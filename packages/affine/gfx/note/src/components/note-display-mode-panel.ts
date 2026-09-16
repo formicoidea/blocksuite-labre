@@ -1,10 +1,24 @@
 import { NoteDisplayMode } from '@labre/affine-model';
+import { translateKey } from '@labre/affine-shared/services';
 import { stopPropagation } from '@labre/affine-shared/utils';
 import { WithDisposable } from '@labre/global/lit';
 import { EdgelessIcon, PageIcon } from '@blocksuite/icons/lit';
+import type { BlockStdScope } from '@labre/std';
 import { css, html, LitElement } from 'lit';
 import { property } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
+
+import {
+  GFX_NOTE_DISPLAY_MODE_BOTH,
+  GFX_NOTE_DISPLAY_MODE_EDGELESS_ONLY,
+  GFX_NOTE_DISPLAY_MODE_PAGE_ONLY,
+} from '../translations.js';
+
+const DisplayModeWording = {
+  [NoteDisplayMode.DocAndEdgeless]: GFX_NOTE_DISPLAY_MODE_BOTH,
+  [NoteDisplayMode.DocOnly]: GFX_NOTE_DISPLAY_MODE_PAGE_ONLY,
+  [NoteDisplayMode.EdgelessOnly]: GFX_NOTE_DISPLAY_MODE_EDGELESS_ONLY,
+} as const;
 
 export class NoteDisplayModePanel extends WithDisposable(LitElement) {
   static override styles = css`
@@ -60,14 +74,8 @@ export class NoteDisplayModePanel extends WithDisposable(LitElement) {
   }
 
   private _DisplayModeLabel(mode: NoteDisplayMode) {
-    switch (mode) {
-      case NoteDisplayMode.DocAndEdgeless:
-        return 'In Both';
-      case NoteDisplayMode.DocOnly:
-        return 'In Page Only';
-      case NoteDisplayMode.EdgelessOnly:
-        return 'In Edgeless Only';
-    }
+    const wording = DisplayModeWording[mode];
+    return this.std ? translateKey(this.std, ...wording) : wording[1];
   }
 
   override render() {
@@ -101,4 +109,13 @@ export class NoteDisplayModePanel extends WithDisposable(LitElement) {
 
   @property({ attribute: false })
   accessor panelWidth = 240;
+
+  /**
+   * Optional: this panel also renders from
+   * `packages/affine/fragments/outline/src/card/outline-card.ts`, outside
+   * this lot's packages, which supplies no `std`. Without one the English
+   * fallback shows, same as before this wording existed.
+   */
+  @property({ attribute: false })
+  accessor std: BlockStdScope | undefined = undefined;
 }

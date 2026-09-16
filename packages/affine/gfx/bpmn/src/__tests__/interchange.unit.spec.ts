@@ -319,7 +319,11 @@ describe('what the format refused to carry reaches the user', () => {
 
     const [warning, ...rest] = runExport(elements, {})!.warnings!;
     expect(rest).toEqual([]);
-    expect(warning).toContain('2 artefacts are drawn outside every pool');
+    // `runExport` is the INTERCHANGE adapter (`InterchangeExportResult`,
+    // shared across every format), so its `warnings` are already resolved
+    // strings — `BpmnExportWarning`'s key/fallback/params live one layer
+    // down, in `exportBpmnXmlWithWarnings` itself.
+    expect(warning).toContain('2 artefact(s) are drawn outside every pool');
     expect(warning).toContain('inside a pool');
   });
 
@@ -360,7 +364,7 @@ describe('what the format refused to carry reaches the user', () => {
 
     const [warning, ...rest] = runExport(elements, {})!.warnings!;
     expect(rest).toEqual([]);
-    expect(warning).toContain('1 message flow was left out');
+    expect(warning).toContain('1 message flow(s) were left out');
     expect(warning).toContain('no pool');
   });
 
@@ -383,7 +387,7 @@ describe('what the format refused to carry reaches the user', () => {
 
     const [warning, ...rest] = runExport(elements, {})!.warnings!;
     expect(rest).toEqual([]);
-    expect(warning).toContain('2 arrows were left out');
+    expect(warning).toContain('2 arrow(s) were left out');
   });
 
   it('says nothing about a neutral connector, which lost nothing', () => {

@@ -3,6 +3,9 @@ import { EditorLifeCycleExtension } from '@labre/std';
 import { type ExtensionType, StoreIdentifier } from '@labre/store';
 import type { TemplateResult } from 'lit';
 
+import { TOOLBAR_UNDO } from './translation-service/chrome.js';
+import { TranslationProvider } from './translation-service/index.js';
+
 export interface NotificationService {
   toast(
     message: string,
@@ -75,6 +78,22 @@ export function NotificationExtension(
   };
 }
 
+/**
+ * `translateKey`'s own contract, replicated over a `ServiceProvider` rather
+ * than a `BlockStdScope`: `notifyWithUndoActionImpl` sits under the DI setup
+ * (`NotificationExtension`), not under an editor, so it only ever has the
+ * provider `std.getOptional` itself delegates to — `std.getOptional ===
+ * std.provider.getOptional.bind(std.provider)` (`framework/std`'s
+ * `BlockStdScope`), so this resolves through the exact same registered
+ * `TranslationProvider` a `translateKey(std, …)` call site would.
+ */
+function undoLabel(provider: ServiceProvider): string {
+  const resolved = provider
+    .getOptional(TranslationProvider)
+    ?.t(TOOLBAR_UNDO[0]);
+  return resolved !== undefined && resolved !== '' ? resolved : TOOLBAR_UNDO[1];
+}
+
 function notifyWithUndoActionImpl(
   provider: ServiceProvider,
   notify: NotificationService['notify'],
@@ -106,7 +125,7 @@ function notifyWithUndoActionImpl(
     actions: [
       {
         key: 'notification-card-undo',
-        label: 'Undo',
+        label: undoLabel(provider),
         onClick: () => {
           store.undo();
           abortController.abort();

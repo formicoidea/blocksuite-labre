@@ -3,6 +3,7 @@ import type { BlockStdScope } from '@labre/std';
 import type { ExtensionType } from '@labre/store';
 
 import { builtInTemplates } from './toolbar/builtin-templates.js';
+import { resolveTemplateName } from './toolbar/resolve-name.js';
 import type {
   Template,
   TemplateCategory,
@@ -71,6 +72,8 @@ export function templateManagerFor(std: BlockStdScope): TemplateManager {
         ...contributed.map(c => c.name),
       ]),
     ],
+    categoryLabel: name =>
+      byName(name)?.nameKey ?? builtInTemplates.categoryLabel(name),
     // Both halves, so a host's `extend(...)` can still append to a framework's
     // own category (the global half answers `[]` for a name it does not know).
     list: async name => {
@@ -83,9 +86,17 @@ export function templateManagerFor(std: BlockStdScope): TemplateManager {
     search: async (keyword, name) => {
       const k = keyword.trim().toLocaleLowerCase();
       const pool = name ? [byName(name)].filter(c => !!c) : contributed;
+      // Matches the ENGLISH name (`templateFromCommand`'s baked-in `name`,
+      // still what a catalogue-less playground shows) or the host's own
+      // translation of it (`resolveTemplateName`, through the command's
+      // `labelKey`) — a search box must not go blind on a translated tile.
       const own = (await Promise.all(pool.map(loadCategory)))
         .flat()
-        .filter(t => t.name?.toLocaleLowerCase().includes(k));
+        .filter(
+          t =>
+            t.name?.toLocaleLowerCase().includes(k) ||
+            resolveTemplateName(std, t).toLocaleLowerCase().includes(k)
+        );
       return [...(await builtInTemplates.search(keyword, name)), ...own];
     },
   };

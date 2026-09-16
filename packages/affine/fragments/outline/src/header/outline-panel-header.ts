@@ -1,3 +1,4 @@
+import { translateKey } from '@labre/affine-shared/services';
 import { createButtonPopper } from '@labre/affine-shared/utils';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
 import { SettingsIcon, SortIcon } from '@blocksuite/icons/lit';
@@ -8,6 +9,11 @@ import { html } from 'lit';
 import { query } from 'lit/decorators.js';
 
 import { type TocContext, tocContext } from '../config';
+import {
+  OUTLINE_PREVIEW_SETTINGS_TOOLTIP,
+  OUTLINE_TABLE_OF_CONTENTS,
+  OUTLINE_VISIBILITY_AND_SORT_TOOLTIP,
+} from '../translations';
 import * as styles from './outline-panel-header.css';
 
 export const AFFINE_OUTLINE_PANEL_HEADER = 'affine-outline-panel-header';
@@ -37,14 +43,19 @@ export class OutlinePanelHeader extends SignalWatcher(
   override render() {
     const sortingEnabled = this._context.enableSorting$.value;
     const showSettingPopper = this._settingPopperShow$.value;
+    const std = this._context.editor$.value.std;
 
     return html`<div class=${styles.container}>
         <div class=${styles.noteSettingContainer}>
-          <span class=${styles.label}>Table of Contents</span>
+          <span class=${styles.label}
+            >${translateKey(std, ...OUTLINE_TABLE_OF_CONTENTS)}</span
+          >
           <edgeless-tool-icon-button
             data-testid="toggle-toc-setting-button"
             class="${showSettingPopper ? 'active' : ''}"
-            .tooltip=${showSettingPopper ? '' : 'Preview Settings'}
+            .tooltip=${showSettingPopper
+              ? ''
+              : translateKey(std, ...OUTLINE_PREVIEW_SETTINGS_TOOLTIP)}
             .tipPosition=${'bottom'}
             .active=${showSettingPopper}
             .activeMode=${'background'}
@@ -56,7 +67,7 @@ export class OutlinePanelHeader extends SignalWatcher(
         <edgeless-tool-icon-button
           data-testid="toggle-notes-sorting-button"
           class="${sortingEnabled ? 'active' : ''}"
-          .tooltip=${'Visibility and sort'}
+          .tooltip=${translateKey(std, ...OUTLINE_VISIBILITY_AND_SORT_TOOLTIP)}
           .tipPosition=${'left'}
           .iconContainerPadding=${0}
           .active=${sortingEnabled}

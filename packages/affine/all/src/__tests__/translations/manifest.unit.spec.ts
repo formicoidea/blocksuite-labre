@@ -1,11 +1,11 @@
-import { readdirSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { bpmnTranslationEntries } from '@labre/affine-gfx-bpmn';
 import { describe, expect, test } from 'vitest';
 
 import { getTranslationKeyManifest } from '../../translations.js';
+import { allSourceFiles } from './source-files.js';
 
 /**
  * The exhaustiveness contract of `getTranslationKeyManifest`, in both
@@ -25,30 +25,11 @@ import { getTranslationKeyManifest } from '../../translations.js';
  * the same objects, so checking the monorepo assembly checks every part.
  */
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-// …/packages/affine/all/src/__tests__/translations → repo root is 6 levels up.
-const ROOT = join(HERE, '..', '..', '..', '..', '..', '..');
-
-/** The library source: everything a host can import. Tests excluded. */
-const SCAN_DIRS = ['packages/affine', 'packages/framework'];
-const SKIP_DIRS = new Set(['node_modules', 'dist', '__tests__']);
 /**
  * The manifest itself is NOT a use site. Scanning it would let `CHROME_KEYS`
  * justify its own entries, and the dead-entry check below would never fire.
  */
 const SKIP_FILES = new Set([join('affine', 'all', 'src', 'translations.ts')]);
-
-function sourceFiles(dir: string, out: string[] = []): string[] {
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const path = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      if (!SKIP_DIRS.has(entry.name)) sourceFiles(path, out);
-    } else if (entry.name.endsWith('.ts') && !entry.name.includes('.spec.')) {
-      if (![...SKIP_FILES].some(skip => path.endsWith(skip))) out.push(path);
-    }
-  }
-  return out;
-}
 
 /** `'com.labre.…'` string literals. */
 const LITERAL = /'(com\.labre\.[^']+)'/g;
@@ -96,7 +77,75 @@ const CHROME_TABLE_PREFIXES = [
  * and the list is pinned so a new unpairable call site has to be looked at
  * rather than silently joining them.
  */
-const UNPAIRABLE_CHROME_KEYS: string[] = [];
+/**
+ * "One chrome word, one key" (L7 dedupe, `.claude/i18n-chantier/dedupe-plan.json`):
+ * two or more packages used to declare the SAME English chrome word under
+ * DIFFERENT keys (e.g. "Reload" as both `com.labre.toolbar.reload` and
+ * `com.labre.root.toolbar.reload`). The closing pass merged every duplicate
+ * onto one canonical key and turned the others into aliases (same constant
+ * NAME, same value) — see `chrome.ts`'s own "L7 dedupe" section. This is the
+ * list of chrome words that GENUINELY need more than one key, each with the
+ * reason a merge would be wrong; copied from the dedupe plan's own
+ * `keepSeparateWords`, plus the four words whose merge GROUP kept a
+ * `keepSeparate` key alongside its canonical ("Confirm", "Equation", "Link",
+ * "Document", formerly "Page").
+ */
+const KEPT_SEPARATE_CHROME_WORDS: Readonly<Record<string, string>> = {
+  Background: 'frame fill vs text highlight background',
+  Close: 'two keys already shipped on main',
+  Code: 'view toggle vs inline code format',
+  Custom: 'custom colour tab vs custom frame preset (gender differs in French)',
+  Elements: 'catalogue category header (derived table) vs C4 legend section',
+  Frames: 'catalogue category header (derived table) vs C4 legend section',
+  Group: 'verb (group the selection) vs noun (a group)',
+  Left: 'mind-map layout direction vs text alignment',
+  Light: 'light colour mode vs light font weight',
+  Relations:
+    'catalogue category header vs framework legend sections (framework-owned keys)',
+  Right: 'mind-map layout direction vs text alignment',
+  Shape: "a connector's shape vs the shape tool",
+  Text: 'text block type vs link text field vs text tool',
+  'What this export could not write down':
+    'one key per writer, both shipped on main',
+  // The four merge groups (L7 dedupe) that kept a `keepSeparate` key beside
+  // their canonical: "Confirm" (the reading panel's own
+  // `com.labre.reading.action.confirm-nature`, a different sentence-in-context
+  // from the generic confirm button), "Equation" (the LaTeX slash menu's own
+  // block-item NAME, distinct from the inline/block empty-placeholder),
+  // "Link" (Wardley's own template-link wording — a framework never imports
+  // another package's key), "Document" (formerly "Page"; the slash menu's own group header,
+  // distinct from the note's display-mode word).
+  Confirm:
+    "the reading panel's own confirm-nature wording, not the generic verb",
+  Equation: "the LaTeX slash-menu block item's own name, not the placeholder",
+  Link: "Wardley's own framework-owned template wording",
+  Document: "the slash menu's own group header, not the note's display mode",
+};
+
+/**
+ * Every manifest entry of source `chrome`, grouped by its exact English
+ * fallback: barring the deliberate homonyms above, a fallback the manifest
+ * ships should be reachable through exactly one key. A NEW duplicate here
+ * means a lot declared a second key for a word `chrome.ts` (or another
+ * package's `translations.ts`) already has — reuse the existing wording
+ * instead of minting a new one, or, for a genuine homonym, add it to
+ * {@link KEPT_SEPARATE_CHROME_WORDS} with a reason.
+ */
+const UNPAIRABLE_CHROME_KEYS: string[] = [
+  // `BPMN_QUARANTINE_REASON` (`gfx/bpmn/src/import.ts`) and its own
+  // `BPMN_QUARANTINE_REASON_KEY` are TWO separate `Record`s rather than one
+  // table of `[key, text]` pairs: the reason's plain string is ALSO written
+  // verbatim into `ForeignInterchange.quarantined[].reason` (a data field,
+  // pinned as English in `import.unit.spec.ts`), so it cannot become a tuple
+  // without breaking that contract — see the long comment on
+  // `BPMN_QUARANTINE_REASON_KEY`. The two tables are matched by PROPERTY
+  // NAME (`colour`, `expanded`, …), not by textual adjacency, so this scan
+  // cannot pair them.
+  'com.labre.bpmn.import.quarantine.colour',
+  'com.labre.bpmn.import.quarantine.expanded',
+  'com.labre.bpmn.import.quarantine.imported',
+  'com.labre.bpmn.import.quarantine.nested-lanes',
+];
 
 describe('getTranslationKeyManifest', () => {
   const manifest = getTranslationKeyManifest();
@@ -155,11 +204,11 @@ describe('getTranslationKeyManifest', () => {
     pinned('com.labre.toast.linked-doc-created', 'Linked doc created');
     pinned(
       'com.labre.toast.note-removed-from-page-mode',
-      'Note removed from Page Mode'
+      'Note removed from Document Mode'
     );
     pinned(
       'com.labre.toast.frame-inserted-into-page',
-      'Frame inserted into Page.'
+      'Frame inserted into Document.'
     );
     pinned('com.labre.toast.no-link-found', 'No link found');
   });
@@ -256,7 +305,7 @@ describe('getTranslationKeyManifest', () => {
   });
 
   test('the manifest and the library source agree, in both directions', () => {
-    const files = SCAN_DIRS.flatMap(dir => sourceFiles(join(ROOT, dir)));
+    const files = allSourceFiles(SKIP_FILES);
     expect(files.length).toBeGreaterThan(100);
 
     /** Full keys seen as literals. */
@@ -339,4 +388,32 @@ describe('getTranslationKeyManifest', () => {
     ).toEqual(UNPAIRABLE_CHROME_KEYS);
     // ~2.8k files read synchronously: ~3s warm, but 20s+ on a cold NTFS cache.
   }, 90_000);
+
+  test('one chrome word, one key (L7 dedupe)', () => {
+    const byFallback = new Map<string, Set<string>>();
+    for (const entry of manifest) {
+      if (entry.source !== 'chrome' || entry.fallback === undefined) continue;
+      const keys = byFallback.get(entry.fallback) ?? new Set<string>();
+      keys.add(entry.key);
+      byFallback.set(entry.fallback, keys);
+    }
+
+    const newDuplicates = [...byFallback.entries()]
+      .filter(
+        ([fallback, keys]) =>
+          keys.size > 1 && !(fallback in KEPT_SEPARATE_CHROME_WORDS)
+      )
+      .map(
+        ([fallback, keys]) =>
+          `${JSON.stringify(fallback)}: ${[...keys].sort().join(', ')}`
+      )
+      .sort();
+
+    expect(
+      newDuplicates,
+      'a new chrome word duplicate: reuse the existing wording from ' +
+        'chrome.ts (or, for a real homonym, add it to ' +
+        'KEPT_SEPARATE_CHROME_WORDS with a reason)'
+    ).toEqual([]);
+  });
 });

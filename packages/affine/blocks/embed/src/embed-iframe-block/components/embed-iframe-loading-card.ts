@@ -1,4 +1,5 @@
 import { LoadingIcon } from '@labre/affine-components/icons';
+import { CHROME_LOADING, translateKey } from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { EmbedIcon } from '@blocksuite/icons/lit';
 import { type BlockStdScope } from '@labre/std';
@@ -173,7 +174,9 @@ export class EmbedIframeLoadingCard extends LitElement {
       <div class=${cardClasses} style=${cardStyle}>
         <div class="loading-content">
           <div class="loading-spinner">${LoadingIcon()}</div>
-          <div class="loading-text">Loading...</div>
+          <div class="loading-text">
+            ${translateKey(this.std, ...CHROME_LOADING)}
+          </div>
         </div>
         <div class="loading-banner">
           <div class="icon-box">${EmbedIcon()}</div>

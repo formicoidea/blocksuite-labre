@@ -19,6 +19,7 @@ import {
   translateKey,
 } from '@labre/affine-shared/services';
 import { stopPropagation } from '@labre/affine-shared/utils';
+import { EDGELESS_TOOLBAR_MORE_TOOLS } from './translations.js';
 import {
   ArrowLeftSmallIcon,
   ArrowRightSmallIcon,
@@ -552,7 +553,7 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
         >
           ${MoreHorizontalIcon({ width: '20px', height: '20px' })}
           <affine-tooltip tip-position="top" .offset=${25}>
-            More Tools
+            ${translateKey(this.std, ...EDGELESS_TOOLBAR_MORE_TOOLS)}
           </affine-tooltip>
         </icon-button>
       </div>

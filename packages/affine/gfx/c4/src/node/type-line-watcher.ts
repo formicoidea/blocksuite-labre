@@ -115,7 +115,12 @@ export class C4TypeLineWatcher extends InteractivityExtension {
     if (!kind) return;
 
     const raw = element.text.toString();
-    const canonical = normalizeC4TypeLine(kind, raw);
+    // `this.std` resolves the canonical line through the host's catalogue —
+    // both halves of the prompt, and the technology round-trip
+    // (`technologyOfTypeLine`) recognising the host's own resolved word —
+    // so a translated document's type line stays in that language across a
+    // commit instead of being silently reverted to English (`type-line.ts`).
+    const canonical = normalizeC4TypeLine(kind, raw, this.std);
     if (canonical === raw) return;
 
     this.std.store.captureSync();

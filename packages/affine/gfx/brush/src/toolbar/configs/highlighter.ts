@@ -15,6 +15,7 @@ import {
 import {
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
+  translateKey,
 } from '@labre/affine-shared/services';
 import {
   getMostCommonResolvedValue,
@@ -22,6 +23,8 @@ import {
 } from '@labre/affine-shared/utils';
 import { BlockFlavourIdentifier } from '@labre/std';
 import { html } from 'lit';
+
+import { BRUSH_LABEL_COLOR } from '../../translations.js';
 
 const trackBaseProps = {
   category: 'highlighter',
@@ -115,7 +118,7 @@ export const highlighterToolbarConfig = {
         return html`
           <edgeless-color-picker-button
             .colorPanelClass="${'one-way small'}"
-            .label="${'Color'}"
+            .label="${translateKey(ctx.std, ...BRUSH_LABEL_COLOR)}"
             .pick=${onPick}
             .color=${color}
             .theme=${theme}
@@ -123,6 +126,7 @@ export const highlighterToolbarConfig = {
             .palettes=${DefaultTheme.StrokeColorShortPalettes}
             .shouldKeepColor=${true}
             .enableCustomColor=${false}
+            .std=${ctx.std}
           >
           </edgeless-color-picker-button>
         `;

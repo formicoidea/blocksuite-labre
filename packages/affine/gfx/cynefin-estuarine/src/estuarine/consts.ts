@@ -1,3 +1,5 @@
+import type { ChromeWording } from '@labre/affine-shared/services';
+
 /**
  * Visual constants for the Estuarine framework map, reproduced from the official
  * SVG (viewBox 0 0 690 801). All geometry is authored in that fixed reference
@@ -7,6 +9,12 @@
  * letterboxed (see `EstuarineFit` in `./element-renderer.ts`). The e axis is
  * vertical & double-headed (energy), the t axis horizontal & single-headed
  * (time only flows one way).
+ *
+ * The three curve legends below (`LABELS`) carry a `wording`, resolved by
+ * `element-renderer.ts` through the `CanvasRenderer` it is handed at paint
+ * time — see `cynefin/consts.ts` for the identical mechanism next door. The
+ * italic `e` / `t` axis LETTERS (`AXIS_LABELS`) are notation, not words, and
+ * are deliberately NOT keyed (PO decision).
  */
 
 export const REF_W = 690;
@@ -71,24 +79,44 @@ export const VOLATILE_PATH =
   'M 58 446 C 61 447, 70 451, 76 454 C 82 457, 88 462, 94 466 C 100 470, 107 476, 112 481 C 117 486, 122 492, 126 498 C 130 504, 135 509, 139 515 C 143 521, 145 526, 148 532 C 151 538, 153 544, 155 550 C 157 556, 159 562, 160 568 C 161 574, 162 580, 163 586 C 164 592, 164 598, 164 604 C 164 610, 166 616, 166 622 C 166 628, 166 634, 165 640 C 164 646, 164 652, 163 658 C 162 664, 162 670, 161 676 C 160 682, 160 688, 159 694 C 158 700, 155 706, 154 712 C 153 718, 152 724, 151 730 C 150 736, 148 746, 147 749';
 export const VOLATILE_WIDTH = 5;
 
+const LABEL_COUNTERFACTUAL: ChromeWording = [
+  'com.labre.cynefin-estuarine.estuarine.legend.counter-factual',
+  'COUNTER FACTUAL',
+];
+const LABEL_LIMINAL: ChromeWording = [
+  'com.labre.cynefin-estuarine.estuarine.legend.liminal',
+  'LIMINAL',
+];
+const LABEL_VOLATILE: ChromeWording = [
+  'com.labre.cynefin-estuarine.estuarine.legend.volatile',
+  'VOLATILE',
+];
+
+/** Every {@link LABELS} wording, for `translations.ts`'s manifest. */
+export const ESTUARINE_CANVAS_WORDINGS: readonly ChromeWording[] = [
+  LABEL_COUNTERFACTUAL,
+  LABEL_LIMINAL,
+  LABEL_VOLATILE,
+];
+
 /** Uppercase legends: anchored centre, alphabetic baseline, with letter-spacing. */
 export const LABELS = {
   counterfactual: {
-    text: 'COUNTER FACTUAL',
+    wording: LABEL_COUNTERFACTUAL,
     x: 422,
     y: 25,
     size: 20,
     color: COLORS.label,
   },
   liminal: {
-    text: 'LIMINAL',
+    wording: LABEL_LIMINAL,
     x: 316,
     y: 192,
     size: 18,
     color: COLORS.liminalLabel,
   },
   volatile: {
-    text: 'VOLATILE',
+    wording: LABEL_VOLATILE,
     x: 219,
     y: 783,
     size: 20,

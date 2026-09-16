@@ -1,7 +1,10 @@
+import { translateKey } from '@labre/affine-shared/services';
 import { stopPropagation } from '@labre/affine-shared/utils';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
 import { DoneIcon } from '@blocksuite/icons/lit';
-import { PropTypes, requiredProperties } from '@labre/std';
+import type { BlockStdScope } from '@labre/std';
+import { PropTypes, requiredProperties, stdContext } from '@labre/std';
+import { consume } from '@lit/context';
 import type { ReadonlySignal, Signal } from '@preact/signals-core';
 import { css, html, LitElement, type TemplateResult } from 'lit';
 import { property, query } from 'lit/decorators.js';
@@ -10,6 +13,7 @@ import { when } from 'lit-html/directives/when.js';
 import clamp from 'lodash-es/clamp';
 
 import { EditorChevronDown, type EditorMenuButton } from '../toolbar';
+import { SIZE_LABEL_SCALE } from '../translations.js';
 
 type SizeItem = { key?: string | number; value: number };
 
@@ -27,6 +31,9 @@ const SIZE_LIST: SizeItem[] = [
 export class SizeDropdownMenu extends SignalWatcher(
   WithDisposable(LitElement)
 ) {
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
+
   static override styles = css`
     div[data-orientation] {
       width: 68px;
@@ -80,7 +87,14 @@ export class SizeDropdownMenu extends SignalWatcher(
   accessor format: ((e: number) => string) | undefined;
 
   @property({ attribute: false })
-  accessor label: string = 'Scale';
+  accessor label: string | undefined = undefined;
+
+  get resolvedLabel(): string {
+    if (this.label !== undefined) return this.label;
+    return this.std
+      ? translateKey(this.std, ...SIZE_LABEL_SCALE)
+      : SIZE_LABEL_SCALE[1];
+  }
 
   @property({ attribute: false })
   accessor icon: TemplateResult | undefined;
@@ -143,7 +157,7 @@ export class SizeDropdownMenu extends SignalWatcher(
       format,
       type,
       icon,
-      label,
+      resolvedLabel: label,
       size$: { value: size },
     } = this;
     const isCheckType = type === 'check';

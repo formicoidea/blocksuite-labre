@@ -2,6 +2,7 @@ import type { ColorScheme } from '@labre/affine-model';
 import {
   type ToolbarAction,
   ToolbarContext,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { SignalWatcher } from '@labre/global/lit';
 import { PaletteIcon } from '@blocksuite/icons/lit';
@@ -27,6 +28,7 @@ import {
   EmbedCardLightListIcon,
   EmbedCardLightVerticalIcon,
 } from '../icons';
+import { CARD_STYLE_LABEL } from '../translations.js';
 
 const cardStyleMap: Record<ColorScheme, Record<string, TemplateResult>> = {
   light: {
@@ -77,8 +79,8 @@ export class CardStyleDropdownMenu extends SignalWatcher(LitElement) {
         .contentPadding="${'8px'}"
         .button=${html`
           <editor-icon-button
-            aria-label="Card style"
-            .tooltip="${'Card style'}"
+            aria-label="${translateKey(context.std, ...CARD_STYLE_LABEL)}"
+            .tooltip="${translateKey(context.std, ...CARD_STYLE_LABEL)}"
           >
             ${PaletteIcon()}
           </editor-icon-button>

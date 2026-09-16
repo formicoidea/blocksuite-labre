@@ -13,6 +13,11 @@ import {
   StrokeStyle,
   TextAlign,
 } from '@labre/affine-model';
+import {
+  type ChromeWording,
+  translateKey,
+} from '@labre/affine-shared/services';
+import type { BlockStdScope } from '@labre/std';
 
 import { COLORS } from '../consts';
 import {
@@ -302,18 +307,132 @@ const ATTRS =
 const mapPreview = (extra: string) =>
   `<svg ${ATTRS} fill="none"><path d="M22 12 V64 H120" stroke="${COLORS.axis}" stroke-width="2"/>${extra}</svg>`;
 
+/**
+ * The seeds the two worked maps write — declared once so the builders below
+ * and the manifest (`../translations.ts`) read the very same fallback, never
+ * a restated literal. `com.labre.wardley.example.<map>.<slug>`, per
+ * `docs/adr/0016`.
+ */
+export const TEA_SHOP_SEED = {
+  title: {
+    key: 'com.labre.wardley.example.tea-shop.title',
+    fallback: 'Tea Shop',
+  },
+  annotations: {
+    key: 'com.labre.wardley.example.tea-shop.annotations',
+    fallback:
+      'Annotations:\n1. Standardising power lets kettles evolve faster\n2. Hot water is obvious and well known',
+  },
+  business: {
+    key: 'com.labre.wardley.example.tea-shop.business',
+    fallback: 'Business',
+  },
+  public: {
+    key: 'com.labre.wardley.example.tea-shop.public',
+    fallback: 'Public',
+  },
+  cupOfTea: {
+    key: 'com.labre.wardley.example.tea-shop.cup-of-tea',
+    fallback: 'Cup of Tea',
+  },
+  cup: { key: 'com.labre.wardley.example.tea-shop.cup', fallback: 'Cup' },
+  tea: { key: 'com.labre.wardley.example.tea-shop.tea', fallback: 'Tea' },
+  hotWater: {
+    key: 'com.labre.wardley.example.tea-shop.hot-water',
+    fallback: 'Hot Water',
+  },
+  water: { key: 'com.labre.wardley.example.tea-shop.water', fallback: 'Water' },
+  kettle: {
+    key: 'com.labre.wardley.example.tea-shop.kettle',
+    fallback: 'Kettle',
+  },
+  electricKettle: {
+    key: 'com.labre.wardley.example.tea-shop.electric-kettle',
+    fallback: 'Electric Kettle',
+  },
+  power: { key: 'com.labre.wardley.example.tea-shop.power', fallback: 'Power' },
+  limitedBy: {
+    key: 'com.labre.wardley.example.tea-shop.limited-by',
+    fallback: 'limited by',
+  },
+} as const;
+
+export const KODAK_INERTIA_SEED = {
+  title: {
+    key: 'com.labre.wardley.example.kodak-inertia.title',
+    fallback: "Wardley map of Kodak's 2005 inertia to digital",
+  },
+  user: {
+    key: 'com.labre.wardley.example.kodak-inertia.user',
+    fallback: 'User',
+  },
+  captureAMoment: {
+    key: 'com.labre.wardley.example.kodak-inertia.capture-a-moment',
+    fallback: 'Capture a moment',
+  },
+  filmCamera: {
+    key: 'com.labre.wardley.example.kodak-inertia.film-camera',
+    fallback: 'Film camera',
+  },
+  digitalCamera: {
+    key: 'com.labre.wardley.example.kodak-inertia.digital-camera',
+    fallback: 'Digital camera',
+  },
+  photographicFilm: {
+    key: 'com.labre.wardley.example.kodak-inertia.photographic-film',
+    fallback: 'Photographic film',
+  },
+  digitalStorage: {
+    key: 'com.labre.wardley.example.kodak-inertia.digital-storage',
+    fallback: 'Digital storage',
+  },
+} as const;
+
+/**
+ * One seed's resolved text — the host's catalogue when `std` is a real
+ * inserting editor, the English fallback when building the module's own
+ * `content` (no editor exists yet at that point).
+ */
+function seedText(
+  std: BlockStdScope | undefined,
+  def: { key: string; fallback: string }
+): string {
+  return std ? translateKey(std, def.key, def.fallback) : def.fallback;
+}
+
+/**
+ * A shipped map — what is left once the artefacts are derived.
+ *
+ * `build` takes the OPTIONAL inserting editor: called with none, at module
+ * load, for the English `content`; called again with the real `std` as
+ * {@link Template.localize}, so the two builds read the very same layout and
+ * differ only in the words a seed resolves to (`docs/adr/0016`).
+ */
 function tpl(
   name: string,
   preview: string,
-  elements: SurfaceElementsJSON
+  build: (std?: BlockStdScope) => SurfaceElementsJSON,
+  nameKey?: string
 ): Template {
   return {
     name,
     type: 'template',
     preview,
-    content: makeTemplateSnapshot(elements, name),
+    nameKey,
+    content: makeTemplateSnapshot(build(), name),
+    localize: std => makeTemplateSnapshot(build(std), name),
   };
 }
+
+/** The two worked maps' own tile names (`Template.nameKey`). */
+export const WARDLEY_TEMPLATE_NAME_TEA_SHOP: ChromeWording = [
+  'com.labre.wardley.template.tea-shop',
+  'Tea Shop',
+];
+export const WARDLEY_TEMPLATE_NAME_KODAK_INERTIA: ChromeWording = [
+  'com.labre.wardley.template.kodak-inertia',
+  'Kodak inertia',
+];
 
 function ann(e: number, v: number) {
   const cx = ex(e);
@@ -345,54 +464,57 @@ function annTxt(e: number, v: number, n: string) {
 }
 
 // ── Tea Shop (the canonical map) ──────────────────────────────────────
-function teaShop(): SurfaceElementsJSON {
+function teaShop(std?: BlockStdScope): SurfaceElementsJSON {
+  const s = (def: (typeof TEA_SHOP_SEED)[keyof typeof TEA_SHOP_SEED]) =>
+    seedText(std, def);
   return {
     bg: bg(),
-    title: title('Tea Shop'),
+    title: title(s(TEA_SHOP_SEED.title)),
     annBox: panel(120, 200, 420, 64),
-    annText: freeText(
-      132,
-      208,
-      400,
-      'Annotations:\n1. Standardising power lets kettles evolve faster\n2. Hot water is obvious and well known',
-      13
-    ),
+    annText: freeText(132, 208, 400, s(TEA_SHOP_SEED.annotations), 13),
     business: stake(0.62, 0.93),
-    businessL: lbl(0.62, 0.93, 'Business', {
+    businessL: lbl(0.62, 0.93, s(TEA_SHOP_SEED.business), {
       align: 'center',
       dy: -28,
       w: 120,
     }),
     businessG: pair('business', 'businessL'),
     public: stake(0.78, 0.93),
-    publicL: lbl(0.78, 0.93, 'Public', { align: 'center', dy: -28, w: 120 }),
+    publicL: lbl(0.78, 0.93, s(TEA_SHOP_SEED.public), {
+      align: 'center',
+      dy: -28,
+      w: 120,
+    }),
     publicG: pair('public', 'publicL'),
     cupOfTea: comp(0.62, 0.74),
-    cupOfTeaL: lbl(0.62, 0.74, 'Cup of Tea', { align: 'right' }),
+    cupOfTeaL: lbl(0.62, 0.74, s(TEA_SHOP_SEED.cupOfTea), { align: 'right' }),
     cupOfTeaG: pair('cupOfTea', 'cupOfTeaL'),
     cup: comp(0.8, 0.7),
-    cupL: lbl(0.8, 0.7, 'Cup'),
+    cupL: lbl(0.8, 0.7, s(TEA_SHOP_SEED.cup)),
     cupG: pair('cup', 'cupL'),
     tea: comp(0.83, 0.6),
-    teaL: lbl(0.83, 0.6, 'Tea'),
+    teaL: lbl(0.83, 0.6, s(TEA_SHOP_SEED.tea)),
     teaG: pair('tea', 'teaL'),
     hotWater: comp(0.8, 0.47),
-    hotWaterL: lbl(0.8, 0.47, 'Hot Water'),
+    hotWaterL: lbl(0.8, 0.47, s(TEA_SHOP_SEED.hotWater)),
     hotWaterG: pair('hotWater', 'hotWaterL'),
     water: comp(0.81, 0.34),
-    waterL: lbl(0.81, 0.34, 'Water'),
+    waterL: lbl(0.81, 0.34, s(TEA_SHOP_SEED.water)),
     waterG: pair('water', 'waterL'),
     kettle: comp(0.36, 0.38),
-    kettleL: lbl(0.36, 0.38, 'Kettle', { align: 'right', dy: 6 }),
+    kettleL: lbl(0.36, 0.38, s(TEA_SHOP_SEED.kettle), {
+      align: 'right',
+      dy: 6,
+    }),
     kettleG: pair('kettle', 'kettleL'),
     electric: future(0.56, 0.38),
-    electricL: lbl(0.56, 0.38, 'Electric Kettle'),
+    electricL: lbl(0.56, 0.38, s(TEA_SHOP_SEED.electricKettle)),
     electricG: pair('electric', 'electricL'),
     power: comp(0.7, 0.1),
-    powerL: lbl(0.7, 0.1, 'Power', { align: 'right', dy: 6 }),
+    powerL: lbl(0.7, 0.1, s(TEA_SHOP_SEED.power), { align: 'right', dy: 6 }),
     powerG: pair('power', 'powerL'),
     powerFut: future(0.88, 0.1),
-    powerFutL: lbl(0.88, 0.1, 'Power'),
+    powerFutL: lbl(0.88, 0.1, s(TEA_SHOP_SEED.power)),
     powerFutG: pair('powerFut', 'powerFutL'),
     // ABOVE the link it annotates, not across it. Written on the line it reads
     // as a label nobody can read — which is the finding W3 raises, and it was
@@ -400,7 +522,7 @@ function teaShop(): SurfaceElementsJSON {
     //
     // NEUTRAL: it is a remark about a LINK, not the name of an artefact, so it
     // travels with nothing and nothing measures it (see `LblOpts.neutral`).
-    limitedBy: lbl(0.56, 0.43, 'limited by', {
+    limitedBy: lbl(0.56, 0.43, s(TEA_SHOP_SEED.limitedBy), {
       align: 'center',
       w: 120,
       size: 13,
@@ -425,7 +547,10 @@ function teaShop(): SurfaceElementsJSON {
 }
 
 // ── Kodak inertia (2005) ──────────────────────────────────────────────
-function kodak(): SurfaceElementsJSON {
+function kodak(std?: BlockStdScope): SurfaceElementsJSON {
+  const s = (
+    def: (typeof KODAK_INERTIA_SEED)[keyof typeof KODAK_INERTIA_SEED]
+  ) => seedText(std, def);
   // The future dependency `capture → storage` is the movement Kodak resisted,
   // and the inertia bar belongs where that dependency crosses into commodity —
   // the boundary the capability refused to cross. It used to sit 105 units away
@@ -440,32 +565,48 @@ function kodak(): SurfaceElementsJSON {
 
   return {
     bg: bg(),
-    title: title("Wardley map of Kodak's 2005 inertia to digital"),
+    title: title(s(KODAK_INERTIA_SEED.title)),
     user: stake(0.54, 0.92),
-    userL: lbl(0.54, 0.92, 'User'),
+    userL: lbl(0.54, 0.92, s(KODAK_INERTIA_SEED.user)),
     userG: pair('user', 'userL'),
     capture: dot(CAPTURE[0], CAPTURE[1], 3),
     // To the LEFT, like the other two capability names: to the right of this
     // node runs the future dependency towards digital storage, and a name
     // written across the line that carries the whole argument is exactly the
     // case W3 exists for.
-    captureL: lbl(CAPTURE[0], CAPTURE[1], 'Capture a moment', {
-      align: 'right',
-    }),
+    captureL: lbl(
+      CAPTURE[0],
+      CAPTURE[1],
+      s(KODAK_INERTIA_SEED.captureAMoment),
+      {
+        align: 'right',
+      }
+    ),
     captureG: pair('capture', 'captureL'),
     film: comp(0.52, 0.62),
-    filmL: lbl(0.52, 0.62, 'Film camera', { align: 'right' }),
+    filmL: lbl(0.52, 0.62, s(KODAK_INERTIA_SEED.filmCamera), {
+      align: 'right',
+    }),
     filmG: pair('film', 'filmL'),
     digital: future(0.74, 0.62),
-    digitalL: lbl(0.74, 0.62, 'Digital camera', { color: WARDLEY_RED }),
-    digitalG: pair('digital', 'digitalL'),
-    roll: comp(0.52, 0.4),
-    rollL: lbl(0.52, 0.4, 'Photographic film', { align: 'right' }),
-    rollG: pair('roll', 'rollL'),
-    storage: future(STORAGE[0], STORAGE[1]),
-    storageL: lbl(STORAGE[0], STORAGE[1], 'Digital storage', {
+    digitalL: lbl(0.74, 0.62, s(KODAK_INERTIA_SEED.digitalCamera), {
       color: WARDLEY_RED,
     }),
+    digitalG: pair('digital', 'digitalL'),
+    roll: comp(0.52, 0.4),
+    rollL: lbl(0.52, 0.4, s(KODAK_INERTIA_SEED.photographicFilm), {
+      align: 'right',
+    }),
+    rollG: pair('roll', 'rollL'),
+    storage: future(STORAGE[0], STORAGE[1]),
+    storageL: lbl(
+      STORAGE[0],
+      STORAGE[1],
+      s(KODAK_INERTIA_SEED.digitalStorage),
+      {
+        color: WARDLEY_RED,
+      }
+    ),
     storageG: pair('storage', 'storageL'),
     inertiaBar: inertia(barE, barV),
     l1: link('user', 'capture'),
@@ -483,13 +624,15 @@ export const wardleyMaps: Template[] = [
     mapPreview(
       `<circle cx="78" cy="24" r="3" fill="${NODE_FILL}" stroke="${NODE_STROKE}"/><circle cx="50" cy="44" r="3" fill="${NODE_FILL}" stroke="${NODE_STROKE}"/><circle cx="86" cy="40" r="3" fill="${NODE_FILL}" stroke="${NODE_STROKE}"/><circle cx="92" cy="58" r="3" fill="${NODE_FILL}" stroke="${NODE_STROKE}"/><path d="M78 24 L50 44 M78 24 L86 40 L92 58" stroke="${LINK_GREY}"/><path d="M50 44 h22" stroke="${WARDLEY_RED}" stroke-dasharray="3 2"/>`
     ),
-    teaShop()
+    teaShop,
+    WARDLEY_TEMPLATE_NAME_TEA_SHOP[0]
   ),
   tpl(
     'Kodak inertia',
     mapPreview(
       `<circle cx="56" cy="22" r="3" fill="${NODE_FILL}" stroke="${NODE_STROKE}"/><circle cx="54" cy="40" r="3" fill="${NODE_FILL}" stroke="${NODE_STROKE}"/><circle cx="86" cy="40" r="3" fill="${NODE_FILL}" stroke="${WARDLEY_RED}"/><rect x="76" y="35" width="2.5" height="11" fill="${INERTIA_COLOR}"/><path d="M57 40 h17" stroke="${WARDLEY_RED}" stroke-dasharray="3 2"/>`
     ),
-    kodak()
+    kodak,
+    WARDLEY_TEMPLATE_NAME_KODAK_INERTIA[0]
   ),
 ];

@@ -6,6 +6,7 @@ import {
   ShapeElementModel,
 } from '@labre/affine-model';
 import {
+  STYLE_MENU_LABEL,
   type ToolbarContext,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
@@ -15,6 +16,13 @@ import {
   type MenuItem,
   renderMenu,
 } from '@labre/affine-widget-edgeless-toolbar';
+
+import {
+  MINDMAP_LAYOUT_LABEL,
+  MINDMAP_LAYOUT_LEFT,
+  MINDMAP_LAYOUT_RADIAL,
+  MINDMAP_LAYOUT_RIGHT,
+} from '../translations';
 import { RadiantIcon, RightLayoutIcon, StyleIcon } from '@blocksuite/icons/lit';
 import { BlockFlavourIdentifier } from '@labre/std';
 
@@ -47,6 +55,7 @@ const MINDMAP_STYLE_LIST = [
 const MINDMAP_LAYOUT_LIST = [
   {
     key: 'Left',
+    keyWording: MINDMAP_LAYOUT_LEFT,
     value: LayoutType.LEFT,
     icon: RightLayoutIcon({
       style: 'transform: rotate(0.5turn); transform-origin: center;',
@@ -54,11 +63,13 @@ const MINDMAP_LAYOUT_LIST = [
   },
   {
     key: 'Radial',
+    keyWording: MINDMAP_LAYOUT_RADIAL,
     value: LayoutType.BALANCE,
     icon: RadiantIcon(),
   },
   {
     key: 'Right',
+    keyWording: MINDMAP_LAYOUT_RIGHT,
     value: LayoutType.RIGHT,
     icon: RightLayoutIcon(),
   },
@@ -78,10 +89,12 @@ export const createMindmapStyleActionMenu = (
 
   return renderMenu({
     label: 'Style',
+    labelWording: STYLE_MENU_LABEL,
     icon: StyleIcon(),
     items: MINDMAP_STYLE_LIST,
     currentValue: style,
     onPick,
+    std: ctx.std,
   });
 };
 
@@ -101,9 +114,11 @@ export const createMindmapLayoutActionMenu = (
 
   return renderMenu({
     label: 'Layout',
+    labelWording: MINDMAP_LAYOUT_LABEL,
     items: MINDMAP_LAYOUT_LIST,
     currentValue: layoutType,
     onPick,
+    std: ctx.std,
   });
 };
 

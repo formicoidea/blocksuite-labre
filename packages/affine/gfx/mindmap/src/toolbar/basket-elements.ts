@@ -16,12 +16,15 @@ import {
 import {
   FeatureFlagService,
   TelemetryProvider,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { openSingleFileWith } from '@labre/affine-shared/utils';
 import { Bound, type IVec } from '@labre/global/gfx';
 import type { BlockComponent } from '@labre/std';
 import type { TemplateResult } from 'lit';
 import * as Y from 'yjs';
+
+import { MINDMAP_SEED_CHILD, MINDMAP_SEED_ROOT } from '../translations';
 
 export type ConfigProperty = 'x' | 'y' | 'r' | 's' | 'z' | 'o';
 export type ConfigState = 'default' | 'active' | 'hover' | 'next';
@@ -77,9 +80,12 @@ export const getMindmapRender =
       xywh: string;
     };
 
+    // Translated HERE and once: the captions are document content the moment
+    // they land (ADR 0016), so the host's catalogue is asked at placement and
+    // never again.
     const root: MindMapNode = {
       children: [],
-      text: 'Mind Map',
+      text: translateKey(edgeless.std, ...MINDMAP_SEED_ROOT),
       xywh: `[${rootX},${rootY},${rootW},${rootH}]`,
     };
 
@@ -88,7 +94,7 @@ export const getMindmapRender =
       const nodeY = centerVertical - nodeH / 2 + (i - 1) * 50;
       root.children.push({
         children: [],
-        text: 'Text',
+        text: translateKey(edgeless.std, ...MINDMAP_SEED_CHILD),
         xywh: `[${nodeX},${nodeY},${nodeW},${nodeH}]`,
       });
     }

@@ -1,12 +1,15 @@
 import {
   addDot,
   addMarker,
+  cdSubdomainSeedKey,
   CD_SUBDOMAINS,
   MOVEMENT_COLOR,
   placeDddElement,
+  teamTopologySeedKey,
   TEAM_TOPOLOGIES,
 } from '@labre/affine-gfx-ddd-shared';
 import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
+import { translateKey } from '@labre/affine-shared/services';
 import type { BlockStdScope, CommandDescriptor } from '@labre/std';
 import { svg, type TemplateResult } from 'lit';
 
@@ -66,7 +69,10 @@ const SPECS: Spec[] = [
             cx,
             cy,
             preset.fill,
-            preset.label,
+            // Translated HERE and once: the caption is document content the
+            // moment it lands (ADR 0016), so the host's catalogue is asked at
+            // placement and never again.
+            translateKey(std, cdSubdomainSeedKey(preset.kind), preset.label),
             // The dot IS the sub-domain: the role rides on the ellipse, so a
             // rule about where a sub-domain sits measures the artefact and not
             // the group that also holds its name.
@@ -87,7 +93,14 @@ const SPECS: Spec[] = [
           addMarker(surface, std, cx, cy, {
             fill: preset.fill,
             letter: preset.letter,
-            label: preset.label,
+            // Translated HERE and once: the caption is document content the
+            // moment it lands (ADR 0016), so the host's catalogue is asked at
+            // placement and never again.
+            label: translateKey(
+              std,
+              teamTopologySeedKey(preset.kind),
+              preset.label
+            ),
             // The square IS the marker, so the role rides on it and not on the
             // group that also holds its caption — the same call as the dot.
             // Without this the automatic legend, which detects by role and only

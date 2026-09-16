@@ -6,3 +6,5 @@ __snapshots__/
 tsconfig.tsbuildinfo
 .coverage/
 **/test-results/
+# Written by literals.unit.spec.ts (UPDATE_I18N_BASELINE); its own line-per-text format keeps ratchet diffs deletion-only.
+packages/affine/all/src/__tests__/translations/literals.baseline.json

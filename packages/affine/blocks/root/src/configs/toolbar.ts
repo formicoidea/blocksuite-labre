@@ -68,10 +68,17 @@ import { toDraftModel } from '@labre/store';
 import { html } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
 
+import {
+  ROOT_TOOLBAR_CONVERSIONS_ARIA,
+  ROOT_TOOLBAR_CREATE_LINKED_DOC,
+  ROOT_TOOLBAR_CREATE_TABLE,
+  ROOT_TOOLBAR_TURN_INTO,
+} from '../translations.js';
+
 const conversionsActionGroup = {
   id: 'a.conversions',
   when: ({ chain }) => isFormatSupported(chain).run()[0],
-  generate({ chain }) {
+  generate({ chain, std }) {
     const [ok, { selectedModels = [] }] = chain
       .tryAll(chain => [
         chain.pipe(getTextSelectionCommand),
@@ -107,8 +114,11 @@ const conversionsActionGroup = {
           .contentPadding="${'8px'}"
           .button=${html`
             <editor-icon-button
-              aria-label="Conversions"
-              .tooltip="${'Turn into'}"
+              aria-label="${translateKey(
+                std,
+                ...ROOT_TOOLBAR_CONVERSIONS_ARIA
+              )}"
+              .tooltip="${translateKey(std, ...ROOT_TOOLBAR_TURN_INTO)}"
             >
               ${conversion.icon} ${EditorChevronDown}
             </editor-icon-button>
@@ -179,6 +189,7 @@ const highlightActionGroup = {
 const turnIntoDatabase = {
   id: 'e.convert-to-database',
   tooltip: 'Create Table',
+  tooltipWording: ROOT_TOOLBAR_CREATE_TABLE,
   icon: DatabaseTableViewIcon(),
   when({ chain }) {
     const middleware = (count = 0) => {
@@ -226,6 +237,7 @@ const turnIntoDatabase = {
 const turnIntoLinkedDoc = {
   id: 'f.convert-to-linked-doc',
   tooltip: 'Create Linked Doc',
+  tooltipWording: ROOT_TOOLBAR_CREATE_LINKED_DOC,
   icon: LinkedPageIcon(),
   when({ chain, std }) {
     const supportFlavours = [

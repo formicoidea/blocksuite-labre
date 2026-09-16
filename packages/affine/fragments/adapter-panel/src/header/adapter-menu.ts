@@ -5,10 +5,11 @@ import { property } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 
 import {
+  ADAPTERS,
+  adapterPanelContext,
+  adapterPanelLabel,
   type AdapterItem,
   type AdapterPanelContext,
-  adapterPanelContext,
-  ADAPTERS,
 } from '../config';
 
 export const AFFINE_ADAPTER_MENU = 'affine-adapter-menu';
@@ -66,7 +67,7 @@ export class AdapterMenu extends SignalWatcher(LitElement) {
             class=${classes}
             @click=${() => this._handleAdapterChange(adapter)}
           >
-            ${adapter.label}
+            ${adapterPanelLabel(this._context.std, adapter.labelWording)}
           </button>
         `;
       })}

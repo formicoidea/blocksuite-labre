@@ -13,6 +13,7 @@ import { DefaultTool } from '../tool/default-tool.js';
 import {
   type InterchangeFormat,
   type InterchangeImportCapability,
+  InterchangeImportError,
   type InterchangeImportResult,
   type InterchangeNote,
   type InterchangeReport,
@@ -153,18 +154,29 @@ const REMARKS_IN_A_NOTIFICATION = 5;
 const formatLabel = (format: InterchangeFormat) => format.id.toUpperCase();
 
 /**
- * One remark, as the line a reader sees.
+ * One remark's own wording — the reader that produced it had no `std` and
+ * could not translate it (P3), so this is where a remark that declared a key
+ * (`InterchangeNote.messageKey`) gets it, `{{name}}` holes filled from
+ * `messageParams` with no host catalogue exactly as they were filled by the
+ * reader's own string interpolation before either field existed. A remark
+ * with no key is one that names something out of the file with no sentence
+ * shape worth sharing, and is shown as the reader wrote it.
  *
- * The reader that produced it had no `std` and could not translate it (P3), so
- * this is where a remark that declared a key gets its wording — with its own
- * `message` as the English default, exactly like every other `translateKey`
- * call site. A remark with no key is one that names something out of the file
- * and is shown as the reader wrote it (see `InterchangeNote.messageKey`).
+ * The one function every READER of `note.message` goes through — the
+ * notification line below (`remarkLine`) and the console table
+ * (`reportInterchangeImport`) both resolve through it, so a note keyed via
+ * the `TABLE.key[1]` pattern (its OWN fallback, not a hand-rebuilt literal)
+ * reads identically in both rather than showing raw `{{tag}}` in the console.
  */
-function remarkLine(std: BlockStdScope, note: InterchangeNote): string {
-  const message = note.messageKey
-    ? translateKey(std, note.messageKey, note.message)
+function resolveNoteMessage(std: BlockStdScope, note: InterchangeNote): string {
+  return note.messageKey
+    ? translateKey(std, note.messageKey, note.message, note.messageParams)
     : note.message;
+}
+
+/** One remark, as the line a reader sees. */
+function remarkLine(std: BlockStdScope, note: InterchangeNote): string {
+  const message = resolveNoteMessage(std, note);
   const subject = note.sourceId ?? note.element;
   return subject ? `${subject}: ${message}` : message;
 }
@@ -265,7 +277,7 @@ export function reportInterchangeImport(
       kind: note.kind,
       source: note.sourceId ?? '',
       element: note.element ?? '',
-      message: note.message,
+      message: resolveNoteMessage(std, note),
     }))
   );
 
@@ -375,9 +387,24 @@ export async function importInterchangeFile(
   try {
     result = capability.run(await file.text(), { name: file.name });
   } catch (error) {
+    // `InterchangeImportError` checked FIRST: a reader that throws it declared
+    // a key for its own refusal, resolved exactly like a note's `messageKey`
+    // (see `remarkLine`, above). Any other `Error` (or a non-`Error` throw)
+    // reads as it always did.
+    const message =
+      error instanceof InterchangeImportError && error.messageKey
+        ? translateKey(
+            std,
+            error.messageKey,
+            error.message,
+            error.messageParams
+          )
+        : error instanceof Error
+          ? error.message
+          : String(error);
     notifyImport(std, {
       title: translateKey(std, IMPORT_FAILED_KEY, IMPORT_FAILED_FALLBACK),
-      message: error instanceof Error ? error.message : String(error),
+      message,
       accent: 'error',
     });
     return;

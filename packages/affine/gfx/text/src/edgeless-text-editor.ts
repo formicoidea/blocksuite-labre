@@ -8,7 +8,7 @@ import {
 } from '@labre/affine-block-surface';
 import { DefaultTheme, TextElementModel } from '@labre/affine-model';
 import type { RichText } from '@labre/affine-rich-text';
-import { ThemeProvider } from '@labre/affine-shared/services';
+import { ThemeProvider, translateKey } from '@labre/affine-shared/services';
 import {
   getSelectedRect,
   overlayScale,
@@ -32,6 +32,7 @@ import { styleMap } from 'lit/directives/style-map.js';
 import * as Y from 'yjs';
 
 import { getCursorByCoord, getLineHeight } from './element-renderer/utils';
+import { TEXT_EDITOR_PLACEHOLDER } from './translations.js';
 
 export function mountTextElementEditor(
   textElement: TextElementModel,
@@ -474,7 +475,7 @@ export class EdgelessTextEditor extends WithDisposable(ShadowlessElement) {
       ></rich-text>
       ${isEmpty
         ? html`<span class="edgeless-text-editor-placeholder">
-            Type from here
+            ${translateKey(this.std, ...TEXT_EDITOR_PLACEHOLDER)}
           </span>`
         : nothing}
     </div>`;

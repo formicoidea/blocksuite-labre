@@ -46,12 +46,13 @@ const CHART_PREVIEW = `<svg ${ATTRS} fill="none"><rect x="10" y="6" width="115" 
 
 export const coreDomainTemplateCategory: TemplateCategory = {
   name: 'Core Domain Chart',
+  // Reuses the senior button's own key — see `TemplateCategory.nameKey`.
+  nameKey: 'com.labre.framework.ddd-core-domain',
   templates: [
-    templateFromCommand(
-      byLabel('Core Domain Chart'),
-      CHART_PREVIEW,
-      'Core Domain Chart'
-    ),
+    // No name override: it would only restate the command's own
+    // `labelFallback` as a second literal the panel could not translate — see
+    // `resolveTemplateName`, which reads the command's `labelKey` instead.
+    templateFromCommand(byLabel('Core Domain Chart'), CHART_PREVIEW),
     ...CD_SUBDOMAINS.map(preset =>
       templateFromCommand(
         byLabel(preset.label),

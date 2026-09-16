@@ -3,7 +3,11 @@ import {
   darkToolbarStyles,
   lightToolbarStyles,
 } from '@labre/affine-components/toolbar';
-import { EditPropsStore, ThemeProvider } from '@labre/affine-shared/services';
+import {
+  EditPropsStore,
+  ThemeProvider,
+  translateKey,
+} from '@labre/affine-shared/services';
 import {
   requestConnectedFrame,
   stopPropagation,
@@ -22,8 +26,13 @@ import { unsafeSVG } from 'lit/directives/unsafe-svg.js';
 
 import { templateManagerFor } from '../contribute.js';
 import { createTemplateJob } from '../services/template.js';
+import {
+  TEMPLATE_PANEL_ADD,
+  TEMPLATE_PANEL_SEARCH_PLACEHOLDER,
+} from '../translations.js';
 import { builtInTemplates } from './builtin-templates.js';
 import { defaultPreview, Triangle } from './cards.js';
+import { resolveTemplateName } from './resolve-name.js';
 import type { Template } from './template-type.js';
 import { cloneDeep } from './utils.js';
 
@@ -320,7 +329,12 @@ export class EdgelessTemplatePanel extends WithDisposable(LitElement) {
         );
       }
 
-      const insertedBound = await templateJob.insertTemplate(template.content);
+      // The seeds in the inserting editor's language (see `Template.localize`);
+      // `content` is the English build, kept for previews, search and tests.
+      const content = original.localize
+        ? original.localize(this.edgeless.std)
+        : template.content;
+      const insertedBound = await templateJob.insertTemplate(content);
 
       original.afterInsert?.(this.edgeless.std, templateJob.insertedElementIds);
 
@@ -409,7 +423,10 @@ export class EdgelessTemplatePanel extends WithDisposable(LitElement) {
           <input
             class="search-input"
             type="text"
-            placeholder="Search file or anything..."
+            placeholder=${translateKey(
+              this.edgeless.std,
+              ...TEMPLATE_PANEL_SEARCH_PLACEHOLDER
+            )}
             @input=${this._updateSearchKeyword}
             @cut=${stopPropagation}
             @copy=${stopPropagation}
@@ -421,6 +438,14 @@ export class EdgelessTemplatePanel extends WithDisposable(LitElement) {
             _categories,
             cate => cate,
             cate => {
+              // `cate` stays the STABLE identity (the click handler, the
+              // remembered `templateCache`, `catalogue.list`/`search`); only
+              // the tab's own TEXT is resolved through the category's
+              // `nameKey`, when it carries one — see `TemplateCategory.nameKey`.
+              const nameKey = this.catalogue.categoryLabel?.(cate);
+              const label = nameKey
+                ? translateKey(this.edgeless.std, nameKey, cate)
+                : cate;
               return html`<div
                 class="category-entry ${_currentCategory === cate
                   ? 'selected'
@@ -430,7 +455,7 @@ export class EdgelessTemplatePanel extends WithDisposable(LitElement) {
                   this._updateTemplates();
                 }}
               >
-                ${cate}
+                ${label}
               </div>`;
             }
           )}
@@ -448,6 +473,9 @@ export class EdgelessTemplatePanel extends WithDisposable(LitElement) {
                   ></affine-template-loading>`
                 : repeat(
                     _templates,
+                    // The drag payload, `templateCache` and `isBeingDragged`
+                    // below all key off this SAME identity — never the
+                    // resolved (possibly translated) display name.
                     template => template.name,
                     template => {
                       const preview = template.preview
@@ -463,6 +491,12 @@ export class EdgelessTemplatePanel extends WithDisposable(LitElement) {
                       const isBeingDragged =
                         draggingElement &&
                         draggingElement.data.name === template.name;
+                      // The one place that asks the host's catalogue for the
+                      // WORDING above the identity — see `resolveTemplateName`.
+                      const displayName = resolveTemplateName(
+                        this.edgeless.std,
+                        template
+                      );
                       return html`
                         <div
                           class=${`template-item ${
@@ -471,7 +505,10 @@ export class EdgelessTemplatePanel extends WithDisposable(LitElement) {
                           style=${styleMap({
                             opacity: isBeingDragged ? '0' : '1',
                           })}
-                          data-hover-text="Add"
+                          data-hover-text=${translateKey(
+                            this.edgeless.std,
+                            ...TEMPLATE_PANEL_ADD
+                          )}
                           @mousedown=${(e: MouseEvent) =>
                             this.draggableController.onMouseDown(e, {
                               data: template,
@@ -488,13 +525,13 @@ export class EdgelessTemplatePanel extends WithDisposable(LitElement) {
                           ${template === this._loadingTemplate
                             ? html`<affine-template-loading></affine-template-loading>`
                             : nothing}
-                          ${template.name
+                          ${displayName
                             ? html`<affine-tooltip
                                 .offset=${12}
                                 .autoHide=${true}
                                 tip-position="top"
                               >
-                                ${template.name}
+                                ${displayName}
                               </affine-tooltip>`
                             : nothing}
                         </div>

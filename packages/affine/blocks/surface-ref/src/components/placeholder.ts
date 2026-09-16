@@ -1,14 +1,19 @@
 import { ColorScheme } from '@labre/affine-model';
+import { translateKey } from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
 import { DeleteIcon } from '@blocksuite/icons/lit';
-import { ShadowlessElement } from '@labre/std';
+import { type BlockStdScope, ShadowlessElement } from '@labre/std';
 import { type GfxModel } from '@labre/std/gfx';
 import { css, html, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 
 import { DarkDeletedSmallBanner, LightDeletedSmallBanner } from '../icons';
+import {
+  SURFACE_REF_PLACEHOLDER_NOT_AVAILABLE,
+  SURFACE_REF_TYPE_SENTENCE_WORDINGS,
+} from '../translations';
 import { getReferenceModelTitle, TYPE_ICON_MAP } from '../utils';
 
 export class SurfaceRefPlaceHolder extends SignalWatcher(
@@ -74,18 +79,25 @@ export class SurfaceRefPlaceHolder extends SignalWatcher(
   @property({ attribute: false })
   accessor theme: ColorScheme = ColorScheme.Light;
 
+  @property({ attribute: false })
+  accessor std!: BlockStdScope;
+
   override render() {
-    const { referenceModel, refFlavour, inEdgeless } = this;
+    const { referenceModel, refFlavour, inEdgeless, std } = this;
 
     // When surface ref is in page mode and reference exists, don't render placeholder
     if (referenceModel && !inEdgeless) return nothing;
 
     const modelNotFound = !referenceModel;
     const matchedType = TYPE_ICON_MAP[refFlavour] ?? TYPE_ICON_MAP['edgeless'];
+    const matchedTypeName = translateKey(std, ...matchedType.wording);
+    const sentences =
+      SURFACE_REF_TYPE_SENTENCE_WORDINGS[refFlavour] ??
+      SURFACE_REF_TYPE_SENTENCE_WORDINGS['edgeless'];
 
     const title =
       (referenceModel && getReferenceModelTitle(referenceModel)) ??
-      matchedType.name;
+      matchedTypeName;
 
     const notFoundBackground =
       this.theme === ColorScheme.Light
@@ -108,15 +120,17 @@ export class SurfaceRefPlaceHolder extends SignalWatcher(
           ${modelNotFound ? DeleteIcon() : matchedType.icon}
           <span class="surface-ref-title">
             ${modelNotFound
-              ? `This ${matchedType.name} not available`
+              ? translateKey(std, ...SURFACE_REF_PLACEHOLDER_NOT_AVAILABLE, {
+                  type: matchedTypeName,
+                })
               : `${title}`}
           </span>
         </div>
         <div class="surface-ref-placeholder-body">
           <span class="surface-ref-text">
             ${modelNotFound
-              ? `The ${matchedType.name.toLowerCase()} is deleted or not in this doc.`
-              : `The ${matchedType.name.toLowerCase()} is inserted but cannot display in edgeless mode. Switch to page mode to view the block.`}
+              ? translateKey(std, ...sentences.deleted)
+              : translateKey(std, ...sentences.cannotDisplay)}
           </span>
         </div>
       </div>

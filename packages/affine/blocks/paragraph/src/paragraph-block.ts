@@ -11,6 +11,7 @@ import {
   BlockCommentManager,
   CitationProvider,
   DocModeProvider,
+  translateKey,
 } from '@labre/affine-shared/services';
 import {
   calculateCollapsedSiblings,
@@ -32,6 +33,7 @@ import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 
 import { ParagraphBlockConfigExtension } from './paragraph-block-config.js';
 import { paragraphBlockStyles } from './styles.js';
+import { PARAGRAPH_PLACEHOLDER_WORDINGS } from './translations.js';
 
 export class ParagraphBlockComponent extends CaptionedBlockComponent<ParagraphBlockModel> {
   static override styles = paragraphBlockStyles;
@@ -70,9 +72,12 @@ export class ParagraphBlockComponent extends CaptionedBlockComponent<ParagraphBl
   };
 
   private get _placeholder() {
-    return this.std
+    const raw = this.std
       .get(ParagraphBlockConfigExtension.identifier)
       ?.getPlaceholder(this.model);
+    if (!raw) return raw;
+    const wording = PARAGRAPH_PLACEHOLDER_WORDINGS[raw];
+    return wording ? translateKey(this.std, ...wording) : raw;
   }
 
   private _setReadonlyCollapsed(collapsed: boolean) {

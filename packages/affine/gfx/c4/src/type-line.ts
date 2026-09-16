@@ -1,4 +1,9 @@
 import type { C4NodeKind } from '@labre/affine-model';
+import {
+  type ChromeWording,
+  translateKey,
+} from '@labre/affine-shared/services';
+import type { BlockStdScope } from '@labre/std';
 
 /**
  * The middle tier of a C4 element's label — `[Person]`, `[Software System]`,
@@ -55,6 +60,54 @@ export const C4_TYPE_WORD: Record<C4NodeKind, string> = {
 };
 
 /**
+ * {@link C4_TYPE_WORD}'s own i18n key, one per DISTINCT word (four kinds
+ * share `Container`, two share `Person`, two share `Software System`, one
+ * word each carries one key).
+ *
+ * The PO's own glossary (`brief-i18n.md`) names "Software System",
+ * "Container" and "Component" franglais — the French proposal IS the English
+ * word — and this lot extends the same choice to "Person" and to
+ * {@link TYPE_TECHNOLOGY_PLACEHOLDER}, for a reason beyond consistency: this
+ * whole file's comparisons (`technologyOfTypeLine`, `C4_TYPE_PLACEHOLDER`,
+ * `c4StatedTechnology` in `component.ts`) read the STORED text back against
+ * these very words, and `c4StatedTechnology` runs from the `std`-free exporter
+ * (`export.ts`, ADR 0012 P3) — it cannot ask a host's catalogue at all. Keeping
+ * the shipped French wording IDENTICAL to English is what keeps that
+ * comparison correct on a document seeded in French. A host that overrides
+ * the catalogue with a genuinely different word regains the risk the
+ * `DESCRIPTION_PLACEHOLDER_KEY` comment in `consts.ts` already names for the
+ * description tier.
+ */
+// Named constants rather than the key literals inline: `manifest.unit.spec.ts`
+// reads two adjacent single-quoted literals in one argument list as a
+// key/fallback PAIR, with no anchor on `translateKey(` — and a `Record`
+// spelling each key out beside the NEXT (quoted, hyphenated) property name
+// below it reads exactly like one. Referencing an identifier instead of
+// repeating the literal sidesteps the false pairing.
+const PERSON_KEY = 'com.labre.c4.type.person';
+const SYSTEM_KEY = 'com.labre.c4.type.system';
+const CONTAINER_KEY = 'com.labre.c4.type.container';
+const COMPONENT_KEY = 'com.labre.c4.type.component';
+
+export const C4_TYPE_WORD_KEY: Record<C4NodeKind, string> = {
+  person: PERSON_KEY,
+  'person-ext': PERSON_KEY,
+  system: SYSTEM_KEY,
+  'system-ext': SYSTEM_KEY,
+  container: CONTAINER_KEY,
+  database: CONTAINER_KEY,
+  mobile: CONTAINER_KEY,
+  browser: CONTAINER_KEY,
+  component: COMPONENT_KEY,
+};
+
+/** The word an `std` (when given) resolves {@link kind}'s bracket to. */
+function typeWord(kind: C4NodeKind, std?: BlockStdScope): string {
+  const english = C4_TYPE_WORD[kind];
+  return std ? translateKey(std, C4_TYPE_WORD_KEY[kind], english) : english;
+}
+
+/**
  * The type line as it is drawn, brackets included.
  *
  * The technology is appended only when the author actually set one — an empty
@@ -62,11 +115,17 @@ export const C4_TYPE_WORD: Record<C4NodeKind, string> = {
  * produce a dangling `[Container: ]`. Whitespace runs collapse for the same
  * reason they do in the mermaid sanitizer: the line is one line.
  *
- * Pure, total and `std`-free, so the renderer, the exporter and a test can all
- * ask the same question and get the same answer.
+ * Pure and total; `std` is OPTIONAL and, when given, resolves the bracketed
+ * word through the host's catalogue ({@link typeWord}) — the renderer, the
+ * exporter and a test can all still ask the same question with no `std` at
+ * all and get the same English answer they always have.
  */
-export function c4TypeLine(kind: C4NodeKind, technology?: string): string {
-  const word = C4_TYPE_WORD[kind];
+export function c4TypeLine(
+  kind: C4NodeKind,
+  technology?: string,
+  std?: BlockStdScope
+): string {
+  const word = typeWord(kind, std);
   const techn = (technology ?? '').replaceAll(/\s+/g, ' ').trim();
   return techn ? `[${word}: ${techn}]` : `[${word}]`;
 }
@@ -92,6 +151,22 @@ const KNOWN_TYPE_WORDS: ReadonlySet<string> = new Set(
 );
 
 /**
+ * {@link KNOWN_TYPE_WORDS}, plus the host-resolved word of every kind when
+ * `std` is given — so a line seeded in a translated host (`c4TypeLine(kind,
+ * …, std)` at placement, or after a commit the watcher rebuilt) is still
+ * recognised as carrying THE NOTATION'S word and not a technology typed on
+ * its own. With no `std` this is exactly {@link KNOWN_TYPE_WORDS}.
+ */
+function knownTypeWords(std?: BlockStdScope): ReadonlySet<string> {
+  if (!std) return KNOWN_TYPE_WORDS;
+  const words = new Set(KNOWN_TYPE_WORDS);
+  for (const kind of Object.keys(C4_TYPE_WORD) as C4NodeKind[]) {
+    words.add(typeWord(kind, std).toLowerCase());
+  }
+  return words;
+}
+
+/**
  * The technology an author stated in a type line, whatever shape they left it
  * in — `''` when they stated none.
  *
@@ -108,8 +183,12 @@ const KNOWN_TYPE_WORDS: ReadonlySet<string> = new Set(
  * https://x/docs     →  https://x/docs   a colon that is NOT a prefix
  * ```
  *
- * Pure and `std`-free, so the commit hook, the exporter and a test all read the
- * same line the same way.
+ * Pure and total; `std` is OPTIONAL, exactly like {@link c4TypeLine} —
+ * without it this reads a line the same way it always has, and with it the
+ * vocabulary the `<word>:` prefix is matched against ALSO recognises the
+ * host's own resolved word ({@link knownTypeWords}), so a line seeded or
+ * normalized in a translated host still gives back the right technology
+ * rather than the whole line.
  *
  * It deliberately does NOT know about the creation placeholder: a node created
  * and never touched carries `[Container: technology]`, and reading that as "no
@@ -118,17 +197,21 @@ const KNOWN_TYPE_WORDS: ReadonlySet<string> = new Set(
  * placeholder is a question for whoever asks what the element STATES, which is
  * the exporter, and it is answered there.
  */
-export function technologyOfTypeLine(text: string | null | undefined): string {
+export function technologyOfTypeLine(
+  text: string | null | undefined,
+  std?: BlockStdScope
+): string {
   const flat = (text ?? '')
     .replaceAll(/[[\]]/g, ' ')
     .replaceAll(/\s+/g, ' ')
     .trim();
   const colon = flat.indexOf(':');
+  const words = knownTypeWords(std);
   // No colon at all: the line is either the bare notation word — which states no
   // technology — or it is the technology, typed on its own.
-  if (colon < 0) return KNOWN_TYPE_WORDS.has(flat.toLowerCase()) ? '' : flat;
+  if (colon < 0) return words.has(flat.toLowerCase()) ? '' : flat;
   const head = flat.slice(0, colon).trim().toLowerCase();
-  if (!KNOWN_TYPE_WORDS.has(head)) return flat;
+  if (!words.has(head)) return flat;
   return flat.slice(colon + 1).trim();
 }
 
@@ -142,12 +225,19 @@ export function technologyOfTypeLine(text: string | null | undefined): string {
  *
  * Idempotent by construction — `normalize(normalize(x)) === normalize(x)` —
  * which is what lets it run on every commit without a guard.
+ *
+ * `std` is OPTIONAL and, when given, is threaded to both halves: the
+ * technology is read back recognising the host's own word
+ * ({@link technologyOfTypeLine}) and the line is rebuilt with it
+ * ({@link c4TypeLine}) — see `C4TypeLineWatcher`, the one real caller that
+ * has an `std` to give it.
  */
 export function normalizeC4TypeLine(
   kind: C4NodeKind,
-  rawText: string | null | undefined
+  rawText: string | null | undefined,
+  std?: BlockStdScope
 ): string {
-  return c4TypeLine(kind, technologyOfTypeLine(rawText));
+  return c4TypeLine(kind, technologyOfTypeLine(rawText, std), std);
 }
 
 /* ── What a fresh element says before anybody writes on it ─────────────── */
@@ -160,6 +250,39 @@ export function normalizeC4TypeLine(
  * {@link C4_TYPE_PLACEHOLDER}.
  */
 export const TYPE_TECHNOLOGY_PLACEHOLDER = 'technology';
+
+/**
+ * {@link TYPE_TECHNOLOGY_PLACEHOLDER}'s own key — see the long comment on
+ * {@link C4_TYPE_WORD_KEY} for why this lot's shipped French proposal keeps
+ * it identical to English.
+ */
+export const C4_TECHNOLOGY_PLACEHOLDER_KEY =
+  'com.labre.c4.type.technology-placeholder';
+
+/** The word an `std` (when given) resolves the technology prompt to. */
+function technologyPlaceholderWord(std?: BlockStdScope): string {
+  return std
+    ? translateKey(
+        std,
+        C4_TECHNOLOGY_PLACEHOLDER_KEY,
+        TYPE_TECHNOLOGY_PLACEHOLDER
+      )
+    : TYPE_TECHNOLOGY_PLACEHOLDER;
+}
+
+/**
+ * Every wording this file writes onto the canvas, for `translations.ts`'s
+ * manifest contribution — the four distinct type words plus the technology
+ * prompt, all `seed` (written into the document once, at placement or at a
+ * commit the watcher normalizes).
+ */
+export const C4_TYPE_LINE_WORDINGS: readonly ChromeWording[] = [
+  [C4_TYPE_WORD_KEY.person, C4_TYPE_WORD.person],
+  [C4_TYPE_WORD_KEY.system, C4_TYPE_WORD.system],
+  [C4_TYPE_WORD_KEY.container, C4_TYPE_WORD.container],
+  [C4_TYPE_WORD_KEY.component, C4_TYPE_WORD.component],
+  [C4_TECHNOLOGY_PLACEHOLDER_KEY, TYPE_TECHNOLOGY_PLACEHOLDER],
+];
 
 /**
  * Which kinds announce a technology in their type line AT ALL.
@@ -211,6 +334,25 @@ export const C4_TYPE_PLACEHOLDER = Object.fromEntries(
   ])
 ) as Record<C4NodeKind, string>;
 
+/**
+ * {@link C4_TYPE_PLACEHOLDER}, resolved through `std` when given — the
+ * placement site (`createC4Node`, `actions.ts`) seeds a fresh element with
+ * this rather than the English-only constant, so a component drawn in a
+ * translated host starts in that language, like every other seed
+ * (`docs/adr/0016`). With no `std` this returns exactly
+ * `C4_TYPE_PLACEHOLDER[kind]`.
+ */
+export function c4TypePlaceholder(
+  kind: C4NodeKind,
+  std?: BlockStdScope
+): string {
+  return c4TypeLine(
+    kind,
+    C4_TYPE_TAKES_TECHNOLOGY[kind] ? technologyPlaceholderWord(std) : undefined,
+    std
+  );
+}
+
 /* ── What the line becomes when the shape becomes something else ───────── */
 
 /**
@@ -257,11 +399,21 @@ export const C4_TYPE_PLACEHOLDER = Object.fromEntries(
 export function c4MorphedTypeLine(
   from: C4NodeKind,
   to: C4NodeKind,
-  rawText: string | null | undefined
+  rawText: string | null | undefined,
+  std?: BlockStdScope
 ): string | null {
   const text = (rawText ?? '').trim();
   if (!text) return null;
-  if (text === C4_TYPE_PLACEHOLDER[from]) return C4_TYPE_PLACEHOLDER[to];
-  if (text !== normalizeC4TypeLine(from, text)) return null;
-  return c4TypeLine(to, technologyOfTypeLine(text));
+  // The untouched prompt, in EITHER language: the English literal (a document
+  // seeded before these keys existed, or with no host) or the host's own
+  // resolved wording (`c4TypePlaceholder`, which equals the English constant
+  // when `std` is absent) — see the module docstring.
+  if (
+    text === C4_TYPE_PLACEHOLDER[from] ||
+    text === c4TypePlaceholder(from, std)
+  ) {
+    return c4TypePlaceholder(to, std);
+  }
+  if (text !== normalizeC4TypeLine(from, text, std)) return null;
+  return c4TypeLine(to, technologyOfTypeLine(text, std), std);
 }

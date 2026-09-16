@@ -4,6 +4,7 @@ import {
   MOVEMENT_COLOR,
   TEAM_TOPOLOGIES,
 } from '@labre/affine-gfx-ddd-shared';
+import type { BlockStdScope } from '@labre/std';
 import { describe, expect, it } from 'vitest';
 
 import { CORE_DOMAIN_AUTO_LEGEND } from '../core-domain/legend';
@@ -80,10 +81,17 @@ describe('the Core Domain auto-legend table derives from the presets', () => {
 });
 
 describe('what a drawn chart puts in its legend', () => {
+  // No host catalogue: `translateKey` falls through to the fallback it is
+  // given, so the plain English wording is still what these rows show.
+  const NO_HOST_STD = {
+    getOptional: () => undefined,
+  } as unknown as BlockStdScope;
+
   it('lists the dot kinds actually placed, and nothing else', () => {
     const sections = autoLegendSections(
       new Set([CORE_DOMAIN_ROLE.bigBet, CORE_DOMAIN_ROLE.bcCurrent]),
-      CORE_DOMAIN_AUTO_LEGEND
+      CORE_DOMAIN_AUTO_LEGEND,
+      NO_HOST_STD
     );
     // No marker on the chart, so no marker section — sub-title included.
     expect(sections.map(s => s.rows.map(r => r.label))).toEqual([
@@ -94,7 +102,8 @@ describe('what a drawn chart puts in its legend', () => {
   it('lists a marker once one is on the chart, and only the ones that are', () => {
     const sections = autoLegendSections(
       new Set([CORE_DOMAIN_ROLE.bigBet, CORE_DOMAIN_ROLE.xaas]),
-      CORE_DOMAIN_AUTO_LEGEND
+      CORE_DOMAIN_AUTO_LEGEND,
+      NO_HOST_STD
     );
     expect(sections.map(s => s.title)).toEqual([
       'Sub-domains',
@@ -114,6 +123,8 @@ describe('what a drawn chart puts in its legend', () => {
     // Every dot on such a chart is neutral, so nothing is recognised — and the
     // box the toolbar then draws is a title with no rows, not the full notation
     // it used to fall back to.
-    expect(autoLegendSections(new Set(), CORE_DOMAIN_AUTO_LEGEND)).toEqual([]);
+    expect(
+      autoLegendSections(new Set(), CORE_DOMAIN_AUTO_LEGEND, NO_HOST_STD)
+    ).toEqual([]);
   });
 });

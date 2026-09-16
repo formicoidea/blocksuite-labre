@@ -45,12 +45,13 @@ const CLOUD_PREVIEW = `<svg ${ATTRS} fill="none"><path d="M30 52 C18 52 16 40 26
 
 export const contextMapTemplateCategory: TemplateCategory = {
   name: 'Context Map',
+  // Reuses the senior button's own key — see `TemplateCategory.nameKey`.
+  nameKey: 'com.labre.framework.ddd-context-map',
   templates: [
-    templateFromCommand(
-      byLabel('Context Map board'),
-      BOARD_PREVIEW,
-      'Context Map board'
-    ),
+    // No name override: it would only restate `addBoard`'s own
+    // `labelFallback` as a second literal the panel could not translate — see
+    // `resolveTemplateName`, which reads the command's `labelKey` instead.
+    templateFromCommand(byLabel('Context Map board'), BOARD_PREVIEW),
     templateFromCommand(
       byLabel('Bounded Context'),
       BUBBLE_PREVIEW,

@@ -1,0 +1,13 @@
+---
+'@labre/affine': minor
+'@labre/affine-shared': minor
+'@labre/affine-block-note': minor
+'@labre/affine-gfx-note': minor
+'@labre/affine-widget-slash-menu': minor
+'@labre/affine-block-paragraph': minor
+'@labre/affine-block-code': minor
+'@labre/affine-block-latex': minor
+'@labre/affine-block-callout': minor
+---
+
+feat(blocks): the text blocks' and the slash menu's AFFiNE chrome resolves through the translation seam instead of raw English literals. The note block's edgeless surface — the style panel (fill color / shadow / border / corner-radius section titles, the custom-color tab, the "Note Style" button), the shadow/border/display-mode dropdowns, the surface toolbar's slicer/size/display-in-page buttons and their four notifications ("Note displayed in Page Mode", "Content removed/added…", "View in Toc") — now carries `translateKey`/`labelWording`/`tooltipWording` pairs everywhere `std` reaches or the toolbar's own static-config seam applies. The note's slash-menu tooltip captions, its conversion/format item names (`nameWording`, reusing the shared block-type words below), and the "Other Headings" submenu follow the same pattern; the move-up/move-down hotkey config's internal label now reads the shared wording's own fallback instead of restating it, so it can never drift from what the slash menu's own "Actions" group says. The paragraph block's placeholders (the empty-paragraph "Type '/' for commands" and the six heading-level placeholders) resolve through a lookup table a host's custom `getPlaceholder` is free to ignore. `gfx/note`'s "add note" senior tool, its quick-tool row (Image/File/Link, and every block kind offered), and its own shadow/display-mode panels are keyed too — distinct from `blocks/note`'s wording where the two surfaces say different words (e.g. "In Both" vs "Both"), including the pre-existing "Floation shadow" typo, kept letter-for-letter apart from `blocks/note`'s "Floating shadow". The code block's toolbar (copy/caption/comment/duplicate/delete/more, wrap/line-number toggles, the language search placeholder, the "Plain Text" fallback and the copy-failure toast) and the latex block's two slash-menu items (name/description/tooltip intro) and its empty/error placeholders are keyed; language names themselves stay English (proper names). The callout block's single slash-menu item is keyed. Block-type words used in more than one of these packages (Text, Heading 1-6, Code Block, Quote, Divider, Bulleted/Numbered/To-do List) and the note shadow options shared between `blocks/note` and `gfx/note` now live once in `@labre/affine-shared`'s `chrome.ts`. With no catalogue registered every surface reads exactly as it did before this change, letter for letter.

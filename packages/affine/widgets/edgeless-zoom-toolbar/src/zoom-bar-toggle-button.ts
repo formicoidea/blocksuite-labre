@@ -1,5 +1,6 @@
 import { EdgelessLegacySlotIdentifier } from '@labre/affine-block-surface';
 import { createLitPortal } from '@labre/affine-components/portal';
+import { translateKey } from '@labre/affine-shared/services';
 import { stopPropagation } from '@labre/affine-shared/utils';
 import { WithDisposable } from '@labre/global/lit';
 import { MoreHorizontalIcon } from '@blocksuite/icons/lit';
@@ -7,6 +8,8 @@ import type { BlockStdScope } from '@labre/std';
 import { offset } from '@floating-ui/dom';
 import { css, html, LitElement, nothing } from 'lit';
 import { property, query, state } from 'lit/decorators.js';
+
+import { ZOOM_TOGGLE_BAR_TOOLTIP } from './translations.js';
 
 export class ZoomBarToggleButton extends WithDisposable(LitElement) {
   static override styles = css`
@@ -87,7 +90,7 @@ export class ZoomBarToggleButton extends WithDisposable(LitElement) {
     return html`
       <div class="toggle-button" @pointerdown=${stopPropagation}>
         <edgeless-tool-icon-button
-          .tooltip=${'Toggle Zoom Tool Bar'}
+          .tooltip=${translateKey(this.std, ...ZOOM_TOGGLE_BAR_TOOLTIP)}
           .tipPosition=${'right'}
           .active=${this._showPopper}
           .arrow=${false}

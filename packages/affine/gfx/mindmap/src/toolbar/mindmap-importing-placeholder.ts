@@ -1,11 +1,19 @@
 import { LoadingIcon } from '@labre/affine-components/icons';
+import { translateKey } from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
+import type { BlockStdScope } from '@labre/std';
 import { ShadowlessElement } from '@labre/std';
 import { css, html } from 'lit';
+import { property } from 'lit/decorators.js';
 
+import { MINDMAP_IMPORTING_PLACEHOLDER } from '../translations.js';
 import { importMindMapIcon } from './icons.js';
 
 export class MindMapPlaceholder extends ShadowlessElement {
+  /** Set by the caller that has one (`mindmap-menu.ts`) — optional so this
+   * element still renders (in English) when created with none. */
+  @property({ attribute: false })
+  accessor std: BlockStdScope | undefined = undefined;
   static override styles = css`
     mindmap-import-placeholder {
       display: flex;
@@ -47,7 +55,11 @@ export class MindMapPlaceholder extends ShadowlessElement {
       <div class="preview-icon">${importMindMapIcon}</div>
       <div class="description">
         ${LoadingIcon()}
-        <span>Importing mind map...</span>
+        <span
+          >${this.std
+            ? translateKey(this.std, ...MINDMAP_IMPORTING_PLACEHOLDER)
+            : MINDMAP_IMPORTING_PLACEHOLDER[1]}</span
+        >
       </div>
     </div>`;
   }

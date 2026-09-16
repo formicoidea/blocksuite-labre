@@ -14,9 +14,14 @@ import {
   ParagraphKeymapExtension,
   ParagraphTextKeymapExtension,
 } from './paragraph-keymap.js';
+import { PARAGRAPH_PLACEHOLDER_TEXT } from './translations.js';
 
+// `text` reads its English literal from the wording declared in
+// `./translations.ts` (a property access, not a restated literal) so this map
+// stays the single source of truth `paragraph-block.ts` resolves through the
+// seam, rather than drifting from it.
 const placeholders = {
-  text: "Type '/' for commands",
+  text: PARAGRAPH_PLACEHOLDER_TEXT[1],
   h1: 'Heading 1',
   h2: 'Heading 2',
   h3: 'Heading 3',

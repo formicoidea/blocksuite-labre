@@ -12,6 +12,7 @@ import {
 import {
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
+  translateKey,
 } from '@labre/affine-shared/services';
 import {
   getMostCommonResolvedValue,
@@ -19,6 +20,8 @@ import {
 } from '@labre/affine-shared/utils';
 import { BlockFlavourIdentifier } from '@labre/std';
 import { html } from 'lit';
+
+import { BRUSH_LABEL_COLOR } from '../../translations.js';
 
 export const brushToolbarConfig = {
   actions: [
@@ -98,12 +101,13 @@ export const brushToolbarConfig = {
         return html`
           <edgeless-color-picker-button
             class="color"
-            .label="${'Color'}"
+            .label="${translateKey(ctx.std, ...BRUSH_LABEL_COLOR)}"
             .pick=${onPick}
             .color=${color}
             .theme=${theme}
             .originalColor=${originalColor}
             .enableCustomColor=${enableCustomColor}
+            .std=${ctx.std}
           >
           </edgeless-color-picker-button>
         `;

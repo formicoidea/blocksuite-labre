@@ -29,8 +29,14 @@ export interface TranslationService {
   /**
    * Resolve an i18n key. Return `undefined` when the catalogue has no entry,
    * so the caller can fall back rather than render an empty bubble.
+   *
+   * `params` carries the values of a sentence with holes in it ("Failed to
+   * upload {{name}}"). The host interpolates them — and pluralises on `count` —
+   * with its own i18n stack; the placeholders are i18next's `{{name}}`, so a
+   * catalogue seeded from the manifest's fallbacks works as is. A host that
+   * ignores `params` still type-checks and simply shows its unfilled wording.
    */
-  t(key: string): string | undefined;
+  t(key: string, params?: TranslationParams): string | undefined;
 
   /**
    * The language the catalogue is currently serving, as a BCP-47 tag
@@ -61,6 +67,51 @@ export function hostLanguage(std: BlockStdScope): string | undefined {
   return tag.split('-')[0].toLowerCase();
 }
 
+/**
+ * The host's full language tag (`'fr-CA'`), or `undefined` when no host said —
+ * for `Intl` formatting of dates and numbers, where the region matters
+ * (`en-GB` and `en-US` write a date differently). `undefined` hands `Intl` the
+ * runtime default, which is what the editor did before hosts could say.
+ */
+export function hostLocale(std: BlockStdScope): string | undefined {
+  const tag = std.getOptional(TranslationProvider)?.language;
+  return typeof tag === 'string' && tag.length > 0 ? tag : undefined;
+}
+
+/**
+ * `hostLocale(std)`, defaulting to `'en-US'` when the host said nothing —
+ * the locale every `Intl.*Format` call in the library resolves against.
+ *
+ * Dates and numbers fall back to English like every string does, so a
+ * standalone playground stays deterministic: `Intl`'s own runtime-default
+ * fallback would instead read whatever locale the machine happens to have,
+ * which is not a fallback a test can assert on.
+ */
+export function formatLocale(std: BlockStdScope): string {
+  return hostLocale(std) ?? 'en-US';
+}
+
+/** The values of a wording's `{{name}}` placeholders. */
+export type TranslationParams = Record<string, string | number>;
+
+/**
+ * Fill `{{name}}` placeholders from `params`; a placeholder with no value is
+ * left as written, so a missing argument shows rather than vanishes.
+ *
+ * The library's side of interpolation only — used on the English fallback when
+ * the host has no entry. Pluralisation is the host's: a fallback stays neutral
+ * ("{{count}} element(s)").
+ */
+export function fillPlaceholders(
+  wording: string,
+  params?: TranslationParams
+): string {
+  if (!params) return wording;
+  return wording.replace(/\{\{\s*(\w+)\s*\}\}/g, (hole, name: string) =>
+    name in params ? String(params[name]) : hole
+  );
+}
+
 export const TranslationProvider = createIdentifier<TranslationService>(
   'AffineTranslationService'
 );
@@ -87,12 +138,19 @@ export const TranslationExtension = (
  *   made up.
  * - **Chrome** (the word "Warning" on a severity chip) passes an English
  *   default, so a standalone playground reads correctly without a catalogue.
+ *
+ * `params` fill the wording's `{{name}}` placeholders: handed to the host,
+ * which interpolates its own translation, and filled here into the fallback
+ * when the host has none.
  */
 export function translateKey(
   std: BlockStdScope,
   key: string,
-  fallback: string = key
+  fallback: string = key,
+  params?: TranslationParams
 ): string {
-  const resolved = std.getOptional(TranslationProvider)?.t(key);
-  return resolved !== undefined && resolved !== '' ? resolved : fallback;
+  const resolved = std.getOptional(TranslationProvider)?.t(key, params);
+  return resolved !== undefined && resolved !== ''
+    ? resolved
+    : fillPlaceholders(fallback, params);
 }

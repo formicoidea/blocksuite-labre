@@ -180,6 +180,29 @@ export const WARDLEY_NODE_LABEL: Record<WardleyLabelledKind, string> = {
 };
 
 /**
+ * The i18n key {@link WARDLEY_NODE_LABEL} is the English default of —
+ * resolved at placement (`createWardleyNode` / `createWardleyPipeline` /
+ * `createWardleyMarket`), never afterwards. "Pipeline" is the PO's glossary
+ * term for Wardley: the French proposal IS the English word.
+ *
+ * ## The morph's placeholder detection, translated
+ *
+ * `wardleyMorphedLabel` (`morph.ts`) decides whether to refresh an artefact's
+ * name across a morph, and accepts an OPTIONAL `std`: given one, it
+ * recognises the stored text as "untouched" whether it reads the English
+ * prompt or the host's own resolved wording, and resolves the TARGET kind's
+ * prompt through the host too (the same fix `c4MorphedTypeLine` carries,
+ * `gfx/c4/src/type-line.ts`). `MorphSpec.afterMorph`
+ * (`packages/affine/blocks/surface`) now hands its callee the morph
+ * toolbar's own `std`, so `rewriteLabel` passes it straight through: on a
+ * host running a French catalogue, morphing an untouched TRANSLATED node
+ * rewrites its name to the target kind's own translated prompt, exactly as a
+ * standalone playground already rewrote the English one.
+ */
+export const wardleyNodeLabelKey = (kind: WardleyLabelledKind) =>
+  `com.labre.wardley.seed.${kind}`;
+
+/**
  * The fill a kind is born with. White for every circle that means "a thing on
  * the value chain"; the method's grey is the one that carries meaning — it
  * ENCODES the chosen method and stays editable from the toolbar.

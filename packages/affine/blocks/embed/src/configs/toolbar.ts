@@ -17,12 +17,18 @@ import {
   EmbedOptionProvider,
   type LinkEventType,
   TOAST_COPIED_TO_CLIPBOARD,
+  TOOLBAR_CAPTION,
   TOOLBAR_CARD_VIEW,
   TOOLBAR_COPY,
   TOOLBAR_DELETE,
   TOOLBAR_DUPLICATE,
   TOOLBAR_EMBED_VIEW,
   TOOLBAR_INLINE_VIEW,
+  TOOLBAR_LARGE_HORIZONTAL_STYLE,
+  TOOLBAR_LARGE_VERTICAL_STYLE,
+  TOOLBAR_RELOAD,
+  TOOLBAR_SMALL_HORIZONTAL_STYLE,
+  TOOLBAR_SMALL_VERTICAL_STYLE,
   type ToolbarAction,
   type ToolbarActionGroup,
   type ToolbarContext,
@@ -304,10 +310,12 @@ function createBuiltinToolbarConfigForExternal(
           {
             id: 'horizontal',
             label: 'Large horizontal style',
+            labelWording: TOOLBAR_LARGE_HORIZONTAL_STYLE,
           },
           {
             id: 'list',
             label: 'Small horizontal style',
+            labelWording: TOOLBAR_SMALL_HORIZONTAL_STYLE,
           },
         ],
         when(ctx) {
@@ -349,6 +357,7 @@ function createBuiltinToolbarConfigForExternal(
       {
         id: 'd.caption',
         tooltip: 'Caption',
+        tooltipWording: TOOLBAR_CAPTION,
         icon: CaptionIcon(),
         run(ctx) {
           const block = ctx.getCurrentBlockByType(klass);
@@ -409,6 +418,7 @@ function createBuiltinToolbarConfigForExternal(
         placement: ActionPlacement.More,
         id: 'b.reload',
         label: 'Reload',
+        labelWording: TOOLBAR_RELOAD,
         icon: ResetIcon(),
         run(ctx) {
           const block = ctx.getCurrentBlockByType(klass);
@@ -521,7 +531,10 @@ const createBuiltinSurfaceToolbarConfigForExternal = (
               ?.viewType ?? 'card';
           const actions = this.actions.map(action => ({ ...action }));
           const viewType$ = signal(
-            `${viewType === 'card' ? 'Card' : 'Embed'} view`
+            translateKey(
+              ctx.std,
+              ...(viewType === 'card' ? TOOLBAR_CARD_VIEW : TOOLBAR_EMBED_VIEW)
+            )
           );
           const onToggle = createOnToggleFn(
             ctx,
@@ -547,18 +560,22 @@ const createBuiltinSurfaceToolbarConfigForExternal = (
             {
               id: 'horizontal',
               label: 'Large horizontal style',
+              labelWording: TOOLBAR_LARGE_HORIZONTAL_STYLE,
             },
             {
               id: 'list',
               label: 'Small horizontal style',
+              labelWording: TOOLBAR_SMALL_HORIZONTAL_STYLE,
             },
             {
               id: 'vertical',
               label: 'Large vertical style',
+              labelWording: TOOLBAR_LARGE_VERTICAL_STYLE,
             },
             {
               id: 'cube',
               label: 'Small vertical style',
+              labelWording: TOOLBAR_SMALL_VERTICAL_STYLE,
             },
           ] as const
         ).filter(action => EmbedGithubStyles.includes(action.id)),
@@ -608,6 +625,7 @@ const createBuiltinSurfaceToolbarConfigForExternal = (
       {
         id: 'd.caption',
         tooltip: 'Caption',
+        tooltipWording: TOOLBAR_CAPTION,
         icon: CaptionIcon(),
         run(ctx) {
           const block = ctx.getCurrentBlockByType(klass);

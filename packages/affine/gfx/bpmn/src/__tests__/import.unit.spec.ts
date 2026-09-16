@@ -1,7 +1,9 @@
 import type { BpmnNodeKind } from '@labre/affine-model';
+import { fillPlaceholders } from '@labre/affine-shared/services';
 import { describe, expect, it } from 'vitest';
 
 import {
+  type BpmnExportWarning,
   BPMN_XML_OF_KIND,
   exportBpmnXml,
   exportBpmnXmlWithWarnings,
@@ -16,6 +18,10 @@ import {
   collaborationBoard,
   fakePool,
 } from './board-stub';
+
+/** A warning's English fallback, placeholders filled — what a catalogue-less playground shows. */
+const resolved = (w: BpmnExportWarning) =>
+  fillPlaceholders(w.fallback, w.params);
 
 /**
  * The BPMN 2.0 XML import (`docs/adr/0012`, D1–D6).
@@ -1254,7 +1260,7 @@ describe('the writer gives back what the reader carried', () => {
     expect(occurrences(text, 'id="Msg_1"')).toBe(1);
     expect(text).toContain('name="A"');
     expect(text).not.toContain('name="B"');
-    expect(warnings.some(line => line.includes('"Msg_1"'))).toBe(true);
+    expect(warnings.some(w => resolved(w).includes('"Msg_1"'))).toBe(true);
     expect(wellFormed(text)).toBe(true);
   });
 
@@ -1341,9 +1347,9 @@ describe('the writer gives back what the reader carried', () => {
     expect(text).not.toContain('INJECTED');
     expect(text).toContain('camunda:assignee="demo"');
     expect(wellFormed(text)).toBe(true);
-    expect(warnings.some(line => line.includes('not a valid XML name'))).toBe(
-      true
-    );
+    expect(
+      warnings.some(w => resolved(w).includes('not a valid XML name'))
+    ).toBe(true);
   });
 
   it('writes the document’s residue once, however many pools carry it', () => {
@@ -1396,7 +1402,7 @@ describe('the writer gives back what the reader carried', () => {
       boardFromProps(importBpmnXml(FOREIGN, {}).elements)
     );
     expect(
-      warnings.some(line => line.includes('kept exactly as the file drew'))
+      warnings.some(w => resolved(w).includes('kept exactly as the file drew'))
     ).toBe(true);
   });
 

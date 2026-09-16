@@ -71,6 +71,8 @@ const CONTAINER = NODE_PALETTE.container;
 
 export const c4TemplateCategory: TemplateCategory = {
   name: 'C4',
+  // Reuses the senior button's own key — see `TemplateCategory.nameKey`.
+  nameKey: 'com.labre.framework.c4',
   templates: [
     templateFromCommand(
       byId('c4.addBoard'),

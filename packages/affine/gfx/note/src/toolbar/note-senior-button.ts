@@ -3,7 +3,11 @@ import {
   LinkIcon,
   TextIcon,
 } from '@labre/affine-components/icons';
-import { EditPropsStore, ThemeProvider } from '@labre/affine-shared/services';
+import {
+  EditPropsStore,
+  ThemeProvider,
+  translateKey,
+} from '@labre/affine-shared/services';
 import { EdgelessToolbarToolMixin } from '@labre/affine-widget-edgeless-toolbar';
 import { SignalWatcher } from '@labre/global/lit';
 import { computed } from '@preact/signals-core';
@@ -11,6 +15,7 @@ import { css, html, LitElement } from 'lit';
 import { state } from 'lit/decorators.js';
 
 import { NoteTool, type NoteToolOption } from '../note-tool.js';
+import { GFX_NOTE_TOOL_LABEL } from '../translations.js';
 import { toShapeNotToAdapt } from './icon.js';
 
 export class EdgelessNoteSeniorButton extends EdgelessToolbarToolMixin(
@@ -184,7 +189,10 @@ export class EdgelessNoteSeniorButton extends EdgelessToolbarToolMixin(
       .tooltip=${this.popper
         ? ''
         : html`<affine-tooltip-content-with-shortcut
-            data-tip="${'Note'}"
+            data-tip="${translateKey(
+              this.edgeless.std,
+              ...GFX_NOTE_TOOL_LABEL
+            )}"
             data-shortcut="${'N'}"
           ></affine-tooltip-content-with-shortcut>`}
       .tooltipOffset=${5}

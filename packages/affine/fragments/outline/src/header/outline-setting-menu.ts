@@ -1,9 +1,14 @@
+import { translateKey } from '@labre/affine-shared/services';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
 import { ShadowlessElement } from '@labre/std';
 import { consume } from '@lit/context';
 import { html } from 'lit';
 
 import { type TocContext, tocContext } from '../config';
+import {
+  OUTLINE_SETTINGS_LABEL,
+  OUTLINE_SHOW_TYPE_ICON,
+} from '../translations';
 import * as styles from './outline-setting-menu.css';
 
 export const AFFINE_OUTLINE_NOTE_PREVIEW_SETTING_MENU =
@@ -14,16 +19,21 @@ export class OutlineNotePreviewSettingMenu extends SignalWatcher(
 ) {
   override render() {
     const showPreviewIcon = this._context.showIcons$.value;
+    const std = this._context.editor$.value.std;
 
     return html`<div
       class=${styles.notePreviewSettingMenuContainer}
       @click=${(e: MouseEvent) => e.stopPropagation()}
     >
       <div class=${styles.notePreviewSettingMenuItem}>
-        <div class=${styles.settingLabel}>Settings</div>
+        <div class=${styles.settingLabel}>
+          ${translateKey(std, ...OUTLINE_SETTINGS_LABEL)}
+        </div>
       </div>
       <div class="${styles.notePreviewSettingMenuItem} ${styles.action}">
-        <div class=${styles.actionLabel}>Show type icon</div>
+        <div class=${styles.actionLabel}>
+          ${translateKey(std, ...OUTLINE_SHOW_TYPE_ICON)}
+        </div>
         <div class=${styles.toggleButton}>
           <toggle-switch
             .on=${showPreviewIcon}

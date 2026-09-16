@@ -5,6 +5,8 @@ import {
   type Template,
 } from '@labre/affine-gfx-template';
 import { ConnectorMode, PointStyle, StrokeStyle } from '@labre/affine-model';
+import { translateKey } from '@labre/affine-shared/services';
+import type { BlockStdScope } from '@labre/std';
 
 import { CROP } from '../consts';
 import {
@@ -12,7 +14,9 @@ import {
   EDGY_DYNAMIC_RELATIONS,
   EDGY_ZONE_FILL,
   edgyElementLabel,
+  edgyElementLabelKey,
   type EdgyElementName,
+  edgyVerbSeedKey,
 } from '../metamodel';
 import { NODE_SIZE, NODE_STROKE } from '../node/consts';
 import { edgyNodeProps, edgyNodeTextProps } from '../presets';
@@ -47,7 +51,20 @@ export function dynToModel(refX: number, refY: number): [number, number] {
   return [(refX - CROP.x) * DYN_SCALE, (refY - CROP.y) * DYN_SCALE];
 }
 
-function dynamic(): SurfaceElementsJSON {
+/**
+ * One label's resolved text — the host's catalogue when `std` is a real
+ * inserting editor, the English fallback when building the module's own
+ * `content` (no editor exists yet at that point).
+ */
+function seedText(
+  std: BlockStdScope | undefined,
+  key: string,
+  fallback: string
+): string {
+  return std ? translateKey(std, key, fallback) : fallback;
+}
+
+function dynamic(std?: BlockStdScope): SurfaceElementsJSON {
   const out: SurfaceElementsJSON = {
     bg: {
       type: 'edgy',
@@ -66,7 +83,7 @@ function dynamic(): SurfaceElementsJSON {
     const nw = w ?? NODE_SIZE[kind].w;
     const nh = NODE_SIZE[kind].h;
     const [mx, my] = dynToModel(cx, cy);
-    const name = edgyElementLabel(key);
+    const name = seedText(std, edgyElementLabelKey(key), edgyElementLabel(key));
     out[key] = {
       // What an EDGY node IS — the same description the toolbox draws from.
       ...edgyNodeProps(kind, {
@@ -83,6 +100,7 @@ function dynamic(): SurfaceElementsJSON {
     };
   }
   EDGY_DYNAMIC_RELATIONS.forEach(([src, dst, verb, t], i) => {
+    const verbText = seedText(std, edgyVerbSeedKey(verb), verb);
     out[`rel${i}`] = {
       type: 'connector',
       mode: ConnectorMode.Straight,
@@ -102,7 +120,12 @@ function dynamic(): SurfaceElementsJSON {
       // re-centred on the path at the first layout, but the w/h ARE the label
       // box — size it to the verb so the text lays out on one line. The
       // distance slides the verb along the link like the reference diagram.
-      text: surfaceText(verb),
+      //
+      // The BOX (`edgyVerbLabelXYWH`) is still measured off the ENGLISH verb:
+      // it is layout, sized once from the table this template already reads,
+      // and a translated word longer than its English original wraps inside
+      // that box like any other native text rather than resizing it.
+      text: surfaceText(verbText),
       labelXYWH: edgyVerbLabelXYWH(verb),
       labelOffset: { distance: t ?? EDGY_RELATION_LABEL_DISTANCE },
     };
@@ -123,4 +146,5 @@ export const edgyDynamicTemplate: Template = {
   // and fails the day the command is renamed.
   commandId: 'edgy.insertDynamic',
   content: makeTemplateSnapshot(dynamic(), NAME),
+  localize: std => makeTemplateSnapshot(dynamic(std), NAME),
 };

@@ -6,7 +6,7 @@ import {
 } from '@labre/affine-block-surface';
 import type { FrameBlockModel } from '@labre/affine-model';
 import { FrameworkBackgroundElementModel } from '@labre/affine-model';
-import { EditPropsStore } from '@labre/affine-shared/services';
+import { EditPropsStore, translateKey } from '@labre/affine-shared/services';
 import { DisposableGroup } from '@labre/global/disposable';
 import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
 import {
@@ -29,6 +29,8 @@ import {
 } from '@labre/std/gfx';
 import { type BlockModel, Text } from '@labre/store';
 import * as Y from 'yjs';
+
+import { FRAME_SEED_NAME } from './translations';
 
 const FRAME_PADDING = 40;
 
@@ -218,7 +220,16 @@ export class EdgelessFrameManager extends GfxExtension {
     const props = this.gfx.std
       .get(EditPropsStore)
       .applyLastProps('affine:frame', {
-        title: new Text(new Y.Text(`Frame ${this.frames.length + 1}`)),
+        // Translated HERE and once: the title is document content the moment
+        // it lands (ADR 0016), so the host's catalogue is asked at placement
+        // and never again — a renamed frame keeps its name.
+        title: new Text(
+          new Y.Text(
+            translateKey(this.gfx.std, ...FRAME_SEED_NAME, {
+              n: this.frames.length + 1,
+            })
+          )
+        ),
         xywh: bound.serialize(),
         index: this.frameIndexAt(bound),
         presentationIndex: this.generatePresentationIndex(),

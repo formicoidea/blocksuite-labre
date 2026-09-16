@@ -12,19 +12,27 @@ import {
 import {
   ActionPlacement,
   blockCommentToolbarButton,
+  CHROME_UNTITLED,
   DocDisplayMetaProvider,
   EditorSettingProvider,
   type LinkEventType,
   type OpenDocMode,
   TOAST_COPIED_TO_CLIPBOARD,
+  TOOLBAR_CAPTION,
   TOOLBAR_CARD_VIEW,
   TOOLBAR_COPY,
   TOOLBAR_DELETE,
   TOOLBAR_DUPLICATE,
   TOOLBAR_EMBED_VIEW,
   TOOLBAR_INLINE_VIEW,
+  TOOLBAR_LARGE_HORIZONTAL_STYLE,
+  TOOLBAR_LARGE_VERTICAL_STYLE,
+  TOOLBAR_OPEN_THIS_DOC,
+  TOOLBAR_SMALL_HORIZONTAL_STYLE,
+  TOOLBAR_SMALL_VERTICAL_STYLE,
   type ToolbarAction,
   type ToolbarActionGroup,
+  toolbarActionLabel,
   type ToolbarContext,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
@@ -49,6 +57,7 @@ import { keyed } from 'lit/directives/keyed.js';
 import { repeat } from 'lit/directives/repeat.js';
 
 import { EmbedLinkedDocBlockComponent } from '../embed-linked-doc-block';
+import { EMBED_DOC_OPEN_DOC } from '../../translations';
 
 const trackBaseProps = {
   category: 'linked doc',
@@ -85,7 +94,7 @@ const docTitleAction = {
 
     const originalTitle =
       ctx.std.get(DocDisplayMetaProvider).title(model.props.pageId).value ||
-      'Untitled';
+      translateKey(ctx.std, ...CHROME_UNTITLED);
     const open = (event: MouseEvent) => block.open({ event });
 
     return html`<affine-linked-doc-title
@@ -98,6 +107,7 @@ const docTitleAction = {
 const captionAction = {
   id: 'd.caption',
   tooltip: 'Caption',
+  tooltipWording: TOOLBAR_CAPTION,
   icon: CaptionIcon(),
   run(ctx) {
     const block = ctx.getCurrentBlockByType(EmbedLinkedDocBlockComponent);
@@ -115,9 +125,13 @@ const openDocActions = [
     mode: 'open-in-active-view',
     id: 'a.open-in-active-view',
     label: 'Open this doc',
+    labelWording: TOOLBAR_OPEN_THIS_DOC,
     icon: ExpandFullIcon(),
   },
-] as const satisfies (Pick<ToolbarAction, 'id' | 'label' | 'icon'> & {
+] as const satisfies (Pick<
+  ToolbarAction,
+  'id' | 'label' | 'labelWording' | 'icon'
+> & {
   mode: OpenDocMode;
 })[];
 
@@ -140,12 +154,16 @@ const openDocActionGroup = {
         run: (_ctx: ToolbarContext) => block.open({ openMode }),
       };
     });
+    const openDocLabel = translateKey(ctx.std, ...EMBED_DOC_OPEN_DOC);
 
     return html`
       <editor-menu-button
         .contentPadding="${'8px'}"
         .button=${html`
-          <editor-icon-button aria-label="Open doc" .tooltip=${'Open doc'}>
+          <editor-icon-button
+            aria-label=${openDocLabel}
+            .tooltip=${openDocLabel}
+          >
             ${OpenInNewIcon()} ${EditorChevronDown}
           </editor-icon-button>
         `}
@@ -154,17 +172,21 @@ const openDocActionGroup = {
           ${repeat(
             actions,
             action => action.id,
-            ({ label, icon, run, disabled }) => html`
-              <editor-menu-action
-                aria-label=${ifDefined(label)}
-                ?disabled=${ifDefined(
-                  typeof disabled === 'function' ? disabled(ctx) : disabled
-                )}
-                @click=${() => run?.(ctx)}
-              >
-                ${icon}<span class="label">${label}</span>
-              </editor-menu-action>
-            `
+            action => {
+              const label = toolbarActionLabel(ctx.std, action);
+              const { icon, run, disabled } = action;
+              return html`
+                <editor-menu-action
+                  aria-label=${ifDefined(label)}
+                  ?disabled=${ifDefined(
+                    typeof disabled === 'function' ? disabled(ctx) : disabled
+                  )}
+                  @click=${() => run?.(ctx)}
+                >
+                  ${icon}<span class="label">${label}</span>
+                </editor-menu-action>
+              `;
+            }
           )}
         </div>
       </editor-menu-button>
@@ -270,10 +292,12 @@ const builtinToolbarConfig = {
           {
             id: 'horizontal',
             label: 'Large horizontal style',
+            labelWording: TOOLBAR_LARGE_HORIZONTAL_STYLE,
           },
           {
             id: 'list',
             label: 'Small horizontal style',
+            labelWording: TOOLBAR_SMALL_HORIZONTAL_STYLE,
           },
         ] as const
       ).filter(action => EmbedLinkedDocStyles.includes(action.id)),
@@ -388,18 +412,22 @@ const builtinSurfaceToolbarConfig = {
           {
             id: 'horizontal',
             label: 'Large horizontal style',
+            labelWording: TOOLBAR_LARGE_HORIZONTAL_STYLE,
           },
           {
             id: 'list',
             label: 'Small horizontal style',
+            labelWording: TOOLBAR_SMALL_HORIZONTAL_STYLE,
           },
           {
             id: 'vertical',
             label: 'Large vertical style',
+            labelWording: TOOLBAR_LARGE_VERTICAL_STYLE,
           },
           {
             id: 'cube',
             label: 'Small vertical style',
+            labelWording: TOOLBAR_SMALL_VERTICAL_STYLE,
           },
         ] as const
       ).filter(action => EmbedLinkedDocStyles.includes(action.id)),

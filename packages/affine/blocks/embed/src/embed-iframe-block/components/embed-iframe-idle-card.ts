@@ -1,6 +1,8 @@
+import { translateKey } from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { WithDisposable } from '@labre/global/lit';
 import { EmbedIcon } from '@blocksuite/icons/lit';
+import type { BlockStdScope } from '@labre/std';
 import { baseTheme } from '@toeverything/theme';
 import { css, html, LitElement, unsafeCSS } from 'lit';
 import { property } from 'lit/decorators.js';
@@ -9,6 +11,7 @@ import { styleMap } from 'lit/directives/style-map.js';
 
 import { IDLE_CARD_DEFAULT_HEIGHT } from '../consts';
 import type { EmbedIframeStatusCardOptions } from '../types';
+import { EMBED_IFRAME_IDLE_TEXT } from '../../translations';
 
 export class EmbedIframeIdleCard extends WithDisposable(LitElement) {
   static override styles = css`
@@ -118,11 +121,14 @@ export class EmbedIframeIdleCard extends WithDisposable(LitElement) {
       <div class=${cardClasses} style=${cardStyle}>
         <span class="icon"> ${EmbedIcon()} </span>
         <span class="text">
-          Embed anything (Google Drive, Google Docs, Spotify, Miro…)
+          ${translateKey(this.std, ...EMBED_IFRAME_IDLE_TEXT)}
         </span>
       </div>
     `;
   }
+
+  @property({ attribute: false })
+  accessor std!: BlockStdScope;
 
   @property({ attribute: false })
   accessor options: EmbedIframeStatusCardOptions = {

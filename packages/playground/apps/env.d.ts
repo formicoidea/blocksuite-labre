@@ -20,6 +20,13 @@ declare global {
     editor: TestAffineEditorContainer;
     /** Re-mount the edgeless std with another flag set, no reload (#244). */
     applyFlags: (flags: import('@labre/affine/flags').BlockFlags) => void;
+    /**
+     * Recette tool: re-mount page and edgeless with a pseudo-locale
+     * `TranslationExtension` (default `on = true`; pass `false` to turn it
+     * off) — every known key reads `⟦bracketed⟧`, so any string left in
+     * plain English is a hole in the i18n seam.
+     */
+    applyPseudoLocale: (on?: boolean) => void;
     doc: Blocks;
     collection: Workspace;
     blockSchemas: z.infer<typeof BlockSchema>[];

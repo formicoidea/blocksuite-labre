@@ -42,6 +42,7 @@ import {
   resolveShowLineNumbers,
 } from './line-numbers.js';
 import { codeBlockStyles } from './styles.js';
+import { CODE_COPY_FAILED, CODE_PLAIN_TEXT_LANGUAGE } from './translations.js';
 
 export class CodeBlockComponent extends CaptionedBlockComponent<CodeBlockModel> {
   static override styles = codeBlockStyles;
@@ -67,11 +68,13 @@ export class CodeBlockComponent extends CaptionedBlockComponent<CodeBlockModel> 
   languageName$: Signal<string> = computed(() => {
     const lang = this.model.props.language$.value;
     if (lang === null) {
-      return 'Plain Text';
+      return translateKey(this.std, ...CODE_PLAIN_TEXT_LANGUAGE);
     }
 
     const matchedInfo = this.langs.find(info => info.id === lang);
-    return matchedInfo ? matchedInfo.name : 'Plain Text';
+    return matchedInfo
+      ? matchedInfo.name
+      : translateKey(this.std, ...CODE_PLAIN_TEXT_LANGUAGE);
   });
 
   get inlineEditor() {
@@ -438,7 +441,9 @@ export class CodeBlockComponent extends CaptionedBlockComponent<CodeBlockModel> 
         );
       })
       .catch(e => {
-        this.notificationService?.toast('Copied failed, something went wrong');
+        this.notificationService?.toast(
+          translateKey(this.std, ...CODE_COPY_FAILED)
+        );
         console.error(e);
       });
   }

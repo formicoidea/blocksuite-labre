@@ -4,7 +4,8 @@ import {
 } from '@labre/affine-gfx-template';
 import { TextFitMode } from '@labre/affine-model';
 import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
-import type { CommandInvocation } from '@labre/std';
+import { TranslationProvider } from '@labre/affine-shared/services';
+import type { BlockStdScope, CommandInvocation } from '@labre/std';
 import { describe, expect, it } from 'vitest';
 
 import { cynefinEstuarineCommands } from '../commands';
@@ -238,4 +239,73 @@ describe('the hand-authored templates write their text in the shared ink', () =>
       }
     });
   }
+});
+
+/**
+ * The two hand-authored compositions speak the inserting editor's language:
+ * their seeds (the sorting board's four domain names, the map's three
+ * constraint captions) go through the translation seam at placement, exactly
+ * like a derived template's (ADR 0016).
+ */
+describe('the hand-authored templates localize their seeds', () => {
+  const hostWith = (t?: (key: string) => string | undefined) =>
+    ({
+      getOptional: (id: unknown) =>
+        id === TranslationProvider && t ? { t } : null,
+    }) as unknown as BlockStdScope;
+
+  const findByName = (name: string) => {
+    const found = templates.find(template => template.name === name);
+    if (!found) throw new Error(`no template named "${name}"`);
+    return found;
+  };
+
+  for (const name of HAND_AUTHORED) {
+    it(`${name}: without a provider, localize returns exactly the content`, () => {
+      const template = findByName(name);
+      expect(JSON.stringify(template.localize!(hostWith()))).toBe(
+        JSON.stringify(template.content)
+      );
+    });
+  }
+
+  it('Decision sorting: a fake provider changes every sticky caption', () => {
+    const template = findByName('Decision sorting');
+    const fr: Record<string, string> = {
+      'com.labre.cynefin-estuarine.seed.probe-learn': 'Sonder et apprendre',
+      'com.labre.cynefin-estuarine.seed.expert-analysis': 'Analyse experte',
+      'com.labre.cynefin-estuarine.seed.act-now': 'Agir maintenant',
+      'com.labre.cynefin-estuarine.seed.known-issue': 'Problème connu',
+    };
+    const localized = elementsOf({
+      ...template,
+      content: template.localize!(hostWith(key => fr[key])),
+    });
+    const captions = Object.values(localized)
+      .map(el => (el as { text?: { delta?: { insert?: string }[] } }).text)
+      .filter((text): text is { delta?: { insert?: string }[] } => !!text)
+      .map(text => text.delta?.[0]?.insert);
+    expect(captions.sort()).toEqual(Object.values(fr).sort());
+  });
+
+  it('Constraint map: a fake provider changes every hexagon caption', () => {
+    const template = findByName('Constraint map');
+    const fr: Record<string, string> = {
+      'com.labre.cynefin-estuarine.seed.policy': 'Politique',
+      'com.labre.cynefin-estuarine.seed.habit': 'Habitude',
+      'com.labre.cynefin-estuarine.seed.budget': 'Budget FR',
+    };
+    const localized = elementsOf({
+      ...template,
+      content: template.localize!(hostWith(key => fr[key])),
+    });
+    const captions = Object.entries(localized)
+      .filter(([, el]) => el.type === 'text')
+      .map(
+        ([, el]) =>
+          (el as unknown as { text?: { delta?: { insert?: string }[] } }).text
+            ?.delta?.[0]?.insert
+      );
+    expect(captions.sort()).toEqual(Object.values(fr).sort());
+  });
 });

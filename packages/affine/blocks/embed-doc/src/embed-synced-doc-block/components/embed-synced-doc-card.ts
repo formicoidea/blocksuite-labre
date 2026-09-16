@@ -1,10 +1,12 @@
 import { RENDER_CARD_THROTTLE_MS } from '@labre/affine-block-embed';
 import { LoadingIcon } from '@labre/affine-components/icons';
 import {
+  CHROME_LOADING,
   LINKED_DOC_DELETED,
   LINKED_DOC_FAILED,
   SYNCED_DOC_EMPTY_PREVIEW,
   ThemeProvider,
+  TOOLBAR_RELOAD,
   translateKey,
   whenLinkedDocContentReady,
 } from '@labre/affine-shared/services';
@@ -21,6 +23,7 @@ import { classMap } from 'lit/directives/class-map.js';
 import throttle from 'lodash-es/throttle';
 
 import { renderLinkedDocInCard } from '../../common/render-linked-doc';
+import { EMBED_DOC_UPDATED_LABEL } from '../../translations.js';
 import type { EmbedSyncedDocBlockComponent } from '../embed-synced-doc-block.js';
 import { cardStyles } from '../styles.js';
 import { getSyncedDocIcons } from '../utils.js';
@@ -172,7 +175,9 @@ export class EmbedSyncedDocCard extends WithDisposable(ShadowlessElement) {
       : isLoading
         ? LoadingIcon()
         : this.block.icon$.value;
-    const title = isLoading ? 'Loading...' : this.block.title$;
+    const title = isLoading
+      ? translateKey(this.std, ...CHROME_LOADING)
+      : this.block.title$;
 
     const showDefaultNoteContent = isLoading || error || isDeleted || isEmpty;
     const std = this.block.std;
@@ -228,13 +233,14 @@ export class EmbedSyncedDocCard extends WithDisposable(ShadowlessElement) {
                     class="affine-embed-synced-doc-card-content-reload-button"
                     @click=${() => this.block.refreshData()}
                   >
-                    ${ResetIcon()} <span>Reload</span>
+                    ${ResetIcon()}
+                    <span>${translateKey(std, ...TOOLBAR_RELOAD)}</span>
                   </div>
                 </div>
               `
             : html`
                 <div class="affine-embed-synced-doc-card-content-date">
-                  <span>Updated</span>
+                  <span>${translateKey(std, ...EMBED_DOC_UPDATED_LABEL)}</span>
 
                   <span>${dateText}</span>
                 </div>

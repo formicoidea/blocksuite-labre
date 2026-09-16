@@ -4,6 +4,7 @@ import type {
   MenuItemGroup,
 } from '@labre/affine-components/toolbar';
 import { renderGroups } from '@labre/affine-components/toolbar';
+import { translateKey } from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { WithDisposable } from '@labre/global/lit';
 import { noop } from '@labre/global/utils';
@@ -14,6 +15,7 @@ import { css, html, LitElement } from 'lit';
 import { property, query, state } from 'lit/decorators.js';
 
 import type { CodeBlockToolbarContext } from '../context.js';
+import { CODE_TOOLBAR_MORE } from '../../translations.js';
 
 export class AffineCodeToolbar extends WithDisposable(LitElement) {
   static override styles = css`
@@ -127,8 +129,14 @@ export class AffineCodeToolbar extends WithDisposable(LitElement) {
         <editor-icon-button
           class="code-toolbar-button more"
           data-testid="more"
-          aria-label="More"
-          .tooltip=${'More'}
+          aria-label=${translateKey(
+            this.context.blockComponent.std,
+            ...CODE_TOOLBAR_MORE
+          )}
+          .tooltip=${translateKey(
+            this.context.blockComponent.std,
+            ...CODE_TOOLBAR_MORE
+          )}
           .tooltipOffset=${4}
           .iconSize=${'16px'}
           .iconContainerPadding=${4}

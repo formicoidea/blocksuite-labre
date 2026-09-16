@@ -3,6 +3,7 @@ import {
   getUniverseRegistry,
   publishOccurrenceMaterialities,
   translateKey,
+  translateTagLabel,
 } from '@labre/affine-shared/services';
 import {
   getRegisteredCommands,
@@ -256,7 +257,8 @@ export class ReadingProposalWidget extends EditorAnchoredPanel {
   private _natureLabel(tagId: string, valueId: string): string {
     const def = getUniverseRegistry(this.std).tag(tagId);
     if (!def || def.values === 'open') return valueId;
-    return def.values.find(value => value.id === valueId)?.label || valueId;
+    const value = def.values.find(value => value.id === valueId);
+    return (value && translateTagLabel(this.std, value)) || valueId;
   }
 
   private _field(

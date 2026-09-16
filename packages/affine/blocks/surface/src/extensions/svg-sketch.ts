@@ -4,6 +4,7 @@ import {
   StrokeStyle,
   TextAlign,
 } from '@labre/affine-model';
+import type { TranslationParams } from '@labre/affine-shared/services';
 import DOMPurify from 'dompurify';
 
 import type {
@@ -12,6 +13,26 @@ import type {
   InterchangeNote,
   SerializedElementProps,
 } from './interchange.js';
+import {
+  SVG_SKETCH_CURRENT_COLOR,
+  SVG_SKETCH_CURVE,
+  SVG_SKETCH_EMPTY,
+  SVG_SKETCH_EMPTY_BOX,
+  SVG_SKETCH_EMPTY_TEXT,
+  SVG_SKETCH_FLAT_POLYGON,
+  SVG_SKETCH_FONT_UNIT,
+  SVG_SKETCH_HIDDEN_DISPLAY,
+  SVG_SKETCH_HIDDEN_VISIBILITY,
+  SVG_SKETCH_LONE_POINT,
+  SVG_SKETCH_OPACITY,
+  SVG_SKETCH_PAINT_SERVER,
+  SVG_SKETCH_PERCENT_RADIUS,
+  SVG_SKETCH_REMOVED,
+  SVG_SKETCH_REMOVED_ATTRIBUTE,
+  SVG_SKETCH_SKIPPED,
+  SVG_SKETCH_SWITCH,
+  SVG_SKETCH_TRANSFORM,
+} from './svg-sketch-translations.js';
 
 /**
  * **SVG → a canvas sketch.** The platform's VISUAL-tier importer, shared by
@@ -190,12 +211,30 @@ class Notebook {
 
   readonly notes: InterchangeNote[] = [];
 
-  once(key: string, message: string, element?: string): void {
-    if (this.seen.has(key)) return;
-    this.seen.add(key);
+  /**
+   * @param dedupKey De-duplication identity — a note fires once per distinct
+   *   value (`font-unit:px`, `font-unit:pt`…), independent of the i18n key
+   *   below, which stays the same across all of them.
+   * @param message The English sentence, already filled in with the file's
+   *   own words — shown as is with no host catalogue registered.
+   * @param wording The key/fallback pair for this sentence's SHAPE
+   *   (`svg-sketch-translations.ts`), and the params that fill its
+   *   `{{name}}` holes when it has any.
+   */
+  once(
+    dedupKey: string,
+    message: string,
+    wording: readonly [key: string, fallback: string],
+    params?: TranslationParams,
+    element?: string
+  ): void {
+    if (this.seen.has(dedupKey)) return;
+    this.seen.add(dedupKey);
     this.notes.push({
       kind: 'warning',
       message,
+      messageKey: wording[0],
+      ...(params ? { messageParams: params } : {}),
       ...(element ? { element } : {}),
     });
   }
@@ -255,7 +294,9 @@ function fontSizeOf(raw: string, inherited: number, notes: Notebook) {
   if (unit === 'em') return value * inherited;
   notes.once(
     `font-unit:${unit}`,
-    `Font sizes in \`${unit}\` cannot be resolved without a page to measure against; those labels use the inherited size.`
+    `Font sizes in \`${unit}\` cannot be resolved without a page to measure against; those labels use the inherited size.`,
+    SVG_SKETCH_FONT_UNIT,
+    { unit }
   );
   return undefined;
 }
@@ -322,7 +363,8 @@ function isHidden(element: Element, notes: Notebook): boolean {
   if (display?.trim() === 'none') {
     notes.once(
       'hidden:display',
-      'Parts of the file marked `display:none` were not imported — they draw nothing where the file came from either.'
+      'Parts of the file marked `display:none` were not imported — they draw nothing where the file came from either.',
+      SVG_SKETCH_HIDDEN_DISPLAY
     );
     return true;
   }
@@ -332,7 +374,8 @@ function isHidden(element: Element, notes: Notebook): boolean {
   if (hidden === 'hidden' || hidden === 'collapse') {
     notes.once(
       'hidden:visibility',
-      'Parts of the file marked `visibility:hidden` were not imported — they draw nothing where the file came from either.'
+      'Parts of the file marked `visibility:hidden` were not imported — they draw nothing where the file came from either.',
+      SVG_SKETCH_HIDDEN_VISIBILITY
     );
     return true;
   }
@@ -356,7 +399,8 @@ function noteOpacity(element: Element, notes: Notebook): void {
     if (Number.isFinite(value) && value < 1) {
       notes.once(
         'opacity',
-        'Transparency is not carried: partly transparent shapes arrive at full strength.'
+        'Transparency is not carried: partly transparent shapes arrive at full strength.',
+        SVG_SKETCH_OPACITY
       );
       return;
     }
@@ -400,14 +444,16 @@ function colorOf(
   if (value.startsWith('url(')) {
     notes.once(
       'paint-server',
-      'Gradients and patterns are not read; the shapes that used one are a flat neutral.'
+      'Gradients and patterns are not read; the shapes that used one are a flat neutral.',
+      SVG_SKETCH_PAINT_SERVER
     );
     return fallback;
   }
   if (value === 'currentColor') {
     notes.once(
       'current-color',
-      '`currentColor` has no page to inherit from here; the shapes that used it are a flat neutral.'
+      '`currentColor` has no page to inherit from here; the shapes that used it are a flat neutral.',
+      SVG_SKETCH_CURRENT_COLOR
     );
     return fallback;
   }
@@ -508,7 +554,9 @@ function translated(element: Element, frame: Frame, notes: Notebook): Frame {
     }
     notes.once(
       `transform:${kind}`,
-      `\`${kind}\` transforms are ignored (best effort): what carried one is placed as if it did not.`
+      `\`${kind}\` transforms are ignored (best effort): what carried one is placed as if it did not.`,
+      SVG_SKETCH_TRANSFORM,
+      { kind }
     );
   }
   // A translate is expressed in the PARENT's user units, so it is scaled by the
@@ -567,7 +615,8 @@ function samplePath(d: string, notes: Notebook): number[][][] {
     else if (current.length === 1) {
       notes.once(
         'lone-point',
-        'A path that never moved anywhere draws nothing and was skipped.'
+        'A path that never moved anywhere draws nothing and was skipped.',
+        SVG_SKETCH_LONE_POINT
       );
     }
     current = [];
@@ -590,7 +639,8 @@ function samplePath(d: string, notes: Notebook): number[][][] {
     if (CURVE_COMMANDS.has(kind)) {
       notes.once(
         'curve',
-        'Curves are approximated by their endpoints (best effort), so a curved path arrives as straight segments.'
+        'Curves are approximated by their endpoints (best effort), so a curved path arrives as straight segments.',
+        SVG_SKETCH_CURVE
       );
     }
 
@@ -663,7 +713,7 @@ function readRect(
   const w = num(element, 'width');
   const h = num(element, 'height');
   if (w <= 0 || h <= 0) {
-    sketch.notes.once('empty-box', EMPTY_BOX_NOTE);
+    sketch.notes.once('empty-box', EMPTY_BOX_NOTE, SVG_SKETCH_EMPTY_BOX);
     return;
   }
 
@@ -679,7 +729,8 @@ function readRect(
   if (rawRadius?.includes('%')) {
     sketch.notes.once(
       'percent-radius',
-      'Corner radii given as a percentage were not read; those corners arrive square.'
+      'Corner radii given as a percentage were not read; those corners arrive square.',
+      SVG_SKETCH_PERCENT_RADIUS
     );
   } else {
     const scaled = len(frame, num(element, 'rx', num(element, 'ry')));
@@ -710,7 +761,7 @@ function readEllipse(
   const rx = circle ? r : num(element, 'rx');
   const ry = circle ? r : num(element, 'ry');
   if (rx <= 0 || ry <= 0) {
-    sketch.notes.once('empty-box', EMPTY_BOX_NOTE);
+    sketch.notes.once('empty-box', EMPTY_BOX_NOTE, SVG_SKETCH_EMPTY_BOX);
     return;
   }
   const cx = num(element, 'cx');
@@ -758,12 +809,13 @@ function readPolygon(
 
   if (points.length < 3 || w <= 0 || h <= 0) {
     if (points.length === 0 || w < 0 || h < 0) {
-      sketch.notes.once('empty-box', EMPTY_BOX_NOTE);
+      sketch.notes.once('empty-box', EMPTY_BOX_NOTE, SVG_SKETCH_EMPTY_BOX);
       return;
     }
     sketch.notes.once(
       'flat-polygon',
-      'A polygon with fewer than three corners, or flat on one axis, arrives as its bounding rectangle.'
+      'A polygon with fewer than three corners, or flat on one axis, arrives as its bounding rectangle.',
+      SVG_SKETCH_FLAT_POLYGON
     );
     sketch.elements.push({
       ...shapeProps(paint, frame, sketch),
@@ -882,7 +934,11 @@ function readText(
   }
 
   if (lines.length === 0) {
-    sketch.notes.once('empty-text', 'Empty text elements were skipped.');
+    sketch.notes.once(
+      'empty-text',
+      'Empty text elements were skipped.',
+      SVG_SKETCH_EMPTY_TEXT
+    );
     return;
   }
 
@@ -980,7 +1036,8 @@ function visit(
     if (rest.length > 0) {
       sketch.notes.once(
         'switch',
-        'A `<switch>` offers alternative renderings; the first was imported and the others were not.'
+        'A `<switch>` offers alternative renderings; the first was imported and the others were not.',
+        SVG_SKETCH_SWITCH
       );
     }
     if (first) visit(first, here, paint, sketch);
@@ -1058,6 +1115,8 @@ function emit(
       sketch.notes.once(
         `skipped:${name}`,
         `\`<${name}>\` is not recognised and was skipped.`,
+        SVG_SKETCH_SKIPPED,
+        { name },
         name
       );
   }
@@ -1131,6 +1190,8 @@ function parseSvgRoot(source: string, notes: Notebook): Element {
       notes.once(
         `removed:${name.toLowerCase()}`,
         `\`<${name}>\` was removed while sanitizing the file — it is one of the constructs an SVG can carry code in — so nothing it drew was imported.`,
+        SVG_SKETCH_REMOVED,
+        { name },
         name
       );
     } else if (removed.attribute) {
@@ -1140,7 +1201,8 @@ function parseSvgRoot(source: string, notes: Notebook): Element {
       // perfectly ordinary file of something.
       notes.once(
         'removed-attribute',
-        'Attributes outside the safe SVG drawing vocabulary — event handlers, script URLs, and anything else the sanitizer does not know — were removed before the file was read.'
+        'Attributes outside the safe SVG drawing vocabulary — event handlers, script URLs, and anything else the sanitizer does not know — were removed before the file was read.',
+        SVG_SKETCH_REMOVED_ATTRIBUTE
       );
     }
   }
@@ -1191,7 +1253,8 @@ export function parseSvgSketch(
   if (sketch.elements.length === 0) {
     sketch.notes.once(
       'empty',
-      'No shape or text was recognised in this SVG, so nothing was drawn.'
+      'No shape or text was recognised in this SVG, so nothing was drawn.',
+      SVG_SKETCH_EMPTY
     );
   }
 

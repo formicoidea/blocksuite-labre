@@ -2,6 +2,7 @@ import type { Color, ColorScheme, Palette } from '@labre/affine-model';
 import { DefaultTheme, resolveColor } from '@labre/affine-model';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { ColorEvent } from '@labre/affine-shared/utils';
+import type { BlockStdScope } from '@labre/std';
 import { css, html, LitElement, type PropertyValues } from 'lit';
 import { property } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
@@ -10,6 +11,7 @@ import { repeat } from 'lit/directives/repeat.js';
 import isEqual from 'lodash-es/isEqual';
 
 import { AdditionIcon } from './icons';
+import { resolvePaletteLabel } from './utils.js';
 
 export class EdgelessColorButton extends LitElement {
   static override styles = css`
@@ -176,7 +178,7 @@ export class EdgelessColorPanel extends LitElement {
           const activated = isEqual(resolvedColor, this.resolvedValue);
           return html`<edgeless-color-button
             class=${classMap({ large: true })}
-            .label=${palette.key}
+            .label=${resolvePaletteLabel(this.std, palette)}
             .color=${palette.value}
             .theme=${this.theme}
             .hollowCircle=${this.hollowCircle}
@@ -201,6 +203,15 @@ export class EdgelessColorPanel extends LitElement {
 
   @property({ type: Array })
   accessor palettes: readonly Palette[] = DefaultTheme.Palettes;
+
+  /**
+   * Optional: with none, every swatch's label resolves to its English
+   * fallback (or, for a swatch neither {@link resolvePaletteLabel} tier
+   * knows, its raw `key`) — exactly the panel's behaviour before this
+   * property existed.
+   */
+  @property({ attribute: false })
+  accessor std: BlockStdScope | undefined = undefined;
 
   @property({ attribute: false })
   accessor theme!: ColorScheme;

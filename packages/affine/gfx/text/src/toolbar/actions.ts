@@ -14,9 +14,10 @@ import {
   TextAlign,
   type TextStyleProps,
 } from '@labre/affine-model';
-import type {
-  ToolbarActions,
-  ToolbarContext,
+import {
+  translateKey,
+  type ToolbarActions,
+  type ToolbarContext,
 } from '@labre/affine-shared/services';
 import {
   getMostCommonResolvedValue,
@@ -24,8 +25,8 @@ import {
 } from '@labre/affine-shared/utils';
 import {
   type MenuItem,
-  renderCurrentMenuItemWith,
   renderMenu,
+  resolveMenuItemLabel,
 } from '@labre/affine-widget-edgeless-toolbar';
 import {
   TextAlignCenterIcon,
@@ -41,18 +42,35 @@ import {
   isFontStyleSupported,
   isFontWeightSupported,
 } from '../element-renderer/utils';
+import {
+  TEXT_ALIGN_CENTER,
+  TEXT_ALIGN_LEFT,
+  TEXT_ALIGN_RIGHT,
+  TEXT_TOOLBAR_ALIGNMENT,
+  TEXT_TOOLBAR_FONT,
+  TEXT_TOOLBAR_FONT_STYLE,
+  TEXT_TOOLBAR_FONT_STYLE_ITALIC,
+  TEXT_TOOLBAR_FONT_WEIGHT_LIGHT,
+  TEXT_TOOLBAR_FONT_WEIGHT_REGULAR,
+  TEXT_TOOLBAR_FONT_WEIGHT_SEMIBOLD,
+  TEXT_TOOLBAR_FONT_SIZE,
+  TEXT_TOOLBAR_TEXT_COLOR,
+} from '../translations';
 
 const FONT_WEIGHT_LIST = [
   {
     key: 'Light',
+    keyWording: TEXT_TOOLBAR_FONT_WEIGHT_LIGHT,
     value: FontWeight.Light,
   },
   {
     key: 'Regular',
+    keyWording: TEXT_TOOLBAR_FONT_WEIGHT_REGULAR,
     value: FontWeight.Regular,
   },
   {
     key: 'Semibold',
+    keyWording: TEXT_TOOLBAR_FONT_WEIGHT_SEMIBOLD,
     value: FontWeight.SemiBold,
   },
 ] as const satisfies MenuItem<FontWeight>[];
@@ -63,6 +81,7 @@ const FONT_STYLE_LIST = [
   },
   {
     key: 'Italic',
+    keyWording: TEXT_TOOLBAR_FONT_STYLE_ITALIC,
     value: FontStyle.Italic,
   },
 ] as const satisfies MenuItem<FontStyle>[];
@@ -79,16 +98,19 @@ const FONT_SIZE_LIST = [
 const TEXT_ALIGN_LIST = [
   {
     key: 'Left',
+    keyWording: TEXT_ALIGN_LEFT,
     value: TextAlign.Left,
     icon: TextAlignLeftIcon(),
   },
   {
     key: 'Center',
+    keyWording: TEXT_ALIGN_CENTER,
     value: TextAlign.Center,
     icon: TextAlignCenterIcon(),
   },
   {
     key: 'Right',
+    keyWording: TEXT_ALIGN_RIGHT,
     value: TextAlign.Right,
     icon: TextAlignRightIcon(),
   },
@@ -154,8 +176,8 @@ export function createTextActions<
             .contentPadding="${'8px'}"
             .button=${html`
               <editor-icon-button
-                aria-label="Font"
-                .tooltip="${'Font'}"
+                aria-label="${translateKey(ctx.std, ...TEXT_TOOLBAR_FONT)}"
+                .tooltip="${translateKey(ctx.std, ...TEXT_TOOLBAR_FONT)}"
                 .justify="${'space-between'}"
                 .iconContainerWidth="${'40px'}"
               >
@@ -236,10 +258,11 @@ export function createTextActions<
         return html`
           <edgeless-color-picker-button
             class="text-color"
-            .label="${'Text color'}"
+            .label="${translateKey(ctx.std, ...TEXT_TOOLBAR_TEXT_COLOR)}"
             .pick=${onPick}
             .color=${color}
             .theme=${theme}
+            .std=${ctx.std}
             .isText=${true}
             .hollowCircle=${true}
             .originalColor=${originalColor}
@@ -286,23 +309,18 @@ export function createTextActions<
             .contentPadding="${'8px'}"
             .button=${html`
               <editor-icon-button
-                aria-label="Font style"
-                .tooltip="${'Font style'}"
+                aria-label="${translateKey(
+                  ctx.std,
+                  ...TEXT_TOOLBAR_FONT_STYLE
+                )}"
+                .tooltip="${translateKey(ctx.std, ...TEXT_TOOLBAR_FONT_STYLE)}"
                 .justify="${'space-between'}"
                 .iconContainerWidth="${'90px'}"
                 .disabled=${disabled}
               >
                 <span class="label ellipsis">
-                  ${renderCurrentMenuItemWith(
-                    FONT_WEIGHT_LIST,
-                    fontWeight,
-                    'key'
-                  )}
-                  ${renderCurrentMenuItemWith(
-                    FONT_STYLE_LIST,
-                    fontStyle,
-                    'key'
-                  )}
+                  ${resolveMenuItemLabel(FONT_WEIGHT_LIST, fontWeight, ctx.std)}
+                  ${resolveMenuItemLabel(FONT_STYLE_LIST, fontStyle, ctx.std)}
                 </span>
                 ${EditorChevronDown}
               </editor-icon-button>
@@ -313,6 +331,7 @@ export function createTextActions<
               .fontWeight=${fontWeight}
               .fontStyle=${fontStyle}
               .onSelect=${onPick}
+              .std=${ctx.std}
             ></edgeless-font-weight-and-style-panel>
           </editor-menu-button>
         `;
@@ -348,7 +367,7 @@ export function createTextActions<
 
         return html`<affine-size-dropdown-menu
           @select=${onPick}
-          .label="${'Font size'}"
+          .label="${translateKey(ctx.std, ...TEXT_TOOLBAR_FONT_SIZE)}"
           .sizes=${FONT_SIZE_LIST}
           .size$=${fontSize$}
         ></affine-size-dropdown-menu>`;
@@ -376,9 +395,11 @@ export function createTextActions<
 
         return renderMenu({
           label: 'Alignment',
+          labelWording: TEXT_TOOLBAR_ALIGNMENT,
           items: TEXT_ALIGN_LIST,
           currentValue: textAlign,
           onPick,
+          std: ctx.std,
         });
       },
     },

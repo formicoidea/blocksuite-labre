@@ -328,7 +328,14 @@ function recordingStd() {
     },
   };
   return {
-    std: { get: () => gfx } as unknown as BlockStdScope,
+    // No `TranslationProvider` registered: `createC4Node` falls back to the
+    // English literals (`NODE_LABEL`, `DESCRIPTION_PLACEHOLDER`), exactly as
+    // it did before the title and description tiers went through the
+    // translation seam (#278).
+    std: {
+      get: () => gfx,
+      getOptional: () => undefined,
+    } as unknown as BlockStdScope,
     added,
     selection: () => selected,
   };

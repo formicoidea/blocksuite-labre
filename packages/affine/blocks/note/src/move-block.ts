@@ -1,3 +1,7 @@
+import {
+  TOOLBAR_MOVE_DOWN,
+  TOOLBAR_MOVE_UP,
+} from '@labre/affine-shared/services';
 import { BlockSelection, type BlockStdScope, TextSelection } from '@labre/std';
 
 const getSelection = (std: BlockStdScope) => std.selection;
@@ -23,9 +27,14 @@ interface MoveBlockConfig {
   action: (std: BlockStdScope) => void;
 }
 
+// `name` is an internal label — read by nobody, never rendered (only
+// `hotkey` and `action` below are), which is why it borrows the shared
+// wording's own English fallback (`TOOLBAR_MOVE_UP[1]` / `_DOWN[1]`, said by
+// the slash menu's "Actions" group too) rather than restating the word as an
+// unkeyed literal that would drift the day either wording's fallback changes.
 export const moveBlockConfigs: MoveBlockConfig[] = [
   {
-    name: 'Move Up',
+    name: TOOLBAR_MOVE_UP[1],
     hotkey: ['Mod-Alt-ArrowUp', 'Mod-Shift-ArrowUp'],
     action: std => {
       const doc = std.store;
@@ -79,7 +88,7 @@ export const moveBlockConfigs: MoveBlockConfig[] = [
     },
   },
   {
-    name: 'Move Down',
+    name: TOOLBAR_MOVE_DOWN[1],
     hotkey: ['Mod-Alt-ArrowDown', 'Mod-Shift-ArrowDown'],
     action: std => {
       const doc = std.store;

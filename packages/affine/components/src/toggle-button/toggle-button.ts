@@ -1,14 +1,22 @@
+import { translateKey } from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { WithDisposable } from '@labre/global/lit';
 import { ToggleDownIcon, ToggleRightIcon } from '@blocksuite/icons/lit';
-import { ShadowlessElement } from '@labre/std';
+import type { BlockStdScope } from '@labre/std';
+import { ShadowlessElement, stdContext } from '@labre/std';
+import { consume } from '@lit/context';
 import { css, unsafeCSS } from 'lit';
 import { property } from 'lit/decorators.js';
 import { html } from 'lit-html';
 
+import { TOGGLE_COLLAPSE_ARIA, TOGGLE_EXPAND_ARIA } from '../translations.js';
+
 export const TOGGLE_BUTTON_PARENT_CLASS = 'blocksuite-toggle-button-parent';
 
 export class ToggleButton extends WithDisposable(ShadowlessElement) {
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
+
   static override styles = css`
     .toggle-icon {
       display: flex;
@@ -62,6 +70,11 @@ export class ToggleButton extends WithDisposable(ShadowlessElement) {
     }
   `;
 
+  private _ariaLabel(): string {
+    const wording = this.collapsed ? TOGGLE_EXPAND_ARIA : TOGGLE_COLLAPSE_ARIA;
+    return this.std ? translateKey(this.std, ...wording) : wording[1];
+  }
+
   override render() {
     return html`
       <button
@@ -69,7 +82,7 @@ export class ToggleButton extends WithDisposable(ShadowlessElement) {
         contenteditable="false"
         class="toggle-icon"
         data-collapsed=${this.collapsed}
-        aria-label=${this.collapsed ? 'Expand content' : 'Collapse content'}
+        aria-label=${this._ariaLabel()}
         aria-expanded=${!this.collapsed}
         aria-controls=${this.controls}
         @click=${() => this.updateCollapsed(!this.collapsed)}

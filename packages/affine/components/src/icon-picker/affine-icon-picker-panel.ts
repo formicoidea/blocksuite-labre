@@ -1,10 +1,13 @@
+import { translateKey } from '@labre/affine-shared/services';
 import { SearchIcon } from '@blocksuite/icons/lit';
+import type { BlockStdScope } from '@labre/std';
+import { stdContext } from '@labre/std';
+import { consume } from '@lit/context';
 import { css, html, LitElement, nothing } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { styleMap } from 'lit/directives/style-map.js';
 
-import { RECENT_GROUP_NAME } from './emoji-data.js';
 import {
   DEFAULT_ICON_COLOR,
   filterIcons,
@@ -16,12 +19,22 @@ import {
 import { pushRecent, readRecent, RECENT_ICONS_KEY } from './recent-store.js';
 import { panelStyles } from './styles.js';
 import { IconType } from './types.js';
+import {
+  COLOR_NAME_WORDINGS,
+  ICON_PICKER_FILTER_PLACEHOLDER,
+  ICON_PICKER_ICONS_GROUP,
+  ICON_PICKER_NO_ICON_FOUND,
+  ICON_PICKER_RECENT_GROUP,
+} from '../translations.js';
 
 /**
  * The icon half of the picker: a filter box, a colour menu, a recents row and
  * the full `@blocksuite/icons` set.
  */
 export class AffineIconPickerPanel extends LitElement {
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
+
   static override styles = [
     panelStyles,
     css`
@@ -81,6 +94,30 @@ export class AffineIconPickerPanel extends LitElement {
     );
   };
 
+  private _colorName(name: string): string {
+    const wording = COLOR_NAME_WORDINGS[name];
+    if (!wording) return name;
+    return this.std ? translateKey(this.std, ...wording) : wording[1];
+  }
+
+  private _recentGroupLabel(): string {
+    return this.std
+      ? translateKey(this.std, ...ICON_PICKER_RECENT_GROUP)
+      : ICON_PICKER_RECENT_GROUP[1];
+  }
+
+  private _iconsGroupLabel(): string {
+    return this.std
+      ? translateKey(this.std, ...ICON_PICKER_ICONS_GROUP)
+      : ICON_PICKER_ICONS_GROUP[1];
+  }
+
+  private _emptyLabel(): string {
+    return this.std
+      ? translateKey(this.std, ...ICON_PICKER_NO_ICON_FOUND)
+      : ICON_PICKER_NO_ICON_FOUND[1];
+  }
+
   private _renderGroup(name: string, iconNames: string[]) {
     return html`
       <div class="picker-group">
@@ -117,7 +154,9 @@ export class AffineIconPickerPanel extends LitElement {
             ${SearchIcon()}
             <input
               type="text"
-              placeholder="Filter..."
+              placeholder=${this.std
+                ? translateKey(this.std, ...ICON_PICKER_FILTER_PLACEHOLDER)
+                : ICON_PICKER_FILTER_PLACEHOLDER[1]}
               .value=${this._keyword}
               @input=${(e: Event) => {
                 this._keyword = (e.target as HTMLInputElement).value;
@@ -148,7 +187,7 @@ export class AffineIconPickerPanel extends LitElement {
                       <button
                         class="picker-cell"
                         type="button"
-                        title=${swatch.name}
+                        title=${this._colorName(swatch.name)}
                         data-color-name=${swatch.name}
                         @click=${() => {
                           this.color = swatch.value;
@@ -169,14 +208,14 @@ export class AffineIconPickerPanel extends LitElement {
 
         <div class="picker-scroll">
           ${this._recent.length && !this._keyword
-            ? this._renderGroup(RECENT_GROUP_NAME, this._recent)
+            ? this._renderGroup(this._recentGroupLabel(), this._recent)
             : nothing}
           ${icons.length
             ? this._renderGroup(
-                'Icons',
+                this._iconsGroupLabel(),
                 icons.map(icon => icon.name)
               )
-            : html`<div class="picker-empty">No icon found</div>`}
+            : html`<div class="picker-empty">${this._emptyLabel()}</div>`}
         </div>
       </div>
     `;

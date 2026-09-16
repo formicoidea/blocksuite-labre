@@ -11,6 +11,7 @@ import {
 import {
   ThemeExtensionIdentifier,
   ThemeProvider,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { Bound } from '@labre/global/gfx';
 import { type BlockComponent, BlockStdScope } from '@labre/std';
@@ -23,6 +24,7 @@ import { styleMap } from 'lit/directives/style-map.js';
 
 import { EmbedSyncedDocConfigExtension } from './configs';
 import { EmbedSyncedDocBlockComponent } from './embed-synced-doc-block';
+import { EMBED_DOC_CARD_EMPTY_CONTENT } from '../translations';
 
 export class EmbedEdgelessSyncedDocBlockComponent extends toEdgelessEmbedBlock(
   EmbedSyncedDocBlockComponent
@@ -127,7 +129,7 @@ export class EmbedEdgelessSyncedDocBlockComponent extends toEdgelessEmbedBlock(
               ? html`
                   <div class="affine-embed-synced-doc-editor-empty">
                     <span>
-                      This is a linked doc, you can add content here.
+                      ${translateKey(this.std, ...EMBED_DOC_CARD_EMPTY_CONTENT)}
                     </span>
                   </div>
                 `

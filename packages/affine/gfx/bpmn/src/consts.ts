@@ -189,6 +189,28 @@ export const nodeLabelKey = (kind: BpmnNodeKind) =>
   `com.labre.bpmn.seed.${kind}`;
 
 /**
+ * The pool's own default name, at creation — a plain seed like {@link
+ * NODE_LABEL}, and never restated: `packages/affine/model/src/elements/bpmn/pool.ts`
+ * still defaults `name` to the English literal `'Pool'` (a document created
+ * before this key existed, or without a host catalogue, keeps that exact
+ * text), but `createBpmnPool` writes the resolved value explicitly so a pool
+ * dropped in a translated host starts in that language.
+ *
+ * "Pool" is the PO's glossary term for BPMN: the French proposal IS the
+ * English word.
+ */
+export const POOL_NAME_KEY = 'com.labre.bpmn.seed.pool';
+export const POOL_NAME_FALLBACK = 'Pool';
+
+/**
+ * A fresh lane's name — `Lane 1`, `Lane 2`… — resolved AT PLACEMENT
+ * (`addBpmnLane`) like every other seed here. `{{n}}` is the count AFTER the
+ * lane being added, so the first is `Lane 1`.
+ */
+export const LANE_NAME_KEY = 'com.labre.bpmn.seed.lane';
+export const LANE_NAME_FALLBACK = 'Lane {{n}}';
+
+/**
  * Pool (background container) defaults — read by the `BPMN_POOL_BACKGROUND`
  * declaration (`background.ts`), which is the only thing that draws a pool.
  */

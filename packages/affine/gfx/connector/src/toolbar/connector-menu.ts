@@ -7,6 +7,7 @@ import {
   EditPropsStore,
   FeatureFlagService,
   ThemeProvider,
+  translateKey,
 } from '@labre/affine-shared/services';
 import type { ColorEvent } from '@labre/affine-shared/utils';
 import { EdgelessToolbarToolMixin } from '@labre/affine-widget-edgeless-toolbar';
@@ -16,13 +17,16 @@ import {
   ConnectorEIcon,
   ConnectorLIcon,
 } from '@blocksuite/icons/lit';
+import type { BlockStdScope } from '@labre/std';
 import { computed } from '@preact/signals-core';
 import { css, html, LitElement } from 'lit';
 import { property } from 'lit/decorators.js';
 
 import { ConnectorTool } from '../connector-tool';
+import { CONNECTOR_MODE_WORDING } from '../translations';
 
 function ConnectorModeButtonGroup(
+  std: BlockStdScope,
   mode: ConnectorMode,
   setConnectorMode: (props: Record<string, unknown>) => void
 ) {
@@ -36,7 +40,10 @@ function ConnectorModeButtonGroup(
       <edgeless-tool-icon-button
         .active=${mode === ConnectorMode.Curve}
         .activeMode=${'background'}
-        .tooltip=${'Curve'}
+        .tooltip=${translateKey(
+          std,
+          ...CONNECTOR_MODE_WORDING[ConnectorMode.Curve]
+        )}
         .iconSize=${'20px'}
         @click=${() => setConnectorMode({ mode: ConnectorMode.Curve })}
       >
@@ -45,7 +52,10 @@ function ConnectorModeButtonGroup(
       <edgeless-tool-icon-button
         .active=${mode === ConnectorMode.Orthogonal}
         .activeMode=${'background'}
-        .tooltip=${'Elbowed'}
+        .tooltip=${translateKey(
+          std,
+          ...CONNECTOR_MODE_WORDING[ConnectorMode.Orthogonal]
+        )}
         .iconSize=${'20px'}
         @click=${() => setConnectorMode({ mode: ConnectorMode.Orthogonal })}
       >
@@ -54,7 +64,10 @@ function ConnectorModeButtonGroup(
       <edgeless-tool-icon-button
         .active=${mode === ConnectorMode.Straight}
         .activeMode=${'background'}
-        .tooltip=${'Straight'}
+        .tooltip=${translateKey(
+          std,
+          ...CONNECTOR_MODE_WORDING[ConnectorMode.Straight]
+        )}
         .iconSize=${'20px'}
         @click=${() => setConnectorMode({ mode: ConnectorMode.Straight })}
       >
@@ -116,6 +129,7 @@ export class EdgelessConnectorMenu extends EdgelessToolbarToolMixin(
   override render() {
     const { stroke, strokeWidth, mode } = this._props$.value;
     const connectorModeButtonGroup = ConnectorModeButtonGroup(
+      this.edgeless.std,
       mode,
       this.onChange
     );
@@ -140,6 +154,7 @@ export class EdgelessConnectorMenu extends EdgelessToolbarToolMixin(
             .hasTransparent=${!this.edgeless.store
               .get(FeatureFlagService)
               .getFlag('enable_color_picker')}
+            .std=${this.edgeless.std}
             @select=${(e: ColorEvent) =>
               this.onChange({ stroke: e.detail.value })}
           ></edgeless-color-panel>

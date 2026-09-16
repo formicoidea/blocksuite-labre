@@ -1,4 +1,6 @@
 import { ShapeStyle } from '@labre/affine-model';
+import { translateKey } from '@labre/affine-shared/services';
+import type { BlockStdScope } from '@labre/std';
 import { css, html, LitElement } from 'lit';
 import { property } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
@@ -35,10 +37,19 @@ export class EdgelessShapePanel extends LitElement {
     return repeat(
       ShapeComponentConfig,
       item => item.name,
-      ({ name, generalIcon, scribbledIcon, tooltip, disabled }) =>
+      ({
+        name,
+        generalIcon,
+        scribbledIcon,
+        tooltip,
+        tooltipWording,
+        disabled,
+      }) =>
         html`<edgeless-tool-icon-button
           .disabled=${disabled}
-          .tooltip=${tooltip}
+          .tooltip=${this.std
+            ? translateKey(this.std, ...tooltipWording)
+            : tooltip}
           .active=${this.selectedShape === name}
           .activeMode=${'background'}
           .iconSize=${'20px'}
@@ -53,6 +64,11 @@ export class EdgelessShapePanel extends LitElement {
         </edgeless-tool-icon-button>`
     );
   }
+
+  /** Set by a caller that has one — optional so this panel still renders (in
+   * English) when created with none, as it is today. */
+  @property({ attribute: false })
+  accessor std: BlockStdScope | undefined = undefined;
 
   @property({ attribute: false })
   accessor selectedShape:

@@ -5,5 +5,6 @@ export * from './interactivity';
 export * from './templates';
 export * from './toolbar/config';
 export * from './toolbar/senior-tool';
+export * from './translations';
 export * from './utils';
 export * from './view/index';

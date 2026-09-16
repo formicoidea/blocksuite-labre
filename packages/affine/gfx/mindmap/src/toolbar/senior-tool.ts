@@ -1,15 +1,18 @@
+import { translateKey, TOOL_NAME_TEXT } from '@labre/affine-shared/services';
 import { SeniorToolExtension } from '@labre/affine-widget-edgeless-toolbar';
 import { Bound } from '@labre/global/gfx';
 import { html, type TemplateResult } from 'lit';
 
 import { mediaRender, textRender } from './basket-elements';
 import { mindmapMenuMediaIcon, textIcon } from './icons';
+import { MINDMAP_ADD_FILE_TOOL, MINDMAP_TOOLTIP } from '../translations';
 
 export const mindMapSeniorTool = SeniorToolExtension(
   'mindMap',
   ({ block, toolbarContainer }) => {
     return {
       name: 'Mind Map',
+      labelKey: MINDMAP_TOOLTIP[0],
       content: html`<edgeless-mindmap-tool-button
         .edgeless=${block}
         .toolbarContainer=${toolbarContainer}
@@ -65,7 +68,8 @@ export const textSeniorTool = SeniorToolExtension(
   'edgeless-text',
   ({ block, gfx }) => ({
     name: 'Text',
-    content: slot(textIcon, 'Text', () => {
+    labelKey: TOOL_NAME_TEXT[0],
+    content: slot(textIcon, translateKey(block.std, ...TOOL_NAME_TEXT), () => {
       const { centerX, centerY } = gfx.viewport;
       void textRender(new Bound(centerX - 50, centerY - 16, 100, 32), block);
     }),
@@ -81,9 +85,17 @@ export const mediaSeniorTool = SeniorToolExtension(
   'edgeless-media',
   ({ block, gfx }) => ({
     name: 'Add file',
-    content: slot(mindmapMenuMediaIcon, 'Add file', () => {
-      const { centerX, centerY } = gfx.viewport;
-      void mediaRender(new Bound(centerX - 50, centerY - 50, 100, 100), block);
-    }),
+    labelKey: MINDMAP_ADD_FILE_TOOL[0],
+    content: slot(
+      mindmapMenuMediaIcon,
+      translateKey(block.std, ...MINDMAP_ADD_FILE_TOOL),
+      () => {
+        const { centerX, centerY } = gfx.viewport;
+        void mediaRender(
+          new Bound(centerX - 50, centerY - 50, 100, 100),
+          block
+        );
+      }
+    ),
   })
 );

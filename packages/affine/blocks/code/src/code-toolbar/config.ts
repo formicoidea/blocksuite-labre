@@ -11,6 +11,7 @@ import {
   CommentProviderIdentifier,
   DocModeProvider,
   TelemetryProvider,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { isInsidePageEditor } from '@labre/affine-shared/utils';
 import { noop, sleep } from '@labre/global/utils';
@@ -22,9 +23,21 @@ import {
 } from '@blocksuite/icons/lit';
 import { BlockSelection } from '@labre/std';
 import { html } from 'lit';
-import { ifDefined } from 'lit/directives/if-defined.js';
 
 import { CodeBlockConfigExtension } from '../code-block-config.js';
+import {
+  CODE_TOOLBAR_CANCEL_LINE_NUMBER,
+  CODE_TOOLBAR_CANCEL_WRAP,
+  CODE_TOOLBAR_CAPTION,
+  CODE_TOOLBAR_COLLAPSE,
+  CODE_TOOLBAR_COMMENT,
+  CODE_TOOLBAR_COPY_CODE,
+  CODE_TOOLBAR_DELETE,
+  CODE_TOOLBAR_DUPLICATE,
+  CODE_TOOLBAR_EXPAND,
+  CODE_TOOLBAR_LINE_NUMBER,
+  CODE_TOOLBAR_WRAP,
+} from '../translations.js';
 import type { CodeBlockToolbarContext } from './context.js';
 import { duplicateCodeBlock } from './utils.js';
 
@@ -80,22 +93,28 @@ export const PRIMARY_GROUPS: MenuItemGroup<CodeBlockToolbarContext>[] = [
             action: () => {
               blockComponent.copyCode();
             },
-            render: item => html`
-              <editor-icon-button
-                class="code-toolbar-button copy-code"
-                aria-label=${ifDefined(item.label)}
-                .tooltip=${item.label}
-                .tooltipOffset=${4}
-                .iconSize=${'16px'}
-                .iconContainerPadding=${4}
-                @click=${(e: MouseEvent) => {
-                  e.stopPropagation();
-                  item.action();
-                }}
-              >
-                ${item.icon}
-              </editor-icon-button>
-            `,
+            render: item => {
+              const label = translateKey(
+                blockComponent.std,
+                ...CODE_TOOLBAR_COPY_CODE
+              );
+              return html`
+                <editor-icon-button
+                  class="code-toolbar-button copy-code"
+                  aria-label=${label}
+                  .tooltip=${label}
+                  .tooltipOffset=${4}
+                  .iconSize=${'16px'}
+                  .iconContainerPadding=${4}
+                  @click=${(e: MouseEvent) => {
+                    e.stopPropagation();
+                    item.action();
+                  }}
+                >
+                  ${item.icon}
+                </editor-icon-button>
+              `;
+            },
           };
         },
       },
@@ -124,7 +143,10 @@ export const PRIMARY_GROUPS: MenuItemGroup<CodeBlockToolbarContext>[] = [
             render: item => {
               const collapsed = blockComponent.collapsed$.value;
               const icon = collapsed ? ExpandCodeIcon : CollapseCodeIcon;
-              const label = collapsed ? 'Expand code' : 'Collapse code';
+              const label = translateKey(
+                blockComponent.std,
+                ...(collapsed ? CODE_TOOLBAR_EXPAND : CODE_TOOLBAR_COLLAPSE)
+              );
               return html`
                 <editor-icon-button
                   class="code-toolbar-button collapse"
@@ -155,22 +177,28 @@ export const PRIMARY_GROUPS: MenuItemGroup<CodeBlockToolbarContext>[] = [
             action: () => {
               blockComponent.captionEditor?.show();
             },
-            render: item => html`
-              <editor-icon-button
-                class="code-toolbar-button caption"
-                aria-label=${ifDefined(item.label)}
-                .tooltip=${item.label}
-                .tooltipOffset=${4}
-                .iconSize=${'16px'}
-                .iconContainerPadding=${4}
-                @click=${(e: MouseEvent) => {
-                  e.stopPropagation();
-                  item.action();
-                }}
-              >
-                ${item.icon}
-              </editor-icon-button>
-            `,
+            render: item => {
+              const label = translateKey(
+                blockComponent.std,
+                ...CODE_TOOLBAR_CAPTION
+              );
+              return html`
+                <editor-icon-button
+                  class="code-toolbar-button caption"
+                  aria-label=${label}
+                  .tooltip=${label}
+                  .tooltipOffset=${4}
+                  .iconSize=${'16px'}
+                  .iconContainerPadding=${4}
+                  @click=${(e: MouseEvent) => {
+                    e.stopPropagation();
+                    item.action();
+                  }}
+                >
+                  ${item.icon}
+                </editor-icon-button>
+              `;
+            },
           };
         },
       },
@@ -197,11 +225,15 @@ export const PRIMARY_GROUPS: MenuItemGroup<CodeBlockToolbarContext>[] = [
                 }),
               ]);
             },
-            render: item =>
-              html`<editor-icon-button
+            render: item => {
+              const label = translateKey(
+                blockComponent.std,
+                ...CODE_TOOLBAR_COMMENT
+              );
+              return html`<editor-icon-button
                 class="code-toolbar-button comment"
-                aria-label=${ifDefined(item.label)}
-                .tooltip=${item.label}
+                aria-label=${label}
+                .tooltip=${label}
                 .tooltipOffset=${4}
                 .iconSize=${'16px'}
                 .iconContainerPadding=${4}
@@ -211,7 +243,8 @@ export const PRIMARY_GROUPS: MenuItemGroup<CodeBlockToolbarContext>[] = [
                 }}
               >
                 ${item.icon}
-              </editor-icon-button>`,
+              </editor-icon-button>`;
+            },
           };
         },
       },
@@ -229,7 +262,10 @@ export const toggleGroup: MenuItemGroup<CodeBlockToolbarContext> = {
           action: () => {},
           render: () => {
             const wrapped = blockComponent.model.props.wrap;
-            const label = wrapped ? 'Cancel wrap' : 'Wrap';
+            const label = translateKey(
+              blockComponent.std,
+              ...(wrapped ? CODE_TOOLBAR_CANCEL_WRAP : CODE_TOOLBAR_WRAP)
+            );
             const icon = wrapped ? CancelWrapIcon : WrapIcon;
             return html`
               <editor-menu-action
@@ -261,7 +297,12 @@ export const toggleGroup: MenuItemGroup<CodeBlockToolbarContext> = {
           action: () => {},
           render: () => {
             const lineNumber = blockComponent.showLineNumbers;
-            const label = lineNumber ? 'Cancel line number' : 'Line number';
+            const label = translateKey(
+              blockComponent.std,
+              ...(lineNumber
+                ? CODE_TOOLBAR_CANCEL_LINE_NUMBER
+                : CODE_TOOLBAR_LINE_NUMBER)
+            );
             return html`
               <editor-menu-action
                 @click=${() => {
@@ -292,35 +333,55 @@ export const clipboardGroup: MenuItemGroup<CodeBlockToolbarContext> = {
   items: [
     {
       type: 'duplicate',
-      // NOT a `ToolbarAction`: the code block's "⋮" is a `MenuItemGroup`,
-      // rendered by `renderGroups` over a context that is generic and carries
-      // no `std`, so the wording seam cannot reach it. Left English with the
-      // rest of that menu's vocabulary rather than keying two of its five
-      // entries — see the changeset.
-      label: 'Duplicate',
+      // `MenuItemGroup`'s default renderer (`renderActions`,
+      // `@labre/affine-components/toolbar`) draws a plain `action` item's
+      // static `label` with no wording seam of its own — but `generate` DOES
+      // reach `std` (via `blockComponent`, exactly like every other item in
+      // this file), so the wording is resolved in a `render` override instead
+      // of relying on the generic renderer.
       icon: DuplicateIcon,
       when: ({ doc }) => !doc.readonly,
-      action: ({ host, blockComponent, close }) => {
-        const codeId = duplicateCodeBlock(blockComponent.model);
+      generate: ({ host, blockComponent, close }) => {
+        return {
+          action: () => {
+            const codeId = duplicateCodeBlock(blockComponent.model);
 
-        host.updateComplete
-          .then(() => {
-            host.selection.setGroup('note', [
-              host.selection.create(BlockSelection, {
-                blockId: codeId,
-              }),
-            ]);
+            host.updateComplete
+              .then(() => {
+                host.selection.setGroup('note', [
+                  host.selection.create(BlockSelection, {
+                    blockId: codeId,
+                  }),
+                ]);
 
-            if (isInsidePageEditor(host)) {
-              const duplicateElement = host.view.getBlock(codeId);
-              if (duplicateElement) {
-                duplicateElement.scrollIntoView({ block: 'nearest' });
-              }
-            }
-          })
-          .catch(console.error);
+                if (isInsidePageEditor(host)) {
+                  const duplicateElement = host.view.getBlock(codeId);
+                  if (duplicateElement) {
+                    duplicateElement.scrollIntoView({ block: 'nearest' });
+                  }
+                }
+              })
+              .catch(console.error);
 
-        close();
+            close();
+          },
+          render: item => {
+            const label = translateKey(
+              blockComponent.std,
+              ...CODE_TOOLBAR_DUPLICATE
+            );
+            return html`
+              <editor-menu-action
+                class="code-toolbar-button duplicate"
+                aria-label=${label}
+                @click=${() => item.action()}
+              >
+                ${item.icon}
+                <span class="label">${label}</span>
+              </editor-menu-action>
+            `;
+          },
+        };
       },
     },
   ],
@@ -333,12 +394,31 @@ export const deleteGroup: MenuItemGroup<CodeBlockToolbarContext> = {
     {
       type: 'delete',
       // See the note on `duplicate` above.
-      label: 'Delete',
       icon: DeleteIcon,
       when: ({ doc }) => !doc.readonly,
-      action: ({ doc, blockComponent, close }) => {
-        doc.deleteBlock(blockComponent.model);
-        close();
+      generate: ({ doc, blockComponent, close }) => {
+        return {
+          action: () => {
+            doc.deleteBlock(blockComponent.model);
+            close();
+          },
+          render: item => {
+            const label = translateKey(
+              blockComponent.std,
+              ...CODE_TOOLBAR_DELETE
+            );
+            return html`
+              <editor-menu-action
+                class="code-toolbar-button delete"
+                aria-label=${label}
+                @click=${() => item.action()}
+              >
+                ${item.icon}
+                <span class="label">${label}</span>
+              </editor-menu-action>
+            `;
+          },
+        };
       },
     },
   ],

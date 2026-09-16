@@ -1,3 +1,9 @@
+import type { ChromeWording } from '@labre/affine-shared/services';
+
+import {
+  BRUSH_TOOLTIP_HIGHLIGHTER,
+  BRUSH_TOOLTIP_PEN,
+} from '../../../translations.js';
 import {
   EdgelessBrushDarkIcon,
   EdgelessBrushLightIcon,
@@ -27,3 +33,7 @@ export const penInfoMap: { [k in Pen]: { tip: string; shortcut: string } } = {
     shortcut: '⇧ P',
   },
 };
+
+/** `penInfoMap[pen].tip`'s i18n key/fallback pair — resolved at render. */
+export const penTipWording = (pen: Pen): ChromeWording =>
+  pen === 'brush' ? BRUSH_TOOLTIP_PEN : BRUSH_TOOLTIP_HIGHLIGHTER;

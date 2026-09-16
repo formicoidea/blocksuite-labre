@@ -1,3 +1,10 @@
+import type { ServiceProvider } from '@labre/global/di';
+
+import {
+  CHROME_CLIPBOARD_FILE_TOO_LARGE,
+  CHROME_CLIPBOARD_SIZE_LIMIT,
+} from '../../services/translation-service/chrome.js';
+import { resolveWording } from '../utils/wording.js';
 import type { FileSnapshot } from './clipboard.js';
 
 const chars =
@@ -67,21 +74,25 @@ export const decode = (base64: string): ArrayBuffer => {
 
 export async function encodeClipboardBlobs(
   map: Map<string, Blob>,
-  onError?: (message: string) => void
+  onError?: (message: string) => void,
+  provider?: ServiceProvider
 ) {
   const blobs: Record<string, FileSnapshot> = {};
   let sumSize = 0;
   await Promise.all(
     Array.from(map.entries()).map(async ([id, blob]) => {
       if (blob.size > 4 * 1024 * 1024) {
-        onError?.((blob as File).name ?? 'File' + ' is too large to be copied');
+        onError?.(
+          (blob as File).name ??
+            resolveWording(provider, CHROME_CLIPBOARD_FILE_TOO_LARGE)
+        );
         return;
       }
       sumSize += blob.size;
       if (sumSize > 6 * 1024 * 1024) {
         onError?.(
           (blob as File).name ??
-            'File' + ' cannot be copied due to the clipboard size limit'
+            resolveWording(provider, CHROME_CLIPBOARD_SIZE_LIMIT)
         );
         return;
       }

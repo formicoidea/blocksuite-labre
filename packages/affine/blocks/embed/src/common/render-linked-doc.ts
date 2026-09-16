@@ -7,6 +7,7 @@ import {
   ParagraphBlockModel,
 } from '@labre/affine-model';
 import {
+  CHROME_UNTITLED,
   NotificationProvider,
   TOAST_LINKED_DOC_CREATED,
   TOOLBAR_CREATE_LINKED_DOC,
@@ -22,6 +23,13 @@ import {
   type Store,
   Text,
 } from '@labre/store';
+
+import {
+  EMBED_CANCEL,
+  EMBED_CONFIRM,
+  EMBED_DOC_CREATED_UNDO_MESSAGE,
+  EMBED_PROMPT_TITLE_MESSAGE,
+} from '../translations';
 
 // Throttle delay for block updates to reduce unnecessary re-renders
 // - Prevents rapid-fire updates when multiple blocks are updated in quick succession
@@ -135,18 +143,18 @@ export function promptDocTitle(std: BlockStdScope, autofill?: string) {
 
   return notification.prompt({
     title: translateKey(std, ...TOOLBAR_CREATE_LINKED_DOC),
-    message: 'Enter a title for the new doc.',
-    placeholder: 'Untitled',
+    message: translateKey(std, ...EMBED_PROMPT_TITLE_MESSAGE),
+    placeholder: translateKey(std, ...CHROME_UNTITLED),
     autofill,
-    confirmText: 'Confirm',
-    cancelText: 'Cancel',
+    confirmText: translateKey(std, ...EMBED_CONFIRM),
+    cancelText: translateKey(std, ...EMBED_CANCEL),
   });
 }
 
 export function notifyDocCreated(std: BlockStdScope) {
   std.getOptional(NotificationProvider)?.notifyWithUndoAction({
     title: translateKey(std, ...TOAST_LINKED_DOC_CREATED),
-    message: 'You can click undo to recovery block content',
+    message: translateKey(std, ...EMBED_DOC_CREATED_UNDO_MESSAGE),
     accent: 'info',
     duration: 10 * 1000,
   });

@@ -22,6 +22,11 @@ import type { TemplateResult } from 'lit';
 
 import { referenceToNode } from '../utils/reference.js';
 import { DocModeProvider } from './doc-mode-service.js';
+import {
+  CHROME_DELETED_DOC,
+  CHROME_UNTITLED,
+} from './translation-service/chrome.js';
+import { translateKey } from './translation-service/index.js';
 
 export type DocDisplayMetaParams = {
   referenced?: boolean;
@@ -156,18 +161,23 @@ export class DocDisplayMetaService
     const doc = this.std.workspace.getDoc(pageId);
 
     if (!doc) {
-      return computed(() => title || 'Deleted doc');
+      return computed(
+        () => title || translateKey(this.std, ...CHROME_DELETED_DOC)
+      );
     }
 
     const store = doc.getStore();
 
     let title$ = this.titleMap.get(store);
     if (!title$) {
-      title$ = signal(doc.meta?.title || 'Untitled');
+      title$ = signal(
+        doc.meta?.title || translateKey(this.std, ...CHROME_UNTITLED)
+      );
 
       const disposable = this.std.workspace.slots.docListUpdated.subscribe(
         () => {
-          title$!.value = doc.meta?.title || 'Untitled';
+          title$!.value =
+            doc.meta?.title || translateKey(this.std, ...CHROME_UNTITLED);
         }
       );
 

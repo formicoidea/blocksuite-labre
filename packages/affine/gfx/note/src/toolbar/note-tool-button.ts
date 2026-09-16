@@ -1,3 +1,4 @@
+import { translateKey } from '@labre/affine-shared/services';
 import {
   createPopper,
   type MenuPopper,
@@ -9,6 +10,7 @@ import { css, html, LitElement } from 'lit';
 import { state } from 'lit/decorators.js';
 
 import { NoteTool, type NoteToolOption } from '../note-tool.js';
+import { GFX_NOTE_TOOL_LABEL } from '../translations.js';
 import type { EdgelessNoteMenu } from './note-menu.js';
 
 export class EdgelessNoteToolButton extends QuickToolMixin(LitElement) {
@@ -92,7 +94,10 @@ export class EdgelessNoteToolButton extends QuickToolMixin(LitElement) {
         .tooltip=${this._noteMenu
           ? ''
           : html`<affine-tooltip-content-with-shortcut
-              data-tip="${'Note'}"
+              data-tip="${translateKey(
+                this.edgeless.std,
+                ...GFX_NOTE_TOOL_LABEL
+              )}"
               data-shortcut="${'N'}"
             ></affine-tooltip-content-with-shortcut>`}
         .tooltipOffset=${17}

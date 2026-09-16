@@ -1,4 +1,5 @@
 import { EdgelessLegacySlotIdentifier } from '@labre/affine-block-surface';
+import { translateKey } from '@labre/affine-shared/services';
 import { stopPropagation } from '@labre/affine-shared/utils';
 import { WithDisposable } from '@labre/global/lit';
 import { MinusIcon, PlusIcon, ViewBarIcon } from '@blocksuite/icons/lit';
@@ -14,6 +15,12 @@ import { baseTheme } from '@toeverything/theme';
 import { css, html, LitElement, nothing, unsafeCSS } from 'lit';
 import { property } from 'lit/decorators.js';
 import clamp from 'lodash-es/clamp';
+
+import {
+  ZOOM_FIT_TO_SCREEN_TOOLTIP,
+  ZOOM_IN_TOOLTIP,
+  ZOOM_OUT_TOOLTIP,
+} from './translations.js';
 
 export class EdgelessZoomToolbar extends WithDisposable(LitElement) {
   static override styles = css`
@@ -162,7 +169,7 @@ export class EdgelessZoomToolbar extends WithDisposable(LitElement) {
         @pointerdown=${stopPropagation}
       >
         <edgeless-tool-icon-button
-          .tooltip=${'Fit to screen'}
+          .tooltip=${translateKey(this.std, ...ZOOM_FIT_TO_SCREEN_TOOLTIP)}
           .tipPosition=${this._isVerticalBar() ? 'right' : 'top-end'}
           .arrow=${!this._isVerticalBar()}
           @click=${() => this.gfx.fitToScreen()}
@@ -173,7 +180,7 @@ export class EdgelessZoomToolbar extends WithDisposable(LitElement) {
           ${ViewBarIcon()}
         </edgeless-tool-icon-button>
         <edgeless-tool-icon-button
-          .tooltip=${'Zoom out'}
+          .tooltip=${translateKey(this.std, ...ZOOM_OUT_TOOLTIP)}
           .tipPosition=${this._isVerticalBar() ? 'right' : 'top'}
           .arrow=${!this._isVerticalBar()}
           @click=${() => this.setZoomByStep(-ZOOM_STEP)}
@@ -191,7 +198,7 @@ export class EdgelessZoomToolbar extends WithDisposable(LitElement) {
           ${formattedZoom}
         </button>
         <edgeless-tool-icon-button
-          .tooltip=${'Zoom in'}
+          .tooltip=${translateKey(this.std, ...ZOOM_IN_TOOLTIP)}
           .tipPosition=${this._isVerticalBar() ? 'right' : 'top'}
           .arrow=${!this._isVerticalBar()}
           @click=${() => this.setZoomByStep(ZOOM_STEP)}

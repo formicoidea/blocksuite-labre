@@ -1,5 +1,9 @@
 import { keepColor } from '@labre/affine-components/color-picker';
-import { EditPropsStore, ThemeProvider } from '@labre/affine-shared/services';
+import {
+  EditPropsStore,
+  ThemeProvider,
+  translateKey,
+} from '@labre/affine-shared/services';
 import { EdgelessToolbarToolMixin } from '@labre/affine-widget-edgeless-toolbar';
 import { SignalWatcher } from '@labre/global/lit';
 import { computed, signal } from '@preact/signals-core';
@@ -9,7 +13,7 @@ import { when } from 'lit/directives/when.js';
 
 import { BrushTool } from '../../../brush-tool';
 import { HighlighterTool } from '../../../highlighter-tool';
-import { penIconMap, penInfoMap } from './consts';
+import { penIconMap, penInfoMap, penTipWording } from './consts';
 import type { Pen } from './types';
 
 export class EdgelessPenToolButton extends EdgelessToolbarToolMixin(
@@ -98,6 +102,7 @@ export class EdgelessPenToolButton extends EdgelessToolbarToolMixin(
     const type = this.pen$.value;
     return {
       ...penInfoMap[type],
+      tip: translateKey(this.edgeless.std, ...penTipWording(type)),
       type: this.pen$.value,
       icon: this.penIcon$.value,
       color: this.color$.value,

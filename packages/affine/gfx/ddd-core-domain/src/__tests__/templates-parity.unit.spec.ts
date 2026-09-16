@@ -1,6 +1,7 @@
 import { CD_SUBDOMAINS, TEAM_TOPOLOGIES } from '@labre/affine-gfx-ddd-shared';
 import { snapshotFromAction } from '@labre/affine-gfx-template';
-import type { CommandInvocation } from '@labre/std';
+import { TranslationProvider } from '@labre/affine-shared/services';
+import type { BlockStdScope, CommandInvocation } from '@labre/std';
 import { describe, expect, it } from 'vitest';
 
 import { coreDomainCommands } from '../commands';
@@ -159,4 +160,69 @@ describe('a team-topology marker is a square, its letter and its caption', () =>
       expect(Object.keys(group![1].children?.json ?? {})).toHaveLength(3);
     });
   }
+});
+
+/**
+ * A dot's name and a marker's caption are SEEDS: resolved at placement,
+ * through the same translation seam a derived template already speaks
+ * (ADR 0016).
+ */
+describe('captions speak the inserting editor’s language', () => {
+  const hostWith = (t?: (key: string) => string | undefined) =>
+    ({
+      getOptional: (id: unknown) =>
+        id === TranslationProvider && t ? { t } : null,
+    }) as unknown as BlockStdScope;
+
+  type Text = { type?: string; text?: { delta?: { insert?: string }[] } };
+
+  it('without a provider, a sub-domain dot keeps its English name', () => {
+    const command = coreDomainCommands.find(
+      c => c.id === 'ddd-core-domain.addBigBet'
+    )!;
+    const elements = snapshotFromAction(
+      std => command.run(std, INVOCATION),
+      'big bet'
+    ).blocks.children[0].props.elements as unknown as Record<string, Text>;
+    const label = Object.values(elements).find(el => el.type === 'text');
+    expect(label?.text?.delta?.[0]?.insert).toBe('Big-bet sub-domain');
+  });
+
+  it('with a fake provider, a sub-domain dot is named in French', () => {
+    const command = coreDomainCommands.find(
+      c => c.id === 'ddd-core-domain.addBigBet'
+    )!;
+    const std = hostWith(key =>
+      key === 'com.labre.ddd-core-domain.seed.big-bet'
+        ? 'Sous-domaine pari majeur'
+        : undefined
+    );
+    const elements = snapshotFromAction(
+      s => command.run(s, INVOCATION),
+      'big bet',
+      std
+    ).blocks.children[0].props.elements as unknown as Record<string, Text>;
+    const label = Object.values(elements).find(el => el.type === 'text');
+    expect(label?.text?.delta?.[0]?.insert).toBe('Sous-domaine pari majeur');
+  });
+
+  it('with a fake provider, a team-topology marker’s caption is translated (its letter is not)', () => {
+    const command = coreDomainCommands.find(
+      c => c.id === 'ddd-core-domain.addCollaboration'
+    )!;
+    const std = hostWith(key =>
+      key === 'com.labre.ddd-core-domain.seed.collaboration'
+        ? 'Collaboration FR'
+        : undefined
+    );
+    const elements = snapshotFromAction(
+      s => command.run(s, INVOCATION),
+      'collaboration',
+      std
+    ).blocks.children[0].props.elements as unknown as Record<string, Text>;
+    const texts = Object.values(elements)
+      .filter(el => el.type === 'text')
+      .map(el => el.text?.delta?.[0]?.insert);
+    expect(texts.sort()).toEqual(['C', 'Collaboration FR'].sort());
+  });
 });

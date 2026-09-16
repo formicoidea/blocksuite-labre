@@ -1,5 +1,6 @@
 import {
   EmbedOptionProvider,
+  translateKey,
   VirtualKeyboardProvider,
 } from '@labre/affine-shared/services';
 import { isValidUrl, stopPropagation } from '@labre/affine-shared/utils';
@@ -14,6 +15,11 @@ import { classMap } from 'lit/directives/class-map.js';
 import { styleMap } from 'lit-html/directives/style-map.js';
 
 import { toast } from '../toast';
+import {
+  CONFIRM_LABEL,
+  EMBED_CARD_INVALID_LINK,
+  EMBED_CARD_LINK_PLACEHOLDER,
+} from '../translations.js';
 import { embedCardModalStyles } from './styles.js';
 
 export class EmbedCardCreateModal extends SignalWatcher(
@@ -29,7 +35,7 @@ export class EmbedCardCreateModal extends SignalWatcher(
     const url = this.input.value;
 
     if (!isValidUrl(url)) {
-      toast(this.host, 'Invalid link');
+      toast(this.host, translateKey(this.host.std, ...EMBED_CARD_INVALID_LINK));
       return;
     }
 
@@ -124,7 +130,10 @@ export class EmbedCardCreateModal extends SignalWatcher(
             class="embed-card-modal-input link"
             id="card-description"
             type="text"
-            placeholder="Input in https://..."
+            placeholder=${translateKey(
+              this.host.std,
+              ...EMBED_CARD_LINK_PLACEHOLDER
+            )}
             value=${this._linkInputValue}
             @input=${this._handleInput}
           />
@@ -139,7 +148,7 @@ export class EmbedCardCreateModal extends SignalWatcher(
             ?disabled=${!isValidUrl(this._linkInputValue)}
             @click=${this._onConfirm}
           >
-            Confirm
+            ${translateKey(this.host.std, ...CONFIRM_LABEL)}
           </button>
         </div>
       </div>

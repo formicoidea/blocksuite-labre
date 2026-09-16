@@ -60,6 +60,27 @@ const LiminalIcon = html`<svg
   <path d="M5 17 C9 6 15 6 19 7" />
 </svg>`;
 
+/** The three toolbar tooltips this file used to hard-code as English literals. */
+const TITLES_TOGGLE: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.toolbar.titles',
+  'Show / hide titles',
+];
+const DESCRIPTIONS_TOGGLE: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.toolbar.descriptions',
+  'Show / hide explanatory text',
+];
+const LIMINAL_LINE_TOGGLE: ChromeWording = [
+  'com.labre.cynefin-estuarine.cynefin.toolbar.liminal-line',
+  'Show / hide liminal line',
+];
+
+/** Every wording above, for `translations.ts`'s manifest contribution. */
+export const CYNEFIN_TOOLBAR_WORDINGS: readonly ChromeWording[] = [
+  TITLES_TOGGLE,
+  DESCRIPTIONS_TOGGLE,
+  LIMINAL_LINE_TOGGLE,
+];
+
 type CynefinToggleProp =
   | 'resizeEnabled'
   | 'showTitles'
@@ -105,21 +126,16 @@ export const cynefinToolbarConfig = {
       ResizeIcon,
       'resizeEnabled'
     ),
-    booleanToggle(
-      'b.toggle-titles',
-      'Show / hide titles',
-      TitlesIcon,
-      'showTitles'
-    ),
+    booleanToggle('b.toggle-titles', TITLES_TOGGLE, TitlesIcon, 'showTitles'),
     booleanToggle(
       'c.toggle-descriptions',
-      'Show / hide explanatory text',
+      DESCRIPTIONS_TOGGLE,
       DescIcon,
       'showDescriptions'
     ),
     booleanToggle(
       'd.toggle-liminal',
-      'Show / hide liminal line',
+      LIMINAL_LINE_TOGGLE,
       LiminalIcon,
       'showLiminalLine'
     ),

@@ -19,6 +19,10 @@ import { BlockSelection } from '@labre/std';
 
 import { updateBlockType } from '../commands';
 import { tooltips } from './tooltips';
+import {
+  NOTE_OTHER_HEADINGS,
+  NOTE_SLASH_ITEM_NAME_WORDINGS,
+} from '../translations.js';
 
 let basicIndex = 0;
 const noteSlashMenuConfig: SlashMenuConfig = {
@@ -28,6 +32,7 @@ const noteSlashMenuConfig: SlashMenuConfig = {
       .map(config => createConversionItem(config, `0_Basic@${basicIndex++}`)),
     {
       name: 'Other Headings',
+      nameWording: NOTE_OTHER_HEADINGS,
       icon: HeadingsIcon(),
       group: `0_Basic@${basicIndex++}`,
       subMenu: textConversionConfigs
@@ -68,6 +73,14 @@ const noteSlashMenuConfig: SlashMenuConfig = {
   ],
 };
 
+/**
+ * `TextConversionConfig.name` / `TextFormatConfig.name` are borrowed from
+ * `@labre/affine-rich-text` / `@labre/affine-inline-preset` — both outside
+ * this lot's packages, so their English literal is out of scope to key. The
+ * NAME each produces, though, is one this package already has a wording for
+ * (the shared block-type names, or this file's own format names), looked up
+ * by the borrowed string in `NOTE_SLASH_ITEM_NAME_WORDINGS`.
+ */
 function createConversionItem(
   config: TextConversionConfig,
   group?: SlashMenuItem['group']
@@ -75,8 +88,10 @@ function createConversionItem(
   const { name, description, icon, flavour, type } = config;
   return {
     name,
+    nameWording: config.nameWording ?? NOTE_SLASH_ITEM_NAME_WORDINGS[name],
     group,
     description,
+    descriptionWording: config.descriptionWording,
     icon,
     tooltip: tooltips[name],
     when: ({ model }) => model.store.schema.flavourSchemaMap.has(flavour),
@@ -96,6 +111,7 @@ function createTextFormatItem(
   const { name, icon, id, action } = config;
   return {
     name,
+    nameWording: config.nameWording ?? NOTE_SLASH_ITEM_NAME_WORDINGS[name],
     icon,
     group,
     tooltip: tooltips[name],

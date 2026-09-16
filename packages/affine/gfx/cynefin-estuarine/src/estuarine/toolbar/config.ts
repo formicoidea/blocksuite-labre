@@ -72,6 +72,32 @@ const AxisIcon = html`<svg
   <path d="M3 6l3-3 3 3M18 9l3 3-3 3" />
 </svg>`;
 
+/** The four toolbar tooltips this file used to hard-code as English literals. */
+const LIMINAL_TOGGLE: ChromeWording = [
+  'com.labre.cynefin-estuarine.estuarine.toolbar.liminal',
+  'Show / hide the Liminal line',
+];
+const VOLATILE_TOGGLE: ChromeWording = [
+  'com.labre.cynefin-estuarine.estuarine.toolbar.volatile',
+  'Show / hide the Volatile line',
+];
+const COUNTERFACTUAL_TOGGLE: ChromeWording = [
+  'com.labre.cynefin-estuarine.estuarine.toolbar.counterfactual',
+  'Show / hide the Counter-factual line',
+];
+const AXIS_LABELS_TOGGLE: ChromeWording = [
+  'com.labre.cynefin-estuarine.estuarine.toolbar.axis-labels',
+  'Show / hide axis labels (e / t)',
+];
+
+/** Every wording above, for `translations.ts`'s manifest contribution. */
+export const ESTUARINE_TOOLBAR_WORDINGS: readonly ChromeWording[] = [
+  LIMINAL_TOGGLE,
+  VOLATILE_TOGGLE,
+  COUNTERFACTUAL_TOGGLE,
+  AXIS_LABELS_TOGGLE,
+];
+
 type EstuarineToggleProp =
   | 'resizeEnabled'
   | 'showLiminal'
@@ -120,25 +146,25 @@ export const estuarineToolbarConfig = {
     ),
     booleanToggle(
       'b.toggle-liminal',
-      'Show / hide the Liminal line',
+      LIMINAL_TOGGLE,
       LiminalIcon,
       'showLiminal'
     ),
     booleanToggle(
       'c.toggle-volatile',
-      'Show / hide the Volatile line',
+      VOLATILE_TOGGLE,
       VolatileIcon,
       'showVolatile'
     ),
     booleanToggle(
       'd.toggle-counterfactual',
-      'Show / hide the Counter-factual line',
+      COUNTERFACTUAL_TOGGLE,
       CounterfactualIcon,
       'showCounterfactual'
     ),
     booleanToggle(
       'e.toggle-axis-labels',
-      'Show / hide axis labels (e / t)',
+      AXIS_LABELS_TOGGLE,
       AxisIcon,
       'showAxisLabels'
     ),

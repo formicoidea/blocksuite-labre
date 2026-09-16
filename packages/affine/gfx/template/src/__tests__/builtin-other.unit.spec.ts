@@ -1,4 +1,6 @@
 import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
+import { TranslationProvider } from '@labre/affine-shared/services';
+import type { BlockStdScope } from '@labre/std';
 import { describe, expect, it } from 'vitest';
 
 import { otherTemplateCategory } from '../builtin/other.js';
@@ -63,5 +65,93 @@ describe('the generic ("Other") templates', () => {
       colour => !scale.has(colour) && !hues.has(colour)
     );
     expect(outside).toEqual([]);
+  });
+});
+
+/**
+ * The five generic templates speak the inserting editor's language: their
+ * seeds (SWOT's four quadrant labels, Kanban's column headers, BMC's nine
+ * section titles, Fishbone's category/item words, Gantt's phase names and
+ * week header) go through the translation seam at placement (ADR 0016), like
+ * a derived template's.
+ */
+describe('the generic templates localize their seeds', () => {
+  type Snapshot = {
+    blocks: { children: [{ props: { elements: Record<string, unknown> } }] };
+  };
+  const elementsOf = (content: unknown) =>
+    (content as Snapshot).blocks.children[0].props.elements as Record<
+      string,
+      { text?: unknown }
+    >;
+
+  const hostWith = (
+    t?: (
+      key: string,
+      params?: Record<string, string | number>
+    ) => string | undefined
+  ) =>
+    ({
+      getOptional: (id: unknown) =>
+        id === TranslationProvider && t ? { t } : null,
+    }) as unknown as BlockStdScope;
+
+  const byName = (name: string) => {
+    const { templates } = otherTemplateCategory;
+    if (!Array.isArray(templates)) throw new Error('expected eager templates');
+    const found = templates.find(t => t.name === name);
+    if (!found) throw new Error(`no template named "${name}"`);
+    return found;
+  };
+
+  for (const name of [
+    'SWOT',
+    'Kanban board',
+    'Business model canvas',
+    'Fishbone (Ishikawa)',
+    'Gantt chart',
+  ]) {
+    it(`${name}: without a provider, localize returns exactly the content`, () => {
+      const template = byName(name);
+      expect(JSON.stringify(template.localize!(hostWith()))).toBe(
+        JSON.stringify(template.content)
+      );
+    });
+  }
+
+  const insertOf = (el: unknown) =>
+    (el as { text?: { delta?: { insert?: string }[] } }).text?.delta?.[0]
+      ?.insert;
+
+  it('SWOT: a fake provider changes every quadrant label', () => {
+    const fr: Record<string, string> = {
+      'com.labre.template.seed.swot-strengths': 'Forces',
+      'com.labre.template.seed.swot-weaknesses': 'Faiblesses',
+      'com.labre.template.seed.swot-opportunities': 'Opportunités',
+      'com.labre.template.seed.swot-threats': 'Menaces',
+    };
+    const localized = elementsOf(
+      byName('SWOT').localize!(hostWith(k => fr[k]))
+    );
+    const texts = Object.values(localized)
+      .map(insertOf)
+      .filter((text): text is string => typeof text === 'string');
+    expect(texts.sort()).toEqual(Object.values(fr).sort());
+  });
+
+  it('Gantt chart: a fake provider translates the week header with its param', () => {
+    const localized = elementsOf(
+      byName('Gantt chart').localize!(
+        hostWith((key, params) =>
+          key === 'com.labre.template.seed.gantt-week'
+            ? `S${params?.['n']}`
+            : undefined
+        )
+      )
+    );
+    const weeks = Object.entries(localized)
+      .filter(([id]) => id.startsWith('w'))
+      .map(([, el]) => insertOf(el));
+    expect(weeks).toEqual(['S1', 'S2', 'S3', 'S4', 'S5', 'S6']);
   });
 });

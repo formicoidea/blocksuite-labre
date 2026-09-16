@@ -32,9 +32,25 @@ const WARDLEY_SWATCHES = [
 
 describe('the wardley node palette', () => {
   it('leads with the cycle swatches, in order', () => {
-    expect(WARDLEY_PALETTE_LIST.slice(0, WARDLEY_SWATCHES.length)).toEqual(
-      WARDLEY_SWATCHES
+    // `{ key, value }` only: each swatch also carries a `labelWording` now
+    // (i18n L7-s2, `resolvePaletteLabel`), which is not this spec's concern —
+    // the colour and the order are.
+    const actual = WARDLEY_PALETTE_LIST.slice(0, WARDLEY_SWATCHES.length).map(
+      ({ key, value }) => ({ key, value })
     );
+    expect(actual).toEqual(WARDLEY_SWATCHES);
+  });
+
+  it('names every cycle swatch for translation, one key per swatch', () => {
+    for (const swatch of WARDLEY_PALETTE_LIST.slice(
+      0,
+      WARDLEY_SWATCHES.length
+    )) {
+      expect(swatch.labelWording?.[0]).toMatch(
+        /^com\.labre\.wardley\.palette\./
+      );
+      expect(swatch.labelWording?.[1]).toBe(swatch.key);
+    }
   });
 
   it('says the notation colours the map already uses', () => {

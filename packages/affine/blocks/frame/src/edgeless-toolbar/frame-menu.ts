@@ -1,10 +1,12 @@
 import { DefaultTool } from '@labre/affine-block-surface';
+import { translateKey } from '@labre/affine-shared/services';
 import { EdgelessToolbarToolMixin } from '@labre/affine-widget-edgeless-toolbar';
 import { css, html, LitElement } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
 
 import { EdgelessFrameManagerIdentifier } from '../frame-manager.js';
 import { FrameTool } from '../frame-tool';
+import { FRAME_DENSE_MENU_CUSTOM } from '../translations.js';
 import { FrameConfig } from './config.js';
 
 export class EdgelessFrameMenu extends EdgelessToolbarToolMixin(LitElement) {
@@ -77,7 +79,9 @@ export class EdgelessFrameMenu extends EdgelessToolbarToolMixin(LitElement) {
     return html`
       <edgeless-slide-menu .showNext=${false}>
         <div class="menu-content">
-          <div class="frame-add-button custom">Custom</div>
+          <div class="frame-add-button custom">
+            ${translateKey(this.edgeless.std, ...FRAME_DENSE_MENU_CUSTOM)}
+          </div>
           <div class="divider"></div>
           ${repeat(
             FrameConfig,

@@ -97,12 +97,12 @@ const updateArrowStyles = ({
  * ```ts
  * // Simple usage
  * html`
- * <affine-tooltip>Content</affine-tooltip>
+ * <affine-tooltip>${content}</affine-tooltip>
  * `
  * // With placement
  * html`
  * <affine-tooltip tip-position="top">
- *   Content
+ *   ${content}
  * </affine-tooltip>
  * `
  *
@@ -116,7 +116,7 @@ const updateArrowStyles = ({
  *   .tooltipStyle=${css`:host { z-index: 0; --affine-tooltip: #fff; }`}
  *   .allowInteractive=${false}
  * >
- *   Content
+ *   ${content}
  * </affine-tooltip>
  * `
  * ```

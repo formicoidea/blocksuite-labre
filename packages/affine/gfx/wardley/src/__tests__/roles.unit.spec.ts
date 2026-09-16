@@ -281,6 +281,10 @@ describe('legend glyphs stay neutral', () => {
     };
     const std = {
       get: () => gfx,
+      // `createWardleyLegend` resolves every wording it writes through
+      // `translateKey`, which asks for this — absent here, exactly like a
+      // playground with no `TranslationProvider` registered.
+      getOptional: () => undefined,
       store: { captureSync: vi.fn() },
       command: { exec: () => [{}, { groupId: 'g' }] },
     };

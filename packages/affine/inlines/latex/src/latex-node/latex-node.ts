@@ -1,4 +1,9 @@
 import { createLitPortal } from '@labre/affine-components/portal';
+import {
+  EQUATION_EMPTY_LABEL,
+  EQUATION_ERROR_LABEL,
+  translateKey,
+} from '@labre/affine-shared/services';
 import { unsafeCSSVar, unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import type { AffineTextAttributes } from '@labre/affine-shared/types';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
@@ -135,7 +140,9 @@ export class AffineLatexNode extends SignalWatcher(
 
             if (latex.length === 0) {
               render(
-                html`<span class="placeholder">Equation</span>`,
+                html`<span class="placeholder"
+                  >${translateKey(this.std, ...EQUATION_EMPTY_LABEL)}</span
+                >`,
                 latexContainer
               );
             } else {
@@ -148,7 +155,9 @@ export class AffineLatexNode extends SignalWatcher(
                 // @ts-expect-error lit hack won't fix
                 delete latexContainer['_$litPart$'];
                 render(
-                  html`<span class="error-placeholder">Error equation</span>`,
+                  html`<span class="error-placeholder"
+                    >${translateKey(this.std, ...EQUATION_ERROR_LABEL)}</span
+                  >`,
                   latexContainer
                 );
               }

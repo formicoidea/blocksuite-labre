@@ -5,6 +5,20 @@ import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
  * (sticky, dot, bubble, connector, label) from these presets — no duplicated
  * component definitions across the Event Storming / Context Map / Core Domain
  * sub-menus.
+ *
+ * ## Where each preset's `label` actually gets a key
+ *
+ * Not here: this file is generic across the three frameworks and declares no
+ * `com.labre.*` key of its own. Every preset below is reused, byte for byte,
+ * as the `labelFallback` of the placement (or connector-arming) command it
+ * feeds in its framework's own `commands.ts` — `ddd-context-map.add<Kind>`,
+ * `ddd-core-domain.<preset>`, `ddd-event-storming.<preset>` — which is where
+ * the command's own `labelKey` (`com.labre.commands.<framework>.<id>`) lives.
+ * `getCommands()` walks registered commands into the translation manifest
+ * automatically ("declared data", see
+ * `packages/affine/shared/src/services/translation-service/README.md`), so a
+ * second key here for the same English word would only be the drift the
+ * manifest guard exists to catch.
  */
 
 /** Square sticky side (px, canvas reference). */

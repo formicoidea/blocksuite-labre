@@ -17,6 +17,7 @@ import {
   REFERENCE_NODE,
 } from '@labre/affine-shared/consts';
 import {
+  CHROME_LOADING,
   CitationProvider,
   DocDisplayMetaProvider,
   DocModeProvider,
@@ -26,6 +27,7 @@ import {
   OpenDocExtensionIdentifier,
   type OpenDocMode,
   ThemeProvider,
+  TOOLBAR_RELOAD,
   translateKey,
   whenLinkedDocContentReady,
 } from '@labre/affine-shared/services';
@@ -55,6 +57,7 @@ import * as Y from 'yjs';
 import { isDocTrashed } from '../common/doc-trashed.js';
 import { renderLinkedDocInCard } from '../common/render-linked-doc';
 import { SyncedDocErrorIcon } from '../embed-synced-doc-block/styles.js';
+import { EMBED_DOC_UPDATED_LABEL } from '../translations.js';
 import { styles } from './styles.js';
 import { getEmbedLinkedDocIcons } from './utils.js';
 
@@ -362,7 +365,9 @@ export class EmbedLinkedDocBlockComponent extends EmbedBlockComponent<EmbedLinke
       : isLoading
         ? LoadingIcon()
         : this.icon$.value;
-    const title = isLoading ? 'Loading...' : this.title$;
+    const title = isLoading
+      ? translateKey(this.std, ...CHROME_LOADING)
+      : this.title$;
     const description = this.model.props.description$;
 
     const showDefaultNoteContent = isError || isLoading || isDeleted || isEmpty;
@@ -442,13 +447,19 @@ export class EmbedLinkedDocBlockComponent extends EmbedBlockComponent<EmbedLinke
                       class="affine-embed-linked-doc-card-content-reload-button"
                       @click=${this.refreshData}
                     >
-                      ${ResetIcon()} <span>Reload</span>
+                      ${ResetIcon()}
+                      <span>${translateKey(this.std, ...TOOLBAR_RELOAD)}</span>
                     </div>
                   </div>
                 `
               : html`
                   <div class="affine-embed-linked-doc-content-date">
-                    <span>Updated</span>
+                    <span
+                      >${translateKey(
+                        this.std,
+                        ...EMBED_DOC_UPDATED_LABEL
+                      )}</span
+                    >
 
                     <span>${dateText}</span>
                   </div>

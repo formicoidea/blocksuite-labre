@@ -3,9 +3,13 @@ import { EmbedHtmlModel } from '@labre/affine-model';
 import {
   ActionPlacement,
   TOAST_COPIED_TO_CLIPBOARD,
+  TOOLBAR_CAPTION,
   TOOLBAR_COPY,
   TOOLBAR_DELETE,
   TOOLBAR_DUPLICATE,
+  TOOLBAR_LARGE_HORIZONTAL_STYLE,
+  TOOLBAR_OPEN_THIS_DOC,
+  TOOLBAR_SMALL_HORIZONTAL_STYLE,
   type ToolbarAction,
   type ToolbarActionGroup,
   type ToolbarModuleConfig,
@@ -36,6 +40,7 @@ const openDocAction = {
   id: 'a.open-doc',
   icon: ExpandFullIcon(),
   tooltip: 'Open this doc',
+  tooltipWording: TOOLBAR_OPEN_THIS_DOC,
   run(ctx) {
     const block = ctx.getCurrentBlockByType(EmbedHtmlBlockComponent);
     block?.open();
@@ -45,6 +50,7 @@ const openDocAction = {
 const captionAction = {
   id: 'c.caption',
   tooltip: 'Caption',
+  tooltipWording: TOOLBAR_CAPTION,
   icon: CaptionIcon(),
   run(ctx) {
     const block = ctx.getCurrentBlockByType(EmbedHtmlBlockComponent);
@@ -66,10 +72,12 @@ const builtinToolbarConfig = {
         {
           id: 'horizontal',
           label: 'Large horizontal style',
+          labelWording: TOOLBAR_LARGE_HORIZONTAL_STYLE,
         },
         {
           id: 'list',
           label: 'Small horizontal style',
+          labelWording: TOOLBAR_SMALL_HORIZONTAL_STYLE,
         },
       ],
       content(ctx) {

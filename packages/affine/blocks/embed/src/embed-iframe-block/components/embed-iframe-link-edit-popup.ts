@@ -1,6 +1,8 @@
 import {
   DocModeProvider,
   TelemetryProvider,
+  TOOLBAR_LINK,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { unsafeCSSVar, unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { SignalWatcher } from '@labre/global/lit';
@@ -89,7 +91,9 @@ export class EmbedIframeLinkEditPopup extends SignalWatcher(
     return html`
       <div class="embed-iframe-link-edit-popup">
         <div class="input-container">
-          <span class="input-label">Link</span>
+          <span class="input-label"
+            >${translateKey(this.std, ...TOOLBAR_LINK)}</span
+          >
           <input
             class="link-input"
             type="text"

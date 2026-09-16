@@ -1,3 +1,4 @@
+import { translateKey } from '@labre/affine-shared/services';
 import {
   fontBaseStyle,
   panelBaseColorsStyle,
@@ -9,9 +10,18 @@ import {
 } from '@labre/affine-shared/utils';
 import { WithDisposable } from '@labre/global/lit';
 import { InformationIcon } from '@blocksuite/icons/lit';
-import { PropTypes, requiredProperties } from '@labre/std';
+import type { BlockStdScope } from '@labre/std';
+import { PropTypes, requiredProperties, stdContext } from '@labre/std';
+import { consume } from '@lit/context';
 import { css, html, LitElement } from 'lit';
 import { property, query } from 'lit/decorators.js';
+
+import {
+  RESOURCE_STATUS_DOWNLOAD_FAILED,
+  RESOURCE_STATUS_RELOAD,
+  RESOURCE_STATUS_RETRY,
+  RESOURCE_STATUS_UPLOAD_FAILED,
+} from '../translations.js';
 
 @requiredProperties({
   message: PropTypes.string,
@@ -19,6 +29,9 @@ import { property, query } from 'lit/decorators.js';
   action: PropTypes.instanceOf(Function),
 })
 export class ResourceStatus extends WithDisposable(LitElement) {
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
+
   static override styles = css`
     button.status {
       display: flex;
@@ -123,20 +136,23 @@ export class ResourceStatus extends WithDisposable(LitElement) {
 
   override render() {
     const { message, needUpload } = this;
-    const { type, label } = needUpload
-      ? {
-          type: 'Upload',
-          label: 'Retry',
-        }
-      : {
-          type: 'Download',
-          label: 'Reload',
-        };
+    const headerWording = needUpload
+      ? RESOURCE_STATUS_UPLOAD_FAILED
+      : RESOURCE_STATUS_DOWNLOAD_FAILED;
+    const actionWording = needUpload
+      ? RESOURCE_STATUS_RETRY
+      : RESOURCE_STATUS_RELOAD;
+    const header = this.std
+      ? translateKey(this.std, ...headerWording)
+      : headerWording[1];
+    const label = this.std
+      ? translateKey(this.std, ...actionWording)
+      : actionWording[1];
 
     return html`
       <button class="status">${InformationIcon()}</button>
       <div class="popper">
-        <div class="header">${type} failed</div>
+        <div class="header">${header}</div>
         <div class="content">${message}</div>
         <div class="footer">
           <button class="action">${label}</button>

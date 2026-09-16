@@ -1,10 +1,12 @@
 import type { EditorIconButton } from '@labre/affine-components/toolbar';
+import { RESET_LABEL, SAVE_LABEL } from '@labre/affine-components/translations';
 import type { ReferenceInfo } from '@labre/affine-model';
 import { REFERENCE_NODE } from '@labre/affine-shared/consts';
 import {
   type LinkEventType,
   type TelemetryEvent,
   TelemetryProvider,
+  translateKey,
 } from '@labre/affine-shared/services';
 import { fontXSStyle, panelBaseStyle } from '@labre/affine-shared/styles';
 import type { AffineTextAttributes } from '@labre/affine-shared/types';
@@ -18,6 +20,8 @@ import { signal } from '@preact/signals-core';
 import { css, html } from 'lit';
 import { property, query } from 'lit/decorators.js';
 import { live } from 'lit/directives/live.js';
+
+import { REFERENCE_TITLE_PLACEHOLDER } from '../../translations.js';
 
 export class ReferencePopup extends SignalWatcher(
   WithDisposable(ShadowlessElement)
@@ -179,28 +183,31 @@ export class ReferencePopup extends SignalWatcher(
           <input
             id="alias-title"
             type="text"
-            placeholder="Add a custom title"
+            placeholder=${translateKey(
+              this.std,
+              ...REFERENCE_TITLE_PLACEHOLDER
+            )}
             .value=${live(this.title$.value)}
             @input=${this._updateTitle}
           />
           <editor-icon-button
-            aria-label="Reset"
+            aria-label="${translateKey(this.std, ...RESET_LABEL)}"
             class="reset"
             .iconContainerPadding=${4}
-            .tooltip=${'Reset'}
+            .tooltip=${translateKey(this.std, ...RESET_LABEL)}
             @click=${this._onReset}
           >
             ${ResetIcon({ width: '16px', height: '16px' })}
           </editor-icon-button>
           <editor-toolbar-separator></editor-toolbar-separator>
           <editor-icon-button
-            aria-label="Save"
+            aria-label="${translateKey(this.std, ...SAVE_LABEL)}"
             class="save"
             .active=${true}
             @click=${this._onSave}
           >
             ${DoneIcon({ width: '16px', height: '16px' })}
-            <span class="label">Save</span>
+            <span class="label">${translateKey(this.std, ...SAVE_LABEL)}</span>
           </editor-icon-button>
         </div>
       </div>

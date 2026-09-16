@@ -7,6 +7,7 @@ import {
   UnderlineIcon,
 } from '@labre/affine-components/icons';
 import { toggleLink } from '@labre/affine-inline-link';
+import { type ChromeWording } from '@labre/affine-shared/services';
 import { type EditorHost, TextSelection } from '@labre/std';
 import type { TemplateResult } from 'lit';
 
@@ -18,10 +19,20 @@ import {
   toggleStrike,
   toggleUnderline,
 } from './text-style.js';
+import {
+  TEXT_FORMAT_BOLD,
+  TEXT_FORMAT_CODE,
+  TEXT_FORMAT_ITALIC,
+  TEXT_FORMAT_LINK,
+  TEXT_FORMAT_STRIKETHROUGH,
+  TEXT_FORMAT_UNDERLINE,
+} from '../translations.js';
 
 export interface TextFormatConfig {
   id: string;
   name: string;
+  /** {@link name}, said as an i18n key — resolved by the widget that renders it. */
+  nameWording?: ChromeWording;
   icon: TemplateResult<1>;
   hotkey?: string;
   activeWhen: (host: EditorHost) => boolean;
@@ -33,6 +44,7 @@ export const textFormatConfigs: TextFormatConfig[] = [
   {
     id: 'bold',
     name: 'Bold',
+    nameWording: TEXT_FORMAT_BOLD,
     icon: BoldIcon,
     hotkey: 'Mod-b',
     activeWhen: host => {
@@ -49,6 +61,7 @@ export const textFormatConfigs: TextFormatConfig[] = [
   {
     id: 'italic',
     name: 'Italic',
+    nameWording: TEXT_FORMAT_ITALIC,
     icon: ItalicIcon,
     hotkey: 'Mod-i',
     activeWhen: host => {
@@ -65,6 +78,7 @@ export const textFormatConfigs: TextFormatConfig[] = [
   {
     id: 'underline',
     name: 'Underline',
+    nameWording: TEXT_FORMAT_UNDERLINE,
     icon: UnderlineIcon,
     hotkey: 'Mod-u',
     activeWhen: host => {
@@ -81,6 +95,7 @@ export const textFormatConfigs: TextFormatConfig[] = [
   {
     id: 'strike',
     name: 'Strikethrough',
+    nameWording: TEXT_FORMAT_STRIKETHROUGH,
     icon: StrikethroughIcon,
     hotkey: 'Mod-shift-s',
     activeWhen: host => {
@@ -97,6 +112,7 @@ export const textFormatConfigs: TextFormatConfig[] = [
   {
     id: 'code',
     name: 'Code',
+    nameWording: TEXT_FORMAT_CODE,
     icon: CodeIcon,
     hotkey: 'Mod-e',
     activeWhen: host => {
@@ -113,6 +129,7 @@ export const textFormatConfigs: TextFormatConfig[] = [
   {
     id: 'link',
     name: 'Link',
+    nameWording: TEXT_FORMAT_LINK,
     icon: LinkIcon,
     hotkey: 'Mod-k',
     activeWhen: host => {

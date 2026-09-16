@@ -8,13 +8,13 @@ export const TweetTooltip = html`<svg width="170" height="106" viewBox="0 0 170 
 <path d="M168 0H2C0.89543 0 0 0.89543 0 2V104C0 105.105 0.89543 106 2 106H168C169.105 106 170 105.105 170 104V2C170 0.89543 169.105 0 168 0Z" fill="white"/>
 </mask>
 <g mask="url(#mask0_24732_2246)">
-<text fill="#8E8D91" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="10" letter-spacing="0em"><tspan x="10" y="18.2727">Embed a X post (tweet).</tspan></text>
+<rect x="10" y="10.7727" width="126.5" height="8" rx="4" fill="#8E8D91" fill-opacity="0.55"/>
 <path d="M174 28.5H12C10.067 28.5 8.5 30.067 8.5 32V209C8.5 210.933 10.067 212.5 12 212.5H174C175.933 212.5 177.5 210.933 177.5 209V32C177.5 30.067 175.933 28.5 174 28.5Z" fill="white" stroke="#E3E2E4"/>
 <path d="M168.244 71H17.7557C16.7861 71 16 71.2054 16 71.4588V105.541C16 105.795 16.7861 106 17.7557 106H168.244C169.214 106 170 105.795 170 105.541V71.4588C170 71.2054 169.214 71 168.244 71Z" fill="url(#pattern0_24732_2246)" stroke="#E3E2E4" stroke-width="0.5"/>
-<text fill="#121212" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="9" letter-spacing="0em"><tspan x="16" y="62.5454">To Shape, Not to Adapt.</tspan></text>
+<rect x="16" y="55.7954" width="113.85" height="7.2" rx="3.6" fill="#121212" fill-opacity="0.3"/>
 <path d="M32 42C32 37.5817 28.4183 34 24 34C19.5817 34 16 37.5817 16 42C16 46.4183 19.5817 50 24 50C28.4183 50 32 46.4183 32 42Z" fill="url(#pattern1_24732_2246)" stroke="#E3E2E4" stroke-width="0.5"/>
-<text fill="#121212" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="9" letter-spacing="0em"><tspan x="38" y="45.0454">AFFiNE</tspan></text>
-<text fill="#8E8D91" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="9" letter-spacing="0em"><tspan x="72" y="45.0454">@AFFiNEOfficial</tspan></text>
+<rect x="38" y="38.2954" width="29.7" height="7.2" rx="3.6" fill="#121212" fill-opacity="0.3"/>
+<rect x="72" y="38.2954" width="74.25" height="7.2" rx="3.6" fill="#8E8D91" fill-opacity="0.55"/>
 </g>
 </g>
 <defs>
@@ -40,26 +40,26 @@ export const LinearTooltip = html`<svg width="170" height="106" viewBox="0 0 170
 <rect width="170" height="106" rx="2" fill="white"/>
 </mask>
 <g mask="url(#mask0_16460_1097)">
-<text fill="#8E8D91" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="10" letter-spacing="0px"><tspan x="10" y="18.6364">Insert a Linear issue.</tspan></text>
+<rect x="10" y="11.1364" width="121" height="8" rx="4" fill="#8E8D91" fill-opacity="0.55"/>
 <rect x="8.5" y="28.5" width="169" height="84" rx="3.5" fill="white" stroke="#E3E2E4"/>
-<text fill="#121212" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="9" font-weight="500" letter-spacing="0em"><tspan x="18" y="44.7727">Change theme following phone case color</tspan></text>
+<rect x="18" y="38.0227" width="152" height="7.2" rx="3.6" fill="#121212" fill-opacity="0.3"/>
 <g clip-path="url(#clip0_16460_1097)">
 <path fill-rule="evenodd" clip-rule="evenodd" d="M20.5474 50.5324C20.6694 50.6545 20.6694 50.8523 20.5474 50.9744L19.7835 51.7383C19.6614 51.8603 19.4636 51.8603 19.3415 51.7383C19.2195 51.6162 19.2195 51.4184 19.3415 51.2963L20.1054 50.5324C20.2275 50.4104 20.4253 50.4104 20.5474 50.5324ZM25.4526 50.5324C25.5747 50.4104 25.7725 50.4104 25.8946 50.5324L26.6585 51.2963C26.7805 51.4184 26.7805 51.6162 26.6585 51.7383C26.5364 51.8603 26.3386 51.8603 26.2165 51.7383L25.4526 50.9744C25.3306 50.8523 25.3306 50.6545 25.4526 50.5324ZM23 51.4479C21.4851 51.4479 20.2569 52.676 20.2569 54.1909C20.2569 55.7059 21.4851 56.934 23 56.934C24.5149 56.934 25.7431 55.7059 25.7431 54.1909C25.7431 52.676 24.5149 51.4479 23 51.4479ZM19.6319 54.1909C19.6319 52.3308 21.1399 50.8229 23 50.8229C24.8601 50.8229 26.3681 52.3308 26.3681 54.1909C26.3681 56.051 24.8601 57.559 23 57.559C21.1399 57.559 19.6319 56.051 19.6319 54.1909Z" fill="#8E8D91"/>
 <path fill-rule="evenodd" clip-rule="evenodd" d="M24.3321 53.316C24.4541 53.4381 24.4541 53.6359 24.3321 53.758L22.8506 55.2394C22.7286 55.3615 22.5307 55.3615 22.4087 55.2394L21.6679 54.4987C21.5459 54.3767 21.5459 54.1788 21.6679 54.0568C21.79 53.9347 21.9878 53.9347 22.1099 54.0568L22.6296 54.5765L23.8901 53.316C24.0122 53.194 24.21 53.194 24.3321 53.316Z" fill="#8E8D91"/>
 </g>
-<text fill="#8E8D91" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="7" letter-spacing="0em"><tspan x="30" y="56.5455">Work in Progress &#xb7; </tspan></text>
+<rect x="30" y="51.2955" width="73.15" height="5.6" rx="2.8" fill="#8E8D91" fill-opacity="0.55"/>
 <g clip-path="url(#clip1_16460_1097)">
 <path fill-rule="evenodd" clip-rule="evenodd" d="M96.6591 50.3635C96.8266 50.4054 96.9284 50.5751 96.8865 50.7425L96.4627 52.4375H98.3185L98.7802 50.5909C98.822 50.4235 98.9917 50.3217 99.1591 50.3635C99.3266 50.4054 99.4284 50.5751 99.3865 50.7425L98.9627 52.4375H100.333C100.506 52.4375 100.646 52.5774 100.646 52.75C100.646 52.9226 100.506 53.0625 100.333 53.0625H98.8065L98.3377 54.9375H99.5C99.6726 54.9375 99.8125 55.0774 99.8125 55.25C99.8125 55.4226 99.6726 55.5625 99.5 55.5625H98.1815L97.7198 57.4092C97.678 57.5766 97.5083 57.6784 97.3409 57.6365C97.1734 57.5947 97.0716 57.425 97.1135 57.2576L97.5373 55.5625H95.6815L95.2198 57.4092C95.178 57.5766 95.0083 57.6784 94.8409 57.6365C94.6734 57.5947 94.5716 57.425 94.6135 57.2576L95.0373 55.5625H93.6667C93.4941 55.5625 93.3542 55.4226 93.3542 55.25C93.3542 55.0774 93.4941 54.9375 93.6667 54.9375H95.1935L95.6623 53.0625H94.5C94.3274 53.0625 94.1875 52.9226 94.1875 52.75C94.1875 52.5774 94.3274 52.4375 94.5 52.4375H95.8185L96.2802 50.5909C96.322 50.4235 96.4917 50.3217 96.6591 50.3635ZM96.3065 53.0625L95.8377 54.9375H97.6935L98.1623 53.0625H96.3065Z" fill="#8E8D91"/>
 </g>
-<text fill="#8E8D91" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="7" letter-spacing="0em"><tspan x="104" y="56.5455">High</tspan></text>
+<rect x="104" y="51.2955" width="15.4" height="5.6" rx="2.8" fill="#8E8D91" fill-opacity="0.55"/>
 <rect x="16" y="65" width="12" height="12" rx="6" fill="url(#pattern0_16460_1097)"/>
-<text fill="#121212" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="7" font-weight="500" letter-spacing="0em"><tspan x="32" y="71.5455">qpomelo</tspan></text>
-<text fill="#8E8D91" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="7" letter-spacing="0em"><tspan x="32" y="79.5455">re-assigned to </tspan></text>
-<text fill="#121212" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="7" font-weight="500" letter-spacing="0em"><tspan x="82.1006" y="79.5455">tsiheng</tspan></text>
+<rect x="32" y="66.2955" width="26.95" height="5.6" rx="2.8" fill="#121212" fill-opacity="0.3"/>
+<rect x="32" y="74.2955" width="57.75" height="5.6" rx="2.8" fill="#8E8D91" fill-opacity="0.55"/>
+<rect x="82.1006" y="74.2955" width="26.95" height="5.6" rx="2.8" fill="#121212" fill-opacity="0.3"/>
 <rect x="16" y="87" width="12" height="12" rx="6" fill="url(#pattern1_16460_1097)"/>
-<text fill="#121212" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="7" font-weight="500" letter-spacing="0em"><tspan x="32" y="93.5455">tsiheng</tspan></text>
-<text fill="#8E8D91" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="7" letter-spacing="0em"><tspan x="32" y="101.545">re-assigned to </tspan></text>
-<text fill="#121212" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="7" font-weight="500" letter-spacing="0em"><tspan x="82.1006" y="101.545">qpomelo</tspan></text>
+<rect x="32" y="88.2955" width="26.95" height="5.6" rx="2.8" fill="#121212" fill-opacity="0.3"/>
+<rect x="32" y="96.295" width="57.75" height="5.6" rx="2.8" fill="#8E8D91" fill-opacity="0.55"/>
+<rect x="82.1006" y="96.295" width="26.95" height="5.6" rx="2.8" fill="#121212" fill-opacity="0.3"/>
 <path d="M22 79V85" stroke="#E3E2E4" stroke-width="0.5" stroke-linecap="round" stroke-dasharray="5 5"/>
 <path d="M22 101V107" stroke="#E3E2E4" stroke-width="0.5" stroke-linecap="round" stroke-dasharray="5 5"/>
 </g>

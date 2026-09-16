@@ -65,6 +65,17 @@ export const builtInTemplates = {
     return templates.map(cate => cate.name).concat(extendCates);
   },
 
+  categoryLabel: (name: string): string | undefined => {
+    // eslint-disable-next-line sonarjs/no-empty-collection
+    const own = templates.find(cate => cate.name === name)?.nameKey;
+    if (own) return own;
+    for (const manager of extendTemplate) {
+      const key = manager.categoryLabel?.(name);
+      if (key) return key;
+    }
+    return undefined;
+  },
+
   search: async (keyword: string, cateName?: string): Promise<Template[]> => {
     const candidates: Template[] = flat(
       await Promise.all(

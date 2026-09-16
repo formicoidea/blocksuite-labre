@@ -1,6 +1,7 @@
 import { snapshotFromAction } from '@labre/affine-gfx-template';
 import { TextFitMode } from '@labre/affine-model';
-import type { CommandInvocation } from '@labre/std';
+import { TranslationProvider } from '@labre/affine-shared/services';
+import type { BlockStdScope, CommandInvocation } from '@labre/std';
 import { describe, expect, it } from 'vitest';
 
 import { contextMapCommands } from '../commands';
@@ -146,5 +147,66 @@ describe('the cloud carries its name beside it', () => {
     expect(Object.keys(group![1].children?.json ?? {}).sort()).toEqual(
       [cloud![0], label![0]].sort()
     );
+  });
+});
+
+/**
+ * The bubble's caption and the cloud's name are SEEDS: resolved at placement,
+ * through the same translation seam a derived template already speaks
+ * (ADR 0016).
+ */
+describe('captions speak the inserting editor’s language', () => {
+  const hostWith = (t?: (key: string) => string | undefined) =>
+    ({
+      getOptional: (id: unknown) =>
+        id === TranslationProvider && t ? { t } : null,
+    }) as unknown as BlockStdScope;
+
+  type Text = { type?: string; text?: { delta?: { insert?: string }[] } };
+
+  it('without a provider, the bubble keeps its English caption', () => {
+    const command = contextMapCommands.find(
+      c => c.id === 'ddd-context-map.addBoundedContext'
+    )!;
+    const elements = snapshotFromAction(
+      std => command.run(std, INVOCATION),
+      'bubble'
+    ).blocks.children[0].props.elements as unknown as Record<string, Text>;
+    const [bubble] = Object.values(elements);
+    expect(bubble.text?.delta?.[0]?.insert).toBe('Bounded Context');
+  });
+
+  it('with a fake provider, the bubble caption is French', () => {
+    const command = contextMapCommands.find(
+      c => c.id === 'ddd-context-map.addBoundedContext'
+    )!;
+    const std = hostWith(key =>
+      key === 'com.labre.ddd-context-map.seed.bounded-context'
+        ? 'Contexte borné'
+        : undefined
+    );
+    const elements = snapshotFromAction(
+      s => command.run(s, INVOCATION),
+      'bubble',
+      std
+    ).blocks.children[0].props.elements as unknown as Record<string, Text>;
+    const [bubble] = Object.values(elements);
+    expect(bubble.text?.delta?.[0]?.insert).toBe('Contexte borné');
+  });
+
+  it('with a fake provider, the cloud’s name is French', () => {
+    const command = contextMapCommands.find(
+      c => c.id === 'ddd-context-map.addCloud'
+    )!;
+    const std = hostWith(key =>
+      key === 'com.labre.ddd-context-map.seed.cloud' ? 'Système' : undefined
+    );
+    const elements = snapshotFromAction(
+      s => command.run(s, INVOCATION),
+      'cloud',
+      std
+    ).blocks.children[0].props.elements as unknown as Record<string, Text>;
+    const label = Object.values(elements).find(el => el.type === 'text');
+    expect(label?.text?.delta?.[0]?.insert).toBe('Système');
   });
 });

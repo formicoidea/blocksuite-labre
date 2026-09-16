@@ -1,4 +1,5 @@
 import type { EmbedHtmlModel, EmbedHtmlStyles } from '@labre/affine-model';
+import { translateKey } from '@labre/affine-shared/services';
 import { BlockSelection } from '@labre/std';
 import { html } from 'lit';
 import { query } from 'lit/decorators.js';
@@ -6,6 +7,7 @@ import { classMap } from 'lit/directives/class-map.js';
 import { type StyleInfo, styleMap } from 'lit/directives/style-map.js';
 
 import { EmbedBlockComponent } from '../common/embed-block-element.js';
+import { EMBED_HTML_EMPTY } from '../translations.js';
 import { HtmlIcon, styles } from './styles.js';
 
 export class EmbedHtmlBlockComponent extends EmbedBlockComponent<EmbedHtmlModel> {
@@ -62,7 +64,11 @@ export class EmbedHtmlBlockComponent extends EmbedBlockComponent<EmbedHtmlModel>
 
     return this.renderEmbed(() => {
       if (!this.model.props.html) {
-        return html` <div class="affine-html-empty">Empty</div>`;
+        return html`
+          <div class="affine-html-empty">
+            ${translateKey(this.std, ...EMBED_HTML_EMPTY)}
+          </div>
+        `;
       }
       return html`
         <div
