@@ -22,7 +22,10 @@ import { css, html, nothing, unsafeCSS } from 'lit';
 import { state } from 'lit/decorators.js';
 import { literal, unsafeStatic } from 'lit/static-html.js';
 
-import { armArtefact } from '../placement/artefact-placement-tool.js';
+import {
+  armArtefact,
+  armedArtefact,
+} from '../placement/artefact-placement-tool.js';
 import {
   CATALOGUE_CATEGORY_KEY_PREFIX,
   type CatalogueGroup,
@@ -297,6 +300,14 @@ export class EdgelessArtefactCatalogueWidget extends WidgetComponent<RootBlockMo
     // Anything inside this widget keeps it open. The sub-menu entry that opened
     // it is in another tree, and its own click already landed.
     if (event.composedPath().includes(this)) return;
+    // So does the click that PLACES the artefact this panel just armed. A row
+    // taps to arm since 2026-09-16, and the gesture that finishes it is a click
+    // on the canvas — which is also the click-away. Read literally, the panel
+    // would dismiss itself halfway through its own interaction, and furnishing
+    // a diagram would cost a re-open per artefact: exactly the open-click-reopen
+    // the PO reversed on 27/08/2026. The placement returns to the default tool,
+    // so the NEXT click outside puts the panel away as it always has.
+    if (armedArtefact(this.std.get(GfxControllerIdentifier))) return;
     this.closePanel();
   };
 

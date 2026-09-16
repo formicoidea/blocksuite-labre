@@ -82,17 +82,58 @@ describe('drawing areas from the Wardley sub-menu', () => {
     return drawn[0];
   };
 
+  /** The corners a drawn zone gets, as offsets from the viewport centre. */
+  const POLYGON_CORNERS: [number, number][] = [
+    [-120, -80],
+    [120, -80],
+    [120, 80],
+    [-120, 80],
+  ];
+
+  /**
+   * Draw one polygon zone the way #351 says a polygon is drawn.
+   *
+   * `wardley.addAreaPolygon` is the only entry of this row of kind `tool`: a
+   * polygon IS its corners, so the command creates nothing and arms the
+   * interactive `PolygonTool` instead of handing the author a pentagon to
+   * reshape. The outline below is therefore placed corner by corner and closed
+   * on the first one, which is the gesture a user performs.
+   */
+  const drawPolygon = async () => {
+    await run('wardley.addAreaPolygon');
+
+    // The whole of what the command does — and nothing has been written yet.
+    expect(edgeless.gfx.tool.currentToolName$.value).toBe('polygon');
+    expect(areas()).toHaveLength(0);
+
+    const { centerX: cx, centerY: cy } = edgeless.gfx.viewport;
+    const host = window.editor.host as HTMLElement;
+    const clickAt = async (x: number, y: number) => {
+      const point = at(x, y);
+      pointerdown(host, point);
+      pointerup(host, point);
+      await wait();
+    };
+
+    for (const [dx, dy] of POLYGON_CORNERS) {
+      await clickAt(cx + dx, cy + dy);
+    }
+    // Back onto the first corner: that is what closes the outline.
+    await clickAt(cx + POLYGON_CORNERS[0][0], cy + POLYGON_CORNERS[0][1]);
+
+    const drawn = areas();
+    expect(drawn).toHaveLength(1);
+    return drawn[0];
+  };
+
   /* ── What one click produces ─────────────────────────────────────────── */
 
-  test.each([
-    ['wardley.addAreaRect', 'rect'],
-    ['wardley.addAreaPolygon', 'polygon'],
-  ] as const)('%s draws one loose zone', async (id, shape) => {
-    const area = await draw(id);
+  test('wardley.addAreaRect draws one loose zone', async () => {
+    const area = await draw('wardley.addAreaRect');
 
     expect(area.kind).toBe('area');
     expect(area.role).toBe(WARDLEY_ROLE.area);
-    expect(area.shapeType).toBe(shape);
+    expect(area.shapeType).toBe('rect');
 
     // ONE element and no group, which is what separates this artefact from
     // every other one on the palette: a zone's name lives inside it, so there
@@ -106,8 +147,8 @@ describe('drawing areas from the Wardley sub-menu', () => {
 
     const [, , w, h] = area.deserializedXYWH;
     expect([w, h]).toEqual([
-      WARDLEY_AREA_SIZE[shape].w,
-      WARDLEY_AREA_SIZE[shape].h,
+      WARDLEY_AREA_SIZE.rect.w,
+      WARDLEY_AREA_SIZE.rect.h,
     ]);
     // Peace light at ~25 % opacity over a thin Peace rim: the components
     // underneath have to stay readable through the wash.
@@ -119,14 +160,57 @@ describe('drawing areas from the Wardley sub-menu', () => {
     expect(area.text).toBeUndefined();
   });
 
-  test('the polygon arrives with the editor’s own default outline', async () => {
-    const area = await draw('wardley.addAreaPolygon');
+  test('wardley.addAreaPolygon draws one loose zone, once the corners are placed', async () => {
+    const area = await drawPolygon();
 
-    expect(area.vertices).toEqual(DEFAULT_POLYGON_VERTICES);
+    expect(area.kind).toBe('area');
+    expect(area.role).toBe(WARDLEY_ROLE.area);
+    expect(area.shapeType).toBe('polygon');
+
+    expect(area.group).toBeNull();
+    expect(
+      surfaceModel().elementModels.filter(
+        model => model instanceof GroupElementModel
+      )
+    ).toHaveLength(0);
+
+    // The box the AUTHOR drew, not the preset one: `WARDLEY_AREA_SIZE.polygon`
+    // is still the placeholder the command arms the tool with, and the tool
+    // overwrites it with the outline. That is the point of #351 — the preset
+    // size would be a pentagon handed over to be reshaped.
+    const [, , w, h] = area.deserializedXYWH;
+    expect([w, h]).toEqual([240, 160]);
+
+    // Everything the zone IS, though, survives the gesture untouched: the tool
+    // spreads the command's props before the geometry, so a drawn outline is
+    // still a Wardley zone and not a plain polygon.
+    expect(area.fillColor).toBe('#c6dbfc40');
+    expect(area.strokeColor).toBe('#5b9cf6');
+    expect(area.strokeWidth).toBe(1);
+    expect(area.filled).toBe(true);
+    expect(area.text).toBeUndefined();
+  });
+
+  test('the polygon keeps the outline the author drew', async () => {
+    const area = await drawPolygon();
+
+    // Four corners, normalised to the bounding box — the editor's own polygon
+    // form. NOT `DEFAULT_POLYGON_VERTICES`: since #351 nothing hands the author
+    // a default pentagon, so the only outline a zone can have is the drawn one.
     expect(area.isClosed).toBe(true);
-    // …and a fresh array in the document, not the module literal every other
-    // polygon in the editor would then share.
-    expect(area.vertices).not.toBe(DEFAULT_POLYGON_VERTICES);
+    expect(area.vertices).toHaveLength(4);
+    expect(area.vertices).not.toEqual(DEFAULT_POLYGON_VERTICES);
+    const corners = (area.vertices as number[][]).map(([x, y]) => [
+      Math.round(x),
+      Math.round(y),
+    ]);
+    // The four corners of the box, in some rotation and either winding.
+    expect([...corners].sort().map(c => c.join(','))).toEqual([
+      '0,0',
+      '0,1',
+      '1,0',
+      '1,1',
+    ]);
   });
 
   test('the rectangle writes square corners and no outline', async () => {
@@ -346,7 +430,7 @@ describe('drawing areas from the Wardley sub-menu', () => {
     // ShapeElementView) view.enterVertexEditingMode()`, so while this view sat
     // outside that hierarchy the button was on the row, enabled, and did
     // nothing whatsoever when clicked.
-    const area = await draw('wardley.addAreaPolygon');
+    const area = await drawPolygon();
     expect(isEditingVertices(area)).toBe(false);
 
     runVertexEditing(WARDLEY_NODE_FLAVOUR, area);
@@ -381,7 +465,7 @@ describe('drawing areas from the Wardley sub-menu', () => {
   test('a polygon zone is offered the vertex editor', async () => {
     // The whole point of choosing the polygon over the rectangle: its outline
     // has to follow the components it groups.
-    const area = await draw('wardley.addAreaPolygon');
+    const area = await drawPolygon();
     expect(offersVertexEditing(WARDLEY_NODE_FLAVOUR, area)).toBe(true);
   });
 
