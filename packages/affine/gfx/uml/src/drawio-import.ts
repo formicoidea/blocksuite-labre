@@ -607,7 +607,11 @@ export function importDrawio(
   const packages: UmlPackageNode[] = [];
   const umlNotes: UmlNote[] = [];
   const relations: UmlRelation[] = [];
-  const boxes: Record<string, UmlBox> = {};
+  // No prototype: the key is the cell id the FILE chose. On a plain object a
+  // cell whose id is `__proto__` rewrites the bag's own prototype, and a cell
+  // whose id is `toString` has the materializer hand a FUNCTION back as that
+  // shape's box — which is where the geometry becomes `NaN`.
+  const boxes: Record<string, UmlBox> = Object.create(null);
   const lifelines: UmlLifeline[] = [];
   const executions: UmlExecution[] = [];
   const destructions: UmlDestruction[] = [];
@@ -1026,12 +1030,13 @@ function translate(boxes: Record<string, UmlBox>): Record<string, UmlBox> {
   if (entries.length === 0) return boxes;
   const minX = Math.min(...entries.map(([, box]) => box.x));
   const minY = Math.min(...entries.map(([, box]) => box.y));
-  return Object.fromEntries(
-    entries.map(([id, box]) => [
-      id,
-      { ...box, x: box.x - minX, y: box.y - minY },
-    ])
-  );
+  // `Object.fromEntries` would give the moved bag a prototype back, and the ids
+  // in it are still the file's — so it is filled by hand instead.
+  const moved: Record<string, UmlBox> = Object.create(null);
+  for (const [id, box] of entries) {
+    moved[id] = { ...box, x: box.x - minX, y: box.y - minY };
+  }
+  return moved;
 }
 
 const DIAGRAM_KIND: UmlDiagramKind = 'class';
