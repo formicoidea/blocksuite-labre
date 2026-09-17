@@ -59,8 +59,10 @@ export const paletteCarouselStyles = css`
     min-width: 0;
     /* The hover pill bleeds out by exactly what the padding pushed in, so the
      * name starts on the same x as "Fill color" and as the swatch grid. */
-    margin: -2px -8px;
-    padding: 2px 8px;
+    /* 4px, not the popup's whole 8px gutter: the pill keeps a 4px gap to the popup
+     * edge, so its 4px radius stays concentric with the popup's 8px corner. */
+    margin: -2px -4px;
+    padding: 2px 4px;
     border: none;
     border-radius: 4px;
     background: transparent;
@@ -124,10 +126,10 @@ export const paletteCarouselStyles = css`
      * way in, see rememberPanelWidth — plus the two gutters its rows bleed
      * into, so the popup never resizes under the cursor. The fallback is the
      * 9-column swatch grid (9 × 20px + 8 × 4px). */
-    min-width: calc(var(--palette-panel-width, 212px) + 16px);
+    min-width: calc(var(--palette-panel-width, 212px) + 8px);
     /* Full-bleed rows: the list reaches the popup's padding edge, and its rows
      * put their names back on the panel's grid line with their own padding. */
-    margin: 0 -8px;
+    margin: 0 -4px;
     /* Nine pages fit without scrolling; the cap is a seatbelt for a tenth. */
     max-height: 280px;
     overflow-y: auto;
@@ -139,7 +141,7 @@ export const paletteCarouselStyles = css`
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 4px 8px;
+    padding: 4px;
     border: none;
     border-radius: 4px;
     background: transparent;
@@ -442,7 +444,6 @@ export function renderPaletteCarousel(
         type="button"
         class="palette-carousel-name"
         aria-label=${choose}
-        title=${choose}
         aria-expanded=${open}
         @click=${toggle}
       >
