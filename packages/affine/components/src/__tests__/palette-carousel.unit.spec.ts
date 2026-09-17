@@ -284,6 +284,28 @@ describe('the palette carousel', () => {
     expect(name(element)).toBe('Wardley map');
   });
 
+  test('a flick’s inertia tail — a second of fading events — is still one page', async () => {
+    await settleWheel();
+    const element = await mount({
+      paletteGroups: GROUPS,
+      activeGroupKey: 'default',
+    });
+
+    // 20 events 50ms apart: longer than any throttle, never quiet, fading.
+    for (let i = 0; i < 20; i++) {
+      panel(element).dispatchEvent(
+        new WheelEvent('wheel', {
+          deltaY: Math.max(1, 30 - 2 * i),
+          bubbles: true,
+          cancelable: true,
+        })
+      );
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    await element.updateComplete;
+    expect(name(element)).toBe('Wardley map');
+  });
+
   test('a ctrl+wheel is the pinch gesture, and the header keeps its hands off', async () => {
     const element = await mount({
       paletteGroups: GROUPS,

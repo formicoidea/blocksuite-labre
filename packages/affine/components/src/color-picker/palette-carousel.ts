@@ -258,11 +258,20 @@ export const paletteCarouselStyles = css`
 `;
 
 /**
- * One page per wheel burst. A trackpad fires a dozen events for a single flick
- * and nine pages would spin past; a module-level stamp is enough because only
- * one picker is ever open.
+ * One page per wheel GESTURE, not per time slice. A trackpad flick streams
+ * events for a second or more (the inertia tail), so a fixed throttle paged
+ * four or five times per flick. A gesture ends when the wheel has been quiet
+ * for {@link WHEEL_QUIET_MS}; within one, a further page is granted only to a
+ * deliberate, still-strong scroll — never to the fading tail. Module-level
+ * stamps are enough because only one picker is ever open.
+ *
+ * ponytail: hand-tuned thresholds; if they need per-device tuning, accumulate
+ * delta into page-sized steps instead.
  */
-const WHEEL_THROTTLE_MS = 200;
+const WHEEL_QUIET_MS = 160;
+const WHEEL_REPEAT_MS = 650;
+const WHEEL_REPEAT_MIN_DELTA = 40;
+let lastWheelEventAt = 0;
 let lastWheelPageAt = 0;
 
 /** How many swatches of a page are shown beside its name, for recognition. */
@@ -311,7 +320,12 @@ export function paletteCarouselWheel(
     e.preventDefault();
     e.stopPropagation();
     const now = Date.now();
-    if (now - lastWheelPageAt < WHEEL_THROTTLE_MS) return;
+    const newGesture = now - lastWheelEventAt > WHEEL_QUIET_MS;
+    lastWheelEventAt = now;
+    const sustained =
+      now - lastWheelPageAt > WHEEL_REPEAT_MS &&
+      Math.abs(delta) >= WHEEL_REPEAT_MIN_DELTA;
+    if (!newGesture && !sustained) return;
     lastWheelPageAt = now;
     const forward = delta > 0;
     onPage(
