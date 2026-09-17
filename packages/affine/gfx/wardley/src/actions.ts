@@ -13,8 +13,6 @@ import {
   ConnectorMode,
   FontWeight,
   FrameworkBackgroundElementModel,
-  PointStyle,
-  StrokeStyle,
   TextElementModel,
   WardleyBackgroundElementModel,
   type WardleyBgVariant,
@@ -40,19 +38,14 @@ import {
   wardleySafeFilename,
 } from './export';
 import { WARDLEY_OWM_EXPORT, WARDLEY_OWM_IMPORT } from './interchange';
-import {
-  INERTIA_SIZE,
-  LINK_GREY,
-  LINK_STROKE_WIDTH,
-  PORTER_DEFAULT_LETTER,
-  WARDLEY_RED,
-} from './node/consts';
+import { INERTIA_SIZE, PORTER_DEFAULT_LETTER } from './node/consts';
 import {
   type WardleyAreaShape,
   wardleyAreaBox,
   wardleyAreaProps,
   type WardleyArtefactKind,
   wardleyCanonicalBox,
+  WARDLEY_EDGE_STYLE,
   wardleyHandleBox,
   wardleyHandleProps,
   wardleyInertiaProps,
@@ -640,23 +633,10 @@ export function activateWardleyConnector(
     // fall on a dependency.
     role: kind === 'link' ? WARDLEY_ROLE.dependency : WARDLEY_ROLE.changeArrow,
     // The look rides on the activation, never through the last-props store:
-    // the plain connector tool must keep the user's own style (#144 M1).
-    style:
-      kind === 'arrow'
-        ? {
-            stroke: WARDLEY_RED,
-            strokeStyle: StrokeStyle.Dash,
-            strokeWidth: LINK_STROKE_WIDTH,
-            frontEndpointStyle: PointStyle.None,
-            rearEndpointStyle: PointStyle.Triangle,
-          }
-        : {
-            stroke: LINK_GREY,
-            strokeStyle: StrokeStyle.Solid,
-            strokeWidth: LINK_STROKE_WIDTH,
-            frontEndpointStyle: PointStyle.None,
-            rearEndpointStyle: PointStyle.None,
-          },
+    // the plain connector tool must keep the user's own style (#144 M1). The
+    // style itself is {@link WARDLEY_EDGE_STYLE}, so the legend row this tool
+    // subscribes pictures the very line the tool draws.
+    style: { ...WARDLEY_EDGE_STYLE[kind] },
   });
   // The wardley palette stays open (native sub-menu behaviour): it only
   // closes on re-click of the senior button, another senior tool, or Escape.

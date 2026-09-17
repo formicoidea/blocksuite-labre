@@ -17,7 +17,6 @@ import {
 import { wardleyFillColor } from '../toolbar/node-config';
 import { wardleyCommands } from '../commands';
 import { exportWardleyOwmWithWarnings, wardleyBoardFrom } from '../export';
-import { createWardleyLegend } from '../legend';
 import { WARDLEY_MORPH_FAMILIES } from '../morph';
 import {
   AREA_FILL,
@@ -37,6 +36,7 @@ import {
   wardleyMorphClears,
 } from '../presets';
 import { WARDLEY_ROLE } from '../roles';
+import { legendOf, roled, textsOf } from './legend-stub';
 import {
   board,
   drawNode,
@@ -611,45 +611,32 @@ describe('the two commands', () => {
 /* ── The map legend ───────────────────────────────────────────────────── */
 
 describe('the legend', () => {
-  /** Run the legend over a board holding exactly the given elements. */
-  function legendOf(present: unknown[]) {
-    const added: Added[] = [];
-    const gfx = {
-      surface: { addElement: (props: Added) => (added.push(props), 'x') },
-      getElementsByBound: () => present,
-      selection: { set: vi.fn() },
-    };
-    const std = {
-      get: () => gfx,
-      // `createWardleyLegend` resolves every wording it writes through
-      // `translateKey`, which asks for this — absent here, exactly like a
-      // playground with no `TranslationProvider` registered.
-      getOptional: () => undefined,
-      store: { captureSync: vi.fn() },
-      command: { exec: () => [{}, { groupId: 'g' }] },
-    };
-    createWardleyLegend(
-      std as never,
-      {
-        deserializedXYWH: [0, 0, 1600, 900],
-        xywh: '[0,0,1600,900]',
-        variant: 'classic',
-      } as never
-    );
-    return added;
-  }
-
-  const areaOnBoard = () =>
-    Object.create(WardleyNodeElementModel.prototype, {
-      kind: { value: 'area' },
-    });
+  const areaOnBoard = () => roled(WARDLEY_ROLE.area);
 
   it('adds one row saying what a zone is', () => {
-    const texts = legendOf([areaOnBoard()])
-      .filter(el => el.type === 'text')
-      .map(el => String(el.text));
+    const texts = textsOf(legendOf([areaOnBoard()]));
 
     expect(texts).toContain('Area (zone of the map)');
+    // Under its own sub-title, which is the command's own catalogue category:
+    // a zone is neither a node of the value chain nor a relation between two.
+    expect(texts).toContain('Areas');
+  });
+
+  it('draws ONE row for the two commands that both stamp a zone', () => {
+    // `addAreaRect` and `addAreaPolygon` subscribe the same role, because a
+    // rectangle and a polygon are one notation drawn with a different number of
+    // corners. The engine de-duplicates by role, so the reader sees one "Area"
+    // rather than the same sentence twice.
+    const subscribers = wardleyCommands.filter(command =>
+      [command.legend].flat().some(entry => entry?.role === WARDLEY_ROLE.area)
+    );
+    expect(subscribers.map(command => command.id)).toEqual([
+      'wardley.addAreaRect',
+      'wardley.addAreaPolygon',
+    ]);
+
+    const texts = textsOf(legendOf([areaOnBoard()]));
+    expect(texts.filter(t => t === 'Area (zone of the map)')).toHaveLength(1);
   });
 
   it('draws the row as a small translucent rect, whatever the map’s zones are', () => {
@@ -673,15 +660,10 @@ describe('the legend', () => {
   });
 
   it('says nothing about a map that carries none', () => {
-    const texts = legendOf([
-      Object.create(WardleyNodeElementModel.prototype, {
-        kind: { value: 'component' },
-      }),
-    ])
-      .filter(el => el.type === 'text')
-      .map(el => String(el.text));
+    const texts = textsOf(legendOf([roled(WARDLEY_ROLE.component)]));
 
     expect(texts).not.toContain('Area (zone of the map)');
+    expect(texts).not.toContain('Areas');
   });
 });
 

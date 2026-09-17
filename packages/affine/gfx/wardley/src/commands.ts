@@ -18,6 +18,11 @@ import {
   importWardleySvgFile,
   wardleyMapsSelected,
 } from './actions';
+import {
+  WARDLEY_LEGEND_BOX,
+  wardleyLegendEntry,
+  type WardleyLegendRole,
+} from './legend';
 import { WARDLEY_ROLE, WARDLEY_ROLES, type WardleyRoleId } from './roles';
 import {
   wardleyAcceleratorIcon,
@@ -81,6 +86,16 @@ interface Spec {
    * hint can never disagree about which way a link is meant to be drawn.
    */
   edgeRole?: WardleyRoleId;
+  /**
+   * The role this entry puts a LINE in the map's legend for — the swatch, and
+   * the sentence that explains it, from {@link wardleyLegendEntry}.
+   *
+   * Absent on the four backgrounds, which are the sheet the legend is drawn ON
+   * ({@link WARDLEY_LEGEND_BOX} is theirs instead), and declared TWICE on the
+   * two zone gestures: a rectangle and a polygon are one notation, and the
+   * platform de-duplicates by role so the reader sees one "Area".
+   */
+  legendRole?: WardleyLegendRole;
   /** Historical label key, for the seven commands that already shipped. */
   labelKey?: string;
   /** Second keystroke of the `w` chord; absent = keyless by intent. */
@@ -151,6 +166,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addComponent',
+    legendRole: WARDLEY_ROLE.component,
     label: 'Component',
     labelKey: 'com.labre.keyboardShortcuts.wardley.addComponent',
     key: 'c',
@@ -162,6 +178,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addMethod',
+    legendRole: WARDLEY_ROLE.method,
     label: 'Component + method',
     labelKey: 'com.labre.keyboardShortcuts.wardley.addMethod',
     key: 'm',
@@ -173,6 +190,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addMarket',
+    legendRole: WARDLEY_ROLE.market,
     label: 'Market',
     iconKey: 'wardley.market',
     category: 'nodes',
@@ -182,6 +200,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addEcosystem',
+    legendRole: WARDLEY_ROLE.ecosystem,
     label: 'Ecosystem',
     iconKey: 'wardley.ecosystem',
     category: 'nodes',
@@ -191,6 +210,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addAnchor',
+    legendRole: WARDLEY_ROLE.anchor,
     label: 'Anchor',
     key: 'a',
     iconKey: 'wardley.anchor',
@@ -201,6 +221,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addPipeline',
+    legendRole: WARDLEY_ROLE.pipeline,
     label: 'Pipeline',
     labelKey: 'com.labre.keyboardShortcuts.wardley.addPipeline',
     key: 'p',
@@ -212,6 +233,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'linkTool',
+    legendRole: WARDLEY_ROLE.dependency,
     label: 'Link',
     labelKey: 'com.labre.keyboardShortcuts.wardley.linkTool',
     key: 'l',
@@ -224,6 +246,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'evolutionArrow',
+    legendRole: WARDLEY_ROLE.changeArrow,
     label: 'Arrow (evolution)',
     labelKey: 'com.labre.keyboardShortcuts.wardley.evolutionArrow',
     key: 'e',
@@ -236,6 +259,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addInertia',
+    legendRole: WARDLEY_ROLE.inertia,
     label: 'Inertia',
     labelKey: 'com.labre.keyboardShortcuts.wardley.addInertia',
     key: 'i',
@@ -252,6 +276,7 @@ const SPECS: Spec[] = [
   // a framework binds past that by host override rather than by default.
   {
     id: 'addPorter',
+    legendRole: WARDLEY_ROLE.porter,
     label: "Porter's forces",
     iconKey: 'wardley.porter',
     category: 'nodes',
@@ -266,6 +291,7 @@ const SPECS: Spec[] = [
   // past that by host override.
   {
     id: 'addAccelerator',
+    legendRole: WARDLEY_ROLE.accelerator,
     label: 'Accelerator',
     iconKey: 'wardley.accelerator',
     category: 'nodes',
@@ -275,6 +301,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addDecelerator',
+    legendRole: WARDLEY_ROLE.decelerator,
     label: 'Decelerator',
     iconKey: 'wardley.decelerator',
     category: 'nodes',
@@ -293,6 +320,7 @@ const SPECS: Spec[] = [
   // eight artefacts and a framework binds past that by host override.
   {
     id: 'addAreaRect',
+    legendRole: WARDLEY_ROLE.area,
     label: 'Area (rectangle)',
     iconKey: 'wardley.area-rect',
     category: 'areas',
@@ -302,6 +330,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addAreaPolygon',
+    legendRole: WARDLEY_ROLE.area,
     label: 'Area (polygon)',
     iconKey: 'wardley.area-polygon',
     category: 'areas',
@@ -353,6 +382,13 @@ const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, order) => ({
   availability: 'always',
   run: std => spec.run(std.get(GfxControllerIdentifier)),
   telemetry: { framework: 'wardley', element: spec.element, board: spec.board },
+  // The legend, SUBSCRIBED rather than tabulated (`docs/adr/0009`'s sibling):
+  // the command that draws the artefact names the row that pictures it, and
+  // the sheet's own command carries the box the rows are drawn in. Which
+  // sub-title a row files under is `category`, so the sections are the very
+  // groups the catalogue already shows.
+  ...(spec.legendRole ? { legend: wardleyLegendEntry(spec.legendRole) } : {}),
+  ...(spec.id === 'addBackground' ? { legendBox: WARDLEY_LEGEND_BOX } : {}),
 }));
 
 /**

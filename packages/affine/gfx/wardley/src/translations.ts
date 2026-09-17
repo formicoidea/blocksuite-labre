@@ -65,8 +65,8 @@ const exampleSeedEntries = (): TranslationKeyManifestEntry[] =>
 /**
  * The auto-legend's own wordings — title, row captions, gradient blocks and
  * the Porter panel — derived from `legend.ts`'s own `WARDLEY_LEGEND_WORDINGS`,
- * the very table `createWardleyLegend` reads when it writes the group onto
- * the canvas.
+ * the very declarations the rows subscribe and the two extras write when the
+ * group lands on the canvas.
  */
 const legendSeedEntries = (): TranslationKeyManifestEntry[] =>
   WARDLEY_LEGEND_WORDINGS.map(([key, fallback]) => ({

@@ -1,11 +1,14 @@
-import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
+import {
+  EdgelessCRUDIdentifier,
+  legendToolbarAction,
+  validationToolbarConfig,
+} from '@labre/affine-block-surface';
 import { WardleyBackgroundElementModel } from '@labre/affine-model';
 import {
   BOARD_LEGEND_COMPONENTS,
   BOARD_RESIZE_TOGGLE,
   type ChromeWording,
   commandMoreAction,
-  TelemetryProvider,
   type ToolbarContext,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
@@ -13,7 +16,6 @@ import {
 import { BlockFlavourIdentifier } from '@labre/std';
 import { html, type TemplateResult } from 'lit';
 
-import { createWardleyLegend } from '../legend';
 import { wardleyExportOwmIcon, wardleyLegendIcon } from './icons';
 
 /** The seven toolbar tooltips this file used to hard-code as English literals. */
@@ -299,30 +301,6 @@ export const wardleyToolbarConfig = {
         ),
       ],
     },
-    // Generate the auto-legend from the components present inside this
-    // background's perimeter (+ a gradient-meaning block for gradient variants).
-    {
-      id: 'd.legend',
-      tooltipWording: BOARD_LEGEND_COMPONENTS,
-      icon: wardleyLegendIcon,
-      run(ctx) {
-        const models = ctx.getSurfaceModelsByType(
-          WardleyBackgroundElementModel
-        );
-        const bg = models[0];
-        if (!bg) return;
-        createWardleyLegend(ctx.std, bg);
-        ctx.std
-          .getOptional(TelemetryProvider)
-          ?.track('FrameworkLegendCreated', {
-            framework: 'wardley',
-            element: 'legend',
-            page: 'whiteboard editor',
-            segment: 'element toolbar',
-            module: 'wardley toolbar',
-          });
-      },
-    },
     // The OWM export, in the "⋮" — R5 of
     // `docs/add-a-framework/02-framework-rules.md`, the position
     // `bpmn.exportXml` and `c4.exportMermaid` already hold on their own boards.
@@ -345,4 +323,58 @@ export const wardleyToolbarConfig = {
 export const wardleyToolbarExtension = ToolbarModuleExtension({
   id: BlockFlavourIdentifier('affine:surface:wardley'),
   config: wardleyToolbarConfig,
+});
+
+/**
+ * The map's flag-gated row, WHOLE: the Legend button and the Validation
+ * dropdown, in one module.
+ *
+ * ## Why they cannot be two modules
+ *
+ * `renderToolbar` merges exactly four slots per element — `<flavour>`,
+ * `custom:<flavour>` and the two `affine:surface:*` wildcards — and
+ * `ToolbarModuleExtension` binds by DI variant, so a second module claiming
+ * `custom:affine:surface:wardley` would throw
+ * `DuplicateServiceDefinitionError` before the editor finished setting up. Two
+ * slots, and Wardley has three things to put on a selected map: the axis and
+ * label toggles (always-on, `<flavour>`, above), the legend and the level of
+ * requirement. The precedent is C4's `c4BoardToolingToolbarConfig`.
+ *
+ * ## Why the legend moved OUT of the always-on half
+ *
+ * Because GENERATING one is tooling, and `docs/adr/0009` gates tooling: the
+ * flag off takes away the gesture that writes legend elements, exactly as it
+ * takes away the sub-menu that draws components. What the gesture already
+ * wrote is document CONTENT and keeps being painted — the box is plain shapes,
+ * text and `wardleyNode`s with no role, all drawn by the always-on renderers.
+ * The axis and label toggles stay always-on for the opposite reason: a stored
+ * map must keep its axes whatever the flag says.
+ *
+ * Sorting keeps the row readable across the merge — `a.` … `d.legend` from the
+ * two modules, then `z.validation` — whatever order they were registered in.
+ */
+export const wardleyBoardToolingToolbarConfig: ToolbarModuleConfig = {
+  actions: [
+    // `d.legend` and not the factory's default `b.legend`: the row is sorted
+    // lexicographically by id and the two axis groups already hold `b.` and
+    // `c.`, so the legend reads after the toggles it documents the map beside.
+    legendToolbarAction({
+      id: 'd.legend',
+      Model: WardleyBackgroundElementModel,
+      owner: 'wardley',
+      framework: 'wardley',
+      tooltipWording: BOARD_LEGEND_COMPONENTS,
+      icon: wardleyLegendIcon,
+    }),
+    // The generic dropdown, not a Wardley variant of it: the config names no
+    // framework — it reads the registered rules and profiles — so this is the
+    // very same object c4, bpmn and the context map register.
+    ...validationToolbarConfig.actions,
+  ],
+  when: wardleyToolbarConfig.when,
+};
+
+export const wardleyBoardToolingToolbarExtension = ToolbarModuleExtension({
+  id: BlockFlavourIdentifier('custom:affine:surface:wardley'),
+  config: wardleyBoardToolingToolbarConfig,
 });

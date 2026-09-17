@@ -1,14 +1,8 @@
-import { createGroupCommand } from '@labre/affine-gfx-group';
 import {
-  ConnectorElementModel,
   ConnectorMode,
   FontFamily,
-  PointStyle,
-  ShapeElementModel,
   ShapeStyle,
-  StrokeStyle,
   type WardleyBackgroundElementModel,
-  WardleyNodeElementModel,
 } from '@labre/affine-model';
 import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
 import {
@@ -16,118 +10,445 @@ import {
   translateKey,
 } from '@labre/affine-shared/services';
 import { Bound } from '@labre/global/gfx';
-import type { BlockStdScope } from '@labre/std';
-import { GfxControllerIdentifier } from '@labre/std/gfx';
+import type {
+  BlockStdScope,
+  CommandLegendBox,
+  CommandLegendEntry,
+  CommandLegendExtra,
+  CommandLegendRow,
+  CommandLegendSurface,
+} from '@labre/std';
 
 import { GRADIENT_GREEN, GRADIENT_RED } from './gradient';
 import {
-  ACCELERATOR_FILL,
-  ACCELERATOR_STROKE_WIDTH,
-  ACCELERATOR_VERTICES,
-  AREA_FILL,
-  AREA_STROKE,
-  AREA_STROKE_WIDTH,
-  DECELERATOR_VERTICES,
-  INERTIA_COLOR,
-  LINK_GREY,
-  LINK_STROKE_WIDTH,
-  MARKET_DOT_STROKE_WIDTH,
-  MARKET_LINK_COLOR,
-  MARKET_LINK_WIDTH,
-  METHOD_FILL,
   NODE_FILL,
   NODE_STROKE,
-  NODE_STROKE_WIDTH,
   PIPELINE_FILL,
   PORTER_DEFAULT_LETTER,
-  WARDLEY_RED,
 } from './node/consts';
-import { wardleyPorterArrowProps, wardleyPorterArrows } from './presets';
+import {
+  WARDLEY_EDGE_STYLE,
+  wardleyHandleProps,
+  wardleyInertiaProps,
+  wardleyMarketDotProps,
+  wardleyMarketLinkPairs,
+  wardleyMarketLinkProps,
+  wardleyNodeProps,
+  wardleyPorterArrowProps,
+  wardleyPorterArrows,
+  type WardleyArtefactKind,
+} from './presets';
+import { WARDLEY_ROLE } from './roles';
 
-/** Component kinds the legend can describe, in display order. */
-type LegendType =
-  | 'component'
-  | 'anchor'
-  | 'market'
-  | 'ecosystem'
-  | 'method'
-  | 'pipeline'
-  | 'link'
-  | 'arrow'
-  | 'inertia'
-  | 'porter'
-  | 'accelerator'
-  | 'decelerator'
-  | 'area';
+/**
+ * What a Wardley legend ROW is, and the two blocks that are not rows.
+ *
+ * The scan, the box and the placement all live in the platform
+ * (`@labre/affine-block-surface`'s `legend.ts`): a row is SUBSCRIBED by the
+ * command that draws the artefact (`CommandDescriptor.legend`, see
+ * `commands.ts`), so the notation has one description instead of a table kept
+ * in step with the palette by hand. What is left here is what only Wardley can
+ * say: the swatch each role is pictured by, the prose each row reads, and the
+ * gradient and Porter panels, which document the SHEET rather than anything
+ * drawn on it and therefore hang off the board's own `legendBox`.
+ */
 
-const LEGEND_ORDER: LegendType[] = [
-  'component',
-  'anchor',
-  'market',
-  'ecosystem',
-  'method',
-  'pipeline',
-  'link',
-  'arrow',
-  'inertia',
-  'porter',
-  'accelerator',
-  'decelerator',
-  'area',
+/* ── The box's own numbers ────────────────────────────────────────────── */
+
+/**
+ * The legend box's width, and the inset the extras are drawn at.
+ *
+ * Wardley's, and the reason the box declares a `legendBox` at all: the rows
+ * explain the notation in a sentence, so a 260-unit default box would wrap
+ * every one of them. `BOX_PAD` mirrors the platform's own padding — the extras
+ * are drawn with the full width in hand and have to line their content up with
+ * the rows above them.
+ */
+const LEGEND_WIDTH = 450;
+const BOX_PAD = 16;
+/** The swatch column, wide enough for the market and the porter composites. */
+const SWATCH_W = 46;
+const SWATCH_H = 30;
+/** Gap between the swatch column and the text the extras write beside it. */
+const EXTRA_GAP = 12;
+/** The text column the extras' captions are laid out in. */
+const EXTRA_TEXT_W = LEGEND_WIDTH - BOX_PAD * 2 - SWATCH_W - EXTRA_GAP;
+const EXTRA_TEXT_FS = 15;
+
+/** The legend box's own title. */
+export const WARDLEY_LEGEND_TITLE: ChromeWording = [
+  'com.labre.wardley.legend.title',
+  'Legend',
 ];
 
 /**
- * Default (editable) descriptions for each legend row — a `ChromeWording` per
- * row so the seed a legend writes into the document is resolved through the
- * host at BUILD time, like every other text `createWardleyLegend` creates.
- * The fallback is the literal that shipped before these keys existed.
+ * A free text line, as the extras write them: the artefact ink, the notation
+ * face, and NO role — a legend documents the map and is not part of it.
  */
-const LEGEND_DESC: Record<LegendType, ChromeWording> = {
-  component: [
+function addText(
+  surface: CommandLegendSurface,
+  std: BlockStdScope,
+  wording: ChromeWording | string,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  fontSize: number,
+  textAlign: 'left' | 'center' = 'left'
+): string {
+  return surface.addElement({
+    type: 'text',
+    text: typeof wording === 'string' ? wording : translateKey(std, ...wording),
+    fontFamily: FontFamily.Inter,
+    fontSize,
+    color: NODE_STROKE,
+    textAlign,
+    xywh: new Bound(x, y, w, h).serialize(),
+  });
+}
+
+/* ── The thirteen rows ────────────────────────────────────────────────── */
+
+/**
+ * A preset's props with its ROLE taken off, and nothing else changed.
+ *
+ * Every element of this box goes through here. A legend is drawn ON the map it
+ * describes and the scan detects by role, so a swatch carrying one would list
+ * itself the next time a legend was generated and would be counted by every
+ * validation rule. The platform strips a `glyph` row's; a `custom` swatch draws
+ * straight onto the surface, so it strips its own.
+ */
+function neutral(props: Record<string, unknown>): Record<string, unknown> {
+  const { role: _role, ...rest } = props;
+  return rest;
+}
+
+const NO_BOX = { xywh: '[0,0,0,0]' };
+const boxAt = (x: number, y: number, w: number, h: number) =>
+  new Bound(x, y, w, h).serialize();
+
+/**
+ * The props of a real artefact, at swatch size — geometry and role removed.
+ *
+ * Derived from {@link wardleyNodeProps} rather than restated, which is the
+ * whole point of subscribing: restyling a kind restyles its legend row, and the
+ * two can no longer disagree. `xywh` is the layout's to fill in.
+ */
+function glyphProps(kind: WardleyArtefactKind): Record<string, unknown> {
+  const { xywh: _xywh, ...props } = neutral(wardleyNodeProps(kind, NO_BOX));
+  return props;
+}
+
+/** One real artefact, drawn at an explicit box — the composites' building block. */
+function addGlyph(
+  surface: CommandLegendSurface,
+  kind: WardleyArtefactKind,
+  x: number,
+  y: number,
+  w: number,
+  h: number
+): string {
+  return surface.addElement({ ...glyphProps(kind), xywh: boxAt(x, y, w, h) });
+}
+
+/** A box centred on a point, as every composite below places its pieces. */
+const centred = (cx: number, cy: number, w: number, h: number) =>
+  boxAt(cx - w / 2, cy - h / 2, w, h);
+
+/**
+ * A node row at an EXPLICIT size, which short-circuits the platform's
+ * fit-to-box.
+ *
+ * The gradation is notation here rather than decoration — a component is 16
+ * across, a method 18, an ecosystem 20 and a market 22 — and a legend that
+ * fitted every pastille to the same box would say they were the same thing.
+ */
+function glyphRow(
+  kind: WardleyArtefactKind,
+  size: readonly [number, number]
+): CommandLegendRow {
+  return {
+    swatch: 'glyph',
+    color: String(glyphProps(kind)['fillColor'] ?? NODE_FILL),
+    props: glyphProps(kind),
+    size,
+  };
+}
+
+/**
+ * The connector a Wardley tool arms, as a swatch — the very style it arms, at
+ * the very endpoints this legend has always drawn it between.
+ *
+ * `custom` rather than the platform's `edge`, for one reason: that swatch spans
+ * the column horizontally, and a dependency has been drawn RISING across its
+ * row since the legend shipped — the slope is what tells it apart from the
+ * evolution arrow beside it at a glance, before the eye reaches the colour.
+ * Six lines to keep the two samples identical, and the style itself is still
+ * {@link WARDLEY_EDGE_STYLE}, so the row pictures the line the tool draws.
+ */
+function edgeRow(
+  kind: 'link' | 'arrow',
+  from: readonly [number, number],
+  to: readonly [number, number]
+): CommandLegendRow {
+  return {
+    swatch: 'custom',
+    color: WARDLEY_EDGE_STYLE[kind].stroke,
+    draw: (surface, box) => {
+      const cx = box.x + box.w / 2;
+      const cy = box.y + box.h / 2;
+      return [
+        surface.addElement({
+          type: 'connector',
+          mode: ConnectorMode.Straight,
+          source: { position: [cx + from[0], cy + from[1]] },
+          target: { position: [cx + to[0], cy + to[1]] },
+          ...WARDLEY_EDGE_STYLE[kind],
+        }),
+      ];
+    },
+  };
+}
+
+/**
+ * The inertia bar: a plain filled rect, and the whole of its semantics is the
+ * role — so the swatch is the preset's own props at the bar's own proportions.
+ */
+function inertiaRow(): CommandLegendRow {
+  const { xywh: _xywh, ...props } = neutral(wardleyInertiaProps(NO_BOX));
+  return {
+    swatch: 'glyph',
+    color: String(props['fillColor']),
+    props,
+    size: [5, 22],
+  };
+}
+
+/**
+ * The market: a circle, three neutral dots and the triangle wiring them.
+ *
+ * A `custom` swatch and not a `glyph`, for the reason the pipeline and the
+ * porter below give: the drawing is SEVERAL elements, and the three connectors
+ * are anchored by id so the triangle follows its dots.
+ */
+function drawMarket(
+  surface: CommandLegendSurface,
+  box: { x: number; y: number; w: number; h: number }
+): string[] {
+  const cx = box.x + box.w / 2;
+  const cy = box.y + box.h / 2;
+  // The row's own scale: a 22-unit circle carrying three 6-unit dots on a
+  // 12-unit ring. Smaller than the map's 30, and a ratio of it rather than a
+  // reduction of the canvas geometry, because the dots must stay readable.
+  const R = 11;
+  const dr = 3;
+  const rho = 6;
+  const sin60 = Math.sqrt(3) / 2;
+  const circle = addGlyph(surface, 'market', cx - R, cy - R, R * 2, R * 2);
+  const dots = [
+    [0, -rho],
+    [rho * sin60, rho / 2],
+    [-rho * sin60, rho / 2],
+  ].map(([vx, vy]) =>
+    surface.addElement(
+      neutral(
+        wardleyMarketDotProps({
+          xywh: centred(cx + vx, cy + vy, dr * 2, dr * 2),
+        })
+      )
+    )
+  );
+  const links = wardleyMarketLinkPairs(dots).map(([a, b]) =>
+    surface.addElement(neutral(wardleyMarketLinkProps(a, b)))
+  );
+  return [circle, ...dots, ...links];
+}
+
+/** The pipeline: the body, and the handle astride its top edge. */
+function drawPipeline(
+  surface: CommandLegendSurface,
+  box: { x: number; y: number; w: number; h: number }
+): string[] {
+  const cx = box.x + box.w / 2;
+  const cy = box.y + box.h / 2;
+  const bw = 34;
+  const bh = 12;
+  const hd = 10;
+  const top = cy - bh / 2;
+  return [
+    addGlyph(surface, 'pipeline', cx - bw / 2, top, bw, bh),
+    surface.addElement(
+      neutral(wardleyHandleProps({ xywh: centred(cx, top, hd, hd) }))
+    ),
+  ];
+}
+
+/**
+ * The Porter rose at the row's scale: the circle, the four DERIVED arrows and
+ * the notation letter.
+ *
+ * Radius 6 and not the 8 the other circles get, because this glyph is the only
+ * one wider than its own circle: arrows included it spans
+ * `2 * (R + (gap + length) * R / 30)`, which at 8 would overrun a 30-unit row.
+ * It is a RATIO, so the PO's doubling of the map glyph left this row where it
+ * was.
+ *
+ * The letter is a SEPARATE text and not the circle's inner text (recette v2): a
+ * shape lays its text out inside a padding larger than this 12-unit box, so at
+ * font size 8 the character was pushed out under the circle.
+ */
+function drawPorter(
+  surface: CommandLegendSurface,
+  box: { x: number; y: number; w: number; h: number },
+  std: BlockStdScope
+): string[] {
+  const cx = box.x + box.w / 2;
+  const cy = box.y + box.h / 2;
+  const R = 6;
+  const FS = 8;
+  const circle = addGlyph(surface, 'porter', cx - R, cy - R, R * 2, R * 2);
+  const arrows = wardleyPorterArrows(cx, cy, R).map(arrow =>
+    surface.addElement(neutral(wardleyPorterArrowProps(arrow)))
+  );
+  const letter = addText(
+    surface,
+    std,
+    PORTER_DEFAULT_LETTER,
+    cx - R,
+    cy - FS / 2 - 1,
+    R * 2,
+    FS + 2,
+    FS,
+    'center'
+  );
+  return [circle, ...arrows, letter];
+}
+
+/**
+ * The swatch each of the thirteen rows is pictured by, keyed by the ROLE it
+ * stands for — eight real artefacts at their notation size, and five samples
+ * the framework draws itself: the two typed connectors, at the endpoints that
+ * tell them apart, and the three composites that are several elements.
+ */
+export const WARDLEY_LEGEND_ROWS = {
+  [WARDLEY_ROLE.component]: glyphRow('component', [16, 16]),
+  [WARDLEY_ROLE.anchor]: glyphRow('anchor', [16, 16]),
+  [WARDLEY_ROLE.market]: {
+    swatch: 'custom',
+    color: NODE_FILL,
+    draw: drawMarket,
+  },
+  [WARDLEY_ROLE.ecosystem]: glyphRow('ecosystem', [20, 20]),
+  [WARDLEY_ROLE.method]: glyphRow('method', [18, 18]),
+  [WARDLEY_ROLE.pipeline]: {
+    swatch: 'custom',
+    color: PIPELINE_FILL,
+    draw: drawPipeline,
+  },
+  // The dependency RISES across its row, the evolution arrow runs flat: the
+  // two endpoint pairs the legend has drawn since it shipped.
+  [WARDLEY_ROLE.dependency]: edgeRow('link', [-18, 6], [18, -6]),
+  [WARDLEY_ROLE.changeArrow]: edgeRow('arrow', [-18, 0], [16, 0]),
+  [WARDLEY_ROLE.inertia]: inertiaRow(),
+  [WARDLEY_ROLE.porter]: {
+    swatch: 'custom',
+    color: NODE_FILL,
+    draw: drawPorter,
+  },
+  [WARDLEY_ROLE.accelerator]: glyphRow('accelerator', [30, 18]),
+  [WARDLEY_ROLE.decelerator]: glyphRow('decelerator', [30, 18]),
+  // The rect even for a map full of polygons: the row says what a ZONE is, and
+  // the number of corners is the author's choice rather than notation.
+  [WARDLEY_ROLE.area]: glyphRow('area', [34, 20]),
+} satisfies Record<string, CommandLegendRow>;
+
+/** A role Wardley pictures in its legend. */
+export type WardleyLegendRole = keyof typeof WARDLEY_LEGEND_ROWS;
+
+/**
+ * What each row SAYS — prose rather than the role's bare name.
+ *
+ * The role vocabulary calls `wardley:component` a "Component"; the legend has
+ * to say what one IS to somebody reading their first map. So each row declares
+ * its own wording, which the platform reads ahead of the role's, and the
+ * thirteen keys the host catalogue already carries are unchanged.
+ */
+const LEGEND_DESC = {
+  [WARDLEY_ROLE.component]: [
     'com.labre.wardley.legend.desc.component',
     'Need / capability (activity, practice, data…)',
   ],
-  anchor: [
+  [WARDLEY_ROLE.anchor]: [
     'com.labre.wardley.legend.desc.anchor',
     'Stakeholder (customer, user…)',
   ],
-  market: ['com.labre.wardley.legend.desc.market', 'Market (set of actors)'],
-  ecosystem: ['com.labre.wardley.legend.desc.ecosystem', 'Ecosystem'],
-  method: [
+  [WARDLEY_ROLE.market]: [
+    'com.labre.wardley.legend.desc.market',
+    'Market (set of actors)',
+  ],
+  [WARDLEY_ROLE.ecosystem]: [
+    'com.labre.wardley.legend.desc.ecosystem',
+    'Ecosystem',
+  ],
+  [WARDLEY_ROLE.method]: [
     'com.labre.wardley.legend.desc.method',
     'Component + method (color = phase)',
   ],
-  pipeline: [
+  [WARDLEY_ROLE.pipeline]: [
     'com.labre.wardley.legend.desc.pipeline',
     'Pipeline (possible choices for a capability)',
   ],
-  link: [
+  [WARDLEY_ROLE.dependency]: [
     'com.labre.wardley.legend.desc.link',
     'Need relation (parent → child)',
   ],
-  arrow: [
+  [WARDLEY_ROLE.changeArrow]: [
     'com.labre.wardley.legend.desc.arrow',
     'Evolution / movement (red = future)',
   ],
-  inertia: ['com.labre.wardley.legend.desc.inertia', 'Inertia to change'],
-  porter: [
+  [WARDLEY_ROLE.inertia]: [
+    'com.labre.wardley.legend.desc.inertia',
+    'Inertia to change',
+  ],
+  [WARDLEY_ROLE.porter]: [
     'com.labre.wardley.legend.desc.porter',
     "Porter's forces (external competition: R relative, L survival, E establish)",
   ],
-  accelerator: [
+  [WARDLEY_ROLE.accelerator]: [
     'com.labre.wardley.legend.desc.accelerator',
     'Accelerator (speeds evolution up)',
   ],
-  decelerator: [
+  [WARDLEY_ROLE.decelerator]: [
     'com.labre.wardley.legend.desc.decelerator',
     'Decelerator (slows evolution down)',
   ],
-  area: ['com.labre.wardley.legend.desc.area', 'Area (zone of the map)'],
-};
+  [WARDLEY_ROLE.area]: [
+    'com.labre.wardley.legend.desc.area',
+    'Area (zone of the map)',
+  ],
+} satisfies Record<WardleyLegendRole, ChromeWording>;
 
 /** Every {@link LEGEND_DESC} wording, for `translations.ts`'s manifest. */
 export const WARDLEY_LEGEND_DESC_WORDINGS: readonly ChromeWording[] =
   Object.values(LEGEND_DESC);
+
+/**
+ * The legend line one command subscribes — the swatch of the role it stamps,
+ * and the sentence that explains it. Its sub-title comes from the command's own
+ * catalogue category (Nodes, Connectors, Areas), so a section is declared by
+ * filing a command rather than by a second list.
+ */
+export function wardleyLegendEntry(
+  role: WardleyLegendRole
+): CommandLegendEntry {
+  return {
+    role,
+    row: WARDLEY_LEGEND_ROWS[role],
+    labelWording: LEGEND_DESC[role],
+  };
+}
+
+/* ── Extra 1: what the gradient means ─────────────────────────────────── */
 
 type GradientVariant = Exclude<
   WardleyBackgroundElementModel['variant'],
@@ -166,7 +487,85 @@ const LEGEND_GRADIENT: Record<
 export const WARDLEY_LEGEND_GRADIENT_WORDINGS: readonly ChromeWording[] =
   Object.values(LEGEND_GRADIENT).map(g => g.caption);
 
-/* ── Porter's five forces: the panel under the rows ───────────────────── */
+/** The gradient row's own height — taller than a row, as its caption may wrap. */
+const GRAD_ROW_H = 40;
+
+/**
+ * The gradient block: a separator, then [2-colour swatch | caption].
+ *
+ * An EXTRA and not a row, because it says nothing about anything drawn on the
+ * map: it is a property of the SHEET, read off the background's variant, so no
+ * command could subscribe it.
+ */
+function gradientExtra(variant: GradientVariant): CommandLegendExtra {
+  const grad = LEGEND_GRADIENT[variant];
+  return {
+    height: 12 + GRAD_ROW_H,
+    draw(surface, std, x, y, width) {
+      const ids: string[] = [];
+      const sepY = y + 4;
+      ids.push(
+        surface.addElement({
+          type: 'shape',
+          shapeType: 'rect',
+          filled: true,
+          fillColor: NOTATION_NEUTRALS.legendBorder,
+          strokeColor: NOTATION_NEUTRALS.legendBorder,
+          strokeWidth: 0,
+          shapeStyle: ShapeStyle.General,
+          roughness: 0,
+          radius: 0,
+          xywh: new Bound(
+            x + BOX_PAD,
+            sepY,
+            width - BOX_PAD * 2,
+            1
+          ).serialize(),
+        })
+      );
+      const cy = sepY + 8 + GRAD_ROW_H / 2;
+      const sw = 14;
+      const sgap = 2;
+      const sx = x + BOX_PAD + SWATCH_W / 2 - (sw * 2 + sgap) / 2;
+      grad.swatch.forEach((col, i) => {
+        ids.push(
+          surface.addElement({
+            type: 'shape',
+            shapeType: 'rect',
+            filled: true,
+            fillColor: col,
+            strokeColor: NOTATION_NEUTRALS.legendBorder,
+            strokeWidth: 0.5,
+            shapeStyle: ShapeStyle.General,
+            roughness: 0,
+            radius: 1,
+            xywh: new Bound(
+              sx + i * (sw + sgap),
+              cy - sw / 2,
+              sw,
+              sw
+            ).serialize(),
+          })
+        );
+      });
+      ids.push(
+        addText(
+          surface,
+          std,
+          grad.caption,
+          x + BOX_PAD + SWATCH_W + EXTRA_GAP,
+          cy - GRAD_ROW_H / 2,
+          EXTRA_TEXT_W,
+          GRAD_ROW_H,
+          EXTRA_TEXT_FS
+        )
+      );
+      return ids;
+    },
+  };
+}
+
+/* ── Extra 2: Porter's five forces ────────────────────────────────────── */
 
 /** The panel's own numbers. Model units, like every other measure here. */
 const PORTER_PANEL = {
@@ -213,19 +612,13 @@ const PORTER_FORCES: readonly ChromeWording[] = [
   ],
 ];
 
-/** What the panel's own glyph reads: the notation, not one force — untouched, like the Cynefin A/C letters. */
+/** What the panel's own glyph reads: the notation, not one force. */
 const PORTER_PANEL_LETTERS = 'R/L/E';
 
 /** What the letters mean, spelled out under the diagram. */
 const PORTER_CAPTION: ChromeWording = [
   'com.labre.wardley.legend.porter.caption',
   'R/L/E = Relative competition, or struggLe for survival, or struggle to Establish',
-];
-
-/** The legend box's own title. */
-export const WARDLEY_LEGEND_TITLE: ChromeWording = [
-  'com.labre.wardley.legend.title',
-  'Legend',
 ];
 
 /** The five-forces panel's own title. */
@@ -321,505 +714,25 @@ export function porterPanelLayout(w: number): PorterPanelLayout {
   };
 }
 
-/**
- * Every wording this file writes onto the canvas, for `translations.ts`'s
- * manifest contribution — the auto-legend's own title, its rows' captions,
- * the gradient blocks and the Porter panel, all as `seed` (written into the
- * document once, at the moment a legend is generated).
- */
-export const WARDLEY_LEGEND_WORDINGS: readonly ChromeWording[] = [
-  WARDLEY_LEGEND_TITLE,
-  ...WARDLEY_LEGEND_DESC_WORDINGS,
-  ...WARDLEY_LEGEND_GRADIENT_WORDINGS,
-  ...WARDLEY_LEGEND_PORTER_WORDINGS,
-];
+/** The panel, at the only width this box is ever drawn at. */
+const PORTER_PANEL_LAYOUT = porterPanelLayout(LEGEND_WIDTH - BOX_PAD * 2);
 
 /**
- * Build a "Legend" group from real, editable elements (white rect frame +
- * "Legend" text + one row of [real component glyph + description text] per
- * Wardley component TYPE present inside the background's perimeter + a
- * gradient-meaning block when the background is a gradient variant + the
- * five-forces panel when a Porter's-forces glyph is on the map). A snapshot
- * is created on each call; everything is grouped so it can be moved / resized /
- * edited and is dropped bottom-left of the background.
+ * The five-forces panel, under everything else.
+ *
+ * It is not a row — a row says what a glyph IS, and this says what the notation
+ * MEANS: four named pressures around one circle, and the three letters spelled
+ * out. Only present when a force is on the map, so a legend without one is the
+ * legend it always was.
  */
-export function createWardleyLegend(
-  std: BlockStdScope,
-  bg: WardleyBackgroundElementModel
-) {
-  const gfx = std.get(GfxControllerIdentifier);
-  const surface = gfx.surface;
-  if (!surface) return;
-
-  const [bx, by, , bh] = bg.deserializedXYWH;
-
-  // 1. Detect which component types are present inside the perimeter.
-  const present = new Set<LegendType>();
-  for (const el of gfx.getElementsByBound(Bound.deserialize(bg.xywh), {
-    type: 'canvas',
-  })) {
-    // Note: WardleyNodeElementModel extends ShapeElementModel, so the order of
-    // these instanceof checks matters.
-    if (el instanceof WardleyNodeElementModel) {
-      if (el.kind !== 'handle') present.add(el.kind);
-    } else if (el instanceof ConnectorElementModel) {
-      if (el.strokeStyle === StrokeStyle.Dash || el.stroke === WARDLEY_RED) {
-        present.add('arrow');
-      } else if (el.stroke === LINK_GREY) {
-        present.add('link');
-      }
-      // market triangle connectors (NODE_STROKE) are ignored.
-    } else if (el instanceof ShapeElementModel) {
-      // The inertia bar is the only plain shape this legend describes, and it
-      // is recognised by its FILL. A Porter's-forces arrow is a plain shape too
-      // — a filled red polygon, the glyph's own wiring — and it is `WARDLEY_RED`
-      // rather than `INERTIA_COLOR`, so it falls through here and is described
-      // by the porter circle it belongs to. Asserted in `porter.unit.spec.ts`:
-      // an arrow that started answering this test would put an "Inertia to
-      // change" row in the legend of a map with no inertia bar on it.
-      if (el.fillColor === INERTIA_COLOR) present.add('inertia');
-    }
-  }
-  const rows = LEGEND_ORDER.filter(t => present.has(t));
-
-  // 2. Layout (model units). The text column is wide enough for one-line
-  // descriptions; the gradient row is taller as its caption may wrap.
-  const PAD = 16;
-  const TITLE_H = 28;
-  const ROW_H = 30;
-  const GLYPH_W = 46;
-  const GAP = 12;
-  const TEXT_FS = 15;
-  const TITLE_FS = 18;
-  const TEXT_W = 360;
-  const GRAD_ROW_H = 40;
-  const W = PAD * 2 + GLYPH_W + GAP + TEXT_W;
-
-  const variant = bg.variant;
-  const grad = variant !== 'classic' ? LEGEND_GRADIENT[variant] : null;
-  const gradH = grad ? 12 + GRAD_ROW_H : 0;
-  // The five-forces panel, and ONLY when a force is actually on the map: a
-  // legend of a map with no porter on it has to come out byte-identical to the
-  // one it came out as before this panel existed. Pinned in
-  // `porter.unit.spec.ts`.
-  const panel = present.has('porter') ? porterPanelLayout(W - PAD * 2) : null;
-  const panelH = panel ? 12 + panel.h : 0;
-  const H = PAD * 2 + TITLE_H + rows.length * ROW_H + gradH + panelH;
-
-  const x0 = bx + 50;
-  const y0 = by + bh - 56 - H;
-
-  const text = (
-    t: string,
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    fontSize: number,
-    align: 'left' | 'center' = 'left'
-  ) =>
-    surface.addElement({
-      type: 'text',
-      text: t,
-      fontFamily: FontFamily.Inter,
-      fontSize,
-      color: NODE_STROKE,
-      textAlign: align,
-      xywh: new Bound(x, y, w, h).serialize(),
-    });
-
-  // ── glyph builders (real, editable elements), centred on (cx, cy) ─────
-  //
-  // DELIBERATELY ROLE-LESS. These are real `wardleyNode` elements, but a
-  // legend documents the map — it is not part of it. Giving its glyphs
-  // `wardley:component` & co. would make every legend entry count as an
-  // artefact and skew any rule written against roles (a legend would add a
-  // phantom component, anchor, market…). Neutral is the semantics we want;
-  // `kind` still drives their rendering. Frozen by a test in
-  // `__tests__/roles.unit.spec.ts`.
-  const ellipse = (
-    kind: 'component' | 'anchor' | 'ecosystem' | 'method',
-    d: number,
-    fill: string,
-    sw: number,
-    cx: number,
-    cy: number
-  ) =>
-    surface.addElement({
-      type: 'wardleyNode',
-      kind,
-      shapeType: 'ellipse',
-      filled: true,
-      fillColor: fill,
-      strokeColor: NODE_STROKE,
-      strokeWidth: sw,
-      shapeStyle: ShapeStyle.General,
-      roughness: 0,
-      xywh: new Bound(cx - d / 2, cy - d / 2, d, d).serialize(),
-    });
-
-  const glyph = (type: LegendType, cx: number, cy: number): string[] => {
-    switch (type) {
-      case 'component':
-        return [ellipse('component', 16, NODE_FILL, NODE_STROKE_WIDTH, cx, cy)];
-      case 'anchor':
-        return [ellipse('anchor', 16, NODE_FILL, NODE_STROKE_WIDTH, cx, cy)];
-      case 'ecosystem':
-        return [ellipse('ecosystem', 20, NODE_FILL, NODE_STROKE_WIDTH, cx, cy)];
-      case 'method':
-        return [ellipse('method', 18, METHOD_FILL, NODE_STROKE_WIDTH, cx, cy)];
-      case 'inertia':
-        return [
-          surface.addElement({
-            type: 'shape',
-            shapeType: 'rect',
-            filled: true,
-            fillColor: INERTIA_COLOR,
-            strokeColor: INERTIA_COLOR,
-            strokeWidth: 0,
-            shapeStyle: ShapeStyle.General,
-            roughness: 0,
-            radius: 0,
-            xywh: new Bound(cx - 2.5, cy - 11, 5, 22).serialize(),
-          }),
-        ];
-      case 'pipeline': {
-        const bw2 = 34;
-        const bh2 = 12;
-        const hd = 10;
-        const top = cy - bh2 / 2;
-        return [
-          surface.addElement({
-            type: 'wardleyNode',
-            kind: 'pipeline',
-            shapeType: 'rect',
-            filled: true,
-            fillColor: PIPELINE_FILL,
-            strokeColor: NODE_STROKE,
-            strokeWidth: NODE_STROKE_WIDTH,
-            shapeStyle: ShapeStyle.General,
-            roughness: 0,
-            radius: 0,
-            xywh: new Bound(cx - bw2 / 2, top, bw2, bh2).serialize(),
-          }),
-          surface.addElement({
-            type: 'wardleyNode',
-            kind: 'handle',
-            shapeType: 'rect',
-            filled: true,
-            fillColor: NODE_FILL,
-            strokeColor: NODE_STROKE,
-            strokeWidth: NODE_STROKE_WIDTH,
-            shapeStyle: ShapeStyle.General,
-            roughness: 0,
-            radius: 0,
-            xywh: new Bound(cx - hd / 2, top - hd / 2, hd, hd).serialize(),
-          }),
-        ];
-      }
-      case 'market': {
-        const R = 11;
-        const dr = 3;
-        const rho = 6;
-        const sin60 = Math.sqrt(3) / 2;
-        const circle = surface.addElement({
-          type: 'wardleyNode',
-          kind: 'market',
-          shapeType: 'ellipse',
-          filled: true,
-          fillColor: NODE_FILL,
-          strokeColor: NODE_STROKE,
-          strokeWidth: NODE_STROKE_WIDTH,
-          shapeStyle: ShapeStyle.General,
-          roughness: 0,
-          xywh: new Bound(cx - R, cy - R, R * 2, R * 2).serialize(),
-        });
-        const verts = [
-          [0, -rho],
-          [rho * sin60, rho / 2],
-          [-rho * sin60, rho / 2],
-        ];
-        const dots = verts.map(([vx, vy]) =>
-          surface.addElement({
-            type: 'wardleyNode',
-            kind: 'component',
-            shapeType: 'ellipse',
-            filled: true,
-            fillColor: NODE_FILL,
-            strokeColor: NODE_STROKE,
-            strokeWidth: MARKET_DOT_STROKE_WIDTH,
-            shapeStyle: ShapeStyle.General,
-            roughness: 0,
-            xywh: new Bound(
-              cx + vx - dr,
-              cy + vy - dr,
-              dr * 2,
-              dr * 2
-            ).serialize(),
-          })
-        );
-        const conns = [
-          [dots[0], dots[1]],
-          [dots[1], dots[2]],
-          [dots[2], dots[0]],
-        ].map(([a, b]) =>
-          surface.addElement({
-            type: 'connector',
-            mode: ConnectorMode.Straight,
-            source: { id: a },
-            target: { id: b },
-            stroke: MARKET_LINK_COLOR,
-            strokeStyle: StrokeStyle.Solid,
-            strokeWidth: MARKET_LINK_WIDTH,
-            frontEndpointStyle: PointStyle.None,
-            rearEndpointStyle: PointStyle.None,
-          })
-        );
-        return [circle, ...dots, ...conns];
-      }
-      case 'porter': {
-        // The same drawing as the map's, at the row's scale: the helper scales
-        // the gap, the shaft and the head with the radius, so what a reader
-        // sees here is a small Porter and not a circle with four map-sized
-        // spikes through it.
-        //
-        // 6 and not the 8 the other circles get, because this glyph is the only
-        // one wider than its own circle: arrows included it spans
-        // `2 * (R + (gap + length) * R / 30)`, which at 8 would overrun a row
-        // 30 units tall. At 6 it comes to just over `ROW_H` and sits inside its
-        // line — and it is a RATIO, so the PO's doubling of the map glyph left
-        // this row exactly where it was.
-        const R = 6;
-        const FS = 8;
-        const circle = surface.addElement({
-          type: 'wardleyNode',
-          kind: 'porter',
-          shapeType: 'ellipse',
-          filled: true,
-          fillColor: NODE_FILL,
-          strokeColor: NODE_STROKE,
-          strokeWidth: NODE_STROKE_WIDTH,
-          shapeStyle: ShapeStyle.General,
-          roughness: 0,
-          xywh: new Bound(cx - R, cy - R, R * 2, R * 2).serialize(),
-        });
-        const arrows = wardleyPorterArrows(cx, cy, R).map(arrow =>
-          surface.addElement(wardleyPorterArrowProps(arrow))
-        );
-        // The letter is the notation, so a legend that dropped it would be
-        // describing a circle rather than the glyph it stands for — but here it
-        // is a SEPARATE text element rather than the circle's inner text, which
-        // is what the map glyph uses. A shape lays its text out inside padding
-        // (`SHAPE_TEXT_VERTICAL_PADDING`) larger than this 12-unit box, so at
-        // font size 8 the character was pushed out under the circle (recette
-        // v2). A free text has no padding to overflow, and its box is placed on
-        // the circle's own centre. Role-less like every other legend glyph.
-        const letter = text(
-          PORTER_DEFAULT_LETTER,
-          cx - R,
-          cy - FS / 2 - 1,
-          R * 2,
-          FS + 2,
-          FS,
-          'center'
-        );
-        return [circle, ...arrows, letter];
-      }
-      case 'accelerator':
-      case 'decelerator': {
-        // The map's own outline, at the row's scale: `vertices` are normalized
-        // to the box, so the SAME seven points draw a 30 × 18 legend arrow and
-        // a 48 × 40 canvas one. Role-less like every glyph in this box — a
-        // legend documents the map, it is not part of it.
-        const gw = 30;
-        const gh = 18;
-        return [
-          surface.addElement({
-            type: 'wardleyNode',
-            kind: type,
-            shapeType: 'polygon',
-            vertices: (type === 'accelerator'
-              ? ACCELERATOR_VERTICES
-              : DECELERATOR_VERTICES
-            ).map(([vx, vy]) => [vx, vy]),
-            isClosed: true,
-            filled: true,
-            fillColor: ACCELERATOR_FILL,
-            strokeColor: NODE_STROKE,
-            strokeWidth: ACCELERATOR_STROKE_WIDTH,
-            shapeStyle: ShapeStyle.General,
-            roughness: 0,
-            xywh: new Bound(cx - gw / 2, cy - gh / 2, gw, gh).serialize(),
-          }),
-        ];
-      }
-      case 'area': {
-        // A small translucent rect, and the rect even when the map's zones are
-        // polygons: the row says what a ZONE is, and the number of corners is
-        // the author's choice rather than part of the notation. Same wash and
-        // same rim as the canvas draws, so the swatch is recognisable.
-        const gw = 34;
-        const gh = 20;
-        return [
-          surface.addElement({
-            type: 'wardleyNode',
-            kind: 'area',
-            shapeType: 'rect',
-            filled: true,
-            fillColor: AREA_FILL,
-            strokeColor: AREA_STROKE,
-            strokeWidth: AREA_STROKE_WIDTH,
-            shapeStyle: ShapeStyle.General,
-            roughness: 0,
-            radius: 0,
-            xywh: new Bound(cx - gw / 2, cy - gh / 2, gw, gh).serialize(),
-          }),
-        ];
-      }
-      case 'link':
-        return [
-          surface.addElement({
-            type: 'connector',
-            mode: ConnectorMode.Straight,
-            source: { position: [cx - 18, cy + 6] },
-            target: { position: [cx + 18, cy - 6] },
-            stroke: LINK_GREY,
-            strokeStyle: StrokeStyle.Solid,
-            strokeWidth: LINK_STROKE_WIDTH,
-            frontEndpointStyle: PointStyle.None,
-            rearEndpointStyle: PointStyle.None,
-          }),
-        ];
-      case 'arrow':
-        return [
-          surface.addElement({
-            type: 'connector',
-            mode: ConnectorMode.Straight,
-            source: { position: [cx - 18, cy] },
-            target: { position: [cx + 16, cy] },
-            stroke: WARDLEY_RED,
-            strokeStyle: StrokeStyle.Dash,
-            strokeWidth: LINK_STROKE_WIDTH,
-            frontEndpointStyle: PointStyle.None,
-            rearEndpointStyle: PointStyle.Triangle,
-          }),
-        ];
-    }
-  };
-
-  // 3. Create the elements.
-  std.store.captureSync();
-  const ids: string[] = [];
-
-  // White frame.
-  ids.push(
-    surface.addElement({
-      type: 'shape',
-      shapeType: 'rect',
-      filled: true,
-      fillColor: NOTATION_NEUTRALS.cardFill,
-      strokeColor: NOTATION_NEUTRALS.legendBorder,
-      strokeWidth: 1,
-      shapeStyle: ShapeStyle.General,
-      roughness: 0,
-      radius: 6,
-      xywh: new Bound(x0, y0, W, H).serialize(),
-    })
-  );
-
-  // Title.
-  ids.push(
-    text(
-      translateKey(std, ...WARDLEY_LEGEND_TITLE),
-      x0 + PAD,
-      y0 + PAD,
-      W - PAD * 2,
-      TITLE_FS + 6,
-      TITLE_FS
-    )
-  );
-
-  // Rows.
-  let ry = y0 + PAD + TITLE_H;
-  for (const t of rows) {
-    const cyRow = ry + ROW_H / 2;
-    ids.push(...glyph(t, x0 + PAD + GLYPH_W / 2, cyRow));
-    ids.push(
-      text(
-        translateKey(std, ...LEGEND_DESC[t]),
-        x0 + PAD + GLYPH_W + GAP,
-        cyRow - (TEXT_FS + 8) / 2,
-        TEXT_W,
-        TEXT_FS + 8,
-        TEXT_FS
-      )
-    );
-    ry += ROW_H;
-  }
-
-  // Gradient meaning block: a separator, then [2-colour swatch | caption].
-  if (grad) {
-    const sepY = ry + 4;
-    ids.push(
-      surface.addElement({
-        type: 'shape',
-        shapeType: 'rect',
-        filled: true,
-        fillColor: NOTATION_NEUTRALS.legendBorder,
-        strokeColor: NOTATION_NEUTRALS.legendBorder,
-        strokeWidth: 0,
-        shapeStyle: ShapeStyle.General,
-        roughness: 0,
-        radius: 0,
-        xywh: new Bound(x0 + PAD, sepY, W - PAD * 2, 1).serialize(),
-      })
-    );
-    const cyRow = sepY + 8 + GRAD_ROW_H / 2;
-    const sw = 14;
-    const sgap = 2;
-    const sx = x0 + PAD + GLYPH_W / 2 - (sw * 2 + sgap) / 2;
-    grad.swatch.forEach((col, i) => {
-      ids.push(
-        surface.addElement({
-          type: 'shape',
-          shapeType: 'rect',
-          filled: true,
-          fillColor: col,
-          strokeColor: NOTATION_NEUTRALS.legendBorder,
-          strokeWidth: 0.5,
-          shapeStyle: ShapeStyle.General,
-          roughness: 0,
-          radius: 1,
-          xywh: new Bound(
-            sx + i * (sw + sgap),
-            cyRow - sw / 2,
-            sw,
-            sw
-          ).serialize(),
-        })
-      );
-    });
-    ids.push(
-      text(
-        translateKey(std, ...grad.caption),
-        x0 + PAD + GLYPH_W + GAP,
-        cyRow - GRAD_ROW_H / 2,
-        TEXT_W,
-        GRAD_ROW_H,
-        TEXT_FS
-      )
-    );
-  }
-
-  // Porter's five forces: the panel the PO's reference draws, under everything
-  // else. It is not a row — a row says what a glyph IS, and this says what the
-  // notation MEANS: four named pressures around one circle, and the three
-  // letters spelled out. Only drawn when a force is on the map, so a legend
-  // without one is the legend it always was.
-  if (panel) {
-    const px = x0 + PAD;
-    const py = ry + gradH + 12;
+const PORTER_EXTRA: CommandLegendExtra = {
+  height: 12 + PORTER_PANEL_LAYOUT.h,
+  draw(surface, std, x, y) {
+    const panel = PORTER_PANEL_LAYOUT;
     const p = PORTER_PANEL;
+    const px = x + BOX_PAD;
+    const py = y + 12;
+    const ids: string[] = [];
 
     // The backing: square-cornered and grey, so the panel reads as a figure
     // set into the legend rather than as one more entry in it.
@@ -840,8 +753,10 @@ export function createWardleyLegend(
 
     const [tx, ty, tw, th] = panel.title;
     ids.push(
-      text(
-        translateKey(std, ...WARDLEY_LEGEND_PORTER_TITLE),
+      addText(
+        surface,
+        std,
+        WARDLEY_LEGEND_PORTER_TITLE,
         px + tx,
         py + ty,
         tw,
@@ -852,38 +767,27 @@ export function createWardleyLegend(
 
     const [cx, cy] = panel.center;
     ids.push(
-      surface.addElement({
-        type: 'wardleyNode',
-        kind: 'porter',
-        shapeType: 'ellipse',
-        filled: true,
-        fillColor: NODE_FILL,
-        strokeColor: NODE_STROKE,
-        strokeWidth: NODE_STROKE_WIDTH,
-        shapeStyle: ShapeStyle.General,
-        roughness: 0,
-        xywh: new Bound(
-          px + cx - panel.radius,
-          py + cy - panel.radius,
-          panel.radius * 2,
-          panel.radius * 2
-        ).serialize(),
-      })
+      addGlyph(
+        surface,
+        'porter',
+        px + cx - panel.radius,
+        py + cy - panel.radius,
+        panel.radius * 2,
+        panel.radius * 2
+      )
     );
     for (const arrow of wardleyPorterArrows(px + cx, py + cy, panel.radius)) {
-      ids.push(surface.addElement(wardleyPorterArrowProps(arrow)));
+      ids.push(surface.addElement(neutral(wardleyPorterArrowProps(arrow))));
     }
     // All three letters at once: this circle stands for the NOTATION rather
     // than for one force, so picking one of them would make the panel say that
-    // a Porter is an R.
-    //
-    // A SEPARATE text element, like the porter row above and for the same
-    // reason (recette v2): a shape lays its text out inside a padding
-    // (`SHAPE_TEXT_PADDING`) wider than this 30-unit circle, so the characters
-    // would be pushed outside it. A free text has no padding to overflow, and
-    // its box is placed on the circle's own centre.
+    // a Porter is an R. A SEPARATE text element, like the row's own letter and
+    // for the same reason (recette v2): a shape's text padding is wider than
+    // this 30-unit circle.
     ids.push(
-      text(
+      addText(
+        surface,
+        std,
         PORTER_PANEL_LETTERS,
         px + cx - panel.radius,
         py + cy - p.letterFs / 2 - 1,
@@ -911,8 +815,10 @@ export function createWardleyLegend(
         })
       );
       ids.push(
-        text(
-          translateKey(std, ...box.label),
+        addText(
+          surface,
+          std,
+          box.label,
           px + bx + 4,
           py + by + 3,
           bw - 8,
@@ -925,8 +831,10 @@ export function createWardleyLegend(
 
     const [capX, capY, capW, capH] = panel.caption;
     ids.push(
-      text(
-        translateKey(std, ...PORTER_CAPTION),
+      addText(
+        surface,
+        std,
+        PORTER_CAPTION,
         px + capX,
         py + capY,
         capW,
@@ -935,12 +843,43 @@ export function createWardleyLegend(
         'center'
       )
     );
-  }
+    return ids;
+  },
+};
 
-  // 4. Group everything and select it.
-  const [, result] = std.command.exec(createGroupCommand, { elements: ids });
-  gfx.selection.set({
-    elements: [result.groupId || ids[0]],
-    editing: false,
-  });
-}
+/* ── The box the board's command declares ─────────────────────────────── */
+
+/**
+ * How a Wardley map's legend box is laid out, and the two blocks it adds under
+ * the rows. Declared on the FIRST background command (`commands.ts`), which is
+ * the sheet the legend is drawn on.
+ */
+export const WARDLEY_LEGEND_BOX: CommandLegendBox = {
+  titleWording: WARDLEY_LEGEND_TITLE,
+  width: LEGEND_WIDTH,
+  rowHeight: SWATCH_H,
+  swatchWidth: SWATCH_W,
+  swatchHeight: SWATCH_H,
+  extras: ({ board, present }) => {
+    const extras: CommandLegendExtra[] = [];
+    // The variant is a fact about the BOARD, which the platform hands over
+    // untyped — it knows a board has a box and nothing else about one.
+    const { variant } = board as WardleyBackgroundElementModel;
+    if (variant && variant !== 'classic') extras.push(gradientExtra(variant));
+    if (present.has(WARDLEY_ROLE.porter)) extras.push(PORTER_EXTRA);
+    return extras;
+  },
+};
+
+/**
+ * Every wording this file writes onto the canvas, for `translations.ts`'s
+ * manifest contribution — the box's own title, its rows' captions, the gradient
+ * blocks and the Porter panel, all as `seed` (written into the document once,
+ * at the moment a legend is generated).
+ */
+export const WARDLEY_LEGEND_WORDINGS: readonly ChromeWording[] = [
+  WARDLEY_LEGEND_TITLE,
+  ...WARDLEY_LEGEND_DESC_WORDINGS,
+  ...WARDLEY_LEGEND_GRADIENT_WORDINGS,
+  ...WARDLEY_LEGEND_PORTER_WORDINGS,
+];
