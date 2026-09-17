@@ -53,6 +53,18 @@
     "packages/affine/gfx/text/src/toolbar/actions.ts": [
       "Aa"
     ],
+    "packages/affine/gfx/wardley/src/consts.ts": [
+      "Commodity (+Utility)",
+      "Custom-Built",
+      "Evolution",
+      "Genesis",
+      "Industrialized",
+      "Invisible",
+      "Product (+Rental)",
+      "Uncharted",
+      "Value Chain",
+      "Visible"
+    ],
     "packages/affine/shared/src/consts/bracket-pairs.ts": [
       "corner bracket",
       "curly bracket",

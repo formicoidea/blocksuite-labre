@@ -307,6 +307,16 @@ describe('getTranslationKeyManifest', () => {
     pinned('com.labre.edgy.seed.activity', 'Activity', 'seed');
     // A kind BPMN deliberately draws with no caption asks for no key.
     expect(byKey.get('com.labre.bpmn.seed.startEvent')).toBeUndefined();
+    // UML's own: one key per kind the notation gives words to (23 of the 38),
+    // plus the three compartment lines a fresh classifier carries.
+    pinned('com.labre.uml.seed.class', 'Class', 'seed');
+    pinned('com.labre.uml.seed.attributes', '+ attribute : Type', 'seed');
+    expect(
+      manifest.filter(entry => entry.key.startsWith('com.labre.uml.seed.'))
+    ).toHaveLength(26);
+    // …and a kind it draws as a MARK asks for none, for BPMN's reason above:
+    // `UML_NAME_SEED.decision` is the empty string, so there is no word.
+    expect(byKey.get('com.labre.uml.seed.decision')).toBeUndefined();
     // The C4 board's name reuses the board ROLE's key rather than minting a
     // second one for the same noun.
     expect(byKey.get('com.labre.c4.role.board')?.fallback).toBe('C4 diagram');

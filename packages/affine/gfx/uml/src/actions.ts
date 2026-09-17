@@ -52,10 +52,14 @@ import {
 } from './interchange.js';
 import {
   UML_ATTRIBUTES_SEED,
+  UML_ATTRIBUTES_SEED_KEY,
   UML_NAME_SEED,
   UML_OPERATIONS_SEED,
+  UML_OPERATIONS_SEED_KEY,
   UML_SLOTS_SEED,
+  UML_SLOTS_SEED_KEY,
   UML_UNLABELLED_KINDS,
+  umlSeedKey,
 } from './keywords.js';
 import { umlNodeProps, umlTextProps } from './presets.js';
 import {
@@ -549,7 +553,11 @@ export function createUmlNode(std: BlockStdScope, kind: UmlGlyphKind) {
     // head carries `uml:lifeline-ident` and every other single word carries
     // `uml:label` (`component.ts`, {@link umlLabelRoleOf}).
     isLabel ? umlLabelRoleOf(kind) : UML_ROLE.name,
-    UML_NAME_SEED[kind],
+    // Through the SEAM, like the frames above: the words a gesture writes are
+    // persisted, so a host that has a catalogue must be asked before they land
+    // — a package dropped in a French editor is never called "Package"
+    // afterwards (R30). Resolved once, here; content from that moment on.
+    translateKey(std, umlSeedKey(kind), UML_NAME_SEED[kind]),
     box,
     {
       fontSize: UML_NAME_FONT_SIZE,
@@ -594,10 +602,16 @@ export function createUmlNode(std: BlockStdScope, kind: UmlGlyphKind) {
  *    figures draw exactly this — a named state with a ruled-off compartment
  *    waiting to be filled — and the author types the first line the grammar
  *    then reads back.
+ *
+ * Each is paired with the key it is the English default of, and the state's is
+ * `null` for the reason an unlabelled kind contributes none: there is no word
+ * to translate.
  */
-const BODY_SEED: Partial<Record<UmlClassifierKind, string>> = {
-  object: UML_SLOTS_SEED,
-  state: '',
+const BODY_SEED: Partial<
+  Record<UmlClassifierKind, readonly [key: string | null, text: string]>
+> = {
+  object: [UML_SLOTS_SEED_KEY, UML_SLOTS_SEED],
+  state: [null, ''],
 };
 
 /**
@@ -663,7 +677,8 @@ export function createUmlClassifier(
       surface,
       gfx.layer.generateIndex(),
       UML_ROLE.name,
-      UML_NAME_SEED[kind],
+      // Through the seam, exactly as {@link createUmlNode} writes its one tier.
+      translateKey(std, umlSeedKey(kind), UML_NAME_SEED[kind]),
       boxes.name,
       {
         fontSize: UML_NAME_FONT_SIZE,
@@ -674,12 +689,16 @@ export function createUmlClassifier(
   ] = true;
 
   if (boxes.attributes) {
+    const [bodyKey, bodyText] = BODY_SEED[kind] ?? [
+      UML_ATTRIBUTES_SEED_KEY,
+      UML_ATTRIBUTES_SEED,
+    ];
     children[
       addTier(
         surface,
         gfx.layer.generateIndex(),
         UML_ROLE.attributes,
-        BODY_SEED[kind] ?? UML_ATTRIBUTES_SEED,
+        bodyKey ? translateKey(std, bodyKey, bodyText) : bodyText,
         boxes.attributes,
         { fontSize: UML_BODY_FONT_SIZE, align: TextAlign.Left }
       )
@@ -692,7 +711,7 @@ export function createUmlClassifier(
         surface,
         gfx.layer.generateIndex(),
         UML_ROLE.operations,
-        UML_OPERATIONS_SEED,
+        translateKey(std, UML_OPERATIONS_SEED_KEY, UML_OPERATIONS_SEED),
         boxes.operations,
         { fontSize: UML_BODY_FONT_SIZE, align: TextAlign.Left }
       )

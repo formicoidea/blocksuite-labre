@@ -290,6 +290,19 @@ export const UML_UNLABELLED_KINDS: ReadonlySet<UmlNodeKind> = new Set(
 );
 
 /**
+ * The i18n key {@link UML_NAME_SEED} is the English default of — the same
+ * derivation BPMN's and C4's `nodeLabelKey` are, one package over: resolved AT
+ * PLACEMENT (`createUmlNode`, `createUmlClassifier`) and never afterwards,
+ * since what a gesture writes into the document is content the author owns
+ * from that moment on, and a renderer that re-translated it on every paint
+ * would silently overwrite a name somebody typed.
+ *
+ * The kinds seeded with nothing ({@link UML_UNLABELLED_KINDS}) ask for no key:
+ * there is no word to translate, and the notation draws them as marks.
+ */
+export const umlSeedKey = (kind: UmlNodeKind) => `com.labre.uml.seed.${kind}`;
+
+/**
  * The attribute compartment of a fresh classifier — one property in the §9.5.4
  * syntax the parser reads back.
  *
@@ -298,8 +311,14 @@ export const UML_UNLABELLED_KINDS: ReadonlySet<UmlNodeKind> = new Set(
  */
 export const UML_ATTRIBUTES_SEED = '+ attribute : Type';
 
+/** The key the line above is the English default of, resolved at placement. */
+export const UML_ATTRIBUTES_SEED_KEY = 'com.labre.uml.seed.attributes';
+
 /** The operation compartment of a fresh classifier — §9.6.4, same argument. */
 export const UML_OPERATIONS_SEED = '+ operation() : Type';
+
+/** Its own key, resolved at placement like the one above. */
+export const UML_OPERATIONS_SEED_KEY = 'com.labre.uml.seed.operations';
 
 /**
  * The one written tier of a fresh object — a SLOT, not a property.
@@ -309,6 +328,9 @@ export const UML_OPERATIONS_SEED = '+ operation() : Type';
  * its classifier's features, it gives them values.
  */
 export const UML_SLOTS_SEED = 'attribute = value';
+
+/** Its own key, resolved at placement like the two above. */
+export const UML_SLOTS_SEED_KEY = 'com.labre.uml.seed.slots';
 
 /* ── Reading one back ─────────────────────────────────────────────────── */
 

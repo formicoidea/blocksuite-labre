@@ -332,6 +332,15 @@ const KEYWORD_OF_KIND: Readonly<Partial<Record<UmlNodeKind, string>>> =
  * `Class`, `Interface`, `Enumeration`, `object : Class`. This is the string a
  * component NOBODY HAS NAMED still says, and the only name a morph is allowed to
  * rewrite.
+ *
+ * ENGLISH, and knowingly so: since the creation sites resolve their seeds
+ * through the translation seam (`umlSeedKey`), an artefact placed in a
+ * translated host arrives carrying that host's word, which this table does not
+ * recognise. The morph then treats the name as the author's and leaves it —
+ * the timid half of the rule below, never the destructive one. Resolving it
+ * would mean handing `afterMorph` the `std` it is not given, which is the
+ * generic `MorphSpec`'s shape and not this pack's; C4's `c4MorphedName` carries
+ * exactly the same limitation, against the same seam.
  */
 const SEEDED_NAME: Readonly<Record<UmlNodeKind, string>> = Object.fromEntries(
   (Object.keys(UML_NAME_SEED) as UmlNodeKind[]).map(kind => {

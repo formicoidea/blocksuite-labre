@@ -313,7 +313,10 @@ what they were — a user who arms one and changes their mind has not used it.
 is not silently short of keys (`manifest.unit.spec.ts`). That includes seeds,
 the text a creation action writes into the document: they are resolved at
 placement, never by changing a model default. A new displayed literal with no
-key fails `literals.unit.spec.ts` (ADR 0023).
+key fails `literals.unit.spec.ts` (ADR 0023) — including the values of a seed
+table keyed by KIND (`UML_NAME_SEED`, `NODE_LABEL`), which that guard reads as
+its own pattern since a table keyed by kind carries no prose-shaped property
+name for the others to match.
 
 ## Packaging
 
