@@ -264,6 +264,54 @@ describe('legendFromCommands', () => {
       expect(labels(sections)).toEqual([['Event'], ['Flow']]);
     });
 
+    /**
+     * A legend is a KEY to a notation, so the same framework has to read in the
+     * same order on every board — only the rows may change.
+     *
+     * The bucket is therefore opened for every DECLARED row, lit or not, and
+     * emptied ones are dropped afterwards. Opening it on the first row that lit
+     * made the order a property of the board: here "Flows" is declared after
+     * "Stickies" but its row is the first to light, so it used to come out
+     * first, and the same framework read one way with a bare event on the board
+     * and another way without it.
+     */
+    it('orders the sub-titles by DECLARATION, not by which row lights first', () => {
+      const { std } = stub([
+        // Declares "Stickies" first — and this row does NOT light below.
+        command({
+          id: 'fx.addEvent',
+          category: 'stickies',
+          order: 1,
+          legend: { role: 'fx:event', row: row() },
+        }),
+        command({
+          id: 'fx.addFlow',
+          kind: 'tool',
+          category: 'flows',
+          order: 2,
+          legend: {
+            role: 'fx:flow',
+            row: { swatch: 'line', color: '#1f2328' },
+          },
+        }),
+        // …and the row that actually fills "Stickies" comes later.
+        command({
+          id: 'fx.addCommand',
+          category: 'stickies',
+          order: 3,
+          legend: { role: 'fx:command', row: row('#5BA3DB') },
+        }),
+      ]);
+      const sections = legendFromCommands(
+        std,
+        'ddd-event-storming',
+        new Set(['fx:flow', 'fx:command'])
+      );
+      expect(titles(sections)).toEqual(['Stickies', 'Flows']);
+      // …and the ROWS inside a section keep command order, as before.
+      expect(labels(sections)).toEqual([['Command'], ['Flow']]);
+    });
+
     it('leaves a row with neither a section nor a category untitled', () => {
       const { std } = stub([
         command({ id: 'fx.bare', legend: { role: 'fx:event', row: row() } }),

@@ -1,6 +1,9 @@
 ---
 '@labre/affine-gfx-bpmn': minor
+'@labre/affine-block-surface': patch
 ---
+
+A generated legend now lists its sections in the order the framework declares them, instead of the order the board happens to fill them: the same notation reads the same way whatever is drawn, and only the rows change. Empty sections are still dropped.
 
 A BPMN pool gets an automatic legend. Select a pool and the new **Legend** button on its toolbar draws a box naming the artefacts the process actually uses — each row the real glyph, painted by the same renderer and from the same preset as the artefact on the board: the thin green ring against the thick red one, the envelope, the clock, the diamond with its X or its +, the corner person and cog, the folded page, the cylinder, the bracket, and the three flow lines with their own endpoints. Rows appear only for what is inside the pool, a plain "Task" never appears just because a user task is there, and the sections are the catalogue's own headers, so no new wording ships. Every row is derived from the command that draws the artefact, so renaming a role renames its row and restyling a preset restyles its swatch.
 

@@ -1601,20 +1601,21 @@ describe('the pool’s Legend button draws what the process actually uses', () =
     const legend = legends()[0];
     expect(legend, 'the legend group').toBeTruthy();
 
-    // Sections appear in the order their FIRST listed row is declared in
-    // (`legendFromCommands` walks the commands by `order`), which on this board
-    // puts the gateway and the flow ahead of the user task.
+    // Sections in the order BPMN declares them, not in the order this board
+    // happens to fill them: "Activities" is second because `bpmn.addTask` is
+    // declared third, even though the row that fills it is the user task's,
+    // declared after the gateway and the sequence flow.
     expect(wordsOf(legend)).toEqual([
       'Legend',
       'Events',
       'Start event',
       'End event',
+      'Activities',
+      'User task',
       'Gateways',
       'Exclusive gateway',
       'Flows',
       'Sequence flow',
-      'Activities',
-      'User task',
     ]);
 
     // The absences are the stronger half: nothing that is not on the board.
