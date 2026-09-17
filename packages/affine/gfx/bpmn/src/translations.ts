@@ -91,7 +91,7 @@ const quarantineReasonEntries = (): TranslationKeyManifestEntry[] =>
   }));
 
 /**
- * The nine export-warning keys ({@link BPMN_EXPORT_WARNING_KEYS}) — a report
+ * The ten export-warning keys ({@link BPMN_EXPORT_WARNING_KEYS}) — a report
  * built from the board rather than written into it, so `chrome` like the
  * import remarks above and not `seed`.
  */

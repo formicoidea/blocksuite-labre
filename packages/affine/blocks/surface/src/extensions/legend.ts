@@ -202,11 +202,31 @@ function addSwatchElement(
 }
 
 /**
+ * The role the legend's GROUP carries — the one thing on a generated legend
+ * that says what it is.
+ *
+ * Its glyphs deliberately carry none (see {@link addShape}), which is what
+ * keeps a legend out of the scan and out of every validation rule. But "made of
+ * nothing in particular" is unreadable to anything that has to tell a legend
+ * from a drawing, and something does: the `.bpmn` export counts what it left
+ * behind inside a pool, and a legend's fourteen glyphs would be reported as
+ * fourteen losses. The wrapper says so instead, once, structurally — no title
+ * to match on, no framework name, no geometry.
+ *
+ * `core:` because it belongs to no framework: no `RoleDefs` declares it, so
+ * `roleIsA` matches it against nothing, no rule evaluates it and no legend row
+ * lights because of it. Nothing is backfilled, as ever — a legend drawn before
+ * this shipped carries no role and is not recognised.
+ */
+export const LEGEND_ROLE = 'core:legend';
+
+/**
  * Group the box's elements under one titled group, without
  * `@labre/affine-gfx-group`'s `createGroupCommand`: that package depends on
  * THIS one, so importing it would close a cycle. The twelve lines below are
  * that command's whole body, run against the same `EdgelessCRUDIdentifier` it
- * uses, so a legend group is what the gesture says a group is.
+ * uses, so a legend group is what the gesture says a group is — plus the one
+ * thing a plain group is not, {@link LEGEND_ROLE}.
  */
 function groupLegendElements(std: BlockStdScope, ids: string[]): string {
   const gfx = std.get(GfxControllerIdentifier);
@@ -218,6 +238,7 @@ function groupLegendElements(std: BlockStdScope, ids: string[]): string {
     // lands (ADR 0023), so the host's catalogue is asked at placement and never
     // again — a renamed group keeps its name.
     title: translateKey(std, ...GROUP_SEED_NAME, { n: groups.length + 1 }),
+    role: LEGEND_ROLE,
   });
   return groupId || ids[0];
 }
