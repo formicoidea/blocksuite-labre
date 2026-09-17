@@ -709,7 +709,7 @@ describe('the UML combined fragment', () => {
    * open an editor on a string the canvas does not paint — invisible, and
    * committing it writes a guard nobody can see. The view therefore derives its
    * boxes from `umlFragmentAsPainted`, the same declaration the renderer is
-   * handed (`element-view.ts`, `UmlFrameView._painted`).
+   * handed (`element-view.ts`, `UmlFragmentView._painted`).
    */
   it('derives no rename box for the guard the renderer suppresses', () => {
     const stored = { operator: 'alt', name: '[stock > 0]', operands: split };

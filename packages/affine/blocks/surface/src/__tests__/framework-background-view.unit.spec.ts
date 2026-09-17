@@ -93,7 +93,8 @@ class DemoView extends DeclaredBackgroundView {
 
 function setup(
   props: Record<string, unknown> = {},
-  options: { readonly?: boolean; picked?: boolean } = {}
+  options: { readonly?: boolean; picked?: boolean } = {},
+  View: typeof DemoView = DemoView
 ) {
   // Only `updateElement` writes in production, so routing the stub through this
   // store is what makes "nothing was written" a real assertion.
@@ -133,7 +134,7 @@ function setup(
     },
   };
 
-  const view = new DemoView(model as never, gfx as never);
+  const view = new View(model as never, gfx as never);
   view.onCreated();
 
   const dblclick = (at: { x: number; y: number }) =>
@@ -231,5 +232,76 @@ describe('the shared in-place label editor', () => {
     const { dblclick, editor } = setup({}, { readonly: true });
     dblclick(ON_TITLE);
     expect(editor()).toBeNull();
+  });
+
+  /**
+   * Enter commits, then removes the focused input — and Chrome fires `blur`
+   * SYNCHRONOUSLY inside that `remove()`, which is the second `commit` the
+   * re-entrancy guard exists for. This suite runs in Chromium, so the nested
+   * blur here is the real one.
+   */
+  it('writes once on Enter, although removing the input blurs it', () => {
+    const { dblclick, editor, updateElement, captureSync } = setup();
+
+    dblclick(ON_TITLE);
+    const input = editor()!;
+    input.value = 'Ma carte';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+
+    expect(updateElement).toHaveBeenCalledTimes(1);
+    expect(captureSync).toHaveBeenCalledTimes(1);
+    expect(editor()).toBeNull();
+  });
+});
+
+/**
+ * The one write hook: a label whose target no `{ [prop]: value }` patch can
+ * express (a UML combined fragment's operand guard, kept inside an array)
+ * brings its own `commit`, and the base calls it INSTEAD of writing the prop.
+ */
+describe('a label that carries its own commit', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  const commit = vi.fn();
+
+  class HookView extends DemoView {
+    protected override labelAt(lx: number, ly: number, w: number, h: number) {
+      const hit = super.labelAt(lx, ly, w, h);
+      return hit ? { ...hit, commit } : null;
+    }
+  }
+
+  function hooked() {
+    commit.mockReset();
+    return setup({}, {}, HookView);
+  }
+
+  it('hands the edited words to the hook, and writes no prop itself', () => {
+    const { dblclick, editor, updateElement, captureSync } = hooked();
+
+    dblclick(ON_TITLE);
+    const input = editor()!;
+    // Opened on the drawn words, exactly as a plain label is.
+    expect(input.value).toBe('Board');
+    input.value = 'Ma carte';
+    input.dispatchEvent(new Event('blur'));
+
+    expect(commit).toHaveBeenCalledTimes(1);
+    expect(commit).toHaveBeenCalledWith('Ma carte');
+    expect(updateElement).not.toHaveBeenCalled();
+    // The undo boundary is still the base's, captured before the hook runs.
+    expect(captureSync).toHaveBeenCalledTimes(1);
+  });
+
+  it('never calls the hook for an untouched value', () => {
+    const { dblclick, editor, captureSync } = hooked();
+
+    dblclick(ON_TITLE);
+    editor()!.dispatchEvent(new Event('blur'));
+
+    expect(commit).not.toHaveBeenCalled();
+    expect(captureSync).not.toHaveBeenCalled();
   });
 });

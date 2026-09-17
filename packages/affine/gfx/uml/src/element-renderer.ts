@@ -168,7 +168,7 @@ const paintUmlFragment = withUmlFrameTag<UmlFragmentElementModel>(
  * `name`'s box — so a double-click in the corner of such a document would open
  * an editor on a string the canvas does not paint. The view therefore hit-tests
  * against THIS declaration rather than the stored one
- * (`element-view.ts`, `UmlFrameView._painted`), which is the invariant the
+ * (`element-view.ts`, `UmlFragmentView._painted`), which is the invariant the
  * class comment there already claims: "a label can never be drawn in one place
  * and clicked in another".
  */

@@ -29,9 +29,9 @@ import {
  * user aims at cannot drift away from the strip the frame reserves.
  *
  * ponytail: a ROTATED frame is not accounted for — the caller converts by
- * subtraction (and, in `UmlFrameView`, by de-rotating about the centre first),
- * so every box here assumes an upright frame. Same reserve `board-hit.ts` and
- * `pool-hit.ts` both document.
+ * subtraction (and, for the rename zones, the shared `FrameworkBackgroundView`
+ * de-rotates about the centre first), so every box here assumes an upright
+ * frame. Same reserve `board-hit.ts` and `pool-hit.ts` both document.
  */
 
 /** What this file needs of a frame: its box. */

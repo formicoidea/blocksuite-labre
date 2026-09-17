@@ -2,10 +2,12 @@ import {
   backgroundIncludesPoint,
   UML_FRAME_BAND_HEIGHT,
 } from '@labre/affine-model';
-import { describe, expect, it, vi } from 'vitest';
+import { GfxViewEventManager } from '@labre/std/gfx';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   umlDiagramBand,
+  umlFragmentOperands,
   umlInDiagramBand,
   umlInPartitionBand,
   umlInRegionBand,
@@ -15,6 +17,7 @@ import {
 import {
   UML_DIAGRAM_BOX,
   UML_DIAGRAM_MARGIN,
+  UML_FRAGMENT_BOX,
   UML_NAME_FONT_SIZE,
   UML_PARTITION_BAND,
   UML_PARTITION_BOX,
@@ -25,6 +28,7 @@ import {
 } from '../consts.js';
 import {
   UmlDiagramView,
+  UmlFragmentView,
   UmlPartitionView,
   UmlRegionView,
   UmlSubjectView,
@@ -96,7 +100,7 @@ function frame(
       backgroundIncludesPoint({ x: 0, y: 0, w, h, rotate: 0 }, x, y, options),
   };
 
-  const gfx = {
+  const gfx: Record<string, unknown> = {
     viewport: { toModelCoord: (x: number, y: number) => [x, y] },
     selection: { set: vi.fn() },
     std: {
@@ -108,6 +112,12 @@ function frame(
 
   const view = new Ctor(model as never, gfx as never);
   view.onCreated();
+
+  // What the real pointer router walks: the grid returns the models near the
+  // point, `view.get` maps each back to its view.
+  gfx.grid = { search: () => [model] };
+  gfx.view = { get: () => view };
+
   return view;
 }
 
@@ -187,6 +197,49 @@ describe('where a UML subject answers the pointer', () => {
     // Across the top, where the diagram frame wears its band — and where a
     // subject wears nothing, because it has no heading to write in one.
     expect(at(subject(), { x: BW / 2, y: 30 })).toBe(false);
+  });
+});
+
+/**
+ * Everything above calls the view DIRECTLY. `DblClickAddEdgelessText` asks the
+ * other layer — the pointer router — whether a double click belongs to a view,
+ * and drops a text block wherever the answer is "nobody" (#332). Over a
+ * subject's name the MODEL answers "nobody" while the view is opening its
+ * rename input; the router's answer is what keeps the text block out.
+ */
+describe('a double click on a UML frame name is not a double click on empty canvas', () => {
+  const BW = UML_SUBJECT_BOX.w;
+  const BH = UML_SUBJECT_BOX.h;
+
+  const routerOf = (view: ReturnType<typeof frame>) =>
+    new GfxViewEventManager(view.gfx as never);
+
+  it('reports a view over the subject name, where the model reports none', () => {
+    const view = frame(UmlSubjectView, { name: 'Order service', w: BW, h: BH });
+    const x = UML_SUBJECT_MARGIN + 20;
+    const y = UML_SUBJECT_MARGIN + UML_NAME_FONT_SIZE - 4;
+
+    expect(
+      backgroundIncludesPoint(
+        { x: 0, y: 0, w: BW, h: BH, rotate: 0 },
+        x,
+        y,
+        PICK
+      )
+    ).toBe(false);
+    expect(routerOf(view).hasViewAt(x, y)).toBe(true);
+  });
+
+  it('reports a view over the diagram heading', () => {
+    expect(routerOf(diagram()).hasViewAt(ON_HEADING.x, ON_HEADING.y)).toBe(
+      true
+    );
+  });
+
+  it('leaves the open sheet free, so a double click there still adds a text', () => {
+    expect(
+      routerOf(diagram()).hasViewAt(ON_OPEN_SPACE.x, ON_OPEN_SPACE.y)
+    ).toBe(false);
   });
 });
 
@@ -359,5 +412,111 @@ describe('where a UML composite state answers the pointer', () => {
     expect(
       umlInRegionBand({ deserializedXYWH: [0, 0, W, H] }, [W / 2, 10])
     ).toBe(true);
+  });
+});
+
+/* ── The combined fragment's operand guards ────────────────────────────── */
+
+/**
+ * A guard lives INSIDE `operands`, so its rename cannot be the shared editor's
+ * flat `{ [prop]: value }` patch: the fragment hands the base a label with its
+ * own `commit`, and that is what writes the array back — trimmed, and with the
+ * key dropped when the guard is cleared.
+ */
+describe('renaming a UML combined fragment operand guard', () => {
+  const FW = UML_FRAGMENT_BOX.w;
+  const FH = UML_FRAGMENT_BOX.h;
+
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  function fragment() {
+    const operands = [
+      { id: 'a', name: '[stock > 0]', size: 1 },
+      { id: 'b', name: '[else]', size: 1 },
+    ];
+    const model = {
+      id: 'frag',
+      operator: 'alt',
+      operands,
+      deserializedXYWH: [0, 0, FW, FH],
+      rotate: 0,
+      isLocked: () => false,
+      includesPoint: () => false,
+    };
+    const updateElement = vi.fn((_id: string, _patch: unknown) => {});
+    const captureSync = vi.fn();
+    const gfx = {
+      viewport: { toModelCoord: (x: number, y: number) => [x, y] },
+      selection: { set: vi.fn(), selectedIds: [] },
+      cursor$: { value: 'default' },
+      std: {
+        store: { captureSync, readonly: false },
+        get: () => ({ updateElement }),
+        getOptional: () => null,
+      },
+    };
+    const view = new UmlFragmentView(model as never, gfx as never);
+    view.onCreated();
+
+    // The second operand's guard corner, read off the same geometry the
+    // renderer lays the bands out from.
+    const { plot, bands } = umlFragmentOperands(model)!;
+    const onGuard = { x: plot.x0 + 10, y: bands[1].top + 6 };
+
+    const dblclick = (at: { x: number; y: number }) =>
+      view.dispatch('dblclick', {
+        ...at,
+        raw: { clientX: at.x, clientY: at.y },
+      } as never);
+    const editor = () => document.querySelector('input');
+
+    return { view, dblclick, editor, onGuard, updateElement, captureSync };
+  }
+
+  it('answers the pointer over the guard, and opens on that guard', () => {
+    const { view, dblclick, editor, onGuard } = fragment();
+    expect(
+      view.includesPoint(onGuard.x, onGuard.y, PICK as never, null as never)
+    ).toBe(true);
+
+    dblclick(onGuard);
+    expect(editor()?.value).toBe('[else]');
+  });
+
+  it('writes the trimmed guard into its operand, and nothing else', () => {
+    const { dblclick, editor, onGuard, updateElement, captureSync } =
+      fragment();
+
+    dblclick(onGuard);
+    const input = editor()!;
+    input.value = '  [stock = 0]  ';
+    input.dispatchEvent(new Event('blur'));
+
+    expect(captureSync).toHaveBeenCalledTimes(1);
+    expect(updateElement).toHaveBeenCalledTimes(1);
+    expect(updateElement).toHaveBeenCalledWith('frag', {
+      operands: [
+        { id: 'a', name: '[stock > 0]', size: 1 },
+        { id: 'b', name: '[stock = 0]', size: 1 },
+      ],
+    });
+  });
+
+  it('drops the key when the guard is cleared', () => {
+    const { dblclick, editor, onGuard, updateElement } = fragment();
+
+    dblclick(onGuard);
+    const input = editor()!;
+    input.value = '   ';
+    input.dispatchEvent(new Event('blur'));
+
+    expect(updateElement).toHaveBeenCalledTimes(1);
+    const patch = updateElement.mock.calls[0][1] as {
+      operands: Record<string, unknown>[];
+    };
+    expect(patch.operands[1]).toEqual({ id: 'b', size: 1 });
+    expect('name' in patch.operands[1]).toBe(false);
   });
 });

@@ -230,3 +230,13 @@ SVG) first, and the rules file never renumbers a published rule. The same merge
 renumbered main’s ADR 0017 (board SVG export) to **0025**, as its i18n ADR had
 become 0023: the UML branch had reserved 0016–0024 and cites them throughout
 its code.
+
+**2026-09-17 (frame views on the shared base).** UML's five frame views
+predated main's shared rename gesture (#355) and carried their own copy of
+it. They now extend `DeclaredBackgroundView` (R14), and the copy is gone. The
+combined fragment's operand guards live in `operands[i].name`, and the base's
+`updateElement({ [prop]: value })` cannot write them. So the base gained one
+optional write hook, `EditableBackgroundLabel.commit`: a label that brings it
+is written through it, after the same unchanged-value check and undo boundary.
+It sits on the label rather than the view because one fragment carries both
+kinds of label.
