@@ -116,12 +116,12 @@ export {
 // The toolbox, for the host that composes the command registry and the
 // translation-key manifest out of the frameworks it installed (see
 // `packages/affine/all/src/{commands,translations}.ts`).
+// What the board's automatic legend can say is no longer a table of its own:
+// every row is subscribed by the command that draws the artefact
+// (`CommandDescriptor.legend`, `docs/adr/0026`), so `c4Commands` already
+// answers "what does this framework document about itself" without a canvas.
 export { c4CommandIcons, c4Commands } from './commands.js';
 export { c4TranslationEntries } from './translations.js';
-// The legend TABLE — what the board's automatic legend can say. Exported for
-// the same reason the two background declarations are: it answers "what does
-// this framework document about itself" without a canvas.
-export { C4_AUTO_LEGEND } from './legend.js';
 export {
   C4_COMPONENT_READING,
   C4_CONTAINER_READING,

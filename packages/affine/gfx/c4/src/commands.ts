@@ -1,4 +1,11 @@
-import type { BlockStdScope, CommandDescriptor } from '@labre/std';
+import type { ChromeWording } from '@labre/affine-shared/services';
+import type {
+  BlockStdScope,
+  CommandDescriptor,
+  CommandLegendBox,
+  CommandLegendEntry,
+} from '@labre/std';
+import type { RoleId } from '@labre/std/gfx';
 import type { TemplateResult } from 'lit';
 
 import {
@@ -9,6 +16,8 @@ import {
   createC4Node,
   exportC4MermaidFile,
 } from './actions';
+import { BOUNDARY_STROKE, NODE_PALETTE, RELATIONSHIP_STROKE } from './consts';
+import { C4_ROLE } from './roles';
 import {
   c4ExportMermaidIcon,
   c4ToolbarIcon,
@@ -36,6 +45,11 @@ import {
  * from nowhere else (PO arbitration, 27/08/2026 — the same call the Context Map
  * board makes). See `toolbar/config.ts` for what that costs and why it is the
  * arbitrated exception to the command bottleneck.
+ *
+ * What the legend IS made of, though, is declared right here: each entry below
+ * subscribes the row its artefact puts in the box (`CommandDescriptor.legend`,
+ * `docs/adr/0026`), so the row and the gesture cannot drift apart the way a
+ * second hand-written table did.
  *
  * That does not make the ORDER free — it makes it a fifteenth entry away from
  * mattering. Add one more of anything, an artefact or a second export, and the
@@ -75,6 +89,78 @@ import {
  * database, then the two container flavours that are a container with a picture,
  * then the relationship, then the two boundaries, then the export.
  */
+/* ── The legend, SUBSCRIBED rather than tabulated (`docs/adr/0026`) ────── */
+
+/**
+ * The legend's own three section titles — this framework's word about this
+ * framework's vocabulary, which is why they are keyed per framework and never
+ * shared with UML's identical three (`translation-service/README.md`).
+ *
+ * They are DECLARED rather than derived from the commands' `category` because
+ * the catalogue files a boundary under `boundaries` and the legend calls the
+ * same thing a "Frame": one is where a gesture sits in a toolbox, the other is
+ * what the drawing is. The keys are the ones already shipped to the host
+ * catalogue, unchanged.
+ */
+const SECTION_ELEMENTS: ChromeWording = [
+  'com.labre.c4.legend.section.elements',
+  'Elements',
+];
+const SECTION_FRAMES: ChromeWording = [
+  'com.labre.c4.legend.section.frames',
+  'Frames',
+];
+const SECTION_RELATIONS: ChromeWording = [
+  'com.labre.c4.legend.section.relations',
+  'Relations',
+];
+
+/** Every section wording above, for `translations.ts`'s manifest. */
+export const C4_LEGEND_SECTION_WORDINGS: readonly ChromeWording[] = [
+  SECTION_ELEMENTS,
+  SECTION_FRAMES,
+  SECTION_RELATIONS,
+];
+
+/**
+ * One element row, in the very fill {@link NODE_PALETTE} paints that kind with
+ * — never a second literal, so restyling the pack restyles its swatches. The
+ * WORDING is nowhere here either: the engine reads the role's own label, so
+ * renaming a role renames its row.
+ *
+ * `exact` is asked for on the container and nowhere else. `c4:database`
+ * specialises `c4:container`, so an inclusive row on the parent would put a
+ * blue square on a board carrying nothing but cylinders — a row naming a shape
+ * that is nowhere on the diagram. The other four element roles are childless,
+ * so the flag would change nothing for them and marks only the place where the
+ * distinction is real.
+ */
+function elementEntry(
+  role: RoleId,
+  fill: string,
+  exact = false
+): CommandLegendEntry {
+  return {
+    role,
+    row: { swatch: 'square', color: fill },
+    ...(exact ? { exact } : {}),
+    section: SECTION_ELEMENTS,
+  };
+}
+
+/**
+ * A line row: a boundary and a relationship are both drawn, never filled, and
+ * both are dashed on the canvas — a filled chip would picture the one thing
+ * this board deliberately does not paint.
+ */
+function lineEntry(
+  role: RoleId,
+  color: string,
+  section: ChromeWording
+): CommandLegendEntry {
+  return { role, row: { swatch: 'line', color, dashed: true }, section };
+}
+
 interface Spec {
   id: string;
   label: string;
@@ -97,6 +183,18 @@ interface Spec {
   element: string;
   /** Places the framework's board — see `CommandTelemetry.board`. */
   board?: true;
+  /**
+   * The legend row this entry's artefact puts on the board it is drawn on.
+   *
+   * Absent on the four VARIANTS and on the container boundary, and neither is
+   * an oversight: `mobile`, `browser`, `person-ext` and `system-ext` carry the
+   * role of the thing they vary (`roles.ts`), and a container boundary is a
+   * `c4:boundary` — so each is already covered by another entry's row, and a
+   * second row would be the same role under a different name.
+   */
+  legend?: CommandLegendEntry;
+  /** The BOARD's own box. Declared once, on the command that puts it down. */
+  legendBox?: CommandLegendBox;
   run: (std: BlockStdScope) => void;
 }
 
@@ -110,6 +208,8 @@ const SPECS: Spec[] = [
     category: 'diagrams',
     element: 'board',
     board: true,
+    // Wider than the shared 260: the longest C4 row reads "Software system".
+    legendBox: { width: 290 },
     run: createC4Board,
   },
   /* ── The base components: the four levels, each plain form immediately
@@ -121,6 +221,7 @@ const SPECS: Spec[] = [
     kind: 'artefact',
     category: 'elements',
     element: 'node:person',
+    legend: elementEntry(C4_ROLE.person, NODE_PALETTE.person.fill),
     run: std => createC4Node(std, 'person'),
   },
   {
@@ -139,6 +240,7 @@ const SPECS: Spec[] = [
     kind: 'artefact',
     category: 'elements',
     element: 'node:system',
+    legend: elementEntry(C4_ROLE.system, NODE_PALETTE.system.fill),
     run: std => createC4Node(std, 'system'),
   },
   {
@@ -157,6 +259,7 @@ const SPECS: Spec[] = [
     kind: 'artefact',
     category: 'elements',
     element: 'node:container',
+    legend: elementEntry(C4_ROLE.container, NODE_PALETTE.container.fill, true),
     run: std => createC4Node(std, 'container'),
   },
   {
@@ -166,6 +269,7 @@ const SPECS: Spec[] = [
     kind: 'artefact',
     category: 'elements',
     element: 'node:component',
+    legend: elementEntry(C4_ROLE.component, NODE_PALETTE.component.fill),
     run: std => createC4Node(std, 'component'),
   },
   /* ── The niche components: a container with a picture on it ─────────── */
@@ -178,6 +282,7 @@ const SPECS: Spec[] = [
     kind: 'artefact',
     category: 'elements',
     element: 'node:database',
+    legend: elementEntry(C4_ROLE.database, NODE_PALETTE.database.fill),
     run: std => createC4Node(std, 'database'),
   },
   {
@@ -208,6 +313,11 @@ const SPECS: Spec[] = [
     kind: 'tool',
     category: 'relations',
     element: 'connector:relationship',
+    legend: lineEntry(
+      C4_ROLE.relationship,
+      RELATIONSHIP_STROKE,
+      SECTION_RELATIONS
+    ),
     run: activateC4Relationship,
   },
   {
@@ -217,6 +327,9 @@ const SPECS: Spec[] = [
     kind: 'artefact',
     category: 'boundaries',
     element: 'boundary:system',
+    // ONE row for both boundaries, written on the PARENT role: a container
+    // boundary IS a boundary, and two rows would name one frame twice.
+    legend: lineEntry(C4_ROLE.boundary, BOUNDARY_STROKE, SECTION_FRAMES),
     run: std => createC4Boundary(std, 'system'),
   },
   {
@@ -249,6 +362,8 @@ const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, order) => ({
   availability: 'always',
   run: spec.run,
   telemetry: { framework: 'c4', element: spec.element, board: spec.board },
+  ...(spec.legend ? { legend: spec.legend } : {}),
+  ...(spec.legendBox ? { legendBox: spec.legendBox } : {}),
 }));
 
 /**

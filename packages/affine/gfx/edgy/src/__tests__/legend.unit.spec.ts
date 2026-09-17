@@ -1,85 +1,117 @@
-import { autoLegendSections } from '@labre/affine-gfx-ddd-shared';
+import { legendFromCommands } from '@labre/affine-block-surface';
 import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
 import {
-  TranslationProvider,
-  translateKey,
-} from '@labre/affine-shared/services';
-import type { BlockStdScope } from '@labre/std';
+  type BlockStdScope,
+  CommandDescriptorIdentifier,
+  type CommandLegendEntry,
+} from '@labre/std';
 import { describe, expect, it } from 'vitest';
 
-import { EDGY_AUTO_LEGEND } from '../legend';
+import { edgyCommands } from '../commands';
 import {
   EDGY_DYNAMIC_NODES,
   EDGY_ZONE_FILL,
   EDGY_ZONES,
   edgyElementLabel,
+  edgyElementLabelKey,
   type EdgyElementName,
 } from '../metamodel';
 import { NODE_FILL, NODE_LABEL, NODE_STROKE } from '../node/consts';
 import { EDGY_ROLE, EDGY_ROLES, EDGY_VERB_ROLE } from '../roles';
 
 /**
- * The EDGY auto-legend is a TABLE over the metamodel. What is worth freezing is
- * its DERIVATION: every element the metamodel declares has its row, the colour
- * the legend shows for one IS the colour the diagram paints it with, and the
- * wording comes from the vocabulary — so a thirteenth element gets its row for
- * free and a re-coloured zone re-colours its swatches.
+ * The EDGY legend is a SUBSCRIPTION over the metamodel (`docs/adr/0026`): every
+ * row is declared by the command that draws the artefact, so there is no second
+ * table here to keep in step with the first. What is worth freezing is the
+ * DERIVATION — every element the metamodel declares has its row, the colour the
+ * legend shows for one IS the colour the diagram paints it with, and the wording
+ * comes from the vocabulary, so a thirteenth element gets its row for free and a
+ * re-coloured zone re-colours its swatches.
  */
-describe('the EDGY auto-legend table derives from the metamodel', () => {
-  const entries = EDGY_AUTO_LEGEND.sections.flatMap(s => s.entries);
 
-  it('carries a titleKey for the box title, translated with a host and unchanged without one', () => {
-    expect(EDGY_AUTO_LEGEND.title).toBe('Legend');
-    expect(EDGY_AUTO_LEGEND.titleKey).toBe('com.labre.board.legend.title');
-    const NO_HOST_STD = {
-      getOptional: () => undefined,
-    } as unknown as BlockStdScope;
-    expect(
-      translateKey(
-        NO_HOST_STD,
-        EDGY_AUTO_LEGEND.titleKey!,
-        EDGY_AUTO_LEGEND.title
-      )
-    ).toBe('Legend');
-    const HOSTED_STD = {
-      getOptional: (id: unknown) =>
-        id === TranslationProvider
-          ? {
-              t: (key: string) =>
-                key === EDGY_AUTO_LEGEND.titleKey ? 'Légende' : undefined,
-            }
-          : undefined,
-    } as unknown as BlockStdScope;
-    expect(
-      translateKey(
-        HOSTED_STD,
-        EDGY_AUTO_LEGEND.titleKey!,
-        EDGY_AUTO_LEGEND.title
-      )
-    ).toBe('Légende');
+/** Every row the toolbox subscribes, in the order its commands declare them. */
+const entries: CommandLegendEntry[] = edgyCommands.flatMap(command =>
+  command.legend
+    ? Array.isArray(command.legend)
+      ? [...command.legend]
+      : [command.legend]
+    : []
+);
+
+/**
+ * A std with the toolbox registered and NO host catalogue, so
+ * `legendFromCommands` reads exactly the commands the editor registers and every
+ * wording falls through to its English fallback.
+ */
+const LEGEND_STD = {
+  provider: {
+    getAll: (identifier: unknown) =>
+      new Map<string, unknown>(
+        identifier === (CommandDescriptorIdentifier as unknown)
+          ? edgyCommands.map((command, index) => [`c-${index}`, command])
+          : [['edgy', EDGY_ROLES]]
+      ),
+  },
+  getOptional: () => undefined,
+} as unknown as BlockStdScope;
+
+const sectionsOf = (present: string[]) =>
+  legendFromCommands(LEGEND_STD, 'edgy', new Set(present));
+
+const labels = (present: string[]) =>
+  sectionsOf(present).map(section => ({
+    title: section.title,
+    rows: section.rows.map(row => row.label),
+  }));
+
+/** Everything the notation can put on a board, so every row lights up. */
+const EVERYTHING = entries.map(entry => entry.role);
+
+describe('the EDGY legend derives from the metamodel', () => {
+  it('leaves the box its generic chrome, and declares no layout of its own', () => {
+    // Every board that has a legend says "Legend", through the one
+    // `BOARD_LEGEND_TITLE` key the platform falls back to — and EDGY's rows are
+    // 16-unit colour chips, which is exactly what the shared box is built for.
+    expect(edgyCommands.filter(command => command.legendBox)).toEqual([]);
   });
 
   it('groups by zone: the three facets, the intersections, the bases, the relations', () => {
-    expect(EDGY_AUTO_LEGEND.sections.map(s => s.title)).toEqual([
-      ...EDGY_ZONES.filter(z => z.group === 'facet').map(z =>
-        edgyElementLabel(z.id)
+    expect(sectionsOf(EVERYTHING).map(section => section.title)).toEqual([
+      ...EDGY_ZONES.filter(zone => zone.group === 'facet').map(zone =>
+        edgyElementLabel(zone.id)
       ),
       'Intersections',
       'Base elements',
       'Relations',
     ]);
+    // The facets and the intersections reuse the metamodel's own seed keys —
+    // the legend and the facets diagram say "Identity" with ONE key, not two.
+    const sectionKeyOf = (name: EdgyElementName) =>
+      entries.find(entry => entry.role === EDGY_ROLE[name])?.section?.[0];
+    expect(sectionKeyOf('content')).toBe(edgyElementLabelKey('identity'));
+    expect(sectionKeyOf('organisation')).toBe(
+      'com.labre.edgy.seed.intersections-title'
+    );
   });
 
   it('gives each of the twelve official elements exactly one row', () => {
     const names = Object.keys(EDGY_DYNAMIC_NODES) as EdgyElementName[];
     const listed = entries
-      .map(e => e.role)
+      .map(entry => entry.role)
       .filter(role => names.some(name => EDGY_ROLE[name] === role));
     expect(listed).toHaveLength(names.length);
     expect(new Set(listed).size).toBe(names.length);
     for (const name of names) {
       expect(listed, `no legend row for ${name}`).toContain(EDGY_ROLE[name]);
     }
+    // All twelve on ONE command: they are stamped by the "EDGY dynamic"
+    // template and by nothing else, and no "add a Content" gesture exists.
+    const dynamic = edgyCommands.find(
+      command => command.id === 'edgy.insertDynamic'
+    );
+    expect(
+      (dynamic?.legend as readonly CommandLegendEntry[] | undefined)?.length
+    ).toBe(names.length);
   });
 
   it('shows each element in the fill its zone is drawn with', () => {
@@ -90,43 +122,52 @@ describe('the EDGY auto-legend table derives from the metamodel', () => {
       const entry = entries.find(e => e.role === EDGY_ROLE[name]);
       expect(entry?.row.color).toBe(EDGY_ZONE_FILL[node.zone]);
       expect(entry?.row.swatch).toBe('square');
-      // The wording is the vocabulary's, which is the metamodel's own name.
-      expect(entry?.row.label).toBe(edgyElementLabel(name));
-      expect(entry?.row.label).toBe(EDGY_ROLES[EDGY_ROLE[name]].labelFallback);
+      // The wording is the vocabulary's, which is the metamodel's own name —
+      // and it is nowhere in the subscription, so renaming the role renames it.
+      expect(entry).not.toHaveProperty('labelWording');
+      expect(labels([EDGY_ROLE[name]])[0].rows).toEqual([
+        edgyElementLabel(name),
+      ]);
+      expect(EDGY_ROLES[EDGY_ROLE[name]].labelFallback).toBe(
+        edgyElementLabel(name)
+      );
     }
   });
 
   it('lists the four base elements in the fill the palette gives them', () => {
-    const base = EDGY_AUTO_LEGEND.sections.find(
-      s => s.title === 'Base elements'
+    const base = sectionsOf(EVERYTHING).find(
+      section => section.title === 'Base elements'
     );
-    expect(base?.entries.map(e => e.role)).toEqual([
-      EDGY_ROLE.people,
-      EDGY_ROLE.outcome,
-      EDGY_ROLE.object,
-      EDGY_ROLE.activity,
-    ]);
-    expect(base?.entries.map(e => e.row.color)).toEqual(
-      Array(4).fill(NODE_FILL)
-    );
-    expect(base?.entries.map(e => e.row.label)).toEqual([
+    expect(base?.rows.map(row => row.label)).toEqual([
       NODE_LABEL.people,
       NODE_LABEL.outcome,
       NODE_LABEL.object,
       NODE_LABEL.activity,
     ]);
+    expect(base?.rows.map(row => row.color)).toEqual(Array(4).fill(NODE_FILL));
+    // The order is the four commands' own (`addPeople`…`addActivity`), which is
+    // the order the sub-menu offers them in: one `order`, both surfaces.
+    expect(
+      edgyCommands
+        .filter(command => command.legend && command.category === 'elements')
+        .map(command => command.id)
+    ).toEqual([
+      'edgy.addPeople',
+      'edgy.addOutcome',
+      'edgy.addObject',
+      'edgy.addActivity',
+    ]);
   });
 
   it('says "Relation" once, in the stroke relations are drawn with', () => {
-    const relations = EDGY_AUTO_LEGEND.sections.find(
-      s => s.title === 'Relations'
+    const relations = sectionsOf(EVERYTHING).find(
+      section => section.title === 'Relations'
     );
-    expect(relations?.entries).toHaveLength(1);
-    const [entry] = relations!.entries;
-    expect(entry.role).toBe(EDGY_ROLE.relation);
-    expect(entry.row.swatch).toBe('line');
-    expect(entry.row.color).toBe(NODE_STROKE);
-    expect(entry.row.label).toBe(EDGY_ROLES[EDGY_ROLE.relation].labelFallback);
+    expect(relations?.rows).toHaveLength(1);
+    const [row] = relations!.rows;
+    expect(row.swatch).toBe('line');
+    expect(row.color).toBe(NODE_STROKE);
+    expect(row.label).toBe(EDGY_ROLES[EDGY_ROLE.relation].labelFallback);
   });
 
   it('names only roles the vocabulary declares', () => {
@@ -137,24 +178,27 @@ describe('the EDGY auto-legend table derives from the metamodel', () => {
       ).toBeDefined();
     }
   });
+
+  it('never stamps a ROLE on a swatch', () => {
+    // A legend is drawn ON the background it documents and the scan is by role:
+    // a swatch carrying one would list itself the next time a legend was made.
+    for (const entry of entries) {
+      expect(entry.row.props ?? {}, entry.role).not.toHaveProperty('role');
+    }
+  });
+
+  it('lists nothing for the two frames the elements are drawn inside', () => {
+    // The facets Venn and the board are the paper, not the drawing.
+    for (const id of ['edgy.addFacets', 'edgy.addBoard']) {
+      expect(
+        edgyCommands.find(command => command.id === id)?.legend,
+        id
+      ).toBeUndefined();
+    }
+  });
 });
 
 describe('what an EDGY board puts in its legend', () => {
-  // No host catalogue: every `translateKey` call falls through to the fallback
-  // it is given, which is what lets this describe block still assert on the
-  // plain English wording.
-  const NO_HOST_STD = {
-    getOptional: () => undefined,
-  } as unknown as BlockStdScope;
-
-  const labels = (present: string[]) =>
-    autoLegendSections(new Set(present), EDGY_AUTO_LEGEND, NO_HOST_STD).map(
-      s => ({
-        title: s.title,
-        rows: s.rows.map(r => r.label),
-      })
-    );
-
   it('lists the elements actually drawn on it, and nothing else', () => {
     expect(
       labels([EDGY_ROLE.content, EDGY_ROLE.purpose, EDGY_ROLE.task])
@@ -196,11 +240,9 @@ describe('what an EDGY board puts in its legend', () => {
     // The legend reads the REAL vocabulary — the twelve still specialise their
     // kind for every rule that walks it — so the four base rows have to say for
     // themselves that they mean the bare kind and not the family.
-    const exact = EDGY_AUTO_LEGEND.sections
-      .flatMap(s => s.entries)
-      .filter(e => e.exact)
-      .map(e => e.role);
-    expect(exact).toEqual([
+    expect(
+      entries.filter(entry => entry.exact).map(entry => entry.role)
+    ).toEqual([
       EDGY_ROLE.people,
       EDGY_ROLE.outcome,
       EDGY_ROLE.object,
@@ -217,7 +259,7 @@ describe('what an EDGY board puts in its legend', () => {
     // Every one of the twelve, drawn alone: the kind it specialises must not
     // put a white square in the box.
     for (const name of Object.keys(EDGY_DYNAMIC_NODES) as EdgyElementName[]) {
-      const titles = labels([EDGY_ROLE[name]]).map(s => s.title);
+      const titles = labels([EDGY_ROLE[name]]).map(section => section.title);
       expect(titles, `${name} lit up the base section`).not.toContain(
         'Base elements'
       );

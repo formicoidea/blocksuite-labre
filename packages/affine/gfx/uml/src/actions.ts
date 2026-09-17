@@ -1,9 +1,9 @@
 import {
+  createBoardLegend,
   DefaultTool,
   runInterchangeImportFile,
 } from '@labre/affine-block-surface';
 import { ConnectorTool } from '@labre/affine-gfx-connector';
-import { createAutoLegend } from '@labre/affine-gfx-ddd-shared';
 import {
   ConnectorMode,
   TextAlign,
@@ -57,7 +57,6 @@ import {
   UML_SLOTS_SEED,
   UML_UNLABELLED_KINDS,
 } from './keywords.js';
-import { UML_AUTO_LEGEND } from './legend.js';
 import { umlNodeProps, umlTextProps } from './presets.js';
 import {
   UML_ROLE,
@@ -786,7 +785,8 @@ export function umlDiagramsSelected(
  * The FIRST selected frame and no other: a legend is placed relative to one
  * background, and two of them would put two boxes on top of whatever sits in
  * that corner. Everything about the gesture — the scan, the placement, the box —
- * is `createAutoLegend`'s; UML contributes {@link UML_AUTO_LEGEND}, a table.
+ * is `createBoardLegend`'s; UML contributes nothing but the rows its own
+ * commands subscribe (`commands.ts`, `docs/adr/0026`).
  *
  * The one action in this file with no command behind it, exactly as in C4: the
  * legend is reached from the selected frame's contextual toolbar and from
@@ -804,7 +804,7 @@ export function umlDiagramsSelected(
 export function createUmlLegend(std: BlockStdScope): void {
   const diagram = umlDiagramsSelected(std)[0];
   if (!diagram) return;
-  createAutoLegend(std, diagram, UML_AUTO_LEGEND);
+  createBoardLegend(std, diagram, 'uml');
 }
 
 /* ── Export (PlantUML, XMI 2.5.1) ──────────────────────────────────────── */

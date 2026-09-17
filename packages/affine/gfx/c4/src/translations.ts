@@ -7,7 +7,7 @@ import {
 } from '@labre/std';
 
 import { C4_BOARD_BACKGROUND, C4_BOUNDARY_BACKGROUND } from './background.js';
-import { c4Commands } from './commands.js';
+import { c4Commands, C4_LEGEND_SECTION_WORDINGS } from './commands.js';
 import {
   BOUNDARY_LABEL,
   boundaryLabelKey,
@@ -16,7 +16,6 @@ import {
   NODE_LABEL,
   nodeLabelKey,
 } from './consts.js';
-import { C4_LEGEND_SECTION_WORDINGS } from './legend.js';
 import { C4_BOARD_LEVEL_MENU } from './levels.js';
 import { C4_PROFILES } from './profiles.js';
 import { C4_READINGS } from './reading.js';

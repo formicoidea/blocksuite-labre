@@ -1,22 +1,21 @@
-import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
-import { createAutoLegend, dddLegendIcon } from '@labre/affine-gfx-ddd-shared';
+import {
+  EdgelessCRUDIdentifier,
+  legendToolbarAction,
+  validationToolbarConfig,
+} from '@labre/affine-block-surface';
 import {
   EdgyBoardElementModel,
   EdgyFacetsElementModel,
 } from '@labre/affine-model';
 import {
-  BOARD_LEGEND_NOTATION,
   BOARD_RESIZE_TOGGLE,
   type ChromeWording,
-  TelemetryProvider,
   type ToolbarContext,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
 } from '@labre/affine-shared/services';
 import { BlockFlavourIdentifier } from '@labre/std';
 import { html, type TemplateResult } from 'lit';
-
-import { EDGY_AUTO_LEGEND } from '../legend';
 
 /** The two toolbar tooltips this file used to hard-code as English literals. */
 const FACET_LABELS_TOGGLE: ChromeWording = [
@@ -124,43 +123,6 @@ function booleanToggle<
   };
 }
 
-/**
- * The legend action, shared by the two EDGY backgrounds: both frame the same
- * notation, so both answer the same question — "what is actually drawn here" —
- * with the same table ({@link EDGY_AUTO_LEGEND}) and the same box.
- *
- * Registered ALWAYS-ON (`EdgyRenderViewExtension`) with the toggles it sits
- * next to: a legend is real, editable elements written into the document, so
- * generating one is authoring, not tooling a flag may take away
- * (`docs/adr/0009`).
- */
-function legendAction<
-  T extends typeof EdgyFacetsElementModel | typeof EdgyBoardElementModel,
->(Model: T, id: string) {
-  return {
-    id,
-    tooltipWording: BOARD_LEGEND_NOTATION,
-    icon: dddLegendIcon,
-    run(ctx: ToolbarContext) {
-      const background = ctx.getSurfaceModelsByType(Model)[0] as unknown as
-        | { xywh: string }
-        | undefined;
-      if (!background) return;
-      createAutoLegend(ctx.std, background, EDGY_AUTO_LEGEND);
-      ctx.std.getOptional(TelemetryProvider)?.track('FrameworkLegendCreated', {
-        // The WIRE value from `frameworks.ts` (`telemetryKey`), which for EDGY
-        // happens to be the module id itself. Same field set as Wardley's and
-        // the three DDD legend buttons, so the four are comparable.
-        framework: 'edgy',
-        element: 'legend',
-        page: 'whiteboard editor',
-        segment: 'element toolbar',
-        module: 'edgy toolbar',
-      });
-    },
-  };
-}
-
 export const edgyToolbarConfig = {
   actions: [
     booleanToggle(
@@ -179,7 +141,6 @@ export const edgyToolbarConfig = {
     ),
     // No spotlight toggle here: the hover spotlight is BOARD logic and lives on
     // the EDGY board toolbar below. The Venn only carries APPEARANCE (#195).
-    legendAction(EdgyFacetsElementModel, 'c.legend'),
   ],
   when: ctx => ctx.getSurfaceModelsByType(EdgyFacetsElementModel).length > 0,
 } as const satisfies ToolbarModuleConfig;
@@ -205,7 +166,6 @@ export const edgyBoardToolbarConfig = {
       SpotlightIcon,
       'spotlightEnabled'
     ),
-    legendAction(EdgyBoardElementModel, 'c.legend'),
   ],
   when: ctx => ctx.getSurfaceModelsByType(EdgyBoardElementModel).length > 0,
 } as const satisfies ToolbarModuleConfig;
@@ -213,4 +173,64 @@ export const edgyBoardToolbarConfig = {
 export const edgyBoardToolbarExtension = ToolbarModuleExtension({
   id: BlockFlavourIdentifier('affine:surface:edgyBoard'),
   config: edgyBoardToolbarConfig,
+});
+
+/**
+ * A background's flag-gated row, WHOLE: the legend button and the Validation
+ * dropdown, in ONE module — registered by `EdgyViewExtension` on the `custom:`
+ * flavour slot of each of the two frames.
+ *
+ * ## Why one module and not two
+ *
+ * `renderToolbar` merges exactly four slots per element and
+ * `ToolbarModuleExtension` binds by DI variant, so a second module claiming
+ * `custom:affine:surface:edgy` throws `DuplicateServiceDefinitionError` before
+ * the editor finishes setting up. The always-on module above holds the
+ * APPEARANCE toggles a stored board must keep; these two entries are gated by
+ * the same flag and appear together or not at all.
+ *
+ * ## Why the legend moved out of the always-on half
+ *
+ * It used to sit with the toggles, argued as authoring. `docs/adr/0026` (which
+ * amends `docs/adr/0009`) reverses that reading: GENERATING a legend is
+ * tooling — it is the framework telling you what its notation means — while the
+ * legend it wrote is content, made of plain shapes, text and this pack's own
+ * always-on renderers, and keeps being painted with the flag off.
+ *
+ * `c.legend` and not the factory's default `b.`: the sort is lexicographic and
+ * both frames already spend `a.` and `b.` on their toggles.
+ */
+function toolingConfig<
+  T extends typeof EdgyFacetsElementModel | typeof EdgyBoardElementModel,
+>(Model: T): ToolbarModuleConfig {
+  return {
+    actions: [
+      legendToolbarAction({
+        id: 'c.legend',
+        Model,
+        owner: 'edgy',
+        framework: 'edgy',
+      }),
+      // The generic dropdown, not an EDGY variant of it: the config names no
+      // framework — it reads the registered rules and profiles — so this is the
+      // very same object wardley, bpmn, the context map and C4 register.
+      ...validationToolbarConfig.actions,
+    ],
+    when: (ctx: ToolbarContext) => ctx.getSurfaceModelsByType(Model).length > 0,
+  };
+}
+
+export const edgyToolingToolbarConfig = toolingConfig(EdgyFacetsElementModel);
+export const edgyBoardToolingToolbarConfig = toolingConfig(
+  EdgyBoardElementModel
+);
+
+export const edgyToolingToolbarExtension = ToolbarModuleExtension({
+  id: BlockFlavourIdentifier('custom:affine:surface:edgy'),
+  config: edgyToolingToolbarConfig,
+});
+
+export const edgyBoardToolingToolbarExtension = ToolbarModuleExtension({
+  id: BlockFlavourIdentifier('custom:affine:surface:edgyBoard'),
+  config: edgyBoardToolingToolbarConfig,
 });

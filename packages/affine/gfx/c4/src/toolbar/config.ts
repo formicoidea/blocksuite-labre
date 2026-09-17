@@ -1,11 +1,10 @@
 import {
   EdgelessCRUDIdentifier,
+  legendToolbarAction,
   validationToolbarConfig,
 } from '@labre/affine-block-surface';
-import { dddLegendIcon } from '@labre/affine-gfx-ddd-shared';
 import { C4BoardElementModel } from '@labre/affine-model';
 import {
-  BOARD_LEGEND_NOTATION,
   BOARD_RESIZE_TOGGLE,
   commandMoreAction,
   TelemetryProvider,
@@ -17,7 +16,6 @@ import {
 import { BlockFlavourIdentifier } from '@labre/std';
 import { html, nothing } from 'lit';
 
-import { createC4Legend } from '../actions';
 import { C4_BOARD_LEVEL_MENU, type C4BoardLevelOption } from '../levels';
 
 import { c4ExportMermaidIcon } from './icons';
@@ -87,15 +85,14 @@ const CheckIcon = html`<svg
  * The PO's call is that generating one belongs to a board you have SELECTED and
  * to nothing else: it is not an artefact to pick off a palette, and an entry in
  * a catalogue of things C4 draws would offer it to a user with no board in front
- * of them. So there is no `c4.legend` command, this button is the only way to
- * reach it, and the telemetry it owes is emitted by hand below.
+ * of them. So there is no `c4.legend` command, and this button is the only way
+ * to reach it.
  *
- * That is the same shape — and the same exception — the Context Map board makes
- * (`ddd-context-map/src/toolbar/board-config.ts`), down to the payload, so the
- * two frameworks' legends stay comparable on one dashboard. The cost is the one
- * the bottleneck exists to avoid and is accepted knowingly: this `track()` call
- * is a second emitter, and it is on whoever edits it to keep the wire values
- * matching what `reportCommandTelemetry` would have sent.
+ * That is the same shape — and the same exception — every other framework with a
+ * legend makes. The cost is the one the bottleneck exists to avoid: the
+ * telemetry it owes is emitted outside `runCommand`. It is emitted ONCE, by the
+ * shared factory (`legend-toolbar.ts`), so the seven copies of those wire values
+ * that used to sit in seven files can no longer drift apart.
  *
  * ## Two modules on one element, and why
  *
@@ -332,32 +329,21 @@ const levelPickerAction = {
 /**
  * The legend button — the flag-gated half of the row (see the note above).
  *
- * `b.` sorts it after the resize toggle, so the two modules render as the one
- * row a user sees rather than in registration order.
+ * The SHARED factory, not a C4 copy of it: the button, the placement, the box
+ * and the one `FrameworkLegendCreated` emission all live in the surface block
+ * (`legend-toolbar.ts`, `docs/adr/0026`), and C4 hands it the board model to
+ * look for, whose commands to read the rows off, and the historical wire value.
+ *
+ * `b.` — the factory's default — sorts it after the resize toggle, so the two
+ * modules render as the one row a user sees rather than in registration order.
  */
 export const c4LegendToolbarConfig = {
   actions: [
-    {
-      id: 'b.legend',
-      tooltipWording: BOARD_LEGEND_NOTATION,
-      icon: dddLegendIcon,
-      run(ctx: ToolbarContext) {
-        createC4Legend(ctx.std);
-        ctx.std
-          .getOptional(TelemetryProvider)
-          ?.track('FrameworkLegendCreated', {
-            // The WIRE values, and they are the ones `reportCommandTelemetry`
-            // would have sent for a `kind: 'legend'` command — `framework` from
-            // the descriptor's `telemetryKey`, `element: 'legend'` as Wardley
-            // and the Context Map both emit, so the three are one metric.
-            framework: 'c4',
-            element: 'legend',
-            page: 'whiteboard editor',
-            segment: 'element toolbar',
-            module: 'c4 toolbar',
-          });
-      },
-    },
+    legendToolbarAction({
+      Model: C4BoardElementModel,
+      owner: 'c4',
+      framework: 'c4',
+    }),
   ],
   when: (ctx: ToolbarContext) =>
     ctx.getSurfaceModelsByType(C4BoardElementModel).length > 0,

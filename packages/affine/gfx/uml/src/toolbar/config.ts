@@ -1,9 +1,9 @@
 import {
   EdgelessCRUDIdentifier,
   generateElementId,
+  legendToolbarAction,
   validationToolbarConfig,
 } from '@labre/affine-block-surface';
-import { createAutoLegend, dddLegendIcon } from '@labre/affine-gfx-ddd-shared';
 import {
   UmlDiagramElementModel,
   UmlFragmentElementModel,
@@ -13,7 +13,6 @@ import {
 } from '@labre/affine-model';
 import {
   BOARD_ADD_BAND,
-  BOARD_LEGEND_NOTATION,
   BOARD_ORIENTATION_TOGGLE,
   BOARD_RESIZE_TOGGLE,
   commandMoreAction,
@@ -32,8 +31,6 @@ import {
   type UmlDiagramKindOption,
   type UmlFragmentOperatorOption,
 } from '../kinds.js';
-import { UML_AUTO_LEGEND } from '../legend.js';
-
 import { umlExportPlantumlIcon, umlExportXmiIcon } from './icons.js';
 
 const ResizeIcon = html`<svg
@@ -334,48 +331,31 @@ const kindPickerAction = {
  * generating one belongs to a frame you have SELECTED and to nothing else — it
  * is not an artefact to pick off a palette, and an entry in a catalogue of
  * things UML draws would offer it to a user with no diagram in front of them. So
- * there is no `uml.legend` command, this button is the only way to reach it, and
- * the telemetry it owes is emitted BY HAND below.
+ * there is no `uml.legend` command, and this button is the only way to reach it.
  *
- * The cost is the one the bottleneck exists to avoid and is accepted knowingly:
- * this `track()` call is a second emitter, and it is on whoever edits it to keep
- * the wire values matching what `reportCommandTelemetry` would have sent.
+ * The cost is the one the bottleneck exists to avoid: the telemetry it owes is
+ * emitted outside `runCommand`. It is emitted ONCE, by the shared factory
+ * (`legend-toolbar.ts`), so the seven copies of those wire values that used to
+ * sit in seven files can no longer drift apart.
  *
- * `b.` sorts it after the resize toggle, so the two modules render as the one
- * row a user sees rather than in registration order.
+ * `b.` — the factory's default — sorts it after the resize toggle, so the two
+ * modules render as the one row a user sees rather than in registration order.
  */
 export const umlLegendToolbarConfig = {
   actions: [
-    {
-      id: 'b.legend',
-      tooltipWording: BOARD_LEGEND_NOTATION,
-      icon: dddLegendIcon,
-      run(ctx: ToolbarContext) {
-        // The FIRST selected frame and no other: a legend is placed relative to
-        // one background, and two of them would put two boxes on top of
-        // whatever sits in that corner. Everything about the gesture — the
-        // scan, the placement, the box — is `createAutoLegend`'s; UML
-        // contributes `UML_AUTO_LEGEND`, a table.
-        if (ctx.std.store.readonly) return;
-        const [diagram] = ctx.getSurfaceModelsByType(UmlDiagramElementModel);
-        if (!diagram) return;
-        createAutoLegend(ctx.std, diagram, UML_AUTO_LEGEND);
-
-        ctx.std
-          .getOptional(TelemetryProvider)
-          ?.track('FrameworkLegendCreated', {
-            // The WIRE values, and they are the ones `reportCommandTelemetry`
-            // would have sent for a `kind: 'legend'` command — `framework` from
-            // the descriptor's `telemetryKey`, `element: 'legend'` as C4,
-            // Wardley and the Context Map all emit, so the four are one metric.
-            framework: 'uml',
-            element: 'legend',
-            page: 'whiteboard editor',
-            segment: 'element toolbar',
-            module: 'uml toolbox',
-          });
-      },
-    },
+    // The SHARED factory, not a UML copy of it: the button, the first selected
+    // frame and no other, the scan, the placement, the box and the one
+    // `FrameworkLegendCreated` emission all live in the surface block
+    // (`legend-toolbar.ts`, `docs/adr/0026`). UML hands it the frame model to
+    // look for, whose commands to read the rows off, and the two historical wire
+    // values — `module` is `uml toolbox` here where the other six say
+    // `<framework> toolbar`, so it is passed rather than derived.
+    legendToolbarAction({
+      Model: UmlDiagramElementModel,
+      owner: 'uml',
+      framework: 'uml',
+      module: 'uml toolbox',
+    }),
   ],
   when: (ctx: ToolbarContext) =>
     ctx.getSurfaceModelsByType(UmlDiagramElementModel).length > 0,

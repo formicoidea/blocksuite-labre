@@ -1,37 +1,73 @@
-import { autoLegendSections, roleLabel } from '@labre/affine-gfx-ddd-shared';
+import { legendFromCommands } from '@labre/affine-block-surface';
 import { PointStyle, StrokeStyle, type UmlNodeKind } from '@labre/affine-model';
-import type { BlockStdScope } from '@labre/std';
+import {
+  type BlockStdScope,
+  CommandDescriptorIdentifier,
+  type CommandLegendEntry,
+} from '@labre/std';
 import type { RoleId } from '@labre/std/gfx';
 import { describe, expect, it } from 'vitest';
 
+import { umlCommands } from '../commands.js';
 import { UML_NODE_BOX } from '../consts.js';
 import { UML_EDGE_STYLE, type UmlEdgeRole } from '../edge-styles.js';
-import { UML_AUTO_LEGEND } from '../legend.js';
+import { UML_LEGEND_BOX } from '../legend.js';
 import { umlNodeProps } from '../presets.js';
 import { UML_ROLE, UML_ROLE_OF_KIND, UML_ROLES } from '../roles.js';
 
-/** A std with no host catalogue: every wording resolves to its fallback. */
-const NO_HOST_STD = {
-  getOptional: () => null,
-} as unknown as BlockStdScope;
-
 /**
- * The diagram frame's automatic legend, checked the way the three DDD boards'
- * are: not for its prose — there is none, every row's wording is the role
+ * The diagram frame's automatic legend, checked the way the other packs' are:
+ * not for its prose — there is none, every row's wording is the role
  * vocabulary's own — but for its COVERAGE and for the two decisions that would
  * otherwise read as oversights.
  *
  * Coverage is what this file is worth, and it is the failure it exists to
  * prevent: phase 2 added twenty-seven artefacts and six relationships to
- * `roles.ts`, and not one of them got a legend row. Nothing broke — an
- * unlisted role simply never appears — so a deployment sheet's legend said
- * "Legend" and listed nothing, and no test anywhere named the absence. The
- * assertions below are DERIVED from the vocabulary, so the next phase's roles
- * fail this file on the day they land rather than on the day somebody clicks.
+ * `roles.ts`, and not one of them got a legend row. Nothing broke — an unlisted
+ * role simply never appears — so a deployment sheet's legend said "Legend" and
+ * listed nothing, and no test anywhere named the absence. The assertions below
+ * are DERIVED from the vocabulary, so the next phase's roles fail this file on
+ * the day they land rather than on the day somebody clicks.
+ *
+ * Since `docs/adr/0026` the rows are no longer a table beside the commands: each
+ * is subscribed by the command that draws the artefact, so this reads the
+ * catalogue. The coverage question is unchanged and the answer is now structural
+ * — a kind with a creation command gets its row from the same declaration.
  */
 
-const entries = UML_AUTO_LEGEND.sections.flatMap(section => section.entries);
+const entries: CommandLegendEntry[] = umlCommands.flatMap(command =>
+  command.legend
+    ? Array.isArray(command.legend)
+      ? [...command.legend]
+      : [command.legend]
+    : []
+);
 const listed = new Set<RoleId>(entries.map(entry => entry.role));
+
+/**
+ * A std with the toolbox registered and NO host catalogue, so
+ * `legendFromCommands` reads exactly the commands the editor registers and every
+ * wording falls through to its English fallback.
+ */
+const LEGEND_STD = {
+  provider: {
+    getAll: (identifier: unknown) =>
+      new Map<string, unknown>(
+        identifier === (CommandDescriptorIdentifier as unknown)
+          ? umlCommands.map((command, index) => [`c-${index}`, command])
+          : [['uml', UML_ROLES]]
+      ),
+  },
+  getOptional: () => undefined,
+} as unknown as BlockStdScope;
+
+const sectionsOf = (present: RoleId[]) =>
+  legendFromCommands(LEGEND_STD, 'uml', new Set(present));
+
+const rowsOf = (present: RoleId[]) =>
+  sectionsOf(present).flatMap(section => section.rows.map(row => row.label));
+
+const labelOf = (role: RoleId) => UML_ROLES[role]?.labelFallback ?? role;
 
 /**
  * The roles that deliberately get NO row, with the reason.
@@ -53,7 +89,7 @@ const UNLISTED: Readonly<Record<string, string>> = {
   'uml:operand': 'a reported zone, never a stamped element',
 };
 
-describe('the UML auto-legend covers the vocabulary it documents', () => {
+describe('the UML legend covers the vocabulary it documents', () => {
   it('lists every role an element can actually carry', () => {
     const missing = Object.values(UML_ROLES)
       .filter(def => def.kind !== 'text')
@@ -79,11 +115,16 @@ describe('the UML auto-legend covers the vocabulary it documents', () => {
   });
 
   it('never restates a wording the role vocabulary already owns', () => {
+    // No row carries a label at all any more: the engine resolves the ROLE's
+    // wording, which is what makes renaming a role rename its legend row.
     for (const entry of entries) {
-      expect(entry.row.label, entry.role).toBe(
-        roleLabel(UML_ROLES, entry.role)
-      );
+      expect(entry, entry.role).not.toHaveProperty('labelWording');
+      expect(entry, entry.role).not.toHaveProperty('labelPrefix');
     }
+    expect(rowsOf([UML_ROLE.class, UML_ROLE.actor])).toEqual([
+      labelOf(UML_ROLE.class),
+      labelOf(UML_ROLE.actor),
+    ]);
   });
 
   it('writes no text tier into the legend', () => {
@@ -92,6 +133,31 @@ describe('the UML auto-legend covers the vocabulary it documents', () => {
     for (const entry of entries) {
       expect(UML_ROLES[entry.role]?.kind, entry.role).not.toBe('text');
     }
+  });
+
+  it('subscribes no row for the frame, and the box instead', () => {
+    const frame = umlCommands.find(command => command.id === 'uml.addDiagram');
+    expect(frame?.legend).toBeUndefined();
+    // 34 × 24, because a picture needs room a colour chip does not.
+    expect(frame?.legendBox).toEqual(UML_LEGEND_BOX);
+    // Every board that has a legend says "Legend", through the one
+    // `BOARD_LEGEND_TITLE` key the platform falls back to.
+    expect(frame?.legendBox?.titleWording).toBeUndefined();
+    // Exactly one command declares a box: the first one found wins, so two
+    // would make the layout depend on registration order.
+    expect(
+      umlCommands.filter(command => command.legendBox).map(c => c.id)
+    ).toEqual(['uml.addDiagram']);
+  });
+
+  it('leaves the interaction use to the fragment’s own row', () => {
+    // It draws the very same combined fragment with `ref` in its tag (§17.7.4)
+    // and therefore stamps `uml:fragment`: a row of its own would name one
+    // frame twice.
+    expect(
+      umlCommands.find(command => command.id === 'uml.addInteractionUse')
+        ?.legend
+    ).toBeUndefined();
   });
 });
 
@@ -104,25 +170,17 @@ describe('the two `exact` entries, and why only two', () => {
   it('marks the association and the node exact, and nothing else', () => {
     expect(
       entries.filter(entry => entry.exact).map(entry => entry.role)
-    ).toEqual([UML_ROLE.node, UML_ROLE.association]);
+    ).toEqual([UML_ROLE.association, UML_ROLE.node]);
   });
 
   it('keeps a plain "Node" row off a board of devices', () => {
-    const rows = autoLegendSections(
-      new Set([UML_ROLE.device]),
-      UML_AUTO_LEGEND,
-      NO_HOST_STD
-    ).flatMap(section => section.rows.map(row => row.label));
-    expect(rows).toEqual([roleLabel(UML_ROLES, UML_ROLE.device)]);
+    expect(rowsOf([UML_ROLE.device])).toEqual([labelOf(UML_ROLE.device)]);
   });
 
   it('keeps a plain "Association" row off a board of diamonds', () => {
-    const rows = autoLegendSections(
-      new Set([UML_ROLE.composition]),
-      UML_AUTO_LEGEND,
-      NO_HOST_STD
-    ).flatMap(section => section.rows.map(row => row.label));
-    expect(rows).toEqual([roleLabel(UML_ROLES, UML_ROLE.composition)]);
+    expect(rowsOf([UML_ROLE.composition])).toEqual([
+      labelOf(UML_ROLE.composition),
+    ]);
   });
 });
 
@@ -130,28 +188,33 @@ describe('what a drawn sheet puts in its legend', () => {
   it('lists the deployment vocabulary a deployment sheet actually draws', () => {
     // The regression this file exists for, stated as the drawing that produced
     // it: before the phase-2 rows landed, this legend was empty.
-    const sections = autoLegendSections(
-      new Set([
-        UML_ROLE.artifact,
-        UML_ROLE.device,
-        UML_ROLE.deploy,
-        UML_ROLE.manifest,
-      ]),
-      UML_AUTO_LEGEND,
-      NO_HOST_STD
-    );
+    const sections = sectionsOf([
+      UML_ROLE.artifact,
+      UML_ROLE.device,
+      UML_ROLE.deploy,
+      UML_ROLE.manifest,
+    ]);
+    expect(sections.map(section => section.title)).toEqual([
+      'Elements',
+      'Relations',
+    ]);
     expect(sections.map(section => section.rows.map(row => row.label))).toEqual(
       [
-        [
-          roleLabel(UML_ROLES, UML_ROLE.artifact),
-          roleLabel(UML_ROLES, UML_ROLE.device),
-        ],
-        [
-          roleLabel(UML_ROLES, UML_ROLE.deploy),
-          roleLabel(UML_ROLES, UML_ROLE.manifest),
-        ],
+        [labelOf(UML_ROLE.artifact), labelOf(UML_ROLE.device)],
+        [labelOf(UML_ROLE.deploy), labelOf(UML_ROLE.manifest)],
       ]
     );
+  });
+
+  it('reads Elements, then Frames, then Relations', () => {
+    // Sections appear in the order their first row does, which is command
+    // order: the class comes before the subject frame, which comes before the
+    // association tool.
+    expect(
+      sectionsOf([UML_ROLE.class, UML_ROLE.subject, UML_ROLE.association]).map(
+        section => section.title
+      )
+    ).toEqual(['Elements', 'Frames', 'Relations']);
   });
 
   it('dashes the two keyworded dependencies and nothing else of the three', () => {
@@ -170,10 +233,10 @@ describe('what a drawn sheet puts in its legend', () => {
   });
 
   it('puts the swimlane and the composite state with the frames', () => {
-    const frames = UML_AUTO_LEGEND.sections.find(
-      section => section.title === 'Frames'
-    )!;
-    expect(frames.entries.map(entry => entry.role)).toEqual([
+    const frames = entries.filter(
+      entry => entry.section?.[0] === 'com.labre.uml.legend.section.frames'
+    );
+    expect(frames.map(entry => entry.role)).toEqual([
       UML_ROLE.subject,
       UML_ROLE.partition,
       UML_ROLE.region,
@@ -182,10 +245,16 @@ describe('what a drawn sheet puts in its legend', () => {
     // None of the four has a body — each is a rectangle drawn ROUND part of the
     // sheet — so none of them may carry a FILLED swatch. An outline is what
     // they are, and what the swatch draws.
-    for (const entry of frames.entries) {
+    for (const entry of frames) {
       expect(entry.row.swatch, entry.role).toBe('glyph');
       expect(entry.row.props?.filled, entry.role).toBe(false);
     }
+    // §14.2.4 draws a composite state with rounded corners, like the state it
+    // is one of — the one frame whose outline is not square.
+    const radiusOf = (role: RoleId) =>
+      frames.find(entry => entry.role === role)?.row.props?.radius;
+    expect(radiusOf(UML_ROLE.region)).toBe(4);
+    expect(radiusOf(UML_ROLE.subject)).toBe(0);
   });
 });
 
