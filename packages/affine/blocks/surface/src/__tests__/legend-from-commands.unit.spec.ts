@@ -9,7 +9,11 @@ import { RoleVocabularyIdentifier, type RoleDefs } from '@labre/std/gfx';
 import { describe, expect, it, vi } from 'vitest';
 
 import { EdgelessCRUDIdentifier } from '../extensions/crud-extension';
-import { createBoardLegend, legendFromCommands } from '../extensions/legend';
+import {
+  createBoardLegend,
+  LEGEND_ROLE,
+  legendFromCommands,
+} from '../extensions/legend';
 
 /**
  * The DERIVED legend: what {@link legendFromCommands} makes of a framework's
@@ -559,6 +563,23 @@ describe('createBoardLegend', () => {
     expect(Object.keys(grouped[0].children as object)).toHaveLength(
       added.length
     );
+  });
+
+  /**
+   * …and the one thing a plain group is not. The glyphs stay role-less (the
+   * invariant below), so the WRAPPER is the only structural handle anything has
+   * on "this box is a legend" — which the `.bpmn` export needs, or it reports a
+   * generated legend as a dozen things it left out of the file.
+   */
+  it('stamps the group with the legend role, and nothing else with it', () => {
+    const { added, grouped, std } = stub(
+      [BOARD, EVENT],
+      [at(100, 100, 'fx:event')]
+    );
+    createBoardLegend(std, BG, 'ddd-event-storming');
+
+    expect(grouped[0].role).toBe(LEGEND_ROLE);
+    for (const element of added) expect(element).not.toHaveProperty('role');
   });
 
   /**

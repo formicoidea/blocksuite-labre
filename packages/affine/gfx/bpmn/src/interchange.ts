@@ -7,6 +7,7 @@ import type {
 } from '@labre/affine-block-surface';
 import {
   interchangeCapabilityId,
+  LEGEND_ROLE,
   parseSvgSketch,
   SVG_SKETCH_EXTENSION,
   SVG_SKETCH_FORMAT_ID,
@@ -81,6 +82,42 @@ export const BPMN_XML_FORMAT: InterchangeFormat = {
 /* ── Pure board helpers ───────────────────────────────────────────────── */
 
 /**
+ * Everything a generated legend is made of: the group the legend gesture stamps
+ * with {@link LEGEND_ROLE}, and everything under it.
+ *
+ * A legend is drawn INSIDE the board it documents (`createBoardLegend`) and is
+ * made, on purpose, of role-less shapes, texts and swatches — so without this
+ * it would be reported as fourteen things the `.bpmn` left out, which is
+ * exactly the surprise that warning exists to prevent. The group's ROLE is what
+ * it is read by: nothing here matches a title, a framework name or a box.
+ *
+ * Read defensively, like every other walk over stored data in this framework:
+ * the children came out of a Y.Map and are whatever a peer wrote.
+ */
+function legendMemberIds(
+  elements: readonly GfxPrimitiveElementModel[]
+): ReadonlySet<string> {
+  const byId = new Map(elements.map(element => [element.id, element]));
+  const members = new Set<string>();
+
+  const walk = (element: GfxPrimitiveElementModel) => {
+    if (members.has(element.id)) return;
+    members.add(element.id);
+    const children = (element as { childIds?: unknown }).childIds;
+    if (!Array.isArray(children)) return;
+    for (const id of children) {
+      const child = typeof id === 'string' ? byId.get(id) : undefined;
+      if (child) walk(child);
+    }
+  };
+
+  for (const element of elements) {
+    if (element.role === LEGEND_ROLE) walk(element);
+  }
+  return members;
+}
+
+/**
  * The artefacts the exporter speaks about, picked out of a surface's elements
  * and kept in the order they were given.
  *
@@ -120,7 +157,8 @@ export const BPMN_XML_FORMAT: InterchangeFormat = {
  *
  * Connectors are deliberately NOT counted: a neutral arrow states nothing
  * (`docs/adr/0010`), so there is nothing to lose, which is the reason
- * `export.ts` has always dropped one in silence.
+ * `export.ts` has always dropped one in silence. Neither is a generated legend
+ * — see {@link legendMemberIds}.
  */
 export function bpmnBoardFrom(
   elements: readonly GfxPrimitiveElementModel[]
@@ -149,8 +187,11 @@ export function bpmnBoardFrom(
   // the `.bpmn` cannot see. `bpmnPoolOf` is the same whole-containment test the
   // audit and the serializer use, so what is reported left out is what the rest
   // of the framework agrees is in there.
+  const legend = legendMemberIds(elements);
   const leftOut = roleless.filter(
-    element => bpmnPoolOf(pools, element.elementBound) !== null
+    element =>
+      !legend.has(element.id) &&
+      bpmnPoolOf(pools, element.elementBound) !== null
   ).length;
 
   return { pools, nodes, connectors, ...(leftOut > 0 ? { leftOut } : {}) };

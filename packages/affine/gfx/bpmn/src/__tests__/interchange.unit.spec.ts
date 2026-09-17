@@ -2,6 +2,7 @@ import {
   InterchangeExtension,
   InterchangeIdentifier,
   interchangeCapabilities,
+  LEGEND_ROLE,
   parseSvgSketch,
 } from '@labre/affine-block-surface';
 import { Container } from '@labre/global/di';
@@ -413,6 +414,41 @@ describe('the export says what it left inside the pool', () => {
 
     expect(bpmnBoardFrom(elements).leftOut).toBeUndefined();
     expect(runExport(elements, {}).warnings).toBeUndefined();
+  });
+
+  it('does not count a generated legend, which is not a loss', () => {
+    // A legend is drawn INSIDE the pool it documents and is made of role-less
+    // glyphs on purpose. Counting them would report fourteen losses for a box
+    // the user asked for — the exact surprise this warning exists to prevent.
+    // The group's `LEGEND_ROLE` is what it is recognised by.
+    const swatches = ['sw-1', 'sw-2', 'sw-3'].map(id => ({
+      id,
+      elementBound: new Bound(BAND + 10, 150, 16, 16),
+    }));
+    const legend = {
+      id: 'legend-1',
+      role: LEGEND_ROLE,
+      childIds: swatches.map(swatch => swatch.id),
+      elementBound: new Bound(BAND + 5, 140, 200, 50),
+    };
+
+    const elements = [
+      fakePool('p', [0, 0, POOL_W, POOL_H], { name: 'Sales' }),
+      fakeNode('t1', 'task', [BAND + 20, 40, 60, 40], 'Check'),
+      fakeNode('t2', 'task', [BAND + 120, 40, 60, 40], 'Ship'),
+      // The one real stray, drawn beside the legend.
+      fakeStray([BAND + 240, 40, 60, 40]),
+      legend,
+      ...swatches,
+    ] as unknown as readonly GfxPrimitiveElementModel[];
+
+    expect(bpmnBoardFrom(elements).leftOut).toBe(1);
+
+    const [warning, ...rest] = runExport(elements, {})!.warnings!;
+    expect(rest).toEqual([]);
+    expect(warning).toContain(
+      '1 element(s) inside the pool are not BPMN elements'
+    );
   });
 
   it('ignores a role-less element drawn outside every pool', () => {
