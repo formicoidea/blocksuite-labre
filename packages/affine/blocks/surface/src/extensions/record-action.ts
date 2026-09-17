@@ -28,6 +28,12 @@ export interface RecordedAction {
    * drawing it armed. `null` when nothing was armed.
    */
   armedTool: string | null;
+  /**
+   * The OPTIONS the action armed that tool with — where a typed edge's `role`
+   * lives, since a command that arms the connector tool creates nothing and
+   * therefore stamps nothing on any record. `null` when nothing was armed.
+   */
+  armedToolOptions: Record<string, unknown> | null;
 }
 
 /** Hook applied to a finished record before it is kept. See {@link recordAction}. */
@@ -106,9 +112,16 @@ export function recordAction(
   const records = () => [...elements.values()];
 
   let armedTool: string | null = null;
-  const setTool = (tool: { toolName?: string } | string) => {
+  let armedToolOptions: Record<string, unknown> | null = null;
+  const setTool = (
+    tool: { toolName?: string } | string,
+    options?: Record<string, unknown>
+  ) => {
     const name = typeof tool === 'string' ? tool : tool?.toolName;
-    if (name && name !== 'default') armedTool = name;
+    if (name && name !== 'default') {
+      armedTool = name;
+      armedToolOptions = options ?? null;
+    }
   };
 
   const surface = {
@@ -192,7 +205,12 @@ export function recordAction(
   gfx.std = std as unknown as BlockStdScope;
   run(gfx.std);
 
-  return { records: records(), bound: uniteBounds(records()), armedTool };
+  return {
+    records: records(),
+    bound: uniteBounds(records()),
+    armedTool,
+    armedToolOptions,
+  };
 }
 
 /** The union of whatever boxes the records carry. */

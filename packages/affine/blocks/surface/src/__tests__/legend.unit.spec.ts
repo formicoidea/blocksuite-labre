@@ -3,13 +3,14 @@ import type { BlockStdScope } from '@labre/std';
 import type { RoleDefs } from '@labre/std/gfx';
 import { describe, expect, it, vi } from 'vitest';
 
+import { EdgelessCRUDIdentifier } from '../extensions/crud-extension';
 import {
   type AutoLegendSpec,
   autoLegendSections,
   createAutoLegend,
   roleLabel,
   rolesInBound,
-} from '../shared/legend-auto';
+} from '../extensions/legend';
 
 /**
  * A two-level fixture vocabulary: `fx:sticky` is the parent, `fx:event` and
@@ -93,18 +94,30 @@ function stub(elements: FixtureElement[], catalogue?: Record<string, string>) {
     getElementsByBound: (bound: Bound) =>
       elements.filter(el => overlaps(bound, Bound.deserialize(el.xywh))),
     selection,
+    layer: { canvasElements: [] as { type: string }[] },
   };
   const captureSync = vi.fn();
   const translationProvider = catalogue
     ? { t: (key: string) => catalogue[key] }
     : undefined;
+  // The box is grouped through `EdgelessCRUDIdentifier` since the engine moved
+  // here: the group package depends on this one, so the legend re-runs
+  // `createGroupCommand`'s body rather than importing it.
+  const grouped: Record<string, unknown>[] = [];
+  const crud = {
+    addElement: (type: string, props: Record<string, unknown>) => {
+      grouped.push({ ...props, type });
+      return 'group-1';
+    },
+  };
   const std = {
-    get: () => gfx,
+    get: (identifier: unknown) =>
+      identifier === (EdgelessCRUDIdentifier as unknown) ? crud : gfx,
     getOptional: () => translationProvider,
     store: { captureSync },
-    command: { exec: () => [null, { groupId: 'group-1' }] },
+    provider: { getAll: () => new Map() },
   } as unknown as BlockStdScope;
-  return { added, captureSync, gfx, std, selection };
+  return { added, captureSync, gfx, grouped, std, selection };
 }
 
 const at = (x: number, y: number, role?: string): FixtureElement => ({
@@ -410,5 +423,24 @@ describe('createAutoLegend', () => {
     const { captureSync, std } = stub([at(100, 100, 'fx:event')]);
     createAutoLegend(std, BG, SPEC);
     expect(captureSync).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * The box used to be grouped through `createGroupCommand`
+   * (`@labre/affine-gfx-group`), which this package cannot import: that package
+   * depends on THIS one. The engine re-runs that command's body against the
+   * same `EdgelessCRUDIdentifier`, seed title included, so a legend group is
+   * still exactly what the gesture says a group is.
+   */
+  it('groups the box through the CRUD seam, under the group seed title', () => {
+    const { added, grouped, std } = stub([at(100, 100, 'fx:event')]);
+    createAutoLegend(std, BG, SPEC);
+
+    expect(grouped).toHaveLength(1);
+    expect(grouped[0].type).toBe('group');
+    expect(grouped[0].title).toBe('Group 1');
+    expect(Object.keys(grouped[0].children as object)).toHaveLength(
+      added.length
+    );
   });
 });

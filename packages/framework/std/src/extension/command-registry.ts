@@ -5,6 +5,9 @@ import type { z } from 'zod';
 
 import { SurfaceSelection } from '../selection/index.js';
 import type { BlockStdScope } from '../scope/index.js';
+// TYPE-only, and the only edge this module has towards `gfx`: a legend entry
+// names a role, and `RoleId` is declared with the vocabulary that owns it.
+import type { RoleId } from '../gfx/model/surface/role.js';
 import {
   ShortcutExtension,
   type ShortcutDescriptor,
@@ -187,6 +190,30 @@ export interface CommandDescriptor<P = void> {
    * it as the `role` dimension.
    */
   telemetry?: CommandTelemetry;
+
+  /**
+   * The legend row (or rows) this command's artefact puts in its board's
+   * legend — `docs/adr/0009`'s sibling for the legend: a framework subscribes
+   * its notation instead of maintaining a second table of it.
+   *
+   * Declared on the command that DRAWS the thing, so the row and the gesture
+   * cannot drift: renaming the role renames the row, restyling the preset
+   * restyles the swatch. The board's own command declares {@link legendBox}
+   * instead — it is the sheet the legend is drawn on, not an artefact on it.
+   *
+   * A LIST because one command may put several rows down: EDGY's twelve
+   * official elements are all stamped by one template command, and no "add a
+   * Content" gesture exists to hang them off individually.
+   */
+  legend?: CommandLegendEntry | readonly CommandLegendEntry[];
+
+  /**
+   * How the legend BOX of this framework's board is laid out, and what it adds
+   * beyond the rows. Declared on the board command (`telemetry.board`) and
+   * read by nothing else — a framework whose rows are 16-unit chips declares
+   * none of it.
+   */
+  legendBox?: CommandLegendBox;
 }
 
 /** See {@link CommandDescriptor.telemetry}. */
@@ -194,6 +221,133 @@ export interface CommandTelemetry {
   framework: FrameworkId;
   element: string;
   board?: true;
+}
+
+/**
+ * What a legend SWATCH is, without its label: the command already carries a
+ * wording, and the role it stamps carries one too, so a table that restated the
+ * text would be a third spelling of the same word.
+ */
+export interface CommandLegendRow {
+  swatch: 'dot' | 'square' | 'line' | 'glyph' | 'edge' | 'custom';
+  color: string;
+  /** `square` swatches: the letter drawn inside it (Team Topologies' C/X/F). */
+  letter?: string;
+  /** `line` swatches: draw the sample as two segments, so a dash reads as one. */
+  dashed?: boolean;
+  /**
+   * `glyph` / `edge` swatches: the props of the REAL element to draw in the
+   * swatch box, geometry excluded — the layout fills in `xywh` (a glyph) or the
+   * two endpoint positions (an edge).
+   *
+   * A `role` here is stripped by the drawing side and must not be declared: a
+   * legend is drawn ON the board it describes and the scan detects by role, so
+   * a swatch carrying one would list itself the next time a legend is
+   * generated — and would be counted by every validation rule.
+   */
+  props?: Record<string, unknown>;
+  /** `glyph` swatches: the artefact's aspect ratio, fitted inside the box. */
+  aspect?: number;
+  /**
+   * `glyph` swatches: an explicit size in model units, which SHORT-CIRCUITS the
+   * fit-to-box. Wardley's gradation (component 16 < method 18 < ecosystem 20 <
+   * market 22) is notation rather than decoration, and fitting every pastille
+   * to the same box would erase it.
+   */
+  size?: readonly [width: number, height: number];
+  /**
+   * `custom` swatches: draw the sample yourself and return the ids created.
+   *
+   * The escape hatch for a COMPOSITE glyph — Wardley's market (a circle, three
+   * dots and three connectors), its pipeline (a body and a handle), its Porter
+   * rose (a circle, four derived arrows and a letter). Their geometry is
+   * derived rather than literal, and a table of static rectangles would re-fix
+   * what the framework computes.
+   */
+  draw?: (
+    surface: CommandLegendSurface,
+    box: { x: number; y: number; w: number; h: number },
+    std: BlockStdScope
+  ) => string[];
+}
+
+/**
+ * Where a `custom` swatch (and a {@link CommandLegendExtra}) puts what it
+ * draws. Structural on purpose: `std` declares WHAT a framework may say, and
+ * the surface block that receives it is what knows how to draw — importing it
+ * here would point this layer at one of its own consumers.
+ */
+export interface CommandLegendSurface {
+  addElement(props: Record<string, unknown>): string;
+}
+
+/** See {@link CommandDescriptor.legend}. */
+export interface CommandLegendEntry {
+  /**
+   * The role this row stands for — usually the one the command stamps, but not
+   * always: C4 writes ONE "Boundary" row on the parent `c4:boundary` for its
+   * two boundary commands, and the second declares nothing.
+   */
+  role: RoleId;
+  row: CommandLegendRow;
+  /**
+   * Match `role` and `role` ALONE, without the specialisation walk. Reach for
+   * it when the parent row would be a lie on a board carrying only children —
+   * EDGY's bare "Object", BPMN's blank "Task".
+   */
+  exact?: boolean;
+  /** Static prefix kept in front of the resolved wording ("PS — Partnership"). */
+  labelPrefix?: string;
+  /**
+   * The row's OWN wording, ahead of the role's. Wardley's rows explain the
+   * notation ("Need / capability (activity, practice, data…)") where the role
+   * merely names it ("Component"); without this the legend would lose its prose.
+   */
+  labelWording?: readonly [key: string, fallback: string];
+  /**
+   * The sub-title this row files itself under, ahead of the command's
+   * `category`. Three of the DDD frameworks put every command in ONE category
+   * and still show two or three sub-titles, and EDGY's twelve elements come
+   * from one command and span four.
+   */
+  section?: readonly [key: string, fallback: string];
+}
+
+/**
+ * A block of the legend box that is not a row: Wardley's evolution gradient,
+ * its Porter panel. `height` is a VALUE rather than a second callback because
+ * the box has to be measured before it is placed.
+ */
+export interface CommandLegendExtra {
+  /** Total height in model units, separator included. Known BEFORE drawing. */
+  height: number;
+  draw(
+    surface: CommandLegendSurface,
+    std: BlockStdScope,
+    x: number,
+    y: number,
+    width: number
+  ): string[];
+}
+
+/** See {@link CommandLegendBox.extras}. */
+export type CommandLegendExtras = (ctx: {
+  std: BlockStdScope;
+  /** The board the legend describes. Cast by whoever needs more than its box. */
+  board: { xywh: string };
+  present: ReadonlySet<RoleId>;
+}) => CommandLegendExtra[];
+
+/** See {@link CommandDescriptor.legendBox}. */
+export interface CommandLegendBox {
+  /** Box title; every board that has one says "Legend" and omits this. */
+  titleWording?: readonly [key: string, fallback: string];
+  width?: number;
+  /** Row pitch; the swatch is drawn centred in it. */
+  rowHeight?: number;
+  swatchWidth?: number;
+  swatchHeight?: number;
+  extras?: CommandLegendExtras;
 }
 
 /**

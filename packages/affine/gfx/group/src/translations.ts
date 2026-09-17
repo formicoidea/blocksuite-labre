@@ -1,25 +1,22 @@
 import {
   type ChromeWording,
+  GROUP_SEED_NAME,
   TOOLBAR_INSERT_INTO_PAGE,
   TOOLBAR_RENAME,
   TOOLBAR_UNGROUP,
 } from '@labre/affine-shared/services';
 
 /**
- * The group's own seed: the default title a newly created group is stamped
- * with (`Group 2`), written into the document at creation
- * (`createGroupCommand`). Resolved at PLACEMENT and never again — a group
- * renamed by its author keeps its name, and a group created before this key
- * existed keeps the plain text it was given.
+ * The group's own seed — the default title a newly created group is stamped
+ * with (`Group 2`), written into the document by `createGroupCommand`.
  *
- * `{{n}}` is the group's 1-based ordinal among the groups already on the doc;
- * see the translation-service README on why a count carries a param rather
- * than its own key.
+ * It now LIVES in `@labre/affine-shared`, because the surface block's legend
+ * groups the box it draws and cannot import this package (`gfx-group` depends
+ * on the surface block, not the other way round). Re-exported here unchanged,
+ * and still listed by {@link GROUP_WORDINGS} below, so the key manifest sees
+ * exactly the one `seed` entry it always has.
  */
-export const GROUP_SEED_NAME: ChromeWording = [
-  'com.labre.group.seed.name',
-  'Group {{n}}',
-];
+export { GROUP_SEED_NAME };
 
 /**
  * This package's contribution to the translation-key manifest — a single seed,

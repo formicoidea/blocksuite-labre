@@ -515,6 +515,13 @@ describe('the serializable catalogue projection', () => {
       }
       expect(entry).not.toHaveProperty('run');
       expect(entry).not.toHaveProperty('when');
+      // The legend subscription stays library-side. `toCommandManifestEntry`
+      // is an explicit list of sixteen fields, so it is already left out by
+      // construction — this pins it, because a `glyph` swatch's props hold
+      // real element props and a `custom` one holds a DRAWING FUNCTION, and a
+      // host reading the manifest would be handed neither.
+      expect(entry).not.toHaveProperty('legend');
+      expect(entry).not.toHaveProperty('legendBox');
     }
   });
 
