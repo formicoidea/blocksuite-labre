@@ -1,9 +1,11 @@
 import type {
   BackgroundLabelHit,
+  EditableBackgroundLabel,
   FrameworkBackgroundDef,
 } from '@labre/affine-block-surface';
 import {
   backgroundLabelHits,
+  DeclaredBackgroundView,
   EdgelessCRUDIdentifier,
   hitTestBackgroundLabel,
 } from '@labre/affine-block-surface';
@@ -16,10 +18,8 @@ import type {
   UmlSubjectElementModel,
 } from '@labre/affine-model';
 import { TranslationProvider } from '@labre/affine-shared/services';
-import { rotatePoint } from '@labre/global/gfx';
 import type { EditorHost, PointerEventState } from '@labre/std';
 import type { PointTestOptions } from '@labre/std/gfx';
-import { GfxElementModelView } from '@labre/std/gfx';
 
 import {
   UML_DIAGRAM_FRAME,
@@ -43,11 +43,11 @@ import { umlFragmentAsPainted } from './element-renderer.js';
  * The one gesture every UML frame carries: a double-click on the name edits it
  * in place.
  *
- * All four are a rectangle with exactly one editable word on them — the
- * diagram's name, the subject's, the partition's, the composite state's — so the
- * gesture is written once here and the views differ only in which declaration
- * they hit-test against and how wide their rename zone is. The simplified version of `C4FrameView`, which is
- * itself the simplified `BpmnPoolView`: no lanes, no separators, no armed drag.
+ * The gesture itself — the rotation arithmetic, the widened `includesPoint`,
+ * the double-click handler and the `<input>` — is the library's shared one,
+ * `DeclaredBackgroundView` (issue #355, R14: extend, never copy). What this
+ * class adds is only what UML answers differently: WHICH words a double-click
+ * aims at, and the model those words are read from.
  *
  * Which labels exist, where they sit and what they SAY all come from the
  * declaration the renderer paints (`backgroundLabelHits`), so a label can never
@@ -55,8 +55,8 @@ import { umlFragmentAsPainted } from './element-renderer.js';
  * coordinates of its own.
  *
  * ponytail: like every other framework view in the library, only `name` may be
- * written — see {@link UmlFrameView._editable} for what that costs the diagram
- * frame, whose drawn label is not `name`.
+ * written — see {@link UmlDiagramView} for what that costs the diagram frame,
+ * whose drawn label is not `name`.
  */
 abstract class UmlFrameView<
   T extends
@@ -65,10 +65,7 @@ abstract class UmlFrameView<
     | UmlPartitionElementModel
     | UmlRegionElementModel
     | UmlFragmentElementModel,
-> extends GfxElementModelView<T> {
-  /** The declaration this view hit-tests against — the one the renderer paints. */
-  protected abstract get def(): FrameworkBackgroundDef;
-
+> extends DeclaredBackgroundView<T> {
   /**
    * The model this view hit-tests against — the one the RENDERER was handed.
    *
@@ -86,64 +83,20 @@ abstract class UmlFrameView<
     return this.model;
   }
 
-  /** The in-place `<input>` used to edit the name, or null when idle. */
-  private _editor: HTMLInputElement | null = null;
-
-  override onCreated(): void {
-    super.onCreated();
-    this.on('dblclick', e => this._onDblClick(e));
-  }
-
-  override onDestroyed(): void {
-    this._closeEditor();
-    super.onDestroyed();
-  }
-
   /**
-   * The words the editor must OPEN on, for a label the user has aimed at.
-   *
-   * The drawn words by default, which is the rule everywhere else in the
-   * library: a label showing its declared wording opens on that wording rather
-   * than on an empty box.
-   *
-   * The DIAGRAM frame overrides it, and that is the one place UML parts company
-   * with the C4 board it is modelled on. Annex A's heading is `<kind> <name>` —
-   * a derived string, joined from a closed discriminant the picker owns and a
-   * name the author owns — so opening on the drawn words would hand the user
-   * `class Orders` to edit, and committing it would write the kind INTO the
-   * name, to be prefixed again on the next paint.
+   * The declaration's editable labels, element-local, derived from the PAINTED
+   * model — see {@link _painted}. This is `DeclaredBackgroundView.labelAt`'s
+   * own walk with that one substitution, which is why the frames below do not
+   * call `super.labelAt`.
    */
-  protected _editable(hit: BackgroundLabelHit): string {
-    return hit.text;
-  }
-
-  /** The editable name label under a MODEL-space point, or null. */
-  private _labelAt(mx: number, my: number) {
-    const [bx, by, w, h] = this.model.deserializedXYWH;
-
-    // Element-local coordinates, undoing the element rotation about its centre.
-    let lx = mx - bx;
-    let ly = my - by;
-    const rot = this.model.rotate ?? 0;
-    if (rot) {
-      const center: [number, number] = [bx + w / 2, by + h / 2];
-      const [ux, uy] = rotatePoint([mx, my], center, -rot);
-      lx = ux - bx;
-      ly = uy - by;
-    }
-
-    // The GEOMETRY above is the element's own, and the DECLARATION here is the
-    // painted one: the two differ only in the props the renderer suppresses,
-    // and a box is a drawn label's box only if it was derived from the words
-    // that were drawn. See {@link _painted}.
-    const hits = backgroundLabelHits(
+  protected _hits(w: number, h: number): BackgroundLabelHit[] {
+    return backgroundLabelHits(
       this.def,
       this._painted as unknown as Record<string, unknown>,
       w,
       h,
       this.gfx.std.getOptional(TranslationProvider)
     );
-    return this._nameAt(hits, lx, ly);
   }
 
   /**
@@ -158,161 +111,31 @@ abstract class UmlFrameView<
    * A frame whose name has a band of its own overrides this — see
    * {@link UmlDiagramView}.
    */
-  protected _nameAt(
-    hits: readonly BackgroundLabelHit[],
+  protected override labelAt(
     lx: number,
-    ly: number
-  ): BackgroundLabelHit | null {
-    const hit = hitTestBackgroundLabel(hits, lx, ly);
-    return hit && hit.prop === 'name' ? hit : null;
+    ly: number,
+    w: number,
+    h: number
+  ): EditableBackgroundLabel | null {
+    const hit = hitTestBackgroundLabel(this._hits(w, h), lx, ly);
+    return hit && hit.prop === 'name' ? { prop: 'name', text: hit.text } : null;
   }
 
   /**
-   * A frame is SELECTED by its border (`FrameworkBackgroundElementModel`, issue
-   * #194) — but the name written on it must still receive the double-click that
-   * renames it.
+   * The name label, answered over a whole BAND rather than over its words —
+   * for the frames whose name has a strip of its own.
    *
-   * Same seam Wardley, C4 and EDGY use: the pointer router asks the VIEW,
-   * picking asks the MODEL, and a framework declares its own gesture zones
-   * beside the code that draws them.
-   *
-   * The DIAGRAM's band is in both answers — the model picks it and this widens
-   * nothing over it — so on that frame the fallback below only ever fires for a
-   * point the model already took. It is the SUBJECT that needs it: its name is
-   * written inside the plot, where nothing is selectable.
+   * @param inBand whether the point is in the frame's band, as the frame's own
+   * band helper (`board-hit.ts`) decides.
    */
-  override includesPoint(
-    x: number,
-    y: number,
-    options: PointTestOptions,
-    host: EditorHost
-  ): boolean {
-    if (super.includesPoint(x, y, options, host)) return true;
-    return this._renameTargetAt(x, y) !== null;
-  }
-
-  /** Whether this frame may be written to at all. */
-  protected get _writable(): boolean {
-    return !this.gfx.std.store.readonly && !this.model.isLocked();
-  }
-
-  /**
-   * What a double-click at this MODEL-space point would rename: the words to
-   * open on, and where to write them back.
-   *
-   * A hook rather than a fixed answer, because one frame has more than one name
-   * on it: a combined fragment carries a guard per OPERAND (§17.6.4), and each
-   * of them is written in its own corner. Every other frame has exactly one
-   * editable word, so the default below is the whole of their story — the
-   * declaration's `name` label, committed to `name`.
-   */
-  protected _renameTargetAt(
-    mx: number,
-    my: number
-  ): { current: string; commit: (value: string) => void } | null {
-    const hit = this._labelAt(mx, my);
-    if (!hit) return null;
-    return {
-      current: this._editable(hit),
-      commit: value => this._writeName(value),
-    };
-  }
-
-  /**
-   * The ordinary rename: `name`, and never the drawn label's own prop — the
-   * diagram frame paints a DERIVED heading, and a getter is not somewhere a
-   * rename can land.
-   */
-  protected _writeName(value: string): void {
-    this.gfx.std.store.captureSync();
-    this.gfx.std
-      .get(EdgelessCRUDIdentifier)
-      .updateElement(this.model.id, { name: value });
-  }
-
-  protected _onDblClick(e: PointerEventState): void {
-    if (!this._writable) return;
-
-    const [mx, my] = this.gfx.viewport.toModelCoord(e.x, e.y);
-    const target = this._renameTargetAt(mx, my);
-    if (!target) return;
-
-    this._openEditor(target.current, e, target.commit);
-  }
-
-  /**
-   * @param current the words the editor opens on — see {@link _editable}. Always
-   * the author's own half of the label, never the notation's.
-   * @param commit where the edited words go — see {@link _renameTargetAt}.
-   */
-  protected _openEditor(
-    current: string,
-    e: PointerEventState,
-    commit: (value: string) => void
-  ): void {
-    this._closeEditor();
-
-    const input = document.createElement('input');
-    input.value = current;
-    Object.assign(input.style, {
-      position: 'fixed',
-      left: `${e.raw.clientX}px`,
-      top: `${e.raw.clientY}px`,
-      transform: 'translate(-50%, -50%)',
-      zIndex: '10000',
-      minWidth: '140px',
-      padding: '3px 8px',
-      font: '14px Inter, sans-serif',
-      color: 'var(--affine-text-primary-color, #1f2328)',
-      background: 'var(--affine-background-overlay-panel-color, #ffffff)',
-      border: '1px solid var(--affine-primary-color, #1e96eb)',
-      borderRadius: '6px',
-      boxShadow: 'var(--affine-shadow-2, 0 2px 8px rgba(0,0,0,0.18))',
-      outline: 'none',
-    });
-    document.body.append(input);
-    this._editor = input;
-
-    // Mark "editing" so the global edgeless key handlers (delete, escape, …)
-    // don't act on the frame while the user types.
-    this.gfx.selection.set({ elements: [this.model.id], editing: true });
-
-    input.focus();
-    input.select();
-
-    const onCommit = () => {
-      // Guard against re-entrancy: removing the input fires `blur`, which would
-      // otherwise call `commit` a second time.
-      if (this._editor !== input) return;
-      const value = input.value;
-      this._closeEditor();
-      // Opening an editor is not renaming: an untouched value would push an
-      // empty entry onto undo and freeze the drawn wording as the user's own.
-      if (value === current) return;
-      commit(value);
-    };
-
-    input.addEventListener('keydown', ev => {
-      ev.stopPropagation();
-      if (ev.key === 'Enter') {
-        ev.preventDefault();
-        onCommit();
-      } else if (ev.key === 'Escape') {
-        ev.preventDefault();
-        this._closeEditor();
-      }
-    });
-    input.addEventListener('blur', onCommit);
-  }
-
-  protected _closeEditor(): void {
-    if (!this._editor) return;
-    const input = this._editor;
-    this._editor = null;
-    input.remove();
-    if (this.isConnected) {
-      this.gfx.selection.set({ elements: [this.model.id], editing: false });
-    }
+  protected _nameInBand(
+    inBand: boolean,
+    w: number,
+    h: number
+  ): EditableBackgroundLabel | null {
+    if (!inBand) return null;
+    const name = this._hits(w, h).find(hit => hit.prop === 'name');
+    return name ? { prop: 'name', text: name.text } : null;
   }
 }
 
@@ -320,16 +143,22 @@ abstract class UmlFrameView<
  * The sheet a UML diagram is drawn on. Double-click ANYWHERE in its heading band
  * to rename it.
  *
- * The band and not the words, which is the whole of what this subclass changes —
+ * The band and not the words, which is the first thing this subclass changes —
  * the same call the C4 board and the BPMN pool's participant band both make: a
  * strip you may only double-click the eleven characters of is a target that lies
  * about where it is. Here it also buys something they do not need: the tag is
  * drawn round the words with padding on either side, so a user aiming at the
  * pentagon they can see is inside the zone whether or not they hit a glyph.
  *
- * The editor opens on `name` — the author's half of `<kind> <name>` — and the
- * commit writes `name` back. The kind is the picker's, and it is prefixed again
- * on the next paint.
+ * The second is what the editor opens on, and that is the one place UML parts
+ * company with the C4 board it is modelled on. Annex A's heading is
+ * `<kind> <name>` — a derived string, joined from a closed discriminant the
+ * picker owns and a name the author owns — so opening on the drawn words would
+ * hand the user `class Orders` to edit, and committing it would write the kind
+ * INTO the name, to be prefixed again on the next paint. The editor therefore
+ * opens on `name` — the author's half — and writes `name` back, never the drawn
+ * label's own prop: `heading` is a getter, and a getter is not somewhere a
+ * rename can land.
  */
 export class UmlDiagramView extends UmlFrameView<UmlDiagramElementModel> {
   static override type: string = 'umlDiagram';
@@ -338,19 +167,15 @@ export class UmlDiagramView extends UmlFrameView<UmlDiagramElementModel> {
     return UML_DIAGRAM_FRAME;
   }
 
-  protected override _nameAt(
-    hits: readonly BackgroundLabelHit[],
+  protected override labelAt(
     lx: number,
-    ly: number
-  ): BackgroundLabelHit | null {
-    const heading = hits.find(hit => hit.prop === 'heading');
-    if (!heading) return null;
-    return umlInDiagramBand(this.model, [lx, ly]) ? heading : null;
-  }
-
-  /** The author's half of the heading — see {@link UmlFrameView._editable}. */
-  protected override _editable(): string {
-    return this.model.name;
+    ly: number,
+    w: number,
+    h: number
+  ): EditableBackgroundLabel | null {
+    if (!umlInDiagramBand(this.model, [lx, ly])) return null;
+    const heading = this._hits(w, h).some(hit => hit.prop === 'heading');
+    return heading ? { prop: 'name', text: this.model.name } : null;
   }
 }
 
@@ -387,14 +212,13 @@ export class UmlPartitionView extends UmlFrameView<UmlPartitionElementModel> {
     return umlPartitionFrame(this.model);
   }
 
-  protected override _nameAt(
-    hits: readonly BackgroundLabelHit[],
+  protected override labelAt(
     lx: number,
-    ly: number
-  ): BackgroundLabelHit | null {
-    const name = hits.find(hit => hit.prop === 'name');
-    if (!name) return null;
-    return umlInPartitionBand(this.model, [lx, ly]) ? name : null;
+    ly: number,
+    w: number,
+    h: number
+  ): EditableBackgroundLabel | null {
+    return this._nameInBand(umlInPartitionBand(this.model, [lx, ly]), w, h);
   }
 }
 
@@ -412,14 +236,13 @@ export class UmlRegionView extends UmlFrameView<UmlRegionElementModel> {
     return UML_REGION_FRAME;
   }
 
-  protected override _nameAt(
-    hits: readonly BackgroundLabelHit[],
+  protected override labelAt(
     lx: number,
-    ly: number
-  ): BackgroundLabelHit | null {
-    const name = hits.find(hit => hit.prop === 'name');
-    if (!name) return null;
-    return umlInRegionBand(this.model, [lx, ly]) ? name : null;
+    ly: number,
+    w: number,
+    h: number
+  ): EditableBackgroundLabel | null {
+    return this._nameInBand(umlInRegionBand(this.model, [lx, ly]), w, h);
   }
 }
 
@@ -450,10 +273,11 @@ export class UmlRegionView extends UmlFrameView<UmlRegionElementModel> {
  * undraggable. The handlers are attached while the pointer is over a separator
  * of a SELECTED fragment and detached the moment it is not.
  *
- * ponytail: a ROTATED fragment is not accounted for — the pointer is converted
- * to element-local coordinates by subtraction, so the separator boxes assume an
- * upright frame. The same reserve `board-hit.ts` documents; nothing rotates a
- * framework background today.
+ * ponytail: a ROTATED fragment is not accounted for by the separator drag —
+ * its pointer is converted to element-local coordinates by subtraction, so the
+ * separator boxes assume an upright frame (the guards do not: the shared base
+ * de-rotates before {@link labelAt}). The same reserve `board-hit.ts`
+ * documents; nothing rotates a framework background today.
  */
 export class UmlFragmentView extends UmlFrameView<UmlFragmentElementModel> {
   static override type: string = 'umlFragment';
@@ -485,8 +309,8 @@ export class UmlFragmentView extends UmlFrameView<UmlFragmentElementModel> {
    * `name` and `operands`, and the canvas paints operand zero's guard over the
    * declared one's corner — i.e. paints `name` nowhere. `umlFragmentAsPainted`
    * is the single statement of which of the two wins; calling it here is what
-   * keeps {@link _renameTargetAt}'s fallback from opening an editor on the
-   * invisible corner. The operand branch of that method is unaffected: it reads
+   * keeps {@link labelAt}'s fallback from opening an editor on the invisible
+   * corner. The operand branch of that method is unaffected: it reads
    * `operands`, which the suppression never touches.
    */
   protected override get _painted(): UmlFragmentElementModel {
@@ -517,22 +341,28 @@ export class UmlFragmentView extends UmlFrameView<UmlFragmentElementModel> {
    * first of them (`background.ts` states the contract) — handing the
    * double-click to `name` would open an editor on a string nothing paints.
    */
-  protected override _renameTargetAt(
-    mx: number,
-    my: number
-  ): { current: string; commit: (value: string) => void } | null {
-    const [ex, ey] = this.model.deserializedXYWH;
-    const index = umlOperandGuardAt(this.model, [mx - ex, my - ey]);
+  protected override labelAt(
+    lx: number,
+    ly: number,
+    w: number,
+    h: number
+  ): EditableBackgroundLabel | null {
+    const index = umlOperandGuardAt(this.model, [lx, ly]);
     if (index !== null) {
       const operand = this._operands()[index];
       if (operand) {
+        // A guard lives INSIDE `operands`, which no `{ [prop]: value }` patch
+        // can reach — hence the label's own `commit`, the base's one write
+        // hook. `prop` names the prop the hook rewrites; the base never writes
+        // it itself.
         return {
-          current: operand.name ?? '',
+          prop: 'operands',
+          text: operand.name ?? '',
           commit: value => this._writeGuard(index, value),
         };
       }
     }
-    return super._renameTargetAt(mx, my);
+    return super.labelAt(lx, ly, w, h);
   }
 
   private _operands(): readonly UmlFragmentOperand[] {
@@ -547,6 +377,9 @@ export class UmlFragmentView extends UmlFrameView<UmlFragmentElementModel> {
    * operand — which is what an `else` branch with no condition is — and an
    * empty string left in the array would be a key that means nothing and
    * paints nothing.
+   *
+   * No undo boundary here: the shared editor captures one before it calls a
+   * label's `commit`.
    */
   private _writeGuard(index: number, value: string): void {
     const operands = this._operands();
@@ -565,7 +398,6 @@ export class UmlFragmentView extends UmlFrameView<UmlFragmentElementModel> {
           }
         : entry
     );
-    this.gfx.std.store.captureSync();
     this.gfx.std
       .get(EdgelessCRUDIdentifier)
       .updateElement(this.model.id, { operands: next });
@@ -591,6 +423,11 @@ export class UmlFragmentView extends UmlFrameView<UmlFragmentElementModel> {
     if (super.includesPoint(x, y, options, host)) return true;
     const [ex, ey] = this.model.deserializedXYWH;
     return umlOperandBoundaryAt(this.model, [x - ex, y - ey]) !== null;
+  }
+
+  /** Whether this fragment may be written to at all. */
+  private get _writable(): boolean {
+    return !this.gfx.std.store.readonly && !this.model.isLocked();
   }
 
   private _leave(): void {

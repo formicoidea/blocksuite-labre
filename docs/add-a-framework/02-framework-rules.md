@@ -134,7 +134,11 @@ its words without a declaration — from
 `packages/affine/blocks/surface/src/framework-background/background-view.ts`,
 and say only WHERE the labels are. Copying the in-place `<input>` instead is
 how four boards ended up with no double-click rename at all (issue #355); the
-gesture is pinned once, in `framework-background-view.unit.spec.ts`.
+gesture is pinned once, in `framework-background-view.unit.spec.ts`. Every
+board extends it, UML's five frames included. A label whose target no
+`{ [prop]: value }` patch can express (a UML fragment's operand guard, kept
+inside an array) returns its own `commit` from `labelAt`; it never copies the
+editor.
 
 **R34. Every board exports as SVG**, and gets it for free. "Export SVG" sits in
 the "⋮" of every board's contextual toolbar — one core command `export.svg`
