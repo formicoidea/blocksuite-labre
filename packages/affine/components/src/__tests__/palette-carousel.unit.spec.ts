@@ -25,7 +25,10 @@ const GROUPS: PaletteGroup[] = [
 
 async function mount(
   props: Partial<
-    Pick<EdgelessColorPickerButton, 'paletteGroups' | 'activeGroupKey'>
+    Pick<
+      EdgelessColorPickerButton,
+      'paletteGroups' | 'activeGroupKey' | 'palettes'
+    >
   >
 ): Promise<EdgelessColorPickerButton> {
   const element = Object.assign(
@@ -96,10 +99,33 @@ describe('the palette carousel', () => {
     expect(element.activePalettes).toEqual(GROUPS[2].palettes);
   });
 
-  test('a single group draws no header — the panel as every other call site has it', async () => {
-    const element = await mount({ paletteGroups: [GROUPS[0]] });
+  test("a single group is no carousel: the caller's own `palettes` still wins", async () => {
+    // What a Wardley node's picker gets when the Wardley flag is off: its
+    // node toolbar is always-on, its palette is not, so no framework page is
+    // offered — and the notation swatches the toolbar seeded must stay.
+    const seeded = [swatch('Wonder')];
+    const element = await mount({
+      paletteGroups: [GROUPS[0]],
+      palettes: seeded,
+    });
     expect(element.shadowRoot?.querySelector('.palette-carousel')).toBeNull();
-    expect(element.activePalettes).toEqual(GROUPS[0].palettes);
+    expect(element.activePalettes).toBe(seeded);
+  });
+
+  test('a new selection re-opens on ITS framework, forgetting the page paged to', async () => {
+    const element = await mount({
+      paletteGroups: GROUPS,
+      activeGroupKey: 'wardley',
+    });
+
+    nav(element, 'Next palette')?.click();
+    await element.updateComplete;
+    expect(name(element)).toBe('EDGY');
+
+    // The toolbar now serves another element, on no board at all.
+    element.activeGroupKey = 'default';
+    await element.updateComplete;
+    expect(name(element)).toBe('Default');
   });
 
   test('no groups at all: the flat `palettes` prop still drives the panel', async () => {

@@ -4,6 +4,7 @@ import {
   ValidationProfileExtension,
   ValidationRuleExtension,
 } from '@labre/affine-block-surface';
+import { FrameworkPaletteExtension } from '@labre/affine-components/color-picker';
 import {
   type ViewExtensionContext,
   ViewExtensionProvider,
@@ -27,6 +28,7 @@ import {
   contextMapBoardToolbarExtension,
   contextMapBoardToolingToolbarConfig,
 } from './toolbar/board-config';
+import { CONTEXT_MAP_FRAMEWORK_PALETTE } from './toolbar/palette';
 import { contextMapSeniorTool } from './toolbar/senior-tool';
 
 /**
@@ -101,6 +103,13 @@ export class DddContextMapViewExtension extends ViewExtensionProvider {
       // profile, so it goes with the flag without either side naming the other.
       context.register(ReadingProfileExtension(CONTEXT_MAP_READING));
       context.register(contextMapSeniorTool);
+      // The Context Map's page of the colour pickers' carousel
+      // (`docs/adr/0027`). Here, beside the senior tool, because offering hues
+      // is TOOLING — the colours already painted on a stored map are content
+      // and do not move (`docs/adr/0009`).
+      context.register(
+        FrameworkPaletteExtension(CONTEXT_MAP_FRAMEWORK_PALETTE)
+      );
       // The Templates-panel category, gated by this framework's own flag like
       // every other framework's: a template is tooling (`docs/adr/0009`), and it
       // is DERIVED from this package's commands, so it registers where they do.

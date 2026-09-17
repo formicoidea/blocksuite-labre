@@ -8,8 +8,10 @@
   "include": ["./src"],
   "references": [
     { "path": "../../blocks/surface" },
+    { "path": "../../components" },
     { "path": "../../ext-loader" },
     { "path": "../pointer" },
+    { "path": "../shape" },
     { "path": "../template" },
     { "path": "../../model" },
     { "path": "../../shared" },

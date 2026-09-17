@@ -3,7 +3,7 @@ import { DefaultTheme, resolveColor } from '@labre/affine-model';
 import type { ColorEvent } from '@labre/affine-shared/utils';
 import { WithDisposable } from '@labre/global/lit';
 import type { BlockStdScope } from '@labre/std';
-import { html, LitElement } from 'lit';
+import { html, LitElement, type PropertyValues } from 'lit';
 import { property, query, state } from 'lit/decorators.js';
 import { choose } from 'lit/directives/choose.js';
 import { ifDefined } from 'lit/directives/if-defined.js';
@@ -74,8 +74,15 @@ export class EdgelessColorPickerButton extends WithDisposable(LitElement) {
     return asked < 0 ? 0 : asked;
   }
 
-  /** The swatches on screen: the carousel's current page, else the flat prop. */
+  /**
+   * The swatches on screen: the carousel's current page — unless there is no
+   * carousel. A single page means no framework offered hues, and then the
+   * caller's own {@link palettes} wins: that is how a Wardley node keeps its
+   * notation swatches when the Wardley flag is off, its node toolbar being
+   * always-on while its palette is not (`docs/adr/0009`).
+   */
   get activePalettes(): readonly Palette[] {
+    if (this.paletteGroups.length < 2) return this.palettes;
     return this.paletteGroups[this.groupIndex]?.palettes ?? this.palettes;
   }
 
@@ -85,9 +92,10 @@ export class EdgelessColorPickerButton extends WithDisposable(LitElement) {
    * and paging to `Default` must not make the element look custom-coloured.
    */
   get isCustomColor() {
-    const offered = this.paletteGroups.length
-      ? this.paletteGroups.flatMap(group => group.palettes)
-      : this.palettes;
+    const offered =
+      this.paletteGroups.length > 1
+        ? this.paletteGroups.flatMap(group => group.palettes)
+        : this.palettes;
     return !offered
       .map(({ value }) => resolveColor(value, this.theme))
       .includes(this.color);
@@ -101,6 +109,16 @@ export class EdgelessColorPickerButton extends WithDisposable(LitElement) {
     this.pick?.({ type: 'start' });
     this.pick?.({ type: 'pick', detail });
     this.pick?.({ type: 'end' });
+  }
+
+  /**
+   * A NEW selection re-opens on ITS framework: the page the user paged to
+   * belongs to the element they were recolouring, not to the next one. Only a
+   * change of {@link activeGroupKey} clears it, so paging survives the
+   * re-render the click itself provokes.
+   */
+  override willUpdate(changed: PropertyValues) {
+    if (changed.has('activeGroupKey')) this.pickedGroupIndex = undefined;
   }
 
   override firstUpdated() {

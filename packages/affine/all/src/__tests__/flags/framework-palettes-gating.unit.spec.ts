@@ -27,11 +27,25 @@ const ALL_OFF = Object.fromEntries(
 const ALL_ON: BlockFlags = {};
 
 /**
- * The frameworks that ship a palette TODAY. Wardley and EDGY are the two that
- * have one; the other seven come in a follow-up, so this list is expected to
- * grow — and a framework silently LOSING its page shows up here.
+ * The frameworks that ship a palette: every one that has HUES OF ITS OWN.
+ *
+ * Eight of the nine. UML is missing on purpose and is not an omission: its
+ * pack is neutrals-only (`NOTATION_NEUTRALS`, `docs/adr/0026`), so the base
+ * palette — page one of the carousel, never hidden — already serves it and a
+ * UML page would repeat it word for word.
+ *
+ * A framework silently LOSING its page shows up here.
  */
-const ALL_PALETTES = ['edgy', 'wardley'];
+const ALL_PALETTES = [
+  'bpmn',
+  'c4',
+  'cynefin-estuarine',
+  'ddd-context-map',
+  'ddd-core-domain',
+  'ddd-event-storming',
+  'edgy',
+  'wardley',
+];
 
 /** Mount the view extensions of one scope for real, exactly as std does. */
 function mountProvider(scope: 'page' | 'edgeless', flags: BlockFlags) {
@@ -76,6 +90,57 @@ describe('the framework palettes are flag-gated tooling', () => {
     const second = palettesOf(mountProvider('edgeless', { wardley: false }));
     expect(second).not.toContain('wardley');
     expect(second).toEqual(ALL_PALETTES.filter(id => id !== 'wardley'));
+  });
+
+  test.each([
+    ['bpmn', 'com.labre.framework.bpmn', 'Start green'],
+    ['c4', 'com.labre.framework.c4', 'Person blue'],
+    [
+      'cynefin-estuarine',
+      'com.labre.framework.cynefin-estuarine',
+      'Iterate teal',
+    ],
+    [
+      'ddd-context-map',
+      'com.labre.framework.ddd-context-map',
+      'Bounded context blue',
+    ],
+    [
+      'ddd-core-domain',
+      'com.labre.framework.ddd-core-domain',
+      'Big-bet purple',
+    ],
+    [
+      'ddd-event-storming',
+      'com.labre.framework.ddd-event-storming',
+      'Domain event orange',
+    ],
+  ])(
+    '%s contributes its own swatches with the flag on, and nothing with it off',
+    (framework, labelKey, swatch) => {
+      const on = mountProvider('edgeless', ALL_ON);
+      const palette = [...on.getAll(FrameworkPaletteIdentifier).values()].find(
+        candidate => candidate.framework === framework
+      );
+
+      // Its own name, reused from the framework descriptor rather than minted.
+      expect(palette?.labelWording[0]).toBe(labelKey);
+      // Its own hues, led by the notation swatch its pack is known for, and
+      // the shared neutrals behind them — so the page is never just the tail.
+      expect(palette?.palettes.map(entry => entry.key)).toContain(swatch);
+      expect(palette?.palettes.length).toBeGreaterThan(1);
+
+      const off = mountProvider('edgeless', {
+        [framework]: false,
+      } as BlockFlags);
+      expect(palettesOf(off)).not.toContain(framework);
+    }
+  );
+
+  test('UML ships no page: its pack is neutrals-only', () => {
+    // Not an omission — the base palette already says everything a UML diagram
+    // is drawn in, and a second copy of it would be a page with no news.
+    expect(palettesOf(mountProvider('edgeless', ALL_ON))).not.toContain('uml');
   });
 
   test('the page scope contributes no palette at all', () => {

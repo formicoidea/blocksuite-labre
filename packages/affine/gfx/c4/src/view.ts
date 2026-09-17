@@ -6,6 +6,7 @@ import {
   ValidationProfileExtension,
   ValidationRuleExtension,
 } from '@labre/affine-block-surface';
+import { FrameworkPaletteExtension } from '@labre/affine-components/color-picker';
 import {
   type ViewExtensionContext,
   ViewExtensionProvider,
@@ -40,6 +41,7 @@ import {
   c4BoardToolbarExtension,
   c4BoardToolingToolbarExtension,
 } from './toolbar/config';
+import { C4_FRAMEWORK_PALETTE } from './toolbar/palette';
 import { c4SeniorTool } from './toolbar/senior-tool';
 
 /**
@@ -135,6 +137,11 @@ export class C4ViewExtension extends ViewExtensionProvider {
         context.register(ReadingProfileExtension(reading));
       }
       context.register(c4SeniorTool);
+      // C4's page of the colour pickers' carousel (`docs/adr/0027`). Here,
+      // beside the senior tool, because offering hues is TOOLING — the colours
+      // already painted on a stored diagram are content and do not move
+      // (`docs/adr/0009`).
+      context.register(FrameworkPaletteExtension(C4_FRAMEWORK_PALETTE));
       // The Templates-panel category — tooling, so it goes with the flag (#244).
       context.register(TemplateCategoryExtension(c4TemplateCategory));
       context.register(CommandExtension(c4Commands, c4CommandIcons));

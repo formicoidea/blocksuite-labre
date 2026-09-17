@@ -19,7 +19,7 @@ import type { BlockStdScope } from '@labre/std';
 import { stdContext } from '@labre/std';
 import { consume } from '@lit/context';
 import { batch, signal } from '@preact/signals-core';
-import { css, html, LitElement } from 'lit';
+import { css, html, LitElement, type PropertyValues } from 'lit';
 import { property, query, state } from 'lit/decorators.js';
 import { choose } from 'lit-html/directives/choose.js';
 import { repeat } from 'lit-html/directives/repeat.js';
@@ -161,15 +161,26 @@ export class EdgelessShapeColorPicker extends WithDisposable(
     return asked < 0 ? 0 : asked;
   }
 
+  /** The page on screen, or the caller's own list when there is no carousel. */
   get activePalettes(): readonly Palette[] {
+    if (this.paletteGroups.length < 2) return this.palettes;
     return this.paletteGroups[this.groupIndex]?.palettes ?? this.palettes;
+  }
+
+  /**
+   * A new selection re-opens on ITS framework — see the twin on
+   * `edgeless-color-picker-button`.
+   */
+  override willUpdate(changed: PropertyValues) {
+    if (changed.has('activeGroupKey')) this.pickedGroupIndex = undefined;
   }
 
   /** Measured against the UNION of the pages, for the reason the twin states. */
   #calcCustomButtonState(color: string, theme: ColorScheme) {
-    const offered = this.paletteGroups.length
-      ? this.paletteGroups.flatMap(group => group.palettes)
-      : this.palettes;
+    const offered =
+      this.paletteGroups.length > 1
+        ? this.paletteGroups.flatMap(group => group.palettes)
+        : this.palettes;
     return !offered
       .map(({ value }) => resolveColor(value, theme))
       .includes(color);

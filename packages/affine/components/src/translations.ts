@@ -78,15 +78,15 @@ export const COLOR_PICKER_MODE_DARK: ChromeWording = [
  * senior button already uses.
  */
 export const PALETTE_GROUP_DEFAULT: ChromeWording = [
-  'com.labre.palette.group.default',
+  'com.labre.color-picker.palette.default',
   'Default',
 ];
 export const PALETTE_GROUP_PREVIOUS: ChromeWording = [
-  'com.labre.palette.group.previous',
+  'com.labre.color-picker.palette.previous',
   'Previous palette',
 ];
 export const PALETTE_GROUP_NEXT: ChromeWording = [
-  'com.labre.palette.group.next',
+  'com.labre.color-picker.palette.next',
   'Next palette',
 ];
 

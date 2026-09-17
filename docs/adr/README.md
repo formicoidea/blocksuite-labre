@@ -31,6 +31,7 @@ One file per decision. Format and lifecycle in
 | [0024](0024-border-proximity-rule-family.md)                   | `border-proximity` rule family       | accepted                  | Centre within N units of a carrier node's outline; overlap is the gate; `surface` scope.                      |
 | [0025](0025-board-svg-export.md)                               | Board SVG export                     | accepted                  | The canvas renderer replays into svgcanvas; one core command and one wildcard "⋮" entry for every board.      |
 | [0026](0026-legend-is-a-catalogue-subscription.md)             | A legend is a subscription           | accepted                  | A command declares its row; the board's legend is derived from the catalogue. One button, gated, one emitter. |
+| [0027](0027-framework-palettes-carousel.md)                    | Colour pickers are a carousel        | accepted                  | Every active palette on every picker, base page one; it opens on the element's framework of origin. Gated.    |
 
 Related documents that are not ADRs:
 

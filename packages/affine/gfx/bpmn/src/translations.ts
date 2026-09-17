@@ -26,6 +26,7 @@ import { BPMN_PROFILES } from './profiles.js';
 import { BPMN_READINGS } from './reading.js';
 import { BPMN_ROLES } from './roles.js';
 import { BPMN_RULES } from './rules.js';
+import { BPMN_PALETTE_WORDINGS } from './toolbar/palette.js';
 import {
   BPMN_TEMPLATE_NAME_MESSAGE_EXCHANGE,
   BPMN_TEMPLATE_NAME_SEQUENCE_FLOW,
@@ -136,6 +137,18 @@ const templateNameEntries = (): TranslationKeyManifestEntry[] =>
   ].map(([key, fallback]) => ({ key, fallback, source: 'chrome' as const }));
 
 /**
+ * The carousel swatches' own names ({@link BPMN_PALETTE_WORDINGS}) — chrome,
+ * re-rendered by the colour picker on every locale switch, never seeded into a
+ * document. Same treatment as Wardley's and EDGY's.
+ */
+const paletteEntries = (): TranslationKeyManifestEntry[] =>
+  BPMN_PALETTE_WORDINGS.map(([key, fallback]) => ({
+    key,
+    fallback,
+    source: 'chrome' as const,
+  }));
+
+/**
  * THIS framework's contribution to the translation-key manifest — every
  * `com.labre.*` key BPMN can hand to `TranslationProvider.t`, derived from the
  * very declarations the editor registers (never restated).
@@ -165,6 +178,7 @@ export const bpmnTranslationEntries: TranslationKeyManifestEntry[] =
     furnitureSeedEntries(),
     exampleSeedEntries(),
     templateNameEntries(),
+    paletteEntries(),
     importRemarkEntries(),
     importErrorEntries(),
     quarantineReasonEntries(),
