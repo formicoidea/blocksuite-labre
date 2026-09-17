@@ -2,6 +2,7 @@ import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import type { BlockFlags } from '@labre/affine/flags';
 import { ConnectorMode, type ShapeElementModel } from '@labre/affine/model';
 import { AFFINE_TOOLBAR_WIDGET } from '@labre/affine/widgets/toolbar';
+import { page, userEvent } from '@vitest/browser/context';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 
 import { wait } from '../utils/common.js';
@@ -9,8 +10,9 @@ import { getDocRootBlock } from '../utils/edgeless.js';
 import { setupEditor } from '../utils/setup.js';
 
 /**
- * ADR 0027 end to end: the `‹ Label ›` carousel a contextual colour picker
- * draws above its swatch grid.
+ * ADR 0027 end to end: the palette header a contextual colour picker draws
+ * above its swatch grid — a name that opens an inline list of the pages, still
+ * paged by a wheel.
  *
  * The unit suites own the origin rule, the builder and the header component in
  * isolation. This one is the RECETTE — it owns what only a mounted editor can
@@ -19,6 +21,15 @@ import { setupEditor } from '../utils/setup.js';
  * the element belongs to; that paging leaves the menu open and swaps the grid;
  * that a swatch taken from a framework page is what ends up in the model; and
  * that the page the user paged to never leaks onto the next selection.
+ *
+ * Every gesture on the header goes through `userEvent`, i.e. through Playwright
+ * and a real mouse, and that is the lesson of the 2026-09-17 recette: the
+ * suite it replaces set `select.value` and dispatched `change` by hand, so it
+ * stayed green while the drop-down could not be opened by anybody. The toolbar
+ * cancels every `pointerdown` in its subtree (`toolbar/toolbar.ts`) to hold the
+ * canvas selection; a cancelled `pointerdown` suppresses the compatibility
+ * `mousedown` a native `<select>` needs, and nothing but a real click could
+ * have said so.
  */
 
 /** The base palette's page name, and Wardley's — the English fallbacks. */
@@ -26,9 +37,6 @@ const BASE_LABEL = 'Default';
 const WARDLEY_LABEL = 'Wardley map';
 /** Wardley's lead swatch, as `resolvePaletteLabel` prints it. */
 const WARDLEY_SWATCH = 'Wonder';
-
-const NEXT = 'Next palette';
-const PREVIOUS = 'Previous palette';
 
 /** See `wardley-validation-bubble.spec.ts`: the viewport persists per doc id. */
 const VIEWPORT_STORAGE_KEY = 'blocksuite:doc:home:edgelessViewport';
@@ -110,6 +118,12 @@ describe("the colour pickers' palette carousel", () => {
     (host.shadowRoot?.querySelector('editor-menu-button') ??
       null) as MenuButton | null;
 
+  /** A REAL click — Playwright's mouse, not `element.click()`. */
+  const clickFor = async (element: Element) => {
+    await userEvent.click(page.elementLocator(element as HTMLElement));
+    await settle();
+  };
+
   /**
    * Open the picker the way a user does — a click on the toolbar trigger.
    *
@@ -117,6 +131,12 @@ describe("the colour pickers' palette carousel", () => {
    * shows it, and, more to the point here, `createButtonPopper` closes the menu
    * on any click whose composed path misses the TRIGGER. A menu that was never
    * opened cannot show that paging keeps it open.
+   *
+   * Programmatic on purpose, and the only gesture here that is: several cases
+   * below select an element parked far off the viewport, whose toolbar entry
+   * the widget has folded into its "⋮" overflow — a real mouse has nothing to
+   * aim at. What IS under test, the header and its rows, is always clicked for
+   * real, on a picker the viewport actually shows.
    */
   const openPicker = async (host: Element) => {
     const menu = menuOf(host);
@@ -133,20 +153,49 @@ describe("the colour pickers' palette carousel", () => {
     return menu!;
   };
 
+  const carouselHeader = (host: Element) =>
+    (host.shadowRoot?.querySelector('.palette-carousel-name') ??
+      null) as HTMLButtonElement | null;
+
   const carouselName = (host: Element) =>
-    host.shadowRoot
-      ?.querySelector('.palette-carousel-name')
-      ?.textContent?.trim() ?? null;
+    carouselHeader(host)?.querySelector('.label')?.textContent?.trim() ?? null;
 
-  const navButton = (host: Element, label: string) =>
-    (host.shadowRoot?.querySelector(
-      `.palette-carousel-nav[aria-label="${label}"]`
-    ) ?? null) as HTMLButtonElement | null;
+  const pageRows = (host: Element) =>
+    Array.from(
+      host.shadowRoot?.querySelectorAll('.palette-carousel-option') ?? []
+    ) as HTMLButtonElement[];
 
-  const page = async (host: Element, label: string) => {
-    const button = navButton(host, label);
-    expect(button).not.toBeNull();
-    button!.click();
+  const rowLabels = (host: Element) =>
+    pageRows(host).map(row => row.querySelector('.label')?.textContent?.trim());
+
+  /** Open the inline list of pages with a real click on the header. */
+  const openList = async (host: Element) => {
+    expect(carouselHeader(host)).not.toBeNull();
+    await clickFor(carouselHeader(host)!);
+  };
+
+  /** Pick a page the way a user does: open the list, click the row. */
+  const choosePage = async (host: Element, label: string) => {
+    if (!pageRows(host).length) await openList(host);
+    const row = pageRows(host).find(
+      item => item.querySelector('.label')?.textContent?.trim() === label
+    );
+    expect(row).toBeDefined();
+    await clickFor(row!);
+  };
+
+  /**
+   * A flick of the wheel over the SWATCH GRID — the second half of the recette
+   * failure was that only the name answered. Playwright's `userEvent` has no
+   * wheel, so the event itself is synthesised; where it is aimed is the point.
+   */
+  const wheelPage = async (host: Element, deltaY: number) => {
+    const grid = host.shadowRoot?.querySelector('edgeless-color-panel');
+    expect(grid).not.toBeNull();
+    grid!.dispatchEvent(
+      new WheelEvent('wheel', { deltaY, bubbles: true, cancelable: true })
+    );
+    // `settle()` waits 250ms, longer than the header's own wheel throttle.
     await settle();
   };
 
@@ -205,8 +254,11 @@ describe("the colour pickers' palette carousel", () => {
       picker!.shadowRoot?.querySelector('.palette-carousel')
     ).not.toBeNull();
     expect(carouselName(picker!)).toBe(BASE_LABEL);
-    expect(navButton(picker!, PREVIOUS)).not.toBeNull();
-    expect(navButton(picker!, NEXT)).not.toBeNull();
+    // Neither the arrows of the first cut nor the drop-down of the second.
+    expect(
+      picker!.shadowRoot?.querySelector('.palette-carousel-nav')
+    ).toBeNull();
+    expect(picker!.shadowRoot?.querySelector('select')).toBeNull();
     // Eight frameworks ship hues, plus the base page that is never hidden.
     expect(picker!.paletteGroups.map(group => group.key)).toEqual([
       'default',
@@ -239,7 +291,7 @@ describe("the colour pickers' palette carousel", () => {
     expect(swatchLabels(fill!)).toContain(WARDLEY_SWATCH);
   });
 
-  test('paging swaps the grid and leaves the menu open', async () => {
+  test('a wheel over the swatch grid swaps it and leaves the menu open', async () => {
     addMap();
     const shape = addShape('[400,300,100,100]');
     await select(shape);
@@ -249,15 +301,121 @@ describe("the colour pickers' palette carousel", () => {
     expect(carouselName(picker)).toBe(WARDLEY_LABEL);
 
     const before = swatchLabels(panel(picker, 'Fill color')!);
-    await page(picker, NEXT);
+    await wheelPage(picker, 1);
 
     expect(carouselName(picker)).not.toBe(WARDLEY_LABEL);
     expect(swatchLabels(panel(picker, 'Fill color')!)).not.toEqual(before);
     // The header lives inside an open menu; paging must not close it.
     expect(menu.dataset.open).toBe('true');
 
+    // Both grids travel together, and from the side the wheel came from: the
+    // direction is on the box the stylesheet animates (ADR 0027, decision 1).
+    expect(
+      Array.from(
+        picker.shadowRoot!.querySelectorAll('.palette-carousel-page')
+      ).map(box => box.getAttribute('data-direction'))
+    ).toEqual(['next', 'next']);
+
     // …and back, because the pages are a ring.
-    await page(picker, PREVIOUS);
+    await wheelPage(picker, -1);
+    expect(carouselName(picker)).toBe(WARDLEY_LABEL);
+    expect(menu.dataset.open).toBe('true');
+    expect(
+      Array.from(
+        picker.shadowRoot!.querySelectorAll('.palette-carousel-page')
+      ).map(box => box.getAttribute('data-direction'))
+    ).toEqual(['prev', 'prev']);
+  });
+
+  test('the header is the panel’s title, on the panel’s own left edge', async () => {
+    // The 2026-09-17 recette, third pass: the header was a full-width bar whose
+    // name sat a padding to the right of every section label. It is now a
+    // compact trigger whose text starts on the very x the labels and the swatch
+    // grid start on — the hover pill bleeds outward, the text does not move.
+    addMap();
+    const shape = addShape('[400,300,100,100]');
+    await select(shape);
+
+    const picker = shapePicker()!;
+    await openPicker(picker);
+
+    const left = (selector: string) =>
+      picker.shadowRoot!.querySelector(selector)!.getBoundingClientRect().left;
+
+    const name = left('.palette-carousel-name .label');
+    expect(name).toBeCloseTo(left('.picker-label'), 0);
+    expect(name).toBeCloseTo(left('edgeless-color-panel'), 0);
+
+    // The panel must not resize under the cursor when the list takes over.
+    const panel = picker.shadowRoot!.querySelector('.pickers')!;
+    const width = panel.getBoundingClientRect().width;
+
+    await openList(picker);
+    expect(left('.palette-carousel-option .label')).toBeCloseTo(name, 0);
+    expect(panel.getBoundingClientRect().width).toBeCloseTo(width, 0);
+  });
+
+  test('a real click on the header, then on a row, jumps straight to a page', async () => {
+    addMap();
+    const shape = addShape('[400,300,100,100]');
+    await select(shape);
+
+    const picker = shapePicker()!;
+    const menu = await openPicker(picker);
+    expect(carouselName(picker)).toBe(WARDLEY_LABEL);
+
+    const before = swatchLabels(panel(picker, 'Fill color')!);
+
+    // THE regression of the 2026-09-17 recette: a real mouse on the header
+    // must open something. The native `<select>` it replaces opened nothing,
+    // the toolbar having cancelled the `pointerdown` that would have led to it.
+    await openList(picker);
+    // One row per page, and the grids give way to them in the same panel.
+    expect(rowLabels(picker).length).toBe(picker.paletteGroups.length);
+    expect(rowLabels(picker)).toContain(BASE_LABEL);
+    expect(rowLabels(picker)).toContain(WARDLEY_LABEL);
+    expect(picker.shadowRoot?.querySelector('edgeless-color-panel')).toBeNull();
+    // Each row previews its page with the first few swatches of it.
+    expect(
+      pageRows(picker)[1].querySelectorAll('.palette-carousel-dot').length
+    ).toBeGreaterThan(0);
+    // The row in force is the page on screen, and it is the only one marked.
+    expect(
+      pageRows(picker)
+        .filter(row => row.getAttribute('aria-current') === 'true')
+        .map(row => row.querySelector('.label')?.textContent?.trim())
+    ).toEqual([WARDLEY_LABEL]);
+    expect(menu.dataset.open).toBe('true');
+
+    // The base page is page one, whatever the origin — a name away, not a
+    // count of clicks away.
+    await choosePage(picker, BASE_LABEL);
+
+    expect(carouselName(picker)).toBe(BASE_LABEL);
+    expect(pageRows(picker)).toHaveLength(0);
+    expect(swatchLabels(panel(picker, 'Fill color')!)).not.toEqual(before);
+    expect(menu.dataset.open).toBe('true');
+
+    // …and back to the framework page by its own name.
+    await choosePage(picker, WARDLEY_LABEL);
+    expect(carouselName(picker)).toBe(WARDLEY_LABEL);
+    expect(swatchLabels(panel(picker, 'Fill color')!)).toEqual(before);
+    expect(menu.dataset.open).toBe('true');
+  });
+
+  test('a second real click on the header puts the list away, page intact', async () => {
+    addMap();
+    const shape = addShape('[400,300,100,100]');
+    await select(shape);
+
+    const picker = shapePicker()!;
+    const menu = await openPicker(picker);
+
+    await openList(picker);
+    expect(pageRows(picker).length).toBeGreaterThan(1);
+
+    await openList(picker);
+    expect(pageRows(picker)).toHaveLength(0);
     expect(carouselName(picker)).toBe(WARDLEY_LABEL);
     expect(menu.dataset.open).toBe('true');
   });
@@ -278,8 +436,7 @@ describe("the colour pickers' palette carousel", () => {
     const hex = wonder!.color;
     expect(hex).toMatch(/^#[0-9a-f]{6}$/i);
 
-    wonder!.click();
-    await settle();
+    await clickFor(wonder!);
 
     // A picked swatch is a plain stored colour value and nothing else — no new
     // field, no migration owed (ADR 0027, decision 7).
@@ -311,9 +468,12 @@ describe("the colour pickers' palette carousel", () => {
     const picker = shapePicker()!;
     await openPicker(picker);
     expect(carouselName(picker)).toBe(WARDLEY_LABEL);
-    await page(picker, NEXT);
+    // Somewhere that is neither Wardley nor the base page, so the assertions
+    // below cannot pass by accident.
+    await wheelPage(picker, 1);
     const pagedTo = carouselName(picker);
     expect(pagedTo).not.toBe(WARDLEY_LABEL);
+    expect(pagedTo).not.toBe(BASE_LABEL);
 
     // The toolbar now serves an element on no board at all.
     await select(offMap);

@@ -72,7 +72,7 @@ export const COLOR_PICKER_MODE_DARK: ChromeWording = [
 /* ── Palette carousel (the framework pages of a colour picker) ───────── */
 
 /**
- * The carousel's own three words (`docs/adr/0027`). The PAGE names are not
+ * The carousel's own two words (`docs/adr/0027`). The PAGE names are not
  * here: the base page is the one below, and a framework's page is named by the
  * framework itself, through the `labelWording` it registers — the same key its
  * senior button already uses.
@@ -81,13 +81,9 @@ export const PALETTE_GROUP_DEFAULT: ChromeWording = [
   'com.labre.color-picker.palette.default',
   'Default',
 ];
-export const PALETTE_GROUP_PREVIOUS: ChromeWording = [
-  'com.labre.color-picker.palette.previous',
-  'Previous palette',
-];
-export const PALETTE_GROUP_NEXT: ChromeWording = [
-  'com.labre.color-picker.palette.next',
-  'Next palette',
+export const PALETTE_GROUP_CHOOSE: ChromeWording = [
+  'com.labre.color-picker.palette.choose',
+  'Choose a palette',
 ];
 
 /* ── Shape colour picker ─────────────────────────────────────────────── */
@@ -487,8 +483,7 @@ export const COMPONENTS_WORDINGS: readonly ChromeWording[] = [
   COLOR_PICKER_MODE_LIGHT,
   COLOR_PICKER_MODE_DARK,
   PALETTE_GROUP_DEFAULT,
-  PALETTE_GROUP_PREVIOUS,
-  PALETTE_GROUP_NEXT,
+  PALETTE_GROUP_CHOOSE,
   BORDER_COLOR_LABEL,
   CONTEXT_MENU_NO_RESULTS,
   CONTEXT_MENU_DONE,
