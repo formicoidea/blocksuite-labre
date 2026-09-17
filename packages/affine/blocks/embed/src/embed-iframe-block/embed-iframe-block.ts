@@ -42,10 +42,12 @@ import {
   IDLE_CARD_DEFAULT_HEIGHT,
   LINK_CREATE_POPUP_OFFSET,
   LOADING_CARD_DEFAULT_HEIGHT,
+  TRUSTED_SANDBOX,
+  UNTRUSTED_SANDBOX,
 } from './consts.js';
 import { embedIframeBlockStyles } from './style.js';
 import type { EmbedIframeStatusCardOptions } from './types.js';
-import { safeGetIframeSrc } from './utils.js';
+import { isSafeEmbedUrl, safeGetIframeSrc } from './utils.js';
 import { EMBED_IFRAME_NO_LINK_MESSAGE } from '../translations.js';
 
 export type EmbedIframeStatus = 'idle' | 'loading' | 'success' | 'error';
@@ -95,6 +97,9 @@ export class EmbedIframeBlockComponent extends CaptionedBlockComponent<EmbedIfra
 
   protected iframeOptions: IframeOptions | undefined = undefined;
 
+  // the name of the provider config matched by the original url, if any
+  private currentConfigName: string | undefined = undefined;
+
   get embedIframeService() {
     return this.std.get(EmbedIframeService);
   }
@@ -132,7 +137,8 @@ export class EmbedIframeBlockComponent extends CaptionedBlockComponent<EmbedIfra
 
   open = () => {
     const link = this.model.props.url;
-    if (!link) {
+    // a non http(s) link would run in the opener context, never open it
+    if (!isSafeEmbedUrl(link)) {
       this.notificationService?.notify({
         title: translateKey(this.std, ...TOAST_NO_LINK_FOUND),
         message: translateKey(this.std, ...EMBED_IFRAME_NO_LINK_MESSAGE),
@@ -141,7 +147,7 @@ export class EmbedIframeBlockComponent extends CaptionedBlockComponent<EmbedIfra
       });
       return;
     }
-    window.open(link, '_blank');
+    window.open(link, '_blank', 'noopener,noreferrer');
   };
 
   refreshData = async () => {
@@ -256,6 +262,7 @@ export class EmbedIframeBlockComponent extends CaptionedBlockComponent<EmbedIfra
     const config = this.embedIframeService?.getConfig(url);
     if (config) {
       this.iframeOptions = config.options;
+      this.currentConfigName = config.name;
     }
   };
 
@@ -297,6 +304,17 @@ export class EmbedIframeBlockComponent extends CaptionedBlockComponent<EmbedIfra
 
   private readonly _renderIframe = () => {
     const { iframeUrl } = this.model.props;
+    // the url comes from the document: refuse to give a non http(s) one to src
+    if (!isSafeEmbedUrl(iframeUrl)) {
+      return html`<embed-iframe-error-card
+        .error=${new Error('Invalid iframe URL')}
+        .model=${this.model}
+        .onRetry=${this._handleRetry}
+        .std=${this.std}
+        .inSurface=${this.inSurface}
+        .options=${this._statusCardOptions}
+      ></embed-iframe-error-card>`;
+    }
     const {
       widthPercent,
       heightInNote,
@@ -305,11 +323,19 @@ export class EmbedIframeBlockComponent extends CaptionedBlockComponent<EmbedIfra
       referrerpolicy,
       scrolling,
       allowFullscreen,
+      sandbox,
     } = this.iframeOptions ?? {};
     const width = `${widthPercent}%`;
     // if the block is in the surface, use 100% as the height
     // otherwise, use the heightInNote
     const height = this.inSurface ? '100%' : heightInNote;
+    // a provider may widen its own sandbox; an arbitrary url (generic config,
+    // or no config at all) only ever gets the untrusted one
+    const sandboxValue =
+      sandbox ??
+      (this.currentConfigName && this.currentConfigName !== 'generic'
+        ? TRUSTED_SANDBOX
+        : UNTRUSTED_SANDBOX);
     return html`
       <iframe
         width=${width ?? DEFAULT_IFRAME_WIDTH}
@@ -318,7 +344,8 @@ export class EmbedIframeBlockComponent extends CaptionedBlockComponent<EmbedIfra
         loading="lazy"
         frameborder="0"
         credentialless
-        src=${ifDefined(iframeUrl)}
+        sandbox=${sandboxValue}
+        src=${iframeUrl}
         allow=${ifDefined(allow)}
         referrerpolicy=${ifDefined(referrerpolicy)}
         scrolling=${ifDefined(scrolling)}
