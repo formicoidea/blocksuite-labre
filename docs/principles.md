@@ -118,3 +118,9 @@ short reason, and the consequence for the code you write.
 
 - **J. A decision that touches a stored format or a host contract is an ADR
   first**, code second. See [contribute/06-decisions.md](contribute/06-decisions.md).
+
+- **K. Every framework board exports as SVG.** A board is a picture people take
+  away: the same renderer that paints the canvas paints the file (svgcanvas
+  replays the 2D context into SVG), so every board — present and future — gets
+  the export for free, generically, from its contextual toolbar. Native formats
+  (OWM, BPMN XML, mermaid) are per framework; the picture is not. (ADR 0025)

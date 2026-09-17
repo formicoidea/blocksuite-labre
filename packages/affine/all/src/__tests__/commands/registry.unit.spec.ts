@@ -1,5 +1,16 @@
 import { RESERVED_EDGELESS_KEYS } from '@labre/affine-block-root';
-import { wardleyCommands } from '@labre/affine-gfx-wardley';
+import { recordAction } from '@labre/affine-block-surface';
+import { bpmnCommandIcons } from '@labre/affine-gfx-bpmn';
+import { c4CommandIcons } from '@labre/affine-gfx-c4';
+import { cynefinEstuarineCommandIcons } from '@labre/affine-gfx-cynefin-estuarine';
+import { contextMapCommandIcons } from '@labre/affine-gfx-ddd-context-map';
+import { coreDomainCommandIcons } from '@labre/affine-gfx-ddd-core-domain';
+import { eventStormingCommandIcons } from '@labre/affine-gfx-ddd-event-storming';
+import { edgyCommandIcons } from '@labre/affine-gfx-edgy';
+import {
+  wardleyCommandIcons,
+  wardleyCommands,
+} from '@labre/affine-gfx-wardley';
 import {
   canonicalCombo,
   FRAMEWORK_IDS,
@@ -205,7 +216,7 @@ describe('command registry invariants', () => {
       uml: 69,
       // 5 root commands (undo, redo, redo-windows, duplicate, applyLastStyle)
       // + shape.cycleTextFit + pivot.bind + tag.set + validation.mapQuality
-      // + map.audit + edge.invert-direction + element.read
+      // + map.audit + edge.invert-direction + element.read + export.svg
       //
       // `map.audit` is counted here because `getCommands()` is called with no
       // flags and `ai-audit` defaults to enabled, like every switch. Its
@@ -218,7 +229,9 @@ describe('command registry invariants', () => {
       // conflict. They are the whole point of this test — the line that
       // notices a command appearing or vanishing — so re-derive them at every
       // merge instead of trusting the diff.
-      core: 12,
+      // 13 since `export.svg` (`docs/adr/0025`): core-owned because a board is
+      // a `FrameworkBackgroundElementModel` whatever framework drew it.
+      core: 13,
     });
     // 112 since the two SVG fallback imports (`bpmn.importSvg`,
     // `wardley.importSvg`) joined the OWM pair — one SVG row per framework,
@@ -236,7 +249,10 @@ describe('command registry invariants', () => {
     //
     // …and 186 since UML's SEQUENCE diagrams (phase 3, §17): three artefacts,
     // two frames and five message tools.
-    expect(commands).toHaveLength(186);
+    //
+    // …and 187 since `export.svg` — the one interchange row that is NOT per
+    // framework (`docs/adr/0025`).
+    expect(commands).toHaveLength(187);
   });
 
   /**
@@ -449,6 +465,46 @@ describe('command registry invariants', () => {
   });
 });
 
+/**
+ * Rule R1 of `docs/add-a-framework/02-framework-rules.md`: a framework owns its
+ * senior glyph. `FrameworkDescriptor.iconKey` names it, and the framework's own
+ * command-icon table is what holds it — so a host (or the catalogue) can resolve
+ * the button's picture through `getCommandIcon` without importing the module.
+ */
+describe('every framework declares its own senior icon key', () => {
+  /**
+   * Each table as its framework's `CommandExtension` registers it. Typed off
+   * one of them — `Record<string, TemplateResult>` — rather than importing
+   * `lit`, which this package does not declare as a dependency.
+   */
+  const TABLES: Record<FrameworkId, typeof wardleyCommandIcons> = {
+    wardley: wardleyCommandIcons,
+    edgy: edgyCommandIcons,
+    'cynefin-estuarine': cynefinEstuarineCommandIcons,
+    bpmn: bpmnCommandIcons,
+    c4: c4CommandIcons,
+    'ddd-event-storming': eventStormingCommandIcons,
+    'ddd-core-domain': coreDomainCommandIcons,
+    'ddd-context-map': contextMapCommandIcons,
+  };
+
+  test('iconKey is non-empty, unique across frameworks, and of the form <segment>.toolbar', () => {
+    const keys = FRAMEWORK_DESCRIPTORS.map(d => d.iconKey);
+    for (const d of FRAMEWORK_DESCRIPTORS) {
+      expect(d.iconKey, d.id).toMatch(/^[a-z][a-z0-9-]*\.toolbar$/);
+    }
+    // Two frameworks sharing a key would silently draw the same button twice.
+    expect(new Set(keys).size).toBe(FRAMEWORK_DESCRIPTORS.length);
+  });
+
+  test("iconKey is registered in the framework's own icon table", () => {
+    for (const d of FRAMEWORK_DESCRIPTORS) {
+      // A key no table holds resolves to nothing — the failure this pins.
+      expect(TABLES[d.id][d.iconKey], `${d.id} → ${d.iconKey}`).toBeDefined();
+    }
+  });
+});
+
 describe('the serializable catalogue projection', () => {
   test('carries no function and no template across the seam', () => {
     for (const entry of getCommandManifest()) {
@@ -539,5 +595,39 @@ describe('menu and manifest enumerate the same source', () => {
         `${id} sub-menu entries absent from its catalogue`
       ).toEqual([]);
     }
+  });
+});
+
+/**
+ * A command that ARMS a drawing tool creates nothing when it runs — the user
+ * draws the relation afterwards. Declared as an `artefact`, the placement tool
+ * (`ArtefactPlacementTool`) wraps it: the placing click arms the connector and
+ * returns straight to the default tool, so the relation can never be drawn
+ * from the sub-menu. Found on 2026-09-17 for the Event Storming flow, the Core
+ * Domain movement and the nine Context Map relationships.
+ */
+describe('a command that arms a drawing tool is declared as a tool', () => {
+  test('no artefact command arms a tool when it runs', () => {
+    const offenders = commands
+      .filter(c => c.owner !== 'core' && c.kind === 'artefact')
+      .flatMap(c => {
+        try {
+          const { armedTool } = recordAction(std => {
+            const result = c.run(std, {
+              surface: 'senior-menu',
+              source: 'internal',
+            });
+            // An async action (a template insertion) is not a tool; its
+            // rejection on the recording fake is not this test's business.
+            if (result instanceof Promise) result.catch(() => {});
+          });
+          return armedTool ? [`${c.id} arms "${armedTool}"`] : [];
+        } catch {
+          // An action the recording fake cannot run is measured elsewhere
+          // (the placement tool falls back to its dashed box).
+          return [];
+        }
+      });
+    expect(offenders).toEqual([]);
   });
 });

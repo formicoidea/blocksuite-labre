@@ -27,6 +27,9 @@ import {
 import { HANDLE_SIZE, MARKET_DOT_SIZE } from '../node/consts';
 import {
   type WardleyArtefactKind,
+  WARDLEY_LABEL_H,
+  WARDLEY_LABEL_W,
+  wardleyLabelBoxFor,
   WARDLEY_NODE_LABEL,
   WARDLEY_NODE_SIZE,
   wardleyMorphClears,
@@ -510,6 +513,16 @@ const centre = (model: GfxPrimitiveElementModel): [number, number] => {
   return [x + w / 2, y + h / 2];
 };
 
+/** Whether two boxes share any area at all — W3's own test, in two lines. */
+const overlap = (
+  a: GfxPrimitiveElementModel,
+  b: GfxPrimitiveElementModel
+): boolean => {
+  const [ax, ay, aw, ah] = a.deserializedXYWH;
+  const [bx, by, bw, bh] = b.deserializedXYWH;
+  return ax < bx + bw && bx < ax + aw && ay < by + bh && by < ay + ah;
+};
+
 /**
  * What a composite IS, with every id and every absolute position taken out.
  *
@@ -775,6 +788,69 @@ describe('the words on the picture', () => {
 
     morph(group, 'ecosystem');
     expect(labelOf(group).text.toString()).toBe(WARDLEY_NODE_LABEL.ecosystem);
+  });
+
+  it('carries the name above the bar when a component becomes a pipeline', () => {
+    const b = board();
+    createWardleyNode(b.gfx, 'component');
+    const group = b.drawn();
+    const label = labelOf(group);
+
+    morph(group, 'pipeline');
+
+    // Where a pipeline holds its name: above the handle, centred on the body.
+    const { x, y, textAlign } = wardleyLabelBoxFor('pipeline', 0, 0);
+    expect(label.deserializedXYWH).toEqual([
+      x,
+      y,
+      WARDLEY_LABEL_W,
+      WARDLEY_LABEL_H,
+    ]);
+    expect(label.textAlign).toBe(textAlign);
+    // The bug, stated as the rule that forbids it (W3): the 120-wide bar used
+    // to be drawn straight over the words a component wore on its right, and
+    // whichever of the two answered the click depended on where you aimed.
+    const body = wardleyNodeOfComponent(
+      group as unknown as GfxPrimitiveElementModel
+    )!;
+    expect(overlap(label, body)).toBe(false);
+    // …and a morphed pipeline is a drawn one: same words, same place.
+    const created = board();
+    createWardleyPipeline(created.gfx);
+    expect(label.xywh).toBe(labelOf(created.drawn()).xywh);
+  });
+
+  it('puts it back beside the circle on the way out', () => {
+    const b = board();
+    createWardleyPipeline(b.gfx);
+    const group = b.drawn();
+    const label = labelOf(group);
+
+    morph(group, 'component');
+
+    const { x, y, textAlign } = wardleyLabelBoxFor('component', 0, 0);
+    expect(label.deserializedXYWH).toEqual([
+      x,
+      y,
+      WARDLEY_LABEL_W,
+      WARDLEY_LABEL_H,
+    ]);
+    expect(label.textAlign).toBe(textAlign);
+    expect(label.xywh).toBe(labelOf(drawnComponent()).xywh);
+  });
+
+  it('leaves a label the author moved exactly where they dropped it', () => {
+    const b = board();
+    createWardleyNode(b.gfx, 'component');
+    const group = b.drawn();
+    const label = labelOf(group);
+    // Dragged off on purpose: the placement is then the author's, and a morph
+    // may no more move their label than rewrite their words.
+    b.surface.updateElement(label.id, { xywh: '[300,-200,120,26]' });
+
+    morph(group, 'pipeline');
+
+    expect(label.xywh).toBe('[300,-200,120,26]');
   });
 
   it('leaves a name the author wrote, and leaves it where they put it', () => {

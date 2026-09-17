@@ -135,6 +135,19 @@ export class InteractivityManager extends GfxExtension {
     };
   }
 
+  /**
+   * Whether a view claims the model point — the answer the pointer router will
+   * give this coordinate, made available BEFORE the router runs.
+   *
+   * `dispatchEvent` emits to the extensions first and to the views second, so
+   * an extension that wants to know whether the point is free (rather than
+   * react after the fact) has no `handledByView` to read yet. This is that
+   * answer, asked ahead of time.
+   */
+  hasViewAt(x: number, y: number): boolean {
+    return this.canvasEventHandler.hasViewAt(x, y);
+  }
+
   private _getSelectionConfig(models: GfxModel[]) {
     type SelectionHandlers = Required<
       ReturnType<Required<GfxViewInteractionConfig>['handleSelection']>

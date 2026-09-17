@@ -88,7 +88,12 @@ export class GfxViewEventManager {
         if (this._draggingElement) {
           this._draggingElement.dispatch('dragend', _evt);
         }
-        this._draggingElement = last(this._hoveredElementsStack) ?? null;
+        // The same re-pick by point a click makes, and for the same reason: a
+        // stack only `pointermove` rebuilds is stale whenever the pointer
+        // arrived without one — after a toolbar action that rewrote what is
+        // under it, for instance — and a drag would then be handed to the view
+        // that USED to be there.
+        this._draggingElement = this._targetOf(_evt);
         return this._draggingElement?.dispatch('dragstart', _evt) ?? false;
       }
       case 'dragmove': {
@@ -134,6 +139,21 @@ export class GfxViewEventManager {
         ? (model.externalBound?.isPointInBound([x, y]) ?? false)
         : false)
     );
+  }
+
+  /**
+   * Whether ANY view answers at a model point — "is this spot taken?" asked of
+   * the view layer rather than of the models.
+   *
+   * The two layers do not answer the same thing (see {@link _answersAt}), so
+   * whoever treats a point as empty canvas has to ask both: the model says
+   * "select me?", the view says "is this mine?". A framework background is the
+   * case that forced this out — it is picked by its border alone, yet its
+   * labels answer the double-click that renames them, so the model calls their
+   * zone empty while the view is about to use it.
+   */
+  hasViewAt(x: number, y: number): boolean {
+    return this._viewsAt(x, y).length > 0;
   }
 
   /**

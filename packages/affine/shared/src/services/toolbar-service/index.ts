@@ -1,4 +1,5 @@
 export * from './action';
+export * from './command-action';
 export * from './config';
 export * from './context';
 export { Flag as ToolbarFlag } from './flags';

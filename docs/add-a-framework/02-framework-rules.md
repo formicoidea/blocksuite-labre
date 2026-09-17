@@ -11,8 +11,9 @@ convention with no test yet, it says so.
 **R1. One senior button per framework, one icon, in descriptor order.**
 `FRAMEWORK_DESCRIPTORS` in `packages/affine/all/src/frameworks.ts` carries
 `iconKey`; the button's glyph is the 56×56 icon in `toolbar/icons.ts`. Row
-order is the array order (`senior-row-order.unit.spec.ts`). No test checks
-icon uniqueness across frameworks yet.
+order is the array order (`senior-row-order.unit.spec.ts`). `iconKey` is
+non-empty, unique and registered in the framework's icon table
+(`registry.unit.spec.ts`, "every framework declares its own senior icon key").
 
 **R2. The sub-menu shows at most 13 artefacts plus "More artefacts…".**
 `SENIOR_MENU_CAP = 14` and `SENIOR_MENU_RANKED_SLOTS = 13` in
@@ -32,8 +33,11 @@ declare. Every command is in the catalogue.
 
 **R5. Import sits in the sub-menu, export on the board's contextual
 toolbar.** A board comes _from_ a file; you export a board you already have.
-BPMN and C4 follow it; **Wardley's OWM export currently declares no
-`contextual-toolbar` surface**, which is a deviation to fix, not a precedent.
+BPMN, C4 and Wardley follow it (the OWM export is scoped to the selected
+map's perimeter). That is about a framework's NATIVE format. The **SVG export
+is generic** and needs nothing from a framework: one core command
+(`export.svg`) and one wildcard toolbar module
+(`custom:affine:surface:*#export-svg`) serve every board — see R34.
 
 _One_ import per framework takes the sub-menu seat, not all of them: the
 nomination budget is `SENIOR_MENU_CAP` per owner plus the single
@@ -55,6 +59,21 @@ undocumented.
 **R7. Chords use the framework's prefix letter**, and only Wardley has
 allocated one (`w`). A prefix must be unique and outside
 `RESERVED_EDGELESS_KEYS` (`registry.unit.spec.ts`).
+
+**R7b. An artefact command is PLACED, not run** (PO decision, 2026-09-16;
+lettered rather than renumbered so the thirty references below stay valid).
+Choosing a command of kind `artefact` — in the sub-menu, in the catalogue, or
+with Enter on the keyboard highlight — arms `ArtefactPlacementTool`
+(`packages/affine/widgets/edgeless-toolbar/src/placement/`) instead of running
+it: a dashed ghost at the command's true footprint follows the cursor, Shift+S
+cycles the armed artefact backwards along the owner's row, and the click on
+the canvas is what runs the command. The action still creates at the viewport
+centre — no framework code takes a point — and the tool moves what was created
+by the offset between that centre and the click. Kind `tool` is unaffected: a
+link tool, the evolution arrow and `wardley.addAreaPolygon` arm their own
+gesture and run on the spot, as before. A framework needs no code for any of
+this beyond its senior button naming its own owner
+(`artefact-placement.unit.spec.ts`).
 
 ## Templates
 
@@ -109,7 +128,26 @@ shorter than its header instead.
 
 **R14. Extend `FrameworkBackgroundElementModel`; never copy its overrides.**
 Boards that re-implemented them were skipped by `instanceof` and dropped
-elements sank (PR #231).
+elements sank (PR #231). The same holds on the VIEW side: extend
+`DeclaredBackgroundView` — or `FrameworkBackgroundView` when the board paints
+its words without a declaration — from
+`packages/affine/blocks/surface/src/framework-background/background-view.ts`,
+and say only WHERE the labels are. Copying the in-place `<input>` instead is
+how four boards ended up with no double-click rename at all (issue #355); the
+gesture is pinned once, in `framework-background-view.unit.spec.ts`.
+
+**R34. Every board exports as SVG**, and gets it for free. "Export SVG" sits in
+the "⋮" of every board's contextual toolbar — one core command `export.svg`
+(`packages/affine/blocks/surface/src/extensions/export-svg/command.ts`) and one
+wildcard module `custom:affine:surface:*#export-svg` (`…/export-svg/toolbar.ts`),
+both keyed on `FrameworkBackgroundElementModel` and neither naming a framework
+(ADR 0025). A framework contributes nothing; what it must not do is draw its
+board as anything other than a `FrameworkBackgroundElementModel` (R14).
+`export-svg-boards.unit.spec.ts` names every framework's board class and checks
+the entry lights up for each; `board-svg-export.spec.ts` (integration) renders
+one board of every kind and parses the result. Numbered R34 — the file's numbers
+are allocated in order of creation, not by section, and existing rules are never
+renumbered.
 
 ## Artefacts
 
@@ -235,6 +273,10 @@ wire value and is frozen (`registry.unit.spec.ts`).
 **R29. Command telemetry is emitted by `runCommand`** from the descriptor's
 `telemetry` field (`command-telemetry.ts`). Nothing emits in `actions.ts`.
 The board-placing command declares `board: true` (`board-role.unit.spec.ts`).
+Arming an artefact (R7b) is not an invocation: it emits nothing and records no
+usage, exactly as picking a shape variant does. The emission happens when the
+artefact LANDS, through the same `runCommand`, so a framework's numbers are
+what they were — a user who arms one and changes their mind has not used it.
 
 **R30. Every user-visible string is a `com.labre.*` key** derived in
 `translations.ts` from the declarations, so the published framework bundle
@@ -274,7 +316,7 @@ reads the scale (its background, consts, legend or template spec).
 
 ## Identity: one framework is one drawing
 
-**R34. A framework is one drawing.** Split into several frameworks when the
+**R35. A framework is one drawing.** Split into several frameworks when the
 boards are distinct sheets with disjoint vocabularies that never mix on one
 surface: DDD is event storming, core domain chart and context map — three
 boards, three buttons, three flags. Keep one framework when the notations share

@@ -43,6 +43,7 @@ import {
   bpmnTaskServiceIcon,
   bpmnTaskUserIcon,
   bpmnTextAnnotationIcon,
+  bpmnToolbarIcon,
 } from './toolbar/icons';
 
 /**
@@ -710,4 +711,7 @@ export const bpmnCommandIcons: Record<string, TemplateResult> = {
   'bpmn.export-xml': bpmnExportXmlIcon,
   'bpmn.import-xml': bpmnImportXmlIcon,
   'bpmn.import-svg': bpmnImportSvgIcon,
+  // The senior button's 56×56 glyph, so `FrameworkDescriptor.iconKey` resolves
+  // through `getCommandIcon`.
+  'bpmn.toolbar': bpmnToolbarIcon,
 };

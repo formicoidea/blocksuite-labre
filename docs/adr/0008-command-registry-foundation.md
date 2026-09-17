@@ -1019,3 +1019,42 @@ seats seven, four of them by recency` (unit, eleven measured commands for seven
 seats) and `the head section stops at seven rows however much was used`
 (integration, on the rendered panel — the previous head-section spec exercised a
 single used command and was insensitive to any cap).
+
+## Amended 2026-09-16 — an artefact command is placed, not run
+
+PO decision after the recette of #348, recorded here because it changes what
+INVOKING a command means for one of the five `CommandKind`s, and therefore what
+a surface does when a user picks a row.
+
+**Choosing a command of kind `artefact` arms a tool; the click on the canvas
+runs it.** `ArtefactPlacementTool`
+(`packages/affine/widgets/edgeless-toolbar/src/placement/`) takes the descriptor
+as its option, puts a dashed ghost of the command's own footprint under the
+cursor, and runs the command where the user clicks. The senior sub-menu, the
+catalogue sidepanel and the keyboard's Enter all arm rather than run; Shift+S
+walks the armed artefact backwards along the owner's row, which is the same
+keystroke and the same "previous" the shape tool has always given. The other
+four kinds — `tool`, `toggle`, `legend`, `action` — are untouched and still run
+on the spot.
+
+Three things this does NOT change, deliberately:
+
+- **The bottleneck.** `runCommand` is still the one place a command runs, and
+  therefore still the one place telemetry is emitted and usage measured. The
+  tool calls it; it does not reach past it. Arming and cycling emit nothing and
+  measure nothing, because they are not invocations — the same reason picking a
+  shape variant reports nothing.
+- **The command bodies.** No action learns to take a point. Every one of them
+  still creates around the viewport centre, and the tool moves what was created
+  by the offset between that centre and the click. Adding a coordinate
+  parameter to eight frameworks' worth of actions would have been exactly the
+  per-framework code the registry exists to remove.
+- **`CommandDescriptor`.** Nothing was added to it. The tool is driven by
+  `kind`, which was already there, and it measures the footprint by running the
+  body against the recording fake (`recordAction`, lifted out of
+  `snapshotFromAction` into `@labre/affine-block-surface` for this) rather than
+  asking a framework to declare a size a second time.
+
+A command whose body the fake cannot serve still arms: the ghost falls back to
+a plain 120×60 box. Drag-to-size is out of scope — a framework artefact has the
+size its framework chose.

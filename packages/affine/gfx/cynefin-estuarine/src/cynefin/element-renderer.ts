@@ -2,6 +2,7 @@ import {
   type CanvasRenderer,
   type ElementRenderer,
   ElementRendererExtension,
+  taggedPath2D,
 } from '@labre/affine-block-surface';
 import type { CynefinElementModel } from '@labre/affine-model';
 import {
@@ -18,6 +19,7 @@ import {
   DASH_RECTS,
   DOMAINS,
   HATCHES,
+  HEADING_SIZE,
   MARKERS,
   REF_H,
   REF_W,
@@ -26,6 +28,7 @@ import {
   TEAL_PATH,
   TEAL_WIDTH,
 } from './consts';
+import { cynefinHeadingText } from './labels';
 
 /**
  * Canvas renderer for the Liminal Cynefin diagram — reproduces the official SVG:
@@ -88,7 +91,7 @@ export const cynefin: ElementRenderer<CynefinElementModel> = (
   for (const [d, lw, miter] of DARK_BACK_PATHS) {
     ctx.lineJoin = miter ? 'miter' : 'round';
     ctx.lineWidth = lw;
-    ctx.stroke(new Path2D(d));
+    ctx.stroke(taggedPath2D(d));
   }
   ctx.lineJoin = 'round';
 
@@ -106,7 +109,7 @@ export const cynefin: ElementRenderer<CynefinElementModel> = (
   if (model.showLiminalLine) {
     ctx.strokeStyle = COLORS.teal;
     ctx.lineWidth = TEAL_WIDTH;
-    ctx.stroke(new Path2D(TEAL_PATH));
+    ctx.stroke(taggedPath2D(TEAL_PATH));
   }
 
   // ── Dark boundary strokes (over the teal curve) ─────────────────────
@@ -114,7 +117,7 @@ export const cynefin: ElementRenderer<CynefinElementModel> = (
   for (const [d, lw, miter] of DARK_FRONT_PATHS) {
     ctx.lineJoin = miter ? 'miter' : 'round';
     ctx.lineWidth = lw;
-    ctx.stroke(new Path2D(d));
+    ctx.stroke(taggedPath2D(d));
   }
   ctx.lineJoin = 'round';
 
@@ -133,8 +136,12 @@ export const cynefin: ElementRenderer<CynefinElementModel> = (
   if (model.showTitles) {
     ctx.textAlign = 'left';
     ctx.fillStyle = COLORS.heading;
-    ctx.font = `700 30px ${FONT_FAMILY}`;
-    for (const d of DOMAINS) ctx.fillText(tr(d.heading), d.x, d.hy);
+    ctx.font = `700 ${HEADING_SIZE}px ${FONT_FAMILY}`;
+    // The user's own word when they have renamed this domain, the catalogue's
+    // otherwise — the same precedence a declared background applies.
+    for (const d of DOMAINS) {
+      ctx.fillText(cynefinHeadingText(model, d, tr), d.x, d.hy);
+    }
 
     ctx.textAlign = 'center';
     for (const m of MARKERS) {

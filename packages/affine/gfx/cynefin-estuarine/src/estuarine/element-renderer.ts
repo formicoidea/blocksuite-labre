@@ -1,6 +1,7 @@
 import {
   type ElementRenderer,
   ElementRendererExtension,
+  taggedPath2D,
 } from '@labre/affine-block-surface';
 import type { EstuarineElementModel } from '@labre/affine-model';
 import {
@@ -27,6 +28,7 @@ import {
   VOLATILE_PATH,
   VOLATILE_WIDTH,
 } from './consts';
+import { type EstuarineLegendKey, estuarineLegendText } from './labels';
 
 /**
  * The three reference curves are drawn as a permanent GHOST (PO arbitration,
@@ -84,21 +86,21 @@ export function estuarineCurves(): readonly EstuarineCurve[] {
   return (_curves ??= [
     {
       key: 'liminal',
-      path: new Path2D(LIMINAL_PATH),
+      path: taggedPath2D(LIMINAL_PATH),
       color: COLORS.liminal,
       width: LIMINAL_WIDTH,
       visibleProp: 'showLiminal',
     },
     {
       key: 'volatile',
-      path: new Path2D(VOLATILE_PATH),
+      path: taggedPath2D(VOLATILE_PATH),
       color: COLORS.volatile,
       width: VOLATILE_WIDTH,
       visibleProp: 'showVolatile',
     },
     {
       key: 'counterfactual',
-      path: new Path2D(COUNTERFACTUAL_PATH),
+      path: taggedPath2D(COUNTERFACTUAL_PATH),
       color: COLORS.counterfactual,
       width: COUNTERFACTUAL_WIDTH,
       visibleProp: 'showCounterfactual',
@@ -260,13 +262,8 @@ export const estuarine: ElementRenderer<EstuarineElementModel> = (
   // Uppercase legend (centre-anchored, alphabetic baseline, letter-spaced).
   // Anchored proportionally, typed isotropically — never inside the stretch.
   const hasSpacing = 'letterSpacing' in ctx;
-  const legend = (l: {
-    wording: ChromeWording;
-    x: number;
-    y: number;
-    size: number;
-    color: string;
-  }) => {
+  const legend = (key: EstuarineLegendKey) => {
+    const l = LABELS[key];
     ctx.fillStyle = l.color;
     ctx.font = `600 ${l.size * fit.strokeScale}px ${FONT_FAMILY}`;
     ctx.textAlign = 'center';
@@ -274,7 +271,9 @@ export const estuarine: ElementRenderer<EstuarineElementModel> = (
     if (hasSpacing) {
       ctx.letterSpacing = `${LABEL_LETTER_SPACING * fit.strokeScale}px`;
     }
-    ctx.fillText(tr(l.wording), ax(l.x), ay(l.y));
+    // The user's own word when they have renamed this legend, the catalogue's
+    // otherwise — the same precedence a declared background applies.
+    ctx.fillText(estuarineLegendText(model, key, tr), ax(l.x), ay(l.y));
     if (hasSpacing) ctx.letterSpacing = '0px';
   };
 
@@ -292,7 +291,7 @@ export const estuarine: ElementRenderer<EstuarineElementModel> = (
     ctx.setLineDash([...GHOST_DASH]);
     ctx.stroke(curve.path);
     ctx.restore();
-    legend(LABELS[curve.key]);
+    legend(curve.key);
   }
 
   // ── Italic e / t axis letters ───────────────────────────────────────

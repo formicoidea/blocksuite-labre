@@ -267,8 +267,6 @@ const gatewayPreview = (marker: string) =>
 
 const ENVELOPE = `<rect x="59" y="35" width="16" height="11" stroke="${NEUTRAL_STROKE}" stroke-width="1.4"/><path d="M59 35 L67 42 L75 35" stroke="${NEUTRAL_STROKE}" stroke-width="1.4" stroke-linejoin="round"/>`;
 const CLOCK = `<circle cx="67" cy="40" r="9" stroke="${NEUTRAL_STROKE}" stroke-width="1.4"/><path d="M67 40 V33 M67 40 L72 43" stroke="${NEUTRAL_STROKE}" stroke-width="1.4" stroke-linecap="round"/>`;
-/** The collapsed `[+]`, on the activity's bottom edge — sub-process and call alike. */
-const COLLAPSED = `<rect x="61" y="44" width="12" height="12" stroke="${NEUTRAL_STROKE}" stroke-width="1.4"/><path d="M67 47 V53 M64 50 H70" stroke="${NEUTRAL_STROKE}" stroke-width="1.4" stroke-linecap="round"/>`;
 
 const previews = {
   process: `<svg ${A} fill="none"><circle cx="16" cy="40" r="8" stroke="${EVENT_START}" stroke-width="2"/><rect x="34" y="31" width="26" height="18" rx="3" stroke="${NEUTRAL_STROKE}" stroke-width="1.6"/><path d="M78 31 L88 40 L78 49 L68 40 Z" stroke="${NEUTRAL_STROKE}" stroke-width="1.4"/><path d="M73 37 L83 43 M83 37 L73 43" stroke="${NEUTRAL_STROKE}" stroke-width="1.2"/><circle cx="118" cy="40" r="8" stroke="${EVENT_END}" stroke-width="3"/><path d="M24 40 H34 M60 40 H68 M88 40 H110" stroke="${SEQUENCE_STROKE}" stroke-width="1.2"/></svg>`,
@@ -289,10 +287,13 @@ const previews = {
   taskService: taskPreview(
     `<circle cx="41" cy="32" r="3.4" stroke="${NEUTRAL_STROKE}" stroke-width="1.2"/><circle cx="41" cy="32" r="1" fill="${NEUTRAL_STROKE}"/><path d="M41 27.4 V29 M41 35 V36.6 M36.4 32 H38 M44 32 H45.6" stroke="${NEUTRAL_STROKE}" stroke-width="1.2" stroke-linecap="round"/>`
   ),
-  subProcess: taskPreview(COLLAPSED),
+  // Neither carries the notation's collapsed `[+]`: it opens nothing in Labre
+  // and the board does not paint it, so a card that did would be advertising a
+  // drawing the command never makes.
+  subProcess: taskPreview(),
   // The thick border IS the distinction: this box stands for a process defined
   // elsewhere (`presets.ts`, `CALL_ACTIVITY_WIDTH`).
-  callActivity: taskPreview(COLLAPSED, 4.5),
+  callActivity: taskPreview('', 4.5),
   gateway: gatewayPreview('M58 31 L76 49 M76 31 L58 49'),
   gatewayParallel: gatewayPreview('M67 30 V50 M57 40 H77'),
   dataObject: `<svg ${A} fill="none"><path d="M52 14 H76 L88 26 V66 H52 Z" stroke="${NEUTRAL_STROKE}" stroke-width="2.2" stroke-linejoin="round"/><path d="M76 14 V26 H88" stroke="${NEUTRAL_STROKE}" stroke-width="1.8" stroke-linejoin="round"/></svg>`,

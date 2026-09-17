@@ -100,4 +100,21 @@ describe('double hyphen to em dash', () => {
 
     expect(textOf()).toBe('x -- ');
   });
+
+  test('a code span still open keeps its hyphens', async () => {
+    await setup(new Text());
+    await userEvent.keyboard('`e -- ');
+    await wait();
+
+    expect(textOf()).toBe('`e -- ');
+  });
+
+  // the code rule consumes the space that closed the span, hence `e— f`
+  test('a closed code span does not stop the next em dash', async () => {
+    await setup(new Text());
+    await userEvent.keyboard('`e` -- f');
+    await wait();
+
+    expect(textOf()).toBe('e— f');
+  });
 });

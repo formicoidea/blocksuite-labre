@@ -97,7 +97,7 @@ export function backgroundInVariant(
 }
 
 /** A label's clickable box in element-local coordinates (axis-aligned, padded). */
-export interface BackgroundLabelHit {
+export interface BackgroundLabelHit extends BackgroundTextBox {
   /** The declaration id of the text. */
   id: string;
   /** The model prop the in-place editor must write back to. */
@@ -110,10 +110,6 @@ export interface BackgroundLabelHit {
    * would silently offer to erase a name the user can see.
    */
   text: string;
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
 }
 
 /** Rough per-character advance — only used to size generous hit boxes. */
@@ -122,6 +118,56 @@ const approxTextWidth = (text: string, fontSize: number) =>
 
 /** Padding so double-clicking a label is forgiving. */
 const HIT_PAD = 6;
+
+/** The padded box of one drawn word, in the space its anchor is expressed in. */
+export interface BackgroundTextBox {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+/**
+ * The clickable box of a word drawn at `(ax, ay)` on an ALPHABETIC baseline —
+ * the one convention every background in the library paints its text on.
+ *
+ * Exported because two frameworks place their words without a declaration
+ * (Cynefin and Estuarine are figurative reproductions of an official drawing,
+ * scaled by their own fit) and still have to offer the same forgiving target as
+ * everybody else. They pass a point already mapped into element coordinates;
+ * the padding, the rough advance and the baseline arithmetic stay here, in one
+ * place, so a label is not easier to hit on one framework than on the next.
+ */
+export function backgroundTextHitBox(
+  words: string,
+  fontSize: number,
+  ax: number,
+  ay: number,
+  align: 'left' | 'center' | 'right' = 'left',
+  vertical = false
+): BackgroundTextBox {
+  const tw = approxTextWidth(words, fontSize);
+
+  if (vertical) {
+    return {
+      minX: ax - fontSize - HIT_PAD,
+      maxX: ax + fontSize * 0.4 + HIT_PAD,
+      minY: ay - tw / 2 - HIT_PAD,
+      maxY: ay + tw / 2 + HIT_PAD,
+    };
+  }
+
+  const minX =
+    align === 'right' ? ax - tw : align === 'center' ? ax - tw / 2 : ax;
+  const maxX =
+    align === 'right' ? ax : align === 'center' ? ax + tw / 2 : ax + tw;
+  return {
+    minX: minX - HIT_PAD,
+    maxX: maxX + HIT_PAD,
+    minY: ay - fontSize - HIT_PAD,
+    maxY: ay + fontSize * 0.3 + HIT_PAD,
+  };
+}
 
 /**
  * Every text of a declaration, in PAINTING ORDER: the side-band labels, the
@@ -210,36 +256,20 @@ export function backgroundLabelHits(
     if (!backgroundVisible(text.visibleProp, model)) continue;
 
     const words = backgroundLabelText(text, model, translation);
-    const size = text.style.size;
-    const tw = approxTextWidth(words, size);
     const [ax, ay] = backgroundPoint(text.anchor, plot);
 
-    if (text.vertical) {
-      hits.push({
-        id: text.id,
-        prop: text.prop,
-        text: words,
-        minX: ax - size - HIT_PAD,
-        maxX: ax + size * 0.4 + HIT_PAD,
-        minY: ay - tw / 2 - HIT_PAD,
-        maxY: ay + tw / 2 + HIT_PAD,
-      });
-      continue;
-    }
-
-    const align = text.align ?? 'left';
-    const minX =
-      align === 'right' ? ax - tw : align === 'center' ? ax - tw / 2 : ax;
-    const maxX =
-      align === 'right' ? ax : align === 'center' ? ax + tw / 2 : ax + tw;
     hits.push({
       id: text.id,
       prop: text.prop,
       text: words,
-      minX: minX - HIT_PAD,
-      maxX: maxX + HIT_PAD,
-      minY: ay - size - HIT_PAD,
-      maxY: ay + size * 0.3 + HIT_PAD,
+      ...backgroundTextHitBox(
+        words,
+        text.style.size,
+        ax,
+        ay,
+        text.align,
+        text.vertical
+      ),
     });
   }
 

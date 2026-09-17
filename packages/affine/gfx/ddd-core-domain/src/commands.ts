@@ -3,6 +3,7 @@ import {
   addMarker,
   cdSubdomainSeedKey,
   CD_SUBDOMAINS,
+  coreDomainToolbarIcon,
   MOVEMENT_COLOR,
   placeDddElement,
   teamTopologySeedKey,
@@ -37,6 +38,11 @@ interface Spec {
   element: string;
   /** Places the framework's board — see `CommandTelemetry.board`. */
   board?: true;
+  /**
+   * `tool` when the entry ARMS a drawing tool instead of placing an artefact:
+   * the placement tool must not wrap it, and it reports `FrameworkToolPicked`.
+   */
+  kind?: 'artefact' | 'tool';
   icon: TemplateResult;
   run: (std: BlockStdScope) => void;
 }
@@ -116,6 +122,7 @@ const SPECS: Spec[] = [
     iconKey: 'ddd-core-domain.movement',
     // Historical telemetry value, unchanged by the gesture becoming a drag.
     element: 'movement',
+    kind: 'tool',
     icon: movementSwatch,
     // No longer a free arrow dropped at the viewport centre: the movement is a
     // typed edge, so the user draws it from the current position to the future
@@ -128,7 +135,7 @@ export const coreDomainCommands: CommandDescriptor[] = SPECS.map(
   (spec, order) => ({
     id: `ddd-core-domain.${spec.id}`,
     owner: 'ddd-core-domain',
-    kind: 'artefact',
+    kind: spec.kind ?? 'artefact',
     labelKey: `com.labre.commands.ddd-core-domain.${spec.id}`,
     labelFallback: spec.label,
     category: 'chart',
@@ -147,5 +154,9 @@ export const coreDomainCommands: CommandDescriptor[] = SPECS.map(
   })
 );
 
-export const coreDomainCommandIcons: Record<string, TemplateResult> =
-  Object.fromEntries(SPECS.map(spec => [spec.iconKey, spec.icon]));
+export const coreDomainCommandIcons: Record<string, TemplateResult> = {
+  ...Object.fromEntries(SPECS.map(spec => [spec.iconKey, spec.icon])),
+  // The senior button's 56×56 glyph, so `FrameworkDescriptor.iconKey` resolves
+  // through `getCommandIcon`.
+  'ddd-core-domain.toolbar': coreDomainToolbarIcon,
+};

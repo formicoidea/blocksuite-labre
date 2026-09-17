@@ -5,16 +5,21 @@ import {
 import {
   type CommandDescriptor,
   type CommandOwner,
-  CommandUsageIdentifier,
   getCommandIcon,
-  getCommandsForSurface,
   runCommand,
-  selectSeniorMenuCommands,
 } from '@labre/std';
 import { MoreHorizontalIcon } from '@blocksuite/icons/lit';
+import { SignalWatcher } from '@labre/global/lit';
 import { css, type CSSResultGroup, html, LitElement, nothing } from 'lit';
+import { state } from 'lit/decorators.js';
 
 import { EdgelessToolbarToolMixin } from '../mixins/tool.mixin.js';
+import {
+  armArtefact,
+  armedArtefact,
+  cycleArmedArtefact,
+} from '../placement/artefact-placement-tool.js';
+import { seniorMenuSelection } from './senior-menu-selection.js';
 
 /**
  * The senior button sub-menu, rendered FROM the command registry.
@@ -26,9 +31,15 @@ import { EdgelessToolbarToolMixin } from '../mixins/tool.mixin.js';
  * There is now exactly one renderer, and it enumerates
  * `getCommandsForSurface(std, owner, 'senior-menu')`. A framework subclass
  * declares its owner and its tool type, nothing else. See `docs/adr/0008`.
+ *
+ * `SignalWatcher` and not the mixin's own effect: the mixin registers that
+ * effect in `connectedCallback`, and bails out when `edgeless` is still unset —
+ * which it always is here, because the senior button assigns it AFTER appending
+ * the popover. So the row is re-rendered by reading the tool signal in
+ * {@link _armed} during render, the way the senior buttons do it.
  */
 export abstract class EdgelessCommandMenu extends EdgelessToolbarToolMixin(
-  LitElement
+  SignalWatcher(LitElement)
 ) {
   /**
    * Typed as a group so a subclass can extend rather than replace it — the DDD
@@ -75,20 +86,125 @@ export abstract class EdgelessCommandMenu extends EdgelessToolbarToolMixin(
    * path now requests an update; this getter is what it exists to re-ask.
    */
   private get _selection() {
-    const std = this.edgeless.std;
-    const usage = std.getOptional(CommandUsageIdentifier);
-    return selectSeniorMenuCommands(
-      getCommandsForSurface(std, this.owner, 'senior-menu'),
-      getCommandsForSurface(std, this.owner, 'catalogue'),
-      id => usage?.statsOf(id)
-    );
+    return seniorMenuSelection(this.edgeless.std, this.owner);
   }
 
   get commands(): CommandDescriptor[] {
     return this._selection.commands;
   }
 
+  /** Whoever shows an owner's whole catalogue, when anything does. */
+  private get _catalogue() {
+    return this.edgeless.std.getOptional(ArtefactCatalogueProvider);
+  }
+
+  /**
+   * How many buttons a keypress can land on: the commands, plus the overflow
+   * button on the rows that render one. Read from the same `_selection` the
+   * render does, so the highlight can never point past what is on screen.
+   */
+  private get _slots() {
+    const { commands, overflow } = this._selection;
+    return commands.length + (overflow && this._catalogue ? 1 : 0);
+  }
+
+  /**
+   * Which button the armed artefact sits on, `-1` when this owner has none
+   * armed. Read off the tool option signal the mixin already subscribes to, so
+   * arming from anywhere — this menu, a keystroke, the catalogue — lights the
+   * same button.
+   */
+  private get _armed(): number {
+    const armed = armedArtefact(this.gfx);
+    if (!armed || armed.owner !== this.owner) return -1;
+    return this._selection.commands.findIndex(
+      command => command.id === armed.command.id
+    );
+  }
+
+  /**
+   * What the row shows as highlighted: the armed artefact when there is one,
+   * otherwise wherever the keyboard walked. The armed command WINS, so the
+   * menu can never point at one artefact while the ghost under the cursor is
+   * another.
+   */
+  private get _highlight(): number {
+    const armed = this._armed;
+    return armed >= 0 ? armed : this._active;
+  }
+
+  /**
+   * Move the highlight by one button, wrapping at both ends.
+   *
+   * Shift+S over an open senior menu is the analogue of Shift+S over the shape
+   * tool: the same keystroke walks the row backwards.
+   *
+   * With an artefact ARMED it walks the tool instead — same row, same
+   * direction, and the ghost under the cursor changes with the highlight. The
+   * row it walks then is the row's artefacts alone: an entry of kind `'tool'`
+   * arms a gesture of its own and has no ghost to offer.
+   *
+   * With nothing armed it moves a HIGHLIGHT and nothing else, because these
+   * commands each drop an artefact on the canvas and "run the next one on every
+   * press" would litter the board.
+   */
+  cycle(dir: 1 | -1) {
+    if (this._armed >= 0) {
+      cycleArmedArtefact(this.gfx, dir);
+      return;
+    }
+    const slots = this._slots;
+    if (slots === 0) return;
+    if (this._active < 0) {
+      // Nothing highlighted yet: forwards enters on the first button,
+      // backwards on the last — the "previous" the shape tool gives too.
+      this._active = dir === 1 ? 0 : slots - 1;
+      return;
+    }
+    this._active = (this._active + dir + slots) % slots;
+  }
+
+  /**
+   * Do whatever the keyboard points at, and say whether it did.
+   *
+   * It goes through the same {@link _invoke} the click goes through, so an
+   * artefact reached from the keyboard is armed exactly like a clicked one, and
+   * a command run from it is measured and reported exactly like a clicked one.
+   * With nothing highlighted it consumes nothing and the caller's own Enter
+   * stands.
+   */
+  activate(): boolean {
+    const highlight = this._highlight;
+    if (highlight < 0) return false;
+    const { commands, overflow } = this._selection;
+    const command = commands[highlight];
+    if (command) {
+      this._invoke(command);
+      return true;
+    }
+    const catalogue = this._catalogue;
+    if (overflow && catalogue) {
+      catalogue.open(this.owner);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * An artefact is ARMED, not created (PO decision, 2026-09-16): the ghost goes
+   * under the cursor and the click on the canvas says where. Everything else —
+   * a link tool, a toggle, an export — runs on the spot, as it always has.
+   *
+   * Arming deliberately emits nothing and measures nothing. The ONE emission
+   * point is still `runCommand`, which the placement tool calls when the
+   * artefact actually lands; a user who arms one and changes their mind has not
+   * used it.
+   */
   private _invoke(command: CommandDescriptor) {
+    if (command.kind === 'artefact') {
+      armArtefact(this.gfx, this.owner, command);
+      return;
+    }
     // The ONE emission point: no `_track()` helper anywhere in the menus.
     runCommand(this.edgeless.std, command, {
       surface: 'senior-menu',
@@ -139,9 +255,9 @@ export abstract class EdgelessCommandMenu extends EdgelessToolbarToolMixin(
    * to a catalogue the user can still reach in full. Thirteen plus this one is
    * fourteen — the overflowed row is exactly as wide as the cap.
    */
-  private _renderCatalogueButton() {
+  private _renderCatalogueButton(index: number) {
     const std = this.edgeless.std;
-    const catalogue = std.getOptional(ArtefactCatalogueProvider);
+    const catalogue = this._catalogue;
     if (!catalogue) return nothing;
 
     const label = translateKey(
@@ -158,6 +274,8 @@ export abstract class EdgelessCommandMenu extends EdgelessToolbarToolMixin(
             'This framework offers more than the menu can show.'
           )}</span
         >`}
+      .active=${index === this._highlight}
+      .hoverState=${index === this._highlight}
       @click=${() => catalogue.open(this.owner)}
     >
       ${MoreHorizontalIcon()}
@@ -167,24 +285,39 @@ export abstract class EdgelessCommandMenu extends EdgelessToolbarToolMixin(
   override render() {
     const std = this.edgeless.std;
     const { commands, overflow } = this._selection;
+    const highlight = this._highlight;
     return html`
       <edgeless-slide-menu>
         <div class="menu-content">
           <div class="button-group-container">
             ${commands.map(
-              command =>
+              (command, index) =>
                 html`<edgeless-tool-icon-button
                   data-command-id=${command.id}
                   .tooltip=${this._tooltip(command)}
+                  .active=${index === highlight}
+                  .hoverState=${index === highlight}
                   @click=${() => this._invoke(command)}
                 >
                   ${getCommandIcon(std, command.iconKey)}
                 </edgeless-tool-icon-button>`
             )}
-            ${overflow ? this._renderCatalogueButton() : nothing}
+            ${overflow ? this._renderCatalogueButton(commands.length) : nothing}
           </div>
         </div>
       </edgeless-slide-menu>
     `;
   }
+
+  /**
+   * Which button the keyboard points at, `-1` while it points at none.
+   *
+   * It starts empty and stays empty until a cycling key is pressed: a menu that
+   * opened with its first artefact already lit would read as a choice the user
+   * did not make. Nothing resets it on close because each opening builds a new
+   * menu element — the only case the popover hands the same one back is a
+   * re-open during the leave transition, where the row never left the screen.
+   */
+  @state()
+  private accessor _active = -1;
 }

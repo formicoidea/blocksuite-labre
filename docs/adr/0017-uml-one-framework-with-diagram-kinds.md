@@ -42,7 +42,7 @@ descriptor, one role namespace. The diagram kind is a FIELD on the board**
 
 ### 1. One framework, and the criterion that says so
 
-The criterion is written into the contributor guide as **R34 — a framework is
+The criterion is written into the contributor guide as **R35 — a framework is
 one drawing** (`docs/add-a-framework/02-framework-rules.md`). Its practical
 test: _can I drop an artefact of A on a board of B and have it mean something?_
 Yes — one framework, and the kind is a field. No — two frameworks, two buttons,
@@ -182,7 +182,7 @@ is what `add-a-framework/01-definition-of-done.md` and
   this ADR**, as is one reporting missing OCL validation.
 - **Widening a kind union needs no ADR** — it is the promise this one makes.
   Narrowing one, or adding a SECOND framework in the `uml` family, does.
-- **R34 is a convention with no test.** A contributor who splits a notation that
+- **R35 is a convention with no test.** A contributor who splits a notation that
   should have stayed one will not be stopped by CI; they will be stopped, if at
   all, at review. That is accepted: the alternative is a test that has to encode
   what a notation means.
@@ -223,3 +223,10 @@ documented where it costs nothing to say — in `rules.ts`, beside the
 declaration, which is where it is said today. Any future renaming needs a
 migration that rewrites stored `validationExceptions`, which is a
 `packages/framework/store` concern and a red zone.
+
+**2026-09-17 (merge of main).** The criterion was written as R34 and is now
+**R35**: `blocksuite-labre-main` shipped its own R34 (every board exports as
+SVG) first, and the rules file never renumbers a published rule. The same merge
+renumbered main’s ADR 0017 (board SVG export) to **0025**, as its i18n ADR had
+become 0023: the UML branch had reserved 0016–0024 and cites them throughout
+its code.

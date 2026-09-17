@@ -29,7 +29,7 @@ the shared behaviour:
 
 One framework has one board. When a notation draws several kinds of diagram on
 the same sheet under the same frame, the kind is a **field of the board** rather
-than a second framework — see R34 in
+than a second framework — see R35 in
 [../add-a-framework/02-framework-rules.md](../add-a-framework/02-framework-rules.md).
 
 ## The artefacts

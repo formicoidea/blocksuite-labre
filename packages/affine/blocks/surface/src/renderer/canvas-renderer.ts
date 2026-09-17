@@ -888,6 +888,27 @@ export class CanvasRenderer {
     return canvas;
   }
 
+  /**
+   * Paint `bound` into any 2D context at 1:1 — no device pixel ratio, no zoom.
+   * The SVG export's door: it hands the same element renderers an SVG-emitting
+   * context instead of a canvas one.
+   *
+   * `surfaceElements` is painted in the order given, so a caller that wants the
+   * canvas' z-order passes what `GfxController.getElementsByBound` returned
+   * (already sorted by `layer.compare`). Omitting it falls back to the grid
+   * search, which is NOT layer-ordered.
+   */
+  renderBoundTo(
+    ctx: CanvasRenderingContext2D,
+    rc: RoughCanvas,
+    bound: IBound,
+    surfaceElements?: SurfaceElementModel[]
+  ): void {
+    const matrix = new DOMMatrix();
+    ctx.setTransform(matrix);
+    this._renderByBound(ctx, matrix, rc, bound, surfaceElements);
+  }
+
   getColorScheme() {
     return this.provider.getColorScheme?.() ?? ColorScheme.Light;
   }

@@ -1,5 +1,6 @@
 import { OpenIcon } from '@labre/affine-components/icons';
 import type { EmbedFigmaModel, EmbedFigmaStyles } from '@labre/affine-model';
+import { shouldRefreshOnPropsUpdate } from '@labre/affine-shared/utils';
 import { BlockSelection } from '@labre/std';
 import { html, nothing } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
@@ -54,7 +55,7 @@ export class EmbedFigmaBlockComponent extends EmbedBlockComponent<EmbedFigmaMode
 
     this.disposables.add(
       this.model.propsUpdated.subscribe(({ key }) => {
-        if (key === 'url') {
+        if (shouldRefreshOnPropsUpdate(this.store, key)) {
           this.refreshData();
         }
       })

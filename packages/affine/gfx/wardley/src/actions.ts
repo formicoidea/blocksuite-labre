@@ -1,5 +1,6 @@
 import {
   backgroundSize,
+  containingFrame,
   DefaultTool,
   indexOverBackgrounds,
   runInterchangeImportFile,
@@ -7,12 +8,14 @@ import {
 } from '@labre/affine-block-surface';
 import { ConnectorTool } from '@labre/affine-gfx-connector';
 import { createGroupCommand } from '@labre/affine-gfx-group';
+import { PolygonTool } from '@labre/affine-gfx-shape';
 import {
   ConnectorMode,
   FontWeight,
   FrameworkBackgroundElementModel,
   PointStyle,
   StrokeStyle,
+  TextElementModel,
   WardleyBackgroundElementModel,
   type WardleyBgVariant,
 } from '@labre/affine-model';
@@ -23,7 +26,11 @@ import {
 import { downloadBlob } from '@labre/affine-shared/utils';
 import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
-import { type GfxController, GfxControllerIdentifier } from '@labre/std/gfx';
+import {
+  type GfxController,
+  GfxControllerIdentifier,
+  type GfxPrimitiveElementModel,
+} from '@labre/std/gfx';
 
 import { WARDLEY_BACKGROUND } from './background';
 import { WARDLEY_SVG_IMPORT } from './interchange';
@@ -34,9 +41,7 @@ import {
 } from './export';
 import { WARDLEY_OWM_EXPORT, WARDLEY_OWM_IMPORT } from './interchange';
 import {
-  HANDLE_SIZE,
   INERTIA_SIZE,
-  LABEL_GAP,
   LINK_GREY,
   LINK_STROKE_WIDTH,
   PORTER_DEFAULT_LETTER,
@@ -51,8 +56,7 @@ import {
   wardleyHandleBox,
   wardleyHandleProps,
   wardleyInertiaProps,
-  WARDLEY_LABEL_H,
-  WARDLEY_LABEL_W,
+  wardleyLabelBoxFor,
   wardleyLabelProps,
   wardleyMarketDotBoxes,
   wardleyMarketDotProps,
@@ -60,7 +64,6 @@ import {
   wardleyMarketLinkProps,
   WARDLEY_NODE_LABEL,
   wardleyNodeLabelKey,
-  WARDLEY_NODE_SIZE,
   wardleyNodeProps,
   wardleyPorterArrowProps,
   wardleyPorterArrows,
@@ -142,11 +145,6 @@ function backgroundVariantDefaults(
 }
 
 type Surface = NonNullable<GfxController['surface']>;
-
-// The label box, now owned by `presets.ts` — the local names stay so the four
-// placements below keep reading as they did.
-const LABEL_H = WARDLEY_LABEL_H;
-const LABEL_W = WARDLEY_LABEL_W;
 
 /**
  * The single-circle node flavours: one connectable ellipse + a label to its
@@ -280,10 +278,10 @@ export function createWardleyNode(
   const surface = gfx.surface;
   if (!surface) return;
 
-  const { w } = WARDLEY_NODE_SIZE[kind];
   const { centerX: cx, centerY: cy } = gfx.viewport;
 
   const nodeId = addNode(surface, kind, cx, cy);
+  const { x, y, textAlign } = wardleyLabelBoxFor(kind, cx, cy);
   const labelId = addLabel(
     surface,
     // Resolved HERE, once — the prompt a node nobody has named still carries,
@@ -291,8 +289,9 @@ export function createWardleyNode(
     // the translation seam: these creation sites take `GfxController`, not
     // `BlockStdScope`, directly (`WardleyView` reads the same member).
     translateKey(gfx.std, wardleyNodeLabelKey(kind), WARDLEY_NODE_LABEL[kind]),
-    cx + w / 2 + LABEL_GAP,
-    cy - LABEL_H / 2
+    x,
+    y,
+    textAlign
   );
 
   finish(gfx, group(gfx, [nodeId, labelId]));
@@ -323,8 +322,6 @@ export function createWardleyPipeline(gfx: GfxController) {
   if (!gfx.surface) return;
 
   const { centerX: cx, centerY: cy } = gfx.viewport;
-  const d = HANDLE_SIZE;
-  const top = cy - WARDLEY_NODE_SIZE.pipeline.h / 2;
 
   // Body: a WardleyNode rect, made non-connectable by `kind: 'pipeline'`.
   const bodyId = addNode(gfx.surface, 'pipeline', cx, cy);
@@ -336,6 +333,7 @@ export function createWardleyPipeline(gfx: GfxController) {
   );
 
   // Label centered horizontally on the pipeline, sitting ABOVE the handle.
+  const { x, y, textAlign } = wardleyLabelBoxFor('pipeline', cx, cy);
   const labelId = addLabel(
     gfx.surface,
     translateKey(
@@ -343,9 +341,9 @@ export function createWardleyPipeline(gfx: GfxController) {
       wardleyNodeLabelKey('pipeline'),
       WARDLEY_NODE_LABEL.pipeline
     ),
-    cx - 60,
-    top - d / 2 - LABEL_H - LABEL_GAP,
-    'center'
+    x,
+    y,
+    textAlign
   );
 
   // Nested groups: (handle + label), then (body + that group).
@@ -365,7 +363,6 @@ export function createWardleyMarket(gfx: GfxController) {
   if (!surface) return;
 
   const { centerX: cx, centerY: cy } = gfx.viewport;
-  const R = WARDLEY_NODE_SIZE.market.w / 2;
 
   // Outer circle = the market node (connectable, center-only).
   const circleId = addNode(surface, 'market', cx, cy);
@@ -380,6 +377,7 @@ export function createWardleyMarket(gfx: GfxController) {
     surface.addElement(wardleyMarketLinkProps(a, b))
   );
 
+  const { x, y, textAlign } = wardleyLabelBoxFor('market', cx, cy);
   const labelId = addLabel(
     surface,
     translateKey(
@@ -387,8 +385,9 @@ export function createWardleyMarket(gfx: GfxController) {
       wardleyNodeLabelKey('market'),
       WARDLEY_NODE_LABEL.market
     ),
-    cx + R + LABEL_GAP,
-    cy - LABEL_H / 2
+    x,
+    y,
+    textAlign
   );
 
   finish(gfx, group(gfx, [circleId, ...dotIds, ...connIds, labelId]));
@@ -463,20 +462,19 @@ export function createWardleyAccelerator(
   const surface = gfx.surface;
   if (!surface) return;
 
-  const { w } = WARDLEY_NODE_SIZE[kind];
   const { centerX: cx, centerY: cy } = gfx.viewport;
 
   const nodeId = addNode(surface, kind, cx, cy);
 
-  const rightwards = kind === 'accelerator';
+  // Which side, and which alignment, are the placement's answer: the
+  // decelerator's mirrored label is one of the two rules `presets.ts` states.
+  const { x, y, textAlign } = wardleyLabelBoxFor(kind, cx, cy);
   const labelId = addLabel(
     surface,
     translateKey(gfx.std, wardleyNodeLabelKey(kind), WARDLEY_NODE_LABEL[kind]),
-    // A label box is a fixed LABEL_W wide whatever it reads, so a right-aligned
-    // one has to start a box-width before the edge the words must end on.
-    rightwards ? cx + w / 2 + LABEL_GAP : cx - w / 2 - LABEL_GAP - LABEL_W,
-    cy - LABEL_H / 2,
-    rightwards ? 'left' : 'right',
+    x,
+    y,
+    textAlign,
     FontWeight.SemiBold
   );
 
@@ -513,6 +511,42 @@ export function createWardleyArea(gfx: GfxController, shape: WardleyAreaShape) {
   lowerWardleyArea(gfx, id);
 
   finish(gfx, id);
+}
+
+/**
+ * Arm the interactive polygon tool to draw a ZONE, corner by corner.
+ *
+ * The polygonal half of the kind is a TOOL and the rectangular half an artefact,
+ * and the asymmetry is the gesture rather than an inconsistency: a rectangle has
+ * one shape whatever its size, so placing one and dragging its handles is the
+ * whole of drawing it — while a polygon IS its corners, and a prefabricated
+ * pentagon parked in the middle of the map is never the outline anybody wanted
+ * (PO decision of 2026-09-16). The author clicks each corner and closes on the
+ * first one; Escape cancels and fewer than three corners draws nothing, both of
+ * which the tool already decides.
+ *
+ * What comes back is a Wardley area and not a plain polygon, because the tool
+ * creates the element from the props handed here — same fill, rim, role and
+ * inner-text settings as {@link createWardleyArea} writes, from the same
+ * description — and then lowers it the way that function does.
+ */
+export function activateWardleyAreaPolygon(gfx: GfxController) {
+  const { centerX: cx, centerY: cy } = gfx.viewport;
+
+  gfx.tool.setTool(PolygonTool, {
+    // The box and the default pentagon in here are a placeholder: the tool
+    // spreads this bag before the outline the author drew, so both are
+    // overwritten. They are still stated rather than stripped, because what a
+    // zone IS has exactly one description (`presets.ts`) and taking two keys
+    // out of it here would be a second one.
+    props: wardleyAreaProps('polygon', {
+      xywh: wardleyAreaBox('polygon', cx, cy),
+    }),
+    // A zone is lowered the moment it exists, for the reason
+    // {@link createWardleyArea} gives at length: drawn last it would paint over
+    // every component it groups and intercept their clicks.
+    onCreated: lowerWardleyArea,
+  });
 }
 
 /**
@@ -642,43 +676,95 @@ export function activateWardleyConnector(
 const EXPORT_WARNINGS_KEY = 'com.labre.commands.wardley.exportOwm.warnings';
 const EXPORT_WARNINGS_FALLBACK = 'What this export could not write down';
 
-/** The maps on the surface — what the export command is offered against. */
-export function wardleyMapsOnBoard(
+/**
+ * The Wardley maps in the SELECTION — what the export is offered against.
+ *
+ * No read-only filter, for `c4BoardsForExport`'s reason: an export writes
+ * nothing, and a map published read-only is precisely the one somebody wants to
+ * take away.
+ */
+export function wardleyMapsSelected(
   std: BlockStdScope
 ): WardleyBackgroundElementModel[] {
-  const surface = std.get(GfxControllerIdentifier).surface;
-  return (surface?.elementModels ?? []).filter(
+  return std
+    .get(GfxControllerIdentifier)
+    .selection.selectedElements.filter(
+      (model): model is WardleyBackgroundElementModel =>
+        model instanceof WardleyBackgroundElementModel
+    );
+}
+
+/**
+ * The elements the export speaks about, in DOCUMENT order: the selected map(s)
+ * and what they wholly contain.
+ *
+ * Membership is `containingFrame` on the map's element bound — whole
+ * containment, ties to the smaller id — which is the one answer the validation
+ * engine and the legend already give (PF2.4). The candidates are EVERY map on
+ * the surface and not just the selected ones, so an artefact inside two
+ * overlapping maps is attributed here exactly as the engine attributes it.
+ */
+export function wardleyExportElementsOf(
+  std: BlockStdScope
+): GfxPrimitiveElementModel[] {
+  const elements =
+    std.get(GfxControllerIdentifier).surface?.elementModels ?? [];
+  const allMaps = elements.filter(
     (model): model is WardleyBackgroundElementModel =>
       model instanceof WardleyBackgroundElementModel
   );
+  const selected = new Set<GfxPrimitiveElementModel>(wardleyMapsSelected(std));
+
+  return elements.filter(element => {
+    if (element instanceof WardleyBackgroundElementModel) {
+      return selected.has(element);
+    }
+    // ponytail: a label is the NAME of a node, not an artefact of its own, so it
+    // crosses UNSCOPED. `matchLabels` (export.ts) only binds one within
+    // LABEL_MATCH_TOLERANCE of a kept node and drops the rest, while a long name
+    // beside a node near the right edge legitimately hangs over the map bound —
+    // scoping labels by containment would export that node unnamed.
+    if (
+      element instanceof TextElementModel &&
+      element.role === WARDLEY_ROLE.label
+    ) {
+      return true;
+    }
+    const map = containingFrame(
+      element.elementBound,
+      allMaps,
+      candidate => candidate.elementBound
+    );
+    return map !== null && selected.has(map);
+  });
 }
 
 /**
- * Everything on the surface the exporter speaks about, in document order.
+ * What the exporter speaks about, as a picked board.
  *
- * The half that needs an editor, and only that half: reading the surface. The
- * picking is {@link wardleyBoardFrom}, which the interchange capability calls
- * with the same elements and no `std` at all (`docs/adr/0012`, P3).
+ * The half that needs an editor, and only that half: reading the surface and
+ * scoping it to the selection. The picking is {@link wardleyBoardFrom}, which
+ * the interchange capability calls with the same elements and no `std` at all
+ * (`docs/adr/0012`, P3).
  */
 export function wardleyBoardOf(std: BlockStdScope): WardleyExportBoard {
-  return wardleyBoardFrom(
-    std.get(GfxControllerIdentifier).surface?.elementModels ?? []
-  );
+  return wardleyBoardFrom(wardleyExportElementsOf(std));
 }
 
 /**
- * Serialize the board as an OWM document and hand it to the browser.
+ * Serialize the selected map as an OWM document and hand it to the browser.
  *
  * Three steps, and only the first and the last know what an editor is: read the
- * surface, run the DECLARED capability, download what it produced. The middle
- * step is not re-implemented here — the document, the filename and the content
- * type all come out of `WARDLEY_OWM_EXPORT.run`, so the command and the
- * registry cannot describe the same map differently. There is one door, and the
- * registry is the label on it.
+ * selected map's perimeter, run the DECLARED capability, download what it
+ * produced. The middle step is not re-implemented here — the document, the
+ * filename and the content type all come out of `WARDLEY_OWM_EXPORT.run`, so
+ * the command and the registry cannot describe the same map differently.
+ *
+ * Selecting SEVERAL maps still produces one file: an OWM document is one map,
+ * and `exportWardleyOwmWithWarnings` says so out loud in its warnings.
  */
 export function exportOwmFile(std: BlockStdScope): void {
-  const elements =
-    std.get(GfxControllerIdentifier).surface?.elementModels ?? [];
+  const elements = wardleyExportElementsOf(std);
   const title = std.store.workspace.meta.getDocMeta(std.store.id)?.title;
   const { text, filename, mime, warnings } = WARDLEY_OWM_EXPORT.run(elements, {
     name: wardleySafeFilename(title),

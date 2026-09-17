@@ -27,6 +27,7 @@ import {
   WARDLEY_TEMPLATE_NAME_TEA_SHOP,
 } from './templates/maps.js';
 import {
+  WARDLEY_TEMPLATE_NAME_AREA_POLYGON,
   WARDLEY_TEMPLATE_NAME_EVOLUTION_ARROW,
   WARDLEY_TEMPLATE_NAME_LINK,
 } from './templates/index.js';
@@ -83,7 +84,7 @@ const toolbarChromeEntries = (): TranslationKeyManifestEntry[] =>
   }));
 
 /**
- * The four hand-composed cards' own tile names — chrome, not seeds: a
+ * The five hand-composed cards' own tile names — chrome, not seeds: a
  * `Template.nameKey`, re-resolved every time the panel opens, never written
  * into a document. See `templates/index.ts` and `templates/maps.ts`.
  */
@@ -91,6 +92,7 @@ const templateNameEntries = (): TranslationKeyManifestEntry[] =>
   [
     WARDLEY_TEMPLATE_NAME_LINK,
     WARDLEY_TEMPLATE_NAME_EVOLUTION_ARROW,
+    WARDLEY_TEMPLATE_NAME_AREA_POLYGON,
     WARDLEY_TEMPLATE_NAME_TEA_SHOP,
     WARDLEY_TEMPLATE_NAME_KODAK_INERTIA,
   ].map(([key, fallback]) => ({ key, fallback, source: 'chrome' as const }));

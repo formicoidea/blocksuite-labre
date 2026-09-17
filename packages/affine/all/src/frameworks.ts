@@ -12,6 +12,15 @@ import type { OptionalBlock } from './flags.js';
  * read it (through a type-strip transform) instead of hand-maintaining its own
  * `FRAMEWORKS` array. Keep it that way. See `docs/adr/0008` § Packaging.
  *
+ * `iconKey` names the senior button's 56×56 glyph, registered in the framework's
+ * OWN command-icon table under `<segment>.toolbar` and therefore resolvable
+ * through `getCommandIcon`. The button still imports the glyph directly; the
+ * registry entry is what a host — or the catalogue — can resolve without it.
+ * Unlike the 24×24 command glyphs, it is `width="100%"` and fills whatever
+ * box it is put in.
+ * `__tests__/commands/registry.unit.spec.ts` ("every framework declares its own
+ * senior icon key") pins it non-empty, unique and registered.
+ *
  * `telemetryKey` and `telemetrySegment` hold the HISTORICAL PostHog values.
  * They are the reason the identity unification is code-side only and existing
  * dashboards keep working untouched — never "tidy" them.

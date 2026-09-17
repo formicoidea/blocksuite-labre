@@ -273,6 +273,35 @@ export async function getImageFilesFromLocal() {
   return files ?? [];
 }
 
+/**
+ * A name a file system will accept, minus the extension.
+ *
+ * The sanitiser the framework exports each wrote for themselves
+ * (`wardleySafeFilename`, `c4SafeFilename`, BPMN's) — same five steps, same
+ * 120-character ceiling — lifted here for the callers that belong to no
+ * framework at all. The generic SVG export (ADR 0025) is the first of them: it
+ * writes a file for ELEVEN kinds of board, so it has no framework's fallback to
+ * borrow and takes one as a parameter instead.
+ *
+ * The three framework copies stay where they are: each is part of an
+ * interchange capability with its own format id and its own declared fallback
+ * (`map`, `board`, `process`), and rewriting them to call this one would touch
+ * three exported APIs for no behaviour change.
+ */
+export function safeFilename(
+  raw: string | undefined,
+  fallback: string
+): string {
+  const safe = (raw ?? '')
+    .trim()
+    .replaceAll(/[\\/:*?"<>|]/g, '-')
+    .replaceAll(/\s+/g, ' ')
+    .trim()
+    .slice(0, 120)
+    .replace(/[. ]+$/, '');
+  return safe || fallback;
+}
+
 export function downloadBlob(blob: Blob, name: string) {
   const dataURL = URL.createObjectURL(blob);
   const tmpLink = document.createElement('a');

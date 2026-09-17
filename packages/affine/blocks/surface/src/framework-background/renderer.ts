@@ -62,6 +62,18 @@ import {
  * moves.
  */
 
+/**
+ * Trace the card, and say whether there was one to trace.
+ *
+ * The drawable box has the border subtracted from it, so a background dragged
+ * to nothing — or one whose `xywh` came back degenerate from a damaged
+ * document — asks for a negative radius: a 1.5 border on a 1-unit card gives
+ * -0.75. `arcTo` throws `IndexSizeError` on that rather than clamping, and the
+ * surface render loop wraps no renderer in a `try`, so one such throw aborts
+ * the rest of the frame with an unbalanced save stack. Returning `false` lets
+ * the caller skip the fill and the stroke too, rather than painting a
+ * degenerate path.
+ */
 function roundRectPath(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -69,8 +81,9 @@ function roundRectPath(
   w: number,
   h: number,
   r: number
-) {
-  const rr = Math.min(r, w / 2, h / 2);
+): boolean {
+  if (!(w > 0) || !(h > 0)) return false;
+  const rr = Math.max(0, Math.min(r, w / 2, h / 2));
   ctx.beginPath();
   ctx.moveTo(x + rr, y);
   ctx.arcTo(x + w, y, x + w, y + h, rr);
@@ -78,6 +91,7 @@ function roundRectPath(
   ctx.arcTo(x, y + h, x, y, rr);
   ctx.arcTo(x, y, x + w, y, rr);
   ctx.closePath();
+  return true;
 }
 
 const HEX6 = /^#[0-9a-fA-F]{6}$/;
@@ -162,6 +176,12 @@ export function createFrameworkBackgroundRenderer<
       ) ?? null;
 
     const [, , w, h] = model.deserializedXYWH;
+    // A background with no area has no card, no bands, no plot and no text, so
+    // there is nothing to paint and every ratio below would divide by zero.
+    // Bailing here is also what keeps a degenerate element from reaching
+    // `arcTo` at all; `roundRectPath` stays the second line of defence for a
+    // card that is positive but smaller than its own border.
+    if (!(w > 0) || !(h > 0)) return;
     const cx = w / 2;
     const cy = h / 2;
     ctx.setTransform(
@@ -224,8 +244,10 @@ export function createFrameworkBackgroundRenderer<
         border?.radius ?? 0
       );
 
-    cardPath();
-    if (surface.fill) {
+    // A card whose border eats the whole element is not traced at all, and then
+    // neither its fill nor its frame is painted.
+    const carded = cardPath();
+    if (carded && surface.fill) {
       ctx.fillStyle = color(surface.fill);
       ctx.fill();
     }
@@ -260,10 +282,10 @@ export function createFrameworkBackgroundRenderer<
           if (divider.dash?.length) ctx.setLineDash([]);
         }
       }
-      if (border) cardPath();
+      if (border && carded) cardPath();
     }
 
-    if (border) {
+    if (border && carded) {
       ctx.strokeStyle = color(border.color);
       ctx.lineWidth = border.width;
       if (border.dash?.length) ctx.setLineDash([...border.dash]);

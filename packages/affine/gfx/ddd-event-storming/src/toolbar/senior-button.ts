@@ -8,4 +8,5 @@ export class EdgelessDddEventStormingSeniorButton extends DddSeniorButtonBase {
   protected override label = 'Event Storming';
   protected override labelKey = 'com.labre.framework.ddd-event-storming';
   protected override icon = eventStormingToolbarIcon;
+  protected override owner = 'ddd-event-storming' as const;
 }

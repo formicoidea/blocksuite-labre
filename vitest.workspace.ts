@@ -37,6 +37,7 @@ export default [
   'packages/affine/gfx/group/vitest.config.ts',
   'packages/affine/gfx/mindmap/vitest.config.ts',
   'packages/affine/gfx/pointer/vitest.config.ts',
+  'packages/affine/gfx/shape/vitest.config.ts',
   'packages/affine/gfx/template/vitest.config.ts',
   'packages/affine/gfx/text/vitest.config.ts',
   'packages/affine/gfx/uml/vitest.config.ts',

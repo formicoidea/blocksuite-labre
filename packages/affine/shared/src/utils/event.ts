@@ -44,6 +44,27 @@ export function isControlledKeyboardEvent(e: KeyboardEvent) {
   return e.ctrlKey || e.metaKey || e.altKey;
 }
 
+// The editor host itself carries `tabindex="0"` so that it can receive the
+// keystrokes aimed at a block selection; it is the editing surface, not a
+// control, hence the exclusion.
+const NATIVE_FOCUSABLE_SELECTOR =
+  'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"]):not(editor-host)';
+
+/**
+ * The editor swallows Tab, Shift-Tab and Enter so that indentation and block
+ * splitting stay under the control of the block-scoped handlers. That would
+ * however trap the focus on the native controls the editor renders (the
+ * collapse button of headings and lists, for instance), which then could
+ * neither be reached, left nor activated with the keyboard. When the event
+ * originates from such a control — and not from editable text — the native
+ * behaviour is let through.
+ */
+export function isNativeFocusableTarget(target: EventTarget | null) {
+  if (!(target instanceof Element)) return false;
+  if (target instanceof HTMLElement && target.isContentEditable) return false;
+  return !!target.closest(NATIVE_FOCUSABLE_SELECTOR);
+}
+
 export function isNewTabTrigger(event?: MouseEvent) {
   return event
     ? (event.ctrlKey || event.metaKey || event.button === 1) && !event.altKey

@@ -22,4 +22,6 @@ export class EdgelessC4SeniorButton extends DddSeniorButtonBase {
   protected override labelKey = 'com.labre.framework.c4';
 
   protected override icon = c4ToolbarIcon;
+
+  protected override owner = 'c4' as const;
 }

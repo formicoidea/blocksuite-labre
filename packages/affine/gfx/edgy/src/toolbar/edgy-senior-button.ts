@@ -1,7 +1,10 @@
 import { DefaultTool } from '@labre/affine-block-surface';
 import { EmptyTool } from '@labre/affine-gfx-pointer';
 import { translateKey } from '@labre/affine-shared/services';
-import { EdgelessToolbarToolMixin } from '@labre/affine-widget-edgeless-toolbar';
+import {
+  armedArtefact,
+  EdgelessToolbarToolMixin,
+} from '@labre/affine-widget-edgeless-toolbar';
 import { SignalWatcher } from '@labre/global/lit';
 import { css, html, LitElement } from 'lit';
 
@@ -77,6 +80,11 @@ export class EdgelessEdgySeniorButton extends EdgelessToolbarToolMixin(
     menu.element.edgeless = this.edgeless;
   }
 
+  /** Lit while one of THIS framework's artefacts is armed. See the Wardley one. */
+  private get _armed() {
+    return armedArtefact(this.gfx)?.owner === 'edgy';
+  }
+
   override render() {
     return html`<edgeless-toolbar-button
       class="edgy-button"
@@ -84,7 +92,7 @@ export class EdgelessEdgySeniorButton extends EdgelessToolbarToolMixin(
         ? ''
         : translateKey(this.edgeless.std, 'com.labre.framework.edgy', 'EDGY')}
       .tooltipOffset=${4}
-      .active=${!!this.popper}
+      .active=${!!this.popper || this._armed}
       @click=${this._toggleMenu}
     >
       <div class="edgy-root">

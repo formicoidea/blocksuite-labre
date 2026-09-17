@@ -8,4 +8,5 @@ export class EdgelessDddContextMapSeniorButton extends DddSeniorButtonBase {
   protected override label = 'Context Map';
   protected override labelKey = 'com.labre.framework.ddd-context-map';
   protected override icon = contextMapToolbarIcon;
+  protected override owner = 'ddd-context-map' as const;
 }

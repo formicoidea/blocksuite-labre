@@ -146,9 +146,13 @@ describe('the c4 command inventory', () => {
   it('gives every command glyph a home, and every glyph a command', () => {
     // A key a descriptor names and the icon record does not hold renders as
     // nothing; a glyph no descriptor names is a drawing nobody can reach.
-    expect(Object.keys(c4CommandIcons).sort()).toEqual(
-      c4Commands.map(c => c.iconKey!).sort()
-    );
+    // `c4.toolbar` is the one key with no command behind it: it is the senior
+    // BUTTON's glyph, registered so `FrameworkDescriptor.iconKey` resolves.
+    expect(
+      Object.keys(c4CommandIcons)
+        .filter(key => key !== 'c4.toolbar')
+        .sort()
+    ).toEqual(c4Commands.map(c => c.iconKey!).sort());
   });
 
   it('creates one command per node kind, telemetry named after it', () => {

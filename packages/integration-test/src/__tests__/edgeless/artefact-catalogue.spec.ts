@@ -7,7 +7,7 @@ import { TOUCH_TARGET_MIN_PX } from '@labre/affine/shared/consts';
 import { CATALOGUE_HEAD_RANKED_SLOTS } from '@labre/affine/std';
 import { beforeEach, describe, expect, test } from 'vitest';
 
-import { wait } from '../utils/common.js';
+import { pointerdown, pointerup, wait } from '../utils/common.js';
 import { getDocRootBlock } from '../utils/edgeless.js';
 import { setupEditor } from '../utils/setup.js';
 
@@ -85,6 +85,34 @@ describe('artefact catalogue sidepanel', () => {
 
   const armedTool = () => edgeless.gfx.tool.currentToolName$.peek();
 
+  /** The command the placement tool is holding, if it is holding one. */
+  const armedCommand = () =>
+    (
+      edgeless.gfx.tool.currentToolOption$.peek()?.options as
+        | { command?: { id: string } }
+        | undefined
+    )?.command?.id;
+
+  /**
+   * The gesture that finishes a tap: a real click on the board.
+   *
+   * Since 2026-09-16 a row of kind `artefact` ARMS the placement tool rather
+   * than creating on the spot, so the artefact exists only once the author has
+   * said where. Offset from the viewport centre so two placements do not land
+   * on top of each other.
+   */
+  const place = async (dx = 0, dy = 0) => {
+    const { viewport } = edgeless.gfx;
+    const [x, y] = viewport.toViewCoord(
+      viewport.centerX + dx,
+      viewport.centerY + dy
+    );
+    const host = window.editor.host as HTMLElement;
+    pointerdown(host, { x, y });
+    pointerup(host, { x, y });
+    await settle();
+  };
+
   test('the seam resolves to the library panel, and opening shows it', async () => {
     // `getOptional`, not `get`: this is the exact call the senior sub-menu's
     // "More artefacts…" entry makes to decide whether to render at all
@@ -121,9 +149,9 @@ describe('artefact catalogue sidepanel', () => {
     // Twenty of Wardley's twenty-one catalogue commands (eighteen of nineteen
     // before the two zones), and the missing one is absent for a
     // reason the panel is supposed to have: it filters on `isCommandAvailable`
-    // AND on `when`, and `wardley.exportOwm` needs a Wardley map on the board
-    // to have a plot to measure coordinates against. This board has none, so
-    // there is nothing to export and no row offering to.
+    // AND on `when`, and `wardley.exportOwm` exports the SELECTED map's
+    // perimeter (R5). Nothing is selected here — and there is no map to select
+    // — so there is nothing to export and no row offering to.
     //
     // Both IMPORTS are here, and that is the tier distinction made visible:
     // neither needs anything on the board, so both render — the native OWM
@@ -245,7 +273,7 @@ describe('artefact catalogue sidepanel', () => {
     }
   });
 
-  test('a tap creates the artefact and the panel STAYS for the next one', async () => {
+  test('a tap ARMS the artefact, and the panel STAYS for the next one', async () => {
     await open();
     const before = armedTool();
 
@@ -253,13 +281,34 @@ describe('artefact catalogue sidepanel', () => {
       entry => entry.dataset.commandId === 'wardley.addComponent'
     );
     expect(row).toBeDefined();
-    clickElement(row!);
-    await settle();
+
     clickElement(row!);
     await settle();
 
+    // The new contract (PO, 2026-09-16): the row arms, it does not create. A
+    // catalogue tap is the same gesture as a sub-menu tap, so it leaves the
+    // same ghost under the cursor.
+    expect(armedTool()).toBe('artefact-placement');
+    expect(armedCommand()).toBe('wardley.addComponent');
+    expect(edgeless.surface.model.getElementsByType('wardleyNode').length).toBe(
+      0
+    );
+    expect(panel()).not.toBeNull();
+
+    await place(-200, -120);
+    expect(edgeless.surface.model.getElementsByType('wardleyNode').length).toBe(
+      1
+    );
     // Furnishing is several artefacts in a row (PO recette, 27/08/2026): the
-    // first default — close on insert — turned that into open-click-reopen.
+    // first default — close on insert — turned that into open-click-reopen, and
+    // so would dismissing the panel on the click that PLACES what it armed.
+    expect(panel()).not.toBeNull();
+    expect(armedTool()).toBe(before);
+
+    clickElement(row!);
+    await settle();
+    await place(200, 120);
+
     expect(edgeless.surface.model.getElementsByType('wardleyNode').length).toBe(
       2
     );
@@ -279,6 +328,14 @@ describe('artefact catalogue sidepanel', () => {
     expect(row).toBeDefined();
     clickElement(row!);
     await settle();
+    // Arming measures NOTHING — the usage store is fed at the bottleneck, and
+    // the bottleneck is the placement. A user who arms an artefact and changes
+    // their mind has not used it, so the head section must still be absent here.
+    expect(
+      widgetRoot()?.querySelector('[data-testid="artefact-catalogue-ranked"]')
+    ).toBeNull();
+
+    await place();
     catalogue().close();
     await open();
 

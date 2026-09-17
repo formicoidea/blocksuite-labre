@@ -11,6 +11,11 @@ export type EstuarineProps = FrameworkBackgroundProps & {
   showCounterfactual?: boolean;
   /** When false the axis labels (e / t) are hidden. */
   showAxisLabels?: boolean;
+
+  // ── Editable curve legends (double-click on the canvas to edit) ───────
+  liminalLabel?: string;
+  volatileLabel?: string;
+  counterfactualLabel?: string;
 };
 
 /**
@@ -43,6 +48,25 @@ export class EstuarineElementModel extends FrameworkBackgroundElementModel<Estua
 
   @field(true)
   accessor showAxisLabels: boolean = true;
+
+  // ── Editable curve legends ────────────────────────────────────────────
+  //
+  // ADDITIVE and OPTIONAL, on the Wardley pattern: defaulted to `undefined`
+  // they stay absent from the Y.Map until something assigns them, so a map
+  // placed before this change carries none of them and is byte-identical to one
+  // placed after. Absent is also what lets the drawing fall through to the
+  // catalogue — a hard default here would put the three legends in English
+  // forever.
+  //
+  // The LEGENDS only: the italic e / t axis letters are notation, not words.
+  @field()
+  accessor liminalLabel: string | undefined = undefined;
+
+  @field()
+  accessor volatileLabel: string | undefined = undefined;
+
+  @field()
+  accessor counterfactualLabel: string | undefined = undefined;
 
   @field(0)
   accessor rotate: number = 0;

@@ -1,6 +1,7 @@
 import {
   type ElementRenderer,
   ElementRendererExtension,
+  taggedPath2D,
 } from '@labre/affine-block-surface';
 import { type BrushElementModel, DefaultTheme } from '@labre/affine-model';
 
@@ -23,7 +24,7 @@ export const brush: ElementRenderer<BrushElementModel> = (
 
   ctx.fillStyle = color;
 
-  ctx.fill(new Path2D(model.commands));
+  ctx.fill(taggedPath2D(model.commands));
 };
 
 export const BrushElementRendererExtension = ElementRendererExtension(

@@ -50,6 +50,7 @@ import {
   TEXT_TOOLBAR_FONT,
   TEXT_TOOLBAR_FONT_STYLE,
   TEXT_TOOLBAR_FONT_STYLE_ITALIC,
+  TEXT_TOOLBAR_FONT_WEIGHT_BOLD,
   TEXT_TOOLBAR_FONT_WEIGHT_LIGHT,
   TEXT_TOOLBAR_FONT_WEIGHT_REGULAR,
   TEXT_TOOLBAR_FONT_WEIGHT_SEMIBOLD,
@@ -72,6 +73,11 @@ const FONT_WEIGHT_LIST = [
     key: 'Semibold',
     keyWording: TEXT_TOOLBAR_FONT_WEIGHT_SEMIBOLD,
     value: FontWeight.SemiBold,
+  },
+  {
+    key: 'Bold',
+    keyWording: TEXT_TOOLBAR_FONT_WEIGHT_BOLD,
+    value: FontWeight.Bold,
   },
 ] as const satisfies MenuItem<FontWeight>[];
 
@@ -116,6 +122,14 @@ const TEXT_ALIGN_LIST = [
   },
 ] as const satisfies MenuItem<TextAlign>[];
 
+/**
+ * What the dropdowns read off a selected model. `fontSize` is optional because
+ * `affine:edgeless-text` has no such prop — it scales instead, which is why the
+ * `d.font-size` action skips that type.
+ */
+type ReadableTextStyleProps = Omit<TextStyleProps, 'fontSize'> &
+  Partial<Pick<TextStyleProps, 'fontSize'>>;
+
 export function createTextActions<
   K extends abstract new (...args: any) => any,
   T extends keyof SurfaceTextModelMap,
@@ -128,7 +142,7 @@ export function createTextActions<
     props: Partial<TextStyleProps>
   ) => void = (ctx, model, props) =>
     ctx.std.get(EdgelessCRUDIdentifier).updateElement(model.id, props),
-  mapInto: (model: InstanceType<K>) => TextStyleProps = model => model,
+  mapInto: (model: InstanceType<K>) => ReadableTextStyleProps = model => model,
   stash: <P extends keyof TextStyleProps>(
     model: InstanceType<K>,
     type: 'stash' | 'pop',

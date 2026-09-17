@@ -111,9 +111,19 @@ const MIGRATION_TEXT: BackgroundTextStyle = {
   color: '@zoneLabelDark',
 };
 
-/** A centred zone name, gated by `showLabels` like every other word on the chart. */
+/**
+ * A centred zone name, gated by `showLabels` like every other word on the chart.
+ *
+ * `prop` is what makes it RENAMABLE (issue #355): the model prop the in-place
+ * editor writes to, which `backgroundLabelText` reads BEFORE the catalogue — so
+ * a chart the user has renamed keeps their words, and every other chart keeps
+ * the vocabulary in whatever language the host serves it. The id and the prop
+ * are deliberately two strings: the id names a piece of this declaration, the
+ * prop names a key in somebody's document, and only the first may ever change.
+ */
 function zoneLabel(
   id: string,
+  prop: string,
   key: string,
   fallback: string,
   x: number,
@@ -122,6 +132,7 @@ function zoneLabel(
 ): BackgroundTextDef {
   return {
     id,
+    prop,
     labelKey: `com.labre.core-domain.background.zone.${key}`,
     fallback,
     anchor: { x: rx(x), y: ry(y) },
@@ -152,7 +163,15 @@ const CLASSIC_ZONES: FrameworkBackgroundDef['zones'] = [
     rect: { x: rx(70), y: ry(30), w: rw(150), h: rh(720) },
     fill: '@zoneGeneric',
     fillVisibleProp: 'showZones',
-    label: zoneLabel('generic', 'generic', 'Generic', 150, 474, ZONE_TEXT),
+    label: zoneLabel(
+      'generic',
+      'zoneGeneric',
+      'generic',
+      'Generic',
+      150,
+      474,
+      ZONE_TEXT
+    ),
   },
   {
     id: 'supporting-low-diff',
@@ -162,6 +181,7 @@ const CLASSIC_ZONES: FrameworkBackgroundDef['zones'] = [
     fillVisibleProp: 'showZones',
     label: zoneLabel(
       'supporting',
+      'zoneSupporting',
       'supporting',
       'Supporting',
       340,
@@ -175,7 +195,7 @@ const CLASSIC_ZONES: FrameworkBackgroundDef['zones'] = [
     rect: { x: rx(440), y: ry(30), w: rw(400), h: rh(360) },
     fill: '@zoneCore',
     fillVisibleProp: 'showZones',
-    label: zoneLabel('core', 'core', 'Core', 640, 214, CORE_TEXT),
+    label: zoneLabel('core', 'zoneCore', 'core', 'Core', 640, 214, CORE_TEXT),
   },
   {
     // The template tints this one and writes nothing on it, so neither does the
@@ -206,6 +226,7 @@ const MIGRATION_ZONES: FrameworkBackgroundDef['zones'] = [
     fillVisibleProp: 'showZones',
     label: {
       id: 'lastToothpaste',
+      prop: 'zoneLastToothpaste',
       labelKey: 'com.labre.core-domain.background.zone.last-toothpaste',
       fallback: 'Last toothpaste',
       anchor: { x: 0.25, y: 0.25 },
@@ -222,6 +243,7 @@ const MIGRATION_ZONES: FrameworkBackgroundDef['zones'] = [
     fillVisibleProp: 'showZones',
     label: {
       id: 'riskSeeking',
+      prop: 'zoneRiskSeeking',
       labelKey: 'com.labre.core-domain.background.zone.risk-seeking',
       fallback: 'Risk-seeking',
       anchor: { x: 0.75, y: 0.25 },
@@ -238,6 +260,7 @@ const MIGRATION_ZONES: FrameworkBackgroundDef['zones'] = [
     fillVisibleProp: 'showZones',
     label: {
       id: 'riskAverse',
+      prop: 'zoneRiskAverse',
       labelKey: 'com.labre.core-domain.background.zone.risk-averse',
       fallback: 'Risk-averse',
       anchor: { x: 0.25, y: 0.75 },
@@ -254,6 +277,7 @@ const MIGRATION_ZONES: FrameworkBackgroundDef['zones'] = [
     fillVisibleProp: 'showZones',
     label: {
       id: 'lowHangingFruit',
+      prop: 'zoneLowHangingFruit',
       labelKey: 'com.labre.core-domain.background.zone.lhf',
       fallback: 'Low-hanging fruit',
       anchor: { x: 0.75, y: 0.75 },
@@ -288,6 +312,7 @@ const CORE_DOMAIN_AXES: FrameworkBackgroundDef['axes'] = [
     stroke: { color: '@axis', width: 2 },
     title: {
       id: 'complexityTitle',
+      prop: 'complexityTitle',
       // The classic reading's vertical axis. The migration one relabels it —
       // see `MIGRATION_AXIS_TITLE` below, and why it rides in `endLabels`.
       variants: ['classic'],
@@ -301,6 +326,7 @@ const CORE_DOMAIN_AXES: FrameworkBackgroundDef['axes'] = [
     endLabels: [
       {
         id: 'complexityLow',
+        prop: 'complexityLow',
         labelKey: 'com.labre.core-domain.background.complexity.low',
         fallback: 'Low',
         anchor: { x: 0, y: ry(758), dx: -12 },
@@ -310,6 +336,7 @@ const CORE_DOMAIN_AXES: FrameworkBackgroundDef['axes'] = [
       },
       {
         id: 'complexityHigh',
+        prop: 'complexityHigh',
         labelKey: 'com.labre.core-domain.background.complexity.high',
         fallback: 'High',
         anchor: { x: 0, y: ry(44), dx: -22 },
@@ -329,6 +356,7 @@ const CORE_DOMAIN_AXES: FrameworkBackgroundDef['axes'] = [
        */
       {
         id: 'complexityTitleMigration',
+        prop: 'migrationCostTitle',
         variants: ['migration'],
         labelKey: 'com.labre.core-domain.background.axis.migration-cost',
         fallback: 'Cost of migration',
@@ -348,6 +376,7 @@ const CORE_DOMAIN_AXES: FrameworkBackgroundDef['axes'] = [
     stroke: { color: '@axis', width: 2 },
     title: {
       id: 'differentiationTitle',
+      prop: 'differentiationTitle',
       labelKey: 'com.labre.core-domain.background.axis.differentiation',
       fallback: 'Business differentiation',
       anchor: { x: rx(450), y: 1, dy: 30 },
@@ -358,6 +387,7 @@ const CORE_DOMAIN_AXES: FrameworkBackgroundDef['axes'] = [
     endLabels: [
       {
         id: 'differentiationLow',
+        prop: 'differentiationLow',
         labelKey: 'com.labre.core-domain.background.differentiation.low',
         fallback: 'Low',
         anchor: { x: rx(84), y: 1, dy: 22 },
@@ -367,6 +397,7 @@ const CORE_DOMAIN_AXES: FrameworkBackgroundDef['axes'] = [
       },
       {
         id: 'differentiationHigh',
+        prop: 'differentiationHigh',
         labelKey: 'com.labre.core-domain.background.differentiation.high',
         fallback: 'High',
         anchor: { x: rx(838), y: 1, dy: 22 },

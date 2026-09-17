@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-font",
+        "value": "demo",
+        "createdAt": "2026-09-16T19:45:19.401Z",
+        "reason": "test fixture: stub framework-background declaration in a unit spec, mirrors the existing FULL stub in framework-background.unit.spec.ts; never rendered in the product"
+      }
+    ]
+  }
+}

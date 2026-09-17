@@ -4,6 +4,7 @@ import {
   BOARD_LEGEND_COMPONENTS,
   BOARD_RESIZE_TOGGLE,
   type ChromeWording,
+  commandMoreAction,
   TelemetryProvider,
   type ToolbarContext,
   type ToolbarModuleConfig,
@@ -13,7 +14,7 @@ import { BlockFlavourIdentifier } from '@labre/std';
 import { html, type TemplateResult } from 'lit';
 
 import { createWardleyLegend } from '../legend';
-import { wardleyLegendIcon } from './icons';
+import { wardleyExportOwmIcon, wardleyLegendIcon } from './icons';
 
 /** The seven toolbar tooltips this file used to hard-code as English literals. */
 const EVOLUTION_AXIS_TOGGLE: ChromeWording = [
@@ -322,6 +323,20 @@ export const wardleyToolbarConfig = {
           });
       },
     },
+    // The OWM export, in the "⋮" — R5 of
+    // `docs/add-a-framework/02-framework-rules.md`, the position
+    // `bpmn.exportXml` and `c4.exportMermaid` already hold on their own boards.
+    // This module is registered ALWAYS-ON (`view.ts`) while the commands are
+    // flag-gated, and that needs no extra guard: the entry's `when` looks the
+    // command up in the registry and withdraws when the wardley flag left it
+    // unregistered.
+    commandMoreAction(
+      'z.export-owm',
+      'wardley.exportOwm',
+      'com.labre.commands.wardley.exportOwm',
+      'Export Wardley map (OWM)',
+      wardleyExportOwmIcon
+    ),
   ],
   when: ctx =>
     ctx.getSurfaceModelsByType(WardleyBackgroundElementModel).length > 0,
