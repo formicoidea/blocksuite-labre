@@ -142,6 +142,9 @@ describe('the cloud carries its name beside it', () => {
     expect(cloud && label && group).toBeTruthy();
 
     expect(cloud![1].shapeType).toBe('polygon');
+    // The role sits on the polygon — what the legend scan meets.
+    expect(cloud![1].role).toBe(CONTEXT_MAP_ROLE.system);
+    expect(group![1].role).toBeUndefined();
     expect(cloud![1].text).toBeUndefined();
 
     expect(Object.keys(group![1].children?.json ?? {}).sort()).toEqual(

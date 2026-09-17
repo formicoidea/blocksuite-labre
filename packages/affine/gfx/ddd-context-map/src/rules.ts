@@ -63,10 +63,12 @@ import { CONTEXT_MAP_ROLE, CONTEXT_MAP_ROLES } from './roles';
  * tolerable but the correct notation. Judging it would be indicting the act of
  * sketching (PRD principle 8).
  *
- * The branch becomes reachable the day a second NODE role lands — a role on the
- * cloud, say — and on that day this declaration already says what to do with it
- * without a line changing. Until then `offMatrix` carries no words of its own
- * and the rule's own sentence stands behind it, unused.
+ * The cloud has a role of its own since 17/09/2026 (`context-map:system`, there
+ * so the legend can list it) and that changes nothing here: the alphabet is the
+ * roles the MATRIX cites, not the roles the vocabulary declares, and `system`
+ * is cited by no triplet. The branch becomes reachable only the day a second
+ * node role is written INTO a triplet. Until then `offMatrix` carries no words
+ * of its own and the rule's own sentence stands behind it, unused.
  */
 const relationshipEndpoints: ValidationRule = {
   id: 'context-map.relationship-endpoints',

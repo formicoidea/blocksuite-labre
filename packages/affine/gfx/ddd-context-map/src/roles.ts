@@ -5,10 +5,11 @@ import type { RoleDef, RoleDefs } from '@labre/std/gfx';
  * Context Mapping role vocabulary (WS2).
  *
  * Roles are the semantic identity of a Context Map artefact — no rule will ever
- * look at a shape type. Three families:
+ * look at a shape type. Four families:
  *
  * - the **board** (`context-map:board`), the white card the map is drawn on;
  * - the **bounded context** (`context-map:context`), the blue pill;
+ * - the **system** (`context-map:system`), the cloud — see below;
  * - the **relationship** (`context-map:relationship`), the edge parent, with
  *   one child per DDD pattern.
  *
@@ -38,9 +39,27 @@ import type { RoleDef, RoleDefs } from '@labre/std/gfx';
  * would show a sentence the framework does not say. They therefore declare none,
  * which is exactly what an untyped edge already did.
  *
+ * ## The cloud is a `system`, not a Big Ball of Mud
+ *
+ * DDD Crew's cheat sheet defines Big Ball of Mud as "a (part of a) system which
+ * is a mess" — a DEMARCATION of a system's quality, not a kind of node. The
+ * cloud is the thing being demarcated: something out there the map integrates
+ * with and does not model as a bounded context (a legacy, a vendor package, a
+ * mess). Naming the role `big-ball-of-mud` would make every cloud a quality
+ * claim the user never made, and the id `context-map:bbom` is the PATTERN's
+ * already. So the role is the neutral `context-map:system`, and its label keeps
+ * the Big Ball of Mud reading in sight because that is what the palette entry
+ * has always said.
+ *
+ * The role exists so the automatic legend can SEE a cloud (detection is by role
+ * only). It is deliberately absent from every rule's endpoint matrix: a
+ * relationship drawn onto a cloud stays outside the alphabet, hence unjudged
+ * (`rules.ts`, CM1).
+ *
  * ## Compat
  *
- * Nothing is backfilled. Relationships drawn before these roles existed — the
+ * Nothing is backfilled. A cloud placed before `context-map:system` existed
+ * carries no role, stays out of the legend, and is otherwise the same drawing. Relationships drawn before these roles existed — the
  * old free connector + tag + U/D markers group — carry no role and are never
  * evaluated (promesse #71): they stay drawings, in the documents they are in.
  */
@@ -66,10 +85,11 @@ export const CM_PATTERN_ROLE = Object.fromEntries(
   ])
 ) as Record<ContextMapPatternKind, ContextMapRoleId>;
 
-/** The three roles that are not a pattern, plus the pattern ids. */
+/** The four roles that are not a pattern, plus the pattern ids. */
 export const CONTEXT_MAP_ROLE = {
   board: 'context-map:board',
   context: 'context-map:context',
+  system: 'context-map:system',
   relationship: 'context-map:relationship',
   ...CM_PATTERN_ROLE,
 } as const;
@@ -97,6 +117,14 @@ const DEFS: readonly RoleDef[] = [
     kind: 'node',
     labelKey: 'com.labre.ddd-context-map.role.context',
     labelFallback: 'Bounded context',
+  },
+  // The cloud. Specialises nothing — above all not `context-map:context`, which
+  // would pull it into the endpoint alphabet and the off-board rule.
+  {
+    id: CONTEXT_MAP_ROLE.system,
+    kind: 'node',
+    labelKey: 'com.labre.ddd-context-map.role.system',
+    labelFallback: 'System / Big Ball of Mud',
   },
   // The edge parent. Carries no `direction` of its own: five of its nine
   // children have one and four do not, and a verb on the parent would be

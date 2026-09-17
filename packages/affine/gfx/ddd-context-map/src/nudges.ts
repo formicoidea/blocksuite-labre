@@ -38,10 +38,10 @@ export const CONTEXT_MAP_NUDGES: readonly QualityNudge[] = [
     /**
      * The rule this nudge replaces. "Every downstream of a Big Ball of Mud is
      * protected" is decidable in principle — walk the edges out of the cloud and
-     * look for an ACL — and undecidable in practice on THIS canvas: the cloud
-     * carries no role (a v1 cut), so there is nothing for a rule to walk from,
-     * and a shape somebody drew a mess with is not a claim that it IS one.
-     * Level 2 is the honest home for it until the cloud has a role.
+     * look for an ACL — and undecidable in practice on THIS canvas: the cloud's
+     * role is `context-map:system`, which says "a system", not "a mess", and a
+     * shape somebody drew a mess with is not a claim that it IS one. Level 2 is
+     * the honest home for it.
      */
     id: 'context-map.q3-bbom-protected',
     framework: 'ddd-context-map',

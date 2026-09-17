@@ -96,6 +96,10 @@ const UNREAD_NODE_ROLES: Readonly<Record<string, string>> = {
   // element carries it, so there is nothing for a profile to read — and the
   // three concrete children each have one of their own.
   'uml:classifier': 'an abstract parent nothing is ever drawn as',
+  // The Context Map cloud: a system the map integrates with and does NOT model.
+  // Its role exists so the automatic legend can list it; there is nothing
+  // inside it for a reading to report (`gfx/ddd-context-map/src/reading.ts`).
+  'context-map:system': 'outside the model — a role for the legend only',
   // Wardley's own product decision: the reading is about the VALUE CHAIN.
   // A need has a demand, not a nature; a force and an accelerator press on the
   // chain from outside it; an area is a region; a pipeline's connections go
