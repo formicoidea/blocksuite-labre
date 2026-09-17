@@ -10,6 +10,16 @@ import { UML_DIAGRAM_FRAME, UML_SUBJECT_FRAME } from './background.js';
 import { umlCommands } from './commands.js';
 import { UML_DRAWIO_REMARKS } from './drawio-import.js';
 import { UML_LAYOUT_REMARKS } from './import.js';
+import {
+  UML_ATTRIBUTES_SEED,
+  UML_ATTRIBUTES_SEED_KEY,
+  UML_NAME_SEED,
+  UML_OPERATIONS_SEED,
+  UML_OPERATIONS_SEED_KEY,
+  UML_SLOTS_SEED,
+  UML_SLOTS_SEED_KEY,
+  umlSeedKey,
+} from './keywords.js';
 import { UML_DIAGRAM_KIND_MENU } from './kinds.js';
 import { UML_LEGEND_SECTION_WORDINGS } from './legend.js';
 import { UML_FRAGMENT_OPERATOR_MENU } from './operators.js';
@@ -19,6 +29,37 @@ import { UML_READINGS } from './reading.js';
 import { UML_ROLES } from './roles.js';
 import { UML_RULES } from './rules.js';
 import { UML_XMI_REMARKS } from './xmi-import.js';
+
+/**
+ * The words a placed artefact is SEEDED with — its name compartment, and the
+ * three compartment lines a fresh classifier carries.
+ *
+ * Derived from {@link UML_NAME_SEED} itself, never restated: the fallback IS
+ * the very string the creation site used to write raw, mirroring BPMN's
+ * `seedEntries` exactly. The kinds the notation draws with no words
+ * (`UML_UNLABELLED_KINDS`, an empty seed) contribute no key — there is nothing
+ * to translate, and BPMN's own filter says the same thing one package over.
+ *
+ * `seed`, not `chrome`: unlike the section titles below, this text is WRITTEN
+ * INTO THE DOCUMENT and is the author's content from that moment on, so it is
+ * resolved once at placement (`actions.ts`) and never re-resolved.
+ */
+const seedEntries = (): TranslationKeyManifestEntry[] => [
+  ...Object.entries(UML_NAME_SEED)
+    .filter(([, seed]) => seed !== '')
+    .map(([kind, seed]) => ({
+      key: umlSeedKey(kind as keyof typeof UML_NAME_SEED),
+      fallback: seed,
+      source: 'seed' as const,
+    })),
+  ...(
+    [
+      [UML_ATTRIBUTES_SEED_KEY, UML_ATTRIBUTES_SEED],
+      [UML_OPERATIONS_SEED_KEY, UML_OPERATIONS_SEED],
+      [UML_SLOTS_SEED_KEY, UML_SLOTS_SEED],
+    ] as const
+  ).map(([key, fallback]) => ({ key, fallback, source: 'seed' as const })),
+];
 
 /**
  * The auto-legend's own section titles ({@link UML_LEGEND_SECTION_WORDINGS})
@@ -92,6 +133,7 @@ export const umlTranslationEntries: TranslationKeyManifestEntry[] =
       // three declarations beside it are.
       UML_FRAGMENT_OPERATOR_MENU,
     ]),
+    seedEntries(),
     chromeEntries(),
     // AFTER the two groups above — see the header on why the order decides
     // which source each key is reported under.

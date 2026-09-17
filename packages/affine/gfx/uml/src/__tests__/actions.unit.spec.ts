@@ -8,6 +8,7 @@ import {
   type UmlNodeKind,
 } from '@labre/affine-model';
 import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
+import { TranslationProvider } from '@labre/affine-shared/services';
 import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
@@ -42,10 +43,14 @@ import { umlCompartmentBoxes } from '../component.js';
 import { umlSafeFilename } from '../filename.js';
 import {
   UML_ATTRIBUTES_SEED,
+  UML_ATTRIBUTES_SEED_KEY,
   UML_NAME_SEED,
   UML_OPERATIONS_SEED,
+  UML_OPERATIONS_SEED_KEY,
   UML_SLOTS_SEED,
+  UML_SLOTS_SEED_KEY,
   UML_UNLABELLED_KINDS,
+  umlSeedKey,
 } from '../keywords.js';
 import { UML_ROLE, UML_ROLE_OF_KIND } from '../roles.js';
 
@@ -59,12 +64,12 @@ import { UML_ROLE, UML_ROLE_OF_KIND } from '../roles.js';
  * handful of times and then select something, and a fixture with a real
  * surface behind it would test Yjs rather than the notation.
  *
- * `getOptional` returns nothing, which is the case worth stubbing: the diagram
- * and the subject seed their names through the translation seam, and with no
- * host catalogue registered they must fall back to the English the model always
+ * `getOptional` returns nothing unless a catalogue is handed in, which is the
+ * case worth stubbing: every seed goes through the translation seam, and with
+ * no host catalogue registered it must fall back to the English the pack always
  * carried.
  */
-function recorder() {
+function recorder(t?: (key: string) => string | undefined) {
   const added: Record<string, unknown>[] = [];
   let selected: string[] = [];
   let tool: unknown = null;
@@ -95,7 +100,8 @@ function recorder() {
 
   const std = {
     get: () => gfx,
-    getOptional: () => undefined,
+    getOptional: (id: unknown) =>
+      id === TranslationProvider && t ? { t } : undefined,
   } as unknown as BlockStdScope;
 
   return {
@@ -658,6 +664,58 @@ describe('what a uml artefact is created as', () => {
     expect(() => createUmlClassifier(std, 'class')).not.toThrow();
     expect(() => createUmlNode(std, 'note')).not.toThrow();
     expect(() => createUmlNode(std, 'initial')).not.toThrow();
+  });
+});
+
+/* ── The seeds, through the translation seam ───────────────────────────── */
+
+/**
+ * R30: text a gesture writes INTO THE DOCUMENT is asked of the host catalogue
+ * BEFORE it lands, because it can never be translated afterwards — a class
+ * dropped in a French editor that arrived called "Class" stays called that for
+ * the life of the document.
+ *
+ * The frames above already crossed the seam; the artefacts themselves did not,
+ * and that is what these two tests pin, one per side of the seam.
+ */
+describe('a placed artefact is seeded through the seam', () => {
+  const shout = (key: string) => `[${key}]`.toUpperCase();
+
+  it('resolves every tier through the host catalogue when there is one', () => {
+    const rec = recorder(shout);
+    createUmlClassifier(rec.std, 'class');
+    expect(rec.added[1].text).toBe(shout(umlSeedKey('class')));
+    expect(rec.added[2].text).toBe(shout(UML_ATTRIBUTES_SEED_KEY));
+    expect(rec.added[3].text).toBe(shout(UML_OPERATIONS_SEED_KEY));
+
+    // The one-tier artefacts travel the other creation path, and the two
+    // exceptions to `+ attribute : Type` carry their own key or none at all.
+    const glyph = recorder(shout);
+    createUmlNode(glyph.std, 'package');
+    expect(glyph.added[1].text).toBe(shout(umlSeedKey('package')));
+
+    const object = recorder(shout);
+    createUmlClassifier(object.std, 'object');
+    expect(object.added[2].text).toBe(shout(UML_SLOTS_SEED_KEY));
+
+    // A state's internal-activities tier is seeded EMPTY (§14.2.4.4), so it
+    // asks for nothing: a key here would put a prompt where `model.ts` reads
+    // "no behaviour".
+    const state = recorder(shout);
+    createUmlClassifier(state.std, 'state');
+    expect(state.added[2].text).toBe('');
+  });
+
+  it('falls back to the very English it used to write, with no catalogue', () => {
+    const rec = recorder();
+    createUmlClassifier(rec.std, 'class');
+    expect(rec.added[1].text).toBe(UML_NAME_SEED.class);
+    expect(rec.added[2].text).toBe(UML_ATTRIBUTES_SEED);
+    expect(rec.added[3].text).toBe(UML_OPERATIONS_SEED);
+
+    const glyph = recorder();
+    createUmlNode(glyph.std, 'package');
+    expect(glyph.added[1].text).toBe(UML_NAME_SEED.package);
   });
 });
 

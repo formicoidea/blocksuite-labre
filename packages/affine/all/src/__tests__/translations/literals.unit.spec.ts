@@ -15,9 +15,10 @@ import { allSourceFiles, HERE, toRepoRelative } from './source-files.js';
  *
  * ## This is a regex over file text, not an AST walk
  *
- * Four shapes catch most of what a reviewer would flag by eye (a lit text
+ * Five shapes catch most of what a reviewer would flag by eye (a lit text
  * node, a template attribute, a prose-shaped object property, a toast
- * message) — see the `P1`-`P4` patterns below. It will always miss some real
+ * message, a seed table keyed by kind) — see the `P1`-`P5` patterns below. It
+ * will always miss some real
  * prose (a string built by concatenation, a tuple `['some prose', x, y]` with
  * no property name in front of it) and it will always let through some
  * near-misses the classification below has to correct for (an identifier
@@ -93,6 +94,27 @@ const OBJECT_PROP = new RegExp(
   `\\b(?:${PROP_NAMES})\\s*:\\s*(['"\`])((?:(?!\\1)[^\\\\]|\\\\.)*)\\1`,
   'g'
 );
+
+/**
+ * P5 — the values of a SEED or LABEL table: `` class: 'Class' ``,
+ * `` container: 'Container' ``. P3 cannot see them, because it keys on the
+ * PROPERTY NAME and these tables are keyed by KIND — which is how 23 UML seeds
+ * were written into documents in English under a guard that was already
+ * running over the file (#XXX). The text such a table holds is the worst kind
+ * to leave unkeyed: a creation site persists it, so it can never be translated
+ * afterwards.
+ *
+ * Narrow on purpose. The declaration is matched by its NAME (the repo's
+ * `…_SEED` / `…_LABEL` convention) and its body is taken up to the closing
+ * `\n};` of a top-level const, because a `${…}` inside a value would stop a
+ * brace-counting scan on its own closing brace. A value that interpolates is
+ * skipped for the same reason C4's type line is not compared letter for
+ * letter: what the source states is not what the table holds, so this scan can
+ * check the KEY's existence for it no better than P3 can.
+ */
+const SEED_TABLE = /const\s+\w*(?:SEED|LABEL)\w*[^=\n]*=\s*\{([\s\S]*?)\n\};/g;
+const TABLE_VALUE =
+  /^\s*(?:'[^']+'|"[^"]+"|\[[^\]]+\]|[\w-]+)\s*:\s*(['"`])((?:(?!\1)[^\\]|\\.)*)\1\s*,?\s*$/gm;
 
 /**
  * P4 — the message argument of a toast: the two-argument
@@ -234,6 +256,14 @@ function findHits(src: string): string[] {
   for (const match of src.matchAll(OBJECT_PROP)) {
     const value = match[2];
     if (looksLikeObjectProse(value)) hits.push(normalizeLiteral(value));
+  }
+
+  for (const [, body] of src.matchAll(SEED_TABLE)) {
+    for (const match of body.matchAll(TABLE_VALUE)) {
+      const value = match[2];
+      if (value.includes('${')) continue;
+      if (looksLikeObjectProse(value)) hits.push(normalizeLiteral(value));
+    }
   }
 
   for (const match of src.matchAll(TOAST_MESSAGE)) {
@@ -547,6 +577,26 @@ const KEPT_HITS: readonly { file: string; text: string }[] = [
     text: 'white corner bracket',
   },
 
+  // `PHASE_LABELS` / `AXIS_LABELS` (`gfx/wardley/src/consts.ts`) — already
+  // keyed at the declaration that DRAWS them: `background.ts` states every one
+  // of these ten as the `fallback` of a `com.labre.wardley.*` key, and the
+  // bands and axes are painted from there. The same shape as `emoji-data.ts`
+  // above, and the reason P5 needs an entry here at all: the WORDING sits in a
+  // pure-data file that names no key, so the per-file seam gate cannot see
+  // that the render site resolves it.
+  ...[
+    'Genesis',
+    'Custom-Built',
+    'Product (+Rental)',
+    'Commodity (+Utility)',
+    'Evolution',
+    'Value Chain',
+    'Uncharted',
+    'Industrialized',
+    'Visible',
+    'Invisible',
+  ].map(text => ({ file: 'packages/affine/gfx/wardley/src/consts.ts', text })),
+
   // The senior-tool button's OWN generic name for a framework-less canvas
   // primitive (a shape with no notation drawn on it) — kept English by design
   // like the brush's "Pen" and the template button's "Template" (a different
@@ -678,6 +728,10 @@ describe('literal translation guard', () => {
     expect(findHits(`toast(host, 'Copied image to clipboard');`)).toContain(
       'Copied image to clipboard'
     );
+    // P5 — a seed table keyed by KIND, which P3's property names cannot see.
+    expect(
+      findHits(`const UML_NAME_SEED = {\n  class: 'Class',\n};`)
+    ).toContain('Class');
 
     // Covered case: a P3 hit whose normalised text equals a manifest
     // fallback is not a "new" concern for THIS spec (the manifest spec is
