@@ -1,5 +1,6 @@
 import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
 import {
+  frameworkPaletteGroups,
   packColor,
   type PickColorEvent,
 } from '@labre/affine-components/color-picker';
@@ -201,6 +202,14 @@ const builtinSurfaceToolbarConfig = {
           }
         };
 
+        // A frame drawn over a framework board opens on that framework's hues
+        // (`docs/adr/0027`); the editor palette stays page one.
+        const carousel = frameworkPaletteGroups(
+          ctx.std,
+          models,
+          DefaultTheme.Palettes
+        );
+
         return html`
           <edgeless-color-picker-button
             class="background"
@@ -210,6 +219,8 @@ const builtinSurfaceToolbarConfig = {
             .theme=${theme}
             .std=${ctx.std}
             .originalColor=${firstModel.props.background}
+            .paletteGroups=${carousel.groups}
+            .activeGroupKey=${carousel.activeKey}
             .enableCustomColor=${enableCustomColor}
           >
           </edgeless-color-picker-button>

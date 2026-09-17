@@ -20,7 +20,7 @@ import { stdContext } from '@labre/std';
 import { consume } from '@lit/context';
 import { batch, signal } from '@preact/signals-core';
 import { css, html, LitElement } from 'lit';
-import { property, query } from 'lit/decorators.js';
+import { property, query, state } from 'lit/decorators.js';
 import { choose } from 'lit-html/directives/choose.js';
 import { repeat } from 'lit-html/directives/repeat.js';
 import { styleMap } from 'lit-html/directives/style-map.js';
@@ -30,8 +30,11 @@ import {
   calcCustomButtonStyle,
   keepColor,
   packColorsWith,
+  type PaletteGroup,
+  paletteCarouselStyles,
   type PickColorEvent,
   preprocessColor,
+  renderPaletteCarousel,
   rgbaToHex8,
 } from '../color-picker';
 import type { LineDetailType } from '../edgeless-line-styles-panel';
@@ -77,6 +80,8 @@ export class EdgelessShapeColorPicker extends WithDisposable(
       color: ${unsafeCSSVarV2('text/secondary')};
       font-weight: 400;
     }
+
+    ${paletteCarouselStyles}
   `;
 
   tabType$ = signal<TabType>('normal');
@@ -144,8 +149,28 @@ export class EdgelessShapeColorPicker extends WithDisposable(
     return calcCustomButtonStyle(color, isCustomColor, this);
   }
 
+  /**
+   * The page of {@link paletteGroups} on screen — see the twin getter on
+   * `edgeless-color-picker-button` for why a click wins over the prop.
+   */
+  get groupIndex(): number {
+    if (this.pickedGroupIndex !== undefined) return this.pickedGroupIndex;
+    const asked = this.paletteGroups.findIndex(
+      group => group.key === this.activeGroupKey
+    );
+    return asked < 0 ? 0 : asked;
+  }
+
+  get activePalettes(): readonly Palette[] {
+    return this.paletteGroups[this.groupIndex]?.palettes ?? this.palettes;
+  }
+
+  /** Measured against the UNION of the pages, for the reason the twin states. */
   #calcCustomButtonState(color: string, theme: ColorScheme) {
-    return !this.palettes
+    const offered = this.paletteGroups.length
+      ? this.paletteGroups.flatMap(group => group.palettes)
+      : this.palettes;
+    return !offered
       .map(({ value }) => resolveColor(value, theme))
       .includes(color);
   }
@@ -188,7 +213,7 @@ export class EdgelessShapeColorPicker extends WithDisposable(
     const {
       tabType$: { value: tabType },
       colorType$: { value: colorType },
-      palettes,
+      activePalettes,
       fillColorWithoutAlpha,
       payload: {
         fillColor,
@@ -227,6 +252,12 @@ export class EdgelessShapeColorPicker extends WithDisposable(
               'normal',
               () => {
                 return html`
+                  ${renderPaletteCarousel({
+                    groups: this.paletteGroups,
+                    index: this.groupIndex,
+                    onPage: index => (this.pickedGroupIndex = index),
+                    std: this.std,
+                  })}
                   ${repeat(
                     [
                       {
@@ -258,7 +289,7 @@ export class EdgelessShapeColorPicker extends WithDisposable(
                         .hollowCircle=${hollowCircle}
                         .value=${value}
                         .theme=${theme}
-                        .palettes=${palettes}
+                        .palettes=${activePalettes}
                         .std=${this.std}
                         @select=${onPick}
                       >
@@ -340,6 +371,21 @@ export class EdgelessShapeColorPicker extends WithDisposable(
 
   @property({ attribute: false })
   accessor palettes: Palette[] = DefaultTheme.Palettes;
+
+  /**
+   * The carousel's pages, base palette first (`docs/adr/0027`). Empty falls
+   * back to {@link palettes} and draws no header — the panel as it was.
+   */
+  @property({ attribute: false })
+  accessor paletteGroups: readonly PaletteGroup[] = [];
+
+  /** The page to open on: the framework of the selected element, usually. */
+  @property({ attribute: false })
+  accessor activeGroupKey: string | undefined = undefined;
+
+  /** Component state only, never persisted: which page the user paged TO. */
+  @state()
+  accessor pickedGroupIndex: number | undefined = undefined;
 
   @query('editor-menu-button')
   accessor menuButton!: EditorMenuButton;

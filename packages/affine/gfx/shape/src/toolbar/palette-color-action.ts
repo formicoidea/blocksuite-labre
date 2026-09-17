@@ -1,5 +1,6 @@
 import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
 import {
+  frameworkPaletteGroups,
   packColor,
   type PickColorEvent,
 } from '@labre/affine-components/color-picker';
@@ -161,12 +162,27 @@ export function paletteColorAction(
         }
       };
 
+      // The carousel: the editor palette, then a page per framework whose
+      // tooling is on. A Wardley node resolves to `wardley` and therefore
+      // OPENS on the very swatches `palettes` holds, since the framework
+      // registers that same list (`docs/adr/0027`). With its flag off the
+      // framework contributes no page and the picker opens on the editor
+      // palette — a palette is tooling (`docs/adr/0009`), the colour already
+      // stored is not and does not move.
+      const carousel = frameworkPaletteGroups(
+        ctx.std,
+        models,
+        DefaultTheme.Palettes
+      );
+
       return html`
         <edgeless-shape-color-picker
           @pickFillColor=${onPickFillColor}
           @pickStrokeColor=${onPickStrokeColor}
           @pickStrokeStyle=${onPickStrokeStyle}
           .palettes=${palettes}
+          .paletteGroups=${carousel.groups}
+          .activeGroupKey=${carousel.activeKey}
           .payload=${{
             fillColor,
             strokeColor,

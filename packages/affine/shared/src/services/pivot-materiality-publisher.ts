@@ -42,8 +42,7 @@
  * materiality by scanning `collectPivotOccurrences`. Derived materialities are
  * a cache of the boards, never a second original.
  */
-import { LifeCycleWatcher, type FrameworkId } from '@labre/std';
-import { FRAMEWORK_IDS } from '@labre/std';
+import { frameworkOfRole, LifeCycleWatcher } from '@labre/std';
 import {
   GfxControllerIdentifier,
   type GfxPrimitiveElementModel,
@@ -68,14 +67,6 @@ const touchesMateriality = (payload: {
 }) =>
   Object.keys(payload.props).some(key => MATERIAL_PROPS.has(key)) ||
   Object.keys(payload.oldValues).some(key => MATERIAL_PROPS.has(key));
-
-/** `'wardley:component'` → `'wardley'`, when that names a real framework. */
-function frameworkOfRole(role: string | undefined): FrameworkId | undefined {
-  const namespace = role?.split(':')[0];
-  return (FRAMEWORK_IDS as readonly string[]).includes(namespace ?? '')
-    ? (namespace as FrameworkId)
-    : undefined;
-}
 
 /**
  * `(pivotDocId, elementId)` — the host's primary key for a derived materiality.

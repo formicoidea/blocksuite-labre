@@ -1,5 +1,6 @@
 import { EdgelessCRUDIdentifier, TextUtils } from '@labre/affine-block-surface';
 import {
+  frameworkPaletteGroups,
   packColor,
   type PickColorEvent,
 } from '@labre/affine-components/color-picker';
@@ -269,6 +270,10 @@ export function createTextActions<
           }
         };
 
+        // A label on a framework board opens on that framework's hues; the
+        // text palette of the editor stays page one (`docs/adr/0027`).
+        const carousel = frameworkPaletteGroups(ctx.std, models, palettes);
+
         return html`
           <edgeless-color-picker-button
             class="text-color"
@@ -281,6 +286,8 @@ export function createTextActions<
             .hollowCircle=${true}
             .originalColor=${originalColor}
             .palettes=${palettes}
+            .paletteGroups=${carousel.groups}
+            .activeGroupKey=${carousel.activeKey}
             .enableCustomColor=${enableCustomColor}
           >
           </edgeless-color-picker-button>

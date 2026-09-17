@@ -11,6 +11,11 @@ import { styleMap } from 'lit/directives/style-map.js';
 import { when } from 'lit-html/directives/when.js';
 
 import type { EditorMenuButton } from '../toolbar/menu-button';
+import type { PaletteGroup } from './framework-palette.js';
+import {
+  paletteCarouselStyles,
+  renderPaletteCarousel,
+} from './palette-carousel.js';
 import type { PickColorEvent } from './types';
 import {
   calcCustomButtonStyle,
@@ -23,6 +28,8 @@ import {
 type Type = 'normal' | 'custom';
 
 export class EdgelessColorPickerButton extends WithDisposable(LitElement) {
+  static override styles = paletteCarouselStyles;
+
   readonly #select = (e: ColorEvent) => {
     e.stopPropagation();
     this.#pick(e.detail);
@@ -53,8 +60,35 @@ export class EdgelessColorPickerButton extends WithDisposable(LitElement) {
     return calcCustomButtonStyle(this.color, this.isCustomColor, this);
   }
 
+  /**
+   * The page of {@link paletteGroups} currently on screen — the one the caller
+   * asked for until the user pages away from it, and never reset by a re-render
+   * (a toolbar rebuilds `paletteGroups` on every update, so reading the prop
+   * back would undo the click that moved the carousel).
+   */
+  get groupIndex(): number {
+    if (this.pickedGroupIndex !== undefined) return this.pickedGroupIndex;
+    const asked = this.paletteGroups.findIndex(
+      group => group.key === this.activeGroupKey
+    );
+    return asked < 0 ? 0 : asked;
+  }
+
+  /** The swatches on screen: the carousel's current page, else the flat prop. */
+  get activePalettes(): readonly Palette[] {
+    return this.paletteGroups[this.groupIndex]?.palettes ?? this.palettes;
+  }
+
+  /**
+   * "Custom" is measured against the UNION of the pages, not the one on screen:
+   * a Wardley blue is one of the offered swatches whichever page is showing,
+   * and paging to `Default` must not make the element look custom-coloured.
+   */
   get isCustomColor() {
-    return !this.palettes
+    const offered = this.paletteGroups.length
+      ? this.paletteGroups.flatMap(group => group.palettes)
+      : this.palettes;
+    return !offered
       .map(({ value }) => resolveColor(value, this.theme))
       .includes(this.color);
   }
@@ -115,12 +149,18 @@ export class EdgelessColorPickerButton extends WithDisposable(LitElement) {
               <div data-orientation="vertical">
                 <slot name="other"></slot>
                 <slot name="separator"></slot>
+                ${renderPaletteCarousel({
+                  groups: this.paletteGroups,
+                  index: this.groupIndex,
+                  onPage: index => (this.pickedGroupIndex = index),
+                  std: this.std,
+                })}
                 <edgeless-color-panel
                   role="listbox"
                   class=${ifDefined(this.colorPanelClass)}
                   .value=${this.color}
                   .theme=${this.theme}
-                  .palettes=${this.palettes}
+                  .palettes=${this.activePalettes}
                   .hollowCircle=${this.hollowCircle}
                   .hasTransparent=${false}
                   .std=${this.std}
@@ -191,6 +231,25 @@ export class EdgelessColorPickerButton extends WithDisposable(LitElement) {
 
   @property({ attribute: false })
   accessor palettes: Palette[] = DefaultTheme.Palettes;
+
+  /**
+   * The carousel's pages, base palette first (`docs/adr/0027`). Empty — every
+   * call site that has not opted in — falls back to {@link palettes} and draws
+   * no header, which is exactly the panel this component rendered before.
+   */
+  @property({ attribute: false })
+  accessor paletteGroups: readonly PaletteGroup[] = [];
+
+  /** The page to open on: the framework of the selected element, usually. */
+  @property({ attribute: false })
+  accessor activeGroupKey: string | undefined = undefined;
+
+  /**
+   * Component state only, never persisted: which page the user paged TO.
+   * `undefined` means "still on the one the caller asked for".
+   */
+  @state()
+  accessor pickedGroupIndex: number | undefined = undefined;
 
   @property({ attribute: false })
   accessor pick!: (event: PickColorEvent) => void;

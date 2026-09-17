@@ -1,4 +1,7 @@
-import type { NamedPalette } from '@labre/affine-components/color-picker';
+import type {
+  FrameworkPalette,
+  NamedPalette,
+} from '@labre/affine-components/color-picker';
 import {
   neutralPalettes,
   paletteColorAction,
@@ -155,10 +158,22 @@ const EDGY_PALETTES: NamedPalette[] = [
  * black, transparent) — the historical colours are dropped in favour of the
  * EDGY swatches above.
  */
-const EDGY_PALETTE_LIST: NamedPalette[] = [
+export const EDGY_PALETTE_LIST: NamedPalette[] = [
   ...EDGY_PALETTES,
   ...neutralPalettes(),
 ];
+
+/**
+ * EDGY's page of the colour pickers' carousel (`docs/adr/0027`) — the same
+ * list its node picker is seeded with, offered on every other picker too.
+ * Registered from the FLAG-GATED view extension: offering hues is tooling
+ * (`docs/adr/0009`).
+ */
+export const EDGY_FRAMEWORK_PALETTE: FrameworkPalette = {
+  framework: 'edgy',
+  labelWording: ['com.labre.framework.edgy', 'EDGY'],
+  palettes: EDGY_PALETTE_LIST,
+};
 
 /**
  * EDGY fill / stroke colour picker — identical to the shape one but seeded with
