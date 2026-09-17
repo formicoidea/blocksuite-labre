@@ -1,4 +1,3 @@
-import type { ChromeWording } from '@labre/affine-shared/services';
 import {
   collectTranslationKeys,
   commandCategoryTranslationEntries,
@@ -11,6 +10,8 @@ import { CONTEXT_MAP_BACKGROUND } from './background.js';
 import {
   CONTEXT_MAP_SEED_BOUNDED_CONTEXT,
   CONTEXT_MAP_SEED_CLOUD,
+  CONTEXT_MAP_SEED_LEGEND_BOUNDARIES,
+  CONTEXT_MAP_SEED_LEGEND_RELATIONSHIPS,
   contextMapCommands,
 } from './commands.js';
 import { CONTEXT_MAP_NUDGES } from './nudges.js';
@@ -18,22 +19,6 @@ import { CONTEXT_MAP_PROFILES } from './profiles.js';
 import { CONTEXT_MAP_READING } from './reading.js';
 import { CONTEXT_MAP_ROLES } from './roles.js';
 import { CONTEXT_MAP_RULES } from './rules.js';
-
-/**
- * The automatic legend's own section titles (`legend.ts`) — text stamped onto
- * the board the moment the legend is built (`createAutoLegend`), like any
- * other seed. The box title itself is NOT here: it says the shared word
- * "Legend", so it reuses `BOARD_LEGEND_TITLE`
- * (`@labre/affine-shared/services`) instead of a key of its own.
- */
-export const CONTEXT_MAP_SEED_LEGEND_BOUNDARIES: ChromeWording = [
-  'com.labre.ddd-context-map.seed.legend-boundaries',
-  'Boundaries',
-];
-export const CONTEXT_MAP_SEED_LEGEND_RELATIONSHIPS: ChromeWording = [
-  'com.labre.ddd-context-map.seed.legend-relationships',
-  'Relationships',
-];
 
 /**
  * THIS framework's contribution to the translation-key manifest — every

@@ -2,8 +2,10 @@ import {
   addBubble,
   addCloud,
   CLOUD,
+  CM_BUBBLE,
   CM_RELATIONSHIPS,
   contextMapToolbarIcon,
+  LABEL_COLOR,
   placeDddElement,
 } from '@labre/affine-gfx-ddd-shared';
 import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
@@ -11,7 +13,12 @@ import {
   type ChromeWording,
   translateKey,
 } from '@labre/affine-shared/services';
-import type { BlockStdScope, CommandDescriptor } from '@labre/std';
+import type {
+  BlockStdScope,
+  CommandDescriptor,
+  CommandLegendBox,
+  CommandLegendEntry,
+} from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { svg, type TemplateResult } from 'lit';
 
@@ -19,7 +26,7 @@ import {
   activateContextMapRelationship,
   createContextMapBoard,
 } from './actions';
-import { CONTEXT_MAP_ROLE } from './roles';
+import { CM_PATTERN_ROLE, CONTEXT_MAP_ROLE } from './roles';
 
 /**
  * The seeds baked into a placed artefact: the bounded-context bubble's
@@ -38,6 +45,26 @@ export const CONTEXT_MAP_SEED_BOUNDED_CONTEXT: ChromeWording = [
 export const CONTEXT_MAP_SEED_CLOUD: ChromeWording = [
   'com.labre.ddd-context-map.seed.cloud',
   'System',
+];
+
+/**
+ * The automatic legend's own section titles — text stamped onto the board the
+ * moment the legend is built, like any other seed, and declared HERE because
+ * the rows that file themselves under them are subscribed by the commands
+ * below. The box title itself is not one of them: it says the shared word
+ * "Legend" and reuses `BOARD_LEGEND_TITLE`.
+ *
+ * Two sub-titles for a framework whose twelve commands all sit in ONE category:
+ * `section` is what keeps "Boundaries" and "Relationships" apart where the
+ * category would say "Map" once (`docs/adr/0026`).
+ */
+export const CONTEXT_MAP_SEED_LEGEND_BOUNDARIES: ChromeWording = [
+  'com.labre.ddd-context-map.seed.legend-boundaries',
+  'Boundaries',
+];
+export const CONTEXT_MAP_SEED_LEGEND_RELATIONSHIPS: ChromeWording = [
+  'com.labre.ddd-context-map.seed.legend-relationships',
+  'Relationships',
 ];
 
 /**
@@ -75,6 +102,10 @@ interface Spec {
   kind?: 'artefact' | 'tool';
   icon: TemplateResult;
   run: (std: BlockStdScope) => void;
+  /** The row this entry's artefact puts in the board's legend, if any. */
+  legend?: CommandLegendEntry;
+  /** Board entries only: how the legend box of this board is laid out. */
+  legendBox?: CommandLegendBox;
 }
 
 const SPECS: Spec[] = [
@@ -88,6 +119,9 @@ const SPECS: Spec[] = [
     board: true,
     icon: boardSwatch,
     run: std => createContextMapBoard(std.get(GfxControllerIdentifier)),
+    // Wider than the shared 260: nine pattern rows carry an abbreviation in
+    // front of their wording ("OHS — Open Host Service") and wrapped at 260.
+    legendBox: { width: 290 },
   },
   {
     id: 'addBoundedContext',
@@ -110,6 +144,11 @@ const SPECS: Spec[] = [
           CONTEXT_MAP_ROLE.context
         )
       ),
+    legend: {
+      role: CONTEXT_MAP_ROLE.context,
+      section: CONTEXT_MAP_SEED_LEGEND_BOUNDARIES,
+      row: { swatch: 'square', color: CM_BUBBLE.fill },
+    },
   },
   {
     id: 'addCloud',
@@ -131,6 +170,15 @@ const SPECS: Spec[] = [
           CONTEXT_MAP_ROLE.system
         )
       ),
+    // Beside the bounded context, in the cloud's own lilac. A cloud placed
+    // before `context-map:system` existed carries no role and stays out: the
+    // scan reads roles and nothing else, and telling a legacy cloud from any
+    // other lilac polygon would mean detecting by shape or fill.
+    legend: {
+      role: CONTEXT_MAP_ROLE.system,
+      section: CONTEXT_MAP_SEED_LEGEND_BOUNDARIES,
+      row: { swatch: 'square', color: CLOUD.fill },
+    },
   },
   ...CM_RELATIONSHIPS.map(
     (preset): Spec => ({
@@ -150,6 +198,17 @@ const SPECS: Spec[] = [
           preset.kind,
           { upDown: preset.upDown, dashed: preset.dashed }
         ),
+      // One row per PATTERN, not one for `context-map:relationship`: a legend
+      // that said "Relationship" would document nothing a reader could use. Both
+      // the row and the command come out of the same preset, so the dashed
+      // sample marks the two "no real integration" patterns exactly as the board
+      // draws them, and a tenth pattern gets its row with no edit.
+      legend: {
+        role: CM_PATTERN_ROLE[preset.kind],
+        section: CONTEXT_MAP_SEED_LEGEND_RELATIONSHIPS,
+        labelPrefix: preset.abbrev,
+        row: { swatch: 'line', color: LABEL_COLOR, dashed: preset.dashed },
+      },
     })
   ),
 ];
@@ -174,6 +233,8 @@ export const contextMapCommands: CommandDescriptor[] = SPECS.map(
       element: spec.element,
       board: spec.board,
     },
+    legend: spec.legend,
+    legendBox: spec.legendBox,
   })
 );
 

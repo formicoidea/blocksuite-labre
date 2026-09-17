@@ -10,12 +10,68 @@ import {
   TEAM_TOPOLOGIES,
 } from '@labre/affine-gfx-ddd-shared';
 import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
-import { translateKey } from '@labre/affine-shared/services';
-import type { BlockStdScope, CommandDescriptor } from '@labre/std';
+import {
+  type ChromeWording,
+  translateKey,
+} from '@labre/affine-shared/services';
+import type {
+  BlockStdScope,
+  CommandDescriptor,
+  CommandLegendEntry,
+} from '@labre/std';
+import type { RoleId } from '@labre/std/gfx';
 import { svg, type TemplateResult } from 'lit';
 
 import { activateMovement, createCoreDomainChart } from './actions';
-import { markerRole, subdomainRole } from './roles';
+import {
+  CORE_DOMAIN_ROLE,
+  CORE_DOMAIN_ROLES,
+  markerRole,
+  subdomainRole,
+} from './roles';
+
+/**
+ * The legend wording of a sub-domain dot: the ROLE's own i18n key — so a host
+ * catalogue still wins and no key is invented — with the PALETTE's shorter
+ * label as the fallback.
+ *
+ * The two differ for three of the five: `roles.ts` spells out "Bounded context
+ * (current position)" where the chart's legend has always read "Bounded
+ * context". A host resolving the key reads the same word either way; this keeps
+ * the host-less fallback reading what it has read since the button shipped.
+ * Both halves come from declarations that already exist — neither is restated.
+ */
+function subdomainWording(
+  role: RoleId,
+  label: string
+): CommandLegendEntry['labelWording'] {
+  const { labelKey } = CORE_DOMAIN_ROLES[role];
+  return labelKey ? [labelKey, label] : undefined;
+}
+
+/**
+ * The automatic legend's own section titles — text stamped onto the chart the
+ * moment the legend is built, like any other seed, and declared HERE because
+ * the rows that file themselves under them are subscribed by the commands
+ * below. The box title itself is not one of them: it says the shared word
+ * "Legend" and reuses `BOARD_LEGEND_TITLE`.
+ *
+ * Three sub-titles for a framework whose ten commands all sit in ONE category:
+ * `section` is what keeps them, and in particular the one that explains the
+ * C/X/F letters (`docs/adr/0026`).
+ */
+export const CORE_DOMAIN_SEED_LEGEND_SUBDOMAINS: ChromeWording = [
+  'com.labre.ddd-core-domain.seed.legend-subdomains',
+  'Sub-domains',
+];
+export const CORE_DOMAIN_SEED_LEGEND_TEAM_MODES: ChromeWording = [
+  'com.labre.ddd-core-domain.seed.legend-team-modes',
+  'Team interaction modes',
+];
+export const CORE_DOMAIN_SEED_LEGEND_MOVEMENT: ChromeWording = [
+  'com.labre.ddd-core-domain.seed.legend-movement',
+  'Movement',
+];
 
 /**
  * The Core Domain Chart palette as commands: the background, the five
@@ -45,6 +101,8 @@ interface Spec {
   kind?: 'artefact' | 'tool';
   icon: TemplateResult;
   run: (std: BlockStdScope) => void;
+  /** The row this entry's artefact puts in the chart's legend, if any. */
+  legend?: CommandLegendEntry;
 }
 
 const SPECS: Spec[] = [
@@ -85,6 +143,18 @@ const SPECS: Spec[] = [
             subdomainRole(preset.kind)
           )
         ),
+      // Row and command out of the SAME preset, which also keeps this list and
+      // `core-domain.off-legend-colour` naming the same five colours by
+      // construction.
+      legend: {
+        role: subdomainRole(preset.kind),
+        section: CORE_DOMAIN_SEED_LEGEND_SUBDOMAINS,
+        labelWording: subdomainWording(
+          subdomainRole(preset.kind),
+          preset.label
+        ),
+        row: { swatch: 'dot', color: preset.fill },
+      },
     })
   ),
   ...TEAM_TOPOLOGIES.map(
@@ -114,6 +184,14 @@ const SPECS: Spec[] = [
             role: markerRole(preset.kind),
           })
         ),
+      // The LETTER is what identifies a marker on the chart — the squares are
+      // three colours a reader has no key to — so the row shows the same square
+      // with the same letter in it, from the same preset the palette draws with.
+      legend: {
+        role: markerRole(preset.kind),
+        section: CORE_DOMAIN_SEED_LEGEND_TEAM_MODES,
+        row: { swatch: 'square', color: preset.fill, letter: preset.letter },
+      },
     })
   ),
   {
@@ -128,6 +206,13 @@ const SPECS: Spec[] = [
     // typed edge, so the user draws it from the current position to the future
     // one and the pair they drew IS the statement (`docs/adr/0010`).
     run: activateMovement,
+    legend: {
+      role: CORE_DOMAIN_ROLE.movement,
+      section: CORE_DOMAIN_SEED_LEGEND_MOVEMENT,
+      // The style `activateMovement` arms the connector tool with: a red dashed
+      // line.
+      row: { swatch: 'line', color: MOVEMENT_COLOR, dashed: true },
+    },
   },
 ];
 
@@ -151,6 +236,7 @@ export const coreDomainCommands: CommandDescriptor[] = SPECS.map(
       element: spec.element,
       board: spec.board,
     },
+    legend: spec.legend,
   })
 );
 

@@ -2,7 +2,6 @@ import {
   morphToolbarConfig,
   QualityNudgeExtension,
   ReadingProfileExtension,
-  validationToolbarConfig,
   ValidationProfileExtension,
   ValidationRuleExtension,
 } from '@labre/affine-block-surface';
@@ -25,7 +24,7 @@ import {
   CoreDomainInteraction,
   CoreDomainView,
 } from './core-domain/element-view';
-import { coreDomainToolbarExtension } from './core-domain/toolbar-config';
+import { coreDomainChartToolingToolbarConfig } from './core-domain/toolbar-config';
 import { coreDomainEffects } from './effects';
 import { CORE_DOMAIN_MORPH_SPEC } from './morph';
 import { CORE_DOMAIN_NUDGES } from './nudges';
@@ -37,10 +36,13 @@ import { coreDomainSeniorTool } from './toolbar/senior-tool';
 
 /**
  * Core Domain Chart rendering — ALWAYS registered, independent of any flag.
- * Disabling `ddd-core-domain` hides only the senior toolbar button (see
+ * Disabling `ddd-core-domain` hides only the tooling (see
  * {@link DddCoreDomainViewExtension}); placed `coreDomain` elements must still
- * paint, stay selectable, and keep their contextual toolbar, and Templates-
- * panel insertion must still render them.
+ * paint, stay selectable and stay movable, and Templates-panel insertion must
+ * still render them.
+ *
+ * The chart claims no always-on toolbar module: the legend button was its only
+ * contextual entry and it moved to the gated half (`docs/adr/0026`).
  */
 export class DddCoreDomainRenderViewExtension extends ViewExtensionProvider {
   override name = 'affine-ddd-core-domain-render-gfx';
@@ -58,7 +60,6 @@ export class DddCoreDomainRenderViewExtension extends ViewExtensionProvider {
     context.register(RoleVocabularyExtension(CORE_DOMAIN_ROLES));
     if (this.isEdgeless(context.scope)) {
       context.register(CoreDomainInteraction);
-      context.register(coreDomainToolbarExtension);
     }
   }
 }
@@ -84,17 +85,14 @@ export class DddCoreDomainViewExtension extends ViewExtensionProvider {
       context.register(ValidationRuleExtension(CORE_DOMAIN_RULES));
       context.register(ValidationProfileExtension(CORE_DOMAIN_PROFILES));
       context.register(QualityNudgeExtension(CORE_DOMAIN_NUDGES));
-      // The Validation dropdown on a selected chart's contextual toolbar. A
-      // SECOND module on the same element, through the `custom:` flavour slot:
-      // `coreDomainToolbarExtension` is registered always-on because a stored
-      // chart must keep its legend action, while choosing how hard to check it
-      // is tooling and belongs here. The config itself names no framework — it
-      // reads roles and profiles — so it is the very same object Wardley
-      // registers on its own flavour.
+      // The chart's WHOLE contextual row — the Legend button and the Validation
+      // dropdown, merged into ONE module because a flavour may carry exactly one
+      // (`core-domain/toolbar-config.ts`). Both are tooling: with the flag off a
+      // stored chart keeps everything drawn on it and simply offers no button.
       context.register(
         ToolbarModuleExtension({
           id: BlockFlavourIdentifier('custom:affine:surface:coreDomain'),
-          config: validationToolbarConfig,
+          config: coreDomainChartToolingToolbarConfig,
         })
       );
       // The reversed reading (MF3): what the chart says about an artefact, on

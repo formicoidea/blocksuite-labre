@@ -1,18 +1,17 @@
-import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
-import { createAutoLegend, dddLegendIcon } from '@labre/affine-gfx-ddd-shared';
+import {
+  EdgelessCRUDIdentifier,
+  legendToolbarAction,
+  validationToolbarConfig,
+} from '@labre/affine-block-surface';
 import { EventStormingBoardElementModel } from '@labre/affine-model';
 import {
-  BOARD_LEGEND_NOTATION,
   BOARD_RESIZE_TOGGLE,
-  TelemetryProvider,
   type ToolbarContext,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
 } from '@labre/affine-shared/services';
 import { BlockFlavourIdentifier } from '@labre/std';
 import { html } from 'lit';
-
-import { EVENT_STORMING_AUTO_LEGEND } from '../legend';
 
 const ResizeIcon = html`<svg
   width="24"
@@ -29,16 +28,15 @@ const ResizeIcon = html`<svg
 </svg>`;
 
 /**
- * The selected board's contextual toolbar: the resize toggle, and the automatic
- * legend of the sticky kinds actually stuck to the board. Registered ALWAYS-ON
- * (`DddEventStormingRenderViewExtension`) — a stored board must stay usable with
- * the Event Storming button switched off (`docs/adr/0009`), legend included: a
- * legend is real editable elements, so generating one is authoring a document,
- * not tooling that a flag may take away.
+ * The selected board's ALWAYS-ON row: the resize toggle, and nothing else. A
+ * stored board must stay usable with the Event Storming button switched off
+ * (`docs/adr/0009`) — it keeps its handles, and everything already stuck to it,
+ * legend boxes included, keeps being painted.
  *
- * This is the module's ONLY legend gesture: the Event Storming palette never had
- * a static Legend entry, and a wall of colour-coded stickies is exactly the
- * board a reader needs one for.
+ * The legend BUTTON moved out of here to
+ * {@link eventStormingBoardToolingToolbarConfig} (`docs/adr/0026`): generating
+ * one is a gesture the flag may take away, even though what it writes is
+ * document content.
  */
 export const eventStormingBoardToolbarConfig = {
   actions: [
@@ -65,32 +63,6 @@ export const eventStormingBoardToolbarConfig = {
         }
       },
     },
-    {
-      id: 'b.legend',
-      tooltipWording: BOARD_LEGEND_NOTATION,
-      icon: dddLegendIcon,
-      run(ctx: ToolbarContext) {
-        const board = ctx.getSurfaceModelsByType(
-          EventStormingBoardElementModel
-        )[0];
-        if (!board) return;
-        createAutoLegend(ctx.std, board, EVENT_STORMING_AUTO_LEGEND);
-        ctx.std
-          .getOptional(TelemetryProvider)
-          ?.track('FrameworkLegendCreated', {
-            // The WIRE value, which is not the module id: the framework is
-            // `ddd-event-storming` in code and `event-storming` in PostHog
-            // (`frameworks.ts` `telemetryKey`, and the only value
-            // `FrameworkElementEvent` accepts). Same convention as Wardley's own
-            // legend button, so the two are comparable.
-            framework: 'event-storming',
-            element: 'legend',
-            page: 'whiteboard editor',
-            segment: 'element toolbar',
-            module: 'event-storming toolbar',
-          });
-      },
-    },
   ],
   when: (ctx: ToolbarContext) =>
     ctx.getSurfaceModelsByType(EventStormingBoardElementModel).length > 0,
@@ -100,3 +72,39 @@ export const eventStormingBoardToolbarExtension = ToolbarModuleExtension({
   id: BlockFlavourIdentifier('affine:surface:eventStorming'),
   config: eventStormingBoardToolbarConfig,
 });
+
+/**
+ * The board's FLAG-GATED row, whole: the legend button and the Validation
+ * dropdown, in one module.
+ *
+ * They cannot be two, and that is a hard constraint rather than a preference:
+ * `ToolbarModuleExtension` binds by DI variant, so a second module claiming
+ * `custom:affine:surface:eventStorming` throws
+ * `DuplicateServiceDefinitionError` before the editor finishes setting up. The
+ * C4 board's own row was merged this way first
+ * (`c4BoardToolingToolbarConfig`).
+ *
+ * Both entries go with the `ddd-event-storming` flag for the same reason:
+ * turning it off takes away the gesture that GENERATES legend elements and the
+ * choice of how hard to check the board, and leaves the stored board its handles
+ * and everything already stuck to it. The legend rows themselves are derived
+ * from `eventStormingCommands` — the module writes no table (`docs/adr/0026`).
+ */
+export const eventStormingBoardToolingToolbarConfig: ToolbarModuleConfig = {
+  actions: [
+    legendToolbarAction({
+      Model: EventStormingBoardElementModel,
+      owner: 'ddd-event-storming',
+      // The WIRE value, which is not the module id: the framework is
+      // `ddd-event-storming` in code and `event-storming` in PostHog
+      // (`frameworks.ts` `telemetryKey`). Unchanged by the button becoming
+      // shared.
+      framework: 'event-storming',
+    }),
+    // The generic dropdown, not an Event Storming variant of it: the config
+    // names no framework — it reads the registered rules and profiles — so this
+    // is the very same object c4, wardley and bpmn register.
+    ...validationToolbarConfig.actions,
+  ],
+  when: eventStormingBoardToolbarConfig.when,
+};

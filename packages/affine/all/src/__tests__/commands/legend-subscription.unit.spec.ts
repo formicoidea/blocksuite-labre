@@ -57,9 +57,6 @@ const commands = getCommands();
 const PENDING_OWNERS: readonly CommandOwner[] = [
   'edgy',
   'c4',
-  'ddd-event-storming',
-  'ddd-core-domain',
-  'ddd-context-map',
   'uml',
 ];
 
