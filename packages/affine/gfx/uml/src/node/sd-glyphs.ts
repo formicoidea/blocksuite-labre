@@ -73,16 +73,21 @@ export function paintSdGlyph(
       // than the head, because it is a line and the head is a box.
       const cx = w / 2;
       const top = head.y + head.h;
+      //
+      // The dash and the width are scoped with `save`/`restore` rather than
+      // read back and re-set: both are part of the 2D drawing state, so the
+      // caller's pattern comes back whatever it was, and the glyph never calls
+      // `getLineDash` — which the SVG export's context (svgcanvas 2.6.0) does
+      // not implement. The pair is balanced inside this block, `finally`
+      // included, so the renderer's own save stack is left as it found it.
       if (h > top) {
-        const dash = ctx.getLineDash();
-        const width = ctx.lineWidth;
-        ctx.setLineDash([...UML_LIFELINE_DASH]);
-        ctx.lineWidth = UML_LIFELINE_SPINE_WIDTH;
+        ctx.save();
         try {
+          ctx.setLineDash([...UML_LIFELINE_DASH]);
+          ctx.lineWidth = UML_LIFELINE_SPINE_WIDTH;
           line(ctx, cx, top, cx, h);
         } finally {
-          ctx.setLineDash(dash);
-          ctx.lineWidth = width;
+          ctx.restore();
         }
       }
       return;

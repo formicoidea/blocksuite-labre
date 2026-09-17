@@ -51,6 +51,28 @@ it.
    click writes one file — the first selected board. Browsers throttle (and
    Safari silently drops) programmatic downloads fired in a burst, so a
    selection of three boards would yield an unpredictable number of files.
+   Another board's background is in the file only when its frame lies wholly
+   inside the exported one — a nested frame; a board that merely overlaps is a
+   neighbour and stays out (amended 2026-09-17, below).
+
+## Amendment — 2026-09-17: nested frames, and `getLineDash`
+
+- **Nested frames are kept.** The first cut dropped _every_ other
+  `FrameworkBackgroundElementModel` in the export area, to keep a neighbouring
+  board out. UML nests frames inside the diagram frame by design (subject,
+  activity partition, state region, combined fragment) and C4 nests a boundary
+  in a board, so their frames vanished while their contents stayed.
+  `selectBoardElements` now keeps a background whose `xywh` lies entirely
+  inside the board's (edges may touch) and still drops one that overlaps
+  without fitting, or that encloses the board.
+- **The context speaks `getLineDash`.** svgcanvas 2.6.0 implements
+  `setLineDash` but not `getLineDash`; the UML lifeline read the dash back and
+  the whole export threw. `createSvgContext` now shims it from svgcanvas' own
+  `lineDash` style, and the lifeline scopes its dash with `save`/`restore`
+  instead. Two further gaps are known and harmless (the value is dropped, the
+  render goes on): `lineDashOffset` (rough.js hachure dashes, the estuarine
+  ghost overlay, which is not exported) and `letterSpacing` (the estuarine
+  labels are written without their tracking).
 
 ## Why not resvg
 

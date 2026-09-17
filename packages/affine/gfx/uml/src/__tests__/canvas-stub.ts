@@ -84,6 +84,8 @@ export function recordingCtx() {
   let my = 0;
   /** The dash pattern currently in force — what `getLineDash` hands back. */
   let currentDash: number[] = [];
+  /** What each `save` captured, for the matching `restore`. */
+  const stateStack: Array<{ dash: number[]; lineWidth: number }> = [];
   // Vertical text is drawn at the origin of a translated + rotated frame.
   let frame: { x: number; y: number } | null = null;
   let rotated = false;
@@ -156,14 +158,27 @@ export function recordingCtx() {
     /**
      * The counterpart Canvas2D has and the copies this file comes from never
      * needed: §17.3.4's lifeline spine is the pack's first DASHED glyph, and a
-     * glyph that sets a dash puts the previous one back rather than clearing it
-     * — a restore-to-empty would be a renderer deciding what its caller had.
+     * test reads the pattern back to prove the glyph put the previous one back
+     * rather than clearing it. The GLYPH does not call it — the SVG export's
+     * context has no `getLineDash` — it scopes the dash with `save`/`restore`.
      */
     getLineDash: vi.fn(() => [...currentDash]),
-    save: vi.fn(),
+    /**
+     * The dash and the line width are part of the drawing state, as in
+     * Canvas2D, so `restore` puts back what `save` saw. `depth` is what lets a
+     * test prove a glyph left the save stack balanced.
+     */
+    save: vi.fn(() => {
+      stateStack.push({ dash: currentDash, lineWidth: ctx.lineWidth });
+    }),
     restore: vi.fn(() => {
       frame = null;
       rotated = false;
+      const state = stateStack.pop();
+      if (state) {
+        currentDash = state.dash;
+        ctx.lineWidth = state.lineWidth;
+      }
     }),
     translate: vi.fn((x: number, y: number) => {
       frame = { x, y };
@@ -235,6 +250,10 @@ export function recordingCtx() {
     strokes,
     transform,
     ops,
+    /** How many `save`s are still waiting for their `restore`. */
+    get depth() {
+      return stateStack.length;
+    },
     get paths() {
       return collectPaths();
     },

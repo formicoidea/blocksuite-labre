@@ -271,6 +271,23 @@ function installPathOps(ctx: SvgCanvasInternals) {
   }
 }
 
+/**
+ * The dash pattern svgcanvas holds, as the `number[]` Canvas2D's `getLineDash`
+ * returns.
+ *
+ * svgcanvas 2.6.0 implements `setLineDash` but not `getLineDash`, and a
+ * renderer that reads the pattern back (to put it back after a dashed stroke)
+ * would throw and abort the whole export. Its `setLineDash` stores the pattern
+ * in the `lineDash` style — a comma-joined string, `null` once cleared, the
+ * default `[]` before any call — and that style is saved and restored with the
+ * rest of the drawing state, so reading it is exact.
+ */
+export function readLineDash(lineDash: unknown): number[] {
+  if (Array.isArray(lineDash)) return lineDash.map(Number);
+  if (typeof lineDash !== 'string' || lineDash === '') return [];
+  return lineDash.split(',').map(Number);
+}
+
 /** Adds `viewBox` / `xmlns` / px units to the root `<svg>` if they are missing. */
 function finishSvg(svg: string, width: number, height: number): string {
   return (
@@ -317,6 +334,9 @@ export function createSvgContext(width: number, height: number): SvgContext {
   // …and they set `dir` on the canvas before every text run; a no-op keeps
   // that call from reaching an object that is not an element.
   context.setAttribute = () => {};
+  // The one Canvas2D method a renderer calls that svgcanvas lacks — see
+  // `readLineDash`. Without it a single `getLineDash()` aborts the export.
+  context.getLineDash = () => readLineDash(context.lineDash);
 
   installPathOps(context as unknown as SvgCanvasInternals);
 

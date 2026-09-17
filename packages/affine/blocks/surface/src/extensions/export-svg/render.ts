@@ -22,19 +22,30 @@ export interface BoardSvgExport {
  * The canvas elements that make up `board`'s picture, in paint order.
  *
  * `candidates` comes from a bound query, so it also holds whatever a NEIGHBOUR
- * board happens to overlap with. Another framework background is dropped:
- * without that, a map sitting next to this one would paint its whole frame into
- * this file. Its children are kept — an element inside the exported frame
- * belongs to the picture whoever owns it.
+ * board happens to overlap with. Another framework background is kept only
+ * when its frame lies ENTIRELY inside the exported one (edges may touch): that
+ * is a nested frame — a UML subject, partition, region or fragment inside its
+ * diagram frame, a C4 boundary inside a C4 board — and it is part of the
+ * picture. One that merely overlaps is a neighbour and is dropped: without
+ * that, a map sitting next to this one would paint its whole frame into this
+ * file. So is one that ENCLOSES the board, the diagram frame around an
+ * exported partition. Non-background elements are kept whoever owns them — an
+ * element inside the exported frame belongs to the picture.
+ *
+ * Containment is read on the stored `xywh`, the same rectangle
+ * {@link exportBoundOf} starts from; a background at exactly the board's own
+ * rectangle therefore counts as nested.
  */
 export function selectBoardElements<T extends GfxPrimitiveElementModel>(
   board: FrameworkBackgroundElementModel,
   candidates: readonly T[]
 ): (FrameworkBackgroundElementModel | T)[] {
+  const frame = Bound.deserialize(board.xywh);
   const kept = candidates.filter(
     element =>
       element === (board as unknown as T) ||
-      !(element instanceof FrameworkBackgroundElementModel)
+      !(element instanceof FrameworkBackgroundElementModel) ||
+      frame.contains(Bound.deserialize(element.xywh))
   );
   // A background paints under everything, so a board missing from the query
   // (an empty bound, a stub) goes in front of the list, not at the end.

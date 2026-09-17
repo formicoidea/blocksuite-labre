@@ -142,7 +142,13 @@ the "⋮" of every board's contextual toolbar — one core command `export.svg`
 wildcard module `custom:affine:surface:*#export-svg` (`…/export-svg/toolbar.ts`),
 both keyed on `FrameworkBackgroundElementModel` and neither naming a framework
 (ADR 0025). A framework contributes nothing; what it must not do is draw its
-board as anything other than a `FrameworkBackgroundElementModel` (R14).
+board as anything other than a `FrameworkBackgroundElementModel` (R14). A
+frame nested wholly inside the exported board (a UML partition, a C4 boundary)
+is part of its picture; a board that only overlaps it is not. The file is drawn
+by svgcanvas 2.6.0, so a renderer sticks to the 2D calls it implements:
+`isPointInPath`/`isPointInStroke` are absent, and `getLineDash` exists only as
+the export's shim — scope a dash with `save`/`restore` rather than reading it
+back (ADR 0025, amendment of 2026-09-17).
 `export-svg-boards.unit.spec.ts` names every framework's board class and checks
 the entry lights up for each; `board-svg-export.spec.ts` (integration) renders
 one board of every kind and parses the result. Numbered R34 — the file's numbers

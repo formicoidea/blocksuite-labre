@@ -985,6 +985,23 @@ describe('the interaction marks', () => {
   });
 
   /**
+   * …and it does so with `save`/`restore`, never by reading the pattern back:
+   * the SVG export's context (svgcanvas 2.6.0) has no `getLineDash`, and a
+   * glyph that called it made every sequence diagram with a lifeline
+   * unexportable. A caller's own pattern survives, and the save stack is left
+   * balanced.
+   */
+  it('scopes the spine dash with save/restore, without getLineDash', () => {
+    rec.ctx.setLineDash([2, 5]);
+    const { ctx, depth } = draw('lifeline');
+
+    expect(ctx.getLineDash).not.toHaveBeenCalled();
+    expect(ctx.save).toHaveBeenCalled();
+    expect(depth).toBe(0);
+    expect(ctx.getLineDash()).toEqual([2, 5]);
+  });
+
+  /**
    * A lifeline dragged SHORTER than its own head keeps a head, cut down to what
    * there is — the degenerate case the model's hit test clamps too — and drops
    * the spine rather than drawing one upward.
