@@ -1,37 +1,18 @@
+import { legendIcon } from '@labre/affine-block-surface';
 import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
-import { html, svg } from 'lit';
+import { svg } from 'lit';
 
 /**
- * Contextual-toolbar glyph — "generate the legend of what is on this
- * background". One icon for the three DDD backgrounds because it is one
- * gesture; the Core Domain chart has drawn this exact box-and-rows since its
- * legend button shipped, and the two boards now borrow it rather than each
- * redrawing a lookalike.
+ * Contextual-toolbar glyph — "generate the legend of what is on this board".
  *
- * `html` rather than `svg`: a toolbar action's `icon` is rendered as a standalone
- * template, unlike the senior-button glyphs above which are interpolated into an
- * outer `<svg>`.
+ * It MOVED to `@labre/affine-block-surface` with the button factory that
+ * defaults to it ({@link legendToolbarAction}): seven frameworks draw this one
+ * glyph and only three of them are DDD ones. Re-exported under its old name so
+ * none of the six call sites had to be touched by the move.
+ *
+ * @deprecated Import `legendIcon` from `@labre/affine-block-surface`.
  */
-export const dddLegendIcon = html`<svg
-  width="24"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  xmlns="http://www.w3.org/2000/svg"
->
-  <rect
-    x="3"
-    y="4"
-    width="18"
-    height="16"
-    rx="2"
-    stroke="currentColor"
-    stroke-width="1.6"
-  />
-  <circle cx="7" cy="9" r="1.6" fill="currentColor" />
-  <circle cx="7" cy="14" r="1.6" fill="currentColor" />
-  <path d="M11 9 H18 M11 14 H18" stroke="currentColor" stroke-width="1.4" />
-</svg>`;
+export const dddLegendIcon = legendIcon;
 
 /** Senior-button glyph — Event Storming (overlapping stickies). */
 export const eventStormingToolbarIcon = svg`<svg width="100%" height="100%" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">

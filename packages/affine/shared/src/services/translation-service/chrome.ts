@@ -628,6 +628,32 @@ export const BOARD_LEGEND_TITLE: ChromeWording = [
   'Legend',
 ];
 
+/**
+ * The group's own seed: the default title a newly created group is stamped
+ * with (`Group 2`), written into the document at creation. Resolved at
+ * PLACEMENT and never again — a group renamed by its author keeps its name,
+ * and a group created before this key existed keeps the plain text it was
+ * given.
+ *
+ * `{{n}}` is the group's 1-based ordinal among the groups already on the doc;
+ * see this service's README on why a count carries a param rather than its own
+ * key.
+ *
+ * ## Why it sits here rather than with the group package
+ *
+ * Two packages group elements and neither may import the other's translations:
+ * `@labre/affine-gfx-group`, which owns the gesture, and
+ * `@labre/affine-block-surface`, whose legend groups the box it just drew and
+ * which `gfx-group` DEPENDS ON. This layer is below both. It is deliberately
+ * NOT listed in {@link CHROME_WORDINGS}: the key stays declared by the group
+ * package under source `seed` (`GROUP_WORDINGS`), so the manifest is
+ * byte-identical to what it was — one key, one source.
+ */
+export const GROUP_SEED_NAME: ChromeWording = [
+  'com.labre.group.seed.name',
+  'Group {{n}}',
+];
+
 /* ── Undo, wherever a quick-tool or a notification offers it ──────────── */
 
 /**

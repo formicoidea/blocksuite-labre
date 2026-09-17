@@ -10,6 +10,8 @@ export * from './export-svg';
 export * from './interchange';
 export * from './interchange-import';
 export * from './legacy-slot-extension';
+export * from './legend';
+export * from './legend-toolbar';
 export * from './map-quality';
 export * from './map-quality-widget';
 export * from './morph-toolbar';
