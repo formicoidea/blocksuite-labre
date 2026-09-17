@@ -14,8 +14,6 @@ import {
   type BpmnNodeKind,
   BpmnPoolElementModel,
   ConnectorMode,
-  PointStyle,
-  StrokeStyle,
 } from '@labre/affine-model';
 import {
   NotificationProvider,
@@ -27,19 +25,14 @@ import type { BlockStdScope } from '@labre/std';
 import { type GfxController, GfxControllerIdentifier } from '@labre/std/gfx';
 
 import {
-  ASSOCIATION_STROKE,
-  ASSOCIATION_WIDTH,
+  BPMN_EDGE_STYLE,
   LANE_NAME_FALLBACK,
   LANE_NAME_KEY,
-  MESSAGE_STROKE,
-  MESSAGE_WIDTH,
   NODE_LABEL,
   nodeLabelKey,
   NODE_SIZE,
   POOL_NAME_FALLBACK,
   POOL_NAME_KEY,
-  SEQUENCE_STROKE,
-  SEQUENCE_WIDTH,
 } from './consts';
 import {
   BPMN_FORMAT_ID,
@@ -144,13 +137,9 @@ export function activateBpmnSequenceFlow(std: BlockStdScope) {
     role: BPMN_ROLE.sequenceFlow,
     // The flow's look rides on the activation, never through the last-props
     // store: the plain connector tool must keep the user's own style (#144 M1).
-    style: {
-      stroke: SEQUENCE_STROKE,
-      strokeStyle: StrokeStyle.Solid,
-      strokeWidth: SEQUENCE_WIDTH,
-      frontEndpointStyle: PointStyle.None,
-      rearEndpointStyle: PointStyle.Triangle,
-    },
+    // What the look IS lives in one table, because the legend pictures the same
+    // line and two spellings of it would drift (see {@link BPMN_EDGE_STYLE}).
+    style: BPMN_EDGE_STYLE.sequenceFlow,
   });
   // Keep the palette open (native sub-menu behaviour).
 }
@@ -180,13 +169,7 @@ export function activateBpmnMessageFlow(std: BlockStdScope) {
     role: BPMN_ROLE.messageFlow,
     // The flow's look rides on the activation, never through the last-props
     // store: the plain connector tool must keep the user's own style (#144 M1).
-    style: {
-      stroke: MESSAGE_STROKE,
-      strokeStyle: StrokeStyle.Dash,
-      strokeWidth: MESSAGE_WIDTH,
-      frontEndpointStyle: PointStyle.Circle,
-      rearEndpointStyle: PointStyle.Arrow,
-    },
+    style: BPMN_EDGE_STYLE.messageFlow,
   });
   // Keep the palette open (native sub-menu behaviour).
 }
@@ -212,13 +195,7 @@ export function activateBpmnAssociation(std: BlockStdScope) {
     // The association's look rides on the activation, never through the
     // last-props store: the plain connector tool must keep the user's own
     // style (#144 M1).
-    style: {
-      stroke: ASSOCIATION_STROKE,
-      strokeStyle: StrokeStyle.Dash,
-      strokeWidth: ASSOCIATION_WIDTH,
-      frontEndpointStyle: PointStyle.None,
-      rearEndpointStyle: PointStyle.None,
-    },
+    style: BPMN_EDGE_STYLE.association,
   });
   // Keep the palette open (native sub-menu behaviour).
 }

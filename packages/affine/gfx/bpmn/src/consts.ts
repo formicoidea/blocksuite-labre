@@ -1,4 +1,5 @@
 import type { BpmnNodeKind } from '@labre/affine-model';
+import { PointStyle, StrokeStyle } from '@labre/affine-model';
 import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
 
 /**
@@ -330,3 +331,58 @@ export const MESSAGE_WIDTH = 2;
  */
 export const ASSOCIATION_STROKE = NOTATION_NEUTRALS.ink;
 export const ASSOCIATION_WIDTH = 2;
+
+/** The three connecting objects, keyed the way {@link BPMN_EDGE_STYLE} is. */
+export type BpmnEdgeKey = 'sequenceFlow' | 'messageFlow' | 'association';
+
+/**
+ * What a BPMN connecting object LOOKS like — the five props, and never a sixth.
+ *
+ * `mode` is deliberately absent. The toolbox arms the connector tool
+ * orthogonally, but that is a property of the DRAWING gesture, not of the line:
+ * a legend swatch draws the same notation across 44 units in a straight
+ * segment, and an orthogonal mode there would put a right angle in a sample
+ * that has nothing to route around.
+ */
+export interface BpmnEdgeStyle {
+  stroke: string;
+  strokeStyle: StrokeStyle;
+  strokeWidth: number;
+  frontEndpointStyle: PointStyle;
+  rearEndpointStyle: PointStyle;
+}
+
+/**
+ * The whole BPMN line notation, in one table — read by the tool that ARMS the
+ * connector (`actions.ts`) and by the legend row that PICTURES it
+ * (`commands.ts`).
+ *
+ * One table for the same reason `presets.ts` is one builder for the nodes: two
+ * spellings of the same line agree the day they are written and drift on the
+ * first restyle, and the drift shows up as a legend that documents a notation
+ * the board does not use. Same argument, and the same shape, as UML's
+ * `UML_EDGE_STYLE`.
+ */
+export const BPMN_EDGE_STYLE: Record<BpmnEdgeKey, BpmnEdgeStyle> = {
+  sequenceFlow: {
+    stroke: SEQUENCE_STROKE,
+    strokeStyle: StrokeStyle.Solid,
+    strokeWidth: SEQUENCE_WIDTH,
+    frontEndpointStyle: PointStyle.None,
+    rearEndpointStyle: PointStyle.Triangle,
+  },
+  messageFlow: {
+    stroke: MESSAGE_STROKE,
+    strokeStyle: StrokeStyle.Dash,
+    strokeWidth: MESSAGE_WIDTH,
+    frontEndpointStyle: PointStyle.Circle,
+    rearEndpointStyle: PointStyle.Arrow,
+  },
+  association: {
+    stroke: ASSOCIATION_STROKE,
+    strokeStyle: StrokeStyle.Dash,
+    strokeWidth: ASSOCIATION_WIDTH,
+    frontEndpointStyle: PointStyle.None,
+    rearEndpointStyle: PointStyle.None,
+  },
+};

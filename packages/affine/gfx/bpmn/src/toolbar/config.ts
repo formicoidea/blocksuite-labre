@@ -1,4 +1,8 @@
-import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
+import {
+  EdgelessCRUDIdentifier,
+  legendToolbarAction,
+  validationToolbarConfig,
+} from '@labre/affine-block-surface';
 import { BpmnPoolElementModel } from '@labre/affine-model';
 import {
   BOARD_RESIZE_TOGGLE,
@@ -162,4 +166,43 @@ export const bpmnPoolToolbarConfig = {
 export const bpmnPoolToolbarExtension = ToolbarModuleExtension({
   id: BlockFlavourIdentifier('affine:surface:bpmnPool'),
   config: bpmnPoolToolbarConfig,
+});
+
+/**
+ * The pool's FLAG-GATED row: the legend and the validation dropdown, in one
+ * module because a flavour may carry exactly one (a second on the same key
+ * throws `DuplicateServiceDefinitionError` before the editor finishes setting
+ * up — the same merge C4's board makes for the same reason).
+ *
+ * `c.legend` and not `b.legend`: the toolbar sorts lexicographically by id
+ * after partitioning by placement, and `'b.add-lane' < 'b.legend' <
+ * 'b.remove-lane'` would wedge the button between the two lane gestures. `c.`
+ * puts it where it belongs — resize · add lane · remove lane · **Legend** ·
+ * Validation, with Export XML in the "⋮".
+ *
+ * Gated, because GENERATING a legend is tooling (ADR 0026, amending 0009). What
+ * the gesture already wrote is document content and keeps painting with the
+ * flag off: the box is plain shapes and text plus `bpmnNode`s the always-on
+ * renderer paints, and the pool keeps its resize handle and its lanes either
+ * way.
+ */
+export const bpmnPoolToolingToolbarConfig: ToolbarModuleConfig = {
+  actions: [
+    legendToolbarAction({
+      id: 'c.legend',
+      Model: BpmnPoolElementModel,
+      owner: 'bpmn',
+      framework: 'bpmn',
+    }),
+    // The generic dropdown, not a BPMN variant of it: the config names no
+    // framework — it reads the registered rules and profiles — so this is the
+    // very same object wardley, c4 and the context map register.
+    ...validationToolbarConfig.actions,
+  ],
+  when: bpmnPoolToolbarConfig.when,
+};
+
+export const bpmnPoolToolingToolbarExtension = ToolbarModuleExtension({
+  id: BlockFlavourIdentifier('custom:affine:surface:bpmnPool'),
+  config: bpmnPoolToolingToolbarConfig,
 });

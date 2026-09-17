@@ -14,6 +14,7 @@ import { exportBpmnXmlFile } from '../actions';
 import {
   BPMN_INTERCHANGE,
   BPMN_SVG_IMPORT,
+  bpmnBoardFrom,
   BPMN_XML_EXPORT,
   BPMN_XML_IMPORT,
 } from '../interchange';
@@ -290,6 +291,73 @@ describe('one door, and the command is it', () => {
     exportBpmnXmlFile(fakeStd(elements, 'Order/to:cash. '));
 
     expect(captured.file!.name).toBe('Order-to-cash.bpmn');
+  });
+});
+
+/**
+ * What the exporter is allowed to speak about, and it is the ROLE that decides.
+ *
+ * A `bpmnNode` is a shape with a `kind`; the role is the author's statement
+ * that this circle IS the start of the process (`docs/adr/0010`). The
+ * distinction became load-bearing the day the pool grew a legend — a legend
+ * swatch is a real `bpmnNode` with a real `kind` and deliberately no role — and
+ * it has a cost the PO took on 2026-09-17: a process drawn before roles existed
+ * (2026-08-26) no longer exports at all.
+ */
+describe('the export speaks about roled artefacts and nothing else', () => {
+  it('drops a node whose role is missing, and one whose role contradicts its kind', () => {
+    const picked = bpmnBoardFrom(
+      flatten(
+        board({
+          pools: [fakePool('p', [0, 0, POOL_W, POOL_H], { name: 'Sales' })],
+          nodes: [
+            fakeNode('real', 'task', [BAND + 20, 60, 60, 40], 'Work'),
+            // A legend swatch: same class, same kind, no role.
+            fakeNode('swatch', 'task', [BAND + 20, 120, 44, 26], undefined, {
+              role: undefined,
+            }),
+            // …and a node whose role says something its kind does not.
+            fakeNode('liar', 'task', [BAND + 20, 150, 60, 40], undefined, {
+              role: BPMN_ROLE.startEvent,
+            }),
+          ],
+        })
+      )
+    );
+    expect(picked.nodes.map(node => node.id)).toEqual(['real']);
+  });
+
+  it('drops a pool with no role, so a legend backdrop is never a participant', () => {
+    const picked = bpmnBoardFrom(
+      flatten(
+        board({
+          pools: [
+            fakePool('real', [0, 0, POOL_W, POOL_H], { name: 'Sales' }),
+            fakePool('neutral', [0, 300, POOL_W, POOL_H], { role: undefined }),
+          ],
+        })
+      )
+    );
+    expect(picked.pools.map(pool => pool.id)).toEqual(['real']);
+  });
+
+  it('leaves the connectors to the filter they already had', () => {
+    // `EDGE_ELEMENT[connector.role]` in `export.ts` has always dropped a
+    // neutral arrow; nothing here duplicates that decision one layer up.
+    const picked = bpmnBoardFrom(
+      flatten(
+        board({
+          connectors: [
+            fakeConnector('typed', BPMN_ROLE.sequenceFlow),
+            fakeConnector('neutral', undefined),
+          ],
+        })
+      )
+    );
+    expect(picked.connectors.map(connector => connector.id)).toEqual([
+      'typed',
+      'neutral',
+    ]);
   });
 });
 

@@ -57,7 +57,6 @@ const commands = getCommands();
 const PENDING_OWNERS: readonly CommandOwner[] = [
   'wardley',
   'edgy',
-  'bpmn',
   'c4',
   'ddd-event-storming',
   'ddd-core-domain',
