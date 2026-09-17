@@ -4,17 +4,45 @@ import {
   ES_HOTSPOT,
   ES_STICKIES,
   eventStormingToolbarIcon,
+  LABEL_COLOR,
   placeDddElement,
   STICKY_SIZE,
 } from '@labre/affine-gfx-ddd-shared';
 import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
-import { translateKey } from '@labre/affine-shared/services';
-import type { BlockStdScope, CommandDescriptor } from '@labre/std';
+import {
+  type ChromeWording,
+  translateKey,
+} from '@labre/affine-shared/services';
+import type {
+  BlockStdScope,
+  CommandDescriptor,
+  CommandLegendEntry,
+} from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { svg, type TemplateResult } from 'lit';
 
 import { activateEventStormingFlow, createEventStormingBoard } from './actions';
-import { ES_STICKY_ROLE } from './roles';
+import { ES_ROLE, ES_STICKY_ROLE } from './roles';
+
+/**
+ * The automatic legend's own section titles — text stamped onto the board the
+ * moment the legend is built, like any other seed, and declared HERE because
+ * the rows that file themselves under them are subscribed by the commands
+ * below. The box title itself is not one of them: it says the shared word
+ * "Legend" and reuses `BOARD_LEGEND_TITLE`.
+ *
+ * Two sub-titles for a framework whose eleven commands all sit in ONE category:
+ * `section` is what keeps the Flow — a line, not a post-it — out of the
+ * stickies where the category would file it (`docs/adr/0026`).
+ */
+export const ES_SEED_LEGEND_STICKIES: ChromeWording = [
+  'com.labre.ddd-event-storming.seed.legend-stickies',
+  'Stickies',
+];
+export const ES_SEED_LEGEND_FLOW: ChromeWording = [
+  'com.labre.ddd-event-storming.seed.legend-flow',
+  'Flow',
+];
 
 /**
  * The Event Storming palette as commands: the board, the eight colour-coded
@@ -59,6 +87,8 @@ interface Spec {
   kind?: 'artefact' | 'tool';
   icon: TemplateResult;
   run: (std: BlockStdScope) => void;
+  /** The row this entry's artefact puts in the board's legend, if any. */
+  legend?: CommandLegendEntry;
 }
 
 const SPECS: Spec[] = [
@@ -101,6 +131,14 @@ const SPECS: Spec[] = [
             role: ES_STICKY_ROLE[preset.kind],
           })
         ),
+      // Row and command out of the SAME preset, so the colour ladder the legend
+      // shows is by construction the colour ladder on the wall — and a tenth
+      // sticky kind gets its row with no edit.
+      legend: {
+        role: ES_STICKY_ROLE[preset.kind],
+        section: ES_SEED_LEGEND_STICKIES,
+        row: { swatch: 'square', color: preset.fill },
+      },
     })
   ),
   {
@@ -126,6 +164,13 @@ const SPECS: Spec[] = [
           role: ES_STICKY_ROLE.hotspot,
         })
       ),
+    // In its own preset, a diamond rather than a square, and therefore its own
+    // row — appended after the eight by its `order` rather than by hand.
+    legend: {
+      role: ES_STICKY_ROLE.hotspot,
+      section: ES_SEED_LEGEND_STICKIES,
+      row: { swatch: 'square', color: ES_HOTSPOT.fill },
+    },
   },
   {
     id: 'addFlow',
@@ -138,6 +183,13 @@ const SPECS: Spec[] = [
     // DRAWS the flow between two stickies. See `activateEventStormingFlow` for
     // why the free-floating arrow had to go. The telemetry value is untouched.
     run: std => activateEventStormingFlow(std.get(GfxControllerIdentifier)),
+    legend: {
+      role: ES_ROLE.flow,
+      section: ES_SEED_LEGEND_FLOW,
+      // The style `activateEventStormingFlow` arms the connector tool with: a
+      // solid line in the label colour.
+      row: { swatch: 'line', color: LABEL_COLOR },
+    },
   },
 ];
 
@@ -161,6 +213,7 @@ export const eventStormingCommands: CommandDescriptor[] = SPECS.map(
       element: spec.element,
       board: spec.board,
     },
+    legend: spec.legend,
   })
 );
 

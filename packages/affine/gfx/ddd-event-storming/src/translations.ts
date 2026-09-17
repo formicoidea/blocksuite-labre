@@ -1,5 +1,4 @@
 import { dddSharedTranslationEntries } from '@labre/affine-gfx-ddd-shared';
-import type { ChromeWording } from '@labre/affine-shared/services';
 import {
   collectTranslationKeys,
   commandCategoryTranslationEntries,
@@ -9,28 +8,16 @@ import {
 } from '@labre/std';
 
 import { EVENT_STORMING_BACKGROUND } from './background.js';
-import { eventStormingCommands } from './commands.js';
+import {
+  ES_SEED_LEGEND_FLOW,
+  ES_SEED_LEGEND_STICKIES,
+  eventStormingCommands,
+} from './commands.js';
 import { EVENT_STORMING_NUDGES } from './nudges.js';
 import { EVENT_STORMING_PROFILES } from './profiles.js';
 import { EVENT_STORMING_READING } from './reading.js';
 import { EVENT_STORMING_ROLES } from './roles.js';
 import { EVENT_STORMING_RULES } from './rules.js';
-
-/**
- * The automatic legend's own section titles (`legend.ts`) — text stamped onto
- * the board the moment the legend is built (`createAutoLegend`), like any
- * other seed. The box title itself is NOT here: it says the shared word
- * "Legend", so it reuses `BOARD_LEGEND_TITLE`
- * (`@labre/affine-shared/services`) instead of a key of its own.
- */
-export const ES_SEED_LEGEND_STICKIES: ChromeWording = [
-  'com.labre.ddd-event-storming.seed.legend-stickies',
-  'Stickies',
-];
-export const ES_SEED_LEGEND_FLOW: ChromeWording = [
-  'com.labre.ddd-event-storming.seed.legend-flow',
-  'Flow',
-];
 
 /**
  * THIS framework's contribution to the translation-key manifest — every

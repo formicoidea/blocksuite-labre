@@ -2,7 +2,6 @@ import {
   morphToolbarConfig,
   QualityNudgeExtension,
   ReadingProfileExtension,
-  validationToolbarConfig,
   ValidationProfileExtension,
   ValidationRuleExtension,
 } from '@labre/affine-block-surface';
@@ -29,7 +28,10 @@ import { EVENT_STORMING_PROFILES } from './profiles';
 import { EVENT_STORMING_READING } from './reading';
 import { EVENT_STORMING_ROLES } from './roles';
 import { EVENT_STORMING_RULES } from './rules';
-import { eventStormingBoardToolbarExtension } from './toolbar/board-config';
+import {
+  eventStormingBoardToolbarExtension,
+  eventStormingBoardToolingToolbarConfig,
+} from './toolbar/board-config';
 import { eventStormingSeniorTool } from './toolbar/senior-tool';
 
 /**
@@ -84,17 +86,17 @@ export class DddEventStormingViewExtension extends ViewExtensionProvider {
       context.register(ValidationRuleExtension(EVENT_STORMING_RULES));
       context.register(ValidationProfileExtension(EVENT_STORMING_PROFILES));
       context.register(QualityNudgeExtension(EVENT_STORMING_NUDGES));
-      // The Validation dropdown on a selected board's contextual toolbar. A
-      // SECOND module on the same element, through the `custom:` flavour slot:
-      // `eventStormingBoardToolbarExtension` is registered always-on because a
-      // stored board must keep its resize toggle, while choosing how hard to
-      // check it is tooling and belongs here. The config names no framework —
-      // it reads roles and profiles — so it is the very same object Wardley
-      // registers on its own flavour.
+      // The board's gated row — the Legend button and the Validation dropdown,
+      // merged into ONE module because a flavour may carry exactly one
+      // (`board-config.ts`). A SECOND module on the same element, through the
+      // `custom:` flavour slot: `eventStormingBoardToolbarExtension` is
+      // registered always-on because a stored board must keep its resize
+      // toggle, while generating a legend and choosing how hard to check the
+      // board are tooling and belong here.
       context.register(
         ToolbarModuleExtension({
           id: BlockFlavourIdentifier('custom:affine:surface:eventStorming'),
-          config: validationToolbarConfig,
+          config: eventStormingBoardToolingToolbarConfig,
         })
       );
       // The reversed reading (MF3): what the board says about a sticky, on

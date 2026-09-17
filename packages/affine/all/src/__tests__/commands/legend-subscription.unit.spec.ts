@@ -58,9 +58,6 @@ const PENDING_OWNERS: readonly CommandOwner[] = [
   'wardley',
   'edgy',
   'c4',
-  'ddd-event-storming',
-  'ddd-core-domain',
-  'ddd-context-map',
   'uml',
 ];
 

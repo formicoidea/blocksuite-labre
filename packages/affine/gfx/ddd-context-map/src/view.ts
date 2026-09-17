@@ -1,7 +1,6 @@
 import {
   QualityNudgeExtension,
   ReadingProfileExtension,
-  validationToolbarConfig,
   ValidationProfileExtension,
   ValidationRuleExtension,
 } from '@labre/affine-block-surface';
@@ -24,7 +23,10 @@ import { CONTEXT_MAP_PROFILES } from './profiles';
 import { CONTEXT_MAP_READING } from './reading';
 import { CONTEXT_MAP_ROLES } from './roles';
 import { CONTEXT_MAP_RULES } from './rules';
-import { contextMapBoardToolbarExtension } from './toolbar/board-config';
+import {
+  contextMapBoardToolbarExtension,
+  contextMapBoardToolingToolbarConfig,
+} from './toolbar/board-config';
 import { contextMapSeniorTool } from './toolbar/senior-tool';
 
 /**
@@ -79,17 +81,17 @@ export class DddContextMapViewExtension extends ViewExtensionProvider {
       context.register(ValidationRuleExtension(CONTEXT_MAP_RULES));
       context.register(ValidationProfileExtension(CONTEXT_MAP_PROFILES));
       context.register(QualityNudgeExtension(CONTEXT_MAP_NUDGES));
-      // The Validation dropdown on a selected board's contextual toolbar. A
-      // SECOND module on the same element, through the `custom:` flavour slot:
-      // `contextMapBoardToolbarExtension` is registered always-on because a
-      // stored board must keep its resize toggle, while choosing how hard to
-      // check it is tooling and belongs here. The config names no framework —
-      // it reads roles and profiles — so it is the very same object Wardley
-      // registers on its own flavour.
+      // The board's gated row — the Legend button and the Validation dropdown,
+      // merged into ONE module because a flavour may carry exactly one
+      // (`board-config.ts`). A SECOND module on the same element, through the
+      // `custom:` flavour slot: `contextMapBoardToolbarExtension` is registered
+      // always-on because a stored board must keep its resize toggle, while
+      // generating a legend and choosing how hard to check the map are tooling
+      // and belong here.
       context.register(
         ToolbarModuleExtension({
           id: BlockFlavourIdentifier('custom:affine:surface:contextMap'),
-          config: validationToolbarConfig,
+          config: contextMapBoardToolingToolbarConfig,
         })
       );
       // The reversed reading (MF3): what the map says about a bounded context,
