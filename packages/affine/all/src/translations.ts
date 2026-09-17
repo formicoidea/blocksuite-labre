@@ -351,6 +351,14 @@ const CHROME_KEYS: readonly [key: string, fallback: string][] = [
   // and would leave every new format silently untranslated.
   ['com.labre.interchange.import.done', 'file imported'],
   ['com.labre.interchange.import.failed', 'This file could not be imported'],
+  // Rights lost WHILE the file was being read — the import's own sentence,
+  // because nothing is wrong with the file. It rides under the same "could not
+  // be imported" headline as a reader's refusal, which is what it is to the
+  // person who picked it.
+  [
+    'com.labre.interchange.import.readonly',
+    'This document became read-only while the file was being read, so nothing was imported.',
+  ],
   [
     'com.labre.interchange.import.remarks',
     'What the import could not keep as it was',

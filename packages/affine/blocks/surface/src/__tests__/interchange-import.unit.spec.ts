@@ -307,6 +307,18 @@ describe('materializing an import', () => {
       materializeInterchangeImport(std, 'owm', [{ type: 'shape' }])
     ).toEqual([]);
   });
+
+  it('writes nothing on a read-only document, and says so by answering empty', () => {
+    // A PUBLIC API: labre-mcp writes through it with no command in front of
+    // it, so the guard is the function's own. The empty array is the same
+    // "nothing was minted" every other refusal here returns — an exception
+    // would be one no caller knows to catch.
+    const { std, surface } = stubEditor({ readonly: true });
+    expect(
+      materializeInterchangeImport(std, 'owm', [element('shape', 'owm', 'A')])
+    ).toEqual([]);
+    expect(surface.added).toEqual([]);
+  });
 });
 
 /* ── The report ───────────────────────────────────────────────────────── */
@@ -627,6 +639,36 @@ describe('running an import from a file', () => {
     await runInterchangeImportFile(std, capabilityOf(farFromOrigin));
     expect(document.querySelector('.affine-upload-input')).toBeNull();
     expect(surface.added).toEqual([]);
+  });
+
+  it('draws nothing when the rights are lost while the file is being read', async () => {
+    // The guard at the top of the gesture is a decision taken BEFORE two
+    // `await`s — the file's bytes and the container's `decode` — and a remote
+    // cascade can turn the store read-only between them (the class of defect
+    // issue #324 named). The write used to go ahead and reject a promise
+    // nobody awaits, with nothing said to the person who picked the file.
+    const { std, surface, notify, captureSync } = stubEditor();
+    const store = std.store as unknown as { readonly: boolean };
+
+    await importInterchangeFile(std, capabilityOf(farFromOrigin), fileOf(), {
+      decode: text => {
+        store.readonly = true;
+        return text;
+      },
+    });
+
+    expect(surface.added).toEqual([]);
+    // Not even the undo boundary: nothing was written to bracket.
+    expect(captureSync).not.toHaveBeenCalled();
+    // Said, through the channel every other import failure uses — and the
+    // sentence is the import's own, because nothing is wrong with the FILE.
+    expect(notify).toHaveBeenCalledTimes(1);
+    const failure = notify.mock.calls[0][0];
+    expect(failure.title).toBe('This file could not be imported');
+    expect(failure.accent).toBe('error');
+    expect(failure.message).toBe(
+      'This document became read-only while the file was being read, so nothing was imported.'
+    );
   });
 });
 
