@@ -17,13 +17,25 @@
  * compatibility `mousedown` whose default action is the only thing that opens a
  * native `<select>`. `click` survives that policy untouched, which is why the
  * list is ours and not the platform's.
+ *
+ * The header is the PANEL'S TITLE, not a bar bolted on top of it: a compact,
+ * content-width trigger whose name starts on the very x the section labels
+ * ("Fill color", "Border color") and the swatch grid start on. Its hit area
+ * comes from padding cancelled by an equal negative margin, so the hover pill
+ * bleeds outward while the text itself stays on the panel's left grid line.
  */
 import { ColorScheme, resolveColor } from '@labre/affine-model';
 import { translateKey } from '@labre/affine-shared/services';
+import {
+  reducedMotionStyle,
+  springDuration,
+  springEasing,
+} from '@labre/affine-shared/styles';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import type { BlockStdScope } from '@labre/std';
 import { ArrowDownSmallIcon, DoneIcon } from '@blocksuite/icons/lit';
 import { css, html, nothing, type TemplateResult } from 'lit';
+import { keyed } from 'lit/directives/keyed.js';
 
 import { PALETTE_GROUP_CHOOSE } from '../translations.js';
 import type { PaletteGroup } from './framework-palette.js';
@@ -32,25 +44,32 @@ import type { PaletteGroup } from './framework-palette.js';
 export const paletteCarouselStyles = css`
   .palette-carousel {
     display: flex;
+    align-items: center;
     align-self: stretch;
     padding-bottom: 4px;
   }
 
   .palette-carousel-name {
-    display: flex;
-    flex: 1 1 auto;
+    display: inline-flex;
+    /* Content width, not the panel's: a title, not a bar. */
+    flex: 0 0 auto;
     align-items: center;
-    justify-content: space-between;
-    gap: 4px;
+    gap: 2px;
+    max-width: 100%;
     min-width: 0;
-    margin: 0;
-    padding: 2px 4px 2px 8px;
+    /* The hover pill bleeds out by exactly what the padding pushed in, so the
+     * name starts on the same x as "Fill color" and as the swatch grid. */
+    margin: -2px -8px;
+    padding: 2px 8px;
     border: none;
     border-radius: 4px;
     background: transparent;
+    /* The panel's own type, one step stronger: this names the whole panel. */
     font-family: inherit;
-    font-size: var(--affine-font-xs);
-    color: ${unsafeCSSVarV2('text/secondary')};
+    font-size: inherit;
+    font-weight: 500;
+    line-height: 22px;
+    color: ${unsafeCSSVarV2('text/primary')};
     cursor: pointer;
     outline: none;
   }
@@ -68,27 +87,52 @@ export const paletteCarouselStyles = css`
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
+    /* The name travels with the swatches it names — same keys, same curve. */
+    animation: palette-carousel-settle ${springDuration} ${springEasing};
+  }
+
+  .palette-carousel-name > .label[data-direction='next'] {
+    animation-name: palette-carousel-next;
+  }
+
+  .palette-carousel-name > .label[data-direction='prev'] {
+    animation-name: palette-carousel-prev;
   }
 
   .palette-carousel-chevron {
     display: flex;
     flex: 0 0 auto;
     color: ${unsafeCSSVarV2('icon/primary')};
+    transition: transform ${springDuration} ${springEasing};
   }
 
   .palette-carousel-chevron svg {
-    width: 12px;
-    height: 12px;
+    width: 16px;
+    height: 16px;
+  }
+
+  .palette-carousel-name[aria-expanded='true'] .palette-carousel-chevron {
+    transform: rotate(180deg);
   }
 
   .palette-carousel-list {
     display: flex;
     flex-direction: column;
     align-self: stretch;
+    box-sizing: content-box;
+    /* As wide as whatever it stands in for — the panel measures itself on the
+     * way in, see rememberPanelWidth — plus the two gutters its rows bleed
+     * into, so the popup never resizes under the cursor. The fallback is the
+     * 9-column swatch grid (9 × 20px + 8 × 4px). */
+    min-width: calc(var(--palette-panel-width, 212px) + 16px);
+    /* Full-bleed rows: the list reaches the popup's padding edge, and its rows
+     * put their names back on the panel's grid line with their own padding. */
+    margin: 0 -8px;
     /* Nine pages fit without scrolling; the cap is a seatbelt for a tenth. */
     max-height: 280px;
     overflow-y: auto;
     overscroll-behavior: contain;
+    animation: palette-carousel-settle ${springDuration} ${springEasing};
   }
 
   .palette-carousel-option {
@@ -100,7 +144,7 @@ export const paletteCarouselStyles = css`
     border-radius: 4px;
     background: transparent;
     font-family: inherit;
-    font-size: var(--affine-font-sm);
+    font-size: inherit;
     color: var(--affine-text-primary-color);
     text-align: left;
     white-space: nowrap;
@@ -142,7 +186,9 @@ export const paletteCarouselStyles = css`
 
   .palette-carousel-tick {
     display: flex;
-    flex: 0 0 auto;
+    /* Always the same slot, ticked or not, so the dots line up down the list. */
+    flex: 0 0 16px;
+    height: 16px;
     color: inherit;
   }
 
@@ -150,6 +196,63 @@ export const paletteCarouselStyles = css`
     width: 16px;
     height: 16px;
   }
+
+  /* The swatches of ONE page. Re-keyed on the page index, so a page change
+   * builds a new box and its entry animation starts from scratch — a burst of
+   * wheel events never queues, it replaces. */
+  .palette-carousel-page {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    animation: palette-carousel-settle ${springDuration} ${springEasing};
+  }
+
+  .palette-carousel-page[data-direction='next'] {
+    animation-name: palette-carousel-next;
+  }
+
+  .palette-carousel-page[data-direction='prev'] {
+    animation-name: palette-carousel-prev;
+  }
+
+  /* The easing overshoots (easeOutBack), so each of these travels a little
+   * past its resting place and springs back — the "elastic" of the recette. */
+  @keyframes palette-carousel-next {
+    from {
+      transform: translateX(14px);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes palette-carousel-prev {
+    from {
+      transform: translateX(-14px);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes palette-carousel-settle {
+    from {
+      transform: scale(0.97);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  ${reducedMotionStyle('.palette-carousel')}
+  ${reducedMotionStyle('.palette-carousel-list')}
+  ${reducedMotionStyle('.palette-carousel-page')}
 `;
 
 /**
@@ -163,12 +266,20 @@ let lastWheelPageAt = 0;
 /** How many swatches of a page are shown beside its name, for recognition. */
 const PREVIEW_DOTS = 5;
 
+/**
+ * Where the new page comes FROM. `settle` is "from nowhere in particular": the
+ * first paint of a panel, and the list closing on the page it opened on.
+ */
+export type PaletteCarouselDirection = 'next' | 'prev' | 'settle';
+
 type CarouselOptions = {
   groups: readonly PaletteGroup[];
   index: number;
-  onPage: (index: number) => void;
+  onPage: (index: number, direction: PaletteCarouselDirection) => void;
   /** Whether the inline list of pages is showing instead of the swatch grid. */
   open?: boolean;
+  /** Where the page on screen came from, for the entry animation. */
+  direction?: PaletteCarouselDirection;
 };
 
 /**
@@ -177,7 +288,9 @@ type CarouselOptions = {
  * second half of the recette's failure.
  *
  * Wrap-around in both directions: the pages are a ring, not a list, and the
- * base palette is always one of them.
+ * base palette is always one of them. The direction is the wheel's own sign,
+ * never the index delta, so wrapping from the last page to the first still
+ * comes in from the right.
  */
 export function paletteCarouselWheel(
   options: CarouselOptions
@@ -198,8 +311,56 @@ export function paletteCarouselWheel(
     const now = Date.now();
     if (now - lastWheelPageAt < WHEEL_THROTTLE_MS) return;
     lastWheelPageAt = now;
-    onPage((index + (delta > 0 ? 1 : -1) + groups.length) % groups.length);
+    const forward = delta > 0;
+    onPage(
+      (index + (forward ? 1 : -1) + groups.length) % groups.length,
+      forward ? 'next' : 'prev'
+    );
   };
+}
+
+/**
+ * The swatches of the page on screen, wrapped so that paging slides them in.
+ * The host passes its own grid (both of them, in the shape picker, each in its
+ * own wrapper — same key, same timing, so the two move together).
+ *
+ * `keyed` is the whole mechanism: the wrapper is torn down and rebuilt on a
+ * page change, which restarts the CSS animation and, by the same token, cancels
+ * the one in flight. No JS animation, nothing to queue, and the swatches stay
+ * clickable throughout (a CSS animation never takes the pointer).
+ */
+export function paletteCarouselPage(
+  options: {
+    groups: readonly PaletteGroup[];
+    index: number;
+    direction?: PaletteCarouselDirection;
+  },
+  content: TemplateResult
+) {
+  const { groups, index, direction = 'settle' } = options;
+  // No carousel, no page: the grid of a picker with a single palette keeps the
+  // exact DOM it had before any of this existed.
+  if (groups.length < 2) return content;
+  return keyed(
+    index,
+    html`<div class="palette-carousel-page" data-direction=${direction}>
+      ${content}
+    </div>`
+  );
+}
+
+/**
+ * The popup must not resize under the cursor when the list takes the grid's
+ * place, and a list has no way to know how wide the thing it replaces was — so
+ * the panel is measured on the way IN and hands the number down as a custom
+ * property. Read from the header's own container, which is the flex column the
+ * grid, the section labels and the list all share.
+ */
+function rememberPanelWidth(trigger: HTMLElement) {
+  const panel = trigger.closest<HTMLElement>('[data-orientation]');
+  if (!panel) return;
+  const { width } = panel.getBoundingClientRect();
+  if (width > 0) panel.style.setProperty('--palette-panel-width', `${width}px`);
 }
 
 const dots = (group: PaletteGroup, theme: ColorScheme) =>
@@ -225,7 +386,16 @@ export function renderPaletteCarousel(
     theme?: ColorScheme;
   }
 ): TemplateResult | typeof nothing {
-  const { groups, index, onPage, onToggle, open = false, std, theme } = options;
+  const {
+    groups,
+    index,
+    onPage,
+    onToggle,
+    open = false,
+    direction = 'settle',
+    std,
+    theme,
+  } = options;
   if (groups.length < 2) return nothing;
 
   const group = groups[index];
@@ -238,14 +408,21 @@ export function renderPaletteCarousel(
   // Every handler below stops the click: the header lives inside an open
   // popper, and `createButtonPopper` hides the menu on any document click whose
   // composed path misses the TRIGGER (`button-popper.ts`).
+  //
+  // Closing the list re-states the page it was opened on, which changes no
+  // page at all and only clears the direction: the grid comes back where it
+  // left, without replaying the slide of the last page change.
   const toggle = (e: Event) => {
     e.stopPropagation();
+    if (open) onPage(index, 'settle');
+    else rememberPanelWidth(e.currentTarget as HTMLElement);
     onToggle(!open);
   };
 
   const pick = (to: number) => (e: Event) => {
     e.stopPropagation();
-    onPage(to);
+    // A row names its page, so here the index delta IS the direction.
+    onPage(to, to === index ? 'settle' : to > index ? 'next' : 'prev');
     onToggle(false);
   };
 
@@ -255,6 +432,7 @@ export function renderPaletteCarousel(
   const keydown = (e: KeyboardEvent) => {
     if (e.key !== 'Escape' || !open) return;
     e.stopPropagation();
+    onPage(index, 'settle');
     onToggle(false);
   };
 
@@ -268,7 +446,12 @@ export function renderPaletteCarousel(
         aria-expanded=${open}
         @click=${toggle}
       >
-        <span class="label">${group.label}</span>
+        ${keyed(
+          index,
+          html`<span class="label" data-direction=${direction}
+            >${group.label}</span
+          >`
+        )}
         <span class="palette-carousel-chevron">${ArrowDownSmallIcon()}</span>
       </button>
     </div>

@@ -13,6 +13,8 @@ import { when } from 'lit-html/directives/when.js';
 import type { EditorMenuButton } from '../toolbar/menu-button';
 import type { PaletteGroup } from './framework-palette.js';
 import {
+  type PaletteCarouselDirection,
+  paletteCarouselPage,
   paletteCarouselStyles,
   paletteCarouselWheel,
   renderPaletteCarousel,
@@ -122,8 +124,15 @@ export class EdgelessColorPickerButton extends WithDisposable(LitElement) {
     if (changed.has('activeGroupKey')) {
       this.pickedGroupIndex = undefined;
       this.paletteListOpen = false;
+      this.pageDirection = 'settle';
     }
   }
+
+  /** Page, and remember which way it went, for the entry animation. */
+  readonly #page = (index: number, direction: PaletteCarouselDirection) => {
+    this.pickedGroupIndex = index;
+    this.pageDirection = direction;
+  };
 
   override firstUpdated() {
     this.disposables.addFromEvent(
@@ -175,7 +184,7 @@ export class EdgelessColorPickerButton extends WithDisposable(LitElement) {
                 @wheel=${paletteCarouselWheel({
                   groups: this.paletteGroups,
                   index: this.groupIndex,
-                  onPage: index => (this.pickedGroupIndex = index),
+                  onPage: this.#page,
                   open: this.paletteListOpen,
                 })}
               >
@@ -184,39 +193,46 @@ export class EdgelessColorPickerButton extends WithDisposable(LitElement) {
                 ${renderPaletteCarousel({
                   groups: this.paletteGroups,
                   index: this.groupIndex,
-                  onPage: index => (this.pickedGroupIndex = index),
+                  onPage: this.#page,
                   onToggle: open => (this.paletteListOpen = open),
                   open: this.paletteListOpen,
+                  direction: this.pageDirection,
                   std: this.std,
                   theme: this.theme,
                 })}
-                ${when(
-                  !this.paletteListOpen,
-                  () => html`
-                    <edgeless-color-panel
-                      role="listbox"
-                      class=${ifDefined(this.colorPanelClass)}
-                      .value=${this.color}
-                      .theme=${this.theme}
-                      .palettes=${this.activePalettes}
-                      .hollowCircle=${this.hollowCircle}
-                      .hasTransparent=${false}
-                      .std=${this.std}
-                      @select=${this.#select}
-                    >
-                      ${when(
-                        this.enableCustomColor,
-                        () => html`
-                          <edgeless-color-custom-button
-                            slot="custom"
-                            style=${styleMap(this.customButtonStyle)}
-                            ?active=${this.isCustomColor}
-                            @click=${this.switchToCustomTab}
-                          ></edgeless-color-custom-button>
-                        `
-                      )}
-                    </edgeless-color-panel>
-                  `
+                ${when(!this.paletteListOpen, () =>
+                  paletteCarouselPage(
+                    {
+                      groups: this.paletteGroups,
+                      index: this.groupIndex,
+                      direction: this.pageDirection,
+                    },
+                    html`
+                      <edgeless-color-panel
+                        role="listbox"
+                        class=${ifDefined(this.colorPanelClass)}
+                        .value=${this.color}
+                        .theme=${this.theme}
+                        .palettes=${this.activePalettes}
+                        .hollowCircle=${this.hollowCircle}
+                        .hasTransparent=${false}
+                        .std=${this.std}
+                        @select=${this.#select}
+                      >
+                        ${when(
+                          this.enableCustomColor,
+                          () => html`
+                            <edgeless-color-custom-button
+                              slot="custom"
+                              style=${styleMap(this.customButtonStyle)}
+                              ?active=${this.isCustomColor}
+                              @click=${this.switchToCustomTab}
+                            ></edgeless-color-custom-button>
+                          `
+                        )}
+                      </edgeless-color-panel>
+                    `
+                  )
                 )}
               </div>
             `,
@@ -298,6 +314,14 @@ export class EdgelessColorPickerButton extends WithDisposable(LitElement) {
    */
   @state()
   accessor paletteListOpen = false;
+
+  /**
+   * View state again: which way the page on screen arrived, so the swatches
+   * and the name slide in from the right side of the panel. Never persisted,
+   * and cleared with the rest when the selection changes.
+   */
+  @state()
+  accessor pageDirection: PaletteCarouselDirection = 'settle';
 
   @property({ attribute: false })
   accessor pick!: (event: PickColorEvent) => void;

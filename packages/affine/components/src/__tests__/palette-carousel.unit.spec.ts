@@ -72,6 +72,23 @@ const rows = (element: EdgelessColorPickerButton) =>
 const grid = (element: EdgelessColorPickerButton) =>
   element.shadowRoot?.querySelector('edgeless-color-panel') ?? null;
 
+/**
+ * The box the swatches of ONE page live in. Its `data-direction` is the whole
+ * of the motion contract: the stylesheet picks the keyframes off it, and the
+ * box is re-keyed on the page index so the animation restarts (and cancels the
+ * one in flight) rather than queueing behind it. What the animation LOOKS like
+ * is a matter for a browser; that it is aimed the right way is a matter here.
+ */
+const pageBox = (element: EdgelessColorPickerButton) =>
+  element.shadowRoot?.querySelector('.palette-carousel-page') ?? null;
+
+const direction = (element: EdgelessColorPickerButton) =>
+  pageBox(element)?.getAttribute('data-direction');
+
+/** The name travels with the swatches it names, from the same side. */
+const nameDirection = (element: EdgelessColorPickerButton) =>
+  header(element)?.querySelector('.label')?.getAttribute('data-direction');
+
 const openList = async (element: EdgelessColorPickerButton) => {
   header(element)!.click();
   await element.updateComplete;
@@ -287,6 +304,73 @@ describe('the palette carousel', () => {
     expect(event.defaultPrevented).toBe(false);
   });
 
+  test('the page arrives from the side the wheel came from, wrap included', async () => {
+    const element = await mount({
+      paletteGroups: GROUPS,
+      activeGroupKey: 'default',
+    });
+
+    // Nothing has moved yet: the first paint comes from nowhere in particular.
+    expect(direction(element)).toBe('settle');
+
+    // The wheel throttle is a module-level stamp, so the flick of the test
+    // before this one still counts against the first flick of this one.
+    await settleWheel();
+
+    await wheel(element, 1);
+    expect(direction(element)).toBe('next');
+    expect(nameDirection(element)).toBe('next');
+
+    await wheel(element, -1);
+    expect(direction(element)).toBe('prev');
+    expect(nameDirection(element)).toBe('prev');
+
+    // Wrapping from the last page to the first is still a step FORWARD: the
+    // wheel's own sign says so, and the index delta (2 → 0) would lie.
+    await wheel(element, -1);
+    expect(name(element)).toBe('EDGY');
+    await wheel(element, 1);
+    expect(name(element)).toBe('Default');
+    expect(direction(element)).toBe('next');
+  });
+
+  test('a row picked from the list comes in from where it sat', async () => {
+    const element = await mount({
+      paletteGroups: GROUPS,
+      activeGroupKey: 'default',
+    });
+
+    // Two rows down the list: from the right.
+    await choose(element, 'EDGY');
+    expect(direction(element)).toBe('next');
+
+    // …and back up it: from the left.
+    await choose(element, 'Default');
+    expect(direction(element)).toBe('prev');
+
+    // The page already on screen goes nowhere, so neither do the swatches.
+    await choose(element, 'Default');
+    expect(direction(element)).toBe('settle');
+  });
+
+  test('closing the list gives the grid back without replaying the last slide', async () => {
+    const element = await mount({
+      paletteGroups: GROUPS,
+      activeGroupKey: 'default',
+    });
+
+    await wheel(element, 1);
+    expect(direction(element)).toBe('next');
+
+    await openList(element);
+    header(element)!.click();
+    await element.updateComplete;
+
+    expect(grid(element)).not.toBeNull();
+    expect(name(element)).toBe('Wardley map');
+    expect(direction(element)).toBe('settle');
+  });
+
   test("a single group is no carousel: the caller's own `palettes` still wins", async () => {
     // What a Wardley node's picker gets when the Wardley flag is off: its
     // node toolbar is always-on, its palette is not, so no framework page is
@@ -298,6 +382,9 @@ describe('the palette carousel', () => {
     });
     expect(element.shadowRoot?.querySelector('.palette-carousel')).toBeNull();
     expect(element.activePalettes).toBe(seeded);
+    // No carousel, no page box either: the grid keeps the DOM it always had.
+    expect(pageBox(element)).toBeNull();
+    expect(grid(element)).not.toBeNull();
   });
 
   test('a new selection re-opens on ITS framework, forgetting the page paged to', async () => {

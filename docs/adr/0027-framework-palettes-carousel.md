@@ -83,6 +83,21 @@ where the picker OPENS, the carousel decides what it OFFERS.
    floating over it. The swatch preview the native list could never show is
    now the point of a row.
 
+   **Amended a third time 2026-09-17** (third PO feedback, UX approved): the
+   header is the PANEL'S TITLE, not a bar across the top of it. Compact and
+   content-width, Ink at 500, its name on the very x the section labels and
+   the swatch grid start on (its hit-area padding is given back by an equal
+   negative margin, so only the hover pill bleeds outward), its chevron
+   turning over when the list opens, and the list's rows on that same edge
+   with their dots right-aligned. Paging is animated with the library's one
+   shared elastic curve, `SPRING_EASING` in
+   `packages/affine/shared/src/styles/motion.ts`: the grids and the name slide
+   in from the side the page came from, the list scales in, CSS only and keyed
+   on the page index so a wheel burst restarts rather than queues, and off
+   under `prefers-reduced-motion`.
+   The panel measures itself on the way into the list so its width never
+   moves under the cursor. See DESIGN.md, "Motion".
+
 2. **The base palette is page one and is never hidden**, whatever the origin
    and whatever the flags — DESIGN.md, "The Coexisting Palettes Rule". A
    framework page is never trimmed either: a page IS the framework's own

@@ -308,10 +308,51 @@ describe("the colour pickers' palette carousel", () => {
     // The header lives inside an open menu; paging must not close it.
     expect(menu.dataset.open).toBe('true');
 
+    // Both grids travel together, and from the side the wheel came from: the
+    // direction is on the box the stylesheet animates (ADR 0027, decision 1).
+    expect(
+      Array.from(
+        picker.shadowRoot!.querySelectorAll('.palette-carousel-page')
+      ).map(box => box.getAttribute('data-direction'))
+    ).toEqual(['next', 'next']);
+
     // …and back, because the pages are a ring.
     await wheelPage(picker, -1);
     expect(carouselName(picker)).toBe(WARDLEY_LABEL);
     expect(menu.dataset.open).toBe('true');
+    expect(
+      Array.from(
+        picker.shadowRoot!.querySelectorAll('.palette-carousel-page')
+      ).map(box => box.getAttribute('data-direction'))
+    ).toEqual(['prev', 'prev']);
+  });
+
+  test('the header is the panel’s title, on the panel’s own left edge', async () => {
+    // The 2026-09-17 recette, third pass: the header was a full-width bar whose
+    // name sat a padding to the right of every section label. It is now a
+    // compact trigger whose text starts on the very x the labels and the swatch
+    // grid start on — the hover pill bleeds outward, the text does not move.
+    addMap();
+    const shape = addShape('[400,300,100,100]');
+    await select(shape);
+
+    const picker = shapePicker()!;
+    await openPicker(picker);
+
+    const left = (selector: string) =>
+      picker.shadowRoot!.querySelector(selector)!.getBoundingClientRect().left;
+
+    const name = left('.palette-carousel-name .label');
+    expect(name).toBeCloseTo(left('.picker-label'), 0);
+    expect(name).toBeCloseTo(left('edgeless-color-panel'), 0);
+
+    // The panel must not resize under the cursor when the list takes over.
+    const panel = picker.shadowRoot!.querySelector('.pickers')!;
+    const width = panel.getBoundingClientRect().width;
+
+    await openList(picker);
+    expect(left('.palette-carousel-option .label')).toBeCloseTo(name, 0);
+    expect(panel.getBoundingClientRect().width).toBeCloseTo(width, 0);
   });
 
   test('a real click on the header, then on a row, jumps straight to a page', async () => {

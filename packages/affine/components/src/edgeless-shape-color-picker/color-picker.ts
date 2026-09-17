@@ -30,7 +30,9 @@ import {
   calcCustomButtonStyle,
   keepColor,
   packColorsWith,
+  type PaletteCarouselDirection,
   type PaletteGroup,
+  paletteCarouselPage,
   paletteCarouselStyles,
   paletteCarouselWheel,
   type PickColorEvent,
@@ -176,8 +178,15 @@ export class EdgelessShapeColorPicker extends WithDisposable(
     if (changed.has('activeGroupKey')) {
       this.pickedGroupIndex = undefined;
       this.paletteListOpen = false;
+      this.pageDirection = 'settle';
     }
   }
+
+  /** Page, and remember which way it went — see the twin. */
+  readonly #page = (index: number, direction: PaletteCarouselDirection) => {
+    this.pickedGroupIndex = index;
+    this.pageDirection = direction;
+  };
 
   /** Measured against the UNION of the pages, for the reason the twin states. */
   #calcCustomButtonState(color: string, theme: ColorScheme) {
@@ -269,7 +278,7 @@ export class EdgelessShapeColorPicker extends WithDisposable(
           @wheel=${paletteCarouselWheel({
             groups: this.paletteGroups,
             index: this.groupIndex,
-            onPage: index => (this.pickedGroupIndex = index),
+            onPage: this.#page,
             open: this.paletteListOpen,
           })}
         >
@@ -281,9 +290,10 @@ export class EdgelessShapeColorPicker extends WithDisposable(
                   ${renderPaletteCarousel({
                     groups: this.paletteGroups,
                     index: this.groupIndex,
-                    onPage: index => (this.pickedGroupIndex = index),
+                    onPage: this.#page,
                     onToggle: open => (this.paletteListOpen = open),
                     open: this.paletteListOpen,
+                    direction: this.pageDirection,
                     std: this.std,
                     theme,
                   })}
@@ -319,35 +329,45 @@ export class EdgelessShapeColorPicker extends WithDisposable(
                             hollowCircle,
                           }) => html`
                             <div class="picker-label">${label}</div>
-                            <edgeless-color-panel
-                              aria-label="${label}"
-                              role="listbox"
-                              .hasTransparent=${false}
-                              .hollowCircle=${hollowCircle}
-                              .value=${value}
-                              .theme=${theme}
-                              .palettes=${activePalettes}
-                              .std=${this.std}
-                              @select=${onPick}
-                            >
-                              ${when(enableCustomColor, () => {
-                                const isCustomColor =
-                                  this.#calcCustomButtonState(value, theme);
-                                const styleInfo = this.#calcCustomButtonStyle(
-                                  value,
-                                  isCustomColor
-                                );
-                                return html`
-                                  <edgeless-color-custom-button
-                                    slot="custom"
-                                    style=${styleMap(styleInfo)}
-                                    ?active=${isCustomColor}
-                                    @click=${() =>
-                                      this.#switchToCustomWith(type)}
-                                  ></edgeless-color-custom-button>
-                                `;
-                              })}
-                            </edgeless-color-panel>
+                            ${paletteCarouselPage(
+                              {
+                                groups: this.paletteGroups,
+                                index: this.groupIndex,
+                                direction: this.pageDirection,
+                              },
+                              html`
+                                <edgeless-color-panel
+                                  aria-label="${label}"
+                                  role="listbox"
+                                  .hasTransparent=${false}
+                                  .hollowCircle=${hollowCircle}
+                                  .value=${value}
+                                  .theme=${theme}
+                                  .palettes=${activePalettes}
+                                  .std=${this.std}
+                                  @select=${onPick}
+                                >
+                                  ${when(enableCustomColor, () => {
+                                    const isCustomColor =
+                                      this.#calcCustomButtonState(value, theme);
+                                    const styleInfo =
+                                      this.#calcCustomButtonStyle(
+                                        value,
+                                        isCustomColor
+                                      );
+                                    return html`
+                                      <edgeless-color-custom-button
+                                        slot="custom"
+                                        style=${styleMap(styleInfo)}
+                                        ?active=${isCustomColor}
+                                        @click=${() =>
+                                          this.#switchToCustomWith(type)}
+                                      ></edgeless-color-custom-button>
+                                    `;
+                                  })}
+                                </edgeless-color-panel>
+                              `
+                            )}
                           `
                         )}
                         <div class="picker-label">
@@ -433,6 +453,10 @@ export class EdgelessShapeColorPicker extends WithDisposable(
    */
   @state()
   accessor paletteListOpen = false;
+
+  /** Which way the page arrived — see the twin. Both grids take it together. */
+  @state()
+  accessor pageDirection: PaletteCarouselDirection = 'settle';
 
   @query('editor-menu-button')
   accessor menuButton!: EditorMenuButton;
