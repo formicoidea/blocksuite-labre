@@ -6,8 +6,7 @@ import {
   type TranslationKeyManifestEntry,
 } from '@labre/std';
 
-import { edgyCommands } from './commands.js';
-import { EDGY_LEGEND_CHROME_WORDINGS } from './legend.js';
+import { edgyCommands, EDGY_LEGEND_CHROME_WORDINGS } from './commands.js';
 import {
   EDGY_DYNAMIC_NODES,
   EDGY_DYNAMIC_VERBS,

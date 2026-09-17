@@ -1,14 +1,6 @@
-import {
-  type AutoLegendEntry,
-  type AutoLegendSpec,
-  type LegendRow,
-  roleLabel,
-} from '@labre/affine-gfx-ddd-shared';
 import { StrokeStyle, type UmlNodeKind } from '@labre/affine-model';
-import {
-  BOARD_LEGEND_TITLE,
-  type ChromeWording,
-} from '@labre/affine-shared/services';
+import type { ChromeWording } from '@labre/affine-shared/services';
+import type { CommandLegendEntry, CommandLegendRow } from '@labre/std';
 import type { RoleId } from '@labre/std/gfx';
 
 import {
@@ -20,17 +12,18 @@ import {
 } from './consts.js';
 import { UML_EDGE_STYLE, type UmlEdgeRole } from './edge-styles.js';
 import { umlNodeProps } from './presets.js';
-import { UML_ROLE, UML_ROLE_OF_KIND, UML_ROLES } from './roles.js';
+import { UML_ROLE, UML_ROLE_OF_KIND } from './roles.js';
 
 /**
- * What the UML diagram frame's automatic legend can say — a TABLE, and nothing
- * else: the scan, the placement and the box are `createAutoLegend`'s job, shared
- * with the C4 board and the three DDD boards.
+ * What the UML diagram frame's automatic legend can say — not a table, but the
+ * ROW each of the toolbox's own commands subscribes (`docs/adr/0026`).
+ * `commands.ts` calls {@link umlLegendEntry} once per entry and the surface
+ * block's engine does the rest: the scan, the order, the sections, the
+ * placement and the box.
  *
- * Every row's WORDING is derived from the role vocabulary's own `labelFallback`
- * ({@link roleLabel}) rather than restated here, so renaming a role renames its
- * legend row — which is what keeps a legend a description of the board rather
- * than a second opinion about it.
+ * Every row's WORDING is the role vocabulary's own and is nowhere in here, so
+ * renaming a role renames its legend row — which is what keeps a legend a
+ * description of the board rather than a second opinion about it.
  *
  * ## A monochrome legend, and what carries the meaning instead
  *
@@ -72,7 +65,8 @@ import { UML_ROLE, UML_ROLE_OF_KIND, UML_ROLES } from './roles.js';
  * A role. The legend is drawn ON the frame it documents and the scan is by role
  * (`rolesInBound`), so a swatch stamped with one would list ITSELF the next time
  * a legend was generated — a class row conjured by the class row before it.
- * {@link nodeRow} strips it, deliberately and in one place.
+ * {@link nodeRow} strips it, deliberately and in one place, and the drawing side
+ * strips it again for anything that slipped through.
  *
  * ## `exact` on the association and on the node, and nowhere else
  *
@@ -93,10 +87,15 @@ import { UML_ROLE, UML_ROLE_OF_KIND, UML_ROLES } from './roles.js';
  * `uml:message` are ancestors nothing is ever drawn as, and a "Classifier" or a
  * "Message" row would name a shape that exists only in the vocabulary.
  *
- * ## The frame gets no row either
+ * ## What subscribes nothing, and why
  *
- * `uml:diagram` is the sheet the legend is drawn ON. Listing it would be listing
- * the paper — the same call the C4 board's legend makes about itself.
+ * `uml.addDiagram` — `uml:diagram` is the sheet the legend is drawn ON, and
+ * listing it would be listing the paper. It declares the BOX instead
+ * (`CommandDescriptor.legendBox`).
+ *
+ * `uml.addInteractionUse` — it draws the very same combined fragment with `ref`
+ * in its tag (§17.7.4) and therefore stamps `uml:fragment`, which the fragment's
+ * own row already covers. A second row would name one frame twice.
  */
 
 /* ── The three kinds of row ────────────────────────────────────────────── */
@@ -109,7 +108,7 @@ import { UML_ROLE, UML_ROLE_OF_KIND, UML_ROLES } from './roles.js';
  * the swatch column — and the ROLE must not be on a swatch at all, or the
  * legend starts documenting itself (see the note above).
  */
-function nodeRow(kind: UmlNodeKind): LegendRow {
+function nodeRow(kind: UmlNodeKind): CommandLegendRow {
   const {
     role: _role,
     xywh: _xywh,
@@ -121,22 +120,12 @@ function nodeRow(kind: UmlNodeKind): LegendRow {
   return {
     swatch: 'glyph',
     // Read by nothing for a glyph row — the element carries its own fill and
-    // stroke — and written all the same, because `LegendRow` asks for a colour
-    // and a row that lied about which one it uses would be worse than one that
-    // repeats the paper.
+    // stroke — and written all the same, because `CommandLegendRow` asks for a
+    // colour and a row that lied about which one it uses would be worse than
+    // one that repeats the paper.
     color: UML_CARD,
-    label: roleLabel(UML_ROLES, UML_ROLE_OF_KIND[kind]),
     props,
     aspect: box.h > 0 ? box.w / box.h : 1,
-  };
-}
-
-/** One element entry, with the role the vocabulary itself binds to that kind. */
-function nodeEntry(kind: UmlNodeKind, exact = false): AutoLegendEntry {
-  return {
-    role: UML_ROLE_OF_KIND[kind],
-    row: nodeRow(kind),
-    ...(exact ? { exact } : {}),
   };
 }
 
@@ -148,22 +137,13 @@ function nodeEntry(kind: UmlNodeKind, exact = false): AutoLegendEntry {
  * read without a renderer, and it is DERIVED from the same table rather than
  * restated, so the two can never disagree.
  */
-function edgeRow(role: UmlEdgeRole): LegendRow {
+function edgeRow(role: UmlEdgeRole): CommandLegendRow {
   const style = UML_EDGE_STYLE[role];
   return {
     swatch: 'edge',
     color: UML_INK,
-    label: roleLabel(UML_ROLES, UML_ROLE[role]),
     dashed: style.strokeStyle === StrokeStyle.Dash,
     props: { ...style },
-  };
-}
-
-function edgeEntry(role: UmlEdgeRole, exact = false): AutoLegendEntry {
-  return {
-    role: UML_ROLE[role],
-    row: edgeRow(role),
-    ...(exact ? { exact } : {}),
   };
 }
 
@@ -175,11 +155,10 @@ function edgeEntry(role: UmlEdgeRole, exact = false): AutoLegendEntry {
  * the swatch is an OUTLINE and never a filled chip, which is the same statement
  * the `line` swatch used to make and a better picture of it.
  */
-function frameRow(role: RoleId, radius = 0): LegendRow {
+function frameRow(radius: number): CommandLegendRow {
   return {
     swatch: 'glyph',
     color: UML_FRAME_INK,
-    label: roleLabel(UML_ROLES, role),
     props: {
       type: 'shape',
       shapeType: 'rect',
@@ -196,96 +175,23 @@ function frameRow(role: RoleId, radius = 0): LegendRow {
   };
 }
 
-/* ── The table ─────────────────────────────────────────────────────────── */
-
-/**
- * Every node kind that gets a row, in the order the pack grew.
- *
- * The list is the ELEMENTS section, and it is written as kinds rather than as
- * roles because a kind is what a picture needs: `UML_ROLE_OF_KIND` binds each to
- * the role the scan matches on, so the two halves cannot drift.
- *
- *  - phase 1, the class and use case families;
- *  - phase 2, the structural artefacts (§11.6.4, §11.3.4, §10.4.4), the
- *    deployment targets (§19.3.4, §19.4.4), the activity vocabulary (§15.3.4,
- *    §15.4.4, §16.3.4) and the state machine's (§14.2.4);
- *  - phase 3, the three marks a sequence diagram is drawn out of.
- */
-const ELEMENT_KINDS: readonly UmlNodeKind[] = [
-  'class',
-  'interface',
-  'enumeration',
-  'object',
-  'package',
-  'note',
-  'actor',
-  'use-case',
-  'component',
-  'port',
-  'provided-interface',
-  'required-interface',
-  'artifact',
-  'node',
-  'device',
-  'execution-environment',
-  'action',
-  'initial',
-  'activity-final',
-  'flow-final',
-  'decision',
-  'fork',
-  'object-node',
-  'send-signal',
-  'accept-event',
-  'time-event',
-  'state',
-  'final-state',
-  'choice',
-  'junction',
-  'shallow-history',
-  'deep-history',
-  'entry-point',
-  'exit-point',
-  'terminate',
-  'lifeline',
-  'execution',
-  'destruction',
-];
-
-/** The relations, in the order `edge-styles.ts` grew them. */
-const RELATION_ROLES: readonly UmlEdgeRole[] = [
-  'association',
-  'aggregation',
-  'composition',
-  'generalization',
-  'realization',
-  'dependency',
-  'anchor',
-  'include',
-  'extend',
-  'deploy',
-  'manifest',
-  'communication-path',
-  'control-flow',
-  'object-flow',
-  'transition',
-  'message-sync',
-  'message-async',
-  'message-reply',
-  'message-create',
-  'message-delete',
-];
+/* ── The three sections ────────────────────────────────────────────────── */
 
 /**
  * This legend's own three section titles.
  *
- * Declared here beside the sections they head, and keyed per FRAMEWORK rather
- * than shared with C4's identical three: a framework never imports another's
- * wording (`translation-service/README.md`), so "Elements" is UML's own word
- * about UML's own vocabulary, and a host is free to word it differently on a
- * class diagram than on a context diagram. The box's own title is the one
- * exception — every board that has a legend says the same generic "Legend",
- * and reuses `BOARD_LEGEND_TITLE` for it.
+ * Declared here beside the rows they head, and keyed per FRAMEWORK rather than
+ * shared with C4's identical three: a framework never imports another's wording
+ * (`translation-service/README.md`), so "Elements" is UML's own word about UML's
+ * own vocabulary, and a host is free to word it differently on a class diagram
+ * than on a context diagram.
+ *
+ * They are DECLARED rather than left to the commands' `category`, which since
+ * 2026-09-16 files the catalogue by DIAGRAM KIND: nine headers from "Class
+ * diagram" to "Sequence diagram" would tell a reader which toolbox drawer a
+ * gesture lives in, not whether the thing on the sheet is a shape, a frame or a
+ * line. The box's own title is the one exception — every board that has a legend
+ * says the same generic "Legend", and reuses `BOARD_LEGEND_TITLE` for it.
  */
 const SECTION_ELEMENTS: ChromeWording = [
   'com.labre.uml.legend.section.elements',
@@ -307,43 +213,70 @@ export const UML_LEGEND_SECTION_WORDINGS: readonly ChromeWording[] = [
   SECTION_RELATIONS,
 ];
 
-export const UML_AUTO_LEGEND: AutoLegendSpec = {
-  // The shared auto-legend box's own generic chrome, resolved through the same
-  // key every board that has one reuses — see `AutoLegendSpec.title`.
-  title: BOARD_LEGEND_TITLE[1],
-  titleKey: BOARD_LEGEND_TITLE[0],
+/**
+ * The four frames that get a row, with the corner §14.2.4 draws them with: a
+ * composite state is rounded like the state it is one of, and it is the one
+ * frame whose outline is not square.
+ *
+ * `interaction-use` is deliberately absent — see the header.
+ */
+const FRAME_ROWS: Readonly<Record<string, { role: RoleId; radius: number }>> = {
+  subject: { role: UML_ROLE.subject, radius: 0 },
+  partition: { role: UML_ROLE.partition, radius: 0 },
+  region: { role: UML_ROLE.region, radius: 4 },
+  fragment: { role: UML_ROLE.fragment, radius: 0 },
+};
+
+/**
+ * The legend row a toolbox entry subscribes, read off the `element` value it
+ * already declares for telemetry (`node:class`, `connector:association`,
+ * `boundary:region`) — so the row and the gesture cannot drift, and a kind
+ * added to the pack gets its row on the day its command lands.
+ *
+ * `undefined` for an entry that owes none: the frame itself, and the
+ * interaction use whose role another row already covers.
+ *
+ * The box's layout is the board command's to declare, not this function's: see
+ * {@link UML_LEGEND_BOX}.
+ */
+export function umlLegendEntry(
+  element: string
+): CommandLegendEntry | undefined {
+  const [type, name] = element.split(':');
+  if (type === 'node' && name in UML_ROLE_OF_KIND) {
+    const kind = name as UmlNodeKind;
+    return {
+      role: UML_ROLE_OF_KIND[kind],
+      row: nodeRow(kind),
+      ...(kind === 'node' ? { exact: true } : {}),
+      section: SECTION_ELEMENTS,
+    };
+  }
+  if (type === 'connector' && name in UML_EDGE_STYLE) {
+    const role = name as UmlEdgeRole;
+    return {
+      role: UML_ROLE[role],
+      row: edgeRow(role),
+      ...(role === 'association' ? { exact: true } : {}),
+      section: SECTION_RELATIONS,
+    };
+  }
+  const frame = type === 'boundary' ? FRAME_ROWS[name] : undefined;
+  return frame
+    ? { role: frame.role, row: frameRow(frame.radius), section: SECTION_FRAMES }
+    : undefined;
+}
+
+/**
+ * The BOX, declared once on the command that puts the frame down.
+ *
+ * A picture needs room a colour chip does not: 34 × 24 is enough for a class to
+ * show its two compartment rules and for an actor to show a head, arms and legs,
+ * and 34 is the pitch that leaves them breathing space between rows.
+ */
+export const UML_LEGEND_BOX = {
   width: 300,
-  // A picture needs room a colour chip does not: 34 × 24 is enough for a class
-  // to show its two compartment rules and for an actor to show a head, arms and
-  // legs, and 34 is the pitch that leaves them breathing space between rows.
   rowHeight: 34,
   swatchWidth: 34,
   swatchHeight: 24,
-  roles: UML_ROLES,
-  sections: [
-    {
-      title: SECTION_ELEMENTS[1],
-      titleKey: SECTION_ELEMENTS[0],
-      entries: ELEMENT_KINDS.map(kind => nodeEntry(kind, kind === 'node')),
-    },
-    {
-      title: SECTION_FRAMES[1],
-      titleKey: SECTION_FRAMES[0],
-      entries: [
-        { role: UML_ROLE.subject, row: frameRow(UML_ROLE.subject) },
-        { role: UML_ROLE.partition, row: frameRow(UML_ROLE.partition) },
-        // §14.2.4 draws a composite state with rounded corners, like the state
-        // it is one of — the one frame whose outline is not square.
-        { role: UML_ROLE.region, row: frameRow(UML_ROLE.region, 4) },
-        { role: UML_ROLE.fragment, row: frameRow(UML_ROLE.fragment) },
-      ],
-    },
-    {
-      title: SECTION_RELATIONS[1],
-      titleKey: SECTION_RELATIONS[0],
-      entries: RELATION_ROLES.map(role =>
-        edgeEntry(role, role === 'association')
-      ),
-    },
-  ],
-};
+} as const;

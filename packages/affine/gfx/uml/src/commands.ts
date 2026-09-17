@@ -18,6 +18,7 @@ import {
   importUmlXmiFile,
   umlDiagramsForExport,
 } from './actions.js';
+import { umlLegendEntry, UML_LEGEND_BOX } from './legend.js';
 import {
   umlExportPlantumlIcon,
   umlExportXmiIcon,
@@ -912,6 +913,15 @@ const SPECS: Spec[] = [
  */
 const UML_INTERCHANGE_ORDER = SPECS.length;
 
+/**
+ * `{ legend }` when the entry owes a row, `{}` when it does not — the frame and
+ * the interaction use are the two that do not. See `legend.ts`.
+ */
+function legendOf(spec: Spec) {
+  const entry = umlLegendEntry(spec.element);
+  return entry ? { legend: entry } : {};
+}
+
 const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, index) => ({
   id: `uml.${spec.id}`,
   owner: 'uml',
@@ -935,6 +945,11 @@ const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, index) => ({
   availability: 'always',
   run: spec.run,
   telemetry: { framework: 'uml', element: spec.element, board: spec.board },
+  // The legend row this entry's artefact puts on the frame it is drawn on —
+  // derived from the very `element` value above, so the sixty-two rows of the
+  // old table are sixty-two commands that cannot fall out of step with it. The
+  // frame declares the BOX instead of a row: a legend must not list the paper.
+  ...(spec.board ? { legendBox: UML_LEGEND_BOX } : legendOf(spec)),
 }));
 
 /**

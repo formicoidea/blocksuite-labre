@@ -8,6 +8,7 @@ import {
   type CommandOwner,
 } from '@labre/std';
 import {
+  GfxControllerIdentifier,
   RoleVocabularyIdentifier,
   roleIsA,
   type RoleDefs,
@@ -54,11 +55,7 @@ const commands = getCommands();
  * Frameworks whose legend is still a table. Emptied one tranche at a time; the
  * constant itself goes with the last one.
  */
-const PENDING_OWNERS: readonly CommandOwner[] = [
-  'edgy',
-  'c4',
-  'uml',
-];
+const PENDING_OWNERS: readonly CommandOwner[] = [];
 
 /**
  * Frameworks with no legend at all, permanently. Estuarine draws a landscape
@@ -84,6 +81,14 @@ const EXEMPT_ROLES: Readonly<Record<string, string>> = {
   'c4:title': 'a third of a label',
   'c4:type-line': 'a third of a label',
   'c4:description': 'a third of a label',
+  // The same shape in UML: a compartment of a classifier's own label, not a
+  // thing on the sheet (`kind: 'text'`, `gfx/uml/src/roles.ts`). A "Name" row
+  // would be the legend describing the legend's own medium.
+  'uml:name': 'a tier of a label',
+  'uml:attributes': 'a tier of a label',
+  'uml:operations': 'a tier of a label',
+  'uml:label': 'a tier of a label',
+  'uml:lifeline-ident': 'a tier of a label',
   // The facets diagram is the frame the EDGY elements are drawn inside.
   'edgy:facets': 'a frame, like a board',
   // The square a pipeline's connectors land on — the body's own plumbing, and
@@ -158,24 +163,27 @@ function entriesOf(
 }
 
 /**
- * The commands that OWE a row: an artefact or a tool, and not the one that puts
+ * A command that OWES a row: an artefact or a tool, and not the one that puts
  * the board itself down — a legend is drawn ON the board, and listing it would
  * be listing the paper.
  */
-function subjectsOf(owner: CommandOwner): AnyCommandDescriptor[] {
-  return commands.filter(
-    command =>
-      command.owner === owner &&
-      (command.kind === 'artefact' || command.kind === 'tool') &&
-      command.telemetry?.board !== true
+function owesARow(command: AnyCommandDescriptor): boolean {
+  return (
+    (command.kind === 'artefact' || command.kind === 'tool') &&
+    command.telemetry?.board !== true
   );
+}
+
+const ownedBy = (owner: CommandOwner): AnyCommandDescriptor[] =>
+  commands.filter(command => command.owner === owner);
+
+function subjectsOf(owner: CommandOwner): AnyCommandDescriptor[] {
+  return ownedBy(owner).filter(owesARow);
 }
 
 /** Every row the owner's commands subscribe. */
 function rowsOf(owner: CommandOwner): CommandLegendEntry[] {
-  return commands
-    .filter(command => command.owner === owner)
-    .flatMap(command => [...entriesOf(command)]);
+  return ownedBy(owner).flatMap(command => [...entriesOf(command)]);
 }
 
 /** A role is covered when a row names it, or a family it belongs to. */
@@ -183,11 +191,18 @@ function covers(entry: CommandLegendEntry, role: string): boolean {
   return entry.exact ? entry.role === role : roleIsA(role, entry.role, ROLES);
 }
 
-/** The roles an owner stamps that no row covers and no exemption names. */
-function uncoveredRolesOf(owner: CommandOwner): string[] {
-  const rows = rowsOf(owner);
+/**
+ * The roles a SET of commands stamps that none of their rows covers and no
+ * exemption names.
+ *
+ * Takes the commands rather than an owner so the control below can run the very
+ * same check against synthetic ones — which is what makes it a control and not
+ * a second implementation.
+ */
+function uncoveredRolesIn(owned: readonly AnyCommandDescriptor[]): string[] {
+  const rows = owned.flatMap(command => [...entriesOf(command)]);
   const uncovered = new Set<string>();
-  for (const command of subjectsOf(owner)) {
+  for (const command of owned.filter(owesARow)) {
     for (const role of rolesStampedBy(command)) {
       if (role in EXEMPT_ROLES) continue;
       if (rows.some(entry => covers(entry, role))) continue;
@@ -196,6 +211,9 @@ function uncoveredRolesOf(owner: CommandOwner): string[] {
   }
   return [...uncovered].sort();
 }
+
+const uncoveredRolesOf = (owner: CommandOwner): string[] =>
+  uncoveredRolesIn(ownedBy(owner));
 
 const OWED = FRAMEWORK_IDS.filter(
   id => !(id in NO_LEGEND) && !PENDING_OWNERS.includes(id)
@@ -244,40 +262,90 @@ describe('every artefact a framework draws is in its legend', () => {
  * The CONTROL — without it the suite above is green because it checks nothing.
  *
  * It exercises the exact mechanism the real check runs on (`recordAction` plus
- * the armed tool's options) against a framework that is still pending, and
- * asserts both halves: that roles are actually found, and that they are
- * actually uncovered. So the day somebody deletes an owner from
- * {@link PENDING_OWNERS} without subscribing its commands, the check fails —
- * which is the only property that makes the list safe to keep.
+ * the armed tool's options) and asserts both halves: that roles are actually
+ * found, and that an unsubscribed one is actually reported. So the day somebody
+ * deletes an owner from {@link PENDING_OWNERS} without subscribing its commands,
+ * the check fails — which is the only property that makes the list safe to keep.
+ *
+ * It runs on SYNTHETIC commands rather than on whichever framework happens to be
+ * unmigrated. A control pinned to a real one is a control with an expiry date:
+ * it has to be rewritten by every tranche that migrates its subject, and the
+ * last tranche — the one that deletes {@link PENDING_OWNERS} — would have had to
+ * delete the control watching it too, exactly when the check finally applies to
+ * everything.
  */
 describe('the coverage check is not vacuous', () => {
-  const owner: CommandOwner = 'c4';
+  const ROLE = 'control:artefact';
+  const TOOL_ROLE = 'control:relation';
 
-  test('the recording finds the roles a framework stamps on what it creates', () => {
-    const stamped = new Set(
-      subjectsOf(owner).flatMap(command => [...rolesStampedBy(command)])
-    );
-    // The stencil's own nine node roles are among them; naming three is enough
-    // to prove the recording ran the bodies rather than silently swallowing them.
-    expect(stamped).toContain('c4:person');
-    expect(stamped).toContain('c4:container');
-    expect(stamped.size).toBeGreaterThan(5);
+  /** A command in the shape the real ones have, and nothing more. */
+  const command = (
+    id: string,
+    run: AnyCommandDescriptor['run'],
+    legend?: CommandLegendEntry
+  ): AnyCommandDescriptor => ({
+    id,
+    // Any real owner: nothing below reads it, because the check is handed the
+    // list of commands rather than asked to filter the registry by owner.
+    owner: 'core',
+    kind: 'artefact',
+    labelKey: `com.labre.commands.${id}`,
+    surfaces: ['catalogue'],
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+    run,
+    ...(legend ? { legend } : {}),
+  });
+
+  /** Draws one element carrying a role, the way every creation command does. */
+  const draws = command('control.add', std => {
+    std.get(GfxControllerIdentifier).surface!.addElement({
+      type: 'shape',
+      xywh: '[0,0,10,10]',
+      role: ROLE,
+    } as never);
+  });
+
+  /** Arms a typed connector and creates nothing at all, the way a tool does. */
+  const armsTool = command('control.relationTool', std =>
+    std
+      .get(GfxControllerIdentifier)
+      .tool.setTool('connector' as never, { role: TOOL_ROLE } as never)
+  );
+
+  test('the recording finds the role a command stamps on what it creates', () => {
+    expect([...rolesStampedBy(draws)]).toEqual([ROLE]);
   });
 
   test('the ARMED tool’s role is found too, where nothing is created', () => {
-    const tool = commands.find(c => c.id === 'c4.relationshipTool');
-    expect(tool, 'c4.relationshipTool').toBeDefined();
-    expect(tool!.kind).toBe('tool');
-    // It creates no element at all: without reading the tool options this
+    // A tool creates no element at all: without reading the tool options such a
     // command would look like it stamps nothing, and the check would wave
     // through a framework with no row for its relationships.
-    expect([...rolesStampedBy(tool!)]).toEqual(['c4:relationship']);
+    expect([...rolesStampedBy(armsTool)]).toEqual([TOOL_ROLE]);
   });
 
-  test('a pending framework really is uncovered, so removing it would fail', () => {
-    expect(PENDING_OWNERS).toContain(owner);
-    expect(rowsOf(owner), 'c4 subscribes nothing yet').toEqual([]);
-    expect(uncoveredRolesOf(owner).length).toBeGreaterThan(0);
+  test('an unsubscribed role is reported, so removing an owner early fails', () => {
+    expect(uncoveredRolesIn([draws, armsTool])).toEqual([ROLE, TOOL_ROLE]);
+  });
+
+  test('…and a subscribed one is not, so the check can ever pass', () => {
+    const subscribed = command('control.add', draws.run, {
+      role: ROLE,
+      row: { swatch: 'square', color: '#000000' },
+    });
+    expect(uncoveredRolesIn([subscribed])).toEqual([]);
+  });
+
+  test('the real registry is reachable by the recording at all', () => {
+    // The synthetic halves above prove the MECHANISM; this proves the mechanism
+    // meets the actual commands, so a registry that stopped being runnable
+    // against the fake could not leave the suite silently green.
+    const stamped = new Set(
+      FRAMEWORK_IDS.flatMap(owner =>
+        subjectsOf(owner).flatMap(cmd => [...rolesStampedBy(cmd)])
+      )
+    );
+    expect(stamped.size).toBeGreaterThan(50);
   });
 
   test('every exemption names a role some command really stamps', () => {
@@ -285,7 +353,7 @@ describe('the coverage check is not vacuous', () => {
     // rule — and it would hide the next role that took the same name.
     const stamped = new Set(
       FRAMEWORK_IDS.flatMap(owner =>
-        subjectsOf(owner).flatMap(command => [...rolesStampedBy(command)])
+        subjectsOf(owner).flatMap(cmd => [...rolesStampedBy(cmd)])
       )
     );
     expect(

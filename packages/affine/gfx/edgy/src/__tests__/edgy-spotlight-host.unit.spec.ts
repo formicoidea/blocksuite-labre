@@ -7,7 +7,12 @@ import { Bound } from '@labre/global/gfx';
 import type { ExtensionType } from '@labre/store';
 import { describe, expect, it } from 'vitest';
 
-import { edgyBoardToolbarConfig, edgyToolbarConfig } from '../toolbar/config';
+import {
+  edgyBoardToolbarConfig,
+  edgyBoardToolingToolbarConfig,
+  edgyToolbarConfig,
+  edgyToolingToolbarConfig,
+} from '../toolbar/config';
 import { EdgyRenderViewExtension } from '../view';
 
 /**
@@ -83,15 +88,30 @@ describe('the two EDGY toolbars after the split', () => {
     );
   });
 
-  it('the facets Venn keeps its appearance toggles and its legend', () => {
+  it('the facets Venn keeps its appearance toggles', () => {
     expect(ids(edgyToolbarConfig)).toEqual([
       'a.toggle-resize',
       'b.toggle-labels',
-      'c.legend',
     ]);
   });
 
   it('the board keeps its spotlight toggle', () => {
     expect(ids(edgyBoardToolbarConfig)).toContain('b.toggle-spotlight');
+  });
+
+  it('puts the legend on the flag-gated row of BOTH frames', () => {
+    // The always-on modules above carry APPEARANCE only. Generating a legend is
+    // tooling — the framework telling you what its notation means — so it sits
+    // in the `custom:` module a flag may take away (`docs/adr/0026`), merged
+    // with the Validation dropdown because a flavour carries exactly one.
+    for (const config of [
+      edgyToolingToolbarConfig,
+      edgyBoardToolingToolbarConfig,
+    ]) {
+      expect(ids(config)[0]).toBe('c.legend');
+      expect(ids(config)).toContain('z.validation');
+    }
+    expect(ids(edgyToolbarConfig)).not.toContain('c.legend');
+    expect(ids(edgyBoardToolbarConfig)).not.toContain('c.legend');
   });
 });

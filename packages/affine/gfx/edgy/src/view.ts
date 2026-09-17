@@ -4,15 +4,13 @@ import {
   SpotlightHostExtension,
   ValidationProfileExtension,
   ValidationRuleExtension,
-  validationToolbarConfig,
 } from '@labre/affine-block-surface';
-import { ToolbarModuleExtension } from '@labre/affine-shared/services';
 import {
   type ViewExtensionContext,
   ViewExtensionProvider,
 } from '@labre/affine-ext-loader';
 import { TemplateCategoryExtension } from '@labre/affine-gfx-template';
-import { BlockFlavourIdentifier, CommandExtension } from '@labre/std';
+import { CommandExtension } from '@labre/std';
 import { RoleVocabularyExtension } from '@labre/std/gfx';
 
 import { edgyCommandIcons, edgyCommands } from './commands';
@@ -32,7 +30,9 @@ import { EdgyNodeRendererExtension } from './node/node-renderer';
 import { EdgyNodeView } from './node/node-view';
 import {
   edgyBoardToolbarExtension,
+  edgyBoardToolingToolbarExtension,
   edgyToolbarExtension,
+  edgyToolingToolbarExtension,
 } from './toolbar/config';
 import { edgyNodeToolbarExtension } from './toolbar/node-config';
 import { edgySeniorTool } from './toolbar/senior-tool';
@@ -101,24 +101,17 @@ export class EdgyViewExtension extends ViewExtensionProvider {
       // including the two the PO deliberately kept out of `rules.ts` on
       // 26/08/2026 (see `./nudges.ts`).
       context.register(QualityNudgeExtension(EDGY_NUDGES));
-      // The Validation dropdown on a selected background's contextual toolbar.
-      // A SECOND module on the same element, through the `custom:` flavour slot
-      // (the pattern `gfx/wardley` uses on its map): the rendering toolbars are
-      // registered always-on because a stored board must keep its toggles,
-      // while choosing how hard to check it is tooling and belongs here. The
-      // config itself names no framework — it reads roles and profiles — so
-      // BOTH EDGY frames register the very same object.
-      for (const flavour of [
-        'custom:affine:surface:edgy',
-        'custom:affine:surface:edgyBoard',
-      ]) {
-        context.register(
-          ToolbarModuleExtension({
-            id: BlockFlavourIdentifier(flavour),
-            config: validationToolbarConfig,
-          })
-        );
-      }
+      // The LEGEND button and the Validation dropdown on a selected
+      // background's contextual toolbar. A SECOND module on the same element,
+      // through the `custom:` flavour slot (the pattern `gfx/wardley` uses on
+      // its map): the rendering toolbars are registered always-on because a
+      // stored board must keep its appearance toggles, while asking the
+      // framework what its notation means, and choosing how hard to check the
+      // board, are both tooling and belong here (`docs/adr/0026`). One module
+      // per frame and not one shared object, because the button has to know
+      // WHICH background it is documenting.
+      context.register(edgyToolingToolbarExtension);
+      context.register(edgyBoardToolingToolbarExtension);
       // The resolver that turns a hand-drawn `edgy:relation` into the verb the
       // metamodel gives its two ends. It belongs HERE and not in the always-on
       // extension above, and the test is the one `docs/adr/0009` asks: does it

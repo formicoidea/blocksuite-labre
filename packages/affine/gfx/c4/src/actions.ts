@@ -1,6 +1,5 @@
-import { DefaultTool } from '@labre/affine-block-surface';
+import { createBoardLegend, DefaultTool } from '@labre/affine-block-surface';
 import { ConnectorTool } from '@labre/affine-gfx-connector';
-import { createAutoLegend } from '@labre/affine-gfx-ddd-shared';
 import {
   C4BoardElementModel,
   type C4BoundaryVariant,
@@ -46,7 +45,6 @@ import {
 } from './consts';
 import type { C4ExportBoard } from './export';
 import { C4_MERMAID_EXPORT, c4BoardFrom, c4SafeFilename } from './interchange';
-import { C4_AUTO_LEGEND } from './legend';
 import { c4NodeProps } from './presets';
 import { C4_BOUNDARY_ROLE, C4_ROLE, c4BoardRoleKey } from './roles';
 import { c4TypePlaceholder } from './type-line';
@@ -394,7 +392,8 @@ export function c4BoardsSelected(std: BlockStdScope): C4BoardElementModel[] {
  * The FIRST selected board and no other: a legend is placed relative to one
  * background, and two of them would put two boxes on top of whatever sits in
  * that corner. Everything about the gesture — the scan, the placement, the box —
- * is `createAutoLegend`'s; C4 contributes {@link C4_AUTO_LEGEND}, a table.
+ * is `createBoardLegend`'s; C4 contributes nothing but the rows its own commands
+ * subscribe (`commands.ts`, `docs/adr/0026`).
  *
  * The one action in this file with no command behind it: the legend is reached
  * from the selected board's contextual toolbar and from nowhere else (PO
@@ -405,7 +404,7 @@ export function c4BoardsSelected(std: BlockStdScope): C4BoardElementModel[] {
 export function createC4Legend(std: BlockStdScope): void {
   const board = c4BoardsSelected(std)[0];
   if (!board) return;
-  createAutoLegend(std, board, C4_AUTO_LEGEND);
+  createBoardLegend(std, board, 'c4');
 }
 
 /* ── Export (mermaid C4) ───────────────────────────────────────────────── */

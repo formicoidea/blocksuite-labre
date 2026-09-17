@@ -4,15 +4,12 @@ import {
   PointStyle,
   StrokeStyle,
 } from '@labre/affine-model';
-import { autoLegendSections } from '@labre/affine-gfx-ddd-shared';
-import {
-  TranslationProvider,
-  translateKey,
-} from '@labre/affine-shared/services';
+import { legendFromCommands } from '@labre/affine-block-surface';
 import { groupCommandsByCategory } from '@labre/affine-widget-edgeless-toolbar';
 import {
   type BlockStdScope,
   type CommandDescriptor,
+  CommandDescriptorIdentifier,
   SENIOR_MENU_CAP,
   SENIOR_MENU_RANKED_SLOTS,
   selectSeniorMenuCommands,
@@ -23,6 +20,7 @@ import { describe, expect, it } from 'vitest';
 import { c4CommandIcons, c4Commands } from '../commands';
 import {
   BOUNDARY_LABEL,
+  BOUNDARY_STROKE,
   NODE_LABEL,
   NODE_PALETTE,
   NODE_SIZE,
@@ -30,7 +28,6 @@ import {
   RELATIONSHIP_STROKE,
   RELATIONSHIP_WIDTH,
 } from '../consts';
-import { C4_AUTO_LEGEND } from '../legend';
 import { C4_ROLE, C4_ROLE_OF_KIND, C4_ROLES } from '../roles';
 import { c4BoardToolbarConfig, c4LegendToolbarConfig } from '../toolbar/config';
 
@@ -495,61 +492,111 @@ describe('what a c4 command actually creates', () => {
 });
 
 describe('the c4 automatic legend', () => {
+  /**
+   * Every row the toolbox SUBSCRIBES, in the order its commands declare them.
+   * There is no second table to read: `docs/adr/0026` made the legend a
+   * projection of the catalogue, so this IS the catalogue.
+   */
+  const entries = c4Commands.flatMap(command =>
+    command.legend
+      ? Array.isArray(command.legend)
+        ? [...command.legend]
+        : [command.legend]
+      : []
+  );
+
+  /**
+   * A std with the toolbox registered and NO host catalogue, so
+   * `legendFromCommands` reads exactly the commands the editor registers and
+   * every wording falls through to its English fallback.
+   */
+  const LEGEND_STD = {
+    provider: {
+      getAll: (identifier: unknown) =>
+        new Map<string, unknown>(
+          identifier === (CommandDescriptorIdentifier as unknown)
+            ? c4Commands.map((command, index) => [`c-${index}`, command])
+            : [['c4', C4_ROLES]]
+        ),
+    },
+    getOptional: () => undefined,
+  } as unknown as BlockStdScope;
+
+  const legendOf = (present: string[]) =>
+    legendFromCommands(LEGEND_STD, 'c4', new Set(present));
+
   it('documents the five element roles, the frame and the relation', () => {
-    expect(C4_AUTO_LEGEND.sections.map(section => section.title)).toEqual([
-      'Elements',
-      'Frames',
-      'Relations',
-    ]);
-    const roles = C4_AUTO_LEGEND.sections.flatMap(section =>
-      section.entries.map(entry => entry.role)
-    );
-    expect(roles).toEqual([
+    expect(entries.map(entry => entry.role)).toEqual([
       C4_ROLE.person,
       C4_ROLE.system,
       C4_ROLE.container,
-      C4_ROLE.database,
+      // Component before Database — the command order, and the PO accepted it
+      // on 17/09/2026 rather than re-order a sub-menu to please a key. One
+      // `order` feeds both surfaces (`getCommandsForSurface`), so the legend
+      // could not have kept the old reading without moving a button a user
+      // reaches for.
       C4_ROLE.component,
-      C4_ROLE.boundary,
+      C4_ROLE.database,
       C4_ROLE.relationship,
+      C4_ROLE.boundary,
     ]);
     // The board itself is never a legend row: a legend of what is drawn ON the
-    // sheet must not list the sheet.
-    expect(roles).not.toContain(C4_ROLE.board);
+    // sheet must not list the sheet. It declares the BOX instead.
+    expect(entries.map(entry => entry.role)).not.toContain(C4_ROLE.board);
+    const board = c4Commands.find(command => command.id === 'c4.addBoard');
+    expect(board?.legend).toBeUndefined();
+    expect(board?.legendBox).toEqual({ width: 290 });
+    // …and no title of its own: every board that has a legend says "Legend",
+    // through the one `BOARD_LEGEND_TITLE` key the platform falls back to.
+    expect(board?.legendBox?.titleWording).toBeUndefined();
   });
 
-  it('carries a titleKey for the box title, translated with a host and unchanged without one', () => {
-    expect(C4_AUTO_LEGEND.title).toBe('Legend');
-    expect(C4_AUTO_LEGEND.titleKey).toBe('com.labre.board.legend.title');
-    const NO_HOST_STD = {
-      getOptional: () => undefined,
-    } as unknown as BlockStdScope;
+  it('files its rows under the three section keys already shipped', () => {
+    // A command's `category` is where a GESTURE sits in the toolbox, and a
+    // boundary sits under "Boundaries" there. The legend calls the same thing a
+    // "Frame", which is what the drawing is — so each row names its own
+    // section and no key already shipped to a host is orphaned.
+    expect(entries.map(entry => entry.section?.[0])).toEqual([
+      'com.labre.c4.legend.section.elements',
+      'com.labre.c4.legend.section.elements',
+      'com.labre.c4.legend.section.elements',
+      'com.labre.c4.legend.section.elements',
+      'com.labre.c4.legend.section.elements',
+      'com.labre.c4.legend.section.relations',
+      'com.labre.c4.legend.section.frames',
+    ]);
+    // Sections appear in the order their first row does, which is command
+    // order: the relationship tool is authored before the two boundaries, so
+    // Relations reads before Frames where the old table put it last.
     expect(
-      translateKey(NO_HOST_STD, C4_AUTO_LEGEND.titleKey!, C4_AUTO_LEGEND.title)
-    ).toBe('Legend');
-    const HOSTED_STD = {
-      getOptional: (id: unknown) =>
-        id === TranslationProvider
-          ? {
-              t: (key: string) =>
-                key === C4_AUTO_LEGEND.titleKey ? 'Légende' : undefined,
-            }
-          : undefined,
-    } as unknown as BlockStdScope;
-    expect(
-      translateKey(HOSTED_STD, C4_AUTO_LEGEND.titleKey!, C4_AUTO_LEGEND.title)
-    ).toBe('Légende');
+      legendOf([
+        C4_ROLE.person,
+        C4_ROLE.relationship,
+        C4_ROLE['system-boundary'],
+      ]).map(section => section.title)
+    ).toEqual(['Elements', 'Relations', 'Frames']);
   });
 
   it('asks for an exact match on the container, and only there', () => {
     // `c4:database` specialises `c4:container`, so an inclusive entry would put
     // a "Container" row on a board carrying nothing but cylinders — a row
     // naming a shape that is nowhere on the diagram.
-    const exact = C4_AUTO_LEGEND.sections
-      .flatMap(section => section.entries)
-      .filter(entry => entry.exact)
-      .map(entry => entry.role);
-    expect(exact).toEqual([C4_ROLE.container]);
+    expect(
+      entries.filter(entry => entry.exact).map(entry => entry.role)
+    ).toEqual([C4_ROLE.container]);
+    expect(
+      legendOf([C4_ROLE.database]).flatMap(section =>
+        section.rows.map(row => row.label)
+      )
+    ).toEqual(['Database']);
+    // The variants stamp `c4:container` LITERALLY, so that row still lights up
+    // for a board of mobile apps — which is the honest answer about what those
+    // boxes mean, and why none of the four subscribes a row of its own.
+    expect(
+      legendOf([C4_ROLE.container]).flatMap(section =>
+        section.rows.map(row => row.label)
+      )
+    ).toEqual(['Container']);
   });
 
   /**
@@ -557,20 +604,12 @@ describe('the c4 automatic legend', () => {
    * this is what proves it rather than assuming it.
    *
    * The entry is written on the PARENT role and asks for no `exact` match, so
-   * `autoLegendSections` reaches both children through `roleIsA`. Had the split
-   * needed a second and a third entry here, a board of container boundaries
-   * would have listed "Boundary" twice or not at all.
+   * `legendFromCommands` reaches both children through `roleIsA` — and
+   * `addContainerBoundary` subscribes nothing, so the row cannot be doubled.
    */
   it('lists the one Boundary row for a board drawn at either level', () => {
-    // No host catalogue: `translateKey` falls through to the fallback it is
-    // given, so the plain English wording is still what these rows show.
-    const NO_HOST_STD = {
-      getOptional: () => undefined,
-    } as unknown as BlockStdScope;
     const framesOf = (present: string[]) =>
-      autoLegendSections(new Set(present), C4_AUTO_LEGEND, NO_HOST_STD).find(
-        section => section.title === 'Frames'
-      );
+      legendOf(present).find(section => section.title === 'Frames');
     for (const role of [
       C4_ROLE.boundary,
       C4_ROLE['system-boundary'],
@@ -588,11 +627,21 @@ describe('the c4 automatic legend', () => {
     ).toHaveLength(1);
     // ...and a board with no boundary at all lists no Frames section.
     expect(framesOf([C4_ROLE.system])).toBeUndefined();
+    expect(
+      c4Commands.find(command => command.id === 'c4.addContainerBoundary')
+        ?.legend
+    ).toBeUndefined();
   });
 
   it('reads its wordings off the vocabulary rather than restating them', () => {
-    const rows = C4_AUTO_LEGEND.sections.flatMap(section =>
-      section.entries.map(entry => entry.row)
+    // No row carries a label at all: the engine resolves the ROLE's wording, so
+    // renaming a role renames its legend row.
+    for (const entry of entries) {
+      expect(entry, entry.role).not.toHaveProperty('labelWording');
+      expect(C4_ROLES[entry.role]?.labelFallback, entry.role).toBeTruthy();
+    }
+    const rows = legendOf(entries.map(entry => entry.role)).flatMap(
+      section => section.rows
     );
     for (const row of rows) expect(row.label).toBeTruthy();
     // The two frames of the notation are drawn, never filled: a boundary and a
@@ -600,5 +649,27 @@ describe('the c4 automatic legend', () => {
     const dashed = rows.filter(row => row.swatch === 'line');
     expect(dashed).toHaveLength(2);
     expect(dashed.every(row => row.dashed)).toBe(true);
+  });
+
+  it('swatches each element in the fill the pack paints it with', () => {
+    const colourOf = (role: string) =>
+      entries.find(entry => entry.role === role)?.row.color;
+    expect(colourOf(C4_ROLE.person)).toBe(NODE_PALETTE.person.fill);
+    expect(colourOf(C4_ROLE.system)).toBe(NODE_PALETTE.system.fill);
+    expect(colourOf(C4_ROLE.container)).toBe(NODE_PALETTE.container.fill);
+    expect(colourOf(C4_ROLE.component)).toBe(NODE_PALETTE.component.fill);
+    expect(colourOf(C4_ROLE.database)).toBe(NODE_PALETTE.database.fill);
+    expect(colourOf(C4_ROLE.boundary)).toBe(BOUNDARY_STROKE);
+    expect(colourOf(C4_ROLE.relationship)).toBe(RELATIONSHIP_STROKE);
+    // A swatch never carries the role of the artefact it pictures, or the
+    // legend would list itself the next time one was generated.
+    for (const entry of entries) {
+      expect(entry.row.props ?? {}, entry.role).not.toHaveProperty('role');
+    }
+  });
+
+  it('says nothing about a board nothing is recognised on', () => {
+    expect(legendOf([])).toEqual([]);
+    expect(legendOf(['wardley:component'])).toEqual([]);
   });
 });
