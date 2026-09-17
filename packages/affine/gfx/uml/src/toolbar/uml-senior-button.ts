@@ -15,6 +15,8 @@ import { umlToolbarIcon } from './icons.js';
 export class EdgelessUmlSeniorButton extends DddSeniorButtonBase {
   protected override menuTag = 'edgeless-uml-menu' as const;
 
+  protected override owner = 'uml' as const;
+
   protected override label = 'UML';
 
   protected override labelKey = 'com.labre.framework.uml';

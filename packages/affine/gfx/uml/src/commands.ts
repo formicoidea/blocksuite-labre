@@ -24,6 +24,7 @@ import {
   umlImportDrawioIcon,
   umlImportPlantumlIcon,
   umlImportXmiIcon,
+  umlToolbarIcon,
   UML_TOOLBOX_ICONS,
 } from './toolbar/icons.js';
 
@@ -1154,6 +1155,9 @@ export const umlCommands: CommandDescriptor[] = [
 
 export const umlCommandIcons: Record<string, TemplateResult> = {
   ...UML_TOOLBOX_ICONS,
+  // The senior BUTTON's glyph, registered so `FrameworkDescriptor.iconKey`
+  // resolves through `getCommandIcon` (rule R1). No command names it.
+  'uml.toolbar': umlToolbarIcon,
   'uml.export-plantuml': umlExportPlantumlIcon,
   'uml.export-xmi': umlExportXmiIcon,
   'uml.import-plantuml': umlImportPlantumlIcon,

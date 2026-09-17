@@ -74,9 +74,13 @@ describe('the uml command inventory', () => {
   it('gives every command glyph a home, and every glyph a command', () => {
     // A key a descriptor names and the icon record does not hold renders as
     // nothing; a glyph no descriptor names is a drawing nobody can reach.
-    expect(Object.keys(umlCommandIcons).sort()).toEqual(
-      umlCommands.map(c => c.iconKey!).sort()
-    );
+    // `uml.toolbar` is the one key with no command behind it: it is the senior
+    // BUTTON's glyph, registered so `FrameworkDescriptor.iconKey` resolves.
+    expect(
+      Object.keys(umlCommandIcons)
+        .filter(key => key !== 'uml.toolbar')
+        .sort()
+    ).toEqual(umlCommands.map(c => c.iconKey!).sort());
   });
 
   it('places exactly one board command, and names it `board`', () => {

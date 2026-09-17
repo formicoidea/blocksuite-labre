@@ -11,6 +11,11 @@ import {
   EstuarineElementModel,
   EventStormingBoardElementModel,
   FrameworkBackgroundElementModel,
+  UmlDiagramElementModel,
+  UmlFragmentElementModel,
+  UmlPartitionElementModel,
+  UmlRegionElementModel,
+  UmlSubjectElementModel,
   WardleyBackgroundElementModel,
 } from '@labre/affine-model';
 import type { ToolbarContext } from '@labre/affine-shared/services';
@@ -58,9 +63,19 @@ const FRAMEWORK_BOARDS: Record<
   'ddd-event-storming': [EventStormingBoardElementModel],
   'ddd-core-domain': [CoreDomainChartElementModel],
   'ddd-context-map': [ContextMapBoardElementModel],
+  // One diagram frame and the four frames UML nests inside it: the use-case
+  // subject, the activity partition, the state region and the combined
+  // fragment. Each is a `FrameworkBackgroundElementModel`, so each exports.
+  uml: [
+    UmlDiagramElementModel,
+    UmlSubjectElementModel,
+    UmlPartitionElementModel,
+    UmlRegionElementModel,
+    UmlFragmentElementModel,
+  ],
 };
 
-/** The eleven board kinds, flattened — what the export has to cover. */
+/** The sixteen board kinds, flattened — what the export has to cover. */
 const ALL_BOARDS = Object.values(FRAMEWORK_BOARDS).flat();
 
 const commands = getCommands();

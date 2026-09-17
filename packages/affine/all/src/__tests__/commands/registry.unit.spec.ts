@@ -7,6 +7,7 @@ import { contextMapCommandIcons } from '@labre/affine-gfx-ddd-context-map';
 import { coreDomainCommandIcons } from '@labre/affine-gfx-ddd-core-domain';
 import { eventStormingCommandIcons } from '@labre/affine-gfx-ddd-event-storming';
 import { edgyCommandIcons } from '@labre/affine-gfx-edgy';
+import { umlCommandIcons } from '@labre/affine-gfx-uml';
 import {
   wardleyCommandIcons,
   wardleyCommands,
@@ -486,6 +487,7 @@ describe('every framework declares its own senior icon key', () => {
     'ddd-event-storming': eventStormingCommandIcons,
     'ddd-core-domain': coreDomainCommandIcons,
     'ddd-context-map': contextMapCommandIcons,
+    uml: umlCommandIcons,
   };
 
   test('iconKey is non-empty, unique across frameworks, and of the form <segment>.toolbar', () => {
