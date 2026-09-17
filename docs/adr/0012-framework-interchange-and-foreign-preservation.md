@@ -116,6 +116,16 @@ sequence flow, it is not a flow at all, and it is absent from the file (ADR
 inherit that discipline in the other direction: a fragment we cannot read is
 not a thing we may quietly decide is nothing.
 
+**…and it says what it refused.** Amended 2026-09-17, PO: a semantic export
+carries the author's statements, while the board's generic SVG export
+([0025](0025-board-svg-export.md), rule R34) carries the drawing — everything
+inside the pool's perimeter, role or no role. That asymmetry is wanted and does
+not change; what changed is that the `.bpmn` export now counts the role-less
+things drawn INSIDE a pool and reports them as one warning in its export report
+(`com.labre.bpmn.export.warning.left-out`), and the export command's own
+description says so before the click. A format that leaves something out owes
+the person who clicked Export a sentence, not a code comment.
+
 ### 2. What a semantic format says about the unknown
 
 BPMN's extensibility is not a courtesy, it is a clause. §8.3.3:

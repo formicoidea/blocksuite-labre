@@ -910,6 +910,18 @@ export interface BpmnExportBoard {
   pools: readonly BpmnPoolElementModel[];
   nodes: readonly BpmnNodeElementModel[];
   connectors: readonly ConnectorElementModel[];
+  /**
+   * How many things drawn INSIDE a pool the picking left behind because they
+   * carry no BPMN role — a free shape, a text, an artefact drawn before roles
+   * existed (2026-08-26).
+   *
+   * Counted by whoever picked the board (`bpmnBoardFrom`), because that is the
+   * only place that ever sees what was NOT picked. The behaviour is the PO's
+   * ruling of 2026-09-17 and does not change: a `.bpmn` carries the author's
+   * statements, and the board's generic SVG export (ADR 0025, R34) carries the
+   * drawing. What was missing was SAYING so, which is what this number buys.
+   */
+  leftOut?: number;
 }
 
 export interface BpmnExportOptions {
@@ -934,7 +946,7 @@ export interface BpmnExportWarning {
 }
 
 /**
- * The nine export-warning keys, each paired with its English fallback
+ * The ten export-warning keys, each paired with its English fallback
  * (`{{name}}` placeholders included) — declared ONCE, here, and read both by
  * the `if` blocks below (which add the live `params`) and by
  * `translations.ts`'s manifest (which needs the pair with no board to run
@@ -982,8 +994,12 @@ const UNWRITABLE_EDGES_WARNING: readonly [string, string] = [
   'com.labre.bpmn.export.warning.unwritable-edges',
   '{{count}} arrow(s) were left out: BPMN requires both ends of a flow to be named, and they have an end that is loose or attached to something that is not a BPMN artefact.',
 ];
+const LEFT_OUT_WARNING: readonly [string, string] = [
+  'com.labre.bpmn.export.warning.left-out',
+  '{{count}} element(s) inside the pool are not BPMN elements and were left out of the .bpmn file. Export SVG to get everything drawn in the pool.',
+];
 
-/** All nine, for `translations.ts`'s manifest contribution. */
+/** All ten, for `translations.ts`'s manifest contribution. */
 export const BPMN_EXPORT_WARNING_KEYS: readonly (readonly [string, string])[] =
   [
     UNDRAWN_ARTEFACTS_WARNING,
@@ -995,6 +1011,7 @@ export const BPMN_EXPORT_WARNING_KEYS: readonly (readonly [string, string])[] =
     CONFLICTING_IDS_WARNING,
     REFUSED_ATTRIBUTE_NAMES_WARNING,
     UNWRITABLE_EDGES_WARNING,
+    LEFT_OUT_WARNING,
   ];
 
 /**
@@ -2047,6 +2064,14 @@ export function exportBpmnXmlWithWarnings(
   if (unwritableEdges > 0) {
     const [key, fallback] = UNWRITABLE_EDGES_WARNING;
     warnings.push({ key, fallback, params: { count: unwritableEdges } });
+  }
+
+  // What the PICKING left behind (see {@link BpmnExportBoard.leftOut}). One
+  // line for the whole pool, because the point is not which shape it was: it is
+  // that the file is the process and the SVG is the picture.
+  if (board.leftOut !== undefined && board.leftOut > 0) {
+    const [key, fallback] = LEFT_OUT_WARNING;
+    warnings.push({ key, fallback, params: { count: board.leftOut } });
   }
 
   return {

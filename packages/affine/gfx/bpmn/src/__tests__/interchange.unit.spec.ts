@@ -5,6 +5,7 @@ import {
   parseSvgSketch,
 } from '@labre/affine-block-surface';
 import { Container } from '@labre/global/di';
+import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
 import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
@@ -239,9 +240,16 @@ describe('the capability resolves and runs', () => {
     // A brush stroke and a plain shape share the surface with the process;
     // neither is something BPMN speaks about, and neither may reach the
     // serializer.
+    // Drawn BESIDE the pools, so this stays a test about the serializer's
+    // silence: one drawn inside would also be counted by the left-out warning,
+    // which is a different sentence and has its own tests below.
     const foreign = [
-      { id: 'brush-1', type: 'brush' },
-      { id: 'shape-1', type: 'shape' },
+      { id: 'brush-1', type: 'brush', elementBound: new Bound(900, 0, 40, 40) },
+      {
+        id: 'shape-1',
+        type: 'shape',
+        elementBound: new Bound(900, 60, 40, 40),
+      },
     ] as unknown as GfxPrimitiveElementModel[];
 
     const withForeign = runExport([...elements, ...foreign], {
@@ -358,6 +366,66 @@ describe('the export speaks about roled artefacts and nothing else', () => {
       'typed',
       'neutral',
     ]);
+  });
+});
+
+/**
+ * …and now it SAYS so (PO ruling of 2026-09-17).
+ *
+ * Everything inside a pool's perimeter leaves in the board's generic SVG export
+ * (ADR 0025, R34) and only the roled artefacts leave in the `.bpmn`. That
+ * asymmetry is wanted; being silent about it was the surprise.
+ */
+describe('the export says what it left inside the pool', () => {
+  /** Anything on the surface that is not a BPMN element: a shape, a text. */
+  const fakeStray = (bound: [number, number, number, number]) =>
+    ({
+      elementBound: new Bound(...bound),
+    }) as unknown as GfxPrimitiveElementModel;
+
+  it('counts what it left behind and warns about it once', () => {
+    const elements = [
+      fakePool('p', [0, 0, POOL_W, POOL_H], { name: 'Sales' }),
+      fakeNode('t1', 'task', [BAND + 20, 40, 60, 40], 'Check'),
+      fakeNode('t2', 'task', [BAND + 20, 100, 60, 40], 'Ship'),
+      // A free shape and a free text, both drawn inside the pool.
+      fakeStray([BAND + 140, 40, 60, 40]),
+      fakeStray([BAND + 140, 100, 60, 20]),
+    ] as unknown as readonly GfxPrimitiveElementModel[];
+
+    expect(bpmnBoardFrom(elements).leftOut).toBe(2);
+
+    const exported = runExport(elements, {});
+    expect(exported.text).toContain('name="Check"');
+    expect(exported.text).toContain('name="Ship"');
+
+    const [warning, ...rest] = exported.warnings!;
+    expect(rest).toEqual([]);
+    expect(warning).toContain(
+      '2 element(s) inside the pool are not BPMN elements'
+    );
+    expect(warning).toContain('Export SVG');
+  });
+
+  it('says nothing when everything drawn in the pools is BPMN', () => {
+    const { board: composed } = collaborationBoard();
+    const elements = flatten(composed);
+
+    expect(bpmnBoardFrom(elements).leftOut).toBeUndefined();
+    expect(runExport(elements, {}).warnings).toBeUndefined();
+  });
+
+  it('ignores a role-less element drawn outside every pool', () => {
+    // The SVG export of a board is bounded by the board, so a stray beside it
+    // is not something this file "left out" — nothing claims to carry it.
+    const elements = [
+      fakePool('p', [0, 0, POOL_W, POOL_H], { name: 'Sales' }),
+      fakeNode('t1', 'task', [BAND + 20, 40, 60, 40], 'Check'),
+      fakeStray([900, 400, 60, 40]),
+    ] as unknown as readonly GfxPrimitiveElementModel[];
+
+    expect(bpmnBoardFrom(elements).leftOut).toBeUndefined();
+    expect(runExport(elements, {}).warnings).toBeUndefined();
   });
 });
 

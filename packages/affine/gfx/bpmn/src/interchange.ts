@@ -25,6 +25,7 @@ import {
   type BpmnExportBoard,
   exportBpmnXmlWithWarnings,
 } from './export.js';
+import { bpmnPoolOf } from './facts.js';
 import { importBpmnXml } from './import.js';
 import { BPMN_ROLE, BPMN_ROLE_OF_KIND } from './roles.js';
 
@@ -107,6 +108,19 @@ export const BPMN_XML_FORMAT: InterchangeFormat = {
  * those two dates carries no role on anything and therefore no longer exports.
  * Arbitrated on 2026-09-17: the alternative is an interchange file that cannot
  * be trusted, which is worse than one that is not written.
+ *
+ * ## …and what it now SAYS
+ *
+ * The same ruling of 2026-09-17 added the other half: everything inside a
+ * pool's perimeter leaves in the board's generic SVG export (ADR 0025, R34),
+ * and only the roled artefacts leave in the `.bpmn`. That asymmetry is wanted;
+ * being silent about it was not. So the role-less things drawn INSIDE a pool
+ * are counted here — this is the only place that sees what was not picked —
+ * and `exportBpmnXmlWithWarnings` turns the count into one warning.
+ *
+ * Connectors are deliberately NOT counted: a neutral arrow states nothing
+ * (`docs/adr/0010`), so there is nothing to lose, which is the reason
+ * `export.ts` has always dropped one in silence.
  */
 export function bpmnBoardFrom(
   elements: readonly GfxPrimitiveElementModel[]
@@ -114,18 +128,32 @@ export function bpmnBoardFrom(
   const pools: BpmnPoolElementModel[] = [];
   const nodes: BpmnNodeElementModel[] = [];
   const connectors: ConnectorElementModel[] = [];
+  const roleless: GfxPrimitiveElementModel[] = [];
 
   for (const element of elements) {
     if (element instanceof BpmnPoolElementModel) {
       if (element.role === BPMN_ROLE.pool) pools.push(element);
+      else roleless.push(element);
     } else if (element instanceof BpmnNodeElementModel) {
       if (element.role === BPMN_ROLE_OF_KIND[element.kind]) nodes.push(element);
+      else roleless.push(element);
     } else if (element instanceof ConnectorElementModel) {
       connectors.push(element);
+    } else {
+      roleless.push(element);
     }
   }
 
-  return { pools, nodes, connectors };
+  // Against the pools that are actually WRITTEN: "inside the pool" has to mean
+  // inside a pool the file has, or the sentence names a perimeter the reader of
+  // the `.bpmn` cannot see. `bpmnPoolOf` is the same whole-containment test the
+  // audit and the serializer use, so what is reported left out is what the rest
+  // of the framework agrees is in there.
+  const leftOut = roleless.filter(
+    element => bpmnPoolOf(pools, element.elementBound) !== null
+  ).length;
+
+  return { pools, nodes, connectors, ...(leftOut > 0 ? { leftOut } : {}) };
 }
 
 /**

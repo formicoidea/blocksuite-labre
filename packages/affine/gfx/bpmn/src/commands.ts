@@ -711,8 +711,13 @@ const exportCommand: CommandDescriptor = {
   labelKey: 'com.labre.commands.bpmn.exportXml',
   labelFallback: 'Export BPMN XML',
   descriptionKey: 'com.labre.commands.bpmn.exportXml.description',
+  // The second sentence is the PO's ruling of 2026-09-17 said BEFORE the click
+  // rather than after it: only artefacts carrying a BPMN role are written, and
+  // the board's generic SVG export (ADR 0025, R34) is what takes the drawing.
+  // The export also SAYS what it left out, once, in its own report — but a
+  // promise a command makes in the catalogue is cheaper than a surprise.
   descriptionFallback:
-    'Download the whole board as a BPMN 2.0 XML file, ready to open in any BPMN tool.',
+    'Download the whole board as a BPMN 2.0 XML file, ready to open in any BPMN tool. Only BPMN artefacts are written; export SVG to get everything drawn in the pool.',
   // Filed with the import it is the other half of — see {@link INTERCHANGE}.
   // It shipped filed under `swimlanes`, because the pool's "⋮" is where it is
   // REACHED from and there was no better section for a command with no sibling;
