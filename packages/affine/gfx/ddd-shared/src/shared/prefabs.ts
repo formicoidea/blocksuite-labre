@@ -472,20 +472,3 @@ export function addCloud(
   );
   return groupIds(std, [cloud, lbl]);
 }
-
-/**
- * The legend BOX moved to `@labre/affine-block-surface`
- * (`extensions/legend.ts`) with the engine that drives it, so a framework which
- * is not a DDD one — BPMN, Wardley — can document itself without depending on
- * this bundle. Re-exported unchanged so no caller had to be touched by the
- * move; it goes away with the rest of the table-shaped API.
- *
- * @deprecated Import from `@labre/affine-block-surface`.
- */
-export {
-  addLegend,
-  measureLegend,
-  type LegendLayout,
-  type LegendRow,
-  type LegendSection,
-} from '@labre/affine-block-surface';

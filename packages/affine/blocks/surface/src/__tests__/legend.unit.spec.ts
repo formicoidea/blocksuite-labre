@@ -1,67 +1,13 @@
 import { Bound } from '@labre/global/gfx';
-import type { BlockStdScope } from '@labre/std';
-import type { RoleDefs } from '@labre/std/gfx';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import { EdgelessCRUDIdentifier } from '../extensions/crud-extension';
-import {
-  type AutoLegendSpec,
-  autoLegendSections,
-  createAutoLegend,
-  roleLabel,
-  rolesInBound,
-} from '../extensions/legend';
+import { rolesInBound } from '../extensions/legend';
 
 /**
- * A two-level fixture vocabulary: `fx:sticky` is the parent, `fx:event` and
- * `fx:command` specialise it, `fx:flow` is an unrelated edge. Enough to prove
- * the generic resolves specialisations and ignores what it does not know.
+ * The SCAN a legend starts from: which roles the elements drawn inside a
+ * board's perimeter carry. What the engine then makes of them is
+ * `legend-from-commands.unit.spec.ts`.
  */
-const ROLES: RoleDefs = {
-  'fx:sticky': { id: 'fx:sticky', kind: 'node', labelFallback: 'Sticky' },
-  'fx:event': {
-    id: 'fx:event',
-    parent: 'fx:sticky',
-    kind: 'node',
-    labelFallback: 'Event',
-  },
-  'fx:command': {
-    id: 'fx:command',
-    parent: 'fx:sticky',
-    kind: 'node',
-    labelFallback: 'Command',
-  },
-  'fx:flow': { id: 'fx:flow', kind: 'edge', labelFallback: 'Flow' },
-};
-
-const SPEC: AutoLegendSpec = {
-  title: 'Legend',
-  roles: ROLES,
-  sections: [
-    {
-      title: 'Stickies',
-      entries: [
-        {
-          role: 'fx:event',
-          row: { swatch: 'square', color: '#F5963B', label: 'Event' },
-        },
-        {
-          role: 'fx:command',
-          row: { swatch: 'square', color: '#5BA3DB', label: 'Command' },
-        },
-      ],
-    },
-    {
-      title: 'Flow',
-      entries: [
-        {
-          role: 'fx:flow',
-          row: { swatch: 'line', color: '#1f2328', label: 'Flow' },
-        },
-      ],
-    },
-  ],
-};
 
 interface FixtureElement {
   role?: string;
@@ -69,55 +15,17 @@ interface FixtureElement {
 }
 
 /**
- * A gfx / std pair with a REAL bound filter, so "an artefact outside the
- * perimeter is not in the legend" is proved by the geometry rather than by the
- * stub being told the answer.
- *
- * `catalogue`, optional, stands in for a host's translation service: an empty
- * one (the default) leaves `std.getOptional(TranslationProvider)` answering
- * `undefined`, exactly like a standalone playground with no host wired in —
- * every `translateKey` call then falls through to its own fallback argument.
+ * A gfx with a REAL bound filter, so "an artefact outside the perimeter is not
+ * in the legend" is proved by the geometry rather than by the stub being told
+ * the answer.
  */
-function stub(elements: FixtureElement[], catalogue?: Record<string, string>) {
-  const added: Record<string, unknown>[] = [];
-  let n = 0;
+function gfxOver(elements: FixtureElement[]) {
   const overlaps = (a: Bound, b: Bound) =>
     a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
-  const selection = { set: vi.fn() };
-  const gfx = {
-    surface: {
-      addElement: (props: Record<string, unknown>) => {
-        added.push(props);
-        return `el-${n++}`;
-      },
-    },
+  return {
     getElementsByBound: (bound: Bound) =>
       elements.filter(el => overlaps(bound, Bound.deserialize(el.xywh))),
-    selection,
-    layer: { canvasElements: [] as { type: string }[] },
   };
-  const captureSync = vi.fn();
-  const translationProvider = catalogue
-    ? { t: (key: string) => catalogue[key] }
-    : undefined;
-  // The box is grouped through `EdgelessCRUDIdentifier` since the engine moved
-  // here: the group package depends on this one, so the legend re-runs
-  // `createGroupCommand`'s body rather than importing it.
-  const grouped: Record<string, unknown>[] = [];
-  const crud = {
-    addElement: (type: string, props: Record<string, unknown>) => {
-      grouped.push({ ...props, type });
-      return 'group-1';
-    },
-  };
-  const std = {
-    get: (identifier: unknown) =>
-      identifier === (EdgelessCRUDIdentifier as unknown) ? crud : gfx,
-    getOptional: () => translationProvider,
-    store: { captureSync },
-    provider: { getAll: () => new Map() },
-  } as unknown as BlockStdScope;
-  return { added, captureSync, gfx, grouped, std, selection };
 }
 
 const at = (x: number, y: number, role?: string): FixtureElement => ({
@@ -126,321 +34,24 @@ const at = (x: number, y: number, role?: string): FixtureElement => ({
 });
 
 /** The background every case below scans: 1000 × 800 at the origin. */
-const BG = { xywh: new Bound(0, 0, 1000, 800).serialize() };
+const BG = new Bound(0, 0, 1000, 800);
 
 describe('rolesInBound', () => {
   it('collects the roles inside the perimeter and ignores those outside it', () => {
-    const { gfx } = stub([
+    const gfx = gfxOver([
       at(100, 100, 'fx:event'),
       at(200, 200, 'fx:flow'),
       // Well past the background's right edge.
       at(5000, 100, 'fx:command'),
     ]);
-    const present = rolesInBound(gfx as never, Bound.deserialize(BG.xywh));
-    expect([...present].sort()).toEqual(['fx:event', 'fx:flow']);
-  });
-
-  it('ignores neutral elements, so a board drawn before roles yields nothing', () => {
-    const { gfx } = stub([at(100, 100), at(200, 200)]);
-    expect(rolesInBound(gfx as never, Bound.deserialize(BG.xywh)).size).toBe(0);
-  });
-});
-
-describe('autoLegendSections', () => {
-  it('lists only the rows whose role is present, in declaration order', () => {
-    const { std } = stub([]);
-    const sections = autoLegendSections(
-      new Set(['fx:command', 'fx:flow']),
-      SPEC,
-      std
-    );
-    expect(sections).toEqual([
-      {
-        title: 'Stickies',
-        rows: [{ swatch: 'square', color: '#5BA3DB', label: 'Command' }],
-      },
-      {
-        title: 'Flow',
-        rows: [{ swatch: 'line', color: '#1f2328', label: 'Flow' }],
-      },
+    expect([...rolesInBound(gfx as never, BG)].sort()).toEqual([
+      'fx:event',
+      'fx:flow',
     ]);
   });
 
-  it('drops an empty section, sub-title included', () => {
-    const { std } = stub([]);
-    const sections = autoLegendSections(new Set(['fx:flow']), SPEC, std);
-    expect(sections.map(s => s.title)).toEqual(['Flow']);
-  });
-
-  it('resolves a specialisation: a parent entry appears for a child role', () => {
-    const { std } = stub([]);
-    const parentSpec: AutoLegendSpec = {
-      title: 'Legend',
-      roles: ROLES,
-      sections: [
-        {
-          entries: [
-            {
-              role: 'fx:sticky',
-              row: { swatch: 'square', color: '#fff', label: 'Sticky' },
-            },
-          ],
-        },
-      ],
-    };
-    expect(
-      autoLegendSections(new Set(['fx:event']), parentSpec, std)
-    ).toHaveLength(1);
-    expect(
-      autoLegendSections(new Set(['fx:flow']), parentSpec, std)
-    ).toHaveLength(0);
-  });
-
-  it('says nothing about roles it does not know', () => {
-    const { std } = stub([]);
-    expect(autoLegendSections(new Set(['other:thing']), SPEC, std)).toEqual([]);
-  });
-
-  describe('an entry that demands its exact role', () => {
-    /**
-     * The same parent entry as above, with `exact` — the case a legend has when
-     * the parent is a thing the user can actually put down (EDGY's bare
-     * "Object") and not merely the name of a family.
-     */
-    const exactSpec: AutoLegendSpec = {
-      title: 'Legend',
-      roles: ROLES,
-      sections: [
-        {
-          entries: [
-            {
-              role: 'fx:sticky',
-              exact: true,
-              row: { swatch: 'square', color: '#fff', label: 'Sticky' },
-            },
-            {
-              role: 'fx:event',
-              row: { swatch: 'square', color: '#F5963B', label: 'Event' },
-            },
-          ],
-        },
-      ],
-    };
-
-    it('stays silent when only a specialisation is on the board', () => {
-      const { std } = stub([]);
-      expect(autoLegendSections(new Set(['fx:event']), exactSpec, std)).toEqual(
-        [
-          {
-            title: undefined,
-            rows: [{ swatch: 'square', color: '#F5963B', label: 'Event' }],
-          },
-        ]
-      );
-    });
-
-    it('lists itself when the bare role is on the board', () => {
-      const { std } = stub([]);
-      expect(
-        autoLegendSections(new Set(['fx:sticky']), exactSpec, std)
-      ).toEqual([
-        {
-          title: undefined,
-          rows: [{ swatch: 'square', color: '#fff', label: 'Sticky' }],
-        },
-      ]);
-    });
-
-    it('lists both when the board carries the bare role AND a specialisation', () => {
-      const { std } = stub([]);
-      expect(
-        autoLegendSections(new Set(['fx:sticky', 'fx:event']), exactSpec, std)
-      ).toEqual([
-        {
-          title: undefined,
-          rows: [
-            { swatch: 'square', color: '#fff', label: 'Sticky' },
-            { swatch: 'square', color: '#F5963B', label: 'Event' },
-          ],
-        },
-      ]);
-    });
-
-    it('leaves the default alone: without the flag the walk still resolves', () => {
-      const { std } = stub([]);
-      const loose: AutoLegendSpec = {
-        ...exactSpec,
-        sections: [
-          {
-            entries: exactSpec.sections[0].entries.map(({ role, row }) => ({
-              role,
-              row,
-            })),
-          },
-        ],
-      };
-      expect(
-        autoLegendSections(new Set(['fx:event']), loose, std)[0].rows
-      ).toEqual([
-        { swatch: 'square', color: '#fff', label: 'Sticky' },
-        { swatch: 'square', color: '#F5963B', label: 'Event' },
-      ]);
-    });
-  });
-
-  describe('resolving a labelKey through the host catalogue', () => {
-    const KEYED_ROLES: RoleDefs = {
-      'fx:flow': {
-        id: 'fx:flow',
-        kind: 'edge',
-        labelKey: 'com.labre.fx.role.flow',
-        labelFallback: 'Flow',
-      },
-    };
-    const KEYED_SPEC: AutoLegendSpec = {
-      title: 'Legend',
-      roles: KEYED_ROLES,
-      sections: [
-        {
-          title: 'Flow',
-          entries: [
-            {
-              role: 'fx:flow',
-              row: { swatch: 'line', color: '#1f2328', label: 'Flow' },
-            },
-          ],
-        },
-      ],
-    };
-
-    it('renders the English fallback, letter-identical, with no catalogue', () => {
-      const { std } = stub([]);
-      expect(
-        autoLegendSections(new Set(['fx:flow']), KEYED_SPEC, std)[0].rows
-      ).toEqual([{ swatch: 'line', color: '#1f2328', label: 'Flow' }]);
-    });
-
-    it("prefers the host's catalogue entry over the baked fallback", () => {
-      const { std } = stub([], {
-        'com.labre.fx.role.flow': 'Flux',
-      });
-      expect(
-        autoLegendSections(new Set(['fx:flow']), KEYED_SPEC, std)[0].rows
-      ).toEqual([{ swatch: 'line', color: '#1f2328', label: 'Flux' }]);
-    });
-
-    it('recomposes a labelPrefix row around the translated role text', () => {
-      const prefixSpec: AutoLegendSpec = {
-        ...KEYED_SPEC,
-        sections: [
-          {
-            title: 'Flow',
-            entries: [
-              {
-                role: 'fx:flow',
-                labelPrefix: 'FL',
-                row: { swatch: 'line', color: '#1f2328', label: 'FL — Flow' },
-              },
-            ],
-          },
-        ],
-      };
-      const { std: noHost } = stub([]);
-      expect(
-        autoLegendSections(new Set(['fx:flow']), prefixSpec, noHost)[0].rows
-      ).toEqual([{ swatch: 'line', color: '#1f2328', label: 'FL — Flow' }]);
-
-      const { std: withHost } = stub([], {
-        'com.labre.fx.role.flow': 'Flux',
-      });
-      expect(
-        autoLegendSections(new Set(['fx:flow']), prefixSpec, withHost)[0].rows
-      ).toEqual([{ swatch: 'line', color: '#1f2328', label: 'FL — Flux' }]);
-    });
-
-    it('resolves a titleKey the same way, and leaves an untitled section untouched', () => {
-      const titledSpec: AutoLegendSpec = {
-        ...KEYED_SPEC,
-        sections: [
-          {
-            title: 'Flow',
-            titleKey: 'com.labre.fx.section.flow',
-            entries: KEYED_SPEC.sections[0].entries,
-          },
-        ],
-      };
-      const { std } = stub([], {
-        'com.labre.fx.section.flow': 'Flux (section)',
-      });
-      expect(
-        autoLegendSections(new Set(['fx:flow']), titledSpec, std)[0].title
-      ).toBe('Flux (section)');
-    });
-  });
-});
-
-describe('roleLabel', () => {
-  it('takes the vocabulary’s own wording', () => {
-    expect(roleLabel(ROLES, 'fx:flow')).toBe('Flow');
-  });
-
-  it('falls back to the id rather than inventing prose', () => {
-    expect(roleLabel(ROLES, 'fx:unknown')).toBe('fx:unknown');
-  });
-});
-
-describe('createAutoLegend', () => {
-  it('drops the box bottom-left of the background, grouped and selected', () => {
-    const { added, std, selection } = stub([at(100, 100, 'fx:event')]);
-    const id = createAutoLegend(std, BG, SPEC);
-
-    // One section (title + one row): PAD*2 + TITLE_H + SUB_H + ROW_H.
-    const H = 16 * 2 + 32 + 26 + 28;
-    const frame = added[0];
-    expect(frame.xywh).toBe(
-      new Bound(0 + 50, 0 + 800 - 56 - H, 260, H).serialize()
-    );
-    expect(id).toBe('group-1');
-    expect(selection.set).toHaveBeenCalledWith({
-      elements: ['group-1'],
-      editing: false,
-    });
-  });
-
-  it('draws a titled box with no rows on a board it recognises nothing on', () => {
-    // Wardley's behaviour, replicated: an empty map still yields a framed
-    // "Legend" — the legend lists what is drawn, and nothing is drawn.
-    const { added, std } = stub([at(100, 100)]);
-    createAutoLegend(std, BG, SPEC);
-
-    expect(added).toHaveLength(2); // frame + title, nothing else
-    expect(added[1].text).toBe('Legend');
-    const H = 16 * 2 + 32;
-    expect(added[0].xywh).toBe(new Bound(50, 800 - 56 - H, 260, H).serialize());
-  });
-
-  it('takes one undo checkpoint before writing', () => {
-    const { captureSync, std } = stub([at(100, 100, 'fx:event')]);
-    createAutoLegend(std, BG, SPEC);
-    expect(captureSync).toHaveBeenCalledTimes(1);
-  });
-
-  /**
-   * The box used to be grouped through `createGroupCommand`
-   * (`@labre/affine-gfx-group`), which this package cannot import: that package
-   * depends on THIS one. The engine re-runs that command's body against the
-   * same `EdgelessCRUDIdentifier`, seed title included, so a legend group is
-   * still exactly what the gesture says a group is.
-   */
-  it('groups the box through the CRUD seam, under the group seed title', () => {
-    const { added, grouped, std } = stub([at(100, 100, 'fx:event')]);
-    createAutoLegend(std, BG, SPEC);
-
-    expect(grouped).toHaveLength(1);
-    expect(grouped[0].type).toBe('group');
-    expect(grouped[0].title).toBe('Group 1');
-    expect(Object.keys(grouped[0].children as object)).toHaveLength(
-      added.length
-    );
+  it('ignores neutral elements, so a board drawn before roles yields nothing', () => {
+    const gfx = gfxOver([at(100, 100), at(200, 200)]);
+    expect(rolesInBound(gfx as never, BG).size).toBe(0);
   });
 });

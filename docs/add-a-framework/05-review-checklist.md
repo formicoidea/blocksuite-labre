@@ -65,3 +65,6 @@ change to one. Paste it in the PR and tick.**
       toolbar.
 - [ ] Each artefact moves, connects, morphs, copies and undoes like a shape.
 - [ ] Legend, export, rules: present, or their absence recorded in an ADR.
+- [ ] The legend is subscribed, not tabulated: a `legend` entry on every
+      artefact command, no `legend.ts` table, no second `FrameworkLegendCreated`
+      emitter, and its button in the gated `custom:` module (ADR 0026).

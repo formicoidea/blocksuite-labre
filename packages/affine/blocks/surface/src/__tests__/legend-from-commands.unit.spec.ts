@@ -109,12 +109,13 @@ function stub(
   const registry = new Map<string, AnyCommandDescriptor>(
     commands.map((c, i) => [`Command-${i}`, c])
   );
+  const captureSync = vi.fn();
   const std = {
     get: (identifier: unknown) =>
       identifier === (EdgelessCRUDIdentifier as unknown) ? crud : gfx,
     getOptional: () =>
       catalogue ? { t: (key: string) => catalogue[key] } : undefined,
-    store: { captureSync: vi.fn() },
+    store: { captureSync },
     provider: {
       getAll: (identifier: unknown) =>
         identifier === (CommandDescriptorIdentifier as unknown)
@@ -124,7 +125,7 @@ function stub(
             : new Map(),
     },
   } as unknown as BlockStdScope;
-  return { added, grouped, selection, std };
+  return { added, captureSync, grouped, selection, std };
 }
 
 const at = (x: number, y: number, role?: string): FixtureElement => ({
@@ -527,6 +528,37 @@ describe('createBoardLegend', () => {
     expect(added[1].text).toBe('Legend');
     const H = 16 * 2 + 32;
     expect(added[0].xywh).toBe(new Bound(50, 800 - 56 - H, 260, H).serialize());
+  });
+
+  it('takes one undo checkpoint before writing', () => {
+    const { captureSync, std } = stub(
+      [BOARD, EVENT],
+      [at(100, 100, 'fx:event')]
+    );
+    createBoardLegend(std, BG, 'ddd-event-storming');
+    expect(captureSync).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * The box used to be grouped through `createGroupCommand`
+   * (`@labre/affine-gfx-group`), which this package cannot import: that package
+   * depends on THIS one. The engine re-runs that command's body against the
+   * same `EdgelessCRUDIdentifier`, seed title included, so a legend group is
+   * still exactly what the gesture says a group is.
+   */
+  it('groups the box through the CRUD seam, under the group seed title', () => {
+    const { added, grouped, std } = stub(
+      [BOARD, EVENT],
+      [at(100, 100, 'fx:event')]
+    );
+    createBoardLegend(std, BG, 'ddd-event-storming');
+
+    expect(grouped).toHaveLength(1);
+    expect(grouped[0].type).toBe('group');
+    expect(grouped[0].title).toBe('Group 1');
+    expect(Object.keys(grouped[0].children as object)).toHaveLength(
+      added.length
+    );
   });
 
   /**

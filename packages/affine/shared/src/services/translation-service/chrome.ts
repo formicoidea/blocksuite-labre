@@ -617,11 +617,12 @@ export const BLOCK_TYPE_DIVIDER_DESCRIPTION: ChromeWording = [
 ];
 
 /**
- * The auto-legend BOX title every framework's `createAutoLegend` draws
- * (`AutoLegendSpec.title`, `@labre/affine-gfx-ddd-shared`) — "Legend" itself,
+ * The automatic legend BOX title the shared engine draws
+ * (`createBoardLegend`, `@labre/affine-block-surface`) — "Legend" itself,
  * distinct from the {@link BOARD_LEGEND_NOTATION} / {@link BOARD_LEGEND_COMPONENTS}
  * toolbar BUTTONS that create it. Declared here because it is the same word on
- * every board that has one: the three DDD tools, EDGY and C4 alike.
+ * every board that has one, and a board's own command may override it
+ * (`CommandLegendBox.titleWording`).
  */
 export const BOARD_LEGEND_TITLE: ChromeWording = [
   'com.labre.board.legend.title',

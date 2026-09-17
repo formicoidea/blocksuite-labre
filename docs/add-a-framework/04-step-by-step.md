@@ -51,7 +51,7 @@ Create `packages/affine/gfx/<id>/` from Wardley's `package.json`,
 - `element-view.ts`: the view with `dblclick` on label zones, and the
   `Interaction` extension.
 - `toolbar/config.ts`: the board's contextual toolbar (resize toggle now;
-  legend and export later).
+  export later, and Legend with Validation in the gated module later still).
 
 Test: render the background into a canvas stub; hit-test the border and a
 label zone.
@@ -169,9 +169,12 @@ Tests: `templates-parity.unit.spec.ts`, `reading-coverage.unit.spec.ts`,
 
 ## Step 9. Optional layers
 
-In the order of value: legend (`legend.ts` + a toolbar button that emits
-`FrameworkLegendCreated`), rules and profiles (default profile most
-permissive, every rule with a `backgroundRole` and its family's scope),
+In the order of value: legend (a `legend` entry on each artefact command, a
+`legendBox` on the board's, and `legendToolbarAction(…)` merged into the
+gated `custom:affine:surface:<board>` module beside Validation — no
+`legend.ts`, no button to build, no telemetry to emit; ADR 0026), rules and
+profiles (default profile most permissive, every rule with a
+`backgroundRole` and its family's scope),
 nudges, natures, interchange (pure `export.ts`/`import.ts`, an
 `InterchangeCapability` per format and direction, export on the board
 toolbar, import in the sub-menu), morph. Each in the gated half, each with
