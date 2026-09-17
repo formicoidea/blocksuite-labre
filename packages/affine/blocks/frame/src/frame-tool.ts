@@ -74,7 +74,7 @@ export class FrameTool extends BaseTool {
         .get(EditPropsStore)
         .applyLastProps('affine:frame', {
           // Translated HERE and once, like `EdgelessFrameManager._addFrameBlock`:
-          // the title is document content the moment it lands (ADR 0016).
+          // the title is document content the moment it lands (ADR 0023).
           title: new Text(
             new Y.Text(
               translateKey(this.std, ...FRAME_SEED_NAME, {

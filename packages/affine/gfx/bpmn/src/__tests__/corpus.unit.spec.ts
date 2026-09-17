@@ -420,25 +420,37 @@ describe('the INVALID corpus — one mistake, one sentence', () => {
     ]);
   });
 
-  it('catches a ring the process can never enter — but only on a check-up', () => {
+  it('catches a ring the process can never enter', () => {
     // The defect `implicitRoots` leaves standing, and the only one it leaves:
     // every step in the ring is pointed at, so none of them is an implicit
     // start; nothing outside points in, so no walk reaches it. The work can
     // never begin there. Forward-only traversal is what makes it a finding.
-    const board = [
-      ...onePool(),
+    const ring = [
       task('ring-a', 300, 250),
       task('ring-b', 500, 250),
       flow('r1', 'ring-a', 'ring-b'),
       flow('r2', 'ring-b', 'ring-a'),
     ];
-    // Nothing on the drawing path: the rule is `on-demand`, so `evaluateRules`
-    // skips it before touching a single element.
-    expect(told(evaluate(board))).toEqual([]);
-    expect(said(checkup(board))).toEqual([
+    const found = [
       'bpmn.unreachable-step ring-a',
       'bpmn.unreachable-step ring-b',
-    ]);
+    ];
+    // The rule declares `on-demand`, but the descriptive level NAMES it at
+    // `warning`, and a level that names a rule at a drawn severity decides the
+    // moment (PO, 2026-09-16: "Specification is the check-up"). So the pool
+    // that chose that level is told while drawing, and the check-up has
+    // nothing left to add.
+    const board = [...onePool(), ...ring];
+    expect(told(evaluate(board))).toEqual(found);
+    expect(said(checkup(board))).toEqual([]);
+    // The sketch default names nothing: there the rule keeps its own moment.
+    const sketch = [
+      pool('pool', [0, 0, 800, 300], null),
+      ...onePool().slice(1),
+      ...ring,
+    ];
+    expect(told(evaluate(sketch))).toEqual([]);
+    expect(said(checkup(sketch))).toEqual(found);
   });
 
   it('says nothing about a branch that simply has no start event drawn', () => {

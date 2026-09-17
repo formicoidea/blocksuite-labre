@@ -8,7 +8,7 @@ import { createGroupCommand } from '../command/group-api';
 
 /**
  * A group's default title (`Group {{n}}`) is a SEED: text a creation action
- * writes INTO the document, resolved at PLACEMENT and never again (ADR 0016).
+ * writes INTO the document, resolved at PLACEMENT and never again (ADR 0023).
  */
 describe('createGroupCommand names the group through the translation seam', () => {
   function fakeStd(

@@ -73,7 +73,7 @@ A new block (or gfx framework module) is DONE only when it has ALL of:
 1. **Model/schema** in `packages/affine/model` (or element model for gfx),
    with a migration story for existing documents. A gfx BOARD extends
    `FrameworkBackgroundElementModel` and gets the generic "Export SVG" of its
-   contextual toolbar for free (`docs/adr/0017`, rule R34).
+   contextual toolbar for free (`docs/adr/0025`, rule R34).
 2. **Store extension** + **view extension**, registered in
    `packages/affine/all/src/extensions/{store,view}.ts`.
 3. **A flag** in `packages/affine/all/src/flags.ts` (`OPTIONAL_BLOCKS`) gating

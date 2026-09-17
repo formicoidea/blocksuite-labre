@@ -39,9 +39,20 @@ is generic** and needs nothing from a framework: one core command
 (`export.svg`) and one wildcard toolbar module
 (`custom:affine:surface:*#export-svg`) serve every board — see R34.
 
+_One_ import per framework takes the sub-menu seat, not all of them: the
+nomination budget is `SENIOR_MENU_CAP` per owner plus the single
+over-nomination the PO authorized on 2026-08-28, which `bpmn.importXml` spent
+(`registry.unit.spec.ts`). A framework that reads several formats nominates the
+one a user is most likely to arrive with and leaves the rest in the catalogue —
+BPMN nominates `.bpmn` and not its SVG fallback; UML nominates `uml.importXmi`
+and leaves PlantUML and draw.io one click away, which cost `uml.addNote` its
+seat (ADR [0019](../adr/0019-uml-import-formats.md) §7). A framework already at
+the cap therefore arrives at a curation question, and records the trade where
+the demoted entry is declared rather than settling it in a tranche.
+
 **R6. The legend is a button on the selected board's toolbar**, not a
 command: absent from catalogue, palette and shortcuts (product decision,
-2026-08-27). It emits `FrameworkLegendCreated` by hand. Six of eight
+2026-08-27). It emits `FrameworkLegendCreated` by hand. Seven of nine
 frameworks have one; Cynefin does not by ADR 0013; BPMN's absence is
 undocumented.
 
@@ -76,15 +87,28 @@ live in one flat category named after the framework
 ## Boards
 
 **R9. A board is picked by its border**, a 10 screen-pixel band constant at
-every zoom, plus its title bands (BPMN participant band, C4 title band).
+every zoom, plus its title bands (BPMN participant band, C4 title band, UML
+frame heading band, UML partition band — on the top or left edge by
+orientation — and UML region band). A board's inner zones follow the same
+shape whatever the notation calls them: after the activity partition, UML's
+second zone is the combined fragment's **operand band** — horizontal, separated
+by a dashed line per §17.6.4.1, added from the fragment's toolbar as a lane is
+added to a BPMN pool (ADR
+[0022](../adr/0022-uml-sequence-diagrams-scope.md) §3).
 `backgroundIncludesPoint` in
 `packages/affine/model/src/elements/framework-background/hit-test.ts`;
 `framework-background-hit-test.unit.spec.ts`. An already-selected board can
 be dragged from anywhere inside (`ignoreTransparent: false`). Double-click in
-a label zone edits the label.
+a label zone edits the label. A marquee takes a board only when it holds the
+whole board (`boxSelectable`, the native frame block's rule): a rectangle drawn
+on the sheet lassoes what is drawn there, never the sheet.
 
 **R10. A board is a floor, never a lid.** Anything overlapping a board is
-kept above it; boards can stack and each stays under its own artefacts.
+kept above it; boards can stack and each stays under its own artefacts — but a
+board that wholly ENCLOSES another board is the sheet that one is drawn on and
+stays under it, so a frame holding inner backgrounds (UML subject, partition,
+region, fragment; C4 boundary) is not raised over them when it is moved or
+resized.
 Framework-agnostic, idempotent (undo-safe), ignores remote changes, never
 restacks nested elements.
 `packages/affine/blocks/surface/src/framework-background/stacking.ts`;
@@ -99,8 +123,8 @@ lanes). Ties go to the smaller id. Nothing moves with a board.
 never frame content.
 
 **R13. Resize is a per-board toggle** (`resizeEnabled`) exposed on its
-toolbar. No minimum size is enforced; C4 clamps a board shorter than its
-header instead.
+toolbar. No minimum size is enforced; C4 — and the UML frame — clamps a board
+shorter than its header instead.
 
 **R14. Extend `FrameworkBackgroundElementModel`; never copy its overrides.**
 Boards that re-implemented them were skipped by `instanceof` and dropped
@@ -110,15 +134,25 @@ its words without a declaration — from
 `packages/affine/blocks/surface/src/framework-background/background-view.ts`,
 and say only WHERE the labels are. Copying the in-place `<input>` instead is
 how four boards ended up with no double-click rename at all (issue #355); the
-gesture is pinned once, in `framework-background-view.unit.spec.ts`.
+gesture is pinned once, in `framework-background-view.unit.spec.ts`. Every
+board extends it, UML's five frames included. A label whose target no
+`{ [prop]: value }` patch can express (a UML fragment's operand guard, kept
+inside an array) returns its own `commit` from `labelAt`; it never copies the
+editor.
 
 **R34. Every board exports as SVG**, and gets it for free. "Export SVG" sits in
 the "⋮" of every board's contextual toolbar — one core command `export.svg`
 (`packages/affine/blocks/surface/src/extensions/export-svg/command.ts`) and one
 wildcard module `custom:affine:surface:*#export-svg` (`…/export-svg/toolbar.ts`),
 both keyed on `FrameworkBackgroundElementModel` and neither naming a framework
-(ADR 0017). A framework contributes nothing; what it must not do is draw its
-board as anything other than a `FrameworkBackgroundElementModel` (R14).
+(ADR 0025). A framework contributes nothing; what it must not do is draw its
+board as anything other than a `FrameworkBackgroundElementModel` (R14). A
+frame nested wholly inside the exported board (a UML partition, a C4 boundary)
+is part of its picture; a board that only overlaps it is not. The file is drawn
+by svgcanvas 2.6.0, so a renderer sticks to the 2D calls it implements:
+`isPointInPath`/`isPointInStroke` are absent, and `getLineDash` exists only as
+the export's shim — scope a dash with `save`/`restore` rather than reading it
+back (ADR 0025, amendment of 2026-09-17).
 `export-svg-boards.unit.spec.ts` names every framework's board class and checks
 the entry lights up for each; `board-svg-export.spec.ts` (integration) renders
 one board of every kind and parses the result. Numbered R34 — the file's numbers
@@ -136,8 +170,10 @@ morphs are registered on `GroupElementModel`.
 
 **R16. Labels are free-text elements grouped with the shape, never text on
 the shape.** The preset refuses to write `text`; the label has its own role
-(`wardley:label`, kind `text`). Two declared exceptions: the Porter glyph's
-letter and an area's name.
+(`wardley:label`, kind `text`). Three declared exceptions: the Porter glyph's
+letter, an area's name, and a connector's labels — the centre `text` and the
+two end labels of ADR 0020 are fields of the connector, because a label that
+must follow a moving endpoint cannot be a sibling in a group.
 
 **R17. One preset per artefact**, in `presets.ts`, read by creation and by
 morph. Creation sites and morphs never restate sizes or fonts.
@@ -165,14 +201,48 @@ every transform.
 nobody. The default profile is the most permissive and writes nothing on the
 element. Changing profile leaves granted exceptions alone.
 
+**The strict profile IS the check-up** (PO, 2026-09-16): a level that NAMES a
+rule at a drawn severity puts it on the drawing path, `moment: 'on-demand'`
+included, so its findings appear on the canvas on the switch and on every edit
+afterwards. A rule nothing promotes keeps its declared moment and is reached
+only by `runCheckup`. A rule too costly for the gesture path therefore stays
+`audit` at EVERY level — that is the only way to keep it off, and it is what
+`uml.unreachable-*` does.
+
 **R22. Rules run only when a board of the framework exists on the surface.**
 A lone node is a sketch. A node beside a map _is_ judged and attributed to
 the nearest map: that is the "element outside its board" finding. Rules
 match roles, never shape types (`backgroundRole` through `roleIsA`).
+Known gap: a rule names **one** `appliesTo` role, so a framework whose
+vocabulary has no single "any artefact" role cannot cover all of it — UML's
+`element-outside-frame` and `composition-single-owner` apply to
+`uml:classifier` only, and an actor, use case, object, package or note beside
+the frame is silence (`gfx/uml/src/rules.ts` docblock). It closes the day a
+family accepts several subject roles.
 
 **R23. A rule family declares its dependency scope** (`RULE_SCOPES`, ADR
 0015). A rule may widen it, never narrow it. A new family without a scope
-line fails to compile.
+line fails to compile. Seventeen families today, and the last two are the only
+ones the engine grew for a framework rather than the other way round.
+
+The sixteenth is `label-syntax` (ADR 0021), the only one whose verdict is a
+FUNCTION the framework ships rather than a table the engine interprets — a
+notation's grammar is a parser, and `gfx/uml/src/grammar.ts` is already that
+parser for the exporters. It is `'element'`-scoped (the subject's own words),
+judges each non-blank, non-elided line unless `perLine: false`, and a rule of it
+is not serializable: a declaration whose `parse` is missing evaluates nothing
+and warns once.
+
+The seventeenth is `border-proximity` (ADR 0024), the only one whose frame of
+reference is another ARTEFACT's outline rather than the sheet: the subject's
+CENTRE must sit within a declared tolerance, in model units, of the perimeter of
+a carrier `node` role it overlaps. Overlap is the gate — a subject touching no
+carrier raises nothing, so the family judges a glyph the author has already put
+on a box and never one dropped on open canvas. One finding per subject, both ids
+indicted, measured against the nearest carrier. `'surface'`-scoped for
+`attachment`'s reason: the carriers are collected from the whole surface and
+bounded by no frame. A carrier that is not a `node` role, or a tolerance of
+zero, evaluates nothing and warns once.
 
 **R24. Rules, profiles, nudges, reading, interchange, audit criteria are
 tooling**: registered from the flag-gated extension. Flag off means no
@@ -181,6 +251,17 @@ finding; persisted profile ids and ticks stay written, unread.
 **R25. A framework may ship no rules, by decision.** Cynefin/Estuarine (ADR
 0013). Reading is not validation: every framework ships a reading profile
 (`reading-coverage.unit.spec.ts`).
+
+A profile reads AS MANY typed edges as the notation draws — `relation` is the
+one it is read through first, `alsoRelations` the rest — and no two of its
+tables may answer for one edge (`roleIsA` overlap; checked by
+`reading-coverage.unit.spec.ts`). One table per profile was the original
+contract and the PO's UML recette of 2026-09-14 retired it: the panel says
+"No typed link touches this component" both when a framework declined to read a
+line and when it could not, so a use case whose one link was an `«include»`
+read as unconnected. Each table names its own two wordings; the panel groups by
+table, and a connector's per-end labels (ADR 0020 — a UML multiplicity) ride
+with the far end's name.
 
 **R26. The validation of a 500-element map fits in one 16 ms frame**, asserted
 by `validation.bench.unit.spec.ts`; flag-off costs under 0.05 ms.
@@ -212,7 +293,7 @@ what they were — a user who arms one and changes their mind has not used it.
 is not silently short of keys (`manifest.unit.spec.ts`). That includes seeds,
 the text a creation action writes into the document: they are resolved at
 placement, never by changing a model default. A new displayed literal with no
-key fails `literals.unit.spec.ts` (ADR 0016).
+key fails `literals.unit.spec.ts` (ADR 0023).
 
 ## Packaging
 
@@ -242,5 +323,19 @@ scale** (Wardley's `INERTIA_COLOR`, `LINK_GREY`, `WARDLEY_RED`): a change of
 ink would otherwise orphan every element already drawn with it. Pinned by
 `notation.unit.spec.ts` (affine-shared) and an assertion in every module that
 reads the scale (its background, consts, legend or template spec).
+
+## Identity: one framework is one drawing
+
+**R35. A framework is one drawing.** Split into several frameworks when the
+boards are distinct sheets with disjoint vocabularies that never mix on one
+surface: DDD is event storming, core domain chart and context map — three
+boards, three buttons, three flags. Keep one framework when the notations share
+one frame and one sheet, and an artefact of one has a meaning when dropped on
+the board of the other: UML draws classes, use cases and activities under one
+`<kind> <name>` heading, so it is one framework and the kind is a field of the
+board. Admissibility ("a use case has no place on a class diagram") is then a
+`view-admissibility` rule, not a second framework. Practical test: "can I drop
+an artefact of A on a board of B and have it mean something?" Yes → one
+framework. Convention, no test enforces it (ADR 0017).
 
 Next: [03-anatomy.md](03-anatomy.md).

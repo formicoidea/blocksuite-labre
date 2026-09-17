@@ -61,6 +61,7 @@
     "@labre/affine-gfx-template": "workspace:*",
     "@labre/affine-gfx-text": "workspace:*",
     "@labre/affine-gfx-turbo-renderer": "workspace:*",
+    "@labre/affine-gfx-uml": "workspace:*",
     "@labre/affine-gfx-wardley": "workspace:*",
     "@labre/affine-inline-comment": "workspace:*",
     "@labre/affine-inline-footnote": "workspace:*",

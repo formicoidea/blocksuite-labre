@@ -54,7 +54,7 @@ export type Template = {
    * Rebuild {@link content} in the inserting editor's language — the seeds a
    * template writes into the document (a component's name, a lane's title) go
    * through the translation seam at placement, like a creation action's
-   * (ADR 0016). Called once per insertion; without it `content` is inserted
+   * (ADR 0023). Called once per insertion; without it `content` is inserted
    * as is.
    *
    * With no `TranslationProvider` registered it must return exactly

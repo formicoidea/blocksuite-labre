@@ -153,7 +153,7 @@ describe('the cloud carries its name beside it', () => {
 /**
  * The bubble's caption and the cloud's name are SEEDS: resolved at placement,
  * through the same translation seam a derived template already speaks
- * (ADR 0016).
+ * (ADR 0023).
  */
 describe('captions speak the inserting editor’s language', () => {
   const hostWith = (t?: (key: string) => string | undefined) =>

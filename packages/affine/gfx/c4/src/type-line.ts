@@ -339,7 +339,7 @@ export const C4_TYPE_PLACEHOLDER = Object.fromEntries(
  * placement site (`createC4Node`, `actions.ts`) seeds a fresh element with
  * this rather than the English-only constant, so a component drawn in a
  * translated host starts in that language, like every other seed
- * (`docs/adr/0016`). With no `std` this returns exactly
+ * (`docs/adr/0023`). With no `std` this returns exactly
  * `C4_TYPE_PLACEHOLDER[kind]`.
  */
 export function c4TypePlaceholder(

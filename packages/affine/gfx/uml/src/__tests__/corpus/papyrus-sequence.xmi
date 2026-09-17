@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<uml:Model xmi:version="20131001" xmlns:xmi="http://www.omg.org/spec/XMI/20131001" xmlns:uml="http://www.eclipse.org/uml2/5.0.0/UML" xmi:id="_model" name="Storefront">
+  <packagedElement xmi:type="uml:Interaction" xmi:id="_int" name="PlaceOrder">
+    <lifeline xmi:type="uml:Lifeline" xmi:id="_ll_customer" name="customer" represents="_prop_customer"/>
+    <lifeline xmi:type="uml:Lifeline" xmi:id="_ll_order" name="order" represents="_prop_order"/>
+    <lifeline xmi:type="uml:Lifeline" xmi:id="_ll_stock" name="stock"/>
+    <fragment xmi:type="uml:MessageOccurrenceSpecification" xmi:id="_occ_1s" name="placeSend" covered="_ll_customer" message="_msg_place"/>
+    <fragment xmi:type="uml:MessageOccurrenceSpecification" xmi:id="_occ_1r" name="placeRecv" covered="_ll_order" message="_msg_place"/>
+    <fragment xmi:type="uml:ExecutionOccurrenceSpecification" xmi:id="_occ_start" name="start" covered="_ll_order" execution="_exec"/>
+    <fragment xmi:type="uml:BehaviorExecutionSpecification" xmi:id="_exec" name="handle" covered="_ll_order" start="_occ_start" finish="_occ_finish"/>
+    <fragment xmi:type="uml:CombinedFragment" xmi:id="_cf" covered="_ll_order _ll_stock" interactionOperator="alt">
+      <operand xmi:type="uml:InteractionOperand" xmi:id="_op_1">
+        <guard xmi:type="uml:InteractionConstraint" xmi:id="_g_1">
+          <specification xmi:type="uml:LiteralString" xmi:id="_gs_1" value="quantity &gt; 0"/>
+        </guard>
+        <fragment xmi:type="uml:MessageOccurrenceSpecification" xmi:id="_occ_2s" name="reserveSend" covered="_ll_order" message="_msg_reserve"/>
+        <fragment xmi:type="uml:MessageOccurrenceSpecification" xmi:id="_occ_2r" name="reserveRecv" covered="_ll_stock" message="_msg_reserve"/>
+      </operand>
+      <operand xmi:type="uml:InteractionOperand" xmi:id="_op_2">
+        <guard xmi:type="uml:InteractionConstraint" xmi:id="_g_2">
+          <specification xmi:type="uml:LiteralString" xmi:id="_gs_2" value="else"/>
+        </guard>
+        <fragment xmi:type="uml:MessageOccurrenceSpecification" xmi:id="_occ_3s" name="rejectSend" covered="_ll_order" message="_msg_reject"/>
+        <fragment xmi:type="uml:MessageOccurrenceSpecification" xmi:id="_occ_3r" name="rejectRecv" covered="_ll_customer" message="_msg_reject"/>
+      </operand>
+    </fragment>
+    <fragment xmi:type="uml:InteractionUse" xmi:id="_use" name="Charge card" covered="_ll_customer _ll_order" refersTo="_int_payment"/>
+    <fragment xmi:type="uml:ExecutionOccurrenceSpecification" xmi:id="_occ_finish" name="finish" covered="_ll_order" execution="_exec"/>
+    <fragment xmi:type="uml:MessageOccurrenceSpecification" xmi:id="_occ_4s" name="closeSend" covered="_ll_customer" message="_msg_close"/>
+    <fragment xmi:type="uml:MessageOccurrenceSpecification" xmi:id="_occ_4r" name="closeRecv" covered="_ll_order" message="_msg_close"/>
+    <fragment xmi:type="uml:DestructionOccurrenceSpecification" xmi:id="_occ_x" name="destroyOrder" covered="_ll_order"/>
+    <message xmi:type="uml:Message" xmi:id="_msg_place" name="place(basket)" messageSort="synchCall" sendEvent="_occ_1s" receiveEvent="_occ_1r"/>
+    <message xmi:type="uml:Message" xmi:id="_msg_reserve" name="reserve(sku)" messageSort="asynchCall" sendEvent="_occ_2s" receiveEvent="_occ_2r"/>
+    <message xmi:type="uml:Message" xmi:id="_msg_reject" name="rejected" messageSort="reply" sendEvent="_occ_3s" receiveEvent="_occ_3r"/>
+    <message xmi:type="uml:Message" xmi:id="_msg_close" name="close()" messageSort="deleteMessage" sendEvent="_occ_4s" receiveEvent="_occ_4r"/>
+    <ownedAttribute xmi:type="uml:Property" xmi:id="_prop_customer" name="aCustomer"/>
+    <ownedAttribute xmi:type="uml:Property" xmi:id="_prop_order" name="anOrder"/>
+  </packagedElement>
+  <packagedElement xmi:type="uml:Interaction" xmi:id="_int_payment" name="Charge card">
+    <lifeline xmi:type="uml:Lifeline" xmi:id="_ll_psp" name="psp"/>
+  </packagedElement>
+</uml:Model>

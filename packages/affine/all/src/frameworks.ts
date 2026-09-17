@@ -199,6 +199,25 @@ export const FRAMEWORK_DESCRIPTORS: FrameworkDescriptor[] = [
     ],
     shortcuts: true,
   },
+  {
+    id: 'uml',
+    labelKey: 'com.labre.framework.uml',
+    labelFallback: 'UML',
+    iconKey: 'uml.toolbar',
+    telemetryKey: 'uml',
+    telemetrySegment: 'uml toolbox',
+    bundle: 'framework-uml',
+    info: 'umlFramework',
+    pkg: '@labre/affine-gfx-uml',
+    dir: 'affine/gfx/uml',
+    extensions: [
+      // always-on: placed diagrams, subjects and nodes must paint with the
+      // button off, and their role vocabulary must stay readable
+      { viewExtension: 'UmlRenderViewExtension' },
+      { flag: 'uml', viewExtension: 'UmlViewExtension' },
+    ],
+    shortcuts: true,
+  },
 ];
 
 /**

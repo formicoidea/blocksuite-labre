@@ -7,7 +7,7 @@ import { mindmapTemplateCategory } from '../templates';
 /**
  * The four starter mindmap templates speak the inserting editor's language:
  * their seeds (the root "Mind Map" caption, the three "Topic N" children) go
- * through the translation seam at placement (ADR 0016), like a derived
+ * through the translation seam at placement (ADR 0023), like a derived
  * template's.
  */
 describe('the mindmap starter templates localize their seeds', () => {

@@ -86,7 +86,7 @@ const SPECS: Spec[] = [
             fill: preset.fill,
             text: preset.text,
             // Translated HERE and once: the caption is document content the
-            // moment it lands (ADR 0016), so the host's catalogue is asked at
+            // moment it lands (ADR 0023), so the host's catalogue is asked at
             // placement and never again.
             label: translateKey(
               std,
@@ -114,7 +114,7 @@ const SPECS: Spec[] = [
         addSticky(surface, std, cx, cy, {
           fill: ES_HOTSPOT.fill,
           text: ES_HOTSPOT.text,
-          // Translated HERE and once, like every sticky above (ADR 0016).
+          // Translated HERE and once, like every sticky above (ADR 0023).
           label: translateKey(
             std,
             esStickySeedKey('hotspot'),

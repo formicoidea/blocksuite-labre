@@ -1,0 +1,5 @@
+---
+'@labre/affine-gfx-uml': minor
+---
+
+feat(edgeless): the UML artefact catalogue is filed by DIAGRAM KIND. « Plus d'artefacts… » used to group sixty-nine commands under the four headers C4 lends the library — one "Elements" section held fifty shapes, from a lifeline to a deep history — so the nine sections are now the frame's own kinds, in the order of its kind picker: General, Class diagram, Use case diagram, Component diagram, Deployment diagram, Activity diagram, State machine diagram, Sequence diagram, and the Interchange last. What several kinds share (the frame, the package, the note, and the four relationships no notation owns) sits under General; inside every section the reading is elements, then boundaries, then relations. Each header's wording is the one the kind picker already offers, derived from the category id rather than minted beside it. Nothing moved surface: the fourteen nominations and the thirteen a cold start meets are untouched, and every one of the sixty-nine commands is still in the catalogue.

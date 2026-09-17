@@ -23,8 +23,18 @@ function degraded(mode: ConnectorMode): ConnectorElementModel {
     w: 100,
     h: 50,
     strokeWidth: 4,
+    // Every label predicate `includesPoint` consults — the centre caption and
+    // the two end labels of ADR 0020. A degraded connector has none of them.
     hasLabel: () => false,
     labelIncludesPoint: () => false,
+    sourceLabelIncludesPoint: () => false,
+    targetLabelIncludesPoint: () => false,
+    // The end-label GRAB, which `includesPoint` consults too — and the real one,
+    // so the degraded case is exercised rather than stubbed away: an empty path
+    // has no ends to be near, which is exactly what has to stay true here.
+    endGrabIncludesPoint: proto.endGrabIncludesPoint,
+    source: {},
+    target: {},
   } as unknown as ConnectorElementModel;
 }
 

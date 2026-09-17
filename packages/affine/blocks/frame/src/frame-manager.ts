@@ -221,7 +221,7 @@ export class EdgelessFrameManager extends GfxExtension {
       .get(EditPropsStore)
       .applyLastProps('affine:frame', {
         // Translated HERE and once: the title is document content the moment
-        // it lands (ADR 0016), so the host's catalogue is asked at placement
+        // it lands (ADR 0023), so the host's catalogue is asked at placement
         // and never again — a renamed frame keeps its name.
         title: new Text(
           new Y.Text(

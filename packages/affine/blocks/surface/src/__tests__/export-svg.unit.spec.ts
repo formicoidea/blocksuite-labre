@@ -72,6 +72,34 @@ describe('createSvgContext', () => {
     expect(svg).toContain('xmlns="http://www.w3.org/2000/svg"');
   });
 
+  test('getLineDash reads back what setLineDash set, as Canvas2D does', () => {
+    // svgcanvas 2.6.0 has no getLineDash; a renderer calling it aborted the
+    // whole export (the UML lifeline did).
+    const { ctx } = createSvgContext(10, 10);
+
+    expect(ctx.getLineDash()).toEqual([]);
+    ctx.setLineDash([4, 2.5]);
+    expect(ctx.getLineDash()).toEqual([4, 2.5]);
+    ctx.save();
+    ctx.setLineDash([]);
+    expect(ctx.getLineDash()).toEqual([]);
+    ctx.restore();
+    expect(ctx.getLineDash()).toEqual([4, 2.5]);
+  });
+
+  test('a dashed stroke is written out as stroke-dasharray', () => {
+    const { ctx, serialize } = createSvgContext(50, 50);
+
+    ctx.strokeStyle = '#000000';
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(0, 40);
+    ctx.stroke();
+
+    expect(serialize()).toMatch(/<path[^>]*stroke-dasharray="6,4"/);
+  });
+
   test('the canvas handed to RoughCanvas resolves back to the context', () => {
     const { ctx, canvas } = createSvgContext(10, 10);
 
@@ -255,6 +283,40 @@ describe('selectBoardElements', () => {
     expect(kept).toContain(board);
     expect(kept).toContain(node);
     expect(kept).not.toContain(neighbour);
+  });
+
+  test('keeps a background nested entirely inside the board', () => {
+    // A UML partition in its diagram frame, a C4 boundary in its board: the
+    // nested frame is part of the picture, like the elements it holds.
+    const board = fakeBackground('[0,0,100,100]');
+    const nested = fakeBackground('[10,10,50,50]');
+    const flush = fakeBackground('[0,0,100,40]');
+    const node = fakeElement('[20,20,10,10]');
+
+    expect(selectBoardElements(board, [board, nested, flush, node])).toEqual([
+      board,
+      nested,
+      flush,
+      node,
+    ]);
+  });
+
+  test('drops a background that overlaps the board without fitting inside', () => {
+    const board = fakeBackground('[0,0,100,100]');
+    const overlapping = fakeBackground('[50,50,100,20]');
+    const nested = fakeBackground('[10,10,20,20]');
+
+    const kept = selectBoardElements(board, [board, nested, overlapping]);
+
+    expect(kept).toEqual([board, nested]);
+  });
+
+  test('drops a background that encloses the board', () => {
+    // Exporting a partition must not paint the diagram frame around it.
+    const board = fakeBackground('[10,10,20,20]');
+    const parent = fakeBackground('[0,0,100,100]');
+
+    expect(selectBoardElements(board, [parent, board])).toEqual([board]);
   });
 
   test('preserves the query order, which is the canvas z-order', () => {

@@ -4,7 +4,10 @@
 that the editor turns into tooling.**
 
 Frameworks today: Wardley maps, EDGY, BPMN, C4, Cynefin/Estuarine, DDD event
-storming, DDD core domain chart, DDD context map. All live under
+storming, DDD core domain chart, DDD context map, UML — one framework carrying
+nine diagram kinds (`class`, `pkg`, `obj`, `uc`, `cmp`, `dep`, `act`, `stm`,
+`sd`) as a field of its board, per ADR
+[0017](../adr/0017-uml-one-framework-with-diagram-kinds.md). All live under
 `packages/affine/gfx/<id>`. Wardley is the reference implementation.
 
 ## The board
@@ -23,6 +26,11 @@ the shared behaviour:
 - it is not a container. Membership ("this node is on this map") is computed
   from geometry at read time: whole containment for the board, centre point
   for inner regions such as zones or lanes.
+
+One framework has one board. When a notation draws several kinds of diagram on
+the same sheet under the same frame, the kind is a **field of the board** rather
+than a second framework — see R35 in
+[../add-a-framework/02-framework-rules.md](../add-a-framework/02-framework-rules.md).
 
 ## The artefacts
 
@@ -73,6 +81,10 @@ permissive one (Wardley calls it `sketch`), and choosing the default writes
 nothing on the element. A framework may ship no rules at all: Cynefin does,
 by decision (ADR 0013).
 
+Any other declaration a framework omits is declared too, in an ADR, so a
+coverage audit does not report it as missing. UML: natures, nudges and audit
+criteria not shipped, imports in phase 2, per ADR 0017.
+
 Rules run only when a board of the framework exists on the surface. A Wardley
 node on a blank canvas is a sketch, not an error. A node beside a map is
 judged and attributed to the nearest map: that is what the "element outside
@@ -83,7 +95,7 @@ its board" finding is for.
 ```
  whiteboard toolbar
  ┌──────────────────────────────────────────────────────────────┐
- │ … [Wardley] [EDGY] [BPMN] [C4] [Cynefin] [DDD…]              │  senior row (order = FRAMEWORK_DESCRIPTORS)
+ │ … [Wardley] [EDGY] [BPMN] [C4] [Cynefin] [DDD…] [UML]        │  senior row (order = FRAMEWORK_DESCRIPTORS)
  └──────────┬───────────────────────────────────────────────────┘
             ▼ click
  ┌──────────────────────────────┐

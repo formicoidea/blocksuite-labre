@@ -165,7 +165,7 @@ describe('a team-topology marker is a square, its letter and its caption', () =>
 /**
  * A dot's name and a marker's caption are SEEDS: resolved at placement,
  * through the same translation seam a derived template already speaks
- * (ADR 0016).
+ * (ADR 0023).
  */
 describe('captions speak the inserting editor’s language', () => {
   const hostWith = (t?: (key: string) => string | undefined) =>

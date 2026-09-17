@@ -311,7 +311,7 @@ const mapPreview = (extra: string) =>
  * The seeds the two worked maps write — declared once so the builders below
  * and the manifest (`../translations.ts`) read the very same fallback, never
  * a restated literal. `com.labre.wardley.example.<map>.<slug>`, per
- * `docs/adr/0016`.
+ * `docs/adr/0023`.
  */
 export const TEA_SHOP_SEED = {
   title: {
@@ -406,7 +406,7 @@ function seedText(
  * `build` takes the OPTIONAL inserting editor: called with none, at module
  * load, for the English `content`; called again with the real `std` as
  * {@link Template.localize}, so the two builds read the very same layout and
- * differ only in the words a seed resolves to (`docs/adr/0016`).
+ * differ only in the words a seed resolves to (`docs/adr/0023`).
  */
 function tpl(
   name: string,

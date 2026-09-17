@@ -26,7 +26,7 @@ function configOf(extension: ExtensionType) {
 
 /**
  * The "/ Mind Map" slash-menu entry's root and child captions are SEEDS:
- * resolved at PLACEMENT and never again (ADR 0016).
+ * resolved at PLACEMENT and never again (ADR 0023).
  */
 describe('the "/ Mind Map" slash command names the mindmap through the seam', () => {
   function fakeStd(t?: (key: string) => string | undefined) {

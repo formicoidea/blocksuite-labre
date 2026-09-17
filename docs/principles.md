@@ -123,4 +123,4 @@ short reason, and the consequence for the code you write.
   away: the same renderer that paints the canvas paints the file (svgcanvas
   replays the 2D context into SVG), so every board — present and future — gets
   the export for free, generically, from its contextual toolbar. Native formats
-  (OWM, BPMN XML, mermaid) are per framework; the picture is not. (ADR 0017)
+  (OWM, BPMN XML, mermaid) are per framework; the picture is not. (ADR 0025)

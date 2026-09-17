@@ -7,7 +7,7 @@ import {
  * The mindmap's own seeds: the captions a freshly placed mindmap is written
  * with, wherever the gesture draws one directly (the toolbar's built-in
  * templates, the drag-from-basket tool, a `.mm`/`.opml` import that meets an
- * empty node). Resolved at PLACEMENT and never again (ADR 0016) — a node
+ * empty node). Resolved at PLACEMENT and never again (ADR 0023) — a node
  * renamed by its author keeps its name, and a mindmap created before these
  * keys existed keeps the plain text it was given.
  *

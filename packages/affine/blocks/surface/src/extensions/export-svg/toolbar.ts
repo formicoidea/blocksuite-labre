@@ -59,7 +59,7 @@ export const exportSvgToolbarConfig = {
 } as const satisfies ToolbarModuleConfig;
 
 /**
- * "Export SVG" in the "⋮" of EVERY framework board (ADR 0017).
+ * "Export SVG" in the "⋮" of EVERY framework board (ADR 0025).
  *
  * ## Where it is registered
  *

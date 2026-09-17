@@ -149,7 +149,7 @@ framework-owned duplicate is not something this rule can fix.
 ### The other direction: literals with no key
 
 `packages/affine/all/src/__tests__/translations/literals.unit.spec.ts` scans
-the source for displayed literals that carry no key (ADR 0016). Anything it
+the source for displayed literals that carry no key (ADR 0023). Anything it
 finds must be listed in `literals.baseline.json`, and that list can only
 shrink: a new literal fails the test, and so does a listed one that has gone.
 Translating a string therefore means running

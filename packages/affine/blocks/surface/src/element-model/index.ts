@@ -19,6 +19,12 @@ import {
   MindmapElementModel,
   ShapeElementModel,
   TextElementModel,
+  UmlDiagramElementModel,
+  UmlFragmentElementModel,
+  UmlNodeElementModel,
+  UmlPartitionElementModel,
+  UmlRegionElementModel,
+  UmlSubjectElementModel,
   WardleyBackgroundElementModel,
   WardleyNodeElementModel,
 } from '@labre/affine-model';
@@ -48,6 +54,12 @@ export const elementsCtorMap = {
   c4Node: C4NodeElementModel,
   c4Board: C4BoardElementModel,
   c4Boundary: C4BoundaryElementModel,
+  umlNode: UmlNodeElementModel,
+  umlDiagram: UmlDiagramElementModel,
+  umlSubject: UmlSubjectElementModel,
+  umlPartition: UmlPartitionElementModel,
+  umlRegion: UmlRegionElementModel,
+  umlFragment: UmlFragmentElementModel,
 };
 
 export {
@@ -72,6 +84,12 @@ export {
   ShapeElementModel,
   SurfaceElementModel,
   TextElementModel,
+  UmlDiagramElementModel,
+  UmlFragmentElementModel,
+  UmlNodeElementModel,
+  UmlPartitionElementModel,
+  UmlRegionElementModel,
+  UmlSubjectElementModel,
   WardleyBackgroundElementModel,
   WardleyNodeElementModel,
 };
@@ -99,6 +117,12 @@ export enum CanvasElementType {
   C4NODE = 'c4Node',
   C4BOARD = 'c4Board',
   C4BOUNDARY = 'c4Boundary',
+  UMLNODE = 'umlNode',
+  UMLDIAGRAM = 'umlDiagram',
+  UMLSUBJECT = 'umlSubject',
+  UMLPARTITION = 'umlPartition',
+  UMLREGION = 'umlRegion',
+  UMLFRAGMENT = 'umlFragment',
 }
 
 export type ElementModelMap = {
@@ -124,6 +148,12 @@ export type ElementModelMap = {
   ['c4Node']: C4NodeElementModel;
   ['c4Board']: C4BoardElementModel;
   ['c4Boundary']: C4BoundaryElementModel;
+  ['umlNode']: UmlNodeElementModel;
+  ['umlDiagram']: UmlDiagramElementModel;
+  ['umlSubject']: UmlSubjectElementModel;
+  ['umlPartition']: UmlPartitionElementModel;
+  ['umlRegion']: UmlRegionElementModel;
+  ['umlFragment']: UmlFragmentElementModel;
 };
 
 export function isCanvasElementType(type: string): type is CanvasElementType {

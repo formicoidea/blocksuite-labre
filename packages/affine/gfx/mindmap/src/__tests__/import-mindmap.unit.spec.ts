@@ -24,7 +24,7 @@ vi.mock('@labre/affine-shared/utils', async importOriginal => ({
 /**
  * A `.mm` / `.opml` node with no text of its own is a SEED
  * (`com.labre.mindmap.seed.imported-node`): resolved at PLACEMENT — the
- * moment the import lands, ADR 0016 — and never again.
+ * moment the import lands, ADR 0023 — and never again.
  */
 describe('an imported node with no text speaks the inserting editor’s language', () => {
   const hostWith = (t?: (key: string) => string | undefined) =>

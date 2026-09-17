@@ -6,7 +6,7 @@ import { edgyTemplateCategory } from '../templates';
 
 /**
  * The four hand-composed scenes and the "EDGY dynamic" metamodel template
- * rebuild their seeds through {@link Template.localize} (`docs/adr/0016`):
+ * rebuild their seeds through {@link Template.localize} (`docs/adr/0023`):
  * without a host catalogue the rebuild must be byte-identical to the shipped
  * `content`, and with one every seed the card writes must come back in the
  * host's words. Mirrors BPMN's, C4's and Wardley's own

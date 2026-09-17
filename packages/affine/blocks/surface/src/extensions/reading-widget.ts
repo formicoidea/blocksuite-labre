@@ -26,6 +26,7 @@ import {
   ReadingManager,
   type ReadingProfile,
   type ReadingRelation,
+  readingRelationDefs,
   type ReadingRelationSide,
   readRecord,
   readValueFlows,
@@ -394,32 +395,59 @@ export class ReadingProposalWidget extends EditorAnchoredPanel {
   }
 
   /**
-   * The typed edges touching the subject, grouped by side and named with the
-   * FRAMEWORK's own two words (`ReadingRelationDef.sides`).
+   * The typed edges touching the subject, grouped by TABLE and then by side,
+   * and named with the FRAMEWORK's own two words
+   * (`ReadingRelationDef.sides`).
+   *
+   * One line per (table, side) rather than per side, since a profile may
+   * declare several tables (`ReadingProfile.alsoRelations`): a UML use case
+   * associated with an actor and including another use case has two sentences
+   * to say and they are not the same sentence. A framework declaring one table
+   * — which is every framework but UML — renders exactly what it did before.
    *
    * The `data-testid` keeps the shape it shipped with — `reading-consumers`,
    * `reading-suppliers` — because it names the SIDE, which is generic, and not
-   * the wording, which is now the framework's.
+   * the wording, which is the framework's. `data-relation-role` is what tells
+   * two lines of the same side apart.
+   *
+   * The FAR end's label rides with the name, in parentheses: a UML association
+   * writes its multiplicity there (ADR 0020) and "Associated with: OrderLine
+   * (1..*)" is the sentence an author drew. The subject's OWN end label is read
+   * too ({@link ReadingRelation.ownEndLabel}) and deliberately not printed —
+   * one line about the other end, not a transcription of the connector.
    */
   private _renderRelations(reading: ElementReading, profile: ReadingProfile) {
-    const sides = profile.relation?.sides;
+    const named = (relation: ReadingRelation) => {
+      const name = relation.otherName || relation.otherId;
+      return relation.otherEndLabel
+        ? `${name} (${relation.otherEndLabel})`
+        : name;
+    };
 
-    const line = (side: ReadingRelationSide) => {
+    const line = (edgeRole: string, side: ReadingRelationSide) => {
       const relations: ReadingRelation[] = reading.relations.filter(
-        r => r.side === side
+        r => r.side === side && r.relationRole === edgeRole
       );
-      const wording = sides?.[side];
+      const wording = readingRelationDefs(profile).find(
+        def => def.edgeRole === edgeRole
+      )?.sides[side];
       // No wording means the framework declared no relation at all, in which
       // case there is nothing to list either. Silence rather than a heading
       // this library would have had to invent.
       if (!relations.length || !wording) return nothing;
-      return html`<div class="reading-value" data-testid=${`reading-${side}s`}>
+      return html`<div
+        class="reading-value"
+        data-testid=${`reading-${side}s`}
+        data-relation-role=${edgeRole}
+      >
         ${translateKey(this.std, wording.labelKey, wording.labelFallback)}:
-        ${relations
-          .map(relation => relation.otherName || relation.otherId)
-          .join(', ')}
+        ${relations.map(named).join(', ')}
       </div>`;
     };
+
+    const lines = readingRelationDefs(profile).flatMap(def =>
+      RELATION_SIDES.map(side => line(def.edgeRole, side))
+    );
 
     const contradictions = reading.relations.filter(r => r.contradictsGeometry);
 
@@ -439,7 +467,7 @@ export class ReadingProposalWidget extends EditorAnchoredPanel {
             )}
           </div>`
         : nothing}
-      ${RELATION_SIDES.map(line)}
+      ${lines}
       ${contradictions.length
         ? html`<div class="reading-note" data-testid="reading-contradiction">
             ${translateKey(

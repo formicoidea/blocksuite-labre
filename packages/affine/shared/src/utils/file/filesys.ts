@@ -279,7 +279,7 @@ export async function getImageFilesFromLocal() {
  * The sanitiser the framework exports each wrote for themselves
  * (`wardleySafeFilename`, `c4SafeFilename`, BPMN's) — same five steps, same
  * 120-character ceiling — lifted here for the callers that belong to no
- * framework at all. The generic SVG export (ADR 0017) is the first of them: it
+ * framework at all. The generic SVG export (ADR 0025) is the first of them: it
  * writes a file for ELEVEN kinds of board, so it has no framework's fallback to
  * borrow and takes one as a parameter instead.
  *

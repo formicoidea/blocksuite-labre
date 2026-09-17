@@ -97,6 +97,48 @@ export function addText(edgeless: BlockComponent, event: PointerEventState) {
   }
 }
 
+/**
+ * What the editor does with a canvas text the author committed EMPTY: delete it,
+ * or leave it standing.
+ *
+ * ## Why anything survives being emptied
+ *
+ * A free canvas text emptied of its words IS nothing, and deleting it is what
+ * keeps an invisible, selectable box off the board. That was the only rule until
+ * the PO's recette of 14/09/2026 found what it costs a COMPARTMENT: emptying a
+ * classifier's title deleted the `uml:name` tier out of its group, and the next
+ * double-click on the body fell through to the SHAPE's own inner text
+ * (`UmlNodeView`), which R16 keeps empty and no framework renderer paints —
+ * "je n'arrive pas à entrer dans l'édition de texte".
+ *
+ * ## …and why a `role` alone is not the test
+ *
+ * A role says the element means something to a framework. It does NOT say the
+ * element is a tier of a composite: a Wardley `wardley:label` and a BPMN name
+ * are roled texts that float BESIDE their artefact, sized to their own words,
+ * and one emptied to nothing leaves exactly the invisible box the deletion rule
+ * exists to remove — with no placeholder drawn over it and no layout to put it
+ * back.
+ *
+ * A compartment tier is the one that has both halves: a `role`, and
+ * `hasMaxWidth` — a FIXED width, given at creation by every framework that lays
+ * tiers out (`uml/presets.ts`, `c4/actions.ts`), because a tier's width is its
+ * compartment's and not its content's. That fixed width is also, and not by
+ * coincidence, what leaves a full-width hit box for the next double-click to
+ * land on when the words are gone.
+ *
+ * Pure and total, so it can be asked without an editor, an element model or a
+ * document.
+ */
+export function emptiedTextIsDeleted(element: {
+  text: { length: number };
+  role?: string;
+  hasMaxWidth?: boolean;
+}): boolean {
+  if (element.text.length !== 0) return false;
+  return !(element.role !== undefined && element.hasMaxWidth === true);
+}
+
 export class EdgelessTextEditor extends WithDisposable(ShadowlessElement) {
   get crud() {
     return this.std.get(EdgelessCRUDIdentifier);
@@ -151,6 +193,8 @@ export class EdgelessTextEditor extends WithDisposable(ShadowlessElement) {
   private _isComposition = false;
 
   private _keeping = false;
+
+  private _removing = false;
 
   private readonly _updateRect = () => {
     const element = this.element;
@@ -277,7 +321,12 @@ export class EdgelessTextEditor extends WithDisposable(ShadowlessElement) {
         this.disposables.add(() => {
           element.display = true;
 
-          if (element.text.length === 0) {
+          // An emptied COMPARTMENT TIER stays, at its compartment's box,
+          // showing the placeholder its framework draws and answering the next
+          // double-click; anything else emptied goes. The whole rule, and why it
+          // is those two properties and not one, is on
+          // {@link emptiedTextIsDeleted}.
+          if (emptiedTextIsDeleted(element)) {
             this.crud.deleteElements([element]);
           }
 
@@ -291,7 +340,17 @@ export class EdgelessTextEditor extends WithDisposable(ShadowlessElement) {
         this.disposables.addFromEvent(
           this.inlineEditorContainer,
           'blur',
-          () => !this._keeping && this.remove()
+          () => {
+            // Re-entrant, and the connector label editor already says why:
+            // Chrome fires the focused child's blur SYNCHRONOUSLY inside
+            // `remove()`, before the node is detached, and the commit in
+            // `disconnectedCallback` moves the focus again. Without the flag the
+            // handler removes a node whose removal is in progress — a
+            // `NotFoundError` out of a listener nobody is awaiting.
+            if (this._keeping || this._removing) return;
+            this._removing = true;
+            this.remove();
+          }
         );
 
         this.disposables.addFromEvent(

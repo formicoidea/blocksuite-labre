@@ -5,6 +5,7 @@ import {
 } from '@labre/affine/blocks/surface';
 // Straight off the framework package, as the neighbouring wardley specs do:
 // `@labre/affine` re-exports the blocks, not the framework modules.
+import { UML_LIFELINE_DASH, UML_ROLE } from '@labre/affine-gfx-uml';
 import {
   WARDLEY_BACKGROUND,
   WARDLEY_NODE_SIZE,
@@ -14,6 +15,7 @@ import {
 } from '@labre/affine-gfx-wardley';
 import {
   FrameworkBackgroundElementModel,
+  StrokeStyle,
   TextElementModel,
   WardleyBackgroundElementModel,
 } from '@labre/affine/model';
@@ -30,7 +32,7 @@ import { getDocRootBlock, getSurface } from '../utils/edgeless.js';
 import { setupEditor } from '../utils/setup.js';
 
 /**
- * The generic SVG export (ADR 0017, rule R34).
+ * The generic SVG export (ADR 0025, rule R34).
  *
  * The unit suite owns the descriptor and the board table over plain stubs.
  * What only a real editor can answer is the claim the whole feature rests on:
@@ -219,6 +221,11 @@ describe('exporting a board as SVG', () => {
     'estuarine',
     'edgy',
     'edgyBoard',
+    'umlDiagram',
+    'umlSubject',
+    'umlPartition',
+    'umlRegion',
+    'umlFragment',
   ] as const;
 
   test.each(BOARD_TYPES)('%s exports a parsable SVG', async type => {
@@ -232,5 +239,82 @@ describe('exporting a board as SVG', () => {
     expect(svg.length, type).toBeGreaterThan(0);
     const doc = parse(svg);
     expect(doc.documentElement.getAttribute('viewBox'), type).toBeTruthy();
+  });
+
+  /** Every text node of an export, as the reader of the file sees it. */
+  const textsOf = (doc: Document) =>
+    [...doc.querySelectorAll('text')].map(node => node.textContent ?? '');
+
+  /**
+   * A sequence diagram with a lifeline in it. The lifeline's dashed spine was
+   * the first glyph to read the dash back (`getLineDash`), which svgcanvas
+   * 2.6.0 does not implement — so the whole export threw and nothing
+   * downloaded. The spine must now reach the file, dashed.
+   */
+  test('a sequence diagram with a lifeline exports, spine included', async () => {
+    const surface = surfaceModel();
+    const diagram = surface.addElement({
+      type: 'umlDiagram',
+      role: UML_ROLE.diagram,
+      kind: 'sd',
+      name: 'Checkout',
+      xywh: '[0,0,1400,900]',
+    });
+    surface.addElement({
+      type: 'umlNode',
+      kind: 'lifeline',
+      role: UML_ROLE.lifeline,
+      shapeType: 'rect',
+      filled: false,
+      strokeStyle: StrokeStyle.None,
+      xywh: '[200,100,16,600]',
+    });
+    await wait();
+
+    const { svg } = renderBoardSvg(edgeless.std, boardById(diagram));
+    const doc = parse(svg);
+
+    expect(textsOf(doc).some(text => text.includes('Checkout'))).toBe(true);
+    const dashed = [...doc.querySelectorAll('path')].filter(
+      path =>
+        path.getAttribute('stroke-dasharray') === UML_LIFELINE_DASH.join(',')
+    );
+    expect(dashed, svg.slice(0, 400)).toHaveLength(1);
+  });
+
+  /**
+   * UML nests frames inside the diagram frame by design (a subject, a
+   * partition, a region, a fragment), and they are backgrounds too. The export
+   * used to drop every background but the selected one; a frame that lies
+   * wholly inside the exported one is part of its picture and stays.
+   */
+  test('a diagram frame exports the frame nested inside it', async () => {
+    const surface = surfaceModel();
+    const diagram = surface.addElement({
+      type: 'umlDiagram',
+      role: UML_ROLE.diagram,
+      kind: 'sd',
+      name: 'Checkout',
+      xywh: '[0,0,1400,900]',
+    });
+    const fragment = surface.addElement({
+      type: 'umlFragment',
+      role: UML_ROLE.fragment,
+      operator: 'loop',
+      name: '[items left]',
+      xywh: '[150,180,420,260]',
+    });
+    await wait();
+
+    // The fragment on its own is a board too, and its export does not drag
+    // the diagram frame around it along.
+    const own = parse(renderBoardSvg(edgeless.std, boardById(fragment)).svg);
+    expect(textsOf(own).some(text => text.includes('loop'))).toBe(true);
+    expect(textsOf(own).some(text => text.includes('Checkout'))).toBe(false);
+
+    const { svg } = renderBoardSvg(edgeless.std, boardById(diagram));
+    const texts = textsOf(parse(svg));
+    expect(texts.some(text => text.includes('Checkout'))).toBe(true);
+    expect(texts.some(text => text.includes('loop'))).toBe(true);
   });
 });

@@ -49,5 +49,8 @@
     "!src/__tests__",
     "!dist/__tests__"
   ],
-  "version": "0.41.0"
+  "version": "0.41.0",
+  "devDependencies": {
+    "happy-dom": "^17.4.4"
+  }
 }

@@ -655,7 +655,7 @@ const ATTRS =
  * `build` takes the OPTIONAL inserting editor: called with none, at module
  * load, for the English `content`; called again with the real `std` as
  * {@link Template.localize}, so the two builds read the very same layout and
- * differ only in the words a seed resolves to (`docs/adr/0016`).
+ * differ only in the words a seed resolves to (`docs/adr/0023`).
  */
 function tpl(
   name: string,

@@ -18,7 +18,7 @@ const SVG_FILENAME_FALLBACK = 'board';
  * this command: eleven board kinds today — a Wardley map, a BPMN pool, a C4
  * board and its boundaries, the three DDD boards, Cynefin, Estuarine, the two
  * EDGY ones — and whatever a framework adds next, because a board IS the class
- * and nothing about SVG is per framework (ADR 0017).
+ * and nothing about SVG is per framework (ADR 0025).
  */
 export function selectedBoards(
   std: BlockStdScope
@@ -55,7 +55,7 @@ export function exportBoardSvg(std: BlockStdScope): void {
 }
 
 /**
- * "Export SVG", in the command registry (ADR 0017).
+ * "Export SVG", in the command registry (ADR 0025).
  *
  * `owner: 'core'` and not a framework's, for the reason `map.audit` and
  * `validation.mapQuality` are core: the command belongs to no framework —

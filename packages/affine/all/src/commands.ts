@@ -18,6 +18,7 @@ import { coreDomainCommands } from '@labre/affine-gfx-ddd-core-domain';
 import { eventStormingCommands } from '@labre/affine-gfx-ddd-event-storming';
 import { edgyCommands } from '@labre/affine-gfx-edgy';
 import { shapeCommands } from '@labre/affine-gfx-shape';
+import { umlCommands } from '@labre/affine-gfx-uml';
 import { wardleyCommands } from '@labre/affine-gfx-wardley';
 import {
   type AnyCommandDescriptor,
@@ -63,6 +64,7 @@ const FRAMEWORK_COMMAND_GROUPS: FrameworkCommandGroup[] = [
   { owner: 'ddd-event-storming', commands: eventStormingCommands },
   { owner: 'ddd-core-domain', commands: coreDomainCommands },
   { owner: 'ddd-context-map', commands: contextMapCommands },
+  { owner: 'uml', commands: umlCommands },
 ];
 
 /**
@@ -91,7 +93,7 @@ export function buildCommandRegistry(
  * stay reachable on a board whose framework tooling is switched off; it is
  * registered from the always-on connector view extension for the same reason.
  *
- * `export.svg` joins them on the same terms (`docs/adr/0017`): a board is a
+ * `export.svg` joins them on the same terms (`docs/adr/0025`): a board is a
  * `FrameworkBackgroundElementModel` whatever framework drew it, and the picture
  * it hands back is the canvas renderer's output replayed into SVG — so the
  * command belongs to no framework, and a framework toggled off must still be

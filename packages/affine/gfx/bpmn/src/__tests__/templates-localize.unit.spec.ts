@@ -6,7 +6,7 @@ import { bpmnTemplateCategory } from '../templates';
 
 /**
  * The two hand-composed scenes rebuild their seeds through
- * {@link Template.localize} (`docs/adr/0016`): without a host catalogue the
+ * {@link Template.localize} (`docs/adr/0023`): without a host catalogue the
  * rebuild must be byte-identical to the shipped `content`, and with one every
  * seed the scene writes must come back in the host's words.
  *

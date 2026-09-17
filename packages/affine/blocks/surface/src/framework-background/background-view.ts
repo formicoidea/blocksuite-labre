@@ -23,6 +23,23 @@ export interface EditableBackgroundLabel {
    * would silently offer to erase a name the user can see.
    */
   text: string;
+  /**
+   * Where the edited words go, when a flat `{ [prop]: value }` patch cannot say
+   * it. Absent — the case for every label a declaration binds — the editor
+   * writes `updateElement(id, { [prop]: value })`.
+   *
+   * The one label shape that needs it is a name kept INSIDE a structured prop:
+   * a UML combined fragment's operand guard lives in `operands[i].name`, and
+   * renaming it means rewriting that array (trimmed, the key dropped when
+   * cleared), which no single-prop patch expresses. A write hook on the label
+   * rather than on the view, because the target is a property of the label hit
+   * — one view carries labels of both kinds.
+   *
+   * Called only for an ACTUAL change (the untouched-value rule below still
+   * applies), after the editor has closed and after the undo boundary has been
+   * captured: the hook writes, and nothing else.
+   */
+  commit?: (value: string) => void;
 }
 
 /**
@@ -44,6 +61,11 @@ export interface EditableBackgroundLabel {
  * hand (Cynefin, Estuarine — figurative reproductions of an official drawing,
  * with no `FrameworkBackgroundDef` behind them) extends this class and hit-tests
  * in its own reference space.
+ *
+ * UML's five frames were the last copy standing and now extend
+ * {@link DeclaredBackgroundView} like the rest (2026-09-17); the combined
+ * fragment's operand guards are why a label may carry its own
+ * {@link EditableBackgroundLabel.commit}.
  */
 export abstract class FrameworkBackgroundView<
   T extends GfxPrimitiveElementModel = GfxPrimitiveElementModel,
@@ -126,20 +148,21 @@ export abstract class FrameworkBackgroundView<
     const hit = this._labelAtModelPoint(mx, my);
     if (!hit) return;
 
-    this._openLabelEditor(hit.prop, hit.text, e);
+    this._openLabelEditor(hit, e);
   }
 
   /**
-   * @param current the words currently DRAWN — which is the vocabulary, not
-   * `model[prop]`, for a label the user has never renamed. Opening on the raw
-   * prop would show an empty box for a label that plainly reads "Evolution".
+   * @param label the label aimed at. The editor opens on `label.text`, the
+   * words currently DRAWN — which is the vocabulary, not `model[prop]`, for a
+   * label the user has never renamed. Opening on the raw prop would show an
+   * empty box for a label that plainly reads "Evolution".
    */
   private _openLabelEditor(
-    prop: string,
-    current: string,
+    label: EditableBackgroundLabel,
     e: PointerEventState
   ): void {
     this._closeLabelEditor();
+    const current = label.text;
 
     const input = document.createElement('input');
     input.value = current;
@@ -170,8 +193,10 @@ export abstract class FrameworkBackgroundView<
     input.select();
 
     const commit = () => {
-      // Guard against re-entrancy: removing the input fires `blur`, which would
-      // otherwise call `commit` a second time.
+      // Guard against re-entrancy: removing the input fires `blur` — Chrome
+      // fires it SYNCHRONOUSLY inside `remove()` — which would otherwise call
+      // `commit` a second time. `_closeLabelEditor` clears the field before it
+      // removes the node, so that nested call finds it gone and returns.
       if (this._labelEditor !== input) return;
       const value = input.value;
       this._closeLabelEditor();
@@ -181,9 +206,13 @@ export abstract class FrameworkBackgroundView<
       // any catalogue for good — and it would push an empty entry onto undo.
       if (value === current) return;
       this.gfx.std.store.captureSync();
+      if (label.commit) {
+        label.commit(value);
+        return;
+      }
       this.gfx.std
         .get(EdgelessCRUDIdentifier)
-        .updateElement(this.model.id, { [prop]: value });
+        .updateElement(this.model.id, { [label.prop]: value });
     };
 
     input.addEventListener('keydown', ev => {

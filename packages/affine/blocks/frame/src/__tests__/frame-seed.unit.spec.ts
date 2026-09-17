@@ -18,7 +18,7 @@ function materialize(text: Text): string {
 
 /**
  * A frame's default title (`Frame {{n}}`) is a SEED: text a creation action
- * writes INTO the document, resolved at PLACEMENT and never again (ADR 0016).
+ * writes INTO the document, resolved at PLACEMENT and never again (ADR 0023).
  */
 describe('a placed frame is named through the translation seam', () => {
   function fakeGfx(

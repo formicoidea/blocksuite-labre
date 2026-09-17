@@ -40,6 +40,7 @@ export default [
   'packages/affine/gfx/shape/vitest.config.ts',
   'packages/affine/gfx/template/vitest.config.ts',
   'packages/affine/gfx/text/vitest.config.ts',
+  'packages/affine/gfx/uml/vitest.config.ts',
   'packages/affine/gfx/wardley/vitest.config.ts',
   'packages/affine/inlines/footnote/vitest.config.ts',
   'packages/affine/inlines/latex/vitest.config.ts',

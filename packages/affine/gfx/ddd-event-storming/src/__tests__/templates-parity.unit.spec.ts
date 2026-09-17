@@ -167,7 +167,7 @@ describe('the board is a declared board', () => {
 
 /**
  * A sticky's caption is a SEED: resolved at placement, through the same
- * translation seam a derived template already speaks (ADR 0016).
+ * translation seam a derived template already speaks (ADR 0023).
  */
 describe('a sticky speaks the inserting editor’s language', () => {
   const hostWith = (t?: (key: string) => string | undefined) =>

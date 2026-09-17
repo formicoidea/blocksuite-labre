@@ -61,7 +61,7 @@ describe('artefact catalogue sidepanel', () => {
     await wait(0);
   };
 
-  const open = async (owner: 'wardley' | 'bpmn' = 'wardley') => {
+  const open = async (owner: 'wardley' | 'bpmn' | 'uml' = 'wardley') => {
     catalogue().open(owner);
     await settle();
   };
@@ -172,6 +172,90 @@ describe('artefact catalogue sidepanel', () => {
       entry => entry.dataset.commandId === 'wardley.addComponent'
     );
     expect(component?.textContent).toContain('W C');
+  });
+
+  /**
+   * UML's catalogue, which is the one the PO ruled on for 2026-09-16: at
+   * sixty-nine commands the library's own `elements` / `boundaries` /
+   * `relations` headers stopped sorting anything, so the sections are the
+   * DIAGRAM KINDS, in the order of the frame's own kind picker, with what
+   * several kinds share under "General" and the interchange still last.
+   *
+   * Asserted on the RENDERED panel and not on the descriptors, because the
+   * headers are the half a unit test cannot see: the key is derived from the
+   * category id (`CATALOGUE_CATEGORY_KEY_PREFIX`) and the English comes from
+   * `humanizeCategory`, so nothing in the framework restates the words — and
+   * this is where a host with no catalogue registered reads them.
+   */
+  test('UML files its catalogue by diagram kind, interchange last', async () => {
+    await open('uml');
+
+    expect(groups().map(group => group.dataset.category)).toEqual([
+      'general',
+      'class-diagram',
+      'use-case-diagram',
+      'component-diagram',
+      'deployment-diagram',
+      'activity-diagram',
+      'state-machine-diagram',
+      'sequence-diagram',
+      'interchange',
+    ]);
+    // The words on screen, which are the kind picker's own wordings for the
+    // seven headers that name a kind. `aria-label` carries the same string the
+    // group's label div draws.
+    expect(groups().map(group => group.getAttribute('aria-label'))).toEqual([
+      'General',
+      'Class diagram',
+      'Use case diagram',
+      'Component diagram',
+      'Deployment diagram',
+      'Activity diagram',
+      'State machine diagram',
+      'Sequence diagram',
+      'Interchange',
+    ]);
+
+    const idsIn = (category: string) =>
+      Array.from(
+        groups()
+          .find(group => group.dataset.category === category)!
+          .querySelectorAll<HTMLElement>(ENTRY),
+        entry => entry.dataset.commandId
+      );
+    // The frame, the two annotating artefacts, then the four relationships no
+    // one notation owns — elements before relations, which is how the ruling
+    // orders a section internally.
+    expect(idsIn('general')).toEqual([
+      'uml.addDiagram',
+      'uml.addPackage',
+      'uml.addNote',
+      'uml.generalizationTool',
+      'uml.dependencyTool',
+      'uml.realizationTool',
+      'uml.anchorTool',
+    ]);
+    // …and a kind's own section holds every shape that kind is drawn with.
+    expect(idsIn('sequence-diagram')).toEqual([
+      'uml.addLifeline',
+      'uml.addExecution',
+      'uml.addDestruction',
+      'uml.addFragment',
+      'uml.addInteractionUse',
+      'uml.messageSyncTool',
+      'uml.messageAsyncTool',
+      'uml.messageReplyTool',
+      'uml.messageCreateTool',
+      'uml.messageDeleteTool',
+    ]);
+    // The three imports and neither export: the panel filters on `when`, and an
+    // export needs a diagram on the board to have something to write. An empty
+    // board is exactly where an import is wanted.
+    expect(idsIn('interchange')).toEqual([
+      'uml.importXmi',
+      'uml.importPlantuml',
+      'uml.importDrawio',
+    ]);
   });
 
   test('every row is at least a finger tall', async () => {

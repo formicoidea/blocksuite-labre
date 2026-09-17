@@ -35,6 +35,7 @@ import { contextMapTranslationEntries } from '@labre/affine-gfx-ddd-context-map'
 import { coreDomainTranslationEntries } from '@labre/affine-gfx-ddd-core-domain';
 import { eventStormingTranslationEntries } from '@labre/affine-gfx-ddd-event-storming';
 import { edgyTranslationEntries } from '@labre/affine-gfx-edgy';
+import { umlTranslationEntries } from '@labre/affine-gfx-uml';
 import {
   GROUP_CHROME_WORDINGS,
   GROUP_WORDINGS,
@@ -173,6 +174,7 @@ const FRAMEWORK_TRANSLATION_GROUPS: FrameworkTranslationGroup[] = [
   { owner: 'ddd-event-storming', entries: eventStormingTranslationEntries },
   { owner: 'ddd-core-domain', entries: coreDomainTranslationEntries },
   { owner: 'ddd-context-map', entries: contextMapTranslationEntries },
+  { owner: 'uml', entries: umlTranslationEntries },
 ];
 
 /**
@@ -364,6 +366,14 @@ const CHROME_KEYS: readonly [key: string, fallback: string][] = [
   ['com.labre.interchange.import.drawn', 'drawn'],
   ['com.labre.interchange.import.carried', 'carried'],
   ['com.labre.interchange.import.quarantined', 'quarantined'],
+  // The one remark the shared materializer raises itself — a provisional name
+  // two imported elements were both handed. It belongs here with the pipeline's
+  // other words rather than in a reader's table, because no reader produces it:
+  // `materializeInterchangeImport` does, whichever format was read.
+  [
+    'com.labre.interchange.import.duplicate-provisional-name',
+    'Two imported elements were handed the same provisional name "{{name}}". Both are on the board; anything referring to that name points at the first of them.',
+  ],
 ];
 
 /**

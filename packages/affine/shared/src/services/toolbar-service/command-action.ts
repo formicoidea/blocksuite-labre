@@ -32,7 +32,7 @@ const findCommand = (ctx: ToolbarContext, id: string) =>
  * It was written three times — BPMN's pool row, C4's board row and Wardley's
  * map row — each copy a few words of comment apart from the others, because a
  * framework's toolbar has no layer below it to share with. The generic SVG
- * export (`export.svg`, ADR 0017) is the fourth caller and the first that is
+ * export (`export.svg`, ADR 0025) is the fourth caller and the first that is
  * not a framework at all, which is what settles the question: the shape belongs
  * to the toolbar service, beside the module registry it plugs into, not to
  * whichever framework happened to need it first.

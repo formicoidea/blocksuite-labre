@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<uml:Model xmi:version="20131001" xmlns:xmi="http://www.omg.org/spec/XMI/20131001" xmlns:uml="http://www.omg.org/spec/UML/20161101" xmi:id="_1" name="BlockSuite Playground">
+  <packagedElement xmi:type="uml:Package" xmi:id="_2" name="Diagram">
+    <packagedElement xmi:type="uml:Interaction" xmi:id="_3" name="Diagram">
+      <lifeline xmi:type="uml:Lifeline" xmi:id="_4" name="a">
+        <xmi:Extension extender="labre">
+          <represents name="A"/>
+        </xmi:Extension>
+      </lifeline>
+      <lifeline xmi:type="uml:Lifeline" xmi:id="_5" name="b">
+        <xmi:Extension extender="labre">
+          <represents name="B"/>
+        </xmi:Extension>
+      </lifeline>
+      <fragment xmi:type="uml:CombinedFragment" xmi:id="_6" covered="_4 _5" interactionOperator="loop">
+        <operand xmi:type="uml:InteractionOperand" xmi:id="_15">
+          <guard xmi:type="uml:InteractionConstraint" xmi:id="_13">
+            <specification xmi:type="uml:LiteralString" xmi:id="_14" value="x &gt; 0"/>
+          </guard>
+          <fragment xmi:type="uml:MessageOccurrenceSpecification" xmi:id="_9" covered="_4" message="_7"/>
+          <fragment xmi:type="uml:MessageOccurrenceSpecification" xmi:id="_10" covered="_5" message="_7"/>
+          <fragment xmi:type="uml:MessageOccurrenceSpecification" xmi:id="_11" covered="_5" message="_8"/>
+          <fragment xmi:type="uml:MessageOccurrenceSpecification" xmi:id="_12" covered="_4" message="_8"/>
+        </operand>
+        <operand xmi:type="uml:InteractionOperand" xmi:id="_18">
+          <guard xmi:type="uml:InteractionConstraint" xmi:id="_16">
+            <specification xmi:type="uml:LiteralString" xmi:id="_17" value="else"/>
+          </guard>
+        </operand>
+      </fragment>
+      <message xmi:type="uml:Message" xmi:id="_7" name="doIt(x)" messageSort="synchCall" sendEvent="_9" receiveEvent="_10"/>
+      <message xmi:type="uml:Message" xmi:id="_8" name="ok" messageSort="reply" sendEvent="_11" receiveEvent="_12"/>
+    </packagedElement>
+    <xmi:Extension extender="labre">
+      <diagram kind="sd"/>
+    </xmi:Extension>
+  </packagedElement>
+</uml:Model>

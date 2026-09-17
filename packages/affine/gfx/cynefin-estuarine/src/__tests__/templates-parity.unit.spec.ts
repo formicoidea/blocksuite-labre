@@ -245,7 +245,7 @@ describe('the hand-authored templates write their text in the shared ink', () =>
  * The two hand-authored compositions speak the inserting editor's language:
  * their seeds (the sorting board's four domain names, the map's three
  * constraint captions) go through the translation seam at placement, exactly
- * like a derived template's (ADR 0016).
+ * like a derived template's (ADR 0023).
  */
 describe('the hand-authored templates localize their seeds', () => {
   const hostWith = (t?: (key: string) => string | undefined) =>

@@ -188,7 +188,7 @@ export const aggregateTemplateCategory: TemplateCategory = {
         'Aggregate Design Canvas'
       ),
       // The nine section titles and the header are document content the
-      // moment the template lands (ADR 0016); `content` stays the English
+      // moment the template lands (ADR 0023); `content` stays the English
       // build.
       localize: std =>
         makeTemplateSnapshot(

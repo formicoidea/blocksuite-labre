@@ -5,7 +5,7 @@ import { createWardleyBackground, createWardleyNode } from '../actions';
 /**
  * The seeds this lot (#278) put through the translation seam:
  * `createWardleyNode`'s label and `createWardleyBackground`'s axis titles.
- * Mirrors the mechanism `docs/adr/0016` already proves for BPMN — a fake
+ * Mirrors the mechanism `docs/adr/0023` already proves for BPMN — a fake
  * `TranslationProvider` changes what lands in the document, its absence
  * keeps the English literal.
  */

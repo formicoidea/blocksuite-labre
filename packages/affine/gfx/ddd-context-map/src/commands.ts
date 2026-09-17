@@ -98,7 +98,7 @@ const SPECS: Spec[] = [
     run: std =>
       placeDddElement(std, (surface, cx, cy) =>
         // Translated HERE and once: the caption is document content the
-        // moment it lands (ADR 0016). The role is what makes a bubble a
+        // moment it lands (ADR 0023). The role is what makes a bubble a
         // bounded CONTEXT rather than a blue pill: every rule in `rules.ts`
         // reads it, and a pill drawn before WS2 carries none and is never
         // evaluated (promesse #71).
@@ -119,7 +119,7 @@ const SPECS: Spec[] = [
     icon: cloudSwatch,
     run: std =>
       placeDddElement(std, (surface, cx, cy) =>
-        // Translated HERE and once, like the bubble above (ADR 0016).
+        // Translated HERE and once, like the bubble above (ADR 0023).
         addCloud(
           surface,
           std,

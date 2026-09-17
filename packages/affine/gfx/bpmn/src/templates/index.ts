@@ -39,7 +39,7 @@ import { BPMN_ROLE } from '../roles';
  * The seeds the two worked scenes write — declared once so the scene builder
  * and the manifest ({@link ../translations.ts}) read the very same fallback,
  * never a restated literal. `com.labre.bpmn.example.<scene>.<slug>`, per
- * `docs/adr/0016`.
+ * `docs/adr/0023`.
  */
 export const SIMPLE_PROCESS_SEED = {
   poolName: {
@@ -318,7 +318,7 @@ const previews = {
  * `build` takes the OPTIONAL inserting editor: called with none, at module
  * load, for the English `content`; called again with the real `std` as
  * {@link Template.localize}, so the two builds read the very same layout and
- * differ only in the words a seed resolves to (`docs/adr/0016`).
+ * differ only in the words a seed resolves to (`docs/adr/0023`).
  */
 const scene = (
   name: string,

@@ -60,7 +60,7 @@ async function parseMmFile(
 ): Promise<MindMapNode> {
   const content = await readAsText(file);
   // Translated HERE and once: a node with no text is document content the
-  // moment the import lands (ADR 0016).
+  // moment the import lands (ADR 0023).
   const untitled = translateKey(std, ...MINDMAP_SEED_IMPORTED_NODE);
 
   try {
@@ -122,7 +122,7 @@ async function parseOPMLFile(
 ): Promise<MindMapNode> {
   const content = await readAsText(file);
   // Translated HERE and once: a node with no text is document content the
-  // moment the import lands (ADR 0016).
+  // moment the import lands (ADR 0023).
   const untitled = translateKey(std, ...MINDMAP_SEED_IMPORTED_NODE);
 
   try {

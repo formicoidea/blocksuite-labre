@@ -72,7 +72,7 @@ describe('the generic ("Other") templates', () => {
  * The five generic templates speak the inserting editor's language: their
  * seeds (SWOT's four quadrant labels, Kanban's column headers, BMC's nine
  * section titles, Fishbone's category/item words, Gantt's phase names and
- * week header) go through the translation seam at placement (ADR 0016), like
+ * week header) go through the translation seam at placement (ADR 0023), like
  * a derived template's.
  */
 describe('the generic templates localize their seeds', () => {

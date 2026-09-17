@@ -119,6 +119,21 @@ export type ProfileSeverity = ViolationSeverity | 'off';
  *   VIEW rather than of the artefact: every other one starts from a subject and
  *   looks around it, this one starts from the sheet and asks what has been
  *   drawn on it.
+ * - `label-syntax` — the subject's words must be SPELLED the way the notation
+ *   spells them. `label-presence` asks whether anything is written; this one
+ *   asks whether what is written parses. The first family whose verdict comes
+ *   out of a function the FRAMEWORK ships rather than out of a table the engine
+ *   interprets — a notation's grammar is a grammar, and no amount of declarative
+ *   data is going to express `[<visibility>] [/] <name> [: <type>]`. See
+ *   {@link LabelSyntaxDef} and `docs/adr/0021`.
+ * - `border-proximity` — the subject must sit ON the OUTLINE of a carrier NODE,
+ *   within a declared tolerance. The family of "a port is a small square on the
+ *   border of the component that owns it" (UML §11.3.4), and the first one whose
+ *   frame of reference is another ARTEFACT's edge rather than the sheet's:
+ *   `attachment` measures a distance to a PATH and refuses a node carrier,
+ *   `element-in-background` demands full containment — which a glyph straddling
+ *   the edge breaks by construction — and `no-overlap` has the opposite polarity
+ *   and no tolerance. See {@link BorderProximityDef} and `docs/adr/0024`.
  */
 export type RuleFamily =
   | 'element-in-background'
@@ -135,7 +150,9 @@ export type RuleFamily =
   | 'edge-locality'
   | 'reachability'
   | 'label-presence'
-  | 'view-admissibility';
+  | 'label-syntax'
+  | 'view-admissibility'
+  | 'border-proximity';
 
 /**
  * What a verdict on one subject depends on (PF5.3). Ordered: each level
@@ -919,6 +936,123 @@ export interface LabelPresenceDef {
 }
 
 /**
+ * WHICH of an element's labels a `label-syntax` rule reads.
+ *
+ * `'center-label'` is the element's own `text` — the one property every
+ * artefact-bearing model carries, and the same slot {@link elementLabel} reads.
+ * The other two are the connector's per-END labels (`docs/adr/0020`), which is
+ * the whole reason this discriminant exists: a multiplicity is written at the
+ * end of an association and NOT in the middle of it, so a rule about `0..*` has
+ * to be able to say which of the three labels it is about.
+ *
+ * `'end-labels'` is the two ends TOGETHER, one per line. §11.5.4 puts the same
+ * grammar at both ends of an association, so a rule naming one end could only
+ * ever check half of every line drawn — and two rules would be two ids, two
+ * sentences and two entries in every profile table for one requirement. The
+ * per-line walk is what makes this honest rather than a shortcut: each end is
+ * judged on its own, and the finding quotes whichever one is wrong.
+ *
+ * Named after the notation's positions rather than after the props they live in,
+ * so a rule reads as a sentence about a drawing and the mapping to model props
+ * stays one table in this file ({@link LABEL_PROPS}).
+ */
+export type LabelTarget =
+  | 'center-label'
+  | 'source-label'
+  | 'target-label'
+  | 'end-labels';
+
+/** What a {@link LabelSyntaxDef.parse} says about ONE line. */
+export interface LabelSyntaxVerdict {
+  /** The line is spelled the way the notation spells it. */
+  ok: boolean;
+  /**
+   * WHY it is not, in the framework's own words, when it is not — a fragment,
+   * not a sentence: "no parentheses", "the multiplicity is not a range". The
+   * family prints it after the offending line, so the two read together.
+   *
+   * Absent on an `ok` verdict, and absent on a failure the framework has nothing
+   * more precise to say about. English, like every other `*Fallback` in a rule
+   * declaration: the framework owns the word, the engine never invents one.
+   */
+  reason?: string;
+}
+
+/**
+ * `label-syntax` configuration — the subject's words must PARSE.
+ *
+ * The sibling of {@link LabelPresenceDef}, one question further on. That family
+ * asks whether an artefact says anything at all; this one asks whether what it
+ * says is spelled the way the notation spells it — `- balance : Money = 0`
+ * against §9.5.4, `0..*` against §7.5.4, `after 5 s [ready] / open` against
+ * §14.2.4.8.
+ *
+ * ## The parser belongs to the FRAMEWORK, and there is no way round it
+ *
+ * Every other family in this file is a table the engine interprets: a matrix of
+ * triplets, a set of zone ids, a pair of bounds. A NOTATION'S GRAMMAR is not a
+ * table. `[<visibility>] [`/`] <name> [`:` <type>] [`[` <mult> `]`] [`=` <def>]
+ * [`{` <mods> `}`]` is a parser, and a declarative encoding of it would be a
+ * parser generator shipped inside a validation engine — for one clause of one
+ * specification, with a second dialect arriving with every notation after it.
+ *
+ * So the rule carries the FUNCTION, and the family owns only the WALK: which
+ * label to read, how to cut it into lines, which lines are notation rather than
+ * content, how to turn a `false` into a finding attributed to a frame. The
+ * framework already owns its grammar — `gfx/uml/src/grammar.ts` is that grammar,
+ * written for the exporters, and a rule that calls it is a rule that can never
+ * disagree with the file the same diagram exports to.
+ *
+ * ## What that costs, stated
+ *
+ * A rule of this family is NOT serializable. Every other rule in this library is
+ * plain data a host could ship over a wire; this one holds a closure, and a
+ * round trip through JSON loses it. The family answers that the way it answers a
+ * malformed declaration anywhere else: a rule whose `parse` is not a function
+ * evaluates NOTHING and says so once ({@link warnOnce}), rather than quietly
+ * passing every line. Nothing in this library serializes a rule today, and the
+ * day something does, the families that carry only data keep working.
+ *
+ * ## Purity, and why the engine leans on it
+ *
+ * `parse` is called once per line per evaluation, inside the pass the bench
+ * measures. It must be pure and total — strings in, a verdict out, no throw, no
+ * clock, no allocation the caller cannot name. `grammar.ts` opens with exactly
+ * that promise for exactly that reason. The family does NOT wrap the call in a
+ * `try`: a parser that throws is a bug in the framework, and swallowing it would
+ * turn a crash into a silently unchecked compartment.
+ */
+export interface LabelSyntaxDef {
+  /**
+   * The framework's own reading of ONE line — see the header on why this is a
+   * function and not a table.
+   *
+   * Handed a line already trimmed, NFC-normalised and stripped of invisible code
+   * points, and never an empty one: the walk drops those before it asks. So a
+   * checker is free to assume it has been given something a reader can see.
+   */
+  parse: (line: string) => LabelSyntaxVerdict;
+  /**
+   * `true` (the default) — the label is a LIST and each line of it is judged on
+   * its own: a compartment of attributes, a compartment of operations.
+   *
+   * `false` — the label is ONE expression and a newline inside it is still part
+   * of it: a transition's `trigger [guard] / effect`, an association end's
+   * multiplicity. The whole text, trimmed, is handed to {@link parse} as a
+   * single subject.
+   *
+   * Either way the two notational lines below are dropped, because in both
+   * readings they are notation rather than content: a BLANK line (spacing) and
+   * an ELLIPSIS — `...` or `…` — which is §9.2.4's elision marker and means
+   * "there are more, not shown". A rule that indicted one would be indicting the
+   * author for saying they had left something out.
+   */
+  perLine?: boolean;
+  /** Which label is read. Absent is `'center-label'`, the element's own text. */
+  target?: LabelTarget;
+}
+
+/**
  * `view-admissibility` configuration — WHICH ROLES the frame admits, given the
  * level the frame itself declares.
  *
@@ -1015,6 +1149,87 @@ export interface ElementInZoneDef {
 }
 
 /**
+ * `border-proximity` configuration — "this small glyph belongs ON the edge of
+ * that box" (ADR 0024).
+ *
+ * The family UML §11.3.4 asked for and no other one could answer. A Port is a
+ * square drawn on the boundary of the component that owns it: half of it inside
+ * and half outside is the clause's own preferred drawing, tangent inside is
+ * just as legible, and the same square dragged into the middle of the component
+ * has stopped saying anything at all. Three families sound like the answer and
+ * none of them is:
+ *
+ * - `attachment` measures a distance to a PATH and warns once on a `node`
+ *   carrier, because a box has no path;
+ * - `element-in-background` demands FULL containment, which the straddling
+ *   drawing breaks by construction — and it frames against the sheet, not
+ *   against a neighbour;
+ * - `no-overlap` is the only family evaluating PAIRS and its polarity is the
+ *   opposite one: it forbids a collision and cannot require a proximity.
+ *
+ * So this is the first family whose frame of reference is another ARTEFACT's
+ * outline. It is not a fourth membership family: nothing about the sheet takes
+ * part in the verdict, and the rule's {@link ValidationRule.backgroundRole} is
+ * read for attribution alone, exactly as `no-overlap` reads it.
+ *
+ * ## The two roles, and where each is declared
+ *
+ * The CARRIED role is the rule's own {@link ValidationRule.appliesTo} — the
+ * subject, like every element-shaped family — and the CARRIER role is
+ * {@link carrierRole} here. Same split `attachment` makes, and for the same
+ * reason: one of the two is what the finding is about and the other is what it
+ * is measured against.
+ *
+ * ## The geometry, in one sentence
+ *
+ * The carried element's CENTRE must be within {@link tolerance} of the OUTLINE
+ * — the rectangular perimeter, not the area — of a carrier it overlaps.
+ *
+ * Centre and not extent, which is the opposite of what `attachment` measures
+ * across a transition band and is the right answer for the opposite reason: a
+ * band is wide and the subject is asked to COVER it, whereas an outline is a
+ * line and the subject is asked to SIT on it. A glyph whose box happens to clip
+ * the edge of a component it is drawn well inside of would pass an extent test
+ * while failing the eye.
+ *
+ * ## A carried element touching NO carrier is silence
+ *
+ * Not a finding, and the requirement that makes the family shippable. A square
+ * dropped on blank canvas, or beside a component while the sheet is being
+ * rearranged, is somebody drawing — and a rule that answered "this belongs on a
+ * border" would be indicting the act of sketching (PRD principle 8). The family
+ * only speaks once the author has ALREADY put the glyph on a box: the mistake it
+ * reports is a glyph that has drifted INTO one, never one that has left.
+ */
+export interface BorderProximityDef {
+  /**
+   * The role of the element the subject must be posed on.
+   *
+   * It has to be a **node** role: "on the border" is measured against a box's
+   * outline, and an edge has none. A rule naming an `edge` or a `text` role here
+   * matches nothing and warns once rather than failing silently — the same
+   * contract {@link AttachmentDef.carrierRole} states in the other direction.
+   */
+  carrierRole: RoleId;
+  /**
+   * How far, in model units, the subject's CENTRE may sit from that outline.
+   *
+   * An absolute number and deliberately not a ratio, which is the opposite
+   * choice from {@link RelativeOrderDef.toleranceRatio} and the right one here:
+   * a glyph's own footprint is what makes "on the border" legible, and a
+   * notation that draws it at a fixed size (UML's port is 16 units square) means
+   * the same thing whether the component beside it is small or enormous. A
+   * tolerance proportional to the carrier would let a port sit a hundred units
+   * inside a large component and call it a border.
+   *
+   * Absent or `0` means the centre must be exactly on the line, which no hand
+   * and no snap ever produces — a rule declaring neither is a rule that indicts
+   * every subject on the board, so the family warns once and evaluates nothing.
+   */
+  tolerance: number;
+}
+
+/**
  * WHERE a rule's authority comes from.
  *
  * - `standard` — the rule restates a normative sentence of a published
@@ -1046,7 +1261,7 @@ export type ProvenanceSource =
  *
  * ## Purely descriptive
  *
- * **No evaluator reads it.** Not one of the fourteen family functions branches
+ * **No evaluator reads it.** Not one of the seventeen family functions branches
  * on it, `evaluateRules` and `evaluateCheckup` never look at it, and a rule
  * declaring it evaluates identically to the same rule with the field removed
  * ({@link ValidationRule.provenance} is pinned inert by a test). It exists for
@@ -1174,6 +1389,11 @@ export interface ValidationRule extends RuleMessage {
   /** `element-in-zone` only. */
   inZone?: ElementInZoneDef;
   /**
+   * `border-proximity` only: the CARRIED elements are named by
+   * {@link appliesTo}, the carrier by {@link BorderProximityDef.carrierRole}.
+   */
+  borderProximity?: BorderProximityDef;
+  /**
    * `no-overlap` only: how DEEP a collision has to be, in model units, before
    * it is worth reporting. Absent or `0` means any shared area at all.
    *
@@ -1202,6 +1422,11 @@ export interface ValidationRule extends RuleMessage {
   reachability?: ReachabilityDef;
   /** `label-presence` only: the subjects are named by {@link appliesTo}. */
   label?: LabelPresenceDef;
+  /**
+   * `label-syntax` only: the subjects are named by {@link appliesTo}, and WHICH
+   * of their labels is read by {@link LabelSyntaxDef.target}.
+   */
+  labelSyntax?: LabelSyntaxDef;
   /**
    * `view-admissibility` only: the views are named by {@link backgroundRole},
    * and the subjects by the level the view declares.
@@ -1718,18 +1943,19 @@ function backgroundsOf(
  * measures against have nothing to invalidate — and a framework whose only rules
  * are on-demand has no incremental pass to protect in the first place.
  *
- * The DECLARED moment, deliberately, and not the one the levels in force decide
- * ({@link momentOf}): this is a set of ids and not a verdict, so an audit rule
- * whose frames it guards costs one extra id and can never make an answer wrong,
- * where reading the levels here would mean re-reading the surface for it.
+ * The moment is read STATICALLY ({@link couldBeRealtime}) and not per instance:
+ * this is a set of ids and not a verdict, so a rule some level could promote
+ * costs one extra id and can never make an answer wrong, where reading the
+ * chosen levels here would mean re-reading the surface for it.
  */
 export function backgroundElementIds(
   rules: readonly ValidationRule[],
-  elements: readonly GfxPrimitiveElementModel[]
+  elements: readonly GfxPrimitiveElementModel[],
+  profiles: readonly ValidationProfile[] = []
 ): ReadonlySet<string> {
   const ids = new Set<string>();
   for (const rule of rules) {
-    if (!isRealtime(rule)) continue;
+    if (!couldBeRealtime(rule, profiles)) continue;
     for (const background of backgroundsOf(rule, elements))
       ids.add(background.id);
   }
@@ -4119,6 +4345,166 @@ function evaluateElementInZone(
 }
 
 /**
+ * How far `p` is from the OUTLINE of `bound` — the rectangle's perimeter, and
+ * not its area.
+ *
+ * Zero on the line, and positive on both sides of it: the distance to the
+ * nearest edge for a point inside, the ordinary distance to the rectangle for a
+ * point outside. That two-sided reading is the whole point of the function —
+ * "on the border" is a claim about a LINE, and a family measuring containment
+ * could not tell a glyph sitting on the edge from one buried in the middle.
+ *
+ * Euclidean rather than squared, unlike {@link gapSquared}: the result is
+ * compared against a tolerance a framework declares in model units, so the root
+ * has to be taken somewhere and taking it here keeps the declaration readable.
+ * One `Math.hypot` per (carrier, carried) couple that actually overlaps, which
+ * is a handful per board.
+ */
+function outlineDistance(p: Point, bound: Bound): number {
+  // Negative inside, positive outside, on each axis independently.
+  const dx = Math.max(bound.x - p[0], p[0] - bound.maxX);
+  const dy = Math.max(bound.y - p[1], p[1] - bound.maxY);
+  if (dx > 0 || dy > 0) {
+    return Math.hypot(Math.max(dx, 0), Math.max(dy, 0));
+  }
+  // Inside: the nearest of the four edges.
+  return Math.min(-dx, -dy);
+}
+
+/**
+ * "Is this glyph still ON the border of the box it was drawn on?"
+ *
+ * The `border-proximity` family (ADR 0024). See {@link BorderProximityDef} for
+ * the requirement and for the three families that cannot state it.
+ *
+ * ## The walk
+ *
+ * Two passes over the surface to index the carriers and the subjects, then per
+ * subject one test against each carrier: do the two boxes share AREA (or does
+ * the carrier contain the subject outright), and if so how far is the subject's
+ * centre from that carrier's outline. The BEST carrier — smallest distance,
+ * ties broken by the smaller id — is the one the finding is measured against and
+ * the one it names, because it is the box the author was aiming at and the only
+ * one a suggestion can point back to.
+ *
+ * Deliberately not sweep-and-pruned the way `no-overlap` is. The two populations
+ * are disjoint by role and both are small — a component sheet carries units of
+ * components and units of ports — so the couple walk is `carriers × subjects`
+ * over two handfuls, and an index would cost more to build than the walk it
+ * saves. If a framework ever writes this family on two crowded roles, the prune
+ * is the same one `evaluateNoOverlap` already documents.
+ *
+ * ## Overlap is the GATE, and the distance is the verdict
+ *
+ * A subject overlapping no carrier at all raises nothing (the family's
+ * proportionality requirement), so the only thing this reports is a glyph the
+ * author put ON a box and then pushed too far into it. Shared AREA and not a
+ * shared edge — {@link boundsOverlap}'s epsilon — because a glyph tangent
+ * OUTSIDE its carrier is within any tolerance worth declaring anyway, and
+ * treating a snapped edge as an overlap would make the gate depend on float
+ * noise.
+ *
+ * ## One finding, two ids
+ *
+ * One per SUBJECT, however many carriers it touches: the mistake is one glyph in
+ * one wrong place, and a square straddling two nested components would otherwise
+ * be reported twice for one drag. Both ids are indicted — the carrier and the
+ * carried — because the finding has two honest readings (the glyph has drifted,
+ * or the box has grown under it) and only the pair shows the user both brackets.
+ * Sorted, like every other multi-element finding in this file, so the same
+ * situation reports the same way whichever order the surface was walked in.
+ */
+function evaluateBorderProximity(
+  rule: ValidationRule,
+  elements: readonly GfxPrimitiveElementModel[]
+): Violation[] {
+  const subjectRole = rule.appliesTo;
+  const proximity = rule.borderProximity;
+  if (subjectRole === undefined || proximity === undefined) return [];
+
+  const carrierRole = proximity.carrierRole;
+  // An outline is a box's, so the carrier has to be one. A rule naming an edge
+  // or a text role can never fire; say so once rather than shrugging.
+  const carrierKind = rule.roles[carrierRole]?.kind;
+  if (carrierKind !== 'node') {
+    warnOnce(
+      `border-proximity rule "${rule.id}" names a ` +
+        `"${carrierKind ?? 'unknown'}" role ("${carrierRole}") as its ` +
+        `carrier — only a "node" role has an outline, and "on the border" is a ` +
+        `distance to one, so this rule can never fire.`
+    );
+    return [];
+  }
+
+  const tolerance = proximity.tolerance;
+  if (!(tolerance > 0)) {
+    // A centre exactly on the line is a drawing no hand and no snap produces,
+    // so a rule declaring no tolerance would indict every subject on the board.
+    warnOnce(
+      `border-proximity rule "${rule.id}" declares no positive tolerance — ` +
+        `the rule is not evaluated.`
+    );
+    return [];
+  }
+
+  const carriers: { id: string; bound: Bound }[] = [];
+  const subjects: { id: string; bound: Bound }[] = [];
+  for (const el of elements) {
+    // Cheapest possible exit for a neutral element: no role, no evaluation.
+    if (el.role === undefined) continue;
+    if (roleIsA(el.role, carrierRole, rule.roles)) {
+      carriers.push({ id: el.id, bound: el.elementBound });
+      // A role that is BOTH — a framework specialising one from the other —
+      // would be a declaration that cannot mean anything here, so the carrier
+      // reading wins and the element is not also judged as a subject.
+      continue;
+    }
+    if (roleIsA(el.role, subjectRole, rule.roles)) {
+      subjects.push({ id: el.id, bound: el.elementBound });
+    }
+  }
+  if (carriers.length === 0 || subjects.length === 0) return [];
+
+  const backgrounds = backgroundsOf(rule, elements);
+  const violations: Violation[] = [];
+  for (const subject of subjects) {
+    const centre = centreOf(subject.bound);
+    let host: { id: string; bound: Bound } | null = null;
+    let distance = Infinity;
+    for (const carrier of carriers) {
+      if (
+        !boundsOverlap(carrier.bound, subject.bound) &&
+        !carrier.bound.contains(subject.bound)
+      ) {
+        continue;
+      }
+      const away = outlineDistance(centre, carrier.bound);
+      // Strictly nearer wins; an exact tie goes to the smaller id, never to
+      // whichever carrier the surface happened to be walked past first.
+      if (
+        away < distance ||
+        (away === distance && host !== null && carrier.id < host.id)
+      ) {
+        distance = away;
+        host = carrier;
+      }
+    }
+    // On no carrier at all: the glyph is a sketch, and this family says nothing
+    // about where a sketch sits.
+    if (host === null || distance <= tolerance) continue;
+
+    violations.push(
+      raise(
+        rule,
+        [host.id, subject.id].sort(),
+        attributeBackground(subject.bound, backgrounds)?.id
+      )
+    );
+  }
+  return violations;
+}
+
+/**
  * "Does this artefact belong on THIS view?"
  *
  * The first family whose subject is the SHEET. Every other one starts from an
@@ -4918,6 +5304,221 @@ function evaluateLabelPresence(
 }
 
 /**
+ * WHERE each {@link LabelTarget} is actually written, in order of preference.
+ *
+ * The one place in this file that names a connector's end-label props:
+ * `sourceLabel` / `targetLabel`, the flat `Y.Text` fields `docs/adr/0020`
+ * chose (mirroring the centre label's `text`). {@link labelSource} also
+ * tolerates a nested `{ text }` under the same key — the shape an importer's
+ * serialized props or a host that modelled the end label as one object would
+ * hand it — so the rule does not break the day the model is reshaped, the same
+ * duck-typing discipline {@link elementLabel} and {@link rawEndpointIds}
+ * already hold.
+ *
+ * Own-property reads only, through {@link labelSource}: these come off a Y.Map
+ * and are whatever a peer or an importer wrote.
+ */
+const LABEL_PROPS: Readonly<
+  Record<Exclude<LabelTarget, 'end-labels'>, readonly string[]>
+> = {
+  'center-label': ['text'],
+  'source-label': ['sourceLabel'],
+  'target-label': ['targetLabel'],
+};
+
+/**
+ * The RAW words of one of an element's labels — newlines and all, `''` when it
+ * carries none.
+ *
+ * {@link elementLabel} one step earlier: it trims, because "is there anything
+ * here" is the only question that family asks. This family has to keep the line
+ * structure, since a compartment is a LIST and the trimming happens per line.
+ */
+function labelSource(el: unknown, target: LabelTarget): string {
+  if (target === 'end-labels') {
+    // The two ends, one per line — see {@link LabelTarget}. An end carrying
+    // nothing contributes no line rather than an empty one, so a connector
+    // labelled at one end alone is one subject and not two.
+    return [labelSource(el, 'source-label'), labelSource(el, 'target-label')]
+      .filter(text => text.trim() !== '')
+      .join('\n');
+  }
+  const props = el as Record<string, unknown>;
+  for (const key of LABEL_PROPS[target]) {
+    const raw = props[key];
+    if (raw == null) continue;
+    if (typeof raw === 'string') return raw;
+    if (rendersAsText(raw)) return String(raw);
+    // A nested end label — `{ text: Y.Text, xywh }` — read exactly one level
+    // deep. Deeper would be guessing at a shape nobody declared.
+    const nested = (raw as { text?: unknown }).text;
+    if (typeof nested === 'string') return nested;
+    if (nested != null && rendersAsText(nested)) return String(nested);
+  }
+  return '';
+}
+
+/**
+ * §9.2.4's elision marker, in both spellings. A line that says "there are more
+ * of these, not shown" is notation, and indicting it would indict the author for
+ * having said so.
+ */
+const ELISION = new Set(['...', '…']);
+
+/**
+ * The lines of a label that SAY something — trimmed, normalised, in order.
+ *
+ * Deliberately the same three rules `gfx/uml/src/grammar.ts` `parseCompartment`
+ * holds (trim, drop blanks, drop the ellipsis), plus the invisible-code-point
+ * strip {@link elementLabel} does: a line of zero-width joiners is a line the
+ * reader cannot see, and handing it to a parser would indict the author for
+ * something invisible on both the canvas and the finding.
+ *
+ * `perLine === false` folds the whole label into ONE subject — the trimmed text,
+ * newlines kept — which is the reading a transition label or a multiplicity
+ * wants: it is one expression, not a list.
+ */
+function syntaxLines(text: string, perLine: boolean): string[] {
+  const clean = text.normalize('NFC').replace(INVISIBLE_CHARS, '');
+  const lines = perLine ? clean.split('\n') : [clean];
+  return lines
+    .map(line => line.trim())
+    .filter(line => line.length > 0 && !ELISION.has(line));
+}
+
+/**
+ * How much of an offending line the finding's own sentence repeats.
+ *
+ * A compartment line is normally short, and a pasted one is occasionally a
+ * paragraph. The fallback sentence ends up in a bubble eight units tall, so the
+ * quotation is capped and elided rather than allowed to set the width of the
+ * panel.
+ */
+const QUOTED_LINE_MAX = 80;
+
+function quoteLine(line: string): string {
+  return line.length <= QUOTED_LINE_MAX
+    ? line
+    : `${line.slice(0, QUOTED_LINE_MAX - 1)}…`;
+}
+
+/**
+ * "Is this written the way the notation writes it?"
+ *
+ * {@link evaluateLabelPresence} asks whether the artefact says anything; this
+ * asks whether what it says PARSES. The walk is the same walk — subjects by
+ * role, frame attribution through {@link ValidationRule.backgroundRole}, one
+ * finding per offending element — and everything that makes the verdict is in
+ * the function the framework shipped ({@link LabelSyntaxDef}).
+ *
+ * ## One finding per ELEMENT, naming the FIRST bad line
+ *
+ * Not one per line, and the reason is what a compartment looks like halfway
+ * through being typed: six lines of a class's attributes with three of them
+ * unfinished is three brackets on one text element, three entries in the panel
+ * and one thing to fix. The first offending line is the one the author is going
+ * to look at, so it is the one the sentence names.
+ *
+ * The finding keeps the RULE's `messageKey` and quotes the line in the
+ * FALLBACK, which is the honest limit of this engine: a finding carries no
+ * message parameters, so a host translating the key gets the rule's own
+ * sentence and not the line. Recorded in `docs/adr/0021` rather than worked
+ * around here — inventing a parameter channel for one family would be a change
+ * to every family's contract.
+ *
+ * ## Silence
+ *
+ * The usual proportionality, and one addition. An element with no role is not a
+ * subject; a label with no visible line is nothing to parse (that is
+ * `label-presence`'s question, and a framework asking both asks them with two
+ * rules); a blank line and an ellipsis are notation. And a rule whose `parse` is
+ * not a function evaluates nothing at all and warns once — see the header of
+ * {@link LabelSyntaxDef} on why that case exists.
+ *
+ * ## Cost
+ *
+ * One label read and one `parse` per line, paid only by the elements carrying
+ * the subject role. Linear in the WORDS on the board rather than in its
+ * elements, which is the first time this file can say that — and the reason
+ * every rule of the family this library ships is `audit`, hence on-demand
+ * (PF7.6), hence off the drawing path entirely.
+ */
+function evaluateLabelSyntax(
+  rule: ValidationRule,
+  elements: readonly GfxPrimitiveElementModel[],
+  incremental?: IncrementalContext
+): Violation[] {
+  const subjectRole = rule.appliesTo;
+  const syntax = rule.labelSyntax;
+  if (subjectRole === undefined || syntax === undefined) return [];
+  if (typeof syntax.parse !== 'function') {
+    warnOnce(
+      `label-syntax rule "${rule.id}" carries no parse function — a rule of ` +
+        `this family holds its framework's own grammar and cannot be ` +
+        `serialized; the rule is not evaluated.`
+    );
+    return [];
+  }
+
+  const target = syntax.target ?? 'center-label';
+  const perLine = syntax.perLine ?? true;
+
+  // Only resolved when something is actually wrong — a board spelled correctly
+  // pays nothing for the frames it never has to name.
+  let backgrounds: BackgroundInstance[] | null = null;
+
+  const judged = incremental?.subjects;
+  const violations: Violation[] = [];
+  for (const el of elements) {
+    if (judged !== undefined && !judged.has(el.id)) continue;
+    // Cheapest possible exit for a neutral element: no role, no evaluation.
+    if (el.role === undefined) continue;
+    if (!roleIsA(el.role, subjectRole, rule.roles)) continue;
+
+    const lines = syntaxLines(labelSource(el, target), perLine);
+    let offending: { line: string; reason?: string } | null = null;
+    for (const line of lines) {
+      const verdict = syntax.parse(line);
+      if (verdict.ok) continue;
+      offending = {
+        line,
+        ...(verdict.reason ? { reason: verdict.reason } : {}),
+      };
+      break;
+    }
+    if (offending === null) continue;
+
+    const quoted = quoteLine(offending.line);
+    const words: RuleMessage = {
+      messageKey: rule.messageKey,
+      ...(rule.messageFallback !== undefined
+        ? {
+            messageFallback:
+              offending.reason === undefined
+                ? `${rule.messageFallback} “${quoted}”`
+                : `${rule.messageFallback} “${quoted}” — ${offending.reason}.`,
+          }
+        : {}),
+      ...(rule.suggestionKey !== undefined
+        ? { suggestionKey: rule.suggestionKey }
+        : {}),
+      ...(rule.suggestionFallback !== undefined
+        ? { suggestionFallback: rule.suggestionFallback }
+        : {}),
+    };
+
+    backgrounds ??= backgroundsOf(rule, elements);
+    const frameId = attributeBackground(el.elementBound, backgrounds)?.id;
+    // The TEXT element, and nothing else. A UML compartment belongs to a group
+    // and the mark is drawn on that group already ({@link anchorOf}) — the
+    // group carries no role, is never evaluated, and by the same contract never
+    // appears in a finding's `elementIds`.
+    violations.push(raise(rule, [el.id], frameId, words));
+  }
+  return violations;
+}
+
+/**
  * What a caller knows about a change, when it knows anything.
  *
  * `dirty` is every element id added, removed or updated since the findings in
@@ -4925,7 +5526,7 @@ function evaluateLabelPresence(
  * where exactly that is known; every other caller — the first evaluation, a
  * gesture that must land immediately, the bench, a test — evaluates in full.
  *
- * Since PF5.4 the TWELVE families that are not `'surface'` honour it, and not
+ * Since PF5.4 the THIRTEEN families that are not `'surface'` honour it, and not
  * one of them computes what it means: {@link runRules} derives the SUBJECTS
  * each rule must judge from {@link dirtyClosure} — which reads {@link scopeOf}
  * and nothing else — and hands them down. A family's whole part in this is one
@@ -4988,7 +5589,9 @@ const RULE_FAMILIES: Record<
   'edge-locality': evaluateEdgeLocality,
   reachability: evaluateReachability,
   'label-presence': evaluateLabelPresence,
+  'label-syntax': evaluateLabelSyntax,
   'view-admissibility': evaluateViewAdmissibility,
+  'border-proximity': evaluateBorderProximity,
 };
 
 /**
@@ -5039,9 +5642,21 @@ export const RULE_SCOPES: Record<RuleFamily, RuleScope> = {
   reachability: 'surface',
   // Own words; the frame is attribution only.
   'label-presence': 'element',
+  // Own words again, one question further on: the verdict is the framework's
+  // parser applied to the subject's OWN label, line by line. Nothing about the
+  // neighbourhood takes part — a compartment is right or wrong whatever is drawn
+  // beside it, and an end label is read off the connector that carries it rather
+  // than off what the connector joins.
+  'label-syntax': 'element',
   // Own role against the level the containing view declares; kept at the wider
   // level for the same reason as `tone-convention`.
   'view-admissibility': 'frame',
+  // Widened from 'element' for the reason `attachment` is: the carriers the
+  // subject is measured against are collected from the WHOLE surface and bounded
+  // by no frame, so a carrier moved, resized or deleted anywhere can flip a
+  // subject's verdict — including from "on a border" to "on no carrier at all",
+  // which is the difference between a finding and silence.
+  'border-proximity': 'surface',
 };
 
 /**
@@ -5154,13 +5769,17 @@ function attributeAll(
  * it, an incremental pass keeps verdicts measured against a map the user has
  * just stopped calling a map, or judged at a level nobody holds any more.
  *
- * Real-time rules only, and the DECLARED moment, exactly like
- * {@link backgroundElementIds} and for the same reason: an on-demand rule never
- * takes part in an incremental pass, so it has nothing to invalidate.
+ * Real-time rules only, read statically ({@link couldBeRealtime}), exactly like
+ * {@link backgroundElementIds} and for the same reason: an on-demand rule no
+ * level can promote never takes part in an incremental pass, so it has nothing
+ * to invalidate — and one that a level CAN promote has to be remembered here
+ * before anybody chooses that level, because the memory is what the pass after
+ * the choice reads.
  */
 export function frameMembership(
   rules: readonly ValidationRule[],
-  elements: readonly GfxPrimitiveElementModel[]
+  elements: readonly GfxPrimitiveElementModel[],
+  profiles: readonly ValidationProfile[] = []
 ): ReadonlyMap<string, readonly string[]> {
   const membership = new Map<string, string[]>();
   const add = (id: string, frameId: string) => {
@@ -5172,7 +5791,7 @@ export function frameMembership(
   const done = new Set<string>();
   let levelled = false;
   for (const rule of rules) {
-    if (!isRealtime(rule)) continue;
+    if (!couldBeRealtime(rule, profiles)) continue;
     levelled = true;
     const key = frameKey(rule);
     if (key === null || done.has(key)) continue;
@@ -5543,16 +6162,65 @@ export function dirtyClosure(
 }
 
 /**
+ * Whether a level in force on this surface PROMOTES `rule` — names it, by id,
+ * at a severity the drawing user is shown.
+ *
+ * Named, and not merely resolved: {@link profileSeverity} falls back to the
+ * rule's own severity for a rule a table is silent about, and a fallback is not
+ * a decision. A promotion is a framework writing `'warning'` beside an id, which
+ * is the one statement strong enough to overrule the rule's own `'on-demand'`
+ * ({@link momentOf}).
+ *
+ * The same walk {@link isRuleAuditOnly} does — the framework's default level
+ * unconditionally, then every level a root instance on this surface has CHOSEN.
+ */
+function isRulePromoted(
+  rule: ValidationRule,
+  chosen: Map<string, string> | null,
+  index: ProfileIndex | null
+): boolean {
+  if (index === null) return false;
+
+  const promotes = (profile: ValidationProfile | undefined): boolean =>
+    profile !== undefined &&
+    profile.framework === rule.framework &&
+    Object.hasOwn(profile.rules, rule.id) &&
+    isDrawn(profile.rules[rule.id]);
+
+  if (promotes(index.defaults.get(rule.framework))) return true;
+  if (chosen === null) return false;
+  for (const id of chosen.values()) {
+    if (promotes(index.byId.get(id))) return true;
+  }
+  return false;
+}
+
+/**
  * The moment `rule` is evaluated at, GIVEN the levels of requirement in force
  * on this surface — the one decision {@link runRules} takes before it reads a
  * single element.
  *
- * A rule that declares the second moment keeps it, whatever any level says: an
- * explicit `'on-demand'` is the stronger statement, and a framework that made
- * it is not overruled by a table. Everything else turns on
- * {@link isRuleAuditOnly}: an `audit` finding is dropped before anything draws
- * it ({@link userFacingViolations}), so computing one inside the frame budget
- * buys the user nothing.
+ * Everything turns on {@link isRuleAuditOnly}: an `audit` finding is dropped
+ * before anything draws it ({@link userFacingViolations}), so computing one
+ * inside the frame budget buys the user nothing.
+ *
+ * ## A declared `'on-demand'` yields to a level that PROMOTES the rule
+ *
+ * It did not, until the UML recette of 2026-09-16. An explicit `'on-demand'`
+ * used to win against any table, on the argument that a framework which made
+ * that declaration is not overruled by one — and the consequence was a rule a
+ * level had explicitly raised to `'warning'` that still drew nothing, ever, on
+ * any gesture. `uml.strict` promotes nine of them; the PO chose Specification,
+ * emptied a lifeline's head, and the canvas stayed silent.
+ *
+ * So the arbitration is the other way round, and it is the narrow one:
+ * **choosing a level that NAMES the rule at a drawn severity puts it back on
+ * the drawing path** ({@link isRulePromoted}). A framework keeping a rule
+ * `'audit'` at every level keeps the second moment with it — which is how
+ * `uml.unreachable-*` stays a graph walk nobody pays for on a gesture — and a
+ * declaration nothing promotes is untouched. The rule stays the framework's to
+ * make: it makes it in its profile table now, where the rest of the level lives,
+ * instead of in two places that could disagree.
  *
  * Mixed levels resolve towards EVALUATING, exactly as {@link isRuleSilent}
  * needs `'off'` everywhere before it skips: one frame held to a level that
@@ -5565,7 +6233,9 @@ function momentOf(
   chosen: Map<string, string> | null,
   index: ProfileIndex | null
 ): ValidationMoment {
-  if ((rule.moment ?? 'realtime') !== 'realtime') return 'on-demand';
+  if ((rule.moment ?? 'realtime') !== 'realtime') {
+    return isRulePromoted(rule, chosen, index) ? 'realtime' : 'on-demand';
+  }
   return isRuleAuditOnly(rule, chosen, index) ? 'on-demand' : 'realtime';
 }
 
@@ -5580,6 +6250,36 @@ function momentOf(
  */
 function isRealtime(rule: ValidationRule): boolean {
   return (rule.moment ?? 'realtime') === 'realtime';
+}
+
+/**
+ * Whether the drawing path may EVER have to evaluate `rule` on this assembly:
+ * it declares the real-time moment, or some REGISTERED level promotes it past
+ * `audit`, which is what puts it back on that path ({@link momentOf}).
+ *
+ * The three callers below are the ones with no instance to read a chosen level
+ * from — they are computed once, against the registry, before any surface
+ * exists. Asking "could any level in this assembly promote it" is the honest
+ * static approximation of "does a level in force promote it": it can only
+ * over-answer, and over-answering costs one extra id in a set or one extra
+ * watched property, where under-answering costs a verdict that never appears
+ * and a stale one that never clears.
+ *
+ * `profiles` defaults to none, so a caller that has no registry — every unit
+ * fixture, and every host reading the declarations in the abstract — gets the
+ * declared moment, exactly as before.
+ */
+function couldBeRealtime(
+  rule: ValidationRule,
+  profiles: readonly ValidationProfile[]
+): boolean {
+  if (isRealtime(rule)) return true;
+  return profiles.some(
+    profile =>
+      profile.framework === rule.framework &&
+      Object.hasOwn(profile.rules, rule.id) &&
+      isDrawn(profile.rules[rule.id])
+  );
 }
 
 /** The exceptions an element carries, always an array, never a copy to keep. */
@@ -5712,7 +6412,7 @@ function runRules(
    * other moment, which no carry-over and no dirty-set walk can reconstruct. So
    * the answer is not "re-judge more", it is "there is nothing here to build
    * on", and that applies to {@link evaluateNoOverlap} exactly as it does to
-   * the twelve families that filter on subjects.
+   * the thirteen families that filter on subjects.
    *
    * A board with no profile registered has no regime to change and pays nothing
    * for the question.
@@ -5851,7 +6551,11 @@ export function evaluateCheckup(
     'on-demand',
     seed === undefined
       ? undefined
-      : { dirty: seed, previous: [], wasIn: frameMembership(rules, elements) }
+      : {
+          dirty: seed,
+          previous: [],
+          wasIn: frameMembership(rules, elements, profiles),
+        }
   );
 }
 
@@ -6253,29 +6957,46 @@ export const VERDICT_PROPS = [
  *
  * ## `text`, and why it is not in the constant
  *
- * `label-presence` is the one family whose verdict turns on an element's words,
- * and words are what a user changes by TYPING. Watched unconditionally, every
- * keystroke in every shape on the board would wake the debounced evaluation —
- * a cost paid by every document, for a question most of them never ask.
+ * `label-presence` and `label-syntax` are the two families whose verdict turns
+ * on an element's words, and words are what a user changes by TYPING. Watched
+ * unconditionally, every keystroke in every shape on the board would wake the
+ * debounced evaluation — a cost paid by every document, for a question most of
+ * them never ask.
  *
- * So it is added exactly when a REAL-TIME rule of that family is registered.
- * The moment filter is deliberate and mirrors {@link backgroundElementIds}: an
- * on-demand rule is never evaluated on the gesture path, so waking that path for
- * it would hand back precisely what declaring the second moment bought — and a
- * framework that wants its naming checked while the user types says so by
- * declaring the rule real-time, which is the one place that decision belongs.
+ * So it is added exactly when a rule of either family COULD reach the gesture
+ * path — it declares the real-time moment, or some registered level promotes it
+ * ({@link couldBeRealtime}). The filter mirrors {@link backgroundElementIds}: an
+ * on-demand rule no level can promote is never evaluated on the gesture path, so
+ * waking that path for it would hand back precisely what declaring the second
+ * moment bought.
  *
- * The DECLARED moment, like {@link backgroundElementIds} and for the same
- * reason: this set is computed ONCE per manager, before any surface exists to
- * read a level from, and watching a prop nothing turns out to need costs a
+ * The level half of that test is what makes "Specification is the check-up"
+ * true for the two families that read WORDS. `uml.strict` promotes six spelling
+ * rules and three naming ones; without the promoted rules' `text` in this set,
+ * choosing Specification would raise them once, on the switch, and then never
+ * again while the user retyped the very word the finding is about.
+ *
+ * Read STATICALLY, like {@link backgroundElementIds} and for the same reason:
+ * this set is computed ONCE per manager, before any surface exists to read a
+ * chosen level from, and watching a prop nothing turns out to need costs a
  * debounced pass that finds nothing — never a wrong verdict.
  */
 export function verdictPropsOf(
-  rules: readonly ValidationRule[]
+  rules: readonly ValidationRule[],
+  profiles: readonly ValidationProfile[] = []
 ): ReadonlySet<string> {
   const props = new Set<string>(VERDICT_PROPS);
   for (const rule of rules) {
-    if (rule.family === 'label-presence' && isRealtime(rule)) props.add('text');
+    // The two families whose verdict turns on an element's words. Neither is
+    // named as a constant: the second reads the same `text` slot (and, for a
+    // connector end label, props that only exist on a connector, which are
+    // watched through their own element's change anyway).
+    if (
+      (rule.family === 'label-presence' || rule.family === 'label-syntax') &&
+      couldBeRealtime(rule, profiles)
+    ) {
+      props.add('text');
+    }
     // The level a VIEW declares decides which roles it admits, so changing it —
     // or clearing it back to "free sketch", which DELETES the key, which is why
     // `touchesVerdict` reads `oldValues` too — re-judges everything drawn on
@@ -6494,7 +7215,10 @@ export class ValidationManager extends InteractivityExtension {
    * beside the rules it is derived from — see {@link verdictPropsOf}.
    */
   private get _watchedProps(): ReadonlySet<string> {
-    this._verdictProps ??= verdictPropsOf(this._activeRules);
+    this._verdictProps ??= verdictPropsOf(
+      this._activeRules,
+      this._activeProfiles
+    );
     return this._verdictProps;
   }
 
@@ -6684,8 +7408,16 @@ export class ValidationManager extends InteractivityExtension {
         : undefined
     );
     this._evaluated = true;
-    this._backgrounds = backgroundElementIds(rules, surface.elementModels);
-    this._membership = frameMembership(rules, surface.elementModels);
+    this._backgrounds = backgroundElementIds(
+      rules,
+      surface.elementModels,
+      this._activeProfiles
+    );
+    this._membership = frameMembership(
+      rules,
+      surface.elementModels,
+      this._activeProfiles
+    );
     // Stay silent when nothing changed: `violations$` is the seam a host panel
     // subscribes to, and a clean board must not wake it on every debounce tick.
     if (violations.length === 0 && this.violations$.peek().length === 0) return;

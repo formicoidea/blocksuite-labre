@@ -1,4 +1,4 @@
-# ADR 0016 — Every string the library displays goes through a key
+# ADR 0023 — Every string the library displays goes through a key
 
 - Status: **accepted** (2026-09-11)
 - Deciders: Mathieu Jolly

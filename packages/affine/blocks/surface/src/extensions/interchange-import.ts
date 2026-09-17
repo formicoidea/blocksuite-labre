@@ -1,11 +1,12 @@
 import { ConnectorElementModel } from '@labre/affine-model';
 import {
+  fillPlaceholders,
   NotificationProvider,
   translateKey,
 } from '@labre/affine-shared/services';
 import { openSingleFileWithSpec } from '@labre/affine-shared/utils';
 import type { ServiceProvider } from '@labre/global/di';
-import { type Bound, getCommonBound } from '@labre/global/gfx';
+import { Bound, getCommonBound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 
@@ -73,6 +74,34 @@ import {
  * whole blob and `addElement` writes it with everything else, which is the
  * whole-record LWW the field's own contract asks for (D2).
  *
+ * ## The reader's OWN names, and why there is a second map
+ *
+ * A source id is the file's, and there are two things a reader has to point at
+ * that the file never named: an element it MINTED (a framework artefact is
+ * routinely several elements — a shape, its compartments, and the group that
+ * makes them one thing), and the group membership between them. So a reader may
+ * also hand each element a provisional `id` of its own. `surface.addElement`
+ * overwrites it with a nanoid and is documented to, which is precisely what
+ * makes it safe to use as a local name: it reaches no document, and it is read
+ * here and nowhere else.
+ *
+ * A GROUP's `children` are therefore rewritten BEFORE the group is created, out
+ * of the map built so far — which costs nothing and asks the reader for the one
+ * thing it can always give: emit an element before the group that holds it. A
+ * connector is the opposite case (a flow may be written before either of its
+ * ends) and keeps its second pass.
+ *
+ * Source ids win over provisional ones wherever both could answer, so a reader
+ * that mints no local name behaves exactly as it did before this was here.
+ *
+ * ## Beside what is already drawn
+ *
+ * A reader writes the coordinates its FILE gave it, so importing the same file
+ * twice put the second board exactly on top of the first. The offset is applied
+ * here, once, for every framework, because the only thing that knows what the
+ * canvas already holds is the function doing the writing — see
+ * {@link importOffset}, and note that an empty surface is left alone.
+ *
  * @param formatId the format whose payload key carries the source ids — the
  *   `id` of the capability's {@link InterchangeFormat}, and the ONLY thing this
  *   function ever knew about BPMN.
@@ -80,14 +109,37 @@ import {
 export function materializeInterchangeImport(
   std: BlockStdScope,
   formatId: string,
-  elements: readonly SerializedElementProps[]
+  elements: readonly SerializedElementProps[],
+  options: { onNote?: (note: InterchangeNote) => void } = {}
 ): string[] {
   const surface = std.get(GfxControllerIdentifier).surface;
   if (!surface) return [];
 
+  const shift = importOffset(surface.elementModels, elements);
+
   const bySource = new Map<string, string>();
+  const byLocal = new Map<string, string>();
+  const resolve = (name: string) => bySource.get(name) ?? byLocal.get(name);
+
   const created = elements.map(props => {
-    const id = surface.addElement({ ...props });
+    const written: SerializedElementProps = shift
+      ? translateProps(props, shift)
+      : { ...props };
+    const children = written.children;
+    if (
+      written.type === 'group' &&
+      children !== null &&
+      typeof children === 'object'
+    ) {
+      written.children = Object.fromEntries(
+        Object.keys(children as Record<string, unknown>).map(child => [
+          resolve(child) ?? child,
+          true,
+        ])
+      );
+    }
+
+    const id = surface.addElement(written);
     const carried = props.interchange as
       | Record<string, { id?: string }>
       | undefined;
@@ -96,6 +148,34 @@ export function materializeInterchangeImport(
     // twice: it imports both and says so in a `substituted-id` note, and a flow
     // naming that id means the first of them.
     if (source !== undefined && !bySource.has(source)) bySource.set(source, id);
+
+    const local = props.id;
+    if (typeof local === 'string') {
+      // FIRST wins here too, and for the same reason — but where a duplicated
+      // SOURCE id is the FILE's mistake and the reader has already reported it,
+      // a duplicated provisional name is the READER's, and nothing else in the
+      // pipeline is in a position to notice. So it is named: every element is
+      // still imported, and the remark says which of the two a group or a
+      // connector naming it will have landed on.
+      if (byLocal.has(local)) {
+        // The English is FILLED from the wording rather than restated beside
+        // it, so the sentence a host translates and the sentence a playground
+        // with no catalogue reads cannot drift apart.
+        const messageParams = { name: local };
+        options.onNote?.({
+          kind: 'substituted-id',
+          elementId: id,
+          messageKey: IMPORT_DUPLICATE_NAME_KEY,
+          message: fillPlaceholders(
+            IMPORT_DUPLICATE_NAME_FALLBACK,
+            messageParams
+          ),
+          messageParams,
+        });
+      } else {
+        byLocal.set(local, id);
+      }
+    }
     return id;
   });
 
@@ -105,10 +185,130 @@ export function materializeInterchangeImport(
     for (const side of ['source', 'target'] as const) {
       const end = model[side];
       if (end?.id === undefined) continue;
-      model[side] = { ...end, id: bySource.get(end.id) ?? end.id };
+      model[side] = { ...end, id: resolve(end.id) ?? end.id };
     }
   }
   return created;
+}
+
+/* ── Beside what is already there ─────────────────────────────────────── */
+
+/**
+ * The space left between a board that is already drawn and one just imported.
+ *
+ * Wide enough that the two read as two documents rather than as one crowded
+ * sheet, and narrow enough that the viewport fit which follows still shows the
+ * new one at a useful zoom.
+ */
+const IMPORT_BESIDE_GAP = 200;
+
+/** A box off one element's props, or nothing — `[x,y,w,h]`, as the store holds it. */
+function propsBound(props: SerializedElementProps): Bound | undefined {
+  const xywh = props.xywh;
+  if (typeof xywh !== 'string') return undefined;
+  try {
+    return Bound.deserialize(xywh);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * How far to move an imported board so it lands BESIDE what is already drawn.
+ *
+ * ## Why this is the seam's job and not each reader's
+ *
+ * "What arrives is a NEW board, never a merge" is already this file's rule
+ * ({@link importInterchangeFile}) — but a reader has no surface to look at, so
+ * it writes the coordinates the FILE gave it, and a second import of the same
+ * file therefore landed exactly on top of the first. Every framework had the
+ * bug and none of them could fix it: the only thing that knows what the canvas
+ * already holds is the function doing the writing.
+ *
+ * `undefined` on an EMPTY surface, and deliberately: with nothing to avoid, the
+ * board keeps the file's own coordinates, which is what every golden and every
+ * round-trip assertion is written against. Only a second import moves, which is
+ * exactly the case that was wrong.
+ *
+ * Connectors are excluded from the measurement for the reason
+ * {@link importInterchangeFile} excludes them from the viewport fit: a
+ * connector's bound is derived from a path the router has not computed yet, and
+ * it answers `[0, 0, 0, 0]` — which would anchor every offset to the origin.
+ *
+ * The list is read defensively because a SURFACE is not the only thing that ever
+ * reaches this function: several framework specs drive the pipeline through a
+ * hand-built stub that answers `addElement` and little else. A stub with no
+ * elements is an empty canvas, which is the one case that must not move.
+ */
+function importOffset(
+  drawn: readonly { elementBound?: Bound }[] | undefined,
+  arriving: readonly SerializedElementProps[]
+): { x: number; y: number } | undefined {
+  const occupied = getCommonBound(
+    (drawn ?? [])
+      .map(model => model.elementBound)
+      .filter((bound): bound is Bound => !!bound && bound.w > 0 && bound.h > 0)
+  );
+  if (!occupied) return undefined;
+
+  const boxes = arriving
+    .map(propsBound)
+    .filter((bound): bound is Bound => bound !== undefined);
+  const incoming = getCommonBound(boxes);
+  if (!incoming) return undefined;
+
+  return {
+    x: occupied.x + occupied.w + IMPORT_BESIDE_GAP - incoming.x,
+    y: occupied.y - incoming.y,
+  };
+}
+
+/**
+ * One element's props, moved.
+ *
+ * `xywh` and the label boxes, with one exception: a connector end that names no
+ * element carries an ABSOLUTE position rather than an anchor within a shape, and
+ * an end left behind would stretch the line back to where the file drew it. An
+ * end WITH an id carries a fraction of its shape's box and must not be touched.
+ *
+ * A connector's three label boxes (`labelXYWH`, and ADR 0020's two per-end
+ * siblings) are absolute `[x, y, w, h]` in the same space as `xywh`, so they
+ * move with everything else. A reader that creates a connector with an end label
+ * already positioned — `gfx/uml`'s materializer does — would otherwise drop the
+ * text at the origin of a board it was not imported onto.
+ */
+function translateProps(
+  props: SerializedElementProps,
+  shift: { x: number; y: number }
+): SerializedElementProps {
+  const moved: SerializedElementProps = { ...props };
+  const bound = propsBound(props);
+  if (bound) {
+    moved.xywh = new Bound(
+      bound.x + shift.x,
+      bound.y + shift.y,
+      bound.w,
+      bound.h
+    ).serialize();
+  }
+  for (const key of ['labelXYWH', 'sourceLabelXYWH', 'targetLabelXYWH']) {
+    const box = props[key];
+    if (!Array.isArray(box) || box.length !== 4) continue;
+    if (!box.every(each => typeof each === 'number')) continue;
+    const [x, y, w, h] = box as number[];
+    moved[key] = [x + shift.x, y + shift.y, w, h];
+  }
+  for (const side of ['source', 'target'] as const) {
+    const end = props[side] as
+      | { id?: string; position?: [number, number] }
+      | undefined;
+    if (!end || end.id !== undefined || !Array.isArray(end.position)) continue;
+    moved[side] = {
+      ...end,
+      position: [end.position[0] + shift.x, end.position[1] + shift.y],
+    };
+  }
+  return moved;
 }
 
 /* ── Saying what it cost ──────────────────────────────────────────────── */
@@ -128,6 +328,18 @@ const IMPORT_CARRIED_KEY = 'com.labre.interchange.import.carried';
 const IMPORT_CARRIED_FALLBACK = 'carried';
 const IMPORT_QUARANTINED_KEY = 'com.labre.interchange.import.quarantined';
 const IMPORT_QUARANTINED_FALLBACK = 'quarantined';
+/**
+ * The one remark the MATERIALIZER raises itself (see the provisional-name note
+ * on `SerializedElementProps`) — this pipeline's own words about its own
+ * substitution, not a reader's, so it is keyed here with the rest of the
+ * pipeline's chrome rather than in any one format's table. `{{name}}` is the
+ * provisional name the reader minted, filled from `messageParams` by
+ * `resolveNoteMessage` exactly as a reader's own remark is.
+ */
+const IMPORT_DUPLICATE_NAME_KEY =
+  'com.labre.interchange.import.duplicate-provisional-name';
+const IMPORT_DUPLICATE_NAME_FALLBACK =
+  'Two imported elements were handed the same provisional name "{{name}}". Both are on the board; anything referring to that name points at the first of them.';
 
 /**
  * How many remarks the second notification spells out before it hands the
@@ -319,7 +531,8 @@ export function reportInterchangeImport(
  */
 export async function runInterchangeImportFile(
   std: BlockStdScope,
-  capability: InterchangeImportCapability
+  capability: InterchangeImportCapability,
+  options: InterchangeImportOptions = {}
 ): Promise<void> {
   const gfx = std.get(GfxControllerIdentifier);
   if (!gfx.surface || std.store.readonly) return;
@@ -333,7 +546,32 @@ export async function runInterchangeImportFile(
   // know what they just did.
   if (!file) return;
 
-  await importInterchangeFile(std, capability, file);
+  await importInterchangeFile(std, capability, file, options);
+}
+
+/** What a caller can put between the file's bytes and the declared reader. */
+export interface InterchangeImportOptions {
+  /**
+   * Turn the file's text into the text the reader takes — the seam for a
+   * format whose container is not the document.
+   *
+   * A reader is a PURE, synchronous function of text (`docs/adr/0012` P3), and
+   * that is not negotiable: it is what lets labre-mcp call the same function
+   * the command calls. Some containers put an asynchronous platform API between
+   * the bytes and the document all the same — a `.drawio` file holds its
+   * `<mxGraphModel>` as base64 of a raw deflate, and inflating it needs
+   * `DecompressionStream` (`gfx/uml/src/drawio-decode.ts`, `docs/adr/0019`);
+   * a zipped container would be the next one.
+   *
+   * So the unwrapping happens HERE, where a caller already has an editor and an
+   * `await`, and the reader keeps its purity. Anything this throws is shown as
+   * the import's failure notification, exactly as a reader's own refusal is —
+   * so the sentence it throws should name what is wrong with the file.
+   *
+   * Absent for every format whose file IS its document, which is all of them
+   * bar one.
+   */
+  decode?: (text: string, file: File) => string | Promise<string>;
 }
 
 /**
@@ -376,7 +614,8 @@ export async function runInterchangeImportFile(
 export async function importInterchangeFile(
   std: BlockStdScope,
   capability: InterchangeImportCapability,
-  file: File
+  file: File,
+  options: InterchangeImportOptions = {}
 ): Promise<void> {
   const gfx = std.get(GfxControllerIdentifier);
   if (!gfx.surface || std.store.readonly) return;
@@ -385,7 +624,13 @@ export async function importInterchangeFile(
 
   let result: InterchangeImportResult;
   try {
-    result = capability.run(await file.text(), { name: file.name });
+    const text = await file.text();
+    // The container, opened — see {@link InterchangeImportOptions.decode}. Inside
+    // the same `try` as the reader, deliberately: "this .drawio could not be
+    // inflated" and "this is not a BPMN document" are the same event to the
+    // person who picked the file, and they take the same notification.
+    const source = options.decode ? await options.decode(text, file) : text;
+    result = capability.run(source, { name: file.name });
   } catch (error) {
     // `InterchangeImportError` checked FIRST: a reader that throws it declared
     // a key for its own refusal, resolved exactly like a note's `messageKey`
@@ -414,8 +659,20 @@ export async function importInterchangeFile(
   // `captureSync` before opens a boundary, the writes land inside it, and the
   // second one closes it. An import a user has to undo forty times is an import
   // they cannot undo.
+  // What the WRITING found that the reading could not: a provisional name the
+  // reader handed out twice. Collected here rather than pushed into the
+  // reader's own array, which is `readonly` and is the reader's statement about
+  // the file — this is a statement about the import.
+  const written: InterchangeNote[] = [];
   std.store.captureSync();
-  const created = materializeInterchangeImport(std, format.id, result.elements);
+  const created = materializeInterchangeImport(
+    std,
+    format.id,
+    result.elements,
+    {
+      onNote: note => written.push(note),
+    }
+  );
   std.store.captureSync();
 
   // …and then bring it into view, which is what template insertion does for
@@ -457,7 +714,13 @@ export async function importInterchangeFile(
   }
   gfx.tool.setTool(DefaultTool);
 
-  reportInterchangeImport(std, format, result.report);
+  reportInterchangeImport(
+    std,
+    format,
+    written.length === 0
+      ? result.report
+      : { ...result.report, notes: [...result.report.notes, ...written] }
+  );
 }
 
 /* ── What can read a file called this ─────────────────────────────────── */

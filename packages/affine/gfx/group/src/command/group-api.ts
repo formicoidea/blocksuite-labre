@@ -116,7 +116,7 @@ export const createGroupCommand: Command<
       {} as Record<string, true>
     ),
     // Translated HERE and once: the title is document content the moment it
-    // lands (ADR 0016), so the host's catalogue is asked at placement and
+    // lands (ADR 0023), so the host's catalogue is asked at placement and
     // never again — a renamed group keeps its name.
     title: translateKey(std, ...GROUP_SEED_NAME, { n: groups.length + 1 }),
   });

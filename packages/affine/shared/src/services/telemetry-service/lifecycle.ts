@@ -49,7 +49,8 @@ export interface FrameworkElementEvent extends TelemetryEvent {
     | 'c4'
     | 'event-storming'
     | 'core-domain'
-    | 'context-map';
+    | 'context-map'
+    | 'uml';
   element: string;
 }
 

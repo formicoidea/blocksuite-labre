@@ -209,7 +209,7 @@ function tr(std: BlockStdScope | undefined, wording: ChromeWording): string {
  * A hand-composed template — what is left once the artefacts are derived.
  *
  * The seeds a template writes into the document go through the translation
- * seam at placement (ADR 0016); `content` stays the English build, and
+ * seam at placement (ADR 0023); `content` stays the English build, and
  * `localize` rebuilds the same snapshot with translated seeds.
  */
 function tpl(

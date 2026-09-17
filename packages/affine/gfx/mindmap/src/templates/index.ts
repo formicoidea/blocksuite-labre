@@ -68,7 +68,7 @@ function tpl(
     nameKey,
     content: makeTemplateSnapshot(build(EN_SEEDS), name),
     // The seeds a template writes into the document go through the
-    // translation seam at placement (ADR 0016); `content` stays the English
+    // translation seam at placement (ADR 0023); `content` stays the English
     // build.
     localize: std => makeTemplateSnapshot(build(seedsFor(std)), name),
   };

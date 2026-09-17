@@ -10,7 +10,7 @@ import { getMindmapRender } from '../toolbar/basket-elements';
 /**
  * The drag-from-basket mindmap tool writes the same two seeds the starter
  * templates do (`com.labre.mindmap.seed.root` / `.child`): resolved at
- * PLACEMENT and never again (ADR 0016).
+ * PLACEMENT and never again (ADR 0023).
  */
 describe('dragging the mindmap basket tool names the mindmap through the seam', () => {
   function fakeEdgeless(

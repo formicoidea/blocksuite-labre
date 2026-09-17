@@ -196,6 +196,43 @@ export const BOARD_RESIZE_TOGGLE: ChromeWording = [
 ];
 
 /**
+ * The orientation toggle a BANDED background carries: the one gesture that
+ * turns a frame drawn in columns into the same frame drawn in rows.
+ *
+ * Declared beside the resize toggle for the same reason and with the same
+ * scope: it names a behaviour of the frame primitive — where the name band
+ * sits and which way the bands run — rather than anything a notation calls its
+ * own. A UML activity partition is the first frame to use it (§15.6.4 draws
+ * swimlanes either way and says the choice means nothing); a BPMN pool is the
+ * obvious second, and a second key for it would be a second tooltip for one
+ * word.
+ */
+export const BOARD_ORIENTATION_TOGGLE: ChromeWording = [
+  'com.labre.board.toolbar.orientation-toggle',
+  'Vertical / horizontal bands',
+];
+
+/**
+ * The gesture that divides a banded background one band further — the button a
+ * frame carrying zones offers next to the two above.
+ *
+ * Declared here with them, and for the third time for the same reason: it names
+ * a behaviour of the generic frame primitive (a background whose `instanceZones`
+ * are a list the author grows) rather than anything a notation calls its own. A
+ * UML combined fragment is the first frame to use it — §17.6.4's second operand
+ * is a band added to a box that has one — and a BPMN pool's lane is the obvious
+ * second the day it stops reaching this through a command of its own.
+ *
+ * "Band" and not "operand" or "lane": the word has to be true of every frame
+ * that offers the button, and each notation's own noun is already written on
+ * the element the button is attached to.
+ */
+export const BOARD_ADD_BAND: ChromeWording = [
+  'com.labre.board.toolbar.add-band',
+  'Add a band',
+];
+
+/**
  * The legend button, in the two wordings the boards actually use: the notation
  * boards say "notation", Wardley says "components".
  *
@@ -211,6 +248,29 @@ export const BOARD_LEGEND_NOTATION: ChromeWording = [
 export const BOARD_LEGEND_COMPONENTS: ChromeWording = [
   'com.labre.board.toolbar.legend.components',
   'Generate the legend (components present)',
+];
+
+/* ── The connector's own labels ───────────────────────────────────────── */
+
+/**
+ * The two END labels a connector can carry beside its caption — where UML
+ * writes a multiplicity and a role name (`docs/adr/0018` phase 2).
+ *
+ * Declared here and not in the UML pack for the same reason the resize toggle
+ * is: they name a part of the generic CONNECTOR, which every framework draws,
+ * and a stored connector keeps its end labels with the UML tooling switched off
+ * (`docs/adr/0009`). "Source" and "target" are the connector's own words for
+ * its two ends, already the vocabulary of `frontEndpointStyle` /
+ * `rearEndpointStyle` and of the direction commands.
+ */
+export const CONNECTOR_SOURCE_LABEL: ChromeWording = [
+  'com.labre.connector.toolbar.source-label',
+  'Source label',
+];
+
+export const CONNECTOR_TARGET_LABEL: ChromeWording = [
+  'com.labre.connector.toolbar.target-label',
+  'Target label',
 ];
 
 /* ── Note shadow styles ────────────────────────────────────────────────
@@ -1162,8 +1222,12 @@ export const CHROME_WORDINGS: readonly ChromeWording[] = [
   LINKED_DOC_EMPTY_PREVIEW,
   SYNCED_DOC_EMPTY_PREVIEW,
   BOARD_RESIZE_TOGGLE,
+  BOARD_ORIENTATION_TOGGLE,
+  BOARD_ADD_BAND,
   BOARD_LEGEND_NOTATION,
   BOARD_LEGEND_COMPONENTS,
+  CONNECTOR_SOURCE_LABEL,
+  CONNECTOR_TARGET_LABEL,
   NOTE_SHADOW_NONE,
   NOTE_SHADOW_BOX,
   NOTE_SHADOW_STICKER,

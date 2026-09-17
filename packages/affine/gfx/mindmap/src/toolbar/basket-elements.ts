@@ -81,7 +81,7 @@ export const getMindmapRender =
     };
 
     // Translated HERE and once: the captions are document content the moment
-    // they land (ADR 0016), so the host's catalogue is asked at placement and
+    // they land (ADR 0023), so the host's catalogue is asked at placement and
     // never again.
     const root: MindMapNode = {
       children: [],

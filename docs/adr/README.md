@@ -20,8 +20,16 @@ One file per decision. Format and lifecycle in
 | [0013](0013-cynefin-framworks-carries-no-validation-rules.md)  | Cynefin carries no validation rules  | accepted, amended         | A sensemaking frame has no rules to check; reading is not validation.                                        |
 | [0014](0014-senior-submenu-rules.md)                           | Senior sub-menu rules                | accepted, amended         | Cap 13 + 1, declared eligibility, recency and frequency, one mechanism for every framework.                  |
 | [0015](0015-rule-dependency-scope.md)                          | Rule dependency scope                | accepted                  | A rule family declares what its verdict depends on; a rule may only widen it.                                |
-| [0016](0016-every-displayed-string-through-a-key.md)           | Every displayed string through a key | accepted                  | Params and `Intl` cross the seam; wordings per package; a shrinking baseline guards against new literals.    |
-| [0017](0017-board-svg-export.md)                               | Board SVG export                     | accepted                  | The canvas renderer replays into svgcanvas; one core command and one wildcard "⋮" entry for every board.     |
+| [0016](0016-hollow-endpoint-styles.md)                         | Hollow endpoint heads                | accepted                  | `PointStyle` is persisted and append-only; an older client paints no head. Hollow heads use the card fill.   |
+| [0017](0017-uml-one-framework-with-diagram-kinds.md)           | UML is one framework                 | accepted                  | One senior button, one flag; the diagram kind is a field on the board. Scope by phase; no metamodel checked. |
+| [0018](0018-connector-per-end-labels-deferred.md)              | Per-end connector labels deferred    | superseded by 0020        | One label per connector: the centre carries the name, end multiplicities are free text until phase 2.        |
+| [0019](0019-uml-import-formats.md)                             | UML reads three formats              | accepted                  | PlantUML and XMI in both directions, draw.io in only and `visual`; the compressed payload is the command's.  |
+| [0020](0020-connector-end-labels.md)                           | Connector end labels                 | accepted                  | Four flat optional fields; absent by default, so no migration. An end label follows its own endpoint.        |
+| [0021](0021-label-syntax-rule-family.md)                       | `label-syntax` rule family           | accepted                  | The first family whose verdict is the framework's own parser; `element` scope; per line, ellipsis dropped.   |
+| [0022](0022-uml-sequence-diagrams-scope.md)                    | UML sequence diagrams                | accepted                  | Kind `sd`: a lifeline is a narrow column, a fragment is a board with operand zones, time is y. Gates out.    |
+| [0023](0023-every-displayed-string-through-a-key.md)           | Every displayed string through a key | accepted                  | Params and `Intl` cross the seam; wordings per package; a shrinking baseline guards against new literals.    |
+| [0024](0024-border-proximity-rule-family.md)                   | `border-proximity` rule family       | accepted                  | Centre within N units of a carrier node's outline; overlap is the gate; `surface` scope.                     |
+| [0025](0025-board-svg-export.md)                               | Board SVG export                     | accepted                  | The canvas renderer replays into svgcanvas; one core command and one wildcard "⋮" entry for every board.     |
 
 Related documents that are not ADRs:
 

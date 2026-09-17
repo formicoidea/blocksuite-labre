@@ -6,7 +6,7 @@ import { wardleyMaps } from '../templates/maps';
 
 /**
  * The two shipped maps rebuild their seeds through {@link Template.localize}
- * (`docs/adr/0016`): without a host catalogue the rebuild must be
+ * (`docs/adr/0023`): without a host catalogue the rebuild must be
  * byte-identical to the shipped `content`, and with one every seed the map
  * writes must come back in the host's words. Mirrors BPMN's
  * `templates-localize.unit.spec.ts` and C4's, one framework over.

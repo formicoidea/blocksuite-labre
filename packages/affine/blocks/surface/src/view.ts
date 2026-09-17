@@ -96,7 +96,7 @@ export class SurfaceViewExtension extends ViewExtensionProvider {
       // behind it. Generic like the two above and registered on the same terms:
       // a board is a `FrameworkBackgroundElementModel`, whatever framework drew
       // it, so the picture it takes away needs no framework at all
-      // (`docs/adr/0017`). Nothing is offered until a board is selected.
+      // (`docs/adr/0025`). Nothing is offered until a board is selected.
       context.register(CommandExtension(exportSvgCommands));
       context.register(exportSvgToolbarExtension);
     } else {
