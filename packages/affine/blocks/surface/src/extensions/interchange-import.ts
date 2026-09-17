@@ -102,6 +102,14 @@ import {
  * canvas already holds is the function doing the writing — see
  * {@link importOffset}, and note that an empty surface is left alone.
  *
+ * ## A read-only document is answered, not thrown at
+ *
+ * This is a public API — a host (labre-mcp) writes through it with no command
+ * in front of it — so the guard belongs here too and not only at the callers:
+ * a readonly document answers the empty array, which is the same "nothing was
+ * minted" every other refusal of this function returns, rather than an
+ * exception a caller would have to know to catch.
+ *
  * @param formatId the format whose payload key carries the source ids — the
  *   `id` of the capability's {@link InterchangeFormat}, and the ONLY thing this
  *   function ever knew about BPMN.
@@ -114,6 +122,7 @@ export function materializeInterchangeImport(
 ): string[] {
   const surface = std.get(GfxControllerIdentifier).surface;
   if (!surface) return [];
+  if (std.store.readonly) return [];
 
   const shift = importOffset(surface.elementModels, elements);
 
@@ -317,6 +326,15 @@ const IMPORT_DONE_KEY = 'com.labre.interchange.import.done';
 const IMPORT_DONE_FALLBACK = 'file imported';
 const IMPORT_FAILED_KEY = 'com.labre.interchange.import.failed';
 const IMPORT_FAILED_FALLBACK = 'This file could not be imported';
+/**
+ * The document went read-only between the moment the file was accepted and the
+ * moment its board was about to be written — see the second guard in
+ * {@link importInterchangeFile}. Its own sentence rather than the reader's,
+ * because nothing is wrong with the FILE.
+ */
+const IMPORT_READONLY_KEY = 'com.labre.interchange.import.readonly';
+const IMPORT_READONLY_FALLBACK =
+  'This document became read-only while the file was being read, so nothing was imported.';
 const IMPORT_REMARKS_KEY = 'com.labre.interchange.import.remarks';
 const IMPORT_REMARKS_FALLBACK = 'What the import could not keep as it was';
 const IMPORT_CONSOLE_KEY = 'com.labre.interchange.import.console';
@@ -650,6 +668,21 @@ export async function importInterchangeFile(
     notifyImport(std, {
       title: translateKey(std, IMPORT_FAILED_KEY, IMPORT_FAILED_FALLBACK),
       message,
+      accent: 'error',
+    });
+    return;
+  }
+
+  // The guard at the top was a decision taken BEFORE two `await`s, and rights
+  // can be lost while they run: a remote cascade turning the store read-only
+  // between the picker and this line is the same class of defect as issue #324
+  // ("Cannot remove element in readonly mode"). Writing anyway rejects a
+  // promise nobody awaits, and returning in silence loses a file the user
+  // chose — so it is said, through the channel every other import failure uses.
+  if (std.store.readonly) {
+    notifyImport(std, {
+      title: translateKey(std, IMPORT_FAILED_KEY, IMPORT_FAILED_FALLBACK),
+      message: translateKey(std, IMPORT_READONLY_KEY, IMPORT_READONLY_FALLBACK),
       accent: 'error',
     });
     return;
