@@ -3,7 +3,6 @@ import {
   morphToolbarConfig,
   ReadingProfileExtension,
   tagsToolbarConfig,
-  validationToolbarConfig,
   QualityNudgeExtension,
   ValidationProfileExtension,
   ValidationRuleExtension,
@@ -40,7 +39,10 @@ import { WardleyNodeRendererExtension } from './node/node-renderer';
 import { WardleyNodeView } from './node/node-view';
 import { WardleyPorterWatcher } from './node/porter-watcher';
 import { wardleyNodeToolbarExtension } from './toolbar/node-config';
-import { wardleyToolbarExtension } from './toolbar/config';
+import {
+  wardleyBoardToolingToolbarExtension,
+  wardleyToolbarExtension,
+} from './toolbar/config';
 import { wardleySeniorTool } from './toolbar/senior-tool';
 
 /**
@@ -123,20 +125,15 @@ export class WardleyViewExtension extends ViewExtensionProvider {
       // off contributes none and `map.audit` finds nothing to ask about — while
       // `ai-audit` independently decides whether the command exists at all.
       context.register(AuditCriterionExtension(WARDLEY_AUDIT_CRITERIA));
-      // The Validation dropdown on a selected map's contextual toolbar. A
-      // SECOND module on the same element, through the `custom:` flavour slot
-      // (the pattern `gfx/mindmap` uses on `custom:affine:surface:shape`):
-      // `wardleyToolbarExtension` is registered always-on because a stored map
-      // must keep its axes and labels, while choosing how hard to check it is
-      // tooling and belongs here. The config itself names no framework — it
-      // reads roles and profiles — so a second framework registers the very
-      // same object on its own flavour.
-      context.register(
-        ToolbarModuleExtension({
-          id: BlockFlavourIdentifier('custom:affine:surface:wardley'),
-          config: validationToolbarConfig,
-        })
-      );
+      // The Legend button and the Validation dropdown on a selected map's
+      // contextual toolbar — ONE module, through the `custom:` flavour slot
+      // (the pattern `gfx/mindmap` uses on `custom:affine:surface:shape`), for
+      // the reason `wardleyBoardToolingToolbarConfig` states: a flavour carries
+      // exactly one, and a second would throw at set-up. Here and not in the
+      // always-on half because both are TOOLING — generating a legend and
+      // choosing how hard to check the map — while `wardleyToolbarExtension`
+      // stays always-on so a stored map keeps its axes and labels.
+      context.register(wardleyBoardToolingToolbarExtension);
       // The four natures — Wardley's type-3 qualification (MF3, ADR 0007).
       // Seeded on the SAME mechanism a host uses for its own taxonomy: the
       // library ships one real pack, and a client's private extension is a

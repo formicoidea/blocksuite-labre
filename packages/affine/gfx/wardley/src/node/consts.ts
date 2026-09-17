@@ -62,29 +62,31 @@ export const LINK_STROKE_WIDTH = 2;
 /**
  * Wardley red ("future"/evolution) — matches the validated arrow icon.
  *
- * An IDENTITY colour: the legend recognises a stored evolution link by it
- * (`legend.ts`, `el.stroke === WARDLEY_RED`). It stays a literal and must never
- * be derived from `NOTATION_NEUTRALS` or any other scale — a change of value
- * would orphan every link already drawn with it.
+ * A STORED colour: every evolution arrow ever drawn carries this exact value,
+ * so it stays a literal and must never be derived from `NOTATION_NEUTRALS` or
+ * any other scale — a change of value would leave the maps already drawn with
+ * it a different red from the ones drawn after. (It is no longer how an arrow
+ * is RECOGNISED: the legend and the rules read `wardley:change-arrow`, so a
+ * connector somebody restyled red is not one.)
  */
 export const WARDLEY_RED = '#d6455d';
 /**
  * Dependency link grey.
  *
- * An IDENTITY colour: the legend recognises a stored dependency link by it
- * (`legend.ts`, `el.stroke === LINK_GREY`). It stays a literal and must never
- * be derived from `NOTATION_NEUTRALS` — a change of value would orphan every
- * link already drawn with it.
+ * A STORED colour, like {@link WARDLEY_RED} above and for its reason: every
+ * dependency link ever drawn carries this exact value, so it stays a literal
+ * and must never be derived from `NOTATION_NEUTRALS`. What MAKES a connector a
+ * dependency is its role, not its grey.
  */
 export const LINK_GREY = '#666666';
 /**
  * Inertia bar color + size.
  *
- * An IDENTITY colour: the legend recognises a stored inertia bar by it
- * (`legend.ts`, `el.fillColor === INERTIA_COLOR`). It happens to equal the
- * scale's ink today, but it stays a literal and must never be derived from
- * `NOTATION_NEUTRALS`: a change of the shared ink would orphan every inertia bar
- * already on a map.
+ * A STORED colour, like the two above: every inertia bar ever drawn carries
+ * this exact value. It happens to equal the scale's ink today, but it stays a
+ * literal and must never be derived from `NOTATION_NEUTRALS` — a change of the
+ * shared ink would repaint the bars already on a map. A rect somebody tinted
+ * `#1f2328` is NOT an inertia: `wardley:inertia` is.
  */
 export const INERTIA_COLOR = '#1f2328';
 export const INERTIA_SIZE = { w: 8, h: 44 };

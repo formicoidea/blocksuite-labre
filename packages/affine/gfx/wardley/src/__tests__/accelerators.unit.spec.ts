@@ -1,10 +1,4 @@
-import {
-  FontWeight,
-  ShapeElementModel,
-  ShapeStyle,
-  TextAlign,
-  WardleyNodeElementModel,
-} from '@labre/affine-model';
+import { FontWeight, ShapeStyle, TextAlign } from '@labre/affine-model';
 import { Bound } from '@labre/global/gfx';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -12,7 +6,6 @@ import { createWardleyAccelerator } from '../actions';
 import { wardleyCommands } from '../commands';
 import { exportWardleyOwm } from '../export';
 import { importWardleyOwm } from '../import';
-import { createWardleyLegend } from '../legend';
 import { WARDLEY_MORPH_FAMILIES, type WardleyMorphKind } from '../morph';
 import {
   ACCELERATOR_FILL,
@@ -31,6 +24,7 @@ import {
   wardleyNodeProps,
 } from '../presets';
 import { WARDLEY_ROLE } from '../roles';
+import { legendOf, roled, textsOf } from './legend-stub';
 import { boardFromProps } from './owm-board-stub';
 
 /**
@@ -303,46 +297,13 @@ describe('the two commands', () => {
 /* ── The map legend ───────────────────────────────────────────────────── */
 
 describe('the legend', () => {
-  /** Run the legend over a board holding exactly the given elements. */
-  function legendOf(present: unknown[]) {
-    const added: Added[] = [];
-    const gfx = {
-      surface: { addElement: (props: Added) => (added.push(props), 'x') },
-      getElementsByBound: () => present,
-      selection: { set: vi.fn() },
-    };
-    const std = {
-      get: () => gfx,
-      // `createWardleyLegend` resolves every wording it writes through
-      // `translateKey`, which asks for this — absent here, exactly like a
-      // playground with no `TranslationProvider` registered.
-      getOptional: () => undefined,
-      store: { captureSync: vi.fn() },
-      command: { exec: () => [{}, { groupId: 'g' }] },
-    };
-    createWardleyLegend(
-      std as never,
-      {
-        deserializedXYWH: [0, 0, 1600, 900],
-        xywh: '[0,0,1600,900]',
-        variant: 'classic',
-      } as never
-    );
-    return added;
-  }
-
   const arrowOnBoard = (kind: 'accelerator' | 'decelerator') =>
-    Object.create(WardleyNodeElementModel.prototype, {
-      kind: { value: kind },
-    }) as ShapeElementModel;
+    roled(WARDLEY_ROLE[kind]);
 
   it('adds one row per kind, saying which way evolution moves', () => {
-    const texts = legendOf([
-      arrowOnBoard('accelerator'),
-      arrowOnBoard('decelerator'),
-    ])
-      .filter(el => el.type === 'text')
-      .map(el => String(el.text));
+    const texts = textsOf(
+      legendOf([arrowOnBoard('accelerator'), arrowOnBoard('decelerator')])
+    );
 
     expect(texts).toContain('Accelerator (speeds evolution up)');
     expect(texts).toContain('Decelerator (slows evolution down)');
@@ -374,13 +335,7 @@ describe('the legend', () => {
   });
 
   it('says nothing about a map that carries neither', () => {
-    const texts = legendOf([
-      Object.create(WardleyNodeElementModel.prototype, {
-        kind: { value: 'component' },
-      }),
-    ])
-      .filter(el => el.type === 'text')
-      .map(el => String(el.text));
+    const texts = textsOf(legendOf([roled(WARDLEY_ROLE.component)]));
 
     expect(texts).not.toContain('Accelerator (speeds evolution up)');
     expect(texts).not.toContain('Decelerator (slows evolution down)');

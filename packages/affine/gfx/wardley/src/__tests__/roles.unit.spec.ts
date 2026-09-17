@@ -1,4 +1,3 @@
-import { WardleyNodeElementModel } from '@labre/affine-model';
 import { roleIsA } from '@labre/std/gfx';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -9,9 +8,10 @@ import {
   createWardleyNode,
   createWardleyPipeline,
 } from '../actions';
-import { createWardleyLegend } from '../legend';
+import { WARDLEY_EDGE_STYLE } from '../presets';
 import { WARDLEY_ROLE, WARDLEY_ROLES } from '../roles';
 import { wardleyTemplateCategory as wardleyTemplates } from '../templates';
+import { legendOf, roled } from './legend-stub';
 
 type Added = Record<string, unknown>;
 
@@ -264,33 +264,12 @@ describe('built-in templates are typed like hand-drawn maps', () => {
 
 describe('legend glyphs stay neutral', () => {
   it('creates real wardleyNode elements without any role', () => {
-    const added: Added[] = [];
-    // `instanceof` is what the legend uses to detect what to describe.
-    // `kind` as an own data property, shadowing the `@field` accessor (which
-    // would need a real surface).
-    const present = (['component', 'market'] as const).map(kind =>
-      Object.create(WardleyNodeElementModel.prototype, {
-        kind: { value: kind },
-      })
-    );
-
-    const gfx = {
-      surface: { addElement: (props: Added) => (added.push(props), 'x') },
-      getElementsByBound: () => present,
-      selection: { set: vi.fn() },
-    };
-    const std = {
-      get: () => gfx,
-      // `createWardleyLegend` resolves every wording it writes through
-      // `translateKey`, which asks for this — absent here, exactly like a
-      // playground with no `TranslationProvider` registered.
-      getOptional: () => undefined,
-      store: { captureSync: vi.fn() },
-      command: { exec: () => [{}, { groupId: 'g' }] },
-    };
-    const bg = { deserializedXYWH: [0, 0, 1600, 900], xywh: '[0,0,1600,900]' };
-
-    createWardleyLegend(std as never, bg as never);
+    // A ROLE is what the legend detects by — no `instanceof`, no fill colour —
+    // so the fixtures are the roles and nothing else.
+    const added = legendOf([
+      roled(WARDLEY_ROLE.component),
+      roled(WARDLEY_ROLE.market),
+    ]);
 
     const nodes = added.filter(el => el.type === 'wardleyNode');
     // The legend really does build wardley nodes…
@@ -301,5 +280,31 @@ describe('legend glyphs stay neutral', () => {
     for (const el of added) {
       expect(el).not.toHaveProperty('role');
     }
+  });
+
+  it('draws the two typed edges as themselves: one rising, one flat', () => {
+    // The dependency RISES across its row and the evolution arrow runs flat,
+    // which is what tells them apart before the eye reaches the colour. The
+    // shared `edge` swatch spans its column horizontally, so both samples are
+    // drawn by the framework — with the very style
+    // `activateWardleyConnector` arms, and with no role, like every glyph here.
+    const added = legendOf([
+      roled(WARDLEY_ROLE.dependency),
+      roled(WARDLEY_ROLE.changeArrow),
+    ]);
+    const [link, arrow] = added.filter(el => el.type === 'connector');
+
+    const span = (el: Record<string, unknown>) => {
+      const [sx, sy] = (el.source as { position: number[] }).position;
+      const [tx, ty] = (el.target as { position: number[] }).position;
+      return [tx - sx, ty - sy];
+    };
+    expect(span(link)).toEqual([36, -12]);
+    expect(span(arrow)).toEqual([34, 0]);
+
+    expect(link).toMatchObject(WARDLEY_EDGE_STYLE.link);
+    expect(arrow).toMatchObject(WARDLEY_EDGE_STYLE.arrow);
+    expect(link).not.toHaveProperty('role');
+    expect(arrow).not.toHaveProperty('role');
   });
 });

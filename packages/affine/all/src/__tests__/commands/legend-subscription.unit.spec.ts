@@ -55,7 +55,6 @@ const commands = getCommands();
  * constant itself goes with the last one.
  */
 const PENDING_OWNERS: readonly CommandOwner[] = [
-  'wardley',
   'edgy',
   'c4',
   'ddd-event-storming',
@@ -90,6 +89,12 @@ const EXEMPT_ROLES: Readonly<Record<string, string>> = {
   'c4:description': 'a third of a label',
   // The facets diagram is the frame the EDGY elements are drawn inside.
   'edgy:facets': 'a frame, like a board',
+  // The square a pipeline's connectors land on — the body's own plumbing, and
+  // the reason the body itself declares `connectable: false`.
+  'wardley:handle': 'the pipeline’s connection point',
+  // The name written BESIDE a Wardley artefact, grouped with it. A role so W3
+  // can say where it must not land, not an artefact of its own.
+  'wardley:label': 'the name beside an artefact',
 };
 
 const INVOCATION = {

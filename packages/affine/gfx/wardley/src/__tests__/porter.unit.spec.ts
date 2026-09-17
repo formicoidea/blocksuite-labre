@@ -1,14 +1,11 @@
-import {
-  ShapeStyle,
-  TextFitMode,
-  WardleyNodeElementModel,
-} from '@labre/affine-model';
+import { measureLegend } from '@labre/affine-block-surface';
+import { ShapeStyle, TextFitMode } from '@labre/affine-model';
 import { Bound } from '@labre/global/gfx';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createWardleyPorter } from '../actions';
 import { exportWardleyOwmWithWarnings, wardleyBoardFrom } from '../export';
-import { createWardleyLegend, porterPanelLayout } from '../legend';
+import { porterPanelLayout } from '../legend';
 import { WARDLEY_MORPH_FAMILIES } from '../morph';
 import {
   NODE_FILL,
@@ -28,6 +25,7 @@ import {
   wardleyPorterArrows,
 } from '../presets';
 import { WARDLEY_ROLE } from '../roles';
+import { legendOf, roled, textsOf } from './legend-stub';
 import {
   board,
   drawNode,
@@ -314,61 +312,20 @@ describe('createWardleyPorter', () => {
 /* ── The map legend ───────────────────────────────────────────────────── */
 
 describe('the legend', () => {
-  /** Run the legend over a board holding exactly the given elements. */
-  function legendOf(present: unknown[]) {
-    const added: Added[] = [];
-    const gfx = {
-      surface: { addElement: (props: Added) => (added.push(props), 'x') },
-      getElementsByBound: () => present,
-      selection: { set: vi.fn() },
-    };
-    const std = {
-      get: () => gfx,
-      // `createWardleyLegend` resolves every wording it writes through
-      // `translateKey`, which asks for this — absent here, exactly like a
-      // playground with no `TranslationProvider` registered.
-      getOptional: () => undefined,
-      store: { captureSync: vi.fn() },
-      command: { exec: () => [{}, { groupId: 'g' }] },
-    };
-    createWardleyLegend(
-      std as never,
-      {
-        deserializedXYWH: [0, 0, 1600, 900],
-        xywh: '[0,0,1600,900]',
-        variant: 'classic',
-      } as never
-    );
-    return added;
-  }
-
-  /** A porter circle and its four arrows, as `instanceof` sees them. */
+  /**
+   * A porter circle and its four arrows, as the SCAN sees them: one role, and
+   * four neutral pieces of the glyph's own wiring.
+   */
   const porterOnBoard = () => [
-    Object.create(WardleyNodeElementModel.prototype, {
-      kind: { value: 'porter' },
-      role: { value: WARDLEY_ROLE.porter },
-    }),
-    // `wardleyNode` polygons since recette v2, not plain shapes — so they meet
-    // the legend's FIRST branch, on `kind`, rather than its inertia test. Both
-    // outcomes are checked below: one porter row, and no inertia row.
-    ...wardleyPorterArrows(0, 0).map(() =>
-      Object.create(WardleyNodeElementModel.prototype, {
-        kind: { value: 'porter' },
-        role: { value: undefined },
-        shapeType: { value: 'polygon' },
-        fillColor: { value: WARDLEY_RED },
-      })
-    ),
+    roled(WARDLEY_ROLE.porter),
+    ...wardleyPorterArrows(0, 0).map(() => roled(undefined)),
   ];
 
   it('adds ONE porter row, spelling out what the three letters mean', () => {
-    const added = legendOf(porterOnBoard());
-    const texts = added
-      .filter(el => el.type === 'text')
-      .map(el => String(el.text));
+    const texts = textsOf(legendOf(porterOnBoard()));
 
-    // One row, not five: the four arrows carry `kind: 'porter'` too, and the
-    // legend collects kinds into a SET, so the glyph describes itself once.
+    // One row, not five: the four arrows carry no role at all, and the engine
+    // de-duplicates rows by role, so the glyph describes itself once.
     expect(
       texts.filter(t => t.startsWith("Porter's forces (external competition"))
     ).toHaveLength(1);
@@ -399,16 +356,31 @@ describe('the legend', () => {
   });
 
   it('describes nothing but the force: no evolution, no inertia', () => {
-    const texts = legendOf(porterOnBoard())
-      .filter(el => el.type === 'text')
-      .map(el => String(el.text));
+    const texts = textsOf(legendOf(porterOnBoard()));
 
     // Two rows that must NOT appear. The arrows are red, so a legend reading
     // colour alone would call them an evolution; and they are filled shapes, so
-    // the inertia test — a matching `fillColor` — is the other one they could
+    // an inertia test on a matching `fillColor` is the other one they could
     // trip. A map carrying a force and nothing else claims neither.
     expect(texts).not.toContain('Evolution / movement (red = future)');
     expect(texts).not.toContain('Inertia to change');
+  });
+
+  it('says nothing about a connector somebody restyled red and dashed', () => {
+    // The correction the switch to roles buys, and the one the PO signed off:
+    // a plain connector the author recoloured used to answer the "red OR
+    // dashed" test and put an "Evolution" row in the legend of a map with no
+    // evolution arrow on it. Detection is by role now, and a restyle writes
+    // none.
+    const texts = textsOf(
+      legendOf([
+        roled(WARDLEY_ROLE.component),
+        { role: undefined, stroke: WARDLEY_RED, strokeStyle: 'dash' },
+      ])
+    );
+
+    expect(texts).toContain('Need / capability (activity, practice, data…)');
+    expect(texts).not.toContain('Evolution / movement (red = future)');
   });
 
   it('leaves every legend glyph neutral, arrows and letter included', () => {
@@ -430,15 +402,8 @@ describe('the legend', () => {
 
   /* ── The five-forces panel ──────────────────────────────────────────── */
 
-  /** A plain Wardley component, as `instanceof` sees it. */
-  const componentOnBoard = () => [
-    Object.create(WardleyNodeElementModel.prototype, {
-      kind: { value: 'component' },
-    }),
-  ];
-
-  const textsOf = (added: Added[]) =>
-    added.filter(el => el.type === 'text').map(el => String(el.text));
+  /** A map carrying one plain component and nothing else. */
+  const componentOnBoard = () => [roled(WARDLEY_ROLE.component)];
 
   /** The legend's own white frame — the first element it creates. */
   const frameOf = (added: Added[]) => Bound.deserialize(String(added[0].xywh));
@@ -457,20 +422,51 @@ describe('the legend', () => {
   describe("Porter's five forces", () => {
     const PANEL = porterPanelLayout(450 - 16 * 2);
 
-    it('is absent from a map with no force on it, to the pixel', () => {
+    /**
+     * The box's own layout, as the board's command declares it — and the only
+     * honest way to state a height now that the chrome (title band, sub-titles,
+     * corner radius) belongs to the shared box. The five expectations below
+     * used to be byte-identical literals; they are derived, and what they hold
+     * still is the ARITHMETIC — one row per role, one sub-title per section,
+     * the panel's own height under them — rather than a number copied out of a
+     * run.
+     */
+    const LAYOUT = {
+      width: 450,
+      rowHeight: 30,
+      swatchWidth: 46,
+      swatchHeight: 30,
+    };
+    const ROW = { swatch: 'dot' as const, color: '#000000', label: 'row' };
+    /** `n` rows under one sub-title, per section. */
+    const boxOfRows = (...perSection: number[]) =>
+      measureLegend(
+        perSection.map(n => ({ title: 'section', rows: ROW_LIST(n) })),
+        LAYOUT
+      );
+    const ROW_LIST = (n: number) => Array.from({ length: n }, () => ROW);
+
+    it('is absent from a map with no force on it', () => {
       // The promise this panel owes every legend that came before it: a map
-      // without a porter produces exactly the elements, and exactly the frame,
-      // it produced yesterday. Literal numbers on purpose — a derived
-      // expectation would move with the code it is meant to hold still.
+      // without a porter is the box it would have been without this panel —
+      // frame, title, one sub-title, one glyph and one description.
       const added = legendOf(componentOnBoard());
 
-      // Frame, title, one glyph, one description, and nothing else.
-      expect(added).toHaveLength(4);
-      expect(added[0].xywh).toBe('[50,754,450,90]');
+      expect(added).toHaveLength(5);
       expect(added.some(el => el.fillColor === '#e5e7eb')).toBe(false);
       expect(textsOf(added)).toEqual([
         'Legend',
+        'Nodes',
         'Need / capability (activity, practice, data…)',
+      ]);
+      // One section, one row — and still hung 50 in from the map's left edge
+      // and 56 above its bottom one.
+      const { width, height } = boxOfRows(1);
+      expect(frameOf(added).toXYWH()).toEqual([
+        50,
+        900 - 56 - height,
+        width,
+        height,
       ]);
     });
 
@@ -480,8 +476,9 @@ describe('the legend', () => {
 
       // The porter ROW is the same 30 units every row is; the panel is 12 of
       // separation plus its own height, under everything else.
-      expect(w).toBe(450);
-      expect(h).toBe(16 * 2 + 28 + 30 + 12 + PANEL.h);
+      const { width, height } = boxOfRows(1);
+      expect(w).toBe(width);
+      expect(h).toBe(height + 12 + PANEL.h);
       // …and it still hangs 56 above the background's bottom edge.
       expect(frameOf(added).toXYWH()[1]).toBe(900 - 56 - h);
     });

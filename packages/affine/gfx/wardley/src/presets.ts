@@ -31,6 +31,8 @@ import {
   LABEL_DEFAULT,
   LABEL_FONT_SIZE,
   LABEL_GAP,
+  LINK_GREY,
+  LINK_STROKE_WIDTH,
   MARKET_DOT_RING,
   MARKET_DOT_SIZE,
   MARKET_DOT_STROKE_WIDTH,
@@ -636,6 +638,35 @@ export function wardleyMarketLinkPairs<T>(dots: readonly T[]): [T, T][] {
     [dots[2], dots[0]],
   ];
 }
+
+/* ── The two typed edges ──────────────────────────────────────────────── */
+
+/**
+ * How a Wardley connector LOOKS, per tool: the value-chain link is grey, solid
+ * and headless, the evolution arrow red, dashed and tipped with a filled
+ * triangle.
+ *
+ * Here beside the node presets, and for their reason: the style rides on the
+ * tool activation (`activateWardleyConnector`) and is pictured by the legend
+ * row that tool subscribes, so restating it in either place would be two
+ * descriptions of one notation that agreed the day they were written.
+ */
+export const WARDLEY_EDGE_STYLE = {
+  link: {
+    stroke: LINK_GREY,
+    strokeStyle: StrokeStyle.Solid,
+    strokeWidth: LINK_STROKE_WIDTH,
+    frontEndpointStyle: PointStyle.None,
+    rearEndpointStyle: PointStyle.None,
+  },
+  arrow: {
+    stroke: WARDLEY_RED,
+    strokeStyle: StrokeStyle.Dash,
+    strokeWidth: LINK_STROKE_WIDTH,
+    frontEndpointStyle: PointStyle.None,
+    rearEndpointStyle: PointStyle.Triangle,
+  },
+} as const;
 
 /* ── Porter's forces ──────────────────────────────────────────────────── */
 
