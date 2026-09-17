@@ -161,8 +161,8 @@ export const c4ExportMermaidIcon = svg`<svg width="24" height="24" viewBox="0 0 
  * glyph ⇄ command bijection.
  *
  * The legend's glyph is in neither, because the legend is no longer a command at
- * all: it is `dddLegendIcon`, referenced straight from `config.ts` by the button
- * that is now the only way to reach it (PO arbitration, 27/08/2026).
+ * all: it is the surface block's own `legendIcon`, drawn by the shared button
+ * factory that is now the only way to reach it (PO arbitration, 27/08/2026).
  */
 export const C4_TOOLBOX_ICONS = {
   'c4.person': c4PersonIcon,

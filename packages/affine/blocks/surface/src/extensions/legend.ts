@@ -56,9 +56,7 @@ import { EdgelessCRUDIdentifier } from './crud-extension.js';
  * reason `validation.ts` next door does: BPMN and Wardley must not take a
  * dependency on a DDD bundle to draw their own legend.
  *
- * {@link createAutoLegend} and the `AutoLegend*` types are the PREVIOUS shape of
- * the same engine — a table per framework — kept working, and re-exported from
- * `@labre/affine-gfx-ddd-shared`, until the last framework has subscribed.
+ * See `docs/adr/0026`.
  */
 
 type Surface = NonNullable<GfxController['surface']>;
@@ -89,15 +87,16 @@ export interface LegendLayout {
 export type LegendExtra = CommandLegendExtra;
 
 /**
- * The ink and the type the box is written in — the shared notation scale's,
- * and the same three values the DDD prefabs label their artefacts with
- * (`@labre/affine-gfx-ddd-shared`'s `LABEL_COLOR` / `LABEL_FONT` /
- * `LABEL_FONT_SIZE`), restated here rather than imported because that bundle
- * depends on this one.
+ * The ink and the type a notation writes its labels in: this box's rows, and
+ * the words the DDD prefabs set beside a dot or a marker.
+ *
+ * Declared HERE and re-exported by `@labre/affine-gfx-ddd-shared`, rather than
+ * the other way round, because that bundle depends on this one and a legend
+ * must not depend on a DDD bundle to be drawn.
  */
-const LABEL_COLOR = NOTATION_NEUTRALS.ink;
-const LABEL_FONT = 'blocksuite:surface:Inter';
-const LABEL_FONT_SIZE = 14;
+export const LABEL_COLOR = NOTATION_NEUTRALS.ink;
+export const LABEL_FONT = 'blocksuite:surface:Inter';
+export const LABEL_FONT_SIZE = 14;
 
 const NO_STROKE = '#00000000';
 
@@ -642,152 +641,6 @@ export function createBoardLegend(
     bound.x + INSET_X,
     bound.y + bound.h - INSET_BOTTOM - height,
     { title, sections, extras, ...layout }
-  );
-  gfx.selection.set({ elements: [id], editing: false });
-  return id;
-}
-
-/* ── The previous shape: a TABLE per framework ─────────────────────────── */
-
-/**
- * One candidate row of a hand-written table: `row` is listed only when `role` —
- * or a role that specialises it — is carried by an element inside the board's
- * perimeter.
- *
- * @deprecated Subscribe the row on the command that draws the artefact
- * (`CommandDescriptor.legend`) and let {@link legendFromCommands} derive it.
- * Kept until the last framework has migrated.
- */
-export interface AutoLegendEntry {
-  role: RoleId;
-  row: LegendRow;
-  /**
-   * Match `role` and `role` ALONE, without the specialisation walk. See
-   * {@link CommandLegendEntry.exact}.
-   */
-  exact?: boolean;
-  /** Static prefix kept literal in front of the role's resolved wording. */
-  labelPrefix?: string;
-}
-
-/** @deprecated See {@link AutoLegendEntry}. */
-export interface AutoLegendSectionSpec {
-  /** Sub-title, dropped along with the section when none of its rows appear. */
-  title?: string;
-  /** i18n key for {@link title}, resolved through the host's catalogue. */
-  titleKey?: string;
-  entries: readonly AutoLegendEntry[];
-}
-
-/** @deprecated See {@link AutoLegendEntry}. */
-export interface AutoLegendSpec extends LegendLayout {
-  /** Box title. Every framework with an automatic legend says "Legend". */
-  title: string;
-  /** i18n key for {@link title}; every framework reuses `BOARD_LEGEND_TITLE`. */
-  titleKey?: string;
-  /** The framework's role vocabulary, for the specialisation walk. */
-  roles: RoleDefs;
-  sections: readonly AutoLegendSectionSpec[];
-}
-
-/**
- * The framework's OWN wording for a role, from the vocabulary that declares it
- * — the FALLBACK half only, baked at spec-declaration time with no `std` in
- * scope. The catalogue is asked afterwards, when the legend is drawn.
- *
- * @deprecated See {@link AutoLegendEntry}.
- */
-export function roleLabel(roles: RoleDefs, id: RoleId): string {
-  return roles[id]?.labelFallback ?? id;
-}
-
-function resolveTableRowLabel(
-  std: BlockStdScope,
-  roles: RoleDefs,
-  entry: AutoLegendEntry
-): string {
-  const def = roles[entry.role];
-  if (!def?.labelKey) return entry.row.label;
-  if (entry.labelPrefix) {
-    const translated = translateKey(
-      std,
-      def.labelKey,
-      def.labelFallback ?? entry.role
-    );
-    return `${entry.labelPrefix} — ${translated}`;
-  }
-  return translateKey(std, def.labelKey, entry.row.label);
-}
-
-/**
- * The sections a hand-written table draws for a given set of present roles.
- *
- * @deprecated See {@link legendFromCommands}.
- */
-export function autoLegendSections(
-  present: ReadonlySet<RoleId>,
-  spec: AutoLegendSpec,
-  std: BlockStdScope
-): LegendSection[] {
-  const sections: LegendSection[] = [];
-  for (const section of spec.sections) {
-    const rows = section.entries
-      .filter(entry =>
-        entry.exact
-          ? present.has(entry.role)
-          : [...present].some(role => roleIsA(role, entry.role, spec.roles))
-      )
-      .map(entry => ({
-        ...entry.row,
-        label: resolveTableRowLabel(std, spec.roles, entry),
-      }));
-    if (rows.length)
-      sections.push({
-        title:
-          section.titleKey && section.title !== undefined
-            ? translateKey(std, section.titleKey, section.title)
-            : section.title,
-        rows,
-      });
-  }
-  return sections;
-}
-
-/**
- * Build the legend of what is drawn inside `background` from a hand-written
- * table, and drop it bottom-left of it, grouped and selected.
- *
- * @deprecated See {@link createBoardLegend}.
- */
-export function createAutoLegend(
-  std: BlockStdScope,
-  background: { xywh: string },
-  spec: AutoLegendSpec
-): string | undefined {
-  const gfx = std.get(GfxControllerIdentifier);
-  const surface = gfx.surface;
-  if (!surface) return undefined;
-
-  const bound = Bound.deserialize(background.xywh);
-  const sections = autoLegendSections(rolesInBound(gfx, bound), spec, std);
-  const title = spec.titleKey
-    ? translateKey(std, spec.titleKey, spec.title)
-    : spec.title;
-  const layout: LegendLayout = {
-    width: spec.width,
-    rowHeight: spec.rowHeight,
-    swatchWidth: spec.swatchWidth,
-    swatchHeight: spec.swatchHeight,
-  };
-  const { height } = measureLegend(sections, layout);
-
-  std.store.captureSync();
-  const id = addLegend(
-    surface,
-    std,
-    bound.x + INSET_X,
-    bound.y + bound.h - INSET_BOTTOM - height,
-    { title, sections, ...layout }
   );
   gfx.selection.set({ elements: [id], editing: false });
   return id;

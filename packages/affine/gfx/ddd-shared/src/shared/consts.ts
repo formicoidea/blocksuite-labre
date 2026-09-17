@@ -225,7 +225,15 @@ export const CD_SUBDOMAINS = [
 
 export const DOT_SIZE = 26;
 export const MOVEMENT_COLOR = '#ff3333';
-/** Label and legend text: the shared notation scale's artefact ink. */
-export const LABEL_COLOR = NOTATION_NEUTRALS.ink;
-export const LABEL_FONT = 'blocksuite:surface:Inter';
-export const LABEL_FONT_SIZE = 14;
+
+/**
+ * Label text: ink, family and size. Declared by the legend engine
+ * (`@labre/affine-block-surface`), which writes its rows in the very same
+ * three values — one declaration, so a DDD caption and the legend line that
+ * explains it cannot drift apart.
+ */
+export {
+  LABEL_COLOR,
+  LABEL_FONT,
+  LABEL_FONT_SIZE,
+} from '@labre/affine-block-surface';

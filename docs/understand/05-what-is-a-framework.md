@@ -66,7 +66,7 @@ package:
 | reading            | `reading.ts`                               | what the tool proposes about a component the user clicks                                                                     |
 | interchange        | `interchange.ts`, `export.ts`, `import.ts` | native format import/export, as pure functions                                                                               |
 | templates          | `templates/`                               | the Templates panel category: worked examples plus one derived entry per artefact command                                    |
-| legend             | `legend.ts`                                | the auto-generated legend group                                                                                              |
+| legend             | `commands.ts` (`legend`, `legendBox`)      | the row each artefact puts in the board's auto-generated legend; the box itself is derived, not written (ADR 0026)           |
 | translations       | `translations.ts`                          | the `com.labre.*` keys derived from the declarations above                                                                   |
 
 The full rulebook is in
@@ -110,6 +110,9 @@ its board" finding is for.
 
 Import of a native format sits in the sub-menu (a board comes _from_ a
 file). Export sits on the selected board's contextual toolbar (you export a
-board you already have). The legend button is on that contextual toolbar too.
+board you already have). The Legend button is on that contextual toolbar too,
+beside Validation, and both disappear with the flag — generating a legend is
+tooling, whereas the legend already drawn is content and keeps being painted
+(ADR 0026).
 
 Next: [06-glossary.md](06-glossary.md).

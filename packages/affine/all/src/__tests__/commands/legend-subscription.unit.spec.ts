@@ -39,23 +39,14 @@ import { getInternalViewExtensions } from '../../extensions/view.js';
  * armed, which is where a typed connector's role lives since it creates
  * nothing at all.
  *
- * ## Why it is green today
+ * ## Why it cannot pass vacuously
  *
- * {@link PENDING_OWNERS} lists the frameworks whose rows still live in a
- * hand-written `legend.ts`. Each migration tranche removes its own entry and
- * the check starts biting for it; the last one removes the constant. The
- * control case at the bottom is what keeps the list honest in the meantime: it
- * proves the recording really finds roles and that removing an owner from the
- * list without subscribing its commands would FAIL, rather than pass vacuously.
+ * The control block at the bottom exercises the very same mechanism on
+ * synthetic commands and asserts both halves: that a stamped role really is
+ * found, and that an unsubscribed one really is reported. See `docs/adr/0026`.
  */
 
 const commands = getCommands();
-
-/**
- * Frameworks whose legend is still a table. Emptied one tranche at a time; the
- * constant itself goes with the last one.
- */
-const PENDING_OWNERS: readonly CommandOwner[] = [];
 
 /**
  * Frameworks with no legend at all, permanently. Estuarine draws a landscape
@@ -215,12 +206,10 @@ function uncoveredRolesIn(owned: readonly AnyCommandDescriptor[]): string[] {
 const uncoveredRolesOf = (owner: CommandOwner): string[] =>
   uncoveredRolesIn(ownedBy(owner));
 
-const OWED = FRAMEWORK_IDS.filter(
-  id => !(id in NO_LEGEND) && !PENDING_OWNERS.includes(id)
-);
+const OWED = FRAMEWORK_IDS.filter(id => !(id in NO_LEGEND));
 
 describe('every artefact a framework draws is in its legend', () => {
-  test('a migrated framework subscribes a row for every role it stamps', () => {
+  test('a framework subscribes a row for every role it stamps', () => {
     const uncovered = Object.fromEntries(
       OWED.map(owner => [owner, uncoveredRolesOf(owner)]).filter(
         ([, roles]) => (roles as string[]).length > 0
@@ -231,9 +220,7 @@ describe('every artefact a framework draws is in its legend', () => {
 
   /**
    * The other direction, and the one that catches the real regression: a row
-   * left naming a role after somebody renamed it. Checked for EVERY framework,
-   * pending or not — a table-driven legend declares no rows here, so this is
-   * simply silent until a tranche lands, and bites from the first one on.
+   * left naming a role after somebody renamed it.
    */
   test('no row names a role the vocabulary does not declare', () => {
     const orphans = FRAMEWORK_IDS.flatMap(owner =>
@@ -263,16 +250,14 @@ describe('every artefact a framework draws is in its legend', () => {
  *
  * It exercises the exact mechanism the real check runs on (`recordAction` plus
  * the armed tool's options) and asserts both halves: that roles are actually
- * found, and that an unsubscribed one is actually reported. So the day somebody
- * deletes an owner from {@link PENDING_OWNERS} without subscribing its commands,
- * the check fails — which is the only property that makes the list safe to keep.
+ * found, and that an unsubscribed one is actually reported. So the day a
+ * framework gains an artefact and no row, the check fails rather than passing
+ * on an empty reading.
  *
- * It runs on SYNTHETIC commands rather than on whichever framework happens to be
- * unmigrated. A control pinned to a real one is a control with an expiry date:
- * it has to be rewritten by every tranche that migrates its subject, and the
- * last tranche — the one that deletes {@link PENDING_OWNERS} — would have had to
- * delete the control watching it too, exactly when the check finally applies to
- * everything.
+ * It runs on SYNTHETIC commands rather than on a real framework. A control
+ * pinned to a real one is a control with an expiry date: it has to be rewritten
+ * the day its subject changes, and it was the frameworks themselves that the
+ * migration was moving.
  */
 describe('the coverage check is not vacuous', () => {
   const ROLE = 'control:artefact';
@@ -324,7 +309,7 @@ describe('the coverage check is not vacuous', () => {
     expect([...rolesStampedBy(armsTool)]).toEqual([TOOL_ROLE]);
   });
 
-  test('an unsubscribed role is reported, so removing an owner early fails', () => {
+  test('an unsubscribed role is reported, so a missing row really fails', () => {
     expect(uncoveredRolesIn([draws, armsTool])).toEqual([ROLE, TOOL_ROLE]);
   });
 

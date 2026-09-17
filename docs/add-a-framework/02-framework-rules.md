@@ -50,11 +50,31 @@ seat (ADR [0019](../adr/0019-uml-import-formats.md) §7). A framework already at
 the cap therefore arrives at a curation question, and records the trade where
 the demoted entry is declared rather than settling it in a tranche.
 
-**R6. The legend is a button on the selected board's toolbar**, not a
-command: absent from catalogue, palette and shortcuts (product decision,
-2026-08-27). It emits `FrameworkLegendCreated` by hand. Seven of nine
-frameworks have one; Cynefin does not by ADR 0013; BPMN's absence is
-undocumented.
+**R6. The legend is SUBSCRIBED by the commands, and its button is gated**
+(ADR [0026](../adr/0026-legend-is-a-catalogue-subscription.md)). A framework
+writes no legend code: each command that draws an artefact declares its row
+on `CommandDescriptor.legend` (the role, the swatch, optionally a section),
+the board's command declares the box on `legendBox`, and
+`legendFromCommands` (`blocks/surface/src/extensions/legend.ts`) derives what
+the board actually shows — rows in command order, filtered by the roles drawn
+inside the perimeter, under declared sections or the command's catalogue
+category, in declaration order, one row per role.
+
+The button is `legendToolbarAction(…)` in the framework's
+`custom:affine:surface:<board>` module, merged with the Validation dropdown
+(one `custom:` module per flavour). It is a BUTTON, never a command: absent
+from catalogue, palette and shortcuts (product decision, 2026-08-27), which
+`registry.unit.spec.ts` pins by the per-owner command counts and by
+`not.toHaveProperty('legend')` on the manifest. It is gated because generating
+a legend is tooling; the legend already drawn is content and keeps being
+painted. `trackLegendCreated` is the single emitter of
+`FrameworkLegendCreated`.
+
+Every role a command stamps is covered by a row, directly or through a
+specialisation, unless an exemption names it and says why
+(`legend-subscription.unit.spec.ts` in `packages/affine/all`, which RUNS the
+commands to find the roles). Eight of nine frameworks have a legend; Cynefin
+has none by ADR 0013, which is the exemption the same test reads.
 
 **R7. Chords use the framework's prefix letter**, and only Wardley has
 allocated one (`w`). A prefix must be unique and outside

@@ -1,18 +1,5 @@
-import { legendIcon } from '@labre/affine-block-surface';
 import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
 import { svg } from 'lit';
-
-/**
- * Contextual-toolbar glyph — "generate the legend of what is on this board".
- *
- * It MOVED to `@labre/affine-block-surface` with the button factory that
- * defaults to it ({@link legendToolbarAction}): seven frameworks draw this one
- * glyph and only three of them are DDD ones. Re-exported under its old name so
- * none of the six call sites had to be touched by the move.
- *
- * @deprecated Import `legendIcon` from `@labre/affine-block-surface`.
- */
-export const dddLegendIcon = legendIcon;
 
 /** Senior-button glyph — Event Storming (overlapping stickies). */
 export const eventStormingToolbarIcon = svg`<svg width="100%" height="100%" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">

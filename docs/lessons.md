@@ -176,3 +176,14 @@ Container()` threw "illegal constructor" and the page hung.
     frame quoting a line the file does not have — is a stale
     `<package>/node_modules/.vite`. Delete it and re-run before debugging the
     code.
+
+29. **A key to the notation that read differently on every board.** The shared
+    legend engine opened a section on the first row that LIT, so the order of
+    the sub-titles was a property of the board rather than of the framework: a
+    BPMN pool holding a user task but no plain task listed Gateways and Flows
+    ahead of Activities, and the same pool with a plain task added read another
+    way again. A legend is a KEY — the same notation must read the same way
+    every time, and only the rows may change.
+    _Rule:_ when a derivation groups rows into declared buckets, open the
+    buckets from the DECLARATION and drop the empty ones at the end. Opening
+    them from the data lets the data decide the shape as well as the content.

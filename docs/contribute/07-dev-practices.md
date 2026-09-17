@@ -149,7 +149,8 @@ type`, registered with `context.register(View)`.
   is a deliberate refusal.
 - Telemetry of a command is emitted by `runCommand`, from the descriptor's
   `telemetry` field. The only manual emission left is the auto-legend button
-  on a board toolbar, which is not a command.
+  on a board toolbar, which is not a command — and it is one call site for
+  every framework, `trackLegendCreated` (ADR 0026).
 
 ## Tests
 

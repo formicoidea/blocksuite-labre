@@ -140,6 +140,24 @@ fail to compile and migrate to `extensions`. That is the intended outcome.
   framework whose `effects()` also defined a render-side element (an inline
   editor for a placed node, say) would have to split `effects()` too.
 
+## Amendment — 2026-09-17: generating a legend is tooling
+
+Seven frameworks kept their Legend button in the always-on half, with a comment
+in four of those files arguing, in this ADR's name, that _generating a legend is
+authoring_ and therefore had to survive the flag. That sentence is withdrawn.
+
+Authoring is what a flag takes away. The distinction this ADR draws is between
+the ability to CREATE new content and the content already created: a legend
+already on the canvas is native shapes and role-less framework nodes, painted by
+the always-on render extension, and stays exactly as it was with the flag off.
+The gesture that writes a new one is a button in the framework's toolbox, no
+different from its senior button — so it belongs in the framework's
+`custom:affine:surface:<board>` module, which the flag removes.
+
+Five buttons moved accordingly; see
+[ADR 0026](0026-legend-is-a-catalogue-subscription.md) §6, which is where the
+rule now lives.
+
 ## Test coverage and its limit
 
 `reversed-contract-doc.unit.spec.ts` covers the contract at two levels:
