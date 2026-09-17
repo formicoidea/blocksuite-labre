@@ -426,7 +426,14 @@ function note(ctx: Context, entry: InterchangeNote): void {
   ctx.notes.push(entry);
 }
 
-/** The payload riding on one source id, created on first use. */
+/**
+ * The payload riding on one source id, created on first use.
+ *
+ * `ctx.foreign` has NO prototype (see {@link importXmi}), which is what makes
+ * this lookup safe: on a plain object, a file whose `xmi:id` is `__proto__`
+ * would have this return `Object.prototype` and the caller write its payload
+ * onto it — every object in the process, poisoned by opening a document.
+ */
 function foreignOf(ctx: Context, scope: string): ForeignInterchange {
   const known = ctx.foreign[scope];
   if (known) return known;
@@ -871,7 +878,8 @@ function numberAttr(node: XmlNode, name: string): number | undefined {
  * two-point edges, applied to all of them until phase 3 says otherwise).
  */
 function readLayout(root: XmlNode): UmlXmiLayout {
-  const layout: UmlXmiLayout = {};
+  // No prototype, for the reason `importXmi` gives: the key is the file's.
+  const layout: UmlXmiLayout = Object.create(null);
   for (const node of [root, ...xmlDescendants(root)]) {
     const meta = xmlAttr(node, 'type') ?? '';
     const isShape =
@@ -2440,16 +2448,21 @@ export function importXmi(
   context: InterchangeImportContext = {}
 ): UmlXmiImport {
   const document = readXml(source);
+  // The three bags keyed by an id the FILE chose have no prototype: `__proto__`
+  // and `constructor` are ids a document is free to use, and on a plain object
+  // the first writes through to `Object.prototype` and the second reads a
+  // function back as a box. Nothing downstream asks these bags for an inherited
+  // method — spread, `Object.keys` and `Object.entries` all still work.
   const ctx: Context = {
     source,
     notes: [],
-    foreign: {},
-    layout: {},
+    foreign: Object.create(null),
+    layout: Object.create(null),
     byId: new Map(),
     consumed: new Set(),
     scopeOf: new Map(),
     counts: { mapped: 0, carried: 0, quarantined: 0 },
-    containment: {},
+    containment: Object.create(null),
     minted: 0,
   };
 

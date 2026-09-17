@@ -1524,7 +1524,14 @@ function placeDrafts(
 ): number {
   const hinted = layout?.boxes;
   for (const draft of drafts) {
-    const hint = draft.sourceId ? hinted?.[draft.sourceId] : undefined;
+    // `Object.hasOwn`, because the id is the FILE's: a drawing that names a
+    // shape `toString` would otherwise be handed a function as its box, and
+    // every coordinate computed off it is `NaN`. The readers hand over a bag
+    // with no prototype; this is what holds for a caller that does not.
+    const hint =
+      draft.sourceId && hinted && Object.hasOwn(hinted, draft.sourceId)
+        ? hinted[draft.sourceId]
+        : undefined;
     if (hint) draft.bounds = hint;
   }
 
