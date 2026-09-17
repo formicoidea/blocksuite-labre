@@ -1,9 +1,14 @@
 /**
  * The palette header of `docs/adr/0027`, on the real component: it opens on
- * the page the caller asked for, the drop-down jumps straight to a page, a
- * wheel still pages with wrap-around, and with a single page it is not drawn
- * at all — which is the whole of the "no regression for every other call site"
- * promise.
+ * the page the caller asked for, the header's inline list jumps straight to a
+ * page, a wheel over the PANEL still pages with wrap-around, and with a single
+ * page it is not drawn at all — which is the whole of the "no regression for
+ * every other call site" promise.
+ *
+ * The recette of the pointer itself lives in the integration spec, which is the
+ * only place a REAL click exists; happy-dom has no popper and no compositor, so
+ * here a `click()` is the honest stand-in — and it is a click, not a default
+ * action, which is exactly what the drop-down this replaces could not survive.
  */
 import { ColorScheme, type Palette } from '@labre/affine-model';
 import { beforeAll, describe, expect, test } from 'vitest';
@@ -48,40 +53,50 @@ async function mount(
   return element;
 }
 
-const box = (element: EdgelessColorPickerButton) =>
-  element.shadowRoot?.querySelector<HTMLSelectElement>(
+const header = (element: EdgelessColorPickerButton) =>
+  element.shadowRoot?.querySelector<HTMLButtonElement>(
     '.palette-carousel-name'
   ) ?? null;
 
-/**
- * The selected option, found by its own flag: happy-dom keeps `selectedOptions`
- * stale and never moves `selectedIndex` off `-1` for options appended by lit.
- */
+/** The page on screen: the name the header shows. */
 const name = (element: EdgelessColorPickerButton) =>
-  Array.from(box(element)?.options ?? [])
-    .find(item => item.selected)
-    ?.textContent?.trim();
+  header(element)?.querySelector('.label')?.textContent?.trim();
 
-/** Pick a page from the drop-down the way the browser reports a choice. */
-const choose = async (element: EdgelessColorPickerButton, label: string) => {
-  const select = box(element);
-  expect(select).not.toBeNull();
-  const option = Array.from(select!.options).find(
-    item => item.textContent?.trim() === label
+const rows = (element: EdgelessColorPickerButton) =>
+  Array.from(
+    element.shadowRoot?.querySelectorAll<HTMLButtonElement>(
+      '.palette-carousel-option'
+    ) ?? []
   );
-  expect(option).toBeDefined();
-  select!.value = option!.value;
-  select!.dispatchEvent(new Event('change', { bubbles: true }));
+
+const grid = (element: EdgelessColorPickerButton) =>
+  element.shadowRoot?.querySelector('edgeless-color-panel') ?? null;
+
+const openList = async (element: EdgelessColorPickerButton) => {
+  header(element)!.click();
+  await element.updateComplete;
+};
+
+/** Jump to a page by its name, the way a user reads the list. */
+const choose = async (element: EdgelessColorPickerButton, label: string) => {
+  if (!rows(element).length) await openList(element);
+  const row = rows(element).find(
+    item => item.querySelector('.label')?.textContent?.trim() === label
+  );
+  expect(row).toBeDefined();
+  row!.click();
   await element.updateComplete;
 };
 
 /** Longer than the header's own wheel throttle, so each flick is its own. */
 const settleWheel = () => new Promise(resolve => setTimeout(resolve, 250));
 
+/** The wheel is bound on the PANEL, not on the name: the whole picker pages. */
+const panel = (element: EdgelessColorPickerButton) =>
+  element.shadowRoot!.querySelector('[data-orientation="vertical"]')!;
+
 const wheel = async (element: EdgelessColorPickerButton, deltaY: number) => {
-  const header = element.shadowRoot?.querySelector('.palette-carousel');
-  expect(header).not.toBeNull();
-  header!.dispatchEvent(
+  panel(element).dispatchEvent(
     new WheelEvent('wheel', { deltaY, bubbles: true, cancelable: true })
   );
   await element.updateComplete;
@@ -106,23 +121,89 @@ describe('the palette carousel', () => {
     expect(name(element)).toBe('Default');
   });
 
-  test('the drop-down lists every page and jumps straight to one', async () => {
+  test('the header opens an inline list of every page, in place of the grid', async () => {
     const element = await mount({
       paletteGroups: GROUPS,
       activeGroupKey: 'default',
     });
 
-    expect(
-      Array.from(box(element)!.options).map(item => item.textContent?.trim())
-    ).toEqual(['Default', 'Wardley map', 'EDGY']);
+    // Closed, the picker is a header above a grid and nothing else.
+    expect(rows(element)).toHaveLength(0);
+    expect(grid(element)).not.toBeNull();
 
-    // Two pages away in one gesture — the whole point of the drop-down.
+    await openList(element);
+
+    expect(
+      rows(element).map(row => row.querySelector('.label')?.textContent?.trim())
+    ).toEqual(['Default', 'Wardley map', 'EDGY']);
+    // The list TAKES THE PLACE of the swatches: no nested popover to position.
+    expect(grid(element)).toBeNull();
+    expect(header(element)?.getAttribute('aria-expanded')).toBe('true');
+    // The page in force is marked, and only it.
+    expect(rows(element).map(row => row.getAttribute('aria-current'))).toEqual([
+      'true',
+      'false',
+      'false',
+    ]);
+    // Each row previews its page: swatch dots beside the name.
+    expect(
+      rows(element)[1].querySelectorAll('.palette-carousel-dot').length
+    ).toBe(1);
+  });
+
+  test('a row jumps straight to its page and gives the grid back', async () => {
+    const element = await mount({
+      paletteGroups: GROUPS,
+      activeGroupKey: 'default',
+    });
+
+    // Two pages away in one gesture — the whole point of the list.
     await choose(element, 'EDGY');
     expect(name(element)).toBe('EDGY');
     expect(element.activePalettes).toEqual(GROUPS[2].palettes);
+    expect(rows(element)).toHaveLength(0);
+    expect(grid(element)).not.toBeNull();
   });
 
-  test('a wheel over the header pages, wrapping both ways', async () => {
+  test('the header closes the list again without changing the page', async () => {
+    const element = await mount({
+      paletteGroups: GROUPS,
+      activeGroupKey: 'wardley',
+    });
+
+    await openList(element);
+    expect(rows(element)).toHaveLength(3);
+
+    header(element)!.click();
+    await element.updateComplete;
+
+    expect(rows(element)).toHaveLength(0);
+    expect(name(element)).toBe('Wardley map');
+  });
+
+  test('Escape closes the list, and stops there so the menu survives', async () => {
+    const element = await mount({
+      paletteGroups: GROUPS,
+      activeGroupKey: 'wardley',
+    });
+    await openList(element);
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+    });
+    rows(element)[0].dispatchEvent(event);
+    await element.updateComplete;
+
+    expect(rows(element)).toHaveLength(0);
+    expect(name(element)).toBe('Wardley map');
+    // `editor-menu-button` hides the whole popper on an Escape that reaches it.
+    expect(event.cancelBubble).toBe(true);
+  });
+
+  test('a wheel anywhere over the panel pages, wrapping both ways', async () => {
     const element = await mount({
       paletteGroups: GROUPS,
       activeGroupKey: 'default',
@@ -144,15 +225,41 @@ describe('the palette carousel', () => {
     expect(element.activePalettes).toEqual(GROUPS[2].palettes);
   });
 
+  test('a wheel over the swatch grid pages too — the name is not a target', async () => {
+    const element = await mount({
+      paletteGroups: GROUPS,
+      activeGroupKey: 'default',
+    });
+
+    grid(element)!.dispatchEvent(
+      new WheelEvent('wheel', { deltaY: 1, bubbles: true, cancelable: true })
+    );
+    await element.updateComplete;
+    await settleWheel();
+
+    expect(name(element)).toBe('Wardley map');
+  });
+
+  test('with the list open the wheel is the list’s, not the carousel’s', async () => {
+    const element = await mount({
+      paletteGroups: GROUPS,
+      activeGroupKey: 'default',
+    });
+    await openList(element);
+
+    await wheel(element, 1);
+    expect(name(element)).toBe('Default');
+    expect(rows(element)).toHaveLength(3);
+  });
+
   test('a trackpad burst moves one page, not the whole ring', async () => {
     const element = await mount({
       paletteGroups: GROUPS,
       activeGroupKey: 'default',
     });
 
-    const header = element.shadowRoot!.querySelector('.palette-carousel')!;
     for (let i = 0; i < 6; i++) {
-      header.dispatchEvent(
+      panel(element).dispatchEvent(
         new WheelEvent('wheel', { deltaY: 8, bubbles: true, cancelable: true })
       );
     }
@@ -173,9 +280,7 @@ describe('the palette carousel', () => {
     });
     // happy-dom drops the modifier keys of a `WheelEventInit`.
     Object.defineProperty(event, 'ctrlKey', { value: true });
-    element
-      .shadowRoot!.querySelector('.palette-carousel')!
-      .dispatchEvent(event);
+    panel(element).dispatchEvent(event);
     await element.updateComplete;
 
     expect(name(element)).toBe('Default');
@@ -208,6 +313,20 @@ describe('the palette carousel', () => {
     element.activeGroupKey = 'default';
     await element.updateComplete;
     expect(name(element)).toBe('Default');
+  });
+
+  test('a new selection also puts the list away', async () => {
+    const element = await mount({
+      paletteGroups: GROUPS,
+      activeGroupKey: 'wardley',
+    });
+    await openList(element);
+
+    element.activeGroupKey = 'edgy';
+    await element.updateComplete;
+
+    expect(rows(element)).toHaveLength(0);
+    expect(grid(element)).not.toBeNull();
   });
 
   test('no groups at all: the flat `palettes` prop still drives the panel', async () => {

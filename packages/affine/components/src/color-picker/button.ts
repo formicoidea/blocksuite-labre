@@ -14,6 +14,7 @@ import type { EditorMenuButton } from '../toolbar/menu-button';
 import type { PaletteGroup } from './framework-palette.js';
 import {
   paletteCarouselStyles,
+  paletteCarouselWheel,
   renderPaletteCarousel,
 } from './palette-carousel.js';
 import type { PickColorEvent } from './types';
@@ -118,7 +119,10 @@ export class EdgelessColorPickerButton extends WithDisposable(LitElement) {
    * re-render the click itself provokes.
    */
   override willUpdate(changed: PropertyValues) {
-    if (changed.has('activeGroupKey')) this.pickedGroupIndex = undefined;
+    if (changed.has('activeGroupKey')) {
+      this.pickedGroupIndex = undefined;
+      this.paletteListOpen = false;
+    }
   }
 
   override firstUpdated() {
@@ -127,6 +131,8 @@ export class EdgelessColorPickerButton extends WithDisposable(LitElement) {
       'toggle',
       (e: CustomEvent<boolean>) => {
         const opened = e.detail;
+        // A re-opened picker shows its swatches, never the list it was left on.
+        this.paletteListOpen = false;
         if (!opened && this.tabType !== 'normal') {
           this.tabType = 'normal';
         }
@@ -164,38 +170,54 @@ export class EdgelessColorPickerButton extends WithDisposable(LitElement) {
           [
             'normal',
             () => html`
-              <div data-orientation="vertical">
+              <div
+                data-orientation="vertical"
+                @wheel=${paletteCarouselWheel({
+                  groups: this.paletteGroups,
+                  index: this.groupIndex,
+                  onPage: index => (this.pickedGroupIndex = index),
+                  open: this.paletteListOpen,
+                })}
+              >
                 <slot name="other"></slot>
                 <slot name="separator"></slot>
                 ${renderPaletteCarousel({
                   groups: this.paletteGroups,
                   index: this.groupIndex,
                   onPage: index => (this.pickedGroupIndex = index),
+                  onToggle: open => (this.paletteListOpen = open),
+                  open: this.paletteListOpen,
                   std: this.std,
+                  theme: this.theme,
                 })}
-                <edgeless-color-panel
-                  role="listbox"
-                  class=${ifDefined(this.colorPanelClass)}
-                  .value=${this.color}
-                  .theme=${this.theme}
-                  .palettes=${this.activePalettes}
-                  .hollowCircle=${this.hollowCircle}
-                  .hasTransparent=${false}
-                  .std=${this.std}
-                  @select=${this.#select}
-                >
-                  ${when(
-                    this.enableCustomColor,
-                    () => html`
-                      <edgeless-color-custom-button
-                        slot="custom"
-                        style=${styleMap(this.customButtonStyle)}
-                        ?active=${this.isCustomColor}
-                        @click=${this.switchToCustomTab}
-                      ></edgeless-color-custom-button>
-                    `
-                  )}
-                </edgeless-color-panel>
+                ${when(
+                  !this.paletteListOpen,
+                  () => html`
+                    <edgeless-color-panel
+                      role="listbox"
+                      class=${ifDefined(this.colorPanelClass)}
+                      .value=${this.color}
+                      .theme=${this.theme}
+                      .palettes=${this.activePalettes}
+                      .hollowCircle=${this.hollowCircle}
+                      .hasTransparent=${false}
+                      .std=${this.std}
+                      @select=${this.#select}
+                    >
+                      ${when(
+                        this.enableCustomColor,
+                        () => html`
+                          <edgeless-color-custom-button
+                            slot="custom"
+                            style=${styleMap(this.customButtonStyle)}
+                            ?active=${this.isCustomColor}
+                            @click=${this.switchToCustomTab}
+                          ></edgeless-color-custom-button>
+                        `
+                      )}
+                    </edgeless-color-panel>
+                  `
+                )}
               </div>
             `,
           ],
@@ -268,6 +290,14 @@ export class EdgelessColorPickerButton extends WithDisposable(LitElement) {
    */
   @state()
   accessor pickedGroupIndex: number | undefined = undefined;
+
+  /**
+   * View state, like {@link pickedGroupIndex}: whether the header's list of
+   * pages is showing IN PLACE of the swatch grid. Reset when the picker
+   * re-opens and when the selection changes, so it never greets a new element.
+   */
+  @state()
+  accessor paletteListOpen = false;
 
   @property({ attribute: false })
   accessor pick!: (event: PickColorEvent) => void;

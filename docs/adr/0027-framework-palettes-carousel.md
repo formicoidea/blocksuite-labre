@@ -53,16 +53,35 @@ where the picker OPENS, the carousel decides what it OFFERS.
    **Amended 2026-09-17** (PO feedback after recette): the name is a
    drop-down, not a label between two arrows. The first cut drew
    `‹ Label ›` and paged one step per click; with nine pages, reaching one
-   cost up to four clicks. The header is now a native `<select>` styled as
-   the label — every page in one list, one gesture to any of them — and the
-   arrows are gone. A wheel over the header still pages one step at a time,
-   wrapping, so the carousel gesture survives for the common "what's next"
-   move. Native because the header lives inside an open popper menu: a
-   `<select>` renders its list at the OS level, so there is no second
-   popover to position, dismiss or trap focus in, and the keyboard and the
-   accessibility tree come for free. The ceiling, marked `ponytail:` in the
-   source, is that the option rows are the OS's own — no swatch preview
-   beside a page name; the upgrade path is the repo's own menu component.
+   cost up to four clicks. The header names the page and opens the list of
+   all of them — every page one gesture away — and the arrows are gone. A
+   wheel still pages one step at a time, wrapping, so the carousel gesture
+   survives for the common "what's next" move.
+
+   **Amended again 2026-09-17** (second PO feedback, same day): the
+   drop-down is OURS, not the platform's, and it is inline. The first
+   attempt used a native `<select>`, on the reasoning that a list rendered
+   at the OS level needs no second popover to position or dismiss; in the
+   editor it never opened at all. `editor-toolbar` cancels every
+   `pointerdown` in its subtree (`toolbar/toolbar.ts`) to hold the canvas
+   selection and the focus, a cancelled `pointerdown` suppresses the
+   compatibility `mousedown`, and that `mousedown`'s DEFAULT ACTION is the
+   only thing that opens a native select. A control that depends on a
+   default action cannot live inside this toolbar, and the toolbar's focus
+   policy was not up for negotiation.
+
+   So the header is a plain `<button>` — page name, chevron, full panel
+   width, hover state — and clicking it swaps the swatch grid for an inline
+   list of the pages, in the same panel: one row per page, its name beside a
+   strip of its first five swatches as dots, the page in force carrying
+   `aria-current` and a tick. A row jumps to its page and gives the grid
+   back; the header again, or Escape, gives it back unchanged. Rows are
+   buttons, so Tab and Enter work, and everything is driven by `click`,
+   which the toolbar's policy leaves alone. Inline rather than nested,
+   because a popover inside a popper would owe positioning, dismissal and a
+   focus trap, and because the list is a page of the picker, not a thing
+   floating over it. The swatch preview the native list could never show is
+   now the point of a row.
 
 2. **The base palette is page one and is never hidden**, whatever the origin
    and whatever the flags — DESIGN.md, "The Coexisting Palettes Rule". A
@@ -94,17 +113,32 @@ where the picker OPENS, the carousel decides what it OFFERS.
    as two of them disagree. `undefined` opens on the base palette, which is
    true of every element in the selection.
 
-5. **Paging is view state and nothing else.** It stops the click, the change
-   and the keydown, so the menu stays open, the canvas selection is untouched
-   and an arrow key inside the drop-down moves the page rather than the
-   element; a wheel over the header is swallowed too, so neither the canvas
-   zooms nor the page scrolls — except `ctrl`+wheel, which stays the board's
-   pinch-zoom gesture. A trackpad's inertia burst moves one page, not nine.
-   The page is forgotten as soon as the
-   picker is asked to open on a different framework, so a new selection always
-   re-opens on ITS origin. "Custom colour" is measured against the UNION of
-   the pages, so paging to `Default` never makes a Wardley blue look
-   hand-typed.
+5. **Paging is view state and nothing else.** Every click it involves is
+   stopped, so the menu stays open — `createButtonPopper` hides it on any
+   document click that misses the trigger — and the canvas selection is
+   untouched. Escape closes the LIST and stops there, rather than dismissing
+   the whole picker behind it.
+
+   **Amended 2026-09-17** (second PO feedback): the wheel pages over the WHOLE
+   picker panel, header and swatch grids alike, not only over the name. "You
+   must have the mouse on the name" was the other half of the failed recette,
+   and the name is a 20-pixel band in a panel the pointer is otherwise always
+   in. The handler is one exported factory bound by each of the two hosts on
+   its own panel container, so the shape picker — two grids and the line
+   styles under one header — pages the shared palette from anywhere in it. The
+   wheel is swallowed (`preventDefault` + `stopPropagation`), so neither the
+   canvas zooms nor the panel scrolls, except `ctrl`+wheel, which stays the
+   board's pinch-zoom gesture, and except while the inline list is open, when
+   the wheel belongs to the list. A trackpad's inertia burst moves one page,
+   not nine.
+
+   Both pieces of view state — the page paged to and whether the list is
+   showing — are forgotten as soon as the picker is asked to open on a
+   different framework, and the list is also put away whenever the menu is
+   toggled, so a new selection always re-opens on ITS origin, showing
+   swatches. "Custom colour" is measured against the UNION of the pages, so
+   paging to `Default` never makes a Wardley blue look hand-typed.
+
 6. **A single page is no carousel.** With no framework active the header is
    not drawn and the caller's own `palettes` prop drives the panel — the
    panel exactly as it was before this existed. That is also how a Wardley
@@ -123,10 +157,19 @@ where the picker OPENS, the carousel decides what it OFFERS.
   a framework with no registration contributing nothing.
 - `palette-carousel.unit.spec.ts` (`affine/components`) — on the real
   component: opens on the asked-for page, an unknown key falls back to page
-  one, the drop-down lists every page and jumps straight to one, a wheel pages
-  with wrap-around both ways, a trackpad burst moves one page, a `ctrl`+wheel
-  is left alone, a single page draws no header and lets the caller's list win,
-  a new selection forgets the page paged to, and "custom" against the union.
+  one, the header opens an inline list of every page in place of the grid and
+  a row jumps straight to one, the header and Escape close it unchanged, a
+  wheel over the panel and over the grid pages with wrap-around both ways, the
+  open list keeps the wheel to itself, a trackpad burst moves one page, a
+  `ctrl`+wheel is left alone, a single page draws no header and lets the
+  caller's list win, a new selection forgets both the page paged to and the
+  open list, and "custom" against the union.
+- `framework-palette-carousel.spec.ts` (`integration-test`) — the RECETTE, and
+  since 2026-09-17 every gesture on the header is a REAL click, through
+  Playwright's mouse. The suite it replaces set `select.value` and dispatched
+  `change` by hand and so stayed green on a drop-down nobody could open: a
+  header that is only ever clicked programmatically is a header that has not
+  been tested. The wheel case aims at the swatch grid, not at the name.
 - `framework-palettes-gating.unit.spec.ts` (`affine/all`) — the flag contract,
   per editor: every framework with a palette registers one with the flags on,
   none with them off, and a second editor mounted with other flags answers
@@ -179,6 +222,14 @@ where the picker OPENS, the carousel decides what it OFFERS.
 - **A `<palette-carousel>` custom element** would have bought a tag name and
   an entry in `effects()`; the two pickers that draw the header already own
   their `render()`, so it is a render helper and a stylesheet.
+- **A native `<select>` for the page list** (shipped, then withdrawn the same
+  day): it cannot open inside `editor-toolbar`, which cancels the
+  `pointerdown` whose compatibility `mousedown` would have triggered it. The
+  alternative — exempting the header from the toolbar's focus policy — trades
+  a reliable canvas selection for a widget, which is the wrong way round.
+- **A nested popover for the page list**: a second floating layer inside the
+  picker's own popper, owing its own positioning, dismissal and focus trap, to
+  show nine rows that fit in the panel already on screen.
 - **Persisting the page the user last paged to** (per document, per
   framework): more state to store and to migrate, for a preference the origin
   rule already guesses correctly.

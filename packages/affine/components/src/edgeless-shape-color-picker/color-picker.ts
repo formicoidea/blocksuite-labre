@@ -19,7 +19,7 @@ import type { BlockStdScope } from '@labre/std';
 import { stdContext } from '@labre/std';
 import { consume } from '@lit/context';
 import { batch, signal } from '@preact/signals-core';
-import { css, html, LitElement, type PropertyValues } from 'lit';
+import { css, html, LitElement, nothing, type PropertyValues } from 'lit';
 import { property, query, state } from 'lit/decorators.js';
 import { choose } from 'lit-html/directives/choose.js';
 import { repeat } from 'lit-html/directives/repeat.js';
@@ -32,6 +32,7 @@ import {
   packColorsWith,
   type PaletteGroup,
   paletteCarouselStyles,
+  paletteCarouselWheel,
   type PickColorEvent,
   preprocessColor,
   renderPaletteCarousel,
@@ -172,7 +173,10 @@ export class EdgelessShapeColorPicker extends WithDisposable(
    * `edgeless-color-picker-button`.
    */
   override willUpdate(changed: PropertyValues) {
-    if (changed.has('activeGroupKey')) this.pickedGroupIndex = undefined;
+    if (changed.has('activeGroupKey')) {
+      this.pickedGroupIndex = undefined;
+      this.paletteListOpen = false;
+    }
   }
 
   /** Measured against the UNION of the pages, for the reason the twin states. */
@@ -213,6 +217,8 @@ export class EdgelessShapeColorPicker extends WithDisposable(
       'toggle',
       (e: CustomEvent<boolean>) => {
         const opened = e.detail;
+        // A re-opened picker shows its swatches, never the list it was left on.
+        this.paletteListOpen = false;
         if (!opened && this.tabType$.peek() === 'custom') {
           this.tabType$.value = 'normal';
         }
@@ -257,7 +263,16 @@ export class EdgelessShapeColorPicker extends WithDisposable(
           </editor-icon-button>
         `}
       >
-        <div class="pickers" data-orientation="vertical">
+        <div
+          class="pickers"
+          data-orientation="vertical"
+          @wheel=${paletteCarouselWheel({
+            groups: this.paletteGroups,
+            index: this.groupIndex,
+            onPage: index => (this.pickedGroupIndex = index),
+            open: this.paletteListOpen,
+          })}
+        >
           ${choose(tabType, [
             [
               'normal',
@@ -267,75 +282,88 @@ export class EdgelessShapeColorPicker extends WithDisposable(
                     groups: this.paletteGroups,
                     index: this.groupIndex,
                     onPage: index => (this.pickedGroupIndex = index),
+                    onToggle: open => (this.paletteListOpen = open),
+                    open: this.paletteListOpen,
                     std: this.std,
+                    theme,
                   })}
-                  ${repeat(
-                    [
-                      {
-                        label: this.std
-                          ? translateKey(this.std, ...FILL_COLOR_LABEL)
-                          : FILL_COLOR_LABEL[1],
-                        type: 'fillColor',
-                        value: fillColor,
-                        hollowCircle: false,
-                        onPick: this.#pickFillColor,
-                      },
-                      {
-                        label: this.std
-                          ? translateKey(this.std, ...BORDER_COLOR_LABEL)
-                          : BORDER_COLOR_LABEL[1],
-                        type: 'strokeColor',
-                        value: strokeColor,
-                        hollowCircle: true,
-                        onPick: this.#pickStrokeColor,
-                      },
-                    ] satisfies PickerType[],
-                    item => item.type,
-                    ({ label, type, value, onPick, hollowCircle }) => html`
-                      <div class="picker-label">${label}</div>
-                      <edgeless-color-panel
-                        aria-label="${label}"
-                        role="listbox"
-                        .hasTransparent=${false}
-                        .hollowCircle=${hollowCircle}
-                        .value=${value}
-                        .theme=${theme}
-                        .palettes=${activePalettes}
-                        .std=${this.std}
-                        @select=${onPick}
-                      >
-                        ${when(enableCustomColor, () => {
-                          const isCustomColor = this.#calcCustomButtonState(
+                  ${this.paletteListOpen
+                    ? nothing
+                    : html`${repeat(
+                          [
+                            {
+                              label: this.std
+                                ? translateKey(this.std, ...FILL_COLOR_LABEL)
+                                : FILL_COLOR_LABEL[1],
+                              type: 'fillColor',
+                              value: fillColor,
+                              hollowCircle: false,
+                              onPick: this.#pickFillColor,
+                            },
+                            {
+                              label: this.std
+                                ? translateKey(this.std, ...BORDER_COLOR_LABEL)
+                                : BORDER_COLOR_LABEL[1],
+                              type: 'strokeColor',
+                              value: strokeColor,
+                              hollowCircle: true,
+                              onPick: this.#pickStrokeColor,
+                            },
+                          ] satisfies PickerType[],
+                          item => item.type,
+                          ({
+                            label,
+                            type,
                             value,
-                            theme
-                          );
-                          const styleInfo = this.#calcCustomButtonStyle(
-                            value,
-                            isCustomColor
-                          );
-                          return html`
-                            <edgeless-color-custom-button
-                              slot="custom"
-                              style=${styleMap(styleInfo)}
-                              ?active=${isCustomColor}
-                              @click=${() => this.#switchToCustomWith(type)}
-                            ></edgeless-color-custom-button>
-                          `;
-                        })}
-                      </edgeless-color-panel>
-                    `
-                  )}
-                  <div class="picker-label">
-                    ${this.std
-                      ? translateKey(this.std, ...BOARD_BORDER_STYLE_LABEL)
-                      : BOARD_BORDER_STYLE_LABEL[1]}
-                  </div>
-                  <edgeless-line-styles-panel
-                    class="picker"
-                    .lineSize=${strokeWidth}
-                    .lineStyle=${strokeStyle}
-                    @select=${this.#pickStrokeStyle}
-                  ></edgeless-line-styles-panel>
+                            onPick,
+                            hollowCircle,
+                          }) => html`
+                            <div class="picker-label">${label}</div>
+                            <edgeless-color-panel
+                              aria-label="${label}"
+                              role="listbox"
+                              .hasTransparent=${false}
+                              .hollowCircle=${hollowCircle}
+                              .value=${value}
+                              .theme=${theme}
+                              .palettes=${activePalettes}
+                              .std=${this.std}
+                              @select=${onPick}
+                            >
+                              ${when(enableCustomColor, () => {
+                                const isCustomColor =
+                                  this.#calcCustomButtonState(value, theme);
+                                const styleInfo = this.#calcCustomButtonStyle(
+                                  value,
+                                  isCustomColor
+                                );
+                                return html`
+                                  <edgeless-color-custom-button
+                                    slot="custom"
+                                    style=${styleMap(styleInfo)}
+                                    ?active=${isCustomColor}
+                                    @click=${() =>
+                                      this.#switchToCustomWith(type)}
+                                  ></edgeless-color-custom-button>
+                                `;
+                              })}
+                            </edgeless-color-panel>
+                          `
+                        )}
+                        <div class="picker-label">
+                          ${this.std
+                            ? translateKey(
+                                this.std,
+                                ...BOARD_BORDER_STYLE_LABEL
+                              )
+                            : BOARD_BORDER_STYLE_LABEL[1]}
+                        </div>
+                        <edgeless-line-styles-panel
+                          class="picker"
+                          .lineSize=${strokeWidth}
+                          .lineStyle=${strokeStyle}
+                          @select=${this.#pickStrokeStyle}
+                        ></edgeless-line-styles-panel>`}
                 `;
               },
             ],
@@ -397,6 +425,14 @@ export class EdgelessShapeColorPicker extends WithDisposable(
   /** Component state only, never persisted: which page the user paged TO. */
   @state()
   accessor pickedGroupIndex: number | undefined = undefined;
+
+  /**
+   * View state too: whether the header's list of pages is showing IN PLACE of
+   * the two grids and the line styles — see the twin on
+   * `edgeless-color-picker-button`.
+   */
+  @state()
+  accessor paletteListOpen = false;
 
   @query('editor-menu-button')
   accessor menuButton!: EditorMenuButton;
