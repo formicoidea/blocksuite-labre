@@ -18,6 +18,7 @@ import {
   bpmnBoardOf,
   bpmnLaneOf,
   bpmnMorphProps,
+  bpmnNodeProps,
   bpmnPoolOf,
   exportBpmnXml,
   importBpmnXml,
@@ -26,12 +27,15 @@ import {
 } from '@labre/affine-gfx-bpmn';
 import {
   type BpmnNodeElementModel,
+  type BpmnNodeKind,
   type BpmnPoolElementModel,
   ConnectorElementModel,
   ConnectorMode,
+  GroupElementModel,
   PointStyle,
   ShapeElementModel,
   StrokeStyle,
+  TextElementModel,
 } from '@labre/affine/model';
 import {
   COMMAND_USAGE_KEY,
@@ -1457,5 +1461,242 @@ describe('morphing a BPMN node into a nearby kind', () => {
     expect(
       typeof config.when === 'function' ? config.when(ctx) : config.when
     ).toBe(false);
+  });
+});
+
+/**
+ * The pool's Legend button, in a real editor.
+ *
+ * The unit suite owns the SUBSCRIPTION — which command declares which row, what
+ * each swatch is made of, and the one telemetry payload. What only a mounted
+ * editor can answer is what the user actually gets: that a real click on a real
+ * toolbar button draws a box naming the artefacts this process uses AND NOTHING
+ * ELSE, that nothing it drew carries a role (so no rule counts it and a second
+ * click documents the same board), and that the `.bpmn` file still holds the
+ * process rather than a picture of its own key.
+ *
+ * The viewport helpers and the composed click come from
+ * `wardley-competition.spec.ts`, where the pattern for clicking a
+ * contextual-toolbar entry through the widget's shadow DOM was written.
+ */
+describe('the pool’s Legend button draws what the process actually uses', () => {
+  let edgeless!: EdgelessRootBlockComponent;
+
+  /** Native-shaped click: composed, so it crosses the widget's shadow boundary. */
+  const clickElement = (element: Element) => {
+    const rect = element.getBoundingClientRect();
+    const init = {
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+      clientX: rect.x + rect.width / 2,
+      clientY: rect.y + rect.height / 2,
+      pointerId: 1,
+      isPrimary: true,
+    };
+    element.dispatchEvent(new PointerEvent('pointerdown', init));
+    element.dispatchEvent(new PointerEvent('pointerup', init));
+    element.dispatchEvent(new MouseEvent('click', init));
+  };
+
+  /**
+   * The viewport persists in storage between specs, and a board drawn off
+   * screen never gets a toolbar. See `wardley-validation-bubble.spec.ts`.
+   */
+  const VIEWPORT_STORAGE_KEY = 'blocksuite:doc:home:edgelessViewport';
+  const forgetStoredViewport = () => {
+    localStorage.removeItem(VIEWPORT_STORAGE_KEY);
+    sessionStorage.removeItem(VIEWPORT_STORAGE_KEY);
+  };
+
+  beforeEach(async () => {
+    forgetStoredViewport();
+    const cleanup = await setupEditor('edgeless');
+    edgeless = getDocRootBlock(window.doc, window.editor, 'edgeless');
+    edgeless.std.event.active = true;
+    return () => {
+      cleanup();
+      forgetStoredViewport();
+    };
+  });
+
+  const surfaceModel = () => getSurface(window.doc, window.editor).model;
+
+  const settle = async () => {
+    await wait(250);
+    await edgeless.updateComplete;
+    await wait(0);
+  };
+
+  const toolbarQuery = (selector: string) =>
+    (
+      edgeless.widgetComponents[AFFINE_TOOLBAR_WIDGET] as
+        | { toolbar?: HTMLElement }
+        | undefined
+    )?.toolbar?.querySelector(selector) ?? null;
+
+  /** Select the pool and click the real button. */
+  const generateLegend = async (poolId: string) => {
+    edgeless.gfx.selection.set({ elements: [poolId], editing: false });
+    await settle();
+    const button = toolbarQuery('[data-toolbar-action-id="c.legend"]');
+    expect(button, 'the Legend button on a selected pool').not.toBeNull();
+    clickElement(button!);
+    await settle();
+  };
+
+  /** The legend boxes on the surface, oldest first. */
+  const legends = () =>
+    surfaceModel().elementModels.filter(
+      (model): model is GroupElementModel =>
+        model instanceof GroupElementModel && model.group === null
+    );
+
+  const wordsOf = (legend: GroupElementModel) =>
+    legend.childElements
+      .filter(
+        (child): child is TextElementModel => child instanceof TextElementModel
+      )
+      .map(child => child.text.toString());
+
+  /** A pool with a start, a user task, an exclusive gateway, an end, two flows. */
+  const drawProcess = () => {
+    const surface = surfaceModel();
+    const poolId = surface.addElement({
+      type: 'bpmnPool',
+      role: BPMN_ROLE.pool,
+      xywh: '[0,0,900,700]',
+    });
+    // Placed BY HAND rather than through the creation command: a gesture
+    // centres its artefact on the VIEWPORT, and an artefact outside the pool's
+    // perimeter is not part of the process the legend describes. Built from
+    // `bpmnNodeProps` and never from a literal, so this breaks the day the
+    // preset changes.
+    const mk = (kind: BpmnNodeKind, xywh: string) =>
+      surface.addElement(bpmnNodeProps(kind, { xywh }));
+    const start = mk('startEvent', '[60,100,56,56]');
+    const task = mk('taskUser', '[200,100,120,72]');
+    const xor = mk('gatewayExclusive', '[400,100,72,72]');
+    const end = mk('endEvent', '[560,100,56,56]');
+    for (const [from, to] of [
+      [start, task],
+      [xor, end],
+    ] as const) {
+      surface.addElement({
+        type: 'connector',
+        role: BPMN_ROLE.sequenceFlow,
+        mode: ConnectorMode.Orthogonal,
+        source: { id: from, position: [0.5, 0.5] },
+        target: { id: to, position: [0.5, 0.5] },
+      });
+    }
+    return poolId;
+  };
+
+  test('five rows, the sections they belong to, and no role on any of them', async () => {
+    const poolId = drawProcess();
+    await settle();
+    await generateLegend(poolId);
+
+    const legend = legends()[0];
+    expect(legend, 'the legend group').toBeTruthy();
+
+    // Sections in the order BPMN declares them, not in the order this board
+    // happens to fill them: "Activities" is second because `bpmn.addTask` is
+    // declared third, even though the row that fills it is the user task's,
+    // declared after the gateway and the sequence flow.
+    expect(wordsOf(legend)).toEqual([
+      'Legend',
+      'Events',
+      'Start event',
+      'End event',
+      'Activities',
+      'User task',
+      'Gateways',
+      'Exclusive gateway',
+      'Flows',
+      'Sequence flow',
+    ]);
+
+    // The absences are the stronger half: nothing that is not on the board.
+    // "Task" above all — a user task IS a `bpmn:task`, and only the row's
+    // `exact` keeps the legend from naming a bare rectangle nobody drew.
+    for (const absent of [
+      'Task',
+      'Message flow',
+      'Association',
+      'Data object',
+      'Data',
+      'Pool',
+      'Swimlanes',
+    ]) {
+      expect(wordsOf(legend), absent).not.toContain(absent);
+    }
+
+    // A legend documents the process, it is not part of it: nothing it drew is
+    // roled, so none of the 21 rules counts a phantom artefact — starting with
+    // `bpmn.single-blank-start`, which a second start event would trip.
+    for (const child of legend.childElements) {
+      expect(child.role, child.id).toBeUndefined();
+    }
+
+    // …and the measurable corollary: regenerating describes the same board.
+    await generateLegend(poolId);
+    const second = legends().at(-1)!;
+    expect(second).not.toBe(legend);
+    expect(second.childElements.length).toBe(legend.childElements.length);
+  });
+
+  test('an empty pool gets the box and not one row', async () => {
+    const poolId = surfaceModel().addElement({
+      type: 'bpmnPool',
+      role: BPMN_ROLE.pool,
+      xywh: '[0,0,900,700]',
+    });
+    await settle();
+    await generateLegend(poolId);
+
+    expect(wordsOf(legends()[0])).toEqual(['Legend']);
+  });
+
+  test('the .bpmn file still holds the process, not a picture of its key', async () => {
+    const poolId = drawProcess();
+    await settle();
+    await generateLegend(poolId);
+
+    const xml = new DOMParser().parseFromString(
+      exportBpmnXml(bpmnBoardOf(edgeless.std)),
+      'application/xml'
+    );
+    expect(xml.querySelector('parsererror')).toBeNull();
+    const count = (local: string) => {
+      let found = 0;
+      const walk = (element: Element) => {
+        if (element.localName === local) found++;
+        for (const child of Array.from(element.children)) walk(child);
+      };
+      if (xml.documentElement) walk(xml.documentElement);
+      return found;
+    };
+
+    // The legend put five more `bpmnNode`s on the surface, inside the pool, each
+    // with a valid `kind`. None is in the file, because the exporter filters by
+    // ROLE: without that this would read two start events, two user tasks and
+    // so on, and the bpmn.io round trip would come back full of ghosts.
+    expect({
+      startEvent: count('startEvent'),
+      userTask: count('userTask'),
+      exclusiveGateway: count('exclusiveGateway'),
+      endEvent: count('endEvent'),
+      sequenceFlow: count('sequenceFlow'),
+      participant: count('participant'),
+    }).toEqual({
+      startEvent: 1,
+      userTask: 1,
+      exclusiveGateway: 1,
+      endEvent: 1,
+      sequenceFlow: 2,
+      participant: 1,
+    });
   });
 });

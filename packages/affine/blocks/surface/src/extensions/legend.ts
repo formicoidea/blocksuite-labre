@@ -535,7 +535,12 @@ function resolveSection(
  * it: every subscribed row whose role is present (directly or through a
  * specialisation, unless the entry asks for {@link CommandLegendEntry.exact}),
  * in command order, grouped under the section each declares — or under its
- * command's category — with empty sections dropped by construction.
+ * command's category — with empty sections dropped.
+ *
+ * The SUB-TITLES come out in the order the framework first declares them,
+ * walking every command whether its row lights or not: a legend is a key to a
+ * notation, so the same framework reads in the same order on every board, and
+ * only the rows change.
  *
  * Rows are de-duplicated BY ROLE, first declaration winning: two commands draw
  * a Wardley area (a rectangle and a polygon) and the notation has one "Area".
@@ -560,15 +565,23 @@ export function legendFromCommands(
 
   for (const command of commands) {
     for (const entry of entriesOf(command)) {
+      // The bucket is opened for EVERY declared row, lit or not, and emptied
+      // ones are dropped at the end. That is what makes the order of the
+      // sub-titles a property of the framework's declarations rather than of
+      // what happens to be on this board: opening it only when a row lit put
+      // BPMN's "Activities" after "Gateways" and "Flows" on a pool that had a
+      // user task but no plain task, and the same pool with a plain task read
+      // in a different order again.
+      const { key, title } = resolveSection(std, command, entry);
+      let draft = drafts.find(d => d.key === key);
+      if (!draft) drafts.push((draft = { key, title, rows: [] }));
+
       const lit = entry.exact
         ? present.has(entry.role)
         : presentRoles.some(role => roleIsA(role, entry.role, roles));
       if (!lit || seen.has(entry.role)) continue;
       seen.add(entry.role);
 
-      const { key, title } = resolveSection(std, command, entry);
-      let draft = drafts.find(d => d.key === key);
-      if (!draft) drafts.push((draft = { key, title, rows: [] }));
       draft.rows.push({
         ...entry.row,
         label: resolveRowLabel(std, roles, command, entry),
@@ -576,7 +589,9 @@ export function legendFromCommands(
     }
   }
 
-  return drafts.map(({ title, rows }) => ({ title, rows }));
+  return drafts
+    .filter(draft => draft.rows.length > 0)
+    .map(({ title, rows }) => ({ title, rows }));
 }
 
 /** The `legendBox` of the framework's BOARD command, if it declares one. */

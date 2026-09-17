@@ -9,7 +9,7 @@ import { Bound } from '@labre/global/gfx';
 
 import { POOL_BAND_WIDTH } from '../consts';
 import { BPMN_XML_OF_KIND, type BpmnExportBoard } from '../export';
-import { BPMN_ROLE } from '../roles';
+import { BPMN_ROLE, BPMN_ROLE_OF_KIND } from '../roles';
 
 /**
  * Plain stubs for a BPMN board, shared by every spec that needs one.
@@ -30,10 +30,17 @@ export const BAND = POOL_BAND_WIDTH;
 /** The seventeen kinds, read off the mapping so the list cannot drift. */
 export const ALL_KINDS = Object.keys(BPMN_XML_OF_KIND) as BpmnNodeKind[];
 
+/**
+ * `role` defaults to the one the creation builder stamps, because that is what
+ * a drawn artefact carries and what the exporter now filters on
+ * (`bpmnBoardFrom`). Overridable — with `undefined` — so a spec can build the
+ * one thing that must NOT be exported: a neutral element, which is what a
+ * legend swatch is and what a board drawn before 2026-08-26 is made of.
+ */
 export function fakePool(
   id: string,
   bound: [number, number, number, number],
-  options: { name?: string; lanes?: BpmnLane[] } = {}
+  options: { name?: string; lanes?: BpmnLane[]; role?: string } = {}
 ): BpmnPoolElementModel {
   const pool = Object.create(BpmnPoolElementModel.prototype) as Record<
     string,
@@ -41,6 +48,10 @@ export function fakePool(
   >;
   Object.defineProperties(pool, {
     id: { value: id, enumerable: true },
+    role: {
+      value: 'role' in options ? options.role : BPMN_ROLE.pool,
+      enumerable: true,
+    },
     name: { value: options.name, enumerable: true },
     lanes: { value: options.lanes, enumerable: true },
     elementBound: { value: new Bound(...bound) },
@@ -52,11 +63,13 @@ export function fakePool(
   return pool as unknown as BpmnPoolElementModel;
 }
 
+/** Same as {@link fakePool} on `role`, one artefact over. */
 export function fakeNode(
   id: string,
   kind: BpmnNodeKind,
   bound: [number, number, number, number],
-  text?: string
+  text?: string,
+  options: { role?: string } = {}
 ): BpmnNodeElementModel {
   const node = Object.create(BpmnNodeElementModel.prototype) as Record<
     string,
@@ -64,6 +77,10 @@ export function fakeNode(
   >;
   Object.defineProperties(node, {
     id: { value: id, enumerable: true },
+    role: {
+      value: 'role' in options ? options.role : BPMN_ROLE_OF_KIND[kind],
+      enumerable: true,
+    },
     kind: { value: kind, enumerable: true },
     text: { value: text, enumerable: true },
     elementBound: { value: new Bound(...bound) },
@@ -161,6 +178,9 @@ export function boardFromProps(
       const pool = fakePool(id, bound, {
         name: props.name as string | undefined,
         lanes: props.lanes as BpmnLane[] | undefined,
+        // Whatever the importer stamped, verbatim: the round trip has to prove
+        // that a file comes back as artefacts the exporter will speak about.
+        role: props.role as string | undefined,
       });
       carry(pool, props);
       pools.push(pool);
@@ -169,7 +189,8 @@ export function boardFromProps(
         id,
         props.kind as BpmnNodeKind,
         bound,
-        props.text as string | undefined
+        props.text as string | undefined,
+        { role: props.role as string | undefined }
       );
       carry(node, props);
       nodes.push(node);

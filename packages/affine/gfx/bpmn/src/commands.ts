@@ -1,4 +1,13 @@
-import type { BlockStdScope, CommandDescriptor } from '@labre/std';
+import type { BpmnNodeKind } from '@labre/affine-model';
+import { StrokeStyle } from '@labre/affine-model';
+import type {
+  BlockStdScope,
+  CommandDescriptor,
+  CommandLegendBox,
+  CommandLegendEntry,
+  CommandLegendRow,
+} from '@labre/std';
+import type { RoleId } from '@labre/std/gfx';
 import type { TemplateResult } from 'lit';
 
 import {
@@ -16,6 +25,14 @@ import {
   importBpmnXmlFile,
   removeBpmnLane,
 } from './actions';
+import {
+  BPMN_EDGE_STYLE,
+  type BpmnEdgeKey,
+  NODE_FILL,
+  NODE_SIZE,
+} from './consts';
+import { bpmnNodeProps } from './presets';
+import { BPMN_ROLE, BPMN_ROLE_OF_KIND } from './roles';
 import {
   bpmnAssociationIcon,
   bpmnCallActivityIcon,
@@ -129,7 +146,38 @@ interface Spec {
   element: string;
   /** Places the framework's board — see `CommandTelemetry.board`. */
   board?: true;
-  run: (std: BlockStdScope) => void;
+  /**
+   * The artefact this entry draws. ONE declaration, three derivations: the
+   * creation gesture, the role the command stamps and the legend row that
+   * pictures it — so a swatch cannot end up showing a kind the button does not
+   * draw.
+   */
+  node?: BpmnNodeKind;
+  /** The connecting object this entry arms. Same, one declaration over. */
+  edge?: BpmnEdgeKey;
+  /**
+   * The gesture, for the entries that are not "draw a node": the pool and the
+   * three connecting objects. A spec with a {@link Spec.node} derives it.
+   */
+  run?: (std: BlockStdScope) => void;
+}
+
+/**
+ * What a spec DOES — its own gesture, or the one its {@link Spec.node} implies.
+ *
+ * Total over {@link SPECS} by inspection, and loud rather than silent if it
+ * ever stops being: a spec that drew nothing would be a button that does
+ * nothing, which is worse than a module that refuses to load.
+ */
+function gestureOf(spec: Spec): (std: BlockStdScope) => void {
+  if (spec.run) return spec.run;
+  const kind = spec.node;
+  if (!kind) {
+    throw new Error(
+      `bpmn: "${spec.id}" declares neither a node kind nor a run`
+    );
+  }
+  return std => createBpmnNode(std, kind);
 }
 
 /**
@@ -172,7 +220,7 @@ const SPECS: Spec[] = [
     category: 'events',
     senior: true,
     element: 'node:startEvent',
-    run: std => createBpmnNode(std, 'startEvent'),
+    node: 'startEvent',
   },
   {
     id: 'addEndEvent',
@@ -182,7 +230,7 @@ const SPECS: Spec[] = [
     category: 'events',
     senior: true,
     element: 'node:endEvent',
-    run: std => createBpmnNode(std, 'endEvent'),
+    node: 'endEvent',
   },
   {
     id: 'addTask',
@@ -192,7 +240,7 @@ const SPECS: Spec[] = [
     category: 'activities',
     senior: true,
     element: 'node:task',
-    run: std => createBpmnNode(std, 'task'),
+    node: 'task',
   },
   {
     id: 'addExclusiveGateway',
@@ -202,7 +250,7 @@ const SPECS: Spec[] = [
     category: 'gateways',
     senior: true,
     element: 'node:gatewayExclusive',
-    run: std => createBpmnNode(std, 'gatewayExclusive'),
+    node: 'gatewayExclusive',
   },
   {
     id: 'sequenceFlowTool',
@@ -212,6 +260,7 @@ const SPECS: Spec[] = [
     category: 'flows',
     senior: true,
     element: 'connector:sequence',
+    edge: 'sequenceFlow',
     run: activateBpmnSequenceFlow,
   },
   {
@@ -236,6 +285,7 @@ const SPECS: Spec[] = [
     category: 'flows',
     senior: true,
     element: 'connector:message',
+    edge: 'messageFlow',
     run: activateBpmnMessageFlow,
   },
   /* ── Activities: the typed tasks and the two that stand for a process ─ */
@@ -247,7 +297,7 @@ const SPECS: Spec[] = [
     category: 'activities',
     senior: true,
     element: 'node:taskUser',
-    run: std => createBpmnNode(std, 'taskUser'),
+    node: 'taskUser',
   },
   {
     id: 'addServiceTask',
@@ -257,7 +307,7 @@ const SPECS: Spec[] = [
     category: 'activities',
     senior: true,
     element: 'node:taskService',
-    run: std => createBpmnNode(std, 'taskService'),
+    node: 'taskService',
   },
   {
     id: 'addSubProcess',
@@ -267,7 +317,7 @@ const SPECS: Spec[] = [
     category: 'activities',
     senior: true,
     element: 'node:subProcess',
-    run: std => createBpmnNode(std, 'subProcess'),
+    node: 'subProcess',
   },
   {
     id: 'addCallActivity',
@@ -277,7 +327,7 @@ const SPECS: Spec[] = [
     category: 'activities',
     senior: true,
     element: 'node:callActivity',
-    run: std => createBpmnNode(std, 'callActivity'),
+    node: 'callActivity',
   },
   /* ── The other gateway ──────────────────────────────────────────────── */
   {
@@ -291,7 +341,7 @@ const SPECS: Spec[] = [
     category: 'gateways',
     senior: true,
     element: 'node:gatewayParallel',
-    run: std => createBpmnNode(std, 'gatewayParallel'),
+    node: 'gatewayParallel',
   },
   /* ── Event variants: what TRIGGERS a start, what an end does on the way
        out. Refinements of the two plain events above, so they follow them. ─ */
@@ -303,7 +353,7 @@ const SPECS: Spec[] = [
     category: 'events',
     senior: false,
     element: 'node:startEventMessage',
-    run: std => createBpmnNode(std, 'startEventMessage'),
+    node: 'startEventMessage',
   },
   {
     id: 'addTimerStartEvent',
@@ -313,7 +363,7 @@ const SPECS: Spec[] = [
     category: 'events',
     senior: false,
     element: 'node:startEventTimer',
-    run: std => createBpmnNode(std, 'startEventTimer'),
+    node: 'startEventTimer',
   },
   {
     id: 'addMessageEndEvent',
@@ -323,7 +373,7 @@ const SPECS: Spec[] = [
     category: 'events',
     senior: false,
     element: 'node:endEventMessage',
-    run: std => createBpmnNode(std, 'endEventMessage'),
+    node: 'endEventMessage',
   },
   {
     id: 'addTerminateEndEvent',
@@ -333,7 +383,7 @@ const SPECS: Spec[] = [
     category: 'events',
     senior: false,
     element: 'node:endEventTerminate',
-    run: std => createBpmnNode(std, 'endEventTerminate'),
+    node: 'endEventTerminate',
   },
   /* ── The last connecting object ─────────────────────────────────────── */
   {
@@ -344,6 +394,7 @@ const SPECS: Spec[] = [
     category: 'flows',
     senior: false,
     element: 'connector:association',
+    edge: 'association',
     run: activateBpmnAssociation,
   },
   /* ── Data ───────────────────────────────────────────────────────────── */
@@ -355,7 +406,7 @@ const SPECS: Spec[] = [
     category: 'data',
     senior: true,
     element: 'node:dataObject',
-    run: std => createBpmnNode(std, 'dataObject'),
+    node: 'dataObject',
   },
   {
     id: 'addDataStore',
@@ -365,7 +416,7 @@ const SPECS: Spec[] = [
     category: 'data',
     senior: false,
     element: 'node:dataStore',
-    run: std => createBpmnNode(std, 'dataStore'),
+    node: 'dataStore',
   },
   /* ── Artifacts: what an author writes ON the picture ────────────────── */
   {
@@ -376,7 +427,7 @@ const SPECS: Spec[] = [
     category: 'annotations',
     senior: true,
     element: 'node:textAnnotation',
-    run: std => createBpmnNode(std, 'textAnnotation'),
+    node: 'textAnnotation',
   },
   {
     // Filed with the annotation and not in a section of its own: both are
@@ -393,30 +444,172 @@ const SPECS: Spec[] = [
     // senior row is a shortcut to.
     senior: false,
     element: 'node:group',
-    run: std => createBpmnNode(std, 'group'),
+    node: 'group',
   },
 ];
 
-const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, order) => ({
-  id: `bpmn.${spec.id}`,
-  owner: 'bpmn',
-  kind: spec.kind,
-  labelKey: `com.labre.commands.bpmn.${spec.id}`,
-  labelFallback: spec.label,
-  category: spec.category,
-  iconKey: spec.iconKey,
-  // The catalogue holds all of them; `senior` decides which fourteen the
-  // sub-menu opens on before this user has reached for anything.
-  surfaces: spec.senior
-    ? ['senior-menu', 'catalogue', 'palette', 'agent']
-    : ['catalogue', 'palette', 'agent'],
-  order,
-  scope: 'edgeless',
-  defaultKeys: { mac: [], other: [] },
-  availability: 'always',
-  run: spec.run,
-  telemetry: { framework: 'bpmn', element: spec.element, board: spec.board },
-}));
+/* ── The legend, subscribed rather than tabulated ──────────────────────── */
+
+/**
+ * The legend of a pool is not a table: every row below is DERIVED from the
+ * command that draws the artefact, from the same preset the gesture creates it
+ * with, and it is listed only when the pool actually contains one (ADR 0026,
+ * `legendFromCommands`).
+ *
+ * ## The swatch box, and why BPMN asks for a bigger one than UML
+ *
+ * UML tells its figures apart by full-box silhouettes (a stick figure, a
+ * divided box, an ellipse) and is comfortable at 34 × 24. BPMN puts its
+ * distinctions in CORNER MARKERS — the person and the cog are `0.24 × unit` in
+ * the top-left (`node/node-renderer.ts`) — so it needs about 30 % more: at
+ * 44 × 30 a task's marker is ~6 px and a gateway's arms ~6 px, which is the
+ * floor at which they read at all.
+ *
+ * ## The one known visual limit
+ *
+ * The group's dashed lasso uses the renderer's fixed `[12, 12]` dash pattern
+ * (`consts.ts` says why there is no dotted stroke to ask for): across 44 units
+ * that is about two dashes, and down 29 it is none. The row is still
+ * distinguishable from the text annotation — which draws no closed rectangle —
+ * but it does not READ as dotted, and nothing in this file can change that.
+ */
+const SWATCH_W = 44;
+const SWATCH_H = 30;
+
+const BPMN_LEGEND_BOX: CommandLegendBox = {
+  // No `titleWording`: every board that has a legend says the same generic
+  // "Legend", which is what the platform falls back to (`BOARD_LEGEND_TITLE`).
+  width: 300,
+  rowHeight: 36,
+  swatchWidth: SWATCH_W,
+  swatchHeight: SWATCH_H,
+};
+
+/**
+ * The three roles whose row must match EXACTLY, and no others.
+ *
+ * `bpmn:start-event`, `bpmn:end-event` and `bpmn:task` are the three roles with
+ * a row that also have children (`roles.ts`). Without `exact`, a pool holding
+ * only a message start event would light the plain "Start event" row too — a
+ * bare circle nobody drew. The families that have no row at all
+ * (`bpmn:event`, `bpmn:activity`, `bpmn:gateway`, `bpmn:data`,
+ * `bpmn:flow-object`) need no such care: they are never stamped.
+ */
+const EXACT_ROLES: ReadonlySet<RoleId> = new Set([
+  BPMN_ROLE.startEvent,
+  BPMN_ROLE.endEvent,
+  BPMN_ROLE.task,
+]);
+
+/**
+ * A glyph row: the artefact itself, painted at swatch size by the very renderer
+ * that paints it on the board — the creation preset minus three keys.
+ *
+ *  - `role`, because the legend is drawn IN the pool it documents and the scan
+ *    detects by role: a swatch carrying one would list itself the next time,
+ *    and all 21 validation rules would count it (`rules.ts`);
+ *  - `xywh`, because the box belongs to the layout, which fits {@link
+ *    CommandLegendRow.aspect} inside the swatch column;
+ *  - `text`, because `bpmnNodeProps` writes the artefact's default caption at
+ *    18 px with `TextFitMode.Overflow`: a "Task" that size would spill across
+ *    the whole box. Without it `fontSize` / `textAlign` / `textFitMode` are
+ *    inert, so there is no reason to strip those too.
+ *
+ * `radius` is the one prop SCALED to the swatch, and it has to be: it is an
+ * absolute, unbounded value (`drawRect` calls `arcTo` with it), so the group's
+ * 20 and the task's 10 would both round a 44 × 30 box into a pill.
+ * `strokeWidth` is deliberately NOT scaled — the thin ring against the thick
+ * one, and the call activity's heavy border against the sub-process's, IS the
+ * notation, and at 30 units the 2-against-4 ratio reads better than at 56.
+ */
+function nodeRow(kind: BpmnNodeKind): CommandLegendRow {
+  const {
+    role: _role,
+    xywh: _xywh,
+    text: _text,
+    ...props
+  } = bpmnNodeProps(kind, { xywh: '[0,0,0,0]' });
+  const size = NODE_SIZE[kind];
+  return {
+    swatch: 'glyph',
+    // Read by nothing for a glyph row — the element carries its own fill and
+    // stroke — and written all the same, because `CommandLegendRow` asks for a
+    // colour and the paper is the honest answer. UML does the same.
+    color: NODE_FILL,
+    props: {
+      ...props,
+      radius: Math.round((Number(props.radius) || 0) * (SWATCH_H / size.h)),
+    },
+    aspect: size.h > 0 ? size.w / size.h : 1,
+  };
+}
+
+/**
+ * An edge row: the line the tool actually arms, endpoints and all, drawn by the
+ * connector renderer at swatch width rather than approximated by a bar.
+ *
+ * `dashed` is kept beside the props although the connector carries its own
+ * `strokeStyle`: it is the one fact about an edge row a pure test can read
+ * without a renderer, and it is DERIVED from the same table, so the two can
+ * never disagree.
+ */
+function edgeRow(key: BpmnEdgeKey): CommandLegendRow {
+  const style = BPMN_EDGE_STYLE[key];
+  return {
+    swatch: 'edge',
+    color: style.stroke,
+    dashed: style.strokeStyle === StrokeStyle.Dash,
+    props: { ...style },
+  };
+}
+
+/**
+ * The row a spec subscribes, or none.
+ *
+ * The pool subscribes nothing on purpose: it is the SHEET the legend is drawn
+ * on, and listing it would be listing the paper — the same call C4's board and
+ * UML's frame make about themselves.
+ */
+function legendOf(spec: Spec): CommandLegendEntry | undefined {
+  if (spec.edge) {
+    return { role: BPMN_ROLE[spec.edge], row: edgeRow(spec.edge) };
+  }
+  if (!spec.node) return undefined;
+  const role = BPMN_ROLE_OF_KIND[spec.node];
+  return {
+    role,
+    row: nodeRow(spec.node),
+    ...(EXACT_ROLES.has(role) ? { exact: true } : {}),
+  };
+}
+
+const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, order) => {
+  const legend = legendOf(spec);
+  return {
+    id: `bpmn.${spec.id}`,
+    owner: 'bpmn',
+    kind: spec.kind,
+    labelKey: `com.labre.commands.bpmn.${spec.id}`,
+    labelFallback: spec.label,
+    category: spec.category,
+    iconKey: spec.iconKey,
+    // The catalogue holds all of them; `senior` decides which fourteen the
+    // sub-menu opens on before this user has reached for anything.
+    surfaces: spec.senior
+      ? ['senior-menu', 'catalogue', 'palette', 'agent']
+      : ['catalogue', 'palette', 'agent'],
+    order,
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+    availability: 'always',
+    run: gestureOf(spec),
+    telemetry: { framework: 'bpmn', element: spec.element, board: spec.board },
+    ...(legend ? { legend } : {}),
+    // The board carries the BOX the rows are laid out in, and only the board:
+    // exactly one command per framework may declare it.
+    ...(spec.board ? { legendBox: BPMN_LEGEND_BOX } : {}),
+  };
+});
 
 /**
  * The LANE commands (B4) — the first BPMN entries that are not a toolbox slot.

@@ -5,7 +5,6 @@ import {
   ReadingProfileExtension,
   ValidationProfileExtension,
   ValidationRuleExtension,
-  validationToolbarConfig,
 } from '@labre/affine-block-surface';
 import {
   type ViewExtensionContext,
@@ -30,7 +29,10 @@ import { BpmnPoolRendererExtension } from './element-renderer';
 import { BpmnPoolView } from './element-view';
 import { BpmnNodeRendererExtension } from './node/node-renderer';
 import { BpmnNodeView } from './node/node-view';
-import { bpmnPoolToolbarExtension } from './toolbar/config';
+import {
+  bpmnPoolToolbarExtension,
+  bpmnPoolToolingToolbarExtension,
+} from './toolbar/config';
 import { bpmnSeniorTool } from './toolbar/senior-tool';
 
 /**
@@ -93,20 +95,15 @@ export class BpmnViewExtension extends ViewExtensionProvider {
       // off there is nothing to export WITH, while a board a past import wrote
       // keeps every element and every byte it was given (`docs/adr/0009`).
       context.register(InterchangeExtension(BPMN_INTERCHANGE));
-      // The Validation dropdown on a selected pool's contextual toolbar. A
-      // SECOND module on the same element, through the `custom:` flavour slot,
-      // exactly as wardley and the context map register it on theirs:
-      // `bpmnPoolToolbarExtension` is registered always-on because a stored pool
-      // must keep its lanes and its resize toggle, while choosing how hard to
-      // check the process is tooling and belongs here. The config names no
-      // framework — it reads roles and profiles — so it is the very same object
-      // the other two register.
-      context.register(
-        ToolbarModuleExtension({
-          id: BlockFlavourIdentifier('custom:affine:surface:bpmnPool'),
-          config: validationToolbarConfig,
-        })
-      );
+      // The Legend button and the Validation dropdown on a selected pool's
+      // contextual toolbar. A SECOND module on the same element, through the
+      // `custom:` flavour slot, exactly as wardley and the context map register
+      // it on theirs: `bpmnPoolToolbarExtension` is registered always-on
+      // because a stored pool must keep its lanes and its resize toggle, while
+      // GENERATING a legend and choosing how hard to check the process are both
+      // tooling and belong here (ADR 0026). One module, because a flavour may
+      // carry exactly one — see `bpmnPoolToolingToolbarConfig`.
+      context.register(bpmnPoolToolingToolbarExtension);
       // The "Change type" dropdown on a selected NODE's contextual toolbar —
       // the generic module, parameterized by BPMN's own families table.
       //

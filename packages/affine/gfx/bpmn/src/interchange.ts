@@ -26,6 +26,7 @@ import {
   exportBpmnXmlWithWarnings,
 } from './export.js';
 import { importBpmnXml } from './import.js';
+import { BPMN_ROLE, BPMN_ROLE_OF_KIND } from './roles.js';
 
 /**
  * BPMN's entries in the interchange registry (`docs/adr/0012`, P1).
@@ -86,6 +87,26 @@ export const BPMN_XML_FORMAT: InterchangeFormat = {
  * gives a centre inside two overlapping pools to the FIRST one, and the audit's
  * `attribute()` does the same. Sorting here would make the export disagree with
  * the badge the user can see.
+ *
+ * ## The filter is the ROLE, not the class
+ *
+ * A `BpmnNodeElementModel` is a shape with a `kind`; the ROLE is the author's
+ * statement that this circle IS the start of the process (`docs/adr/0010`, and
+ * C4's `isC4Node` before it). The distinction became load-bearing the day the
+ * pool grew a legend: a legend swatch is a real `bpmnNode` with a real `kind`
+ * and deliberately NO role, so a class-based filter would have written eighteen
+ * ghost `<task>` / `<startEvent>` / `<dataObject>` elements into the
+ * participant's process and broken the bpmn.io round trip the pack is for. The
+ * connectors have always been filtered this way (`EDGE_ELEMENT[connector.role]`
+ * in `export.ts`); this is the nodes and the pools catching up.
+ *
+ * ## What it costs, and the PO took that cost
+ *
+ * The pack shipped on 2026-06-13 and roles on 2026-08-26, with nothing
+ * backfilled (`roles.ts` says so in as many words). A process drawn between
+ * those two dates carries no role on anything and therefore no longer exports.
+ * Arbitrated on 2026-09-17: the alternative is an interchange file that cannot
+ * be trusted, which is worse than one that is not written.
  */
 export function bpmnBoardFrom(
   elements: readonly GfxPrimitiveElementModel[]
@@ -95,9 +116,13 @@ export function bpmnBoardFrom(
   const connectors: ConnectorElementModel[] = [];
 
   for (const element of elements) {
-    if (element instanceof BpmnPoolElementModel) pools.push(element);
-    else if (element instanceof BpmnNodeElementModel) nodes.push(element);
-    else if (element instanceof ConnectorElementModel) connectors.push(element);
+    if (element instanceof BpmnPoolElementModel) {
+      if (element.role === BPMN_ROLE.pool) pools.push(element);
+    } else if (element instanceof BpmnNodeElementModel) {
+      if (element.role === BPMN_ROLE_OF_KIND[element.kind]) nodes.push(element);
+    } else if (element instanceof ConnectorElementModel) {
+      connectors.push(element);
+    }
   }
 
   return { pools, nodes, connectors };
