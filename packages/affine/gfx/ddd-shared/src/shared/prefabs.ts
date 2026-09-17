@@ -439,7 +439,8 @@ export function addCloud(
   std: BlockStdScope,
   cx: number,
   cy: number,
-  label?: string
+  label?: string,
+  role?: string
 ): string {
   const { w, h, fill, stroke } = CLOUD;
   const cloud = surface.addElement({
@@ -454,6 +455,9 @@ export function addCloud(
     shapeStyle: ShapeStyle.General,
     roughness: 0,
     xywh: new Bound(cx - w / 2, cy - h / 2, w, h).serialize(),
+    // On the POLYGON, never on the group: the polygon is what a relationship
+    // binds to and what the legend scan meets.
+    ...(role ? { role } : {}),
   });
   if (!label) return cloud;
   const lbl = addText(

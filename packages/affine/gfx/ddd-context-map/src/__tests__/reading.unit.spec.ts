@@ -56,9 +56,14 @@ const profileOf = (role: string | undefined) =>
   readingProfileFor(element({ id: 'x', role }), [CONTEXT_MAP_READING]);
 
 describe('what a Context Map is read as', () => {
-  it('gives every role-carrying NODE a profile, and the board none', () => {
+  it('gives every role-carrying NODE a profile, the board and the cloud none', () => {
+    // `context-map:system` exists so the legend can list the cloud, and for
+    // nothing else: the map does not model what is inside it, so there is
+    // nothing to read of it — it stays as unread as when it carried no role.
+    const frames: string[] = [CONTEXT_MAP_ROLE.board, CONTEXT_MAP_ROLE.system];
+    expect(profileOf(CONTEXT_MAP_ROLE.system)).toBeNull();
     const unread = Object.values(CONTEXT_MAP_ROLES)
-      .filter(def => def.kind === 'node' && def.id !== CONTEXT_MAP_ROLE.board)
+      .filter(def => def.kind === 'node' && !frames.includes(def.id))
       .filter(def => profileOf(def.id) === null)
       .map(def => def.id);
     expect(unread).toEqual([]);

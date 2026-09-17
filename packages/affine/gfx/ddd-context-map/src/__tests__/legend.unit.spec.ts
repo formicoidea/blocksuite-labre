@@ -1,5 +1,6 @@
 import {
   autoLegendSections,
+  CLOUD,
   CM_BUBBLE,
   CM_RELATIONSHIPS,
 } from '@labre/affine-gfx-ddd-shared';
@@ -66,17 +67,20 @@ describe('the Context Map auto-legend table derives from the presets', () => {
   });
 
   /**
-   * The cloud carries no role (`commands.ts` creates it neutral, deliberately),
-   * and detection is by role only — so the automatic legend cannot mention it.
-   * Frozen here so the omission reads as a decision and not as an oversight; the
-   * palette's static Legend entry is what still documents the cloud.
+   * The cloud carries `context-map:system` (PO recette, 17/09/2026), so it has a
+   * row — in BOUNDARIES, beside the bounded context, in the cloud's own lilac.
+   * (The "BBoM" row further down is the PATTERN, not the cloud shape.)
    */
-  it('says nothing about the cloud, which carries no role', () => {
-    // The BOUNDARIES section is the cloud's only possible home, and it holds one
-    // entry: the bounded context. (The "BBoM" row further down is the PATTERN,
-    // which does carry a role — not the cloud shape.)
-    expect(boundaries.entries).toHaveLength(1);
-    expect(boundaries.entries[0].role).toBe(CONTEXT_MAP_ROLE.context);
+  it('lists the cloud under its role, in the fill the palette draws it with', () => {
+    expect(boundaries.entries.map(e => e.role)).toEqual([
+      CONTEXT_MAP_ROLE.context,
+      CONTEXT_MAP_ROLE.system,
+    ]);
+    const [, system] = boundaries.entries;
+    expect(system.row.color).toBe(CLOUD.fill);
+    expect(system.row.label).toBe(
+      CONTEXT_MAP_ROLES[CONTEXT_MAP_ROLE.system].labelFallback
+    );
   });
 });
 
@@ -97,5 +101,19 @@ describe('what a drawn board puts in its legend', () => {
       ['Bounded context'],
       ['ACL — Anticorruption Layer'],
     ]);
+  });
+
+  it('gives a cloud on the board its row, and a board without one none', () => {
+    const rows = (present: string[]) =>
+      autoLegendSections(
+        new Set(present),
+        CONTEXT_MAP_AUTO_LEGEND,
+        NO_HOST_STD
+      ).flatMap(s => s.rows.map(r => r.label));
+    expect(rows([CONTEXT_MAP_ROLE.system])).toEqual([
+      'System / Big Ball of Mud',
+    ]);
+    // A legacy cloud carries no role: it contributes nothing to `present`.
+    expect(rows([CONTEXT_MAP_ROLE.context])).toEqual(['Bounded context']);
   });
 });

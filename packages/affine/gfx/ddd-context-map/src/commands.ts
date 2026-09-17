@@ -119,13 +119,16 @@ const SPECS: Spec[] = [
     icon: cloudSwatch,
     run: std =>
       placeDddElement(std, (surface, cx, cy) =>
-        // Translated HERE and once, like the bubble above (ADR 0023).
+        // Translated HERE and once, like the bubble above (ADR 0023). The
+        // role is what lets the automatic legend list the cloud; no rule's
+        // matrix cites it, so a relationship drawn onto one stays unjudged.
         addCloud(
           surface,
           std,
           cx,
           cy,
-          translateKey(std, ...CONTEXT_MAP_SEED_CLOUD)
+          translateKey(std, ...CONTEXT_MAP_SEED_CLOUD),
+          CONTEXT_MAP_ROLE.system
         )
       ),
   },

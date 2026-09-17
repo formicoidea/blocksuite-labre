@@ -19,7 +19,10 @@ import { CONTEXT_MAP_ROLE, CONTEXT_MAP_ROLES } from './roles.js';
  *
  * `context-map:context` is the only artefact this notation places; the board is
  * the FRAME and specialises nothing, exactly so that what is written about the
- * contexts never falls on the card they sit on.
+ * contexts never falls on the card they sit on. The cloud
+ * (`context-map:system`) is not a subject either: its role is there for the
+ * legend, the map does not model what is inside it, and it is read exactly as
+ * much as when it carried no role — not at all.
  *
  * ## The nine patterns are read through their parent
  *

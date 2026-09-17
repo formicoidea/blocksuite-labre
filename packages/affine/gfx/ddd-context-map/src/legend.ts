@@ -1,5 +1,6 @@
 import {
   type AutoLegendSpec,
+  CLOUD,
   CM_BUBBLE,
   CM_RELATIONSHIPS,
   LABEL_COLOR,
@@ -18,18 +19,20 @@ import {
  * else: the scan, the placement and the box are `createAutoLegend`'s job.
  *
  * Every row is DERIVED from the presets the palette itself draws from
- * ({@link CM_RELATIONSHIPS}, {@link CM_BUBBLE}) and from the role vocabulary's
- * own labels, never restated. A tenth pattern added to `CM_RELATIONSHIPS` gets
- * its legend row here with no edit, the same way it gets its role.
+ * ({@link CM_RELATIONSHIPS}, {@link CM_BUBBLE}, {@link CLOUD}) and from the
+ * role vocabulary's own labels, never restated. A tenth pattern added to
+ * `CM_RELATIONSHIPS` gets its legend row here with no edit, the same way it
+ * gets its role.
  *
  * ## What is missing, and why
  *
- * The **cloud** (the "System / Big Ball of Mud" blob) carries no role: it is
- * created neutral by `commands.ts`, deliberately — the endpoint grammar treats a
- * relationship drawn onto a cloud as a sketch and stays silent on it. Detection
- * is by role and only by role, so the automatic legend cannot list the cloud and
- * does not pretend to. The palette's static Legend entry still documents it, and
- * the day the cloud earns a role its row lands here in one line.
+ * Detection is by role and only by role. The **cloud** carries
+ * `context-map:system` since the PO recette of 17/09/2026 and is listed; a cloud
+ * placed BEFORE that carries no role and stays out of the legend. Nothing is
+ * backfilled, deliberately: telling a legacy cloud from any other lilac polygon
+ * would mean detecting by shape or fill, which is exactly what this legend
+ * refuses to do, and stamping a role onto stored elements is a document
+ * migration. Placing a fresh cloud from the palette is the way to list it.
  */
 export const CONTEXT_MAP_AUTO_LEGEND: AutoLegendSpec = {
   title: BOARD_LEGEND_TITLE[1],
@@ -47,6 +50,14 @@ export const CONTEXT_MAP_AUTO_LEGEND: AutoLegendSpec = {
             swatch: 'square',
             color: CM_BUBBLE.fill,
             label: roleLabel(CONTEXT_MAP_ROLES, CONTEXT_MAP_ROLE.context),
+          },
+        },
+        {
+          role: CONTEXT_MAP_ROLE.system,
+          row: {
+            swatch: 'square',
+            color: CLOUD.fill,
+            label: roleLabel(CONTEXT_MAP_ROLES, CONTEXT_MAP_ROLE.system),
           },
         },
       ],

@@ -172,8 +172,9 @@ describe('CM1 · the endpoints of a relationship', () => {
 
   it('says nothing about a relationship onto a neutral drawing', () => {
     // The hard requirement of the family: an end outside the alphabet takes the
-    // whole edge out of the conversation. A cloud carries no role in v1, so
-    // integrating with a Big Ball of Mud system is a sketch, not a fault.
+    // whole edge out of the conversation. A cloud placed before
+    // `context-map:system` carries no role, so integrating with a Big Ball of
+    // Mud system is a sketch, not a fault.
     expect(
       evaluate([
         board(),
@@ -182,6 +183,24 @@ describe('CM1 · the endpoints of a relationship', () => {
         link('r1', CM_PATTERN_ROLE.acl, 'a', 'cloud'),
       ])
     ).toEqual([]);
+  });
+
+  it('says nothing about a relationship onto a cloud carrying its role', () => {
+    // `context-map:system` exists for the legend. No triplet cites it, so it is
+    // outside the alphabet exactly like the role-less cloud above — either way
+    // round, on the gesture path and at check-up, off the board included.
+    const drawn = [
+      board(),
+      context('a'),
+      element('cloud', [100, 400, 180, 120], CONTEXT_MAP_ROLE.system),
+      element('far', [5000, 5000, 180, 120], CONTEXT_MAP_ROLE.system),
+      link('r1', CM_PATTERN_ROLE.acl, 'a', 'cloud'),
+      link('r2', CM_PATTERN_ROLE.bbom, 'cloud', 'a'),
+      link('r3', CM_PATTERN_ROLE.partnership, 'cloud', 'cloud'),
+      link('r4', CM_PATTERN_ROLE.conformist, 'a', 'far'),
+    ];
+    expect(evaluate(drawn)).toEqual([]);
+    expect(checkup(drawn)).toEqual([]);
   });
 
   it('says nothing about a link carrying no role at all', () => {

@@ -5,8 +5,19 @@ import { describe, expect, it } from 'vitest';
 import { CM_PATTERN_ROLE, CONTEXT_MAP_ROLE, CONTEXT_MAP_ROLES } from '../roles';
 
 describe('context map role vocabulary', () => {
-  it('declares a role for each of the nine patterns, plus board / context / parent', () => {
-    expect(Object.keys(CONTEXT_MAP_ROLES)).toHaveLength(3 + 9);
+  it('declares a role for each of the nine patterns, plus board / context / system / parent', () => {
+    expect(Object.keys(CONTEXT_MAP_ROLES)).toHaveLength(4 + 9);
+    // The cloud: a node that is NOT a bounded context, so no rule written on
+    // `context-map:context` (endpoint alphabet, off-board) ever reaches it.
+    expect(CONTEXT_MAP_ROLE.system).toBe('context-map:system');
+    expect(CONTEXT_MAP_ROLES[CONTEXT_MAP_ROLE.system].kind).toBe('node');
+    expect(
+      roleIsA(
+        CONTEXT_MAP_ROLE.system,
+        CONTEXT_MAP_ROLE.context,
+        CONTEXT_MAP_ROLES
+      )
+    ).toBe(false);
     expect(CONTEXT_MAP_ROLES[CONTEXT_MAP_ROLE.board].kind).toBe('node');
     expect(CONTEXT_MAP_ROLES[CONTEXT_MAP_ROLE.context].kind).toBe('node');
     expect(CONTEXT_MAP_ROLES[CONTEXT_MAP_ROLE.relationship].kind).toBe('edge');
