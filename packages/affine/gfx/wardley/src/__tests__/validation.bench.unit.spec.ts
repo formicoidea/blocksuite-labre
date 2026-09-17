@@ -1308,23 +1308,46 @@ describe('the dirty tick, every family (PF5.4)', () => {
     it(
       `re-judges a drag on ${size} elements`,
       () => {
-        // Interleaved, for the reason `pairedMedianMs` documents: the RATIO is
-        // the claim about the engine, and measuring the two one after the other
-        // would let a machine that got busy in between decide it.
-        const [full, dirtyTick] = pairedMedianMs(
-          () => evaluateRules(WARDLEY_RULES, map, WARDLEY_PROFILES),
-          tick,
-          7,
+        // One interleaved sweep for all three, for the reason `sweepEachMs`
+        // documents: the RATIO is the claim about the engine, and measuring the
+        // two one after the other would let a machine that got busy in between
+        // decide it.
+        const fullPass = () =>
+          evaluateRules(WARDLEY_RULES, map, WARDLEY_PROFILES);
+        const [full, whole, withoutAttachment] = sweepEachMs(
+          [fullPass, tick, tickWithoutW2],
+          // The best of 9 was not enough at 4000: under six concurrent copies it
+          // still read ×1.2 once in 24, every one of the tick's nine samples
+          // having been preempted. 8000 keeps 9 — its worst read was ×1.8, and
+          // 21 rounds of a 100 ms pass under that load crowd the timeout.
+          size < 8000 ? 21 : 9,
           3
         );
-        const whole = sweepMs(tick, 9, 3);
-        const withoutAttachment = sweepMs(tickWithoutW2, 9, 3);
+
+        // A best sample can only get better with more samples, so a sweep that
+        // misses the floor asserted below is EXTENDED before it is believed.
+        // Measured under six concurrent copies: the real tick's best-sample
+        // ratio read ×1.3–×3.2 at 4000 and a tick made to do the full pass's
+        // work ×0.9–×1.2, either side of the ×1.25 floor with no room to
+        // spare. More samples pull both towards their quiet figures (×1.9 and
+        // ×1.0): the first settles above the floor, the second cannot — which
+        // is why this is not a retry. Nothing is re-rolled, the minimum is kept.
+        for (
+          let more = 0;
+          more < 2 && size > SIZES[0] && whole.best * 1.25 >= full.best;
+          more++
+        ) {
+          const [fullAgain, wholeAgain] = sweepEachMs([fullPass, tick], 9, 0);
+          full.best = Math.min(full.best, fullAgain.best);
+          whole.best = Math.min(whole.best, wholeAgain.best);
+        }
 
         console.info(
           `[bench] PF5.4 dirty tick, ${size} elements, ${dirty.size} dragged: ` +
             `${whole.best.toFixed(2)} ms best, ${whole.median.toFixed(2)} ms ` +
-            `median, against ${full.toFixed(2)} ms for the full pass it ` +
-            `replaces (interleaved medians: ×${(full / dirtyTick).toFixed(1)}). ` +
+            `median, against ${full.best.toFixed(2)} ms best, ` +
+            `${full.median.toFixed(2)} ms median for the full pass it replaces ` +
+            `(interleaved best samples: ×${(full.best / whole.best).toFixed(1)}). ` +
             `Budget ${FRAME_BUDGET_MS} ms. Without W2 attachment — 'surface' ` +
             `scope, so Wardley pays it whole on every tick — the same tick is ` +
             `${withoutAttachment.best.toFixed(2)} ms best, i.e. W2 is ` +
@@ -1351,15 +1374,32 @@ describe('the dirty tick, every family (PF5.4)', () => {
         // quiet, and logged at 2000.
         if (size > SIZES[0]) {
           // Deliberately loose. What this guard is FOR is a tick that stopped
-          // being a tick — a closure that narrows nothing, or a `previous` no
-          // longer carried, both of which read ×1.0. It cannot be tightened
+          // being a tick — an incremental context that is dropped on the way
+          // in, or a `previous` no longer carried, both of which read ×1.0
+          // (mutation-checked on 17/09/2026: ×1.0 at 4000 and at 8000, and this
+          // line fails). It does NOT see a PF5.4 closure that narrows nothing:
+          // that one is ~9 % of the tick (see above), the pair-wise family's
+          // own dirty path keeps the rest, and the same check read ×1.7 and
+          // passed. Wardley is the pack where that closure shows least; a
+          // guard on it belongs with a pack whose families do work per subject.
+          // It cannot be tightened
           // into a guard on this slice's own contribution, and pretending
           // otherwise makes it fail the day the full pass gets faster again:
           // that is exactly what #227 did to the 2× floor this started at.
-          expect(dirtyTick * 1.25).toBeLessThan(full);
+          //
+          // BEST samples, not medians. On 17/09/2026, with six copies of this
+          // file running, the interleaved medians read 93.56 ms against
+          // 115.09 ms and failed this line on an unchanged engine: a burst of
+          // load fell inside the tick's seven samples and not the full pass's
+          // (see `sweepEachMs` — medians of IDENTICAL work spread ×0.5–×2.6
+          // under that load, best samples ×0.85–×1.10). The floor itself is not
+          // loosened: a tick that narrows nothing does the full pass's work on
+          // every sample, the best one included, and still reads ×1.0.
+          expect(whole.best * 1.25).toBeLessThan(full.best);
         }
       },
-      BENCH_TIMEOUT_MS
+      // Twice the usual room: an extended sweep at 8000 under load is ~25 s.
+      BENCH_TIMEOUT_MS * 2
     );
   }
 });
