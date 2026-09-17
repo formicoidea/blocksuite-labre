@@ -24,6 +24,7 @@ export type IframeOptions = {
   allow?: string;
   allowFullscreen?: boolean;
   containerBorderRadius?: number;
+  sandbox?: string; // the sandbox attribute of the iframe, overrides the default one
 };
 
 /**

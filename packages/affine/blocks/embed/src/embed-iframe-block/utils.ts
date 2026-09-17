@@ -34,6 +34,25 @@ export function validateEmbedIframeUrl(
 }
 
 /**
+ * Whether a url stored in the document may be handed to an iframe `src` or to
+ * `window.open`. Only http(s) passes: the url comes from a collaborative
+ * document, so a `javascript:` or `data:` one must never reach the browser.
+ * @param url URL to check
+ * @returns Whether the url is safe to navigate to
+ */
+export function isSafeEmbedUrl(url: string | undefined): url is string {
+  if (!url) {
+    return false;
+  }
+  try {
+    const { protocol } = new URL(url);
+    return protocol === 'http:' || protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Safely extracts the src URL from an iframe HTML string
  * @param htmlString The iframe HTML string to parse
  * @param options Optional validation configuration
