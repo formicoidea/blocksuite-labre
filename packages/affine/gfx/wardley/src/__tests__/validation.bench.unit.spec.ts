@@ -325,12 +325,20 @@ function medianMs(run: () => unknown, runs = 21, warmup = 5): number {
  * its own noise floor off the result — see the on-demand test below, which is
  * the only honest way to say "these two are indistinguishable" on a box whose
  * load nobody controls.
+ *
+ * The BEST sample comes back beside the median, for the claims a median cannot
+ * carry. Measured on 17/09/2026 with six copies of this file running at once:
+ * the interleaved medians of IDENTICAL work landed anywhere between ×0.5 and
+ * ×2.6 of each other — a burst of load falls inside one variant's samples and
+ * not its neighbour's, and 21 samples do not average a burst away — while their
+ * best samples stayed within ×0.85–×1.10. See `sweepMs`: the best sample is the
+ * one number of a sweep a loaded runner cannot inflate.
  */
-function medianEachMs(
+function sweepEachMs(
   runs: readonly (() => unknown)[],
   samples = 21,
   warmup = 5
-): number[] {
+): { median: number; best: number }[] {
   for (let i = 0; i < warmup; i++) for (const run of runs) run();
 
   const buckets: number[][] = runs.map(() => []);
@@ -347,7 +355,7 @@ function medianEachMs(
 
   return buckets.map(bucket => {
     bucket.sort((x, y) => x - y);
-    return bucket[Math.floor(bucket.length / 2)];
+    return { median: bucket[Math.floor(bucket.length / 2)], best: bucket[0] };
   });
 }
 
@@ -437,10 +445,10 @@ describe(`validation stays inside one frame (${MAP_SIZE}+ elements)`, () => {
    * PF5.14's acceptance criterion, measured rather than asserted in prose: an
    * on-demand rule must cost the drawing path ZERO.
    *
-   * Measured against a PROBE rule since 02/08/2026 — Wardley ships no on-demand
+   * Measured against PROBE rules since 02/08/2026 — Wardley ships no on-demand
    * rule any more (the PO dropped the check-up), and the property being measured
-   * is the engine's, not the framework's. The probe is one of the real rules
-   * with its moment changed, so the work skipped is real work on a real map.
+   * is the engine's, not the framework's. The probes are the real rules with
+   * their moment changed, so the work skipped is real work on a real map.
    *
    * Both halves are checked, because either one alone is easy to fake: the
    * ANSWER must be identical (the rules are never evaluated, not merely
@@ -458,7 +466,21 @@ describe(`validation stays inside one frame (${MAP_SIZE}+ elements)`, () => {
   it(
     'pays nothing for the on-demand rules registered beside them',
     () => {
-      const both = [...WARDLEY_RULES, ...ON_DEMAND_PROBE];
+      // EVERY real-time rule registered a second time as an on-demand one, not
+      // the single probe: walked by mistake, one extra rule reads ×1.1–1.3 of
+      // the pass (measured), which no bound that survives a loaded runner can
+      // tell from noise. A whole second rule set reads ×2, and that one can.
+      const both = [
+        ...WARDLEY_RULES,
+        ...WARDLEY_RULES.map(
+          (rule): ValidationRule => ({
+            ...rule,
+            id: `bench.on-demand.${rule.id}`,
+            moment: 'on-demand',
+            severity: 'audit',
+          })
+        ),
+      ];
 
       expect(evaluateRules(both, map)).toEqual(
         evaluateRules(WARDLEY_RULES, map)
@@ -479,28 +501,42 @@ describe(`validation stays inside one frame (${MAP_SIZE}+ elements)`, () => {
        * a second call a moment later — which was the flaw in the first attempt:
        * a separate calibration sweep reports the machine's mood at a different
        * moment, which is precisely the thing being corrected for.
+       *
+       * And it is read off the BEST samples, not the medians. The medians were
+       * the second flaw: with six copies of this file running, two identical
+       * variants read ×1.07 of each other while the third, equally idle, read
+       * ×2.2 — the spread between two medians under-reads the spread of a third
+       * (see `sweepEachMs`). A rule set that is really walked is walked on
+       * every sample, the best one included, so nothing is lost by asking the
+       * one sample the runner left alone.
        */
-      const [withoutA, with_, withoutB] = medianEachMs([
+      const [withoutA, with_, withoutB] = sweepEachMs([
         () => evaluateRules(WARDLEY_RULES, map),
         () => evaluateRules(both, map),
         () => evaluateRules(WARDLEY_RULES, map),
       ]);
 
-      const without = (withoutA + withoutB) / 2;
-      const noise = Math.max(withoutA, withoutB) / Math.min(withoutA, withoutB);
-      const bound = without * Math.max(noise, 1.25) + 0.05;
+      const without = (withoutA.best + withoutB.best) / 2;
+      const noise =
+        Math.max(withoutA.best, withoutB.best) /
+        Math.min(withoutA.best, withoutB.best);
+      // Measured under that load: skipped reads ×0.96–1.07 of the pass and its
+      // own spread stays under ×1.2; walked reads ×2. The floor sits between.
+      const bound = without * Math.max(noise, 1.5) + 0.05;
 
       console.info(
-        `[bench] real-time pass, ${WARDLEY_RULES.length} rules: ${without.toFixed(3)} ms — ` +
-          `with ${ON_DEMAND_PROBE.length} on-demand rules also registered: ` +
-          `${with_.toFixed(3)} ms (interleaved; must be the same number) — ` +
-          `noise floor ×${noise.toFixed(2)} (${withoutA.toFixed(3)} vs ` +
-          `${withoutB.toFixed(3)} ms for identical work), bound ${bound.toFixed(3)} ms`
+        `[bench] real-time pass, ${WARDLEY_RULES.length} rules: best ${without.toFixed(3)} ms ` +
+          `(median ${((withoutA.median + withoutB.median) / 2).toFixed(3)}) — ` +
+          `with ${both.length - WARDLEY_RULES.length} on-demand rules also registered: ` +
+          `best ${with_.best.toFixed(3)} ms (median ${with_.median.toFixed(3)}; ` +
+          `interleaved; must be the same number) — ` +
+          `noise floor ×${noise.toFixed(2)} (${withoutA.best.toFixed(3)} vs ` +
+          `${withoutB.best.toFixed(3)} ms for identical work), bound ${bound.toFixed(3)} ms`
       );
       // What the extra rules may cost is two property reads per evaluation, which
       // is unmeasurable. Anything past the spread the SAME work shows on this
       // machine would mean they are actually being walked.
-      expect(with_).toBeLessThan(bound);
+      expect(with_.best).toBeLessThan(bound);
     },
     BENCH_TIMEOUT_MS
   );
@@ -1051,32 +1087,41 @@ describe('W4 is priced by the relations, not by the pairs', () => {
     expect(new Set(found.map(v => v.elementIds.length))).toEqual(new Set([3]));
   });
 
-  it('stays a small fraction of the frame at twice the reference map', () => {
-    const small = referenceMap(MAP_SIZE, 'wardley.strict');
-    const big = referenceMap(MAP_SIZE * 2, 'wardley.strict');
-    const oneWay = medianMs(
-      () => evaluateRules(w4, small, WARDLEY_PROFILES),
-      7,
-      2
-    );
-    const twice = sweepMs(() => evaluateRules(w4, big, WARDLEY_PROFILES), 7, 2);
+  it(
+    'stays a small fraction of the frame at twice the reference map',
+    () => {
+      const small = referenceMap(MAP_SIZE, 'wardley.strict');
+      const big = referenceMap(MAP_SIZE * 2, 'wardley.strict');
+      // One interleaved sweep of 21, where there were two back-to-back sweeps
+      // of 7. The best sample only means "the iteration the machine let run"
+      // if the sweep is long enough to contain one: under six parallel copies
+      // of this file, the best of seven read 7 ms for an evaluation that costs
+      // 1.2 — a burst of load simply outlasted the whole sweep. Interleaving
+      // the small map stretches the window further and makes the logged ratio
+      // a comparison of two maps rather than of two moments.
+      const [oneWay, twice] = sweepEachMs([
+        () => evaluateRules(w4, small, WARDLEY_PROFILES),
+        () => evaluateRules(w4, big, WARDLEY_PROFILES),
+      ]);
 
-    console.info(
-      `[bench] W4 alone, ${MAP_SIZE} → ${MAP_SIZE * 2} elements ` +
-        `(${Math.round(MAP_SIZE / 6)} → ${Math.round((MAP_SIZE * 2) / 6)} bound edges): ` +
-        `${oneWay.toFixed(3)} → ${twice.median.toFixed(3)} ms (×${(twice.median / oneWay).toFixed(2)}), ` +
-        `best ${twice.best.toFixed(3)} ms — budget ${FRAME_BUDGET_MS} ms`
-    );
+      console.info(
+        `[bench] W4 alone, ${MAP_SIZE} → ${MAP_SIZE * 2} elements ` +
+          `(${Math.round(MAP_SIZE / 6)} → ${Math.round((MAP_SIZE * 2) / 6)} bound edges): ` +
+          `best ${oneWay.best.toFixed(3)} → ${twice.best.toFixed(3)} ms (×${(twice.best / oneWay.best).toFixed(2)}), ` +
+          `median ${oneWay.median.toFixed(3)} → ${twice.median.toFixed(3)} ms — budget ${FRAME_BUDGET_MS} ms`
+      );
 
-    // The RATIO is logged, never asserted: both figures are well under a
-    // millisecond on an idle machine, which is exactly where a median stops
-    // being a statement about the engine and becomes one about the runner's
-    // mood. The shape is asserted above, by counting. What is worth pinning
-    // here is the absolute: the family must not eat the frame on a board twice
-    // the size of the reference map — held to the best sample, like every
-    // absolute budget in this file (see `sweepMs`).
-    expect(twice.best).toBeLessThan(FRAME_BUDGET_MS / 2);
-  });
+      // The RATIO is logged, never asserted: both figures are well under a
+      // millisecond on an idle machine, which is exactly where a median stops
+      // being a statement about the engine and becomes one about the runner's
+      // mood. The shape is asserted above, by counting. What is worth pinning
+      // here is the absolute: the family must not eat the frame on a board twice
+      // the size of the reference map — held to the best sample, like every
+      // absolute budget in this file (see `sweepMs`).
+      expect(twice.best).toBeLessThan(FRAME_BUDGET_MS / 2);
+    },
+    BENCH_TIMEOUT_MS
+  );
 });
 
 describe('a rule switched off costs nothing', () => {
