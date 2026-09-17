@@ -882,6 +882,35 @@ describe('an empty or a broken file', () => {
     expect(result.elements).toHaveLength(1);
     expect(JSON.stringify(result.elements)).not.toContain('alert');
   });
+
+  it('lets none of the four executable constructs through', () => {
+    // The sanitizer is a dependency, and a dependency is a thing that moves:
+    // this pins the four ways an `.svg` is known to carry code — a `<script>`,
+    // an event handler, a `<foreignObject>` full of markup and a `javascript:`
+    // URL — against the version of DOMPurify the bundle actually ships.
+    const result = run(
+      svg(
+        '<script>alert(1)</script>' +
+          '<rect x="0" y="0" width="10" height="10" onload="alert(2)"/>' +
+          '<foreignObject width="10" height="10"><div onclick="alert(3)">x</div></foreignObject>' +
+          '<a href="javascript:alert(4)"><rect x="20" y="0" width="10" height="10"/></a>'
+      )
+    );
+    // The two plain rectangles are still there: sanitizing takes the code, not
+    // the drawing — the `<a>` is a container, so what it wrapped survives it.
+    expect(result.elements).toHaveLength(2);
+    expect(result.elements.map(e => e.type)).toEqual(['shape', 'shape']);
+
+    // Nothing of the four reaches the board. The REPORT is where they are
+    // allowed to appear, and only as the sentence saying they were taken.
+    const drawn = JSON.stringify(result.elements).toLowerCase();
+    for (const carrier of ['script', 'onload', 'onclick', 'javascript:']) {
+      expect(drawn).not.toContain(carrier);
+    }
+    const said = result.report.notes.map(n => n.message);
+    expect(said.filter(m => m.includes('`<script>`'))).toHaveLength(1);
+    expect(said.filter(m => m.includes('`<foreignObject>`'))).toHaveLength(1);
+  });
 });
 
 /* ── Realistic fixtures ───────────────────────────────────────────────── */

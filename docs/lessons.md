@@ -187,3 +187,18 @@ Container()` threw "illegal constructor" and the page hung.
     _Rule:_ when a derivation groups rows into declared buckets, open the
     buckets from the DECLARATION and drop the empty ones at the end. Opening
     them from the data lets the data decide the shape as well as the content.
+
+30. **A sanitizer that emptied every SVG, under happy-dom only.** DOMPurify
+    3.4.8 started reading tag names through the accessor it takes off
+    `Node.prototype` once and unapplies on each node, so a document that
+    CLOBBERS `nodeName` cannot talk it into the wrong allow-list decision.
+    happy-dom declares that accessor as a base returning `''` and shadows it on
+    `Element`, `Text` and the rest, so every tag read as `''`, matched nothing
+    in the SVG profile, and `parseSvgSketch` threw "Nothing survived sanitizing
+    this SVG" — in the unit suite only. The same file imported cleanly in the
+    integration suite's Chromium, and no happy-dom release up to 20.14.5 has
+    changed this.
+    _Rule:_ a unit failure that a real browser does not reproduce is a fact
+    about happy-dom, not about the library. Repair the environment
+    (`scripts/vitest-node-name-setup.js`) rather than the call — loosening a
+    sanitizer's configuration to satisfy a test DOM ships the loosening.
