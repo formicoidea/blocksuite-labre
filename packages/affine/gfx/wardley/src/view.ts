@@ -13,6 +13,7 @@ import {
   toolbarModuleKey,
   UniverseTagDefsExtension,
 } from '@labre/affine-shared/services';
+import { FrameworkPaletteExtension } from '@labre/affine-components/color-picker';
 import {
   type ViewExtensionContext,
   ViewExtensionProvider,
@@ -38,7 +39,10 @@ import { WardleyInteraction, WardleyView } from './element-view';
 import { WardleyNodeRendererExtension } from './node/node-renderer';
 import { WardleyNodeView } from './node/node-view';
 import { WardleyPorterWatcher } from './node/porter-watcher';
-import { wardleyNodeToolbarExtension } from './toolbar/node-config';
+import {
+  WARDLEY_FRAMEWORK_PALETTE,
+  wardleyNodeToolbarExtension,
+} from './toolbar/node-config';
 import {
   wardleyBoardToolingToolbarExtension,
   wardleyToolbarExtension,
@@ -201,6 +205,12 @@ export class WardleyViewExtension extends ViewExtensionProvider {
       // the flag without either side naming the other.
       context.register(ReadingProfileExtension(WARDLEY_READING));
       context.register(wardleySeniorTool);
+      // Wardley's page of the colour pickers' carousel (`docs/adr/0027`).
+      // Here, beside the senior tool, because offering hues is TOOLING: a map
+      // drawn while the flag was on keeps every colour it was painted with
+      // when the flag goes off — the shelf that offers more of them is what
+      // goes away (`docs/adr/0009`).
+      context.register(FrameworkPaletteExtension(WARDLEY_FRAMEWORK_PALETTE));
       // The Templates-panel category — tooling, so it goes with the flag (#244).
       context.register(TemplateCategoryExtension(wardleyTemplateCategory));
       // The Wardley commands — thirteen artefacts plus the two directions of

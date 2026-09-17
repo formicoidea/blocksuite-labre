@@ -10,6 +10,8 @@ import { EdgelessColorCustomButton } from './custom-button';
 export * from './button';
 export * from './color-panel';
 export * from './color-picker';
+export * from './framework-palette';
+export * from './palette-carousel';
 export * from './types';
 export * from './utils';
 

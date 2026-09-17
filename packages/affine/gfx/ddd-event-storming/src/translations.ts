@@ -18,6 +18,7 @@ import { EVENT_STORMING_PROFILES } from './profiles.js';
 import { EVENT_STORMING_READING } from './reading.js';
 import { EVENT_STORMING_ROLES } from './roles.js';
 import { EVENT_STORMING_RULES } from './rules.js';
+import { ES_PALETTE_WORDINGS } from './toolbar/palette.js';
 
 /**
  * THIS framework's contribution to the translation-key manifest — every
@@ -61,5 +62,13 @@ export const eventStormingTranslationEntries: TranslationKeyManifestEntry[] =
       key,
       fallback,
       source: 'seed' as const,
+    })),
+    // The carousel swatches' own names (`toolbar/palette.ts`) — chrome,
+    // re-rendered by the colour picker on every locale switch, never seeded
+    // into a document. Same treatment as Wardley's and EDGY's.
+    ES_PALETTE_WORDINGS.map(([key, fallback]) => ({
+      key,
+      fallback,
+      source: 'chrome' as const,
     }))
   );

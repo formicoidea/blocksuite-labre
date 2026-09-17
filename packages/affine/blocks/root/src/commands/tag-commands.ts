@@ -15,11 +15,10 @@
  */
 import { TelemetryProvider } from '@labre/affine-shared/services';
 import {
-  FRAMEWORK_IDS,
+  frameworkOfRole,
   type AnyCommandDescriptor,
   type BlockStdScope,
   type CommandDescriptor,
-  type FrameworkId,
 } from '@labre/std';
 import {
   GfxControllerIdentifier,
@@ -92,14 +91,6 @@ function tagTargets(
  * guard of their own.
  */
 const isQualifiable = (std: BlockStdScope) => !std.store.readonly;
-
-/** `'wardley:component'` → `'wardley'`, when that names a real framework. */
-function frameworkOfRole(role: string | undefined): FrameworkId | undefined {
-  const namespace = role?.split(':')[0];
-  return (FRAMEWORK_IDS as readonly string[]).includes(namespace ?? '')
-    ? (namespace as FrameworkId)
-    : undefined;
-}
 
 /** The single value shared by every target, or `undefined` if they disagree. */
 function unanimous<T>(values: T[]): T | undefined {

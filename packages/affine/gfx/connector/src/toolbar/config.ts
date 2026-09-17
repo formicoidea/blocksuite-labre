@@ -1,5 +1,6 @@
 import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
 import {
+  frameworkPaletteGroups,
   packColor,
   type PickColorEvent,
 } from '@labre/affine-components/color-picker';
@@ -245,6 +246,14 @@ export const connectorToolbarConfig = {
           updateModelsWith(ctx, models, 'strokeStyle', value);
         };
 
+        // A link belongs to what it links: the carousel opens on the framework
+        // of its endpoints, else of the board it crosses (`docs/adr/0027`).
+        const carousel = frameworkPaletteGroups(
+          ctx.std,
+          models,
+          DefaultTheme.Palettes
+        );
+
         return html`
           <edgeless-color-picker-button
             class="stroke-color"
@@ -255,6 +264,8 @@ export const connectorToolbarConfig = {
             .hollowCircle=${true}
             .originalColor=${firstModel.stroke}
             .enableCustomColor=${enableCustomColor}
+            .paletteGroups=${carousel.groups}
+            .activeGroupKey=${carousel.activeKey}
             .std=${ctx.std}
           >
             <edgeless-line-styles-panel

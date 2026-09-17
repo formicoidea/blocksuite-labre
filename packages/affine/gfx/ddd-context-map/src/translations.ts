@@ -19,6 +19,7 @@ import { CONTEXT_MAP_PROFILES } from './profiles.js';
 import { CONTEXT_MAP_READING } from './reading.js';
 import { CONTEXT_MAP_ROLES } from './roles.js';
 import { CONTEXT_MAP_RULES } from './rules.js';
+import { CONTEXT_MAP_PALETTE_WORDINGS } from './toolbar/palette.js';
 
 /**
  * THIS framework's contribution to the translation-key manifest — every
@@ -56,5 +57,13 @@ export const contextMapTranslationEntries: TranslationKeyManifestEntry[] =
       CONTEXT_MAP_SEED_CLOUD,
       CONTEXT_MAP_SEED_LEGEND_BOUNDARIES,
       CONTEXT_MAP_SEED_LEGEND_RELATIONSHIPS,
-    ].map(([key, fallback]) => ({ key, fallback, source: 'seed' as const }))
+    ].map(([key, fallback]) => ({ key, fallback, source: 'seed' as const })),
+    // The carousel swatches' own names (`toolbar/palette.ts`) — chrome,
+    // re-rendered by the colour picker on every locale switch, never seeded
+    // into a document. Same treatment as Wardley's and EDGY's.
+    CONTEXT_MAP_PALETTE_WORDINGS.map(([key, fallback]) => ({
+      key,
+      fallback,
+      source: 'chrome' as const,
+    }))
   );

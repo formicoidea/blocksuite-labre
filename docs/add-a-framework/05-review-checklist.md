@@ -32,6 +32,9 @@ change to one. Paste it in the PR and tick.**
       module (previews, glyphs and templates included) outside a stencil
       exception; identity colours (a colour code recognises a stored element
       by) stay literal.
+- [ ] R36: a framework with its own hues registers them with
+      `FrameworkPaletteExtension` from the flag-gated view extension, reusing
+      its `*_PALETTE_LIST` and its `com.labre.framework.*` wording.
 - [ ] Rules name a `backgroundRole`; the default profile is the most
       permissive; no rule uses `blocking-overridable`.
 - [ ] Every user-visible string is a `com.labre.*` key in `translations.ts`.

@@ -5,6 +5,7 @@ import {
   ValidationProfileExtension,
   ValidationRuleExtension,
 } from '@labre/affine-block-surface';
+import { FrameworkPaletteExtension } from '@labre/affine-components/color-picker';
 import {
   type ViewExtensionContext,
   ViewExtensionProvider,
@@ -34,7 +35,10 @@ import {
   edgyToolbarExtension,
   edgyToolingToolbarExtension,
 } from './toolbar/config';
-import { edgyNodeToolbarExtension } from './toolbar/node-config';
+import {
+  EDGY_FRAMEWORK_PALETTE,
+  edgyNodeToolbarExtension,
+} from './toolbar/node-config';
 import { edgySeniorTool } from './toolbar/senior-tool';
 
 /**
@@ -130,6 +134,11 @@ export class EdgyViewExtension extends ViewExtensionProvider {
       // profile, so it goes with the flag without either side naming the other.
       context.register(ReadingProfileExtension(EDGY_READING));
       context.register(edgySeniorTool);
+      // EDGY's page of the colour pickers' carousel (`docs/adr/0027`). Here,
+      // beside the senior tool, because offering hues is TOOLING — the colours
+      // already painted on a stored board are content and do not move
+      // (`docs/adr/0009`).
+      context.register(FrameworkPaletteExtension(EDGY_FRAMEWORK_PALETTE));
       // The Templates-panel category — tooling, so it goes with the flag (#244).
       context.register(TemplateCategoryExtension(edgyTemplateCategory));
       // The eight EDGY commands: the sub-menu renders them, Settings ›

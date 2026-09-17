@@ -235,6 +235,8 @@ Greys that carry a meaning are not neutrals and stay put: C4 external elements (
 
 **The Coexisting Palettes Rule.** The base canvas palette and every framework palette are available together. No framework hides or replaces the base palette, and a framework palette is never trimmed to fit another. Each palette keeps its own hues. Only the neutrals are shared (see The Wardley Neutrals Rule).
 
+Coexisting means reachable, so every contextual colour picker on the canvas is a **carousel**: one page per active palette, paged with `‹ Label ›`, the base palette always page one and never hidden. The picker opens on the palette of the selected element's framework of origin — its own role's namespace, else a connector's two ends, else the smallest framework board containing it — and on the base palette when the element belongs to no framework or the selection is mixed. A framework whose tooling is switched off contributes no page, because offering hues is tooling; the colours it already painted are content and do not move. Nothing is written to the document but a plain colour value (ADR 0027).
+
 **The Distinct Accent Rule.** The chrome accent is reserved for interaction (selection, focus, active states) and has to stay recognisable against every notation hue. Chrome never borrows a notation hue, and a notation never borrows the accent. Known conflict: today's Borrowed Blue (`#1E96EB`, hue about 246°) sits in the same hue family as the C4 blue ladder (`#1168BD`, `#438DD5`) and the base palette's medium blue (`#84CFFF`), so a selection on a C4 diagram reads weakly. The replacement accent must come from a hue family that no notation palette uses, and a new framework palette must not settle next to the accent's hue.
 
 ## Typography

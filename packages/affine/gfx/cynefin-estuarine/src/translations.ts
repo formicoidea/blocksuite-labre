@@ -19,6 +19,7 @@ import {
   CYNEFIN_ESTUARINE_TEMPLATE_NAME_WORDINGS,
   CYNEFIN_ESTUARINE_TEMPLATE_SEEDS,
 } from './templates/index.js';
+import { CYNEFIN_ESTUARINE_PALETTE_WORDINGS } from './toolbar/palette.js';
 
 /**
  * THIS framework's contribution to the translation-key manifest.
@@ -91,6 +92,14 @@ export const cynefinEstuarineTranslationEntries: TranslationKeyManifestEntry[] =
     })),
     // The Estuarine map's own three curve legends.
     ESTUARINE_CANVAS_WORDINGS.map(([key, fallback]) => ({
+      key,
+      fallback,
+      source: 'chrome' as const,
+    })),
+    // The carousel swatches' own names (`toolbar/palette.ts`) — chrome,
+    // re-rendered by the colour picker on every locale switch, never seeded
+    // into a document. Same treatment as Wardley's and EDGY's.
+    CYNEFIN_ESTUARINE_PALETTE_WORDINGS.map(([key, fallback]) => ({
       key,
       fallback,
       source: 'chrome' as const,
