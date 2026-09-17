@@ -9,8 +9,8 @@ import { getDocRootBlock } from '../utils/edgeless.js';
 import { setupEditor } from '../utils/setup.js';
 
 /**
- * ADR 0027 end to end: the `‹ Label ›` carousel a contextual colour picker
- * draws above its swatch grid.
+ * ADR 0027 end to end: the palette header a contextual colour picker draws
+ * above its swatch grid — a drop-down of the pages, still paged by a wheel.
  *
  * The unit suites own the origin rule, the builder and the header component in
  * isolation. This one is the RECETTE — it owns what only a mounted editor can
@@ -26,9 +26,6 @@ const BASE_LABEL = 'Default';
 const WARDLEY_LABEL = 'Wardley map';
 /** Wardley's lead swatch, as `resolvePaletteLabel` prints it. */
 const WARDLEY_SWATCH = 'Wonder';
-
-const NEXT = 'Next palette';
-const PREVIOUS = 'Previous palette';
 
 /** See `wardley-validation-bubble.spec.ts`: the viewport persists per doc id. */
 const VIEWPORT_STORAGE_KEY = 'blocksuite:doc:home:edgelessViewport';
@@ -133,20 +130,36 @@ describe("the colour pickers' palette carousel", () => {
     return menu!;
   };
 
+  const carouselBox = (host: Element) =>
+    (host.shadowRoot?.querySelector('.palette-carousel-name') ??
+      null) as HTMLSelectElement | null;
+
   const carouselName = (host: Element) =>
-    host.shadowRoot
-      ?.querySelector('.palette-carousel-name')
+    Array.from(carouselBox(host)?.options ?? [])
+      .find(item => item.selected)
       ?.textContent?.trim() ?? null;
 
-  const navButton = (host: Element, label: string) =>
-    (host.shadowRoot?.querySelector(
-      `.palette-carousel-nav[aria-label="${label}"]`
-    ) ?? null) as HTMLButtonElement | null;
+  /** Pick a page from the drop-down, the way the browser reports a choice. */
+  const choosePage = async (host: Element, label: string) => {
+    const select = carouselBox(host);
+    expect(select).not.toBeNull();
+    const option = Array.from(select!.options).find(
+      item => item.textContent?.trim() === label
+    );
+    expect(option).toBeDefined();
+    select!.value = option!.value;
+    select!.dispatchEvent(new Event('change', { bubbles: true }));
+    await settle();
+  };
 
-  const page = async (host: Element, label: string) => {
-    const button = navButton(host, label);
-    expect(button).not.toBeNull();
-    button!.click();
+  /** A flick of the wheel over the header — one page, wrapping round. */
+  const wheelPage = async (host: Element, deltaY: number) => {
+    const header = host.shadowRoot?.querySelector('.palette-carousel');
+    expect(header).not.toBeNull();
+    header!.dispatchEvent(
+      new WheelEvent('wheel', { deltaY, bubbles: true, cancelable: true })
+    );
+    // `settle()` waits 250ms, longer than the header's own wheel throttle.
     await settle();
   };
 
@@ -205,8 +218,13 @@ describe("the colour pickers' palette carousel", () => {
       picker!.shadowRoot?.querySelector('.palette-carousel')
     ).not.toBeNull();
     expect(carouselName(picker!)).toBe(BASE_LABEL);
-    expect(navButton(picker!, PREVIOUS)).not.toBeNull();
-    expect(navButton(picker!, NEXT)).not.toBeNull();
+    // One option per page, the arrows of the first cut replaced by the list.
+    expect(carouselBox(picker!)?.options.length).toBe(
+      picker!.paletteGroups.length
+    );
+    expect(
+      picker!.shadowRoot?.querySelector('.palette-carousel-nav')
+    ).toBeNull();
     // Eight frameworks ship hues, plus the base page that is never hidden.
     expect(picker!.paletteGroups.map(group => group.key)).toEqual([
       'default',
@@ -239,7 +257,7 @@ describe("the colour pickers' palette carousel", () => {
     expect(swatchLabels(fill!)).toContain(WARDLEY_SWATCH);
   });
 
-  test('paging swaps the grid and leaves the menu open', async () => {
+  test('a wheel over the header swaps the grid and leaves the menu open', async () => {
     addMap();
     const shape = addShape('[400,300,100,100]');
     await select(shape);
@@ -249,7 +267,7 @@ describe("the colour pickers' palette carousel", () => {
     expect(carouselName(picker)).toBe(WARDLEY_LABEL);
 
     const before = swatchLabels(panel(picker, 'Fill color')!);
-    await page(picker, NEXT);
+    await wheelPage(picker, 1);
 
     expect(carouselName(picker)).not.toBe(WARDLEY_LABEL);
     expect(swatchLabels(panel(picker, 'Fill color')!)).not.toEqual(before);
@@ -257,8 +275,33 @@ describe("the colour pickers' palette carousel", () => {
     expect(menu.dataset.open).toBe('true');
 
     // …and back, because the pages are a ring.
-    await page(picker, PREVIOUS);
+    await wheelPage(picker, -1);
     expect(carouselName(picker)).toBe(WARDLEY_LABEL);
+    expect(menu.dataset.open).toBe('true');
+  });
+
+  test('the drop-down jumps straight to a page, and the menu stays open', async () => {
+    addMap();
+    const shape = addShape('[400,300,100,100]');
+    await select(shape);
+
+    const picker = shapePicker()!;
+    const menu = await openPicker(picker);
+    expect(carouselName(picker)).toBe(WARDLEY_LABEL);
+
+    const before = swatchLabels(panel(picker, 'Fill color')!);
+    // The base page is page one, whatever the origin — a name away, not a
+    // count of clicks away.
+    await choosePage(picker, BASE_LABEL);
+
+    expect(carouselName(picker)).toBe(BASE_LABEL);
+    expect(swatchLabels(panel(picker, 'Fill color')!)).not.toEqual(before);
+    expect(menu.dataset.open).toBe('true');
+
+    // …and back to the framework page by its own name.
+    await choosePage(picker, WARDLEY_LABEL);
+    expect(carouselName(picker)).toBe(WARDLEY_LABEL);
+    expect(swatchLabels(panel(picker, 'Fill color')!)).toEqual(before);
     expect(menu.dataset.open).toBe('true');
   });
 
@@ -311,9 +354,12 @@ describe("the colour pickers' palette carousel", () => {
     const picker = shapePicker()!;
     await openPicker(picker);
     expect(carouselName(picker)).toBe(WARDLEY_LABEL);
-    await page(picker, NEXT);
+    // Somewhere that is neither Wardley nor the base page, so the assertions
+    // below cannot pass by accident.
+    await wheelPage(picker, 1);
     const pagedTo = carouselName(picker);
     expect(pagedTo).not.toBe(WARDLEY_LABEL);
+    expect(pagedTo).not.toBe(BASE_LABEL);
 
     // The toolbar now serves an element on no board at all.
     await select(offMap);

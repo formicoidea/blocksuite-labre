@@ -45,10 +45,25 @@ where the picker OPENS, the carousel decides what it OFFERS.
 ## Decision
 
 1. **Every contextual colour picker offers a carousel.** One page per palette,
-   `‹ Label ›` above the swatch grid, wrapping in both directions.
+   the page's name above the swatch grid, wrapping in both directions.
    `frameworkPaletteGroups(std, models, basePalettes)` builds it and
    `renderPaletteCarousel` draws it
    (`packages/affine/components/src/color-picker/`).
+
+   **Amended 2026-09-17** (PO feedback after recette): the name is a
+   drop-down, not a label between two arrows. The first cut drew
+   `‹ Label ›` and paged one step per click; with nine pages, reaching one
+   cost up to four clicks. The header is now a native `<select>` styled as
+   the label — every page in one list, one gesture to any of them — and the
+   arrows are gone. A wheel over the header still pages one step at a time,
+   wrapping, so the carousel gesture survives for the common "what's next"
+   move. Native because the header lives inside an open popper menu: a
+   `<select>` renders its list at the OS level, so there is no second
+   popover to position, dismiss or trap focus in, and the keyboard and the
+   accessibility tree come for free. The ceiling, marked `ponytail:` in the
+   source, is that the option rows are the OS's own — no swatch preview
+   beside a page name; the upgrade path is the repo's own menu component.
+
 2. **The base palette is page one and is never hidden**, whatever the origin
    and whatever the flags — DESIGN.md, "The Coexisting Palettes Rule". A
    framework page is never trimmed either: a page IS the framework's own
@@ -79,8 +94,13 @@ where the picker OPENS, the carousel decides what it OFFERS.
    as two of them disagree. `undefined` opens on the base palette, which is
    true of every element in the selection.
 
-5. **Paging is view state and nothing else.** It stops the click, so the menu
-   stays open and the selection is untouched; it is forgotten as soon as the
+5. **Paging is view state and nothing else.** It stops the click, the change
+   and the keydown, so the menu stays open, the canvas selection is untouched
+   and an arrow key inside the drop-down moves the page rather than the
+   element; a wheel over the header is swallowed too, so neither the canvas
+   zooms nor the page scrolls — except `ctrl`+wheel, which stays the board's
+   pinch-zoom gesture. A trackpad's inertia burst moves one page, not nine.
+   The page is forgotten as soon as the
    picker is asked to open on a different framework, so a new selection always
    re-opens on ITS origin. "Custom colour" is measured against the UNION of
    the pages, so paging to `Default` never makes a Wardley blue look
@@ -103,14 +123,15 @@ where the picker OPENS, the carousel decides what it OFFERS.
   a framework with no registration contributing nothing.
 - `palette-carousel.unit.spec.ts` (`affine/components`) — on the real
   component: opens on the asked-for page, an unknown key falls back to page
-  one, wrap-around both ways, a single page draws no header and lets the
-  caller's list win, a new selection forgets the page paged to, and "custom"
-  against the union.
+  one, the drop-down lists every page and jumps straight to one, a wheel pages
+  with wrap-around both ways, a trackpad burst moves one page, a `ctrl`+wheel
+  is left alone, a single page draws no header and lets the caller's list win,
+  a new selection forgets the page paged to, and "custom" against the union.
 - `framework-palettes-gating.unit.spec.ts` (`affine/all`) — the flag contract,
   per editor: every framework with a palette registers one with the flags on,
   none with them off, and a second editor mounted with other flags answers
   about itself (#244).
-- `manifest.unit.spec.ts` (`affine/all`) — the three new chrome keys are in
+- `manifest.unit.spec.ts` (`affine/all`) — the two new chrome keys are in
   the manifest and the page labels reuse the frameworks' existing
   `com.labre.framework.*` keys, so nothing was minted for a page name.
 
