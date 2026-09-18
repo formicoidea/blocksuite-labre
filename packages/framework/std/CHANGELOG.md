@@ -1,5 +1,30 @@
 # @labre/std
 
+## 0.42.0
+
+### Minor Changes
+
+- f6ece47: The automatic legend becomes a platform: a command can subscribe the legend row its artefact deserves (`CommandDescriptor.legend`) and a board command the box that holds them (`legendBox`), and the surface block derives the whole legend from them — rows in command order, sub-titles from each row's own section or from the command's catalogue category, one row per role. One shared toolbar button and one telemetry emitter replace the seven copies, with the wire values unchanged. Nothing visible moves yet: every framework still draws its legend from its own table, re-exported from `@labre/affine-gfx-ddd-shared` while they migrate.
+
+### Patch Changes
+
+- 87ef822: An armed framework artefact shows itself under the cursor, drawn exactly as it will be placed; connectors show only the crosshair.
+- 911d143: fix(blocks): a framework board joins a box (marquee) selection only when the rectangle holds the whole board — the native frame block's rule. A rectangle dragged on the sheet lassoes what is drawn there and never the sheet itself, so a board is picked by its border and bands only (rule R9). The model carries the answer (`boxSelectable`) and the default element view defers to it, for every framework's boards at once.
+- 48213e7: Raise the floor of the shipped `dompurify` to `^3.4.13`, the smallest version
+  clear of its five open advisories (up to GHSA-55q2-fjhq-7xh7, an XSS through a
+  detached subtree). No behaviour change in a browser.
+- 512ab39: The editor reports `DocumentDamaged` on the telemetry bus when a document opens with elements that have no geometry, so the host can count damaged documents.
+- 2e179bb: Colour pickers on the canvas page through the palettes of the active frameworks: the editor palette is always the first page, and the picker opens on the palette of the framework the selected element belongs to — its own role, else the ends of a connector, else the smallest framework board it sits on. A connector between two Wardley components, a label beside them or a frame drawn round the map can now be tinted with the framework's own hues instead of a hex typed from memory. Offering a palette is tooling: a framework switched off simply loses its page, and every colour already stored stays exactly as it was drawn.
+- 4f5faa3: A readonly peer never deletes an emptied group locally; the duplicate group-relation watcher is removed.
+- f3f412a: An element whose `xywh` is missing from the document reads `[0,0,0,0]`, is reported once in the console and no longer floods it on every frame.
+- d1851b1: Double-clicking a label of a Wardley, EDGY or C4 boundary background opens the label editor again instead of dropping a text block on the canvas.
+- 2bb7318: A readonly peer never drops a deleted block from its group locally; the block-delete cascade obeys the same rule as the group-relation cascade.
+- 55d9f13: Morphing a Wardley component into a pipeline, or back, moves the label to where that kind carries it; a label the author had moved stays put.
+- Updated dependencies [4899136]
+- Updated dependencies [f3f412a]
+  - @labre/store@0.42.0
+  - @labre/global@0.42.0
+
 ## 0.41.0
 
 ### Minor Changes

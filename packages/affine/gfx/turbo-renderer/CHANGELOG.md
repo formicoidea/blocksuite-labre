@@ -1,5 +1,25 @@
 # @labre/affine-gfx-turbo-renderer
 
+## 0.42.0
+
+### Patch Changes
+
+- Updated dependencies [87ef822]
+- Updated dependencies [911d143]
+- Updated dependencies [4899136]
+- Updated dependencies [48213e7]
+- Updated dependencies [512ab39]
+- Updated dependencies [2e179bb]
+- Updated dependencies [4f5faa3]
+- Updated dependencies [f3f412a]
+- Updated dependencies [f6ece47]
+- Updated dependencies [d1851b1]
+- Updated dependencies [2bb7318]
+- Updated dependencies [55d9f13]
+  - @labre/std@0.42.0
+  - @labre/store@0.42.0
+  - @labre/global@0.42.0
+
 ## 0.41.0
 
 ### Patch Changes

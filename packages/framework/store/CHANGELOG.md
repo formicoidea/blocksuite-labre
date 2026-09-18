@@ -1,5 +1,18 @@
 # @labre/store
 
+## 0.42.0
+
+### Patch Changes
+
+- 4899136: Raise the floor of three runtime dependencies that ship inside the published
+  bundles to their smallest patched release: `fflate` (infinite loop on a
+  malformed ZIP64 archive), `nanoid` (infinite loop on a negative or zero id
+  size) and, transitively, `mdast-util-to-hast` (unsanitized `class` attribute).
+  Generated ids are unchanged: same alphabet, same default length.
+- Updated dependencies [f3f412a]
+  - @labre/global@0.42.0
+  - @labre/sync@0.42.0
+
 ## 0.41.0
 
 ### Patch Changes

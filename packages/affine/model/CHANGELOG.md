@@ -1,5 +1,67 @@
 # @labre/affine-model
 
+## 0.42.0
+
+### Minor Changes
+
+- 911d143: feat(edgeless): a connector carries two END labels beside its centre one — a multiplicity, a role name, a qualifier — each anchored beside the endpoint it belongs to and following that endpoint alone when a node moves. Four optional fields (`sourceLabel`, `sourceLabelXYWH`, `targetLabel`, `targetLabelXYWH`) are absent by default, so a connector that has none serialises exactly as before and an older build opens the document unchanged. Double-click near an endpoint to open that end's label; the connector toolbar gains "Source label" and "Target label". Canvas and DOM renderers paint the three boxes and clip the stroke around each. See `docs/adr/0020-connector-end-labels.md`.
+- 911d143: feat(edgeless): connectors gain two hollow endpoint heads, `TriangleHollow` and `DiamondHollow` — the UML 2.5.1 heads for generalization and realization (hollow closed triangle) and shared aggregation (hollow diamond). Both appear in the start- and end-point menus of the connector toolbar, and both render on the canvas and in the DOM renderer. The outline keeps the connector's stroke colour while the interior is the shared notation card fill, so a hollow head reads as white against the box it points at in every theme. `PointStyle` is persisted on every connector: the two members are appended, no existing value changes, and a build that predates them simply paints no head at that end rather than failing to load the document. See `docs/adr/0016-hollow-endpoint-styles.md`.
+- 911d143: UML 2.5.1 phase 2, structure and behaviour: component and deployment diagrams (component, port, provided and required interfaces, artifact, node, device, execution environment; deploy, manifest, communication path), activity and state machine diagrams (nineteen behaviour artefacts, partitions with an orientation toggle, regions, control flow, object flow, transitions with a parsed trigger/guard/effect label), their rules, readings, morphs, and their XMI and PlantUML exports.
+- 911d143: UML 2.5.1 phase 3, sequence diagrams: the `sd` frame and the interaction it holds — lifelines with a named head and a dashed spine, execution bars, destruction marks, combined fragments whose operands are bands you add like a lane (alt, opt, loop, par, break, critical and the rest), and the `ref` interaction use. Five kinds of message (synchronous, asynchronous, reply, create, delete) draw §17.4.4's arrowheads and carry a parsed `name(args) : return` label; a sheet reads top to bottom, so the vertical order of the messages is the order of the conversation. Four rules, their readings, morphs, templates, toolbar and legend rows. PlantUML and XMI now **read** sequence diagrams as well as writing them — a `.puml` or a Papyrus `.xmi` opens as a drawn diagram, and a file this pack wrote comes back byte for byte — and draw.io recognises lifelines, destructions, fragments and messages best effort. Scope and exclusions in ADR 0022.
+- 911d143: fix(edgeless): uml compartments, empty tiers and connector end labels
+
+  Four things the PO's manual recette of the UML framework found:
+
+  - **A classifier now grows to the height it is actually PAINTED at.** A tier
+    wraps its words at the compartment's width, and the box was sized from the
+    author's newlines alone — so one long attribute line was drawn through the
+    separator under it and the node never grew for it. The line count is now the
+    renderer's own wrap.
+  - **A compartment emptied to its placeholder stays.** A canvas text with no
+    words was deleted on commit, which took a classifier's whole name compartment
+    out of its group and left the next double-click opening the shape's invisible
+    inner text. A text that carries a framework ROLE **and a fixed width** is a
+    compartment tier and survives being emptied; a roled label sized to its own
+    words — a Wardley component's name, a BPMN task's — still goes.
+  - **Morphing a classifier re-lays its compartments.** `«interface»` is a LINE
+    (§9.5.4), so a class called `Ligne` becomes a two-line heading — and nothing
+    re-fitted the box for it. The keyword is also written once now, never stacked
+    on one that is already there.
+  - **A double-click aimed at an arrowhead opens that end's label.** The 24-unit
+    grab of `docs/adr/0018` was unreachable: a connector answered for its line
+    only, so the gesture reached no view and the editor's add-text-here handler
+    dropped a stray text block at the arrowhead instead. Only a connector a
+    framework typed claims the discs — a plain arrow keeps its hairline — and each
+    disc stops at the box of the element the end is bound to, a note or a frame as
+    much as a shape.
+  - **A board moved over a peer board no longer hides its own content.** Clearing
+    the board it overlaps raised it just above the topmost background it covered,
+    which for a UML diagram frame was the subject drawn inside it.
+  - **A framework's toolbox re-ranks when it is reopened.** The popover was cached
+    on the way out and handed straight back on the way in, so a command that had
+    just earned its seat — an import, say — only appeared after a reload.
+
+### Patch Changes
+
+- f294deb: The labels of every framework background — Core Domain Chart, Event Storming, Cynefin and Estuarine included — are renamed in place by double-click, as on the Wardley map.
+- 911d143: fix(blocks): a framework board joins a box (marquee) selection only when the rectangle holds the whole board — the native frame block's rule. A rectangle dragged on the sheet lassoes what is drawn there and never the sheet itself, so a board is picked by its border and bands only (rule R9). The model carries the answer (`boxSelectable`) and the default element view defers to it, for every framework's boards at once.
+- f3f412a: An element whose `xywh` is missing from the document reads `[0,0,0,0]`, is reported once in the console and no longer floods it on every frame.
+- Updated dependencies [87ef822]
+- Updated dependencies [911d143]
+- Updated dependencies [4899136]
+- Updated dependencies [48213e7]
+- Updated dependencies [512ab39]
+- Updated dependencies [2e179bb]
+- Updated dependencies [4f5faa3]
+- Updated dependencies [f3f412a]
+- Updated dependencies [f6ece47]
+- Updated dependencies [d1851b1]
+- Updated dependencies [2bb7318]
+- Updated dependencies [55d9f13]
+  - @labre/std@0.42.0
+  - @labre/store@0.42.0
+  - @labre/global@0.42.0
+
 ## 0.41.0
 
 ### Patch Changes

@@ -1,5 +1,113 @@
 # @labre/affine-gfx-bpmn
 
+## 0.42.0
+
+### Minor Changes
+
+- d756a4a: A generated legend now lists its sections in the order the framework declares them, instead of the order the board happens to fill them: the same notation reads the same way whatever is drawn, and only the rows change. Empty sections are still dropped.
+
+  A BPMN pool gets an automatic legend. Select a pool and the new **Legend** button on its toolbar draws a box naming the artefacts the process actually uses — each row the real glyph, painted by the same renderer and from the same preset as the artefact on the board: the thin green ring against the thick red one, the envelope, the clock, the diamond with its X or its +, the corner person and cog, the folded page, the cylinder, the bracket, and the three flow lines with their own endpoints. Rows appear only for what is inside the pool, a plain "Task" never appears just because a user task is there, and the sections are the catalogue's own headers, so no new wording ships. Every row is derived from the command that draws the artefact, so renaming a role renames its row and restyling a preset restyles its swatch.
+
+  The legend never documents itself: what it draws carries no role, so no validation rule counts it and generating a second one describes the same process.
+
+  **Breaking, and deliberate — the `.bpmn` export now only writes artefacts that carry a role.** Roles arrived on 2026-08-26 and nothing was backfilled, so a process drawn between the pack's release (2026-06-13) and that date is no longer exported at all; redrawing it, or re-importing a `.bpmn` of it, restores the export. The alternative was an interchange file that could not be trusted: a legend glyph is a real BPMN node with a real kind, so the previous class-based filter would have written it into the file as a ghost `<task>` or `<startEvent>`.
+
+  With the `bpmn` flag off the Legend button and the Validation dropdown go with the rest of the tooling; the pool keeps its resize handle and its lane gestures, and a legend already drawn keeps being painted.
+
+### Patch Changes
+
+- 90ddf64: Framework artefacts are placed like shapes: choosing one arms a tool with a ghost under the cursor, Shift+S cycles the armed artefact, a click places it there.
+- 0dcd69b: Every framework board offers Export SVG in its contextual toolbar (⋮): the selected board and everything drawn on it, rendered as vector SVG through svgcanvas.
+- 7cc5126: BPMN sub-processes and call activities no longer show the collapsed [+] marker, which opens nothing in Labre; the call activity keeps its thick border.
+- a441d96: The `.bpmn` export now says what it left in the pool
+
+  Exporting a pool as BPMN 2.0 XML writes only the artefacts that carry a BPMN
+  role. That is deliberate and unchanged — a legend swatch is a real node with a
+  real kind and no role, and writing it would put a ghost `<task>` into the file —
+  but until now it happened in silence, and a free shape, a caption or a process
+  drawn before roles existed (2026-08-26) simply vanished from the download with
+  nothing said.
+
+  It is now said twice. The export report gains one line —
+  "_N element(s) inside the pool are not BPMN elements and were left out of the
+  .bpmn file. Export SVG to get everything drawn in the pool._" — counted once for
+  the whole board and absent when nothing was left behind. And the Export BPMN XML
+  command's description says the same thing before the click, so the choice
+  between the two files is made in front of the download rather than after it.
+
+  Nothing about the file changes: the same board still produces the same bytes.
+  A neutral connector is still silent, because a connector with no role states
+  nothing and there was nothing to lose. Neither is a generated legend: a legend
+  is drawn inside the board it documents and is made of role-less glyphs on
+  purpose, so the group the legend gesture draws now carries a role of its own
+  (`core:legend` — no framework declares it, so no rule and no legend row reads
+  it) and the count skips that group and everything under it. A legend drawn
+  before this ships carries no such group and is still counted.
+
+  **One English fallback changed**: `com.labre.commands.bpmn.exportXml.description`
+  now ends with "Only BPMN artefacts are written; export SVG to get everything
+  drawn in the pool." A host that translated it should revisit its own wording.
+  One key is new, `com.labre.bpmn.export.warning.left-out`.
+
+- 2e179bb: Colour pickers on the canvas page through the palettes of the active frameworks: the editor palette is always the first page, and the picker opens on the palette of the framework the selected element belongs to — its own role, else the ends of a connector, else the smallest framework board it sits on. A connector between two Wardley components, a label beside them or a frame drawn round the map can now be tinted with the framework's own hues instead of a hex typed from memory. Offering a palette is tooling: a framework switched off simply loses its page, and every colour already stored stays exactly as it was drawn.
+- Updated dependencies [87ef822]
+- Updated dependencies [90ddf64]
+- Updated dependencies [f294deb]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [0dcd69b]
+- Updated dependencies [911d143]
+- Updated dependencies [a441d96]
+- Updated dependencies [4899136]
+- Updated dependencies [2f5c621]
+- Updated dependencies [911d143]
+- Updated dependencies [9ecfc77]
+- Updated dependencies [48213e7]
+- Updated dependencies [512ab39]
+- Updated dependencies [7437481]
+- Updated dependencies [2e179bb]
+- Updated dependencies [911d143]
+- Updated dependencies [4f5faa3]
+- Updated dependencies [e5d0e6e]
+- Updated dependencies [911d143]
+- Updated dependencies [f3f412a]
+- Updated dependencies [d756a4a]
+- Updated dependencies [6bc897b]
+- Updated dependencies [f6ece47]
+- Updated dependencies [ef0e3da]
+- Updated dependencies [e2f6ca5]
+- Updated dependencies [fff6bea]
+- Updated dependencies [d1851b1]
+- Updated dependencies [5a8ec30]
+- Updated dependencies [549056e]
+- Updated dependencies [2bb7318]
+- Updated dependencies [c73b25f]
+- Updated dependencies [7898f84]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [ad28f94]
+- Updated dependencies [55d9f13]
+  - @labre/affine-widget-edgeless-toolbar@0.42.0
+  - @labre/std@0.42.0
+  - @labre/affine-block-surface@0.42.0
+  - @labre/affine-gfx-template@0.42.0
+  - @labre/affine-model@0.42.0
+  - @labre/affine-shared@0.42.0
+  - @labre/store@0.42.0
+  - @labre/affine-gfx-connector@0.42.0
+  - @labre/affine-components@0.42.0
+  - @labre/affine-gfx-shape@0.42.0
+  - @labre/affine-gfx-group@0.42.0
+  - @labre/global@0.42.0
+  - @labre/affine-gfx-pointer@0.42.0
+  - @labre/affine-ext-loader@0.42.0
+
 ## 0.41.0
 
 ### Minor Changes

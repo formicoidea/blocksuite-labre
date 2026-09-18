@@ -1,5 +1,76 @@
 # @labre/affine-gfx-c4
 
+## 0.42.0
+
+### Minor Changes
+
+- b1bf440: EDGY, C4 and UML derive their automatic legend from their own commands instead of a table beside them: each entry of the toolbox subscribes the row its artefact draws, and the shared engine scans the board, orders the rows, groups them under the section keys already shipped and draws the box. The rows, the swatches and the wording are unchanged — a UML row still draws the real class, actor or hollow diamond, an EDGY row still shows its facet's fill, a C4 row still reads its role's name — and the one `FrameworkLegendCreated` event keeps its historical values (`uml` still reports `module: 'uml toolbox'`). Two readings move with the command order they now follow: C4 lists Component before Database and its Relations section before Frames, and UML lists its elements in the order the sub-menu offers them. The Legend button of the two EDGY frames leaves the always-on toolbar for the flag-gated one, beside Validation: generating a legend is tooling, while the legend it wrote is content and keeps being painted with the flag off.
+
+### Patch Changes
+
+- 90ddf64: Framework artefacts are placed like shapes: choosing one arms a tool with a ghost under the cursor, Shift+S cycles the armed artefact, a click places it there.
+- 0dcd69b: Every framework board offers Export SVG in its contextual toolbar (⋮): the selected board and everything drawn on it, rendered as vector SVG through svgcanvas.
+- 2e179bb: Colour pickers on the canvas page through the palettes of the active frameworks: the editor palette is always the first page, and the picker opens on the palette of the framework the selected element belongs to — its own role, else the ends of a connector, else the smallest framework board it sits on. A connector between two Wardley components, a label beside them or a frame drawn round the map can now be tinted with the framework's own hues instead of a hex typed from memory. Offering a palette is tooling: a framework switched off simply loses its page, and every colour already stored stays exactly as it was drawn.
+- Updated dependencies [87ef822]
+- Updated dependencies [90ddf64]
+- Updated dependencies [f294deb]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [0dcd69b]
+- Updated dependencies [911d143]
+- Updated dependencies [a441d96]
+- Updated dependencies [4899136]
+- Updated dependencies [2f5c621]
+- Updated dependencies [911d143]
+- Updated dependencies [8506cc4]
+- Updated dependencies [9ecfc77]
+- Updated dependencies [48213e7]
+- Updated dependencies [dd1c772]
+- Updated dependencies [512ab39]
+- Updated dependencies [7437481]
+- Updated dependencies [2e179bb]
+- Updated dependencies [911d143]
+- Updated dependencies [4f5faa3]
+- Updated dependencies [e5d0e6e]
+- Updated dependencies [911d143]
+- Updated dependencies [f3f412a]
+- Updated dependencies [d756a4a]
+- Updated dependencies [6bc897b]
+- Updated dependencies [f6ece47]
+- Updated dependencies [ef0e3da]
+- Updated dependencies [e2f6ca5]
+- Updated dependencies [fff6bea]
+- Updated dependencies [d1851b1]
+- Updated dependencies [5a8ec30]
+- Updated dependencies [549056e]
+- Updated dependencies [2bb7318]
+- Updated dependencies [c73b25f]
+- Updated dependencies [7898f84]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [ad28f94]
+- Updated dependencies [55d9f13]
+  - @labre/affine-widget-edgeless-toolbar@0.42.0
+  - @labre/std@0.42.0
+  - @labre/affine-block-surface@0.42.0
+  - @labre/affine-gfx-template@0.42.0
+  - @labre/affine-gfx-ddd-shared@0.42.0
+  - @labre/affine-model@0.42.0
+  - @labre/affine-shared@0.42.0
+  - @labre/affine-gfx-text@0.42.0
+  - @labre/affine-gfx-connector@0.42.0
+  - @labre/affine-components@0.42.0
+  - @labre/affine-gfx-shape@0.42.0
+  - @labre/global@0.42.0
+  - @labre/affine-gfx-pointer@0.42.0
+  - @labre/affine-ext-loader@0.42.0
+
 ## 0.41.0
 
 ### Minor Changes

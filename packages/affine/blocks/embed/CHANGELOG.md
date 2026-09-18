@@ -1,5 +1,64 @@
 # @labre/affine-block-embed
 
+## 0.42.0
+
+### Patch Changes
+
+- 7437481: An embedded iframe is sandboxed: a known provider gets `allow-same-origin allow-scripts allow-forms allow-presentation` and may widen it through its `sandbox` option, while an arbitrary url only gets `allow-scripts`. A stored url that is not http(s) shows the error card instead of reaching the iframe `src`, and opening the original link no longer hands the opener to the target page.
+- 549056e: A readonly peer no longer refetches and rewrites a bookmark or embed card when another peer changes its URL.
+- Updated dependencies [87ef822]
+- Updated dependencies [90ddf64]
+- Updated dependencies [f294deb]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [0dcd69b]
+- Updated dependencies [911d143]
+- Updated dependencies [a441d96]
+- Updated dependencies [4899136]
+- Updated dependencies [2f5c621]
+- Updated dependencies [911d143]
+- Updated dependencies [9ecfc77]
+- Updated dependencies [48213e7]
+- Updated dependencies [512ab39]
+- Updated dependencies [7437481]
+- Updated dependencies [2e179bb]
+- Updated dependencies [911d143]
+- Updated dependencies [4f5faa3]
+- Updated dependencies [e5d0e6e]
+- Updated dependencies [911d143]
+- Updated dependencies [f3f412a]
+- Updated dependencies [d756a4a]
+- Updated dependencies [6bc897b]
+- Updated dependencies [f6ece47]
+- Updated dependencies [ef0e3da]
+- Updated dependencies [e2f6ca5]
+- Updated dependencies [d1851b1]
+- Updated dependencies [5a8ec30]
+- Updated dependencies [549056e]
+- Updated dependencies [2bb7318]
+- Updated dependencies [c73b25f]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [55d9f13]
+  - @labre/std@0.42.0
+  - @labre/affine-block-surface@0.42.0
+  - @labre/affine-model@0.42.0
+  - @labre/affine-shared@0.42.0
+  - @labre/store@0.42.0
+  - @labre/affine-components@0.42.0
+  - @labre/global@0.42.0
+  - @labre/affine-gfx-pointer@0.42.0
+  - @labre/affine-inline-reference@0.42.0
+  - @labre/affine-rich-text@0.42.0
+  - @labre/affine-widget-slash-menu@0.42.0
+  - @labre/affine-ext-loader@0.42.0
+
 ## 0.41.0
 
 ### Minor Changes

@@ -1,5 +1,79 @@
 # @labre/affine-gfx-wardley
 
+## 0.42.0
+
+### Minor Changes
+
+- ad28f94: The Wardley Area (polygon) command draws the polygon vertex by vertex on the canvas instead of dropping a prefabricated one.
+- dddcc56: The Wardley OWM export moves to the selected map's contextual toolbar (⋮) and exports only the components inside that map's perimeter.
+- 254c99d: A Wardley map's legend is now derived from the commands that draw the map, not from a table of its own. Each artefact command subscribes the row that pictures it, the background command carries the box, and detection reads the ROLE of what is on the map instead of its shape class and its colour — so a connector somebody restyled red and dashed no longer counts as an evolution arrow, a rectangle tinted `#1f2328` no longer counts as an inertia bar, and a market's three inner dots no longer add a "Component" row. The glyphs, the evolution gradient block and Porter's five-forces panel are unchanged; the box itself is the shared one, so the rows now read in command order under `Nodes`, `Connectors` and `Areas` sub-titles, and the box is taller. The Legend button moves from the always-on toolbar module to the flag-gated one, beside Validation: generating a legend is tooling, and a legend already generated keeps being painted with the flag off. No i18n key changes. A map drawn before 01/08/2026 carries no roles and comes out with an empty legend box.
+
+### Patch Changes
+
+- 90ddf64: Framework artefacts are placed like shapes: choosing one arms a tool with a ghost under the cursor, Shift+S cycles the armed artefact, a click places it there.
+- f294deb: The labels of every framework background — Core Domain Chart, Event Storming, Cynefin and Estuarine included — are renamed in place by double-click, as on the Wardley map.
+- 0dcd69b: Every framework board offers Export SVG in its contextual toolbar (⋮): the selected board and everything drawn on it, rendered as vector SVG through svgcanvas.
+- 2e179bb: Colour pickers on the canvas page through the palettes of the active frameworks: the editor palette is always the first page, and the picker opens on the palette of the framework the selected element belongs to — its own role, else the ends of a connector, else the smallest framework board it sits on. A connector between two Wardley components, a label beside them or a frame drawn round the map can now be tinted with the framework's own hues instead of a hex typed from memory. Offering a palette is tooling: a framework switched off simply loses its page, and every colour already stored stays exactly as it was drawn.
+- ef0e3da: A framework background of zero width or height paints nothing instead of throwing IndexSizeError and blanking the rest of the canvas frame.
+- 55d9f13: Morphing a Wardley component into a pipeline, or back, moves the label to where that kind carries it; a label the author had moved stays put.
+- Updated dependencies [87ef822]
+- Updated dependencies [90ddf64]
+- Updated dependencies [f294deb]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [0dcd69b]
+- Updated dependencies [911d143]
+- Updated dependencies [a441d96]
+- Updated dependencies [4899136]
+- Updated dependencies [2f5c621]
+- Updated dependencies [911d143]
+- Updated dependencies [9ecfc77]
+- Updated dependencies [48213e7]
+- Updated dependencies [512ab39]
+- Updated dependencies [7437481]
+- Updated dependencies [2e179bb]
+- Updated dependencies [911d143]
+- Updated dependencies [4f5faa3]
+- Updated dependencies [e5d0e6e]
+- Updated dependencies [911d143]
+- Updated dependencies [f3f412a]
+- Updated dependencies [d756a4a]
+- Updated dependencies [6bc897b]
+- Updated dependencies [f6ece47]
+- Updated dependencies [ef0e3da]
+- Updated dependencies [e2f6ca5]
+- Updated dependencies [fff6bea]
+- Updated dependencies [d1851b1]
+- Updated dependencies [5a8ec30]
+- Updated dependencies [549056e]
+- Updated dependencies [2bb7318]
+- Updated dependencies [c73b25f]
+- Updated dependencies [7898f84]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [ad28f94]
+- Updated dependencies [55d9f13]
+  - @labre/affine-widget-edgeless-toolbar@0.42.0
+  - @labre/std@0.42.0
+  - @labre/affine-block-surface@0.42.0
+  - @labre/affine-gfx-template@0.42.0
+  - @labre/affine-model@0.42.0
+  - @labre/affine-shared@0.42.0
+  - @labre/store@0.42.0
+  - @labre/affine-gfx-connector@0.42.0
+  - @labre/affine-components@0.42.0
+  - @labre/affine-gfx-shape@0.42.0
+  - @labre/affine-gfx-group@0.42.0
+  - @labre/global@0.42.0
+  - @labre/affine-gfx-pointer@0.42.0
+  - @labre/affine-ext-loader@0.42.0
+
 ## 0.41.0
 
 ### Minor Changes

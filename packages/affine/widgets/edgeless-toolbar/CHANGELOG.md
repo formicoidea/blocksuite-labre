@@ -1,5 +1,98 @@
 # @labre/affine-widget-edgeless-toolbar
 
+## 0.42.0
+
+### Minor Changes
+
+- 87ef822: An armed framework artefact shows itself under the cursor, drawn exactly as it will be placed; connectors show only the crosshair.
+- 90ddf64: Framework artefacts are placed like shapes: choosing one arms a tool with a ghost under the cursor, Shift+S cycles the armed artefact, a click places it there.
+- 2f5c621: Canvas text offers Bold (700) and Bold Italic for every font family that ships them.
+- 7898f84: In an open framework senior menu, Shift+S and the left/right arrows move the highlight between the commands and Enter runs the highlighted one.
+
+### Patch Changes
+
+- 911d143: fix(edgeless): uml compartments, empty tiers and connector end labels
+
+  Four things the PO's manual recette of the UML framework found:
+
+  - **A classifier now grows to the height it is actually PAINTED at.** A tier
+    wraps its words at the compartment's width, and the box was sized from the
+    author's newlines alone — so one long attribute line was drawn through the
+    separator under it and the node never grew for it. The line count is now the
+    renderer's own wrap.
+  - **A compartment emptied to its placeholder stays.** A canvas text with no
+    words was deleted on commit, which took a classifier's whole name compartment
+    out of its group and left the next double-click opening the shape's invisible
+    inner text. A text that carries a framework ROLE **and a fixed width** is a
+    compartment tier and survives being emptied; a roled label sized to its own
+    words — a Wardley component's name, a BPMN task's — still goes.
+  - **Morphing a classifier re-lays its compartments.** `«interface»` is a LINE
+    (§9.5.4), so a class called `Ligne` becomes a two-line heading — and nothing
+    re-fitted the box for it. The keyword is also written once now, never stacked
+    on one that is already there.
+  - **A double-click aimed at an arrowhead opens that end's label.** The 24-unit
+    grab of `docs/adr/0018` was unreachable: a connector answered for its line
+    only, so the gesture reached no view and the editor's add-text-here handler
+    dropped a stray text block at the arrowhead instead. Only a connector a
+    framework typed claims the discs — a plain arrow keeps its hairline — and each
+    disc stops at the box of the element the end is bound to, a note or a frame as
+    much as a shape.
+  - **A board moved over a peer board no longer hides its own content.** Clearing
+    the board it overlaps raised it just above the topmost background it covered,
+    which for a UML diagram frame was the subject drawn inside it.
+  - **A framework's toolbox re-ranks when it is reopened.** The popover was cached
+    on the way out and handed straight back on the way in, so a command that had
+    just earned its seat — an import, say — only appeared after a reload.
+
+- Updated dependencies [87ef822]
+- Updated dependencies [90ddf64]
+- Updated dependencies [f294deb]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [0dcd69b]
+- Updated dependencies [911d143]
+- Updated dependencies [a441d96]
+- Updated dependencies [4899136]
+- Updated dependencies [2f5c621]
+- Updated dependencies [911d143]
+- Updated dependencies [9ecfc77]
+- Updated dependencies [48213e7]
+- Updated dependencies [512ab39]
+- Updated dependencies [7437481]
+- Updated dependencies [2e179bb]
+- Updated dependencies [911d143]
+- Updated dependencies [4f5faa3]
+- Updated dependencies [e5d0e6e]
+- Updated dependencies [911d143]
+- Updated dependencies [f3f412a]
+- Updated dependencies [d756a4a]
+- Updated dependencies [6bc897b]
+- Updated dependencies [f6ece47]
+- Updated dependencies [ef0e3da]
+- Updated dependencies [e2f6ca5]
+- Updated dependencies [d1851b1]
+- Updated dependencies [5a8ec30]
+- Updated dependencies [549056e]
+- Updated dependencies [2bb7318]
+- Updated dependencies [c73b25f]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [55d9f13]
+  - @labre/std@0.42.0
+  - @labre/affine-block-surface@0.42.0
+  - @labre/affine-model@0.42.0
+  - @labre/affine-shared@0.42.0
+  - @labre/affine-components@0.42.0
+  - @labre/global@0.42.0
+  - @labre/affine-rich-text@0.42.0
+  - @labre/affine-ext-loader@0.42.0
+
 ## 0.41.0
 
 ### Minor Changes

@@ -1,5 +1,147 @@
 # @labre/affine-block-surface
 
+## 0.42.0
+
+### Minor Changes
+
+- 0dcd69b: Every framework board offers Export SVG in its contextual toolbar (⋮): the selected board and everything drawn on it, rendered as vector SVG through svgcanvas.
+- 911d143: feat(blocks): a sixteenth validation rule family, `label-syntax`: a rule hands the engine a parser, and every non-empty line of the role's text that fails to parse becomes a finding naming the line. UML ships four such rules — attribute, operation and transition grammar, and the multiplicity of an association's end labels — audit in the sketch profile, warning in strict. Interchange imports also translate connector end label boxes with the import offset. See `docs/adr/0021-label-syntax-rule-family.md`.
+- 6bc897b: **Breaking for hosts importing the table-shaped legend API** — migrate imports to `@labre/affine-block-surface` (see below).
+
+  The table-shaped legend API is removed, now that every framework subscribes its rows to the catalogue (ADR 0026). Gone from `@labre/affine-block-surface`: `AutoLegendSpec`, `AutoLegendSectionSpec`, `AutoLegendEntry`, `autoLegendSections`, `createAutoLegend` and `roleLabel`. Gone from `@labre/affine-gfx-ddd-shared`: the whole `shared/legend-auto.ts` re-export module (those six plus `rolesInBound`), the deprecated `addLegend` / `measureLegend` / `LegendLayout` / `LegendRow` / `LegendSection` re-exports in `shared/prefabs.ts`, and `dddLegendIcon`. All of them had moved to `@labre/affine-block-surface` and were kept only so the frameworks could migrate one at a time; import `createBoardLegend`, `legendFromCommands`, `rolesInBound`, `addLegend`, `measureLegend` and `legendIcon` from there. `LABEL_COLOR`, `LABEL_FONT` and `LABEL_FONT_SIZE` are now declared once, by the surface block, and re-exported by `@labre/affine-gfx-ddd-shared` under the same names. EDGY no longer depends on the DDD bundle at all.
+
+- f6ece47: The automatic legend becomes a platform: a command can subscribe the legend row its artefact deserves (`CommandDescriptor.legend`) and a board command the box that holds them (`legendBox`), and the surface block derives the whole legend from them — rows in command order, sub-titles from each row's own section or from the command's catalogue category, one row per role. One shared toolbar button and one telemetry emitter replace the seven copies, with the wire values unchanged. Nothing visible moves yet: every framework still draws its legend from its own table, re-exported from `@labre/affine-gfx-ddd-shared` while they migrate.
+- 911d143: feat(edgeless): the strict profile IS the check-up — choosing « Specification » on a frame now puts every rule that level promotes on the drawing path, `moment: 'on-demand'` included, so the findings appear on the canvas on the switch and on every edit afterwards. Until now an explicit `'on-demand'` won against any level, so nine UML rules the strict table raised to `warning` were drawn by nothing at all: the PO emptied a lifeline's head, chose Specification, and the canvas stayed silent. A level that NAMES a rule at a drawn severity is now the statement that decides the moment; a rule no level promotes keeps its declaration, so `uml.unreachable-*` and the Wardley probes stay off the gesture path. The frame bookkeeping and the watched properties follow the same static question, so a promoted naming or spelling rule re-judges as the user types. UML's strict profile also promotes the behaviour sheets' three membership rules (a history outside every region, an action outside every partition), which are glyphs whose whole meaning is the container they sit in.
+- 911d143: UML 2.5.1 phase 3, sequence diagrams: the `sd` frame and the interaction it holds — lifelines with a named head and a dashed spine, execution bars, destruction marks, combined fragments whose operands are bands you add like a lane (alt, opt, loop, par, break, critical and the rest), and the `ref` interaction use. Five kinds of message (synchronous, asynchronous, reply, create, delete) draw §17.4.4's arrowheads and carry a parsed `name(args) : return` label; a sheet reads top to bottom, so the vertical order of the messages is the order of the conversation. Four rules, their readings, morphs, templates, toolbar and legend rows. PlantUML and XMI now **read** sequence diagrams as well as writing them — a `.puml` or a Papyrus `.xmi` opens as a drawn diagram, and a file this pack wrote comes back byte for byte — and draw.io recognises lifelines, destructions, fragments and messages best effort. Scope and exclusions in ADR 0022.
+- 911d143: fix(edgeless): two findings of the UML recette. The imports and exports now sit in their own **Interchange** section at the END of the UML catalogue, where BPMN and Wardley already put theirs — they used to open the panel, filed under "Diagrams" above every artefact the framework draws. `uml.importXmi` keeps its senior-menu nomination and surfaces on the row through use (ADR 0014 § R3) instead of holding a cold-start seat. And **"Read this component" now describes every typed line touching an artefact**, not just one: a reading profile may declare several relation tables (`ReadingProfile.alsoRelations`), so a use case reads its associations, its `«include»` and `«extend»`, a class reads its generalizations, realizations and dependencies, a node its communication paths and an artifact its manifestations. A connector's per-end label (ADR 0020 — a UML multiplicity) is read with the far end's name: "Associated with: OrderLine (1..\*)".
+
+### Patch Changes
+
+- 90ddf64: Framework artefacts are placed like shapes: choosing one arms a tool with a ghost under the cursor, Shift+S cycles the armed artefact, a click places it there.
+- f294deb: The labels of every framework background — Core Domain Chart, Event Storming, Cynefin and Estuarine included — are renamed in place by double-click, as on the Wardley map.
+- 911d143: Export SVG now works for a sequence diagram with a lifeline (it used to fail silently), and keeps the frames nested inside the exported board — UML subjects, partitions, regions and fragments, C4 boundaries — while still leaving out a neighbouring board that only overlaps it.
+- 911d143: feat(blocks): a UML port dragged into the middle of its component is now reported. The validation engine gains a seventeenth rule family, `border-proximity` (ADR 0024): the subject's centre must sit within a declared tolerance, in model units, of the outline of a carrier node it overlaps. Overlap is the gate, so a glyph touching no carrier raises nothing and a sketch stays a sketch; the finding indicts the carrier and the carried element together, measured against the nearest carrier. UML ships its first rule of the family, `uml.port-on-border` (§11.3.4, tolerance 16 — the port glyph's own side), an audit on the sketch and a warning under Specification.
+- a441d96: The `.bpmn` export now says what it left in the pool
+
+  Exporting a pool as BPMN 2.0 XML writes only the artefacts that carry a BPMN
+  role. That is deliberate and unchanged — a legend swatch is a real node with a
+  real kind and no role, and writing it would put a ghost `<task>` into the file —
+  but until now it happened in silence, and a free shape, a caption or a process
+  drawn before roles existed (2026-08-26) simply vanished from the download with
+  nothing said.
+
+  It is now said twice. The export report gains one line —
+  "_N element(s) inside the pool are not BPMN elements and were left out of the
+  .bpmn file. Export SVG to get everything drawn in the pool._" — counted once for
+  the whole board and absent when nothing was left behind. And the Export BPMN XML
+  command's description says the same thing before the click, so the choice
+  between the two files is made in front of the download rather than after it.
+
+  Nothing about the file changes: the same board still produces the same bytes.
+  A neutral connector is still silent, because a connector with no role states
+  nothing and there was nothing to lose. Neither is a generated legend: a legend
+  is drawn inside the board it documents and is made of role-less glyphs on
+  purpose, so the group the legend gesture draws now carries a role of its own
+  (`core:legend` — no framework declares it, so no rule and no legend row reads
+  it) and the count skips that group and everything under it. A legend drawn
+  before this ships carries no such group and is still counted.
+
+  **One English fallback changed**: `com.labre.commands.bpmn.exportXml.description`
+  now ends with "Only BPMN artefacts are written; export SVG to get everything
+  drawn in the pool." A host that translated it should revisit its own wording.
+  One key is new, `com.labre.bpmn.export.warning.left-out`.
+
+- 4899136: Raise the floor of three runtime dependencies that ship inside the published
+  bundles to their smallest patched release: `fflate` (infinite loop on a
+  malformed ZIP64 archive), `nanoid` (infinite loop on a negative or zero id
+  size) and, transitively, `mdast-util-to-hast` (unsanitized `class` attribute).
+  Generated ids are unchanged: same alphabet, same default length.
+- 9ecfc77: The Event Storming flow, the Core Domain movement and the Context Map relationships arm the connector again when chosen from their sub-menu; they are declared as tools and report `FrameworkToolPicked`.
+- 48213e7: Raise the floor of the shipped `dompurify` to `^3.4.13`, the smallest version
+  clear of its five open advisories (up to GHSA-55q2-fjhq-7xh7, an XSS through a
+  detached subtree). No behaviour change in a browser.
+- e5d0e6e: An interchange import whose document turns read-only while the file is being read now says so and writes nothing, instead of failing silently in a rejected promise.
+- d756a4a: A generated legend now lists its sections in the order the framework declares them, instead of the order the board happens to fill them: the same notation reads the same way whatever is drawn, and only the rows change. Empty sections are still dropped.
+
+  A BPMN pool gets an automatic legend. Select a pool and the new **Legend** button on its toolbar draws a box naming the artefacts the process actually uses — each row the real glyph, painted by the same renderer and from the same preset as the artefact on the board: the thin green ring against the thick red one, the envelope, the clock, the diamond with its X or its +, the corner person and cog, the folded page, the cylinder, the bracket, and the three flow lines with their own endpoints. Rows appear only for what is inside the pool, a plain "Task" never appears just because a user task is there, and the sections are the catalogue's own headers, so no new wording ships. Every row is derived from the command that draws the artefact, so renaming a role renames its row and restyling a preset restyles its swatch.
+
+  The legend never documents itself: what it draws carries no role, so no validation rule counts it and generating a second one describes the same process.
+
+  **Breaking, and deliberate — the `.bpmn` export now only writes artefacts that carry a role.** Roles arrived on 2026-08-26 and nothing was backfilled, so a process drawn between the pack's release (2026-06-13) and that date is no longer exported at all; redrawing it, or re-importing a `.bpmn` of it, restores the export. The alternative was an interchange file that could not be trusted: a legend glyph is a real BPMN node with a real kind, so the previous class-based filter would have written it into the file as a ghost `<task>` or `<startEvent>`.
+
+  With the `bpmn` flag off the Legend button and the Validation dropdown go with the rest of the tooling; the pool keeps its resize handle and its lane gestures, and a legend already drawn keeps being painted.
+
+- ef0e3da: A framework background of zero width or height paints nothing instead of throwing IndexSizeError and blanking the rest of the canvas frame.
+- 911d143: refactor(edgeless): the UML frames (diagram, subject, partition, composite state, combined fragment) now use the shared double-click rename of every framework board instead of a copy of it; nothing changes for the user. The shared editor accepts an optional `commit` on a label, for a name that a single property write cannot store (a fragment's operand guard). The UML diagram toolbar uses the shared "⋮" command entry.
+- 911d143: feat(blocks): the UML pack's last displayed strings cross the translation seam (ADR 0023). Its automatic legend resolves its box title through the shared `BOARD_LEGEND_TITLE` and its three sections ("Elements", "Frames", "Relations") through keys of its own; its Templates category resolves its tile name through the senior button's `com.labre.framework.uml`; and the nineteen fixed-wording remarks the PlantUML, XMI and draw.io readers and the shared materializer put in an import report now carry a key and its `{{name}}` parameters, resolved at report time like BPMN's. The surface's own "same provisional name" remark is keyed with them. Every one of them reads exactly as before with no `TranslationProvider` registered, with one wording change the seam asks for: the XMI reader's "N elements are declared inside another" is now the plural-neutral "{{count}} element(s) are declared…", since agreement is the host's.
+- 911d143: fix(edgeless): uml compartments, empty tiers and connector end labels
+
+  Four things the PO's manual recette of the UML framework found:
+
+  - **A classifier now grows to the height it is actually PAINTED at.** A tier
+    wraps its words at the compartment's width, and the box was sized from the
+    author's newlines alone — so one long attribute line was drawn through the
+    separator under it and the node never grew for it. The line count is now the
+    renderer's own wrap.
+  - **A compartment emptied to its placeholder stays.** A canvas text with no
+    words was deleted on commit, which took a classifier's whole name compartment
+    out of its group and left the next double-click opening the shape's invisible
+    inner text. A text that carries a framework ROLE **and a fixed width** is a
+    compartment tier and survives being emptied; a roled label sized to its own
+    words — a Wardley component's name, a BPMN task's — still goes.
+  - **Morphing a classifier re-lays its compartments.** `«interface»` is a LINE
+    (§9.5.4), so a class called `Ligne` becomes a two-line heading — and nothing
+    re-fitted the box for it. The keyword is also written once now, never stacked
+    on one that is already there.
+  - **A double-click aimed at an arrowhead opens that end's label.** The 24-unit
+    grab of `docs/adr/0018` was unreachable: a connector answered for its line
+    only, so the gesture reached no view and the editor's add-text-here handler
+    dropped a stray text block at the arrowhead instead. Only a connector a
+    framework typed claims the discs — a plain arrow keeps its hairline — and each
+    disc stops at the box of the element the end is bound to, a note or a frame as
+    much as a shape.
+  - **A board moved over a peer board no longer hides its own content.** Clearing
+    the board it overlaps raised it just above the topmost background it covered,
+    which for a UML diagram frame was the subject drawn inside it.
+  - **A framework's toolbox re-ranks when it is reopened.** The popover was cached
+    on the way out and handed straight back on the way in, so a command that had
+    just earned its seat — an import, say — only appeared after a reload.
+
+- 911d143: fix(blocks): a framework board is never raised above a board it strictly encloses when it is moved or resized, so a UML frame (or a C4 board) holding inner regions no longer jumps to the front and hides its own content (rule R10). The UML legend draws a real pictogram per notation — class box with its separators, actor, use case ellipse, package tab, component, node cube, lifeline, the typed edges with their hollow heads — instead of a plain chip; the shared legend gains glyph and edge swatches for any framework that wants them.
+- Updated dependencies [87ef822]
+- Updated dependencies [f294deb]
+- Updated dependencies [911d143]
+- Updated dependencies [0dcd69b]
+- Updated dependencies [4899136]
+- Updated dependencies [2f5c621]
+- Updated dependencies [911d143]
+- Updated dependencies [48213e7]
+- Updated dependencies [512ab39]
+- Updated dependencies [7437481]
+- Updated dependencies [2e179bb]
+- Updated dependencies [911d143]
+- Updated dependencies [4f5faa3]
+- Updated dependencies [f3f412a]
+- Updated dependencies [f6ece47]
+- Updated dependencies [e2f6ca5]
+- Updated dependencies [d1851b1]
+- Updated dependencies [5a8ec30]
+- Updated dependencies [549056e]
+- Updated dependencies [2bb7318]
+- Updated dependencies [c73b25f]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [55d9f13]
+  - @labre/std@0.42.0
+  - @labre/affine-model@0.42.0
+  - @labre/affine-shared@0.42.0
+  - @labre/store@0.42.0
+  - @labre/affine-components@0.42.0
+  - @labre/global@0.42.0
+  - @labre/affine-rich-text@0.42.0
+  - @labre/affine-ext-loader@0.42.0
+
 ## 0.41.0
 
 ### Minor Changes

@@ -1,5 +1,0 @@
----
-'@labre/affine-gfx-wardley': minor
----
-
-A Wardley map's legend is now derived from the commands that draw the map, not from a table of its own. Each artefact command subscribes the row that pictures it, the background command carries the box, and detection reads the ROLE of what is on the map instead of its shape class and its colour — so a connector somebody restyled red and dashed no longer counts as an evolution arrow, a rectangle tinted `#1f2328` no longer counts as an inertia bar, and a market's three inner dots no longer add a "Component" row. The glyphs, the evolution gradient block and Porter's five-forces panel are unchanged; the box itself is the shared one, so the rows now read in command order under `Nodes`, `Connectors` and `Areas` sub-titles, and the box is taller. The Legend button moves from the always-on toolbar module to the flag-gated one, beside Validation: generating a legend is tooling, and a legend already generated keeps being painted with the flag off. No i18n key changes. A map drawn before 01/08/2026 carries no roles and comes out with an empty legend box.
