@@ -13,6 +13,8 @@ export default defineConfig({
       'src/__tests__/context-menu*.unit.spec.ts',
       'src/__tests__/toggle-button*.unit.spec.ts',
       'src/__tests__/resolve-palette-label*.unit.spec.ts',
+      'src/__tests__/framework-palette*.unit.spec.ts',
+      'src/__tests__/palette-carousel*.unit.spec.ts',
       'src/__tests__/resource-controller*.unit.spec.ts',
     ],
     testTimeout: 10000,

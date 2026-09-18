@@ -19,6 +19,7 @@ import { CORE_DOMAIN_PROFILES } from './profiles.js';
 import { CORE_DOMAIN_READINGS } from './reading.js';
 import { CORE_DOMAIN_ROLES } from './roles.js';
 import { CORE_DOMAIN_RULES } from './rules.js';
+import { CORE_DOMAIN_PALETTE_WORDINGS } from './toolbar/palette.js';
 
 /**
  * THIS framework's contribution to the translation-key manifest — every
@@ -60,5 +61,13 @@ export const coreDomainTranslationEntries: TranslationKeyManifestEntry[] =
       CORE_DOMAIN_SEED_LEGEND_SUBDOMAINS,
       CORE_DOMAIN_SEED_LEGEND_TEAM_MODES,
       CORE_DOMAIN_SEED_LEGEND_MOVEMENT,
-    ].map(([key, fallback]) => ({ key, fallback, source: 'seed' as const }))
+    ].map(([key, fallback]) => ({ key, fallback, source: 'seed' as const })),
+    // The carousel swatches' own names (`toolbar/palette.ts`) — chrome,
+    // re-rendered by the colour picker on every locale switch, never seeded
+    // into a document. Same treatment as Wardley's and EDGY's.
+    CORE_DOMAIN_PALETTE_WORDINGS.map(([key, fallback]) => ({
+      key,
+      fallback,
+      source: 'chrome' as const,
+    }))
   );

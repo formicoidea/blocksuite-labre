@@ -21,6 +21,7 @@ import { C4_PROFILES } from './profiles.js';
 import { C4_READINGS } from './reading.js';
 import { C4_ROLES } from './roles.js';
 import { C4_RULES } from './rules.js';
+import { C4_PALETTE_WORDINGS } from './toolbar/palette.js';
 import { C4_TYPE_LINE_WORDINGS } from './type-line.js';
 
 /**
@@ -53,6 +54,18 @@ const seedEntries = (): TranslationKeyManifestEntry[] => [
     source: 'seed' as const,
   })),
 ];
+
+/**
+ * The carousel swatches' own names ({@link C4_PALETTE_WORDINGS}) — chrome,
+ * re-rendered by the colour picker on every locale switch, never seeded into
+ * a document. Same treatment as Wardley's and EDGY's.
+ */
+const paletteEntries = (): TranslationKeyManifestEntry[] =>
+  C4_PALETTE_WORDINGS.map(([key, fallback]) => ({
+    key,
+    fallback,
+    source: 'chrome' as const,
+  }));
 
 /** The auto-legend's own section titles ({@link C4_LEGEND_SECTION_WORDINGS}). */
 const legendSectionEntries = (): TranslationKeyManifestEntry[] =>
@@ -103,6 +116,7 @@ export const c4TranslationEntries: TranslationKeyManifestEntry[] =
     ]),
     seedEntries(),
     legendSectionEntries(),
+    paletteEntries(),
     // AFTER the two above, and the order is load-bearing: a rule carries its
     // framework's `roles` and, for `c4.person-in-boundary`, the boundary's own
     // declaration, so walking the rules reaches keys those two lists already

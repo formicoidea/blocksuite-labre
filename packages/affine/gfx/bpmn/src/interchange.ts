@@ -7,6 +7,7 @@ import type {
 } from '@labre/affine-block-surface';
 import {
   interchangeCapabilityId,
+  LEGEND_ROLE,
   parseSvgSketch,
   SVG_SKETCH_EXTENSION,
   SVG_SKETCH_FORMAT_ID,
@@ -25,6 +26,7 @@ import {
   type BpmnExportBoard,
   exportBpmnXmlWithWarnings,
 } from './export.js';
+import { bpmnPoolOf } from './facts.js';
 import { importBpmnXml } from './import.js';
 import { BPMN_ROLE, BPMN_ROLE_OF_KIND } from './roles.js';
 
@@ -80,6 +82,42 @@ export const BPMN_XML_FORMAT: InterchangeFormat = {
 /* ── Pure board helpers ───────────────────────────────────────────────── */
 
 /**
+ * Everything a generated legend is made of: the group the legend gesture stamps
+ * with {@link LEGEND_ROLE}, and everything under it.
+ *
+ * A legend is drawn INSIDE the board it documents (`createBoardLegend`) and is
+ * made, on purpose, of role-less shapes, texts and swatches — so without this
+ * it would be reported as fourteen things the `.bpmn` left out, which is
+ * exactly the surprise that warning exists to prevent. The group's ROLE is what
+ * it is read by: nothing here matches a title, a framework name or a box.
+ *
+ * Read defensively, like every other walk over stored data in this framework:
+ * the children came out of a Y.Map and are whatever a peer wrote.
+ */
+function legendMemberIds(
+  elements: readonly GfxPrimitiveElementModel[]
+): ReadonlySet<string> {
+  const byId = new Map(elements.map(element => [element.id, element]));
+  const members = new Set<string>();
+
+  const walk = (element: GfxPrimitiveElementModel) => {
+    if (members.has(element.id)) return;
+    members.add(element.id);
+    const children = (element as { childIds?: unknown }).childIds;
+    if (!Array.isArray(children)) return;
+    for (const id of children) {
+      const child = typeof id === 'string' ? byId.get(id) : undefined;
+      if (child) walk(child);
+    }
+  };
+
+  for (const element of elements) {
+    if (element.role === LEGEND_ROLE) walk(element);
+  }
+  return members;
+}
+
+/**
  * The artefacts the exporter speaks about, picked out of a surface's elements
  * and kept in the order they were given.
  *
@@ -107,6 +145,20 @@ export const BPMN_XML_FORMAT: InterchangeFormat = {
  * those two dates carries no role on anything and therefore no longer exports.
  * Arbitrated on 2026-09-17: the alternative is an interchange file that cannot
  * be trusted, which is worse than one that is not written.
+ *
+ * ## …and what it now SAYS
+ *
+ * The same ruling of 2026-09-17 added the other half: everything inside a
+ * pool's perimeter leaves in the board's generic SVG export (ADR 0025, R34),
+ * and only the roled artefacts leave in the `.bpmn`. That asymmetry is wanted;
+ * being silent about it was not. So the role-less things drawn INSIDE a pool
+ * are counted here — this is the only place that sees what was not picked —
+ * and `exportBpmnXmlWithWarnings` turns the count into one warning.
+ *
+ * Connectors are deliberately NOT counted: a neutral arrow states nothing
+ * (`docs/adr/0010`), so there is nothing to lose, which is the reason
+ * `export.ts` has always dropped one in silence. Neither is a generated legend
+ * — see {@link legendMemberIds}.
  */
 export function bpmnBoardFrom(
   elements: readonly GfxPrimitiveElementModel[]
@@ -114,18 +166,35 @@ export function bpmnBoardFrom(
   const pools: BpmnPoolElementModel[] = [];
   const nodes: BpmnNodeElementModel[] = [];
   const connectors: ConnectorElementModel[] = [];
+  const roleless: GfxPrimitiveElementModel[] = [];
 
   for (const element of elements) {
     if (element instanceof BpmnPoolElementModel) {
       if (element.role === BPMN_ROLE.pool) pools.push(element);
+      else roleless.push(element);
     } else if (element instanceof BpmnNodeElementModel) {
       if (element.role === BPMN_ROLE_OF_KIND[element.kind]) nodes.push(element);
+      else roleless.push(element);
     } else if (element instanceof ConnectorElementModel) {
       connectors.push(element);
+    } else {
+      roleless.push(element);
     }
   }
 
-  return { pools, nodes, connectors };
+  // Against the pools that are actually WRITTEN: "inside the pool" has to mean
+  // inside a pool the file has, or the sentence names a perimeter the reader of
+  // the `.bpmn` cannot see. `bpmnPoolOf` is the same whole-containment test the
+  // audit and the serializer use, so what is reported left out is what the rest
+  // of the framework agrees is in there.
+  const legend = legendMemberIds(elements);
+  const leftOut = roleless.filter(
+    element =>
+      !legend.has(element.id) &&
+      bpmnPoolOf(pools, element.elementBound) !== null
+  ).length;
+
+  return { pools, nodes, connectors, ...(leftOut > 0 ? { leftOut } : {}) };
 }
 
 /**

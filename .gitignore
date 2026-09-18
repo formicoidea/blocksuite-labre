@@ -42,3 +42,4 @@ __screenshots__/
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+.impeccable/hook.cache.json

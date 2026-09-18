@@ -1,5 +1,6 @@
 import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
 import {
+  frameworkPaletteGroups,
   packColor,
   type PickColorEvent,
 } from '@labre/affine-components/color-picker';
@@ -278,11 +279,21 @@ export const shapeToolbarConfig = {
           }
         };
 
+        // The base palette, plus a page per framework whose tooling is on —
+        // opening on the one the selection belongs to (`docs/adr/0027`).
+        const carousel = frameworkPaletteGroups(
+          ctx.std,
+          models,
+          DefaultTheme.Palettes
+        );
+
         return html`
           <edgeless-shape-color-picker
             @pickFillColor=${onPickFillColor}
             @pickStrokeColor=${onPickStrokeColor}
             @pickStrokeStyle=${onPickStrokeStyle}
+            .paletteGroups=${carousel.groups}
+            .activeGroupKey=${carousel.activeKey}
             .payload=${{
               fillColor,
               strokeColor,

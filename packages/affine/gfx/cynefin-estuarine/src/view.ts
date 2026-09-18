@@ -4,6 +4,7 @@ import {
   ValidationFrameworkExtension,
   validationToolbarConfig,
 } from '@labre/affine-block-surface';
+import { FrameworkPaletteExtension } from '@labre/affine-components/color-picker';
 import {
   type ViewExtensionContext,
   ViewExtensionProvider,
@@ -35,6 +36,7 @@ import {
   cynefinTemplateCategory,
   estuarineTemplateCategory,
 } from './templates';
+import { CYNEFIN_ESTUARINE_FRAMEWORK_PALETTE } from './toolbar/palette';
 import { cynefinEstuarineSeniorTool } from './toolbar/senior-tool';
 
 /**
@@ -131,6 +133,13 @@ export class CynefinEstuarineViewExtension extends ViewExtensionProvider {
       // free element on a Cynefin board carries no role and stays unreadable.
       context.register(ReadingProfileExtension(ESTUARINE_READING));
       context.register(cynefinEstuarineSeniorTool);
+      // This pack's page of the colour pickers' carousel (`docs/adr/0027`).
+      // Here, beside the senior tool, because offering hues is TOOLING — the
+      // colours already painted on a stored board are content and do not move
+      // (`docs/adr/0009`).
+      context.register(
+        FrameworkPaletteExtension(CYNEFIN_ESTUARINE_FRAMEWORK_PALETTE)
+      );
       // Both Templates-panel categories — tooling, so they go with the flag
       // (#244).
       context.register(

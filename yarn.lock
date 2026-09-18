@@ -1912,7 +1912,7 @@ __metadata:
     "@preact/signals-core": "npm:^1.8.0"
     "@toeverything/theme": "npm:^1.1.15"
     "@types/lodash-es": "npm:^4.17.12"
-    dompurify: "npm:^3.2.4"
+    dompurify: "npm:^3.4.13"
     html2canvas: "npm:^1.4.1"
     lit: "npm:^3.2.0"
     lodash-es: "npm:^4.17.21"
@@ -1969,7 +1969,7 @@ __metadata:
     "@preact/signals-core": "npm:^1.8.0"
     "@toeverything/theme": "npm:^1.1.15"
     "@types/lodash-es": "npm:^4.17.12"
-    dompurify: "npm:^3.2.4"
+    dompurify: "npm:^3.4.13"
     fractional-indexing: "npm:^3.2.0"
     html2canvas: "npm:^1.4.1"
     lit: "npm:^3.2.0"
@@ -2239,6 +2239,7 @@ __metadata:
   resolution: "@labre/affine-gfx-c4@workspace:packages/affine/gfx/c4"
   dependencies:
     "@labre/affine-block-surface": "workspace:*"
+    "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
     "@labre/affine-gfx-connector": "workspace:*"
     "@labre/affine-gfx-ddd-shared": "workspace:*"
@@ -2275,7 +2276,7 @@ __metadata:
     "@preact/signals-core": "npm:^1.8.0"
     "@toeverything/theme": "npm:^1.1.15"
     "@types/lodash-es": "npm:^4.17.12"
-    happy-dom: "npm:^17.4.4"
+    happy-dom: "npm:^20.8.9"
     lit: "npm:^3.2.0"
     lodash-es: "npm:^4.17.21"
     minimatch: "npm:^10.0.1"
@@ -2290,8 +2291,10 @@ __metadata:
   resolution: "@labre/affine-gfx-cynefin-estuarine@workspace:packages/affine/gfx/cynefin-estuarine"
   dependencies:
     "@labre/affine-block-surface": "workspace:*"
+    "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
     "@labre/affine-gfx-pointer": "workspace:*"
+    "@labre/affine-gfx-shape": "workspace:*"
     "@labre/affine-gfx-template": "workspace:*"
     "@labre/affine-model": "workspace:*"
     "@labre/affine-shared": "workspace:*"
@@ -2328,11 +2331,13 @@ __metadata:
   resolution: "@labre/affine-gfx-ddd-context-map@workspace:packages/affine/gfx/ddd-context-map"
   dependencies:
     "@labre/affine-block-surface": "workspace:*"
+    "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
     "@labre/affine-gfx-connector": "workspace:*"
     "@labre/affine-gfx-ddd-shared": "workspace:*"
     "@labre/affine-gfx-group": "workspace:*"
     "@labre/affine-gfx-pointer": "workspace:*"
+    "@labre/affine-gfx-shape": "workspace:*"
     "@labre/affine-gfx-template": "workspace:*"
     "@labre/affine-model": "workspace:*"
     "@labre/affine-shared": "workspace:*"
@@ -2349,11 +2354,13 @@ __metadata:
   resolution: "@labre/affine-gfx-ddd-core-domain@workspace:packages/affine/gfx/ddd-core-domain"
   dependencies:
     "@labre/affine-block-surface": "workspace:*"
+    "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
     "@labre/affine-gfx-connector": "workspace:*"
     "@labre/affine-gfx-ddd-shared": "workspace:*"
     "@labre/affine-gfx-group": "workspace:*"
     "@labre/affine-gfx-pointer": "workspace:*"
+    "@labre/affine-gfx-shape": "workspace:*"
     "@labre/affine-gfx-template": "workspace:*"
     "@labre/affine-model": "workspace:*"
     "@labre/affine-shared": "workspace:*"
@@ -2370,11 +2377,13 @@ __metadata:
   resolution: "@labre/affine-gfx-ddd-event-storming@workspace:packages/affine/gfx/ddd-event-storming"
   dependencies:
     "@labre/affine-block-surface": "workspace:*"
+    "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
     "@labre/affine-gfx-connector": "workspace:*"
     "@labre/affine-gfx-ddd-shared": "workspace:*"
     "@labre/affine-gfx-group": "workspace:*"
     "@labre/affine-gfx-pointer": "workspace:*"
+    "@labre/affine-gfx-shape": "workspace:*"
     "@labre/affine-gfx-template": "workspace:*"
     "@labre/affine-model": "workspace:*"
     "@labre/affine-shared": "workspace:*"
@@ -3006,7 +3015,7 @@ __metadata:
     "@types/lodash-es": "npm:^4.17.12"
     "@types/mdast": "npm:^4.0.4"
     bytes: "npm:^3.1.2"
-    dompurify: "npm:^3.2.4"
+    dompurify: "npm:^3.4.13"
     fractional-indexing: "npm:^3.2.0"
     lit: "npm:^3.2.0"
     lodash-es: "npm:^4.17.21"
@@ -3507,7 +3516,7 @@ __metadata:
     "@labre/store": "workspace:*"
     "@labre/sync": "workspace:*"
     "@vanilla-extract/vite-plugin": "npm:5.1.4"
-    happy-dom: "npm:^17.4.4"
+    happy-dom: "npm:^20.8.9"
     msw: "npm:^2.8.4"
     rxjs: "npm:^7.8.1"
     vitest: "npm:3.1.3"
@@ -3632,7 +3641,7 @@ __metadata:
     "@preact/signals-core": "npm:^1.8.0"
     "@types/hast": "npm:^3.0.4"
     "@types/lodash-es": "npm:^4.17.12"
-    dompurify: "npm:^3.2.4"
+    dompurify: "npm:^3.4.13"
     fractional-indexing: "npm:^3.2.0"
     lib0: "npm:^0.2.97"
     lit: "npm:^3.2.0"
@@ -4641,6 +4650,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/node@npm:>=20.0.0":
+  version: 26.6.1
+  resolution: "@types/node@npm:26.6.1"
+  dependencies:
+    undici-types: "npm:~8.9.0"
+  checksum: 10/86e4bbb49b696e1183d42e1e8653b13b969146969e6e30635aa5de7d4340f06fcdd748284bcc68ea6a3f8300d9dc54569ec377f312cdeb1c1ae0a5996ec075d7
+  languageName: node
+  linkType: hard
+
 "@types/node@npm:^12.7.1":
   version: 12.20.55
   resolution: "@types/node@npm:12.20.55"
@@ -4734,12 +4752,28 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/whatwg-mimetype@npm:^3.0.2":
+  version: 3.0.2
+  resolution: "@types/whatwg-mimetype@npm:3.0.2"
+  checksum: 10/609607beeaa8b50b9e00541d8f571880d651b26b6b006103370099aba00784037de54433627c9fe775a5558e3d1fc09c2a48f54c8af91988e9bebeaf6a698eeb
+  languageName: node
+  linkType: hard
+
 "@types/ws@npm:^7.4.0":
   version: 7.4.7
   resolution: "@types/ws@npm:7.4.7"
   dependencies:
     "@types/node": "npm:*"
   checksum: 10/5236b6c54817bdf17674337db5776bb34a876b77a90d885d0f70084c9d453cc2f21703207cc1147d33a9e49a4306773830fbade4729b01ffe33ef0c82cd4c701
+  languageName: node
+  linkType: hard
+
+"@types/ws@npm:^8.18.1":
+  version: 8.18.1
+  resolution: "@types/ws@npm:8.18.1"
+  dependencies:
+    "@types/node": "npm:*"
+  checksum: 10/1ce05e3174dcacf28dae0e9b854ef1c9a12da44c7ed73617ab6897c5cbe4fccbb155a20be5508ae9a7dde2f83bd80f5cf3baa386b934fc4b40889ec963e94f3a
   languageName: node
   linkType: hard
 
@@ -5385,6 +5419,15 @@ __metadata:
   bin:
     browserslist: cli.js
   checksum: 10/4a5442b1a0d09c4c64454f184b8fed17d8c3e202034bf39de28f74497d7bd28dddee121b2bab4e34825fe0ed4c166d84e32a39f576c76fce73c1f8f05e4b6ee6
+  languageName: node
+  linkType: hard
+
+"buffer-image-size@npm:^0.6.4":
+  version: 0.6.4
+  resolution: "buffer-image-size@npm:0.6.4"
+  dependencies:
+    "@types/node": "npm:*"
+  checksum: 10/82d4ca9bc8e71c9c0cbc74191d3613100d0a20dd21da018c6f373d7dc88ec4a9225eebe06c44a982de074f695402e81ab8a8daa40afce36b915042fa9fb32c52
   languageName: node
   linkType: hard
 
@@ -6055,15 +6098,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"dompurify@npm:^3.2.4":
-  version: 3.4.7
-  resolution: "dompurify@npm:3.4.7"
+"dompurify@npm:^3.4.13":
+  version: 3.4.15
+  resolution: "dompurify@npm:3.4.15"
   dependencies:
     "@types/trusted-types": "npm:^2.0.7"
   dependenciesMeta:
     "@types/trusted-types":
       optional: true
-  checksum: 10/7432e2a2fe1f4235e09e54d40c285eb76812afab46605fb52449891ca922e474fd5cab2cc297ae9ae1e235d1186e9e9924c32178903359d18e4587cd5119471b
+  checksum: 10/159f592307578405c5217ba40ab467d4ac35f23eb20abc7f32b85698b8c1aff92f71b00c80779f891a8e463edafab05d9a4db53052d5c67005240ac4fff7fc72
   languageName: node
   linkType: hard
 
@@ -6155,6 +6198,13 @@ __metadata:
   version: 6.0.1
   resolution: "entities@npm:6.0.1"
   checksum: 10/62af1307202884349d2867f0aac5c60d8b57102ea0b0e768b16246099512c28e239254ad772d6834e7e14cb1b6f153fc3d0c031934e3183b086c86d3838d874a
+  languageName: node
+  linkType: hard
+
+"entities@npm:^7.0.1":
+  version: 7.0.1
+  resolution: "entities@npm:7.0.1"
+  checksum: 10/3c0c58d869c45148463e96d21dee2d1b801bd3fe4cf47aa470cd26dfe81d59e9e0a9be92ae083fa02fa441283c883a471486e94538dcfb8544428aa80a55271b
   languageName: node
   linkType: hard
 
@@ -6868,13 +6918,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"happy-dom@npm:^17.4.4":
-  version: 17.6.3
-  resolution: "happy-dom@npm:17.6.3"
+"happy-dom@npm:^20.8.9":
+  version: 20.14.5
+  resolution: "happy-dom@npm:20.14.5"
   dependencies:
-    webidl-conversions: "npm:^7.0.0"
+    "@types/node": "npm:>=20.0.0"
+    "@types/whatwg-mimetype": "npm:^3.0.2"
+    "@types/ws": "npm:^8.18.1"
+    buffer-image-size: "npm:^0.6.4"
+    entities: "npm:^7.0.1"
     whatwg-mimetype: "npm:^3.0.0"
-  checksum: 10/0f82fe84a0a9885185e0b390c01befe4746d32a98e362dd09929490df1c56c82ff01a0c33a6203a90341575a2bfbb3e53368e37f80f795cd89c2292659a4b5cb
+    ws: "npm:^8.21.0"
+  checksum: 10/5a1f177622e7d08d0ee27b2bdd4d2c86365989e04342c67b6afd623da968ace87d551fb9ea60085159d4d9174db040cd9b5320a430a0b899a06fbbfd1acf2374
   languageName: node
   linkType: hard
 
@@ -10465,6 +10520,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"undici-types@npm:~8.9.0":
+  version: 8.9.0
+  resolution: "undici-types@npm:8.9.0"
+  checksum: 10/8785591929de2b71d281c684e915c4a8c41becc225adbf42a3e89148f8b384724a21533494c30a1cbb85b4cbccd088d020788ff4f2d605013eb2863cd47a1639
+  languageName: node
+  linkType: hard
+
 "unicorn-magic@npm:^0.1.0":
   version: 0.1.0
   resolution: "unicorn-magic@npm:0.1.0"
@@ -10960,13 +11022,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"webidl-conversions@npm:^7.0.0":
-  version: 7.0.0
-  resolution: "webidl-conversions@npm:7.0.0"
-  checksum: 10/4c4f65472c010eddbe648c11b977d048dd96956a625f7f8b9d64e1b30c3c1f23ea1acfd654648426ce5c743c2108a5a757c0592f02902cf7367adb7d14e67721
-  languageName: node
-  linkType: hard
-
 "whatwg-mimetype@npm:^3.0.0":
   version: 3.0.0
   resolution: "whatwg-mimetype@npm:3.0.0"
@@ -11079,6 +11134,21 @@ __metadata:
     utf-8-validate:
       optional: true
   checksum: 10/26e4901e93abaf73af9f26a93707c95b4845e91a7a347ec8c569e6e9be7f9df066f6c2b817b2d685544e208207898a750b78461e6e8d810c11a370771450c31b
+  languageName: node
+  linkType: hard
+
+"ws@npm:^8.21.0":
+  version: 8.21.3
+  resolution: "ws@npm:8.21.3"
+  peerDependencies:
+    bufferutil: ^4.0.1
+    utf-8-validate: ">=5.0.2"
+  peerDependenciesMeta:
+    bufferutil:
+      optional: true
+    utf-8-validate:
+      optional: true
+  checksum: 10/8856922c26fd2d106931c16310d9a0bc2d6d37ed8771352bfa0d2a36df0ab5cb1f6528c6db8213f3333cf4ce93925e56f13604df0454cb0d4289fef922bebcdd
   languageName: node
   linkType: hard
 

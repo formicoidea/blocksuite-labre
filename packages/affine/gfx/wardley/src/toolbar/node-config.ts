@@ -1,4 +1,7 @@
-import type { NamedPalette } from '@labre/affine-components/color-picker';
+import type {
+  FrameworkPalette,
+  NamedPalette,
+} from '@labre/affine-components/color-picker';
 import {
   neutralPalettes,
   paletteColorAction,
@@ -178,6 +181,19 @@ export const WARDLEY_PALETTE_LIST: NamedPalette[] = [
   ...WARDLEY_PALETTES,
   ...neutralPalettes(),
 ];
+
+/**
+ * Wardley's page of the colour pickers' carousel (`docs/adr/0027`) — the very
+ * list its own node picker is seeded with, offered on every other picker too:
+ * a connector between two components, a free-text label, a frame drawn over
+ * the map. Registered from the FLAG-GATED view extension, because offering
+ * hues is tooling (`docs/adr/0009`).
+ */
+export const WARDLEY_FRAMEWORK_PALETTE: FrameworkPalette = {
+  framework: 'wardley',
+  labelWording: ['com.labre.framework.wardley', 'Wardley map'],
+  palettes: WARDLEY_PALETTE_LIST,
+};
 
 /**
  * Wardley nodes are {@link ShapeElementModel} subclasses, so the shape toolbar's

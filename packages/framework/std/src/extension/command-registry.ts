@@ -59,6 +59,30 @@ export type FrameworkId = (typeof FRAMEWORK_IDS)[number];
 export type CommandOwner = 'core' | FrameworkId;
 
 /**
+ * `'wardley:component'` → `'wardley'`, when that names a real framework.
+ *
+ * A role id is namespaced by its framework (`<framework>:<role>`, see
+ * `gfx/model/surface/role.ts`), so the namespace IS the framework — for every
+ * element that carries one, board included (`wardley:map`, `edgy:board`…).
+ * Anything else — a neutral element, a namespace no framework claims — answers
+ * `undefined`, which is what "this element belongs to no framework" means
+ * everywhere this is read.
+ *
+ * Lives here, beside {@link FRAMEWORK_IDS}, because it is the only knowledge it
+ * needs and because four call sites had each copied it: the materiality
+ * publisher, the pivot and tag commands, and now the colour pickers' palette
+ * carousel.
+ */
+export function frameworkOfRole(
+  role: string | undefined
+): FrameworkId | undefined {
+  const namespace = role?.split(':')[0];
+  return (FRAMEWORK_IDS as readonly string[]).includes(namespace ?? '')
+    ? (namespace as FrameworkId)
+    : undefined;
+}
+
+/**
  * Serializable precondition. Closed union; extended only by an amendment to
  * `docs/adr/0008`. `'always'` is the default when omitted.
  */

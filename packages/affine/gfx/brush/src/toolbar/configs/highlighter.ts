@@ -1,6 +1,7 @@
 import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
 import {
   adjustColorAlpha,
+  frameworkPaletteGroups,
   keepColor,
   packColor,
   type PickColorEvent,
@@ -115,6 +116,14 @@ export const highlighterToolbarConfig = {
           });
         };
 
+        // A highlight drawn over a framework board opens on that framework's
+        // hues (`docs/adr/0027`); the short stroke palette stays page one.
+        const carousel = frameworkPaletteGroups(
+          ctx.std,
+          models,
+          DefaultTheme.StrokeColorShortPalettes
+        );
+
         return html`
           <edgeless-color-picker-button
             .colorPanelClass="${'one-way small'}"
@@ -124,6 +133,8 @@ export const highlighterToolbarConfig = {
             .theme=${theme}
             .originalColor=${originalColor}
             .palettes=${DefaultTheme.StrokeColorShortPalettes}
+            .paletteGroups=${carousel.groups}
+            .activeGroupKey=${carousel.activeKey}
             .shouldKeepColor=${true}
             .enableCustomColor=${false}
             .std=${ctx.std}

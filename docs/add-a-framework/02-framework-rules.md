@@ -347,6 +347,21 @@ ink would otherwise orphan every element already drawn with it. Pinned by
 `notation.unit.spec.ts` (affine-shared) and an assertion in every module that
 reads the scale (its background, consts, legend or template spec).
 
+**R36. A framework with its own hues registers them from its FLAG-GATED view
+extension.** One `FrameworkPaletteExtension({ framework, labelWording,
+palettes })` in `…ViewExtension.setup()`, beside the senior tool, carrying the
+module's existing `*_PALETTE_LIST` and the framework's existing
+`com.labre.framework.*` wording — nothing is restated. Every contextual colour
+picker on the canvas then offers that page in its carousel, opening on it for
+elements whose origin is the framework (its role's namespace, else a
+connector's two ends, else the smallest board containing it). Offering hues is
+tooling: with the flag off the page disappears and every colour already stored
+stays (ADR [0009](../adr/0009-reversed-flag-contract.md),
+[0027](../adr/0027-framework-palettes-carousel.md)). A framework whose colours
+come from an official SVG registers nothing. Enforced by
+`framework-palettes-gating.unit.spec.ts` (`packages/affine/all`), which pins
+the palettes present with the flags on and their absence with them off.
+
 ## Identity: one framework is one drawing
 
 **R35. A framework is one drawing.** Split into several frameworks when the
