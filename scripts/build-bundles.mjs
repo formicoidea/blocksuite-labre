@@ -270,6 +270,25 @@ function copySrc(srcDir, destDir) {
   }
 }
 
+/**
+ * Copy the repo's MPL-2.0 LICENSE to a bundle's root.
+ *
+ * npm always packs a `LICENSE` sitting at the root of the package being packed,
+ * whatever `files` says — but only if it is there, and a generated bundle dir
+ * holds nothing but what this script writes. Called for all three kinds of
+ * bundle (core, shared, framework): the copyleft is file-level, so every
+ * tarball has to carry the text.
+ */
+function copyLicense(outDir) {
+  const license = path.join(ROOT, 'LICENSE');
+  if (!fs.existsSync(license)) {
+    throw new Error(
+      `No LICENSE at ${toPosix(license)} — a published bundle must ship the MPL-2.0 text`
+    );
+  }
+  fs.copyFileSync(license, path.join(outDir, 'LICENSE'));
+}
+
 /** Delete lines matching `re` from a file; assert exactly `expected` removed. */
 function dropLines(fileAbs, re, expected, label) {
   const lines = fs.readFileSync(fileAbs, 'utf8').split('\n');
@@ -419,7 +438,8 @@ function buildCore() {
     const after = rewriteCoreImports(abs, before);
     if (after !== before) fs.writeFileSync(abs, after);
   }
-  // 5. package.json (no @labre/* deps)
+  // 5. package.json (no @labre/* deps) + the LICENSE npm packs beside it
+  copyLicense(CORE_OUT);
   const exportsMap = { ...umbrella.exports }; // frameworks are not umbrella subpaths
   fs.writeFileSync(
     path.join(CORE_OUT, 'package.json'),
@@ -593,6 +613,7 @@ function buildFramework(fw, reverseMap) {
       body
   );
 
+  copyLicense(out);
   fs.writeFileSync(
     path.join(out, 'package.json'),
     JSON.stringify(
@@ -635,6 +656,7 @@ function buildShared(sh, reverseMap) {
   fs.rmSync(out, { recursive: true, force: true });
   copySrc(path.join(PKGS_DIR, sh.dir, 'src'), src);
   rewriteBundleImports(src, sh.pkg, reverseMap, sh.out);
+  copyLicense(out);
   fs.writeFileSync(
     path.join(out, 'package.json'),
     JSON.stringify(

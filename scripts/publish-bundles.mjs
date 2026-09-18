@@ -52,6 +52,20 @@ const visit = b => {
 };
 for (const b of bundles) visit(b);
 
+// MPL-2.0 is file-level copyleft: a tarball without the licence text must never
+// reach the registry. Checked for EVERY bundle before the first publish, so a
+// missing one cannot be found halfway through a release.
+for (const { dir, pkg: pj } of ordered) {
+  const license = path.join(dir, 'LICENSE');
+  if (!fs.existsSync(license) || fs.statSync(license).size === 0) {
+    throw new Error(
+      `${pj.name}: no (or empty) LICENSE in ${path.relative(process.cwd(), dir)} — ` +
+        'the published tarball would ship without the MPL-2.0 text; ' +
+        're-run `node scripts/build-bundles.mjs`'
+    );
+  }
+}
+
 for (const { dir, pkg: pj } of ordered) {
   const url = `https://registry.npmjs.org/${pj.name.replace('/', '%2F')}/${pj.version}`;
   const res = await fetch(url);

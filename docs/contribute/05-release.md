@@ -42,7 +42,9 @@ yarn ci:publish
 git-ignored `dist-bundles/`, `scripts/compile-bundles.mjs` compiles them and
 rewrites import specifiers so Node resolves them), then
 `scripts/publish-bundles.mjs latest`. A bundle whose version is already on
-the registry is skipped, so re-running is safe.
+the registry is skipped, so re-running is safe. Each generated bundle gets a
+copy of the root `LICENSE` (npm packs it whatever `files` says), and
+`publish-bundles.mjs` refuses to publish a bundle whose directory has none.
 
 ## Traps
 
