@@ -1,5 +1,72 @@
 # @labre/affine-gfx-ddd-shared
 
+## 0.42.0
+
+### Minor Changes
+
+- 6bc897b: **Breaking for hosts importing the table-shaped legend API** — migrate imports to `@labre/affine-block-surface` (see below).
+
+  The table-shaped legend API is removed, now that every framework subscribes its rows to the catalogue (ADR 0026). Gone from `@labre/affine-block-surface`: `AutoLegendSpec`, `AutoLegendSectionSpec`, `AutoLegendEntry`, `autoLegendSections`, `createAutoLegend` and `roleLabel`. Gone from `@labre/affine-gfx-ddd-shared`: the whole `shared/legend-auto.ts` re-export module (those six plus `rolesInBound`), the deprecated `addLegend` / `measureLegend` / `LegendLayout` / `LegendRow` / `LegendSection` re-exports in `shared/prefabs.ts`, and `dddLegendIcon`. All of them had moved to `@labre/affine-block-surface` and were kept only so the frameworks could migrate one at a time; import `createBoardLegend`, `legendFromCommands`, `rolesInBound`, `addLegend`, `measureLegend` and `legendIcon` from there. `LABEL_COLOR`, `LABEL_FONT` and `LABEL_FONT_SIZE` are now declared once, by the surface block, and re-exported by `@labre/affine-gfx-ddd-shared` under the same names. EDGY no longer depends on the DDD bundle at all.
+
+- 911d143: fix(blocks): a framework board is never raised above a board it strictly encloses when it is moved or resized, so a UML frame (or a C4 board) holding inner regions no longer jumps to the front and hides its own content (rule R10). The UML legend draws a real pictogram per notation — class box with its separators, actor, use case ellipse, package tab, component, node cube, lifeline, the typed edges with their hollow heads — instead of a plain chip; the shared legend gains glyph and edge swatches for any framework that wants them.
+
+### Patch Changes
+
+- 90ddf64: Framework artefacts are placed like shapes: choosing one arms a tool with a ghost under the cursor, Shift+S cycles the armed artefact, a click places it there.
+- 8506cc4: The Context Map cloud now appears in the board's automatic legend ("System / Big Ball of Mud"): it is placed with a new `context-map:system` role. Relationships drawn onto a cloud stay unjudged by validation. Clouds placed before this release carry no role and stay out of the legend until replaced.
+- f6ece47: The automatic legend becomes a platform: a command can subscribe the legend row its artefact deserves (`CommandDescriptor.legend`) and a board command the box that holds them (`legendBox`), and the surface block derives the whole legend from them — rows in command order, sub-titles from each row's own section or from the command's catalogue category, one row per role. One shared toolbar button and one telemetry emitter replace the seven copies, with the wire values unchanged. Nothing visible moves yet: every framework still draws its legend from its own table, re-exported from `@labre/affine-gfx-ddd-shared` while they migrate.
+- Updated dependencies [87ef822]
+- Updated dependencies [90ddf64]
+- Updated dependencies [f294deb]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [0dcd69b]
+- Updated dependencies [911d143]
+- Updated dependencies [a441d96]
+- Updated dependencies [4899136]
+- Updated dependencies [2f5c621]
+- Updated dependencies [911d143]
+- Updated dependencies [9ecfc77]
+- Updated dependencies [48213e7]
+- Updated dependencies [512ab39]
+- Updated dependencies [7437481]
+- Updated dependencies [2e179bb]
+- Updated dependencies [911d143]
+- Updated dependencies [4f5faa3]
+- Updated dependencies [e5d0e6e]
+- Updated dependencies [911d143]
+- Updated dependencies [f3f412a]
+- Updated dependencies [d756a4a]
+- Updated dependencies [6bc897b]
+- Updated dependencies [f6ece47]
+- Updated dependencies [ef0e3da]
+- Updated dependencies [e2f6ca5]
+- Updated dependencies [d1851b1]
+- Updated dependencies [5a8ec30]
+- Updated dependencies [549056e]
+- Updated dependencies [2bb7318]
+- Updated dependencies [7898f84]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [55d9f13]
+  - @labre/affine-widget-edgeless-toolbar@0.42.0
+  - @labre/std@0.42.0
+  - @labre/affine-block-surface@0.42.0
+  - @labre/affine-gfx-template@0.42.0
+  - @labre/affine-model@0.42.0
+  - @labre/affine-shared@0.42.0
+  - @labre/store@0.42.0
+  - @labre/affine-gfx-group@0.42.0
+  - @labre/global@0.42.0
+  - @labre/affine-gfx-pointer@0.42.0
+  - @labre/affine-ext-loader@0.42.0
+
 ## 0.41.0
 
 ### Minor Changes

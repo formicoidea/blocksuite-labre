@@ -1,5 +1,49 @@
 # @labre/affine-shared
 
+## 0.42.0
+
+### Minor Changes
+
+- 0dcd69b: Every framework board offers Export SVG in its contextual toolbar (⋮): the selected board and everything drawn on it, rendered as vector SVG through svgcanvas.
+- 2f5c621: Canvas text offers Bold (700) and Bold Italic for every font family that ships them.
+- 911d143: feat(edgeless): a connector carries two END labels beside its centre one — a multiplicity, a role name, a qualifier — each anchored beside the endpoint it belongs to and following that endpoint alone when a node moves. Four optional fields (`sourceLabel`, `sourceLabelXYWH`, `targetLabel`, `targetLabelXYWH`) are absent by default, so a connector that has none serialises exactly as before and an older build opens the document unchanged. Double-click near an endpoint to open that end's label; the connector toolbar gains "Source label" and "Target label". Canvas and DOM renderers paint the three boxes and clip the stroke around each. See `docs/adr/0020-connector-end-labels.md`.
+- 911d143: UML 2.5.1 phase 3, sequence diagrams: the `sd` frame and the interaction it holds — lifelines with a named head and a dashed spine, execution bars, destruction marks, combined fragments whose operands are bands you add like a lane (alt, opt, loop, par, break, critical and the rest), and the `ref` interaction use. Five kinds of message (synchronous, asynchronous, reply, create, delete) draw §17.4.4's arrowheads and carry a parsed `name(args) : return` label; a sheet reads top to bottom, so the vertical order of the messages is the order of the conversation. Four rules, their readings, morphs, templates, toolbar and legend rows. PlantUML and XMI now **read** sequence diagrams as well as writing them — a `.puml` or a Papyrus `.xmi` opens as a drawn diagram, and a file this pack wrote comes back byte for byte — and draw.io recognises lifelines, destructions, fragments and messages best effort. Scope and exclusions in ADR 0022.
+
+### Patch Changes
+
+- 48213e7: Raise the floor of the shipped `dompurify` to `^3.4.13`, the smallest version
+  clear of its five open advisories (up to GHSA-55q2-fjhq-7xh7, an XSS through a
+  detached subtree). No behaviour change in a browser.
+- 512ab39: The editor reports `DocumentDamaged` on the telemetry bus when a document opens with elements that have no geometry, so the host can count damaged documents.
+- 7437481: An embedded iframe is sandboxed: a known provider gets `allow-same-origin allow-scripts allow-forms allow-presentation` and may widen it through its `sandbox` option, while an arbitrary url only gets `allow-scripts`. A stored url that is not http(s) shows the error card instead of reaching the iframe `src`, and opening the original link no longer hands the opener to the target page.
+- 2e179bb: Colour pickers on the canvas page through the palettes of the active frameworks: the editor palette is always the first page, and the picker opens on the palette of the framework the selected element belongs to — its own role, else the ends of a connector, else the smallest framework board it sits on. A connector between two Wardley components, a label beside them or a frame drawn round the map can now be tinted with the framework's own hues instead of a hex typed from memory. Offering a palette is tooling: a framework switched off simply loses its page, and every colour already stored stays exactly as it was drawn.
+- f6ece47: The automatic legend becomes a platform: a command can subscribe the legend row its artefact deserves (`CommandDescriptor.legend`) and a board command the box that holds them (`legendBox`), and the surface block derives the whole legend from them — rows in command order, sub-titles from each row's own section or from the command's catalogue category, one row per role. One shared toolbar button and one telemetry emitter replace the seven copies, with the wire values unchanged. Nothing visible moves yet: every framework still draws its legend from its own table, re-exported from `@labre/affine-gfx-ddd-shared` while they migrate.
+- e2f6ca5: A colour picker's palette name now reads as the panel's title, on the same left edge as its labels and its swatches, and clicking it swaps the swatches for a list of every palette — each row showing its own colours, one click to any of them. Paging (by the list or by a wheel anywhere over the picker) slides the swatches in from the side the palette came from, with a spring settle that stops under `prefers-reduced-motion`, and the panel keeps its width throughout.
+- 5a8ec30: Tab, Shift-Tab and Enter pressed on a native control such as the collapse button act on that control, in every block keymap and not only in the root fallback.
+- 549056e: A readonly peer no longer refetches and rewrites a bookmark or embed card when another peer changes its URL.
+- Updated dependencies [87ef822]
+- Updated dependencies [f294deb]
+- Updated dependencies [911d143]
+- Updated dependencies [4899136]
+- Updated dependencies [911d143]
+- Updated dependencies [48213e7]
+- Updated dependencies [512ab39]
+- Updated dependencies [2e179bb]
+- Updated dependencies [911d143]
+- Updated dependencies [4f5faa3]
+- Updated dependencies [f3f412a]
+- Updated dependencies [f6ece47]
+- Updated dependencies [d1851b1]
+- Updated dependencies [2bb7318]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [55d9f13]
+  - @labre/std@0.42.0
+  - @labre/affine-model@0.42.0
+  - @labre/store@0.42.0
+  - @labre/global@0.42.0
+
 ## 0.41.0
 
 ### Minor Changes

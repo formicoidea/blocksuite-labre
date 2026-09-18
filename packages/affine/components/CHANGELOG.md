@@ -1,5 +1,46 @@
 # @labre/affine-components
 
+## 0.42.0
+
+### Minor Changes
+
+- 2e179bb: Colour pickers on the canvas page through the palettes of the active frameworks: the editor palette is always the first page, and the picker opens on the palette of the framework the selected element belongs to — its own role, else the ends of a connector, else the smallest framework board it sits on. A connector between two Wardley components, a label beside them or a frame drawn round the map can now be tinted with the framework's own hues instead of a hex typed from memory. Offering a palette is tooling: a framework switched off simply loses its page, and every colour already stored stays exactly as it was drawn.
+
+### Patch Changes
+
+- e2f6ca5: A colour picker's palette name now reads as the panel's title, on the same left edge as its labels and its swatches, and clicking it swaps the swatches for a list of every palette — each row showing its own colours, one click to any of them. Paging (by the list or by a wheel anywhere over the picker) slides the swatches in from the side the palette came from, with a spring settle that stops under `prefers-reduced-motion`, and the panel keeps its width throughout.
+- c73b25f: The blob state subscription no longer writes a signal inside the effect that creates it, which raised `Cycle detected` on a synchronously emitting host.
+- Updated dependencies [87ef822]
+- Updated dependencies [f294deb]
+- Updated dependencies [911d143]
+- Updated dependencies [0dcd69b]
+- Updated dependencies [4899136]
+- Updated dependencies [2f5c621]
+- Updated dependencies [911d143]
+- Updated dependencies [48213e7]
+- Updated dependencies [512ab39]
+- Updated dependencies [7437481]
+- Updated dependencies [2e179bb]
+- Updated dependencies [911d143]
+- Updated dependencies [4f5faa3]
+- Updated dependencies [f3f412a]
+- Updated dependencies [f6ece47]
+- Updated dependencies [e2f6ca5]
+- Updated dependencies [d1851b1]
+- Updated dependencies [5a8ec30]
+- Updated dependencies [549056e]
+- Updated dependencies [2bb7318]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [55d9f13]
+  - @labre/std@0.42.0
+  - @labre/affine-model@0.42.0
+  - @labre/affine-shared@0.42.0
+  - @labre/store@0.42.0
+  - @labre/global@0.42.0
+  - @labre/sync@0.42.0
+
 ## 0.41.0
 
 ### Minor Changes

@@ -1,5 +1,180 @@
 # @labre/affine
 
+## 0.42.0
+
+### Minor Changes
+
+- 0dcd69b: Every framework board offers Export SVG in its contextual toolbar (⋮): the selected board and everything drawn on it, rendered as vector SVG through svgcanvas.
+- 911d143: feat(edgeless): UML 2.5.1 pack, phase 1
+
+  A ninth business framework on the edgeless senior row: **UML**, covering the
+  four structural diagrams a transformation architect draws by hand — class,
+  package, object and use case.
+
+  What it puts on the canvas: a diagram frame with the cut-corner name tag and a
+  kind picker (class / package / object / use case), a subject frame for the use
+  cases one system offers, and ten artefacts — class, interface, enumeration,
+  object, package, note, actor, use case — each arriving as its shape and its own
+  compartments rather than as a box to type into. Nine typed relationships:
+  association, aggregation, composition, generalization, realization, dependency,
+  anchor, include and extend, each drawn with the endpoint UML gives it.
+
+  What it can hand you: the selected diagram as **PlantUML** source, or as **XMI
+  2.5.1** — the OMG's own interchange format, read by every UML tool. Both are
+  semantic-tier capabilities (`docs/adr/0012`): the attributes and operations you
+  typed are parsed and written as model, not as a picture of one.
+
+  Flag-gated like every framework (`uml`, ADR 0009): switching it off removes the
+  toolbar button, its menu, the templates shelf and the exports. A diagram already
+  drawn keeps painting, stays selectable and stays editable.
+
+- 911d143: UML 2.5.1 phase 2, structure and behaviour: component and deployment diagrams (component, port, provided and required interfaces, artifact, node, device, execution environment; deploy, manifest, communication path), activity and state machine diagrams (nineteen behaviour artefacts, partitions with an orientation toggle, regions, control flow, object flow, transitions with a parsed trigger/guard/effect label), their rules, readings, morphs, and their XMI and PlantUML exports.
+- 911d143: UML 2.5.1 phase 3, sequence diagrams: the `sd` frame and the interaction it holds — lifelines with a named head and a dashed spine, execution bars, destruction marks, combined fragments whose operands are bands you add like a lane (alt, opt, loop, par, break, critical and the rest), and the `ref` interaction use. Five kinds of message (synchronous, asynchronous, reply, create, delete) draw §17.4.4's arrowheads and carry a parsed `name(args) : return` label; a sheet reads top to bottom, so the vertical order of the messages is the order of the conversation. Four rules, their readings, morphs, templates, toolbar and legend rows. PlantUML and XMI now **read** sequence diagrams as well as writing them — a `.puml` or a Papyrus `.xmi` opens as a drawn diagram, and a file this pack wrote comes back byte for byte — and draw.io recognises lifelines, destructions, fragments and messages best effort. Scope and exclusions in ADR 0022.
+
+### Patch Changes
+
+- 83807ae: fix(blocks): the published bundles now ship the MPL-2.0 `LICENSE` file. `scripts/build-bundles.mjs` copies the repo's root `LICENSE` into every generated bundle directory (core, the shared bundle and each framework), so `npm pack` embeds it — it always packs a root `LICENSE`, but only if one is there, and a generated directory holds nothing the script did not write. `scripts/publish-bundles.mjs` refuses to publish a bundle whose directory has no (or an empty) `LICENSE`.
+- e5d0e6e: An interchange import whose document turns read-only while the file is being read now says so and writes nothing, instead of failing silently in a rejected promise.
+- 911d143: feat(blocks): the UML pack's last displayed strings cross the translation seam (ADR 0023). Its automatic legend resolves its box title through the shared `BOARD_LEGEND_TITLE` and its three sections ("Elements", "Frames", "Relations") through keys of its own; its Templates category resolves its tile name through the senior button's `com.labre.framework.uml`; and the nineteen fixed-wording remarks the PlantUML, XMI and draw.io readers and the shared materializer put in an import report now carry a key and its `{{name}}` parameters, resolved at report time like BPMN's. The surface's own "same provisional name" remark is keyed with them. Every one of them reads exactly as before with no `TranslationProvider` registered, with one wording change the seam asks for: the XMI reader's "N elements are declared inside another" is now the plural-neutral "{{count}} element(s) are declared…", since agreement is the host's.
+- Updated dependencies [87ef822]
+- Updated dependencies [90ddf64]
+- Updated dependencies [f294deb]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [0dcd69b]
+- Updated dependencies [911d143]
+- Updated dependencies [7cc5126]
+- Updated dependencies [a441d96]
+- Updated dependencies [4899136]
+- Updated dependencies [2f5c621]
+- Updated dependencies [911d143]
+- Updated dependencies [8506cc4]
+- Updated dependencies [9ecfc77]
+- Updated dependencies [48213e7]
+- Updated dependencies [dd1c772]
+- Updated dependencies [512ab39]
+- Updated dependencies [f5acc9b]
+- Updated dependencies [7437481]
+- Updated dependencies [2e179bb]
+- Updated dependencies [911d143]
+- Updated dependencies [4f5faa3]
+- Updated dependencies [e5d0e6e]
+- Updated dependencies [911d143]
+- Updated dependencies [f3f412a]
+- Updated dependencies [d756a4a]
+- Updated dependencies [3c62c32]
+- Updated dependencies [6bc897b]
+- Updated dependencies [b1bf440]
+- Updated dependencies [f6ece47]
+- Updated dependencies [ef0e3da]
+- Updated dependencies [e2f6ca5]
+- Updated dependencies [d3253d3]
+- Updated dependencies [fff6bea]
+- Updated dependencies [d1851b1]
+- Updated dependencies [5a8ec30]
+- Updated dependencies [549056e]
+- Updated dependencies [2bb7318]
+- Updated dependencies [c73b25f]
+- Updated dependencies [7898f84]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [9877228]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [911d143]
+- Updated dependencies [46423ff]
+- Updated dependencies [ad28f94]
+- Updated dependencies [dddcc56]
+- Updated dependencies [254c99d]
+- Updated dependencies [55d9f13]
+  - @labre/affine-widget-edgeless-toolbar@0.42.0
+  - @labre/std@0.42.0
+  - @labre/affine-block-root@0.42.0
+  - @labre/affine-block-surface@0.42.0
+  - @labre/affine-gfx-template@0.42.0
+  - @labre/affine-gfx-wardley@0.42.0
+  - @labre/affine-gfx-bpmn@0.42.0
+  - @labre/affine-gfx-c4@0.42.0
+  - @labre/affine-gfx-edgy@0.42.0
+  - @labre/affine-gfx-cynefin-estuarine@0.42.0
+  - @labre/affine-gfx-ddd-shared@0.42.0
+  - @labre/affine-gfx-ddd-core-domain@0.42.0
+  - @labre/affine-gfx-ddd-context-map@0.42.0
+  - @labre/affine-gfx-ddd-event-storming@0.42.0
+  - @labre/affine-model@0.42.0
+  - @labre/affine-gfx-uml@0.42.0
+  - @labre/affine-shared@0.42.0
+  - @labre/affine-widget-page-dragging-area@0.42.0
+  - @labre/affine-widget-keyboard-toolbar@0.42.0
+  - @labre/affine-block-surface-ref@0.42.0
+  - @labre/affine-widget-linked-doc@0.42.0
+  - @labre/store@0.42.0
+  - @labre/affine-gfx-text@0.42.0
+  - @labre/affine-gfx-connector@0.42.0
+  - @labre/affine-block-edgeless-text@0.42.0
+  - @labre/affine-inline-preset@0.42.0
+  - @labre/affine-block-embed@0.42.0
+  - @labre/affine-components@0.42.0
+  - @labre/affine-block-frame@0.42.0
+  - @labre/affine-gfx-brush@0.42.0
+  - @labre/affine-gfx-shape@0.42.0
+  - @labre/affine-gfx-group@0.42.0
+  - @labre/global@0.42.0
+  - @labre/affine-block-paragraph@0.42.0
+  - @labre/affine-block-note@0.42.0
+  - @labre/affine-block-list@0.42.0
+  - @labre/affine-block-bookmark@0.42.0
+  - @labre/affine-gfx-ddd-aggregate@0.42.0
+  - @labre/affine-gfx-link@0.42.0
+  - @labre/affine-gfx-mindmap@0.42.0
+  - @labre/affine-gfx-note@0.42.0
+  - @labre/affine-gfx-pointer@0.42.0
+  - @labre/affine-block-attachment@0.42.0
+  - @labre/affine-block-callout@0.42.0
+  - @labre/affine-block-code@0.42.0
+  - @labre/affine-block-data-view@0.42.0
+  - @labre/affine-block-database@0.42.0
+  - @labre/affine-block-divider@0.42.0
+  - @labre/affine-block-embed-doc@0.42.0
+  - @labre/affine-block-image@0.42.0
+  - @labre/affine-block-latex@0.42.0
+  - @labre/affine-block-table@0.42.0
+  - @labre/data-view@0.42.0
+  - @labre/affine-foundation@0.42.0
+  - @labre/affine-fragment-adapter-panel@0.42.0
+  - @labre/affine-fragment-doc-title@0.42.0
+  - @labre/affine-fragment-frame-panel@0.42.0
+  - @labre/affine-fragment-outline@0.42.0
+  - @labre/affine-gfx-turbo-renderer@0.42.0
+  - @labre/affine-inline-comment@0.42.0
+  - @labre/affine-inline-footnote@0.42.0
+  - @labre/affine-inline-latex@0.42.0
+  - @labre/affine-inline-link@0.42.0
+  - @labre/affine-inline-mention@0.42.0
+  - @labre/affine-inline-reference@0.42.0
+  - @labre/affine-rich-text@0.42.0
+  - @labre/affine-widget-drag-handle@0.42.0
+  - @labre/affine-widget-edgeless-auto-connect@0.42.0
+  - @labre/affine-widget-edgeless-dragging-area@0.42.0
+  - @labre/affine-widget-edgeless-selected-rect@0.42.0
+  - @labre/affine-widget-edgeless-zoom-toolbar@0.42.0
+  - @labre/affine-widget-frame-title@0.42.0
+  - @labre/affine-widget-note-slicer@0.42.0
+  - @labre/affine-widget-remote-selection@0.42.0
+  - @labre/affine-widget-scroll-anchoring@0.42.0
+  - @labre/affine-widget-slash-menu@0.42.0
+  - @labre/affine-widget-toolbar@0.42.0
+  - @labre/affine-widget-viewport-overlay@0.42.0
+  - @labre/affine-ext-loader@0.42.0
+  - @labre/sync@0.42.0
+
 ## 0.41.0
 
 ### Minor Changes

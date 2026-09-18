@@ -1,5 +1,11 @@
 # @labre/global
 
+## 0.42.0
+
+### Patch Changes
+
+- f3f412a: An element whose `xywh` is missing from the document reads `[0,0,0,0]`, is reported once in the console and no longer floods it on every frame.
+
 ## 0.41.0
 
 ## 0.40.0
