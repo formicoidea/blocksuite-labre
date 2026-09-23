@@ -61,6 +61,22 @@ export const sideMap = new Map([
   ['affine:surface:shape', { top: 26, bottom: -26 }],
 ]);
 
+/**
+ * The narrowest room the row is ever told it has.
+ *
+ * A cap is a `max-width`: below the width of what the row cannot give up, it
+ * stops being an instruction and becomes a guillotine — the entries past it are
+ * painted outside the row's own background, over the document. A floor keeps
+ * that from ever happening on a number nobody meant.
+ *
+ * 120px is a minimal row, drawn: three icon buttons — the "⋮" plus the two
+ * entries a menu is worth opening for — at {@link MENU_BUTTON_WIDTH} each, the
+ * two 8px gaps between them, one separator and its gap, and the row's own 6px
+ * of padding on either side. 109px, rounded up to leave the border its half
+ * pixel and the eye a little air.
+ */
+const MIN_TOOLBAR_WIDTH = 120;
+
 export function autoUpdatePosition(
   signal: AbortSignal,
   toolbar: EditorToolbar,
@@ -97,22 +113,32 @@ export function autoUpdatePosition(
       }
     : {
         placement,
+        // ORDER MATTERS, and `size` comes LAST of the four — after `inline`,
+        // after `shift`, after `flip` — which is the order floating-ui
+        // documents for it and the order this row needs.
+        //
+        // `size` asks the question "how much room is there", and it has two
+        // different answers depending on whether a `shift` has already run:
+        //
+        // - **after `shift`** (`middlewareData.shift.enabled.x`): the room is
+        //   `maximumClippingWidth` — the clipping box, less the padding. Which
+        //   is the truth: it is where the row may be drawn, and `shift` will
+        //   slide the row to fit inside it.
+        // - **before `shift`**, on an UNALIGNED placement (`'top'`, which is
+        //   what a text selection's row uses), floating-ui falls back to
+        //   `width - 2 × overflow` — the row's own width, less twice what a
+        //   row CENTRED on the selection would stick out by. That number is
+        //   not room at all. It is fine while the centred row fits, and the
+        //   moment it would stick out by one pixel it collapses below the
+        //   row's width and the entries start leaving for the "⋮" — with 900px
+        //   of empty editor next to them, because `shift` was about to slide
+        //   the row back in anyway. Worse, it is computed from a width `size`
+        //   itself has just capped, so each `reset` makes it smaller: the
+        //   format bar measured 75px of "room" inside a 420px window.
+        //
+        // See the cap's only reader, `availableWidthOf`.
         middleware: [
           offset(10 + offsetY),
-          size({
-            padding: 10,
-            apply: ({ elements, availableWidth }) => {
-              elements.floating.style.width = 'fit-content';
-              // The room the row has. The toolbar never wraps and never
-              // scrolls: past this width its entries give way, in the order
-              // they declared, into the "⋮" menu — see `ToolbarFitter`.
-              const capped = `${availableWidth}px`;
-              if (elements.floating.style.maxWidth !== capped) {
-                elements.floating.style.maxWidth = capped;
-                onAvailableWidth?.();
-              }
-            },
-          }),
           isInline ? inline() : undefined,
           shift(state => ({
             padding: {
@@ -134,6 +160,20 @@ export function autoUpdatePosition(
           // 25/08/2026, third video: the map background's row). Horizontal
           // placement belongs to `shift`, which slides — it never teleports.
           flip({ padding: 10, crossAxis: false, flipAlignment: false }),
+          size({
+            padding: 10,
+            apply: ({ elements, availableWidth }) => {
+              elements.floating.style.width = 'fit-content';
+              // The room the row has. The toolbar never wraps and never
+              // scrolls: past this width its entries give way, in the order
+              // they declared, into the "⋮" menu — see `ToolbarFitter`.
+              const capped = `${Math.max(availableWidth, MIN_TOOLBAR_WIDTH)}px`;
+              if (elements.floating.style.maxWidth !== capped) {
+                elements.floating.style.maxWidth = capped;
+                onAvailableWidth?.();
+              }
+            },
+          }),
           hide(),
         ],
       };
@@ -850,6 +890,10 @@ const MAX_FIT_ROUNDS = 3;
  * keeps its natural width under it, while an `inner` toolbar is pinned to the
  * exact width of the block it sits on. Anything else — a row nothing has
  * positioned yet — has all the room in the world and collapses nothing.
+ *
+ * The cap is the clipping box less its padding, never the row's own width: see
+ * the middleware order in {@link autoUpdatePosition}. It is floored at
+ * {@link MIN_TOOLBAR_WIDTH}.
  */
 function availableWidthOf(toolbar: EditorToolbar) {
   const max = Number.parseFloat(toolbar.style.maxWidth);
