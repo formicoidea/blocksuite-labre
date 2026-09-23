@@ -1,5 +1,25 @@
 # @labre/affine-widget-toolbar
 
+## 0.43.0
+
+### Patch Changes
+
+- 8f54236: The selection toolbar keeps its whole row at every window size: it now measures the room the editor has instead of what a row centred on the selection would overhang by, slides along the edge rather than sending an action into the "⋮", and can no longer paint outside its own background.
+- Updated dependencies [da68dbb]
+- Updated dependencies [72f7282]
+- Updated dependencies [8f54236]
+- Updated dependencies [f1a4af7]
+- Updated dependencies [8a927dd]
+  - @labre/affine-shared@0.43.0
+  - @labre/affine-block-surface@0.43.0
+  - @labre/affine-components@0.43.0
+  - @labre/affine-block-database@0.43.0
+  - @labre/affine-block-table@0.43.0
+  - @labre/affine-ext-loader@0.43.0
+  - @labre/affine-model@0.43.0
+  - @labre/global@0.43.0
+  - @labre/std@0.43.0
+
 ## 0.42.0
 
 ### Patch Changes

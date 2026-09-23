@@ -1,5 +1,43 @@
 # @labre/affine-gfx-cynefin-estuarine
 
+## 0.43.0
+
+### Patch Changes
+
+- 72f7282: A Cynefin frame dragged off its proportion no longer keeps the empty bands it
+  letterboxes: when the resize handle is let go, its border comes back onto the
+  drawing, so the board can be selected by the edge you can see. At 1600 × 600
+  that is 383 model units of nothing removed from each side. The picture itself is
+  untouched — same shape, same size, same centre — and the resize and its crop are
+  one undo step. A frame stretched before this change is cropped the next time it
+  is resized; nothing is rewritten behind the user's back, and a readonly document
+  writes nothing at all.
+
+  The uniform fit the three hand-drawn frameworks share (Cynefin, Estuarine, EDGY
+  and the DDD stencils) was copied in three packages and is now one function in
+  `@labre/affine-block-surface`, so the crop reads the very function the renderer
+  paints through.
+
+- a672979: Stretching an Estuarine map no longer tears its axes apart: the arrowheads stay welded to the end of the axis they belong to, and the italic `e` / `t` letters keep the same gap from their axis, however wide or tall the map is pulled. A map at its normal proportions is unchanged, to the pixel.
+- bd3f165: A new Estuarine map is born on a box that hugs its drawing instead of the loose SVG viewBox it was authored in: the board's border — the edge you grab it by — now runs about 7 units from the ink on all four sides, where it stood up to 35 away. The drawing itself keeps exactly the size it had, so the new board is simply smaller (828 × 961 → 791 × 944). An Estuarine map already in a document keeps its box and its contents, and its drawing grows to fill it — about +4.7 % wide and +1.8 % tall.
+- Updated dependencies [da68dbb]
+- Updated dependencies [72f7282]
+- Updated dependencies [8f54236]
+- Updated dependencies [f1a4af7]
+- Updated dependencies [8a927dd]
+  - @labre/affine-shared@0.43.0
+  - @labre/affine-block-surface@0.43.0
+  - @labre/affine-components@0.43.0
+  - @labre/affine-gfx-template@0.43.0
+  - @labre/affine-widget-edgeless-toolbar@0.43.0
+  - @labre/affine-gfx-shape@0.43.0
+  - @labre/affine-gfx-pointer@0.43.0
+  - @labre/affine-ext-loader@0.43.0
+  - @labre/affine-model@0.43.0
+  - @labre/global@0.43.0
+  - @labre/std@0.43.0
+  - @labre/store@0.43.0
+
 ## 0.42.0
 
 ### Patch Changes

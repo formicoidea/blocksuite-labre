@@ -1,5 +1,112 @@
 # @labre/affine
 
+## 0.43.0
+
+### Patch Changes
+
+- 02fcc50: refactor(blocks): no visible change; the chrome accent now follows the host theme token everywhere. The 61 hard-coded spellings of the AFFiNE blue (`#1e96eb`, `rgb(a)(30, 150, 235, …)`) that short-circuited the theme are gone: CSS and inline SVG reach it through `var(--affine-primary-color)`, canvas painters resolve it through the new `getChromeAccentColor(std)`, and the only literal left is the fallback of the standalone HTML export's stylesheet, which is opened without a theme sheet. Two of those literals were bugs that always won over their variable — `var(--affine—primary—color, …)` (em dashes instead of hyphens) on the edgeless text block and `var(--light-brand-color, …)` (a variable defined nowhere) on the frame panel's selected card — so both now take the accent they were meant to. A host that redefines `--affine-primary-color` repaints the whole editor, canvas included. One visible change comes with it: the direction chips of every framework now follow the theme accent token, so the Wardley dependency chip no longer stands out in a second blue — the "needs" and "is evolving towards" labels of one map are the same colour, and `wardley:dependency` no longer declares a chip colour of its own.
+- 81563c6: fix(blocks): the dedicated YouTube, Figma and Loom embeds now render their iframe sandboxed, like every other embedded frame. They each carry `sandbox="allow-same-origin allow-scripts allow-presentation"` — enough for the players to run, no more — and the three levels of the iframe sandbox policy now live in one module of the embed package instead of inside the generic iframe block, so a new embed block cannot be shipped without one (a test sweeps every template of the package and names the offender).
+- 9f9e3c8: fix(edgeless): pressing "Generate legend" a second time now REFRESHES the
+  board's legend instead of stacking an identical box on top of the first one.
+  The placement is derived from the board, so the copies landed at the same pixel
+  and were invisible — one legend to the eye, N groups and N × ~15 elements in
+  the document. The box is replaced in a single undo step (one Ctrl+Z brings the
+  previous one back whole), which also means hand retouching of the box — a moved
+  box, a renamed group, a recoloured swatch — is lost on a regenerate. Every
+  framework that has a legend gets this from the shared button. Known limit: a
+  legend generated before 0.42, when the `core:legend` role shipped, carries no
+  role, is not recognised and still stacks; nothing is backfilled, so such a box
+  has to be deleted by hand once.
+- Updated dependencies [da68dbb]
+- Updated dependencies [1b86f3a]
+- Updated dependencies [72f7282]
+- Updated dependencies [5d0f9b2]
+- Updated dependencies [a672979]
+- Updated dependencies [bd3f165]
+- Updated dependencies [8f54236]
+- Updated dependencies [f1a4af7]
+- Updated dependencies [8a927dd]
+  - @labre/affine-block-root@0.43.0
+  - @labre/affine-shared@0.43.0
+  - @labre/affine-gfx-ddd-core-domain@0.43.0
+  - @labre/affine-block-surface@0.43.0
+  - @labre/affine-gfx-cynefin-estuarine@0.43.0
+  - @labre/affine-gfx-edgy@0.43.0
+  - @labre/affine-widget-toolbar@0.43.0
+  - @labre/affine-components@0.43.0
+  - @labre/affine-widget-slash-menu@0.43.0
+  - @labre/affine-gfx-template@0.43.0
+  - @labre/affine-block-embed@0.43.0
+  - @labre/affine-block-embed-doc@0.43.0
+  - @labre/affine-widget-edgeless-toolbar@0.43.0
+  - @labre/affine-gfx-shape@0.43.0
+  - @labre/affine-gfx-mindmap@0.43.0
+  - @labre/affine-gfx-text@0.43.0
+  - @labre/affine-gfx-connector@0.43.0
+  - @labre/affine-gfx-bpmn@0.43.0
+  - @labre/affine-block-attachment@0.43.0
+  - @labre/affine-block-bookmark@0.43.0
+  - @labre/affine-block-callout@0.43.0
+  - @labre/affine-block-code@0.43.0
+  - @labre/affine-block-data-view@0.43.0
+  - @labre/affine-block-database@0.43.0
+  - @labre/affine-block-divider@0.43.0
+  - @labre/affine-block-edgeless-text@0.43.0
+  - @labre/affine-block-frame@0.43.0
+  - @labre/affine-block-image@0.43.0
+  - @labre/affine-block-latex@0.43.0
+  - @labre/affine-block-list@0.43.0
+  - @labre/affine-block-note@0.43.0
+  - @labre/affine-block-paragraph@0.43.0
+  - @labre/affine-block-surface-ref@0.43.0
+  - @labre/affine-block-table@0.43.0
+  - @labre/data-view@0.43.0
+  - @labre/affine-foundation@0.43.0
+  - @labre/affine-fragment-adapter-panel@0.43.0
+  - @labre/affine-fragment-doc-title@0.43.0
+  - @labre/affine-fragment-frame-panel@0.43.0
+  - @labre/affine-fragment-outline@0.43.0
+  - @labre/affine-gfx-brush@0.43.0
+  - @labre/affine-gfx-c4@0.43.0
+  - @labre/affine-gfx-ddd-aggregate@0.43.0
+  - @labre/affine-gfx-ddd-context-map@0.43.0
+  - @labre/affine-gfx-ddd-event-storming@0.43.0
+  - @labre/affine-gfx-ddd-shared@0.43.0
+  - @labre/affine-gfx-group@0.43.0
+  - @labre/affine-gfx-link@0.43.0
+  - @labre/affine-gfx-note@0.43.0
+  - @labre/affine-gfx-pointer@0.43.0
+  - @labre/affine-gfx-uml@0.43.0
+  - @labre/affine-gfx-wardley@0.43.0
+  - @labre/affine-inline-comment@0.43.0
+  - @labre/affine-inline-footnote@0.43.0
+  - @labre/affine-inline-latex@0.43.0
+  - @labre/affine-inline-link@0.43.0
+  - @labre/affine-inline-mention@0.43.0
+  - @labre/affine-inline-preset@0.43.0
+  - @labre/affine-inline-reference@0.43.0
+  - @labre/affine-rich-text@0.43.0
+  - @labre/affine-widget-drag-handle@0.43.0
+  - @labre/affine-widget-edgeless-auto-connect@0.43.0
+  - @labre/affine-widget-edgeless-dragging-area@0.43.0
+  - @labre/affine-widget-edgeless-selected-rect@0.43.0
+  - @labre/affine-widget-edgeless-zoom-toolbar@0.43.0
+  - @labre/affine-widget-frame-title@0.43.0
+  - @labre/affine-widget-keyboard-toolbar@0.43.0
+  - @labre/affine-widget-linked-doc@0.43.0
+  - @labre/affine-widget-note-slicer@0.43.0
+  - @labre/affine-widget-page-dragging-area@0.43.0
+  - @labre/affine-widget-remote-selection@0.43.0
+  - @labre/affine-widget-scroll-anchoring@0.43.0
+  - @labre/affine-widget-viewport-overlay@0.43.0
+  - @labre/affine-ext-loader@0.43.0
+  - @labre/affine-gfx-turbo-renderer@0.43.0
+  - @labre/affine-model@0.43.0
+  - @labre/global@0.43.0
+  - @labre/std@0.43.0
+  - @labre/store@0.43.0
+  - @labre/sync@0.43.0
+
 ## 0.42.0
 
 ### Minor Changes

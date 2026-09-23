@@ -1,5 +1,40 @@
 # @labre/affine-components
 
+## 0.43.0
+
+### Patch Changes
+
+- 8f54236: The selection toolbar keeps its whole row at every window size: it now measures the room the editor has instead of what a row centred on the selection would overhang by, slides along the edge rather than sending an action into the "⋮", and can no longer paint outside its own background.
+- f1a4af7: Twenty-six strings a French host still read in English now go through the
+  translation seam: the colour picker's Heavy row, the slash menu's List and
+  Style headers, the five "Other" template tiles, the embed error card's
+  sentence, the SVG import's three refusals, the two "Untitled" linked-doc
+  titles, and the accessible name of every toolbar menu (which used to read
+  "changer le type de forme-menu"). New keys, English fallbacks letter for
+  letter what shipped — a host with no catalogue sees no change.
+
+  New keys: `com.labre.palette-name.heavy-{red,orange,yellow,green,blue,purple,magenta}`,
+  `com.labre.slash-menu.group.list`,
+  `com.labre.template.name.{swot,kanban-board,business-model-canvas,fishbone,gantt-chart}`,
+  `com.labre.embed.iframe.error.{no-embed-data,invalid-url,message}`,
+  `com.labre.interchange.svg.error.{malformed-xml,not-svg,sanitized-away}`,
+  `com.labre.interchange.import.default-name`, `com.labre.menu-aria.style`,
+  `com.labre.text-toolbar.alignment-menu`,
+  `com.labre.shape.toolbar.switch-type-menu`,
+  `com.labre.mindmap.toolbar.layout-menu`,
+  `com.labre.connector.toolbar.{start-point-style,end-point-style,shape}-menu`,
+  `com.labre.bpmn.import.error.missing-namespace`.
+
+- 8a927dd: Paging the palette carousel of a colour picker no longer flashes a horizontal scrollbar across the popup: a toolbar menu is no longer a sideways scroll container by accident.
+- Updated dependencies [da68dbb]
+- Updated dependencies [f1a4af7]
+  - @labre/affine-shared@0.43.0
+  - @labre/affine-model@0.43.0
+  - @labre/global@0.43.0
+  - @labre/std@0.43.0
+  - @labre/store@0.43.0
+  - @labre/sync@0.43.0
+
 ## 0.42.0
 
 ### Minor Changes
