@@ -7,6 +7,8 @@
  * and the pictos/labels keep their relative proportions at any size.
  */
 
+import { refScale as fitReference } from '@labre/affine-block-surface';
+
 /** Reference design size (the validated mockup canvas). */
 export const REF_W = 680;
 export const REF_H = 400;
@@ -43,10 +45,12 @@ export const FONT_FAMILY = 'Inter, sans-serif';
  * Uniform fit of the reference design into an element of size `w × h`: the
  * scale factor plus the centering offsets (letterboxed). Shared by the renderer
  * (to draw) and the view (to map clicks back into reference coords).
+ *
+ * The fit itself is the library's ({@link fitReference}, R37): only the
+ * reference size is this framework's business.
  */
 export function refScale(w: number, h: number) {
-  const s = Math.min(w / REF_W, h / REF_H);
-  return { s, ox: (w - REF_W * s) / 2, oy: (h - REF_H * s) / 2 };
+  return fitReference(w, h, REF_W, REF_H);
 }
 
 /**
