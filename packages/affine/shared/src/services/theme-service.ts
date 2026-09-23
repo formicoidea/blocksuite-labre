@@ -14,7 +14,10 @@ import {
   combinedLightCssVariables,
 } from '@toeverything/theme';
 
+import { LABRE_ACCENT } from '../consts/accent';
+import { withAccent } from '../theme/accent';
 import { isInsideEdgelessEditor } from '../utils/dom';
+import { resolveChromeAccent } from './chrome-accent-service';
 
 export const ThemeExtensionIdentifier = createIdentifier<ThemeExtension>(
   'AffineThemeExtension'
@@ -134,6 +137,15 @@ export class ThemeService extends Extension {
     return result ?? DefaultTheme.transparent;
   }
 
+  /**
+   * The accent in force: the host's if it registered `ChromeAccentExtension`,
+   * else Labre's own (ADR 0029). The same value `ChromeAccentWatcher` writes
+   * into the DOM override, so the canvas and the chrome cannot drift apart.
+   */
+  get accent(): string {
+    return resolveChromeAccent(this.std);
+  }
+
   getCssVariableColor(property: string, theme = this.theme) {
     // Compatible old data
     if (property.startsWith('--')) {
@@ -146,7 +158,14 @@ export class ThemeService extends Extension {
         theme === ColorScheme.Dark
           ? combinedDarkCssVariables[key]
           : combinedLightCssVariables[key];
-      return color;
+      // The canvas resolves its colours in JS and never reads a CSS variable,
+      // so the override stylesheet cannot reach it. Re-point the accent here
+      // instead, from the same source and by the same rule (ADR 0029). Any
+      // variable that does not carry the accent comes back untouched, and the
+      // colours a document STORES do not come through here at all — those are
+      // read by `model/themes/utils.ts`, which is deliberately left alone
+      // (DESIGN.md, The Untouched Data Rule).
+      return withAccent(color, this.accent);
     }
     return property;
   }
@@ -154,7 +173,7 @@ export class ThemeService extends Extension {
 
 /**
  * The CSS variable the chrome accent lives behind — the token `DESIGN.md`'s
- * Borrowed Blue Rule names. Kept here so a canvas painter can reach the accent
+ * Labre Accent Rule names. Kept here so a canvas painter can reach the accent
  * by NAME rather than by value.
  */
 export const CHROME_ACCENT_CSS_VARIABLE = '--affine-primary-color';
@@ -165,18 +184,20 @@ export const CHROME_ACCENT_CSS_VARIABLE = '--affine-primary-color';
  * `var(…)`.
  *
  * Canvas painters used to write the AFFiNE blue out as a hex, which made it
- * unreachable for a host re-skin: the DOM followed `--affine-primary-color`
- * while the canvas stayed on the literal. The last-resort value, for the case
- * where no `ThemeProvider` is registered, is READ from the upstream theme
- * rather than spelled out, so no module holds a copy of the hex
- * (`brand-hex.unit.spec.ts` enforces that).
+ * unreachable for a re-skin: the DOM followed `--affine-primary-color` while
+ * the canvas stayed on the literal. They go through here instead, so they get
+ * the accent the whole editor is using — Labre's by default, the host's if it
+ * registered `ChromeAccentExtension` (ADR 0029).
+ *
+ * The last resort, for a caller with no `ThemeProvider` at all, is
+ * `LABRE_ACCENT` itself: there is no theme to ask, so the library's own accent
+ * is the only defensible answer.
  */
 export function getChromeAccentColor(std: BlockStdScope): string {
   return (
     std
       .getOptional(ThemeProvider)
-      ?.getCssVariableColor(CHROME_ACCENT_CSS_VARIABLE) ??
-    combinedLightCssVariables[CHROME_ACCENT_CSS_VARIABLE]
+      ?.getCssVariableColor(CHROME_ACCENT_CSS_VARIABLE) ?? LABRE_ACCENT
   );
 }
 

@@ -96,6 +96,7 @@ export const CANVAS_EXPORT_IGNORE_TAGS = [
   'AFFINE-BLOCK-SELECTION',
 ];
 
+export * from './accent.js';
 export * from './bracket-pairs.js';
 export * from './heading.js';
 export * from './notation.js';

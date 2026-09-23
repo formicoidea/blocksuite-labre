@@ -11,6 +11,7 @@ import {
   AutoClearSelectionService,
   BlockCommentManager,
   BlockLifecycleTelemetryWatcher,
+  ChromeAccentWatcher,
   CitationService,
   DefaultOpenDocExtension,
   DNDAPIExtension,
@@ -72,6 +73,10 @@ export class FoundationViewExtension extends ViewExtensionProvider<FoundationVie
 
       DocModeService,
       ThemeService,
+      // Adopts the Labre accent override into the editor's document (ADR
+      // 0029). Not flag-gated and not optional: the accent is what the editor
+      // looks like, not a piece of framework tooling.
+      ChromeAccentWatcher,
       EmbedOptionService,
       PageViewportServiceExtension,
       DNDAPIExtension,

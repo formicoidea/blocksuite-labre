@@ -1,0 +1,5 @@
+---
+'@labre/affine': minor
+---
+
+feat(blocks): the editor chrome and canvas now use the Labre accent. `#2563eb` replaces the blue inherited from AFFiNE everywhere the editor paints an interaction — selection marquee and handles, ticked checkboxes, active icons, focus rings, primary buttons, emphasis text, the direction chip — in both themes, with nothing for the host to configure. The library derives the override from the upstream theme rather than listing it, so a theme upgrade that adds an accent-coloured token is covered, and it applies it where the upstream stylesheet declares the same variables (`:root` and `[data-theme]`), which is what an override on `<html>` alone could never reach. The canvas, which resolves its colours in JS and cannot read a CSS variable, gets the same value through `ThemeService`. A host with its own brand registers `ChromeAccentExtension('#rrggbb')`: one value, and both the chrome and the canvas follow. Colours already stored in documents are untouched. See ADR 0029.

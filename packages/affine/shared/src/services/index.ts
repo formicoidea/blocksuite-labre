@@ -2,6 +2,7 @@ export * from './artefact-catalogue-service';
 export * from './audit-service';
 export * from './auto-clear-selection-service';
 export * from './block-meta-service';
+export * from './chrome-accent-service';
 export * from './citation-service';
 export * from './command-usage-service';
 export * from './comment-service';

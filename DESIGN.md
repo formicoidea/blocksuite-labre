@@ -2,7 +2,7 @@
 name: Labre editor library
 description: Markdown + whiteboard editor for enterprise transformation architects — quiet AFFiNE-derived chrome around standard-faithful framework notations.
 colors:
-  accent-borrowed-blue: '#1E96EB'
+  accent-labre: '#2563eb'
   link-deep-blue: '#1E67AF'
   processing-blue: '#2776FF'
   success-green: '#10CB86'
@@ -111,7 +111,7 @@ components:
   icon-button-hover:
     backgroundColor: '{colors.hover-veil}'
   icon-button-active:
-    textColor: '{colors.accent-borrowed-blue}'
+    textColor: '{colors.accent-labre}'
   icon-button-disabled:
     textColor: '{colors.ink-disabled}'
   editor-toolbar:
@@ -151,13 +151,13 @@ components:
 
 **Creative North Star: "Quiet Chrome, Loud Notation"**
 
-The editor has two layers. The **chrome** (toolbars, menus, icon buttons, popovers, the page itself) is AFFiNE's visual system as it stands, delivered by `@toeverything/theme` 1.1.15 with no Labre overrides. It is neutral grey on white, 4px corners, Inter at 15px, and one borrowed blue for interaction. It follows the app theme (`data-theme="light" | "dark"`) and stays out of the way: controls appear on selection, sit in a single 36px row, and hold back when nothing is selected.
+The editor has two layers. The **chrome** (toolbars, menus, icon buttons, popovers, the page itself) is AFFiNE's visual system as it stands, delivered by `@toeverything/theme` 1.1.15, with one Labre override: the accent (ADR 0029). It is neutral grey on white, 4px corners, Inter at 15px, and one blue for interaction. It follows the app theme (`data-theme="light" | "dark"`) and stays out of the way: controls appear on selection, sit in a single 36px row, and hold back when nothing is selected.
 
 The **notation** (EDGY, C4, BPMN, Wardley, Event Storming, DDD, Cynefin) is where the colour lives. Each framework paints with the colours of its own standard or stencil, fixed in model units and fixed in both themes. A C4 container is `#438DD5` on every screen and in every export, because a diagram is a document that has to read the same in a slide deck as it does in the editor.
 
 **Labre's identity is the frameworks themselves.** The chrome is deliberately not where Labre sets itself apart. What it offers is the set of framework notations it draws faithfully and lets you combine on one canvas. Design effort goes into the notations, and the chrome only has to stay out of their way.
 
-This file describes the system **as it is**. It records the incumbent implementation; it is not a target. The chrome's accent is inherited from upstream and is expected to be replaced (see The Borrowed Blue Rule).
+This file describes the system **as it is**. It records the incumbent implementation; it is not a target. The chrome's shapes and neutrals are inherited from upstream; its accent is not — the library re-points it onto Labre's own (see The Labre Accent Rule).
 
 **Key Characteristics:**
 
@@ -173,7 +173,7 @@ Several palettes on one canvas: an achromatic chrome with one blue accent, the b
 
 ### Primary
 
-- **Borrowed Blue** (accent-borrowed-blue): the only interaction colour in the chrome: selection marquee border, active icons, focused inputs, primary buttons, emphasis text. Inherited from AFFiNE (`--affine-brand-color`, `--affine-primary-color`, `--affine-v2-button-primary`). Its focus-ring form is `rgba(30, 150, 235, 0.3)` at 2px.
+- **Labre Accent** (accent-labre): the only interaction colour in the chrome: selection marquee border, selection handles, active icons, ticked checkboxes, focused inputs, primary buttons, emphasis text. Reached through the upstream token names (`--affine-brand-color`, `--affine-primary-color`, `--affine-v2-button-primary` and the forty-odd others upstream paints with its accent), whose values the library re-points onto `#2563eb` (ADR 0029). Its focus-ring form is the accent at 30% over 2px.
 - **Link Deep Blue** (link-deep-blue): inline links in prose (`--affine-link-color`).
 
 ### Secondary
@@ -225,7 +225,7 @@ Greys that carry a meaning are not neutrals and stay put: C4 external elements (
 
 ### Named Rules
 
-**The Borrowed Blue Rule.** The accent `#1E96EB` is AFFiNE's, not Labre's, and it is due to be replaced. Always reach it through a token (`cssVarV2('button/primary')`, `var(--affine-primary-color)`), never as a literal hex, so the re-skin is a token change. On the canvas, where a `CanvasRenderingContext2D` cannot take a `var(…)`, resolve the token through `getChromeAccentColor(std)` instead. Enforced by `brand-hex.unit.spec.ts` (`packages/affine/all`), which fails on any literal spelling of the accent outside its one justified exception, the standalone HTML export's stylesheet. Don't give it any new brand meaning in the meantime.
+**The Labre Accent Rule.** The accent is `#2563eb`, and it is Labre's own: the library re-points every upstream variable that carried AFFiNE's inherited blue onto it, for the chrome and for the canvas, from the single constant `LABRE_ACCENT` (ADR 0029). Reach it through a token (`var(--affine-primary-color)`, `cssVarV2('button/primary')`), never as a literal hex, and on the canvas — where a `CanvasRenderingContext2D` cannot take a `var(…)` — through `getChromeAccentColor(std)`. A host with its own brand registers `ChromeAccentExtension`, which moves chrome and canvas together; a CSS-only override moves only the chrome and leaves the board on the other accent, so it is not the way. `brand-hex.unit.spec.ts` (`packages/affine/all`) fails on any literal spelling of the accent that was replaced, outside its one justified exception, the standalone HTML export's stylesheet; `accent.unit.spec.ts` and `labre-accent.spec.ts` pin the replacement.
 
 **The Standard-Fidelity Rule.** A framework's notation hues, and any neutral its standard or stencil prescribes, match that source exactly and never follow the app theme, dark mode included. A diagram looks the same in every theme, export and host. If a prescribed colour differs from the published standard, that is a bug.
 
@@ -237,7 +237,7 @@ Greys that carry a meaning are not neutrals and stay put: C4 external elements (
 
 Coexisting means reachable, so every contextual colour picker on the canvas is a **carousel**: one page per active palette, named above the swatch grid, the base palette always page one and never hidden. The name is the panel's title — Ink, 500, on the same left edge as the section labels and the swatch grid, compact and followed by its chevron, its hover pill bleeding outward so the text never leaves that edge — and it is a button that swaps the swatch grid for an inline list of the pages, each row its name on that same edge beside a right-aligned strip of its own swatches, the page in force ticked. A wheel anywhere over the picker pages one step at a time, wrapping. The picker opens on the palette of the selected element's framework of origin — its own role's namespace, else a connector's two ends, else the smallest framework board containing it — and on the base palette when the element belongs to no framework or the selection is mixed. A framework whose tooling is switched off contributes no page, because offering hues is tooling; the colours it already painted are content and do not move. Nothing is written to the document but a plain colour value (ADR 0027).
 
-**The Distinct Accent Rule.** The chrome accent is reserved for interaction (selection, focus, active states) and has to stay recognisable against every notation hue. Chrome never borrows a notation hue, and a notation never borrows the accent. Known conflict: today's Borrowed Blue (`#1E96EB`, hue about 246°) sits in the same hue family as the C4 blue ladder (`#1168BD`, `#438DD5`) and the base palette's medium blue (`#84CFFF`), so a selection on a C4 diagram reads weakly. The replacement accent must come from a hue family that no notation palette uses, and a new framework palette must not settle next to the accent's hue.
+**The Distinct Accent Rule.** The chrome accent is reserved for interaction (selection, focus, active states) and has to stay recognisable against every notation hue. Chrome never borrows a notation hue, and a notation never borrows the accent. The rule binds new notation palettes: a framework palette must not settle next to the accent's hue. It no longer binds the accent, which is settled (ADR 0029). Accepted conflict: `#2563eb` is still in the blue family, near the C4 ladder (`#1168BD`, `#438DD5`) and the base palette's medium blue (`#84CFFF`). It is darker and far more saturated than either, so a selection reads on a C4 diagram where the inherited blue did not, and the contrast complaint that motivated the rule is answered (5.17:1 with white text, against 3.17:1 before).
 
 ## Typography
 
@@ -319,7 +319,7 @@ The main control. Compact and transparent at rest; it responds to the pointer bu
 - **Shape:** 4px corners (`{rounded.sm}`), 4px padding, sized per call site (`--button-width`/`--button-height`).
 - **Default:** transparent background, Icon Graphite glyph.
 - **Hover:** Hover Veil wash, applied only on devices with real hover (`@media (hover: hover)`).
-- **Active (toggled):** Borrowed Blue glyph (`icon/activated`). Alternatively, per `activeMode`, a border or a Hover Veil background.
+- **Active (toggled):** Labre Accent glyph (`icon/activated`). Alternatively, per `activeMode`, a border or a Hover Veil background.
 - **Disabled:** transparent, Ink Disabled glyph, clicks swallowed.
 - **Label:** optional 14px label and 12px sub-label beside the icon.
 
@@ -336,7 +336,7 @@ The floating selection toolbar.
 
 - **Panel:** Overlay Paper, 4px corners, 8px padding, 180px minimum width, Overlay shadow. Grouped sections use 4px padding and 12px corners.
 - **Items:** 4px padding and corners, 14px Inter, Hover Veil on hover. Larger rows use 11px 8px padding.
-- **Input:** 4px corners, 4px 6px padding; on focus, a 2px Borrowed Blue ring at 30%.
+- **Input:** 4px corners, 4px 6px padding; on focus, a 2px Labre Accent ring at 30%.
 
 ### Tooltips
 
@@ -360,7 +360,7 @@ The white card that frames a framework's canvas: Card fill and Card Border from 
 
 ### Don't:
 
-- **Don't** hardcode `#1E96EB` (or any chrome hex). The accent is inherited and due to be replaced, and a literal would block the re-skin.
+- **Don't** hardcode the accent (or any chrome hex). It is reached through a token so one constant re-skins the whole editor, and a literal would put a second accent on the screen.
 - **Don't** make a framework notation follow the app theme or dark mode. Standard fidelity comes first.
 - **Don't** use a notation hue (EDGY green, C4 blue, BPMN red) in the chrome, and don't use the chrome accent inside a notation.
 - **Don't** let the editor toolbar wrap onto a second row or squeeze entries. Overflow goes into the "⋮" menu.
