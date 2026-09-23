@@ -72,6 +72,9 @@ It must stay data-only (no Lit import) so the script can load it.
 
 ## After publishing
 
+- `yarn i18n:manifest <version>.csv` writes the whole translation-key manifest
+  as `key,fallback,domain`, sorted — `diff` it against the previous release's
+  file to hand the host exactly the keys it has to translate.
 - Tell the host maintainers the version and the changelog highlights.
 - The Labre app bumps its ranges and runs its upgrade checklist
   ([integrate/07-upgrade.md](../integrate/07-upgrade.md)).

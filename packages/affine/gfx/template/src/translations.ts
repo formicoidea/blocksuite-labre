@@ -38,10 +38,49 @@ export const TEMPLATE_SENIOR_TOOL_NAME: ChromeWording = [
   'Template',
 ];
 
+/* ── The five "Other" tiles' own names (#390) ─────────────────────────────
+ *
+ * A hand-composed template derives no tile name from a command, so it needs a
+ * `nameKey` of its own — the same seam every framework category already uses
+ * for its hand-written templates (`gfx/bpmn`, `gfx/edgy`, `gfx/mindmap`…).
+ * Only the NAME is chrome here; the captions painted into each scene are
+ * seeds, declared further down and resolved through `Template.localize`.
+ *
+ * `TEMPLATE_NAME_BUSINESS_MODEL_CANVAS` and `BMC_SEED_TITLE` share the same
+ * English words on purpose and do NOT collide: the seed is written once into
+ * the document, the tile is redrawn every time the panel opens, and the
+ * "un mot chrome, une clé" test groups `source: 'chrome'` only.
+ */
+export const TEMPLATE_NAME_SWOT: ChromeWording = [
+  'com.labre.template.name.swot',
+  'SWOT',
+];
+export const TEMPLATE_NAME_KANBAN_BOARD: ChromeWording = [
+  'com.labre.template.name.kanban-board',
+  'Kanban board',
+];
+export const TEMPLATE_NAME_BUSINESS_MODEL_CANVAS: ChromeWording = [
+  'com.labre.template.name.business-model-canvas',
+  'Business model canvas',
+];
+export const TEMPLATE_NAME_FISHBONE: ChromeWording = [
+  'com.labre.template.name.fishbone',
+  'Fishbone (Ishikawa)',
+];
+export const TEMPLATE_NAME_GANTT_CHART: ChromeWording = [
+  'com.labre.template.name.gantt-chart',
+  'Gantt chart',
+];
+
 export const TEMPLATE_PACKAGE_WORDINGS: readonly ChromeWording[] = [
   TEMPLATE_PANEL_ADD,
   TEMPLATE_PANEL_SEARCH_PLACEHOLDER,
   TEMPLATE_SENIOR_TOOL_NAME,
+  TEMPLATE_NAME_SWOT,
+  TEMPLATE_NAME_KANBAN_BOARD,
+  TEMPLATE_NAME_BUSINESS_MODEL_CANVAS,
+  TEMPLATE_NAME_FISHBONE,
+  TEMPLATE_NAME_GANTT_CHART,
 ];
 
 /**

@@ -48,6 +48,7 @@ import {
   TEXT_ALIGN_LEFT,
   TEXT_ALIGN_RIGHT,
   TEXT_TOOLBAR_ALIGNMENT,
+  TEXT_TOOLBAR_ALIGNMENT_MENU_ARIA,
   TEXT_TOOLBAR_FONT,
   TEXT_TOOLBAR_FONT_STYLE,
   TEXT_TOOLBAR_FONT_STYLE_ITALIC,
@@ -417,6 +418,7 @@ export function createTextActions<
         return renderMenu({
           label: 'Alignment',
           labelWording: TEXT_TOOLBAR_ALIGNMENT,
+          menuAriaWording: TEXT_TOOLBAR_ALIGNMENT_MENU_ARIA,
           items: TEXT_ALIGN_LIST,
           currentValue: textAlign,
           onPick,

@@ -22,6 +22,7 @@ import {
 import {
   CONNECTOR_SOURCE_LABEL,
   CONNECTOR_TARGET_LABEL,
+  MENU_ARIA_STYLE,
   type ToolbarContext,
   type ToolbarGenericAction,
   type ToolbarModuleConfig,
@@ -82,12 +83,15 @@ import {
 } from './hollow-endpoint-icons.js';
 import {
   CONNECTOR_ADD_TEXT,
+  CONNECTOR_END_POINT_STYLE_MENU_ARIA,
   CONNECTOR_LABEL_END_POINT_STYLE,
   CONNECTOR_LABEL_SHAPE,
   CONNECTOR_LABEL_START_POINT_STYLE,
   CONNECTOR_LABEL_STROKE_STYLE,
   CONNECTOR_LABEL_STYLE,
   CONNECTOR_MODE_WORDING,
+  CONNECTOR_SHAPE_MENU_ARIA,
+  CONNECTOR_START_POINT_STYLE_MENU_ARIA,
   CONNECTOR_TOOLTIP_CONNECTOR_SHAPE,
   CONNECTOR_TOOLTIP_FLIP_DIRECTION,
 } from '../translations';
@@ -301,10 +305,16 @@ export const connectorToolbarConfig = {
         };
 
         return renderMenu({
-          label: translateKey(ctx.std, ...CONNECTOR_LABEL_STYLE),
+          // `label` stays the ENGLISH literal and `labelWording` carries the
+          // key: `renderMenu` resolves it, and the menu shell's accessible
+          // name no longer has to be sewn onto a translated word (#390).
+          label: CONNECTOR_LABEL_STYLE[1],
+          labelWording: CONNECTOR_LABEL_STYLE,
+          menuAriaWording: MENU_ARIA_STYLE,
           items: LINE_STYLE_LIST,
           currentValue: rough,
           onPick,
+          std: ctx.std,
         });
       },
     },
@@ -325,13 +335,13 @@ export const connectorToolbarConfig = {
             };
 
             return renderMenu({
-              label: translateKey(
-                ctx.std,
-                ...CONNECTOR_LABEL_START_POINT_STYLE
-              ),
+              label: CONNECTOR_LABEL_START_POINT_STYLE[1],
+              labelWording: CONNECTOR_LABEL_START_POINT_STYLE,
+              menuAriaWording: CONNECTOR_START_POINT_STYLE_MENU_ARIA,
               items: FRONT_ENDPOINT_STYLE_LIST,
               currentValue: pointStyle,
               onPick,
+              std: ctx.std,
             });
           },
         },
@@ -401,10 +411,13 @@ export const connectorToolbarConfig = {
             };
 
             return renderMenu({
-              label: translateKey(ctx.std, ...CONNECTOR_LABEL_END_POINT_STYLE),
+              label: CONNECTOR_LABEL_END_POINT_STYLE[1],
+              labelWording: CONNECTOR_LABEL_END_POINT_STYLE,
+              menuAriaWording: CONNECTOR_END_POINT_STYLE_MENU_ARIA,
               items: REAR_ENDPOINT_STYLE_LIST,
               currentValue: pointStyle,
               onPick,
+              std: ctx.std,
             });
           },
         },
@@ -477,14 +490,15 @@ export const connectorToolbarConfig = {
             }));
 
             return renderMenu({
-              label: translateKey(ctx.std, ...CONNECTOR_LABEL_SHAPE),
-              tooltip: translateKey(
-                ctx.std,
-                ...CONNECTOR_TOOLTIP_CONNECTOR_SHAPE
-              ),
+              label: CONNECTOR_LABEL_SHAPE[1],
+              labelWording: CONNECTOR_LABEL_SHAPE,
+              menuAriaWording: CONNECTOR_SHAPE_MENU_ARIA,
+              tooltip: CONNECTOR_TOOLTIP_CONNECTOR_SHAPE[1],
+              tooltipWording: CONNECTOR_TOOLTIP_CONNECTOR_SHAPE,
               items,
               currentValue: mode,
               onPick,
+              std: ctx.std,
             });
           },
         },

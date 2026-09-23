@@ -18,6 +18,7 @@ import {
 } from '@labre/affine-shared/consts';
 import {
   CHROME_LOADING,
+  CHROME_UNTITLED,
   CitationProvider,
   DocDisplayMetaProvider,
   DocModeProvider,
@@ -252,7 +253,11 @@ export class EmbedLinkedDocBlockComponent extends EmbedBlockComponent<EmbedLinke
   });
 
   get docTitle() {
-    return this.model.props.title || this.linkedDoc?.meta?.title || 'Untitled';
+    return (
+      this.model.props.title ||
+      this.linkedDoc?.meta?.title ||
+      translateKey(this.std, ...CHROME_UNTITLED)
+    );
   }
 
   get editorMode() {

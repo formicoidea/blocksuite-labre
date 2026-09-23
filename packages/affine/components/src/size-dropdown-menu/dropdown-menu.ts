@@ -163,9 +163,14 @@ export class SizeDropdownMenu extends SignalWatcher(
     const isCheckType = type === 'check';
     const placeholder = format?.(Math.trunc(size)) ?? Math.trunc(size);
 
+    // `class` is STATIC. It used to be `${label.toLowerCase()}-menu`, which
+    // made a CSS class depend on the host's language the day `label` joined
+    // the translation seam (#390) — `échelle-menu` in French. Nothing in the
+    // repo selects it (checked across the styles and both test suites): it is
+    // the stable identifier it was always meant to be.
     return html`
       <editor-menu-button
-        class="${`${label.toLowerCase()}-menu`}"
+        class="size-menu"
         .contentPadding="${'8px'}"
         .button=${html`
           <editor-icon-button

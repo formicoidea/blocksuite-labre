@@ -1,5 +1,6 @@
 import {
   type ChromeWording,
+  STYLE_MENU_LABEL,
   TOOLBAR_COPY,
   TOOLBAR_DELETE,
   TOOLBAR_DUPLICATE,
@@ -115,11 +116,18 @@ export const SLASH_MENU_DELETE_DESCRIPTION: ChromeWording = [
  * '<n>_<Name>@<i>'`, the `<Name>` between `_` and `@`):
  *
  * - `Basic` — callout, latex, note (paragraph/heading/list/quote/divider).
+ * - `List`, `Style` — note again, but written as TEMPLATE literals
+ *   (`` `1_List@${index++}` ``, `` `2_Style@${index++}` ``,
+ *   `blocks/note/src/configs/slash-menu.ts`), which is why the first
+ *   inventory — a grep for `group: '` — missed both (#390).
  * - `Content & Media` — attachment, bookmark, image, latex, the generic embed
  *   (iframe) block, and (postponed, `blocks/table`) table.
  * - `Page` — the linked-doc embed block.
  * - `Edgeless Element` — surface-ref.
  * - `Date`, `Actions` — this package's own groups (`./config.ts`).
+ *
+ * The inventory covers template literals too: the `<Name>` is read between the
+ * `_` and the `@`, whichever way the group string was built.
  *
  * NOT included: `Database`, used only by the postponed `blocks/database` and
  * `blocks/data-view` — the PO's decision excludes those surfaces, and
@@ -132,6 +140,20 @@ export const SLASH_MENU_GROUP_BASIC: ChromeWording = [
   'com.labre.slash-menu.group.basic',
   'Basic',
 ];
+
+export const SLASH_MENU_GROUP_LIST: ChromeWording = [
+  'com.labre.slash-menu.group.list',
+  'List',
+];
+
+/**
+ * An ALIAS, not a new key: `STYLE_MENU_LABEL` already carries the word
+ * `Style` in the chrome table, and a second key with the same fallback would
+ * fail the "un mot chrome, une clé" test. Listed in the group table below,
+ * NOT in `SLASH_MENU_WORDINGS` — an alias is walked once, from
+ * `CHROME_WORDINGS`, exactly like `SLASH_MENU_COPY` / `_DUPLICATE`.
+ */
+export const SLASH_MENU_GROUP_STYLE: ChromeWording = STYLE_MENU_LABEL;
 
 export const SLASH_MENU_GROUP_CONTENT_MEDIA: ChromeWording = [
   'com.labre.slash-menu.group.content-media',
@@ -161,6 +183,8 @@ export const SLASH_MENU_GROUP_ACTIONS: ChromeWording = [
 /** The group table, keyed by the raw group name `parseGroup` extracts. */
 const SLASH_MENU_GROUP_WORDINGS: Readonly<Record<string, ChromeWording>> = {
   Basic: SLASH_MENU_GROUP_BASIC,
+  List: SLASH_MENU_GROUP_LIST,
+  Style: SLASH_MENU_GROUP_STYLE,
   'Content & Media': SLASH_MENU_GROUP_CONTENT_MEDIA,
   Page: SLASH_MENU_GROUP_PAGE,
   'Edgeless Element': SLASH_MENU_GROUP_EDGELESS_ELEMENT,
@@ -201,6 +225,7 @@ export const SLASH_MENU_WORDINGS: readonly ChromeWording[] = [
   SLASH_MENU_COPY_DUPLICATE_CAPTION,
   SLASH_MENU_DELETE_DESCRIPTION,
   SLASH_MENU_GROUP_BASIC,
+  SLASH_MENU_GROUP_LIST,
   SLASH_MENU_GROUP_CONTENT_MEDIA,
   SLASH_MENU_GROUP_PAGE,
   SLASH_MENU_GROUP_EDGELESS_ELEMENT,

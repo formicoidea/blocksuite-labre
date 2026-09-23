@@ -852,6 +852,42 @@ export const PALETTE_NAME_MEDIUM_GREY: ChromeWording = [
   'MediumGrey',
 ];
 
+/*
+ * The `Heavy` row (`DefaultTheme.Palettes`, seven colours and no grey). It was
+ * missing from the table until #390 — the row rendered its raw `Palette.key`
+ * next to translated neighbours. The exhaustiveness test in
+ * `packages/affine/all` now compares this table to the theme.
+ */
+
+export const PALETTE_NAME_HEAVY_RED: ChromeWording = [
+  'com.labre.palette-name.heavy-red',
+  'HeavyRed',
+];
+export const PALETTE_NAME_HEAVY_ORANGE: ChromeWording = [
+  'com.labre.palette-name.heavy-orange',
+  'HeavyOrange',
+];
+export const PALETTE_NAME_HEAVY_YELLOW: ChromeWording = [
+  'com.labre.palette-name.heavy-yellow',
+  'HeavyYellow',
+];
+export const PALETTE_NAME_HEAVY_GREEN: ChromeWording = [
+  'com.labre.palette-name.heavy-green',
+  'HeavyGreen',
+];
+export const PALETTE_NAME_HEAVY_BLUE: ChromeWording = [
+  'com.labre.palette-name.heavy-blue',
+  'HeavyBlue',
+];
+export const PALETTE_NAME_HEAVY_PURPLE: ChromeWording = [
+  'com.labre.palette-name.heavy-purple',
+  'HeavyPurple',
+];
+export const PALETTE_NAME_HEAVY_MAGENTA: ChromeWording = [
+  'com.labre.palette-name.heavy-magenta',
+  'HeavyMagenta',
+];
+
 /**
  * Keyed by the exact `Palette.key` string the default theme's tables produce
  * (`buildPalettes`, `packages/affine/model/src/themes/{default,utils}.ts`) —
@@ -886,7 +922,31 @@ export const PALETTE_NAME_WORDINGS: Readonly<Record<string, ChromeWording>> = {
   MediumPurple: PALETTE_NAME_MEDIUM_PURPLE,
   MediumMagenta: PALETTE_NAME_MEDIUM_MAGENTA,
   MediumGrey: PALETTE_NAME_MEDIUM_GREY,
+  HeavyRed: PALETTE_NAME_HEAVY_RED,
+  HeavyOrange: PALETTE_NAME_HEAVY_ORANGE,
+  HeavyYellow: PALETTE_NAME_HEAVY_YELLOW,
+  HeavyGreen: PALETTE_NAME_HEAVY_GREEN,
+  HeavyBlue: PALETTE_NAME_HEAVY_BLUE,
+  HeavyPurple: PALETTE_NAME_HEAVY_PURPLE,
+  HeavyMagenta: PALETTE_NAME_HEAVY_MAGENTA,
 };
+
+/* ── Menu shells' accessible names (#390) ─────────────────────────────────
+ *
+ * The `aria-label` of an `editor-menu-button` is a wording of its OWN, never
+ * `` `${translatedLabel}-menu` `` — sewing a suffix onto a translated word
+ * gave "changer le type de forme-menu" to a French host. The precedent is
+ * `ROOT_ALIGNMENT_MENU_ARIA` (`blocks/root`). The fallbacks are the exact
+ * identifiers the composition produced in English, so a catalogue-less
+ * playground reads what it always read.
+ *
+ * This one is HERE and not in a package because three toolbars draw a menu
+ * called "Style" (shape, mindmap, connector) — one shared word, one key.
+ */
+export const MENU_ARIA_STYLE: ChromeWording = [
+  'com.labre.menu-aria.style',
+  'style-menu',
+];
 
 /* ── Clipboard size-limit toasts (adapters/clipboard/utils.ts) ────────── */
 
@@ -1401,4 +1461,13 @@ export const CHROME_WORDINGS: readonly ChromeWording[] = [
   PALETTE_NAME_MEDIUM_PURPLE,
   PALETTE_NAME_MEDIUM_MAGENTA,
   PALETTE_NAME_MEDIUM_GREY,
+  PALETTE_NAME_HEAVY_RED,
+  PALETTE_NAME_HEAVY_ORANGE,
+  PALETTE_NAME_HEAVY_YELLOW,
+  PALETTE_NAME_HEAVY_GREEN,
+  PALETTE_NAME_HEAVY_BLUE,
+  PALETTE_NAME_HEAVY_PURPLE,
+  PALETTE_NAME_HEAVY_MAGENTA,
+
+  MENU_ARIA_STYLE,
 ];

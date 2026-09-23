@@ -44,6 +44,18 @@ export const TEXT_TOOLBAR_ALIGNMENT: ChromeWording = [
 ];
 
 /**
+ * The accessible name of the alignment menu SHELL (#390) — its own wording,
+ * not `` `${TEXT_TOOLBAR_ALIGNMENT}-menu` ``, which read "alignement-menu" in
+ * French. Distinct from `ROOT_ALIGNMENT_MENU_ARIA`: that one names the
+ * edgeless menu that aligns ELEMENTS on the board, this one the menu that
+ * aligns TEXT inside an element. Two menus, two names.
+ */
+export const TEXT_TOOLBAR_ALIGNMENT_MENU_ARIA: ChromeWording = [
+  'com.labre.text-toolbar.alignment-menu',
+  'text alignment-menu',
+];
+
+/**
  * The three alignment values — a different concept from a mindmap's own
  * "Left" / "Right" layout direction (`gfx/mindmap`'s
  * `MINDMAP_LAYOUT_LEFT`/`RIGHT`), so kept as this package's own keys rather
@@ -76,6 +88,7 @@ export const TEXT_WORDINGS: readonly ChromeWording[] = [
   TEXT_TOOLBAR_TEXT_COLOR,
   TEXT_TOOLBAR_FONT_STYLE,
   TEXT_TOOLBAR_ALIGNMENT,
+  TEXT_TOOLBAR_ALIGNMENT_MENU_ARIA,
   TEXT_ALIGN_LEFT,
   TEXT_ALIGN_CENTER,
   TEXT_ALIGN_RIGHT,

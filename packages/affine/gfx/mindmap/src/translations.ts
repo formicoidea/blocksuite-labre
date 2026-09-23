@@ -115,6 +115,16 @@ export const MINDMAP_LAYOUT_LABEL: ChromeWording = [
 ];
 
 /**
+ * The accessible name of the layout menu SHELL (#390) — its own wording, not
+ * `` `${MINDMAP_LAYOUT_LABEL}-menu` ``, which read "disposition-menu" in
+ * French. The fallback is the exact identifier that composition produced.
+ */
+export const MINDMAP_LAYOUT_MENU_ARIA: ChromeWording = [
+  'com.labre.mindmap.toolbar.layout-menu',
+  'layout-menu',
+];
+
+/**
  * The three layout directions — a different concept from `gfx/text`'s own
  * "Left" / "Right" text alignment (`TEXT_ALIGN_LEFT`/`RIGHT`), so kept as
  * this package's own keys: the English word coincides, the meaning (which
@@ -180,6 +190,7 @@ export const MINDMAP_CHROME_WORDINGS: readonly ChromeWording[] = [
   MINDMAP_TEMPLATE_NAME_STYLE_3,
   MINDMAP_TEMPLATE_NAME_STYLE_4,
   MINDMAP_LAYOUT_LABEL,
+  MINDMAP_LAYOUT_MENU_ARIA,
   MINDMAP_LAYOUT_LEFT,
   MINDMAP_LAYOUT_RADIAL,
   MINDMAP_LAYOUT_RIGHT,
