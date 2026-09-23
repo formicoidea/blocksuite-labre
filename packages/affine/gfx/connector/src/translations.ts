@@ -58,6 +58,20 @@ export const CONNECTOR_LABEL_START_POINT_STYLE: ChromeWording = [
   'Start point style',
 ];
 
+/* ── The menu shells' accessible names (#390) ─────────────────────────────
+ *
+ * Each `aria-label` is its own wording rather than `` `${label}-menu` ``: the
+ * four labels above go through the seam, so the composition read "style de
+ * point de départ-menu" on a French host. Fallbacks are the exact identifiers
+ * the composition produced in English. The plain "Style" menu reuses the
+ * shared `MENU_ARIA_STYLE` — three toolbars draw that same menu.
+ */
+
+export const CONNECTOR_START_POINT_STYLE_MENU_ARIA: ChromeWording = [
+  'com.labre.connector.toolbar.start-point-style-menu',
+  'start point style-menu',
+];
+
 export const CONNECTOR_TOOLTIP_FLIP_DIRECTION: ChromeWording = [
   'com.labre.connector.toolbar.flip-direction',
   'Flip direction',
@@ -68,9 +82,19 @@ export const CONNECTOR_LABEL_END_POINT_STYLE: ChromeWording = [
   'End point style',
 ];
 
+export const CONNECTOR_END_POINT_STYLE_MENU_ARIA: ChromeWording = [
+  'com.labre.connector.toolbar.end-point-style-menu',
+  'end point style-menu',
+];
+
 export const CONNECTOR_LABEL_SHAPE: ChromeWording = [
   'com.labre.connector.toolbar.shape',
   'Shape',
+];
+
+export const CONNECTOR_SHAPE_MENU_ARIA: ChromeWording = [
+  'com.labre.connector.toolbar.shape-menu',
+  'shape-menu',
 ];
 
 export const CONNECTOR_TOOLTIP_CONNECTOR_SHAPE: ChromeWording = [
@@ -91,8 +115,11 @@ export const CONNECTOR_WORDINGS: readonly ChromeWording[] = [
   CONNECTOR_LABEL_CONNECTOR,
   CONNECTOR_LABEL_STROKE_STYLE,
   CONNECTOR_LABEL_START_POINT_STYLE,
+  CONNECTOR_START_POINT_STYLE_MENU_ARIA,
   CONNECTOR_TOOLTIP_FLIP_DIRECTION,
   CONNECTOR_LABEL_END_POINT_STYLE,
+  CONNECTOR_END_POINT_STYLE_MENU_ARIA,
   CONNECTOR_LABEL_SHAPE,
+  CONNECTOR_SHAPE_MENU_ARIA,
   CONNECTOR_TOOLTIP_CONNECTOR_SHAPE,
 ];

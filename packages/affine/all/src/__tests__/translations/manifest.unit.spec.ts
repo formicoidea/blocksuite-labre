@@ -2,6 +2,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { bpmnTranslationEntries } from '@labre/affine-gfx-bpmn';
+import { DefaultTheme } from '@labre/affine-model';
+import { PALETTE_NAME_WORDINGS } from '@labre/affine-shared/services';
+import { slashMenuGroupWording } from '@labre/affine-widget-slash-menu/translations';
 import { describe, expect, test } from 'vitest';
 
 import { getTranslationKeyManifest } from '../../translations.js';
@@ -406,6 +409,124 @@ describe('getTranslationKeyManifest', () => {
     ).toEqual(UNPAIRABLE_CHROME_KEYS);
     // ~2.8k files read synchronously: ~3s warm, but 20s+ on a cold NTFS cache.
   }, 90_000);
+
+  /**
+   * **Would have caught #390 (1, 2).**
+   *
+   * The two guards beside this one both ask about KEYS: is every key used
+   * declared, is every key declared used. Neither can see the shape #390 was
+   * made of — a `Record<string, ChromeWording>` keyed by a DOMAIN (a palette
+   * key, a slash-menu group name) that is missing an entry its caller can
+   * present. The missing entry is not a key anywhere, so there is nothing to
+   * be absent from the manifest; the lookup simply misses and the raw domain
+   * value is drawn next to translated neighbours.
+   *
+   * So this test compares each such table with the domain itself, read from
+   * the SAME place the caller reads it from — never from a copy in the spec:
+   *
+   * - `PALETTE_NAME_WORDINGS` against every `Palette.key` the default theme
+   *   produces. The `Heavy` row was absent from the table (7 swatches drawn
+   *   as `HeavyRed`…`HeavyMagenta`) because the table had been written by
+   *   copying the `Light` and `Medium` arrays by hand.
+   * - the slash menu's group table against every `group:` string the repo
+   *   writes, matched in BOTH spellings — the first inventory was a grep for
+   *   `group: '` and so never saw `` `1_List@${i}` `` or `` `2_Style@${i}` ``,
+   *   which is exactly the two headers that shipped untranslated.
+   */
+  describe('a table keyed by a domain covers its domain (#390)', () => {
+    test('every palette the default theme draws has a name wording', () => {
+      const domain = new Set(
+        [
+          ...DefaultTheme.Palettes,
+          ...DefaultTheme.ShapeTextColorPalettes,
+          ...DefaultTheme.StrokeColorShortPalettes,
+          ...DefaultTheme.FillColorShortPalettes,
+          ...DefaultTheme.ShapeTextColorShortPalettes,
+          ...DefaultTheme.NoteBackgroundColorPalettes,
+        ].map(palette => palette.key)
+      );
+      expect(domain.size).toBeGreaterThan(20);
+
+      const uncovered = [...domain]
+        .filter(key => !(key in PALETTE_NAME_WORDINGS))
+        .sort();
+      expect(
+        uncovered,
+        'a palette key the colour picker can draw with no wording to render: ' +
+          'add one to PALETTE_NAME_WORDINGS (shared/…/translation-service/chrome.ts)'
+      ).toEqual([]);
+
+      // …and the wordings the table declares are all reachable: an entry for a
+      // palette no theme produces is a key a host would translate for nothing.
+      const orphans = Object.keys(PALETTE_NAME_WORDINGS)
+        .filter(key => !domain.has(key))
+        .sort();
+      expect(
+        orphans,
+        'PALETTE_NAME_WORDINGS entries no theme produces'
+      ).toEqual([]);
+    });
+
+    /**
+     * `Database` is the only group deliberately left out: it belongs to the
+     * postponed `blocks/database` / `blocks/data-view` surfaces (ADR 0023,
+     * "Consequences"), whose English is pinned in `literals.baseline.json`
+     * under `deferred`. It renders its raw name, exactly as every group did
+     * before the table existed.
+     */
+    const SLASH_GROUPS_WITHOUT_A_WORDING: Readonly<Record<string, string>> = {
+      Database: 'postponed surface (blocks/database, blocks/data-view)',
+    };
+
+    /**
+     * A group id, `'<order>_<Name>@<index>'`, wherever it is written — the
+     * `<Name>` between the `_` and the `@` is what `parseGroup` extracts and
+     * what `slashMenuGroupWording` is asked for.
+     *
+     * Anchored on the LITERAL and not on `group:`, which is the second half of
+     * #390's lesson: `blocks/note` does not write the property at all, it
+     * passes the id positionally
+     * (`` createConversionItem(config, `1_List@${index++}`) ``). An inventory
+     * anchored on the property name misses those two exactly as the original
+     * grep for `group: '` did. The shape `<digits>_<text>@` is distinctive
+     * enough on its own.
+     */
+    const GROUP_DECLARATION = /['"`]\d+_([^'"`@\n]+)@/g;
+
+    test('every slash-menu group header has a wording', () => {
+      const declared = new Set<string>();
+      for (const file of allSourceFiles()) {
+        for (const [, name] of readFileSync(file, 'utf8').matchAll(
+          GROUP_DECLARATION
+        )) {
+          declared.add(name);
+        }
+      }
+      // The inventory itself is load-bearing: if this ever collapses the test
+      // stops proving anything.
+      expect(declared.size).toBeGreaterThanOrEqual(9);
+      // The two #390 headers, whose ids are TEMPLATE literals passed
+      // positionally — the shape the first inventory could not see.
+      expect(declared.has('List')).toBe(true);
+      expect(declared.has('Style')).toBe(true);
+
+      const uncovered = [...declared]
+        .filter(
+          name =>
+            !slashMenuGroupWording(name) &&
+            !(name in SLASH_GROUPS_WITHOUT_A_WORDING)
+        )
+        .sort();
+      expect(
+        uncovered,
+        'a slash-menu group header with no wording: add one to ' +
+          'SLASH_MENU_GROUP_WORDINGS (widgets/slash-menu/src/translations.ts), ' +
+          'or, for a postponed surface, to SLASH_GROUPS_WITHOUT_A_WORDING here'
+      ).toEqual([]);
+      // Same budget as the both-directions scan above: ~2.8k files read
+      // synchronously, seconds warm and far more on a cold NTFS cache.
+    }, 90_000);
+  });
 
   test('one chrome word, one key (L7 dedupe)', () => {
     const byFallback = new Map<string, Set<string>>();

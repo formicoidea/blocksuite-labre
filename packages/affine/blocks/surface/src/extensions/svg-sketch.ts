@@ -7,11 +7,12 @@ import {
 import type { TranslationParams } from '@labre/affine-shared/services';
 import DOMPurify from 'dompurify';
 
-import type {
-  InterchangeImportContext,
-  InterchangeImportResult,
-  InterchangeNote,
-  SerializedElementProps,
+import {
+  type InterchangeImportContext,
+  InterchangeImportError,
+  type InterchangeImportResult,
+  type InterchangeNote,
+  type SerializedElementProps,
 } from './interchange.js';
 import {
   SVG_SKETCH_CURRENT_COLOR,
@@ -19,6 +20,9 @@ import {
   SVG_SKETCH_EMPTY,
   SVG_SKETCH_EMPTY_BOX,
   SVG_SKETCH_EMPTY_TEXT,
+  SVG_SKETCH_ERROR_MALFORMED_XML,
+  SVG_SKETCH_ERROR_NOT_SVG,
+  SVG_SKETCH_ERROR_SANITIZED_AWAY,
   SVG_SKETCH_FLAT_POLYGON,
   SVG_SKETCH_FONT_UNIT,
   SVG_SKETCH_HIDDEN_DISPLAY,
@@ -1152,13 +1156,20 @@ function parseSvgRoot(source: string, notes: Notebook): Element {
       .split('\n')
       .map(line => line.trim())
       .filter(line => line.length > 0);
-    throw new Error(
-      `This file is not well-formed XML, so no drawing can be read out of it: ${summary.slice(0, 200)}`
+    const detail = summary.slice(0, 200);
+    throw new InterchangeImportError(
+      `This file is not well-formed XML, so no drawing can be read out of it: ${detail}`,
+      {
+        messageKey: SVG_SKETCH_ERROR_MALFORMED_XML[0],
+        messageParams: { detail },
+      }
     );
   }
   if (nameOf(doc.documentElement) !== 'svg') {
-    throw new Error(
-      `An SVG opens on <svg>; this one opens on <${doc.documentElement?.localName ?? 'nothing'}>.`
+    const tag = doc.documentElement?.localName ?? 'nothing';
+    throw new InterchangeImportError(
+      `An SVG opens on <svg>; this one opens on <${tag}>.`,
+      { messageKey: SVG_SKETCH_ERROR_NOT_SVG[0], messageParams: { tag } }
     );
   }
 
@@ -1211,9 +1222,9 @@ function parseSvgRoot(source: string, notes: Notebook): Element {
   // overload, which answers an `HTMLElement` — the sanitized body wrapper.
   const root = childElements(clean).find(child => nameOf(child) === 'svg');
   if (!root) {
-    throw new Error(
-      'Nothing survived sanitizing this SVG, so there is no drawing to read.'
-    );
+    throw new InterchangeImportError(SVG_SKETCH_ERROR_SANITIZED_AWAY[1], {
+      messageKey: SVG_SKETCH_ERROR_SANITIZED_AWAY[0],
+    });
   }
   return root;
 }

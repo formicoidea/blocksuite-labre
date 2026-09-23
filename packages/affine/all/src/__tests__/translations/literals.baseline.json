@@ -1,5 +1,8 @@
 {
   "kept": {
+    "packages/affine/blocks/code/src/adapters/html.ts": [
+      "Plain Text"
+    ],
     "packages/affine/blocks/embed-doc/src/embed-linked-doc-block/adapters/html.ts": [
       "+ o.node.props.pageId) ??"
     ],
@@ -11,6 +14,9 @@
     ],
     "packages/affine/blocks/list/src/turbo/list-layout-handler.ts": [
       "true"
+    ],
+    "packages/affine/blocks/note/src/turbo/note-painter.worker.ts": [
+      "rgb(255, 255, 255)"
     ],
     "packages/affine/blocks/paragraph/src/turbo/paragraph-layout-handler.ts": [
       "true"
@@ -53,6 +59,14 @@
     "packages/affine/gfx/text/src/toolbar/actions.ts": [
       "Aa"
     ],
+    "packages/affine/gfx/uml/src/frame-tag.ts": [
+      "Inter, sans-serif"
+    ],
+    "packages/affine/gfx/uml/src/xmi.ts": [
+      "Model",
+      "Signal",
+      "Signal"
+    ],
     "packages/affine/gfx/wardley/src/consts.ts": [
       "Commodity (+Utility)",
       "Custom-Built",
@@ -64,6 +78,9 @@
       "Uncharted",
       "Value Chain",
       "Visible"
+    ],
+    "packages/affine/model/src/elements/mindmap/mindmap.ts": [
+      "New node"
     ],
     "packages/affine/shared/src/consts/bracket-pairs.ts": [
       "corner bracket",
@@ -169,6 +186,9 @@
     "packages/affine/blocks/database/src/properties/created-time/define.ts": [
       "Created Time"
     ],
+    "packages/affine/blocks/database/src/properties/link/cell-renderer.ts": [
+      "Untitled"
+    ],
     "packages/affine/blocks/database/src/properties/link/define.ts": [
       "Link"
     ],
@@ -189,6 +209,7 @@
       "Embed a Figma document."
     ],
     "packages/affine/blocks/embed/src/embed-figma-block/embed-figma-block.ts": [
+      "Figma",
       "Figma"
     ],
     "packages/affine/blocks/embed/src/embed-github-block/configs/slash-menu.ts": [
@@ -402,10 +423,17 @@
       "Remove grouping",
       "Week (starts Monday)",
       "Week (starts Sunday)",
-      "Year"
+      "Year",
+      "default key",
+      "default key"
     ],
     "packages/affine/data-view/src/core/sort/add-sort.ts": [
       "New sort"
+    ],
+    "packages/affine/data-view/src/core/statistics/number.ts": [
+      "None",
+      "None",
+      "None"
     ],
     "packages/affine/data-view/src/property-presets/checkbox/define.ts": [
       "Checkbox"
@@ -441,7 +469,14 @@
     ],
     "packages/affine/data-view/src/view-presets/calendar/calendar-view-manager.ts": [
       "Date",
-      "End Date"
+      "End Date",
+      "Untitled"
+    ],
+    "packages/affine/data-view/src/view-presets/calendar/pc/actions.ts": [
+      "Calendar event"
+    ],
+    "packages/affine/data-view/src/view-presets/calendar/pc/dnd.ts": [
+      "Untitled"
     ],
     "packages/affine/data-view/src/view-presets/calendar/pc/view.ts": [
       "${} ${}",
@@ -450,6 +485,9 @@
       "Calendar by",
       "Connect calendar",
       "Create date property",
+      "Create date property",
+      "Date",
+      "Date",
       "Date range",
       "Dismiss",
       "End date",
@@ -463,7 +501,12 @@
       "Previous month",
       "Select or create date property",
       "Show all workspace calendars",
-      "Today"
+      "Today",
+      "Untitled",
+      "Untitled",
+      "Untitled",
+      "Untitled",
+      "Untitled"
     ],
     "packages/affine/data-view/src/view-presets/kanban/mobile/group.ts": [
       "Add",
@@ -484,6 +527,9 @@
     ],
     "packages/affine/data-view/src/view-presets/kanban/pc/header.ts": [
       "Group"
+    ],
+    "packages/affine/data-view/src/view-presets/kanban/pc/kanban-view-ui-logic.ts": [
+      "default key"
     ],
     "packages/affine/data-view/src/view-presets/kanban/pc/menu.ts": [
       "Delete Card",
@@ -681,7 +727,6 @@
       "InlineTex",
       "Kanban view",
       "LinkedPage",
-      "List",
       "Loom",
       "NewPage",
       "NumberedList",
@@ -694,5 +739,9 @@
       "Youtube"
     ]
   },
-  "pending": {}
+  "pending": {
+    "packages/affine/gfx/bpmn/src/import.ts": [
+      "no namespace"
+    ]
+  }
 }

@@ -18,13 +18,36 @@ import { classMap } from 'lit/directives/class-map.js';
 import { styleMap } from 'lit/directives/style-map.js';
 
 import { ERROR_CARD_DEFAULT_HEIGHT } from '../consts';
-import type { EmbedIframeStatusCardOptions } from '../types';
+import { EmbedIframeError, type EmbedIframeStatusCardOptions } from '../types';
 import {
   EMBED_IFRAME_ERROR_EDIT,
+  EMBED_IFRAME_ERROR_FALLBACK,
   EMBED_IFRAME_ERROR_TITLE,
 } from '../../translations';
 
 const LINK_EDIT_POPUP_OFFSET = 12;
+
+/**
+ * The sentence the error card draws under its (translated) title — #390.
+ *
+ * The card used to render `error.message` raw, which put an English developer
+ * sentence under a French heading. An {@link EmbedIframeError} that declared a
+ * `messageKey` is resolved through it, with its own `message` as the English
+ * fallback; anything else — a plain `Error`, a `BlockSuiteError`, a DI wiring
+ * failure — reads one keyed sentence, and its `message` is NEVER displayed.
+ *
+ * A free function rather than a method so the contract can be tested without
+ * mounting a custom element.
+ */
+export function embedIframeErrorMessage(
+  std: BlockStdScope,
+  error?: Error | null
+): string {
+  if (error instanceof EmbedIframeError && error.messageKey) {
+    return translateKey(std, error.messageKey, error.message);
+  }
+  return translateKey(std, ...EMBED_IFRAME_ERROR_FALLBACK);
+}
 
 export class EmbedIframeErrorCard extends WithDisposable(LitElement) {
   static override styles = css`
@@ -257,7 +280,7 @@ export class EmbedIframeErrorCard extends WithDisposable(LitElement) {
             >
           </div>
           <div class="error-message">
-            ${this.error?.message || 'Failed to load embedded content'}
+            ${embedIframeErrorMessage(this.std, this.error)}
           </div>
           <div class="error-info">
             ${this.readonly

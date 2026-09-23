@@ -45,6 +45,21 @@ export type PickerMenu<T> = {
   label: string;
   icon?: TemplateResult;
   tooltip?: string;
+  /**
+   * The accessible name of the MENU shell (`aria-label` on
+   * `editor-menu-button`), which the caller supplies whole (#390).
+   *
+   * It used to be sewn together here as `` `${label.toLowerCase()}-menu` ``.
+   * That was a stable identifier while {@link label} was an English literal;
+   * once the caller started handing over a TRANSLATED label it became half a
+   * sentence in each language ("changer le type de forme-menu"). A menu's
+   * accessible name is its own wording, never a composition — the precedent
+   * is `ROOT_ALIGNMENT_MENU_ARIA` in `blocks/root`.
+   *
+   * Left out, the name is composed from {@link label} as before, so a caller
+   * that still passes an English literal is unaffected.
+   */
+  menuAria?: string;
   items: PickerMenuItem<T>[];
   currentValue: T;
   onPick: (value: T) => void;
@@ -68,6 +83,7 @@ export function renderCurrentPickerItemWith<
 export function renderPickerMenu<T>({
   label,
   tooltip,
+  menuAria,
   icon,
   items,
   currentValue,
@@ -77,7 +93,7 @@ export function renderPickerMenu<T>({
   return html`
     <editor-menu-button
       data-testid=${ifDefined(testId)}
-      aria-label="${`${label.toLowerCase()}-menu`}"
+      aria-label="${menuAria ?? `${label.toLowerCase()}-menu`}"
       .button=${html`
         <editor-icon-button
           data-testid=${ifDefined(testId ? `${testId}-button` : undefined)}

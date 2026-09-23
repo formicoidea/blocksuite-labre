@@ -327,6 +327,15 @@ const IMPORT_DONE_FALLBACK = 'file imported';
 const IMPORT_FAILED_KEY = 'com.labre.interchange.import.failed';
 const IMPORT_FAILED_FALLBACK = 'This file could not be imported';
 /**
+ * What an imported sheet is called when neither the file nor the source
+ * document names it — resolved HERE, at the creation site, because that is
+ * where `std` is (ADR 0023 §3: a seed is translated by whoever writes it, and
+ * a pure reader never can). The readers keep the same English text as their
+ * own last-resort default, so a headless call still produces a named sheet.
+ */
+const IMPORT_DEFAULT_NAME_KEY = 'com.labre.interchange.import.default-name';
+const IMPORT_DEFAULT_NAME_FALLBACK = 'Imported diagram';
+/**
  * The document went read-only between the moment the file was accepted and the
  * moment its board was about to be written — see the second guard in
  * {@link importInterchangeFile}. Its own sentence rather than the reader's,
@@ -648,7 +657,15 @@ export async function importInterchangeFile(
     // inflated" and "this is not a BPMN document" are the same event to the
     // person who picked the file, and they take the same notification.
     const source = options.decode ? await options.decode(text, file) : text;
-    result = capability.run(source, { name: file.name });
+    result = capability.run(source, {
+      name:
+        file.name.trim() ||
+        translateKey(
+          std,
+          IMPORT_DEFAULT_NAME_KEY,
+          IMPORT_DEFAULT_NAME_FALLBACK
+        ),
+    });
   } catch (error) {
     // `InterchangeImportError` checked FIRST: a reader that throws it declared
     // a key for its own refusal, resolved exactly like a note's `messageKey`

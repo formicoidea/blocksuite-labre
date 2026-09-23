@@ -18,7 +18,6 @@ import {
   matchModels,
   shouldRefreshOnPropsUpdate,
 } from '@labre/affine-shared/utils';
-import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
 import { BlockSelection } from '@labre/std';
 import { flip, offset, shift } from '@floating-ui/dom';
 import {
@@ -46,9 +45,16 @@ import {
   UNTRUSTED_SANDBOX,
 } from './consts.js';
 import { embedIframeBlockStyles } from './style.js';
-import type { EmbedIframeStatusCardOptions } from './types.js';
+import {
+  EmbedIframeError,
+  type EmbedIframeStatusCardOptions,
+} from './types.js';
 import { isSafeEmbedUrl, safeGetIframeSrc } from './utils.js';
-import { EMBED_IFRAME_NO_LINK_MESSAGE } from '../translations.js';
+import {
+  EMBED_IFRAME_ERROR_INVALID_URL,
+  EMBED_IFRAME_ERROR_NO_DATA,
+  EMBED_IFRAME_NO_LINK_MESSAGE,
+} from '../translations.js';
 
 export type EmbedIframeStatus = 'idle' | 'loading' | 'success' | 'error';
 
@@ -166,8 +172,10 @@ export class EmbedIframeBlockComponent extends CaptionedBlockComponent<EmbedIfra
       const embedIframeService = this.embedIframeService;
       const linkPreviewService = this.linkPreviewService;
       if (!embedIframeService || !linkPreviewService) {
-        throw new BlockSuiteError(
-          ErrorCode.ValueNotExists,
+        // A DI wiring failure, never a user-facing fact: it declares NO
+        // `messageKey`, so the card shows its generic keyed sentence and this
+        // technical one stays where a developer reads it (#390).
+        throw new EmbedIframeError(
           'EmbedIframeService or LinkPreviewService not found'
         );
       }
@@ -181,10 +189,9 @@ export class EmbedIframeBlockComponent extends CaptionedBlockComponent<EmbedIfra
       // if the embed data is not found, and the iframeUrl is not set, throw an error
       const currentIframeUrl = this.model.props.iframeUrl;
       if (!embedData && !currentIframeUrl) {
-        throw new BlockSuiteError(
-          ErrorCode.ValueNotExists,
-          'Failed to get embed data'
-        );
+        throw new EmbedIframeError(EMBED_IFRAME_ERROR_NO_DATA[1], {
+          messageKey: EMBED_IFRAME_ERROR_NO_DATA[0],
+        });
       }
 
       // update model
@@ -307,7 +314,9 @@ export class EmbedIframeBlockComponent extends CaptionedBlockComponent<EmbedIfra
     // the url comes from the document: refuse to give a non http(s) one to src
     if (!isSafeEmbedUrl(iframeUrl)) {
       return html`<embed-iframe-error-card
-        .error=${new Error('Invalid iframe URL')}
+        .error=${new EmbedIframeError(EMBED_IFRAME_ERROR_INVALID_URL[1], {
+          messageKey: EMBED_IFRAME_ERROR_INVALID_URL[0],
+        })}
         .model=${this.model}
         .onRetry=${this._handleRetry}
         .std=${this.std}

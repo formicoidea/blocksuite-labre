@@ -15,9 +15,10 @@ import { allSourceFiles, HERE, toRepoRelative } from './source-files.js';
  *
  * ## This is a regex over file text, not an AST walk
  *
- * Five shapes catch most of what a reviewer would flag by eye (a lit text
+ * Six shapes catch most of what a reviewer would flag by eye (a lit text
  * node, a template attribute, a prose-shaped object property, a toast
- * message, a seed table keyed by kind) — see the `P1`-`P5` patterns below. It
+ * message, a seed table keyed by kind, a fallback literal) — see the `P1`-`P6`
+ * patterns below. It
  * will always miss some real
  * prose (a string built by concatenation, a tuple `['some prose', x, y]` with
  * no property name in front of it) and it will always let through some
@@ -28,15 +29,26 @@ import { allSourceFiles, HERE, toRepoRelative } from './source-files.js';
  * is never getting a key" — and it is a RATCHET: `pending` can only shrink
  * (see `UPDATE_I18N_BASELINE` below), never grow silently.
  *
- * ponytail: known false-negatives the four patterns do not attempt —
+ * ponytail: known false-negatives the patterns do not attempt —
  * string-literal ARRAY ELEMENTS with no property name in front of them
  * (`SMALL_LABELS` in `gfx/cynefin-estuarine/src/cynefin/consts.ts` is exactly
  * this shape: `['dispositional exaptation', 257, 239]`), string
  * CONCATENATION (`'Frame: ' + frameModel.props.title`), and a literal passed
  * as a bare function ARGUMENT with no distinguishing property/attribute name
  * around it. Widening the patterns to catch these would also catch a lot more
- * of TypeScript itself (tuple types, generic argument lists); the four
- * patterns below were chosen because they are the shapes that stay narrow.
+ * of TypeScript itself (tuple types, generic argument lists); the patterns
+ * below were chosen because they are the shapes that stay narrow.
+ *
+ * The bare-ARGUMENT case is the one #390 asked about, in the specific shape of
+ * `new Error('a sentence a user reads')`. It was MEASURED before being
+ * rejected: 248 hits across the repo, of which the overwhelming majority are
+ * internal invariants that no catch site ever renders ("Note block is not
+ * found after creation", "Never reach here"). Classifying 248 entries is a lot
+ * of judgement for a pattern whose real target is much smaller — the errors
+ * that ARE displayed, which in this repo is a closed set of two classes that
+ * carry a `messageKey`. So the minimal form ships instead, as a claim rather
+ * than a ratchet entry: see "a displayed error names its own sentence" at the
+ * bottom of this file (10 construction sites today, 1 deliberate exception).
  */
 
 // ---------------------------------------------------------------------------
@@ -115,6 +127,31 @@ const OBJECT_PROP = new RegExp(
 const SEED_TABLE = /const\s+\w*(?:SEED|LABEL)\w*[^=\n]*=\s*\{([\s\S]*?)\n\};/g;
 const TABLE_VALUE =
   /^\s*(?:'[^']+'|"[^"]+"|\[[^\]]+\]|[\w-]+)\s*:\s*(['"`])((?:(?!\1)[^\\]|\\.)*)\1\s*,?\s*$/gm;
+
+/**
+ * P6 — a FALLBACK literal: `` x || 'Untitled' ``, `` y ?? 'Imported diagram' ``.
+ *
+ * Added after #390, where the embed error card rendered
+ * `` ${this.error?.message || 'Failed to load embedded content'} `` — a
+ * user-facing sentence sitting in the one place none of P1-P5 could reach.
+ * P1 treats a `${…}` span as opaque, so a fallback written inside a lit
+ * interpolation is invisible to it; P2/P3 key on a name to the LEFT of the
+ * literal, and `||` is not a name. The same blind spot had already left two
+ * `'Untitled'` fallbacks in the embed-doc blocks.
+ *
+ * It stays cheap because the default of a nullish value is almost always
+ * either prose (a title, a message) or an identifier the `looksLikeObjectProse`
+ * filter already rejects: the whole repo yields under 40 hits.
+ *
+ * Deliberately NOT matching a backtick literal, and never across a line
+ * break. Both were measured: a `` ` `` branch turns every `??` inside a doc
+ * comment (this repo writes plenty, e.g. "a property NAMED `???`") into an
+ * opening quote that swallows the rest of the file, and the capture that
+ * comes back is a page of TypeScript rather than a sentence. A fallback
+ * written as a template literal interpolates, and an interpolated fallback is
+ * skipped below anyway.
+ */
+const FALLBACK_LITERAL = /(?:\|\||\?\?)\s*(['"])((?:(?!\1)[^\\\n]|\\.)*)\1/g;
 
 /**
  * P4 — the message argument of a toast: the two-argument
@@ -264,6 +301,12 @@ function findHits(src: string): string[] {
       if (value.includes('${')) continue;
       if (looksLikeObjectProse(value)) hits.push(normalizeLiteral(value));
     }
+  }
+
+  for (const match of src.matchAll(FALLBACK_LITERAL)) {
+    const value = match[2];
+    if (value.includes('${')) continue;
+    if (looksLikeObjectProse(value)) hits.push(normalizeLiteral(value));
   }
 
   for (const match of src.matchAll(TOAST_MESSAGE)) {
@@ -835,5 +878,80 @@ describe('literal translation guard', () => {
         'removed). Run `UPDATE_I18N_BASELINE=1 yarn vitest run literals` ' +
         'from packages/affine/all to drop it.'
     ).toEqual([]);
+  }, 90_000);
+
+  /**
+   * **Would have caught #390 (4) and S3-S6.** The minimal form of the "bare
+   * function argument" pattern, restricted to the shape that actually matters.
+   *
+   * An `Error`'s `message` is written for a developer. Two classes in this
+   * repo are different: their instances are CAUGHT AND RENDERED — the
+   * interchange import's failure notification and the embed iframe's error
+   * card — and both therefore carry a `messageKey` the catch site resolves.
+   * A construction of one of them that declares no key is a sentence that
+   * will be drawn in English under a translated heading, which is exactly
+   * what #390 reported and what `svg-sketch.ts` did with three sentences.
+   *
+   * Narrow by construction, so it needs no baseline: 10 construction sites
+   * across the repo today, one deliberate exception.
+   */
+  const DISPLAYED_ERROR_CLASSES = [
+    'InterchangeImportError',
+    'EmbedIframeError',
+  ];
+
+  /**
+   * The one displayed error that deliberately declares no key: a DI wiring
+   * failure is not a fact about the user's file, so the card shows its own
+   * generic sentence (`EMBED_IFRAME_ERROR_FALLBACK`) and this technical one
+   * stays for the console.
+   */
+  const ERRORS_WITHOUT_A_KEY_ON_PURPOSE = [
+    'packages/affine/blocks/embed/src/embed-iframe-block/embed-iframe-block.ts: ' +
+      'EmbedIframeService or LinkPreviewService not found',
+  ];
+
+  test('a displayed error names its own sentence (#390)', () => {
+    const offenders: string[] = [];
+    let constructions = 0;
+
+    for (const file of allSourceFiles()) {
+      const src = readFileSync(file, 'utf8');
+      for (const className of DISPLAYED_ERROR_CLASSES) {
+        const opening = new RegExp(`new\\s+${className}\\s*\\(`, 'g');
+        for (const match of src.matchAll(opening)) {
+          constructions++;
+          // The whole call, by balanced parentheses — the message and the
+          // options object both sit inside it, however they are formatted.
+          let index = match.index + match[0].length;
+          let depth = 1;
+          while (index < src.length && depth > 0) {
+            const char = src[index];
+            if (char === '(') depth++;
+            else if (char === ')') depth--;
+            index++;
+          }
+          const call = src.slice(match.index, index);
+          if (/\bmessageKey\s*:/.test(call)) continue;
+
+          const message = /['"`]((?:[^'"`\\]|\\.)*)['"`]/.exec(call)?.[1] ?? '';
+          offenders.push(`${toRepoRelative(file)}: ${message}`);
+        }
+      }
+    }
+
+    // The inventory is load-bearing: if the classes are renamed and this drops
+    // to zero the test would pass while proving nothing.
+    expect(constructions, 'displayed-error construction sites').toBeGreaterThan(
+      5
+    );
+    expect(
+      offenders.sort(),
+      'a displayed error with no messageKey: its message will be drawn in ' +
+        'English under a translated heading. Declare a wording in the ' +
+        "package's translations.ts and pass its key, or — if the sentence is " +
+        'for a developer and the catch site should show its generic one — ' +
+        'list it in ERRORS_WITHOUT_A_KEY_ON_PURPOSE with the reason.'
+    ).toEqual(ERRORS_WITHOUT_A_KEY_ON_PURPOSE.sort());
   }, 90_000);
 });

@@ -60,6 +60,35 @@ export const EMBED_IFRAME_ERROR_TITLE: ChromeWording = [
 
 export const EMBED_IFRAME_ERROR_EDIT = TOOLBAR_EDIT;
 
+/* ── The error card's own sentence (#390) ─────────────────────────────────
+ *
+ * The card used to render `error.message` raw — a developer sentence thrown
+ * by `refreshData`, drawn under a translated title. An `EmbedIframeError`
+ * carries a `messageKey` instead (the `InterchangeImportError` pattern,
+ * `blocks/surface/src/extensions/interchange.ts`), and the card resolves the
+ * key or this fallback, never the raw `message`.
+ */
+
+export const EMBED_IFRAME_ERROR_NO_DATA: ChromeWording = [
+  'com.labre.embed.iframe.error.no-embed-data',
+  'Failed to get embed data',
+];
+
+export const EMBED_IFRAME_ERROR_INVALID_URL: ChromeWording = [
+  'com.labre.embed.iframe.error.invalid-url',
+  'Invalid iframe URL',
+];
+
+/**
+ * What the card says for any error that declares no key of its own —
+ * including the DI wiring failure ("EmbedIframeService or LinkPreviewService
+ * not found"), which is never a user-facing fact and stays in the console.
+ */
+export const EMBED_IFRAME_ERROR_FALLBACK: ChromeWording = [
+  'com.labre.embed.iframe.error.message',
+  'Failed to load embedded content',
+];
+
 export const EMBED_IFRAME_IDLE_TEXT: ChromeWording = [
   'com.labre.embed.iframe.idle.text',
   'Embed anything (Google Drive, Google Docs, Spotify, Miro…)',
@@ -134,6 +163,9 @@ export const EMBED_WORDINGS: readonly ChromeWording[] = [
   EMBED_IFRAME_SLASH_NAME,
   EMBED_IFRAME_SLASH_DESCRIPTION,
   EMBED_IFRAME_ERROR_TITLE,
+  EMBED_IFRAME_ERROR_NO_DATA,
+  EMBED_IFRAME_ERROR_INVALID_URL,
+  EMBED_IFRAME_ERROR_FALLBACK,
   EMBED_IFRAME_IDLE_TEXT,
   EMBED_IFRAME_INVALID_URL_TITLE,
   EMBED_IFRAME_INVALID_URL_MESSAGE,

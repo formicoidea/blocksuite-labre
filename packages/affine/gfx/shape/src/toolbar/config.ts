@@ -26,6 +26,7 @@ import {
   TextFitMode,
 } from '@labre/affine-model';
 import {
+  MENU_ARIA_STYLE,
   STYLE_MENU_LABEL,
   type ToolbarGenericAction,
   type ToolbarModuleConfig,
@@ -61,6 +62,7 @@ import {
   SHAPE_ADD_TEXT_TOOLTIP,
   SHAPE_EDIT_VERTICES_TOOLTIP,
   SHAPE_SWITCH_TYPE_LABEL,
+  SHAPE_SWITCH_TYPE_MENU_ARIA,
   SHAPE_TEXT_FIT_ARIA,
   SHAPE_TEXT_FIT_CONTAINED,
   SHAPE_TEXT_FIT_GROW,
@@ -124,6 +126,7 @@ export const shapeToolbarConfig = {
           icon: ShapeIcon(),
           label: 'Switch shape type',
           labelWording: SHAPE_SWITCH_TYPE_LABEL,
+          menuAriaWording: SHAPE_SWITCH_TYPE_MENU_ARIA,
           items: ShapeComponentConfig.map(item => ({
             key: item.tooltip,
             keyWording: item.tooltipWording,
@@ -164,6 +167,7 @@ export const shapeToolbarConfig = {
         return renderMenu({
           label: 'Style',
           labelWording: STYLE_MENU_LABEL,
+          menuAriaWording: MENU_ARIA_STYLE,
           items: LINE_STYLE_LIST,
           currentValue: shapeStyle === ShapeStyle.Scribbled,
           onPick,

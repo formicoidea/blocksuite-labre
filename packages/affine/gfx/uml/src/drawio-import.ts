@@ -937,6 +937,11 @@ export function importDrawio(
       ? [
           {
             id: UML_DRAWIO_FORMAT_ID,
+            // The LAST resort, reached only by a headless call that names
+            // nothing: the editor's own import resolves
+            // `com.labre.interchange.import.default-name` and passes it as
+            // `options.name` (#390), so this reader stays pure and the two
+            // spellings are the same English text on purpose.
             name: sheetName?.trim() || 'Imported diagram',
             lifelines,
             messages,
@@ -1059,6 +1064,8 @@ function emptyModel(
   // costs the author a retag they would otherwise have to make.
   kind: UmlDiagramKind = DIAGRAM_KIND
 ): UmlModel {
+  // Same last resort as in `readSequence`: the editor's import resolves
+  // `com.labre.interchange.import.default-name` and hands it over as `name`.
   const label = name?.trim() || 'Imported diagram';
   return {
     diagram: {

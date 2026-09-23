@@ -58,6 +58,17 @@ export const SHAPE_SWITCH_TYPE_LABEL: ChromeWording = [
   'Switch shape type',
 ];
 
+/**
+ * The accessible name of the shape-type menu SHELL (#390) — its own wording,
+ * not `` `${SHAPE_SWITCH_TYPE_LABEL}-menu` ``, which is what produced
+ * "changer le type de forme-menu" on a French host. The fallback is the exact
+ * identifier that composition produced in English.
+ */
+export const SHAPE_SWITCH_TYPE_MENU_ARIA: ChromeWording = [
+  'com.labre.shape.toolbar.switch-type-menu',
+  'switch shape type-menu',
+];
+
 export const SHAPE_ADD_TEXT_TOOLTIP = ADD_TEXT_TOOLTIP;
 
 export const SHAPE_EDIT_VERTICES_TOOLTIP: ChromeWording = [
@@ -109,6 +120,7 @@ export const SHAPE_WORDINGS: readonly ChromeWording[] = [
   SHAPE_TEXT_FIT_ARIA,
   SHAPE_TEXT_FIT_TOOLTIP,
   SHAPE_SWITCH_TYPE_LABEL,
+  SHAPE_SWITCH_TYPE_MENU_ARIA,
   SHAPE_EDIT_VERTICES_TOOLTIP,
   SHAPE_NAME_SQUARE,
   SHAPE_NAME_ELLIPSE,

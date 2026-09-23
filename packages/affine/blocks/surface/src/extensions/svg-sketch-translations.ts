@@ -113,6 +113,30 @@ export const SVG_SKETCH_EMPTY: ChromeWording = [
   'No shape or text was recognised in this SVG, so nothing was drawn.',
 ];
 
+/* ── The reader's own refusals (#390) ─────────────────────────────────────
+ *
+ * Thrown via `InterchangeImportError` and rendered by `runInterchangeImport`
+ * in the failure notification — the same shape as `BPMN_IMPORT_ERRORS`
+ * (`gfx/bpmn/src/import.ts`), and keyed for the same reason: these three
+ * sentences were written for a user, not for a console, and were reaching a
+ * French host in English because a bare `new Error(…)` carries no key.
+ */
+
+export const SVG_SKETCH_ERROR_MALFORMED_XML: ChromeWording = [
+  'com.labre.interchange.svg.error.malformed-xml',
+  'This file is not well-formed XML, so no drawing can be read out of it: {{detail}}',
+];
+
+export const SVG_SKETCH_ERROR_NOT_SVG: ChromeWording = [
+  'com.labre.interchange.svg.error.not-svg',
+  'An SVG opens on <svg>; this one opens on <{{tag}}>.',
+];
+
+export const SVG_SKETCH_ERROR_SANITIZED_AWAY: ChromeWording = [
+  'com.labre.interchange.svg.error.sanitized-away',
+  'Nothing survived sanitizing this SVG, so there is no drawing to read.',
+];
+
 /**
  * Every wording declared above, in declaration order — joined into
  * `PACKAGE_WORDINGS` (`packages/affine/all/src/translations.ts`) alongside
@@ -138,4 +162,7 @@ export const SVG_SKETCH_WORDINGS: readonly ChromeWording[] = [
   SVG_SKETCH_REMOVED,
   SVG_SKETCH_REMOVED_ATTRIBUTE,
   SVG_SKETCH_EMPTY,
+  SVG_SKETCH_ERROR_MALFORMED_XML,
+  SVG_SKETCH_ERROR_NOT_SVG,
+  SVG_SKETCH_ERROR_SANITIZED_AWAY,
 ];

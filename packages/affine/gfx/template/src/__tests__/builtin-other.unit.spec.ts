@@ -4,6 +4,7 @@ import type { BlockStdScope } from '@labre/std';
 import { describe, expect, it } from 'vitest';
 
 import { otherTemplateCategory } from '../builtin/other.js';
+import { resolveTemplateName } from '../toolbar/resolve-name.js';
 
 const COLOUR_KEYS = new Set(['fillColor', 'strokeColor', 'color', 'stroke']);
 
@@ -137,6 +138,55 @@ describe('the generic templates localize their seeds', () => {
       .map(insertOf)
       .filter((text): text is string => typeof text === 'string');
     expect(texts.sort()).toEqual(Object.values(fr).sort());
+  });
+
+  /**
+   * **Would have caught #390 (3).** The five tiles' names were the only string
+   * of these templates left outside the seam: `t()` set `name`, `type`,
+   * `preview`, `content` and `localize`, and never `nameKey` — so
+   * `resolveTemplateName` fell through to the raw English `name` while every
+   * framework category's hand-written templates resolved theirs.
+   */
+  describe('the tile names go through the seam (#390)', () => {
+    const templates = otherTemplateCategory.templates;
+    if (!Array.isArray(templates)) throw new Error('expected eager templates');
+
+    it('every hand-composed tile carries a nameKey', () => {
+      // No `commandId` anywhere here: nothing derives these from a command, so
+      // `nameKey` is the only wording they can have.
+      for (const template of templates) {
+        expect(template.commandId, template.name).toBeUndefined();
+        expect(template.nameKey, template.name).toMatch(
+          /^com\.labre\.template\.name\./
+        );
+      }
+      expect(new Set(templates.map(t => t.nameKey)).size).toBe(
+        templates.length
+      );
+    });
+
+    it('a host catalogue renames the tile; without one the English stands', () => {
+      const fr: Record<string, string> = {
+        'com.labre.template.name.swot': 'Matrice SWOT',
+        'com.labre.template.name.kanban-board': 'Tableau kanban',
+        'com.labre.template.name.business-model-canvas':
+          'Canevas de modèle économique',
+        'com.labre.template.name.fishbone': 'Diagramme en arêtes de poisson',
+        'com.labre.template.name.gantt-chart': 'Diagramme de Gantt',
+      };
+      const host = hostWith(key => fr[key]);
+      expect(templates.map(t => resolveTemplateName(host, t))).toEqual([
+        'Matrice SWOT',
+        'Tableau kanban',
+        'Canevas de modèle économique',
+        'Diagramme en arêtes de poisson',
+        'Diagramme de Gantt',
+      ]);
+      // `name` itself is untouched — it is the drag payload and the cache key.
+      expect(templates.map(t => resolveTemplateName(hostWith(), t))).toEqual(
+        templates.map(t => t.name)
+      );
+    });
   });
 
   it('Gantt chart: a fake provider translates the week header with its param', () => {

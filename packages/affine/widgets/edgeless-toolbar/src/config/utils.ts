@@ -37,6 +37,7 @@ export function renderMenu<T>({
   labelWording,
   tooltip,
   tooltipWording,
+  menuAriaWording,
   icon,
   items,
   currentValue,
@@ -49,10 +50,16 @@ export function renderMenu<T>({
     tooltipWording && std
       ? translateKey(std, ...tooltipWording)
       : (tooltip ?? resolvedLabel);
+  // Composed from the ENGLISH `label`, never `resolvedLabel` (#390): sewing
+  // `-menu` onto a translated word produced "changer le type de forme-menu".
+  const menuAria =
+    menuAriaWording && std
+      ? translateKey(std, ...menuAriaWording)
+      : `${label.toLowerCase()}-menu`;
 
   return html`
     <editor-menu-button
-      aria-label="${`${resolvedLabel.toLowerCase()}-menu`}"
+      aria-label="${menuAria}"
       .button=${html`
         <editor-icon-button
           aria-label="${resolvedLabel}"
