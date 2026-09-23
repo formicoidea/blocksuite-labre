@@ -67,18 +67,31 @@ const CIRCLES = (() => {
 })();
 
 /**
- * Bounding box of the three circles in reference coords (small padding). The
- * REF margins around it only exist for the facet name labels — when a diagram
- * hides them (`cropToCircles`), the renderer fits THIS box into the element
- * bounds instead, so the background hugs the Venn.
+ * Bounding box of the three circles in reference coords, with just enough
+ * padding to see their outline. When a diagram hides its facet names
+ * (`cropToCircles` without `showLabels`) the renderer fits THIS box into the
+ * element bounds, so the background hugs the Venn.
  *
- * The 8-unit padding is load-bearing beyond the look: `templates/dynamic.ts`
- * places every element of the EDGY dynamic board in coordinates relative to
- * THIS box, so a document built from that template is pinned to these numbers.
- * They do not move.
+ * ## Why the padding is 2.5 and not the 8 it was
+ *
+ * The padding is the ONLY empty band such a board has, and it is spent at the
+ * element's scale, not at the reference one. The EDGY dynamic template draws
+ * its board at `DYN_SCALE = 4.8`, so eight reference units of padding were
+ * **32.4 model units** of nothing on each of the four sides — the board a user
+ * has to catch by its border (R37) sat a good inch away from the circles, which
+ * is what the recette of 23/09/2026 reported. 2.5 leaves 1.25 past the circles'
+ * own 2.5-wide outline, i.e. 6 model units at the dynamic board's scale and
+ * under 2 at a facets board's.
+ *
+ * `templates/dynamic.ts` places every element of the dynamic board in
+ * coordinates relative to this box (`dynToModel`) and sizes the board from it,
+ * so the template follows in the same breath: both are derived here, and a
+ * freshly inserted template is aligned by construction. A board built from the
+ * OLD template keeps its `xywh` and sees the Venn grow 3.8 % inside it — see
+ * the changeset.
  */
 export const CROP = (() => {
-  const pad = 8;
+  const pad = 2.5;
   return {
     x: CIRCLES.minX - pad,
     y: CIRCLES.minY - pad,

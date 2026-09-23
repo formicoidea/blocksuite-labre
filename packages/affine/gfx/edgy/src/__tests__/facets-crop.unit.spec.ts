@@ -4,6 +4,7 @@ import {
   CROP,
   CROP_LABELED,
   cropLabeledScale,
+  cropScale,
   LABEL_FONT_SIZE,
   VENN,
 } from '../consts';
@@ -14,6 +15,7 @@ import {
   facetLabelAnchors,
 } from '../label-layout';
 import { FACETS_SCALE } from '../presets';
+import { DYN_SCALE, dynToModel } from '../templates/dynamic';
 
 /**
  * The frame of a facets diagram sits ON the drawing (Notion "Ajuster les
@@ -141,18 +143,68 @@ describe('the facets frame sits on the Venn', () => {
     }
   });
 
-  it('leaves the circles box alone: the dynamic template is pinned to it', () => {
-    // `templates/dynamic.ts` places all twelve elements of the EDGY dynamic
-    // board in coordinates relative to `CROP`. Moving it would move them on
-    // every document already built from that template, for nothing: `CROP` is
-    // used when the names are HIDDEN, and it was already tight.
-    expect(CROP.x).toBeCloseTo(188.504, 3);
-    expect(CROP.y).toBe(45);
-    expect(CROP.w).toBeCloseTo(302.992, 3);
-    expect(CROP.h).toBe(290);
-  });
-
   it('keeps the font the allowances were measured at', () => {
     expect(LABEL_FONT_SIZE).toBe(15);
+  });
+});
+
+/**
+ * The board of the EDGY dynamic template, which hides its names and so is
+ * fitted through `CROP` rather than `CROP_LABELED`.
+ *
+ * What this would have caught: the first pass of this fix measured the facet
+ * names and left `CROP` alone, because `CROP` looked tight — eight reference
+ * units of padding round the circles. It is not tight where it is spent: the
+ * dynamic template draws its board at `DYN_SCALE = 4.8`, so those eight units
+ * were 32.4 MODEL units of nothing on each side, and the PO's recette of
+ * 23/09/2026 found the dynamic board exactly as hard to catch as before. A
+ * padding is only ever as small as the scale it is multiplied by.
+ */
+describe('the dynamic template board', () => {
+  const BOARD_W = CROP.w * DYN_SCALE;
+  const BOARD_H = CROP.h * DYN_SCALE;
+
+  /** Its ink is the three circles: it draws neither names nor pictos. */
+  function deadMarginsOfBoard() {
+    const { s, ox, oy } = cropScale(BOARD_W, BOARD_H);
+    const R = VENN.R + STROKE_HALF;
+    const minX = Math.min(CIRCLE_A.x, CIRCLE_B.x, CIRCLE_C.x) - R;
+    const maxX = Math.max(CIRCLE_A.x, CIRCLE_B.x, CIRCLE_C.x) + R;
+    const minY = Math.min(CIRCLE_A.y, CIRCLE_B.y, CIRCLE_C.y) - R;
+    const maxY = Math.max(CIRCLE_A.y, CIRCLE_B.y, CIRCLE_C.y) + R;
+    return {
+      left: ox + minX * s,
+      top: oy + minY * s,
+      right: BOARD_W - (ox + maxX * s),
+      bottom: BOARD_H - (oy + maxY * s),
+    };
+  }
+
+  it('leaves at most 8 model units of nothing on any side', () => {
+    const dead = deadMarginsOfBoard();
+    for (const side of ['left', 'top', 'right', 'bottom'] as const) {
+      expect(dead[side]).toBeGreaterThanOrEqual(0);
+      expect(dead[side]).toBeLessThanOrEqual(8);
+    }
+    // 1.25 reference units past the circles' outline, at 4.8: six model units,
+    // against the 32.4 the eight-unit padding used to cost.
+    expect(dead.left).toBeCloseTo(6, 6);
+  });
+
+  it('sizes the board and places its elements from the same box', () => {
+    // The template derives BOTH from `CROP`, so a freshly inserted one is
+    // aligned by construction: the board's top-left IS the box's origin.
+    expect(dynToModel(CROP.x, CROP.y)).toEqual([0, 0]);
+    expect(dynToModel(CROP.x + CROP.w, CROP.y + CROP.h)).toEqual([
+      BOARD_W,
+      BOARD_H,
+    ]);
+    // And the three circle centres land where the board paints them.
+    const { s, ox, oy } = cropScale(BOARD_W, BOARD_H);
+    for (const circle of [CIRCLE_A, CIRCLE_B, CIRCLE_C]) {
+      const [mx, my] = dynToModel(circle.x, circle.y);
+      expect(mx).toBeCloseTo(ox + circle.x * s, 6);
+      expect(my).toBeCloseTo(oy + circle.y * s, 6);
+    }
   });
 });
