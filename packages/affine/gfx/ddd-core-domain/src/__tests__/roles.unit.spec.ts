@@ -160,7 +160,9 @@ describe('what the creation sites stamp', () => {
       type: 'coreDomain',
       role: CORE_DOMAIN_ROLE.chart,
       resizeEnabled: true,
-      xywh: '[-450,-410,900,820]',
+      // The birth box: the 786 × 746 plot the chart has always been drawn in,
+      // plus the margins the ink actually needs (`core-domain/background.ts`).
+      xywh: '[-421,-393.5,842,787]',
     });
   });
 
