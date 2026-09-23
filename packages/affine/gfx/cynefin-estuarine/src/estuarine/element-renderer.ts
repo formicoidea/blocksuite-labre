@@ -24,6 +24,8 @@ import {
   LIMINAL_WIDTH,
   REF_H,
   REF_W,
+  REF_X,
+  REF_Y,
   T_AXIS,
   VOLATILE_PATH,
   VOLATILE_WIDTH,
@@ -184,6 +186,10 @@ export function applyEstuarineTransform(
 ): EstuarineFit {
   const fit = estuarineFit(w, h);
   ctx.scale(fit.sx, fit.sy);
+  // The crop: authored (REF_X, REF_Y) is the element's own origin. Applied
+  // INSIDE the scale so the translation is expressed in authored units, which
+  // is the space the `Path2D` this transform is meant for is written in.
+  ctx.translate(-REF_X, -REF_Y);
   return fit;
 }
 
@@ -230,10 +236,10 @@ export const estuarine: ElementRenderer<EstuarineElementModel> = (
   );
 
   const fit = estuarineFit(w, h);
-  /** Authored x → element x. Proportional: `43.5 / 690` of the real width. */
-  const ax = (x: number) => x * fit.sx;
+  /** Authored x → element x, through the cropped window (see `./consts.ts`). */
+  const ax = (x: number) => (x - REF_X) * fit.sx;
   /** Authored y → element y. */
-  const ay = (y: number) => y * fit.sy;
+  const ay = (y: number) => (y - REF_Y) * fit.sy;
 
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';

@@ -15,7 +15,7 @@ import {
 import type { BlockStdScope, CommandDescriptor } from '@labre/std';
 
 import { cynefinEstuarineCommands } from '../commands';
-import { HEX_SIZE } from '../estuarine/consts';
+import { HEX_SIZE, REF_X, REF_Y } from '../estuarine/consts';
 import {
   CYNEFIN_H,
   CYNEFIN_W,
@@ -35,8 +35,8 @@ import {
  * Every single-artefact entry below is what its command actually draws, run
  * once against a recording surface. Hand-written, they had drifted exactly as
  * far as a copy drifts: the hexagons had lost the `textFitMode` #52 gave them,
- * and the estuarine background was drawn at scale 1 (690×801) where the button
- * draws it at 1.2 (828×961). Derived, neither can happen again — and
+ * and the estuarine background was drawn at scale 1 where the button draws it
+ * at `MAP_SCALE`. Derived, neither can happen again — and
  * `templates-parity.unit.spec.ts` re-runs each command and compares.
  *
  * The two COMPOSITIONS stay hand-written: a sorting board and a constraint map
@@ -72,13 +72,21 @@ function sticky(x: number, y: number, text: string) {
 }
 
 /**
- * A constraint on the shipped map, placed by its CENTRE in the map's reference
- * space (690×801) — the frame the drawing was laid out in — carried onto the
- * box the map is actually born at.
+ * A constraint on the shipped map, placed by its CENTRE in the map's AUTHORED
+ * space (the 690×801 the drawing was laid out in), carried onto the box the map
+ * is actually born at.
+ *
+ * `- REF_X` / `- REF_Y` is the map's crop: the board's own origin is authored
+ * `(REF_X, REF_Y)`, not `(0, 0)`, so a hexagon placed on a curve stays on that
+ * curve. Derived, never restated — tightening the crop moves the drawing and
+ * the constraints on it together.
  */
+const mapX = (cx: number) => (cx - REF_X) * MAP_SCALE;
+const mapY = (cy: number) => (cy - REF_Y) * MAP_SCALE;
+
 const hexAt = (cx: number, cy: number) =>
   estuarineHexagonProps({
-    xywh: estuarineHexagonBox(cx * MAP_SCALE, cy * MAP_SCALE),
+    xywh: estuarineHexagonBox(mapX(cx), mapY(cy)),
   });
 
 const CAPTION_W = 120;
@@ -97,8 +105,8 @@ const CAPTION_GAP = 8;
  * Neutral, and staying so: a name is nobody's artefact.
  */
 function caption(cx: number, cy: number, str: string) {
-  const x = cx * MAP_SCALE - CAPTION_W / 2;
-  const y = cy * MAP_SCALE + HEX_SIZE / 2 + CAPTION_GAP;
+  const x = mapX(cx) - CAPTION_W / 2;
+  const y = mapY(cy) + HEX_SIZE / 2 + CAPTION_GAP;
   return {
     type: 'text',
     text: surfaceText(str),

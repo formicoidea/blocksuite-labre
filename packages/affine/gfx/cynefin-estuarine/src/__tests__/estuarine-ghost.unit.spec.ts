@@ -8,7 +8,10 @@ import {
   LABEL_LETTER_SPACING,
   LABELS,
   REF_H,
+  REF_MARGIN,
   REF_W,
+  REF_X,
+  REF_Y,
   T_AXIS,
 } from '../estuarine/consts';
 import {
@@ -28,6 +31,7 @@ import {
   ghostRevealFrame,
   prefersReducedMotion,
 } from '../estuarine/ghost-overlay';
+import { ESTUARINE_MAP_H, ESTUARINE_MAP_W } from '../presets';
 
 /**
  * `Path2D` does not exist under Node, which is the entire reason the curves are
@@ -52,6 +56,11 @@ interface StrokeRecord {
   strokeStyle: string;
   /** The ambient scale the path was stroked under — `[sx, sy]`. */
   scale: Point;
+  /**
+   * The ambient translation, in the path's OWN (pre-scale) units — the crop.
+   * A point `p` of the path therefore lands on `(p + translate) * scale`.
+   */
+  translate: Point;
 }
 
 interface FillTextRecord {
@@ -60,6 +69,7 @@ interface FillTextRecord {
   at: Point;
   font: string;
   letterSpacing: string;
+  align: string;
   /** Text must never be drawn under a non-unit scale: it would be squashed. */
   scale: Point;
 }
@@ -95,9 +105,11 @@ function fakeCtx() {
     alpha: number;
     dash: readonly number[];
     scale: Point;
+    translate: Point;
   }[] = [];
 
   const scaleNow = (): Point => [ctx.__sx, ctx.__sy];
+  const translateNow = (): Point => [ctx.__tx, ctx.__ty];
 
   /** Close the sub-path being built and file it. */
   const flush = (filled: boolean) => {
@@ -115,6 +127,8 @@ function fakeCtx() {
     __dash: [] as readonly number[],
     __sx: 1,
     __sy: 1,
+    __tx: 0,
+    __ty: 0,
     globalAlpha: 1,
     lineWidth: 0,
     strokeStyle: '',
@@ -132,6 +146,7 @@ function fakeCtx() {
         alpha: ctx.globalAlpha,
         dash: ctx.__dash,
         scale: scaleNow(),
+        translate: translateNow(),
       });
     }),
     restore: vi.fn(() => {
@@ -140,12 +155,20 @@ function fakeCtx() {
       ctx.globalAlpha = state.alpha;
       ctx.__dash = state.dash;
       [ctx.__sx, ctx.__sy] = state.scale;
+      [ctx.__tx, ctx.__ty] = state.translate;
     }),
     setTransform: vi.fn(() => {
       ctx.__sx = 1;
       ctx.__sy = 1;
+      ctx.__tx = 0;
+      ctx.__ty = 0;
     }),
-    translate: vi.fn(),
+    // Only ever called INSIDE the stretch, so the offset it carries is in
+    // authored units — which is exactly the space a recorded path is in.
+    translate: vi.fn((x: number, y: number) => {
+      ctx.__tx += x;
+      ctx.__ty += y;
+    }),
     scale: vi.fn((x: number, y: number) => {
       ctx.__sx *= x;
       ctx.__sy *= y;
@@ -175,6 +198,7 @@ function fakeCtx() {
         lineWidth: ctx.lineWidth,
         strokeStyle: ctx.strokeStyle,
         scale: scaleNow(),
+        translate: translateNow(),
       });
     }),
     fillText: vi.fn((text: string, x: number, y: number) => {
@@ -184,6 +208,7 @@ function fakeCtx() {
         at: [x, y],
         font: ctx.font,
         letterSpacing: ctx.letterSpacing,
+        align: ctx.textAlign,
         scale: scaleNow(),
       });
     }),
@@ -359,8 +384,21 @@ describe('estuarine — a stretched map stretches', () => {
     [580, 685],
   ];
 
+  /**
+   * An authored point, on an element of `k` times the reference box.
+   *
+   * The reference box is a CROPPED window onto the authored SVG space, so the
+   * element's own origin is authored `(REF_X, REF_Y)` and every expectation
+   * below has to go through the same window the renderer does. The arithmetic
+   * is written in the renderer's own order so the two land on the same float.
+   */
+  const onBoard = ([x, y]: Point, k = 1): Point => [
+    (x - REF_X) * k,
+    (y - REF_Y) * k,
+  ];
+
   const scaled = (points: Point[][], k: number) =>
-    points.map(head => head.map(([x, y]) => [x * k, y * k]));
+    points.map(head => head.map(point => onBoard(point as Point, k)));
 
   it('is exactly the authored drawing at the authored ratio', () => {
     const { paths, fillTexts, strokes } = render(
@@ -369,22 +407,24 @@ describe('estuarine — a stretched map stretches', () => {
 
     // The e axis over the full authored height, the t axis over its width.
     expect(axesOf(paths)?.points).toEqual([
-      [E_AXIS.x, E_AXIS.y1],
-      [E_AXIS.x, E_AXIS.y2],
-      [T_AXIS.x1, T_AXIS.y],
-      [T_AXIS.x2, T_AXIS.y],
+      onBoard([E_AXIS.x, E_AXIS.y1]),
+      onBoard([E_AXIS.x, E_AXIS.y2]),
+      onBoard([T_AXIS.x1, T_AXIS.y]),
+      onBoard([T_AXIS.x2, T_AXIS.y]),
     ]);
     expect(axesOf(paths)?.lineWidth).toBeCloseTo(AXIS_WIDTH, 9);
 
     // Three arrowheads, vertex for vertex where the SVG put them.
-    expect(headsOf(paths).map(head => head.points)).toEqual(AUTHORED_HEADS);
+    expect(headsOf(paths).map(head => head.points)).toEqual(
+      scaled(AUTHORED_HEADS, 1)
+    );
 
     // Every legend on its authored anchor, at its authored size.
     expect(fillTexts.map(entry => entry.at)).toEqual([
-      [LABELS.liminal.x, LABELS.liminal.y],
-      [LABELS.volatile.x, LABELS.volatile.y],
-      [LABELS.counterfactual.x, LABELS.counterfactual.y],
-      ...AUTHORED_LETTERS,
+      onBoard([LABELS.liminal.x, LABELS.liminal.y]),
+      onBoard([LABELS.volatile.x, LABELS.volatile.y]),
+      onBoard([LABELS.counterfactual.x, LABELS.counterfactual.y]),
+      ...AUTHORED_LETTERS.map(point => onBoard(point)),
     ]);
     expect(fillTexts[0].font).toContain(`${LABELS.liminal.size}px`);
     expect(fillTexts[4].font).toContain(`${AXIS_LABELS.size}px`);
@@ -404,14 +444,14 @@ describe('estuarine — a stretched map stretches', () => {
       })
     );
 
-    // Three times the authored coordinates, everywhere: no letterbox offset
+    // Three times the cropped coordinates, everywhere: no letterbox offset
     // has to be added or subtracted, which is what makes this a pure scale-up
     // of the picture that shipped before the fix.
     expect(axesOf(paths)?.points).toEqual([
-      [E_AXIS.x * 3, E_AXIS.y1 * 3],
-      [E_AXIS.x * 3, E_AXIS.y2 * 3],
-      [T_AXIS.x1 * 3, T_AXIS.y * 3],
-      [T_AXIS.x2 * 3, T_AXIS.y * 3],
+      onBoard([E_AXIS.x, E_AXIS.y1], 3),
+      onBoard([E_AXIS.x, E_AXIS.y2], 3),
+      onBoard([T_AXIS.x1, T_AXIS.y], 3),
+      onBoard([T_AXIS.x2, T_AXIS.y], 3),
     ]);
     expect(axesOf(paths)?.lineWidth).toBeCloseTo(AXIS_WIDTH * 3, 9);
     expect(headsOf(paths).map(head => head.points)).toEqual(
@@ -420,12 +460,11 @@ describe('estuarine — a stretched map stretches', () => {
     // Birth size is this very case (`MAP_SCALE = 1.2`): a map that has not been
     // stretched paints the authored picture, only bigger. Including the letters.
     expect(fillTexts.slice(3).map(entry => entry.at)).toEqual(
-      AUTHORED_LETTERS.map(([x, y]) => [x * 3, y * 3])
+      AUTHORED_LETTERS.map(point => onBoard(point, 3))
     );
-    expect(fillTexts[0].at).toEqual([
-      LABELS.liminal.x * 3,
-      LABELS.liminal.y * 3,
-    ]);
+    expect(fillTexts[0].at).toEqual(
+      onBoard([LABELS.liminal.x, LABELS.liminal.y], 3)
+    );
     expect(fillTexts[0].font).toContain(`${LABELS.liminal.size * 3}px`);
     for (const stroke of strokes) expect(stroke.scale).toEqual([3, 3]);
     expect(strokes[0].lineWidth).toBeCloseTo(estuarineCurves()[0].width, 9);
@@ -439,13 +478,28 @@ describe('estuarine — a stretched map stretches', () => {
 
     // The t axis now covers twice the reference span — the same FRACTION of a
     // width that doubled — instead of stopping where the old letterbox left it.
-    expect(axes?.points[2]).toEqual([T_AXIS.x1 * 2, T_AXIS.y]);
-    expect(axes?.points[3]).toEqual([T_AXIS.x2 * 2, T_AXIS.y]);
-    expect((T_AXIS.x2 * 2) / (REF_W * 2)).toBeCloseTo(T_AXIS.x2 / REF_W, 9);
+    expect(axes?.points[2]).toEqual([
+      (T_AXIS.x1 - REF_X) * 2,
+      T_AXIS.y - REF_Y,
+    ]);
+    expect(axes?.points[3]).toEqual([
+      (T_AXIS.x2 - REF_X) * 2,
+      T_AXIS.y - REF_Y,
+    ]);
+    expect(((T_AXIS.x2 - REF_X) * 2) / (REF_W * 2)).toBeCloseTo(
+      (T_AXIS.x2 - REF_X) / REF_W,
+      9
+    );
 
     // The e axis keeps the untouched height, at the stretched x.
-    expect(axes?.points[0]).toEqual([E_AXIS.x * 2, E_AXIS.y1]);
-    expect(axes?.points[1]).toEqual([E_AXIS.x * 2, E_AXIS.y2]);
+    expect(axes?.points[0]).toEqual([
+      (E_AXIS.x - REF_X) * 2,
+      E_AXIS.y1 - REF_Y,
+    ]);
+    expect(axes?.points[1]).toEqual([
+      (E_AXIS.x - REF_X) * 2,
+      E_AXIS.y2 - REF_Y,
+    ]);
   });
 
   /**
@@ -578,8 +632,8 @@ describe('estuarine — a stretched map stretches', () => {
       expect(entry.scale).toEqual([1, 1]);
       // A legend names a CURVE, not an axis end, so its anchor stays the
       // proportional one: it has to travel with the boundary it names.
-      expect(entry.at[0]).toBeCloseTo(x * sx, 9);
-      expect(entry.at[1]).toBeCloseTo(y * sy, 9);
+      expect(entry.at[0]).toBeCloseTo((x - REF_X) * sx, 9);
+      expect(entry.at[1]).toBeCloseTo((y - REF_Y) * sy, 9);
       // One size, from BOTH factors: strictly between what the narrow side
       // and the wide side would each have given on their own.
       expect(entry.font).toContain(`${size * strokeScale}px`);
@@ -612,6 +666,178 @@ describe('estuarine — a stretched map stretches', () => {
         9
       );
       expect(fit.curveLineScale).toBeLessThan(1);
+    }
+  });
+});
+
+/**
+ * The crop (bug G): the board's own border is what a user grabs a background
+ * by (`framework-background/hit-test.ts`), so it must run close to the drawing.
+ *
+ * Before the crop the reference box was the raw SVG viewBox, which is loose
+ * around the picture: measured on the painted pixels of a board at birth size,
+ * 16.6 units of dead space on the left, 12.6 on top, 35.5 on the right and 20.4
+ * at the bottom. The reference box is now the ink's own bounding box grown by
+ * `REF_MARGIN`, and this suite measures the ink back out of the renderer.
+ */
+describe('estuarine — the board hugs its drawing', () => {
+  /**
+   * Per-character advance, matching `approxTextWidth` in the shared label
+   * helper (`framework-background/labels.ts`) — the estimate the library
+   * already trusts to size a word it cannot measure.
+   */
+  const GLYPH_ADVANCE = 0.6;
+  /**
+   * Cap height as a fraction of the font size. None of the five words drawn
+   * here has a descender (three uppercase legends, an `e`, a `t`), so the
+   * baseline IS the bottom of the ink.
+   *
+   * Calibration: `COUNTER FACTUAL` sits on baseline 25 at size 20, which puts
+   * its top at 25 − 14.4 = 10.6 — the 12.6 model units measured on the real
+   * canvas at birth size (÷ 1.2 = 10.5) came from exactly this word.
+   */
+  const CAP_HEIGHT = 0.72;
+
+  /** Samples of a `M … C …` authored path, in authored coordinates. */
+  function samplePath(d: string): Point[] {
+    const numbers = (chunk: string) =>
+      (chunk.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
+    const [start, ...curves] = d.split(/[MC]/).filter(chunk => chunk.trim());
+    const [x0, y0] = numbers(start);
+    let from: Point = [x0, y0];
+    const points: Point[] = [from];
+
+    for (const curve of curves) {
+      const [c1x, c1y, c2x, c2y, x, y] = numbers(curve);
+      const to: Point = [x, y];
+      // 16 samples is plenty: these are shallow segments a few units long.
+      for (let step = 1; step <= 16; step++) {
+        const t = step / 16;
+        const u = 1 - t;
+        points.push([
+          u ** 3 * from[0] +
+            3 * u * u * t * c1x +
+            3 * u * t * t * c2x +
+            t ** 3 * x,
+          u ** 3 * from[1] +
+            3 * u * u * t * c1y +
+            3 * u * t * t * c2y +
+            t ** 3 * y,
+        ]);
+      }
+      from = to;
+    }
+    return points;
+  }
+
+  /** Dead space between each edge of a `w × h` board and its painted ink. */
+  function margins(w: number, h: number) {
+    const { paths, strokes, fillTexts } = render(
+      fakeMap({ deserializedXYWH: [0, 0, w, h], showAxisLabels: true })
+    );
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    const add = (x: number, y: number, padX = 0, padY = 0) => {
+      minX = Math.min(minX, x - padX);
+      maxX = Math.max(maxX, x + padX);
+      minY = Math.min(minY, y - padY);
+      maxY = Math.max(maxY, y + padY);
+    };
+
+    // Axes (stroked, round caps and joins) and arrowheads (filled).
+    for (const path of paths) {
+      const pad = path.filled ? 0 : path.lineWidth / 2;
+      for (const [x, y] of path.points) add(x, y, pad, pad);
+    }
+
+    // The ghost curves, drawn inside the stretch: a point of the path lands on
+    // `(p + translate) * scale`, and the pen widens with the scale too.
+    for (const stroke of strokes) {
+      const [sx, sy] = stroke.scale;
+      const [tx, ty] = stroke.translate;
+      for (const [x, y] of samplePath((stroke.path as FakePath2D).d)) {
+        add(
+          (x + tx) * sx,
+          (y + ty) * sy,
+          (stroke.lineWidth * sx) / 2,
+          (stroke.lineWidth * sy) / 2
+        );
+      }
+    }
+
+    // Words, on an alphabetic baseline.
+    for (const entry of fillTexts) {
+      const size = Number(/([\d.]+)px/.exec(entry.font)?.[1]);
+      const spacing =
+        Number(/(-?[\d.]+)px/.exec(entry.letterSpacing)?.[1]) || 0;
+      const advance =
+        entry.text.length * size * GLYPH_ADVANCE +
+        Math.max(entry.text.length - 1, 0) * spacing;
+      const left =
+        entry.align === 'center' ? entry.at[0] - advance / 2 : entry.at[0];
+      add(left, entry.at[1] - size * CAP_HEIGHT);
+      add(left + advance, entry.at[1]);
+    }
+
+    return { left: minX, top: minY, right: w - maxX, bottom: h - maxY };
+  }
+
+  /**
+   * GUARD (bug G). Would have caught: a board born on the raw SVG viewBox,
+   * whose right edge stood 35.5 units clear of the last thing painted on it.
+   */
+  it('is born with its edges a few units from its ink', () => {
+    const box = margins(ESTUARINE_MAP_W, ESTUARINE_MAP_H);
+
+    for (const [side, margin] of Object.entries(box)) {
+      // Close, and on the INSIDE: the drawing is framed, never clipped.
+      expect(margin, side).toBeLessThanOrEqual(8);
+      expect(margin, side).toBeGreaterThan(0);
+    }
+  });
+
+  /**
+   * The same margin at any SIZE, since everything scales together. Expressed
+   * in reference units (÷ the factor), which is the space `REF_MARGIN` is in.
+   */
+  it('keeps that margin at every uniform resize', () => {
+    for (const k of [0.6, 1, 3]) {
+      const box = margins(REF_W * k, REF_H * k);
+      const at = `×${k}`;
+      expect(box.left / k, `left ${at}`).toBeLessThanOrEqual(REF_MARGIN + 1);
+      expect(box.right / k, `right ${at}`).toBeLessThanOrEqual(REF_MARGIN + 1);
+      expect(box.top / k, `top ${at}`).toBeLessThanOrEqual(REF_MARGIN + 1);
+      expect(box.bottom / k, `bottom ${at}`).toBeLessThanOrEqual(
+        REF_MARGIN + 1
+      );
+      for (const [side, margin] of Object.entries(box)) {
+        expect(margin, `${side} ${at}`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  /**
+   * A STRETCHED map cannot have a uniform margin, and the reason is the design
+   * rather than the crop: the t axis starts at a RATIO of the width (`x1 = 28`
+   * of 690) while its round cap and the glyphs beside it are fixed-size, so
+   * pulling the map sideways multiplies that lead. The crop still buys the
+   * whole of `REF_X` / `REF_Y` at every ratio; what this pins is that nothing
+   * runs away, at the two shapes the bug was filed on.
+   */
+  it('leaves no runaway band on a stretched map', () => {
+    for (const [w, h] of [
+      [1600, 400],
+      [400, 1600],
+    ]) {
+      const box = margins(w, h);
+      const [sx, sy] = [w / REF_W, h / REF_H];
+      const at = `${w}×${h}`;
+      expect(box.left / sx, `left ${at}`).toBeLessThanOrEqual(20);
+      expect(box.right / sx, `right ${at}`).toBeLessThanOrEqual(20);
+      expect(box.top / sy, `top ${at}`).toBeLessThanOrEqual(20);
+      expect(box.bottom / sy, `bottom ${at}`).toBeLessThanOrEqual(20);
     }
   });
 });

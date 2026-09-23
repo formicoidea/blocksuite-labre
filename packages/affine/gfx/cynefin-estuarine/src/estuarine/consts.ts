@@ -2,13 +2,14 @@ import type { ChromeWording } from '@labre/affine-shared/services';
 
 /**
  * Visual constants for the Estuarine framework map, reproduced from the official
- * SVG (viewBox 0 0 690 801). All geometry is authored in that fixed reference
- * space; the renderer reads every coordinate below as a RATIO of it and maps it
- * onto the element's real width and height independently, so a stretched map
- * gets a longer time axis and a taller energy axis rather than the same drawing
- * letterboxed (see `EstuarineFit` in `./element-renderer.ts`). The e axis is
- * vertical & double-headed (energy), the t axis horizontal & single-headed
- * (time only flows one way).
+ * SVG (viewBox 0 0 690 801). All geometry is authored in that fixed space; the
+ * renderer reads every coordinate below as a RATIO of the CROPPED window onto
+ * it ({@link REF_X} … {@link REF_H}) and maps it onto the element's real width
+ * and height independently, so a stretched map gets a longer time axis and a
+ * taller energy axis rather than the same drawing letterboxed (see
+ * `EstuarineFit` in `./element-renderer.ts`). The e axis is vertical &
+ * double-headed (energy), the t axis horizontal & single-headed (time only
+ * flows one way).
  *
  * The three curve legends below (`LABELS`) carry a `wording`, resolved by
  * `element-renderer.ts` through the `CanvasRenderer` it is handed at paint
@@ -17,8 +18,41 @@ import type { ChromeWording } from '@labre/affine-shared/services';
  * are deliberately NOT keyed (PO decision).
  */
 
-export const REF_W = 690;
-export const REF_H = 801;
+/**
+ * The CROPPED window onto the authored 690 × 801 SVG space — the rectangle the
+ * element's bounds are mapped onto.
+ *
+ * The SVG's own viewBox is loose around the drawing: the t axis stops at
+ * `x = 616 / 690` and the e axis at `y = 763 / 801`, so a board born on the raw
+ * viewBox carried dead space on every side (measured on the painted pixels at
+ * birth size: 16.6 left, 12.6 top, 35.5 right, 20.4 bottom, in model units).
+ * The board's own border is therefore nowhere near its drawing, which is both
+ * ugly and awkward — a background is grabbed BY that border
+ * (`framework-background/hit-test.ts`).
+ *
+ * So the reference box is the ink's bounding box grown by {@link REF_MARGIN},
+ * not the viewBox. `REF_X` / `REF_Y` is where that window starts in authored
+ * coordinates; every authored number in this file keeps its ORIGINAL value and
+ * the renderer subtracts the origin (`ax` / `ay`), so nothing about the drawing
+ * moves relative to anything else — only the frame around it tightens.
+ *
+ * `MAP_SCALE` (see `../presets.ts`) multiplies these, so a new board is born
+ * smaller while its drawing keeps exactly the size it had.
+ */
+export const REF_X = 8;
+export const REF_Y = 4.5;
+export const REF_W = 659;
+export const REF_H = 786.5;
+
+/**
+ * Space left between the ink and the edge of the board, in reference units.
+ *
+ * Small but not zero: a stroke is centred on its path, a glyph is measured
+ * generously, and a board whose ink touched its own border would look clipped.
+ * ~6 units is a little under one axis width (8) — enough to read as a margin,
+ * little enough that the border is visibly AROUND the drawing.
+ */
+export const REF_MARGIN = 6;
 
 export const COLORS = {
   axis: '#941253',
