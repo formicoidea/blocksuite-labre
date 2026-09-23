@@ -41,21 +41,46 @@ export enum FontStyle {
   Normal = 'normal',
 }
 
+/**
+ * A stored value: every member stays forever, whether or not a host still
+ * ships its files. `Satoshi` is in no default font list since #396 (its
+ * licence forbids offering it as a selectable font in a SaaS or design tool),
+ * but an element that carries it keeps loading and painting with the
+ * `sans-serif` fallback. `PlusJakartaSans` (SIL OFL 1.1) is its replacement.
+ */
 export enum FontFamily {
   BebasNeue = 'blocksuite:surface:BebasNeue',
   Inter = 'blocksuite:surface:Inter',
   Kalam = 'blocksuite:surface:Kalam',
   Lora = 'blocksuite:surface:Lora',
   OrelegaOne = 'blocksuite:surface:OrelegaOne',
+  PlusJakartaSans = 'blocksuite:surface:PlusJakartaSans',
   Poppins = 'blocksuite:surface:Poppins',
   Satoshi = 'blocksuite:surface:Satoshi',
 }
 
 export const FontFamilyMap = createEnumMap(FontFamily);
 
-export const FontFamilyList = Object.entries(FontFamilyMap) as {
-  [K in FontFamily]: [K, (typeof FontFamilyMap)[K]];
-}[FontFamily][];
+/**
+ * The name a family goes by where its enum key cannot spell it: a proper name
+ * with spaces. Proper names carry no i18n key, like the other family names
+ * (ADR 0023).
+ */
+const SPACED_FONT_FAMILY_NAMES: Partial<Record<FontFamily, string>> = {
+  [FontFamily.PlusJakartaSans]: 'Plus Jakarta Sans',
+};
+
+/**
+ * Every family with the name the picker shows, in declaration order. What a
+ * picker OFFERS is this list narrowed to the families the host configured
+ * (`FontConfig`, #396); this is the order and the names it keeps.
+ */
+export const FontFamilyList = (
+  Object.entries(FontFamilyMap) as [FontFamily, string][]
+).map(([family, key]): [FontFamily, string] => [
+  family,
+  SPACED_FONT_FAMILY_NAMES[family] ?? key,
+]);
 
 export enum TextResizing {
   AUTO_WIDTH_AND_HEIGHT,

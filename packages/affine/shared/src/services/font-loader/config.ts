@@ -14,8 +14,14 @@ export type FontConfig = z.infer<typeof fontConfigSchema>;
  * The AFFiNE-hosted mirror. It carries strictly fewer files than the community
  * list: `cdn.affine.pro` answers 404 for every `Inter-Bold`, `Poppins-Bold`
  * and `BebasNeue-Bold` spelling, so those three families offer no 700 weight
- * here. The Kalam / Satoshi / Lora `SemiBold` entries below already point at
- * the 700 file — those families ship a single heavy face, not two.
+ * here. The Kalam / Lora `SemiBold` entries below already point at the 700
+ * file — those families ship a single heavy face, not two.
+ *
+ * Satoshi is in neither list since #396: its licence (ITF Free Font License
+ * 2.0, section 02) forbids offering it as a selectable font in a SaaS or design
+ * tool, whoever hosts the files. `FontFamily.Satoshi` stays a valid stored
+ * value; an element that carries it paints with the fallback, and the family
+ * picker names it as unavailable instead of offering it.
  */
 export const AffineCanvasTextFonts: FontConfig[] = [
   // Inter, https://fonts.cdnfonts.com/css/inter?styles=29139,29134,29135,29136,29140,29141
@@ -73,43 +79,6 @@ export const AffineCanvasTextFonts: FontConfig[] = [
     url: 'https://cdn.affine.pro/fonts/Kalam-Bold.woff2',
     weight: FontWeight.SemiBold,
     style: FontStyle.Normal,
-  },
-  // Satoshi, https://fonts.cdnfonts.com/css/satoshi?styles=135009,135004,135005,135006,135002,135003
-  {
-    font: FontFamily.Satoshi,
-    url: 'https://cdn.affine.pro/fonts/Satoshi-Light.woff2',
-    weight: FontWeight.Light,
-    style: FontStyle.Normal,
-  },
-  {
-    font: FontFamily.Satoshi,
-    url: 'https://cdn.affine.pro/fonts/Satoshi-Regular.woff2',
-    weight: FontWeight.Regular,
-    style: FontStyle.Normal,
-  },
-  {
-    font: FontFamily.Satoshi,
-    url: 'https://cdn.affine.pro/fonts/Satoshi-Bold.woff2',
-    weight: FontWeight.SemiBold,
-    style: FontStyle.Normal,
-  },
-  {
-    font: FontFamily.Satoshi,
-    url: 'https://cdn.affine.pro/fonts/Satoshi-LightItalic.woff2',
-    weight: FontWeight.Light,
-    style: FontStyle.Italic,
-  },
-  {
-    font: FontFamily.Satoshi,
-    url: 'https://cdn.affine.pro/fonts/Satoshi-Italic.woff2',
-    weight: FontWeight.Regular,
-    style: FontStyle.Italic,
-  },
-  {
-    font: FontFamily.Satoshi,
-    url: 'https://cdn.affine.pro/fonts/Satoshi-BoldItalic.woff2',
-    weight: FontWeight.SemiBold,
-    style: FontStyle.Italic,
   },
   // Poppins, https://fonts.cdnfonts.com/css/poppins?styles=20394,20389,20390,20391,20395,20396
   {
@@ -201,6 +170,11 @@ export const AffineCanvasTextFonts: FontConfig[] = [
   },
 ];
 
+/**
+ * The families on a public mirror, one `FontConfig` per face. A host that
+ * promises no third-party request passes the same list with its own `url`s;
+ * a host that drops a family drops it from the family picker too (#396).
+ */
 export const CommunityCanvasTextFonts: FontConfig[] = [
   // Inter, https://fonts.cdnfonts.com/css/inter?styles=29139,29134,29135,29136,29140,29141
   {
@@ -272,41 +246,56 @@ export const CommunityCanvasTextFonts: FontConfig[] = [
     weight: FontWeight.SemiBold,
     style: FontStyle.Normal,
   },
-  // Satoshi, https://fonts.cdnfonts.com/css/satoshi?styles=135009,135004,135005,135006,135002,135003
+  // PlusJakartaSans (SIL OFL 1.1), https://fonts.cdnfonts.com/css/plus-jakarta-sans
+  // The mirror serves the two variable files only (weights 200 to 800), so
+  // every face below points at one of them: a face declared with a single
+  // weight gets that weight from the file's `wght` axis.
   {
-    font: FontFamily.Satoshi,
-    url: 'https://fonts.cdnfonts.com/s/85546/Satoshi-Light.woff',
+    font: FontFamily.PlusJakartaSans,
+    url: 'https://fonts.cdnfonts.com/s/107199/PlusJakartaSans%5Bwght%5D.woff',
     weight: FontWeight.Light,
     style: FontStyle.Normal,
   },
   {
-    font: FontFamily.Satoshi,
-    url: 'https://fonts.cdnfonts.com/s/85546/Satoshi-Regular.woff',
+    font: FontFamily.PlusJakartaSans,
+    url: 'https://fonts.cdnfonts.com/s/107199/PlusJakartaSans%5Bwght%5D.woff',
     weight: FontWeight.Regular,
     style: FontStyle.Normal,
   },
   {
-    font: FontFamily.Satoshi,
-    url: 'https://fonts.cdnfonts.com/s/85546/Satoshi-Bold.woff',
+    font: FontFamily.PlusJakartaSans,
+    url: 'https://fonts.cdnfonts.com/s/107199/PlusJakartaSans%5Bwght%5D.woff',
     weight: FontWeight.SemiBold,
     style: FontStyle.Normal,
   },
   {
-    font: FontFamily.Satoshi,
-    url: 'https://fonts.cdnfonts.com/s/85546/Satoshi-LightItalic.woff',
+    font: FontFamily.PlusJakartaSans,
+    url: 'https://fonts.cdnfonts.com/s/107199/PlusJakartaSans%5Bwght%5D.woff',
+    weight: FontWeight.Bold,
+    style: FontStyle.Normal,
+  },
+  {
+    font: FontFamily.PlusJakartaSans,
+    url: 'https://fonts.cdnfonts.com/s/107199/PlusJakartaSans-Italic%5Bwght%5D.woff',
     weight: FontWeight.Light,
     style: FontStyle.Italic,
   },
   {
-    font: FontFamily.Satoshi,
-    url: 'https://fonts.cdnfonts.com/s/85546/Satoshi-Italic.woff',
+    font: FontFamily.PlusJakartaSans,
+    url: 'https://fonts.cdnfonts.com/s/107199/PlusJakartaSans-Italic%5Bwght%5D.woff',
     weight: FontWeight.Regular,
     style: FontStyle.Italic,
   },
   {
-    font: FontFamily.Satoshi,
-    url: 'https://fonts.cdnfonts.com/s/85546/Satoshi-BoldItalic.woff',
+    font: FontFamily.PlusJakartaSans,
+    url: 'https://fonts.cdnfonts.com/s/107199/PlusJakartaSans-Italic%5Bwght%5D.woff',
     weight: FontWeight.SemiBold,
+    style: FontStyle.Italic,
+  },
+  {
+    font: FontFamily.PlusJakartaSans,
+    url: 'https://fonts.cdnfonts.com/s/107199/PlusJakartaSans-Italic%5Bwght%5D.woff',
+    weight: FontWeight.Bold,
     style: FontStyle.Italic,
   },
   // Poppins, https://fonts.cdnfonts.com/css/poppins?styles=20394,20389,20390,20391,20395,20396
@@ -365,8 +354,8 @@ export const CommunityCanvasTextFonts: FontConfig[] = [
     style: FontStyle.Italic,
   },
   // Lora, https://fonts.cdnfonts.com/css/lora-4?styles=50357,50356,50354,50355
-  // Lora ships no 600 face either: as with Kalam and Satoshi, the entries
-  // below map the 700 file onto `SemiBold` and the family has a single heavy.
+  // Lora ships no 600 face either: as with Kalam, the entries below map the
+  // 700 file onto `SemiBold` and the family has a single heavy.
   {
     font: FontFamily.Lora,
     url: 'https://fonts.cdnfonts.com/s/29883/Lora-Regular.woff',
