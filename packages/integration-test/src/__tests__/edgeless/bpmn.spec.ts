@@ -1640,11 +1640,18 @@ describe('the pool’s Legend button draws what the process actually uses', () =
       expect(child.role, child.id).toBeUndefined();
     }
 
-    // …and the measurable corollary: regenerating describes the same board.
+    // …and the measurable corollary: regenerating describes the same board —
+    // in the SAME box, since a second press replaces the pool's legend rather
+    // than stacking a second one on it (issue #391, ADR 0026's 2026-09-23
+    // amendment). The first group is gone afterwards, so what it drew is read
+    // before the second press and not through the dead model.
+    const drawn = legend.childElements.length;
     await generateLegend(poolId);
-    const second = legends().at(-1)!;
+
+    expect(legends()).toHaveLength(1);
+    const second = legends()[0];
     expect(second).not.toBe(legend);
-    expect(second.childElements.length).toBe(legend.childElements.length);
+    expect(second.childElements.length).toBe(drawn);
   });
 
   test('an empty pool gets the box and not one row', async () => {
