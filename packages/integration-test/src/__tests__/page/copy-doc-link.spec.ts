@@ -68,7 +68,15 @@ const hostNotifications = NotificationExtension({
   notify: () => {},
 });
 
-let realClipboard: unknown;
+/**
+ * The descriptor to put back afterwards, or `undefined` when `navigator` had
+ * no OWN `clipboard` property — which is the normal case, since it lives on
+ * `Navigator.prototype`. Restoring only "if there was one" would therefore
+ * leave the stub in place for every spec file that runs after this one:
+ * `isolate: false` gives this whole package ONE browser page.
+ */
+let realClipboard: PropertyDescriptor | undefined;
+let stubbedClipboard = false;
 
 describe('copy document link', () => {
   let paragraphId!: string;
@@ -79,6 +87,7 @@ describe('copy document link', () => {
     toasts.length = 0;
     window.__copiedLinks = [];
     realClipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+    stubbedClipboard = true;
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
       value: {
@@ -116,12 +125,14 @@ describe('copy document link', () => {
   });
 
   afterEach(() => {
+    if (!stubbedClipboard) return;
+    stubbedClipboard = false;
     if (realClipboard) {
-      Object.defineProperty(
-        navigator,
-        'clipboard',
-        realClipboard as PropertyDescriptor
-      );
+      Object.defineProperty(navigator, 'clipboard', realClipboard);
+    } else {
+      // No own property to put back: deleting the stub uncovers the real
+      // accessor on `Navigator.prototype` again.
+      delete (navigator as { clipboard?: unknown }).clipboard;
     }
   });
 

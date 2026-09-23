@@ -35,6 +35,46 @@ const toggleOf = (blockId: string) => {
   return button;
 };
 
+/**
+ * The deepest focused element, walking into shadow roots the way the event
+ * dispatcher does.
+ */
+const deepActiveElement = () => {
+  let active = document.activeElement;
+  while (active?.shadowRoot?.activeElement) {
+    active = active.shadowRoot.activeElement;
+  }
+  return active;
+};
+
+/**
+ * Put the browser focus on the chevron and WAIT for it to land there.
+ *
+ * `element.focus()` is synchronous in the DOM, but the keystroke below is not
+ * a DOM event: it is dispatched through the driver, to whatever the BROWSER
+ * considers focused, and that view of the focus settles a tick or two behind.
+ * A fixed `await wait()` was enough only as long as nothing else was competing
+ * for the scheduler — so the outcome of these tests depended on how much work
+ * the previously-run spec FILE had left the page doing, which is exactly the
+ * kind of accidental ordering a suite must not encode (`isolate: false` puts
+ * every spec of this package in ONE browser page).
+ *
+ * Polling the premise instead of counting ticks makes each test state what it
+ * needs: the keystroke is aimed at the chevron, so the chevron must hold the
+ * focus before it is sent.
+ */
+const focusAndSettle = async (element: HTMLElement) => {
+  element.focus();
+  for (let attempt = 0; attempt < 50; attempt++) {
+    if (deepActiveElement() === element) return;
+    await wait();
+  }
+  throw new Error(
+    `${element.tagName} never took the focus ` +
+      `(it is on ${deepActiveElement()?.tagName})`
+  );
+};
+
 const caretIn = (blockId: string) => {
   const { std } = window.editor;
   std.selection.setGroup('note', [
@@ -80,13 +120,11 @@ describe('the flavour keymaps leave the collapse toggle alone', () => {
 
   // The editor host carries `tabindex="0"` so that it can receive the
   // keystrokes of a block selection: the guard must not mistake it for one of
-  // the controls the editor renders. This one comes first on purpose — the
-  // tests below leave the browser focus on a chevron, and the host then never
-  // takes it back in this harness.
+  // the controls the editor renders.
   test('Tab still indents the blocks of a block selection', async () => {
     const { std } = window.editor;
     const doc = window.doc;
-    host().focus();
+    await focusAndSettle(host());
     std.selection.setGroup('note', [
       std.selection.create(BlockSelection, { blockId: siblingId }),
     ]);
@@ -101,8 +139,7 @@ describe('the flavour keymaps leave the collapse toggle alone', () => {
   test('Tab pressed on the toggle does not indent the block holding the caret', async () => {
     const doc = window.doc;
     caretIn(siblingId);
-    toggleOf(headingId).focus();
-    await wait();
+    await focusAndSettle(toggleOf(headingId));
 
     await userEvent.keyboard('{Tab}');
     await wait();
@@ -120,8 +157,7 @@ describe('the flavour keymaps leave the collapse toggle alone', () => {
     await wait(100);
 
     caretIn(childId);
-    toggleOf(headingId).focus();
-    await wait();
+    await focusAndSettle(toggleOf(headingId));
 
     await userEvent.keyboard('{Shift>}{Tab}{/Shift}');
     await wait();
@@ -134,8 +170,7 @@ describe('the flavour keymaps leave the collapse toggle alone', () => {
     const before = doc.getParent(siblingId)!.children.length;
 
     caretIn(siblingId);
-    toggleOf(headingId).focus();
-    await wait();
+    await focusAndSettle(toggleOf(headingId));
 
     await userEvent.keyboard('{Enter}');
     await wait();
