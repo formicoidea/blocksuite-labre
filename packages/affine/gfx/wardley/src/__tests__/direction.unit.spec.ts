@@ -1,3 +1,4 @@
+import { EDGE_DIRECTION_COLOR } from '@labre/affine-gfx-connector';
 import { findRoleDef, isTypedEdgeRole } from '@labre/std/gfx';
 import { describe, expect, it } from 'vitest';
 
@@ -59,19 +60,25 @@ describe('the vocabulary states the convention', () => {
     expect(arrow?.direction?.verbFallback).not.toBe('needs');
   });
 
-  it('paints the dependency chip in the house primary, and nothing else', () => {
-    // The PO asked for THIS relation to stand out (recette of 02/09/2026). A
-    // colour declared on the role rather than on the reveal is what keeps that
-    // decision from repainting every other framework's typed edges, so the pin
-    // is two-sided: the dependency asks for a colour, and no other Wardley edge
-    // role does.
-    const dependency = findRoleDef(vocabularies, WARDLEY_ROLE.dependency);
-    expect(dependency?.direction?.chipColor).toBe('#2563eb');
-
+  it('lets the mechanism colour every chip, and claims none for itself', () => {
+    // Reversed on the PO recette of 23/09/2026. `wardley:dependency` used to
+    // declare its own chip colour so the value chain would stand out; on a map
+    // that also carries a change arrow, the result was two chips in two
+    // different blues — the declared one and the mechanism's default — and no
+    // test compared them, because this file only ever looked at Wardley.
+    //
+    // The chip is chrome, so it follows the theme's accent token
+    // (`EDGE_DIRECTION_COLOR`), and no Wardley role overrides it. The field
+    // remains on the contract as an extension point; what guards it now is
+    // `affine/all/src/__tests__/direction-chip-accent.unit.spec.ts`, which
+    // reads EVERY framework's roles rather than this one's.
     for (const def of Object.values(WARDLEY_ROLES)) {
-      if (def.id === WARDLEY_ROLE.dependency) continue;
       expect(def.direction?.chipColor, def.id).toBeUndefined();
     }
+
+    // A token, not a hex: the day the host re-skins the accent, the chip moves
+    // with the rest of the chrome (DESIGN.md, The Borrowed Blue Rule).
+    expect(EDGE_DIRECTION_COLOR).toBe('var(--affine-primary-color)');
   });
 
   it('answers "is this a typed edge" for edges, nodes and strangers alike', () => {

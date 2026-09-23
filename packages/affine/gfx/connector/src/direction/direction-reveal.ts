@@ -58,6 +58,11 @@ import {
  * A TOKEN, not a hex: the chip is rendered in the DOM (`direction-widget.ts`),
  * so it follows whatever the host sets `--affine-primary-color` to. The accent
  * is AFFiNE's and due to be replaced — DESIGN.md, The Borrowed Blue Rule.
+ *
+ * It is the colour of EVERY typed edge of every framework: no role declares a
+ * `chipColor` any more (PO recette of 23/09/2026, after one that did produced
+ * two blues on one map). `affine/all/src/__tests__/direction-chip-accent.unit.spec.ts`
+ * reads the mounted vocabularies and keeps it that way.
  */
 export const EDGE_DIRECTION_COLOR = 'var(--affine-primary-color)';
 
