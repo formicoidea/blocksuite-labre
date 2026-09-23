@@ -475,10 +475,16 @@ describe('the direction of a wardley dependency', () => {
     expect(shown!.textContent).not.toContain('Kettle');
     expect(shown!.textContent).not.toContain('Electricity');
 
-    // In the colour the ROLE declares (PO recette of 02/09/2026), which is what
-    // makes the value chain unmistakable without touching the default every
-    // other framework's typed edge keeps.
-    expect(shown!.style.backgroundColor).toBe('rgb(37, 99, 235)');
+    // In the Labre accent — the one blue every framework's chip is drawn in
+    // since PR #395.
+    //
+    // COMPUTED, not inline. The colour used to be declared by this one role and
+    // written as an inline style, so reading `style.backgroundColor` was enough.
+    // It is now the widget stylesheet's default, which an inline read cannot
+    // see: that is exactly how this assertion caught the change. Reading what
+    // the browser actually paints covers both routes, so a framework that goes
+    // back to declaring its own `chipColor` is still checked here.
+    expect(getComputedStyle(shown!).backgroundColor).toBe('rgb(37, 99, 235)');
 
     // Turned onto the segment it sits on, not laid flat across it.
     expect(transform(shown!).degrees).toBeCloseTo(45, 0);
@@ -513,6 +519,55 @@ describe('the direction of a wardley dependency', () => {
     // Still readable: the link now runs up-and-left, so the box is turned by
     // 180° and lands back at the same +45°.
     expect(transform(reversed!).degrees).toBeCloseTo(45, 0);
+  });
+
+  /**
+   * GUARD — the reported bug, as the product owner saw it.
+   *
+   * Two relations on ONE map, selected together, came out in two different
+   * blues: `needs` in the colour `wardley:dependency` declared on itself, and
+   * `is evolving towards` in the mechanism's inherited default. Every
+   * assertion that existed read ONE chip, so nothing compared them and nothing
+   * failed. This reads both at once and compares what the browser paints.
+   */
+  test('both typed edges of a map wear the SAME blue', async () => {
+    addMap();
+    const consumer = addNamedNode(400, 200, 'Kettle');
+    const provider = addNamedNode(900, 700, 'Electricity');
+    const dependency = addDependency(consumer, provider);
+    const arrow = service.surface.addElement({
+      type: 'connector',
+      role: 'wardley:change-arrow',
+      mode: ConnectorMode.Straight,
+      source: { id: provider },
+      target: { id: consumer },
+    });
+    await wait(50);
+
+    const widget = edgeless.querySelector(
+      'affine-edge-direction-widget'
+    )! as Element & { updateComplete: Promise<unknown> };
+
+    // Selection reveals both, which is how the two chips came to be on screen
+    // together in the first place.
+    select(dependency, arrow);
+    await wait(50);
+    await widget.updateComplete;
+
+    const chips = Array.from(
+      widget.shadowRoot?.querySelectorAll(
+        '[data-testid="edge-direction-label"]'
+      ) ?? []
+    ) as HTMLElement[];
+    expect(chips).toHaveLength(2);
+
+    // Both verbs are on screen — without this the comparison below could pass
+    // on two copies of the same chip.
+    const verbs = chips.map(chip => chip.textContent?.trim()).sort();
+    expect(verbs).toEqual(['is evolving towards', 'needs']);
+
+    const blues = chips.map(chip => getComputedStyle(chip).backgroundColor);
+    expect(blues).toEqual(['rgb(37, 99, 235)', 'rgb(37, 99, 235)']);
   });
 
   /**

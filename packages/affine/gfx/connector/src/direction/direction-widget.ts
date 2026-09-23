@@ -99,13 +99,13 @@ export class EdgeDirectionWidget extends WidgetComponent<RootBlockModel> {
      *
      * Filled rather than outlined, because the box is a SHAPE now: an arrow's
      * point has no border to speak of, and a hairline diagonal at 40 % zoom is
-     * a smudge. Solid house blue with white text reads in both themes and
+     * a smudge. Solid Labre accent with white text reads in both themes and
      * cannot be mistaken for the map's own ink.
      *
-     * The background here is the DEFAULT, which every role that declares no
-     * chipColor keeps: render() overrides it inline only for a role that asks
-     * for one, so a colour decision taken about one relation never repaints the
-     * others.
+     * The background here is the DEFAULT, which every shipped role keeps —
+     * none declares a chipColor since PR #395, so every framework's chips are
+     * one blue. render() still overrides it inline for a role that asks for
+     * one, which is what keeps the extension point real.
      */
     .edge-direction-label {
       --edge-direction-point: 9px;

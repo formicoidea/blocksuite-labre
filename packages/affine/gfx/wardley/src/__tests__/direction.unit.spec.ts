@@ -1,3 +1,5 @@
+import { EDGE_DIRECTION_COLOR } from '@labre/affine-gfx-connector';
+import { LABRE_ACCENT } from '@labre/affine-shared/consts';
 import { findRoleDef, isTypedEdgeRole } from '@labre/std/gfx';
 import { describe, expect, it } from 'vitest';
 
@@ -59,19 +61,21 @@ describe('the vocabulary states the convention', () => {
     expect(arrow?.direction?.verbFallback).not.toBe('needs');
   });
 
-  it('paints the dependency chip in the house primary, and nothing else', () => {
-    // The PO asked for THIS relation to stand out (recette of 02/09/2026). A
-    // colour declared on the role rather than on the reveal is what keeps that
-    // decision from repainting every other framework's typed edges, so the pin
-    // is two-sided: the dependency asks for a colour, and no other Wardley edge
-    // role does.
-    const dependency = findRoleDef(vocabularies, WARDLEY_ROLE.dependency);
-    expect(dependency?.direction?.chipColor).toBe('#2563eb');
-
+  it('leaves every chip colour to the mechanism, dependency included', () => {
+    // THIS relation was asked to stand out (PR #203), and it did so by
+    // declaring `#2563eb` on itself while the mechanism defaulted to AFFiNE's
+    // borrowed blue. PR #395 made that same blue the accent of every direction
+    // chip, so the declaration would now only restate the default — and, worse,
+    // would hide a library-wide decision inside one framework's vocabulary.
+    //
+    // The pin is therefore reversed and widened: NO Wardley role declares a
+    // chip colour, and the mechanism's default is the Labre accent. That second
+    // half is what would have caught the reported bug — "needs" and "is
+    // evolving towards" in two different blues on one map.
     for (const def of Object.values(WARDLEY_ROLES)) {
-      if (def.id === WARDLEY_ROLE.dependency) continue;
       expect(def.direction?.chipColor, def.id).toBeUndefined();
     }
+    expect(EDGE_DIRECTION_COLOR).toBe(LABRE_ACCENT);
   });
 
   it('answers "is this a typed edge" for edges, nodes and strangers alike', () => {

@@ -3,6 +3,7 @@ name: Labre editor library
 description: Markdown + whiteboard editor for enterprise transformation architects — quiet AFFiNE-derived chrome around standard-faithful framework notations.
 colors:
   accent-borrowed-blue: '#1E96EB'
+  labre-accent: '#2563EB'
   link-deep-blue: '#1E67AF'
   processing-blue: '#2776FF'
   success-green: '#10CB86'
@@ -174,6 +175,7 @@ Several palettes on one canvas: an achromatic chrome with one blue accent, the b
 ### Primary
 
 - **Borrowed Blue** (accent-borrowed-blue): the only interaction colour in the chrome: selection marquee border, active icons, focused inputs, primary buttons, emphasis text. Inherited from AFFiNE (`--affine-brand-color`, `--affine-primary-color`, `--affine-v2-button-primary`). Its focus-ring form is `rgba(30, 150, 235, 0.3)` at 2px.
+- **Labre Accent** (labre-accent): the accent Labre chose for itself, and the only one it owns. It paints the direction chip of every typed connector — the verb revealed along a link on hover and on selection — in every framework (`LABRE_ACCENT`, `packages/affine/shared/src/consts/accent.ts`). Distinct from the Borrowed Blue on purpose: a chip carries white text, and `#2563EB` gives it 5.17:1 where `#1E96EB` gives 3.17:1. It is a JS constant rather than a token because the canvas and the marks drawn over it resolve their colours in JS and never read a CSS variable.
 - **Link Deep Blue** (link-deep-blue): inline links in prose (`--affine-link-color`).
 
 ### Secondary

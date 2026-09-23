@@ -82,13 +82,18 @@ export interface EdgeDirectionDef {
   gestureHintFallback?: string;
   /**
    * CSS colour of the chip the reveal draws this verb in (M2). Absent — which
-   * is every role but one — keeps the house affordance blue the mechanism has
-   * always used, so declaring nothing repaints nothing.
+   * is every role shipped today — keeps the mechanism's default, the Labre
+   * accent (`LABRE_ACCENT`), so every typed edge of every framework announces
+   * itself in the same blue.
    *
-   * A colour belongs to the ROLE rather than to the widget because the chip is
-   * per-relation: the PO may want one framework's central relation to stand out
-   * without every other framework's edges changing with it. The chip's text is
-   * white, so a colour declared here must be dark enough to carry it.
+   * It stays on the contract as a declared extension point: a colour belongs to
+   * the ROLE rather than to the widget because the chip is per-relation, so a
+   * framework whose central relation must stand out can claim its own without
+   * every other framework's edges changing with it. One role did exactly that
+   * from PR #203 (Wardley's dependency, `#2563eb`), until PR #395 promoted that
+   * colour to the default and the declaration became a restatement. The chip's
+   * text is white, so a colour declared here must be dark enough to carry it —
+   * 4.5:1 against white, which the default meets.
    */
   chipColor?: string;
 }

@@ -1,4 +1,5 @@
 import type { ConnectorElementModel } from '@labre/affine-model';
+import { LABRE_ACCENT } from '@labre/affine-shared/consts';
 import type { IVec } from '@labre/global/gfx';
 import type { EdgeDirectionDef, RoleDefs } from '@labre/std/gfx';
 import { InteractivityExtension } from '@labre/std/gfx';
@@ -51,11 +52,22 @@ import {
  */
 
 /**
- * The one colour the reveal is drawn in — the house primary, i.e. the colour of
+ * The one colour the reveal is drawn in — the Labre accent, i.e. the colour of
  * an affordance rather than of ink. Deliberately NOT the framework's palette:
  * the label is the tool talking about the drawing, not part of the drawing.
+ *
+ * It was the borrowed AFFiNE blue until PR #395, and one Wardley role declared
+ * `#2563eb` on itself to stand out against it (PR #203). The result was the bug
+ * the product owner reported: two chips on one board, "needs" and "is evolving
+ * towards", in two different blues — the second one also failing AA against its
+ * own white text (3.17:1 against 5.17:1). A product decision settled it by
+ * making the chosen blue the only one, so the default now reads
+ * {@link LABRE_ACCENT} and the role declares nothing.
+ *
+ * `chipColor` survives on the role contract: a framework may still claim its own
+ * chip colour, and none does today.
  */
-export const EDGE_DIRECTION_COLOR = '#1e96eb';
+export const EDGE_DIRECTION_COLOR = LABRE_ACCENT;
 
 const pathOf = (model: ConnectorElementModel): IVec[] | null => {
   const path = model.absolutePath as IVec[] | undefined;

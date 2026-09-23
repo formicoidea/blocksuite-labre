@@ -203,12 +203,12 @@ const DEFS: readonly RoleDef[] = [
       gestureHintKey: 'com.labre.wardley.role.dependency.gesture',
       gestureHintFallback:
         'Drag from the component that has the need to what it needs.',
-      // The house primary, on THIS chip and no other (same recette). The value
-      // chain is what a Wardley map is read along, and the PO asked for the
-      // relation that carries it to be unmistakable — a decision about one
-      // relation, so it is declared on that relation rather than on the
-      // mechanism, and every other framework's reveal keeps the colour it had.
-      chipColor: '#2563eb',
+      // No `chipColor`. This role declared `#2563eb` from PR #203 until
+      // PR #395, to stand out against the borrowed blue the mechanism defaulted
+      // to. A product decision then made that very blue the accent of EVERY
+      // direction chip (`LABRE_ACCENT`), so declaring it here would only restate
+      // the default — and hide the fact that the value is now a library-wide
+      // decision rather than a Wardley one.
     },
   },
   // The map itself: the axes frame the other roles are positioned against.
