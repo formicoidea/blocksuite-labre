@@ -89,7 +89,8 @@ export class FrameCardTitleEditor extends WithDisposable(ShadowlessElement) {
       background: 'var(--affine-background-primary-color)',
       border: '1px solid var(--affine-primary-color)',
       color: 'var(--affine-text-primary-color)',
-      boxShadow: '0px 0px 0px 2px rgba(30, 150, 235, 0.30)',
+      boxShadow:
+        '0px 0px 0px 2px color-mix(in srgb, var(--affine-primary-color) 30%, transparent)',
       zIndex: '1',
       display: 'block',
     });

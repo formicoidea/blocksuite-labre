@@ -6,7 +6,10 @@ import {
   type MindmapElementModel,
   type MindmapNode,
 } from '@labre/affine-model';
-import { ThemeProvider } from '@labre/affine-shared/services';
+import {
+  CHROME_ACCENT_CSS_VARIABLE,
+  ThemeProvider,
+} from '@labre/affine-shared/services';
 import {
   type Bound,
   isVecZero,
@@ -178,10 +181,12 @@ export class MindMapIndicatorOverlay extends Overlay {
 
     const targetPos = this.targetBound;
     const points = this._generatePath();
-    const color = this.themeService.getColorValue(
-      '--affine-primary-color',
-      '#1E96EB',
-      true
+    // The accent read from the theme, not a literal: a canvas context cannot
+    // take a `var(…)`, so the token is resolved here (DESIGN.md, The Borrowed
+    // Blue Rule). The hex used to sit here as a `getColorValue` fallback that
+    // could never fire — the variable name always resolves.
+    const color = this.themeService.getCssVariableColor(
+      CHROME_ACCENT_CSS_VARIABLE
     );
 
     ctx.strokeStyle = color;

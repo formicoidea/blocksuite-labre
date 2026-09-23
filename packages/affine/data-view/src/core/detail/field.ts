@@ -93,7 +93,8 @@ export class RecordField extends SignalWatcher(
     }
 
     .field-content.is-editing {
-      box-shadow: 0px 0px 0px 2px rgba(30, 150, 235, 0.3);
+      box-shadow: 0px 0px 0px 2px
+        color-mix(in srgb, var(--affine-primary-color) 30%, transparent);
     }
 
     .field-content.is-focus {

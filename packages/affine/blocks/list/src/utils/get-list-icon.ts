@@ -60,7 +60,9 @@ export function getListIcon(
         @click=${onClick}
       >
         ${model.props.checked
-          ? CheckBoxCheckSolidIcon({ style: 'color: #1E96EB' })
+          ? CheckBoxCheckSolidIcon({
+              style: 'color: var(--affine-primary-color)',
+            })
           : CheckBoxUnIcon()}
       </div>`;
     case 'toggle':
