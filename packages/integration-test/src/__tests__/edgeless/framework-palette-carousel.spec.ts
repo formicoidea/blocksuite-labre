@@ -102,6 +102,37 @@ describe("the colour pickers' palette carousel", () => {
   const select = async (...ids: string[]) => {
     service.gfx.selection.set({ elements: ids, editing: false });
     await settle();
+    await scrollToSelection();
+  };
+
+  /**
+   * Brings what is selected into the WINDOW, the way a user scrolls to it.
+   *
+   * The editor is mounted in a container twice the height of the window
+   * (`setupEditor`), and the camera `beforeEach` asks for does not survive the
+   * editor's own layout — from the second spec of a run onwards these scenes
+   * sit around a thousand pixels down: well inside the board, outside the
+   * window. A selection the WINDOW cannot show is one the toolbar is right to
+   * hide (`hide()`, in the positioner), and a hidden toolbar is one no real
+   * mouse can reach — which is what the palette clicks below timed out on.
+   *
+   * Low in the window rather than centred: the toolbar sits above what is
+   * selected and its panels open above the toolbar, so the room that has to be
+   * in view is the room ABOVE the anchor.
+   *
+   * The board is not moved — the page is. The scene, and every geometry these
+   * tests assert on, is the one they have always had.
+   */
+  const scrollToSelection = async () => {
+    const [element] = service.gfx.selection.selectedElements;
+    if (!element) return;
+    const bound = service.viewport.toViewBound(element.elementBound);
+    const anchored = bound.y + bound.h / 2 - window.innerHeight * 0.72;
+    window.scrollTo({
+      top: Math.max(0, Math.min(anchored, document.body.scrollHeight)),
+      behavior: 'instant' as ScrollBehavior,
+    });
+    await settle();
   };
 
   /** The shape toolbar's single colour entry — one header, two grids. */

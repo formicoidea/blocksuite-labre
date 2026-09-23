@@ -3,6 +3,8 @@ import { stopPropagation } from '@labre/affine-shared/utils';
 import { WithDisposable } from '@labre/global/lit';
 import { css, html, LitElement } from 'lit';
 
+import { EDITOR_MENU_TOGGLE } from './menu-button.js';
+
 export class EditorToolbar extends WithDisposable(LitElement) {
   static override styles = css`
     ${panelBaseStyle(':host')}
@@ -32,7 +34,7 @@ export class EditorToolbar extends WithDisposable(LitElement) {
        floating-ui fits a panel into, so left in place the rule above would
        squeeze a 176px menu into the width of the row that opened it — or, for
        a dropdown at one end of the row, cut half of it off. See
-       watchOpenMenus below, which is what raises this attribute. */
+       syncOpenMenus below, which is what raises this attribute. */
     :host([data-menu-open]) {
       overflow: visible;
     }
@@ -58,43 +60,36 @@ export class EditorToolbar extends WithDisposable(LitElement) {
     }
   `;
 
+  /** The panels open in this row right now, whatever opened them. */
+  readonly #openMenus = new Set<Element>();
+
   /**
-   * Says, on the row itself, whether one of its menus is open.
+   * Says, on the row itself, whether one of its panels is open.
    *
-   * `data-open` is raised by {@link EditorMenuButton} on the button, before the
-   * panel is ever positioned, and is already the toolbar widget's own handle on
-   * an open menu — so the state exists; it is only in the wrong place. The row
-   * cannot read it where it is: `:host()` takes a COMPOUND selector and `:has()`
-   * is not one, so `:host(:has([data-open]))` is not a rule browsers honour
-   * (Chromium 2026-09: it matches from the document, never from inside the
-   * shadow root). Hence an attribute on the host, mirrored here.
+   * Why an attribute at all: the row cannot ask the question in CSS. `:host()`
+   * takes a COMPOUND selector and `:has()` is not one, so
+   * `:host(:has([data-open]))` is not a rule browsers honour (Chromium
+   * 2026-09: it matches from the document, never from inside the shadow root).
    *
-   * A MutationObserver rather than an event: `toggle` does not bubble, and this
-   * has to be right for every way a menu can close — including the widget
-   * hiding one from the outside, and a re-render taking an open button off the
-   * row.
+   * Why not a `querySelector` for `data-open`, which the buttons do raise:
+   * because it answers only for the buttons the row holds DIRECTLY. A colour
+   * picker keeps its menu button inside its own shadow root, where neither a
+   * `querySelector` nor a `MutationObserver` of this row can see it — and that
+   * is the row whose panel the clip was cutting in half
+   * (`framework-palette-carousel.spec.ts`). {@link EDITOR_MENU_TOGGLE} is
+   * composed, so it crosses every boundary, and it is raised before the panel
+   * is ever positioned.
+   *
+   * A panel whose button is taken off the row by a re-render never says it
+   * closed, so the set is swept of anything no longer in a document.
    */
-  #watchOpenMenus() {
-    const sync = () => {
-      if (this.querySelector('[data-open]')) this.dataset.menuOpen = 'true';
-      else delete this.dataset.menuOpen;
-    };
+  #syncOpenMenus() {
+    for (const menu of this.#openMenus) {
+      if (!menu.isConnected) this.#openMenus.delete(menu);
+    }
 
-    // Microtask-timed, so the attribute is on the host before the panel's own
-    // positioning reads the clipping boxes — and re-read every frame after
-    // that by the panel's `autoUpdate` in any case.
-    const observer = new MutationObserver(sync);
-    observer.observe(this, {
-      subtree: true,
-      childList: true,
-      attributes: true,
-      // Not `data-menu-open`, which this very callback writes.
-      attributeFilter: ['data-open'],
-    });
-
-    sync();
-
-    return () => observer.disconnect();
+    if (this.#openMenus.size > 0) this.dataset.menuOpen = 'true';
+    else delete this.dataset.menuOpen;
   }
 
   override connectedCallback() {
@@ -107,7 +102,18 @@ export class EditorToolbar extends WithDisposable(LitElement) {
     this._disposables.addFromEvent(this, 'wheel', stopPropagation, {
       passive: false,
     });
-    this._disposables.add(this.#watchOpenMenus());
+    this._disposables.addFromEvent(this, EDITOR_MENU_TOGGLE, (e: Event) => {
+      // The deepest element of the path, not `target`: a composed event that
+      // crosses a shadow boundary is retargeted to the host it came out of,
+      // and one host may hold more than one panel.
+      const menu = e.composedPath()[0];
+      if (!(menu instanceof Element)) return;
+
+      if ((e as CustomEvent<boolean>).detail) this.#openMenus.add(menu);
+      else this.#openMenus.delete(menu);
+
+      this.#syncOpenMenus();
+    });
   }
 
   override render() {
