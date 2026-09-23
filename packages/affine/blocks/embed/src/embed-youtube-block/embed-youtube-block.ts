@@ -13,6 +13,7 @@ import { classMap } from 'lit/directives/class-map.js';
 import { styleMap } from 'lit/directives/style-map.js';
 
 import { EmbedBlockComponent } from '../common/embed-block-element.js';
+import { PROVIDER_PLAYER_SANDBOX } from '../common/iframe-sandbox.js';
 import { getEmbedCardIcons } from '../common/utils.js';
 import { youtubeUrlRegex } from './embed-youtube-model.js';
 import type { EmbedYoutubeBlockService } from './embed-youtube-service.js';
@@ -153,6 +154,7 @@ export class EmbedYoutubeBlockComponent extends EmbedBlockComponent<
                       allowfullscreen
                       loading="lazy"
                       credentialless
+                      sandbox=${PROVIDER_PLAYER_SANDBOX}
                     ></iframe>
 
                     <!-- overlay to prevent the iframe from capturing pointer events -->

@@ -6,6 +6,7 @@ import { html, nothing } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 
 import { EmbedBlockComponent } from '../common/embed-block-element.js';
+import { PROVIDER_PLAYER_SANDBOX } from '../common/iframe-sandbox.js';
 import { FigmaIcon, styles } from './styles.js';
 
 export class EmbedFigmaBlockComponent extends EmbedBlockComponent<EmbedFigmaModel> {
@@ -83,6 +84,7 @@ export class EmbedFigmaBlockComponent extends EmbedBlockComponent<EmbedFigmaMode
                 allowfullscreen
                 loading="lazy"
                 credentialless
+                sandbox=${PROVIDER_PLAYER_SANDBOX}
               ></iframe>
 
               <!-- overlay to prevent the iframe from capturing pointer events -->

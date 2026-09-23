@@ -10,6 +10,7 @@ import { classMap } from 'lit/directives/class-map.js';
 import { styleMap } from 'lit/directives/style-map.js';
 
 import { EmbedBlockComponent } from '../common/embed-block-element.js';
+import { PROVIDER_PLAYER_SANDBOX } from '../common/iframe-sandbox.js';
 import { getEmbedCardIcons } from '../common/utils.js';
 import { loomUrlRegex } from './embed-loom-model.js';
 import type { EmbedLoomBlockService } from './embed-loom-service.js';
@@ -128,6 +129,7 @@ export class EmbedLoomBlockComponent extends EmbedBlockComponent<
                       allow="fullscreen; accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                       loading="lazy"
                       credentialless
+                      sandbox=${PROVIDER_PLAYER_SANDBOX}
                     ></iframe>
 
                     <!-- overlay to prevent the iframe from capturing pointer events -->
