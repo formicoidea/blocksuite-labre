@@ -62,6 +62,22 @@ export const TOAST_NO_LINK_FOUND: ChromeWording = [
   'No link found',
 ];
 
+/**
+ * What the `doc.copyLink` command says once the document's URL is on the
+ * clipboard.
+ *
+ * Its own wording rather than {@link TOAST_COPIED_TO_CLIPBOARD}: that one
+ * reports a SLICE copy (blocks, elements, an image) and this one reports a
+ * link, and the two are told apart by nothing else on screen. Its own wording
+ * rather than the inline link toolbar's "Copied link to clipboard" too — that
+ * key belongs to `@labre/affine-inline-link` and names the `href` a delta
+ * already carried, not a document address the host just generated.
+ */
+export const TOAST_LINK_COPIED: ChromeWording = [
+  'com.labre.toast.link-copied',
+  'Link copied',
+];
+
 /* ── Toolbars and menus ───────────────────────────────────────────────── */
 
 export const TOOLBAR_BRING_TO_FRONT: ChromeWording = [
@@ -1228,6 +1244,7 @@ export const CHROME_WORDINGS: readonly ChromeWording[] = [
   TOAST_NOTE_REMOVED_FROM_PAGE,
   TOAST_FRAME_INSERTED_INTO_PAGE,
   TOAST_NO_LINK_FOUND,
+  TOAST_LINK_COPIED,
   TOOLBAR_BRING_TO_FRONT,
   TOOLBAR_SEND_TO_BACK,
   TOOLBAR_COPY,

@@ -17,6 +17,7 @@ import {
 import { literal } from 'lit/static-html.js';
 
 import { PageClipboard, ReadOnlyClipboard } from './clipboard';
+import { copyLinkCommands } from './commands/copy-link-commands';
 import { pivotCommands } from './commands/pivot-commands';
 import { readingCommands } from './commands/reading-commands';
 import { tagCommands } from './commands/tag-commands';
@@ -50,6 +51,7 @@ export class RootViewExtension extends ViewExtensionProvider {
         ...pivotCommands,
         ...tagCommands,
         ...readingCommands,
+        ...copyLinkCommands,
       ]),
       ShortcutKeymapExtension('global'),
       ToolbarModuleExtension({

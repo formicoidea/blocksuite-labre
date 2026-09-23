@@ -70,3 +70,11 @@ Behaviour when absent:
 > Note: the standalone playground does **not** register `QuickSearchProvider`,
 > so the menu items are hidden there by design. Test the full pick→open flow in
 > labreapp (or register a stub `QuickSearchExtension` in a dev harness).
+
+> **Not to be confused with the document link either.** This page is about a
+> link an element CARRIES. The opposite gesture — copy a link TO the document
+> currently open, so it can be pasted into a text as a reference — is the
+> `doc.copyLink` command (`Ctrl/Cmd+Alt+L`), which reads
+> `GenerateDocUrlProvider` and is **unavailable** when the host registers none.
+> Its return path is `ParseDocUrlProvider`. Both seams are in
+> [`integrate/04-host-seams.md`](integrate/04-host-seams.md).
