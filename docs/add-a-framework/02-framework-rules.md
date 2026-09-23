@@ -70,6 +70,13 @@ a legend is tooling; the legend already drawn is content and keeps being
 painted. `trackLegendCreated` is the single emitter of
 `FrameworkLegendCreated`.
 
+A board has **one** legend: the button REGENERATES, replacing the box it finds
+inside the board's perimeter rather than stacking a second one at the same
+pixel (issue #391, ADR 0026's 2026-09-23 amendment) — so hand retouching of the
+box is lost on a second press, one Ctrl+Z brings it back, and a legend drawn
+before the `core:legend` role shipped in 0.42 is not recognised. A framework
+gets this from the factory and has nothing to declare for it.
+
 Every role a command stamps is covered by a row, directly or through a
 specialisation, unless an exemption names it and says why
 (`legend-subscription.unit.spec.ts` in `packages/affine/all`, which RUNS the

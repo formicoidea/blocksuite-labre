@@ -72,7 +72,10 @@ function command(seed: CommandSeed): AnyCommandDescriptor {
 const row = (color = '#F5963B') => ({ swatch: 'square' as const, color });
 
 interface FixtureElement {
+  id?: string;
   role?: string;
+  /** `'shape'` unless the case is about a group (a legend wrapper is one). */
+  type?: string;
   xywh: string;
 }
 
@@ -80,35 +83,74 @@ interface FixtureElement {
  * An editor stub carrying registered commands and one role vocabulary, with a
  * REAL bound filter so "an artefact outside the perimeter is not in the legend"
  * is proved by the geometry rather than by the stub being told the answer.
+ *
+ * The group the engine creates is pushed BACK into the scanned perimeter, with
+ * the bound its children give it, so a second `createBoardLegend` on the same
+ * stub sees exactly what a second press on the real board sees (issue #391).
  */
 function stub(
   commands: AnyCommandDescriptor[],
   elements: FixtureElement[] = [],
-  catalogue?: Record<string, string>
+  catalogue?: Record<string, string>,
+  { readonly = false }: { readonly?: boolean } = {}
 ) {
   const added: Record<string, unknown>[] = [];
   const grouped: Record<string, unknown>[] = [];
+  const boundsById = new Map<string, Bound>();
   let n = 0;
+  let g = 0;
   const overlaps = (a: Bound, b: Bound) =>
     a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
   const selection = { set: vi.fn() };
   const gfx = {
     surface: {
       addElement: (props: Record<string, unknown>) => {
+        const id = `el-${n++}`;
         added.push(props);
-        return `el-${n++}`;
+        if (typeof props.xywh === 'string') {
+          boundsById.set(id, Bound.deserialize(props.xywh));
+        }
+        return id;
       },
     },
     getElementsByBound: (bound: Bound) =>
-      elements.filter(el => overlaps(bound, Bound.deserialize(el.xywh))),
+      elements
+        .filter(el => overlaps(bound, Bound.deserialize(el.xywh)))
+        .map(el => ({
+          ...el,
+          id: el.id ?? 'fixture',
+          type: el.type ?? 'shape',
+          elementBound: Bound.deserialize(el.xywh),
+        })),
     selection,
     layer: { canvasElements: [] as { type: string }[] },
   };
+  const removeElement = vi.fn((id: string) => {
+    const at = elements.findIndex(el => el.id === id);
+    if (at >= 0) elements.splice(at, 1);
+  });
   const crud = {
     addElement: (type: string, props: Record<string, unknown>) => {
       grouped.push({ ...props, type });
-      return 'group-1';
+      const id = `group-${++g}`;
+      // The wrapper's geometry is DERIVED from its children, as the real group
+      // model's is — which is what puts it inside the board's perimeter.
+      let box: Bound | undefined;
+      for (const child of Object.keys(props.children as object)) {
+        const childBox = boundsById.get(child);
+        if (childBox) box = box ? box.unite(childBox) : childBox;
+      }
+      if (box) {
+        elements.push({
+          id,
+          type,
+          role: props.role as string | undefined,
+          xywh: box.serialize(),
+        });
+      }
+      return id;
     },
+    removeElement,
   };
   const registry = new Map<string, AnyCommandDescriptor>(
     commands.map((c, i) => [`Command-${i}`, c])
@@ -119,7 +161,7 @@ function stub(
       identifier === (EdgelessCRUDIdentifier as unknown) ? crud : gfx,
     getOptional: () =>
       catalogue ? { t: (key: string) => catalogue[key] } : undefined,
-    store: { captureSync },
+    store: { captureSync, readonly },
     provider: {
       getAll: (identifier: unknown) =>
         identifier === (CommandDescriptorIdentifier as unknown)
@@ -129,7 +171,15 @@ function stub(
             : new Map(),
     },
   } as unknown as BlockStdScope;
-  return { added, captureSync, grouped, selection, std };
+  return {
+    added,
+    captureSync,
+    elements,
+    grouped,
+    removeElement,
+    selection,
+    std,
+  };
 }
 
 const at = (x: number, y: number, role?: string): FixtureElement => ({
@@ -506,6 +556,13 @@ describe('createBoardLegend', () => {
     order: 1,
     legend: { role: 'fx:event', row: row() },
   });
+  const FLOW = command({
+    id: 'fx.addFlow',
+    kind: 'tool',
+    category: 'flows',
+    order: 2,
+    legend: { role: 'fx:flow', row: { swatch: 'line', color: '#1f2328' } },
+  });
 
   it('drops the box bottom-left of the board, grouped and selected', () => {
     const { added, selection, std } = stub(
@@ -739,6 +796,185 @@ describe('createBoardLegend', () => {
     };
     expect(ctx.board).toBe(BG);
     expect([...ctx.present]).toEqual(['fx:event']);
+  });
+
+  /**
+   * Issue #391. The placement is derived from the BOARD alone, so a second
+   * press used to drop an identical box at the very same pixel: one legend to
+   * the eye, two groups and thirty-odd elements in the document, every one of
+   * them exported, synced, and to be dragged away one at a time. Nothing in
+   * this file would have caught it — it never pressed the button twice.
+   *
+   * Four of the seven below are red on the code that shipped 0.42; the other
+   * three are guards on the filter that finds the outgoing box, and would go
+   * red the day it started matching more than this board's own legend.
+   */
+  describe('a second press (#391)', () => {
+    /** The legend groups the perimeter holds, whoever drew them. */
+    const legendsOf = (perimeter: FixtureElement[]) =>
+      perimeter.filter(el => el.type === 'group' && el.role === LEGEND_ROLE);
+
+    it('replaces the board’s legend instead of stacking a second one', () => {
+      const { elements, grouped, removeElement, std } = stub(
+        [BOARD, EVENT],
+        [at(100, 100, 'fx:event')]
+      );
+      const first = createBoardLegend(std, BG, 'ddd-event-storming');
+      const second = createBoardLegend(std, BG, 'ddd-event-storming');
+
+      expect(first).toBe('group-1');
+      expect(second).toBe('group-2');
+      // Two boxes were drawn, and exactly one is left on the board.
+      expect(grouped).toHaveLength(2);
+      expect(removeElement).toHaveBeenCalledTimes(1);
+      expect(removeElement).toHaveBeenCalledWith('group-1');
+      expect(legendsOf(elements)).toHaveLength(1);
+      expect(legendsOf(elements)[0].id).toBe('group-2');
+    });
+
+    /**
+     * The point of replacing rather than refusing: the box a user presses for
+     * a second time is the one that now documents what he has just drawn.
+     */
+    it('redraws the rows from what is on the board NOW', () => {
+      const { added, elements, std } = stub(
+        [BOARD, EVENT, FLOW],
+        [at(100, 100, 'fx:event')]
+      );
+      createBoardLegend(std, BG, 'ddd-event-storming');
+      const afterFirst = added.filter(el => el.text === 'Flow');
+      expect(afterFirst).toHaveLength(0);
+
+      // An artefact drawn between the two presses.
+      elements.push(at(200, 200, 'fx:flow'));
+      createBoardLegend(std, BG, 'ddd-event-storming');
+
+      // The row is drawn once, on the box that is left standing.
+      expect(added.filter(el => el.text === 'Flow')).toHaveLength(1);
+      expect(legendsOf(elements)).toHaveLength(1);
+    });
+
+    /**
+     * Replacing is two writes, and a user who presses twice by accident must
+     * get his box back with ONE Ctrl+Z — not an empty board on the first undo
+     * and the old box on the second.
+     */
+    it('spends one undo checkpoint, taken before the removal', () => {
+      const { captureSync, removeElement, std } = stub(
+        [BOARD, EVENT],
+        [at(100, 100, 'fx:event')]
+      );
+      createBoardLegend(std, BG, 'ddd-event-storming');
+      captureSync.mockClear();
+      createBoardLegend(std, BG, 'ddd-event-storming');
+
+      expect(captureSync).toHaveBeenCalledTimes(1);
+      expect(captureSync.mock.invocationCallOrder[0]).toBeLessThan(
+        removeElement.mock.invocationCallOrder[0]
+      );
+    });
+
+    /**
+     * `getElementsByBound` answers with everything that OVERLAPS, and two
+     * boards drawn edge to edge overlap each other's corner. Containment is
+     * what keeps a press on one from eating the other's legend.
+     */
+    it('leaves the legend of the board next door alone', () => {
+      const { elements, removeElement, std } = stub(
+        [BOARD, EVENT],
+        [at(100, 100, 'fx:event')]
+      );
+      // The neighbour's box: it reaches into this board, but hangs out of it.
+      elements.push({
+        id: 'neighbour-legend',
+        type: 'group',
+        role: LEGEND_ROLE,
+        xywh: new Bound(-100, 600, 260, 120).serialize(),
+      });
+      createBoardLegend(std, BG, 'ddd-event-storming');
+
+      expect(removeElement).not.toHaveBeenCalled();
+      expect(legendsOf(elements).map(el => el.id)).toEqual([
+        'neighbour-legend',
+        'group-1',
+      ]);
+    });
+
+    /**
+     * The compatibility clause of ADR 0026, said out loud: `core:legend`
+     * shipped in 0.42 and nothing is backfilled, so a box generated before it
+     * is not recognised and the old stacking survives on those documents.
+     */
+    it('does not recognise a legend drawn before the role shipped', () => {
+      const { elements, removeElement, std } = stub(
+        [BOARD, EVENT],
+        [at(100, 100, 'fx:event')]
+      );
+      elements.push({
+        id: 'legacy-legend',
+        type: 'group',
+        xywh: new Bound(50, 600, 260, 120).serialize(),
+      });
+      createBoardLegend(std, BG, 'ddd-event-storming');
+
+      expect(removeElement).not.toHaveBeenCalled();
+      expect(elements.some(el => el.id === 'legacy-legend')).toBe(true);
+    });
+
+    /**
+     * The outgoing wrapper is the one element of the perimeter carrying
+     * `core:legend`, and the box replacing it describes the drawing, not
+     * itself. No `RoleDefs` declares the role so no row could light from it —
+     * but the extras hook is handed the same set, and a framework's hook is
+     * free to read it.
+     */
+    it('keeps `core:legend` out of the roles the new box is derived from', () => {
+      const extras = vi.fn((_ctx: unknown) => []);
+      const { std } = stub(
+        [
+          command({
+            id: 'fx.addBoard',
+            category: 'stickies',
+            order: 0,
+            telemetry: {
+              framework: 'ddd-event-storming',
+              element: 'board',
+              board: true,
+            },
+            legendBox: { extras },
+          }),
+          EVENT,
+        ],
+        [at(100, 100, 'fx:event')]
+      );
+      createBoardLegend(std, BG, 'ddd-event-storming');
+      createBoardLegend(std, BG, 'ddd-event-storming');
+
+      const ctx = extras.mock.calls[1][0] as unknown as {
+        present: ReadonlySet<string>;
+      };
+      expect([...ctx.present]).toEqual(['fx:event']);
+    });
+
+    /**
+     * The gesture DELETES now, so the readonly refusal moves into the engine
+     * as well as the button: `removeElement` would refuse on its own and the
+     * draw that follows would throw, which is the one order that loses a box.
+     */
+    it('writes nothing at all on a readonly store', () => {
+      const { added, captureSync, grouped, removeElement, std } = stub(
+        [BOARD, EVENT],
+        [at(100, 100, 'fx:event')],
+        undefined,
+        { readonly: true }
+      );
+      expect(createBoardLegend(std, BG, 'ddd-event-storming')).toBeUndefined();
+
+      expect(added).toHaveLength(0);
+      expect(grouped).toHaveLength(0);
+      expect(removeElement).not.toHaveBeenCalled();
+      expect(captureSync).not.toHaveBeenCalled();
+    });
   });
 
   it('takes the box title and its layout from the board’s own command', () => {
