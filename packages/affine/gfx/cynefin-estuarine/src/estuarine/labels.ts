@@ -3,7 +3,7 @@ import { backgroundTextHitBox } from '@labre/affine-block-surface';
 import type { EstuarineElementModel } from '@labre/affine-model';
 import type { ChromeWording } from '@labre/affine-shared/services';
 
-import { LABEL_LETTER_SPACING, LABELS } from './consts';
+import { LABEL_LETTER_SPACING, LABELS, REF_X, REF_Y } from './consts';
 
 /** Resolves a wording against the host's catalogue, or falls back to English. */
 export type EstuarineWordingResolver = (wording: ChromeWording) => string;
@@ -50,8 +50,9 @@ export function estuarineLegendText(
  * Clickable boxes of the visible legends, in ELEMENT-LOCAL coordinates.
  *
  * Anchored through the same fit the renderer anchors them with: proportionally
- * in both directions, typed isotropically. A legend whose curve is switched off
- * is not painted and is therefore not aimable either.
+ * in both directions — through the same cropped window (`REF_X` / `REF_Y`) —
+ * and typed isotropically. A legend whose curve is switched off is not painted
+ * and is therefore not aimable either.
  */
 export function estuarineLabelHits(
   model: EstuarineElementModel,
@@ -69,8 +70,8 @@ export function estuarineLabelHits(
     const box = backgroundTextHitBox(
       text,
       label.size * fit.strokeScale,
-      label.x * fit.sx,
-      label.y * fit.sy,
+      (label.x - REF_X) * fit.sx,
+      (label.y - REF_Y) * fit.sy,
       'center'
     );
     // A legend is letter-spaced, so it is wider than the shared estimate: half
