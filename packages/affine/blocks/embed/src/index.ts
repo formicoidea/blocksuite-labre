@@ -6,6 +6,11 @@ export {
   EmbedBlockComponent,
 } from './common/embed-block-element';
 export * from './common/embed-note-content-styles';
+export {
+  PROVIDER_PLAYER_SANDBOX,
+  TRUSTED_SANDBOX,
+  UNTRUSTED_SANDBOX,
+} from './common/iframe-sandbox';
 export { insertEmbedCard } from './common/insert-embed-card';
 export * from './common/render-linked-doc';
 export { toEdgelessEmbedBlock } from './common/to-edgeless-embed-block';
