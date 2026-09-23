@@ -165,9 +165,10 @@ export class EdgelessTextEditor extends WithDisposable(ShadowlessElement) {
       transform-origin: left top;
       font-kerning: none;
       border: ${EdgelessTextEditor.BORDER_WIDTH}px solid
-        var(--affine-primary-color, #1e96eb);
+        var(--affine-primary-color);
       border-radius: 4px;
-      box-shadow: 0px 0px 0px 2px rgba(30, 150, 235, 0.3);
+      box-shadow: 0px 0px 0px 2px
+        color-mix(in srgb, var(--affine-primary-color) 30%, transparent);
       padding: ${EdgelessTextEditor.PADDING_VERTICAL}px
         ${EdgelessTextEditor.PADDING_HORIZONTAL}px;
       overflow: visible;

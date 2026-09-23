@@ -225,7 +225,7 @@ Greys that carry a meaning are not neutrals and stay put: C4 external elements (
 
 ### Named Rules
 
-**The Borrowed Blue Rule.** The accent `#1E96EB` is AFFiNE's, not Labre's, and it is due to be replaced. Always reach it through a token (`cssVarV2('button/primary')`, `var(--affine-primary-color)`), never as a literal hex, so the re-skin is a token change. Don't give it any new brand meaning in the meantime.
+**The Borrowed Blue Rule.** The accent `#1E96EB` is AFFiNE's, not Labre's, and it is due to be replaced. Always reach it through a token (`cssVarV2('button/primary')`, `var(--affine-primary-color)`), never as a literal hex, so the re-skin is a token change. On the canvas, where a `CanvasRenderingContext2D` cannot take a `var(…)`, resolve the token through `getChromeAccentColor(std)` instead. Enforced by `brand-hex.unit.spec.ts` (`packages/affine/all`), which fails on any literal spelling of the accent outside its one justified exception, the standalone HTML export's stylesheet. Don't give it any new brand meaning in the meantime.
 
 **The Standard-Fidelity Rule.** A framework's notation hues, and any neutral its standard or stencil prescribes, match that source exactly and never follow the app theme, dark mode included. A diagram looks the same in every theme, export and host. If a prescribed colour differs from the published standard, that is a bug.
 

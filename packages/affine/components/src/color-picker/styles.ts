@@ -110,7 +110,7 @@ export const COLOR_PICKER_STYLE = css`
   }
   .modes .mode button[active] {
     pointer-events: none;
-    outline: 2px solid var(--affine-brand-color, #1e96eb);
+    outline: 2px solid var(--affine-brand-color);
   }
 
   .content {

@@ -137,7 +137,7 @@ export class KanbanCell extends SignalWatcher(
       ? '1px solid var(--affine-primary-color)'
       : '';
     this.style.boxShadow = this.isEditing$.value
-      ? '0px 0px 0px 2px rgba(30, 150, 235, 0.30)'
+      ? '0px 0px 0px 2px color-mix(in srgb, var(--affine-primary-color) 30%, transparent)'
       : '';
     return html` ${this.renderIcon()}
     ${renderUniLit(view, props, {

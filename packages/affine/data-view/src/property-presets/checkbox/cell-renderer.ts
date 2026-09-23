@@ -8,6 +8,13 @@ import { createFromBaseCellRenderer } from '../../core/property/renderer.js';
 import { createIcon } from '../../core/utils/uni-icon.js';
 import { checkboxPropertyModelConfig } from './define.js';
 
+/**
+ * The chrome accent, reached through its token rather than written as a hex:
+ * the six-dot burst is chrome, so it has to follow the host's theme (DESIGN.md,
+ * The Borrowed Blue Rule).
+ */
+const ACCENT = 'var(--affine-primary-color)';
+
 const playCheckAnimation = async (
   refElement: Element,
   { left = 0, size = 20 }: { left?: number; size?: number } = {}
@@ -29,8 +36,7 @@ const playCheckAnimation = async (
   await sparkingEl.animate(
     [
       {
-        boxShadow:
-          '0 -18px 0 -8px #1e96eb, 16px -8px 0 -8px #1e96eb, 16px 8px 0 -8px #1e96eb, 0 18px 0 -8px #1e96eb, -16px 8px 0 -8px #1e96eb, -16px -8px 0 -8px #1e96eb',
+        boxShadow: `0 -18px 0 -8px ${ACCENT}, 16px -8px 0 -8px ${ACCENT}, 16px 8px 0 -8px ${ACCENT}, 0 18px 0 -8px ${ACCENT}, -16px 8px 0 -8px ${ACCENT}, -16px -8px 0 -8px ${ACCENT}`,
       },
     ],
     { duration: 240, easing: 'ease', fill: 'forwards' }
@@ -97,7 +103,7 @@ export class CheckboxCell extends BaseCellRenderer<boolean> {
   override render() {
     const checked = this.value ?? false;
     const icon = checked
-      ? CheckBoxCheckSolidIcon({ style: `color:#1E96EB` })
+      ? CheckBoxCheckSolidIcon({ style: `color:var(--affine-primary-color)` })
       : CheckBoxUnIcon();
     return html` <div class="affine-database-checkbox-container">
       <div

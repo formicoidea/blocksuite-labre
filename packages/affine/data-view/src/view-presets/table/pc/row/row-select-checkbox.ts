@@ -72,7 +72,9 @@ export class RowSelectCheckbox extends SignalWatcher(
     return html`
       <div class="${classString}">
         ${this.isSelected$.value
-          ? CheckBoxCheckSolidIcon({ style: `color:#1E96EB` })
+          ? CheckBoxCheckSolidIcon({
+              style: `color:var(--affine-primary-color)`,
+            })
           : CheckBoxUnIcon()}
       </div>
     `;

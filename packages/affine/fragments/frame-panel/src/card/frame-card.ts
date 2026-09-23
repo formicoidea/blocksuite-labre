@@ -61,7 +61,7 @@ const styles = css`
   }
 
   .frame-card-container.selected .frame-card-body {
-    border: 2px solid var(--light-brand-color, #1e96eb);
+    border: 2px solid var(--affine-primary-color);
   }
 
   .frame-card-container.dragging {

@@ -32,7 +32,8 @@ export class EdgelessFrameTitleEditor extends WithDisposable(
       outline: none;
       z-index: 1;
       border: 1px solid var(--affine-primary-color);
-      box-shadow: 0px 0px 0px 2px rgba(30, 150, 235, 0.3);
+      box-shadow: 0px 0px 0px 2px
+        color-mix(in srgb, var(--affine-primary-color) 30%, transparent);
       overflow: hidden;
       font-family: var(--affine-font-family);
     }

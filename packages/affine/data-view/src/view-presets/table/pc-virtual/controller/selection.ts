@@ -1079,7 +1079,7 @@ export class SelectionElement extends SignalWatcher(
           height: `${focus.height}px`,
           display: 'block',
           boxShadow: focus.editing
-            ? '0px 0px 0px 2px rgba(30, 150, 235, 0.30)'
+            ? '0px 0px 0px 2px color-mix(in srgb, var(--affine-primary-color) 30%, transparent)'
             : 'unset',
         })
       : undefined;
