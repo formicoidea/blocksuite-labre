@@ -469,6 +469,10 @@ export function morphToolbarConfig<K extends string>(
           return renderPickerMenu({
             testId: 'element-morph',
             label: wording(ctx, spec.label),
+            // The shell's accessible name stays the stable ENGLISH
+            // identifier: composing it from the translated label produced
+            // half a sentence per language (#390).
+            menuAria: `${spec.label.fallback.toLowerCase()}-menu`,
             // The current kind's own icon on the closed button, exactly as the
             // shape picker shows the current shape: the dropdown reads as a
             // statement about the selection before it is opened.

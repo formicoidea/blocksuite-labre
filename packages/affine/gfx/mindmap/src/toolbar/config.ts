@@ -6,6 +6,7 @@ import {
   ShapeElementModel,
 } from '@labre/affine-model';
 import {
+  MENU_ARIA_STYLE,
   STYLE_MENU_LABEL,
   type ToolbarContext,
   type ToolbarModuleConfig,
@@ -19,6 +20,7 @@ import {
 
 import {
   MINDMAP_LAYOUT_LABEL,
+  MINDMAP_LAYOUT_MENU_ARIA,
   MINDMAP_LAYOUT_LEFT,
   MINDMAP_LAYOUT_RADIAL,
   MINDMAP_LAYOUT_RIGHT,
@@ -90,6 +92,7 @@ export const createMindmapStyleActionMenu = (
   return renderMenu({
     label: 'Style',
     labelWording: STYLE_MENU_LABEL,
+    menuAriaWording: MENU_ARIA_STYLE,
     icon: StyleIcon(),
     items: MINDMAP_STYLE_LIST,
     currentValue: style,
@@ -115,6 +118,7 @@ export const createMindmapLayoutActionMenu = (
   return renderMenu({
     label: 'Layout',
     labelWording: MINDMAP_LAYOUT_LABEL,
+    menuAriaWording: MINDMAP_LAYOUT_MENU_ARIA,
     items: MINDMAP_LAYOUT_LIST,
     currentValue: layoutType,
     onPick,

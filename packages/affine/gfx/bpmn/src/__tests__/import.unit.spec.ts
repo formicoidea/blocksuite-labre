@@ -2,13 +2,16 @@ import type { BpmnNodeKind } from '@labre/affine-model';
 import { fillPlaceholders } from '@labre/affine-shared/services';
 import { describe, expect, it } from 'vitest';
 
+import { InterchangeImportError } from '@labre/affine-block-surface';
+
 import {
   type BpmnExportWarning,
+  BPMN_NS,
   BPMN_XML_OF_KIND,
   exportBpmnXml,
   exportBpmnXmlWithWarnings,
 } from '../export';
-import { BPMN_KIND_OF_XML, importBpmnXml } from '../import';
+import { BPMN_IMPORT_ERRORS, BPMN_KIND_OF_XML, importBpmnXml } from '../import';
 import { BPMN_XML_IMPORT } from '../interchange';
 import { BPMN_ROLE } from '../roles';
 import {
@@ -938,6 +941,34 @@ describe('the files an importer meets on its first afternoon', () => {
         {}
       )
     ).toThrow(/not\s+in BPMN 2\.0's/);
+  });
+
+  it('refuses a `<definitions>` with NO namespace in its own words (#390)', () => {
+    // Its own refusal, not the wrong-namespace one with the English words
+    // "no namespace" poured into `{{namespace}}`: a fragment of English
+    // inside a translated sentence is the one thing a `messageParams` hole
+    // cannot carry, because this reader is pure and has no `std`.
+    let thrown: unknown;
+    try {
+      importBpmnXml(`<definitions id="d" />`, {});
+    } catch (error) {
+      thrown = error;
+    }
+    const error = thrown as InterchangeImportError;
+    expect(error.messageKey).toBe(
+      'com.labre.bpmn.import.error.missing-namespace'
+    );
+    // Nothing to substitute but the namespace BPMN's own is — so no English
+    // is left for a host to meet untranslated.
+    expect(error.messageParams).toEqual({ bpmnNamespace: BPMN_NS.model });
+    expect(error.message).not.toContain('"no namespace"');
+    // The English fallback and the thrown message stay the same sentence.
+    expect(
+      fillPlaceholders(
+        BPMN_IMPORT_ERRORS.missingNamespace[1],
+        error.messageParams
+      )
+    ).toBe(error.message);
   });
 
   it('throws on a file that is not well-formed', () => {

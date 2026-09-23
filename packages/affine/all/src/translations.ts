@@ -351,6 +351,11 @@ const CHROME_KEYS: readonly [key: string, fallback: string][] = [
   // and would leave every new format silently untranslated.
   ['com.labre.interchange.import.done', 'file imported'],
   ['com.labre.interchange.import.failed', 'This file could not be imported'],
+  // The name an imported sheet takes when neither the file nor the source
+  // document carries one. Resolved at the creation site (`interchange-import`,
+  // which has `std`); the pure readers keep the same English text as their own
+  // last-resort default, so the two can never drift (#390).
+  ['com.labre.interchange.import.default-name', 'Imported diagram'],
   // Rights lost WHILE the file was being read — the import's own sentence,
   // because nothing is wrong with the file. It rides under the same "could not
   // be imported" headline as a reader's refusal, which is what it is to the

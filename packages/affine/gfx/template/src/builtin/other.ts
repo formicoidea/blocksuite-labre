@@ -54,6 +54,11 @@ import {
   SWOT_SEED_STRENGTHS,
   SWOT_SEED_THREATS,
   SWOT_SEED_WEAKNESSES,
+  TEMPLATE_NAME_BUSINESS_MODEL_CANVAS,
+  TEMPLATE_NAME_FISHBONE,
+  TEMPLATE_NAME_GANTT_CHART,
+  TEMPLATE_NAME_KANBAN_BOARD,
+  TEMPLATE_NAME_SWOT,
   TEMPLATE_PANEL_CATEGORY_OTHER,
 } from '../translations.js';
 
@@ -384,12 +389,18 @@ const previews = {
  * rebuilds the same snapshot with translated seeds.
  */
 function t(
-  name: string,
+  nameWording: ChromeWording,
   preview: string,
   build: (std?: BlockStdScope) => SurfaceElementsJSON
 ): Template {
+  const [nameKey, name] = nameWording;
   return {
     name,
+    // `resolveTemplateName` reads this FIRST: nothing here derives from a
+    // command, so the tile's own key is the only way a host translates it
+    // (#390). `name` stays the stable English identity (drag payload, cache
+    // key) and doubles as the fallback.
+    nameKey,
     type: 'template',
     preview,
     content: makeTemplateSnapshot(build(), name),
@@ -401,10 +412,10 @@ export const otherTemplateCategory: TemplateCategory = {
   name: 'Other',
   nameKey: TEMPLATE_PANEL_CATEGORY_OTHER[0],
   templates: [
-    t('SWOT', previews.swot, swot),
-    t('Kanban board', previews.kanban, kanban),
-    t('Business model canvas', previews.bmc, bmc),
-    t('Fishbone (Ishikawa)', previews.fishbone, fishbone),
-    t('Gantt chart', previews.gantt, gantt),
+    t(TEMPLATE_NAME_SWOT, previews.swot, swot),
+    t(TEMPLATE_NAME_KANBAN_BOARD, previews.kanban, kanban),
+    t(TEMPLATE_NAME_BUSINESS_MODEL_CANVAS, previews.bmc, bmc),
+    t(TEMPLATE_NAME_FISHBONE, previews.fishbone, fishbone),
+    t(TEMPLATE_NAME_GANTT_CHART, previews.gantt, gantt),
   ],
 };

@@ -14,6 +14,7 @@ import {
 } from '@labre/affine-model';
 import { REFERENCE_NODE } from '@labre/affine-shared/consts';
 import {
+  CHROME_UNTITLED,
   DocDisplayMetaProvider,
   DocModeProvider,
   EditorSettingExtension,
@@ -390,7 +391,9 @@ export class EmbedSyncedDocBlockComponent extends EmbedBlockComponent<EmbedSynce
   }
 
   get docTitle() {
-    return this.syncedDoc?.meta?.title || 'Untitled';
+    return (
+      this.syncedDoc?.meta?.title || translateKey(this.std, ...CHROME_UNTITLED)
+    );
   }
 
   get docUpdatedAt() {
