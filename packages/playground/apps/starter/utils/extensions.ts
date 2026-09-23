@@ -9,6 +9,8 @@ import {
   FeatureFlagService,
   fillPlaceholders,
   FontConfigExtension,
+  GenerateDocUrlExtension,
+  NotificationExtension,
   ParseDocUrlExtension,
   TelemetryExtension,
   type TranslationParams,
@@ -22,6 +24,8 @@ import { getTestViewManager } from '@labre/integration-test/view';
 import {
   mockDocModeService,
   mockEditorSetting,
+  mockGenerateDocUrlService,
+  mockNotificationService,
   mockParseDocUrlService,
   mockPivotRecordPicker,
 } from '../../_common/mock-services';
@@ -65,6 +69,19 @@ export function getTestCommonExtensions(
       setting$: mockEditorSetting(),
     }),
     ParseDocUrlExtension(mockParseDocUrlService(editor.doc.workspace)),
+    // The other half of the same seam, and the reason it is here: the library
+    // ships ONE consumer of `GenerateDocUrlProvider` — the `doc.copyLink`
+    // command (`Ctrl/Cmd+Alt+L`) — and that command reports itself
+    // UNAVAILABLE without it, so the playground could not exercise it at all
+    // while this mock stayed unwired. Its URL shape is the mirror of
+    // `mockParseDocUrlService`'s (the doc id in the hash), which is what makes
+    // the copy → paste → inline reference round trip testable here.
+    GenerateDocUrlExtension(mockGenerateDocUrlService(editor.doc.workspace)),
+    // Same story: the toasts the library emits through `NotificationProvider`
+    // were dropped on the floor in the playground because nothing registered
+    // one. `doc.copyLink` announces itself through it, so a silent seam would
+    // have made the recette "did the shortcut fire?" unanswerable.
+    NotificationExtension(mockNotificationService(editor)),
     // A RECETTE MOCK-UP, and only ever that. The library registers no pivot
     // record picker — it cannot know what a record is — so without one the
     // reading panel's "Link to a record" action is hidden by design and the

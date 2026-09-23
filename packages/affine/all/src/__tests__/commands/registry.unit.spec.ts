@@ -232,7 +232,12 @@ describe('command registry invariants', () => {
       // merge instead of trusting the diff.
       // 13 since `export.svg` (`docs/adr/0025`): core-owned because a board is
       // a `FrameworkBackgroundElementModel` whatever framework drew it.
-      core: 13,
+      //
+      // …and 14 since `doc.copyLink`, the consumer `GenerateDocUrlProvider`
+      // never had: core-owned because a document's address belongs to no
+      // framework, and the first NEW command in the library to ship a default
+      // chord (`Mod-Alt-l`, global scope) rather than being keyless by intent.
+      core: 14,
     });
     // 112 since the two SVG fallback imports (`bpmn.importSvg`,
     // `wardley.importSvg`) joined the OWM pair — one SVG row per framework,
@@ -253,7 +258,10 @@ describe('command registry invariants', () => {
     //
     // …and 187 since `export.svg` — the one interchange row that is NOT per
     // framework (`docs/adr/0025`).
-    expect(commands).toHaveLength(187);
+    //
+    // …and 188 since `doc.copyLink` — the other end of the paste path that
+    // already turns a host URL back into an inline reference.
+    expect(commands).toHaveLength(188);
   });
 
   /**
@@ -273,6 +281,12 @@ describe('command registry invariants', () => {
     // creation nor a static `{ framework, element }` pair — its role and its
     // element count are facts of the invocation.
     'edge.invert-direction',
+    // A fourth, for a different reason: `CommandDescriptor.telemetry` requires
+    // a `FrameworkId` and routes the bottleneck onto the three framework
+    // CREATION events, and copying a document's address creates nothing and
+    // belongs to no framework. It emits the historical `CopiedLink` the two
+    // other copy-a-link sites already emit, so "links copied" stays one series.
+    'doc.copyLink',
   ];
 
   test('a self-emitting command never also declares telemetry', () => {

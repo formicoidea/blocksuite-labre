@@ -20,6 +20,13 @@
  * `w e`. Ids are unchanged, so a persisted override table still resolves; only
  * these two defaults moved. Anything else in this file drifting is still a
  * regression.
+ *
+ * AMENDED by PR #401 (copy the link of a document) — a second deliberate
+ * addition, not a regeneration: `doc.copyLink` is the first NEW command in the
+ * library to ship a default chord, `Mod-Alt-l` in the global scope (`Mod-l` is
+ * the browser's address bar and never reaches the page). No existing id moved
+ * and no existing combo changed — the global scope gained one entry on both
+ * platforms. Anything else drifting is still a regression.
  */
 export const KEYMAP_GOLDEN = {
   declarations: [
@@ -36,6 +43,13 @@ export const KEYMAP_GOLDEN = {
       scope: 'edgeless',
       mac: ['Mod-d'],
       other: ['Mod-d'],
+    },
+    {
+      id: 'doc.copyLink',
+      owner: 'core',
+      scope: 'global',
+      mac: ['Mod-Alt-l'],
+      other: ['Mod-Alt-l'],
     },
     {
       id: 'redo',
@@ -127,6 +141,7 @@ export const KEYMAP_GOLDEN = {
       global: {
         'Mod-z': 'undo',
         'Shift-Mod-z': 'redo',
+        'Mod-Alt-l': 'doc.copyLink',
       },
       page: {},
       edgeless: {
@@ -147,6 +162,7 @@ export const KEYMAP_GOLDEN = {
       global: {
         'Mod-z': 'undo',
         'Shift-Mod-z': 'redo',
+        'Mod-Alt-l': 'doc.copyLink',
         'Control-y': 'redo-windows',
       },
       page: {},

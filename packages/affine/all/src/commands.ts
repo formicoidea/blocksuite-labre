@@ -1,4 +1,5 @@
 import {
+  copyLinkCommands,
   coreCommands,
   pivotCommands,
   readingCommands,
@@ -114,6 +115,7 @@ export function getCommands(flags?: LabreFlags): AnyCommandDescriptor[] {
   return buildCommandRegistry(
     [
       ...coreCommands,
+      ...copyLinkCommands,
       ...pivotCommands,
       ...tagCommands,
       ...readingCommands,
