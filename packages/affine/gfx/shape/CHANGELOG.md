@@ -1,5 +1,47 @@
 # @labre/affine-gfx-shape
 
+## 0.43.0
+
+### Patch Changes
+
+- f1a4af7: Twenty-six strings a French host still read in English now go through the
+  translation seam: the colour picker's Heavy row, the slash menu's List and
+  Style headers, the five "Other" template tiles, the embed error card's
+  sentence, the SVG import's three refusals, the two "Untitled" linked-doc
+  titles, and the accessible name of every toolbar menu (which used to read
+  "changer le type de forme-menu"). New keys, English fallbacks letter for
+  letter what shipped — a host with no catalogue sees no change.
+
+  New keys: `com.labre.palette-name.heavy-{red,orange,yellow,green,blue,purple,magenta}`,
+  `com.labre.slash-menu.group.list`,
+  `com.labre.template.name.{swot,kanban-board,business-model-canvas,fishbone,gantt-chart}`,
+  `com.labre.embed.iframe.error.{no-embed-data,invalid-url,message}`,
+  `com.labre.interchange.svg.error.{malformed-xml,not-svg,sanitized-away}`,
+  `com.labre.interchange.import.default-name`, `com.labre.menu-aria.style`,
+  `com.labre.text-toolbar.alignment-menu`,
+  `com.labre.shape.toolbar.switch-type-menu`,
+  `com.labre.mindmap.toolbar.layout-menu`,
+  `com.labre.connector.toolbar.{start-point-style,end-point-style,shape}-menu`,
+  `com.labre.bpmn.import.error.missing-namespace`.
+
+- Updated dependencies [da68dbb]
+- Updated dependencies [72f7282]
+- Updated dependencies [8f54236]
+- Updated dependencies [f1a4af7]
+- Updated dependencies [8a927dd]
+  - @labre/affine-shared@0.43.0
+  - @labre/affine-block-surface@0.43.0
+  - @labre/affine-components@0.43.0
+  - @labre/affine-widget-edgeless-toolbar@0.43.0
+  - @labre/affine-gfx-text@0.43.0
+  - @labre/affine-gfx-connector@0.43.0
+  - @labre/affine-rich-text@0.43.0
+  - @labre/affine-ext-loader@0.43.0
+  - @labre/affine-model@0.43.0
+  - @labre/global@0.43.0
+  - @labre/std@0.43.0
+  - @labre/store@0.43.0
+
 ## 0.42.0
 
 ### Patch Changes

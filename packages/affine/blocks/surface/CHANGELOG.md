@@ -1,5 +1,56 @@
 # @labre/affine-block-surface
 
+## 0.43.0
+
+### Patch Changes
+
+- 72f7282: A Cynefin frame dragged off its proportion no longer keeps the empty bands it
+  letterboxes: when the resize handle is let go, its border comes back onto the
+  drawing, so the board can be selected by the edge you can see. At 1600 × 600
+  that is 383 model units of nothing removed from each side. The picture itself is
+  untouched — same shape, same size, same centre — and the resize and its crop are
+  one undo step. A frame stretched before this change is cropped the next time it
+  is resized; nothing is rewritten behind the user's back, and a readonly document
+  writes nothing at all.
+
+  The uniform fit the three hand-drawn frameworks share (Cynefin, Estuarine, EDGY
+  and the DDD stencils) was copied in three packages and is now one function in
+  `@labre/affine-block-surface`, so the crop reads the very function the renderer
+  paints through.
+
+- f1a4af7: Twenty-six strings a French host still read in English now go through the
+  translation seam: the colour picker's Heavy row, the slash menu's List and
+  Style headers, the five "Other" template tiles, the embed error card's
+  sentence, the SVG import's three refusals, the two "Untitled" linked-doc
+  titles, and the accessible name of every toolbar menu (which used to read
+  "changer le type de forme-menu"). New keys, English fallbacks letter for
+  letter what shipped — a host with no catalogue sees no change.
+
+  New keys: `com.labre.palette-name.heavy-{red,orange,yellow,green,blue,purple,magenta}`,
+  `com.labre.slash-menu.group.list`,
+  `com.labre.template.name.{swot,kanban-board,business-model-canvas,fishbone,gantt-chart}`,
+  `com.labre.embed.iframe.error.{no-embed-data,invalid-url,message}`,
+  `com.labre.interchange.svg.error.{malformed-xml,not-svg,sanitized-away}`,
+  `com.labre.interchange.import.default-name`, `com.labre.menu-aria.style`,
+  `com.labre.text-toolbar.alignment-menu`,
+  `com.labre.shape.toolbar.switch-type-menu`,
+  `com.labre.mindmap.toolbar.layout-menu`,
+  `com.labre.connector.toolbar.{start-point-style,end-point-style,shape}-menu`,
+  `com.labre.bpmn.import.error.missing-namespace`.
+
+- Updated dependencies [da68dbb]
+- Updated dependencies [8f54236]
+- Updated dependencies [f1a4af7]
+- Updated dependencies [8a927dd]
+  - @labre/affine-shared@0.43.0
+  - @labre/affine-components@0.43.0
+  - @labre/affine-rich-text@0.43.0
+  - @labre/affine-ext-loader@0.43.0
+  - @labre/affine-model@0.43.0
+  - @labre/global@0.43.0
+  - @labre/std@0.43.0
+  - @labre/store@0.43.0
+
 ## 0.42.0
 
 ### Minor Changes
