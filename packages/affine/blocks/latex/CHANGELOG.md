@@ -1,5 +1,22 @@
 # @labre/affine-block-latex
 
+## 0.43.1
+
+### Patch Changes
+
+- Updated dependencies [2602909]
+  - @labre/affine-shared@0.43.1
+  - @labre/affine-model@0.43.1
+  - @labre/affine-block-note@0.43.1
+  - @labre/affine-components@0.43.1
+  - @labre/affine-inline-latex@0.43.1
+  - @labre/affine-rich-text@0.43.1
+  - @labre/affine-widget-slash-menu@0.43.1
+  - @labre/affine-ext-loader@0.43.1
+  - @labre/global@0.43.1
+  - @labre/std@0.43.1
+  - @labre/store@0.43.1
+
 ## 0.43.0
 
 ### Patch Changes
