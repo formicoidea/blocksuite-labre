@@ -139,3 +139,50 @@ check on synthetic commands, so the suite cannot pass on an empty reading.
   module it already has. There is no `legend.ts` to write, no button to build,
   no telemetry to emit — see
   [R6](../add-a-framework/02-framework-rules.md).
+
+## Amendments
+
+**2026-09-23 — a board has ONE legend, and regenerating replaces it.** Issue
+#391. The box's placement is derived from the board alone (`INSET_X` from the
+left edge, `INSET_BOTTOM` from the bottom), so pressing the button twice used
+to drop a second box at the very same pixel: the eye saw one legend and the
+document held N groups and N × ~15 elements, every one of them exported, synced
+and to be dragged away one at a time.
+
+`createBoardLegend` now **replaces the board's existing legend in place**. Among
+the elements the perimeter scan already returns it keeps the groups carrying
+`LEGEND_ROLE` whose box is CONTAINED in the board's — containment and not the
+intersection `getElementsByBound` answers with, so a press on one of two boards
+drawn edge to edge does not eat the other's box — takes the undo checkpoint in
+front of them, removes them through `EdgelessCRUDIdentifier` (which cascades
+into the group's children) and then draws. The outgoing wrapper is dropped from
+the scan as well, so `core:legend` is never among the roles the new box is
+derived from. Nothing in the document format changes: the role this ADR
+introduced for the `.bpmn` export is simply read a second time.
+
+Three consequences, taken deliberately:
+
+- **A second press is a REFRESH**, which is what a user who has just drawn three
+  more artefacts is asking for — and what the tooltip already said ("Generate
+  the legend …" describes a refresh as well as a creation). No wording moved and
+  no key was minted.
+- **Manual edits to the legend box are lost on regenerate**: a box the author
+  moved, a group he renamed, a swatch he recoloured. One Ctrl+Z brings the
+  previous box back whole, because the removal and the redraw share the single
+  checkpoint.
+- **Legends generated before the `core:legend` role (before 0.42) are not
+  recognised and still stack.** Nothing is backfilled, as everywhere else in
+  this ADR; regenerating on such a board leaves the old box standing, to be
+  deleted by hand.
+
+Two boxes it deliberately does not find: one the author dragged OUT of the board
+(it is no longer that board's legend, and a fresh one is drawn at the corner),
+and one belonging to a board that merely overlaps this one. The gesture now
+DELETES, so `createBoardLegend` refuses on a readonly store on its own account
+rather than trusting the button's guard — a refused delete followed by a
+throwing draw is the one order that could lose a box.
+
+Telemetry is unchanged: `FrameworkLegendCreated` is still emitted once per
+press, and still does not distinguish a creation from a refresh. Adding a
+`mode` dimension would be a taxonomy change (`telemetry-service/README.md` and
+the host's PostHog side) and was not asked for.
