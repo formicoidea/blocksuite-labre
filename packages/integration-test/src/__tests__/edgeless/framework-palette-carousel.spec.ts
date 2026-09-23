@@ -200,6 +200,39 @@ describe("the colour pickers' palette carousel", () => {
   };
 
   /**
+   * The popup's own scroll box: `editor-menu-content`'s `.content-wrapper`,
+   * two shadow roots below the picker. It is the box that grew a horizontal
+   * scrollbar in #392 — the carousel animates inside it.
+   */
+  const popupBox = (host: Element) =>
+    menuOf(host)
+      ?.shadowRoot?.querySelector('editor-menu-content')
+      ?.shadowRoot?.querySelector('.content-wrapper') as HTMLElement | null;
+
+  /**
+   * Watch `box` for `ms` — one sample a frame, i.e. right through an entry
+   * animation — and report every horizontal `overflow` it computed to, plus
+   * the widest its scrollable region ever got.
+   *
+   * The axis, not the offset, is what says whether a scrollbar can be painted:
+   * `overflow: hidden` IS a scroll container, and stays scrollable
+   * programmatically, it simply never paints a bar and never answers a gesture.
+   * So `scrollLeft` proves nothing here, and a headless Chromium paints its
+   * bars as overlays, which no measurement of the box can see either.
+   */
+  const watchOverflow = async (box: HTMLElement, ms: number) => {
+    const axes = new Set<string>();
+    let widest = 0;
+    const until = Date.now() + ms;
+    while (Date.now() < until) {
+      axes.add(getComputedStyle(box).overflowX);
+      widest = Math.max(widest, box.scrollWidth - box.clientWidth);
+      await new Promise(resolve => requestAnimationFrame(resolve));
+    }
+    return { axes: [...axes], widest };
+  };
+
+  /**
    * One grid of the picker. The shape picker draws two (fill and border) under
    * a single header; the connector picker draws one.
    */
@@ -325,6 +358,59 @@ describe("the colour pickers' palette carousel", () => {
         picker.shadowRoot!.querySelectorAll('.palette-carousel-page')
       ).map(box => box.getAttribute('data-direction'))
     ).toEqual(['prev', 'prev']);
+  });
+
+  test('paging never lets the popup scroll sideways, either way', async () => {
+    // What this would have caught: issue #392. For the ~240ms of the entry
+    // animation the incoming page sits at translateX(14px), which pushed the
+    // popup's scrollable region 8px past its box. `.content-wrapper` only ever
+    // asked for a VERTICAL scroll, but CSS Overflow computes the other axis to
+    // `auto` alongside it — so the box really was a horizontal scroll
+    // container, and a scrollbar was painted for as long as the animation ran.
+    //
+    // The report's symptom was one-sided (a `prev` page overflows the START
+    // edge, which LTR clips without ever scrolling). Both directions are
+    // sampled here, so the day the animation changes sign the guard holds.
+    //
+    // This is the only level that can answer for the REAL popup: its own
+    // padding, its own width, and a compositor actually running the keyframes.
+    addMap();
+    const shape = addShape('[400,300,100,100]');
+    await select(shape);
+
+    const picker = shapePicker()!;
+    await openPicker(picker);
+
+    const box = popupBox(picker);
+    expect(box).not.toBeNull();
+
+    const widest: number[] = [];
+    for (const deltaY of [1, -1]) {
+      const grid = picker.shadowRoot!.querySelector('edgeless-color-panel')!;
+      grid.dispatchEvent(
+        new WheelEvent('wheel', { deltaY, bubbles: true, cancelable: true })
+      );
+      await wait(0);
+      // The animation really is in flight while the box is sampled below.
+      expect(
+        picker
+          .shadowRoot!.querySelector('.palette-carousel-page')
+          ?.getAttribute('data-direction')
+      ).toBe(deltaY > 0 ? 'next' : 'prev');
+      // 320ms: longer than the animation, and longer than the wheel's quiet
+      // window, so the next turn of the loop counts as a fresh flick.
+      const seen = await watchOverflow(box!, 320);
+      // Never `auto`, never `scroll`, at any point of the travel.
+      expect(seen.axes).toEqual(['hidden']);
+      widest.push(seen.widest);
+    }
+
+    // …and the guard is not vacuous: the forward page really does overflow,
+    // which is the whole precondition of #392. Skipped when the runner asked
+    // for less motion, because then there is no travel to overflow with.
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      expect(widest[0]).toBeGreaterThan(0);
+    }
   });
 
   test('the header is the panel’s title, on the panel’s own left edge', async () => {
