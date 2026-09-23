@@ -1,11 +1,10 @@
 /**
- * Uniform fit of a fixed reference design (`refW × refH`) into an element of
- * size `w × h`: the scale factor plus the centering offsets (letterboxed).
- * Keeps the artwork undistorted at any element size.
+ * Uniform fit of a fixed reference design into an element, THE one in the
+ * library: `@labre/affine-block-surface`'s `refScale`. Re-exported here because
+ * both diagrams of this package draw an authored artwork and have always called
+ * it by this name — the body used to be copied here, and in two other packages
+ * besides (R37, one source of truth).
  */
-export function refScale(w: number, h: number, refW: number, refH: number) {
-  const s = Math.min(w / refW, h / refH);
-  return { s, ox: (w - refW * s) / 2, oy: (h - refH * s) / 2 };
-}
+export { refScale } from '@labre/affine-block-surface';
 
 export const FONT_FAMILY = 'Inter, sans-serif';

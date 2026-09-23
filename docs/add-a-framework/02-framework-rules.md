@@ -123,6 +123,31 @@ a label zone edits the label. A marquee takes a board only when it holds the
 whole board (`boxSelectable`, the native frame block's rule): a rectangle drawn
 on the sheet lassoes what is drawn there, never the sheet.
 
+**R37. A board's border sits ON its drawing.** R9 makes the border the only
+thing a board is caught by, so every model unit between the ink and the `xywh`
+is a unit of nowhere: invisible, unselectable, and exported as blank by R34. A
+board therefore claims no room it does not paint. For a DECLARED background,
+that is `geometry.margin`: each margin is the reach of the furniture it hosts —
+an arrowhead tip is the plot edge, an end label overhangs it by half its
+advance, a rotated axis title reaches in by its ASCENT and never by its length —
+measured, never rounded up (`gfx/ddd-core-domain/src/core-domain/background.ts`;
+`background.unit.spec.ts` → "the frame sits on the drawing"). For a framework
+that fits an AUTHORED artwork, it is the crop box it fits, whose allowances are
+measured per side because words are not symmetric
+(`gfx/edgy/src/consts.ts`, `facets-crop.unit.spec.ts`). The fit itself is one
+function, `refScale` in
+`packages/affine/blocks/surface/src/framework-background/fit.ts` — a uniform,
+centred letterbox, shared by every framework that reproduces a drawing.
+
+A uniform fit letterboxes as soon as the user drags the board off the artwork's
+proportion, and no margin can help with that: the board is then cropped back
+onto its drawing when the resize handle is LET GO
+(`gfx/cynefin-estuarine/src/cynefin/crop.ts`, `cynefin-crop.unit.spec.ts`). The
+crop belongs to the gesture — `handleResize`'s `onResizeEnd`, before the
+manager commits the stashed `xywh`, so a resize and its crop are one write and
+one undo step. Never a cascade on `xywh`: that would re-crop, on every peer's
+screen, a board nobody on that screen touched (principle 4, the `local` guard).
+
 **R10. A board is a floor, never a lid.** Anything overlapping a board is
 kept above it; boards can stack and each stays under its own artefacts — but a
 board that wholly ENCLOSES another board is the sheet that one is drawn on and
