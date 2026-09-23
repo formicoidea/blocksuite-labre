@@ -5,7 +5,7 @@ import { beforeAll, describe, expect, test } from 'vitest';
 import {
   TRUSTED_SANDBOX,
   UNTRUSTED_SANDBOX,
-} from '../embed-iframe-block/consts.js';
+} from '../common/iframe-sandbox.js';
 import { EmbedIframeBlockComponent } from '../embed-iframe-block/embed-iframe-block.js';
 
 beforeAll(() => {
