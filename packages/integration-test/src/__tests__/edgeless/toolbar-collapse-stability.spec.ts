@@ -15,10 +15,17 @@ import { setupEditor } from '../utils/setup.js';
  *
  * `toolbar-priority-collapse.spec.ts` owns what the row does when the room
  * changes. This one owns what it does WHILE the room is changing: nothing. A
- * zoom moves the selected element sixty times a second, and the room the row
- * has moves with it; a row that re-composes on every one of those frames is a
- * row that visibly hesitates between several widths — and, because its width
- * feeds the anchoring, between several positions.
+ * gesture moves the row sixty times a second and re-renders it with every
+ * write that lands under it; a row that re-composes on every one of those
+ * frames is a row that visibly hesitates between several widths — and,
+ * because its width feeds the anchoring, between several positions.
+ *
+ * Which gesture moves the ROOM has changed (PO arbitration of 23/09/2026). It
+ * used to be the zoom and the pan, because the cap was computed before
+ * `shift()` had run and answered with what the row would overhang the window
+ * by. It is now the editor's own width, so the room moves when the WINDOW is
+ * dragged — `narrowFrames` — and a zoom only moves the row and re-renders it,
+ * which is still every glitch this file is about.
  */
 
 /** See `wardley-validation-bubble.spec.ts`: the viewport persists per doc id. */
@@ -32,6 +39,8 @@ function forgetStoredViewport() {
 describe('the contextual toolbar, while the viewport moves', () => {
   let service!: EdgelessRootBlockComponent['service'];
   let root!: EdgelessRootBlockComponent;
+  /** What the editor is mounted in, and therefore how wide it is. */
+  let container!: HTMLElement;
   let unmount: (() => void) | null = null;
 
   const widget = () =>
@@ -89,22 +98,31 @@ describe('the contextual toolbar, while the viewport moves', () => {
   /** Where the row is anchored, as the positioner last wrote it. */
   const anchor = () => toolbar()?.style.transform ?? '';
 
+  /** How many lines the row occupies — the invariant of the first pass. */
+  const lines = () => new Set(entries().map(child => child.offsetTop)).size;
+
   /**
    * How far the row is sticking out of the room it was given, in pixels.
    *
    * The cap `size()` writes is a `max-width`, so a row that has not given up
-   * enough does not push its neighbours aside or wrap — it OVERFLOWS, and the
-   * entries past the cap are the ones under the cursor's own scrollbar-less
-   * edge. Zero is the invariant; anything else is the row spilling.
+   * enough does not push its neighbours aside or wrap — it OVERFLOWS. It is
+   * now CLIPPED at the row's own background rather than painted over the
+   * canvas, which is why this reads the entries' LAYOUT boxes instead of
+   * `scrollWidth`: a clipped row has no scrollable overflow left to report,
+   * and the clip must not hide the spill from this spec too. Zero is the
+   * invariant; anything else is the row spilling.
    */
   const spill = () => {
     const bar = toolbar();
     if (!bar) return 0;
-    return bar.scrollWidth - bar.clientWidth;
+    const box = bar.getBoundingClientRect();
+    const right = entries().reduce(
+      (furthest, child) =>
+        Math.max(furthest, child.getBoundingClientRect().right),
+      box.left
+    );
+    return Math.max(0, right - box.right);
   };
-
-  /** How many lines the row occupies — the invariant of the first pass. */
-  const lines = () => new Set(entries().map(child => child.offsetTop)).size;
 
   /** The cap `size()` wrote on the toolbar. */
   const capOf = () => Number.parseFloat(toolbar()!.style.maxWidth);
@@ -126,9 +144,17 @@ describe('the contextual toolbar, while the viewport moves', () => {
     await settle();
   };
 
-  /** See `toolbar-priority-collapse.spec.ts`: pans until the row is tight. */
+  /** The padding `size()` keeps between the row and the edge of the editor. */
+  const EDGE = 10;
+
+  /**
+   * See `toolbar-priority-collapse.spec.ts`: narrows the EDITOR until the row
+   * is tight. The room is the editor's width, less that padding on either
+   * side — not where on the map the selected element happens to sit.
+   */
   const roomFor = async (target: number) => {
-    service.viewport.applyDeltaCenter(-(capOf() - target), 0);
+    container.style.width = `${Math.round(target + 2 * EDGE)}px`;
+    window.dispatchEvent(new Event('resize'));
     await settle();
   };
 
@@ -168,6 +194,22 @@ describe('the contextual toolbar, while the viewport moves', () => {
     return samples;
   };
 
+  /**
+   * A window being dragged narrower, frame by frame.
+   *
+   * This — and not a zoom — is the gesture that moves the room the row has.
+   * The cap is the EDITOR's width less its padding, so a zoom leaves it
+   * exactly where it was; what a zoom still does, and what the tests above
+   * are about, is move the row and re-render it sixty times a second.
+   */
+  const narrowFrames = async (from: number, to: number, count: number) => {
+    for (let i = 1; i <= count; i++) {
+      container.style.width = `${Math.round(from + ((to - from) * i) / count)}px`;
+      window.dispatchEvent(new Event('resize'));
+      await frames(1);
+    }
+  };
+
   /** Counts the times the row was rebuilt: one re-render, one mutation burst. */
   const countRenders = () => {
     const state = { count: 0 };
@@ -188,11 +230,13 @@ describe('the contextual toolbar, while the viewport moves', () => {
     forgetStoredViewport();
     unmount = await setupEditor('edgeless');
     root = getDocRootBlock(window.doc, window.editor, 'edgeless');
+    container = window.editor.parentElement as HTMLElement;
     service = root.service;
     service.std.event.active = true;
     service.viewport.setZoom(1);
     service.viewport.setCenter(880, 450);
     return () => {
+      container.style.width = '';
       unmount?.();
       unmount = null;
     };
@@ -221,7 +265,7 @@ describe('the contextual toolbar, while the viewport moves', () => {
     expect([...new Set(samples.map(s => s.lines))]).toEqual([1]);
   });
 
-  test('the row is replanned once, when the viewport lands', async () => {
+  test('the row is replanned once, when the gesture lands', async () => {
     addMap();
     const component = addComponent();
     await select(component);
@@ -230,7 +274,9 @@ describe('the contextual toolbar, while the viewport moves', () => {
 
     const before = composition();
     const renders = countRenders();
-    await zoomFrames(24);
+    // The gesture that DOES move the room: a window dragged narrower, frame
+    // by frame, down to a width nothing on this row fits in.
+    await narrowFrames(340, 170, 24);
     await settle();
 
     // One replan, at the accalmie. `ToolbarFitter` verifies its own plan, so a
@@ -244,6 +290,35 @@ describe('the contextual toolbar, while the viewport moves', () => {
     // it could have given up.
     expect(composition()).not.toBe(before);
     expect(composition()).not.toContain(':label');
+    expect(lines()).toBe(1);
+  });
+
+  /**
+   * **A zoom does not change the room** (PO arbitration of 23/09/2026).
+   *
+   * It used to: the cap was computed before `shift()` had run, so it answered
+   * with what a row anchored to the element would overhang the window by —
+   * which moves with every frame of a zoom and every pixel of a pan. It is now
+   * the editor's own width, so a gesture that does not resize the editor
+   * leaves the row exactly as it found it.
+   */
+  test('a zoom, and a pan, leave the room alone', async () => {
+    addMap();
+    const component = addComponent();
+    await select(component);
+
+    await roomFor(320);
+    const room = capOf();
+    const before = composition();
+
+    await zoomFrames(24);
+    await settle();
+    expect(capOf()).toBe(room);
+
+    service.viewport.applyDeltaCenter(-400, 0);
+    await settle();
+    expect(capOf()).toBe(room);
+    expect(composition()).toBe(before);
     expect(lines()).toBe(1);
   });
 
@@ -392,8 +467,13 @@ describe('the contextual toolbar, while the viewport moves', () => {
       await roomFor(320);
 
       const renders = countRenders();
+      // A window dragged narrower — the gesture that moves the room — with a
+      // zoom and a write landing on top of it, which is what re-renders the
+      // row under the drag.
       for (let i = 0; i < 24; i++) {
         service.viewport.setZoom(service.viewport.zoom * 1.04, undefined, true);
+        container.style.width = `${340 - i * 7}px`;
+        window.dispatchEvent(new Event('resize'));
         if (i % 4 === 0) touchSomethingElse(map, i);
         await frames(1);
       }
@@ -641,9 +721,12 @@ describe('the contextual toolbar, while the viewport moves', () => {
     const renders = countRenders();
 
     // Two measurements a hair apart are the same measurement. Alternating by a
-    // pixel — rounding, a scrollbar, a subpixel zoom — must never re-compose.
+    // pixel — rounding, a scrollbar appearing, a fractional layout — must
+    // never re-compose.
+    const width = container.getBoundingClientRect().width;
     for (let i = 0; i < 6; i++) {
-      service.viewport.applyDeltaCenter(i % 2 ? 1 : -1, 0);
+      container.style.width = `${width + (i % 2 ? 1 : -1)}px`;
+      window.dispatchEvent(new Event('resize'));
       await settle();
       expect(composition()).toBe(before);
     }
