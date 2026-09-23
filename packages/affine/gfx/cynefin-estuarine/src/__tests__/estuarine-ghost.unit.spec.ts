@@ -321,6 +321,47 @@ describe('estuarine — a stretched map stretches', () => {
 
   const headsOf = (paths: SubPathRecord[]) => paths.filter(path => path.filled);
 
+  /**
+   * The three triangles EXACTLY as the official SVG draws them, transcribed
+   * here as plain numbers rather than rebuilt from {@link ARROWHEADS}.
+   *
+   * On purpose: these literals are the only thing in the suite that still
+   * knows what the shipped drawing looks like. `ARROWHEADS` was rewritten from
+   * three absolute vertices into an axis-anchored declaration, and a spec that
+   * recomputed the expectation from the new declaration would have agreed with
+   * any transcription error. Vertex order is the renderer's walk — tip, then
+   * the base across the axis.
+   */
+  const AUTHORED_HEADS: Point[][] = [
+    // e — top
+    [
+      [43.5, 72],
+      [30, 100],
+      [57, 100],
+    ],
+    // e — bottom
+    [
+      [43.5, 785],
+      [57, 758],
+      [30, 758],
+    ],
+    // t — right
+    [
+      [643, 649],
+      [613, 636],
+      [613, 662],
+    ],
+  ];
+
+  /** The authored baseline of each italic axis letter, `e` then `t`. */
+  const AUTHORED_LETTERS: Point[] = [
+    [14, 138],
+    [580, 685],
+  ];
+
+  const scaled = (points: Point[][], k: number) =>
+    points.map(head => head.map(([x, y]) => [x * k, y * k]));
+
   it('is exactly the authored drawing at the authored ratio', () => {
     const { paths, fillTexts, strokes } = render(
       fakeMap({ showAxisLabels: true })
@@ -336,17 +377,14 @@ describe('estuarine — a stretched map stretches', () => {
     expect(axesOf(paths)?.lineWidth).toBeCloseTo(AXIS_WIDTH, 9);
 
     // Three arrowheads, vertex for vertex where the SVG put them.
-    expect(headsOf(paths).map(head => head.points)).toEqual(
-      ARROWHEADS.map(head => head.map(([x, y]) => [x, y]))
-    );
+    expect(headsOf(paths).map(head => head.points)).toEqual(AUTHORED_HEADS);
 
     // Every legend on its authored anchor, at its authored size.
     expect(fillTexts.map(entry => entry.at)).toEqual([
       [LABELS.liminal.x, LABELS.liminal.y],
       [LABELS.volatile.x, LABELS.volatile.y],
       [LABELS.counterfactual.x, LABELS.counterfactual.y],
-      [AXIS_LABELS.e.x, AXIS_LABELS.e.y],
-      [AXIS_LABELS.t.x, AXIS_LABELS.t.y],
+      ...AUTHORED_LETTERS,
     ]);
     expect(fillTexts[0].font).toContain(`${LABELS.liminal.size}px`);
     expect(fillTexts[4].font).toContain(`${AXIS_LABELS.size}px`);
@@ -377,7 +415,12 @@ describe('estuarine — a stretched map stretches', () => {
     ]);
     expect(axesOf(paths)?.lineWidth).toBeCloseTo(AXIS_WIDTH * 3, 9);
     expect(headsOf(paths).map(head => head.points)).toEqual(
-      ARROWHEADS.map(head => head.map(([x, y]) => [x * 3, y * 3]))
+      scaled(AUTHORED_HEADS, 3)
+    );
+    // Birth size is this very case (`MAP_SCALE = 1.2`): a map that has not been
+    // stretched paints the authored picture, only bigger. Including the letters.
+    expect(fillTexts.slice(3).map(entry => entry.at)).toEqual(
+      AUTHORED_LETTERS.map(([x, y]) => [x * 3, y * 3])
     );
     expect(fillTexts[0].at).toEqual([
       LABELS.liminal.x * 3,
@@ -405,33 +448,106 @@ describe('estuarine — a stretched map stretches', () => {
     expect(axes?.points[1]).toEqual([E_AXIS.x * 2, E_AXIS.y2]);
   });
 
-  it('lands each arrowhead on the real end of its axis, undeformed', () => {
-    const { paths } = render(
-      fakeMap({ deserializedXYWH: [0, 0, REF_W * 2, REF_H] })
-    );
-    const heads = headsOf(paths);
-    const k = estuarineFit(REF_W * 2, REF_H).strokeScale;
+  /**
+   * The ratios a user actually reaches by dragging a corner, plus the mild one
+   * the suite already covered. 1600 × 400 and 400 × 1600 are the two shapes the
+   * bug report was filed on: one pulls the t axis far past the isotropic scale,
+   * the other does the same to the e axis, so together they catch the defect
+   * whichever axis it lands on.
+   */
+  const RATIOS: [number, number][] = [
+    [REF_W, REF_H],
+    [REF_W * 2, REF_H],
+    [1600, 400],
+    [400, 1600],
+  ];
 
-    expect(heads).toHaveLength(3);
-    heads.forEach((head, index) => {
-      const [tip, ...bases] = ARROWHEADS[index];
-      // The tip travels with the stretch…
-      expect(head.points[0][0]).toBeCloseTo(tip[0] * 2, 9);
-      expect(head.points[0][1]).toBeCloseTo(tip[1], 9);
-      // …the triangle itself does not: both base vertices sit at the authored
-      // offset times ONE isotropic factor, so a head pulled sideways is not a
-      // head twice as long.
-      bases.forEach(([bx, by], base) => {
-        expect(head.points[base + 1][0]).toBeCloseTo(
-          tip[0] * 2 + (bx - tip[0]) * k,
-          9
-        );
-        expect(head.points[base + 1][1]).toBeCloseTo(
-          tip[1] + (by - tip[1]) * k,
-          9
-        );
+  /**
+   * GUARD (issue #390 / bug F). Would have caught: an arrowhead whose tip is
+   * anchored proportionally while its base is rebuilt at the isotropic scale.
+   * That mix left a 29-unit gap between the t axis and its head at 1600 × 400
+   * and buried the head 17 units inside the stroke at 400 × 1600 — the head
+   * only sat right where `sx === sy === strokeScale`.
+   */
+  it('welds every arrowhead to the end of its axis, at every ratio', () => {
+    for (const [w, h] of RATIOS) {
+      const { paths } = render(fakeMap({ deserializedXYWH: [0, 0, w, h] }));
+      const heads = headsOf(paths);
+      const axes = axesOf(paths);
+      const k = estuarineFit(w, h).strokeScale;
+      const at = `${w}×${h}`;
+
+      expect(heads, at).toHaveLength(3);
+      // The four axis endpoints the stroke visits: e top, e bottom, t right.
+      // (`points[2]` is the t axis's LEFT end, which carries no head.)
+      const ends = [axes!.points[0], axes!.points[1], axes!.points[3]];
+
+      heads.forEach((head, index) => {
+        const spec = ARROWHEADS[index];
+        const [dx, dy] = spec.dir;
+        const [end, [tipX, tipY], v1, v2] = [ends[index], ...head.points];
+        /** Distance from the axis end, measured ALONG the axis, outwards. */
+        const along = (p: Point) => (p[0] - end[0]) * dx + (p[1] - end[1]) * dy;
+        /** Distance from the axis, measured ACROSS it. */
+        const across = (p: Point) =>
+          (p[0] - end[0]) * -dy + (p[1] - end[1]) * dx;
+
+        // The tip is a FIXED distance past the end of the stroke…
+        expect(along([tipX, tipY]), `tip ${at}`).toBeCloseTo(spec.tip * k, 9);
+        expect(across([tipX, tipY]), `tip ${at}`).toBeCloseTo(0, 9);
+        // …and the base a fixed distance SHORT of it, so the stroke always
+        // dies inside the triangle. Negative — an overlap, never a gap.
+        for (const v of [v1, v2]) {
+          expect(along(v), `base ${at}`).toBeCloseTo(-spec.overlap * k, 9);
+        }
+        expect(across(v1), `base ${at}`).toBeCloseTo(-spec.halfWidth * k, 9);
+        expect(across(v2), `base ${at}`).toBeCloseTo(spec.halfWidth * k, 9);
       });
-    });
+    }
+  });
+
+  /**
+   * GUARD (issue #390 / bug F). Would have caught: axis letters placed at
+   * absolute authored coordinates projected by `sx`/`sy` while the glyph was
+   * typed at the isotropic scale — the `t` climbing onto its own axis at
+   * 1600 × 400 (gap −83 instead of −36) and falling away from it at 400 × 1600.
+   */
+  it('keeps each axis letter a constant gap from its axis', () => {
+    for (const [w, h] of RATIOS) {
+      const { paths, fillTexts } = render(
+        fakeMap({ deserializedXYWH: [0, 0, w, h], showAxisLabels: true })
+      );
+      const axes = axesOf(paths);
+      const k = estuarineFit(w, h).strokeScale;
+      const at = `${w}×${h}`;
+
+      // The letters are the last two words painted: `e`, then `t`.
+      const letters = fillTexts.slice(3);
+      expect(
+        letters.map(entry => entry.text),
+        at
+      ).toEqual(['e', 't']);
+
+      // `e` names the TOP of the e axis, `t` the RIGHT end of the t axis.
+      const anchors = [axes!.points[0], axes!.points[3]];
+      const specs = [AXIS_LABELS.e, AXIS_LABELS.t];
+
+      letters.forEach((entry, index) => {
+        // The gap rides the very factor the glyph does — so it is the SAME
+        // gap, in glyph widths, on a map pulled either way.
+        expect(entry.at[0] - anchors[index][0], `${at} x`).toBeCloseTo(
+          specs[index].dx * k,
+          9
+        );
+        expect(entry.at[1] - anchors[index][1], `${at} y`).toBeCloseTo(
+          specs[index].dy * k,
+          9
+        );
+        // Element coordinates, so the glyphs come out of the font undistorted.
+        expect(entry.scale, at).toEqual([1, 1]);
+        expect(entry.font, at).toContain(`${AXIS_LABELS.size * k}px`);
+      });
+    }
   });
 
   it('never draws a word inside the stretch', () => {
@@ -443,7 +559,7 @@ describe('estuarine — a stretched map stretches', () => {
     );
     const { sx, sy, strokeScale } = estuarineFit(REF_W * 2, REF_H);
 
-    /** Every word the renderer draws: authored anchor, then authored size. */
+    /** The three LEGENDS: authored anchor, then authored size. */
     const expected = [
       [LABELS.liminal.x, LABELS.liminal.y, LABELS.liminal.size],
       [LABELS.volatile.x, LABELS.volatile.y, LABELS.volatile.size],
@@ -452,16 +568,16 @@ describe('estuarine — a stretched map stretches', () => {
         LABELS.counterfactual.y,
         LABELS.counterfactual.size,
       ],
-      [AXIS_LABELS.e.x, AXIS_LABELS.e.y, AXIS_LABELS.size],
-      [AXIS_LABELS.t.x, AXIS_LABELS.t.y, AXIS_LABELS.size],
     ];
 
-    expect(fillTexts).toHaveLength(expected.length);
-    fillTexts.forEach((entry, index) => {
+    // Three legends and the two axis letters, checked just above.
+    expect(fillTexts).toHaveLength(expected.length + 2);
+    fillTexts.slice(0, expected.length).forEach((entry, index) => {
       const [x, y, size] = expected[index];
       // Element coordinates, so the glyphs come out of the font undistorted.
       expect(entry.scale).toEqual([1, 1]);
-      // The anchor still follows the stretch — a legend belongs to its curve.
+      // A legend names a CURVE, not an axis end, so its anchor stays the
+      // proportional one: it has to travel with the boundary it names.
       expect(entry.at[0]).toBeCloseTo(x * sx, 9);
       expect(entry.at[1]).toBeCloseTo(y * sy, 9);
       // One size, from BOTH factors: strictly between what the narrow side
@@ -475,6 +591,7 @@ describe('estuarine — a stretched map stretches', () => {
     expect(fillTexts[0].letterSpacing).toBe(
       `${LABEL_LETTER_SPACING * strokeScale}px`
     );
+    for (const entry of fillTexts) expect(entry.scale).toEqual([1, 1]);
   });
 
   it('stretches the curves and thins the pen to compensate', () => {

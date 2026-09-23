@@ -39,29 +39,63 @@ export const E_AXIS = { x: 43.5, y1: 97, y2: 763 } as const;
 export const T_AXIS = { y: 649, x1: 28, x2: 616 } as const;
 export const AXIS_WIDTH = 8;
 
-/** Filled arrowhead triangles: [[tipX,tipY],[baseAX,baseAY],[baseBX,baseBY]]. */
-export const ARROWHEADS: ReadonlyArray<
-  readonly [
-    readonly [number, number],
-    readonly [number, number],
-    readonly [number, number],
-  ]
-> = [
-  [
-    [43.5, 72],
-    [30, 100],
-    [57, 100],
-  ], // e — top
-  [
-    [43.5, 785],
-    [30, 758],
-    [57, 758],
-  ], // e — bottom
-  [
-    [643, 649],
-    [613, 636],
-    [613, 662],
-  ], // t — right
+/**
+ * A filled arrowhead, welded to the END OF ITS AXIS.
+ *
+ * Declared the way the shared primitive declares one (`drawAxis`,
+ * `blocks/surface/src/framework-background/renderer.ts`): the head has ONE
+ * proportional anchor — {@link at}, the point where its axis stops, which
+ * travels with the stretch — and every other number below is an offset from
+ * that anchor in FIXED units, painted at the isotropic `strokeScale`.
+ *
+ * That split is the whole point. The vertices used to be three absolute
+ * authored points, so a stretch moved the tip by `sx` while the renderer
+ * rebuilt the base from the tip at the isotropic factor: as soon as
+ * `sx ≠ strokeScale` the triangle tore away from the line it belongs to
+ * (a 29-unit gap at 1600 × 400, the head drowning in the stroke at 400 × 1600).
+ * Anchoring the head to the axis end instead keeps it soldered at every ratio,
+ * and reproduces the authored SVG exactly when `sx === sy` — which is what the
+ * numbers below were read off.
+ */
+export interface EstuarineArrowhead {
+  /** Authored end of the axis this head is welded to — the ratio anchor. */
+  at: readonly [number, number];
+  /** Unit vector pointing OUT of the axis, towards the tip. */
+  dir: readonly [number, number];
+  /** How far past the axis end the tip sits, in fixed units. */
+  tip: number;
+  /** How far SHORT of the axis end the base sits: the weld's overlap. */
+  overlap: number;
+  /** Half the base's width, in fixed units. */
+  halfWidth: number;
+}
+
+/** The three heads: both ends of the e axis, the right end of the t axis. */
+export const ARROWHEADS: readonly EstuarineArrowhead[] = [
+  // e — top
+  {
+    at: [E_AXIS.x, E_AXIS.y1],
+    dir: [0, -1],
+    tip: 25,
+    overlap: 3,
+    halfWidth: 13.5,
+  },
+  // e — bottom
+  {
+    at: [E_AXIS.x, E_AXIS.y2],
+    dir: [0, 1],
+    tip: 22,
+    overlap: 5,
+    halfWidth: 13.5,
+  },
+  // t — right
+  {
+    at: [T_AXIS.x2, T_AXIS.y],
+    dir: [1, 0],
+    tip: 27,
+    overlap: 3,
+    halfWidth: 13,
+  },
 ];
 
 /** Liminal: green boundary rising gently then dipping at the right end. */
@@ -140,10 +174,24 @@ export const LABELS = {
   },
 } as const;
 
-/** Italic Georgia axis letters (left-anchored, alphabetic baseline). */
+/**
+ * Italic Georgia axis letters (left-anchored, alphabetic baseline).
+ *
+ * Each letter NAMES an axis, so it is declared against that axis the way a
+ * declared background declares a word (`backgroundPoint`,
+ * `blocks/surface/src/framework-background/def.ts`): a proportional anchor
+ * (`at`, the end of the axis it names) plus a FIXED `dx`/`dy` gap, painted at
+ * the isotropic `strokeScale` like the glyph itself.
+ *
+ * They used to be absolute authored positions projected by `sx`/`sy` while the
+ * glyph was typed isotropically, so the gap between letter and axis grew or
+ * collapsed with the ratio — the `t` climbing onto its own axis at 1600 × 400,
+ * falling far below it at 400 × 1600. `at + d·strokeScale` is exactly the
+ * authored position when `sx === sy`, and a constant gap everywhere else.
+ */
 export const AXIS_LABELS = {
-  e: { text: 'e', x: 14, y: 138 },
-  t: { text: 't', x: 580, y: 685 },
+  e: { text: 'e', at: [E_AXIS.x, E_AXIS.y1], dx: -29.5, dy: 41 },
+  t: { text: 't', at: [T_AXIS.x2, T_AXIS.y], dx: -36, dy: 36 },
   size: 34,
 } as const;
 
