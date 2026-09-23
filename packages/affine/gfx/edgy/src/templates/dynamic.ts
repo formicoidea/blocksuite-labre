@@ -139,7 +139,11 @@ const NAME = 'EDGY dynamic';
 export const edgyDynamicTemplate: Template = {
   name: NAME,
   type: 'template',
-  preview: `<svg width="100%" height="100%" viewBox="0 0 135 80" xmlns="http://www.w3.org/2000/svg"><circle cx="55" cy="34" r="18" fill="#00ea4e" opacity="0.9"/><circle cx="80" cy="34" r="18" fill="#034cee" opacity="0.9"/><circle cx="67" cy="54" r="18" fill="#ff0056" opacity="0.9"/><path d="M55 30 H80 M56 31 L66 52 M79 31 L69 52" stroke="#fff" stroke-width="2"/><rect x="51" y="26" width="8" height="8" fill="#fff"/><circle cx="80" cy="30" r="4" fill="#fff"/><path d="M62 49 h6 l3 3 -3 3 h-6 z" fill="#fff"/></svg>`,
+  // The thumbnail follows the board: the circles are drawn where the cropped
+  // {@link CROP} box puts them once it is fitted into the 135 × 80 tile
+  // (height-bound, `s = 80 / CROP.h`), so the tile shows the same framing the
+  // template actually inserts rather than a Venn floating in a tile of its own.
+  preview: `<svg width="100%" height="100%" viewBox="0 0 135 80" xmlns="http://www.w3.org/2000/svg"><circle cx="53.6" cy="28" r="27.2" fill="#00ea4e" opacity="0.9"/><circle cx="81.4" cy="28" r="27.2" fill="#034cee" opacity="0.9"/><circle cx="67.5" cy="52" r="27.2" fill="#ff0056" opacity="0.9"/><path d="M53.6 28 H81.4 M55.1 30.6 L66 49.4 M79.9 30.6 L69 49.4" stroke="#fff" stroke-width="3"/><rect x="48.6" y="23" width="10" height="10" fill="#fff"/><circle cx="81.4" cy="28" r="5" fill="#fff"/><path d="M63 48 h7 l4 4 -4 4 h-7 z" fill="#fff"/></svg>`,
   // Stamped by hand, and it is the one `commandId` in this pack that is a
   // literal rather than a derivation: importing the registry here would close
   // the very loop this module exists to avoid. The coverage test pairs the two
