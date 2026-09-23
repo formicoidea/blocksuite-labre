@@ -151,6 +151,19 @@ export const BPMN_IMPORT_ERRORS = {
     'com.labre.bpmn.import.error.wrong-namespace',
     'This <definitions> is in "{{namespace}}", not in BPMN 2.0\'s ("{{bpmnNamespace}}"). A DMN decision model and a BPMN process open on the same element name and are not the same file.',
   ],
+  /**
+   * Its OWN entry rather than `wrongNamespace` with the words "no namespace"
+   * poured into `{{namespace}}` (#390). That fragment was English prose
+   * substituted into a translated sentence — the one shape a `messageParams`
+   * hole cannot carry, because the reader is pure and has no `std` to resolve
+   * it with. It is also a different FACT, which is what this table is a list
+   * of: a `<definitions>` in the wrong namespace names one, a `<definitions>`
+   * in none names nothing at all.
+   */
+  missingNamespace: [
+    'com.labre.bpmn.import.error.missing-namespace',
+    'This <definitions> declares no namespace, so it does not say it is BPMN 2.0 ("{{bpmnNamespace}}"). A DMN decision model and a BPMN process open on the same element name and are not the same file.',
+  ],
   declinedRootKind: [
     'com.labre.bpmn.import.error.declined-root-kind',
     'This file is a BPMN {{kind}}, which Labre does not draw. Only a process or a collaboration can be imported.',
@@ -541,7 +554,22 @@ function parseDefinitions(source: string): Element {
   // Without this a `.dmn` imports as an empty board, which is exactly the
   // "three zeroes claiming an empty process" this reader refuses to return.
   if (root.namespaceURI !== BPMN_NS.model) {
-    const namespace = root.namespaceURI ?? 'no namespace';
+    // Two facts, two refusals: a namespace this reader can quote back, and no
+    // namespace at all. The second used to borrow the first's sentence with
+    // the English words "no namespace" poured into its `{{namespace}}` hole,
+    // which put a fragment of English inside a translated sentence (#390).
+    const namespace = root.namespaceURI;
+    if (namespace === null) {
+      throw new InterchangeImportError(
+        `This <definitions> declares no namespace, so it does not say it is ` +
+          `BPMN 2.0 ("${BPMN_NS.model}"). A DMN decision model and a BPMN ` +
+          `process open on the same element name and are not the same file.`,
+        {
+          messageKey: BPMN_IMPORT_ERRORS.missingNamespace[0],
+          messageParams: { bpmnNamespace: BPMN_NS.model },
+        }
+      );
+    }
     throw new InterchangeImportError(
       `This <definitions> is in "${namespace}", not ` +
         `in BPMN 2.0's ("${BPMN_NS.model}"). A DMN decision model and a BPMN ` +

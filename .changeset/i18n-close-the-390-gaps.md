@@ -11,9 +11,10 @@
 '@labre/affine-gfx-mindmap': patch
 '@labre/affine-gfx-text': patch
 '@labre/affine-gfx-connector': patch
+'@labre/affine-gfx-bpmn': patch
 ---
 
-Twenty-five strings a French host still read in English now go through the
+Twenty-six strings a French host still read in English now go through the
 translation seam: the colour picker's Heavy row, the slash menu's List and
 Style headers, the five "Other" template tiles, the embed error card's
 sentence, the SVG import's three refusals, the two "Untitled" linked-doc
@@ -30,4 +31,5 @@ New keys: `com.labre.palette-name.heavy-{red,orange,yellow,green,blue,purple,mag
 `com.labre.text-toolbar.alignment-menu`,
 `com.labre.shape.toolbar.switch-type-menu`,
 `com.labre.mindmap.toolbar.layout-menu`,
-`com.labre.connector.toolbar.{start-point-style,end-point-style,shape}-menu`.
+`com.labre.connector.toolbar.{start-point-style,end-point-style,shape}-menu`,
+`com.labre.bpmn.import.error.missing-namespace`.

@@ -739,9 +739,5 @@
       "Youtube"
     ]
   },
-  "pending": {
-    "packages/affine/gfx/bpmn/src/import.ts": [
-      "no namespace"
-    ]
-  }
+  "pending": {}
 }
