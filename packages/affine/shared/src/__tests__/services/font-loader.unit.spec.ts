@@ -5,7 +5,10 @@ import { FontFamily, FontStyle, FontWeight } from '@labre/affine-model';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { FontConfig } from '../../services/font-loader/config';
-import { CommunityCanvasTextFonts } from '../../services/font-loader/config';
+import {
+  AffineCanvasTextFonts,
+  CommunityCanvasTextFonts,
+} from '../../services/font-loader/config';
 import { FontLoaderService } from '../../services/font-loader/font-loader-service';
 
 class FakeFontFace {
@@ -147,19 +150,55 @@ describe('CommunityCanvasTextFonts', () => {
     [FontFamily.Poppins, FontStyle.Normal],
     [FontFamily.Poppins, FontStyle.Italic],
     [FontFamily.BebasNeue, FontStyle.Normal],
+    [FontFamily.PlusJakartaSans, FontStyle.Normal],
+    [FontFamily.PlusJakartaSans, FontStyle.Italic],
   ])('ships a 700 face for %s %s', (family, style) => {
     expect(heaviestOf(family, style)).toBe(FontWeight.Bold);
   });
 
   /**
-   * Kalam, Satoshi and Lora have no 600 file of their own: their `SemiBold`
-   * entries already point at the 700 one, so a second Bold row would repeat
-   * the Semibold row rather than add a weight.
+   * Kalam and Lora have no 600 file of their own: their `SemiBold` entries
+   * already point at the 700 one, so a second Bold row would repeat the
+   * Semibold row rather than add a weight.
    */
-  it.each([FontFamily.Kalam, FontFamily.Satoshi, FontFamily.Lora])(
+  it.each([FontFamily.Kalam, FontFamily.Lora])(
     'keeps %s on a single heavy face',
     family => {
       expect(heaviestOf(family, FontStyle.Normal)).toBe(FontWeight.SemiBold);
     }
   );
+});
+
+/**
+ * #396, PO decision: Plus Jakarta Sans (SIL OFL 1.1) replaces Satoshi, whose
+ * licence forbids offering it as a selectable font in a SaaS or design tool.
+ * These would have caught Satoshi coming back into a default list, and Plus
+ * Jakarta Sans losing the faces its weight panel offers.
+ */
+describe('default font lists (#396)', () => {
+  it.each([
+    ['CommunityCanvasTextFonts', CommunityCanvasTextFonts],
+    ['AffineCanvasTextFonts', AffineCanvasTextFonts],
+  ])('%s offers no Satoshi face', (_, list) => {
+    expect(list.filter(config => config.font === FontFamily.Satoshi)).toEqual(
+      []
+    );
+  });
+
+  it('CommunityCanvasTextFonts ships Plus Jakarta Sans light to bold, upright and italic', () => {
+    const faces = CommunityCanvasTextFonts.filter(
+      config => config.font === FontFamily.PlusJakartaSans
+    ).map(config => `${config.weight} ${config.style}`);
+
+    expect(faces).toEqual([
+      '300 normal',
+      '400 normal',
+      '600 normal',
+      '700 normal',
+      '300 italic',
+      '400 italic',
+      '600 italic',
+      '700 italic',
+    ]);
+  });
 });

@@ -207,6 +207,7 @@ export function createTextActions<
             <edgeless-font-family-panel
               .value=${fontFamily}
               .onSelect=${onPick}
+              .std=${ctx.std}
             ></edgeless-font-family-panel>
           </editor-menu-button>
         `;

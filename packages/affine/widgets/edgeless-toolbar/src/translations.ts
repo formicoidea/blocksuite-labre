@@ -20,7 +20,18 @@ export const EDGELESS_TOOLBAR_MORE_TOOLS: ChromeWording = [
   'More Tools',
 ];
 
+/**
+ * A family the element still carries but the host no longer configures
+ * (#396): the font picker keeps its name, greyed, with this mark. `{{name}}`
+ * is the family name, a proper name the host does not translate.
+ */
+export const EDGELESS_TOOLBAR_FONT_FAMILY_UNAVAILABLE: ChromeWording = [
+  'com.labre.edgeless-toolbar.font-family-unavailable',
+  '{{name}} (unavailable)',
+];
+
 /** Every wording this package declares, in the order it renders them. */
 export const EDGELESS_TOOLBAR_WORDINGS: readonly ChromeWording[] = [
   EDGELESS_TOOLBAR_MORE_TOOLS,
+  EDGELESS_TOOLBAR_FONT_FAMILY_UNAVAILABLE,
 ];
