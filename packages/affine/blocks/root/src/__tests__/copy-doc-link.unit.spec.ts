@@ -63,6 +63,11 @@ interface Options {
   elementIds?: string[];
   /** A host that declines to route this document (unsaved, not its own). */
   declines?: boolean;
+  /**
+   * `false` stands the page up OUTSIDE a secure context, where the Clipboard
+   * API is not "refusing" but absent: `navigator.clipboard` is `undefined`.
+   */
+  clipboard?: boolean;
 }
 
 function setup({
@@ -71,19 +76,25 @@ function setup({
   blockIds = [],
   elementIds = [],
   declines = false,
+  clipboard = true,
 }: Options = {}): Harness {
   const generated: Harness['generated'] = [];
   const toasts: string[] = [];
   const events: Harness['events'] = [];
   const written: string[] = [];
 
+  // A whole `navigator`, and `clipboard` either present or genuinely absent —
+  // `undefined`, not a stub that throws — because that IS the shape a browser
+  // outside a secure context serves.
   vi.stubGlobal('navigator', {
-    clipboard: {
-      writeText: (text: string) => {
-        written.push(text);
-        return Promise.resolve();
-      },
-    },
+    clipboard: clipboard
+      ? {
+          writeText: (text: string) => {
+            written.push(text);
+            return Promise.resolve();
+          },
+        }
+      : undefined,
   });
 
   const std = {
@@ -150,8 +161,8 @@ describe('the descriptor', () => {
     // `global`, not `page` / `edgeless`: the chord has to fire with the focus
     // in a page editor AND on the canvas.
     expect(command.scope).toBe('global');
-    // `Mod-l` is the browser's address bar and never reaches the page; the PO
-    // chose `Mod-Alt-l` on 2026-09-23, matching Notion.
+    // `Mod-l` is the browser's address bar and never reaches the page, so the
+    // shipped default is `Mod-Alt-l` (product decision, PR #401).
     expect(command.defaultKeys).toEqual({
       mac: ['Mod-Alt-l'],
       other: ['Mod-Alt-l'],
@@ -289,6 +300,27 @@ describe('with the seam registered', () => {
     expect(kind({})).toBe('document');
     expect(kind({ blockIds: ['b1'] })).toBe('block');
     expect(kind({ elementIds: ['e1'] })).toBe('element');
+  });
+
+  test('no clipboard API: nothing thrown, nothing copied, nothing announced', () => {
+    // Over plain `http://` (anything but localhost) and in a cross-origin
+    // iframe without `clipboard-write`, `navigator.clipboard` is `undefined` —
+    // so `writeText` is a SYNCHRONOUS TypeError out of `run`, which
+    // `runCommand` cannot catch (it only handles a returned promise). The
+    // keystroke would die with it, and a toast claiming a copy that never
+    // happened is worse than no toast at all.
+    const { std, written, toasts, events } = setup({ clipboard: false });
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    expect(() => runCommand(std, command, fromShortcut)).not.toThrow();
+    expect(written).toEqual([]);
+    expect(toasts).toEqual([]);
+    expect(events).toEqual([]);
+    // Silent on screen, never silent in the console: this is a deployment
+    // mistake (serving the editor over http), and it has to be diagnosable.
+    expect(logged).toHaveBeenCalledOnce();
+    expect(String(logged.mock.calls[0][0])).toContain('secure context');
+    logged.mockRestore();
   });
 
   test('a host that declines to route the document announces nothing', () => {

@@ -15,10 +15,26 @@
  * its Settings › Shortcuts row. A host-side button would be reachable from none
  * of the three, and would not fire while the focus is inside the editor.
  *
- * Default chord `Mod-Alt-l` (PO arbitration of 2026-09-23, matching Notion).
- * NOT `Mod-l`: `Ctrl+L` / `Cmd+L` is the browser's address bar and never
- * reaches the page, so a default on it would silently do nothing on the web.
- * `scope: 'global'` so it fires in page mode and on the canvas alike.
+ * Default chord `Mod-Alt-l` (product decision, PR #401 — the gesture users
+ * already know from Notion). NOT `Mod-l`: `Ctrl+L` / `Cmd+L` is the browser's
+ * address bar and never reaches the page, so a default on it would silently do
+ * nothing on the web. `scope: 'global'` so it fires in page mode and on the
+ * canvas alike.
+ *
+ * **`navigator.clipboard` can be absent, not merely refusing.** The Clipboard
+ * API is a secure-context feature: over plain `http://` on anything but
+ * `localhost`, and in a cross-origin iframe with no `clipboard-write`
+ * permission, the `clipboard` property is `undefined` altogether — so reaching
+ * for `writeText` throws a synchronous `TypeError` out of `run` rather than
+ * returning a promise to reject. That is checked before anything is announced:
+ * no copy, no toast, no telemetry, one `console.error` saying why. Announcing a
+ * copy that never happened is the one failure mode worse than doing nothing.
+ *
+ * A clipboard that EXISTS and then rejects (permission denied at the moment of
+ * writing) is a different case and is left as it is: the promise is caught, and
+ * the toast has already been shown — the same optimistic behaviour the inline
+ * link toolbar has always had, kept deliberately so the two copy-a-link
+ * gestures do not answer differently.
  */
 import {
   DocModeProvider,
@@ -119,6 +135,19 @@ const copyDocLink: CommandDescriptor = {
     // A host may decline — an unsaved document, one it does not route. Nothing
     // is copied and nothing is announced.
     if (!url) return;
+
+    // Not a promise rejection: outside a secure context the property itself is
+    // `undefined`, so this would be a synchronous `TypeError` thrown out of
+    // `run` — and `runCommand` only catches what a returned promise rejects
+    // with, so it would surface as an unhandled error taking the keystroke
+    // down with it. Nothing announced, one line saying why.
+    if (!navigator.clipboard) {
+      console.error(
+        'doc.copyLink: no clipboard API — a secure context (https, or ' +
+          'localhost) is required, and an iframe needs `clipboard-write`.'
+      );
+      return;
+    }
 
     navigator.clipboard.writeText(url).catch(console.error);
 

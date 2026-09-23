@@ -21,12 +21,11 @@
  * these two defaults moved. Anything else in this file drifting is still a
  * regression.
  *
- * AMENDED 2026-09-23 (ticket "Copier le lien d'un document") — a second
- * deliberate addition, not a regeneration: `doc.copyLink` is the first NEW
- * command in the library to ship a default chord, `Mod-Alt-l` in the global
- * scope (PO arbitration of 2026-09-23, matching Notion; `Mod-l` is the
- * browser's address bar and never reaches the page). No existing id moved and
- * no existing combo changed — the global scope gained one entry on both
+ * AMENDED by PR #401 (copy the link of a document) — a second deliberate
+ * addition, not a regeneration: `doc.copyLink` is the first NEW command in the
+ * library to ship a default chord, `Mod-Alt-l` in the global scope (`Mod-l` is
+ * the browser's address bar and never reaches the page). No existing id moved
+ * and no existing combo changed — the global scope gained one entry on both
  * platforms. Anything else drifting is still a regression.
  */
 export const KEYMAP_GOLDEN = {
