@@ -16,6 +16,7 @@ import {
   type ShapeName,
   type ShapeStyle,
 } from '@labre/affine-model';
+import { getChromeAccentColor } from '@labre/affine-shared/services';
 import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
 import { Bound, normalizeDegAngle, type XYWH } from '@labre/global/gfx';
 import { assertType } from '@labre/global/utils';
@@ -72,7 +73,10 @@ export class AutoCompleteTextOverlay extends AutoCompleteTargetOverlay {
     const [x, y, w, h] = this.xywh;
 
     ctx.globalAlpha = 0.4;
-    ctx.strokeStyle = '#1e96eb';
+    // The accent read from the theme, not a literal: a canvas context cannot
+    // take a `var(…)`, so the token is resolved here (DESIGN.md, The Borrowed
+    // Blue Rule).
+    ctx.strokeStyle = getChromeAccentColor(this.gfx.std);
     ctx.lineWidth = 1;
     ctx.strokeRect(x, y, w, h);
 

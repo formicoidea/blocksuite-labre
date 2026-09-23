@@ -203,12 +203,21 @@ const DEFS: readonly RoleDef[] = [
       gestureHintKey: 'com.labre.wardley.role.dependency.gesture',
       gestureHintFallback:
         'Drag from the component that has the need to what it needs.',
-      // The house primary, on THIS chip and no other (same recette). The value
-      // chain is what a Wardley map is read along, and the PO asked for the
-      // relation that carries it to be unmistakable — a decision about one
-      // relation, so it is declared on that relation rather than on the
-      // mechanism, and every other framework's reveal keeps the colour it had.
-      chipColor: '#2563eb',
+      // No `chipColor`. This role used to declare one (PR #203), so that the
+      // relation carrying the value chain would be unmistakable — and the
+      // result, on one map, was two chips in two different blues: this one in
+      // the colour it asked for, `wardley:change-arrow` in the mechanism's
+      // default. Neither had been compared against the other, because the pin
+      // that watched this field only ever looked at Wardley.
+      //
+      // The chip is chrome — the tool talking about the drawing, not part of
+      // it — so it follows the theme's accent token like every other
+      // affordance, and both relations of a map now wear the same blue
+      // (`EDGE_DIRECTION_COLOR`, `gfx/connector`). `chipColor` stays on the
+      // role contract as the extension point it was meant to be: a framework
+      // MAY claim its own, and the cross-framework guard in
+      // `affine/all/src/__tests__/direction-chip-accent.unit.spec.ts` is what
+      // keeps a second accent from creeping back in unnoticed.
     },
   },
   // The map itself: the axes frame the other roles are positioned against.

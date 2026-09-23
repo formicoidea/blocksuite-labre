@@ -114,6 +114,26 @@ describe('the direction of a wardley dependency', () => {
     service.selection.set({ elements, editing: false });
 
   /**
+   * What `--affine-primary-color` actually resolves to on the editor host, as
+   * an `rgb(…)` string.
+   *
+   * The chip reads the accent through that token, so pinning a hex here would
+   * pin the THEME the harness happens to load rather than the rule under test
+   * — "the chip wears the chrome's accent". Resolving it through a throwaway
+   * element is the only way to get the computed value of a custom property in
+   * the same form `getComputedStyle().backgroundColor` returns.
+   */
+  const accentOnHost = () => {
+    const probe = document.createElement('div');
+    probe.style.color = 'var(--affine-primary-color)';
+    edgeless.append(probe);
+    const value = getComputedStyle(probe).color;
+    probe.remove();
+    expect(value, 'the host resolves no accent').toMatch(/^rgba?\(/);
+    return value;
+  };
+
+  /**
    * The four ways a user reaches the inversion, invoked EXACTLY as the product
    * invokes them.
    *
@@ -475,10 +495,16 @@ describe('the direction of a wardley dependency', () => {
     expect(shown!.textContent).not.toContain('Kettle');
     expect(shown!.textContent).not.toContain('Electricity');
 
-    // In the colour the ROLE declares (PO recette of 02/09/2026), which is what
-    // makes the value chain unmistakable without touching the default every
-    // other framework's typed edge keeps.
-    expect(shown!.style.backgroundColor).toBe('rgb(37, 99, 235)');
+    // In the theme's accent, like every other framework's chip.
+    //
+    // COMPUTED, and compared against the token rather than against a hex. The
+    // colour used to be declared by this one role and written as an inline
+    // style, so reading `style.backgroundColor` was enough and the value could
+    // be spelled out here. It is now the widget stylesheet's
+    // `var(--affine-primary-color)`, which an inline read cannot see and whose
+    // value belongs to whatever theme the host loaded — so the assertion asks
+    // the host what the accent resolves to and checks the chip agrees.
+    expect(getComputedStyle(shown!).backgroundColor).toBe(accentOnHost());
 
     // Turned onto the segment it sits on, not laid flat across it.
     expect(transform(shown!).degrees).toBeCloseTo(45, 0);
@@ -513,6 +539,57 @@ describe('the direction of a wardley dependency', () => {
     // Still readable: the link now runs up-and-left, so the box is turned by
     // 180° and lands back at the same +45°.
     expect(transform(reversed!).degrees).toBeCloseTo(45, 0);
+  });
+
+  /**
+   * GUARD — the reported bug, as the product owner saw it.
+   *
+   * Two relations on ONE map, selected together, came out in two different
+   * blues: `needs` in the colour `wardley:dependency` declared on itself, and
+   * `is evolving towards` in the mechanism's inherited default. Every
+   * assertion that existed read ONE chip, so nothing compared them and nothing
+   * failed. This reads both at once and compares what the browser paints —
+   * against each other, and against the accent the host resolves.
+   */
+  test('both typed edges of a map wear the SAME blue, the theme’s', async () => {
+    addMap();
+    const consumer = addNamedNode(400, 200, 'Kettle');
+    const provider = addNamedNode(900, 700, 'Electricity');
+    const dependency = addDependency(consumer, provider);
+    const arrow = service.surface.addElement({
+      type: 'connector',
+      role: 'wardley:change-arrow',
+      mode: ConnectorMode.Straight,
+      source: { id: provider },
+      target: { id: consumer },
+    });
+    await wait(50);
+
+    const widget = edgeless.querySelector(
+      'affine-edge-direction-widget'
+    )! as Element & { updateComplete: Promise<unknown> };
+
+    // Selection reveals both, which is how the two chips came to be on screen
+    // together in the first place.
+    select(dependency, arrow);
+    await wait(50);
+    await widget.updateComplete;
+
+    const chips = Array.from(
+      widget.shadowRoot?.querySelectorAll(
+        '[data-testid="edge-direction-label"]'
+      ) ?? []
+    ) as HTMLElement[];
+    expect(chips).toHaveLength(2);
+
+    // Both verbs are on screen — without this the comparison below could pass
+    // on two copies of the same chip.
+    const verbs = chips.map(chip => chip.textContent?.trim()).sort();
+    expect(verbs).toEqual(['is evolving towards', 'needs']);
+
+    const accent = accentOnHost();
+    const blues = chips.map(chip => getComputedStyle(chip).backgroundColor);
+    expect(blues).toEqual([accent, accent]);
   });
 
   /**

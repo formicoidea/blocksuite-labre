@@ -12,6 +12,7 @@ export { EditorChevronDown } from './chevron-down.js';
 export { ToolbarMoreMenuConfigExtension } from './config.js';
 export { EditorIconButton } from './icon-button.js';
 export {
+  EDITOR_MENU_TOGGLE,
   EditorMenuAction,
   EditorMenuButton,
   EditorMenuContent,

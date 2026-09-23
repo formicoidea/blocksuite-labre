@@ -24,6 +24,8 @@ import {
   LIMINAL_WIDTH,
   REF_H,
   REF_W,
+  REF_X,
+  REF_Y,
   T_AXIS,
   VOLATILE_PATH,
   VOLATILE_WIDTH,
@@ -184,6 +186,10 @@ export function applyEstuarineTransform(
 ): EstuarineFit {
   const fit = estuarineFit(w, h);
   ctx.scale(fit.sx, fit.sy);
+  // The crop: authored (REF_X, REF_Y) is the element's own origin. Applied
+  // INSIDE the scale so the translation is expressed in authored units, which
+  // is the space the `Path2D` this transform is meant for is written in.
+  ctx.translate(-REF_X, -REF_Y);
   return fit;
 }
 
@@ -200,6 +206,13 @@ export function applyEstuarineTransform(
  *   arrowheads and every word. Their POSITION follows the stretch — an axis
  *   ends where the map now ends — while their SHAPE does not, because a
  *   stretched arrowhead or a squashed letter is a defect, never a feature.
+ *
+ *   One rule keeps that split honest, and it is the shared primitive's own
+ *   (`drawAxis` / `backgroundPoint`): **an anchor is a RATIO of the frame, and
+ *   every offset from an anchor is in FIXED units.** A shape must never take
+ *   its anchor from one and its offset from the other — that mix is exactly
+ *   what tore the arrowheads off their axes and slid the `e` / `t` letters
+ *   around on a stretched map.
  * - **Stretched reference space**, entered by {@link applyEstuarineTransform}:
  *   the three curves, which are boundaries across the plane and must cover
  *   whatever plane the user has made.
@@ -223,10 +236,10 @@ export const estuarine: ElementRenderer<EstuarineElementModel> = (
   );
 
   const fit = estuarineFit(w, h);
-  /** Authored x → element x. Proportional: `43.5 / 690` of the real width. */
-  const ax = (x: number) => x * fit.sx;
+  /** Authored x → element x, through the cropped window (see `./consts.ts`). */
+  const ax = (x: number) => (x - REF_X) * fit.sx;
   /** Authored y → element y. */
-  const ay = (y: number) => y * fit.sy;
+  const ay = (y: number) => (y - REF_Y) * fit.sy;
 
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
@@ -244,17 +257,29 @@ export const estuarine: ElementRenderer<EstuarineElementModel> = (
   ctx.moveTo(ax(T_AXIS.x1), ay(T_AXIS.y));
   ctx.lineTo(ax(T_AXIS.x2), ay(T_AXIS.y));
   ctx.stroke();
-  // Each head is pinned by its TIP — which travels to the real end of its axis
-  // — and then built from the authored offsets at the isotropic scale, so the
-  // triangle keeps its shape at any aspect ratio.
-  for (const [[tx, ty], [px, py], [qx, qy]] of ARROWHEADS) {
-    const tipX = ax(tx);
-    const tipY = ay(ty);
-    const k = fit.strokeScale;
+  // Each head is welded to the END OF ITS AXIS — the one proportional anchor —
+  // and built entirely from fixed offsets around that point, exactly as the
+  // shared primitive's `drawAxis` builds one. Anchor by ratio, offset by fixed
+  // units, never a mix of the two on the two ends of one shape: that is the
+  // rule the old formula broke by pinning the tip proportionally and then
+  // rebuilding the base from it at the isotropic scale.
+  const k = fit.strokeScale;
+  for (const head of ARROWHEADS) {
+    const [dx, dy] = head.dir;
+    // Across the axis, same fixed units — the base's half-width.
+    const [px, py] = [-dy, dx];
+    const endX = ax(head.at[0]);
+    const endY = ay(head.at[1]);
+    // The base sits SHORT of the axis end, so the stroke dies inside the
+    // triangle and the two never come apart however the map is pulled.
+    const baseX = endX - dx * head.overlap * k;
+    const baseY = endY - dy * head.overlap * k;
+    const spreadX = px * head.halfWidth * k;
+    const spreadY = py * head.halfWidth * k;
     ctx.beginPath();
-    ctx.moveTo(tipX, tipY);
-    ctx.lineTo(tipX + (px - tx) * k, tipY + (py - ty) * k);
-    ctx.lineTo(tipX + (qx - tx) * k, tipY + (qy - ty) * k);
+    ctx.moveTo(endX + dx * head.tip * k, endY + dy * head.tip * k);
+    ctx.lineTo(baseX - spreadX, baseY - spreadY);
+    ctx.lineTo(baseX + spreadX, baseY + spreadY);
     ctx.closePath();
     ctx.fill();
   }
@@ -295,13 +320,22 @@ export const estuarine: ElementRenderer<EstuarineElementModel> = (
   }
 
   // ── Italic e / t axis letters ───────────────────────────────────────
+  // A letter names an axis, so it rides the END of that axis (proportional)
+  // at a FIXED gap from it — the same anchor-plus-offset a declared background
+  // writes as `backgroundPoint`. The glyph and the gap then scale together, so
+  // the letter sits the same distance from its axis at every ratio.
   if (model.showAxisLabels) {
     ctx.fillStyle = COLORS.axisLabel;
-    ctx.font = `italic 700 ${AXIS_LABELS.size * fit.strokeScale}px Georgia, serif`;
+    ctx.font = `italic 700 ${AXIS_LABELS.size * k}px Georgia, serif`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
-    ctx.fillText(AXIS_LABELS.e.text, ax(AXIS_LABELS.e.x), ay(AXIS_LABELS.e.y));
-    ctx.fillText(AXIS_LABELS.t.text, ax(AXIS_LABELS.t.x), ay(AXIS_LABELS.t.y));
+    for (const letter of [AXIS_LABELS.e, AXIS_LABELS.t]) {
+      ctx.fillText(
+        letter.text,
+        ax(letter.at[0]) + letter.dx * k,
+        ay(letter.at[1]) + letter.dy * k
+      );
+    }
   }
 };
 

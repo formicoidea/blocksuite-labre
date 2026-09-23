@@ -6,7 +6,11 @@ import {
 } from '@labre/affine-block-surface';
 import type { FrameBlockModel } from '@labre/affine-model';
 import { FrameworkBackgroundElementModel } from '@labre/affine-model';
-import { EditPropsStore, translateKey } from '@labre/affine-shared/services';
+import {
+  EditPropsStore,
+  getChromeAccentColor,
+  translateKey,
+} from '@labre/affine-shared/services';
 import { DisposableGroup } from '@labre/global/disposable';
 import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
 import {
@@ -115,7 +119,10 @@ export class FrameOverlay extends Overlay {
 
   override render(ctx: CanvasRenderingContext2D): void {
     ctx.beginPath();
-    ctx.strokeStyle = '#1E96EB';
+    // The accent read from the theme, not a literal: a canvas context cannot
+    // take a `var(…)`, so the token is resolved here (DESIGN.md, The Borrowed
+    // Blue Rule).
+    ctx.strokeStyle = getChromeAccentColor(this.gfx.std);
     ctx.lineWidth = 2 / this.gfx.viewport.zoom;
     const radius = 2 / this.gfx.viewport.zoom;
 

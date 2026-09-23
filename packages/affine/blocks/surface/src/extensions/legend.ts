@@ -28,6 +28,7 @@ import {
   roleIsA,
   RoleVocabularyIdentifier,
   type GfxController,
+  type GfxPrimitiveElementModel,
   type RoleDefs,
   type RoleId,
 } from '@labre/std/gfx';
@@ -450,11 +451,48 @@ const INSET_BOTTOM = 56;
  * It is also why a legend never lists itself: nothing it draws carries a role.
  */
 export function rolesInBound(gfx: GfxController, bound: Bound): Set<RoleId> {
+  return rolesOf(gfx.getElementsByBound(bound, { type: 'canvas' }));
+}
+
+/** {@link rolesInBound} over a perimeter already scanned. */
+function rolesOf(elements: readonly GfxPrimitiveElementModel[]): Set<RoleId> {
   const present = new Set<RoleId>();
-  for (const el of gfx.getElementsByBound(bound, { type: 'canvas' })) {
+  for (const el of elements) {
     if (el.role !== undefined) present.add(el.role);
   }
   return present;
+}
+
+/**
+ * The legends ALREADY drawn on this board — what turns the button's second
+ * press into "regenerate" rather than a second stacked box (issue #391).
+ *
+ * The scan already sees them: a generated legend's wrapper carries
+ * {@link LEGEND_ROLE}, so recognising one costs a filter over the elements the
+ * perimeter pass returned, and nothing in the document format changes.
+ *
+ * CONTAINMENT rather than intersection, which is what `getElementsByBound`
+ * answers with: two boards drawn edge to edge each overlap the other's corner,
+ * and the press on one would eat the other's box. A legend is inset well inside
+ * the board it documents, so asking for the whole box costs nothing here and
+ * keeps the neighbour's.
+ *
+ * Two boxes it deliberately does not find: one the author dragged off the board
+ * (it is no longer this board's legend, and a fresh one is drawn), and one
+ * generated before {@link LEGEND_ROLE} shipped in 0.42 — that box carries no
+ * role, so the old stacking survives on those documents. Nothing is backfilled,
+ * as ever (ADR 0026).
+ */
+function legendsOn(
+  elements: readonly GfxPrimitiveElementModel[],
+  bound: Bound
+): GfxPrimitiveElementModel[] {
+  return elements.filter(
+    el =>
+      el.type === 'group' &&
+      el.role === LEGEND_ROLE &&
+      bound.contains(el.elementBound)
+  );
 }
 
 /** Every registered vocabulary, merged — a role id is namespaced, so it is flat. */
@@ -628,6 +666,14 @@ function boardLegendBox(
  * Build the legend of what is drawn inside `board` and drop it bottom-left of
  * it, grouped and selected. THE gesture the shared toolbar button runs.
  *
+ * REPLACES the board's own legend if it already has one, rather than stacking a
+ * second box on the first (issue #391): the placement is derived from the board
+ * alone, so every press landed at the same pixel and the copies were invisible
+ * — one box to the eye, N groups and N × ~15 elements in the document. The
+ * second press is therefore a REFRESH, which is what a user who has just added
+ * three artefacts is asking for; the cost is that hand retouching of the box is
+ * lost, and one undo brings it back (see {@link legendsOn} and ADR 0026).
+ *
  * Returns the group id, or `undefined` when there is no surface to draw on.
  */
 export function createBoardLegend(
@@ -637,10 +683,19 @@ export function createBoardLegend(
 ): string | undefined {
   const gfx = std.get(GfxControllerIdentifier);
   const surface = gfx.surface;
-  if (!surface) return undefined;
+  // The button already refuses on a readonly document; said again here because
+  // this gesture now DELETES before it draws, and a refused delete followed by
+  // a throwing draw is the one order that could lose a box.
+  if (!surface || std.store.readonly) return undefined;
 
   const bound = Bound.deserialize(board.xywh);
-  const present = rolesInBound(gfx, bound);
+  const inside = gfx.getElementsByBound(bound, { type: 'canvas' });
+  const previous = legendsOn(inside, bound);
+  // The box about to be drawn describes the DRAWING, never the box it replaces:
+  // the outgoing wrapper is dropped from the scan so `core:legend` is not among
+  // the roles the rows are derived from. Its glyphs carry no role at all.
+  const outgoing = new Set<GfxPrimitiveElementModel>(previous);
+  const present = rolesOf(inside.filter(el => !outgoing.has(el)));
   const sections = legendFromCommands(std, owner, present);
   const box = boardLegendBox(std, owner);
   const layout: LegendLayout = {
@@ -655,7 +710,16 @@ export function createBoardLegend(
   const title = translateKey(std, ...(box?.titleWording ?? BOARD_LEGEND_TITLE));
   const { height } = measureLegend(sections, layout, extras);
 
+  // ONE checkpoint, in front of BOTH halves of the replacement: a single
+  // Ctrl+Z after a regenerate puts the previous box back whole, rather than
+  // leaving the board with no legend at all.
   std.store.captureSync();
+  if (previous.length > 0) {
+    const crud = std.get(EdgelessCRUDIdentifier);
+    // Cascades into the group's children (`crud-extension.ts`), so one call
+    // per legend takes the whole box away.
+    for (const legend of previous) crud.removeElement(legend.id);
+  }
   const id = addLegend(
     surface,
     std,

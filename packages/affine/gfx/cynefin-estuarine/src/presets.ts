@@ -22,10 +22,21 @@ import { ESTUARINE_ROLE } from './estuarine/roles';
  * 1.2. Derived from one table, neither can happen again.
  */
 
-/** Estuarine map default scale (REF aspect, scaled up so it reads on canvas). */
+/**
+ * Estuarine map default scale: how many canvas units one reference unit of the
+ * drawing is worth when the map is born. The DRAWING's size, in other words —
+ * which is why it is this number, and not the birth box, that is the constant.
+ */
 export const MAP_SCALE = 1.2;
 
-/** The box an estuarine map is born in — the size the toolbox draws. */
+/**
+ * The box an estuarine map is born in — the size the toolbox draws.
+ *
+ * Derived from the CROPPED reference box (`estuarine/consts.ts`), so the board
+ * is born just big enough to hold its drawing plus a thin margin. It shrank
+ * when the crop tightened (828 × 961.2 → 790.8 × 943.8) and the drawing inside
+ * it did not change size by a single unit — `MAP_SCALE` is still 1.2.
+ */
 export const ESTUARINE_MAP_W = EST_W * MAP_SCALE;
 export const ESTUARINE_MAP_H = EST_H * MAP_SCALE;
 

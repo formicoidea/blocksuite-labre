@@ -152,6 +152,34 @@ export class ThemeService extends Extension {
   }
 }
 
+/**
+ * The CSS variable the chrome accent lives behind — the token `DESIGN.md`'s
+ * Borrowed Blue Rule names. Kept here so a canvas painter can reach the accent
+ * by NAME rather than by value.
+ */
+export const CHROME_ACCENT_CSS_VARIABLE = '--affine-primary-color';
+
+/**
+ * The chrome accent resolved for the theme in force, ready to be handed to a
+ * `CanvasRenderingContext2D` (`strokeStyle`, `fillStyle`), which cannot take a
+ * `var(…)`.
+ *
+ * Canvas painters used to write the AFFiNE blue out as a hex, which made it
+ * unreachable for a host re-skin: the DOM followed `--affine-primary-color`
+ * while the canvas stayed on the literal. The last-resort value, for the case
+ * where no `ThemeProvider` is registered, is READ from the upstream theme
+ * rather than spelled out, so no module holds a copy of the hex
+ * (`brand-hex.unit.spec.ts` enforces that).
+ */
+export function getChromeAccentColor(std: BlockStdScope): string {
+  return (
+    std
+      .getOptional(ThemeProvider)
+      ?.getCssVariableColor(CHROME_ACCENT_CSS_VARIABLE) ??
+    combinedLightCssVariables[CHROME_ACCENT_CSS_VARIABLE]
+  );
+}
+
 export class ThemeObserver {
   private readonly observer: MutationObserver;
 

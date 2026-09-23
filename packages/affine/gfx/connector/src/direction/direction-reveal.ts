@@ -51,11 +51,20 @@ import {
  */
 
 /**
- * The one colour the reveal is drawn in — the house primary, i.e. the colour of
+ * The one colour the reveal is drawn in — the chrome accent, i.e. the colour of
  * an affordance rather than of ink. Deliberately NOT the framework's palette:
  * the label is the tool talking about the drawing, not part of the drawing.
+ *
+ * A TOKEN, not a hex: the chip is rendered in the DOM (`direction-widget.ts`),
+ * so it follows whatever the host sets `--affine-primary-color` to. The accent
+ * is AFFiNE's and due to be replaced — DESIGN.md, The Borrowed Blue Rule.
+ *
+ * It is the colour of EVERY typed edge of every framework: no role declares a
+ * `chipColor` any more (PO recette of 23/09/2026, after one that did produced
+ * two blues on one map). `affine/all/src/__tests__/direction-chip-accent.unit.spec.ts`
+ * reads the mounted vocabularies and keeps it that way.
  */
-export const EDGE_DIRECTION_COLOR = '#1e96eb';
+export const EDGE_DIRECTION_COLOR = 'var(--affine-primary-color)';
 
 const pathOf = (model: ConnectorElementModel): IVec[] | null => {
   const path = model.absolutePath as IVec[] | undefined;

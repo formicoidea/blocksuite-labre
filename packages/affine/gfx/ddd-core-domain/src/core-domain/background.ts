@@ -39,8 +39,13 @@ import { CORE_DOMAIN_ROLE } from '../roles';
 /**
  * The authoring reference space, kept as documentation of where every ratio
  * below comes from: the chart was drawn at 900 × 820 with its plot inset by the
- * margins declared in {@link CORE_DOMAIN_BACKGROUND}, so the plot is 786 × 746
- * and `(absolute - origin) / span` is the conversion.
+ * ORIGINAL margins `{ top: 24, right: 54, bottom: 50, left: 60 }`, so the plot
+ * is 786 × 746 and `(absolute - origin) / span` is the conversion.
+ *
+ * These numbers are the conversion and nothing else: they are NOT the margins
+ * the chart is drawn with any more (see {@link CORE_DOMAIN_MARGIN}). The ratios
+ * below therefore still describe the same picture — the picture simply fills a
+ * tighter frame.
  */
 const PLOT = { x0: 60, y0: 24, width: 786, height: 746 } as const;
 
@@ -409,6 +414,57 @@ const CORE_DOMAIN_AXES: FrameworkBackgroundDef['axes'] = [
   },
 ];
 
+/**
+ * The margins, each one the ink it actually hosts — not a round number.
+ *
+ * The chart used to be inset by `{ top: 24, right: 54, bottom: 50, left: 60 }`,
+ * drawn when the frame was authored and never measured since. Measured on the
+ * canvas at the authoring size, the ink of a default chart stopped 24.1 units
+ * short of the top edge, 50.7 short of the right one, 20.1 short of the bottom
+ * and 17.2 short of the left: about a tenth of the element was empty on every
+ * side, which is exactly what makes a chart hard to grab — a background is
+ * caught by its border (`framework-background/hit-test.ts`), and that border
+ * was nowhere near the drawing.
+ *
+ * So each margin is now the reach of what it hosts, plus room to breathe:
+ *
+ * - `top` hosts the tip of the vertical arrowhead and nothing else — the tip IS
+ *   the top of the plot — so 4 units of gutter is the whole of it;
+ * - `right` hosts the tip of the horizontal arrowhead — which, like the top
+ *   one, IS the edge of the plot — and the right half of the "High" tick, which
+ *   is centred 1.02 % of the plot inside that end and reaches 3.3 units past it
+ *   in English. 8 covers the tick on a chart of the usual width; a locale whose
+ *   word is half again as wide overruns the edge by a few units on a narrow
+ *   chart, which paints fine (the surface clips nothing) and is the same thing
+ *   the arrowheads already do;
+ * - `bottom` hosts the horizontal axis title, whose baseline is 30 below the
+ *   axis (`dy: 30`), plus a descender the English wording happens not to have
+ *   (≈ 3.4 at 14px) and a gutter;
+ * - `left` hosts the rotated vertical title, written 32 left of the axis
+ *   (`dx: -32`); rotated, a word reaches into the margin by its ASCENT, not by
+ *   its length — ≈ 10.8 at 14px, more for an accented capital — hence 48.
+ *
+ * Nothing about the drawing changed: every ratio above is untouched, so the
+ * chart is the same chart. What changed is that the frame now sits on it.
+ */
+const CORE_DOMAIN_MARGIN = {
+  top: 4,
+  right: 8,
+  bottom: 37,
+  left: 48,
+} as const;
+
+/**
+ * The birth size, chosen so that a NEW chart's plot is the 786 × 746 it has
+ * always been: the tighter margins take room off the element, not off the
+ * drawing. A chart created before this change keeps its `xywh` and sees its
+ * plot grow into the margins instead — the deliberate half of this fix.
+ */
+const BIRTH_WIDTH =
+  PLOT.width + CORE_DOMAIN_MARGIN.left + CORE_DOMAIN_MARGIN.right;
+const BIRTH_HEIGHT =
+  PLOT.height + CORE_DOMAIN_MARGIN.top + CORE_DOMAIN_MARGIN.bottom;
+
 export const CORE_DOMAIN_BACKGROUND: FrameworkBackgroundDef = {
   type: 'coreDomain',
   // The chart is a first-class role: validation rules position artefacts
@@ -416,14 +472,14 @@ export const CORE_DOMAIN_BACKGROUND: FrameworkBackgroundDef = {
   role: CORE_DOMAIN_ROLE.chart,
   variantProp: 'variant',
   geometry: {
-    width: 900,
-    height: 820,
+    width: BIRTH_WIDTH,
+    height: BIRTH_HEIGHT,
     lockAspectRatio: true,
     // The chart has always offered its handles (`resizeEnabled` defaults to
     // true on the model); the declaration says so, and the toolbar toggle takes
     // over from there.
     resizable: true,
-    margin: { top: 24, right: 54, bottom: 50, left: 60 },
+    margin: CORE_DOMAIN_MARGIN,
   },
   chrome: {
     fontFamily: FONT_FAMILY,

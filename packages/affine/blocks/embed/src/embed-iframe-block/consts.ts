@@ -7,12 +7,8 @@ export const DEFAULT_IFRAME_WIDTH = '100%';
 
 export const LINK_CREATE_POPUP_OFFSET = 4;
 
-// Sandbox granted to an embed served by a known provider (spotify, miro, …).
-export const TRUSTED_SANDBOX =
-  'allow-same-origin allow-scripts allow-forms allow-presentation';
-// Sandbox granted to an arbitrary url: the generic provider, or no provider at
-// all. Without `allow-same-origin` the frame runs on an opaque origin.
-export const UNTRUSTED_SANDBOX = 'allow-scripts';
+// The sandbox policy now lives at `../common/iframe-sandbox.ts`, so that every
+// block of this package can read it (issue #389).
 
 export const IDLE_CARD_DEFAULT_HEIGHT = 48;
 export const LOADING_CARD_DEFAULT_HEIGHT = 114;

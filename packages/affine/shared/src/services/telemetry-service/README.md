@@ -239,6 +239,29 @@ then subscribes to `elementDamaged` for what sync delivers afterwards.
 The surface keeps its `console.warn` alongside: `@labre/std` runs standalone
 and has no bus of its own.
 
+## Copying a link
+
+| Event        | When                           | Required props                        |
+| ------------ | ------------------------------ | ------------------------------------- |
+| `CopiedLink` | a link is put on the clipboard | `module`, `control`, `type`, `result` |
+
+Historical (`LinkEventType`), and deliberately **not** replaced by a new event:
+three sites copy a link — the inline link toolbar, the generic iframe embed
+toolbar, and the `doc.copyLink` command — and "links copied" has to stay one
+series. `type` is what tells them apart for the command: `document` when the
+URL points at the document as a whole, `block` / `element` when it is anchored
+on the selection. `page` distinguishes `doc editor` from `whiteboard editor`,
+`module` names the surface the command was invoked from (`palette`,
+`shortcut`, `agent`).
+
+`doc.copyLink` emits from its own body rather than through `runCommand`'s
+bottleneck: `CommandDescriptor.telemetry` routes the reporter onto the three
+framework CREATION events and requires a `FrameworkId`, and this command
+creates nothing and belongs to no framework. It is enumerated in
+`registry.unit.spec.ts`'s `SELF_EMITTING_COMMANDS` so it can never also declare
+`telemetry` and report the same gesture twice. No ids cross: neither the
+document id nor the anchored block/element ids.
+
 ## Legacy events
 
 The historical AFFiNE events (`CanvasElementAdded`, `DocCreated`, slash menu,

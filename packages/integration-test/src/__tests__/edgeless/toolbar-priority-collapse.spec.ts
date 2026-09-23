@@ -15,10 +15,15 @@ import { setupEditor } from '../utils/setup.js';
  * all, that it stays ONE line at every width, that an entry pushed into the "⋮"
  * still does what it did, and that widening the room brings it back.
  *
- * The row is narrowed the way a user narrows it: by panning the map so the
- * selected element sits near the right edge of the window, which is exactly
- * what leaves `size()` little room to give — no test-only knob, no forced
- * style. `capOf` reads back the cap that middleware writes.
+ * The row is narrowed the way a user narrows it: by making the EDITOR narrower
+ * — no test-only knob, no forced style. `capOf` reads back the cap `size()`
+ * writes.
+ *
+ * It used to be narrowed by panning the map until the selected element sat
+ * near the right edge of the window, because `size()` ran before `shift()` and
+ * answered with what the row would overhang by rather than with the room the
+ * editor has. That is the bug this suite outlived: panning changes nothing now
+ * — the row simply slides — and only a narrower editor makes an entry give way.
  */
 
 /** Native-shaped click: composed, so it crosses the widget's shadow boundary. */
@@ -52,6 +57,8 @@ const READING = 'y1.element-reading';
 describe('the contextual toolbar, on one line', () => {
   let service!: EdgelessRootBlockComponent['service'];
   let root!: EdgelessRootBlockComponent;
+  /** What the editor is mounted in, and therefore how wide it is. */
+  let container!: HTMLElement;
   let unmount: (() => void) | null = null;
 
   const widget = () =>
@@ -91,6 +98,25 @@ describe('the contextual toolbar, on one line', () => {
   /** How many lines the row occupies — the number this whole branch is about. */
   const lines = () => new Set(entries().map(child => child.offsetTop)).size;
 
+  /**
+   * How far the row's content sticks out of its own background, in pixels.
+   *
+   * Measured from the entries' LAYOUT boxes, not from `scrollWidth`: the row
+   * is `overflow-x: clip` and has no scrollable overflow left to report — the
+   * clip is what keeps a row that cannot give way any further from painting
+   * over the canvas, and it must not also hide the fact from this spec.
+   */
+  const spill = () => {
+    const bar = toolbar()!;
+    const box = bar.getBoundingClientRect();
+    const right = entries().reduce(
+      (furthest, child) =>
+        Math.max(furthest, child.getBoundingClientRect().right),
+      box.left
+    );
+    return Math.max(0, right - box.right);
+  };
+
   /** The cap `size()` wrote on the toolbar. */
   const capOf = () => Number.parseFloat(toolbar()!.style.maxWidth);
 
@@ -111,16 +137,22 @@ describe('the contextual toolbar, on one line', () => {
     await settle();
   };
 
+  /** The padding `size()` keeps between the row and the edge of the editor. */
+  const EDGE = 10;
+
   /**
-   * Pans until the row has about `target` pixels to work with.
+   * Narrows the EDITOR until the row has about `target` pixels to work with.
    *
-   * Moving the map left moves the selected element right, and the toolbar is
-   * anchored to the element's left edge — so the room `size()` computes shrinks
-   * by exactly what we pan. Read back rather than assumed: `capOf` is the real
-   * number the middleware wrote.
+   * The room is the editor's own width, less that padding on either side —
+   * which is what the positioner now reports and what the fitter plans from.
+   * Read back rather than assumed: `capOf` is the real number the middleware
+   * wrote.
    */
   const roomFor = async (target: number) => {
-    service.viewport.applyDeltaCenter(-(capOf() - target), 0);
+    container.style.width = `${Math.round(target + 2 * EDGE)}px`;
+    // What a window being resized also does, and what the positioner listens
+    // to: it is not watching the container for its own account.
+    window.dispatchEvent(new Event('resize'));
     await settle();
   };
 
@@ -149,11 +181,13 @@ describe('the contextual toolbar, on one line', () => {
     forgetStoredViewport();
     unmount = await setupEditor('edgeless');
     root = getDocRootBlock(window.doc, window.editor, 'edgeless');
+    container = window.editor.parentElement as HTMLElement;
     service = root.service;
     service.std.event.active = true;
     service.viewport.setZoom(1);
     service.viewport.setCenter(880, 450);
     return () => {
+      container.style.width = '';
       unmount?.();
       unmount = null;
     };
@@ -255,8 +289,35 @@ describe('the contextual toolbar, on one line', () => {
     expect(row.filter(child => child.dataset.iconOnly === 'true')).toHaveLength(
       0
     );
-    expect(toolbar()!.scrollWidth).toBeLessThanOrEqual(
-      toolbar()!.clientWidth + 1
+    expect(spill()).toBe(0);
+  });
+
+  /**
+   * **The row near the edge of the canvas slides; it does not give way.**
+   *
+   * The behaviour the PO arbitrated on 23/09/2026, and the one the old
+   * `roomFor` was built on: an element selected against the right edge of the
+   * window used to squeeze the row, because the cap was computed before
+   * `shift()` and read the row's overhang as a shortage of room. The editor
+   * is just as wide wherever the element sits, so the row is just as whole.
+   */
+  test('an element against the edge slides the row, it does not spend it', async () => {
+    addMap();
+    const component = addComponent();
+    await select(component);
+
+    const whole = entries().map(child => child.dataset.toolbarActionId);
+    const room = capOf();
+
+    // Right up against the edge of the window, and then past it.
+    service.viewport.applyDeltaCenter(-420, 0);
+    await settle();
+
+    expect(capOf()).toBe(room);
+    expect(entries().map(child => child.dataset.toolbarActionId)).toEqual(
+      whole
     );
+    expect(stateOf(READING)).toBe('label');
+    expect(lines()).toBe(1);
   });
 });

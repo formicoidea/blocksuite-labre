@@ -41,8 +41,6 @@ import {
   IDLE_CARD_DEFAULT_HEIGHT,
   LINK_CREATE_POPUP_OFFSET,
   LOADING_CARD_DEFAULT_HEIGHT,
-  TRUSTED_SANDBOX,
-  UNTRUSTED_SANDBOX,
 } from './consts.js';
 import { embedIframeBlockStyles } from './style.js';
 import {
@@ -50,6 +48,10 @@ import {
   type EmbedIframeStatusCardOptions,
 } from './types.js';
 import { isSafeEmbedUrl, safeGetIframeSrc } from './utils.js';
+import {
+  TRUSTED_SANDBOX,
+  UNTRUSTED_SANDBOX,
+} from '../common/iframe-sandbox.js';
 import {
   EMBED_IFRAME_ERROR_INVALID_URL,
   EMBED_IFRAME_ERROR_NO_DATA,

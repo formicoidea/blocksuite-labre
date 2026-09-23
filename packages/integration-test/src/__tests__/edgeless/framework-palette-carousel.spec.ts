@@ -102,6 +102,37 @@ describe("the colour pickers' palette carousel", () => {
   const select = async (...ids: string[]) => {
     service.gfx.selection.set({ elements: ids, editing: false });
     await settle();
+    await scrollToSelection();
+  };
+
+  /**
+   * Brings what is selected into the WINDOW, the way a user scrolls to it.
+   *
+   * The editor is mounted in a container twice the height of the window
+   * (`setupEditor`), and the camera `beforeEach` asks for does not survive the
+   * editor's own layout — from the second spec of a run onwards these scenes
+   * sit around a thousand pixels down: well inside the board, outside the
+   * window. A selection the WINDOW cannot show is one the toolbar is right to
+   * hide (`hide()`, in the positioner), and a hidden toolbar is one no real
+   * mouse can reach — which is what the palette clicks below timed out on.
+   *
+   * Low in the window rather than centred: the toolbar sits above what is
+   * selected and its panels open above the toolbar, so the room that has to be
+   * in view is the room ABOVE the anchor.
+   *
+   * The board is not moved — the page is. The scene, and every geometry these
+   * tests assert on, is the one they have always had.
+   */
+  const scrollToSelection = async () => {
+    const [element] = service.gfx.selection.selectedElements;
+    if (!element) return;
+    const bound = service.viewport.toViewBound(element.elementBound);
+    const anchored = bound.y + bound.h / 2 - window.innerHeight * 0.72;
+    window.scrollTo({
+      top: Math.max(0, Math.min(anchored, document.body.scrollHeight)),
+      behavior: 'instant' as ScrollBehavior,
+    });
+    await settle();
   };
 
   /** The shape toolbar's single colour entry — one header, two grids. */
@@ -197,6 +228,39 @@ describe("the colour pickers' palette carousel", () => {
     );
     // `settle()` waits 250ms, longer than the header's own wheel throttle.
     await settle();
+  };
+
+  /**
+   * The popup's own scroll box: `editor-menu-content`'s `.content-wrapper`,
+   * two shadow roots below the picker. It is the box that grew a horizontal
+   * scrollbar in #392 — the carousel animates inside it.
+   */
+  const popupBox = (host: Element) =>
+    menuOf(host)
+      ?.shadowRoot?.querySelector('editor-menu-content')
+      ?.shadowRoot?.querySelector('.content-wrapper') as HTMLElement | null;
+
+  /**
+   * Watch `box` for `ms` — one sample a frame, i.e. right through an entry
+   * animation — and report every horizontal `overflow` it computed to, plus
+   * the widest its scrollable region ever got.
+   *
+   * The axis, not the offset, is what says whether a scrollbar can be painted:
+   * `overflow: hidden` IS a scroll container, and stays scrollable
+   * programmatically, it simply never paints a bar and never answers a gesture.
+   * So `scrollLeft` proves nothing here, and a headless Chromium paints its
+   * bars as overlays, which no measurement of the box can see either.
+   */
+  const watchOverflow = async (box: HTMLElement, ms: number) => {
+    const axes = new Set<string>();
+    let widest = 0;
+    const until = Date.now() + ms;
+    while (Date.now() < until) {
+      axes.add(getComputedStyle(box).overflowX);
+      widest = Math.max(widest, box.scrollWidth - box.clientWidth);
+      await new Promise(resolve => requestAnimationFrame(resolve));
+    }
+    return { axes: [...axes], widest };
   };
 
   /**
@@ -325,6 +389,59 @@ describe("the colour pickers' palette carousel", () => {
         picker.shadowRoot!.querySelectorAll('.palette-carousel-page')
       ).map(box => box.getAttribute('data-direction'))
     ).toEqual(['prev', 'prev']);
+  });
+
+  test('paging never lets the popup scroll sideways, either way', async () => {
+    // What this would have caught: issue #392. For the ~240ms of the entry
+    // animation the incoming page sits at translateX(14px), which pushed the
+    // popup's scrollable region 8px past its box. `.content-wrapper` only ever
+    // asked for a VERTICAL scroll, but CSS Overflow computes the other axis to
+    // `auto` alongside it — so the box really was a horizontal scroll
+    // container, and a scrollbar was painted for as long as the animation ran.
+    //
+    // The report's symptom was one-sided (a `prev` page overflows the START
+    // edge, which LTR clips without ever scrolling). Both directions are
+    // sampled here, so the day the animation changes sign the guard holds.
+    //
+    // This is the only level that can answer for the REAL popup: its own
+    // padding, its own width, and a compositor actually running the keyframes.
+    addMap();
+    const shape = addShape('[400,300,100,100]');
+    await select(shape);
+
+    const picker = shapePicker()!;
+    await openPicker(picker);
+
+    const box = popupBox(picker);
+    expect(box).not.toBeNull();
+
+    const widest: number[] = [];
+    for (const deltaY of [1, -1]) {
+      const grid = picker.shadowRoot!.querySelector('edgeless-color-panel')!;
+      grid.dispatchEvent(
+        new WheelEvent('wheel', { deltaY, bubbles: true, cancelable: true })
+      );
+      await wait(0);
+      // The animation really is in flight while the box is sampled below.
+      expect(
+        picker
+          .shadowRoot!.querySelector('.palette-carousel-page')
+          ?.getAttribute('data-direction')
+      ).toBe(deltaY > 0 ? 'next' : 'prev');
+      // 320ms: longer than the animation, and longer than the wheel's quiet
+      // window, so the next turn of the loop counts as a fresh flick.
+      const seen = await watchOverflow(box!, 320);
+      // Never `auto`, never `scroll`, at any point of the travel.
+      expect(seen.axes).toEqual(['hidden']);
+      widest.push(seen.widest);
+    }
+
+    // …and the guard is not vacuous: the forward page really does overflow,
+    // which is the whole precondition of #392. Skipped when the runner asked
+    // for less motion, because then there is no travel to overflow with.
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      expect(widest[0]).toBeGreaterThan(0);
+    }
   });
 
   test('the header is the panel’s title, on the panel’s own left edge', async () => {

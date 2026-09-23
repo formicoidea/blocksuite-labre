@@ -15,6 +15,14 @@ import { property, query } from 'lit/decorators.js';
 
 import type { EditorIconButton } from './icon-button.js';
 
+/**
+ * A panel in a toolbar opened or closed, announced across shadow boundaries.
+ *
+ * `detail` is whether it is now open, and the deepest element of
+ * `composedPath()` is the button it belongs to.
+ */
+export const EDITOR_MENU_TOGGLE = 'editor-menu-toggle';
+
 export class EditorMenuButton extends WithDisposable(LitElement) {
   static override styles = css`
     :host {
@@ -49,6 +57,23 @@ export class EditorMenuButton extends WithDisposable(LitElement) {
         } else {
           delete this.dataset.open;
         }
+
+        // Said again, out loud, for whoever is holding this button — the row
+        // it sits on has to know, and `data-open` alone cannot tell it: a
+        // picker keeps its menu button inside its OWN shadow root, where no
+        // `querySelector` and no `MutationObserver` of the row's reaches. This
+        // one bubbles AND is composed, so it crosses every boundary between
+        // here and the row. See `EditorToolbar`, which stops clipping while a
+        // panel is open. The `toggle` event above is deliberately left as it
+        // is: it does not bubble, and things listen for it by that name.
+        this.dispatchEvent(
+          new CustomEvent<boolean>(EDITOR_MENU_TOGGLE, {
+            detail: opened,
+            bubbles: true,
+            cancelable: false,
+            composed: true,
+          })
+        );
       },
       mainAxis: 0,
       offsetHeight: 6 * 4,
@@ -131,6 +156,15 @@ export class EditorMenuContent extends LitElement {
     .content-wrapper {
       overscroll-behavior: contain;
       overflow-y: auto;
+      /* Spelled out because CSS Overflow computes a visible axis to auto as
+       * soon as the other one is not visible: the overflow-y above would
+       * silently make this popup scrollable SIDEWAYS too. Anything animated by
+       * a positive translateX inside it — the palette carousel's incoming page,
+       * see color-picker/palette-carousel.ts — then grows the scrollable
+       * region for the length of the animation and flashes a horizontal
+       * scrollbar (issue #392). Not clip: combined with overflow-y: auto the
+       * spec falls it back to hidden anyway. */
+      overflow-x: hidden;
       padding: var(--content-padding, 0 6px);
     }
 

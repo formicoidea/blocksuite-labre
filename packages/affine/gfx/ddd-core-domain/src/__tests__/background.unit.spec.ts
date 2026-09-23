@@ -1,4 +1,8 @@
-import { backgroundSize, backgroundTexts } from '@labre/affine-block-surface';
+import {
+  backgroundPlot,
+  backgroundSize,
+  backgroundTexts,
+} from '@labre/affine-block-surface';
 import { CoreDomainChartElementModel } from '@labre/affine-model';
 import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
 import { describe, expect, it } from 'vitest';
@@ -19,8 +23,12 @@ import { recordingCtx, stubMatrix } from './canvas-stub';
  * recomputed from the declaration under test. Change the declaration and these
  * fail; change both and the review sees a deliberate visual change.
  *
- * Reference geometry, at the authoring size 900 × 820:
- *   plot  x 60 → 846, y 24 → 770   (786 × 746)
+ * Reference geometry, at the birth size 842 × 787:
+ *   plot  x 48 → 834, y 4 → 750   (786 × 746)
+ *
+ * The plot is the 786 × 746 it has always been; only the margins around it were
+ * cut back to the ink they host, so every literal below is the deleted
+ * `consts.ts` value translated by the ONE offset that changed: `(-12, -20)`.
  *
  * ## The two knowing differences, both invisible
  *
@@ -41,8 +49,12 @@ import { recordingCtx, stubMatrix } from './canvas-stub';
 const FRAME_INK = NOTATION_NEUTRALS.frameInk;
 const TICK = NOTATION_NEUTRALS.label;
 
-const W = 900;
-const H = 820;
+const W = 842;
+const H = 787;
+
+/** The plot, unchanged since the chart was authored. */
+const PLOT_W = 786;
+const PLOT_H = 746;
 
 /** Float noise from `(absolute - origin) / span * span`; nothing else. */
 const round = (n: number) => Math.round(n * 1e6) / 1e6;
@@ -100,16 +112,21 @@ const t = (
 describe('the Core Domain Chart declaration', () => {
   it('declares the geometry a fresh chart is created at', () => {
     expect(CORE_DOMAIN_BACKGROUND.geometry).toEqual({
-      width: 900,
-      height: 820,
+      width: W,
+      height: H,
       lockAspectRatio: true,
       resizable: true,
-      margin: { top: 24, right: 54, bottom: 50, left: 60 },
+      margin: { top: 4, right: 8, bottom: 37, left: 48 },
     });
     expect(backgroundSize(CORE_DOMAIN_BACKGROUND)).toEqual({
-      width: 900,
-      height: 820,
+      width: W,
+      height: H,
     });
+    // The point of the birth size: a NEW chart's plot is the one the chart was
+    // drawn in, so tightening the margins took room off the element, never off
+    // the drawing.
+    const plot = backgroundPlot(CORE_DOMAIN_BACKGROUND, W, H);
+    expect([plot.width, plot.height]).toEqual([PLOT_W, PLOT_H]);
   });
 
   it('stamps the chart role, so rules keep framing against it', () => {
@@ -161,34 +178,34 @@ describe('the Core Domain Chart paints what it always painted', () => {
   it('tints the four bands at the published rects and alphas', () => {
     // `ZONES` of the deleted consts.ts, in the order it declared them.
     expect(render(chart()).rects).toEqual([
-      { x: 70, y: 30, w: 150, h: 720, fill: '#b3b3b399' },
-      { x: 220, y: 30, w: 220, h: 720, fill: '#9933ff99' },
-      { x: 440, y: 30, w: 400, h: 360, fill: '#4d990099' },
-      { x: 440, y: 390, w: 400, h: 360, fill: '#9933ff99' },
+      { x: 58, y: 10, w: 150, h: 720, fill: '#b3b3b399' },
+      { x: 208, y: 10, w: 220, h: 720, fill: '#9933ff99' },
+      { x: 428, y: 10, w: 400, h: 360, fill: '#4d990099' },
+      { x: 428, y: 370, w: 400, h: 360, fill: '#9933ff99' },
     ]);
   });
 
   it('writes every word where it has always been written', () => {
     expect(render(chart()).texts).toEqual([
       // ZONE_LABELS: white, bold, centred.
-      t('Generic', 150, 474, '700 20px Inter, sans-serif', '#ffffff'),
-      t('Supporting', 340, 474, '700 20px Inter, sans-serif', '#ffffff'),
-      t('Core', 640, 214, '700 26px Inter, sans-serif', '#ffffff'),
+      t('Generic', 138, 454, '700 20px Inter, sans-serif', '#ffffff'),
+      t('Supporting', 328, 454, '700 20px Inter, sans-serif', '#ffffff'),
+      t('Core', 628, 194, '700 26px Inter, sans-serif', '#ffffff'),
       // The rotated Y title, hugging the axis.
-      t('Complexity', 28, 400, '600 14px Inter, sans-serif', FRAME_INK, true),
+      t('Complexity', 16, 380, '600 14px Inter, sans-serif', FRAME_INK, true),
       // The Y ticks, at their two (different) hand-placed insets.
-      t('Low', 48, 758, '12px Inter, sans-serif', TICK, true),
-      t('High', 38, 44, '12px Inter, sans-serif', TICK, true),
+      t('Low', 36, 738, '12px Inter, sans-serif', TICK, true),
+      t('High', 26, 24, '12px Inter, sans-serif', TICK, true),
       // The X title and its ticks, below the axis.
       t(
         'Business differentiation',
-        450,
-        800,
+        438,
+        780,
         '600 14px Inter, sans-serif',
         FRAME_INK
       ),
-      t('Low', 84, 792, '12px Inter, sans-serif', TICK),
-      t('High', 838, 792, '12px Inter, sans-serif', TICK),
+      t('Low', 72, 772, '12px Inter, sans-serif', TICK),
+      t('High', 826, 772, '12px Inter, sans-serif', TICK),
     ]);
   });
 
@@ -196,11 +213,11 @@ describe('the Core Domain Chart paints what it always painted', () => {
     const { segments, strokes, fills } = render(chart());
     // AXIS.ox / AXIS.oy is the origin; the line stops one unit inside the base
     // of its 9-long arrowhead, which the filled triangle then covers.
-    expect(segments).toContainEqual({ x1: 60, y1: 770, x2: 60, y2: 32 });
-    expect(segments).toContainEqual({ x1: 60, y1: 770, x2: 838, y2: 770 });
+    expect(segments).toContainEqual({ x1: 48, y1: 750, x2: 48, y2: 12 });
+    expect(segments).toContainEqual({ x1: 48, y1: 750, x2: 826, y2: 750 });
     // AXIS.top and AXIS.right: the two tips, to the unit.
-    expect(segments).toContainEqual({ x1: 60, y1: 24, x2: 55.5, y2: 33 });
-    expect(segments).toContainEqual({ x1: 846, y1: 770, x2: 837, y2: 765.5 });
+    expect(segments).toContainEqual({ x1: 48, y1: 4, x2: 43.5, y2: 13 });
+    expect(segments).toContainEqual({ x1: 834, y1: 750, x2: 825, y2: 745.5 });
     // Both axes, and both heads, in the scale's frame ink.
     expect(strokes).toEqual([FRAME_INK, FRAME_INK]);
     expect(fills).toEqual([FRAME_INK, FRAME_INK]);
@@ -208,21 +225,21 @@ describe('the Core Domain Chart paints what it always painted', () => {
 
   it('rotates about the element centre, as every surface element does', () => {
     expect(render(chart({ rotate: 45 })).transform).toEqual([
-      ['translate', 450, 410],
+      ['translate', 421, 393.5],
       ['rotate', 45],
-      ['translate', -450, -410],
+      ['translate', -421, -393.5],
     ]);
   });
 
   it('scales its ratios with the element, furniture excepted', () => {
-    // Twice the size: the plot doubles, so the Core band's left edge moves from
-    // 440 to 60 + 380 × 2 = 820 (the margin is FIXED model units).
+    // Twice the plot: the Core band's left edge moves from 428 to
+    // 48 + 380 × 2 = 808 (the margin is FIXED model units).
     const { rects } = render(
-      chart({ deserializedXYWH: [0, 0, 2 * W - 114, 2 * H - 74] })
+      chart({ deserializedXYWH: [0, 0, 2 * PLOT_W + 56, 2 * PLOT_H + 41] })
     );
     expect(rects[2]).toEqual({
-      x: 820,
-      y: 36,
+      x: 808,
+      y: 16,
       w: 800,
       h: 720,
       fill: '#4d990099',
@@ -242,7 +259,7 @@ describe('the two toggles the chart has always had', () => {
     expect(off.texts).toEqual([]);
     expect(off.rects).toHaveLength(4);
     // The frame itself is never hidden: the axes are the chart.
-    expect(off.segments).toContainEqual({ x1: 60, y1: 770, x2: 838, y2: 770 });
+    expect(off.segments).toContainEqual({ x1: 48, y1: 750, x2: 826, y2: 750 });
   });
 });
 
@@ -251,10 +268,10 @@ describe('the migration reading', () => {
 
   it('replaces the three bands with the four migration quadrants', () => {
     expect(migration().rects).toEqual([
-      { x: 60, y: 24, w: 393, h: 373, fill: '#ff333326' },
-      { x: 453, y: 24, w: 393, h: 373, fill: '#9933ff26' },
-      { x: 60, y: 397, w: 393, h: 373, fill: '#b3b3b326' },
-      { x: 453, y: 397, w: 393, h: 373, fill: '#4d990026' },
+      { x: 48, y: 4, w: 393, h: 373, fill: '#ff333326' },
+      { x: 441, y: 4, w: 393, h: 373, fill: '#9933ff26' },
+      { x: 48, y: 377, w: 393, h: 373, fill: '#b3b3b326' },
+      { x: 441, y: 377, w: 393, h: 373, fill: '#4d990026' },
     ]);
   });
 
@@ -277,16 +294,107 @@ describe('the migration reading', () => {
     // One title at a time, at the very place the other one occupied.
     expect(words).not.toContain('Complexity');
     const title = migration().texts.find(x => x.text === 'Cost of migration');
-    expect(title).toMatchObject({ x: 28, y: 400, vertical: true });
+    expect(title).toMatchObject({ x: 16, y: 380, vertical: true });
   });
 
   it('leaves the frame of reference exactly where it was', () => {
     expect(migration().segments).toContainEqual({
-      x1: 60,
-      y1: 770,
-      x2: 838,
-      y2: 770,
+      x1: 48,
+      y1: 750,
+      x2: 826,
+      y2: 750,
     });
+  });
+});
+
+/**
+ * The frame sits ON the drawing (Notion "Ajuster les bordures des fonds de
+ * cartes au plus proche des bords").
+ *
+ * What this would have caught: the margins the chart was authored with left
+ * 24 / 54 / 50 / 60 model units of nothing between the ink and the element
+ * border — and a background is caught by that border and by nothing else
+ * (`framework-background/hit-test.ts`), so the chart was grabbed at a line
+ * drawn a tenth of its width away from anything visible.
+ *
+ * The measure is the INK BOX: everything the renderer actually put on the
+ * canvas — every segment, every tint, and a deliberately MEAN box round every
+ * word (0.26 em per character, an ascent of 0.72 em and no descender, all of
+ * them under what Inter really paints). Understating the ink can only make the
+ * dead margin this test computes LARGER than the one a screenshot shows, so a
+ * margin it calls tight really is tight.
+ */
+describe('the frame sits on the drawing', () => {
+  /** Mean text metrics — see the docstring: they understate on purpose. */
+  const ADVANCE_PER_CHAR = 0.26;
+  const ASCENT = 0.72;
+
+  const sizeOf = (font: string) => Number(/(\d+(?:\.\d+)?)px/.exec(font)![1]);
+
+  /** The box the ink of one chart occupies, in element-local units. */
+  function inkBox(w: number, h: number) {
+    const { rects, texts, segments } = render(
+      chart({ deserializedXYWH: [0, 0, w, h] })
+    );
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    const eat = (x: number, y: number) => {
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    };
+
+    for (const s of segments) {
+      eat(s.x1, s.y1);
+      eat(s.x2, s.y2);
+    }
+    for (const r of rects) {
+      eat(r.x, r.y);
+      eat(r.x + r.w, r.y + r.h);
+    }
+    for (const text of texts) {
+      const size = sizeOf(text.font);
+      const advance = text.text.length * ADVANCE_PER_CHAR * size;
+      const ascent = ASCENT * size;
+      if (text.vertical) {
+        // Rotated a quarter turn: the word runs along the element's Y, and it
+        // is its ASCENT — never its length — that reaches into the margin.
+        eat(text.x - ascent, text.y - advance / 2);
+        eat(text.x, text.y + advance / 2);
+        continue;
+      }
+      const half = text.align === 'center' ? advance / 2 : 0;
+      eat(text.x - half, text.y - ascent);
+      eat(text.x - half + advance, text.y);
+    }
+    return { left: minX, top: minY, right: w - maxX, bottom: h - maxY };
+  }
+
+  // Birth size, then a wide chart and a tall one: the margins are FIXED model
+  // units, so a ratio must not be able to reopen the gap.
+  it.each([
+    ['at birth', 842, 787],
+    ['stretched wide', 1600, 787],
+    ['stretched tall', 500, 1200],
+  ])('leaves at most 8 units of nothing on any side, %s', (_what, w, h) => {
+    const dead = inkBox(w, h);
+    expect(dead.left).toBeLessThanOrEqual(8);
+    expect(dead.top).toBeLessThanOrEqual(8);
+    expect(dead.right).toBeLessThanOrEqual(8);
+    expect(dead.bottom).toBeLessThanOrEqual(8);
+  });
+
+  it('never gives a side away: the ink reaches every edge it is measured on', () => {
+    const dead = inkBox(842, 787);
+    // The top and right edges ARE the arrowhead tips, so they are the margin
+    // itself; the left and bottom are the two words that reach furthest.
+    expect(dead.top).toBe(4);
+    expect(dead.right).toBe(8);
+    expect(dead.left).toBeGreaterThan(0);
+    expect(dead.bottom).toBeGreaterThan(0);
   });
 });
 

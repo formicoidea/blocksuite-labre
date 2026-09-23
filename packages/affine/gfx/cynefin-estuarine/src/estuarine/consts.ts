@@ -2,13 +2,14 @@ import type { ChromeWording } from '@labre/affine-shared/services';
 
 /**
  * Visual constants for the Estuarine framework map, reproduced from the official
- * SVG (viewBox 0 0 690 801). All geometry is authored in that fixed reference
- * space; the renderer reads every coordinate below as a RATIO of it and maps it
- * onto the element's real width and height independently, so a stretched map
- * gets a longer time axis and a taller energy axis rather than the same drawing
- * letterboxed (see `EstuarineFit` in `./element-renderer.ts`). The e axis is
- * vertical & double-headed (energy), the t axis horizontal & single-headed
- * (time only flows one way).
+ * SVG (viewBox 0 0 690 801). All geometry is authored in that fixed space; the
+ * renderer reads every coordinate below as a RATIO of the CROPPED window onto
+ * it ({@link REF_X} … {@link REF_H}) and maps it onto the element's real width
+ * and height independently, so a stretched map gets a longer time axis and a
+ * taller energy axis rather than the same drawing letterboxed (see
+ * `EstuarineFit` in `./element-renderer.ts`). The e axis is vertical &
+ * double-headed (energy), the t axis horizontal & single-headed (time only
+ * flows one way).
  *
  * The three curve legends below (`LABELS`) carry a `wording`, resolved by
  * `element-renderer.ts` through the `CanvasRenderer` it is handed at paint
@@ -17,8 +18,41 @@ import type { ChromeWording } from '@labre/affine-shared/services';
  * are deliberately NOT keyed (PO decision).
  */
 
-export const REF_W = 690;
-export const REF_H = 801;
+/**
+ * The CROPPED window onto the authored 690 × 801 SVG space — the rectangle the
+ * element's bounds are mapped onto.
+ *
+ * The SVG's own viewBox is loose around the drawing: the t axis stops at
+ * `x = 616 / 690` and the e axis at `y = 763 / 801`, so a board born on the raw
+ * viewBox carried dead space on every side (measured on the painted pixels at
+ * birth size: 16.6 left, 12.6 top, 35.5 right, 20.4 bottom, in model units).
+ * The board's own border is therefore nowhere near its drawing, which is both
+ * ugly and awkward — a background is grabbed BY that border
+ * (`framework-background/hit-test.ts`).
+ *
+ * So the reference box is the ink's bounding box grown by {@link REF_MARGIN},
+ * not the viewBox. `REF_X` / `REF_Y` is where that window starts in authored
+ * coordinates; every authored number in this file keeps its ORIGINAL value and
+ * the renderer subtracts the origin (`ax` / `ay`), so nothing about the drawing
+ * moves relative to anything else — only the frame around it tightens.
+ *
+ * `MAP_SCALE` (see `../presets.ts`) multiplies these, so a new board is born
+ * smaller while its drawing keeps exactly the size it had.
+ */
+export const REF_X = 8;
+export const REF_Y = 4.5;
+export const REF_W = 659;
+export const REF_H = 786.5;
+
+/**
+ * Space left between the ink and the edge of the board, in reference units.
+ *
+ * Small but not zero: a stroke is centred on its path, a glyph is measured
+ * generously, and a board whose ink touched its own border would look clipped.
+ * ~6 units is a little under one axis width (8) — enough to read as a margin,
+ * little enough that the border is visibly AROUND the drawing.
+ */
+export const REF_MARGIN = 6;
 
 export const COLORS = {
   axis: '#941253',
@@ -39,29 +73,63 @@ export const E_AXIS = { x: 43.5, y1: 97, y2: 763 } as const;
 export const T_AXIS = { y: 649, x1: 28, x2: 616 } as const;
 export const AXIS_WIDTH = 8;
 
-/** Filled arrowhead triangles: [[tipX,tipY],[baseAX,baseAY],[baseBX,baseBY]]. */
-export const ARROWHEADS: ReadonlyArray<
-  readonly [
-    readonly [number, number],
-    readonly [number, number],
-    readonly [number, number],
-  ]
-> = [
-  [
-    [43.5, 72],
-    [30, 100],
-    [57, 100],
-  ], // e — top
-  [
-    [43.5, 785],
-    [30, 758],
-    [57, 758],
-  ], // e — bottom
-  [
-    [643, 649],
-    [613, 636],
-    [613, 662],
-  ], // t — right
+/**
+ * A filled arrowhead, welded to the END OF ITS AXIS.
+ *
+ * Declared the way the shared primitive declares one (`drawAxis`,
+ * `blocks/surface/src/framework-background/renderer.ts`): the head has ONE
+ * proportional anchor — {@link at}, the point where its axis stops, which
+ * travels with the stretch — and every other number below is an offset from
+ * that anchor in FIXED units, painted at the isotropic `strokeScale`.
+ *
+ * That split is the whole point. The vertices used to be three absolute
+ * authored points, so a stretch moved the tip by `sx` while the renderer
+ * rebuilt the base from the tip at the isotropic factor: as soon as
+ * `sx ≠ strokeScale` the triangle tore away from the line it belongs to
+ * (a 29-unit gap at 1600 × 400, the head drowning in the stroke at 400 × 1600).
+ * Anchoring the head to the axis end instead keeps it soldered at every ratio,
+ * and reproduces the authored SVG exactly when `sx === sy` — which is what the
+ * numbers below were read off.
+ */
+export interface EstuarineArrowhead {
+  /** Authored end of the axis this head is welded to — the ratio anchor. */
+  at: readonly [number, number];
+  /** Unit vector pointing OUT of the axis, towards the tip. */
+  dir: readonly [number, number];
+  /** How far past the axis end the tip sits, in fixed units. */
+  tip: number;
+  /** How far SHORT of the axis end the base sits: the weld's overlap. */
+  overlap: number;
+  /** Half the base's width, in fixed units. */
+  halfWidth: number;
+}
+
+/** The three heads: both ends of the e axis, the right end of the t axis. */
+export const ARROWHEADS: readonly EstuarineArrowhead[] = [
+  // e — top
+  {
+    at: [E_AXIS.x, E_AXIS.y1],
+    dir: [0, -1],
+    tip: 25,
+    overlap: 3,
+    halfWidth: 13.5,
+  },
+  // e — bottom
+  {
+    at: [E_AXIS.x, E_AXIS.y2],
+    dir: [0, 1],
+    tip: 22,
+    overlap: 5,
+    halfWidth: 13.5,
+  },
+  // t — right
+  {
+    at: [T_AXIS.x2, T_AXIS.y],
+    dir: [1, 0],
+    tip: 27,
+    overlap: 3,
+    halfWidth: 13,
+  },
 ];
 
 /** Liminal: green boundary rising gently then dipping at the right end. */
@@ -140,10 +208,24 @@ export const LABELS = {
   },
 } as const;
 
-/** Italic Georgia axis letters (left-anchored, alphabetic baseline). */
+/**
+ * Italic Georgia axis letters (left-anchored, alphabetic baseline).
+ *
+ * Each letter NAMES an axis, so it is declared against that axis the way a
+ * declared background declares a word (`backgroundPoint`,
+ * `blocks/surface/src/framework-background/def.ts`): a proportional anchor
+ * (`at`, the end of the axis it names) plus a FIXED `dx`/`dy` gap, painted at
+ * the isotropic `strokeScale` like the glyph itself.
+ *
+ * They used to be absolute authored positions projected by `sx`/`sy` while the
+ * glyph was typed isotropically, so the gap between letter and axis grew or
+ * collapsed with the ratio — the `t` climbing onto its own axis at 1600 × 400,
+ * falling far below it at 400 × 1600. `at + d·strokeScale` is exactly the
+ * authored position when `sx === sy`, and a constant gap everywhere else.
+ */
 export const AXIS_LABELS = {
-  e: { text: 'e', x: 14, y: 138 },
-  t: { text: 't', x: 580, y: 685 },
+  e: { text: 'e', at: [E_AXIS.x, E_AXIS.y1], dx: -29.5, dy: 41 },
+  t: { text: 't', at: [T_AXIS.x2, T_AXIS.y], dx: -36, dy: 36 },
   size: 34,
 } as const;
 
