@@ -212,7 +212,8 @@ const createDropPreview = () => {
   div.style.height = '2px';
   div.style.borderRadius = '1px';
   div.style.backgroundColor = 'var(--affine-primary-color)';
-  div.style.boxShadow = '0px 0px 8px 0px rgba(30, 150, 235, 0.35)';
+  div.style.boxShadow =
+    '0px 0px 8px 0px color-mix(in srgb, var(--affine-primary-color) 35%, transparent)';
   return {
     display(
       group: KanbanGroup,

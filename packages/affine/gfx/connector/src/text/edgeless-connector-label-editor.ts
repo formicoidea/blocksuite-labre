@@ -273,10 +273,11 @@ export class EdgelessConnectorLabelEditor extends WithDisposable(
       transform-origin: center;
       z-index: 10;
       padding: ${VERTICAL_PADDING}px ${HORIZONTAL_PADDING}px;
-      border: ${BORDER_WIDTH}px solid var(--affine-primary-color, #1e96eb);
+      border: ${BORDER_WIDTH}px solid var(--affine-primary-color);
       background: var(--affine-background-primary-color, #fff);
       border-radius: 2px;
-      box-shadow: 0px 0px 0px 2px rgba(30, 150, 235, 0.3);
+      box-shadow: 0px 0px 0px 2px
+        color-mix(in srgb, var(--affine-primary-color) 30%, transparent);
       box-sizing: border-box;
       overflow: visible;
 

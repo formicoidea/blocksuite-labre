@@ -14,13 +14,13 @@ export class EdgelessDraggingAreaRectWidget extends WidgetComponent<RootBlockMod
     .affine-edgeless-dragging-area {
       position: absolute;
       background: ${unsafeCSS(
-        cssVarV2('edgeless/selection/selectionMarqueeBackground', '#1E96EB14')
+        cssVarV2('edgeless/selection/selectionMarqueeBackground')
       )};
       box-sizing: border-box;
       border-width: 1px;
       border-style: solid;
       border-color: ${unsafeCSS(
-        cssVarV2('edgeless/selection/selectionMarqueeBorder', '#1E96EB')
+        cssVarV2('edgeless/selection/selectionMarqueeBorder')
       )};
 
       z-index: 1;

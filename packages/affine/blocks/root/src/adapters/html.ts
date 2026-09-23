@@ -66,7 +66,7 @@ export const rootBlockHtmlAdapterMatcher: BlockHtmlAdapterMatcher = {
               display: none;
             }
             label:before {
-              background: rgb(30, 150, 235);
+              background: var(--affine-primary-color, rgb(30, 150, 235));
               border-radius: 3px;
               height: 16px;
               width: 16px;
@@ -75,7 +75,7 @@ export const rootBlockHtmlAdapterMatcher: BlockHtmlAdapterMatcher = {
             }
             input[type='checkbox'] + label:before {
               content: '';
-              background: rgb(30, 150, 235);
+              background: var(--affine-primary-color, rgb(30, 150, 235));
               color: #fff;
               font-size: 16px;
               line-height: 16px;

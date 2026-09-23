@@ -1,4 +1,4 @@
-import { ThemeProvider } from '@labre/affine-shared/services';
+import { getChromeAccentColor } from '@labre/affine-shared/services';
 import { DisposableGroup } from '@labre/global/disposable';
 import type { GfxController } from '@labre/std/gfx';
 import { effect } from '@preact/signals-core';
@@ -14,9 +14,6 @@ const HIGHLIGHT_GAP = 4;
 /** Ring corner radius, in screen pixels. */
 const HIGHLIGHT_RADIUS = 4;
 
-/** Used when no theme is provided, matches the legacy frame highlight. */
-const FALLBACK_HIGHLIGHT_COLOR = '#1E96EB';
-
 /**
  * Draws the transient emphasis ring around the elements held by
  * `gfx.highlight` (`ElementHighlightManager`).
@@ -30,12 +27,7 @@ export class ElementHighlightOverlay extends Overlay {
   private readonly _disposables = new DisposableGroup();
 
   private get _strokeColor() {
-    return (
-      this.gfx.std
-        .getOptional(ThemeProvider)
-        ?.getCssVariableColor('--affine-primary-color') ??
-      FALLBACK_HIGHLIGHT_COLOR
-    );
+    return getChromeAccentColor(this.gfx.std);
   }
 
   constructor(gfx: GfxController) {

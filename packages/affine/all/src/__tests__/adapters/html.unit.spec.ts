@@ -28,7 +28,7 @@ describe('snapshot to html', () => {
         display: none;
       }
       label:before {
-        background: rgb(30, 150, 235);
+        background: var(--affine-primary-color, rgb(30, 150, 235));
         border-radius: 3px;
         height: 16px;
         width: 16px;
@@ -37,7 +37,7 @@ describe('snapshot to html', () => {
       }
       input[type='checkbox'] + label:before {
         content: '';
-        background: rgb(30, 150, 235);
+        background: var(--affine-primary-color, rgb(30, 150, 235));
         color: #fff;
         font-size: 16px;
         line-height: 16px;
@@ -1917,7 +1917,7 @@ describe('html to snapshot', () => {
         display: none;
       }
       label:before {
-        background: rgb(30, 150, 235);
+        background: var(--affine-primary-color, rgb(30, 150, 235));
         border-radius: 3px;
         height: 16px;
         width: 16px;
@@ -1926,7 +1926,7 @@ describe('html to snapshot', () => {
       }
       input[type='checkbox'] + label:before {
         content: '';
-        background: rgb(30, 150, 235);
+        background: var(--affine-primary-color, rgb(30, 150, 235));
         color: #fff;
         font-size: 16px;
         line-height: 16px;

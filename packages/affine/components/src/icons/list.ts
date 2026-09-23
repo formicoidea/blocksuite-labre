@@ -1,3 +1,10 @@
+/**
+ * The chrome accent, reached through its token rather than written as a hex:
+ * the six-dot burst is chrome, so it has to follow the host's theme (DESIGN.md,
+ * The Borrowed Blue Rule).
+ */
+const ACCENT = 'var(--affine-primary-color)';
+
 export const playCheckAnimation = async (
   refElement: Element,
   { left = 0, size = 20 }: { left?: number; size?: number } = {}
@@ -19,8 +26,7 @@ export const playCheckAnimation = async (
   await sparkingEl.animate(
     [
       {
-        boxShadow:
-          '0 -18px 0 -8px #1e96eb, 16px -8px 0 -8px #1e96eb, 16px 8px 0 -8px #1e96eb, 0 18px 0 -8px #1e96eb, -16px 8px 0 -8px #1e96eb, -16px -8px 0 -8px #1e96eb',
+        boxShadow: `0 -18px 0 -8px ${ACCENT}, 16px -8px 0 -8px ${ACCENT}, 16px 8px 0 -8px ${ACCENT}, 0 18px 0 -8px ${ACCENT}, -16px 8px 0 -8px ${ACCENT}, -16px -8px 0 -8px ${ACCENT}`,
       },
     ],
     { duration: 240, easing: 'ease', fill: 'forwards' }

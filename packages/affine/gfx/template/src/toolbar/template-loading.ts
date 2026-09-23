@@ -23,7 +23,7 @@ export class AffineTemplateLoading extends LitElement {
       height: 20px;
       position: relative;
       background: conic-gradient(
-        rgba(30, 150, 235, 1) 90deg,
+        var(--affine-primary-color) 90deg,
         rgba(0, 0, 0, 0.1) 90deg 360deg
       );
       border-radius: 50%;

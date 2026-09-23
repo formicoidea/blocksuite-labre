@@ -82,12 +82,17 @@ export interface EdgeDirectionDef {
   gestureHintFallback?: string;
   /**
    * CSS colour of the chip the reveal draws this verb in (M2). Absent — which
-   * is every role but one — keeps the house affordance blue the mechanism has
-   * always used, so declaring nothing repaints nothing.
+   * is every role today — leaves the chip on the chrome's accent token, so
+   * every typed edge of every framework wears one blue and follows a host
+   * re-skin with the rest of the chrome.
    *
-   * A colour belongs to the ROLE rather than to the widget because the chip is
-   * per-relation: the PO may want one framework's central relation to stand out
-   * without every other framework's edges changing with it. The chip's text is
+   * An extension point, deliberately unused. One role took it (PR #203) so its
+   * framework's central relation would stand out, and the result on a map
+   * carrying two typed relations was two different blues, with nothing
+   * comparing them. Reversed on the PO recette of 23/09/2026; the field stays
+   * because a framework may one day have a real reason to claim its own, and
+   * `affine/all/src/__tests__/direction-chip-accent.unit.spec.ts` is what makes
+   * that a reviewed decision rather than a silent one. The chip's text is
    * white, so a colour declared here must be dark enough to carry it.
    */
   chipColor?: string;

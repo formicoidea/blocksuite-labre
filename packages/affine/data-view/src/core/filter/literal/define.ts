@@ -87,7 +87,9 @@ export const allLiteralConfig: LiteralItemsConfig[] = [
             type.element.data?.map(tag => {
               const selected = set.has(tag.id);
               const prefix = selected
-                ? CheckBoxCheckSolidIcon({ style: `color:#1E96EB` })
+                ? CheckBoxCheckSolidIcon({
+                    style: `color:var(--affine-primary-color)`,
+                  })
                 : CheckBoxUnIcon();
               return menu.action({
                 name: tag.value,

@@ -356,7 +356,7 @@ export class BpmnPoolView extends GfxElementModelView<BpmnPoolElementModel> {
       font: '14px Inter, sans-serif',
       color: 'var(--affine-text-primary-color, #1f2328)',
       background: 'var(--affine-background-overlay-panel-color, #ffffff)',
-      border: '1px solid var(--affine-primary-color, #1e96eb)',
+      border: '1px solid var(--affine-primary-color)',
       borderRadius: '6px',
       boxShadow: 'var(--affine-shadow-2, 0 2px 8px rgba(0,0,0,0.18))',
       outline: 'none',

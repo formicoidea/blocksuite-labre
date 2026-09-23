@@ -6,8 +6,8 @@ export const EdgelessTooltip = html`<svg width="170" height="106" viewBox="0 0 1
 <rect width="170" height="106" rx="2" fill="white"/>
 </mask>
 <g mask="url(#mask0_16460_1252)">
-<rect x="100.5" y="42.6565" width="141" height="51" stroke="#1E96EB" stroke-width="3" stroke-dasharray="5 5"/>
-<circle cx="101.5" cy="43.5" r="6" fill="white" stroke="#1E96EB" stroke-width="3"/>
+<rect x="100.5" y="42.6565" width="141" height="51" stroke="var(--affine-primary-color)" stroke-width="3" stroke-dasharray="5 5"/>
+<circle cx="101.5" cy="43.5" r="6" fill="white" stroke="var(--affine-primary-color)" stroke-width="3"/>
 <rect x="105" y="8" width="59" height="26" rx="10" fill="black" fill-opacity="0.1"/>
 <text fill="#121212" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="12" letter-spacing="0em"><tspan x="117" y="25.3636">Group</tspan></text>
 <mask id="mask1_16460_1252" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="98" height="106">
