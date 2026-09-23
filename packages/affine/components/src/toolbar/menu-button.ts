@@ -131,6 +131,15 @@ export class EditorMenuContent extends LitElement {
     .content-wrapper {
       overscroll-behavior: contain;
       overflow-y: auto;
+      /* Spelled out because CSS Overflow computes a visible axis to auto as
+       * soon as the other one is not visible: the overflow-y above would
+       * silently make this popup scrollable SIDEWAYS too. Anything animated by
+       * a positive translateX inside it — the palette carousel's incoming page,
+       * see color-picker/palette-carousel.ts — then grows the scrollable
+       * region for the length of the animation and flashes a horizontal
+       * scrollbar (issue #392). Not clip: combined with overflow-y: auto the
+       * spec falls it back to hidden anyway. */
+      overflow-x: hidden;
       padding: var(--content-padding, 0 6px);
     }
 

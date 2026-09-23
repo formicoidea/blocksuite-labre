@@ -133,6 +133,11 @@ export const paletteCarouselStyles = css`
     /* Nine pages fit without scrolling; the cap is a seatbelt for a tenth. */
     max-height: 280px;
     overflow-y: auto;
+    /* Same trap as the popup box that holds this list (issue #392, see
+     * toolbar/menu-button.ts): an overflow-y of its own makes the other axis
+     * scrollable too, and this list is one long page name — a translation, or
+     * a tenth page — away from overflowing it. */
+    overflow-x: hidden;
     overscroll-behavior: contain;
     animation: palette-carousel-settle ${springDuration} ${springEasing};
   }

@@ -187,3 +187,17 @@ Container()` threw "illegal constructor" and the page hung.
     _Rule:_ when a derivation groups rows into declared buckets, open the
     buckets from the DECLARATION and drop the empty ones at the end. Opening
     them from the data lets the data decide the shape as well as the content.
+
+30. **One axis of `overflow` was asked for, two were granted.** A toolbar popup
+    (`components/src/toolbar/menu-button.ts`) sets `overflow-y: auto` and says
+    nothing about `overflow-x`. CSS Overflow computes a `visible` axis to `auto`
+    as soon as the other one is not `visible`, so the box was a HORIZONTAL
+    scroll container nobody had asked for — and the palette carousel's entry
+    animation, which starts at `translateX(14px)`, widened the scrollable region
+    by 8px and flashed a scrollbar for the 240ms of its travel (#392). The
+    symptom was one-sided because the reverse animation overflows the start
+    edge, which LTR clips without ever scrolling.
+    _Rule:_ write both axes whenever one of them is not `visible`. And note that
+    `overflow: hidden` is still a scroll container — it paints no bar and
+    answers no gesture, but `scrollLeft` still moves it, so a test that probes
+    `scrollLeft` proves nothing; read the computed axis instead.
