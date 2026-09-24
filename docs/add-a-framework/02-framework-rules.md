@@ -220,15 +220,46 @@ connectors built by `actions.ts`. So an artefact inherits move, resize,
 colour, anchors and the shape toolbar. The group is the unit of identity:
 morphs are registered on `GroupElementModel`.
 
-**R16. Labels are free-text elements grouped with the shape, never text on
-the shape.** The preset refuses to write `text`; the label has its own role
-(`wardley:label`, kind `text`). Three declared exceptions: the Porter glyph's
-letter, an area's name, and a connector's labels — the centre `text` and the
-two end labels of ADR 0020 are fields of the connector, because a label that
-must follow a moving endpoint cannot be a sibling in a group.
+**R16. A gravitating label is a free-text element grouped with the shape,
+never text on the shape.** Whether a symbol's label gravitates or is inscribed
+is decided by R38, on the symbol's size alone; R16 governs how a gravitating
+label is built. The preset refuses to write `text`; the label has its own role
+(`wardley:label`, `bpmn:label`, kind `text`) and is a native group member of
+the symbol. Three declared exceptions: the Porter glyph's letter, an area's
+name, and a connector's labels — the centre `text` and the two end labels of
+ADR 0020 are fields of the connector, because a label that must follow a moving
+endpoint cannot be a sibling in a group. Amended 2026-09-24 (ADR
+[0029](../adr/0029-label-mode-by-symbol-size.md)): the rule used to read as
+"every label is free text"; a label that fits its symbol is now inscribed.
 
 **R17. One preset per artefact**, in `presets.ts`, read by creation and by
 morph. Creation sites and morphs never restate sizes or fonts.
+
+**R38. A label is inscribed only if it fits; otherwise it gravitates.** A
+catalogue symbol carries its name one of two ways: INSCRIBED, as the shape's
+own `text`, or GRAVITATING, as a free text element grouped with the symbol
+(R16). The only criterion is the symbol's size: if a normal-size text (18 model
+units) of two five-letter words does not fit legibly inside the shape at its
+canonical creation size, without enlarging it, the label gravitates. The test
+is arithmetic, `fitsInscribedLabel({ w, h, shapeType })` in
+`packages/affine/shared/src/utils/label-mode.ts`: the inner box is the shape
+minus the native text insets (10 vertical, 20 horizontal), reduced to its
+inscribed rectangle (×0.7 per side for an ellipse, ×0.5 for a diamond, ×1 for a
+rect or polygon); the probe "Hello World" fits on one line (11 × 0.5 × 18 wide,
+1.2 × 18 high) or on two (5 × 0.5 × 18 wide, 2 × 1.2 × 18 high). The 18 is the
+reference size of the test, not a mandate: a framework keeps its own label
+size. The rule forbids inscribing a text that does not fit; it does not forbid
+placing a separate text inside a silhouette that holds it (C4, UML, the Context
+Map cloud comply). The test never enlarges the symbol: a canonical size is a
+product decision (the BPMN activities' 1.5× of 2026-09-24 was one), and the
+label mode follows from it, never the other way round. Enforced by
+`label-mode.unit.spec.ts` in `gfx/bpmn` (every kind of `NODE_SIZE` checked
+against `bpmnLabelMode`), the arithmetic by `label-mode.unit.spec.ts` in
+`affine/shared`; a framework that adopts the rule adds the same per-kind spec.
+Two recorded deviations, each with a Backlog ticket: Wardley `porter` (a
+60-unit ellipse whose inscribed letter IS the notation) and DDD Event Storming
+`hotspot` (a 120-unit diamond whose `Contained` fit shrinks the font). ADR
+[0029](../adr/0029-label-mode-by-symbol-size.md).
 
 ## Semantics
 

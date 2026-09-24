@@ -261,7 +261,7 @@ The scale lives in `HEADING_SCALE` (`packages/affine/shared/src/consts/heading.t
 - **Label** (400, 14px): toolbar labels, menu items, panel text (`--affine-font-sm`, applied by `fontSMStyle`).
 - **Caption** (400, 12px): sub-labels under icon-button labels, shortcuts, metadata (`--affine-font-xs`).
 
-Framework labels on the canvas don't use this scale. They use fixed sizes in **model units** set in each module's `consts.ts` (Wardley's prominent labels are 18), so they scale with zoom like the rest of the drawing.
+Framework labels on the canvas don't use this scale. They use fixed sizes in **model units** set in each module's `consts.ts` (Wardley's prominent labels are 18), so they scale with zoom like the rest of the drawing. Whether a symbol's label sits inside it or gravitates beside it as a grouped text is decided by its size alone: rule R38 in `docs/add-a-framework/02-framework-rules.md` (ADR 0029).
 
 ### Named Rules
 

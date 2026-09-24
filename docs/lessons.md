@@ -201,3 +201,20 @@ Container()` threw "illegal constructor" and the page hung.
     `overflow: hidden` is still a scroll container — it paints no bar and
     answers no gesture, but `scrollLeft` still moves it, so a test that probes
     `scrollLeft` proves nothing; read the computed axis instead.
+
+31. **The whole unit workspace starts ten Chromium sessions at once.** On a
+    loaded Windows machine the root `yarn test:unit` died before running a
+    single test: one browser-mode project's session timed out while Vite was
+    still transforming (≈300 s of transform), and the orchestrator reported
+    "Failed to connect to the browser session" as an unhandled error. Nothing
+    was wrong with the tests; the same run in CI, with less to transform and a
+    warm cache, is fine.
+    _Rule:_ when the root run dies at start-up, split it: run the happy-dom
+    configs through a temporary workspace file placed INSIDE the repo (vite-node
+    refuses a workspace file outside its root), then each browser-mode config
+    alone. A config that sets `root: './packages/…'` runs from the repo root
+    with `--config <path>`; one that does not runs from its package directory.
+    `--maxWorkers` alone conflicts with the configured `minThreads`; pass
+    `--minWorkers=1` with it. A load-sensitive spec that fails in the full run
+    (the benches, `validation-incremental-closure`, an adapter that times out
+    fetching a stylesheet) is rerun alone before it is called a regression.
