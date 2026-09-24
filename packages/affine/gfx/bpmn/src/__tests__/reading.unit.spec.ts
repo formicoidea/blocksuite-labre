@@ -3,7 +3,7 @@ import { Bound } from '@labre/global/gfx';
 import { GfxPrimitiveElementModel } from '@labre/std/gfx';
 import { describe, expect, it } from 'vitest';
 
-import { BPMN_READING, BPMN_READINGS } from '../reading.js';
+import { BPMN_DATA_READING, BPMN_READING, BPMN_READINGS } from '../reading.js';
 import { BPMN_ROLE, BPMN_ROLES } from '../roles.js';
 
 /**
@@ -200,5 +200,62 @@ describe('what a BPMN process is read as', () => {
     expect(reading.nature).toBeUndefined();
     expect(reading.naming).toBeUndefined();
     expect(reading.phase).toBeUndefined();
+  });
+});
+
+/**
+ * Why this block exists: since R38 (`docs/adr/0029`) an event, a gateway or a
+ * data shape is born with no inner text and named by a grouped `bpmn:label`
+ * text. Without `labelRole` the panel would call every such symbol nameless;
+ * with it, an inscribed task must still read its OWN text first.
+ */
+describe('a gravitating name is read off the grouped label', () => {
+  /** Put `members` in one native group, the way `createBpmnNode` does. */
+  const grouped = (...members: GfxPrimitiveElementModel[]) => {
+    const group = { childElements: members };
+    for (const member of members) {
+      Object.defineProperty(member, 'group', {
+        value: group,
+        configurable: true,
+      });
+    }
+    return members;
+  };
+
+  it('names a grouped event and a grouped gateway from their label', () => {
+    const [start] = grouped(
+      element({ id: 'start', role: BPMN_ROLE.startEvent }),
+      element({ id: 'startL', role: BPMN_ROLE.label, text: 'Request received' })
+    );
+    const [gw] = grouped(
+      element({ id: 'gw', role: BPMN_ROLE.gatewayExclusive }),
+      element({ id: 'gwL', role: BPMN_ROLE.label, text: 'Approved?' })
+    );
+    expect(readElement(start, [], BPMN_READING)!.name).toBe('Request received');
+    expect(readElement(gw, [], BPMN_READING)!.name).toBe('Approved?');
+  });
+
+  it('names a grouped data shape from its label', () => {
+    const [store] = grouped(
+      element({ id: 'store', role: BPMN_ROLE.dataStore }),
+      element({ id: 'storeL', role: BPMN_ROLE.label, text: 'Orders' })
+    );
+    expect(readElement(store, [], BPMN_DATA_READING)!.name).toBe('Orders');
+  });
+
+  it('reads an inscribed task from its own text', () => {
+    const [task] = grouped(
+      element({ id: 't', role: BPMN_ROLE.task, text: 'Check stock' }),
+      element({ id: 'note', role: BPMN_ROLE.label, text: 'Elsewhere' })
+    );
+    expect(readElement(task, [], BPMN_READING)!.name).toBe('Check stock');
+  });
+
+  it('does not take a neighbour that is not a label for a name', () => {
+    const [start] = grouped(
+      element({ id: 'start', role: BPMN_ROLE.startEvent }),
+      element({ id: 'free', role: undefined, text: 'A note' })
+    );
+    expect(readElement(start, [], BPMN_READING)!.name).toBe('');
   });
 });

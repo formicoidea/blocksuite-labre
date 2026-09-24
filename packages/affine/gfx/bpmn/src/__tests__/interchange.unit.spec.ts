@@ -26,8 +26,10 @@ import {
   board,
   collaborationBoard,
   fakeConnector,
+  fakeLabelledNode,
   fakeNode,
   fakePool,
+  fakeText,
   POOL_H,
   POOL_W,
 } from './board-stub';
@@ -430,6 +432,44 @@ describe('the export says what it left inside the pool', () => {
     expect(warning).toContain(
       '1 element(s) inside the pool are not BPMN elements'
     );
+  });
+
+  it('does not count a grouped label and its group, whose words the file carries', () => {
+    // R38: an event's name is a `bpmn:label` grouped with it, and the export
+    // writes it as the event's `name`. An UNGROUPED label is bound to nothing,
+    // so its words are in no file — that one is a loss, and is counted.
+    const elements = [
+      fakePool('p', [0, 0, POOL_W, POOL_H], { name: 'Sales' }),
+      ...fakeLabelledNode('s', 'startEvent', [BAND + 20, 40, 56, 56], 'Go'),
+      fakeText('stray', 'Orphan name', [BAND + 200, 40, 120, 26]),
+    ] as unknown as readonly GfxPrimitiveElementModel[];
+
+    const picked = bpmnBoardFrom(elements);
+    expect(picked.labels?.get('s')).toBe('Go');
+    expect(picked.leftOut).toBe(1);
+    expect(runExport(elements, {}).text).toContain('name="Go"');
+  });
+
+  it('binds a label by group membership, never by where it sits', () => {
+    // A text with the label role sitting right under an event, in no group
+    // with it, is not its name; a grouped label dragged away still is.
+    const [node, , group] = fakeLabelledNode(
+      's',
+      'startEvent',
+      [BAND + 20, 40, 56, 56],
+      'Go'
+    );
+    const moved = fakeText('s-label', 'Go', [BAND + 300, 150, 120, 26]);
+    const beside = fakeText('near', 'Not mine', [BAND - 12, 102, 120, 26]);
+    const elements = [
+      fakePool('p', [0, 0, POOL_W, POOL_H], { name: 'Sales' }),
+      node,
+      moved,
+      group,
+      beside,
+    ] as unknown as readonly GfxPrimitiveElementModel[];
+
+    expect(bpmnBoardFrom(elements).labels?.get('s')).toBe('Go');
   });
 
   it('ignores a role-less element drawn outside every pool', () => {

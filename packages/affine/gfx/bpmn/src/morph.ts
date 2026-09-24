@@ -3,13 +3,21 @@ import {
   morphLabel,
   type MorphSpec,
 } from '@labre/affine-block-surface';
-import { BpmnNodeElementModel, type BpmnNodeKind } from '@labre/affine-model';
-import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
+import {
+  BpmnNodeElementModel,
+  type BpmnNodeKind,
+  GroupElementModel,
+  TextElementModel,
+} from '@labre/affine-model';
+import { translateKey } from '@labre/affine-shared/services';
+import type { BlockStdScope } from '@labre/std';
+import type { GfxModel, GfxPrimitiveElementModel } from '@labre/std/gfx';
 import type { TemplateResult } from 'lit';
 
 import { bpmnCommandIcons, bpmnCommands } from './commands.js';
+import { bpmnLabelMode, NODE_LABEL, nodeLabelKey } from './consts.js';
 import { bpmnMorphClears, bpmnMorphProps } from './presets.js';
-import { BPMN_ROLE_OF_KIND } from './roles.js';
+import { BPMN_ROLE, BPMN_ROLE_OF_KIND } from './roles.js';
 
 /**
  * What a BPMN artefact may BECOME — the declaration behind the "Change type"
@@ -104,6 +112,125 @@ function iconOf(kind: BpmnNodeKind): TemplateResult {
   );
 }
 
+/* ── The gravitating label (R38) ───────────────────────────────────────── */
+
+/**
+ * Every element under a group, however deeply nested — the same walk as
+ * Wardley's `descendants`, so an author who grouped a composite with
+ * something else still has it resolved.
+ */
+function* descendants(group: GroupElementModel): Generator<GfxModel> {
+  for (const child of group.childElements) {
+    yield child;
+    if (child instanceof GroupElementModel) yield* descendants(child);
+  }
+}
+
+/**
+ * The BPMN node a selected GROUP is the artefact of — `undefined` when it is
+ * not one.
+ *
+ * An event, a gateway or a data shape is born as a native group of the symbol
+ * and its `bpmn:label` (`createBpmnNode`, R38), so a click selects the GROUP
+ * and the `kind` lives on the node inside it. Mirrors
+ * `wardleyNodeOfComponent`: only a `BpmnNodeElementModel` of an EXTERNAL kind
+ * is a candidate (the label, a connector or an activity somebody grouped in
+ * beside it are not), and TWO candidates is a refusal rather than a first-wins
+ * pick — morphing "it" in a group of two events would mean choosing one by
+ * document order.
+ */
+export function bpmnNodeOfComposite(
+  model: GfxPrimitiveElementModel
+): BpmnNodeElementModel | undefined {
+  if (!(model instanceof GroupElementModel)) return undefined;
+
+  let found: BpmnNodeElementModel | undefined;
+  for (const child of descendants(model)) {
+    if (!(child instanceof BpmnNodeElementModel)) continue;
+    if (bpmnLabelMode(child.kind) !== 'external') continue;
+    if (found) return undefined;
+    found = child;
+  }
+  return found;
+}
+
+/**
+ * The one `bpmn:label` of the composite the selected element belongs to —
+ * the group itself when the group row morphed, the node's group when the node
+ * row did. `undefined` when there is not exactly one.
+ */
+function labelOfComposite(
+  selected: GfxPrimitiveElementModel
+): TextElementModel | undefined {
+  const group =
+    selected instanceof GroupElementModel
+      ? selected
+      : selected.group instanceof GroupElementModel
+        ? selected.group
+        : undefined;
+  if (!group) return undefined;
+
+  let found: TextElementModel | undefined;
+  for (const child of descendants(group)) {
+    if (!(child instanceof TextElementModel)) continue;
+    if (child.role !== BPMN_ROLE.label) continue;
+    if (found) return undefined;
+    found = child;
+  }
+  return found;
+}
+
+/**
+ * The name an artefact should carry once it has morphed — or `null` when the
+ * name is the AUTHOR's.
+ *
+ * Exactly one case rewrites: the label still says the SOURCE kind's seed,
+ * English or translated, letter for letter. A "Start event" that became a
+ * timer start and still read "Start event" would contradict its own glyph;
+ * anything typed over the seed is content and survives the morph untouched —
+ * the rule `wardleyMorphedLabel` states, for the same reason.
+ */
+export function bpmnMorphedLabel(
+  from: BpmnNodeKind,
+  to: BpmnNodeKind,
+  rawText: string | null | undefined,
+  std?: BlockStdScope
+): string | null {
+  const text = (rawText ?? '').trim();
+  const fromSeed = std
+    ? translateKey(std, nodeLabelKey(from), NODE_LABEL[from])
+    : NODE_LABEL[from];
+  if (text !== NODE_LABEL[from] && text !== fromSeed) return null;
+  return std
+    ? translateKey(std, nodeLabelKey(to), NODE_LABEL[to])
+    : NODE_LABEL[to];
+}
+
+/**
+ * The structural half of a morph on an external kind: rewrite the grouped
+ * label when it is still the source kind's seed. The families never cross
+ * inscribed ⇄ external, so nothing moves in or out of the shape; an inscribed
+ * kind has no grouped label and this does nothing for it.
+ */
+function bpmnMorphLabel(
+  selected: GfxPrimitiveElementModel,
+  from: BpmnNodeKind,
+  to: BpmnNodeKind,
+  std?: BlockStdScope
+) {
+  const label = labelOfComposite(selected);
+  if (!label || label.isLocked()) return;
+
+  const text = label.text.toString().trim();
+  const next = bpmnMorphedLabel(from, to, text, std);
+  if (next === null || next === text) return;
+
+  label.surface.store.transact(() => {
+    label.text.delete(0, label.text.length);
+    label.text.insert(0, next);
+  });
+}
+
 /**
  * BPMN's morph declaration, handed to the generic `morphToolbarConfig`.
  *
@@ -129,7 +256,22 @@ export const BPMN_MORPH_SPEC: MorphSpec<BpmnNodeKind> = {
   roleOf: kind => BPMN_ROLE_OF_KIND[kind],
   propsOf: bpmnMorphProps,
   clearOf: bpmnMorphClears,
+  afterMorph: bpmnMorphLabel,
   labelOf,
   iconOf,
   label: morphLabel('com.labre.morph.toolbar.label', 'Change type'),
+};
+
+/**
+ * The same declaration on the GROUP row: an event, a gateway or a data shape
+ * is a native group of the symbol and its label (R38), and the group is what a
+ * click on one selects. `modelType` is therefore `GroupElementModel`, and
+ * everything that makes that safe is {@link bpmnNodeOfComposite} — the
+ * toolbar's homogeneity test only proves each selected element is A group.
+ * Mirrors `WARDLEY_MORPH_SPEC`.
+ */
+export const BPMN_GROUP_MORPH_SPEC: MorphSpec<BpmnNodeKind> = {
+  ...BPMN_MORPH_SPEC,
+  modelType: GroupElementModel,
+  resolveTarget: bpmnNodeOfComposite,
 };

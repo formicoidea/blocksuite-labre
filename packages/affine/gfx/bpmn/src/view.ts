@@ -12,7 +12,10 @@ import {
   ViewExtensionProvider,
 } from '@labre/affine-ext-loader';
 import { TemplateCategoryExtension } from '@labre/affine-gfx-template';
-import { ToolbarModuleExtension } from '@labre/affine-shared/services';
+import {
+  ToolbarModuleExtension,
+  toolbarModuleKey,
+} from '@labre/affine-shared/services';
 import { BlockFlavourIdentifier, CommandExtension } from '@labre/std';
 import { RoleVocabularyExtension } from '@labre/std/gfx';
 
@@ -20,7 +23,7 @@ import { BPMN_POOL_BACKGROUND } from './background';
 import { bpmnCommandIcons, bpmnCommands } from './commands';
 import { effects } from './effects';
 import { BPMN_INTERCHANGE } from './interchange';
-import { BPMN_MORPH_SPEC } from './morph';
+import { BPMN_GROUP_MORPH_SPEC, BPMN_MORPH_SPEC } from './morph';
 import { BPMN_PROFILES } from './profiles';
 import { BPMN_READINGS } from './reading';
 import { BPMN_ROLES } from './roles';
@@ -34,6 +37,7 @@ import {
   bpmnPoolToolbarExtension,
   bpmnPoolToolingToolbarExtension,
 } from './toolbar/config';
+import { bpmnNodeToolbarExtension } from './toolbar/node-config';
 import { BPMN_FRAMEWORK_PALETTE } from './toolbar/palette';
 import { bpmnSeniorTool } from './toolbar/senior-tool';
 
@@ -66,6 +70,11 @@ export class BpmnRenderViewExtension extends ViewExtensionProvider {
         FrameworkBackgroundInteractionExtension(BPMN_POOL_BACKGROUND)
       );
       context.register(bpmnPoolToolbarExtension);
+      // The base shape features on a selected NODE — colours, stroke, text
+      // style — on the BARE `affine:surface:bpmnNode` key, like Wardley's and
+      // EDGY's node modules. Always on: recolouring a stored element is editing
+      // content, not tooling (`docs/adr/0009`).
+      context.register(bpmnNodeToolbarExtension);
     }
   }
 }
@@ -109,25 +118,47 @@ export class BpmnViewExtension extends ViewExtensionProvider {
       // The "Change type" dropdown on a selected NODE's contextual toolbar —
       // the generic module, parameterized by BPMN's own families table.
       //
-      // `affine:surface:bpmnNode` is a FREE slot, and class inheritance has
-      // nothing to do with it: `renderToolbar` merges by flavour KEY — the
-      // element's own, its `custom:` twin and the `affine:surface:*` wildcards
-      // — so `shapeToolbarExtension`, which binds `affine:surface:shape`, never
-      // reaches a bpmn node however much of `ShapeElementModel` the class
-      // inherits. Nothing claimed this key before, so the registration is purely
-      // additive: it joins the wildcard entries (tags, validation) that a node
-      // already gets, and a second module claiming the same key would throw
-      // `DuplicateServiceDefinitionError` before the editor finished setting up.
+      // ## Why the key carries an owner
       //
-      // Registered HERE, in the flag-gated half, because a morph is TOOLING: a
-      // node drawn while the flag was on keeps its kind, its role, its glyph
-      // and its place in every rule when the flag goes off — it just stops
-      // being something the toolbar offers to say more precisely
-      // (`docs/adr/0009`).
+      // `renderToolbar` merges by flavour KEY — the element's own, its
+      // `custom:` twin and the `affine:surface:*` wildcards — so
+      // `shapeToolbarExtension`, which binds `affine:surface:shape`, never
+      // reaches a bpmn node however much of `ShapeElementModel` the class
+      // inherits. The bare `affine:surface:bpmnNode` key is now taken by the
+      // always-on `bpmnNodeToolbarExtension` (the shape's base features), and
+      // a second module on it would throw `DuplicateServiceDefinitionError`
+      // at setup. `toolbarModuleKey` lifts that ceiling: the morph is the
+      // DISTINCT variant `affine:surface:bpmnNode#bpmn-morph`, and the
+      // registry hands it to the same row.
+      //
+      // ## Why here
+      //
+      // In the flag-gated half, because a morph is TOOLING: a node drawn while
+      // the flag was on keeps its kind, its role, its glyph and its place in
+      // every rule when the flag goes off — it just stops being something the
+      // toolbar offers to say more precisely (`docs/adr/0009`).
       context.register(
         ToolbarModuleExtension({
-          id: BlockFlavourIdentifier('affine:surface:bpmnNode'),
+          id: BlockFlavourIdentifier(
+            toolbarModuleKey('affine:surface:bpmnNode', 'bpmn-morph')
+          ),
           config: morphToolbarConfig(BPMN_MORPH_SPEC),
+        })
+      );
+      // The same dropdown on the GROUP row. An event, a gateway or a data
+      // shape is born as a native group of the symbol and its gravitating
+      // label (R38), and a click selects the group — so, exactly as Wardley,
+      // C4 and UML do for their composites, the morph is also registered on
+      // `custom:affine:surface:group` under an owner, and
+      // `BPMN_GROUP_MORPH_SPEC` resolves the node inside (refusing any group
+      // that is not one BPMN external-label artefact). Flag-gated for the
+      // same reason as the node row.
+      context.register(
+        ToolbarModuleExtension({
+          id: BlockFlavourIdentifier(
+            toolbarModuleKey('custom:affine:surface:group', 'bpmn-morph')
+          ),
+          config: morphToolbarConfig(BPMN_GROUP_MORPH_SPEC),
         })
       );
       // The reversed reading (MF3): what the process says about an artefact, on

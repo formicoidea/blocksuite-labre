@@ -33,6 +33,7 @@ One file per decision. Format and lifecycle in
 | [0026](0026-legend-is-a-catalogue-subscription.md)             | A legend is a subscription           | accepted                  | A command declares its row; the board's legend is derived from the catalogue. One button, gated, one emitter. |
 | [0027](0027-framework-palettes-carousel.md)                    | Colour pickers are a carousel        | accepted                  | Every active palette on every picker, base page one; it opens on the element's framework of origin. Gated.    |
 | [0028](0028-iframe-sandbox-policy.md)                          | Iframe sandbox policy                | accepted                  | Every embedded iframe is sandboxed. Three levels in one module; `allow-same-origin` only on a fixed origin.   |
+| [0029](0029-label-mode-by-symbol-size.md)                      | Label mode by symbol size            | accepted                  | Inscribed only if "Hello World" at 18 fits the symbol; otherwise a grouped free text. BPMN adopts it.         |
 
 Related documents that are not ADRs:
 

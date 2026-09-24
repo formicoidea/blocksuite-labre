@@ -9,6 +9,7 @@ import {
   type SerializedElementProps,
 } from '@labre/affine-block-surface';
 import { ConnectorTool } from '@labre/affine-gfx-connector';
+import { createGroupCommand } from '@labre/affine-gfx-group';
 import {
   type BpmnLane,
   type BpmnNodeKind,
@@ -26,6 +27,7 @@ import { type GfxController, GfxControllerIdentifier } from '@labre/std/gfx';
 
 import {
   BPMN_EDGE_STYLE,
+  bpmnLabelMode,
   LANE_NAME_FALLBACK,
   LANE_NAME_KEY,
   NODE_LABEL,
@@ -47,7 +49,12 @@ import {
   bpmnBoardFrom,
   bpmnSafeFilename,
 } from './interchange.js';
-import { bpmnNodeProps, bpmnPoolProps } from './presets.js';
+import {
+  bpmnLabelBoxFor,
+  bpmnLabelProps,
+  bpmnNodeProps,
+  bpmnPoolProps,
+} from './presets.js';
 import { BPMN_ROLE } from './roles';
 
 /**
@@ -65,7 +72,29 @@ function finish(gfx: GfxController, id: string) {
   // Keep the palette open (native sub-menu behaviour).
 }
 
-/** Create a flow-object node (native shape) centred on the viewport. */
+/**
+ * Group elements; returns the group id, or the first id if grouping failed —
+ * the same fallback as Wardley's helper, so a failed group still leaves the
+ * symbol selected rather than nothing.
+ */
+function group(gfx: GfxController, ids: string[]) {
+  const [, result] = gfx.std.command.exec(createGroupCommand, {
+    elements: ids,
+  });
+  return result.groupId || ids[0];
+}
+
+/**
+ * Create a flow-object node (native shape) centred on the viewport.
+ *
+ * An inscribed kind (activities, annotation, group) carries its name as the
+ * shape's own inner text. An external kind (events, gateways, data shapes)
+ * is born WITHOUT inner text and gets a gravitating label instead: a free
+ * `bpmn:label` text centred under the symbol, grouped with it through the
+ * native group command — exactly Wardley's `createWardleyNode` (R38). The
+ * group is what makes the pair move as one; the role is what tells the name
+ * from a note typed beside the process.
+ */
 export function createBpmnNode(std: BlockStdScope, kind: BpmnNodeKind) {
   const gfx = gfxOf(std);
   const surface = gfx.surface;
@@ -73,6 +102,14 @@ export function createBpmnNode(std: BlockStdScope, kind: BpmnNodeKind) {
 
   const { w, h } = NODE_SIZE[kind];
   const { centerX: cx, centerY: cy } = gfx.viewport;
+  // Translated HERE and once: the caption is document content the moment it
+  // lands, so the host's catalogue is asked at placement and never again
+  // (`nodeLabelKey`, and #183 on why a French board should not start in
+  // English).
+  const seed = NODE_LABEL[kind]
+    ? translateKey(std, nodeLabelKey(kind), NODE_LABEL[kind])
+    : undefined;
+  const external = bpmnLabelMode(kind) === 'external';
 
   // What a node IS lives in one place (`./presets.ts`), because the importer
   // creates the same artefacts out of a `.bpmn` file and the two must not
@@ -82,16 +119,16 @@ export function createBpmnNode(std: BlockStdScope, kind: BpmnNodeKind) {
   const id = surface.addElement(
     bpmnNodeProps(kind, {
       xywh: new Bound(cx - w / 2, cy - h / 2, w, h).serialize(),
-      // Translated HERE and once: the caption is document content the moment
-      // it lands, so the host's catalogue is asked at placement and never
-      // again (`nodeLabelKey`, and #183 on why a French board should not
-      // start in English).
-      text: NODE_LABEL[kind]
-        ? translateKey(std, nodeLabelKey(kind), NODE_LABEL[kind])
-        : undefined,
+      text: external ? undefined : seed,
     })
   );
-  finish(gfx, id);
+  if (!external || seed === undefined) {
+    finish(gfx, id);
+    return;
+  }
+  const { x, y } = bpmnLabelBoxFor(kind, cx, cy);
+  const labelId = surface.addElement(bpmnLabelProps(seed, x, y));
+  finish(gfx, group(gfx, [id, labelId]));
 }
 
 /** Create a pool (background container) centred on the viewport. */

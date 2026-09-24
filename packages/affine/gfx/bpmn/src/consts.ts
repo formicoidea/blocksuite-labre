@@ -42,8 +42,9 @@ export const CALL_ACTIVITY_WIDTH = END_WIDTH;
 export const TASK_RADIUS = 10;
 
 /**
- * The group's corner radius — twice a task's, because it is drawn at three
- * times the size and a 10-unit corner on a 300-unit box reads as a square one.
+ * The group's corner radius — twice a task's, because a group is born the
+ * biggest artefact on the board and a 10-unit corner on a 300-unit box reads
+ * as a square one.
  */
 export const GROUP_RADIUS = 20;
 
@@ -68,7 +69,8 @@ export const INNER_FONT_SIZE = 18;
  *
  * A file draws its artefacts at whatever scale its author's tool uses, and
  * bpmn.io's normative sizes are about six tenths of this pack's: a 36-unit
- * event against a 56-unit one, a 100×72 task against a 120×72. The label of an
+ * event against a 56-unit one, a 100×80 task against the 120×72 activities are
+ * fitted against (`ACTIVITY_FIT_REF`). The label of an
  * imported artefact is therefore asked for at a size proportional to the box
  * the FILE gave, and 10 is where that shrinking stops — under it a label is no
  * longer read, it is guessed at.
@@ -86,20 +88,21 @@ export const LABEL_MIN_FONT_SIZE = 10;
  * How much of a box a fitted label gives up to its margin, per side.
  *
  * A shape's native inset is a FIXED 20 units horizontally
- * (`SHAPE_TEXT_PADDING`), which is a sixth of this pack's 120-unit task and
- * therefore invisible on a drawn board — and more than the whole width of a
- * 36-unit event, which leaves NEGATIVE room for the text and is why an imported
- * label breaks in the middle of a word. Expressed as a ratio, the margin
- * follows the artefact down: it is exactly the native inset at the pack's own
- * task width and it never grows past it, so a drawn node is untouched and a
- * small one keeps a usable line.
+ * (`SHAPE_TEXT_PADDING`), which is a sixth of the 120-unit activity width
+ * labels are fitted against (`ACTIVITY_FIT_REF`) and therefore invisible on a
+ * drawn board — and more than the whole width of a 36-unit event, which leaves
+ * NEGATIVE room for the text and is why an imported label breaks in the middle
+ * of a word. Expressed as a ratio, the margin follows the artefact down: it is
+ * exactly the native inset at 120 units and it never grows past it (the cap in
+ * `bpmnLabelFit`), so a drawn node — 180 wide since activities grew — is
+ * untouched and a small one keeps a usable line.
  */
 export const LABEL_INSET_RATIO = 1 / 6;
 
 /**
  * Default node sizes (model units) per kind.
  *
- * Three sizes carry the whole scale: the 56-unit event, the 120×72 task and the
+ * Three sizes carry the whole scale: the 56-unit event, the 180×108 task and the
  * 72-unit gateway. Everything the descriptive profile adds takes one of them —
  * a message start is a start event, a user task is a task — except the three
  * data/artifact shapes, which have no sibling to inherit from:
@@ -108,15 +111,19 @@ export const LABEL_INSET_RATIO = 1 / 6;
  *    56-unit event without looking like a shrunken task;
  *  - `dataStore` is the event's own diameter, which is what a cylinder needs to
  *    read as one rather than as a squashed ellipse;
- *  - `textAnnotation` is wider than a task and shorter — it holds a sentence,
- *    not a verb phrase.
+ *  - `textAnnotation` is a wide, short strip (140×48) — it holds a sentence,
+ *    not a verb phrase. It was sized against the 120×72 task and kept when the
+ *    activities grew.
  *
  * These three are ~1.2–1.4× bpmn.io's normative pixel sizes, which is the ratio
- * this pack's event and task already sit at against the same reference.
+ * this pack's event sits at against the same reference (the activities sat
+ * there too until they grew 1.5×, see below).
  *
  * `group` is on no scale at all: it is a LASSO, so it has to be born big enough
- * to have something in it. 300×200 holds two tasks and the arrow between them,
- * which is the smallest thing anybody draws a group around.
+ * to have something in it — bigger than any other artefact on both axes. It
+ * was sized for two 120×72 tasks and the arrow between them; since the
+ * activities grew it holds one task with room around it, and the author
+ * stretches it from there.
  */
 export const NODE_SIZE: Record<BpmnNodeKind, { w: number; h: number }> = {
   startEvent: { w: 56, h: 56 },
@@ -125,11 +132,14 @@ export const NODE_SIZE: Record<BpmnNodeKind, { w: number; h: number }> = {
   endEvent: { w: 56, h: 56 },
   endEventMessage: { w: 56, h: 56 },
   endEventTerminate: { w: 56, h: 56 },
-  task: { w: 120, h: 72 },
-  taskUser: { w: 120, h: 72 },
-  taskService: { w: 120, h: 72 },
-  subProcess: { w: 120, h: 72 },
-  callActivity: { w: 120, h: 72 },
+  // Activities: 1.5× the 120×72 they shipped at (user feedback, 24/09/2026):
+  // the inscribed label at 18 units needs the room, and the type does not
+  // grow with the box (R38, `docs/add-a-framework/02-framework-rules.md`).
+  task: { w: 180, h: 108 },
+  taskUser: { w: 180, h: 108 },
+  taskService: { w: 180, h: 108 },
+  subProcess: { w: 180, h: 108 },
+  callActivity: { w: 180, h: 108 },
   gatewayExclusive: { w: 72, h: 72 },
   gatewayParallel: { w: 72, h: 72 },
   dataObject: { w: 48, h: 64 },
@@ -139,37 +149,104 @@ export const NODE_SIZE: Record<BpmnNodeKind, { w: number; h: number }> = {
 };
 
 /**
- * Default inner text per kind.
+ * The box an ACTIVITY's inscribed label is fitted against on import
+ * (`bpmnLabelFit`, `presets.ts`) — the 120×72 the drawn task shipped at, kept
+ * as the fit reference when the drawn task grew to 180×108.
  *
- * The activities carry one, because a rectangle with nothing written in it says
- * nothing at all. Events and gateways do not: their meaning is the glyph, and
- * BPMN puts whatever name they have OUTSIDE the symbol.
+ * The fit scales the 18-unit type by how much smaller a file's box is than
+ * "the box this typography is comfortable in". That box did not change when
+ * the palette's did: 18 units were comfortable at 120×72 (that is why the pack
+ * shipped there), so a bpmn.io task of 100×80 still reads at 15 units rather
+ * than falling to the 10-unit floor it would hit against 180×108.
+ */
+export const ACTIVITY_FIT_REF = { w: 120, h: 72 };
+
+const ACTIVITY_KINDS: ReadonlySet<BpmnNodeKind> = new Set<BpmnNodeKind>([
+  'task',
+  'taskUser',
+  'taskService',
+  'subProcess',
+  'callActivity',
+]);
+
+/** The five activity kinds — the ones drawn at the 180×108 box. */
+export const isBpmnActivityKind = (kind: BpmnNodeKind): boolean =>
+  ACTIVITY_KINDS.has(kind);
+
+/**
+ * The kinds whose name GRAVITATES: a free text element centred under the
+ * symbol, grouped with it — never the shape's own inner text (R38).
  *
- * `dataObject` and `dataStore` are empty for the same reason plus one of our
- * own: the spec puts their name under the shape, the native inner text can only
- * go inside it, and inside is where the folded page and the cylinder already
- * are. The user can still type — the text simply overflows, which is the
- * honest failure rather than a label painted over the glyph.
+ * Events, gateways and the two data shapes are small, punctual symbols: two
+ * five-letter words at 18 units do not fit a 56-unit ring or a 72-unit diamond
+ * without enlarging it, and the glyph is already inside. BPMN itself draws
+ * their name below the symbol, which is what `bpmnLabelBoxFor` places.
+ *
+ * The activities, the annotation and the group stay INSCRIBED: the label fits
+ * (`label-mode.unit.spec.ts` proves it against the rule's arithmetic), and for
+ * the annotation the text IS the artefact.
+ *
+ * A stored node keeps whatever it was born with: an event drawn before this
+ * list existed carries inner text and keeps painting it. Nothing is migrated.
+ */
+export const BPMN_EXTERNAL_LABEL_KINDS = [
+  'startEvent',
+  'startEventMessage',
+  'startEventTimer',
+  'endEvent',
+  'endEventMessage',
+  'endEventTerminate',
+  'gatewayExclusive',
+  'gatewayParallel',
+  'dataObject',
+  'dataStore',
+] as const satisfies readonly BpmnNodeKind[];
+
+export type BpmnExternalLabelKind = (typeof BPMN_EXTERNAL_LABEL_KINDS)[number];
+
+const EXTERNAL_LABEL_KINDS: ReadonlySet<BpmnNodeKind> = new Set(
+  BPMN_EXTERNAL_LABEL_KINDS
+);
+
+/** Whether a kind's name is the shape's inner text or a grouped text beside it. */
+export const bpmnLabelMode = (kind: BpmnNodeKind): 'inscribed' | 'external' =>
+  EXTERNAL_LABEL_KINDS.has(kind) ? 'external' : 'inscribed';
+
+/** Gravitating-label metrics: a 120-wide, one-line box under the symbol. */
+export const LABEL_FONT_SIZE = INNER_FONT_SIZE;
+export const BPMN_LABEL_W = 120;
+export const BPMN_LABEL_H = LABEL_FONT_SIZE + 8;
+/** Gap between the symbol's bottom edge and the label's top. */
+export const BPMN_LABEL_GAP = 6;
+
+/**
+ * Default text per kind — the shape's inner text for an inscribed kind, the
+ * grouped label's text for an external one ({@link bpmnLabelMode}).
+ *
+ * Every kind carries one, because a symbol whose label is born empty is a text
+ * element nobody can find to click (PO, 24/09/2026 — the Wardley precedent
+ * seeds "Component" for the same reason). The external kinds are seeded with
+ * the spec's own name for the artefact, the wording their role already carries.
  *
  * The caption is asked of the host's catalogue under {@link nodeLabelKey} when
  * the artefact is placed, with the entry below as the English default.
  */
 export const NODE_LABEL: Record<BpmnNodeKind, string> = {
-  startEvent: '',
-  startEventMessage: '',
-  startEventTimer: '',
-  endEvent: '',
-  endEventMessage: '',
-  endEventTerminate: '',
+  startEvent: 'Start event',
+  startEventMessage: 'Message start event',
+  startEventTimer: 'Timer start event',
+  endEvent: 'End event',
+  endEventMessage: 'Message end event',
+  endEventTerminate: 'Terminate end event',
   task: 'Task',
   taskUser: 'User task',
   taskService: 'Service task',
   subProcess: 'Sub-process',
   callActivity: 'Call activity',
-  gatewayExclusive: '',
-  gatewayParallel: '',
-  dataObject: '',
-  dataStore: '',
+  gatewayExclusive: 'Exclusive gateway',
+  gatewayParallel: 'Parallel gateway',
+  dataObject: 'Data object',
+  dataStore: 'Data store',
   // The one artefact that IS its text.
   textAnnotation: 'Annotation',
   // The group's label is a CategoryValue in the spec. A plain editable string
@@ -184,8 +261,8 @@ export const NODE_LABEL: Record<BpmnNodeKind, string> = {
  * Resolved AT PLACEMENT (`createBpmnNode`) and never afterwards: what a gesture
  * writes into the document is content the author owns from that moment on, and
  * a renderer that re-translated it on every paint would silently overwrite a
- * name somebody typed. The kinds with an empty label ask for nothing — there is
- * no word to translate, and BPMN puts an event's name outside its glyph anyway.
+ * name somebody typed. Every kind has a seed now; for an external kind it is
+ * written into the grouped `bpmn:label` rather than the shape (R38).
  */
 export const nodeLabelKey = (kind: BpmnNodeKind) =>
   `com.labre.bpmn.seed.${kind}`;

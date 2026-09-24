@@ -87,7 +87,9 @@ export type BpmnRole =
   // Connecting objects.
   | 'sequence-flow'
   | 'message-flow'
-  | 'association';
+  | 'association'
+  // The gravitating name of an event, a gateway or a data shape (R38).
+  | 'label';
 
 export type BpmnRoleId = `bpmn:${BpmnRole}`;
 
@@ -125,7 +127,8 @@ type BpmnRoleKey =
   | 'pool'
   | 'sequenceFlow'
   | 'messageFlow'
-  | 'association';
+  | 'association'
+  | 'label';
 
 /** Role ids, keyed by the `kind` used at the creation sites. */
 export const BPMN_ROLE = {
@@ -169,6 +172,10 @@ export const BPMN_ROLE = {
   sequenceFlow: 'bpmn:sequence-flow',
   messageFlow: 'bpmn:message-flow',
   association: 'bpmn:association',
+  // The gravitating name: a free text grouped under an event, a gateway or a
+  // data shape. Same call as `wardley:label` — the role is the only thing that
+  // tells a name from a free text the author typed beside the process.
+  label: 'bpmn:label',
 } as const satisfies Record<BpmnRoleKey, BpmnRoleId>;
 
 /**
@@ -520,12 +527,32 @@ const FLOW_DEFS: readonly RoleDef[] = [
   },
 ];
 
+/**
+ * The gravitating label (R38): the text element grouped under an event, a
+ * gateway or a data shape, whose words are that artefact's NAME.
+ *
+ * Kind `text`, parent-less: it is not a flow object, not data and not an
+ * artifact, and no rule about the process may fall on the words that name a
+ * step. It exists so the export, the reading panel and the board picker can
+ * tell a name from a free text the author typed beside the process — exactly
+ * what `wardley:label` does for a component.
+ */
+const LABEL_DEFS: readonly RoleDef[] = [
+  {
+    id: BPMN_ROLE.label,
+    kind: 'text',
+    labelKey: roleKey(BPMN_ROLE.label),
+    labelFallback: 'Label',
+  },
+];
+
 const DEFS: readonly RoleDef[] = [
   ...FLOW_OBJECT_DEFS,
   ...DATA_DEFS,
   ...ARTIFACT_DEFS,
   ...POOL_DEFS,
   ...FLOW_DEFS,
+  ...LABEL_DEFS,
 ];
 
 // Null prototype: this is a lookup table keyed by ids that may one day come

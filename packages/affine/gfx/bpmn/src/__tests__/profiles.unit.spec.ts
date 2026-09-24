@@ -1,4 +1,4 @@
-import { checkupRules } from '@labre/affine-block-surface';
+import { checkupRules, evaluateCheckup } from '@labre/affine-block-surface';
 import { Bound } from '@labre/global/gfx';
 import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
 import { describe, expect, it } from 'vitest';
@@ -458,5 +458,61 @@ describe('what the framework ships as rules', () => {
         'bpmn.unlabeled-step',
       ]);
     });
+  });
+});
+
+/**
+ * Why this block exists: since R38 (`docs/adr/0029`) an event, a gateway or a
+ * data shape is named by a grouped `bpmn:label` text, never by its own inner
+ * text — and the `label-presence` family reads only the subject's own text.
+ * Left on `bpmn:flow-object`, `bpmn.unlabeled-step` would have told every
+ * author of a properly named gateway that it has no name. The rule now asks
+ * the question of the activities alone, whose name is inscribed.
+ */
+describe('bpmn.unlabeled-step asks only the activities', () => {
+  const at = (
+    id: string,
+    role: string | undefined,
+    xywh: [number, number, number, number],
+    props: Record<string, unknown> = {}
+  ) =>
+    ({
+      id,
+      role,
+      ...props,
+      get elementBound() {
+        return new Bound(...xywh);
+      },
+    }) as unknown as GfxPrimitiveElementModel;
+
+  const unnamed = (elements: GfxPrimitiveElementModel[]) =>
+    evaluateCheckup(ALL_RULES, elements, BPMN_PROFILES)
+      .filter(v => v.ruleId === 'bpmn.unlabeled-step')
+      .flatMap(v => v.elementIds)
+      .sort();
+
+  it('is written on the activity role', () => {
+    const rule = ALL_RULES.find(r => r.id === 'bpmn.unlabeled-step');
+    expect(rule?.appliesTo).toBe(BPMN_ROLE.activity);
+  });
+
+  it('reports a wordless task, and no event, gateway or data shape', () => {
+    const board = [
+      at('pool', BPMN_ROLE.pool, [0, 0, 1200, 400], {
+        validationProfile: 'bpmn.descriptive',
+      }),
+      // The external kinds as the palette draws them: no inner text, the name
+      // on a grouped label beside them.
+      at('start', BPMN_ROLE.startEvent, [40, 100, 56, 56]),
+      at('startName', BPMN_ROLE.label, [8, 162, 120, 26], {
+        text: 'Request received',
+      }),
+      at('gw', BPMN_ROLE.gatewayExclusive, [400, 92, 72, 72]),
+      at('store', BPMN_ROLE.dataStore, [600, 260, 56, 56]),
+      at('named', BPMN_ROLE.task, [160, 74, 180, 108], { text: 'Check' }),
+      at('blank', BPMN_ROLE.taskUser, [520, 74, 180, 108]),
+      at('sub', BPMN_ROLE.subProcess, [800, 74, 180, 108]),
+    ];
+    expect(unnamed(board)).toEqual(['blank', 'sub']);
   });
 });

@@ -43,9 +43,16 @@ describe('Framework template catalog', () => {
     );
   });
 
-  test('every template in every category inserts valid elements', async () => {
-    const surface = getSurface(window.doc, window.editor).model;
-    for (const cat of CATEGORIES) {
+  // One test per category, each on the fresh editor `beforeEach` mounts: an
+  // insertion costs more the more the surface already holds, so one test
+  // piling every catalogue onto one surface measured the sum of every
+  // framework's catalogue against a single budget — and crossed it the day
+  // BPMN's cards grew a label group each (R38), on a machine where the base
+  // already sat at the limit. Per category, each catalogue pays for itself
+  // and a failure names the framework.
+  for (const cat of CATEGORIES) {
+    test(`every ${cat} template inserts valid elements`, async () => {
+      const surface = getSurface(window.doc, window.editor).model;
       const list = await templateManagerFor(std).list(cat);
       expect(list.length).toBeGreaterThan(0);
       for (const template of list) {
@@ -58,8 +65,8 @@ describe('Framework template catalog', () => {
           `${cat} / ${template.name}`
         ).toBeGreaterThan(before);
       }
-    }
-  });
+    });
+  }
 
   test('the BPMN category is registered with its templates', async () => {
     const cats = await templateManagerFor(std).categories();
@@ -96,6 +103,20 @@ describe('Framework template catalog', () => {
     expect(counts.bpmnPool).toBe(1);
     expect(counts.bpmnNode).toBe(6); // start, 3 tasks, gateway, end
     expect(counts.connector).toBe(6);
+    // R38: the start, the gateway and the end are named by a gravitating label,
+    // grouped with the symbol — and the group must survive the id remap of the
+    // insertion, or the pair would come apart at the first drag.
+    expect(counts.text).toBe(3);
+    expect(counts.group).toBe(3);
+    for (const el of surface.elementModels) {
+      if (el.type !== 'group') continue;
+      const members = (el as unknown as { childElements: { type: string }[] })
+        .childElements;
+      expect(members.map(member => member.type).sort()).toEqual([
+        'bpmnNode',
+        'text',
+      ]);
+    }
   });
 });
 

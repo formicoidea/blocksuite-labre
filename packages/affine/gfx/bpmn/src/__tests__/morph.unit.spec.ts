@@ -1,9 +1,23 @@
 import type { BpmnNodeKind } from '@labre/affine-model';
-import { StrokeStyle, TextVerticalAlign } from '@labre/affine-model';
+import {
+  BpmnNodeElementModel,
+  GroupElementModel,
+  StrokeStyle,
+  TextElementModel,
+  TextVerticalAlign,
+} from '@labre/affine-model';
+import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
 import { describe, expect, it } from 'vitest';
 
 import { bpmnCommandIcons, bpmnCommands } from '../commands';
-import { BPMN_MORPH_FAMILIES, BPMN_MORPH_SPEC } from '../morph';
+import { NODE_LABEL } from '../consts';
+import {
+  BPMN_GROUP_MORPH_SPEC,
+  BPMN_MORPH_FAMILIES,
+  BPMN_MORPH_SPEC,
+  bpmnMorphedLabel,
+  bpmnNodeOfComposite,
+} from '../morph';
 import { bpmnMorphClears, bpmnMorphProps, NODE_PRESETS } from '../presets';
 import { BPMN_ROLE, BPMN_ROLE_OF_KIND } from '../roles';
 
@@ -233,5 +247,127 @@ describe('the spec handed to the generic module', () => {
     // Same rounded rectangle, same stroke: only the meaning and the glyph move.
     expect(props.shapeType).toBe(bpmnMorphProps('task').shapeType);
     expect(props.radius).toBe(bpmnMorphProps('task').radius);
+  });
+});
+
+/* ── The group row (R38) ───────────────────────────────────────────────── */
+
+/**
+ * The morph on the GROUP row, and the label it keeps honest.
+ *
+ * Why it exists: since R38 an event, a gateway or a data shape is born as a
+ * native group of the symbol and its `bpmn:label`, and a click selects the
+ * GROUP — so without a group-row spec the "Change type" dropdown vanished from
+ * every artefact that has a family but a task's. The resolution mirrors
+ * `wardleyNodeOfComponent`: one external-kind node inside, or a refusal.
+ *
+ * Models are built detached, the way the Wardley and C4 specs build theirs:
+ * the `instanceof` gates are the shipped ones, the accessors plain values.
+ */
+function detached<T>(
+  Ctor: abstract new (...args: never[]) => T,
+  props: Record<string, unknown>
+): T {
+  const element = Object.create(Ctor.prototype) as object;
+  for (const [key, value] of Object.entries(props)) {
+    Object.defineProperty(element, key, { value, configurable: true });
+  }
+  return element as T;
+}
+
+const bpmnNode = (kind: BpmnNodeKind) =>
+  detached(BpmnNodeElementModel, {
+    kind,
+    role: BPMN_ROLE_OF_KIND[kind],
+  }) as unknown as GfxPrimitiveElementModel;
+
+const grouped = (children: unknown[]) =>
+  detached(GroupElementModel, {
+    childElements: children,
+  }) as unknown as GfxPrimitiveElementModel;
+
+/** A `bpmn:label` whose text is a plain string behind the `Y.Text` calls. */
+function label(initial: string) {
+  let value = initial;
+  const text = {
+    toString: () => value,
+    get length() {
+      return value.length;
+    },
+    delete: (at: number, n: number) => {
+      value = value.slice(0, at) + value.slice(at + n);
+    },
+    insert: (at: number, s: string) => {
+      value = value.slice(0, at) + s + value.slice(at);
+    },
+  };
+  const model = detached(TextElementModel, {
+    role: BPMN_ROLE.label,
+    text,
+    isLocked: () => false,
+    surface: { store: { transact: (fn: () => void) => fn() } },
+  });
+  return { model, read: () => value };
+}
+
+describe('the group-row morph', () => {
+  it('selects groups and resolves them to the node inside', () => {
+    expect(BPMN_GROUP_MORPH_SPEC.modelType).toBe(GroupElementModel);
+    expect(BPMN_GROUP_MORPH_SPEC.resolveTarget).toBe(bpmnNodeOfComposite);
+    // Same families, same patch, same wording: one declaration, two rows.
+    expect(BPMN_GROUP_MORPH_SPEC.families).toBe(BPMN_MORPH_SPEC.families);
+    expect(BPMN_GROUP_MORPH_SPEC.propsOf).toBe(BPMN_MORPH_SPEC.propsOf);
+  });
+
+  it('finds the one event a composite is built round', () => {
+    const event = bpmnNode('startEvent');
+    const resolved = bpmnNodeOfComposite(grouped([event, label('x').model]));
+    expect(resolved).toBe(event);
+    expect(BPMN_GROUP_MORPH_SPEC.kindOf(resolved!)).toBe('startEvent');
+  });
+
+  it('refuses a group holding two nodes', () => {
+    expect(
+      bpmnNodeOfComposite(
+        grouped([bpmnNode('startEvent'), bpmnNode('endEvent')])
+      )
+    ).toBeUndefined();
+  });
+
+  it('refuses a group of inscribed kinds, a bare node and an empty group', () => {
+    // A task is morphed on its own row — it is never born grouped — and a
+    // lasso round two tasks is not an artefact.
+    expect(
+      bpmnNodeOfComposite(grouped([bpmnNode('task'), bpmnNode('taskUser')]))
+    ).toBeUndefined();
+    expect(bpmnNodeOfComposite(bpmnNode('startEvent'))).toBeUndefined();
+    expect(bpmnNodeOfComposite(grouped([]))).toBeUndefined();
+  });
+
+  it('renames a label that still says the source seed, and only that', () => {
+    const untouched = label(NODE_LABEL.startEvent);
+    BPMN_GROUP_MORPH_SPEC.afterMorph!(
+      grouped([bpmnNode('startEvent'), untouched.model]),
+      'startEvent',
+      'startEventTimer'
+    );
+    expect(untouched.read()).toBe(NODE_LABEL.startEventTimer);
+
+    const named = label('Order received');
+    BPMN_GROUP_MORPH_SPEC.afterMorph!(
+      grouped([bpmnNode('startEvent'), named.model]),
+      'startEvent',
+      'startEventTimer'
+    );
+    expect(named.read()).toBe('Order received');
+  });
+
+  it('decides the rename on the words alone', () => {
+    expect(bpmnMorphedLabel('dataObject', 'dataStore', 'Data object')).toBe(
+      'Data store'
+    );
+    for (const raw of ['Invoice', '', '  ', null, undefined, 'Data store']) {
+      expect(bpmnMorphedLabel('dataObject', 'dataStore', raw)).toBeNull();
+    }
   });
 });

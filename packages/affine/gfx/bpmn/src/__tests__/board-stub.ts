@@ -4,11 +4,15 @@ import {
   type BpmnNodeKind,
   BpmnPoolElementModel,
   ConnectorElementModel,
+  GroupElementModel,
+  TextElementModel,
 } from '@labre/affine-model';
 import { Bound } from '@labre/global/gfx';
+import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
 
 import { POOL_BAND_WIDTH } from '../consts';
 import { BPMN_XML_OF_KIND, type BpmnExportBoard } from '../export';
+import { bpmnBoardFrom } from '../interchange';
 import { BPMN_ROLE, BPMN_ROLE_OF_KIND } from '../roles';
 
 /**
@@ -117,6 +121,71 @@ export function fakeConnector(
   return connector as unknown as ConnectorElementModel;
 }
 
+/** A free text, as a `bpmn:label` (or any role) — what the palette writes. */
+export function fakeText(
+  id: string,
+  text: string,
+  bound: [number, number, number, number],
+  options: { role?: string } = {}
+): TextElementModel {
+  const element = Object.create(TextElementModel.prototype) as Record<
+    string,
+    unknown
+  >;
+  Object.defineProperties(element, {
+    id: { value: id, enumerable: true },
+    role: {
+      value: 'role' in options ? options.role : BPMN_ROLE.label,
+      enumerable: true,
+    },
+    // A string where the model holds a `Y.Text`: the reader calls
+    // `toString()`, which both answer.
+    text: { value: text, enumerable: true },
+    elementBound: { value: new Bound(...bound) },
+  });
+  return element as unknown as TextElementModel;
+}
+
+/** A native group over `childIds`, the accessor the board picker reads. */
+export function fakeGroup(
+  id: string,
+  childIds: string[],
+  bound: [number, number, number, number] = [0, 0, 0, 0]
+): GroupElementModel {
+  const element = Object.create(GroupElementModel.prototype) as Record<
+    string,
+    unknown
+  >;
+  Object.defineProperties(element, {
+    id: { value: id, enumerable: true },
+    role: { value: undefined, enumerable: true },
+    childIds: { value: childIds, enumerable: true },
+    elementBound: { value: new Bound(...bound) },
+  });
+  return element as unknown as GroupElementModel;
+}
+
+/**
+ * A named external node the way the palette draws it: the bare symbol, its
+ * `bpmn:label` under it, and the group binding the two (R38). Returns the
+ * three elements in creation order.
+ */
+export function fakeLabelledNode(
+  id: string,
+  kind: BpmnNodeKind,
+  bound: [number, number, number, number],
+  name: string
+): [BpmnNodeElementModel, TextElementModel, GroupElementModel] {
+  const node = fakeNode(id, kind, bound);
+  const label = fakeText(`${id}-label`, name, [
+    bound[0],
+    bound[1] + bound[3] + 6,
+    120,
+    26,
+  ]);
+  return [node, label, fakeGroup(`${id}-group`, [node.id, label.id])];
+}
+
 export const board = (partial: Partial<BpmnExportBoard>): BpmnExportBoard => ({
   pools: [],
   nodes: [],
@@ -125,15 +194,20 @@ export const board = (partial: Partial<BpmnExportBoard>): BpmnExportBoard => ({
 });
 
 /**
- * What the CALLER of an importer does, in eighteen lines — the half of the
- * round trip that is nobody's pure function.
+ * What the CALLER of an importer does — the half of the round trip that is
+ * nobody's pure function — followed by the board picking the export does.
  *
  * The importer returns props, never models: it has no surface, and
  * `surface.addElement` mints its own nanoid and ignores any id handed to it
  * (`docs/adr/0012`, D3 — surface identity is Labre's and never the file's). So
- * a connector's endpoints come back naming the SOURCE FILE's ids, and the
- * caller is what turns them into surface ids, using the one map the array
- * already contains: `interchange.bpmn.id` → the id the surface just minted.
+ * a connector's endpoints come back naming the SOURCE FILE's ids, and a
+ * group's children name the reader's PROVISIONAL ids (`bpmn-import-<n>`); the
+ * caller turns both into surface ids, the way `materializeInterchangeImport`
+ * does: source id first, provisional name second.
+ *
+ * The stubs are then handed to the real `bpmnBoardFrom`, so a gravitating
+ * label is read back through its group exactly as the editor's export reads
+ * it, rather than through a second copy of that rule kept here.
  *
  * Stubbed here rather than mocked: this is exactly what the editor command owes
  * (and what a labre-mcp tool owes), so a test that skipped it would be proving
@@ -151,17 +225,20 @@ export function boardFromProps(
   };
 
   const bySource = new Map<string, string>();
+  const byLocal = new Map<string, string>();
   elements.forEach((props, index) => {
     const source = sourceId(props);
     if (source !== undefined && !bySource.has(source)) {
       bySource.set(source, surfaceIds[index]);
     }
+    if (typeof props.id === 'string' && !byLocal.has(props.id)) {
+      byLocal.set(props.id, surfaceIds[index]);
+    }
   });
+  const resolve = (name: string) =>
+    bySource.get(name) ?? byLocal.get(name) ?? name;
 
-  const built = board({});
-  const pools: BpmnPoolElementModel[] = [];
-  const nodes: BpmnNodeElementModel[] = [];
-  const connectors: ConnectorElementModel[] = [];
+  const models: GfxPrimitiveElementModel[] = [];
 
   elements.forEach((props, index) => {
     const id = surfaceIds[index];
@@ -183,7 +260,7 @@ export function boardFromProps(
         role: props.role as string | undefined,
       });
       carry(pool, props);
-      pools.push(pool);
+      models.push(pool);
     } else if (props.type === 'bpmnNode') {
       const node = fakeNode(
         id,
@@ -193,12 +270,12 @@ export function boardFromProps(
         { role: props.role as string | undefined }
       );
       carry(node, props);
-      nodes.push(node);
+      models.push(node);
     } else if (props.type === 'connector') {
       const ends = (side: 'source' | 'target') => {
         const end = props[side] as { id?: string } | undefined;
         const named = end?.id;
-        return named === undefined ? undefined : (bySource.get(named) ?? named);
+        return named === undefined ? undefined : resolve(named);
       };
       const connector = fakeConnector(
         id,
@@ -207,11 +284,22 @@ export function boardFromProps(
         { text: props.text as string | undefined }
       );
       carry(connector, props);
-      connectors.push(connector);
+      models.push(connector);
+    } else if (props.type === 'text') {
+      models.push(
+        fakeText(id, String(props.text ?? ''), bound, {
+          role: props.role as string | undefined,
+        })
+      );
+    } else if (props.type === 'group') {
+      const children = Object.keys(
+        (props.children as Record<string, unknown> | undefined) ?? {}
+      );
+      models.push(fakeGroup(id, children.map(resolve)));
     }
   });
 
-  return { ...built, pools, nodes, connectors };
+  return bpmnBoardFrom(models);
 }
 
 /** Puts the foreign payload on the stub, the way the Y.Map would. */

@@ -13,6 +13,7 @@ import type { ForeignInterchange } from '@labre/std/gfx';
 import {
   ASSOCIATION_STROKE,
   ASSOCIATION_WIDTH,
+  bpmnLabelMode,
   MESSAGE_STROKE,
   MESSAGE_WIDTH,
   NODE_SIZE,
@@ -32,7 +33,7 @@ import {
   escapeAttr,
   escapeText,
 } from './export.js';
-import { bpmnNodeProps } from './presets.js';
+import { bpmnLabelBoxUnder, bpmnLabelProps, bpmnNodeProps } from './presets.js';
 import { BPMN_ROLE } from './roles.js';
 
 /**
@@ -190,8 +191,23 @@ export const BPMN_IMPORT_ERRORS = {
  * `source` / `target` below name the **source file's** ids rather than surface
  * ones. The caller creates the elements, folds the array into a map from each
  * element's `interchange.bpmn.id` to the id the surface minted for it, and
- * rewrites the two endpoints. Every element carries that id, so the map is a
- * fold over the very array this returned; nothing else is needed to finish it.
+ * rewrites the two endpoints. Every element a flow can name carries that id, so
+ * the map is a fold over the very array this returned.
+ *
+ * ## The gravitating label, and the second name it needs
+ *
+ * An event, a gateway or a data shape wears its `name` UNDER the symbol, as a
+ * free `bpmn:label` text grouped with it (R38, `bpmnLabelMode`) — the element
+ * the palette draws. Imported, that is three elements where the file wrote
+ * one: the node (no `text`), the label, and a native `group` holding the two.
+ * The label and the group are Labre's and no file ever named them, so they
+ * carry no `interchange` payload, and the group cannot point at its children
+ * by a source id. The three therefore carry a PROVISIONAL `id`
+ * (`bpmn-import-<n>`, UML's arrangement): `surface.addElement` overwrites it,
+ * and `materializeInterchangeImport` rewrites the group's `children` through
+ * it. The group is written LAST, after what it holds. An export reads the name
+ * back through the group (`bpmnBoardFrom`), which is what closes the round
+ * trip. An unnamed event stays a bare node: no label is invented.
  *
  * ## Three states, and no fourth
  *
@@ -690,9 +706,16 @@ interface Draft {
   payload: ForeignInterchange;
   /** Where it sits in the DRAWING; `Infinity` for anything undrawn. */
   order: number;
-  kind: 'pool' | 'node' | 'edge';
+  /**
+   * `label` and `group` are the gravitating label's two elements (see the
+   * module comment): Labre's own, never an artefact of the file, and
+   * therefore never counted as mapped.
+   */
+  kind: 'pool' | 'node' | 'edge' | 'label' | 'group';
   /** Set when the file gave this shape no bounds: D4's swept position. */
   needsLayout?: { w: number; h: number };
+  /** A label's node: the label is placed under it once the node has a box. */
+  follows?: Draft;
 }
 
 /** One resolved lane band, and what the file claimed was in it. */
@@ -810,11 +833,16 @@ function boundOf(draft: Draft): Bound {
  * did not.
  */
 function layOutTheUndrawn(drafts: readonly Draft[], minted: Draft | undefined) {
+  // A label counts as placed when its node was: it hangs under a box the file
+  // drew, and the sweep must not land something on top of it. A group has no
+  // box of its own, and an edge is routed between its ends.
   const placed = drafts.filter(
     draft =>
       draft.needsLayout === undefined &&
+      draft.follows?.needsLayout === undefined &&
       draft !== minted &&
-      draft.kind !== 'edge'
+      draft.kind !== 'edge' &&
+      draft.kind !== 'group'
   );
   const boxes = placed.map(boundOf);
   const maxX =
@@ -835,13 +863,27 @@ function layOutTheUndrawn(drafts: readonly Draft[], minted: Draft | undefined) {
     ).serialize();
   }
 
+  // A label follows its node AFTER the sweep, so a swept event keeps its name
+  // under it rather than at the origin it was drafted at.
+  for (const draft of drafts) {
+    if (!draft.follows?.needsLayout) continue;
+    const node = boundOf(draft.follows);
+    const { x, y } = bpmnLabelBoxUnder(node.x + node.w / 2, node.y + node.h);
+    const label = boundOf(draft);
+    draft.props.xywh = new Bound(x, y, label.w, label.h).serialize();
+  }
+
   // The pool minted for a file that had no participant (D6) is sized LAST, to
   // hold everything: a pool's plot is what decides which artefacts are in it,
   // and an artefact drawn outside every plot would be exported back into a
-  // process of its own.
+  // process of its own. The labels are inside too, or a name would hang below
+  // the frame of the process it names.
   if (!minted) return;
   const inside = drafts
-    .filter(draft => draft !== minted && draft.kind === 'node')
+    .filter(
+      draft =>
+        draft !== minted && (draft.kind === 'node' || draft.kind === 'label')
+    )
     .map(boundOf);
   if (inside.length === 0) return;
   const left = Math.min(...inside.map(box => box.x)) - MINTED_POOL_PADDING;
@@ -887,6 +929,9 @@ export function importBpmnXml(
   let explicitRoutes = 0;
 
   const drafts: Draft[] = [];
+  /** The provisional names a gravitating label's group is wired by. */
+  let provisional = 0;
+  const mint = () => `bpmn-import-${++provisional}`;
   const seenSourceIds = new Set<string>();
   /** Source ids that became an artefact a flow may attach to: pools and nodes. */
   const mappedSourceIds = new Set<string>();
@@ -1561,24 +1606,65 @@ export function importBpmnXml(
     }
 
     const size = NODE_SIZE[kind];
-    drafts.push({
+    const box = bounds
+      ? new Bound(bounds.x, bounds.y, bounds.w, bounds.h)
+      : new Bound(0, 0, size.w, size.h);
+    // An external kind's name is not the shape's to hold (R38): it goes to a
+    // grouped label under the symbol, and the node is drawn bare.
+    const gravitating = text !== '' && bpmnLabelMode(kind) === 'external';
+    const order = shape?.index ?? Number.POSITIVE_INFINITY;
+    const nodeDraft: Draft = {
       props: bpmnNodeProps(kind, {
-        xywh: (bounds
-          ? new Bound(bounds.x, bounds.y, bounds.w, bounds.h)
-          : new Bound(0, 0, size.w, size.h)
-        ).serialize(),
-        text: text || undefined,
-        // The file's own box, which this reader may not rewrite — so the label
-        // is fitted to it rather than painted past it (#184). A shape the file
-        // did not draw is laid out at the pack's own size below, and wants the
-        // pack's own type: no fit, and an element identical to a drawn one.
-        ...(bounds ? { fitLabel: true } : {}),
+        xywh: box.serialize(),
+        ...(gravitating
+          ? {}
+          : {
+              text: text || undefined,
+              // The file's own box, which this reader may not rewrite — so the
+              // label is fitted to it rather than painted past it (#184). A
+              // shape the file did not draw is laid out at the pack's own size
+              // below, and wants the pack's own type: no fit, and an element
+              // identical to a drawn one.
+              ...(bounds ? { fitLabel: true } : {}),
+            }),
       }),
       payload,
-      order: shape?.index ?? Number.POSITIVE_INFINITY,
+      order,
       kind: 'node',
       ...(bounds ? {} : { needsLayout: size }),
-    });
+    };
+    drafts.push(nodeDraft);
+
+    if (gravitating) {
+      // ponytail: the label is always placed centred under the symbol, and a
+      // `BPMNLabel`'s own bounds are ignored for placement (they are still
+      // carried verbatim as DI, so the file gets them back). Ceiling: a file
+      // that set its label beside an event lands it under. Upgrade: read the
+      // `dc:Bounds` of the shape's `BPMNLabel` and place the text there.
+      const nodeId = mint();
+      const labelId = mint();
+      nodeDraft.props.id = nodeId;
+      const under = bpmnLabelBoxUnder(box.x + box.w / 2, box.y + box.h);
+      // Same order as the node, pushed after it: the stable sort keeps the
+      // node, then its label, then the group that holds both.
+      drafts.push({
+        props: { ...bpmnLabelProps(text, under.x, under.y), id: labelId },
+        payload: {},
+        order,
+        kind: 'label',
+        follows: nodeDraft,
+      });
+      drafts.push({
+        props: {
+          type: 'group',
+          id: mint(),
+          children: { [nodeId]: true, [labelId]: true },
+        },
+        payload: {},
+        order,
+        kind: 'group',
+      });
+    }
 
     if (sourceId !== undefined && bounds) nodeBounds.set(sourceId, bounds);
     if (!bounds) {
@@ -1957,6 +2043,11 @@ export function importBpmnXml(
       total + (Array.isArray(draft.props.lanes) ? draft.props.lanes.length : 0),
     0
   );
+  // A gravitating label and its group are how a node wears its name, not
+  // artefacts of the file: counting them would report one event as three.
+  const artefacts = ordered.filter(
+    draft => draft.kind !== 'label' && draft.kind !== 'group'
+  ).length;
 
   const sourceVersion = sourceVersionOf(definitions);
   return {
@@ -1965,7 +2056,7 @@ export function importBpmnXml(
       // Everything that became a drawn, editable artefact: the pools, the flow
       // objects, the arrows — and the LANES, which are drawn and editable and
       // are not elements of their own.
-      mapped: ordered.length + lanes,
+      mapped: artefacts + lanes,
       carried,
       quarantined,
       notes,
