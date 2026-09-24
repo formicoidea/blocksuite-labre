@@ -7,7 +7,8 @@ import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
 import { describe, expect, it } from 'vitest';
 
 import { bpmnCommands } from '../commands';
-import { bpmnNodeProps } from '../presets';
+import { bpmnLabelMode } from '../consts';
+import { bpmnLabelBoxFor, bpmnNodeProps } from '../presets';
 import { BPMN_PROFILES } from '../profiles';
 import { BPMN_ROLE } from '../roles';
 import { BPMN_RULES } from '../rules';
@@ -49,6 +50,7 @@ type RawElement = {
   source?: { id?: string; position?: [number, number] };
   target?: { id?: string; position?: [number, number] };
   text?: { delta: { insert: string }[] };
+  children?: { json?: Record<string, boolean> };
 };
 
 /**
@@ -176,6 +178,119 @@ describe('the worked scenes are composed of the same presets', () => {
           expect(element.role, id).toBe(BPMN_ROLE.pool);
         }
       });
+    });
+  }
+});
+
+/* ── Gravitating labels (R38) ─────────────────────────────────────────────── */
+
+/**
+ * Why this block exists: since R38 an event, a gateway or a data shape is
+ * named by a free `bpmn:label` text grouped with it, never by its own inner
+ * text — and a card is the first BPMN most people ever insert. A derived card
+ * follows `createBpmnNode` by construction (the re-run above), but that proves
+ * only that card and command AGREE; this proves what they agree on is the
+ * shape R38 asks for, and that the two hand-laid scenes say the same thing
+ * about the same kinds.
+ */
+const textOfRaw = (element: RawElement | undefined) =>
+  element?.text?.delta.map(op => op.insert).join('') ?? '';
+
+/** The group, if any, whose children include `id`. */
+const groupOf = (elements: Record<string, RawElement>, id: string) =>
+  Object.entries(elements).find(
+    ([, element]) =>
+      element.type === 'group' && element.children?.json?.[id] === true
+  );
+
+/** Every node of a card is named the way its kind asks (R38). */
+function expectNamedByMode(elements: Record<string, RawElement>) {
+  const nodes = Object.entries(elements).filter(
+    ([, element]) => element.type === 'bpmnNode'
+  );
+  expect(nodes.length).toBeGreaterThan(0);
+  for (const [id, node] of nodes) {
+    const kind = node.kind as BpmnNodeKind;
+    const group = groupOf(elements, id);
+    if (bpmnLabelMode(kind) === 'inscribed') {
+      expect(textOfRaw(node), `${id} carries its own name`).not.toBe('');
+      expect(group, `${id} is not grouped`).toBeUndefined();
+      continue;
+    }
+    expect(node.text, `${id} has no inner text`).toBeUndefined();
+    expect(group, `${id} is grouped with its label`).toBeDefined();
+    const members = Object.keys(group![1].children!.json!);
+    expect(members, id).toHaveLength(2);
+    const label = elements[members.find(member => member !== id)!];
+    expect(label?.type, id).toBe('text');
+    expect(label?.role, id).toBe(BPMN_ROLE.label);
+    expect(textOfRaw(label), `${id}'s label says something`).not.toBe('');
+    // Centred under the symbol, at the box the palette computes.
+    const at = Bound.deserialize(node.xywh!).center;
+    const box = bpmnLabelBoxFor(kind, at[0], at[1]);
+    const drawn = Bound.deserialize(label!.xywh!);
+    expect([drawn.x, drawn.y], `${id}'s label position`).toEqual([
+      box.x,
+      box.y,
+    ]);
+  }
+}
+
+describe('every card names its nodes the way R38 asks', () => {
+  for (const template of templates) {
+    const elements = elementsOf(template);
+    const hasNode = Object.values(elements).some(
+      element => element.type === 'bpmnNode'
+    );
+    // The pool and the free "Sequence flow" swatch have no node to name.
+    if (!hasNode) continue;
+    it(template.name ?? '(unnamed)', () => expectNamedByMode(elements));
+  }
+});
+
+/**
+ * Why: the scenes were laid out by hand for a 120×72 task, and at 180×108 the
+ * "Reject" branch left its 200-high pool. `bpmnPoolOf` judges WHOLE
+ * containment, so a node that pokes out belongs to no participant and every
+ * pool-scoped rule stops seeing it — and a gravitating name hanging out of its
+ * pool reads as belonging to nobody.
+ */
+describe('every scene keeps its artefacts inside a pool', () => {
+  for (const name of SCENES) {
+    it(name, () => {
+      const elements = cardNamed(name);
+      const pools = Object.values(elements)
+        .filter(element => element.type === 'bpmnPool')
+        .map(element => Bound.deserialize(element.xywh!));
+      const placed = Object.entries(elements).filter(
+        ([, element]) => element.type !== 'bpmnPool' && element.xywh
+      );
+      expect(placed.length).toBeGreaterThan(0);
+      for (const [id, element] of placed) {
+        const bound = Bound.deserialize(element.xywh!);
+        expect(
+          pools.some(pool => pool.contains(bound)),
+          `${id} lies inside a pool`
+        ).toBe(true);
+      }
+    });
+
+    // The other half of the same regression: grown tasks landed on the
+    // gateway and the end event, and a name drawn over a neighbour is
+    // unreadable.
+    it(`${name} overlaps no artefact with another`, () => {
+      const placed = Object.entries(cardNamed(name))
+        .filter(([, element]) => element.type !== 'bpmnPool' && element.xywh)
+        .map(
+          ([id, element]) => [id, Bound.deserialize(element.xywh!)] as const
+        );
+      const clashes: string[] = [];
+      placed.forEach(([id, bound], i) => {
+        for (const [other, next] of placed.slice(i + 1)) {
+          if (bound.isOverlapWithBound(next, 0)) clashes.push(`${id}+${other}`);
+        }
+      });
+      expect(clashes).toEqual([]);
     });
   }
 });

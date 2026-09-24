@@ -17,6 +17,8 @@ import {
   BpmnNodeElementModel,
   BpmnPoolElementModel,
   ConnectorElementModel,
+  GroupElementModel,
+  TextElementModel,
 } from '@labre/affine-model';
 import { fillPlaceholders } from '@labre/affine-shared/services';
 import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
@@ -118,6 +120,63 @@ function legendMemberIds(
 }
 
 /**
+ * Every node's gravitating name (R38), and the elements that carried it.
+ *
+ * A native group holding exactly one picked node and exactly one `bpmn:label`
+ * text binds the two: the text is the node's name, whatever the geometry says
+ * (the palette and the importer both write that pair). GROUP membership is the
+ * binding, as it is for Wardley's composites (`labelOfComposite`, `morph.ts`),
+ * because a label dragged aside is still the name and a stray text that
+ * happens to sit under an event is not.
+ *
+ * `consumed` is what the file does carry after all — the bound label, and the
+ * group when it holds nothing but BPMN nodes and their labels — so the
+ * left-out count does not report a name that IS written. An unbound
+ * `bpmn:label` stays counted: its words are in no file.
+ *
+ * Direct children only, read defensively: they came out of a Y.Map.
+ */
+function gravitatingLabels(
+  elements: readonly GfxPrimitiveElementModel[],
+  picked: ReadonlySet<string>
+): { labels: Map<string, string>; consumed: Set<string> } {
+  const byId = new Map(elements.map(element => [element.id, element]));
+  const labels = new Map<string, string>();
+  const consumed = new Set<string>();
+  const isLabel = (element: GfxPrimitiveElementModel | undefined) =>
+    element instanceof TextElementModel && element.role === BPMN_ROLE.label;
+
+  for (const group of elements) {
+    if (!(group instanceof GroupElementModel)) continue;
+    const ids: unknown = (group as { childIds?: unknown }).childIds;
+    if (!Array.isArray(ids)) continue;
+    const members = ids.map(id =>
+      typeof id === 'string' ? byId.get(id) : undefined
+    );
+    const nodes = members.filter(
+      (member): member is GfxPrimitiveElementModel =>
+        member !== undefined && picked.has(member.id)
+    );
+    const texts = members.filter((member): member is TextElementModel =>
+      isLabel(member)
+    );
+    if (nodes.length === 1 && texts.length === 1) {
+      labels.set(nodes[0].id, texts[0].text?.toString() ?? '');
+      consumed.add(texts[0].id);
+    }
+    if (
+      members.length > 0 &&
+      members.every(
+        member => member && (picked.has(member.id) || isLabel(member))
+      )
+    ) {
+      consumed.add(group.id);
+    }
+  }
+  return { labels, consumed };
+}
+
+/**
  * The artefacts the exporter speaks about, picked out of a surface's elements
  * and kept in the order they were given.
  *
@@ -158,7 +217,9 @@ function legendMemberIds(
  * Connectors are deliberately NOT counted: a neutral arrow states nothing
  * (`docs/adr/0010`), so there is nothing to lose, which is the reason
  * `export.ts` has always dropped one in silence. Neither is a generated legend
- * — see {@link legendMemberIds}.
+ * — see {@link legendMemberIds} — nor a gravitating label and the group that
+ * binds it to its node, which the file DOES carry, as the node's `name` — see
+ * {@link gravitatingLabels}.
  */
 export function bpmnBoardFrom(
   elements: readonly GfxPrimitiveElementModel[]
@@ -188,13 +249,24 @@ export function bpmnBoardFrom(
   // audit and the serializer use, so what is reported left out is what the rest
   // of the framework agrees is in there.
   const legend = legendMemberIds(elements);
+  const { labels, consumed } = gravitatingLabels(
+    elements,
+    new Set(nodes.map(node => node.id))
+  );
   const leftOut = roleless.filter(
     element =>
       !legend.has(element.id) &&
+      !consumed.has(element.id) &&
       bpmnPoolOf(pools, element.elementBound) !== null
   ).length;
 
-  return { pools, nodes, connectors, ...(leftOut > 0 ? { leftOut } : {}) };
+  return {
+    pools,
+    nodes,
+    connectors,
+    ...(labels.size > 0 ? { labels } : {}),
+    ...(leftOut > 0 ? { leftOut } : {}),
+  };
 }
 
 /**

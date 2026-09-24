@@ -12,13 +12,16 @@ import {
   exportBpmnXmlWithWarnings,
 } from '../export';
 import { BPMN_IMPORT_ERRORS, BPMN_KIND_OF_XML, importBpmnXml } from '../import';
-import { BPMN_XML_IMPORT } from '../interchange';
+import { BPMN_XML_IMPORT, bpmnBoardFrom } from '../interchange';
 import { BPMN_ROLE } from '../roles';
 import {
   ALL_KINDS,
   board,
   boardFromProps,
   collaborationBoard,
+  fakeConnector,
+  fakeLabelledNode,
+  fakeNode,
   fakePool,
 } from './board-stub';
 
@@ -130,16 +133,167 @@ describe('the round trip is a fixed point', () => {
     const { board: drawn } = collaborationBoard();
     const { elements } = importBpmnXml(exportBpmnXml(drawn, { name: NAME }));
 
-    const ids = elements.map(
-      element =>
-        (element.interchange as Record<string, { id?: string }>).bpmn.id
+    // A gravitating label and its group are Labre's own and no file named
+    // them, so they carry no payload; every artefact of the file does.
+    const labelled = elements.filter(element => !element.interchange);
+    expect(new Set(labelled.map(element => element.type))).toEqual(
+      new Set(['text', 'group'])
     );
+    const ids = elements
+      .filter(element => element.interchange)
+      .map(
+        element =>
+          (element.interchange as Record<string, { id?: string }>).bpmn.id
+      );
     // The exporter's own minted names, verbatim — not the surface ids they were
     // derived from, which the file never carried and the reader must not guess.
     expect(ids).toContain('Participant_pool-sales');
     expect(ids).toContain('n-task');
     expect(ids).toContain('Flow_c-seq');
     expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('reads a named event back as the palette draws it: node, label, group', () => {
+    // R38. An external kind's name gravitates under the symbol, so a named
+    // event is THREE elements — and the group, written last, holds the other
+    // two by the reader's provisional names.
+    const { board: drawn } = collaborationBoard();
+    const { elements, report } = importBpmnXml(
+      exportBpmnXml(drawn, { name: NAME })
+    );
+
+    const start = elements.find(element => element.kind === 'startEvent')!;
+    expect(start.text).toBeUndefined();
+    expect(start.id).toMatch(/^bpmn-import-\d+$/);
+    const label = elements.find(
+      element => element.type === 'text' && element.text === 'Label startEvent'
+    )!;
+    expect(label.role).toBe(BPMN_ROLE.label);
+    const group = elements.find(
+      element =>
+        element.type === 'group' &&
+        Object.keys(element.children as object).includes(String(start.id))
+    )!;
+    expect(Object.keys(group.children as object)).toEqual([start.id, label.id]);
+    expect(elements.indexOf(group)).toBeGreaterThan(elements.indexOf(label));
+    expect(elements.indexOf(label)).toBeGreaterThan(elements.indexOf(start));
+
+    // The inscribed kinds keep their text, and no label is minted for them.
+    expect(elements.find(element => element.kind === 'task')!.text).toBe(
+      'Label task'
+    );
+    // Ten external kinds on the board, each named: ten labels, ten groups —
+    // and none of them counted as a mapped artefact.
+    expect(elements.filter(element => element.type === 'text')).toHaveLength(
+      10
+    );
+    expect(elements.filter(element => element.type === 'group')).toHaveLength(
+      10
+    );
+    expect(report.mapped).toBe(2 + 2 + drawn.nodes.length + 3);
+  });
+
+  it('invents no label for an unnamed event', () => {
+    const unnamed = board({
+      nodes: [fakeNode('n-start', 'startEvent', [10, 10, 36, 36])],
+    });
+    const { elements } = importBpmnXml(exportBpmnXml(unnamed));
+
+    expect(elements.map(element => element.type)).toEqual([
+      'bpmnPool',
+      'bpmnNode',
+    ]);
+    expect(elements[1].text).toBeUndefined();
+    expect(elements[1].id).toBeUndefined();
+  });
+
+  it('round-trips a board whose events wear grouped labels, byte for byte', () => {
+    // The palette's own form, read back through the group by `bpmnBoardFrom`.
+    const pool = fakePool('pool-p', [0, 0, 560, 200], { name: 'Claims' });
+    const labelled = bpmnBoardFrom([
+      pool,
+      ...fakeLabelledNode('n-start', 'startEvent', [90, 40, 56, 56], 'Filed'),
+      fakeNode('n-task', 'task', [200, 30, 180, 108], 'Assess'),
+      ...fakeLabelledNode('n-end', 'endEvent', [420, 40, 56, 56], 'Settled'),
+      fakeConnector('c-1', BPMN_ROLE.sequenceFlow, {
+        source: 'n-start',
+        target: 'n-task',
+      }),
+    ]);
+    // Neither the labels nor their groups are "left out": the file carries
+    // their words as the events' names.
+    expect(labelled.leftOut).toBeUndefined();
+
+    const first = exportBpmnXml(labelled, { name: NAME });
+    expect(first).toContain('name="Filed"');
+    expect(first).toContain('name="Settled"');
+    // No `BPMNLabel` of Labre's own: the label is placed by its reader.
+    expect(first).not.toContain('BPMNLabel');
+
+    const second = exportBpmnXml(
+      boardFromProps(importBpmnXml(first).elements),
+      {
+        name: NAME,
+      }
+    );
+    expect(second).toBe(first);
+  });
+
+  it('hangs a swept event’s label under it, inside the pool minted round both', () => {
+    // D4: an event the file did not draw is swept beside the drawing, and its
+    // label must follow it there rather than stay where it was drafted. The
+    // pool minted for a bare process must hold the labels too, or a name would
+    // hang below the frame of the process it names.
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="${BPMN_NS.model}" xmlns:bpmndi="${BPMN_NS.bpmndi}" xmlns:dc="${BPMN_NS.dc}" id="D">
+  <process id="P">
+    <task id="T" name="Drawn" />
+    <startEvent id="S" name="Undrawn" />
+  </process>
+  <bpmndi:BPMNDiagram id="Di">
+    <bpmndi:BPMNPlane id="Pl" bpmnElement="P">
+      <bpmndi:BPMNShape id="ST" bpmnElement="T"><dc:Bounds x="0" y="0" width="100" height="80" /></bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>`;
+    const { elements, report } = importBpmnXml(xml);
+    const bound = (xywh: unknown) => JSON.parse(String(xywh)) as number[];
+
+    const event = elements.find(element => element.kind === 'startEvent')!;
+    const label = elements.find(element => element.type === 'text')!;
+    const [ex, ey, ew, eh] = bound(event.xywh);
+    const [lx, ly, lw] = bound(label.xywh);
+    expect(ex).toBeGreaterThan(100);
+    expect(lx + lw / 2).toBe(ex + ew / 2);
+    expect(ly).toBeGreaterThan(ey + eh);
+
+    const [px, py, pw, ph] = bound(
+      elements.find(element => element.type === 'bpmnPool')!.xywh
+    );
+    const [, , , lh] = bound(label.xywh);
+    expect(lx).toBeGreaterThanOrEqual(px);
+    expect(lx + lw).toBeLessThanOrEqual(px + pw);
+    expect(ly + lh).toBeLessThanOrEqual(py + ph);
+    // The pool, the task, the event: the label and its group are not counted.
+    expect(report.mapped).toBe(3);
+  });
+
+  it('exports a legacy event with inner text exactly as a labelled one', () => {
+    // Fallback (b): an event drawn before names gravitated keeps its inner
+    // text, and the file cannot tell the two apart.
+    const pool = () => fakePool('pool-p', [0, 0, 560, 200], { name: 'Claims' });
+    const legacy = bpmnBoardFrom([
+      pool(),
+      fakeNode('n-start', 'startEvent', [90, 40, 56, 56], 'Filed'),
+    ]);
+    const labelled = bpmnBoardFrom([
+      pool(),
+      ...fakeLabelledNode('n-start', 'startEvent', [90, 40, 56, 56], 'Filed'),
+    ]);
+
+    expect(exportBpmnXml(labelled, { name: NAME })).toBe(
+      exportBpmnXml(legacy, { name: NAME })
+    );
   });
 
   it('rebuilds the two pools, their lanes and every artefact', () => {

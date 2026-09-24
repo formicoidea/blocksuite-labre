@@ -38,6 +38,15 @@ import { BPMN_ROLE, BPMN_ROLES } from './roles.js';
  * under the sequence flow's two words would put a sentence in the panel that
  * the notation never said.
  *
+ * ## A name inscribed, or a name beside
+ *
+ * Since R38 (`docs/adr/0029`) an event, a gateway and a data shape carry their
+ * name on a free `bpmn:label` text grouped with them, not as inner text. The
+ * two profiles that read them therefore declare `labelRole`, which the engine
+ * falls back to when the subject's own text is empty — Wardley's reading does
+ * the same. An activity's inscribed name still wins, because own text is read
+ * first; the annotation and the group ARE their text and need no fallback.
+ *
  * ## No nature, no phase
  *
  * BPMN ships no type-3 tag pack: its kinds ARE the roles, and the panel says
@@ -70,6 +79,8 @@ export const BPMN_READING: ReadingProfile = {
   framework: 'bpmn',
   roles: BPMN_ROLES,
   appliesTo: BPMN_ROLE.flowObject,
+  // An event's or a gateway's name gravitates (R38): see the module comment.
+  labelRole: BPMN_ROLE.label,
   relation: { edgeRole: BPMN_ROLE.sequenceFlow, sides: SEQUENCE_SIDES },
 };
 
@@ -84,6 +95,8 @@ export const BPMN_DATA_READING: ReadingProfile = {
   framework: 'bpmn',
   roles: BPMN_ROLES,
   appliesTo: BPMN_ROLE.data,
+  // Both data shapes are named beside the symbol (R38).
+  labelRole: BPMN_ROLE.label,
 };
 
 /** A note on the picture. Readable, so a reader can link it to a record. */

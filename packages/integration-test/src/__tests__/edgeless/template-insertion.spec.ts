@@ -96,6 +96,20 @@ describe('Framework template catalog', () => {
     expect(counts.bpmnPool).toBe(1);
     expect(counts.bpmnNode).toBe(6); // start, 3 tasks, gateway, end
     expect(counts.connector).toBe(6);
+    // R38: the start, the gateway and the end are named by a gravitating label,
+    // grouped with the symbol — and the group must survive the id remap of the
+    // insertion, or the pair would come apart at the first drag.
+    expect(counts.text).toBe(3);
+    expect(counts.group).toBe(3);
+    for (const el of surface.elementModels) {
+      if (el.type !== 'group') continue;
+      const members = (el as unknown as { childElements: { type: string }[] })
+        .childElements;
+      expect(members.map(member => member.type).sort()).toEqual([
+        'bpmnNode',
+        'text',
+      ]);
+    }
   });
 });
 

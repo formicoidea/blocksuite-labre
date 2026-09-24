@@ -10,7 +10,7 @@ import type {
 import { describe, expect, it, vi } from 'vitest';
 
 import { bpmnCommands } from '../commands';
-import { BPMN_EDGE_STYLE, NODE_SIZE } from '../consts';
+import { BPMN_EDGE_STYLE, bpmnLabelMode, NODE_SIZE } from '../consts';
 import { bpmnNodeProps } from '../presets';
 import { BPMN_ROLE, BPMN_ROLE_OF_KIND } from '../roles';
 import { bpmnPoolToolingToolbarConfig } from '../toolbar/config';
@@ -85,8 +85,21 @@ describe('the pool subscribes its notation instead of tabulating it', () => {
           .concat(recorded.armedToolOptions?.['role'])
           .filter((role): role is string => typeof role === 'string')
       );
+      // An event, a gateway or a data shape is born with its gravitating
+      // name (R38): a `bpmn:label` text, which is a NAME and not an artefact
+      // — no command stamps it as its row, so no legend row ever lists it,
+      // and a label inside a pool is simply not subscribed to.
+      const kind = command.telemetry?.element?.startsWith('node:')
+        ? (command.telemetry.element.slice('node:'.length) as BpmnNodeKind)
+        : undefined;
+      const external = kind !== undefined && bpmnLabelMode(kind) === 'external';
+      expect(stamped.has(BPMN_ROLE.label), command.id).toBe(external);
+      stamped.delete(BPMN_ROLE.label);
       expect([...stamped], command.id).toEqual([entry.role]);
     }
+    expect(subscribed.map(c => entryOf(c)!.role)).not.toContain(
+      BPMN_ROLE.label
+    );
   });
 
   it('asks for an EXACT match on the three roles that have children, and no others', () => {

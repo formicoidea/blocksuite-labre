@@ -5,9 +5,17 @@ import {
 } from '@labre/affine-model';
 import { describe, expect, it } from 'vitest';
 
-import { INNER_FONT_SIZE, LABEL_MIN_FONT_SIZE, NODE_SIZE } from '../consts';
+import {
+  ACTIVITY_FIT_REF,
+  BPMN_LABEL_H,
+  BPMN_LABEL_W,
+  INNER_FONT_SIZE,
+  LABEL_MIN_FONT_SIZE,
+  NODE_SIZE,
+} from '../consts';
 import { importBpmnXml } from '../import';
-import { bpmnLabelFit, bpmnNodeProps } from '../presets';
+import { bpmnLabelBoxUnder, bpmnLabelFit, bpmnNodeProps } from '../presets';
+import { BPMN_ROLE } from '../roles';
 
 /**
  * Labels that fit the box the FILE gave them (#184).
@@ -211,44 +219,83 @@ describe('a minimal file, imported', () => {
   const nodes = elements.filter(
     element => element.type === 'bpmnNode'
   ) as Array<Record<string, unknown>>;
+  const [start, task, end] = nodes;
+  const labels = elements.filter(element => element.type === 'text');
+  const groups = elements.filter(element => element.type === 'group');
   const boxOf = (node: Record<string, unknown>) => {
-    const [, , w, h] = JSON.parse(String(node.xywh)) as number[];
-    return { w, h };
+    const [x, y, w, h] = JSON.parse(String(node.xywh)) as number[];
+    return { x, y, w, h };
   };
 
-  it('reads the three artefacts with their accented names', () => {
-    expect(nodes.map(node => node.text)).toEqual([
+  it('keeps the task’s name inscribed, and gives each event a grouped label', () => {
+    // R38: a task's name is its own text; an event's gravitates under it, as
+    // the palette draws it — the node bare, a `bpmn:label` text, a group.
+    expect(task.text).toBe('Étudier le dossier');
+    expect(start.text).toBeUndefined();
+    expect(end.text).toBeUndefined();
+    expect(labels.map(label => label.text)).toEqual([
       'Demande reçue',
-      'Étudier le dossier',
       'Contrat émis',
     ]);
+    expect(labels.every(label => label.role === BPMN_ROLE.label)).toBe(true);
+
+    // Each group holds exactly its event and that event's label, by the
+    // provisional names the materializer resolves.
+    expect(groups).toHaveLength(2);
+    for (const [group, event, label] of [
+      [groups[0], start, labels[0]],
+      [groups[1], end, labels[1]],
+    ]) {
+      expect(Object.keys(group.children as object)).toEqual([
+        event.id,
+        label.id,
+      ]);
+    }
   });
 
-  it('gives every label a line box inside the shape that carries it', () => {
-    for (const node of nodes) {
-      const box = boxOf(node);
-      const line = lineBox(node, box.w, box.h);
-
-      expect(node.textFitMode, String(node.text)).toBe(TextFitMode.Contained);
-      expect(line.w, String(node.text)).toBeGreaterThan(0);
-      expect(line.h, String(node.text)).toBeGreaterThan(0);
-      // …and a line box the label is actually inside: at the fitted size, the
-      // shape renderer's `Contained` pass has room to shrink into.
-      expect(line.w, String(node.text)).toBeGreaterThanOrEqual(
-        Number(node.fontSize)
+  it('hangs each label under its symbol, centred, with the file’s box kept', () => {
+    for (const [event, label] of [
+      [start, labels[0]],
+      [end, labels[1]],
+    ]) {
+      const symbol = boxOf(event);
+      const under = bpmnLabelBoxUnder(
+        symbol.x + symbol.w / 2,
+        symbol.y + symbol.h
+      );
+      expect(label.xywh).toBe(
+        JSON.stringify([under.x, under.y, BPMN_LABEL_W, BPMN_LABEL_H])
       );
     }
   });
 
-  it('asks for type that shrinks with the symbol, never under the floor', () => {
-    const [start, task, end] = nodes.map(node => Number(node.fontSize));
-
-    expect(task).toBeLessThan(INNER_FONT_SIZE);
-    expect(start).toBeLessThanOrEqual(task);
-    expect(start).toBe(end);
-    for (const size of [start, task, end]) {
-      expect(size).toBeGreaterThanOrEqual(LABEL_MIN_FONT_SIZE);
+  it('fits nothing on a bare event: it has no text to fit', () => {
+    for (const event of [start, end]) {
+      expect(event.textFitMode).toBe(TextFitMode.Overflow);
+      expect(event.padding).toBeUndefined();
     }
+  });
+
+  it('gives the task’s label a line box inside the shape that carries it', () => {
+    const box = boxOf(task);
+    const line = lineBox(task, box.w, box.h);
+
+    expect(task.textFitMode).toBe(TextFitMode.Contained);
+    expect(line.w).toBeGreaterThan(0);
+    expect(line.h).toBeGreaterThan(0);
+    // …and a line box the label is actually inside: at the fitted size, the
+    // shape renderer's `Contained` pass has room to shrink into.
+    expect(line.w).toBeGreaterThanOrEqual(Number(task.fontSize));
+  });
+
+  it('fits a bpmn.io task against the reference box, not the drawn one', () => {
+    // The reason `ACTIVITY_FIT_REF` exists: the palette's task grew to 180×108
+    // and its type did not, so a 100×80 task still reads at 15 units. Fitted
+    // against the drawn box it would fall to the 10-unit floor.
+    expect(ACTIVITY_FIT_REF).toEqual({ w: 120, h: 72 });
+    expect(task.fontSize).toBe(15);
+    expect(Number(task.fontSize)).toBeLessThan(INNER_FONT_SIZE);
+    expect(Number(task.fontSize)).toBeGreaterThan(LABEL_MIN_FONT_SIZE);
   });
 
   it('keeps the geometry the file drew, to the unit', () => {

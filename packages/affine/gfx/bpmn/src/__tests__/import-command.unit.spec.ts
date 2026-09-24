@@ -85,6 +85,25 @@ class StubSurface {
         target: { value: props.target, writable: true, enumerable: true },
       });
       this.models.set(id, connector);
+    } else if (props.type === 'group') {
+      // A group has no `xywh`: its bound is the union of what it holds, as the
+      // real `GroupElementModel` computes it. Defaulting it to the origin would
+      // reintroduce, through the gravitating label's group, the very
+      // stretched-to-the-origin fit the spec below keeps fixed.
+      const children = Object.keys(
+        (props.children as Record<string, unknown> | undefined) ?? {}
+      )
+        .map(
+          child =>
+            (this.models.get(child) as { elementBound?: Bound } | undefined)
+              ?.elementBound
+        )
+        .filter((box): box is Bound => box !== undefined);
+      this.models.set(id, {
+        ...props,
+        id,
+        elementBound: children.reduce((all, box) => all.unite(box)),
+      });
     } else {
       this.models.set(id, { ...props, id, elementBound: bound });
     }

@@ -154,7 +154,10 @@ import { BPMN_ROLE, BPMN_ROLES } from './roles.js';
  *   not a bound that failed and its sentence never reads like one;
  * - `label-presence` reads the subject's OWN `text`. A framework whose artefacts
  *   are named by a separate element beside them is asking a different question,
- *   and this family cannot answer it. BPMN names its steps in place, so it can.
+ *   and this family cannot answer it. BPMN names its ACTIVITIES in place, so it
+ *   can ask it of them; since R38 its events, gateways and data shapes are
+ *   named by a grouped `bpmn:label` instead, and are not asked (see
+ *   {@link unlabeledStep}).
  */
 
 /**
@@ -1541,24 +1544,37 @@ const singleBlankStart: ValidationRule = {
  * **`audit`**, because an unnamed step is a diagram that is not done rather than
  * a diagram that is wrong, and the panel is where "not done" belongs.
  *
- * Written on `bpmn:flow-object`: an unnamed gateway is worse than an unnamed
- * task, since the whole content of a decision is the question it asks.
+ * Written on `bpmn:activity`, and only there. The `label-presence` family
+ * reads the subject's OWN `text`, and since R38 (`docs/adr/0029`) only an
+ * activity keeps its name there: an event, a gateway or a data shape is named
+ * by a free `bpmn:label` text grouped with it, which the family cannot see
+ * (`packages/affine/blocks/surface/src/extensions/validation.ts`, the
+ * label-presence evaluator). Left on `bpmn:flow-object`, the rule would report
+ * every NAMED event and gateway as unnamed.
  *
- * The `label-presence` family reads the subject's OWN `text`, which is where
- * BPMN puts the name of a step — so this rule can be asked at all.
+ * Losing them costs little: BPMN practice commonly leaves an event or a
+ * converging gateway unnamed, while an activity is a box whose whole content is
+ * its name — an empty one says nothing at all. The rule id is kept (ids are
+ * forever); it was shipped as "step", and an activity is the step par
+ * excellence.
+ *
+ * ponytail: the ceiling is "a gateway that asks no question is not reported".
+ * The upgrade path is a label-presence mode that also reads the `labelRole`
+ * member of the subject's group, the way `readName` does for the reading
+ * panel — an engine change, not a pack one.
  */
 const unlabeledStep: ValidationRule = {
   id: 'bpmn.unlabeled-step',
   framework: 'bpmn',
   family: 'label-presence',
   severity: 'audit',
-  appliesTo: BPMN_ROLE.flowObject,
+  appliesTo: BPMN_ROLE.activity,
   roles: BPMN_ROLES,
   messageKey: 'com.labre.bpmn.validation.unlabeled-step',
   messageFallback: 'This step has no name.',
   suggestionKey: 'com.labre.bpmn.validation.unlabeled-step.suggestion',
   suggestionFallback:
-    'Name it in a verb phrase a reader outside the room would understand — "Check the credit limit" rather than "Step 3". An unnamed gateway is worse still: the whole content of a decision is the question it asks.',
+    'Name it in a verb phrase a reader outside the room would understand — "Check the credit limit" rather than "Step 3".',
   version: 1,
   // A name is nowhere required by the specification: an unnamed step is a
   // diagram that is not done, never one that is wrong.

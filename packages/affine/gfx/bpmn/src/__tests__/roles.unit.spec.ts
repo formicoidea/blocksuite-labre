@@ -34,8 +34,9 @@ const FLOW_OBJECT_FAMILIES = [
 
 describe('BPMN role vocabulary', () => {
   it('declares the four families, their leaves, the pool and the three flows', () => {
-    // 23 node roles (22 + the flow-object umbrella) + 3 edges.
-    expect(Object.keys(BPMN_ROLES)).toHaveLength(26);
+    // 23 node roles (22 + the flow-object umbrella) + 3 edges + the
+    // gravitating label (R38).
+    expect(Object.keys(BPMN_ROLES)).toHaveLength(27);
     for (const id of [
       ...FAMILIES,
       BPMN_ROLE.flowObject,

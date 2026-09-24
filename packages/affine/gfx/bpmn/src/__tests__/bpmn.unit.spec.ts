@@ -1,3 +1,4 @@
+import { recordAction } from '@labre/affine-block-surface';
 import {
   type BpmnNodeKind,
   ConnectorMode,
@@ -7,6 +8,7 @@ import {
   TextVerticalAlign,
 } from '@labre/affine-model';
 import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
+import { Bound } from '@labre/global/gfx';
 import { groupCommandsByCategory } from '@labre/affine-widget-edgeless-toolbar';
 import {
   type BlockStdScope,
@@ -17,11 +19,13 @@ import {
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { describe, expect, it } from 'vitest';
 
-import { NODE_PRESETS } from '../presets';
+import { createBpmnNode } from '../actions';
+import { bpmnLabelBoxFor, NODE_PRESETS } from '../presets';
 import { bpmnCommands } from '../commands';
 import {
   ASSOCIATION_STROKE,
   ASSOCIATION_WIDTH,
+  bpmnLabelMode,
   CALL_ACTIVITY_WIDTH,
   EVENT_END,
   EVENT_START,
@@ -198,9 +202,14 @@ describe('bpmn style-C constants', () => {
     // Quieter than the flow objects it is drawn around.
     expect(group.stroke).toBe(GROUP_STROKE);
     expect(GROUP_STROKE).not.toBe(NEUTRAL_STROKE);
-    // Born big enough to have something in it — it is a lasso, not a node.
-    expect(NODE_SIZE.group.w).toBeGreaterThan(NODE_SIZE.task.w * 2);
-    expect(NODE_SIZE.group.h).toBeGreaterThan(NODE_SIZE.task.h * 2);
+    // Born big enough to have something in it — it is a lasso, not a node:
+    // bigger than every other artefact on both axes, the grown 180×108
+    // activities included.
+    for (const kind of KINDS) {
+      if (kind === 'group') continue;
+      expect(NODE_SIZE.group.w, kind).toBeGreaterThan(NODE_SIZE[kind].w);
+      expect(NODE_SIZE.group.h, kind).toBeGreaterThan(NODE_SIZE[kind].h);
+    }
     // Its label names a REGION, so it sits in the corner rather than floating
     // over whatever the group encloses.
     expect(group.textAlign).toBe(TextAlign.Left);
@@ -223,22 +232,28 @@ describe('bpmn style-C constants', () => {
   it('hands the three artifact silhouettes to the glyph, and nothing else', () => {
     const glyphBodied = KINDS.filter(k => NODE_PRESETS[k].glyphBody);
     expect(glyphBodied).toEqual(['dataObject', 'dataStore', 'textAnnotation']);
-    // A page is portrait, a store is square, an annotation is a wide strip.
+    // A page is portrait, a store is square, an annotation is a wide strip —
+    // wider than it is tall, and shorter than a task: it holds a sentence,
+    // not a verb phrase.
     expect(NODE_SIZE.dataObject.h).toBeGreaterThan(NODE_SIZE.dataObject.w);
     expect(NODE_SIZE.dataStore.w).toBe(NODE_SIZE.dataStore.h);
-    expect(NODE_SIZE.textAnnotation.w).toBeGreaterThan(NODE_SIZE.task.w);
+    expect(NODE_SIZE.textAnnotation.w).toBeGreaterThan(
+      NODE_SIZE.textAnnotation.h * 2
+    );
+    expect(NODE_SIZE.textAnnotation.h).toBeLessThan(NODE_SIZE.task.h);
   });
 
-  it('labels the activities and the annotation, and nothing else', () => {
-    // A rectangle with nothing written in it says nothing at all; an event's
-    // meaning is its glyph, and BPMN puts its name outside the symbol anyway.
-    for (const kind of ACTIVITIES) {
+  it('seeds every kind, inscribed inside the shape or gravitating under it', () => {
+    // A symbol whose name is born empty is a text nobody can find to click
+    // (PO, 24/09/2026), so every kind carries a seed. Where it goes is R38's
+    // call: activities, the annotation and the group wear it INSIDE; events,
+    // gateways and the data shapes wear it as a grouped label under the glyph.
+    for (const kind of KINDS) {
       expect(NODE_LABEL[kind], kind).toBeTruthy();
     }
     expect(NODE_LABEL.task).toBe('Task');
-    expect(NODE_LABEL.textAnnotation).toBeTruthy();
-    const labelled = KINDS.filter(k => NODE_LABEL[k] !== '');
-    expect(labelled.sort()).toEqual(
+    const inscribed = KINDS.filter(k => bpmnLabelMode(k) === 'inscribed');
+    expect(inscribed.sort()).toEqual(
       [...ACTIVITIES, 'textAnnotation', 'group'].sort()
     );
   });
@@ -734,4 +749,66 @@ describe('bpmn templates carry the toolbox roles', () => {
     const to = message!.target as { id: string };
     expect(topOf(from.id)).toBeLessThan(topOf(to.id));
   });
+});
+
+/**
+ * Creating a node from the palette, per label mode (R38).
+ *
+ * Why it exists: before R38 every kind was one element and the name, when
+ * there was one, was the shape's inner text. An event, a gateway or a data
+ * shape now arrives as a GROUP of the symbol and a `bpmn:label` text centred
+ * under it — the Wardley `createWardleyNode` pattern — and an inscribed kind
+ * must come out exactly as before. The recording fake really runs
+ * `createGroupCommand`, so the group asserted here is the one the command
+ * builds, not a second definition.
+ */
+describe('createBpmnNode, inscribed or gravitating', () => {
+  const create = (kind: BpmnNodeKind) =>
+    recordAction(std => createBpmnNode(std, kind)).records;
+
+  it.each(KINDS.filter(k => bpmnLabelMode(k) === 'external'))(
+    'groups a %s with its seeded label, centred under the symbol',
+    kind => {
+      const records = create(kind);
+      const nodes = records.filter(r => r['type'] === 'bpmnNode');
+      const labels = records.filter(r => r['type'] === 'text');
+      const groups = records.filter(r => r['type'] === 'group');
+      expect(nodes).toHaveLength(1);
+      expect(labels).toHaveLength(1);
+      expect(groups).toHaveLength(1);
+
+      const [node] = nodes;
+      const [label] = labels;
+      // The symbol carries no inner text: its name is the label's.
+      expect(node['text']).toBeUndefined();
+      expect(label['role']).toBe(BPMN_ROLE.label);
+      expect(label['text']).toBe(NODE_LABEL[kind]);
+
+      // Centred on the symbol's vertical axis, just under its bottom edge —
+      // the box `bpmnLabelBoxFor` places, around the fake's (0, 0) centre.
+      const symbol = Bound.deserialize(node['xywh'] as string);
+      const box = Bound.deserialize(label['xywh'] as string);
+      expect(box.center[0]).toBeCloseTo(symbol.center[0]);
+      expect(box.y).toBeGreaterThan(symbol.y + symbol.h);
+      expect(box.y).toBe(
+        bpmnLabelBoxFor(kind, symbol.center[0], symbol.center[1]).y
+      );
+
+      // One group of exactly the two, so they move as one artefact.
+      expect(groups[0]['children']).toEqual({
+        [node['id'] as string]: true,
+        [label['id'] as string]: true,
+      });
+    }
+  );
+
+  it.each(KINDS.filter(k => bpmnLabelMode(k) === 'inscribed'))(
+    'draws a %s as one element carrying its name inside, as before',
+    kind => {
+      const records = create(kind);
+      expect(records).toHaveLength(1);
+      expect(records[0]['type']).toBe('bpmnNode');
+      expect(records[0]['text']).toBe(NODE_LABEL[kind]);
+    }
+  );
 });

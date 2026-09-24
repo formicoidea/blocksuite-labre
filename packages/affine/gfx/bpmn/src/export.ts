@@ -911,6 +911,18 @@ export interface BpmnExportBoard {
   nodes: readonly BpmnNodeElementModel[];
   connectors: readonly ConnectorElementModel[];
   /**
+   * A node's gravitating name, keyed by the node's surface id: the text of the
+   * `bpmn:label` that shares its native group (R38, `bpmnLabelMode`).
+   *
+   * Resolved by whoever picked the board (`bpmnBoardFrom`), because group
+   * membership is a fact about the surface and this writer sees none of it.
+   * GROUP membership is the binding and never geometry: a label dragged away
+   * from its event is still its name, and a text that happens to sit under an
+   * event is not. A node with no entry falls back to its own `text` — every
+   * inscribed kind, and an event drawn before its name gravitated.
+   */
+  labels?: ReadonlyMap<string, string>;
+  /**
    * How many things drawn INSIDE a pool the picking left behind because they
    * carry no BPMN role — a free shape, a text, an artefact drawn before roles
    * existed (2026-08-26).
@@ -1445,7 +1457,9 @@ export function exportBpmnXmlWithWarnings(
           ? COLLABORATION
           : orphanProcessIndex();
 
-    const name = labelOf(model.text);
+    // The grouped label first, then the shape's own text: a legacy event kept
+    // its inner text and must still export the same name.
+    const name = labelOf(board.labels?.get(model.id)) || labelOf(model.text);
     const node: PlannedNode = {
       model,
       mapping,

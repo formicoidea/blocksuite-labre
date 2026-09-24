@@ -40,6 +40,7 @@ import {
 import {
   COMMAND_USAGE_KEY,
   ToolbarContext,
+  toolbarModuleKey,
   ToolbarRegistryIdentifier,
 } from '@labre/affine/shared/services';
 import {
@@ -760,14 +761,25 @@ describe('the BPMN XML export, end to end', () => {
     const pool = surface.getElementById(poolId) as BpmnPoolElementModel;
 
     // Two artefacts inside the pool, one per lane, each with a REAL label —
-    // `text` is a `Y.Text`, which is the thing a hand-made stub never is.
+    // `text` is a `Y.Text`, which is the thing a hand-made stub never is. The
+    // event wears its name the way the palette draws it (R38): a bare node, a
+    // `bpmn:label` text under it, and a native group binding the two.
     const startId = surface.addElement({
       type: 'bpmnNode',
       kind: 'startEvent',
       role: BPMN_ROLE_OF_KIND.startEvent,
       shapeType: 'ellipse',
-      text: 'Order received',
       xywh: '[100,60,56,56]',
+    });
+    const startLabelId = surface.addElement({
+      type: 'text',
+      role: BPMN_ROLE.label,
+      text: 'Order received',
+      xywh: '[68,122,120,26]',
+    });
+    const startGroupId = surface.addElement({
+      type: 'group',
+      children: { [startId]: true, [startLabelId]: true },
     });
     const taskId = surface.addElement({
       type: 'bpmnNode',
@@ -803,6 +815,11 @@ describe('the BPMN XML export, end to end', () => {
     expect(board.pools).toHaveLength(1);
     expect(board.nodes).toHaveLength(2);
     expect(board.connectors).toHaveLength(1);
+    // The label is read through the GROUP, off the real models.
+    expect(
+      (surface.getElementById(startGroupId) as GroupElementModel).childIds
+    ).toContain(startLabelId);
+    expect(board.labels?.get(startId)).toBe('Order received');
 
     const doc = parse(exportBpmnXml(board, { name: 'Order to cash' }));
 
@@ -813,6 +830,8 @@ describe('the BPMN XML export, end to end', () => {
     expect(byName(doc, 'startEvent')[0].getAttribute('name')).toBe(
       'Order received'
     );
+    // Labre writes no `BPMNLabel` of its own: a reader places the name.
+    expect(byName(doc, 'BPMNLabel')).toHaveLength(0);
 
     // The participant is the pool, and the lanes are the pool's.
     expect(byName(doc, 'participant')[0].getAttribute('name')).toBe('Sales');
@@ -1035,13 +1054,23 @@ describe('the BPMN XML import, end to end', () => {
         { id: 'back', name: 'Back office', size: 3 },
       ],
     });
+    // The event in the palette's form (R38): bare node, grouped label.
     const startId = surface.addElement({
       type: 'bpmnNode',
       kind: 'startEvent',
       role: BPMN_ROLE_OF_KIND.startEvent,
       shapeType: 'ellipse',
-      text: 'Order received',
       xywh: '[100,40,56,56]',
+    });
+    const startLabelId = surface.addElement({
+      type: 'text',
+      role: BPMN_ROLE.label,
+      text: 'Order received',
+      xywh: '[68,102,120,26]',
+    });
+    const startGroupId = surface.addElement({
+      type: 'group',
+      children: { [startId]: true, [startLabelId]: true },
     });
     const taskId = surface.addElement({
       type: 'bpmnNode',
@@ -1061,10 +1090,18 @@ describe('the BPMN XML import, end to end', () => {
     await wait(200);
 
     const first = exportBpmnXml(bpmnBoardOf(edgeless.std), { name: 'Round' });
+    expect(first).toContain('name="Order received"');
 
     // Everything the drawing was made of goes, and the FILE comes back as a
     // board — which is the import, run against a live store.
-    for (const id of [flowId, poolId, startId, taskId]) {
+    for (const id of [
+      flowId,
+      startGroupId,
+      poolId,
+      startId,
+      startLabelId,
+      taskId,
+    ]) {
       surface.deleteElement(id);
     }
     await wait();
@@ -1078,6 +1115,19 @@ describe('the BPMN XML import, end to end', () => {
     expect(board.pools).toHaveLength(1);
     expect(board.nodes).toHaveLength(2);
     expect(board.connectors).toHaveLength(1);
+    // The event came back bare, its name on a grouped label: the group's
+    // children were rewritten from the reader's provisional names to the ids
+    // the store minted, which is what lets the export read the name back.
+    const start = board.nodes.find(node => node.kind === 'startEvent')!;
+    expect(String(start.text ?? '')).toBe('');
+    expect(board.labels?.get(start.id)).toBe('Order received');
+    const group = start.group as GroupElementModel | null;
+    expect(group).toBeInstanceOf(GroupElementModel);
+    const label = group!.childElements.find(
+      child => child instanceof TextElementModel
+    ) as TextElementModel;
+    expect(label.role).toBe(BPMN_ROLE.label);
+    expect(label.text.toString()).toBe('Order received');
     // The payload went into the Y.Map through `addElement` and came back off a
     // real accessor, which is what makes the id below the FILE's rather than a
     // fresh one (`docs/adr/0012`, D2 and D3).
@@ -1151,6 +1201,23 @@ describe('the BPMN XML import, end to end', () => {
     expect(board.pools).toHaveLength(1);
     expect(board.nodes.map(node => node.kind)).toEqual(['startEvent', 'task']);
     expect(board.connectors).toHaveLength(1);
+    // The event's name gravitated (R38): a `bpmn:label` text centred under the
+    // 36-unit circle the file drew, grouped with it; the task kept its own.
+    const start = board.nodes[0];
+    expect(board.labels?.get(start.id)).toBe('Order received');
+    const group = start.group as GroupElementModel;
+    expect(group).toBeInstanceOf(GroupElementModel);
+    expect(created).toContain(group.id);
+    const label = group.childElements.find(
+      child => child instanceof TextElementModel
+    ) as TextElementModel;
+    expect(label.role).toBe(BPMN_ROLE.label);
+    expect(label.elementBound.center[0]).toBeCloseTo(
+      start.elementBound.center[0],
+      5
+    );
+    expect(label.elementBound.y).toBeGreaterThan(start.elementBound.maxY);
+    expect(String(board.nodes[1].text)).toBe('Check the stock');
 
     // The endpoints are SURFACE ids — the file said `Start_1` and `Task_1`, and
     // what the connector manager has to be able to resolve is what the store
@@ -1307,15 +1374,35 @@ describe('morphing a BPMN node into a nearby kind', () => {
 
   test('the entry is registered on the node flavour', () => {
     const registry = edgeless.std.get(ToolbarRegistryIdentifier);
-    // `affine:surface:bpmnNode` was a free slot: the toolbar merges by flavour
-    // KEY, so the shape module (bound to `affine:surface:shape`) never reaches
-    // a bpmn node however much of `ShapeElementModel` the class inherits — and
-    // nothing else had claimed this key.
-    const config = registry.getModuleBy('affine:surface:bpmnNode');
-    expect(config).toBeTruthy();
+    // The BARE `affine:surface:bpmnNode` key is the node's own shape-derived
+    // toolbar (colour, text), always on; the morph is an ADDITION to that row,
+    // registered under its owner so the two cannot claim one DI variant. The
+    // bare key must therefore NOT be where the morph is looked for.
+    const own = registry.getModuleBy('affine:surface:bpmnNode');
+    expect(own).toBeTruthy();
+    expect(own?.actions.map(action => action.id)).not.toContain('e.morph.bpmn');
+
+    const row = registry.modulesFor('affine:surface:bpmnNode');
+    const morph = row.find(
+      module =>
+        module.id.variant ===
+        toolbarModuleKey('affine:surface:bpmnNode', 'bpmn-morph')
+    );
     // Scoped by the declaring framework: one flavour may carry several morph
     // modules, and `renderToolbar` merges a row's actions BY ID.
-    expect(config?.actions.map(action => action.id)).toContain('e.morph.bpmn');
+    expect(morph?.config.actions.map(action => action.id)).toContain(
+      'e.morph.bpmn'
+    );
+
+    // A named event is a group (R38): its morph rides the group's row.
+    const groupRow = registry.modulesFor('custom:affine:surface:group');
+    expect(
+      groupRow.some(
+        module =>
+          module.id.variant ===
+          toolbarModuleKey('custom:affine:surface:group', 'bpmn-morph')
+      )
+    ).toBe(true);
   });
 
   test('a task becomes a user task and keeps its box, its words and its wire', async () => {

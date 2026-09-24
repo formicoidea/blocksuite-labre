@@ -834,6 +834,38 @@ describe('labels that fight the format', () => {
   });
 });
 
+describe('a gravitating label (R38)', () => {
+  const pool = () => fakePool('p', [0, 0, POOL_W, POOL_H], { name: 'Sales' });
+
+  it('names the node after its grouped label, before its own text', () => {
+    const start = fakeNode('s', 'startEvent', [BAND + 20, 40, 56, 56], 'Old');
+    const xml = exportBpmnXml(
+      board({
+        pools: [pool()],
+        nodes: [start],
+        labels: new Map([['s', 'New']]),
+      })
+    );
+    expect(xml).toContain('<bpmn:startEvent id="s" name="New"');
+    expect(xml).not.toContain('Old');
+  });
+
+  it('falls back to the node’s own text when no label names it', () => {
+    // A legacy event, and every inscribed kind.
+    const start = fakeNode('s', 'startEvent', [BAND + 20, 40, 56, 56], 'Old');
+    const blank = fakeNode('t', 'task', [BAND + 100, 40, 180, 108], 'Work');
+    const xml = exportBpmnXml(
+      board({
+        pools: [pool()],
+        nodes: [start, blank],
+        labels: new Map([['t', '  ']]),
+      })
+    );
+    expect(xml).toContain('<bpmn:startEvent id="s" name="Old"');
+    expect(xml).toContain('<bpmn:task id="t" name="Work"');
+  });
+});
+
 describe('ids', () => {
   it('turns a surface id into a valid NCName', () => {
     // `xsd:ID` means NCName: no leading digit, no colon, no space. Surface ids

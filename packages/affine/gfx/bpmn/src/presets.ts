@@ -12,6 +12,10 @@ import {
 import { Bound } from '@labre/global/gfx';
 
 import {
+  ACTIVITY_FIT_REF,
+  BPMN_LABEL_GAP,
+  BPMN_LABEL_H,
+  BPMN_LABEL_W,
   CALL_ACTIVITY_WIDTH,
   END_WIDTH,
   EVENT_END,
@@ -19,6 +23,8 @@ import {
   GROUP_RADIUS,
   GROUP_STROKE,
   INNER_FONT_SIZE,
+  isBpmnActivityKind,
+  LABEL_FONT_SIZE,
   LABEL_INSET_RATIO,
   LABEL_MIN_FONT_SIZE,
   NEUTRAL_STROKE,
@@ -237,7 +243,9 @@ const insetOf = (extent: number, native: number): number =>
  *
  * Every value the creation builder writes is calibrated against
  * {@link NODE_SIZE}: an 18-unit font and the shape's native 20-unit horizontal
- * inset are comfortable in a 120-unit task, which is what the palette draws.
+ * inset are comfortable in a 120-unit task — the box the palette drew when
+ * this was written, kept as the activities' fit reference
+ * (`ACTIVITY_FIT_REF`) now that it draws 180×108.
  * A file draws to its author's scale, and bpmn.io's normative sizes — the ones
  * nearly every `.bpmn` in the wild carries — are a 100×80 task and a 36-unit
  * event. In a 100-unit task the native inset leaves 60 units of line, which is
@@ -271,7 +279,9 @@ export function bpmnLabelFit(
   w: number,
   h: number
 ): BpmnLabelFit {
-  const size = NODE_SIZE[kind];
+  // An activity is fitted against the box its type was calibrated in, not the
+  // box the palette now draws (see `ACTIVITY_FIT_REF`).
+  const size = isBpmnActivityKind(kind) ? ACTIVITY_FIT_REF : NODE_SIZE[kind];
   const scale = Math.min(1, ratioOf(w, size.w), ratioOf(h, size.h));
   return {
     fontSize: Math.max(
@@ -362,6 +372,58 @@ export function bpmnNodeProps(
     // the Y.Map.
     ...(fit ? { padding: fit.padding } : {}),
     xywh: box.xywh,
+  };
+}
+
+/* ── The gravitating label (R38) ───────────────────────────────────────── */
+
+/**
+ * Where an external label's box goes for a symbol centred on `(cx, cy)`:
+ * centred on the symbol's vertical axis, {@link BPMN_LABEL_GAP} under its
+ * bottom edge — the placement BPMN's own cartography uses for an event's, a
+ * gateway's or a data shape's name.
+ *
+ * Reads the kind's canonical size, so the creation gesture and a template scene
+ * agree; an importer that keeps a file's own box passes that box's bottom
+ * through {@link bpmnLabelBoxUnder} instead.
+ */
+export function bpmnLabelBoxFor(
+  kind: BpmnNodeKind,
+  cx: number,
+  cy: number
+): { x: number; y: number } {
+  return bpmnLabelBoxUnder(cx, cy + NODE_SIZE[kind].h / 2);
+}
+
+/** The label box for a symbol whose vertical axis is `cx` and bottom edge `bottom`. */
+export function bpmnLabelBoxUnder(
+  cx: number,
+  bottom: number
+): { x: number; y: number } {
+  return { x: cx - BPMN_LABEL_W / 2, y: bottom + BPMN_LABEL_GAP };
+}
+
+/**
+ * A gravitating label, as props — a free text element in the pack's own type,
+ * centred, carrying the role that makes it a NAME rather than a note.
+ *
+ * Mirrors `wardleyLabelProps`; one builder so the palette, the scenes and the
+ * importer write the same element.
+ */
+export function bpmnLabelProps(
+  text: string,
+  x: number,
+  y: number
+): Record<string, unknown> & { type: string } {
+  return {
+    type: 'text',
+    text,
+    role: BPMN_ROLE.label,
+    fontFamily: FontFamily.Inter,
+    fontSize: LABEL_FONT_SIZE,
+    color: NEUTRAL_STROKE,
+    textAlign: TextAlign.Center,
+    xywh: new Bound(x, y, BPMN_LABEL_W, BPMN_LABEL_H).serialize(),
   };
 }
 

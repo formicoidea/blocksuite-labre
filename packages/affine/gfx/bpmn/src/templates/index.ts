@@ -2,6 +2,7 @@ import {
   makeTemplateSnapshot,
   type SurfaceElementsJSON,
   surfaceText,
+  surfaceYMap,
   type Template,
   type TemplateCategory,
   templateFromCommand,
@@ -32,7 +33,12 @@ import {
   SEQUENCE_STROKE,
   SEQUENCE_WIDTH,
 } from '../consts';
-import { bpmnNodeProps, bpmnPoolProps } from '../presets';
+import {
+  bpmnLabelBoxFor,
+  bpmnLabelProps,
+  bpmnNodeProps,
+  bpmnPoolProps,
+} from '../presets';
 import { BPMN_ROLE } from '../roles';
 
 /**
@@ -57,6 +63,22 @@ export const SIMPLE_PROCESS_SEED = {
   reject: {
     key: 'com.labre.bpmn.example.simple-process.reject',
     fallback: 'Reject',
+  },
+  // The three names the scene's events and gateway carry since they gravitate
+  // (R38): a worked example names its punctual symbols the way BPMN practice
+  // does — a state for an event, a question for a gateway — rather than
+  // repeating the artefact's kind under it.
+  requestReceived: {
+    key: 'com.labre.bpmn.example.simple-process.request-received',
+    fallback: 'Request received',
+  },
+  approved: {
+    key: 'com.labre.bpmn.example.simple-process.approved',
+    fallback: 'Approved?',
+  },
+  requestHandled: {
+    key: 'com.labre.bpmn.example.simple-process.request-handled',
+    fallback: 'Request handled',
   },
 } as const;
 
@@ -98,6 +120,15 @@ export const MESSAGE_EXCHANGE_SEED = {
   confirmOrder: {
     key: 'com.labre.bpmn.example.message-exchange.confirm-order',
     fallback: 'Confirm order',
+  },
+  // The customer's two events, named since they gravitate (R38).
+  orderNeeded: {
+    key: 'com.labre.bpmn.example.message-exchange.order-needed',
+    fallback: 'Order needed',
+  },
+  orderPlaced: {
+    key: 'com.labre.bpmn.example.message-exchange.order-placed',
+    fallback: 'Order placed',
   },
 } as const;
 
@@ -158,6 +189,37 @@ function node(kind: BpmnNodeKind, x: number, y: number, text?: string) {
     // A snapshot carries a serialized `Y.Text`, never a bare string.
     ...(text === undefined ? {} : { text: surfaceText(text) }),
   });
+}
+
+/**
+ * A scene node whose name GRAVITATES (R38, `bpmnLabelMode`): the symbol with no
+ * inner text, its label centred under it, and the native group that binds the
+ * two — the three elements `createBpmnNode` draws for the same kind, and the
+ * pattern Wardley's shipped maps use (`pair()` in `gfx/wardley`).
+ *
+ * Spread into a scene: `<id>` is the symbol, so connectors keep binding to it,
+ * `<id>Label` its name and `<id>Group` the pair.
+ */
+function named(
+  id: string,
+  kind: BpmnNodeKind,
+  x: number,
+  y: number,
+  text: string
+): SurfaceElementsJSON {
+  const { w, h } = NODE_SIZE[kind];
+  const at = bpmnLabelBoxFor(kind, x + w / 2, y + h / 2);
+  const label = `${id}Label`;
+  return {
+    [id]: node(kind, x, y),
+    // A snapshot carries a serialized `Y.Text`, where `addElement` takes a
+    // plain string.
+    [label]: { ...bpmnLabelProps(text, at.x, at.y), text: surfaceText(text) },
+    [`${id}Group`]: {
+      type: 'group',
+      children: surfaceYMap({ [id]: true, [label]: true }),
+    },
+  };
 }
 
 /** A scene participant, from the same description the toolbox draws from. */
@@ -334,20 +396,47 @@ const scene = (
   localize: std => makeTemplateSnapshot(build(std), name),
 });
 
+/**
+ * Start, a task, an exclusive split into two tasks, and the end they both reach.
+ *
+ * Laid out for the 180×108 activity (R38) on one horizontal axis at y = 160:
+ * the two branches sit 40 units apart with 32 units of margin to the pool's
+ * edges, and every symbol's gravitating label lands inside the pool as well —
+ * `bpmnPoolOf` judges whole containment, and a name hanging out of its
+ * participant would read as belonging to no one.
+ */
 function process(std?: BlockStdScope): SurfaceElementsJSON {
   return {
-    pool: pool(0, 0, 640, 200, seedText(std, SIMPLE_PROCESS_SEED.poolName)),
-    start: node('startEvent', 40, 72),
+    pool: pool(0, 0, 840, 320, seedText(std, SIMPLE_PROCESS_SEED.poolName)),
+    ...named(
+      'start',
+      'startEvent',
+      72,
+      132,
+      seedText(std, SIMPLE_PROCESS_SEED.requestReceived)
+    ),
     task1: node(
       'task',
-      116,
-      64,
+      168,
+      106,
       seedText(std, SIMPLE_PROCESS_SEED.submitRequest)
     ),
-    gw: node('gatewayExclusive', 272, 64),
-    task2: node('task', 376, 20, seedText(std, SIMPLE_PROCESS_SEED.fulfil)),
-    task3: node('task', 376, 124, seedText(std, SIMPLE_PROCESS_SEED.reject)),
-    end: node('endEvent', 556, 72),
+    ...named(
+      'gw',
+      'gatewayExclusive',
+      388,
+      124,
+      seedText(std, SIMPLE_PROCESS_SEED.approved)
+    ),
+    task2: node('task', 500, 32, seedText(std, SIMPLE_PROCESS_SEED.fulfil)),
+    task3: node('task', 500, 180, seedText(std, SIMPLE_PROCESS_SEED.reject)),
+    ...named(
+      'end',
+      'endEvent',
+      720,
+      132,
+      seedText(std, SIMPLE_PROCESS_SEED.requestHandled)
+    ),
     c1: seq('start', 'task1'),
     c2: seq('task1', 'gw'),
     c3: seq('gw', 'task2'),
@@ -367,7 +456,9 @@ function process(std?: BlockStdScope): SurfaceElementsJSON {
  * way to show that — the solid arrow stays home, the dashed one crosses.
  *
  * Stacked vertically with a 40-unit gutter, so the message flow is a straight
- * orthogonal drop between two tasks that already line up.
+ * orthogonal drop between two tasks that already line up. Each 200-high pool
+ * centres its 108-high activity (R38), and the customer's two events keep
+ * their gravitating names inside the pool.
  *
  * ## The end event, which is not decoration
  *
@@ -395,18 +486,30 @@ function messageExchange(std?: BlockStdScope): SurfaceElementsJSON {
       200,
       seedText(std, MESSAGE_EXCHANGE_SEED.supplier)
     ),
-    start: node('startEvent', 40, 72),
+    ...named(
+      'start',
+      'startEvent',
+      72,
+      72,
+      seedText(std, MESSAGE_EXCHANGE_SEED.orderNeeded)
+    ),
     ask: node(
       'taskUser',
-      140,
-      64,
+      168,
+      46,
       seedText(std, MESSAGE_EXCHANGE_SEED.placeOrder)
     ),
-    done: node('endEvent', 320, 72),
+    ...named(
+      'done',
+      'endEvent',
+      388,
+      72,
+      seedText(std, MESSAGE_EXCHANGE_SEED.orderPlaced)
+    ),
     answer: node(
       'taskService',
-      140,
-      304,
+      168,
+      286,
       seedText(std, MESSAGE_EXCHANGE_SEED.confirmOrder)
     ),
     // Inside the first participant: what happens, and in what order.

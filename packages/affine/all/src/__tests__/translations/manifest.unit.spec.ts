@@ -308,8 +308,10 @@ describe('getTranslationKeyManifest', () => {
     pinned('com.labre.bpmn.seed.group', 'Group', 'seed');
     pinned('com.labre.edgy.seed.people', 'People', 'seed');
     pinned('com.labre.edgy.seed.activity', 'Activity', 'seed');
-    // A kind BPMN deliberately draws with no caption asks for no key.
-    expect(byKey.get('com.labre.bpmn.seed.startEvent')).toBeUndefined();
+    // Every BPMN kind is seeded since R38 — an event's seed lands in the
+    // gravitating label grouped under it rather than inside the ring.
+    pinned('com.labre.bpmn.seed.startEvent', 'Start event', 'seed');
+    pinned('com.labre.bpmn.seed.dataStore', 'Data store', 'seed');
     // UML's own: one key per kind the notation gives words to (23 of the 38),
     // plus the three compartment lines a fresh classifier carries.
     pinned('com.labre.uml.seed.class', 'Class', 'seed');
@@ -317,7 +319,7 @@ describe('getTranslationKeyManifest', () => {
     expect(
       manifest.filter(entry => entry.key.startsWith('com.labre.uml.seed.'))
     ).toHaveLength(26);
-    // …and a kind it draws as a MARK asks for none, for BPMN's reason above:
+    // …and a kind it draws as a MARK asks for none, because there is no word:
     // `UML_NAME_SEED.decision` is the empty string, so there is no word.
     expect(byKey.get('com.labre.uml.seed.decision')).toBeUndefined();
     // The C4 board's name reuses the board ROLE's key rather than minting a

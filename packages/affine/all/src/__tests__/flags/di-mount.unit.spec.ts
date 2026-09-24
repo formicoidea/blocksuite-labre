@@ -71,7 +71,7 @@ describe('the whole view layer mounts in one container', () => {
     expect(() => collide.setup(container)).toThrowError(/already exists/);
   });
 
-  test('the group row carries seven modules, from six owners', () => {
+  test('the group row carries eight modules, from seven owners', () => {
     const modules = toolbarModules(mount('edgeless'));
     const forGroup = [...modules.keys()].filter(
       variant => toolbarModuleFlavour(variant) === 'custom:affine:surface:group'
@@ -79,11 +79,12 @@ describe('the whole view layer mounts in one container', () => {
 
     // Wardley's qualification dropdown, under the bare flavour…
     expect(forGroup).toContain('custom:affine:surface:group');
-    // …and the five morphs, each under an owner-suffixed variant that cannot
-    // collide with it — nor with each other — while all six are merged into
+    // …and the six morphs, each under an owner-suffixed variant that cannot
+    // collide with it — nor with each other — while all seven are merged into
     // the same row. Every one of those frameworks builds its artefact as a
-    // native group, so six contributors on one flavour is the shipped
-    // configuration and not a hypothetical one.
+    // native group (BPMN's events, gateways and data shapes since R38: the
+    // symbol grouped with its gravitating label), so seven contributors on
+    // one flavour is the shipped configuration and not a hypothetical one.
     //
     // Note that MODULES and OWNERS have stopped matching: Wardley holds two of
     // these — the bare qualification dropdown and its own morph — because one
@@ -108,15 +109,18 @@ describe('the whole view layer mounts in one container', () => {
     expect(forGroup).toContain(
       toolbarModuleKey('custom:affine:surface:group', 'uml-morph')
     );
-    expect(forGroup).toHaveLength(6);
+    expect(forGroup).toContain(
+      toolbarModuleKey('custom:affine:surface:group', 'bpmn-morph')
+    );
+    expect(forGroup).toHaveLength(7);
     // The native group operations sit on the other group key, untouched — the
-    // seventh module, and the one a stored group needs whatever the flags say.
+    // eighth module, and the one a stored group needs whatever the flags say.
     expect([...modules.keys()]).toContain('affine:surface:group');
   });
 
   test('a flavour claimed only by contributors still has a row', () => {
     // `{wardley: false}` is a real configuration, and it leaves
-    // `custom:affine:surface:group` with NO bare module: only the four morphs
+    // `custom:affine:surface:group` with NO bare module: only the five morphs
     // of the OTHER frameworks. Wardley's own two go together — the flag owns
     // the qualification dropdown and the morph alike — which is why turning one
     // framework off is what empties the bare key rather than thinning the row.
@@ -131,14 +135,15 @@ describe('the whole view layer mounts in one container', () => {
     } as never);
     const flavour = 'custom:affine:surface:group';
 
-    // In `extensions/view.ts` registration order — event storming, then C4,
-    // then core domain, then UML — because that is what `modulesFor` returns and pinning
+    // In `extensions/view.ts` registration order — BPMN, event storming, then
+    // C4, then core domain, then UML — because that is what `modulesFor` returns and pinning
     // it costs nothing. It is not an order a user can observe: `renderToolbar`
     // merges these modules' actions BY ID and sorts on that, so the row reads
     // the same whichever framework registered first.
     expect(
       registry.modulesFor(flavour).map(module => module.id.variant)
     ).toEqual([
+      toolbarModuleKey(flavour, 'bpmn-morph'),
       toolbarModuleKey(flavour, 'ddd-event-storming-morph'),
       toolbarModuleKey(flavour, 'c4-morph'),
       toolbarModuleKey(flavour, 'ddd-core-domain-morph'),
@@ -162,6 +167,10 @@ describe('the whole view layer mounts in one container', () => {
     const wardleyMorph = toolbarModuleKey(
       'custom:affine:surface:group',
       'wardley-morph'
+    );
+    const bpmnMorph = toolbarModuleKey(
+      'custom:affine:surface:group',
+      'bpmn-morph'
     );
 
     const noC4 = toolbarModules(mount('edgeless', { c4: false }));
@@ -207,5 +216,26 @@ describe('the whole view layer mounts in one container', () => {
     expect([...noWardley.keys()]).toContain(esMorph);
     expect([...noWardley.keys()]).toContain(cdMorph);
     expect([...noWardley.keys()]).toContain('affine:surface:group');
+
+    // BPMN contributes to TWO rows: the group row (an event and its label)
+    // and the node row (a task, or a symbol selected inside its group), both
+    // under an owner — the bare `affine:surface:bpmnNode` key belongs to the
+    // always-on shape features, which a stored node needs to stay editable.
+    const bpmnNodeMorph = toolbarModuleKey(
+      'affine:surface:bpmnNode',
+      'bpmn-morph'
+    );
+    const withBpmn = [...toolbarModules(mount('edgeless')).keys()];
+    expect(withBpmn).toContain(bpmnMorph);
+    expect(withBpmn).toContain(bpmnNodeMorph);
+    expect(withBpmn).toContain('affine:surface:bpmnNode');
+    const noBpmn = [
+      ...toolbarModules(mount('edgeless', { bpmn: false })).keys(),
+    ];
+    expect(noBpmn).not.toContain(bpmnMorph);
+    expect(noBpmn).not.toContain(bpmnNodeMorph);
+    expect(noBpmn).toContain('affine:surface:bpmnNode');
+    expect(noBpmn).toContain(wardleyMorph);
+    expect(noBpmn).toContain(c4Morph);
   });
 });

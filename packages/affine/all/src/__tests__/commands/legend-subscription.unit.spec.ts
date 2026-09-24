@@ -88,6 +88,10 @@ const EXEMPT_ROLES: Readonly<Record<string, string>> = {
   // The name written BESIDE a Wardley artefact, grouped with it. A role so W3
   // can say where it must not land, not an artefact of its own.
   'wardley:label': 'the name beside an artefact',
+  // The same thing under a BPMN event, gateway or data shape (R38, ADR 0029):
+  // the name the export and the reading panel bind through the group, never
+  // an artefact the process is made of.
+  'bpmn:label': 'the name under an artefact',
 };
 
 const INVOCATION = {

@@ -72,7 +72,7 @@ describe('the two worked scenes speak the inserting editor’s language', () => 
   const shout = (key: string, params?: unknown) =>
     `[${key}${params ? ':' + JSON.stringify(params) : ''}]`.toUpperCase();
 
-  it('"Simple process" resolves its pool name and its three task captions', () => {
+  it('"Simple process" resolves its pool name, its three task captions and its three gravitating names', () => {
     const template = templates.find(t => t.name === 'Simple process')!;
     const localized = template.localize!(hostWith(shout));
 
@@ -88,9 +88,21 @@ describe('the two worked scenes speak the inserting editor’s language', () => 
     expect(textOf(localized, 'task3')).toBe(
       shout('com.labre.bpmn.example.simple-process.reject')
     );
+    // Since R38 an event's or a gateway's name is its grouped label, not its
+    // own text: the seed must land THERE, and the symbol stays wordless.
+    expect(textOf(localized, 'startLabel')).toBe(
+      shout('com.labre.bpmn.example.simple-process.request-received')
+    );
+    expect(textOf(localized, 'gwLabel')).toBe(
+      shout('com.labre.bpmn.example.simple-process.approved')
+    );
+    expect(textOf(localized, 'endLabel')).toBe(
+      shout('com.labre.bpmn.example.simple-process.request-handled')
+    );
+    expect(textOf(localized, 'gw')).toBeUndefined();
   });
 
-  it('"Message exchange" resolves its two pool names and its two task captions', () => {
+  it('"Message exchange" resolves its two pool names, its two task captions and its two event names', () => {
     const template = templates.find(t => t.name === 'Message exchange')!;
     const localized = template.localize!(hostWith(shout));
 
@@ -105,6 +117,12 @@ describe('the two worked scenes speak the inserting editor’s language', () => 
     );
     expect(textOf(localized, 'answer')).toBe(
       shout('com.labre.bpmn.example.message-exchange.confirm-order')
+    );
+    expect(textOf(localized, 'startLabel')).toBe(
+      shout('com.labre.bpmn.example.message-exchange.order-needed')
+    );
+    expect(textOf(localized, 'doneLabel')).toBe(
+      shout('com.labre.bpmn.example.message-exchange.order-placed')
     );
   });
 });
