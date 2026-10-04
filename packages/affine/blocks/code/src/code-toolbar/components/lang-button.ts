@@ -18,7 +18,22 @@ import { styleMap } from 'lit/directives/style-map.js';
 import { html } from 'lit/static-html.js';
 
 import type { CodeBlockComponent } from '../..';
-import { CODE_SEARCH_FOR_LANGUAGE } from '../../translations.js';
+import {
+  CODE_PLAIN_TEXT_LANGUAGE,
+  CODE_SEARCH_FOR_LANGUAGE,
+} from '../../translations.js';
+
+/**
+ * The list name of the Plain Text entry, which stands for `language: null`
+ * (#417). A colon never appears in a shiki language id, so it cannot collide
+ * with one, and no query starting with a letter matches it by name. It lives
+ * in the list and its persisted order only, never in the model.
+ */
+const PLAIN_TEXT_ITEM_NAME = ':plain-text';
+
+function languageOf(item: FilterableListItem): string | null {
+  return item.name === PLAIN_TEXT_ITEM_NAME ? null : item.name;
+}
 
 export class LanguageListButton extends WithDisposable(
   SignalWatcher(LitElement)
@@ -80,7 +95,7 @@ export class LanguageListButton extends WithDisposable(
           sortedBundledLanguages.unshift(item);
         }
         this.blockComponent.store.transact(() => {
-          this.blockComponent.model.props.language$.value = item.name;
+          this.blockComponent.model.props.language$.value = languageOf(item);
         });
 
         const std = this.blockComponent.std;
@@ -95,7 +110,8 @@ export class LanguageListButton extends WithDisposable(
           control: item.name,
         });
       },
-      active: item => item.name === this.blockComponent.model.props.language,
+      active: item =>
+        languageOf(item) === this.blockComponent.model.props.language,
       items: this._sortedBundledLanguages,
     };
 
@@ -117,15 +133,31 @@ export class LanguageListButton extends WithDisposable(
     super.connectedCallback();
 
     const langList = localStorage.getItem('blocksuite:code-block:lang-list');
-    if (langList) {
-      this._sortedBundledLanguages = JSON.parse(langList);
+    const languages: FilterableListItem[] = langList
+      ? JSON.parse(langList)
+      : this.blockComponent.langs.map(lang => ({
+          label: lang.name,
+          name: lang.id,
+          aliases: lang.aliases,
+        }));
+
+    // A list persisted before the entry existed lacks it, and a persisted
+    // label is in the locale of the session that wrote it: keep the entry's
+    // recently-used position, refresh its words.
+    const plainText: FilterableListItem = {
+      label: translateKey(this.blockComponent.std, ...CODE_PLAIN_TEXT_LANGUAGE),
+      name: PLAIN_TEXT_ITEM_NAME,
+      aliases: ['plain', 'text', 'none'],
+    };
+    const index = languages.findIndex(
+      item => item.name === PLAIN_TEXT_ITEM_NAME
+    );
+    if (index === -1) {
+      languages.unshift(plainText);
     } else {
-      this._sortedBundledLanguages = this.blockComponent.langs.map(lang => ({
-        label: lang.name,
-        name: lang.id,
-        aliases: lang.aliases,
-      }));
+      languages[index] = plainText;
     }
+    this._sortedBundledLanguages = languages;
 
     this.disposables.add(() => {
       localStorage.setItem(
