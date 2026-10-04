@@ -1,9 +1,19 @@
 import { FrameworkBackgroundElementModel } from '@labre/affine-model';
+import {
+  NotificationProvider,
+  translateKey,
+} from '@labre/affine-shared/services';
 import { downloadBlob, safeFilename } from '@labre/affine-shared/utils';
 import type { AnyCommandDescriptor, BlockStdScope } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 
+import {
+  type BoardSvgExportOptions,
+  boardSvgExportOptions,
+  DEFAULT_BOARD_SVG_EXPORT_OPTIONS,
+} from './parts.js';
 import { renderBoardSvg } from './render.js';
+import { EXPORT_SVG_NOTHING_TO_EXPORT } from './translations.js';
 
 /** What the file is, told to the browser. */
 const SVG_MIME = 'image/svg+xml';
@@ -40,11 +50,23 @@ export function selectedBoards(
  * on the browser — a result nobody can read off the gesture. One board, one
  * file, every time.
  */
-export function exportBoardSvg(std: BlockStdScope): void {
+export function exportBoardSvg(
+  std: BlockStdScope,
+  options: Readonly<BoardSvgExportOptions> = DEFAULT_BOARD_SVG_EXPORT_OPTIONS
+): void {
   const [board] = selectedBoards(std);
   if (!board) return;
 
-  const { svg } = renderBoardSvg(std, board);
+  const rendered = renderBoardSvg(std, board, options);
+  if (!rendered) {
+    // Every part left was switched off. Said once, through the host's
+    // notification seam; a host without one simply gets no file.
+    std
+      .getOptional(NotificationProvider)
+      ?.toast(translateKey(std, ...EXPORT_SVG_NOTHING_TO_EXPORT));
+    return;
+  }
+  const { svg } = rendered;
   const title = std.store.workspace.meta.getDocMeta(std.store.id)?.title;
   downloadBlob(
     // The charset is the browser's business, not the format's: `image/svg+xml`
@@ -66,6 +88,13 @@ export function exportBoardSvg(std: BlockStdScope): void {
  *
  * It READS, so there is no read-only guard: taking a picture of a board you
  * cannot edit is precisely what a reader does.
+ *
+ * Its optional params are the export options (`parts.ts`), which the "⋮"
+ * entry asks for before it runs this. Every other surface — the palette, the
+ * catalogue, a shortcut, the agent — passes nothing and exports everything,
+ * without a dialog. They are deliberately not declared as `params`: the agent
+ * contract stays "export the selected board", and `run` re-validates whatever
+ * arrives.
  *
  * No `telemetry` field: `CommandTelemetry.framework` is typed on `FrameworkId`,
  * and this command cannot name one — the surface package knows a board by its
@@ -99,7 +128,8 @@ const exportSvg: AnyCommandDescriptor = {
   // union can express.
   availability: 'selection:framework',
   when: std => selectedBoards(std).length > 0,
-  run: std => exportBoardSvg(std),
+  run: (std, _invocation, params) =>
+    exportBoardSvg(std, boardSvgExportOptions(params)),
 };
 
 export const exportSvgCommands: AnyCommandDescriptor[] = [exportSvg];

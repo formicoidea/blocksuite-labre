@@ -74,6 +74,43 @@ it.
   ghost overlay, which is not exported) and `letterSpacing` (the estuarine
   labels are written without their tracking).
 
+## Amendment — 2026-10-04: what goes in the file, and the edgeless text
+
+- **The "⋮" entry asks first.** It opens a small menu of three switches, all on
+  by default — "Framework elements", "Other shapes and strokes", "Other texts"
+  — and an Export button, built from the library's menu primitives
+  (`menu.toggleSwitch`), not a modal of its own. The choice is remembered per
+  editor for the session, never in the document nor in the browser. Every other
+  surface (palette, catalogue, shortcut, agent) still runs `export.svg` with no
+  dialog and gets everything; the options travel as the command's optional,
+  re-validated params and are deliberately not declared as `params`, so the
+  agent contract is unchanged. One export is still one `runCommand`, one usage
+  record, and still no telemetry.
+- **What a switch removes is read off the document, never per framework**
+  (`export-svg/parts.ts`). A framework element is the board, anything whose
+  role shares the board's role namespace (`es:board` owns `es:command`), the
+  generated legend (`core:legend`) and its glyphs, and a role-less element
+  grouped with any of those — a framework artefact is a group in which one
+  member carries the role (an EDGY person and its name, a Wardley market and
+  its dots). Everything else is an "other text" when it is a `text` element,
+  an "other shape" otherwise; another framework's elements lying on the board
+  count by their type. A board with no role (Cynefin) owns itself alone.
+  `export-svg-parts.unit.spec.ts` in `packages/affine/all` runs every
+  framework's real board and artefact commands and checks each switch removes
+  exactly its part.
+- **With "Framework elements" off, the board is not drawn** and the file covers
+  what remains. Nothing left means no file, and a toast through the
+  notification seam when a host provides one.
+- **The edgeless text is the one block drawn** — an exception to "Blocks are not
+  exported" above, because it is what the text tool creates by default and its
+  absence read as "my texts are not exported". It is redrawn as VECTOR text by
+  a painter registered from its own package (`BlockSvgPainterExtension`, keyed
+  by flavour): the surface package cannot import the canvas text metrics, which
+  sit above it. Plain text per paragraph in the block's own style (inline
+  bold, italic and colour flattened, no list bullets), wrapped as the block
+  wraps, rotated and scaled as on screen, painted over the canvas elements
+  rather than at its layer index. Notes, images and embeds stay out.
+
 ## Why not resvg
 
 `resvg` is a _rasteriser_: it turns SVG into PNG. It answers the opposite

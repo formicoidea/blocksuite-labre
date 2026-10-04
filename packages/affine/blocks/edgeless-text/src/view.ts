@@ -9,6 +9,7 @@ import { EdgelessClipboardEdgelessTextConfig } from './edgeless-clipboard-config
 import { EdgelessTextInteraction } from './edgeless-text-block';
 import { edgelessTextToolbarExtension } from './edgeless-toolbar';
 import { effects } from './effects';
+import { EdgelessTextSvgPainterExtension } from './svg-painter.js';
 
 export class EdgelessTextViewExtension extends ViewExtensionProvider {
   override name = 'affine-edgeless-text-block';
@@ -32,6 +33,7 @@ export class EdgelessTextViewExtension extends ViewExtensionProvider {
       context.register(edgelessTextToolbarExtension);
       context.register(EdgelessClipboardEdgelessTextConfig);
       context.register(EdgelessTextInteraction);
+      context.register(EdgelessTextSvgPainterExtension);
     }
   }
 }
