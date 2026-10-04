@@ -1,0 +1,703 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg width="975" height="827" viewBox="0 0 975 827" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g transform="translate(35, 45)"><g><rect fill="white" x="-35" y="-45" width="905" height="737"></rect><g><rect x="-35" y="-45" width="905" height="737" fill="transparent" style="pointer-events: all;"></rect><defs><linearGradient id="arrowGradient" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color: rgb(255, 255, 255); stop-opacity: 1;"></stop><stop offset="40%" style="stop-color: rgb(128, 128, 128); stop-opacity: 1;"></stop><stop offset="100%" style="stop-color: rgb(128, 128, 128); stop-opacity: 1;"></stop></linearGradient><filter id="ctrlHighlight"><feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="blue"></feDropShadow></filter><linearGradient gradientUnits="objectBoundingBox" id="wardleyGradient" spreadMethod="pad" x1="0%" x2="100%" y1="0%" y2="0%"><stop offset="0%" style="stop-color: rgb(196, 196, 196); stop-opacity: 1;"></stop><stop offset="0.3" style="stop-color: white; stop-opacity: 1;"></stop><stop offset="0.7" style="stop-color: white;"></stop><stop offset="1" style="stop-color: rgb(196, 196, 196);"></stop></linearGradient><linearGradient spreadMethod="pad" id="accelGradient" x1="0%" y1="64%" x2="76%" y2="0%"><stop offset="0%" style="stop-color: white; stop-opacity: 1;"></stop><stop offset="100%" style="stop-color: rgb(140, 137, 149); stop-opacity: 1;"></stop></linearGradient><pattern id="diagonalHatch" patternUnits="userSpaceOnUse" width="4" height="4"><path d="M 3,-1 l 2,2
+            M 0,0 l 4,4
+            M -1,3 l 2,2
+            " stroke="grey" stroke-width="1" opacity=".5"></path></pattern><marker id="arrow" markerWidth="12" markerHeight="12" refX="15" refY="0" viewBox="0 -5 10 10" orient="0"><path d="M0,-5L10,0L0,5" fill="red"></path></marker><marker id="graphArrow" markerWidth="12" markerHeight="12" refX="9" refY="0" viewBox="0 -5 10 10" orient="0"><path d="M0,-5L10,0L0,5" fill="black"></path></marker><marker id="pipelineArrow" markerWidth="5" markerHeight="5" refX="9" refY="0" viewBox="0 -5 10 10" orient="0"><path d="M0,-5L10,0L0,5" fill="black"></path></marker></defs><g id="grid"><rect x="0" width="800" y="0" height="600" id="fillArea" fill="none" style="pointer-events: none;"></rect><text x="0" y="-10" id="mapTitle" font-weight="bold" font-size="20px" font-family="&quot;Helvetica Neue&quot;,Helvetica,Arial,sans-serif" style="cursor: pointer;">Tea Shop moderne 2026 - chaine de valeur</text><g id="valueChain" transform="translate(0,600) rotate(270)" font-family="&quot;Helvetica Neue&quot;,Helvetica,Arial,sans-serif" font-size="13px"><line x1="0" y1="0" x2="600" y2="0" stroke="black" stroke-width="1" stroke-dasharray="2,2"></line><line x1="-2em" y1="140" x2="600" y2="140" stroke="black" stroke-dasharray="2,2"></line><line x1="-2em" y1="320" x2="600" y2="320" stroke="black" stroke-dasharray="2,2"></line><line x1="-2em" y1="560" x2="600" y2="560" stroke="black" stroke-dasharray="2,2"></line><text fill="black" x="598" y="-0.4em" text-anchor="end" font-weight="bold">Value Chain</text></g><g id="Evolution" font-family="&quot;Helvetica Neue&quot;,Helvetica,Arial,sans-serif" font-size="13px" font-style="italic" transform="translate(0,600)"><line x1="0" y1="0" x2="798" y2="0" stroke="black" stroke-width="1" marker-end="url(#graphArrow)"></line><text fill="black" x="0" y="1em" text-anchor="start">Genesis</text><text fill="black" x="0" y="2em" text-anchor="start"></text><text fill="black" x="147" y="1em" text-anchor="start">Custom-Built</text><text fill="black" x="147" y="2em" text-anchor="start"></text><text fill="black" x="327" y="1em" text-anchor="start">Product</text><text fill="black" x="327" y="2em" text-anchor="start">(+rental)</text><text fill="black" x="567" y="1em" text-anchor="start">Commodity</text><text fill="black" x="567" y="2em" text-anchor="start">(+utility)</text><text fill="black" x="800" y="1.8em" text-anchor="end" font-weight="bold" font-style="normal">Evolution</text></g></g><g id="mapContent"><g id="pst-content"><g id="pst-elements"></g></g><g id="link-content"><g id="links"><g id="links"><g id="modern_link_3_5" style="cursor: pointer;"><line x1="80" y1="59.999999999999986" x2="688" y2="30.00000000000003" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="80" y1="59.999999999999986" x2="688" y2="30.00000000000003" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_3_6" style="cursor: pointer;"><line x1="80" y1="59.999999999999986" x2="624" y2="53.99999999999998" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="80" y1="59.999999999999986" x2="624" y2="53.99999999999998" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_3_7" style="cursor: pointer;"><line x1="80" y1="59.999999999999986" x2="576" y2="72" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="80" y1="59.999999999999986" x2="576" y2="72" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_3_8" style="cursor: pointer;"><line x1="80" y1="59.999999999999986" x2="528" y2="96.00000000000001" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="80" y1="59.999999999999986" x2="528" y2="96.00000000000001" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_5_10" style="cursor: pointer;"><line x1="688" y1="30.00000000000003" x2="528" y2="144" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="688" y1="30.00000000000003" x2="528" y2="144" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_5_11" style="cursor: pointer;"><line x1="688" y1="30.00000000000003" x2="463.99999999999994" y2="168.00000000000003" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="688" y1="30.00000000000003" x2="463.99999999999994" y2="168.00000000000003" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_5_17" style="cursor: pointer;"><line x1="688" y1="30.00000000000003" x2="400" y2="270" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="688" y1="30.00000000000003" x2="400" y2="270" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_6_12" style="cursor: pointer;"><line x1="624" y1="53.99999999999998" x2="352" y2="186.00000000000003" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="624" y1="53.99999999999998" x2="352" y2="186.00000000000003" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_6_19" style="cursor: pointer;"><line x1="624" y1="53.99999999999998" x2="336" y2="312" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="624" y1="53.99999999999998" x2="336" y2="312" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_6_20" style="cursor: pointer;"><line x1="624" y1="53.99999999999998" x2="488" y2="330" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="624" y1="53.99999999999998" x2="488" y2="330" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_7_24" style="cursor: pointer;"><line x1="576" y1="72" x2="568" y2="372" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="576" y1="72" x2="568" y2="372" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_7_25" style="cursor: pointer;"><line x1="576" y1="72" x2="608" y2="390" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="576" y1="72" x2="608" y2="390" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_7_28" style="cursor: pointer;"><line x1="576" y1="72" x2="584" y2="438" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="576" y1="72" x2="584" y2="438" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_8_15" style="cursor: pointer;"><line x1="528" y1="96.00000000000001" x2="216" y2="240" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="528" y1="96.00000000000001" x2="216" y2="240" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_8_14" style="cursor: pointer;"><line x1="528" y1="96.00000000000001" x2="272" y2="228" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="528" y1="96.00000000000001" x2="272" y2="228" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_10_18" style="cursor: pointer;"><line x1="528" y1="144" x2="240" y2="300" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="528" y1="144" x2="240" y2="300" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_10_19" style="cursor: pointer;"><line x1="528" y1="144" x2="336" y2="312" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="528" y1="144" x2="336" y2="312" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_11_26" style="cursor: pointer;"><line x1="463.99999999999994" y1="168.00000000000003" x2="472" y2="407.99999999999994" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="463.99999999999994" y1="168.00000000000003" x2="472" y2="407.99999999999994" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_13_22" style="cursor: pointer;"><line x1="504" y1="203.99999999999997" x2="544" y2="354.00000000000006" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="504" y1="203.99999999999997" x2="544" y2="354.00000000000006" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_14_26" style="cursor: pointer;"><line x1="272" y1="228" x2="472" y2="407.99999999999994" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="272" y1="228" x2="472" y2="407.99999999999994" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_18_27" style="cursor: pointer;"><line x1="240" y1="300" x2="384" y2="426" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="240" y1="300" x2="384" y2="426" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_17_29" style="cursor: pointer;"><line x1="400" y1="270" x2="440.00000000000006" y2="450" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="400" y1="270" x2="440.00000000000006" y2="450" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_22_31" style="cursor: pointer;"><line x1="544" y1="354.00000000000006" x2="560" y2="480" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="544" y1="354.00000000000006" x2="560" y2="480" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_24_32" style="cursor: pointer;"><line x1="568" y1="372" x2="656" y2="492.00000000000006" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="568" y1="372" x2="656" y2="492.00000000000006" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_25_32" style="cursor: pointer;"><line x1="608" y1="390" x2="656" y2="492.00000000000006" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="608" y1="390" x2="656" y2="492.00000000000006" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_26_32" style="cursor: pointer;"><line x1="472" y1="407.99999999999994" x2="656" y2="492.00000000000006" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="472" y1="407.99999999999994" x2="656" y2="492.00000000000006" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_27_32" style="cursor: pointer;"><line x1="384" y1="426" x2="656" y2="492.00000000000006" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="384" y1="426" x2="656" y2="492.00000000000006" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_21_31" style="cursor: pointer;"><line x1="512" y1="342.00000000000006" x2="560" y2="480" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="512" y1="342.00000000000006" x2="560" y2="480" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_31_33" style="cursor: pointer;"><line x1="560" y1="480" x2="704" y2="510" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="560" y1="480" x2="704" y2="510" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_32_34" style="cursor: pointer;"><line x1="656" y1="492.00000000000006" x2="688" y2="528" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="656" y1="492.00000000000006" x2="688" y2="528" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g></g><g id="evolvingEndLinks"></g><g id="bothEvolving"></g><g id="anchorLinks"><g id="modern_link_3_5" style="cursor: pointer;"><line x1="80" y1="59.999999999999986" x2="688" y2="30.00000000000003" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="80" y1="59.999999999999986" x2="688" y2="30.00000000000003" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_3_6" style="cursor: pointer;"><line x1="80" y1="59.999999999999986" x2="624" y2="53.99999999999998" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="80" y1="59.999999999999986" x2="624" y2="53.99999999999998" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_3_7" style="cursor: pointer;"><line x1="80" y1="59.999999999999986" x2="576" y2="72" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="80" y1="59.999999999999986" x2="576" y2="72" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_3_8" style="cursor: pointer;"><line x1="80" y1="59.999999999999986" x2="528" y2="96.00000000000001" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="80" y1="59.999999999999986" x2="528" y2="96.00000000000001" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g></g><g id="anchorNonEvolvedLinks"></g><g id="evolvingToNoneEvolvingEndLinks"></g></g><g id="evolvedLinks"></g><g id="fluidLinks"></g></g><g id="component-content"><defs><style>
+                        @keyframes methodHighlightPulse {
+                            0%, 100% {
+                                stroke-opacity: 0.3;
+                                stroke-width: 2;
+                            }
+                            50% {
+                                stroke-opacity: 0.8;
+                                stroke-width: 3;
+                            }
+                        }
+
+                        .method-hover-circle {
+                            animation: methodHighlightPulse 1.5s ease-in-out infinite;
+                        }
+
+                        .method-hover-circle:hover {
+                            stroke: #4CAF50 !important;
+                            stroke-width: 3 !important;
+                            stroke-opacity: 0.8 !important;
+                            stroke-dasharray: 0 !important;
+                            animation: none !important;
+                        }
+                    </style></defs><g id="anchors"><g class="draggable" style="cursor: grab;" id="modern_movable_anchor__3_" transform="translate(80,59.999999999999986)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g data-testid="map-anchor-3" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;"><rect class="anchor-hover-indicator" x="-31.200000000000003" y="-29.4" width="62.400000000000006" height="28.8" fill="#87ceeb" stroke="#2196F3" stroke-width="1" rx="4" ry="4" style="opacity: 0; transition: opacity 0.3s ease-in-out; pointer-events: none;"></rect><text id="3-text" data-testid="3-text" font-weight="normal" font-size="14px" class="label" text-anchor="middle" x="0" y="-10" transform="" fill="black">Client</text></g></g><defs><style>
+                    @keyframes anchorSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      0% {
+                        opacity: 0;
+                      }
+                      40% {
+                        opacity: 0.2;
+                      }
+                      100% {
+                        opacity: 0.5;
+                      }
+                    }
+                    
+                    g[data-testid^="map-anchor-"]:hover .anchor-hover-indicator {
+                      opacity: 0.5 !important;
+                      animation: fadeIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                    }
+                    </style></defs></g><g id="accelerators"></g><g id="methods"></g><g id="elements"><g class="draggable" style="cursor: grab;" id="modern_movable_element_5" transform="translate(688,30.00000000000003)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="5" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-5"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_5" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(688,30.00000000000003)"><g class="draggable" style="cursor: grab;" id="modern_movable_5-text-movable" transform="translate(5,-10)"><text id="5-text" data-testid="5-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Moment the premium, rapide et personnalise</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_6" transform="translate(624,53.99999999999998)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="6" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-6"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_6" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(624,53.99999999999998)"><g class="draggable" style="cursor: grab;" id="modern_movable_6-text-movable" transform="translate(5,-10)"><text id="6-text" data-testid="6-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Confiance qualite, origine et sante</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_7" transform="translate(576,72)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="7" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-7"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_7" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(576,72)"><g class="draggable" style="cursor: grab;" id="modern_movable_7-text-movable" transform="translate(5,-10)"><text id="7-text" data-testid="7-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Commande omnicanale sans friction</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_8" transform="translate(528,96.00000000000001)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="8" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-8"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_8" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(528,96.00000000000001)"><g class="draggable" style="cursor: grab;" id="modern_movable_8-text-movable" transform="translate(5,-10)"><text id="8-text" data-testid="8-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Experience boutique et communaute</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_10" transform="translate(528,144)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="10" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-10"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_10" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(528,144)"><g class="draggable" style="cursor: grab;" id="modern_movable_10-text-movable" transform="translate(5,-10)"><text id="10-text" data-testid="10-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Menu boissons chaudes/froides</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_11" transform="translate(463.99999999999994,168.00000000000003)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="11" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-11"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_11" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(463.99999999999994,168.00000000000003)"><g class="draggable" style="cursor: grab;" id="modern_movable_11-text-movable" transform="translate(5,-10)"><text id="11-text" data-testid="11-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Personnalisation gout, sucre, lait, temperature</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_12" transform="translate(352,186.00000000000003)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="12" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-12"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_12" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(352,186.00000000000003)"><g class="draggable" style="cursor: grab;" id="modern_movable_12-text-movable" transform="translate(5,-10)"><text id="12-text" data-testid="12-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Conseil expert et storytelling produit</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_13" transform="translate(504,203.99999999999997)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="13" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-13"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_13" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(504,203.99999999999997)"><g class="draggable" style="cursor: grab;" id="modern_movable_13-text-movable" transform="translate(5,-10)"><text id="13-text" data-testid="13-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Vente retail thés, accessoires, coffrets</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_14" transform="translate(272,228)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="14" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-14"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_14" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(272,228)"><g class="draggable" style="cursor: grab;" id="modern_movable_14-text-movable" transform="translate(5,-10)"><text id="14-text" data-testid="14-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Abonnements et recommandations</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_15" transform="translate(216,240)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="15" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-15"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_15" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(216,240)"><g class="draggable" style="cursor: grab;" id="modern_movable_15-text-movable" transform="translate(5,-10)"><text id="15-text" data-testid="15-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Ateliers, tastings et evenements</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_17" transform="translate(400,270)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="17" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-17"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_17" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(400,270)"><g class="draggable" style="cursor: grab;" id="modern_movable_17-text-movable" transform="translate(5,-10)"><text id="17-text" data-testid="17-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Preparation barista / tea master</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_18" transform="translate(240,300)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="18" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-18"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_18" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(240,300)"><g class="draggable" style="cursor: grab;" id="modern_movable_18-text-movable" transform="translate(5,-10)"><text id="18-text" data-testid="18-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Recettes signature saisonnieres</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_19" transform="translate(336,312)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="19" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-19"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_19" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(336,312)"><g class="draggable" style="cursor: grab;" id="modern_movable_19-text-movable" transform="translate(5,-10)"><text id="19-text" data-testid="19-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Sourcing thés premium et ingredients</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_20" transform="translate(488,330)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="20" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-20"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_20" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(488,330)"><g class="draggable" style="cursor: grab;" id="modern_movable_20-text-movable" transform="translate(5,-10)"><text id="20-text" data-testid="20-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Traçabilite, certifications, allergenes</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_21" transform="translate(512,342.00000000000006)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="21" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-21"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_21" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(512,342.00000000000006)"><g class="draggable" style="cursor: grab;" id="modern_movable_21-text-movable" transform="translate(5,-10)"><text id="21-text" data-testid="21-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Packaging durable et vente a emporter</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_22" transform="translate(544,354.00000000000006)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="22" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-22"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_22" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(544,354.00000000000006)"><g class="draggable" style="cursor: grab;" id="modern_movable_22-text-movable" transform="translate(5,-10)"><text id="22-text" data-testid="22-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Gestion stock et fraicheur</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_24" transform="translate(568,372)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="24" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-24"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_24" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(568,372)"><g class="draggable" style="cursor: grab;" id="modern_movable_24-text-movable" transform="translate(5,-10)"><text id="24-text" data-testid="24-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Application mobile / web ordering</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_25" transform="translate(608,390)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="25" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-25"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_25" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(608,390)"><g class="draggable" style="cursor: grab;" id="modern_movable_25-text-movable" transform="translate(5,-10)"><text id="25-text" data-testid="25-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">POS, paiements et fidelite</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_26" transform="translate(472,407.99999999999994)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="26" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-26"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_26" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(472,407.99999999999994)"><g class="draggable" style="cursor: grab;" id="modern_movable_26-text-movable" transform="translate(5,-10)"><text id="26-text" data-testid="26-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">CRM, segmentation et marketing automation</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_27" transform="translate(384,426)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="27" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-27"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_27" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(384,426)"><g class="draggable" style="cursor: grab;" id="modern_movable_27-text-movable" transform="translate(5,-10)"><text id="27-text" data-testid="27-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Analytics demande, marge et prevision</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_28" transform="translate(584,438)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="28" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-28"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_28" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(584,438)"><g class="draggable" style="cursor: grab;" id="modern_movable_28-text-movable" transform="translate(5,-10)"><text id="28-text" data-testid="28-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Integrations livraison / click-and-collect</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_29" transform="translate(440.00000000000006,450)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="29" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-29"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_29" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(440.00000000000006,450)"><g class="draggable" style="cursor: grab;" id="modern_movable_29-text-movable" transform="translate(5,-10)"><text id="29-text" data-testid="29-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Formation equipe et playbooks operationnels</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_31" transform="translate(560,480)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="31" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-31"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_31" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(560,480)"><g class="draggable" style="cursor: grab;" id="modern_movable_31-text-movable" transform="translate(5,-10)"><text id="31-text" data-testid="31-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Fournisseurs the, lait vegetal, patisserie</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_32" transform="translate(656,492.00000000000006)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="32" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-32"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_32" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(656,492.00000000000006)"><g class="draggable" style="cursor: grab;" id="modern_movable_32-text-movable" transform="translate(5,-10)"><text id="32-text" data-testid="32-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Plateformes SaaS retail / restauration</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_33" transform="translate(704,510)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="33" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-33"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_33" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(704,510)"><g class="draggable" style="cursor: grab;" id="modern_movable_33-text-movable" transform="translate(5,-10)"><text id="33-text" data-testid="33-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Logistique, energie, eau, hygiene</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_34" transform="translate(688,528)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="34" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-34"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_34" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(688,528)"><g class="draggable" style="cursor: grab;" id="modern_movable_34-text-movable" transform="translate(5,-10)"><text id="34-text" data-testid="34-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Reglementation alimentaire et donnees clients</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs></g></g><g id="annotation-content"><g id="notes"></g><g id="annotations"></g></g></g></g></g></g></svg>

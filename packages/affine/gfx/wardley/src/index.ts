@@ -98,6 +98,9 @@ export {
   wardleySafeFilename,
 } from './export';
 export { importWardleyOwm } from './import';
+// The SVG reader that recognises a map (ADR 0032), pure for the same reason:
+// labre-mcp calls the very function the command does.
+export { importWardleySvg } from './svg-import';
 // The half of the export that needs an editor, kept apart from the half that
 // does not — the same split C4's and BPMN's indexes make for the same reason:
 // what the selection scopes the file to lives here, the serializer next door.

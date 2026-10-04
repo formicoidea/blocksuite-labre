@@ -44,6 +44,23 @@ describe('the SVG fallback import is declared by each framework that reads one',
     }
   });
 
+  test('Wardley’s names the producers it recognises, under a NEW key', () => {
+    // ADR 0032: Wardley's reader yields a map when it knows who drew the
+    // picture, and says so before the file is read. The old key's host
+    // translation says the axes are NOT read, so the wording moved to a new
+    // key rather than rewording that one under the host's feet.
+    const wardley = commandOf('wardley.importSvg');
+    expect(wardley.descriptionKey).toBe(
+      'com.labre.commands.wardley.importSvg.recognised.description'
+    );
+    expect(wardley.descriptionFallback).toContain('OnlineWardleyMaps');
+    expect(wardley.descriptionFallback).toContain('sketch');
+    // BPMN still reads geometry and nothing else (ADR 0032 §8).
+    expect(commandOf('bpmn.importSvg').descriptionKey).toBe(
+      'com.labre.commands.bpmn.importSvg.description'
+    );
+  });
+
   test('they are catalogue, palette and agent — and NOT the senior sub-menu', () => {
     // The arbitration, pinned so that changing it is a decision rather than a
     // diff: the senior sub-menu carries a framework's NATIVE-format import

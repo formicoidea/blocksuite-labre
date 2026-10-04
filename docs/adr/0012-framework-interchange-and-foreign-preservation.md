@@ -524,6 +524,20 @@ which is the route P2 already says a user should be pointed at, and the fallback
 lives one click away behind "More artefacts…". That is a curation call, flagged
 for the PO as one, and it is a one-line change either way.
 
+#### Amendment 2026-10-04 — Wardley recognises the map ([ADR 0032](0032-wardley-svg-recognises-roles.md))
+
+For **Wardley only**, point 1's answer "what a visual capability is allowed to
+guess: geometry, and nothing else" and the `wardley:svg:import` row of the
+roadmap ("the SAME parser BPMN declares") are superseded by ADR 0032: Wardley
+writes its own reader (`gfx/wardley/src/svg-import.ts`) and its own heuristics
+paragraph beside it, exactly as point 1 foresaw, recognising roles, relations
+and coordinates when a producer marker says who drew the picture, and
+sketching the rest through the shared walk (`sanitizeSvg`, `sketchSvgTree`).
+Everything else here stands, for Wardley as for every framework: the tier, no
+payload, no round-trip, the closed note vocabulary, and the surface naming the
+tier before the file is read. BPMN keeps `run: parseSvgSketch`, geometry and
+nothing else.
+
 ### P3 — Parsers live in the lib; the editor and labre-mcp are both callers
 
 **PO decision, recorded.** Import functions are to be exposed as **labre-mcp**
@@ -1297,7 +1311,9 @@ decisions above.
    capabilities wrap one parser; the answer to "what is a visual capability
    allowed to guess" is _geometry, and nothing about the vocabulary_. The
    question re-opens the day a framework wants narrower or wider recognition
-   than the shared parser gives it.
+   than the shared parser gives it. _Re-opened and answered for Wardley on
+   2026-10-04 by [ADR 0032](0032-wardley-svg-recognises-roles.md) — see the
+   amendment under P2._
 3. **Is a payload size ceiling needed?** Nothing caps `interchange` in v1. A
    pathological file (generated BPMN, thousands of extension elements) would
    produce a document that is mostly foreign matter. A cap that drops data

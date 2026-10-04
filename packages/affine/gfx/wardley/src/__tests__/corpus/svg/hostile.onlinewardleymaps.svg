@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="870" height="690" viewBox="0 0 870 690" xmlns="http://www.w3.org/2000/svg" onload="window.__hostile = 'onload'">
+<script>window.__hostile = 'script'</script>
+<g transform="translate(35, 45)">
+<g id="grid">
+<rect x="0" width="800" y="0" height="600" id="fillArea" fill="none"/>
+<text x="0" y="-10" id="mapTitle" font-size="20px">&lt;img src=x onerror="window.__hostile = 'title'"&gt;</text>
+</g>
+<g id="modern_movable_element_1" transform="translate(400,300)" onclick="window.__hostile = 'click'">
+<circle id="element_circle_1" r="5" stroke="black" fill="white"/>
+</g>
+<g transform="translate(400,300)"><g id="modern_movable_1-text-movable" transform="translate(5,-10)"><text id="1-text">Real</text></g></g>
+<g id="modern_movable_element___proto__" transform="translate(200,100)">
+<circle id="element_circle___proto__" r="5" stroke="black" fill="white"/>
+</g>
+<g transform="translate(200,100)"><text id="__proto__-text">Proto</text></g>
+<g id="modern_movable_element_&lt;script&gt;" transform="translate(600,500)">
+<circle id="element_circle_&lt;script&gt;" r="5" stroke="black" fill="white"/>
+</g>
+<g transform="translate(600,500)"><text id="&lt;script&gt;-text">&lt;script&gt;alert(1)&lt;/script&gt;</text></g>
+<g id="modern_movable_element_9" transform="translate(NaN, 50)">
+<circle id="element_circle_9" r="5" stroke="black" fill="white"/>
+</g>
+<g id="modern_movable_element_10" transform="translate(1e999, 50)">
+<circle id="element_circle_10" r="5" stroke="black" fill="white"/>
+</g>
+<g id="modern_link_1_&lt;script&gt;"><line x1="400" y1="300" x2="600" y2="500" stroke="grey"/></g>
+<g id="modern_link_1_nowhere"><line x1="400" y1="300" x2="10" y2="10" stroke="grey"/></g>
+<foreignObject width="100" height="100"><div xmlns="http://www.w3.org/1999/xhtml" onclick="window.__hostile = 'foreign'">x</div></foreignObject>
+<use href="#element_circle_1"/>
+</g>
+</svg>

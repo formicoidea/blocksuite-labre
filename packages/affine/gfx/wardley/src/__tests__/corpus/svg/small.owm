@@ -1,0 +1,18 @@
+title Tea delivery
+anchor Customer [0.95, 0.63]
+component Cup of tea [0.79, 0.61]
+component Tea [0.63, 0.81]
+component Hot water [0.52, 0.80]
+component Kettle [0.43, 0.35] inertia
+component Water [0.38, 0.82]
+component Power [0.10, 0.70]
+pipeline Kettle [0.30, 0.60]
+evolve Kettle 0.62
+note Standardising power [0.20, 0.45]
+note Watch the kettle [0.55, 0.25]
+Customer->Cup of tea
+Cup of tea->Tea
+Cup of tea->Hot water
+Hot water->Water
+Hot water->Kettle
+Kettle->Power

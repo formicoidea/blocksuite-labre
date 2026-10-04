@@ -48,9 +48,11 @@ import {
  * a one-paragraph statement of its heuristics and its known failure modes" —
  * answered ONCE, here, because every framework that declares `…:svg:import`
  * wraps this one function and therefore owes the same statement. It is
- * referenced by `bpmn:svg:import` and by `wardley:svg:import`; a framework that
- * ever wants a narrower or wider guess writes its own parser and its own
- * paragraph beside it._
+ * referenced by `bpmn:svg:import`; a framework that ever wants a narrower or
+ * wider guess writes its own parser and its own paragraph beside it. Wardley
+ * did (ADR 0032): a framework may CLAIM nodes before the walk below
+ * ({@link sanitizeSvg}, {@link sketchSvgTree}), and then owes its own statement
+ * for what it claims — this one still covers everything it leaves here._
  *
  * **What it guesses.** An SVG carries a rendering, not a model, so this reader
  * recognises GEOMETRY and nothing else: `<rect>` becomes a rectangle,
@@ -209,8 +211,12 @@ function numbers(raw: string): number[] {
  * Every note is a `warning`. The other four kinds would be lies here:
  * `carried` and `quarantined` describe a payload this tier does not write, and
  * `substituted-id` and `invented-layout` describe promises it does not make.
+ *
+ * Exported so a framework that claims part of a picture first (ADR 0032 §2)
+ * hands the SAME notebook to {@link sanitizeSvg} and {@link sketchSvgTree}: one
+ * file, one de-duplication, one list of remarks.
  */
-class Notebook {
+export class SvgSketchNotebook {
   private readonly seen = new Set<string>();
 
   readonly notes: InterchangeNote[] = [];
@@ -283,7 +289,7 @@ function styleMap(element: Element): Map<string, string> {
  * with a note rather than silently read as its number: `font-size="200%"` read
  * as 200 would draw a label fourteen times too big.
  */
-function fontSizeOf(raw: string, inherited: number, notes: Notebook) {
+function fontSizeOf(raw: string, inherited: number, notes: SvgSketchNotebook) {
   const value = Number.parseFloat(raw);
   if (!Number.isFinite(value) || value <= 0) return undefined;
   // The tail after the number as WRITTEN, not after `String(value)` — `12.0px`
@@ -313,7 +319,11 @@ function fontSizeOf(raw: string, inherited: number, notes: Notebook) {
  * only looked at the leaf would import every shape in the SVG's initial colours
  * and get the picture visibly wrong.
  */
-function paintOf(element: Element, inherited: Paint, notes: Notebook): Paint {
+function paintOf(
+  element: Element,
+  inherited: Paint,
+  notes: SvgSketchNotebook
+): Paint {
   const style = styleMap(element);
   // `inherit` is resolved HERE, where the inherited value is in hand, rather
   // than downstream where the only honest answer would be a neutral: the
@@ -361,7 +371,7 @@ function paintOf(element: Element, inherited: Paint, notes: Notebook): Paint {
  * way, and an exporter's off-canvas scaffolding is the usual source of a
  * "why is there a huge black box on my board" report.
  */
-function isHidden(element: Element, notes: Notebook): boolean {
+function isHidden(element: Element, notes: SvgSketchNotebook): boolean {
   const style = styleMap(element);
   const display = style.get('display') ?? element.getAttribute('display');
   if (display?.trim() === 'none') {
@@ -394,7 +404,7 @@ function isHidden(element: Element, notes: Notebook): boolean {
  * the backdrop it sits on. It is imported at full strength, which is visible
  * and editable, and the note says the strength changed.
  */
-function noteOpacity(element: Element, notes: Notebook): void {
+function noteOpacity(element: Element, notes: SvgSketchNotebook): void {
   const style = styleMap(element);
   for (const property of ['opacity', 'fill-opacity', 'stroke-opacity']) {
     const raw = style.get(property) ?? element.getAttribute(property);
@@ -441,7 +451,7 @@ const NEUTRAL_FILL = '#cccccc';
 function colorOf(
   raw: string | undefined,
   fallback: string,
-  notes: Notebook
+  notes: SvgSketchNotebook
 ): string | undefined {
   const value = raw?.trim();
   if (!value || value === 'none' || value === 'transparent') return undefined;
@@ -477,12 +487,19 @@ function colorOf(
  * — `min(width / viewBox width, height / viewBox height)` — because that is
  * what the default `preserveAspectRatio` (`xMidYMid meet`) means, and a
  * non-uniform read would need a shape model with independent axes.
+ *
+ * Exported as {@link SvgSketchFrame}: a recogniser reads a node's coordinates
+ * through {@link svgFrameOf} so it lands them exactly where this walk would
+ * have, and places what it leaves to the walk with the `place` option of
+ * {@link sketchSvgTree}.
  */
 interface Frame {
   ox: number;
   oy: number;
   s: number;
 }
+
+export type SvgSketchFrame = Frame;
 
 const IDENTITY: Frame = { ox: 0, oy: 0, s: 1 };
 
@@ -541,7 +558,11 @@ function viewportFrame(element: Element, parent: Frame): Frame {
  * wrong place, and the author is about to move things anyway. What is not
  * acceptable is doing it quietly, so each ignored KIND is named once.
  */
-function translated(element: Element, frame: Frame, notes: Notebook): Frame {
+function translated(
+  element: Element,
+  frame: Frame,
+  notes: SvgSketchNotebook
+): Frame {
   const raw = element.getAttribute('transform');
   if (!raw) return frame;
 
@@ -607,7 +628,7 @@ const CURVE_COMMANDS = new Set(['c', 's', 'q', 't', 'a']);
  * element is a single connected path, so joining two subpaths would draw a line
  * across the drawing that the file never had.
  */
-function samplePath(d: string, notes: Notebook): number[][][] {
+function samplePath(d: string, notes: SvgSketchNotebook): number[][][] {
   const subpaths: number[][][] = [];
   let current: number[][] = [];
   let start: [number, number] | null = null;
@@ -681,7 +702,9 @@ function samplePath(d: string, notes: Notebook): number[][][] {
 /** Everything one walk accumulates. Never a surface, never an id. */
 interface Sketch {
   elements: SerializedElementProps[];
-  notes: Notebook;
+  notes: SvgSketchNotebook;
+  /** The nodes a caller already claimed — see {@link sketchSvgTree}. */
+  skip: ReadonlySet<Element>;
 }
 
 /** The generic shape props every recognised outline lands with. */
@@ -1016,6 +1039,7 @@ function visit(
   inherited: Paint,
   sketch: Sketch
 ): void {
+  if (sketch.skip.has(element)) return;
   const name = nameOf(element);
   if (NON_RENDERING.has(name)) return;
   if (isHidden(element, sketch.notes)) return;
@@ -1126,6 +1150,79 @@ function emit(
   }
 }
 
+/* ── The two passes, opened to a recogniser (ADR 0032 §2) ────────────── */
+
+/**
+ * The second pass: a sanitised tree as sketch props, minus what a caller
+ * claimed.
+ *
+ * `skip` is the set of nodes a framework's recogniser already turned into its
+ * own artefacts; each one is left alone WITH its subtree, and everything else
+ * is read exactly as {@link parseSvgSketch} reads it. `place` composes a frame
+ * OUTSIDE the file's own viewport — `canvas = place.s · file + place.o` — so
+ * the remainder can land beside a board the recogniser laid out at another
+ * scale. Both default to nothing, which is {@link parseSvgSketch} itself.
+ *
+ * A framework that claims nodes owes its own heuristics statement for what it
+ * claims; this module's statement covers only what reaches this walk.
+ */
+export function sketchSvgTree(
+  root: Element,
+  notes: SvgSketchNotebook,
+  options: { skip?: ReadonlySet<Element>; place?: SvgSketchFrame } = {}
+): SerializedElementProps[] {
+  const sketch: Sketch = {
+    elements: [],
+    notes,
+    skip: options.skip ?? new Set(),
+  };
+  const place = options.place ?? IDENTITY;
+  const own = viewportFrame(root, IDENTITY);
+  // The root `<svg>` paints like any other element — a `fill` on it is what
+  // every shape under it inherits — and it establishes the outermost viewport.
+  walk(
+    root,
+    {
+      ox: own.ox * place.s + place.ox,
+      oy: own.oy * place.s + place.oy,
+      s: own.s * place.s,
+    },
+    paintOf(root, INITIAL_PAINT, notes),
+    sketch
+  );
+  return sketch.elements;
+}
+
+/**
+ * The frame a node's OWN attributes are read in — its `cx`, its `x1`, its
+ * `points` — composed exactly the way the walk composes it: the root's
+ * viewport, then every ancestor's translate and nested viewport, then the
+ * node's own `transform`. So a recogniser that reads a circle's centre through
+ * this lands it on the very point the sketch would have drawn it.
+ *
+ * The transforms the walk ignores are ignored here too, silently: the walk
+ * already says so once per kind when it meets them.
+ */
+export function svgFrameOf(element: Element): SvgSketchFrame {
+  const path: Element[] = [];
+  for (let at: Element | null = element; at; at = at.parentElement) {
+    path.unshift(at);
+  }
+  // The outermost `<svg>` on the path is the root the walk starts from: its
+  // viewport is the identity's, and its own `transform` is never read.
+  const rootIndex = path.findIndex(node => nameOf(node) === 'svg');
+  if (rootIndex < 0) return IDENTITY;
+  const quiet = new SvgSketchNotebook();
+  let frame = viewportFrame(path[rootIndex], IDENTITY);
+  for (const node of path.slice(rootIndex + 1)) {
+    frame = translated(node, frame, quiet);
+    if (node !== element && nameOf(node) === 'svg') {
+      frame = viewportFrame(node, frame);
+    }
+  }
+  return frame;
+}
+
 /* ── The capability's function ────────────────────────────────────────── */
 
 /**
@@ -1143,8 +1240,12 @@ function emit(
  * handler attributes — handed over by whoever sent the file. The same
  * `USE_PROFILES: { svg: true }` guard is what the edgeless clipboard already
  * puts in front of a pasted SVG.
+ *
+ * The first of the two passes {@link parseSvgSketch} is made of, exported so a
+ * framework that recognises part of a picture reads the SAME sanitised tree
+ * the sketch walks (ADR 0032 §2, §7) — never the source.
  */
-function parseSvgRoot(source: string, notes: Notebook): Element {
+export function sanitizeSvg(source: string, notes: SvgSketchNotebook): Element {
   const doc = new DOMParser().parseFromString(source, 'image/svg+xml');
   const error = doc.querySelector('parsererror');
   if (error) {
@@ -1250,19 +1351,11 @@ export function parseSvgSketch(
   // document's business, not any element's. Same answer the BPMN reader gives.
   void context;
 
-  const sketch: Sketch = { elements: [], notes: new Notebook() };
-  const root = parseSvgRoot(source, sketch.notes);
-  // The root `<svg>` paints like any other element — a `fill` on it is what
-  // every shape under it inherits — and it establishes the outermost viewport.
-  walk(
-    root,
-    viewportFrame(root, IDENTITY),
-    paintOf(root, INITIAL_PAINT, sketch.notes),
-    sketch
-  );
+  const notes = new SvgSketchNotebook();
+  const elements = sketchSvgTree(sanitizeSvg(source, notes), notes);
 
-  if (sketch.elements.length === 0) {
-    sketch.notes.once(
+  if (elements.length === 0) {
+    notes.once(
       'empty',
       'No shape or text was recognised in this SVG, so nothing was drawn.',
       SVG_SKETCH_EMPTY
@@ -1270,16 +1363,16 @@ export function parseSvgSketch(
   }
 
   return {
-    elements: sketch.elements,
+    elements,
     report: {
-      mapped: sketch.elements.length,
+      mapped: elements.length,
       // Always zero, and it is the tier's whole contract rather than an
       // accident of this file: a visual import carries nothing and quarantines
       // nothing, because it writes no `interchange` payload to carry anything
       // IN (ADR 0012, P2). Pinned by an anti-decay test.
       carried: 0,
       quarantined: 0,
-      notes: sketch.notes.notes,
+      notes: notes.notes,
       // …and no `sourceVersion`. An SVG declares a version of the SVG spec, not
       // a version of a vocabulary this reader translates, so claiming one would
       // be a fact about the file dressed up as a fact about the import.

@@ -143,12 +143,13 @@ describe('the SVG sketch import, end to end', () => {
     ).toBe(before);
   });
 
-  test('both frameworks read one `.svg` through one function', async () => {
+  test('a picture no producer marked is the same sketch for both frameworks', async () => {
     // ADR 0012 refuses to infer a framework from a `.svg`, so there are two
-    // capabilities — and they wrap the SAME parser, which is what keeps them
-    // from drifting into recognising different pictures.
+    // capabilities. BPMN wraps the shared parser; Wardley, since ADR 0032,
+    // runs its own reader, which recognises the map a producer's picture is a
+    // picture of — and hands everything else to the SAME sketch walk.
     expect(BPMN_SVG_IMPORT.run).toBe(parseSvgSketch);
-    expect(WARDLEY_SVG_IMPORT.run).toBe(parseSvgSketch);
+    expect(WARDLEY_SVG_IMPORT.run).not.toBe(parseSvgSketch);
 
     const surface = await importFixture();
     const drawn = surface.elementModels.length;
@@ -158,7 +159,8 @@ describe('the SVG sketch import, end to end', () => {
     await wait();
 
     // The same picture again, beside the first: an import is an import and
-    // never a merge, and Wardley drew exactly what BPMN drew.
+    // never a merge, and with no marker and no axes Wardley drew exactly what
+    // BPMN drew.
     expect(
       getSurface(window.doc, window.editor).model.elementModels.length
     ).toBe(drawn * 2);
