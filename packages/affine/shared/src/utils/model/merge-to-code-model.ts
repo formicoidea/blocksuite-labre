@@ -21,13 +21,19 @@ export function mergeToCodeModel(models: BlockModel[]) {
     })
     .filter(Boolean)
     .join('\n');
-  models.forEach(model => doc.deleteBlock(model));
 
+  // Add first and delete only once the code block exists: `addBlock` returns
+  // an id even when the parent rejected the flavour (a callout only takes
+  // paragraphs and lists), and deleting first lost the text (#418).
   const id = doc.addBlock(
     'affine:code',
     { text: new Text(text) },
     parent,
     index
   );
+  if (!doc.getModelById(id)) {
+    return null;
+  }
+  models.forEach(model => doc.deleteBlock(model));
   return id;
 }
