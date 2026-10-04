@@ -24,7 +24,10 @@ import {
   EmbedLinkedDocBlockSchema,
   EmbedSyncedDocBlockSchema,
 } from '@labre/affine-model';
-import { textConversionConfigs } from '@labre/affine-rich-text';
+import {
+  textConversionConfigs,
+  TextConversionEntryIdentifier,
+} from '@labre/affine-rich-text';
 import {
   copySelectedModelsCommand,
   deleteSelectedModelsCommand,
@@ -107,6 +110,11 @@ const conversionsActionGroup = {
         })
         .run();
     };
+    // Conversions a gated block package registers from its own view extension
+    // (#418): absent when its flag is off, so never listed statically here.
+    const contributed = [
+      ...std.provider.getAll(TextConversionEntryIdentifier).values(),
+    ].filter(entry => entry.when(std, selectedModels));
 
     return {
       content: html`
@@ -137,6 +145,21 @@ const conversionsActionGroup = {
                   ${icon}<span class="label">${name}</span>
                 </editor-menu-action>
               `
+            )}
+            ${repeat(
+              contributed,
+              entry => entry.flavour,
+              entry => {
+                const label = translateKey(std, ...entry.nameWording);
+                return html`
+                  <editor-menu-action
+                    aria-label=${label}
+                    @click=${() => entry.run(std, selectedModels)}
+                  >
+                    ${entry.icon}<span class="label">${label}</span>
+                  </editor-menu-action>
+                `;
+              }
             )}
           </div>
         </editor-menu-button>
