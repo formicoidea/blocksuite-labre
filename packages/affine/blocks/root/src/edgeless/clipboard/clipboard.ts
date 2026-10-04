@@ -38,6 +38,7 @@ import {
   isTopLevelBlock,
   isUrlInClipboard,
   matchModels,
+  normalizeCanvasExportColors,
   referenceToNode,
 } from '@labre/affine-shared/utils';
 import { DisposableGroup } from '@labre/global/disposable';
@@ -474,6 +475,7 @@ export class EdgelessClipboardController extends PageClipboard {
       },
 
       onclone: async function (documentClone: Document, element: HTMLElement) {
+        normalizeCanvasExportColors(documentClone, element);
         // html2canvas can't support transform feature
         element.style.setProperty('transform', 'none');
         const layer = documentClone.querySelector('.affine-edgeless-layer');

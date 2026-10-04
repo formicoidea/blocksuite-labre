@@ -1,5 +1,6 @@
 export * from './auto-scroll';
 export * from './button-popper';
+export * from './canvas-export-colors';
 export * from './collapsed';
 export * from './computing';
 export * from './dnd';
