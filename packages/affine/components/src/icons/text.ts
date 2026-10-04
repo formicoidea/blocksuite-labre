@@ -120,6 +120,18 @@ export const UnderlineIcon = icons.UnderLineIcon({
   height: '20',
 });
 
+/**
+ * The icon set ships no overline, so it is drawn here: the underline icon's
+ * own letter and rule, the rule moved above the letter (ADR 0030).
+ */
+const OverlineSVG = svg`<path
+  fill="currentColor"
+  fill-rule="evenodd"
+  clip-rule="evenodd"
+  d="M4.458 3.064a.808.808 0 0 0 0 1.616h15.084a.808.808 0 1 0 0-1.616zM7.744 7.968a.808.808 0 1 0-1.616 0v7.003a5.656 5.656 0 1 0 11.313 0V7.968a.808.808 0 1 0-1.616 0v7.003a4.04 4.04 0 1 1-8.08 0z"
+/>`;
+export const OverlineIcon = icon(OverlineSVG, 20);
+
 export const StrikethroughIcon = icons.StrikeThroughIcon({
   width: '20',
   height: '20',

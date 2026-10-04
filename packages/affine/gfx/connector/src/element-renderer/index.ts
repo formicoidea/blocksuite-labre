@@ -5,10 +5,12 @@ import {
   type RoughCanvas,
 } from '@labre/affine-block-surface';
 import {
+  alphabeticBaselineOffset,
   getFontString,
   getLineHeight,
   getTextWidth,
   isRTL,
+  paintTextDecoration,
   type TextDelta,
   wrapTextDeltas,
 } from '@labre/affine-gfx-text';
@@ -316,7 +318,15 @@ function renderLabel(
   const {
     text,
     xywh,
-    style: { color, fontSize, fontWeight, fontStyle, fontFamily, textAlign },
+    style: {
+      color,
+      fontSize,
+      fontWeight,
+      fontStyle,
+      fontFamily,
+      textAlign,
+      textDecoration,
+    },
     constraints: { hasMaxWidth, maxWidth },
   } = label;
   const font = getFontString({
@@ -345,7 +355,8 @@ function renderLabel(
   ctx.font = font;
   ctx.textAlign = textAlign;
   ctx.textBaseline = 'middle';
-  ctx.fillStyle = renderer.getColorValue(color, DefaultTheme.black, true);
+  const fill = renderer.getColorValue(color, DefaultTheme.black, true);
+  ctx.fillStyle = fill;
 
   let textMaxWidth = textAlign === 'center' ? 0 : getMaxTextWidth(lines, font);
   if (hasMaxWidth && maxWidth > 0) {
@@ -376,7 +387,24 @@ function renderLabel(
             : rtl
               ? 0.5
               : -0.5);
-      ctx.fillText(str, x + cx, index * lineHeight - textHeight + cy);
+      const lineY = index * lineHeight - textHeight + cy;
+      ctx.fillText(str, x + cx, lineY);
+
+      if (textDecoration) {
+        // Painted on the `middle` baseline; the line hangs off the alphabetic
+        // one, measured below it.
+        paintTextDecoration(ctx, {
+          decoration: textDecoration,
+          lineText: str,
+          font,
+          x: x + cx,
+          baselineY: lineY + alphabeticBaselineOffset(font, 'middle'),
+          fontFamily,
+          fontSize,
+          fontWeight,
+          color: fill,
+        });
+      }
 
       if (shouldTemporarilyAttach) {
         ctx.canvas.remove();

@@ -2,7 +2,7 @@ import {
   DefaultTool,
   EdgelessCRUDIdentifier,
 } from '@labre/affine-block-surface';
-import { getLineHeight } from '@labre/affine-gfx-text';
+import { getLineHeight, textDecorationLine } from '@labre/affine-gfx-text';
 import {
   type ConnectorElementModel,
   connectorEndLabelBox,
@@ -537,6 +537,7 @@ export class EdgelessConnectorLabelEditor extends WithDisposable(
         fontStyle,
         fontWeight,
         textAlign,
+        textDecoration,
         color: labelColor,
       },
       labelConstraints: { hasMaxWidth, maxWidth },
@@ -567,6 +568,7 @@ export class EdgelessConnectorLabelEditor extends WithDisposable(
           fontStyle,
           fontWeight,
           textAlign,
+          textDecorationLine: textDecorationLine(textDecoration),
           lineHeight: `${lineHeight}px`,
           maxWidth: hasMaxWidth
             ? `${maxWidth + BORDER_WIDTH * 2 + HORIZONTAL_PADDING * 2}px`

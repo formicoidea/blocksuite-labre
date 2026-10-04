@@ -13,7 +13,7 @@ import { createTextActions } from './actions';
 export const textToolbarConfig = {
   actions: createTextActions(TextElementModel, 'text', (ctx, model, props) => {
     // No need to adjust element bounds
-    if (props['textAlign']) {
+    if (props['textAlign'] || props['textDecoration']) {
       ctx.std.get(EdgelessCRUDIdentifier).updateElement(model.id, props);
       return;
     }

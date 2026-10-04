@@ -25,6 +25,7 @@ import {
   ShapeType,
   StrokeStyle,
   TextAlign,
+  type TextDecoration,
   TextFitMode,
   TextResizing,
   type TextStyleProps,
@@ -228,6 +229,13 @@ export class ShapeElementModel extends GfxPrimitiveElementModel<ShapeProps> {
 
   @field(TextAlign.Center as TextAlign)
   accessor textAlign!: TextAlign;
+
+  /**
+   * Absent until the author sets it, so a shape whose text is never decorated
+   * stores exactly the keys it stored before the field existed (ADR 0030).
+   */
+  @field()
+  accessor textDecoration: TextDecoration | undefined = undefined;
 
   @local()
   accessor textDisplay: boolean = true;

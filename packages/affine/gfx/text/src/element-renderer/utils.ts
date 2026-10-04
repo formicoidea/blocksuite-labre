@@ -1,9 +1,10 @@
 import { TextUtils } from '@labre/affine-block-surface';
-import type {
-  FontFamily,
-  FontStyle,
-  FontWeight,
-  TextElementModel,
+import {
+  type FontFamily,
+  type FontStyle,
+  type FontWeight,
+  TextDecoration,
+  type TextElementModel,
 } from '@labre/affine-model';
 import type { Bound } from '@labre/global/gfx';
 import {
@@ -198,6 +199,162 @@ export function getTextWidth(text: string, font: string): number {
     width = Math.max(width, getLineWidth(line, font));
   });
   return width;
+}
+
+/**
+ * How far BELOW a `textBaseline` line the alphabetic baseline sits, measured
+ * rather than derived: Chromium puts `middle` at half the x-height, not half
+ * the font box, so no ratio of the font metrics gets it right. Negative when
+ * the alphabetic baseline is above the line (`ideographic`, the font box's
+ * bottom).
+ */
+export function alphabeticBaselineOffset(
+  font: string,
+  baseline: CanvasTextBaseline
+): number {
+  const ctx = getMeasureCtx();
+  if (font !== ctx.font) ctx.font = font;
+  const previous = ctx.textBaseline;
+  ctx.textBaseline = baseline;
+  const { alphabeticBaseline } = ctx.measureText('x');
+  ctx.textBaseline = previous;
+  return -(alphabeticBaseline ?? 0) || 0;
+}
+
+/** The decoration tokens this build paints; any other token is skipped. */
+type KnownTextDecorationToken = 'underline' | 'overline';
+
+/**
+ * The tokens of a stored `textDecoration` this build knows (ADR 0030).
+ *
+ * Token by token on purpose: the stored value is an append-only CSS token
+ * list, so a token a newer client adds is dropped here one at a time and
+ * `'underline line-through'` still reads as underlined. Never a `switch` on the
+ * whole string, which would lose the underline with the unknown token.
+ */
+export function parseTextDecoration(value: string | undefined): {
+  underline: boolean;
+  overline: boolean;
+} {
+  const tokens = value ? value.split(/\s+/) : [];
+  return {
+    underline: tokens.includes('underline'),
+    overline: tokens.includes('overline'),
+  };
+}
+
+/**
+ * The CSS `text-decoration-line` the DOM twins of a canvas text use — the
+ * known tokens only, so an unknown one cannot invalidate the declaration.
+ */
+export function textDecorationLine(value: string | undefined): string {
+  const { underline, overline } = parseTextDecoration(value);
+  const line = [underline && 'underline', overline && 'overline']
+    .filter(Boolean)
+    .join(' ');
+  return line || 'none';
+}
+
+/**
+ * The stored value after one toggle: `token` turned on or off, every other
+ * token kept — an unknown one included, so a toggle in this build never erases
+ * what a newer client wrote. Nothing left writes `None`, never `undefined`
+ * (ADR 0030 §2).
+ */
+export function toggleTextDecoration(
+  value: string | undefined,
+  token: KnownTextDecorationToken,
+  on: boolean
+): TextDecoration {
+  const tokens = new Set(
+    (value ?? '')
+      .split(/\s+/)
+      .filter(t => t && t !== TextDecoration.None && t !== token)
+  );
+  if (on) tokens.add(token);
+  const known = (['underline', 'overline'] as const).filter(t => tokens.has(t));
+  const unknown = [...tokens].filter(
+    t => t !== 'underline' && t !== 'overline'
+  );
+  const next = [...known, ...unknown].join(' ');
+  return (next || TextDecoration.None) as TextDecoration;
+}
+
+/**
+ * Strokes the underline and the overline of ONE painted run of a canvas text
+ * (ADR 0030 §3) — shared by the text, shape and connector-label renderers, and
+ * replayed as is by the SVG export, which runs those renderers on svgcanvas.
+ *
+ * - Width is the run's measured advance, never the element's box, with the
+ *   same measurement the wrap uses, offset by the `ctx.textAlign` the run was
+ *   painted with.
+ * - Offsets are ratios of the size the renderer paints with: canvas
+ *   `TextMetrics` exposes no underline position.
+ * - `fillRect`, not `stroke`: a rectangle ignores whatever `lineDash`,
+ *   `lineCap` or `lineWidth` a shape left on the context, and svgcanvas writes
+ *   it as one `<rect>`.
+ *
+ * Paints nothing at all — not even a `fillStyle` write — when the value holds
+ * no known token, so an undecorated text draws exactly the calls it drew
+ * before the field existed.
+ */
+export function paintTextDecoration(
+  ctx: CanvasRenderingContext2D,
+  {
+    decoration,
+    lineText,
+    font,
+    x,
+    baselineY,
+    fontFamily,
+    fontSize,
+    fontWeight,
+    color,
+  }: {
+    decoration: string | undefined;
+    lineText: string;
+    font: string;
+    /** The x passed to `fillText`, read with the context's `textAlign`. */
+    x: number;
+    /** The ALPHABETIC baseline of the run, whatever `textBaseline` painted it. */
+    baselineY: number;
+    fontFamily: string;
+    fontSize: number;
+    fontWeight: string;
+    color: string;
+  }
+): void {
+  const { underline, overline } = parseTextDecoration(decoration);
+  if (!underline && !overline) return;
+
+  const width = getLineWidth(lineText, font);
+  if (!(width > 0)) return;
+
+  const left =
+    ctx.textAlign === 'center'
+      ? x - width / 2
+      : ctx.textAlign === 'right'
+        ? x - width
+        : x;
+  const thickness = Math.max(1, fontSize / 16);
+
+  ctx.fillStyle = color;
+  if (underline) {
+    ctx.fillRect(
+      left,
+      baselineY + Math.max(1, fontSize * 0.08),
+      width,
+      thickness
+    );
+  }
+  if (overline) {
+    const { fontBoundingBoxAscent } = getFontMetrics(
+      fontFamily,
+      fontSize,
+      fontWeight
+    );
+    ctx.fillRect(left, baselineY - fontBoundingBoxAscent, width, thickness);
+  }
 }
 
 export function wrapTextDeltas(text: Y.Text, font: string, w: number) {

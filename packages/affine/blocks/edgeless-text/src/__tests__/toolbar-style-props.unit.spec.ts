@@ -33,6 +33,10 @@ function renderAction(id: string) {
     action => action.id === id
   );
   expect(action, `no toolbar action ${id}`).toBeDefined();
+  // The decoration toggles are a group, with no template of their own.
+  if (!action || !('content' in action)) {
+    throw new Error(`toolbar action ${id} renders no template`);
+  }
 
   const ctx = {
     getSurfaceModelsByType: () => [textModel],
@@ -41,7 +45,7 @@ function renderAction(id: string) {
   } as unknown as ToolbarContext;
 
   const container = document.createElement('div');
-  render(action!.content!(ctx), container);
+  render(action.content(ctx), container);
   return container;
 }
 

@@ -24,7 +24,9 @@ import { DefaultTheme } from '../../themes/default';
 type EdgelessTextProps = {
   hasMaxWidth: boolean;
   comments?: Record<string, boolean>;
-} & Omit<TextStyleProps, 'fontSize'> &
+  // No `textDecoration`: its paragraphs are rich text, decorated per run
+  // through the inline schema (ADR 0030 §1).
+} & Omit<TextStyleProps, 'fontSize' | 'textDecoration'> &
   GfxCommonBlockProps;
 
 export const EdgelessTextZodSchema = z

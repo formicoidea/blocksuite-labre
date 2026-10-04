@@ -1,4 +1,5 @@
 import type { DomRenderer } from '@labre/affine-block-surface';
+import { textDecorationLine } from '@labre/affine-gfx-text';
 import {
   type ConnectorElementModel,
   ConnectorMode,
@@ -309,6 +310,7 @@ function renderConnectorLabel(
       fontStyle,
       fontFamily,
       textAlign,
+      textDecoration,
     },
   } = model;
 
@@ -340,6 +342,7 @@ function renderConnectorLabel(
   labelElement.style.fontStyle = fontStyle;
   labelElement.style.fontFamily = fontFamily;
   labelElement.style.textAlign = textAlign;
+  labelElement.style.textDecorationLine = textDecorationLine(textDecoration);
   labelElement.style.lineHeight = '1.2';
   labelElement.style.whiteSpace = 'pre-wrap';
   labelElement.style.wordWrap = 'break-word';

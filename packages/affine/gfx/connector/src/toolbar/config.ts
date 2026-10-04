@@ -572,7 +572,7 @@ export const connectorToolbarConfig = {
         const labelStyle = { ...model.labelStyle, ...props };
 
         // No need to adjust element bounds
-        if (props['textAlign']) {
+        if (props['textAlign'] || props['textDecoration']) {
           ctx.std
             .get(EdgelessCRUDIdentifier)
             .updateElement(model.id, { labelStyle });
