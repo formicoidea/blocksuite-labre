@@ -111,6 +111,29 @@ it.
   wraps, rotated and scaled as on screen, painted over the canvas elements
   rather than at its layer index. Notes, images and embeds stay out.
 
+## Amendment — 2026-10-04: the file says what each group is ([ADR 0032](0032-wardley-svg-recognises-roles.md) §6)
+
+- **Every element the export replays is wrapped in one `<g>`** carrying
+  `data-labre-id`, `data-labre-type`, `data-labre-role` (when it has one),
+  `data-labre-xywh` (its stored bound, in the file's coordinates), and
+  `data-labre-source` / `data-labre-target` on a connector and
+  `data-labre-group` on a grouped element; the root `<svg>` carries
+  `data-labre-svg="1"`, the marker version. The loop in `render.ts` draws one
+  element per `renderBoundTo` pass inside that group
+  (`SvgContext.markedGroup`), so paint order and every renderer are
+  unchanged, and the decisions above — who draws, what is in scope — stand:
+  the attributes draw nothing.
+- **Ids and vocabulary, never prose.** Base-class fields only, so every board's
+  file carries them and no framework is named in the export; never
+  `pivotDocId`, `interchange`, a tag, a link or any text — a name is read back
+  from the `<text>` the renderer already drew. Pinned in
+  `wardley-svg-roundtrip.spec.ts`.
+- **On by default, no opt-out** (ADR 0032, open point 3, resolved at
+  acceptance). Measured on a 501-element Wardley map: 179 bytes an element,
+  about 90 kB, against the ADR's estimate of 150.
+- **What reads them:** Wardley's SVG import, which recognises its own export
+  first and gets back the same map (ADR 0032 §4.1).
+
 ## Why not resvg
 
 `resvg` is a _rasteriser_: it turns SVG into PNG. It answers the opposite

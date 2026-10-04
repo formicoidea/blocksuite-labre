@@ -400,6 +400,20 @@ function labelAnchors(node: Box, label: Box): [number, number][] {
   ];
 }
 
+/** What {@link matchLabels} reads of a node: a model, or a file's marker. */
+export interface LabelledNode {
+  id: string;
+  kind: string;
+  role?: string;
+  elementBound: { x: number; y: number; w: number; h: number };
+}
+
+/** What {@link matchLabels} reads of a label. */
+export interface LabelBox {
+  text?: unknown;
+  elementBound: { x: number; y: number; w: number; h: number };
+}
+
 /**
  * Which label names which node — the one heuristic in this module.
  *
@@ -425,10 +439,15 @@ function labelAnchors(node: Box, label: Box): [number, number][] {
  * HAS no name — its one letter is the shape's own inner text — so any label it
  * matched would be some neighbouring artefact's, taken out of that artefact's
  * mouth and then thrown away, since a force is not written to the file at all.
+ *
+ * Typed on the four facts it reads rather than on the models, so the SVG
+ * reader (`svg-recognise-labre.ts`) names the nodes of Labre's own export with
+ * this very function, from the bounds the file's markers carry: an export and
+ * the import of that export cannot disagree about whose name is whose.
  */
-function matchLabels(
-  nodes: readonly WardleyNodeElementModel[],
-  labels: readonly TextElementModel[]
+export function matchLabels(
+  nodes: readonly LabelledNode[],
+  labels: readonly LabelBox[]
 ): Map<string, string> {
   type Pair = { distance: number; node: number; label: number };
   const pairs: Pair[] = [];

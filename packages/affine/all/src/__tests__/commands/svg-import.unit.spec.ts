@@ -55,6 +55,7 @@ describe('the SVG fallback import is declared by each framework that reads one',
     );
     expect(wardley.descriptionFallback).toContain('OnlineWardleyMaps');
     expect(wardley.descriptionFallback).toContain('wardley-map-renderer');
+    expect(wardley.descriptionFallback).toContain('Labre');
     expect(wardley.descriptionFallback).toContain('sketch');
     // BPMN still reads geometry and nothing else (ADR 0032 §8).
     expect(commandOf('bpmn.importSvg').descriptionKey).toBe(
