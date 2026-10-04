@@ -8,6 +8,8 @@ export {
   setPaneElementsLocked,
 } from './actions.js';
 export {
+  type HideLocalParams,
+  hideLocalParams,
   type LockElementsParams,
   lockElementsParams,
   type RenameGroupParams,

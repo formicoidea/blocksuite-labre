@@ -1,4 +1,5 @@
 import {
+  CanvasLocalVisibility,
   SelectionPaneProvider,
   TelemetryProvider,
 } from '@labre/affine-shared/services';
@@ -197,10 +198,90 @@ const renameGroup: CommandDescriptor<RenameGroupParams> = {
   },
 };
 
+export const hideLocalParams = z.object({
+  /** The models to act on. Omitted: the current canvas selection. */
+  ids: z.array(z.string()).optional(),
+  /** `false` shows them again. Omitted: hide. */
+  hidden: z.boolean().optional(),
+});
+
+export type HideLocalParams = z.infer<typeof hideLocalParams>;
+
+function reportVisibility(std: BlockStdScope, hidden: boolean, count: number) {
+  if (!count) return;
+  std.getOptional(TelemetryProvider)?.track('CanvasVisibilityChanged', {
+    page: 'whiteboard editor',
+    target: 'element',
+    scope: 'local',
+    hidden,
+    count,
+  });
+}
+
+/**
+ * Hide elements for THIS viewer only (ADR 0031 §8) — or, with
+ * `hidden: false`, show them again; the pane's eye is both.
+ *
+ * Nothing is written to the document, so there is no read-only guard: a
+ * reader may hide what is in their way. Self-emits `CanvasVisibilityChanged`
+ * with the number of elements the gesture actually changed.
+ */
+const hideLocal: CommandDescriptor<HideLocalParams> = {
+  id: 'canvas.visibility.hideLocal',
+  owner: 'core',
+  kind: 'action',
+  labelKey: 'com.labre.command.canvas.visibility.hide-local',
+  labelFallback: 'Hide for me',
+  descriptionKey: 'com.labre.command.canvas.visibility.hide-local.description',
+  descriptionFallback:
+    'Hide the selected elements on your screen only. Nothing changes for anyone else.',
+  surfaces: ['palette', 'agent'],
+  scope: 'edgeless',
+  defaultKeys: { mac: [], other: [] },
+  availability: 'selection',
+  when: std => !!std.getOptional(CanvasLocalVisibility),
+  params: hideLocalParams,
+  run: (std, _invocation, params) => {
+    const visibility = std.getOptional(CanvasLocalVisibility);
+    const parsed = hideLocalParams.safeParse(params ?? {});
+    if (!visibility || !parsed.success) return;
+    const ids =
+      parsed.data.ids ?? std.get(GfxControllerIdentifier).selection.selectedIds;
+    const hidden = parsed.data.hidden ?? true;
+    const count = hidden ? visibility.hide(ids) : visibility.show(ids);
+    reportVisibility(std, hidden, count);
+  },
+};
+
+/**
+ * Show everything this viewer hid. Stays in the palette whatever the pane
+ * seam says: with `SelectionPaneExtension(null)` it is the one way back.
+ */
+const showAll: AnyCommandDescriptor = {
+  id: 'canvas.visibility.showAll',
+  owner: 'core',
+  kind: 'action',
+  labelKey: 'com.labre.command.canvas.visibility.show-all',
+  labelFallback: 'Show hidden elements',
+  descriptionKey: 'com.labre.command.canvas.visibility.show-all.description',
+  descriptionFallback: 'Show again every element you hid on your screen.',
+  surfaces: ['palette', 'agent'],
+  scope: 'edgeless',
+  defaultKeys: { mac: [], other: [] },
+  when: std =>
+    (std.getOptional(CanvasLocalVisibility)?.hiddenIds$.peek().size ?? 0) > 0,
+  run: std => {
+    const count = std.getOptional(CanvasLocalVisibility)?.showAll() ?? 0;
+    reportVisibility(std, false, count);
+  },
+};
+
 export const selectionPaneCommands: AnyCommandDescriptor[] = [
   toggleSelectionPane,
   reorderElement,
   lockCommand(true),
   lockCommand(false),
   renameGroup,
+  hideLocal,
+  showAll,
 ];

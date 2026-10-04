@@ -242,7 +242,10 @@ describe('command registry invariants', () => {
       // `canvas.selectionPane.toggle`, `canvas.element.reorder`,
       // `canvas.element.lock`, `canvas.element.unlock`, `canvas.group.rename`
       // — core-owned because a pane lists every element whatever drew it.
-      core: 19,
+      //
+      // …and 21 with the local hide (stage 3): `canvas.visibility.hideLocal`
+      // and `canvas.visibility.showAll`.
+      core: 21,
     });
     // 112 since the two SVG fallback imports (`bpmn.importSvg`,
     // `wardley.importSvg`) joined the OWM pair — one SVG row per framework,
@@ -268,7 +271,9 @@ describe('command registry invariants', () => {
     // already turns a host URL back into an inline reference.
     //
     // …and 193 with the five selection pane commands (`docs/adr/0031`).
-    expect(commands).toHaveLength(193);
+    //
+    // …and 195 with the two local-hide commands (stage 3).
+    expect(commands).toHaveLength(195);
   });
 
   /**
@@ -298,6 +303,10 @@ describe('command registry invariants', () => {
     // belongs to no framework, and `SelectionPaneOpened` is only emitted when
     // the toggle OPENS it — a fact of the invocation, not of the descriptor.
     'canvas.selectionPane.toggle',
+    // And for the same reason: `CanvasVisibilityChanged.count` is how many
+    // elements the gesture actually changed.
+    'canvas.visibility.hideLocal',
+    'canvas.visibility.showAll',
   ];
 
   test('a self-emitting command never also declares telemetry', () => {

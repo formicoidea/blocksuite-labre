@@ -12,13 +12,16 @@ import {
   intersects,
 } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
-import type {
-  GfxCompatibleInterface,
-  GridManager,
-  LayerManager,
-  SurfaceBlockModel,
-  Viewport,
+import {
+  type GfxCompatibleInterface,
+  GfxControllerIdentifier,
+  type GfxLocalVisibility,
+  type GridManager,
+  type LayerManager,
+  type SurfaceBlockModel,
+  type Viewport,
 } from '@labre/std/gfx';
+import { effect, untracked } from '@preact/signals-core';
 import { Subject } from 'rxjs';
 
 import type { SurfaceElementModel } from '../element-model/base.js';
@@ -211,11 +214,36 @@ export class DomRenderer {
       return featureFlagService.getFlag('enable_turbo_renderer');
     };
 
+    this._localVisibility = this.std.get(
+      GfxControllerIdentifier
+    ).localVisibility;
+
     this._initViewport();
     this._watchSurface(options.surfaceModel);
   }
 
+  /** The viewer's local hide (ADR 0031 §8), read by the paint predicate. */
+  private readonly _localVisibility: GfxLocalVisibility;
+
   private _initViewport() {
+    // A local hide or show changes what is painted without touching any
+    // element: the whole viewport is dirty once. The first run only
+    // subscribes.
+    let visibilityRead = false;
+    this._disposables.add(
+      effect(() => {
+        this._localVisibility.hiddenIds$.value;
+        if (!visibilityRead) {
+          visibilityRead = true;
+          return;
+        }
+        untracked(() => {
+          this._markViewportDirty();
+          this.refresh();
+        });
+      })
+    );
+
     this._disposables.add(
       this.viewport.viewportUpdated.subscribe(() => {
         this._markViewportDirty();
@@ -583,7 +611,7 @@ export class DomRenderer {
 
     // 1. Update dirty elements
     for (const elementModel of elementsFromGrid) {
-      const display = isPainted(elementModel);
+      const display = isPainted(elementModel, this._localVisibility);
       if (
         display &&
         intersects(getBoundWithRotation(elementModel), viewportBounds)
@@ -671,7 +699,7 @@ export class DomRenderer {
     const visibleElementIds = new Set<string>();
 
     for (const elementModel of elementsFromGrid) {
-      const display = isPainted(elementModel);
+      const display = isPainted(elementModel, this._localVisibility);
       if (
         display &&
         intersects(getBoundWithRotation(elementModel), viewportBounds)

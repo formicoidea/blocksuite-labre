@@ -30,6 +30,16 @@ describe('isPainted', () => {
     expect(isPainted({ display: false, hidden: true })).toBe(false);
     expect(isPainted({ display: true, hidden: false })).toBe(true);
   });
+
+  test("the viewer's local hide (stage 3) skips an element on its own", () => {
+    const hidden: { id: string; display?: boolean } = { id: 'a' };
+    const visibility = { isHidden: (e: { id?: string }) => e.id === 'a' };
+    expect(isPainted(hidden, visibility)).toBe(false);
+    const shown: { id: string; display?: boolean } = { id: 'b' };
+    expect(isPainted(shown, visibility)).toBe(true);
+    // Absent hook: today's answer, unchanged.
+    expect(isPainted(hidden)).toBe(true);
+  });
 });
 
 describe('the renderer sites call the predicate', () => {

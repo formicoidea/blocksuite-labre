@@ -1,3 +1,4 @@
+import { CanvasLocalVisibility } from '@labre/affine-shared/services';
 import { type BlockStdScope, LifeCycleWatcher } from '@labre/std';
 import {
   compareLayer,
@@ -22,6 +23,8 @@ import {
  */
 export const DEFAULT_LAYER_ID = '@default';
 
+const NOTHING_HIDDEN: ReadonlySet<string> = new Set();
+
 /**
  * One row of the selection pane, as the HEADLESS API hands it out (ADR 0031
  * §12): ids and states only, never a wording. Whoever draws the row reads the
@@ -44,7 +47,10 @@ export interface SelectionPaneNode {
   layerId: string;
   /** Locked by itself — what the row's lock toggle shows and flips. */
   locked: boolean;
-  /** Hidden for this viewer only. `false` until the local-hide stage. */
+  /**
+   * Hidden for this viewer only (`CanvasLocalVisibility`): still listed, still
+   * selectable from the pane, just not painted or picked on the canvas.
+   */
   hiddenLocal: boolean;
   /** Hidden for everyone. `false` until that stage writes the field. */
   hiddenForEveryone: boolean;
@@ -92,7 +98,8 @@ function rawGroupOf(model: GfxModel): unknown {
  * ancestors (a frame's members beside loose elements) pay the full walk.
  */
 export function buildSelectionPaneTree(
-  models: readonly GfxModel[]
+  models: readonly GfxModel[],
+  hiddenLocally: ReadonlySet<string> = NOTHING_HIDDEN
 ): SelectionPaneNode[] {
   const present = new Set<string>();
   const groupOf = new Map<GfxModel, unknown>();
@@ -139,7 +146,7 @@ export function buildSelectionPaneTree(
         type: block ? model.flavour : (model as GfxPrimitiveElementModel).type,
         layerId: DEFAULT_LAYER_ID,
         locked: model.lockedBySelf === true,
-        hiddenLocal: false,
+        hiddenLocal: hiddenLocally.has(model.id),
         hiddenForEveryone: false,
       };
       if (role !== undefined) node.role = role;
@@ -197,7 +204,10 @@ export class SelectionPaneModel extends LifeCycleWatcher {
     this._revision$.value;
     const gfx = this.std.get(GfxControllerIdentifier);
     if (!gfx.surface$.value) return [];
-    return buildSelectionPaneTree(gfx.gfxElements);
+    // Read here, so a local hide or show re-derives the rows' marks.
+    const hidden = this.std.getOptional(CanvasLocalVisibility)?.hiddenIds$
+      .value;
+    return buildSelectionPaneTree(gfx.gfxElements, hidden);
   });
 
   /** Force a rebuild; for a change no subscribed event reports. */

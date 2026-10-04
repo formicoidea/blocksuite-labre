@@ -145,10 +145,22 @@ export function renderBoardSvg(
 
   const frame = Bound.deserialize(board.xywh);
   // Already sorted by `layer.compare`, which is the canvas' own z-order.
-  const candidates = gfx.getElementsByBound(frame, { type: 'canvas' });
+  // What you see is what you export (ADR 0031): what this viewer hid is
+  // neither painted nor allowed to widen the picture. The board itself stays,
+  // it is the sheet being exported.
+  const candidates = gfx
+    .getElementsByBound(frame, { type: 'canvas' })
+    .filter(
+      element =>
+        element === (board as unknown) || !gfx.localVisibility.isHidden(element)
+    );
   const textBlocks = gfx
     .getElementsByBound(frame, { type: 'block' })
-    .filter(block => SVG_TEXT_BLOCK_FLAVOURS.includes(block.flavour));
+    .filter(
+      block =>
+        SVG_TEXT_BLOCK_FLAVOURS.includes(block.flavour) &&
+        !gfx.localVisibility.isHidden(block)
+    );
   const { elements, textBlocks: texts } = selectBoardSvgParts(
     board,
     selectBoardElements(board, candidates),

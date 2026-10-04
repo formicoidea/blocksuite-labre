@@ -368,6 +368,26 @@ export interface SelectionPaneOpenedEvent extends TelemetryEvent {
   source: 'toolbar' | 'palette' | 'shortcut';
 }
 
+/**
+ * Something on the canvas was hidden or shown (ADR 0031 §14).
+ *
+ * `scope: 'local'` is the viewer's own hide, which writes nothing to the
+ * document; `'everyone'` is reserved for "hide for everyone", a later stage.
+ * `target: 'layer'` is reserved for the layers stage. `count` is how many
+ * elements the ONE gesture actually changed — a gesture that changes nothing
+ * reports nothing.
+ *
+ * Counts only: never an element id, a type, a group title or any text.
+ */
+export interface CanvasVisibilityChangedEvent extends TelemetryEvent {
+  page?: 'whiteboard editor';
+  target: 'element' | 'layer';
+  scope: 'local' | 'everyone';
+  hidden: boolean;
+  count: number;
+}
+
 export type CanvasPaneEvents = {
   SelectionPaneOpened: SelectionPaneOpenedEvent;
+  CanvasVisibilityChanged: CanvasVisibilityChangedEvent;
 };

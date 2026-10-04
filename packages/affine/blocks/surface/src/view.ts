@@ -2,6 +2,7 @@ import {
   type ViewExtensionContext,
   ViewExtensionProvider,
 } from '@labre/affine-ext-loader';
+import { CanvasLocalVisibility } from '@labre/affine-shared/services';
 import {
   BlockViewExtension,
   CommandExtension,
@@ -106,6 +107,9 @@ export class SurfaceViewExtension extends ViewExtensionProvider {
       // framework's, and nothing it lists is gated — a flag gates tooling,
       // the rows are content. The panel itself is the edgeless toolbar's.
       context.register(SelectionPaneModel);
+      // This viewer's local hide (ADR 0031 §8): registers into
+      // `gfx.localVisibility` and persists per document, never in it.
+      context.register(CanvasLocalVisibility);
       context.register(CommandExtension(selectionPaneCommands));
     } else {
       context.register(

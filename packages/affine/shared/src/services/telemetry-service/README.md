@@ -241,9 +241,10 @@ and has no bus of its own.
 
 ## The selection pane (ADR 0031)
 
-| Event                 | When                         | Required props                                  |
-| --------------------- | ---------------------------- | ----------------------------------------------- |
-| `SelectionPaneOpened` | the selection pane is opened | `source` (`toolbar` \| `palette` \| `shortcut`) |
+| Event                     | When                         | Required props                                                                      |
+| ------------------------- | ---------------------------- | ----------------------------------------------------------------------------------- |
+| `SelectionPaneOpened`     | the selection pane is opened | `source` (`toolbar` \| `palette` \| `shortcut`)                                     |
+| `CanvasVisibilityChanged` | elements are hidden or shown | `target` (`element` \| `layer`), `scope` (`local` \| `everyone`), `hidden`, `count` |
 
 Emitted by the `canvas.selectionPane.toggle` command, which every opening
 gesture goes through (`runCommand`), and only when the toggle OPENS the pane —
@@ -258,6 +259,13 @@ routes the reporter onto the framework creation events and requires a
 `FrameworkId`, and opening a pane creates nothing and belongs to no framework.
 It is enumerated in `registry.unit.spec.ts`'s `SELF_EMITTING_COMMANDS`. No ids
 cross: nothing about what the pane lists.
+
+`CanvasVisibilityChanged` is emitted by `canvas.visibility.hideLocal` (the
+pane's eye, the palette) and `canvas.visibility.showAll`, from their bodies for
+the same reason: `count` is how many elements the gesture actually changed, a
+fact of the invocation. Only `target: 'element'` and `scope: 'local'` exist so
+far; `layer` and `everyone` arrive with the layers and "hide for everyone"
+stages. A gesture that changes nothing emits nothing.
 
 ## Copying a link
 

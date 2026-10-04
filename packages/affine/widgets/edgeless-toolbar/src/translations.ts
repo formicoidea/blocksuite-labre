@@ -81,6 +81,18 @@ export const SELECTION_PANE_FILTER_BOARD: ChromeWording = [
   'Board: {{name}}',
 ];
 
+/** The eye of a visible row: hide it for this viewer only (ADR 0031 §8). */
+export const SELECTION_PANE_HIDE: ChromeWording = [
+  'com.labre.selection-pane.hide',
+  'Hide for me',
+];
+
+/** The eye of a row this viewer hid: show it again. */
+export const SELECTION_PANE_SHOW: ChromeWording = [
+  'com.labre.selection-pane.show',
+  'Show',
+];
+
 /** The padlock of a locked row; the unlocked one reads `TOOLBAR_LOCK`. */
 export const SELECTION_PANE_UNLOCK: ChromeWording = [
   'com.labre.selection-pane.unlock',
@@ -151,6 +163,8 @@ export const EDGELESS_TOOLBAR_WORDINGS: readonly ChromeWording[] = [
   SELECTION_PANE_FILTER_ALL,
   SELECTION_PANE_FILTER_FRAME,
   SELECTION_PANE_FILTER_BOARD,
+  SELECTION_PANE_HIDE,
+  SELECTION_PANE_SHOW,
   SELECTION_PANE_UNLOCK,
   SELECTION_PANE_EXPAND,
   SELECTION_PANE_COLLAPSE,

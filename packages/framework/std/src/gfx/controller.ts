@@ -23,6 +23,7 @@ import { GridManager } from './grid.js';
 import { gfxControllerKey } from './identifiers.js';
 import { KeyboardController } from './keyboard.js';
 import { LayerManager } from './layer.js';
+import { GfxLocalVisibility } from './local-visibility.js';
 import type { PointTestOptions } from './model/base.js';
 import { GfxBlockElementModel } from './model/gfx-block-model.js';
 import type { GfxModel } from './model/model.js';
@@ -40,6 +41,13 @@ export class GfxController extends LifeCycleWatcher {
   readonly cursor$ = new Signal<CursorType>();
 
   readonly keyboard: KeyboardController;
+
+  /**
+   * What this viewer has hidden on the canvas (ADR 0031 §8). Read by the
+   * renderers, the DOM block views, pointer picking and the marquee — never by
+   * `grid.search`, whose answer rules and legends share.
+   */
+  readonly localVisibility = new GfxLocalVisibility();
 
   readonly viewport: Viewport = new Viewport();
 
@@ -163,10 +171,13 @@ export class GfxController extends LifeCycleWatcher {
     };
 
     const candidates = this.grid.search(hitTestBound);
+    // A model this viewer hid is not under the pointer: it is not painted,
+    // so it cannot be what the user aims at (ADR 0031 §8).
     const picked = candidates.filter(
       elm =>
-        elm.includesPoint(x, y, options as PointTestOptions, this.std.host) ||
-        elm.externalBound?.isPointInBound([x, y])
+        !this.localVisibility.isHidden(elm) &&
+        (elm.includesPoint(x, y, options as PointTestOptions, this.std.host) ||
+          elm.externalBound?.isPointInBound([x, y]))
     );
 
     picked.sort(this.layer.compare);

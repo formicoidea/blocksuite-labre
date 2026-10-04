@@ -32,8 +32,10 @@ import {
   ArrowDownSmallIcon,
   ArrowRightSmallIcon,
   FilterIcon,
+  InvisibleIcon,
   LockIcon,
   UnlockIcon,
+  ViewIcon,
 } from '@blocksuite/icons/lit';
 import { css, html, nothing, unsafeCSS } from 'lit';
 import { state } from 'lit/decorators.js';
@@ -51,6 +53,8 @@ import {
   SELECTION_PANE_FILTER_BOARD,
   SELECTION_PANE_FILTER_FRAME,
   SELECTION_PANE_TITLE,
+  SELECTION_PANE_HIDE,
+  SELECTION_PANE_SHOW,
   SELECTION_PANE_UNLOCK,
 } from '../translations.js';
 import { selectionPaneRowIcon, selectionPaneRowLabel } from './labels.js';
@@ -270,6 +274,7 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     }
 
     .selection-pane-chevron,
+    .selection-pane-eye,
     .selection-pane-lock {
       flex: none;
       display: flex;
@@ -286,6 +291,7 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     }
 
     .selection-pane-chevron svg,
+    .selection-pane-eye svg,
     .selection-pane-lock svg,
     .selection-pane-icon svg {
       width: 16px;
@@ -293,6 +299,7 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     }
 
     .selection-pane-chevron:hover,
+    .selection-pane-eye:hover,
     .selection-pane-lock:hover {
       background: var(--affine-hover-color);
     }
@@ -301,13 +308,26 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       visibility: hidden;
     }
 
+    /*
+      Off states show on hover only, like PowerPoint's pane: a column of open
+      eyes and open padlocks on every row would be noise. A hidden or locked
+      row keeps its mark visible, which is what makes it findable.
+    */
+    .selection-pane-eye[aria-pressed='false'],
     .selection-pane-lock[aria-pressed='false'] {
       opacity: 0;
     }
 
+    .selection-pane-row:hover .selection-pane-eye,
     .selection-pane-row:hover .selection-pane-lock,
+    .selection-pane-eye:focus-visible,
     .selection-pane-lock:focus-visible {
       opacity: 1;
+    }
+
+    .selection-pane-row[data-hidden-local] .selection-pane-label,
+    .selection-pane-row[data-hidden-local] .selection-pane-icon {
+      opacity: 0.5;
     }
 
     .selection-pane-lock:disabled {
@@ -525,6 +545,18 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     });
   }
 
+  /**
+   * Hide this row for this viewer, or show it again. Not refused on a
+   * read-only document: nothing reaches the document (ADR 0031 §8).
+   */
+  private _onEyeClick(event: MouseEvent, node: SelectionPaneNode) {
+    event.stopPropagation();
+    this._run('canvas.visibility.hideLocal', {
+      ids: [node.id],
+      hidden: !node.hiddenLocal,
+    });
+  }
+
   private _commitRename(id: string, input: HTMLInputElement) {
     if (this._renaming !== id) return;
     this._renaming = null;
@@ -707,6 +739,7 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       aria-expanded=${container ? (collapsed ? 'false' : 'true') : nothing}
       ?data-selected=${selected}
       ?data-locked=${node.locked}
+      ?data-hidden-local=${node.hiddenLocal}
       ?data-dragging=${dragging}
       data-drop=${drop ?? nothing}
       style=${styleMap({ paddingLeft: `${8 + depth * INDENT_PX}px` })}
@@ -751,6 +784,19 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
         : html`<span class="selection-pane-label" title=${label}
             >${label}</span
           >`}
+      <button
+        class="selection-pane-eye"
+        type="button"
+        data-testid="selection-pane-eye"
+        aria-pressed=${node.hiddenLocal ? 'true' : 'false'}
+        aria-label=${translateKey(
+          std,
+          ...(node.hiddenLocal ? SELECTION_PANE_SHOW : SELECTION_PANE_HIDE)
+        )}
+        @click=${(event: MouseEvent) => this._onEyeClick(event, node)}
+      >
+        ${node.hiddenLocal ? InvisibleIcon() : ViewIcon()}
+      </button>
       <button
         class="selection-pane-lock"
         type="button"

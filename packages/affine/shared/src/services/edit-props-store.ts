@@ -45,6 +45,12 @@ const LocalPropsSchema = z.object({
 
   autoHideEmbedHTMLFullScreenToolbar: z.boolean(),
   connectorCenterAnchor: z.boolean().default(false),
+  /**
+   * The ids this viewer hid on this document's canvas (ADR 0031 §8). Per
+   * viewer and per document, like the viewport; never written to the
+   * document. Owned by `CanvasLocalVisibility`.
+   */
+  localHiddenElements: z.array(z.string()),
 });
 
 type SessionProps = z.infer<typeof SessionPropsSchema>;
@@ -148,6 +154,8 @@ export class EditPropsStore extends LifeCycleWatcher {
         return 'blocksuite:embedHTML:autoHideFullScreenToolbar';
       case 'connectorCenterAnchor':
         return 'blocksuite:connector:centerAnchor';
+      case 'localHiddenElements':
+        return 'blocksuite:' + id + ':localHiddenElements';
       default:
         return key;
     }
