@@ -107,6 +107,144 @@ describe('createSvgContext', () => {
   });
 });
 
+/* ── Static SVG 1.1 paint ─────────────────────────────────────────────── */
+
+/**
+ * svgcanvas writes a fill or stroke verbatim unless it reads `rgba`, so an
+ * 8-digit hex or the keyword `transparent` reached the file as-is. Neither is
+ * an SVG 1.1 paint: PowerPoint's importer drops them and paints the shape in
+ * its own theme colour, which is how a Wardley map's area zones and pipeline
+ * whites changed colour once inserted in a slide. The paint must leave as
+ * `rgb()` plus an `-opacity` attribute, or as `none`.
+ */
+describe('createSvgContext — static paint', () => {
+  // The Wardley `AREA_FILL` and `PIPELINE_FILL`, spelled out here because the
+  // surface package sits below the framework packages.
+  const AREA_FILL = '#c6dbfc40';
+  const PIPELINE_FILL = '#ffffff99';
+
+  const EIGHT_DIGIT_HEX_PAINT =
+    /(fill|stroke|stop-color)="#[0-9a-f]{8}"|(fill|stroke|stop-color)="#[0-9a-f]{4}"/i;
+
+  function attr(svg: string, tag: string, name: string): string | undefined {
+    const node = svg.match(new RegExp(`<${tag}\\b[^>]*>`))?.[0];
+    return node?.match(new RegExp(`\\s${name}="([^"]*)"`))?.[1];
+  }
+
+  test('an 8-digit hex fill leaves as rgb() plus fill-opacity', () => {
+    const { ctx, serialize } = createSvgContext(50, 50);
+
+    ctx.fillStyle = AREA_FILL;
+    ctx.fillRect(0, 0, 10, 10);
+
+    const svg = serialize();
+
+    expect(svg).not.toMatch(EIGHT_DIGIT_HEX_PAINT);
+    expect(attr(svg, 'rect', 'fill')).toBe('rgb(198,219,252)');
+    expect(Number(attr(svg, 'rect', 'fill-opacity'))).toBeCloseTo(
+      0x40 / 255,
+      5
+    );
+  });
+
+  test('an 8-digit hex stroke leaves as rgb() plus stroke-opacity', () => {
+    const { ctx, serialize } = createSvgContext(50, 50);
+
+    ctx.strokeStyle = PIPELINE_FILL;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(10, 0);
+    ctx.stroke();
+
+    const svg = serialize();
+
+    expect(svg).not.toMatch(EIGHT_DIGIT_HEX_PAINT);
+    expect(attr(svg, 'path', 'stroke')).toBe('rgb(255,255,255)');
+    expect(Number(attr(svg, 'path', 'stroke-opacity'))).toBeCloseTo(
+      0x99 / 255,
+      5
+    );
+  });
+
+  test('`transparent` and a zero alpha leave as `none`', () => {
+    const { ctx, serialize } = createSvgContext(50, 50);
+
+    ctx.fillStyle = 'transparent';
+    ctx.strokeStyle = '#00000000';
+    ctx.beginPath();
+    ctx.rect(0, 0, 10, 10);
+    ctx.fill();
+    ctx.stroke();
+
+    const svg = serialize();
+
+    expect(svg).not.toContain('transparent');
+    expect(svg).not.toMatch(EIGHT_DIGIT_HEX_PAINT);
+    expect(attr(svg, 'path', 'fill')).toBe('none');
+    expect(attr(svg, 'path', 'stroke')).toBe('none');
+  });
+
+  test('the alpha composes with globalAlpha, as on the canvas', () => {
+    const { ctx, serialize } = createSvgContext(50, 50);
+
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = AREA_FILL;
+    ctx.fillRect(0, 0, 10, 10);
+
+    expect(Number(attr(serialize(), 'rect', 'fill-opacity'))).toBeCloseTo(
+      (0x40 / 255) * 0.5,
+      5
+    );
+  });
+
+  test('a gradient stop with an 8-digit hex leaves as stop-color plus stop-opacity', () => {
+    const { ctx, serialize } = createSvgContext(50, 50);
+
+    const gradient = ctx.createLinearGradient(0, 0, 50, 0);
+    gradient.addColorStop(0, AREA_FILL);
+    gradient.addColorStop(1, 'transparent');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 50, 50);
+
+    const svg = serialize();
+    const stops = [...svg.matchAll(/<stop\b[^>]*>/g)].map(match => match[0]);
+
+    expect(svg).not.toContain('transparent');
+    expect(svg).not.toMatch(EIGHT_DIGIT_HEX_PAINT);
+    expect(stops[0]).toContain('stop-color="rgb(198,219,252)"');
+    expect(stops[1]).toContain('stop-color="rgb(0,0,0)"');
+    expect(stops[1]).toContain('stop-opacity="0"');
+    expect(attr(svg, 'rect', 'fill')).toMatch(/^url\(#/);
+  });
+
+  test('an opaque colour is written exactly as the renderer gave it', () => {
+    const { ctx, serialize } = createSvgContext(50, 50);
+
+    ctx.fillStyle = '#1f2328';
+    ctx.fillText('Label', 0, 10);
+
+    const svg = serialize();
+
+    expect(attr(svg, 'text', 'fill')).toBe('#1f2328');
+    expect(svg).not.toMatch(/fill-opacity/);
+  });
+
+  test('a style restored by restore() is still static paint', () => {
+    const { ctx, serialize } = createSvgContext(50, 50);
+
+    ctx.fillStyle = AREA_FILL;
+    ctx.save();
+    ctx.fillStyle = '#000000';
+    ctx.restore();
+    ctx.fillRect(0, 0, 10, 10);
+
+    const svg = serialize();
+
+    expect(svg).not.toMatch(EIGHT_DIGIT_HEX_PAINT);
+    expect(attr(svg, 'rect', 'fill')).toBe('rgb(198,219,252)');
+  });
+});
+
 /* ── The Path2D shim ──────────────────────────────────────────────────── */
 
 describe('runWithRecordingPath2D', () => {

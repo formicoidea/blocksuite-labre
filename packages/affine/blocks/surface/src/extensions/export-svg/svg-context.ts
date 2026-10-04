@@ -1,3 +1,4 @@
+import { parseCssColor } from '@labre/affine-shared/adapters';
 import { Context } from 'svgcanvas/dist/svgcanvas.esm.js';
 
 /**
@@ -288,6 +289,66 @@ export function readLineDash(lineDash: unknown): number[] {
   return lineDash.split(',').map(Number);
 }
 
+/**
+ * A colour with alpha, rewritten as the comma `rgba()` svgcanvas recognises;
+ * any other value comes back unchanged.
+ *
+ * svgcanvas splits only a value containing `rgba` into `rgb()` plus an
+ * `-opacity` attribute and writes everything else verbatim, so an 8-digit hex
+ * (`AREA_FILL`, `PIPELINE_FILL`, the DDD zones) or `transparent` reached the
+ * file as-is. Neither is an SVG 1.1 paint, and an importer that sticks to 1.1
+ * (PowerPoint's) replaces it with its own theme colour. The alpha is fixed to
+ * six decimals because svgcanvas' parser reads no exponent (`1e-7`).
+ */
+function toSvgColor(value: string): string {
+  const parsed = parseCssColor(value);
+  if (!parsed || parsed.alpha === 1) return value;
+  const { r, g, b, alpha } = parsed;
+  return `rgba(${r}, ${g}, ${b}, ${Number(alpha.toFixed(6))})`;
+}
+
+/**
+ * {@link toSvgColor} for a `fill` or `stroke`, where a fully transparent colour
+ * is `none`: the one invisible paint every SVG reader honours. svgcanvas births
+ * every node with `fill="none" stroke="none"` and skips a stroke equal to that
+ * default, so an invisible second pass leaves an earlier paint in place — as
+ * painting it on a canvas would.
+ */
+function toSvgPaint(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  return parseCssColor(value)?.alpha === 0 ? 'none' : toSvgColor(value);
+}
+
+/**
+ * Routes every `fillStyle` / `strokeStyle` write — including the ones
+ * svgcanvas' own `restore()` makes — and every gradient stop through the
+ * converters above. Gradients and patterns pass through untouched.
+ */
+function installStaticPaint(context: Record<string, unknown>) {
+  for (const key of ['fillStyle', 'strokeStyle']) {
+    let current = toSvgPaint(context[key]);
+    Object.defineProperty(context, key, {
+      configurable: true,
+      enumerable: true,
+      get: () => current,
+      set: (value: unknown) => {
+        current = toSvgPaint(value);
+      },
+    });
+  }
+
+  for (const key of ['createLinearGradient', 'createRadialGradient']) {
+    const create = context[key] as (...args: unknown[]) => CanvasGradient;
+    context[key] = (...args: unknown[]) => {
+      const gradient = create.apply(context, args);
+      const addColorStop = gradient.addColorStop;
+      gradient.addColorStop = (offset: number, color: string) =>
+        addColorStop.call(gradient, offset, toSvgColor(color));
+      return gradient;
+    };
+  }
+}
+
 /** Adds `viewBox` / `xmlns` / px units to the root `<svg>` if they are missing. */
 function finishSvg(svg: string, width: number, height: number): string {
   return (
@@ -339,6 +400,7 @@ export function createSvgContext(width: number, height: number): SvgContext {
   context.getLineDash = () => readLineDash(context.lineDash);
 
   installPathOps(context as unknown as SvgCanvasInternals);
+  installStaticPaint(context as unknown as Record<string, unknown>);
 
   return {
     ctx,
