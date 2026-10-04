@@ -266,8 +266,10 @@ cross: nothing about what the pane lists.
 pane's eye, the palette) and `canvas.visibility.showAll` with `scope: 'local'`,
 and by `canvas.visibility.hideForEveryone` (the pane's row menu, the palette)
 with `scope: 'everyone'`, from their bodies for the same reason: `count` is how
-many elements the gesture actually changed, a fact of the invocation. Only
-`target: 'element'` exists so far; `layer` arrives with the layers stage. A
+many elements the gesture actually changed, a fact of the invocation. With
+`layerIds` (a layer row's eye, its menu's "Hide for everyone") the same two
+commands act on whole layers and report `target: 'layer'`, `count` being the
+layers changed; `showAll` reports elements and layers as two events. A
 gesture that changes nothing emits nothing.
 
 `CanvasGridToggled` is emitted by `canvas.grid.toggle` (`scope: 'local'`, the

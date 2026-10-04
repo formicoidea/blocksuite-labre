@@ -120,6 +120,15 @@ export const SELECTION_PANE_ACTIVE_LAYER: ChromeWording = [
   'New elements go into this layer',
 ];
 
+/**
+ * A layer row's menu entry that deletes the layer WITH its members, in one
+ * undo step (ADR 0031 §10). Absent on the default layer.
+ */
+export const SELECTION_PANE_DELETE_LAYER: ChromeWording = [
+  'com.labre.selection-pane.delete-layer',
+  'Delete layer',
+];
+
 /** The menu of a row, opened by a right click or its "more" button. */
 export const SELECTION_PANE_ROW_MENU: ChromeWording = [
   'com.labre.selection-pane.row-menu',
@@ -203,6 +212,7 @@ export const EDGELESS_TOOLBAR_WORDINGS: readonly ChromeWording[] = [
   SELECTION_PANE_ROW_MENU,
   SELECTION_PANE_NEW_LAYER,
   SELECTION_PANE_ACTIVE_LAYER,
+  SELECTION_PANE_DELETE_LAYER,
   SELECTION_PANE_UNLOCK,
   SELECTION_PANE_EXPAND,
   SELECTION_PANE_COLLAPSE,

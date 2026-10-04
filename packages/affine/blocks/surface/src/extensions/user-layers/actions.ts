@@ -154,6 +154,78 @@ export function reorderUserLayer(
 }
 
 /**
+ * Hide whole layers for EVERYONE, or show them again (ADR 0031 §7, stage
+ * 7): `hidden: true` on each record — one write per layer, never one per
+ * member — and the key REMOVED on show, never `false`. Answers how many
+ * records were written.
+ */
+export function setUserLayersHiddenForEveryone(
+  std: BlockStdScope,
+  ids: readonly string[],
+  hidden: boolean
+): number {
+  if (std.store.readonly) return 0;
+  const layers = surfaceOf(std)?.props.layers;
+  if (!layers) return 0;
+  const targets = ids
+    .map(id => layers[id])
+    .filter(
+      (record): record is SurfaceLayerRecord =>
+        !!record && (record.hidden === true) !== hidden
+    );
+  if (!targets.length) return 0;
+
+  std.store.captureSync();
+  std.store.transact(() => {
+    for (const record of targets) {
+      if (hidden) {
+        record.hidden = true;
+      } else {
+        delete record.hidden;
+      }
+    }
+  });
+  return targets.length;
+}
+
+/**
+ * Delete a user layer WITH its members, in one undo step (ADR 0031 §10).
+ * Answers how many models went with it, or `null` when nothing was written.
+ *
+ * The read-only refusal comes first, then one `captureSync()`, then one
+ * transaction: every top-level model whose effective layer is this one (a
+ * group or a mindmap takes its descendants with it), then the record. A
+ * connector of ANOTHER layer whose ends were here stays, loose, as when its
+ * ends are deleted any other way — the members are removed one by one, not
+ * through the "delete with connectors" path of the toolbar. A frame of this
+ * layer goes; what it holds from other layers stays. `'@default'` cannot be
+ * deleted.
+ */
+export function deleteUserLayer(std: BlockStdScope, id: string): number | null {
+  if (std.store.readonly) return null;
+  if (id === DEFAULT_LAYER_ID) return null;
+  const surface = surfaceOf(std);
+  const layers = surface?.props.layers;
+  if (!surface || !layers?.[id]) return null;
+
+  const gfx = std.get(GfxControllerIdentifier);
+  const members = gfx.gfxElements.filter(
+    model => surface.userLayers.effectiveLayerOf(model) === id
+  );
+  const carriers = members.filter(model => layerCarrier(model) === model);
+
+  std.store.captureSync();
+  std.store.transact(() => {
+    for (const model of carriers) {
+      if (gfx.getElementById(model.id)) gfx.deleteElement(model);
+    }
+    delete layers[id];
+  });
+  std.store.captureSync();
+  return members.length;
+}
+
+/**
  * The model a "move to layer" writes on: the outermost group-like ELEMENT
  * holding `model` (a group, a mindmap), else `model` itself — a group lives
  * in one layer, stored once on its outermost group (ADR 0031 §5).

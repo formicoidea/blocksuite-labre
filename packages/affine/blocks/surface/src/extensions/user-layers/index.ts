@@ -1,9 +1,11 @@
 export { CanvasActiveLayer } from './active-layer.js';
 export {
   createUserLayer,
+  deleteUserLayer,
   moveModelsToUserLayer,
   renameUserLayer,
   reorderUserLayer,
+  setUserLayersHiddenForEveryone,
   userLayersBottomUp,
   writeModelLayer,
 } from './actions.js';
@@ -11,6 +13,8 @@ export {
   type CanvasLayerAction,
   type CreateLayerParams,
   createLayerParams,
+  type DeleteLayerParams,
+  deleteLayerParams,
   type MoveElementsToLayerParams,
   moveElementsToLayerParams,
   type RenameLayerParams,

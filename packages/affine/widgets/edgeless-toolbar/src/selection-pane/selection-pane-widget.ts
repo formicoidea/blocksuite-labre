@@ -29,10 +29,15 @@ import {
   WidgetComponent,
   WidgetViewExtension,
 } from '@labre/std';
-import { GfxControllerIdentifier, type GfxModel } from '@labre/std/gfx';
+import {
+  DEFAULT_LAYER_ID,
+  GfxControllerIdentifier,
+  type GfxModel,
+} from '@labre/std/gfx';
 import {
   ArrowDownSmallIcon,
   ArrowRightSmallIcon,
+  DeleteIcon,
   FilterIcon,
   InvisibleIcon,
   LayerIcon,
@@ -52,6 +57,7 @@ import {
   SELECTION_PANE_ACTIVE_LAYER,
   SELECTION_PANE_CLOSE,
   SELECTION_PANE_COLLAPSE,
+  SELECTION_PANE_DELETE_LAYER,
   SELECTION_PANE_EMPTY,
   SELECTION_PANE_EXPAND,
   SELECTION_PANE_FILTER,
@@ -366,7 +372,8 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       opacity: 0.5;
     }
 
-    .selection-pane-row[data-hidden-everyone] .selection-pane-label {
+    .selection-pane-row[data-hidden-everyone] .selection-pane-label,
+    .selection-pane-layer-row[data-hidden-local] .selection-pane-label {
       opacity: 0.5;
     }
 
@@ -607,8 +614,11 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
    */
   private _onEyeClick(event: MouseEvent, node: SelectionPaneNode) {
     event.stopPropagation();
+    // A layer's eye hides the whole layer for this viewer (stage 7).
+    const target =
+      node.kind === 'layer' ? { layerIds: [node.id] } : { ids: [node.id] };
     this._run('canvas.visibility.hideLocal', {
-      ids: [node.id],
+      ...target,
       hidden: !node.hiddenLocal,
     });
   }
@@ -622,6 +632,10 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
    */
   private _openRowMenu(anchor: HTMLElement, node: SelectionPaneNode) {
     if (this.std.store.readonly) return;
+    if (node.kind === 'layer') {
+      this._openLayerMenu(anchor, node);
+      return;
+    }
     const wording = node.hiddenForEveryone
       ? SELECTION_PANE_SHOW_FOR_EVERYONE
       : SELECTION_PANE_HIDE_FOR_EVERYONE;
@@ -638,6 +652,46 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
                 ids: [node.id],
                 hidden: !node.hiddenForEveryone,
               });
+            },
+          }),
+        ],
+      },
+    });
+  }
+
+  /**
+   * A layer's menu (ADR 0031 stage 7): "Hide for everyone" — `hidden: true`
+   * on the record, painted with the warning tokens like the element entry —
+   * and "Delete layer", which takes the members with it in one undo step.
+   * The default layer cannot be deleted, so its menu has no such entry.
+   */
+  private _openLayerMenu(anchor: HTMLElement, node: SelectionPaneNode) {
+    const wording = node.hiddenForEveryone
+      ? SELECTION_PANE_SHOW_FOR_EVERYONE
+      : SELECTION_PANE_HIDE_FOR_EVERYONE;
+    popMenu(popupTargetFromElement(anchor), {
+      options: {
+        items: [
+          menu.action({
+            name: translateKey(this.std, ...wording),
+            prefix: node.hiddenForEveryone ? ViewIcon() : InvisibleIcon(),
+            class: { 'warning-item': true },
+            testId: 'selection-pane-hide-for-everyone',
+            select: () => {
+              this._run('canvas.visibility.hideForEveryone', {
+                layerIds: [node.id],
+                hidden: !node.hiddenForEveryone,
+              });
+            },
+          }),
+          menu.action({
+            name: translateKey(this.std, ...SELECTION_PANE_DELETE_LAYER),
+            prefix: DeleteIcon(),
+            class: { 'delete-item': true },
+            testId: 'selection-pane-delete-layer',
+            hide: () => node.id === DEFAULT_LAYER_ID,
+            select: () => {
+              this._run('canvas.layer.delete', { id: node.id });
             },
           }),
         ],
@@ -855,11 +909,14 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
         ? translateKey(std, ...SELECTION_PANE_ACTIVE_LAYER)
         : nothing}
       ?data-active=${active}
+      ?data-hidden-local=${node.hiddenLocal}
+      ?data-hidden-everyone=${node.hiddenForEveryone}
       ?data-dragging=${dragging}
       data-drop=${drop ?? nothing}
       style=${styleMap({ paddingLeft: `${8 + depth * INDENT_PX}px` })}
       @click=${(event: MouseEvent) => this._onRowClick(event, node)}
       @dblclick=${() => this._onRowDblClick(node)}
+      @contextmenu=${(event: MouseEvent) => this._onRowContextMenu(event, node)}
       @pointerdown=${(event: PointerEvent) =>
         this._onRowPointerDown(event, row)}
     >
@@ -893,6 +950,34 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
               this._commitRename(node.id, event.target as HTMLInputElement)}
           />`
         : html`<span class="selection-pane-label" title=${name}>${name}</span>`}
+      <button
+        class="selection-pane-eye"
+        type="button"
+        data-testid="selection-pane-eye"
+        aria-pressed=${node.hiddenLocal ? 'true' : 'false'}
+        aria-label=${translateKey(
+          std,
+          ...(node.hiddenLocal ? SELECTION_PANE_SHOW : SELECTION_PANE_HIDE)
+        )}
+        @click=${(event: MouseEvent) => this._onEyeClick(event, node)}
+      >
+        ${node.hiddenLocal ? InvisibleIcon() : ViewIcon()}
+      </button>
+      ${std.store.readonly
+        ? nothing
+        : html`<button
+            class="selection-pane-more"
+            type="button"
+            data-testid="selection-pane-more"
+            aria-haspopup="menu"
+            aria-label=${translateKey(std, ...SELECTION_PANE_ROW_MENU)}
+            @click=${(event: MouseEvent) => {
+              event.stopPropagation();
+              this._openRowMenu(event.currentTarget as HTMLElement, node);
+            }}
+          >
+            ${MoreHorizontalIcon()}
+          </button>`}
     </div>`;
   }
 

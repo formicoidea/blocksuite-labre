@@ -1,6 +1,6 @@
 import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
 import { Bound } from '@labre/global/gfx';
-import { computed, effect, signal } from '@preact/signals-core';
+import { computed, effect, signal, untracked } from '@preact/signals-core';
 import { nothing } from 'lit';
 
 import type { BlockService } from '../../extension/index.js';
@@ -69,6 +69,8 @@ function handleGfxConnection(instance: GfxBlockComponent) {
       if (id === instance.model.id && type === 'update') {
         updateTransform(instance);
         updateZIndex(instance);
+        // A move to another user layer may hide or show it (ADR 0031 §7).
+        untracked(() => updateBlockVisibility(instance));
       }
     })
   );
@@ -78,6 +80,9 @@ function handleGfxConnection(instance: GfxBlockComponent) {
   instance.disposables.add(
     instance.gfx.layer.slots.layerUpdated.subscribe(() => {
       updateZIndex(instance);
+      // So may a regroup, or a change of the layer list (a layer hidden for
+      // everyone is one record write, not a write on this block).
+      untracked(() => updateBlockVisibility(instance));
     })
   );
 

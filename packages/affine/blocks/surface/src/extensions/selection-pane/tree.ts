@@ -75,6 +75,10 @@ export interface SelectionPaneLayers {
   /** Each id's rank key, as `compare` reads it. */
   readonly ranks: ReadonlyMap<string, string>;
   effectiveLayerOf(model: GfxModel): string;
+  /** The layers this viewer hid (stage 7). */
+  readonly hiddenLocally?: ReadonlySet<string>;
+  /** The layers whose record says `hidden: true` (stage 7). */
+  readonly hiddenForEveryone?: ReadonlySet<string>;
 }
 
 /**
@@ -204,8 +208,8 @@ export function buildSelectionPaneTree(
     type: 'layer',
     layerId: id,
     locked: false,
-    hiddenLocal: false,
-    hiddenForEveryone: false,
+    hiddenLocal: layers.hiddenLocally?.has(id) ?? false,
+    hiddenForEveryone: layers.hiddenForEveryone?.has(id) ?? false,
     children: top.filter(node => node.layerId === id),
   }));
 }
@@ -229,18 +233,23 @@ const TREE_KEYS = new Set([
  * create, a rename, a reorder — local or a peer's.
  */
 export function paneLayersOf(
-  surface: SurfaceBlockModel
+  surface: SurfaceBlockModel,
+  hiddenLocally?: ReadonlySet<string>
 ): SelectionPaneLayers | null {
   surface.props.layers$?.value;
   const ranks = surface.userLayers?.ranks;
   if (!ranks) return null;
-  const order = userLayersBottomUp(surface)
-    .map(layer => layer.id)
-    .reverse();
+  const bottomUp = userLayersBottomUp(surface);
   return {
-    order,
+    order: bottomUp.map(layer => layer.id).reverse(),
     ranks,
     effectiveLayerOf: model => surface.userLayers.effectiveLayerOf(model),
+    hiddenLocally,
+    hiddenForEveryone: new Set(
+      bottomUp
+        .filter(layer => layer.record.hidden === true)
+        .map(layer => layer.id)
+    ),
   };
 }
 
@@ -277,14 +286,15 @@ export class SelectionPaneModel extends LifeCycleWatcher {
     const surface = gfx.surface$.value;
     if (!surface) return [];
     // Read here, so a local hide or show re-derives the rows' marks.
-    const hidden = this.std.getOptional(CanvasLocalVisibility)?.hiddenIds$
-      .value;
+    const local = this.std.getOptional(CanvasLocalVisibility);
+    const hidden = local?.hiddenIds$.value;
+    const hiddenLayers = local?.hiddenLayerIds$.value;
     // And here, so a hide for everyone (local or a peer's) re-derives them too.
     gfx.hiddenForEveryone?.ids$.value;
     return buildSelectionPaneTree(
       gfx.gfxElements,
       hidden,
-      paneLayersOf(surface)
+      paneLayersOf(surface, hiddenLayers)
     );
   });
 

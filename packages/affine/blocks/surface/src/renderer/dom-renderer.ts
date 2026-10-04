@@ -233,6 +233,7 @@ export class DomRenderer {
     this._disposables.add(
       effect(() => {
         this._localVisibility.hiddenIds$.value;
+        this._localVisibility.hiddenLayerIds$.value;
         if (!visibilityRead) {
           visibilityRead = true;
           return;

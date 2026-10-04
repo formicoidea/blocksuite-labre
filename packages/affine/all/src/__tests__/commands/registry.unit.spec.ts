@@ -253,7 +253,9 @@ describe('command registry invariants', () => {
       //
       // …and 28 with the layers (stage 6): `canvas.layer.create`,
       // `.rename`, `.reorder` and `.moveElements`.
-      core: 28,
+      //
+      // …and 29 with `canvas.layer.delete` (stage 7).
+      core: 29,
     });
     // 112 since the two SVG fallback imports (`bpmn.importSvg`,
     // `wardley.importSvg`) joined the OWM pair — one SVG row per framework,
@@ -287,7 +289,9 @@ describe('command registry invariants', () => {
     // …and 198 with `canvas.visibility.hideForEveryone` (stage 5).
     //
     // …and 202 with the four layer commands (stage 6).
-    expect(commands).toHaveLength(202);
+    //
+    // …and 203 with `canvas.layer.delete` (stage 7).
+    expect(commands).toHaveLength(203);
   });
 
   /**
@@ -329,6 +333,7 @@ describe('command registry invariants', () => {
     'canvas.layer.rename',
     'canvas.layer.reorder',
     'canvas.layer.moveElements',
+    'canvas.layer.delete',
     // `CanvasGridToggled.scope` depends on which of the two gestures ran, and
     // a save that changes nothing in the document reports nothing.
     'canvas.grid.toggle',

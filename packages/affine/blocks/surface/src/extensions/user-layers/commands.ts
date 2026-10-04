@@ -9,6 +9,7 @@ import { z } from 'zod';
 
 import {
   createUserLayer,
+  deleteUserLayer,
   moveModelsToUserLayer,
   renameUserLayer,
   reorderUserLayer,
@@ -180,9 +181,47 @@ const moveElementsToLayer: CommandDescriptor<MoveElementsToLayerParams> = {
   },
 };
 
+export const deleteLayerParams = z.object({
+  /** The layer to delete; `'@default'` is refused. */
+  id: z.string().min(1),
+});
+
+export type DeleteLayerParams = z.infer<typeof deleteLayerParams>;
+
+/**
+ * Delete a layer and everything in it, in one undo step (ADR 0031 §10). The
+ * default layer cannot be deleted.
+ */
+const deleteLayer: CommandDescriptor<DeleteLayerParams> = {
+  id: 'canvas.layer.delete',
+  owner: 'core',
+  kind: 'action',
+  labelKey: 'com.labre.command.canvas.layer.delete',
+  labelFallback: 'Delete layer',
+  descriptionKey: 'com.labre.command.canvas.layer.delete.description',
+  descriptionFallback:
+    'Delete a layer and every element in it. One undo brings them all back.',
+  surfaces: ['agent'],
+  scope: 'edgeless',
+  defaultKeys: { mac: [], other: [] },
+  availability: 'editable',
+  params: deleteLayerParams,
+  run: (std, _invocation, params) => {
+    const parsed = deleteLayerParams.safeParse(params);
+    if (!parsed.success) {
+      console.error('canvas.layer.delete: invalid params', parsed.error);
+      return;
+    }
+    const removed = deleteUserLayer(std, parsed.data.id);
+    if (removed === null) return;
+    reportLayerChange(std, 'delete', removed);
+  },
+};
+
 export const userLayerCommands: AnyCommandDescriptor[] = [
   createLayer,
   renameLayer,
   reorderLayer,
   moveElementsToLayer,
+  deleteLayer,
 ];
