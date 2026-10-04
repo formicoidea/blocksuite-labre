@@ -373,13 +373,21 @@ export class LayerManager extends GfxExtension {
             target
           )
         ) {
-          const insertIdx = layerElements.findIndex((_, idx) => {
-            const pre = layerElements[idx - 1];
-            return (
-              compare(target, layerElements[idx]) < 0 &&
-              (!pre || compare(target, pre) >= 0)
-            );
-          });
+          // The first element `target` sorts before. The layer is sorted and
+          // `target` is in its range, so that position is found by bisection
+          // rather than by comparing `target` with every element: a frame
+          // adopting N children re-inserted each of them, N² comparisons.
+          let low = 0;
+          let high = layerElements.length;
+          while (low < high) {
+            const mid = (low + high) >>> 1;
+            if (compare(target, layerElements[mid]) < 0) {
+              high = mid;
+            } else {
+              low = mid + 1;
+            }
+          }
+          const insertIdx = low;
 
           if (layer.type === type) {
             addToLayer(layer, target, insertIdx);

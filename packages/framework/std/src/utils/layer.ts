@@ -46,16 +46,29 @@ export function ungroupIndex(index: string) {
   return index.split('-')[0];
 }
 
+/**
+ * Insert `element` after every element that sorts before it or ties with it.
+ *
+ * The array is kept sorted by `compare`, so that predicate holds on a prefix
+ * and the position is found by bisection. The linear scan it replaces asked
+ * `compare` (which walks both elements' group chains) of every element on
+ * every insert: a paste of N elements was N² comparisons. Where an index is
+ * shared by two unrelated subtrees `compare` is not transitive and both pick
+ * a tied position, not always the same one (layer-ordered-insert.unit.spec).
+ */
 export function insertToOrderedArray(array: GfxModel[], element: GfxModel) {
-  let idx = 0;
-  while (
-    idx < array.length &&
-    [SortOrder.BEFORE, SortOrder.SAME].includes(compare(array[idx], element))
-  ) {
-    ++idx;
+  let low = 0;
+  let high = array.length;
+  while (low < high) {
+    const mid = (low + high) >>> 1;
+    if (compare(array[mid], element) === SortOrder.AFTER) {
+      high = mid;
+    } else {
+      low = mid + 1;
+    }
   }
 
-  array.splice(idx, 0, element);
+  array.splice(low, 0, element);
 }
 
 export function removeFromOrderedArray(array: GfxModel[], element: GfxModel) {
@@ -137,14 +150,22 @@ export function compare(
   a = result.a;
   b = result.b;
 
-  if (isGfxGroupCompatibleModel(a) && b.groups.includes(a)) {
+  // Each `groups` read walks the group chain through `getGroup`, a scan of
+  // every container on the surface: read each side once.
+  const aGroups = a.groups as GfxGroupCompatibleInterface[];
+  const bGroups = b.groups as GfxGroupCompatibleInterface[];
+
+  if (
+    isGfxGroupCompatibleModel(a) &&
+    bGroups.includes(a as GfxGroupCompatibleInterface)
+  ) {
     return SortOrder.BEFORE;
-  } else if (isGfxGroupCompatibleModel(b) && a.groups.includes(b)) {
+  } else if (
+    isGfxGroupCompatibleModel(b) &&
+    aGroups.includes(b as GfxGroupCompatibleInterface)
+  ) {
     return SortOrder.AFTER;
   } else {
-    const aGroups = a.groups as GfxGroupCompatibleInterface[];
-    const bGroups = b.groups as GfxGroupCompatibleInterface[];
-
     let i = 1;
     let aGroup:
       | GfxModel

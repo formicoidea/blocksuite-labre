@@ -61,6 +61,10 @@ function isSessionProp(key: string): key is keyof SessionProps {
 }
 
 function customizer(_target: unknown, source: unknown) {
+  // `mergeWith` assigns a primitive source as-is whatever the customizer says,
+  // so only an object can need one; skipping the schema parse for the rest is
+  // what keeps a paste of N elements from parsing every prop of every one.
+  if (source === null || typeof source !== 'object') return;
   if (
     ColorSchema.safeParse(source).success ||
     source instanceof Y.Text ||
