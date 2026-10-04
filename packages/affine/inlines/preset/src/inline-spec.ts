@@ -48,6 +48,21 @@ export const UnderlineInlineSpecExtension =
     },
   });
 
+/** Underline's twin, declared at the affine level only (ADR 0030 §5). */
+export const OverlineInlineSpecExtension =
+  InlineSpecExtension<AffineTextAttributes>({
+    name: 'overline',
+    schema: z.object({
+      overline: z.literal(true).optional().nullable().catch(undefined),
+    }),
+    match: delta => {
+      return !!delta.attributes?.overline;
+    },
+    renderer: ({ delta }) => {
+      return html`<affine-text .delta=${delta}></affine-text>`;
+    },
+  });
+
 export const StrikeInlineSpecExtension =
   InlineSpecExtension<AffineTextAttributes>({
     name: 'strike',
@@ -108,6 +123,7 @@ export const InlineSpecExtensions: ExtensionType[] = [
   BoldInlineSpecExtension,
   ItalicInlineSpecExtension,
   UnderlineInlineSpecExtension,
+  OverlineInlineSpecExtension,
   StrikeInlineSpecExtension,
   CodeInlineSpecExtension,
   BackgroundInlineSpecExtension,

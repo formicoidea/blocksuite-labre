@@ -16,7 +16,7 @@ import { getCombinedTextAttributes } from './utils.js';
 export const toggleTextStyleCommand: Command<{
   key: Extract<
     keyof AffineTextStyleAttributes,
-    'bold' | 'italic' | 'underline' | 'strike' | 'code'
+    'bold' | 'italic' | 'underline' | 'overline' | 'strike' | 'code'
   >;
 }> = (ctx, next) => {
   const { std, key } = ctx;
@@ -53,7 +53,7 @@ export const toggleTextStyleCommand: Command<{
 const toggleTextStyleCommandWrapper = (
   key: Extract<
     keyof AffineTextStyleAttributes,
-    'bold' | 'italic' | 'underline' | 'strike' | 'code'
+    'bold' | 'italic' | 'underline' | 'overline' | 'strike' | 'code'
   >
 ): Command => {
   return (ctx, next) => {
@@ -69,6 +69,7 @@ const toggleTextStyleCommandWrapper = (
 export const toggleBold = toggleTextStyleCommandWrapper('bold');
 export const toggleItalic = toggleTextStyleCommandWrapper('italic');
 export const toggleUnderline = toggleTextStyleCommandWrapper('underline');
+export const toggleOverline = toggleTextStyleCommandWrapper('overline');
 export const toggleStrike = toggleTextStyleCommandWrapper('strike');
 export const toggleCode = toggleTextStyleCommandWrapper('code');
 

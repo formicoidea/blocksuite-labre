@@ -6,13 +6,13 @@ export function affineTextStyles(
   props: AffineTextAttributes,
   override?: Readonly<StyleInfo>
 ): StyleInfo {
-  let textDecorations = '';
-  if (props.underline) {
-    textDecorations += 'underline';
-  }
-  if (props.strike) {
-    textDecorations += ' line-through';
-  }
+  const textDecorations = [
+    props.underline && 'underline',
+    props.overline && 'overline',
+    props.strike && 'line-through',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   let inlineCodeStyle = {};
   if (props.code) {

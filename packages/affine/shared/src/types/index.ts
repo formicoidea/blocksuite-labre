@@ -39,6 +39,12 @@ export type AffineTextStyleAttributes = {
   bold?: true | null;
   italic?: true | null;
   underline?: true | null;
+  /**
+   * Declared at the affine level only, like `color`: the store's base
+   * attributes do not know it (ADR 0030 §5), and the editor schema is the
+   * intersection of those and every inline spec.
+   */
+  overline?: true | null;
   strike?: true | null;
   code?: true | null;
   color?: string | null;
