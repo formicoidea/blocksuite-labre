@@ -519,7 +519,7 @@ const importSvgCommand: CommandDescriptor = {
   labelFallback: 'Import SVG sketch',
   descriptionKey: 'com.labre.commands.wardley.importSvg.recognised.description',
   descriptionFallback:
-    'Best effort, no round-trip: a map exported by OnlineWardleyMaps arrives as a native Wardley map — components, links, pipelines, evolution. Anything else arrives as a sketch you then promote.',
+    'Best effort, no round-trip: a map exported by OnlineWardleyMaps or drawn by wardley-map-renderer arrives as a native Wardley map — components, links, pipelines, evolution. Anything else arrives as a sketch you then promote.',
   // The same section the two OWM directions are filed under, and the same one
   // BPMN files its `.bpmn` pair under: a host that translated the header once
   // has translated it for every framework.

@@ -111,13 +111,18 @@ function summarise(elements: readonly Props[]): MapSummary {
     .filter(props => props.role === WARDLEY_ROLE.changeArrow)
     .map(props => `${nameOf(props.source)} -> ${nameOf(props.target)}`)
     .sort();
+  // A pipeline's name is the label laid after its body and its handle.
   const pipelines = elements
-    .filter(props => props.role === WARDLEY_ROLE.pipeline)
-    .map(props => {
+    .map((props, index) => ({ props, index }))
+    .filter(({ props }) => props.role === WARDLEY_ROLE.pipeline)
+    .map(({ props, index }) => {
       const [x, y, w] = JSON.parse(props.xywh as string) as number[];
       const plot = owmDefaultPlot();
+      const label = elements
+        .slice(index + 1)
+        .find(next => next.role === WARDLEY_ROLE.label);
       return {
-        name: names.get(identityOf(props)!) ?? '',
+        name: (label?.text as string | undefined) ?? '',
         from: owmCoordsOf(plot, x, y).evolution,
         to: owmCoordsOf(plot, x + w, y).evolution,
       };
@@ -348,6 +353,127 @@ describe('an OnlineWardleyMaps export', () => {
           'com.labre.wardley.import.svg.remark.sketched-remainder'
       )
     ).toBeUndefined();
+  });
+});
+
+/* ── wardley-map-renderer ─────────────────────────────────────────────── */
+
+describe('a wardley-map-renderer SVG', () => {
+  /**
+   * The renderer draws no notes, and draws a pipeline as an artefact of its
+   * own (its own name, its own handle) rather than under a component, so the
+   * small map is compared with its OWM text on everything else, and its
+   * pipeline on its own.
+   */
+  const withoutNotesAndPipelines = (summary: MapSummary): MapSummary => ({
+    ...summary,
+    notes: [],
+    pipelines: [],
+    // The DSL's `pipeline Kettle` labels its body "Kettle"; that label hangs
+    // under no node, so it does not enter `nodes` — nothing to strip there.
+  });
+
+  it.each([
+    ['static', SVG_CORPUS.teaShopRenderer, 'wardley-map-renderer SVG'],
+    [
+      'interactive',
+      SVG_CORPUS.teaShopRendererLive,
+      'wardley-map-renderer SVG (interactive)',
+    ],
+  ])(
+    'imports the tea shop to the same map as its OWM text (%s)',
+    async (_mode, source, version) => {
+      const { TEA_SHOP_OWM } = await import('./owm-corpus');
+      const result = read(source);
+      expect(result.report.sourceVersion).toBe(version);
+      expectSameMap(
+        summarise(result.elements),
+        summarise(importWardleyOwm(TEA_SHOP_OWM).elements)
+      );
+    }
+  );
+
+  it.each([
+    ['static', SVG_CORPUS.smallRenderer],
+    ['interactive', SVG_CORPUS.smallRendererLive],
+  ])(
+    'imports the small map, pipeline and inertia included (%s)',
+    (_mode, source) => {
+      const result = read(source);
+      const summary = summarise(result.elements);
+      expectSameMap(
+        withoutNotesAndPipelines(summary),
+        withoutNotesAndPipelines(
+          summarise(importWardleyOwm(SVG_CORPUS.smallOwmText).elements)
+        )
+      );
+      // The pipeline stands alone, under its own name, across its own span.
+      expect(summary.pipelines.map(pipeline => pipeline.name)).toEqual([
+        'Kettle pipeline',
+      ]);
+      expect(Math.abs(summary.pipelines[0].from - 0.3)).toBeLessThanOrEqual(
+        TOLERANCE
+      );
+      expect(Math.abs(summary.pipelines[0].to - 0.6)).toBeLessThanOrEqual(
+        TOLERANCE
+      );
+      expect(summary.inertias).toHaveLength(1);
+      // The axes, the title and the renderer's own legend are chrome: nothing
+      // of a plain render is left for the sketch.
+      expect(
+        result.report.notes.find(
+          note =>
+            note.messageKey ===
+            'com.labre.wardley.import.svg.remark.sketched-remainder'
+        )
+      ).toBeUndefined();
+    }
+  );
+
+  it('binds by `data-id` in interactive mode, and an id is only a name', () => {
+    // The interactive contract, with ids a hostile file would pick. They are
+    // `data-*` attributes, which DOMPurify keeps whatever their value, so they
+    // DO reach the reader — as provisional names and `Map` keys, nothing more.
+    const source = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+      <g data-layer="axes"><line x1="20" y1="280" x2="380" y2="280"/><line x1="20" y1="280" x2="20" y2="20"/></g>
+      <g data-layer="edges"><g data-id="r1" data-kind="relation"><line class="hit-area" x1="100" y1="50" x2="300" y2="200" stroke="transparent"/><line x1="100" y1="50" x2="300" y2="200"/></g></g>
+      <g data-layer="nodes">
+        <g data-id="__proto__" data-kind="component"><circle cx="100" cy="50" r="5"/></g>
+        <g data-id="constructor" data-kind="component"><circle cx="300" cy="200" r="5"/></g>
+      </g>
+      <g data-layer="labels">
+        <text x="300" y="20" data-id="__proto__" data-kind="label">Far from its node</text>
+        <text x="309" y="204" data-id="constructor" data-kind="label">Builder</text>
+      </g>
+    </svg>`;
+    const result = read(source);
+    const summary = summarise(result.elements);
+    expect(summary.nodes.map(node => node.name).sort()).toEqual([
+      'Builder',
+      'Far from its node',
+    ]);
+    expect(summary.links).toEqual(['Far from its node -> Builder']);
+    expect(Object.getPrototypeOf({})).toBe(Object.prototype);
+  });
+
+  it('names a static node by the label beside it, closest pairs first', () => {
+    // No ids at all: the label is matched to the node it was drawn beside,
+    // and a label nobody's node is near stays for the sketch.
+    const source = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+      <g data-layer="axes"><line x1="20" y1="280" x2="380" y2="280"/><line x1="20" y1="280" x2="20" y2="20"/></g>
+      <g data-layer="nodes"><circle cx="100" cy="50" r="5"/><circle cx="130" cy="60" r="5"/></g>
+      <g data-layer="labels">
+        <text x="139" y="64">Right one</text>
+        <text x="91" y="54" text-anchor="end">Left one</text>
+      </g>
+    </svg>`;
+    const names = summarise(read(source).elements)
+      .nodes.map(node => [node.name, Math.round(node.evolution * 100)])
+      .sort();
+    expect(names).toEqual([
+      ['Left one', 22],
+      ['Right one', 31],
+    ]);
   });
 });
 

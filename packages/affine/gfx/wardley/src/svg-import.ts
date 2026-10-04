@@ -24,6 +24,7 @@ import { layoutWardleyStatements, type WardleyStatements } from './import.js';
 import { NODE_STROKE } from './node/consts.js';
 import type { DrawnWardleyMap } from './svg-read.js';
 import { recogniseOnlineWardleyMaps } from './svg-recognise-owm.js';
+import { recogniseWardleyMapRenderer } from './svg-recognise-renderer.js';
 import { WARDLEY_SVG_IMPORT_REMARKS } from './svg-remarks.js';
 
 /**
@@ -39,9 +40,10 @@ import { WARDLEY_SVG_IMPORT_REMARKS } from './svg-remarks.js';
  * **What it guesses, and from what.** Roles, relations and coordinates — and
  * only when it can say where they came from. A producer is detected by a
  * structural marker on the sanitised tree, never by searching the text, in a
- * fixed order that stops at the first certain match:
+ * fixed order that stops at the first certain match: wardley-map-renderer
+ * (its `axes` and `nodes` layers, `svg-recognise-renderer.ts`), then
  * OnlineWardleyMaps (an element marker inside its own movable wrapper,
- * `svg-recognise-owm.ts`). The recogniser reads the producer's components,
+ * `svg-recognise-owm.ts`). A recogniser reads the producer's components,
  * anchors, markets, ecosystems, climate arrows, pipelines, evolved twins,
  * inertia bars, notes, dependencies and title, and the PLOT they sit on;
  * `[visibility, evolution]` is then read off that plot (`owmCoordsOf`) and
@@ -54,7 +56,13 @@ import { WARDLEY_SVG_IMPORT_REMARKS } from './svg-remarks.js';
  * but plot-less file (its `fillArea` stripped) is laid out over the extent of
  * its own components, and the report says those coordinates were ESTIMATED
  * (`invented-layout`). OnlineWardleyMaps draws a climate arrow with no name, so
- * one arrives unnamed. Methods, annotations and PST boxes have no native
+ * one arrives unnamed. The renderer's dependencies name no node — their
+ * `data-id` is the relation's own — so their ends are bound by geometry in
+ * both modes, each within its node's reach; its static output carries no id
+ * at all, so a name is the label drawn nearest its node, closest pairs first,
+ * and two nodes crowded closer than their labels can swap names. The renderer
+ * draws no evolved twin, so the twin takes the moving node's name. Methods,
+ * annotations, PST boxes, steps and flow labels have no native
  * artefact and arrive as a sketch. The title is drawn as a free text above the
  * board, because a board stores no title of its own. Nothing of the source
  * tool's MODEL beyond the drawing survives: the OWM DSL stays the reference
@@ -88,7 +96,7 @@ import { WARDLEY_SVG_IMPORT_REMARKS } from './svg-remarks.js';
 
 /** Detection order (ADR 0032 §4): the first certain match wins. */
 const RECOGNISERS: readonly ((root: Element) => DrawnWardleyMap | undefined)[] =
-  [recogniseOnlineWardleyMaps];
+  [recogniseWardleyMapRenderer, recogniseOnlineWardleyMaps];
 
 export function importWardleySvg(
   source: string,
@@ -191,6 +199,19 @@ function mapAndSketch(
       invented: false,
     })),
     pipelines: drawn.pipelines.flatMap(pipeline => {
+      if (!('of' in pipeline)) {
+        return [
+          {
+            name: pipeline.name,
+            id: pipeline.id,
+            from: at(pipeline.x1, pipeline.top).evolution,
+            to: at(pipeline.x2, pipeline.top).evolution,
+            top: at(pipeline.x1, pipeline.top).visibility,
+            tail: '',
+            invented: false,
+          },
+        ];
+      }
       const owner = byId.get(pipeline.of);
       if (!owner) return [];
       return [
