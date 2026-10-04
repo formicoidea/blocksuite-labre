@@ -84,4 +84,37 @@ import 'katex/dist/katex.min.css'; // only if you use formulas
 The library ships vanilla-extract `.css.ts` files. Your bundler needs the
 plugin; see [06-build-tooling.md](06-build-tooling.md).
 
+### Re-skinning: substitute the theme package
+
+The colours, the chrome accent included, come from `@toeverything/theme`,
+upstream AFFiNE's theme. To re-skin the editor, override that package name
+in your package manager with a theme of your own; the library compiles and
+runs against whatever the override resolves to:
+
+```json
+{
+  "pnpm": {
+    "overrides": {
+      "@toeverything/theme": "link:./packages/theme"
+    }
+  }
+}
+```
+
+Redefining `--affine-*` variables in your own CSS is not enough: the canvas
+painters and the toolbars read the package's JS values, not the variables
+(see [04-host-seams.md](04-host-seams.md), Theme). A substitute keeps every
+`--affine-*` variable name, ships `style.css` (and `fonts.css` if you load
+it), and exports every name the library imports:
+
+| Entry point              | Names                                                                                                                             |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| `@toeverything/theme`    | `cssVar`, `baseTheme`, `combinedLightCssVariables`, `combinedDarkCssVariables`, and the types `AffineCssVariables`, `AffineTheme` |
+| `@toeverything/theme/v2` | `cssVarV2`, `themeToVar`, `lightThemeV2`, `darkThemeV2`, and the type `AffineThemeKeyV2`                                          |
+
+`theme-imports.unit.spec.ts` (`packages/affine/all`) freezes this list: a new
+import from the theme package fails it until this table changes too. Which
+scheme is in force (light or dark) is a separate seam, the theme extension;
+see [04-host-seams.md](04-host-seams.md).
+
 Next: [02-mount.md](02-mount.md).
