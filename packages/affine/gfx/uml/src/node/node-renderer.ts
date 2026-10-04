@@ -214,10 +214,15 @@ function paintGlyph(
     }
 
     // An instance's name is UNDERLINED (§9.8.4) — the one mark that tells a
-    // reader an object from the class it is an instance of. Drawn under the NAME
-    // box and only as wide as it, so it reads as a rule under the words rather
-    // than as a fifth compartment line.
-    if (kind === 'object') {
+    // reader an object from the class it is an instance of. Since ADR 0030 the
+    // name is CREATED underlined and the text renderer draws the line under the
+    // words; this rule under the NAME box is the paint-time fallback for a name
+    // that never carried the field (an object drawn before, or by an older
+    // client). Any stored value — `none` included — hands the line to the text.
+    // ponytail: an old object keeps this box-wide rule until its author touches
+    // the decoration toggle once; a deliberate "normalise decorations" command
+    // is the upgrade, if ever asked — never a migration on open.
+    if (kind === 'object' && !boxes.nameDecorated) {
       const { name } = boxes;
       const under = name.y + name.h;
       if (under > y0 && under < y1 && name.w > 0) {
@@ -565,7 +570,13 @@ function paintArtifactIcon(
  * they are already on the canvas — so a renderer holding them would be holding a
  * second opinion about where words it does not draw ought to be.
  */
-type UmlSeparators = Pick<UmlCompartmentBoxes, 'name' | 'splits'>;
+type UmlSeparators = Pick<UmlCompartmentBoxes, 'name' | 'splits'> & {
+  /**
+   * Whether the name tier carries a `textDecoration` of its own, whatever its
+   * value: the text then owns the instance underline (ADR 0030 §4).
+   */
+  nameDecorated?: boolean;
+};
 
 /**
  * The stencil stack, in PROPORTION when the box is too short to hold it.
@@ -654,30 +665,40 @@ export function umlNodeCompartments(
   const group = model.group;
   // No splits at all is a kind that is a PICTURE (a package, an actor, a cube):
   // there are no compartments to read off, and nothing below would mean
-  // anything. A rotated shape is the documented ceiling above.
-  if (defaults.splits.length === 0 || model.rotate || !group) return defaults;
+  // anything.
+  if (defaults.splits.length === 0 || !group) return defaults;
 
   const children = group.childElements;
   const component = umlComponentSiblings(
     { id: group.id, childIds: group.childIds },
     children as unknown as { id: string; role?: string }[]
   );
+  const name = children.find(child => child.id === component.name?.id);
+  // Read before any fallback below, so a rotated or displaced node never draws
+  // the legacy rule under a name that already decorates itself.
+  const nameDecorated =
+    (name as { textDecoration?: unknown } | undefined)?.textDecoration !==
+    undefined;
+  const fallback = { ...defaults, nameDecorated };
+  // A rotated shape is the documented ceiling above.
+  if (model.rotate) return fallback;
+
   // The BODY tier is what both separators hang off: the line above it is where
   // the name compartment stops, the line below it where the operations start.
   // Its role is `uml:attributes` on all seven compartmented kinds — a slot list,
   // a component's parts, a state's activities included (`component.ts`).
   const body = children.find(child => child.id === component.attributes?.id);
-  if (!body) return defaults;
+  if (!body) return fallback;
 
   const [nodeX, nodeY] = model.deserializedXYWH;
   const top = body.y - nodeY;
   const bottom = top + body.h;
   // A tier dragged clean off its node says nothing useful about where a line
   // INSIDE the node goes.
-  if (!(top > 0) || !(bottom > top)) return defaults;
+  if (!(top > 0) || !(bottom > top)) return fallback;
 
-  const name = children.find(child => child.id === component.name?.id);
   return {
+    nameDecorated,
     // The name box is read for the one thing it is used for: the rule under an
     // INSTANCE's name (§9.8.4), which has to stay under the words once a
     // two-line name has pushed them down.

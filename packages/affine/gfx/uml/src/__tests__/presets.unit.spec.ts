@@ -5,6 +5,7 @@ import {
   ShapeStyle,
   StrokeStyle,
   TextAlign,
+  TextDecoration,
   type UmlNodeKind,
 } from '@labre/affine-model';
 import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
@@ -22,6 +23,7 @@ import {
   ROUNDED_KINDS,
   umlMorphClears,
   umlMorphProps,
+  umlNameDecoration,
   umlNodeProps,
   umlTextProps,
 } from '../presets.js';
@@ -276,5 +278,40 @@ describe('what a compartment text is created as', () => {
       'type',
       'xywh',
     ]);
+  });
+});
+
+/**
+ * The instance underline (§9.8.4) is the NAME TIER's text decoration since
+ * ADR 0030, written by the creation site from this one preset — the toolbox,
+ * the importers and the templates all read it, so none restates the rule.
+ */
+describe('what a name tier is decorated with', () => {
+  const box: UmlBox = { x: 10, y: 20, w: 30, h: 40 };
+
+  it('underlines an object name and leaves every other kind undecided', () => {
+    expect(umlNameDecoration('object')).toBe(TextDecoration.Underline);
+    for (const kind of ALL_KINDS.filter(kind => kind !== 'object')) {
+      expect(umlNameDecoration(kind), kind).toBeUndefined();
+    }
+  });
+
+  it('writes the decoration it is given, and no key when given none', () => {
+    expect(
+      umlTextProps(UML_ROLE.name, box, {
+        fontSize: 16,
+        align: TextAlign.Center,
+        decoration: TextDecoration.Underline,
+      }).textDecoration
+    ).toBe('underline');
+    // Absent, not `undefined`: a class name stores exactly the keys it stored
+    // before the field existed.
+    expect(
+      umlTextProps(UML_ROLE.name, box, {
+        fontSize: 16,
+        align: TextAlign.Center,
+        decoration: umlNameDecoration('class'),
+      })
+    ).not.toHaveProperty('textDecoration');
   });
 });

@@ -50,7 +50,7 @@ import {
   type UmlRelationKind,
   type UmlState,
 } from './model.js';
-import { umlNodeProps, umlTextProps } from './presets.js';
+import { umlNameDecoration, umlNodeProps, umlTextProps } from './presets.js';
 import { UML_ROLE } from './roles.js';
 
 /**
@@ -1336,6 +1336,8 @@ export function umlElementsFromModel(
               // The classifier's name is the heading of a divided box; a
               // glyph's one word is not.
               ...(compartmented ? { bold: true } : {}),
+              // The toolbox's own preset: an instance's name is underlined.
+              decoration: umlNameDecoration(kind),
             }
           ),
           id: tierId,

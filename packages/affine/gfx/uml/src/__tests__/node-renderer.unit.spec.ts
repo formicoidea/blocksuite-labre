@@ -197,6 +197,9 @@ describe('the UML node glyph layer', () => {
    * §9.8.4: an instance specification is a name compartment over a SLOT
    * compartment — one split, not two — with the name UNDERLINED, which is the
    * one mark that tells an object from the class it instantiates.
+   *
+   * A shape with no group has no name tier to read, so this is the legacy
+   * paint-time rule (ADR 0030 §4), which an old object still gets.
    */
   it('gives the object one split and underlines its name', () => {
     const { w, h } = UML_NODE_BOX.object;
@@ -910,12 +913,68 @@ describe('the separators, read off the tiers', () => {
     ];
     const { segments } = drawGrouped('object', size, grouped('object', tiers));
 
-    // One split and one underline — never two splits.
+    // One split and one underline — never two splits. The name tier here
+    // carries no `textDecoration`, so this is the legacy rule (ADR 0030 §4).
     expect(segments).toHaveLength(2);
     expect(segments[0].y1).toBe(boxes.attributes!.y);
     // …and the underline follows the two-line name down, rather than sitting
     // where a one-line name used to end.
     expect(segments[1].y1).toBe(boxes.name.y + boxes.name.h);
+  });
+
+  /**
+   * ADR 0030 §4: since the object name is created with the text decoration,
+   * the glyph's box-wide rule is a PAINT-TIME FALLBACK for a name that never
+   * carried the field — an object drawn before, or by an older client. Any
+   * stored value, `none` included, hands the line to the text renderer, which
+   * draws it under the words; drawing both would underline the name twice.
+   */
+  describe('the instance underline is the text decoration once there is one', () => {
+    const size = UML_NODE_BOX.object;
+    const boxes = umlCompartmentBoxes('object', 0, 0, size.w, size.h);
+    const objectWithName = (textDecoration?: string) =>
+      grouped('object', [
+        {
+          role: UML_ROLE.name,
+          ...boxes.name,
+          ...(textDecoration === undefined ? {} : { textDecoration }),
+        },
+        { role: UML_ROLE.attributes, ...boxes.attributes! },
+      ]);
+
+    it('draws the legacy rule under a name that never carried the field', () => {
+      expect(
+        drawGrouped('object', size, objectWithName()).segments
+      ).toHaveLength(2);
+    });
+
+    it('leaves the line to an underlined name', () => {
+      const { segments } = drawGrouped(
+        'object',
+        size,
+        objectWithName('underline')
+      );
+      expect(segments).toEqual([
+        {
+          x1: INSET,
+          y1: boxes.splits[0],
+          x2: size.w - INSET,
+          y2: boxes.splits[0],
+        },
+      ]);
+    });
+
+    it('draws nothing for a name decorated none — the author took it off', () => {
+      expect(
+        drawGrouped('object', size, objectWithName('none')).segments
+      ).toHaveLength(1);
+    });
+
+    it('reads the name even on a rotated shape, so the line is never doubled', () => {
+      expect(
+        drawGrouped('object', size, objectWithName('underline'), 30).segments
+      ).toHaveLength(1);
+    });
   });
 });
 

@@ -6,6 +6,7 @@ import { ElementRendererIdentifier } from '@labre/affine/blocks/surface';
 import { UML_ROLE } from '@labre/affine-gfx-uml';
 import {
   GroupElementModel,
+  TextDecoration,
   TextElementModel,
   UML_FRAME_BAND_HEIGHT,
   type UmlDiagramElementModel,
@@ -104,6 +105,23 @@ describe('the UML toolbox draws what it declares', () => {
     for (const text of texts) {
       expect(text.text.toString().length, text.role).toBeGreaterThan(0);
     }
+  });
+
+  test('addObject underlines the name through the text, not the glyph', async () => {
+    // ADR 0030 §4: the instance underline (§9.8.4) is the name tier's own
+    // decoration, painted under the words by the text renderer; the glyph's
+    // box-wide rule is only a fallback for names that never carried it.
+    await run('uml.addDiagram');
+    await run('uml.addObject');
+
+    const texts = lastGroup().childElements.filter(
+      (child): child is TextElementModel => child instanceof TextElementModel
+    );
+    const name = texts.find(text => text.role === UML_ROLE.name)!;
+    const slots = texts.find(text => text.role === UML_ROLE.attributes)!;
+
+    expect(name.textDecoration).toBe(TextDecoration.Underline);
+    expect(slots.yMap.has('textDecoration')).toBe(false);
   });
 
   test('the diagram stays UNDER what is drawn on it', async () => {

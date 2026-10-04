@@ -224,6 +224,22 @@ describe('a materialized classifier is what createUmlClassifier writes', () => {
   });
 });
 
+describe('a materialized object is what createUmlClassifier writes', () => {
+  it('names it with the same underlined tier the button draws (ADR 0030)', () => {
+    const imported = materialize({
+      ...emptyModel('Orders'),
+      classifiers: [
+        { ...classifier('order1', 'order1 : Order'), kind: 'object' },
+      ],
+    }).elements;
+    const drawn = drawnBy(std => createUmlClassifier(std, 'object'));
+
+    const name = byRole(imported, UML_ROLE.name)!;
+    expect(name['textDecoration']).toBe('underline');
+    expect(strip(name)).toEqual(strip(byRole(drawn, UML_ROLE.name)!));
+  });
+});
+
 describe('a materialized glyph is what createUmlNode writes', () => {
   // The four kinds that settle the two questions this file could get wrong on
   // its own: which tier ROLE a picture's one word takes, and whether a mark
