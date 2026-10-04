@@ -44,6 +44,9 @@ export class DefaultTool extends BaseTool {
 
   private _scrollViewport(delta: IVec) {
     this.gfx.viewport.applyDeltaCenter(delta[0], delta[1]);
+    // `viewportMoved` is what an element move listens to in order to keep the
+    // dragged elements under a pointer that stays still while the board pans.
+    this.gfx.viewport.viewportMoved.next(delta);
   }
 
   private _spaceTranslationRect: null | {
@@ -225,6 +228,7 @@ export class DefaultTool extends BaseTool {
           movingElements: this._toBeMoved,
           event: event.raw,
           onDragEnd: () => {
+            this._stopEdgeScrolling();
             this.doc.captureSync();
           },
         });
@@ -297,6 +301,17 @@ export class DefaultTool extends BaseTool {
         break;
       }
       case DefaultModeDragType.ContentMoving: {
+        // Only an accepted move pans: `handleElementMove` refuses a readonly
+        // store and an extension may cancel it, and neither leaves an active
+        // interaction behind.
+        const moving =
+          this.interactivity?.activeInteraction$.peek()?.type === 'move';
+        const moveDelta = moving ? calPanDelta(viewport, e) : null;
+        if (moveDelta) {
+          this._enableEdgeScrolling(moveDelta);
+        } else {
+          this._stopEdgeScrolling();
+        }
         break;
       }
       case DefaultModeDragType.NativeEditing: {

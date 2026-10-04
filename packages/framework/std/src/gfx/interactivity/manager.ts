@@ -412,6 +412,9 @@ export class InteractivityManager extends GfxExtension {
       onDragMove(lastEvent as PointerEvent);
     });
     const onDragMove = (event: PointerEvent) => {
+      // The viewport watcher replays the latest pointer position; without
+      // this it replayed the drag start and snapped the elements back.
+      lastEvent = event;
       dragLastPos = Point.from(
         this.gfx.viewport.toModelCoordFromClientCoord([event.x, event.y])
       );
