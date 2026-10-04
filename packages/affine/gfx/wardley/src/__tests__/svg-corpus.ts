@@ -1,7 +1,9 @@
 import FULL_OWM_TEXT from './corpus/svg/full.owm?raw';
+import HEURISTIC_SVG from './corpus/svg/heuristic.vector-editor.svg?raw';
 import HOSTILE_SVG from './corpus/svg/hostile.onlinewardleymaps.svg?raw';
 import FULL_OWM_SVG from './corpus/svg/full.onlinewardleymaps.svg?raw';
 import MIXED_OWM_SVG from './corpus/svg/mixed.onlinewardleymaps.svg?raw';
+import NOT_A_MAP_SVG from './corpus/svg/not-a-map.bpmn-io.svg?raw';
 import SMALL_OWM_TEXT from './corpus/svg/small.owm?raw';
 import SMALL_OWM_SVG from './corpus/svg/small.onlinewardleymaps.svg?raw';
 import SMALL_RENDERER_SVG from './corpus/svg/small.wardley-map-renderer.svg?raw';
@@ -32,6 +34,16 @@ import TEA_SHOP_RENDERER_LIVE_SVG from './corpus/svg/tea-shop.wardley-map-render
  *   to act on: a `<script>`, an `onload` and an `onclick`, a
  *   `<foreignObject>`, a `<use>`, ids `__proto__` and `<script>`, markup in a
  *   name, and coordinates that are not finite numbers.
+ * - `heuristic.vector-editor.svg` — WRITTEN by hand in the shape an Inkscape
+ *   drawing has (layers as groups, paths with absolute, relative and implicit
+ *   line-tos, styles in `style`), from a known map: five components at the
+ *   `[visibility, evolution]` pairs of `HEURISTIC_OWM` below, four straight
+ *   dependencies, and the things the heuristic must NOT promote — a curved
+ *   link, a dashed red arrow, a thick bar, a pipeline-like rect, a circle with
+ *   no name, a legend dot outside the plot.
+ * - `not-a-map.bpmn-io.svg` — WRITTEN by hand in bpmn.io's export shape (a
+ *   pool, two events, a task, two flows): a picture that is not a map and
+ *   must yield NO native element.
  * - `*.wardley-map-renderer.svg` / `…-interactive.svg` — wardley-map-renderer
  *   1.0.0-beta.5 (commit `bfe11ad`), `render(map, { format: 'svg' })` and the
  *   same with `renderOptions: { interactive: true }`, from the JSON
@@ -42,6 +54,18 @@ import TEA_SHOP_RENDERER_LIVE_SVG from './corpus/svg/tea-shop.wardley-map-render
  * the SVG reader is measured against: the SVG of a map must import to the
  * same map as its OWM text.
  */
+/** The map `heuristic.vector-editor.svg` was drawn from, plot `[60, 30, 700, 410]`. */
+export const HEURISTIC_OWM = `component Customer [0.95, 0.70]
+component Online shop [0.80, 0.55]
+component Payment [0.55, 0.85]
+component Catalogue [0.50, 0.40]
+component Hosting [0.20, 0.90]
+Customer->Online shop
+Online shop->Payment
+Online shop->Catalogue
+Catalogue->Hosting
+`;
+
 export const SVG_CORPUS = {
   smallOwmText: SMALL_OWM_TEXT,
   fullOwmText: FULL_OWM_TEXT,
@@ -50,6 +74,8 @@ export const SVG_CORPUS = {
   teaShopOwm: TEA_SHOP_OWM_SVG,
   mixedOwm: MIXED_OWM_SVG,
   hostile: HOSTILE_SVG,
+  heuristic: HEURISTIC_SVG,
+  notAMap: NOT_A_MAP_SVG,
   smallRenderer: SMALL_RENDERER_SVG,
   smallRendererLive: SMALL_RENDERER_LIVE_SVG,
   teaShopRenderer: TEA_SHOP_RENDERER_SVG,

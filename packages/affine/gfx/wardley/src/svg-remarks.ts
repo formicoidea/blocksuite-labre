@@ -20,6 +20,10 @@ export const WARDLEY_SVG_IMPORT_REMARKS = {
     'com.labre.wardley.import.svg.remark.dangling-link',
     'a link in this file names an artefact the drawing does not hold, so it arrives as a sketch rather than as a dependency.',
   ],
+  noAxes: [
+    'com.labre.wardley.import.svg.remark.no-axes',
+    'No map axes were found and no known producer marked this file, so nothing was recognised as a Wardley map: it arrives as a sketch.',
+  ],
   unreadableCoordinates: [
     'com.labre.wardley.import.svg.remark.unreadable-coordinates',
     'its position in the file is not a pair of numbers this reader can trust, so it arrives as a sketch.',
