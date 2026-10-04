@@ -3,7 +3,7 @@ Editor library for **Labre**, a markdown + whiteboard editor for enterprise tran
 ## What this repo is
 
 - The **library**, not the product. Open source, MPL-2.0. The SaaS lives in the private `labre` repo (formicoidea/labre), which consumes this library as published npm bundles; a product need is a seam here, never a back door for one host (principle 17: no privileged consumer).
-- 82 private `@labre/*` workspace packages under `packages/`, one Vite playground, one browser-mode integration suite; about ten `@formicoidea/labre-*` bundles generated at release time. Never `@blocksuite/*`: that scope belongs to the AFFiNE team.
+- 83 private `@labre/*` workspace packages under `packages/`, the Vite playground and the browser-mode integration suite among them; about ten `@formicoidea/labre-*` bundles generated at release time. Never `@blocksuite/*`: that scope belongs to the AFFiNE team.
 - Web components (Lit), state in Yjs, signals for reactivity, no framework of its own. There is no first-party React wrapper; do not document one as if it shipped.
 - Sibling checkouts: `../AFFiNE-upstream` (shallow reference clone, editor under `blocksuite/`), `../labre` (the private Labre app, holds the FR catalogue, the PostHog adapter and the seam registrations), `../labre-mcp`.
 
@@ -37,7 +37,7 @@ One line per location: `path in this repo — what lives there (counterpart in t
 
 ## Library contract
 
-- Published as `@formicoidea/labre-core` plus one `@formicoidea/labre-framework-<id>` per framework (`wardley`, `edgy`, `bpmn`, `c4`, `cynefin`, `ddd-event-storming`, `ddd-core-domain`, `ddd-context-map`, `uml`), plus `labre-ddd-shared` and `labre-framework-ddd-aggregate` (DDD template categories, no senior button). The list is derived from `FRAMEWORK_DESCRIPTORS` and `AUXILIARY_BUNDLES` in `packages/affine/all/src/frameworks.ts`, which must stay data-only (type-only imports, no Lit) so the script can read it. Hosts alias the bundles back to `@labre/*`.
+- Published as `@formicoidea/labre-core` plus one `@formicoidea/labre-framework-<name>` per framework (`wardley`, `edgy`, `bpmn`, `c4`, `cynefin`, `ddd-event-storming`, `ddd-core-domain`, `ddd-context-map`, `uml`; the name is the descriptor's `bundle` field, not its `id`: `cynefin-estuarine` publishes as `framework-cynefin`), plus `labre-ddd-shared` and `labre-framework-ddd-aggregate` (DDD template categories, no senior button). The list is derived from `FRAMEWORK_DESCRIPTORS` and `AUXILIARY_BUNDLES` in `packages/affine/all/src/frameworks.ts`, which must stay data-only (type-only imports, no Lit) so the script can read it. Hosts alias the bundles back to `@labre/*`.
 - Every bundle carries the umbrella's version; a framework bundle pins the **exact** core version and depends only on core and the shared bundle. A framework package that imports another framework package breaks publish: the build script has no bundle for that edge.
 - Registry: `getAffineSchemas()`, `getInternalStoreExtensions()`, `getInternalViewExtensions(flags)` — the three assembly points. **Flags (`@labre/affine/flags`) gate TOOLING, never content**: schemas and store extensions are registered unconditionally, so every document opens and round-trips whatever the flags say; a flag only removes a framework's senior button, submenus, templates category and shortcuts. Frameworks therefore split their view into an always-on `…RenderViewExtension` and a flag-gated `…ViewExtension` (ADR 0009, which reverses the "ship dark" half of ADR 0002).
 - Flags are `LabreFlags = BlockFlags & CapabilityFlags`: `OPTIONAL_BLOCKS` (things a document can contain) and `OPTIONAL_CAPABILITIES` (`ai-audit`, which persists nothing). Missing key means enabled. Hosts read the key lists from the library, never keep their own copy.
@@ -150,7 +150,7 @@ Entry points, not an exhaustive list. Nothing is authorised by omission: if your
 
 ## Testing
 
-- Unit: Vitest, `src/__tests__/**/*.unit.spec.ts`, happy-dom by default, browser mode where the canvas is needed (`framework/std`, `gfx/bpmn`, `gfx/wardley` have a `vitest.browser.config.ts`). Root `vitest.workspace.ts` lists every package with tests; `yarn test:unit` runs them all, `yarn vitest run <filter>` from the package directory runs one.
+- Unit: Vitest, `src/__tests__/**/*.unit.spec.ts`, happy-dom by default, browser mode where the canvas is needed (`framework/std` in its `vitest.config.ts`; `gfx/bpmn` and `gfx/wardley` in a `vitest.browser.config.ts`). Root `vitest.workspace.ts` lists every package with tests; `yarn test:unit` runs them all, `yarn vitest run <filter>` from the package directory runs one.
 - Integration: `packages/integration-test/src/__tests__/**/*.spec.ts`, Vitest browser mode on Playwright chromium, 1024×768, `isolate: false`, headless and `retry: 3` in CI. Keep `--no-file-parallelism` (in the script): the suite is load-sensitive. `setupEditor('edgeless' | 'page')` sets `window.doc` and `window.editor`.
 - A feature or a bug fix ships with its test, colocated; the file starts with a docblock saying why the spec exists. Slow tests are a design smell, not a timeout bump. No focused test in a commit.
 - Assert the observable effect, not the mechanics: drive `elementUpdated` with `local: true` and `local: false` for a cascade; mount the real extensions and read the container back for coverage (`reading-coverage.unit.spec.ts`), never the exported constant.
@@ -233,7 +233,7 @@ Already wicked here — walk this list before estimating anything:
 - Nearly thirty host seams that must each degrade gracefully, and a table that says how.
 - The persisted Yjs format, which is forever: every stored prop, enum value, role id and command id.
 - Every displayed string as a `com.labre.*` key with an English fallback; the FR catalogue lives in the host.
-- Granular source (82 workspaces, source-first `exports`) versus coarse publication (about ten compiled bundles, Node-resolvable): every new package must land in the right bundle.
+- Granular source (83 workspaces, source-first `exports`) versus coarse publication (about ten compiled bundles, Node-resolvable): every new package must land in the right bundle.
 - MPL-2.0 file-level copyleft: every published tarball ships the licence, every package manifest declares it.
 - Upstream cherry-picks: the source tree keeps AFFiNE's layout so a cherry-pick stays cheap; the bundle scripts rewrite the emit rather than the ~1000 source sites.
 - Collaboration: any cascade may receive a change from another peer or a readonly store.
