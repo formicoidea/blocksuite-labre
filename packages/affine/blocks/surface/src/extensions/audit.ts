@@ -51,11 +51,10 @@ import { z } from 'zod';
 
 import type { FrameworkBackgroundDef } from '../framework-background/def.js';
 import {
-  backgroundInstanceZones,
-  backgroundPlot,
-} from '../framework-background/def.js';
-import {
   backgroundAxisFacts,
+  backgroundPlotRatios,
+  backgroundZoneAt,
+  backgroundZones,
   containingFrame,
 } from '../framework-background/facts.js';
 import {
@@ -162,78 +161,23 @@ function collectFrames(
           type: def.type,
           ...(typeof profileId === 'string' ? { profileId } : {}),
           axes: backgroundAxisFacts(def),
-          // The framework's zones first, then the ones THIS frame declares —
-          // a BPMN pool's lanes. Concatenated rather than merged: the two
-          // namespaces are kept apart by the instance ids' prefix, so `zoneAt`
-          // resolves them by the same containment test and a framework zone
-          // still wins a genuine overlap, which is the reading that was true
-          // before an element could partition its own plot.
-          zones: [
-            ...(def.zones ?? []).map(zone => ({
-              id: zone.id,
-              rect: { ...zone.rect },
-            })),
-            ...backgroundInstanceZones(
-              def,
-              el as unknown as Readonly<Record<string, unknown>>
-            ).map(zone => ({
-              id: zone.id,
-              ...(zone.name !== undefined ? { name: zone.name } : {}),
-              rect: { ...zone.rect },
-            })),
-          ],
+          // The zones THIS frame has — the framework's, in the variant it is
+          // turned to, then its own (a BPMN pool's lanes) — read through the
+          // helper the reading panel uses, so the two cannot disagree. Copied
+          // field by field: the declared label is painting data, not a fact.
+          zones: backgroundZones(
+            def,
+            el as unknown as Readonly<Record<string, unknown>>
+          ).map(zone => ({
+            id: zone.id,
+            ...(zone.name !== undefined ? { name: zone.name } : {}),
+            rect: { ...zone.rect },
+          })),
         },
       });
     }
   }
   return frames;
-}
-
-/**
- * Where an element's centre sits inside a frame's PLOT, as ratios.
- *
- * A POSITION, not a membership test: it is asked only about an element some
- * frame already contains, and answers where in that frame's plot it lies.
- *
- * Ratios of the plot and not of the element box: a Wardley transition drawn at
- * `0.4` is 40 % of the PLOT, not of the map element, and the margin between the
- * two is exactly where the axis titles live. `backgroundPlot` is the one place
- * that knows the difference, and this is the only reason this function exists
- * rather than a subtraction at the call site.
- *
- * Not clamped: an element just off the left edge reads as `-0.03`, which is a
- * true and useful thing to say. `null` for a degenerate plot.
- */
-function plotRatios(
-  frame: Frame,
-  bound: Bound
-): readonly [number, number] | null {
-  const plot = backgroundPlot(frame.def, frame.bound.w, frame.bound.h);
-  if (!(plot.width > 0) || !(plot.height > 0)) return null;
-  const cx = bound.x + bound.w / 2;
-  const cy = bound.y + bound.h / 2;
-  return [
-    (cx - frame.bound.x - plot.x0) / plot.width,
-    (cy - frame.bound.y - plot.y0) / plot.height,
-  ];
-}
-
-/**
- * The zone a plot-ratio point falls in, if any — one the framework declares or
- * one the frame itself does. It needs to know nothing about the difference: the
- * fact carries both, in that order, as rectangles in the same ratios.
- */
-function zoneAt(
-  frame: Frame,
-  at: readonly [number, number]
-): string | undefined {
-  for (const zone of frame.fact.zones) {
-    const { x, y, w, h } = zone.rect;
-    if (at[0] >= x && at[0] <= x + w && at[1] >= y && at[1] <= y + h) {
-      return zone.id;
-    }
-  }
-  return undefined;
 }
 
 /**
@@ -311,8 +255,10 @@ export function collectAuditFacts(std: BlockStdScope): AuditFacts {
       continue;
     }
 
-    const at = plotRatios(frame, bound);
-    const zone = at === null ? undefined : zoneAt(frame, at);
+    // A POSITION, not a membership test: `frame` already contains the element.
+    const at = backgroundPlotRatios(frame.def, frame.bound, bound);
+    const zone =
+      at === null ? undefined : backgroundZoneAt(frame.fact.zones, at)?.id;
     elementFacts.push({
       id: el.id,
       role,

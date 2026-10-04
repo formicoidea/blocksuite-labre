@@ -540,30 +540,44 @@ export class ReadingProposalWidget extends EditorAnchoredPanel {
   }
 
   /**
-   * Where the subject sits along the frame's phase axis.
+   * The zone of the frame the subject sits in — Wardley's evolution phase, a
+   * Core Domain Chart's quadrant, a BPMN lane — under the framework's own
+   * heading (`frame.label`).
    *
-   * Absent ENTIRELY — not "no phase to read" — for a framework that declares no
-   * frame. The empty state below is about a component that could have been on a
-   * map and is not; telling the author of a BPMN task that it is "not on a
-   * framework background" would be answering a question their notation never
-   * asks.
+   * Absent ENTIRELY — not "no zone to read" — for a framework that declares no
+   * frame. The empty state below is about an artefact that could have been on
+   * a frame and is not, in the framework's own words (`frame.none`).
+   *
+   * The zone is named the way the board names it: the user's words when they
+   * wrote some (a renamed quadrant, a lane's name), the vocabulary otherwise,
+   * and "Unnamed" for a zone the board paints but never writes on — never the
+   * zone's id, which is not a word anyone drew.
    */
   private _renderPhase(reading: ElementReading, profile: ReadingProfile) {
-    if (!profile.frame) return nothing;
+    const frame = profile.frame;
+    if (!frame) return nothing;
     const { phase } = reading;
+    const words = !phase
+      ? ''
+      : phase.name !== undefined
+        ? phase.name.trim()
+        : phase.labelKey !== undefined
+          ? translateKey(
+              this.std,
+              phase.labelKey,
+              phase.labelFallback ?? phase.labelKey
+            )
+          : (phase.labelFallback ?? '');
     return this._field(
       'reading-phase',
-      translateKey(
-        this.std,
-        'com.labre.reading.field.phase',
-        'Evolution phase'
-      ),
+      translateKey(this.std, frame.label.labelKey, frame.label.labelFallback),
       phase
         ? html`<div class="reading-value" data-zone-id=${phase.zoneId}>
-              ${translateKey(
+              ${words ||
+              translateKey(
                 this.std,
-                phase.labelKey ?? phase.zoneId,
-                phase.labelFallback ?? phase.zoneId
+                'com.labre.reading.zone.unnamed',
+                'Unnamed'
               )}
             </div>
             ${phase.inTransitionBand
@@ -579,8 +593,8 @@ export class ReadingProposalWidget extends EditorAnchoredPanel {
         : html`<div class="reading-empty" data-testid="reading-phase-none">
             ${translateKey(
               this.std,
-              'com.labre.reading.phase.none',
-              'Not on a framework background — no phase to read.'
+              frame.none.labelKey,
+              frame.none.labelFallback
             )}
           </div>`
     );

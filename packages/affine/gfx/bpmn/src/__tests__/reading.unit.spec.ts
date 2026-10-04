@@ -165,11 +165,12 @@ describe('what a BPMN process is read as', () => {
 
   it('never contradicts the drawing, proposes no nature, reads no phase', () => {
     // A pool's lanes are participants, not an ordered axis: two tasks side by
-    // side contradict nothing, and a phase read off a lane would be invented.
+    // side contradict nothing. What IS read off a pool is the lane — in the
+    // plane, never along an axis (see the block below).
     for (const profile of BPMN_READINGS) {
       expect(profile.relation?.geometry, profile.id).toBeUndefined();
       expect(profile.nature, profile.id).toBeUndefined();
-      expect(profile.frame, profile.id).toBeUndefined();
+      expect(profile.frame?.axis, profile.id).toBeUndefined();
     }
 
     const above = element({
@@ -200,6 +201,69 @@ describe('what a BPMN process is read as', () => {
     expect(reading.nature).toBeUndefined();
     expect(reading.naming).toBeUndefined();
     expect(reading.phase).toBeUndefined();
+  });
+});
+
+/**
+ * Why this block exists: the reading panel could say what a task is and what
+ * follows it, but not which LANE it is drawn in — the first thing a reader of a
+ * pool asks. The lane comes from the pool's own `lanes` prop, named as the
+ * user named it, and agrees with `bpmnLaneOf` and the audit.
+ */
+describe('the lane an artefact is drawn in', () => {
+  /** A pool 600 × 200 at the origin, with two lanes of equal weight. */
+  const pool = (lanes?: unknown) => {
+    const el = element({
+      id: 'pool',
+      role: BPMN_ROLE.pool,
+      bound: [0, 0, 600, 200],
+    });
+    if (lanes !== undefined) {
+      Object.defineProperty(el, 'lanes', { value: lanes, configurable: true });
+    }
+    return el;
+  };
+  const LANES = [
+    { id: 'sales', name: 'Sales', size: 1 },
+    { id: 'ops', name: 'Operations', size: 1 },
+  ];
+
+  /** A 60 × 40 artefact centred on (300, `y`), clear of the name band. */
+  const at = (role: string, y: number) =>
+    element({ id: 'a', role, bound: [270, y - 20, 60, 40] });
+
+  it('reads a task in the lane its centre falls in, under the lane’s name', () => {
+    const task = at(BPMN_ROLE.task, 150);
+    expect(readElement(task, [pool(LANES), task], BPMN_READING)!.phase).toEqual(
+      { zoneId: 'lane:ops', name: 'Operations', inTransitionBand: false }
+    );
+  });
+
+  it('reads a data shape in its lane too', () => {
+    const store = at(BPMN_ROLE.dataStore, 50);
+    expect(
+      readElement(store, [pool(LANES), store], BPMN_DATA_READING)!.phase
+    ).toMatchObject({ zoneId: 'lane:sales', name: 'Sales' });
+  });
+
+  it('reads no lane in a pool that has none, nor off every pool', () => {
+    const task = at(BPMN_ROLE.task, 150);
+    expect(
+      readElement(task, [pool(), task], BPMN_READING)!.phase
+    ).toBeUndefined();
+    expect(readElement(task, [task], BPMN_READING)!.phase).toBeUndefined();
+  });
+
+  it('frames only the families drawn IN a lane', () => {
+    // Commentary is about the picture, and §10.4 lets a group cross lanes.
+    expect(BPMN_READING.frame?.backgroundRole).toBe(BPMN_ROLE.pool);
+    expect(BPMN_DATA_READING.frame?.backgroundRole).toBe(BPMN_ROLE.pool);
+    expect(profileOf(BPMN_ROLE.textAnnotation)?.frame).toBeUndefined();
+    expect(profileOf(BPMN_ROLE.group)?.frame).toBeUndefined();
+    expect(BPMN_READING.frame?.label).toEqual({
+      labelKey: 'com.labre.bpmn.reading.field.lane',
+      labelFallback: 'Lane',
+    });
   });
 });
 

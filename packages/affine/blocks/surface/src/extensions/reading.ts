@@ -33,7 +33,11 @@ import {
   type FrameworkBackgroundDef,
 } from '../framework-background/def.js';
 import {
+  backgroundPlotRatios,
   backgroundTransitionBands,
+  backgroundZoneAt,
+  type BackgroundZoneFact,
+  backgroundZones,
   containingFrame,
 } from '../framework-background/facts.js';
 
@@ -125,6 +129,15 @@ export interface ReadingNamingConvention {
 export interface ReadingRelationSideLabel {
   labelKey: string;
   /** The framework's own English wording, for a host that ships no catalogue. */
+  labelFallback: string;
+}
+
+/**
+ * One wording a framework declares for the frame field of the panel: key plus
+ * its own English, so a host with no catalogue still reads a real phrase.
+ */
+export interface ReadingFrameWording {
+  labelKey: string;
   labelFallback: string;
 }
 
@@ -222,13 +235,33 @@ export interface ReadingProfile {
    * reads them in, so the first is the question the artefact answers first.
    */
   alsoRelations?: readonly ReadingRelationDef[];
-  /** The frame the phase is read from. */
+  /**
+   * The frame the subject's ZONE is read from — Wardley's evolution phase, a
+   * Core Domain Chart's quadrant, a BPMN pool's lane.
+   */
   frame?: {
     backgroundRole: RoleId;
     /** The declaration itself, carried as data exactly like `roles` is. */
     background: FrameworkBackgroundDef;
-    /** Which plot axis the zones are laid along. */
-    axis: 'x' | 'y';
+    /**
+     * The plot axis the zones are laid ALONG, for a frame read in one
+     * dimension: Wardley's phases are columns of the evolution axis, so only
+     * the `x` position matters and a component in the top or bottom margin of
+     * the plot still has a phase.
+     *
+     * Absent, the frame is read in TWO dimensions: the subject is in the zone
+     * whose rectangle holds its centre — a quadrant, a lane — and nowhere when
+     * none does. A 2D frame has no transition band.
+     */
+    axis?: 'x' | 'y';
+    /**
+     * The panel's heading for the field — "Evolution phase", "Zone", "Lane".
+     * The framework's own word, like a relation's sides: the panel used to
+     * hard-code Wardley's, which a chart or a pool would have worn too.
+     */
+    label: ReadingFrameWording;
+    /** What the field says when the subject sits in no zone of any frame. */
+    none: ReadingFrameWording;
   };
   /**
    * Which properties of the PIVOT RECORD the reading may compare itself
@@ -319,12 +352,24 @@ export interface ReadingRelation {
   contradictsGeometry: boolean;
 }
 
-/** Where the subject sits along the frame's phase axis. */
+/**
+ * The zone of the frame the subject sits in: a phase along an axis, or a
+ * region of the plane (see `ReadingProfile.frame.axis`).
+ */
 export interface ReadingPhase {
-  /** The declared zone id, e.g. `product`. */
+  /** The zone id, e.g. `product`, or `lane:<id>` for an instance zone. */
   zoneId: string;
+  /** The declared zone's vocabulary, absent on a zone the board never names. */
   labelKey?: string;
   labelFallback?: string;
+  /**
+   * The words the USER wrote for this zone, which is what the board paints in
+   * place of the vocabulary: a renamed zone label stored on the frame (the
+   * declaration's `label.prop`), or a lane's name. Wins over
+   * {@link labelKey} exactly as it does on the canvas (`backgroundLabelText`),
+   * so the panel and the board never name one zone two ways.
+   */
+  name?: string;
   /**
    * The subject sits in the band around a zone transition — Wardley's zone of
    * punctuated equilibrium, declared by the background as
@@ -546,13 +591,42 @@ function frameOf(
 }
 
 /**
- * The phase, read from the position and the frame's DECLARED zones.
+ * How a zone is named, as the BOARD names it: the user's own words first — a
+ * renamed label stored on the frame, a lane's name — then the vocabulary.
  *
- * Two facts, both taken from the declaration and never from a number in this
- * file: which zone the subject's centre falls in, and whether it is inside the
- * band around a transition. The second is the "zone of punctuated equilibrium"
- * — the frontier is a region, not a coordinate — and a component sitting in one
- * is a different statement from a component sitting in a phase.
+ * The same precedence `backgroundLabelText` paints with, minus the translation:
+ * the reading carries the key and the panel resolves it, so the record and the
+ * drift comparison keep working on the vocabulary.
+ */
+function zoneWording(
+  zone: BackgroundZoneFact,
+  model: Readonly<Record<string, unknown>>
+): Pick<ReadingPhase, 'labelKey' | 'labelFallback' | 'name'> {
+  const label = zone.label;
+  const stored = label?.prop !== undefined ? model[label.prop] : undefined;
+  const name =
+    stored !== undefined && stored !== null ? String(stored) : zone.name;
+  return {
+    ...(label?.labelKey !== undefined ? { labelKey: label.labelKey } : {}),
+    ...(label?.fallback !== undefined ? { labelFallback: label.fallback } : {}),
+    ...(name !== undefined ? { name } : {}),
+  };
+}
+
+/**
+ * The zone, read from the position and the zones the frame INSTANCE has
+ * ({@link backgroundZones}: the framework's in the instance's variant, then the
+ * instance's own).
+ *
+ * Along an axis (Wardley), two facts, both taken from the declaration and never
+ * from a number in this file: which zone the subject's centre falls in, and
+ * whether it is inside the band around a transition. The second is the "zone of
+ * punctuated equilibrium" — the frontier is a region, not a coordinate — and a
+ * component sitting in one is a different statement from a component sitting in
+ * a phase.
+ *
+ * In the plane (no `axis`: a Core Domain Chart, a BPMN pool), the zone whose
+ * rectangle holds the centre, through the helper the audit uses, and no band.
  */
 function readPhase(
   element: GfxPrimitiveElementModel,
@@ -567,12 +641,27 @@ function readPhase(
 
   const def = frame.background;
   const bound = background.elementBound;
+  const model = background as unknown as Readonly<Record<string, unknown>>;
+  const zones = backgroundZones(def, model);
+
+  const axis = frame.axis;
+  if (axis === undefined) {
+    const at = backgroundPlotRatios(def, bound, element.elementBound);
+    const zone = at === null ? undefined : backgroundZoneAt(zones, at);
+    if (!zone) return undefined;
+    return {
+      zoneId: zone.id,
+      ...zoneWording(zone, model),
+      inTransitionBand: false,
+    };
+  }
+
   const plot = backgroundPlot(def, bound.w, bound.h);
   const [cx, cy] = centreOf(element.elementBound);
 
-  const along = frame.axis === 'x' ? cx : cy;
-  const origin = frame.axis === 'x' ? bound.x + plot.x0 : bound.y + plot.y0;
-  const span = frame.axis === 'x' ? plot.width : plot.height;
+  const along = axis === 'x' ? cx : cy;
+  const origin = axis === 'x' ? bound.x + plot.x0 : bound.y + plot.y0;
+  const span = axis === 'x' ? plot.width : plot.height;
   if (!(span > 0)) return undefined;
 
   const ratio = (along - origin) / span;
@@ -581,26 +670,21 @@ function readPhase(
   // phase it is visibly not in.
   if (ratio < 0 || ratio > 1) return undefined;
 
-  const zone = (def.zones ?? []).find(({ rect }) => {
-    const start = frame.axis === 'x' ? rect.x : rect.y;
-    const size = frame.axis === 'x' ? rect.w : rect.h;
+  const zone = zones.find(({ rect }) => {
+    const start = axis === 'x' ? rect.x : rect.y;
+    const size = axis === 'x' ? rect.w : rect.h;
     // Half-open, so a component exactly on a divider reads as the phase it is
     // entering — the same side the band below reports as the frontier.
     return ratio >= start && (ratio < start + size || start + size >= 1);
   });
   if (!zone) return undefined;
 
-  const bands = backgroundTransitionBands(def, bound)[frame.axis];
+  const bands = backgroundTransitionBands(def, bound)[axis];
   const band = bands.find(({ min, max }) => along >= min && along <= max);
 
   return {
     zoneId: zone.id,
-    ...(zone.label?.labelKey !== undefined
-      ? { labelKey: zone.label.labelKey }
-      : {}),
-    ...(zone.label?.fallback !== undefined
-      ? { labelFallback: zone.label.fallback }
-      : {}),
+    ...zoneWording(zone, model),
     inTransitionBand: band !== undefined,
     ...(band !== undefined ? { bandId: band.id } : {}),
   };

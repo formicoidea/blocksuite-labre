@@ -2,11 +2,13 @@ import type { Bound } from '@labre/global/gfx';
 
 import {
   type BackgroundAxisDef,
+  backgroundInstanceZones,
   backgroundPlot,
+  type BackgroundTextDef,
   type FrameworkBackgroundDef,
   type Ratio,
 } from './def.js';
-import type { BackgroundModelLike } from './labels.js';
+import { backgroundInVariant, type BackgroundModelLike } from './labels.js';
 
 /**
  * The framework-background declaration read as EVALUATION FACTS (PF5.15/PF5.16).
@@ -134,6 +136,95 @@ export function containingFrame<T extends { id: string }>(
     if (found === null || candidate.id < found.id) found = candidate;
   }
   return found;
+}
+
+/**
+ * One zone of ONE instance, as a reader sees it: a framework zone the instance
+ * shows, or a zone the instance declares for itself.
+ */
+export interface BackgroundZoneFact {
+  /** The declared id, or `${idPrefix}:${item.id}` for an instance zone. */
+  id: string;
+  rect: { x: Ratio; y: Ratio; w: Ratio; h: Ratio };
+  /** A framework zone's name, as declared — key, fallback and stored prop. */
+  label?: BackgroundTextDef;
+  /** An instance zone's name, as the user wrote it. */
+  name?: string;
+}
+
+/**
+ * Every zone ONE instance actually has: the framework's zones in the variant
+ * the instance is turned to, then the zones it declares for itself — a BPMN
+ * pool's lanes.
+ *
+ * THE answer to "which zones are on this frame", shared by the reading and the
+ * audit so they cannot disagree. Before it existed the audit concatenated every
+ * declared zone whatever the instance's variant, and could place a sub-domain
+ * on a migration chart in a classic quadrant nobody can see — the same gate
+ * the renderer and the validation engine already passed through
+ * (`backgroundInVariant`), forgotten in one reader out of three.
+ *
+ * Framework zones first, so a framework zone still wins a genuine overlap: the
+ * order the audit has always reported them in.
+ */
+export function backgroundZones(
+  def: FrameworkBackgroundDef,
+  model: BackgroundModelLike
+): BackgroundZoneFact[] {
+  const zones: BackgroundZoneFact[] = [];
+  for (const zone of def.zones ?? []) {
+    if (!backgroundInVariant(def, zone.variants, model)) continue;
+    zones.push({
+      id: zone.id,
+      rect: zone.rect,
+      ...(zone.label !== undefined ? { label: zone.label } : {}),
+    });
+  }
+  zones.push(...backgroundInstanceZones(def, model));
+  return zones;
+}
+
+/**
+ * Where the centre of `bound` sits inside the PLOT of the instance occupying
+ * `frame`, as ratios.
+ *
+ * Ratios of the plot and not of the element box: a Wardley transition drawn at
+ * `0.4` is 40 % of the PLOT, and the margin between the two is exactly where the
+ * axis titles live. Not clamped — an element just off the left edge reads as
+ * `-0.03`, which is a true and useful thing to say. `null` for a degenerate
+ * plot.
+ */
+export function backgroundPlotRatios(
+  def: FrameworkBackgroundDef,
+  frame: Bound,
+  bound: Bound
+): readonly [number, number] | null {
+  const plot = backgroundPlot(def, frame.w, frame.h);
+  if (!(plot.width > 0) || !(plot.height > 0)) return null;
+  return [
+    (bound.x + bound.w / 2 - frame.x - plot.x0) / plot.width,
+    (bound.y + bound.h / 2 - frame.y - plot.y0) / plot.height,
+  ];
+}
+
+/**
+ * The first zone whose rectangle holds a plot-ratio point, in the order given.
+ *
+ * Inclusive on all four edges and first match wins, so a point exactly on a
+ * divider belongs to the zone declared first — the tie the audit and
+ * `bpmnLaneOf` have always broken that way.
+ */
+export function backgroundZoneAt<T extends Pick<BackgroundZoneFact, 'rect'>>(
+  zones: readonly T[],
+  at: readonly [number, number]
+): T | undefined {
+  return zones.find(
+    ({ rect }) =>
+      at[0] >= rect.x &&
+      at[0] <= rect.x + rect.w &&
+      at[1] >= rect.y &&
+      at[1] <= rect.y + rect.h
+  );
 }
 
 /** The declared axes, as facts. Empty for a background that declares none. */
