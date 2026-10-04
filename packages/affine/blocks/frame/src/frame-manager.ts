@@ -151,6 +151,11 @@ export class EdgelessFrameManager extends GfxExtension {
 
   private readonly _disposable = new DisposableGroup();
 
+  /** Canvas elements added locally, waiting for the adoption microtask. */
+  private readonly _pendingAdoptions: GfxModel[] = [];
+
+  private _pendingAdoptionTicks = 0;
+
   /**
    * Get all sorted frames by presentation orderer,
    * the legacy frame that uses `index` as presentation order
@@ -336,7 +341,7 @@ export class EdgelessFrameManager extends GfxExtension {
     this._disposable.add(
       surfaceModel.elementAdded.subscribe(({ id, local }) => {
         const element = surfaceModel.getElementById(id);
-        if (element && local) {
+        if (element && local && !surfaceModel.store.readonly) {
           // The entire frame detection logic must be in microtask for timing reasons:
           //
           // 1. For connectors: When elementAdded fires, connectors have invalid bounds [0,0,0,0]
@@ -353,28 +358,22 @@ export class EdgelessFrameManager extends GfxExtension {
           // - Connectors have proper bounds calculated (not [0,0,0,0])
           // - getFrameFromPoint() works correctly with valid element centers
           // - All element initialization is complete before frame detection
+          //
+          // One transaction (one update for the peers) adopts everything a
+          // single transaction added — a paste of N elements no longer sends N
+          // adoptions. Only the LAST microtask queued does the work, so each
+          // element is decided no earlier than its own microtask would have
+          // been, connector paths included.
+          this._pendingAdoptions.push(element);
+          this._pendingAdoptionTicks++;
           queueMicrotask(() => {
-            const frame = this.getFrameFromPoint(element.elementBound.center);
+            if (--this._pendingAdoptionTicks > 0) return;
 
-            // if the container created with a frame, skip it.
-            if (
-              isGfxGroupCompatibleModel(element) &&
-              frame &&
-              element.hasChild(frame)
-            ) {
-              return;
-            }
-
-            // Only add elements that aren't already grouped and have a valid
-            // frame, and never let the frame swallow a backdrop that encloses
-            // it (e.g. a Wardley map background the frame was drawn on top of).
-            if (
-              !element.group &&
-              frame &&
-              !this._enclosesFrame(element, frame)
-            ) {
-              this._adoptNewlyCreatedElement(frame, element);
-            }
+            const elements = this._pendingAdoptions.splice(0);
+            if (surfaceModel.store.readonly) return;
+            doc.transact(() => {
+              elements.forEach(element => this._adoptIfInFrame(element));
+            });
           });
         }
       })
@@ -425,6 +424,24 @@ export class EdgelessFrameManager extends GfxExtension {
         }
       })
     );
+  }
+
+  /** A canvas element just added locally: the frame under it adopts it. */
+  private _adoptIfInFrame(element: GfxModel) {
+    const frame = this.getFrameFromPoint(element.elementBound.center);
+    if (!frame) return;
+
+    // if the container created with a frame, skip it.
+    if (isGfxGroupCompatibleModel(element) && element.hasChild(frame)) {
+      return;
+    }
+
+    // Only add elements that aren't already grouped, and never let the frame
+    // swallow a backdrop that encloses it (e.g. a Wardley map background the
+    // frame was drawn on top of).
+    if (!element.group && !this._enclosesFrame(element, frame)) {
+      this._adoptNewlyCreatedElement(frame, element);
+    }
   }
 
   /**
