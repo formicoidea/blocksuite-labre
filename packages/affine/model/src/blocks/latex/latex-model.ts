@@ -21,6 +21,7 @@ export const LatexBlockSchema = defineBlockSchema({
     index: 'a0',
     lockedBySelf: false,
     hiddenForEveryone: undefined,
+    layer: undefined,
     scale: 1,
     rotate: 0,
     latex: '',

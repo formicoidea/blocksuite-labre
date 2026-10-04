@@ -54,8 +54,18 @@ function gfxModel(std: BlockStdScope, id: string): GfxModel | null {
  */
 function stackSiblings(std: BlockStdScope, model: GfxModel): GfxModel[] {
   const group = model.group;
-  const all = std.get(GfxControllerIdentifier).gfxElements;
-  return all.filter(other => other.group === group).sort(compareLayer);
+  const gfx = std.get(GfxControllerIdentifier);
+  // With user layers a model is restacked within its layer (ADR 0031 §4):
+  // a key computed against another layer's neighbours would not move it.
+  const userLayers = gfx.surface?.userLayers;
+  const layer = userLayers?.ranks ? userLayers.effectiveLayerOf(model) : null;
+  return gfx.gfxElements
+    .filter(
+      other =>
+        other.group === group &&
+        (layer === null || userLayers!.effectiveLayerOf(other) === layer)
+    )
+    .sort(compareLayer);
 }
 
 /**

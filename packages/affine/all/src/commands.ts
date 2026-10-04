@@ -11,6 +11,7 @@ import {
   exportSvgCommands,
   mapQualityCommands,
   selectionPaneCommands,
+  userLayerCommands,
 } from '@labre/affine-block-surface';
 import { bpmnCommands } from '@labre/affine-gfx-bpmn';
 import { c4Commands } from '@labre/affine-gfx-c4';
@@ -126,6 +127,7 @@ export function getCommands(flags?: LabreFlags): AnyCommandDescriptor[] {
       ...exportSvgCommands,
       ...selectionPaneCommands,
       ...canvasGridCommands,
+      ...userLayerCommands,
       ...edgeDirectionCommands,
       ...(isCapabilityEnabled(flags, 'ai-audit') ? auditCommands : []),
     ],

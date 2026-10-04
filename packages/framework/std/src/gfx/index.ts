@@ -101,6 +101,12 @@ export {
   type ValidationException,
 } from './model/surface/element-model.js';
 export {
+  DEFAULT_LAYER_ID,
+  ownLayerOf,
+  type SurfaceLayerRecord,
+  SurfaceUserLayers,
+} from './model/surface/user-layers.js';
+export {
   GfxLocalElementModel,
   prop,
 } from './model/surface/local-element-model.js';

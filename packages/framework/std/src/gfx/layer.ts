@@ -696,6 +696,29 @@ export class LayerManager extends GfxExtension {
    * @returns
    */
   generateIndex(reverse = false): string {
+    // With user layers the paint order is layer rank first (ADR 0031 §4), so
+    // the first and last runs no longer hold the lowest and highest `index`.
+    // "Above everything" must still mean above every key, which, rank first,
+    // is the top of whichever layer the new element lands in.
+    // Every model is scanned, not the runs' edges: a run can span two user
+    // layers, and the lower layer's highest key then sits mid-run.
+    if (this._surface?.userLayers.ranks) {
+      let lowest: string | null = null;
+      let highest: string | null = null;
+      for (const model of [...this.canvasElements, ...this.blocks]) {
+        const index = model.index;
+        if (typeof index !== 'string') continue;
+        if (lowest === null || index < lowest) lowest = index;
+        if (highest === null || index > highest) highest = index;
+      }
+      if (lowest === null || highest === null) {
+        return LayerManager.INITIAL_INDEX;
+      }
+      return reverse
+        ? generateKeyBetween(null, lowest)
+        : generateKeyBetween(highest, null);
+    }
+
     if (reverse) {
       const firstIndex = this.layers[0]?.indexes[0];
 
@@ -730,6 +753,15 @@ export class LayerManager extends GfxExtension {
           pre.concat(current.elements.filter(element => element.group == null)),
         []
       );
+      // Forward / backward / front / back move an element WITHIN its user
+      // layer (ADR 0031 §4): its neighbours are that layer's members only.
+      const userLayers = this._surface?.userLayers;
+      if (userLayers?.ranks) {
+        const own = userLayers.effectiveLayerOf(element);
+        elements = elements.filter(
+          other => userLayers.effectiveLayerOf(other) === own
+        );
+      }
     }
 
     const currentIdx = elements.indexOf(element);
@@ -816,6 +848,16 @@ export class LayerManager extends GfxExtension {
         if (payload.type === 'update') {
           const block = store.getModelById(payload.id)!;
 
+          // A block moved to another user layer (ADR 0031 §3) stacks
+          // elsewhere: re-sort it as if its `index` changed.
+          if (
+            payload.props.key === 'layer' &&
+            block instanceof GfxBlockElementModel &&
+            this.blocks.includes(block)
+          ) {
+            this.update(block);
+          }
+
           if (
             (payload.props.key === 'index' ||
               payload.props.key === 'childElementIds') &&
@@ -876,7 +918,24 @@ export class LayerManager extends GfxExtension {
         surface.elementUpdated.subscribe(payload => {
           if (payload.props['index'] || payload.props['childIds']) {
             this.update(surface.getElementById(payload.id)!, payload.props);
+          } else if ('layer' in payload.props || 'layer' in payload.oldValues) {
+            // Moved to another user layer (ADR 0031 §3), set or cleared:
+            // re-sort as an `index` change would (a group re-sorts whole).
+            const element = surface.getElementById(payload.id);
+            if (element) this.update(element);
           }
+        })
+      );
+      // The layer list changed — created, reordered, removed (ADR 0031 §2):
+      // every rank may have moved, so the whole order is rebuilt.
+      this._disposable.add(
+        surface.propsUpdated.subscribe(({ key }) => {
+          if (key !== 'layers') return;
+          this._reset();
+          this.slots.layerUpdated.next({
+            type: 'update',
+            initiatingElement: surface as unknown as GfxModel,
+          });
         })
       );
       this._disposable.add(

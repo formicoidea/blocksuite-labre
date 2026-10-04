@@ -7,6 +7,7 @@ import {
   GfxGroupLikeElementModel,
   type GfxModel,
   GfxPrimitiveElementModel,
+  DEFAULT_LAYER_ID,
   isStoredHiddenForEveryone,
   type SurfaceBlockModel,
 } from '@labre/std/gfx';
@@ -17,12 +18,10 @@ import {
   signal,
 } from '@preact/signals-core';
 
-/**
- * The layer every element belongs to while the user has created none (ADR
- * 0031 §2). The `@` cannot appear in a nanoid, so it can never collide with a
- * real layer id. Until the layers stage ships, it is the only layer there is.
- */
-export const DEFAULT_LAYER_ID = '@default';
+import { userLayersBottomUp } from '../user-layers/actions.js';
+
+/** The default layer's reserved id (ADR 0031 §2), re-exported from std. */
+export { DEFAULT_LAYER_ID };
 
 const NOTHING_HIDDEN: ReadonlySet<string> = new Set();
 
@@ -36,7 +35,11 @@ const NOTHING_HIDDEN: ReadonlySet<string> = new Set();
  */
 export interface SelectionPaneNode {
   id: string;
-  /** `'layer'` is reserved for the layers stage; nothing produces it yet. */
+  /**
+   * `'layer'` is a user layer's row (ADR 0031 §2), present only once the
+   * surface has layers: the top-level rows are then the layers, top first,
+   * and every element row sits under its effective layer.
+   */
   kind: 'element' | 'block' | 'layer';
   /** The element `type` (`shape`, `group`…) or the block flavour. */
   type: string;
@@ -44,7 +47,10 @@ export interface SelectionPaneNode {
   role?: string;
   /** The group-like ELEMENT (group, mindmap) this row is listed under. */
   groupId?: string;
-  /** Always {@link DEFAULT_LAYER_ID} until user layers exist. */
+  /**
+   * The effective layer (ADR 0031 §4): the outermost group's, a dangling id
+   * read as {@link DEFAULT_LAYER_ID}. A layer row carries its own id.
+   */
   layerId: string;
   /** Locked by itself — what the row's lock toggle shows and flips. */
   locked: boolean;
@@ -58,8 +64,17 @@ export interface SelectionPaneNode {
    * and selectable like a local hide, but no viewer paints or picks it.
    */
   hiddenForEveryone: boolean;
-  /** Present on a group or a mindmap: its members, top first. */
+  /** Present on a group, a mindmap or a layer: its members, top first. */
   children?: SelectionPaneNode[];
+}
+
+/** The user layers a tree is built against (ADR 0031 §4). */
+export interface SelectionPaneLayers {
+  /** Every layer id, TOP first. */
+  readonly order: readonly string[];
+  /** Each id's rank key, as `compare` reads it. */
+  readonly ranks: ReadonlyMap<string, string>;
+  effectiveLayerOf(model: GfxModel): string;
 }
 
 /**
@@ -103,7 +118,8 @@ function rawGroupOf(model: GfxModel): unknown {
  */
 export function buildSelectionPaneTree(
   models: readonly GfxModel[],
-  hiddenLocally: ReadonlySet<string> = NOTHING_HIDDEN
+  hiddenLocally: ReadonlySet<string> = NOTHING_HIDDEN,
+  layers: SelectionPaneLayers | null = null
 ): SelectionPaneNode[] {
   const present = new Set<string>();
   const groupOf = new Map<GfxModel, unknown>();
@@ -114,7 +130,21 @@ export function buildSelectionPaneTree(
     indexOf.set(model, model.index);
   }
 
+  const layerOf = (model: GfxModel) =>
+    layers ? layers.effectiveLayerOf(model) : DEFAULT_LAYER_ID;
+
   const paintOrder = (a: GfxModel, b: GfxModel) => {
+    // Rank first, as `compare` does, so the index shortcut below only ever
+    // orders two models of the same layer.
+    if (layers) {
+      const al = layerOf(a);
+      const bl = layerOf(b);
+      if (al !== bl) {
+        const ar = layers.ranks.get(al) ?? '';
+        const br = layers.ranks.get(bl) ?? '';
+        if (ar !== br) return ar < br ? -1 : 1;
+      }
+    }
     if (groupOf.get(a) !== groupOf.get(b)) return compareLayer(a, b);
     const ai = indexOf.get(a)!;
     const bi = indexOf.get(b)!;
@@ -148,7 +178,7 @@ export function buildSelectionPaneTree(
         id: model.id,
         kind: block ? 'block' : 'element',
         type: block ? model.flavour : (model as GfxPrimitiveElementModel).type,
-        layerId: DEFAULT_LAYER_ID,
+        layerId: layerOf(model),
         locked: model.lockedBySelf === true,
         hiddenLocal: hiddenLocally.has(model.id),
         hiddenForEveryone: isStoredHiddenForEveryone(model),
@@ -162,7 +192,22 @@ export function buildSelectionPaneTree(
     });
   };
 
-  return build(null);
+  const top = build(null);
+  if (!layers) return top;
+
+  // Layers present: the top-level rows are the layers, top first, each
+  // holding its members in paint order. An empty layer is still a row — it
+  // is where a drop lands.
+  return layers.order.map(id => ({
+    id,
+    kind: 'layer' as const,
+    type: 'layer',
+    layerId: id,
+    locked: false,
+    hiddenLocal: false,
+    hiddenForEveryone: false,
+    children: top.filter(node => node.layerId === id),
+  }));
 }
 
 /**
@@ -171,11 +216,33 @@ export function buildSelectionPaneTree(
  */
 const TREE_KEYS = new Set([
   'index',
+  'layer',
   'lockedBySelf',
   'children',
   'childIds',
   'role',
 ]);
+
+/**
+ * The surface's user layers as the tree builder takes them, or `null` while
+ * there is none. Reads `layers$`, so a `computed` calling it re-derives on a
+ * create, a rename, a reorder — local or a peer's.
+ */
+export function paneLayersOf(
+  surface: SurfaceBlockModel
+): SelectionPaneLayers | null {
+  surface.props.layers$?.value;
+  const ranks = surface.userLayers?.ranks;
+  if (!ranks) return null;
+  const order = userLayersBottomUp(surface)
+    .map(layer => layer.id)
+    .reverse();
+  return {
+    order,
+    ranks,
+    effectiveLayerOf: model => surface.userLayers.effectiveLayerOf(model),
+  };
+}
 
 /**
  * The live tree behind {@link selectionPaneTree}, one per editor.
@@ -207,13 +274,18 @@ export class SelectionPaneModel extends LifeCycleWatcher {
   readonly tree$: ReadonlySignal<SelectionPaneNode[]> = computed(() => {
     this._revision$.value;
     const gfx = this.std.get(GfxControllerIdentifier);
-    if (!gfx.surface$.value) return [];
+    const surface = gfx.surface$.value;
+    if (!surface) return [];
     // Read here, so a local hide or show re-derives the rows' marks.
     const hidden = this.std.getOptional(CanvasLocalVisibility)?.hiddenIds$
       .value;
     // And here, so a hide for everyone (local or a peer's) re-derives them too.
     gfx.hiddenForEveryone?.ids$.value;
-    return buildSelectionPaneTree(gfx.gfxElements, hidden);
+    return buildSelectionPaneTree(
+      gfx.gfxElements,
+      hidden,
+      paneLayersOf(surface)
+    );
   });
 
   /** Force a rebuild; for a change no subscribed event reports. */

@@ -402,8 +402,26 @@ export interface CanvasGridToggledEvent extends TelemetryEvent {
   visible: boolean;
 }
 
+/**
+ * The user layers changed (ADR 0031 §14).
+ *
+ * `layerCount` is how many layers the surface holds AFTER the gesture;
+ * `memberCount` is how many models the gesture moved (for `move-elements`)
+ * or deleted with the layer (for `delete`). A gesture that changes nothing
+ * reports nothing.
+ *
+ * Counts only: never a layer name, a layer id or any element text.
+ */
+export interface CanvasLayerChangedEvent extends TelemetryEvent {
+  page?: 'whiteboard editor';
+  action: 'create' | 'rename' | 'reorder' | 'delete' | 'move-elements';
+  layerCount: number;
+  memberCount?: number;
+}
+
 export type CanvasPaneEvents = {
   SelectionPaneOpened: SelectionPaneOpenedEvent;
   CanvasVisibilityChanged: CanvasVisibilityChangedEvent;
   CanvasGridToggled: CanvasGridToggledEvent;
+  CanvasLayerChanged: CanvasLayerChangedEvent;
 };

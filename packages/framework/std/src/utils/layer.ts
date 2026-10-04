@@ -9,6 +9,7 @@ import { type GfxBlockElementModel } from '../gfx/model/gfx-block-model.js';
 import type { GfxModel } from '../gfx/model/model.js';
 import { GfxLocalElementModel } from '../gfx/model/surface/local-element-model.js';
 import type { SurfaceBlockModel } from '../gfx/model/surface/surface-model.js';
+import { userLayersOf } from '../gfx/model/surface/user-layers.js';
 
 export function getLayerEndZIndex(layers: Layer[], layerIndex: number) {
   const layer = layers[layerIndex];
@@ -126,10 +127,44 @@ function compareLocal(
     return compareIndex(a.index, b.index);
   }
 
-  return {
-    a: isALocal && a.creator ? a.creator : a,
-    b: isBLocal && b.creator ? b.creator : b,
-  };
+  const left = isALocal && a.creator ? a.creator : a;
+  const right = isBLocal && b.creator ? b.creator : b;
+
+  // ADR 0031 §4: user layer rank first, then everything below unchanged.
+  const byLayer = compareUserLayer(left, right);
+  if (byLayer !== SortOrder.SAME) return byLayer;
+
+  return { a: left, b: right };
+}
+
+/**
+ * The first step of {@link compare} (ADR 0031 §4): two models in different
+ * user layers stack by their layers' `index`; anything else is `SAME`, and
+ * today's comparator decides.
+ *
+ * The fast path is the first `return`: a surface with no `layers` answers
+ * `null` ranks after one cached read, so a document without user layers
+ * sorts with exactly the code that sorted it before layers existed. A local
+ * element without a creator has no layer and keeps today's order — above the
+ * content, as overlays always were.
+ */
+function compareUserLayer(
+  a: GfxModel | GfxLocalElementModel,
+  b: GfxModel | GfxLocalElementModel
+): SortOrder {
+  if (a instanceof GfxLocalElementModel || b instanceof GfxLocalElementModel) {
+    return SortOrder.SAME;
+  }
+  const layers = userLayersOf(a);
+  const ranks = layers?.ranks;
+  if (!layers || !ranks) return SortOrder.SAME;
+
+  const aLayer = layers.effectiveLayerOf(a);
+  const bLayer = layers.effectiveLayerOf(b);
+  if (aLayer === bLayer) return SortOrder.SAME;
+  // A default layer with no record (the loser of a first-layer race, ADR
+  // 0031 open point 6) stacks at the bottom: `''` precedes every key.
+  return compareIndex(ranks.get(aLayer) ?? '', ranks.get(bLayer) ?? '');
 }
 
 /**

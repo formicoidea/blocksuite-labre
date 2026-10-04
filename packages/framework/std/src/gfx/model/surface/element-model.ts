@@ -57,6 +57,8 @@ export type BaseElementProps = {
   lockedBySelf?: boolean;
   /** See {@link GfxPrimitiveElementModel.hiddenForEveryone}. */
   hiddenForEveryone?: true;
+  /** See {@link GfxPrimitiveElementModel.layer}. */
+  layer?: string;
   /** See {@link GfxPrimitiveElementModel.pivotDocId}. */
   pivotDocId?: string;
   /** See {@link GfxPrimitiveElementModel.role}. */
@@ -625,6 +627,17 @@ export abstract class GfxPrimitiveElementModel<
    */
   @field()
   accessor hiddenForEveryone: true | undefined = undefined;
+
+  /**
+   * The user layer this element belongs to (ADR 0031 §3): a key of the
+   * surface's `layers`, or `undefined` for the default layer — never the
+   * string `'@default'`. A dangling id reads as the default layer and is never
+   * dropped. Ignored while the element is inside a group or a mindmap: the
+   * outermost one's `layer` decides. Declared on the BASE class for the reason
+   * {@link role} is. Clearing goes through {@link clearField}.
+   */
+  @field()
+  accessor layer: string | undefined = undefined;
 
   @field()
   accessor index!: string;

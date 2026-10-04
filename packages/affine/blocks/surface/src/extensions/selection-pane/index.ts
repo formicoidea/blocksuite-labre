@@ -25,6 +25,8 @@ export {
   buildSelectionPaneTree,
   DEFAULT_LAYER_ID,
   paneContainerOf,
+  paneLayersOf,
+  type SelectionPaneLayers,
   type SelectionPaneNode,
   SelectionPaneModel,
   selectionPaneTree,

@@ -13,6 +13,7 @@ import {
   PROVENANCE_FALLBACK,
   SEVERITY_FALLBACK,
   SVG_SKETCH_WORDINGS,
+  USER_LAYER_SEED_WORDINGS,
 } from '@labre/affine-block-surface';
 import {
   SURFACE_REF_CHROME_WORDINGS,
@@ -468,6 +469,7 @@ const PACKAGE_SEED_WORDINGS: readonly (readonly ChromeWording[])[] = [
   SURFACE_REF_WORDINGS,
   TEMPLATE_SEED_WORDINGS,
   ROOT_SEED_WORDINGS,
+  USER_LAYER_SEED_WORDINGS,
 ];
 
 /**

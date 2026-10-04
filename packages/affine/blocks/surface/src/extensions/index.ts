@@ -27,6 +27,7 @@ export * from './surface-middleware';
 export * from './svg-sketch';
 export * from './svg-sketch-translations';
 export * from './tags-toolbar';
+export * from './user-layers';
 export * from './validation';
 export * from './validation-toolbar';
 export * from './violation-detail-widget';

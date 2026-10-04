@@ -250,7 +250,10 @@ describe('command registry invariants', () => {
       // `canvas.grid.saveForEveryone`.
       //
       // …and 24 with `canvas.visibility.hideForEveryone` (stage 5).
-      core: 24,
+      //
+      // …and 28 with the layers (stage 6): `canvas.layer.create`,
+      // `.rename`, `.reorder` and `.moveElements`.
+      core: 28,
     });
     // 112 since the two SVG fallback imports (`bpmn.importSvg`,
     // `wardley.importSvg`) joined the OWM pair — one SVG row per framework,
@@ -282,7 +285,9 @@ describe('command registry invariants', () => {
     // …and 197 with the two grid commands (stage 4).
     //
     // …and 198 with `canvas.visibility.hideForEveryone` (stage 5).
-    expect(commands).toHaveLength(198);
+    //
+    // …and 202 with the four layer commands (stage 6).
+    expect(commands).toHaveLength(202);
   });
 
   /**
@@ -318,6 +323,12 @@ describe('command registry invariants', () => {
     'canvas.visibility.showAll',
     // Same reason, scope `everyone`: the count is what the gesture wrote.
     'canvas.visibility.hideForEveryone',
+    // `CanvasLayerChanged` carries the layer count after the gesture and,
+    // for a move, how many models it wrote: facts of the invocation.
+    'canvas.layer.create',
+    'canvas.layer.rename',
+    'canvas.layer.reorder',
+    'canvas.layer.moveElements',
     // `CanvasGridToggled.scope` depends on which of the two gestures ran, and
     // a save that changes nothing in the document reports nothing.
     'canvas.grid.toggle',
