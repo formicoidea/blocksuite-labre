@@ -51,6 +51,12 @@ const LocalPropsSchema = z.object({
    * document. Owned by `CanvasLocalVisibility`.
    */
   localHiddenElements: z.array(z.string()),
+  /**
+   * This viewer's grid override on this document's canvas (ADR 0031 §11),
+   * keyed like the viewport. Absent = the document, the host or the library
+   * decides. Owned by `CanvasGrid`.
+   */
+  localShowGrid: z.boolean(),
 });
 
 type SessionProps = z.infer<typeof SessionPropsSchema>;
@@ -160,6 +166,8 @@ export class EditPropsStore extends LifeCycleWatcher {
         return 'blocksuite:connector:centerAnchor';
       case 'localHiddenElements':
         return 'blocksuite:' + id + ':localHiddenElements';
+      case 'localShowGrid':
+        return 'blocksuite:' + id + ':localShowGrid';
       default:
         return key;
     }
@@ -238,6 +246,11 @@ export class EditPropsStore extends LifeCycleWatcher {
   saveViewport(viewport: StorageProps['viewport']) {
     if (this.std.store.readonly) return;
     this.setStorage('viewport', viewport);
+  }
+
+  /** Forget a stored prop, so the next `getStorage` answers `null`. */
+  removeStorage(key: StoragePropsKey) {
+    this._getStorage(key).removeItem(this._getStorageKey(key));
   }
 
   setStorage<T extends StoragePropsKey>(key: T, value: StorageProps[T]) {

@@ -1,7 +1,11 @@
 import { ImageBlockModel, type RootBlockModel } from '@labre/affine-model';
 import { FetchUtils, ImageProxyService } from '@labre/affine-shared/adapters';
 import { CANVAS_EXPORT_IGNORE_TAGS } from '@labre/affine-shared/consts';
-import { CHROME_UNTITLED, translateKey } from '@labre/affine-shared/services';
+import {
+  CanvasGrid,
+  CHROME_UNTITLED,
+  translateKey,
+} from '@labre/affine-shared/services';
 import type { Viewport } from '@labre/affine-shared/types';
 import {
   isInsidePageEditor,
@@ -35,6 +39,30 @@ import { FileExporter } from './file-exporter.js';
 
 // oxlint-disable-next-line typescript/consistent-type-imports
 type Html2CanvasFunction = typeof import('html2canvas').default;
+
+export type EdgelessBackgroundOptions = {
+  size: number;
+  backgroundColor: string;
+  /** `null` when the grid is off (ADR 0031 §11): the background alone. */
+  gridColor: string | null;
+};
+
+/**
+ * The SVG the PNG export paints the canvas background from: the background
+ * colour, plus the dotted grid unless `gridColor` is `null` — what this
+ * viewer sees, as `CanvasGrid.visible$` says.
+ */
+export function edgelessBackgroundSvg(
+  width: number,
+  height: number,
+  { size, backgroundColor, gridColor }: EdgelessBackgroundOptions
+): string {
+  const grid =
+    gridColor === null
+      ? ''
+      : ` background-image: radial-gradient(${gridColor} 1px, ${backgroundColor} 1px)`;
+  return `<svg width='${width}px' height='${height}px' xmlns='http://www.w3.org/2000/svg' style='background-size:${size}px ${size}px;background-color:${backgroundColor};${grid}'></svg>`;
+}
 
 export class ExportManager {
   /**
@@ -245,17 +273,13 @@ export class ExportManager {
 
   private _drawEdgelessBackground(
     ctx: CanvasRenderingContext2D,
-    {
-      size,
-      backgroundColor,
-      gridColor,
-    }: {
-      size: number;
-      backgroundColor: string;
-      gridColor: string;
-    }
+    options: EdgelessBackgroundOptions
   ) {
-    const svgImg = `<svg width='${ctx.canvas.width}px' height='${ctx.canvas.height}px' xmlns='http://www.w3.org/2000/svg' style='background-size:${size}px ${size}px;background-color:${backgroundColor}; background-image: radial-gradient(${gridColor} 1px, ${backgroundColor} 1px)'></svg>`;
+    const svgImg = edgelessBackgroundSvg(
+      ctx.canvas.width,
+      ctx.canvas.height,
+      options
+    );
     const img = new Image();
     const cleanup = () => {
       img.onload = null;
@@ -412,9 +436,13 @@ export class ExportManager {
           '--affine-background-primary-color'
         ),
         size: getBgGridGap(edgelessBackground.zoom),
-        gridColor: containerComputedStyle.getPropertyValue(
-          '--affine-edgeless-grid-color'
-        ),
+        // What this viewer sees: off leaves the background colour alone.
+        gridColor:
+          (this.std.getOptional(CanvasGrid)?.visible$.peek() ?? true)
+            ? containerComputedStyle.getPropertyValue(
+                '--affine-edgeless-grid-color'
+              )
+            : null,
       });
     }
 

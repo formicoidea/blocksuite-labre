@@ -15,6 +15,7 @@ import {
   type ShapeElementModel,
 } from '@labre/affine-model';
 import {
+  CanvasGrid,
   EditorSettingProvider,
   EditPropsStore,
   FontLoaderService,
@@ -83,6 +84,11 @@ export class EdgelessRootBlockComponent extends BlockComponent<
         var(--affine-edgeless-grid-color) 1px,
         var(--affine-background-primary-color) 1px
       );
+    }
+
+    /* ADR 0031 §11: the grid is a setting (CanvasGrid.visible$). */
+    affine-edgeless-root[data-grid-hidden] .edgeless-background {
+      background-image: none;
     }
 
     .edgeless-container {
@@ -480,6 +486,7 @@ export class EdgelessRootBlockComponent extends BlockComponent<
     super.connectedCallback();
 
     this._initViewport();
+    this._initGrid();
 
     this.keyboardManager = new EdgelessPageKeyboardManager(this);
 
@@ -496,6 +503,21 @@ export class EdgelessRootBlockComponent extends BlockComponent<
 
       return;
     });
+  }
+
+  /**
+   * The grid follows `CanvasGrid` (ADR 0031 §11) through one attribute on
+   * the root, which both containers that paint it — this block's background
+   * and the surface container — key their `background-image: none` on.
+   */
+  private _initGrid() {
+    this._disposables.add(
+      effect(() => {
+        const visible =
+          this.std.getOptional(CanvasGrid)?.visible$.value ?? true;
+        this.toggleAttribute('data-grid-hidden', !visible);
+      })
+    );
   }
 
   override disconnectedCallback() {

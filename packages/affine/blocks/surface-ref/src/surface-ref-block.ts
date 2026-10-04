@@ -15,6 +15,7 @@ import {
 import {
   BlockCommentManager,
   DocModeProvider,
+  documentShowsGrid,
   EditPropsStore,
   type OpenDocMode,
   ThemeProvider,
@@ -94,6 +95,11 @@ export class SurfaceRefBlockComponent extends BlockComponent<SurfaceRefBlockMode
         var(--affine-edgeless-grid-color) 1px,
         var(--affine-background-primary-color) 1px
       );
+    }
+
+    /* ADR 0031 §11: a reference follows the document's showGrid alone. */
+    .ref-content.grid-hidden {
+      background: var(--affine-background-primary-color);
     }
 
     .ref-viewport {
@@ -388,8 +394,15 @@ export class SurfaceRefBlockComponent extends BlockComponent<SurfaceRefBlockMode
     const aspectRatio = h !== 0 ? w / h : 1;
     const _previewSpec = this._previewSpec.concat(this._runtimePreviewExt);
     const edgelessTheme = this.std.get(ThemeProvider).edgeless$.value;
+    // A reference is a picture of the referenced document: its saved grid,
+    // never this viewer's override.
+    const showGrid = documentShowsGrid(
+      this._previewDoc ? getSurfaceBlock(this._previewDoc) : null
+    );
 
-    return html`<div class="ref-content">
+    return html`<div
+      class=${classMap({ 'ref-content': true, 'grid-hidden': !showGrid })}
+    >
       <div
         class="ref-viewport"
         style=${styleMap({

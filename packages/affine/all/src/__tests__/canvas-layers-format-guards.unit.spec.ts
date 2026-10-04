@@ -185,12 +185,16 @@ describe('the surface snapshot round trip', () => {
   /**
    * Every snapshot written before the fix holds `elements` and nothing else
    * on the surface: it must load into a surface whose stored props are
-   * exactly that one key, as it always did.
+   * exactly that one key, as it always did. Read in its STORED (JSON) form:
+   * a declared optional prop left `undefined` (ADR 0031's `showGrid`) is in
+   * the in-memory snapshot as an `undefined` value and in no stored file.
    */
   test('an old snapshot (elements only) loads exactly as before', async () => {
     const { collection, transformer } = createWorkspace('old-snapshot');
     const board = authorBoard(collection, 'board');
-    const snapshot = transformer.docToSnapshot(board) as DocSnapshot;
+    const stored = (value: unknown) =>
+      JSON.parse(JSON.stringify(value)) as DocSnapshot;
+    const snapshot = stored(transformer.docToSnapshot(board));
     expect(
       Object.keys(findNode(snapshot.blocks, 'affine:surface')!.props)
     ).toEqual(['elements']);
@@ -203,7 +207,7 @@ describe('the surface snapshot round trip', () => {
     const propKeys = [...yBlock.keys()].filter(key => key.startsWith('prop:'));
 
     expect(propKeys).toEqual(['prop:elements']);
-    const reExported = transformer.docToSnapshot(reloaded!) as DocSnapshot;
+    const reExported = stored(transformer.docToSnapshot(reloaded!));
     expect(
       Object.keys(findNode(reExported.blocks, 'affine:surface')!.props)
     ).toEqual(['elements']);

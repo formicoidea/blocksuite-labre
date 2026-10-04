@@ -387,7 +387,22 @@ export interface CanvasVisibilityChangedEvent extends TelemetryEvent {
   count: number;
 }
 
+/**
+ * The canvas grid was turned on or off (ADR 0031 §14).
+ *
+ * `scope: 'local'` is the viewer's own toggle, which writes nothing to the
+ * document; `'everyone'` is "Save for everyone", which stores the grid on the
+ * document. `visible` is the state after the gesture. A save that changes
+ * nothing in the document reports nothing.
+ */
+export interface CanvasGridToggledEvent extends TelemetryEvent {
+  page?: 'whiteboard editor';
+  scope: 'local' | 'everyone';
+  visible: boolean;
+}
+
 export type CanvasPaneEvents = {
   SelectionPaneOpened: SelectionPaneOpenedEvent;
   CanvasVisibilityChanged: CanvasVisibilityChangedEvent;
+  CanvasGridToggled: CanvasGridToggledEvent;
 };

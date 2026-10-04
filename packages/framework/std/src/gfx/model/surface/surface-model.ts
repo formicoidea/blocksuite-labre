@@ -37,6 +37,13 @@ export const SURFACE_YMAP_UNIQ_IDENTIFIER = 'affine:surface:ymap';
 
 export type SurfaceBlockProps = {
   elements: Boxed<Y.Map<Y.Map<unknown>>>;
+  /**
+   * The canvas grid, saved for everyone by "Save for everyone" (ADR 0031
+   * §2, §11). Absent = nobody decided: the viewer's override, the host
+   * default and the library default decide, in that order. Declared with an
+   * `undefined` default so loading a document writes nothing.
+   */
+  showGrid?: boolean;
 };
 
 export interface ElementUpdatedData {

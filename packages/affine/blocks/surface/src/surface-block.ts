@@ -84,6 +84,12 @@ export class SurfaceBlockComponent extends BlockComponent<SurfaceBlockModel> {
       z-index: 0;
     }
 
+    /* ADR 0031 §11: off removes the grid here too (CanvasGrid.visible$). */
+    affine-edgeless-root[data-grid-hidden]
+      .affine-block-children-container.edgeless {
+      background-image: none;
+    }
+
     .affine-edgeless-block-child {
       position: absolute;
       transform-origin: center;

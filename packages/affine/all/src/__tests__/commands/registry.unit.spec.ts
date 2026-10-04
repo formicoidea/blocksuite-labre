@@ -245,7 +245,10 @@ describe('command registry invariants', () => {
       //
       // …and 21 with the local hide (stage 3): `canvas.visibility.hideLocal`
       // and `canvas.visibility.showAll`.
-      core: 21,
+      //
+      // …and 23 with the grid (stage 4): `canvas.grid.toggle` and
+      // `canvas.grid.saveForEveryone`.
+      core: 23,
     });
     // 112 since the two SVG fallback imports (`bpmn.importSvg`,
     // `wardley.importSvg`) joined the OWM pair — one SVG row per framework,
@@ -273,7 +276,9 @@ describe('command registry invariants', () => {
     // …and 193 with the five selection pane commands (`docs/adr/0031`).
     //
     // …and 195 with the two local-hide commands (stage 3).
-    expect(commands).toHaveLength(195);
+    //
+    // …and 197 with the two grid commands (stage 4).
+    expect(commands).toHaveLength(197);
   });
 
   /**
@@ -307,6 +312,10 @@ describe('command registry invariants', () => {
     // elements the gesture actually changed.
     'canvas.visibility.hideLocal',
     'canvas.visibility.showAll',
+    // `CanvasGridToggled.scope` depends on which of the two gestures ran, and
+    // a save that changes nothing in the document reports nothing.
+    'canvas.grid.toggle',
+    'canvas.grid.saveForEveryone',
   ];
 
   test('a self-emitting command never also declares telemetry', () => {
