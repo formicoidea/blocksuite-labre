@@ -32,7 +32,7 @@ function escapeMhchem(text: string) {
  * @param content - The content to preprocess
  * @returns The preprocessed content
  */
-function preprocessLatex(content: string) {
+export function preprocessLatex(content: string) {
   // Protect code blocks
   const codeBlocks: string[] = [];
   let preprocessedContent = content;
@@ -44,18 +44,25 @@ function preprocessLatex(content: string) {
     }
   );
 
-  // Protect existing LaTeX expressions
+  // Protect existing LaTeX expressions. Inline delimiters use Pandoc's
+  // whitespace and digit rules, with backslash parity preserved: a `$` opens
+  // math when not followed by a space, closes it when not preceded by one nor
+  // followed by a digit, and an odd backslash run escapes it.
   const latexExpressions: string[] = [];
   preprocessedContent = preprocessedContent.replace(
-    /(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\\\(.*?\\\))/g,
+    /(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\\\(.*?\\\)|(?<!\\)(?:\\\\)*\$(?!\s)(?:[^\n$\\]|\\.)*?(?<!\s)\$(?!\d))/g,
     match => {
       latexExpressions.push(match);
       return `<<LATEX_${latexExpressions.length - 1}>>`;
     }
   );
 
-  // Escape dollar signs that are likely currency indicators
-  preprocessedContent = preprocessedContent.replace(/\$(?=\d)/g, '\\$');
+  // Escape dollar signs that are likely currency indicators. An odd backslash
+  // run already escapes the dollar sign, so only an even run (or none) gets one.
+  preprocessedContent = preprocessedContent.replace(
+    /(?<!\\)((?:\\\\)*)\$(?=\d)/g,
+    '$1\\$'
+  );
 
   // Restore LaTeX expressions
   preprocessedContent = preprocessedContent.replace(
