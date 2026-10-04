@@ -262,11 +262,12 @@ It is enumerated in `registry.unit.spec.ts`'s `SELF_EMITTING_COMMANDS`. No ids
 cross: nothing about what the pane lists.
 
 `CanvasVisibilityChanged` is emitted by `canvas.visibility.hideLocal` (the
-pane's eye, the palette) and `canvas.visibility.showAll`, from their bodies for
-the same reason: `count` is how many elements the gesture actually changed, a
-fact of the invocation. Only `target: 'element'` and `scope: 'local'` exist so
-far; `layer` and `everyone` arrive with the layers and "hide for everyone"
-stages. A gesture that changes nothing emits nothing.
+pane's eye, the palette) and `canvas.visibility.showAll` with `scope: 'local'`,
+and by `canvas.visibility.hideForEveryone` (the pane's row menu, the palette)
+with `scope: 'everyone'`, from their bodies for the same reason: `count` is how
+many elements the gesture actually changed, a fact of the invocation. Only
+`target: 'element'` exists so far; `layer` arrives with the layers stage. A
+gesture that changes nothing emits nothing.
 
 `CanvasGridToggled` is emitted by `canvas.grid.toggle` (`scope: 'local'`, the
 viewer's own override, nothing written to the document) and

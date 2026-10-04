@@ -20,6 +20,7 @@ export const LatexBlockSchema = defineBlockSchema({
     xywh: '[0,0,16,16]',
     index: 'a0',
     lockedBySelf: false,
+    hiddenForEveryone: undefined,
     scale: 1,
     rotate: 0,
     latex: '',

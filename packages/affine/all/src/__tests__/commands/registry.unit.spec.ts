@@ -248,7 +248,9 @@ describe('command registry invariants', () => {
       //
       // …and 23 with the grid (stage 4): `canvas.grid.toggle` and
       // `canvas.grid.saveForEveryone`.
-      core: 23,
+      //
+      // …and 24 with `canvas.visibility.hideForEveryone` (stage 5).
+      core: 24,
     });
     // 112 since the two SVG fallback imports (`bpmn.importSvg`,
     // `wardley.importSvg`) joined the OWM pair — one SVG row per framework,
@@ -278,7 +280,9 @@ describe('command registry invariants', () => {
     // …and 195 with the two local-hide commands (stage 3).
     //
     // …and 197 with the two grid commands (stage 4).
-    expect(commands).toHaveLength(197);
+    //
+    // …and 198 with `canvas.visibility.hideForEveryone` (stage 5).
+    expect(commands).toHaveLength(198);
   });
 
   /**
@@ -312,6 +316,8 @@ describe('command registry invariants', () => {
     // elements the gesture actually changed.
     'canvas.visibility.hideLocal',
     'canvas.visibility.showAll',
+    // Same reason, scope `everyone`: the count is what the gesture wrote.
+    'canvas.visibility.hideForEveryone',
     // `CanvasGridToggled.scope` depends on which of the two gestures ran, and
     // a save that changes nothing in the document reports nothing.
     'canvas.grid.toggle',

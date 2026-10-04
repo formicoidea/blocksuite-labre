@@ -51,6 +51,7 @@ export const FrameBlockSchema = defineBlockSchema({
     childElementIds: Object.create(null),
     presentationIndex: generateKeyBetweenV2(null, null),
     lockedBySelf: false,
+    hiddenForEveryone: undefined,
     comments: undefined,
   }),
   metadata: {

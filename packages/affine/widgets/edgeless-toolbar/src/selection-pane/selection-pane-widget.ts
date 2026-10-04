@@ -34,6 +34,7 @@ import {
   FilterIcon,
   InvisibleIcon,
   LockIcon,
+  MoreHorizontalIcon,
   UnlockIcon,
   ViewIcon,
 } from '@blocksuite/icons/lit';
@@ -54,7 +55,10 @@ import {
   SELECTION_PANE_FILTER_FRAME,
   SELECTION_PANE_TITLE,
   SELECTION_PANE_HIDE,
+  SELECTION_PANE_HIDE_FOR_EVERYONE,
+  SELECTION_PANE_ROW_MENU,
   SELECTION_PANE_SHOW,
+  SELECTION_PANE_SHOW_FOR_EVERYONE,
   SELECTION_PANE_UNLOCK,
 } from '../translations.js';
 import { selectionPaneRowIcon, selectionPaneRowLabel } from './labels.js';
@@ -275,7 +279,8 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
 
     .selection-pane-chevron,
     .selection-pane-eye,
-    .selection-pane-lock {
+    .selection-pane-lock,
+    .selection-pane-more {
       flex: none;
       display: flex;
       align-items: center;
@@ -293,6 +298,7 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     .selection-pane-chevron svg,
     .selection-pane-eye svg,
     .selection-pane-lock svg,
+    .selection-pane-more svg,
     .selection-pane-icon svg {
       width: 16px;
       height: 16px;
@@ -300,7 +306,8 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
 
     .selection-pane-chevron:hover,
     .selection-pane-eye:hover,
-    .selection-pane-lock:hover {
+    .selection-pane-lock:hover,
+    .selection-pane-more:hover {
       background: var(--affine-hover-color);
     }
 
@@ -314,20 +321,32 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       row keeps its mark visible, which is what makes it findable.
     */
     .selection-pane-eye[aria-pressed='false'],
-    .selection-pane-lock[aria-pressed='false'] {
+    .selection-pane-lock[aria-pressed='false'],
+    .selection-pane-more {
       opacity: 0;
     }
 
     .selection-pane-row:hover .selection-pane-eye,
     .selection-pane-row:hover .selection-pane-lock,
+    .selection-pane-row:hover .selection-pane-more,
     .selection-pane-eye:focus-visible,
-    .selection-pane-lock:focus-visible {
+    .selection-pane-lock:focus-visible,
+    .selection-pane-more:focus-visible {
       opacity: 1;
     }
 
     .selection-pane-row[data-hidden-local] .selection-pane-label,
     .selection-pane-row[data-hidden-local] .selection-pane-icon {
       opacity: 0.5;
+    }
+
+    .selection-pane-row[data-hidden-everyone] .selection-pane-label {
+      opacity: 0.5;
+    }
+
+    /* Hidden for everyone: the theme warning token marks what others cannot see. */
+    .selection-pane-row[data-hidden-everyone] .selection-pane-icon {
+      color: var(--affine-warning-color);
     }
 
     .selection-pane-lock:disabled {
@@ -557,6 +576,44 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     });
   }
 
+  /**
+   * The row's menu: the actions that write to the DOCUMENT for every viewer,
+   * kept off the row's quick toggles so they are never one stray click away.
+   * "Hide for everyone" is painted with the theme warning tokens (ADR 0031,
+   * resolved at acceptance). A read-only document offers none of them, so the
+   * menu does not open there.
+   */
+  private _openRowMenu(anchor: HTMLElement, node: SelectionPaneNode) {
+    if (this.std.store.readonly) return;
+    const wording = node.hiddenForEveryone
+      ? SELECTION_PANE_SHOW_FOR_EVERYONE
+      : SELECTION_PANE_HIDE_FOR_EVERYONE;
+    popMenu(popupTargetFromElement(anchor), {
+      options: {
+        items: [
+          menu.action({
+            name: translateKey(this.std, ...wording),
+            prefix: node.hiddenForEveryone ? ViewIcon() : InvisibleIcon(),
+            class: { 'warning-item': true },
+            testId: 'selection-pane-hide-for-everyone',
+            select: () => {
+              this._run('canvas.visibility.hideForEveryone', {
+                ids: [node.id],
+                hidden: !node.hiddenForEveryone,
+              });
+            },
+          }),
+        ],
+      },
+    });
+  }
+
+  private _onRowContextMenu(event: MouseEvent, node: SelectionPaneNode) {
+    event.preventDefault();
+    event.stopPropagation();
+    this._openRowMenu(event.currentTarget as HTMLElement, node);
+  }
+
   private _commitRename(id: string, input: HTMLInputElement) {
     if (this._renaming !== id) return;
     this._renaming = null;
@@ -740,10 +797,12 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       ?data-selected=${selected}
       ?data-locked=${node.locked}
       ?data-hidden-local=${node.hiddenLocal}
+      ?data-hidden-everyone=${node.hiddenForEveryone}
       ?data-dragging=${dragging}
       data-drop=${drop ?? nothing}
       style=${styleMap({ paddingLeft: `${8 + depth * INDENT_PX}px` })}
       @click=${(event: MouseEvent) => this._onRowClick(event, node)}
+      @contextmenu=${(event: MouseEvent) => this._onRowContextMenu(event, node)}
       @dblclick=${() => this._onRowDblClick(node)}
       @pointerenter=${() => this._highlight(node.id)}
       @pointerdown=${(event: PointerEvent) =>
@@ -811,6 +870,21 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       >
         ${node.locked ? LockIcon() : UnlockIcon()}
       </button>
+      ${readonly
+        ? nothing
+        : html`<button
+            class="selection-pane-more"
+            type="button"
+            data-testid="selection-pane-more"
+            aria-haspopup="menu"
+            aria-label=${translateKey(std, ...SELECTION_PANE_ROW_MENU)}
+            @click=${(event: MouseEvent) => {
+              event.stopPropagation();
+              this._openRowMenu(event.currentTarget as HTMLElement, node);
+            }}
+          >
+            ${MoreHorizontalIcon()}
+          </button>`}
     </div>`;
   }
 

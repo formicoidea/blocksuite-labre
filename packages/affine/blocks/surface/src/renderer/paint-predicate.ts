@@ -12,9 +12,11 @@
  * - `display` is the text editor's session flag (`edgeless-text-editor.ts`
  *   sets it to `false` while it edits); `undefined` means painted.
  * - `hidden` is stored, and owned by mindmap collapse alone (ADR 0031 §1).
- * - `visibility` is the viewer's local hide (`gfx.localVisibility`, ADR 0031
- *   §8). The exports paint through the same renderer, so a locally hidden
- *   element is left out of an SVG or PNG too: what you see is what you export.
+ * - `visibility` is what this viewer does not see (`gfx.localVisibility`, ADR
+ *   0031 §8): their own local hide, and the stored "hide for everyone" that
+ *   `GfxController` registers into the same hook (§7). The exports paint
+ *   through the same renderer, so both are left out of an SVG or PNG too:
+ *   what you see is what you export.
  *
  * Painting only. Picking does not read this: the stored `hidden` is already
  * skipped by `grid.search`, the local hide by `getElementByPoint`, and

@@ -1,18 +1,111 @@
+import type { Store } from '@labre/store';
 import { computed, type ReadonlySignal, signal } from '@preact/signals-core';
 
+import { GfxBlockElementModel } from './model/gfx-block-model.js';
 import type { GfxLocalElementModel } from './model/surface/local-element-model.js';
 import type { GfxGroupModel, GfxModel } from './model/model.js';
-import { GfxPrimitiveElementModel } from './model/surface/element-model.js';
+import {
+  GfxPrimitiveElementModel,
+  isStoredHiddenForEveryone,
+} from './model/surface/element-model.js';
+import type { SurfaceBlockModel } from './model/surface/surface-model.js';
 
 const NOTHING_HIDDEN: ReadonlySet<string> = new Set();
 
 /**
- * What THIS viewer has hidden on the canvas — the per-editor predicate hook of
- * ADR 0031 §8.
+ * The ids of the elements and gfx blocks hidden for everyone (ADR 0031 §7) —
+ * the SHARED half of the paint and pick predicate, kept as a set so the
+ * renderers ask one `has` per element and pay nothing when nobody hid
+ * anything.
+ *
+ * Built from the document once per surface, then kept current by the
+ * surface's element events and the store's block events, local or remote
+ * alike: a peer's "hide for everyone" reaches this viewer the moment its
+ * update does. Registered by `GfxController` into its
+ * {@link GfxLocalVisibility}, beside the viewer's own local hide, so every
+ * site that already skips what this viewer hid skips this too — and
+ * `grid.search`, which reads neither, keeps counting both.
+ */
+export class GfxHiddenForEveryone {
+  private readonly _ids$ = signal<ReadonlySet<string>>(NOTHING_HIDDEN);
+
+  private _unwatch: (() => void) | null = null;
+
+  /** Every id carrying the stored `hiddenForEveryone`. */
+  get ids$(): ReadonlySignal<ReadonlySet<string>> {
+    return this._ids$;
+  }
+
+  /** Follow `surface` and `store`; `null` stops following. */
+  watch(store: Store, surface: SurfaceBlockModel | null) {
+    this.dispose();
+    if (!surface) return;
+
+    const initial = new Set<string>();
+    for (const element of surface.elementModels) {
+      if (isStoredHiddenForEveryone(element)) initial.add(element.id);
+    }
+    for (const model of store.getAllModels()) {
+      if (
+        model instanceof GfxBlockElementModel &&
+        isStoredHiddenForEveryone(model)
+      ) {
+        initial.add(model.id);
+      }
+    }
+    this._ids$.value = initial.size ? initial : NOTHING_HIDDEN;
+
+    const recheck = (id: string, model: unknown) => {
+      const hidden = model !== null && isStoredHiddenForEveryone(model);
+      const current = this._ids$.peek();
+      if (current.has(id) === hidden) return;
+      const next = new Set(current);
+      if (hidden) next.add(id);
+      else next.delete(id);
+      this._ids$.value = next.size ? next : NOTHING_HIDDEN;
+    };
+
+    const subscriptions = [
+      surface.elementAdded.subscribe(({ id }) =>
+        recheck(id, surface.getElementById(id))
+      ),
+      surface.elementUpdated.subscribe(({ id }) =>
+        recheck(id, surface.getElementById(id))
+      ),
+      surface.elementRemoved.subscribe(({ id }) => recheck(id, null)),
+      store.slots.blockUpdated.subscribe(payload => {
+        if (payload.type === 'delete') {
+          recheck(payload.id, null);
+          return;
+        }
+        if (
+          payload.type === 'update' &&
+          payload.props.key !== 'hiddenForEveryone'
+        ) {
+          return;
+        }
+        recheck(payload.id, store.getBlock(payload.id)?.model ?? null);
+      }),
+    ];
+    this._unwatch = () => subscriptions.forEach(sub => sub.unsubscribe());
+  }
+
+  dispose() {
+    this._unwatch?.();
+    this._unwatch = null;
+    this._ids$.value = NOTHING_HIDDEN;
+  }
+}
+
+/**
+ * What THIS viewer does not see on the canvas — the per-editor predicate hook
+ * of ADR 0031 §8.
  *
  * `std` knows nothing about why an element is hidden for one viewer; the
  * affine layer (`CanvasLocalVisibility`) registers a signal of ids and owns
- * their persistence. This class answers the one question the gfx plumbing
+ * their persistence. `GfxController` registers one more source, the ids
+ * hidden for everyone ({@link GfxHiddenForEveryone}): the shared half of the
+ * same predicate, so the sites below skip both with one question. This class answers the one question the gfx plumbing
  * asks — "does this viewer see that model?" — at the places a viewer's eye
  * and hand reach the canvas: the renderers, the DOM block views, pointer
  * picking and the marquee.

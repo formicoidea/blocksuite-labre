@@ -15,6 +15,7 @@ import { z } from 'zod';
 import {
   renamePaneGroup,
   reorderPaneElement,
+  setPaneElementsHiddenForEveryone,
   setPaneElementsLocked,
 } from './actions.js';
 import { SelectionPaneModel } from './tree.js';
@@ -207,12 +208,17 @@ export const hideLocalParams = z.object({
 
 export type HideLocalParams = z.infer<typeof hideLocalParams>;
 
-function reportVisibility(std: BlockStdScope, hidden: boolean, count: number) {
+function reportVisibility(
+  std: BlockStdScope,
+  hidden: boolean,
+  count: number,
+  scope: 'local' | 'everyone' = 'local'
+) {
   if (!count) return;
   std.getOptional(TelemetryProvider)?.track('CanvasVisibilityChanged', {
     page: 'whiteboard editor',
     target: 'element',
-    scope: 'local',
+    scope,
     hidden,
     count,
   });
@@ -253,6 +259,52 @@ const hideLocal: CommandDescriptor<HideLocalParams> = {
   },
 };
 
+export const hideForEveryoneParams = z.object({
+  /** The models to act on. Omitted: the current canvas selection. */
+  ids: z.array(z.string()).optional(),
+  /** `false` shows them again, for everyone. Omitted: hide. */
+  hidden: z.boolean().optional(),
+});
+
+export type HideForEveryoneParams = z.infer<typeof hideForEveryoneParams>;
+
+/**
+ * Hide elements for EVERYONE (ADR 0031 §7) — or, with `hidden: false`, show
+ * them again for everyone. Written to the document and synced: every viewer,
+ * every peer, stops painting and picking them, while rules, legends and
+ * semantic exports keep counting them (§9). Refused on a read-only document
+ * (`availability`, and again in the action). Self-emits
+ * `CanvasVisibilityChanged` with `scope: 'everyone'` and the count actually
+ * written.
+ */
+const hideForEveryone: CommandDescriptor<HideForEveryoneParams> = {
+  id: 'canvas.visibility.hideForEveryone',
+  owner: 'core',
+  kind: 'action',
+  labelKey: 'com.labre.command.canvas.visibility.hide-for-everyone',
+  labelFallback: 'Hide for everyone',
+  descriptionKey:
+    'com.labre.command.canvas.visibility.hide-for-everyone.description',
+  descriptionFallback:
+    'Hide the selected elements for everyone who opens this document. They stay in the document and in the selection pane.',
+  surfaces: ['palette', 'agent'],
+  scope: 'edgeless',
+  defaultKeys: { mac: [], other: [] },
+  availability: 'editable',
+  when: std =>
+    std.get(GfxControllerIdentifier).selection.selectedIds.length > 0,
+  params: hideForEveryoneParams,
+  run: (std, _invocation, params) => {
+    const parsed = hideForEveryoneParams.safeParse(params ?? {});
+    if (!parsed.success) return;
+    const ids =
+      parsed.data.ids ?? std.get(GfxControllerIdentifier).selection.selectedIds;
+    const hidden = parsed.data.hidden ?? true;
+    const count = setPaneElementsHiddenForEveryone(std, ids, hidden);
+    reportVisibility(std, hidden, count, 'everyone');
+  },
+};
+
 /**
  * Show everything this viewer hid. Stays in the palette whatever the pane
  * seam says: with `SelectionPaneExtension(null)` it is the one way back.
@@ -283,5 +335,6 @@ export const selectionPaneCommands: AnyCommandDescriptor[] = [
   lockCommand(false),
   renameGroup,
   hideLocal,
+  hideForEveryone,
   showAll,
 ];

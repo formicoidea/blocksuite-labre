@@ -54,7 +54,10 @@ export {
   InteractivityManager,
 } from './interactivity/index.js';
 export { LayerManager, type ReorderingDirection } from './layer.js';
-export { GfxLocalVisibility } from './local-visibility.js';
+export {
+  GfxHiddenForEveryone,
+  GfxLocalVisibility,
+} from './local-visibility.js';
 export type {
   GfxCompatibleInterface,
   GfxElementGeometry,
@@ -93,6 +96,7 @@ export {
   type InterchangeScope,
   GfxGroupLikeElementModel,
   GfxPrimitiveElementModel,
+  isStoredHiddenForEveryone,
   type SerializedElement,
   type ValidationException,
 } from './model/surface/element-model.js';

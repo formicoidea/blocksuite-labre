@@ -93,6 +93,27 @@ export const SELECTION_PANE_SHOW: ChromeWording = [
   'Show',
 ];
 
+/**
+ * A row's menu entry that hides it for EVERYONE (ADR 0031 §7): written to
+ * the document, painted with the theme's warning tokens.
+ */
+export const SELECTION_PANE_HIDE_FOR_EVERYONE: ChromeWording = [
+  'com.labre.selection-pane.hide-for-everyone',
+  'Hide for everyone',
+];
+
+/** The same entry on a row hidden for everyone: show it to everyone again. */
+export const SELECTION_PANE_SHOW_FOR_EVERYONE: ChromeWording = [
+  'com.labre.selection-pane.show-for-everyone',
+  'Show for everyone',
+];
+
+/** The menu of a row, opened by a right click or its "more" button. */
+export const SELECTION_PANE_ROW_MENU: ChromeWording = [
+  'com.labre.selection-pane.row-menu',
+  'More actions',
+];
+
 /** The padlock of a locked row; the unlocked one reads `TOOLBAR_LOCK`. */
 export const SELECTION_PANE_UNLOCK: ChromeWording = [
   'com.labre.selection-pane.unlock',
@@ -165,6 +186,9 @@ export const EDGELESS_TOOLBAR_WORDINGS: readonly ChromeWording[] = [
   SELECTION_PANE_FILTER_BOARD,
   SELECTION_PANE_HIDE,
   SELECTION_PANE_SHOW,
+  SELECTION_PANE_HIDE_FOR_EVERYONE,
+  SELECTION_PANE_SHOW_FOR_EVERYONE,
+  SELECTION_PANE_ROW_MENU,
   SELECTION_PANE_UNLOCK,
   SELECTION_PANE_EXPAND,
   SELECTION_PANE_COLLAPSE,

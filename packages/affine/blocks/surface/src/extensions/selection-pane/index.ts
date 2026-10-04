@@ -5,9 +5,12 @@ export {
   type SelectionPaneFilterTarget,
   selectionPaneFilterMembers,
   selectionPaneFilterTargets,
+  setPaneElementsHiddenForEveryone,
   setPaneElementsLocked,
 } from './actions.js';
 export {
+  type HideForEveryoneParams,
+  hideForEveryoneParams,
   type HideLocalParams,
   hideLocalParams,
   type LockElementsParams,

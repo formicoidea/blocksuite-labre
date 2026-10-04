@@ -372,7 +372,8 @@ export interface SelectionPaneOpenedEvent extends TelemetryEvent {
  * Something on the canvas was hidden or shown (ADR 0031 §14).
  *
  * `scope: 'local'` is the viewer's own hide, which writes nothing to the
- * document; `'everyone'` is reserved for "hide for everyone", a later stage.
+ * document; `'everyone'` is "hide for everyone", which stores
+ * `hiddenForEveryone` on each element and syncs it.
  * `target: 'layer'` is reserved for the layers stage. `count` is how many
  * elements the ONE gesture actually changed — a gesture that changes nothing
  * reports nothing.
