@@ -7,6 +7,7 @@ import type { OutDatabaseAllEvents } from './database.js';
 import type {
   AuditEvents,
   BlockLifecycleEvents,
+  CanvasPaneEvents,
   DocumentHealthEvents,
   FrameworkDiagramEvents,
   ValidationEvents,
@@ -42,6 +43,7 @@ export type TelemetryEventMap = OutDatabaseAllEvents &
   FrameworkDiagramEvents &
   ValidationEvents &
   AuditEvents &
+  CanvasPaneEvents &
   DocumentHealthEvents & {
     DocCreated: DocCreatedEvent;
     Link: TelemetryEvent;

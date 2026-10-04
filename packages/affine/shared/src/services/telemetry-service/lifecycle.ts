@@ -351,3 +351,23 @@ export interface DocumentDamagedEvent extends TelemetryEvent {
 export type DocumentHealthEvents = {
   DocumentDamaged: DocumentDamagedEvent;
 };
+
+/**
+ * The selection pane was opened (ADR 0031 §14).
+ *
+ * Worth measuring for the reason any optional surface is: a pane nobody opens
+ * is chrome the toolbar pays a slot for. `source` is how the user got there —
+ * the edgeless toolbar's button, the palette (or the agent, which invokes by
+ * name as the palette does), or a bound chord. Opening only: closing reports
+ * nothing, and neither does a toggle that closes the pane.
+ *
+ * No ids at all: the event is about the pane, never about what it lists.
+ */
+export interface SelectionPaneOpenedEvent extends TelemetryEvent {
+  page?: 'whiteboard editor';
+  source: 'toolbar' | 'palette' | 'shortcut';
+}
+
+export type CanvasPaneEvents = {
+  SelectionPaneOpened: SelectionPaneOpenedEvent;
+};

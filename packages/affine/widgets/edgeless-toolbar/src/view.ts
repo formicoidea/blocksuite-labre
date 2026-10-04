@@ -8,6 +8,9 @@ import { edgelessArtefactCatalogueWidget } from './catalogue/artefact-catalogue-
 import { edgelessToolbarWidget } from './edgeless-toolbar';
 import { effects } from './effects';
 import { ArtefactPlacementTool } from './placement/artefact-placement-tool';
+import { selectionPaneDefaultExtension } from './selection-pane/selection-pane-default';
+import { selectionPaneQuickTool } from './selection-pane/selection-pane-tool';
+import { edgelessSelectionPaneWidget } from './selection-pane/selection-pane-widget';
 
 export class EdgelessToolbarViewExtension extends ViewExtensionProvider {
   override name = 'affine-edgeless-toolbar-widget';
@@ -32,6 +35,13 @@ export class EdgelessToolbarViewExtension extends ViewExtensionProvider {
       // chrome driven by whatever commands are registered, so a framework whose
       // flag is off simply never arms it. See `docs/adr/0009`.
       context.register(ArtefactPlacementTool);
+      // The selection pane (ADR 0031), on the catalogue's terms: its panel,
+      // the default implementation of its seam, and its toolbar entry, all
+      // unconditional. A host replaces or switches it off through
+      // `SelectionPaneExtension`; nothing it lists is a flag's business.
+      context.register(edgelessSelectionPaneWidget);
+      context.register(selectionPaneDefaultExtension);
+      context.register(selectionPaneQuickTool);
     }
   }
 }

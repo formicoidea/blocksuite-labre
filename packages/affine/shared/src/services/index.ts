@@ -28,6 +28,7 @@ export * from './parse-url-service';
 export * from './pivot-materiality-publisher';
 export * from './pivot-properties-service';
 export * from './quick-search-service';
+export * from './selection-pane-service';
 export * from './sidebar-service';
 export * from './telemetry-service';
 export * from './theme-service';

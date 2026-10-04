@@ -12,6 +12,14 @@ import { EdgelessSlideMenu } from './menu/slide-menu';
 import { ToolbarArrowUpIcon } from './menu/toolbar-arrow-up-icon';
 import { EdgelessFontFamilyPanel } from './panel/font-family-panel';
 import { EdgelessFontWeightAndStylePanel } from './panel/font-weight-and-style-panel';
+import {
+  EdgelessSelectionPaneToolButton,
+  SELECTION_PANE_TOOL_BUTTON,
+} from './selection-pane/selection-pane-tool';
+import {
+  EDGELESS_SELECTION_PANE_WIDGET,
+  EdgelessSelectionPaneWidget,
+} from './selection-pane/selection-pane-widget';
 
 export function effects() {
   customElements.define(EDGELESS_TOOLBAR_WIDGET, EdgelessToolbarWidget);
@@ -28,6 +36,14 @@ export function effects() {
   customElements.define('edgeless-font-family-panel', EdgelessFontFamilyPanel);
   customElements.define('edgeless-slide-menu', EdgelessSlideMenu);
   customElements.define('toolbar-arrow-up-icon', ToolbarArrowUpIcon);
+  customElements.define(
+    EDGELESS_SELECTION_PANE_WIDGET,
+    EdgelessSelectionPaneWidget
+  );
+  customElements.define(
+    SELECTION_PANE_TOOL_BUTTON,
+    EdgelessSelectionPaneToolButton
+  );
 }
 
 declare global {
@@ -40,5 +56,7 @@ declare global {
     'edgeless-font-family-panel': EdgelessFontFamilyPanel;
     'edgeless-slide-menu': EdgelessSlideMenu;
     'toolbar-arrow-up-icon': ToolbarArrowUpIcon;
+    'edgeless-selection-pane-widget': EdgelessSelectionPaneWidget;
+    'edgeless-selection-pane-tool-button': EdgelessSelectionPaneToolButton;
   }
 }

@@ -12,3 +12,7 @@ export * from './menu/command-menu';
 export * from './menu/senior-menu-selection';
 export * from './mixins';
 export * from './placement';
+export * from './selection-pane/labels';
+export * from './selection-pane/selection-pane-default';
+export * from './selection-pane/selection-pane-tool';
+export * from './selection-pane/selection-pane-widget';

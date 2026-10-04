@@ -237,7 +237,12 @@ describe('command registry invariants', () => {
       // never had: core-owned because a document's address belongs to no
       // framework, and the first NEW command in the library to ship a default
       // chord (`Mod-Alt-l`, global scope) rather than being keyless by intent.
-      core: 14,
+      //
+      // …and 19 since the selection pane (`docs/adr/0031` stage 2):
+      // `canvas.selectionPane.toggle`, `canvas.element.reorder`,
+      // `canvas.element.lock`, `canvas.element.unlock`, `canvas.group.rename`
+      // — core-owned because a pane lists every element whatever drew it.
+      core: 19,
     });
     // 112 since the two SVG fallback imports (`bpmn.importSvg`,
     // `wardley.importSvg`) joined the OWM pair — one SVG row per framework,
@@ -261,7 +266,9 @@ describe('command registry invariants', () => {
     //
     // …and 188 since `doc.copyLink` — the other end of the paste path that
     // already turns a host URL back into an inline reference.
-    expect(commands).toHaveLength(188);
+    //
+    // …and 193 with the five selection pane commands (`docs/adr/0031`).
+    expect(commands).toHaveLength(193);
   });
 
   /**
@@ -287,6 +294,10 @@ describe('command registry invariants', () => {
     // belongs to no framework. It emits the historical `CopiedLink` the two
     // other copy-a-link sites already emit, so "links copied" stays one series.
     'doc.copyLink',
+    // A fifth, for doc.copyLink's reason: opening a pane creates nothing and
+    // belongs to no framework, and `SelectionPaneOpened` is only emitted when
+    // the toggle OPENS it — a fact of the invocation, not of the descriptor.
+    'canvas.selectionPane.toggle',
   ];
 
   test('a self-emitting command never also declares telemetry', () => {
