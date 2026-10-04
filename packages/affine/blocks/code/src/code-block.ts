@@ -132,7 +132,15 @@ export class CodeBlockComponent extends CaptionedBlockComponent<CodeBlockModel> 
     return this.rootComponent;
   }
 
+  /**
+   * Bumped on every highlight request: a grammar load that resolves after a
+   * newer request (another language, or plain text) must not repaint the
+   * block with its stale tokens (#416).
+   */
+  private _highlightRequestId = 0;
+
   private _updateHighlightTokens() {
+    const requestId = ++this._highlightRequestId;
     const modelLang = this.model.props.language$.value;
     if (modelLang === null) {
       this.highlightTokens$.value = [];
@@ -163,9 +171,10 @@ export class CodeBlockComponent extends CaptionedBlockComponent<CodeBlockModel> 
 
       const loadedLanguages = highlighter.getLoadedLanguages();
       if (!loadedLanguages.includes(lang)) {
-        highlighter
-          .loadLanguage(langImport)
+        this.highlighter
+          .loadLanguage(lang, langImport)
           .then(() => {
+            if (requestId !== this._highlightRequestId) return;
             this.highlightTokens$.value = highlighter.codeToTokensBase(code, {
               lang,
               theme,

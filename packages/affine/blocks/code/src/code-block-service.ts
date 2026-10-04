@@ -25,6 +25,13 @@ export class CodeBlockHighlighter extends LifeCycleWatcher {
 
   highlighter$: Signal<HighlighterCore | null> = signal(null);
 
+  /**
+   * In-flight grammar loads, one per language. Per instance rather than
+   * static: each editor owns its own shiki core, and a grammar loaded into
+   * another editor's core is not loaded into this one.
+   */
+  private readonly _languageLoads = new Map<string, Promise<void>>();
+
   get themeKey() {
     const theme = this.std.get(ThemeProvider).theme$.value;
     return theme === ColorScheme.Dark
@@ -43,6 +50,31 @@ export class CodeBlockHighlighter extends LifeCycleWatcher {
     await highlighter.loadTheme(darkTheme, lightTheme);
     this.highlighter$.value = highlighter;
   };
+
+  /**
+   * Loads a grammar into the shiki core, sharing the pending promise between
+   * concurrent callers (every code block of that language asks at once on
+   * first paint). A settled load leaves the map, so a failed one is retried
+   * on the next request.
+   */
+  loadLanguage(
+    lang: string,
+    input: Parameters<HighlighterCore['loadLanguage']>[0]
+  ): Promise<void> {
+    const pending = this._languageLoads.get(lang);
+    if (pending) return pending;
+
+    const highlighter = this.highlighter$.peek();
+    if (!highlighter) {
+      return Promise.reject(new Error('Code block highlighter is not ready'));
+    }
+
+    const load = highlighter.loadLanguage(input).finally(() => {
+      this._languageLoads.delete(lang);
+    });
+    this._languageLoads.set(lang, load);
+    return load;
+  }
 
   override mounted(): void {
     super.mounted();

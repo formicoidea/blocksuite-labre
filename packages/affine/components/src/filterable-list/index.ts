@@ -51,24 +51,24 @@ export class FilterableListComponent<Props = unknown> extends WithDisposable(
   }
 
   private _filterItems() {
-    const searchFilter = !this._filterText
-      ? this.options.items
-      : this.options.items.filter(
-          item =>
-            item.name.startsWith(this._filterText.toLowerCase()) ||
-            item.aliases?.some(alias =>
-              alias.startsWith(this._filterText.toLowerCase())
-            )
-        );
-    return searchFilter.sort((a, b) => {
-      const isActiveA = this.options.active?.(a);
-      const isActiveB = this.options.active?.(b);
+    const query = this._filterText.toLowerCase();
+    // A copy: the caller's array is its own state (the language button keeps
+    // its most-recently-used order in it), so sorting must not reorder it.
+    const ranked = this.options.items
+      .map(item => ({ item, rank: matchRank(item, query) }))
+      .filter(entry => entry.rank !== -1);
+    return ranked
+      .sort((a, b) => {
+        const isActiveA = this.options.active?.(a.item);
+        const isActiveB = this.options.active?.(b.item);
 
-      if (isActiveA && !isActiveB) return -1;
-      if (!isActiveA && isActiveB) return 1;
+        if (isActiveA && !isActiveB) return -1;
+        if (!isActiveA && isActiveB) return 1;
+        if (a.rank !== b.rank) return a.rank - b.rank;
 
-      return this.listFilter?.(a, b) ?? 0;
-    });
+        return this.listFilter?.(a.item, b.item) ?? 0;
+      })
+      .map(entry => entry.item);
   }
 
   private _scrollFocusedItemIntoView() {
@@ -185,6 +185,20 @@ export class FilterableListComponent<Props = unknown> extends WithDisposable(
 
   @property({ attribute: false })
   accessor placement: Placement | undefined = undefined;
+}
+
+/**
+ * Prefix match on both sides lowercased: 0 for a name or alias hit, 1 for a
+ * hit on the display label only (it sorts after an id hit), -1 for no match.
+ * An empty query matches everything at rank 0.
+ */
+function matchRank(item: FilterableListItem<unknown>, query: string): number {
+  if (!query) return 0;
+  const hits = (value: string | undefined) =>
+    !!value && value.toLowerCase().startsWith(query);
+  if (hits(item.name) || item.aliases?.some(hits)) return 0;
+  if (hits(item.label)) return 1;
+  return -1;
 }
 
 export function showPopFilterableList({
