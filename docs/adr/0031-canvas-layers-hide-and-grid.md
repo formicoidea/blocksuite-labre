@@ -1,6 +1,6 @@
 # ADR 0031 — User layers, a shared hide, and a shared grid setting
 
-- Status: **proposed** (2026-10-04)
+- Status: **accepted** (2026-10-04)
 - Deciders: Mathieu Jolly
 - Milestone: product decisions "selection pane", "calques", "hide for
   everyone", "grid for everyone" (2026-10)
@@ -500,3 +500,5 @@ fields fixed above; none writes before this ADR is accepted.
    a gesture, not on load)?
 7. Local hide persisted in `localStorage` per document (survives reload), or
    per session only?
+
+Resolved at acceptance: every recommendation above is retained (1 no, 2 yes, 3 yes, 4 yes, 5 confirmed, 6 acceptable for v1, 7 persisted per document). The "Hide for everyone" and "Save for everyone" entries are painted with the theme warning tokens (`--affine-background-warning-color`, `--affine-warning-color`): the library has no announcement component and adds none.

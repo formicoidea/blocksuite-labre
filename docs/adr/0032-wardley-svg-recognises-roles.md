@@ -1,6 +1,6 @@
 # ADR 0032 — A Wardley SVG import recognises the map it is a picture of
 
-- Status: **proposed** (2026-10-04)
+- Status: **accepted** (2026-10-04)
 - Deciders: Mathieu Jolly
 - Milestone: product decision "importing a Wardley SVG yields native Wardley
   objects" (2026-10)
@@ -337,3 +337,5 @@ to the same map as its OWM text** — same roles, same links, every
    yields a map, or stay in the catalogue behind the OWM import?
    Recommended: stay; OWM is still the reference route.
 5. Is `0.01` the right tolerance for "the same map" in the corpus test?
+
+Resolved at acceptance: 1 confirmed, 2 confirmed, 3 yes, 4 stays in the catalogue; 5 is settled by the corpus test of the first recognising stage.

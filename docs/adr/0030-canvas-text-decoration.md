@@ -1,6 +1,6 @@
 # ADR 0030 — Canvas text carries one decoration field; inline text gains overline
 
-- Status: **proposed** (2026-10-04)
+- Status: **accepted** (2026-10-04)
 - Deciders: Mathieu Jolly
 - Milestone: product decision "underline and overline on canvas text"
   (2026-10), first consumer the UML object name
@@ -338,3 +338,5 @@ places for upstream reasons; overline does not have to copy that.
 3. Should the decoration join the last-used text style (`zod-schema.ts`), like
    `fontWeight` does?
 4. Should overline get a default chord, and which?
+
+Resolved at acceptance: the weight stays as written (no `DESIGN.md` token yet); the decoration follows the size the renderer paints with; it does not join the last-used text style; overline gets no default chord.

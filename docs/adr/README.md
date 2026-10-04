@@ -34,9 +34,9 @@ One file per decision. Format and lifecycle in
 | [0027](0027-framework-palettes-carousel.md)                    | Colour pickers are a carousel        | accepted                  | Every active palette on every picker, base page one; it opens on the element's framework of origin. Gated.                          |
 | [0028](0028-iframe-sandbox-policy.md)                          | Iframe sandbox policy                | accepted                  | Every embedded iframe is sandboxed. Three levels in one module; `allow-same-origin` only on a fixed origin.                         |
 | [0029](0029-label-mode-by-symbol-size.md)                      | Label mode by symbol size            | accepted                  | Inscribed only if "Hello World" at 18 fits the symbol; otherwise a grouped free text. BPMN adopts it.                               |
-| [0030](0030-canvas-text-decoration.md)                         | Canvas text decoration               | proposed                  | One optional `textDecoration` token list on text, shape and connector labels; inline overline. UML names created underlined.        |
-| [0031](0031-canvas-layers-hide-and-grid.md)                    | Layers, shared hide, shared grid     | proposed                  | Layer records on the surface, one optional `layer` id per element; local hide is never stored; `hiddenForEveryone` is not `hidden`. |
-| [0032](0032-wardley-svg-recognises-roles.md)                   | Wardley SVG recognises roles         | proposed                  | Supersedes 0012 P2's "geometry only" for Wardley: producer markers, plot recovery, native map plus sketch remainder.                |
+| [0030](0030-canvas-text-decoration.md)                         | Canvas text decoration               | accepted                  | One optional `textDecoration` token list on text, shape and connector labels; inline overline. UML names created underlined.        |
+| [0031](0031-canvas-layers-hide-and-grid.md)                    | Layers, shared hide, shared grid     | accepted                  | Layer records on the surface, one optional `layer` id per element; local hide is never stored; `hiddenForEveryone` is not `hidden`. |
+| [0032](0032-wardley-svg-recognises-roles.md)                   | Wardley SVG recognises roles         | accepted                  | Supersedes 0012 P2's "geometry only" for Wardley: producer markers, plot recovery, native map plus sketch remainder.                |
 
 Related documents that are not ADRs:
 
