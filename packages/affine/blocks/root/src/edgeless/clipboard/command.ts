@@ -1,3 +1,4 @@
+import { isFrameBlock } from '@labre/affine-block-frame';
 import {
   type ClipboardConfigCreationContext,
   EdgelessClipboardConfigIdentifier,
@@ -13,6 +14,7 @@ import {
   GfxControllerIdentifier,
   type GfxModel,
   type GfxPrimitiveElementModel,
+  isGfxGroupCompatibleModel,
   type SerializedElement,
   SortOrder,
 } from '@labre/std/gfx';
@@ -86,6 +88,10 @@ export const createElementsFromClipboardDataCommand: Command<Input, Output> = (
     const allElements: GfxModel[] = [];
 
     for (const data of elementsRawData) {
+      // Clipboard data written before `sortEdgelessElements` deduplicated can
+      // list one element twice; the first copy is the one its container maps.
+      if (context.oldToNewIdMap.has(data.id)) continue;
+
       const { data: blockSnapshot } = BlockSnapshotSchema.safeParse(data);
       if (blockSnapshot) {
         const oldId = blockSnapshot.id;
@@ -156,6 +162,7 @@ export const createElementsFromClipboardDataCommand: Command<Input, Output> = (
       }
     });
 
+    releaseChildrenFromAdoptingFrames(std, allElements);
     updatePastedElementsIndex(std, allElements, context.originalIndexes);
 
     return {
@@ -168,6 +175,41 @@ export const createElementsFromClipboardDataCommand: Command<Input, Output> = (
     createdElementsPromise: runner(),
   });
 };
+
+/**
+ * The paste creates children before their container (post-order), and the
+ * frame manager adopts whatever is created inside a frame — a block at once on
+ * `blockUpdated`, a canvas element a microtask later, which an `await` between
+ * two creations lets run. So a child of a pasted group or frame can already sit
+ * in the frame under the paste point when its own container claims it, and a
+ * child claimed twice is copied twice by the next duplicate.
+ *
+ * The paste knows the parentage it is writing; the frame's guess does not
+ * survive it. Each pasted container's children leave any other frame. The
+ * container itself is untouched, so a pasted group still lands in the frame it
+ * was dropped on.
+ */
+function releaseChildrenFromAdoptingFrames(
+  std: BlockStdScope,
+  created: GfxModel[]
+) {
+  const frames = std.store
+    .getModelsByFlavour('affine:frame')
+    .filter(isFrameBlock);
+  if (frames.length === 0) return;
+
+  for (const container of created) {
+    if (!isGfxGroupCompatibleModel(container)) continue;
+
+    for (const child of container.childElements) {
+      for (const frame of frames) {
+        if (frame !== container && frame.hasChild(child)) {
+          frame.removeChild(child);
+        }
+      }
+    }
+  }
+}
 
 function updatePastedElementsIndex(
   std: BlockStdScope,

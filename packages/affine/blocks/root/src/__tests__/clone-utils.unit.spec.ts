@@ -13,6 +13,12 @@
  * source document, and must end up with a non-empty `path` — because `path` is
  * `@local()` (never serialized), so a connector whose path is never recomputed
  * is drawn nowhere and hit-tests nowhere: invisible AND unselectable.
+ *
+ * The second suite holds the clone ORDER against a document where one child is
+ * claimed by two containers, a frame and a group. Paste wrote such documents
+ * (the frame adopted a pasted child before the pasted group claimed it); they
+ * are stored, and the clone path must copy each element exactly once from them
+ * without rewriting them.
  */
 import {
   getSurfaceBlock,
@@ -26,7 +32,12 @@ import type {
   ConnectorElementModel,
   ShapeElementModel,
 } from '@labre/affine-model';
-import { ConnectorMode, RootBlockSchemaExtension } from '@labre/affine-model';
+import {
+  ConnectorMode,
+  FrameBlockSchemaExtension,
+  type FrameBlockModel,
+  RootBlockSchemaExtension,
+} from '@labre/affine-model';
 import type { EditorHost } from '@labre/std';
 import type { GfxModel } from '@labre/std/gfx';
 import type { Store } from '@labre/store';
@@ -35,6 +46,10 @@ import { TestWorkspace } from '@labre/store/test';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { createLinkedDocFromEdgelessElements } from '../edgeless/configs/toolbar/render-linked-doc.js';
+import {
+  getSortedCloneElements,
+  sortEdgelessElements,
+} from '../edgeless/utils/clone-utils.js';
 
 /** The shape that gets cloned, at the left. */
 const INSIDE_XYWH = '[0,0,100,100]';
@@ -57,6 +72,7 @@ function createWorkspace() {
   collection.storeExtensions = [
     RootBlockSchemaExtension,
     SurfaceBlockSchemaExtension,
+    FrameBlockSchemaExtension,
     ...manager.get('store'),
   ];
   collection.meta.initialize();
@@ -218,5 +234,78 @@ describe('turning a partial selection into a linked doc', () => {
     expect(() =>
       ConnectorPathGenerator.updatePath(cloned, null, elementGetter)
     ).not.toThrow();
+  });
+});
+
+describe('cloning a child claimed by both a frame and a group', () => {
+  /**
+   * A frame registered BEFORE the group, so `getGroup` — first claimant wins —
+   * answers the frame for the shared child: the order a live session has when
+   * the frame was there first.
+   */
+  function doublyClaimed() {
+    const collection = createWorkspace();
+    const store = collection.createDoc().getStore();
+    let surfaceId = '';
+    store.load(() => {
+      const rootId = store.addBlock('affine:page', { title: new Text('src') });
+      surfaceId = store.addBlock('affine:surface', {}, rootId);
+    });
+    const surface = surfaceOf(store);
+    const frameId = store.addBlock(
+      'affine:frame',
+      { xywh: '[0,0,1000,1000]', title: new Text('frame') },
+      surfaceId
+    );
+    const frame = store.getBlock(frameId)!.model as FrameBlockModel;
+
+    const childId = surface.addElement({
+      type: 'shape',
+      shapeType: 'ellipse',
+      xywh: '[100,100,100,100]',
+    });
+    const siblingId = surface.addElement({
+      type: 'shape',
+      shapeType: 'rect',
+      xywh: '[300,100,100,100]',
+    });
+    const groupId = surface.addElement({
+      type: 'group',
+      children: { [childId]: true, [siblingId]: true },
+    });
+    const child = surface.getElementById(childId) as GfxModel;
+    frame.addChild(child);
+
+    return {
+      frame,
+      child,
+      sibling: surface.getElementById(siblingId) as GfxModel,
+      group: surface.getElementById(groupId) as GfxModel,
+    };
+  }
+
+  it('reproduces the stored state: the child reads the frame as its parent', () => {
+    const { frame, child, group } = doublyClaimed();
+    expect(child.group).toBe(frame);
+    expect((group as unknown as FrameBlockModel).hasChild(child)).toBe(true);
+  });
+
+  it('lists the child once, before the group that owns it', () => {
+    const { child, sibling, group } = doublyClaimed();
+
+    const sorted = sortEdgelessElements([group, child, sibling]);
+    expect(sorted.map(element => element.id)).toEqual([
+      child.id,
+      sibling.id,
+      group.id,
+    ]);
+  });
+
+  it('collects the group subtree with no element twice', () => {
+    const { child, sibling, group } = doublyClaimed();
+
+    const ids = getSortedCloneElements([group]).map(element => element.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids.sort()).toEqual([child.id, sibling.id, group.id].sort());
   });
 });

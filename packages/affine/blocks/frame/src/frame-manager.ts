@@ -389,13 +389,20 @@ export class EdgelessFrameManager extends GfxExtension {
         // cannot write at all, which is how this surfaced (#251). See #242 for
         // the rule: a cascade reacts to local transactions, the receiving peer
         // trusts the sync.
-        if (!payload.isLocal) return;
+        if (!payload.isLocal || doc.readonly) return;
 
         if (
           payload.type === 'add' &&
           payload.model instanceof GfxBlockElementModel &&
           renderableInEdgeless(doc, surfaceModel, payload.model)
         ) {
+          // Same guard as the canvas half: a block that already has a parent
+          // (restored by undo with its group, or created by a transaction that
+          // also wrote its container) is not the frame's to take. Adopting it
+          // makes two containers claim one child, and the next duplicate
+          // copies that child twice.
+          if (payload.model.group) return;
+
           const frame = this.getFrameFromPoint(
             payload.model.elementBound.center,
             isFrameBlock(payload.model) ? [payload.model] : []
