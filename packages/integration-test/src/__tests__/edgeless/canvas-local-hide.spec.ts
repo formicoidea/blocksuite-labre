@@ -151,7 +151,7 @@ describe('local hide', () => {
             renderBoardSvg(
               edgeless.std,
               board as FrameworkBackgroundElementModel
-            ).svg,
+            )?.svg ?? '',
             'image/svg+xml'
           )
           .querySelectorAll('text'),
