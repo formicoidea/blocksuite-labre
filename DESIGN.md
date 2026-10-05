@@ -338,6 +338,14 @@ The floating selection toolbar.
 - **Items:** 4px padding and corners, 14px Inter, Hover Veil on hover. Larger rows use 11px 8px padding.
 - **Input:** 4px corners, 4px 6px padding; on focus, a 2px Borrowed Blue ring at 30%.
 
+### Side Panel Header
+
+The frame panel's header, and every side panel's (frame panel, selection pane, artefact catalogue): `panelHeaderStyles` in `packages/affine/shared/src/styles/panel-header.ts`, held by `panel-header-parity.unit.spec.ts`.
+
+- **Row:** one 36px row, 8px side padding, no divider under it.
+- **Title:** Label size at 500 (`fontSMStyle`), secondary text colour.
+- **Actions:** 20px glyphs in `edgeless-tool-icon-button`, secondary until hovered or active, a Hover Veil while active. A close is the same icon button, not a touch-sized ×.
+
 ### Tooltips
 
 Black (`tooltip-black`) with white text, optionally showing the keyboard shortcut (`tooltip-content-with-shortcut`).
