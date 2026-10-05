@@ -81,6 +81,7 @@ import * as Y from 'yjs';
 // The corpus as a string, as `uml-import.spec.ts` reads it.
 import DRAWIO_COMPRESSED from '../../../../affine/gfx/uml/src/__tests__/corpus/drawio-class-iwlayer.drawio.xml?raw';
 
+import { dragModel } from '../utils/canvas-gesture.js';
 import { wait } from '../utils/common.js';
 import { getDocRootBlock } from '../utils/edgeless.js';
 import { pointerDown, pointerMoveTo, pointerUp } from '../utils/pointer.js';
@@ -883,7 +884,6 @@ describe('user layers', () => {
     // source and ask for its layer explicitly; a paste cannot tell "the default
     // layer" from "another document", so it keeps the §6 rule.
     describe('the clone gestures, the default layer included', () => {
-      const CANVAS = 'affine-edgeless-root';
       const hasLayerKey = (id: string) => {
         const target = model(id) as unknown as {
           yMap?: Y.Map<unknown>;
@@ -928,23 +928,13 @@ describe('user layers', () => {
       };
 
       /**
-       * Hold Alt and drag `id` by a real mouse, from its centre, 0.15 of the
-       * canvas to the right. The viewport is centred on it first, clear of the
-       * pane down the left edge.
+       * Hold Alt and drag `id` by a real mouse. `dragModel` sets its own
+       * camera, presses a point derived from the model (clear of the pane down
+       * the left edge and of the auto-pan edge zone) and checks the canvas
+       * answers that model there first, so a missed press fails loudly.
        */
       const altDrag = async (id: string) => {
-        const center = model(id).elementBound.center;
-        gfx().viewport.setCenter(center[0], center[1]);
-        await settle();
-        await pointerMoveTo(CANVAS, 0.5, 0.5, 1);
-        await userEvent.keyboard('{Alt>}');
-        try {
-          await pointerDown();
-          await pointerMoveTo(CANVAS, 0.65, 0.5, 8);
-          await pointerUp();
-        } finally {
-          await userEvent.keyboard('{/Alt}');
-        }
+        await dragModel(edgeless, model(id), { alt: true });
         await settle();
       };
 

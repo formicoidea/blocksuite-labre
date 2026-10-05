@@ -15,15 +15,12 @@
  */
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import { type ShapeElementModel, ShapeType } from '@labre/affine/model';
-import { userEvent } from '@vitest/browser/context';
 import { beforeEach, describe, expect, test } from 'vitest';
 
+import { dragModel } from '../utils/canvas-gesture.js';
 import { wait } from '../utils/common.js';
 import { getDocRootBlock } from '../utils/edgeless.js';
-import { pointerDown, pointerMoveTo, pointerUp } from '../utils/pointer.js';
 import { setupEditor } from '../utils/setup.js';
-
-const CANVAS = 'affine-edgeless-root';
 
 describe('alt+drag clone is one undo step', () => {
   let edgeless!: EdgelessRootBlockComponent;
@@ -35,7 +32,6 @@ describe('alt+drag clone is one undo step', () => {
     return cleanup;
   });
 
-  const gfx = () => edgeless.service.gfx;
   const shapes = () =>
     edgeless.service.surface.getElementsByType('shape') as ShapeElementModel[];
 
@@ -44,37 +40,31 @@ describe('alt+drag clone is one undo step', () => {
     await wait(50);
   };
 
-  /** A shape centred in the viewport, its creation closed in the history. */
-  const shapeInView = async () => {
+  /** A shape, its creation closed in the history. */
+  const newShape = async () => {
     const id = edgeless.service.crud.addElement('shape', {
       shapeType: ShapeType.Rect,
       xywh: '[0,0,100,100]',
     })!;
-    gfx().viewport.setCenter(50, 50);
     window.doc.captureSync();
     await settle();
     return shapes().find(shape => shape.id === id)!;
   };
 
-  /** Press on the centre of the canvas, drag to the right, release. */
-  const drag = async (alt: boolean) => {
-    await pointerMoveTo(CANVAS, 0.5, 0.5, 1);
-    if (alt) await userEvent.keyboard('{Alt>}');
-    try {
-      await pointerDown();
-      await pointerMoveTo(CANVAS, 0.65, 0.5, 8);
-      await pointerUp();
-    } finally {
-      if (alt) await userEvent.keyboard('{/Alt}');
-    }
-    await settle();
-  };
+  /**
+   * Press on the shape, drag it to the right, release — real mouse and keys,
+   * through `dragModel`, which sets its own camera: the suite shares one
+   * page, and a press on "the middle of the canvas" missed the shape once
+   * other specs had run (CI, PR #455).
+   */
+  const drag = (shape: ShapeElementModel, alt: boolean) =>
+    dragModel(edgeless, shape, { alt });
 
   test('one undo removes the copy and leaves the source untouched', async () => {
-    const source = await shapeInView();
+    const source = await newShape();
     const sourceXYWH = source.xywh;
 
-    await drag(true);
+    await drag(source, true);
     const copies = shapes().filter(shape => shape.id !== source.id);
     expect(copies, 'the drag made one copy').toHaveLength(1);
     expect(copies[0].xywh, 'the copy was dragged away').not.toBe(sourceXYWH);
@@ -90,10 +80,10 @@ describe('alt+drag clone is one undo step', () => {
   });
 
   test('a plain drag is still its own undo step', async () => {
-    const source = await shapeInView();
+    const source = await newShape();
     const sourceXYWH = source.xywh;
 
-    await drag(false);
+    await drag(source, false);
     expect(source.xywh, 'the drag moved the shape').not.toBe(sourceXYWH);
 
     window.doc.undo();
