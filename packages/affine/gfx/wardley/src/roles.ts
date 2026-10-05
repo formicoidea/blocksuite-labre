@@ -76,6 +76,7 @@ const DEFS: readonly RoleDef[] = [
     id: WARDLEY_ROLE.component,
     kind: 'node',
     labelKey: 'com.labre.wardley.role.component',
+    labelFallback: 'Component',
   },
   // A user / need: a component with no need of its own, hence its own role
   // rather than a specialisation of `component`.
@@ -83,34 +84,40 @@ const DEFS: readonly RoleDef[] = [
     id: WARDLEY_ROLE.anchor,
     kind: 'node',
     labelKey: 'com.labre.wardley.role.anchor',
+    labelFallback: 'Anchor',
   },
   // The pipeline body. Connections go through its handle, never the body.
   {
     id: WARDLEY_ROLE.pipeline,
     kind: 'node',
     labelKey: 'com.labre.wardley.role.pipeline',
+    labelFallback: 'Pipeline',
   },
   {
     id: WARDLEY_ROLE.handle,
     kind: 'node',
     labelKey: 'com.labre.wardley.role.handle',
+    labelFallback: 'Pipeline handle',
   },
   {
     id: WARDLEY_ROLE.market,
     parent: WARDLEY_ROLE.component,
     kind: 'node',
     labelKey: 'com.labre.wardley.role.market',
+    labelFallback: 'Market',
   },
   {
     id: WARDLEY_ROLE.ecosystem,
     parent: WARDLEY_ROLE.component,
     kind: 'node',
     labelKey: 'com.labre.wardley.role.ecosystem',
+    labelFallback: 'Ecosystem',
   },
   {
     id: WARDLEY_ROLE.method,
     kind: 'node',
     labelKey: 'com.labre.wardley.role.method',
+    labelFallback: 'Method',
   },
   /**
    * A Porter's-forces glyph: one of the five forces of external competition
@@ -227,6 +234,7 @@ const DEFS: readonly RoleDef[] = [
     id: WARDLEY_ROLE.map,
     kind: 'node',
     labelKey: 'com.labre.wardley.role.map',
+    labelFallback: 'Wardley map',
   },
   // The change (evolution) arrow: "this is where it is going". An EDGE, and
   // deliberately not a specialisation of `dependency` — it says nothing about
@@ -256,6 +264,7 @@ const DEFS: readonly RoleDef[] = [
     id: WARDLEY_ROLE.inertia,
     kind: 'node',
     labelKey: 'com.labre.wardley.role.inertia',
+    labelFallback: 'Inertia',
   },
   // The name written next to an artefact. A role of its own rather than a
   // property of the node it labels: on this canvas a label IS a separate free
@@ -268,6 +277,7 @@ const DEFS: readonly RoleDef[] = [
     id: WARDLEY_ROLE.label,
     kind: 'text',
     labelKey: 'com.labre.wardley.role.label',
+    labelFallback: 'Label',
   },
 ];
 
