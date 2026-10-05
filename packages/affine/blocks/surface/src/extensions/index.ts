@@ -1,4 +1,5 @@
 export * from './audit';
+export * from './canvas-grid';
 export * from './clipboard-config';
 export * from './crud-extension';
 export * from './dom-element-renderer';

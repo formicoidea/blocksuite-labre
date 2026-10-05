@@ -245,6 +245,7 @@ and has no bus of its own.
 | ------------------------- | ---------------------------- | ----------------------------------------------------------------------------------- |
 | `SelectionPaneOpened`     | the selection pane is opened | `source` (`toolbar` \| `palette` \| `shortcut`)                                     |
 | `CanvasVisibilityChanged` | elements are hidden or shown | `target` (`element` \| `layer`), `scope` (`local` \| `everyone`), `hidden`, `count` |
+| `CanvasGridToggled`       | the canvas grid is switched  | `scope` (`local` \| `everyone`), `visible`                                          |
 
 Emitted by the `canvas.selectionPane.toggle` command, which every opening
 gesture goes through (`runCommand`), and only when the toggle OPENS the pane —
@@ -266,6 +267,13 @@ the same reason: `count` is how many elements the gesture actually changed, a
 fact of the invocation. Only `target: 'element'` and `scope: 'local'` exist so
 far; `layer` and `everyone` arrive with the layers and "hide for everyone"
 stages. A gesture that changes nothing emits nothing.
+
+`CanvasGridToggled` is emitted by `canvas.grid.toggle` (`scope: 'local'`, the
+viewer's own override, nothing written to the document) and
+`canvas.grid.saveForEveryone` (`scope: 'everyone'`, the document's `showGrid`),
+from their bodies: which gesture ran is the scope, and a save that finds the
+document already saying the same writes nothing and reports nothing.
+`visible` is the state after the gesture.
 
 ## Copying a link
 

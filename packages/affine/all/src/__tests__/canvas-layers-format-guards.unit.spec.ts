@@ -124,35 +124,94 @@ describe('an unknown prop crosses the doc-snapshot boundary', () => {
   });
 
   /**
-   * ponytail: RED on the code base this ADR was accepted against.
-   * `SurfaceBlockTransformer` rebuilds the surface's props as `{ elements }`
-   * on both `toSnapshot` and `fromSnapshot`, so any other surface prop — the
-   * `layers` record of stage 6 included — is dropped by a whole-doc copy, a
-   * template insertion or an export/import. Marked `fails` so the suite stays
-   * green and the guard turns red the day the transformer passes the other
-   * props through; the layers stage (6) must make it pass, and drop the
-   * `.fails`, before it writes `layers`. Reported to the maintainer at stage 1.
+   * Stage 1 found this guard red: `SurfaceBlockTransformer` rebuilt the
+   * surface's props as `{ elements }` on both `toSnapshot` and
+   * `fromSnapshot`, so any other surface prop — `layers` and `showGrid`
+   * included — was dropped by a whole-doc copy, a template insertion or an
+   * export/import. The transformer now carries every other prop through
+   * (ADR 0031, amendment "Snapshots carry the surface props").
    */
-  test.fails(
-    'on the affine:surface block: import keeps it, re-export emits it',
-    async () => {
-      const { collection, transformer } = createWorkspace('guard-surface');
-      const board = authorBoard(collection, 'board');
-      const snapshot = transformer.docToSnapshot(board) as DocSnapshot;
+  test('on the affine:surface block: import keeps it, re-export emits it', async () => {
+    const { collection, transformer } = createWorkspace('guard-surface');
+    const board = authorBoard(collection, 'board');
+    const snapshot = transformer.docToSnapshot(board) as DocSnapshot;
 
-      const reloaded = await transformer.snapshotToDoc(
-        withProbe(snapshot, 'affine:surface', 'surface-reloaded')
-      );
+    const reloaded = await transformer.snapshotToDoc(
+      withProbe(snapshot, 'affine:surface', 'surface-reloaded')
+    );
 
-      expect(
-        yBlockOf(reloaded!, 'affine:surface').get(`prop:${PROBE_KEY}`)
-      ).toBe(PROBE_VALUE);
-      const reExported = transformer.docToSnapshot(reloaded!) as DocSnapshot;
-      expect(
-        findNode(reExported.blocks, 'affine:surface')!.props[PROBE_KEY]
-      ).toBe(PROBE_VALUE);
-    }
-  );
+    expect(yBlockOf(reloaded!, 'affine:surface').get(`prop:${PROBE_KEY}`)).toBe(
+      PROBE_VALUE
+    );
+    const reExported = transformer.docToSnapshot(reloaded!) as DocSnapshot;
+    expect(
+      findNode(reExported.blocks, 'affine:surface')!.props[PROBE_KEY]
+    ).toBe(PROBE_VALUE);
+  });
+});
+
+describe('the surface snapshot round trip', () => {
+  /**
+   * A record-shaped unknown prop (the shape `layers` has) and a boolean one
+   * (the shape `showGrid` has) both survive export → import → export
+   * unchanged, next to the elements, which round-trip as before.
+   */
+  test('an unknown record and an unknown boolean come back identical', async () => {
+    const { collection, transformer } = createWorkspace('round-trip');
+    const board = authorBoard(collection, 'board');
+    const snapshot = JSON.parse(
+      JSON.stringify(transformer.docToSnapshot(board))
+    ) as DocSnapshot;
+    const surface = findNode(snapshot.blocks, 'affine:surface')!;
+    const record = {
+      'probe-a': { name: 'Back', index: 'a0', hidden: true },
+      'probe-b': { name: 'Front', index: 'a1' },
+    };
+    surface.props[`${PROBE_KEY}-record`] = record;
+    surface.props[`${PROBE_KEY}-flag`] = false;
+
+    const reloaded = await transformer.snapshotToDoc({
+      ...snapshot,
+      meta: { ...snapshot.meta, id: 'round-trip-reloaded' },
+    });
+    const reExported = transformer.docToSnapshot(reloaded!) as DocSnapshot;
+    const after = findNode(reExported.blocks, 'affine:surface')!;
+
+    expect(after.props[`${PROBE_KEY}-record`]).toEqual(record);
+    expect(after.props[`${PROBE_KEY}-flag`]).toBe(false);
+    expect(after.props.elements).toEqual(surface.props.elements);
+  });
+
+  /**
+   * Every snapshot written before the fix holds `elements` and nothing else
+   * on the surface: it must load into a surface whose stored props are
+   * exactly that one key, as it always did. Read in its STORED (JSON) form:
+   * a declared optional prop left `undefined` (ADR 0031's `showGrid`) is in
+   * the in-memory snapshot as an `undefined` value and in no stored file.
+   */
+  test('an old snapshot (elements only) loads exactly as before', async () => {
+    const { collection, transformer } = createWorkspace('old-snapshot');
+    const board = authorBoard(collection, 'board');
+    const stored = (value: unknown) =>
+      JSON.parse(JSON.stringify(value)) as DocSnapshot;
+    const snapshot = stored(transformer.docToSnapshot(board));
+    expect(
+      Object.keys(findNode(snapshot.blocks, 'affine:surface')!.props)
+    ).toEqual(['elements']);
+
+    const reloaded = await transformer.snapshotToDoc({
+      ...snapshot,
+      meta: { ...snapshot.meta, id: 'old-reloaded' },
+    });
+    const yBlock = yBlockOf(reloaded!, 'affine:surface');
+    const propKeys = [...yBlock.keys()].filter(key => key.startsWith('prop:'));
+
+    expect(propKeys).toEqual(['prop:elements']);
+    const reExported = stored(transformer.docToSnapshot(reloaded!));
+    expect(
+      Object.keys(findNode(reExported.blocks, 'affine:surface')!.props)
+    ).toEqual(['elements']);
+  });
 });
 
 describe('an unknown element TYPE', () => {

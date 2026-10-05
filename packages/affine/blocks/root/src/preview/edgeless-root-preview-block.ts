@@ -6,6 +6,7 @@ import {
 } from '@labre/affine-block-surface';
 import type { RootBlockModel } from '@labre/affine-model';
 import {
+  documentShowsGrid,
   EditorSettingProvider,
   FontLoaderService,
   ThemeProvider,
@@ -53,6 +54,11 @@ export class EdgelessRootPreviewBlockComponent extends BlockComponent<RootBlockM
         var(--affine-edgeless-grid-color) 1px,
         var(--affine-background-primary-color) 1px
       );
+    }
+
+    /* ADR 0031 §11: a preview follows the document's showGrid alone. */
+    affine-edgeless-root-preview .edgeless-background.grid-hidden {
+      background-image: none;
     }
 
     @media print {
@@ -223,8 +229,17 @@ export class EdgelessRootPreviewBlockComponent extends BlockComponent<RootBlockM
       background: this.overrideBackground,
     });
 
+    // A preview is a picture of the document, not a viewer's session: no
+    // viewer override and no host default, only what the document saved.
+    const gridClass = documentShowsGrid(this.surfaceBlockModel)
+      ? ''
+      : ' grid-hidden';
+
     return html`
-      <div class="edgeless-background edgeless-container" style=${background}>
+      <div
+        class="edgeless-background edgeless-container${gridClass}"
+        style=${background}
+      >
         <gfx-viewport
           .enableChildrenSchedule=${!this._disableScheduleUpdate}
           .viewport=${this._gfx.viewport}

@@ -2,7 +2,10 @@ import {
   type ViewExtensionContext,
   ViewExtensionProvider,
 } from '@labre/affine-ext-loader';
-import { CanvasLocalVisibility } from '@labre/affine-shared/services';
+import {
+  CanvasGrid,
+  CanvasLocalVisibility,
+} from '@labre/affine-shared/services';
 import {
   BlockViewExtension,
   CommandExtension,
@@ -13,6 +16,7 @@ import { literal } from 'lit/static-html.js';
 import { effects } from './effects';
 import {
   auditCommands,
+  canvasGridCommands,
   EdgelessCRUDExtension,
   EdgelessLegacySlotExtension,
   EditPropsMiddlewareBuilder,
@@ -111,6 +115,12 @@ export class SurfaceViewExtension extends ViewExtensionProvider {
       // `gfx.localVisibility` and persists per document, never in it.
       context.register(CanvasLocalVisibility);
       context.register(CommandExtension(selectionPaneCommands));
+      // The grid as a setting (ADR 0031 §11): this viewer's override, the
+      // document's `showGrid`, the host default, the library default. Read by
+      // the edgeless root's background, the surface container and the PNG
+      // export; previews follow the document setting alone.
+      context.register(CanvasGrid);
+      context.register(CommandExtension(canvasGridCommands));
     } else {
       context.register(
         BlockViewExtension('affine:surface', literal`affine-surface-void`)

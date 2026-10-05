@@ -502,3 +502,32 @@ fields fixed above; none writes before this ADR is accepted.
    per session only?
 
 Resolved at acceptance: every recommendation above is retained (1 no, 2 yes, 3 yes, 4 yes, 5 confirmed, 6 acceptable for v1, 7 persisted per document). The "Hide for everyone" and "Save for everyone" entries are painted with the theme warning tokens (`--affine-background-warning-color`, `--affine-warning-color`): the library has no announcement component and adds none.
+
+## Amendments
+
+**Snapshots carry the surface props (prerequisite of stage 4).** The
+"untouched" in the loadability table held for Yjs sync only. A whole-document
+snapshot — doc copy, template insertion, export / import — went through
+`SurfaceBlockTransformer`, which rebuilt the surface's props as `{ elements }`
+in both `toSnapshot` and `fromSnapshot`, so `layers` and `showGrid` (and any
+surface prop a newer client wrote) were dropped by every snapshot round trip.
+Stage 1 pinned it as an expected failure in
+`packages/affine/all/src/__tests__/canvas-layers-format-guards.unit.spec.ts`.
+The transformer now carries every surface prop other than `elements` through
+both directions unchanged, unknown keys included; only `elements` is rebuilt.
+A snapshot written before the fix holds `elements` alone and loads exactly as
+before. Two consequences: a client that has this fix keeps `layers` /
+`showGrid` through a snapshot even if it predates the fields (they are
+unknown keys to it), and a 0.43 client's snapshot still drops them — the
+loadability table's last column is right for sync and resave, not for a
+0.43 snapshot copy.
+
+A related edge stays open, in the store (red zone, not changed here): a block
+model's `keys` are fixed when the model is built
+(`packages/framework/store/src/model/block/sync-controller.ts`, `model.keys =
+Object.keys(props)`), and a `prop:` key a peer adds afterwards reaches
+`model.props` but not `keys`. The snapshot walks `keys`, so a client whose
+schema does not declare the key (a 0.43 client for `layer` /
+`hiddenForEveryone`) drops it from a snapshot-based duplicate until it reloads
+the document. A client that declares the fields has them in `keys` from load
+and is not affected.

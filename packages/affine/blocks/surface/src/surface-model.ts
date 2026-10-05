@@ -16,6 +16,9 @@ export const SurfaceBlockSchema = defineBlockSchema({
   flavour: 'affine:surface',
   props: (internalPrimitives): SurfaceBlockProps => ({
     elements: internalPrimitives.Boxed(new Y.Map()),
+    // ADR 0031 §2: optional, `undefined` default, so the load pass writes
+    // nothing and the schema version stays 5.
+    showGrid: undefined,
   }),
   metadata: {
     version: 5,

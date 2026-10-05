@@ -81,7 +81,11 @@ export class SurfaceBlockTransformer extends BaseBlockTransformer<SurfaceBlockPr
 
     const elements = this._internal.Boxed(yMap);
 
+    // Every other surface prop (ADR 0031: `layers`, `showGrid`, and any key
+    // a newer client wrote) crosses the snapshot unchanged; only `elements`
+    // needs rebuilding into a Y.Map.
     snapshotRet.props = {
+      ...snapshotRet.props,
       elements,
     };
 
@@ -107,6 +111,7 @@ export class SurfaceBlockTransformer extends BaseBlockTransformer<SurfaceBlockPr
       });
     }
     snapshot.props = {
+      ...snapshot.props,
       elements: value,
     };
 
