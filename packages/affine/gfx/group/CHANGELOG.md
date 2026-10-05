@@ -1,5 +1,70 @@
 # @labre/affine-gfx-group
 
+## 0.44.0
+
+### Minor Changes
+
+- 11a7710: User layers on the canvas (ADR 0031, stage 6). The surface gains an optional
+  `layers` record (`SurfaceLayerRecord`: `name`, fractional `index`), and every
+  canvas element and gfx block an optional `layer` id (`undefined` = the default
+  layer, `'@default'`); stacking is layer rank first, then the existing
+  comparator, with a fast path that leaves a document without layers sorted
+  exactly as before. A group lives in one layer, stored on its outermost group;
+  frames hold elements from any layer; a dangling id reads as the default layer
+  and is never dropped. New elements, pasted blocks and imports land in the
+  viewer's active layer (session only, `CanvasActiveLayer`) unless they name a
+  layer of this surface. Bring forward / send backward stay inside the layer.
+  The selection pane lists layers as sections: create ("New layer"), rename in
+  place, reorder by drag, drop a row on a layer to move it there, collapse.
+  Commands `canvas.layer.create`, `.rename`, `.reorder`, `.moveElements`;
+  telemetry `CanvasLayerChanged`; the default layer name is seeded through the
+  new key `com.labre.layer.seed.name` ("Layer {{n}}"). The pane no longer lets a
+  pointer move over it reach the canvas.
+
+### Patch Changes
+
+- Updated dependencies [38c4a78]
+- Updated dependencies [1ab40a5]
+- Updated dependencies [c982522]
+- Updated dependencies [a7c4643]
+- Updated dependencies [871e571]
+- Updated dependencies [e13b46e]
+- Updated dependencies [68242dc]
+- Updated dependencies [11a7710]
+- Updated dependencies [11a7710]
+- Updated dependencies [4d12815]
+- Updated dependencies [2f4df91]
+- Updated dependencies [a12e678]
+- Updated dependencies [2447500]
+- Updated dependencies [5918f84]
+- Updated dependencies [900dade]
+- Updated dependencies [dc738fa]
+- Updated dependencies [e677a3b]
+- Updated dependencies [8ce6769]
+- Updated dependencies [c4cfd0e]
+- Updated dependencies [2908a50]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [c6ab710]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [4d12815]
+- Updated dependencies [e13b46e]
+- Updated dependencies [83fc2d3]
+- Updated dependencies [066b754]
+- Updated dependencies [b6dc00a]
+- Updated dependencies [33e4341]
+  - @labre/affine-block-surface@0.44.0
+  - @labre/affine-shared@0.44.0
+  - @labre/std@0.44.0
+  - @labre/affine-model@0.44.0
+  - @labre/affine-components@0.44.0
+  - @labre/affine-widget-edgeless-toolbar@0.44.0
+  - @labre/affine-gfx-text@0.44.0
+  - @labre/affine-rich-text@0.44.0
+  - @labre/affine-ext-loader@0.44.0
+  - @labre/global@0.44.0
+  - @labre/store@0.44.0
+
 ## 0.43.1
 
 ### Patch Changes

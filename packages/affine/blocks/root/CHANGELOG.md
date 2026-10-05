@@ -1,5 +1,147 @@
 # @labre/affine-block-root
 
+## 0.44.0
+
+### Minor Changes
+
+- e13b46e: The canvas grid becomes a setting (ADR 0031, stage 4). New commands
+  `canvas.grid.toggle` (this viewer only, remembered per document in
+  `localStorage`, nothing written to the document) and
+  `canvas.grid.saveForEveryone` (stores the grid as the viewer sees it in the
+  surface's new optional `showGrid` prop, clears the saver's own override, refused
+  on a read-only document), on the palette and the agent. The nearest decision
+  wins: the viewer's toggle, then the document, then the host default — the new
+  optional `edgelessShowGrid` in `GeneralSettingSchema` — then the library
+  default, on. Off removes the grid from the canvas background and from the PNG
+  export; the edgeless preview and surface references follow the document's
+  setting only. New service `CanvasGrid`, helpers `resolveCanvasGrid` /
+  `documentShowsGrid`, telemetry event `CanvasGridToggled` (`scope`, `visible`).
+- b6dc00a: "Turn into" now offers Callout for a paragraph, a list item or a code block:
+  the callout takes the block's place, the text moves into a paragraph inside
+  it, the block's children move under that paragraph, and the caret lands in it.
+  One undo step; a conversion that cannot complete leaves every source block as
+  it was. The entry is hidden inside a callout, answers to the same
+  `enable_callout` feature flag as the slash-menu item, and disappears with
+  `{ callout: false }`: it is registered by `CalloutViewExtension` through the
+  new `TextConversionEntryExtension` of `@labre/affine-rich-text`, which the
+  "Turn into" menu reads beside the static `textConversionConfigs`. Its label
+  reuses `com.labre.callout.slash-menu.name` ("Callout"); no new key.
+
+### Patch Changes
+
+- 38c4a78: With user layers (unreleased), a duplicated, alt-dragged or copy-pasted frame,
+  image, attachment, bookmark, embed or other canvas block now stays in its
+  source's layer, as elements, notes and edgeless texts already did, instead of
+  landing in the viewer's active layer; a copy of a block hidden for everyone
+  stays hidden. Duplicate (Mod+D) and alt-drag keep the copy of an element or a
+  block of the default layer in the default layer too (ADR 0031 amendment),
+  while a paste, which cannot tell the default layer from another document,
+  still lands in the active layer unless it names a layer of this document.
+  A block made from another one also lands beside it: the note or shape an
+  auto-complete arrow clones, the note the slicer splits off, the block that replaces a link
+  when its view changes, a linked doc turned into a synced doc and back, and the
+  note "Duplicate as note" puts beside a synced doc. `sourceLayerOf` is exported
+  beside `applyCreationLayer` for host code doing the same.
+
+  Behaviour change on a released feature, independent of layers: an alt+drag
+  clone is now ONE undo step. The first Ctrl+Z used to only move the copy back
+  onto its source, so the copy seemed to survive, and a second one removed it;
+  now the first removes the copy and leaves the source where it was. A plain
+  drag is still its own undo step, unchanged.
+
+- 871e571: PNG/PDF export and "copy as image" no longer fail under a theme written in
+  `oklch()` (or any colour html2canvas cannot parse, including the library's own
+  `color-mix()`): the rasterised clone's computed colours, the page background and
+  the `backgroundColor` option are converted to `rgb()` / `rgba()` first. New
+  `normalizeCanvasExportColors` and `toLegacyColors` in `@labre/affine-shared/utils`.
+- 088a1db: Duplicating or pasting a group inside a frame no longer leaves its children
+  claimed by both the frame and the group, and a duplicate no longer copies such
+  a child twice. The paste now takes its own children back from a frame that
+  adopted them before their group existed, the frame manager no longer adopts a
+  block that a group already claims (nor writes on a readonly store), and the
+  clone order visits each element once, so documents that already hold a doubly
+  claimed child duplicate it once without being rewritten.
+- 8ce6769: Duplicating or pasting a large selection no longer freezes the page:
+  duplicating a frame holding 400 shapes and 5 groups now takes about 0.6 s
+  instead of 4.7 s (8.7 s in 0.43.1), and one undo removes it whole. Pasted
+  canvas elements are created with their final stacking index instead of being
+  re-indexed one by one, the layer manager finds an element's place by bisection
+  instead of comparing it with every element of the board, and the last-used
+  style merge no longer validates every plain value against the colour schema.
+- c4bec2c: Pasting or duplicating canvas elements writes them, and their final stacking
+  indexes, in one Yjs transaction instead of two per element: duplicating 50
+  shapes sends peers one update instead of 100, and inside a frame the frame's
+  adoptions follow in a single second update instead of one per element. The
+  paste starts a new undo step, so one undo removes the whole paste and nothing
+  from the gesture before it. Blocks (notes, texts, images, attachments) are
+  still created one transaction each, because their creation is asynchronous.
+- 6fa9539: Ctrl+Y now redoes on Linux as well as Windows. The `redo-windows` alias was
+  gated on Windows alone, so on Linux the keystroke did nothing; it stays unbound
+  on mac, and its id is unchanged so persisted shortcut overrides keep resolving.
+- Updated dependencies [38c4a78]
+- Updated dependencies [1ab40a5]
+- Updated dependencies [c982522]
+- Updated dependencies [a7c4643]
+- Updated dependencies [871e571]
+- Updated dependencies [e13b46e]
+- Updated dependencies [68242dc]
+- Updated dependencies [11a7710]
+- Updated dependencies [11a7710]
+- Updated dependencies [4d12815]
+- Updated dependencies [2f4df91]
+- Updated dependencies [a12e678]
+- Updated dependencies [2447500]
+- Updated dependencies [5918f84]
+- Updated dependencies [088a1db]
+- Updated dependencies [900dade]
+- Updated dependencies [dc738fa]
+- Updated dependencies [2908a50]
+- Updated dependencies [e677a3b]
+- Updated dependencies [8ce6769]
+- Updated dependencies [c4bec2c]
+- Updated dependencies [c4cfd0e]
+- Updated dependencies [2908a50]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [c6ab710]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [4d12815]
+- Updated dependencies [e13b46e]
+- Updated dependencies [83fc2d3]
+- Updated dependencies [066b754]
+- Updated dependencies [b6dc00a]
+- Updated dependencies [33e4341]
+  - @labre/affine-block-surface@0.44.0
+  - @labre/affine-block-bookmark@0.44.0
+  - @labre/affine-block-embed@0.44.0
+  - @labre/affine-widget-edgeless-selected-rect@0.44.0
+  - @labre/affine-shared@0.44.0
+  - @labre/std@0.44.0
+  - @labre/affine-model@0.44.0
+  - @labre/affine-components@0.44.0
+  - @labre/affine-widget-edgeless-toolbar@0.44.0
+  - @labre/affine-gfx-group@0.44.0
+  - @labre/affine-gfx-text@0.44.0
+  - @labre/affine-gfx-shape@0.44.0
+  - @labre/affine-gfx-connector@0.44.0
+  - @labre/affine-block-edgeless-text@0.44.0
+  - @labre/affine-block-frame@0.44.0
+  - @labre/affine-block-image@0.44.0
+  - @labre/affine-block-attachment@0.44.0
+  - @labre/affine-inline-preset@0.44.0
+  - @labre/affine-rich-text@0.44.0
+  - @labre/affine-block-note@0.44.0
+  - @labre/affine-gfx-brush@0.44.0
+  - @labre/affine-gfx-mindmap@0.44.0
+  - @labre/affine-gfx-note@0.44.0
+  - @labre/affine-gfx-pointer@0.44.0
+  - @labre/affine-block-database@0.44.0
+  - @labre/affine-block-paragraph@0.44.0
+  - @labre/data-view@0.44.0
+  - @labre/affine-ext-loader@0.44.0
+  - @labre/global@0.44.0
+  - @labre/store@0.44.0
+
 ## 0.43.1
 
 ### Patch Changes

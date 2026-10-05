@@ -1,5 +1,67 @@
 # @labre/affine-model
 
+## 0.44.0
+
+### Minor Changes
+
+- 68242dc: Hide canvas elements for everyone (ADR 0031, stage 5). A new optional stored
+  field `hiddenForEveryone` (`true` or absent, never `false`) on every canvas
+  element and on the fifteen gfx block schemas: the element stays in the document,
+  in the selection pane (marked) and in what rules, legends and semantic exports
+  count, but no viewer paints or picks it, and the SVG / PNG exports leave it out.
+  It is not `hidden`, which mindmap collapse keeps owning: expanding a branch never
+  unhides a node hidden for everyone. Unhiding removes the key. New command
+  `canvas.visibility.hideForEveryone` (`hidden: false` shows again; refused on a
+  read-only document; one undo step), reached from the selection pane's new row
+  menu (right click, or the row's "more" button), whose entry is painted with the
+  theme warning tokens through a new `warning-item` menu-button class.
+  `CanvasVisibilityChanged` gains `scope: 'everyone'`. New in `@labre/std`:
+  `GfxController.hiddenForEveryone` (`GfxHiddenForEveryone`, the synced set the
+  paint and pick predicate reads) and `isStoredHiddenForEveryone(model)`.
+- 11a7710: User layers on the canvas (ADR 0031, stage 6). The surface gains an optional
+  `layers` record (`SurfaceLayerRecord`: `name`, fractional `index`), and every
+  canvas element and gfx block an optional `layer` id (`undefined` = the default
+  layer, `'@default'`); stacking is layer rank first, then the existing
+  comparator, with a fast path that leaves a document without layers sorted
+  exactly as before. A group lives in one layer, stored on its outermost group;
+  frames hold elements from any layer; a dangling id reads as the default layer
+  and is never dropped. New elements, pasted blocks and imports land in the
+  viewer's active layer (session only, `CanvasActiveLayer`) unless they name a
+  layer of this surface. Bring forward / send backward stay inside the layer.
+  The selection pane lists layers as sections: create ("New layer"), rename in
+  place, reorder by drag, drop a row on a layer to move it there, collapse.
+  Commands `canvas.layer.create`, `.rename`, `.reorder`, `.moveElements`;
+  telemetry `CanvasLayerChanged`; the default layer name is seeded through the
+  new key `com.labre.layer.seed.name` ("Layer {{n}}"). The pane no longer lets a
+  pointer move over it reach the canvas.
+- 2f4df91: Canvas text can be underlined and overlined (ADR 0030). A canvas text, a
+  shape's text and a connector's labels gain one optional stored field,
+  `textDecoration` (`TextDecoration`: `none`, `underline`, `overline`,
+  `underline overline` — an append-only CSS token list, read token by token so a
+  future token is skipped rather than the whole value), absent until the author
+  sets it: documents drawn before this change store and paint exactly as they
+  did, and nothing is migrated. The text toolbar of a canvas text, a shape and a
+  connector gains two toggles, Underline and Overline, each one undo step; the
+  line is painted under the measured words by the three canvas renderers (so the
+  SVG export carries it) and shown as CSS by the overlay editors and the
+  connector DOM renderer. A decoration is not remembered as the last-used text
+  style. New key for hosts to translate: `com.labre.text-format.overline`
+  ("Overline"); the underline toggle reuses `com.labre.text-format.underline`.
+
+### Patch Changes
+
+- Updated dependencies [e13b46e]
+- Updated dependencies [68242dc]
+- Updated dependencies [11a7710]
+- Updated dependencies [11a7710]
+- Updated dependencies [4d12815]
+- Updated dependencies [900dade]
+- Updated dependencies [8ce6769]
+- Updated dependencies [2908a50]
+  - @labre/std@0.44.0
+  - @labre/global@0.44.0
+  - @labre/store@0.44.0
+
 ## 0.43.1
 
 ### Patch Changes

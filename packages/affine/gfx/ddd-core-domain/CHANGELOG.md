@@ -1,5 +1,74 @@
 # @labre/affine-gfx-ddd-core-domain
 
+## 0.44.0
+
+### Minor Changes
+
+- c4cfd0e: The reading panel now says where an artefact sits on its frame beyond Wardley:
+  a sub-domain on a Core Domain Chart reads its quadrant under "Zone", among the
+  quadrants of the chart's variant (classic or migration), and a BPMN flow object
+  or data shape inside a pool reads its lane under "Lane". A zone is named the way
+  the board paints it — a renamed quadrant or a lane's name wins over the
+  vocabulary — and a zone the board never names reads "Unnamed".
+  `ReadingProfile.frame.axis` is now optional (absent reads the frame in two
+  dimensions) and the frame declares its own `label` and `none` wordings, required;
+  the panel no longer hard-codes "Evolution phase". New keys for hosts:
+  `com.labre.core-domain.reading.field.zone`,
+  `com.labre.core-domain.reading.zone.none`, `com.labre.bpmn.reading.field.lane`,
+  `com.labre.bpmn.reading.lane.none`, `com.labre.reading.zone.unnamed`;
+  `com.labre.reading.field.phase` and `com.labre.reading.phase.none` now ship with
+  the Wardley bundle (same keys, same English). The map audit no longer reports a
+  zone of a variant the chart is not turned to; `backgroundZones`,
+  `backgroundZoneAt` and `backgroundPlotRatios` are the shared helpers.
+
+### Patch Changes
+
+- Updated dependencies [38c4a78]
+- Updated dependencies [1ab40a5]
+- Updated dependencies [c982522]
+- Updated dependencies [a7c4643]
+- Updated dependencies [871e571]
+- Updated dependencies [e13b46e]
+- Updated dependencies [68242dc]
+- Updated dependencies [11a7710]
+- Updated dependencies [11a7710]
+- Updated dependencies [4d12815]
+- Updated dependencies [2f4df91]
+- Updated dependencies [a12e678]
+- Updated dependencies [2447500]
+- Updated dependencies [5918f84]
+- Updated dependencies [900dade]
+- Updated dependencies [dc738fa]
+- Updated dependencies [2908a50]
+- Updated dependencies [e677a3b]
+- Updated dependencies [8ce6769]
+- Updated dependencies [c4cfd0e]
+- Updated dependencies [2908a50]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [c6ab710]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [4d12815]
+- Updated dependencies [e13b46e]
+- Updated dependencies [83fc2d3]
+- Updated dependencies [066b754]
+- Updated dependencies [33e4341]
+  - @labre/affine-block-surface@0.44.0
+  - @labre/affine-shared@0.44.0
+  - @labre/std@0.44.0
+  - @labre/affine-model@0.44.0
+  - @labre/affine-components@0.44.0
+  - @labre/affine-widget-edgeless-toolbar@0.44.0
+  - @labre/affine-gfx-group@0.44.0
+  - @labre/affine-gfx-shape@0.44.0
+  - @labre/affine-gfx-connector@0.44.0
+  - @labre/affine-gfx-template@0.44.0
+  - @labre/affine-gfx-ddd-shared@0.44.0
+  - @labre/affine-gfx-pointer@0.44.0
+  - @labre/affine-ext-loader@0.44.0
+  - @labre/global@0.44.0
+  - @labre/store@0.44.0
+
 ## 0.43.1
 
 ### Patch Changes

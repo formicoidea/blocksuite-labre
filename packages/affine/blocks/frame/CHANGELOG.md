@@ -1,5 +1,70 @@
 # @labre/affine-block-frame
 
+## 0.44.0
+
+### Patch Changes
+
+- 088a1db: Duplicating or pasting a group inside a frame no longer leaves its children
+  claimed by both the frame and the group, and a duplicate no longer copies such
+  a child twice. The paste now takes its own children back from a frame that
+  adopted them before their group existed, the frame manager no longer adopts a
+  block that a group already claims (nor writes on a readonly store), and the
+  clone order visits each element once, so documents that already hold a doubly
+  claimed child duplicate it once without being rewritten.
+- 2908a50: With user layers (unreleased), a frame drawn with the frame tool, made from the
+  selection (`f`), placed from the frame menu presets or the surface-ref slash
+  menu now lands in the viewer's active layer instead of always in the default
+  layer, keeping the index the frame stacking rules give it. A template insertion
+  and images or attachments put on the canvas land in the active layer too, as
+  ADR 0031 §6 says. With only the default layer, nothing new is written.
+- c4bec2c: Pasting or duplicating canvas elements writes them, and their final stacking
+  indexes, in one Yjs transaction instead of two per element: duplicating 50
+  shapes sends peers one update instead of 100, and inside a frame the frame's
+  adoptions follow in a single second update instead of one per element. The
+  paste starts a new undo step, so one undo removes the whole paste and nothing
+  from the gesture before it. Blocks (notes, texts, images, attachments) are
+  still created one transaction each, because their creation is asynchronous.
+- Updated dependencies [38c4a78]
+- Updated dependencies [1ab40a5]
+- Updated dependencies [c982522]
+- Updated dependencies [a7c4643]
+- Updated dependencies [871e571]
+- Updated dependencies [e13b46e]
+- Updated dependencies [68242dc]
+- Updated dependencies [11a7710]
+- Updated dependencies [11a7710]
+- Updated dependencies [4d12815]
+- Updated dependencies [2f4df91]
+- Updated dependencies [a12e678]
+- Updated dependencies [2447500]
+- Updated dependencies [5918f84]
+- Updated dependencies [900dade]
+- Updated dependencies [dc738fa]
+- Updated dependencies [e677a3b]
+- Updated dependencies [8ce6769]
+- Updated dependencies [c4cfd0e]
+- Updated dependencies [2908a50]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [c6ab710]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [4d12815]
+- Updated dependencies [e13b46e]
+- Updated dependencies [83fc2d3]
+- Updated dependencies [066b754]
+- Updated dependencies [33e4341]
+  - @labre/affine-block-surface@0.44.0
+  - @labre/affine-shared@0.44.0
+  - @labre/std@0.44.0
+  - @labre/affine-model@0.44.0
+  - @labre/affine-components@0.44.0
+  - @labre/affine-widget-edgeless-toolbar@0.44.0
+  - @labre/affine-gfx-pointer@0.44.0
+  - @labre/affine-widget-frame-title@0.44.0
+  - @labre/affine-ext-loader@0.44.0
+  - @labre/global@0.44.0
+  - @labre/store@0.44.0
+
 ## 0.43.1
 
 ### Patch Changes

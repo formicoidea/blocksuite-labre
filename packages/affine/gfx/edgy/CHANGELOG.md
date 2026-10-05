@@ -1,5 +1,68 @@
 # @labre/affine-gfx-edgy
 
+## 0.44.0
+
+### Patch Changes
+
+- dfc4baa: Selection pane fixes from the product owner's review (the pane is unreleased). A
+  row no longer shows a raw `com.labre.*` key: the ten Wardley roles and three EDGY
+  board roles that declared a `labelKey` with no `labelFallback` now carry their
+  English wording, and a role with no wording at all reads as its element type.
+  The filter offers frames only: `selectionPaneFilterTargets` answers frames
+  only, and the `com.labre.selection-pane.filter.board` key is gone.
+  Layer rows are listed whatever the filter (`filterSelectionPaneTree` keeps every
+  layer node); a layer the filter empties says "{{count}} hidden by the filter"
+  (new key `com.labre.selection-pane.layer.filtered`), and "New layer" opens the
+  new layer's name field, focused and scrolled into view. Dragging a row now shows
+  a ghost under the pointer and a line at the gap it would land in (the frame
+  panel's model); the gap under the last row is a target, a frame's members stand
+  for their frame, and a gap the row cannot go to shows no line and a
+  `not-allowed` cursor instead of failing silently.
+- Updated dependencies [38c4a78]
+- Updated dependencies [1ab40a5]
+- Updated dependencies [c982522]
+- Updated dependencies [a7c4643]
+- Updated dependencies [871e571]
+- Updated dependencies [e13b46e]
+- Updated dependencies [68242dc]
+- Updated dependencies [11a7710]
+- Updated dependencies [11a7710]
+- Updated dependencies [4d12815]
+- Updated dependencies [2f4df91]
+- Updated dependencies [a12e678]
+- Updated dependencies [2447500]
+- Updated dependencies [5918f84]
+- Updated dependencies [900dade]
+- Updated dependencies [dc738fa]
+- Updated dependencies [2908a50]
+- Updated dependencies [e677a3b]
+- Updated dependencies [8ce6769]
+- Updated dependencies [c4cfd0e]
+- Updated dependencies [2908a50]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [c6ab710]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [4d12815]
+- Updated dependencies [e13b46e]
+- Updated dependencies [83fc2d3]
+- Updated dependencies [066b754]
+- Updated dependencies [33e4341]
+  - @labre/affine-block-surface@0.44.0
+  - @labre/affine-shared@0.44.0
+  - @labre/std@0.44.0
+  - @labre/affine-model@0.44.0
+  - @labre/affine-components@0.44.0
+  - @labre/affine-widget-edgeless-toolbar@0.44.0
+  - @labre/affine-gfx-group@0.44.0
+  - @labre/affine-gfx-shape@0.44.0
+  - @labre/affine-gfx-connector@0.44.0
+  - @labre/affine-gfx-template@0.44.0
+  - @labre/affine-gfx-pointer@0.44.0
+  - @labre/affine-ext-loader@0.44.0
+  - @labre/global@0.44.0
+  - @labre/store@0.44.0
+
 ## 0.43.1
 
 ### Patch Changes
