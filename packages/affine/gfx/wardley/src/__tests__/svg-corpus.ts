@@ -1,14 +1,18 @@
 import FULL_OWM_TEXT from './corpus/svg/full.owm?raw';
+import FULL_LABRE_SVG from './corpus/svg/full.labre.svg?raw';
 import HEURISTIC_SVG from './corpus/svg/heuristic.vector-editor.svg?raw';
 import HOSTILE_SVG from './corpus/svg/hostile.onlinewardleymaps.svg?raw';
 import FULL_OWM_SVG from './corpus/svg/full.onlinewardleymaps.svg?raw';
 import MIXED_OWM_SVG from './corpus/svg/mixed.onlinewardleymaps.svg?raw';
 import NOT_A_MAP_SVG from './corpus/svg/not-a-map.bpmn-io.svg?raw';
+import SMALL_LABRE_SVG from './corpus/svg/small.labre.svg?raw';
 import SMALL_OWM_TEXT from './corpus/svg/small.owm?raw';
 import SMALL_OWM_SVG from './corpus/svg/small.onlinewardleymaps.svg?raw';
 import SMALL_RENDERER_SVG from './corpus/svg/small.wardley-map-renderer.svg?raw';
 import SMALL_RENDERER_LIVE_SVG from './corpus/svg/small.wardley-map-renderer-interactive.svg?raw';
+import TEA_SHOP_LABRE_SVG from './corpus/svg/tea-shop.labre.svg?raw';
 import TEA_SHOP_OWM_SVG from './corpus/svg/tea-shop.onlinewardleymaps.svg?raw';
+import TEA_SHOP_OWM_TEXT from './corpus/svg/tea-shop.owm?raw';
 import TEA_SHOP_RENDERER_SVG from './corpus/svg/tea-shop.wardley-map-renderer.svg?raw';
 import TEA_SHOP_RENDERER_LIVE_SVG from './corpus/svg/tea-shop.wardley-map-renderer-interactive.svg?raw';
 
@@ -41,6 +45,11 @@ import TEA_SHOP_RENDERER_LIVE_SVG from './corpus/svg/tea-shop.wardley-map-render
  *   dependencies, and the things the heuristic must NOT promote — a curved
  *   link, a dashed red arrow, a thick bar, a pipeline-like rect, a circle with
  *   no name, a legend dot outside the plot.
+ * - `*.labre.svg` — Labre's own board export (ADR 0025, with the ADR 0032 §6
+ *   markers), written by `renderBoardSvg` in the integration suite's real
+ *   editor from the `.owm` text beside it laid out by `importWardleyOwm`,
+ *   every part switched on. Nothing edited by hand; element ids are the
+ *   nanoids that editor minted.
  * - `not-a-map.bpmn-io.svg` — WRITTEN by hand in bpmn.io's export shape (a
  *   pool, two events, a task, two flows): a picture that is not a map and
  *   must yield NO native element.
@@ -76,6 +85,10 @@ export const SVG_CORPUS = {
   hostile: HOSTILE_SVG,
   heuristic: HEURISTIC_SVG,
   notAMap: NOT_A_MAP_SVG,
+  teaShopOwmText: TEA_SHOP_OWM_TEXT,
+  smallLabre: SMALL_LABRE_SVG,
+  teaShopLabre: TEA_SHOP_LABRE_SVG,
+  fullLabre: FULL_LABRE_SVG,
   smallRenderer: SMALL_RENDERER_SVG,
   smallRendererLive: SMALL_RENDERER_LIVE_SVG,
   teaShopRenderer: TEA_SHOP_RENDERER_SVG,

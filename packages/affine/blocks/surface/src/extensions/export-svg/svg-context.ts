@@ -12,6 +12,14 @@ export interface SvgContext {
   canvas: HTMLCanvasElement;
   /** The finished document, with `viewBox`, `width`/`height` in px and `xmlns`. */
   serialize(): string;
+  /** Stamps the root `<svg>` with the marker version (ADR 0032 §6). */
+  markRoot(): void;
+  /**
+   * Runs `draw` inside a new `<g>` carrying `attributes`, then closes it —
+   * however many groups `draw` left open (`renderBoundTo` restores one more
+   * time than it saves), so the next element starts beside this one.
+   */
+  markedGroup(attributes: Record<string, string>, draw: () => void): void;
 }
 
 /** The slice of svgcanvas' private surface the path shim reaches into. */
@@ -22,6 +30,12 @@ interface SvgCanvasInternals {
   __currentDefaultPath: string;
   /** Writes the current (or given) matrix onto a node as `transform="…"`. */
   __applyTransformation(element: SVGElement, matrix?: DOMMatrix): void;
+  /** The parents of the open groups, pushed by `save()`, popped by `restore()`. */
+  __groupStack: unknown[];
+  /** The root `<svg>`. */
+  getSvg(): SVGSVGElement;
+  save(): void;
+  restore(): void;
   beginPath(): void;
   lineWidth: number;
   fill(): void;
@@ -399,12 +413,35 @@ export function createSvgContext(width: number, height: number): SvgContext {
   // `readLineDash`. Without it a single `getLineDash()` aborts the export.
   context.getLineDash = () => readLineDash(context.lineDash);
 
-  installPathOps(context as unknown as SvgCanvasInternals);
+  const internals = context as unknown as SvgCanvasInternals;
+  installPathOps(internals);
   installStaticPaint(context as unknown as Record<string, unknown>);
 
   return {
     ctx,
     canvas: ctx.canvas,
     serialize: () => finishSvg(context.getSerializedSvg(true), width, height),
+    markRoot: () =>
+      internals
+        .getSvg()
+        .setAttribute('data-labre-svg', BOARD_SVG_MARKER_VERSION),
+    markedGroup: (attributes, draw) => {
+      const depth = internals.__groupStack.length;
+      // svgcanvas' `save()` IS a new `<g>`, and it becomes the current node.
+      internals.save();
+      const group = internals.__currentElement;
+      for (const [name, value] of Object.entries(attributes)) {
+        group.setAttribute(name, value);
+      }
+      draw();
+      while (internals.__groupStack.length > depth) internals.restore();
+    },
   };
 }
+
+/**
+ * The marker version an export writes on its root (`data-labre-svg`), and the
+ * one a reader of it must know (ADR 0032 §6). Bumped only when the meaning of
+ * a marker changes; adding one is not a new version.
+ */
+export const BOARD_SVG_MARKER_VERSION = '1';

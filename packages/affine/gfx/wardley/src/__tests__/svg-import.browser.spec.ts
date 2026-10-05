@@ -356,6 +356,88 @@ describe('an OnlineWardleyMaps export', () => {
   });
 });
 
+/* ── Labre's own export ───────────────────────────────────────────────── */
+
+describe('Labre’s own board SVG', () => {
+  it.each([
+    ['the small map', SVG_CORPUS.smallLabre, SVG_CORPUS.smallOwmText],
+    ['the tea shop', SVG_CORPUS.teaShopLabre, SVG_CORPUS.teaShopOwmText],
+    ['every kind the pack draws', SVG_CORPUS.fullLabre, SVG_CORPUS.fullOwmText],
+  ])('imports %s to the same map as its OWM text', (_name, svg, owm) => {
+    const result = read(svg);
+    expect(result.report.sourceVersion).toBe('Labre SVG 1');
+    expectSameMap(
+      summarise(result.elements),
+      summarise(importWardleyOwm(owm).elements)
+    );
+  });
+
+  it('draws back what the markers state, and sketches nothing of a plain export', () => {
+    const result = read(SVG_CORPUS.fullLabre);
+    // Not a sketched shape, and not even a remark about the clip paths the
+    // export hoists to its root: a plain export reads back silent.
+    expect(result.report.notes).toEqual([]);
+  });
+
+  /** A Labre-marked file, written by hand, with markers a hostile file forges. */
+  const forged = (version: string, body: string) =>
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" data-labre-svg="${version}">
+      <g data-labre-id="map" data-labre-type="wardley" data-labre-role="wardley:map" data-labre-xywh="[0,0,1600,900]"><rect width="1600" height="900" fill="#fff"/></g>
+      ${body}
+    </svg>`;
+
+  it('refuses a role no Wardley table declares, and numbers that are not numbers', () => {
+    const result = read(
+      forged(
+        '1',
+        `<g data-labre-id="__proto__" data-labre-type="wardleyNode" data-labre-role="wardley:component" data-labre-xywh="[788,438,24,24]"><circle cx="800" cy="450" r="12"/></g>
+         <g data-labre-id="evil" data-labre-type="wardleyNode" data-labre-role="wardley:root-kit" data-labre-xywh="[100,100,24,24]"><circle cx="112" cy="112" r="12"/></g>
+         <g data-labre-id="nan" data-labre-type="wardleyNode" data-labre-role="wardley:component" data-labre-xywh="[NaN,1,2,3]"><circle cx="5" cy="5" r="2"/></g>
+         <g data-labre-id="short" data-labre-type="wardleyNode" data-labre-role="wardley:component" data-labre-xywh="[1,2]"><circle cx="9" cy="9" r="2"/></g>
+         <g data-labre-id="link" data-labre-type="connector" data-labre-role="wardley:dependency" data-labre-source="__proto__" data-labre-target="constructor" data-labre-xywh="[0,0,0,0]"><path d="M 0 0 L 9 9"/></g>`
+      )
+    );
+    expect(result.report.sourceVersion).toBe('Labre SVG 1');
+    // One native component — the forged id is a provisional name, nothing more.
+    expect(
+      result.elements
+        .filter(props => props.role === WARDLEY_ROLE.component)
+        .map(props => props.id)
+    ).toEqual(['__proto__']);
+    expect(Object.getPrototypeOf({})).toBe(Object.prototype);
+    // The unknown role is not a new role: no element carries it.
+    expect(
+      result.elements.some(props => props.role === 'wardley:root-kit')
+    ).toBe(false);
+    const byKey = (key: string) =>
+      result.report.notes.filter(
+        note => note.messageKey === `com.labre.wardley.import.svg.remark.${key}`
+      );
+    expect(byKey('unreadable-coordinates').map(note => note.sourceId)).toEqual([
+      'nan',
+      'short',
+    ]);
+    // A link to an id the file does not hold is not drawn as a dependency.
+    expect(byKey('dangling-link')).toHaveLength(1);
+    expect(
+      result.elements.filter(props => props.role === WARDLEY_ROLE.dependency)
+    ).toEqual([]);
+  });
+
+  it('reads only a marker version it knows', () => {
+    // A future version is not this reader's to interpret: the file falls
+    // through to the next producer, here the shapes, which find no axes.
+    const result = read(
+      forged(
+        '2',
+        '<g data-labre-id="a" data-labre-type="wardleyNode" data-labre-role="wardley:component" data-labre-xywh="[788,438,24,24]"><circle cx="800" cy="450" r="12"/></g>'
+      )
+    );
+    expect(result.report.sourceVersion).toBeUndefined();
+    expect(result.elements.some(props => props.role !== undefined)).toBe(false);
+  });
+});
+
 /* ── wardley-map-renderer ─────────────────────────────────────────────── */
 
 describe('a wardley-map-renderer SVG', () => {
@@ -720,8 +802,9 @@ describe('every producer marker survives sanitising', () => {
         .map(element => element.getAttribute('id')!)
         .filter(id => MARKED.test(id))
         .sort();
-    const data = (root: ParentNode) =>
-      Array.from(root.querySelectorAll('*'))
+    // The root's own attributes too: Labre's marker version rides on it.
+    const data = (root: Element) =>
+      [root, ...Array.from(root.querySelectorAll('*'))]
         .flatMap(element =>
           element
             .getAttributeNames()
@@ -730,7 +813,7 @@ describe('every producer marker survives sanitising', () => {
         )
         .sort();
     expect(ids(clean)).toEqual(ids(raw));
-    expect(data(clean)).toEqual(data(raw));
+    expect(data(clean)).toEqual(data(raw.documentElement));
   });
 });
 

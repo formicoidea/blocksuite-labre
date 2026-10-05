@@ -174,13 +174,20 @@ export function renderBoardSvg(
   const bound = exportBoundOf(options.framework ? board : drawn[0], drawn);
 
   return runWithRecordingPath2D(() => {
-    const { ctx, canvas, serialize } = createSvgContext(bound.w, bound.h);
-    renderer.renderBoundTo(
-      ctx,
-      new RoughCanvas(canvas),
-      bound,
-      elements as SurfaceElementModel[]
+    const { ctx, canvas, serialize, markRoot, markedGroup } = createSvgContext(
+      bound.w,
+      bound.h
     );
+    const rc = new RoughCanvas(canvas);
+    markRoot();
+    // One element per pass, each inside a group carrying its markers (ADR
+    // 0032 §6). Same paint order as one pass over the list: a pass draws its
+    // one element exactly as the list's loop would have.
+    for (const element of elements as SurfaceElementModel[]) {
+      markedGroup(boardSvgMarkers(element, bound), () =>
+        renderer.renderBoundTo(ctx, rc, bound, [element])
+      );
+    }
     // ponytail: the text blocks paint OVER every canvas element, not at their
     // layer index — interleaving them would mean one `renderBoundTo` per run
     // of elements between two blocks. Upgrade when a board needs a shape
@@ -188,15 +195,58 @@ export function renderBoardSvg(
     for (const block of texts) {
       const paint = std.getOptional(BlockSvgPainterIdentifier(block.flavour));
       if (!paint) continue;
-      ctx.save();
-      paint(
-        block,
-        ctx,
-        new DOMMatrix().translate(block.x - bound.x, block.y - bound.y),
-        renderer
-      );
-      ctx.restore();
+      markedGroup(boardSvgMarkers(block, bound), () => {
+        ctx.save();
+        paint(
+          block,
+          ctx,
+          new DOMMatrix().translate(block.x - bound.x, block.y - bound.y),
+          renderer
+        );
+        ctx.restore();
+      });
     }
     return { svg: serialize(), bound };
   });
+}
+
+/**
+ * What an element's group says about it in the file (ADR 0032 §6): its id, its
+ * type, its role, its stored bound in the FILE's coordinates, the two ends of
+ * a connector and the group it belongs to — base-class fields only, so every
+ * board's SVG carries them and no framework is named here.
+ *
+ * Ids and vocabulary, never prose: no `pivotDocId` (its contract forbids an
+ * exporter to read it), no `interchange`, no tag, no link, no text — a name is
+ * read back from the `<text>` the renderer already drew.
+ */
+export function boardSvgMarkers(
+  element: {
+    id: string;
+    xywh: string;
+    type?: string;
+    flavour?: string;
+    role?: string;
+    group?: { id: string } | null;
+    source?: { id?: string } | null;
+    target?: { id?: string } | null;
+  },
+  bound: Bound
+): Record<string, string> {
+  const own = Bound.deserialize(element.xywh);
+  const markers: Record<string, string> = {
+    'data-labre-id': element.id,
+    'data-labre-type': element.type ?? element.flavour ?? '',
+    'data-labre-xywh': JSON.stringify([
+      own.x - bound.x,
+      own.y - bound.y,
+      own.w,
+      own.h,
+    ]),
+  };
+  if (element.role) markers['data-labre-role'] = element.role;
+  if (element.source?.id) markers['data-labre-source'] = element.source.id;
+  if (element.target?.id) markers['data-labre-target'] = element.target.id;
+  if (element.group?.id) markers['data-labre-group'] = element.group.id;
+  return markers;
 }

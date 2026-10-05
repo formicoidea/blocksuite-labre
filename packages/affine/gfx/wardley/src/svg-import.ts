@@ -24,6 +24,7 @@ import {
 import { layoutWardleyStatements, type WardleyStatements } from './import.js';
 import { NODE_STROKE } from './node/consts.js';
 import type { DrawnWardleyMap } from './svg-read.js';
+import { recogniseLabreExport } from './svg-recognise-labre.js';
 import { recogniseOnlineWardleyMaps } from './svg-recognise-owm.js';
 import { recogniseWardleyMapRenderer } from './svg-recognise-renderer.js';
 import { recogniseByShape } from './svg-recognise-shapes.js';
@@ -42,7 +43,9 @@ import { WARDLEY_SVG_IMPORT_REMARKS } from './svg-remarks.js';
  * **What it guesses, and from what.** Roles, relations and coordinates — and
  * only when it can say where they came from. A producer is detected by a
  * structural marker on the sanitised tree, never by searching the text, in a
- * fixed order that stops at the first certain match: wardley-map-renderer
+ * fixed order that stops at the first certain match: Labre's own board export
+ * (its `data-labre-svg` root and per-element `data-labre-*` markers, which
+ * state roles exactly, `svg-recognise-labre.ts`), then wardley-map-renderer
  * (its `axes` and `nodes` layers, `svg-recognise-renderer.ts`), then
  * OnlineWardleyMaps (an element marker inside its own movable wrapper,
  * `svg-recognise-owm.ts`), then — no marker at all — the shapes themselves
@@ -102,7 +105,12 @@ import { WARDLEY_SVG_IMPORT_REMARKS } from './svg-remarks.js';
 
 /** Detection order (ADR 0032 §4): the first certain match wins. */
 const RECOGNISERS: readonly ((root: Element) => DrawnWardleyMap | undefined)[] =
-  [recogniseWardleyMapRenderer, recogniseOnlineWardleyMaps, recogniseByShape];
+  [
+    recogniseLabreExport,
+    recogniseWardleyMapRenderer,
+    recogniseOnlineWardleyMaps,
+    recogniseByShape,
+  ];
 
 export function importWardleySvg(
   source: string,
