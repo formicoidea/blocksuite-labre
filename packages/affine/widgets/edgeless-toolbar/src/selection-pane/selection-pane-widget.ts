@@ -740,25 +740,32 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       this._openLayerMenu(anchor, node);
       return;
     }
+    popMenu(popupTargetFromElement(anchor), {
+      options: { items: [this._hideForEveryoneItem(node)] },
+    });
+  }
+
+  /**
+   * "Hide for everyone" (or "Show for everyone"), in a row's or a layer's
+   * menu alike: painted with the warning tokens, and written on the element
+   * or on the layer's record (`hidden: true`) depending on the row.
+   */
+  private _hideForEveryoneItem(node: SelectionPaneNode) {
     const wording = node.hiddenForEveryone
       ? SELECTION_PANE_SHOW_FOR_EVERYONE
       : SELECTION_PANE_HIDE_FOR_EVERYONE;
-    popMenu(popupTargetFromElement(anchor), {
-      options: {
-        items: [
-          menu.action({
-            name: translateKey(this.std, ...wording),
-            prefix: node.hiddenForEveryone ? ViewIcon() : InvisibleIcon(),
-            class: { 'warning-item': true },
-            testId: 'selection-pane-hide-for-everyone',
-            select: () => {
-              this._run('canvas.visibility.hideForEveryone', {
-                ids: [node.id],
-                hidden: !node.hiddenForEveryone,
-              });
-            },
-          }),
-        ],
+    const target =
+      node.kind === 'layer' ? { layerIds: [node.id] } : { ids: [node.id] };
+    return menu.action({
+      name: translateKey(this.std, ...wording),
+      prefix: node.hiddenForEveryone ? ViewIcon() : InvisibleIcon(),
+      class: { 'warning-item': true },
+      testId: 'selection-pane-hide-for-everyone',
+      select: () => {
+        this._run('canvas.visibility.hideForEveryone', {
+          ...target,
+          hidden: !node.hiddenForEveryone,
+        });
       },
     });
   }
@@ -770,24 +777,10 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
    * The default layer cannot be deleted, so its menu has no such entry.
    */
   private _openLayerMenu(anchor: HTMLElement, node: SelectionPaneNode) {
-    const wording = node.hiddenForEveryone
-      ? SELECTION_PANE_SHOW_FOR_EVERYONE
-      : SELECTION_PANE_HIDE_FOR_EVERYONE;
     popMenu(popupTargetFromElement(anchor), {
       options: {
         items: [
-          menu.action({
-            name: translateKey(this.std, ...wording),
-            prefix: node.hiddenForEveryone ? ViewIcon() : InvisibleIcon(),
-            class: { 'warning-item': true },
-            testId: 'selection-pane-hide-for-everyone',
-            select: () => {
-              this._run('canvas.visibility.hideForEveryone', {
-                layerIds: [node.id],
-                hidden: !node.hiddenForEveryone,
-              });
-            },
-          }),
+          this._hideForEveryoneItem(node),
           menu.action({
             name: translateKey(this.std, ...SELECTION_PANE_DELETE_LAYER),
             prefix: DeleteIcon(),
@@ -1198,35 +1191,7 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
           ${collapsed ? ArrowRightSmallIcon() : ArrowDownSmallIcon()}
         </button>
         <span class="selection-pane-icon">${LayerIcon()}</span>
-        ${this._renaming === node.id
-          ? html`<input
-              class="selection-pane-rename"
-              data-testid="selection-pane-rename"
-              aria-label=${translateKey(std, ...TOOLBAR_RENAME)}
-              .value=${name}
-              @click=${this._swallow}
-              @dblclick=${this._swallow}
-              @keydown=${(event: KeyboardEvent) =>
-                this._onRenameKeydown(event, node.id)}
-              @blur=${(event: FocusEvent) =>
-                this._commitRename(node.id, event.target as HTMLInputElement)}
-            />`
-          : html`<span class="selection-pane-label" title=${name}
-              >${name}</span
-            >`}
-        <button
-          class="selection-pane-eye"
-          type="button"
-          data-testid="selection-pane-eye"
-          aria-pressed=${node.hiddenLocal ? 'true' : 'false'}
-          aria-label=${translateKey(
-            std,
-            ...(node.hiddenLocal ? SELECTION_PANE_SHOW : SELECTION_PANE_HIDE)
-          )}
-          @click=${(event: MouseEvent) => this._onEyeClick(event, node)}
-        >
-          ${node.hiddenLocal ? InvisibleIcon() : ViewIcon()}
-        </button>
+        ${this._renderName(node.id, name)} ${this._renderEye(node)}
         ${std.store.readonly
           ? nothing
           : html`<button
@@ -1257,6 +1222,43 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
             })}
           </div>`
         : nothing}`;
+  }
+
+  /** A row's name, or the field that renames it in place. */
+  private _renderName(id: string, name: string) {
+    if (this._renaming !== id) {
+      return html`<span class="selection-pane-label" title=${name}
+        >${name}</span
+      >`;
+    }
+    return html`<input
+      class="selection-pane-rename"
+      data-testid="selection-pane-rename"
+      aria-label=${translateKey(this.std, ...TOOLBAR_RENAME)}
+      .value=${name}
+      @click=${this._swallow}
+      @dblclick=${this._swallow}
+      @keydown=${(event: KeyboardEvent) => this._onRenameKeydown(event, id)}
+      @blur=${(event: FocusEvent) =>
+        this._commitRename(id, event.target as HTMLInputElement)}
+    />`;
+  }
+
+  /** A row's eye: hide it, or the whole layer, for this viewer only. */
+  private _renderEye(node: SelectionPaneNode) {
+    return html`<button
+      class="selection-pane-eye"
+      type="button"
+      data-testid="selection-pane-eye"
+      aria-pressed=${node.hiddenLocal ? 'true' : 'false'}
+      aria-label=${translateKey(
+        this.std,
+        ...(node.hiddenLocal ? SELECTION_PANE_SHOW : SELECTION_PANE_HIDE)
+      )}
+      @click=${(event: MouseEvent) => this._onEyeClick(event, node)}
+    >
+      ${node.hiddenLocal ? InvisibleIcon() : ViewIcon()}
+    </button>`;
   }
 
   private _renderRow(row: PaneRow) {
@@ -1320,35 +1322,7 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       <span class="selection-pane-icon"
         >${selectionPaneRowIcon(node.type)}</span
       >
-      ${this._renaming === node.id
-        ? html`<input
-            class="selection-pane-rename"
-            data-testid="selection-pane-rename"
-            aria-label=${translateKey(std, ...TOOLBAR_RENAME)}
-            .value=${label}
-            @click=${this._swallow}
-            @dblclick=${this._swallow}
-            @keydown=${(event: KeyboardEvent) =>
-              this._onRenameKeydown(event, node.id)}
-            @blur=${(event: FocusEvent) =>
-              this._commitRename(node.id, event.target as HTMLInputElement)}
-          />`
-        : html`<span class="selection-pane-label" title=${label}
-            >${label}</span
-          >`}
-      <button
-        class="selection-pane-eye"
-        type="button"
-        data-testid="selection-pane-eye"
-        aria-pressed=${node.hiddenLocal ? 'true' : 'false'}
-        aria-label=${translateKey(
-          std,
-          ...(node.hiddenLocal ? SELECTION_PANE_SHOW : SELECTION_PANE_HIDE)
-        )}
-        @click=${(event: MouseEvent) => this._onEyeClick(event, node)}
-      >
-        ${node.hiddenLocal ? InvisibleIcon() : ViewIcon()}
-      </button>
+      ${this._renderName(node.id, label)} ${this._renderEye(node)}
       <button
         class="selection-pane-lock"
         type="button"

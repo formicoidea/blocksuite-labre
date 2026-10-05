@@ -37,6 +37,29 @@ export function ownLayerOf(model: unknown): string | undefined {
 }
 
 /**
+ * The model whose `layer` decides `model`'s (ADR 0031 §5): its outermost
+ * group-like ELEMENT ancestor (a group, a mindmap), else `model` itself. A
+ * group lives in one layer, stored once on its outermost group, so this is
+ * what {@link SurfaceUserLayers.effectiveLayerOf} reads and what a "move to
+ * layer" writes on. Frames are blocks and do not count. `groups` walks the
+ * model's surface, which throws on a detached model: that one carries itself.
+ */
+export function layerCarrierOf(model: GfxModel): GfxModel {
+  let groups: readonly unknown[] = [];
+  try {
+    groups = model.groups ?? [];
+  } catch {
+    groups = [];
+  }
+  for (let i = groups.length - 1; i >= 0; i--) {
+    if (groups[i] instanceof GfxPrimitiveElementModel) {
+      return groups[i] as GfxModel;
+    }
+  }
+  return model;
+}
+
+/**
  * The user layers of one surface, resolved for the comparator (ADR 0031 §4).
  *
  * Two caches, both thrown away by a revision bump rather than kept in step:
@@ -101,19 +124,7 @@ export class SurfaceUserLayers {
     const cached = this._effective.get(model);
     if (cached && cached.revision === this._revision) return cached.layer;
 
-    let named = ownLayerOf(model);
-    let groups: readonly unknown[] = [];
-    try {
-      groups = model.groups ?? [];
-    } catch {
-      groups = [];
-    }
-    for (let i = groups.length - 1; i >= 0; i--) {
-      if (groups[i] instanceof GfxPrimitiveElementModel) {
-        named = ownLayerOf(groups[i]);
-        break;
-      }
-    }
+    const named = ownLayerOf(layerCarrierOf(model));
     const ranks = this.ranks;
     const layer =
       named !== undefined && ranks?.has(named) ? named : DEFAULT_LAYER_ID;

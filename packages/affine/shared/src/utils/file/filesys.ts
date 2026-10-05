@@ -276,17 +276,14 @@ export async function getImageFilesFromLocal() {
 /**
  * A name a file system will accept, minus the extension.
  *
- * The sanitiser the framework exports each wrote for themselves
- * (`wardleySafeFilename`, `c4SafeFilename`, BPMN's) — same five steps, same
- * 120-character ceiling — lifted here for the callers that belong to no
- * framework at all. The generic SVG export (ADR 0025) is the first of them: it
- * writes a file for ELEVEN kinds of board, so it has no framework's fallback to
- * borrow and takes one as a parameter instead.
- *
- * The three framework copies stay where they are: each is part of an
- * interchange capability with its own format id and its own declared fallback
- * (`map`, `board`, `process`), and rewriting them to call this one would touch
- * three exported APIs for no behaviour change.
+ * Every file the library writes is named through it: the generic SVG export
+ * (ADR 0025), which writes a file for every kind of board and so takes its
+ * fallback as a parameter, and the framework interchanges, whose exported
+ * sanitisers (`wardleySafeFilename`, `c4SafeFilename`, `bpmnSafeFilename`,
+ * `umlSafeFilename`) keep their names and signatures and only supply their own
+ * fallback word. They were verbatim copies of this rule;
+ * `safe-filename-parity.unit.spec.ts` in `packages/affine/all` holds every one
+ * to it, because what a downloaded file is called is visible behaviour.
  */
 export function safeFilename(
   raw: string | undefined,

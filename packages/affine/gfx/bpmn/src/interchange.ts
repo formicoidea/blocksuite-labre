@@ -21,6 +21,7 @@ import {
   TextElementModel,
 } from '@labre/affine-model';
 import { fillPlaceholders } from '@labre/affine-shared/services';
+import { safeFilename } from '@labre/affine-shared/utils';
 import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
 
 import {
@@ -270,27 +271,13 @@ export function bpmnBoardFrom(
 }
 
 /**
- * A name a file system will accept, minus the extension.
- *
- * Every character a file system reserves becomes `-`, whitespace runs collapse,
- * and the result is capped: `process` is a better download than one a browser
- * silently refuses.
- *
- * The trailing `[. ]` trim is the Windows tail case and it is not decorative: a
- * board called "Order to cash." would otherwise download as
- * `Order to cash..bpmn`, and Windows strips trailing dots and spaces from a
- * name anyway — so the extension is what would get eaten. Trimmed AFTER the
- * cap, because the cap can create one.
+ * A name a file system will accept, minus the extension: the shared
+ * `safeFilename` with BPMN's fallback — `process` is a better download than
+ * one a browser silently refuses. Held to it by
+ * `safe-filename-parity.unit.spec.ts`.
  */
 export function bpmnSafeFilename(raw: string | undefined): string {
-  const safe = (raw ?? '')
-    .trim()
-    .replaceAll(/[\\/:*?"<>|]/g, '-')
-    .replaceAll(/\s+/g, ' ')
-    .trim()
-    .slice(0, 120)
-    .replace(/[. ]+$/, '');
-  return safe || 'process';
+  return safeFilename(raw, 'process');
 }
 
 /* ── The capability ───────────────────────────────────────────────────── */

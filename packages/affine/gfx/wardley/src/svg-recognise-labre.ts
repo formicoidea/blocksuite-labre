@@ -3,7 +3,7 @@ import { BOARD_SVG_MARKER_VERSION } from '@labre/affine-block-surface';
 import { matchLabels, type OwmPlot, owmPlotOf } from './export.js';
 import type { WardleyNodeKeyword } from './import.js';
 import { WARDLEY_ROLE, WARDLEY_ROLES } from './roles.js';
-import type { DrawnWardleyMap } from './svg-read.js';
+import { type DrawnWardleyMap, startDrawnMap } from './svg-read.js';
 import { WARDLEY_SVG_IMPORT_REMARKS } from './svg-remarks.js';
 
 /**
@@ -89,20 +89,11 @@ export function recogniseLabreExport(
     return undefined;
   }
 
-  const drawn: DrawnWardleyMap = {
+  const { drawn, consume: consumeElement } = startDrawnMap({
     producer: `Labre SVG ${BOARD_SVG_MARKER_VERSION}`,
-    nodes: [],
-    pipelines: [],
-    evolutions: [],
-    links: [],
-    notes: [],
-    inertias: [],
-    consumed: new Set(),
-    remarks: [],
-  };
-  const consume = (marked: Marked | undefined) => {
-    if (marked) drawn.consumed.add(marked.element);
-  };
+  });
+  const consume = (marked: Marked | undefined) =>
+    consumeElement(marked?.element);
 
   /* Every marked group whose numbers are numbers and whose role is Wardley's. */
   const marked: Marked[] = [];

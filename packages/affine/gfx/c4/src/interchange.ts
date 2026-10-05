@@ -13,6 +13,7 @@ import {
   GroupElementModel,
   TextElementModel,
 } from '@labre/affine-model';
+import { safeFilename } from '@labre/affine-shared/utils';
 import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
 
 import { type C4ExportBoard, exportC4Mermaid } from './export.js';
@@ -107,24 +108,12 @@ export function c4BoardFrom(
 }
 
 /**
- * A name a file system will accept, minus the extension.
- *
- * The same transformations `bpmnSafeFilename` applies and for the same reasons
- * — reserved characters become `-`, whitespace runs collapse, the result is
- * capped, and the Windows tail of dots and spaces is trimmed AFTER the cap so
- * the extension is not the thing that gets eaten. Duplicated rather than
- * imported: a filename rule is not API, and coupling two frameworks to share
- * eight lines would be the worse trade.
+ * A name a file system will accept, minus the extension: the shared
+ * `safeFilename` with C4's fallback, `diagram`. Held to it by
+ * `safe-filename-parity.unit.spec.ts`.
  */
 export function c4SafeFilename(raw: string | undefined): string {
-  const safe = (raw ?? '')
-    .trim()
-    .replaceAll(/[\\/:*?"<>|]/g, '-')
-    .replaceAll(/\s+/g, ' ')
-    .trim()
-    .slice(0, 120)
-    .replace(/[. ]+$/, '');
-  return safe || 'diagram';
+  return safeFilename(raw, 'diagram');
 }
 
 /* ── The capability ───────────────────────────────────────────────────── */
