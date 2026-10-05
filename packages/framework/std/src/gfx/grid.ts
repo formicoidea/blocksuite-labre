@@ -281,8 +281,37 @@ export class GridManager extends GfxExtension {
 
   /**
    * Search for elements in a bound.
-   * @param bound
-   * @param options
+   *
+   * Skips the stored `hidden` (mindmap collapse) and NOTHING ELSE, on purpose:
+   * this answer is shared by painting, picking AND logic — rules, legends,
+   * semantic exports — and a viewer's local hide must never change what
+   * another viewer's rules or legend say about the same document (ADR 0031
+   * §8). A new visibility is applied by the consumer, never added here.
+   *
+   * Caller audit (ADR 0031 §9; the row of its table each caller belongs to):
+   *
+   * - paint — the canvas renderer's bound pass (`_renderByBound`, which also
+   *   paints the SVG export and the PNG export's canvas layer) and the DOM
+   *   renderer's two passes: filter through the shared paint predicate
+   *   (`isPainted`, `affine-block-surface/renderer/paint-predicate.ts`).
+   * - paint, blocks — `gfx-viewport`'s `getModelsInViewport` in the edgeless
+   *   root and its preview: which DOM blocks to mount; a block's own
+   *   visibility is its view's business.
+   * - picking — `GfxController.getElementByPoint` and every caller of it
+   *   (selection, hover highlights, frame highlight, peek, connector reveal,
+   *   mindmap drag, pan, text tools, element link, spotlight).
+   * - marquee — `GfxController.getElementsByBound` from
+   *   `InteractivityManager.handleBoxSelection`.
+   * - export — `getElementsByBound` from the PNG export (`ExportManager`),
+   *   the SVG board export (`renderBoardSvg`) and copy-as-PNG
+   *   (`EdgelessClipboardController`'s canvas path).
+   * - logic, keeps every visibility — `getElementsByBound` from the legend
+   *   (`rolesInBound`, the legend redraw), and the surface-ref slash menu's
+   *   free-space search (a hidden element still takes its room).
+   * - pointer-adjacent, no row in the table yet, keeps every visibility today
+   *   — the connector tool's connectable targets in view and the snap
+   *   overlay's alignment candidates: a connector may still attach to, and a
+   *   drag still snap to, an element the viewer hid.
    */
   search<T extends BuiltInFilterType = 'canvas' | 'block'>(
     bound: IBound,

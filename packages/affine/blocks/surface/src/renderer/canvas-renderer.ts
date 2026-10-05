@@ -28,6 +28,7 @@ import { ElementRendererIdentifier } from '../extensions/element-renderer.js';
 import { RoughCanvas } from '../utils/rough/canvas.js';
 import type { ElementRenderer } from './elements/index.js';
 import type { Overlay } from './overlay.js';
+import { isPainted } from './paint-predicate.js';
 
 type EnvProvider = {
   generateColorProperty: (color: Color, fallback?: Color) => string;
@@ -363,7 +364,7 @@ export class CanvasRenderer {
     let layerBound: Bound | null = null;
 
     for (const element of elements) {
-      const display = (element.display ?? true) && !element.hidden;
+      const display = isPainted(element);
 
       if (!display) {
         continue;
@@ -743,7 +744,7 @@ export class CanvasRenderer {
       }) as SurfaceElementModel[]);
 
     for (const element of elements) {
-      const display = (element.display ?? true) && !element.hidden;
+      const display = isPainted(element);
       if (display && intersects(getBoundWithRotation(element), bound)) {
         renderStats && (renderStats.visibleElementCount += 1);
         if (

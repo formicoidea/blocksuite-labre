@@ -25,6 +25,7 @@ import type { SurfaceElementModel } from '../element-model/base.js';
 import type { DomElementRenderer } from './dom-elements/index.js';
 import { DomElementRendererIdentifier } from './dom-elements/index.js';
 import type { Overlay } from './overlay.js';
+import { isPainted } from './paint-predicate.js';
 
 type EnvProvider = {
   generateColorProperty: (color: Color, fallback?: Color) => string;
@@ -582,7 +583,7 @@ export class DomRenderer {
 
     // 1. Update dirty elements
     for (const elementModel of elementsFromGrid) {
-      const display = (elementModel.display ?? true) && !elementModel.hidden;
+      const display = isPainted(elementModel);
       if (
         display &&
         intersects(getBoundWithRotation(elementModel), viewportBounds)
@@ -670,7 +671,7 @@ export class DomRenderer {
     const visibleElementIds = new Set<string>();
 
     for (const elementModel of elementsFromGrid) {
-      const display = (elementModel.display ?? true) && !elementModel.hidden;
+      const display = isPainted(elementModel);
       if (
         display &&
         intersects(getBoundWithRotation(elementModel), viewportBounds)
