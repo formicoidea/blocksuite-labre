@@ -17,6 +17,7 @@ export default defineConfig({
       'src/__tests__/palette-carousel*.unit.spec.ts',
       'src/__tests__/popup-overflow*.unit.spec.ts',
       'src/__tests__/resource-controller*.unit.spec.ts',
+      'src/__tests__/filterable-list*.unit.spec.ts',
     ],
     testTimeout: 10000,
     environment: 'happy-dom',
