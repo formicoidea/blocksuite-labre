@@ -302,6 +302,37 @@ describe('selection pane', () => {
 
       expect(rowIds()).toEqual([inside]);
     });
+
+    // A narrow editor once dropped the pane's button outright: the toolbar
+    // moves a quick tool it has no room for into its "more tools" menu only
+    // when the tool declares a menu entry, and the pane's declared none.
+    test('at a narrow width the button moves into the more-tools menu and still opens the pane', async () => {
+      const container = window.editor.parentElement as HTMLElement;
+      container.style.width = '520px';
+      try {
+        await wait(300);
+        await settle();
+        expect(toolButton(), 'no room left for the button').toBeNull();
+
+        const toolbarRoot =
+          edgeless.widgetComponents['edgeless-toolbar-widget']!.shadowRoot!;
+        const more = deepQuery(toolbarRoot, '.quick-tool-more-button');
+        expect(more, 'the toolbar shows its more-tools button').toBeTruthy();
+        await userEvent.click(page.elementLocator(more!));
+        await wait(100);
+
+        const entry = deepQueryAll(document, 'affine-menu-button').find(
+          button => button.textContent?.includes('Selection pane')
+        );
+        expect(entry, 'the more-tools menu offers the pane').toBeTruthy();
+        await userEvent.click(page.elementLocator(entry!));
+        await settle();
+
+        expect(widget()!.paneOpen).toBe(true);
+      } finally {
+        container.style.width = '';
+      }
+    });
   });
 
   test('a read-only document is listed and refuses every write', async () => {

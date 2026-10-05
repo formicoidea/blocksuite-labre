@@ -6,8 +6,9 @@ import {
   SelectionPaneProvider,
   translateKey,
 } from '@labre/affine-shared/services';
+import { menu } from '@labre/affine-components/context-menu';
 import { SignalWatcher } from '@labre/global/lit';
-import { runCommand } from '@labre/std';
+import { type BlockStdScope, runCommand } from '@labre/std';
 import { LayerIcon } from '@blocksuite/icons/lit';
 import { css, html, LitElement } from 'lit';
 
@@ -18,13 +19,25 @@ import { SELECTION_PANE_TITLE } from '../translations.js';
 export const SELECTION_PANE_TOOL_BUTTON = 'edgeless-selection-pane-tool-button';
 
 /**
+ * The button and its "more tools" entry both run `canvas.selectionPane.toggle`
+ * rather than calling the seam, so `SelectionPaneOpened` is emitted in ONE
+ * place whichever surface opened the pane.
+ */
+function toggleSelectionPane(std: BlockStdScope) {
+  const toggle = selectionPaneCommands.find(
+    command => command.id === 'canvas.selectionPane.toggle'
+  );
+  if (!toggle) return;
+  runCommand(std, toggle, {
+    surface: 'contextual-toolbar',
+    source: 'toolbar:general',
+  });
+}
+
+/**
  * The edgeless toolbar's entry to the selection pane: a quick tool, placed and
  * styled like the undo and frame ones. An action, not a tool mode, so `type`
  * is empty; it reads as active while the library's own pane is open.
- *
- * It runs `canvas.selectionPane.toggle` rather than calling the seam itself,
- * so `SelectionPaneOpened` is emitted in ONE place whichever surface opened
- * the pane.
  */
 export class EdgelessSelectionPaneToolButton extends QuickToolMixin(
   SignalWatcher(LitElement)
@@ -40,14 +53,7 @@ export class EdgelessSelectionPaneToolButton extends QuickToolMixin(
   override type = [];
 
   private _onClick() {
-    const toggle = selectionPaneCommands.find(
-      command => command.id === 'canvas.selectionPane.toggle'
-    );
-    if (!toggle) return;
-    runCommand(this.edgeless.std, toggle, {
-      surface: 'contextual-toolbar',
-      source: 'toolbar:general',
-    });
+    toggleSelectionPane(this.edgeless.std);
   }
 
   override render() {
@@ -72,6 +78,10 @@ export class EdgelessSelectionPaneToolButton extends QuickToolMixin(
  * removes the button with the pane, because a control that opens nothing is a
  * lie. Not hidden on a read-only document — the pane is how a reader finds
  * what is on it.
+ *
+ * The `menu` entry is what the toolbar moves into its "more tools" menu when a
+ * narrow editor leaves no room for the button; a quick tool without one is
+ * dropped there, which is how the pane once went missing below ~800 px.
  */
 export const selectionPaneQuickTool = QuickToolExtension(
   'selection-pane',
@@ -79,6 +89,11 @@ export const selectionPaneQuickTool = QuickToolExtension(
     content: html`<edgeless-selection-pane-tool-button
       .edgeless=${block}
     ></edgeless-selection-pane-tool-button>`,
+    menu: menu.action({
+      name: translateKey(block.std, ...SELECTION_PANE_TITLE),
+      prefix: LayerIcon(),
+      select: () => toggleSelectionPane(block.std),
+    }),
     enable: !!block.std.getOptional(SelectionPaneProvider),
   })
 );
