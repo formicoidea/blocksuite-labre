@@ -8,6 +8,7 @@
   "include": ["./src"],
   "references": [
     { "path": "../../components" },
+    { "path": "../../model" },
     { "path": "../../ext-loader" },
     { "path": "../../rich-text" },
     { "path": "../../shared" },
