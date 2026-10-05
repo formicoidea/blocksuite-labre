@@ -18,11 +18,14 @@ export const CALLOUT_SLASH_DESCRIPTION: ChromeWording = [
 /** The item's tooltip caption says the exact same word as its name. */
 export const CALLOUT_SLASH_CAPTION = CALLOUT_SLASH_NAME;
 
+/** "Turn into → Callout" names the block with the slash item's own word. */
+export const CALLOUT_TURN_INTO_NAME = CALLOUT_SLASH_NAME;
+
 /**
  * Every wording declared above, in declaration order — walked by
  * `PACKAGE_WORDINGS` in `packages/affine/all/src/translations.ts`. The
- * caption alias is not listed again, same rule other packages' chrome
- * aliases already follow.
+ * caption and turn-into aliases are not listed again, same rule other
+ * packages' chrome aliases already follow.
  */
 export const CALLOUT_WORDINGS: readonly ChromeWording[] = [
   CALLOUT_SLASH_NAME,

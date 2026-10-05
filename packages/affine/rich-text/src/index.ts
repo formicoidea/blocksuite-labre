@@ -1,4 +1,10 @@
-export { type TextConversionConfig, textConversionConfigs } from './conversion';
+export {
+  type TextConversionConfig,
+  textConversionConfigs,
+  type TextConversionEntry,
+  TextConversionEntryExtension,
+  TextConversionEntryIdentifier,
+} from './conversion';
 export {
   asyncGetRichText,
   asyncSetInlineRange,

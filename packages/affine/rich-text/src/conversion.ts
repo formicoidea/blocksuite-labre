@@ -42,6 +42,9 @@ import {
   BLOCK_TYPE_TODO_LIST_DESCRIPTION,
   type ChromeWording,
 } from '@labre/affine-shared/services';
+import { createIdentifier } from '@labre/global/di';
+import type { BlockStdScope } from '@labre/std';
+import type { BlockModel, ExtensionType } from '@labre/store';
 import type { TemplateResult } from 'lit';
 
 /**
@@ -201,3 +204,38 @@ export const textConversionConfigs: TextConversionConfig[] = [
     descriptionWording: BLOCK_TYPE_DIVIDER_DESCRIPTION,
   },
 ];
+
+/**
+ * A "Turn into" entry contributed by a block package from its OWN view
+ * extension, for a conversion `updateBlockType` cannot carry (#418).
+ *
+ * `textConversionConfigs` above is static and unconditional: every entry in it
+ * is offered whatever the host's flags say. A block whose tooling is
+ * flag-gated (ADR 0009) therefore cannot be listed there; it registers this
+ * entry from its gated view extension instead, so `{ callout: false }` removes
+ * the entry with the rest of the callout's tooling. Mirrors
+ * `SlashMenuConfigExtension`: one DI variant per flavour, read with `getAll`
+ * by the menu that draws the entries.
+ */
+export interface TextConversionEntry {
+  flavour: string;
+  name: string;
+  nameWording: ChromeWording;
+  icon: TemplateResult;
+  /** Whether the entry is offered for the models currently selected. */
+  when: (std: BlockStdScope, models: BlockModel[]) => boolean;
+  run: (std: BlockStdScope, models: BlockModel[]) => void;
+}
+
+export const TextConversionEntryIdentifier =
+  createIdentifier<TextConversionEntry>('AffineTextConversionEntry');
+
+export function TextConversionEntryExtension(
+  entry: TextConversionEntry
+): ExtensionType {
+  return {
+    setup: di => {
+      di.addImpl(TextConversionEntryIdentifier(entry.flavour), entry);
+    },
+  };
+}
