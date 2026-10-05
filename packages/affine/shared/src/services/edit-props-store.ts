@@ -52,6 +52,13 @@ const LocalPropsSchema = z.object({
    */
   localHiddenElements: z.array(z.string()),
   /**
+   * The user layers this viewer hid on this document's canvas (ADR 0031 §8,
+   * stage 7). Same owner, same key scheme, same lifetime as
+   * `localHiddenElements`; a separate key so the element list keeps the shape
+   * it already has in viewers' storage.
+   */
+  localHiddenLayers: z.array(z.string()),
+  /**
    * This viewer's grid override on this document's canvas (ADR 0031 §11),
    * keyed like the viewport. Absent = the document, the host or the library
    * decides. Owned by `CanvasGrid`.
@@ -166,6 +173,8 @@ export class EditPropsStore extends LifeCycleWatcher {
         return 'blocksuite:connector:centerAnchor';
       case 'localHiddenElements':
         return 'blocksuite:' + id + ':localHiddenElements';
+      case 'localHiddenLayers':
+        return 'blocksuite:' + id + ':localHiddenLayers';
       case 'localShowGrid':
         return 'blocksuite:' + id + ':localShowGrid';
       default:

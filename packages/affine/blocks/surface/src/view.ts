@@ -16,6 +16,7 @@ import { literal } from 'lit/static-html.js';
 import { effects } from './effects';
 import {
   auditCommands,
+  CanvasActiveLayer,
   canvasGridCommands,
   EdgelessCRUDExtension,
   EdgelessLegacySlotExtension,
@@ -30,6 +31,8 @@ import {
   selectionPaneCommands,
   SelectionPaneModel,
   SpotlightManager,
+  UserLayerMiddlewareBuilder,
+  userLayerCommands,
   ValidationManager,
   validationExceptionToolbarExtension,
   ValidationOverlay,
@@ -121,6 +124,12 @@ export class SurfaceViewExtension extends ViewExtensionProvider {
       // export; previews follow the document setting alone.
       context.register(CanvasGrid);
       context.register(CommandExtension(canvasGridCommands));
+      // User layers (ADR 0031 §2-§6): the viewer's active layer (session
+      // only), the `beforeAdd` middleware that stamps it on what is created,
+      // and the commands the pane's layer rows run. Content, never gated.
+      context.register(CanvasActiveLayer);
+      context.register(UserLayerMiddlewareBuilder);
+      context.register(CommandExtension(userLayerCommands));
     } else {
       context.register(
         BlockViewExtension('affine:surface', literal`affine-surface-void`)

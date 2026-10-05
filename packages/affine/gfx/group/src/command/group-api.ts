@@ -13,6 +13,7 @@ import {
   type GfxController,
   GfxControllerIdentifier,
   type GfxModel,
+  GfxPrimitiveElementModel,
   measureOperation,
 } from '@labre/std/gfx';
 
@@ -95,6 +96,58 @@ const buildUngroupIndexes = (
   );
 };
 
+/**
+ * The layer a new group is stored in (ADR 0031 §5): the effective layer of
+ * its HIGHEST member, so grouping never sinks what was on top. `'@default'`
+ * is passed explicitly — the creation middleware then writes no key, rather
+ * than reading "absent" as "the viewer's active layer". Nothing at all while
+ * the surface has no user layer.
+ */
+function groupLayerProps(
+  gfx: GfxController,
+  elements: GfxModel[] | string[]
+): { layer?: string } {
+  const userLayers = gfx.surface?.userLayers;
+  if (!userLayers?.ranks) return {};
+  const models = elements
+    .map(el => (typeof el === 'string' ? gfx.getElementById(el) : el))
+    .filter((model): model is GfxModel => !!model && 'index' in model)
+    .sort((a, b) => gfx.layer.compare(a, b));
+  const highest = models.at(-1);
+  return highest ? { layer: userLayers.effectiveLayerOf(highest) } : {};
+}
+
+/**
+ * Ungrouping a top-level group hands its layer to each released child, in
+ * the ungroup's own transaction (ADR 0031 §5): a member's own `layer` was
+ * ignored while it was inside, and may be stale.
+ */
+function releaseChildrenToGroupLayer(
+  gfx: GfxController,
+  group: GroupElementModel,
+  children: GfxModel[]
+) {
+  const userLayers = gfx.surface?.userLayers;
+  if (!userLayers?.ranks) return;
+  const layer = group.layer;
+  for (const child of children) {
+    const own =
+      child instanceof GfxPrimitiveElementModel
+        ? child.layer
+        : (child.props as { layer?: string }).layer;
+    if (own === layer) continue;
+    if (layer === undefined) {
+      if (child instanceof GfxPrimitiveElementModel) {
+        child.clearField('layer');
+      } else {
+        delete (child.props as { layer?: string }).layer;
+      }
+    } else {
+      gfx.updateElement(child, { layer });
+    }
+  }
+}
+
 export const createGroupCommand: Command<
   { elements: GfxModel[] | string[] },
   { groupId: string }
@@ -107,6 +160,7 @@ export const createGroupCommand: Command<
     el => el.type === 'group'
   ) as GroupElementModel[];
   const groupId = crud.addElement('group', {
+    ...groupLayerProps(gfx, elements),
     children: elements.reduce(
       (pre, el) => {
         const id = typeof el === 'string' ? el : el.id;
@@ -252,6 +306,8 @@ export const ungroupCommand: Command<{ group: GroupElementModel }, {}> = (
 
       if (parent !== null) {
         batchAddChildren(parent, orderedElements);
+      } else {
+        releaseChildrenToGroupLayer(gfx, group, orderedElements);
       }
     });
 

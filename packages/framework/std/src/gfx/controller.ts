@@ -109,6 +109,9 @@ export class GfxController extends LifeCycleWatcher {
     this._disposables.add(
       this.localVisibility.register(this.hiddenForEveryone.ids$)
     );
+    this._disposables.add(
+      this.localVisibility.registerLayers(this.hiddenForEveryone.layerIds$)
+    );
     this._disposables.add(() => this.hiddenForEveryone.dispose());
     this._disposables.add(this.viewport);
     this._disposables.add(this.keyboard);

@@ -18,6 +18,7 @@ import {
   setPaneElementsHiddenForEveryone,
   setPaneElementsLocked,
 } from './actions.js';
+import { setUserLayersHiddenForEveryone } from '../user-layers/actions.js';
 import { SelectionPaneModel } from './tree.js';
 
 /**
@@ -202,6 +203,11 @@ const renameGroup: CommandDescriptor<RenameGroupParams> = {
 export const hideLocalParams = z.object({
   /** The models to act on. Omitted: the current canvas selection. */
   ids: z.array(z.string()).optional(),
+  /**
+   * Whole user layers to act on instead (ADR 0031 stage 7). When given,
+   * `ids` and the selection are ignored.
+   */
+  layerIds: z.array(z.string()).optional(),
   /** `false` shows them again. Omitted: hide. */
   hidden: z.boolean().optional(),
 });
@@ -212,12 +218,13 @@ function reportVisibility(
   std: BlockStdScope,
   hidden: boolean,
   count: number,
-  scope: 'local' | 'everyone' = 'local'
+  scope: 'local' | 'everyone' = 'local',
+  target: 'element' | 'layer' = 'element'
 ) {
   if (!count) return;
   std.getOptional(TelemetryProvider)?.track('CanvasVisibilityChanged', {
     page: 'whiteboard editor',
-    target: 'element',
+    target,
     scope,
     hidden,
     count,
@@ -251,6 +258,15 @@ const hideLocal: CommandDescriptor<HideLocalParams> = {
     const visibility = std.getOptional(CanvasLocalVisibility);
     const parsed = hideLocalParams.safeParse(params ?? {});
     if (!visibility || !parsed.success) return;
+    if (parsed.data.layerIds) {
+      const hidden = parsed.data.hidden ?? true;
+      const layers = parsed.data.layerIds;
+      const count = hidden
+        ? visibility.hideLayers(layers)
+        : visibility.showLayers(layers);
+      reportVisibility(std, hidden, count, 'local', 'layer');
+      return;
+    }
     const ids =
       parsed.data.ids ?? std.get(GfxControllerIdentifier).selection.selectedIds;
     const hidden = parsed.data.hidden ?? true;
@@ -262,6 +278,11 @@ const hideLocal: CommandDescriptor<HideLocalParams> = {
 export const hideForEveryoneParams = z.object({
   /** The models to act on. Omitted: the current canvas selection. */
   ids: z.array(z.string()).optional(),
+  /**
+   * Whole user layers to act on instead: `hidden: true` on each record, one
+   * write per layer, never one per member (ADR 0031 §7).
+   */
+  layerIds: z.array(z.string()).optional(),
   /** `false` shows them again, for everyone. Omitted: hide. */
   hidden: z.boolean().optional(),
 });
@@ -297,6 +318,16 @@ const hideForEveryone: CommandDescriptor<HideForEveryoneParams> = {
   run: (std, _invocation, params) => {
     const parsed = hideForEveryoneParams.safeParse(params ?? {});
     if (!parsed.success) return;
+    if (parsed.data.layerIds) {
+      const hidden = parsed.data.hidden ?? true;
+      const count = setUserLayersHiddenForEveryone(
+        std,
+        parsed.data.layerIds,
+        hidden
+      );
+      reportVisibility(std, hidden, count, 'everyone', 'layer');
+      return;
+    }
     const ids =
       parsed.data.ids ?? std.get(GfxControllerIdentifier).selection.selectedIds;
     const hidden = parsed.data.hidden ?? true;
@@ -316,15 +347,28 @@ const showAll: AnyCommandDescriptor = {
   labelKey: 'com.labre.command.canvas.visibility.show-all',
   labelFallback: 'Show hidden elements',
   descriptionKey: 'com.labre.command.canvas.visibility.show-all.description',
-  descriptionFallback: 'Show again every element you hid on your screen.',
+  descriptionFallback:
+    'Show again every element and layer you hid on your screen.',
   surfaces: ['palette', 'agent'],
   scope: 'edgeless',
   defaultKeys: { mac: [], other: [] },
-  when: std =>
-    (std.getOptional(CanvasLocalVisibility)?.hiddenIds$.peek().size ?? 0) > 0,
+  when: std => {
+    const visibility = std.getOptional(CanvasLocalVisibility);
+    return (
+      (visibility?.hiddenIds$.peek().size ?? 0) > 0 ||
+      (visibility?.hiddenLayerIds$.peek().size ?? 0) > 0
+    );
+  },
   run: std => {
-    const count = std.getOptional(CanvasLocalVisibility)?.showAll() ?? 0;
-    reportVisibility(std, false, count);
+    const visibility = std.getOptional(CanvasLocalVisibility);
+    reportVisibility(std, false, visibility?.showAll() ?? 0);
+    reportVisibility(
+      std,
+      false,
+      visibility?.showAllLayers() ?? 0,
+      'local',
+      'layer'
+    );
   },
 };
 

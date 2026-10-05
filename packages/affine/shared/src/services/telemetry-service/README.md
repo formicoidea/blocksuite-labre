@@ -241,11 +241,12 @@ and has no bus of its own.
 
 ## The selection pane (ADR 0031)
 
-| Event                     | When                         | Required props                                                                      |
-| ------------------------- | ---------------------------- | ----------------------------------------------------------------------------------- |
-| `SelectionPaneOpened`     | the selection pane is opened | `source` (`toolbar` \| `palette` \| `shortcut`)                                     |
-| `CanvasVisibilityChanged` | elements are hidden or shown | `target` (`element` \| `layer`), `scope` (`local` \| `everyone`), `hidden`, `count` |
-| `CanvasGridToggled`       | the canvas grid is switched  | `scope` (`local` \| `everyone`), `visible`                                          |
+| Event                     | When                         | Required props                                                                                            |
+| ------------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `SelectionPaneOpened`     | the selection pane is opened | `source` (`toolbar` \| `palette` \| `shortcut`)                                                           |
+| `CanvasVisibilityChanged` | elements are hidden or shown | `target` (`element` \| `layer`), `scope` (`local` \| `everyone`), `hidden`, `count`                       |
+| `CanvasGridToggled`       | the canvas grid is switched  | `scope` (`local` \| `everyone`), `visible`                                                                |
+| `CanvasLayerChanged`      | the user layers change       | `action` (`create` \| `rename` \| `reorder` \| `delete` \| `move-elements`), `layerCount`, `memberCount?` |
 
 Emitted by the `canvas.selectionPane.toggle` command, which every opening
 gesture goes through (`runCommand`), and only when the toggle OPENS the pane —
@@ -265,8 +266,10 @@ cross: nothing about what the pane lists.
 pane's eye, the palette) and `canvas.visibility.showAll` with `scope: 'local'`,
 and by `canvas.visibility.hideForEveryone` (the pane's row menu, the palette)
 with `scope: 'everyone'`, from their bodies for the same reason: `count` is how
-many elements the gesture actually changed, a fact of the invocation. Only
-`target: 'element'` exists so far; `layer` arrives with the layers stage. A
+many elements the gesture actually changed, a fact of the invocation. With
+`layerIds` (a layer row's eye, its menu's "Hide for everyone") the same two
+commands act on whole layers and report `target: 'layer'`, `count` being the
+layers changed; `showAll` reports elements and layers as two events. A
 gesture that changes nothing emits nothing.
 
 `CanvasGridToggled` is emitted by `canvas.grid.toggle` (`scope: 'local'`, the
@@ -275,6 +278,15 @@ viewer's own override, nothing written to the document) and
 from their bodies: which gesture ran is the scope, and a save that finds the
 document already saying the same writes nothing and reports nothing.
 `visible` is the state after the gesture.
+
+`CanvasLayerChanged` is emitted by the `canvas.layer.*` commands from their
+bodies — the pane's head button, its in-place rename, its drags (a layer
+reordered, a row dropped into a layer) all go through them, so each gesture
+reports once. `layerCount` is how many layers the surface holds after the
+gesture; `memberCount` is how many models a `move-elements` wrote (a grouped
+element moves its outermost group, so it can be fewer than asked) or a
+`delete` removed. Never a layer name or id. A gesture that writes nothing
+reports nothing.
 
 ## Copying a link
 

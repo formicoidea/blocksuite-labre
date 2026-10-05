@@ -5,6 +5,7 @@ import { type BlockSnapshot, Extension, type Store } from '@labre/store';
 
 import { getSurfaceComponent } from '../utils/get-surface-block';
 import { EdgelessCRUDIdentifier } from './crud-extension';
+import { applyCreationLayer } from './user-layers/creation.js';
 
 export type ClipboardConfigCreationContext = {
   /**
@@ -46,6 +47,9 @@ export abstract class EdgelessClipboardConfig extends Extension {
     parent?: string,
     index?: number
   ) => {
+    // The clipboard's block path follows the elements' rule (ADR 0031 §6):
+    // a layer of this surface is kept, anything else lands in the active one.
+    applyCreationLayer(this.std, snapshot.props);
     const block = await this.std.clipboard.pasteBlockSnapshot(
       snapshot,
       doc,

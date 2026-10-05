@@ -19,6 +19,8 @@ export const SurfaceBlockSchema = defineBlockSchema({
     // ADR 0031 §2: optional, `undefined` default, so the load pass writes
     // nothing and the schema version stays 5.
     showGrid: undefined,
+    // ADR 0031 §2: user layers, absent until the first one is created.
+    layers: undefined,
   }),
   metadata: {
     version: 5,

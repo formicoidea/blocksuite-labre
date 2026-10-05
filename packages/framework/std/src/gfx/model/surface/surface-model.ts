@@ -25,6 +25,11 @@ import {
 } from './element-model.js';
 import type { GfxLocalElementModel } from './local-element-model.js';
 import { tagsPropToY } from './tags.js';
+import {
+  registerSurfaceOfStore,
+  type SurfaceLayerRecord,
+  SurfaceUserLayers,
+} from './user-layers.js';
 
 /**
  * Used for text field
@@ -44,6 +49,13 @@ export type SurfaceBlockProps = {
    * `undefined` default so loading a document writes nothing.
    */
   showGrid?: boolean;
+  /**
+   * User layers by id (ADR 0031 §2). Absent until the first layer is
+   * created; every write sets ONE record or ONE field of a record, never the
+   * whole prop, so two peers' edits merge key by key. Declared with an
+   * `undefined` default so loading a document writes nothing.
+   */
+  layers?: Record<string, SurfaceLayerRecord>;
 };
 
 export interface ElementUpdatedData {
@@ -322,6 +334,13 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
   }>();
 
   elementUpdated = new Subject<ElementUpdatedData>();
+
+  /**
+   * The user layers of this surface, resolved for stacking (ADR 0031 §4).
+   * Read by `compare`; `userLayers.ranks` is `null` while the document has no
+   * layer, and then nothing else here is ever asked.
+   */
+  readonly userLayers: SurfaceUserLayers = new SurfaceUserLayers(this);
 
   /**
    * An element was found damaged — see {@link damagedElements}. Pushed at the
@@ -952,6 +971,42 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
     this._initElementModels();
     this._watchGroupRelationChange();
     this._watchChildrenChange();
+    this._watchUserLayers();
+  }
+
+  /**
+   * Keeps {@link userLayers}' caches honest (ADR 0031 §4): the ranks follow
+   * the `layers` prop, the effective layers follow every `layer` write, every
+   * regroup and every element added or removed.
+   */
+  private _watchUserLayers() {
+    registerSurfaceOfStore(this.store, this);
+    const membership = () => this.userLayers.invalidateMembership();
+    const subscriptions = [
+      this.propsUpdated.subscribe(({ key }) => {
+        if (key === 'layers') this.userLayers.invalidateRanks();
+      }),
+      this.elementAdded.subscribe(membership),
+      this.elementRemoved.subscribe(membership),
+      this.elementUpdated.subscribe(({ props, oldValues }) => {
+        if (
+          'layer' in props ||
+          'layer' in oldValues ||
+          'childIds' in props ||
+          'childIds' in oldValues
+        ) {
+          membership();
+        }
+      }),
+      this.store.slots.blockUpdated.subscribe(payload => {
+        if (payload.type !== 'update' || payload.props.key === 'layer') {
+          membership();
+        }
+      }),
+    ];
+    this.deleted.subscribe(() => {
+      subscriptions.forEach(subscription => subscription.unsubscribe());
+    });
   }
 
   getConstructor(type: string) {

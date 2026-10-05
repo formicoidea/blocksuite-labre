@@ -56,6 +56,7 @@ export function createEmbedBlockSchema<
         xywh: '[0,0,0,0]',
         lockedBySelf: false,
         hiddenForEveryone: undefined,
+        layer: undefined,
         rotate: 0,
         comments: undefined,
         'meta:createdAt': undefined,

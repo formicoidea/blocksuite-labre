@@ -543,6 +543,7 @@ export class CanvasRenderer {
     this._disposables.add(
       effect(() => {
         this._gfx.localVisibility.hiddenIds$.value;
+        this._gfx.localVisibility.hiddenLayerIds$.value;
         if (!visibilityRead) {
           visibilityRead = true;
           return;

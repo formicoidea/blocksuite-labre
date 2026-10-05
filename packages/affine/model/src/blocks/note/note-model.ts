@@ -57,6 +57,7 @@ export const NoteBlockSchema = defineBlockSchema({
     index: 'a0',
     lockedBySelf: false,
     hiddenForEveryone: undefined,
+    layer: undefined,
     hidden: false,
     displayMode: NoteDisplayMode.DocAndEdgeless,
     edgeless: {

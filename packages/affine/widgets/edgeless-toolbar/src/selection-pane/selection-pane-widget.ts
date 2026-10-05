@@ -1,4 +1,5 @@
 import {
+  CanvasActiveLayer,
   EDITOR_ANCHORED_PANEL_Z_INDEX,
   filterSelectionPaneTree,
   type SelectionPaneNode,
@@ -7,6 +8,7 @@ import {
   selectionPaneFilterMembers,
   selectionPaneFilterTargets,
   selectionPaneTree,
+  userLayerCommands,
 } from '@labre/affine-block-surface';
 import {
   menu,
@@ -27,14 +29,21 @@ import {
   WidgetComponent,
   WidgetViewExtension,
 } from '@labre/std';
-import { GfxControllerIdentifier, type GfxModel } from '@labre/std/gfx';
+import {
+  DEFAULT_LAYER_ID,
+  GfxControllerIdentifier,
+  type GfxModel,
+} from '@labre/std/gfx';
 import {
   ArrowDownSmallIcon,
   ArrowRightSmallIcon,
+  DeleteIcon,
   FilterIcon,
   InvisibleIcon,
+  LayerIcon,
   LockIcon,
   MoreHorizontalIcon,
+  PlusIcon,
   UnlockIcon,
   ViewIcon,
 } from '@blocksuite/icons/lit';
@@ -45,8 +54,10 @@ import { styleMap } from 'lit/directives/style-map.js';
 import { literal, unsafeStatic } from 'lit/static-html.js';
 
 import {
+  SELECTION_PANE_ACTIVE_LAYER,
   SELECTION_PANE_CLOSE,
   SELECTION_PANE_COLLAPSE,
+  SELECTION_PANE_DELETE_LAYER,
   SELECTION_PANE_EMPTY,
   SELECTION_PANE_EXPAND,
   SELECTION_PANE_FILTER,
@@ -56,6 +67,7 @@ import {
   SELECTION_PANE_TITLE,
   SELECTION_PANE_HIDE,
   SELECTION_PANE_HIDE_FOR_EVERYONE,
+  SELECTION_PANE_NEW_LAYER,
   SELECTION_PANE_ROW_MENU,
   SELECTION_PANE_SHOW,
   SELECTION_PANE_SHOW_FOR_EVERYONE,
@@ -86,7 +98,9 @@ const PANE_INVOCATION: CommandInvocation = {
 };
 
 function paneCommand(id: string): AnyCommandDescriptor {
-  const command = selectionPaneCommands.find(c => c.id === id);
+  const command = [...selectionPaneCommands, ...userLayerCommands].find(
+    c => c.id === id
+  );
   if (!command) throw new Error(`selection pane: no command ${id}`);
   return command;
 }
@@ -101,6 +115,8 @@ interface PaneRow {
 
 interface DragState {
   id: string;
+  /** A layer row reorders among layers; any other row may also drop INTO one. */
+  kind: SelectionPaneNode['kind'];
   groupId: string | undefined;
   siblings: readonly SelectionPaneNode[];
   x: number;
@@ -277,6 +293,22 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       opacity: 0.5;
     }
 
+    /* A row dragged onto a layer moves into it (ADR 0031 §5). */
+    .selection-pane-row[data-drop='into'] {
+      outline: 2px solid var(--affine-primary-color);
+      outline-offset: -2px;
+    }
+
+    .selection-pane-layer-row {
+      font-weight: 600;
+    }
+
+    /* The active layer: where this viewer's new elements land. */
+    .selection-pane-layer-row[data-active] .selection-pane-label,
+    .selection-pane-layer-row[data-active] .selection-pane-icon {
+      color: var(--affine-primary-color);
+    }
+
     .selection-pane-chevron,
     .selection-pane-eye,
     .selection-pane-lock,
@@ -340,7 +372,8 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       opacity: 0.5;
     }
 
-    .selection-pane-row[data-hidden-everyone] .selection-pane-label {
+    .selection-pane-row[data-hidden-everyone] .selection-pane-label,
+    .selection-pane-layer-row[data-hidden-local] .selection-pane-label {
       opacity: 0.5;
     }
 
@@ -406,7 +439,7 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
   @state()
   private accessor _drop: {
     id: string;
-    position: 'above' | 'below';
+    position: 'above' | 'below' | 'into';
   } | null = null;
 
   /** Bumped when the canvas selection changes, so the rows repaint. */
@@ -549,12 +582,23 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       this._swallowNextClick = false;
       return;
     }
+    // A layer row is not on the canvas: a click makes it the active layer,
+    // where this viewer's new elements land (session only, never stored).
+    if (node.kind === 'layer') {
+      this.std.getOptional(CanvasActiveLayer)?.choose(node.id);
+      return;
+    }
     this._select(event, node);
   }
 
   private _onRowDblClick(node: SelectionPaneNode) {
-    if (node.type !== 'group' || this.std.store.readonly) return;
+    if (this.std.store.readonly) return;
+    if (node.type !== 'group' && node.kind !== 'layer') return;
     this._renaming = node.id;
+  }
+
+  private _layerName(id: string): string | null {
+    return this._gfx.surface?.props.layers?.[id]?.name ?? null;
   }
 
   private _onLockClick(event: MouseEvent, node: SelectionPaneNode) {
@@ -570,8 +614,11 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
    */
   private _onEyeClick(event: MouseEvent, node: SelectionPaneNode) {
     event.stopPropagation();
+    // A layer's eye hides the whole layer for this viewer (stage 7).
+    const target =
+      node.kind === 'layer' ? { layerIds: [node.id] } : { ids: [node.id] };
     this._run('canvas.visibility.hideLocal', {
-      ids: [node.id],
+      ...target,
       hidden: !node.hiddenLocal,
     });
   }
@@ -585,6 +632,10 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
    */
   private _openRowMenu(anchor: HTMLElement, node: SelectionPaneNode) {
     if (this.std.store.readonly) return;
+    if (node.kind === 'layer') {
+      this._openLayerMenu(anchor, node);
+      return;
+    }
     const wording = node.hiddenForEveryone
       ? SELECTION_PANE_SHOW_FOR_EVERYONE
       : SELECTION_PANE_HIDE_FOR_EVERYONE;
@@ -608,6 +659,46 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     });
   }
 
+  /**
+   * A layer's menu (ADR 0031 stage 7): "Hide for everyone" — `hidden: true`
+   * on the record, painted with the warning tokens like the element entry —
+   * and "Delete layer", which takes the members with it in one undo step.
+   * The default layer cannot be deleted, so its menu has no such entry.
+   */
+  private _openLayerMenu(anchor: HTMLElement, node: SelectionPaneNode) {
+    const wording = node.hiddenForEveryone
+      ? SELECTION_PANE_SHOW_FOR_EVERYONE
+      : SELECTION_PANE_HIDE_FOR_EVERYONE;
+    popMenu(popupTargetFromElement(anchor), {
+      options: {
+        items: [
+          menu.action({
+            name: translateKey(this.std, ...wording),
+            prefix: node.hiddenForEveryone ? ViewIcon() : InvisibleIcon(),
+            class: { 'warning-item': true },
+            testId: 'selection-pane-hide-for-everyone',
+            select: () => {
+              this._run('canvas.visibility.hideForEveryone', {
+                layerIds: [node.id],
+                hidden: !node.hiddenForEveryone,
+              });
+            },
+          }),
+          menu.action({
+            name: translateKey(this.std, ...SELECTION_PANE_DELETE_LAYER),
+            prefix: DeleteIcon(),
+            class: { 'delete-item': true },
+            testId: 'selection-pane-delete-layer',
+            hide: () => node.id === DEFAULT_LAYER_ID,
+            select: () => {
+              this._run('canvas.layer.delete', { id: node.id });
+            },
+          }),
+        ],
+      },
+    });
+  }
+
   private _onRowContextMenu(event: MouseEvent, node: SelectionPaneNode) {
     event.preventDefault();
     event.stopPropagation();
@@ -617,6 +708,10 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
   private _commitRename(id: string, input: HTMLInputElement) {
     if (this._renaming !== id) return;
     this._renaming = null;
+    if (this._layerName(id) !== null) {
+      this._run('canvas.layer.rename', { id, name: input.value });
+      return;
+    }
     this._run('canvas.group.rename', { id, title: input.value });
   }
 
@@ -642,6 +737,7 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     if (target.closest('button, input')) return;
     this._drag = {
       id: row.node.id,
+      kind: row.node.kind,
       groupId: row.node.groupId,
       siblings: row.siblings,
       x: event.clientX,
@@ -652,25 +748,28 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     document.addEventListener('pointerup', this._onDocumentPointerUp, true);
   }
 
-  /** The sibling row under `clientY`, and which half of it. */
+  /** The row under `clientY` — a canvas row or a layer row — and where. */
   private _dropAt(clientY: number): typeof this._drop {
     const drag = this._drag;
     if (!drag) return null;
     const rows =
       this.shadowRoot?.querySelectorAll<HTMLElement>(
-        '[data-testid="selection-pane-row"]'
+        '[data-testid="selection-pane-row"], [data-testid="selection-pane-layer"]'
       ) ?? [];
     for (const element of rows) {
       const rect = element.getBoundingClientRect();
       if (clientY < rect.top || clientY > rect.bottom) continue;
       const id = element.dataset.id;
       if (!id || id === drag.id) return null;
-      // Only among siblings: a row never leaves its group by a drag here.
+      const position = clientY < rect.top + rect.height / 2 ? 'above' : 'below';
+      // A row of the canvas dropped on a layer row moves INTO that layer.
+      if (drag.kind !== 'layer' && element.dataset.kind === 'layer') {
+        return { id, position: 'into' };
+      }
+      // Otherwise only among siblings: a row never leaves its group, and a
+      // layer never leaves the list of layers, by a drag here.
       if (!drag.siblings.some(node => node.id === id)) return null;
-      return {
-        id,
-        position: clientY < rect.top + rect.height / 2 ? 'above' : 'below',
-      };
+      return { id, position };
     }
     return null;
   }
@@ -706,11 +805,22 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
    * filtered view never computes a neighbour it is not showing.
    */
   private _commitDrop(drag: DragState, drop: NonNullable<typeof this._drop>) {
+    if (drop.position === 'into') {
+      this._run('canvas.layer.moveElements', {
+        ids: [drag.id],
+        layerId: drop.id,
+      });
+      return;
+    }
     let above: string | null = drop.id;
     if (drop.position === 'below') {
       const rest = drag.siblings.filter(node => node.id !== drag.id);
       const at = rest.findIndex(node => node.id === drop.id);
       above = rest[at + 1]?.id ?? null;
+    }
+    if (drag.kind === 'layer') {
+      this._run('canvas.layer.reorder', { id: drag.id, above });
+      return;
     }
     this._run('canvas.element.reorder', { id: drag.id, above });
   }
@@ -771,8 +881,109 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
 
   /* ── Render ─────────────────────────────────────────────────────────── */
 
+  /**
+   * A user layer's row (ADR 0031 §2): its name, renamed in place with a
+   * double-click; a click makes it the active layer; collapsible like a
+   * group (UI state, never stored); dragged among the layers to reorder, and
+   * the drop target of a canvas row dragged onto it.
+   */
+  private _renderLayerRow(row: PaneRow) {
+    const { node, depth } = row;
+    const std = this.std;
+    const name = this._layerName(node.id) ?? '';
+    const collapsed = this._collapsed.has(node.id);
+    const active =
+      (std.getOptional(CanvasActiveLayer)?.resolve() ?? null) === node.id;
+    const drop = this._drop?.id === node.id ? this._drop.position : undefined;
+    const dragging = this._drag?.dragging && this._drag.id === node.id;
+
+    return html`<div
+      class="selection-pane-row selection-pane-layer-row"
+      role="treeitem"
+      data-testid="selection-pane-layer"
+      data-id=${node.id}
+      data-kind="layer"
+      aria-level=${depth + 1}
+      aria-expanded=${collapsed ? 'false' : 'true'}
+      title=${active
+        ? translateKey(std, ...SELECTION_PANE_ACTIVE_LAYER)
+        : nothing}
+      ?data-active=${active}
+      ?data-hidden-local=${node.hiddenLocal}
+      ?data-hidden-everyone=${node.hiddenForEveryone}
+      ?data-dragging=${dragging}
+      data-drop=${drop ?? nothing}
+      style=${styleMap({ paddingLeft: `${8 + depth * INDENT_PX}px` })}
+      @click=${(event: MouseEvent) => this._onRowClick(event, node)}
+      @dblclick=${() => this._onRowDblClick(node)}
+      @contextmenu=${(event: MouseEvent) => this._onRowContextMenu(event, node)}
+      @pointerdown=${(event: PointerEvent) =>
+        this._onRowPointerDown(event, row)}
+    >
+      <button
+        class="selection-pane-chevron"
+        type="button"
+        data-testid="selection-pane-collapse"
+        aria-label=${translateKey(
+          std,
+          ...(collapsed ? SELECTION_PANE_EXPAND : SELECTION_PANE_COLLAPSE)
+        )}
+        @click=${(event: MouseEvent) => {
+          event.stopPropagation();
+          this._toggleCollapsed(node.id);
+        }}
+      >
+        ${collapsed ? ArrowRightSmallIcon() : ArrowDownSmallIcon()}
+      </button>
+      <span class="selection-pane-icon">${LayerIcon()}</span>
+      ${this._renaming === node.id
+        ? html`<input
+            class="selection-pane-rename"
+            data-testid="selection-pane-rename"
+            aria-label=${translateKey(std, ...TOOLBAR_RENAME)}
+            .value=${name}
+            @click=${this._swallow}
+            @dblclick=${this._swallow}
+            @keydown=${(event: KeyboardEvent) =>
+              this._onRenameKeydown(event, node.id)}
+            @blur=${(event: FocusEvent) =>
+              this._commitRename(node.id, event.target as HTMLInputElement)}
+          />`
+        : html`<span class="selection-pane-label" title=${name}>${name}</span>`}
+      <button
+        class="selection-pane-eye"
+        type="button"
+        data-testid="selection-pane-eye"
+        aria-pressed=${node.hiddenLocal ? 'true' : 'false'}
+        aria-label=${translateKey(
+          std,
+          ...(node.hiddenLocal ? SELECTION_PANE_SHOW : SELECTION_PANE_HIDE)
+        )}
+        @click=${(event: MouseEvent) => this._onEyeClick(event, node)}
+      >
+        ${node.hiddenLocal ? InvisibleIcon() : ViewIcon()}
+      </button>
+      ${std.store.readonly
+        ? nothing
+        : html`<button
+            class="selection-pane-more"
+            type="button"
+            data-testid="selection-pane-more"
+            aria-haspopup="menu"
+            aria-label=${translateKey(std, ...SELECTION_PANE_ROW_MENU)}
+            @click=${(event: MouseEvent) => {
+              event.stopPropagation();
+              this._openRowMenu(event.currentTarget as HTMLElement, node);
+            }}
+          >
+            ${MoreHorizontalIcon()}
+          </button>`}
+    </div>`;
+  }
+
   private _renderRow(row: PaneRow) {
     const { node, depth } = row;
+    if (node.kind === 'layer') return this._renderLayerRow(row);
     const std = this.std;
     const model = this._gfx.getElementById(node.id) as GfxModel | null;
     if (!model) return nothing;
@@ -791,6 +1002,7 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       data-testid="selection-pane-row"
       data-id=${node.id}
       data-type=${node.type}
+      data-kind=${node.kind}
       aria-level=${depth + 1}
       aria-selected=${selected ? 'true' : 'false'}
       aria-expanded=${container ? (collapsed ? 'false' : 'true') : nothing}
@@ -918,6 +1130,12 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     const rows = this._rows(tree);
     const title = translateKey(this.std, ...SELECTION_PANE_TITLE);
 
+    // `pointermove` too: the editor turns every move over the host into a
+    // cursor selection, and a selection with nothing recoverable in it makes
+    // the range binding focus the host — which blurred a layer's rename field
+    // the moment the pointer moved (a group's survived only because its click
+    // had selected it). The pane's own drag listens on the document, in the
+    // capture phase, so it still sees every move.
     return html`<div
       class="selection-pane-panel"
       role="dialog"
@@ -926,11 +1144,23 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       data-testid="selection-pane-panel"
       @pointerdown=${this._swallow}
       @pointerup=${this._swallow}
+      @pointermove=${this._swallow}
       @click=${this._swallow}
       @dblclick=${this._swallow}
     >
       <div class="selection-pane-head">
         <span class="selection-pane-title">${title}</span>
+        ${this.std.store.readonly
+          ? nothing
+          : html`<button
+              class="selection-pane-head-button"
+              type="button"
+              data-testid="selection-pane-new-layer"
+              aria-label=${translateKey(this.std, ...SELECTION_PANE_NEW_LAYER)}
+              @click=${() => this._run('canvas.layer.create', {})}
+            >
+              ${PlusIcon()}
+            </button>`}
         <button
           class="selection-pane-head-button"
           type="button"

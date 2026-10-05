@@ -40,6 +40,12 @@ export type GfxCompatibleProps = {
    * `undefined` default, the way it declares `lockedBySelf`.
    */
   hiddenForEveryone?: true;
+  /**
+   * The user layer this block belongs to (ADR 0031 §3); `undefined` = the
+   * default layer. Declared by every gfx block schema with an `undefined`
+   * default, like `hiddenForEveryone`.
+   */
+  layer?: string;
 };
 
 /**

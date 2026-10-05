@@ -29,6 +29,7 @@ const defaultImageProps: ImageBlockProps = {
   xywh: '[0,0,0,0]',
   lockedBySelf: false,
   hiddenForEveryone: undefined,
+  layer: undefined,
   rotate: 0,
   size: -1,
   comments: undefined,

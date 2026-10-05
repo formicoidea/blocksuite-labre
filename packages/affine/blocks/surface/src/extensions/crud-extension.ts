@@ -13,6 +13,7 @@ import { type BlockModel, Extension } from '@labre/store';
 import type { SurfaceBlockModel } from '../surface-model';
 import { getLastPropsKey } from '../utils/get-last-props-key';
 import { isConnectable, isNoteBlock } from './query';
+import { applyCreationLayer } from './user-layers/creation.js';
 
 export const EdgelessCRUDIdentifier = createIdentifier<EdgelessCRUDExtension>(
   'AffineEdgelessCrudService'
@@ -96,10 +97,13 @@ export class EdgelessCRUDExtension extends Extension {
       props = this.std.get(EditPropsStore).applyLastProps(key, props);
     }
 
-    const nProps = {
+    const nProps: Record<string, unknown> = {
       ...props,
       index: gfx.layer.generateIndex(),
     };
+    // A gfx block gets the elements' rule (ADR 0031 §6): its own layer if it
+    // names one of this surface, else the viewer's active layer.
+    applyCreationLayer(this.std, nProps);
 
     return this.std.store.addBlock(
       flavour as never,

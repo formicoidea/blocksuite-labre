@@ -52,6 +52,7 @@ export const EdgelessTextBlockSchema = defineBlockSchema({
     index: 'a0',
     lockedBySelf: false,
     hiddenForEveryone: undefined,
+    layer: undefined,
     scale: 1,
     rotate: 0,
     hasMaxWidth: false,
