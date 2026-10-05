@@ -7,8 +7,8 @@
  * integration suite drives that one with a real pointer):
  *
  * - the rows ARE the paint order, top first, with groups and mindmaps nested
- *   and frames NOT listed at all (a frame is the filter's scope, never a row
- *   nor a container), and the filter offers frames and nothing else;
+ *   and frames listed as ordinary rows where they paint (never a container),
+ *   and the filter offers frames and nothing else;
  * - every write refuses on a read-only document, writes nothing when nothing
  *   would change, and is one undo step;
  * - a row's padlock locks that row alone — never the toolbar's
@@ -24,6 +24,8 @@
 import {
   buildSelectionPaneTree,
   filterSelectionPaneTree,
+  paneContainerOf,
+  renamePaneFrame,
   renamePaneGroup,
   reorderPaneElement,
   type SelectionPaneNode,
@@ -37,6 +39,7 @@ import { StoreExtensionManager } from '@labre/affine-ext-loader';
 import type { GroupElementModel } from '@labre/affine-model';
 import type { BlockStdScope } from '@labre/std';
 import {
+  compareLayer,
   GfxBlockElementModel,
   GfxControllerIdentifier,
   type GfxModel,
@@ -158,14 +161,16 @@ describe('the tree is the paint order', () => {
     expect(tree.every(row => row.layerId === '@default')).toBe(true);
   });
 
-  test('a frame is not a row: it is what the list is filtered by', () => {
-    // ADR 0031, amendment of the product owner's review: a frame is the
-    // filter's scope, never an element of the stack. Its members stay rows,
-    // where they paint.
+  test('a frame is a row at its real z position, never a container', () => {
+    // ADR 0031, amendments: frames are ordinary rows, listed where they
+    // paint. A frame interleaves with everything else through `compare`, and
+    // its members paint right above it — so they are listed right above it,
+    // as siblings, not nested (a frame holds elements from any layer).
     const { store, surface, surfaceId } = createBoard();
     const below = shape(surface, 'a0', 200);
     const inside = shape(surface, 'a2', 20);
-    store.addBlock(
+    const above = shape(surface, 'a3', 400);
+    const frame = store.addBlock(
       'affine:frame',
       {
         xywh: '[0,0,100,100]',
@@ -176,7 +181,13 @@ describe('the tree is the paint order', () => {
       surfaceId
     );
 
-    expect(ids(treeOf(gfxFor(store, surface)))).toEqual([inside, below]);
+    const tree = treeOf(gfxFor(store, surface));
+
+    expect(ids(tree)).toEqual([above, inside, frame, below]);
+    const row = tree.find(node => node.id === frame)!;
+    expect(row.kind).toBe('block');
+    expect(row.type).toBe('affine:frame');
+    expect(row.children).toBeUndefined();
   });
 
   test('a framework board stays an ordinary row', () => {
@@ -216,7 +227,7 @@ describe('filter', () => {
     ]);
   });
 
-  test('narrows the rows to the frame’s members, the frame itself unlisted', () => {
+  test('narrows the rows to the frame and its members', () => {
     const { store, surface, surfaceId } = createBoard();
     const inside = shape(surface, 'a1', 20);
     const outside = shape(surface, 'a2', 500);
@@ -235,7 +246,9 @@ describe('filter', () => {
 
     const rows = filterSelectionPaneTree(treeOf(gfx), members);
 
-    expect(ids(rows)).toEqual([inside]);
+    // The least surprising narrowing: the frame's own row stays, so the list
+    // still shows what it is filtered by, at its place.
+    expect(ids(rows)).toEqual([inside, frame]);
     expect(ids(rows)).not.toContain(outside);
   });
 });
@@ -435,14 +448,45 @@ describe('rename a group', () => {
   });
 });
 
+describe('rename a frame', () => {
+  test('writes the stored title, once, and refuses on a read-only document', () => {
+    const { store, surface, surfaceId } = createBoard();
+    const frameId = store.addBlock(
+      'affine:frame',
+      { xywh: '[0,0,100,100]', title: new Text('Frame 1') },
+      surfaceId
+    );
+    store.resetHistory();
+    const std = stdFor(store, gfxFor(store, surface));
+    const title = () =>
+      (store.getModelById(frameId)!.props as { title: Text }).title.toString();
+
+    expect(renamePaneFrame(std, frameId, '  Context  ')).toBe(true);
+    expect(title()).toBe('Context');
+    expect(renamePaneFrame(std, frameId, 'Context')).toBe(false);
+    expect(renamePaneFrame(std, frameId, '   ')).toBe(false);
+    expect(renamePaneFrame(std, shape(surface, 'a0'), 'Shape')).toBe(false);
+
+    store.undo();
+    expect(title()).toBe('Frame 1');
+    store.readonly = true;
+    expect(renamePaneFrame(std, frameId, 'Context')).toBe(false);
+  });
+});
+
 describe('the tree is cheap', () => {
-  /** 500 loose shapes, 100 groups of two: 800 elements. */
+  /**
+   * 500 loose shapes, 100 groups of two, 20 frames holding five of the loose
+   * shapes each: 820 models. The frames are rows too (ADR 0031, amendments),
+   * and their members are the rows ordered across ancestors — the slow path.
+   */
   function bigBoard() {
     const board = createBoard();
-    const { surface } = board;
+    const { store, surface, surfaceId } = board;
     let n = 0;
     const next = () => `a${(n++).toString(36).padStart(4, '0')}`;
-    for (let i = 0; i < 500; i++) shape(surface, next(), i * 12);
+    const loose: string[] = [];
+    for (let i = 0; i < 500; i++) loose.push(shape(surface, next(), i * 12));
     for (let g = 0; g < 100; g++) {
       const a = shape(surface, next());
       const b = shape(surface, next());
@@ -452,13 +496,26 @@ describe('the tree is cheap', () => {
         index: next(),
       });
     }
+    for (let f = 0; f < 20; f++) {
+      const members = loose.slice(f * 5, f * 5 + 5);
+      store.addBlock(
+        'affine:frame',
+        {
+          xywh: `[${f * 60},0,60,10]`,
+          index: next(),
+          title: new Text(`Frame ${f + 1}`),
+          childElementIds: Object.fromEntries(members.map(id => [id, true])),
+        },
+        surfaceId
+      );
+    }
     return board;
   }
 
-  test(`an 800-element canvas builds within ${FRAME_BUDGET_MS} ms`, () => {
+  test(`an 820-model canvas builds within ${FRAME_BUDGET_MS} ms`, () => {
     const { store, surface } = bigBoard();
     const models = gfxFor(store, surface).gfxElements;
-    expect(models).toHaveLength(800);
+    expect(models).toHaveLength(820);
 
     let best = Infinity;
     let tree: SelectionPaneNode[] = [];
@@ -468,9 +525,24 @@ describe('the tree is cheap', () => {
       best = Math.min(best, performance.now() - start);
     }
 
-    expect(tree).toHaveLength(600);
+    // 500 loose rows (100 of them a frame's members), 100 groups, 20 frames.
+    expect(tree).toHaveLength(620);
     expect(best).toBeLessThan(FRAME_BUDGET_MS);
   }, 30_000);
+
+  // The tree orders rows across ancestors on chains it reads once per model,
+  // not through `compareLayer`, to hold the budget above. This is the parity
+  // that keeps the two one rule: the top-level rows are exactly the canvas'
+  // own comparator, reversed.
+  test('its order across ancestors is compareLayer’s', () => {
+    const { store, surface } = bigBoard();
+    const models = gfxFor(store, surface).gfxElements;
+    const topLevel = models.filter(model => paneContainerOf(model) === null);
+
+    expect(ids(buildSelectionPaneTree(models))).toEqual(
+      [...topLevel].sort((a, b) => compareLayer(b, a)).map(model => model.id)
+    );
+  });
 
   test('a drag does not rebuild it; a reorder does', () => {
     const { store, surface } = createBoard();

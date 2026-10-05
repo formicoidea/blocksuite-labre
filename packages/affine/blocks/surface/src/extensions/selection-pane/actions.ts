@@ -216,6 +216,30 @@ export function renamePaneGroup(
   return true;
 }
 
+/**
+ * Rename a frame through its existing stored `title`, edited in place — the
+ * `Text` the frame's own title editor binds to, never a replaced one, so an
+ * open title editor keeps its binding. Answers whether anything was written.
+ * An empty or unchanged title writes nothing.
+ */
+export function renamePaneFrame(
+  std: BlockStdScope,
+  id: string,
+  title: string
+): boolean {
+  if (std.store.readonly) return false;
+
+  const model = gfxModel(std, id);
+  if (!(model instanceof FrameBlockModel)) return false;
+  const next = title.trim();
+  const text = model.props.title;
+  if (!next || next === text.toString()) return false;
+
+  std.store.captureSync();
+  text.replace(0, text.length, next);
+  return true;
+}
+
 /** Something the pane can be filtered by: a frame, and only a frame. */
 export interface SelectionPaneFilterTarget {
   id: string;
@@ -239,9 +263,10 @@ export function selectionPaneFilterTargets(
 }
 
 /**
- * The ids a frame filter keeps: the frame's `childElementIds` and their
- * descendants. `null` for an id that is not a frame. The frame itself is not
- * among them: it is not a row (ADR 0031, amendments).
+ * The ids a frame filter keeps: the frame itself — a row like any other, so
+ * the list keeps showing what it is filtered by (ADR 0031, amendments) — its
+ * `childElementIds` and their descendants. `null` for an id that is not a
+ * frame.
  */
 export function selectionPaneFilterMembers(
   std: BlockStdScope,
@@ -250,7 +275,7 @@ export function selectionPaneFilterMembers(
   const target = std.get(GfxControllerIdentifier).getElementById(targetId);
   if (!(target instanceof FrameBlockModel)) return null;
 
-  const ids = new Set<string>();
+  const ids = new Set<string>([target.id]);
   for (const child of target.childElements) {
     ids.add(child.id);
     if ('descendantElements' in child) {

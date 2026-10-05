@@ -1,5 +1,6 @@
 export {
   filterSelectionPaneTree,
+  renamePaneFrame,
   renamePaneGroup,
   reorderPaneElement,
   type SelectionPaneFilterTarget,

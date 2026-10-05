@@ -15,7 +15,8 @@
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import { ShapeType } from '@labre/affine/model';
 import { SelectionPaneProvider } from '@labre/affine/shared/services';
-import { DEFAULT_LAYER_ID } from '@labre/affine/std/gfx';
+import { DEFAULT_LAYER_ID, type GfxModel } from '@labre/affine/std/gfx';
+import { Bound } from '@labre/global/gfx';
 import { page, userEvent } from '@vitest/browser/context';
 import { beforeEach, describe, expect, test } from 'vitest';
 import * as Y from 'yjs';
@@ -128,6 +129,54 @@ describe('hide and delete a layer', () => {
     ).toContain(created);
     expect(updates).toHaveLength(0);
     expect(gfx().getElementById(a)).toBeTruthy();
+  });
+
+  // A frame is a row of its layer (ADR 0031, amendments): hiding the layer
+  // hides the frame too, and the pane lists the frame under that layer, which
+  // is what makes the hide coherent — what disappears is what the layer shows.
+  test('hiding the layer hides the frame, listed under that hidden layer', async () => {
+    const { created } = await twoLayers();
+    await userEvent.click(
+      page.elementLocator(inLayerRow(created, '.selection-pane-label'))
+    );
+    await settle();
+    // Through the CRUD path, which lands a block in the active layer (ADR 0031
+    // §6) — the user layer clicked above.
+    const frameId = edgeless.service.crud.addBlock(
+      'affine:frame',
+      { xywh: new Bound(2000, 0, 300, 200).serialize() },
+      surface().id
+    );
+    await settle();
+    const frame = gfx().getElementById(frameId) as GfxModel;
+
+    const frameRow = () =>
+      root().querySelector<HTMLElement>(
+        `[data-testid="selection-pane-row"][data-id="${frameId}"]`
+      );
+    expect(frameRow(), 'the frame is a row').toBeTruthy();
+    // Listed in the layer it belongs to: after that layer's header, before
+    // the next one.
+    const rows = Array.from(
+      root().querySelectorAll<HTMLElement>(
+        '[data-testid="selection-pane-row"], [data-testid="selection-pane-layer"]'
+      )
+    ).map(row => row.dataset.id);
+    const at = rows.indexOf(frameId);
+    expect(at).toBeGreaterThan(rows.indexOf(created));
+    expect(at).toBeLessThan(rows.indexOf(DEFAULT_LAYER_ID));
+
+    await userEvent.hover(page.elementLocator(layerRow(created)));
+    await userEvent.click(
+      page.elementLocator(
+        inLayerRow(created, '[data-testid="selection-pane-eye"]')
+      )
+    );
+    await settle();
+
+    expect(gfx().localVisibility.isHidden(frame)).toBe(true);
+    expect(layerRow(created).hasAttribute('data-hidden-local')).toBe(true);
+    expect(frameRow(), 'still listed, under the hidden layer').toBeTruthy();
   });
 
   test('hide for everyone writes the record and reaches a second client', async () => {

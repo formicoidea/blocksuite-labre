@@ -594,3 +594,29 @@ different lists, and `canvas.element.reorder` restacks one element), and the
 drop line keeps the theme's primary token rather than the frame panel's
 `--affine-blue-600` (DESIGN.md, The Borrowed Blue Rule). Nothing stored
 changes.
+
+**Frames are rows again, at their real place in the stack (product owner's
+decision after the review; supersedes the amendment "The pane filters by frame
+only, and a frame is not a row" wherever it says a frame is not a row).** The
+reason it was reversed is a fact the earlier amendment did not weigh: frames
+are not a band beneath the canvas. A frame interleaves with every other
+element and block through `compare` — its block stacks by its own `index`
+(`LayerManager`, `packages/framework/std/src/gfx/layer.ts`; the frame block
+takes its depth from `gfx.layer.getZIndex`), its members paint right above it,
+and a frame drawn on a framework board is placed just above that board by
+`frameIndexAt` and raised again by `_watchFrameMoved`
+(`packages/affine/blocks/frame/src/frame-manager.ts`), as `frame.spec.ts`
+pins. Hiding a layer hid its frames while the pane did not list them, which
+read as an incoherence; listing each frame where it paints makes the hide
+coherent — what disappears is what the layer shows. So `buildSelectionPaneTree`
+and the headless `selectionPaneTree(std)` carry each `affine:frame` as an
+ordinary `kind: 'block'` row of its effective layer, in paint order; its
+members are its siblings right above it, never its children (a frame holds
+elements from any layer, §5). A frame row has its title as name, renames in
+place (a new agent command, `canvas.frame.rename`, writing the frame's stored
+title in place), and has the eye, the lock, the row menu, select and highlight,
+and the drag of any row. The filter still offers frames only; filtered on a
+frame, the list keeps that frame's own row with its members. Frames keep their
+`layer` prop: hiding or deleting a layer hides or deletes the frames listed in
+it. Nothing stored changes, and neither the comparator nor any frame-versus-
+board rule does.

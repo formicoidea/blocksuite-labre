@@ -15,7 +15,11 @@ import {
   popMenu,
   popupTargetFromElement,
 } from '@labre/affine-components/context-menu';
-import { MindmapElementModel, type RootBlockModel } from '@labre/affine-model';
+import {
+  FrameBlockModel,
+  MindmapElementModel,
+  type RootBlockModel,
+} from '@labre/affine-model';
 import {
   TOOLBAR_LOCK,
   TOOLBAR_RENAME,
@@ -176,7 +180,8 @@ function rawGroupOf(model: GfxModel): GfxModel | null {
  * A group or a mindmap is a collapsible row; collapse is this panel's state,
  * never stored. Hover highlights the element on the canvas, click selects it
  * (shift / ctrl / cmd adds or removes it, like on the canvas), the padlock
- * locks that row alone, a double-click renames a group, and a drag moves a row
+ * locks that row alone, a double-click renames a group or a frame (a frame is
+ * a row at its place in the stack, ADR 0031 amendments), and a drag moves a row
  * among its siblings. Every write goes through `runCommand`, so the read-only
  * refusal and the undo step live in one place.
  */
@@ -684,7 +689,13 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
 
   private _onRowDblClick(node: SelectionPaneNode) {
     if (this.std.store.readonly) return;
-    if (node.type !== 'group' && node.kind !== 'layer') return;
+    if (
+      node.type !== 'group' &&
+      node.type !== 'affine:frame' &&
+      node.kind !== 'layer'
+    ) {
+      return;
+    }
     this._renaming = node.id;
   }
 
@@ -803,7 +814,11 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       this._run('canvas.layer.rename', { id, name: input.value });
       return;
     }
-    this._run('canvas.group.rename', { id, title: input.value });
+    const frame = this._gfx.getElementById(id) instanceof FrameBlockModel;
+    this._run(frame ? 'canvas.frame.rename' : 'canvas.group.rename', {
+      id,
+      title: input.value,
+    });
   }
 
   private readonly _onRenameKeydown = (event: KeyboardEvent, id: string) => {
