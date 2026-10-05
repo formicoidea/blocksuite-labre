@@ -497,13 +497,19 @@ const exportCommand: CommandDescriptor = {
  * and invocable by an agent.
  *
  * **Flagged for the PO** as a curation call rather than a technical one: it is
- * a one-line change either way.
+ * a one-line change either way. ADR 0032 (open point 4) asked again once the
+ * reader started yielding a map, and the answer stayed: the catalogue.
  *
  * ## The label names the tier before the file is read
  *
- * A map is coordinates, and this reader recovers none: it recognises circles
- * and words. Saying so in the description is not modesty, it is the contract —
- * "the import surface must name the tier before the file is read".
+ * The description says which producers' pictures arrive as a MAP and that
+ * everything else arrives as a sketch — "the import surface must name the tier
+ * before the file is read". It is a new key, and the old one
+ * (`com.labre.commands.wardley.importSvg.description`, "The axes and the
+ * evolution are not read…") is retired rather than reworded: a host's
+ * translation of it says the opposite of what the reader now does, and a
+ * reworded fallback would have left that translation lying (ADR 0032,
+ * Consequences).
  */
 const importSvgCommand: CommandDescriptor = {
   id: 'wardley.importSvg',
@@ -511,9 +517,9 @@ const importSvgCommand: CommandDescriptor = {
   kind: 'action',
   labelKey: 'com.labre.commands.wardley.importSvg',
   labelFallback: 'Import SVG sketch',
-  descriptionKey: 'com.labre.commands.wardley.importSvg.description',
+  descriptionKey: 'com.labre.commands.wardley.importSvg.recognised.description',
   descriptionFallback:
-    'Best effort: recognises shapes and text, no round-trip. The axes and the evolution are not read — what arrives is a sketch you then promote.',
+    'Best effort, no round-trip: a map exported by OnlineWardleyMaps arrives as a native Wardley map — components, links, pipelines, evolution. Anything else arrives as a sketch you then promote.',
   // The same section the two OWM directions are filed under, and the same one
   // BPMN files its `.bpmn` pair under: a host that translated the header once
   // has translated it for every framework.

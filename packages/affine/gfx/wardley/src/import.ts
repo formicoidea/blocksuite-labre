@@ -31,6 +31,7 @@ import {
 } from './export.js';
 import {
   HANDLE_SIZE,
+  INERTIA_SIZE,
   LABEL_GAP,
   LABEL_FONT_SIZE,
   LINK_GREY,
@@ -50,7 +51,11 @@ import {
   PIPELINE_HEIGHT,
   WARDLEY_RED,
 } from './node/consts.js';
-import { WARDLEY_NODE_SIZE, wardleyNodeProps } from './presets.js';
+import {
+  WARDLEY_NODE_SIZE,
+  wardleyInertiaProps,
+  wardleyNodeProps,
+} from './presets.js';
 import { WARDLEY_ROLE } from './roles.js';
 
 /**
@@ -356,26 +361,41 @@ const NODE_KEYWORDS = {
   deaccelerator: 'decelerator',
 } as const;
 
-type NodeKeyword = keyof typeof NODE_KEYWORDS;
+export type WardleyNodeKeyword = keyof typeof NODE_KEYWORDS;
+type NodeKeyword = WardleyNodeKeyword;
 
-interface NodeStatement {
+/**
+ * The statements a Wardley map is made of — what this reader builds out of
+ * lines, and what the SVG reader (`svg-import.ts`, ADR 0032 §2) builds out of
+ * a picture, so both are laid out by {@link layoutWardleyStatements} and a map
+ * that arrives from a file and one that arrives from a drawing are the same
+ * elements.
+ *
+ * `id` is the identity links, pipelines and `evolve` lines refer to. OWM has
+ * none — the NAME is the identity — so this reader leaves it out; a picture
+ * has ids of its own (an SVG producer's), and names that may repeat.
+ */
+export interface WardleyNodeStatement {
   keyword: NodeKeyword;
   name: string;
+  id?: string;
   visibility: number;
   evolution: number;
   tail: string;
   invented: boolean;
 }
 
-interface PipelineStatement {
+/** `id` / `name`: the identity and the name of the component it hangs under. */
+export interface WardleyPipelineStatement {
   name: string;
+  id?: string;
   from: number;
   to: number;
   tail: string;
   invented: boolean;
 }
 
-interface NoteStatement {
+export interface WardleyNoteStatement {
   text: string;
   visibility: number;
   evolution: number;
@@ -383,18 +403,46 @@ interface NoteStatement {
   invented: boolean;
 }
 
-interface EvolveStatement {
+/** `id` / `name`: the component that moves; `becomes`: its twin's name. */
+export interface WardleyEvolveStatement {
   name: string;
+  id?: string;
   becomes: string;
   evolution: number;
   tail: string;
   invented: boolean;
 }
 
-interface LinkStatement {
+/** Two identities: the consumer, then what it needs (ADR 0010). */
+export interface WardleyLinkStatement {
   from: string;
   to: string;
 }
+
+/**
+ * An inertia bar, centred where it was drawn. The DSL has no statement for
+ * one — `inertia` is a modifier this reader carries in a line's tail — so only
+ * a picture ever produces it.
+ */
+export interface WardleyInertiaStatement {
+  visibility: number;
+  evolution: number;
+}
+
+export interface WardleyStatements {
+  nodes: WardleyNodeStatement[];
+  pipelines: WardleyPipelineStatement[];
+  notes: WardleyNoteStatement[];
+  evolutions: WardleyEvolveStatement[];
+  links: WardleyLinkStatement[];
+  inertias: WardleyInertiaStatement[];
+}
+
+type NodeStatement = WardleyNodeStatement;
+type PipelineStatement = WardleyPipelineStatement;
+type NoteStatement = WardleyNoteStatement;
+type EvolveStatement = WardleyEvolveStatement;
+type LinkStatement = WardleyLinkStatement;
 
 /* ── The reader ───────────────────────────────────────────────────────── */
 
@@ -747,6 +795,98 @@ export function importWardleyOwm(
 
   /* ── Laying it out ────────────────────────────────────────────────── */
 
+  // Where the document's residue rides: on the map, which is always first.
+  const mapPayload: ForeignInterchange = {};
+  if (title !== undefined) {
+    mapPayload.attrs = { [OWM_SCOPE.document]: { [OWM_TITLE_ATTR]: title } };
+  }
+  if (carriedLines.length > 0) {
+    mapPayload.children = { [OWM_SCOPE.document]: carriedLines };
+  }
+  const elements = layoutWardleyStatements(
+    {
+      nodes: nodeStatements,
+      pipelines,
+      notes: noteStatements,
+      evolutions,
+      links,
+      inertias: [],
+    },
+    { mapPayload, onInvented: inventedNote }
+  );
+
+  /* ── The report ───────────────────────────────────────────────────── */
+
+  const mapped =
+    (titledByFile ? 1 : 0) +
+    nodeStatements.length +
+    pipelines.length +
+    noteStatements.length +
+    evolutions.length +
+    links.length;
+
+  return {
+    elements,
+    report: {
+      mapped,
+      carried: carriedLines.length,
+      // Nothing. Every statement this format writes is a standalone sentence,
+      // so a carried one cannot contradict the drawing — which is what D5's
+      // quarantine is FOR. Stated here rather than left to be inferred from a
+      // zero: a format with no quarantine case is a finding about the format.
+      quarantined: 0,
+      notes,
+      sourceVersion:
+        carriedLines.length === 0 && notes.length === 0
+          ? OWM_DIALECT_LABRE
+          : OWM_DIALECT,
+    },
+  };
+}
+
+/* ── Laying statements out ───────────────────────────────────────────── */
+
+/**
+ * Statements as element props, on a new map at the reference size — the OWM
+ * reader's own layout, shared with the SVG reader (ADR 0032 §2.3) so the two
+ * paths draw the same elements.
+ *
+ * Every element that a later statement refers to carries its identity under
+ * `interchange.owm.id` (D3): the OWM reader hands that to the materializer
+ * as is, and the SVG reader turns it into a provisional local id and drops
+ * the payload, because a picture promises no round-trip.
+ *
+ * @param options.mapPayload what rides on the map element under `owm`, if
+ *   anything.
+ * @param options.onInvented told of every position this layout made up.
+ */
+export function layoutWardleyStatements(
+  statements: WardleyStatements,
+  options: {
+    mapPayload?: ForeignInterchange;
+    onInvented: (
+      element: string,
+      name: string,
+      why: string,
+      whyKey?: string
+    ) => void;
+  }
+): SerializedElementProps[] {
+  const {
+    nodes: nodeStatements,
+    pipelines,
+    notes: noteStatements,
+    evolutions,
+    links,
+    inertias,
+  } = statements;
+  const inventedNote = options.onInvented;
+  const mapPayload = options.mapPayload ?? {};
+  /** What a statement is referred to by: its id, or (OWM) its name. */
+  const identity = (statement: { id?: string; name: string }) =>
+    statement.id ?? statement.name;
+  const declared = new Set(nodeStatements.map(identity));
+
   const plot = owmDefaultPlot();
   const elements: SerializedElementProps[] = [];
 
@@ -758,8 +898,8 @@ export function importWardleyOwm(
   for (const statement of nodeStatements) {
     // FIRST wins, matching the materializer's own rule for a duplicated name
     // and OWM's: a pipeline or an `evolve` naming it means the first one.
-    if (!declaredAt.has(statement.name)) {
-      declaredAt.set(statement.name, {
+    if (!declaredAt.has(identity(statement))) {
+      declaredAt.set(identity(statement), {
         visibility: statement.visibility,
         evolution: statement.evolution,
       });
@@ -779,14 +919,6 @@ export function importWardleyOwm(
     return candidate;
   };
 
-  /* The map itself, always first, and where the document's residue rides. */
-  const mapPayload: ForeignInterchange = {};
-  if (title !== undefined) {
-    mapPayload.attrs = { [OWM_SCOPE.document]: { [OWM_TITLE_ATTR]: title } };
-  }
-  if (carriedLines.length > 0) {
-    mapPayload.children = { [OWM_SCOPE.document]: carriedLines };
-  }
   elements.push({
     type: WARDLEY_BACKGROUND.type,
     role: WARDLEY_BACKGROUND.role,
@@ -808,6 +940,7 @@ export function importWardleyOwm(
       ...artefact(
         statement.keyword,
         statement.name,
+        identity(statement),
         cx,
         cy,
         statement.tail,
@@ -817,7 +950,7 @@ export function importWardleyOwm(
   }
 
   for (const pipeline of pipelines) {
-    const at = declaredAt.get(pipeline.name);
+    const at = declaredAt.get(identity(pipeline));
     if (at === undefined) {
       inventedNote(
         'pipeline',
@@ -846,7 +979,7 @@ export function importWardleyOwm(
       roughness: 0,
       radius: 0,
       xywh: `[${left},${top},${width},${PIPELINE_HEIGHT}]`,
-      interchange: payload({ id: pipeline.name, tail: pipeline.tail }),
+      interchange: payload({ id: identity(pipeline), tail: pipeline.tail }),
     });
     elements.push({
       type: 'wardleyNode',
@@ -862,7 +995,7 @@ export function importWardleyOwm(
       radius: 0,
       xywh: `[${centre - HANDLE_SIZE / 2},${top - HANDLE_SIZE / 2},${HANDLE_SIZE},${HANDLE_SIZE}]`,
       interchange: payload({
-        id: mintHandle(`${pipeline.name} handle`),
+        id: mintHandle(`${identity(pipeline)} handle`),
         element: 'pipeline',
       }),
     });
@@ -895,7 +1028,7 @@ export function importWardleyOwm(
   /** The twin an `evolve` line draws, and the handle its arrow points at. */
   const twinHandles: string[] = [];
   for (const evolution of evolutions) {
-    const at = declaredAt.get(evolution.name);
+    const at = declaredAt.get(identity(evolution));
     if (at === undefined) {
       inventedNote(
         'evolve',
@@ -905,7 +1038,7 @@ export function importWardleyOwm(
     }
     const visibility = at?.visibility ?? 0.5;
     const [cx, cy] = owmPointOf(plot, visibility, evolution.evolution);
-    const handle = mintHandle(`evolve ${evolution.name}`);
+    const handle = mintHandle(`evolve ${identity(evolution)}`);
     twinHandles.push(handle);
 
     elements.push({
@@ -952,7 +1085,7 @@ export function importWardleyOwm(
       strokeWidth: LINK_STROKE_WIDTH,
       frontEndpointStyle: PointStyle.None,
       rearEndpointStyle: PointStyle.Triangle,
-      source: { id: evolution.name },
+      source: { id: identity(evolution) },
       target: { id: twinHandles[index] },
     });
   });
@@ -975,33 +1108,15 @@ export function importWardleyOwm(
     });
   }
 
-  /* ── The report ───────────────────────────────────────────────────── */
+  for (const inertia of inertias) {
+    const [cx, cy] = owmPointOf(plot, inertia.visibility, inertia.evolution);
+    const { w, h } = INERTIA_SIZE;
+    elements.push(
+      wardleyInertiaProps({ xywh: `[${cx - w / 2},${cy - h / 2},${w},${h}]` })
+    );
+  }
 
-  const mapped =
-    (titledByFile ? 1 : 0) +
-    nodeStatements.length +
-    pipelines.length +
-    noteStatements.length +
-    evolutions.length +
-    links.length;
-
-  return {
-    elements,
-    report: {
-      mapped,
-      carried: carriedLines.length,
-      // Nothing. Every statement this format writes is a standalone sentence,
-      // so a carried one cannot contradict the drawing — which is what D5's
-      // quarantine is FOR. Stated here rather than left to be inferred from a
-      // zero: a format with no quarantine case is a finding about the format.
-      quarantined: 0,
-      notes,
-      sourceVersion:
-        carriedLines.length === 0 && notes.length === 0
-          ? OWM_DIALECT_LABRE
-          : OWM_DIALECT,
-    },
-  };
+  return elements;
 }
 
 /* ── The pieces ───────────────────────────────────────────────────────── */
@@ -1054,6 +1169,7 @@ function label(
 function artefact(
   keyword: NodeKeyword,
   name: string,
+  id: string,
   cx: number,
   cy: number,
   tail: string,
@@ -1071,9 +1187,13 @@ function artefact(
       ...wardleyNodeProps(kind, {
         xywh: `[${cx - w / 2},${cy - h / 2},${w},${h}]`,
       }),
-      interchange: payload({ id: name, tail }),
+      interchange: payload({ id, tail }),
     };
     const rightwards = kind === 'accelerator';
+    // A picture may draw the arrow and no name (OnlineWardleyMaps does); a
+    // label with nothing in it would be an empty box nobody asked for. The DSL
+    // reader always names one, so this only ever drops a label for the SVG.
+    if (name.length === 0) return [arrow];
     return [
       arrow,
       label(
@@ -1114,7 +1234,7 @@ function artefact(
     shapeStyle: ShapeStyle.General,
     roughness: 0,
     xywh: `[${cx - diameter / 2},${cy - diameter / 2},${diameter},${diameter}]`,
-    interchange: payload({ id: name, tail }),
+    interchange: payload({ id, tail }),
   };
 
   const named = label(
@@ -1139,7 +1259,7 @@ function artefact(
     [-ring * sin60, ring / 2],
   ];
   const handles = vertices.map((_, index) =>
-    mintHandle(`${name} market ${index + 1}`)
+    mintHandle(`${id} market ${index + 1}`)
   );
   const dots: SerializedElementProps[] = vertices.map(([dx, dy], index) => ({
     type: 'wardleyNode',

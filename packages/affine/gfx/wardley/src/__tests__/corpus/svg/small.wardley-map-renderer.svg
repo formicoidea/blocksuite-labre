@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="800" viewBox="0 0 1600 800">
+<rect width="1600" height="800" fill="#ffffff" />
+<g data-layer="title">
+<text x="800" y="22" text-anchor="middle" font-family="Inter, sans-serif" font-size="16" font-weight="600" fill="#333333">Tea delivery</text>
+</g>
+<g data-layer="axes">
+<defs><marker id="axis-arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#444444" /></marker></defs>
+<line x1="28" y1="772" x2="1580" y2="772" stroke="#444444" stroke-width="1.5" marker-end="url(#axis-arrow)" />
+<line x1="28" y1="772" x2="28" y2="28" stroke="#444444" stroke-width="1.5" marker-end="url(#axis-arrow)" />
+<line x1="299.59999999999997" y1="28" x2="299.59999999999997" y2="772" stroke="#444444" stroke-width="1" stroke-dasharray="4,4" />
+<line x1="648.8000000000001" y1="28" x2="648.8000000000001" y2="772" stroke="#444444" stroke-width="1" stroke-dasharray="4,4" />
+<line x1="1114.3999999999999" y1="28" x2="1114.3999999999999" y2="772" stroke="#444444" stroke-width="1" stroke-dasharray="4,4" />
+<text x="32" y="788" text-anchor="start" font-family="Inter, sans-serif" font-size="12" fill="#666666">Genesis</text>
+<text x="303.59999999999997" y="788" text-anchor="start" font-family="Inter, sans-serif" font-size="12" fill="#666666">Custom-Built</text>
+<text x="652.8000000000001" y="788" text-anchor="start" font-family="Inter, sans-serif" font-size="12" fill="#666666">Product (+Rental)</text>
+<text x="1118.3999999999999" y="788" text-anchor="start" font-family="Inter, sans-serif" font-size="12" fill="#666666">Commodity (+Utility)</text>
+<text x="1564" y="788" text-anchor="end" font-family="Inter, sans-serif" font-size="13" fill="#444444">Evolution</text>
+<text x="40" y="42" font-family="Inter, sans-serif" font-size="10" fill="#666666">Uncharted</text>
+<text x="1576" y="42" text-anchor="end" font-family="Inter, sans-serif" font-size="10" fill="#666666">Industrialized</text>
+<text x="20" y="400" text-anchor="middle" font-family="Inter, sans-serif" font-size="13" fill="#444444" transform="rotate(-90, 20, 400)">Value Chain</text>
+<text x="22" y="68" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#666666" transform="rotate(-90, 22, 68)">Visible</text>
+<text x="22" y="742" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#666666" transform="rotate(-90, 22, 742)">Invisible</text>
+</g>
+<g data-layer="pipelines">
+<rect x="493.59999999999997" y="466.96" width="465.59999999999997" height="29.760000000000048" rx="0" ry="0" fill="rgba(255, 255, 255, 0.35)" stroke="#999999" stroke-width="1" />
+</g>
+<g data-layer="edges">
+<line x1="1005.76" y1="65.2" x2="974.72" y2="184.23999999999998" stroke="#999999" stroke-width="1" />
+<line x1="974.72" y1="184.23999999999998" x2="1285.1200000000001" y2="303.28" stroke="#999999" stroke-width="1" />
+<line x1="974.72" y1="184.23999999999998" x2="1269.6000000000001" y2="385.12" stroke="#999999" stroke-width="1" />
+<line x1="1269.6000000000001" y1="385.12" x2="1300.6399999999999" y2="489.28" stroke="#999999" stroke-width="1" />
+<line x1="1269.6000000000001" y1="385.12" x2="571.1999999999999" y2="452.08" stroke="#999999" stroke-width="1" />
+<line x1="571.1999999999999" y1="452.08" x2="1114.3999999999999" y2="697.6" stroke="#999999" stroke-width="1" />
+</g>
+<g data-layer="evolvesTo">
+<line x1="571.1999999999999" y1="452.08" x2="990.24" y2="452.08" stroke="#dc2626" stroke-width="1" stroke-dasharray="6,3" />
+<polygon points="990.24,452.08 982.24,456.08 982.24,448.08" fill="#dc2626" />
+<line x1="648.8000000000001" y1="437.08" x2="648.8000000000001" y2="467.08" stroke="#000000" stroke-width="6" />
+</g>
+<g data-layer="nodes">
+<circle cx="1005.76" cy="65.2" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" /><defs><clipPath id="anchor-clip-customer"><circle cx="1005.76" cy="65.2" r="4.5" /></clipPath></defs><g clip-path="url(#anchor-clip-customer)"><circle cx="1005.76" cy="63.7" r="1.5" fill="none" stroke="#000000" stroke-width="1.2" /><path d="M 1003.01 70.45 A 2.75 4.75 0 0 1 1008.51 70.45" fill="none" stroke="#000000" stroke-width="1.2" stroke-linecap="round" /></g>
+<circle cx="974.72" cy="184.23999999999998" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" />
+<circle cx="1285.1200000000001" cy="303.28" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" />
+<circle cx="1269.6000000000001" cy="385.12" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" />
+<circle cx="571.1999999999999" cy="452.08" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" />
+<circle cx="1300.6399999999999" cy="489.28" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" />
+<circle cx="1114.3999999999999" cy="697.6" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" />
+<rect x="721.4" y="461.96" width="10" height="10" fill="#ffffff" stroke="#000000" stroke-width="1" />
+</g>
+<g data-layer="labels">
+<text x="1014.76" y="69.2" text-anchor="start" font-family="Inter, sans-serif" font-size="12" fill="#333333">Customer</text>
+<text x="965.72" y="188.23999999999998" text-anchor="end" font-family="Inter, sans-serif" font-size="12" fill="#333333">Cup of tea</text>
+<text x="1294.1200000000001" y="307.28" text-anchor="start" font-family="Inter, sans-serif" font-size="12" fill="#333333">Tea</text>
+<text x="1278.6000000000001" y="389.12" text-anchor="start" font-family="Inter, sans-serif" font-size="12" fill="#333333">Hot water</text>
+<text x="562.1999999999999" y="456.08" text-anchor="end" font-family="Inter, sans-serif" font-size="12" fill="#333333">Kettle</text>
+<text x="1309.6399999999999" y="493.28" text-anchor="start" font-family="Inter, sans-serif" font-size="12" fill="#333333">Water</text>
+<text x="1123.3999999999999" y="701.6" text-anchor="start" font-family="Inter, sans-serif" font-size="12" fill="#333333">Power</text>
+<text x="726.4" y="485.96" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#333333">Kettle pipeline</text>
+</g>
+<g data-layer="legend">
+<rect x="1386" y="594" width="182" height="166" fill="#f5f5f5" opacity="0.95" />
+<text x="1398" y="618" font-family="Inter, sans-serif" font-size="12" font-weight="bold" fill="#333333">Legend</text>
+<circle cx="1410" cy="638" r="5" fill="#ffffff" stroke="#000000" stroke-width="1.5" />
+<text x="1430" y="642" font-family="Inter, sans-serif" font-size="12" fill="#333333">Component</text>
+<rect x="1402" y="652" width="16" height="12" fill="none" stroke="#000000" stroke-width="1" /><rect x="1407.5" y="649.5" width="5" height="5" fill="#ffffff" stroke="#000000" stroke-width="1" />
+<text x="1430" y="662" font-family="Inter, sans-serif" font-size="12" fill="#333333">Pipeline</text>
+<defs><clipPath id="anchor-legend-clip"><circle cx="1410" cy="678" r="4.25" /></clipPath></defs><circle cx="1410" cy="678" r="5" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><g clip-path="url(#anchor-legend-clip)"><circle cx="1410" cy="676.5" r="1.5" fill="none" stroke="#000000" stroke-width="1" /><path d="M 1407.25 683.25 A 2.75 4.75 0 0 1 1412.75 683.25" fill="none" stroke="#000000" stroke-width="1" stroke-linecap="round" /></g>
+<text x="1430" y="682" font-family="Inter, sans-serif" font-size="12" fill="#333333">User / Stakeholder</text>
+<line x1="1400" y1="698" x2="1420" y2="698" stroke="#999999" stroke-width="1.5"  />
+<text x="1430" y="702" font-family="Inter, sans-serif" font-size="12" fill="#333333">Dependency</text>
+<line x1="1400" y1="718" x2="1416" y2="718" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="6,3" /><polygon points="1420,718 1415,715 1415,721" fill="#dc2626" />
+<text x="1430" y="722" font-family="Inter, sans-serif" font-size="12" fill="#333333">Future change</text>
+<line x1="1410" y1="730" x2="1410" y2="746" stroke="#000000" stroke-width="4" />
+<text x="1430" y="742" font-family="Inter, sans-serif" font-size="12" fill="#333333">Inertia</text>
+</g>
+</svg>

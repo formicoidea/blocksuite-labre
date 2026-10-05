@@ -11,6 +11,7 @@ import {
   WARDLEY_SVG_FORMAT,
   WARDLEY_SVG_IMPORT,
 } from '../interchange';
+import { importWardleySvg } from '../svg-import';
 
 /**
  * Wardley's entry in the interchange registry (`docs/adr/0012`, P1).
@@ -63,12 +64,14 @@ describe('the declaration', () => {
     });
   });
 
-  it('wraps the SHARED parser, adding nothing of its own', () => {
-    // The identity, not an equivalence. Wardley and BPMN read a `.svg` through
-    // ONE function, so they cannot drift into recognising different pictures,
-    // and the heuristics statement ADR 0012's open question 2 asks for is
-    // written once — in that parser's module documentation — rather than twice
-    // with the second copy going stale.
-    expect(WARDLEY_SVG_IMPORT.run).toBe(parseSvgSketch);
+  it('runs Wardley’s OWN reader, no longer the shared parser', () => {
+    // The opposite of the pin this replaced (ADR 0032 §1). Wardley recognises
+    // the map a picture is a picture of, so it owes its own heuristics
+    // statement (`svg-import.ts`) and must not be the function BPMN declares —
+    // BPMN keeps `run: parseSvgSketch`, pinned in its own package. What the
+    // two still share is the sanitiser and the sketch walk, and the anti-decay
+    // assertion runs against this reader in `svg-import.browser.spec.ts`.
+    expect(WARDLEY_SVG_IMPORT.run).not.toBe(parseSvgSketch);
+    expect(WARDLEY_SVG_IMPORT.run).toBe(importWardleySvg);
   });
 });

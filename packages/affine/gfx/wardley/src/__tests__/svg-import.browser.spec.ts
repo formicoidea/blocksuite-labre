@@ -1,0 +1,644 @@
+import type {
+  InterchangeImportResult,
+  SerializedElementProps,
+} from '@labre/affine-block-surface';
+import {
+  importInterchangeFile,
+  sanitizeSvg,
+  SvgSketchNotebook,
+} from '@labre/affine-block-surface';
+import { ConnectorElementModel } from '@labre/affine-model';
+import { NotificationProvider } from '@labre/affine-shared/services';
+import { Bound } from '@labre/global/gfx';
+import type { BlockStdScope } from '@labre/std';
+import { describe, expect, it, vi } from 'vitest';
+
+import { owmCoordsOf, owmDefaultPlot } from '../export';
+import { importWardleyOwm } from '../import';
+import { WARDLEY_SVG_IMPORT } from '../interchange';
+import { WARDLEY_ROLE } from '../roles';
+import { importWardleySvg } from '../svg-import';
+import { SVG_CORPUS } from './svg-corpus';
+
+/**
+ * The Wardley SVG import against real producers' files (ADR 0032 §9).
+ *
+ * Browser mode, because the reader sanitises with DOMPurify and DOMPurify
+ * supports a real DOM only. The corpus is described file by file in
+ * `svg-corpus.ts`.
+ *
+ * The property every certain producer is held to: **the SVG of a map imports
+ * to the same map as its OWM text** — the same roles, the same names, the same
+ * links, and every `[visibility, evolution]` within {@link TOLERANCE}. That is
+ * the test that keeps "recognised" from drifting into "looks about right".
+ */
+
+/**
+ * ADR 0032 open point 5, settled here: `0.005`, half the last digit the OWM
+ * DSL writes (`owmNumber`, two decimals). A position within it EXPORTS to the
+ * very number the source `.owm` holds, so "the same map" means the same file
+ * on the way out — a property a reader of the DSL can check, rather than a
+ * distance somebody liked. The ADR's proposed `0.01` would let a component
+ * come back one hundredth off and still pass. Measured on this corpus, the
+ * OnlineWardleyMaps files land within 1e-12 of their text: the producer draws
+ * `[v, e]` to the pixel and the plot is read off `#fillArea` exactly, so the
+ * margin is for producers that round, not for this one.
+ */
+const TOLERANCE = 0.005;
+
+type Props = SerializedElementProps;
+
+const NODE_ROLES = new Set<string>([
+  WARDLEY_ROLE.component,
+  WARDLEY_ROLE.anchor,
+  WARDLEY_ROLE.market,
+  WARDLEY_ROLE.ecosystem,
+  WARDLEY_ROLE.accelerator,
+  WARDLEY_ROLE.decelerator,
+]);
+
+const centreOf = (props: Props) => {
+  const [x, y, w, h] = JSON.parse(props.xywh as string) as number[];
+  return owmCoordsOf(owmDefaultPlot(), x + w / 2, y + h / 2);
+};
+
+/** The identity a connector end names: the OWM reader's payload, or the SVG reader's provisional id. */
+const identityOf = (props: Props): string | undefined =>
+  (props.interchange as { owm?: { id?: string } } | undefined)?.owm?.id ??
+  (typeof props.id === 'string' ? props.id : undefined);
+
+interface MapSummary {
+  nodes: {
+    role: string;
+    name: string;
+    visibility: number;
+    evolution: number;
+  }[];
+  links: string[];
+  evolutions: string[];
+  pipelines: { name: string; from: number; to: number }[];
+  notes: { text: string; visibility: number; evolution: number }[];
+  inertias: { visibility: number; evolution: number }[];
+}
+
+/** A result as the map it draws: what a reader of the map would compare. */
+function summarise(elements: readonly Props[]): MapSummary {
+  const names = new Map<string, string>();
+  const nodes: MapSummary['nodes'] = [];
+  elements.forEach((props, index) => {
+    const role = props.role as string | undefined;
+    if (props.type !== 'wardleyNode' || role === undefined) return;
+    if (!NODE_ROLES.has(role)) return;
+    let name = '';
+    for (const next of elements.slice(index + 1)) {
+      if (next.type === 'wardleyNode' && next.role !== undefined) break;
+      if (next.role === WARDLEY_ROLE.label) {
+        name = next.text as string;
+        break;
+      }
+    }
+    const id = identityOf(props);
+    if (id !== undefined && !names.has(id)) names.set(id, name);
+    nodes.push({ role, name, ...centreOf(props) });
+  });
+  const nameOf = (end: unknown) =>
+    names.get((end as { id: string }).id) ?? `?${(end as { id: string }).id}`;
+  const links = elements
+    .filter(props => props.role === WARDLEY_ROLE.dependency)
+    .map(props => `${nameOf(props.source)} -> ${nameOf(props.target)}`)
+    .sort();
+  const evolutions = elements
+    .filter(props => props.role === WARDLEY_ROLE.changeArrow)
+    .map(props => `${nameOf(props.source)} -> ${nameOf(props.target)}`)
+    .sort();
+  const pipelines = elements
+    .filter(props => props.role === WARDLEY_ROLE.pipeline)
+    .map(props => {
+      const [x, y, w] = JSON.parse(props.xywh as string) as number[];
+      const plot = owmDefaultPlot();
+      return {
+        name: names.get(identityOf(props)!) ?? '',
+        from: owmCoordsOf(plot, x, y).evolution,
+        to: owmCoordsOf(plot, x + w, y).evolution,
+      };
+    });
+  // A note the layout drew names its font; a text the sketch read does not,
+  // and the title is the one drawn at 28.
+  const notes = elements
+    .filter(props => props.type === 'text' && props.role === undefined)
+    .filter(props => props.fontFamily !== undefined && props.fontSize !== 28)
+    .map(props => ({ text: props.text as string, ...centreOf(props) }));
+  const inertias = elements
+    .filter(props => props.role === WARDLEY_ROLE.inertia)
+    .map(centreOf);
+  const byName = <T extends { name?: string; text?: string }>(a: T, b: T) =>
+    (a.name ?? a.text ?? '').localeCompare(b.name ?? b.text ?? '');
+  return {
+    nodes: nodes.sort(
+      (a, b) =>
+        a.role.localeCompare(b.role) ||
+        byName(a, b) ||
+        a.evolution - b.evolution
+    ),
+    links,
+    evolutions,
+    pipelines: pipelines.sort(byName),
+    notes: notes.sort(byName),
+    inertias,
+  };
+}
+
+/** Two summaries are the same map: equal words, positions within tolerance. */
+function expectSameMap(actual: MapSummary, expected: MapSummary) {
+  const words = (summary: MapSummary) => ({
+    nodes: summary.nodes.map(({ role, name }) => [role, name]),
+    links: summary.links,
+    evolutions: summary.evolutions,
+    pipelines: summary.pipelines.map(({ name }) => name),
+    notes: summary.notes.map(({ text }) => text),
+  });
+  expect(words(actual)).toEqual(words(expected));
+  const close = (a: number, b: number, what: string) =>
+    expect(Math.abs(a - b), `${what}: ${a} vs ${b}`).toBeLessThanOrEqual(
+      TOLERANCE
+    );
+  actual.nodes.forEach((node, index) => {
+    const reference = expected.nodes[index];
+    close(node.visibility, reference.visibility, `${node.name} visibility`);
+    close(node.evolution, reference.evolution, `${node.name} evolution`);
+  });
+  actual.pipelines.forEach((pipeline, index) => {
+    close(
+      pipeline.from,
+      expected.pipelines[index].from,
+      `${pipeline.name} from`
+    );
+    close(pipeline.to, expected.pipelines[index].to, `${pipeline.name} to`);
+  });
+  actual.notes.forEach((note, index) => {
+    const reference = expected.notes[index];
+    close(note.visibility, reference.visibility, `${note.text} visibility`);
+    close(note.evolution, reference.evolution, `${note.text} evolution`);
+  });
+}
+
+const hasInterchange = (value: unknown): boolean => {
+  if (Array.isArray(value)) return value.some(hasInterchange);
+  if (value && typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>).some(
+      ([key, nested]) => key === 'interchange' || hasInterchange(nested)
+    );
+  }
+  return false;
+};
+
+const read = (source: string): InterchangeImportResult =>
+  importWardleySvg(source, { name: 'map.svg' });
+
+const nativeOf = (result: InterchangeImportResult) =>
+  result.elements.filter(
+    props => props.role !== undefined || props.type === 'wardley'
+  );
+
+/* ── OnlineWardleyMaps ────────────────────────────────────────────────── */
+
+describe('an OnlineWardleyMaps export', () => {
+  it('imports to the same map as its OWM text — the small map', () => {
+    const result = read(SVG_CORPUS.smallOwm);
+    expect(result.report.sourceVersion).toBe('OnlineWardleyMaps SVG');
+    expectSameMap(
+      summarise(result.elements),
+      summarise(importWardleyOwm(SVG_CORPUS.smallOwmText).elements)
+    );
+  });
+
+  it('imports to the same map as its OWM text — the tea shop', async () => {
+    const { TEA_SHOP_OWM } = await import('./owm-corpus');
+    expectSameMap(
+      summarise(read(SVG_CORPUS.teaShopOwm).elements),
+      summarise(importWardleyOwm(TEA_SHOP_OWM).elements)
+    );
+  });
+
+  it('imports to the same map as its OWM text — every kind it draws', () => {
+    // Accelerators are drawn with no name by this producer, so the two
+    // summaries differ there and only there: compared by role and place.
+    //
+    // OnlineWardleyMaps draws `component X (market)` AS a market, and so does
+    // this reader; Labre's DSL reader keeps the decorator in the line's tail
+    // and draws a component (the interoperable spelling, `import.ts`). The
+    // reference is therefore spelled with the keyword Labre's reader draws.
+    const reference = SVG_CORPUS.fullOwmText.replace(
+      /^component (\w+) (\[[^\]]+\]) \((market|ecosystem)\)$/gm,
+      '$3 $1 $2'
+    );
+    const svg = summarise(read(SVG_CORPUS.fullOwm).elements);
+    const text = summarise(importWardleyOwm(reference).elements);
+    const climate = (summary: MapSummary) =>
+      summary.nodes.filter(
+        node =>
+          node.role === WARDLEY_ROLE.accelerator ||
+          node.role === WARDLEY_ROLE.decelerator
+      );
+    expect(climate(svg).map(node => [node.role, node.name])).toEqual([
+      [WARDLEY_ROLE.accelerator, ''],
+      [WARDLEY_ROLE.decelerator, ''],
+    ]);
+    climate(svg).forEach((node, index) => {
+      const reference = climate(text)[index];
+      expect(node.role).toBe(reference.role);
+      expect(
+        Math.abs(node.evolution - reference.evolution)
+      ).toBeLessThanOrEqual(TOLERANCE);
+      expect(
+        Math.abs(node.visibility - reference.visibility)
+      ).toBeLessThanOrEqual(TOLERANCE);
+    });
+    const rest = (summary: MapSummary) => ({
+      ...summary,
+      nodes: summary.nodes.filter(node => !climate(summary).includes(node)),
+    });
+    expectSameMap(rest(svg), rest(text));
+  });
+
+  it('counts every artefact by its role', () => {
+    const roles = nativeOf(read(SVG_CORPUS.fullOwm)).reduce<
+      Record<string, number>
+    >((count, props) => {
+      const key = (props.role as string) ?? 'map';
+      count[key] = (count[key] ?? 0) + 1;
+      return count;
+    }, {});
+    expect(roles).toMatchObject({
+      'wardley:map': 1,
+      // 7 components and 2 evolved twins; a market's three dots carry no role.
+      'wardley:component': 9,
+      'wardley:anchor': 2,
+      'wardley:market': 1,
+      'wardley:ecosystem': 1,
+      'wardley:accelerator': 1,
+      'wardley:decelerator': 1,
+      'wardley:pipeline': 1,
+      'wardley:handle': 1,
+      'wardley:dependency': 10,
+      'wardley:change-arrow': 2,
+      'wardley:inertia': 1,
+    });
+  });
+
+  it('draws the inertia bar the picture drew, where it drew it', () => {
+    const { inertias } = summarise(read(SVG_CORPUS.smallOwm).elements);
+    expect(inertias).toHaveLength(1);
+    // Astride the Kettle's line of the value chain, between it and its twin.
+    expect(Math.abs(inertias[0].visibility - 0.43)).toBeLessThanOrEqual(
+      TOLERANCE
+    );
+    expect(inertias[0].evolution).toBeGreaterThan(0.35);
+    expect(inertias[0].evolution).toBeLessThan(0.62);
+  });
+
+  it('attaches every dependency to the nodes its id names', () => {
+    const result = read(SVG_CORPUS.smallOwm);
+    const ids = new Set(
+      result.elements
+        .map(props => props.id)
+        .filter((id): id is string => typeof id === 'string')
+    );
+    const links = result.elements.filter(
+      props => props.role === WARDLEY_ROLE.dependency
+    );
+    expect(links).toHaveLength(6);
+    for (const link of links) {
+      expect(ids.has((link.source as { id: string }).id)).toBe(true);
+      expect(ids.has((link.target as { id: string }).id)).toBe(true);
+    }
+  });
+
+  it('draws the title above the board, as a free text', () => {
+    const titles = read(SVG_CORPUS.smallOwm).elements.filter(
+      props => props.type === 'text' && props.fontSize === 28
+    );
+    expect(titles.map(props => props.text)).toEqual(['Tea delivery']);
+  });
+
+  it('sketches what has no native artefact, and says how much', () => {
+    // Methods and annotations: OnlineWardleyMaps draws them, Labre has no
+    // native artefact for either.
+    const result = read(SVG_CORPUS.fullOwm);
+    // The native map, then its title, then whatever the sketch read.
+    const titleAt = result.elements.findIndex(props => props.fontSize === 28);
+    const sketched = result.elements.slice(titleAt + 1);
+    expect(sketched.length).toBeGreaterThan(0);
+    for (const props of sketched) expect(props.role).toBeUndefined();
+    const remark = result.report.notes.find(
+      note =>
+        note.messageKey ===
+        'com.labre.wardley.import.svg.remark.sketched-remainder'
+    );
+    expect(remark?.kind).toBe('warning');
+    expect(remark?.messageParams?.count).toBe(sketched.length);
+  });
+
+  it('sketches NOTHING of a plain export: every node is recognised or chrome', () => {
+    const result = read(SVG_CORPUS.smallOwm);
+    expect(
+      result.report.notes.find(
+        note =>
+          note.messageKey ===
+          'com.labre.wardley.import.svg.remark.sketched-remainder'
+      )
+    ).toBeUndefined();
+  });
+});
+
+/* ── The mixed case ───────────────────────────────────────────────────── */
+
+describe('a map with a logo and a hand-drawn remark added', () => {
+  it('is ONE result: the native map, then the additions as a sketch', () => {
+    const result = read(SVG_CORPUS.mixedOwm);
+    const plain = read(SVG_CORPUS.smallOwm);
+    // The map is untouched by what was added around it…
+    expectSameMap(summarise(result.elements), summarise(plain.elements));
+    // …and the four additions arrive after it: the logo's rect and text, the
+    // stroke and the remark.
+    const added = result.elements.slice(plain.elements.length);
+    expect(added.map(props => props.type)).toEqual([
+      'shape',
+      'text',
+      'brush',
+      'text',
+    ]);
+    expect(added.map(props => props.text).filter(Boolean)).toEqual([
+      'ACME',
+      'ask finance',
+    ]);
+    expect(
+      result.report.notes.find(
+        note =>
+          note.messageKey ===
+          'com.labre.wardley.import.svg.remark.sketched-remainder'
+      )?.messageParams
+    ).toEqual({ count: 4 });
+  });
+
+  it('lands the additions where the picture had them, relative to its plot', () => {
+    // The file's plot (800 × 600 at (35, 45)) is landed on the board's plot
+    // with ONE scale, centred — the sketch has no independent axes. So the
+    // additions keep their place around the picture: the logo, drawn right of
+    // the plot and above it, lands right of the board's centre and above its
+    // plot; the remark, drawn below the plot, lands below the board's.
+    const result = read(SVG_CORPUS.mixedOwm);
+    const plot = owmDefaultPlot();
+    const boxOf = (text: string) =>
+      JSON.parse(
+        result.elements.find(props => props.text === text)!.xywh as string
+      ) as number[];
+    const [logoX, logoY] = boxOf('ACME');
+    expect(logoX).toBeGreaterThan(plot.x0 + plot.width / 2);
+    expect(logoY).toBeLessThan(plot.y0);
+    const [, remarkY] = boxOf('ask finance');
+    expect(remarkY).toBeGreaterThan(plot.y0 + plot.height);
+  });
+});
+
+/* ── The tier's promises ──────────────────────────────────────────────── */
+
+describe('still the visual tier', () => {
+  const FILES = Object.entries(SVG_CORPUS).filter(([name]) =>
+    name.endsWith('Text') ? false : true
+  );
+
+  it('writes no `interchange` key on any element of any corpus file', () => {
+    // ADR 0012's anti-decay test, run against the reader that replaced the
+    // shared one for Wardley (ADR 0032 §1).
+    for (const [name, source] of FILES) {
+      for (const props of read(source).elements) {
+        expect(hasInterchange(props), `${name}: ${JSON.stringify(props)}`).toBe(
+          false
+        );
+      }
+    }
+  });
+
+  it('carries and quarantines nothing, and counts what it wrote', () => {
+    for (const [name, source] of FILES) {
+      const { report, elements } = read(source);
+      expect([report.carried, report.quarantined], name).toEqual([0, 0]);
+      expect(report.mapped, name).toBe(elements.length);
+    }
+  });
+});
+
+/* ── Hostile input ────────────────────────────────────────────────────── */
+
+describe('a hostile file in the shape of an export', () => {
+  it('runs nothing, and reads names as text', () => {
+    const before = (window as { __hostile?: string }).__hostile;
+    const result = read(SVG_CORPUS.hostile);
+    expect((window as { __hostile?: string }).__hostile).toBe(before);
+    const texts = result.elements
+      .map(props => props.text)
+      .filter((text): text is string => typeof text === 'string');
+    // The markup in a name is the name: characters, never an element.
+    expect(texts).toContain('<script>alert(1)</script>');
+    for (const props of result.elements) {
+      for (const value of Object.values(props)) {
+        if (typeof value === 'string')
+          expect(value).not.toMatch(/^javascript:/i);
+      }
+    }
+  });
+
+  it('uses a forged id as a local name and nothing more', () => {
+    const result = read(SVG_CORPUS.hostile);
+    const ids = result.elements
+      .map(props => props.id)
+      .filter((id): id is string => typeof id === 'string');
+    expect(ids).toEqual(expect.arrayContaining(['1', '__proto__', '<script>']));
+    // Nothing reached a prototype.
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+    expect(Object.getPrototypeOf({})).toBe(Object.prototype);
+    // The link between two real ids is drawn; the one naming nothing is not.
+    const links = result.elements.filter(
+      props => props.role === WARDLEY_ROLE.dependency
+    );
+    expect(
+      links.map(link => [
+        (link.source as { id: string }).id,
+        (link.target as { id: string }).id,
+      ])
+    ).toEqual([['1', '<script>']]);
+    expect(
+      result.report.notes.filter(
+        note =>
+          note.messageKey ===
+          'com.labre.wardley.import.svg.remark.dangling-link'
+      )
+    ).toHaveLength(1);
+  });
+
+  it('sends an element whose coordinates are not finite numbers to the sketch', () => {
+    const result = read(SVG_CORPUS.hostile);
+    const unreadable = result.report.notes.filter(
+      note =>
+        note.messageKey ===
+        'com.labre.wardley.import.svg.remark.unreadable-coordinates'
+    );
+    expect(unreadable.map(note => note.sourceId).sort()).toEqual(['10', '9']);
+    for (const props of result.elements) {
+      if (typeof props.xywh !== 'string') continue;
+      for (const value of JSON.parse(props.xywh) as number[]) {
+        expect(Number.isFinite(value)).toBe(true);
+      }
+    }
+  });
+});
+
+/* ── The markers survive the sanitiser ────────────────────────────────── */
+
+describe('every producer marker survives sanitising', () => {
+  /**
+   * GUARD for ADR 0032 §7: the recognisers read the SANITISED tree, so a
+   * DOMPurify upgrade that dropped an `id` or a `data-*` attribute would turn
+   * every recognised import into a plain sketch with no other test failing.
+   * Would have caught: that, file by file, marker by marker.
+   */
+  const MARKED =
+    /^(element_circle_|element_square_|market_circle_|ecosystem_circle_|pipeline_box_|modern_link_|modern_movable_|modern_note_text_|accelerator_circle_|fillArea$|mapTitle$|\d+-text$)/;
+
+  it.each(
+    Object.entries(SVG_CORPUS).filter(
+      ([name]) => !name.endsWith('Text') && name !== 'hostile'
+    )
+  )('%s', (_name, source) => {
+    const raw = new DOMParser().parseFromString(source, 'image/svg+xml');
+    const clean = sanitizeSvg(source, new SvgSketchNotebook());
+    const ids = (root: ParentNode) =>
+      Array.from(root.querySelectorAll('[id]'))
+        .map(element => element.getAttribute('id')!)
+        .filter(id => MARKED.test(id))
+        .sort();
+    const data = (root: ParentNode) =>
+      Array.from(root.querySelectorAll('*'))
+        .flatMap(element =>
+          element
+            .getAttributeNames()
+            .filter(name => name.startsWith('data-'))
+            .map(name => `${name}=${element.getAttribute(name)}`)
+        )
+        .sort();
+    expect(ids(clean)).toEqual(ids(raw));
+    expect(data(clean)).toEqual(data(raw));
+  });
+});
+
+/* ── Through the import pipeline ──────────────────────────────────────── */
+
+describe('one import, through the pipeline every framework uses', () => {
+  /** The two halves of a surface the pipeline depends on, and nothing else. */
+  function stubEditor() {
+    const added: Props[] = [];
+    const models = new Map<string, unknown>();
+    const order: string[] = [];
+    const surface = {
+      addElement(props: Props) {
+        const id = `minted-${added.length + 1}`;
+        added.push(props);
+        order.push('add');
+        if (props.type === 'connector') {
+          const connector = Object.create(ConnectorElementModel.prototype);
+          Object.defineProperties(connector, {
+            id: { value: id },
+            elementBound: { value: new Bound(0, 0, 0, 0) },
+            source: { value: props.source, writable: true },
+            target: { value: props.target, writable: true },
+          });
+          models.set(id, connector);
+        } else {
+          models.set(id, {
+            id,
+            elementBound: Bound.deserialize(
+              String(props.xywh ?? '[0,0,10,10]')
+            ),
+          });
+        }
+        return id;
+      },
+      getElementById: (id: string) => models.get(id),
+      get elementModels() {
+        return [];
+      },
+    };
+    const notify = vi.fn();
+    const store = {
+      readonly: false,
+      captureSync: vi.fn(() => order.push('capture')),
+    };
+    const std = {
+      get: () => ({
+        surface,
+        viewport: { zoom: 1, setViewportByBound: vi.fn() },
+        tool: { setTool: vi.fn() },
+      }),
+      getOptional: (identifier: unknown) =>
+        identifier === NotificationProvider ? { notify } : undefined,
+      store,
+    } as unknown as BlockStdScope;
+    return { std, added, models, order, store, notify };
+  }
+
+  const fileOf = (text: string) =>
+    ({ name: 'map.svg', text: () => Promise.resolve(text) }) as unknown as File;
+
+  it('writes the native map and the sketch inside ONE undo step', async () => {
+    const { std, added, order } = stubEditor();
+    await importInterchangeFile(
+      std,
+      WARDLEY_SVG_IMPORT,
+      fileOf(SVG_CORPUS.mixedOwm)
+    );
+    expect(added.length).toBe(read(SVG_CORPUS.mixedOwm).elements.length);
+    // capture · every write · capture — and nothing else between them.
+    expect(order[0]).toBe('capture');
+    expect(order.at(-1)).toBe('capture');
+    expect(order.filter(step => step === 'capture')).toHaveLength(2);
+  });
+
+  it('wires every dependency onto the surface ids, not the file’s', async () => {
+    const { std, models } = stubEditor();
+    await importInterchangeFile(
+      std,
+      WARDLEY_SVG_IMPORT,
+      fileOf(SVG_CORPUS.smallOwm)
+    );
+    const connectors = [...models.values()].filter(
+      (model): model is ConnectorElementModel =>
+        model instanceof ConnectorElementModel
+    );
+    expect(connectors.length).toBeGreaterThan(0);
+    for (const connector of connectors) {
+      expect(models.has(connector.source.id!)).toBe(true);
+      expect(models.has(connector.target.id!)).toBe(true);
+    }
+    // No provisional id reached a document: every one was replaced.
+    expect([...models.keys()].every(id => id.startsWith('minted-'))).toBe(true);
+  });
+
+  it('writes nothing when the document turns read-only while reading', async () => {
+    const { std, added, store, notify } = stubEditor();
+    await importInterchangeFile(
+      std,
+      WARDLEY_SVG_IMPORT,
+      fileOf(SVG_CORPUS.smallOwm),
+      {
+        decode: text => {
+          store.readonly = true;
+          return text;
+        },
+      }
+    );
+    expect(added).toEqual([]);
+    expect(store.captureSync).not.toHaveBeenCalled();
+    expect(notify.mock.calls[0][0].accent).toBe('error');
+  });
+});

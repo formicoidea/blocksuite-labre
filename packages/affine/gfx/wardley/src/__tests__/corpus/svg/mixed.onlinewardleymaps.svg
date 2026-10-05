@@ -1,0 +1,280 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg width="975" height="827" viewBox="0 0 975 827" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g transform="translate(35, 45)"><g><rect fill="white" x="-35" y="-45" width="905" height="737"></rect><g><rect x="-35" y="-45" width="905" height="737" fill="transparent" style="pointer-events: all;"></rect><defs><linearGradient id="arrowGradient" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color: rgb(255, 255, 255); stop-opacity: 1;"></stop><stop offset="40%" style="stop-color: rgb(128, 128, 128); stop-opacity: 1;"></stop><stop offset="100%" style="stop-color: rgb(128, 128, 128); stop-opacity: 1;"></stop></linearGradient><filter id="ctrlHighlight"><feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="blue"></feDropShadow></filter><linearGradient gradientUnits="objectBoundingBox" id="wardleyGradient" spreadMethod="pad" x1="0%" x2="100%" y1="0%" y2="0%"><stop offset="0%" style="stop-color: rgb(196, 196, 196); stop-opacity: 1;"></stop><stop offset="0.3" style="stop-color: white; stop-opacity: 1;"></stop><stop offset="0.7" style="stop-color: white;"></stop><stop offset="1" style="stop-color: rgb(196, 196, 196);"></stop></linearGradient><linearGradient spreadMethod="pad" id="accelGradient" x1="0%" y1="64%" x2="76%" y2="0%"><stop offset="0%" style="stop-color: white; stop-opacity: 1;"></stop><stop offset="100%" style="stop-color: rgb(140, 137, 149); stop-opacity: 1;"></stop></linearGradient><pattern id="diagonalHatch" patternUnits="userSpaceOnUse" width="4" height="4"><path d="M 3,-1 l 2,2
+            M 0,0 l 4,4
+            M -1,3 l 2,2
+            " stroke="grey" stroke-width="1" opacity=".5"></path></pattern><marker id="arrow" markerWidth="12" markerHeight="12" refX="15" refY="0" viewBox="0 -5 10 10" orient="0"><path d="M0,-5L10,0L0,5" fill="red"></path></marker><marker id="graphArrow" markerWidth="12" markerHeight="12" refX="9" refY="0" viewBox="0 -5 10 10" orient="0"><path d="M0,-5L10,0L0,5" fill="black"></path></marker><marker id="pipelineArrow" markerWidth="5" markerHeight="5" refX="9" refY="0" viewBox="0 -5 10 10" orient="0"><path d="M0,-5L10,0L0,5" fill="black"></path></marker></defs><g id="grid"><rect x="0" width="800" y="0" height="600" id="fillArea" fill="none" style="pointer-events: none;"></rect><text x="0" y="-10" id="mapTitle" font-weight="bold" font-size="20px" font-family="&quot;Helvetica Neue&quot;,Helvetica,Arial,sans-serif" style="cursor: pointer;">Tea delivery</text><g id="valueChain" transform="translate(0,600) rotate(270)" font-family="&quot;Helvetica Neue&quot;,Helvetica,Arial,sans-serif" font-size="13px"><line x1="0" y1="0" x2="600" y2="0" stroke="black" stroke-width="1" stroke-dasharray="2,2"></line><line x1="-2em" y1="140" x2="600" y2="140" stroke="black" stroke-dasharray="2,2"></line><line x1="-2em" y1="320" x2="600" y2="320" stroke="black" stroke-dasharray="2,2"></line><line x1="-2em" y1="560" x2="600" y2="560" stroke="black" stroke-dasharray="2,2"></line><text fill="black" x="598" y="-0.4em" text-anchor="end" font-weight="bold">Value Chain</text></g><g id="Evolution" font-family="&quot;Helvetica Neue&quot;,Helvetica,Arial,sans-serif" font-size="13px" font-style="italic" transform="translate(0,600)"><line x1="0" y1="0" x2="798" y2="0" stroke="black" stroke-width="1" marker-end="url(#graphArrow)"></line><text fill="black" x="0" y="1em" text-anchor="start">Genesis</text><text fill="black" x="0" y="2em" text-anchor="start"></text><text fill="black" x="147" y="1em" text-anchor="start">Custom-Built</text><text fill="black" x="147" y="2em" text-anchor="start"></text><text fill="black" x="327" y="1em" text-anchor="start">Product</text><text fill="black" x="327" y="2em" text-anchor="start">(+rental)</text><text fill="black" x="567" y="1em" text-anchor="start">Commodity</text><text fill="black" x="567" y="2em" text-anchor="start">(+utility)</text><text fill="black" x="800" y="1.8em" text-anchor="end" font-weight="bold" font-style="normal">Evolution</text></g></g><g id="mapContent"><g id="pst-content"><g id="pst-elements"></g></g><g id="link-content"><g id="links"><g id="links"><g id="modern_link_2_3" style="cursor: pointer;"><line x1="504" y1="30.00000000000003" x2="488" y2="125.99999999999997" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="504" y1="30.00000000000003" x2="488" y2="125.99999999999997" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_3_4" style="cursor: pointer;"><line x1="488" y1="125.99999999999997" x2="648" y2="222" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="488" y1="125.99999999999997" x2="648" y2="222" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_3_5" style="cursor: pointer;"><line x1="488" y1="125.99999999999997" x2="640" y2="288" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="488" y1="125.99999999999997" x2="640" y2="288" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><g id="modern_link_5_7" style="cursor: pointer;"><line x1="640" y1="288" x2="656" y2="372" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="640" y1="288" x2="656" y2="372" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g></g><g id="evolvingEndLinks"><g id="modern_link_5_6" style="cursor: pointer;"><line x1="640" y1="288" x2="280" y2="342.00000000000006" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="640" y1="288" x2="280" y2="342.00000000000006" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g></g><g id="bothEvolving"></g><g id="anchorLinks"><g id="modern_link_2_3" style="cursor: pointer;"><line x1="504" y1="30.00000000000003" x2="488" y2="125.99999999999997" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="504" y1="30.00000000000003" x2="488" y2="125.99999999999997" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g></g><g id="anchorNonEvolvedLinks"></g><g id="evolvingToNoneEvolvingEndLinks"><g id="modern_link_6_8" style="cursor: pointer;"><line x1="280" y1="342.00000000000006" x2="560" y2="540" stroke="transparent" stroke-width="10" style="cursor: pointer;"></line><line x1="280" y1="342.00000000000006" x2="560" y2="540" stroke="grey" stroke-width="1" stroke-opacity="1" style="cursor: pointer; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g></g></g><g id="evolvedLinks"><g id="modern_evolving_link_6_6_evolved" style="cursor: default;"><line x1="280" y1="342.00000000000006" x2="496" y2="342.00000000000006" stroke="transparent" stroke-width="10" style="cursor: default;"></line><line x1="280" y1="342.00000000000006" x2="496" y2="342.00000000000006" stroke-dasharray="5 5" stroke="red" stroke-width="1" stroke-opacity="1" marker-end="url(#arrow)" style="cursor: default; transition: stroke 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), stroke-opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);"></line></g><line class="inertia-symbol " x1="320" y1="332.00000000000006" x2="320" y2="352.00000000000006" stroke="black" stroke-width="6"></line></g><g id="fluidLinks"></g></g><g id="component-content"><defs><style>
+                        @keyframes methodHighlightPulse {
+                            0%, 100% {
+                                stroke-opacity: 0.3;
+                                stroke-width: 2;
+                            }
+                            50% {
+                                stroke-opacity: 0.8;
+                                stroke-width: 3;
+                            }
+                        }
+
+                        .method-hover-circle {
+                            animation: methodHighlightPulse 1.5s ease-in-out infinite;
+                        }
+
+                        .method-hover-circle:hover {
+                            stroke: #4CAF50 !important;
+                            stroke-width: 3 !important;
+                            stroke-opacity: 0.8 !important;
+                            stroke-dasharray: 0 !important;
+                            animation: none !important;
+                        }
+                    </style></defs><g id="anchors"><g class="draggable" style="cursor: grab;" id="modern_movable_anchor__2_" transform="translate(504,30.00000000000003)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g data-testid="map-anchor-2" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;"><rect class="anchor-hover-indicator" x="-39.6" y="-29.4" width="79.2" height="28.8" fill="#87ceeb" stroke="#2196F3" stroke-width="1" rx="4" ry="4" style="opacity: 0; transition: opacity 0.3s ease-in-out; pointer-events: none;"></rect><text id="2-text" data-testid="2-text" font-weight="normal" font-size="14px" class="label" text-anchor="middle" x="0" y="-10" transform="" fill="black">Customer</text></g></g><defs><style>
+                    @keyframes anchorSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      0% {
+                        opacity: 0;
+                      }
+                      40% {
+                        opacity: 0.2;
+                      }
+                      100% {
+                        opacity: 0.5;
+                      }
+                    }
+                    
+                    g[data-testid^="map-anchor-"]:hover .anchor-hover-indicator {
+                      opacity: 0.5 !important;
+                      animation: fadeIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                    }
+                    </style></defs></g><g id="accelerators"></g><g id="methods"></g><g id="elements"><g class="draggable" style="cursor: grab;" id="modern_movable_element_3" transform="translate(488,125.99999999999997)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="3" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-3"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_3" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(488,125.99999999999997)"><g class="draggable" style="cursor: grab;" id="modern_movable_3-text-movable" transform="translate(5,-10)"><text id="3-text" data-testid="3-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Cup of tea</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_4" transform="translate(648,222)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="4" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-4"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_4" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(648,222)"><g class="draggable" style="cursor: grab;" id="modern_movable_4-text-movable" transform="translate(5,-10)"><text id="4-text" data-testid="4-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Tea</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_5" transform="translate(640,288)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="5" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-5"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_5" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(640,288)"><g class="draggable" style="cursor: grab;" id="modern_movable_5-text-movable" transform="translate(5,-10)"><text id="5-text" data-testid="5-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Hot water</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_6" transform="translate(280,342.00000000000006)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="6" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-6"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><rect id="element_square_6" x="-5" y="-5" fill="white" stroke="black" width="10" height="10" stroke-width="1"></rect></g></g><g transform="translate(280,342.00000000000006)"><g class="draggable" style="cursor: grab;" id="modern_movable_6-text-movable" transform="translate(5,20)"><text id="6-text" data-testid="6-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Kettle</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_7" transform="translate(656,372)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="7" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-7"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_7" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(656,372)"><g class="draggable" style="cursor: grab;" id="modern_movable_7-text-movable" transform="translate(5,-10)"><text id="7-text" data-testid="7-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Water</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_8" transform="translate(560,540)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="8" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-8"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><circle id="element_circle_8" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g transform="translate(560,540)"><g class="draggable" style="cursor: grab;" id="modern_movable_8-text-movable" transform="translate(5,-10)"><text id="8-text" data-testid="8-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Power</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_element_6_evolved" transform="translate(496,342.00000000000006)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g id="6_evolved" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;" data-testid="map-component-6_evolved"><g class="component-hover-indicator" style="opacity: 0; transition: opacity 0.1s ease-in-out; pointer-events: none;"><circle cx="0" cy="0" r="12" fill="#87ceeb" stroke="#2196F3" stroke-width="1"></circle></g><rect id="element_square_6_evolved" x="-5" y="-5" fill="white" stroke="red" width="10" height="10" stroke-width="1"></rect></g></g><g transform="translate(496,342.00000000000006)"><g class="draggable" style="cursor: grab;" id="modern_movable_6_evolved-text-movable" transform="translate(5,-10)"><text id="6_evolved-text" data-testid="6_evolved-text" font-weight="normal" font-size="14px" class="label" transform="" fill="black">Kettle</text></g></g><defs><style>
+                    @keyframes componentSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                        r: 12;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                        r: 14;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      from {
+                        opacity: 0;
+                      }
+                      to {
+                        opacity: 0.8;
+                      }
+                    }
+                    
+                    g[data-testid^="map-component-"]:hover .component-hover-indicator {
+                      opacity: 0.8 !important;
+                      animation: fadeIn 0.2s ease-in-out;
+                    }
+                    </style></defs></g></g><g id="annotation-content"><g id="pipelines"><g id="pipeline_box_9" transform="translate(225,344.00000000000006)" style="cursor: default;"><rect x="0" y="0" width="270" height="22" fill="transparent" stroke="none"></rect><line x1="0" y1="0" x2="270" y2="0" stroke-width="1" stroke="black" style="transition: stroke 0.2s ease-in-out, stroke-width 0.2s ease-in-out;"></line><line x1="270" y1="0" x2="270" y2="22" stroke-width="1" stroke="black" style="transition: stroke 0.2s ease-in-out, stroke-width 0.2s ease-in-out;"></line><line x1="270" y1="22" x2="0" y2="22" stroke-width="1" stroke="black" style="transition: stroke 0.2s ease-in-out, stroke-width 0.2s ease-in-out;"></line><line x1="0" y1="22" x2="0" y2="0" stroke-width="1" stroke="black" style="transition: stroke 0.2s ease-in-out, stroke-width 0.2s ease-in-out;"></line></g><g class="draggable" style="cursor: grab;" id="modern_movable_pipeline_x1_9" transform="translate(240,355.00000000000006)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><circle id="pipeline_circle_x1_9" stroke-width="1" r="5" stroke="black" fill="white"></circle></g><g class="draggable" style="cursor: grab;" id="modern_movable_pipeline_x2_9" transform="translate(480,355.00000000000006)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><circle id="pipeline_circle_x2_9" stroke-width="1" r="5" stroke="black" fill="white"></circle></g></g><g id="notes"><g class="draggable" style="cursor: grab;" id="modern_movable_modern_note_11" transform="translate(360,480)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g data-testid="map-note-11" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;"><rect class="note-hover-indicator" x="-6" y="-6" width="62" height="24" fill="#87ceeb" stroke="#2196F3" stroke-width="1" rx="4" ry="4" style="opacity: 0; transition: opacity 0.3s ease-in-out; pointer-events: none;"></rect><text id="modern_note_text_11" data-testid="modern_note_text_11" font-weight="bold" font-size="12px" class="label" text-anchor="start" transform="" fill="black">Standardising power</text></g></g><defs><style>
+                    @keyframes noteSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      0% {
+                        opacity: 0;
+                      }
+                      40% {
+                        opacity: 0.2;
+                      }
+                      100% {
+                        opacity: 0.5;
+                      }
+                    }
+                    
+                    g[data-testid^="map-note-"]:hover .note-hover-indicator {
+                      opacity: 0.5 !important;
+                      animation: fadeIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                    }
+                    </style></defs><g class="draggable" style="cursor: grab;" id="modern_movable_modern_note_12" transform="translate(200,270)"><rect x="-15" y="-15" rx="30" ry="30" width="30" height="30" fill-opacity="0"></rect><g data-testid="map-note-12" style="cursor: pointer; transition: all 0.2s ease-in-out; filter: none;"><rect class="note-hover-indicator" x="-6" y="-6" width="62" height="24" fill="#87ceeb" stroke="#2196F3" stroke-width="1" rx="4" ry="4" style="opacity: 0; transition: opacity 0.3s ease-in-out; pointer-events: none;"></rect><text id="modern_note_text_12" data-testid="modern_note_text_12" font-weight="bold" font-size="12px" class="label" text-anchor="start" transform="" fill="black">Watch the kettle</text></g></g><defs><style>
+                    @keyframes noteSelectionPulse {
+                      0%, 100% {
+                        stroke-opacity: 0.4;
+                      }
+                      50% {
+                        stroke-opacity: 0.8;
+                      }
+                    }
+                    
+                    @keyframes fadeIn {
+                      0% {
+                        opacity: 0;
+                      }
+                      40% {
+                        opacity: 0.2;
+                      }
+                      100% {
+                        opacity: 0.5;
+                      }
+                    }
+                    
+                    g[data-testid^="map-note-"]:hover .note-hover-indicator {
+                      opacity: 0.5 !important;
+                      animation: fadeIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                    }
+                    </style></defs></g><g id="annotations"></g></g></g></g></g></g><g id="acme-logo"><rect x="880" y="10" width="80" height="30" fill="#1f6feb"/><text x="920" y="31" font-size="16" text-anchor="middle" fill="#ffffff">ACME</text></g><path d="M 860 700 L 900 690 L 940 705" stroke="#d1242f" stroke-width="2" fill="none"/><text x="860" y="725" font-size="14" fill="#d1242f">ask finance</text></svg>

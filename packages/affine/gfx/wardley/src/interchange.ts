@@ -7,7 +7,6 @@ import type {
 } from '@labre/affine-block-surface';
 import {
   interchangeCapabilityId,
-  parseSvgSketch,
   SVG_SKETCH_EXTENSION,
   SVG_SKETCH_FORMAT_ID,
   SVG_SKETCH_MIME,
@@ -20,6 +19,7 @@ import {
   wardleySafeFilename,
 } from './export.js';
 import { importWardleyOwm } from './import.js';
+import { importWardleySvg } from './svg-import.js';
 
 /**
  * Wardley's entries in the interchange registry (`docs/adr/0012`, P1).
@@ -31,7 +31,8 @@ import { importWardleyOwm } from './import.js';
  * and the import is the row the ADR calls **the reference Wardley import**,
  * because the OWM DSL is the settled Wardley vocabulary while mermaid's Wardley
  * diagram type is still experimental upstream. Then SVG IN, the visual-tier
- * FALLBACK, which promises recognition and nothing else.
+ * route for a picture, which recognises the map when it knows who drew it and
+ * sketches the rest (ADR 0032).
  *
  * The file is laid out as one section per FORMAT, each holding its format
  * object then its capabilities, with {@link WARDLEY_INTERCHANGE} at the bottom
@@ -135,31 +136,25 @@ export const WARDLEY_SVG_FORMAT: InterchangeFormat = {
 };
 
 /**
- * `wardley:svg:import` — an SVG as a sketch, best effort.
+ * `wardley:svg:import` — an SVG as the Wardley map it is a picture of, and
+ * whatever else it holds as a sketch (ADR 0032).
  *
- * **The heuristics statement and the known failure modes this capability owes
- * (ADR 0012, open question 2) are the module documentation of
- * `packages/affine/blocks/surface/src/extensions/svg-sketch.ts`.** Written once
- * there because Wardley and BPMN wrap the SAME parser and therefore make the
- * same guesses — and because the ADR's question is about what a visual
- * capability is ALLOWED to guess, which for both of them is: geometry, and
- * nothing else. A circle is a circle; whether it is a component is the
- * author's sentence, not this reader's.
- *
- * What lands is an ADR 0007 level-1 sketch — plain shapes, brush strokes and
- * editable free text — which the author then PROMOTES onto a map. In
- * particular the two axes and the evolution bands are NOT recovered: a map's
- * coordinates are its meaning, and reading them off a picture would be
- * inventing a position and presenting it as read. {@link WARDLEY_OWM_IMPORT}
- * beside it is the route a user should be pointed at, exactly as P2 says —
- * this one is for the picture somebody sent you from a tool that writes no OWM.
+ * **The heuristics statement this capability owes (ADR 0012, open question 2)
+ * is the module documentation of `./svg-import.ts`**, beside the parser that
+ * makes the guesses: ADR 0032 superseded, for Wardley only, the rule that a
+ * visual capability guesses geometry and nothing else. A picture from a
+ * producer the reader recognises arrives as native Wardley elements; the rest
+ * of it — and the whole of a picture nobody recognises — arrives as the same
+ * level-1 sketch BPMN's reader draws (`parseSvgSketch`, which BPMN still
+ * declares). Still the visual tier: no payload, no round-trip, and
+ * {@link WARDLEY_OWM_IMPORT} beside it stays the reference Wardley import.
  */
 export const WARDLEY_SVG_IMPORT: InterchangeImportCapability = {
   id: interchangeCapabilityId('wardley', WARDLEY_SVG_FORMAT.id, 'import'),
   framework: 'wardley',
   format: WARDLEY_SVG_FORMAT,
   direction: 'import',
-  run: parseSvgSketch,
+  run: importWardleySvg,
 };
 
 /* ── The list the view extension registers ────────────────────────────── */

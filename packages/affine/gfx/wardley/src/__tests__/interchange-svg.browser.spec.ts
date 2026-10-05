@@ -6,6 +6,7 @@ import { Container } from '@labre/global/di';
 import { describe, expect, it } from 'vitest';
 
 import { WARDLEY_INTERCHANGE, WARDLEY_SVG_IMPORT } from '../interchange';
+import { SVG_CORPUS } from './svg-corpus';
 
 /**
  * The half of Wardley's interchange spec that actually RUNS the `.svg` reader,
@@ -36,11 +37,27 @@ describe('the capability resolves and runs', () => {
     );
 
     // A circle and its label, as a level-1 sketch: a plain ellipse and an
-    // editable text element. Nothing here decided the circle was a component —
-    // that promotion is the author's, and it is the whole of ADR 0007's ladder.
+    // editable text element. No producer marked this file, so nothing here
+    // decided the circle was a component — that promotion is the author's,
+    // and it is the whole of ADR 0007's ladder (ADR 0032 §4).
     expect(result.elements.map(props => props.type)).toEqual(['shape', 'text']);
     expect(result.elements[1].text).toBe('Customer');
     expect(result.report.mapped).toBe(2);
+  });
+
+  it('reads a producer’s export off the container as a native map', () => {
+    // The same door, a file a producer marked: ADR 0032's recognition is the
+    // capability's own behaviour, not a separate entry a host has to find.
+    const capability = mount().get(InterchangeIdentifier('wardley:svg:import'));
+    if (capability.direction !== 'import') throw new Error('expected import');
+
+    const result = capability.run(SVG_CORPUS.smallOwm, { name: 'map.svg' });
+
+    expect(result.report.sourceVersion).toBe('OnlineWardleyMaps SVG');
+    expect(result.elements[0].role).toBe('wardley:map');
+    expect(
+      result.elements.filter(props => props.role === 'wardley:component')
+    ).toHaveLength(7);
   });
 
   it('writes no `interchange` payload, and reports nothing carried', () => {

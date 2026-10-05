@@ -20,6 +20,7 @@ import { WARDLEY_PROFILES } from './profiles.js';
 import { WARDLEY_READING } from './reading.js';
 import { WARDLEY_ROLES } from './roles.js';
 import { WARDLEY_RULES } from './rules.js';
+import { WARDLEY_SVG_IMPORT_REMARKS } from './svg-remarks.js';
 import {
   KODAK_INERTIA_SEED,
   TEA_SHOP_SEED,
@@ -97,9 +98,16 @@ const templateNameEntries = (): TranslationKeyManifestEntry[] =>
     WARDLEY_TEMPLATE_NAME_KODAK_INERTIA,
   ].map(([key, fallback]) => ({ key, fallback, source: 'chrome' as const }));
 
-/** The five fixed-wording OWM import remarks ({@link WARDLEY_OWM_IMPORT_REMARKS}). */
+/**
+ * The fixed-wording import remarks: the OWM reader's
+ * ({@link WARDLEY_OWM_IMPORT_REMARKS}) and the SVG reader's
+ * ({@link WARDLEY_SVG_IMPORT_REMARKS}).
+ */
 const importRemarkEntries = (): TranslationKeyManifestEntry[] =>
-  Object.values(WARDLEY_OWM_IMPORT_REMARKS).map(([key, english]) => ({
+  [
+    ...Object.values(WARDLEY_OWM_IMPORT_REMARKS),
+    ...Object.values(WARDLEY_SVG_IMPORT_REMARKS),
+  ].map(([key, english]) => ({
     key,
     fallback: english,
     source: 'chrome' as const,

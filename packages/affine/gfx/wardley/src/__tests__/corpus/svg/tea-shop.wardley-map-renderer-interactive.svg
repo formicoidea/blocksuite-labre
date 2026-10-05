@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="800" viewBox="0 0 1600 800">
+<rect width="1600" height="800" fill="#ffffff" data-id="background" data-kind="background" />
+<g data-layer="title">
+<text x="800" y="22" data-id="title" data-kind="title" text-anchor="middle" font-family="Inter, sans-serif" font-size="16" font-weight="600" fill="#333333">Tea Shop moderne 2026 - chaine de valeur</text>
+</g>
+<g data-layer="axes">
+<defs><marker id="axis-arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#444444" /></marker></defs>
+<line x1="28" y1="772" x2="1580" y2="772" stroke="#444444" stroke-width="1.5" marker-end="url(#axis-arrow)" />
+<line x1="28" y1="772" x2="28" y2="28" stroke="#444444" stroke-width="1.5" marker-end="url(#axis-arrow)" />
+<line x1="299.59999999999997" y1="28" x2="299.59999999999997" y2="772" stroke="#444444" stroke-width="1" stroke-dasharray="4,4" />
+<line x1="648.8000000000001" y1="28" x2="648.8000000000001" y2="772" stroke="#444444" stroke-width="1" stroke-dasharray="4,4" />
+<line x1="1114.3999999999999" y1="28" x2="1114.3999999999999" y2="772" stroke="#444444" stroke-width="1" stroke-dasharray="4,4" />
+<text x="32" y="788" text-anchor="start" font-family="Inter, sans-serif" font-size="12" fill="#666666">Genesis</text>
+<text x="303.59999999999997" y="788" text-anchor="start" font-family="Inter, sans-serif" font-size="12" fill="#666666">Custom-Built</text>
+<text x="652.8000000000001" y="788" text-anchor="start" font-family="Inter, sans-serif" font-size="12" fill="#666666">Product (+Rental)</text>
+<text x="1118.3999999999999" y="788" text-anchor="start" font-family="Inter, sans-serif" font-size="12" fill="#666666">Commodity (+Utility)</text>
+<text x="1564" y="788" text-anchor="end" font-family="Inter, sans-serif" font-size="13" fill="#444444">Evolution</text>
+<text x="40" y="42" font-family="Inter, sans-serif" font-size="10" fill="#666666">Uncharted</text>
+<text x="1576" y="42" text-anchor="end" font-family="Inter, sans-serif" font-size="10" fill="#666666">Industrialized</text>
+<text x="20" y="400" text-anchor="middle" font-family="Inter, sans-serif" font-size="13" fill="#444444" transform="rotate(-90, 20, 400)">Value Chain</text>
+<text x="22" y="68" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#666666" transform="rotate(-90, 22, 68)">Visible</text>
+<text x="22" y="742" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#666666" transform="rotate(-90, 22, 742)">Invisible</text>
+</g>
+<g data-layer="edges">
+<g data-id="r1" data-kind="relation"><line class="hit-area" x1="183.20000000000002" y1="102.4" x2="1362.72" y2="65.2" stroke="transparent" stroke-width="16" /><line x1="183.20000000000002" y1="102.4" x2="1362.72" y2="65.2" stroke="#999999" stroke-width="1" /></g>
+<g data-id="r2" data-kind="relation"><line class="hit-area" x1="183.20000000000002" y1="102.4" x2="1238.56" y2="94.96" stroke="transparent" stroke-width="16" /><line x1="183.20000000000002" y1="102.4" x2="1238.56" y2="94.96" stroke="#999999" stroke-width="1" /></g>
+<g data-id="r3" data-kind="relation"><line class="hit-area" x1="183.20000000000002" y1="102.4" x2="1145.44" y2="117.28" stroke="transparent" stroke-width="16" /><line x1="183.20000000000002" y1="102.4" x2="1145.44" y2="117.28" stroke="#999999" stroke-width="1" /></g>
+<g data-id="r4" data-kind="relation"><line class="hit-area" x1="183.20000000000002" y1="102.4" x2="1052.32" y2="147.04000000000002" stroke="transparent" stroke-width="16" /><line x1="183.20000000000002" y1="102.4" x2="1052.32" y2="147.04000000000002" stroke="#999999" stroke-width="1" /></g>
+<g data-id="r5" data-kind="relation"><line class="hit-area" x1="1362.72" y1="65.2" x2="1052.32" y2="206.56" stroke="transparent" stroke-width="16" /><line x1="1362.72" y1="65.2" x2="1052.32" y2="206.56" stroke="#999999" stroke-width="1" /></g>
+<g data-id="r6" data-kind="relation"><line class="hit-area" x1="1362.72" y1="65.2" x2="928.16" y2="236.32000000000002" stroke="transparent" stroke-width="16" /><line x1="1362.72" y1="65.2" x2="928.16" y2="236.32000000000002" stroke="#999999" stroke-width="1" /></g>
+<g data-id="r7" data-kind="relation"><line class="hit-area" x1="1362.72" y1="65.2" x2="804" y2="362.8" stroke="transparent" stroke-width="16" /><line x1="1362.72" y1="65.2" x2="804" y2="362.8" stroke="#999999" stroke-width="1" /></g>
+<g data-id="r8" data-kind="relation"><line class="hit-area" x1="1238.56" y1="94.96" x2="710.88" y2="258.64" stroke="transparent" stroke-width="16" /><line x1="1238.56" y1="94.96" x2="710.88" y2="258.64" stroke="#999999" stroke-width="1" /></g>
+<g data-id="r9" data-kind="relation"><line class="hit-area" x1="1238.56" y1="94.96" x2="679.84" y2="414.88" stroke="transparent" stroke-width="16" /><line x1="1238.56" y1="94.96" x2="679.84" y2="414.88" stroke="#999999" stroke-width="1" /></g>
+<g data-id="r10" data-kind="relation"><line class="hit-area" x1="1238.56" y1="94.96" x2="974.72" y2="437.20000000000005" stroke="transparent" stroke-width="16" /><line x1="1238.56" y1="94.96" x2="974.72" y2="437.20000000000005" stroke="#999999" stroke-width="1" /></g>
+<g data-id="r11" data-kind="relation"><line class="hit-area" x1="1145.44" y1="117.28" x2="1129.9199999999998" y2="489.28" stroke="transparent" stroke-width="16" /><line x1="1145.44" y1="117.28" x2="1129.9199999999998" y2="489.28" stroke="#999999" stroke-width="1" /></g>
+<g data-id="r12" data-kind="relation"><line class="hit-area" x1="1145.44" y1="117.28" x2="1207.52" y2="511.6" stroke="transparent" stroke-width="16" /><line x1="1145.44" y1="117.28" x2="1207.52" y2="511.6" stroke="#999999" stroke-width="1" /></g>
+<g data-id="r13" data-kind="relation"><line class="hit-area" x1="1145.44" y1="117.28" x2="1160.96" y2="571.12" stroke="transparent" stroke-width="16" /><line x1="1145.44" y1="117.28" x2="1160.96" y2="571.12" stroke="#999999" stroke-width="1" /></g>
+<g data-id="r14" data-kind="relation"><line class="hit-area" x1="1052.32" y1="147.04000000000002" x2="447.04" y2="325.6" stroke="transparent" stroke-width="16" /><line x1="1052.32" y1="147.04000000000002" x2="447.04" y2="325.6" stroke="#999999" stroke-width="1" /></g>
+<g data-id="r15" data-kind="relation"><line class="hit-area" x1="1052.32" y1="147.04000000000002" x2="555.6800000000001" y2="310.72" stroke="transparent" stroke-width="16" /><line x1="1052.32" y1="147.04000000000002" x2="555.6800000000001" y2="310.72" stroke="#999999" stroke-width="1" /></g>
+<g data-id="r16" data-kind="relation"><line class="hit-area" x1="1052.32" y1="206.56" x2="493.59999999999997" y2="400" stroke="transparent" stroke-width="16" /><line x1="1052.32" y1="206.56" x2="493.59999999999997" y2="400" stroke="#999999" stroke-width="1" /></g>
+<g data-id="r17" data-kind="relation"><line class="hit-area" x1="1052.32" y1="206.56" x2="679.84" y2="414.88" stroke="transparent" stroke-width="16" /><line x1="1052.32" y1="206.56" x2="679.84" y2="414.88" stroke="#999999" stroke-width="1" /></g>
+<g data-id="r18" data-kind="relation"><line class="hit-area" x1="928.16" y1="236.32000000000002" x2="943.68" y2="533.9200000000001" stroke="transparent" stroke-width="16" /><line x1="928.16" y1="236.32000000000002" x2="943.68" y2="533.9200000000001" stroke="#999999" stroke-width="1" /></g>
+<g data-id="r19" data-kind="relation"><line class="hit-area" x1="1005.76" y1="280.96000000000004" x2="1083.3600000000001" y2="466.96" stroke="transparent" stroke-width="16" /><line x1="1005.76" y1="280.96000000000004" x2="1083.3600000000001" y2="466.96" stroke="#999999" stroke-width="1" /></g>
+<g data-id="r20" data-kind="relation"><line class="hit-area" x1="555.6800000000001" y1="310.72" x2="943.68" y2="533.9200000000001" stroke="transparent" stroke-width="16" /><line x1="555.6800000000001" y1="310.72" x2="943.68" y2="533.9200000000001" stroke="#999999" stroke-width="1" /></g>
+<g data-id="r21" data-kind="relation"><line class="hit-area" x1="493.59999999999997" y1="400" x2="772.9599999999999" y2="556.24" stroke="transparent" stroke-width="16" /><line x1="493.59999999999997" y1="400" x2="772.9599999999999" y2="556.24" stroke="#999999" stroke-width="1" /></g>
+<g data-id="r22" data-kind="relation"><line class="hit-area" x1="804" y1="362.8" x2="881.6" y2="586" stroke="transparent" stroke-width="16" /><line x1="804" y1="362.8" x2="881.6" y2="586" stroke="#999999" stroke-width="1" /></g>
+<g data-id="r23" data-kind="relation"><line class="hit-area" x1="1083.3600000000001" y1="466.96" x2="1114.3999999999999" y2="623.2" stroke="transparent" stroke-width="16" /><line x1="1083.3600000000001" y1="466.96" x2="1114.3999999999999" y2="623.2" stroke="#999999" stroke-width="1" /></g>
+<g data-id="r24" data-kind="relation"><line class="hit-area" x1="1129.9199999999998" y1="489.28" x2="1300.6399999999999" y2="638.0799999999999" stroke="transparent" stroke-width="16" /><line x1="1129.9199999999998" y1="489.28" x2="1300.6399999999999" y2="638.0799999999999" stroke="#999999" stroke-width="1" /></g>
+<g data-id="r25" data-kind="relation"><line class="hit-area" x1="1207.52" y1="511.6" x2="1300.6399999999999" y2="638.0799999999999" stroke="transparent" stroke-width="16" /><line x1="1207.52" y1="511.6" x2="1300.6399999999999" y2="638.0799999999999" stroke="#999999" stroke-width="1" /></g>
+<g data-id="r26" data-kind="relation"><line class="hit-area" x1="943.68" y1="533.9200000000001" x2="1300.6399999999999" y2="638.0799999999999" stroke="transparent" stroke-width="16" /><line x1="943.68" y1="533.9200000000001" x2="1300.6399999999999" y2="638.0799999999999" stroke="#999999" stroke-width="1" /></g>
+<g data-id="r27" data-kind="relation"><line class="hit-area" x1="772.9599999999999" y1="556.24" x2="1300.6399999999999" y2="638.0799999999999" stroke="transparent" stroke-width="16" /><line x1="772.9599999999999" y1="556.24" x2="1300.6399999999999" y2="638.0799999999999" stroke="#999999" stroke-width="1" /></g>
+<g data-id="r28" data-kind="relation"><line class="hit-area" x1="1021.28" y1="452.08" x2="1114.3999999999999" y2="623.2" stroke="transparent" stroke-width="16" /><line x1="1021.28" y1="452.08" x2="1114.3999999999999" y2="623.2" stroke="#999999" stroke-width="1" /></g>
+<g data-id="r29" data-kind="relation"><line class="hit-area" x1="1114.3999999999999" y1="623.2" x2="1393.76" y2="660.4" stroke="transparent" stroke-width="16" /><line x1="1114.3999999999999" y1="623.2" x2="1393.76" y2="660.4" stroke="#999999" stroke-width="1" /></g>
+<g data-id="r30" data-kind="relation"><line class="hit-area" x1="1300.6399999999999" y1="638.0799999999999" x2="1362.72" y2="682.72" stroke="transparent" stroke-width="16" /><line x1="1300.6399999999999" y1="638.0799999999999" x2="1362.72" y2="682.72" stroke="#999999" stroke-width="1" /></g>
+</g>
+<g data-layer="nodes">
+<g data-id="c1" data-kind="component"><circle cx="183.20000000000002" cy="102.4" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" /><defs><clipPath id="anchor-clip-c1"><circle cx="183.20000000000002" cy="102.4" r="4.5" /></clipPath></defs><g clip-path="url(#anchor-clip-c1)"><circle cx="183.20000000000002" cy="100.9" r="1.5" fill="none" stroke="#000000" stroke-width="1.2" /><path d="M 180.45000000000002 107.65 A 2.75 4.75 0 0 1 185.95000000000002 107.65" fill="none" stroke="#000000" stroke-width="1.2" stroke-linecap="round" /></g></g>
+<g data-id="c2" data-kind="component"><circle cx="1362.72" cy="65.2" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" /></g>
+<g data-id="c3" data-kind="component"><circle cx="1238.56" cy="94.96" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" /></g>
+<g data-id="c4" data-kind="component"><circle cx="1145.44" cy="117.28" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" /></g>
+<g data-id="c5" data-kind="component"><circle cx="1052.32" cy="147.04000000000002" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" /></g>
+<g data-id="c6" data-kind="component"><circle cx="1052.32" cy="206.56" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" /></g>
+<g data-id="c7" data-kind="component"><circle cx="928.16" cy="236.32000000000002" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" /></g>
+<g data-id="c8" data-kind="component"><circle cx="710.88" cy="258.64" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" /></g>
+<g data-id="c9" data-kind="component"><circle cx="1005.76" cy="280.96000000000004" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" /></g>
+<g data-id="c10" data-kind="component"><circle cx="555.6800000000001" cy="310.72" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" /></g>
+<g data-id="c11" data-kind="component"><circle cx="447.04" cy="325.6" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" /></g>
+<g data-id="c12" data-kind="component"><circle cx="804" cy="362.8" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" /></g>
+<g data-id="c13" data-kind="component"><circle cx="493.59999999999997" cy="400" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" /></g>
+<g data-id="c14" data-kind="component"><circle cx="679.84" cy="414.88" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" /></g>
+<g data-id="c15" data-kind="component"><circle cx="974.72" cy="437.20000000000005" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" /></g>
+<g data-id="c16" data-kind="component"><circle cx="1021.28" cy="452.08" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" /></g>
+<g data-id="c17" data-kind="component"><circle cx="1083.3600000000001" cy="466.96" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" /></g>
+<g data-id="c18" data-kind="component"><circle cx="1129.9199999999998" cy="489.28" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" /></g>
+<g data-id="c19" data-kind="component"><circle cx="1207.52" cy="511.6" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" /></g>
+<g data-id="c20" data-kind="component"><circle cx="943.68" cy="533.9200000000001" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" /></g>
+<g data-id="c21" data-kind="component"><circle cx="772.9599999999999" cy="556.24" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" /></g>
+<g data-id="c22" data-kind="component"><circle cx="1160.96" cy="571.12" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" /></g>
+<g data-id="c23" data-kind="component"><circle cx="881.6" cy="586" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" /></g>
+<g data-id="c24" data-kind="component"><circle cx="1114.3999999999999" cy="623.2" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" /></g>
+<g data-id="c25" data-kind="component"><circle cx="1300.6399999999999" cy="638.0799999999999" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" /></g>
+<g data-id="c26" data-kind="component"><circle cx="1393.76" cy="660.4" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" /></g>
+<g data-id="c27" data-kind="component"><circle cx="1362.72" cy="682.72" r="5" fill="#ffffff" stroke="#000000" stroke-width="1" /></g>
+</g>
+<g data-layer="labels">
+<text x="174.20000000000002" y="106.4" text-anchor="end" font-family="Inter, sans-serif" font-size="12" fill="#333333" data-id="c1" data-kind="label" style="cursor:move">Client</text>
+<text x="1371.72" y="69.2" text-anchor="start" font-family="Inter, sans-serif" font-size="12" fill="#333333" data-id="c2" data-kind="label" style="cursor:move">Moment the premium, rapide et personnalise</text>
+<text x="1247.56" y="98.96" text-anchor="start" font-family="Inter, sans-serif" font-size="12" fill="#333333" data-id="c3" data-kind="label" style="cursor:move">Confiance qualite, origine et sante</text>
+<text x="1136.44" y="121.28" text-anchor="end" font-family="Inter, sans-serif" font-size="12" fill="#333333" data-id="c4" data-kind="label" style="cursor:move">Commande omnicanale sans friction</text>
+<text x="1043.32" y="151.04000000000002" text-anchor="end" font-family="Inter, sans-serif" font-size="12" fill="#333333" data-id="c5" data-kind="label" style="cursor:move">Experience boutique et communaute</text>
+<text x="1061.32" y="210.56" text-anchor="start" font-family="Inter, sans-serif" font-size="12" fill="#333333" data-id="c6" data-kind="label" style="cursor:move">Menu boissons chaudes/froides</text>
+<text x="919.16" y="240.32000000000002" text-anchor="end" font-family="Inter, sans-serif" font-size="12" fill="#333333" data-id="c7" data-kind="label" style="cursor:move">Personnalisation gout, sucre, lait, temperature</text>
+<text x="701.88" y="262.64" text-anchor="end" font-family="Inter, sans-serif" font-size="12" fill="#333333" data-id="c8" data-kind="label" style="cursor:move">Conseil expert et storytelling produit</text>
+<text x="1014.76" y="284.96000000000004" text-anchor="start" font-family="Inter, sans-serif" font-size="12" fill="#333333" data-id="c9" data-kind="label" style="cursor:move">Vente retail thés, accessoires, coffrets</text>
+<text x="555.6800000000001" y="299.72" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#333333" data-id="c10" data-kind="label" style="cursor:move">Abonnements et recommandations</text>
+<text x="438.04" y="329.6" text-anchor="end" font-family="Inter, sans-serif" font-size="12" fill="#333333" data-id="c11" data-kind="label" style="cursor:move">Ateliers, tastings et evenements</text>
+<text x="804" y="351.8" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#333333" data-id="c12" data-kind="label" style="cursor:move">Preparation barista / tea master</text>
+<text x="484.59999999999997" y="404" text-anchor="end" font-family="Inter, sans-serif" font-size="12" fill="#333333" data-id="c13" data-kind="label" style="cursor:move">Recettes signature saisonnieres</text>
+<text x="679.84" y="433.88" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#333333" data-id="c14" data-kind="label" style="cursor:move">Sourcing thés premium et ingredients</text>
+<text x="974.72" y="426.20000000000005" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#333333" data-id="c15" data-kind="label" style="cursor:move">Traçabilite, certifications, allergenes</text>
+<text x="1012.28" y="456.08" text-anchor="end" font-family="Inter, sans-serif" font-size="12" fill="#333333" data-id="c16" data-kind="label" style="cursor:move">Packaging durable et vente a emporter</text>
+<text x="1092.3600000000001" y="470.96" text-anchor="start" font-family="Inter, sans-serif" font-size="12" fill="#333333" data-id="c17" data-kind="label" style="cursor:move">Gestion stock et fraicheur</text>
+<text x="1138.9199999999998" y="493.28" text-anchor="start" font-family="Inter, sans-serif" font-size="12" fill="#333333" data-id="c18" data-kind="label" style="cursor:move">Application mobile / web ordering</text>
+<text x="1216.52" y="515.6" text-anchor="start" font-family="Inter, sans-serif" font-size="12" fill="#333333" data-id="c19" data-kind="label" style="cursor:move">POS, paiements et fidelite</text>
+<text x="934.68" y="537.9200000000001" text-anchor="end" font-family="Inter, sans-serif" font-size="12" fill="#333333" data-id="c20" data-kind="label" style="cursor:move">CRM, segmentation et marketing automation</text>
+<text x="763.9599999999999" y="560.24" text-anchor="end" font-family="Inter, sans-serif" font-size="12" fill="#333333" data-id="c21" data-kind="label" style="cursor:move">Analytics demande, marge et prevision</text>
+<text x="1160.96" y="560.12" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#333333" data-id="c22" data-kind="label" style="cursor:move">Integrations livraison / click-and-collect</text>
+<text x="872.6" y="590" text-anchor="end" font-family="Inter, sans-serif" font-size="12" fill="#333333" data-id="c23" data-kind="label" style="cursor:move">Formation equipe et playbooks operationnels</text>
+<text x="1105.3999999999999" y="627.2" text-anchor="end" font-family="Inter, sans-serif" font-size="12" fill="#333333" data-id="c24" data-kind="label" style="cursor:move">Fournisseurs the, lait vegetal, patisserie</text>
+<text x="1309.6399999999999" y="642.0799999999999" text-anchor="start" font-family="Inter, sans-serif" font-size="12" fill="#333333" data-id="c25" data-kind="label" style="cursor:move">Plateformes SaaS retail / restauration</text>
+<text x="1402.76" y="664.4" text-anchor="start" font-family="Inter, sans-serif" font-size="12" fill="#333333" data-id="c26" data-kind="label" style="cursor:move">Logistique, energie, eau, hygiene</text>
+<text x="1371.72" y="686.72" text-anchor="start" font-family="Inter, sans-serif" font-size="12" fill="#333333" data-id="c27" data-kind="label" style="cursor:move">Reglementation alimentaire et donnees clients</text>
+</g>
+<g data-layer="legend">
+<g data-id="legend" data-kind="legend">
+<rect x="1386" y="654" width="182" height="106" fill="#f5f5f5" opacity="0.95" />
+<text x="1398" y="678" font-family="Inter, sans-serif" font-size="12" font-weight="bold" fill="#333333">Legend</text>
+<circle cx="1410" cy="698" r="5" fill="#ffffff" stroke="#000000" stroke-width="1.5" />
+<text x="1430" y="702" font-family="Inter, sans-serif" font-size="12" fill="#333333">Component</text>
+<defs><clipPath id="anchor-legend-clip"><circle cx="1410" cy="718" r="4.25" /></clipPath></defs><circle cx="1410" cy="718" r="5" fill="#ffffff" stroke="#000000" stroke-width="1.5" /><g clip-path="url(#anchor-legend-clip)"><circle cx="1410" cy="716.5" r="1.5" fill="none" stroke="#000000" stroke-width="1" /><path d="M 1407.25 723.25 A 2.75 4.75 0 0 1 1412.75 723.25" fill="none" stroke="#000000" stroke-width="1" stroke-linecap="round" /></g>
+<text x="1430" y="722" font-family="Inter, sans-serif" font-size="12" fill="#333333">User / Stakeholder</text>
+<line x1="1400" y1="738" x2="1420" y2="738" stroke="#999999" stroke-width="1.5"  />
+<text x="1430" y="742" font-family="Inter, sans-serif" font-size="12" fill="#333333">Dependency</text>
+</g>
+</g>
+</svg>
