@@ -39,7 +39,11 @@
  *   paste in the same document leave every copy — element or block — in its
  *   source's layer, and a copy of what is hidden for everyone stays hidden.
  *   Frames, images and most other blocks were rebuilt from a few snapshot
- *   props, so their copies fell in the active layer, visible.
+ *   props, so their copies fell in the active layer, visible;
+ * - the clone gestures (mod+d, a real alt-drag) keep a copy of a
+ *   default-layer element or block in the default layer, with no `layer` key,
+ *   while a paste of the same model lands in the active layer — the
+ *   difference the ADR 0031 amendment makes on purpose.
  */
 import { addAttachments } from '@labre/affine/blocks/attachment';
 import { addImages } from '@labre/affine/blocks/image';
@@ -872,6 +876,156 @@ describe('user layers', () => {
           .map(flavourOf),
         'every copy is hidden like its source'
       ).toEqual([]);
+    });
+
+    // ADR 0031, amendment "A duplicate stays in its source's layer, the
+    // default one included": the clone gestures (mod+d, alt-drag) know their
+    // source and ask for its layer explicitly; a paste cannot tell "the default
+    // layer" from "another document", so it keeps the §6 rule.
+    describe('the clone gestures, the default layer included', () => {
+      const CANVAS = 'affine-edgeless-root';
+      const hasLayerKey = (id: string) => {
+        const target = model(id) as unknown as {
+          yMap?: Y.Map<unknown>;
+          yBlock?: Y.Map<unknown>;
+        };
+        return target.yMap
+          ? target.yMap.has('layer')
+          : target.yBlock!.has('prop:layer');
+      };
+      const addNote = (xywh: string) => {
+        const note = edgeless.service.crud.addBlock(
+          'affine:note',
+          { xywh },
+          window.doc.root!.id
+        );
+        window.doc.addBlock('affine:paragraph', {}, note);
+        return note;
+      };
+
+      /** A shape, a note and a frame drawn while only the default exists. */
+      const sourcesInTheDefaultLayer = async () => {
+        const sources = [
+          shape(500),
+          addNote('[500,300,300,100]'),
+          edgeless.service.crud.addBlock(
+            'affine:frame',
+            { xywh: '[500,600,300,300]', childElementIds: {} },
+            surface().id
+          ),
+        ];
+        await settle();
+        await openPane();
+        await newLayer();
+        await userEvent.keyboard('{Enter}');
+        await settle();
+        const created = userLayerId();
+        expect(layerRow(created).hasAttribute('data-active')).toBe(true);
+        for (const id of sources) {
+          expect(ownLayerOf(model(id)), id).toBeUndefined();
+        }
+        return { created, sources };
+      };
+
+      /**
+       * Hold Alt and drag `id` by a real mouse, from its centre, 0.15 of the
+       * canvas to the right. The viewport is centred on it first, clear of the
+       * pane down the left edge.
+       */
+      const altDrag = async (id: string) => {
+        const center = model(id).elementBound.center;
+        gfx().viewport.setCenter(center[0], center[1]);
+        await settle();
+        await pointerMoveTo(CANVAS, 0.5, 0.5, 1);
+        await userEvent.keyboard('{Alt>}');
+        try {
+          await pointerDown();
+          await pointerMoveTo(CANVAS, 0.65, 0.5, 8);
+          await pointerUp();
+        } finally {
+          await userEvent.keyboard('{/Alt}');
+        }
+        await settle();
+      };
+
+      test('mod+d: a shape, a note and a frame of the default layer stay in it', async () => {
+        const { sources } = await sourcesInTheDefaultLayer();
+        const before = allIds();
+
+        await selectAndFocus(sources);
+        await userEvent.keyboard(chord('d'));
+        await settle();
+
+        const copies = newIds(before);
+        expect(copies.map(flavourOf).sort()).toEqual(
+          sources.map(flavourOf).sort()
+        );
+        expect(
+          copies
+            .filter(id => ownLayerOf(model(id)) !== undefined)
+            .map(flavourOf),
+          'every copy is in the default layer'
+        ).toEqual([]);
+        expect(
+          copies.filter(hasLayerKey).map(flavourOf),
+          'and writes no layer key'
+        ).toEqual([]);
+
+        window.doc.undo();
+        await settle();
+        expect(newIds(before)).toEqual([]);
+      });
+
+      test('alt-drag: a shape and a note of the default layer stay in it', async () => {
+        const { sources } = await sourcesInTheDefaultLayer();
+        const [element, note] = sources;
+
+        for (const id of [element, note]) {
+          const before = allIds();
+          await altDrag(id);
+          const copies = newIds(before);
+          expect(copies.map(flavourOf), flavourOf(id)).toEqual([flavourOf(id)]);
+          expect(ownLayerOf(model(copies[0])), flavourOf(id)).toBeUndefined();
+          expect(hasLayerKey(copies[0]), flavourOf(id)).toBe(false);
+          // No undo check here: one undo does not take an alt-drag clone back
+          // even on a canvas with no layer at all (the clone and the move are
+          // separate steps); that predates layers. Mod+d pins one-step undo.
+        }
+      });
+
+      test('alt-drag: a shape and a note of a user layer stay in it', async () => {
+        const { created, sources } = await sourcesInASecondLayer();
+        const [element, note] = sources;
+
+        for (const id of [element, note]) {
+          const before = allIds();
+          await altDrag(id);
+          const copies = newIds(before);
+          expect(copies.map(flavourOf), flavourOf(id)).toEqual([flavourOf(id)]);
+          expect(ownLayerOf(model(copies[0])), flavourOf(id)).toBe(created);
+        }
+      });
+
+      test('a paste of a default-layer shape still lands in the active layer', async () => {
+        const { created, sources } = await sourcesInTheDefaultLayer();
+        const [element] = sources;
+        const before = allIds();
+
+        await selectAndFocus([element]);
+        await commands.systemClipboard(true);
+        try {
+          await userEvent.keyboard(chord('c'));
+          await settle();
+          await userEvent.keyboard(chord('v'));
+          await settle();
+        } finally {
+          await commands.systemClipboard(false);
+        }
+
+        const copies = newIds(before);
+        expect(copies).toHaveLength(1);
+        expect(ownLayerOf(model(copies[0]))).toBe(created);
+      });
     });
   });
 

@@ -311,6 +311,9 @@ export function createEdgelessElement(
       ...current.serialize(),
       text: new Y.Text(),
       xywh: bound.serialize(),
+      // `serialize()` names no layer for a default-layer shape: ask for the
+      // source's explicitly, or the clone lands in the active layer.
+      layer: sourceLayerOf(current),
     });
     if (!id) return null;
     element = crud.getElementById(id);

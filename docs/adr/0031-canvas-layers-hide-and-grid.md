@@ -649,3 +649,25 @@ be deleted, and every other layer can. It is now visible rather than merely
 enforced: the default row's menu has no delete, and `canvas.layer.delete`'s
 `when` withdraws the command while the default layer is the only one. Nothing
 stored changes; no key is added.
+
+**A duplicate stays in its source's layer, the default one included (product
+owner's decision, 2026-10-05).** §6 kept `props.layer` when it names a record
+and sent anything absent to the active layer. A model of the default layer
+names none (§3: the default is written as `undefined`), so its duplicate fell
+in whatever layer the viewer had selected — "a duplicate stays beside its
+source" held for every layer but the default one. The two clone gestures in
+the same document, Mod+D (`duplicate`) and alt-drag (`AltCloneExtension`),
+now ask for the source's layer explicitly: `prepareCloneData`, their one
+shared serializer, stamps every model with `sourceLayerOf(model)` — its own
+layer, or `'@default'` — and `resolveCreationLayer` already reads `'@default'`
+as "the default layer, explicitly", for elements (the `beforeAdd` middleware)
+and gfx blocks (the clipboard command) alike. The copy of a default-layer
+model therefore writes no `layer` key. The auto-complete arrow, which clones
+a shape or a note beside its source, asks the same way. A paste is unchanged
+and keeps §6's rule: a `layer` naming a record of this surface is kept, and
+absent or unknown goes to the active layer. Paste differs because a clipboard
+payload cannot tell "this came from the default layer" from "this came from
+another document", whose layer ids mean nothing here (§6); a copy then paste
+of a default-layer model within one document therefore lands in the active
+layer, on purpose (`canvas-layers.spec.ts` pins both). Nothing stored
+changes: `'@default'` is resolved before anything is written, never stored.

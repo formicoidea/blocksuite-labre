@@ -6,7 +6,7 @@
  * one owns the gestures that make a block out of an existing one and delete
  * nothing of the user's intent about where it lives:
  *
- * - the note an auto-complete arrow clones beside a note;
+ * - the note or shape an auto-complete arrow clones beside its source;
  * - the note the note slicer splits off;
  * - the block that replaces a link when its view changes on the canvas
  *   (bookmark → embed, an external embed → card, an iframe → card);
@@ -21,6 +21,7 @@
  */
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import { EdgelessLegacySlotIdentifier } from '@labre/affine/blocks/surface';
+import { ShapeType } from '@labre/affine/model';
 import {
   SelectionPaneProvider,
   type ToolbarAction,
@@ -168,7 +169,7 @@ describe('a derived block lands beside its source', () => {
     );
   };
 
-  describe('the note an auto-complete arrow clones', () => {
+  describe('what an auto-complete arrow clones', () => {
     const cloneByArrow = async (note: string) => {
       const before = blockIds();
       await selectAndRender(note);
@@ -200,6 +201,33 @@ describe('a derived block lands beside its source', () => {
       const clone = await cloneByArrow(note);
       expect(created).toBeTruthy();
       expect(ownLayerOf(model(clone))).toBeUndefined();
+    });
+
+    // The element counterpart: the clone is built from `serialize()`, which
+    // names no layer for a default-layer shape, so it asks explicitly.
+    test('beside a shape in the default layer, a user layer active', async () => {
+      const shape = crud().addElement('shape', {
+        shapeType: ShapeType.Rect,
+        xywh: '[0,0,100,100]',
+      })!;
+      await settle();
+      const created = await secondLayer();
+      expect(ownLayerOf(model(shape))).toBeUndefined();
+      const before = new Set(surface().elementModels.map(e => e.id));
+
+      await selectAndRender(shape);
+      const arrow = autoCompleteArrow();
+      expect(arrow, 'the shape offers an arrow').toBeTruthy();
+      await userEvent.click(page.elementLocator(arrow!));
+      await settle();
+
+      const clones = surface()
+        .getElementsByType('shape')
+        .filter(element => !before.has(element.id));
+      expect(clones).toHaveLength(1);
+      expect(created).toBeTruthy();
+      expect(ownLayerOf(clones[0])).toBeUndefined();
+      expect(clones[0].yMap.has('layer')).toBe(false);
     });
   });
 
