@@ -39,7 +39,10 @@ function updateZIndex(element: GfxBlockComponent) {
 }
 
 function updateBlockVisibility(view: GfxBlockComponent) {
-  if (view.transformState$.value === 'active') {
+  // Read inside the effect below, so a local hide or show repaints the block
+  // without a transform change (ADR 0031 §8).
+  const hiddenLocally = view.gfx.localVisibility.isHidden(view.model);
+  if (view.transformState$.value === 'active' && !hiddenLocally) {
     view.style.visibility = 'visible';
     view.style.pointerEvents = 'auto';
     view.classList.remove('block-idle');

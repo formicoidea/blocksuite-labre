@@ -511,10 +511,13 @@ function groupMembers(
  * is the same fact `tags-toolbar.ts` works around from the other direction: one
  * click selects the group, the role lives on the circle, and the name lives on
  * a free text beside it.
+ *
+ * Exported for the selection pane, which names its rows the same way (ADR 0031
+ * §12): one rule for "what is this element called", not two.
  */
-function readName(
+export function readName(
   element: GfxPrimitiveElementModel,
-  profile: ReadingProfile
+  profile: Pick<ReadingProfile, 'labelRole' | 'roles'>
 ): string {
   const own = ownText(element);
   if (own) return own;

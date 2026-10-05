@@ -19,7 +19,7 @@ import type {
   Viewport,
 } from '@labre/std/gfx';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
-import { effect } from '@preact/signals-core';
+import { effect, untracked } from '@preact/signals-core';
 import last from 'lodash-es/last';
 import { Subject } from 'rxjs';
 
@@ -364,7 +364,7 @@ export class CanvasRenderer {
     let layerBound: Bound | null = null;
 
     for (const element of elements) {
-      const display = isPainted(element);
+      const display = isPainted(element, this._gfx.localVisibility);
 
       if (!display) {
         continue;
@@ -533,6 +533,21 @@ export class CanvasRenderer {
           this.usePlaceholder = shouldRenderPlaceholders;
           this.refresh({ type: 'all' });
         }
+      })
+    );
+
+    // A local hide or show changes what is painted without touching any
+    // element: repaint everything once (ADR 0031 §8). The first run only
+    // subscribes.
+    let visibilityRead = false;
+    this._disposables.add(
+      effect(() => {
+        this._gfx.localVisibility.hiddenIds$.value;
+        if (!visibilityRead) {
+          visibilityRead = true;
+          return;
+        }
+        untracked(() => this.refresh({ type: 'all' }));
       })
     );
 
@@ -744,7 +759,7 @@ export class CanvasRenderer {
       }) as SurfaceElementModel[]);
 
     for (const element of elements) {
-      const display = isPainted(element);
+      const display = isPainted(element, this._gfx.localVisibility);
       if (display && intersects(getBoundWithRotation(element), bound)) {
         renderStats && (renderStats.visibleElementCount += 1);
         if (

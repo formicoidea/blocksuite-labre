@@ -54,6 +54,7 @@ export {
   InteractivityManager,
 } from './interactivity/index.js';
 export { LayerManager, type ReorderingDirection } from './layer.js';
+export { GfxLocalVisibility } from './local-visibility.js';
 export type {
   GfxCompatibleInterface,
   GfxElementGeometry,

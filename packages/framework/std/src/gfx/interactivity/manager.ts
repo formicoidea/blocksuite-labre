@@ -333,6 +333,9 @@ export class InteractivityManager extends GfxExtension {
 
   handleBoxSelection(context: { box: BoxSelectionContext['box'] }) {
     const elements = this.gfx.getElementsByBound(context.box).filter(model => {
+      // The marquee takes what the viewer sees: a locally hidden model is
+      // left out (ADR 0031 §8). The selection pane still selects it.
+      if (this.gfx.localVisibility.isHidden(model)) return false;
       const view = this.gfx.view.get(model);
 
       if (

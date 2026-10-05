@@ -445,6 +445,11 @@ export class ExportManager {
       blocks = [...blockSet];
     }
 
+    // What you see is what you export (ADR 0031, resolved at acceptance): a
+    // block this viewer hid is not drawn. Canvas elements are left out by the
+    // renderer's own paint predicate.
+    blocks = blocks.filter(block => !gfx.localVisibility.isHidden(block));
+
     for (const block of blocks) {
       if (matchModels(block, [ImageBlockModel])) {
         if (!block.props.sourceId) return;

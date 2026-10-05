@@ -2,6 +2,7 @@ import {
   type ViewExtensionContext,
   ViewExtensionProvider,
 } from '@labre/affine-ext-loader';
+import { CanvasLocalVisibility } from '@labre/affine-shared/services';
 import {
   BlockViewExtension,
   CommandExtension,
@@ -22,6 +23,8 @@ import {
   ReadingManager,
   readingProposalWidget,
   readingToolbarExtension,
+  selectionPaneCommands,
+  SelectionPaneModel,
   SpotlightManager,
   ValidationManager,
   validationExceptionToolbarExtension,
@@ -99,6 +102,15 @@ export class SurfaceViewExtension extends ViewExtensionProvider {
       // (`docs/adr/0025`). Nothing is offered until a board is selected.
       context.register(CommandExtension(exportSvgCommands));
       context.register(exportSvgToolbarExtension);
+      // The selection pane's headless half (ADR 0031): the live tree a pane
+      // renders from, and the commands its rows run. Core chrome, never a
+      // framework's, and nothing it lists is gated — a flag gates tooling,
+      // the rows are content. The panel itself is the edgeless toolbar's.
+      context.register(SelectionPaneModel);
+      // This viewer's local hide (ADR 0031 §8): registers into
+      // `gfx.localVisibility` and persists per document, never in it.
+      context.register(CanvasLocalVisibility);
+      context.register(CommandExtension(selectionPaneCommands));
     } else {
       context.register(
         BlockViewExtension('affine:surface', literal`affine-surface-void`)

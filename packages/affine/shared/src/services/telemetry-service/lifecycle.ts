@@ -351,3 +351,43 @@ export interface DocumentDamagedEvent extends TelemetryEvent {
 export type DocumentHealthEvents = {
   DocumentDamaged: DocumentDamagedEvent;
 };
+
+/**
+ * The selection pane was opened (ADR 0031 §14).
+ *
+ * Worth measuring for the reason any optional surface is: a pane nobody opens
+ * is chrome the toolbar pays a slot for. `source` is how the user got there —
+ * the edgeless toolbar's button, the palette (or the agent, which invokes by
+ * name as the palette does), or a bound chord. Opening only: closing reports
+ * nothing, and neither does a toggle that closes the pane.
+ *
+ * No ids at all: the event is about the pane, never about what it lists.
+ */
+export interface SelectionPaneOpenedEvent extends TelemetryEvent {
+  page?: 'whiteboard editor';
+  source: 'toolbar' | 'palette' | 'shortcut';
+}
+
+/**
+ * Something on the canvas was hidden or shown (ADR 0031 §14).
+ *
+ * `scope: 'local'` is the viewer's own hide, which writes nothing to the
+ * document; `'everyone'` is reserved for "hide for everyone", a later stage.
+ * `target: 'layer'` is reserved for the layers stage. `count` is how many
+ * elements the ONE gesture actually changed — a gesture that changes nothing
+ * reports nothing.
+ *
+ * Counts only: never an element id, a type, a group title or any text.
+ */
+export interface CanvasVisibilityChangedEvent extends TelemetryEvent {
+  page?: 'whiteboard editor';
+  target: 'element' | 'layer';
+  scope: 'local' | 'everyone';
+  hidden: boolean;
+  count: number;
+}
+
+export type CanvasPaneEvents = {
+  SelectionPaneOpened: SelectionPaneOpenedEvent;
+  CanvasVisibilityChanged: CanvasVisibilityChangedEvent;
+};
