@@ -47,7 +47,11 @@ import {
   openSingleFileWith,
   printToPdf,
 } from '@labre/affine/shared/utils';
-import { ShadowlessElement } from '@labre/affine/std';
+import {
+  getRegisteredCommands,
+  runCommand,
+  ShadowlessElement,
+} from '@labre/affine/std';
 import { GfxControllerIdentifier } from '@labre/affine/std/gfx';
 import { type DeltaInsert, Text, type Workspace } from '@labre/affine/store';
 import {
@@ -614,6 +618,19 @@ export class StarterDebugMenu extends ShadowlessElement {
    * the BPMN sub-menu opens too. Until then this needed a throwaway fake
    * framework (`demo-overflow`), which went with the pack that made it moot.
    */
+  /**
+   * Runs a core canvas command the way a host menu entry would. The library
+   * ships the grid commands but no button of its own: the page "more" menu
+   * belongs to the host, so this is the playground's stand-in for it.
+   */
+  private _runCanvasCommand(id: string) {
+    const std = this.editor.host?.std;
+    if (!std) return;
+    const command = getRegisteredCommands(std).find(c => c.id === id);
+    if (!command) return;
+    runCommand(std, command, { surface: 'palette', source: 'shortcut' });
+  }
+
   private _toggleCatalogue() {
     const host = this.editor.host;
     if (!host) return;
@@ -944,6 +961,12 @@ export class StarterDebugMenu extends ShadowlessElement {
               <sl-menu-item @click="${this._toggleConnectorCenterAnchor}">
                 Toggle Connector Center Anchor
               </sl-menu-item>
+              <sl-menu-item
+                @click="${() =>
+                  this._runCanvasCommand('canvas.grid.saveForEveryone')}"
+              >
+                Save Canvas Grid For Everyone
+              </sl-menu-item>
             </sl-menu>
           </sl-dropdown>
 
@@ -956,6 +979,16 @@ export class StarterDebugMenu extends ShadowlessElement {
           <sl-tooltip content="Toggle Catalogue" placement="bottom" hoist>
             <sl-button size="small" @click="${this._toggleCatalogue}">
               <sl-icon name="layout-sidebar"></sl-icon>
+            </sl-button>
+          </sl-tooltip>
+
+          <sl-tooltip content="Toggle Canvas Grid" placement="bottom" hoist>
+            <sl-button
+              size="small"
+              data-testid="toggle-grid-button"
+              @click="${() => this._runCanvasCommand('canvas.grid.toggle')}"
+            >
+              <sl-icon name="grid-3x3"></sl-icon>
             </sl-button>
           </sl-tooltip>
 

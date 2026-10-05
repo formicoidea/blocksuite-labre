@@ -1,4 +1,7 @@
-import { autoResizeElementsCommand } from '@labre/affine-block-surface';
+import {
+  applyCreationLayer,
+  autoResizeElementsCommand,
+} from '@labre/affine-block-surface';
 import { toast } from '@labre/affine-components/toast';
 import {
   type AttachmentBlockProps,
@@ -373,6 +376,9 @@ export async function addImages(
     };
   });
 
+  // The viewer's active layer, as the CRUD `addBlock` path stamps it
+  // (ADR 0031 §6): several blocks at once go straight to `store.addBlocks`.
+  blocks.forEach(({ blockProps }) => applyCreationLayer(std, blockProps));
   const blockIds = std.store.addBlocks(blocks, gfx.surface);
 
   gfx.selection.set({

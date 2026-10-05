@@ -224,14 +224,16 @@ export class GfxLocalVisibility {
    * Whether `model`'s EFFECTIVE layer is one of `layers` — the outermost
    * group's layer, so a whole group hides with its layer. A hidden frame's
    * layer hides the frame, not what it holds (ADR 0031 §5). Local elements
-   * belong to no layer.
+   * belong to no layer. A surface with no `layers` record still has the
+   * default layer, shown and hideable before it is recorded (ADR 0031
+   * amendments): every model is then in it.
    */
   private _inHiddenLayer(
     model: GfxModel | GfxLocalElementModel,
     layers: ReadonlySet<string>
   ): boolean {
     const userLayers = userLayersOf(model);
-    if (!userLayers?.ranks) return false;
+    if (!userLayers) return false;
     if (
       !(model instanceof GfxPrimitiveElementModel) &&
       !(model instanceof GfxBlockElementModel)

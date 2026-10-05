@@ -9,6 +9,7 @@ import {
   selectionPaneFilterTargets,
   selectionPaneTree,
   userLayerCommands,
+  userLayerName,
 } from '@labre/affine-block-surface';
 import {
   menu,
@@ -699,8 +700,9 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     this._renaming = node.id;
   }
 
+  /** A layer's name — the default layer's seed while it has no record. */
   private _layerName(id: string): string | null {
-    return this._gfx.surface?.props.layers?.[id]?.name ?? null;
+    return userLayerName(this.std, id);
   }
 
   private _onLockClick(event: MouseEvent, node: SelectionPaneNode) {
@@ -1139,7 +1141,9 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
    * A user layer's row (ADR 0031 §2): its name, renamed in place with a
    * double-click; a click makes it the active layer; collapsible like a
    * group (UI state, never stored); dragged among the layers to reorder, and
-   * the drop target of a canvas row dragged onto it.
+   * the drop target of a canvas row dragged onto it. The default layer's row
+   * is drawn the same before it has a record (ADR 0031 amendments): its
+   * rename or "hide for everyone" is what records it.
    */
   private _renderLayerRow(row: PaneRow) {
     const { node, depth } = row;

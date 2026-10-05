@@ -227,7 +227,8 @@ describe('the pane still lists a hidden element', () => {
       gfx.gfxElements,
       visibility.hiddenIds$.value
     );
-    expect(tree.map(row => [row.id, row.hiddenLocal])).toEqual([
+    // Under the default layer: no layer record, one layer (ADR 0031 amendments).
+    expect(tree[0].children!.map(row => [row.id, row.hiddenLocal])).toEqual([
       [b, false],
       [a, true],
     ]);

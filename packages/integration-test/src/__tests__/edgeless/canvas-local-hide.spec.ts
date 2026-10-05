@@ -8,6 +8,8 @@
  * - the eye hides the element for this viewer — it is no longer picked by the
  *   pointer — and the click produced ZERO Yjs update;
  * - the row stays listed, marked, and a click on it still selects the element;
+ * - the default layer's eye hides what it holds before the layer has a record,
+ *   still writing nothing;
  * - the hide is remembered per document in `localStorage`;
  * - a gfx BLOCK (a note) is hidden by its own view, not only canvas elements;
  * - what you see is what you export: the SVG board export leaves out what the
@@ -21,7 +23,7 @@ import {
   ShapeType,
 } from '@labre/affine/model';
 import { SelectionPaneProvider } from '@labre/affine/shared/services';
-import type { GfxModel } from '@labre/affine/std/gfx';
+import { DEFAULT_LAYER_ID, type GfxModel } from '@labre/affine/std/gfx';
 import { WARDLEY_BACKGROUND, WARDLEY_ROLE } from '@labre/affine-gfx-wardley';
 import { Bound } from '@labre/global/gfx';
 import { page, userEvent } from '@vitest/browser/context';
@@ -111,6 +113,31 @@ describe('local hide', () => {
     expect(gfx().localVisibility.isHidden(model(a))).toBe(false);
 
     expect(updates).toHaveLength(0);
+  });
+
+  test('the default layer’s eye works before the layer has a record', async () => {
+    // ADR 0031 amendments: "Layer 1" is shown from the start, and its eye
+    // hides what it holds without recording it — nothing is written.
+    const a = shape(0);
+    await settle();
+    await openPane();
+    const updates = recordUpdates();
+    const layer = widget()!.shadowRoot!.querySelector<HTMLElement>(
+      `[data-testid="selection-pane-layer"][data-id="${DEFAULT_LAYER_ID}"]`
+    )!;
+
+    await userEvent.hover(page.elementLocator(layer));
+    await userEvent.click(
+      page.elementLocator(
+        layer.querySelector('[data-testid="selection-pane-eye"]')!
+      )
+    );
+    await settle();
+
+    expect(gfx().localVisibility.isHidden(model(a))).toBe(true);
+    expect(gfx().getElementByPoint(50, 50)).toBeNull();
+    expect(updates).toHaveLength(0);
+    expect(edgeless.service.surface.props.layers).toBeUndefined();
   });
 
   test('a hidden note is hidden by its own view', async () => {

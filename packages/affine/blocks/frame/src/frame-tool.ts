@@ -1,4 +1,8 @@
-import { DefaultTool, OverlayIdentifier } from '@labre/affine-block-surface';
+import {
+  applyCreationLayer,
+  DefaultTool,
+  OverlayIdentifier,
+} from '@labre/affine-block-surface';
 import type { FrameBlockModel } from '@labre/affine-model';
 import {
   EditPropsStore,
@@ -89,6 +93,8 @@ export class FrameTool extends BaseTool {
           index: this.frameManager.frameIndexAt(bound),
           presentationIndex: this.frameManager.generatePresentationIndex(),
         });
+      // The active layer, as `EdgelessFrameManager._addFrameBlock` does.
+      applyCreationLayer(this.std, props);
 
       const id = this.doc.addBlock('affine:frame', props, this.gfx.surface);
 

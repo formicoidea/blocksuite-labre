@@ -304,7 +304,8 @@ describe('hide for everyone', () => {
     const { std, gfx } = mount(store, surface);
     runCommand(std, hide, PANE, { ids: [a] });
 
-    const row = buildSelectionPaneTree(gfx.gfxElements).find(
+    // Under the default layer: no layer record, one layer (ADR 0031 amendments).
+    const row = buildSelectionPaneTree(gfx.gfxElements)[0].children!.find(
       node => node.id === a
     );
     expect(row).toMatchObject({ hiddenForEveryone: true, hiddenLocal: false });

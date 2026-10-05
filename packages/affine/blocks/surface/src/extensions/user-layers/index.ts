@@ -6,6 +6,7 @@ export {
   renameUserLayer,
   reorderUserLayer,
   setUserLayersHiddenForEveryone,
+  userLayerName,
   userLayersBottomUp,
   writeModelLayer,
 } from './actions.js';

@@ -4,6 +4,7 @@ import {
 } from '@labre/affine-shared/services';
 import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
+import { GfxControllerIdentifier } from '@labre/std/gfx';
 import type { Text } from '@labre/store';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
@@ -36,6 +37,7 @@ describe('a placed frame is named through the translation seam', () => {
             ) => props,
           };
         }
+        if (id === GfxControllerIdentifier) return gfx;
         throw new Error(`unexpected get(${String(id)})`);
       },
       getOptional: (id: unknown) =>
@@ -46,7 +48,7 @@ describe('a placed frame is named through the translation seam', () => {
     const noopSubscribable = { subscribe: () => ({ unsubscribe() {} }) };
     const gfx = {
       std,
-      surface: { elementAdded: noopSubscribable },
+      surface: { elementAdded: noopSubscribable, props: {} },
       layer: { layers: [], generateIndex: () => 'a1' },
       doc: {
         addBlock: (

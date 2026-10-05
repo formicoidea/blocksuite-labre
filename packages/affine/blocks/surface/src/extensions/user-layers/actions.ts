@@ -54,6 +54,49 @@ export function userLayersBottomUp(
     );
 }
 
+/** The seed a new layer is named with, resolved through the seam. */
+function seedName(std: BlockStdScope, n: number): string {
+  return translateKey(std, ...LAYER_SEED_NAME, { n });
+}
+
+/**
+ * The name a layer row shows: its record's, or — for the default layer while
+ * it has no record — the name the first-layer creation would write ("Layer
+ * 1", ADR 0031 amendments). `null` for an id that is no layer.
+ *
+ * Reading it writes nothing: the default layer is shown from the start and
+ * recorded only by a gesture that needs the record.
+ */
+export function userLayerName(std: BlockStdScope, id: string): string | null {
+  const record = surfaceOf(std)?.props.layers?.[id];
+  if (record) return record.name;
+  return id === DEFAULT_LAYER_ID ? seedName(std, 1) : null;
+}
+
+/**
+ * Record the default layer, inside the caller's transaction: the whole
+ * `layers` prop while it is absent — as the first creation does — else the
+ * one `'@default'` key, below every other layer. The seed name unless the
+ * gesture says otherwise.
+ */
+function recordDefaultLayer(
+  std: BlockStdScope,
+  surface: SurfaceBlockModel,
+  fields: Partial<SurfaceLayerRecord> = {}
+) {
+  const bottom = userLayersBottomUp(surface)[0]?.record.index ?? null;
+  const record: SurfaceLayerRecord = {
+    name: seedName(std, 1),
+    index: generateKeyBetween(null, bottom),
+    ...fields,
+  };
+  if (!surface.props.layers) {
+    surface.props.layers = { [DEFAULT_LAYER_ID]: record };
+  } else {
+    surface.props.layers[DEFAULT_LAYER_ID] = record;
+  }
+}
+
 /**
  * Create a user layer on top of the others and make it this viewer's active
  * layer. Answers its id, or `null` when nothing was written.
@@ -74,7 +117,7 @@ export function createUserLayer(
 
   const existing = userLayersBottomUp(surface);
   const id = nanoid();
-  const seed = (n: number) => translateKey(std, ...LAYER_SEED_NAME, { n });
+  const seed = (n: number) => seedName(std, n);
 
   std.store.captureSync();
   std.store.transact(() => {
@@ -99,21 +142,29 @@ export function createUserLayer(
   return id;
 }
 
-/** Rename a layer: one field of one record. Empty or unchanged writes nothing. */
+/**
+ * Rename a layer: one field of one record. Empty or unchanged writes nothing.
+ *
+ * The default layer with no record yet is renamed by recording it, named
+ * (ADR 0031 amendments): "unchanged" is then against the seed name it shows.
+ */
 export function renameUserLayer(
   std: BlockStdScope,
   id: string,
   name: string
 ): boolean {
   if (std.store.readonly) return false;
-  const record = surfaceOf(std)?.props.layers?.[id];
+  const surface = surfaceOf(std);
+  const record = surface?.props.layers?.[id];
+  const shown = userLayerName(std, id);
   const next = name.trim();
-  if (!record || !next || next === record.name) return false;
+  if (!surface || shown === null || !next || next === shown) return false;
   std.store.captureSync();
   // Inside the store's transaction, not the props proxy's own: the proxy
   // writes with its own origin, which the undo manager does not track.
   std.store.transact(() => {
-    record.name = next;
+    if (record) record.name = next;
+    else recordDefaultLayer(std, surface, { name: next });
   });
   return true;
 }
@@ -158,6 +209,9 @@ export function reorderUserLayer(
  * 7): `hidden: true` on each record — one write per layer, never one per
  * member — and the key REMOVED on show, never `false`. Answers how many
  * records were written.
+ *
+ * Hiding the default layer while it has no record records it, hidden, with
+ * its seed name (ADR 0031 amendments); showing it has nothing to write.
  */
 export function setUserLayersHiddenForEveryone(
   std: BlockStdScope,
@@ -165,15 +219,18 @@ export function setUserLayersHiddenForEveryone(
   hidden: boolean
 ): number {
   if (std.store.readonly) return 0;
-  const layers = surfaceOf(std)?.props.layers;
-  if (!layers) return 0;
+  const surface = surfaceOf(std);
+  if (!surface) return 0;
+  const layers = surface.props.layers;
   const targets = ids
-    .map(id => layers[id])
+    .map(id => layers?.[id])
     .filter(
       (record): record is SurfaceLayerRecord =>
         !!record && (record.hidden === true) !== hidden
     );
-  if (!targets.length) return 0;
+  const recordDefault =
+    hidden && ids.includes(DEFAULT_LAYER_ID) && !layers?.[DEFAULT_LAYER_ID];
+  if (!targets.length && !recordDefault) return 0;
 
   std.store.captureSync();
   std.store.transact(() => {
@@ -184,8 +241,9 @@ export function setUserLayersHiddenForEveryone(
         delete record.hidden;
       }
     }
+    if (recordDefault) recordDefaultLayer(std, surface, { hidden: true });
   });
-  return targets.length;
+  return targets.length + (recordDefault ? 1 : 0);
 }
 
 /**
@@ -268,7 +326,8 @@ export function writeModelLayer(
 /**
  * Move models to the layer `layerId`. Answers how many models were written —
  * a grouped model moves its outermost group, so that may be fewer than asked.
- * An unknown layer id writes nothing.
+ * An unknown layer id writes nothing. The default layer always exists, record
+ * or not: moving there removes the `layer` key, a dangling id included.
  */
 export function moveModelsToUserLayer(
   std: BlockStdScope,
@@ -277,7 +336,10 @@ export function moveModelsToUserLayer(
 ): number {
   if (std.store.readonly) return 0;
   const surface = surfaceOf(std);
-  if (!surface?.props.layers?.[layerId]) return 0;
+  if (!surface) return 0;
+  if (layerId !== DEFAULT_LAYER_ID && !surface.props.layers?.[layerId]) {
+    return 0;
+  }
 
   const gfx = std.get(GfxControllerIdentifier);
   const carriers = new Set<GfxModel>();

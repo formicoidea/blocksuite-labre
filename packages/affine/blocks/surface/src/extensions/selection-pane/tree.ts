@@ -35,9 +35,11 @@ const NOTHING_HIDDEN: ReadonlySet<string> = new Set();
 export interface SelectionPaneNode {
   id: string;
   /**
-   * `'layer'` is a user layer's row (ADR 0031 §2), present only once the
-   * surface has layers: the top-level rows are then the layers, top first,
-   * and every element row sits under its effective layer.
+   * `'layer'` is a user layer's row (ADR 0031 §2). The top-level rows are
+   * always the layers, top first, and every element row sits under its
+   * effective layer. A surface with no `layers` has one, the default layer
+   * ({@link DEFAULT_LAYER_ID}), shown although it has no record yet (ADR 0031
+   * amendments); its name is `userLayerName`'s, the first-layer seed.
    */
   kind: 'element' | 'block' | 'layer';
   /** The element `type` (`shape`, `group`…) or the block flavour. */
@@ -78,6 +80,22 @@ export interface SelectionPaneLayers {
   readonly hiddenLocally?: ReadonlySet<string>;
   /** The layers whose record says `hidden: true` (stage 7). */
   readonly hiddenForEveryone?: ReadonlySet<string>;
+}
+
+/**
+ * The layers of a surface with no `layers` record: the default layer alone,
+ * shown but not written (ADR 0031 §2 and amendments). Every model is in it,
+ * whatever its own key says — with no record, every id is dangling.
+ */
+function unrecordedDefaultLayer(
+  hiddenLocally?: ReadonlySet<string>
+): SelectionPaneLayers {
+  return {
+    order: [DEFAULT_LAYER_ID],
+    ranks: new Map(),
+    effectiveLayerOf: () => DEFAULT_LAYER_ID,
+    hiddenLocally,
+  };
 }
 
 /**
@@ -128,11 +146,14 @@ function rawGroupOf(model: GfxModel): unknown {
  * two ancestor chains per comparison, and only models stacked under different
  * ancestors (a frame's members beside loose elements) walk their chains, read
  * once per model rather than once per comparison.
+ *
+ * The top-level rows are the layers; with no `layers` given, the default
+ * layer alone, unrecorded — what a canvas without layers shows.
  */
 export function buildSelectionPaneTree(
   models: readonly GfxModel[],
   hiddenLocally: ReadonlySet<string> = NOTHING_HIDDEN,
-  layers: SelectionPaneLayers | null = null
+  layers: SelectionPaneLayers = unrecordedDefaultLayer()
 ): SelectionPaneNode[] {
   // A frame is an ordinary row (ADR 0031, amendments), listed where it
   // paints: a block with no container, so its members — which paint right
@@ -146,8 +167,7 @@ export function buildSelectionPaneTree(
     indexOf.set(model, model.index);
   }
 
-  const layerOf = (model: GfxModel) =>
-    layers ? layers.effectiveLayerOf(model) : DEFAULT_LAYER_ID;
+  const layerOf = (model: GfxModel) => layers.effectiveLayerOf(model);
 
   // `compareLayer`'s ancestor rule, on ancestor chains read ONCE per model:
   // `groups` walks the surface on every read, and a frame's members — rows
@@ -182,14 +202,12 @@ export function buildSelectionPaneTree(
   const paintOrder = (a: GfxModel, b: GfxModel) => {
     // Rank first, as `compare` does, so the index shortcut below only ever
     // orders two models of the same layer.
-    if (layers) {
-      const al = layerOf(a);
-      const bl = layerOf(b);
-      if (al !== bl) {
-        const ar = layers.ranks.get(al) ?? '';
-        const br = layers.ranks.get(bl) ?? '';
-        if (ar !== br) return ar < br ? -1 : 1;
-      }
+    const al = layerOf(a);
+    const bl = layerOf(b);
+    if (al !== bl) {
+      const ar = layers.ranks.get(al) ?? '';
+      const br = layers.ranks.get(bl) ?? '';
+      if (ar !== br) return ar < br ? -1 : 1;
     }
     if (groupOf.get(a) !== groupOf.get(b)) return byAncestors(a, b);
     const ai = indexOf.get(a)!;
@@ -239,11 +257,9 @@ export function buildSelectionPaneTree(
   };
 
   const top = build(null);
-  if (!layers) return top;
 
-  // Layers present: the top-level rows are the layers, top first, each
-  // holding its members in paint order. An empty layer is still a row — it
-  // is where a drop lands.
+  // The top-level rows are the layers, top first, each holding its members
+  // in paint order. An empty layer is still a row — it is where a drop lands.
   return layers.order.map(id => ({
     id,
     kind: 'layer' as const,
@@ -270,17 +286,18 @@ const TREE_KEYS = new Set([
 ]);
 
 /**
- * The surface's user layers as the tree builder takes them, or `null` while
- * there is none. Reads `layers$`, so a `computed` calling it re-derives on a
- * create, a rename, a reorder — local or a peer's.
+ * The surface's user layers as the tree builder takes them; while there is no
+ * record, the default layer alone, unrecorded (nothing is written to show it).
+ * Reads `layers$`, so a `computed` calling it re-derives on a create, a
+ * rename, a reorder — local or a peer's.
  */
 export function paneLayersOf(
   surface: SurfaceBlockModel,
   hiddenLocally?: ReadonlySet<string>
-): SelectionPaneLayers | null {
+): SelectionPaneLayers {
   surface.props.layers$?.value;
   const ranks = surface.userLayers?.ranks;
-  if (!ranks) return null;
+  if (!ranks) return unrecordedDefaultLayer(hiddenLocally);
   const bottomUp = userLayersBottomUp(surface);
   return {
     order: bottomUp.map(layer => layer.id).reverse(),

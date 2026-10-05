@@ -1,10 +1,38 @@
-import { generateElementId, sortIndex } from '@labre/affine-block-surface';
+import {
+  applyCreationLayer,
+  generateElementId,
+  sortIndex,
+} from '@labre/affine-block-surface';
 import type { ConnectorElementModel } from '@labre/affine-model';
 import { Bound } from '@labre/global/gfx';
 import { assertType } from '@labre/global/utils';
+import type { BlockStdScope } from '@labre/std';
 import type { BlockSnapshot, SnapshotNode } from '@labre/store';
 
 import type { SlotBlockPayload, TemplateJob } from './template.js';
+
+/**
+ * Everything a template inserts lands in the viewer's active layer (ADR 0031
+ * §6). The insertion bypasses both stamped paths — its elements are merged
+ * straight into the surface's elements map, its blocks go through
+ * `store.addBlock` — so the layer is stamped on the snapshot before it is
+ * written, with the same rule as every other creation.
+ */
+export const createActiveLayerMiddleware = (std: BlockStdScope) => {
+  return (job: TemplateJob) => {
+    job.slots.beforeInsert.subscribe(payload => {
+      if (payload.type !== 'block') return;
+      const { props, flavour } = payload.data.blockJson;
+      if (flavour === 'affine:surface') {
+        Object.values(
+          props.elements as Record<string, Record<string, unknown>>
+        ).forEach(element => applyCreationLayer(std, element));
+        return;
+      }
+      if (typeof props.xywh === 'string') applyCreationLayer(std, props);
+    });
+  };
+};
 
 export const replaceIdMiddleware = (job: TemplateJob) => {
   const regeneratedIdMap = new Map<string, string>();

@@ -6,6 +6,10 @@
  * comparator, the creation rule and the writes on a bare document. This one
  * owns what only a mounted editor can answer:
  *
+ * - a fresh canvas shows "Layer 1" holding every row, and opening the pane
+ *   writes nothing; renaming it records it; a second layer leaves it its
+ *   name; its row menu has no delete (ADR 0031 amendments: one layer at
+ *   least, visible from the start);
  * - "New layer" in the pane's head creates the first two records, the new
  *   layer becomes active, and what is drawn next lands in it and stacks above
  *   the default layer whatever its `index`;
@@ -21,13 +25,32 @@
  * - grouping across layers puts the group in its highest member's layer, and
  *   ungrouping hands the group's layer to the released children;
  * - a second client sees the layers and the memberships, and a layer it
- *   creates shows up in this pane.
+ *   creates shows up in this pane;
+ * - a frame drawn with the frame tool (`f`, then a real drag) or made from the
+ *   selection (`f` with a selection) lands in the active layer, one undo
+ *   removes it, and with only the default layer it writes no `layer` key. Both
+ *   paths used to write through `store.addBlock` unstamped: the frame always
+ *   fell in "Layer 1" whatever layer was active;
+ * - what ADR 0031 §6 says arrives in the active layer does: a paste from
+ *   another document, a template insertion, an interchange import, and an
+ *   image or attachment put on the canvas. Templates and files bypassed the
+ *   stamp the same way frames did, and landed in the default layer.
  */
-import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
+import { addAttachments } from '@labre/affine/blocks/attachment';
+import { addImages } from '@labre/affine/blocks/image';
+import {
+  createElementsFromClipboardDataCommand,
+  type EdgelessRootBlockComponent,
+} from '@labre/affine/blocks/root';
+import { importInterchangeFile } from '@labre/affine/blocks/surface';
 import {
   createGroupFromSelectedCommand,
   ungroupCommand,
 } from '@labre/affine/gfx/group';
+import {
+  createTemplateJob,
+  templateManagerFor,
+} from '@labre/affine/gfx/template';
 import { type GroupElementModel, ShapeType } from '@labre/affine/model';
 import {
   SelectionPaneProvider,
@@ -37,13 +60,19 @@ import {
   DEFAULT_LAYER_ID,
   type GfxModel,
   ownLayerOf,
+  type SerializedElement,
 } from '@labre/affine/std/gfx';
+import { decodeDrawio, UML_DRAWIO_IMPORT } from '@labre/affine-gfx-uml';
 import { page, userEvent } from '@vitest/browser/context';
 import { beforeEach, describe, expect, test } from 'vitest';
 import * as Y from 'yjs';
 
+// The corpus as a string, as `uml-import.spec.ts` reads it.
+import DRAWIO_COMPRESSED from '../../../../affine/gfx/uml/src/__tests__/corpus/drawio-class-iwlayer.drawio.xml?raw';
+
 import { wait } from '../utils/common.js';
 import { getDocRootBlock } from '../utils/edgeless.js';
+import { pointerDown, pointerMoveTo, pointerUp } from '../utils/pointer.js';
 import { setupEditor } from '../utils/setup.js';
 
 const PANE_WIDGET = 'edgeless-selection-pane-widget';
@@ -125,6 +154,91 @@ describe('user layers', () => {
     );
     await settle();
   };
+
+  test('a fresh canvas shows "Layer 1"; renaming records it, a second layer keeps it', async () => {
+    // The product owner's decision (ADR 0031 amendments): the default layer
+    // is visible from the start, and recorded only by a gesture needing it.
+    const a = shape(0);
+    const b = shape(200);
+    await settle();
+    const updates: Uint8Array[] = [];
+    window.doc.doc.spaceDoc.on('update', (update: Uint8Array) =>
+      updates.push(update)
+    );
+
+    await openPane();
+
+    expect(layerRowIds()).toEqual([DEFAULT_LAYER_ID]);
+    const label = () =>
+      layerRow(DEFAULT_LAYER_ID).querySelector('.selection-pane-label')
+        ?.textContent;
+    expect(label()).toBe('Layer 1');
+    expect(layerRow(DEFAULT_LAYER_ID).hasAttribute('data-active')).toBe(true);
+    const rows = Array.from(
+      root().querySelectorAll<HTMLElement>(
+        '[data-testid="selection-pane-layer"], [data-testid="selection-pane-row"]'
+      )
+    );
+    expect(
+      rows.map(row => [row.dataset.id, row.getAttribute('aria-level')])
+    ).toEqual([
+      [DEFAULT_LAYER_ID, '1'],
+      [b, '2'],
+      [a, '2'],
+    ]);
+    expect(updates, 'opening the pane writes nothing').toHaveLength(0);
+    expect(surface().props.layers).toBeUndefined();
+
+    // The default layer offers no delete: it is the one that keeps a canvas
+    // at one layer.
+    await userEvent.click(
+      page.elementLocator(
+        layerRow(DEFAULT_LAYER_ID).querySelector(
+          '[data-testid="selection-pane-more"]'
+        )!
+      )
+    );
+    await wait(100);
+    expect(
+      deepQueryAll(document, '[data-testid="selection-pane-hide-for-everyone"]')
+        .length,
+      'the row menu opened'
+    ).toBeGreaterThan(0);
+    expect(
+      deepQueryAll(document, '[data-testid="selection-pane-delete-layer"]')
+    ).toHaveLength(0);
+    await userEvent.keyboard('{Escape}');
+    await settle();
+
+    // Rename it in place: that records it, once.
+    await userEvent.dblClick(
+      page.elementLocator(
+        layerRow(DEFAULT_LAYER_ID).querySelector('.selection-pane-label')!
+      )
+    );
+    await settle();
+    const input = layerRow(DEFAULT_LAYER_ID).querySelector<HTMLInputElement>(
+      '[data-testid="selection-pane-rename"]'
+    )!;
+    expect(input, 'the default layer row is a rename field').toBeTruthy();
+    expect(input.value).toBe('Layer 1');
+    await userEvent.fill(page.elementLocator(input), 'Background');
+    await userEvent.keyboard('{Enter}');
+    await settle();
+    expect(Object.keys(layers())).toEqual([DEFAULT_LAYER_ID]);
+    expect(layers()[DEFAULT_LAYER_ID].name).toBe('Background');
+    expect(label()).toBe('Background');
+
+    // A second layer: two rows, the first kept its name.
+    await newLayer();
+    await userEvent.keyboard('{Enter}');
+    await settle();
+    const created = userLayerId();
+    expect(layerRowIds()).toEqual([created, DEFAULT_LAYER_ID]);
+    expect(layers()[DEFAULT_LAYER_ID].name).toBe('Background');
+    expect(label()).toBe('Background');
+    expect(layers()[created].name).toBe('Layer 2');
+  });
 
   test('a new layer is active, and what is drawn next stacks above', async () => {
     const below = shape(0);
@@ -371,6 +485,222 @@ describe('user layers', () => {
     await settle();
     expect(ownLayerOf(model(inUser))).toBe(created);
     expect(ownLayerOf(model(inDefault))).toBe(created);
+  });
+
+  describe('a new frame lands in the active layer', () => {
+    const CANVAS = 'affine-edgeless-root';
+    const frameIds = () =>
+      gfx()
+        .layer.blocks.filter(block => block.flavour === 'affine:frame')
+        .map(block => block.id);
+    const ownLayerKey = (id: string) =>
+      window.doc.getBlock(id)!.model.yBlock.has('prop:layer');
+
+    /** `f` with nothing selected arms the frame tool; then a real drag. */
+    const drawFrame = async () => {
+      gfx().selection.clear();
+      edgeless.std.host.focus();
+      await userEvent.keyboard('f');
+      await settle();
+      expect(gfx().tool.currentToolName$.peek()).toBe('frame');
+      const before = new Set(frameIds());
+      // Right half: the open selection pane is a column down the left edge.
+      await pointerMoveTo(CANVAS, 0.6, 0.3, 1);
+      await pointerDown();
+      await pointerMoveTo(CANVAS, 0.75, 0.55, 8);
+      await pointerUp();
+      await settle();
+      const drawn = frameIds().filter(id => !before.has(id));
+      expect(drawn, 'the drag drew one frame').toHaveLength(1);
+      return drawn[0];
+    };
+
+    test('drawn with the frame tool: listed under the active layer, one undo removes it', async () => {
+      await openPane();
+      await newLayer();
+      await userEvent.keyboard('{Enter}');
+      await settle();
+      const created = userLayerId();
+      expect(layerRow(created).hasAttribute('data-active')).toBe(true);
+
+      const frame = await drawFrame();
+
+      expect(ownLayerOf(model(frame))).toBe(created);
+      expect(
+        layerRow(created).nextElementSibling?.getAttribute('data-id'),
+        'the frame row sits under the active layer'
+      ).toBe(frame);
+
+      window.doc.undo();
+      await settle();
+      expect(frameIds()).not.toContain(frame);
+    });
+
+    test('made from the selection: lands in the active layer too', async () => {
+      await openPane();
+      await newLayer();
+      await userEvent.keyboard('{Enter}');
+      await settle();
+      const created = userLayerId();
+      const inside = shape(100);
+      await settle();
+      gfx().selection.set({ elements: [inside], editing: false });
+      await settle();
+
+      const before = new Set(frameIds());
+      // Focus without a click, which would clear the selection.
+      edgeless.std.host.focus();
+      await userEvent.keyboard('f');
+      await settle();
+      const made = frameIds().filter(id => !before.has(id));
+
+      expect(made).toHaveLength(1);
+      expect(ownLayerOf(model(made[0]))).toBe(created);
+    });
+
+    test('only the default layer: the drawn frame writes no layer key', async () => {
+      const frame = await drawFrame();
+      expect(surface().props.layers).toBeUndefined();
+      expect(ownLayerKey(frame)).toBe(false);
+    });
+  });
+
+  // ADR 0031 §6 names three arrivals that land in the active layer whatever
+  // they carried: a paste from another document, a template, an import.
+  describe('what arrives lands in the active layer', () => {
+    const activeUserLayer = async () => {
+      await openPane();
+      await newLayer();
+      await userEvent.keyboard('{Enter}');
+      await settle();
+      return userLayerId();
+    };
+    const newIds = (before: Set<string>) =>
+      [
+        ...surface().elementModels.map(element => element.id),
+        ...gfx().layer.blocks.map(block => block.id),
+      ].filter(id => !before.has(id));
+    const allIds = () =>
+      new Set([
+        ...surface().elementModels.map(element => element.id),
+        ...gfx().layer.blocks.map(block => block.id),
+      ]);
+
+    test('a paste from another document: an element and a frame', async () => {
+      const created = await activeUserLayer();
+      const before = allIds();
+      const foreign = 'a-layer-of-another-document';
+
+      const [, { createdElementsPromise }] = edgeless.std.command.exec(
+        createElementsFromClipboardDataCommand,
+        {
+          elementsRawData: [
+            {
+              type: 'shape',
+              id: 'pasted-shape',
+              index: 'a0',
+              xywh: '[0,0,100,100]',
+              shapeType: ShapeType.Rect,
+              layer: foreign,
+            } as unknown as SerializedElement,
+            {
+              type: 'block',
+              id: 'pasted-frame',
+              flavour: 'affine:frame',
+              version: 1,
+              props: {
+                xywh: '[-20,-20,200,200]',
+                index: 'a1',
+                title: {
+                  '$blocksuite:internal:text$': true,
+                  delta: [{ insert: 'Pasted' }],
+                },
+                childElementIds: {},
+                layer: foreign,
+              },
+              children: [],
+            },
+          ],
+          pasteCenter: [400, 300],
+        }
+      );
+      await createdElementsPromise;
+      await settle();
+
+      const pasted = newIds(before);
+      expect(pasted).toHaveLength(2);
+      for (const id of pasted) expect(ownLayerOf(model(id)), id).toBe(created);
+    });
+
+    test('a template insertion', async () => {
+      const created = await activeUserLayer();
+      const before = allIds();
+      const swot = (await templateManagerFor(edgeless.std).list('Other')).find(
+        template => template.name === 'SWOT'
+      )!;
+      await createTemplateJob(edgeless.std, swot.type).insertTemplate(
+        swot.content
+      );
+      await settle();
+
+      const inserted = newIds(before);
+      expect(inserted.length).toBeGreaterThan(0);
+      expect(
+        inserted.filter(id => ownLayerOf(model(id)) !== created),
+        'every inserted model is in the active layer'
+      ).toEqual([]);
+    });
+
+    // Files dropped or uploaded onto the canvas: several blocks at once, through
+    // `store.addBlocks` rather than the stamped CRUD path.
+    test('an image and an attachment put on the canvas', async () => {
+      const created = await activeUserLayer();
+      const canvas = document.createElement('canvas');
+      canvas.width = 8;
+      canvas.height = 8;
+      canvas.getContext('2d')!.fillRect(0, 0, 8, 8);
+      const png = await new Promise<Blob>(resolve =>
+        canvas.toBlob(blob => resolve(blob!), 'image/png')
+      );
+
+      const images = await addImages(
+        edgeless.std,
+        [new File([png], 'dot.png', { type: 'image/png' })],
+        {}
+      );
+      const attachments = await addAttachments(edgeless.std, [
+        new File(['hello'], 'hello.txt', { type: 'text/plain' }),
+      ]);
+      await settle();
+
+      expect(images).toHaveLength(1);
+      expect(attachments).toHaveLength(1);
+      for (const id of [...images, ...attachments]) {
+        expect(ownLayerOf(model(id)), id).toBe(created);
+      }
+    });
+
+    test('an interchange import', async () => {
+      const created = await activeUserLayer();
+      const before = allIds();
+      await importInterchangeFile(
+        edgeless.std,
+        UML_DRAWIO_IMPORT,
+        {
+          name: 'iwlayer.drawio',
+          text: () => Promise.resolve(DRAWIO_COMPRESSED),
+        } as unknown as File,
+        { decode: decodeDrawio }
+      );
+      await settle();
+
+      const imported = newIds(before);
+      expect(imported.length).toBeGreaterThan(0);
+      expect(
+        imported.filter(id => ownLayerOf(model(id)) !== created),
+        'every imported model is in the active layer'
+      ).toEqual([]);
+    });
   });
 
   test('a second client sees layers and members; its new layer shows here', async () => {
