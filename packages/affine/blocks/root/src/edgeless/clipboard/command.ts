@@ -3,16 +3,20 @@ import {
   type ClipboardConfigCreationContext,
   EdgelessClipboardConfigIdentifier,
   EdgelessCRUDIdentifier,
+  resolveCreationLayer,
+  writeModelLayer,
 } from '@labre/affine-block-surface';
 import { Bound, type IVec, type SerializedXYWH } from '@labre/global/gfx';
 import { assertType } from '@labre/global/utils';
 import type { BlockStdScope, Command } from '@labre/std';
 import {
+  DEFAULT_LAYER_ID,
   type GfxBlockElementModel,
   type GfxCompatibleProps,
   GfxControllerIdentifier,
   type GfxModel,
   type GfxPrimitiveElementModel,
+  ownLayerOf,
   type SerializedElement,
   SortOrder,
 } from '@labre/std/gfx';
@@ -98,6 +102,9 @@ export const createElementsFromClipboardDataCommand: Command<Input, Output> = (
       context.originalIndexes
     );
     const blockIndexes = new Map<GfxBlockElementModel, string>();
+    // What each block's snapshot asked for, read before its config creates
+    // it; applied in the final transaction (`keepSourceLayerAndHide`).
+    const blockRequests = new Map<GfxBlockElementModel, BlockRequest>();
 
     // Canvas elements are written in as few transactions as the blocks allow,
     // so a peer receives one update for a run of them instead of one per
@@ -179,6 +186,10 @@ export const createElementsFromClipboardDataCommand: Command<Input, Output> = (
       );
       blockSnapshot.props.lockedBySelf = false;
 
+      const requested: BlockRequest = {
+        layer: blockSnapshot.props.layer,
+        hiddenForEveryone: blockSnapshot.props.hiddenForEveryone,
+      };
       const newId = await config.createBlock(blockSnapshot, context);
       if (!newId) continue;
 
@@ -186,6 +197,7 @@ export const createElementsFromClipboardDataCommand: Command<Input, Output> = (
       if (!block) continue;
 
       assertType<GfxBlockElementModel>(block.model);
+      blockRequests.set(block.model, requested);
       blockModels.push(block.model);
       allElements.push(block.model);
       context.oldToNewIdMap.set(oldId, newId);
@@ -211,6 +223,10 @@ export const createElementsFromClipboardDataCommand: Command<Input, Output> = (
       blockIndexes.forEach((index, block) => {
         if (block.index !== index) crud.updateElement(block.id, { index });
       });
+
+      blockRequests.forEach((requested, block) =>
+        keepSourceLayerAndHide(std, block, requested)
+      );
     });
 
     return {
@@ -223,6 +239,42 @@ export const createElementsFromClipboardDataCommand: Command<Input, Output> = (
     createdElementsPromise: runner(),
   });
 };
+
+type BlockRequest = { layer: unknown; hiddenForEveryone: unknown };
+
+/**
+ * A pasted or duplicated block gets what a pasted element gets from
+ * `crud.addElement`, which forwards every serialized prop (ADR 0031 §6 and
+ * "What stays loadable"): its `layer` when it names a layer of this surface,
+ * else the active one, and its `hiddenForEveryone`. Most
+ * `EdgelessClipboardConfig.createBlock` rebuild the block from a handful of
+ * the snapshot's props (frame, image, attachment, bookmark, the embeds…), so
+ * a duplicate fell in the active layer and came back visible. The rule is
+ * applied once here, for every config, rather than in each of them; nothing
+ * is written when the config already carried both.
+ *
+ * `requested` is read BEFORE `createBlock`: the snapshot-pasting configs
+ * stamp `snapshot.props` in place, and an explicit default-layer request from
+ * a clone gesture (`prepareCloneData`) is gone from it afterwards. Called
+ * inside the paste's final transaction, beside the index fix-ups, so it adds
+ * no update of its own.
+ */
+function keepSourceLayerAndHide(
+  std: BlockStdScope,
+  model: GfxBlockElementModel,
+  requested: BlockRequest
+) {
+  const layer = resolveCreationLayer(std, requested.layer) ?? DEFAULT_LAYER_ID;
+  if (layer !== (ownLayerOf(model) ?? DEFAULT_LAYER_ID)) {
+    writeModelLayer(std, model, layer);
+  }
+  if (
+    requested.hiddenForEveryone === true &&
+    (model.props as { hiddenForEveryone?: true }).hiddenForEveryone !== true
+  ) {
+    std.store.updateBlock(model, { hiddenForEveryone: true });
+  }
+}
 
 /**
  * Child id → container id, as the pasted data spells it: a group's or a mind

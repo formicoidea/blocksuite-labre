@@ -34,7 +34,12 @@
  * - what ADR 0031 §6 says arrives in the active layer does: a paste from
  *   another document, a template insertion, an interchange import, and an
  *   image or attachment put on the canvas. Templates and files bypassed the
- *   stamp the same way frames did, and landed in the default layer.
+ *   stamp the same way frames did, and landed in the default layer;
+ * - what §6 says stays beside its source does: `mod+d` and a real copy then
+ *   paste in the same document leave every copy — element or block — in its
+ *   source's layer, and a copy of what is hidden for everyone stays hidden.
+ *   Frames, images and most other blocks were rebuilt from a few snapshot
+ *   props, so their copies fell in the active layer, visible.
  */
 import { addAttachments } from '@labre/affine/blocks/attachment';
 import { addImages } from '@labre/affine/blocks/image';
@@ -59,11 +64,13 @@ import {
 import {
   DEFAULT_LAYER_ID,
   type GfxModel,
+  isStoredHiddenForEveryone,
   ownLayerOf,
   type SerializedElement,
 } from '@labre/affine/std/gfx';
 import { decodeDrawio, UML_DRAWIO_IMPORT } from '@labre/affine-gfx-uml';
-import { page, userEvent } from '@vitest/browser/context';
+import { IS_MAC } from '@labre/global/env';
+import { commands, page, userEvent } from '@vitest/browser/context';
 import { beforeEach, describe, expect, test } from 'vitest';
 import * as Y from 'yjs';
 
@@ -74,6 +81,13 @@ import { wait } from '../utils/common.js';
 import { getDocRootBlock } from '../utils/edgeless.js';
 import { pointerDown, pointerMoveTo, pointerUp } from '../utils/pointer.js';
 import { setupEditor } from '../utils/setup.js';
+
+declare module '@vitest/browser/context' {
+  interface BrowserCommands {
+    /** Grant or take back the clipboard permissions (`vitest.config.ts`). */
+    systemClipboard: (granted: boolean) => Promise<void>;
+  }
+}
 
 const PANE_WIDGET = 'edgeless-selection-pane-widget';
 
@@ -699,6 +713,164 @@ describe('user layers', () => {
       expect(
         imported.filter(id => ownLayerOf(model(id)) !== created),
         'every imported model is in the active layer'
+      ).toEqual([]);
+    });
+  });
+
+  // ADR 0031 §6: a duplicate, an alt-drag clone and a paste within the same
+  // document keep the source's layer. Gfx blocks used to lose it: most
+  // `EdgelessClipboardConfig.createBlock` rebuild the block from a handful of
+  // the snapshot's props, so the copy fell in the active layer instead.
+  describe('a duplicate stays beside its source', () => {
+    const MOD = IS_MAC ? 'Meta' : 'Control';
+    const chord = (key: string) => `{${MOD}>}${key}{/${MOD}}`;
+    const allIds = () =>
+      new Set([
+        ...surface().elementModels.map(element => element.id),
+        ...gfx().layer.blocks.map(block => block.id),
+      ]);
+    const newIds = (before: Set<string>) =>
+      [...allIds()].filter(id => !before.has(id));
+    const flavourOf = (id: string) =>
+      (model(id) as { flavour?: string }).flavour ??
+      (model(id) as { type?: string }).type;
+
+    /**
+     * A shape (the elements' rule, already right) and one block of each kind
+     * the report names, all drawn in a second layer; then the default layer
+     * is made active, so "the active layer" and "the source's layer" differ.
+     */
+    const sourcesInASecondLayer = async () => {
+      await openPane();
+      await newLayer();
+      await userEvent.keyboard('{Enter}');
+      await settle();
+      const created = userLayerId();
+
+      const crud = edgeless.service.crud;
+      const note = crud.addBlock(
+        'affine:note',
+        { xywh: '[0,400,300,100]' },
+        window.doc.root!.id
+      );
+      window.doc.addBlock('affine:paragraph', {}, note);
+      const text = crud.addBlock(
+        'affine:edgeless-text',
+        { xywh: '[400,400,200,50]' },
+        surface().id
+      );
+      window.doc.addBlock('affine:paragraph', {}, text);
+      const frame = crud.addBlock(
+        'affine:frame',
+        { xywh: '[0,800,300,300]', childElementIds: {} },
+        surface().id
+      );
+      const canvas = document.createElement('canvas');
+      canvas.width = 8;
+      canvas.height = 8;
+      canvas.getContext('2d')!.fillRect(0, 0, 8, 8);
+      const png = await new Promise<Blob>(resolve =>
+        canvas.toBlob(blob => resolve(blob!), 'image/png')
+      );
+      const [image] = await addImages(
+        edgeless.std,
+        [new File([png], 'dot.png', { type: 'image/png' })],
+        { point: [800, 400], shouldTransformPoint: false }
+      );
+      const element = shape(1200);
+      await settle();
+      const sources = [element, note, text, frame, image];
+      for (const id of sources) expect(ownLayerOf(model(id)), id).toBe(created);
+
+      await userEvent.click(
+        page.elementLocator(
+          layerRow(DEFAULT_LAYER_ID).querySelector('.selection-pane-label')!
+        )
+      );
+      await settle();
+      expect(layerRow(DEFAULT_LAYER_ID).hasAttribute('data-active')).toBe(true);
+      return { created, sources };
+    };
+
+    const expectCopiesIn = (
+      layer: string,
+      sources: string[],
+      copies: string[]
+    ) => {
+      expect(copies.map(flavourOf).sort()).toEqual(
+        sources.map(flavourOf).sort()
+      );
+      expect(
+        copies
+          .filter(id => ownLayerOf(model(id)) !== layer)
+          .map(id => [flavourOf(id), ownLayerOf(model(id))]),
+        'every copy is in its source layer'
+      ).toEqual([]);
+    };
+
+    const selectAndFocus = async (ids: string[]) => {
+      gfx().selection.set({ elements: ids, editing: false });
+      // Focus without a click, which would change the selection.
+      edgeless.std.host.focus();
+      await settle();
+    };
+
+    test('mod+d on a shape, a note, an edgeless text, a frame and an image', async () => {
+      const { created, sources } = await sourcesInASecondLayer();
+      const before = allIds();
+
+      await selectAndFocus(sources);
+      await userEvent.keyboard(chord('d'));
+      await settle();
+
+      expectCopiesIn(created, sources, newIds(before));
+
+      // The layer is written after the block is created: still one gesture.
+      window.doc.undo();
+      await settle();
+      expect(newIds(before)).toEqual([]);
+    });
+
+    test('copy then paste in the same document', async () => {
+      const { created, sources } = await sourcesInASecondLayer();
+      const before = allIds();
+
+      await selectAndFocus(sources);
+      await commands.systemClipboard(true);
+      try {
+        await userEvent.keyboard(chord('c'));
+        await settle();
+        await userEvent.keyboard(chord('v'));
+        await settle();
+      } finally {
+        await commands.systemClipboard(false);
+      }
+
+      expectCopiesIn(created, sources, newIds(before));
+    });
+
+    // An element's duplicate carries every prop it serialized, `hiddenForEveryone`
+    // included; a block's duplicate behaves the same (ADR 0031, "What stays
+    // loadable": kept through copy).
+    test('a duplicate of what is hidden for everyone stays hidden, block or element', async () => {
+      const { sources } = await sourcesInASecondLayer();
+      for (const id of sources) {
+        edgeless.service.crud.updateElement(id, { hiddenForEveryone: true });
+      }
+      await settle();
+      const before = allIds();
+
+      await selectAndFocus(sources);
+      await userEvent.keyboard(chord('d'));
+      await settle();
+
+      const copies = newIds(before);
+      expect(copies).toHaveLength(sources.length);
+      expect(
+        copies
+          .filter(id => !isStoredHiddenForEveryone(model(id)))
+          .map(flavourOf),
+        'every copy is hidden like its source'
       ).toEqual([]);
     });
   });
