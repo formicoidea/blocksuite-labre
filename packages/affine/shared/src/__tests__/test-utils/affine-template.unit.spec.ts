@@ -1,7 +1,7 @@
 import { TextSelection } from '@labre/std';
 import { describe, expect, it } from 'vitest';
 
-import { affine } from '../../test-utils';
+import { affine } from './index';
 
 describe('helpers/affine-template', () => {
   it('should create a basic document structure from template', () => {

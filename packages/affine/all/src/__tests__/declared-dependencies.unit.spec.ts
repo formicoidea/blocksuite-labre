@@ -39,17 +39,6 @@ import {
  */
 
 /**
- * Imports a manifest deliberately does not carry as a dependency, and why.
- *
- * `@labre/affine-shared/test-utils` is test support for the other packages'
- * specs: it imports `vitest`, which every package that uses it already has as
- * a dev dependency.
- */
-const ALLOWED: Record<string, readonly string[]> = {
-  '@labre/affine-shared': ['vitest'],
-};
-
-/**
  * Module specifiers in statement position: `import … from`, `export … from`,
  * a side-effect `import '…'`, a dynamic `import('…')` and a
  * `declare module '…'` augmentation. Static clauses start a line and cannot
@@ -74,13 +63,19 @@ function packageOf(specifier: string): string | null {
   return BUILTINS.has(name) ? null : name;
 }
 
-function importedPackages(source: string): Set<string> {
+function importedSpecifiers(source: string): Set<string> {
   const found = new Set<string>();
   for (const pattern of SPECIFIERS) {
-    for (const [, specifier] of source.matchAll(pattern)) {
-      const name = packageOf(specifier);
-      if (name) found.add(name);
-    }
+    for (const [, specifier] of source.matchAll(pattern)) found.add(specifier);
+  }
+  return found;
+}
+
+function importedPackages(source: string): Set<string> {
+  const found = new Set<string>();
+  for (const specifier of importedSpecifiers(source)) {
+    const name = packageOf(specifier);
+    if (name) found.add(name);
   }
   return found;
 }
@@ -139,7 +134,6 @@ describe('declared dependencies guard', () => {
       const declared = new Set([
         ...Object.keys(manifest.dependencies ?? {}),
         ...Object.keys(manifest.peerDependencies ?? {}),
-        ...(ALLOWED[manifest.name] ?? []),
         manifest.name,
       ]);
       scanned++;
@@ -161,5 +155,125 @@ describe('declared dependencies guard', () => {
     ).toEqual([]);
     // Same ceiling as `brand-hex.unit.spec.ts`: this walks the whole
     // workspace source, and under `yarn test:unit` workers share the disk.
+  }, 90_000);
+});
+
+/**
+ * No file a published bundle ships imports React or test tooling.
+ *
+ * React inside the library is forbidden (`CLAUDE.md`, Stack), and a test
+ * runner is not something a host should install to open a document. A
+ * manifest entry is not the whole story: `scripts/build-bundles.mjs` copies
+ * every file under a vendored package's `src` except `__tests__`, whatever
+ * the package's `exports` say, so a helper kept beside the shipped code ships
+ * with it.
+ *
+ * **This spec would have caught** three defects of the 0.44 bundles:
+ * `@labre/affine-components/icons` re-exporting `file-icons-rc.ts`, whose
+ * `@blocksuite/icons/rc` loads `react/jsx-runtime` at run time with no `react`
+ * declared anywhere a host installs; `@labre/affine-shared` keeping its
+ * `vitest` helpers in `src/test-utils`, outside `__tests__`, so the core
+ * bundle shipped them; and `@labre/data-view` listing `vitest` under
+ * `dependencies` (the manifest half of the same leak).
+ *
+ * ## Scope
+ *
+ * The packages `build-bundles.mjs` vendors: the `@labre/affine` umbrella and
+ * every `@labre/*` package it depends on. Files are walked the way the script
+ * copies them (everything under `src` but `__tests__`), not through the i18n
+ * walker, which also skips stray specs and `.d.ts` files that do ship.
+ */
+const FORBIDDEN_PACKAGES = new Set(['react', 'react-dom', 'vitest']);
+const FORBIDDEN_SPECIFIERS = ['@blocksuite/icons/rc'];
+
+function isForbidden(specifier: string): boolean {
+  if (FORBIDDEN_PACKAGES.has(packageOf(specifier) ?? '')) return true;
+  return FORBIDDEN_SPECIFIERS.some(
+    forbidden =>
+      specifier === forbidden || specifier.startsWith(`${forbidden}/`)
+  );
+}
+
+/** Every `.ts` file `build-bundles.mjs` copies out of `dir`. */
+function shippedFiles(dir: string, out: string[] = []): string[] {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === '__tests__' || entry.name === 'node_modules') continue;
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) shippedFiles(path, out);
+    else if (entry.name.endsWith('.ts')) out.push(path);
+  }
+  return out;
+}
+
+describe('published source guard', () => {
+  test('the filter names React and test tooling and nothing else', () => {
+    expect(
+      [
+        'react',
+        'react/jsx-runtime',
+        'react-dom/client',
+        'vitest',
+        '@blocksuite/icons/rc',
+        '@blocksuite/icons/lit',
+        'lit',
+        'reactive-element',
+        './vitest.js',
+      ].filter(isForbidden)
+    ).toEqual([
+      'react',
+      'react/jsx-runtime',
+      'react-dom/client',
+      'vitest',
+      '@blocksuite/icons/rc',
+    ]);
+  });
+
+  test('no shipped file or manifest pulls in react, react-dom, @blocksuite/icons/rc or vitest', () => {
+    const umbrella = JSON.parse(
+      readFileSync(join(ROOT, 'packages/affine/all/package.json'), 'utf8')
+    );
+    const vendored = new Set([
+      umbrella.name,
+      ...Object.keys(umbrella.dependencies ?? {}).filter(name =>
+        name.startsWith('@labre/')
+      ),
+    ]);
+    const offending: string[] = [];
+    let scanned = 0;
+    for (const dir of manifestDirs(join(ROOT, 'packages'))) {
+      if (!existsSync(join(dir, 'src'))) continue;
+      const manifest = JSON.parse(
+        readFileSync(join(dir, 'package.json'), 'utf8')
+      );
+      if (!vendored.has(manifest.name)) continue;
+      scanned++;
+      // `thirdPartyDeps` copies these into the bundle a host installs.
+      for (const name of Object.keys({
+        ...manifest.dependencies,
+        ...manifest.peerDependencies,
+      })) {
+        if (FORBIDDEN_PACKAGES.has(name)) {
+          offending.push(`${toRepoRelative(dir)}/package.json: ${name}`);
+        }
+      }
+      for (const file of shippedFiles(join(dir, 'src'))) {
+        for (const specifier of importedSpecifiers(
+          readFileSync(file, 'utf8')
+        )) {
+          if (isForbidden(specifier)) {
+            offending.push(`${toRepoRelative(file)}: ${specifier}`);
+          }
+        }
+      }
+    }
+
+    expect(scanned).toBe(vendored.size);
+    expect(
+      offending,
+      'A published bundle would ship or install React or test tooling. Test ' +
+        'helpers live under `src/__tests__`, which the bundle script skips, ' +
+        'and their packages under `devDependencies`; icons come from ' +
+        '`@blocksuite/icons/lit`.'
+    ).toEqual([]);
   }, 90_000);
 });

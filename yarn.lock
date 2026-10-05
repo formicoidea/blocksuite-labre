@@ -4494,15 +4494,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/react@npm:^19":
-  version: 19.1.6
-  resolution: "@types/react@npm:19.1.6"
-  dependencies:
-    csstype: "npm:^3.0.2"
-  checksum: 10/722a8efb36dedaf5cfe226287214df0982d612ff33ebf005dbbb646279647e5987da661f2d9fe6b8a4516d3b29dd6cb3a708641265861251abb682e8e90540cf
-  languageName: node
-  linkType: hard
-
 "@types/statuses@npm:^2.0.4":
   version: 2.0.6
   resolution: "@types/statuses@npm:2.0.6"
@@ -5052,7 +5043,6 @@ __metadata:
     "@size-limit/esbuild-why": "npm:^11.1.5"
     "@size-limit/preset-small-lib": "npm:^11.1.4"
     "@types/node": "npm:^22.13.10"
-    "@types/react": "npm:^19"
     "@vitest/browser": "npm:3.1.3"
     es-module-lexer: "npm:^1.5.4"
     esbuild: "npm:^0.25.0"
@@ -5060,7 +5050,6 @@ __metadata:
     lint-staged: "npm:^15.2.9"
     micromatch: "npm:^4.0.7"
     prettier: "npm:^3.3.3"
-    react: "npm:^19.1.0"
     size-limit: "npm:^11.1.4"
     tsx: "npm:^4.19.0"
     typescript: "npm:5.8.2"
@@ -8642,13 +8631,6 @@ __metadata:
   version: 17.0.2
   resolution: "react-is@npm:17.0.2"
   checksum: 10/73b36281e58eeb27c9cc6031301b6ae19ecdc9f18ae2d518bdb39b0ac564e65c5779405d623f1df9abf378a13858b79442480244bd579968afc1faf9a2ce5e05
-  languageName: node
-  linkType: hard
-
-"react@npm:^19.1.0":
-  version: 19.1.0
-  resolution: "react@npm:19.1.0"
-  checksum: 10/d0180689826fd9de87e839c365f6f361c561daea397d61d724687cae88f432a307d1c0f53a0ee95ddbe3352c10dac41d7ff1ad85530fb24951b27a39e5398db4
   languageName: node
   linkType: hard
 
