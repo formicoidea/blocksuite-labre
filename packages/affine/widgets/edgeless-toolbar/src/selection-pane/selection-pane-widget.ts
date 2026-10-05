@@ -15,13 +15,16 @@ import {
   popMenu,
   popupTargetFromElement,
 } from '@labre/affine-components/context-menu';
-import type { RootBlockModel } from '@labre/affine-model';
-import { TOUCH_TARGET_MIN_PX } from '@labre/affine-shared/consts';
+import { MindmapElementModel, type RootBlockModel } from '@labre/affine-model';
 import {
   TOOLBAR_LOCK,
   TOOLBAR_RENAME,
   translateKey,
 } from '@labre/affine-shared/services';
+import {
+  panelDragStarted,
+  panelHeaderStyles,
+} from '@labre/affine-shared/styles';
 import {
   type AnyCommandDescriptor,
   type CommandInvocation,
@@ -31,12 +34,15 @@ import {
 } from '@labre/std';
 import {
   DEFAULT_LAYER_ID,
+  GfxBlockElementModel,
   GfxControllerIdentifier,
   type GfxModel,
+  type GfxPrimitiveElementModel,
 } from '@labre/std/gfx';
 import {
   ArrowDownSmallIcon,
   ArrowRightSmallIcon,
+  CloseIcon,
   DeleteIcon,
   FilterIcon,
   InvisibleIcon,
@@ -62,8 +68,8 @@ import {
   SELECTION_PANE_EXPAND,
   SELECTION_PANE_FILTER,
   SELECTION_PANE_FILTER_ALL,
-  SELECTION_PANE_FILTER_BOARD,
   SELECTION_PANE_FILTER_FRAME,
+  SELECTION_PANE_LAYER_FILTERED,
   SELECTION_PANE_TITLE,
   SELECTION_PANE_HIDE,
   SELECTION_PANE_HIDE_FOR_EVERYONE,
@@ -73,6 +79,13 @@ import {
   SELECTION_PANE_SHOW_FOR_EVERYONE,
   SELECTION_PANE_UNLOCK,
 } from '../translations.js';
+import {
+  paneDropAbove,
+  type PaneDropRow,
+  type PaneLists,
+  paneLists,
+  paneSlotAtGap,
+} from './drop.js';
 import { selectionPaneRowIcon, selectionPaneRowLabel } from './labels.js';
 
 export const EDGELESS_SELECTION_PANE_WIDGET = 'edgeless-selection-pane-widget';
@@ -82,9 +95,6 @@ const PANEL_WIDTH = 'min(320px, 85vw)';
 
 /** Indent per nesting level, in px. */
 const INDENT_PX = 16;
-
-/** Pointer travel before a press on a row becomes a drag rather than a click. */
-const DRAG_THRESHOLD_PX = 4;
 
 /**
  * How the pane invokes the registry. The pane is not one of the registry's
@@ -105,23 +115,45 @@ function paneCommand(id: string): AnyCommandDescriptor {
   return command;
 }
 
-/** One visible row: the node, and how deep it sits. */
-interface PaneRow {
-  node: SelectionPaneNode;
-  depth: number;
-  /** Its siblings in the FULL tree, top first — what a drop is computed in. */
-  siblings: readonly SelectionPaneNode[];
+/** One visible row: the node, how deep it sits, what it is listed under. */
+interface PaneRow extends PaneDropRow {
+  /**
+   * A layer row only: how many member rows the filter leaves out, when it
+   * leaves them ALL out — the layer then still shows, and says so.
+   */
+  hiddenByFilter?: number;
 }
 
 interface DragState {
   id: string;
   /** A layer row reorders among layers; any other row may also drop INTO one. */
   kind: SelectionPaneNode['kind'];
-  groupId: string | undefined;
-  siblings: readonly SelectionPaneNode[];
+  /** The list it moves in: its parent row's id, `''` at the top level. */
+  parent: string;
   x: number;
   y: number;
+  /** The row's width when it was pressed: the ghost's. */
+  width: number;
   dragging: boolean;
+}
+
+/**
+ * Where the dragged row would land: into a layer (its header), at a gap of
+ * its own list (`top` / `left` place the line in the list's scroll content),
+ * or nowhere — a refusal the pane shows rather than swallows.
+ */
+type PaneDrop =
+  | { kind: 'into'; id: string }
+  | { kind: 'slot'; above: string | null; top: number; left: number }
+  | { kind: 'refused' };
+
+/** `model.group`, or `null` where the getter throws (no surface holds it). */
+function rawGroupOf(model: GfxModel): GfxModel | null {
+  try {
+    return (model.group as GfxModel | null) ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -150,6 +182,8 @@ interface DragState {
  */
 export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel> {
   static override styles = css`
+    ${panelHeaderStyles}
+
     :host {
       position: absolute;
       left: 0;
@@ -185,57 +219,17 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       outline-offset: -2px;
     }
 
-    .selection-pane-head {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      padding: 8px 8px 8px 16px;
-      border-bottom: 1px solid var(--affine-border-color);
-      font-weight: 600;
-    }
-
-    .selection-pane-title {
-      flex: 1;
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .selection-pane-head-button {
+    /* The header row itself is the frame panel's (panelHeaderStyles). */
+    .selection-pane-actions {
       flex: none;
       display: flex;
       align-items: center;
-      justify-content: center;
-      width: ${unsafeCSS(TOUCH_TARGET_MIN_PX)}px;
-      height: ${unsafeCSS(TOUCH_TARGET_MIN_PX)}px;
-      border: none;
-      border-radius: 8px;
-      background: transparent;
-      color: var(--affine-icon-color);
-      font-family: inherit;
-      font-size: 20px;
-      line-height: 1;
-      cursor: pointer;
+      gap: 8px;
     }
 
-    .selection-pane-head-button svg {
-      width: 20px;
-      height: 20px;
-    }
-
-    .selection-pane-head-button[data-active='true'] {
-      color: var(--affine-primary-color);
-    }
-
-    .selection-pane-head-button:hover,
-    .selection-pane-head-button:focus-visible {
-      background: var(--affine-hover-color);
-    }
-
-    .selection-pane-filter-label {
-      padding: 6px 16px;
-      border-bottom: 1px solid var(--affine-border-color);
+    /* The pane's secondary text: the filter's name, a layer's filtered count. */
+    .selection-pane-filter-label,
+    .selection-pane-layer-note {
       color: var(--affine-text-secondary-color);
       font-size: 12px;
       overflow: hidden;
@@ -243,7 +237,18 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       white-space: nowrap;
     }
 
+    .selection-pane-filter-label {
+      padding: 6px 16px;
+      border-bottom: 1px solid var(--affine-border-color);
+    }
+
+    .selection-pane-layer-note {
+      padding-top: 2px;
+      padding-bottom: 4px;
+    }
+
     .selection-pane-body {
+      position: relative;
       flex: 1;
       min-height: 0;
       overflow-y: auto;
@@ -281,16 +286,71 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       color: var(--affine-primary-color);
     }
 
-    .selection-pane-row[data-drop='above'] {
-      border-top-color: var(--affine-primary-color);
-    }
-
-    .selection-pane-row[data-drop='below'] {
-      border-bottom-color: var(--affine-primary-color);
-    }
-
+    /* The row being dragged stays in place, dimmed, like the frame panel's
+       placeholder card; its ghost follows the pointer. */
     .selection-pane-row[data-dragging] {
       opacity: 0.5;
+    }
+
+    /* While dragging, the pane says whether a drop here would land. */
+    .selection-pane-panel[data-drag='valid'] {
+      cursor: grabbing;
+    }
+
+    .selection-pane-panel[data-drag='invalid'] {
+      cursor: not-allowed;
+    }
+
+    .selection-pane-panel[data-drag] * {
+      cursor: inherit;
+    }
+
+    /* The frame panel's insert indicator: a line at the gap a drop lands in. */
+    .selection-pane-drop-indicator {
+      position: absolute;
+      right: 8px;
+      height: 2px;
+      border-radius: 1px;
+      background: var(--affine-primary-color);
+      transform: translateY(-1px);
+      pointer-events: none;
+    }
+
+    /*
+      The frame panel's drag mask: over the whole viewport for the length of
+      the drag, so the cursor says "grabbing" or "not-allowed" wherever the
+      pointer is (the panel's rule above hands it down) and the canvas under
+      it takes no hover.
+    */
+    .selection-pane-drag-mask {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+    }
+
+    /* The row itself at its own width, like the frame panel's dragged card. */
+    .selection-pane-drag-ghost {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      min-height: 32px;
+      box-sizing: border-box;
+      padding: 4px 8px;
+      border: 1px solid var(--affine-border-color);
+      border-radius: 4px;
+      background: var(--affine-background-overlay-panel-color);
+      box-shadow: var(--affine-shadow-2);
+      white-space: nowrap;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .selection-pane-drag-ghost .selection-pane-label {
+      flex: initial;
     }
 
     /* A row dragged onto a layer moves into it (ADR 0031 §5). */
@@ -427,7 +487,7 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
   @state()
   private accessor _collapsed: ReadonlySet<string> = new Set();
 
-  /** The frame or board the list is narrowed to, or `null`. */
+  /** The frame the list is narrowed to, or `null`. */
   @state()
   private accessor _filter: string | null = null;
 
@@ -437,16 +497,23 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
 
   /** Where the dragged row would land. */
   @state()
-  private accessor _drop: {
-    id: string;
-    position: 'above' | 'below' | 'into';
-  } | null = null;
+  private accessor _drop: PaneDrop | null = null;
+
+  /** Where the dragged row's ghost is drawn, in the panel's own box. */
+  @state()
+  private accessor _ghost: { x: number; y: number } | null = null;
 
   /** Bumped when the canvas selection changes, so the rows repaint. */
   @state()
   private accessor _selectionRevision = 0;
 
   private _drag: DragState | null = null;
+
+  /** The rows of the last render, top first: what a drag hit-tests. */
+  private _visibleRows: readonly PaneRow[] = [];
+
+  /** The sibling lists before the filter: what a drop is computed in. */
+  private _lists: PaneLists = paneLists([]);
 
   /** A drag ends with a click on the row it started on; that click is not one. */
   private _swallowNextClick = false;
@@ -488,6 +555,8 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     if (!event.composedPath().includes(this)) return;
     if (this._renaming) return;
     event.stopPropagation();
+    // The frame panel's drag has no cancel: Escape waits for the release.
+    if (this._drag?.dragging) return;
     this.closePanel();
   };
 
@@ -556,17 +625,39 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
 
   /* ── Rows ───────────────────────────────────────────────────────────── */
 
-  private _rows(nodes: readonly SelectionPaneNode[]): PaneRow[] {
+  /**
+   * The visible rows of `nodes` (the tree as filtered), with `full` the tree
+   * before the filter: what tells a layer emptied by the filter from an empty
+   * one.
+   */
+  private _rows(
+    nodes: readonly SelectionPaneNode[],
+    full: readonly SelectionPaneNode[] = nodes
+  ): PaneRow[] {
+    const membersOf = new Map(
+      full
+        .filter(node => node.kind === 'layer')
+        .map(node => [node.id, node.children?.length ?? 0])
+    );
     const rows: PaneRow[] = [];
-    const walk = (list: readonly SelectionPaneNode[], depth: number) => {
+    const walk = (
+      list: readonly SelectionPaneNode[],
+      depth: number,
+      parent: string
+    ) => {
       for (const node of list) {
-        rows.push({ node, depth, siblings: list });
+        const row: PaneRow = { node, depth, parent };
+        if (node.kind === 'layer' && node.children?.length === 0) {
+          const members = membersOf.get(node.id) ?? 0;
+          if (members > 0) row.hiddenByFilter = members;
+        }
+        rows.push(row);
         if (node.children && !this._collapsed.has(node.id)) {
-          walk(node.children, depth + 1);
+          walk(node.children, depth + 1, node.id);
         }
       }
     };
-    walk(nodes, 0);
+    walk(nodes, 0, '');
     return rows;
   }
 
@@ -731,6 +822,16 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
 
   /* ── Drag to reorder ────────────────────────────────────────────────── */
 
+  /*
+   * The frame panel's model (`fragments/frame-panel`): a press becomes a drag
+   * past its threshold and picks the row up, selecting it; the row stays in
+   * place, dimmed; a copy of it at its own width follows the pointer; a mask
+   * over the viewport carries the cursor; a line marks the gap a release would
+   * land in, and a gap the row cannot go to shows no line and a `not-allowed`
+   * cursor. Escape does nothing until the release. A read-only document never
+   * starts one.
+   */
+
   private _onRowPointerDown(event: PointerEvent, row: PaneRow) {
     if (event.button !== 0 || this.std.store.readonly) return;
     const target = event.target as HTMLElement;
@@ -738,53 +839,149 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     this._drag = {
       id: row.node.id,
       kind: row.node.kind,
-      groupId: row.node.groupId,
-      siblings: row.siblings,
+      parent: row.parent,
       x: event.clientX,
       y: event.clientY,
+      width: (event.currentTarget as HTMLElement).getBoundingClientRect().width,
       dragging: false,
     };
     document.addEventListener('pointermove', this._onDocumentPointerMove, true);
     document.addEventListener('pointerup', this._onDocumentPointerUp, true);
   }
 
-  /** The row under `clientY` — a canvas row or a layer row — and where. */
-  private _dropAt(clientY: number): typeof this._drop {
-    const drag = this._drag;
-    if (!drag) return null;
-    const rows =
-      this.shadowRoot?.querySelectorAll<HTMLElement>(
-        '[data-testid="selection-pane-row"], [data-testid="selection-pane-layer"]'
-      ) ?? [];
-    for (const element of rows) {
-      const rect = element.getBoundingClientRect();
-      if (clientY < rect.top || clientY > rect.bottom) continue;
-      const id = element.dataset.id;
-      if (!id || id === drag.id) return null;
-      const position = clientY < rect.top + rect.height / 2 ? 'above' : 'below';
-      // A row of the canvas dropped on a layer row moves INTO that layer.
-      if (drag.kind !== 'layer' && element.dataset.kind === 'layer') {
-        return { id, position: 'into' };
+  /**
+   * Which model stands for a row in the dragged row's own stack — the stack
+   * `canvas.element.reorder` restacks it in, the models sharing its raw
+   * `group` — or `undefined` for a row outside it. A frame's members paint
+   * together right above the frame, so for a loose element they stand for
+   * their frame. `null` when the dragged row cannot be restacked at all (a
+   * mindmap node moves with its mindmap).
+   */
+  private _stackOf(
+    drag: DragState
+  ): ((id: string) => string | undefined) | null {
+    if (drag.kind === 'layer') return id => id;
+    const gfx = this._gfx;
+    const dragged = gfx.getElementById(drag.id) as GfxModel | null;
+    if (!dragged) return null;
+    const stack = rawGroupOf(dragged);
+    if (stack instanceof MindmapElementModel) return null;
+    return id => {
+      let model = gfx.getElementById(id) as GfxModel | null;
+      for (let hops = 0; model && hops < 32; hops++) {
+        const group = rawGroupOf(model);
+        if (group === stack) return model.id;
+        model = group;
       }
-      // Otherwise only among siblings: a row never leaves its group, and a
-      // layer never leaves the list of layers, by a drag here.
-      if (!drag.siblings.some(node => node.id === id)) return null;
-      return { id, position };
+      return undefined;
+    };
+  }
+
+  /** Where a release at `(clientX, clientY)` would land the dragged row. */
+  private _dropAt(clientX: number, clientY: number): PaneDrop | null {
+    const drag = this._drag;
+    const body = this.shadowRoot?.querySelector<HTMLElement>(
+      '[data-testid="selection-pane-body"]'
+    );
+    if (!drag || !body) return null;
+    const box = body.getBoundingClientRect();
+    if (
+      clientX < box.left ||
+      clientX > box.right ||
+      clientY < box.top ||
+      clientY > box.bottom
+    ) {
+      return { kind: 'refused' };
     }
-    return null;
+
+    const byId = new Map(this._visibleRows.map(row => [row.node.id, row]));
+    const shown = Array.from(
+      body.querySelectorAll<HTMLElement>(
+        '[data-testid="selection-pane-row"], [data-testid="selection-pane-layer"]'
+      )
+    ).flatMap(element => {
+      const row = byId.get(element.dataset.id ?? '');
+      return row ? [{ element, row }] : [];
+    });
+
+    // A canvas row over a layer's header moves INTO that layer (§5).
+    if (drag.kind !== 'layer') {
+      const header = shown.find(({ element, row }) => {
+        if (row.node.kind !== 'layer') return false;
+        const rect = element.getBoundingClientRect();
+        return clientY >= rect.top && clientY <= rect.bottom;
+      });
+      if (header) return { kind: 'into', id: header.row.node.id };
+    }
+
+    // The gap: past the middle of a row is below it.
+    let gap = 0;
+    for (const { element } of shown) {
+      const rect = element.getBoundingClientRect();
+      if (clientY > rect.top + rect.height / 2) gap++;
+    }
+
+    const stackOf = this._stackOf(drag);
+    const slot = stackOf
+      ? paneSlotAtGap(
+          shown.map(({ row }) => row),
+          gap,
+          drag.parent,
+          this._lists
+        )
+      : null;
+    const list = slot ? this._lists.lists.get(slot.parent) : undefined;
+    const landing =
+      slot && list && stackOf
+        ? paneDropAbove(list, slot.index, drag.id, stackOf)
+        : null;
+    if (!slot || !landing) return { kind: 'refused' };
+
+    const under = shown[gap]?.element;
+    const last = shown[shown.length - 1]?.element;
+    const top = under
+      ? under.offsetTop
+      : last
+        ? last.offsetTop + last.offsetHeight
+        : 0;
+    return {
+      kind: 'slot',
+      above: landing.above,
+      top,
+      left: 8 + slot.depth * INDENT_PX,
+    };
+  }
+
+  private _moveGhost(event: PointerEvent) {
+    const panel = this.shadowRoot?.querySelector<HTMLElement>(
+      '[data-testid="selection-pane-panel"]'
+    );
+    if (!panel) return;
+    const box = panel.getBoundingClientRect();
+    this._ghost = { x: event.clientX - box.left, y: event.clientY - box.top };
   }
 
   private readonly _onDocumentPointerMove = (event: PointerEvent) => {
     const drag = this._drag;
     if (!drag) return;
     if (!drag.dragging) {
-      const travel = Math.hypot(event.clientX - drag.x, event.clientY - drag.y);
-      if (travel < DRAG_THRESHOLD_PX) return;
+      if (!panelDragStarted(drag, { x: event.clientX, y: event.clientY })) {
+        return;
+      }
       drag.dragging = true;
-      this.requestUpdate();
+      this._pickUp(drag);
     }
-    this._drop = this._dropAt(event.clientY);
+    this._moveGhost(event);
+    this._drop = this._dropAt(event.clientX, event.clientY);
   };
+
+  /** A canvas row picked up is selected, as the frame panel selects a card. */
+  private _pickUp(drag: DragState) {
+    if (drag.kind === 'layer') return;
+    const { selection } = this._gfx;
+    if (selection.selectedIds.includes(drag.id)) return;
+    selection.set({ elements: [drag.id], editing: false });
+  }
 
   private readonly _onDocumentPointerUp = (event: PointerEvent) => {
     const drag = this._drag;
@@ -793,36 +990,31 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       // A click only follows when the press and the release land on the same
       // row; otherwise nothing would ever clear the flag.
       setTimeout(() => (this._swallowNextClick = false), 0);
-      const drop = this._dropAt(event.clientY);
+      const drop = this._dropAt(event.clientX, event.clientY);
       if (drop) this._commitDrop(drag, drop);
     }
     this._endDrag();
   };
 
   /**
-   * "Above row X" is directly above X in the stack. "Below row X" is directly
-   * above whatever sits right under X — read in the FULL sibling list, so a
-   * filtered view never computes a neighbour it is not showing.
+   * One write per gesture, through the command: `layer` for a drop into a
+   * layer, one `index` for a slot. The command writes nothing when the slot
+   * is where the row already is, and a refused drop never reaches it.
    */
-  private _commitDrop(drag: DragState, drop: NonNullable<typeof this._drop>) {
-    if (drop.position === 'into') {
+  private _commitDrop(drag: DragState, drop: PaneDrop) {
+    if (drop.kind === 'refused') return;
+    if (drop.kind === 'into') {
       this._run('canvas.layer.moveElements', {
         ids: [drag.id],
         layerId: drop.id,
       });
       return;
     }
-    let above: string | null = drop.id;
-    if (drop.position === 'below') {
-      const rest = drag.siblings.filter(node => node.id !== drag.id);
-      const at = rest.findIndex(node => node.id === drop.id);
-      above = rest[at + 1]?.id ?? null;
-    }
     if (drag.kind === 'layer') {
-      this._run('canvas.layer.reorder', { id: drag.id, above });
+      this._run('canvas.layer.reorder', { id: drag.id, above: drop.above });
       return;
     }
-    this._run('canvas.element.reorder', { id: drag.id, above });
+    this._run('canvas.element.reorder', { id: drag.id, above: drop.above });
   }
 
   private _endDrag() {
@@ -835,7 +1027,56 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     const wasDragging = this._drag?.dragging;
     this._drag = null;
     this._drop = null;
+    this._ghost = null;
     if (wasDragging) this.requestUpdate();
+  }
+
+  private _renderGhost() {
+    const drag = this._drag;
+    const at = this._ghost;
+    if (!drag?.dragging || !at) return nothing;
+    const style = styleMap({
+      transform: `translate(${at.x - 16}px, ${at.y - 8}px)`,
+      width: `${drag.width}px`,
+    });
+    if (drag.kind === 'layer') {
+      return html`<div
+        class="selection-pane-drag-ghost"
+        data-testid="selection-pane-drag-ghost"
+        style=${style}
+      >
+        <span class="selection-pane-icon">${LayerIcon()}</span>
+        <span class="selection-pane-label"
+          >${this._layerName(drag.id) ?? ''}</span
+        >
+      </div>`;
+    }
+    const model = this._gfx.getElementById(drag.id) as GfxModel | null;
+    if (!model) return nothing;
+    const type =
+      model instanceof GfxBlockElementModel
+        ? model.flavour
+        : (model as GfxPrimitiveElementModel).type;
+    return html`<div
+      class="selection-pane-drag-ghost"
+      data-testid="selection-pane-drag-ghost"
+      style=${style}
+    >
+      <span class="selection-pane-icon">${selectionPaneRowIcon(type)}</span>
+      <span class="selection-pane-label"
+        >${selectionPaneRowLabel(this.std, model)}</span
+      >
+    </div>`;
+  }
+
+  private _renderDropIndicator() {
+    const drop = this._drop;
+    if (!this._drag?.dragging || drop?.kind !== 'slot') return nothing;
+    return html`<div
+      class="selection-pane-drop-indicator"
+      data-testid="selection-pane-drop-indicator"
+      style=${styleMap({ top: `${drop.top}px`, left: `${drop.left}px` })}
+    ></div>`;
   }
 
   /* ── Filter ─────────────────────────────────────────────────────────── */
@@ -845,12 +1086,10 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     return model ? selectionPaneRowLabel(this.std, model) : id;
   }
 
-  private _filterWording(id: string, kind: 'frame' | 'board'): string {
-    const wording =
-      kind === 'frame'
-        ? SELECTION_PANE_FILTER_FRAME
-        : SELECTION_PANE_FILTER_BOARD;
-    return translateKey(this.std, ...wording, { name: this._filterName(id) });
+  private _filterWording(id: string): string {
+    return translateKey(this.std, ...SELECTION_PANE_FILTER_FRAME, {
+      name: this._filterName(id),
+    });
   }
 
   private readonly _openFilterMenu = (event: MouseEvent) => {
@@ -867,7 +1106,7 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
           }),
           ...targets.map(target =>
             menu.action({
-              name: this._filterWording(target.id, target.kind),
+              name: this._filterWording(target.id),
               isSelected: this._filter === target.id,
               select: () => {
                 this._filter = target.id;
@@ -894,91 +1133,111 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     const collapsed = this._collapsed.has(node.id);
     const active =
       (std.getOptional(CanvasActiveLayer)?.resolve() ?? null) === node.id;
-    const drop = this._drop?.id === node.id ? this._drop.position : undefined;
+    const drop =
+      this._drop?.kind === 'into' && this._drop.id === node.id
+        ? 'into'
+        : undefined;
     const dragging = this._drag?.dragging && this._drag.id === node.id;
 
     return html`<div
-      class="selection-pane-row selection-pane-layer-row"
-      role="treeitem"
-      data-testid="selection-pane-layer"
-      data-id=${node.id}
-      data-kind="layer"
-      aria-level=${depth + 1}
-      aria-expanded=${collapsed ? 'false' : 'true'}
-      title=${active
-        ? translateKey(std, ...SELECTION_PANE_ACTIVE_LAYER)
-        : nothing}
-      ?data-active=${active}
-      ?data-hidden-local=${node.hiddenLocal}
-      ?data-hidden-everyone=${node.hiddenForEveryone}
-      ?data-dragging=${dragging}
-      data-drop=${drop ?? nothing}
-      style=${styleMap({ paddingLeft: `${8 + depth * INDENT_PX}px` })}
-      @click=${(event: MouseEvent) => this._onRowClick(event, node)}
-      @dblclick=${() => this._onRowDblClick(node)}
-      @contextmenu=${(event: MouseEvent) => this._onRowContextMenu(event, node)}
-      @pointerdown=${(event: PointerEvent) =>
-        this._onRowPointerDown(event, row)}
-    >
-      <button
-        class="selection-pane-chevron"
-        type="button"
-        data-testid="selection-pane-collapse"
-        aria-label=${translateKey(
-          std,
-          ...(collapsed ? SELECTION_PANE_EXPAND : SELECTION_PANE_COLLAPSE)
-        )}
-        @click=${(event: MouseEvent) => {
-          event.stopPropagation();
-          this._toggleCollapsed(node.id);
-        }}
+        class="selection-pane-row selection-pane-layer-row"
+        role="treeitem"
+        data-testid="selection-pane-layer"
+        data-id=${node.id}
+        data-kind="layer"
+        aria-level=${depth + 1}
+        aria-expanded=${collapsed ? 'false' : 'true'}
+        title=${active
+          ? translateKey(std, ...SELECTION_PANE_ACTIVE_LAYER)
+          : nothing}
+        ?data-active=${active}
+        ?data-hidden-local=${node.hiddenLocal}
+        ?data-hidden-everyone=${node.hiddenForEveryone}
+        ?data-dragging=${dragging}
+        data-drop=${drop ?? nothing}
+        style=${styleMap({ paddingLeft: `${8 + depth * INDENT_PX}px` })}
+        @click=${(event: MouseEvent) => this._onRowClick(event, node)}
+        @dblclick=${() => this._onRowDblClick(node)}
+        @contextmenu=${(event: MouseEvent) =>
+          this._onRowContextMenu(event, node)}
+        @pointerdown=${(event: PointerEvent) =>
+          this._onRowPointerDown(event, row)}
       >
-        ${collapsed ? ArrowRightSmallIcon() : ArrowDownSmallIcon()}
-      </button>
-      <span class="selection-pane-icon">${LayerIcon()}</span>
-      ${this._renaming === node.id
-        ? html`<input
-            class="selection-pane-rename"
-            data-testid="selection-pane-rename"
-            aria-label=${translateKey(std, ...TOOLBAR_RENAME)}
-            .value=${name}
-            @click=${this._swallow}
-            @dblclick=${this._swallow}
-            @keydown=${(event: KeyboardEvent) =>
-              this._onRenameKeydown(event, node.id)}
-            @blur=${(event: FocusEvent) =>
-              this._commitRename(node.id, event.target as HTMLInputElement)}
-          />`
-        : html`<span class="selection-pane-label" title=${name}>${name}</span>`}
-      <button
-        class="selection-pane-eye"
-        type="button"
-        data-testid="selection-pane-eye"
-        aria-pressed=${node.hiddenLocal ? 'true' : 'false'}
-        aria-label=${translateKey(
-          std,
-          ...(node.hiddenLocal ? SELECTION_PANE_SHOW : SELECTION_PANE_HIDE)
-        )}
-        @click=${(event: MouseEvent) => this._onEyeClick(event, node)}
-      >
-        ${node.hiddenLocal ? InvisibleIcon() : ViewIcon()}
-      </button>
-      ${std.store.readonly
-        ? nothing
-        : html`<button
-            class="selection-pane-more"
-            type="button"
-            data-testid="selection-pane-more"
-            aria-haspopup="menu"
-            aria-label=${translateKey(std, ...SELECTION_PANE_ROW_MENU)}
-            @click=${(event: MouseEvent) => {
-              event.stopPropagation();
-              this._openRowMenu(event.currentTarget as HTMLElement, node);
-            }}
+        <button
+          class="selection-pane-chevron"
+          type="button"
+          data-testid="selection-pane-collapse"
+          aria-label=${translateKey(
+            std,
+            ...(collapsed ? SELECTION_PANE_EXPAND : SELECTION_PANE_COLLAPSE)
+          )}
+          @click=${(event: MouseEvent) => {
+            event.stopPropagation();
+            this._toggleCollapsed(node.id);
+          }}
+        >
+          ${collapsed ? ArrowRightSmallIcon() : ArrowDownSmallIcon()}
+        </button>
+        <span class="selection-pane-icon">${LayerIcon()}</span>
+        ${this._renaming === node.id
+          ? html`<input
+              class="selection-pane-rename"
+              data-testid="selection-pane-rename"
+              aria-label=${translateKey(std, ...TOOLBAR_RENAME)}
+              .value=${name}
+              @click=${this._swallow}
+              @dblclick=${this._swallow}
+              @keydown=${(event: KeyboardEvent) =>
+                this._onRenameKeydown(event, node.id)}
+              @blur=${(event: FocusEvent) =>
+                this._commitRename(node.id, event.target as HTMLInputElement)}
+            />`
+          : html`<span class="selection-pane-label" title=${name}
+              >${name}</span
+            >`}
+        <button
+          class="selection-pane-eye"
+          type="button"
+          data-testid="selection-pane-eye"
+          aria-pressed=${node.hiddenLocal ? 'true' : 'false'}
+          aria-label=${translateKey(
+            std,
+            ...(node.hiddenLocal ? SELECTION_PANE_SHOW : SELECTION_PANE_HIDE)
+          )}
+          @click=${(event: MouseEvent) => this._onEyeClick(event, node)}
+        >
+          ${node.hiddenLocal ? InvisibleIcon() : ViewIcon()}
+        </button>
+        ${std.store.readonly
+          ? nothing
+          : html`<button
+              class="selection-pane-more"
+              type="button"
+              data-testid="selection-pane-more"
+              aria-haspopup="menu"
+              aria-label=${translateKey(std, ...SELECTION_PANE_ROW_MENU)}
+              @click=${(event: MouseEvent) => {
+                event.stopPropagation();
+                this._openRowMenu(event.currentTarget as HTMLElement, node);
+              }}
+            >
+              ${MoreHorizontalIcon()}
+            </button>`}
+      </div>
+      ${row.hiddenByFilter && !collapsed
+        ? html`<div
+            class="selection-pane-layer-note"
+            data-testid="selection-pane-layer-filtered"
+            data-id=${node.id}
+            style=${styleMap({
+              paddingLeft: `${8 + (depth + 1) * INDENT_PX + 28}px`,
+            })}
           >
-            ${MoreHorizontalIcon()}
-          </button>`}
-    </div>`;
+            ${translateKey(std, ...SELECTION_PANE_LAYER_FILTERED, {
+              count: row.hiddenByFilter,
+            })}
+          </div>`
+        : nothing}`;
   }
 
   private _renderRow(row: PaneRow) {
@@ -993,7 +1252,10 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     const container = node.children !== undefined;
     const collapsed = this._collapsed.has(node.id);
     const readonly = std.store.readonly;
-    const drop = this._drop?.id === node.id ? this._drop.position : undefined;
+    const drop =
+      this._drop?.kind === 'into' && this._drop.id === node.id
+        ? 'into'
+        : undefined;
     const dragging = this._drag?.dragging && this._drag.id === node.id;
 
     return html`<div
@@ -1107,15 +1369,59 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     if (input && this.shadowRoot?.activeElement !== input) {
       input.focus();
       input.select();
+      // A layer just created may sit above the scrolled-to rows: bring its
+      // field into view, so the creation is seen where it happened.
+      input.scrollIntoView({ block: 'nearest' });
     }
   }
+
+  /**
+   * One header action, in the frame panel's icon button
+   * (`header/frame-panel-header.ts`): a 20px glyph in `edgeless-tool-icon-button`,
+   * secondary until hovered, its tooltip above it, a wash while active.
+   */
+  private _renderHeadButton(
+    testId: string,
+    label: string,
+    icon: (props: { width: string; height: string }) => unknown,
+    onClick: (event: MouseEvent) => void,
+    active = false
+  ) {
+    return html`<edgeless-tool-icon-button
+      class="affine-panel-header-button ${active ? 'active' : ''}"
+      data-testid=${testId}
+      aria-label=${label}
+      .tooltip=${label}
+      .tipPosition=${'top'}
+      .active=${active}
+      .activeMode=${'background'}
+      @click=${onClick}
+    >
+      ${icon({ width: '20px', height: '20px' })}
+    </edgeless-tool-icon-button>`;
+  }
+
+  /**
+   * "New layer": create it, then open its name for editing — the frame
+   * panel's inline title editor, as a double-click does — so the creation is
+   * unmistakable even under a filter (ADR 0031, amendments).
+   */
+  private readonly _createLayer = () => {
+    const before = new Set(Object.keys(this._gfx.surface?.props.layers ?? {}));
+    this._run('canvas.layer.create', {});
+    const created = Object.keys(this._gfx.surface?.props.layers ?? {}).find(
+      id => id !== DEFAULT_LAYER_ID && !before.has(id)
+    );
+    if (created) this._renaming = created;
+  };
 
   override render() {
     if (!this._open) return nothing;
     // Read for its dependency: the rows repaint when the canvas selection does.
     this._selectionRevision;
 
-    let tree = selectionPaneTree(this.std).value;
+    const full = selectionPaneTree(this.std).value;
+    let tree = full;
     let filterLabel: string | null = null;
     if (this._filter !== null) {
       const members = selectionPaneFilterMembers(this.std, this._filter);
@@ -1124,11 +1430,18 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       );
       if (members && target) {
         tree = filterSelectionPaneTree(tree, members);
-        filterLabel = this._filterWording(target.id, target.kind);
+        filterLabel = this._filterWording(target.id);
       }
     }
-    const rows = this._rows(tree);
+    const rows = this._rows(tree, full);
+    this._visibleRows = rows;
+    this._lists = paneLists(full);
     const title = translateKey(this.std, ...SELECTION_PANE_TITLE);
+    const dragState = this._drag?.dragging
+      ? this._drop && this._drop.kind !== 'refused'
+        ? 'valid'
+        : 'invalid'
+      : undefined;
 
     // `pointermove` too: the editor turns every move over the host into a
     // cursor selection, and a selection with nothing recoverable in it makes
@@ -1142,44 +1455,45 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       tabindex="-1"
       aria-label=${title}
       data-testid="selection-pane-panel"
+      data-drag=${dragState ?? nothing}
       @pointerdown=${this._swallow}
       @pointerup=${this._swallow}
       @pointermove=${this._swallow}
       @click=${this._swallow}
       @dblclick=${this._swallow}
     >
-      <div class="selection-pane-head">
-        <span class="selection-pane-title">${title}</span>
-        ${this.std.store.readonly
-          ? nothing
-          : html`<button
-              class="selection-pane-head-button"
-              type="button"
-              data-testid="selection-pane-new-layer"
-              aria-label=${translateKey(this.std, ...SELECTION_PANE_NEW_LAYER)}
-              @click=${() => this._run('canvas.layer.create', {})}
-            >
-              ${PlusIcon()}
-            </button>`}
-        <button
-          class="selection-pane-head-button"
-          type="button"
-          data-testid="selection-pane-filter"
-          data-active=${filterLabel !== null ? 'true' : 'false'}
-          aria-label=${translateKey(this.std, ...SELECTION_PANE_FILTER)}
-          @click=${this._openFilterMenu}
+      <div
+        class="selection-pane-head affine-panel-header"
+        data-testid="selection-pane-header"
+      >
+        <span
+          class="affine-panel-header-title"
+          data-testid="selection-pane-title"
+          >${title}</span
         >
-          ${FilterIcon()}
-        </button>
-        <button
-          class="selection-pane-head-button"
-          type="button"
-          data-testid="selection-pane-close"
-          aria-label=${translateKey(this.std, ...SELECTION_PANE_CLOSE)}
-          @click=${this.closePanel}
-        >
-          ×
-        </button>
+        <div class="selection-pane-actions">
+          ${this.std.store.readonly
+            ? nothing
+            : this._renderHeadButton(
+                'selection-pane-new-layer',
+                translateKey(this.std, ...SELECTION_PANE_NEW_LAYER),
+                PlusIcon,
+                this._createLayer
+              )}
+          ${this._renderHeadButton(
+            'selection-pane-filter',
+            translateKey(this.std, ...SELECTION_PANE_FILTER),
+            FilterIcon,
+            this._openFilterMenu,
+            filterLabel !== null
+          )}
+          ${this._renderHeadButton(
+            'selection-pane-close',
+            translateKey(this.std, ...SELECTION_PANE_CLOSE),
+            CloseIcon,
+            this.closePanel
+          )}
+        </div>
       </div>
       ${filterLabel !== null
         ? html`<div
@@ -1205,7 +1519,15 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
           : html`<div class="selection-pane-empty">
               ${translateKey(this.std, ...SELECTION_PANE_EMPTY)}
             </div>`}
+        ${this._renderDropIndicator()}
       </div>
+      ${this._drag?.dragging
+        ? html`<div
+            class="selection-pane-drag-mask"
+            data-testid="selection-pane-drag-mask"
+          ></div>`
+        : nothing}
+      ${this._renderGhost()}
     </div>`;
   }
 }

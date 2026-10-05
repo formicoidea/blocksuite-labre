@@ -14,6 +14,7 @@
  * `SelectionPaneExtension(null)` leaves no button behind.
  */
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
+import type { FramePanelHeader } from '@labre/affine/fragments/frame-panel';
 import { type GroupElementModel, ShapeType } from '@labre/affine/model';
 import {
   SelectionPaneExtension,
@@ -262,6 +263,9 @@ describe('selection pane', () => {
     test('the frame filter narrows the list to the frame’s members', async () => {
       const inside = shape(0);
       const outside = shape(800);
+      const board = service().crud.addElement('c4Board', {
+        xywh: '[1200,0,400,300]',
+      })!;
       const frameId = service().crud.addBlock(
         'affine:frame',
         {
@@ -273,6 +277,9 @@ describe('selection pane', () => {
       await settle();
       await openFromToolbar();
       expect(rowIds()).toContain(outside);
+      // A frame is the filter's scope, not a row; a framework board is a row.
+      expect(rowIds()).not.toContain(frameId);
+      expect(rowIds()).toContain(board);
 
       await userEvent.click(
         page.elementLocator(
@@ -282,6 +289,11 @@ describe('selection pane', () => {
         )
       );
       await wait(100);
+      const entries = deepQueryAll(document, 'affine-menu-button').map(
+        button => button.textContent?.trim() ?? ''
+      );
+      // "All elements" and the one frame — the board is not offered.
+      expect(entries).toHaveLength(2);
       const item = deepQueryAll(document, 'affine-menu-button').find(button =>
         button.textContent?.includes('Frame:')
       );
@@ -289,8 +301,98 @@ describe('selection pane', () => {
       await userEvent.click(page.elementLocator(item!));
       await settle();
 
-      expect(rowIds()).toEqual(expect.arrayContaining([inside, frameId]));
-      expect(rowIds()).not.toContain(outside);
+      expect(rowIds()).toEqual([inside]);
+    });
+
+    // The product owner asked for the frame panel's header, not a lookalike:
+    // same row, same title type, same icon buttons, measured on the real
+    // frame panel header mounted beside the pane.
+    test('the header is drawn exactly like the frame panel’s', async () => {
+      await openFromToolbar();
+      const frameHeader = document.createElement(
+        'affine-frame-panel-header'
+      ) as FramePanelHeader;
+      frameHeader.editorHost = window.editor.host!;
+      document.body.append(frameHeader);
+      try {
+        await frameHeader.updateComplete;
+        const reference = frameHeader.shadowRoot!;
+        const ours = widget()!.shadowRoot!;
+        const box = (root: ShadowRoot, selector: string) =>
+          getComputedStyle(root.querySelector(selector)!);
+
+        const theirRow = box(reference, '.frame-panel-header');
+        const ourRow = box(ours, '[data-testid="selection-pane-header"]');
+        for (const property of [
+          'height',
+          'padding-top',
+          'padding-right',
+          'padding-bottom',
+          'padding-left',
+          'border-bottom-width',
+        ]) {
+          expect(ourRow.getPropertyValue(property), property).toBe(
+            theirRow.getPropertyValue(property)
+          );
+        }
+
+        const theirTitle = box(reference, '.all-frames-setting-label');
+        const ourTitle = box(ours, '[data-testid="selection-pane-title"]');
+        for (const property of [
+          'font-family',
+          'font-size',
+          'font-weight',
+          'line-height',
+          'color',
+        ]) {
+          expect(ourTitle.getPropertyValue(property), property).toBe(
+            theirTitle.getPropertyValue(property)
+          );
+        }
+
+        // The pane's own actions, in the frame panel's button.
+        for (const id of ['new-layer', 'filter', 'close']) {
+          const button = ours.querySelector(
+            `[data-testid="selection-pane-${id}"]`
+          );
+          expect(button?.tagName.toLowerCase(), id).toBe(
+            'edgeless-tool-icon-button'
+          );
+        }
+      } finally {
+        frameHeader.remove();
+      }
+    });
+
+    // A narrow editor once dropped the pane's button outright: the toolbar
+    // moves a quick tool it has no room for into its "more tools" menu only
+    // when the tool declares a menu entry, and the pane's declared none.
+    test('at a narrow width the button moves into the more-tools menu and still opens the pane', async () => {
+      const container = window.editor.parentElement as HTMLElement;
+      container.style.width = '520px';
+      try {
+        await wait(300);
+        await settle();
+        expect(toolButton(), 'no room left for the button').toBeNull();
+
+        const toolbarRoot =
+          edgeless.widgetComponents['edgeless-toolbar-widget']!.shadowRoot!;
+        const more = deepQuery(toolbarRoot, '.quick-tool-more-button');
+        expect(more, 'the toolbar shows its more-tools button').toBeTruthy();
+        await userEvent.click(page.elementLocator(more!));
+        await wait(100);
+
+        const entry = deepQueryAll(document, 'affine-menu-button').find(
+          button => button.textContent?.includes('Selection pane')
+        );
+        expect(entry, 'the more-tools menu offers the pane').toBeTruthy();
+        await userEvent.click(page.elementLocator(entry!));
+        await settle();
+
+        expect(widget()!.paneOpen).toBe(true);
+      } finally {
+        container.style.width = '';
+      }
     });
   });
 

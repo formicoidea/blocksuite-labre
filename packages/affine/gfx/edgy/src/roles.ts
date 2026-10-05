@@ -226,18 +226,21 @@ const BACKGROUND_DEFS: readonly RoleDef[] = [
     id: EDGY_ROLE.background,
     kind: 'node',
     labelKey: roleKey(EDGY_ROLE.background),
+    labelFallback: 'EDGY background',
   },
   {
     id: EDGY_ROLE.facets,
     parent: EDGY_ROLE.background,
     kind: 'node',
     labelKey: roleKey(EDGY_ROLE.facets),
+    labelFallback: 'Enterprise Design facets',
   },
   {
     id: EDGY_ROLE.board,
     parent: EDGY_ROLE.background,
     kind: 'node',
     labelKey: roleKey(EDGY_ROLE.board),
+    labelFallback: 'EDGY board',
   },
 ];
 

@@ -38,6 +38,12 @@ import {
 /** For an element no reading profile governs: its own text, no label sibling. */
 const NO_PROFILE = { roles: {} } as const;
 
+/**
+ * Every key of the library starts with it. A host catalogue that echoes a key
+ * it does not hold (i18next's default) is not a wording either.
+ */
+const KEY_PREFIX = 'com.labre.';
+
 /** The type wording of a row: its kind, translated. */
 export function selectionPaneTypeLabel(
   std: BlockStdScope,
@@ -81,7 +87,15 @@ export function selectionPaneRowLabel(
     ];
     const role = findRoleDef(vocabularies, model.role);
     if (role?.labelKey) {
-      return translateKey(std, role.labelKey, role.labelFallback);
+      // `''`, not the key, when the role ships no wording: `translateKey`
+      // defaults its fallback to the key, and a row once printed
+      // `com.labre.wardley.role.…` that way. No wording reads as the kind.
+      const wording = translateKey(
+        std,
+        role.labelKey,
+        role.labelFallback ?? ''
+      );
+      if (wording && !wording.startsWith(KEY_PREFIX)) return wording;
     }
   }
 

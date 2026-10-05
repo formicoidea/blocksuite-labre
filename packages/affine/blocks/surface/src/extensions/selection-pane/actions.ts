@@ -1,10 +1,8 @@
 import {
   FrameBlockModel,
-  FrameworkBackgroundElementModel,
   GroupElementModel,
   MindmapElementModel,
 } from '@labre/affine-model';
-import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
 import {
   compareLayer,
@@ -17,7 +15,6 @@ import {
 import { generateKeyBetween } from 'fractional-indexing';
 import * as Y from 'yjs';
 
-import { selectBoardElements } from '../export-svg/render.js';
 import type { SelectionPaneNode } from './tree.js';
 
 /**
@@ -219,74 +216,61 @@ export function renamePaneGroup(
   return true;
 }
 
-/** Something the pane can be filtered by. */
+/** Something the pane can be filtered by: a frame, and only a frame. */
 export interface SelectionPaneFilterTarget {
   id: string;
-  kind: 'frame' | 'board';
+  /**
+   * Always `'frame'`. A framework board was offered too until the product
+   * owner's review narrowed the filter to frames (ADR 0031, amendments); the
+   * field stays so a host reading it has nothing to change.
+   */
+  kind: 'frame';
 }
 
-/**
- * The frames and framework boards on the canvas, top first — what the pane's
- * filter offers. A board is any `FrameworkBackgroundElementModel`, whatever
- * framework drew it, so a framework added later is offered for free.
- */
+/** The frames on the canvas, top first — what the pane's filter offers. */
 export function selectionPaneFilterTargets(
   std: BlockStdScope
 ): SelectionPaneFilterTarget[] {
   return std
     .get(GfxControllerIdentifier)
-    .gfxElements.filter(
-      model =>
-        model instanceof FrameBlockModel ||
-        model instanceof FrameworkBackgroundElementModel
-    )
+    .gfxElements.filter(model => model instanceof FrameBlockModel)
     .sort((a, b) => compareLayer(b, a))
-    .map(model => ({
-      id: model.id,
-      kind: model instanceof FrameBlockModel ? 'frame' : 'board',
-    }));
+    .map(model => ({ id: model.id, kind: 'frame' }));
 }
 
 /**
- * The ids a filter keeps: a frame's `childElementIds` and their descendants,
- * or what a board's perimeter holds — through the very selection the SVG
- * export uses (`selectBoardElements`), so "what is on this board" has one
- * answer. The frame or board itself is kept too. `null` for an unknown id.
+ * The ids a frame filter keeps: the frame's `childElementIds` and their
+ * descendants. `null` for an id that is not a frame. The frame itself is not
+ * among them: it is not a row (ADR 0031, amendments).
  */
 export function selectionPaneFilterMembers(
   std: BlockStdScope,
   targetId: string
 ): Set<string> | null {
-  const gfx = std.get(GfxControllerIdentifier);
-  const target = gfx.getElementById(targetId);
+  const target = std.get(GfxControllerIdentifier).getElementById(targetId);
+  if (!(target instanceof FrameBlockModel)) return null;
 
-  if (target instanceof FrameBlockModel) {
-    const ids = new Set<string>([target.id]);
-    for (const child of target.childElements) {
-      ids.add(child.id);
-      if ('descendantElements' in child) {
-        for (const descendant of (child as { descendantElements: GfxModel[] })
-          .descendantElements) {
-          ids.add(descendant.id);
-        }
+  const ids = new Set<string>();
+  for (const child of target.childElements) {
+    ids.add(child.id);
+    if ('descendantElements' in child) {
+      for (const descendant of (child as { descendantElements: GfxModel[] })
+        .descendantElements) {
+        ids.add(descendant.id);
       }
     }
-    return ids;
   }
-
-  if (target instanceof FrameworkBackgroundElementModel) {
-    const candidates = gfx.getElementsByBound(Bound.deserialize(target.xywh), {
-      type: 'canvas',
-    });
-    return new Set(selectBoardElements(target, candidates).map(m => m.id));
-  }
-
-  return null;
+  return ids;
 }
 
 /**
  * The tree narrowed to `members`: a row is kept when it is a member or holds
  * one, so a group reaching into a frame stays as the path to its member.
+ *
+ * A LAYER row is always kept, its children narrowed (ADR 0031, amendments): a
+ * layer is where new elements land and where a drop goes, not something a
+ * frame holds, and a layer created under a filter that hid it read as a
+ * "New layer" button doing nothing.
  */
 export function filterSelectionPaneTree(
   nodes: readonly SelectionPaneNode[],
@@ -297,7 +281,11 @@ export function filterSelectionPaneTree(
     const children = node.children
       ? filterSelectionPaneTree(node.children, members)
       : undefined;
-    if (members.has(node.id) || (children && children.length)) {
+    if (
+      node.kind === 'layer' ||
+      members.has(node.id) ||
+      (children && children.length)
+    ) {
       kept.push(children ? { ...node, children } : node);
     }
   }

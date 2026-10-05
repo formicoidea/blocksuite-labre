@@ -1,4 +1,5 @@
 import type { FrameBlockModel } from '@labre/affine-model';
+import { panelDragStarted } from '@labre/affine-shared/styles';
 import { on, once } from '@labre/affine-shared/utils';
 import { WithDisposable } from '@labre/global/lit';
 import { type BlockStdScope, ShadowlessElement } from '@labre/std';
@@ -114,8 +115,10 @@ export class FrameCard extends WithDisposable(ShadowlessElement) {
     const { clientX: startX, clientY: startY } = e;
     const disposeDragStart = on(this.ownerDocument, 'mousemove', e => {
       if (
-        Math.abs(startX - e.clientX) < 5 &&
-        Math.abs(startY - e.clientY) < 5
+        !panelDragStarted(
+          { x: startX, y: startY },
+          { x: e.clientX, y: e.clientY }
+        )
       ) {
         return;
       }

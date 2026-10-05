@@ -5,6 +5,7 @@ import {
   EditPropsStore,
   translateKey,
 } from '@labre/affine-shared/services';
+import { panelHeaderStyles } from '@labre/affine-shared/styles';
 import { createButtonPopper } from '@labre/affine-shared/utils';
 import { DisposableGroup } from '@labre/global/disposable';
 import { WithDisposable } from '@labre/global/lit';
@@ -27,16 +28,6 @@ const styles = css`
     justify-content: start;
   }
 
-  .frame-panel-header {
-    display: flex;
-    width: 100%;
-    height: 36px;
-    align-items: center;
-    justify-content: space-between;
-    box-sizing: border-box;
-    padding: 0 8px;
-  }
-
   .all-frames-setting {
     display: flex;
     align-items: center;
@@ -46,22 +37,9 @@ const styles = css`
     margin: 8px 4px;
   }
 
-  .all-frames-setting-button svg {
-    color: var(--affine-icon-secondary);
-  }
-
-  .all-frames-setting-button:hover svg,
-  .all-frames-setting-button.active svg {
-    color: var(--affine-icon-color);
-  }
-
   .all-frames-setting-label {
     width: 68px;
     height: 22px;
-    font-size: var(--affine-font-sm);
-    font-weight: 500;
-    line-height: 22px;
-    color: var(--light-text-color-text-secondary-color, #8e8d91);
   }
 
   .frames-setting-container {
@@ -111,7 +89,9 @@ const styles = css`
 export const AFFINE_FRAME_PANEL_HEADER = 'affine-frame-panel-header';
 
 export class FramePanelHeader extends WithDisposable(LitElement) {
-  static override styles = styles;
+  // The header row, title and icon button are every side panel's: they live in
+  // panelHeaderStyles so the selection pane and the catalogue draw the same.
+  static override styles = [panelHeaderStyles, styles];
 
   private readonly _clearEdgelessDisposables = () => {
     this._edgelessDisposables?.dispose();
@@ -193,13 +173,14 @@ export class FramePanelHeader extends WithDisposable(LitElement) {
   override render() {
     const { std } = this.editorHost;
 
-    return html`<div class="frame-panel-header">
+    return html`<div class="frame-panel-header affine-panel-header">
       <div class="all-frames-setting">
-        <span class="all-frames-setting-label"
+        <span class="all-frames-setting-label affine-panel-header-title"
           >${translateKey(std, ...FRAME_PANEL_ALL_FRAMES_LABEL)}</span
         >
         <edgeless-tool-icon-button
-          class="all-frames-setting-button ${this._settingPopperShow
+          class="all-frames-setting-button affine-panel-header-button ${this
+            ._settingPopperShow
             ? 'active'
             : ''}"
           .tooltip=${this._settingPopperShow

@@ -531,3 +531,66 @@ schema does not declare the key (a 0.43 client for `layer` /
 `hiddenForEveryone`) drops it from a snapshot-based duplicate until it reloads
 the document. A client that declares the fields has them in `keys` from load
 and is not affected.
+
+**The pane filters by frame only, and a frame is not a row (2026-10-05,
+product owner's review of the pane).** §5 and the staged-delivery table offered
+"filter by frame / board", and the pane listed each `affine:frame` as a row of
+the stack. Both are reversed. The filter offers `affine:frame` blocks only:
+`selectionPaneFilterTargets` answers frames, its `kind` is always `'frame'`,
+and `selectionPaneFilterMembers` answers `null` for anything else, so the
+board-perimeter reading through `selectBoardElements` is no longer used by the
+pane (the SVG export keeps it). A frame is the filter's scope, never an
+element of the stack: `buildSelectionPaneTree` — hence the headless
+`selectionPaneTree(std)` a host draws from — carries no frame node, and a
+frame's members are listed where they paint, i.e. together, right above the
+frame's place in the stack. Framework boards stay ordinary rows. Nothing
+stored changes. The `com.labre.selection-pane.filter.board` key
+("Board: {{name}}") is removed; a host catalogue may drop it.
+
+**A layer row is never filtered, and a new layer opens in rename (2026-10-05,
+same review).** Under a frame filter, a second "New layer" created an empty
+layer the filter then hid, so the button seemed to do nothing.
+`filterSelectionPaneTree` now keeps every `kind: 'layer'` node whatever the
+filter, narrowing only the rows inside it; the library's panel shows a layer
+whose members the filter all leaves out with a secondary line,
+`com.labre.selection-pane.layer.filtered` ("{{count}} hidden by the filter",
+plural left to the host). "New layer" opens the created layer's name field in
+place, focused and scrolled into view. The filter is not cleared, and nothing
+blinks. Nothing stored changes.
+
+**The pane's drag says where a row lands, and when it cannot (2026-10-05,
+same review).** The drag reordered a row "above or below the hovered row"
+among that row's siblings in the list: the space under the last row was no
+target, nothing showed where a release would land, and a frame's members —
+siblings in the list but not in the stack `canvas.element.reorder` restacks
+in — took a drop the command then refused silently. The library's panel now
+follows the frame panel's model: the row stays in place, dimmed; a ghost of it
+follows the pointer; a line marks the hovered gap (before the first row,
+between any two, after the last row of the row's own list — under a group's or
+a layer's last row is after that group or layer); a canvas row over a layer
+header drops into the layer (§5, unchanged). A gap the row cannot go to — the
+inside of another list, or of a frame's block of members for a loose element
+— shows no line and a `not-allowed` cursor. A frame's members stand for their
+frame in a loose element's stack, so the gap above or below them places the
+element above or below the frame. One gesture writes one `index` (or one
+`layer`) in one undo step, and nothing when the gap is the row's own place.
+Moving a row into or out of a group by a drag stays out of scope. No
+auto-scroll: the frame panel has none to mirror.
+
+**The pane is drawn and dragged like the frame panel (product owner's review
+of the pane).** The header is the frame panel's — one 36px row, a 14px / 500
+secondary title, the pane's actions (new layer, filter, close) as 20px
+`edgeless-tool-icon-button`s, no divider — taken from `panelHeaderStyles`
+(`@labre/affine-shared/styles`), which the frame panel now reads too; a
+widget may not import the frame panel (frame panel → frame block → edgeless
+toolbar), so the shared part lives below both. The drag now matches the frame
+panel's behaviour by behaviour: it starts at 5px on either axis
+(`PANEL_DRAG_THRESHOLD_PX`, read by both), picking a row up selects it, the
+ghost is the row at its own width, a mask over the viewport carries the
+`grabbing` / `not-allowed` cursor and keeps the canvas from reacting, and
+Escape does nothing until the release. Two differences stay, on purpose: one
+row is dragged, never the selection (the selected rows of a tree can sit in
+different lists, and `canvas.element.reorder` restacks one element), and the
+drop line keeps the theme's primary token rather than the frame panel's
+`--affine-blue-600` (DESIGN.md, The Borrowed Blue Rule). Nothing stored
+changes.
