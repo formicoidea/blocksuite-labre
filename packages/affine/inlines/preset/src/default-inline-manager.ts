@@ -13,6 +13,7 @@ import {
   CodeInlineSpecExtension,
   ColorInlineSpecExtension,
   ItalicInlineSpecExtension,
+  OverlineInlineSpecExtension,
   StrikeInlineSpecExtension,
   UnderlineInlineSpecExtension,
 } from './inline-spec';
@@ -24,6 +25,7 @@ export const DefaultInlineManagerExtension =
       BoldInlineSpecExtension.identifier,
       ItalicInlineSpecExtension.identifier,
       UnderlineInlineSpecExtension.identifier,
+      OverlineInlineSpecExtension.identifier,
       StrikeInlineSpecExtension.identifier,
       CodeInlineSpecExtension.identifier,
       BackgroundInlineSpecExtension.identifier,

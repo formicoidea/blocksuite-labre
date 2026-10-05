@@ -3,6 +3,7 @@ import {
   CodeIcon,
   ItalicIcon,
   LinkIcon,
+  OverlineIcon,
   StrikethroughIcon,
   UnderlineIcon,
 } from '@labre/affine-components/icons';
@@ -16,6 +17,7 @@ import {
   toggleBold,
   toggleCode,
   toggleItalic,
+  toggleOverline,
   toggleStrike,
   toggleUnderline,
 } from './text-style.js';
@@ -24,6 +26,7 @@ import {
   TEXT_FORMAT_CODE,
   TEXT_FORMAT_ITALIC,
   TEXT_FORMAT_LINK,
+  TEXT_FORMAT_OVERLINE,
   TEXT_FORMAT_STRIKETHROUGH,
   TEXT_FORMAT_UNDERLINE,
 } from '../translations.js';
@@ -90,6 +93,24 @@ export const textFormatConfigs: TextFormatConfig[] = [
     },
     action: host => {
       host.std.command.chain().pipe(toggleUnderline).run();
+    },
+  },
+  {
+    // No default chord: `Mod-u` is underline's and none is free everywhere;
+    // a host binds one through the shortcuts pane (ADR 0030 §5).
+    id: 'overline',
+    name: 'Overline',
+    nameWording: TEXT_FORMAT_OVERLINE,
+    icon: OverlineIcon,
+    activeWhen: host => {
+      const [result] = host.std.command
+        .chain()
+        .pipe(isTextAttributeActive, { key: 'overline' })
+        .run();
+      return result;
+    },
+    action: host => {
+      host.std.command.chain().pipe(toggleOverline).run();
     },
   },
   {

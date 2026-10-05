@@ -110,6 +110,24 @@ const isUnderlineElement = (ast: HtmlAST) => {
 };
 
 /**
+ * Check if the element is an overline element through its style — HTML has
+ * no overline tag, so `text-decoration: overline;` is the only spelling, and
+ * the one the HTML export writes (ADR 0030 §5).
+ * @example
+ * ```html
+ * <span style="text-decoration: overline;">Hello</span>
+ * ```
+ */
+const isOverlineElement = (ast: HtmlAST) => {
+  if (!isElement(ast)) {
+    return false;
+  }
+  const style =
+    typeof ast.properties.style === 'string' ? ast.properties.style : '';
+  return /text-decoration:\s*overline/.test(style);
+};
+
+/**
  * Check if the element is a line-through element through style or tag
  * If the element tag is <del> or the style is `text-decoration: line-through;`,
  * we consider it as a line-through element
@@ -146,6 +164,7 @@ const isTextLikeElement = (ast: HtmlAST) => {
     !isStrongElement(ast) &&
     !isItalicElement(ast) &&
     !isUnderlineElement(ast) &&
+    !isOverlineElement(ast) &&
     !isLineThroughElement(ast)
   );
 };
@@ -309,6 +328,22 @@ export const htmlUnderlineElementToDeltaMatcher = HtmlASTToDeltaExtension({
   },
 });
 
+export const htmlOverlineElementToDeltaMatcher = HtmlASTToDeltaExtension({
+  name: 'overline-element',
+  match: ast => isOverlineElement(ast),
+  toDelta: (ast, context) => {
+    if (!isElement(ast)) {
+      return [];
+    }
+    return ast.children.flatMap(child =>
+      context.toDelta(child, { trim: false }).map(delta => {
+        delta.attributes = { ...delta.attributes, overline: true };
+        return delta;
+      })
+    );
+  },
+});
+
 export const htmlMarkElementToDeltaMatcher = HtmlASTToDeltaExtension({
   name: 'mark-element',
   match: ast => isElement(ast) && ast.tagName === 'mark',
@@ -342,6 +377,7 @@ export const HtmlInlineToDeltaAdapterExtensions = [
   htmlCodeElementToDeltaMatcher,
   htmlDelElementToDeltaMatcher,
   htmlUnderlineElementToDeltaMatcher,
+  htmlOverlineElementToDeltaMatcher,
   htmlMarkElementToDeltaMatcher,
   htmlBrElementToDeltaMatcher,
 ];

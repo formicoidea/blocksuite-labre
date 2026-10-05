@@ -15,6 +15,7 @@ export {
   toggleBold,
   toggleCode,
   toggleItalic,
+  toggleOverline,
   toggleStrike,
   toggleTextStyleCommand,
   toggleUnderline,

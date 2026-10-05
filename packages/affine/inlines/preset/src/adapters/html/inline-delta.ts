@@ -71,6 +71,21 @@ export const underlineDeltaToHtmlAdapterMatcher =
     },
   });
 
+/** HTML has no overline tag: a span carries it as CSS (ADR 0030 §5). */
+export const overlineDeltaToHtmlAdapterMatcher =
+  InlineDeltaToHtmlAdapterExtension({
+    name: 'overline',
+    match: delta => !!delta.attributes?.overline,
+    toAST: (_, context) => {
+      return {
+        type: 'element',
+        tagName: 'span',
+        properties: { style: 'text-decoration: overline;' },
+        children: [context.current],
+      };
+    },
+  });
+
 export const highlightBackgroundDeltaToHtmlAdapterMatcher =
   InlineDeltaToHtmlAdapterExtension({
     name: 'highlight-background',
@@ -148,6 +163,7 @@ export const InlineDeltaToHtmlAdapterExtensions = [
   italicDeltaToHtmlAdapterMatcher,
   strikeDeltaToHtmlAdapterMatcher,
   underlineDeltaToHtmlAdapterMatcher,
+  overlineDeltaToHtmlAdapterMatcher,
   highlightBackgroundDeltaToHtmlAdapterMatcher,
   highlightColorDeltaToHtmlAdapterMatcher,
   inlineCodeDeltaToHtmlAdapterMatcher,
