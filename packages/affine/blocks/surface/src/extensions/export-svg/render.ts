@@ -1,14 +1,22 @@
 import { FrameworkBackgroundElementModel } from '@labre/affine-model';
+import { createIdentifier } from '@labre/global/di';
 import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
 import {
+  type GfxBlockElementModel,
   GfxControllerIdentifier,
   type GfxPrimitiveElementModel,
 } from '@labre/std/gfx';
+import type { ExtensionType } from '@labre/store';
 
 import type { SurfaceElementModel } from '../../element-model/base.js';
 import { CanvasRenderer } from '../../renderer/canvas-renderer.js';
 import { RoughCanvas } from '../../utils/rough/canvas.js';
+import {
+  type BoardSvgExportOptions,
+  DEFAULT_BOARD_SVG_EXPORT_OPTIONS,
+  selectBoardSvgParts,
+} from './parts.js';
 import { createSvgContext, runWithRecordingPath2D } from './svg-context.js';
 
 export interface BoardSvgExport {
@@ -17,6 +25,46 @@ export interface BoardSvgExport {
   /** The world-space rectangle the document covers. */
   bound: Bound;
 }
+
+/**
+ * How a BLOCK paints itself into the export's 2D context, in model units, the
+ * block's top-left at the origin of `matrix`.
+ *
+ * Blocks are DOM, so the canvas renderer never sees them (ADR 0025,
+ * Consequences). The one block the export draws anyway is the edgeless text —
+ * what the text tool creates by default — and its painter lives with it, in
+ * `@labre/affine-block-edgeless-text`, because the text metrics it needs
+ * (`@labre/affine-gfx-text`) sit ABOVE this package. Keyed by flavour; a block
+ * with no painter registered is simply not drawn.
+ */
+export type BlockSvgPainter<
+  T extends GfxBlockElementModel = GfxBlockElementModel,
+> = (
+  model: T,
+  ctx: CanvasRenderingContext2D,
+  matrix: DOMMatrix,
+  renderer: CanvasRenderer
+) => void;
+
+export const BlockSvgPainterIdentifier =
+  createIdentifier<BlockSvgPainter>('block-svg-painter');
+
+export function BlockSvgPainterExtension<T extends GfxBlockElementModel>(
+  flavour: string,
+  painter: BlockSvgPainter<T>
+): ExtensionType {
+  return {
+    setup: di => {
+      di.addImpl(
+        BlockSvgPainterIdentifier(flavour),
+        () => painter as BlockSvgPainter
+      );
+    },
+  };
+}
+
+/** The blocks the export redraws, all of them "other texts" (`parts.ts`). */
+const SVG_TEXT_BLOCK_FLAVOURS: readonly string[] = ['affine:edgeless-text'];
 
 /**
  * The canvas elements that make up `board`'s picture, in paint order.
@@ -55,15 +103,16 @@ export function selectBoardElements<T extends GfxPrimitiveElementModel>(
 }
 
 /**
- * The board's frame, widened to the union of what is painted on it: a Wardley
- * label overhanging the right edge, or a connector ending just outside, is part
- * of the picture and must not be cut off.
+ * The frame, widened to the union of what is painted: a Wardley label
+ * overhanging the right edge, or a connector ending just outside, is part of
+ * the picture and must not be cut off. The frame is the board's — or, with
+ * "Framework elements" switched off, the first thing still drawn.
  */
 export function exportBoundOf(
-  board: FrameworkBackgroundElementModel,
-  elements: readonly GfxPrimitiveElementModel[]
+  frame: { readonly xywh: string },
+  elements: readonly { readonly xywh: string }[]
 ): Bound {
-  let bound = Bound.deserialize(board.xywh);
+  let bound = Bound.deserialize(frame.xywh);
   for (const element of elements) {
     bound = bound.unite(Bound.deserialize(element.xywh));
   }
@@ -74,11 +123,15 @@ export function exportBoundOf(
  * The selected board and everything painted within its frame, as an SVG
  * document — a true vector export, produced by replaying the very element
  * renderers the canvas uses into an SVG-emitting 2D context.
+ *
+ * `options` says which parts are drawn (`parts.ts`). `null` when they leave
+ * nothing to draw: an empty file is not a picture of anything.
  */
 export function renderBoardSvg(
   std: BlockStdScope,
-  board: FrameworkBackgroundElementModel
-): BoardSvgExport {
+  board: FrameworkBackgroundElementModel,
+  options: Readonly<BoardSvgExportOptions> = DEFAULT_BOARD_SVG_EXPORT_OPTIONS
+): BoardSvgExport | null {
   const gfx = std.get(GfxControllerIdentifier);
   const renderer = (
     gfx.surfaceComponent as { renderer?: unknown } | null | undefined
@@ -90,12 +143,23 @@ export function renderBoardSvg(
     );
   }
 
+  const frame = Bound.deserialize(board.xywh);
   // Already sorted by `layer.compare`, which is the canvas' own z-order.
-  const candidates = gfx.getElementsByBound(Bound.deserialize(board.xywh), {
-    type: 'canvas',
-  });
-  const elements = selectBoardElements(board, candidates);
-  const bound = exportBoundOf(board, elements);
+  const candidates = gfx.getElementsByBound(frame, { type: 'canvas' });
+  const textBlocks = gfx
+    .getElementsByBound(frame, { type: 'block' })
+    .filter(block => SVG_TEXT_BLOCK_FLAVOURS.includes(block.flavour));
+  const { elements, textBlocks: texts } = selectBoardSvgParts(
+    board,
+    selectBoardElements(board, candidates),
+    textBlocks,
+    options,
+    element => element.groups
+  );
+
+  const drawn = [...elements, ...texts];
+  if (!drawn.length) return null;
+  const bound = exportBoundOf(options.framework ? board : drawn[0], drawn);
 
   return runWithRecordingPath2D(() => {
     const { ctx, canvas, serialize } = createSvgContext(bound.w, bound.h);
@@ -105,6 +169,22 @@ export function renderBoardSvg(
       bound,
       elements as SurfaceElementModel[]
     );
+    // ponytail: the text blocks paint OVER every canvas element, not at their
+    // layer index — interleaving them would mean one `renderBoundTo` per run
+    // of elements between two blocks. Upgrade when a board needs a shape
+    // drawn over an edgeless text.
+    for (const block of texts) {
+      const paint = std.getOptional(BlockSvgPainterIdentifier(block.flavour));
+      if (!paint) continue;
+      ctx.save();
+      paint(
+        block,
+        ctx,
+        new DOMMatrix().translate(block.x - bound.x, block.y - bound.y),
+        renderer
+      );
+      ctx.restore();
+    }
     return { svg: serialize(), bound };
   });
 }

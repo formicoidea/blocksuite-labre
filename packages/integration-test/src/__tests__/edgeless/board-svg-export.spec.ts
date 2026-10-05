@@ -1,5 +1,7 @@
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import {
+  type BoardSvgExportOptions,
+  DEFAULT_BOARD_SVG_EXPORT_OPTIONS,
   exportSvgToolbarConfig,
   renderBoardSvg,
 } from '@labre/affine/blocks/surface';
@@ -23,9 +25,12 @@ import {
   ToolbarContext,
   ToolbarRegistryIdentifier,
 } from '@labre/affine/shared/services';
-import { getRegisteredCommands } from '@labre/affine/std';
+import { getRegisteredCommands, runCommand } from '@labre/affine/std';
+import { AFFINE_TOOLBAR_WIDGET } from '@labre/affine/widgets/toolbar';
 import { Bound } from '@labre/global/gfx';
-import { beforeEach, describe, expect, test } from 'vitest';
+import { Text } from '@labre/store';
+import { page, userEvent } from '@vitest/browser/context';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { wait } from '../utils/common.js';
 import { getDocRootBlock, getSurface } from '../utils/edgeless.js';
@@ -114,6 +119,19 @@ describe('exporting a board as SVG', () => {
     return model as FrameworkBackgroundElementModel;
   };
 
+  /** An export with every part switched on, which always has a board to draw. */
+  const render = (
+    board: FrameworkBackgroundElementModel,
+    options?: Partial<BoardSvgExportOptions>
+  ) => {
+    const out = renderBoardSvg(edgeless.std, board, {
+      ...DEFAULT_BOARD_SVG_EXPORT_OPTIONS,
+      ...options,
+    });
+    expect(out, 'nothing was drawn').not.toBeNull();
+    return out!;
+  };
+
   /** Parse an export, refusing anything a browser would refuse. */
   const parse = (svg: string) => {
     const doc = new DOMParser().parseFromString(svg, 'image/svg+xml');
@@ -155,7 +173,7 @@ describe('exporting a board as SVG', () => {
   test('renders the selected board, and nothing of the one beside it', async () => {
     const { mapA } = await twoMaps();
 
-    const { svg, bound } = renderBoardSvg(edgeless.std, boardById(mapA));
+    const { svg, bound } = render(boardById(mapA));
     const doc = parse(svg);
 
     // A document, not a fragment: a file a browser can open on its own.
@@ -235,7 +253,7 @@ describe('exporting a board as SVG', () => {
     });
     await wait();
 
-    const { svg } = renderBoardSvg(edgeless.std, boardById(id));
+    const { svg } = render(boardById(id));
     expect(svg.length, type).toBeGreaterThan(0);
     const doc = parse(svg);
     expect(doc.documentElement.getAttribute('viewBox'), type).toBeTruthy();
@@ -271,7 +289,7 @@ describe('exporting a board as SVG', () => {
     });
     await wait();
 
-    const { svg } = renderBoardSvg(edgeless.std, boardById(diagram));
+    const { svg } = render(boardById(diagram));
     const doc = parse(svg);
 
     expect(textsOf(doc).some(text => text.includes('Checkout'))).toBe(true);
@@ -313,7 +331,7 @@ describe('exporting a board as SVG', () => {
     });
     await wait();
 
-    const { svg } = renderBoardSvg(edgeless.std, boardById(map));
+    const { svg } = render(boardById(map));
     const doc = parse(svg);
 
     const STATIC_PAINT =
@@ -362,13 +380,238 @@ describe('exporting a board as SVG', () => {
 
     // The fragment on its own is a board too, and its export does not drag
     // the diagram frame around it along.
-    const own = parse(renderBoardSvg(edgeless.std, boardById(fragment)).svg);
+    const own = parse(render(boardById(fragment)).svg);
     expect(textsOf(own).some(text => text.includes('loop'))).toBe(true);
     expect(textsOf(own).some(text => text.includes('Checkout'))).toBe(false);
 
-    const { svg } = renderBoardSvg(edgeless.std, boardById(diagram));
+    const { svg } = render(boardById(diagram));
     const texts = textsOf(parse(svg));
     expect(texts.some(text => text.includes('Checkout'))).toBe(true);
     expect(texts.some(text => text.includes('loop'))).toBe(true);
+  });
+
+  /* ── The export options (ADR 0025, amendment of 2026-10-04) ─────────── */
+
+  /**
+   * What the text tool creates by default: an `affine:edgeless-text` BLOCK,
+   * drawn in the DOM — which is why "my texts are not exported" was the
+   * complaint. It is now redrawn into the file as vector text.
+   */
+  const addEdgelessText = (words: string, x: number, y: number) => {
+    const surfaceId = surfaceModel().id;
+    const id = edgeless.service.crud.addBlock(
+      'affine:edgeless-text',
+      { xywh: new Bound(x, y, 300, 40).serialize() },
+      surfaceId
+    );
+    expect(id).toBeTruthy();
+    window.doc.addBlock('affine:paragraph', { text: new Text(words) }, id!);
+    return id!;
+  };
+
+  /**
+   * Every file the export hands the browser, without letting the browser have
+   * it: `downloadBlob` goes through `URL.createObjectURL`, which is where the
+   * blob is still a blob.
+   */
+  const captureDownloads = () => {
+    const files: Blob[] = [];
+    const create = vi
+      .spyOn(URL, 'createObjectURL')
+      .mockImplementation(object => {
+        files.push(object as Blob);
+        return 'blob:captured';
+      });
+    const revoke = vi
+      .spyOn(URL, 'revokeObjectURL')
+      .mockImplementation(() => {});
+    return {
+      files,
+      restore: () => {
+        create.mockRestore();
+        revoke.mockRestore();
+      },
+    };
+  };
+
+  const WORDS = 'Loose words beside the map';
+  const CAPTION = 'Plain caption';
+
+  test('an edgeless text on the board reaches the file as vector text', async () => {
+    const map = addMap(0);
+    await addNamed('Alpha', 200, 400);
+    addEdgelessText(WORDS, 600, 300);
+    await wait();
+
+    const texts = textsOf(parse(render(boardById(map)).svg));
+    expect(texts.some(text => text.includes(WORDS))).toBe(true);
+
+    const without = textsOf(
+      parse(render(boardById(map), { texts: false }).svg)
+    );
+    expect(without.some(text => text.includes(WORDS))).toBe(false);
+    // The framework's own label is a framework element, not an "other text".
+    expect(without.some(text => text.includes('Alpha'))).toBe(true);
+  });
+
+  test('an edgeless text keeps its rotation and its scale in the file', async () => {
+    const map = addMap(0);
+    const id = addEdgelessText(WORDS, 600, 300);
+    // Scaled ×2 the way a corner resize does it (`font-size.ts`), turned 90°.
+    edgeless.service.crud.updateElement(id, {
+      scale: 2,
+      rotate: 90,
+      xywh: new Bound(600, 300, 600, 60).serialize(),
+    });
+    await wait();
+
+    const node = [...parse(render(boardById(map)).svg).querySelectorAll('text')]
+      .filter(text => text.textContent?.includes(WORDS))
+      .at(0);
+    const matrix = node
+      ?.getAttribute('transform')
+      ?.match(/matrix\(([^)]+)\)/)?.[1]
+      .split(/[\s,]+/)
+      .map(Number);
+    // The block re-measures its own box from the DOM, so the box is read back.
+    const [x, y, w, h] = Bound.deserialize(
+      edgeless.service.crud.getElementById(id)!.xywh
+    ).toXYWH();
+    // translate(x, y) · rotate(90°) about the box's centre · scale(2)
+    expect(matrix).toHaveLength(6);
+    const [a, b, c, d, e, f] = matrix!;
+    for (const [actual, expected] of [
+      [a, 0],
+      [b, 2],
+      [c, -2],
+      [d, 0],
+      [e, x + w / 2 + h / 2],
+      [f, y + h / 2 - w / 2],
+    ]) {
+      expect(actual).toBeCloseTo(expected, 3);
+    }
+  });
+
+  /**
+   * Depth-first through open shadow roots: the options menu is a popup in the
+   * modal root, and each row is a custom element with its own shadow.
+   */
+  const deepQuery = <T extends Element>(
+    from: ParentNode,
+    selector: string
+  ): T | null => {
+    const direct = from.querySelector<T>(selector);
+    if (direct) return direct;
+    for (const element of from.querySelectorAll('*')) {
+      if (!element.shadowRoot) continue;
+      const found = deepQuery<T>(element.shadowRoot, selector);
+      if (found) return found;
+    }
+    return null;
+  };
+
+  const toolbarRow = () =>
+    (
+      edgeless.widgetComponents[AFFINE_TOOLBAR_WIDGET] as
+        | { toolbar?: HTMLElement }
+        | undefined
+    )?.toolbar ?? null;
+
+  const settle = async () => {
+    await wait(250);
+    await edgeless.updateComplete;
+    await wait(0);
+  };
+
+  const click = (element: Element | null) => {
+    expect(element).not.toBeNull();
+    return userEvent.click(page.elementLocator(element as HTMLElement));
+  };
+
+  test('the "⋮" asks what to include, and "Other texts" off leaves the edgeless text out', async () => {
+    const map = addMap(0);
+    await addNamed('Alpha', 200, 400);
+    addEdgelessText(WORDS, 600, 300);
+    surfaceModel().addElement({
+      type: 'text',
+      text: CAPTION,
+      xywh: new Bound(600, 500, 200, 26).serialize(),
+    });
+    await wait();
+
+    const downloads = captureDownloads();
+    try {
+      edgeless.gfx.selection.set({ elements: [map], editing: false });
+      await settle();
+
+      const entry = toolbarRow()?.querySelector<HTMLElement>(
+        '[data-toolbar-action-id="z.z-export-svg"]'
+      );
+      await click(entry?.closest('editor-menu-button') ?? null);
+      await settle();
+      await click(entry ?? null);
+      await settle();
+
+      // Nothing is written until the reader says Export.
+      expect(downloads.files).toHaveLength(0);
+      const texts = deepQuery<HTMLElement>(
+        document.body,
+        '[data-testid="export-svg-option-texts"]'
+      );
+      await click(texts?.querySelector('toggle-switch') ?? null);
+      await click(
+        deepQuery(document.body, '[data-testid="export-svg-confirm"]')
+      );
+      await settle();
+
+      expect(downloads.files).toHaveLength(1);
+      const svg = await downloads.files[0].text();
+      const written = textsOf(parse(svg));
+      expect(written.some(text => text.includes(WORDS))).toBe(false);
+      // A plain CANVAS text is an "other text" too, and was drawn before.
+      expect(written.some(text => text.includes(CAPTION))).toBe(false);
+      expect(written.some(text => text.includes('Alpha'))).toBe(true);
+
+      // The choice is remembered for the next export of the session.
+      await click(entry?.closest('editor-menu-button') ?? null);
+      await settle();
+      await click(entry ?? null);
+      await settle();
+      const reopened = deepQuery<HTMLElement>(
+        document.body,
+        '[data-testid="export-svg-option-texts"]'
+      )?.querySelector<HTMLElement & { on: boolean }>('toggle-switch');
+      expect(reopened?.on).toBe(false);
+      await userEvent.keyboard('{Escape}');
+    } finally {
+      downloads.restore();
+    }
+  });
+
+  test('nothing left to draw writes no file', async () => {
+    const map = addMap(0);
+    await addNamed('Alpha', 200, 400);
+    edgeless.gfx.selection.set({ elements: [map], editing: false });
+
+    const downloads = captureDownloads();
+    try {
+      // The board and its own artefacts are all there is.
+      runCommand(
+        edgeless.std,
+        exportCommand(),
+        { surface: 'palette', source: 'shortcut' },
+        { framework: false }
+      );
+      expect(downloads.files).toHaveLength(0);
+
+      // The palette and the agent pass nothing, and get everything.
+      runCommand(edgeless.std, exportCommand(), {
+        surface: 'palette',
+        source: 'shortcut',
+      });
+      expect(downloads.files).toHaveLength(1);
+    } finally {
+      downloads.restore();
+    }
   });
 });
