@@ -557,3 +557,22 @@ whose members the filter all leaves out with a secondary line,
 plural left to the host). "New layer" opens the created layer's name field in
 place, focused and scrolled into view. The filter is not cleared, and nothing
 blinks. Nothing stored changes.
+
+**The pane's drag says where a row lands, and when it cannot (2026-10-05,
+same review).** The drag reordered a row "above or below the hovered row"
+among that row's siblings in the list: the space under the last row was no
+target, nothing showed where a release would land, and a frame's members —
+siblings in the list but not in the stack `canvas.element.reorder` restacks
+in — took a drop the command then refused silently. The library's panel now
+follows the frame panel's model: the row stays in place, dimmed; a ghost of it
+follows the pointer; a line marks the hovered gap (before the first row,
+between any two, after the last row of the row's own list — under a group's or
+a layer's last row is after that group or layer); a canvas row over a layer
+header drops into the layer (§5, unchanged). A gap the row cannot go to — the
+inside of another list, or of a frame's block of members for a loose element
+— shows no line and a `not-allowed` cursor. A frame's members stand for their
+frame in a loose element's stack, so the gap above or below them places the
+element above or below the frame. One gesture writes one `index` (or one
+`layer`) in one undo step, and nothing when the gap is the row's own place.
+Moving a row into or out of a group by a drag stays out of scope. No
+auto-scroll: the frame panel has none to mirror.

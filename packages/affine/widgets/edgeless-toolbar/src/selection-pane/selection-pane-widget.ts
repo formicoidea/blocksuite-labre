@@ -15,7 +15,7 @@ import {
   popMenu,
   popupTargetFromElement,
 } from '@labre/affine-components/context-menu';
-import type { RootBlockModel } from '@labre/affine-model';
+import { MindmapElementModel, type RootBlockModel } from '@labre/affine-model';
 import { TOUCH_TARGET_MIN_PX } from '@labre/affine-shared/consts';
 import {
   TOOLBAR_LOCK,
@@ -31,8 +31,10 @@ import {
 } from '@labre/std';
 import {
   DEFAULT_LAYER_ID,
+  GfxBlockElementModel,
   GfxControllerIdentifier,
   type GfxModel,
+  type GfxPrimitiveElementModel,
 } from '@labre/std/gfx';
 import {
   ArrowDownSmallIcon,
@@ -73,6 +75,13 @@ import {
   SELECTION_PANE_SHOW_FOR_EVERYONE,
   SELECTION_PANE_UNLOCK,
 } from '../translations.js';
+import {
+  paneDropAbove,
+  type PaneDropRow,
+  type PaneLists,
+  paneLists,
+  paneSlotAtGap,
+} from './drop.js';
 import { selectionPaneRowIcon, selectionPaneRowLabel } from './labels.js';
 
 export const EDGELESS_SELECTION_PANE_WIDGET = 'edgeless-selection-pane-widget';
@@ -105,12 +114,8 @@ function paneCommand(id: string): AnyCommandDescriptor {
   return command;
 }
 
-/** One visible row: the node, and how deep it sits. */
-interface PaneRow {
-  node: SelectionPaneNode;
-  depth: number;
-  /** Its siblings in the FULL tree, top first — what a drop is computed in. */
-  siblings: readonly SelectionPaneNode[];
+/** One visible row: the node, how deep it sits, what it is listed under. */
+interface PaneRow extends PaneDropRow {
   /**
    * A layer row only: how many member rows the filter leaves out, when it
    * leaves them ALL out — the layer then still shows, and says so.
@@ -122,11 +127,30 @@ interface DragState {
   id: string;
   /** A layer row reorders among layers; any other row may also drop INTO one. */
   kind: SelectionPaneNode['kind'];
-  groupId: string | undefined;
-  siblings: readonly SelectionPaneNode[];
+  /** The list it moves in: its parent row's id, `''` at the top level. */
+  parent: string;
   x: number;
   y: number;
   dragging: boolean;
+}
+
+/**
+ * Where the dragged row would land: into a layer (its header), at a gap of
+ * its own list (`top` / `left` place the line in the list's scroll content),
+ * or nowhere — a refusal the pane shows rather than swallows.
+ */
+type PaneDrop =
+  | { kind: 'into'; id: string }
+  | { kind: 'slot'; above: string | null; top: number; left: number }
+  | { kind: 'refused' };
+
+/** `model.group`, or `null` where the getter throws (no surface holds it). */
+function rawGroupOf(model: GfxModel): GfxModel | null {
+  try {
+    return (model.group as GfxModel | null) ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -259,6 +283,7 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     }
 
     .selection-pane-body {
+      position: relative;
       flex: 1;
       min-height: 0;
       overflow-y: auto;
@@ -296,16 +321,58 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       color: var(--affine-primary-color);
     }
 
-    .selection-pane-row[data-drop='above'] {
-      border-top-color: var(--affine-primary-color);
-    }
-
-    .selection-pane-row[data-drop='below'] {
-      border-bottom-color: var(--affine-primary-color);
-    }
-
+    /* The row being dragged stays in place, dimmed, like the frame panel's
+       placeholder card; its ghost follows the pointer. */
     .selection-pane-row[data-dragging] {
       opacity: 0.5;
+    }
+
+    /* While dragging, the pane says whether a drop here would land. */
+    .selection-pane-panel[data-drag='valid'] {
+      cursor: grabbing;
+    }
+
+    .selection-pane-panel[data-drag='invalid'] {
+      cursor: not-allowed;
+    }
+
+    .selection-pane-panel[data-drag] * {
+      cursor: inherit;
+    }
+
+    /* The frame panel's insert indicator: a line at the gap a drop lands in. */
+    .selection-pane-drop-indicator {
+      position: absolute;
+      right: 8px;
+      height: 2px;
+      border-radius: 1px;
+      background: var(--affine-primary-color);
+      transform: translateY(-1px);
+      pointer-events: none;
+    }
+
+    .selection-pane-drag-ghost {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      max-width: 240px;
+      box-sizing: border-box;
+      padding: 4px 8px;
+      border: 1px solid var(--affine-border-color);
+      border-radius: 4px;
+      background: var(--affine-background-overlay-panel-color);
+      box-shadow: var(--affine-shadow-2);
+      white-space: nowrap;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .selection-pane-drag-ghost .selection-pane-label {
+      flex: initial;
     }
 
     /* A row dragged onto a layer moves into it (ADR 0031 §5). */
@@ -452,16 +519,23 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
 
   /** Where the dragged row would land. */
   @state()
-  private accessor _drop: {
-    id: string;
-    position: 'above' | 'below' | 'into';
-  } | null = null;
+  private accessor _drop: PaneDrop | null = null;
+
+  /** Where the dragged row's ghost is drawn, in the panel's own box. */
+  @state()
+  private accessor _ghost: { x: number; y: number } | null = null;
 
   /** Bumped when the canvas selection changes, so the rows repaint. */
   @state()
   private accessor _selectionRevision = 0;
 
   private _drag: DragState | null = null;
+
+  /** The rows of the last render, top first: what a drag hit-tests. */
+  private _visibleRows: readonly PaneRow[] = [];
+
+  /** The sibling lists before the filter: what a drop is computed in. */
+  private _lists: PaneLists = paneLists([]);
 
   /** A drag ends with a click on the row it started on; that click is not one. */
   private _swallowNextClick = false;
@@ -586,20 +660,24 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
         .map(node => [node.id, node.children?.length ?? 0])
     );
     const rows: PaneRow[] = [];
-    const walk = (list: readonly SelectionPaneNode[], depth: number) => {
+    const walk = (
+      list: readonly SelectionPaneNode[],
+      depth: number,
+      parent: string
+    ) => {
       for (const node of list) {
-        const row: PaneRow = { node, depth, siblings: list };
+        const row: PaneRow = { node, depth, parent };
         if (node.kind === 'layer' && node.children?.length === 0) {
           const members = membersOf.get(node.id) ?? 0;
           if (members > 0) row.hiddenByFilter = members;
         }
         rows.push(row);
         if (node.children && !this._collapsed.has(node.id)) {
-          walk(node.children, depth + 1);
+          walk(node.children, depth + 1, node.id);
         }
       }
     };
-    walk(nodes, 0);
+    walk(nodes, 0, '');
     return rows;
   }
 
@@ -764,6 +842,13 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
 
   /* ── Drag to reorder ────────────────────────────────────────────────── */
 
+  /*
+   * The frame panel's model (`fragments/frame-panel`): the row stays in place,
+   * dimmed; a ghost of it follows the pointer; a line marks the gap a release
+   * would land in, and a gap the row cannot go to shows no line and a
+   * `not-allowed` cursor. A read-only document never starts one.
+   */
+
   private _onRowPointerDown(event: PointerEvent, row: PaneRow) {
     if (event.button !== 0 || this.std.store.readonly) return;
     const target = event.target as HTMLElement;
@@ -771,8 +856,7 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     this._drag = {
       id: row.node.id,
       kind: row.node.kind,
-      groupId: row.node.groupId,
-      siblings: row.siblings,
+      parent: row.parent,
       x: event.clientX,
       y: event.clientY,
       dragging: false,
@@ -781,30 +865,116 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     document.addEventListener('pointerup', this._onDocumentPointerUp, true);
   }
 
-  /** The row under `clientY` — a canvas row or a layer row — and where. */
-  private _dropAt(clientY: number): typeof this._drop {
-    const drag = this._drag;
-    if (!drag) return null;
-    const rows =
-      this.shadowRoot?.querySelectorAll<HTMLElement>(
-        '[data-testid="selection-pane-row"], [data-testid="selection-pane-layer"]'
-      ) ?? [];
-    for (const element of rows) {
-      const rect = element.getBoundingClientRect();
-      if (clientY < rect.top || clientY > rect.bottom) continue;
-      const id = element.dataset.id;
-      if (!id || id === drag.id) return null;
-      const position = clientY < rect.top + rect.height / 2 ? 'above' : 'below';
-      // A row of the canvas dropped on a layer row moves INTO that layer.
-      if (drag.kind !== 'layer' && element.dataset.kind === 'layer') {
-        return { id, position: 'into' };
+  /**
+   * Which model stands for a row in the dragged row's own stack — the stack
+   * `canvas.element.reorder` restacks it in, the models sharing its raw
+   * `group` — or `undefined` for a row outside it. A frame's members paint
+   * together right above the frame, so for a loose element they stand for
+   * their frame. `null` when the dragged row cannot be restacked at all (a
+   * mindmap node moves with its mindmap).
+   */
+  private _stackOf(
+    drag: DragState
+  ): ((id: string) => string | undefined) | null {
+    if (drag.kind === 'layer') return id => id;
+    const gfx = this._gfx;
+    const dragged = gfx.getElementById(drag.id) as GfxModel | null;
+    if (!dragged) return null;
+    const stack = rawGroupOf(dragged);
+    if (stack instanceof MindmapElementModel) return null;
+    return id => {
+      let model = gfx.getElementById(id) as GfxModel | null;
+      for (let hops = 0; model && hops < 32; hops++) {
+        const group = rawGroupOf(model);
+        if (group === stack) return model.id;
+        model = group;
       }
-      // Otherwise only among siblings: a row never leaves its group, and a
-      // layer never leaves the list of layers, by a drag here.
-      if (!drag.siblings.some(node => node.id === id)) return null;
-      return { id, position };
+      return undefined;
+    };
+  }
+
+  /** Where a release at `(clientX, clientY)` would land the dragged row. */
+  private _dropAt(clientX: number, clientY: number): PaneDrop | null {
+    const drag = this._drag;
+    const body = this.shadowRoot?.querySelector<HTMLElement>(
+      '[data-testid="selection-pane-body"]'
+    );
+    if (!drag || !body) return null;
+    const box = body.getBoundingClientRect();
+    if (
+      clientX < box.left ||
+      clientX > box.right ||
+      clientY < box.top ||
+      clientY > box.bottom
+    ) {
+      return { kind: 'refused' };
     }
-    return null;
+
+    const byId = new Map(this._visibleRows.map(row => [row.node.id, row]));
+    const shown = Array.from(
+      body.querySelectorAll<HTMLElement>(
+        '[data-testid="selection-pane-row"], [data-testid="selection-pane-layer"]'
+      )
+    ).flatMap(element => {
+      const row = byId.get(element.dataset.id ?? '');
+      return row ? [{ element, row }] : [];
+    });
+
+    // A canvas row over a layer's header moves INTO that layer (§5).
+    if (drag.kind !== 'layer') {
+      const header = shown.find(({ element, row }) => {
+        if (row.node.kind !== 'layer') return false;
+        const rect = element.getBoundingClientRect();
+        return clientY >= rect.top && clientY <= rect.bottom;
+      });
+      if (header) return { kind: 'into', id: header.row.node.id };
+    }
+
+    // The gap: past the middle of a row is below it.
+    let gap = 0;
+    for (const { element } of shown) {
+      const rect = element.getBoundingClientRect();
+      if (clientY > rect.top + rect.height / 2) gap++;
+    }
+
+    const stackOf = this._stackOf(drag);
+    const slot = stackOf
+      ? paneSlotAtGap(
+          shown.map(({ row }) => row),
+          gap,
+          drag.parent,
+          this._lists
+        )
+      : null;
+    const list = slot ? this._lists.lists.get(slot.parent) : undefined;
+    const landing =
+      slot && list && stackOf
+        ? paneDropAbove(list, slot.index, drag.id, stackOf)
+        : null;
+    if (!slot || !landing) return { kind: 'refused' };
+
+    const under = shown[gap]?.element;
+    const last = shown[shown.length - 1]?.element;
+    const top = under
+      ? under.offsetTop
+      : last
+        ? last.offsetTop + last.offsetHeight
+        : 0;
+    return {
+      kind: 'slot',
+      above: landing.above,
+      top,
+      left: 8 + slot.depth * INDENT_PX,
+    };
+  }
+
+  private _moveGhost(event: PointerEvent) {
+    const panel = this.shadowRoot?.querySelector<HTMLElement>(
+      '[data-testid="selection-pane-panel"]'
+    );
+    if (!panel) return;
+    const box = panel.getBoundingClientRect();
+    this._ghost = { x: event.clientX - box.left, y: event.clientY - box.top };
   }
 
   private readonly _onDocumentPointerMove = (event: PointerEvent) => {
@@ -814,9 +984,9 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       const travel = Math.hypot(event.clientX - drag.x, event.clientY - drag.y);
       if (travel < DRAG_THRESHOLD_PX) return;
       drag.dragging = true;
-      this.requestUpdate();
     }
-    this._drop = this._dropAt(event.clientY);
+    this._moveGhost(event);
+    this._drop = this._dropAt(event.clientX, event.clientY);
   };
 
   private readonly _onDocumentPointerUp = (event: PointerEvent) => {
@@ -826,36 +996,31 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       // A click only follows when the press and the release land on the same
       // row; otherwise nothing would ever clear the flag.
       setTimeout(() => (this._swallowNextClick = false), 0);
-      const drop = this._dropAt(event.clientY);
+      const drop = this._dropAt(event.clientX, event.clientY);
       if (drop) this._commitDrop(drag, drop);
     }
     this._endDrag();
   };
 
   /**
-   * "Above row X" is directly above X in the stack. "Below row X" is directly
-   * above whatever sits right under X — read in the FULL sibling list, so a
-   * filtered view never computes a neighbour it is not showing.
+   * One write per gesture, through the command: `layer` for a drop into a
+   * layer, one `index` for a slot. The command writes nothing when the slot
+   * is where the row already is, and a refused drop never reaches it.
    */
-  private _commitDrop(drag: DragState, drop: NonNullable<typeof this._drop>) {
-    if (drop.position === 'into') {
+  private _commitDrop(drag: DragState, drop: PaneDrop) {
+    if (drop.kind === 'refused') return;
+    if (drop.kind === 'into') {
       this._run('canvas.layer.moveElements', {
         ids: [drag.id],
         layerId: drop.id,
       });
       return;
     }
-    let above: string | null = drop.id;
-    if (drop.position === 'below') {
-      const rest = drag.siblings.filter(node => node.id !== drag.id);
-      const at = rest.findIndex(node => node.id === drop.id);
-      above = rest[at + 1]?.id ?? null;
-    }
     if (drag.kind === 'layer') {
-      this._run('canvas.layer.reorder', { id: drag.id, above });
+      this._run('canvas.layer.reorder', { id: drag.id, above: drop.above });
       return;
     }
-    this._run('canvas.element.reorder', { id: drag.id, above });
+    this._run('canvas.element.reorder', { id: drag.id, above: drop.above });
   }
 
   private _endDrag() {
@@ -868,7 +1033,55 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     const wasDragging = this._drag?.dragging;
     this._drag = null;
     this._drop = null;
+    this._ghost = null;
     if (wasDragging) this.requestUpdate();
+  }
+
+  private _renderGhost() {
+    const drag = this._drag;
+    const at = this._ghost;
+    if (!drag?.dragging || !at) return nothing;
+    const style = styleMap({
+      transform: `translate(${at.x - 16}px, ${at.y - 8}px)`,
+    });
+    if (drag.kind === 'layer') {
+      return html`<div
+        class="selection-pane-drag-ghost"
+        data-testid="selection-pane-drag-ghost"
+        style=${style}
+      >
+        <span class="selection-pane-icon">${LayerIcon()}</span>
+        <span class="selection-pane-label"
+          >${this._layerName(drag.id) ?? ''}</span
+        >
+      </div>`;
+    }
+    const model = this._gfx.getElementById(drag.id) as GfxModel | null;
+    if (!model) return nothing;
+    const type =
+      model instanceof GfxBlockElementModel
+        ? model.flavour
+        : (model as GfxPrimitiveElementModel).type;
+    return html`<div
+      class="selection-pane-drag-ghost"
+      data-testid="selection-pane-drag-ghost"
+      style=${style}
+    >
+      <span class="selection-pane-icon">${selectionPaneRowIcon(type)}</span>
+      <span class="selection-pane-label"
+        >${selectionPaneRowLabel(this.std, model)}</span
+      >
+    </div>`;
+  }
+
+  private _renderDropIndicator() {
+    const drop = this._drop;
+    if (!this._drag?.dragging || drop?.kind !== 'slot') return nothing;
+    return html`<div
+      class="selection-pane-drop-indicator"
+      data-testid="selection-pane-drop-indicator"
+      style=${styleMap({ top: `${drop.top}px`, left: `${drop.left}px` })}
+    ></div>`;
   }
 
   /* ── Filter ─────────────────────────────────────────────────────────── */
@@ -925,7 +1138,10 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     const collapsed = this._collapsed.has(node.id);
     const active =
       (std.getOptional(CanvasActiveLayer)?.resolve() ?? null) === node.id;
-    const drop = this._drop?.id === node.id ? this._drop.position : undefined;
+    const drop =
+      this._drop?.kind === 'into' && this._drop.id === node.id
+        ? 'into'
+        : undefined;
     const dragging = this._drag?.dragging && this._drag.id === node.id;
 
     return html`<div
@@ -1041,7 +1257,10 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     const container = node.children !== undefined;
     const collapsed = this._collapsed.has(node.id);
     const readonly = std.store.readonly;
-    const drop = this._drop?.id === node.id ? this._drop.position : undefined;
+    const drop =
+      this._drop?.kind === 'into' && this._drop.id === node.id
+        ? 'into'
+        : undefined;
     const dragging = this._drag?.dragging && this._drag.id === node.id;
 
     return html`<div
@@ -1194,7 +1413,14 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       }
     }
     const rows = this._rows(tree, full);
+    this._visibleRows = rows;
+    this._lists = paneLists(full);
     const title = translateKey(this.std, ...SELECTION_PANE_TITLE);
+    const dragState = this._drag?.dragging
+      ? this._drop && this._drop.kind !== 'refused'
+        ? 'valid'
+        : 'invalid'
+      : undefined;
 
     // `pointermove` too: the editor turns every move over the host into a
     // cursor selection, and a selection with nothing recoverable in it makes
@@ -1208,6 +1434,7 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       tabindex="-1"
       aria-label=${title}
       data-testid="selection-pane-panel"
+      data-drag=${dragState ?? nothing}
       @pointerdown=${this._swallow}
       @pointerup=${this._swallow}
       @pointermove=${this._swallow}
@@ -1271,7 +1498,9 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
           : html`<div class="selection-pane-empty">
               ${translateKey(this.std, ...SELECTION_PANE_EMPTY)}
             </div>`}
+        ${this._renderDropIndicator()}
       </div>
+      ${this._renderGhost()}
     </div>`;
   }
 }

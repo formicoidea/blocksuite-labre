@@ -15,4 +15,8 @@ answers frames only, and the `com.labre.selection-pane.filter.board` key is gone
 Layer rows are listed whatever the filter (`filterSelectionPaneTree` keeps every
 layer node); a layer the filter empties says "{{count}} hidden by the filter"
 (new key `com.labre.selection-pane.layer.filtered`), and "New layer" opens the
-new layer's name field, focused and scrolled into view.
+new layer's name field, focused and scrolled into view. Dragging a row now shows
+a ghost under the pointer and a line at the gap it would land in (the frame
+panel's model); the gap under the last row is a target, a frame's members stand
+for their frame, and a gap the row cannot go to shows no line and a
+`not-allowed` cursor instead of failing silently.

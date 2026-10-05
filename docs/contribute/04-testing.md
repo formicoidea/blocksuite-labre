@@ -19,6 +19,7 @@ parity tests for anything spelled twice.**
 | a store watcher or cascade                                        | unit: drive `elementUpdated` with `local: true` and `local: false`                                  |
 | something a user sees on the canvas (selection, toolbar, drawing) | integration: mount the editor, act, read the DOM or the store                                       |
 | a keyboard path                                                   | integration: the dispatcher needs real events; synthetic keydowns in the playground do not drive it |
+| a gesture watched mid-way (a drag's ghost, its drop line)         | integration: Playwright's mouse a step at a time, `__tests__/utils/pointer.ts`                      |
 | performance                                                       | a budget test in the unit suite, asserting a number (`FRAME_BUDGET_MS = 16`)                        |
 
 ## Writing a unit test
