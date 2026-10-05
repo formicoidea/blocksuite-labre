@@ -283,6 +283,60 @@ describe('exporting a board as SVG', () => {
   });
 
   /**
+   * A map pasted into a slide must keep its colours. svgcanvas wrote the
+   * Wardley area's `#c6dbfc40`, the pipeline's `#ffffff99` and the shape
+   * renderer's `transparent` verbatim; none is an SVG 1.1 paint, and
+   * PowerPoint's importer replaced each with its own theme colour. Every
+   * fill, stroke and stop must now be a colour SVG 1.1 reads, or `none`, or a
+   * reference to a gradient.
+   */
+  test('every paint in a Wardley export is static SVG 1.1', async () => {
+    const surface = surfaceModel();
+    const map = addMap(0);
+    await addNamed('Alpha', 300, 400);
+    surface.addElement(
+      wardleyNodeProps('area', {
+        xywh: new Bound(200, 300, 400, 200).serialize(),
+      })
+    );
+    surface.addElement(
+      wardleyNodeProps('pipeline', {
+        xywh: new Bound(700, 300, 300, 40).serialize(),
+      })
+    );
+    surface.addElement({
+      type: 'shape',
+      shapeType: 'rect',
+      filled: false,
+      strokeStyle: StrokeStyle.None,
+      xywh: new Bound(1100, 300, 100, 100).serialize(),
+    });
+    await wait();
+
+    const { svg } = renderBoardSvg(edgeless.std, boardById(map));
+    const doc = parse(svg);
+
+    const STATIC_PAINT =
+      /^(none|#[0-9a-f]{3}|#[0-9a-f]{6}|rgb\(\d+,\d+,\d+\)|url\(#[^)]+\)|[a-z]+)$/i;
+    const paints = [...doc.querySelectorAll('*')].flatMap(node =>
+      ['fill', 'stroke', 'stop-color']
+        .map(name => node.getAttribute(name))
+        .filter((value): value is string => value !== null)
+    );
+
+    expect(paints.length).toBeGreaterThan(0);
+    expect(svg).not.toContain('transparent');
+    expect(paints.filter(paint => !STATIC_PAINT.test(paint))).toEqual([]);
+    // The area's wash, at the alpha its 8-digit hex carried.
+    const area = [...doc.querySelectorAll('[fill="rgb(198,219,252)"]')];
+    expect(area.length, svg.slice(0, 400)).toBeGreaterThan(0);
+    expect(Number(area[0].getAttribute('fill-opacity'))).toBeCloseTo(
+      0x40 / 255,
+      5
+    );
+  });
+
+  /**
    * UML nests frames inside the diagram frame by design (a subject, a
    * partition, a region, a fragment), and they are backgrounds too. The export
    * used to drop every background but the selected one; a frame that lies
