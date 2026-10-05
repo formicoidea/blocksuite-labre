@@ -11,6 +11,7 @@ import {
   EXEMPTION_FALLBACK,
   EXPORT_SVG_WORDINGS,
   PROVENANCE_FALLBACK,
+  READING_FRAME_WORDINGS,
   SEVERITY_FALLBACK,
   SVG_SKETCH_WORDINGS,
   USER_LAYER_SEED_WORDINGS,
@@ -292,11 +293,11 @@ const CHROME_KEYS: readonly [key: string, fallback: string][] = [
   ['com.labre.reading.field.nature', 'Nature'],
   ['com.labre.reading.field.relations', 'Parent-child relations'],
   ['com.labre.reading.field.value-flow', 'Value flow'],
-  // `com.labre.reading.field.phase` and `com.labre.reading.phase.none` USED to
-  // be here. They moved to Wardley's `ReadingProfile.frame` when the Core
-  // Domain Chart and the BPMN pool gained a frame of their own: "Evolution
-  // phase" is a value chain's word, not the panel's. Same keys, same English,
-  // now through `wardleyTranslationEntries`.
+  // `com.labre.reading.field.phase` and `com.labre.reading.phase.none` are the
+  // reading engine's DEFAULT frame wording, declared beside it in the surface
+  // package (`READING_FRAME_WORDINGS`) and walked from `PACKAGE_WORDINGS`: a
+  // profile that names no frame wording — Wardley's, a 0.43 host's — reads
+  // with them, whether or not a framework bundle is installed.
   ['com.labre.reading.field.naming', 'Naming convention'],
   ['com.labre.reading.field.record', 'Record'],
   ['com.labre.reading.field.drift', 'Drift'],
@@ -440,6 +441,7 @@ const PACKAGE_WORDINGS: readonly (readonly ChromeWording[])[] = [
   ROOT_CHROME_WORDINGS,
   SVG_SKETCH_WORDINGS,
   EXPORT_SVG_WORDINGS,
+  READING_FRAME_WORDINGS,
   STD_WORDINGS,
   ATTACHMENT_WORDINGS,
   BOOKMARK_WORDINGS,

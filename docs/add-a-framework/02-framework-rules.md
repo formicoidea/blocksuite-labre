@@ -351,7 +351,9 @@ with the far end's name.
 
 A profile whose artefacts sit IN a zone of their board declares a `frame`: the
 board's role and declaration, plus the panel's heading and empty state in the
-framework's own words (`label`, `none`). With an `axis` the zone is read along
+framework's own words (`label`, `none`; both optional, and absent they are the
+engine's "Evolution phase" wording, `READING_FRAME_DEFAULT_WORDING`, which is
+what Wardley inherits). With an `axis` the zone is read along
 one plot axis (Wardley's phases, with the transition band); without one it is
 the zone whose rectangle holds the artefact's centre (a Core Domain quadrant, a
 BPMN lane). Either way the zones are the instance's own — the framework's in the
