@@ -134,6 +134,18 @@ it.
 - **What reads them:** Wardley's SVG import, which recognises its own export
   first and gets back the same map (ADR 0032 §4.1).
 
+## Amendment — 2026-10-05: an edgeless text is painted at its layer index
+
+- **The file stacks what the canvas stacks.** The text blocks used to be
+  painted after every canvas element ("painted over the canvas elements rather
+  than at its layer index", above), because interleaving them would have cost
+  one `renderBoundTo` per run of elements between two blocks. Since the
+  2026-10-04 amendment the loop already draws one element per pass, so the
+  blocks and the elements are now walked as one list sorted by the canvas'
+  own comparator (`gfx.layer.compare`), and a shape drawn over an edgeless
+  text covers it in the file as it does on screen. Pinned in
+  `board-svg-export.spec.ts`.
+
 ## Why not resvg
 
 `resvg` is a _rasteriser_: it turns SVG into PNG. It answers the opposite

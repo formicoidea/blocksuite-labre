@@ -1,5 +1,4 @@
 import {
-  createBoardLegend,
   DefaultTool,
   runInterchangeImportFile,
 } from '@labre/affine-block-surface';
@@ -797,34 +796,6 @@ export function umlDiagramsSelected(
     (model): model is UmlDiagramElementModel =>
       model instanceof UmlDiagramElementModel
   );
-}
-
-/**
- * Draw the legend of what is actually on the selected frame, bottom-left of it.
- *
- * The FIRST selected frame and no other: a legend is placed relative to one
- * background, and two of them would put two boxes on top of whatever sits in
- * that corner. Everything about the gesture — the scan, the placement, the box —
- * is `createBoardLegend`'s; UML contributes nothing but the rows its own
- * commands subscribe (`commands.ts`, `docs/adr/0026`).
- *
- * The one action in this file with no command behind it, exactly as in C4: the
- * legend is reached from the selected frame's contextual toolbar and from
- * nowhere else (PO arbitration, 27/08/2026 — see `toolbar/config.ts`). It is a
- * legend OF something you have in front of you, not an artefact to pick off a
- * palette. Kept here beside its siblings all the same, because it is the same
- * kind of thing — a gesture that writes elements — and because a unit test can
- * drive it without a toolbar.
- *
- * A legend earns its place in UML more than in most packs: the notation's dozen
- * relationships differ by a diamond's fill and a triangle's outline, and a
- * reader who is not fluent in §11.5.4 cannot tell a shared aggregation from a
- * composition without a key on the sheet.
- */
-export function createUmlLegend(std: BlockStdScope): void {
-  const diagram = umlDiagramsSelected(std)[0];
-  if (!diagram) return;
-  createBoardLegend(std, diagram, 'uml');
 }
 
 /* ── Export (PlantUML, XMI 2.5.1) ──────────────────────────────────────── */

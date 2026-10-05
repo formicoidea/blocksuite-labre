@@ -1,4 +1,4 @@
-import type { EditorHost } from '@labre/affine/block-std';
+import type { EditorHost } from '@labre/affine/std';
 import type { TestAffineEditorContainer } from '@labre/integration-test';
 import type {
   BlockSchema,

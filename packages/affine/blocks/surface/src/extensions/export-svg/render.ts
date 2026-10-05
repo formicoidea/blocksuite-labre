@@ -180,19 +180,19 @@ export function renderBoardSvg(
     );
     const rc = new RoughCanvas(canvas);
     markRoot();
-    // One element per pass, each inside a group carrying its markers (ADR
-    // 0032 §6). Same paint order as one pass over the list: a pass draws its
-    // one element exactly as the list's loop would have.
-    for (const element of elements as SurfaceElementModel[]) {
-      markedGroup(boardSvgMarkers(element, bound), () =>
-        renderer.renderBoundTo(ctx, rc, bound, [element])
-      );
-    }
-    // ponytail: the text blocks paint OVER every canvas element, not at their
-    // layer index — interleaving them would mean one `renderBoundTo` per run
-    // of elements between two blocks. Upgrade when a board needs a shape
-    // drawn over an edgeless text.
-    for (const block of texts) {
+    // One model per pass, each inside a group carrying its markers (ADR 0032
+    // §6), in the canvas' own z-order: a text block is painted at its layer
+    // index, between the elements it sits between on screen.
+    const blocks = new Set<unknown>(texts);
+    for (const model of [...elements, ...texts].sort(gfx.layer.compare)) {
+      if (!blocks.has(model)) {
+        const element = model as SurfaceElementModel;
+        markedGroup(boardSvgMarkers(element, bound), () =>
+          renderer.renderBoundTo(ctx, rc, bound, [element])
+        );
+        continue;
+      }
+      const block = model as GfxBlockElementModel;
       const paint = std.getOptional(BlockSvgPainterIdentifier(block.flavour));
       if (!paint) continue;
       markedGroup(boardSvgMarkers(block, bound), () => {

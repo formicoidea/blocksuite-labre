@@ -221,11 +221,6 @@ export const NOTE_DISPLAY_MODE_LABEL: ChromeWording = [
   'Mode',
 ];
 
-export const NOTE_DISPLAY_MODE_TOOLTIP: ChromeWording = [
-  'com.labre.note.display-mode.tooltip',
-  'Display mode',
-];
-
 /** An alias (L7 dedupe): the same word as {@link DISPLAY_MODE_BOTH}, one key. */
 export const NOTE_DISPLAY_MODE_BOTH = DISPLAY_MODE_BOTH;
 
@@ -331,7 +326,6 @@ export const NOTE_WORDINGS: readonly ChromeWording[] = [
   NOTE_STYLE_CUSTOM_COLOR,
   NOTE_STYLE_PANEL_LABEL,
   NOTE_DISPLAY_MODE_LABEL,
-  NOTE_DISPLAY_MODE_TOOLTIP,
   NOTE_TOAST_DISPLAYED_IN_PAGE_MODE,
   NOTE_TOAST_REMOVED_FROM_PAGE_BODY,
   NOTE_TOAST_ADDED_TO_PAGE_BODY,

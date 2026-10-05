@@ -19,7 +19,6 @@ import {
   activateUmlEdge,
   createUmlClassifier,
   createUmlDiagram,
-  createUmlLegend,
   createUmlNode,
   createUmlPartition,
   createUmlRegion,
@@ -976,7 +975,6 @@ describe('the legend, which is not a command', () => {
     // one somebody wants to take away.
     expect(umlDiagramsSelected(exportStd([a], [a], '', true))).toEqual([]);
     expect(umlDiagramsForExport(exportStd([a], [a], '', true))).toEqual([a]);
-    expect(() => createUmlLegend(exportStd([a], [a], '', true))).not.toThrow();
   });
 
   it('needs a SELECTED frame, and takes the first of them', () => {
@@ -984,7 +982,5 @@ describe('the legend, which is not a command', () => {
     // boxes on top of whatever sits in that corner.
     expect(umlDiagramsSelected(exportStd([a], []))).toEqual([]);
     expect(umlDiagramsSelected(exportStd([a], [a]))).toEqual([a]);
-    // ...and with nothing selected the gesture is simply a no-op.
-    expect(() => createUmlLegend(exportStd([a], []))).not.toThrow();
   });
 });
