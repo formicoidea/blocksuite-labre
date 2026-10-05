@@ -40,7 +40,6 @@
     "@labre/affine-model": "workspace:*",
     "@labre/affine-rich-text": "workspace:*",
     "@labre/affine-shared": "workspace:*",
-    "@labre/affine-widget-edgeless-selected-rect": "workspace:*",
     "@labre/affine-widget-edgeless-toolbar": "workspace:*",
     "@labre/data-view": "workspace:*",
     "@labre/global": "workspace:*",

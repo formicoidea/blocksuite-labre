@@ -9,8 +9,6 @@
   "references": [
     { "path": "../../blocks/surface" },
     { "path": "../../ext-loader" },
-    { "path": "../group" },
-    { "path": "../pointer" },
     { "path": "../template" },
     { "path": "../../model" },
     { "path": "../../shared" },

@@ -15,7 +15,6 @@
   "license": "MPL-2.0",
   "dependencies": {
     "@blocksuite/icons": "^2.2.12",
-    "@labre/affine-block-note": "workspace:*",
     "@labre/affine-block-surface": "workspace:*",
     "@labre/affine-components": "workspace:*",
     "@labre/affine-ext-loader": "workspace:*",
