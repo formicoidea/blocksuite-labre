@@ -266,7 +266,7 @@ describe('a readonly document refuses surface writes', () => {
     // The distinct guarantee of the `lastStyleTargets` guard, which the "no
     // repaint" assertion above cannot see (crud would refuse anyway): `when`
     // goes false, so the keystroke is NOT consumed and stays available to the
-    // `redo-windows` alias that shares Mod+Y on Windows.
+    // `redo-windows` alias that shares Mod+Y on Windows and Linux.
     expect(applyLastStyle.when!(std)).toBe(false);
   });
 

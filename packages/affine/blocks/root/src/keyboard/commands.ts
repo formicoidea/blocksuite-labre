@@ -5,7 +5,7 @@ import {
 import type { LastProps, LastPropsKey } from '@labre/affine-shared/services';
 import { EditPropsStore } from '@labre/affine-shared/services';
 import { pickStylePropsForKey } from '@labre/affine-shared/utils';
-import { IS_WINDOWS } from '@labre/global/env';
+import { IS_LINUX, IS_WINDOWS } from '@labre/global/env';
 import type { BlockStdScope, CommandDescriptor } from '@labre/std';
 import {
   GfxControllerIdentifier,
@@ -32,12 +32,13 @@ import { duplicate } from '../edgeless/utils/clipboard-utils.js';
  *
  * Computed by the `when` predicate AND by `run`, on purpose: the projection to
  * a shortcut only consumes the keystroke when `when` holds, and this gesture
- * must fall through when it has nothing to apply — on Windows `Mod+Y` is also
- * the `redo-windows` alias, which has to keep working.
+ * must fall through when it has nothing to apply — on Windows and Linux `Mod+Y`
+ * is also the `redo-windows` alias, which has to keep working.
  */
 function lastStyleTargets(std: BlockStdScope) {
   // Readonly: nothing to repaint, so `when` fails and the keystroke falls
-  // through (on Windows Mod+Y is also the redo alias, itself readonly-gated).
+  // through (on Windows and Linux Mod+Y is also the redo alias, itself
+  // readonly-gated).
   if (std.store.readonly) return [];
   const gfx = std.get(GfxControllerIdentifier);
   const lastStyle = std.get(EditPropsStore).lastUsedStyle$.value;
@@ -86,7 +87,9 @@ export const coreCommands: CommandDescriptor[] = [
     },
   },
   {
-    // Windows-only redo alias (Ctrl+Y); not bound on mac (empty combo).
+    // Redo alias (Ctrl+Y) on Windows and Linux; not bound on mac (empty
+    // combo). The id still says "windows": command ids are persisted in
+    // users' override tables, so it is kept rather than renamed.
     id: 'redo-windows',
     owner: 'core',
     kind: 'action',
@@ -98,7 +101,7 @@ export const coreCommands: CommandDescriptor[] = [
     scope: 'global',
     defaultKeys: { mac: [], other: ['Control-y'] },
     availability: 'always',
-    when: () => IS_WINDOWS,
+    when: () => IS_WINDOWS || IS_LINUX,
     run: std => {
       if (std.store.canRedo) std.store.redo();
     },
