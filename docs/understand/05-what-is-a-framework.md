@@ -20,8 +20,10 @@ the shared behaviour:
 
 - it is picked by its **border** (a 10 screen-pixel band, constant at every
   zoom), plus its title bands. Clicking inside it selects what is on it.
-- it is a **floor, never a lid**: anything drawn over it is kept above it.
-  Boards can stack; each stays under its own artefacts.
+- it is a **floor, never a lid**: anything drawn or dropped over it is kept
+  above it, and a board placed over artefacts goes under them. Boards can
+  stack; each stays under its own artefacts. After it is placed, a board's
+  depth is the user's: its own move never lowers it (ADR 0033).
 - it is never a connector endpoint and never frame content.
 - it is not a container. Membership ("this node is on this map") is computed
   from geometry at read time: whole containment for the board, centre point

@@ -1,8 +1,11 @@
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
+import { SelectionPaneProvider } from '@labre/affine/shared/services';
 import { beforeEach, describe, expect, test } from 'vitest';
+import * as Y from 'yjs';
 
 import { wait } from '../utils/common.js';
 import { getDocRootBlock } from '../utils/edgeless.js';
+import { pointerDown, pointerMoveTo, pointerUp } from '../utils/pointer.js';
 import { setupEditor } from '../utils/setup.js';
 
 /**
@@ -121,6 +124,102 @@ describe('a framework background never covers what is drawn on it', () => {
     await wait();
 
     expect(service.layer.compare(shape, board)).toBeGreaterThan(0);
+  });
+
+  // ADR 0033: a board is lowered when it is placed, never by its own move.
+  // Placed away from a shape drawn before it, a board stacks above that shape;
+  // moved over it, the board now covers it — the consequence the product
+  // owner accepted. The shape is not lost: moving IT raises it again (above).
+  test('a board stacked above a shape and then moved over it covers it', async () => {
+    const surface = service.surface;
+
+    const shapeId = surface.addElement({
+      type: 'shape',
+      shapeType: 'rect',
+      xywh: '[200,200,100,100]',
+    });
+    await wait();
+    const boardId = surface.addElement({
+      type: 'edgyBoard',
+      xywh: '[5000,5000,1600,1000]',
+    });
+    await wait();
+
+    const shape = surface.getElementById(shapeId)!;
+    const board = surface.getElementById(boardId)!;
+    expect(service.layer.compare(board, shape)).toBeGreaterThan(0);
+
+    service.crud.updateElement(boardId, { xywh: BOARD });
+    await wait();
+
+    expect(service.layer.compare(board, shape)).toBeGreaterThan(0);
+  });
+
+  /*
+   * The guard the decision needs (ADR 0033): the depth a user gives a board by
+   * hand survives what comes after — moving that board, and a peer's edit of
+   * it arriving through sync.
+   */
+  test('a board dragged above an artefact from the pane stays above after a move and a remote update', async () => {
+    const surface = service.surface;
+    const shapeId = surface.addElement({
+      type: 'shape',
+      shapeType: 'rect',
+      xywh: '[200,200,100,100]',
+    });
+    await wait();
+    const boardId = surface.addElement({ type: 'edgyBoard', xywh: BOARD });
+    await wait();
+    const shape = surface.getElementById(shapeId)!;
+    const board = surface.getElementById(boardId)!;
+    // Placed over it, the board went under the shape (insertion default).
+    expect(service.layer.compare(shape, board)).toBeGreaterThan(0);
+
+    // The user drags the board's row above the shape's, in the pane.
+    service.std.get(SelectionPaneProvider).open();
+    await wait();
+    const row = (id: string) =>
+      `[data-testid="selection-pane-row"][data-id="${id}"]`;
+    await pointerMoveTo(row(boardId), 0.3, 0.5, 1);
+    await pointerDown();
+    await pointerMoveTo(row(boardId), 0.3, 0.9, 3);
+    await pointerMoveTo(row(shapeId), 0.4, 0.2, 6);
+    await pointerUp();
+    await wait();
+    expect(
+      service.layer.compare(board, shape),
+      'dragged above'
+    ).toBeGreaterThan(0);
+
+    // Its own move does not sink it again...
+    service.crud.updateElement(boardId, { xywh: '[20,20,1600,1000]' });
+    await wait();
+    expect(
+      service.layer.compare(board, shape),
+      'after its move'
+    ).toBeGreaterThan(0);
+
+    // ...nor does a peer's edit of it, arriving through sync.
+    const space = window.doc.doc.spaceDoc;
+    const peer = new Y.Doc();
+    Y.applyUpdate(peer, Y.encodeStateAsUpdate(space));
+    const peerBoard = (
+      (
+        peer
+          .getMap<Y.Map<unknown>>('blocks')
+          .get(surface.id)!
+          .get('prop:elements') as Y.Map<unknown>
+      ).get('value') as Y.Map<Y.Map<unknown>>
+    ).get(boardId)!;
+    const before = Y.encodeStateVector(peer);
+    peerBoard.set('xywh', '[40,40,1600,1000]');
+    Y.applyUpdate(space, Y.encodeStateAsUpdate(peer, before), 'peer');
+    await wait();
+    expect(board.xywh).toBe('[40,40,1600,1000]');
+    expect(
+      service.layer.compare(board, shape),
+      'after a peer edit'
+    ).toBeGreaterThan(0);
   });
 
   test('two superposed boards keep the artefacts of both on top', async () => {

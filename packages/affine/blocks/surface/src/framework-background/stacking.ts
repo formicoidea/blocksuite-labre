@@ -99,10 +99,16 @@ export function indexOverBackgrounds(
  *    it, the same raise applies — superposed boards stack in the order they
  *    were placed, each still under its own artefacts — unless it ENCLOSES that
  *    background, in which case it is the sheet the other is drawn on and stays
- *    under it ({@link encloses}). Otherwise, if it covers an artefact it
- *    overlaps, it is acting as a lid: lower it to just above the floor it lies
- *    on, or to the back of the surface when it lies on bare canvas. Otherwise
- *    nothing.
+ *    under it ({@link encloses}). Otherwise, if it was just PLACED and covers
+ *    an artefact it overlaps, it is acting as a lid: lower it to just above
+ *    the floor it lies on, or to the back of the surface when it lies on bare
+ *    canvas. Otherwise nothing.
+ *
+ * `gesture` says which: `'placed'` (created, pasted, duplicated, inserted from
+ * a template or an import) or `'moved'`. A move never lowers a board (ADR
+ * 0033): the user may have put it above an artefact on purpose, from the
+ * selection pane or with "bring forward", and their own drag of that board
+ * must not undo it. Moved over free elements, a board now covers them.
  *
  * `siblings` are the OTHER top-level elements of the surface — canvas elements
  * and blocks alike, since the surface paints both by index — with `element`
@@ -126,7 +132,8 @@ export function indexOverBackgrounds(
  */
 export function stackingIndexFor(
   element: StackedElement,
-  siblings: readonly StackedElement[]
+  siblings: readonly StackedElement[],
+  gesture: 'placed' | 'moved' = 'placed'
 ): string | null {
   const box = Bound.deserialize(element.xywh);
   const overlapping = siblings.filter(sibling =>
@@ -156,7 +163,10 @@ export function stackingIndexFor(
       sibling.index > element.index &&
       !encloses(element, box, sibling)
   );
+  // Only where it is PLACED (ADR 0033): a board lowered by its own move would
+  // undo the depth a user gave it by hand, so a move never lowers one.
   const lidding =
+    gesture === 'placed' &&
     element.isBackground &&
     overlapping.some(
       sibling => !sibling.isBackground && sibling.index < element.index
@@ -255,9 +265,11 @@ export function stackedElementsOf(
  *
  * Two gestures produce a wrong depth, and they are the two this listens for:
  * an element CREATED (every creation site mints the top of the stack, so a
- * board drawn last covers what it was drawn around) and an element MOVED (onto
- * a board that is above it, or over free elements it then hides). Anything
- * else — a resize, a colour, a rename — cannot change who covers whom.
+ * board drawn last covers what it was drawn around) and an element MOVED onto
+ * a board that is above it. A board moved over free elements it then hides is
+ * deliberately NOT one of them (ADR 0033): a board's depth after it is placed
+ * is the user's. Anything else — a resize, a colour, a rename — cannot change
+ * who covers whom.
  *
  * Frames are BLOCKS: their own two gestures are already handled, at creation
  * by `frameIndexAt` and on a move by `_watchFrameMoved` (#223), so this never
@@ -281,17 +293,22 @@ export class BackgroundStackingExtension extends GfxExtension {
 
     this._disposable.add(
       surface.elementAdded.subscribe(({ id, local }) => {
-        if (local) this._restack(surface.getElementById(id));
+        if (local) this._restack(surface.getElementById(id), 'placed');
       })
     );
     this._disposable.add(
       surface.elementUpdated.subscribe(({ id, props, local }) => {
-        if (local && props['xywh']) this._restack(surface.getElementById(id));
+        if (local && props['xywh']) {
+          this._restack(surface.getElementById(id), 'moved');
+        }
       })
     );
   }
 
-  private _restack(model: GfxPrimitiveElementModel | null) {
+  private _restack(
+    model: GfxPrimitiveElementModel | null,
+    gesture: 'placed' | 'moved'
+  ) {
     // A nested element is ordered by its ancestor's index — `compare` reads
     // that and ignores the child's own, so restacking it would change nothing.
     if (!model || model.group !== null) return;
@@ -302,7 +319,8 @@ export class BackgroundStackingExtension extends GfxExtension {
         xywh: model.xywh,
         isBackground: model instanceof FrameworkBackgroundElementModel,
       },
-      stackedElementsOf(this.gfx, model)
+      stackedElementsOf(this.gfx, model),
+      gesture
     );
     if (index !== null) this.gfx.updateElement(model, { index });
   }
