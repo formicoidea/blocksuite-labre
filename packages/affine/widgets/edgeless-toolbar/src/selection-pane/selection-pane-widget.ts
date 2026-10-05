@@ -62,7 +62,6 @@ import {
   SELECTION_PANE_EXPAND,
   SELECTION_PANE_FILTER,
   SELECTION_PANE_FILTER_ALL,
-  SELECTION_PANE_FILTER_BOARD,
   SELECTION_PANE_FILTER_FRAME,
   SELECTION_PANE_TITLE,
   SELECTION_PANE_HIDE,
@@ -427,7 +426,7 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
   @state()
   private accessor _collapsed: ReadonlySet<string> = new Set();
 
-  /** The frame or board the list is narrowed to, or `null`. */
+  /** The frame the list is narrowed to, or `null`. */
   @state()
   private accessor _filter: string | null = null;
 
@@ -845,12 +844,10 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     return model ? selectionPaneRowLabel(this.std, model) : id;
   }
 
-  private _filterWording(id: string, kind: 'frame' | 'board'): string {
-    const wording =
-      kind === 'frame'
-        ? SELECTION_PANE_FILTER_FRAME
-        : SELECTION_PANE_FILTER_BOARD;
-    return translateKey(this.std, ...wording, { name: this._filterName(id) });
+  private _filterWording(id: string): string {
+    return translateKey(this.std, ...SELECTION_PANE_FILTER_FRAME, {
+      name: this._filterName(id),
+    });
   }
 
   private readonly _openFilterMenu = (event: MouseEvent) => {
@@ -867,7 +864,7 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
           }),
           ...targets.map(target =>
             menu.action({
-              name: this._filterWording(target.id, target.kind),
+              name: this._filterWording(target.id),
               isSelected: this._filter === target.id,
               select: () => {
                 this._filter = target.id;
@@ -1124,7 +1121,7 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       );
       if (members && target) {
         tree = filterSelectionPaneTree(tree, members);
-        filterLabel = this._filterWording(target.id, target.kind);
+        filterLabel = this._filterWording(target.id);
       }
     }
     const rows = this._rows(tree);

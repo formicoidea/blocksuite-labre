@@ -531,3 +531,18 @@ schema does not declare the key (a 0.43 client for `layer` /
 `hiddenForEveryone`) drops it from a snapshot-based duplicate until it reloads
 the document. A client that declares the fields has them in `keys` from load
 and is not affected.
+
+**The pane filters by frame only, and a frame is not a row (2026-10-05,
+product owner's review of the pane).** §5 and the staged-delivery table offered
+"filter by frame / board", and the pane listed each `affine:frame` as a row of
+the stack. Both are reversed. The filter offers `affine:frame` blocks only:
+`selectionPaneFilterTargets` answers frames, its `kind` is always `'frame'`,
+and `selectionPaneFilterMembers` answers `null` for anything else, so the
+board-perimeter reading through `selectBoardElements` is no longer used by the
+pane (the SVG export keeps it). A frame is the filter's scope, never an
+element of the stack: `buildSelectionPaneTree` — hence the headless
+`selectionPaneTree(std)` a host draws from — carries no frame node, and a
+frame's members are listed where they paint, i.e. together, right above the
+frame's place in the stack. Framework boards stay ordinary rows. Nothing
+stored changes. The `com.labre.selection-pane.filter.board` key
+("Board: {{name}}") is removed; a host catalogue may drop it.

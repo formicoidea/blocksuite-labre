@@ -75,12 +75,6 @@ export const SELECTION_PANE_FILTER_FRAME: ChromeWording = [
   'Frame: {{name}}',
 ];
 
-/** A framework board offered by the filter; `{{name}}` is its wording. */
-export const SELECTION_PANE_FILTER_BOARD: ChromeWording = [
-  'com.labre.selection-pane.filter.board',
-  'Board: {{name}}',
-];
-
 /** The eye of a visible row: hide it for this viewer only (ADR 0031 §8). */
 export const SELECTION_PANE_HIDE: ChromeWording = [
   'com.labre.selection-pane.hide',
@@ -204,7 +198,6 @@ export const EDGELESS_TOOLBAR_WORDINGS: readonly ChromeWording[] = [
   SELECTION_PANE_FILTER,
   SELECTION_PANE_FILTER_ALL,
   SELECTION_PANE_FILTER_FRAME,
-  SELECTION_PANE_FILTER_BOARD,
   SELECTION_PANE_HIDE,
   SELECTION_PANE_SHOW,
   SELECTION_PANE_HIDE_FOR_EVERYONE,

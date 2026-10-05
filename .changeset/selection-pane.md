@@ -11,7 +11,7 @@ panel listing every element by stacking order, top first: groups and mind maps a
 collapsible rows, a click selects on the canvas (shift / ctrl / cmd adds), a hover
 highlights, the padlock locks that row alone (never grouping a multi-selection),
 a double-click renames a group, a drag moves a row in the stack (one undo step),
-and the list can be filtered by frame or framework board. A read-only document is
+and the list can be filtered by frame. A read-only document is
 listed and refuses every write.
 
 New seam `SelectionPaneExtension({ open, close })` / `SelectionPaneProvider`,

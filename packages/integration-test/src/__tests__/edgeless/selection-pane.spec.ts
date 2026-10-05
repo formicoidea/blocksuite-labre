@@ -262,6 +262,9 @@ describe('selection pane', () => {
     test('the frame filter narrows the list to the frame’s members', async () => {
       const inside = shape(0);
       const outside = shape(800);
+      const board = service().crud.addElement('c4Board', {
+        xywh: '[1200,0,400,300]',
+      })!;
       const frameId = service().crud.addBlock(
         'affine:frame',
         {
@@ -273,6 +276,9 @@ describe('selection pane', () => {
       await settle();
       await openFromToolbar();
       expect(rowIds()).toContain(outside);
+      // A frame is the filter's scope, not a row; a framework board is a row.
+      expect(rowIds()).not.toContain(frameId);
+      expect(rowIds()).toContain(board);
 
       await userEvent.click(
         page.elementLocator(
@@ -282,6 +288,11 @@ describe('selection pane', () => {
         )
       );
       await wait(100);
+      const entries = deepQueryAll(document, 'affine-menu-button').map(
+        button => button.textContent?.trim() ?? ''
+      );
+      // "All elements" and the one frame — the board is not offered.
+      expect(entries).toHaveLength(2);
       const item = deepQueryAll(document, 'affine-menu-button').find(button =>
         button.textContent?.includes('Frame:')
       );
@@ -289,8 +300,7 @@ describe('selection pane', () => {
       await userEvent.click(page.elementLocator(item!));
       await settle();
 
-      expect(rowIds()).toEqual(expect.arrayContaining([inside, frameId]));
-      expect(rowIds()).not.toContain(outside);
+      expect(rowIds()).toEqual([inside]);
     });
   });
 

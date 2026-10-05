@@ -3,7 +3,7 @@ import type { ExtensionType } from '@labre/store';
 
 /**
  * The selection pane (ADR 0031 §12): a list of the canvas elements by z-order,
- * top first, with groups, lock, a filter by frame or board, and
+ * top first, with groups, lock, a filter by frame, and
  * drag-to-reorder — PowerPoint's pane, on a Labre canvas.
  *
  * The seam is shaped exactly like `ArtefactCatalogueService`, and was

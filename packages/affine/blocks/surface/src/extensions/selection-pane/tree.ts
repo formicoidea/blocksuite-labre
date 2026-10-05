@@ -1,3 +1,4 @@
+import { FrameBlockModel } from '@labre/affine-model';
 import { CanvasLocalVisibility } from '@labre/affine-shared/services';
 import { type BlockStdScope, LifeCycleWatcher } from '@labre/std';
 import {
@@ -121,10 +122,16 @@ function rawGroupOf(model: GfxModel): unknown {
  * ancestors (a frame's members beside loose elements) pay the full walk.
  */
 export function buildSelectionPaneTree(
-  models: readonly GfxModel[],
+  everything: readonly GfxModel[],
   hiddenLocally: ReadonlySet<string> = NOTHING_HIDDEN,
   layers: SelectionPaneLayers | null = null
 ): SelectionPaneNode[] {
+  // A frame is the filter's scope, never a row of the stack (ADR 0031,
+  // amendment of the product owner's review): its members are listed where
+  // they paint, the frame itself not at all.
+  const models = everything.filter(
+    model => !(model instanceof FrameBlockModel)
+  );
   const present = new Set<string>();
   const groupOf = new Map<GfxModel, unknown>();
   const indexOf = new Map<GfxModel, string>();

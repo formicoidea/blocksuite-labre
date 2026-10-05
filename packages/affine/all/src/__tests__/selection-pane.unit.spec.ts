@@ -7,7 +7,8 @@
  * integration suite drives that one with a real pointer):
  *
  * - the rows ARE the paint order, top first, with groups and mindmaps nested
- *   and frames NOT nested (a frame is a filter, never a container);
+ *   and frames NOT listed at all (a frame is the filter's scope, never a row
+ *   nor a container), and the filter offers frames and nothing else;
  * - every write refuses on a read-only document, writes nothing when nothing
  *   would change, and is one undo step;
  * - a row's padlock locks that row alone — never the toolbar's
@@ -22,10 +23,13 @@
  */
 import {
   buildSelectionPaneTree,
+  filterSelectionPaneTree,
   renamePaneGroup,
   reorderPaneElement,
   type SelectionPaneNode,
   SelectionPaneModel,
+  selectionPaneFilterMembers,
+  selectionPaneFilterTargets,
   setPaneElementsLocked,
   type SurfaceBlockModel,
 } from '@labre/affine-block-surface';
@@ -154,10 +158,14 @@ describe('the tree is the paint order', () => {
     expect(tree.every(row => row.layerId === '@default')).toBe(true);
   });
 
-  test('a frame is a row, never a container', () => {
+  test('a frame is not a row: it is what the list is filtered by', () => {
+    // ADR 0031, amendment of the product owner's review: a frame is the
+    // filter's scope, never an element of the stack. Its members stay rows,
+    // where they paint.
     const { store, surface, surfaceId } = createBoard();
+    const below = shape(surface, 'a0', 200);
     const inside = shape(surface, 'a2', 20);
-    const frame = store.addBlock(
+    store.addBlock(
       'affine:frame',
       {
         xywh: '[0,0,100,100]',
@@ -168,11 +176,19 @@ describe('the tree is the paint order', () => {
       surfaceId
     );
 
-    const tree = treeOf(gfxFor(store, surface));
+    expect(ids(treeOf(gfxFor(store, surface)))).toEqual([inside, below]);
+  });
 
-    expect(ids(tree)).toEqual([inside, frame]);
-    expect(tree.find(row => row.id === frame)!.children).toBeUndefined();
-    expect(tree.find(row => row.id === frame)!.kind).toBe('block');
+  test('a framework board stays an ordinary row', () => {
+    const { store, surface } = createBoard();
+    const board = surface.addElement({
+      type: 'c4Board',
+      xywh: '[0,0,400,300]',
+      index: 'a0',
+    });
+    const top = shape(surface, 'a1', 20);
+
+    expect(ids(treeOf(gfxFor(store, surface)))).toEqual([top, board]);
   });
 
   test('a row reports its own lock', () => {
@@ -181,6 +197,46 @@ describe('the tree is the paint order', () => {
     surface.updateElement(id, { lockedBySelf: true });
 
     expect(treeOf(gfxFor(store, surface))[0].locked).toBe(true);
+  });
+});
+
+describe('filter', () => {
+  test('offers the frames only, never a framework board', () => {
+    const { store, surface, surfaceId } = createBoard();
+    surface.addElement({ type: 'c4Board', xywh: '[0,0,400,300]' });
+    const frame = store.addBlock(
+      'affine:frame',
+      { xywh: '[0,0,100,100]', title: new Text('Slide') },
+      surfaceId
+    );
+    const std = stdFor(store, gfxFor(store, surface));
+
+    expect(selectionPaneFilterTargets(std)).toEqual([
+      { id: frame, kind: 'frame' },
+    ]);
+  });
+
+  test('narrows the rows to the frame’s members, the frame itself unlisted', () => {
+    const { store, surface, surfaceId } = createBoard();
+    const inside = shape(surface, 'a1', 20);
+    const outside = shape(surface, 'a2', 500);
+    const frame = store.addBlock(
+      'affine:frame',
+      {
+        xywh: '[0,0,100,100]',
+        index: 'a0',
+        title: new Text('Slide'),
+        childElementIds: { [inside]: true },
+      },
+      surfaceId
+    );
+    const gfx = gfxFor(store, surface);
+    const members = selectionPaneFilterMembers(stdFor(store, gfx), frame)!;
+
+    const rows = filterSelectionPaneTree(treeOf(gfx), members);
+
+    expect(ids(rows)).toEqual([inside]);
+    expect(ids(rows)).not.toContain(outside);
   });
 });
 
