@@ -1,5 +1,56 @@
 # @labre/affine-block-code
 
+## 0.44.0
+
+### Minor Changes
+
+- 227d893: The code block's language picker now starts with a "Plain Text" entry that
+  clears the block's language (no highlighting), shows the active mark when the
+  block has none, joins the recently-used order like any other language, and is
+  found by typing "plain", "text", "none" or its label. It reuses the existing
+  `com.labre.code.language.plain-text` key; no stored format changes.
+
+### Patch Changes
+
+- 2447500: The code block's language search now matches the display label as well as the
+  id and aliases, case-insensitively, ranking id and alias hits above label-only
+  hits, and no longer reorders the recently-used language list when the query is
+  empty. Switching language while a grammar is still loading no longer repaints
+  the block with the previous language's highlighting, and concurrent loads of
+  the same grammar share one request.
+- Updated dependencies [a7c4643]
+- Updated dependencies [871e571]
+- Updated dependencies [e13b46e]
+- Updated dependencies [68242dc]
+- Updated dependencies [11a7710]
+- Updated dependencies [11a7710]
+- Updated dependencies [4d12815]
+- Updated dependencies [2f4df91]
+- Updated dependencies [2447500]
+- Updated dependencies [5918f84]
+- Updated dependencies [900dade]
+- Updated dependencies [dc738fa]
+- Updated dependencies [e677a3b]
+- Updated dependencies [8ce6769]
+- Updated dependencies [2908a50]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [4d12815]
+- Updated dependencies [b6dc00a]
+  - @labre/affine-shared@0.44.0
+  - @labre/std@0.44.0
+  - @labre/affine-model@0.44.0
+  - @labre/affine-components@0.44.0
+  - @labre/affine-inline-preset@0.44.0
+  - @labre/affine-rich-text@0.44.0
+  - @labre/affine-inline-comment@0.44.0
+  - @labre/affine-inline-latex@0.44.0
+  - @labre/affine-inline-link@0.44.0
+  - @labre/affine-widget-slash-menu@0.44.0
+  - @labre/affine-gfx-turbo-renderer@0.44.0
+  - @labre/affine-ext-loader@0.44.0
+  - @labre/global@0.44.0
+  - @labre/store@0.44.0
+
 ## 0.43.1
 
 ### Patch Changes

@@ -1,5 +1,46 @@
 # @labre/affine-rich-text
 
+## 0.44.0
+
+### Minor Changes
+
+- b6dc00a: "Turn into" now offers Callout for a paragraph, a list item or a code block:
+  the callout takes the block's place, the text moves into a paragraph inside
+  it, the block's children move under that paragraph, and the caret lands in it.
+  One undo step; a conversion that cannot complete leaves every source block as
+  it was. The entry is hidden inside a callout, answers to the same
+  `enable_callout` feature flag as the slash-menu item, and disappears with
+  `{ callout: false }`: it is registered by `CalloutViewExtension` through the
+  new `TextConversionEntryExtension` of `@labre/affine-rich-text`, which the
+  "Turn into" menu reads beside the static `textConversionConfigs`. Its label
+  reuses `com.labre.callout.slash-menu.name` ("Callout"); no new key.
+
+### Patch Changes
+
+- Updated dependencies [a7c4643]
+- Updated dependencies [871e571]
+- Updated dependencies [e13b46e]
+- Updated dependencies [68242dc]
+- Updated dependencies [11a7710]
+- Updated dependencies [11a7710]
+- Updated dependencies [4d12815]
+- Updated dependencies [2f4df91]
+- Updated dependencies [2447500]
+- Updated dependencies [5918f84]
+- Updated dependencies [900dade]
+- Updated dependencies [dc738fa]
+- Updated dependencies [e677a3b]
+- Updated dependencies [8ce6769]
+- Updated dependencies [2908a50]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [4d12815]
+  - @labre/affine-shared@0.44.0
+  - @labre/std@0.44.0
+  - @labre/affine-model@0.44.0
+  - @labre/affine-components@0.44.0
+  - @labre/global@0.44.0
+  - @labre/store@0.44.0
+
 ## 0.43.1
 
 ### Patch Changes

@@ -1,5 +1,175 @@
 # @labre/affine-widget-edgeless-toolbar
 
+## 0.44.0
+
+### Minor Changes
+
+- 68242dc: Hide canvas elements for everyone (ADR 0031, stage 5). A new optional stored
+  field `hiddenForEveryone` (`true` or absent, never `false`) on every canvas
+  element and on the fifteen gfx block schemas: the element stays in the document,
+  in the selection pane (marked) and in what rules, legends and semantic exports
+  count, but no viewer paints or picks it, and the SVG / PNG exports leave it out.
+  It is not `hidden`, which mindmap collapse keeps owning: expanding a branch never
+  unhides a node hidden for everyone. Unhiding removes the key. New command
+  `canvas.visibility.hideForEveryone` (`hidden: false` shows again; refused on a
+  read-only document; one undo step), reached from the selection pane's new row
+  menu (right click, or the row's "more" button), whose entry is painted with the
+  theme warning tokens through a new `warning-item` menu-button class.
+  `CanvasVisibilityChanged` gains `scope: 'everyone'`. New in `@labre/std`:
+  `GfxController.hiddenForEveryone` (`GfxHiddenForEveryone`, the synced set the
+  paint and pick predicate reads) and `isStoredHiddenForEveryone(model)`.
+- 11a7710: Hide and delete a whole user layer (ADR 0031, stage 7). A layer row in the
+  selection pane gets an eye (hide the layer for yourself: nothing written,
+  remembered per document in `localStorage` under `localHiddenLayers`) and a menu
+  with "Hide for everyone" — one `hidden: true` on the layer's record, never a
+  write per member, painted with the theme warning tokens — and "Delete layer",
+  which removes the layer with everything in it in one undo step (not offered for
+  the default layer; a connector of another layer whose ends were there stays,
+  loose). `canvas.visibility.hideLocal` and `canvas.visibility.hideForEveryone`
+  accept `layerIds`; `canvas.visibility.showAll` also shows the layers you hid;
+  new command `canvas.layer.delete`. `gfx.localVisibility` gains
+  `registerLayers` / `hiddenLayerIds# @labre/affine-widget-edgeless-toolbar, and `GfxController.hiddenForEveryone`gains`layerIds# @labre/affine-widget-edgeless-toolbar: a model whose effective layer is hidden is not painted,
+  picked or exported, and rules still count it. The selection pane seam's row now
+  states what `null` leaves behind.
+- 11a7710: User layers on the canvas (ADR 0031, stage 6). The surface gains an optional
+  `layers` record (`SurfaceLayerRecord`: `name`, fractional `index`), and every
+  canvas element and gfx block an optional `layer` id (`undefined` = the default
+  layer, `'@default'`); stacking is layer rank first, then the existing
+  comparator, with a fast path that leaves a document without layers sorted
+  exactly as before. A group lives in one layer, stored on its outermost group;
+  frames hold elements from any layer; a dangling id reads as the default layer
+  and is never dropped. New elements, pasted blocks and imports land in the
+  viewer's active layer (session only, `CanvasActiveLayer`) unless they name a
+  layer of this surface. Bring forward / send backward stay inside the layer.
+  The selection pane lists layers as sections: create ("New layer"), rename in
+  place, reorder by drag, drop a row on a layer to move it there, collapse.
+  Commands `canvas.layer.create`, `.rename`, `.reorder`, `.moveElements`;
+  telemetry `CanvasLayerChanged`; the default layer name is seeded through the
+  new key `com.labre.layer.seed.name` ("Layer {{n}}"). The pane no longer lets a
+  pointer move over it reach the canvas.
+- 4d12815: Hide canvas elements for yourself only (ADR 0031, stage 3). Each row of the
+  selection pane gets an eye: a hidden element is no longer painted, picked by the
+  pointer or caught by the marquee on YOUR screen, and left out of your SVG and PNG
+  exports — nothing is written to the document, and nobody else's view, rules or
+  legends change. The row stays listed and selectable. The hide is remembered per
+  document in `localStorage` (`EditPropsStore`'s new `localHiddenElements`) and
+  pruned of deleted elements on load. New commands `canvas.visibility.hideLocal`
+  (with `hidden: false` to show again) and `canvas.visibility.showAll`, new
+  telemetry event `CanvasVisibilityChanged` (`target`, `scope: 'local'`, `hidden`,
+  `count`), new service `CanvasLocalVisibility`, and a per-editor hook
+  `gfx.localVisibility` in `@labre/std` that a host can read or register into.
+- 4d12815: A selection pane for the canvas (ADR 0031, stage 2). A new button in the edgeless
+  toolbar, and the `canvas.selectionPane.toggle` command in the palette, open a side
+  panel listing every element by stacking order, top first: groups and mind maps are
+  collapsible rows, a click selects on the canvas (shift / ctrl / cmd adds), a hover
+  highlights, the padlock locks that row alone (never grouping a multi-selection),
+  a double-click renames a group, a drag moves a row in the stack (one undo step),
+  and the list can be filtered by frame. A read-only document is
+  listed and refuses every write.
+
+  New seam `SelectionPaneExtension({ open, close })` / `SelectionPaneProvider`,
+  shaped like the artefact catalogue's: `null` removes the pane and its button. The
+  headless tree is `selectionPaneTree(std)` (ids only, z-order, top first) and the
+  actions are core commands a host pane runs through `runCommand`:
+  `canvas.element.reorder`, `canvas.element.lock`, `canvas.element.unlock`,
+  `canvas.group.rename`. New telemetry event `SelectionPaneOpened` (`source`). New
+  i18n keys under `com.labre.selection-pane.*` and `com.labre.command.canvas.*`.
+  Nothing new is written to documents.
+
+### Patch Changes
+
+- a12e678: The artefact catalogue side panel's header now matches the frame panel's (and
+  the selection pane's): a 36px row with no divider, the framework's name as a
+  14px secondary-text title, and the close as a 20px icon button instead of the
+  touch-sized ×. Only the header changes: the catalogue's rows, behaviour, seam,
+  commands and keys (`com.labre.catalogue.close` included) are unchanged.
+- 2908a50: In the selection pane (unreleased), "Layer 1" is shown from the start: a canvas
+  with no layer record lists one layer row, the default layer, named with the
+  first-layer seed (`com.labre.layer.seed.name`, n = 1) and holding every row,
+  and the headless `selectionPaneTree(std)` returns that same single
+  `'@default'` layer node, so a host-drawn pane shows the same thing. Nothing is
+  written to show it, on load or on opening the pane: the default layer's record
+  is written only by a gesture that needs it — renaming it, hiding it for
+  everyone, or creating a second layer (which keeps the name it shows). Its eye
+  hides it for you with nothing written, it is the active layer, and a row dropped
+  on it leaves any other layer. The default layer is the one that cannot be
+  deleted, so a canvas keeps one layer at least: its row menu has no delete, and
+  `canvas.layer.delete` is withdrawn (`when`) while it is the only layer. New
+  helper `userLayerName(std, id)`.
+- dfc4baa: The selection pane (unreleased) now looks and drags like the frame panel. Its
+  header is the frame panel's header — a 36px row, a secondary-text title and
+  20px icon buttons for new layer, filter and close — read from the new shared
+  `panelHeaderStyles` in `@labre/affine-shared/styles`, which the frame panel
+  uses too (its title colour now follows the theme's secondary-text token in
+  dark mode as well). A drag starts at 5px on either axis (the frame panel's
+  threshold, now `PANEL_DRAG_THRESHOLD_PX`), selects the row it picks up, shows
+  the row at its own width under the pointer, shows its cursor over the whole
+  editor and keeps Escape from closing the pane until the row is released.
+- c6ab710: In the selection pane (unreleased), a frame is an ordinary row again, listed at
+  its real place in the stack inside its layer, its members right above it as
+  siblings (never nested): the headless `selectionPaneTree(std)` carries a
+  `kind: 'block'`, `type: 'affine:frame'` node for each frame. A frame row shows
+  its title, renames in place through the new agent command `canvas.frame.rename`
+  (keys `com.labre.command.canvas.frame.rename`, "Rename frame", and
+  `com.labre.command.canvas.frame.rename.description`, "Give a frame a new
+  title."), has its eye, lock and row menu, and drags like any row. Under a frame
+  filter the list keeps that frame's own row with its members. Hiding or deleting
+  a layer hides or deletes the frames listed in it. Nothing stored changes.
+- dfc4baa: Selection pane fixes from the product owner's review (the pane is unreleased). A
+  row no longer shows a raw `com.labre.*` key: the ten Wardley roles and three EDGY
+  board roles that declared a `labelKey` with no `labelFallback` now carry their
+  English wording, and a role with no wording at all reads as its element type.
+  The filter offers frames only: `selectionPaneFilterTargets` answers frames
+  only, and the `com.labre.selection-pane.filter.board` key is gone.
+  Layer rows are listed whatever the filter (`filterSelectionPaneTree` keeps every
+  layer node); a layer the filter empties says "{{count}} hidden by the filter"
+  (new key `com.labre.selection-pane.layer.filtered`), and "New layer" opens the
+  new layer's name field, focused and scrolled into view. Dragging a row now shows
+  a ghost under the pointer and a line at the gap it would land in (the frame
+  panel's model); the gap under the last row is a target, a frame's members stand
+  for their frame, and a gap the row cannot go to shows no line and a
+  `not-allowed` cursor instead of failing silently.
+- dfc4baa: The selection pane's toolbar button (unreleased) no longer disappears when the
+  editor is narrow: like the frame and undo tools, it moves into the edgeless
+  toolbar's "more tools" menu, where its entry ("Selection pane", the existing
+  `com.labre.selection-pane.title` key) toggles the pane.
+- Updated dependencies [38c4a78]
+- Updated dependencies [1ab40a5]
+- Updated dependencies [c982522]
+- Updated dependencies [a7c4643]
+- Updated dependencies [871e571]
+- Updated dependencies [e13b46e]
+- Updated dependencies [68242dc]
+- Updated dependencies [11a7710]
+- Updated dependencies [11a7710]
+- Updated dependencies [4d12815]
+- Updated dependencies [2f4df91]
+- Updated dependencies [2447500]
+- Updated dependencies [5918f84]
+- Updated dependencies [900dade]
+- Updated dependencies [dc738fa]
+- Updated dependencies [e677a3b]
+- Updated dependencies [8ce6769]
+- Updated dependencies [c4cfd0e]
+- Updated dependencies [2908a50]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [c6ab710]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [4d12815]
+- Updated dependencies [e13b46e]
+- Updated dependencies [83fc2d3]
+- Updated dependencies [066b754]
+- Updated dependencies [b6dc00a]
+- Updated dependencies [33e4341]
+  - @labre/affine-block-surface@0.44.0
+  - @labre/affine-shared@0.44.0
+  - @labre/std@0.44.0
+  - @labre/affine-model@0.44.0
+  - @labre/affine-components@0.44.0
+  - @labre/affine-rich-text@0.44.0
+  - @labre/affine-ext-loader@0.44.0
+  - @labre/global@0.44.0
+
 ## 0.43.1
 
 ### Patch Changes

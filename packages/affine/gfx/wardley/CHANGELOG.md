@@ -1,5 +1,91 @@
 # @labre/affine-gfx-wardley
 
+## 0.44.0
+
+### Minor Changes
+
+- c982522: "Export SVG" now marks every element it draws with `data-labre-*` attributes (its id, type, role, bound, connector ends and group — ids and vocabulary only, never text) and stamps the file with `data-labre-svg="1"`, and Wardley's SVG import reads Labre's own export back as the same native map.
+- c4cfd0e: The reading panel now says where an artefact sits on its frame beyond Wardley:
+  a sub-domain on a Core Domain Chart reads its quadrant under "Zone", among the
+  quadrants of the chart's variant (classic or migration), and a BPMN flow object
+  or data shape inside a pool reads its lane under "Lane". A zone is named the way
+  the board paints it — a renamed quadrant or a lane's name wins over the
+  vocabulary — and a zone the board never names reads "Unnamed".
+  `ReadingProfile.frame.axis` is now optional (absent reads the frame in two
+  dimensions) and the frame declares its own `label` and `none` wordings, required;
+  the panel no longer hard-codes "Evolution phase". New keys for hosts:
+  `com.labre.core-domain.reading.field.zone`,
+  `com.labre.core-domain.reading.zone.none`, `com.labre.bpmn.reading.field.lane`,
+  `com.labre.bpmn.reading.lane.none`, `com.labre.reading.zone.unnamed`;
+  `com.labre.reading.field.phase` and `com.labre.reading.phase.none` now ship with
+  the Wardley bundle (same keys, same English). The map audit no longer reports a
+  zone of a variant the chart is not turned to; `backgroundZones`,
+  `backgroundZoneAt` and `backgroundPlotRatios` are the shared helpers.
+- f49246f: Wardley's "Import SVG sketch" reads a map no known tool marked when it can find the map's two axes: circles with a name beside them inside the plot become components and straight lines between two of them become dependencies, and nothing else is guessed; without axes the whole file arrives as a sketch and the report says that no map axes were found.
+- 33e4341: Wardley's "Import SVG sketch" now recognises a map exported by OnlineWardleyMaps and draws it as native Wardley elements — components, anchors, markets, ecosystems, climate arrows, pipelines, evolutions, inertia, notes, dependencies and the title — with anything else in the file arriving as a sketch in the same import (ADR 0032); the SVG sketch reader exposes `sanitizeSvg`, `sketchSvgTree` and `svgFrameOf` so a framework can claim part of a picture first, and BPMN's import is unchanged.
+- c56172a: Wardley's "Import SVG sketch" also recognises a map drawn by wardley-map-renderer, static or interactive output, and draws it as native Wardley elements — components, anchors, markets, ecosystems, standalone pipelines, evolution arrows, inertia, dependencies and the title — the renderer's legend and axes being redrawn by the native board.
+
+### Patch Changes
+
+- dfc4baa: Selection pane fixes from the product owner's review (the pane is unreleased). A
+  row no longer shows a raw `com.labre.*` key: the ten Wardley roles and three EDGY
+  board roles that declared a `labelKey` with no `labelFallback` now carry their
+  English wording, and a role with no wording at all reads as its element type.
+  The filter offers frames only: `selectionPaneFilterTargets` answers frames
+  only, and the `com.labre.selection-pane.filter.board` key is gone.
+  Layer rows are listed whatever the filter (`filterSelectionPaneTree` keeps every
+  layer node); a layer the filter empties says "{{count}} hidden by the filter"
+  (new key `com.labre.selection-pane.layer.filtered`), and "New layer" opens the
+  new layer's name field, focused and scrolled into view. Dragging a row now shows
+  a ghost under the pointer and a line at the gap it would land in (the frame
+  panel's model); the gap under the last row is a target, a frame's members stand
+  for their frame, and a gap the row cannot go to shows no line and a
+  `not-allowed` cursor instead of failing silently.
+- Updated dependencies [38c4a78]
+- Updated dependencies [1ab40a5]
+- Updated dependencies [c982522]
+- Updated dependencies [a7c4643]
+- Updated dependencies [871e571]
+- Updated dependencies [e13b46e]
+- Updated dependencies [68242dc]
+- Updated dependencies [11a7710]
+- Updated dependencies [11a7710]
+- Updated dependencies [4d12815]
+- Updated dependencies [2f4df91]
+- Updated dependencies [a12e678]
+- Updated dependencies [2447500]
+- Updated dependencies [5918f84]
+- Updated dependencies [900dade]
+- Updated dependencies [dc738fa]
+- Updated dependencies [2908a50]
+- Updated dependencies [e677a3b]
+- Updated dependencies [8ce6769]
+- Updated dependencies [c4cfd0e]
+- Updated dependencies [2908a50]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [c6ab710]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [4d12815]
+- Updated dependencies [e13b46e]
+- Updated dependencies [83fc2d3]
+- Updated dependencies [066b754]
+- Updated dependencies [33e4341]
+  - @labre/affine-block-surface@0.44.0
+  - @labre/affine-shared@0.44.0
+  - @labre/std@0.44.0
+  - @labre/affine-model@0.44.0
+  - @labre/affine-components@0.44.0
+  - @labre/affine-widget-edgeless-toolbar@0.44.0
+  - @labre/affine-gfx-group@0.44.0
+  - @labre/affine-gfx-shape@0.44.0
+  - @labre/affine-gfx-connector@0.44.0
+  - @labre/affine-gfx-template@0.44.0
+  - @labre/affine-gfx-pointer@0.44.0
+  - @labre/affine-ext-loader@0.44.0
+  - @labre/global@0.44.0
+  - @labre/store@0.44.0
+
 ## 0.43.1
 
 ### Patch Changes

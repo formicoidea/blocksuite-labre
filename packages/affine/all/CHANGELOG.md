@@ -1,5 +1,251 @@
 # @labre/affine
 
+## 0.44.0
+
+### Minor Changes
+
+- e13b46e: The canvas grid becomes a setting (ADR 0031, stage 4). New commands
+  `canvas.grid.toggle` (this viewer only, remembered per document in
+  `localStorage`, nothing written to the document) and
+  `canvas.grid.saveForEveryone` (stores the grid as the viewer sees it in the
+  surface's new optional `showGrid` prop, clears the saver's own override, refused
+  on a read-only document), on the palette and the agent. The nearest decision
+  wins: the viewer's toggle, then the document, then the host default — the new
+  optional `edgelessShowGrid` in `GeneralSettingSchema` — then the library
+  default, on. Off removes the grid from the canvas background and from the PNG
+  export; the edgeless preview and surface references follow the document's
+  setting only. New service `CanvasGrid`, helpers `resolveCanvasGrid` /
+  `documentShowsGrid`, telemetry event `CanvasGridToggled` (`scope`, `visible`).
+- 68242dc: Hide canvas elements for everyone (ADR 0031, stage 5). A new optional stored
+  field `hiddenForEveryone` (`true` or absent, never `false`) on every canvas
+  element and on the fifteen gfx block schemas: the element stays in the document,
+  in the selection pane (marked) and in what rules, legends and semantic exports
+  count, but no viewer paints or picks it, and the SVG / PNG exports leave it out.
+  It is not `hidden`, which mindmap collapse keeps owning: expanding a branch never
+  unhides a node hidden for everyone. Unhiding removes the key. New command
+  `canvas.visibility.hideForEveryone` (`hidden: false` shows again; refused on a
+  read-only document; one undo step), reached from the selection pane's new row
+  menu (right click, or the row's "more" button), whose entry is painted with the
+  theme warning tokens through a new `warning-item` menu-button class.
+  `CanvasVisibilityChanged` gains `scope: 'everyone'`. New in `@labre/std`:
+  `GfxController.hiddenForEveryone` (`GfxHiddenForEveryone`, the synced set the
+  paint and pick predicate reads) and `isStoredHiddenForEveryone(model)`.
+- 11a7710: Hide and delete a whole user layer (ADR 0031, stage 7). A layer row in the
+  selection pane gets an eye (hide the layer for yourself: nothing written,
+  remembered per document in `localStorage` under `localHiddenLayers`) and a menu
+  with "Hide for everyone" — one `hidden: true` on the layer's record, never a
+  write per member, painted with the theme warning tokens — and "Delete layer",
+  which removes the layer with everything in it in one undo step (not offered for
+  the default layer; a connector of another layer whose ends were there stays,
+  loose). `canvas.visibility.hideLocal` and `canvas.visibility.hideForEveryone`
+  accept `layerIds`; `canvas.visibility.showAll` also shows the layers you hid;
+  new command `canvas.layer.delete`. `gfx.localVisibility` gains
+  `registerLayers` / `hiddenLayerIds# @labre/affine, and `GfxController.hiddenForEveryone`gains`layerIds# @labre/affine: a model whose effective layer is hidden is not painted,
+  picked or exported, and rules still count it. The selection pane seam's row now
+  states what `null` leaves behind.
+- 11a7710: User layers on the canvas (ADR 0031, stage 6). The surface gains an optional
+  `layers` record (`SurfaceLayerRecord`: `name`, fractional `index`), and every
+  canvas element and gfx block an optional `layer` id (`undefined` = the default
+  layer, `'@default'`); stacking is layer rank first, then the existing
+  comparator, with a fast path that leaves a document without layers sorted
+  exactly as before. A group lives in one layer, stored on its outermost group;
+  frames hold elements from any layer; a dangling id reads as the default layer
+  and is never dropped. New elements, pasted blocks and imports land in the
+  viewer's active layer (session only, `CanvasActiveLayer`) unless they name a
+  layer of this surface. Bring forward / send backward stay inside the layer.
+  The selection pane lists layers as sections: create ("New layer"), rename in
+  place, reorder by drag, drop a row on a layer to move it there, collapse.
+  Commands `canvas.layer.create`, `.rename`, `.reorder`, `.moveElements`;
+  telemetry `CanvasLayerChanged`; the default layer name is seeded through the
+  new key `com.labre.layer.seed.name` ("Layer {{n}}"). The pane no longer lets a
+  pointer move over it reach the canvas.
+- 4d12815: Hide canvas elements for yourself only (ADR 0031, stage 3). Each row of the
+  selection pane gets an eye: a hidden element is no longer painted, picked by the
+  pointer or caught by the marquee on YOUR screen, and left out of your SVG and PNG
+  exports — nothing is written to the document, and nobody else's view, rules or
+  legends change. The row stays listed and selectable. The hide is remembered per
+  document in `localStorage` (`EditPropsStore`'s new `localHiddenElements`) and
+  pruned of deleted elements on load. New commands `canvas.visibility.hideLocal`
+  (with `hidden: false` to show again) and `canvas.visibility.showAll`, new
+  telemetry event `CanvasVisibilityChanged` (`target`, `scope: 'local'`, `hidden`,
+  `count`), new service `CanvasLocalVisibility`, and a per-editor hook
+  `gfx.localVisibility` in `@labre/std` that a host can read or register into.
+- e677a3b: Rich text gains overline (ADR 0030 §5), declared and painted the way
+  underline is: a new `overline` inline attribute (`OverlineInlineSpecExtension`,
+  `toggleOverline`), an Overline button in the format bar beside Underline (and
+  the slash menu's style items, which list the same formats), composed into the
+  run's `text-decoration`. No default keyboard chord: a host binds one through
+  the shortcuts pane. HTML export writes `text-decoration: overline` and HTML
+  import reads it back; Markdown cannot say it and drops it, keeping the words.
+  The attribute is affine-level only — the store's base text attributes are
+  unchanged — so an older client keeps the attribute in the document and paints
+  the run without the line. It reuses the key `com.labre.text-format.overline`
+  ("Overline").
+- c4cfd0e: The reading panel now says where an artefact sits on its frame beyond Wardley:
+  a sub-domain on a Core Domain Chart reads its quadrant under "Zone", among the
+  quadrants of the chart's variant (classic or migration), and a BPMN flow object
+  or data shape inside a pool reads its lane under "Lane". A zone is named the way
+  the board paints it — a renamed quadrant or a lane's name wins over the
+  vocabulary — and a zone the board never names reads "Unnamed".
+  `ReadingProfile.frame.axis` is now optional (absent reads the frame in two
+  dimensions) and the frame declares its own `label` and `none` wordings, required;
+  the panel no longer hard-codes "Evolution phase". New keys for hosts:
+  `com.labre.core-domain.reading.field.zone`,
+  `com.labre.core-domain.reading.zone.none`, `com.labre.bpmn.reading.field.lane`,
+  `com.labre.bpmn.reading.lane.none`, `com.labre.reading.zone.unnamed`;
+  `com.labre.reading.field.phase` and `com.labre.reading.phase.none` now ship with
+  the Wardley bundle (same keys, same English). The map audit no longer reports a
+  zone of a variant the chart is not turned to; `backgroundZones`,
+  `backgroundZoneAt` and `backgroundPlotRatios` are the shared helpers.
+- 4d12815: A selection pane for the canvas (ADR 0031, stage 2). A new button in the edgeless
+  toolbar, and the `canvas.selectionPane.toggle` command in the palette, open a side
+  panel listing every element by stacking order, top first: groups and mind maps are
+  collapsible rows, a click selects on the canvas (shift / ctrl / cmd adds), a hover
+  highlights, the padlock locks that row alone (never grouping a multi-selection),
+  a double-click renames a group, a drag moves a row in the stack (one undo step),
+  and the list can be filtered by frame. A read-only document is
+  listed and refuses every write.
+
+  New seam `SelectionPaneExtension({ open, close })` / `SelectionPaneProvider`,
+  shaped like the artefact catalogue's: `null` removes the pane and its button. The
+  headless tree is `selectionPaneTree(std)` (ids only, z-order, top first) and the
+  actions are core commands a host pane runs through `runCommand`:
+  `canvas.element.reorder`, `canvas.element.lock`, `canvas.element.unlock`,
+  `canvas.group.rename`. New telemetry event `SelectionPaneOpened` (`source`). New
+  i18n keys under `com.labre.selection-pane.*` and `com.labre.command.canvas.*`.
+  Nothing new is written to documents.
+
+- 83fc2d3: "Export SVG" in a board's "⋮" now asks what to include before it writes the
+  file: three switches, all on by default — "Framework elements" (the board, its
+  framework's artefacts and its legend), "Other shapes and strokes" and "Other
+  texts" — remembered for the session. Edgeless text blocks, which the text tool
+  creates by default, are now in the file as vector text. The palette, catalogue,
+  shortcut and agent paths still export everything without asking. New keys:
+  `com.labre.export.svg.option.framework`, `…option.shapes`, `…option.texts`,
+  `com.labre.export.svg.confirm` and `com.labre.export.svg.nothing`.
+
+### Patch Changes
+
+- Updated dependencies [38c4a78]
+- Updated dependencies [1ab40a5]
+- Updated dependencies [c982522]
+- Updated dependencies [a7c4643]
+- Updated dependencies [871e571]
+- Updated dependencies [e13b46e]
+- Updated dependencies [68242dc]
+- Updated dependencies [11a7710]
+- Updated dependencies [11a7710]
+- Updated dependencies [4d12815]
+- Updated dependencies [2f4df91]
+- Updated dependencies [a12e678]
+- Updated dependencies [2447500]
+- Updated dependencies [227d893]
+- Updated dependencies [5918f84]
+- Updated dependencies [088a1db]
+- Updated dependencies [900dade]
+- Updated dependencies [dc738fa]
+- Updated dependencies [2908a50]
+- Updated dependencies [e677a3b]
+- Updated dependencies [4697435]
+- Updated dependencies [8ce6769]
+- Updated dependencies [c4bec2c]
+- Updated dependencies [c4cfd0e]
+- Updated dependencies [6fa9539]
+- Updated dependencies [2908a50]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [c6ab710]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [4d12815]
+- Updated dependencies [e13b46e]
+- Updated dependencies [83fc2d3]
+- Updated dependencies [066b754]
+- Updated dependencies [b6dc00a]
+- Updated dependencies [fdf80c5]
+- Updated dependencies [f49246f]
+- Updated dependencies [33e4341]
+- Updated dependencies [c56172a]
+  - @labre/affine-block-root@0.44.0
+  - @labre/affine-block-surface@0.44.0
+  - @labre/affine-block-bookmark@0.44.0
+  - @labre/affine-block-embed@0.44.0
+  - @labre/affine-block-embed-doc@0.44.0
+  - @labre/affine-widget-edgeless-selected-rect@0.44.0
+  - @labre/affine-widget-note-slicer@0.44.0
+  - @labre/affine-gfx-wardley@0.44.0
+  - @labre/affine-gfx-bpmn@0.44.0
+  - @labre/affine-shared@0.44.0
+  - @labre/std@0.44.0
+  - @labre/affine-block-surface-ref@0.44.0
+  - @labre/affine-model@0.44.0
+  - @labre/affine-components@0.44.0
+  - @labre/affine-widget-edgeless-toolbar@0.44.0
+  - @labre/affine-gfx-group@0.44.0
+  - @labre/affine-gfx-text@0.44.0
+  - @labre/affine-gfx-shape@0.44.0
+  - @labre/affine-gfx-connector@0.44.0
+  - @labre/affine-block-edgeless-text@0.44.0
+  - @labre/affine-block-code@0.44.0
+  - @labre/affine-block-frame@0.44.0
+  - @labre/affine-gfx-template@0.44.0
+  - @labre/affine-block-image@0.44.0
+  - @labre/affine-block-attachment@0.44.0
+  - @labre/affine-inline-preset@0.44.0
+  - @labre/affine-block-latex@0.44.0
+  - @labre/affine-gfx-ddd-core-domain@0.44.0
+  - @labre/affine-fragment-frame-panel@0.44.0
+  - @labre/affine-gfx-edgy@0.44.0
+  - @labre/affine-block-callout@0.44.0
+  - @labre/affine-rich-text@0.44.0
+  - @labre/affine-gfx-uml@0.44.0
+  - @labre/affine-block-note@0.44.0
+  - @labre/affine-fragment-doc-title@0.44.0
+  - @labre/affine-gfx-brush@0.44.0
+  - @labre/affine-gfx-c4@0.44.0
+  - @labre/affine-gfx-cynefin-estuarine@0.44.0
+  - @labre/affine-gfx-ddd-aggregate@0.44.0
+  - @labre/affine-gfx-ddd-context-map@0.44.0
+  - @labre/affine-gfx-ddd-event-storming@0.44.0
+  - @labre/affine-gfx-ddd-shared@0.44.0
+  - @labre/affine-gfx-link@0.44.0
+  - @labre/affine-gfx-mindmap@0.44.0
+  - @labre/affine-gfx-note@0.44.0
+  - @labre/affine-gfx-pointer@0.44.0
+  - @labre/affine-widget-drag-handle@0.44.0
+  - @labre/affine-widget-edgeless-auto-connect@0.44.0
+  - @labre/affine-widget-edgeless-dragging-area@0.44.0
+  - @labre/affine-widget-edgeless-zoom-toolbar@0.44.0
+  - @labre/affine-widget-frame-title@0.44.0
+  - @labre/affine-widget-keyboard-toolbar@0.44.0
+  - @labre/affine-widget-remote-selection@0.44.0
+  - @labre/affine-widget-toolbar@0.44.0
+  - @labre/affine-block-data-view@0.44.0
+  - @labre/affine-block-database@0.44.0
+  - @labre/affine-block-divider@0.44.0
+  - @labre/affine-block-list@0.44.0
+  - @labre/affine-block-paragraph@0.44.0
+  - @labre/affine-block-table@0.44.0
+  - @labre/data-view@0.44.0
+  - @labre/affine-foundation@0.44.0
+  - @labre/affine-fragment-adapter-panel@0.44.0
+  - @labre/affine-fragment-outline@0.44.0
+  - @labre/affine-inline-comment@0.44.0
+  - @labre/affine-inline-footnote@0.44.0
+  - @labre/affine-inline-latex@0.44.0
+  - @labre/affine-inline-link@0.44.0
+  - @labre/affine-inline-mention@0.44.0
+  - @labre/affine-inline-reference@0.44.0
+  - @labre/affine-widget-linked-doc@0.44.0
+  - @labre/affine-widget-page-dragging-area@0.44.0
+  - @labre/affine-widget-scroll-anchoring@0.44.0
+  - @labre/affine-widget-slash-menu@0.44.0
+  - @labre/affine-widget-viewport-overlay@0.44.0
+  - @labre/affine-gfx-turbo-renderer@0.44.0
+  - @labre/affine-ext-loader@0.44.0
+  - @labre/global@0.44.0
+  - @labre/store@0.44.0
+  - @labre/sync@0.44.0
+
 ## 0.43.1
 
 ### Patch Changes

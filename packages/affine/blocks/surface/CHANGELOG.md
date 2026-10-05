@@ -1,5 +1,238 @@
 # @labre/affine-block-surface
 
+## 0.44.0
+
+### Minor Changes
+
+- 1ab40a5: Behaviour change on move: a framework board is no longer pushed back under the
+  elements it covers when the user moves it. A board is still placed under what it
+  covers when it is created, pasted, duplicated, inserted from a template or
+  imported, and anything dropped or moved onto a board is still raised above it;
+  but after that a board's stacking is the user's, so a board raised above an
+  artefact (from the selection pane or with "bring forward") stays there when it
+  is dragged, and a board moved over free elements now covers them. Existing
+  documents paint exactly as before; nothing stored changes (ADR 0033).
+- c982522: "Export SVG" now marks every element it draws with `data-labre-*` attributes (its id, type, role, bound, connector ends and group — ids and vocabulary only, never text) and stamps the file with `data-labre-svg="1"`, and Wardley's SVG import reads Labre's own export back as the same native map.
+- e13b46e: The canvas grid becomes a setting (ADR 0031, stage 4). New commands
+  `canvas.grid.toggle` (this viewer only, remembered per document in
+  `localStorage`, nothing written to the document) and
+  `canvas.grid.saveForEveryone` (stores the grid as the viewer sees it in the
+  surface's new optional `showGrid` prop, clears the saver's own override, refused
+  on a read-only document), on the palette and the agent. The nearest decision
+  wins: the viewer's toggle, then the document, then the host default — the new
+  optional `edgelessShowGrid` in `GeneralSettingSchema` — then the library
+  default, on. Off removes the grid from the canvas background and from the PNG
+  export; the edgeless preview and surface references follow the document's
+  setting only. New service `CanvasGrid`, helpers `resolveCanvasGrid` /
+  `documentShowsGrid`, telemetry event `CanvasGridToggled` (`scope`, `visible`).
+- 68242dc: Hide canvas elements for everyone (ADR 0031, stage 5). A new optional stored
+  field `hiddenForEveryone` (`true` or absent, never `false`) on every canvas
+  element and on the fifteen gfx block schemas: the element stays in the document,
+  in the selection pane (marked) and in what rules, legends and semantic exports
+  count, but no viewer paints or picks it, and the SVG / PNG exports leave it out.
+  It is not `hidden`, which mindmap collapse keeps owning: expanding a branch never
+  unhides a node hidden for everyone. Unhiding removes the key. New command
+  `canvas.visibility.hideForEveryone` (`hidden: false` shows again; refused on a
+  read-only document; one undo step), reached from the selection pane's new row
+  menu (right click, or the row's "more" button), whose entry is painted with the
+  theme warning tokens through a new `warning-item` menu-button class.
+  `CanvasVisibilityChanged` gains `scope: 'everyone'`. New in `@labre/std`:
+  `GfxController.hiddenForEveryone` (`GfxHiddenForEveryone`, the synced set the
+  paint and pick predicate reads) and `isStoredHiddenForEveryone(model)`.
+- 11a7710: Hide and delete a whole user layer (ADR 0031, stage 7). A layer row in the
+  selection pane gets an eye (hide the layer for yourself: nothing written,
+  remembered per document in `localStorage` under `localHiddenLayers`) and a menu
+  with "Hide for everyone" — one `hidden: true` on the layer's record, never a
+  write per member, painted with the theme warning tokens — and "Delete layer",
+  which removes the layer with everything in it in one undo step (not offered for
+  the default layer; a connector of another layer whose ends were there stays,
+  loose). `canvas.visibility.hideLocal` and `canvas.visibility.hideForEveryone`
+  accept `layerIds`; `canvas.visibility.showAll` also shows the layers you hid;
+  new command `canvas.layer.delete`. `gfx.localVisibility` gains
+  `registerLayers` / `hiddenLayerIds# @labre/affine-block-surface, and `GfxController.hiddenForEveryone`gains`layerIds# @labre/affine-block-surface: a model whose effective layer is hidden is not painted,
+  picked or exported, and rules still count it. The selection pane seam's row now
+  states what `null` leaves behind.
+- 11a7710: User layers on the canvas (ADR 0031, stage 6). The surface gains an optional
+  `layers` record (`SurfaceLayerRecord`: `name`, fractional `index`), and every
+  canvas element and gfx block an optional `layer` id (`undefined` = the default
+  layer, `'@default'`); stacking is layer rank first, then the existing
+  comparator, with a fast path that leaves a document without layers sorted
+  exactly as before. A group lives in one layer, stored on its outermost group;
+  frames hold elements from any layer; a dangling id reads as the default layer
+  and is never dropped. New elements, pasted blocks and imports land in the
+  viewer's active layer (session only, `CanvasActiveLayer`) unless they name a
+  layer of this surface. Bring forward / send backward stay inside the layer.
+  The selection pane lists layers as sections: create ("New layer"), rename in
+  place, reorder by drag, drop a row on a layer to move it there, collapse.
+  Commands `canvas.layer.create`, `.rename`, `.reorder`, `.moveElements`;
+  telemetry `CanvasLayerChanged`; the default layer name is seeded through the
+  new key `com.labre.layer.seed.name` ("Layer {{n}}"). The pane no longer lets a
+  pointer move over it reach the canvas.
+- 4d12815: Hide canvas elements for yourself only (ADR 0031, stage 3). Each row of the
+  selection pane gets an eye: a hidden element is no longer painted, picked by the
+  pointer or caught by the marquee on YOUR screen, and left out of your SVG and PNG
+  exports — nothing is written to the document, and nobody else's view, rules or
+  legends change. The row stays listed and selectable. The hide is remembered per
+  document in `localStorage` (`EditPropsStore`'s new `localHiddenElements`) and
+  pruned of deleted elements on load. New commands `canvas.visibility.hideLocal`
+  (with `hidden: false` to show again) and `canvas.visibility.showAll`, new
+  telemetry event `CanvasVisibilityChanged` (`target`, `scope: 'local'`, `hidden`,
+  `count`), new service `CanvasLocalVisibility`, and a per-editor hook
+  `gfx.localVisibility` in `@labre/std` that a host can read or register into.
+- 900dade: Dragging elements on the canvas towards the edge of the viewport now pans the
+  board, as the selection rectangle already did: within 20 px of the edge the
+  viewport keeps scrolling while the pointer is held there, the dragged elements
+  stay under the pointer, and the pan stops on release. The gesture is still one
+  undo step; nothing pans on a readonly board or for a locked element. An element
+  move also no longer snaps back to where it started when the board is panned
+  under it (wheel or auto-pan).
+- c4cfd0e: The reading panel now says where an artefact sits on its frame beyond Wardley:
+  a sub-domain on a Core Domain Chart reads its quadrant under "Zone", among the
+  quadrants of the chart's variant (classic or migration), and a BPMN flow object
+  or data shape inside a pool reads its lane under "Lane". A zone is named the way
+  the board paints it — a renamed quadrant or a lane's name wins over the
+  vocabulary — and a zone the board never names reads "Unnamed".
+  `ReadingProfile.frame.axis` is now optional (absent reads the frame in two
+  dimensions) and the frame declares its own `label` and `none` wordings, required;
+  the panel no longer hard-codes "Evolution phase". New keys for hosts:
+  `com.labre.core-domain.reading.field.zone`,
+  `com.labre.core-domain.reading.zone.none`, `com.labre.bpmn.reading.field.lane`,
+  `com.labre.bpmn.reading.lane.none`, `com.labre.reading.zone.unnamed`;
+  `com.labre.reading.field.phase` and `com.labre.reading.phase.none` now ship with
+  the Wardley bundle (same keys, same English). The map audit no longer reports a
+  zone of a variant the chart is not turned to; `backgroundZones`,
+  `backgroundZoneAt` and `backgroundPlotRatios` are the shared helpers.
+- 4d12815: A selection pane for the canvas (ADR 0031, stage 2). A new button in the edgeless
+  toolbar, and the `canvas.selectionPane.toggle` command in the palette, open a side
+  panel listing every element by stacking order, top first: groups and mind maps are
+  collapsible rows, a click selects on the canvas (shift / ctrl / cmd adds), a hover
+  highlights, the padlock locks that row alone (never grouping a multi-selection),
+  a double-click renames a group, a drag moves a row in the stack (one undo step),
+  and the list can be filtered by frame. A read-only document is
+  listed and refuses every write.
+
+  New seam `SelectionPaneExtension({ open, close })` / `SelectionPaneProvider`,
+  shaped like the artefact catalogue's: `null` removes the pane and its button. The
+  headless tree is `selectionPaneTree(std)` (ids only, z-order, top first) and the
+  actions are core commands a host pane runs through `runCommand`:
+  `canvas.element.reorder`, `canvas.element.lock`, `canvas.element.unlock`,
+  `canvas.group.rename`. New telemetry event `SelectionPaneOpened` (`source`). New
+  i18n keys under `com.labre.selection-pane.*` and `com.labre.command.canvas.*`.
+  Nothing new is written to documents.
+
+- 83fc2d3: "Export SVG" in a board's "⋮" now asks what to include before it writes the
+  file: three switches, all on by default — "Framework elements" (the board, its
+  framework's artefacts and its legend), "Other shapes and strokes" and "Other
+  texts" — remembered for the session. Edgeless text blocks, which the text tool
+  creates by default, are now in the file as vector text. The palette, catalogue,
+  shortcut and agent paths still export everything without asking. New keys:
+  `com.labre.export.svg.option.framework`, `…option.shapes`, `…option.texts`,
+  `com.labre.export.svg.confirm` and `com.labre.export.svg.nothing`.
+- 33e4341: Wardley's "Import SVG sketch" now recognises a map exported by OnlineWardleyMaps and draws it as native Wardley elements — components, anchors, markets, ecosystems, climate arrows, pipelines, evolutions, inertia, notes, dependencies and the title — with anything else in the file arriving as a sketch in the same import (ADR 0032); the SVG sketch reader exposes `sanitizeSvg`, `sketchSvgTree` and `svgFrameOf` so a framework can claim part of a picture first, and BPMN's import is unchanged.
+
+### Patch Changes
+
+- 38c4a78: With user layers (unreleased), a duplicated, alt-dragged or copy-pasted frame,
+  image, attachment, bookmark, embed or other canvas block now stays in its
+  source's layer, as elements, notes and edgeless texts already did, instead of
+  landing in the viewer's active layer; a copy of a block hidden for everyone
+  stays hidden. Duplicate (Mod+D) and alt-drag keep the copy of an element or a
+  block of the default layer in the default layer too (ADR 0031 amendment),
+  while a paste, which cannot tell the default layer from another document,
+  still lands in the active layer unless it names a layer of this document.
+  A block made from another one also lands beside it: the note or shape an
+  auto-complete arrow clones, the note the slicer splits off, the block that replaces a link
+  when its view changes, a linked doc turned into a synced doc and back, and the
+  note "Duplicate as note" puts beside a synced doc. `sourceLayerOf` is exported
+  beside `applyCreationLayer` for host code doing the same.
+
+  Behaviour change on a released feature, independent of layers: an alt+drag
+  clone is now ONE undo step. The first Ctrl+Z used to only move the copy back
+  onto its source, so the copy seemed to survive, and a second one removed it;
+  now the first removes the copy and leaves the source where it was. A plain
+  drag is still its own undo step, unchanged.
+
+- 871e571: PNG/PDF export and "copy as image" no longer fail under a theme written in
+  `oklch()` (or any colour html2canvas cannot parse, including the library's own
+  `color-mix()`): the rasterised clone's computed colours, the page background and
+  the `backgroundColor` option are converted to `rgb()` / `rgba()` first. New
+  `normalizeCanvasExportColors` and `toLegacyColors` in `@labre/affine-shared/utils`.
+- 2908a50: In the selection pane (unreleased), "Layer 1" is shown from the start: a canvas
+  with no layer record lists one layer row, the default layer, named with the
+  first-layer seed (`com.labre.layer.seed.name`, n = 1) and holding every row,
+  and the headless `selectionPaneTree(std)` returns that same single
+  `'@default'` layer node, so a host-drawn pane shows the same thing. Nothing is
+  written to show it, on load or on opening the pane: the default layer's record
+  is written only by a gesture that needs it — renaming it, hiding it for
+  everyone, or creating a second layer (which keeps the name it shows). Its eye
+  hides it for you with nothing written, it is the active layer, and a row dropped
+  on it leaves any other layer. The default layer is the one that cannot be
+  deleted, so a canvas keeps one layer at least: its row menu has no delete, and
+  `canvas.layer.delete` is withdrawn (`when`) while it is the only layer. New
+  helper `userLayerName(std, id)`.
+- c6ab710: In the selection pane (unreleased), a frame is an ordinary row again, listed at
+  its real place in the stack inside its layer, its members right above it as
+  siblings (never nested): the headless `selectionPaneTree(std)` carries a
+  `kind: 'block'`, `type: 'affine:frame'` node for each frame. A frame row shows
+  its title, renames in place through the new agent command `canvas.frame.rename`
+  (keys `com.labre.command.canvas.frame.rename`, "Rename frame", and
+  `com.labre.command.canvas.frame.rename.description`, "Give a frame a new
+  title."), has its eye, lock and row menu, and drags like any row. Under a frame
+  filter the list keeps that frame's own row with its members. Hiding or deleting
+  a layer hides or deletes the frames listed in it. Nothing stored changes.
+- dfc4baa: Selection pane fixes from the product owner's review (the pane is unreleased). A
+  row no longer shows a raw `com.labre.*` key: the ten Wardley roles and three EDGY
+  board roles that declared a `labelKey` with no `labelFallback` now carry their
+  English wording, and a role with no wording at all reads as its element type.
+  The filter offers frames only: `selectionPaneFilterTargets` answers frames
+  only, and the `com.labre.selection-pane.filter.board` key is gone.
+  Layer rows are listed whatever the filter (`filterSelectionPaneTree` keeps every
+  layer node); a layer the filter empties says "{{count}} hidden by the filter"
+  (new key `com.labre.selection-pane.layer.filtered`), and "New layer" opens the
+  new layer's name field, focused and scrolled into view. Dragging a row now shows
+  a ghost under the pointer and a line at the gap it would land in (the frame
+  panel's model); the gap under the last row is a target, a frame's members stand
+  for their frame, and a gap the row cannot go to shows no line and a
+  `not-allowed` cursor instead of failing silently.
+- e13b46e: A whole-document snapshot (doc copy, template insertion, export / import) no
+  longer drops the `affine:surface` block's props other than `elements`: the
+  surface transformer now carries every other prop through both directions
+  unchanged, unknown keys included, so the user layers and the shared grid setting
+  of ADR 0031 survive a snapshot. Snapshots written before this fix load exactly
+  as before.
+- 066b754: "Export SVG" now writes every fill, stroke and gradient stop as an SVG 1.1
+  paint: a translucent colour (the Wardley area and pipeline washes, the DDD
+  zones) leaves as `rgb()` plus `fill-opacity` / `stroke-opacity` / `stop-opacity`
+  instead of an 8-digit hex, and `transparent` leaves as `none`, so PowerPoint and
+  other SVG 1.1 importers keep the board's colours instead of substituting their
+  theme colour. Stored values are unchanged.
+- Updated dependencies [a7c4643]
+- Updated dependencies [871e571]
+- Updated dependencies [e13b46e]
+- Updated dependencies [68242dc]
+- Updated dependencies [11a7710]
+- Updated dependencies [11a7710]
+- Updated dependencies [4d12815]
+- Updated dependencies [2f4df91]
+- Updated dependencies [2447500]
+- Updated dependencies [5918f84]
+- Updated dependencies [900dade]
+- Updated dependencies [dc738fa]
+- Updated dependencies [e677a3b]
+- Updated dependencies [8ce6769]
+- Updated dependencies [2908a50]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [4d12815]
+- Updated dependencies [b6dc00a]
+  - @labre/affine-shared@0.44.0
+  - @labre/std@0.44.0
+  - @labre/affine-model@0.44.0
+  - @labre/affine-components@0.44.0
+  - @labre/affine-rich-text@0.44.0
+  - @labre/affine-ext-loader@0.44.0
+  - @labre/global@0.44.0
+  - @labre/store@0.44.0
+
 ## 0.43.1
 
 ### Patch Changes

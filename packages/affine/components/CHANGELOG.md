@@ -1,5 +1,68 @@
 # @labre/affine-components
 
+## 0.44.0
+
+### Minor Changes
+
+- 68242dc: Hide canvas elements for everyone (ADR 0031, stage 5). A new optional stored
+  field `hiddenForEveryone` (`true` or absent, never `false`) on every canvas
+  element and on the fifteen gfx block schemas: the element stays in the document,
+  in the selection pane (marked) and in what rules, legends and semantic exports
+  count, but no viewer paints or picks it, and the SVG / PNG exports leave it out.
+  It is not `hidden`, which mindmap collapse keeps owning: expanding a branch never
+  unhides a node hidden for everyone. Unhiding removes the key. New command
+  `canvas.visibility.hideForEveryone` (`hidden: false` shows again; refused on a
+  read-only document; one undo step), reached from the selection pane's new row
+  menu (right click, or the row's "more" button), whose entry is painted with the
+  theme warning tokens through a new `warning-item` menu-button class.
+  `CanvasVisibilityChanged` gains `scope: 'everyone'`. New in `@labre/std`:
+  `GfxController.hiddenForEveryone` (`GfxHiddenForEveryone`, the synced set the
+  paint and pick predicate reads) and `isStoredHiddenForEveryone(model)`.
+- 2f4df91: Canvas text can be underlined and overlined (ADR 0030). A canvas text, a
+  shape's text and a connector's labels gain one optional stored field,
+  `textDecoration` (`TextDecoration`: `none`, `underline`, `overline`,
+  `underline overline` — an append-only CSS token list, read token by token so a
+  future token is skipped rather than the whole value), absent until the author
+  sets it: documents drawn before this change store and paint exactly as they
+  did, and nothing is migrated. The text toolbar of a canvas text, a shape and a
+  connector gains two toggles, Underline and Overline, each one undo step; the
+  line is painted under the measured words by the three canvas renderers (so the
+  SVG export carries it) and shown as CSS by the overlay editors and the
+  connector DOM renderer. A decoration is not remembered as the last-used text
+  style. New key for hosts to translate: `com.labre.text-format.overline`
+  ("Overline"); the underline toggle reuses `com.labre.text-format.underline`.
+
+### Patch Changes
+
+- 2447500: The code block's language search now matches the display label as well as the
+  id and aliases, case-insensitively, ranking id and alias hits above label-only
+  hits, and no longer reorders the recently-used language list when the query is
+  empty. Switching language while a grammar is still loading no longer repaints
+  the block with the previous language's highlighting, and concurrent loads of
+  the same grammar share one request.
+- Updated dependencies [a7c4643]
+- Updated dependencies [871e571]
+- Updated dependencies [e13b46e]
+- Updated dependencies [68242dc]
+- Updated dependencies [11a7710]
+- Updated dependencies [11a7710]
+- Updated dependencies [4d12815]
+- Updated dependencies [2f4df91]
+- Updated dependencies [5918f84]
+- Updated dependencies [900dade]
+- Updated dependencies [dc738fa]
+- Updated dependencies [e677a3b]
+- Updated dependencies [8ce6769]
+- Updated dependencies [2908a50]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [4d12815]
+  - @labre/affine-shared@0.44.0
+  - @labre/std@0.44.0
+  - @labre/affine-model@0.44.0
+  - @labre/global@0.44.0
+  - @labre/store@0.44.0
+  - @labre/sync@0.44.0
+
 ## 0.43.1
 
 ### Patch Changes

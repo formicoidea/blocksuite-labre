@@ -1,5 +1,195 @@
 # @labre/affine-shared
 
+## 0.44.0
+
+### Minor Changes
+
+- a7c4643: BPMN symbols now carry their name where it can be read. Events, gateways, data
+  objects and data stores are drawn with their name as a separate text centred
+  under the symbol, grouped with it — as BPMN draws them — instead of squeezed
+  inside a 56-unit ring or a 72-unit diamond; a new one is seeded with the name of
+  its type ("Start event", "Exclusive gateway"…), under the new keys
+  `com.labre.bpmn.seed.<kind>` for hosts to translate. Double-click the text to
+  rename it; morphing the group changes the symbol and keeps a name you typed.
+  Activities (task, user task, service task, sub-process, call activity) are
+  drawn 1.5× larger, 180×108, so their inscribed name fits at 18 units. BPMN
+  nodes also get the shape toolbar. `.bpmn` import and export read and write the
+  grouped name; documents drawn before this change are not migrated and keep
+  painting, editing and exporting their inner text.
+
+  New framework rule R38 (ADR 0029): a label is inscribed only when "Hello World"
+  at 18 units fits the symbol at its creation size, otherwise it gravitates.
+  `fitsInscribedLabel` in `@labre/affine-shared/utils` is the fit test.
+
+- e13b46e: The canvas grid becomes a setting (ADR 0031, stage 4). New commands
+  `canvas.grid.toggle` (this viewer only, remembered per document in
+  `localStorage`, nothing written to the document) and
+  `canvas.grid.saveForEveryone` (stores the grid as the viewer sees it in the
+  surface's new optional `showGrid` prop, clears the saver's own override, refused
+  on a read-only document), on the palette and the agent. The nearest decision
+  wins: the viewer's toggle, then the document, then the host default — the new
+  optional `edgelessShowGrid` in `GeneralSettingSchema` — then the library
+  default, on. Off removes the grid from the canvas background and from the PNG
+  export; the edgeless preview and surface references follow the document's
+  setting only. New service `CanvasGrid`, helpers `resolveCanvasGrid` /
+  `documentShowsGrid`, telemetry event `CanvasGridToggled` (`scope`, `visible`).
+- 68242dc: Hide canvas elements for everyone (ADR 0031, stage 5). A new optional stored
+  field `hiddenForEveryone` (`true` or absent, never `false`) on every canvas
+  element and on the fifteen gfx block schemas: the element stays in the document,
+  in the selection pane (marked) and in what rules, legends and semantic exports
+  count, but no viewer paints or picks it, and the SVG / PNG exports leave it out.
+  It is not `hidden`, which mindmap collapse keeps owning: expanding a branch never
+  unhides a node hidden for everyone. Unhiding removes the key. New command
+  `canvas.visibility.hideForEveryone` (`hidden: false` shows again; refused on a
+  read-only document; one undo step), reached from the selection pane's new row
+  menu (right click, or the row's "more" button), whose entry is painted with the
+  theme warning tokens through a new `warning-item` menu-button class.
+  `CanvasVisibilityChanged` gains `scope: 'everyone'`. New in `@labre/std`:
+  `GfxController.hiddenForEveryone` (`GfxHiddenForEveryone`, the synced set the
+  paint and pick predicate reads) and `isStoredHiddenForEveryone(model)`.
+- 11a7710: Hide and delete a whole user layer (ADR 0031, stage 7). A layer row in the
+  selection pane gets an eye (hide the layer for yourself: nothing written,
+  remembered per document in `localStorage` under `localHiddenLayers`) and a menu
+  with "Hide for everyone" — one `hidden: true` on the layer's record, never a
+  write per member, painted with the theme warning tokens — and "Delete layer",
+  which removes the layer with everything in it in one undo step (not offered for
+  the default layer; a connector of another layer whose ends were there stays,
+  loose). `canvas.visibility.hideLocal` and `canvas.visibility.hideForEveryone`
+  accept `layerIds`; `canvas.visibility.showAll` also shows the layers you hid;
+  new command `canvas.layer.delete`. `gfx.localVisibility` gains
+  `registerLayers` / `hiddenLayerIds# @labre/affine-shared, and `GfxController.hiddenForEveryone`gains`layerIds# @labre/affine-shared: a model whose effective layer is hidden is not painted,
+  picked or exported, and rules still count it. The selection pane seam's row now
+  states what `null` leaves behind.
+- 11a7710: User layers on the canvas (ADR 0031, stage 6). The surface gains an optional
+  `layers` record (`SurfaceLayerRecord`: `name`, fractional `index`), and every
+  canvas element and gfx block an optional `layer` id (`undefined` = the default
+  layer, `'@default'`); stacking is layer rank first, then the existing
+  comparator, with a fast path that leaves a document without layers sorted
+  exactly as before. A group lives in one layer, stored on its outermost group;
+  frames hold elements from any layer; a dangling id reads as the default layer
+  and is never dropped. New elements, pasted blocks and imports land in the
+  viewer's active layer (session only, `CanvasActiveLayer`) unless they name a
+  layer of this surface. Bring forward / send backward stay inside the layer.
+  The selection pane lists layers as sections: create ("New layer"), rename in
+  place, reorder by drag, drop a row on a layer to move it there, collapse.
+  Commands `canvas.layer.create`, `.rename`, `.reorder`, `.moveElements`;
+  telemetry `CanvasLayerChanged`; the default layer name is seeded through the
+  new key `com.labre.layer.seed.name` ("Layer {{n}}"). The pane no longer lets a
+  pointer move over it reach the canvas.
+- 4d12815: Hide canvas elements for yourself only (ADR 0031, stage 3). Each row of the
+  selection pane gets an eye: a hidden element is no longer painted, picked by the
+  pointer or caught by the marquee on YOUR screen, and left out of your SVG and PNG
+  exports — nothing is written to the document, and nobody else's view, rules or
+  legends change. The row stays listed and selectable. The hide is remembered per
+  document in `localStorage` (`EditPropsStore`'s new `localHiddenElements`) and
+  pruned of deleted elements on load. New commands `canvas.visibility.hideLocal`
+  (with `hidden: false` to show again) and `canvas.visibility.showAll`, new
+  telemetry event `CanvasVisibilityChanged` (`target`, `scope: 'local'`, `hidden`,
+  `count`), new service `CanvasLocalVisibility`, and a per-editor hook
+  `gfx.localVisibility` in `@labre/std` that a host can read or register into.
+- 2f4df91: Canvas text can be underlined and overlined (ADR 0030). A canvas text, a
+  shape's text and a connector's labels gain one optional stored field,
+  `textDecoration` (`TextDecoration`: `none`, `underline`, `overline`,
+  `underline overline` — an append-only CSS token list, read token by token so a
+  future token is skipped rather than the whole value), absent until the author
+  sets it: documents drawn before this change store and paint exactly as they
+  did, and nothing is migrated. The text toolbar of a canvas text, a shape and a
+  connector gains two toggles, Underline and Overline, each one undo step; the
+  line is painted under the measured words by the three canvas renderers (so the
+  SVG export carries it) and shown as CSS by the overlay editors and the
+  connector DOM renderer. A decoration is not remembered as the last-used text
+  style. New key for hosts to translate: `com.labre.text-format.overline`
+  ("Overline"); the underline toggle reuses `com.labre.text-format.underline`.
+- e677a3b: Rich text gains overline (ADR 0030 §5), declared and painted the way
+  underline is: a new `overline` inline attribute (`OverlineInlineSpecExtension`,
+  `toggleOverline`), an Overline button in the format bar beside Underline (and
+  the slash menu's style items, which list the same formats), composed into the
+  run's `text-decoration`. No default keyboard chord: a host binds one through
+  the shortcuts pane. HTML export writes `text-decoration: overline` and HTML
+  import reads it back; Markdown cannot say it and drops it, keeping the words.
+  The attribute is affine-level only — the store's base text attributes are
+  unchanged — so an older client keeps the attribute in the document and paints
+  the run without the line. It reuses the key `com.labre.text-format.overline`
+  ("Overline").
+- 4d12815: A selection pane for the canvas (ADR 0031, stage 2). A new button in the edgeless
+  toolbar, and the `canvas.selectionPane.toggle` command in the palette, open a side
+  panel listing every element by stacking order, top first: groups and mind maps are
+  collapsible rows, a click selects on the canvas (shift / ctrl / cmd adds), a hover
+  highlights, the padlock locks that row alone (never grouping a multi-selection),
+  a double-click renames a group, a drag moves a row in the stack (one undo step),
+  and the list can be filtered by frame. A read-only document is
+  listed and refuses every write.
+
+  New seam `SelectionPaneExtension({ open, close })` / `SelectionPaneProvider`,
+  shaped like the artefact catalogue's: `null` removes the pane and its button. The
+  headless tree is `selectionPaneTree(std)` (ids only, z-order, top first) and the
+  actions are core commands a host pane runs through `runCommand`:
+  `canvas.element.reorder`, `canvas.element.lock`, `canvas.element.unlock`,
+  `canvas.group.rename`. New telemetry event `SelectionPaneOpened` (`source`). New
+  i18n keys under `com.labre.selection-pane.*` and `com.labre.command.canvas.*`.
+  Nothing new is written to documents.
+
+### Patch Changes
+
+- 871e571: PNG/PDF export and "copy as image" no longer fail under a theme written in
+  `oklch()` (or any colour html2canvas cannot parse, including the library's own
+  `color-mix()`): the rasterised clone's computed colours, the page background and
+  the `backgroundColor` option are converted to `rgb()` / `rgba()` first. New
+  `normalizeCanvasExportColors` and `toLegacyColors` in `@labre/affine-shared/utils`.
+- 5918f84: A block conversion the schema rejects no longer deletes the source block:
+  `transformModel` returns `null` and leaves the block in place when the new
+  block was not created, and `mergeToCodeModel` adds the code block before it
+  deletes the paragraphs, keeping them all when the parent refuses a code block.
+  "Turn into → Code block" on a paragraph inside a callout used to wipe the text
+  and create nothing; it now does nothing.
+- dc738fa: Building the library from source in a CRLF checkout no longer fails with
+  thousands of TS1005 errors in the generated `editor-setting-service.d.ts`: the
+  comment on the `edgelessShowGrid` editor setting is now a line comment, which
+  TypeScript's declaration emit cannot splice into an unrelated type. The
+  setting and its behaviour are unchanged.
+- 8ce6769: Duplicating or pasting a large selection no longer freezes the page:
+  duplicating a frame holding 400 shapes and 5 groups now takes about 0.6 s
+  instead of 4.7 s (8.7 s in 0.43.1), and one undo removes it whole. Pasted
+  canvas elements are created with their final stacking index instead of being
+  re-indexed one by one, the layer manager finds an element's place by bisection
+  instead of comparing it with every element of the board, and the last-used
+  style merge no longer validates every plain value against the colour schema.
+- 2908a50: In the selection pane (unreleased), "Layer 1" is shown from the start: a canvas
+  with no layer record lists one layer row, the default layer, named with the
+  first-layer seed (`com.labre.layer.seed.name`, n = 1) and holding every row,
+  and the headless `selectionPaneTree(std)` returns that same single
+  `'@default'` layer node, so a host-drawn pane shows the same thing. Nothing is
+  written to show it, on load or on opening the pane: the default layer's record
+  is written only by a gesture that needs it — renaming it, hiding it for
+  everyone, or creating a second layer (which keeps the name it shows). Its eye
+  hides it for you with nothing written, it is the active layer, and a row dropped
+  on it leaves any other layer. The default layer is the one that cannot be
+  deleted, so a canvas keeps one layer at least: its row menu has no delete, and
+  `canvas.layer.delete` is withdrawn (`when`) while it is the only layer. New
+  helper `userLayerName(std, id)`.
+- dfc4baa: The selection pane (unreleased) now looks and drags like the frame panel. Its
+  header is the frame panel's header — a 36px row, a secondary-text title and
+  20px icon buttons for new layer, filter and close — read from the new shared
+  `panelHeaderStyles` in `@labre/affine-shared/styles`, which the frame panel
+  uses too (its title colour now follows the theme's secondary-text token in
+  dark mode as well). A drag starts at 5px on either axis (the frame panel's
+  threshold, now `PANEL_DRAG_THRESHOLD_PX`), selects the row it picks up, shows
+  the row at its own width under the pointer, shows its cursor over the whole
+  editor and keeps Escape from closing the pane until the row is released.
+- Updated dependencies [e13b46e]
+- Updated dependencies [68242dc]
+- Updated dependencies [11a7710]
+- Updated dependencies [11a7710]
+- Updated dependencies [4d12815]
+- Updated dependencies [2f4df91]
+- Updated dependencies [900dade]
+- Updated dependencies [8ce6769]
+- Updated dependencies [2908a50]
+  - @labre/std@0.44.0
+  - @labre/affine-model@0.44.0
+  - @labre/global@0.44.0
+  - @labre/store@0.44.0
+
 ## 0.43.1
 
 ### Patch Changes

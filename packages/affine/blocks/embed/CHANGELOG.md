@@ -1,5 +1,70 @@
 # @labre/affine-block-embed
 
+## 0.44.0
+
+### Patch Changes
+
+- 38c4a78: With user layers (unreleased), a duplicated, alt-dragged or copy-pasted frame,
+  image, attachment, bookmark, embed or other canvas block now stays in its
+  source's layer, as elements, notes and edgeless texts already did, instead of
+  landing in the viewer's active layer; a copy of a block hidden for everyone
+  stays hidden. Duplicate (Mod+D) and alt-drag keep the copy of an element or a
+  block of the default layer in the default layer too (ADR 0031 amendment),
+  while a paste, which cannot tell the default layer from another document,
+  still lands in the active layer unless it names a layer of this document.
+  A block made from another one also lands beside it: the note or shape an
+  auto-complete arrow clones, the note the slicer splits off, the block that replaces a link
+  when its view changes, a linked doc turned into a synced doc and back, and the
+  note "Duplicate as note" puts beside a synced doc. `sourceLayerOf` is exported
+  beside `applyCreationLayer` for host code doing the same.
+
+  Behaviour change on a released feature, independent of layers: an alt+drag
+  clone is now ONE undo step. The first Ctrl+Z used to only move the copy back
+  onto its source, so the copy seemed to survive, and a second one removed it;
+  now the first removes the copy and leaves the source where it was. A plain
+  drag is still its own undo step, unchanged.
+
+- Updated dependencies [38c4a78]
+- Updated dependencies [1ab40a5]
+- Updated dependencies [c982522]
+- Updated dependencies [a7c4643]
+- Updated dependencies [871e571]
+- Updated dependencies [e13b46e]
+- Updated dependencies [68242dc]
+- Updated dependencies [11a7710]
+- Updated dependencies [11a7710]
+- Updated dependencies [4d12815]
+- Updated dependencies [2f4df91]
+- Updated dependencies [2447500]
+- Updated dependencies [5918f84]
+- Updated dependencies [900dade]
+- Updated dependencies [dc738fa]
+- Updated dependencies [e677a3b]
+- Updated dependencies [8ce6769]
+- Updated dependencies [c4cfd0e]
+- Updated dependencies [2908a50]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [c6ab710]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [4d12815]
+- Updated dependencies [e13b46e]
+- Updated dependencies [83fc2d3]
+- Updated dependencies [066b754]
+- Updated dependencies [b6dc00a]
+- Updated dependencies [33e4341]
+  - @labre/affine-block-surface@0.44.0
+  - @labre/affine-shared@0.44.0
+  - @labre/std@0.44.0
+  - @labre/affine-model@0.44.0
+  - @labre/affine-components@0.44.0
+  - @labre/affine-rich-text@0.44.0
+  - @labre/affine-gfx-pointer@0.44.0
+  - @labre/affine-inline-reference@0.44.0
+  - @labre/affine-widget-slash-menu@0.44.0
+  - @labre/affine-ext-loader@0.44.0
+  - @labre/global@0.44.0
+  - @labre/store@0.44.0
+
 ## 0.43.1
 
 ### Patch Changes

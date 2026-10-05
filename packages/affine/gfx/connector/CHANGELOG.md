@@ -1,5 +1,67 @@
 # @labre/affine-gfx-connector
 
+## 0.44.0
+
+### Minor Changes
+
+- 2f4df91: Canvas text can be underlined and overlined (ADR 0030). A canvas text, a
+  shape's text and a connector's labels gain one optional stored field,
+  `textDecoration` (`TextDecoration`: `none`, `underline`, `overline`,
+  `underline overline` — an append-only CSS token list, read token by token so a
+  future token is skipped rather than the whole value), absent until the author
+  sets it: documents drawn before this change store and paint exactly as they
+  did, and nothing is migrated. The text toolbar of a canvas text, a shape and a
+  connector gains two toggles, Underline and Overline, each one undo step; the
+  line is painted under the measured words by the three canvas renderers (so the
+  SVG export carries it) and shown as CSS by the overlay editors and the
+  connector DOM renderer. A decoration is not remembered as the last-used text
+  style. New key for hosts to translate: `com.labre.text-format.overline`
+  ("Overline"); the underline toggle reuses `com.labre.text-format.underline`.
+
+### Patch Changes
+
+- Updated dependencies [38c4a78]
+- Updated dependencies [1ab40a5]
+- Updated dependencies [c982522]
+- Updated dependencies [a7c4643]
+- Updated dependencies [871e571]
+- Updated dependencies [e13b46e]
+- Updated dependencies [68242dc]
+- Updated dependencies [11a7710]
+- Updated dependencies [11a7710]
+- Updated dependencies [4d12815]
+- Updated dependencies [2f4df91]
+- Updated dependencies [a12e678]
+- Updated dependencies [2447500]
+- Updated dependencies [5918f84]
+- Updated dependencies [900dade]
+- Updated dependencies [dc738fa]
+- Updated dependencies [e677a3b]
+- Updated dependencies [8ce6769]
+- Updated dependencies [c4cfd0e]
+- Updated dependencies [2908a50]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [c6ab710]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [4d12815]
+- Updated dependencies [e13b46e]
+- Updated dependencies [83fc2d3]
+- Updated dependencies [066b754]
+- Updated dependencies [b6dc00a]
+- Updated dependencies [33e4341]
+  - @labre/affine-block-surface@0.44.0
+  - @labre/affine-shared@0.44.0
+  - @labre/std@0.44.0
+  - @labre/affine-model@0.44.0
+  - @labre/affine-components@0.44.0
+  - @labre/affine-widget-edgeless-toolbar@0.44.0
+  - @labre/affine-gfx-text@0.44.0
+  - @labre/affine-rich-text@0.44.0
+  - @labre/affine-ext-loader@0.44.0
+  - @labre/global@0.44.0
+  - @labre/store@0.44.0
+
 ## 0.43.1
 
 ### Patch Changes

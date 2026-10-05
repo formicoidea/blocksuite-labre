@@ -1,5 +1,56 @@
 # @labre/affine-inline-preset
 
+## 0.44.0
+
+### Minor Changes
+
+- e677a3b: Rich text gains overline (ADR 0030 §5), declared and painted the way
+  underline is: a new `overline` inline attribute (`OverlineInlineSpecExtension`,
+  `toggleOverline`), an Overline button in the format bar beside Underline (and
+  the slash menu's style items, which list the same formats), composed into the
+  run's `text-decoration`. No default keyboard chord: a host binds one through
+  the shortcuts pane. HTML export writes `text-decoration: overline` and HTML
+  import reads it back; Markdown cannot say it and drops it, keeping the words.
+  The attribute is affine-level only — the store's base text attributes are
+  unchanged — so an older client keeps the attribute in the document and paints
+  the run without the line. It reuses the key `com.labre.text-format.overline`
+  ("Overline").
+
+### Patch Changes
+
+- Updated dependencies [a7c4643]
+- Updated dependencies [871e571]
+- Updated dependencies [e13b46e]
+- Updated dependencies [68242dc]
+- Updated dependencies [11a7710]
+- Updated dependencies [11a7710]
+- Updated dependencies [4d12815]
+- Updated dependencies [2f4df91]
+- Updated dependencies [2447500]
+- Updated dependencies [5918f84]
+- Updated dependencies [900dade]
+- Updated dependencies [dc738fa]
+- Updated dependencies [e677a3b]
+- Updated dependencies [8ce6769]
+- Updated dependencies [2908a50]
+- Updated dependencies [dfc4baa]
+- Updated dependencies [4d12815]
+- Updated dependencies [b6dc00a]
+  - @labre/affine-shared@0.44.0
+  - @labre/std@0.44.0
+  - @labre/affine-model@0.44.0
+  - @labre/affine-components@0.44.0
+  - @labre/affine-rich-text@0.44.0
+  - @labre/affine-inline-comment@0.44.0
+  - @labre/affine-inline-footnote@0.44.0
+  - @labre/affine-inline-latex@0.44.0
+  - @labre/affine-inline-link@0.44.0
+  - @labre/affine-inline-mention@0.44.0
+  - @labre/affine-inline-reference@0.44.0
+  - @labre/affine-ext-loader@0.44.0
+  - @labre/global@0.44.0
+  - @labre/store@0.44.0
+
 ## 0.43.1
 
 ### Patch Changes
