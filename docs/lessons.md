@@ -218,3 +218,21 @@ Container()` threw "illegal constructor" and the page hung.
     `--minWorkers=1` with it. A load-sensitive spec that fails in the full run
     (the benches, `validation-incremental-closure`, an adapter that times out
     fetching a stylesheet) is rerun alone before it is called a regression.
+
+32. **35,000 TS1005 in a generated `.d.ts`, every source file valid.**
+    `yarn build` failed in
+    `packages/affine/shared/dist/services/editor-setting-service.d.ts`: the
+    JSDoc of `edgelessShowGrid` was printed between `z.ZodUnion` and its `<` in
+    the `affine:edgeless-text` color type that `GeneralSettingSchema` inherits
+    from `NodePropsSchema`. TypeScript 5.8 re-emits that type by reusing the
+    node from `affine/model`'s own `.d.ts`, then reads its leading comments at
+    the node's offset in the text of the file being emitted; in a CRLF checkout
+    that offset (472) landed on the blank before the JSDoc. LF checkouts shift
+    the offsets and never collided, so CI stayed green, and the same tree
+    built or not depending on line endings and on what `affine/model` emitted.
+    _Rule:_ inside a zod `z.object({...})` literal whose inferred type is
+    re-emitted elsewhere, explain a property with `//` line comments, never
+    `/** */` (guard: `affine/all/src/__tests__/zod-schema-jsdoc.unit.spec.ts`,
+    for `editor-setting-service.ts`). Still carrying a JSDoc property comment
+    in a zod literal, not converted: `shared/src/services/edit-props-store.ts`
+    and `shared/src/services/link-preview-service/link-preview-cache.ts`.
