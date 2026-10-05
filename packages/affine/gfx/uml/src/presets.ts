@@ -5,6 +5,7 @@ import {
   ShapeStyle,
   StrokeStyle,
   TextAlign,
+  TextDecoration,
   type UmlNodeKind,
 } from '@labre/affine-model';
 import { Bound } from '@labre/global/gfx';
@@ -321,11 +322,20 @@ export function umlMorphClears(kind: UmlNodeKind): readonly string[] {
  * by size alone. Everything else is Regular, because UML reserves its type
  * variations for meanings the grammar reads (italics for abstract, §9.2.4) and
  * a decorative weight would compete with them.
+ *
+ * `decoration` is written only when given — see {@link umlNameDecoration}. A
+ * decoration is not a remembered style, so `applyLastProps` has none to merge
+ * and its absence is the plain text every other tier is.
  */
 export function umlTextProps(
   role: string,
   box: UmlBox,
-  options: { fontSize: number; align: TextAlign; bold?: boolean }
+  options: {
+    fontSize: number;
+    align: TextAlign;
+    bold?: boolean;
+    decoration?: TextDecoration;
+  }
 ): Record<string, unknown> & { type: string } {
   return {
     type: 'text',
@@ -338,5 +348,24 @@ export function umlTextProps(
     textAlign: options.align,
     hasMaxWidth: true,
     xywh: new Bound(box.x, box.y, box.w, box.h).serialize(),
+    ...(options.decoration ? { textDecoration: options.decoration } : {}),
   };
+}
+
+/**
+ * The decoration a kind's NAME tier is created with: an instance's name is
+ * underlined (§9.8.4), every other name is left undecided — no key at all, so
+ * it stores what it stored before ADR 0030.
+ *
+ * One preset, read by every creation site (the toolbox, the importers, and the
+ * templates that record the toolbox), so none restates the notation. The
+ * underline lives on the TEXT since ADR 0030 §4: it runs under the words, not
+ * across the compartment, and the author can restyle it from the text toolbar.
+ * The glyph's old rule survives only as a paint-time fallback for a name that
+ * never carried the field (`node/node-renderer.ts`).
+ */
+export function umlNameDecoration(
+  kind: UmlNodeKind
+): TextDecoration | undefined {
+  return kind === 'object' ? TextDecoration.Underline : undefined;
 }

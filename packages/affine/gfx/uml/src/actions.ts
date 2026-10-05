@@ -61,7 +61,7 @@ import {
   UML_UNLABELLED_KINDS,
   umlSeedKey,
 } from './keywords.js';
-import { umlNodeProps, umlTextProps } from './presets.js';
+import { umlNameDecoration, umlNodeProps, umlTextProps } from './presets.js';
 import {
   UML_ROLE,
   umlDiagramRoleKey,
@@ -92,7 +92,7 @@ function addTier(
   role: string,
   text: string,
   box: UmlBox,
-  options: { fontSize: number; align: TextAlign; bold?: boolean }
+  options: Parameters<typeof umlTextProps>[2]
 ): string {
   return surface.addElement({
     ...umlTextProps(role, box, options),
@@ -684,6 +684,7 @@ export function createUmlClassifier(
         fontSize: UML_NAME_FONT_SIZE,
         align: TextAlign.Center,
         bold: true,
+        decoration: umlNameDecoration(kind),
       }
     )
   ] = true;

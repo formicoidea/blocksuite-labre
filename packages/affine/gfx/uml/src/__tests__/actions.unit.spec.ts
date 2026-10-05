@@ -4,6 +4,7 @@ import {
   PointStyle,
   StrokeStyle,
   TextAlign,
+  TextDecoration,
   UmlDiagramElementModel,
   type UmlNodeKind,
 } from '@labre/affine-model';
@@ -384,6 +385,23 @@ describe('what a uml artefact is created as', () => {
       undefined,
     ]);
     expect(rec.added[2].text).toBe(UML_SLOTS_SEED);
+  });
+
+  it('underlines an object name through the text, and no other name', () => {
+    // §9.8.4's instance underline is the name tier's own decoration (ADR 0030),
+    // so it runs under the words and the text toolbar can restyle it.
+    const object = recorder();
+    createUmlClassifier(object.std, 'object');
+    expect(object.added[1].role).toBe(UML_ROLE.name);
+    expect(object.added[1].textDecoration).toBe(TextDecoration.Underline);
+    // The slot tier is not a name.
+    expect(object.added[2]).not.toHaveProperty('textDecoration');
+
+    const klass = recorder();
+    createUmlClassifier(klass.std, 'class');
+    for (const tier of klass.added) {
+      expect(tier).not.toHaveProperty('textDecoration');
+    }
   });
 
   /**
