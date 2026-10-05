@@ -119,6 +119,26 @@ loadable_; ADR 0030):
 Hosts upgrade together, so this window is short; the fields are content and
 no flag gates them.
 
+### A host block on the clipboard
+
+A host that pastes its own canvas block registers an `EdgelessClipboardConfig`
+(`@labre/affine/blocks/surface`) whose `createBlock(snapshot, context)` builds
+the block. Since 0.44 the paste owns two things a config writes:
+
+- **The stacking index.** The paste plans one fresh `index` per pasted
+  element and block, in the order they had where they were copied from, and
+  sets the block's after `createBlock` returns, so a pasted block keeps its
+  place among the pasted elements. The `index` your config writes is
+  overwritten.
+- **The layer and the shared hide.** The snapshot's `layer` and
+  `hiddenForEveryone` are read before `createBlock` and restored after it, for
+  every config: a layer of this surface is kept, any other lands in the
+  viewer's active layer, and a block hidden for everyone stays hidden. A
+  config that rebuilds the block from a few props loses neither.
+
+Both writes happen in the paste's final transaction, with no update of their
+own (`packages/affine/blocks/root/src/edgeless/clipboard/command.ts`).
+
 ## Read-only
 
 Set `store.readonly = true` to make a document read-only. Every mutation entry

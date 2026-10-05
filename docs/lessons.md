@@ -236,3 +236,18 @@ Container()` threw "illegal constructor" and the page hung.
     for `editor-setting-service.ts`). Still carrying a JSDoc property comment
     in a zod literal, not converted: `shared/src/services/edit-props-store.ts`
     and `shared/src/services/link-preview-service/link-preview-cache.ts`.
+
+33. **A minor that broke a 0.43 host twice: at compile time and at render.**
+    0.44.0 made `ReadingProfile.frame.label` and `frame.none` required (#428),
+    so a host profile of the 0.43 shape (`backgroundRole`, `background`,
+    `axis`) stopped compiling, and the reading panel threw on it at render.
+    The same release widened `renderBoardSvg(std, board)` to
+    `BoardSvgExport | null` (#438), so the 0.43 call `.svg` stopped compiling
+    under `strictNullChecks`. Both were withdrawn before publication (#459,
+    #464).
+    _Rule:_ a type a host implements or calls only widens in a minor: a new
+    field is optional and its absence keeps the previous behaviour, a return
+    type never gains `null` (a new overload may). Guard each such type with a
+    spec that types a literal of the previous shape against the current type
+    (`blocks/surface/src/__tests__/reading-frame-wording.unit.spec.ts`,
+    `render-board-svg-signature.unit.spec.ts`); `yarn build` typechecks it.

@@ -21,6 +21,11 @@ Emission sites always use the optional accessor, so a missing adapter is safe:
 std.getOptional(TelemetryProvider)?.track('FrameworkElementAdded', { ... });
 ```
 
+**New events arrive in a minor release.** They are additive: an adapter that forwards `track(event, props)` is unaffected, while
+a host that types an exhaustive `Record<keyof TelemetryEventMap, …>` must add
+the new keys when it upgrades (0.44 added the four selection-pane events
+below).
+
 ## Block lifecycle taxonomy (the contract)
 
 Every canvas flavour (`CANVAS_FLAVOURS`) reports the same five moments, so
