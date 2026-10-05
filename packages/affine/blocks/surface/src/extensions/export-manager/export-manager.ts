@@ -3,7 +3,12 @@ import { FetchUtils, ImageProxyService } from '@labre/affine-shared/adapters';
 import { CANVAS_EXPORT_IGNORE_TAGS } from '@labre/affine-shared/consts';
 import { CHROME_UNTITLED, translateKey } from '@labre/affine-shared/services';
 import type { Viewport } from '@labre/affine-shared/types';
-import { isInsidePageEditor, matchModels } from '@labre/affine-shared/utils';
+import {
+  isInsidePageEditor,
+  matchModels,
+  normalizeCanvasExportColors,
+  toLegacyColors,
+} from '@labre/affine-shared/utils';
 import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
 import type { IBound } from '@labre/global/gfx';
 import { deserializeXYWH } from '@labre/global/gfx';
@@ -209,11 +214,14 @@ export class ExportManager {
           return false;
         }
       },
-      onclone: async (_documentClone: Document, element: HTMLElement) => {
+      onclone: async (documentClone: Document, element: HTMLElement) => {
+        normalizeCanvasExportColors(documentClone, element);
         element.style.height = `${viewportHeight}px`;
         await this.replaceImgSrcWithSvg(element);
       },
-      backgroundColor: window.getComputedStyle(viewportElement).backgroundColor,
+      backgroundColor: toLegacyColors(
+        window.getComputedStyle(viewportElement).backgroundColor
+      ),
       x: pageLeft - viewport.left,
       width: pageWidth,
       height: viewportHeight,
@@ -293,6 +301,7 @@ export class ExportManager {
         }
       },
       onclone: async (documentClone: Document, element: HTMLElement) => {
+        normalizeCanvasExportColors(documentClone, element);
         // html2canvas can't support transform feature
         element.style.setProperty('transform', 'none');
         const layer = element.classList.contains('.affine-edgeless-layer')
