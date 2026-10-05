@@ -1,7 +1,9 @@
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
+import type { FramePanelHeader } from '@labre/affine/fragments/frame-panel';
 import {
   ArtefactCatalogueProvider,
   COMMAND_USAGE_KEY,
+  SelectionPaneProvider,
 } from '@labre/affine/shared/services';
 import { TOUCH_TARGET_MIN_PX } from '@labre/affine/shared/consts';
 import { CATALOGUE_HEAD_RANKED_SLOTS } from '@labre/affine/std';
@@ -256,6 +258,72 @@ describe('artefact catalogue sidepanel', () => {
       'uml.importPlantuml',
       'uml.importDrawio',
     ]);
+  });
+
+  /*
+   * Three side panels, one header: the frame panel's, which the selection
+   * pane and this catalogue adopted from `panelHeaderStyles`. Measured on the
+   * three real headers side by side, so a panel restyling its own header
+   * fails here and not in a review.
+   */
+  test('the header is the frame panel’s, like the selection pane’s', async () => {
+    await open();
+    edgeless.std.get(SelectionPaneProvider).open();
+    const frameHeader = document.createElement(
+      'affine-frame-panel-header'
+    ) as FramePanelHeader;
+    frameHeader.editorHost = window.editor.host!;
+    document.body.append(frameHeader);
+    try {
+      await frameHeader.updateComplete;
+      await settle();
+      const pane =
+        edgeless.widgetComponents['edgeless-selection-pane-widget']!
+          .shadowRoot!;
+      const style = (root: ShadowRoot, selector: string) =>
+        getComputedStyle(root.querySelector(selector)!);
+
+      const rows = [
+        style(frameHeader.shadowRoot!, '.frame-panel-header'),
+        style(pane, '[data-testid="selection-pane-header"]'),
+        style(widgetRoot()!, '[data-testid="artefact-catalogue-header"]'),
+      ];
+      const titles = [
+        style(frameHeader.shadowRoot!, '.all-frames-setting-label'),
+        style(pane, '[data-testid="selection-pane-title"]'),
+        style(widgetRoot()!, '[data-testid="artefact-catalogue-title"]'),
+      ];
+      const same = (all: CSSStyleDeclaration[], property: string) =>
+        expect(
+          new Set(all.map(one => one.getPropertyValue(property))).size,
+          property
+        ).toBe(1);
+
+      for (const property of [
+        'height',
+        'padding-top',
+        'padding-right',
+        'padding-bottom',
+        'padding-left',
+        'border-bottom-width',
+      ]) {
+        same(rows, property);
+      }
+      for (const property of [
+        'font-family',
+        'font-size',
+        'font-weight',
+        'line-height',
+        'color',
+      ]) {
+        same(titles, property);
+      }
+      expect(widgetRoot()!.querySelector(CLOSE)?.tagName.toLowerCase()).toBe(
+        'edgeless-tool-icon-button'
+      );
+    } finally {
+      frameHeader.remove();
+    }
   });
 
   test('every row is at least a finger tall', async () => {

@@ -2,6 +2,7 @@ import { EDITOR_ANCHORED_PANEL_Z_INDEX } from '@labre/affine-block-surface';
 import { TOUCH_TARGET_MIN_PX } from '@labre/affine-shared/consts';
 import type { RootBlockModel } from '@labre/affine-model';
 import { CATALOGUE_OTHER, translateKey } from '@labre/affine-shared/services';
+import { panelHeaderStyles } from '@labre/affine-shared/styles';
 import { IS_MAC } from '@labre/global/env';
 import {
   type AnyCommandDescriptor,
@@ -18,6 +19,7 @@ import {
   WidgetViewExtension,
 } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
+import { CloseIcon } from '@blocksuite/icons/lit';
 import { css, html, nothing, unsafeCSS } from 'lit';
 import { state } from 'lit/decorators.js';
 import { literal, unsafeStatic } from 'lit/static-html.js';
@@ -128,49 +130,13 @@ export class EdgelessArtefactCatalogueWidget extends WidgetComponent<RootBlockMo
       outline-offset: -2px;
     }
 
-    .artefact-catalogue-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      padding: 8px 8px 8px 16px;
-      border-bottom: 1px solid var(--affine-border-color);
-      font-weight: 600;
-    }
-
-    .artefact-catalogue-title {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
     /*
-      A close button a finger can hit. Square at the touch minimum rather than
-      the 6px-padded × the anchored panels use: this one is the only way out of
-      a full-height surface on a tablet, where there is no Escape key.
+      The header row, its title and its close button are the frame panel's,
+      shared with the selection pane through panelHeaderStyles. The close is
+      the frame panel's 20px icon button, no longer the touch-sized ×: one
+      header design across the side panels was the product owner's call.
     */
-    .artefact-catalogue-close {
-      flex: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: ${unsafeCSS(TOUCH_TARGET_MIN_PX)}px;
-      height: ${unsafeCSS(TOUCH_TARGET_MIN_PX)}px;
-      border: none;
-      border-radius: 8px;
-      background: transparent;
-      color: var(--affine-text-secondary-color);
-      font-family: inherit;
-      font-size: 20px;
-      line-height: 1;
-      cursor: pointer;
-    }
-
-    .artefact-catalogue-close:hover,
-    .artefact-catalogue-close:focus-visible {
-      background: var(--affine-hover-color);
-      color: var(--affine-text-primary-color);
-    }
+    ${panelHeaderStyles}
 
     .artefact-catalogue-body {
       flex: 1;
@@ -559,6 +525,11 @@ export class EdgelessArtefactCatalogueWidget extends WidgetComponent<RootBlockMo
       'com.labre.catalogue.title',
       'Artefacts'
     );
+    const closeLabel = translateKey(
+      this.std,
+      'com.labre.catalogue.close',
+      'Close'
+    );
 
     return html`<div
       class="artefact-catalogue-panel"
@@ -571,21 +542,26 @@ export class EdgelessArtefactCatalogueWidget extends WidgetComponent<RootBlockMo
       @pointerup=${this._swallow}
       @click=${this._swallow}
     >
-      <div class="artefact-catalogue-head">
-        <span class="artefact-catalogue-title">${frameworkLabel}</span>
-        <button
-          class="artefact-catalogue-close"
-          type="button"
+      <div
+        class="artefact-catalogue-head affine-panel-header"
+        data-testid="artefact-catalogue-header"
+      >
+        <span
+          class="artefact-catalogue-title affine-panel-header-title"
+          data-testid="artefact-catalogue-title"
+          >${frameworkLabel}</span
+        >
+        <edgeless-tool-icon-button
+          class="artefact-catalogue-close affine-panel-header-button"
           data-testid="artefact-catalogue-close"
-          aria-label=${translateKey(
-            this.std,
-            'com.labre.catalogue.close',
-            'Close'
-          )}
+          aria-label=${closeLabel}
+          .tooltip=${closeLabel}
+          .tipPosition=${'top'}
+          .activeMode=${'background'}
           @click=${this.closePanel}
         >
-          ×
-        </button>
+          ${CloseIcon({ width: '20px', height: '20px' })}
+        </edgeless-tool-icon-button>
       </div>
       <div
         class="artefact-catalogue-body"
