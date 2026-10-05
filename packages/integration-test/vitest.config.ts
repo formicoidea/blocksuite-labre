@@ -30,6 +30,23 @@ const pointerUp: BrowserCommand<[]> = async ctx => {
   await ctx.page.mouse.up();
 };
 
+/**
+ * A real copy then paste: Chromium denies `navigator.clipboard.write` (what
+ * the edgeless copy calls) to a page without the permission, and a trusted
+ * paste then carries nothing. `granted: false` takes it back, so the rest of
+ * the suite, which shares one page (`isolate: false`), runs without it.
+ */
+const systemClipboard: BrowserCommand<[granted: boolean]> = async (
+  ctx,
+  granted
+) => {
+  if (granted) {
+    await ctx.context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  } else {
+    await ctx.context.clearPermissions();
+  }
+};
+
 export default defineConfig(_configEnv =>
   defineConfig({
     esbuild: { target: 'es2018' },
@@ -50,7 +67,7 @@ export default defineConfig(_configEnv =>
         headless: process.env.CI === 'true',
         instances: [{ browser: 'chromium' }],
         provider: 'playwright',
-        commands: { pointerMoveTo, pointerDown, pointerUp },
+        commands: { pointerMoveTo, pointerDown, pointerUp, systemClipboard },
         isolate: false,
         viewport: {
           width: 1024,

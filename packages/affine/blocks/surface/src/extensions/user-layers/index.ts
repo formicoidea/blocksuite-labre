@@ -28,6 +28,7 @@ export {
 export {
   applyCreationLayer,
   resolveCreationLayer,
+  sourceLayerOf,
   UserLayerMiddlewareBuilder,
 } from './creation.js';
 export { LAYER_SEED_NAME, USER_LAYER_SEED_WORDINGS } from './translations.js';

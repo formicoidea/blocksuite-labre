@@ -4,7 +4,11 @@ import {
   EMBED_IFRAME_DEFAULT_HEIGHT_IN_SURFACE,
   EMBED_IFRAME_DEFAULT_WIDTH_IN_SURFACE,
 } from '@labre/affine-block-embed';
-import { reassociateConnectorsCommand } from '@labre/affine-block-surface';
+import {
+  applyCreationLayer,
+  reassociateConnectorsCommand,
+  sourceLayerOf,
+} from '@labre/affine-block-surface';
 import { toast } from '@labre/affine-components/toast';
 import {
   BookmarkBlockModel,
@@ -403,6 +407,13 @@ const builtinSurfaceToolbarConfig = {
 
             const { id: oldId, xywh, parent } = model;
             const { url, caption, title, description } = model.props;
+            // The replacement takes the bookmark's place, layer included
+            // (ADR 0031 §6).
+            const withLayer = (props: Record<string, unknown>) => {
+              props.layer = sourceLayerOf(model);
+              applyCreationLayer(ctx.std, props);
+              return props;
+            };
 
             let newId: string | undefined;
 
@@ -427,14 +438,14 @@ const builtinSurfaceToolbarConfig = {
 
               newId = ctx.store.addBlock(
                 flavour,
-                {
+                withLayer({
                   url,
                   caption,
                   title,
                   description,
                   style,
                   xywh: bound.serialize(),
-                },
+                }),
                 parent
               );
             } else if (canEmbedAsIframe(ctx.std, url)) {
@@ -453,7 +464,13 @@ const builtinSurfaceToolbarConfig = {
 
               newId = ctx.store.addBlock(
                 'affine:embed-iframe',
-                { url, caption, title, description, xywh: bound.serialize() },
+                withLayer({
+                  url,
+                  caption,
+                  title,
+                  description,
+                  xywh: bound.serialize(),
+                }),
                 parent
               );
             }

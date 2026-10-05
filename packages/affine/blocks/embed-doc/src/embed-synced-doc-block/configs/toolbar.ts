@@ -1,3 +1,4 @@
+import { applyCreationLayer, sourceLayerOf } from '@labre/affine-block-surface';
 import { toast } from '@labre/affine-components/toast';
 import { EditorChevronDown } from '@labre/affine-components/toolbar';
 import {
@@ -404,18 +405,22 @@ const builtinSurfaceToolbarConfig = {
               const y = syncedDocModel.elementBound.y;
 
               const children = await draftedModels;
+              const props: Partial<NoteProps> = {
+                xywh: new Bound(
+                  x,
+                  y,
+                  DEFAULT_NOTE_WIDTH,
+                  DEFAULT_NOTE_HEIGHT
+                ).serialize(),
+                index: gfx.layer.generateIndex(),
+                displayMode: NoteDisplayMode.EdgelessOnly,
+                // Beside the synced doc, in its layer (ADR 0031 §6).
+                layer: sourceLayerOf(syncedDocModel),
+              };
+              applyCreationLayer(std, props);
               const noteId = std.store.addBlock(
                 'affine:note',
-                {
-                  xywh: new Bound(
-                    x,
-                    y,
-                    DEFAULT_NOTE_WIDTH,
-                    DEFAULT_NOTE_HEIGHT
-                  ).serialize(),
-                  index: gfx.layer.generateIndex(),
-                  displayMode: NoteDisplayMode.EdgelessOnly,
-                } satisfies Partial<NoteProps>,
+                props,
                 ctx.store.root
               );
 

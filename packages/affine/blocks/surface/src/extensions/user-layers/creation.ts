@@ -2,11 +2,24 @@ import type { BlockStdScope } from '@labre/std';
 import {
   DEFAULT_LAYER_ID,
   GfxControllerIdentifier,
+  ownLayerOf,
   type SurfaceMiddleware,
   SurfaceMiddlewareBuilder,
 } from '@labre/std/gfx';
 
 import { CanvasActiveLayer } from './active-layer.js';
+
+/**
+ * The layer to REQUEST for a model derived from `source` — the note an
+ * auto-complete arrow clones, the note the slicer splits off, the block that
+ * replaces another when its view changes — so it lands beside its source
+ * once {@link resolveCreationLayer} has read it. A source in the default
+ * layer asks for {@link DEFAULT_LAYER_ID} explicitly: "absent" would hand the
+ * derived model to the viewer's active layer instead.
+ */
+export function sourceLayerOf(source: unknown): string {
+  return ownLayerOf(source) ?? DEFAULT_LAYER_ID;
+}
 
 /**
  * The layer a model being CREATED is stored in (ADR 0031 §6), as the value

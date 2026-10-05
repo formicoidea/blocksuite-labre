@@ -10,6 +10,7 @@ import {
   GroupElementModel,
   MindmapElementModel,
 } from '@labre/affine-model';
+import { sourceLayerOf } from '@labre/affine-block-surface';
 import type { BlockStdScope } from '@labre/std';
 import {
   getTopElements,
@@ -38,11 +39,27 @@ export function getSortedCloneElements(elements: GfxModel[]) {
   return sortEdgelessElements([...set]);
 }
 
+/**
+ * The data a clone gesture in the same document (duplicate, alt-drag)
+ * re-creates. Each model asks for its source's layer EXPLICITLY, the default
+ * layer included (ADR 0031, amendment "A duplicate stays in its source's
+ * layer, the default one included"): a default-layer model serializes no
+ * `layer`, and "absent" would hand its copy to the viewer's active layer. A
+ * paste goes through `prepareClipboardData` instead and keeps §6's rule — it
+ * cannot tell the default layer from another document.
+ */
 export function prepareCloneData(elements: GfxModel[], std: BlockStdScope) {
   elements = sortEdgelessElements(elements);
   const job = std.store.getTransformer();
   const res = elements.map(element => {
     const data = serializeElement(element, elements, job);
+    if (!data) return data;
+    const layer = sourceLayerOf(element);
+    if ('props' in data && data.type === 'block') {
+      data.props = { ...data.props, layer };
+    } else {
+      (data as SerializedElement).layer = layer;
+    }
     return data;
   });
   return res.filter((d): d is SerializedElement | BlockSnapshot => !!d);

@@ -2,6 +2,7 @@ import { toEdgelessEmbedBlock } from '@labre/affine-block-embed';
 import {
   EdgelessCRUDIdentifier,
   reassociateConnectorsCommand,
+  sourceLayerOf,
 } from '@labre/affine-block-surface';
 import { type AliasInfo } from '@labre/affine-model';
 import {
@@ -160,6 +161,8 @@ export class EmbedEdgelessSyncedDocBlockComponent extends toEdgelessEmbedBlock(
         caption,
         ...this.referenceInfo,
         ...aliasInfo,
+        // In the synced doc's layer, not the active one (ADR 0031 §6).
+        layer: sourceLayerOf(this.model),
       },
       surface
     );

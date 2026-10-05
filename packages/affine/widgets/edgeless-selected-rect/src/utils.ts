@@ -1,9 +1,11 @@
 import {
+  applyCreationLayer,
   EdgelessCRUDIdentifier,
   isNoteBlock,
   type Options,
   Overlay,
   type RoughCanvas,
+  sourceLayerOf,
 } from '@labre/affine-block-surface';
 import { type Shape, ShapeFactory } from '@labre/affine-gfx-shape';
 import {
@@ -309,21 +311,24 @@ export function createEdgelessElement(
       ...current.serialize(),
       text: new Y.Text(),
       xywh: bound.serialize(),
+      // `serialize()` names no layer for a default-layer shape: ask for the
+      // source's explicitly, or the clone lands in the active layer.
+      layer: sourceLayerOf(current),
     });
     if (!id) return null;
     element = crud.getElementById(id);
   } else if (isNoteBlock(current)) {
     const { store } = edgeless;
-    id = store.addBlock(
-      'affine:note',
-      {
-        background: current.props.background,
-        displayMode: current.props.displayMode,
-        edgeless: current.props.edgeless,
-        xywh: bound.serialize(),
-      },
-      edgeless.model.id
-    );
+    const props: Record<string, unknown> = {
+      background: current.props.background,
+      displayMode: current.props.displayMode,
+      edgeless: current.props.edgeless,
+      xywh: bound.serialize(),
+      // Beside its source, not in the viewer's active layer (ADR 0031 §6).
+      layer: sourceLayerOf(current),
+    };
+    applyCreationLayer(edgeless.std, props);
+    id = store.addBlock('affine:note', props, edgeless.model.id);
     const note = store.getBlock(id)?.model;
     if (!note) {
       throw new BlockSuiteError(
