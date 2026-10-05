@@ -8,7 +8,6 @@
   "include": ["./src"],
   "references": [
     { "path": "../../blocks/attachment" },
-    { "path": "../../blocks/edgeless-text" },
     { "path": "../../blocks/image" },
     { "path": "../../blocks/surface" },
     { "path": "../../components" },

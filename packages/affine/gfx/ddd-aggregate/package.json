@@ -16,8 +16,6 @@
   "dependencies": {
     "@labre/affine-block-surface": "workspace:*",
     "@labre/affine-ext-loader": "workspace:*",
-    "@labre/affine-gfx-group": "workspace:*",
-    "@labre/affine-gfx-pointer": "workspace:*",
     "@labre/affine-gfx-template": "workspace:*",
     "@labre/affine-model": "workspace:*",
     "@labre/affine-shared": "workspace:*",
