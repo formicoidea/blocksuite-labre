@@ -26,6 +26,7 @@ import {
   ReadingManager,
   type ReadingProfile,
   type ReadingRelation,
+  readingFrameWording,
   readingRelationDefs,
   type ReadingRelationSide,
   readRecord,
@@ -542,11 +543,13 @@ export class ReadingProposalWidget extends EditorAnchoredPanel {
   /**
    * The zone of the frame the subject sits in — Wardley's evolution phase, a
    * Core Domain Chart's quadrant, a BPMN lane — under the framework's own
-   * heading (`frame.label`).
+   * heading (`frame.label`), or the engine's default for a profile that names
+   * none (`readingFrameWording`).
    *
    * Absent ENTIRELY — not "no zone to read" — for a framework that declares no
    * frame. The empty state below is about an artefact that could have been on
-   * a frame and is not, in the framework's own words (`frame.none`).
+   * a frame and is not, in the framework's own words (`frame.none`) or the
+   * default ones.
    *
    * The zone is named the way the board names it: the user's words when they
    * wrote some (a renamed quadrant, a lane's name), the vocabulary otherwise,
@@ -554,8 +557,8 @@ export class ReadingProposalWidget extends EditorAnchoredPanel {
    * zone's id, which is not a word anyone drew.
    */
   private _renderPhase(reading: ElementReading, profile: ReadingProfile) {
-    const frame = profile.frame;
-    if (!frame) return nothing;
+    if (!profile.frame) return nothing;
+    const { label, none } = readingFrameWording(profile.frame);
     const { phase } = reading;
     const words = !phase
       ? ''
@@ -570,7 +573,7 @@ export class ReadingProposalWidget extends EditorAnchoredPanel {
           : (phase.labelFallback ?? '');
     return this._field(
       'reading-phase',
-      translateKey(this.std, frame.label.labelKey, frame.label.labelFallback),
+      translateKey(this.std, label.labelKey, label.labelFallback),
       phase
         ? html`<div class="reading-value" data-zone-id=${phase.zoneId}>
               ${words ||
@@ -591,11 +594,7 @@ export class ReadingProposalWidget extends EditorAnchoredPanel {
                 </div>`
               : nothing}`
         : html`<div class="reading-empty" data-testid="reading-phase-none">
-            ${translateKey(
-              this.std,
-              frame.none.labelKey,
-              frame.none.labelFallback
-            )}
+            ${translateKey(this.std, none.labelKey, none.labelFallback)}
           </div>`
     );
   }

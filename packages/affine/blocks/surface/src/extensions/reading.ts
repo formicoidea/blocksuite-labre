@@ -1,4 +1,5 @@
 import {
+  type ChromeWording,
   getUniverseRegistry,
   hostLanguage,
   type PivotSnapshot,
@@ -258,10 +259,18 @@ export interface ReadingProfile {
      * The panel's heading for the field — "Evolution phase", "Zone", "Lane".
      * The framework's own word, like a relation's sides: the panel used to
      * hard-code Wardley's, which a chart or a pool would have worn too.
+     *
+     * Optional because a 0.43 profile has no such field and a minor release
+     * never breaks a host: absent, the panel reads
+     * {@link READING_FRAME_DEFAULT_WORDING}, which is what 0.43 showed for
+     * every frame (`readingFrameWording`).
      */
-    label: ReadingFrameWording;
-    /** What the field says when the subject sits in no zone of any frame. */
-    none: ReadingFrameWording;
+    label?: ReadingFrameWording;
+    /**
+     * What the field says when the subject sits in no zone of any frame.
+     * Optional for the reason {@link label} is, with the same default.
+     */
+    none?: ReadingFrameWording;
   };
   /**
    * Which properties of the PIVOT RECORD the reading may compare itself
@@ -275,6 +284,62 @@ export interface ReadingProfile {
   recordKeys?: {
     nature?: string;
     phase?: string;
+  };
+}
+
+/**
+ * The frame wording of a profile that declares none — the heading and the
+ * empty state 0.43 showed for every frame, before a framework could name its
+ * own.
+ *
+ * Owned by the ENGINE rather than by Wardley, whose words they also are,
+ * because a host profile written against 0.43 reads with them too: declared in
+ * a framework bundle, they would vanish from a host that does not install it.
+ * Wardley's profile declares no wording and inherits these.
+ *
+ * Spelled as `[key, English]` rows, the form the key manifest walks and its
+ * drift check pairs with this declaration, then read as a profile's wording.
+ */
+const READING_FRAME_DEFAULT_LABEL: ChromeWording = [
+  'com.labre.reading.field.phase',
+  'Evolution phase',
+];
+
+const READING_FRAME_DEFAULT_NONE: ChromeWording = [
+  'com.labre.reading.phase.none',
+  'Not on a framework background — no phase to read.',
+];
+
+/** The default frame wording, as the rows the key manifest walks. */
+export const READING_FRAME_WORDINGS: readonly ChromeWording[] = [
+  READING_FRAME_DEFAULT_LABEL,
+  READING_FRAME_DEFAULT_NONE,
+];
+
+const asFrameWording = ([
+  labelKey,
+  labelFallback,
+]: ChromeWording): ReadingFrameWording => ({ labelKey, labelFallback });
+
+/** The default frame wording, as a profile's `frame.label` / `frame.none`. */
+export const READING_FRAME_DEFAULT_WORDING: Readonly<{
+  label: ReadingFrameWording;
+  none: ReadingFrameWording;
+}> = {
+  label: asFrameWording(READING_FRAME_DEFAULT_LABEL),
+  none: asFrameWording(READING_FRAME_DEFAULT_NONE),
+};
+
+/**
+ * The two wordings the panel reads a frame with: the framework's own where it
+ * declares them, {@link READING_FRAME_DEFAULT_WORDING} where it does not.
+ */
+export function readingFrameWording(
+  frame: NonNullable<ReadingProfile['frame']>
+): { label: ReadingFrameWording; none: ReadingFrameWording } {
+  return {
+    label: frame.label ?? READING_FRAME_DEFAULT_WORDING.label,
+    none: frame.none ?? READING_FRAME_DEFAULT_WORDING.none,
   };
 }
 
