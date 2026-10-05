@@ -1,4 +1,4 @@
-import type { DeltaInsert } from '@labre/affine/store';
+import type { DeltaInsert } from '@labre/store';
 
 export function getTextElementText(
   elementModel: Record<string, unknown>

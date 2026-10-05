@@ -1,4 +1,4 @@
-import type { DeltaInsert } from '@labre/affine/store';
+import type { DeltaInsert } from '@labre/store';
 
 export function getConnectorText(
   elementModel: Record<string, unknown>

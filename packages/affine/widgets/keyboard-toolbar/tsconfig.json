@@ -24,6 +24,7 @@
     { "path": "../../inlines/link" },
     { "path": "../../inlines/preset" },
     { "path": "../../inlines/reference" },
+    { "path": "../linked-doc" },
     { "path": "../../model" },
     { "path": "../../rich-text" },
     { "path": "../../shared" },

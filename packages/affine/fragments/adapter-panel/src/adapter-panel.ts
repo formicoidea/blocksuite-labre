@@ -1,5 +1,3 @@
-import type { BlockStdScope } from '@labre/affine/std';
-import type { Store, TransformerMiddleware } from '@labre/affine/store';
 import {
   type HtmlAdapter,
   HtmlAdapterFactoryIdentifier,
@@ -9,6 +7,8 @@ import {
   PlainTextAdapterFactoryIdentifier,
 } from '@labre/affine-shared/adapters';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
+import type { BlockStdScope } from '@labre/std';
+import type { Store, TransformerMiddleware } from '@labre/store';
 import { provide } from '@lit/context';
 import { effect, signal } from '@preact/signals-core';
 import { baseTheme } from '@toeverything/theme';
