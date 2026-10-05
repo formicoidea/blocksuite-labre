@@ -290,7 +290,11 @@ const CHROME_KEYS: readonly [key: string, fallback: string][] = [
   ['com.labre.reading.field.nature', 'Nature'],
   ['com.labre.reading.field.relations', 'Parent-child relations'],
   ['com.labre.reading.field.value-flow', 'Value flow'],
-  ['com.labre.reading.field.phase', 'Evolution phase'],
+  // `com.labre.reading.field.phase` and `com.labre.reading.phase.none` USED to
+  // be here. They moved to Wardley's `ReadingProfile.frame` when the Core
+  // Domain Chart and the BPMN pool gained a frame of their own: "Evolution
+  // phase" is a value chain's word, not the panel's. Same keys, same English,
+  // now through `wardleyTranslationEntries`.
   ['com.labre.reading.field.naming', 'Naming convention'],
   ['com.labre.reading.field.record', 'Record'],
   ['com.labre.reading.field.drift', 'Drift'],
@@ -314,10 +318,7 @@ const CHROME_KEYS: readonly [key: string, fallback: string][] = [
   ['com.labre.reading.value-flow', 'Value flows up from'],
   ['com.labre.reading.value-flow.to', 'to'],
   ['com.labre.reading.phase.band', 'In the zone of punctuated equilibrium'],
-  [
-    'com.labre.reading.phase.none',
-    'Not on a framework background — no phase to read.',
-  ],
+  ['com.labre.reading.zone.unnamed', 'Unnamed'],
   [
     'com.labre.reading.naming.conforms',
     'The name follows the convention of its nature.',

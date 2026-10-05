@@ -5,6 +5,8 @@ import {
   backgroundInstanceZones,
   backgroundPlot,
   morphToolbarConfig,
+  READING_PROPOSAL_WIDGET,
+  ReadingManager,
 } from '@labre/affine/blocks/surface';
 import type { ConnectorTool } from '@labre/affine/gfx/connector';
 // Straight off the framework package, as the connector and template specs
@@ -266,6 +268,41 @@ describe('BPMN pool lanes', () => {
     // question answered here, on a real editor, against a real dropped task.
     expect(bpmnLaneOf(pool, task.elementBound)?.id).toBe(lanes[1].id);
     expect(bpmnPoolOf([pool], task.elementBound)).toBe(pool);
+  });
+
+  test('the reading panel names the lane a task is drawn in', async () => {
+    // Why: the panel could say what a task is and what follows it, not which
+    // lane it is in. It must name the lane the way the pool paints it — the
+    // user's own name — under the framework's heading, not Wardley's.
+    const pool = addPool();
+    const surface = getSurface(window.doc, window.editor).model;
+    surface.updateElement(pool.id, {
+      lanes: [
+        { id: 'front', name: 'Front office', size: 1 },
+        { id: 'back', name: 'Back office', size: 1 },
+      ],
+    });
+    const [px, py, pw, ph] = pool.deserializedXYWH;
+    const plot = backgroundPlot(BPMN_POOL_BACKGROUND, pw, ph);
+    const taskId = surface.addElement({
+      type: 'bpmnNode',
+      kind: 'task',
+      role: 'bpmn:task',
+      shapeType: 'rect',
+      xywh: `[${px + plot.x0 + 40},${py + plot.y0 + plot.height * 0.6},120,72]`,
+    });
+
+    edgeless.std.get(ReadingManager).open(taskId);
+    await wait(250);
+    const widget = edgeless.widgetComponents[READING_PROPOSAL_WIDGET];
+    await widget?.updateComplete;
+    const field = widget?.shadowRoot?.querySelector(
+      '[data-testid="reading-phase"]'
+    );
+
+    expect(field?.textContent).toContain('Lane');
+    expect(field?.textContent).toContain('Back office');
+    expect(field?.textContent).not.toContain('Evolution phase');
   });
 
   test('a lane’s title band belongs to the lane, not to a gutter', () => {

@@ -1,5 +1,6 @@
 import type { ReadingProfile } from '@labre/affine-block-surface';
 
+import { CORE_DOMAIN_BACKGROUND } from './core-domain/background.js';
 import { CORE_DOMAIN_ROLE, CORE_DOMAIN_ROLES } from './roles.js';
 
 /**
@@ -24,14 +25,18 @@ import { CORE_DOMAIN_ROLE, CORE_DOMAIN_ROLES } from './roles.js';
  *
  * The chart itself is the FRAME and is not read.
  *
- * ## No nature, no phase
+ * ## No nature; a zone, not a phase
  *
  * The framework ships no type-3 tag pack: the five dot presets ARE roles, and
  * the panel says them on the type line with the chain above them ("Platform
- * sub-domain › Sub-domain"). And the chart's two axes are a plane, not a set of
- * declared zones with ids — reading a phase off it would be an invented fact, so
- * the section is absent rather than empty. A follow-up ticket covers the
- * variant-scoped 2D zones the engine would need.
+ * sub-domain › Sub-domain").
+ *
+ * The chart's two axes are a PLANE, so a dot is read in two dimensions (no
+ * `axis`): it is in the quadrant whose rectangle holds its centre, among the
+ * quadrants of the reading the chart is turned to (`variant` — classic or
+ * migration), and named the way the chart names it, the user's renamed label
+ * included. A dot in a strip no quadrant covers is in none, and the panel says
+ * so rather than picking the nearest.
  */
 
 /**
@@ -58,6 +63,18 @@ export const CORE_DOMAIN_READING: ReadingProfile = {
         labelKey: 'com.labre.core-domain.reading.relations.supplier',
         labelFallback: 'Moves to',
       },
+    },
+  },
+  frame: {
+    backgroundRole: CORE_DOMAIN_ROLE.chart,
+    background: CORE_DOMAIN_BACKGROUND,
+    label: {
+      labelKey: 'com.labre.core-domain.reading.field.zone',
+      labelFallback: 'Zone',
+    },
+    none: {
+      labelKey: 'com.labre.core-domain.reading.zone.none',
+      labelFallback: 'Not in a zone of a Core Domain Chart.',
     },
   },
 };

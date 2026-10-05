@@ -127,7 +127,13 @@ const PROFILE: ReadingProfile = {
     // claim, which is what every framework but Wardley ships.
     geometry: 'vertical',
   },
-  frame: { backgroundRole: 'test:map', background: BACKGROUND, axis: 'x' },
+  frame: {
+    backgroundRole: 'test:map',
+    background: BACKGROUND,
+    axis: 'x',
+    label: { labelKey: 'k.phase', labelFallback: 'Phase' },
+    none: { labelKey: 'k.phase.none', labelFallback: 'No phase.' },
+  },
   recordKeys: { nature: 'nature', phase: 'phase' },
 };
 
@@ -735,6 +741,177 @@ describe('the evolution phase', () => {
         [map()]
       )!.phase
     ).toBeDefined();
+  });
+
+  it('keeps reading the zone’s vocabulary when the map was never renamed', () => {
+    // The 1D path gained the stored-label override with the 2D one; a map that
+    // carries no stored label must read exactly what it read before.
+    const reading = read(at(690), [map()])!;
+    expect(reading.phase?.name).toBeUndefined();
+  });
+});
+
+/**
+ * A frame read in TWO dimensions — a Core Domain Chart's quadrants, a BPMN
+ * pool's lanes — rather than along one axis. Why this block exists: the 1D
+ * reading ignored `variants` and never saw an instance's own zones, so a
+ * sub-domain on a migration chart could only be read against a quadrant the
+ * chart does not paint, and a task in a lane could not be read at all.
+ */
+describe('the zone a two-dimensional frame places the subject in', () => {
+  /**
+   * 1000 × 500 with a 100-unit left margin: the plot is 900 × 500 from
+   * x = 100. The classic reading leaves its first tenth of the plot unzoned,
+   * the way the Core Domain Chart leaves the strip left of "Generic".
+   */
+  const PLANE: FrameworkBackgroundDef = {
+    type: 'plane',
+    role: 'test:map',
+    variantProp: 'variant',
+    geometry: {
+      width: 1000,
+      height: 500,
+      lockAspectRatio: false,
+      resizable: true,
+      margin: { top: 0, right: 0, bottom: 0, left: 100 },
+    },
+    zones: [
+      {
+        id: 'left',
+        variants: ['classic'],
+        rect: { x: 0.1, y: 0, w: 0.4, h: 1 },
+        label: {
+          id: 'leftLabel',
+          prop: 'zoneLeft',
+          labelKey: 'k.left',
+          fallback: 'Left',
+          anchor: { x: 0.3, y: 0.5 },
+          style: { size: 10, color: '#000' },
+        },
+      },
+      // Painted, never named: the chart tints it and writes nothing on it.
+      {
+        id: 'right',
+        variants: ['classic'],
+        rect: { x: 0.5, y: 0, w: 0.5, h: 1 },
+      },
+      {
+        id: 'whole',
+        variants: ['migration'],
+        rect: { x: 0, y: 0, w: 1, h: 1 },
+        label: {
+          id: 'wholeLabel',
+          labelKey: 'k.whole',
+          fallback: 'Whole',
+          anchor: { x: 0.5, y: 0.5 },
+          style: { size: 10, color: '#000' },
+        },
+      },
+    ],
+    instanceZones: { prop: 'lanes', stack: 'y', idPrefix: 'lane' },
+  };
+
+  const PLANE_PROFILE: ReadingProfile = {
+    id: 'plane',
+    framework: 'ddd-core-domain',
+    roles: ROLES,
+    appliesTo: 'test:component',
+    // No `axis`: containment in the plane, not a position along a line.
+    frame: {
+      backgroundRole: 'test:map',
+      background: PLANE,
+      label: { labelKey: 'k.zone', labelFallback: 'Zone' },
+      none: { labelKey: 'k.zone.none', labelFallback: 'In no zone.' },
+    },
+  };
+
+  const chart = (props: Record<string, unknown>) => {
+    const el = element({
+      id: 'chart',
+      role: 'test:map',
+      bound: [0, 0, 1000, 500],
+    });
+    for (const [key, value] of Object.entries(props)) {
+      Object.defineProperty(el, key, { value, configurable: true });
+    }
+    return el;
+  };
+
+  /** A 20 × 20 subject centred on model (`x`, `y`). */
+  const dot = (x: number, y: number) =>
+    element({
+      id: 'a',
+      role: 'test:component',
+      bound: [x - 10, y - 10, 20, 20],
+    });
+
+  const zoneOf = (
+    subject: GfxPrimitiveElementModel,
+    frame: GfxPrimitiveElementModel
+  ) => readElement(subject, [subject, frame], PLANE_PROFILE)!.phase;
+
+  it('is the zone that contains the centre, in both dimensions', () => {
+    // Plot x = (300 - 100) / 900 ≈ 0.22 → `left`.
+    expect(zoneOf(dot(300, 250), chart({ variant: 'classic' }))).toEqual({
+      zoneId: 'left',
+      labelKey: 'k.left',
+      labelFallback: 'Left',
+      inTransitionBand: false,
+    });
+  });
+
+  it('only reads the zones of the variant the chart is turned to', () => {
+    // Same spot, migration reading: `left` is not painted, so it is not there.
+    expect(
+      zoneOf(dot(300, 250), chart({ variant: 'migration' }))
+    ).toMatchObject({
+      zoneId: 'whole',
+      labelFallback: 'Whole',
+    });
+  });
+
+  it('says what the board says: a renamed zone reads under its new name', () => {
+    const phase = zoneOf(
+      dot(300, 250),
+      chart({ variant: 'classic', zoneLeft: 'Cœur métier' })
+    );
+    expect(phase).toMatchObject({ zoneId: 'left', name: 'Cœur métier' });
+  });
+
+  it('reads a zone the board paints but never names, without inventing a name', () => {
+    const phase = zoneOf(dot(800, 250), chart({ variant: 'classic' }));
+    expect(phase?.zoneId).toBe('right');
+    expect(phase?.labelKey).toBeUndefined();
+    expect(phase?.labelFallback).toBeUndefined();
+    expect(phase?.name).toBeUndefined();
+  });
+
+  it('is absent for a point on the chart that no zone covers', () => {
+    // Plot x = (140 - 100) / 900 ≈ 0.04: the unzoned strip of the classic reading.
+    expect(
+      zoneOf(dot(140, 250), chart({ variant: 'classic' }))
+    ).toBeUndefined();
+  });
+
+  it('reads the zones the INSTANCE declares, under the name the user gave', () => {
+    const laned = chart({
+      variant: 'none',
+      lanes: [
+        { id: 'sales', name: 'Sales', size: 1 },
+        { id: 'ops', size: 3 },
+      ],
+    });
+    // Plot y = 50 / 500 = 0.1 → the first quarter, `sales`.
+    expect(zoneOf(dot(500, 50), laned)).toEqual({
+      zoneId: 'lane:sales',
+      name: 'Sales',
+      inTransitionBand: false,
+    });
+    // An unnamed lane is read, and stays unnamed.
+    expect(zoneOf(dot(500, 400), laned)).toEqual({
+      zoneId: 'lane:ops',
+      inTransitionBand: false,
+    });
   });
 });
 

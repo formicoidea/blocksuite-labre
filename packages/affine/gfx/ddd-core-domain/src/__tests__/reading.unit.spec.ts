@@ -3,7 +3,12 @@ import { Bound } from '@labre/global/gfx';
 import { GfxPrimitiveElementModel } from '@labre/std/gfx';
 import { describe, expect, it } from 'vitest';
 
-import { CORE_DOMAIN_READING, CORE_DOMAIN_READINGS } from '../reading.js';
+import { CORE_DOMAIN_BACKGROUND } from '../core-domain/background';
+import {
+  CORE_DOMAIN_MARKER_READING,
+  CORE_DOMAIN_READING,
+  CORE_DOMAIN_READINGS,
+} from '../reading.js';
 import { CORE_DOMAIN_ROLE, CORE_DOMAIN_ROLES } from '../roles.js';
 
 /**
@@ -135,14 +140,13 @@ describe('what a Core Domain Chart is read as', () => {
   });
 
   it('never contradicts the drawing, proposes no nature, reads no phase', () => {
-    // The chart's two axes are a PLANE, not a set of declared zones with ids: a
-    // movement drawn upwards is a claim about complexity, not an ordering the
-    // engine may second-guess, and a phase read off it would be invented. The
-    // variant-scoped 2D zones are a follow-up.
+    // The chart's two axes are a PLANE: a movement drawn upwards is a claim
+    // about complexity, not an ordering the engine may second-guess. What is
+    // read off the chart is a quadrant, in the plane, never along an axis.
     for (const profile of CORE_DOMAIN_READINGS) {
       expect(profile.relation?.geometry, profile.id).toBeUndefined();
       expect(profile.nature, profile.id).toBeUndefined();
-      expect(profile.frame, profile.id).toBeUndefined();
+      expect(profile.frame?.axis, profile.id).toBeUndefined();
     }
 
     const low = element({
@@ -173,5 +177,91 @@ describe('what a Core Domain Chart is read as', () => {
     expect(reading.nature).toBeUndefined();
     expect(reading.naming).toBeUndefined();
     expect(reading.phase).toBeUndefined();
+  });
+});
+
+/**
+ * Why this block exists: the reading panel could not say which quadrant a
+ * sub-domain sits in, and the one reader that could (the audit) ignored the
+ * chart's variant. The zone is read off the declaration's own rectangles, among
+ * those of the reading the chart is turned to, and named the way the chart
+ * names it — the user's renamed label included.
+ */
+describe('the zone a sub-domain sits in', () => {
+  const { width, height, margin } = CORE_DOMAIN_BACKGROUND.geometry;
+  const plotW = width - margin.left - margin.right;
+  const plotH = height - margin.top - margin.bottom;
+
+  /** A chart at its birth size at the origin, turned to `variant`. */
+  const chart = (props: Record<string, unknown>) => {
+    const el = element({
+      id: 'chart',
+      role: CORE_DOMAIN_ROLE.chart,
+      bound: [0, 0, width, height],
+    });
+    for (const [key, value] of Object.entries(props)) {
+      Object.defineProperty(el, key, { value, configurable: true });
+    }
+    return el;
+  };
+
+  /** A dot centred on the middle of the declared zone `id`. */
+  const dotIn = (id: string) => {
+    const zone = CORE_DOMAIN_BACKGROUND.zones!.find(z => z.id === id)!;
+    const cx = margin.left + (zone.rect.x + zone.rect.w / 2) * plotW;
+    const cy = margin.top + (zone.rect.y + zone.rect.h / 2) * plotH;
+    return element({
+      id: 'dot',
+      role: CORE_DOMAIN_ROLE.bcCurrent,
+      bound: [cx - 10, cy - 10, 20, 20],
+    });
+  };
+
+  const zoneOf = (
+    dot: GfxPrimitiveElementModel,
+    frame: GfxPrimitiveElementModel
+  ) => readElement(dot, [frame, dot], CORE_DOMAIN_READING)!.phase;
+
+  it('is the classic quadrant the dot sits in, in the chart’s vocabulary', () => {
+    expect(zoneOf(dotIn('core'), chart({ variant: 'classic' }))).toEqual({
+      zoneId: 'core',
+      labelKey: 'com.labre.core-domain.background.zone.core',
+      labelFallback: 'Core',
+      inTransitionBand: false,
+    });
+  });
+
+  it('reads the migration quadrants on a chart turned to migration', () => {
+    // The centre of the classic `core` quadrant is in the upper-right quarter
+    // of the plot — `risk-seeking` in the migration reading.
+    expect(zoneOf(dotIn('core'), chart({ variant: 'migration' }))?.zoneId).toBe(
+      'risk-seeking'
+    );
+  });
+
+  it('names a renamed quadrant the way the chart paints it', () => {
+    expect(
+      zoneOf(dotIn('core'), chart({ variant: 'classic', zoneCore: 'Cœur' }))
+    ).toMatchObject({ zoneId: 'core', name: 'Cœur' });
+  });
+
+  it('reads no zone in the strip left of "Generic"', () => {
+    // The classic quadrants start 10 reference units into the plot; this dot's
+    // centre is 3 units in.
+    const dot = element({
+      id: 'dot',
+      role: CORE_DOMAIN_ROLE.bcCurrent,
+      bound: [margin.left, height / 2, 6, 6],
+    });
+    expect(zoneOf(dot, chart({ variant: 'classic' }))).toBeUndefined();
+  });
+
+  it('frames the sub-domains only, under the heading "Zone"', () => {
+    expect(CORE_DOMAIN_READING.frame?.label).toEqual({
+      labelKey: 'com.labre.core-domain.reading.field.zone',
+      labelFallback: 'Zone',
+    });
+    // A Team Topologies marker annotates an interaction, not a position.
+    expect(CORE_DOMAIN_MARKER_READING.frame).toBeUndefined();
   });
 });

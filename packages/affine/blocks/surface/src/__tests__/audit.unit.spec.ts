@@ -496,6 +496,73 @@ describe('the zones a frame declares for itself', () => {
   });
 });
 
+/**
+ * GUARD — a variant the frame is NOT turned to has no zones on it.
+ *
+ * Why this block exists: the audit concatenated every declared zone whatever
+ * the instance's `variantProp` said, so on a Core Domain Chart read for
+ * migration it told the assistant about the classic quadrants and could place
+ * a sub-domain in one of them — a region the chart does not paint. The reading
+ * panel and the validation engine already filtered by variant; the three now
+ * share one helper (`backgroundZones`).
+ */
+describe('the zones of a frame turned to one of its variants', () => {
+  const VARIANT: FrameworkBackgroundDef = {
+    ...BACKGROUND,
+    variantProp: 'variant',
+    zones: [
+      // Declared FIRST and covering the whole plot, so a reader that ignores
+      // the variant finds it before the zone that is actually painted.
+      {
+        id: 'classic',
+        variants: ['classic'],
+        rect: { x: 0, y: 0, w: 1, h: 1 },
+      },
+      {
+        id: 'migration',
+        variants: ['migration'],
+        rect: { x: 0, y: 0, w: 1, h: 1 },
+      },
+    ],
+  };
+
+  function chart(variant: string) {
+    const frame = element('map', [0, 0, 1000, 500], ROLE.frame);
+    Object.defineProperty(frame, 'variant', {
+      value: variant,
+      enumerable: true,
+    });
+    return frame;
+  }
+
+  const factsOn = (variant: string) =>
+    collectAuditFacts(
+      stubStd({
+        elements: [
+          chart(variant),
+          element('n1', [280, 230, 40, 40], ROLE.node),
+        ],
+        rules: [{ ...RULE, background: VARIANT }],
+        manager: stubManager(),
+      })
+    );
+
+  test('lists only the zones the instance paints', () => {
+    expect(factsOn('migration').frames[0].zones.map(z => z.id)).toEqual([
+      'migration',
+    ]);
+  });
+
+  test('places an element in a zone of the variant it is drawn on', () => {
+    expect(factsOn('migration').elements.find(e => e.id === 'n1')?.zone).toBe(
+      'migration'
+    );
+    expect(factsOn('classic').elements.find(e => e.id === 'n1')?.zone).toBe(
+      'classic'
+    );
+  });
+});
+
 describe('running an audit', () => {
   test('hands the provider the criteria and the facts, and files the answer', async () => {
     const manager = stubManager();

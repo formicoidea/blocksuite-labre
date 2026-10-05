@@ -1,5 +1,6 @@
 import type { ReadingProfile } from '@labre/affine-block-surface';
 
+import { BPMN_POOL_BACKGROUND } from './background.js';
 import { BPMN_ROLE, BPMN_ROLES } from './roles.js';
 
 /**
@@ -47,13 +48,36 @@ import { BPMN_ROLE, BPMN_ROLES } from './roles.js';
  * the same. An activity's inscribed name still wins, because own text is read
  * first; the annotation and the group ARE their text and need no fallback.
  *
- * ## No nature, no phase
+ * ## No nature; a lane, not a phase
  *
  * BPMN ships no type-3 tag pack: its kinds ARE the roles, and the panel says
  * them on the type line, chain included ("Message start event › Start event ›
- * Event › Flow object"). And a pool's lanes are participants, not zones on a
- * plotted axis, so there is nothing a position could be read against yet.
+ * Event › Flow object").
+ *
+ * A pool's lanes are not an ordered axis, but they ARE where a flow object or a
+ * data shape is drawn: the lane its centre falls in, read in two dimensions (no
+ * `axis`) off the pool's own `lanes` and named by the name the user gave it —
+ * the same lane `bpmnLaneOf` and the audit report. The annotation and the group
+ * are left without a frame: commentary is about the picture, not in a lane, and
+ * §10.4 lets a group cross every lane there is.
  */
+
+/**
+ * The pool, read for its lanes. Shared by the two profiles that sit IN a lane,
+ * so a task and the data object beside it are placed by one declaration.
+ */
+const BPMN_LANE_FRAME: ReadingProfile['frame'] = {
+  backgroundRole: BPMN_ROLE.pool,
+  background: BPMN_POOL_BACKGROUND,
+  label: {
+    labelKey: 'com.labre.bpmn.reading.field.lane',
+    labelFallback: 'Lane',
+  },
+  none: {
+    labelKey: 'com.labre.bpmn.reading.lane.none',
+    labelFallback: 'Not in a lane of a pool.',
+  },
+};
 
 /**
  * The two words a sequence flow is read with, from the subject's end.
@@ -82,6 +106,7 @@ export const BPMN_READING: ReadingProfile = {
   // An event's or a gateway's name gravitates (R38): see the module comment.
   labelRole: BPMN_ROLE.label,
   relation: { edgeRole: BPMN_ROLE.sequenceFlow, sides: SEQUENCE_SIDES },
+  frame: BPMN_LANE_FRAME,
 };
 
 /**
@@ -97,6 +122,7 @@ export const BPMN_DATA_READING: ReadingProfile = {
   appliesTo: BPMN_ROLE.data,
   // Both data shapes are named beside the symbol (R38).
   labelRole: BPMN_ROLE.label,
+  frame: BPMN_LANE_FRAME,
 };
 
 /** A note on the picture. Readable, so a reader can link it to a record. */

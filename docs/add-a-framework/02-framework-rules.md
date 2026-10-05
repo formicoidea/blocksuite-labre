@@ -346,6 +346,16 @@ read as unconnected. Each table names its own two wordings; the panel groups by
 table, and a connector's per-end labels (ADR 0020 — a UML multiplicity) ride
 with the far end's name.
 
+A profile whose artefacts sit IN a zone of their board declares a `frame`: the
+board's role and declaration, plus the panel's heading and empty state in the
+framework's own words (`label`, `none`). With an `axis` the zone is read along
+one plot axis (Wardley's phases, with the transition band); without one it is
+the zone whose rectangle holds the artefact's centre (a Core Domain quadrant, a
+BPMN lane). Either way the zones are the instance's own — the framework's in the
+variant the board is turned to, then its instance zones — through
+`backgroundZones`, the helper the audit uses, and a zone is named the way the
+board paints it (a stored label or a lane's name first).
+
 **R26. The validation of a 500-element map fits in one 16 ms frame**, asserted
 by `validation.bench.unit.spec.ts`; flag-off costs under 0.05 ms.
 
