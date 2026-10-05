@@ -61,8 +61,10 @@ describe('default tool', () => {
     ]);
     await wait();
 
-    click(edgeless.host, { x: 0, y: 50 });
-    drag(edgeless.host, { x: 0, y: 50 }, { x: 0, y: 150 });
+    // Grabbed away from the viewport border: within 20 px of it an element
+    // drag pans the board (auto-pan-element-drag.spec.ts).
+    click(edgeless.host, { x: 50, y: 50 });
+    drag(edgeless.host, { x: 50, y: 50 }, { x: 50, y: 150 });
     await wait();
 
     const element = service.crud.getElementById(id!)!;
