@@ -1,5 +1,5 @@
 import { LifeCycleWatcher } from '@labre/std';
-import { GfxControllerIdentifier } from '@labre/std/gfx';
+import { DEFAULT_LAYER_ID, GfxControllerIdentifier } from '@labre/std/gfx';
 import { effect, type ReadonlySignal, signal } from '@preact/signals-core';
 
 import { EditPropsStore } from './edit-props-store.js';
@@ -178,7 +178,9 @@ export class CanvasLocalVisibility extends LifeCycleWatcher {
       if (pruned || !surface) return;
       pruned = true;
       const layers = surface.props.layers ?? {};
-      const kept = stored.filter(id => id in layers);
+      // The default layer exists with or without its record (ADR 0031
+      // amendments): a hide of it is never a layer the document lost.
+      const kept = stored.filter(id => id === DEFAULT_LAYER_ID || id in layers);
       if (kept.length === stored.length) {
         this._hiddenLayerIds$.value = new Set(kept);
       } else {

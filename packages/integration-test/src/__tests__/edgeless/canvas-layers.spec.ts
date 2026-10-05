@@ -6,6 +6,10 @@
  * comparator, the creation rule and the writes on a bare document. This one
  * owns what only a mounted editor can answer:
  *
+ * - a fresh canvas shows "Layer 1" holding every row, and opening the pane
+ *   writes nothing; renaming it records it; a second layer leaves it its
+ *   name; its row menu has no delete (ADR 0031 amendments: one layer at
+ *   least, visible from the start);
  * - "New layer" in the pane's head creates the first two records, the new
  *   layer becomes active, and what is drawn next lands in it and stacks above
  *   the default layer whatever its `index`;
@@ -125,6 +129,91 @@ describe('user layers', () => {
     );
     await settle();
   };
+
+  test('a fresh canvas shows "Layer 1"; renaming records it, a second layer keeps it', async () => {
+    // The product owner's decision (ADR 0031 amendments): the default layer
+    // is visible from the start, and recorded only by a gesture needing it.
+    const a = shape(0);
+    const b = shape(200);
+    await settle();
+    const updates: Uint8Array[] = [];
+    window.doc.doc.spaceDoc.on('update', (update: Uint8Array) =>
+      updates.push(update)
+    );
+
+    await openPane();
+
+    expect(layerRowIds()).toEqual([DEFAULT_LAYER_ID]);
+    const label = () =>
+      layerRow(DEFAULT_LAYER_ID).querySelector('.selection-pane-label')
+        ?.textContent;
+    expect(label()).toBe('Layer 1');
+    expect(layerRow(DEFAULT_LAYER_ID).hasAttribute('data-active')).toBe(true);
+    const rows = Array.from(
+      root().querySelectorAll<HTMLElement>(
+        '[data-testid="selection-pane-layer"], [data-testid="selection-pane-row"]'
+      )
+    );
+    expect(
+      rows.map(row => [row.dataset.id, row.getAttribute('aria-level')])
+    ).toEqual([
+      [DEFAULT_LAYER_ID, '1'],
+      [b, '2'],
+      [a, '2'],
+    ]);
+    expect(updates, 'opening the pane writes nothing').toHaveLength(0);
+    expect(surface().props.layers).toBeUndefined();
+
+    // The default layer offers no delete: it is the one that keeps a canvas
+    // at one layer.
+    await userEvent.click(
+      page.elementLocator(
+        layerRow(DEFAULT_LAYER_ID).querySelector(
+          '[data-testid="selection-pane-more"]'
+        )!
+      )
+    );
+    await wait(100);
+    expect(
+      deepQueryAll(document, '[data-testid="selection-pane-hide-for-everyone"]')
+        .length,
+      'the row menu opened'
+    ).toBeGreaterThan(0);
+    expect(
+      deepQueryAll(document, '[data-testid="selection-pane-delete-layer"]')
+    ).toHaveLength(0);
+    await userEvent.keyboard('{Escape}');
+    await settle();
+
+    // Rename it in place: that records it, once.
+    await userEvent.dblClick(
+      page.elementLocator(
+        layerRow(DEFAULT_LAYER_ID).querySelector('.selection-pane-label')!
+      )
+    );
+    await settle();
+    const input = layerRow(DEFAULT_LAYER_ID).querySelector<HTMLInputElement>(
+      '[data-testid="selection-pane-rename"]'
+    )!;
+    expect(input, 'the default layer row is a rename field').toBeTruthy();
+    expect(input.value).toBe('Layer 1');
+    await userEvent.fill(page.elementLocator(input), 'Background');
+    await userEvent.keyboard('{Enter}');
+    await settle();
+    expect(Object.keys(layers())).toEqual([DEFAULT_LAYER_ID]);
+    expect(layers()[DEFAULT_LAYER_ID].name).toBe('Background');
+    expect(label()).toBe('Background');
+
+    // A second layer: two rows, the first kept its name.
+    await newLayer();
+    await userEvent.keyboard('{Enter}');
+    await settle();
+    const created = userLayerId();
+    expect(layerRowIds()).toEqual([created, DEFAULT_LAYER_ID]);
+    expect(layers()[DEFAULT_LAYER_ID].name).toBe('Background');
+    expect(label()).toBe('Background');
+    expect(layers()[created].name).toBe('Layer 2');
+  });
 
   test('a new layer is active, and what is drawn next stacks above', async () => {
     const below = shape(0);

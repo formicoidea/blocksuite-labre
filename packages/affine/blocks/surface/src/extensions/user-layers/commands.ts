@@ -4,7 +4,7 @@ import type {
   BlockStdScope,
   CommandDescriptor,
 } from '@labre/std';
-import { GfxControllerIdentifier } from '@labre/std/gfx';
+import { DEFAULT_LAYER_ID, GfxControllerIdentifier } from '@labre/std/gfx';
 import { z } from 'zod';
 
 import {
@@ -190,7 +190,10 @@ export type DeleteLayerParams = z.infer<typeof deleteLayerParams>;
 
 /**
  * Delete a layer and everything in it, in one undo step (ADR 0031 §10). The
- * default layer cannot be deleted.
+ * default layer cannot be deleted, which is what keeps a canvas at one layer
+ * at least (ADR 0031 amendments): with the default layer alone — recorded or
+ * not — there is nothing to delete, so `when` withdraws the command rather
+ * than letting it fail.
  */
 const deleteLayer: CommandDescriptor<DeleteLayerParams> = {
   id: 'canvas.layer.delete',
@@ -205,6 +208,10 @@ const deleteLayer: CommandDescriptor<DeleteLayerParams> = {
   scope: 'edgeless',
   defaultKeys: { mac: [], other: [] },
   availability: 'editable',
+  when: std =>
+    userLayersBottomUp(std.get(GfxControllerIdentifier).surface).some(
+      layer => layer.id !== DEFAULT_LAYER_ID
+    ),
   params: deleteLayerParams,
   run: (std, _invocation, params) => {
     const parsed = deleteLayerParams.safeParse(params);

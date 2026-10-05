@@ -135,8 +135,15 @@ function shape(surface: SurfaceBlockModel, index: string, x = 0) {
 
 const ids = (nodes: readonly SelectionPaneNode[]) => nodes.map(n => n.id);
 
+/**
+ * The rows of the one layer a canvas without a layer record shows, the
+ * default one (ADR 0031 amendments; the shape is pinned in
+ * `canvas-default-layer.unit.spec.ts`).
+ */
+const rowsOf = (tree: readonly SelectionPaneNode[]) => tree[0].children!;
+
 const treeOf = (gfx: ReturnType<typeof gfxFor>) =>
-  buildSelectionPaneTree(gfx.gfxElements);
+  rowsOf(buildSelectionPaneTree(gfx.gfxElements));
 
 describe('the tree is the paint order', () => {
   test('rows are top first, groups nest their members', () => {
@@ -535,8 +542,10 @@ describe('the tree is cheap', () => {
       best = Math.min(best, performance.now() - start);
     }
 
-    // 500 loose rows (100 of them a frame's members), 100 groups, 20 frames.
-    expect(tree).toHaveLength(620);
+    // The default layer, holding 500 loose rows (100 of them a frame's
+    // members), 100 groups and 20 frames.
+    expect(tree).toHaveLength(1);
+    expect(rowsOf(tree)).toHaveLength(620);
     expect(best).toBeLessThan(FRAME_BUDGET_MS);
   }, 30_000);
 
@@ -549,7 +558,7 @@ describe('the tree is cheap', () => {
     const models = gfxFor(store, surface).gfxElements;
     const topLevel = models.filter(model => paneContainerOf(model) === null);
 
-    expect(ids(buildSelectionPaneTree(models))).toEqual(
+    expect(ids(rowsOf(buildSelectionPaneTree(models)))).toEqual(
       [...topLevel].sort((a, b) => compareLayer(b, a)).map(model => model.id)
     );
   });
@@ -562,17 +571,17 @@ describe('the tree is cheap', () => {
     const model = new SelectionPaneModel(stdFor(store, gfx));
     model.mounted();
 
-    expect(model.tree$.value).toHaveLength(2);
+    expect(rowsOf(model.tree$.value)).toHaveLength(2);
     const built = gfx.reads;
 
     // Geometry churn, a frame of a drag.
     surface.updateElement(s0, { xywh: '[50,50,10,10]' });
-    expect(model.tree$.value).toHaveLength(2);
+    expect(rowsOf(model.tree$.value)).toHaveLength(2);
     expect(gfx.reads).toBe(built);
 
     // Stacking changes the rows.
     surface.updateElement(s0, { index: 'a2' });
-    expect(ids(model.tree$.value)[0]).toBe(s0);
+    expect(ids(rowsOf(model.tree$.value))[0]).toBe(s0);
     expect(gfx.reads).toBe(built + 1);
 
     model.unmounted();

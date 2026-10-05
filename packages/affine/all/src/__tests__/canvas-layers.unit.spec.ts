@@ -669,14 +669,26 @@ describe('the pane tree with layers', () => {
     ]);
   });
 
-  test('no layers: the tree is exactly the pre-layer tree', () => {
+  // ADR 0031 amendments: the default layer is shown before it is recorded,
+  // so a canvas with no `layers` reads as one layer holding the pre-layer
+  // rows — and showing it writes nothing (`canvas-default-layer.unit.spec.ts`).
+  test('no layers: the default layer alone, holding the pre-layer rows', () => {
     const { surface, shape } = createBoard();
-    shape('a1');
-    shape('a2');
-    expect(paneLayersOf(surface)).toBeNull();
-    const tree = buildSelectionPaneTree([
-      ...surface.elementModels,
-    ] as GfxModel[]);
-    expect(tree.every(node => node.kind === 'element')).toBe(true);
+    const low = shape('a1');
+    const high = shape('a2');
+    expect(paneLayersOf(surface).order).toEqual([DEFAULT_LAYER_ID]);
+    const tree = buildSelectionPaneTree(
+      [...surface.elementModels] as GfxModel[],
+      undefined,
+      paneLayersOf(surface)
+    );
+    expect(tree.map(node => [node.kind, node.id])).toEqual([
+      ['layer', DEFAULT_LAYER_ID],
+    ]);
+    expect(tree[0].children!.map(node => [node.kind, node.id])).toEqual([
+      ['element', high],
+      ['element', low],
+    ]);
+    expect(surface.yBlock.has('prop:layers')).toBe(false);
   });
 });

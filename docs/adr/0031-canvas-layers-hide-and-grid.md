@@ -620,3 +620,32 @@ frame, the list keeps that frame's own row with its members. Frames keep their
 `layer` prop: hiding or deleting a layer hides or deletes the frames listed in
 it. Nothing stored changes, and neither the comparator nor any frame-versus-
 board rule does.
+
+**The default layer is always shown, and recorded only when a gesture needs
+it (product owner's decision, 2026-10-05: "Layer 1 exists by default, and it
+is not possible to go below one layer").** §2 left the default layer implicit
+until the first "New layer", so the pane showed a flat list and the layer
+feature stayed out of sight. The pane now always shows the default layer:
+while `layers` is absent, `buildSelectionPaneTree` — hence the headless
+`selectionPaneTree(std)` a host draws from — answers ONE `kind: 'layer'` node,
+`'@default'`, holding every row, the shape a canvas with layers has. That row
+is VIRTUAL: derived in the tree, named by `userLayerName(std, id)` with the
+first-layer seed (`com.labre.layer.seed.name`, n = 1, through the translation
+seam), and §2's rule is unchanged — nothing is written on load or on opening
+the pane. The `'@default'` record is written by the gesture that needs it, in
+one undo step: a rename (the record with the new name; renaming to the shown
+seed writes nothing), "Hide for everyone" (the record with `hidden: true` and
+the seed name), or the first "New layer", which writes both records as before
+and keeps the name the default layer shows. Everything that needs no record
+works on the virtual row: it is the active layer by default, collapses, takes
+a drop (which removes a model's `layer` key, a dangling id included), counts
+what a filter hides, and its eye hides it for this viewer — `localHiddenLayers`
+keeps `'@default'` across a reload, and the paint and pick predicate reads it
+while the surface has no `layers` (`GfxLocalVisibility`, in std; the
+comparator, its fast path and `SurfaceUserLayers` are untouched, so a canvas
+with no record still sorts exactly as before layers). "Not below one layer"
+is the rule §2 and §10 already had: `'@default'` is the one layer that cannot
+be deleted, and every other layer can. It is now visible rather than merely
+enforced: the default row's menu has no delete, and `canvas.layer.delete`'s
+`when` withdraws the command while the default layer is the only one. Nothing
+stored changes; no key is added.
