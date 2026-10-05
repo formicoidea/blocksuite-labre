@@ -21,6 +21,7 @@ import { Subject } from 'rxjs';
 import type * as Y from 'yjs';
 
 import {
+  createActiveLayerMiddleware,
   createInsertPlaceMiddleware,
   createRegenerateIndexMiddleware,
   createStickerMiddleware,
@@ -430,6 +431,7 @@ export function createTemplateJob(
   }
 
   middlewares.push(replaceIdMiddleware);
+  middlewares.push(createActiveLayerMiddleware(std));
 
   return TemplateJob.create({
     model: surface,

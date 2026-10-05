@@ -1,5 +1,6 @@
 import type { SurfaceBlockModel } from '@labre/affine-block-surface';
 import {
+  applyCreationLayer,
   indexOverBackgrounds,
   Overlay,
   stackedElementsOf,
@@ -246,6 +247,10 @@ export class EdgelessFrameManager extends GfxExtension {
         index: this.frameIndexAt(bound),
         presentationIndex: this.generatePresentationIndex(),
       });
+    // The viewer's active layer, like every new model (ADR 0031 §6). Not
+    // through the stamped CRUD `addBlock`: it would replace the index
+    // `frameIndexAt` just chose.
+    applyCreationLayer(this.gfx.std, props);
 
     const id = this.gfx.doc.addBlock('affine:frame', props, surfaceModel);
     const frameModel = this.gfx.getElementById(id);
