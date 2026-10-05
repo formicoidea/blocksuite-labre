@@ -6,6 +6,7 @@ import {
   type WardleyNodeKind,
   WardleyNodeElementModel,
 } from '@labre/affine-model';
+import { safeFilename } from '@labre/affine-shared/utils';
 import type {
   ForeignInterchange,
   GfxPrimitiveElementModel,
@@ -340,19 +341,12 @@ export function wardleyBoardFrom(
 }
 
 /**
- * A name a file system will accept, minus the extension. BPMN's sanitizer,
- * verbatim in behaviour and different only in its fallback — `map`, because
- * that is what an OWM document is.
+ * A name a file system will accept, minus the extension: the shared
+ * `safeFilename` with Wardley's fallback — `map`, because that is what an OWM
+ * document is. Held to it by `safe-filename-parity.unit.spec.ts`.
  */
 export function wardleySafeFilename(raw: string | undefined): string {
-  const safe = (raw ?? '')
-    .trim()
-    .replaceAll(/[\\/:*?"<>|]/g, '-')
-    .replaceAll(/\s+/g, ' ')
-    .trim()
-    .slice(0, 120)
-    .replace(/[. ]+$/, '');
-  return safe || 'map';
+  return safeFilename(raw, 'map');
 }
 
 /* ── Matching a name to the artefact it names ─────────────────────────── */

@@ -6,6 +6,7 @@ import {
   GfxControllerIdentifier,
   type GfxModel,
   GfxPrimitiveElementModel,
+  layerCarrierOf,
   ownLayerOf,
   type SurfaceBlockModel,
   type SurfaceLayerRecord,
@@ -270,7 +271,7 @@ export function deleteUserLayer(std: BlockStdScope, id: string): number | null {
   const members = gfx.gfxElements.filter(
     model => surface.userLayers.effectiveLayerOf(model) === id
   );
-  const carriers = members.filter(model => layerCarrier(model) === model);
+  const carriers = members.filter(model => layerCarrierOf(model) === model);
 
   std.store.captureSync();
   std.store.transact(() => {
@@ -281,26 +282,6 @@ export function deleteUserLayer(std: BlockStdScope, id: string): number | null {
   });
   std.store.captureSync();
   return members.length;
-}
-
-/**
- * The model a "move to layer" writes on: the outermost group-like ELEMENT
- * holding `model` (a group, a mindmap), else `model` itself — a group lives
- * in one layer, stored once on its outermost group (ADR 0031 §5).
- */
-function layerCarrier(model: GfxModel): GfxModel {
-  let groups: readonly unknown[] = [];
-  try {
-    groups = model.groups ?? [];
-  } catch {
-    groups = [];
-  }
-  for (let i = groups.length - 1; i >= 0; i--) {
-    if (groups[i] instanceof GfxPrimitiveElementModel) {
-      return groups[i] as GfxModel;
-    }
-  }
-  return model;
 }
 
 /**
@@ -349,7 +330,7 @@ export function moveModelsToUserLayer(
       model instanceof GfxPrimitiveElementModel ||
       model instanceof GfxBlockElementModel
     ) {
-      carriers.add(layerCarrier(model));
+      carriers.add(layerCarrierOf(model));
     }
   }
   const targets = [...carriers].filter(

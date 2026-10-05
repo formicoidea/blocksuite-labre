@@ -8,6 +8,7 @@ import {
   finiteAttr,
   idIndex,
   originOf,
+  startDrawnMap,
   textOf,
 } from './svg-read.js';
 import { WARDLEY_SVG_IMPORT_REMARKS } from './svg-remarks.js';
@@ -92,20 +93,9 @@ export function recogniseOnlineWardleyMaps(
   });
   if (!certain) return undefined;
 
-  const drawn: DrawnWardleyMap = {
+  const { drawn, consume } = startDrawnMap({
     producer: 'OnlineWardleyMaps SVG',
-    nodes: [],
-    pipelines: [],
-    evolutions: [],
-    links: [],
-    notes: [],
-    inertias: [],
-    consumed: new Set(),
-    remarks: [],
-  };
-  const consume = (element: Element | undefined) => {
-    if (element) drawn.consumed.add(element);
-  };
+  });
   const unreadable = (sourceId: string) => {
     drawn.remarks.push({
       kind: 'warning',

@@ -102,6 +102,7 @@ export {
 } from './model/surface/element-model.js';
 export {
   DEFAULT_LAYER_ID,
+  layerCarrierOf,
   ownLayerOf,
   type SurfaceLayerRecord,
   SurfaceUserLayers,
