@@ -88,6 +88,16 @@ export const createElementsFromClipboardDataCommand: Command<Input, Output> = (
     // Read before anything is created: `createCanvasElement` rewrites a
     // group's `children` with the new ids.
     const oldParents = pastedParentage(elementsRawData);
+    // Decided before anything is created too, so that a canvas element is
+    // born with its final index: written afterwards, each index moved an
+    // element already on the board, through the layer manager, one by one.
+    const newIndexes = pastedIndexes(
+      std,
+      elementsRawData,
+      oldParents,
+      context.originalIndexes
+    );
+    const blockIndexes = new Map<GfxBlockElementModel, string>();
 
     // Canvas elements are written in as few transactions as the blocks allow,
     // so a peer receives one update for a run of them instead of one per
@@ -104,6 +114,7 @@ export const createElementsFromClipboardDataCommand: Command<Input, Output> = (
 
     const createPendingCanvasElements = () => {
       for (const data of pendingCanvasElements) {
+        data.index = newIndexes.get(data.id) ?? data.index;
         const element = createCanvasElement(
           std,
           data,
@@ -115,13 +126,16 @@ export const createElementsFromClipboardDataCommand: Command<Input, Output> = (
         canvasElements.push(element);
         allElements.push(element);
         context.oldToNewIdMap.set(data.id, element.id);
-        context.originalIndexes.set(data.id, element.index);
       }
       pendingCanvasElements.length = 0;
     };
 
     // One gesture, one undo step: close whatever the previous gesture left
     // open in the undo manager's capture window.
+    // ponytail: the paste's own transactions then merge only while each ends
+    // within that window (500 ms) of the one before, so a block whose creation
+    // takes longer splits the step; the two-phase contract above removes the
+    // ceiling (the budget spec measures it on 406 elements).
     std.store.captureSync();
 
     for (const data of elementsRawData) {
@@ -152,7 +166,6 @@ export const createElementsFromClipboardDataCommand: Command<Input, Output> = (
         console.error(`Block(id: ${oldId}) does not have index property`);
         continue;
       }
-      const originalIndex = (blockSnapshot.props as GfxCompatibleProps).index;
 
       if (typeof blockSnapshot.props.xywh !== 'string') {
         console.error(`Block(id: ${oldId}) does not have xywh property`);
@@ -176,22 +189,12 @@ export const createElementsFromClipboardDataCommand: Command<Input, Output> = (
       blockModels.push(block.model);
       allElements.push(block.model);
       context.oldToNewIdMap.set(oldId, newId);
-      context.originalIndexes.set(oldId, originalIndex);
+      const index = newIndexes.get(oldId);
+      if (index) blockIndexes.set(block.model, index);
     }
 
     std.store.transact(() => {
       createPendingCanvasElements();
-
-      // remap old id to new id for the original index
-      const oldIds = [...context.originalIndexes.keys()];
-      oldIds.forEach(oldId => {
-        const newId = context.oldToNewIdMap.get(oldId);
-        const originalIndex = context.originalIndexes.get(oldId);
-        if (newId && originalIndex) {
-          context.originalIndexes.set(newId, originalIndex);
-          context.originalIndexes.delete(oldId);
-        }
-      });
 
       const parents = new Map<string, string>();
       oldParents.forEach((oldParent, oldChild) => {
@@ -201,12 +204,13 @@ export const createElementsFromClipboardDataCommand: Command<Input, Output> = (
       });
 
       releaseChildrenFromAdoptingFrames(std, allElements, parents);
-      updatePastedElementsIndex(
-        std,
-        allElements,
-        context.originalIndexes,
-        parents
-      );
+
+      // A block config chooses its own index (a frame takes the top of the
+      // board, a note the transformer's): set the planned one afterwards.
+      const crud = std.get(EdgelessCRUDIdentifier);
+      blockIndexes.forEach((index, block) => {
+        if (block.index !== index) crud.updateElement(block.id, { index });
+      });
     });
 
     return {
@@ -282,41 +286,46 @@ function releaseChildrenFromAdoptingFrames(
 }
 
 /**
- * Give the pasted elements fresh indexes on top of the board, in the order
- * they had where they were copied from: a container before its children, and
- * otherwise by the original index of the topmost pasted ancestor (then of the
- * next one down, then of the element itself).
+ * The fresh indexes of the pasted elements, by their id in the pasted data: on
+ * top of the board, in the order they had where they were copied from — a
+ * container before its children, and otherwise by the original index of the
+ * topmost pasted ancestor (then of the next one down, then of the element
+ * itself). The original indexes are recorded in `originalIndexes`.
  */
-function updatePastedElementsIndex(
+function pastedIndexes(
   std: BlockStdScope,
-  elements: GfxModel[],
-  originalIndexes: Map<string, string>,
-  parents: Map<string, string>
+  elementsRawData: (SerializedElement | BlockSnapshot)[],
+  parents: Map<string, string>,
+  originalIndexes: Map<string, string>
 ) {
-  const gfx = std.get(GfxControllerIdentifier);
-  const crud = std.get(EdgelessCRUDIdentifier);
+  for (const data of elementsRawData) {
+    const index = 'flavour' in data ? data.props.index : data.index;
+    if (typeof index === 'string' && !originalIndexes.has(data.id)) {
+      originalIndexes.set(data.id, index);
+    }
+  }
 
   // Pasted ancestors, nearest first — the order `GfxModel.groups` uses.
   const ancestors = new Map<string, string[]>();
-  for (const element of elements) {
+  for (const id of originalIndexes.keys()) {
     const chain: string[] = [];
     for (
-      let parent = parents.get(element.id);
+      let parent = parents.get(id);
       parent && !chain.includes(parent);
       parent = parents.get(parent)
     ) {
       chain.push(parent);
     }
-    ancestors.set(element.id, chain);
+    ancestors.set(id, chain);
   }
 
-  function compare(a: GfxModel, b: GfxModel) {
-    const aGroups = ancestors.get(a.id) ?? [];
-    const bGroups = ancestors.get(b.id) ?? [];
+  function compare(a: string, b: string) {
+    const aGroups = ancestors.get(a) ?? [];
+    const bGroups = ancestors.get(b) ?? [];
 
-    if (bGroups.includes(a.id)) {
+    if (bGroups.includes(a)) {
       return SortOrder.BEFORE;
-    } else if (aGroups.includes(b.id)) {
+    } else if (aGroups.includes(b)) {
       return SortOrder.AFTER;
     }
 
@@ -330,8 +339,8 @@ function updatePastedElementsIndex(
       bGroup = bGroups.at(-i);
     }
 
-    const aIndex = originalIndexes.get(aGroup ?? a.id);
-    const bIndex = originalIndexes.get(bGroup ?? b.id);
+    const aIndex = originalIndexes.get(aGroup ?? a);
+    const bIndex = originalIndexes.get(bGroup ?? b);
 
     return aIndex === bIndex
       ? SortOrder.SAME
@@ -340,13 +349,12 @@ function updatePastedElementsIndex(
         : SortOrder.AFTER;
   }
 
-  const idxGenerator = gfx.layer.createIndexGenerator();
-  const sortedElements = elements.sort(compare);
-  sortedElements.forEach(ele => {
-    const newIndex = idxGenerator();
-
-    crud.updateElement(ele.id, {
-      index: newIndex,
-    });
+  const nextIndex = std
+    .get(GfxControllerIdentifier)
+    .layer.createIndexGenerator();
+  const newIndexes = new Map<string, string>();
+  [...originalIndexes.keys()].sort(compare).forEach(id => {
+    newIndexes.set(id, nextIndex());
   });
+  return newIndexes;
 }

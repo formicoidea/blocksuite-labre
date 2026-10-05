@@ -22,6 +22,54 @@ function createStore(readonly = false) {
 
 const viewportOf = (zoom: number) => ({ centerX: 10, centerY: 20, zoom });
 
+/**
+ * The merge customizer returns early for a primitive since a paste of N
+ * elements ran its colour-schema parse on every prop of every one, twice. A
+ * primitive is assigned as-is by `mergeWith` whatever the customizer says;
+ * these hold the merge it feeds: the props win value by value, a colour is
+ * replaced whole, never merged key by key.
+ */
+describe('EditPropsStore.applyLastProps', () => {
+  const lastColour = { light: '#000000', dark: '#ffffff' };
+
+  function withLastColour() {
+    const { props } = createStore();
+    props.recordLastProps('shape:rect', { fillColor: lastColour });
+    return props;
+  }
+
+  test('a colour string replaces a colour object', () => {
+    const merged = withLastColour().applyLastProps('shape:rect', {
+      fillColor: '#123456',
+    });
+    expect(merged.fillColor).toBe('#123456');
+  });
+
+  test('a colour object replaces the last one whole', () => {
+    const merged = withLastColour().applyLastProps('shape:rect', {
+      fillColor: { normal: '#abcdef' },
+    });
+    expect(merged.fillColor).toEqual({ normal: '#abcdef' });
+  });
+
+  test('primitives win, absent and undefined keys keep the last props', () => {
+    const props = withLastColour();
+    const last = props.lastProps$.value['shape:rect'];
+    const merged = props.applyLastProps('shape:rect', {
+      strokeWidth: 7,
+      filled: !last.filled,
+      xywh: '[1,2,3,4]',
+      strokeStyle: undefined,
+    });
+
+    expect(merged.strokeWidth).toBe(7);
+    expect(merged.filled).toBe(!last.filled);
+    expect(merged.xywh).toBe('[1,2,3,4]');
+    expect(merged.strokeStyle).toBe(last.strokeStyle);
+    expect(merged.fillColor).toEqual(lastColour);
+  });
+});
+
 describe('EditPropsStore.saveViewport', () => {
   beforeEach(() => {
     localStorage.clear();
