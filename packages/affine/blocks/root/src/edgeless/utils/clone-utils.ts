@@ -114,7 +114,16 @@ export function sortEdgelessElements(elements: GfxModel[]) {
     return [...rest, ...connectors];
   };
 
+  // A child may be claimed by two containers in a stored document (a frame and
+  // a group: an older paste let the frame adopt a child before the pasted group
+  // claimed it). `getTopElements` then reports it as a top element — its
+  // `.group` reads the other container — and the walk meets it again under its
+  // group. Visit each element once, or the paste creates it twice.
+  const visited = new Set<GfxModel>();
   const traverse = (element: GfxModel) => {
+    if (visited.has(element)) return;
+    visited.add(element);
+
     if (isGfxGroupCompatibleModel(element)) {
       moveConnectorToEnd(element.childElements).forEach(child =>
         traverse(child)

@@ -120,4 +120,50 @@ describe('the frame manager and a block added by another peer', () => {
 
     expect(childIdsOf(frame)).toEqual([inside.id]);
   });
+
+  test('a local add on a readonly store is not adopted', () => {
+    const { store, surface, addFrame } = createBoard('frame-local-readonly');
+    const frame = addFrame('[0,0,800,600]');
+    const inside = addFrame('[100,100,100,100]');
+    frameManagerFor(store, surface);
+    store.readonly = true;
+
+    expect(() =>
+      store.slots.blockUpdated.next({
+        type: 'add',
+        id: inside.id,
+        flavour: 'affine:frame',
+        model: inside,
+        isLocal: true,
+        init: false,
+      })
+    ).not.toThrow();
+
+    expect(childIdsOf(frame)).toEqual([]);
+  });
+
+  /**
+   * Guard for the duplicated-child bug (a group pasted into a frame came back
+   * with a child twice): a block that a group already claims is not adopted, or
+   * two containers list it and the next duplicate copies it twice. The canvas
+   * half has had this `.group` guard all along; the block half lacked it.
+   */
+  test('a local add of a block a group already claims is not adopted', () => {
+    const { store, surface, addFrame } = createBoard('frame-local-grouped');
+    const frame = addFrame('[0,0,800,600]');
+    const inside = addFrame('[100,100,100,100]');
+    surface.addElement({ type: 'group', children: { [inside.id]: true } });
+    frameManagerFor(store, surface);
+
+    store.slots.blockUpdated.next({
+      type: 'add',
+      id: inside.id,
+      flavour: 'affine:frame',
+      model: inside,
+      isLocal: true,
+      init: false,
+    });
+
+    expect(childIdsOf(frame)).toEqual([]);
+  });
 });
