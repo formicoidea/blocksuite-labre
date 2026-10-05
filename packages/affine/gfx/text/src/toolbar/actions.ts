@@ -4,6 +4,7 @@ import {
   packColor,
   type PickColorEvent,
 } from '@labre/affine-components/color-picker';
+import { OverlineIcon, UnderlineIcon } from '@labre/affine-components/icons';
 import { EditorChevronDown } from '@labre/affine-components/toolbar';
 import {
   DefaultTheme,
@@ -16,6 +17,8 @@ import {
   type TextStyleProps,
 } from '@labre/affine-model';
 import {
+  TEXT_FORMAT_OVERLINE,
+  TEXT_FORMAT_UNDERLINE,
   translateKey,
   type ToolbarActions,
   type ToolbarContext,
@@ -42,6 +45,8 @@ import { styleMap } from 'lit/directives/style-map.js';
 import {
   isFontStyleSupported,
   isFontWeightSupported,
+  parseTextDecoration,
+  toggleTextDecoration,
 } from '../element-renderer/utils';
 import {
   TEXT_ALIGN_CENTER,
@@ -123,6 +128,25 @@ const TEXT_ALIGN_LIST = [
     icon: TextAlignRightIcon(),
   },
 ] as const satisfies MenuItem<TextAlign>[];
+
+/**
+ * The decoration toggles, in the order they sit on the row (the toolbar orders
+ * a group's children by id).
+ */
+const TEXT_DECORATION_TOGGLES = [
+  {
+    id: 'a.underline',
+    token: 'underline',
+    icon: UnderlineIcon,
+    wording: TEXT_FORMAT_UNDERLINE,
+  },
+  {
+    id: 'b.overline',
+    token: 'overline',
+    icon: OverlineIcon,
+    wording: TEXT_FORMAT_OVERLINE,
+  },
+] as const;
 
 /**
  * What the dropdowns read off a selected model. `fontSize` is optional because
@@ -359,6 +383,50 @@ export function createTextActions<
           </editor-menu-button>
         `;
       },
+    },
+    {
+      // Two element-level toggles, drawn like the format bar's underline:
+      // the decoration applies to the whole text, never to one run (ADR 0030
+      // §1, §6). `affine:edgeless-text` decorates its paragraphs per run
+      // through the inline schema instead, so it has no such field.
+      id: 'c.text-decoration',
+      when: type !== 'edgeless-text',
+      actions: TEXT_DECORATION_TOGGLES.map(({ id, token, icon, wording }) => ({
+        id,
+        icon,
+        tooltipWording: wording,
+        when: (ctx: ToolbarContext) => {
+          const models = ctx.getSurfaceModelsByType(klass);
+          return (
+            models.length > 0 &&
+            models.every(model => isSurfaceTextModel(model, klass, type))
+          );
+        },
+        active: (ctx: ToolbarContext) =>
+          ctx
+            .getSurfaceModelsByType(klass)
+            .every(
+              model => parseTextDecoration(mapInto(model).textDecoration)[token]
+            ),
+        run: (ctx: ToolbarContext) => {
+          const models = ctx.getSurfaceModelsByType(klass);
+          const on = !models.every(
+            model => parseTextDecoration(mapInto(model).textDecoration)[token]
+          );
+
+          // One click, one undo step, whatever the selection holds.
+          ctx.store.captureSync();
+          for (const model of models) {
+            update(ctx, model, {
+              textDecoration: toggleTextDecoration(
+                mapInto(model).textDecoration,
+                token,
+                on
+              ),
+            });
+          }
+        },
+      })),
     },
     {
       id: 'd.font-size',

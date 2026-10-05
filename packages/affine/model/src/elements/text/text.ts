@@ -15,6 +15,7 @@ import {
   FontStyle,
   FontWeight,
   TextAlign,
+  type TextDecoration,
   type TextStyleProps,
 } from '../../consts/index';
 import { type Color, DefaultTheme } from '../../themes/index';
@@ -86,6 +87,13 @@ export class TextElementModel extends GfxPrimitiveElementModel<TextElementProps>
 
   @field()
   accessor textAlign: TextAlign = TextAlign.Center;
+
+  /**
+   * Absent until the author sets it, so a text that is never decorated stores
+   * exactly the keys it stored before the field existed (ADR 0030).
+   */
+  @field()
+  accessor textDecoration: TextDecoration | undefined = undefined;
 
   @field('[0,0,0,0]' as SerializedXYWH)
   accessor xywh: SerializedXYWH = '[0,0,16,16]';

@@ -3,6 +3,7 @@ import {
   EdgelessCRUDIdentifier,
   TextUtils,
 } from '@labre/affine-block-surface';
+import { textDecorationLine } from '@labre/affine-gfx-text';
 import {
   MindmapElementModel,
   ShapeElementModel,
@@ -518,6 +519,7 @@ export class EdgelessShapeTextEditor extends WithDisposable(ShadowlessElement) {
       color,
       padding: `${verticalPadding}px ${horiPadding}px`,
       textAlign: this.element.textAlign,
+      textDecorationLine: textDecorationLine(this.element.textDecoration),
       display: 'grid',
       gridTemplateColumns: '100%',
       alignItems:

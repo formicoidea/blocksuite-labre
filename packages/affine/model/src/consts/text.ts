@@ -17,6 +17,31 @@ export enum TextVerticalAlign {
   Top = 'top',
 }
 
+/**
+ * The line a canvas text is decorated with, as a CSS `text-decoration-line`
+ * token list (ADR 0030).
+ *
+ * **These string values are PERSISTED** — on a `text`, on a `shape` and inside
+ * a connector's `labelStyle` — so the enum is **append-only**: a member may be
+ * added, never renamed, never removed, never given a different string value.
+ *
+ * Readers split the value on whitespace and act on the tokens they know, never
+ * `switch` on the whole string: a token a newer client adds (`line-through`,
+ * say) is skipped by this build one token at a time, so
+ * `'underline line-through'` still paints its underline here.
+ *
+ * `undefined` (the key absent) and `None` paint the same on every element. They
+ * differ for one reader only — the UML object glyph's legacy rule, drawn for a
+ * name that never carried the field — which is why turning the decoration off
+ * writes `None` rather than clearing the key.
+ */
+export enum TextDecoration {
+  None = 'none',
+  Underline = 'underline',
+  Overline = 'overline',
+  UnderlineOverline = 'underline overline',
+}
+
 export type TextStyleProps = {
   color: Color;
   fontFamily: FontFamily;
@@ -24,6 +49,8 @@ export type TextStyleProps = {
   fontStyle: FontStyle;
   fontWeight: FontWeight;
   textAlign: TextAlign;
+  /** Optional and never written by default: see {@link TextDecoration}. */
+  textDecoration?: TextDecoration;
 };
 
 export enum FontWeight {

@@ -6,10 +6,12 @@ import { DefaultTheme, type TextElementModel } from '@labre/affine-model';
 import { deltaInsertsToChunks } from '@labre/std/inline';
 
 import {
+  alphabeticBaselineOffset,
   getFontString,
   getLineHeight,
   getTextWidth,
   isRTL,
+  paintTextDecoration,
   wrapTextDeltas,
 } from './utils.js';
 
@@ -19,8 +21,15 @@ export const text: ElementRenderer<TextElementModel> = (
   matrix,
   renderer
 ) => {
-  const { fontSize, fontWeight, fontStyle, fontFamily, textAlign, rotate } =
-    model;
+  const {
+    fontSize,
+    fontWeight,
+    fontStyle,
+    fontFamily,
+    textAlign,
+    textDecoration,
+    rotate,
+  } = model;
   const [, , w, h] = model.deserializedXYWH;
   const cx = w / 2;
   const cy = h / 2;
@@ -71,11 +80,25 @@ export const text: ElementRenderer<TextElementModel> = (
       // 0.5 comes from v-line padding
       const offset =
         textAlign === 'center' ? 0 : textAlign === 'right' ? -0.5 : 0.5;
-      ctx.fillText(
-        str,
-        horizontalOffset + beforeTextWidth + offset,
-        (lineIndex + 1) * lineHeightPx
-      );
+      const x = horizontalOffset + beforeTextWidth + offset;
+      const y = (lineIndex + 1) * lineHeightPx;
+      ctx.fillText(str, x, y);
+
+      if (textDecoration) {
+        paintTextDecoration(ctx, {
+          decoration: textDecoration,
+          lineText: str,
+          font,
+          x,
+          // Painted on the ideographic baseline (the bottom of the font box);
+          // the line hangs off the alphabetic one, a descent above it.
+          baselineY: y + alphabeticBaselineOffset(font, 'ideographic'),
+          fontFamily,
+          fontSize,
+          fontWeight,
+          color,
+        });
+      }
 
       beforeTextWidth += getTextWidth(str, font);
 

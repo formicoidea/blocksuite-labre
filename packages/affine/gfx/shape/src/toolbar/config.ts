@@ -394,7 +394,7 @@ export const shapeToolbarConfig = {
     // id: `g.text`
     ...createTextActions(ShapeElementModel, 'shape', (ctx, model, props) => {
       // No need to adjust element bounds
-      if (props['textAlign']) {
+      if (props['textAlign'] || props['textDecoration']) {
         ctx.std.get(EdgelessCRUDIdentifier).updateElement(model.id, props);
         return;
       }

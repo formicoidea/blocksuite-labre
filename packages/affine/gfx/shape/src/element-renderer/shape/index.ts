@@ -10,6 +10,7 @@ import {
   getLineWidth,
   isRTL,
   measureTextInDOM,
+  paintTextDecoration,
   wrapTextDeltas,
 } from '@labre/affine-gfx-text';
 import type {
@@ -104,6 +105,9 @@ function renderText(
     padding,
   } = model;
   if (!text) return;
+  // A local preview shape has no stored decoration.
+  const textDecoration =
+    'textDecoration' in model ? model.textDecoration : undefined;
 
   // Contained mode shrinks the layout font size so the text fits the bounds.
   const fontSize = effectiveShapeFontSize(model);
@@ -157,12 +161,26 @@ function renderText(
         ctx.canvas.setAttribute('dir', rtl ? 'rtl' : 'ltr');
       }
 
-      ctx.fillText(
-        str,
-        // 0.5 is the dom editor padding to make the text align with the DOM text
-        horOffset + 0.5,
-        lineIndex * lineHeight + vertOffset
-      );
+      // 0.5 is the dom editor padding to make the text align with the DOM text
+      const textX = horOffset + 0.5;
+      const baselineY = lineIndex * lineHeight + vertOffset;
+      ctx.fillText(str, textX, baselineY);
+
+      if (textDecoration) {
+        // Already on the alphabetic baseline, at the size Contained mode
+        // shrank the text to.
+        paintTextDecoration(ctx, {
+          decoration: textDecoration,
+          lineText: str,
+          font,
+          x: textX,
+          baselineY,
+          fontFamily,
+          fontSize,
+          fontWeight,
+          color,
+        });
+      }
 
       maxLineWidth = Math.max(maxLineWidth, getLineWidth(str, font));
 

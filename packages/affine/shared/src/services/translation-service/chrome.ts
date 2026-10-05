@@ -391,6 +391,14 @@ export const TEXT_FORMAT_UNDERLINE: ChromeWording = [
   'com.labre.text-format.underline',
   'Underline',
 ];
+/**
+ * Said by the canvas text toolbar's decoration toggles (`gfx/text`, beside
+ * {@link TEXT_FORMAT_UNDERLINE}) and by the inline format bar (ADR 0030).
+ */
+export const TEXT_FORMAT_OVERLINE: ChromeWording = [
+  'com.labre.text-format.overline',
+  'Overline',
+];
 export const TEXT_FORMAT_STRIKETHROUGH: ChromeWording = [
   'com.labre.text-format.strikethrough',
   'Strikethrough',
@@ -1347,6 +1355,7 @@ export const CHROME_WORDINGS: readonly ChromeWording[] = [
   TEXT_FORMAT_BOLD,
   TEXT_FORMAT_ITALIC,
   TEXT_FORMAT_UNDERLINE,
+  TEXT_FORMAT_OVERLINE,
   TEXT_FORMAT_STRIKETHROUGH,
   FONT_WEIGHT_LIGHT,
   FONT_WEIGHT_REGULAR,

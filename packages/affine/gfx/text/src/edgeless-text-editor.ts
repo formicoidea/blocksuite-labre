@@ -31,7 +31,11 @@ import { property, query } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import * as Y from 'yjs';
 
-import { getCursorByCoord, getLineHeight } from './element-renderer/utils';
+import {
+  getCursorByCoord,
+  getLineHeight,
+  textDecorationLine,
+} from './element-renderer/utils';
 import { TEXT_EDITOR_PLACEHOLDER } from './translations.js';
 
 export function mountTextElementEditor(
@@ -514,6 +518,7 @@ export class EdgelessTextEditor extends WithDisposable(ShadowlessElement) {
         fontStyle,
         color,
         textAlign,
+        textDecorationLine: textDecorationLine(this.element.textDecoration),
         lineHeight: `${lineHeight}px`,
         boxSizing: 'content-box',
       })}
