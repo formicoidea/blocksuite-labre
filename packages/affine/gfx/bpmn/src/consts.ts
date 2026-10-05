@@ -202,8 +202,6 @@ export const BPMN_EXTERNAL_LABEL_KINDS = [
   'dataStore',
 ] as const satisfies readonly BpmnNodeKind[];
 
-export type BpmnExternalLabelKind = (typeof BPMN_EXTERNAL_LABEL_KINDS)[number];
-
 const EXTERNAL_LABEL_KINDS: ReadonlySet<BpmnNodeKind> = new Set(
   BPMN_EXTERNAL_LABEL_KINDS
 );

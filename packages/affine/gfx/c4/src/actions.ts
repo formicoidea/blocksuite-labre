@@ -1,4 +1,4 @@
-import { createBoardLegend, DefaultTool } from '@labre/affine-block-surface';
+import { DefaultTool } from '@labre/affine-block-surface';
 import { ConnectorTool } from '@labre/affine-gfx-connector';
 import {
   C4BoardElementModel,
@@ -384,27 +384,6 @@ export function c4BoardsSelected(std: BlockStdScope): C4BoardElementModel[] {
     (model): model is C4BoardElementModel =>
       model instanceof C4BoardElementModel
   );
-}
-
-/**
- * Draw the legend of what is actually on the selected board, bottom-left of it.
- *
- * The FIRST selected board and no other: a legend is placed relative to one
- * background, and two of them would put two boxes on top of whatever sits in
- * that corner. Everything about the gesture — the scan, the placement, the box —
- * is `createBoardLegend`'s; C4 contributes nothing but the rows its own commands
- * subscribe (`commands.ts`, `docs/adr/0026`).
- *
- * The one action in this file with no command behind it: the legend is reached
- * from the selected board's contextual toolbar and from nowhere else (PO
- * arbitration, 27/08/2026 — see `toolbar/config.ts`). Kept here beside its
- * siblings all the same, because it is the same kind of thing — a gesture that
- * writes elements — and because a unit test can drive it without a toolbar.
- */
-export function createC4Legend(std: BlockStdScope): void {
-  const board = c4BoardsSelected(std)[0];
-  if (!board) return;
-  createBoardLegend(std, board, 'c4');
 }
 
 /* ── Export (mermaid C4) ───────────────────────────────────────────────── */

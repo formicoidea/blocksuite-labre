@@ -63,35 +63,14 @@ export const elementsCtorMap = {
 };
 
 export {
-  BpmnNodeElementModel,
-  BpmnPoolElementModel,
   BrushElementModel,
-  C4BoardElementModel,
-  C4BoundaryElementModel,
-  C4NodeElementModel,
   ConnectorElementModel,
-  ContextMapBoardElementModel,
-  CoreDomainChartElementModel,
-  CynefinElementModel,
-  EdgyBoardElementModel,
-  EdgyFacetsElementModel,
-  EdgyNodeElementModel,
-  EstuarineElementModel,
-  EventStormingBoardElementModel,
   GroupElementModel,
   HighlighterElementModel,
   MindmapElementModel,
   ShapeElementModel,
   SurfaceElementModel,
   TextElementModel,
-  UmlDiagramElementModel,
-  UmlFragmentElementModel,
-  UmlNodeElementModel,
-  UmlPartitionElementModel,
-  UmlRegionElementModel,
-  UmlSubjectElementModel,
-  WardleyBackgroundElementModel,
-  WardleyNodeElementModel,
 };
 
 export enum CanvasElementType {

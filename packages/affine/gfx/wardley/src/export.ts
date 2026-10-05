@@ -498,7 +498,7 @@ export function matchLabels(
 }
 
 /** A text element's string, whether it is a `Y.Text` or a test's plain one. */
-export function textOf(element: { text?: unknown }): string {
+function textOf(element: { text?: unknown }): string {
   const text = element.text;
   return text === undefined || text === null ? '' : String(text);
 }
