@@ -987,9 +987,13 @@ describe('user layers', () => {
           expect(copies.map(flavourOf), flavourOf(id)).toEqual([flavourOf(id)]);
           expect(ownLayerOf(model(copies[0])), flavourOf(id)).toBeUndefined();
           expect(hasLayerKey(copies[0]), flavourOf(id)).toBe(false);
-          // No undo check here: one undo does not take an alt-drag clone back
-          // even on a canvas with no layer at all (the clone and the move are
-          // separate steps); that predates layers. Mod+d pins one-step undo.
+
+          window.doc.undo();
+          await settle();
+          expect(
+            newIds(before),
+            `one undo removes the ${flavourOf(id)} clone`
+          ).toEqual([]);
         }
       });
 

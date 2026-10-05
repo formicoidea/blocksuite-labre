@@ -21,3 +21,9 @@ auto-complete arrow clones, the note the slicer splits off, the block that repla
 when its view changes, a linked doc turned into a synced doc and back, and the
 note "Duplicate as note" puts beside a synced doc. `sourceLayerOf` is exported
 beside `applyCreationLayer` for host code doing the same.
+
+Behaviour change on a released feature, independent of layers: an alt+drag
+clone is now ONE undo step. The first Ctrl+Z used to only move the copy back
+onto its source, so the copy seemed to survive, and a second one removed it;
+now the first removes the copy and leaves the source where it was. A plain
+drag is still its own undo step, unchanged.

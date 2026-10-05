@@ -198,7 +198,8 @@ export class DefaultTool extends BaseTool {
 
   private initializeDragState(
     dragType: DefaultModeDragType,
-    event: PointerEventState
+    event: PointerEventState,
+    cloned = false
   ) {
     this.dragType = dragType;
 
@@ -223,7 +224,10 @@ export class DefaultTool extends BaseTool {
 
     if (this.dragType === DefaultModeDragType.ContentMoving) {
       if (this.interactivity) {
-        this.doc.captureSync();
+        // An alt+drag captured BEFORE its clone: a capture here would close
+        // the step between the copy and its move, and the first undo would
+        // only put the copy back on its source (`alt-drag-clone.spec.ts`).
+        if (!cloned) this.doc.captureSync();
         this.interactivity.handleElementMove({
           movingElements: this._toBeMoved,
           event: event.raw,
@@ -357,13 +361,18 @@ export class DefaultTool extends BaseTool {
 
     this._toBeMoved = Array.from(toBeMoved);
 
-    // If alt key is pressed and content is moving, clone the content
-    if (dragType === DefaultModeDragType.ContentMoving && e.keys.alt) {
+    // If alt key is pressed and content is moving, clone the content. One
+    // gesture, one undo step: close what came before, then nothing closes the
+    // step between the clone's writes and the move's end.
+    const cloning =
+      dragType === DefaultModeDragType.ContentMoving && e.keys.alt;
+    if (cloning) {
+      this.doc.captureSync();
       await this._cloneContent();
     }
 
     // Set up drag state
-    this.initializeDragState(dragType, e);
+    this.initializeDragState(dragType, e, cloning);
   }
 
   override mounted() {
