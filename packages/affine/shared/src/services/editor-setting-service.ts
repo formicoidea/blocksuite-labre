@@ -10,12 +10,12 @@ export const GeneralSettingSchema = z
   .object({
     edgelessScrollZoom: z.boolean().default(false),
     edgelessDisableScheduleUpdate: z.boolean().default(false),
-    /**
-     * The host's (or the user's) default for the canvas grid (ADR 0031 §11,
-     * level 3). No default on purpose: absent means the host did not decide,
-     * and the library default — on — applies. A viewer's own toggle and a
-     * document saved "for everyone" both win over it.
-     */
+    // The host's (or the user's) default for the canvas grid (ADR 0031 §11,
+    // level 3). No default on purpose: absent means the host did not decide,
+    // and the library default — on — applies. A viewer's own toggle and a
+    // document saved "for everyone" both win over it.
+    // A line comment, not JSDoc: see the guard in
+    // `affine/all/src/__tests__/zod-schema-jsdoc.unit.spec.ts`.
     edgelessShowGrid: z.boolean().optional(),
     docCanvasPreferView: z
       .enum(['affine:embed-linked-doc', 'affine:embed-synced-doc'])
