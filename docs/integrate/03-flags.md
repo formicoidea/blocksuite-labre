@@ -34,6 +34,12 @@ import { OPTIONAL_BLOCKS, OPTIONAL_CAPABILITIES } from '@labre/affine/flags';
 The core bundle strips the framework keys from its copy of the list. They
 come back through each framework bundle's descriptor (`flag: 'wardley'`).
 
+A block key is the only switch for its entries. `callout` is the example
+that used to have two: the slash-menu "Callout" and "Turn into → Callout" are
+offered by default and removed by `{ callout: false }`. The upstream
+`FeatureFlagService` key `enable_callout` is deprecated and no longer read;
+setting it changes nothing.
+
 ## What `false` does
 
 | Layer                                                                                 | Effect of `{ x: false }`                                             |

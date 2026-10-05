@@ -1,5 +1,4 @@
 import { focusBlockEnd } from '@labre/affine-shared/commands';
-import { FeatureFlagService } from '@labre/affine-shared/services';
 import { isInsideBlockByFlavour } from '@labre/affine-shared/utils';
 import { type SlashMenuConfig } from '@labre/affine-widget-slash-menu';
 import { FontIcon } from '@blocksuite/icons/lit';
@@ -11,6 +10,10 @@ import {
 } from '../translations';
 import { calloutTooltip } from './tooltips';
 
+// Gated by the `callout` block flag alone: `CalloutViewExtension` registers
+// this config and is itself flag-gated (ADR 0009). The deprecated
+// `enable_callout` feature flag is not read.
+//
 // No `disableWhen` here on purpose. The widget ORs every config's `disableWhen`
 // together and then refuses to open at all, so the callout's own guard used to
 // silence the WHOLE slash menu inside a callout — every block, every framework,
@@ -30,9 +33,8 @@ export const calloutSlashMenuConfig: SlashMenuConfig = {
       },
       searchAlias: ['callout'],
       group: '0_Basic@9',
-      when: ({ std, model }) => {
+      when: ({ model }) => {
         return (
-          std.get(FeatureFlagService).getFlag('enable_callout') &&
           !isInsideBlockByFlavour(model.store, model, 'affine:edgeless-text') &&
           // The schema forbids a callout inside a callout, so offering the item
           // there would only produce a thrown insertion.
