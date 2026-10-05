@@ -225,12 +225,10 @@ describe('canvas text decoration', () => {
     expect(text).toBeInstanceOf(TextElementModel);
 
     const rects = () => {
-      const exported = renderBoardSvg(
+      const { svg } = renderBoardSvg(
         edgeless.std,
         boardModel as FrameworkBackgroundElementModel
       );
-      if (!exported) throw new Error('the board has nothing to export');
-      const { svg } = exported;
       const doc = new DOMParser().parseFromString(svg, 'image/svg+xml');
       expect(doc.querySelector('parsererror')).toBeNull();
       return doc.querySelectorAll('rect').length;

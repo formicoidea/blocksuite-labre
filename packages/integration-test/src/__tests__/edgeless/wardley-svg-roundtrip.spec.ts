@@ -1,7 +1,6 @@
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import {
   BOARD_SVG_MARKER_VERSION,
-  DEFAULT_BOARD_SVG_EXPORT_OPTIONS,
   materializeInterchangeImport,
   renderBoardSvg,
   type SerializedElementProps,
@@ -186,15 +185,8 @@ describe('a Wardley board exported as SVG and imported back', () => {
     return { board, surface, ids };
   };
 
-  const exportOf = (board: WardleyBackgroundElementModel) => {
-    const out = renderBoardSvg(
-      edgeless.std,
-      board,
-      DEFAULT_BOARD_SVG_EXPORT_OPTIONS
-    );
-    expect(out).not.toBeNull();
-    return out!.svg;
-  };
+  const exportOf = (board: WardleyBackgroundElementModel) =>
+    renderBoardSvg(edgeless.std, board).svg;
 
   test.each([
     ['the small map', SMALL_OWM],
