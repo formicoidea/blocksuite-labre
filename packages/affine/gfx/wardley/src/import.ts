@@ -385,12 +385,18 @@ export interface WardleyNodeStatement {
   invented: boolean;
 }
 
-/** `id` / `name`: the identity and the name of the component it hangs under. */
+/**
+ * `id` / `name`: the identity and the name of the component it hangs under —
+ * or, with `top`, of the pipeline itself, standing alone with its body's top
+ * edge at that visibility (a picture that draws a pipeline as its own
+ * artefact; the DSL never does).
+ */
 export interface WardleyPipelineStatement {
   name: string;
   id?: string;
   from: number;
   to: number;
+  top?: number;
   tail: string;
   invented: boolean;
 }
@@ -950,19 +956,21 @@ export function layoutWardleyStatements(
   }
 
   for (const pipeline of pipelines) {
-    const at = declaredAt.get(identity(pipeline));
-    if (at === undefined) {
+    const standing = pipeline.top !== undefined;
+    const at = standing ? undefined : declaredAt.get(identity(pipeline));
+    if (!standing && at === undefined) {
       inventedNote(
         'pipeline',
         pipeline.name,
         'no component of this name is declared, so the pipeline was drawn halfway up the value chain. OWM takes a pipeline’s height from the component it belongs to.'
       );
     }
-    const visibility = at?.visibility ?? 0.5;
+    const visibility = pipeline.top ?? at?.visibility ?? 0.5;
     const [left] = owmPointOf(plot, visibility, pipeline.from);
     const [right, y] = owmPointOf(plot, visibility, pipeline.to);
-    // Under the component it belongs to, the way OWM draws it.
-    const top = y + NODE_SIZE;
+    // Under the component it belongs to, the way OWM draws it — or exactly
+    // where a picture drew its top edge.
+    const top = standing ? y : y + NODE_SIZE;
     const width = Math.max(right - left, 1);
     const centre = left + width / 2;
 

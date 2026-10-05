@@ -30,8 +30,15 @@ export interface DrawnWardleyMap {
   plot?: OwmPlot;
   title?: string;
   nodes: DrawnWardleyNode[];
-  /** A pipeline body, by the id of the component it hangs under. */
-  pipelines: { of: string; x1: number; x2: number }[];
+  /**
+   * A pipeline body: either hung under a component (`of`, OnlineWardleyMaps'
+   * reading), or standing alone with its own id, name and top edge (`top`,
+   * the renderer's).
+   */
+  pipelines: (
+    | { of: string; x1: number; x2: number }
+    | { id: string; name: string; top: number; x1: number; x2: number }
+  )[];
   /** An evolved twin: which node moves, what the twin is called, where it lands. */
   evolutions: { of: string; name: string; x: number }[];
   /** Consumer, then what it needs (ADR 0010), by producer id. */
@@ -60,9 +67,21 @@ export function idIndex(root: Element): Map<string, Element> {
   return index;
 }
 
-/** A text's words, collapsed the way the sketch collapses a label. */
+/**
+ * A text's words, collapsed the way the sketch collapses a label — one span
+ * per line joined by a space, so a name a producer wrapped over two `<tspan>`s
+ * reads as the name and not as two words glued together.
+ */
 export function textOf(element: Element | undefined): string {
-  return (element?.textContent ?? '').replace(/\s+/g, ' ').trim();
+  if (!element) return '';
+  const spans = Array.from(element.children).filter(
+    child => child.localName === 'tspan'
+  );
+  const raw =
+    spans.length > 0
+      ? spans.map(span => span.textContent ?? '').join(' ')
+      : (element.textContent ?? '');
+  return raw.replace(/\s+/g, ' ').trim();
 }
 
 /**
