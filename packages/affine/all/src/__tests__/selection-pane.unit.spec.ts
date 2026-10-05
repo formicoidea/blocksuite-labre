@@ -240,6 +240,41 @@ describe('filter', () => {
   });
 });
 
+describe('filter, with user layers', () => {
+  const node = (
+    id: string,
+    kind: SelectionPaneNode['kind'],
+    children?: SelectionPaneNode[]
+  ): SelectionPaneNode => ({
+    id,
+    kind,
+    type: kind === 'layer' ? 'layer' : 'shape',
+    layerId: '@default',
+    locked: false,
+    hiddenLocal: false,
+    hiddenForEveryone: false,
+    ...(children ? { children } : {}),
+  });
+
+  test('keeps every layer row, even one the filter empties', () => {
+    // The product owner's review: under a frame filter, a second "New layer"
+    // created an empty layer the filter then hid, and nothing happened on
+    // screen. A layer is not filtered; only the element rows inside it are.
+    const tree = [
+      node('fresh', 'layer', []),
+      node('outside-only', 'layer', [node('outside', 'element')]),
+      node('@default', 'layer', [node('inside', 'element')]),
+    ];
+
+    const rows = filterSelectionPaneTree(tree, new Set(['inside']));
+
+    expect(ids(rows)).toEqual(['fresh', 'outside-only', '@default']);
+    expect(rows[0].children).toEqual([]);
+    expect(rows[1].children).toEqual([]);
+    expect(ids(rows[2].children!)).toEqual(['inside']);
+  });
+});
+
 describe('reorder', () => {
   test('puts a row directly above its target, in one undo step', () => {
     const { store, surface } = createBoard();

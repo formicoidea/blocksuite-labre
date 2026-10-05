@@ -12,3 +12,7 @@ English wording, and a role with no wording at all reads as its element type.
 The filter offers frames only, and a frame is no longer a row: the headless
 `selectionPaneTree(std)` carries no frame node, `selectionPaneFilterTargets`
 answers frames only, and the `com.labre.selection-pane.filter.board` key is gone.
+Layer rows are listed whatever the filter (`filterSelectionPaneTree` keeps every
+layer node); a layer the filter empties says "{{count}} hidden by the filter"
+(new key `com.labre.selection-pane.layer.filtered`), and "New layer" opens the
+new layer's name field, focused and scrolled into view.

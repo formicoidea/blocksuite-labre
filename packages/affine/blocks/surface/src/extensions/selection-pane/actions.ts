@@ -266,6 +266,11 @@ export function selectionPaneFilterMembers(
 /**
  * The tree narrowed to `members`: a row is kept when it is a member or holds
  * one, so a group reaching into a frame stays as the path to its member.
+ *
+ * A LAYER row is always kept, its children narrowed (ADR 0031, amendments): a
+ * layer is where new elements land and where a drop goes, not something a
+ * frame holds, and a layer created under a filter that hid it read as a
+ * "New layer" button doing nothing.
  */
 export function filterSelectionPaneTree(
   nodes: readonly SelectionPaneNode[],
@@ -276,7 +281,11 @@ export function filterSelectionPaneTree(
     const children = node.children
       ? filterSelectionPaneTree(node.children, members)
       : undefined;
-    if (members.has(node.id) || (children && children.length)) {
+    if (
+      node.kind === 'layer' ||
+      members.has(node.id) ||
+      (children && children.length)
+    ) {
       kept.push(children ? { ...node, children } : node);
     }
   }

@@ -63,6 +63,7 @@ import {
   SELECTION_PANE_FILTER,
   SELECTION_PANE_FILTER_ALL,
   SELECTION_PANE_FILTER_FRAME,
+  SELECTION_PANE_LAYER_FILTERED,
   SELECTION_PANE_TITLE,
   SELECTION_PANE_HIDE,
   SELECTION_PANE_HIDE_FOR_EVERYONE,
@@ -110,6 +111,11 @@ interface PaneRow {
   depth: number;
   /** Its siblings in the FULL tree, top first — what a drop is computed in. */
   siblings: readonly SelectionPaneNode[];
+  /**
+   * A layer row only: how many member rows the filter leaves out, when it
+   * leaves them ALL out — the layer then still shows, and says so.
+   */
+  hiddenByFilter?: number;
 }
 
 interface DragState {
@@ -232,14 +238,24 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       background: var(--affine-hover-color);
     }
 
-    .selection-pane-filter-label {
-      padding: 6px 16px;
-      border-bottom: 1px solid var(--affine-border-color);
+    /* The pane's secondary text: the filter's name, a layer's filtered count. */
+    .selection-pane-filter-label,
+    .selection-pane-layer-note {
       color: var(--affine-text-secondary-color);
       font-size: 12px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    .selection-pane-filter-label {
+      padding: 6px 16px;
+      border-bottom: 1px solid var(--affine-border-color);
+    }
+
+    .selection-pane-layer-note {
+      padding-top: 2px;
+      padding-bottom: 4px;
     }
 
     .selection-pane-body {
@@ -555,11 +571,29 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
 
   /* ── Rows ───────────────────────────────────────────────────────────── */
 
-  private _rows(nodes: readonly SelectionPaneNode[]): PaneRow[] {
+  /**
+   * The visible rows of `nodes` (the tree as filtered), with `full` the tree
+   * before the filter: what tells a layer emptied by the filter from an empty
+   * one.
+   */
+  private _rows(
+    nodes: readonly SelectionPaneNode[],
+    full: readonly SelectionPaneNode[] = nodes
+  ): PaneRow[] {
+    const membersOf = new Map(
+      full
+        .filter(node => node.kind === 'layer')
+        .map(node => [node.id, node.children?.length ?? 0])
+    );
     const rows: PaneRow[] = [];
     const walk = (list: readonly SelectionPaneNode[], depth: number) => {
       for (const node of list) {
-        rows.push({ node, depth, siblings: list });
+        const row: PaneRow = { node, depth, siblings: list };
+        if (node.kind === 'layer' && node.children?.length === 0) {
+          const members = membersOf.get(node.id) ?? 0;
+          if (members > 0) row.hiddenByFilter = members;
+        }
+        rows.push(row);
         if (node.children && !this._collapsed.has(node.id)) {
           walk(node.children, depth + 1);
         }
@@ -895,87 +929,104 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     const dragging = this._drag?.dragging && this._drag.id === node.id;
 
     return html`<div
-      class="selection-pane-row selection-pane-layer-row"
-      role="treeitem"
-      data-testid="selection-pane-layer"
-      data-id=${node.id}
-      data-kind="layer"
-      aria-level=${depth + 1}
-      aria-expanded=${collapsed ? 'false' : 'true'}
-      title=${active
-        ? translateKey(std, ...SELECTION_PANE_ACTIVE_LAYER)
-        : nothing}
-      ?data-active=${active}
-      ?data-hidden-local=${node.hiddenLocal}
-      ?data-hidden-everyone=${node.hiddenForEveryone}
-      ?data-dragging=${dragging}
-      data-drop=${drop ?? nothing}
-      style=${styleMap({ paddingLeft: `${8 + depth * INDENT_PX}px` })}
-      @click=${(event: MouseEvent) => this._onRowClick(event, node)}
-      @dblclick=${() => this._onRowDblClick(node)}
-      @contextmenu=${(event: MouseEvent) => this._onRowContextMenu(event, node)}
-      @pointerdown=${(event: PointerEvent) =>
-        this._onRowPointerDown(event, row)}
-    >
-      <button
-        class="selection-pane-chevron"
-        type="button"
-        data-testid="selection-pane-collapse"
-        aria-label=${translateKey(
-          std,
-          ...(collapsed ? SELECTION_PANE_EXPAND : SELECTION_PANE_COLLAPSE)
-        )}
-        @click=${(event: MouseEvent) => {
-          event.stopPropagation();
-          this._toggleCollapsed(node.id);
-        }}
+        class="selection-pane-row selection-pane-layer-row"
+        role="treeitem"
+        data-testid="selection-pane-layer"
+        data-id=${node.id}
+        data-kind="layer"
+        aria-level=${depth + 1}
+        aria-expanded=${collapsed ? 'false' : 'true'}
+        title=${active
+          ? translateKey(std, ...SELECTION_PANE_ACTIVE_LAYER)
+          : nothing}
+        ?data-active=${active}
+        ?data-hidden-local=${node.hiddenLocal}
+        ?data-hidden-everyone=${node.hiddenForEveryone}
+        ?data-dragging=${dragging}
+        data-drop=${drop ?? nothing}
+        style=${styleMap({ paddingLeft: `${8 + depth * INDENT_PX}px` })}
+        @click=${(event: MouseEvent) => this._onRowClick(event, node)}
+        @dblclick=${() => this._onRowDblClick(node)}
+        @contextmenu=${(event: MouseEvent) =>
+          this._onRowContextMenu(event, node)}
+        @pointerdown=${(event: PointerEvent) =>
+          this._onRowPointerDown(event, row)}
       >
-        ${collapsed ? ArrowRightSmallIcon() : ArrowDownSmallIcon()}
-      </button>
-      <span class="selection-pane-icon">${LayerIcon()}</span>
-      ${this._renaming === node.id
-        ? html`<input
-            class="selection-pane-rename"
-            data-testid="selection-pane-rename"
-            aria-label=${translateKey(std, ...TOOLBAR_RENAME)}
-            .value=${name}
-            @click=${this._swallow}
-            @dblclick=${this._swallow}
-            @keydown=${(event: KeyboardEvent) =>
-              this._onRenameKeydown(event, node.id)}
-            @blur=${(event: FocusEvent) =>
-              this._commitRename(node.id, event.target as HTMLInputElement)}
-          />`
-        : html`<span class="selection-pane-label" title=${name}>${name}</span>`}
-      <button
-        class="selection-pane-eye"
-        type="button"
-        data-testid="selection-pane-eye"
-        aria-pressed=${node.hiddenLocal ? 'true' : 'false'}
-        aria-label=${translateKey(
-          std,
-          ...(node.hiddenLocal ? SELECTION_PANE_SHOW : SELECTION_PANE_HIDE)
-        )}
-        @click=${(event: MouseEvent) => this._onEyeClick(event, node)}
-      >
-        ${node.hiddenLocal ? InvisibleIcon() : ViewIcon()}
-      </button>
-      ${std.store.readonly
-        ? nothing
-        : html`<button
-            class="selection-pane-more"
-            type="button"
-            data-testid="selection-pane-more"
-            aria-haspopup="menu"
-            aria-label=${translateKey(std, ...SELECTION_PANE_ROW_MENU)}
-            @click=${(event: MouseEvent) => {
-              event.stopPropagation();
-              this._openRowMenu(event.currentTarget as HTMLElement, node);
-            }}
+        <button
+          class="selection-pane-chevron"
+          type="button"
+          data-testid="selection-pane-collapse"
+          aria-label=${translateKey(
+            std,
+            ...(collapsed ? SELECTION_PANE_EXPAND : SELECTION_PANE_COLLAPSE)
+          )}
+          @click=${(event: MouseEvent) => {
+            event.stopPropagation();
+            this._toggleCollapsed(node.id);
+          }}
+        >
+          ${collapsed ? ArrowRightSmallIcon() : ArrowDownSmallIcon()}
+        </button>
+        <span class="selection-pane-icon">${LayerIcon()}</span>
+        ${this._renaming === node.id
+          ? html`<input
+              class="selection-pane-rename"
+              data-testid="selection-pane-rename"
+              aria-label=${translateKey(std, ...TOOLBAR_RENAME)}
+              .value=${name}
+              @click=${this._swallow}
+              @dblclick=${this._swallow}
+              @keydown=${(event: KeyboardEvent) =>
+                this._onRenameKeydown(event, node.id)}
+              @blur=${(event: FocusEvent) =>
+                this._commitRename(node.id, event.target as HTMLInputElement)}
+            />`
+          : html`<span class="selection-pane-label" title=${name}
+              >${name}</span
+            >`}
+        <button
+          class="selection-pane-eye"
+          type="button"
+          data-testid="selection-pane-eye"
+          aria-pressed=${node.hiddenLocal ? 'true' : 'false'}
+          aria-label=${translateKey(
+            std,
+            ...(node.hiddenLocal ? SELECTION_PANE_SHOW : SELECTION_PANE_HIDE)
+          )}
+          @click=${(event: MouseEvent) => this._onEyeClick(event, node)}
+        >
+          ${node.hiddenLocal ? InvisibleIcon() : ViewIcon()}
+        </button>
+        ${std.store.readonly
+          ? nothing
+          : html`<button
+              class="selection-pane-more"
+              type="button"
+              data-testid="selection-pane-more"
+              aria-haspopup="menu"
+              aria-label=${translateKey(std, ...SELECTION_PANE_ROW_MENU)}
+              @click=${(event: MouseEvent) => {
+                event.stopPropagation();
+                this._openRowMenu(event.currentTarget as HTMLElement, node);
+              }}
+            >
+              ${MoreHorizontalIcon()}
+            </button>`}
+      </div>
+      ${row.hiddenByFilter && !collapsed
+        ? html`<div
+            class="selection-pane-layer-note"
+            data-testid="selection-pane-layer-filtered"
+            data-id=${node.id}
+            style=${styleMap({
+              paddingLeft: `${8 + (depth + 1) * INDENT_PX + 28}px`,
+            })}
           >
-            ${MoreHorizontalIcon()}
-          </button>`}
-    </div>`;
+            ${translateKey(std, ...SELECTION_PANE_LAYER_FILTERED, {
+              count: row.hiddenByFilter,
+            })}
+          </div>`
+        : nothing}`;
   }
 
   private _renderRow(row: PaneRow) {
@@ -1104,15 +1155,33 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     if (input && this.shadowRoot?.activeElement !== input) {
       input.focus();
       input.select();
+      // A layer just created may sit above the scrolled-to rows: bring its
+      // field into view, so the creation is seen where it happened.
+      input.scrollIntoView({ block: 'nearest' });
     }
   }
+
+  /**
+   * "New layer": create it, then open its name for editing — the frame
+   * panel's inline title editor, as a double-click does — so the creation is
+   * unmistakable even under a filter (ADR 0031, amendments).
+   */
+  private readonly _createLayer = () => {
+    const before = new Set(Object.keys(this._gfx.surface?.props.layers ?? {}));
+    this._run('canvas.layer.create', {});
+    const created = Object.keys(this._gfx.surface?.props.layers ?? {}).find(
+      id => id !== DEFAULT_LAYER_ID && !before.has(id)
+    );
+    if (created) this._renaming = created;
+  };
 
   override render() {
     if (!this._open) return nothing;
     // Read for its dependency: the rows repaint when the canvas selection does.
     this._selectionRevision;
 
-    let tree = selectionPaneTree(this.std).value;
+    const full = selectionPaneTree(this.std).value;
+    let tree = full;
     let filterLabel: string | null = null;
     if (this._filter !== null) {
       const members = selectionPaneFilterMembers(this.std, this._filter);
@@ -1124,7 +1193,7 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
         filterLabel = this._filterWording(target.id);
       }
     }
-    const rows = this._rows(tree);
+    const rows = this._rows(tree, full);
     const title = translateKey(this.std, ...SELECTION_PANE_TITLE);
 
     // `pointermove` too: the editor turns every move over the host into a
@@ -1154,7 +1223,7 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
               type="button"
               data-testid="selection-pane-new-layer"
               aria-label=${translateKey(this.std, ...SELECTION_PANE_NEW_LAYER)}
-              @click=${() => this._run('canvas.layer.create', {})}
+              @click=${this._createLayer}
             >
               ${PlusIcon()}
             </button>`}

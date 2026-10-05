@@ -546,3 +546,14 @@ frame's members are listed where they paint, i.e. together, right above the
 frame's place in the stack. Framework boards stay ordinary rows. Nothing
 stored changes. The `com.labre.selection-pane.filter.board` key
 ("Board: {{name}}") is removed; a host catalogue may drop it.
+
+**A layer row is never filtered, and a new layer opens in rename (2026-10-05,
+same review).** Under a frame filter, a second "New layer" created an empty
+layer the filter then hid, so the button seemed to do nothing.
+`filterSelectionPaneTree` now keeps every `kind: 'layer'` node whatever the
+filter, narrowing only the rows inside it; the library's panel shows a layer
+whose members the filter all leaves out with a secondary line,
+`com.labre.selection-pane.layer.filtered` ("{{count}} hidden by the filter",
+plural left to the host). "New layer" opens the created layer's name field in
+place, focused and scrolled into view. The filter is not cleared, and nothing
+blinks. Nothing stored changes.

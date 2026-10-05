@@ -75,6 +75,15 @@ export const SELECTION_PANE_FILTER_FRAME: ChromeWording = [
   'Frame: {{name}}',
 ];
 
+/**
+ * Under a layer whose members the frame filter all leaves out: how many rows
+ * it holds. `{{count}}` is the number; the host pluralises.
+ */
+export const SELECTION_PANE_LAYER_FILTERED: ChromeWording = [
+  'com.labre.selection-pane.layer.filtered',
+  '{{count}} hidden by the filter',
+];
+
 /** The eye of a visible row: hide it for this viewer only (ADR 0031 §8). */
 export const SELECTION_PANE_HIDE: ChromeWording = [
   'com.labre.selection-pane.hide',
@@ -198,6 +207,7 @@ export const EDGELESS_TOOLBAR_WORDINGS: readonly ChromeWording[] = [
   SELECTION_PANE_FILTER,
   SELECTION_PANE_FILTER_ALL,
   SELECTION_PANE_FILTER_FRAME,
+  SELECTION_PANE_LAYER_FILTERED,
   SELECTION_PANE_HIDE,
   SELECTION_PANE_SHOW,
   SELECTION_PANE_HIDE_FOR_EVERYONE,

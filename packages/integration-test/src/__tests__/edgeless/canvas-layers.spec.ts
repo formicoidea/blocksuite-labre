@@ -9,6 +9,10 @@
  * - "New layer" in the pane's head creates the first two records, the new
  *   layer becomes active, and what is drawn next lands in it and stacks above
  *   the default layer whatever its `index`;
+ * - a new layer opens straight into its rename field, and under a frame
+ *   filter it is still listed — layer rows are never filtered, and a layer
+ *   whose members the filter hides says how many (the product owner's review:
+ *   a second "New layer" under a filter used to show nothing at all);
  * - a click on a layer row makes it the active layer; a double-click renames
  *   it in place; a drag reorders the layers, and the canvas restacks;
  * - a canvas row dragged onto a layer row moves the element into it;
@@ -43,6 +47,16 @@ import { getDocRootBlock } from '../utils/edgeless.js';
 import { setupEditor } from '../utils/setup.js';
 
 const PANE_WIDGET = 'edgeless-selection-pane-widget';
+
+/** Every element matching `selector`, through every open shadow root. */
+function deepQueryAll(root: ParentNode, selector: string): HTMLElement[] {
+  const found = Array.from(root.querySelectorAll<HTMLElement>(selector));
+  for (const element of root.querySelectorAll('*')) {
+    if (element.shadowRoot)
+      found.push(...deepQueryAll(element.shadowRoot, selector));
+  }
+  return found;
+}
 
 describe('user layers', () => {
   let edgeless!: EdgelessRootBlockComponent;
@@ -159,18 +173,28 @@ describe('user layers', () => {
     await settle();
     expect(gfx().getElementByPoint(850, 50)?.id).toBe(top);
 
+    // A new layer opens straight into its rename field.
+    const input = layerRow(created).querySelector<HTMLInputElement>(
+      '[data-testid="selection-pane-rename"]'
+    )!;
+    expect(input, 'the new layer row is a rename field').toBeTruthy();
+    await userEvent.fill(page.elementLocator(input), 'Annotations');
+    await userEvent.keyboard('{Enter}');
+    await settle();
+    expect(layers()[created].name).toBe('Annotations');
+
+    // And a double-click renames it again later.
     await userEvent.dblClick(
       page.elementLocator(
         layerRow(created).querySelector('.selection-pane-label')!
       )
     );
     await settle();
-    const input = layerRow(created).querySelector<HTMLInputElement>(
+    const again = layerRow(created).querySelector<HTMLInputElement>(
       '[data-testid="selection-pane-rename"]'
     )!;
-    expect(input, 'the layer row turned into a rename field').toBeTruthy();
-    await userEvent.fill(page.elementLocator(input), 'Annotations');
-    await userEvent.keyboard('{Enter}');
+    expect(again, 'the layer row turned into a rename field').toBeTruthy();
+    await userEvent.keyboard('{Escape}');
     await settle();
     expect(layers()[created].name).toBe('Annotations');
 
@@ -198,6 +222,75 @@ describe('user layers', () => {
     await settle();
     expect(elementRow(top)).toBeUndefined();
     expect(updates).toHaveLength(0);
+  });
+
+  test('under a frame filter, every layer is listed and a new one is unmistakable', async () => {
+    const inside = shape(0);
+    const outside = shape(800);
+    const frame = edgeless.service.crud.addBlock(
+      'affine:frame',
+      { xywh: '[-50,-50,300,300]', childElementIds: { [inside]: true } },
+      surface().id
+    );
+    await settle();
+    await openPane();
+    await newLayer();
+    const second = userLayerId();
+    // Keep the seeded name: Enter in the open field writes nothing.
+    await userEvent.keyboard('{Enter}');
+    await settle();
+    await userEvent.dragAndDrop(
+      page.elementLocator(elementRow(outside)),
+      page.elementLocator(layerRow(second)),
+      { targetPosition: { x: 60, y: 10 } }
+    );
+    await settle();
+    expect(ownLayerOf(model(outside))).toBe(second);
+
+    await userEvent.click(
+      page.elementLocator(
+        root().querySelector('[data-testid="selection-pane-filter"]')!
+      )
+    );
+    await wait(100);
+    const frameEntry = deepQueryAll(document, 'affine-menu-button').find(
+      button => button.textContent?.includes('Frame:')
+    );
+    expect(frameEntry, 'the filter offers the frame').toBeTruthy();
+    await userEvent.click(page.elementLocator(frameEntry!));
+    await settle();
+    expect(frame).toBeTruthy();
+
+    // Both layers are listed; the one whose only member is off the frame says
+    // so, in words, instead of vanishing.
+    expect(layerRowIds()).toEqual([second, DEFAULT_LAYER_ID]);
+    expect(elementRow(outside)).toBeUndefined();
+    expect(elementRow(inside)).toBeTruthy();
+    const note = root().querySelector<HTMLElement>(
+      '[data-testid="selection-pane-layer-filtered"]'
+    );
+    expect(note?.dataset.id).toBe(second);
+    expect(note?.textContent?.trim()).toBe('1 hidden by the filter');
+
+    // A third layer: listed at the top, its name field open and focused,
+    // the filter untouched.
+    await newLayer();
+    const third = Object.keys(layers()).find(
+      id => id !== DEFAULT_LAYER_ID && id !== second
+    )!;
+    expect(layerRowIds()).toEqual([third, second, DEFAULT_LAYER_ID]);
+    const input = layerRow(third).querySelector<HTMLInputElement>(
+      '[data-testid="selection-pane-rename"]'
+    );
+    expect(input, 'the new layer opens in rename').toBeTruthy();
+    expect(root().activeElement).toBe(input);
+    expect(
+      root().querySelector('[data-testid="selection-pane-filter-label"]')
+    ).toBeTruthy();
+    await userEvent.fill(page.elementLocator(input!), 'Notes');
+    await userEvent.keyboard('{Enter}');
+    await settle();
+    expect(layers()[third].name).toBe('Notes');
   });
 
   test('a canvas row dropped on a layer row moves into that layer', async () => {
