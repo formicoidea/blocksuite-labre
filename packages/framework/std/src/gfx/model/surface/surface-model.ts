@@ -279,6 +279,8 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
     'xywh',
     'rotate',
     'hidden',
+    // ADR 0031 §9: a member hidden for everyone leaves the group's bound.
+    'hiddenForEveryone',
   ]);
 
   protected _decoratorState = createDecoratorState();

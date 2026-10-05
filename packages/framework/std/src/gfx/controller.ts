@@ -23,7 +23,10 @@ import { GridManager } from './grid.js';
 import { gfxControllerKey } from './identifiers.js';
 import { KeyboardController } from './keyboard.js';
 import { LayerManager } from './layer.js';
-import { GfxLocalVisibility } from './local-visibility.js';
+import {
+  GfxHiddenForEveryone,
+  GfxLocalVisibility,
+} from './local-visibility.js';
 import type { PointTestOptions } from './model/base.js';
 import { GfxBlockElementModel } from './model/gfx-block-model.js';
 import type { GfxModel } from './model/model.js';
@@ -48,6 +51,13 @@ export class GfxController extends LifeCycleWatcher {
    * `grid.search`, whose answer rules and legends share.
    */
   readonly localVisibility = new GfxLocalVisibility();
+
+  /**
+   * The ids hidden for everyone (ADR 0031 §7), followed on the surface and
+   * the store and registered into {@link localVisibility}: what nobody sees
+   * is, a fortiori, not seen by this viewer.
+   */
+  readonly hiddenForEveryone = new GfxHiddenForEveryone();
 
   readonly viewport: Viewport = new Viewport();
 
@@ -93,8 +103,13 @@ export class GfxController extends LifeCycleWatcher {
     this._disposables.add(
       onSurfaceAdded(this.doc, surface => {
         this._surface$.value = surface;
+        this.hiddenForEveryone.watch(this.doc, surface);
       })
     );
+    this._disposables.add(
+      this.localVisibility.register(this.hiddenForEveryone.ids$)
+    );
+    this._disposables.add(() => this.hiddenForEveryone.dispose());
     this._disposables.add(this.viewport);
     this._disposables.add(this.keyboard);
 

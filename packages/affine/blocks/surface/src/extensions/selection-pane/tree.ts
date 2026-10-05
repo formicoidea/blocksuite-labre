@@ -7,6 +7,7 @@ import {
   GfxGroupLikeElementModel,
   type GfxModel,
   GfxPrimitiveElementModel,
+  isStoredHiddenForEveryone,
   type SurfaceBlockModel,
 } from '@labre/std/gfx';
 import {
@@ -52,7 +53,10 @@ export interface SelectionPaneNode {
    * selectable from the pane, just not painted or picked on the canvas.
    */
   hiddenLocal: boolean;
-  /** Hidden for everyone. `false` until that stage writes the field. */
+  /**
+   * Hidden for everyone (the stored `hiddenForEveryone`, ADR 0031 §7): listed
+   * and selectable like a local hide, but no viewer paints or picks it.
+   */
   hiddenForEveryone: boolean;
   /** Present on a group or a mindmap: its members, top first. */
   children?: SelectionPaneNode[];
@@ -147,7 +151,7 @@ export function buildSelectionPaneTree(
         layerId: DEFAULT_LAYER_ID,
         locked: model.lockedBySelf === true,
         hiddenLocal: hiddenLocally.has(model.id),
-        hiddenForEveryone: false,
+        hiddenForEveryone: isStoredHiddenForEveryone(model),
       };
       if (role !== undefined) node.role = role;
       if (key !== null) node.groupId = key;
@@ -207,6 +211,8 @@ export class SelectionPaneModel extends LifeCycleWatcher {
     // Read here, so a local hide or show re-derives the rows' marks.
     const hidden = this.std.getOptional(CanvasLocalVisibility)?.hiddenIds$
       .value;
+    // And here, so a hide for everyone (local or a peer's) re-derives them too.
+    gfx.hiddenForEveryone?.ids$.value;
     return buildSelectionPaneTree(gfx.gfxElements, hidden);
   });
 

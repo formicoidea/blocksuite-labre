@@ -69,6 +69,20 @@ export class MenuButton extends MenuFocusable {
     .affine-menu-button.delete-item:hover .affine-menu-action-text {
       color: var(--affine-error-color);
     }
+
+    /*
+      An entry whose effect reaches every viewer of the document ("Hide for
+      everyone", ADR 0031): the theme's warning tokens, always on, so it reads
+      differently from its local twin before it is hovered.
+    */
+    .affine-menu-button.warning-item,
+    .affine-menu-button.warning-item .affine-menu-action-text {
+      color: var(--affine-warning-color);
+    }
+
+    .affine-menu-button.warning-item:hover {
+      background-color: var(--affine-background-warning-color);
+    }
   `;
 
   override connectedCallback() {

@@ -55,6 +55,8 @@ export type BaseElementProps = {
   index: string;
   seed: number;
   lockedBySelf?: boolean;
+  /** See {@link GfxPrimitiveElementModel.hiddenForEveryone}. */
+  hiddenForEveryone?: true;
   /** See {@link GfxPrimitiveElementModel.pivotDocId}. */
   pivotDocId?: string;
   /** See {@link GfxPrimitiveElementModel.role}. */
@@ -608,6 +610,22 @@ export abstract class GfxPrimitiveElementModel<
   @field(false)
   accessor hidden: boolean = false;
 
+  /**
+   * "Hide for everyone" (ADR 0031 §7): stored, synced, and NOT {@link hidden},
+   * which mindmap collapse owns and clears on expand — expanding a branch must
+   * never unhide what somebody hid for everyone.
+   *
+   * `true` or absent, never `false`: unhiding goes through {@link clearField},
+   * which removes the key, so a document goes back to byte-identical. Declared
+   * on the BASE class for the reason {@link role} is: an element re-created
+   * from props (paste, duplicate, template) reaches the Y.Map only through
+   * declared keys. Read by the paint and pick predicate
+   * (`GfxController.hiddenForEveryone`), never by `grid.search`: rules,
+   * legends and semantic exports still count a hidden element.
+   */
+  @field()
+  accessor hiddenForEveryone: true | undefined = undefined;
+
   @field()
   accessor index!: string;
 
@@ -1012,6 +1030,12 @@ export abstract class GfxGroupLikeElementModel<
       if (child instanceof GfxPrimitiveElementModel && child.hidden) {
         return;
       }
+      // A member hidden for everyone is not painted, so it does not stretch
+      // the group's box either (ADR 0031 §9). A local hide does: the bound is
+      // computed once for every viewer.
+      if (isStoredHiddenForEveryone(child)) {
+        return;
+      }
 
       bound = bound ? bound.unite(child.elementBound) : child.elementBound;
     });
@@ -1083,6 +1107,25 @@ export abstract class GfxGroupLikeElementModel<
       },
       local: fromLocal,
     });
+  }
+}
+
+/**
+ * Whether `model` itself carries the stored "hide for everyone" (ADR 0031 §7):
+ * the `@field()` on an element, the `prop:` on a gfx block. Not reactive, and
+ * not inherited — a member of a hidden group answers `false` here; the paint
+ * and pick predicate (`GfxLocalVisibility.isHidden`) walks the ancestors.
+ */
+export function isStoredHiddenForEveryone(model: unknown): boolean {
+  if (model instanceof GfxPrimitiveElementModel) {
+    return model.hiddenForEveryone === true;
+  }
+  try {
+    const props = (model as { props?: { hiddenForEveryone?: unknown } }).props;
+    return props?.hiddenForEveryone === true;
+  } catch {
+    // A block model outside a flat store has no `props` to read.
+    return false;
   }
 }
 

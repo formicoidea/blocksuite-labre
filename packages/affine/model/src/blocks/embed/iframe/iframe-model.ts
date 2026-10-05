@@ -30,6 +30,7 @@ export const defaultEmbedIframeProps: EmbedIframeBlockProps = {
   xywh: '[0,0,0,0]',
   index: 'a0',
   lockedBySelf: false,
+  hiddenForEveryone: undefined,
   scale: 1,
 };
 

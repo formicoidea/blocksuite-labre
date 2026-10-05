@@ -12,6 +12,7 @@ import {
   GfxControllerIdentifier,
   type GfxModel,
   GfxPrimitiveElementModel,
+  isStoredHiddenForEveryone,
 } from '@labre/std/gfx';
 import { generateKeyBetween } from 'fractional-indexing';
 import * as Y from 'yjs';
@@ -139,6 +140,50 @@ export function setPaneElementsLocked(
     }
   });
   return true;
+}
+
+/**
+ * Hide models for EVERYONE, or show them again (ADR 0031 §7). Answers how
+ * many models were written.
+ *
+ * Writes the stored `hiddenForEveryone` — never `hidden`, which mindmap
+ * collapse owns. Hiding writes `true`; showing REMOVES the key (`clearField`
+ * on an element, the props proxy's delete on a block), never stores `false`,
+ * so an unhidden document is byte-identical to one never hidden. Models
+ * already in the asked state are skipped, so a gesture that changes nothing
+ * writes nothing and pushes no undo step; the rest go in one transaction
+ * after one `captureSync()`.
+ */
+export function setPaneElementsHiddenForEveryone(
+  std: BlockStdScope,
+  ids: readonly string[],
+  hidden: boolean
+): number {
+  if (std.store.readonly) return 0;
+
+  const targets = ids
+    .map(id => gfxModel(std, id))
+    .filter(
+      (model): model is GfxModel =>
+        model !== null && isStoredHiddenForEveryone(model) !== hidden
+    );
+  if (!targets.length) return 0;
+
+  const gfx = std.get(GfxControllerIdentifier);
+  std.store.captureSync();
+  std.store.transact(() => {
+    for (const model of targets) {
+      if (hidden) {
+        gfx.updateElement(model, { hiddenForEveryone: true });
+      } else if (model instanceof GfxPrimitiveElementModel) {
+        model.clearField('hiddenForEveryone');
+      } else {
+        // The props proxy deletes the `prop:` key (ADR 0031 §7).
+        delete (model.props as { hiddenForEveryone?: true }).hiddenForEveryone;
+      }
+    }
+  });
+  return targets.length;
 }
 
 /**

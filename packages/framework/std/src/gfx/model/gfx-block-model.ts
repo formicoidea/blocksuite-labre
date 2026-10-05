@@ -33,6 +33,13 @@ export type GfxCompatibleProps = {
   xywh: SerializedXYWH;
   index: string;
   lockedBySelf?: boolean;
+  /**
+   * "Hide for everyone" (ADR 0031 §7). `true` or absent, never `false`:
+   * unhiding deletes the `prop:` key through the props proxy, so the block
+   * goes back to byte-identical. Every gfx block schema declares it with an
+   * `undefined` default, the way it declares `lockedBySelf`.
+   */
+  hiddenForEveryone?: true;
 };
 
 /**

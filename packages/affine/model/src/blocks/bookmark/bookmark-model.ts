@@ -43,6 +43,7 @@ const defaultBookmarkProps: BookmarkBlockProps = {
   index: 'a0',
   xywh: '[0,0,0,0]',
   lockedBySelf: false,
+  hiddenForEveryone: undefined,
   rotate: 0,
   'meta:createdAt': undefined,
   'meta:updatedAt': undefined,
