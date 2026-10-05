@@ -15,6 +15,12 @@ change to one. Paste it in the PR and tick.**
       their loadability story. Enum values are append-only.
 - [ ] `FrameworkId`, flag key, descriptor id, command owner: one spelling.
       `telemetryKey` is set and, for an existing framework, unchanged.
+- [ ] User layers (ADR 0031): every creation site goes through
+      `surface.addElement` or the CRUD `addBlock`, which stamp the layer; a
+      block created any other way calls `applyCreationLayer`, and one derived
+      from a source (a clone, a split) asks for `sourceLayerOf(source)`.
+- [ ] Nothing is written on load or when a panel opens; a cascade runs on a
+      local gesture only and checks `store.readonly`.
 
 ## Declarations
 

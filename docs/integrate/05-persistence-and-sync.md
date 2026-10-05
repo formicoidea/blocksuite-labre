@@ -81,6 +81,44 @@ The library's `BlobSource` is workspace-scoped. If your storage needs the
 document id for authorization, carry it out of band (a module-level "current
 document" set at mount, cleared at dispose). The library cannot pass it.
 
+## Fields that appeared in 0.44
+
+Every one is optional and absent until a user's gesture writes it, so a
+document written before 0.44 is unchanged: nothing is migrated, nothing is
+written when it is opened.
+
+| Field               | Where                                                                                              | Written by                                                                  |
+| ------------------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `layers`            | `affine:surface` props, one `SurfaceLayerRecord` per id (`name`, `index`, optional `hidden: true`) | the first "New layer"; a rename or "Hide for everyone" of the default layer |
+| `showGrid`          | `affine:surface` props                                                                             | "Save for everyone" on the grid                                             |
+| `layer`             | every canvas element, and the fifteen gfx block schemas                                            | creation in, or a move to, a layer other than the default                   |
+| `hiddenForEveryone` | the same; `true` or absent, never `false`                                                          | "Hide for everyone"; unhiding removes the key                               |
+| `textDecoration`    | canvas `text`, `shape`, and inside a connector's `labelStyle`                                      | the Underline / Overline toggles (ADR 0030)                                 |
+| `overline`          | an inline attribute in rich-text deltas                                                            | the format bar's Overline (ADR 0030 §5)                                     |
+
+What a **0.43 client** does with a 0.44 document (ADR 0031, _What stays
+loadable_; ADR 0030):
+
+- It **paints what was hidden for everyone**, an element or a whole layer: it
+  does not know the field.
+- It stacks by `index` alone, so two elements of different layers may stack
+  differently after a layer was reordered; inside one layer the order is the
+  same.
+- Its grid is always on; it paints canvas text without its decoration and a
+  rich-text run without its overline (the attribute stays in the `Y.Text`).
+- It **keeps every new field** through sync, resave, copy and duplicate: an
+  unknown element prop and an unknown block `prop:` key are preserved. A new
+  element it creates lands in the default layer.
+- Two exceptions, both about snapshots. A **snapshot** a 0.43 client writes
+  (doc copy, template insertion, export) drops `layers` and `showGrid`; 0.44
+  carries every surface prop through a snapshot. And a block's `layer` or
+  `hiddenForEveryone` that a peer added after the 0.43 client loaded the
+  document is dropped from that client's snapshot-based duplicate until it
+  reloads.
+
+Hosts upgrade together, so this window is short; the fields are content and
+no flag gates them.
+
 ## Read-only
 
 Set `store.readonly = true` to make a document read-only. Every mutation entry

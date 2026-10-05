@@ -105,7 +105,7 @@ short reason, and the consequence for the code you write.
   zones. Identifiers are deprecated, never removed. Optional fields with an
   `undefined` default need no migration. (ADR 0007, CLAUDE.md)
 
-- **G. Granular source, coarse publication.** 82 private `@labre/*` packages
+- **G. Granular source, coarse publication.** 83 private `@labre/*` packages
   in the repo; about ten `@formicoidea/labre-*` bundles on npm. Published code
   must be resolvable by Node as-is.
 

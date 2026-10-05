@@ -36,10 +36,13 @@ yarn build:bundles    # generate and compile the @formicoidea/* bundles into dis
 ```bash
 yarn test:unit                                  # every unit suite
 yarn test:integration                           # browser suite (chromium, serial)
-cd packages/affine/gfx/wardley && yarn vitest run roles   # one package, one filter
+npx vitest run --config packages/affine/gfx/wardley/vitest.config.ts roles   # one package, one filter
 ```
 
-Run a package's tests from its own directory. Run `yarn test:unit` on its
+A package whose `vitest.config.ts` sets `test.root: './packages/…'` runs from
+the repo root with `--config`, as above; one without `test.root` runs from its
+own directory (`cd packages/affine/all && npx vitest run registry`). The wrong
+place finds no files; the list is in `docs/contribute/01-setup.md`. Run `yarn test:unit` on its
 own: a concurrent `tsc -b` starves the browser-mode projects. The first
 integration run needs `npx playwright install`.
 

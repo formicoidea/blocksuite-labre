@@ -45,11 +45,24 @@ when in doubt.
 ```bash
 yarn test:unit                  # every unit suite (vitest workspace)
 yarn test:integration           # browser suite, chromium, serial
-cd packages/affine/gfx/wardley && yarn vitest run roles   # one package, one filter
+npx vitest run --config packages/affine/gfx/wardley/vitest.config.ts roles   # one package, one filter
+cd packages/affine/all && npx vitest run registry                              # same, other kind of config
 ```
 
-Run a package's tests **from its directory**. From the root,
-`--config <pkg>/vitest.config.ts` finds no files and `--project` filters hang.
+Where to run one package depends on its `vitest.config.ts`:
+
+- **It sets `test.root: './packages/…'`** (every `gfx/*/vitest.config.ts`,
+  `model`, `components`, `fragments/outline`,
+  `blocks/{callout,code,frame,latex,note,root,surface-ref}`, `widgets/*`,
+  `inlines/{latex,link}`): run it **from the repo root** with
+  `--config <pkg>/vitest.config.ts`. From its own directory the root resolves
+  to a path that does not exist and vitest finds no files.
+- **It does not** (`affine/all`, `shared`, `blocks/surface`, `framework/*`,
+  and every browser-mode config, `vitest.browser.config.ts` included): run it
+  **from its package directory**. From the root, `--config` finds no files.
+
+`yarn vitest` only works in a package that declares `vitest`; `npx vitest`
+works everywhere. `--project` filters hang.
 
 Run `yarn test:unit` alone: a concurrent `tsc -b` starves the browser-mode
 projects and the vanilla-extract transforms time out.
@@ -71,7 +84,11 @@ Prettier on staged files.
 - **Worktrees and CRLF.** Git worktrees created by tools often check out with
   `core.autocrlf=true`; `prettier --check` then flags every file. Check only
   your files with `prettier --check --end-of-line auto <files>`, or check the
-  committed blobs. Git normalizes to LF on commit.
+  committed blobs. Git normalizes to LF on commit. CRLF can also break the
+  declaration emit: thousands of TS1005 in one `dist/*.d.ts` come from a
+  `/** */` on a property inside a `z.object({...})` literal, not from a
+  transient state; write that comment with `//`
+  ([lessons.md](../lessons.md) 32, guard `zod-schema-jsdoc.unit.spec.ts`).
 - **Worktrees have no `node_modules`.** Run `yarn install --immutable` in
   each.
 - **No `python` on some machines.** Script edits with Node.

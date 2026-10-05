@@ -19,7 +19,16 @@ git log -1     # confirm you are on the current tip, not a stale base
 
 Sync a long-lived branch with `git merge origin/blocksuite-labre-main`. Merge
 commits are fine: the squash flattens them. Avoid stacking branches on other
-feature branches; a squash-merged base makes the stack conflict.
+feature branches; a squash-merged base makes the stack conflict. A branch
+chained anyway is moved onto the new tip once its base is squashed, replaying
+only its own commits:
+
+```bash
+git rebase --onto origin/blocksuite-labre-main <old-base-tip> <branch>
+```
+
+A branch still checked out in another worktree refuses the rebase without any
+conflict: free it there first.
 
 ## Commits
 
@@ -78,6 +87,11 @@ breaks a host. If in doubt between `minor` and `major`, it is `major`.
 - Body: what changed, why, how it was verified (commands and results). Link
   the ADR if one applies.
 - CI runs format, typecheck, unit and integration. All green before review.
+  Green means every check of the PR's HEAD commit is completed and
+  successful (`gh pr view N --json statusCheckRollup`);
+  `gh pr checks --watch` can return on the previous run.
+- Run the whole integration suite before opening the PR, not only your spec
+  ([04-testing.md](04-testing.md#writing-an-integration-test)).
 - Squash merge. The PR title becomes the commit subject.
 - `Closes #N` does not auto-close on a non-default branch: close the issue by
   hand after the merge.

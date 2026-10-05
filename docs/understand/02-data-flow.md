@@ -57,6 +57,46 @@ Transient churn during a drag (every intermediate stroke point, every mouse
 move) goes through `store.withoutTransact(() => …)` so it does not pollute
 the undo stack; the final position is written normally.
 
+## Stacking, user layers and the layer manager
+
+The canvas paints in one order, and three words describe it. Keep them apart.
+
+- **`index`.** Every canvas element and every gfx block stores a fractional
+  `index`. `compare` (`packages/framework/std/src/utils/layer.ts`) sorts by
+  it; a group-like ancestor (a group, a mindmap, a frame) stacks its
+  descendants right above itself.
+- **User layers** (ADR 0031) are content. The `affine:surface` block may carry
+  a `layers` record (`SurfaceLayerRecord`: `name`, fractional `index`,
+  optional `hidden`), and every element and gfx block an optional `layer` id.
+  No id, or an id with no record, is the default layer, `'@default'`
+  (`DEFAULT_LAYER_ID`), which has no record until a gesture needs one. A
+  group lives in the layer of its outermost group; frames are not counted, so
+  one frame can hold a background layer under a content layer. `compare`
+  ranks by layer first, then decides as before; a surface with no `layers`
+  takes a fast path that sorts exactly as documents did before layers
+  existed (`SurfaceUserLayers`, `packages/framework/std/src/gfx/model/surface/user-layers.ts`).
+- **`LayerManager`** (`packages/framework/std/src/gfx/layer.ts`) cuts that
+  sorted order into runs of canvas elements and runs of DOM blocks, so each
+  run is painted by one canvas or one stacking context. Its "layers" are a
+  rendering device, never a user concept. In code a user layer is a
+  `SurfaceLayerRecord`; the two never meet in one identifier.
+
+The **selection pane** is a projection of that order, not a second model.
+`selectionPaneTree(std)` (`packages/affine/blocks/surface/src/extensions/selection-pane/tree.ts`)
+answers the paint order reversed (top first), built with the canvas's own
+comparator: user layers as the top-level nodes (one unrecorded default layer
+while the surface has none), groups and mind maps as nested rows, a frame as
+an ordinary row at its place with its members as its siblings right above it.
+The tree carries ids, never text; a host draws its own pane from it. Every
+action the pane offers is a `canvas.*` command run through `runCommand`, and
+opening the pane writes nothing.
+
+Visibility has three owners (ADR 0031 §1): the stored `hidden` is mindmap
+collapse's, the stored `hiddenForEveryone` is "Hide for everyone", and a
+viewer's local hide is kept in `localStorage`, never in the document. Painting,
+picking and exports honour all three; `grid.search`, which also answers rules,
+legends and semantic exports, skips `hidden` alone.
+
 ## Reacting to changes
 
 Subscribe to the store or the surface, and always check where the change came

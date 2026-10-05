@@ -2,6 +2,11 @@
 
 **Four layers, one direction of dependency, one assembly point.**
 
+"Layer" on this page means a layer of PACKAGES. The canvas has two other
+meanings of the word — the user layers of the selection pane and
+`LayerManager`'s paint runs — explained in
+[02-data-flow.md](02-data-flow.md#stacking-user-layers-and-the-layer-manager).
+
 ```
  ┌──────────────────────────────────────────────────────────────┐
  │  packages/affine/all      the assembly (schemas, extensions,  │
@@ -73,7 +78,7 @@ Plus the data files hosts read: `src/flags.ts` (the list of flag keys),
 
 ## What is published
 
-The 82 workspace packages are private. `scripts/build-bundles.mjs` generates
+The 83 workspace packages are private. `scripts/build-bundles.mjs` generates
 the npm packages under `@formicoidea/`:
 
 | Bundle                                       | Content                                                                                                                      |
