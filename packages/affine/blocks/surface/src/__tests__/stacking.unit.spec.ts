@@ -61,6 +61,40 @@ describe('an artefact never stays buried under a background', () => {
   });
 });
 
+/*
+ * The product owner's decision (ADR 0033): a board is lowered when it is
+ * PLACED, never by its own MOVE. A board the user put above an artefact by
+ * hand must stay there when they then drag it; what is dropped onto a board
+ * is still raised above it.
+ */
+describe('a moved board is never lowered by its own move', () => {
+  it('stays where it is when moved over free artefacts', () => {
+    expect(
+      stackingIndexFor(board('a3'), [node('a1'), node('a2')], 'moved')
+    ).toBeNull();
+  });
+
+  it('is still lowered when placed over them', () => {
+    expect(
+      stackingIndexFor(board('a3'), [node('a1'), node('a2')], 'placed')
+    ).not.toBeNull();
+  });
+
+  it('still lets an artefact moved onto a board be raised above it', () => {
+    const index = stackingIndexFor(node('a0'), [board('a1')], 'moved')!;
+    expect(index > 'a1').toBe(true);
+  });
+
+  it('still raises a board moved under a peer board', () => {
+    const index = stackingIndexFor(
+      board('a0', '[400,0,1600,1000]'),
+      [board('a1')],
+      'moved'
+    )!;
+    expect(index > 'a1').toBe(true);
+  });
+});
+
 describe('a background never covers what is drawn on it', () => {
   it('goes to the back of the surface when it lids free artefacts', () => {
     const index = stackingIndexFor(board('a3'), [node('a1'), node('a2')])!;

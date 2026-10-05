@@ -37,6 +37,7 @@ One file per decision. Format and lifecycle in
 | [0030](0030-canvas-text-decoration.md)                         | Canvas text decoration               | accepted                  | One optional `textDecoration` token list on text, shape and connector labels; inline overline. UML names created underlined.        |
 | [0031](0031-canvas-layers-hide-and-grid.md)                    | Layers, shared hide, shared grid     | accepted                  | Layer records on the surface, one optional `layer` id per element; local hide is never stored; `hiddenForEveryone` is not `hidden`. |
 | [0032](0032-wardley-svg-recognises-roles.md)                   | Wardley SVG recognises roles         | accepted                  | Supersedes 0012 P2's "geometry only" for Wardley: producer markers, plot recovery, native map plus sketch remainder.                |
+| [0033](0033-board-not-resunk-by-its-own-move.md)               | Board not re-sunk by its own move    | accepted                  | A board is lowered under what it covers only when placed; its own move never lowers it.                                             |
 
 Related documents that are not ADRs:
 

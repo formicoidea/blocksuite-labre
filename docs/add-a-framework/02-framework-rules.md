@@ -155,12 +155,15 @@ manager commits the stashed `xywh`, so a resize and its crop are one write and
 one undo step. Never a cascade on `xywh`: that would re-crop, on every peer's
 screen, a board nobody on that screen touched (principle 4, the `local` guard).
 
-**R10. A board is a floor, never a lid.** Anything overlapping a board is
-kept above it; boards can stack and each stays under its own artefacts — but a
-board that wholly ENCLOSES another board is the sheet that one is drawn on and
-stays under it, so a frame holding inner backgrounds (UML subject, partition,
-region, fragment; C4 boundary) is not raised over them when it is moved or
-resized.
+**R10. A board is a floor, never a lid — when it is placed.** Anything
+placed or moved onto a board is kept above it; boards can stack and each stays
+under its own artefacts — but a board that wholly ENCLOSES another board is the
+sheet that one is drawn on and stays under it, so a frame holding inner
+backgrounds (UML subject, partition, region, fragment; C4 boundary) is not
+raised over them when it is moved or resized. A board is lowered under what it
+covers only when it is PLACED (created, pasted, duplicated, inserted, imported),
+never by its own move: after that its depth is the user's, and a board moved
+over free elements covers them (ADR 0033).
 Framework-agnostic, idempotent (undo-safe), ignores remote changes, never
 restacks nested elements.
 `packages/affine/blocks/surface/src/framework-background/stacking.ts`;
