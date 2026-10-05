@@ -1,8 +1,6 @@
-import { FrameBlockModel } from '@labre/affine-model';
 import { CanvasLocalVisibility } from '@labre/affine-shared/services';
 import { type BlockStdScope, LifeCycleWatcher } from '@labre/std';
 import {
-  compareLayer,
   GfxBlockElementModel,
   GfxControllerIdentifier,
   GfxGroupLikeElementModel,
@@ -99,6 +97,15 @@ export function paneContainerOf(
   return group instanceof GfxGroupLikeElementModel ? group : null;
 }
 
+/** `model.groups`, nearest first, or none where the getter throws. */
+function ancestorsOf(model: GfxModel): readonly GfxModel[] {
+  try {
+    return model.groups as unknown as GfxModel[];
+  } catch {
+    return [];
+  }
+}
+
 /** `model.group`, or `null` on a model no surface holds (the getter throws). */
 function rawGroupOf(model: GfxModel): unknown {
   try {
@@ -119,19 +126,17 @@ function rawGroupOf(model: GfxModel): unknown {
  * `index` alone (its ancestor walk finds no difference and falls through to
  * `compareIndex`). So that case reads two cached strings instead of walking
  * two ancestor chains per comparison, and only models stacked under different
- * ancestors (a frame's members beside loose elements) pay the full walk.
+ * ancestors (a frame's members beside loose elements) walk their chains, read
+ * once per model rather than once per comparison.
  */
 export function buildSelectionPaneTree(
-  everything: readonly GfxModel[],
+  models: readonly GfxModel[],
   hiddenLocally: ReadonlySet<string> = NOTHING_HIDDEN,
   layers: SelectionPaneLayers | null = null
 ): SelectionPaneNode[] {
-  // A frame is the filter's scope, never a row of the stack (ADR 0031,
-  // amendment of the product owner's review): its members are listed where
-  // they paint, the frame itself not at all.
-  const models = everything.filter(
-    model => !(model instanceof FrameBlockModel)
-  );
+  // A frame is an ordinary row (ADR 0031, amendments), listed where it
+  // paints: a block with no container, so its members — which paint right
+  // above it — are its siblings right above it, never its children.
   const present = new Set<string>();
   const groupOf = new Map<GfxModel, unknown>();
   const indexOf = new Map<GfxModel, string>();
@@ -143,6 +148,36 @@ export function buildSelectionPaneTree(
 
   const layerOf = (model: GfxModel) =>
     layers ? layers.effectiveLayerOf(model) : DEFAULT_LAYER_ID;
+
+  // `compareLayer`'s ancestor rule, on ancestor chains read ONCE per model:
+  // `groups` walks the surface on every read, and a frame's members — rows
+  // beside loose elements since frames are rows — compared through
+  // `compareLayer` read it on every comparison, which blew the frame budget.
+  // A chain is the model's ancestors, outermost first, then the model; the
+  // first link two chains do not share decides by `index`, and a chain that
+  // is a prefix of the other is its ancestor, stacked below it. Held to
+  // `compareLayer` by the parity case in `selection-pane.unit.spec.ts`.
+  const chainOf = new Map<GfxModel, readonly GfxModel[]>();
+  const chain = (model: GfxModel) => {
+    let found = chainOf.get(model);
+    if (!found) {
+      found = [...ancestorsOf(model)].reverse().concat(model);
+      chainOf.set(model, found);
+    }
+    return found;
+  };
+  const byAncestors = (a: GfxModel, b: GfxModel) => {
+    const ac = chain(a);
+    const bc = chain(b);
+    let i = 0;
+    while (i < ac.length && i < bc.length && ac[i] === bc[i]) i++;
+    if (i === ac.length && i === bc.length) return 0;
+    if (i === ac.length) return -1;
+    if (i === bc.length) return 1;
+    const ai = ac[i].index;
+    const bi = bc[i].index;
+    return ai === bi ? 0 : ai < bi ? -1 : 1;
+  };
 
   const paintOrder = (a: GfxModel, b: GfxModel) => {
     // Rank first, as `compare` does, so the index shortcut below only ever
@@ -156,7 +191,7 @@ export function buildSelectionPaneTree(
         if (ar !== br) return ar < br ? -1 : 1;
       }
     }
-    if (groupOf.get(a) !== groupOf.get(b)) return compareLayer(a, b);
+    if (groupOf.get(a) !== groupOf.get(b)) return byAncestors(a, b);
     const ai = indexOf.get(a)!;
     const bi = indexOf.get(b)!;
     return ai === bi ? 0 : ai < bi ? -1 : 1;

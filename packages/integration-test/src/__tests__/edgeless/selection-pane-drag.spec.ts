@@ -253,7 +253,11 @@ describe('selection pane drag and drop', () => {
     );
     await settle();
     await openPane();
-    expect(rowIds()).toEqual([inside, middle, loose]);
+    const frame = rowIds().find(
+      id => id !== inside && id !== middle && id !== loose
+    )!;
+    // The frame is a row too (ADR 0031, amendments), right under its members.
+    expect(rowIds()).toEqual([inside, frame, middle, loose]);
 
     await grab(loose);
     await moveTo(rowSelector(inside), 0.2);
@@ -262,7 +266,31 @@ describe('selection pane drag and drop', () => {
       .toBeTruthy();
     await release();
 
-    expect(rowIds()).toEqual([loose, inside, middle]);
+    expect(rowIds()).toEqual([loose, inside, frame, middle]);
+  });
+
+  test('a frame row drags like any row, and its members go with it', async () => {
+    const loose = shape(600);
+    const inside = shape(0);
+    const frame = edgeless.service.crud.addBlock(
+      'affine:frame',
+      { xywh: '[-50,-50,300,300]', childElementIds: { [inside]: true } },
+      edgeless.service.surface.id
+    );
+    await settle();
+    await openPane();
+    expect(rowIds()).toEqual([inside, frame, loose]);
+
+    await grab(frame);
+    await moveTo(BODY, 0.95);
+    expect(indicator(), 'the bottom is a drop target').toBeTruthy();
+    await release();
+
+    // The frame went under the loose shape; its member paints right above it.
+    expect(rowIds()).toEqual([loose, inside, frame]);
+    edgeless.std.store.undo();
+    await settle();
+    expect(rowIds()).toEqual([inside, frame, loose]);
   });
 
   test('on the lower half of a collapsed group, a row lands after the group', async () => {

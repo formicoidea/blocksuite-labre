@@ -255,7 +255,10 @@ describe('command registry invariants', () => {
       // `.rename`, `.reorder` and `.moveElements`.
       //
       // …and 29 with `canvas.layer.delete` (stage 7).
-      core: 29,
+      //
+      // …and 30 with `canvas.frame.rename`: frames are rows of the pane again
+      // (ADR 0031, amendments) and rename in place like a group.
+      core: 30,
     });
     // 112 since the two SVG fallback imports (`bpmn.importSvg`,
     // `wardley.importSvg`) joined the OWM pair — one SVG row per framework,
@@ -291,7 +294,8 @@ describe('command registry invariants', () => {
     // …and 202 with the four layer commands (stage 6).
     //
     // …and 203 with `canvas.layer.delete` (stage 7).
-    expect(commands).toHaveLength(203);
+    // …and 204 with `canvas.frame.rename` (frames are pane rows again).
+    expect(commands).toHaveLength(204);
   });
 
   /**

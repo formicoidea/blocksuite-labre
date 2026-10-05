@@ -15,7 +15,11 @@
  */
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import type { FramePanelHeader } from '@labre/affine/fragments/frame-panel';
-import { type GroupElementModel, ShapeType } from '@labre/affine/model';
+import {
+  type FrameBlockModel,
+  type GroupElementModel,
+  ShapeType,
+} from '@labre/affine/model';
 import {
   SelectionPaneExtension,
   SelectionPaneProvider,
@@ -24,7 +28,7 @@ import {
 import { CommandDescriptorIdentifier } from '@labre/affine/std';
 import type { GfxModel } from '@labre/affine/std/gfx';
 import type { EdgelessSelectionPaneWidget } from '@labre/affine/widgets/edgeless-toolbar';
-import type { ExtensionType } from '@labre/store';
+import { type ExtensionType, Text } from '@labre/store';
 import { page, userEvent } from '@vitest/browser/context';
 import { beforeEach, describe, expect, test } from 'vitest';
 
@@ -277,8 +281,8 @@ describe('selection pane', () => {
       await settle();
       await openFromToolbar();
       expect(rowIds()).toContain(outside);
-      // A frame is the filter's scope, not a row; a framework board is a row.
-      expect(rowIds()).not.toContain(frameId);
+      // A frame is a row, and so is a framework board.
+      expect(rowIds()).toContain(frameId);
       expect(rowIds()).toContain(board);
 
       await userEvent.click(
@@ -301,7 +305,65 @@ describe('selection pane', () => {
       await userEvent.click(page.elementLocator(item!));
       await settle();
 
-      expect(rowIds()).toEqual([inside]);
+      // The frame filtered on stays listed, with its members, in paint order.
+      expect(rowIds()).toEqual([inside, frameId]);
+    });
+
+    // ADR 0031, amendments: a frame is an ordinary row, at the place it
+    // paints — frames interleave with everything else through `compare` —
+    // with its title as its name, renamed in place.
+    test('a frame appears as a row at its z position, and is renamed in place', async () => {
+      const low = service().crud.addElement('shape', {
+        shapeType: ShapeType.Rect,
+        xywh: '[600,0,100,100]',
+        index: 'a1',
+      })!;
+      const inside = service().crud.addElement('shape', {
+        shapeType: ShapeType.Rect,
+        xywh: '[0,0,100,100]',
+        index: 'a2',
+      })!;
+      const high = service().crud.addElement('shape', {
+        shapeType: ShapeType.Rect,
+        xywh: '[800,0,100,100]',
+        index: 'a5',
+      })!;
+      // Through the store: `crud.addBlock` mints a top index of its own.
+      const frameId = edgeless.std.store.addBlock(
+        'affine:frame',
+        {
+          xywh: '[-50,-50,300,300]',
+          index: 'a3',
+          title: new Text('Context'),
+          childElementIds: { [inside]: true },
+        },
+        service().surface.id
+      );
+      await settle();
+      await openFromToolbar();
+
+      // Its members paint right above it, so they are listed right above it.
+      expect(rowIds()).toEqual([high, inside, frameId, low]);
+      expect(inRow(frameId, '.selection-pane-label').textContent).toBe(
+        'Context'
+      );
+
+      await userEvent.click(page.elementLocator(rowOf(frameId)));
+      await settle();
+      expect(gfx().selection.selectedIds).toEqual([frameId]);
+
+      await userEvent.dblClick(
+        page.elementLocator(inRow(frameId, '.selection-pane-label'))
+      );
+      await settle();
+      const input = inRow(frameId, '[data-testid="selection-pane-rename"]');
+      expect(input, 'a frame row opens its title for editing').toBeTruthy();
+      await userEvent.fill(page.elementLocator(input), 'Payments');
+      await userEvent.keyboard('{Enter}');
+      await settle();
+
+      const frame = gfx().getElementById(frameId) as FrameBlockModel;
+      expect(frame.props.title.toString()).toBe('Payments');
     });
 
     // The product owner asked for the frame panel's header, not a lookalike:

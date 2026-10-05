@@ -13,6 +13,7 @@ import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { z } from 'zod';
 
 import {
+  renamePaneFrame,
   renamePaneGroup,
   reorderPaneElement,
   setPaneElementsHiddenForEveryone,
@@ -200,6 +201,34 @@ const renameGroup: CommandDescriptor<RenameGroupParams> = {
   },
 };
 
+/**
+ * A frame's row is renamed in place like a group's (ADR 0031, amendments:
+ * frames are rows). Its own command rather than `canvas.group.rename` widened:
+ * the agent reads a command's wording, and a frame is not a group.
+ */
+const renameFrame: CommandDescriptor<RenameGroupParams> = {
+  id: 'canvas.frame.rename',
+  owner: 'core',
+  kind: 'action',
+  labelKey: 'com.labre.command.canvas.frame.rename',
+  labelFallback: 'Rename frame',
+  descriptionKey: 'com.labre.command.canvas.frame.rename.description',
+  descriptionFallback: 'Give a frame a new title.',
+  surfaces: ['agent'],
+  scope: 'edgeless',
+  defaultKeys: { mac: [], other: [] },
+  availability: 'editable',
+  params: renameGroupParams,
+  run: (std, _invocation, params) => {
+    const parsed = renameGroupParams.safeParse(params);
+    if (!parsed.success) {
+      console.error('canvas.frame.rename: invalid params', parsed.error);
+      return;
+    }
+    renamePaneFrame(std, parsed.data.id, parsed.data.title);
+  },
+};
+
 export const hideLocalParams = z.object({
   /** The models to act on. Omitted: the current canvas selection. */
   ids: z.array(z.string()).optional(),
@@ -378,6 +407,7 @@ export const selectionPaneCommands: AnyCommandDescriptor[] = [
   lockCommand(true),
   lockCommand(false),
   renameGroup,
+  renameFrame,
   hideLocal,
   hideForEveryone,
   showAll,
