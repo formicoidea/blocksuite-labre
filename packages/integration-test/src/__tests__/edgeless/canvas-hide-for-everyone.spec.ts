@@ -185,16 +185,15 @@ describe('hide for everyone', () => {
       map
     ) as FrameworkBackgroundElementModel;
     expect(board).toBeInstanceOf(FrameworkBackgroundElementModel);
-    const texts = () => {
-      const result = renderBoardSvg(edgeless.std, board);
-      return result
-        ? [
-            ...new DOMParser()
-              .parseFromString(result.svg, 'image/svg+xml')
-              .querySelectorAll('text'),
-          ].map(node => node.textContent ?? '')
-        : [];
-    };
+    const texts = () =>
+      [
+        ...new DOMParser()
+          .parseFromString(
+            renderBoardSvg(edgeless.std, board).svg,
+            'image/svg+xml'
+          )
+          .querySelectorAll('text'),
+      ].map(node => node.textContent ?? '');
     expect(texts().some(text => text.includes('Alpha'))).toBe(true);
 
     await openPane();
