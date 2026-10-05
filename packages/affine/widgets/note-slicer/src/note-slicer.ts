@@ -1,8 +1,10 @@
 import type { NoteBlockComponent } from '@labre/affine-block-note';
 import {
+  applyCreationLayer,
   EdgelessLegacySlotIdentifier,
   getSurfaceComponent,
   isNoteBlock,
+  sourceLayerOf,
 } from '@labre/affine-block-surface';
 import {
   DEFAULT_NOTE_HEIGHT,
@@ -177,15 +179,19 @@ export class NoteSlicer extends WidgetComponent<RootBlockModel> {
     const sliceVerticalPos =
       this._divingLinePositions[this._activeSlicerIndex].y;
     const newY = this.gfx.viewport.toModelCoord(x, sliceVerticalPos)[1];
+    const props: Record<string, unknown> = {
+      background,
+      displayMode,
+      xywh: serializeXYWH(x, newY + NEW_NOTE_GAP, width, DEFAULT_NOTE_HEIGHT),
+      index: originalIndex + 1,
+      edgeless: restOfEdgeless,
+      // The split-off half stays in its note's layer (ADR 0031 §6).
+      layer: sourceLayerOf(this._anchorNote),
+    };
+    applyCreationLayer(this.std, props);
     const newNoteId = this.store.addBlock(
       'affine:note',
-      {
-        background,
-        displayMode,
-        xywh: serializeXYWH(x, newY + NEW_NOTE_GAP, width, DEFAULT_NOTE_HEIGHT),
-        index: originalIndex + 1,
-        edgeless: restOfEdgeless,
-      },
+      props,
       doc.root?.id,
       originalNoteIndex ? originalNoteIndex + 1 : undefined
     );

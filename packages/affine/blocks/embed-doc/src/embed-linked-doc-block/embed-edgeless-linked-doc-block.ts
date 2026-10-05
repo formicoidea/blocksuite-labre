@@ -5,6 +5,7 @@ import {
 import {
   EdgelessCRUDIdentifier,
   reassociateConnectorsCommand,
+  sourceLayerOf,
 } from '@labre/affine-block-surface';
 import { EmbedLinkedDocBlockSchema } from '@labre/affine-model';
 import {
@@ -40,6 +41,8 @@ export class EmbedEdgelessLinkedDocBlockComponent extends toEdgelessEmbedBlock(
         xywh: bound.serialize(),
         caption,
         ...cloneReferenceInfoWithoutAliases(this.referenceInfo$.peek()),
+        // In the linked doc's layer, not the active one (ADR 0031 §6).
+        layer: sourceLayerOf(this.model),
       },
       surface
     );

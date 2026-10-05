@@ -1,4 +1,8 @@
-import { reassociateConnectorsCommand } from '@labre/affine-block-surface';
+import {
+  applyCreationLayer,
+  reassociateConnectorsCommand,
+  sourceLayerOf,
+} from '@labre/affine-block-surface';
 import { toast } from '@labre/affine-components/toast';
 import { BookmarkStyles, EmbedIframeBlockModel } from '@labre/affine-model';
 import {
@@ -378,11 +382,16 @@ export const builtinSurfaceToolbarConfig = {
             bounds.w = EMBED_CARD_WIDTH[style];
             bounds.h = EMBED_CARD_HEIGHT[style];
 
-            const newId = ctx.store.addBlock(
-              flavour,
-              { url, caption, style, xywh: bounds.serialize() },
-              parent
-            );
+            // The card takes the iframe's place, layer included (ADR 0031 §6).
+            const props: Record<string, unknown> = {
+              url,
+              caption,
+              style,
+              xywh: bounds.serialize(),
+              layer: sourceLayerOf(model),
+            };
+            applyCreationLayer(ctx.std, props);
+            const newId = ctx.store.addBlock(flavour, props, parent);
 
             ctx.command.exec(reassociateConnectorsCommand, { oldId, newId });
 
