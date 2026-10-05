@@ -23,7 +23,12 @@ export function transformModel(
 
   // Sometimes the new block can not be added due to some reason, e.g. invalid schema check.
   // So we need to try to add the new block first, and if it fails, we will not delete the old block.
+  // `addBlock` returns an id even when the schema check threw (`transact`
+  // swallows it), so only `getModelById` proves the block exists (#418).
   const id = doc.addBlock(flavour, blockProps, parent, index);
+  if (!doc.getModelById(id)) {
+    return null;
+  }
   doc.deleteBlock(model, {
     deleteChildren: false,
   });
