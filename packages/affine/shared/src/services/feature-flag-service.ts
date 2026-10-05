@@ -16,6 +16,10 @@ export interface BlockSuiteFlags {
   enable_mobile_keyboard_toolbar: boolean;
   enable_mobile_linked_doc_menu: boolean;
   enable_block_meta: boolean;
+  /**
+   * @deprecated No longer read: the Callout entries follow the `callout` key
+   * of `OPTIONAL_BLOCKS` alone, so `{ callout: false }` is the switch.
+   */
   enable_callout: boolean;
   enable_edgeless_scribbled_style: boolean;
   enable_table_virtual_scroll: boolean;

@@ -6,6 +6,7 @@ import {
   type DrawnWardleyMap,
   type DrawnWardleyNode,
   finiteAttr,
+  startDrawnMap,
   textOf,
 } from './svg-read.js';
 import { WARDLEY_SVG_IMPORT_REMARKS } from './svg-remarks.js';
@@ -228,23 +229,12 @@ export function recogniseWardleyMapRenderer(
   if (!axes || !nodesLayer) return undefined;
 
   const live = root.querySelector('[data-id][data-kind]') !== null;
-  const drawn: DrawnWardleyMap = {
+  const { drawn, consume } = startDrawnMap({
     producer: live
       ? 'wardley-map-renderer SVG (interactive)'
       : 'wardley-map-renderer SVG',
     plot: plotOf(axes),
-    nodes: [],
-    pipelines: [],
-    evolutions: [],
-    links: [],
-    notes: [],
-    inertias: [],
-    consumed: new Set(),
-    remarks: [],
-  };
-  const consume = (element: Element | undefined) => {
-    if (element) drawn.consumed.add(element);
-  };
+  });
 
   /* Chrome: redrawn by the native board. */
   consume(axes);

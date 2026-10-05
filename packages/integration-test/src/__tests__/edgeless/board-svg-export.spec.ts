@@ -454,6 +454,41 @@ describe('exporting a board as SVG', () => {
     expect(without.some(text => text.includes('Alpha'))).toBe(true);
   });
 
+  /**
+   * The file stacks what the canvas stacks. An edgeless text is a block, and
+   * the export used to paint every text block after every canvas element, so a
+   * shape drawn over a text came out under it.
+   */
+  test('an edgeless text under a shape exports under it', async () => {
+    const map = addMap(0);
+    const below = addEdgelessText(WORDS, 600, 300);
+    const cover = surfaceModel().addElement({
+      type: 'shape',
+      shapeType: 'rect',
+      filled: true,
+      xywh: new Bound(580, 280, 360, 100).serialize(),
+    });
+    const above = addEdgelessText(CAPTION, 600, 500);
+    await wait();
+
+    const doc = parse(render(boardById(map)).svg);
+    const groupOf = (id: string) => {
+      const group = doc.querySelector(`[data-labre-id="${id}"]`);
+      expect(group, id).not.toBeNull();
+      return group!;
+    };
+    const follows = (a: string, b: string) =>
+      (groupOf(a).compareDocumentPosition(groupOf(b)) &
+        Node.DOCUMENT_POSITION_PRECEDING) !==
+      0;
+    expect(follows(cover, below), 'the shape paints over the older text').toBe(
+      true
+    );
+    expect(follows(above, cover), 'the newer text paints over the shape').toBe(
+      true
+    );
+  });
+
   test('an edgeless text keeps its rotation and its scale in the file', async () => {
     const map = addMap(0);
     const id = addEdgelessText(WORDS, 600, 300);

@@ -16,7 +16,6 @@
   "dependencies": {
     "@blocksuite/icons": "^2.2.12",
     "@labre/affine-block-attachment": "workspace:*",
-    "@labre/affine-block-edgeless-text": "workspace:*",
     "@labre/affine-block-image": "workspace:*",
     "@labre/affine-block-surface": "workspace:*",
     "@labre/affine-components": "workspace:*",

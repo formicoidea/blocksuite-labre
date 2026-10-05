@@ -17,7 +17,6 @@
     "@labre/affine-components": "workspace:*",
     "@labre/affine-ext-loader": "workspace:*",
     "@labre/affine-model": "workspace:*",
-    "@labre/affine-rich-text": "workspace:*",
     "@labre/affine-shared": "workspace:*",
     "@labre/global": "workspace:*",
     "@labre/std": "workspace:*",

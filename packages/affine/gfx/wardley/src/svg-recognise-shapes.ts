@@ -5,6 +5,7 @@ import {
   type DrawnWardleyMap,
   type DrawnWardleyNode,
   finiteAttr,
+  startDrawnMap,
   textOf,
 } from './svg-read.js';
 
@@ -208,18 +209,11 @@ export function recogniseByShape(root: Element): DrawnWardleyMap | undefined {
   if (!found) return undefined;
   const { plot, axes } = found;
 
-  const drawn: DrawnWardleyMap = {
+  const { drawn, consume } = startDrawnMap({
     producer: 'SVG (recognised by shape)',
     plot,
-    nodes: [],
-    pipelines: [],
-    evolutions: [],
-    links: [],
-    notes: [],
-    inertias: [],
-    consumed: new Set(axes.map(axis => axis.element)),
-    remarks: [],
-  };
+  });
+  for (const axis of axes) consume(axis.element);
 
   /* Components: a small circle inside the plot, named by the text beside it. */
   const inside = circles.filter(

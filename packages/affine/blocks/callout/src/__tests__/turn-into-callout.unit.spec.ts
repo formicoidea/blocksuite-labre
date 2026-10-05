@@ -9,6 +9,10 @@
  *
  * What has to hold is the shape of the tree afterwards — and, when a step
  * fails, that nothing was lost — so the command runs against a REAL store.
+ *
+ * The two entries that offer a callout — "Turn into" and the slash menu — are
+ * pinned here too: they answer to the `callout` block flag alone, never to the
+ * deprecated `enable_callout` feature flag.
  */
 import {
   CalloutBlockSchemaExtension,
@@ -22,9 +26,11 @@ import type { BlockStdScope } from '@labre/std';
 import { TextSelection } from '@labre/std';
 import { type BlockModel, Text } from '@labre/store';
 import { TestWorkspace } from '@labre/store/test';
+import type { SlashMenuItem } from '@labre/affine-widget-slash-menu';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { turnIntoCalloutCommand } from '../commands/turn-into-callout.js';
+import { calloutSlashMenuConfig } from '../configs/slash-menu.js';
 import { calloutTurnIntoEntry } from '../configs/turn-into.js';
 
 let seq = 0;
@@ -258,14 +264,42 @@ describe('the "Turn into" entry', () => {
     );
   });
 
-  it('follows the same feature flag as the slash-menu item', () => {
+  /**
+   * One switch, not two: the entry is gated by the `callout` key of
+   * `OPTIONAL_BLOCKS` (it is registered by the flag-gated
+   * `CalloutViewExtension`, see `callout-turn-into-gating.unit.spec.ts` in
+   * `@labre/affine`) and by nothing else. `enable_callout`, whose default is
+   * `false`, used to hide it as well, so with default flags Callout was never
+   * offered at all.
+   */
+  it('ignores enable_callout, the deprecated feature flag', () => {
     const { std, ids, model } = authorNote();
     const flagOff = {
       ...std,
       get: () => ({ getFlag: () => false }),
     } as unknown as BlockStdScope;
     expect(calloutTurnIntoEntry.when(flagOff, [model(ids.paragraph)])).toBe(
-      false
+      true
     );
+  });
+});
+
+describe('the slash-menu item', () => {
+  const item = calloutSlashMenuConfig.items as SlashMenuItem[];
+  const when = (std: BlockStdScope, block: BlockModel) =>
+    item[0].when?.({ std, model: block } as never);
+
+  it('is offered with enable_callout false, the feature flag’s default', () => {
+    const { std, ids, model } = authorNote();
+    const flagOff = {
+      ...std,
+      get: () => ({ getFlag: () => false }),
+    } as unknown as BlockStdScope;
+    expect(when(flagOff, model(ids.paragraph))).toBe(true);
+  });
+
+  it('is hidden inside a callout, where the schema refuses one', () => {
+    const { std, ids, model } = authorNote();
+    expect(when(std, model(ids.insideCallout))).toBe(false);
   });
 });

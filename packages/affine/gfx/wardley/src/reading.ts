@@ -176,17 +176,10 @@ export const WARDLEY_READING: ReadingProfile = {
     background: WARDLEY_BACKGROUND,
     // Evolution runs along the plot's x axis; its four zones ARE the phases.
     axis: 'x',
-    // Wardley's words, moved out of the panel when other frames arrived — same
-    // keys and same English, so a host that translated them translates nothing
-    // twice.
-    label: {
-      labelKey: 'com.labre.reading.field.phase',
-      labelFallback: 'Evolution phase',
-    },
-    none: {
-      labelKey: 'com.labre.reading.phase.none',
-      labelFallback: 'Not on a framework background — no phase to read.',
-    },
+    // No `label` / `none`: "Evolution phase" is the engine's default wording
+    // (`READING_FRAME_DEFAULT_WORDING`), declared once in the surface package
+    // so a 0.43 host profile reads with it too. Restating it here would be a
+    // second declaration of the same two keys.
   },
   /**
    * The two record properties a reading may compare itself against.

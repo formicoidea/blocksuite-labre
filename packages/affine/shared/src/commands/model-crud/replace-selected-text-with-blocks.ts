@@ -1,5 +1,5 @@
-import type { BlockModel, Store } from '@labre/affine/store';
 import type { Command, TextSelection } from '@labre/std';
+import type { BlockModel, Store } from '@labre/store';
 import { match } from 'ts-pattern';
 
 import { getBlockProps } from '../../utils';

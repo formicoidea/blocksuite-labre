@@ -326,17 +326,6 @@ export const BPMN_KIND_OF_XML: ReadonlyMap<string, BpmnNodeKind> = new Map(
 );
 
 /**
- * `.bpmn`'s scope vocabulary — where a carried fragment came off (D2, as
- * amended in #157), and where the writer puts it back.
- *
- * Declared in `export.ts` and re-exported here, for the reason
- * {@link BPMN_FORMAT_ID} is: the reader files a fragment under a scope and the
- * writer looks it up under one, and a table written twice is a table that
- * drifts. See its doc comment there for what a scope means.
- */
-export { BPMN_SCOPE };
-
-/**
  * The three edge elements, and the role each one IS.
  *
  * A role is a statement (`docs/adr/0010`), and an imported edge makes the same

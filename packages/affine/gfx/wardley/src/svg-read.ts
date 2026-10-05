@@ -52,6 +52,38 @@ export interface DrawnWardleyMap {
 }
 
 /**
+ * A recogniser's answer before it has read anything, and the one way it marks
+ * an element as turned into a native one (so the sketch skips it).
+ *
+ * `head` is spread first, so the result's keys keep the order every
+ * recogniser wrote them in — a `plot` passed here, even `undefined`, sits
+ * after `producer`; one found later is assigned at the end.
+ */
+export function startDrawnMap(
+  head: Pick<DrawnWardleyMap, 'producer'> &
+    Partial<Pick<DrawnWardleyMap, 'plot'>>
+): {
+  drawn: DrawnWardleyMap;
+  consume: (element: Element | undefined) => void;
+} {
+  const drawn: DrawnWardleyMap = {
+    ...head,
+    nodes: [],
+    pipelines: [],
+    evolutions: [],
+    links: [],
+    notes: [],
+    inertias: [],
+    consumed: new Set(),
+    remarks: [],
+  };
+  const consume = (element: Element | undefined) => {
+    if (element) drawn.consumed.add(element);
+  };
+  return { drawn, consume };
+}
+
+/**
  * Every element carrying an `id`, first wins — the index a producer's markers
  * are looked up in.
  *

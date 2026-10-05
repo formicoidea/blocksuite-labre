@@ -3,7 +3,14 @@ import {
   PivotRecordPickerExtension,
   READING_PROPOSAL_WIDGET,
   ReadingManager,
+  type ReadingProfile,
+  ReadingProfileExtension,
 } from '@labre/affine/blocks/surface';
+import {
+  WARDLEY_BACKGROUND,
+  WARDLEY_READING,
+  WARDLEY_ROLE,
+} from '@labre/affine-gfx-wardley';
 import type { ExtensionType } from '@labre/store';
 import type { BlockFlags } from '@labre/affine/flags';
 import {
@@ -191,8 +198,52 @@ describe('the reversed reading of a Wardley component', () => {
     expect(field('reading-node-type')?.textContent).toContain('component');
     // Read off the map's own zones, not off a number in the reading code.
     expect(field('reading-phase')?.textContent).toContain('Product');
+    // Wardley names no frame wording and inherits the engine's default.
+    expect(field('reading-phase')?.textContent).toContain('Evolution phase');
     // Carried nothing, proposes nothing.
     expect(field('reading-nature-empty')).not.toBeNull();
+  });
+
+  /**
+   * A host profile written against 0.43 — a `frame` of `{ backgroundRole,
+   * background, axis }` and no wording — still opens a panel, and the panel
+   * says what 0.43 said. 0.44.0 made the wording required and the widget read
+   * `frame.label.labelKey`, which a profile like this one turns into a throw
+   * in the middle of a render.
+   */
+  test('a 0.43 host profile reads its frame with the default wording', async () => {
+    unmount?.();
+    unmount = null;
+    const hostProfile: ReadingProfile = {
+      id: 'host-0.43',
+      framework: 'wardley',
+      roles: WARDLEY_READING.roles,
+      appliesTo: WARDLEY_ROLE.component,
+      frame: {
+        backgroundRole: WARDLEY_ROLE.map,
+        background: WARDLEY_BACKGROUND,
+        axis: 'x',
+      },
+    };
+    // Wardley off, so the host's profile is the only one reading the board.
+    await mount({ wardley: false } as BlockFlags, [
+      ReadingProfileExtension(hostProfile),
+    ]);
+
+    addMap();
+    const onMap = addComponent();
+    const offMap = addComponent('[2000,2000,18,18]');
+
+    manager().open(onMap);
+    await settle();
+    expect(field('reading-phase')?.textContent).toContain('Evolution phase');
+    expect(field('reading-phase')?.textContent).toContain('Product');
+
+    manager().open(offMap);
+    await settle();
+    expect(field('reading-phase-none')?.textContent).toContain(
+      'Not on a framework background — no phase to read.'
+    );
   });
 
   test('opening and closing it a hundred times writes nothing', async () => {

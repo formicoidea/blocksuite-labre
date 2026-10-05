@@ -126,12 +126,27 @@ export function exportBoundOf(
  *
  * `options` says which parts are drawn (`parts.ts`). `null` when they leave
  * nothing to draw: an empty file is not a picture of anything.
+ *
+ * Without `options` every part is drawn, the board among them, so the 0.43
+ * call shape `renderBoardSvg(std, board).svg` keeps its non-null return
+ * (`render-board-svg-signature.unit.spec.ts`). Only the overload that takes
+ * options can answer `null`.
  */
 export function renderBoardSvg(
   std: BlockStdScope,
+  board: FrameworkBackgroundElementModel
+): BoardSvgExport;
+export function renderBoardSvg(
+  std: BlockStdScope,
   board: FrameworkBackgroundElementModel,
-  options: Readonly<BoardSvgExportOptions> = DEFAULT_BOARD_SVG_EXPORT_OPTIONS
+  options: Readonly<BoardSvgExportOptions>
+): BoardSvgExport | null;
+export function renderBoardSvg(
+  std: BlockStdScope,
+  board: FrameworkBackgroundElementModel,
+  given?: Readonly<BoardSvgExportOptions>
 ): BoardSvgExport | null {
+  const options = given ?? DEFAULT_BOARD_SVG_EXPORT_OPTIONS;
   const gfx = std.get(GfxControllerIdentifier);
   const renderer = (
     gfx.surfaceComponent as { renderer?: unknown } | null | undefined
@@ -170,7 +185,17 @@ export function renderBoardSvg(
   );
 
   const drawn = [...elements, ...texts];
-  if (!drawn.length) return null;
+  if (!drawn.length) {
+    // Unreachable without options: the board is always selected and answers
+    // to "Framework elements". Thrown rather than returned, so the overload
+    // that promises an export never hands back `null`.
+    if (given === undefined) {
+      throw new Error(
+        'SVG export drew nothing with every part on: the board itself was not selected.'
+      );
+    }
+    return null;
+  }
   const bound = exportBoundOf(options.framework ? board : drawn[0], drawn);
 
   return runWithRecordingPath2D(() => {
@@ -180,19 +205,19 @@ export function renderBoardSvg(
     );
     const rc = new RoughCanvas(canvas);
     markRoot();
-    // One element per pass, each inside a group carrying its markers (ADR
-    // 0032 §6). Same paint order as one pass over the list: a pass draws its
-    // one element exactly as the list's loop would have.
-    for (const element of elements as SurfaceElementModel[]) {
-      markedGroup(boardSvgMarkers(element, bound), () =>
-        renderer.renderBoundTo(ctx, rc, bound, [element])
-      );
-    }
-    // ponytail: the text blocks paint OVER every canvas element, not at their
-    // layer index — interleaving them would mean one `renderBoundTo` per run
-    // of elements between two blocks. Upgrade when a board needs a shape
-    // drawn over an edgeless text.
-    for (const block of texts) {
+    // One model per pass, each inside a group carrying its markers (ADR 0032
+    // §6), in the canvas' own z-order: a text block is painted at its layer
+    // index, between the elements it sits between on screen.
+    const blocks = new Set<unknown>(texts);
+    for (const model of [...elements, ...texts].sort(gfx.layer.compare)) {
+      if (!blocks.has(model)) {
+        const element = model as SurfaceElementModel;
+        markedGroup(boardSvgMarkers(element, bound), () =>
+          renderer.renderBoundTo(ctx, rc, bound, [element])
+        );
+        continue;
+      }
+      const block = model as GfxBlockElementModel;
       const paint = std.getOptional(BlockSvgPainterIdentifier(block.flavour));
       if (!paint) continue;
       markedGroup(boardSvgMarkers(block, bound), () => {

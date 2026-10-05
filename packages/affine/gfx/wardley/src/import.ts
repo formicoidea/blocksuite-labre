@@ -209,10 +209,6 @@ export const WARDLEY_OWM_IMPORT_REMARKS = {
  * since the format has no marker to claim one with.
  */
 
-/* ── The format, re-exported so both halves agree ─────────────────────── */
-
-export { WARDLEY_OWM_FORMAT_ID, OWM_SCOPE };
-
 /** The dialect this reader implements, and how a Labre-shaped file reads. */
 const OWM_DIALECT = 'DSL';
 const OWM_DIALECT_LABRE = 'DSL (Labre)';
@@ -288,8 +284,8 @@ function readName(raw: string): { name: string; rest: string } {
  * layout of our own, so an artefact this reader places without coordinates
  * lands where the tool that wrote the file would have drawn it.
  */
-export const OWM_DEFAULT_VISIBILITY = 0.9;
-export const OWM_DEFAULT_EVOLUTION = 0.1;
+const OWM_DEFAULT_VISIBILITY = 0.9;
+const OWM_DEFAULT_EVOLUTION = 0.1;
 
 /** One coordinate bracket, read per AXIS, plus everything after it VERBATIM. */
 interface Bracket {

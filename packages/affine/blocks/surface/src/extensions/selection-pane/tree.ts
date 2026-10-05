@@ -111,7 +111,11 @@ function unrecordedDefaultLayer(
 export function paneContainerOf(
   model: GfxModel
 ): GfxGroupLikeElementModel | null {
-  const group = rawGroupOf(model);
+  return containerOf(rawGroupOf(model));
+}
+
+/** The rule {@link paneContainerOf} applies, to a `group` already read. */
+function containerOf(group: unknown): GfxGroupLikeElementModel | null {
   return group instanceof GfxGroupLikeElementModel ? group : null;
 }
 
@@ -217,8 +221,8 @@ export function buildSelectionPaneTree(
 
   const buckets = new Map<string | null, GfxModel[]>();
   for (const model of models) {
-    const group = groupOf.get(model);
-    const container = group instanceof GfxGroupLikeElementModel ? group : null;
+    // The `group` read once above: `paneContainerOf` would read it again.
+    const container = containerOf(groupOf.get(model));
     // A container that is not listed (a stale group id) cannot hold a row:
     // the member is listed at the top level rather than vanishing.
     const key = container && present.has(container.id) ? container.id : null;
