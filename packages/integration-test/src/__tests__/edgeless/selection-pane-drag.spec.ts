@@ -322,6 +322,115 @@ describe('selection pane drag and drop', () => {
     expect(edgeless.std.store.canUndo).toBe(false);
   });
 
+  /*
+   * The frame panel's drag, behaviour by behaviour (its card: `frame-card.ts`,
+   * its drag: `utils/drag.ts`). Each test below pins one behaviour the pane
+   * now shares with it.
+   */
+
+  test('a nudge under five pixels is a click, not a drag', async () => {
+    const a = shape(0);
+    shape(200);
+    await settle();
+    await openPane();
+
+    // The frame panel's threshold: 5px on either axis, not 4px of travel. A
+    // diagonal of 3.5px each way is ~5px of travel and under 5px on both axes.
+    const { width, height } = rowOf(a).getBoundingClientRect();
+    await pointerMoveTo(rowSelector(a), 0.3, 0.3, 1);
+    await pointerDown();
+    await pointerMoveTo(
+      rowSelector(a),
+      0.3 + 3.5 / width,
+      0.3 + 3.5 / height,
+      2
+    );
+    await settle();
+    expect(
+      ghost(),
+      'under five pixels a side does not start a drag'
+    ).toBeNull();
+
+    await pointerMoveTo(rowSelector(a), 0.3, 0.3 + 6 / height, 2);
+    await settle();
+    expect(ghost(), 'six pixels do').toBeTruthy();
+    await pointerMoveTo(rowSelector(a), 0.3, 0.3, 2);
+    await release();
+  });
+
+  test('picking a row up selects it, as the frame panel selects a card', async () => {
+    const a = shape(0);
+    shape(200);
+    await settle();
+    await openPane();
+    expect(gfx().selection.selectedIds).toEqual([]);
+
+    await grab(a);
+    expect(gfx().selection.selectedIds).toEqual([a]);
+    await release();
+  });
+
+  test('the ghost is the row itself, at the row’s width', async () => {
+    const a = shape(0);
+    const b = shape(200);
+    await settle();
+    await openPane();
+
+    await grab(a);
+    await moveTo(rowSelector(b), 0.25);
+    const width = rowOf(a).getBoundingClientRect().width;
+    expect(near(ghost()!.getBoundingClientRect().width, width)).toBe(true);
+    expect(ghost()!.textContent).toContain(rowOf(a).textContent?.trim());
+    await release();
+  });
+
+  test('while dragging, the cursor speaks over the whole editor, canvas included', async () => {
+    const a = shape(0);
+    const b = shape(200);
+    await settle();
+    await openPane();
+
+    await grab(a);
+    // Out over the canvas: nowhere to drop, and the canvas does not react.
+    await pointerMoveTo('affine-edgeless-root', 0.8, 0.5, 4);
+    await settle();
+    const canvas = edgeless.getBoundingClientRect();
+    const x = canvas.left + canvas.width * 0.8;
+    const y = canvas.top + canvas.height * 0.5;
+    const over = root().elementFromPoint(x, y) as HTMLElement | null;
+    expect(over?.dataset.testid).toBe('selection-pane-drag-mask');
+    expect(getComputedStyle(over!).cursor).toBe('not-allowed');
+
+    await moveTo(rowSelector(b), 0.25);
+    expect(getComputedStyle(over!).cursor).toBe('grabbing');
+    await release();
+    expect(
+      root().querySelector('[data-testid="selection-pane-drag-mask"]')
+    ).toBeNull();
+  });
+
+  test('Escape during a drag neither closes the pane nor drops the row', async () => {
+    const a = shape(0);
+    const b = shape(200);
+    await settle();
+    await openPane();
+    panel().focus();
+
+    await grab(a);
+    await moveTo(rowSelector(b), 0.25);
+    await userEvent.keyboard('{Escape}');
+    await settle();
+    expect(
+      edgeless.widgetComponents[PANE_WIDGET]!.shadowRoot!.querySelector(
+        '[data-testid="selection-pane-panel"]'
+      ),
+      'the pane is still open'
+    ).toBeTruthy();
+    expect(ghost()).toBeTruthy();
+    await release();
+    expect(rowIds()).toEqual([a, b]);
+  });
+
   test('a read-only document offers no drag', async () => {
     const a = shape(0);
     const b = shape(200);

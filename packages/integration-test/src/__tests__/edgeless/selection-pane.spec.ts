@@ -14,6 +14,7 @@
  * `SelectionPaneExtension(null)` leaves no button behind.
  */
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
+import type { FramePanelHeader } from '@labre/affine/fragments/frame-panel';
 import { type GroupElementModel, ShapeType } from '@labre/affine/model';
 import {
   SelectionPaneExtension,
@@ -301,6 +302,66 @@ describe('selection pane', () => {
       await settle();
 
       expect(rowIds()).toEqual([inside]);
+    });
+
+    // The product owner asked for the frame panel's header, not a lookalike:
+    // same row, same title type, same icon buttons, measured on the real
+    // frame panel header mounted beside the pane.
+    test('the header is drawn exactly like the frame panel’s', async () => {
+      await openFromToolbar();
+      const frameHeader = document.createElement(
+        'affine-frame-panel-header'
+      ) as FramePanelHeader;
+      frameHeader.editorHost = window.editor.host!;
+      document.body.append(frameHeader);
+      try {
+        await frameHeader.updateComplete;
+        const reference = frameHeader.shadowRoot!;
+        const ours = widget()!.shadowRoot!;
+        const box = (root: ShadowRoot, selector: string) =>
+          getComputedStyle(root.querySelector(selector)!);
+
+        const theirRow = box(reference, '.frame-panel-header');
+        const ourRow = box(ours, '[data-testid="selection-pane-header"]');
+        for (const property of [
+          'height',
+          'padding-top',
+          'padding-right',
+          'padding-bottom',
+          'padding-left',
+          'border-bottom-width',
+        ]) {
+          expect(ourRow.getPropertyValue(property), property).toBe(
+            theirRow.getPropertyValue(property)
+          );
+        }
+
+        const theirTitle = box(reference, '.all-frames-setting-label');
+        const ourTitle = box(ours, '[data-testid="selection-pane-title"]');
+        for (const property of [
+          'font-family',
+          'font-size',
+          'font-weight',
+          'line-height',
+          'color',
+        ]) {
+          expect(ourTitle.getPropertyValue(property), property).toBe(
+            theirTitle.getPropertyValue(property)
+          );
+        }
+
+        // The pane's own actions, in the frame panel's button.
+        for (const id of ['new-layer', 'filter', 'close']) {
+          const button = ours.querySelector(
+            `[data-testid="selection-pane-${id}"]`
+          );
+          expect(button?.tagName.toLowerCase(), id).toBe(
+            'edgeless-tool-icon-button'
+          );
+        }
+      } finally {
+        frameHeader.remove();
+      }
     });
 
     // A narrow editor once dropped the pane's button outright: the toolbar

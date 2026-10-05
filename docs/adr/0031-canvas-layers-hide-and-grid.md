@@ -576,3 +576,21 @@ element above or below the frame. One gesture writes one `index` (or one
 `layer`) in one undo step, and nothing when the gap is the row's own place.
 Moving a row into or out of a group by a drag stays out of scope. No
 auto-scroll: the frame panel has none to mirror.
+
+**The pane is drawn and dragged like the frame panel (product owner's review
+of the pane).** The header is the frame panel's — one 36px row, a 14px / 500
+secondary title, the pane's actions (new layer, filter, close) as 20px
+`edgeless-tool-icon-button`s, no divider — taken from `panelHeaderStyles`
+(`@labre/affine-shared/styles`), which the frame panel now reads too; a
+widget may not import the frame panel (frame panel → frame block → edgeless
+toolbar), so the shared part lives below both. The drag now matches the frame
+panel's behaviour by behaviour: it starts at 5px on either axis
+(`PANEL_DRAG_THRESHOLD_PX`, read by both), picking a row up selects it, the
+ghost is the row at its own width, a mask over the viewport carries the
+`grabbing` / `not-allowed` cursor and keeps the canvas from reacting, and
+Escape does nothing until the release. Two differences stay, on purpose: one
+row is dragged, never the selection (the selected rows of a tree can sit in
+different lists, and `canvas.element.reorder` restacks one element), and the
+drop line keeps the theme's primary token rather than the frame panel's
+`--affine-blue-600` (DESIGN.md, The Borrowed Blue Rule). Nothing stored
+changes.
