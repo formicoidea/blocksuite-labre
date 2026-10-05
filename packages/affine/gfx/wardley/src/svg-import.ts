@@ -8,6 +8,7 @@ import type {
 import {
   sanitizeSvg,
   sketchSvgTree,
+  SVG_SKETCH_EMPTY,
   SvgSketchNotebook,
 } from '@labre/affine-block-surface';
 import { FontFamily, TextAlign } from '@labre/affine-model';
@@ -25,6 +26,7 @@ import { NODE_STROKE } from './node/consts.js';
 import type { DrawnWardleyMap } from './svg-read.js';
 import { recogniseOnlineWardleyMaps } from './svg-recognise-owm.js';
 import { recogniseWardleyMapRenderer } from './svg-recognise-renderer.js';
+import { recogniseByShape } from './svg-recognise-shapes.js';
 import { WARDLEY_SVG_IMPORT_REMARKS } from './svg-remarks.js';
 
 /**
@@ -43,7 +45,11 @@ import { WARDLEY_SVG_IMPORT_REMARKS } from './svg-remarks.js';
  * fixed order that stops at the first certain match: wardley-map-renderer
  * (its `axes` and `nodes` layers, `svg-recognise-renderer.ts`), then
  * OnlineWardleyMaps (an element marker inside its own movable wrapper,
- * `svg-recognise-owm.ts`). A recogniser reads the producer's components,
+ * `svg-recognise-owm.ts`), then — no marker at all — the shapes themselves
+ * (`svg-recognise-shapes.ts`), which promote components and dependencies and
+ * nothing else, and only once they have found the two axes of a plot; with
+ * no plot, the whole file is a sketch and the report says no axes were found.
+ * A recogniser reads the producer's components,
  * anchors, markets, ecosystems, climate arrows, pipelines, evolved twins,
  * inertia bars, notes, dependencies and title, and the PLOT they sit on;
  * `[visibility, evolution]` is then read off that plot (`owmCoordsOf`) and
@@ -96,7 +102,7 @@ import { WARDLEY_SVG_IMPORT_REMARKS } from './svg-remarks.js';
 
 /** Detection order (ADR 0032 §4): the first certain match wins. */
 const RECOGNISERS: readonly ((root: Element) => DrawnWardleyMap | undefined)[] =
-  [recogniseWardleyMapRenderer, recogniseOnlineWardleyMaps];
+  [recogniseWardleyMapRenderer, recogniseOnlineWardleyMaps, recogniseByShape];
 
 export function importWardleySvg(
   source: string,
@@ -119,19 +125,33 @@ export function importWardleySvg(
   return mapAndSketch(root, notebook, drawn);
 }
 
-/** Nothing recognised: today's sketch, word for word. */
+/**
+ * Nothing recognised — no producer marked the file and no axes were found —
+ * so today's sketch, word for word, plus the one sentence that says why
+ * (ADR 0032 §5).
+ */
 function sketchOnly(
   root: Element,
   notebook: SvgSketchNotebook
 ): InterchangeImportResult {
   const elements = sketchSvgTree(root, notebook);
+  if (elements.length === 0) {
+    notebook.once('empty', SVG_SKETCH_EMPTY[1], SVG_SKETCH_EMPTY);
+  }
   return {
     elements,
     report: {
       mapped: elements.length,
       carried: 0,
       quarantined: 0,
-      notes: notebook.notes,
+      notes: [
+        {
+          kind: 'warning',
+          message: WARDLEY_SVG_IMPORT_REMARKS.noAxes[1],
+          messageKey: WARDLEY_SVG_IMPORT_REMARKS.noAxes[0],
+        },
+        ...notebook.notes,
+      ],
     },
   };
 }

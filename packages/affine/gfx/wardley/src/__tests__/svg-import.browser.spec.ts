@@ -18,7 +18,7 @@ import { importWardleyOwm } from '../import';
 import { WARDLEY_SVG_IMPORT } from '../interchange';
 import { WARDLEY_ROLE } from '../roles';
 import { importWardleySvg } from '../svg-import';
-import { SVG_CORPUS } from './svg-corpus';
+import { HEURISTIC_OWM, SVG_CORPUS } from './svg-corpus';
 
 /**
  * The Wardley SVG import against real producers' files (ADR 0032 §9).
@@ -474,6 +474,82 @@ describe('a wardley-map-renderer SVG', () => {
       ['Left one', 22],
       ['Right one', 31],
     ]);
+  });
+});
+
+/* ── No marker: the heuristic ─────────────────────────────────────────── */
+
+describe('an SVG no producer marked', () => {
+  const NO_AXES = 'com.labre.wardley.import.svg.remark.no-axes';
+
+  it('promotes components and dependencies when it finds the plot', () => {
+    const result = read(SVG_CORPUS.heuristic);
+    expect(result.report.sourceVersion).toBe('SVG (recognised by shape)');
+    expectSameMap(
+      summarise(result.elements),
+      summarise(importWardleyOwm(HEURISTIC_OWM).elements)
+    );
+  });
+
+  it('promotes NOTHING else: no pipeline, inertia, evolution or anchor', () => {
+    // ADR 0032 §4.4, confirmed at acceptance: bare geometry never becomes a
+    // pipeline, an inertia bar or an evolve arrow — the curved link, the
+    // dashed red arrow, the thick bar, the pipeline-like rect, the unnamed
+    // circle and the legend outside the plot all arrive as a sketch.
+    const result = read(SVG_CORPUS.heuristic);
+    const roles = new Set(
+      result.elements.map(props => props.role).filter(Boolean)
+    );
+    expect([...roles].sort()).toEqual([
+      WARDLEY_ROLE.component,
+      WARDLEY_ROLE.dependency,
+      WARDLEY_ROLE.label,
+      WARDLEY_ROLE.map,
+    ]);
+    const remark = result.report.notes.find(
+      note =>
+        note.messageKey ===
+        'com.labre.wardley.import.svg.remark.sketched-remainder'
+    );
+    expect(remark?.messageParams?.count).toBeGreaterThanOrEqual(8);
+  });
+
+  it('draws nothing native from a picture that is not a map, and says so', () => {
+    const result = read(SVG_CORPUS.notAMap);
+    expect(result.elements.length).toBeGreaterThan(0);
+    for (const props of result.elements) {
+      expect(props.role, JSON.stringify(props)).toBeUndefined();
+      expect(props.type).not.toBe('wardley');
+      expect(props.type).not.toBe('wardleyNode');
+    }
+    expect(result.report.sourceVersion).toBeUndefined();
+    const warning = result.report.notes.filter(
+      note => note.messageKey === NO_AXES
+    );
+    expect(warning).toHaveLength(1);
+    expect(warning[0].kind).toBe('warning');
+  });
+
+  it('never guesses a plot: no axes, nothing promoted, however map-like', () => {
+    // Circles with names beside them and a line between, and no axes: the
+    // invented axis ADR 0012 forbids is exactly what promoting these would be.
+    const result = read(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400">' +
+        '<circle cx="180" cy="90" r="6"/><text x="192" y="94">Customer</text>' +
+        '<circle cx="300" cy="200" r="6"/><text x="312" y="204">Checkout</text>' +
+        '<line x1="180" y1="90" x2="300" y2="200" stroke="#999"/>' +
+        '</svg>'
+    );
+    expect(result.elements.map(props => props.type)).toEqual([
+      'shape',
+      'text',
+      'shape',
+      'text',
+      'brush',
+    ]);
+    expect(
+      result.report.notes.filter(note => note.messageKey === NO_AXES)
+    ).toHaveLength(1);
   });
 });
 
