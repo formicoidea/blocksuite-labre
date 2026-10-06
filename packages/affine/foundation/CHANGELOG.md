@@ -1,5 +1,21 @@
 # @labre/affine-foundation
 
+## 0.45.0
+
+### Patch Changes
+
+- Updated dependencies [aab35cf]
+- Updated dependencies [bfce95b]
+- Updated dependencies [77998d4]
+  - @labre/affine-shared@0.45.0
+  - @labre/data-view@0.45.0
+  - @labre/affine-components@0.45.0
+  - @labre/std@0.45.0
+  - @labre/affine-rich-text@0.45.0
+  - @labre/affine-ext-loader@0.45.0
+  - @labre/global@0.45.0
+  - @labre/store@0.45.0
+
 ## 0.44.0
 
 ### Patch Changes

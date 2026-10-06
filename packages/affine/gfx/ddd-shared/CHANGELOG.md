@@ -1,5 +1,29 @@
 # @labre/affine-gfx-ddd-shared
 
+## 0.45.0
+
+### Patch Changes
+
+- 7f3ec95: The `@formicoidea/labre-ddd-shared` bundle now declares `yjs`, which its
+  prefabs import at run time: a host no longer depends on another package
+  hoisting it. The other bundles' dependency lists are unchanged.
+- Updated dependencies [aab35cf]
+- Updated dependencies [bfce95b]
+- Updated dependencies [77998d4]
+- Updated dependencies [1e1a703]
+- Updated dependencies [6fd3606]
+- Updated dependencies [aa245ce]
+  - @labre/affine-shared@0.45.0
+  - @labre/std@0.45.0
+  - @labre/affine-block-surface@0.45.0
+  - @labre/affine-widget-edgeless-toolbar@0.45.0
+  - @labre/affine-gfx-group@0.45.0
+  - @labre/affine-gfx-pointer@0.45.0
+  - @labre/affine-model@0.45.0
+  - @labre/affine-ext-loader@0.45.0
+  - @labre/global@0.45.0
+  - @labre/store@0.45.0
+
 ## 0.44.0
 
 ### Patch Changes

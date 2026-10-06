@@ -1,5 +1,44 @@
 # @labre/affine-block-surface
 
+## 0.45.0
+
+### Patch Changes
+
+- 77998d4: Duplicated helpers now have a single copy, with no host-visible change in
+  behaviour. `wardleySafeFilename`, `c4SafeFilename`, `bpmnSafeFilename` and
+  `umlSafeFilename` keep their names and signatures and call the shared
+  `safeFilename`, and a parity table holds every exported file name to it. The
+  Wardley SVG recognisers start their answer from one builder. The rule that a
+  group's outermost group carries its layer (ADR 0031 §5) is exported once from
+  `@labre/std/gfx` as `layerCarrierOf`. The selection pane draws its "hide for
+  everyone" entry, row name and eye toggle from one helper each. A parity test
+  now holds the paste's z-order to the canvas comparator.
+- 1e1a703: `ReadingProfile.frame.label` and `frame.none` are optional again: 0.44.0's requirement is withdrawn before publication, so a reading profile written against 0.43 (`{ backgroundRole, background, axis }`) compiles unchanged and its panel shows what 0.43 showed, "Evolution phase" and "Not on a framework background — no phase to read.". That default wording is now owned by the reading engine (`READING_FRAME_DEFAULT_WORDING`, `readingFrameWording`) and ships with core whether or not the Wardley bundle is installed; Wardley inherits it. Keys and English are unchanged (`com.labre.reading.field.phase`, `com.labre.reading.phase.none`).
+- 6fd3606: The board SVG export now paints an edgeless text at its place in the canvas'
+  z-order: a shape drawn over an edgeless text covers it in the file as it does
+  on screen, where every edgeless text used to land on top of everything. The
+  never-read translation key `com.labre.note.display-mode.tooltip` ("Display
+  mode") is removed from the manifest; a host catalogue may drop its entry.
+  Everything else is dead code removed from module-internal exports none of the
+  packages' entry points reach (the superseded C4 and UML legend helpers, unused
+  re-exports in the Wardley and BPMN importers, an unused BPMN type, framework
+  models re-exported a second time by the surface's element-model module): no
+  host-visible change.
+- aa245ce: `renderBoardSvg(std, board)` keeps its 0.43 signature: called without options it returns a `BoardSvgExport`, never `null`, so `renderBoardSvg(std, board).svg` compiles unchanged. 0.44.0's widening to `BoardSvgExport | null` is withdrawn before publication and now applies only to the overload that takes `options`, which returns `null` when the options leave nothing to draw.
+
+  Two 0.44 changes a host may notice stay as they are. `TelemetryEventMap` gains `SelectionPaneOpened`, `CanvasVisibilityChanged`, `CanvasGridToggled` and `CanvasLayerChanged`; an adapter written as `track(event, props)` is unaffected, but a host keeping an exhaustive `Record<keyof TelemetryEventMap, …>` must add the four. And when edgeless content is pasted, the index an `EdgelessClipboardConfig.createBlock` writes is now replaced by the paste's planned index, so pasted blocks keep their relative order with the pasted elements.
+
+- Updated dependencies [aab35cf]
+- Updated dependencies [bfce95b]
+- Updated dependencies [77998d4]
+  - @labre/affine-shared@0.45.0
+  - @labre/affine-components@0.45.0
+  - @labre/std@0.45.0
+  - @labre/affine-model@0.45.0
+  - @labre/affine-ext-loader@0.45.0
+  - @labre/global@0.45.0
+  - @labre/store@0.45.0
+
 ## 0.44.0
 
 ### Minor Changes
