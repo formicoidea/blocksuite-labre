@@ -83,6 +83,9 @@ describe('the callout block toolbar follows the callout flag (#468)', () => {
       expect(row!.config.actions.map(action => action.id)).toContain(
         'a.conversions'
       );
+      // Centred like the note row; the widget's own default for a block's
+      // row is `top-start` (PO recette of #468).
+      expect(row!.config.placement).toBe('top');
     }
   );
 

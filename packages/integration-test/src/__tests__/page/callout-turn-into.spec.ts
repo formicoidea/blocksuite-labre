@@ -170,6 +170,24 @@ describe('turning a callout back into text from its toolbar', () => {
     expect(doc.getModelById(calloutId)?.flavour).toBe('affine:callout');
   });
 
+  // The note row offers "Turn into" on a paragraph or a code block only once
+  // it holds words; the callout's row does the same (PO recette of #468).
+  test('an empty callout offers no Turn into, only its menu', async () => {
+    const doc = window.doc;
+    doc.getModelById(calloutId)!.children.forEach(child => {
+      child.text?.delete(0, child.text.length);
+    });
+    const { selection } = window.editor.std;
+    selection.clear();
+    await settle();
+    selection.set([selection.create(BlockSelection, { blockId: calloutId })]);
+    await settle();
+
+    expect(toolbar()?.dataset.open).toBe('true');
+    expect(turnInto()).toBeNull();
+    await moreEntry('duplicate');
+  });
+
   test('Duplicate copies the callout WITH its children, right after it', async () => {
     (await moreEntry('duplicate')).click();
     await settle();

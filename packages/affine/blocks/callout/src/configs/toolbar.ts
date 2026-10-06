@@ -53,6 +53,11 @@ const selectedCallouts = ({ chain }: ToolbarContext) => {
  * the divider (which is not a conversion of a block's words), each offered
  * only when `calloutUnwrapTargets` says the whole conversion can complete —
  * a refusal is an absent entry, never a click that does nothing.
+ *
+ * Like the note row, which offers "Turn into" on a paragraph or a code block
+ * only once it holds words (`isFormatSupported`), the entry waits for the
+ * callout to hold some: an empty callout shows the "⋮" menu alone (PO
+ * recette of #468, for one behaviour across blocks).
  */
 const conversionsAction = {
   id: 'a.conversions',
@@ -61,6 +66,10 @@ const conversionsAction = {
     const { std, store } = ctx;
     const callouts = selectedCallouts(ctx);
     if (callouts.length === 0) return null;
+    const holdsWords = callouts.some(callout =>
+      callout.children.some(child => (child.text?.length ?? 0) > 0)
+    );
+    if (!holdsWords) return null;
 
     const conversions = textConversionConfigs.filter(
       ({ flavour }) =>
@@ -118,8 +127,13 @@ const conversionsAction = {
  * that they take the selection in `flat` mode, descendants included, where
  * the note row's Duplicate takes `highest`: a callout is a hub, and drafted
  * without its children it would copy as an empty frame.
+ *
+ * Centred above the block (`top`) like the note row a paragraph or a code
+ * block opens; without a placement of its own the widget sets a block's row
+ * at `top-start`, which left the callout's row hanging off its left edge.
  */
 export const calloutToolbarConfig = {
+  placement: 'top',
   actions: [
     conversionsAction,
     {

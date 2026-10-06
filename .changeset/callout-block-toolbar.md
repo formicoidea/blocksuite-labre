@@ -4,7 +4,9 @@
 '@labre/affine-shared': patch
 ---
 
-A callout selected with its drag handle now opens a block toolbar (#468).
+A callout selected with its drag handle now opens a block toolbar (#468),
+centred above it like the paragraph and code block rows. As on those rows,
+"Turn into" appears only once the callout holds some text.
 Its "Turn into" offers the text kinds — text, headings, lists, code block,
 quote — and unwraps the callout: its children take its place, converted to
 the chosen kind (merged into one code block for "Code block"), their own
