@@ -386,12 +386,31 @@ export const builtinToolbarConfig = {
               );
             }
 
-            chain
+            // The copy lands right after the last selected block. Said
+            // explicitly: the command's default anchors on the LAST selected
+            // model, which in `flat` mode below is one of its descendants.
+            const [, { selectedModels: highest = [] }] = chain
               .pipe(getSelectedModelsCommand, {
                 types: ['block', 'image'],
                 mode: 'highest',
               })
-              .pipe(duplicateSelectedModelsCommand)
+              .run();
+            const last = highest.at(-1);
+            const parentModel = last && store.getParent(last);
+            if (!last || !parentModel) return;
+
+            // `flat`, not `highest`: `draftSelectedModelsCommand` keeps a
+            // drafted block's children only when they are selected too, so a
+            // paragraph duplicated alone lost its nested children.
+            chain
+              .pipe(getSelectedModelsCommand, {
+                types: ['block', 'image'],
+                mode: 'flat',
+              })
+              .pipe(duplicateSelectedModelsCommand, {
+                parentModel,
+                index: parentModel.children.indexOf(last) + 1,
+              })
               .run();
           },
         },
