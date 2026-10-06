@@ -1,5 +1,25 @@
 # @labre/affine-components
 
+## 0.45.0
+
+### Patch Changes
+
+- bfce95b: The core bundle no longer installs a test runner: `vitest` leaves its
+  dependencies, and the `vitest` helpers it used to carry as unreachable files
+  are gone. It also no longer ships `getAttachmentFileIconRC` in
+  `components/icons`, a React helper that loaded `react/jsx-runtime` although
+  the bundle never declared `react`; `getAttachmentFileIcon` (Lit) is the icon
+  lookup to use. No other API change.
+- Updated dependencies [aab35cf]
+- Updated dependencies [bfce95b]
+- Updated dependencies [77998d4]
+  - @labre/affine-shared@0.45.0
+  - @labre/std@0.45.0
+  - @labre/affine-model@0.45.0
+  - @labre/global@0.45.0
+  - @labre/store@0.45.0
+  - @labre/sync@0.45.0
+
 ## 0.44.0
 
 ### Minor Changes

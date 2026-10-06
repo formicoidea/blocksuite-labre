@@ -1,5 +1,27 @@
 # @labre/affine-inline-preset
 
+## 0.45.0
+
+### Patch Changes
+
+- Updated dependencies [aab35cf]
+- Updated dependencies [bfce95b]
+- Updated dependencies [77998d4]
+  - @labre/affine-shared@0.45.0
+  - @labre/affine-components@0.45.0
+  - @labre/std@0.45.0
+  - @labre/affine-inline-comment@0.45.0
+  - @labre/affine-inline-footnote@0.45.0
+  - @labre/affine-inline-latex@0.45.0
+  - @labre/affine-inline-link@0.45.0
+  - @labre/affine-inline-mention@0.45.0
+  - @labre/affine-inline-reference@0.45.0
+  - @labre/affine-rich-text@0.45.0
+  - @labre/affine-model@0.45.0
+  - @labre/affine-ext-loader@0.45.0
+  - @labre/global@0.45.0
+  - @labre/store@0.45.0
+
 ## 0.44.0
 
 ### Minor Changes
