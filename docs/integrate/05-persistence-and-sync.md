@@ -81,10 +81,10 @@ The library's `BlobSource` is workspace-scoped. If your storage needs the
 document id for authorization, carry it out of band (a module-level "current
 document" set at mount, cleared at dispose). The library cannot pass it.
 
-## Fields that appeared in 0.44
+## Fields that appeared in 0.45
 
 Every one is optional and absent until a user's gesture writes it, so a
-document written before 0.44 is unchanged: nothing is migrated, nothing is
+document written before 0.45 is unchanged: nothing is migrated, nothing is
 written when it is opened.
 
 | Field               | Where                                                                                              | Written by                                                                  |
@@ -96,7 +96,7 @@ written when it is opened.
 | `textDecoration`    | canvas `text`, `shape`, and inside a connector's `labelStyle`                                      | the Underline / Overline toggles (ADR 0030)                                 |
 | `overline`          | an inline attribute in rich-text deltas                                                            | the format bar's Overline (ADR 0030 §5)                                     |
 
-What a **0.43 client** does with a 0.44 document (ADR 0031, _What stays
+What a **0.43 client** does with a 0.45 document (ADR 0031, _What stays
 loadable_; ADR 0030):
 
 - It **paints what was hidden for everyone**, an element or a whole layer: it
@@ -123,7 +123,7 @@ no flag gates them.
 
 A host that pastes its own canvas block registers an `EdgelessClipboardConfig`
 (`@labre/affine/blocks/surface`) whose `createBlock(snapshot, context)` builds
-the block. Since 0.44 the paste owns two things a config writes:
+the block. Since 0.45 the paste owns two things a config writes:
 
 - **The stacking index.** The paste plans one fresh `index` per pasted
   element and block, in the order they had where they were copied from, and

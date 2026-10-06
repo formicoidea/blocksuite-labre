@@ -55,7 +55,7 @@ Typical changes a host sees, from the Labre app's history:
 Six weeks of library in one hop produced three compile breaks and one silent
 behaviour change. Upgrade at every minor.
 
-## 0.43 → 0.44
+## 0.43 → 0.45 (0.44.0 was versioned but never published)
 
 No compile break: every type a host implements or calls keeps its 0.43
 shape. `ReadingProfile.frame.label` and `.none` are optional and, absent,
