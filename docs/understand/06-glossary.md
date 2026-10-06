@@ -31,6 +31,8 @@ Plain words for the names you will meet in the code.
 | **group**              | A surface element that holds other elements. Compound artefacts are groups.                                                                                    |
 | **host**               | The application that mounts the editor (Labre, the playground, your app).                                                                                      |
 | **interchange**        | Import/export of a framework's native format. A capability is `framework:format:direction`.                                                                    |
+| **layer (user)**       | A named, ordered container of canvas content the user manages in the selection pane: `SurfaceLayerRecord` on the surface, `layer` on each model (ADR 0031).    |
+| **layer manager**      | `LayerManager`: cuts the paint order into runs of canvas elements and of DOM blocks. A rendering device, not a user layer. See `02-data-flow.md`.              |
 | **legend**             | The auto-generated key of symbols placed on a board.                                                                                                           |
 | **nature**             | A level-3 qualification of a role (`wardley:nature = data`).                                                                                                   |
 | **nudge**              | A quality checklist item shown to the user and never evaluated by the engine.                                                                                  |
@@ -45,6 +47,7 @@ Plain words for the names you will meet in the code.
 | **role**               | The semantic identity of an element: `wardley:component`. Namespaced by framework.                                                                             |
 | **rule**               | A validation check producing findings. Never blocks.                                                                                                           |
 | **seam**               | A place where the host plugs its own implementation through an identifier.                                                                                     |
+| **selection pane**     | The side panel listing the canvas by layer and paint order, top first; a projection of the canvas (`selectionPaneTree(std)`), seam `SelectionPaneExtension`.   |
 | **senior button**      | A framework's button in the whiteboard toolbar. Opens the senior sub-menu.                                                                                     |
 | **signal**             | A reactive value from `@preact/signals-core`. Model props are signals (`x$`).                                                                                  |
 | **snapshot**           | The JSON form of a document or a slice of it.                                                                                                                  |

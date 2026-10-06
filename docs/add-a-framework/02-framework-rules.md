@@ -208,6 +208,14 @@ by svgcanvas 2.6.0, so a renderer sticks to the 2D calls it implements:
 `isPointInPath`/`isPointInStroke` are absent, and `getLineDash` exists only as
 the export's shim — scope a dash with `save`/`restore` rather than reading it
 back (ADR 0025, amendment of 2026-09-17).
+Also free, and read from base-class fields only: the export's "Framework
+elements" switch keeps the board, every element whose role shares the board's
+role namespace, the legend and the role-less pieces grouped with them
+(`export-svg/parts.ts`) — so roles namespaced per R18 are all a framework
+owes; and every element in the file is marked with `data-labre-*` attributes
+(id, type, role, stored bound, connector ends, group; ids and vocabulary,
+never text), the root with `data-labre-svg` (ADR 0032 §6), so a later
+recogniser of the framework's own pictures needs no export change.
 `export-svg-boards.unit.spec.ts` names every framework's board class and checks
 the entry lights up for each; `board-svg-export.spec.ts` (integration) renders
 one board of every kind and parses the result. Numbered R34 — the file's numbers
@@ -371,6 +379,21 @@ gated extension, with a `run` that is a pure function of elements and text.
 Importers return serialized props, not live models. Unknown data rides on the
 element under `interchange[formatId]`. Ids that lie or collide are refused at
 boot (ADR 0012).
+
+An SVG import is the visual tier: no `interchange` payload, no round-trip
+promised. By default its `run` IS the shared `parseSvgSketch` (geometry only),
+pinned by identity, as BPMN does. Recognising the framework's own artefacts in
+a picture is an optional part, and only Wardley ships one (ADR 0032,
+`gfx/wardley/src/svg-import.ts`): a pure function that sanitises once with the
+shared `sanitizeSvg`, detects the producer by a structural marker (Labre's own
+`data-labre-*` first), builds native props with the framework's existing
+importer, and hands every node it did not consume to the shared
+`sketchSvgTree` through its `skip` option, so recognised and sketched elements
+land in one undo step. Roles are checked against the framework's role table;
+an unknown role is a sketch. A framework that claims nodes owes its own
+heuristics statement for them (the `sketchSvgTree` docblock); Wardley's also
+carries a corpus under `__tests__/corpus/svg/` asserting that the SVG of a map
+imports to the same map as its native text. Mirror it.
 
 ## Identity and telemetry
 

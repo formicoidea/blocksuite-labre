@@ -5,10 +5,15 @@ parity tests for anything spelled twice.**
 
 ## Two suites
 
-| Suite       | Files                                                  | Runner                                             | Runs where                                                                 |
-| ----------- | ------------------------------------------------------ | -------------------------------------------------- | -------------------------------------------------------------------------- |
-| unit        | `packages/**/src/__tests__/**/*.unit.spec.ts`          | vitest, happy-dom (some packages use browser mode) | `yarn test:unit`, or `yarn vitest run <filter>` from the package directory |
-| integration | `packages/integration-test/src/__tests__/**/*.spec.ts` | vitest browser mode, Playwright chromium, serial   | `yarn test:integration`                                                    |
+| Suite       | Files                                                  | Runner                                             | Runs where                                                             |
+| ----------- | ------------------------------------------------------ | -------------------------------------------------- | ---------------------------------------------------------------------- |
+| unit        | `packages/**/src/__tests__/**/*.unit.spec.ts`          | vitest, happy-dom (some packages use browser mode) | `yarn test:unit`, or one package from where its config expects (below) |
+| integration | `packages/integration-test/src/__tests__/**/*.spec.ts` | vitest browser mode, Playwright chromium, serial   | `yarn test:integration`                                                |
+
+One unit package runs from the repo root, with `--config`, when its
+`vitest.config.ts` sets `test.root: './packages/…'`, and from its own
+directory when it does not; the wrong place finds no files. Commands and the
+list of which is which: [01-setup.md](01-setup.md#tests).
 
 ## What to test where
 
@@ -65,6 +70,27 @@ test('a board is picked by its border', () => {
 
 Globals `window.doc` and `window.editor` are set by the setup. Keep
 `--no-file-parallelism`; the suite is load-sensitive and retries on CI.
+
+Every spec file runs in ONE shared page (`isolate: false`): what a spec leaves
+behind — a docked panel, a zoom, a scroll, a granted permission — is the next
+spec's starting point. Hence:
+
+- **Run the whole suite before a PR**, not only your spec: a spec that passes
+  alone can fail after another one.
+- **Never press "the middle of the canvas".** `dragModel(edgeless, model)`
+  (`__tests__/utils/canvas-gesture.ts`, options `alt` and `dx`) selects the
+  default tool, sets zoom 1, moves the model's centre under an on-screen point clear
+  of the edges and of a pane docked on the left, checks that the canvas
+  answers that model there, then drags it with the real mouse.
+- **A gesture watched mid-way** (a drag's ghost, its drop line) uses
+  `pointerMoveTo(selector, fx, fy, steps)`, `pointerDown()` and `pointerUp()`
+  from `__tests__/utils/pointer.ts`: Playwright's mouse a step at a time,
+  where `userEvent.dragAndDrop` does it all in one call.
+- **A real copy then paste** needs the clipboard permission Chromium denies by
+  default: `await commands.systemClipboard(true)` before, and
+  `commands.systemClipboard(false)` in a `finally`, so the rest of the suite
+  runs without it. These browser commands are declared in
+  `packages/integration-test/vitest.config.ts`.
 
 ## Parity and coverage tests
 
