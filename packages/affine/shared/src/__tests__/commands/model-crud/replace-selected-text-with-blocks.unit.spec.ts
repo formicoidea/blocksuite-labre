@@ -5,7 +5,7 @@ import type { TextSelection } from '@labre/std';
 import { describe, expect, it } from 'vitest';
 
 import { replaceSelectedTextWithBlocksCommand } from '../../../commands/model-crud/replace-selected-text-with-blocks';
-import { affine, block } from '../../../test-utils';
+import { affine, block } from '../../test-utils';
 
 describe('commands/model-crud', () => {
   describe('replaceSelectedTextWithBlocksCommand', () => {
