@@ -1,5 +1,27 @@
 # @labre/affine-block-callout
 
+## 0.45.0
+
+### Minor Changes
+
+- aab35cf: Callout now appears by default in the slash menu and in "Turn into": both entries follow the `callout` key of `OPTIONAL_BLOCKS` alone, so `{ callout: false }` removes them. `FeatureFlagService`'s `enable_callout` is deprecated and ignored; a host that set it to `true` to show Callout can drop it, and setting it to `false` no longer hides Callout — use `{ callout: false }`.
+
+### Patch Changes
+
+- Updated dependencies [aab35cf]
+- Updated dependencies [bfce95b]
+- Updated dependencies [77998d4]
+  - @labre/affine-shared@0.45.0
+  - @labre/affine-components@0.45.0
+  - @labre/std@0.45.0
+  - @labre/affine-inline-preset@0.45.0
+  - @labre/affine-rich-text@0.45.0
+  - @labre/affine-widget-slash-menu@0.45.0
+  - @labre/affine-model@0.45.0
+  - @labre/affine-ext-loader@0.45.0
+  - @labre/global@0.45.0
+  - @labre/store@0.45.0
+
 ## 0.44.0
 
 ### Minor Changes

@@ -1,5 +1,34 @@
 # @labre/affine-shared
 
+## 0.45.0
+
+### Minor Changes
+
+- aab35cf: Callout now appears by default in the slash menu and in "Turn into": both entries follow the `callout` key of `OPTIONAL_BLOCKS` alone, so `{ callout: false }` removes them. `FeatureFlagService`'s `enable_callout` is deprecated and ignored; a host that set it to `true` to show Callout can drop it, and setting it to `false` no longer hides Callout — use `{ callout: false }`.
+
+### Patch Changes
+
+- bfce95b: The core bundle no longer installs a test runner: `vitest` leaves its
+  dependencies, and the `vitest` helpers it used to carry as unreachable files
+  are gone. It also no longer ships `getAttachmentFileIconRC` in
+  `components/icons`, a React helper that loaded `react/jsx-runtime` although
+  the bundle never declared `react`; `getAttachmentFileIcon` (Lit) is the icon
+  lookup to use. No other API change.
+- 77998d4: Duplicated helpers now have a single copy, with no host-visible change in
+  behaviour. `wardleySafeFilename`, `c4SafeFilename`, `bpmnSafeFilename` and
+  `umlSafeFilename` keep their names and signatures and call the shared
+  `safeFilename`, and a parity table holds every exported file name to it. The
+  Wardley SVG recognisers start their answer from one builder. The rule that a
+  group's outermost group carries its layer (ADR 0031 §5) is exported once from
+  `@labre/std/gfx` as `layerCarrierOf`. The selection pane draws its "hide for
+  everyone" entry, row name and eye toggle from one helper each. A parity test
+  now holds the paste's z-order to the canvas comparator.
+- Updated dependencies [77998d4]
+  - @labre/std@0.45.0
+  - @labre/affine-model@0.45.0
+  - @labre/global@0.45.0
+  - @labre/store@0.45.0
+
 ## 0.44.0
 
 ### Minor Changes

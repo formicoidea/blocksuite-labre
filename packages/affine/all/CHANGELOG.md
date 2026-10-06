@@ -1,5 +1,98 @@
 # @labre/affine
 
+## 0.45.0
+
+### Patch Changes
+
+- 1e1a703: `ReadingProfile.frame.label` and `frame.none` are optional again: 0.44.0's requirement is withdrawn before publication, so a reading profile written against 0.43 (`{ backgroundRole, background, axis }`) compiles unchanged and its panel shows what 0.43 showed, "Evolution phase" and "Not on a framework background — no phase to read.". That default wording is now owned by the reading engine (`READING_FRAME_DEFAULT_WORDING`, `readingFrameWording`) and ships with core whether or not the Wardley bundle is installed; Wardley inherits it. Keys and English are unchanged (`com.labre.reading.field.phase`, `com.labre.reading.phase.none`).
+- Updated dependencies [aab35cf]
+- Updated dependencies [bfce95b]
+- Updated dependencies [7f3ec95]
+- Updated dependencies [77998d4]
+- Updated dependencies [1e1a703]
+- Updated dependencies [6fd3606]
+- Updated dependencies [aa245ce]
+  - @labre/affine-block-callout@0.45.0
+  - @labre/affine-shared@0.45.0
+  - @labre/data-view@0.45.0
+  - @labre/affine-components@0.45.0
+  - @labre/affine-gfx-ddd-shared@0.45.0
+  - @labre/std@0.45.0
+  - @labre/affine-block-surface@0.45.0
+  - @labre/affine-block-root@0.45.0
+  - @labre/affine-widget-edgeless-toolbar@0.45.0
+  - @labre/affine-gfx-wardley@0.45.0
+  - @labre/affine-gfx-c4@0.45.0
+  - @labre/affine-gfx-bpmn@0.45.0
+  - @labre/affine-gfx-uml@0.45.0
+  - @labre/affine-block-note@0.45.0
+  - @labre/affine-widget-drag-handle@0.45.0
+  - @labre/affine-block-attachment@0.45.0
+  - @labre/affine-block-bookmark@0.45.0
+  - @labre/affine-block-code@0.45.0
+  - @labre/affine-block-data-view@0.45.0
+  - @labre/affine-block-database@0.45.0
+  - @labre/affine-block-divider@0.45.0
+  - @labre/affine-block-edgeless-text@0.45.0
+  - @labre/affine-block-embed@0.45.0
+  - @labre/affine-block-embed-doc@0.45.0
+  - @labre/affine-block-frame@0.45.0
+  - @labre/affine-block-image@0.45.0
+  - @labre/affine-block-latex@0.45.0
+  - @labre/affine-block-list@0.45.0
+  - @labre/affine-block-paragraph@0.45.0
+  - @labre/affine-block-surface-ref@0.45.0
+  - @labre/affine-block-table@0.45.0
+  - @labre/affine-foundation@0.45.0
+  - @labre/affine-fragment-adapter-panel@0.45.0
+  - @labre/affine-fragment-doc-title@0.45.0
+  - @labre/affine-fragment-frame-panel@0.45.0
+  - @labre/affine-fragment-outline@0.45.0
+  - @labre/affine-gfx-brush@0.45.0
+  - @labre/affine-gfx-connector@0.45.0
+  - @labre/affine-gfx-cynefin-estuarine@0.45.0
+  - @labre/affine-gfx-ddd-aggregate@0.45.0
+  - @labre/affine-gfx-ddd-context-map@0.45.0
+  - @labre/affine-gfx-ddd-core-domain@0.45.0
+  - @labre/affine-gfx-ddd-event-storming@0.45.0
+  - @labre/affine-gfx-edgy@0.45.0
+  - @labre/affine-gfx-group@0.45.0
+  - @labre/affine-gfx-link@0.45.0
+  - @labre/affine-gfx-mindmap@0.45.0
+  - @labre/affine-gfx-note@0.45.0
+  - @labre/affine-gfx-pointer@0.45.0
+  - @labre/affine-gfx-shape@0.45.0
+  - @labre/affine-gfx-template@0.45.0
+  - @labre/affine-gfx-text@0.45.0
+  - @labre/affine-inline-comment@0.45.0
+  - @labre/affine-inline-footnote@0.45.0
+  - @labre/affine-inline-latex@0.45.0
+  - @labre/affine-inline-link@0.45.0
+  - @labre/affine-inline-mention@0.45.0
+  - @labre/affine-inline-preset@0.45.0
+  - @labre/affine-inline-reference@0.45.0
+  - @labre/affine-rich-text@0.45.0
+  - @labre/affine-widget-edgeless-auto-connect@0.45.0
+  - @labre/affine-widget-edgeless-dragging-area@0.45.0
+  - @labre/affine-widget-edgeless-selected-rect@0.45.0
+  - @labre/affine-widget-edgeless-zoom-toolbar@0.45.0
+  - @labre/affine-widget-frame-title@0.45.0
+  - @labre/affine-widget-keyboard-toolbar@0.45.0
+  - @labre/affine-widget-linked-doc@0.45.0
+  - @labre/affine-widget-note-slicer@0.45.0
+  - @labre/affine-widget-page-dragging-area@0.45.0
+  - @labre/affine-widget-remote-selection@0.45.0
+  - @labre/affine-widget-scroll-anchoring@0.45.0
+  - @labre/affine-widget-slash-menu@0.45.0
+  - @labre/affine-widget-toolbar@0.45.0
+  - @labre/affine-widget-viewport-overlay@0.45.0
+  - @labre/affine-gfx-turbo-renderer@0.45.0
+  - @labre/affine-model@0.45.0
+  - @labre/affine-ext-loader@0.45.0
+  - @labre/global@0.45.0
+  - @labre/store@0.45.0
+  - @labre/sync@0.45.0
+
 ## 0.44.0
 
 ### Minor Changes

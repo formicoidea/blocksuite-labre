@@ -1,5 +1,23 @@
 # @labre/affine-widget-edgeless-dragging-area
 
+## 0.45.0
+
+### Patch Changes
+
+- Updated dependencies [aab35cf]
+- Updated dependencies [bfce95b]
+- Updated dependencies [77998d4]
+- Updated dependencies [1e1a703]
+- Updated dependencies [6fd3606]
+- Updated dependencies [aa245ce]
+  - @labre/affine-shared@0.45.0
+  - @labre/affine-components@0.45.0
+  - @labre/std@0.45.0
+  - @labre/affine-block-surface@0.45.0
+  - @labre/affine-model@0.45.0
+  - @labre/affine-ext-loader@0.45.0
+  - @labre/global@0.45.0
+
 ## 0.44.0
 
 ### Patch Changes

@@ -1,5 +1,49 @@
 # @labre/affine-gfx-uml
 
+## 0.45.0
+
+### Patch Changes
+
+- 77998d4: Duplicated helpers now have a single copy, with no host-visible change in
+  behaviour. `wardleySafeFilename`, `c4SafeFilename`, `bpmnSafeFilename` and
+  `umlSafeFilename` keep their names and signatures and call the shared
+  `safeFilename`, and a parity table holds every exported file name to it. The
+  Wardley SVG recognisers start their answer from one builder. The rule that a
+  group's outermost group carries its layer (ADR 0031 §5) is exported once from
+  `@labre/std/gfx` as `layerCarrierOf`. The selection pane draws its "hide for
+  everyone" entry, row name and eye toggle from one helper each. A parity test
+  now holds the paste's z-order to the canvas comparator.
+- 6fd3606: The board SVG export now paints an edgeless text at its place in the canvas'
+  z-order: a shape drawn over an edgeless text covers it in the file as it does
+  on screen, where every edgeless text used to land on top of everything. The
+  never-read translation key `com.labre.note.display-mode.tooltip` ("Display
+  mode") is removed from the manifest; a host catalogue may drop its entry.
+  Everything else is dead code removed from module-internal exports none of the
+  packages' entry points reach (the superseded C4 and UML legend helpers, unused
+  re-exports in the Wardley and BPMN importers, an unused BPMN type, framework
+  models re-exported a second time by the surface's element-model module): no
+  host-visible change.
+- Updated dependencies [aab35cf]
+- Updated dependencies [bfce95b]
+- Updated dependencies [7f3ec95]
+- Updated dependencies [77998d4]
+- Updated dependencies [1e1a703]
+- Updated dependencies [6fd3606]
+- Updated dependencies [aa245ce]
+  - @labre/affine-shared@0.45.0
+  - @labre/affine-gfx-ddd-shared@0.45.0
+  - @labre/std@0.45.0
+  - @labre/affine-block-surface@0.45.0
+  - @labre/affine-widget-edgeless-toolbar@0.45.0
+  - @labre/affine-gfx-connector@0.45.0
+  - @labre/affine-gfx-pointer@0.45.0
+  - @labre/affine-gfx-shape@0.45.0
+  - @labre/affine-gfx-template@0.45.0
+  - @labre/affine-gfx-text@0.45.0
+  - @labre/affine-model@0.45.0
+  - @labre/affine-ext-loader@0.45.0
+  - @labre/global@0.45.0
+
 ## 0.44.0
 
 ### Minor Changes

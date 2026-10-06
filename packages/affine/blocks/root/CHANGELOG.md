@@ -1,5 +1,54 @@
 # @labre/affine-block-root
 
+## 0.45.0
+
+### Patch Changes
+
+- 77998d4: Duplicated helpers now have a single copy, with no host-visible change in
+  behaviour. `wardleySafeFilename`, `c4SafeFilename`, `bpmnSafeFilename` and
+  `umlSafeFilename` keep their names and signatures and call the shared
+  `safeFilename`, and a parity table holds every exported file name to it. The
+  Wardley SVG recognisers start their answer from one builder. The rule that a
+  group's outermost group carries its layer (ADR 0031 §5) is exported once from
+  `@labre/std/gfx` as `layerCarrierOf`. The selection pane draws its "hide for
+  everyone" entry, row name and eye toggle from one helper each. A parity test
+  now holds the paste's z-order to the canvas comparator.
+- Updated dependencies [aab35cf]
+- Updated dependencies [bfce95b]
+- Updated dependencies [77998d4]
+- Updated dependencies [1e1a703]
+- Updated dependencies [6fd3606]
+- Updated dependencies [aa245ce]
+  - @labre/affine-shared@0.45.0
+  - @labre/data-view@0.45.0
+  - @labre/affine-components@0.45.0
+  - @labre/std@0.45.0
+  - @labre/affine-block-surface@0.45.0
+  - @labre/affine-widget-edgeless-toolbar@0.45.0
+  - @labre/affine-block-note@0.45.0
+  - @labre/affine-block-attachment@0.45.0
+  - @labre/affine-block-bookmark@0.45.0
+  - @labre/affine-block-database@0.45.0
+  - @labre/affine-block-edgeless-text@0.45.0
+  - @labre/affine-block-embed@0.45.0
+  - @labre/affine-block-frame@0.45.0
+  - @labre/affine-block-image@0.45.0
+  - @labre/affine-block-paragraph@0.45.0
+  - @labre/affine-gfx-brush@0.45.0
+  - @labre/affine-gfx-connector@0.45.0
+  - @labre/affine-gfx-group@0.45.0
+  - @labre/affine-gfx-mindmap@0.45.0
+  - @labre/affine-gfx-note@0.45.0
+  - @labre/affine-gfx-pointer@0.45.0
+  - @labre/affine-gfx-shape@0.45.0
+  - @labre/affine-gfx-text@0.45.0
+  - @labre/affine-inline-preset@0.45.0
+  - @labre/affine-rich-text@0.45.0
+  - @labre/affine-model@0.45.0
+  - @labre/affine-ext-loader@0.45.0
+  - @labre/global@0.45.0
+  - @labre/store@0.45.0
+
 ## 0.44.0
 
 ### Minor Changes

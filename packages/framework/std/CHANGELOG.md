@@ -1,5 +1,21 @@
 # @labre/std
 
+## 0.45.0
+
+### Patch Changes
+
+- 77998d4: Duplicated helpers now have a single copy, with no host-visible change in
+  behaviour. `wardleySafeFilename`, `c4SafeFilename`, `bpmnSafeFilename` and
+  `umlSafeFilename` keep their names and signatures and call the shared
+  `safeFilename`, and a parity table holds every exported file name to it. The
+  Wardley SVG recognisers start their answer from one builder. The rule that a
+  group's outermost group carries its layer (ADR 0031 §5) is exported once from
+  `@labre/std/gfx` as `layerCarrierOf`. The selection pane draws its "hide for
+  everyone" entry, row name and eye toggle from one helper each. A parity test
+  now holds the paste's z-order to the canvas comparator.
+  - @labre/global@0.45.0
+  - @labre/store@0.45.0
+
 ## 0.44.0
 
 ### Minor Changes
