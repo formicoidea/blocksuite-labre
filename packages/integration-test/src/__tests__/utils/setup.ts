@@ -156,6 +156,23 @@ function forgetPersistedViewport() {
     .forEach(key => localStorage.removeItem(key));
 }
 
+/**
+ * Forget the native selection the last editor left behind.
+ *
+ * A spec that clicked or typed into a paragraph leaves a DOM range in it, and
+ * removing the editor does not clear that range: it collapses onto `<body>`,
+ * where the next spec FILE finds it (`isolate: false`, one page). The editor
+ * reads `document.getSelection()` as the user's range whatever it points at —
+ * `indentBlocks` took the range branch, found no block in it and declined, so
+ * Tab on a block selection indented nothing and fell through to the root
+ * fallback (`toggle-button-flavour-keymap.spec.ts` after
+ * `toolbar-format-bar-width.spec.ts`). A fresh page has no range; neither
+ * does a fresh editor here.
+ */
+function forgetLeftoverSelection() {
+  document.getSelection()?.removeAllRanges();
+}
+
 type SetupEditorOptions = {
   extensions?: ExtensionType[];
   enableDomRenderer?: boolean;
@@ -178,6 +195,7 @@ export async function setupEditor(
   const enableDomRenderer = options?.enableDomRenderer ?? false;
 
   forgetPersistedViewport();
+  forgetLeftoverSelection();
 
   const collection = new TestWorkspace(createCollectionOptions());
   collection.storeExtensions = storeExtensions;

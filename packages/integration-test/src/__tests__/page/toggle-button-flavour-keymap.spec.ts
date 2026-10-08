@@ -75,7 +75,22 @@ const focusAndSettle = async (element: HTMLElement) => {
   );
 };
 
-const caretIn = (blockId: string) => {
+/**
+ * Put the caret in `blockId` and WAIT for the selection to reach the DOM.
+ *
+ * When the dispatcher is active, `RangeBinding` mirrors a text selection into
+ * a native range once the host has updated — and a range in a contenteditable
+ * hands the focus to its editing host (`affine-page-root`). Fired without the
+ * wait, that sync landed AFTER `focusAndSettle` had put the focus on the
+ * chevron and silently took it back, so the keystroke never reached the
+ * button. Whether the dispatcher is active at that point is not this spec's
+ * choice: the real mouse stays where the previous spec FILE left it
+ * (`isolate: false`, one page), and a host mounted under it receives a
+ * `pointerenter`, which activates it. `toolbar-format-bar-width.spec.ts`,
+ * whose click on the paragraph parks the pointer over this spec's editor,
+ * failed every test below when it ran first.
+ */
+const caretIn = async (blockId: string) => {
   const { std } = window.editor;
   std.selection.setGroup('note', [
     std.selection.create(TextSelection, {
@@ -83,6 +98,8 @@ const caretIn = (blockId: string) => {
       to: null,
     }),
   ]);
+  await host().updateComplete;
+  await wait();
 };
 
 describe('the flavour keymaps leave the collapse toggle alone', () => {
@@ -138,7 +155,7 @@ describe('the flavour keymaps leave the collapse toggle alone', () => {
 
   test('Tab pressed on the toggle does not indent the block holding the caret', async () => {
     const doc = window.doc;
-    caretIn(siblingId);
+    await caretIn(siblingId);
     await focusAndSettle(toggleOf(headingId));
 
     await userEvent.keyboard('{Tab}');
@@ -156,7 +173,7 @@ describe('the flavour keymaps leave the collapse toggle alone', () => {
     );
     await wait(100);
 
-    caretIn(childId);
+    await caretIn(childId);
     await focusAndSettle(toggleOf(headingId));
 
     await userEvent.keyboard('{Shift>}{Tab}{/Shift}');
@@ -169,7 +186,7 @@ describe('the flavour keymaps leave the collapse toggle alone', () => {
     const doc = window.doc;
     const before = doc.getParent(siblingId)!.children.length;
 
-    caretIn(siblingId);
+    await caretIn(siblingId);
     await focusAndSettle(toggleOf(headingId));
 
     await userEvent.keyboard('{Enter}');
