@@ -116,6 +116,23 @@ describe('duplicating a block with nested children from the page toolbar', () =>
     expectDuplicated();
   });
 
+  // Parent AND child block-selected (a drag over both, Shift+click): the
+  // child is copied once, inside the parent's copy, and the copy still lands
+  // after the parent — `highest` keeps the child, which made it the anchor.
+  test('from a block selection holding the parent and its child', async () => {
+    const { selection } = window.editor.std;
+    const childId = window.doc.getModelById(parentId)!.children[0].id;
+    selection.set(
+      [parentId, childId].map(blockId =>
+        selection.create(BlockSelection, { blockId })
+      )
+    );
+    await settle();
+
+    await clickDuplicate();
+    expectDuplicated();
+  });
+
   test('from a text selection in the parent', async () => {
     const { selection } = window.editor.std;
     selection.set([

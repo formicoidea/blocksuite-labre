@@ -67,7 +67,7 @@ import {
   BlockSelection,
   BlockViewIdentifier,
 } from '@labre/std';
-import { toDraftModel } from '@labre/store';
+import { type BlockModel, toDraftModel } from '@labre/store';
 import { html } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
 
@@ -386,16 +386,29 @@ export const builtinToolbarConfig = {
               );
             }
 
-            // The copy lands right after the last selected block. Said
-            // explicitly: the command's default anchors on the LAST selected
-            // model, which in `flat` mode below is one of its descendants.
+            // The copy lands right after the last selected block that no other
+            // selected block contains. Said explicitly: the command's default
+            // anchors on the LAST selected model, which in `flat` mode below
+            // is a descendant — and `highest` keeps a block-selected child of
+            // a block-selected parent too, so with both selected the copy went
+            // INSIDE the parent, after the child.
             const [, { selectedModels: highest = [] }] = chain
               .pipe(getSelectedModelsCommand, {
                 types: ['block', 'image'],
                 mode: 'highest',
               })
               .run();
-            const last = highest.at(-1);
+            const selected = new Set(highest);
+            const hasSelectedAncestor = (model: BlockModel) => {
+              for (
+                let at = store.getParent(model);
+                at;
+                at = store.getParent(at)
+              )
+                if (selected.has(at)) return true;
+              return false;
+            };
+            const last = highest.findLast(model => !hasSelectedAncestor(model));
             const parentModel = last && store.getParent(last);
             if (!last || !parentModel) return;
 
