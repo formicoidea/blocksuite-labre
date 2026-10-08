@@ -1,5 +1,39 @@
 # @labre/affine-block-callout
 
+## 0.45.1
+
+### Patch Changes
+
+- ffe75a2: A callout selected with its drag handle now opens a block toolbar (#468),
+  centred above it like the paragraph and code block rows. As on those rows,
+  "Turn into" appears only once the callout holds some text.
+  Its "Turn into" offers the text kinds — text, headings, lists, code block,
+  quote — and unwraps the callout: its children take its place, converted to
+  the chosen kind (merged into one code block for "Code block"), their own
+  children kept; the emoji goes with the callout. One undo step restores it,
+  and an entry whose conversion could not complete is not offered. The "⋮"
+  menu adds copy, duplicate and delete, each taking the callout with its
+  content, and the comment button appears when the
+  host provides comments.
+
+  No new translation key: the row reuses `com.labre.root.toolbar.turn-into`
+  ("Turn into") and `com.labre.root.toolbar.conversions` ("Conversions"), now
+  shared chrome wordings (`TOOLBAR_TURN_INTO`, `TOOLBAR_CONVERSIONS_ARIA` in
+  `@labre/affine-shared/services`); the root block's `ROOT_TOOLBAR_*` names for
+  them remain as aliases.
+
+- Updated dependencies [ffe75a2]
+  - @labre/affine-shared@0.45.1
+  - @labre/affine-components@0.45.1
+  - @labre/affine-inline-preset@0.45.1
+  - @labre/affine-rich-text@0.45.1
+  - @labre/affine-widget-slash-menu@0.45.1
+  - @labre/affine-ext-loader@0.45.1
+  - @labre/affine-model@0.45.1
+  - @labre/global@0.45.1
+  - @labre/std@0.45.1
+  - @labre/store@0.45.1
+
 ## 0.45.0
 
 ### Minor Changes
