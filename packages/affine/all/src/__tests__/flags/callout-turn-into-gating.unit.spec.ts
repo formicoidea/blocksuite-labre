@@ -12,9 +12,17 @@
  * reads the container back, the way the other gating suites do. The entries'
  * own `when` (no `enable_callout` read) is pinned beside them, in the callout
  * package's `turn-into-callout.unit.spec.ts`.
+ *
+ * The callout's own block toolbar (#468) is the way back: without a toolbar
+ * module for `affine:callout` the toolbar widget shows NO row for a
+ * block-selected callout (it falls back to the note's row only for
+ * paragraphs, lists, code and images), so a callout could not be turned into
+ * anything. It is mounted the same way, and it is tooling too: the flag that
+ * removes the slash item removes the row with it.
  */
 import { ViewExtensionManager } from '@labre/affine-ext-loader';
 import { TextConversionEntryIdentifier } from '@labre/affine-rich-text';
+import { ToolbarModuleIdentifier } from '@labre/affine-shared/services';
 import { SlashMenuConfigIdentifier } from '@labre/affine-widget-slash-menu';
 import { Container } from '@labre/global/di';
 import { describe, expect, test } from 'vitest';
@@ -60,5 +68,28 @@ describe('the callout slash-menu item follows the callout flag', () => {
     expect(contributedSlashConfigs(scope, { callout: false })).not.toContain(
       'affine:callout'
     );
+  });
+});
+
+describe('the callout block toolbar follows the callout flag (#468)', () => {
+  const calloutRow = (scope: 'page' | 'edgeless', flags: BlockFlags) =>
+    mounted(scope, flags).getAll(ToolbarModuleIdentifier).get('affine:callout');
+
+  test.each(['page', 'edgeless'] as const)(
+    'a selected callout has a row with Turn into (%s)',
+    scope => {
+      const row = calloutRow(scope, {});
+      expect(row).toBeDefined();
+      expect(row!.config.actions.map(action => action.id)).toContain(
+        'a.conversions'
+      );
+      // Centred like the note row; the widget's own default for a block's
+      // row is `top-start` (PO recette of #468).
+      expect(row!.config.placement).toBe('top');
+    }
+  );
+
+  test.each(['page', 'edgeless'] as const)('absent when off (%s)', scope => {
+    expect(calloutRow(scope, { callout: false })).toBeUndefined();
   });
 });

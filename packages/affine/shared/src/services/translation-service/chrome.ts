@@ -1165,6 +1165,25 @@ export const TOOLBAR_CREATE_LINKED_DOC_TITLE: ChromeWording = [
 ];
 
 /**
+ * "Turn into" — the block toolbar's conversions dropdown, said identically by
+ * the note's text row and the callout's own row (#468). Was
+ * `ROOT_TOOLBAR_TURN_INTO` (`blocks/root`); the key is kept.
+ */
+export const TOOLBAR_TURN_INTO: ChromeWording = [
+  'com.labre.root.toolbar.turn-into',
+  'Turn into',
+];
+
+/**
+ * …and that dropdown's accessible name. Was `ROOT_TOOLBAR_CONVERSIONS_ARIA`
+ * (`blocks/root`); the key is kept.
+ */
+export const TOOLBAR_CONVERSIONS_ARIA: ChromeWording = [
+  'com.labre.root.toolbar.conversions',
+  'Conversions',
+];
+
+/**
  * "Edgeless content" — the surface-ref placeholder's own generic reference
  * kind, said identically by the drag-handle preview's fallback label. Was
  * `SURFACE_REF_TYPE_EDGELESS` (`blocks/surface-ref`).
@@ -1430,6 +1449,8 @@ export const CHROME_WORDINGS: readonly ChromeWording[] = [
   COLOR_LABEL,
   FILL_COLOR_LABEL,
   TOOLBAR_CREATE_LINKED_DOC_TITLE,
+  TOOLBAR_TURN_INTO,
+  TOOLBAR_CONVERSIONS_ARIA,
   EDGELESS_CONTENT_LABEL,
   TOOLBAR_EDIT,
   TOOLBAR_REMOVE_LINK,

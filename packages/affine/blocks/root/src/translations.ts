@@ -1,9 +1,11 @@
 import {
   type ChromeWording,
   TOOL_NAME_FRAME,
+  TOOLBAR_CONVERSIONS_ARIA,
   TOOLBAR_CREATE_LINKED_DOC_TITLE,
   TOOLBAR_RELOAD,
   TOOLBAR_REMOVE_LINK,
+  TOOLBAR_TURN_INTO,
 } from '@labre/affine-shared/services';
 
 /**
@@ -14,15 +16,12 @@ import {
 
 /* ── The block contextual toolbar (`configs/toolbar.ts`) ──────────────── */
 
-export const ROOT_TOOLBAR_CONVERSIONS_ARIA: ChromeWording = [
-  'com.labre.root.toolbar.conversions',
-  'Conversions',
-];
-
-export const ROOT_TOOLBAR_TURN_INTO: ChromeWording = [
-  'com.labre.root.toolbar.turn-into',
-  'Turn into',
-];
+/**
+ * Aliases (L7 dedupe): the callout's own row says the same two words (#468),
+ * so they live in `chrome.ts` under the keys they always had.
+ */
+export const ROOT_TOOLBAR_CONVERSIONS_ARIA = TOOLBAR_CONVERSIONS_ARIA;
+export const ROOT_TOOLBAR_TURN_INTO = TOOLBAR_TURN_INTO;
 
 export const ROOT_TOOLBAR_CREATE_TABLE: ChromeWording = [
   'com.labre.root.toolbar.create-table',
@@ -157,14 +156,13 @@ export const ROOT_MINDMAP_SEED_NEW_NODE: ChromeWording = [
 
 /**
  * This package's own CHROME wordings — L7 dedupe aliased
- * `ROOT_TOOLBAR_CREATE_LINKED_DOC`, `ROOT_TOOLBAR_FRAME`, `ROOT_TOOLBAR_RELOAD`
- * and `ROOT_TOOLBAR_REMOVE_LINK` to `chrome.ts` wordings — not listed again
+ * `ROOT_TOOLBAR_CONVERSIONS_ARIA`, `ROOT_TOOLBAR_CREATE_LINKED_DOC`,
+ * `ROOT_TOOLBAR_FRAME`, `ROOT_TOOLBAR_RELOAD`, `ROOT_TOOLBAR_REMOVE_LINK` and
+ * `ROOT_TOOLBAR_TURN_INTO` to `chrome.ts` wordings — not listed again
  * here, same rule the note/slash-menu packages' own chrome aliases already
  * follow.
  */
 export const ROOT_CHROME_WORDINGS: readonly ChromeWording[] = [
-  ROOT_TOOLBAR_CONVERSIONS_ARIA,
-  ROOT_TOOLBAR_TURN_INTO,
   ROOT_TOOLBAR_CREATE_TABLE,
   ROOT_ALIGNMENT_MENU_ARIA,
   ROOT_ALIGN_LEFT,
