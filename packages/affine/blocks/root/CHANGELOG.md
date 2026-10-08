@@ -1,5 +1,59 @@
 # @labre/affine-block-root
 
+## 0.45.1
+
+### Patch Changes
+
+- ffe75a2: A callout selected with its drag handle now opens a block toolbar (#468),
+  centred above it like the paragraph and code block rows. As on those rows,
+  "Turn into" appears only once the callout holds some text.
+  Its "Turn into" offers the text kinds — text, headings, lists, code block,
+  quote — and unwraps the callout: its children take its place, converted to
+  the chosen kind (merged into one code block for "Code block"), their own
+  children kept; the emoji goes with the callout. One undo step restores it,
+  and an entry whose conversion could not complete is not offered. The "⋮"
+  menu adds copy, duplicate and delete, each taking the callout with its
+  content, and the comment button appears when the
+  host provides comments.
+
+  No new translation key: the row reuses `com.labre.root.toolbar.turn-into`
+  ("Turn into") and `com.labre.root.toolbar.conversions` ("Conversions"), now
+  shared chrome wordings (`TOOLBAR_TURN_INTO`, `TOOLBAR_CONVERSIONS_ARIA` in
+  `@labre/affine-shared/services`); the root block's `ROOT_TOOLBAR_*` names for
+  them remain as aliases.
+
+- 1ff2e09: Duplicate in the page block toolbar's "⋮" menu copies a block with its nested children, right after it. A paragraph with an indented child used to duplicate without the child, and with the parent and its child both selected the copy landed inside the parent.
+- Updated dependencies [ffe75a2]
+  - @labre/affine-shared@0.45.1
+  - @labre/affine-block-attachment@0.45.1
+  - @labre/affine-block-bookmark@0.45.1
+  - @labre/affine-block-database@0.45.1
+  - @labre/affine-block-edgeless-text@0.45.1
+  - @labre/affine-block-embed@0.45.1
+  - @labre/affine-block-frame@0.45.1
+  - @labre/affine-block-image@0.45.1
+  - @labre/affine-block-note@0.45.1
+  - @labre/affine-block-paragraph@0.45.1
+  - @labre/affine-block-surface@0.45.1
+  - @labre/affine-components@0.45.1
+  - @labre/data-view@0.45.1
+  - @labre/affine-gfx-brush@0.45.1
+  - @labre/affine-gfx-connector@0.45.1
+  - @labre/affine-gfx-group@0.45.1
+  - @labre/affine-gfx-mindmap@0.45.1
+  - @labre/affine-gfx-note@0.45.1
+  - @labre/affine-gfx-pointer@0.45.1
+  - @labre/affine-gfx-shape@0.45.1
+  - @labre/affine-gfx-text@0.45.1
+  - @labre/affine-inline-preset@0.45.1
+  - @labre/affine-rich-text@0.45.1
+  - @labre/affine-widget-edgeless-toolbar@0.45.1
+  - @labre/affine-ext-loader@0.45.1
+  - @labre/affine-model@0.45.1
+  - @labre/global@0.45.1
+  - @labre/std@0.45.1
+  - @labre/store@0.45.1
+
 ## 0.45.0
 
 ### Patch Changes
