@@ -67,7 +67,7 @@ import {
   BlockSelection,
   BlockViewIdentifier,
 } from '@labre/std';
-import { toDraftModel } from '@labre/store';
+import { type BlockModel, toDraftModel } from '@labre/store';
 import { html } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
 
@@ -386,12 +386,44 @@ export const builtinToolbarConfig = {
               );
             }
 
-            chain
+            // The copy lands right after the last selected block that no other
+            // selected block contains. Said explicitly: the command's default
+            // anchors on the LAST selected model, which in `flat` mode below
+            // is a descendant — and `highest` keeps a block-selected child of
+            // a block-selected parent too, so with both selected the copy went
+            // INSIDE the parent, after the child.
+            const [, { selectedModels: highest = [] }] = chain
               .pipe(getSelectedModelsCommand, {
                 types: ['block', 'image'],
                 mode: 'highest',
               })
-              .pipe(duplicateSelectedModelsCommand)
+              .run();
+            const selected = new Set(highest);
+            const hasSelectedAncestor = (model: BlockModel) => {
+              for (
+                let at = store.getParent(model);
+                at;
+                at = store.getParent(at)
+              )
+                if (selected.has(at)) return true;
+              return false;
+            };
+            const last = highest.findLast(model => !hasSelectedAncestor(model));
+            const parentModel = last && store.getParent(last);
+            if (!last || !parentModel) return;
+
+            // `flat`, not `highest`: `draftSelectedModelsCommand` keeps a
+            // drafted block's children only when they are selected too, so a
+            // paragraph duplicated alone lost its nested children.
+            chain
+              .pipe(getSelectedModelsCommand, {
+                types: ['block', 'image'],
+                mode: 'flat',
+              })
+              .pipe(duplicateSelectedModelsCommand, {
+                parentModel,
+                index: parentModel.children.indexOf(last) + 1,
+              })
               .run();
           },
         },
