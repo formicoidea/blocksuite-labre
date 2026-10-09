@@ -1,6 +1,7 @@
 import type { FrameBlockComponent } from '@labre/affine/blocks/frame';
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import type { FrameBlockModel } from '@labre/affine/model';
+import { getRegisteredCommands, runCommand } from '@labre/affine/std';
 import type { AffineFrameTitleWidget } from '@labre/affine/widgets/frame-title';
 import { Bound } from '@labre/global/gfx';
 import { assertType } from '@labre/global/utils';
@@ -425,5 +426,59 @@ describe('frame', () => {
     expect(frames[0].descendantElements).toHaveLength(2);
     expect(frames[1].descendantElements).toHaveLength(1);
     expect(frames[2].descendantElements).toHaveLength(0);
+  });
+
+  /**
+   * `canvas.frame.reorder` is the one write of the presentation order (ADR
+   * 0034): the frame panel, the order menu and a host's slide panel all reach
+   * it from the registry. Run for real, it must reorder the frames and come
+   * back in ONE undo step — the panel used to take its `captureSync` after the
+   * write, merging the reorder into the gesture before it.
+   */
+  test('canvas.frame.reorder from the registry moves frames and undoes in one step', async () => {
+    // Explicit keys: the model's default `presentationIndex` is random per
+    // frame, which would make the starting order arbitrary.
+    const [a, b, c] = ['a0', 'a1', 'a2'].map((presentationIndex, i) =>
+      service.doc.addBlock(
+        'affine:frame',
+        {
+          xywh: `[${i * 400},0,300,300]`,
+          title: new Text(`Frame ${i + 1}`),
+          presentationIndex,
+        },
+        service.surface.id
+      )
+    );
+    await wait();
+
+    const order = () =>
+      service.doc
+        .getBlocksByFlavour('affine:frame')
+        .map(block => block.model as FrameBlockModel)
+        .sort((x, y) =>
+          x.props.presentationIndex! < y.props.presentationIndex! ? -1 : 1
+        )
+        .map(frame => frame.id);
+    expect(order()).toEqual([a, b, c]);
+
+    const command = getRegisteredCommands(service.std).find(
+      c => c.id === 'canvas.frame.reorder'
+    );
+    expect(command).toBeDefined();
+    runCommand(
+      service.std,
+      command!,
+      { surface: 'agent', source: 'ai' },
+      { ids: [c, b], before: a }
+    );
+    await wait();
+    // Two frames written, kept in their own relative order.
+    expect(order()).toEqual([b, c, a]);
+
+    service.doc.undo();
+    await wait();
+    expect(order()).toEqual([a, b, c]);
+    // The undo took the reorder only, not the frames' creation.
+    expect(service.doc.getBlocksByFlavour('affine:frame')).toHaveLength(3);
   });
 });

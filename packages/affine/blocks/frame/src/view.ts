@@ -2,7 +2,9 @@ import {
   type ViewExtensionContext,
   ViewExtensionProvider,
 } from '@labre/affine-ext-loader';
+import { CommandExtension } from '@labre/std';
 
+import { frameCommands } from './commands.js';
 import { EdgelessClipboardFrameConfig } from './edgeless-clipboard-config';
 import { frameQuickTool } from './edgeless-toolbar';
 import { effects } from './effects';
@@ -34,6 +36,10 @@ export class FrameViewExtension extends ViewExtensionProvider {
       context.register(edgelessNavigatorBgWidget);
       context.register(EdgelessClipboardFrameConfig);
       context.register(FrameBlockInteraction);
+      // The presentation order's one write (ADR 0034). The frame panel also
+      // mounts in page mode: it runs the imported descriptor, not this
+      // registration, so its reorder works in both modes.
+      context.register(CommandExtension(frameCommands));
     }
   }
 }

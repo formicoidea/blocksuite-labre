@@ -1,4 +1,4 @@
-import { EdgelessFrameManager } from '@labre/affine-block-frame';
+import { EdgelessFrameManager, frameCommands } from '@labre/affine-block-frame';
 import type { FrameBlockModel } from '@labre/affine-model';
 import {
   DocModeProvider,
@@ -8,8 +8,14 @@ import {
 import { DisposableGroup } from '@labre/global/disposable';
 import { Bound } from '@labre/global/gfx';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
-import { type EditorHost, ShadowlessElement } from '@labre/std';
-import { generateKeyBetweenV2, GfxControllerIdentifier } from '@labre/std/gfx';
+import {
+  type AnyCommandDescriptor,
+  type CommandInvocation,
+  type EditorHost,
+  runCommand,
+  ShadowlessElement,
+} from '@labre/std';
+import { GfxControllerIdentifier } from '@labre/std/gfx';
 import type { Store } from '@labre/store';
 import { css, html, nothing, type PropertyValues } from 'lit';
 import { property, query, state } from 'lit/decorators.js';
@@ -26,6 +32,21 @@ import { FRAME_PANEL_EMPTY_PLACEHOLDER } from '../translations.js';
 import { startDragging } from '../utils/drag.js';
 
 const compare = EdgelessFrameManager.framePresentationComparator;
+
+/**
+ * How the panel invokes the registry: from the editor's chrome, on the cards
+ * it names, like the selection pane's rows.
+ */
+const PANEL_INVOCATION: CommandInvocation = {
+  surface: 'contextual-toolbar',
+  source: 'toolbar:general',
+};
+
+function reorderCommand(): AnyCommandDescriptor {
+  const command = frameCommands.find(c => c.id === 'canvas.frame.reorder');
+  if (!command) throw new Error('frame panel: no canvas.frame.reorder');
+  return command;
+}
 
 type FrameListItem = {
   frame: FrameBlockModel;
@@ -215,7 +236,7 @@ export class FramePanelBody extends SignalWatcher(
         this.insertIndex = undefined;
 
         if (insertIdx === undefined || this._frameItems.length <= 1) return;
-        this._reorderFrames(selected, framesMap, insertIdx);
+        this._reorderFrames(selected, insertIdx);
       },
       onDragMove: (idx, indicatorTranslateY) => {
         this.insertIndex = idx;
@@ -291,35 +312,28 @@ export class FramePanelBody extends SignalWatcher(
     return frameList;
   }
 
-  private _reorderFrames(
-    selected: string[],
-    framesMap: Map<string, FrameListItem>,
-    insertIndex: number
-  ) {
-    if (insertIndex >= 0 && insertIndex <= this._frameItems.length) {
-      const frames = Array.from(framesMap.values()).map(
-        frameItem => frameItem.frame
-      );
-      const selectedFrames = selected
-        .map(id => framesMap.get(id) as FrameListItem)
-        .map(frameItem => frameItem.frame)
-        .sort(compare);
-
-      // update selected frames index
-      // make the indexes larger than the frame before and smaller than the frame after
-      let before = frames[insertIndex - 1]?.props.presentationIndex || null;
-      const after = frames[insertIndex]?.props.presentationIndex || null;
-      selectedFrames.forEach(frame => {
-        const newIndex = generateKeyBetweenV2(before, after);
-        frame.store.updateBlock(frame, {
-          presentationIndex: newIndex,
-        });
-        before = newIndex;
-      });
-
-      this.editorHost.store.captureSync();
-      this._updateFrames();
-    }
+  /**
+   * Drop the selected cards at the gap `insertIndex` of the list as it stood
+   * when the drag started (selected cards included). The write is
+   * `canvas.frame.reorder` (ADR 0034): the read-only refusal, the no-op check
+   * and the one undo step live in its action, run through the imported
+   * descriptor so the panel reorders in page mode too, where the command is
+   * not registered.
+   */
+  private _reorderFrames(selected: string[], insertIndex: number) {
+    if (insertIndex < 0 || insertIndex > this._frameItems.length) return;
+    const moving = new Set(selected);
+    // The first card at or after the gap that does not move: the moved block
+    // lands right before it, or at the end when every card after it moves.
+    const before =
+      this._frameItems
+        .slice(insertIndex)
+        .find(({ frame }) => !moving.has(frame.id))?.frame.id ?? null;
+    runCommand(this.editorHost.std, reorderCommand(), PANEL_INVOCATION, {
+      ids: selected,
+      before,
+    });
+    this._updateFrames();
   }
 
   private _setDocDisposables(doc: Store) {

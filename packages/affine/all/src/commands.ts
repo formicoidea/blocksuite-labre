@@ -1,3 +1,4 @@
+import { frameCommands } from '@labre/affine-block-frame';
 import {
   copyLinkCommands,
   coreCommands,
@@ -126,6 +127,7 @@ export function getCommands(flags?: LabreFlags): AnyCommandDescriptor[] {
       ...mapQualityCommands,
       ...exportSvgCommands,
       ...selectionPaneCommands,
+      ...frameCommands,
       ...canvasGridCommands,
       ...userLayerCommands,
       ...edgeDirectionCommands,

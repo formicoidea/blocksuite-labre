@@ -158,9 +158,9 @@ export class EdgelessFrameManager extends GfxExtension {
   private _pendingAdoptionTicks = 0;
 
   /**
-   * Get all sorted frames by presentation orderer,
-   * the legacy frame that uses `index` as presentation order
-   * will be put at the beginning of the array.
+   * Every frame, in presentation order (`framePresentationComparator`): by
+   * `presentationIndex`, and the legacy frames that have none AFTER the keyed
+   * ones, ordered among themselves by their stacking `index`.
    */
   get frames() {
     return Object.values(this.gfx.doc.blocks.value)
@@ -660,8 +660,13 @@ export class EdgelessFrameManager extends GfxExtension {
   }
 
   /**
-   * This method will populate `presentationIndex` for all legacy frames,
-   * and keep the orderer of the legacy frames.
+   * Give a `presentationIndex` to legacy frames, keeping their order — but
+   * only on a document where NO frame has one yet. The comparator sorts
+   * keyless frames AFTER keyed ones, so as soon as one frame is keyed the first
+   * frame is keyed and this returns at once: a mix of keyed and keyless frames
+   * is left as it is. In practice a loaded frame always carries a key (the
+   * schema's default is written on load), so this only acts on a hand-built
+   * store. Idempotent; writes through the props proxy.
    */
   refreshLegacyFrameOrder() {
     const frames = this.frames.splice(0, this.frames.length);
