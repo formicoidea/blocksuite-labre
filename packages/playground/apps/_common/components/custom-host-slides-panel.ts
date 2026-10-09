@@ -1,5 +1,6 @@
 import { PresentTool } from '@labre/affine/blocks/frame';
 import {
+  createFramePreview,
   fitToModel,
   frameCommands,
   frameList,
@@ -63,11 +64,21 @@ export class CustomHostSlidesPanel extends LitElement {
     }
     .row {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       gap: 6px;
       padding: 6px 4px;
       border-radius: 4px;
       cursor: pointer;
+    }
+    .preview {
+      flex-basis: 100%;
+      width: 264px;
+      height: 150px;
+      border: 1px solid var(--affine-border-color, #e3e2e4);
+      border-radius: 4px;
+      overflow: hidden;
+      background: var(--affine-background-primary-color, #fff);
     }
     .row:hover {
       background: var(--affine-hover-color, rgba(0, 0, 0, 0.04));
@@ -105,10 +116,22 @@ export class CustomHostSlidesPanel extends LitElement {
     this._disposeEffect = effect(() => {
       const std = this.editor?.std;
       if (!std) return;
+      // A new std means new previews: the old ones held the old editor.
+      this._previews.clear();
       const refresh = () => {
         this._frames = frameList(std).map(frame => ({
           id: frame.id,
           title: frame.props.title.toString(),
+          // The live preview the library's own card shows, through the façade;
+          // one mini editor per card, kept across renders.
+          preview:
+            this._previews.get(frame.id) ??
+            this._previews
+              .set(
+                frame.id,
+                createFramePreview(std, frame, { width: 264, height: 150 })
+              )
+              .get(frame.id)!,
         }));
         this._readonly = std.store.readonly;
       };
@@ -122,8 +145,11 @@ export class CustomHostSlidesPanel extends LitElement {
     super.disconnectedCallback();
     this._disposeEffect?.();
     this._disposeEffect = null;
+    this._previews.clear();
     delete document.body.dataset.hostSlides;
   }
+
+  private readonly _previews = new Map<string, HTMLElement>();
 
   /**
    * Page mode has no canvas: switch first, then act on the edgeless std the
@@ -214,6 +240,7 @@ export class CustomHostSlidesPanel extends LitElement {
                 >
                   ▼
                 </button>
+                <div class="preview">${frame.preview}</div>
               </div>`
           )}
     </div>`;
@@ -226,7 +253,11 @@ export class CustomHostSlidesPanel extends LitElement {
   }
 
   @state()
-  private accessor _frames: { id: string; title: string }[] = [];
+  private accessor _frames: {
+    id: string;
+    title: string;
+    preview: HTMLElement;
+  }[] = [];
 
   @state()
   private accessor _readonly = false;
