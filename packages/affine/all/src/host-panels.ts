@@ -1,4 +1,8 @@
 import { EdgelessFrameManagerIdentifier } from '@labre/affine-block-frame';
+import {
+  AFFINE_FRAME_PREVIEW,
+  type FramePreview,
+} from '@labre/affine-fragment-frame-panel';
 import type { FrameBlockModel } from '@labre/affine-model';
 import type { BlockStdScope } from '@labre/std';
 import { GfxControllerIdentifier, type GfxModel } from '@labre/std/gfx';
@@ -107,4 +111,32 @@ export function fitToModel(
   if (!model?.elementBound) return false;
   gfx.viewport.setViewportByBound(model.elementBound, padding, true);
   return true;
+}
+
+/**
+ * The live preview of a frame the library's own frame panel draws on each
+ * card: a read-only mini editor clipped to the frame's bounds, repainted as
+ * the frame's content changes. Not a picture — a host that wants a static
+ * thumbnail renders one through `ExportManager` instead.
+ *
+ * Returns the element ready to be appended; `width` and `height` are the
+ * preview box in CSS pixels (the panel's card is 280 × 166), `fillScreen`
+ * covers the box instead of containing the frame. One mini editor per
+ * preview: mount only the cards on screen. The element is defined by the
+ * frame panel's view extension, so it renders nothing in an assembly where the
+ * `frame` flag is off (ADR 0009) — the same assembly where there is no frame
+ * to preview.
+ */
+export function createFramePreview(
+  std: BlockStdScope,
+  frame: FrameBlockModel,
+  options: { width?: number; height?: number; fillScreen?: boolean } = {}
+): FramePreview {
+  const preview = document.createElement(AFFINE_FRAME_PREVIEW) as FramePreview;
+  preview.std = std;
+  preview.frame = frame;
+  if (options.width !== undefined) preview.surfaceWidth = options.width;
+  if (options.height !== undefined) preview.surfaceHeight = options.height;
+  if (options.fillScreen !== undefined) preview.fillScreen = options.fillScreen;
+  return preview;
 }

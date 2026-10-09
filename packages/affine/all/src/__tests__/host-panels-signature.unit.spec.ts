@@ -10,6 +10,7 @@ import {
   type AnyCommandDescriptor,
   armArtefact,
   type CommandInvocation,
+  createFramePreview,
   fitToModel,
   frameCommands,
   frameList,
@@ -59,6 +60,13 @@ const hostCalls = (
   if (reorder) runCommand(std, reorder, invocation, params);
 
   const frames: FrameBlockModel[] = frameList(std);
+  const preview: HTMLElement = createFramePreview(std, frames[0]);
+  const sized: HTMLElement = createFramePreview(std, frames[0], {
+    width: 280,
+    height: 166,
+    fillScreen: false,
+  });
+  preview.append(sized);
   selectModels(
     std,
     frames.map(frame => frame.id)
@@ -87,6 +95,7 @@ describe('@labre/affine/host-panels keeps its 0.46 shape', () => {
     expectTypeOf(fitToModel).returns.toEqualTypeOf<boolean>();
     expectTypeOf(frameList).returns.toEqualTypeOf<FrameBlockModel[]>();
     expectTypeOf(selectModels).returns.toEqualTypeOf<void>();
+    expectTypeOf(createFramePreview).returns.toMatchTypeOf<HTMLElement>();
     expectTypeOf(getRegisteredCommands).returns.toEqualTypeOf<
       AnyCommandDescriptor[]
     >();
