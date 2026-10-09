@@ -77,6 +77,7 @@ import { createTestEditor } from '../../starter/utils/extensions.js';
 import { mockEdgelessTheme } from '../mock-services.js';
 import type { CustomAdapterPanel } from './custom-adapter-panel.js';
 import type { CustomFramePanel } from './custom-frame-panel.js';
+import type { CustomHostSlidesPanel } from './custom-host-slides-panel.js';
 import type { CustomOutlinePanel } from './custom-outline-panel.js';
 import type { CustomOutlineViewer } from './custom-outline-viewer.js';
 import type { DocsPanel } from './docs-panel.js';
@@ -674,6 +675,10 @@ export class StarterDebugMenu extends ShadowlessElement {
     this.framePanel.toggleDisplay();
   }
 
+  private _toggleHostSlidesPanel() {
+    this.hostSlidesPanel.toggleDisplay();
+  }
+
   private _toggleAdapterPanel() {
     this.adapterPanel.toggleDisplay();
   }
@@ -948,6 +953,9 @@ export class StarterDebugMenu extends ShadowlessElement {
               <sl-menu-item @click="${this._toggleFramePanel}">
                 Toggle Frame Panel
               </sl-menu-item>
+              <sl-menu-item @click="${this._toggleHostSlidesPanel}">
+                Toggle Host Slides Panel
+              </sl-menu-item>
               <sl-menu-item @click="${this._toggleCommentPanel}">
                 Toggle Comment Panel
               </sl-menu-item>
@@ -1085,6 +1093,9 @@ export class StarterDebugMenu extends ShadowlessElement {
 
   @property({ attribute: false })
   accessor framePanel!: CustomFramePanel;
+
+  @property({ attribute: false })
+  accessor hostSlidesPanel!: CustomHostSlidesPanel;
 
   @property({ attribute: false })
   accessor adapterPanel!: CustomAdapterPanel;

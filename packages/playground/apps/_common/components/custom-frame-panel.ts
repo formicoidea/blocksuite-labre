@@ -20,6 +20,10 @@ export class CustomFramePanel extends WithDisposable(ShadowlessElement) {
       padding-top: 16px;
       z-index: 1;
     }
+    /* Beside the host slides panel while it is open (same width, same edge). */
+    body[data-host-slides] .custom-frame-container {
+      right: 336px;
+    }
   `;
 
   private _renderPanel() {
