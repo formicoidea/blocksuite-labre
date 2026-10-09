@@ -25,7 +25,7 @@ export const reorderFramesParams = z.object({
 export type ReorderFramesParams = z.infer<typeof reorderFramesParams>;
 
 /**
- * Reorder the presentation (ADR 0034, proposed). The frame panel's drag, the
+ * Reorder the presentation (ADR 0034). The frame panel's drag, the
  * presentation toolbar's order menu and a host's own slide panel all run it
  * through `runCommand`, so the read-only refusal, the no-op check and the one
  * undo step live in the action, once.

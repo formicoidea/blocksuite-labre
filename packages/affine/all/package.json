@@ -300,6 +300,7 @@
     "./flags": "./src/flags.ts",
     "./shortcuts": "./src/shortcuts.ts",
     "./commands": "./src/commands.ts",
+    "./host-panels": "./src/host-panels.ts",
     "./frameworks": "./src/frameworks.ts",
     "./translations": "./src/translations.ts",
     "./model": "./src/model/index.ts",

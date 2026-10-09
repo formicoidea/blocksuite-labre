@@ -1,6 +1,6 @@
 # ADR 0034 — One seam per panel the library opens; one façade for the host's own panels
 
-- Status: proposed (2026-10-09)
+- Status: accepted (2026-10-09)
 - Deciders: Mathieu Jolly
 - Relates to [ADR 0008](./0008-command-registry-foundation.md) (one
   command registry, `runCommand` as the single bottleneck),

@@ -1,5 +1,5 @@
 /**
- * One write of the presentation order (ADR 0034, proposed).
+ * One write of the presentation order (ADR 0034).
  *
  * Why this spec exists: two sites wrote `presentationIndex` by hand — the frame
  * panel's drag and the presentation toolbar's order menu — neither refusing a

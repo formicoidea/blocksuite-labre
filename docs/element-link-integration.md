@@ -34,11 +34,16 @@ provider contracts already used by other features, so wiring is typically
 
 ## What the host must register
 
-| Capability            | Provider (lib identifier)                                                                 | Already used by                  |
-| --------------------- | ----------------------------------------------------------------------------------------- | -------------------------------- |
-| Pick a doc or URL     | `QuickSearchProvider` (`@labre/affine-shared/services`)                                   | bookmark "add link", embed doc   |
-| Open the linked doc   | `RefNodeSlotsProvider` (`@labre/affine-inline-reference`) — subscribe to `docLinkClicked` | `@`-references, embed linked doc |
-| (optional) side panel | `SidebarExtensionIdentifier` (`@labre/affine-shared/services`)                            | existing doc side-view           |
+| Capability          | Provider (lib identifier)                                                                 | Already used by                  |
+| ------------------- | ----------------------------------------------------------------------------------------- | -------------------------------- |
+| Pick a doc or URL   | `QuickSearchProvider` (`@labre/affine-shared/services`)                                   | bookmark "add link", embed doc   |
+| Open the linked doc | `RefNodeSlotsProvider` (`@labre/affine-inline-reference`) — subscribe to `docLinkClicked` | `@`-references, embed linked doc |
+
+There is no separate side-panel seam: the document side-view is wherever the
+host's `docLinkClicked` handler opens the linked doc (see the checklist below).
+The panel seams the library does have (catalogue, selection pane, outline) are
+in [`integrate/04-host-seams.md`](integrate/04-host-seams.md); none of them
+opens a document (ADR 0034).
 
 Behaviour when absent:
 

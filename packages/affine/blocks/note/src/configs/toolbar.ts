@@ -2,7 +2,7 @@ import { EdgelessLegacySlotIdentifier } from '@labre/affine-block-surface';
 import { NoteBlockModel, NoteDisplayMode } from '@labre/affine-model';
 import {
   NotificationProvider,
-  SidebarExtensionIdentifier,
+  OutlinePanelProvider,
   TOAST_NOTE_REMOVED_FROM_PAGE,
   type ToolbarAction,
   type ToolbarContext,
@@ -17,7 +17,7 @@ import {
   InsertIntoPageIcon,
   ScissorsIcon,
 } from '@blocksuite/icons/lit';
-import { BlockFlavourIdentifier } from '@labre/std';
+import { BlockFlavourIdentifier, type BlockStdScope } from '@labre/std';
 import type { ExtensionType } from '@labre/store';
 import { computed } from '@preact/signals-core';
 import { html } from 'lit';
@@ -26,8 +26,10 @@ import { changeNoteDisplayMode } from '../commands';
 import { NoteConfigExtension } from '../config';
 import {
   NOTE_TOAST_ADDED_TO_PAGE_BODY,
+  NOTE_TOAST_ADDED_TO_PAGE_BODY_NO_TOC,
   NOTE_TOAST_DISPLAYED_IN_PAGE_MODE,
   NOTE_TOAST_REMOVED_FROM_PAGE_BODY,
+  NOTE_TOAST_REMOVED_FROM_PAGE_BODY_NO_TOC,
   NOTE_TOAST_VIEW_IN_TOC,
   NOTE_TOOLBAR_AUTO_HEIGHT,
   NOTE_TOOLBAR_CUSTOMIZED_HEIGHT,
@@ -310,6 +312,42 @@ const builtinSurfaceToolbarConfig = {
   when: ctx => ctx.getSurfaceModelsByType(NoteBlockModel).length > 0,
 } as const satisfies ToolbarModuleConfig;
 
+/**
+ * The toast shown after a note's display mode changes. Its "View in TOC" link
+ * is offered only when the host registered an outline panel
+ * (`OutlinePanelExtension`, ADR 0034 §1): a link that opens nothing is a lie,
+ * so a host with no outline, or one that passed `null`, gets a toast with no
+ * link, and a body without the "Find it in the TOC" sentence that points at
+ * it.
+ */
+export function displayModeToast(std: BlockStdScope, newMode: NoteDisplayMode) {
+  const outline = std.getOptional(OutlinePanelProvider);
+  const removed = newMode === NoteDisplayMode.EdgelessOnly;
+  const title = removed
+    ? TOAST_NOTE_REMOVED_FROM_PAGE
+    : NOTE_TOAST_DISPLAYED_IN_PAGE_MODE;
+  const body = removed
+    ? outline
+      ? NOTE_TOAST_REMOVED_FROM_PAGE_BODY
+      : NOTE_TOAST_REMOVED_FROM_PAGE_BODY_NO_TOC
+    : outline
+      ? NOTE_TOAST_ADDED_TO_PAGE_BODY
+      : NOTE_TOAST_ADDED_TO_PAGE_BODY_NO_TOC;
+  return {
+    title: translateKey(std, ...title),
+    message: translateKey(std, ...body),
+    actions: outline
+      ? [
+          {
+            key: 'view-in-toc',
+            label: translateKey(std, ...NOTE_TOAST_VIEW_IN_TOC),
+            onClick: () => outline.open(),
+          },
+        ]
+      : [],
+  };
+}
+
 function setDisplayMode(
   ctx: ToolbarContext,
   model: NoteBlockModel,
@@ -328,33 +366,11 @@ function setDisplayMode(
     ctx.selection.clear();
   }
 
-  const data =
-    newMode === NoteDisplayMode.EdgelessOnly
-      ? {
-          title: translateKey(ctx.std, ...TOAST_NOTE_REMOVED_FROM_PAGE),
-          message: translateKey(ctx.std, ...NOTE_TOAST_REMOVED_FROM_PAGE_BODY),
-        }
-      : {
-          title: translateKey(ctx.std, ...NOTE_TOAST_DISPLAYED_IN_PAGE_MODE),
-          message: translateKey(ctx.std, ...NOTE_TOAST_ADDED_TO_PAGE_BODY),
-        };
-
   const notification = ctx.std.getOptional(NotificationProvider);
   notification?.notifyWithUndoAction({
-    title: data.title,
-    message: data.message,
+    ...displayModeToast(ctx.std, newMode),
     accent: 'success',
     duration: 5 * 1000,
-    actions: [
-      {
-        key: 'view-in-toc',
-        label: translateKey(ctx.std, ...NOTE_TOAST_VIEW_IN_TOC),
-        onClick: () => {
-          const sidebar = ctx.std.getOptional(SidebarExtensionIdentifier);
-          sidebar?.open('outline');
-        },
-      },
-    ],
   });
 
   ctx.track('NoteDisplayModeChanged', {
