@@ -38,7 +38,7 @@ One file per decision. Format and lifecycle in
 | [0031](0031-canvas-layers-hide-and-grid.md)                    | Layers, shared hide, shared grid     | accepted                  | Layer records on the surface, one optional `layer` id per element; local hide is never stored; `hiddenForEveryone` is not `hidden`. |
 | [0032](0032-wardley-svg-recognises-roles.md)                   | Wardley SVG recognises roles         | accepted                  | Supersedes 0012 P2's "geometry only" for Wardley: producer markers, plot recovery, native map plus sketch remainder.                |
 | [0033](0033-board-not-resunk-by-its-own-move.md)               | Board not re-sunk by its own move    | accepted                  | A board is lowered under what it covers only when placed; its own move never lowers it.                                             |
-| [0034](0034-panel-seams-and-host-panels-facade.md)             | Panel seams and host-panels façade   | proposed                  | One DI seam per panel the library opens, no router; `@labre/affine/host-panels` gathers the host→editor verbs; one reorder drag.    |
+| [0034](0034-panel-seams-and-host-panels-facade.md)             | Panel seams and host-panels façade   | accepted                  | One DI seam per panel the library opens, no router; `@labre/affine/host-panels` gathers the host→editor verbs; one reorder drag.    |
 
 Related documents that are not ADRs:
 

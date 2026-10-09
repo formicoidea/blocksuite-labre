@@ -55,6 +55,22 @@ Typical changes a host sees, from the Labre app's history:
 Six weeks of library in one hop produced three compile breaks and one silent
 behaviour change. Upgrade at every minor.
 
+## 0.45 → 0.46
+
+One intended compile break, for a host that registered the sidebar seam
+inherited from AFFiNE: it is removed, not deprecated (a public export is not a
+persisted identifier, ADR 0034 §2), and the fix is one rename. Every other type
+a host implements or calls keeps its 0.45 shape. What a host sees:
+
+| Kind                       | Change                                                                                                                                                                                                                                                                   | What to do                                                                                                                                                              |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| commands are added         | `canvas.frame.reorder { ids, before }` (`before: null` = the end), `owner: 'core'`, on the agent surface, exported with `frameCommands` and `reorderFramesParams`; `canvas.element.reorder` also accepts `ids` (`id` still works)                                        | nothing if you list commands from `getRegisteredCommands`; a slide panel of your own reorders with it ([08-host-panels.md](08-host-panels.md))                          |
+| exports are added          | `@labre/affine/host-panels`: the verbs a host's own panel calls, gathered from four packages, plus `frameList`, `selectModels` and `fitToModel`                                                                                                                          | alias the subpath like `./commands`; import your panel's verbs from it rather than from a widget package                                                                |
+| a seam is replaced         | `SidebarExtension` / `SidebarService` / `SidebarExtensionIdentifier` are removed; `OutlinePanelExtension({ open, close } \| null)` / `OutlinePanelProvider` replace them. Its only caller is the note toast's "View in TOC" link, now offered only when the seam answers | compile error if you implemented the old seam: register `OutlinePanelExtension({ open: () => showOutline(), close })` instead. Nothing to do if you never registered it |
+| a behaviour changes        | the frame panel's drag refuses a read-only document, draws its drop line under the last card for a drop at the end, and is one undo step (it writes through `canvas.frame.reorder`)                                                                                      | nothing                                                                                                                                                                 |
+| a behaviour changes        | the selection pane's drag moves every selected row of one stack together (a selection spanning several stacks is refused), and Escape during a drag cancels it: nothing is written and the pane stays open                                                               | update a smoke test that pressed Escape to close the pane mid-drag                                                                                                      |
+| translation keys are added | `com.labre.command.canvas.frame.reorder` and its `.description`                                                                                                                                                                                                          | translate the delta (`yarn i18n:manifest`)                                                                                                                              |
+
 ## 0.43 → 0.45 (0.44.0 was versioned but never published)
 
 No compile break: every type a host implements or calls keeps its 0.43
@@ -110,3 +126,5 @@ const FRAMEWORKS = FRAMEWORK_DESCRIPTORS.map(d => BUNDLES[d.id]);
 Open an issue on the library repository. If issues are disabled there, the
 Labre app tracks pending requests in its own `docs/adr/0002`; the library
 maintainers read it.
+
+Next: [08-host-panels.md](08-host-panels.md).

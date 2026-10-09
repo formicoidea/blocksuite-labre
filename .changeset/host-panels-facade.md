@@ -1,0 +1,7 @@
+---
+'@labre/affine': minor
+---
+
+New entry `@labre/affine/host-panels`: the verbs a host's own panel calls, in one module of plain functions with no Lit type in a signature (ADR 0034, `docs/integrate/08-host-panels.md`). It re-exports `runCommand`, `getCommandsForSurface`, `getCommandIcon`, `getRegisteredCommands` and the types `AnyCommandDescriptor`, `CommandInvocation`, `CommandOwner`, `CommandSurface`; `armArtefact`; `selectionPaneTree` and the type `SelectionPaneNode`; `frameCommands`, `reorderFramesParams` and the type `ReorderFramesParams`. Three functions are new: `frameList(std)` (the frames in presentation order), `selectModels(std, ids)` and `fitToModel(std, id, padding?)` (returns `false` for an unknown id, never switches mode). Alias the subpath like `./commands`.
+
+Removed: `SidebarExtension`, `SidebarService` and `SidebarExtensionIdentifier` (`@labre/affine/shared/services`), the sidebar seam inherited from AFFiNE. Replaced by `OutlinePanelExtension({ open, close } | null)` and `OutlinePanelProvider`, shaped like `SelectionPaneExtension`. A host that registered the old seam gets a compile error at upgrade; the fix is one rename. Its only caller, the "View in TOC" link of the note toast, is now offered only when the outline seam answers, instead of always being shown and doing nothing without a sidebar.

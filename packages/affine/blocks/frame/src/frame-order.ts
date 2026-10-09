@@ -4,7 +4,7 @@ import { generateKeyBetweenV2, GfxControllerIdentifier } from '@labre/std/gfx';
 import { EdgelessFrameManagerIdentifier } from './frame-manager.js';
 
 /**
- * The one write of the frames' PRESENTATION order (ADR 0034, proposed): the
+ * The one write of the frames' PRESENTATION order (ADR 0034): the
  * order a presentation walks the frames in, held by each frame's
  * `presentationIndex` — a fractional key, never a position.
  *

@@ -2,7 +2,7 @@ import { EdgelessLegacySlotIdentifier } from '@labre/affine-block-surface';
 import { NoteBlockModel, NoteDisplayMode } from '@labre/affine-model';
 import {
   NotificationProvider,
-  SidebarExtensionIdentifier,
+  OutlinePanelProvider,
   TOAST_NOTE_REMOVED_FROM_PAGE,
   type ToolbarAction,
   type ToolbarContext,
@@ -17,7 +17,7 @@ import {
   InsertIntoPageIcon,
   ScissorsIcon,
 } from '@blocksuite/icons/lit';
-import { BlockFlavourIdentifier } from '@labre/std';
+import { BlockFlavourIdentifier, type BlockStdScope } from '@labre/std';
 import type { ExtensionType } from '@labre/store';
 import { computed } from '@preact/signals-core';
 import { html } from 'lit';
@@ -310,6 +310,24 @@ const builtinSurfaceToolbarConfig = {
   when: ctx => ctx.getSurfaceModelsByType(NoteBlockModel).length > 0,
 } as const satisfies ToolbarModuleConfig;
 
+/**
+ * The toast's "View in TOC" link, offered only when the host registered an
+ * outline panel (`OutlinePanelExtension`, ADR 0034 §1): a link that opens
+ * nothing is a lie, so a host with no outline, or one that passed `null`,
+ * gets a toast with no link.
+ */
+export function viewInTocActions(std: BlockStdScope) {
+  const outline = std.getOptional(OutlinePanelProvider);
+  if (!outline) return [];
+  return [
+    {
+      key: 'view-in-toc',
+      label: translateKey(std, ...NOTE_TOAST_VIEW_IN_TOC),
+      onClick: () => outline.open(),
+    },
+  ];
+}
+
 function setDisplayMode(
   ctx: ToolbarContext,
   model: NoteBlockModel,
@@ -345,16 +363,7 @@ function setDisplayMode(
     message: data.message,
     accent: 'success',
     duration: 5 * 1000,
-    actions: [
-      {
-        key: 'view-in-toc',
-        label: translateKey(ctx.std, ...NOTE_TOAST_VIEW_IN_TOC),
-        onClick: () => {
-          const sidebar = ctx.std.getOptional(SidebarExtensionIdentifier);
-          sidebar?.open('outline');
-        },
-      },
-    ],
+    actions: viewInTocActions(ctx.std),
   });
 
   ctx.track('NoteDisplayModeChanged', {
