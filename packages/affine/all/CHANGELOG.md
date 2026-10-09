@@ -1,5 +1,98 @@
 # @labre/affine
 
+## 0.46.0
+
+### Minor Changes
+
+- d7642ca: New entry `@labre/affine/host-panels`: the verbs a host's own panel calls, in one module of plain functions with no Lit type in a signature (ADR 0034, `docs/integrate/08-host-panels.md`). It re-exports `runCommand`, `getCommandsForSurface`, `getCommandIcon`, `getRegisteredCommands` and the types `AnyCommandDescriptor`, `CommandInvocation`, `CommandOwner`, `CommandSurface`; `armArtefact`; `selectionPaneTree` and the type `SelectionPaneNode`; `frameCommands`, `reorderFramesParams` and the type `ReorderFramesParams`. Four functions are new: `frameList(std)` (the frames in presentation order), `selectModels(std, ids)`, `fitToModel(std, id, padding?)` (returns `false` for an unknown id, never switches mode) and `createFramePreview(std, frame, options?)` (the live read-only mini editor the library's frame panel draws on each card, as an element to append). `@labre/affine-fragment-frame-panel` now exports `FramePreview` and its tag `AFFINE_FRAME_PREVIEW`. Alias the subpath like `./commands`.
+
+  Removed: `SidebarExtension`, `SidebarService` and `SidebarExtensionIdentifier` (`@labre/affine/shared/services`), the sidebar seam inherited from AFFiNE. Replaced by `OutlinePanelExtension({ open, close } | null)` and `OutlinePanelProvider`, shaped like `SelectionPaneExtension`. A host that registered the old seam gets a compile error at upgrade; the fix is one rename. Its only caller, the "View in TOC" link of the note toast, is now offered only when the outline seam answers, instead of always being shown and doing nothing without a sidebar; without it, the toast body also drops its "Find it in the TOC for quick navigation." sentence. New keys `com.labre.note.toast.removed-from-page.body-no-toc` and `com.labre.note.toast.added-to-page.body-no-toc`.
+
+### Patch Changes
+
+- Updated dependencies [c615e39]
+- Updated dependencies [f076627]
+  - @labre/affine-block-frame@0.46.0
+  - @labre/affine-shared@0.46.0
+  - @labre/affine-block-root@0.46.0
+  - @labre/affine-block-surface-ref@0.46.0
+  - @labre/affine-fragment-frame-panel@0.46.0
+  - @labre/affine-widget-edgeless-selected-rect@0.46.0
+  - @labre/affine-block-attachment@0.46.0
+  - @labre/affine-block-bookmark@0.46.0
+  - @labre/affine-block-callout@0.46.0
+  - @labre/affine-block-code@0.46.0
+  - @labre/affine-block-data-view@0.46.0
+  - @labre/affine-block-database@0.46.0
+  - @labre/affine-block-divider@0.46.0
+  - @labre/affine-block-edgeless-text@0.46.0
+  - @labre/affine-block-embed@0.46.0
+  - @labre/affine-block-embed-doc@0.46.0
+  - @labre/affine-block-image@0.46.0
+  - @labre/affine-block-latex@0.46.0
+  - @labre/affine-block-list@0.46.0
+  - @labre/affine-block-note@0.46.0
+  - @labre/affine-block-paragraph@0.46.0
+  - @labre/affine-block-surface@0.46.0
+  - @labre/affine-block-table@0.46.0
+  - @labre/affine-components@0.46.0
+  - @labre/data-view@0.46.0
+  - @labre/affine-foundation@0.46.0
+  - @labre/affine-fragment-adapter-panel@0.46.0
+  - @labre/affine-fragment-doc-title@0.46.0
+  - @labre/affine-fragment-outline@0.46.0
+  - @labre/affine-gfx-bpmn@0.46.0
+  - @labre/affine-gfx-brush@0.46.0
+  - @labre/affine-gfx-c4@0.46.0
+  - @labre/affine-gfx-connector@0.46.0
+  - @labre/affine-gfx-cynefin-estuarine@0.46.0
+  - @labre/affine-gfx-ddd-aggregate@0.46.0
+  - @labre/affine-gfx-ddd-context-map@0.46.0
+  - @labre/affine-gfx-ddd-core-domain@0.46.0
+  - @labre/affine-gfx-ddd-event-storming@0.46.0
+  - @labre/affine-gfx-ddd-shared@0.46.0
+  - @labre/affine-gfx-edgy@0.46.0
+  - @labre/affine-gfx-group@0.46.0
+  - @labre/affine-gfx-link@0.46.0
+  - @labre/affine-gfx-mindmap@0.46.0
+  - @labre/affine-gfx-note@0.46.0
+  - @labre/affine-gfx-pointer@0.46.0
+  - @labre/affine-gfx-shape@0.46.0
+  - @labre/affine-gfx-template@0.46.0
+  - @labre/affine-gfx-text@0.46.0
+  - @labre/affine-gfx-uml@0.46.0
+  - @labre/affine-gfx-wardley@0.46.0
+  - @labre/affine-inline-comment@0.46.0
+  - @labre/affine-inline-footnote@0.46.0
+  - @labre/affine-inline-latex@0.46.0
+  - @labre/affine-inline-link@0.46.0
+  - @labre/affine-inline-mention@0.46.0
+  - @labre/affine-inline-preset@0.46.0
+  - @labre/affine-inline-reference@0.46.0
+  - @labre/affine-rich-text@0.46.0
+  - @labre/affine-widget-drag-handle@0.46.0
+  - @labre/affine-widget-edgeless-auto-connect@0.46.0
+  - @labre/affine-widget-edgeless-dragging-area@0.46.0
+  - @labre/affine-widget-edgeless-toolbar@0.46.0
+  - @labre/affine-widget-edgeless-zoom-toolbar@0.46.0
+  - @labre/affine-widget-frame-title@0.46.0
+  - @labre/affine-widget-keyboard-toolbar@0.46.0
+  - @labre/affine-widget-linked-doc@0.46.0
+  - @labre/affine-widget-note-slicer@0.46.0
+  - @labre/affine-widget-page-dragging-area@0.46.0
+  - @labre/affine-widget-remote-selection@0.46.0
+  - @labre/affine-widget-scroll-anchoring@0.46.0
+  - @labre/affine-widget-slash-menu@0.46.0
+  - @labre/affine-widget-toolbar@0.46.0
+  - @labre/affine-widget-viewport-overlay@0.46.0
+  - @labre/affine-ext-loader@0.46.0
+  - @labre/affine-gfx-turbo-renderer@0.46.0
+  - @labre/affine-model@0.46.0
+  - @labre/global@0.46.0
+  - @labre/std@0.46.0
+  - @labre/store@0.46.0
+  - @labre/sync@0.46.0
+
 ## 0.45.1
 
 ### Patch Changes

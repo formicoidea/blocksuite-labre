@@ -1,5 +1,26 @@
 # @labre/affine-block-frame
 
+## 0.46.0
+
+### Minor Changes
+
+- c615e39: New command `canvas.frame.reorder` (`{ ids, before }`, `before: null` = the end): the one write of the frames' presentation order, exported with its `reorderFramesParams` schema and the `reorderFramePresentation` action. The frame panel's drag and the presentation toolbar's order menu now go through it, so on a read-only document they write nothing, a drop that changes nothing pushes no undo step, and a reorder is undone in one step instead of merging into the gesture before it. A host's own slide panel runs the same command through `runCommand`. New keys `com.labre.command.canvas.frame.reorder` and `com.labre.command.canvas.frame.reorder.description`.
+
+### Patch Changes
+
+- Updated dependencies [f076627]
+  - @labre/affine-shared@0.46.0
+  - @labre/affine-block-surface@0.46.0
+  - @labre/affine-components@0.46.0
+  - @labre/affine-gfx-pointer@0.46.0
+  - @labre/affine-widget-edgeless-toolbar@0.46.0
+  - @labre/affine-widget-frame-title@0.46.0
+  - @labre/affine-ext-loader@0.46.0
+  - @labre/affine-model@0.46.0
+  - @labre/global@0.46.0
+  - @labre/std@0.46.0
+  - @labre/store@0.46.0
+
 ## 0.45.1
 
 ### Patch Changes
