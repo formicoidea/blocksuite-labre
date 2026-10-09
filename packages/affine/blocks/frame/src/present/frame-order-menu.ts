@@ -1,14 +1,42 @@
-import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
 import { DisposableGroup } from '@labre/global/disposable';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
-import type { BlockComponent } from '@labre/std';
-import { generateKeyBetweenV2 } from '@labre/std/gfx';
+import {
+  type AnyCommandDescriptor,
+  type BlockComponent,
+  type CommandInvocation,
+  runCommand,
+} from '@labre/std';
 import { css, html, LitElement, nothing } from 'lit';
 import { property, query, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 
+import { frameCommands } from '../commands.js';
 import { EdgelessFrameManagerIdentifier } from '../frame-manager';
 
+/**
+ * How the menu invokes the registry: from the editor's chrome, on the frames
+ * it names, like the selection pane's rows.
+ */
+const MENU_INVOCATION: CommandInvocation = {
+  surface: 'contextual-toolbar',
+  source: 'toolbar:general',
+};
+
+function reorderCommand(): AnyCommandDescriptor {
+  const command = frameCommands.find(c => c.id === 'canvas.frame.reorder');
+  if (!command) throw new Error('frame order menu: no canvas.frame.reorder');
+  return command;
+}
+
+/**
+ * The presentation toolbar's order menu. Its WRITE is `canvas.frame.reorder`
+ * (ADR 0034); its drag gesture is its own.
+ *
+ * ponytail: a drag-to-reorder gesture of its own, beside the frame panel's and
+ * the selection pane's — its ceiling is a 256px popover, which the panels' one
+ * controller (`createPanelReorderDrag`, ADR 0034) is not built for. If the
+ * menu ever becomes a panel, move it onto that controller and delete this one.
+ */
 export class EdgelessFrameOrderMenu extends SignalWatcher(
   WithDisposable(LitElement)
 ) {
@@ -97,10 +125,6 @@ export class EdgelessFrameOrderMenu extends SignalWatcher(
     }
   `;
 
-  get crud() {
-    return this.edgeless.std.get(EdgelessCRUDIdentifier);
-  }
-
   private get _frameMgr() {
     return this.edgeless.std.get(EdgelessFrameManagerIdentifier);
   }
@@ -174,27 +198,14 @@ export class EdgelessFrameOrderMenu extends SignalWatcher(
       this._disposables.addFromEvent(document, 'pointerup', () => {
         clone.style.visibility = 'hidden';
         indicatorLine.style.visibility = 'hidden';
-        if (
-          newIndex >= 0 &&
-          newIndex <= this._frames.length &&
-          newIndex !== index &&
-          newIndex !== index + 1
-        ) {
-          const frameMgr = this._frameMgr;
-          // Legacy compatibility
-          frameMgr.refreshLegacyFrameOrder();
-
-          const before =
-            this._frames[newIndex - 1]?.props.presentationIndex || null;
-          const after = this._frames[newIndex]?.props.presentationIndex || null;
-
-          const frame = this._frames[index];
-
-          this.crud.updateElement(frame.id, {
-            presentationIndex: generateKeyBetweenV2(before, after),
+        const frames = this._frames;
+        // A drop on its own slot (before itself) or on the next one is refused
+        // by the command: nothing is written, no undo step is pushed.
+        if (newIndex >= 0 && newIndex <= frames.length && frames[index]) {
+          runCommand(this.edgeless.std, reorderCommand(), MENU_INVOCATION, {
+            ids: [frames[index].id],
+            before: frames[newIndex]?.id ?? null,
           });
-          this.edgeless.store.captureSync();
-
           this.requestUpdate();
         }
         this._disposables.dispose();
