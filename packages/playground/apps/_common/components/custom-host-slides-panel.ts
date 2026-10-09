@@ -26,9 +26,10 @@ import { customElement, property, state } from 'lit/decorators.js';
  * in page mode. A read-only document keeps the buttons enabled on purpose: the
  * refusal is the command's, and the tester must SEE that nothing moves.
  *
- * Offset to `right: 336px` so it sits beside the library's frame panel
- * (`custom-frame-panel`, `right: 0`) when both are open, for side-by-side
- * comparison of the order.
+ * Docked at the right edge like every playground panel. While it is open it
+ * marks `body[data-host-slides]`, which pushes the library's frame panel
+ * (`custom-frame-panel`) 336px to the left, so the two orders can be compared
+ * side by side without an empty strip when this panel is open alone.
  */
 @customElement('custom-host-slides-panel')
 export class CustomHostSlidesPanel extends LitElement {
@@ -36,7 +37,7 @@ export class CustomHostSlidesPanel extends LitElement {
     .container {
       position: absolute;
       top: 0;
-      right: 336px;
+      right: 0;
       width: 320px;
       height: 100vh;
       box-sizing: border-box;
@@ -121,6 +122,7 @@ export class CustomHostSlidesPanel extends LitElement {
     super.disconnectedCallback();
     this._disposeEffect?.();
     this._disposeEffect = null;
+    delete document.body.dataset.hostSlides;
   }
 
   /**
@@ -219,6 +221,8 @@ export class CustomHostSlidesPanel extends LitElement {
 
   toggleDisplay() {
     this._show = !this._show;
+    if (this._show) document.body.dataset.hostSlides = 'open';
+    else delete document.body.dataset.hostSlides;
   }
 
   @state()
