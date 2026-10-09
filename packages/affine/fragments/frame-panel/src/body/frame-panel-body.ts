@@ -450,12 +450,22 @@ export class FramePanelBody extends SignalWatcher(
     this._clearDocDisposables();
     this._docDisposables = new DisposableGroup();
     this._docDisposables.add(
-      doc.slots.blockUpdated.subscribe(({ type, flavour }) => {
-        if (flavour === 'affine:frame' && type !== 'update') {
-          requestAnimationFrame(() => {
-            this._updateFrames();
-          });
+      doc.slots.blockUpdated.subscribe(payload => {
+        if (payload.flavour !== 'affine:frame') return;
+        // A frame added or deleted changes the cards; of the updates, only a
+        // new presentation order does. The panel is not the order's only
+        // writer — an undo, a host's slide panel running
+        // `canvas.frame.reorder`, a remote peer — and it went stale on all
+        // three until reopened.
+        if (
+          payload.type === 'update' &&
+          payload.props.key !== 'presentationIndex'
+        ) {
+          return;
         }
+        requestAnimationFrame(() => {
+          this._updateFrames();
+        });
       })
     );
   }

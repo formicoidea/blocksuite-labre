@@ -1,7 +1,7 @@
 import { panelDragStarted } from '../styles/panel-header.js';
 
 /**
- * The ONE drag-to-reorder gesture of the side panels (ADR 0034, proposed):
+ * The ONE drag-to-reorder gesture of the side panels (ADR 0034):
  * the frame panel's cards and the selection pane's rows.
  *
  * Why it exists: the two panels each wrote their own drag and the two

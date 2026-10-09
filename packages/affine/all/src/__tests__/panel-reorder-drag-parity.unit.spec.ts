@@ -1,5 +1,5 @@
 /**
- * One drag-to-reorder for the side panels (ADR 0034, proposed).
+ * One drag-to-reorder for the side panels (ADR 0034).
  *
  * Why it exists: the frame panel and the selection pane each wrote their own
  * drag, and the two drifted — mouse events against pointer events, a

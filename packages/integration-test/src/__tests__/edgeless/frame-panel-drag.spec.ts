@@ -19,6 +19,7 @@
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import type { FramePanel } from '@labre/affine/fragments/frame-panel';
 import type { FrameBlockModel } from '@labre/affine/model';
+import { getRegisteredCommands, runCommand } from '@labre/affine/std';
 import { generateKeyBetweenV2 } from '@labre/affine/std/gfx';
 import { Text } from '@labre/store';
 import { userEvent } from '@vitest/browser/context';
@@ -195,6 +196,56 @@ describe('frame panel drag and drop', () => {
 
     await release();
     expect(order()).toEqual([b, c, a]);
+  });
+
+  /** The cards on screen, top first (the drag's copies carry no frame id). */
+  const cardIds = () =>
+    Array.from(
+      panel.querySelectorAll<HTMLElement>(
+        '.frame-list-container > affine-frame-card[data-frame-id]'
+      )
+    ).map(card => card.dataset.frameId);
+
+  /*
+   * The panel is not the presentation order's only writer: a host's slide
+   * panel runs the same command, an undo rewrites the keys, a peer syncs
+   * them. The panel ignored every frame UPDATE and kept the old order until
+   * it was closed and reopened — the first host consumer hit it.
+   */
+  test('a reorder written outside the panel (runCommand canvas.frame.reorder) reorders its cards without reopening', async () => {
+    const [a, b, c] = await addFrames();
+    await mount();
+    expect(cardIds()).toEqual([a, b, c]);
+
+    const command = getRegisteredCommands(edgeless.std).find(
+      candidate => candidate.id === 'canvas.frame.reorder'
+    )!;
+    runCommand(
+      edgeless.std,
+      command,
+      { surface: 'agent', source: 'ai' },
+      { ids: [c], before: a }
+    );
+    await settle();
+
+    expect(order()).toEqual([c, a, b]);
+    expect(cardIds()).toEqual([c, a, b]);
+  });
+
+  test('undo of a drag puts the cards back', async () => {
+    const [a, b, c] = await addFrames();
+    await mount();
+    edgeless.std.store.resetHistory();
+
+    await grab(a);
+    await moveTo(c, 0.95);
+    await release();
+    expect(cardIds()).toEqual([b, c, a]);
+
+    edgeless.std.store.undo();
+    await settle();
+    expect(order()).toEqual([a, b, c]);
+    expect(cardIds()).toEqual([a, b, c]);
   });
 
   test('a reorder is one undo step', async () => {
