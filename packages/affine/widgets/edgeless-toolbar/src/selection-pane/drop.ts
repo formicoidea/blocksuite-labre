@@ -101,26 +101,30 @@ export function paneSlotAtGap(
 }
 
 /**
- * What a drop at `index` of `list` writes for the dragged row `dragId`: the
- * model it lands directly ABOVE (`null` = the bottom of its stack), or `null`
- * when the slot is refused.
+ * What a drop at `index` of `list` writes for the dragged rows `dragged` (one
+ * id, or the set a multi-row drag moves): the model they land directly ABOVE
+ * (`null` = the bottom of their stack), or `null` when the slot is refused.
  *
- * `stackOf(id)` names the model that stands for a row in the dragged row's
+ * `stackOf(id)` names the model that stands for a row in the dragged rows'
  * own stack — itself, or the frame it belongs to when the dragged row is a
  * loose element and that row is a frame's member (a frame's members paint
  * together, right above it) — or `undefined` for a row that is not in that
  * stack at all. A slot is refused when neither neighbour is in the stack, or
  * when both stand for the same model: the inside of a frame's block of rows,
- * where a loose element cannot be put.
+ * where a loose element cannot be put. A row that stands for a dragged model
+ * (a dragged frame's member) moves with it, so it is no neighbour either.
  */
 export function paneDropAbove(
   list: readonly SelectionPaneNode[],
   index: number,
-  dragId: string,
+  dragged: string | ReadonlySet<string>,
   stackOf: (id: string) => string | undefined
 ): { above: string | null } | null {
-  const before = list.slice(0, index).filter(node => node.id !== dragId);
-  const after = list.slice(index).filter(node => node.id !== dragId);
+  const moving = typeof dragged === 'string' ? new Set([dragged]) : dragged;
+  const stays = (node: SelectionPaneNode) =>
+    !moving.has(node.id) && !moving.has(stackOf(node.id) ?? '');
+  const before = list.slice(0, index).filter(stays);
+  const after = list.slice(index).filter(stays);
   const upper = before.length
     ? stackOf(before[before.length - 1].id)
     : undefined;

@@ -3,6 +3,7 @@ export {
   renamePaneFrame,
   renamePaneGroup,
   reorderPaneElement,
+  reorderPaneElements,
   type SelectionPaneFilterTarget,
   selectionPaneFilterMembers,
   selectionPaneFilterTargets,

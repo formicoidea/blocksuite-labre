@@ -15,7 +15,7 @@ import { z } from 'zod';
 import {
   renamePaneFrame,
   renamePaneGroup,
-  reorderPaneElement,
+  reorderPaneElements,
   setPaneElementsHiddenForEveryone,
   setPaneElementsLocked,
 } from './actions.js';
@@ -91,13 +91,20 @@ const toggleSelectionPane: AnyCommandDescriptor = {
   },
 };
 
+/*
+ * "An `id` or a non-empty `ids`" is checked in `run`, not with a zod `refine`:
+ * a refined schema is a `ZodEffects`, which `describeCommandParams` cannot
+ * project, so the agent manifest would lose the whole parameter contract.
+ */
 export const reorderElementParams = z.object({
-  /** The element or gfx block to move. */
-  id: z.string().min(1),
-  /**
-   * The model it lands directly ABOVE, stacked with it; `null` puts it at the
-   * bottom of its stack.
-   */
+  // The element or gfx block to move.
+  id: z.string().min(1).optional(),
+  // Several models of ONE stack, moved as a block in their current relative
+  // order (the selection pane's multi-row drag, ADR 0034). Added beside `id`,
+  // which stays: a caller passing `id` alone is unchanged.
+  ids: z.array(z.string().min(1)).optional(),
+  // The model they land directly ABOVE, stacked with them; `null` puts them
+  // at the bottom of their stack.
   above: z.string().min(1).nullable(),
 });
 
@@ -124,7 +131,13 @@ const reorderElement: CommandDescriptor<ReorderElementParams> = {
       console.error('canvas.element.reorder: invalid params', parsed.error);
       return;
     }
-    reorderPaneElement(std, parsed.data.id, parsed.data.above);
+    const { id, ids = [], above } = parsed.data;
+    const moving = id === undefined ? ids : [id, ...ids];
+    if (!moving.length) {
+      console.error('canvas.element.reorder: needs an id or ids');
+      return;
+    }
+    reorderPaneElements(std, moving, above);
   },
 };
 

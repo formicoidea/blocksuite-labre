@@ -18,6 +18,7 @@ export * from './label-mode';
 export * from './link-preview-refresh';
 export * from './math';
 export * from './model';
+export * from './panel-reorder-drag';
 export * from './popper-position';
 export * from './print-to-pdf';
 export * from './reference';

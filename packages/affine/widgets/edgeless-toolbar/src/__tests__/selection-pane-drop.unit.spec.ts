@@ -103,6 +103,28 @@ describe('what a drop writes', () => {
     expect(paneDropAbove(rows, 2, 'loose', stackOf)).toBeNull();
   });
 
+  test('several dragged rows land as one block (ADR 0034)', () => {
+    const rows = [node('a'), node('b'), node('c'), node('d')];
+    expect(paneDropAbove(rows, 0, new Set(['c', 'd']), self)).toEqual({
+      above: 'a',
+    });
+    expect(paneDropAbove(rows, 4, new Set(['a', 'b']), self)).toEqual({
+      above: null,
+    });
+    expect(paneDropAbove(rows, 2, new Set(['a', 'd']), self)).toEqual({
+      above: 'c',
+    });
+  });
+
+  test('a dragged frame’s members move with it, so they are no neighbour', () => {
+    // m1 paints right above its frame F; both go where F goes.
+    const rows = [node('m1'), node('F'), node('y')];
+    const stackOf = (id: string) => (id === 'm1' ? 'F' : id);
+    expect(paneDropAbove(rows, 1, new Set(['F']), stackOf)).toEqual({
+      above: 'y',
+    });
+  });
+
   test('a frame member moves among its frame’s members only', () => {
     const rows = [node('loose'), node('m1'), node('m2'), node('other')];
     const stackOf = (id: string) =>

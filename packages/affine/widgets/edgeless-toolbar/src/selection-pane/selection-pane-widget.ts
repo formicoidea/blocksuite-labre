@@ -26,10 +26,11 @@ import {
   TOOLBAR_RENAME,
   translateKey,
 } from '@labre/affine-shared/services';
+import { panelHeaderStyles } from '@labre/affine-shared/styles';
 import {
-  panelDragStarted,
-  panelHeaderStyles,
-} from '@labre/affine-shared/styles';
+  createPanelReorderDrag,
+  type PanelReorderDrag,
+} from '@labre/affine-shared/utils';
 import {
   type AnyCommandDescriptor,
   type CommandInvocation,
@@ -129,28 +130,36 @@ interface PaneRow extends PaneDropRow {
   hiddenByFilter?: number;
 }
 
+/** The row a press landed on, before it becomes a drag (or a click). */
+interface PaneRowPress {
+  row: PaneRow;
+  /** The row's width when it was pressed: the ghost's. */
+  width: number;
+}
+
+/** A drag under way: the pressed row and the rows it moves with it. */
 interface DragState {
+  /** The pressed row: the ghost's, and the one whose stack and list count. */
   id: string;
   /** A layer row reorders among layers; any other row may also drop INTO one. */
   kind: SelectionPaneNode['kind'];
   /** The list it moves in: its parent row's id, `''` at the top level. */
   parent: string;
-  x: number;
-  y: number;
-  /** The row's width when it was pressed: the ghost's. */
   width: number;
-  dragging: boolean;
+  /** What moves: the pressed row, or every selected row when it is selected. */
+  moving: ReadonlySet<string>;
+  /** The moved rows are not one stack: every drop is refused. */
+  refused: boolean;
 }
 
 /**
- * Where the dragged row would land: into a layer (its header), at a gap of
- * its own list (`top` / `left` place the line in the list's scroll content),
- * or nowhere — a refusal the pane shows rather than swallows.
+ * Where the dragged rows would land: into a layer (its header), or at a gap
+ * of their own list (`top` / `left` place the line in the list's scroll
+ * content). A refusal is `null`, which the pane shows rather than swallows.
  */
 type PaneDrop =
   | { kind: 'into'; id: string }
-  | { kind: 'slot'; above: string | null; top: number; left: number }
-  | { kind: 'refused' };
+  | { kind: 'slot'; above: string | null; top: number; left: number };
 
 /** `model.group`, or `null` where the getter throws (no surface holds it). */
 function rawGroupOf(model: GfxModel): GfxModel | null {
@@ -183,8 +192,9 @@ function rawGroupOf(model: GfxModel): GfxModel | null {
  * (shift / ctrl / cmd adds or removes it, like on the canvas), the padlock
  * locks that row alone, a double-click renames a group or a frame (a frame is
  * a row at its place in the stack, ADR 0031 amendments), and a drag moves a row
- * among its siblings. Every write goes through `runCommand`, so the read-only
- * refusal and the undo step live in one place.
+ * — or, pressed on a selected row, the whole selection of one stack — among
+ * its siblings (the side panels' one drag, ADR 0034). Every write goes through
+ * `runCommand`, so the read-only refusal and the undo step live in one place.
  */
 export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel> {
   static override styles = css`
@@ -292,8 +302,8 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       color: var(--affine-primary-color);
     }
 
-    /* The row being dragged stays in place, dimmed, like the frame panel's
-       placeholder card; its ghost follows the pointer. */
+    /* The rows being dragged stay in place, dimmed, like the frame panel's
+       placeholder cards; the pressed row's ghost follows the pointer. */
     .selection-pane-row[data-dragging] {
       opacity: 0.5;
     }
@@ -323,10 +333,10 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     }
 
     /*
-      The frame panel's drag mask: over the whole viewport for the length of
-      the drag, so the cursor says "grabbing" or "not-allowed" wherever the
-      pointer is (the panel's rule above hands it down) and the canvas under
-      it takes no hover.
+      The drag mask, created by the drag controller (createPanelReorderDrag):
+      over the whole viewport for the length of the drag, so the cursor —
+      set inline by the controller, "grabbing" or "not-allowed" — speaks
+      wherever the pointer is, and the canvas under it takes no hover.
     */
     .selection-pane-drag-mask {
       position: fixed;
@@ -357,6 +367,24 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
 
     .selection-pane-drag-ghost .selection-pane-label {
       flex: initial;
+    }
+
+    /* How many rows move with the ghost: the frame panel's card count. */
+    .selection-pane-drag-count {
+      flex: none;
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 4px;
+      box-sizing: border-box;
+      border-radius: 10px;
+      background: var(--affine-black);
+      color: var(--affine-white);
+      font-size: 12px;
+      line-height: 20px;
     }
 
     /* A row dragged onto a layer moves into it (ADR 0031 §5). */
@@ -501,7 +529,7 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
   @state()
   private accessor _renaming: string | null = null;
 
-  /** Where the dragged row would land. */
+  /** Where the dragged rows would land; `null` while refused. */
   @state()
   private accessor _drop: PaneDrop | null = null;
 
@@ -513,16 +541,21 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
   @state()
   private accessor _selectionRevision = 0;
 
-  private _drag: DragState | null = null;
+  /** The drag under way, from its pick-up to its end. */
+  @state()
+  private accessor _drag: DragState | null = null;
+
+  /** The last row pressed: what a pick-up picks up. */
+  private _pressed: PaneRowPress | null = null;
+
+  /** The side panels' one reorder gesture, wired in `_wire()`. */
+  private _reorder: PanelReorderDrag | null = null;
 
   /** The rows of the last render, top first: what a drag hit-tests. */
   private _visibleRows: readonly PaneRow[] = [];
 
   /** The sibling lists before the filter: what a drop is computed in. */
   private _lists: PaneLists = paneLists([]);
-
-  /** A drag ends with a click on the row it started on; that click is not one. */
-  private _swallowNextClick = false;
 
   get paneOpen() {
     return this._open;
@@ -561,8 +594,8 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     if (!event.composedPath().includes(this)) return;
     if (this._renaming) return;
     event.stopPropagation();
-    // The frame panel's drag has no cancel: Escape waits for the release.
-    if (this._drag?.dragging) return;
+    // Escape during a drag never gets here: the drag controller cancels the
+    // drag and stops it in the capture phase, so the pane stays open.
     this.closePanel();
   };
 
@@ -580,11 +613,14 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     const subscription = this._gfx.selection.slots.updated.subscribe(() => {
       this._selectionRevision++;
     });
+    const reorder = this._createReorderDrag();
+    this._reorder = reorder;
     this._disposables.add(() => {
       host.removeEventListener('keydown', this._onHostKeydown, true);
       host.removeEventListener('wheel', this._onHostWheel, true);
       subscription.unsubscribe();
-      this._endDrag();
+      reorder.dispose();
+      if (this._reorder === reorder) this._reorder = null;
     });
   }
 
@@ -675,10 +711,8 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
   }
 
   private _onRowClick(event: MouseEvent, node: SelectionPaneNode) {
-    if (this._swallowNextClick) {
-      this._swallowNextClick = false;
-      return;
-    }
+    // A drag ends with a click on the row it started on; that click is not one.
+    if (this._reorder?.consumeSwallowedClick()) return;
     // A layer row is not on the canvas: a click makes it the active layer,
     // where this viewer's new elements land (session only, never stored).
     if (node.kind === 'layer') {
@@ -833,30 +867,123 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
   /* ── Drag to reorder ────────────────────────────────────────────────── */
 
   /*
-   * The frame panel's model (`fragments/frame-panel`): a press becomes a drag
-   * past its threshold and picks the row up, selecting it; the row stays in
-   * place, dimmed; a copy of it at its own width follows the pointer; a mask
-   * over the viewport carries the cursor; a line marks the gap a release would
-   * land in, and a gap the row cannot go to shows no line and a `not-allowed`
-   * cursor. Escape does nothing until the release. A read-only document never
-   * starts one.
+   * The gesture is the side panels' one controller (`createPanelReorderDrag`,
+   * `@labre/affine-shared/utils`, ADR 0034), shared with the frame panel:
+   * threshold, read-only refusal, mask and cursor, Escape and `pointercancel`
+   * as cancels, the swallowed click. What is the pane's own is below: which
+   * rows move (the pressed row, or the whole selection of one stack), where a
+   * gap lands them in their stack, the ghost and the line, and the write.
    */
 
+  private _createReorderDrag(): PanelReorderDrag {
+    return createPanelReorderDrag<PaneDrop>({
+      readonly: () => this.std.store.readonly,
+      rows: () => this._shownRows().map(({ element }) => element),
+      bounds: () => this._paneBody(),
+      onPickUp: () => this._pickUp(),
+      dropAt: (gap, point) => this._dropAt(gap, point.clientY),
+      onMove: (drop, point) => {
+        this._drop = drop;
+        const panel = this._panel();
+        if (!panel) return;
+        const box = panel.getBoundingClientRect();
+        this._ghost = {
+          x: point.clientX - box.left,
+          y: point.clientY - box.top,
+        };
+      },
+      onDrop: drop => this._commitDrop(drop),
+      onEnd: () => {
+        this._drag = null;
+        this._drop = null;
+        this._ghost = null;
+      },
+      mask: {
+        host: () => this._panel(),
+        className: 'selection-pane-drag-mask',
+        testId: 'selection-pane-drag-mask',
+      },
+      stateHost: () => this._panel(),
+    });
+  }
+
+  private _panel() {
+    return (
+      this.shadowRoot?.querySelector<HTMLElement>(
+        '[data-testid="selection-pane-panel"]'
+      ) ?? null
+    );
+  }
+
+  private _paneBody() {
+    return (
+      this.shadowRoot?.querySelector<HTMLElement>(
+        '[data-testid="selection-pane-body"]'
+      ) ?? null
+    );
+  }
+
+  /** The rows on screen, top first, with the rows they draw. */
+  private _shownRows(): { element: HTMLElement; row: PaneRow }[] {
+    const body = this._paneBody();
+    if (!body) return [];
+    const byId = new Map(this._visibleRows.map(row => [row.node.id, row]));
+    return Array.from(
+      body.querySelectorAll<HTMLElement>(
+        '[data-testid="selection-pane-row"], [data-testid="selection-pane-layer"]'
+      )
+    ).flatMap(element => {
+      const row = byId.get(element.dataset.id ?? '');
+      return row ? [{ element, row }] : [];
+    });
+  }
+
   private _onRowPointerDown(event: PointerEvent, row: PaneRow) {
-    if (event.button !== 0 || this.std.store.readonly) return;
     const target = event.target as HTMLElement;
     if (target.closest('button, input')) return;
-    this._drag = {
-      id: row.node.id,
-      kind: row.node.kind,
-      parent: row.parent,
-      x: event.clientX,
-      y: event.clientY,
+    this._pressed = {
+      row,
       width: (event.currentTarget as HTMLElement).getBoundingClientRect().width,
-      dragging: false,
     };
-    document.addEventListener('pointermove', this._onDocumentPointerMove, true);
-    document.addEventListener('pointerup', this._onDocumentPointerUp, true);
+    this._reorder?.press(event);
+  }
+
+  /**
+   * The press became a drag. A canvas row picked up is selected, as the frame
+   * panel selects a card — unless it already is, and then the whole selection
+   * moves with it, as in the frame panel: every selected row the pane lists.
+   * Rows that are not all in the pressed row's stack and list have no one
+   * place to land, so every drop of theirs is refused, honestly, with a
+   * `not-allowed` cursor rather than a line that would write nothing.
+   */
+  private _pickUp() {
+    const pressed = this._pressed;
+    if (!pressed) return;
+    const { node, parent } = pressed.row;
+    const drag: DragState = {
+      id: node.id,
+      kind: node.kind,
+      parent,
+      width: pressed.width,
+      moving: new Set([node.id]),
+      refused: false,
+    };
+    if (node.kind !== 'layer') {
+      const { selection } = this._gfx;
+      if (selection.selectedIds.includes(node.id)) {
+        const listed = selection.selectedIds.filter(id =>
+          this._lists.parentOf.has(id)
+        );
+        drag.moving = new Set([node.id, ...listed]);
+        const stackOf = this._stackOf(drag);
+        drag.refused = [...drag.moving].some(
+          id => this._lists.parentOf.get(id) !== parent || stackOf?.(id) !== id
+        );
+      } else {
+        selection.set({ elements: [node.id], editing: false });
+      }
+    }
+    this._drag = drag;
   }
 
   /**
@@ -868,7 +995,7 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
    * mindmap node moves with its mindmap).
    */
   private _stackOf(
-    drag: DragState
+    drag: Pick<DragState, 'id' | 'kind'>
   ): ((id: string) => string | undefined) | null {
     if (drag.kind === 'layer') return id => id;
     const gfx = this._gfx;
@@ -887,32 +1014,15 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     };
   }
 
-  /** Where a release at `(clientX, clientY)` would land the dragged row. */
-  private _dropAt(clientX: number, clientY: number): PaneDrop | null {
+  /**
+   * Where a release over the gap `gap` (the controller's count of rows whose
+   * middle is above the pointer, at `clientY`) would land the dragged rows,
+   * or `null` to refuse it.
+   */
+  private _dropAt(gap: number, clientY: number): PaneDrop | null {
     const drag = this._drag;
-    const body = this.shadowRoot?.querySelector<HTMLElement>(
-      '[data-testid="selection-pane-body"]'
-    );
-    if (!drag || !body) return null;
-    const box = body.getBoundingClientRect();
-    if (
-      clientX < box.left ||
-      clientX > box.right ||
-      clientY < box.top ||
-      clientY > box.bottom
-    ) {
-      return { kind: 'refused' };
-    }
-
-    const byId = new Map(this._visibleRows.map(row => [row.node.id, row]));
-    const shown = Array.from(
-      body.querySelectorAll<HTMLElement>(
-        '[data-testid="selection-pane-row"], [data-testid="selection-pane-layer"]'
-      )
-    ).flatMap(element => {
-      const row = byId.get(element.dataset.id ?? '');
-      return row ? [{ element, row }] : [];
-    });
+    if (!drag || drag.refused) return null;
+    const shown = this._shownRows();
 
     // A canvas row over a layer's header moves INTO that layer (§5).
     if (drag.kind !== 'layer') {
@@ -922,13 +1032,6 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
         return clientY >= rect.top && clientY <= rect.bottom;
       });
       if (header) return { kind: 'into', id: header.row.node.id };
-    }
-
-    // The gap: past the middle of a row is below it.
-    let gap = 0;
-    for (const { element } of shown) {
-      const rect = element.getBoundingClientRect();
-      if (clientY > rect.top + rect.height / 2) gap++;
     }
 
     const stackOf = this._stackOf(drag);
@@ -943,9 +1046,9 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     const list = slot ? this._lists.lists.get(slot.parent) : undefined;
     const landing =
       slot && list && stackOf
-        ? paneDropAbove(list, slot.index, drag.id, stackOf)
+        ? paneDropAbove(list, slot.index, drag.moving, stackOf)
         : null;
-    if (!slot || !landing) return { kind: 'refused' };
+    if (!slot || !landing) return null;
 
     const under = shown[gap]?.element;
     const last = shown[shown.length - 1]?.element;
@@ -962,89 +1065,30 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     };
   }
 
-  private _moveGhost(event: PointerEvent) {
-    const panel = this.shadowRoot?.querySelector<HTMLElement>(
-      '[data-testid="selection-pane-panel"]'
-    );
-    if (!panel) return;
-    const box = panel.getBoundingClientRect();
-    this._ghost = { x: event.clientX - box.left, y: event.clientY - box.top };
-  }
-
-  private readonly _onDocumentPointerMove = (event: PointerEvent) => {
-    const drag = this._drag;
-    if (!drag) return;
-    if (!drag.dragging) {
-      if (!panelDragStarted(drag, { x: event.clientX, y: event.clientY })) {
-        return;
-      }
-      drag.dragging = true;
-      this._pickUp(drag);
-    }
-    this._moveGhost(event);
-    this._drop = this._dropAt(event.clientX, event.clientY);
-  };
-
-  /** A canvas row picked up is selected, as the frame panel selects a card. */
-  private _pickUp(drag: DragState) {
-    if (drag.kind === 'layer') return;
-    const { selection } = this._gfx;
-    if (selection.selectedIds.includes(drag.id)) return;
-    selection.set({ elements: [drag.id], editing: false });
-  }
-
-  private readonly _onDocumentPointerUp = (event: PointerEvent) => {
-    const drag = this._drag;
-    if (drag?.dragging) {
-      this._swallowNextClick = true;
-      // A click only follows when the press and the release land on the same
-      // row; otherwise nothing would ever clear the flag.
-      setTimeout(() => (this._swallowNextClick = false), 0);
-      const drop = this._dropAt(event.clientX, event.clientY);
-      if (drop) this._commitDrop(drag, drop);
-    }
-    this._endDrag();
-  };
-
   /**
    * One write per gesture, through the command: `layer` for a drop into a
-   * layer, one `index` for a slot. The command writes nothing when the slot
-   * is where the row already is, and a refused drop never reaches it.
+   * layer, one restack for a slot. The command writes nothing when the slot
+   * is where the rows already are, and a refused drop never reaches it.
    */
-  private _commitDrop(drag: DragState, drop: PaneDrop) {
-    if (drop.kind === 'refused') return;
+  private _commitDrop(drop: PaneDrop) {
+    const drag = this._drag;
+    if (!drag) return;
+    const ids = [...drag.moving];
     if (drop.kind === 'into') {
-      this._run('canvas.layer.moveElements', {
-        ids: [drag.id],
-        layerId: drop.id,
-      });
+      this._run('canvas.layer.moveElements', { ids, layerId: drop.id });
       return;
     }
     if (drag.kind === 'layer') {
       this._run('canvas.layer.reorder', { id: drag.id, above: drop.above });
       return;
     }
-    this._run('canvas.element.reorder', { id: drag.id, above: drop.above });
-  }
-
-  private _endDrag() {
-    document.removeEventListener(
-      'pointermove',
-      this._onDocumentPointerMove,
-      true
-    );
-    document.removeEventListener('pointerup', this._onDocumentPointerUp, true);
-    const wasDragging = this._drag?.dragging;
-    this._drag = null;
-    this._drop = null;
-    this._ghost = null;
-    if (wasDragging) this.requestUpdate();
+    this._run('canvas.element.reorder', { ids, above: drop.above });
   }
 
   private _renderGhost() {
     const drag = this._drag;
     const at = this._ghost;
-    if (!drag?.dragging || !at) return nothing;
+    if (!drag || !at) return nothing;
     const style = styleMap({
       transform: `translate(${at.x - 16}px, ${at.y - 8}px)`,
       width: `${drag.width}px`,
@@ -1067,6 +1111,7 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       model instanceof GfxBlockElementModel
         ? model.flavour
         : (model as GfxPrimitiveElementModel).type;
+    const count = drag.moving.size;
     return html`<div
       class="selection-pane-drag-ghost"
       data-testid="selection-pane-drag-ghost"
@@ -1076,12 +1121,19 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       <span class="selection-pane-label"
         >${selectionPaneRowLabel(this.std, model)}</span
       >
+      ${count > 1
+        ? html`<span
+            class="selection-pane-drag-count"
+            data-testid="selection-pane-drag-count"
+            >${count}</span
+          >`
+        : nothing}
     </div>`;
   }
 
   private _renderDropIndicator() {
     const drop = this._drop;
-    if (!this._drag?.dragging || drop?.kind !== 'slot') return nothing;
+    if (!this._drag || drop?.kind !== 'slot') return nothing;
     return html`<div
       class="selection-pane-drop-indicator"
       data-testid="selection-pane-drop-indicator"
@@ -1149,7 +1201,7 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       this._drop?.kind === 'into' && this._drop.id === node.id
         ? 'into'
         : undefined;
-    const dragging = this._drag?.dragging && this._drag.id === node.id;
+    const dragging = this._drag?.moving.has(node.id) ?? false;
 
     return html`<div
         class="selection-pane-row selection-pane-layer-row"
@@ -1277,7 +1329,7 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       this._drop?.kind === 'into' && this._drop.id === node.id
         ? 'into'
         : undefined;
-    const dragging = this._drag?.dragging && this._drag.id === node.id;
+    const dragging = this._drag?.moving.has(node.id) ?? false;
 
     return html`<div
       class="selection-pane-row"
@@ -1430,25 +1482,20 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
     this._visibleRows = rows;
     this._lists = paneLists(full);
     const title = translateKey(this.std, ...SELECTION_PANE_TITLE);
-    const dragState = this._drag?.dragging
-      ? this._drop && this._drop.kind !== 'refused'
-        ? 'valid'
-        : 'invalid'
-      : undefined;
 
     // `pointermove` too: the editor turns every move over the host into a
     // cursor selection, and a selection with nothing recoverable in it makes
     // the range binding focus the host — which blurred a layer's rename field
     // the moment the pointer moved (a group's survived only because its click
     // had selected it). The pane's own drag listens on the document, in the
-    // capture phase, so it still sees every move.
+    // capture phase, so it still sees every move. Its `data-drag` and its
+    // mask are the drag controller's, set outside this template.
     return html`<div
       class="selection-pane-panel"
       role="dialog"
       tabindex="-1"
       aria-label=${title}
       data-testid="selection-pane-panel"
-      data-drag=${dragState ?? nothing}
       @pointerdown=${this._swallow}
       @pointerup=${this._swallow}
       @pointermove=${this._swallow}
@@ -1514,12 +1561,6 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
             </div>`}
         ${this._renderDropIndicator()}
       </div>
-      ${this._drag?.dragging
-        ? html`<div
-            class="selection-pane-drag-mask"
-            data-testid="selection-pane-drag-mask"
-          ></div>`
-        : nothing}
       ${this._renderGhost()}
     </div>`;
   }
