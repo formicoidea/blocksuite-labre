@@ -1,6 +1,4 @@
 import type { FrameBlockModel } from '@labre/affine-model';
-import { panelDragStarted } from '@labre/affine-shared/styles';
-import { on, once } from '@labre/affine-shared/utils';
 import { WithDisposable } from '@labre/global/lit';
 import { type BlockStdScope, ShadowlessElement } from '@labre/std';
 import { css, html, nothing } from 'lit';
@@ -20,11 +18,9 @@ export type SelectEvent = CustomEvent<{
   multiselect: boolean;
 }>;
 
+/** A press on a card's body, handed to the panel's drag controller. */
 export type DragEvent = CustomEvent<{
-  clientX: number;
-  clientY: number;
-  pageX: number;
-  pageY: number;
+  event: PointerEvent;
 }>;
 
 export type FitViewEvent = CustomEvent<{
@@ -108,40 +104,19 @@ export const AFFINE_FRAME_CARD = 'affine-frame-card';
 export class FrameCard extends WithDisposable(ShadowlessElement) {
   static override styles = styles;
 
-  private _dispatchDragEvent(e: MouseEvent) {
+  /**
+   * Hand the press to the panel body: the threshold, the selection and the
+   * drag itself belong to the side panels' one controller, which the body
+   * holds (`createPanelReorderDrag`, ADR 0034).
+   */
+  private _dispatchDragEvent(e: PointerEvent) {
     e.preventDefault();
     if (e.button !== 0) return;
 
-    const { clientX: startX, clientY: startY } = e;
-    const disposeDragStart = on(this.ownerDocument, 'mousemove', e => {
-      if (
-        !panelDragStarted(
-          { x: startX, y: startY },
-          { x: e.clientX, y: e.clientY }
-        )
-      ) {
-        return;
-      }
-      if (this.status !== 'selected') {
-        this._dispatchSelectEvent(e);
-      }
-
-      const event = new CustomEvent('drag', {
-        detail: {
-          clientX: e.clientX,
-          clientY: e.clientY,
-          pageX: e.pageX,
-          pageY: e.pageY,
-        },
-      });
-
-      this.dispatchEvent(event);
-      disposeDragStart();
+    const event: DragEvent = new CustomEvent('drag', {
+      detail: { event: e },
     });
-
-    once(this.ownerDocument, 'mouseup', () => {
-      disposeDragStart();
-    });
+    this.dispatchEvent(event);
   }
 
   private _dispatchFitViewEvent(e: MouseEvent) {
@@ -206,7 +181,7 @@ export class FrameCard extends WithDisposable(ShadowlessElement) {
         class="frame-card-body"
         @click=${this._dispatchSelectEvent}
         @dblclick=${this._dispatchFitViewEvent}
-        @mousedown=${this._dispatchDragEvent}
+        @pointerdown=${this._dispatchDragEvent}
       >
         ${this.status === 'dragging' && stackOrder !== 0
           ? nothing

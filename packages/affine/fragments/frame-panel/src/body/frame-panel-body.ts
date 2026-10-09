@@ -5,6 +5,11 @@ import {
   EditPropsStore,
   translateKey,
 } from '@labre/affine-shared/services';
+import {
+  createPanelReorderDrag,
+  type PanelDragPoint,
+  type PanelReorderDrag,
+} from '@labre/affine-shared/utils';
 import { DisposableGroup } from '@labre/global/disposable';
 import { Bound } from '@labre/global/gfx';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
@@ -22,14 +27,13 @@ import { property, query, state } from 'lit/decorators.js';
 import { keyed } from 'lit/directives/keyed.js';
 import { repeat } from 'lit/directives/repeat.js';
 
-import type {
-  DragEvent,
-  FitViewEvent,
+import {
+  type DragEvent,
+  type FitViewEvent,
   FrameCard,
-  SelectEvent,
+  type SelectEvent,
 } from '../card/frame-card.js';
 import { FRAME_PANEL_EMPTY_PLACEHOLDER } from '../translations.js';
-import { startDragging } from '../utils/drag.js';
 
 const compare = EdgelessFrameManager.framePresentationComparator;
 
@@ -47,6 +51,13 @@ function reorderCommand(): AnyCommandDescriptor {
   if (!command) throw new Error('frame panel: no canvas.frame.reorder');
   return command;
 }
+
+/**
+ * Where a release would land the dragged cards: before the frame `before`
+ * (`null` = at the end), the line drawn at `lineY` in the list's box, at the
+ * gap `gap` of the cards.
+ */
+type FrameDrop = { gap: number; before: string | null; lineY: number };
 
 type FrameListItem = {
   frame: FrameBlockModel;
@@ -101,6 +112,19 @@ const styles = css`
     width: 284px;
     left: 0;
   }
+
+  /*
+    The drag mask, created by the drag controller (createPanelReorderDrag):
+    over the whole viewport for the length of the drag, so its cursor — set
+    inline by the controller, "grabbing" or "not-allowed" — speaks wherever
+    the pointer is. The dragged cards are appended after it, so they paint
+    over it.
+  */
+  .frame-panel-drag-mask {
+    position: fixed;
+    inset: 0;
+    z-index: calc(var(--affine-z-index-popover, 0) + 3);
+  }
 `;
 
 export const AFFINE_FRAME_PANEL_BODY = 'affine-frame-panel-body';
@@ -137,9 +161,19 @@ export class FramePanelBody extends SignalWatcher(
 
   private _docDisposables: DisposableGroup | null = null;
 
-  private _frameElementHeight = 0;
-
   private _frameItems: FrameListItem[] = [];
+
+  /** The side panels' one reorder gesture (ADR 0034), made on connect. */
+  private _reorder: PanelReorderDrag | null = null;
+
+  /** The card a press landed on: what a pick-up picks up. */
+  private _pressed: { card: FrameCard; shiftKey: boolean } | null = null;
+
+  /** The dragged cards' copies following the pointer, top one last. */
+  private _ghosts: FrameCard[] = [];
+
+  /** The list's `gap`, read once at the pick-up: the drop line sits in it. */
+  private _listGap = 0;
 
   private _indicatorTranslateY = 0;
 
@@ -150,6 +184,8 @@ export class FramePanelBody extends SignalWatcher(
   }
 
   private readonly _selectFrame = (e: SelectEvent) => {
+    // A drag ends with a click on the card it started on; that click is not one.
+    if (this._reorder?.consumeSwallowedClick()) return;
     const { selected, id, multiselect } = e.detail;
 
     if (!selected) {
@@ -190,59 +226,139 @@ export class FramePanelBody extends SignalWatcher(
       : [0, 0, 0, 0];
   }
 
-  private _drag(e: DragEvent) {
-    if (!this._selected.length) return;
+  /* ── Drag to reorder ────────────────────────────────────────────────── */
 
-    this._dragging = true;
+  /*
+   * The gesture is the side panels' one controller (`createPanelReorderDrag`,
+   * `@labre/affine-shared/utils`, ADR 0034), shared with the selection pane:
+   * pointer events, the 5px threshold, the read-only refusal, the mask and
+   * its cursor, Escape and `pointercancel` as cancels, the swallowed click.
+   * What is the panel's own is below: the selected cards move together, their
+   * copies follow the pointer, a line marks the gap, and the write is
+   * `canvas.frame.reorder`.
+   */
 
-    const framesMap = this._frameItems.reduce((map, frame) => {
-      map.set(frame.frame.id, {
-        ...frame,
-      });
-      return map;
-    }, new Map<string, FrameListItem>());
-    const selected = this._selected.slice();
-
-    const draggedFramesInfo = selected.map(id => {
-      const frame = framesMap.get(id) as FrameListItem;
-
-      return {
-        frame: frame.frame,
-        element: this.renderRoot.querySelector(
-          `[data-frame-id="${frame.frame.id}"]`
-        ) as FrameCard,
-        cardIndex: frame.cardIndex,
-        frameIndex: frame.frameIndex,
-      };
-    });
-    const width = draggedFramesInfo[0].element.clientWidth;
-
-    this._frameElementHeight = draggedFramesInfo[0].element.offsetHeight;
-
-    startDragging(draggedFramesInfo, {
-      width,
-      container: this,
-      document: this.ownerDocument,
-      domHost: this.domHost ?? this.ownerDocument,
-      start: {
-        x: e.detail.clientX,
-        y: e.detail.clientY,
+  private _createReorderDrag(): PanelReorderDrag {
+    return createPanelReorderDrag<FrameDrop>({
+      readonly: () => this.editorHost.store.readonly,
+      rows: () => this._cards(),
+      bounds: () => this,
+      onPickUp: press => this._pickUp(press),
+      dropAt: gap => this._dropAt(gap),
+      onMove: (drop, point) => {
+        for (const ghost of this._ghosts) {
+          ghost.pos = { x: point.clientX, y: point.clientY };
+        }
+        this._indicatorTranslateY = drop?.lineY ?? 0;
+        this.insertIndex = drop?.gap;
+        this.requestUpdate();
       },
-      framePanelBody: this,
-      frameListContainer: this.frameListContainer,
-      frameElementHeight: this._frameElementHeight,
-      onDragEnd: insertIdx => {
+      onDrop: drop => this._reorderFrames(this._selected.slice(), drop.before),
+      onEnd: () => {
+        this._ghosts.forEach(ghost => ghost.remove());
+        this._ghosts = [];
+        this._pressed = null;
         this._dragging = false;
         this.insertIndex = undefined;
-
-        if (insertIdx === undefined || this._frameItems.length <= 1) return;
-        this._reorderFrames(selected, insertIdx);
+        this._updateFrames();
       },
-      onDragMove: (idx, indicatorTranslateY) => {
-        this.insertIndex = idx;
-        this._indicatorTranslateY = indicatorTranslateY ?? 0;
+      mask: {
+        host: () => this,
+        className: 'frame-panel-drag-mask',
+        testId: 'frame-panel-drag-mask',
       },
     });
+  }
+
+  /** The cards on screen, in presentation order. */
+  private _cards(): FrameCard[] {
+    const list = this.frameListContainer;
+    if (!list) return [];
+    return Array.from(
+      list.querySelectorAll<FrameCard>(':scope > affine-frame-card')
+    );
+  }
+
+  /** A press on a card: the controller decides whether it becomes a drag. */
+  private _drag(e: DragEvent) {
+    const { event } = e.detail;
+    this._pressed = {
+      card: e.currentTarget as FrameCard,
+      shiftKey: event.shiftKey,
+    };
+    this._reorder?.press(event);
+  }
+
+  /**
+   * The press became a drag. The pressed card is selected if it was not
+   * (shift adds it to the selection), and every selected card moves: their
+   * copies — the last two, the top one counting them — follow the pointer,
+   * and the cards themselves stay in place as placeholders.
+   */
+  private _pickUp(press: PanelDragPoint) {
+    const card = this._pressed?.card;
+    if (!card?.frame) return;
+    const id = card.frame.id;
+    if (!this._selected.includes(id)) {
+      this._selected = this._pressed?.shiftKey ? [...this._selected, id] : [id];
+      this._gfx.selection.set({ elements: this._selected, editing: false });
+    }
+
+    const list = this.frameListContainer;
+    this._listGap = list ? parseFloat(getComputedStyle(list).gap) || 0 : 0;
+
+    const items = new Map(this._frameItems.map(item => [item.frame.id, item]));
+    const dragged = this._selected.flatMap(selected => {
+      const item = items.get(selected);
+      return item ? [item] : [];
+    });
+    const width =
+      this.renderRoot.querySelector<FrameCard>(
+        `[data-frame-id="${dragged[0]?.frame.id}"]`
+      )?.clientWidth ?? card.clientWidth;
+
+    this._ghosts = dragged.slice(-2).map((item, idx, arr) => {
+      const ghost = new FrameCard();
+      ghost.frame = item.frame;
+      ghost.cardIndex = item.cardIndex;
+      ghost.frameIndex = item.frameIndex;
+      ghost.status = 'dragging';
+      ghost.stackOrder = arr.length - 1 - idx;
+      ghost.pos = { x: press.clientX, y: press.clientY };
+      ghost.width = width;
+      ghost.std = this.editorHost.std;
+      if (ghost.stackOrder === 0) {
+        ghost.dataset.testid = 'frame-panel-drag-ghost';
+        if (dragged.length > 1) ghost.draggingCardNumber = dragged.length;
+      }
+      return ghost;
+    });
+    this.renderRoot.append(...this._ghosts);
+    this._dragging = true;
+  }
+
+  /**
+   * A release at the gap `gap` puts the selected cards right before the first
+   * card at or after it that does not move, or at the end. The line sits in
+   * the middle of the list's gap: above the card under the gap, or under the
+   * last card — the frame panel's own drag used to draw that last one at 0.
+   */
+  private _dropAt(gap: number): FrameDrop | null {
+    const cards = this._cards();
+    const last = cards[cards.length - 1];
+    if (!last) return null;
+    const moving = new Set(this._selected);
+    const before =
+      cards
+        .slice(gap)
+        .map(card => card.frame?.id)
+        .find(id => id !== undefined && !moving.has(id)) ?? null;
+    const half = this._listGap / 2;
+    const under = cards[gap];
+    const lineY = under
+      ? under.offsetTop - half
+      : last.offsetTop + last.offsetHeight + half;
+    return { gap, before, lineY };
   }
 
   private _fitToElement(e: FitViewEvent) {
@@ -304,6 +420,7 @@ export class FramePanelBody extends SignalWatcher(
       ${this.insertIndex !== undefined
         ? html`<div
             class="insert-indicator"
+            data-testid="frame-panel-drop-indicator"
             style=${`transform: translateY(${this._indicatorTranslateY}px)`}
           ></div>`
         : nothing}
@@ -313,22 +430,15 @@ export class FramePanelBody extends SignalWatcher(
   }
 
   /**
-   * Drop the selected cards at the gap `insertIndex` of the list as it stood
-   * when the drag started (selected cards included). The write is
+   * Move the selected cards, as one block, right before the frame `before`
+   * (`null` = at the end; `_dropAt` picks it). The write is
    * `canvas.frame.reorder` (ADR 0034): the read-only refusal, the no-op check
    * and the one undo step live in its action, run through the imported
    * descriptor so the panel reorders in page mode too, where the command is
    * not registered.
    */
-  private _reorderFrames(selected: string[], insertIndex: number) {
-    if (insertIndex < 0 || insertIndex > this._frameItems.length) return;
-    const moving = new Set(selected);
-    // The first card at or after the gap that does not move: the moved block
-    // lands right before it, or at the end when every card after it moves.
-    const before =
-      this._frameItems
-        .slice(insertIndex)
-        .find(({ frame }) => !moving.has(frame.id))?.frame.id ?? null;
+  private _reorderFrames(selected: string[], before: string | null) {
+    if (!selected.length) return;
     runCommand(this.editorHost.std, reorderCommand(), PANEL_INVOCATION, {
       ids: selected,
       before,
@@ -340,12 +450,22 @@ export class FramePanelBody extends SignalWatcher(
     this._clearDocDisposables();
     this._docDisposables = new DisposableGroup();
     this._docDisposables.add(
-      doc.slots.blockUpdated.subscribe(({ type, flavour }) => {
-        if (flavour === 'affine:frame' && type !== 'update') {
-          requestAnimationFrame(() => {
-            this._updateFrames();
-          });
+      doc.slots.blockUpdated.subscribe(payload => {
+        if (payload.flavour !== 'affine:frame') return;
+        // A frame added or deleted changes the cards; of the updates, only a
+        // new presentation order does. The panel is not the order's only
+        // writer — an undo, a host's slide panel running
+        // `canvas.frame.reorder`, a remote peer — and it went stale on all
+        // three until reopened.
+        if (
+          payload.type === 'update' &&
+          payload.props.key !== 'presentationIndex'
+        ) {
+          return;
         }
+        requestAnimationFrame(() => {
+          this._updateFrames();
+        });
       })
     );
   }
@@ -384,11 +504,14 @@ export class FramePanelBody extends SignalWatcher(
   override connectedCallback() {
     super.connectedCallback();
     this._updateFrameItems();
+    this._reorder = this._createReorderDrag();
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback();
     this._clearDocDisposables();
+    this._reorder?.dispose();
+    this._reorder = null;
   }
 
   override firstUpdated() {
@@ -425,9 +548,6 @@ export class FramePanelBody extends SignalWatcher(
   // Store the ids of the selected frames
   @state()
   private accessor _selected: string[] = [];
-
-  @property({ attribute: false })
-  accessor domHost!: Document | HTMLElement;
 
   @property({ attribute: false })
   accessor editorHost!: EditorHost;

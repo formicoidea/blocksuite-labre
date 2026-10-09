@@ -69,29 +69,60 @@ function stackSiblings(std: BlockStdScope, model: GfxModel): GfxModel[] {
  * Move `id` so it sits directly ABOVE `above` in the stack — `null` puts it at
  * the bottom of its stack. Answers whether anything was written.
  *
- * The drop target of a drag in a top-first list: dropping a row just over row
- * X means "directly above X". The new `index` is a key between the two
- * neighbours (the same `fractional-indexing` keys `LayerManager` generates), so
- * one field of one model is written and nothing else moves.
- *
- * Refused, with nothing written: a read-only document; a mindmap node (it has
- * no index of its own — the whole mindmap moves as one, as the toolbar's
- * reorder already says); an `above` that is not stacked with `id`; and a
- * target that is where the model already is.
+ * The one-row case of {@link reorderPaneElements}, kept for its callers.
  */
 export function reorderPaneElement(
   std: BlockStdScope,
   id: string,
   above: string | null
 ): boolean {
+  return reorderPaneElements(std, [id], above);
+}
+
+/**
+ * Move the models `ids`, as one block, so they sit directly ABOVE `above` in
+ * their stack — `null` puts them at the bottom of it. They keep their current
+ * relative z-order, whatever order `ids` lists them in. Answers whether
+ * anything was written.
+ *
+ * The drop target of a drag in a top-first list: dropping rows just over row
+ * X means "directly above X". Each moved model gets a new `index` between its
+ * new neighbours (the same `fractional-indexing` keys `LayerManager`
+ * generates), so only the moved models are written and nothing else shifts.
+ *
+ * Refused, with nothing written: a read-only document; an unknown id; a
+ * mindmap node (it has no index of its own — the whole mindmap moves as one,
+ * as the toolbar's reorder already says); models that are not all stacked
+ * together (a selection spanning two stacks has no one place to land, ADR
+ * 0034); an `above` that is one of them or not stacked with them; and a
+ * target that is where the models already are.
+ */
+export function reorderPaneElements(
+  std: BlockStdScope,
+  ids: readonly string[],
+  above: string | null
+): boolean {
   if (std.store.readonly) return false;
 
-  const model = gfxModel(std, id);
-  if (!model || id === above) return false;
-  if (model.group instanceof MindmapElementModel) return false;
+  const moving = new Set(ids);
+  if (moving.size === 0) return false;
+  if (above !== null && moving.has(above)) return false;
 
-  const siblings = stackSiblings(std, model);
-  const others = siblings.filter(other => other !== model);
+  const models: GfxModel[] = [];
+  for (const id of moving) {
+    const model = gfxModel(std, id);
+    if (!model) return false;
+    if (model.group instanceof MindmapElementModel) return false;
+    models.push(model);
+  }
+
+  const siblings = stackSiblings(std, models[0]);
+  if (models.some(model => !siblings.includes(model))) return false;
+
+  // `siblings` is in stacking order, bottom first, so filtering keeps the
+  // moved models' relative order.
+  const moved = siblings.filter(model => moving.has(model.id));
+  const others = siblings.filter(model => !moving.has(model.id));
   let position = 0;
   if (above !== null) {
     const target = others.findIndex(other => other.id === above);
@@ -99,10 +130,13 @@ export function reorderPaneElement(
     position = target + 1;
   }
 
-  // Already there: the model's current lower neighbour is the target.
-  const current = siblings.indexOf(model);
-  const lowerNow = current > 0 ? siblings[current - 1] : null;
-  if ((lowerNow?.id ?? null) === above) return false;
+  // Already there: the stack would read the same after the move.
+  const after = [
+    ...others.slice(0, position),
+    ...moved,
+    ...others.slice(position),
+  ];
+  if (after.every((model, i) => model === siblings[i])) return false;
 
   const lower = others[position - 1]?.index ?? null;
   const upper = others[position]?.index ?? null;
@@ -110,9 +144,16 @@ export function reorderPaneElement(
   // this only guards a hand-made document; refusing beats throwing in a drop.
   if (lower !== null && upper !== null && lower >= upper) return false;
 
-  const index = generateKeyBetween(lower, upper);
+  const gfx = std.get(GfxControllerIdentifier);
   std.store.captureSync();
-  std.get(GfxControllerIdentifier).updateElement(model, { index });
+  std.store.transact(() => {
+    let previous = lower;
+    for (const model of moved) {
+      const index = generateKeyBetween(previous, upper);
+      gfx.updateElement(model, { index });
+      previous = index;
+    }
+  });
   return true;
 }
 

@@ -27,7 +27,9 @@ import {
   paneContainerOf,
   renamePaneFrame,
   renamePaneGroup,
+  reorderElementParams,
   reorderPaneElement,
+  reorderPaneElements,
   type SelectionPaneNode,
   SelectionPaneModel,
   selectionPaneFilterMembers,
@@ -357,6 +359,112 @@ describe('reorder', () => {
     const gfx = gfxFor(store, surface);
 
     expect(reorderPaneElement(stdFor(store, gfx), a, loose)).toBe(false);
+  });
+});
+
+/*
+ * The pane drags the whole selection (ADR 0034): `canvas.element.reorder`
+ * takes `ids`, and the rows move as one block of their own stack.
+ */
+describe('reorder several rows', () => {
+  test('they move as one block, in their own z-order, in one undo step', () => {
+    const { store, surface } = createBoard();
+    const s0 = shape(surface, 'a0');
+    const s1 = shape(surface, 'a1');
+    const s2 = shape(surface, 'a2');
+    const s3 = shape(surface, 'a3');
+    store.resetHistory();
+    const gfx = gfxFor(store, surface);
+
+    // Listed out of order on purpose: the stack's order is kept, not the list's.
+    expect(reorderPaneElements(stdFor(store, gfx), [s2, s0], s3)).toBe(true);
+    expect(ids(treeOf(gfx))).toEqual([s2, s0, s3, s1]);
+
+    store.undo();
+    expect(ids(treeOf(gfx))).toEqual([s3, s2, s1, s0]);
+    expect(store.canUndo).toBe(false);
+  });
+
+  test('`null` sends them to the bottom of their stack', () => {
+    const { store, surface } = createBoard();
+    const s0 = shape(surface, 'a0');
+    const s1 = shape(surface, 'a1');
+    const s2 = shape(surface, 'a2');
+    const gfx = gfxFor(store, surface);
+
+    expect(reorderPaneElements(stdFor(store, gfx), [s2, s1], null)).toBe(true);
+    expect(ids(treeOf(gfx))).toEqual([s0, s2, s1]);
+  });
+
+  test('writes nothing when the block is already there', () => {
+    const { store, surface } = createBoard();
+    const s0 = shape(surface, 'a0');
+    const s1 = shape(surface, 'a1');
+    const s2 = shape(surface, 'a2');
+    store.resetHistory();
+    const gfx = gfxFor(store, surface);
+
+    expect(reorderPaneElements(stdFor(store, gfx), [s0, s1], null)).toBe(false);
+    expect(reorderPaneElements(stdFor(store, gfx), [s2, s1], s0)).toBe(false);
+    expect(store.canUndo).toBe(false);
+  });
+
+  test('refuses a selection spanning two stacks', () => {
+    const { store, surface } = createBoard();
+    const a = shape(surface, 'a1');
+    const b = shape(surface, 'a2');
+    const loose = shape(surface, 'a4');
+    const bottom = shape(surface, 'a0');
+    surface.addElement({
+      type: 'group',
+      children: { [a]: true, [b]: true },
+      index: 'a3',
+    });
+    store.resetHistory();
+    const gfx = gfxFor(store, surface);
+
+    expect(reorderPaneElements(stdFor(store, gfx), [a, loose], null)).toBe(
+      false
+    );
+    expect(reorderPaneElements(stdFor(store, gfx), [loose, a], bottom)).toBe(
+      false
+    );
+    expect(store.canUndo).toBe(false);
+  });
+
+  test('refuses a target among the moved rows, and an unknown id', () => {
+    const { store, surface } = createBoard();
+    const s0 = shape(surface, 'a0');
+    const s1 = shape(surface, 'a1');
+    shape(surface, 'a2');
+    const gfx = gfxFor(store, surface);
+
+    expect(reorderPaneElements(stdFor(store, gfx), [s0, s1], s1)).toBe(false);
+    expect(reorderPaneElements(stdFor(store, gfx), [s0, 'nope'], null)).toBe(
+      false
+    );
+    expect(reorderPaneElements(stdFor(store, gfx), [], null)).toBe(false);
+  });
+
+  test('refuses on a read-only document', () => {
+    const { store, surface } = createBoard();
+    const s0 = shape(surface, 'a0');
+    const s1 = shape(surface, 'a1');
+    const s2 = shape(surface, 'a2');
+    const gfx = gfxFor(store, surface);
+    store.readonly = true;
+
+    expect(reorderPaneElements(stdFor(store, gfx), [s0, s1], s2)).toBe(false);
+    expect(surface.getElementById(s0)!.index).toBe('a0');
+  });
+
+  test('the command takes `ids`, and still takes `id` alone', () => {
+    expect(
+      reorderElementParams.safeParse({ ids: ['a', 'b'], above: null }).success
+    ).toBe(true);
+    expect(
+      reorderElementParams.safeParse({ id: 'a', above: 'b' }).success
+    ).toBe(true);
   });
 });
 

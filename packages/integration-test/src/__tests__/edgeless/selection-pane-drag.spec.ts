@@ -351,9 +351,9 @@ describe('selection pane drag and drop', () => {
   });
 
   /*
-   * The frame panel's drag, behaviour by behaviour (its card: `frame-card.ts`,
-   * its drag: `utils/drag.ts`). Each test below pins one behaviour the pane
-   * now shares with it.
+   * The side panels' one drag (`createPanelReorderDrag`, ADR 0034), behaviour
+   * by behaviour. Each test below pins one behaviour the pane shares with the
+   * frame panel (`frame-panel-drag.spec.ts`).
    */
 
   test('a nudge under five pixels is a click, not a drag', async () => {
@@ -437,15 +437,21 @@ describe('selection pane drag and drop', () => {
     ).toBeNull();
   });
 
-  test('Escape during a drag neither closes the pane nor drops the row', async () => {
+  // Product owner's decision (ADR 0034): Escape CANCELS the drag. It used to
+  // wait for the release, which then dropped the row.
+  test('Escape during a drag cancels: ghost and line gone, the pane stays open, the release writes nothing', async () => {
     const a = shape(0);
     const b = shape(200);
     await settle();
     await openPane();
     panel().focus();
+    edgeless.std.store.resetHistory();
+    const updates = recordUpdates();
 
     await grab(a);
     await moveTo(rowSelector(b), 0.25);
+    expect(ghost()).toBeTruthy();
+    expect(indicator()).toBeTruthy();
     await userEvent.keyboard('{Escape}');
     await settle();
     expect(
@@ -454,9 +460,80 @@ describe('selection pane drag and drop', () => {
       ),
       'the pane is still open'
     ).toBeTruthy();
-    expect(ghost()).toBeTruthy();
+    expect(ghost(), 'the ghost is gone').toBeNull();
+    expect(indicator(), 'the line is gone').toBeNull();
+    expect(
+      root().querySelector('[data-testid="selection-pane-drag-mask"]')
+    ).toBeNull();
+    expect(panel().dataset.drag).toBeUndefined();
+
     await release();
-    expect(rowIds()).toEqual([a, b]);
+    expect(updates).toHaveLength(0);
+    expect(edgeless.std.store.canUndo).toBe(false);
+    expect(rowIds()).toEqual([b, a]);
+  });
+
+  // The whole selection moves, as in the frame panel (ADR 0034).
+  test('two selected rows of one stack move together and keep their order', async () => {
+    const a = shape(0);
+    const b = shape(200);
+    const c = shape(400);
+    const d = shape(600);
+    await settle();
+    gfx().selection.set({ elements: [a, c], editing: false });
+    await openPane();
+    expect(rowIds()).toEqual([d, c, b, a]);
+
+    await grab(c);
+    expect(gfx().selection.selectedIds.sort()).toEqual([a, c].sort());
+    expect(
+      root().querySelector('[data-testid="selection-pane-drag-count"]')
+        ?.textContent
+    ).toBe('2');
+    expect(rowOf(a).hasAttribute('data-dragging')).toBe(true);
+    expect(rowOf(c).hasAttribute('data-dragging')).toBe(true);
+    await moveTo(rowSelector(d), 0.2);
+    expect(indicator()).toBeTruthy();
+    await release();
+
+    expect(rowIds()).toEqual([c, a, d, b]);
+    edgeless.std.store.undo();
+    await settle();
+    expect(rowIds()).toEqual([d, c, b, a]);
+  });
+
+  test('a selection spanning two stacks is refused everywhere', async () => {
+    const a = shape(0);
+    const b = shape(200);
+    const group = edgeless.service.crud.addElement('group', {
+      children: { [a]: true, [b]: true },
+    })!;
+    const loose = shape(400);
+    await settle();
+    gfx().selection.set({ elements: [a, loose], editing: false });
+    await openPane();
+    const before = rowIds();
+    const updates = recordUpdates();
+
+    await grab(loose);
+    for (const [selector, fy] of [
+      [rowSelector(group), 0.2],
+      [rowSelector(b), 0.75],
+      [BODY, 0.95],
+    ] as const) {
+      await moveTo(selector, fy);
+      expect(indicator(), `no line at ${selector}`).toBeNull();
+      expect(panel().dataset.drag).toBe('invalid');
+      expect(
+        root().querySelector<HTMLElement>(
+          '[data-testid="selection-pane-drag-mask"]'
+        )!.style.cursor
+      ).toBe('not-allowed');
+    }
+    await release();
+
+    expect(updates).toHaveLength(0);
+    expect(rowIds()).toEqual(before);
   });
 
   test('a read-only document offers no drag', async () => {
