@@ -26,8 +26,10 @@ import { changeNoteDisplayMode } from '../commands';
 import { NoteConfigExtension } from '../config';
 import {
   NOTE_TOAST_ADDED_TO_PAGE_BODY,
+  NOTE_TOAST_ADDED_TO_PAGE_BODY_NO_TOC,
   NOTE_TOAST_DISPLAYED_IN_PAGE_MODE,
   NOTE_TOAST_REMOVED_FROM_PAGE_BODY,
+  NOTE_TOAST_REMOVED_FROM_PAGE_BODY_NO_TOC,
   NOTE_TOAST_VIEW_IN_TOC,
   NOTE_TOOLBAR_AUTO_HEIGHT,
   NOTE_TOOLBAR_CUSTOMIZED_HEIGHT,
@@ -311,21 +313,39 @@ const builtinSurfaceToolbarConfig = {
 } as const satisfies ToolbarModuleConfig;
 
 /**
- * The toast's "View in TOC" link, offered only when the host registered an
- * outline panel (`OutlinePanelExtension`, ADR 0034 §1): a link that opens
- * nothing is a lie, so a host with no outline, or one that passed `null`,
- * gets a toast with no link.
+ * The toast shown after a note's display mode changes. Its "View in TOC" link
+ * is offered only when the host registered an outline panel
+ * (`OutlinePanelExtension`, ADR 0034 §1): a link that opens nothing is a lie,
+ * so a host with no outline, or one that passed `null`, gets a toast with no
+ * link, and a body without the "Find it in the TOC" sentence that points at
+ * it.
  */
-export function viewInTocActions(std: BlockStdScope) {
+export function displayModeToast(std: BlockStdScope, newMode: NoteDisplayMode) {
   const outline = std.getOptional(OutlinePanelProvider);
-  if (!outline) return [];
-  return [
-    {
-      key: 'view-in-toc',
-      label: translateKey(std, ...NOTE_TOAST_VIEW_IN_TOC),
-      onClick: () => outline.open(),
-    },
-  ];
+  const removed = newMode === NoteDisplayMode.EdgelessOnly;
+  const title = removed
+    ? TOAST_NOTE_REMOVED_FROM_PAGE
+    : NOTE_TOAST_DISPLAYED_IN_PAGE_MODE;
+  const body = removed
+    ? outline
+      ? NOTE_TOAST_REMOVED_FROM_PAGE_BODY
+      : NOTE_TOAST_REMOVED_FROM_PAGE_BODY_NO_TOC
+    : outline
+      ? NOTE_TOAST_ADDED_TO_PAGE_BODY
+      : NOTE_TOAST_ADDED_TO_PAGE_BODY_NO_TOC;
+  return {
+    title: translateKey(std, ...title),
+    message: translateKey(std, ...body),
+    actions: outline
+      ? [
+          {
+            key: 'view-in-toc',
+            label: translateKey(std, ...NOTE_TOAST_VIEW_IN_TOC),
+            onClick: () => outline.open(),
+          },
+        ]
+      : [],
+  };
 }
 
 function setDisplayMode(
@@ -346,24 +366,11 @@ function setDisplayMode(
     ctx.selection.clear();
   }
 
-  const data =
-    newMode === NoteDisplayMode.EdgelessOnly
-      ? {
-          title: translateKey(ctx.std, ...TOAST_NOTE_REMOVED_FROM_PAGE),
-          message: translateKey(ctx.std, ...NOTE_TOAST_REMOVED_FROM_PAGE_BODY),
-        }
-      : {
-          title: translateKey(ctx.std, ...NOTE_TOAST_DISPLAYED_IN_PAGE_MODE),
-          message: translateKey(ctx.std, ...NOTE_TOAST_ADDED_TO_PAGE_BODY),
-        };
-
   const notification = ctx.std.getOptional(NotificationProvider);
   notification?.notifyWithUndoAction({
-    title: data.title,
-    message: data.message,
+    ...displayModeToast(ctx.std, newMode),
     accent: 'success',
     duration: 5 * 1000,
-    actions: viewInTocActions(ctx.std),
   });
 
   ctx.track('NoteDisplayModeChanged', {

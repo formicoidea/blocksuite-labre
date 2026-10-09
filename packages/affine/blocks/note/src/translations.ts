@@ -235,7 +235,10 @@ export const NOTE_DISPLAY_MODE_PAGE = DISPLAY_MODE_PAGE;
  * `TOAST_NOTE_REMOVED_FROM_PAGE` (already in `chrome.ts`); its opposite gets
  * its own key here. Each toast's BODY bakes in the trailing "Find it in the
  * TOC…" sentence rather than composing it at the call site — one full
- * sentence per key, never a fragment plus a suffix.
+ * sentence per key, never a fragment plus a suffix. That sentence promises the
+ * "View in TOC" link, which exists only when the host registers an outline
+ * panel (`OutlinePanelExtension`, ADR 0034); each body therefore has a
+ * `body-no-toc` twin without it, picked when no outline answers.
  */
 
 export const NOTE_TOAST_DISPLAYED_IN_PAGE_MODE: ChromeWording = [
@@ -251,6 +254,16 @@ export const NOTE_TOAST_REMOVED_FROM_PAGE_BODY: ChromeWording = [
 export const NOTE_TOAST_ADDED_TO_PAGE_BODY: ChromeWording = [
   'com.labre.note.toast.added-to-page.body',
   'Content added to your document. Find it in the TOC for quick navigation.',
+];
+
+export const NOTE_TOAST_REMOVED_FROM_PAGE_BODY_NO_TOC: ChromeWording = [
+  'com.labre.note.toast.removed-from-page.body-no-toc',
+  'Content removed from your document.',
+];
+
+export const NOTE_TOAST_ADDED_TO_PAGE_BODY_NO_TOC: ChromeWording = [
+  'com.labre.note.toast.added-to-page.body-no-toc',
+  'Content added to your document.',
 ];
 
 export const NOTE_TOAST_VIEW_IN_TOC: ChromeWording = [
@@ -329,6 +342,8 @@ export const NOTE_WORDINGS: readonly ChromeWording[] = [
   NOTE_TOAST_DISPLAYED_IN_PAGE_MODE,
   NOTE_TOAST_REMOVED_FROM_PAGE_BODY,
   NOTE_TOAST_ADDED_TO_PAGE_BODY,
+  NOTE_TOAST_REMOVED_FROM_PAGE_BODY_NO_TOC,
+  NOTE_TOAST_ADDED_TO_PAGE_BODY_NO_TOC,
   NOTE_TOAST_VIEW_IN_TOC,
   NOTE_TOOLBAR_DISPLAY_IN_PAGE,
   NOTE_TOOLBAR_DISPLAYED_IN_PAGE,

@@ -41,6 +41,10 @@ import { GfxControllerIdentifier, type GfxModel } from '@labre/std/gfx';
  * `yarn build` typechecks; docs/lessons.md 33). A verb a host panel needs and
  * cannot find here is a gap in this module, not a reason to import a widget
  * package.
+ *
+ * ponytail: `frameList` is a plain read, not a signal of the frame list; a
+ * host follows reorders through `std.store.slots.blockUpdated` (08 says how).
+ * A signal of the frame list is the upgrade path if two hosts ask.
  */
 
 export {

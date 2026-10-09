@@ -1,18 +1,21 @@
+import { NoteDisplayMode } from '@labre/affine-model';
 import { OutlinePanelProvider } from '@labre/affine-shared/services';
 import type { BlockStdScope } from '@labre/std';
 import { describe, expect, it, vi } from 'vitest';
 
-import { viewInTocActions } from '../configs/toolbar.js';
+import { displayModeToast } from '../configs/toolbar.js';
 
 /**
- * The note toast's "View in TOC" link is offered only when the host draws an
- * outline (ADR 0034 §1).
+ * The note toast's "View in TOC" link, and the sentence that announces it,
+ * are offered only when the host draws an outline (ADR 0034 §1).
  *
  * Its seam used to be the `open(tabId?)` one inherited from AFFiNE, read with
  * `getOptional(...)?.open('outline')` INSIDE the click handler: the link was
  * always shown, and a host with no such panel got a link that did nothing.
- * This spec pins both halves of the replacement: no provider (or `null`), no
- * link; a provider, a link that opens it and nothing else.
+ * The first host on the replacement (the playground, #478) then found the
+ * body still saying "Find it in the TOC for quick navigation." once the link
+ * was gone. This spec pins all three: no provider (or `null`), no link and no
+ * TOC sentence; a provider, both, and a link that opens it and nothing else.
  */
 
 function fakeStd(outline: unknown): BlockStdScope {
@@ -22,20 +25,38 @@ function fakeStd(outline: unknown): BlockStdScope {
   } as unknown as BlockStdScope;
 }
 
-describe('the note toast "View in TOC" link', () => {
-  it('is not offered when the host registered no outline panel', () => {
-    expect(viewInTocActions(fakeStd(undefined))).toEqual([]);
-    expect(viewInTocActions(fakeStd(null))).toEqual([]);
+const MODES = [NoteDisplayMode.EdgelessOnly, NoteDisplayMode.DocAndEdgeless];
+
+describe('the note display-mode toast', () => {
+  it('offers no link and names no TOC when the host has no outline panel', () => {
+    for (const outline of [undefined, null]) {
+      for (const mode of MODES) {
+        const toast = displayModeToast(fakeStd(outline), mode);
+        expect(toast.actions, mode).toEqual([]);
+        expect(toast.message, mode).not.toMatch(/TOC/);
+      }
+    }
+    expect(
+      displayModeToast(fakeStd(null), NoteDisplayMode.EdgelessOnly).message
+    ).toBe('Content removed from your document.');
+    expect(
+      displayModeToast(fakeStd(null), NoteDisplayMode.DocAndEdgeless).message
+    ).toBe('Content added to your document.');
   });
 
-  it("opens the host's outline panel, and only that", () => {
+  it("names the TOC and links to the host's outline panel, and only that", () => {
     const outline = { open: vi.fn(), close: vi.fn() };
-    const actions = viewInTocActions(fakeStd(outline));
 
-    expect(actions.map(action => action.key)).toEqual(['view-in-toc']);
-    expect(actions[0].label).toBe('View in Toc');
+    for (const mode of MODES) {
+      const toast = displayModeToast(fakeStd(outline), mode);
+      expect(toast.message, mode).toMatch(
+        /Find it in the TOC for quick navigation\.$/
+      );
+      expect(toast.actions.map(action => action.key)).toEqual(['view-in-toc']);
+      expect(toast.actions[0].label).toBe('View in Toc');
+    }
 
-    actions[0].onClick();
+    displayModeToast(fakeStd(outline), MODES[0]).actions[0].onClick();
     expect(outline.open).toHaveBeenCalledTimes(1);
     expect(outline.close).not.toHaveBeenCalled();
   });

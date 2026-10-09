@@ -33,21 +33,50 @@ runCommand(
 
 ## Gesture → call
 
-| Gesture                       | Call                                                                                                        | Note                                                                                                                                                                                                                                                             |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| List a framework's artefacts  | `getCommandsForSurface(std, owner, 'catalogue')`, `getCommandIcon(std, command.iconKey)`                    | in the order the framework's senior menu shows them; flags are already applied (a gated framework lists nothing). The icon is the library's template: render it with Lit's `render`, or draw your own                                                            |
-| Arm an artefact               | `armArtefact(gfx, owner, command)`, with `gfx = std.get(GfxControllerIdentifier)` (`@labre/affine/std/gfx`) | the ghost follows the next pointer move and the next click places it, as from the library's catalogue. Edgeless only                                                                                                                                             |
-| Run any command               | `runCommand(std, command, { surface, source }, params)`                                                     | telemetry and usage are recorded here, once; the command's own action refuses a read-only document. `getRegisteredCommands(std)` lists what this editor registered                                                                                               |
-| Read the canvas stack         | `selectionPaneTree(std)`                                                                                    | a signal of `SelectionPaneNode` rows: the layers, top first, each holding its elements, top first; ids only. Read it inside an `effect` to follow it                                                                                                             |
-| Reorder canvas elements       | `canvas.element.reorder` (`{ ids, above }`, or `{ id, above }`) from `getRegisteredCommands(std)`           | `above: null` = the bottom of the stack; a selection that spans several stacks is refused. The layer and visibility commands are `canvas.layer.*` and `canvas.visibility.*`                                                                                      |
-| List the frames               | `frameList(std)`                                                                                            | presentation order, first slide first. Works in page mode too                                                                                                                                                                                                    |
-| Reorder the frames            | `canvas.frame.reorder` (`{ ids, before }`), from `frameCommands`                                            | `before: null` = the end; the moved frames keep their relative order. Refused: a read-only document, an unknown id, a `before` among the moved frames. A no-op writes nothing; a move is one undo step. Validate first with `reorderFramesParams` if you need to |
-| Select                        | `selectModels(std, ids)`                                                                                    | replaces the selection, nothing enters text editing. Edgeless only                                                                                                                                                                                               |
-| Frame a model in the viewport | `fitToModel(std, id, padding?)`                                                                             | smooth; `padding` is `[top, right, bottom, left]` in screen pixels. Returns `false` for an unknown id. It never switches mode: in page mode, switch first (`DocModeProvider`)                                                                                    |
+| Gesture                       | Call                                                                                                        | Note                                                                                                                                                                                                                                                                                                                                                      |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| List a framework's artefacts  | `getCommandsForSurface(std, owner, 'catalogue')`, `getCommandIcon(std, command.iconKey)`                    | in the order the framework's senior menu shows them; flags are already applied (a gated framework lists nothing). The icon is the library's template: render it with Lit's `render`, or draw your own                                                                                                                                                     |
+| Arm an artefact               | `armArtefact(gfx, owner, command)`, with `gfx = std.get(GfxControllerIdentifier)` (`@labre/affine/std/gfx`) | the ghost follows the next pointer move and the next click places it, as from the library's catalogue. Edgeless only                                                                                                                                                                                                                                      |
+| Run any command               | `runCommand(std, command, { surface, source }, params)`                                                     | telemetry and usage are recorded here, once; the command's own action refuses a read-only document. `getRegisteredCommands(std)` lists what this editor registered                                                                                                                                                                                        |
+| Read the canvas stack         | `selectionPaneTree(std)`                                                                                    | a signal of `SelectionPaneNode` rows: the layers, top first, each holding its elements, top first; ids only. Read it inside an `effect` to follow it                                                                                                                                                                                                      |
+| Reorder canvas elements       | `canvas.element.reorder` (`{ ids, above }`, or `{ id, above }`) from `getRegisteredCommands(std)`           | `above: null` = the bottom of the stack; a selection that spans several stacks is refused. The layer and visibility commands are `canvas.layer.*` and `canvas.visibility.*`                                                                                                                                                                               |
+| List the frames               | `frameList(std)`                                                                                            | presentation order, first slide first. Works in page mode too. A plain read, not a signal: to follow a reorder (yours, an undo, a peer's), subscribe to `std.store.slots.blockUpdated`, keep the events whose `flavour` is `affine:frame` (an `add`, a `delete`, or an `update` whose `props.key` is `presentationIndex`) and read `frameList(std)` again |
+| Reorder the frames            | `canvas.frame.reorder` (`{ ids, before }`), from `frameCommands`                                            | `before: null` = the end; the moved frames keep their relative order. Refused: a read-only document, an unknown id, a `before` among the moved frames. A no-op writes nothing; a move is one undo step. Validate first with `reorderFramesParams` if you need to                                                                                          |
+| Select                        | `selectModels(std, ids)`                                                                                    | replaces the selection, nothing enters text editing. Edgeless only: switch mode first (see [Timing](#timing))                                                                                                                                                                                                                                             |
+| Frame a model in the viewport | `fitToModel(std, id, padding?)`                                                                             | smooth; `padding` is `[top, right, bottom, left]` in screen pixels and must include whatever of yours covers the canvas. Returns `false` for an unknown id. It never switches mode (see [Timing](#timing))                                                                                                                                                |
 
 Run `canvas.frame.reorder` with the descriptor from `frameCommands`, not one
 found in the registry: the registry lists it in edgeless mode only, and a slide
 panel stays open in page mode.
+
+## Timing
+
+`fitToModel` moves the viewport of the canvas that is mounted now. Right
+after `std.get(DocModeProvider).setEditorMode('edgeless')` the edgeless root
+has not mounted yet, and when it does it sets its own viewport (the stored
+one, or a fit to the whole canvas) over yours. The library's frame panel
+therefore never fits after a switch: in page mode it stores the target first,
+then switches, and the edgeless root applies it when it mounts:
+
+```ts
+std.get(EditPropsStore).setStorage('viewport', {
+  xywh: frame.xywh,
+  referenceId: frame.id,
+  padding,
+});
+std.get(DocModeProvider).setEditorMode('edgeless');
+```
+
+(`EditPropsStore` and `DocModeProvider` come from
+`@labre/affine/shared/services`.) Already in edgeless, call `fitToModel`
+directly. The frame panel's "Present" button, which has no such handoff,
+waits 100 ms after the switch before it sets the tool.
+
+**Padding is yours to count.** The viewport spans the editor's container. A
+panel docked over it hides part of the canvas, so the side it covers goes in
+`padding`: the playground, with two 320 px panels docked over the right
+edge, fits with `[50, 700, 50, 50]`. A panel laid out beside the editor, which
+shrinks the container instead, needs no more than a margin.
 
 ## The other direction
 
