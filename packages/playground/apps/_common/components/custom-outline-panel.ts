@@ -41,6 +41,15 @@ export class CustomOutlinePanel extends WithDisposable(ShadowlessElement) {
     this._show = !this._show;
   }
 
+  /** `OutlinePanelExtension.open` (the toast's "View in TOC"). */
+  show() {
+    this._show = true;
+  }
+
+  hide() {
+    this._show = false;
+  }
+
   @state()
   private accessor _show = false;
 

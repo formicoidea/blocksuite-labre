@@ -20,6 +20,7 @@ import type { BlockStdScope } from '@labre/affine/std';
 import type { BaseSelection, Workspace } from '@labre/affine/store';
 import type { TestAffineEditorContainer } from '@labre/integration-test';
 import { Signal, signal } from '@preact/signals-core';
+import { html, render } from 'lit';
 import { Subject } from 'rxjs';
 
 function getModeFromStorage() {
@@ -84,6 +85,68 @@ export function mockDocModeService(editor: TestAffineEditorContainer) {
   return docModeService;
 }
 
+/**
+ * A bare notification card, so the playground shows what the library asks a
+ * host to notify: title, message and every action button (the note toolbar's
+ * "Undo" and "View in TOC", ADR 0034). It used to `console.log` only, which
+ * left the outline seam untestable by hand.
+ *
+ * ponytail: one card at a time, bottom-right, theme variables only; the real
+ * notification centre is the host's.
+ */
+function showNotificationCard(
+  notification: Parameters<NotificationService['notify']>[0]
+) {
+  document.querySelector('.playground-notification')?.remove();
+  const card = document.createElement('div');
+  card.className = 'playground-notification';
+  card.dataset.testid = 'playground-notification';
+  Object.assign(card.style, {
+    position: 'fixed',
+    right: '16px',
+    bottom: '16px',
+    zIndex: '1000',
+    maxWidth: '360px',
+    padding: '12px 16px',
+    borderRadius: '8px',
+    border: '1px solid var(--affine-border-color, #e3e2e4)',
+    background: 'var(--affine-background-overlay-panel-color, #fff)',
+    color: 'var(--affine-text-primary-color, #000)',
+    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.15)',
+    fontSize: '14px',
+    fontFamily: 'var(--affine-font-family, sans-serif)',
+  });
+  const close = () => {
+    if (!card.isConnected) return;
+    card.remove();
+    notification.onClose?.();
+  };
+  render(
+    html`<div style="font-weight: 600">${notification.title}</div>
+      <div style="margin: 4px 0 8px">${notification.message ?? ''}</div>
+      <div style="display: flex; gap: 8px">
+        ${(notification.actions ?? []).map(
+          action =>
+            html`<button
+              data-testid=${action.key}
+              @click=${() => {
+                action.onClick();
+                close();
+              }}
+            >
+              ${action.label}
+            </button>`
+        )}
+        <button @click=${close}>×</button>
+      </div>`,
+    card
+  );
+  document.body.append(card);
+  notification.abort?.addEventListener('abort', close, { once: true });
+  const duration = notification.duration ?? 5000;
+  if (duration > 0) setTimeout(close, duration);
+}
+
 export function mockNotificationService(editor: TestAffineEditorContainer) {
   const notificationService: NotificationService = {
     toast: (message, options) => {
@@ -97,14 +160,10 @@ export function mockNotificationService(editor: TestAffineEditorContainer) {
         prompt(notification.title.toString(), notification.autofill?.toString())
       );
     },
-    notify: notification => {
-      // todo: implement in playground
-      console.log(notification);
-    },
-    notifyWithUndoAction: notification => {
-      // todo: implement in playground
-      console.log(notification);
-    },
+    notify: showNotificationCard,
+    // `NotificationExtension` replaces this with `notify` plus the undo
+    // action; kept because the interface asks for it.
+    notifyWithUndoAction: showNotificationCard,
   };
   return notificationService;
 }

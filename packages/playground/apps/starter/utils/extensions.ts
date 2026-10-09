@@ -11,6 +11,7 @@ import {
   FontConfigExtension,
   GenerateDocUrlExtension,
   NotificationExtension,
+  OutlinePanelExtension,
   ParseDocUrlExtension,
   TelemetryExtension,
   type TranslationParams,
@@ -21,6 +22,7 @@ import { getTranslationKeyManifest } from '@labre/affine/translations';
 import { type TestAffineEditorContainer } from '@labre/integration-test';
 import { getTestViewManager } from '@labre/integration-test/view';
 
+import type { CustomOutlinePanel } from '../../_common/components/custom-outline-panel';
 import {
   mockDocModeService,
   mockEditorSetting,
@@ -31,6 +33,17 @@ import {
 } from '../../_common/mock-services';
 
 const viewManager = getTestViewManager();
+
+/**
+ * The playground's outline panel, handed over by `createTestApp` once it is
+ * built: the extensions are assembled before any panel exists. Until then the
+ * seam is registered but opens nothing.
+ */
+let outlinePanelForSeam: CustomOutlinePanel | null = null;
+
+export function setOutlinePanelForSeam(panel: CustomOutlinePanel) {
+  outlinePanelForSeam = panel;
+}
 
 /**
  * The pseudo-locale recette tool (see `window.applyPseudoLocale` below): every
@@ -88,6 +101,14 @@ export function getTestCommonExtensions(
     // playground had no way to exercise `pivot.bind`. This is the SaaS host's
     // record browser stood in for by a `prompt`; see `mockPivotRecordPicker`.
     PivotRecordPickerExtension(mockPivotRecordPicker()),
+    // The outline seam (ADR 0034 §1), wired to the playground's own outline
+    // panel: a note's display-mode toast then offers "View in TOC" and the
+    // link opens `custom-outline-panel`. `OutlinePanelExtension(null)` here
+    // checks the degraded path: the toast loses its link.
+    OutlinePanelExtension({
+      open: () => outlinePanelForSeam?.show(),
+      close: () => outlinePanelForSeam?.hide(),
+    }),
     {
       setup: di => {
         di.override(DocModeProvider, mockDocModeService(editor));

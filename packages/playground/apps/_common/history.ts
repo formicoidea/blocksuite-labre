@@ -28,6 +28,8 @@ export function getDocFromUrlParams(collection: Workspace, url: URL) {
   return doc;
 }
 
+// `?mode=page|edgeless` is read here; `?panel=slides|frames|selection|outline`
+// (open a panel at load) in `starter/utils/app.ts`.
 export function setDocModeFromUrlParams(
   service: DocModeProvider,
   search: URLSearchParams,
