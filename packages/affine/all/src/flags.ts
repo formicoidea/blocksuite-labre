@@ -47,6 +47,9 @@
  *   re-renders untouched once the flag is back on — but a disabled block
  *   currently renders as nothing until its view extension is split the way the
  *   frameworks' were. See the "Consequences" section of `docs/adr/0009`.
+ *   `callout` is the one block split so far (2026-10-11 amendment of that
+ *   ADR): with `{ callout: false }` a stored callout still renders, stays
+ *   editable and keeps its block toolbar; only its creation entries go.
  * - `latex` covers both the latex block and inline latex.
  * - `frame` also covers the frame panel fragment.
  * - `ddd-templates` covers all four DDD Templates-panel categories, so the

@@ -17,8 +17,12 @@
  * module for `affine:callout` the toolbar widget shows NO row for a
  * block-selected callout (it falls back to the note's row only for
  * paragraphs, lists, code and images), so a callout could not be turned into
- * anything. It is mounted the same way, and it is tooling too: the flag that
- * removes the slash item removes the row with it.
+ * anything. It is mounted the same way, but it is NOT tooling: it is the way
+ * out of content already stored, like Wardley's contextual toolbar on a stored
+ * map, so it stays with the flag off (decision 2026-10-11, the ADR 0009
+ * amendment of that date). Until then the flag removed the row with the slash
+ * item, and a callout left in a document with `{ callout: false }` could not
+ * be turned back into text.
  */
 import { ViewExtensionManager } from '@labre/affine-ext-loader';
 import { TextConversionEntryIdentifier } from '@labre/affine-rich-text';
@@ -71,7 +75,7 @@ describe('the callout slash-menu item follows the callout flag', () => {
   });
 });
 
-describe('the callout block toolbar follows the callout flag (#468)', () => {
+describe('the callout block toolbar outlives the callout flag (#468)', () => {
   const calloutRow = (scope: 'page' | 'edgeless', flags: BlockFlags) =>
     mounted(scope, flags).getAll(ToolbarModuleIdentifier).get('affine:callout');
 
@@ -89,7 +93,14 @@ describe('the callout block toolbar follows the callout flag (#468)', () => {
     }
   );
 
-  test.each(['page', 'edgeless'] as const)('absent when off (%s)', scope => {
-    expect(calloutRow(scope, { callout: false })).toBeUndefined();
-  });
+  test.each(['page', 'edgeless'] as const)(
+    'still there when off, Turn into included (%s)',
+    scope => {
+      const row = calloutRow(scope, { callout: false });
+      expect(row).toBeDefined();
+      expect(row!.config.actions.map(action => action.id)).toContain(
+        'a.conversions'
+      );
+    }
+  );
 });

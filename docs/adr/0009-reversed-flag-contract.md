@@ -158,6 +158,35 @@ Five buttons moved accordingly; see
 [ADR 0026](0026-legend-is-a-catalogue-subscription.md) §6, which is where the
 rule now lives.
 
+## Amendment — 2026-10-11: the callout is the first block split
+
+The "residual gap — blocks" above said to split a block the day its flag is
+genuinely shipped. The `callout` flag is that day: it is the first block flag
+a host actually ships, and with `{ callout: false }` every callout already in
+a document rendered as nothing (#418). Its view is now split the way the frameworks' were:
+
+- `CalloutRenderViewExtension`, always registered: the flavour, the block
+  view, `effects()`, the keymap and the block toolbar (#468). `effects()`
+  goes here whole, the case the last consequence above anticipated: both
+  elements it defines are render-side — `affine-callout` paints the block and
+  `affine-emoji-menu` opens from a rendered callout's icon. The keymap (Enter
+  and Backspace inside a callout) edits stored content and creates nothing.
+  The block toolbar (Turn into text, copy, duplicate, delete) is the way OUT
+  of a stored callout, which is why it stays, as Wardley's contextual toolbar
+  stays with a stored map.
+- `CalloutViewExtension`, flag-gated: the slash-menu item and the
+  "Turn into → Callout" entry — the two ways to CREATE one.
+
+With the flag off a document's callouts render, stay editable and can be
+turned back into text; no new one can be made. Held by
+`callout-render-gating.unit.spec.ts` and `callout-turn-into-gating.unit.spec.ts`
+in `@labre/affine`.
+
+The other optional blocks (`attachment`, `bookmark`, `code`, `database`,
+`image`, `latex`, …) are NOT split and remain in the known gap: they still
+render as nothing with their flag off. Each is split the same way when its
+flag is genuinely shipped, never ahead of that.
+
 ## Test coverage and its limit
 
 `reversed-contract-doc.unit.spec.ts` covers the contract at two levels:

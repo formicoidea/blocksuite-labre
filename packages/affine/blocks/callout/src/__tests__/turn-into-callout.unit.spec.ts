@@ -3,9 +3,13 @@
  *
  * A callout is a HUB: it has no text of its own and renders only its children,
  * so converting a paragraph into one cannot go through `transformModel` (which
- * hands the source's text to the new block). The conversion WRAPS instead: a
- * callout takes the block's place and a paragraph inside it takes the text,
- * while the source's own children move under that paragraph.
+ * hands the source's text to the new block). The conversion REPLACES the
+ * block instead: a new callout takes its place, a new paragraph inside it
+ * receives a copy of the text, the source's own children move under that
+ * paragraph, and the source is deleted. Nothing of the source's type survives:
+ * a code block comes back as a plain paragraph and its language is lost, as
+ * upstream, because the callout schema accepts only paragraphs and lists as
+ * children.
  *
  * What has to hold is the shape of the tree afterwards — and, when a step
  * fails, that nothing was lost — so the command runs against a REAL store.
@@ -26,7 +30,10 @@ import type { BlockStdScope } from '@labre/std';
 import { TextSelection } from '@labre/std';
 import { type BlockModel, Text } from '@labre/store';
 import { TestWorkspace } from '@labre/store/test';
-import type { SlashMenuItem } from '@labre/affine-widget-slash-menu';
+import type {
+  SlashMenuActionItem,
+  SlashMenuItem,
+} from '@labre/affine-widget-slash-menu';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { turnIntoCalloutCommand } from '../commands/turn-into-callout.js';
@@ -301,5 +308,23 @@ describe('the slash-menu item', () => {
   it('is hidden inside a callout, where the schema refuses one', () => {
     const { std, ids, model } = authorNote();
     expect(when(std, model(ids.insideCallout))).toBe(false);
+  });
+
+  /**
+   * `addBlock` hands back an id even when the schema refused the block, so
+   * the action used to go on with a callout that did not exist: it added a
+   * paragraph under it and reached for `std.host` to focus it. Run where the
+   * schema refuses a callout, it must stop at once and leave the tree alone.
+   */
+  it('stops when the store refused the callout', () => {
+    const { std, ids, model, describeTree } = authorNote();
+    const before = describeTree();
+    const action = () =>
+      (item[0] as SlashMenuActionItem).action({
+        std,
+        model: model(ids.insideCallout),
+      } as never);
+    expect(action).not.toThrow();
+    expect(describeTree()).toEqual(before);
   });
 });

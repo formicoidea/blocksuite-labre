@@ -36,18 +36,19 @@ come back through each framework bundle's descriptor (`flag: 'wardley'`).
 
 A block key is the only switch for its entries. `callout` is the example
 that used to have two: the slash-menu "Callout" and "Turn into → Callout" are
-offered by default and removed by `{ callout: false }`. The upstream
+offered by default and removed by `{ callout: false }`, while callouts
+already in a document keep rendering. The upstream
 `FeatureFlagService` key `enable_callout` is deprecated and no longer read;
 setting it changes nothing.
 
 ## What `false` does
 
-| Layer                                                                                 | Effect of `{ x: false }`                                             |
-| ------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| creation surfaces (senior button, sub-menu, catalogue, shortcuts, templates category) | removed                                                              |
-| framework elements already on a board                                                 | still rendered and editable                                          |
-| block content already in a document                                                   | still stored; a gated _block_ renders nothing until the flag is back |
-| schema, store extension                                                               | untouched: the document loads and round-trips identically            |
+| Layer                                                                                 | Effect of `{ x: false }`                                                                                           |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| creation surfaces (senior button, sub-menu, catalogue, shortcuts, templates category) | removed                                                                                                            |
+| framework elements already on a board                                                 | still rendered and editable                                                                                        |
+| block content already in a document                                                   | still stored; `callout` keeps rendering, any other gated _block_ renders nothing until the flag is back (ADR 0009) |
+| schema, store extension                                                               | untouched: the document loads and round-trips identically                                                          |
 
 Only `getInternalViewExtensions(flags)` reads the object. The schema and
 store functions accept it for source compatibility and ignore it (ADR 0009).

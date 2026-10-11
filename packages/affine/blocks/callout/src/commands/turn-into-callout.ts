@@ -56,7 +56,7 @@ export function calloutConversionTargets(
 }
 
 /**
- * Wraps each selected paragraph, list item or code block in a callout (#418).
+ * Turns each selected paragraph, list item or code block into a callout (#418).
  *
  * A callout is a hub with no text of its own, so this cannot be
  * `transformModel`: the callout takes the block's place, a paragraph inside it
