@@ -147,7 +147,7 @@ export class LanguageListButton extends WithDisposable(
     const plainText: FilterableListItem = {
       label: translateKey(this.blockComponent.std, ...CODE_PLAIN_TEXT_LANGUAGE),
       name: PLAIN_TEXT_ITEM_NAME,
-      aliases: ['plain', 'text', 'none'],
+      aliases: ['plain', 'text', 'plaintext', 'txt', 'none'],
     };
     const index = languages.findIndex(
       item => item.name === PLAIN_TEXT_ITEM_NAME
