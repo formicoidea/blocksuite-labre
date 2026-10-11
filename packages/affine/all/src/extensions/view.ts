@@ -1,6 +1,9 @@
 import { AttachmentViewExtension } from '@labre/affine-block-attachment/view';
 import { BookmarkViewExtension } from '@labre/affine-block-bookmark/view';
-import { CalloutViewExtension } from '@labre/affine-block-callout/view';
+import {
+  CalloutRenderViewExtension,
+  CalloutViewExtension,
+} from '@labre/affine-block-callout/view';
 import { CodeBlockViewExtension } from '@labre/affine-block-code/view';
 import { DataViewViewExtension } from '@labre/affine-block-data-view/view';
 import { DatabaseViewExtension } from '@labre/affine-block-database/view';
@@ -184,6 +187,10 @@ export function getInternalViewExtensions(flags?: LabreFlags) {
     // Block
     ...(on('attachment') ? [AttachmentViewExtension] : []),
     ...(on('bookmark') ? [BookmarkViewExtension] : []),
+    // Split like the frameworks (ADR 0009, #418): a stored callout paints,
+    // edits and keeps its block toolbar; the flag removes only the creation
+    // entries (slash item, Turn into). The other blocks are not split yet.
+    CalloutRenderViewExtension,
     ...(on('callout') ? [CalloutViewExtension] : []),
     ...(on('code') ? [CodeBlockViewExtension] : []),
     ...(on('data-view') ? [DataViewViewExtension] : []),

@@ -94,9 +94,12 @@ This is why every canvas framework ships two view providers:
 | `XRenderViewExtension` | always                            | element views, renderers, interaction, contextual toolbar of a placed element, role vocabulary                                                |
 | `XViewExtension`       | only when the flag is not `false` | senior button, sub-menu, commands and shortcuts, validation rules and profiles, templates category, interchange capabilities, nudges, reading |
 
-Blocks inherited from AFFiNE have not been split yet: a disabled block's
-content is safe in the store but renders nothing until its flag is back
-(ADR 0009, consequences section).
+Blocks inherited from AFFiNE have not been split yet, the callout excepted:
+`CalloutRenderViewExtension` (block view, keymap, block toolbar) is always
+registered and `CalloutViewExtension` (slash item, "Turn into → Callout") is
+gated. Any other disabled block's content is safe in the store but renders
+nothing until its flag is back (ADR 0009, consequences section and its
+2026-10-11 amendment).
 
 ## Framework descriptors
 

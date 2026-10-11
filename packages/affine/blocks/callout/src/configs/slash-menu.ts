@@ -54,9 +54,11 @@ export const calloutSlashMenuConfig: SlashMenuConfig = {
           parent,
           index + 1
         );
-        if (!calloutId) return;
+        // `addBlock` returns an id even when the schema refused the block
+        // (`transact` swallows the throw, #418): only the model proves it.
+        if (!store.getModelById(calloutId)) return;
         const paragraphId = store.addBlock('affine:paragraph', {}, calloutId);
-        if (!paragraphId) return;
+        if (!store.getModelById(paragraphId)) return;
         std.host.updateComplete
           .then(() => {
             const paragraph = std.view.getBlock(paragraphId);
