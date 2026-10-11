@@ -106,13 +106,13 @@ beforeEach(() => {
 });
 
 describe('code block language picker, Plain Text', () => {
-  it('lists Plain Text first, searchable by plain, text and none', async () => {
+  it('lists Plain Text first, searchable by plain, text, plaintext, txt and none', async () => {
     const { options } = await openPicker('python');
 
     const [first] = options.items;
     expect(first.label).toBe('Plain Text');
     expect(first.aliases).toEqual(
-      expect.arrayContaining(['plain', 'text', 'none'])
+      expect.arrayContaining(['plain', 'text', 'plaintext', 'txt', 'none'])
     );
   });
 
