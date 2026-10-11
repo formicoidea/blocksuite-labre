@@ -1,5 +1,24 @@
 # @labre/affine-gfx-edgy
 
+## 0.46.1
+
+### Patch Changes
+
+- @labre/affine-block-surface@0.46.1
+- @labre/affine-components@0.46.1
+- @labre/affine-ext-loader@0.46.1
+- @labre/affine-gfx-connector@0.46.1
+- @labre/affine-gfx-group@0.46.1
+- @labre/affine-gfx-pointer@0.46.1
+- @labre/affine-gfx-shape@0.46.1
+- @labre/affine-gfx-template@0.46.1
+- @labre/affine-model@0.46.1
+- @labre/affine-shared@0.46.1
+- @labre/affine-widget-edgeless-toolbar@0.46.1
+- @labre/global@0.46.1
+- @labre/std@0.46.1
+- @labre/store@0.46.1
+
 ## 0.46.0
 
 ### Patch Changes

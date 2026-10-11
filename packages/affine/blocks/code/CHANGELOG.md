@@ -1,5 +1,28 @@
 # @labre/affine-block-code
 
+## 0.46.1
+
+### Patch Changes
+
+- 863b8a1: The code block's "Plain Text" language entry is also found by typing
+  "plaintext" or "txt", the two spellings markdown writers reach for. Lists of
+  recently-used languages saved before this change pick the new aliases up on
+  the next open; nothing stored in the document changes.
+  - @labre/affine-components@0.46.1
+  - @labre/affine-ext-loader@0.46.1
+  - @labre/affine-gfx-turbo-renderer@0.46.1
+  - @labre/affine-inline-comment@0.46.1
+  - @labre/affine-inline-latex@0.46.1
+  - @labre/affine-inline-link@0.46.1
+  - @labre/affine-inline-preset@0.46.1
+  - @labre/affine-model@0.46.1
+  - @labre/affine-rich-text@0.46.1
+  - @labre/affine-shared@0.46.1
+  - @labre/affine-widget-slash-menu@0.46.1
+  - @labre/global@0.46.1
+  - @labre/std@0.46.1
+  - @labre/store@0.46.1
+
 ## 0.46.0
 
 ### Patch Changes
