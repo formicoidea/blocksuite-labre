@@ -5,18 +5,18 @@ import { effect } from '@preact/signals-core';
 
 import { Overlay } from './overlay.js';
 
-/** Ring thickness, in screen pixels. */
+/** Border thickness, in screen pixels: the selection frame's. */
 const HIGHLIGHT_STROKE_WIDTH = 2;
 
-/** Gap between the element bounds and the ring, in screen pixels. */
-const HIGHLIGHT_GAP = 4;
-
-/** Ring corner radius, in screen pixels. */
-const HIGHLIGHT_RADIUS = 4;
-
 /**
- * Draws the transient emphasis ring around the elements held by
- * `gfx.highlight` (`ElementHighlightManager`).
+ * Draws the transient emphasis around the elements held by `gfx.highlight`
+ * (`ElementHighlightManager`).
+ *
+ * The emphasis is the canvas's existing vocabulary, a square border on the
+ * element's bounds like the selection frame (`edgeless-selected-rect`), not a
+ * second, detached ring: the product owner asked for the border alone after
+ * the P1 recette, so a selection-pane hover reads as « this one » and not as a
+ * new kind of mark.
  *
  * The overlay is a pure renderer: it owns no state, reads nothing from the
  * store and mutates nothing, which makes it safe on a read-only editor.
@@ -51,8 +51,6 @@ export class ElementHighlightOverlay extends Overlay {
     if (elements.length === 0) return;
 
     const { zoom } = this.gfx.viewport;
-    const gap = HIGHLIGHT_GAP / zoom;
-    const radius = HIGHLIGHT_RADIUS / zoom;
 
     ctx.save();
     ctx.strokeStyle = this._strokeColor;
@@ -63,20 +61,12 @@ export class ElementHighlightOverlay extends Overlay {
 
       ctx.save();
       // Rotate around the element center so rotated elements keep a tight
-      // ring; connectors and other non-rotatable elements use their bound box.
+      // border; connectors and other non-rotatable elements use their bound box.
       ctx.translate(x + w / 2, y + h / 2);
       if (element.rotate) {
         ctx.rotate((element.rotate * Math.PI) / 180);
       }
-      ctx.beginPath();
-      ctx.roundRect(
-        -w / 2 - gap,
-        -h / 2 - gap,
-        w + gap * 2,
-        h + gap * 2,
-        radius
-      );
-      ctx.stroke();
+      ctx.strokeRect(-w / 2, -h / 2, w, h);
       ctx.restore();
     }
 
