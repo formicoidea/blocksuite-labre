@@ -1,0 +1,6 @@
+---
+'@labre/affine-block-embed-doc': minor
+'@labre/affine-shared': minor
+---
+
+The slash menu's "New Doc" now creates its page through the host and leaves a card where it was typed. The page comes from `LinkedDocCreationProvider.createLinkedDoc(host, '')` when the host registers `LinkedDocCreationExtension` (the same seam as the edgeless "Create linked doc"; the library writes a blank page into the unloaded store it returns), else from the workspace as before. The entry then inserts an `affine:embed-linked-doc` card right after the block it was typed in, replacing that line when the gesture left it empty: one undo step, nothing written on a read-only store, `BlockCreated` emitted for the card. Where the parent refuses a card (a callout, an edgeless text), it falls back on the inline mention it used to leave. The provider gains an optional `canCreateLinkedDoc(host)`: on `false` the slash entry is hidden (a host refusing creation on a page shared with a guest, for instance); absent means allowed, so existing providers keep their behaviour. A host that overrode `LinkedDocSlashMenuConfigIdentifier` only to get this can drop the override. New shared helper `writeDefaultDocBlocks(store, title?)` (`@labre/affine-shared/utils`) writes the blank page `createDefaultDoc` makes.
