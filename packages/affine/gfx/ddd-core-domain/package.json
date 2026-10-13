@@ -42,7 +42,7 @@
     "!src/__tests__",
     "!dist/__tests__"
   ],
-  "version": "0.47.0",
+  "version": "0.47.1",
   "devDependencies": {
     "yjs": "^13.6.21"
   }
