@@ -667,7 +667,7 @@ describe('running an import from a file', () => {
     expect(failure.title).toBe('This file could not be imported');
     expect(failure.accent).toBe('error');
     expect(failure.message).toBe(
-      'This document became read-only while the file was being read, so nothing was imported.'
+      'This page became read-only while the file was being read, so nothing was imported.'
     );
   });
 });

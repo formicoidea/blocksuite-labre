@@ -365,7 +365,7 @@ export const BPMN_QUARANTINE_REASON = {
   expanded:
     'The body of an expanded sub-process. Labre draws the collapsed form, and a ' +
     'body written under a shape flagged collapsed is a model and a diagram that ' +
-    'contradict each other. It stays in the document.',
+    'contradict each other. It stays in the page.',
   nestedLanes:
     'A nested lane set. A Labre pool is one flat list of bands, so the leaves ' +
     'were imported carrying their whole path as a name; writing the nesting back ' +

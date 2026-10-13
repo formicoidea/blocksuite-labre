@@ -3,7 +3,7 @@
 Edgeless drawing elements (shape / text / connector / group) can carry a link to
 an existing doc **or** an external URL. On hover, a small arrow
 (`edgeless-element-link` widget) opens the target. This is the minimal
-counterpart to "Create linked doc" — no embed card, just a reference stored on
+counterpart to "Create linked page" — no embed card, just a reference stored on
 the element.
 
 The library ships the **UI and the data fields**; it depends on the host

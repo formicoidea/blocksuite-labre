@@ -349,7 +349,7 @@ const hideForEveryone: CommandDescriptor<HideForEveryoneParams> = {
   descriptionKey:
     'com.labre.command.canvas.visibility.hide-for-everyone.description',
   descriptionFallback:
-    'Hide the selected elements for everyone who opens this document. They stay in the document and in the selection pane.',
+    'Hide the selected elements for everyone who opens this page. They stay in the page and in the selection pane.',
   surfaces: ['palette', 'agent'],
   scope: 'edgeless',
   defaultKeys: { mac: [], other: [] },

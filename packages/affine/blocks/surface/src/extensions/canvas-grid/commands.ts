@@ -68,7 +68,7 @@ const saveGridForEveryone: AnyCommandDescriptor = {
   labelFallback: 'Save the grid for everyone',
   descriptionKey: 'com.labre.command.canvas.grid.save-for-everyone.description',
   descriptionFallback:
-    'Make the grid as you see it now the setting of this document, for everyone who opens it.',
+    'Make the grid as you see it now the setting of this page, for everyone who opens it.',
   category: 'display',
   keywords: ['grid', 'dots', 'background', 'document'],
   surfaces: ['palette', 'agent', 'view-menu'],

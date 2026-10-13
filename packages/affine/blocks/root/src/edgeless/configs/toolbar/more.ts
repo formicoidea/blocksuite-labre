@@ -241,7 +241,7 @@ export const moreActions = [
     actions: [
       {
         id: 'a.turn-into-linked-doc',
-        label: 'Turn into linked doc',
+        label: 'Turn into linked page',
         labelWording: ROOT_TOOLBAR_TURN_INTO_LINKED_DOC,
         icon: LinkedPageIcon(),
         when(ctx) {

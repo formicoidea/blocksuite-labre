@@ -31,7 +31,7 @@ export const GROUP_TOOLBAR_INSERT_INTO_PAGE = TOOLBAR_INSERT_INTO_PAGE;
 
 export const GROUP_TOAST_INSERTED: ChromeWording = [
   'com.labre.group.toast.inserted',
-  'Group has been inserted into doc',
+  'Group has been inserted into page',
 ];
 
 export const GROUP_TOOLBAR_RENAME = TOOLBAR_RENAME;

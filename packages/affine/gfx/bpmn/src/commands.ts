@@ -802,7 +802,7 @@ const importCommand: CommandDescriptor = {
   labelFallback: 'Import BPMN XML',
   descriptionKey: 'com.labre.commands.bpmn.importXml.description',
   descriptionFallback:
-    'Open a BPMN 2.0 XML file as a board. What Labre cannot draw is kept in the document, and the import says what it was.',
+    'Open a BPMN 2.0 XML file as a board. What Labre cannot draw is kept in the page, and the import says what it was.',
   category: 'interchange',
   iconKey: 'bpmn.import-xml',
   surfaces: ['senior-menu', 'catalogue', 'palette', 'agent'],

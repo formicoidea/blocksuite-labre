@@ -223,7 +223,7 @@ export const builtinToolbarConfig = {
     captionAction('d.caption'),
     {
       id: 'e.convert-to-linked-doc',
-      tooltip: 'Create Linked Doc',
+      tooltip: 'Create Linked Page',
       tooltipWording: EMBED_IFRAME_TOOLBAR_CREATE_LINKED_DOC,
       icon: LinkedPageIcon(),
       run(ctx) {

@@ -39,7 +39,7 @@ const trackBaseProps = {
 const openDocAction = {
   id: 'a.open-doc',
   icon: ExpandFullIcon(),
-  tooltip: 'Open this doc',
+  tooltip: 'Open this page',
   tooltipWording: TOOLBAR_OPEN_THIS_DOC,
   run(ctx) {
     const block = ctx.getCurrentBlockByType(EmbedHtmlBlockComponent);

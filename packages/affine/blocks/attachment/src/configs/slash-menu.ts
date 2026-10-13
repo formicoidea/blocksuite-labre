@@ -16,7 +16,7 @@ export const attachmentSlashMenuConfig: SlashMenuConfig = {
     {
       name: 'Attachment',
       nameWording: ATTACHMENT_SLASH_NAME,
-      description: 'Attach a file to document.',
+      description: 'Attach a file to the page.',
       descriptionWording: ATTACHMENT_SLASH_DESCRIPTION,
       icon: FileIcon(),
       tooltip: {
@@ -43,7 +43,7 @@ export const attachmentSlashMenuConfig: SlashMenuConfig = {
     {
       name: 'PDF',
       nameWording: ATTACHMENT_SLASH_PDF_NAME,
-      description: 'Upload a PDF to document.',
+      description: 'Upload a PDF to the page.',
       descriptionWording: ATTACHMENT_SLASH_PDF_DESCRIPTION,
       icon: ExportToPdfIcon(),
       tooltip: {

@@ -32,7 +32,7 @@ export const ROOT_TOOLBAR_CREATE_TABLE: ChromeWording = [
  * An alias (L7 dedupe): the same Title Case word as
  * {@link TOOLBAR_CREATE_LINKED_DOC_TITLE}, distinct from the shared
  * sentence-case `TOOLBAR_CREATE_LINKED_DOC` chrome wording
- * (`com.labre.toolbar.create-linked-doc`, "Create linked doc").
+ * (`com.labre.toolbar.create-linked-doc`, "Create linked page").
  */
 export const ROOT_TOOLBAR_CREATE_LINKED_DOC = TOOLBAR_CREATE_LINKED_DOC_TITLE;
 
@@ -125,7 +125,7 @@ export const ROOT_TOOLBAR_SEND_BACKWARD: ChromeWording = [
 export const ROOT_TOOLBAR_RELOAD = TOOLBAR_RELOAD;
 export const ROOT_TOOLBAR_TURN_INTO_LINKED_DOC: ChromeWording = [
   'com.labre.root.toolbar.turn-into-linked-doc',
-  'Turn into linked doc',
+  'Turn into linked page',
 ];
 export const ROOT_TOOLBAR_EDIT_LINK: ChromeWording = [
   'com.labre.root.toolbar.edit-link',

@@ -1095,7 +1095,7 @@ const importCommands: CommandDescriptor[] = [
     labelFallback: 'Import XMI',
     descriptionKey: 'com.labre.commands.uml.importXmi.description',
     descriptionFallback:
-      'Open an XMI 2.5.1 model as a diagram. What Labre cannot draw is kept in the document, and the import says what it was.',
+      'Open an XMI 2.5.1 model as a diagram. What Labre cannot draw is kept in the page, and the import says what it was.',
     category: 'interchange',
     iconKey: 'uml.import-xmi',
     // The one nominated import — see the header. Not the contextual toolbar: a
@@ -1130,7 +1130,7 @@ const importCommands: CommandDescriptor[] = [
     labelFallback: 'Import PlantUML',
     descriptionKey: 'com.labre.commands.uml.importPlantuml.description',
     descriptionFallback:
-      'Open a PlantUML source as a diagram. Lines Labre cannot read are kept in the document, and the import says which.',
+      'Open a PlantUML source as a diagram. Lines Labre cannot read are kept in the page, and the import says which.',
     category: 'interchange',
     iconKey: 'uml.import-plantuml',
     surfaces: ['catalogue', 'palette', 'agent'],
