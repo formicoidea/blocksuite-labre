@@ -24,7 +24,7 @@ export const AUTO_COMPLETE_ADD_SAME_OBJECT: ChromeWording = [
 /** The floating "open link" button drawn over a linked element. */
 export const EDGELESS_LINK_OPEN_DOC: ChromeWording = [
   'com.labre.edgeless-element-link.open-doc',
-  'Open linked doc',
+  'Open linked page',
 ];
 
 export const EDGELESS_LINK_OPEN_LINK: ChromeWording = [

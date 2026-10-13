@@ -162,7 +162,7 @@ export const SLASH_MENU_GROUP_CONTENT_MEDIA: ChromeWording = [
 
 export const SLASH_MENU_GROUP_PAGE: ChromeWording = [
   'com.labre.slash-menu.group.page',
-  'Document',
+  'Page',
 ];
 
 export const SLASH_MENU_GROUP_EDGELESS_ELEMENT: ChromeWording = [

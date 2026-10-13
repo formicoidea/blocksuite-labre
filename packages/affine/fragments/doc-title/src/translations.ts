@@ -70,7 +70,7 @@ export const TITLE_BAND_CLEAR: ChromeWording = [
  */
 export const TITLE_BAND_NOT_SHOWN: ChromeWording = [
   'com.labre.title-band.not-shown',
-  'Not shown in this document',
+  'Not shown in this page',
 ];
 
 /** Every wording this package declares, in the order it renders them. */

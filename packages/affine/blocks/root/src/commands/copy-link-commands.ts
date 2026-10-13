@@ -109,10 +109,10 @@ const copyDocLink: CommandDescriptor = {
   // carry a default chord, and the shortcut namespace would file it as a
   // keymap row for a translator.
   labelKey: 'com.labre.command.doc.copy-link',
-  labelFallback: 'Copy document link',
+  labelFallback: 'Copy page link',
   descriptionKey: 'com.labre.command.doc.copy-link.description',
   descriptionFallback:
-    'Copy a link to this document, anchored on the selection, so it can be ' +
+    'Copy a link to this page, anchored on the selection, so it can be ' +
     'pasted into a text as a reference.',
   keywords: ['link', 'url', 'share', 'reference'],
   surfaces: ['palette', 'agent'],

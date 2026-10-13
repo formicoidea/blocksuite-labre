@@ -21,7 +21,7 @@ export const LINKED_DOC_FORMAT_HTML = FORMAT_HTML;
 
 export const LINKED_DOC_LINK_TO_DOC: ChromeWording = [
   'com.labre.linked-doc.group.link-to-doc',
-  'Link to Doc',
+  'Link to Page',
 ];
 
 export const LINKED_DOC_NEW_DOC = NEW_DOC_LABEL;
@@ -40,7 +40,7 @@ export const LINKED_DOC_IMPORT: ChromeWording = [
 /** The "Create doc" item's own wording, interpolated with the truncated name. */
 export const LINKED_DOC_CREATE_DOC: ChromeWording = [
   'com.labre.linked-doc.create-doc',
-  'Create "{{name}}" doc',
+  'Create "{{name}}" page',
 ];
 
 /**
@@ -50,7 +50,7 @@ export const LINKED_DOC_CREATE_DOC: ChromeWording = [
  */
 export const LINKED_DOC_IMPORT_SUCCESS_TOAST: ChromeWording = [
   'com.labre.linked-doc.import-success',
-  'Successfully imported {{count}} Doc(s).',
+  'Successfully imported {{count}} Page(s).',
 ];
 
 /**

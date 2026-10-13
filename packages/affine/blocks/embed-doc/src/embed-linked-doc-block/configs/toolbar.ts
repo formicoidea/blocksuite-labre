@@ -124,7 +124,7 @@ const openDocActions = [
   {
     mode: 'open-in-active-view',
     id: 'a.open-in-active-view',
-    label: 'Open this doc',
+    label: 'Open this page',
     labelWording: TOOLBAR_OPEN_THIS_DOC,
     icon: ExpandFullIcon(),
   },

@@ -144,7 +144,7 @@ export const EMBED_CARD_TITLE_ALIAS_PLACEHOLDER: ChromeWording = [
 ];
 export const EMBED_CARD_DESCRIPTION_ALIAS_PLACEHOLDER: ChromeWording = [
   'com.labre.embed.card.description-alias-placeholder',
-  'Add description alias (empty to inherit document content)',
+  'Add description alias (empty to inherit page content)',
 ];
 export const EMBED_CARD_TITLE_PLACEHOLDER: ChromeWording = [
   'com.labre.embed.card.title-placeholder',
@@ -332,7 +332,7 @@ export const EMOJI_GROUP_WORDINGS: Readonly<Record<string, ChromeWording>> = {
 
 export const DOC_TITLE_ARIA: ChromeWording = [
   'com.labre.linked-doc.title-aria',
-  'Doc title',
+  'Page title',
 ];
 
 /* ── Linked-doc notifications ─────────────────────────────────────────── */
@@ -351,7 +351,7 @@ export const NOTIFY_SWITCHED_TO_EMBED_TITLE: ChromeWording = [
 ];
 export const NOTIFY_SWITCHED_TO_EMBED_MESSAGE: ChromeWording = [
   'com.labre.notify.linked-doc.switched-to-embed.message',
-  'Custom alias removed. The linked doc now displays the original title and description.',
+  'Custom alias removed. The linked page now displays the original title and description.',
 ];
 export const NOTIFY_CLEARED_ALIASES_TITLE: ChromeWording = [
   'com.labre.notify.linked-doc.cleared-aliases.title',
@@ -359,7 +359,7 @@ export const NOTIFY_CLEARED_ALIASES_TITLE: ChromeWording = [
 ];
 export const NOTIFY_CLEARED_ALIASES_MESSAGE: ChromeWording = [
   'com.labre.notify.linked-doc.cleared-aliases.message',
-  'Card view has been restored to original doc title and description. All custom aliases have been removed.',
+  'Card view has been restored to original page title and description. All custom aliases have been removed.',
 ];
 
 /* ── Open-doc dropdown ────────────────────────────────────────────────── */
@@ -367,11 +367,11 @@ export const NOTIFY_CLEARED_ALIASES_MESSAGE: ChromeWording = [
 export const OPEN_LABEL: ChromeWording = ['com.labre.open-doc.open', 'Open'];
 export const OPEN_DOC_MENU_ARIA: ChromeWording = [
   'com.labre.open-doc.menu-aria',
-  'Open doc menu',
+  'Open page menu',
 ];
 export const OPEN_DOC_WITH_ARIA: ChromeWording = [
   'com.labre.open-doc.with-aria',
-  'Open doc with',
+  'Open page with',
 ];
 
 /* ── Resource popover (attachment / image not-found or retrieve error) ─ */

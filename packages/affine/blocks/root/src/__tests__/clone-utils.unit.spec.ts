@@ -1,5 +1,5 @@
 /**
- * "Turn into linked doc" on a partial selection: one endpoint of a connector is
+ * "Turn into linked page" on a partial selection: one endpoint of a connector is
  * cloned, the other stays behind in the source document.
  *
  * The endpoint left behind CANNOT keep its element id: the target document is a

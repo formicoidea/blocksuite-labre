@@ -4,7 +4,7 @@ import { type ExtensionType, type Store } from '@labre/store';
 
 /**
  * Creates the new doc that the linked-doc features populate (the edgeless
- * "Create linked doc" / "Turn into linked doc" actions). By default this is a
+ * "Create linked page" / "Turn into linked page" actions). By default this is a
  * fresh in-workspace doc; a host app can override it to ALSO persist or register
  * the doc (assign a stored id, create a metadata row, attach sync) before the
  * editor writes blocks into the returned store.

@@ -91,7 +91,7 @@ const CHROME_TABLE_PREFIXES = [
  * reason a merge would be wrong; copied from the dedupe plan's own
  * `keepSeparateWords`, plus the four words whose merge GROUP kept a
  * `keepSeparate` key alongside its canonical ("Confirm", "Equation", "Link",
- * "Document", formerly "Page").
+ * "Page", called "Document" for a while).
  */
 const KEPT_SEPARATE_CHROME_WORDS: Readonly<Record<string, string>> = {
   Background: 'frame fill vs text highlight background',
@@ -129,13 +129,19 @@ const KEPT_SEPARATE_CHROME_WORDS: Readonly<Record<string, string>> = {
   // from the generic confirm button), "Equation" (the LaTeX slash menu's own
   // block-item NAME, distinct from the inline/block empty-placeholder),
   // "Link" (Wardley's own template-link wording — a framework never imports
-  // another package's key), "Document" (formerly "Page"; the slash menu's own group header,
-  // distinct from the note's display-mode word).
+  // another package's key), "Page" (called "Document" until the PO ruling of
+  // 2026-10-13 that every Labre object is a page; the slash menu's own group
+  // header, distinct from the note's display-mode word).
   Confirm:
     "the reading panel's own confirm-nature wording, not the generic verb",
   Equation: "the LaTeX slash-menu block item's own name, not the placeholder",
   Link: "Wardley's own framework-owned template wording",
-  Document: "the slash menu's own group header, not the note's display mode",
+  Page: "the slash menu's own group header, not the note's display mode",
+  // The linked-doc card and the synced-doc embed said "doc" and "document"
+  // until the 2026-10-13 page wording converged them: two keys already
+  // shipped, each in a host catalogue, so neither is retired for an alias.
+  'Preview of the page will be displayed here.':
+    'linked-doc card vs synced-doc embed, two keys already shipped on main',
 };
 
 /**
@@ -217,14 +223,14 @@ describe('getTranslationKeyManifest', () => {
 
   test('the core toasts crossed the seam (#182)', () => {
     pinned('com.labre.toast.copied-to-clipboard', 'Copied to clipboard');
-    pinned('com.labre.toast.linked-doc-created', 'Linked doc created');
+    pinned('com.labre.toast.linked-doc-created', 'Linked page created');
     pinned(
       'com.labre.toast.note-removed-from-page-mode',
-      'Note removed from Document Mode'
+      'Note removed from Page Mode'
     );
     pinned(
       'com.labre.toast.frame-inserted-into-page',
-      'Frame inserted into Document.'
+      'Frame inserted into Page.'
     );
     pinned('com.labre.toast.no-link-found', 'No link found');
   });
@@ -250,7 +256,7 @@ describe('getTranslationKeyManifest', () => {
     pinned('com.labre.toolbar.lock', 'Lock');
     pinned('com.labre.toolbar.more', 'More');
     pinned('com.labre.toolbar.link', 'Link');
-    pinned('com.labre.toolbar.create-linked-doc', 'Create linked doc');
+    pinned('com.labre.toolbar.create-linked-doc', 'Create linked page');
     pinned('com.labre.toolbar.draw-connector', 'Draw connector');
     pinned('com.labre.toolbar.switch-view', 'Switch view');
     pinned('com.labre.toolbar.inline-view', 'Inline view');
@@ -258,10 +264,13 @@ describe('getTranslationKeyManifest', () => {
     pinned('com.labre.toolbar.embed-view', 'Embed view');
 
     // …and what a linked-doc card says when there is nothing to preview.
-    pinned('com.labre.embed.linked-doc.deleted', 'This linked doc is deleted.');
+    pinned(
+      'com.labre.embed.linked-doc.deleted',
+      'This linked page is deleted.'
+    );
     pinned(
       'com.labre.embed.linked-doc.empty-preview',
-      'Preview of the doc will be displayed here.'
+      'Preview of the page will be displayed here.'
     );
   });
 
