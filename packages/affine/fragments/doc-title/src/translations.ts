@@ -65,12 +65,21 @@ export const TITLE_BAND_CLEAR: ChromeWording = [
 ];
 
 /**
- * The note header's row of child pages the document holds but does not
- * display (ADR 0035 §9d, canvas view only).
+ * The row of child pages the document holds but does not display, under the
+ * title and in the note header (ADR 0035 §9d and its 2026-10-13 amendment).
  */
 export const TITLE_BAND_NOT_SHOWN: ChromeWording = [
   'com.labre.title-band.not-shown',
   'Not shown in this document',
+];
+
+/**
+ * The button beside each page of that row: inserts a card of the page here
+ * (labre ADR-0045 §7).
+ */
+export const TITLE_BAND_SHOW_HERE: ChromeWording = [
+  'com.labre.title-band.show-here',
+  'Show here',
 ];
 
 /** Every wording this package declares, in the order it renders them. */
@@ -85,4 +94,5 @@ export const DOC_TITLE_WORDINGS: readonly ChromeWording[] = [
   TITLE_BAND_LOADING,
   TITLE_BAND_NOT_SHOWN,
   TITLE_BAND_OPEN_PANEL,
+  TITLE_BAND_SHOW_HERE,
 ];

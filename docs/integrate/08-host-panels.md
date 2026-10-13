@@ -232,6 +232,7 @@ const extensions = [
     add: docId => openWorkspacePropertySettings(docId), // the band's "+"
     collapsed$: docId => deviceCollapsed(docId),
     setCollapsed: (docId, collapsed) => rememberCollapsed(docId, collapsed),
+    notShown$: docId => childrenNotShown(docId), // the "Not shown" row, both views
   }),
   PropertiesPanelExtension({
     open: (request: PropertiesPanelRequest) => sidebar.showProperties(request),
