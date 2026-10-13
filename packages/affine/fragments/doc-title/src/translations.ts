@@ -58,12 +58,6 @@ export const TITLE_BAND_LOADING: ChromeWording = [
   'Loading properties',
 ];
 
-/** Clears a select or a date from its editor. */
-export const TITLE_BAND_CLEAR: ChromeWording = [
-  'com.labre.title-band.clear',
-  'Clear value',
-];
-
 /**
  * The row of child pages the document holds but does not display, under the
  * title and in the note header (ADR 0035 §9d and its 2026-10-13 amendment).
@@ -86,7 +80,6 @@ export const TITLE_BAND_SHOW_HERE: ChromeWording = [
 export const DOC_TITLE_WORDINGS: readonly ChromeWording[] = [
   DOC_TITLE_PLACEHOLDER,
   TITLE_BAND_ADD,
-  TITLE_BAND_CLEAR,
   TITLE_BAND_COLLAPSE,
   TITLE_BAND_EMPTY,
   TITLE_BAND_EXPAND,

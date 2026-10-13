@@ -26,7 +26,8 @@ export class MultiSelectCell extends BaseCellRenderer<
     this.closePopup = popTagSelect(popupTargetFromElement(this), {
       name: this.cell.property.name$.value,
       options: this.options$,
-      onOptionsChange: this._onOptionsChange,
+      onOptionsChange:
+        this.property.dataCanSet === false ? undefined : this._onOptionsChange,
       value: this._value$,
       onChange: v => {
         this.valueSetImmediate(v);

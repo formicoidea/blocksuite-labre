@@ -1,7 +1,5 @@
 export { DocTitle } from './doc-title';
 export {
-  chipEditorKind,
-  type ChipEditorKind,
   type ChipTag,
   chipValueView,
   type ChipValueView,

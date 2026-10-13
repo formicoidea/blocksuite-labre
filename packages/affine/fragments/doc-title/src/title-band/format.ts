@@ -1,10 +1,10 @@
 import type { TitleBandProperty } from '@labre/affine-shared/services';
 
 /**
- * How a chip of the title band draws a property's value, and which editor a
- * click opens — pure, render-free, so a host's own properties panel can show
- * the very text a chip shows (`formatPropertyValue`, re-exported by
- * `@labre/affine/host-panels`).
+ * A property's value as one line of text — pure, render-free, so a host's own
+ * properties panel can show what a chip reads (`formatPropertyValue`,
+ * re-exported by `@labre/affine/host-panels`), and the band can still read
+ * a type no data-view cell draws (`relation`, an unknown one).
  *
  * The value is the JSON a data-view cell of `type` holds (ADR 0035 §9d), and
  * the shapes below are the data-view presets' own: an option id for `select`,
@@ -12,12 +12,9 @@ import type { TitleBandProperty } from '@labre/affine-shared/services';
  * formatted with the number preset's options, so a chip and a database cell
  * read the same.
  *
- * ponytail: the band draws its chips and editors itself, per type, rather
- * than mounting the data-view cell renderers, which need a `Cell` bound to a
- * view and a data source the band does not have. The ceiling is a type the
- * band does not know: it is drawn as plain text and opens no editor. The
- * upgrade path is a hosted data source for the page's sheet once
- * `HostedDataSourceBase` exists (ADR 0035 §7, issue B1).
+ * The chips themselves no longer read this: each value is drawn and edited by
+ * the data-view cell of its type (`./band-cell.ts`, ADR 0035 §11 amended
+ * 2026-10-13). This text is the host panels' reading and the band's fallback.
  */
 
 /** A select option as a data-view `select` / `multi-select` holds it. */
@@ -34,25 +31,6 @@ export type ChipValueView =
   | { kind: 'checkbox'; checked: boolean }
   | { kind: 'tags'; tags: ChipTag[] };
 
-/** The editor a click on a chip opens; `none` for a type the band cannot edit. */
-export type ChipEditorKind =
-  | 'toggle'
-  | 'select'
-  | 'multi-select'
-  | 'date'
-  | 'number'
-  | 'text'
-  | 'none';
-
-const TEXT_TYPES = new Set([
-  'text',
-  'rich-text',
-  'title',
-  'url',
-  'link',
-  'email',
-  'phone',
-]);
 const DATE_TYPES = new Set(['date', 'created-time', 'modified-time']);
 const currency = (code: string): Intl.NumberFormatOptions => ({
   style: 'currency',
@@ -215,27 +193,4 @@ export function formatPropertyValue(
     default:
       return '';
   }
-}
-
-/**
- * A number typed in a chip's editor: blanks dropped, a decimal comma read as
- * a point. `NaN` for anything else, which the band writes as `null`.
- */
-export function parseChipNumber(text: string): number {
-  const compact = text.replace(/\s/g, '');
-  if (compact === '') return NaN;
-  return Number(compact.replace(',', '.'));
-}
-
-/** The editor a click on this property's chip opens. */
-export function chipEditorKind(property: TitleBandProperty): ChipEditorKind {
-  if (property.readonly) return 'none';
-  const { type } = property;
-  if (type === 'checkbox') return 'toggle';
-  if (type === 'select') return 'select';
-  if (type === 'multi-select') return 'multi-select';
-  if (type === 'date') return 'date';
-  if (type === 'number' || type === 'progress') return 'number';
-  if (TEXT_TYPES.has(type)) return 'text';
-  return 'none';
 }
