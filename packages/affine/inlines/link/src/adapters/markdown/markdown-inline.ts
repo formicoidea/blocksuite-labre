@@ -1,4 +1,5 @@
 import { MarkdownASTToDeltaExtension } from '@labre/affine-shared/adapters';
+import { isSafeLinkUrl } from '@labre/affine-shared/utils';
 
 export const markdownLinkToDeltaMatcher = MarkdownASTToDeltaExtension({
   name: 'link',
@@ -41,6 +42,10 @@ export const markdownLinkToDeltaMatcher = MarkdownASTToDeltaExtension({
           },
         ];
       }
+    }
+    // A refused scheme (`javascript:`, `data:`…) keeps its text, loses the mark.
+    if (!isSafeLinkUrl(ast.url)) {
+      return ast.children.flatMap(child => context.toDelta(child));
     }
     return ast.children.flatMap(child =>
       context.toDelta(child).map(delta => {

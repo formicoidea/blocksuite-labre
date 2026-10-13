@@ -4,6 +4,7 @@ import type { FootNote } from '@labre/affine-model';
 import { CitationProvider } from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import type { AffineTextAttributes } from '@labre/affine-shared/types';
+import { isSafeLinkUrl } from '@labre/affine-shared/utils';
 import { WithDisposable } from '@labre/global/lit';
 import {
   BlockSelection,
@@ -152,6 +153,7 @@ export class AffineFootnoteNode extends WithDisposable(ShadowlessElement) {
   };
 
   private readonly _handleUrlReference = (url: string) => {
+    if (!isSafeLinkUrl(url)) return;
     window.open(url, '_blank');
   };
 

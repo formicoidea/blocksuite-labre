@@ -5,7 +5,10 @@ import type {
 } from '@labre/affine-model';
 import { ImageProxyService } from '@labre/affine-shared/adapters';
 import { ThemeProvider } from '@labre/affine-shared/services';
-import { shouldRefreshOnPropsUpdate } from '@labre/affine-shared/utils';
+import {
+  isSafeLinkUrl,
+  shouldRefreshOnPropsUpdate,
+} from '@labre/affine-shared/utils';
 import { BlockSelection } from '@labre/std';
 import { html, nothing } from 'lit';
 import { property, state } from 'lit/decorators.js';
@@ -33,6 +36,7 @@ export class EmbedYoutubeBlockComponent extends EmbedBlockComponent<
     if (!link.match(/^[a-zA-Z]+:\/\//)) {
       link = 'https://' + link;
     }
+    if (!isSafeLinkUrl(link)) return;
     window.open(link, '_blank');
   };
 

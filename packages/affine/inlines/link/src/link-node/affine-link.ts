@@ -7,7 +7,7 @@ import {
 } from '@labre/affine-shared/services';
 import { affineTextStyles } from '@labre/affine-shared/styles';
 import type { AffineTextAttributes } from '@labre/affine-shared/types';
-import { normalizeUrl } from '@labre/affine-shared/utils';
+import { isSafeLinkUrl, normalizeUrl } from '@labre/affine-shared/utils';
 import { WithDisposable } from '@labre/global/lit';
 import type { BlockComponent, BlockStdScope } from '@labre/std';
 import { BLOCK_ID_ATTR, ShadowlessElement } from '@labre/std';
@@ -17,7 +17,7 @@ import {
   ZERO_WIDTH_FOR_EMPTY_LINE,
 } from '@labre/std/inline';
 import type { DeltaInsert } from '@labre/store';
-import { css, html } from 'lit';
+import { css, html, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
 import { type StyleInfo, styleMap } from 'lit/directives/style-map.js';
 
@@ -144,8 +144,11 @@ export class AffineLink extends WithDisposable(ShadowlessElement) {
   }
 
   private _renderLink(style: StyleInfo) {
+    const { link } = this;
+    // A stored link may come from an imported or shared document: a refused
+    // scheme keeps its text but gets no href, so a click navigates nowhere.
     return html`<a
-      href=${this.link}
+      href=${isSafeLinkUrl(link) ? link : nothing}
       rel="noopener noreferrer"
       target="_blank"
       style=${styleMap(style)}
