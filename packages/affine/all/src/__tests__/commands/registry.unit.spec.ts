@@ -262,7 +262,10 @@ describe('command registry invariants', () => {
       // …and 31 with `canvas.frame.reorder`: the presentation order's one
       // write, run by the frame panel, the order menu and a host's own slide
       // panel (ADR 0034).
-      core: 31,
+      //
+      // …and 34 with the view actions (ADR 0034, amendment of 2026-10-13):
+      // `canvas.export.png`, `canvas.export.pdf` and `canvas.present`.
+      core: 34,
     });
     // 112 since the two SVG fallback imports (`bpmn.importSvg`,
     // `wardley.importSvg`) joined the OWM pair — one SVG row per framework,
@@ -300,7 +303,8 @@ describe('command registry invariants', () => {
     // …and 203 with `canvas.layer.delete` (stage 7).
     // …and 204 with `canvas.frame.rename` (frames are pane rows again).
     // …and 205 with `canvas.frame.reorder` (ADR 0034).
-    expect(commands).toHaveLength(205);
+    // …and 208 with the three view actions (ADR 0034, 2026-10-13).
+    expect(commands).toHaveLength(208);
   });
 
   /**

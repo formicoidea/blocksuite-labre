@@ -104,13 +104,22 @@ export type Availability =
  * command, so the behaviour, the availability rule and the single telemetry
  * emission stay in one place, and `CommandInvocation.surface` reports where the
  * user actually clicked instead of borrowing another surface's name.
+ *
+ * `'view-menu'` joined with the view actions (ADR 0034, amendment of
+ * 2026-10-13): what is proper to the view the editor shows — the canvas grid,
+ * its PNG and PDF export, the presentation — listed for a HOST menu (Labre's
+ * "This view" section of its header ⋯). The library draws no such menu; the
+ * host reads the projection `getViewActions` (`@labre/affine/host-panels`)
+ * and runs an entry through `runCommand`, so the behaviour and the one
+ * telemetry emission stay in the command.
  */
 export type CommandSurface =
   | 'senior-menu' // the senior button sub-menu — max 14 slots per owner
   | 'catalogue' // the "more artefacts" sidepanel
   | 'palette' // the search / command palette
   | 'contextual-toolbar' // the toolbar of a SELECTED element
-  | 'agent'; // invocable by Labre's AI
+  | 'agent' // invocable by Labre's AI
+  | 'view-menu'; // the host's menu of the current view's own actions
 
 export type CommandKind =
   | 'artefact' // creates an element
@@ -191,6 +200,16 @@ export interface CommandDescriptor<P = void> {
    * only narrowing. Not projected into either manifest.
    */
   when?: (std: BlockStdScope) => boolean;
+
+  /**
+   * A toggle's current state, for a surface that draws a check mark (the
+   * host's view menu reads it through `getViewActions`). Absent = not a
+   * toggle. It may read signals: a caller that reads it inside an `effect`
+   * or a `computed` follows the state, whoever changes it. Not projected into
+   * either manifest — a state is a fact of the open editor, not of the
+   * catalogue.
+   */
+  checked?: (std: BlockStdScope) => boolean;
 
   /** THE new capability: invocable without a keyboard event. */
   run: (
@@ -585,6 +604,45 @@ export function isCommandAvailable(
 }
 
 /**
+ * A file a command hands back to its caller instead of downloading it — the
+ * PNG and PDF exports of the canvas. The library renders, the host decides
+ * where the bytes go (a download, a share sheet, an upload).
+ */
+export interface CommandFile {
+  blob: Blob;
+  /** Sanitised, extension included: `Order to cash.png`. */
+  filename: string;
+}
+
+/**
+ * The params of a command that produces a {@link CommandFile}. Given
+ * `deliver`, the command hands the file to it and downloads nothing; without
+ * it (the palette, a bound chord) the command downloads the file itself. Not
+ * declared as a zod `params`: a callback crosses no serializable seam, and an
+ * agent gets the download.
+ */
+export interface CommandFileParams {
+  deliver?: (file: CommandFile) => void;
+}
+
+/** Shared by the two entry points below: run, then measure, then report. */
+function invokeCommand(
+  std: BlockStdScope,
+  command: AnyCommandDescriptor,
+  invocation: CommandInvocation,
+  params: unknown
+): void | Promise<void> {
+  const result = command.run(std, invocation, params as never);
+  // Before the telemetry gate on purpose: usage is measured for EVERY command,
+  // including the ones with no `telemetry` field and the self-emitting ones.
+  std.getOptional(CommandUsageIdentifier)?.record(command, invocation);
+  if (command.telemetry) {
+    std.getOptional(CommandTelemetryIdentifier)?.({ std, command, invocation });
+  }
+  return result;
+}
+
+/**
  * THE bottleneck: the one place a command runs, and therefore the one place
  * its telemetry is emitted and its usage measured. Every surface (sub-menu,
  * shortcut, palette, sidepanel, agent) goes through here, which is what removes
@@ -596,13 +654,28 @@ export function runCommand(
   invocation: CommandInvocation,
   params?: unknown
 ): void {
-  const result = command.run(std, invocation, params as never);
+  const result = invokeCommand(std, command, invocation, params);
   if (result instanceof Promise) result.catch(console.error);
-  // Before the telemetry gate on purpose: usage is measured for EVERY command,
-  // including the ones with no `telemetry` field and the self-emitting ones.
-  std.getOptional(CommandUsageIdentifier)?.record(command, invocation);
-  if (!command.telemetry) return;
-  std.getOptional(CommandTelemetryIdentifier)?.({ std, command, invocation });
+}
+
+/**
+ * {@link runCommand} for a caller that waits: the same bottleneck (usage and
+ * telemetry recorded once, synchronously, as there), but the returned promise
+ * settles when the command's own work does and REJECTS when it fails, where
+ * `runCommand` only logs. For a gesture that shows progress — a menu entry
+ * that spins while the canvas export renders, then reports a failure.
+ *
+ * A separate function rather than a return value on `runCommand`: a promise
+ * returned there would read as a floating promise at every existing call site
+ * of every host.
+ */
+export async function runCommandAsync(
+  std: BlockStdScope,
+  command: AnyCommandDescriptor,
+  invocation: CommandInvocation,
+  params?: unknown
+): Promise<void> {
+  await invokeCommand(std, command, invocation, params);
 }
 
 /**

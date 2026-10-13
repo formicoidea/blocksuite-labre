@@ -131,4 +131,48 @@ host→editor direction is.
 
 ## Amendments
 
-None yet.
+### 2026-10-13 — View actions for a host menu
+
+Context: Labre v2 gives its header one ⋯ menu split by reach ("This view",
+"This page", "Space", PRD REQ-HD-1/HD-2), and the header carries only what
+serves both views: what is proper to a view belongs to the editor. Labre's
+document page built that section by hand — the grid commands looked up by id,
+`CanvasGrid.visible$` read directly, `ExportManager.exportPng()` called
+outside the registry (no usage measured, a download the host could not
+intercept), `PresentTool` armed with its own timer.
+
+Decision, in the façade's direction (the host calls the editor), no new seam:
+
+1. **A sixth command surface, `'view-menu'`**: the actions proper to the view
+   the editor shows. `canvas.grid.toggle` and `canvas.grid.saveForEveryone`
+   join it; three core commands are added on it and on the palette:
+   `canvas.export.png`, `canvas.export.pdf` (surface block, edgeless) and
+   `canvas.present` (frame block, edgeless, so `frame: false` removes it).
+   The page view has none yet.
+2. **`CommandDescriptor.checked?(std)`**: a toggle's state, readable by a
+   host, reactive when read inside an effect. In neither manifest.
+   `canvas.grid.saveForEveryone`'s `when` narrows to "this viewer has a grid
+   of their own" (`CanvasGrid.source$ === 'local'`), the follow-up the hosts'
+   menus already showed after a toggle.
+3. **A file goes to the host, not to the browser behind its back**: a command
+   that produces one takes `CommandFileParams` (`deliver?(file)`); given it,
+   it hands `{ blob, filename }` over, else it downloads (the palette, a
+   standalone editor). `ExportManager` gains `pngFile()` / `pdfFile()`, which
+   render and never download; `exportPng()` / `exportPdf()` call them and
+   download (and the internal `FileExporter` they used is gone).
+4. **`runCommandAsync`** in `@labre/std`: `runCommand`'s bottleneck, awaited,
+   rejecting on failure, so a menu can spin and report. A separate function: a
+   promise returned by `runCommand` would float at every existing call site.
+5. **The façade projects and runs**: `getViewActions(std, mode?)` →
+   `ViewAction[]` (id, section from `category`, label resolved through the
+   catalogue seam, label key, icon key, `checked`, `disabled`), and
+   `runViewAction(std, id)` → `Promise<{ file? }>`, invoked as
+   `{ surface: 'view-menu', source: 'context-menu' }`.
+
+Consequences: no seam row, no flag, nothing stored; the library still draws
+no page menu. Present from the page view stays the host's composition: its
+own mode toggle first (it owns the toggle's state and the persisted mode),
+then `canvas.present` on the new scope once the canvas has mounted. The
+exports and Present declare no `telemetry` (they name no framework, like
+`export.svg`); usage is measured. Guard: `view-actions.unit.spec.ts`; the
+call shapes join `host-panels-signature.unit.spec.ts`.
