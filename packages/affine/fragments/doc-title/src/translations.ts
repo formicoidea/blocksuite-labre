@@ -14,7 +14,75 @@ export const DOC_TITLE_PLACEHOLDER: ChromeWording = [
   'Title',
 ];
 
+/* ── The title band (ADR 0035 §11), `./title-band/title-band.ts` ───────── */
+
+/** The band's accessible name: the group of property chips. */
+export const TITLE_BAND_LABEL: ChromeWording = [
+  'com.labre.title-band.label',
+  'Page properties',
+];
+
+/** What an empty chip says after the property's name (REQ-PR-1). */
+export const TITLE_BAND_EMPTY: ChromeWording = [
+  'com.labre.title-band.empty',
+  'Not set',
+];
+
+/** The "+" (REQ-PR-4); what it does is the host's. */
+export const TITLE_BAND_ADD: ChromeWording = [
+  'com.labre.title-band.add',
+  'Add a property',
+];
+
+/** The button beside the "+" that opens the host's properties panel. */
+export const TITLE_BAND_OPEN_PANEL: ChromeWording = [
+  'com.labre.title-band.open-panel',
+  'Open the properties panel',
+];
+
+/** Folds the chips away. */
+export const TITLE_BAND_COLLAPSE: ChromeWording = [
+  'com.labre.title-band.collapse',
+  'Hide properties',
+];
+
+/** The folded band's only button; `count` is the number of chips. */
+export const TITLE_BAND_EXPAND: ChromeWording = [
+  'com.labre.title-band.expand',
+  'Properties ({{count}})',
+];
+
+/** The accessible name of the skeleton drawn while the sheet loads. */
+export const TITLE_BAND_LOADING: ChromeWording = [
+  'com.labre.title-band.loading',
+  'Loading properties',
+];
+
+/** Clears a select or a date from its editor. */
+export const TITLE_BAND_CLEAR: ChromeWording = [
+  'com.labre.title-band.clear',
+  'Clear value',
+];
+
+/**
+ * The note header's row of child pages the document holds but does not
+ * display (ADR 0035 §9d, canvas view only).
+ */
+export const TITLE_BAND_NOT_SHOWN: ChromeWording = [
+  'com.labre.title-band.not-shown',
+  'Not shown in this document',
+];
+
 /** Every wording this package declares, in the order it renders them. */
 export const DOC_TITLE_WORDINGS: readonly ChromeWording[] = [
   DOC_TITLE_PLACEHOLDER,
+  TITLE_BAND_ADD,
+  TITLE_BAND_CLEAR,
+  TITLE_BAND_COLLAPSE,
+  TITLE_BAND_EMPTY,
+  TITLE_BAND_EXPAND,
+  TITLE_BAND_LABEL,
+  TITLE_BAND_LOADING,
+  TITLE_BAND_NOT_SHOWN,
+  TITLE_BAND_OPEN_PANEL,
 ];

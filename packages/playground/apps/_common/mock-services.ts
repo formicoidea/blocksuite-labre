@@ -14,7 +14,11 @@ import {
   type GenerateDocUrlService,
   type NotificationService,
   type ParseDocUrlService,
+  type PropertiesPanelService,
   type ThemeExtension,
+  type TitleBandProperty,
+  type TitleBandService,
+  type TitleBandSheetState,
 } from '@labre/affine/shared/services';
 import type { BlockStdScope } from '@labre/affine/std';
 import type { BaseSelection, Workspace } from '@labre/affine/store';
@@ -412,4 +416,185 @@ declare global {
   interface Window {
     editorSetting$: Signal<EditorSetting>;
   }
+}
+
+/**
+ * A RECETTE MOCK-UP of the title band's provider (ADR 0035 §9d): the Labre
+ * app keeps a page's property values in its own store, the playground keeps
+ * them in memory, per document, for the session. Enough to exercise every
+ * chip editor, the pending state (each write takes 400 ms to land), the "+",
+ * the collapse and, on the canvas, the "Not shown in this document" row (the
+ * workspace's other documents stand in for the children).
+ */
+export function mockTitleBandService(workspace: Workspace): TitleBandService {
+  const sheets = new Map<string, Signal<TitleBandSheetState>>();
+  const collapsed = new Map<string, Signal<boolean>>();
+
+  const seed = (): TitleBandProperty[] => [
+    {
+      id: 'status',
+      namespace: 'workspace',
+      name: 'Status',
+      type: 'select',
+      data: {
+        options: [
+          { id: 'todo', value: 'To do', color: 'var(--affine-tag-gray)' },
+          { id: 'doing', value: 'Doing', color: 'var(--affine-tag-blue)' },
+          { id: 'done', value: 'Done', color: 'var(--affine-tag-green)' },
+        ],
+      },
+      value: 'doing',
+      readonly: false,
+    },
+    {
+      id: 'tags',
+      namespace: 'workspace',
+      name: 'Tags',
+      type: 'multi-select',
+      data: {
+        options: [
+          { id: 'ops', value: 'Ops', color: 'var(--affine-tag-orange)' },
+          { id: 'risk', value: 'Risk', color: 'var(--affine-tag-red)' },
+        ],
+      },
+      value: ['ops'],
+      readonly: false,
+    },
+    {
+      id: 'owner',
+      namespace: 'workspace',
+      name: 'Owner',
+      type: 'text',
+      data: {},
+      value: null,
+      readonly: false,
+    },
+    {
+      id: 'budget',
+      namespace: 'workspace',
+      name: 'Budget',
+      type: 'number',
+      data: { format: 'currencyEUR', decimal: 0 },
+      value: 12000,
+      readonly: false,
+    },
+    {
+      id: 'due',
+      namespace: 'workspace',
+      name: 'Due',
+      type: 'date',
+      data: {},
+      value: null,
+      readonly: false,
+    },
+    {
+      id: 'verified',
+      namespace: 'workspace',
+      name: 'Verified',
+      type: 'checkbox',
+      data: {},
+      value: false,
+      readonly: false,
+    },
+    {
+      id: 'created',
+      namespace: 'workspace',
+      name: 'Created',
+      type: 'created-time',
+      data: {},
+      value: Date.now(),
+      readonly: true,
+    },
+  ];
+
+  const sheetOf = (docId: string) => {
+    let sheet = sheets.get(docId);
+    if (!sheet) {
+      sheet = signal<TitleBandSheetState>({ status: 'loading' });
+      sheets.set(docId, sheet);
+      const loaded = sheet;
+      setTimeout(() => {
+        loaded.value = { status: 'ready', properties: seed() };
+      }, 300);
+    }
+    return sheet;
+  };
+
+  const update = (
+    docId: string,
+    change: (properties: TitleBandProperty[]) => TitleBandProperty[]
+  ) => {
+    const sheet = sheetOf(docId);
+    const state = sheet.peek();
+    if (state.status !== 'ready') return;
+    sheet.value = {
+      status: 'ready',
+      properties: change([...state.properties]),
+    };
+  };
+
+  return {
+    sheet$: sheetOf,
+    set: (docId, propertyId, value) =>
+      new Promise<void>(resolve => {
+        setTimeout(() => {
+          update(docId, properties =>
+            properties.map(property =>
+              property.id === propertyId ? { ...property, value } : property
+            )
+          );
+          resolve();
+        }, 400);
+      }),
+    add: docId => {
+      const name = prompt('New text property name');
+      if (!name) return;
+      update(docId, properties => [
+        ...properties,
+        {
+          id: `custom-${Date.now()}`,
+          namespace: 'workspace',
+          name,
+          type: 'text',
+          data: {},
+          value: null,
+          readonly: false,
+        },
+      ]);
+    },
+    collapsed$: docId => {
+      let state = collapsed.get(docId);
+      if (!state) {
+        state = signal(false);
+        collapsed.set(docId, state);
+      }
+      return state;
+    },
+    setCollapsed: (docId, value) => {
+      const state = collapsed.get(docId);
+      if (state) state.value = value;
+    },
+    notShown$: docId =>
+      signal(
+        Array.from(workspace.docs.values())
+          .filter(doc => doc.id !== docId)
+          .slice(0, 3)
+          .map(doc => ({ docId: doc.id, title: doc.meta?.title ?? '' }))
+      ),
+  };
+}
+
+/**
+ * The properties panel the playground does not draw: a toast says what the
+ * host would open, which is all a recette of the seam needs.
+ */
+export function mockPropertiesPanel(
+  editor: TestAffineEditorContainer
+): PropertiesPanelService {
+  return {
+    open: request => {
+      toast(editor.host!, `Properties panel: ${JSON.stringify(request)}`);
+    },
+    close: () => {},
+  };
 }

@@ -267,7 +267,7 @@ Framework labels on the canvas don't use this scale. They use fixed sizes in **m
 
 **The Title-Ratio Rule.** From the doc title down to H3, each level is about 1.25 times smaller than the one above (40 → 32 → 26 → 20). H1 must always stay clearly below the title. Change the scale only in `HEADING_SCALE`, never in a consumer.
 
-**The One Family Rule.** Inter for all chrome and prose. Mono families are only for code and numerals. Don't bring in a display face.
+**The One Family Rule.** Inter for all chrome and prose. Mono families are only for code and numerals. Don't bring in a display face. The one door a host has is the page title alone: `--labre-doc-title-font-family` (unset, the title stays in Inter); headings keep the body family whatever a host sets.
 
 **The Model-Unit Rule.** Text drawn on the canvas as part of a notation is sized in fixed model units, not in the chrome's CSS scale, so it zooms with the diagram and exports at the same proportions.
 

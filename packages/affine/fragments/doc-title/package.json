@@ -19,6 +19,7 @@
     "@labre/affine-block-surface": "workspace:*",
     "@labre/affine-components": "workspace:*",
     "@labre/affine-ext-loader": "workspace:*",
+    "@labre/affine-inline-reference": "workspace:*",
     "@labre/affine-model": "workspace:*",
     "@labre/affine-rich-text": "workspace:*",
     "@labre/affine-shared": "workspace:*",
@@ -44,5 +45,8 @@
     "!src/__tests__",
     "!dist/__tests__"
   ],
-  "version": "0.46.2"
+  "version": "0.46.2",
+  "devDependencies": {
+    "@vanilla-extract/vite-plugin": "5.1.4"
+  }
 }

@@ -9,20 +9,33 @@ import { describe, expect, expectTypeOf, test } from 'vitest';
 import {
   type AnyCommandDescriptor,
   armArtefact,
+  type CommandFile,
   type CommandInvocation,
   createFramePreview,
   fitToModel,
   frameCommands,
+  formatPropertyValue,
   frameList,
   getCommandIcon,
   getCommandsForSurface,
   getRegisteredCommands,
+  getViewActions,
+  isPropertyValueEmpty,
+  type PropertiesPanelRequest,
+  type PropertiesPanelService,
   type ReorderFramesParams,
   reorderFramesParams,
   runCommand,
+  runCommandAsync,
+  runViewAction,
   selectionPaneTree,
   type SelectionPaneNode,
   selectModels,
+  type ViewAction,
+  type ViewActionResult,
+  type TitleBandProperty,
+  type TitleBandService,
+  type TitleBandSheetState,
 } from '../host-panels.js';
 import { ROOT } from './translations/source-files.js';
 
@@ -89,9 +102,80 @@ const hostCalls = (
   return { fitted, padded, registered, listed, icon, rows, parsed };
 };
 
+/**
+ * The 0.47 view actions (ADR 0034, amendment of 2026-10-13): what a host's
+ * header menu reads and runs. Same contract from here on — compiles or the
+ * build fails; never invoked.
+ */
+const viewMenuCalls = async (std: BlockStdScope) => {
+  const actions: ViewAction[] = getViewActions(std);
+  const canvas: ViewAction[] = getViewActions(std, 'edgeless');
+  const [first] = actions;
+  const label: string = first?.label ?? '';
+  const section: string = first?.section ?? '';
+  const checked: boolean | undefined = first?.checked;
+  const disabled: boolean | undefined = first?.disabled;
+  const result: ViewActionResult = await runViewAction(
+    std,
+    'canvas.export.png'
+  );
+  const file: CommandFile | undefined = result.file;
+  const blob: Blob | undefined = file?.blob;
+  const name: string | undefined = file?.filename;
+  const reorder = frameCommands.find(c => c.id === 'canvas.frame.reorder');
+  if (reorder) {
+    await runCommandAsync(std, reorder, {
+      surface: 'view-menu',
+      source: 'context-menu',
+    });
+  }
+  return { canvas, label, section, checked, disabled, blob, name };
+};
+
+/**
+ * The 0.47 calls of a host's properties panel (ADR 0035 §9b, §11), verbatim:
+ * the sheet it hands the title band, the panel it opens on request, and the
+ * chip text it reuses. Same rule as above: compiles or the build fails.
+ */
+const propertiesPanelCalls = (
+  sheet: TitleBandSheetState,
+  service: TitleBandService
+) => {
+  const panel: PropertiesPanelService = {
+    open: (request: PropertiesPanelRequest) => {
+      if (request.scope === 'page') return request.docId;
+      return [request.docId, request.blockId, request.sourceId, request.viewId];
+    },
+    close: () => {},
+  };
+  const property: TitleBandProperty = {
+    id: 'status',
+    namespace: 'workspace',
+    name: 'Status',
+    type: 'select',
+    data: { options: [{ id: 'a', value: 'Doing', color: 'var(--x)' }] },
+    value: 'a',
+    readonly: false,
+  };
+  const text: string = formatPropertyValue(property);
+  const localized: string = formatPropertyValue(property, 'fr-FR');
+  const empty: boolean = isPropertyValueEmpty(property);
+  const written: Promise<void> = service.set('doc', property.id, null);
+  const ready = sheet.status === 'ready' ? sheet.properties : [];
+  return { panel, text, localized, empty, written, ready };
+};
+
 describe('@labre/affine/host-panels keeps its 0.46 shape', () => {
   test('the 0.46 calls typecheck, and no return gains null', () => {
     expectTypeOf(hostCalls).toBeFunction();
+    expectTypeOf(viewMenuCalls).toBeFunction();
+    expectTypeOf(getViewActions).returns.toEqualTypeOf<ViewAction[]>();
+    expectTypeOf(runViewAction).returns.toEqualTypeOf<
+      Promise<ViewActionResult>
+    >();
+    expectTypeOf(propertiesPanelCalls).toBeFunction();
+    expectTypeOf(formatPropertyValue).returns.toEqualTypeOf<string>();
+    expectTypeOf(isPropertyValueEmpty).returns.toEqualTypeOf<boolean>();
     expectTypeOf(fitToModel).returns.toEqualTypeOf<boolean>();
     expectTypeOf(frameList).returns.toEqualTypeOf<FrameBlockModel[]>();
     expectTypeOf(selectModels).returns.toEqualTypeOf<void>();

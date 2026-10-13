@@ -1,6 +1,6 @@
 # Host panels
 
-**Your panel, the editor's verbs.**
+**Your panel, the editor's verbs — and your menu, the view's actions.**
 
 A host that draws its own panel beside the editor — a slide list, an artefact
 catalogue, a selection pane — calls the editor through one module,
@@ -79,17 +79,177 @@ panel docked over it hides part of the canvas, so the side it covers goes in
 edge, fits with `[50, 700, 50, 50]`. A panel laid out beside the editor, which
 shrinks the container instead, needs no more than a margin.
 
+## This view: the view actions
+
+What is proper to the view the editor shows — the canvas grid, its PNG and
+PDF export, the presentation — is the editor's, but the menu it sits in is
+yours (Labre: the "This view" section of the header ⋯). The library lists
+those actions as data and runs them; it draws no menu (ADR 0034, amendment
+of 2026-10-13).
+
+```ts
+import {
+  getViewActions,
+  runViewAction,
+  type ViewAction,
+} from '@labre/affine/host-panels';
+
+const actions: ViewAction[] = getViewActions(editor.std, mode); // mode: 'page' | 'edgeless'
+const { file } = await runViewAction(editor.std, action.id);
+if (file) download(file.blob, file.filename); // yours: a link, a share sheet…
+```
+
+A `ViewAction` is `{ id, section, label, labelKey, iconKey?, checked?,
+disabled }`:
+
+| Field      | What it is                                                                                                                                                                                                      |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`       | the command id, stable: key your own icons, test ids and placement on it                                                                                                                                        |
+| `section`  | `'display'` (grid), `'export'` (PNG, PDF), `'present'`. Draw a separator between sections, or put one elsewhere (a header "Present" button). Open: a minor may add one                                          |
+| `label`    | resolved through your `TranslationExtension`, else English; `labelKey` is the `com.labre.*` key if you translate yourself                                                                                       |
+| `iconKey`  | `getCommandIcon(std, iconKey)` is the library's Lit icon; or map the key to your own set                                                                                                                        |
+| `checked`  | present on a toggle only (the grid): draw a check or a switch                                                                                                                                                   |
+| `disabled` | listed but refused now (saving the grid on a read-only document). An action that does not apply is not listed at all: "Save the grid for everyone" appears once the viewer toggled the grid, and leaves on save |
+
+What you get today, in order:
+
+| Mode     | Actions                                                                                                                          |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| edgeless | `canvas.grid.toggle`, `canvas.grid.saveForEveryone` (after a toggle), `canvas.export.png`, `canvas.export.pdf`, `canvas.present` |
+| page     | none yet                                                                                                                         |
+
+**Follow it.** The list reads signals (the grid, its source, the document's
+read-only state): call `getViewActions` inside an `effect` (or a `computed`)
+from `@preact/signals-core` and the check, the follow-up and the disabled
+state follow — a toggle from the palette, a peer's save. Read it again after
+a mode switch: the `std` is rebuilt. `mode` is the view you show; omitted,
+`DocModeProvider.getEditorMode()` answers, and where it answers `null` (the
+library default) registration decides — the canvas actions are registered on
+the edgeless scope only.
+
+**Run it.** `runViewAction` runs the command through `runCommand`'s
+bottleneck (usage, and telemetry where the command declares it, recorded
+once) and **waits**: it resolves when the work is done and **rejects** when
+it fails — show a spinner on the entry, a notice on failure. An export
+resolves with `file` (a `Blob` and a sanitised file name) and downloads
+nothing; an export with nothing to draw resolves without one. The same
+commands run from the palette, with no one to hand the file to, download it
+themselves. An id that is not a view action of this scope, or no longer
+applies, runs nothing.
+
+**Present from the page view** is yours to compose: switch to the canvas with
+your own mode toggle (you own its state and the persisted mode), then run
+`canvas.present` on the new `std` once the canvas has mounted. Labre waits
+100 ms, as the library's frame panel does ([Timing](#timing)).
+
+**Flags.** A flag removes tooling, never an entry a document needs:
+`frame: false` registers no `canvas.present`, so it is not listed. The grid
+and the exports are never gated.
+
+A React menu, end to end:
+
+```tsx
+import { effect } from '@preact/signals-core';
+import { useEffect, useState } from 'react';
+import {
+  getViewActions,
+  runViewAction,
+  type ViewAction,
+} from '@labre/affine/host-panels';
+
+function ThisViewSection({ std, mode }: Props) {
+  const [actions, setActions] = useState<ViewAction[]>([]);
+  const [busy, setBusy] = useState<string | null>(null);
+  useEffect(
+    () => effect(() => setActions(getViewActions(std, mode))),
+    [std, mode]
+  );
+
+  const run = (action: ViewAction) => {
+    setBusy(action.id);
+    runViewAction(std, action.id)
+      .then(({ file }) => {
+        if (file) download(file.blob, file.filename);
+      })
+      .catch(() => toast(t('editor.exportFailed')))
+      .finally(() => setBusy(null));
+  };
+
+  return actions.map(action => (
+    <button
+      key={action.id}
+      role={action.checked === undefined ? 'menuitem' : 'menuitemcheckbox'}
+      aria-checked={action.checked}
+      disabled={action.disabled || busy !== null}
+      data-testid={`view-action-${action.id}`}
+      onClick={() => run(action)}
+    >
+      {action.label}
+      {busy === action.id && <Spinner />}
+    </button>
+  ));
+}
+```
+
 ## The other direction
 
-The editor asks the host to show a panel through three seams, one per panel the
-library itself opens: `ArtefactCatalogueExtension`, `SelectionPaneExtension`
-and `OutlinePanelExtension`. Each says what disappears when it is absent or
+The editor asks the host to show a panel through four seams, one per panel the
+library itself opens: `ArtefactCatalogueExtension`, `SelectionPaneExtension`,
+`OutlinePanelExtension` and `PropertiesPanelExtension`. Each says what disappears when it is absent or
 `null` in [04-host-seams.md](04-host-seams.md); there is no universal router.
 
 There is no frame panel seam (ADR 0034): nothing in the library opens one.
 Mount your own beside the editor. The "Present" button is the host's too:
 `std.get(GfxControllerIdentifier).tool.setTool(PresentTool, { mode: 'fit' })`,
 `PresentTool` from `@labre/affine/blocks/frame`, after switching to edgeless.
+
+## The properties panel
+
+The library draws no properties panel. The title band (the chips under the
+page title and at the head of the page note) asks the host to show one
+through `PropertiesPanelExtension`, and is fed by `TitleBandExtension`
+(both from `@labre/affine/shared/services`, rows in
+[04-host-seams.md](04-host-seams.md)). Your panel reads and writes the same
+sheet you hand the band, from your own store: the band never caches a value,
+so a write your panel makes shows in the chips as soon as your `sheet$`
+signal changes.
+
+```ts
+import {
+  PropertiesPanelExtension,
+  TitleBandExtension,
+} from '@labre/affine/shared/services';
+import {
+  formatPropertyValue,
+  type PropertiesPanelRequest,
+  type TitleBandProperty,
+} from '@labre/affine/host-panels';
+
+const extensions = [
+  TitleBandExtension({
+    sheet$: docId => sheets.signalFor(docId), // ready: the visible properties
+    set: (docId, propertyId, value) => sheets.write(docId, propertyId, value),
+    add: docId => openWorkspacePropertySettings(docId), // the band's "+"
+    collapsed$: docId => deviceCollapsed(docId),
+    setCollapsed: (docId, collapsed) => rememberCollapsed(docId, collapsed),
+  }),
+  PropertiesPanelExtension({
+    open: (request: PropertiesPanelRequest) => sidebar.showProperties(request),
+    close: () => sidebar.hideProperties(),
+  }),
+];
+
+// In the panel, a value reads as its chip does.
+const text = (property: TitleBandProperty) =>
+  formatPropertyValue(property, locale);
+```
+
+| Gesture                     | Call                                              | Note                                                                                                                                                                                                     |
+| --------------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The band's panel button     | your `open({ scope: 'page', docId })`             | the request names the page; open your panel on its sheet. `scope: 'source'` (a database's source and view) is declared in the type and sent by the database chrome when it ships; handle it or ignore it |
+| Show a value as a chip does | `formatPropertyValue(property, locale?)`          | option labels for a select, the number preset's format, a localized date; `''` for an empty value and for a checkbox, which is a mark you draw                                                           |
+| Tell an empty value         | `isPropertyValueEmpty(property)`                  | nullish, a blank string or an empty list; `false` is a value                                                                                                                                             |
+| Write a value               | your own store, then your `sheet$` signal changes | the band and your panel share one source; the library never applies a value                                                                                                                              |
 
 ## What the module promises
 
