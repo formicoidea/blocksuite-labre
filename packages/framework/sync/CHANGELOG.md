@@ -1,5 +1,11 @@
 # @labre/sync
 
+## 0.47.0
+
+### Patch Changes
+
+- @labre/global@0.47.0
+
 ## 0.46.2
 
 ### Patch Changes

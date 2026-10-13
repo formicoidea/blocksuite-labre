@@ -1,5 +1,106 @@
 # @labre/affine
 
+## 0.47.0
+
+### Minor Changes
+
+- 9318a00: A band of property chips under the page title and at the head of the page note on the canvas, fed by the host (ADR 0035 §9d and §11). New seam `TitleBandExtension(service)` / `TitleBandProvider` in `@labre/affine/shared/services`: `sheet$(docId)` returns the page's visible properties as data-view types and cell values (`loading`, `ready`, `missing`, `error`), `set(docId, propertyId, value)` hands every edit back (the chip shows pending until it settles, the band never applies a value), and the optional `add`, `collapsed# @labre/affine / `setCollapsed`and`notShown# @labre/affine draw the "+", remember the collapse and, on the canvas only, a "Not shown in this document" row of page links. An empty visible property draws an empty chip that can still be clicked. On the canvas the band lives inside the note, so it follows the zoom. Without the seam nothing is drawn and nothing changes: no value lives in the document.
+
+  New seam `PropertiesPanelExtension({ open, close } | null)` / `PropertiesPanelProvider`: the band's panel button sends `open({ scope: 'page', docId })`; absent or `null`, there is no button. The request type also declares `scope: 'source'` for the database chrome to come.
+
+  `@labre/affine/host-panels` gains `formatPropertyValue(property, locale?)` and `isPropertyValueEmpty(property)`, so a host's panel reads values as the chips do, and re-exports the sheet and request types.
+
+  The page title reads its family from `--labre-doc-title-font-family`, falling back to the body family: a host sets the title's face (Cabinet Grotesk in the Labre app) without touching the headings.
+
+  `@labre/data-view/property-pure-presets` exports the number preset's `formatNumber`, `NumberFormat` and `NumberFormatSchema`. New keys `com.labre.title-band.*` (add, clear, collapse, empty, expand with `{{count}}`, label, loading, not-shown, open-panel).
+
+- 9318a00: View actions for a host menu (ADR 0034, amendment of 2026-10-13). `@labre/affine/host-panels` gains `getViewActions(std, mode?)`, the actions proper to the view the editor shows as data (`ViewAction`: id, section, label, label key, icon key, `checked` on a toggle, `disabled`), and `runViewAction(std, id)`, which runs one through `runCommand`'s bottleneck, resolves when it is done, rejects when it fails, and hands back the file an export produced (`{ file?: { blob, filename } }`) instead of downloading it. On the canvas: the grid toggle (with its state), "Save the grid for everyone" (listed once the viewer toggled the grid), the new `canvas.export.png` and `canvas.export.pdf` commands, and the new `canvas.present` (removed with `frame: false`). The page view lists none yet. New in `@labre/std`: the `'view-menu'` command surface, `CommandDescriptor.checked`, `runCommandAsync`, and the `CommandFile` / `CommandFileParams` types. `ExportManager` gains `pngFile()` and `pdfFile()`, which render without downloading; `exportPng()` and `exportPdf()` now name the PDF like the PNG (the document title, or the translated "Untitled"). `canvas.grid.saveForEveryone` is now offered only once the viewer has a grid of their own. New keys for the host catalogue: `com.labre.command.canvas.export.png`, `com.labre.command.canvas.export.png.description`, `com.labre.command.canvas.export.pdf`, `com.labre.command.canvas.export.pdf.description`, `com.labre.command.canvas.present`, `com.labre.command.canvas.present.description`, and the catalogue categories `com.labre.catalogue.category.display`, `.export` and `.present`.
+
+### Patch Changes
+
+- Updated dependencies [9318a00]
+- Updated dependencies [9318a00]
+  - @labre/affine-shared@0.47.0
+  - @labre/affine-fragment-doc-title@0.47.0
+  - @labre/affine-block-note@0.47.0
+  - @labre/data-view@0.47.0
+  - @labre/std@0.47.0
+  - @labre/affine-block-surface@0.47.0
+  - @labre/affine-block-frame@0.47.0
+  - @labre/affine-block-attachment@0.47.0
+  - @labre/affine-block-bookmark@0.47.0
+  - @labre/affine-block-callout@0.47.0
+  - @labre/affine-block-code@0.47.0
+  - @labre/affine-block-data-view@0.47.0
+  - @labre/affine-block-database@0.47.0
+  - @labre/affine-block-divider@0.47.0
+  - @labre/affine-block-edgeless-text@0.47.0
+  - @labre/affine-block-embed@0.47.0
+  - @labre/affine-block-embed-doc@0.47.0
+  - @labre/affine-block-image@0.47.0
+  - @labre/affine-block-latex@0.47.0
+  - @labre/affine-block-list@0.47.0
+  - @labre/affine-block-paragraph@0.47.0
+  - @labre/affine-block-root@0.47.0
+  - @labre/affine-block-surface-ref@0.47.0
+  - @labre/affine-block-table@0.47.0
+  - @labre/affine-components@0.47.0
+  - @labre/affine-foundation@0.47.0
+  - @labre/affine-fragment-adapter-panel@0.47.0
+  - @labre/affine-fragment-frame-panel@0.47.0
+  - @labre/affine-fragment-outline@0.47.0
+  - @labre/affine-gfx-bpmn@0.47.0
+  - @labre/affine-gfx-brush@0.47.0
+  - @labre/affine-gfx-c4@0.47.0
+  - @labre/affine-gfx-connector@0.47.0
+  - @labre/affine-gfx-cynefin-estuarine@0.47.0
+  - @labre/affine-gfx-ddd-aggregate@0.47.0
+  - @labre/affine-gfx-ddd-context-map@0.47.0
+  - @labre/affine-gfx-ddd-core-domain@0.47.0
+  - @labre/affine-gfx-ddd-event-storming@0.47.0
+  - @labre/affine-gfx-ddd-shared@0.47.0
+  - @labre/affine-gfx-edgy@0.47.0
+  - @labre/affine-gfx-group@0.47.0
+  - @labre/affine-gfx-link@0.47.0
+  - @labre/affine-gfx-mindmap@0.47.0
+  - @labre/affine-gfx-note@0.47.0
+  - @labre/affine-gfx-pointer@0.47.0
+  - @labre/affine-gfx-shape@0.47.0
+  - @labre/affine-gfx-template@0.47.0
+  - @labre/affine-gfx-text@0.47.0
+  - @labre/affine-gfx-uml@0.47.0
+  - @labre/affine-gfx-wardley@0.47.0
+  - @labre/affine-inline-comment@0.47.0
+  - @labre/affine-inline-footnote@0.47.0
+  - @labre/affine-inline-latex@0.47.0
+  - @labre/affine-inline-link@0.47.0
+  - @labre/affine-inline-mention@0.47.0
+  - @labre/affine-inline-preset@0.47.0
+  - @labre/affine-inline-reference@0.47.0
+  - @labre/affine-rich-text@0.47.0
+  - @labre/affine-widget-drag-handle@0.47.0
+  - @labre/affine-widget-edgeless-auto-connect@0.47.0
+  - @labre/affine-widget-edgeless-dragging-area@0.47.0
+  - @labre/affine-widget-edgeless-selected-rect@0.47.0
+  - @labre/affine-widget-edgeless-toolbar@0.47.0
+  - @labre/affine-widget-edgeless-zoom-toolbar@0.47.0
+  - @labre/affine-widget-frame-title@0.47.0
+  - @labre/affine-widget-keyboard-toolbar@0.47.0
+  - @labre/affine-widget-linked-doc@0.47.0
+  - @labre/affine-widget-note-slicer@0.47.0
+  - @labre/affine-widget-page-dragging-area@0.47.0
+  - @labre/affine-widget-remote-selection@0.47.0
+  - @labre/affine-widget-scroll-anchoring@0.47.0
+  - @labre/affine-widget-slash-menu@0.47.0
+  - @labre/affine-widget-toolbar@0.47.0
+  - @labre/affine-widget-viewport-overlay@0.47.0
+  - @labre/affine-gfx-turbo-renderer@0.47.0
+  - @labre/affine-model@0.47.0
+  - @labre/affine-ext-loader@0.47.0
+  - @labre/global@0.47.0
+  - @labre/store@0.47.0
+  - @labre/sync@0.47.0
+
 ## 0.46.2
 
 ### Patch Changes

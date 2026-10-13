@@ -1,5 +1,14 @@
 # @labre/affine-model
 
+## 0.47.0
+
+### Patch Changes
+
+- Updated dependencies [9318a00]
+  - @labre/std@0.47.0
+  - @labre/global@0.47.0
+  - @labre/store@0.47.0
+
 ## 0.46.2
 
 ### Patch Changes

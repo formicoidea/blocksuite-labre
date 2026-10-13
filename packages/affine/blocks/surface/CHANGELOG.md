@@ -1,5 +1,23 @@
 # @labre/affine-block-surface
 
+## 0.47.0
+
+### Minor Changes
+
+- 9318a00: View actions for a host menu (ADR 0034, amendment of 2026-10-13). `@labre/affine/host-panels` gains `getViewActions(std, mode?)`, the actions proper to the view the editor shows as data (`ViewAction`: id, section, label, label key, icon key, `checked` on a toggle, `disabled`), and `runViewAction(std, id)`, which runs one through `runCommand`'s bottleneck, resolves when it is done, rejects when it fails, and hands back the file an export produced (`{ file?: { blob, filename } }`) instead of downloading it. On the canvas: the grid toggle (with its state), "Save the grid for everyone" (listed once the viewer toggled the grid), the new `canvas.export.png` and `canvas.export.pdf` commands, and the new `canvas.present` (removed with `frame: false`). The page view lists none yet. New in `@labre/std`: the `'view-menu'` command surface, `CommandDescriptor.checked`, `runCommandAsync`, and the `CommandFile` / `CommandFileParams` types. `ExportManager` gains `pngFile()` and `pdfFile()`, which render without downloading; `exportPng()` and `exportPdf()` now name the PDF like the PNG (the document title, or the translated "Untitled"). `canvas.grid.saveForEveryone` is now offered only once the viewer has a grid of their own. New keys for the host catalogue: `com.labre.command.canvas.export.png`, `com.labre.command.canvas.export.png.description`, `com.labre.command.canvas.export.pdf`, `com.labre.command.canvas.export.pdf.description`, `com.labre.command.canvas.present`, `com.labre.command.canvas.present.description`, and the catalogue categories `com.labre.catalogue.category.display`, `.export` and `.present`.
+
+### Patch Changes
+
+- Updated dependencies [9318a00]
+- Updated dependencies [9318a00]
+  - @labre/affine-shared@0.47.0
+  - @labre/std@0.47.0
+  - @labre/affine-components@0.47.0
+  - @labre/affine-model@0.47.0
+  - @labre/affine-ext-loader@0.47.0
+  - @labre/global@0.47.0
+  - @labre/store@0.47.0
+
 ## 0.46.2
 
 ### Patch Changes
