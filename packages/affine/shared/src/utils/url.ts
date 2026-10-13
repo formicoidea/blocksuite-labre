@@ -70,6 +70,37 @@ export function normalizeUrl(str: string) {
   return str;
 }
 
+const LINK_SCHEMES = new Set(['http:', 'https:', 'mailto:']);
+
+// What the WHATWG URL parser drops before reading a scheme: leading and
+// trailing C0 controls and spaces, and every tab or newline anywhere.
+const URL_EDGE_JUNK = /^[\u0000-\u0020]+|[\u0000-\u0020]+$/g;
+const URL_TAB_OR_NEWLINE = /[\t\n\r]/g;
+
+/**
+ * Whether a link stored in a document may become an `href` or be opened.
+ *
+ * Only `http:`, `https:` and `mailto:` pass, plus scheme-less values that
+ * {@link normalizeUrl} turns into https (`example.com`). Everything else is
+ * refused — `javascript:`, `data:`, `vbscript:`, `file:`, relative paths —
+ * because the value comes from an imported, pasted or shared document and a
+ * click on it must never run in the editor's origin. The scheme is read by
+ * `new URL` after the same cleanup the browser does, never by a prefix test,
+ * so ` JaVaScRiPt:` and `java\tscript:` are recognised for what they are.
+ *
+ * Render and open sites call this on the stored value; nothing is rewritten
+ * on load, so a refused link keeps its text and simply is not clickable.
+ */
+export function isSafeLinkUrl(str: string | null | undefined): str is string {
+  if (!str) return false;
+  const cleaned = str
+    .replace(URL_TAB_OR_NEWLINE, '')
+    .replace(URL_EDGE_JUNK, '');
+  if (!cleaned) return false;
+  const url = toURL(normalizeUrl(cleaned));
+  return url !== null && LINK_SCHEMES.has(url.protocol);
+}
+
 /**
  * Assume user will input a url, we just need to check if it is valid.
  *

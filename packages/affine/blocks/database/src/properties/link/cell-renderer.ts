@@ -1,6 +1,7 @@
 import { RefNodeSlotsProvider } from '@labre/affine-inline-reference';
 import { ParseDocUrlProvider } from '@labre/affine-shared/services';
 import {
+  isSafeLinkUrl,
   isValidUrl,
   normalizeUrl,
   stopPropagation,
@@ -136,7 +137,7 @@ export class LinkCell extends BaseCellRenderer<string, string> {
             ? html`<span class="${linkedDocStyle}" @click="${this.openDoc}"
                 >${docName}</span
               >`
-            : isValidUrl(linkText)
+            : isValidUrl(linkText) && isSafeLinkUrl(linkText)
               ? html`<a
                   data-testid="property-link-a"
                   class="${inlineLinkNodeStyle}"

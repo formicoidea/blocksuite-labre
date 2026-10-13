@@ -2,6 +2,7 @@ import { RefNodeSlotsProvider } from '@labre/affine-inline-reference';
 import type { RootBlockModel } from '@labre/affine-model';
 import { translateKey } from '@labre/affine-shared/services';
 import {
+  isSafeLinkUrl,
   overlayScale,
   requestThrottledConnectedFrame,
   toOverlayCoord,
@@ -149,7 +150,7 @@ export class EdgelessElementLinkWidget extends WidgetComponent<RootBlockModel> {
         pageId: el.linkedDocId,
         host: this.std.host,
       });
-    } else if (el.externalLink) {
+    } else if (isSafeLinkUrl(el.externalLink)) {
       window.open(el.externalLink, '_blank', 'noopener,noreferrer');
     }
   };
