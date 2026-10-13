@@ -347,4 +347,39 @@ cannot draw.
 
 ## Amendments
 
-None yet.
+### 2026-10-13: the "Not shown on this page" row, both views, with "Show here"
+
+Amends §9d and §11 (and the title band row of the seams table above). Asked by
+the Labre v2 page system (labre ADR-0045 §7, amended there the same day).
+
+- **The library draws the row in both views.** §9d had the library read
+  `notShown$` on the canvas only and left the page view's row to the host,
+  under the title. The band already sits under the title in the page view, so
+  a second component there drew the same list twice over two code bases. The
+  band now reads `notShown$` in both views and draws the row under its chips;
+  a host that drew its own row under the title drops it. The seam is
+  unchanged: same optional `notShown$(docId)`, same `{ docId, title }[]`.
+- **"Show here" (`com.labre.title-band.show-here`).** Each listed page gains a
+  button that inserts an `affine:embed-linked-doc` card of it into the open
+  document: at the end of the last note the page view shows (a new note when
+  there is none) in the page view; centred in the visible canvas, as a
+  `vertical` card, through the CRUD `addBlock` that stamps the viewer's active
+  layer (ADR 0031 §6), then selected, on the canvas. One gesture is one undo
+  step (`captureSync`); it emits `BlockCreated`. A read-only document keeps the
+  page links and gets no button. The title still opens the page through the
+  linked-document path, and without `RefNodeSlotsProvider` there is still no
+  row at all.
+- **The row says "page".** Its English fallback becomes "Not shown on this
+  page" (was "Not shown in this document"), same key
+  `com.labre.title-band.not-shown`: in Labre v2 everything is a page (product
+  owner decision, 2026-10-13).
+- **The library still computes nothing.** It writes the card and nothing else:
+  no parent, no child, no tree. Dropping the page from `notShown$` once the
+  card exists is the host's reading of the document (labre ADR-0045 §7,
+  `displayedChildren`). The card is the ordinary linked-doc block, with no new
+  prop: no stored format changes.
+- Held by `fragments/doc-title/src/__tests__/title-band.unit.spec.ts` (both
+  views, the insert in each view, read-only, no provider) and
+  `integration-test/src/__tests__/edgeless/title-band.spec.ts` (a rendered card
+  at the end of the note and at the canvas centre, one undo step, and the
+  canvas's linked and synced cards of a page).

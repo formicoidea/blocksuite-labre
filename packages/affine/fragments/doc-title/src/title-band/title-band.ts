@@ -45,6 +45,7 @@ import {
   TITLE_BAND_LOADING,
   TITLE_BAND_NOT_SHOWN,
   TITLE_BAND_OPEN_PANEL,
+  TITLE_BAND_SHOW_HERE,
 } from '../translations.js';
 import {
   chipEditorKind,
@@ -53,6 +54,7 @@ import {
   chipValueView,
   parseChipNumber,
 } from './format.js';
+import { showPageHere } from './show-here.js';
 
 export const LABRE_TITLE_BAND = 'labre-title-band';
 
@@ -81,10 +83,13 @@ interface BandSources {
  * chips are the sheet's visible properties in the host's order, an empty one
  * included (REQ-PR-1); a click opens the editor of the property's data-view
  * type and hands the value back through `set`, showing the chip as pending
- * until the host settles it. The band never writes to the document and never
- * applies a value. The "+" is drawn when the host passes `add`; the panel
- * button when a `PropertiesPanelProvider` is registered; the "Not shown in
- * this document" row only on the canvas (the page view's row is the host's).
+ * until the host settles it. The band never applies a value, and writes to
+ * the document only the card "Show here" inserts. The "+" is drawn when the
+ * host passes `add`; the panel button when a `PropertiesPanelProvider` is
+ * registered. The "Not shown on this page" row is drawn in both views
+ * from the host's `notShown$` (ADR 0035 §9d, amended 2026-10-13): each page
+ * opens through the linked-document path, and "Show here" inserts a card of
+ * it into this document; the host then drops the page from its list.
  */
 export class TitleBand extends SignalWatcher(
   WithDisposable(ShadowlessElement)
@@ -207,6 +212,13 @@ export class TitleBand extends SignalWatcher(
       padding-right: 4px;
     }
 
+    /* Layout only: the buttons are the band's own, no drawing of their own. */
+    .labre-title-band-not-shown-item {
+      display: inline-flex;
+      align-items: center;
+      max-width: 100%;
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .labre-title-band button {
         transition: none;
@@ -282,8 +294,7 @@ export class TitleBand extends SignalWatcher(
       docId,
       sheet$: service.sheet$(docId),
       collapsed$: service.collapsed$?.(docId) ?? null,
-      notShown$:
-        this.surface === 'canvas' ? (service.notShown$?.(docId) ?? null) : null,
+      notShown$: service.notShown$?.(docId) ?? null,
     };
     this._sources = sources;
     return sources;
@@ -612,36 +623,59 @@ export class TitleBand extends SignalWatcher(
     const slots = std?.getOptional(RefNodeSlotsProvider);
     // A link that opens nothing is a lie: no linked-document path, no row.
     if (!std || !slots || pages.length === 0) return nothing;
+    const label = this._t(TITLE_BAND_NOT_SHOWN);
+    const showHere = this._readonly ? null : this._t(TITLE_BAND_SHOW_HERE);
     return html`<div
       class="labre-title-band-row"
+      role="group"
+      aria-label=${label}
       data-testid="title-band-not-shown"
     >
-      <span class="labre-title-band-not-shown-label"
-        >${this._t(TITLE_BAND_NOT_SHOWN)}</span
+      <span class="labre-title-band-not-shown-label" aria-hidden="true"
+        >${label}</span
       >
       ${repeat(
         pages,
         page => page.docId,
-        page =>
-          html`<button
-            data-testid="title-band-not-shown-page"
-            data-doc-id=${page.docId}
-            @click=${(event: MouseEvent) => {
-              event.stopPropagation();
-              slots.docLinkClicked.next({
-                pageId: page.docId,
-                host: std.host,
-                event,
-              });
-            }}
+        page => {
+          const title =
+            page.title.trim() === '' ? this._t(DOC_UNTITLED) : page.title;
+          // A group named after the page, so a screen reader hears which
+          // page each "Show here" belongs to without a second wording.
+          return html`<span
+            class="labre-title-band-not-shown-item"
+            role="group"
+            aria-label=${title}
           >
-            ${LinkedPageIcon()}
-            <span class="labre-title-band-chip-value"
-              >${page.title.trim() === ''
-                ? this._t(DOC_UNTITLED)
-                : page.title}</span
+            <button
+              data-testid="title-band-not-shown-page"
+              data-doc-id=${page.docId}
+              @click=${(event: MouseEvent) => {
+                event.stopPropagation();
+                slots.docLinkClicked.next({
+                  pageId: page.docId,
+                  host: std.host,
+                  event,
+                });
+              }}
             >
-          </button>`
+              ${LinkedPageIcon()}
+              <span class="labre-title-band-chip-value">${title}</span>
+            </button>
+            ${showHere
+              ? html`<button
+                  data-testid="title-band-show-here"
+                  data-doc-id=${page.docId}
+                  @click=${(event: MouseEvent) => {
+                    event.stopPropagation();
+                    showPageHere(std, this.surface, page.docId);
+                  }}
+                >
+                  ${showHere}
+                </button>`
+              : nothing}
+          </span>`;
+        }
       )}
     </div>`;
   }
@@ -664,8 +698,7 @@ export class TitleBand extends SignalWatcher(
 
     const sources = this._getSources(service);
     const sheet = this._renderSheet(sources);
-    const notShown =
-      this.surface === 'canvas' ? this._renderNotShown(sources) : nothing;
+    const notShown = this._renderNotShown(sources);
     if (sheet === nothing && notShown === nothing) return nothing;
 
     return html`<div
@@ -683,7 +716,7 @@ export class TitleBand extends SignalWatcher(
   @property({ attribute: false })
   accessor docId = '';
 
-  /** Where the band is drawn; only the canvas draws the "Not shown" row. */
+  /** Where the band is drawn: where "Show here" puts the card. */
   @property({ attribute: false })
   accessor surface: 'page' | 'canvas' = 'page';
 }

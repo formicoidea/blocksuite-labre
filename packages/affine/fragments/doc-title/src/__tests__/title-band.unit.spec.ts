@@ -1,17 +1,33 @@
+import {
+  EdgelessCRUDIdentifier,
+  SurfaceBlockSchemaExtension,
+} from '@labre/affine-block-surface';
 import { RefNodeSlotsProvider } from '@labre/affine-inline-reference';
+import {
+  EmbedLinkedDocBlockSchemaExtension,
+  NoteBlockSchemaExtension,
+  NoteDisplayMode,
+  ParagraphBlockSchemaExtension,
+  RootBlockSchemaExtension,
+} from '@labre/affine-model';
 import {
   PropertiesPanelProvider,
   type PropertiesPanelService,
+  TelemetryProvider,
   type TitleBandProperty,
   TitleBandProvider,
   type TitleBandService,
   type TitleBandSheetState,
 } from '@labre/affine-shared/services';
 import type { BlockStdScope } from '@labre/std';
+import { GfxControllerIdentifier } from '@labre/std/gfx';
+import { type Store, Text } from '@labre/store';
+import { TestWorkspace } from '@labre/store/test';
 import { signal } from '@preact/signals-core';
 import { Subject } from 'rxjs';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { showPageHere } from '../title-band/show-here';
 import { LABRE_TITLE_BAND, TitleBand } from '../title-band/title-band';
 
 /**
@@ -27,8 +43,13 @@ import { LABRE_TITLE_BAND, TitleBand } from '../title-band/title-band';
  *   band never applies the value itself, the host's `sheet$` does;
  * - the "+" exists only with `add`, the panel button only with a
  *   `PropertiesPanelProvider`, and the panel opens with a page request;
- * - the "Not shown in this document" row is drawn on the canvas only, and
- *   only with a linked-document path to open its links through.
+ * - the "Not shown on this page" row is drawn in both views (ADR 0035
+ *   §9d, amended 2026-10-13: the page view's row was the host's until then),
+ *   only with a linked-document path to open its links through;
+ * - its "Show here" writes one `affine:embed-linked-doc` card of the page,
+ *   at the end of the last note in the page view and at the centre of the
+ *   visible canvas through the layer-stamping CRUD path on the canvas, as one
+ *   undo step, and nothing at all on a read-only document (labre ADR-0045 §7).
  */
 
 beforeAll(() => {
@@ -312,7 +333,7 @@ describe('the title band', () => {
     expect(all(band, 'title-band-chip')).toHaveLength(1);
   });
 
-  it('draws "Not shown in this document" on the canvas only', async () => {
+  it('draws "Not shown on this page" in both views', async () => {
     const notShown$ = signal([
       { docId: 'child-1', title: 'Child' },
       { docId: 'child-2', title: '' },
@@ -330,23 +351,169 @@ describe('the title band', () => {
     const clicked = vi.fn();
     slots.docLinkClicked.subscribe(clicked);
 
-    const page = await mount(std, 'page');
-    expect(q(page, 'title-band-not-shown')).toBeNull();
-
-    const canvas = await mount(std, 'canvas');
-    const links = all(canvas, 'title-band-not-shown-page');
-    expect(links.map(link => link.textContent?.trim())).toEqual([
-      'Child',
-      'Untitled',
-    ]);
-    (links[0] as HTMLButtonElement).click();
+    for (const surface of ['page', 'canvas'] as const) {
+      const band = await mount(std, surface);
+      const row = q(band, 'title-band-not-shown');
+      expect(row?.getAttribute('role'), surface).toBe('group');
+      expect(row?.getAttribute('aria-label'), surface).toBe(
+        'Not shown on this page'
+      );
+      const links = all(band, 'title-band-not-shown-page');
+      expect(links.map(link => link.textContent?.trim())).toEqual([
+        'Child',
+        'Untitled',
+      ]);
+      const showHere = all(band, 'title-band-show-here');
+      expect(showHere.map(button => button.textContent?.trim())).toEqual([
+        'Show here',
+        'Show here',
+      ]);
+      // Each "Show here" sits in a group named after its page.
+      expect(
+        showHere[1].closest('[role="group"]')?.getAttribute('aria-label')
+      ).toBe('Untitled');
+      (links[0] as HTMLButtonElement).click();
+    }
+    expect(clicked).toHaveBeenCalledTimes(2);
     expect(clicked).toHaveBeenCalledWith(
       expect.objectContaining({ pageId: 'child-1' })
     );
 
+    // The list is the host's: a page it drops leaves the row.
+    notShown$.value = [];
+    const empty = await mount(std, 'page');
+    expect(q(empty, 'title-band-not-shown')).toBeNull();
+
     // No linked-document path: a link that opens nothing is not drawn.
+    notShown$.value = [{ docId: 'child-1', title: 'Child' }];
     providers.delete(RefNodeSlotsProvider);
     const orphan = await mount(std, 'canvas');
     expect(q(orphan, 'title-band-not-shown')).toBeNull();
+  });
+});
+
+let seq = 0;
+
+/** A real store: a page, its surface, an edgeless-only note, then a note. */
+function pageStore(): { store: Store; note: string } {
+  const workspace = new TestWorkspace({ id: `title-band-show-here-${seq++}` });
+  workspace.storeExtensions = [
+    RootBlockSchemaExtension,
+    SurfaceBlockSchemaExtension,
+    NoteBlockSchemaExtension,
+    ParagraphBlockSchemaExtension,
+    EmbedLinkedDocBlockSchemaExtension,
+  ];
+  workspace.meta.initialize();
+  const store = workspace.createDoc(DOC).getStore();
+  let note = '';
+  store.load(() => {
+    const root = store.addBlock('affine:page', { title: new Text('') });
+    store.addBlock('affine:surface', {}, root);
+    note = store.addBlock('affine:note', {}, root);
+    store.addBlock('affine:paragraph', { text: new Text('a') }, note);
+    // Shown on the canvas only: the page view never puts a card here.
+    store.addBlock(
+      'affine:note',
+      { displayMode: NoteDisplayMode.EdgelessOnly },
+      root
+    );
+  });
+  return { store, note };
+}
+
+function showHereStd(store: unknown, extra: [unknown, unknown][] = []) {
+  const { service } = bandService(
+    { status: 'ready', properties: [] },
+    { notShown$: () => signal([{ docId: 'child-1', title: 'Child' }]) }
+  );
+  const providers = new Map<unknown, unknown>([
+    [TitleBandProvider, service],
+    [RefNodeSlotsProvider, { docLinkClicked: new Subject<unknown>() }],
+    ...extra,
+  ]);
+  return {
+    host: {},
+    store,
+    getOptional: (id: unknown) => providers.get(id) ?? null,
+    get: (id: unknown) => {
+      const found = providers.get(id);
+      if (!found) throw new Error('not registered');
+      return found;
+    },
+  } as unknown as BlockStdScope;
+}
+
+describe('"Show here"', () => {
+  it('appends a linked-doc card to the last note of the page view, one undo step', async () => {
+    const { store, note } = pageStore();
+    const capture = vi.spyOn(store, 'captureSync');
+    const track = vi.fn();
+    const std = showHereStd(store, [[TelemetryProvider, { track }]]);
+    const band = await mount(std, 'page');
+
+    (q(band, 'title-band-show-here') as HTMLButtonElement).click();
+
+    const children = store.getBlock(note)!.model.children;
+    expect(children.map(child => child.flavour)).toEqual([
+      'affine:paragraph',
+      'affine:embed-linked-doc',
+    ]);
+    const card = children[1] as unknown as { props: { pageId: string } };
+    expect(card.props.pageId).toBe('child-1');
+    expect(capture).toHaveBeenCalledTimes(1);
+    expect(track).toHaveBeenCalledWith('BlockCreated', {
+      blockType: 'affine:embed-linked-doc',
+    });
+  });
+
+  it('places the card at the centre of the visible canvas through the CRUD path', async () => {
+    const captureSync = vi.fn();
+    const store = {
+      id: DOC,
+      root: { id: 'root' },
+      captureSync,
+      readonly: false,
+      readonly$: signal(false),
+    };
+    const surface = { id: 'surface' };
+    const select = vi.fn();
+    const gfx = {
+      surface,
+      viewport: { centerX: 100, centerY: 50 },
+      selection: { set: select },
+    };
+    const addBlock = vi.fn(() => 'card-1');
+    const std = showHereStd(store, [
+      [GfxControllerIdentifier, gfx],
+      [EdgelessCRUDIdentifier, { addBlock }],
+    ]);
+    const band = await mount(std, 'canvas');
+
+    (q(band, 'title-band-show-here') as HTMLButtonElement).click();
+
+    expect(captureSync).toHaveBeenCalledTimes(1);
+    // A vertical card (the canvas's "Linked doc" style), 364 by 390, centred.
+    expect(addBlock).toHaveBeenCalledWith(
+      'affine:embed-linked-doc',
+      { pageId: 'child-1', xywh: '[-82,-145,364,390]', style: 'vertical' },
+      surface
+    );
+    expect(select).toHaveBeenCalledWith({
+      elements: ['card-1'],
+      editing: false,
+    });
+  });
+
+  it('offers nothing and writes nothing on a read-only document', async () => {
+    const { store, note } = pageStore();
+    store.readonly = true;
+    const band = await mount(showHereStd(store), 'page');
+
+    // The page still opens; it just cannot be shown here.
+    expect(all(band, 'title-band-not-shown-page')).toHaveLength(1);
+    expect(q(band, 'title-band-show-here')).toBeNull();
+    expect(showPageHere(showHereStd(store), 'page', 'child-1')).toBeNull();
+    expect(store.getBlock(note)!.model.children).toHaveLength(1);
   });
 });
