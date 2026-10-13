@@ -99,6 +99,11 @@ const KEPT_SEPARATE_CHROME_WORDS: Readonly<Record<string, string>> = {
   Code: 'view toggle vs inline code format',
   Custom: 'custom colour tab vs custom frame preset (gender differs in French)',
   Elements: 'catalogue category header (derived table) vs C4 legend section',
+  // The view actions' sections (ADR 0034, amendment of 2026-10-13) are command
+  // categories, so their header keys are DERIVED and cannot point at the
+  // existing wording: a group header against a button's verb.
+  Export: 'view-action section header (derived table) vs SVG export button',
+  Present: 'view-action section header (derived table) vs present tool tooltip',
   Frames: 'catalogue category header (derived table) vs C4 legend section',
   // UML's catalogue section for what several diagram kinds share (PO ruling of
   // 2026-09-16), beside the sketch/general toggle every canvas style panel

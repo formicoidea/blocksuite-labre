@@ -9,6 +9,7 @@ import { describe, expect, expectTypeOf, test } from 'vitest';
 import {
   type AnyCommandDescriptor,
   armArtefact,
+  type CommandFile,
   type CommandInvocation,
   createFramePreview,
   fitToModel,
@@ -17,12 +18,17 @@ import {
   getCommandIcon,
   getCommandsForSurface,
   getRegisteredCommands,
+  getViewActions,
   type ReorderFramesParams,
   reorderFramesParams,
   runCommand,
+  runCommandAsync,
+  runViewAction,
   selectionPaneTree,
   type SelectionPaneNode,
   selectModels,
+  type ViewAction,
+  type ViewActionResult,
 } from '../host-panels.js';
 import { ROOT } from './translations/source-files.js';
 
@@ -89,9 +95,44 @@ const hostCalls = (
   return { fitted, padded, registered, listed, icon, rows, parsed };
 };
 
+/**
+ * The 0.47 view actions (ADR 0034, amendment of 2026-10-13): what a host's
+ * header menu reads and runs. Same contract from here on — compiles or the
+ * build fails; never invoked.
+ */
+const viewMenuCalls = async (std: BlockStdScope) => {
+  const actions: ViewAction[] = getViewActions(std);
+  const canvas: ViewAction[] = getViewActions(std, 'edgeless');
+  const [first] = actions;
+  const label: string = first?.label ?? '';
+  const section: string = first?.section ?? '';
+  const checked: boolean | undefined = first?.checked;
+  const disabled: boolean | undefined = first?.disabled;
+  const result: ViewActionResult = await runViewAction(
+    std,
+    'canvas.export.png'
+  );
+  const file: CommandFile | undefined = result.file;
+  const blob: Blob | undefined = file?.blob;
+  const name: string | undefined = file?.filename;
+  const reorder = frameCommands.find(c => c.id === 'canvas.frame.reorder');
+  if (reorder) {
+    await runCommandAsync(std, reorder, {
+      surface: 'view-menu',
+      source: 'context-menu',
+    });
+  }
+  return { canvas, label, section, checked, disabled, blob, name };
+};
+
 describe('@labre/affine/host-panels keeps its 0.46 shape', () => {
   test('the 0.46 calls typecheck, and no return gains null', () => {
     expectTypeOf(hostCalls).toBeFunction();
+    expectTypeOf(viewMenuCalls).toBeFunction();
+    expectTypeOf(getViewActions).returns.toEqualTypeOf<ViewAction[]>();
+    expectTypeOf(runViewAction).returns.toEqualTypeOf<
+      Promise<ViewActionResult>
+    >();
     expectTypeOf(fitToModel).returns.toEqualTypeOf<boolean>();
     expectTypeOf(frameList).returns.toEqualTypeOf<FrameBlockModel[]>();
     expectTypeOf(selectModels).returns.toEqualTypeOf<void>();

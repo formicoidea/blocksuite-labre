@@ -8,6 +8,7 @@ import {
 } from '@labre/affine-block-root';
 import {
   auditCommands,
+  canvasExportCommands,
   canvasGridCommands,
   exportSvgCommands,
   mapQualityCommands,
@@ -129,6 +130,7 @@ export function getCommands(flags?: LabreFlags): AnyCommandDescriptor[] {
       ...selectionPaneCommands,
       ...frameCommands,
       ...canvasGridCommands,
+      ...canvasExportCommands,
       ...userLayerCommands,
       ...edgeDirectionCommands,
       ...(isCapabilityEnabled(flags, 'ai-audit') ? auditCommands : []),

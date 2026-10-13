@@ -1,3 +1,4 @@
+import { PresentationIcon } from '@blocksuite/icons/lit';
 import {
   type ViewExtensionContext,
   ViewExtensionProvider,
@@ -38,8 +39,14 @@ export class FrameViewExtension extends ViewExtensionProvider {
       context.register(FrameBlockInteraction);
       // The presentation order's one write (ADR 0034). The frame panel also
       // mounts in page mode: it runs the imported descriptor, not this
-      // registration, so its reorder works in both modes.
-      context.register(CommandExtension(frameCommands));
+      // registration, so its reorder works in both modes. `canvas.present`
+      // rides along: a host's view menu lists it in edgeless mode, and a
+      // `frame: false` assembly loses it with the rest of the frame tooling.
+      context.register(
+        CommandExtension(frameCommands, {
+          'canvas.present': PresentationIcon(),
+        })
+      );
     }
   }
 }

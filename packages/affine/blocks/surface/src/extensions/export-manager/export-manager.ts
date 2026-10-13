@@ -8,9 +8,11 @@ import {
 } from '@labre/affine-shared/services';
 import type { Viewport } from '@labre/affine-shared/types';
 import {
+  downloadBlob,
   isInsidePageEditor,
   matchModels,
   normalizeCanvasExportColors,
+  safeFilename,
   toLegacyColors,
 } from '@labre/affine-shared/utils';
 import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
@@ -19,6 +21,7 @@ import { deserializeXYWH } from '@labre/global/gfx';
 import {
   type BlockComponent,
   type BlockStdScope,
+  type CommandFile,
   type EditorHost,
   StdIdentifier,
 } from '@labre/std';
@@ -35,7 +38,6 @@ import type { ExtensionType, Store } from '@labre/store';
 import { CanvasRenderer } from '../../renderer/canvas-renderer.js';
 import type { SurfaceBlockComponent } from '../../surface-block.js';
 import { getBgGridGap } from '../../utils/get-bg-grip-gap.js';
-import { FileExporter } from './file-exporter.js';
 
 // oxlint-disable-next-line typescript/consistent-type-imports
 type Html2CanvasFunction = typeof import('html2canvas').default;
@@ -525,45 +527,63 @@ export class ExportManager {
     return canvas;
   }
 
-  async exportPdf() {
-    const rootModel = this.doc.root;
-    if (!rootModel) return;
-    const canvasImage = await this._toCanvas();
-    if (!canvasImage) {
-      return;
-    }
-
-    const PDFLib = await import('pdf-lib');
-    const pdfDoc = await PDFLib.PDFDocument.create();
-    const page = pdfDoc.addPage([canvasImage.width, canvasImage.height]);
-    const imageEmbed = await pdfDoc.embedPng(canvasImage.toDataURL('PNG'));
-    const { width, height } = imageEmbed.scale(1);
-    page.drawImage(imageEmbed, {
-      x: 0,
-      y: 0,
-      width,
-      height,
-    });
-    const pdfBase64 = await pdfDoc.saveAsBase64({ dataUri: true });
-
-    FileExporter.exportFile(
-      (rootModel as RootBlockModel).props.title.toString() + '.pdf',
-      pdfBase64
+  /**
+   * The canvas (or, in page mode, the document) as a PNG file, or `null` when
+   * there is nothing to draw. Renders, never downloads: the caller decides
+   * where the bytes go (`canvas.export.png` hands them to a host, or to the
+   * browser).
+   */
+  async pngFile(): Promise<CommandFile | null> {
+    if (!this.doc.root) return null;
+    const canvas = await this._toCanvas();
+    if (!canvas) return null;
+    const blob = await new Promise<Blob | null>(resolve =>
+      canvas.toBlob(resolve, 'image/png')
     );
+    if (!blob) return null;
+    return { blob, filename: `${this._fileStem()}.png` };
   }
 
-  async exportPng() {
-    const rootModel = this.doc.root;
-    if (!rootModel) return;
-    const canvasImage = await this._toCanvas();
-    if (!canvasImage) {
-      return;
-    }
+  /**
+   * The same picture in a one-page PDF (`pdf-lib`, loaded on demand), or
+   * `null` when there is nothing to draw. The PDF is an image: its text is
+   * not selectable.
+   */
+  async pdfFile(): Promise<CommandFile | null> {
+    if (!this.doc.root) return null;
+    const canvas = await this._toCanvas();
+    if (!canvas) return null;
+    const PDFLib = await import('pdf-lib');
+    const pdfDoc = await PDFLib.PDFDocument.create();
+    const page = pdfDoc.addPage([canvas.width, canvas.height]);
+    const image = await pdfDoc.embedPng(canvas.toDataURL('image/png'));
+    const { width, height } = image.scale(1);
+    page.drawImage(image, { x: 0, y: 0, width, height });
+    const bytes = await pdfDoc.save();
+    return {
+      blob: new Blob([bytes], { type: 'application/pdf' }),
+      filename: `${this._fileStem()}.pdf`,
+    };
+  }
 
-    const title = (this.doc.root as RootBlockModel).props.title.toString();
-    FileExporter.exportPng(
-      title.trim() || translateKey(this.std, ...CHROME_UNTITLED),
-      canvasImage.toDataURL('image/png')
+  /** Render, then hand the file to the browser. Nothing to draw, no file. */
+  async exportPdf() {
+    const file = await this.pdfFile();
+    if (file) downloadBlob(file.blob, file.filename);
+  }
+
+  /** Render, then hand the file to the browser. Nothing to draw, no file. */
+  async exportPng() {
+    const file = await this.pngFile();
+    if (file) downloadBlob(file.blob, file.filename);
+  }
+
+  /** The document title, sanitised; the translated "Untitled" without one. */
+  private _fileStem(): string {
+    const root = this.doc.root as RootBlockModel | null;
+    return safeFilename(
+      root?.props.title.toString(),
+      translateKey(this.std, ...CHROME_UNTITLED)
     );
   }
 }

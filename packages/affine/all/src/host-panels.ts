@@ -4,7 +4,15 @@ import {
   type FramePreview,
 } from '@labre/affine-fragment-frame-panel';
 import type { FrameBlockModel } from '@labre/affine-model';
-import type { BlockStdScope } from '@labre/std';
+import { DocModeProvider, translateKey } from '@labre/affine-shared/services';
+import {
+  type BlockStdScope,
+  type CommandFile,
+  type CommandFileParams,
+  getRegisteredCommands,
+  isCommandAvailable,
+  runCommandAsync,
+} from '@labre/std';
 import { GfxControllerIdentifier, type GfxModel } from '@labre/std/gfx';
 
 /**
@@ -46,6 +54,13 @@ import { GfxControllerIdentifier, type GfxModel } from '@labre/std/gfx';
  * cannot find here is a gap in this module, not a reason to import a widget
  * package.
  *
+ * **The view actions** (amendment of 2026-10-13) are the same idea for a
+ * host's MENU rather than its panel: `getViewActions` projects the commands
+ * on the `'view-menu'` surface — the grid, the PNG and PDF export, Present —
+ * into rows of data (label, icon key, check, disabled), and `runViewAction`
+ * runs one and hands back the file an export produced. The host draws the
+ * rows (Labre's header ⋯, section "This view"); nothing here renders.
+ *
  * ponytail: `frameList` is a plain read, not a signal of the frame list; a
  * host follows reorders through `std.store.slots.blockUpdated` (08 says how).
  * A signal of the frame list is the upgrade path if two hosts ask.
@@ -53,6 +68,7 @@ import { GfxControllerIdentifier, type GfxModel } from '@labre/std/gfx';
 
 export {
   type AnyCommandDescriptor,
+  type CommandFile,
   type CommandInvocation,
   type CommandOwner,
   type CommandSurface,
@@ -60,6 +76,7 @@ export {
   getCommandsForSurface,
   getRegisteredCommands,
   runCommand,
+  runCommandAsync,
 } from '@labre/std';
 export { armArtefact } from '@labre/affine-widget-edgeless-toolbar';
 export {
@@ -139,4 +156,125 @@ export function createFramePreview(
   if (options.height !== undefined) preview.surfaceHeight = options.height;
   if (options.fillScreen !== undefined) preview.fillScreen = options.fillScreen;
   return preview;
+}
+
+/**
+ * One entry of the current view's own actions — what a host draws in the
+ * "This view" section of its menu (ADR 0034, amendment of 2026-10-13). Data
+ * only: the host owns the menu, the row, the spinner and the toast; the
+ * library owns what the entry does.
+ */
+export interface ViewAction {
+  /**
+   * The command id, stable across versions (`canvas.grid.toggle`): the key a
+   * host maps its own icon, test id or placement to, and what it passes back
+   * to {@link runViewAction}.
+   */
+  id: string;
+  /**
+   * The group the entry belongs to, from the command's `category`:
+   * `'display'` (the grid), `'export'` (PNG, PDF), `'present'`. A host draws
+   * a separator between groups, or places a group elsewhere (Labre keeps
+   * "Present" in its header). Open: a later minor may add a group.
+   */
+  section: string;
+  /** Resolved through the host's `TranslationExtension`, else English. */
+  label: string;
+  /** The `com.labre.*` key behind {@link label}, for a host that translates itself. */
+  labelKey: string;
+  /** Stable asset key; `getCommandIcon(std, iconKey)` is the library's icon. */
+  iconKey?: string;
+  /** Present only on a toggle: the state a check mark shows. */
+  checked?: boolean;
+  /**
+   * Listed but refused now (a write on a read-only document): draw it
+   * disabled. An entry that does not apply at all is not listed.
+   */
+  disabled: boolean;
+}
+
+/** What {@link runViewAction} hands back. */
+export interface ViewActionResult {
+  /**
+   * The file an export produced — the host downloads it, shares it, uploads
+   * it. Absent for an action that makes none, and for an export that found
+   * nothing to draw.
+   */
+  file?: CommandFile;
+}
+
+/**
+ * The actions proper to the view the editor shows now, in their declared
+ * order: the commands registered on the `'view-menu'` surface whose `scope`
+ * is this mode (or `'global'`) and whose `when` holds.
+ *
+ * `mode` is the view the host shows; omitted, it is read from
+ * `DocModeProvider`, and a provider that does not know (the library default
+ * answers `null`) leaves the choice to registration — the canvas commands are
+ * registered on the edgeless scope only. Flags apply by construction: a
+ * `frame: false` assembly registers no "Present", so it is not listed.
+ *
+ * Reactive when read inside an `effect` or a `computed`: `checked`, `when`
+ * and the read-only refusal read signals, so the list follows the grid, a
+ * toggle, a peer's save or a document turning read-only. Read it again after a
+ * mode switch: the `std` is rebuilt.
+ */
+export function getViewActions(
+  std: BlockStdScope,
+  mode?: 'page' | 'edgeless'
+): ViewAction[] {
+  const view = mode ?? std.getOptional(DocModeProvider)?.getEditorMode();
+  return getRegisteredCommands(std)
+    .filter(command => command.surfaces.includes('view-menu'))
+    .filter(
+      command => command.scope === 'global' || !view || command.scope === view
+    )
+    .filter(command => !command.when || command.when(std))
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    .map(command => ({
+      id: command.id,
+      section: command.category ?? 'display',
+      label: translateKey(std, command.labelKey, command.labelFallback),
+      labelKey: command.labelKey,
+      ...(command.iconKey ? { iconKey: command.iconKey } : {}),
+      ...(command.checked ? { checked: command.checked(std) } : {}),
+      disabled: !isCommandAvailable(std, command),
+    }));
+}
+
+/**
+ * Run one entry of {@link getViewActions} by its id, through `runCommand`'s
+ * bottleneck (usage and telemetry recorded once), and wait for it.
+ *
+ * Resolves when the action is done — after the export has rendered — with the
+ * file it produced, if any: the library renders, the host decides where the
+ * bytes go, and nothing is downloaded behind its back. Rejects when the action
+ * fails, so the host can say so. An id that is not a view action here, an
+ * entry that no longer applies or a refused one runs nothing and resolves
+ * with no file.
+ */
+export async function runViewAction(
+  std: BlockStdScope,
+  id: string
+): Promise<ViewActionResult> {
+  const command = getRegisteredCommands(std).find(
+    candidate => candidate.id === id && candidate.surfaces.includes('view-menu')
+  );
+  if (!command) return {};
+  if (command.when && !command.when(std)) return {};
+  if (!isCommandAvailable(std, command)) return {};
+
+  const result: ViewActionResult = {};
+  const params: CommandFileParams = {
+    deliver: file => {
+      result.file = file;
+    },
+  };
+  await runCommandAsync(
+    std,
+    command,
+    { surface: 'view-menu', source: 'context-menu' },
+    params
+  );
+  return result;
 }

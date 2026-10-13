@@ -1940,6 +1940,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@labre/affine-block-surface@workspace:packages/affine/blocks/surface"
   dependencies:
+    "@blocksuite/icons": "npm:^2.2.12"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
     "@labre/affine-model": "workspace:*"

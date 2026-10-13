@@ -1,4 +1,9 @@
 import {
+  ExportToPdfIcon,
+  ExportToPngIcon,
+  GridIcon,
+} from '@blocksuite/icons/lit';
+import {
   type ViewExtensionContext,
   ViewExtensionProvider,
 } from '@labre/affine-ext-loader';
@@ -17,6 +22,7 @@ import { effects } from './effects';
 import {
   auditCommands,
   CanvasActiveLayer,
+  canvasExportCommands,
   canvasGridCommands,
   EdgelessCRUDExtension,
   EdgelessLegacySlotExtension,
@@ -123,7 +129,19 @@ export class SurfaceViewExtension extends ViewExtensionProvider {
       // the edgeless root's background, the surface container and the PNG
       // export; previews follow the document setting alone.
       context.register(CanvasGrid);
-      context.register(CommandExtension(canvasGridCommands));
+      context.register(
+        CommandExtension(canvasGridCommands, { 'canvas.grid': GridIcon() })
+      );
+      // The canvas's PNG and PDF export (ADR 0034, amendment of 2026-10-13):
+      // the "This view" entries a host lists with `getViewActions`. Edgeless
+      // only — the page-mode export was never offered — and never gated: a
+      // picture of what is on the canvas is not a framework's tooling.
+      context.register(
+        CommandExtension(canvasExportCommands, {
+          'canvas.export.png': ExportToPngIcon(),
+          'canvas.export.pdf': ExportToPdfIcon(),
+        })
+      );
       // User layers (ADR 0031 §2-§6): the viewer's active layer (session
       // only), the `beforeAdd` middleware that stamps it on what is created,
       // and the commands the pane's layer rows run. Content, never gated.
