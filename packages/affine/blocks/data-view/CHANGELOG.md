@@ -1,5 +1,23 @@
 # @labre/affine-block-data-view
 
+## 0.48.0
+
+### Patch Changes
+
+- Updated dependencies [846e42c]
+- Updated dependencies [846e42c]
+- Updated dependencies [846e42c]
+  - @labre/affine-shared@0.48.0
+  - @labre/data-view@0.48.0
+  - @labre/affine-block-database@0.48.0
+  - @labre/affine-components@0.48.0
+  - @labre/affine-widget-slash-menu@0.48.0
+  - @labre/affine-ext-loader@0.48.0
+  - @labre/affine-model@0.48.0
+  - @labre/global@0.48.0
+  - @labre/std@0.48.0
+  - @labre/store@0.48.0
+
 ## 0.47.1
 
 ### Patch Changes

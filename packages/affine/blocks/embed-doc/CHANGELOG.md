@@ -1,5 +1,28 @@
 # @labre/affine-block-embed-doc
 
+## 0.48.0
+
+### Minor Changes
+
+- 846e42c: The slash menu's "New Page" now creates its page through the host and leaves a card where it was typed. The page comes from `LinkedDocCreationProvider.createLinkedDoc(host, '')` when the host registers `LinkedDocCreationExtension` (the same seam as the edgeless "Create linked page"; the library writes a blank page into the unloaded store it returns), else from the workspace as before. The entry then inserts an `affine:embed-linked-doc` card right after the block it was typed in, replacing that line when the gesture left it empty: one undo step, nothing written on a read-only store, `BlockCreated` emitted for the card. Where the parent refuses a card (a callout, an edgeless text), it falls back on the inline mention it used to leave. The provider gains an optional `canCreateLinkedDoc(host)`: on `false` the slash entry is hidden (a host refusing creation on a page shared with a guest, for instance); absent means allowed, so existing providers keep their behaviour. A host that overrode `LinkedDocSlashMenuConfigIdentifier` only to get this can drop the override. New shared helper `writeDefaultDocBlocks(store, title?)` (`@labre/affine-shared/utils`) writes the blank page `createDefaultDoc` makes.
+
+### Patch Changes
+
+- Updated dependencies [846e42c]
+- Updated dependencies [846e42c]
+  - @labre/affine-shared@0.48.0
+  - @labre/affine-block-embed@0.48.0
+  - @labre/affine-block-surface@0.48.0
+  - @labre/affine-components@0.48.0
+  - @labre/affine-inline-reference@0.48.0
+  - @labre/affine-rich-text@0.48.0
+  - @labre/affine-widget-slash-menu@0.48.0
+  - @labre/affine-ext-loader@0.48.0
+  - @labre/affine-model@0.48.0
+  - @labre/global@0.48.0
+  - @labre/std@0.48.0
+  - @labre/store@0.48.0
+
 ## 0.47.1
 
 ### Patch Changes

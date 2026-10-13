@@ -1,5 +1,19 @@
 # @labre/affine-shared
 
+## 0.48.0
+
+### Minor Changes
+
+- 846e42c: The slash menu's "New Page" now creates its page through the host and leaves a card where it was typed. The page comes from `LinkedDocCreationProvider.createLinkedDoc(host, '')` when the host registers `LinkedDocCreationExtension` (the same seam as the edgeless "Create linked page"; the library writes a blank page into the unloaded store it returns), else from the workspace as before. The entry then inserts an `affine:embed-linked-doc` card right after the block it was typed in, replacing that line when the gesture left it empty: one undo step, nothing written on a read-only store, `BlockCreated` emitted for the card. Where the parent refuses a card (a callout, an edgeless text), it falls back on the inline mention it used to leave. The provider gains an optional `canCreateLinkedDoc(host)`: on `false` the slash entry is hidden (a host refusing creation on a page shared with a guest, for instance); absent means allowed, so existing providers keep their behaviour. A host that overrode `LinkedDocSlashMenuConfigIdentifier` only to get this can drop the override. New shared helper `writeDefaultDocBlocks(store, title?)` (`@labre/affine-shared/utils`) writes the blank page `createDefaultDoc` makes.
+- 846e42c: The title band's "Not shown" row (English fallback now "Not shown on this page", was "Not shown in this document"; same key) is now drawn in both views, under the page title as well as in the note header on the canvas (ADR 0035 §9d, amended 2026-10-13; labre ADR-0045 §7). A host that drew its own row under the title in the page view drops it: the library draws it from the same `notShown# @labre/affine-shared. Each listed page gains a "Show here" button (`com.labre.title-band.show-here`) on a writable document: it inserts an `affine:embed-linked-doc`card of the page, at the end of the last note in the page view and at the centre of the visible canvas on the canvas (through the layer-stamping CRUD path, then selected), as one undo step, and emits`BlockCreated`. The library writes only that card; dropping the page from `notShown# @labre/affine-shared once it shows stays the host's reading of the document. A read-only document keeps the page links and gets no button.
+
+### Patch Changes
+
+- @labre/affine-model@0.48.0
+- @labre/global@0.48.0
+- @labre/std@0.48.0
+- @labre/store@0.48.0
+
 ## 0.47.1
 
 ### Patch Changes
