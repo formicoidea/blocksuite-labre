@@ -13,16 +13,23 @@ import {
   createFramePreview,
   fitToModel,
   frameCommands,
+  formatPropertyValue,
   frameList,
   getCommandIcon,
   getCommandsForSurface,
   getRegisteredCommands,
+  isPropertyValueEmpty,
+  type PropertiesPanelRequest,
+  type PropertiesPanelService,
   type ReorderFramesParams,
   reorderFramesParams,
   runCommand,
   selectionPaneTree,
   type SelectionPaneNode,
   selectModels,
+  type TitleBandProperty,
+  type TitleBandService,
+  type TitleBandSheetState,
 } from '../host-panels.js';
 import { ROOT } from './translations/source-files.js';
 
@@ -89,9 +96,45 @@ const hostCalls = (
   return { fitted, padded, registered, listed, icon, rows, parsed };
 };
 
+/**
+ * The 0.47 calls of a host's properties panel (ADR 0035 §9b, §11), verbatim:
+ * the sheet it hands the title band, the panel it opens on request, and the
+ * chip text it reuses. Same rule as above: compiles or the build fails.
+ */
+const propertiesPanelCalls = (
+  sheet: TitleBandSheetState,
+  service: TitleBandService
+) => {
+  const panel: PropertiesPanelService = {
+    open: (request: PropertiesPanelRequest) => {
+      if (request.scope === 'page') return request.docId;
+      return [request.docId, request.blockId, request.sourceId, request.viewId];
+    },
+    close: () => {},
+  };
+  const property: TitleBandProperty = {
+    id: 'status',
+    namespace: 'workspace',
+    name: 'Status',
+    type: 'select',
+    data: { options: [{ id: 'a', value: 'Doing', color: 'var(--x)' }] },
+    value: 'a',
+    readonly: false,
+  };
+  const text: string = formatPropertyValue(property);
+  const localized: string = formatPropertyValue(property, 'fr-FR');
+  const empty: boolean = isPropertyValueEmpty(property);
+  const written: Promise<void> = service.set('doc', property.id, null);
+  const ready = sheet.status === 'ready' ? sheet.properties : [];
+  return { panel, text, localized, empty, written, ready };
+};
+
 describe('@labre/affine/host-panels keeps its 0.46 shape', () => {
   test('the 0.46 calls typecheck, and no return gains null', () => {
     expectTypeOf(hostCalls).toBeFunction();
+    expectTypeOf(propertiesPanelCalls).toBeFunction();
+    expectTypeOf(formatPropertyValue).returns.toEqualTypeOf<string>();
+    expectTypeOf(isPropertyValueEmpty).returns.toEqualTypeOf<boolean>();
     expectTypeOf(fitToModel).returns.toEqualTypeOf<boolean>();
     expectTypeOf(frameList).returns.toEqualTypeOf<FrameBlockModel[]>();
     expectTypeOf(selectModels).returns.toEqualTypeOf<void>();

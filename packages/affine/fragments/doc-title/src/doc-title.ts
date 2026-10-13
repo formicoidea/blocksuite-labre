@@ -7,13 +7,13 @@ import {
   type RootBlockModel,
 } from '@labre/affine-model';
 import { focusTextModel, type RichText } from '@labre/affine-rich-text';
-import { translateKey } from '@labre/affine-shared/services';
+import { TitleBandProvider, translateKey } from '@labre/affine-shared/services';
 import { matchModels } from '@labre/affine-shared/utils';
 import { WithDisposable } from '@labre/global/lit';
 import { ShadowlessElement } from '@labre/std';
 import type { Store } from '@labre/store';
 import { effect } from '@preact/signals-core';
-import { css, html } from 'lit';
+import { css, html, nothing } from 'lit';
 import { property, query, state } from 'lit/decorators.js';
 
 import { DOC_TITLE_PLACEHOLDER } from './translations';
@@ -22,9 +22,18 @@ const DOC_BLOCK_CHILD_PADDING = 24;
 
 export class DocTitle extends WithDisposable(ShadowlessElement) {
   static override styles = css`
+    /*
+     * The page title's family is a host's to choose (labre ADR-0049 §5: the
+     * Labre app sets Cabinet Grotesk); headings H1 to H6 stay in the body
+     * family. Unset, the title keeps the body family, DESIGN.md's One Family
+     * Rule.
+     */
     .doc-title-container {
       box-sizing: border-box;
-      font-family: var(--affine-font-family);
+      font-family: var(
+        --labre-doc-title-font-family,
+        var(--affine-font-family)
+      );
       font-size: var(--affine-font-base);
       line-height: var(--affine-line-height);
       color: var(--affine-text-primary-color);
@@ -53,6 +62,27 @@ export class DocTitle extends WithDisposable(ShadowlessElement) {
     /* Extra small devices (phones, 640px and down) */
     @container viewport (width <= 640px) {
       .doc-title-container {
+        padding-left: ${DOC_BLOCK_CHILD_PADDING}px;
+        padding-right: ${DOC_BLOCK_CHILD_PADDING}px;
+      }
+    }
+
+    .doc-title-container.doc-title-container-with-band {
+      padding-bottom: 8px;
+    }
+
+    .doc-title-band {
+      box-sizing: border-box;
+      width: 100%;
+      max-width: var(--affine-editor-width);
+      margin-left: auto;
+      margin-right: auto;
+      padding: 0 var(--affine-editor-side-padding, ${DOC_BLOCK_CHILD_PADDING}px)
+        24px;
+    }
+
+    @container viewport (width <= 640px) {
+      .doc-title-band {
         padding-left: ${DOC_BLOCK_CHILD_PADDING}px;
         padding-right: ${DOC_BLOCK_CHILD_PADDING}px;
       }
@@ -211,14 +241,36 @@ export class DocTitle extends WithDisposable(ShadowlessElement) {
     }
   }
 
+  /**
+   * The `std` the title band reads its seams from, when the band belongs
+   * here: in the page view, never inside a note on the canvas, where
+   * `edgeless-page-block-title` draws the band itself (ADR 0035 §11), so a
+   * host that renders this title in the note header does not get two.
+   */
+  private get _bandStd() {
+    if (this.closest('edgeless-page-block-title')) return null;
+    const std = this._std;
+    return std?.getOptional(TitleBandProvider) ? std : null;
+  }
+
+  override firstUpdated() {
+    // `<doc-title>` sits beside the editor host, not inside it: on the first
+    // frame the host may not carry its `std` yet, and without one the band
+    // cannot read its seam. One more render once it has mounted.
+    if (this._std) return;
+    const frame = requestAnimationFrame(() => this.requestUpdate());
+    this._disposables.add(() => cancelAnimationFrame(frame));
+  }
+
   override render() {
     const isEmpty = !this._rootModel?.props.title.length && !this._isComposing;
+    const bandStd = this._bandStd;
 
     return html`
       <div
         class="doc-title-container ${isEmpty
           ? 'doc-title-container-empty'
-          : ''}"
+          : ''} ${bandStd ? 'doc-title-container-with-band' : ''}"
         data-block-is-title="true"
         data-placeholder=${this._placeholder}
       >
@@ -231,6 +283,15 @@ export class DocTitle extends WithDisposable(ShadowlessElement) {
           .wrapText=${this.wrapText}
         ></rich-text>
       </div>
+      ${bandStd
+        ? html`<div class="doc-title-band">
+            <labre-title-band
+              .std=${bandStd}
+              .docId=${this.doc.id}
+              .surface=${'page'}
+            ></labre-title-band>
+          </div>`
+        : nothing}
     `;
   }
 

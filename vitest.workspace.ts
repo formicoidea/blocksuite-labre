@@ -23,6 +23,7 @@ export default [
   'packages/affine/components/vitest.config.ts',
   'packages/affine/data-view/vitest.config.ts',
   'packages/affine/ext-loader/vitest.config.ts',
+  'packages/affine/fragments/doc-title/vitest.config.ts',
   'packages/affine/fragments/outline/vitest.config.ts',
   'packages/affine/gfx/bpmn/vitest.config.ts',
   'packages/affine/gfx/bpmn/vitest.browser.config.ts',

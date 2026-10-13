@@ -131,4 +131,19 @@ host→editor direction is.
 
 ## Amendments
 
-None yet.
+### 2026-10-13 — a fourth panel seam, the properties panel
+
+ADR 0035 §9b adds `PropertiesPanelExtension({ open(request), close } | null)`,
+which the title band's panel button calls (ADR 0035 §11). It is the fourth
+panel the library itself opens, the trigger this ADR set to reconsider a
+router. Reconsidered and still rejected: the new seam has the same shape as
+the other three (two verbs, `null` = no button, no library default), its
+typed request is the catalogue's `open(owner)` pattern and not a panel kind,
+and a router would still fold four contracts into one without removing the
+`null` story each one keeps. Nothing a host registers dynamically yet. The
+trigger moves to a **fifth** panel the library opens, or the first host that
+registers panels at run time. The properties panel's host side lives in
+[08-host-panels.md](../integrate/08-host-panels.md) beside the other three;
+`@labre/affine/host-panels` gains the band's vocabulary
+(`formatPropertyValue`, `isPropertyValueEmpty` and the sheet and request
+types), held by `host-panels-signature.unit.spec.ts`.
