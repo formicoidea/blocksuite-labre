@@ -8,7 +8,7 @@
  * the zoom like the note's own text instead of floating at a fixed size; and
  * nowhere at all, in either view, when the host registers no provider.
  *
- * The "Not shown in this document" row (labre ADR-0045 §7, ADR 0035 §9d
+ * The "Not shown on this page" row (labre ADR-0045 §7, ADR 0035 §9d
  * amended 2026-10-13) is drawn in both views, and its "Show here" must land
  * a real, rendered card of the page: at the end of the last note in the page
  * view, at the centre of the visible canvas on the canvas, as one undo step.

@@ -19,7 +19,7 @@ import type { ReadonlySignal } from '@preact/signals-core';
  * database cell read the same `type`, `data` and value.
  *
  * Absent, there is no band at all: no chips, no "+", no panel button, no "Not
- * shown in this document" row, and nothing else changes.
+ * shown on this page" row, and nothing else changes.
  */
 
 /**
@@ -108,7 +108,7 @@ export interface TitleBandService {
   /**
    * The child pages this document holds but does not display, drawn in both
    * views (under the title, and in the note header on the canvas) as a "Not
-   * shown in this document" row: each page is a link that opens through the
+   * shown on this page" row: each page is a link that opens through the
    * linked-document path (`RefNodeSlotsProvider.docLinkClicked`; without it,
    * no row), with a "Show here" button on a writable document that inserts
    * an `affine:embed-linked-doc` card of it (end of the last note in the

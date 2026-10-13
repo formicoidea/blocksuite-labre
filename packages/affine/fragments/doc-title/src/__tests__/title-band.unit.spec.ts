@@ -43,7 +43,7 @@ import { LABRE_TITLE_BAND, TitleBand } from '../title-band/title-band';
  *   band never applies the value itself, the host's `sheet$` does;
  * - the "+" exists only with `add`, the panel button only with a
  *   `PropertiesPanelProvider`, and the panel opens with a page request;
- * - the "Not shown in this document" row is drawn in both views (ADR 0035
+ * - the "Not shown on this page" row is drawn in both views (ADR 0035
  *   §9d, amended 2026-10-13: the page view's row was the host's until then),
  *   only with a linked-document path to open its links through;
  * - its "Show here" writes one `affine:embed-linked-doc` card of the page,
@@ -333,7 +333,7 @@ describe('the title band', () => {
     expect(all(band, 'title-band-chip')).toHaveLength(1);
   });
 
-  it('draws "Not shown in this document" in both views', async () => {
+  it('draws "Not shown on this page" in both views', async () => {
     const notShown$ = signal([
       { docId: 'child-1', title: 'Child' },
       { docId: 'child-2', title: '' },
@@ -356,7 +356,7 @@ describe('the title band', () => {
       const row = q(band, 'title-band-not-shown');
       expect(row?.getAttribute('role'), surface).toBe('group');
       expect(row?.getAttribute('aria-label'), surface).toBe(
-        'Not shown in this document'
+        'Not shown on this page'
       );
       const links = all(band, 'title-band-not-shown-page');
       expect(links.map(link => link.textContent?.trim())).toEqual([

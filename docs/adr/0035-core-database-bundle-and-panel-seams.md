@@ -347,7 +347,7 @@ cannot draw.
 
 ## Amendments
 
-### 2026-10-13: the "Not shown in this document" row, both views, with "Show here"
+### 2026-10-13: the "Not shown on this page" row, both views, with "Show here"
 
 Amends §9d and §11 (and the title band row of the seams table above). Asked by
 the Labre v2 page system (labre ADR-0045 §7, amended there the same day).
@@ -369,6 +369,10 @@ the Labre v2 page system (labre ADR-0045 §7, amended there the same day).
   page links and gets no button. The title still opens the page through the
   linked-document path, and without `RefNodeSlotsProvider` there is still no
   row at all.
+- **The row says "page".** Its English fallback becomes "Not shown on this
+  page" (was "Not shown in this document"), same key
+  `com.labre.title-band.not-shown`: in Labre v2 everything is a page (product
+  owner decision, 2026-10-13).
 - **The library still computes nothing.** It writes the card and nothing else:
   no parent, no child, no tree. Dropping the page from `notShown$` once the
   card exists is the host's reading of the document (labre ADR-0045 §7,

@@ -86,7 +86,7 @@ interface BandSources {
  * until the host settles it. The band never applies a value, and writes to
  * the document only the card "Show here" inserts. The "+" is drawn when the
  * host passes `add`; the panel button when a `PropertiesPanelProvider` is
- * registered. The "Not shown in this document" row is drawn in both views
+ * registered. The "Not shown on this page" row is drawn in both views
  * from the host's `notShown$` (ADR 0035 §9d, amended 2026-10-13): each page
  * opens through the linked-document path, and "Show here" inserts a card of
  * it into this document; the host then drops the page from its list.

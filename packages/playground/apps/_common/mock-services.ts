@@ -423,7 +423,7 @@ declare global {
  * app keeps a page's property values in its own store, the playground keeps
  * them in memory, per document, for the session. Enough to exercise every
  * chip editor, the pending state (each write takes 400 ms to land), the "+",
- * the collapse and, on the canvas, the "Not shown in this document" row (the
+ * the collapse and, in both views, the "Not shown on this page" row (the
  * workspace's other documents stand in for the children).
  */
 export function mockTitleBandService(workspace: Workspace): TitleBandService {
