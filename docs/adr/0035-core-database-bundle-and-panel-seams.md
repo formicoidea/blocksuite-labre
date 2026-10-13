@@ -86,9 +86,9 @@ Every stored database must keep rendering in a host that installs core only
    provides, editable cell by cell. The bundle adds ways to create and
    arrange, never a way to see.
 
-   | Stays in core (`@labre/data-view`, `blocks/database`, `affine-shared`)                                                                                                                                                                                                                                                                           | New package `packages/affine/database-editor` (`@labre/affine-database-editor`)                                                                                                                                                                                                                                            |
-   | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-   | the view engine; the `affine:database` block; every preset that renders stored data (table, kanban, calendar render-only, new gallery and list); the unknown-view fallback; per-view fields; one schema per source; cell hydration; mobile editing; the row-open seam; the properties panel seam; the property sheet provider and the chips band | the Notion view bar (inline and full page, tabs then "N more"); the full-page database host; "+ view" with its source choice; the "Open pages in" setting; the library's own properties panel element; the data-source picker seam and the entries that call it; its `com.labre.database.*` wordings; its telemetry events |
+   | Stays in core (`@labre/data-view`, `blocks/database`, `affine-shared`)                                                                                                                                                                                                                                                                   | New package `packages/affine/database-editor` (`@labre/affine-database-editor`)                                                                                                                                                                                                                                            |
+   | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | the view engine; the `affine:database` block; every preset that renders stored data (table, kanban, calendar render-only, new gallery and list); the unknown-view fallback; per-view fields; one schema per source; cell hydration; mobile editing; the row-open seam; the properties panel seam; the title band seam and the chips band | the Notion view bar (inline and full page, tabs then "N more"); the full-page database host; "+ view" with its source choice; the "Open pages in" setting; the library's own properties panel element; the data-source picker seam and the entries that call it; its `com.labre.database.*` wordings; its telemetry events |
 
    Hosts alias the bundle as `@labre/core-database`.
 
@@ -195,8 +195,10 @@ Every stored database must keep rendering in a host that installs core only
      `{ id, title, sources: { id, title }[] }[]`. Callers: the "Linked view of
      a database" entry and "+ view" ("on an existing source" or "with a new
      source").
-   - d. **Property sheet** (P1, before B1): `PropertySheetExtension(service)` /
-     `PropertySheetProvider`, in core (`affine-shared/services`). Read:
+   - d. **Title band** (P1, before B1): `TitleBandExtension(service)` /
+     `TitleBandProvider`, in core (`affine-shared/services`), the one seam
+     that feeds the band under the page title and in the note header. Its
+     property sheet, read:
      `sheet$(docId)` returns a signal synchronously, `loading`, `ready`,
      `missing` or `error` as in ADR 0006; `ready` holds the ordered visible
      properties `{ id, namespace: 'workspace' | 'database', name, type, data, value, readonly }`
@@ -215,6 +217,12 @@ Every stored database must keep rendering in a host that installs core only
      through its sheet (the chips) and through the database's source (the
      cells): the host backs both with one store, the library never caches
      either.
+     The band takes one more host row, optional: `notShown$(docId)`, a signal
+     of `{ docId, title }[]`, the child pages this document holds but does
+     not display (labre ADR-0045). The library draws it under the chips as a
+     "Not shown in this document" row (a key) of page links that open
+     through the linked-document path; the host decides what belongs there,
+     the library never computes a parent or a child. Absent or empty, no row.
    - e. **Cell hydration** (B2), a widening of the `DataSourceBase` contract
      rather than a seam: `cellStatus(rowId, propertyId)` is `ready`,
      `pending` or `error`; `valuesState$` is a signal of
@@ -235,7 +243,7 @@ Every stored database must keep rendering in a host that installs core only
     (ADR 0034 §5), so the library's panel and a host's write the same way.
 11. **The chips band is core.** One component under the page title and in the
     note header, inside the note's transform so it follows the zoom, drawn
-    with the data-view property presets, fed by §9d alone. A page has
+    with the data-view property presets, fed by §9d alone, its "Not shown in this document" row included. A page has
     properties whether or not it is a row, and the band ships in P1, before
     the bundle exists.
 12. **Telemetry (B17)** follows the taxonomy README: PascalCase events
@@ -245,13 +253,13 @@ Every stored database must keep rendering in a host that installs core only
 
 ## Seams table rows (to add with the code)
 
-| Seam                                        | Register with                                                                     | When absent                                                                                                                                                                                                                     |
-| ------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Open a database row                         | `DatabaseOpenRowExtension({ open })` or `(null)`                                  | rows open through the peek view as in 0.46 and the view's "Open pages in" setting has no effect; with no peek view either, the open button is hidden. `null` says the same as absent                                            |
-| Properties panel                            | `PropertiesPanelExtension({ open, close })` or `(null)`                           | no panel button beside the chips band's "+"; a view's properties stay reachable through the data-view's own properties popover, the only way back to a hidden property. `null` says the same as absent                          |
-| Data-source picker (`@labre/core-database`) | `DataSourcePickerExtension({ list, createDatabase?, createSource? })` or `(null)` | no "Linked view of a database" entry and "+ view" offers only the sources the block already shows; without `createDatabase` nothing creates a database (the host's kill switch); without `createSource`, no "with a new source" |
-| Property sheet                              | `PropertySheetExtension(service)`                                                 | no chips band under the title or in the note header; nothing else changes, since no value lives in the document. Without `add`, no "+"; without `collapsed$`, the band opens expanded every time                                |
-| Cell hydration (DataSource contract)        | implement `cellStatus` / `valuesState$` / `retryValues` on the host's data source | every cell is ready at once, no skeleton and no banner: the 0.46 behaviour                                                                                                                                                      |
+| Seam                                        | Register with                                                                     | When absent                                                                                                                                                                                                                                                                 |
+| ------------------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Open a database row                         | `DatabaseOpenRowExtension({ open })` or `(null)`                                  | rows open through the peek view as in 0.46 and the view's "Open pages in" setting has no effect; with no peek view either, the open button is hidden. `null` says the same as absent                                                                                        |
+| Properties panel                            | `PropertiesPanelExtension({ open, close })` or `(null)`                           | no panel button beside the chips band's "+"; a view's properties stay reachable through the data-view's own properties popover, the only way back to a hidden property. `null` says the same as absent                                                                      |
+| Data-source picker (`@labre/core-database`) | `DataSourcePickerExtension({ list, createDatabase?, createSource? })` or `(null)` | no "Linked view of a database" entry and "+ view" offers only the sources the block already shows; without `createDatabase` nothing creates a database (the host's kill switch); without `createSource`, no "with a new source"                                             |
+| Title band                                  | `TitleBandExtension(service)`                                                     | no band under the title or in the note header: no chips, no "Not shown in this document" row; nothing else changes, since no value lives in the document. Without `add`, no "+"; without `collapsed$`, the band opens expanded every time; without `notShown$`, no such row |
+| Cell hydration (DataSource contract)        | implement `cellStatus` / `valuesState$` / `retryValues` on the host's data source | every cell is ready at once, no skeleton and no banner: the 0.46 behaviour                                                                                                                                                                                                  |
 
 ## Consequences
 
@@ -287,7 +295,7 @@ Every stored database must keep rendering in a host that installs core only
   `database-render-gating.unit.spec.ts`, `{ database: false, 'data-view': false }`
   still renders a stored database, modelled on `callout-turn-into-gating`
   (B4); a "mounts without the provider" spec per seam (B9, B10, B12, P1
-  sheet); `hydration-status.unit.spec.ts`, a source with no `cellStatus`
+  title band); `hydration-status.unit.spec.ts`, a source with no `cellStatus`
   draws no skeleton (B2); `core-database-boundary.unit.spec.ts`
   (`affine/all`), no package vendored into core imports
   `@labre/affine-database-editor` and the bundle imports no framework (B14).
@@ -316,7 +324,7 @@ Every stored database must keep rendering in a host that installs core only
 | B16 | data-view: dark-mode token audit                                                      | core (data-view)     | §1       |
 | B17 | telemetry: database events in the taxonomy                                            | core + bundle        | §12      |
 
-The property sheet provider, the page scope of the properties panel seam and
+The title band seam, the page scope of the properties panel seam and
 the chips band (§9b, §9d, §11) are P1 work in core and carry no B number.
 B3 and B4 ship before B6 and B7, so no host meets a stored gallery view it
 cannot draw.
