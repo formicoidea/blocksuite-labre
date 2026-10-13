@@ -1,5 +1,40 @@
 # @labre/affine-block-latex
 
+## 0.47.1
+
+### Patch Changes
+
+- Updated dependencies [d796aed]
+  - @labre/affine-block-note@0.47.1
+  - @labre/affine-components@0.47.1
+  - @labre/affine-shared@0.47.1
+  - @labre/affine-widget-slash-menu@0.47.1
+  - @labre/affine-inline-latex@0.47.1
+  - @labre/affine-rich-text@0.47.1
+  - @labre/affine-ext-loader@0.47.1
+  - @labre/affine-model@0.47.1
+  - @labre/global@0.47.1
+  - @labre/std@0.47.1
+  - @labre/store@0.47.1
+
+## 0.47.0
+
+### Patch Changes
+
+- Updated dependencies [9318a00]
+- Updated dependencies [9318a00]
+  - @labre/affine-shared@0.47.0
+  - @labre/affine-block-note@0.47.0
+  - @labre/std@0.47.0
+  - @labre/affine-components@0.47.0
+  - @labre/affine-inline-latex@0.47.0
+  - @labre/affine-rich-text@0.47.0
+  - @labre/affine-widget-slash-menu@0.47.0
+  - @labre/affine-model@0.47.0
+  - @labre/affine-ext-loader@0.47.0
+  - @labre/global@0.47.0
+  - @labre/store@0.47.0
+
 ## 0.46.2
 
 ### Patch Changes

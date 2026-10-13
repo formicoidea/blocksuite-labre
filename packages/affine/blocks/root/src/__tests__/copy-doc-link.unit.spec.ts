@@ -169,7 +169,7 @@ describe('the descriptor', () => {
     });
     expect(command.surfaces).toEqual(['palette', 'agent']);
     expect(command.labelKey).toBe('com.labre.command.doc.copy-link');
-    expect(command.labelFallback).toBe('Copy document link');
+    expect(command.labelFallback).toBe('Copy page link');
   });
 
   test('declares no telemetry, because it emits its own', () => {

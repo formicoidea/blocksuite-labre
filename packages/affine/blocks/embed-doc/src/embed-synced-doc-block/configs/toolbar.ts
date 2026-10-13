@@ -92,7 +92,7 @@ const openDocActions = [
   {
     mode: 'open-in-active-view',
     id: 'a.open-in-active-view',
-    label: 'Open this doc',
+    label: 'Open this page',
     labelWording: TOOLBAR_OPEN_THIS_DOC,
     icon: ExpandFullIcon(),
   },
@@ -324,9 +324,9 @@ const builtinSurfaceToolbarConfig = {
     conversionsActionGroup,
     {
       id: 'b.insert-to-page',
-      label: 'Insert to document',
+      label: 'Insert to page',
       labelWording: EMBED_DOC_INSERT_TO_PAGE,
-      tooltip: 'Insert to document',
+      tooltip: 'Insert to page',
       tooltipWording: EMBED_DOC_INSERT_TO_PAGE,
       icon: InsertIntoPageIcon(),
       run: ctx => {

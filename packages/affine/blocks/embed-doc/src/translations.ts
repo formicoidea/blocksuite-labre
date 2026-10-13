@@ -11,35 +11,35 @@ export const EMBED_DOC_SLASH_NEW_DOC_NAME = NEW_DOC_LABEL;
 
 export const EMBED_DOC_SLASH_NEW_DOC_DESCRIPTION: ChromeWording = [
   'com.labre.embed-doc.slash.new-doc.description',
-  'Start a new document.',
+  'Start a new page.',
 ];
 
 export const EMBED_DOC_SLASH_LINKED_DOC_NAME: ChromeWording = [
   'com.labre.embed-doc.slash.linked-doc.name',
-  'Linked Doc',
+  'Linked Page',
 ];
 
 /** The tooltip's own word — distinct from the item's name above. */
 export const EMBED_DOC_SLASH_LINKED_DOC_CAPTION: ChromeWording = [
   'com.labre.embed-doc.slash.linked-doc.caption',
-  'Link Doc',
+  'Link Page',
 ];
 
 export const EMBED_DOC_SLASH_LINKED_DOC_DESCRIPTION: ChromeWording = [
   'com.labre.embed-doc.slash.linked-doc.description',
-  'Link to another document.',
+  'Link to another page.',
 ];
 
 /* ── Toolbar chrome shared by the linked-doc and synced-doc toolbars ───── */
 
 /**
- * The "Open doc" dropdown button — its own `aria-label`/`tooltip` AND the
+ * The "Open page" dropdown button — its own `aria-label`/`tooltip` AND the
  * dropdown's single entry label, in both `embed-linked-doc-block/configs/toolbar.ts`
  * and `embed-synced-doc-block/configs/toolbar.ts`.
  */
 export const EMBED_DOC_OPEN_DOC: ChromeWording = [
   'com.labre.embed-doc.toolbar.open-doc',
-  'Open doc',
+  'Open page',
 ];
 
 /** The card's "last updated" date label (`components/embed-synced-doc-card.ts`, `embed-linked-doc-block.ts`). */
@@ -50,7 +50,7 @@ export const EMBED_DOC_UPDATED_LABEL: ChromeWording = [
 
 export const EMBED_DOC_INSERT_TO_PAGE: ChromeWording = [
   'com.labre.embed-doc.toolbar.insert-to-page',
-  'Insert to document',
+  'Insert to page',
 ];
 
 export const EMBED_DOC_DUPLICATE_AS_NOTE: ChromeWording = [
@@ -70,7 +70,7 @@ export const EMBED_DOC_DUPLICATE_AS_NOTE_TOOLTIP: ChromeWording = [
  */
 export const EMBED_DOC_CARD_EMPTY_CONTENT: ChromeWording = [
   'com.labre.embed-doc.card.empty-content',
-  'This is a linked doc, you can add content here.',
+  'This is a linked page, you can add content here.',
 ];
 
 /**

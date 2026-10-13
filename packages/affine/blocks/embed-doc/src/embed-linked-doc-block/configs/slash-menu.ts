@@ -19,14 +19,14 @@ import { LinkDocTooltip, NewDocTooltip } from './tooltips';
 const linkedDocSlashMenuConfig: SlashMenuConfig = {
   items: [
     {
-      name: 'New Doc',
+      name: 'New Page',
       nameWording: EMBED_DOC_SLASH_NEW_DOC_NAME,
-      description: 'Start a new document.',
+      description: 'Start a new page.',
       descriptionWording: EMBED_DOC_SLASH_NEW_DOC_DESCRIPTION,
       icon: PlusIcon(),
       tooltip: {
         figure: NewDocTooltip,
-        caption: 'New Doc',
+        caption: 'New Page',
         captionWording: EMBED_DOC_SLASH_NEW_DOC_NAME,
       },
       group: '3_Page@0',
@@ -36,14 +36,14 @@ const linkedDocSlashMenuConfig: SlashMenuConfig = {
       },
     },
     {
-      name: 'Linked Doc',
+      name: 'Linked Page',
       nameWording: EMBED_DOC_SLASH_LINKED_DOC_NAME,
-      description: 'Link to another document.',
+      description: 'Link to another page.',
       descriptionWording: EMBED_DOC_SLASH_LINKED_DOC_DESCRIPTION,
       icon: LinkedPageIcon(),
       tooltip: {
         figure: LinkDocTooltip,
-        caption: 'Link Doc',
+        caption: 'Link Page',
         captionWording: EMBED_DOC_SLASH_LINKED_DOC_CAPTION,
       },
       searchAlias: ['dual link'],

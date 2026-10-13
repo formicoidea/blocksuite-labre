@@ -259,7 +259,7 @@ const turnIntoDatabase = {
 
 const turnIntoLinkedDoc = {
   id: 'f.convert-to-linked-doc',
-  tooltip: 'Create Linked Doc',
+  tooltip: 'Create Linked Page',
   tooltipWording: ROOT_TOOLBAR_CREATE_LINKED_DOC,
   icon: LinkedPageIcon(),
   when({ chain, std }) {

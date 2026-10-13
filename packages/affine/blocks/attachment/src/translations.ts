@@ -14,7 +14,7 @@ export const ATTACHMENT_SLASH_NAME = ATTACHMENT_LABEL;
 
 export const ATTACHMENT_SLASH_DESCRIPTION: ChromeWording = [
   'com.labre.attachment.slash.description',
-  'Attach a file to document.',
+  'Attach a file to the page.',
 ];
 
 /** The slash-menu "PDF" item, same pattern as {@link ATTACHMENT_SLASH_NAME}. */
@@ -25,7 +25,7 @@ export const ATTACHMENT_SLASH_PDF_NAME: ChromeWording = [
 
 export const ATTACHMENT_SLASH_PDF_DESCRIPTION: ChromeWording = [
   'com.labre.attachment.slash.pdf.description',
-  'Upload a PDF to document.',
+  'Upload a PDF to the page.',
 ];
 
 /** The toolbar's "Replace attachment" tooltip (`configs/toolbar.ts`). */

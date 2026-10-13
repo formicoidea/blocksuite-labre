@@ -4,8 +4,8 @@ import { type ExtensionType, type Store } from '@labre/store';
 
 /**
  * Creates the new doc that the linked-doc features populate (the edgeless
- * "Create linked doc" / "Turn into linked doc" actions, and the slash menu's
- * "New Doc" since 0.48, which leaves a linked-doc card where it was typed). By
+ * "Create linked page" / "Turn into linked page" actions, and the slash menu's
+ * "New Page" since 0.48, which leaves a linked-doc card where it was typed). By
  * default this is a fresh in-workspace doc; a host app can override it to ALSO
  * persist or register the doc (assign a stored id, create a metadata row,
  * attach sync) before the editor writes blocks into the returned store.
@@ -20,7 +20,7 @@ export interface LinkedDocCreationProvider {
   /**
    * Whether a doc may be created from this editor at all (a host may refuse
    * it on a doc shared with a guest, for instance). Read by the slash menu's
-   * "New Doc", which hides itself on `false`. Absent means allowed (since 0.48).
+   * "New Page", which hides itself on `false`. Absent means allowed (since 0.48).
    */
   canCreateLinkedDoc?(host: EditorHost): boolean;
 }

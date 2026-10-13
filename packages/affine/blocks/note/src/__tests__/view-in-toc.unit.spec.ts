@@ -38,10 +38,10 @@ describe('the note display-mode toast', () => {
     }
     expect(
       displayModeToast(fakeStd(null), NoteDisplayMode.EdgelessOnly).message
-    ).toBe('Content removed from your document.');
+    ).toBe('Content removed from your page.');
     expect(
       displayModeToast(fakeStd(null), NoteDisplayMode.DocAndEdgeless).message
-    ).toBe('Content added to your document.');
+    ).toBe('Content added to your page.');
   });
 
   it("names the TOC and links to the host's outline panel, and only that", () => {

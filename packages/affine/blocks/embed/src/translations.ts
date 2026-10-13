@@ -24,7 +24,7 @@ export const EMBED_CANCEL = ACTION_CANCEL;
 
 export const EMBED_PROMPT_TITLE_MESSAGE: ChromeWording = [
   'com.labre.embed.prompt.title-message',
-  'Enter a title for the new doc.',
+  'Enter a title for the new page.',
 ];
 
 export const EMBED_DOC_CREATED_UNDO_MESSAGE: ChromeWording = [
@@ -137,7 +137,7 @@ export const EMBED_IFRAME_TOOLBAR_ORIGINAL: ChromeWording = [
 /**
  * An alias (L7 dedupe): the same Title Case word as
  * {@link TOOLBAR_CREATE_LINKED_DOC_TITLE}, distinct from the sentence-case
- * `TOOLBAR_CREATE_LINKED_DOC` chrome wording ("Create linked doc").
+ * `TOOLBAR_CREATE_LINKED_DOC` chrome wording ("Create linked page").
  */
 export const EMBED_IFRAME_TOOLBAR_CREATE_LINKED_DOC =
   TOOLBAR_CREATE_LINKED_DOC_TITLE;

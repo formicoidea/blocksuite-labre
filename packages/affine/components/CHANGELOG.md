@@ -1,5 +1,31 @@
 # @labre/affine-components
 
+## 0.47.1
+
+### Patch Changes
+
+- d796aed: The English fallbacks call the Labre page a page: every `com.labre.*` wording that said "doc" or "document" for the page being edited now says "page" ("Copy page link", "Linked page created", "Insert into Page", "Switch to page mode…", the note display modes, the linked-page embeds and slash items, the import descriptions…). No key, command id or stored value changed; a host that ships its own English catalogue should take the new values (75 keys; `getTranslationKeyManifest()` returns the new values). "Document" stays where it names an imported file (a BPMN, XMI or PlantUML source, a file being imported) and in "Google Docs". The slash items "New Doc" and "Linked Doc" are now named "New Page" and "Linked Page", which is also the `control` their `SelectSlashMenuItem` telemetry reports.
+- Updated dependencies [d796aed]
+  - @labre/affine-shared@0.47.1
+  - @labre/affine-model@0.47.1
+  - @labre/global@0.47.1
+  - @labre/std@0.47.1
+  - @labre/store@0.47.1
+  - @labre/sync@0.47.1
+
+## 0.47.0
+
+### Patch Changes
+
+- Updated dependencies [9318a00]
+- Updated dependencies [9318a00]
+  - @labre/affine-shared@0.47.0
+  - @labre/std@0.47.0
+  - @labre/affine-model@0.47.0
+  - @labre/global@0.47.0
+  - @labre/store@0.47.0
+  - @labre/sync@0.47.0
+
 ## 0.46.2
 
 ### Patch Changes

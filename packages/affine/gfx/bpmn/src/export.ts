@@ -988,19 +988,19 @@ const DISPLACED_SHAPES_WARNING: readonly [string, string] = [
 ];
 const CONTRADICTING_DECLARATIONS_WARNING: readonly [string, string] = [
   'com.labre.bpmn.export.warning.contradicting-declarations',
-  "This board came from a BPMN file that used {{names}} for something other than what BPMN means by them. Labre writes its own, so the file's declarations were left out rather than allowed to redefine the diagram's own namespaces. They are still in the document. Anything the file wrote under those prefixes is still in the export and will now be read under Labre's meaning of them, which is not the meaning the original had.",
+  "This board came from a BPMN file that used {{names}} for something other than what BPMN means by them. Labre writes its own, so the file's declarations were left out rather than allowed to redefine the diagram's own namespaces. They are still in the page. Anything the file wrote under those prefixes is still in the export and will now be read under Labre's meaning of them, which is not the meaning the original had.",
 ];
 const DISAGREEING_DECLARATIONS_WARNING: readonly [string, string] = [
   'com.labre.bpmn.export.warning.disagreeing-declarations',
-  "Two pools on this board disagree about {{names}}: they came from BPMN files that gave the same name two different values. The last was written and the other left out, so matter carried from the first file is now read under the second's meaning. Both are still in the document.",
+  "Two pools on this board disagree about {{names}}: they came from BPMN files that gave the same name two different values. The last was written and the other left out, so matter carried from the first file is now read under the second's meaning. Both are still in the page.",
 ];
 const CONFLICTING_IDS_WARNING: readonly [string, string] = [
   'com.labre.bpmn.export.warning.conflicting-ids',
-  '{{count}} element(s) imported from a BPMN file could not be written back: {{names}} name(s) an id another imported element had already claimed, and a BPMN id must be unique across a document. The first was kept. The other(s) are still in the document; they are not in this file.',
+  '{{count}} element(s) imported from a BPMN file could not be written back: {{names}} name(s) an id another imported element had already claimed, and a BPMN id must be unique across a document. The first was kept. The other(s) are still in the page; they are not in this file.',
 ];
 const REFUSED_ATTRIBUTE_NAMES_WARNING: readonly [string, string] = [
   'com.labre.bpmn.export.warning.refused-attribute-names',
-  '{{count}} carried attribute(s) could not be written back, because their name(s) are not a valid XML name. They are still in the document. This is a sign the payload was edited by something other than a BPMN import.',
+  '{{count}} carried attribute(s) could not be written back, because their name(s) are not a valid XML name. They are still in the page. This is a sign the payload was edited by something other than a BPMN import.',
 ];
 const UNWRITABLE_EDGES_WARNING: readonly [string, string] = [
   'com.labre.bpmn.export.warning.unwritable-edges',

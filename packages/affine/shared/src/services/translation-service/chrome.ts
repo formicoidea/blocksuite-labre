@@ -44,17 +44,17 @@ export const TOAST_COPIED_TO_CLIPBOARD: ChromeWording = [
 
 export const TOAST_LINKED_DOC_CREATED: ChromeWording = [
   'com.labre.toast.linked-doc-created',
-  'Linked doc created',
+  'Linked page created',
 ];
 
 export const TOAST_NOTE_REMOVED_FROM_PAGE: ChromeWording = [
   'com.labre.toast.note-removed-from-page-mode',
-  'Note removed from Document Mode',
+  'Note removed from Page Mode',
 ];
 
 export const TOAST_FRAME_INSERTED_INTO_PAGE: ChromeWording = [
   'com.labre.toast.frame-inserted-into-page',
-  'Frame inserted into Document.',
+  'Frame inserted into Page.',
 ];
 
 export const TOAST_NO_LINK_FOUND: ChromeWording = [
@@ -110,7 +110,7 @@ export const TOOLBAR_LINK: ChromeWording = ['com.labre.toolbar.link', 'Link'];
 
 export const TOOLBAR_CREATE_LINKED_DOC: ChromeWording = [
   'com.labre.toolbar.create-linked-doc',
-  'Create linked doc',
+  'Create linked page',
 ];
 
 export const TOOLBAR_DRAW_CONNECTOR: ChromeWording = [
@@ -176,22 +176,22 @@ export const TOOLBAR_EMBED_VIEW: ChromeWording = [
  */
 export const LINKED_DOC_DELETED: ChromeWording = [
   'com.labre.embed.linked-doc.deleted',
-  'This linked doc is deleted.',
+  'This linked page is deleted.',
 ];
 
 export const LINKED_DOC_FAILED: ChromeWording = [
   'com.labre.embed.linked-doc.failed',
-  'This linked doc failed to load.',
+  'This linked page failed to load.',
 ];
 
 export const LINKED_DOC_EMPTY_PREVIEW: ChromeWording = [
   'com.labre.embed.linked-doc.empty-preview',
-  'Preview of the doc will be displayed here.',
+  'Preview of the page will be displayed here.',
 ];
 
 export const SYNCED_DOC_EMPTY_PREVIEW: ChromeWording = [
   'com.labre.embed.synced-doc.empty-preview',
-  'Preview of the document will be displayed here.',
+  'Preview of the page will be displayed here.',
 ];
 
 /* ── The board toolbars every framework shares ────────────────────────── */
@@ -709,7 +709,7 @@ export const CHROME_UNTITLED = DOC_UNTITLED;
 /** The doc-display-meta service's own fallback for a doc that no longer exists. */
 export const CHROME_DELETED_DOC: ChromeWording = [
   'com.labre.doc.deleted',
-  'Deleted doc',
+  'Deleted page',
 ];
 
 /* ── Palette swatch names (default theme) ──────────────────────────────
@@ -1022,7 +1022,7 @@ export const TOOLBAR_PLAYBACK_SETTINGS: ChromeWording = [
 
 export const TOOLBAR_OPEN_THIS_DOC: ChromeWording = [
   'com.labre.toolbar.open-this-doc',
-  'Open this doc',
+  'Open this page',
 ];
 
 /**
@@ -1119,7 +1119,7 @@ export const DISPLAY_MODE_EDGELESS: ChromeWording = [
 ];
 export const DISPLAY_MODE_PAGE: ChromeWording = [
   'com.labre.note.display-mode.page',
-  'Document',
+  'Page',
 ];
 export const DISPLAY_MODE_SHOW_IN: ChromeWording = [
   'com.labre.note.display-mode.show-in',
@@ -1153,15 +1153,15 @@ export const FILL_COLOR_LABEL: ChromeWording = [
 ];
 
 /**
- * "Create Linked Doc" - Title Case, unlike the sentence-case
- * {@link TOOLBAR_CREATE_LINKED_DOC} above ("Create linked doc"): a different
+ * "Create Linked Page" - Title Case, unlike the sentence-case
+ * {@link TOOLBAR_CREATE_LINKED_DOC} above ("Create linked page"): a different
  * literal, so it keeps its own key. Said identically by the root block's
  * edgeless "More" sub-menu AND the generic iframe embed's own toolbar. Was
  * `ROOT_TOOLBAR_CREATE_LINKED_DOC` (`blocks/root`).
  */
 export const TOOLBAR_CREATE_LINKED_DOC_TITLE: ChromeWording = [
   'com.labre.root.toolbar.create-linked-doc',
-  'Create Linked Doc',
+  'Create Linked Page',
 ];
 
 /**
@@ -1226,7 +1226,7 @@ export const IMAGE_LABEL: ChromeWording = ['com.labre.image.label', 'Image'];
  */
 export const TOOLBAR_INSERT_INTO_PAGE: ChromeWording = [
   'com.labre.frame.toolbar.insert-into-page',
-  'Insert into Document',
+  'Insert into Page',
 ];
 
 /**
@@ -1249,13 +1249,13 @@ export const MINDMAP_NAME: ChromeWording = [
 ];
 
 /**
- * "New Doc" — the "@" menu's own popover group, said identically by the
+ * "New Page" — the "@" menu's own popover group, said identically by the
  * linked-doc embed's slash-menu item. Was `LINKED_DOC_NEW_DOC`
  * (`widgets/linked-doc`).
  */
 export const NEW_DOC_LABEL: ChromeWording = [
   'com.labre.linked-doc.group.new-doc',
-  'New Doc',
+  'New Page',
 ];
 
 /**

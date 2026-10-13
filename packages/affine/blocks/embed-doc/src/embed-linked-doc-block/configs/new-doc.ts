@@ -14,7 +14,7 @@ import type { BlockModel, Store } from '@labre/store';
 const LINKED_DOC = 'affine:embed-linked-doc';
 
 /**
- * Whether the slash menu offers "New Doc" here: the card's schema is
+ * Whether the slash menu offers "New Page" here: the card's schema is
  * registered, and the host, if it creates docs, does not refuse it on this
  * editor (`LinkedDocCreationProvider.canCreateLinkedDoc`).
  */
@@ -28,7 +28,7 @@ export function canCreateDocHere(
 }
 
 /**
- * The slash menu's "New Doc": creates a page and leaves a CARD of it
+ * The slash menu's "New Page": creates a page and leaves a CARD of it
  * (`affine:embed-linked-doc`) right after the block the gesture was typed in.
  * A paragraph the gesture left empty is replaced by the card, as Notion turns
  * the line into the page. A card shows a child where its parent places it; an

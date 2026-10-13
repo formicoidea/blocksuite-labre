@@ -57,7 +57,7 @@ export const FRAME_TOOLBAR_INSERT_INTO_PAGE = TOOLBAR_INSERT_INTO_PAGE;
  */
 export const FRAME_TOAST_INSERTED_MESSAGE: ChromeWording = [
   'com.labre.frame.toast.inserted-message',
-  'Frame has been inserted into doc',
+  'Frame has been inserted into page',
 ];
 
 export const FRAME_TOOLBAR_UNGROUP = TOOLBAR_UNGROUP;

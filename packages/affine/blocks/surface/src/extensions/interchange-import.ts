@@ -343,7 +343,7 @@ const IMPORT_DEFAULT_NAME_FALLBACK = 'Imported diagram';
  */
 const IMPORT_READONLY_KEY = 'com.labre.interchange.import.readonly';
 const IMPORT_READONLY_FALLBACK =
-  'This document became read-only while the file was being read, so nothing was imported.';
+  'This page became read-only while the file was being read, so nothing was imported.';
 const IMPORT_REMARKS_KEY = 'com.labre.interchange.import.remarks';
 const IMPORT_REMARKS_FALLBACK = 'What the import could not keep as it was';
 const IMPORT_CONSOLE_KEY = 'com.labre.interchange.import.console';

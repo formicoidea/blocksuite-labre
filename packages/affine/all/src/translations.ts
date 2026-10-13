@@ -366,7 +366,7 @@ const CHROME_KEYS: readonly [key: string, fallback: string][] = [
   // person who picked it.
   [
     'com.labre.interchange.import.readonly',
-    'This document became read-only while the file was being read, so nothing was imported.',
+    'This page became read-only while the file was being read, so nothing was imported.',
   ],
   [
     'com.labre.interchange.import.remarks',

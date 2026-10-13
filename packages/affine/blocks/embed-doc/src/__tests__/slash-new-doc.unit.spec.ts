@@ -23,13 +23,13 @@ import {
 } from '../embed-linked-doc-block/configs/new-doc';
 
 /**
- * The slash menu's "New Doc" (Labre ADR-0045 §9, host side).
+ * The slash menu's "New Page" (Labre ADR-0045 §9, host side).
  *
  * It used to make a bare in-workspace doc and leave an inline MENTION, so the
  * Labre host overrode the whole `LinkedDocSlashMenuConfigIdentifier` config to
  * create the page through its page tree and leave a CARD. The entry now asks
  * the host's `LinkedDocCreationProvider` for the page (the same seam as the
- * edgeless "Create linked doc"), writes a blank page into it, and leaves an
+ * edgeless "Create linked page"), writes a blank page into it, and leaves an
  * `affine:embed-linked-doc` card in place of the line the gesture emptied.
  * These specs hold that contract, with and without a host.
  */
@@ -86,7 +86,7 @@ function flavours(store: Store, id: string) {
   return model(store, id).children.map(child => child.flavour);
 }
 
-describe('slash "New Doc"', () => {
+describe('slash "New Page"', () => {
   it('replaces the emptied line by a card of the host-created page, one undo step', () => {
     const { workspace, store, ids } = pageStore();
     const capture = vi.spyOn(store, 'captureSync');
