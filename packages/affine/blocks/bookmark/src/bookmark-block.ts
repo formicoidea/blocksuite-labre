@@ -11,6 +11,7 @@ import {
   LinkPreviewServiceIdentifier,
 } from '@labre/affine-shared/services';
 import {
+  isSafeLinkUrl,
   normalizeUrl,
   shouldRefreshOnPropsUpdate,
 } from '@labre/affine-shared/utils';
@@ -108,7 +109,9 @@ export class BookmarkBlockComponent extends CaptionedBlockComponent<BookmarkBloc
   }
 
   open = () => {
-    window.open(this.link, '_blank');
+    const { link } = this;
+    if (!isSafeLinkUrl(link)) return;
+    window.open(link, '_blank');
   };
 
   refreshData = () => {

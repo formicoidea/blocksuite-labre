@@ -1,8 +1,8 @@
-import { getHostName } from '@labre/affine-shared/utils';
+import { getHostName, isSafeLinkUrl } from '@labre/affine-shared/utils';
 import { PropTypes, requiredProperties } from '@labre/std';
 import { css, LitElement } from 'lit';
 import { property } from 'lit/decorators.js';
-import { html } from 'lit-html';
+import { html, nothing } from 'lit-html';
 
 @requiredProperties({
   url: PropTypes.string,
@@ -50,7 +50,7 @@ export class LinkPreview extends LitElement {
         class="affine-link-preview"
         rel="noopener noreferrer"
         target="_blank"
-        href=${url}
+        href=${isSafeLinkUrl(url) ? url : nothing}
       >
         <span>${getHostName(url)}</span>
       </a>
