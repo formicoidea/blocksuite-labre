@@ -96,7 +96,7 @@ export const WARDLEY_OWM_IMPORT_REMARKS = {
   ],
   linkUndeclaredEnd: [
     'com.labre.wardley.import.remark.link-undeclared-end',
-    'a link names this, and no statement in the file declares it. The arrow is in the document and runs to no artefact, so it is invisible on the canvas.',
+    'a link names this, and no statement in the file declares it. The arrow is in the page and runs to no artefact, so it is invisible on the canvas.',
   ],
   unreadableCoordinatesLine: [
     'com.labre.wardley.import.remark.unreadable-coordinates-line',

@@ -424,7 +424,7 @@ const importCommand: CommandDescriptor = {
   labelFallback: 'Import Wardley map (OWM)',
   descriptionKey: 'com.labre.commands.wardley.importOwm.description',
   descriptionFallback:
-    'Open an OnlineWardleyMaps .owm file as a map. What Labre cannot draw is kept in the document, and the import says what it was.',
+    'Open an OnlineWardleyMaps .owm file as a map. What Labre cannot draw is kept in the page, and the import says what it was.',
   category: 'interchange',
   iconKey: 'wardley.import-owm',
   surfaces: ['senior-menu', 'catalogue', 'palette', 'agent'],

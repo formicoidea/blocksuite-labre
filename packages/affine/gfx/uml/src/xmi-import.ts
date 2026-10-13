@@ -307,7 +307,7 @@ export const UML_XMI_REMARKS = {
   ],
   undrawnOccurrence: [
     'com.labre.uml.import.xmi.undrawn-occurrence',
-    'A message in "{{name}}" names an occurrence this sheet has no lifeline for, so it is not drawn. The file still says it, and nothing was removed from the document.',
+    'A message in "{{name}}" names an occurrence this sheet has no lifeline for, so it is not drawn. The file still says it, and nothing was removed from the page.',
   ],
   wrongRoot: [
     'com.labre.uml.import.xmi.wrong-root',
@@ -319,7 +319,7 @@ export const UML_XMI_REMARKS = {
   ],
   offSheetRelation: [
     'com.labre.uml.import.xmi.off-sheet-relation',
-    'A {{kind}} in "{{name}}" runs to an element that is not on this sheet, so it is not drawn. The file still says it, and nothing was removed from the document.',
+    'A {{kind}} in "{{name}}" runs to an element that is not on this sheet, so it is not drawn. The file still says it, and nothing was removed from the page.',
   ],
   modelWithoutDiagram: [
     'com.labre.uml.import.xmi.model-without-diagram',
@@ -1960,7 +1960,7 @@ function readInteraction(
         element: child.name,
         sourceId: messageId,
         messageKey: UML_XMI_REMARKS.undrawnOccurrence[0],
-        message: `A message in "${interaction.name}" names an occurrence this sheet has no lifeline for, so it is not drawn. The file still says it, and nothing was removed from the document.`,
+        message: `A message in "${interaction.name}" names an occurrence this sheet has no lifeline for, so it is not drawn. The file still says it, and nothing was removed from the page.`,
         messageParams: { name: interaction.name },
       });
       continue;
@@ -2580,7 +2580,7 @@ export function importXmi(
       note(ctx, {
         kind: 'warning',
         messageKey: UML_XMI_REMARKS.offSheetRelation[0],
-        message: `A ${relation.kind} in "${model.diagram.name}" runs to an element that is not on this sheet, so it is not drawn. The file still says it, and nothing was removed from the document.`,
+        message: `A ${relation.kind} in "${model.diagram.name}" runs to an element that is not on this sheet, so it is not drawn. The file still says it, and nothing was removed from the page.`,
         messageParams: { kind: relation.kind, name: model.diagram.name },
       });
     }

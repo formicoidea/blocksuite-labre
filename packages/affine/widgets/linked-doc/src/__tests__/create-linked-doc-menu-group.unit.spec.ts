@@ -1,5 +1,5 @@
 /**
- * The "@" menu's "Link to Doc" group counts the docs it cannot show inline
+ * The "@" menu's "Link to Page" group counts the docs it cannot show inline
  * ("1,234 more docs"). The count is locale-sensitive (thousands separator),
  * so it goes through `Intl.NumberFormat(formatLocale(std))` rather than
  * template-literal concatenation.

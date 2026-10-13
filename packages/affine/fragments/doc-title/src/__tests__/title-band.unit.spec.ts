@@ -27,7 +27,7 @@ import { LABRE_TITLE_BAND, TitleBand } from '../title-band/title-band';
  *   band never applies the value itself, the host's `sheet$` does;
  * - the "+" exists only with `add`, the panel button only with a
  *   `PropertiesPanelProvider`, and the panel opens with a page request;
- * - the "Not shown in this document" row is drawn on the canvas only, and
+ * - the "Not shown in this page" row is drawn on the canvas only, and
  *   only with a linked-document path to open its links through.
  */
 
@@ -312,7 +312,7 @@ describe('the title band', () => {
     expect(all(band, 'title-band-chip')).toHaveLength(1);
   });
 
-  it('draws "Not shown in this document" on the canvas only', async () => {
+  it('draws "Not shown in this page" on the canvas only', async () => {
     const notShown$ = signal([
       { docId: 'child-1', title: 'Child' },
       { docId: 'child-2', title: '' },
