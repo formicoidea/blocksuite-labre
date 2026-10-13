@@ -141,19 +141,31 @@ Every stored database must keep rendering in a host that installs core only
    view creation); `data-view` the same. The bundle's two extensions follow
    the same line under the same key. The host's kill switch on creating a
    database is not a library flag: it is whether the host passes
-   `createDatabase` to the picker seam (§9c).
+   `createDatabase` to the picker seam (§9c). When the host fills that
+   seam, the slash entries that create a database ("Table View" and its
+   siblings, `configs/slash-menu.ts`) call `createDatabase` instead of
+   inserting a native inline database, then insert a linked view of what the
+   host returns: a native database is no longer offered for creation but
+   every stored one still renders (labre ADR-0046). Without the seam, the
+   entries behave as in 0.46.
 6. **An unknown view degrades to a table; calendar is render-only.**
    `viewMetaGet` never throws: an unknown `mode` renders through the table
    preset over the source's properties, its stored data is never rewritten
    (nothing is written on load), its view settings are read-only and its tab
    says "Shown as a table" (a key). `views/index.ts` splits renderable from
-   creatable presets: calendar stays renderable and leaves the creatable list
-   (the slash entry and "+ view"); a timeline was never a preset here, so a
+   creatable presets: calendar stays renderable and leaves every path that
+   creates one: the slash entry (`configs/slash-menu.ts:52`), "Create …" in
+   the views bar (`data-view/.../views-bar/views-view.ts:139`, which lists
+   `viewMetas`), the Layout switch (`.../view-options/view-options.ts:260`)
+   and the conversions into calendar (`view-presets/convert.ts:31-40`); the
+   conversions out of calendar stay, so a stored calendar can become a table
+   or a board; a timeline was never a preset here, so a
    stored `timeline` takes the unknown path. Guard
    `unknown-view-fallback.unit.spec.ts` (`blocks/database`, B3): a block with
    views `calendar`, `timeline` and an invented mode mounts without throwing
    and its `props.views` is deep-equal before and after; a parity line holds
-   creatable ⊂ renderable.
+   creatable ⊂ renderable, and no menu (views bar, Layout, conversions)
+   offers `calendar` as a target.
 7. **One schema per source (B1).** `ExternalDataSourceBase` becomes
    `HostedDataSourceBase(hostModel, resolveSource)`: the views stay in
    `hostModel.props.views`; a view names the source it reads by an optional
@@ -193,8 +205,8 @@ Every stored database must keep rendering in a host that installs core only
      `DataSourcePickerExtension({ list(), createDatabase?(), createSource?(databaseId) } | null)`,
      in the bundle (only the bundle reads it). `list()` returns a signal of
      `{ id, title, sources: { id, title }[] }[]`. Callers: the "Linked view of
-     a database" entry and "+ view" ("on an existing source" or "with a new
-     source").
+     a database" entry, the creating slash entries (§5) and "+ view" ("on an
+     existing source" or "with a new source").
    - d. **Title band** (P1, before B1): `TitleBandExtension(service)` /
      `TitleBandProvider`, in core (`affine-shared/services`), the one seam
      that feeds the band under the page title and in the note header. Its
@@ -219,10 +231,13 @@ Every stored database must keep rendering in a host that installs core only
      either.
      The band takes one more host row, optional: `notShown$(docId)`, a signal
      of `{ docId, title }[]`, the child pages this document holds but does
-     not display (labre ADR-0045). The library draws it under the chips as a
-     "Not shown in this document" row (a key) of page links that open
-     through the linked-document path; the host decides what belongs there,
-     the library never computes a parent or a child. Absent or empty, no row.
+     not display (labre ADR-0045). The library reads it **in the canvas view
+     only** and draws it in the note header as a "Not shown in this
+     document" row (a key) of page links that open through the
+     linked-document path. In the page view the library never draws it: the
+     host draws that row under the title itself, so a document never shows
+     two. The host decides what belongs there; the library never computes a
+     parent or a child. Absent or empty, no row.
    - e. **Cell hydration** (B2), a widening of the `DataSourceBase` contract
      rather than a seam: `cellStatus(rowId, propertyId)` is `ready`,
      `pending` or `error`; `valuesState$` is a signal of
@@ -243,7 +258,8 @@ Every stored database must keep rendering in a host that installs core only
     (ADR 0034 §5), so the library's panel and a host's write the same way.
 11. **The chips band is core.** One component under the page title and in the
     note header, inside the note's transform so it follows the zoom, drawn
-    with the data-view property presets, fed by §9d alone, its "Not shown in this document" row included. A page has
+    with the data-view property presets, fed by §9d alone (the note header
+    also draws the "Not shown in this document" row, §9d). A page has
     properties whether or not it is a row, and the band ships in P1, before
     the bundle exists.
 12. **Telemetry (B17)** follows the taxonomy README: PascalCase events
@@ -253,13 +269,13 @@ Every stored database must keep rendering in a host that installs core only
 
 ## Seams table rows (to add with the code)
 
-| Seam                                        | Register with                                                                     | When absent                                                                                                                                                                                                                                                                 |
-| ------------------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Open a database row                         | `DatabaseOpenRowExtension({ open })` or `(null)`                                  | rows open through the peek view as in 0.46 and the view's "Open pages in" setting has no effect; with no peek view either, the open button is hidden. `null` says the same as absent                                                                                        |
-| Properties panel                            | `PropertiesPanelExtension({ open, close })` or `(null)`                           | no panel button beside the chips band's "+"; a view's properties stay reachable through the data-view's own properties popover, the only way back to a hidden property. `null` says the same as absent                                                                      |
-| Data-source picker (`@labre/core-database`) | `DataSourcePickerExtension({ list, createDatabase?, createSource? })` or `(null)` | no "Linked view of a database" entry and "+ view" offers only the sources the block already shows; without `createDatabase` nothing creates a database (the host's kill switch); without `createSource`, no "with a new source"                                             |
-| Title band                                  | `TitleBandExtension(service)`                                                     | no band under the title or in the note header: no chips, no "Not shown in this document" row; nothing else changes, since no value lives in the document. Without `add`, no "+"; without `collapsed$`, the band opens expanded every time; without `notShown$`, no such row |
-| Cell hydration (DataSource contract)        | implement `cellStatus` / `valuesState$` / `retryValues` on the host's data source | every cell is ready at once, no skeleton and no banner: the 0.46 behaviour                                                                                                                                                                                                  |
+| Seam                                        | Register with                                                                     | When absent                                                                                                                                                                                                                                                                                                                            |
+| ------------------------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Open a database row                         | `DatabaseOpenRowExtension({ open })` or `(null)`                                  | rows open through the peek view as in 0.46 and the view's "Open pages in" setting has no effect; with no peek view either, the open button is hidden. `null` says the same as absent                                                                                                                                                   |
+| Properties panel                            | `PropertiesPanelExtension({ open, close })` or `(null)`                           | no panel button beside the chips band's "+"; a view's properties stay reachable through the data-view's own properties popover, the only way back to a hidden property. `null` says the same as absent                                                                                                                                 |
+| Data-source picker (`@labre/core-database`) | `DataSourcePickerExtension({ list, createDatabase?, createSource? })` or `(null)` | no "Linked view of a database" entry and "+ view" offers only the sources the block already shows; without `createDatabase` nothing creates a database (the host's kill switch); without `createSource`, no "with a new source"                                                                                                        |
+| Title band                                  | `TitleBandExtension(service)`                                                     | no band under the title or in the note header: no chips, no "Not shown in this document" row; nothing else changes, since no value lives in the document. Without `add`, no "+"; without `collapsed$`, the band opens expanded every time; without `notShown$`, no such row in the note header (the page view's row is the host's own) |
+| Cell hydration (DataSource contract)        | implement `cellStatus` / `valuesState$` / `retryValues` on the host's data source | every cell is ready at once, no skeleton and no banner: the 0.46 behaviour                                                                                                                                                                                                                                                             |
 
 ## Consequences
 
@@ -299,30 +315,30 @@ Every stored database must keep rendering in a host that installs core only
   draws no skeleton (B2); `core-database-boundary.unit.spec.ts`
   (`affine/all`), no package vendored into core imports
   `@labre/affine-database-editor` and the bundle imports no framework (B14).
-  The host's `lib-boundary.test.ts` and `unknown-view-fallback.test.ts`
-  (labre) hold the other side.
+  `unknown-view-fallback` names this library spec only; the host side is
+  held by labre's `lib-boundary.test.ts`.
 
 ## Issues B1 to B17
 
-| #   | Issue                                                                                 | Package              | Decision |
-| --- | ------------------------------------------------------------------------------------- | -------------------- | -------- |
-| B1  | data-view: one schema per source, `HostedDataSourceBase(hostModel, resolveSource)`    | core (data-view)     | §7, §8   |
-| B2  | data-view: cell hydration status, skeletons and banners                               | core (data-view)     | §9e      |
-| B3  | database: an unknown view falls back to a table; calendar render-only                 | core (database)      | §6       |
-| B4  | database: split the render view extension from creation tooling                       | core (database, all) | §5       |
-| B5  | database: mobile editing (`readonly$` no longer forced by `IS_MOBILE`)                | core (database)      | §1       |
-| B6  | data-view: gallery preset                                                             | core (data-view)     | §1, §8   |
-| B7  | data-view: list preset                                                                | core (data-view)     | §1, §8   |
-| B8  | data-view: per-view visibility on every preset and the `openIn` view field (red zone) | core (data-view)     | §8       |
-| B9  | `DatabaseOpenRowExtension`                                                            | core (database)      | §9a      |
-| B10 | `PropertiesPanelExtension` (source scope), panel element, host-panels verbs           | core + bundle        | §9b, §10 |
-| B11 | Notion view bar widget, inline and full page                                          | bundle               | §1       |
-| B12 | `DataSourcePickerExtension`                                                           | bundle               | §9c      |
-| B13 | full-page database host                                                               | bundle               | §1       |
-| B14 | `database-editor` package and the `core-database` bundle in the scripts (red zone)    | scripts, all         | §3, §4   |
-| B15 | title column read from the source, no row document loaded                             | core (data-view)     | §9f      |
-| B16 | data-view: dark-mode token audit                                                      | core (data-view)     | §1       |
-| B17 | telemetry: database events in the taxonomy                                            | core + bundle        | §12      |
+| #   | Issue                                                                                        | Package              | Decision |
+| --- | -------------------------------------------------------------------------------------------- | -------------------- | -------- |
+| B1  | data-view: one schema per source, `HostedDataSourceBase(hostModel, resolveSource)`           | core (data-view)     | §7, §8   |
+| B2  | data-view: cell hydration status, skeletons and banners                                      | core (data-view)     | §9e      |
+| B3  | database: an unknown view falls back to a table; calendar render-only, no conversion into it | core (database)      | §6       |
+| B4  | database: split the render view extension from creation tooling                              | core (database, all) | §5       |
+| B5  | database: mobile editing (`readonly$` no longer forced by `IS_MOBILE`)                       | core (database)      | §1       |
+| B6  | data-view: gallery preset                                                                    | core (data-view)     | §1, §8   |
+| B7  | data-view: list preset                                                                       | core (data-view)     | §1, §8   |
+| B8  | data-view: per-view visibility on every preset and the `openIn` view field (red zone)        | core (data-view)     | §8       |
+| B9  | `DatabaseOpenRowExtension`                                                                   | core (database)      | §9a      |
+| B10 | `PropertiesPanelExtension` (source scope), panel element, host-panels verbs                  | core + bundle        | §9b, §10 |
+| B11 | Notion view bar widget, inline and full page                                                 | bundle               | §1       |
+| B12 | `DataSourcePickerExtension`                                                                  | bundle               | §9c      |
+| B13 | full-page database host                                                                      | bundle               | §1       |
+| B14 | `database-editor` package and the `core-database` bundle in the scripts (red zone)           | scripts, all         | §3, §4   |
+| B15 | title column read from the source, no row document loaded                                    | core (data-view)     | §9f      |
+| B16 | data-view: dark-mode token audit                                                             | core (data-view)     | §1       |
+| B17 | telemetry: database events in the taxonomy                                                   | core + bundle        | §12      |
 
 The title band seam, the page scope of the properties panel seam and
 the chips band (§9b, §9d, §11) are P1 work in core and carry no B number.
