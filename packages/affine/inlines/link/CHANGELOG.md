@@ -1,5 +1,20 @@
 # @labre/affine-inline-link
 
+## 0.46.2
+
+### Patch Changes
+
+- cc86d33: Links only open `http:`, `https:` and `mailto:` addresses (and scheme-less ones such as `example.com`, read as https). A link stored with any other scheme (`javascript:`, `data:`, `vbscript:`, `file:`, also when spelled with mixed case, spaces or control characters) still shows its text but renders no href and opens nothing: the inline link, its hover preview, the bookmark and the GitHub, YouTube, Loom and Figma embed cards, footnote URL references, the database link cell and the canvas element link button. The Markdown import drops the link mark of such a link and keeps its text. Nothing stored is rewritten. New export `isSafeLinkUrl(url)` in `@labre/affine-shared/utils`, the predicate every one of these sites calls.
+- Updated dependencies [cc86d33]
+  - @labre/affine-shared@0.46.2
+  - @labre/affine-components@0.46.2
+  - @labre/affine-inline-reference@0.46.2
+  - @labre/affine-ext-loader@0.46.2
+  - @labre/affine-model@0.46.2
+  - @labre/global@0.46.2
+  - @labre/std@0.46.2
+  - @labre/store@0.46.2
+
 ## 0.46.1
 
 ### Patch Changes
