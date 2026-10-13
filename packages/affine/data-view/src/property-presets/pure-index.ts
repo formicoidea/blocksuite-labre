@@ -17,3 +17,12 @@ export const propertyModelPresets = {
   selectPropertyModelConfig,
   textPropertyModelConfig,
 };
+
+// The number preset's formats and formatter, so the title band's own copy of
+// the table (`fragments/doc-title/src/title-band/format.ts`) can be held to
+// it by a parity spec (`title-band-number-parity.unit.spec.ts`).
+export {
+  formatNumber,
+  type NumberFormat,
+  NumberFormatSchema,
+} from './number/utils/formatter.js';

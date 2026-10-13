@@ -13,7 +13,9 @@ import {
   NotificationExtension,
   OutlinePanelExtension,
   ParseDocUrlExtension,
+  PropertiesPanelExtension,
   TelemetryExtension,
+  TitleBandExtension,
   type TranslationParams,
   TranslationExtension,
 } from '@labre/affine/shared/services';
@@ -30,6 +32,8 @@ import {
   mockNotificationService,
   mockParseDocUrlService,
   mockPivotRecordPicker,
+  mockPropertiesPanel,
+  mockTitleBandService,
 } from '../../_common/mock-services';
 
 const viewManager = getTestViewManager();
@@ -109,6 +113,12 @@ export function getTestCommonExtensions(
       open: () => outlinePanelForSeam?.show(),
       close: () => outlinePanelForSeam?.hide(),
     }),
+    // The title band and the properties panel (ADR 0035 §9b, §9d), on
+    // in-memory values: chips under the title and at the head of the page's
+    // note, a toast in place of the host's panel. Leave both out to check the
+    // degraded path: no band at all.
+    TitleBandExtension(mockTitleBandService(editor.doc.workspace)),
+    PropertiesPanelExtension(mockPropertiesPanel(editor)),
     {
       setup: di => {
         di.override(DocModeProvider, mockDocModeService(editor));

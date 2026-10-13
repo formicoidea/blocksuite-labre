@@ -193,15 +193,63 @@ function ThisViewSection({ std, mode }: Props) {
 
 ## The other direction
 
-The editor asks the host to show a panel through three seams, one per panel the
-library itself opens: `ArtefactCatalogueExtension`, `SelectionPaneExtension`
-and `OutlinePanelExtension`. Each says what disappears when it is absent or
+The editor asks the host to show a panel through four seams, one per panel the
+library itself opens: `ArtefactCatalogueExtension`, `SelectionPaneExtension`,
+`OutlinePanelExtension` and `PropertiesPanelExtension`. Each says what disappears when it is absent or
 `null` in [04-host-seams.md](04-host-seams.md); there is no universal router.
 
 There is no frame panel seam (ADR 0034): nothing in the library opens one.
 Mount your own beside the editor. The "Present" button is the host's too:
 `std.get(GfxControllerIdentifier).tool.setTool(PresentTool, { mode: 'fit' })`,
 `PresentTool` from `@labre/affine/blocks/frame`, after switching to edgeless.
+
+## The properties panel
+
+The library draws no properties panel. The title band (the chips under the
+page title and at the head of the page note) asks the host to show one
+through `PropertiesPanelExtension`, and is fed by `TitleBandExtension`
+(both from `@labre/affine/shared/services`, rows in
+[04-host-seams.md](04-host-seams.md)). Your panel reads and writes the same
+sheet you hand the band, from your own store: the band never caches a value,
+so a write your panel makes shows in the chips as soon as your `sheet$`
+signal changes.
+
+```ts
+import {
+  PropertiesPanelExtension,
+  TitleBandExtension,
+} from '@labre/affine/shared/services';
+import {
+  formatPropertyValue,
+  type PropertiesPanelRequest,
+  type TitleBandProperty,
+} from '@labre/affine/host-panels';
+
+const extensions = [
+  TitleBandExtension({
+    sheet$: docId => sheets.signalFor(docId), // ready: the visible properties
+    set: (docId, propertyId, value) => sheets.write(docId, propertyId, value),
+    add: docId => openWorkspacePropertySettings(docId), // the band's "+"
+    collapsed$: docId => deviceCollapsed(docId),
+    setCollapsed: (docId, collapsed) => rememberCollapsed(docId, collapsed),
+  }),
+  PropertiesPanelExtension({
+    open: (request: PropertiesPanelRequest) => sidebar.showProperties(request),
+    close: () => sidebar.hideProperties(),
+  }),
+];
+
+// In the panel, a value reads as its chip does.
+const text = (property: TitleBandProperty) =>
+  formatPropertyValue(property, locale);
+```
+
+| Gesture                     | Call                                              | Note                                                                                                                                                                                                     |
+| --------------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The band's panel button     | your `open({ scope: 'page', docId })`             | the request names the page; open your panel on its sheet. `scope: 'source'` (a database's source and view) is declared in the type and sent by the database chrome when it ships; handle it or ignore it |
+| Show a value as a chip does | `formatPropertyValue(property, locale?)`          | option labels for a select, the number preset's format, a localized date; `''` for an empty value and for a checkbox, which is a mark you draw                                                           |
+| Tell an empty value         | `isPropertyValueEmpty(property)`                  | nullish, a blank string or an empty list; `false` is a value                                                                                                                                             |
+| Write a value               | your own store, then your `sheet$` signal changes | the band and your panel share one source; the library never applies a value                                                                                                                              |
 
 ## What the module promises
 

@@ -89,6 +89,29 @@ export {
   reorderFramesParams,
 } from '@labre/affine-block-frame';
 
+/*
+ * The properties panel (ADR 0035 §9b and §11). The editor asks the host to
+ * show it through `PropertiesPanelExtension` and feeds the title band through
+ * `TitleBandExtension` (both registered from `@labre/affine/shared/services`,
+ * docs/integrate/04-host-seams.md); a host's own panel reads and writes the
+ * same sheet it hands the band, from its own store. What it takes from here
+ * is the band's vocabulary, so the panel and the chips read the same: the
+ * types of a sheet and of a panel request, and the text a chip draws for a
+ * value.
+ */
+export {
+  formatPropertyValue,
+  isPropertyValueEmpty,
+} from '@labre/affine-fragment-doc-title';
+export type {
+  PropertiesPanelRequest,
+  PropertiesPanelService,
+  TitleBandNotShownPage,
+  TitleBandProperty,
+  TitleBandService,
+  TitleBandSheetState,
+} from '@labre/affine-shared/services';
+
 /**
  * The document's frames in presentation order, first slide first — the order
  * `canvas.frame.reorder` writes and the presentation walks. Works in page mode
