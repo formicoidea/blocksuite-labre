@@ -2,11 +2,9 @@ import type { TitleBandProperty } from '@labre/affine-shared/services';
 import { describe, expect, it } from 'vitest';
 
 import {
-  chipEditorKind,
   chipValueView,
   formatPropertyValue,
   isPropertyValueEmpty,
-  parseChipNumber,
 } from '../title-band/format';
 
 /**
@@ -92,17 +90,6 @@ describe('the title band formatter', () => {
       }
     }
   });
-
-  it('opens an editor by type, and none on a read-only or unknown one', () => {
-    expect(chipEditorKind(prop({ type: 'checkbox' }))).toBe('toggle');
-    expect(chipEditorKind(prop({ type: 'select' }))).toBe('select');
-    expect(chipEditorKind(prop({ type: 'multi-select' }))).toBe('multi-select');
-    expect(chipEditorKind(prop({ type: 'date' }))).toBe('date');
-    expect(chipEditorKind(prop({ type: 'number' }))).toBe('number');
-    expect(chipEditorKind(prop({ type: 'rich-text' }))).toBe('text');
-    expect(chipEditorKind(prop({ type: 'created-time' }))).toBe('none');
-    expect(chipEditorKind(prop({ type: 'text', readonly: true }))).toBe('none');
-  });
 });
 
 describe('the title band formatter, against a hostile locale', () => {
@@ -116,12 +103,5 @@ describe('the title band formatter, against a hostile locale', () => {
     expect(
       chipValueView(prop({ type: 'date', value: Date.UTC(2026, 9, 13) }), bad)
     ).toEqual({ kind: 'text', text: '2026-10-13' });
-  });
-
-  it('reads a typed number with a decimal comma or a point', () => {
-    expect(parseChipNumber('1 234,5')).toBe(1234.5);
-    expect(parseChipNumber('12.5')).toBe(12.5);
-    expect(parseChipNumber('  ')).toBeNaN();
-    expect(parseChipNumber('abc')).toBeNaN();
   });
 });

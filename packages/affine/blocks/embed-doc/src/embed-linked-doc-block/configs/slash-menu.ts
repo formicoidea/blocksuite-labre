@@ -1,7 +1,4 @@
 import { EmbedLinkedDocBlockSchema } from '@labre/affine-model';
-import { insertContent } from '@labre/affine-rich-text';
-import { REFERENCE_NODE } from '@labre/affine-shared/consts';
-import { createDefaultDoc } from '@labre/affine-shared/utils';
 import {
   type SlashMenuConfig,
   SlashMenuConfigIdentifier,
@@ -16,6 +13,7 @@ import {
   EMBED_DOC_SLASH_NEW_DOC_DESCRIPTION,
   EMBED_DOC_SLASH_NEW_DOC_NAME,
 } from '../../translations';
+import { canCreateDocHere, createDocFromSlash } from './new-doc.js';
 import { LinkDocTooltip, NewDocTooltip } from './tooltips';
 
 const linkedDocSlashMenuConfig: SlashMenuConfig = {
@@ -32,16 +30,9 @@ const linkedDocSlashMenuConfig: SlashMenuConfig = {
         captionWording: EMBED_DOC_SLASH_NEW_DOC_NAME,
       },
       group: '3_Page@0',
-      when: ({ model }) =>
-        model.store.schema.flavourSchemaMap.has('affine:embed-linked-doc'),
+      when: ({ std, model }) => canCreateDocHere(std, model),
       action: ({ std, model }) => {
-        const newDoc = createDefaultDoc(std.host.store.workspace);
-        insertContent(std, model, REFERENCE_NODE, {
-          reference: {
-            type: 'LinkedPage',
-            pageId: newDoc.id,
-          },
-        });
+        createDocFromSlash(std, model);
       },
     },
     {

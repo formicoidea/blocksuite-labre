@@ -67,7 +67,12 @@ export type TagManagerOptions = {
   value: ReadonlySignal<string[]>;
   onChange: (value: string[]) => void;
   options: ReadonlySignal<SelectTag[]>;
-  onOptionsChange: (options: SelectTag[]) => void;
+  /**
+   * Absent, the options are fixed: the menu picks among them and offers no
+   * "Create", no option menu and no reordering (a standalone cell whose host
+   * cannot write the property's config, `standalone-cell.ts`).
+   */
+  onOptionsChange?: (options: SelectTag[]) => void;
   onComplete?: () => void;
   initialDraftText?: string;
 };
@@ -87,7 +92,7 @@ export function consumeTagDraftFromTableCellHost(
 
 class TagManager {
   changeTag = (option: Partial<SelectTag>) => {
-    this.ops.onOptionsChange(
+    this.ops.onOptionsChange?.(
       this.ops.options.value.map(item => {
         if (item.id === option.id) {
           return {
@@ -104,7 +109,7 @@ class TagManager {
 
   createOption = () => {
     const value = this.text$.value.trim();
-    if (value === '') return;
+    if (value === '' || !this.ops.onOptionsChange) return;
     const id = nanoid();
     this.ops.onOptionsChange([
       {
@@ -123,7 +128,7 @@ class TagManager {
   };
 
   deleteOption = (id: string) => {
-    this.ops.onOptionsChange(
+    this.ops.onOptionsChange?.(
       this.ops.options.value.filter(item => item.id !== id)
     );
   };
@@ -148,7 +153,7 @@ class TagManager {
         matched = true;
       }
     }
-    if (this.text$.value && !matched) {
+    if (this.text$.value && !matched && this.ops.onOptionsChange) {
       options.push({
         id: 'create',
         color: this.color$.value,
@@ -300,7 +305,7 @@ export class MultiTagSelect extends SignalWatcher(
     onDragEnd: evt => {
       const over = evt.over;
       const activeId = evt.active.id;
-      if (over && over.id !== activeId) {
+      if (over && over.id !== activeId && this.onOptionsChange) {
         this.onOptionsChange(
           arrayMove(
             this.options.value,
@@ -372,13 +377,18 @@ export class MultiTagSelect extends SignalWatcher(
   }
 
   private renderTags() {
+    const editable = !!this.onOptionsChange;
     return html`
       <div
         style="height: 0.5px;background-color: ${cssVarV2(
           'layer/insideBorder/border'
         )};margin: 4px 0;"
       ></div>
-      <div class="${selectOptionsTipsStyle}">Select tag or create one</div>
+      ${editable
+        ? html`<div class="${selectOptionsTipsStyle}">
+            Select tag or create one
+          </div>`
+        : nothing}
       <div data-testid="tag-option-list" class="${selectOptionsContainerStyle}">
         ${repeat(
           this.tagManager.filteredOptions$.value,
@@ -398,7 +408,7 @@ export class MultiTagSelect extends SignalWatcher(
             };
             return html`
               <div
-                ${!select.isCreate ? sortable(select.id) : nothing}
+                ${editable && !select.isCreate ? sortable(select.id) : nothing}
                 class="${classes}"
                 @mouseenter="${mouseenter}"
                 @click="${select.select}"
@@ -408,15 +418,17 @@ export class MultiTagSelect extends SignalWatcher(
                     ? html` <div class="${selectOptionNewIconStyle}">
                         Create
                       </div>`
-                    : html`
-                        <div
-                          ${dragHandler(select.id)}
-                          class="${selectOptionDragHandlerStyle}"
-                        ></div>
-                      `}
+                    : editable
+                      ? html`
+                          <div
+                            ${dragHandler(select.id)}
+                            class="${selectOptionDragHandlerStyle}"
+                          ></div>
+                        `
+                      : nothing}
                   ${this.renderTag(select.value, select.color)}
                 </div>
-                ${!select.isCreate
+                ${editable && !select.isCreate
                   ? html` <div
                       class="${selectOptionIconStyle}"
                       @click="${clickOption}"
@@ -485,7 +497,8 @@ export class MultiTagSelect extends SignalWatcher(
   accessor onComplete!: () => void;
 
   @property({ attribute: false })
-  accessor onOptionsChange!: (options: SelectTag[]) => void;
+  accessor onOptionsChange: ((options: SelectTag[]) => void) | undefined =
+    undefined;
 
   @property({ attribute: false })
   accessor options!: ReadonlySignal<SelectTag[]>;

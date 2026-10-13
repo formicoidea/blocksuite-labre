@@ -19,7 +19,7 @@ import type { ReadonlySignal } from '@preact/signals-core';
  * database cell read the same `type`, `data` and value.
  *
  * Absent, there is no band at all: no chips, no "+", no panel button, no "Not
- * shown in this document" row, and nothing else changes.
+ * shown on this page" row, and nothing else changes.
  */
 
 /**
@@ -106,12 +106,15 @@ export interface TitleBandService {
   setCollapsed?(docId: string, collapsed: boolean): void;
 
   /**
-   * The child pages this document holds but does not display. Read **in the
-   * canvas view only**, drawn in the note header as a "Not shown in this
-   * document" row of page links that open through the linked-document path
-   * (`RefNodeSlotsProvider.docLinkClicked`). In the page view the host draws
-   * that row under the title itself, so a document never shows two. Absent
-   * or empty, no row.
+   * The child pages this document holds but does not display, drawn in both
+   * views (under the title, and in the note header on the canvas) as a "Not
+   * shown on this page" row: each page is a link that opens through the
+   * linked-document path (`RefNodeSlotsProvider.docLinkClicked`; without it,
+   * no row), with a "Show here" button on a writable document that inserts
+   * an `affine:embed-linked-doc` card of it (end of the last note in the
+   * page view, centre of the visible canvas on the canvas). The library
+   * writes only that card: dropping the page from this list once it shows is
+   * the host's reading of the document. Absent or empty, no row.
    */
   notShown$?(docId: string): ReadonlySignal<readonly TitleBandNotShownPage[]>;
 }
