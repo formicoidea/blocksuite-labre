@@ -13,7 +13,9 @@ export class TextCell extends BaseCellRenderer<string, string> {
 
   private readonly _keydown = (e: KeyboardEvent) => {
     if (e.key === 'Enter' && !e.isComposing) {
-      this._setValue();
+      // Leaving commits, once, through `beforeExitEditingMode`. Committing
+      // here as well reset the input to the old value, which the exit then
+      // wrote back over the new one (standalone-cell.unit.spec.ts).
       setTimeout(() => {
         this.selectCurrentCell(false);
       });

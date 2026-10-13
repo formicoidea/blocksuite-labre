@@ -1,13 +1,7 @@
-import {
-  menu,
-  type MenuConfig,
-  popMenu,
-  popupTargetFromElement,
-} from '@labre/affine-components/context-menu';
-import { DatePicker } from '@labre/affine-components/date-picker';
 import { RefNodeSlotsProvider } from '@labre/affine-inline-reference';
 import {
   DOC_UNTITLED,
+  FeatureFlagService,
   formatLocale,
   PropertiesPanelProvider,
   type TitleBandNotShownPage,
@@ -18,11 +12,16 @@ import {
   translateKey,
 } from '@labre/affine-shared/services';
 import { stopPropagation } from '@labre/affine-shared/utils';
+import {
+  type Cell,
+  createStandaloneCell,
+  type DatabaseFlags,
+  type StandaloneCellHost,
+  StandaloneCellMetaProvider,
+} from '@labre/data-view';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
 import { type BlockStdScope, ShadowlessElement } from '@labre/std';
 import {
-  CheckBoxCheckSolidIcon,
-  CheckBoxUnIcon,
   LinkedPageIcon,
   PlusIcon,
   SidebarIcon,
@@ -33,11 +32,9 @@ import { computed, type ReadonlySignal, signal } from '@preact/signals-core';
 import { css, html, nothing, type TemplateResult } from 'lit';
 import { property } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
-import { styleMap } from 'lit/directives/style-map.js';
 
 import {
   TITLE_BAND_ADD,
-  TITLE_BAND_CLEAR,
   TITLE_BAND_COLLAPSE,
   TITLE_BAND_EMPTY,
   TITLE_BAND_EXPAND,
@@ -48,12 +45,14 @@ import {
   TITLE_BAND_SHOW_HERE,
 } from '../translations.js';
 import {
-  chipEditorKind,
-  chipOptions,
-  type ChipTag,
-  chipValueView,
-  parseChipNumber,
-} from './format.js';
+  bandCellData,
+  bandCellMeta,
+  bandCellValue,
+  bandWriteValue,
+  isBandReadonlyType,
+  sameBandValue,
+} from './band-cell.js';
+import { formatPropertyValue, isPropertyValueEmpty } from './format.js';
 import { showPageHere } from './show-here.js';
 
 export const LABRE_TITLE_BAND = 'labre-title-band';
@@ -67,6 +66,8 @@ interface BandSources {
   sheet$: ReadonlySignal<TitleBandSheetState>;
   collapsed$: ReadonlySignal<boolean> | null;
   notShown$: ReadonlySignal<readonly TitleBandNotShownPage[]> | null;
+  /** One cell per chip, kept across sheet updates so an open editor stays. */
+  cells: Map<string, { type: string; cell: Cell }>;
 }
 
 /**
@@ -81,9 +82,13 @@ interface BandSources {
  *
  * Fed by `TitleBandProvider` alone (§9d): no provider, nothing at all. The
  * chips are the sheet's visible properties in the host's order, an empty one
- * included (REQ-PR-1); a click opens the editor of the property's data-view
- * type and hands the value back through `set`, showing the chip as pending
- * until the host settles it. The band never applies a value, and writes to
+ * included (REQ-PR-1). Each value is drawn and edited by the cell the inline
+ * table mounts for its data-view type (`<dv-standalone-cell>`, ADR 0035
+ * §11 amended 2026-10-13): the checkbox, the tag menu of a select, the date
+ * picker, the number, text and link inputs, with the table's own styles. The
+ * value the cell commits goes back through `set`, the chip shows pending
+ * until the host settles it, and a type with no cell keeps a plain-text
+ * reading that opens the properties panel. The band never applies a value, and writes to
  * the document only the card "Show here" inserts. The "+" is drawn when the
  * host passes `add`; the panel button when a `PropertiesPanelProvider` is
  * registered. The "Not shown on this page" row is drawn in both views
@@ -158,7 +163,7 @@ export class TitleBand extends SignalWatcher(
       background-color: transparent;
     }
 
-    .labre-title-band svg {
+    .labre-title-band button > svg {
       flex: none;
       width: 16px;
       height: 16px;
@@ -169,34 +174,55 @@ export class TitleBand extends SignalWatcher(
       padding: 0 6px !important;
     }
 
+    .labre-title-band-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 28px;
+      max-width: 100%;
+      padding: 0 8px;
+      border-radius: 6px;
+      transition: background-color 150ms;
+    }
+
+    .labre-title-band-chip[data-clickable='true'] {
+      cursor: pointer;
+    }
+
+    .labre-title-band-chip[data-clickable='true']:hover {
+      background-color: var(--affine-hover-color);
+    }
+
+    .labre-title-band-chip[aria-busy='true'] {
+      cursor: progress;
+      opacity: 0.6;
+    }
+
+    .labre-title-band-chip:focus-visible,
+    .labre-title-band-chip dv-standalone-cell:focus-visible {
+      outline: 2px solid var(--affine-primary-color);
+      outline-offset: 1px;
+      border-radius: 4px;
+    }
+
     .labre-title-band-chip-name {
       color: var(--affine-text-secondary-color);
       white-space: nowrap;
     }
 
+    /* Room only: what is inside is the cell's own drawing. */
     .labre-title-band-chip-value {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
       max-width: 240px;
-    }
-
-    .labre-title-band-chip[data-empty='true'] .labre-title-band-chip-value {
-      color: var(--affine-placeholder-color);
-    }
-
-    .labre-title-band-tag {
-      display: inline-block;
-      padding: 0 6px;
-      border-radius: 4px;
-      max-width: 160px;
       overflow: hidden;
+    }
+
+    .labre-title-band-chip-text {
       text-overflow: ellipsis;
       white-space: nowrap;
-      background-color: var(--affine-tag-white);
+    }
+
+    .labre-title-band-chip-text[data-empty='true'] {
+      color: var(--affine-placeholder-color);
     }
 
     .labre-title-band-skeleton {
@@ -220,17 +246,20 @@ export class TitleBand extends SignalWatcher(
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .labre-title-band button {
+      .labre-title-band button,
+      .labre-title-band-chip {
         transition: none;
       }
     }
 
     /* A 44px target under a coarse pointer, without changing the drawing. */
     @media (pointer: coarse) {
-      .labre-title-band button {
+      .labre-title-band button,
+      .labre-title-band-chip {
         position: relative;
       }
-      .labre-title-band button::after {
+      .labre-title-band button::after,
+      .labre-title-band-chip::after {
         content: '';
         position: absolute;
         inset: -8px 0;
@@ -239,24 +268,6 @@ export class TitleBand extends SignalWatcher(
   `;
 
   private _sources: BandSources | null = null;
-
-  /** The editor menu open now, put away with the band. */
-  private _menu: { close(): void } | null = null;
-
-  private _pop(target: HTMLElement, title: string, items: MenuConfig[]) {
-    this._menu?.close();
-    const handler = popMenu(popupTargetFromElement(target), {
-      options: {
-        title: { text: title },
-        items,
-        onClose: () => {
-          if (this._menu === handler) this._menu = null;
-        },
-      },
-    });
-    this._menu = handler;
-    return handler;
-  }
 
   /** Collapse state when the host does not remember one. */
   private readonly _localCollapsed$ = signal(false);
@@ -268,6 +279,15 @@ export class TitleBand extends SignalWatcher(
   private get _readonly() {
     return this.std?.store.readonly$.value ?? true;
   }
+
+  /** The table's own flags, so a number reads as it does in a cell. */
+  private readonly _featureFlags$ = computed<DatabaseFlags>(() => ({
+    enable_number_formatting:
+      this.std
+        ?.getOptional(FeatureFlagService)
+        ?.getFlag('enable_database_number_formatting') ?? false,
+    enable_table_virtual_scroll: false,
+  }));
 
   private get _locale() {
     return this.std ? formatLocale(this.std) : 'en-US';
@@ -295,6 +315,7 @@ export class TitleBand extends SignalWatcher(
       sheet$: service.sheet$(docId),
       collapsed$: service.collapsed$?.(docId) ?? null,
       notShown$: service.notShown$?.(docId) ?? null,
+      cells: new Map(),
     };
     this._sources = sources;
     return sources;
@@ -339,131 +360,59 @@ export class TitleBand extends SignalWatcher(
     });
   }
 
-  private readonly _onChip = (event: MouseEvent, prop: TitleBandProperty) => {
-    event.stopPropagation();
-    const target = event.currentTarget as HTMLElement;
-    switch (chipEditorKind(prop)) {
-      case 'toggle':
-        this._write(prop, prop.value !== true);
-        return;
-      case 'select':
-        this._popSelect(target, prop);
-        return;
-      case 'multi-select':
-        this._popMultiSelect(target, prop);
-        return;
-      case 'date':
-        this._popDate(target, prop);
-        return;
-      case 'number':
-        this._popInput(target, prop, 'number');
-        return;
-      case 'text':
-        this._popInput(target, prop, 'text');
-        return;
-      default:
-        this._openPanel();
-    }
-  };
-
-  private _tagLabel(tag: ChipTag) {
-    return html`<span
-      class="labre-title-band-tag"
-      style=${styleMap(tag.color ? { backgroundColor: tag.color } : {})}
-      >${tag.label}</span
-    >`;
+  /** A value a cell commits: unchanged, nothing is written. */
+  private _commit(prop: TitleBandProperty, cellType: string, value: unknown) {
+    if (sameBandValue(cellType, prop.value, value)) return;
+    this._write(prop, bandWriteValue(value));
   }
 
-  private _clearItem(prop: TitleBandProperty): MenuConfig {
-    return menu.action({
-      name: this._t(TITLE_BAND_CLEAR),
-      select: () => this._write(prop, null),
+  /** Neither the property nor the document can be written, or the type. */
+  private _isReadonlyChip(prop: TitleBandProperty | undefined) {
+    return (
+      !prop || prop.readonly || this._readonly || isBandReadonlyType(prop.type)
+    );
+  }
+
+  /**
+   * The cell that draws `prop`, built once per property and type: its value,
+   * name and config are read from the sheet, so a new sheet updates the cell
+   * in place and an editor open in it stays open.
+   */
+  private _cellFor(sources: BandSources, prop: TitleBandProperty) {
+    const std = this.std;
+    if (!std) return null;
+    const meta = bandCellMeta(prop.type, cellType =>
+      std.getOptional(StandaloneCellMetaProvider(cellType))
+    );
+    if (!meta) return null;
+    const cached = sources.cells.get(prop.id);
+    if (cached?.type === prop.type) return cached.cell;
+
+    const { id, type } = prop;
+    const cellType = meta.type;
+    const current$ = computed(() => {
+      const state = sources.sheet$.value;
+      if (state.status !== 'ready') return undefined;
+      return state.properties.find(p => p.id === id && p.type === type);
     });
-  }
-
-  private _popSelect(target: HTMLElement, prop: TitleBandProperty) {
-    const items: MenuConfig[] = chipOptions(prop).map(tag =>
-      menu.action({
-        name: tag.label,
-        label: () => this._tagLabel(tag),
-        isSelected: tag.id === prop.value,
-        select: () => {
-          if (tag.id !== prop.value) this._write(prop, tag.id);
-        },
-      })
-    );
-    if (prop.value != null) items.push(this._clearItem(prop));
-    this._pop(target, prop.name, items);
-  }
-
-  private _popMultiSelect(target: HTMLElement, prop: TitleBandProperty) {
-    // A draft, because the host's answer arrives later through `sheet$`: two
-    // ticks in one open menu must not both start from the stale value.
-    const draft$ = signal<string[]>(
-      Array.isArray(prop.value)
-        ? prop.value.filter((id): id is string => typeof id === 'string')
-        : []
-    );
-    const items: MenuConfig[] = chipOptions(prop).map(tag =>
-      menu.checkbox({
-        name: tag.label,
-        label: () => this._tagLabel(tag),
-        checked: computed(() => draft$.value.includes(tag.id)),
-        select: checked => {
-          const next = checked
-            ? draft$.peek().filter(id => id !== tag.id)
-            : [...draft$.peek(), tag.id];
-          draft$.value = next;
-          this._write(prop, next);
-          return !checked;
-        },
-      })
-    );
-    this._pop(target, prop.name, items);
-  }
-
-  private _popDate(target: HTMLElement, prop: TitleBandProperty) {
-    let close = () => {};
-    const picker = new DatePicker();
-    picker.padding = 0;
-    picker.value = typeof prop.value === 'number' ? prop.value : Date.now();
-    picker.onChange = (date: Date) => {
-      if (date.getTime() !== prop.value) this._write(prop, date.getTime());
-      close();
-    };
-    picker.onClear = () => {
-      this._write(prop, null);
-      close();
-    };
-    picker.onEscape = () => close();
-    const items: MenuConfig[] = [() => html`${picker}`];
-    const handler = this._pop(target, prop.name, items);
-    close = () => handler.close();
-  }
-
-  private _popInput(
-    target: HTMLElement,
-    prop: TitleBandProperty,
-    kind: 'text' | 'number'
-  ) {
-    const initial =
-      typeof prop.value === 'string' || typeof prop.value === 'number'
-        ? String(prop.value)
-        : '';
-    this._pop(target, prop.name, [
-      menu.input({
-        initialValue: initial,
-        onComplete: text => {
-          if (text === initial) return;
-          if (kind === 'number') {
-            const parsed = parseChipNumber(text);
-            this._write(prop, Number.isNaN(parsed) ? null : parsed);
-            return;
-          }
-          this._write(prop, text.trim() === '' ? null : text);
-        },
+    const cell = createStandaloneCell(meta, {
+      propertyId: id,
+      name$: computed(() => current$.value?.name ?? ''),
+      data$: computed(() => {
+        const current = current$.value;
+        return current ? bandCellData(cellType, current) : {};
       }),
-    ]);
+      value$: computed(() => bandCellValue(cellType, current$.value?.value)),
+      readonly$: computed(() => this._isReadonlyChip(current$.value)),
+      valueSet: value => {
+        const current = current$.peek();
+        if (current) this._commit(current, cellType, value);
+      },
+      featureFlags$: this._featureFlags$,
+      serviceGet: key => std.getOptional(key),
+    });
+    sources.cells.set(id, { type, cell });
+    return cell;
   }
 
   private readonly _openPanel = () => {
@@ -473,43 +422,68 @@ export class TitleBand extends SignalWatcher(
       ?.open({ scope: 'page', docId: this.docId });
   };
 
-  private _renderValue(prop: TitleBandProperty) {
-    const view = chipValueView(prop, this._locale);
-    switch (view.kind) {
-      case 'checkbox':
-        return view.checked ? CheckBoxCheckSolidIcon() : CheckBoxUnIcon();
-      case 'tags':
-        return repeat(
-          view.tags,
-          tag => tag.id,
-          tag => this._tagLabel(tag)
-        );
-      case 'text':
-        return view.text;
-      default:
-        return this._t(TITLE_BAND_EMPTY);
+  private readonly _onChip = (event: Event, editable: boolean) => {
+    event.stopPropagation();
+    const chip = event.currentTarget as HTMLElement;
+    if (editable) {
+      chip.querySelector<StandaloneCellHost>('dv-standalone-cell')?.edit();
+      return;
     }
+    this._openPanel();
+  };
+
+  private _renderFallback(prop: TitleBandProperty) {
+    const text = formatPropertyValue(prop, this._locale);
+    return html`<span
+      class="labre-title-band-chip-value labre-title-band-chip-text"
+      data-empty=${text ? 'false' : 'true'}
+      >${text || this._t(TITLE_BAND_EMPTY)}</span
+    >`;
   }
 
-  private _renderChip(prop: TitleBandProperty, hasPanel: boolean) {
+  private _renderChip(
+    sources: BandSources,
+    prop: TitleBandProperty,
+    hasPanel: boolean
+  ) {
     const pending = this._pending$.value.has(prop.id);
-    const editable = !this._readonly && chipEditorKind(prop) !== 'none';
+    const cell = this._cellFor(sources, prop);
+    const editable = !!cell && !this._isReadonlyChip(prop);
     const clickable = editable || hasPanel;
-    const view = chipValueView(prop, this._locale);
-    return html`<button
-      class="labre-title-band-chip ${clickable ? '' : 'static'}"
+    // Without a cell the chip itself is what a keyboard reaches.
+    const focusable = !cell && hasPanel;
+    return html`<div
+      class="labre-title-band-chip"
       data-testid="title-band-chip"
       data-property-id=${prop.id}
-      data-empty=${view.kind === 'empty' ? 'true' : 'false'}
+      data-empty=${isPropertyValueEmpty(prop) ? 'true' : 'false'}
+      data-clickable=${clickable ? 'true' : 'false'}
       aria-busy=${pending ? 'true' : 'false'}
-      ?disabled=${pending || !clickable}
-      @click=${(event: MouseEvent) => this._onChip(event, prop)}
+      role=${focusable ? 'button' : nothing}
+      tabindex=${focusable ? '0' : nothing}
+      @click=${(event: MouseEvent) => {
+        if (clickable) this._onChip(event, editable);
+      }}
+      @keydown=${(event: KeyboardEvent) => {
+        if (!focusable || event.target !== event.currentTarget) return;
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        this._onChip(event, false);
+      }}
     >
       <span class="labre-title-band-chip-name">${prop.name}</span>
-      <span class="labre-title-band-chip-value"
-        >${this._renderValue(prop)}</span
-      >
-    </button>`;
+      ${cell
+        ? html`<dv-standalone-cell
+            class="labre-title-band-chip-value"
+            data-testid="title-band-cell"
+            role=${editable ? 'button' : nothing}
+            aria-label=${prop.name}
+            .cell=${cell}
+            .readonly=${!editable}
+            .placeholder=${this._t(TITLE_BAND_EMPTY)}
+          ></dv-standalone-cell>`
+        : this._renderFallback(prop)}
+    </div>`;
   }
 
   private _renderTools(sources: BandSources, hasPanel: boolean) {
@@ -611,7 +585,7 @@ export class TitleBand extends SignalWatcher(
       ${repeat(
         properties,
         prop => prop.id,
-        prop => this._renderChip(prop, hasPanel)
+        prop => this._renderChip(sources, prop, hasPanel)
       )}
       ${this._renderTools(sources, hasPanel)}
     </div>`;
@@ -687,7 +661,6 @@ export class TitleBand extends SignalWatcher(
     // split the title) nor the canvas's (a press would start a drag).
     this._disposables.addFromEvent(this, 'keydown', stopPropagation);
     this._disposables.addFromEvent(this, 'pointerdown', stopPropagation);
-    this._disposables.add(() => this._menu?.close());
   }
 
   override render() {

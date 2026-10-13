@@ -2,6 +2,8 @@ import {
   EdgelessCRUDIdentifier,
   SurfaceBlockSchemaExtension,
 } from '@labre/affine-block-surface';
+import { effects as datePickerEffects } from '@labre/affine-components/date-picker';
+import { effects as portalEffects } from '@labre/affine-components/portal';
 import { RefNodeSlotsProvider } from '@labre/affine-inline-reference';
 import {
   EmbedLinkedDocBlockSchemaExtension,
@@ -19,11 +21,21 @@ import {
   type TitleBandService,
   type TitleBandSheetState,
 } from '@labre/affine-shared/services';
+import {
+  BaseCellRenderer,
+  createFromBaseCellRenderer,
+  type MultiTagSelect,
+  type PropertyMetaConfig,
+  type StandaloneCellHost,
+} from '@labre/data-view';
+import { effects as dataViewEffects } from '@labre/data-view/effects';
+import { propertyPresets } from '@labre/data-view/property-presets';
 import type { BlockStdScope } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { type Store, Text } from '@labre/store';
 import { TestWorkspace } from '@labre/store/test';
 import { signal } from '@preact/signals-core';
+import { html } from 'lit';
 import { Subject } from 'rxjs';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -39,8 +51,66 @@ import { LABRE_TITLE_BAND, TitleBand } from '../title-band/title-band';
  *   both views, which is the whole degraded story of `TitleBandExtension`;
  * - the chips follow the host's visible list, an empty one included and
  *   still clickable (REQ-PR-1);
+ * - each value is drawn AND edited by the cell the inline table mounts for
+ *   its type (ADR 0035 §11 amended 2026-10-13: the checkbox, the tag menu of
+ *   a select, the date picker, the number and text inputs), a link by the
+ *   cell a package above registers, a type with no cell by its text;
+ * - the tag menu offers the host's options and creates none, since the band
+ *   cannot write a property's config;
  * - a write goes to `set` and the chip shows pending until it settles; the
- *   band never applies the value itself, the host's `sheet$` does;
+ *   band never applies the value itself, the host's `sheetimport {
+  EdgelessCRUDIdentifier,
+  SurfaceBlockSchemaExtension,
+} from '@labre/affine-block-surface';
+import { effects as datePickerEffects } from '@labre/affine-components/date-picker';
+import { effects as portalEffects } from '@labre/affine-components/portal';
+import { RefNodeSlotsProvider } from '@labre/affine-inline-reference';
+import {
+  EmbedLinkedDocBlockSchemaExtension,
+  NoteBlockSchemaExtension,
+  NoteDisplayMode,
+  ParagraphBlockSchemaExtension,
+  RootBlockSchemaExtension,
+} from '@labre/affine-model';
+import {
+  PropertiesPanelProvider,
+  type PropertiesPanelService,
+  TelemetryProvider,
+  type TitleBandProperty,
+  TitleBandProvider,
+  type TitleBandService,
+  type TitleBandSheetState,
+} from '@labre/affine-shared/services';
+import {
+  BaseCellRenderer,
+  createFromBaseCellRenderer,
+  type MultiTagSelect,
+  type PropertyMetaConfig,
+  type StandaloneCellHost,
+} from '@labre/data-view';
+import { effects as dataViewEffects } from '@labre/data-view/effects';
+import { propertyPresets } from '@labre/data-view/property-presets';
+import type { BlockStdScope } from '@labre/std';
+import { GfxControllerIdentifier } from '@labre/std/gfx';
+import { type Store, Text } from '@labre/store';
+import { TestWorkspace } from '@labre/store/test';
+import { signal } from '@preact/signals-core';
+import { html } from 'lit';
+import { Subject } from 'rxjs';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+
+import { showPageHere } from '../title-band/show-here';
+import { LABRE_TITLE_BAND, TitleBand } from '../title-band/title-band';
+
+/**
+ * The title band under the page title and in the note header (ADR 0035 §9d,
+ * §11; REQ-PR-1, PR-4, PR-7).
+ *
+ * What it pins, each a promise of the seams table:
+ * - **no provider, nothing**: no band, no "+", no panel button, no row, in
+ *   both views, which is the whole degraded story of `TitleBandExtension`;
+ does, and a
+ *   value left as it was is never written;
  * - the "+" exists only with `add`, the panel button only with a
  *   `PropertiesPanelProvider`, and the panel opens with a page request;
  * - the "Not shown on this page" row is drawn in both views (ADR 0035
@@ -52,9 +122,31 @@ import { LABRE_TITLE_BAND, TitleBand } from '../title-band/title-band';
  *   undo step, and nothing at all on a read-only document (labre ADR-0045 §7).
  */
 
+/** Stands for the database block's link cell, which this package cannot import. */
+class FakeLinkCell extends BaseCellRenderer<string> {
+  override render() {
+    return html`<a data-testid="fake-link">${this.value ?? ''}</a>`;
+  }
+}
+
+const FAKE_LINK_META = {
+  ...propertyPresets.textPropertyConfig,
+  type: 'link',
+  renderer: {
+    type: 'link',
+    cellRenderer: { view: createFromBaseCellRenderer(FakeLinkCell) },
+  },
+} as unknown as PropertyMetaConfig;
+
 beforeAll(() => {
   if (!customElements.get(LABRE_TITLE_BAND)) {
     customElements.define(LABRE_TITLE_BAND, TitleBand);
+  }
+  if (!customElements.get('uni-lit')) dataViewEffects();
+  if (!customElements.get('date-picker')) datePickerEffects();
+  if (!customElements.get('blocksuite-portal')) portalEffects();
+  if (!customElements.get('test-fake-link-cell')) {
+    customElements.define('test-fake-link-cell', FakeLinkCell);
   }
 });
 
@@ -91,6 +183,55 @@ const STATUS = prop({
 });
 const OWNER = prop({ id: 'owner', name: 'Owner', type: 'text', value: null });
 const DONE = prop({ id: 'done', name: 'Done', type: 'checkbox', value: false });
+const CHECKED = prop({
+  id: 'checked',
+  name: 'Reviewed',
+  type: 'checkbox',
+  value: true,
+});
+const TAGS = prop({
+  id: 'tags',
+  name: 'Tags',
+  type: 'multi-select',
+  data: {
+    options: [
+      { id: 'x', value: 'Strategy', color: 'var(--affine-tag-purple)' },
+      { id: 'y', value: 'Q4' },
+    ],
+  },
+  value: ['x', 'y'],
+});
+const DUE = prop({
+  id: 'due',
+  name: 'Due',
+  type: 'date',
+  value: new Date(2026, 9, 13).getTime(),
+});
+const BUDGET = prop({
+  id: 'budget',
+  name: 'Budget',
+  type: 'number',
+  data: { format: 'currencyEUR', decimal: 2 },
+  value: 1234.5,
+});
+const PROGRESS = prop({
+  id: 'progress',
+  name: 'Progress',
+  type: 'progress',
+  value: 40,
+});
+const SITE = prop({
+  id: 'site',
+  name: 'Site',
+  type: 'url',
+  value: 'https://labre.app',
+});
+const LINKS = prop({
+  id: 'links',
+  name: 'Links',
+  type: 'relation',
+  value: ['Child A', 'Child B'],
+});
 
 /** A scope whose `getOptional` answers from `providers`, read live. */
 function fakeStd(
@@ -107,7 +248,18 @@ function fakeStd(
         return readonly$.value;
       },
     },
-    getOptional: (id: unknown) => providers.get(id) ?? null,
+    // A keyed identifier is a new object per call: read it by name.
+    getOptional: (id: unknown) => {
+      const { identifierName, variant } = (id ?? {}) as {
+        identifierName?: string;
+        variant?: string;
+      };
+      return (
+        providers.get(id) ??
+        providers.get(`${identifierName}:${variant}`) ??
+        null
+      );
+    },
   } as unknown as BlockStdScope;
   return { std };
 }
@@ -140,6 +292,51 @@ async function mount(
 
 const q = (band: Element, testId: string) =>
   band.querySelector(`[data-testid="${testId}"]`);
+const frame = () =>
+  new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+
+const chipOf = (band: Element, id: string) =>
+  band.querySelector<HTMLElement>(
+    `[data-testid="title-band-chip"][data-property-id="${id}"]`
+  )!;
+
+const cellOf = (chip: Element) =>
+  chip.querySelector<StandaloneCellHost>('dv-standalone-cell')!;
+
+/** The cells render after the band, each in its own update. */
+async function settleCells(band: Element) {
+  await (band as TitleBand).updateComplete;
+  for (const host of band.querySelectorAll<StandaloneCellHost>(
+    'dv-standalone-cell'
+  )) {
+    await host.updateComplete;
+  }
+  await frame();
+}
+
+/** An option row of the tag menu, by its label. */
+const optionNamed = (menu: MultiTagSelect, name: string) =>
+  [
+    ...menu.querySelectorAll<HTMLElement>(
+      '[data-testid="tag-option-list"] > div'
+    ),
+  ].find(row => row.textContent?.includes(name))!;
+
+/** Opens the cell's input, types `text`, presses Enter, lets it commit. */
+async function typeInto(host: StandaloneCellHost, text: string) {
+  host.click();
+  await host.updateComplete;
+  await frame();
+  const input = host.querySelector('input')!;
+  input.value = text;
+  input.dispatchEvent(
+    new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })
+  );
+  await new Promise(resolve => setTimeout(resolve, 0));
+  await frame();
+  await frame();
+}
+
 const all = (band: Element, testId: string) => [
   ...band.querySelectorAll(`[data-testid="${testId}"]`),
 ];
@@ -183,8 +380,9 @@ describe('the title band', () => {
     });
     const { std } = fakeStd(new Map([[TitleBandProvider, service]]));
     const band = await mount(std);
+    await settleCells(band);
 
-    const chips = all(band, 'title-band-chip') as HTMLButtonElement[];
+    const chips = all(band, 'title-band-chip') as HTMLElement[];
     expect(chips.map(chip => chip.dataset.propertyId)).toEqual([
       'status',
       'owner',
@@ -193,15 +391,79 @@ describe('the title band', () => {
     expect(chips[0].textContent).toContain('Doing');
     expect(chips[1].dataset.empty).toBe('true');
     expect(chips[1].textContent).toContain('Not set');
-    // Empty, and still a live button (REQ-PR-1).
-    expect(chips[1].disabled).toBe(false);
+    // Empty, and still a live editor (REQ-PR-1).
+    expect(cellOf(chips[1]).readonly).toBe(false);
+    expect(cellOf(chips[1]).getAttribute('tabindex')).toBe('0');
     // Asked once, however often the band renders.
     band.requestUpdate();
     await band.updateComplete;
     expect(service.sheet$).toHaveBeenCalledTimes(1);
   });
 
-  it('hands a write to the host, shows it pending, and never applies it', async () => {
+  it('draws each value with the cell the inline table mounts for its type', async () => {
+    const { service } = bandService({
+      status: 'ready',
+      properties: [
+        STATUS,
+        TAGS,
+        CHECKED,
+        DUE,
+        BUDGET,
+        PROGRESS,
+        OWNER,
+        SITE,
+        LINKS,
+      ],
+    });
+    const { std } = fakeStd(new Map([[TitleBandProvider, service]]));
+    const band = await mount(std);
+    await settleCells(band);
+
+    const cellTag = (id: string) =>
+      chipOf(band, id).querySelector('dv-standalone-cell uni-lit > *')
+        ?.localName;
+    expect(cellTag('status')).toBe('affine-database-select-cell');
+    expect(cellTag('tags')).toBe('affine-database-multi-select-cell');
+    expect(cellTag('checked')).toBe('affine-database-checkbox-cell');
+    expect(cellTag('due')).toBe('affine-database-date-cell');
+    expect(cellTag('budget')).toBe('affine-database-number-cell');
+    expect(cellTag('progress')).toBe('affine-database-progress-cell');
+    expect(cellTag('owner')).toBe('affine-database-text-cell');
+    // No link cell registered: the URL is the text cell's.
+    expect(cellTag('site')).toBe('affine-database-text-cell');
+
+    expect(chipOf(band, 'status').textContent).toContain('Doing');
+    expect(chipOf(band, 'tags').textContent).toContain('Strategy');
+    expect(chipOf(band, 'tags').textContent).toContain('Q4');
+    expect(
+      chipOf(band, 'checked').querySelector('.affine-database-checkbox.checked')
+    ).not.toBeNull();
+    expect(chipOf(band, 'due').textContent).toContain('2026/10/13');
+    // The table's own reading: unformatted while its flag is off.
+    expect(chipOf(band, 'budget').textContent).toContain('1234.5');
+    expect(chipOf(band, 'site').textContent).toContain('https://labre.app');
+    // A type no cell draws keeps its text and has no cell.
+    expect(
+      chipOf(band, 'links').querySelector('dv-standalone-cell')
+    ).toBeNull();
+    expect(chipOf(band, 'links').textContent).toContain('Child A, Child B');
+  });
+
+  it('draws a type a package above registers with its cell (the link)', async () => {
+    const { service } = bandService({ status: 'ready', properties: [SITE] });
+    const providers = new Map<unknown, unknown>([
+      [TitleBandProvider, service],
+      ['DataViewStandaloneCellMeta:link', FAKE_LINK_META],
+    ]);
+    const band = await mount(fakeStd(providers).std);
+    await settleCells(band);
+    const link = chipOf(band, 'site').querySelector(
+      '[data-testid="fake-link"]'
+    );
+    expect(link?.textContent).toBe('https://labre.app');
+  });
+
+  it('toggles a checkbox through its cell, pending until the host settles', async () => {
     let settle = () => {};
     const { service, sheet$ } = bandService(
       { status: 'ready', properties: [DONE] },
@@ -216,16 +478,18 @@ describe('the title band', () => {
     );
     const { std } = fakeStd(new Map([[TitleBandProvider, service]]));
     const band = await mount(std);
+    const chip = () => chipOf(band, 'done');
+    await settleCells(band);
 
-    const chip = () => q(band, 'title-band-chip') as HTMLButtonElement;
-    chip().click();
+    cellOf(chip()).click();
     await band.updateComplete;
 
     expect(service.set).toHaveBeenCalledWith(DOC, 'done', true);
     expect(chip().getAttribute('aria-busy')).toBe('true');
-    expect(chip().disabled).toBe(true);
     // Still unchecked: the value is the host's to apply.
-    expect(chip().querySelector('svg')).not.toBeNull();
+    expect(
+      chip().querySelector('.affine-database-checkbox.checked')
+    ).toBeNull();
     expect(sheet$.value).toEqual({ status: 'ready', properties: [DONE] });
 
     settle();
@@ -233,7 +497,13 @@ describe('the title band', () => {
     await Promise.resolve();
     await band.updateComplete;
     expect(chip().getAttribute('aria-busy')).toBe('false');
-    expect(chip().disabled).toBe(false);
+
+    // The host applies it: the same cell now draws it checked.
+    sheet$.value = { status: 'ready', properties: [{ ...DONE, value: true }] };
+    await settleCells(band);
+    expect(
+      chip().querySelector('.affine-database-checkbox.checked')
+    ).not.toBeNull();
   });
 
   it('clears the pending state when the host refuses a write', async () => {
@@ -244,29 +514,140 @@ describe('the title band', () => {
     );
     const { std } = fakeStd(new Map([[TitleBandProvider, service]]));
     const band = await mount(std);
+    await settleCells(band);
 
-    (q(band, 'title-band-chip') as HTMLButtonElement).click();
+    cellOf(chipOf(band, 'done')).click();
     await new Promise(resolve => setTimeout(resolve, 0));
     await band.updateComplete;
-    expect(q(band, 'title-band-chip')?.getAttribute('aria-busy')).toBe('false');
+    expect(chipOf(band, 'done').getAttribute('aria-busy')).toBe('false');
     expect(error).toHaveBeenCalled();
     error.mockRestore();
   });
 
-  it('writes nothing and offers no "+" on a read-only document', async () => {
+  it("picks a select option in the table's tag menu, its options fixed", async () => {
+    const { service } = bandService({ status: 'ready', properties: [STATUS] });
+    const band = await mount(
+      fakeStd(new Map([[TitleBandProvider, service]])).std
+    );
+    // A click anywhere on the chip, its name included, opens the cell.
+    chipOf(band, 'status')
+      .querySelector<HTMLElement>('.labre-title-band-chip-name')!
+      .click();
+    await frame();
+    const menu = document.querySelector('affine-multi-tag-select');
+    expect(menu).not.toBeNull();
+    // The band cannot write the property's options: no create, no edit.
+    expect(menu!.onOptionsChange).toBeUndefined();
+    expect(menu!.querySelector('[data-testid="option-more"]')).toBeNull();
+    optionNamed(menu!, 'Done').click();
+    expect(service.set).toHaveBeenCalledWith(DOC, 'status', 'b');
+  });
+
+  it("adds a tag through the table's multi-select menu", async () => {
+    const { service } = bandService({
+      status: 'ready',
+      properties: [{ ...TAGS, value: ['x'] }],
+    });
+    const band = await mount(
+      fakeStd(new Map([[TitleBandProvider, service]])).std
+    );
+    cellOf(chipOf(band, 'tags')).click();
+    await frame();
+    const menu = document.querySelector('affine-multi-tag-select');
+    optionNamed(menu!, 'Q4').click();
+    expect(service.set).toHaveBeenCalledWith(DOC, 'tags', ['x', 'y']);
+  });
+
+  it("sets a date through the table's date picker", async () => {
+    const { service } = bandService({
+      status: 'ready',
+      properties: [{ ...DUE, value: null }],
+    });
+    const band = await mount(
+      fakeStd(new Map([[TitleBandProvider, service]])).std
+    );
+    const host = cellOf(chipOf(band, 'due'));
+    host.click();
+    await frame();
+    const cell = host.querySelector('affine-database-date-cell') as unknown as {
+      tempValue$: { value: Date | undefined };
+    };
+    const picked = new Date(Date.UTC(2026, 11, 24));
+    cell.tempValue$.value = picked;
+    // What a click away does: the picker closes and the cell commits.
+    host.exit();
+    await frame();
+    await frame();
+    expect(service.set).toHaveBeenCalledTimes(1);
+    expect(service.set).toHaveBeenCalledWith(DOC, 'due', picked.getTime());
+  });
+
+  it("types a number and a text in the table's inputs", async () => {
+    const { service } = bandService({
+      status: 'ready',
+      properties: [BUDGET, OWNER],
+    });
+    const band = await mount(
+      fakeStd(new Map([[TitleBandProvider, service]])).std
+    );
+
+    await typeInto(cellOf(chipOf(band, 'budget')), '42');
+    expect(service.set).toHaveBeenCalledWith(DOC, 'budget', 42);
+
+    await typeInto(cellOf(chipOf(band, 'owner')), 'Ada');
+    expect(service.set).toHaveBeenCalledWith(DOC, 'owner', 'Ada');
+    expect(service.set).toHaveBeenCalledTimes(2);
+  });
+
+  it('writes nothing for a value left as it was', async () => {
+    const { service } = bandService({ status: 'ready', properties: [OWNER] });
+    const band = await mount(
+      fakeStd(new Map([[TitleBandProvider, service]])).std
+    );
+    await typeInto(cellOf(chipOf(band, 'owner')), '   ');
+    expect(service.set).not.toHaveBeenCalled();
+  });
+
+  it('draws every cell and opens none on a read-only document', async () => {
     const add = vi.fn();
     const { service } = bandService(
-      { status: 'ready', properties: [DONE] },
+      { status: 'ready', properties: [DONE, OWNER] },
       { add }
     );
     const { std } = fakeStd(new Map([[TitleBandProvider, service]]), true);
     const band = await mount(std);
 
-    const chip = q(band, 'title-band-chip') as HTMLButtonElement;
-    expect(chip.disabled).toBe(true);
-    chip.click();
+    const host = cellOf(chipOf(band, 'done'));
+    expect(host.readonly).toBe(true);
+    expect(host.hasAttribute('tabindex')).toBe(false);
+    expect(host.querySelector('affine-database-checkbox-cell')).not.toBeNull();
+    host.click();
+    chipOf(band, 'done').click();
     expect(service.set).not.toHaveBeenCalled();
     expect(q(band, 'title-band-add')).toBeNull();
+  });
+
+  it('opens the panel from a read-only property or a type with no cell', async () => {
+    const panel: PropertiesPanelService = { open: vi.fn(), close: vi.fn() };
+    const { service } = bandService({
+      status: 'ready',
+      properties: [{ ...OWNER, value: 'Ada', readonly: true }, LINKS],
+    });
+    const band = await mount(
+      fakeStd(
+        new Map<unknown, unknown>([
+          [TitleBandProvider, service],
+          [PropertiesPanelProvider, panel],
+        ])
+      ).std
+    );
+    cellOf(chipOf(band, 'owner')).click();
+    expect(panel.open).toHaveBeenCalledWith({ scope: 'page', docId: DOC });
+    const links = chipOf(band, 'links');
+    expect(links.getAttribute('tabindex')).toBe('0');
+    links.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    expect(panel.open).toHaveBeenCalledTimes(2);
+    expect(service.set).not.toHaveBeenCalled();
   });
 
   it('draws the "+" only with add, the panel button only with a panel', async () => {

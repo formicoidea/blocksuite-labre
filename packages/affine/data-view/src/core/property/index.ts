@@ -3,4 +3,5 @@ export * from './convert.js';
 export * from './manager.js';
 export * from './property-config.js';
 export * from './renderer.js';
+export * from './standalone-cell.js';
 export * from './types.js';

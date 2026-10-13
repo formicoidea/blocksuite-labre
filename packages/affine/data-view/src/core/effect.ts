@@ -13,6 +13,7 @@ import { SelectGroupView } from './group-by/renderer/select-group.js';
 import { StringGroupView } from './group-by/renderer/string-group.js';
 import { GroupSetting } from './group-by/setting.js';
 import { AffineLitIcon, UniAnyRender, UniLit } from './index.js';
+import { StandaloneCellHost } from './property/standalone-cell.js';
 import { AnyRender } from './utils/uni-component/render-template.js';
 
 export function coreEffects() {
@@ -38,4 +39,5 @@ export function coreEffects() {
   customElements.define('uni-any-render', UniAnyRender);
   customElements.define('variable-ref-view', VariableRefView);
   customElements.define('affine-data-view-record-detail', RecordDetail);
+  customElements.define('dv-standalone-cell', StandaloneCellHost);
 }

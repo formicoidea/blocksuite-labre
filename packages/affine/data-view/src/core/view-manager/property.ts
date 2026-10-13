@@ -37,6 +37,12 @@ export interface Property<
 
   readonly data$: ReadonlySignal<Data>;
   dataUpdate(updater: PropertyDataUpdater<Data>): void;
+  /**
+   * Whether `dataUpdate` writes anything; absent means it does. A standalone
+   * cell whose host cannot write the config says `false`, and a select then
+   * creates, edits and reorders no option (`standalone-cell.ts`).
+   */
+  readonly dataCanSet?: boolean;
 
   readonly type$: ReadonlySignal<string>;
   readonly typeSet?: (type: string) => void;

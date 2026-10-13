@@ -8,6 +8,12 @@
  * the zoom like the note's own text instead of floating at a fixed size; and
  * nowhere at all, in either view, when the host registers no provider.
  *
+ * Its values are the inline table's own cells (ADR 0035 §11 amended
+ * 2026-10-13): only the real editor registers the database block's link
+ * cell, defines every data-view element and lays the tag menu and the date
+ * picker out over the page, so the native drawing and editing of each type
+ * is pinned here as well as in the unit spec.
+ *
  * The "Not shown on this page" row (labre ADR-0045 §7, ADR 0035 §9d
  * amended 2026-10-13) is drawn in both views, and its "Show here" must land
  * a real, rendered card of the page: at the end of the last note in the page
@@ -49,6 +55,42 @@ const PROPERTIES: TitleBandProperty[] = [
     type: 'text',
     data: {},
     value: null,
+    readonly: false,
+  },
+];
+
+/** One property per cell the band mounts, beside the two above. */
+const NATIVE: TitleBandProperty[] = [
+  {
+    id: 'status',
+    namespace: 'workspace',
+    name: 'Status',
+    type: 'select',
+    data: {
+      options: [
+        { id: 'a', value: 'Doing' },
+        { id: 'b', value: 'Done' },
+      ],
+    },
+    value: 'a',
+    readonly: false,
+  },
+  {
+    id: 'done',
+    namespace: 'workspace',
+    name: 'Reviewed',
+    type: 'checkbox',
+    data: {},
+    value: false,
+    readonly: false,
+  },
+  {
+    id: 'site',
+    namespace: 'workspace',
+    name: 'Site',
+    type: 'url',
+    data: {},
+    value: 'https://labre.app',
     readonly: false,
   },
 ];
@@ -154,6 +196,52 @@ describe('the title band', () => {
     expect(set).toHaveBeenCalledWith(window.doc.id, 'owner', 'Ada');
   });
 
+  test("draws and edits each value with the table's own cell", async () => {
+    const set = vi.fn(async () => {});
+    cleanup = await setupEditor('page', [
+      TitleBandExtension({
+        sheet$: () =>
+          signal<TitleBandSheetState>({ status: 'ready', properties: NATIVE }),
+        set,
+      }),
+    ]);
+    await wait(100);
+    const chip = (id: string) =>
+      document.querySelector<HTMLElement>(
+        `doc-title ${CHIP}[data-property-id="${id}"]`
+      )!;
+
+    expect(
+      chip('status').querySelector('affine-database-select-cell')
+    ).not.toBeNull();
+    expect(chip('status').textContent).toContain('Doing');
+    // The database block's link cell, registered for the band.
+    const link = chip('site').querySelector<HTMLAnchorElement>(
+      'affine-database-link-cell [data-testid="property-link-a"]'
+    );
+    expect(link?.href).toBe('https://labre.app/');
+
+    chip('done')
+      .querySelector<HTMLElement>('affine-database-checkbox-cell')!
+      .click();
+    expect(set).toHaveBeenCalledWith(window.doc.id, 'done', true);
+
+    chip('status')
+      .querySelector<HTMLElement>('affine-database-select-cell')!
+      .click();
+    await wait(100);
+    const menu = document.querySelector('affine-multi-tag-select');
+    expect(menu).not.toBeNull();
+    const done = [
+      ...menu!.querySelectorAll<HTMLElement>(
+        '[data-testid="tag-option-list"] > div'
+      ),
+    ].find(row => row.textContent?.includes('Done'));
+    done!.click();
+    await wait(50);
+    expect(set).toHaveBeenCalledWith(window.doc.id, 'status', 'b');
+  });
+
   test('sits in the page note on the canvas and follows the zoom', async () => {
     cleanup = await setupEditor('edgeless', [TitleBandExtension(service())]);
     const edgeless = getDocRootBlock(window.doc, window.editor, 'edgeless');
@@ -163,6 +251,8 @@ describe('the title band', () => {
       document.querySelector<HTMLElement>(`affine-edgeless-note ${BAND}`);
     expect(band()).not.toBeNull();
     expect(band()!.querySelectorAll(CHIP)).toHaveLength(2);
+    // The same cells as under the title, inside the note's own DOM.
+    expect(band()!.querySelector('affine-database-select-cell')).not.toBeNull();
     expect(
       band()!.querySelector('[data-testid="title-band-not-shown"]')
     ).not.toBeNull();

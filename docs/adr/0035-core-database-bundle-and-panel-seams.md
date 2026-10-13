@@ -383,3 +383,47 @@ the Labre v2 page system (labre ADR-0045 §7, amended there the same day).
   `integration-test/src/__tests__/edgeless/title-band.spec.ts` (a rendered card
   at the end of the note and at the canvas centre, one undo step, and the
   canvas's linked and synced cards of a page).
+
+### 2026-10-13: the chips are the inline table's cells
+
+Amends §11 ("drawn with the data-view property presets", which P1 deferred:
+the band drew its own chips and editors). Asked by the product owner: the
+library reuses the components it already designed, never a second drawing.
+
+- **One drawing per type.** Each chip mounts the cell renderer a table cell
+  mounts (`checkbox`, `select`, `multi-select`, `date`, `number`,
+  `progress`, `text`, and the database block's `link`) for display and
+  edit, with the table's own styles and popups (the tag menu, the date
+  picker): in the page view and in the note header, where it follows the zoom.
+  The band keeps only its layout (name, value, "+", panel button, collapse)
+  and the "Not shown on this page" row, unchanged.
+- **The smallest seam in data-view: a cell outside any view.**
+  `createStandaloneCell(meta, source)` builds a `Cell` over signals with no
+  view, row or data source, providing only what the presets read (the
+  property's name, config, type and read-only state, the view's flags and
+  `serviceGet`); `<dv-standalone-cell>` mounts its renderer and owns the
+  table's edit lifecycle. `standalone-cell.unit.spec.ts` mounts every preset
+  through it, so a renderer that starts reading more fails there.
+- **A registry for a cell owned above the band.** The link cell lives in
+  `blocks/database`, which depends on `doc-title` (through the note and the
+  drag handle): it registers itself with `StandaloneCellMetaExtension` from
+  the database view extension, and the band looks it up by type. Without that
+  extension a URL is drawn by the text cell.
+- **Fixed options.** The seam writes values, not a property's config, so the
+  tag menu takes no `onOptionsChange` here and offers no "Create", no option
+  menu and no reordering (`Property.dataCanSet`, optional, absent means
+  writable: the table is unchanged). Creating an option from the band would
+  widen `TitleBandService` with an optional config write; not done.
+- **What moves for a host.** `TitleBandService` is unchanged. A number now
+  reads as in a table cell, unformatted unless the store's
+  `enable_database_number_formatting` flag is on; dates read `yyyy/MM/dd`.
+  The key `com.labre.title-band.clear` is gone (the date picker's own Clear
+  replaces it); `chipEditorKind` and `ChipEditorKind` leave the
+  `doc-title` entry, unused since the cells decide what a click opens.
+- **A fix the band surfaced.** The text cell committed on Enter and again on
+  leaving, after resetting its input to the old value: the second write put
+  the old value back as soon as a host applied the first. Enter now only
+  leaves, which commits once.
+- Held by `data-view/src/__tests__/standalone-cell.unit.spec.ts`,
+  `fragments/doc-title/src/__tests__/title-band.unit.spec.ts` (each type drawn
+  and edited by its cell) and `integration-test/…/edgeless/title-band.spec.ts`.
