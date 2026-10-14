@@ -96,6 +96,27 @@ export function databaseOpenRowRequest(input: {
 }
 
 /**
+ * `DatabaseRowOpened` for one row-open gesture (telemetry README,
+ * "Databases"): the mode the row opens in, the host's when it opens it,
+ * `side` for the library's own peek or detail; ids only, never the row.
+ */
+export function rowOpenedParams(
+  request: DatabaseOpenRowRequest | null,
+  rowsAreDocuments: boolean,
+  newTab: boolean | undefined
+): {
+  mode: DatabaseViewOpenIn;
+  newTab: boolean;
+  rowKind: 'document' | 'block';
+} {
+  return {
+    mode: request?.mode ?? 'side',
+    newTab: newTab === true,
+    rowKind: rowsAreDocuments ? 'document' : 'block',
+  };
+}
+
+/**
  * A stored `openIn` as this client reads it: absent, or a value appended by a
  * later client, reads `side` (append-only, ADR 0035 §8).
  */

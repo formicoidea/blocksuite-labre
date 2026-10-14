@@ -38,6 +38,7 @@ import {
   PropertiesPanelOpenerKey,
   renderUniLit,
   type SingleView,
+  traceViewEvent,
   uniMap,
   ViewCreationOffKey,
 } from '@labre/data-view';
@@ -84,6 +85,7 @@ import {
   DatabaseDataSourceProvider,
   DatabaseOpenRowProvider,
   openDatabasePropertiesPanel,
+  rowOpenedParams,
 } from './service/index.js';
 import {
   DATABASE_SOURCE_MISSING,
@@ -254,6 +256,8 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
    * A row that is a document opens where the host says, in the view's
    * `openIn` mode (ADR 0035 §9a, B9); without an opener, or for a row that is
    * a block, the caller keeps the peek view and the side detail of 0.48.
+   * Every row open passes here once, so `DatabaseRowOpened` leaves from here
+   * (B17), whichever path then opens the row.
    */
   private openRowThroughHost(data: {
     view: SingleView;
@@ -265,16 +269,22 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
     const viewData = source.viewDataGet(data.view.id) as
       | { openIn?: unknown }
       | undefined;
+    const rowsAreDocuments =
+      source instanceof HostedDataSourceBase && source.rowsAreDocuments;
     const request = databaseOpenRowRequest({
       hasOpener: !!opener,
-      rowsAreDocuments:
-        source instanceof HostedDataSourceBase && source.rowsAreDocuments,
+      rowsAreDocuments,
       rowId: data.rowId,
       viewId: data.view.id,
       blockId: this.blockId,
       openIn: viewData?.openIn,
       newTab: data.newTab,
     });
+    traceViewEvent(
+      data.view,
+      'DatabaseRowOpened',
+      rowOpenedParams(request, rowsAreDocuments, data.newTab)
+    );
     if (!opener || !request) return false;
     opener.open(request);
     return true;

@@ -342,11 +342,13 @@ carries `fieldId`); the new events do not need it and leave it out.
   `existing` for a view on a source the database already reads (its own
   included) and `new` when the gesture created the source with it (the
   bundle's "+ view, with a new source", B12). `DatabaseRowOpened` leaves
-  `DataViewRootUILogic.openDetailPanel`, which every preset's open button,
-  card and row go through, gallery and list included: `mode` is what the
-  view's stored `openIn` asks for (absent reads `side`, a block-backed row is
-  always `side`, a Ctrl/Cmd-click is `full` with `newTab: true`), not what the
-  host drew. `DatabaseGroupChanged` leaves `GroupTrait` (`changeGroup`,
+  the database block's `openDetailPanel`, where every preset's open button,
+  card and row land through `DataViewRootUILogic.openDetailPanel`, gallery
+  and list included, once B9's row-open request is built: `mode` is the
+  request's (the view's stored `openIn`, absent or unknown reads `side`, a
+  Ctrl/Cmd-click is `full` with `newTab: true`), and `side` when the library
+  opens the row itself (no host opener, or a block-backed row); it says what
+  was asked, not what the host drew. `DatabaseGroupChanged` leaves `GroupTrait` (`changeGroup`,
   `changeGroupMode`), which every grouping menu calls, through the source's
   `DataViewEventTraceKey`. `DatabaseValuesLoadFailed` is a health event, like
   `DocumentDamaged`: once per failure of a source (its `since`), not per

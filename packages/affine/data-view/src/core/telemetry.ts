@@ -1,12 +1,10 @@
 import type {
   DatabaseAllEvents,
   DatabaseAllViewEvents,
-  DatabaseRowOpenMode,
   EventTraceFn,
 } from '@labre/affine-shared/services';
 import { createIdentifier } from '@labre/global/di';
 
-import type { DataSource } from './data-source/index.js';
 import type { SingleView } from './view-manager/single-view.js';
 
 /**
@@ -36,27 +34,4 @@ export function traceViewEvent<K extends keyof DatabaseAllViewEvents>(
     viewId: view.id,
     viewType: view.type,
   } as DatabaseAllEvents[K]);
-}
-
-const OPEN_MODES: readonly DatabaseRowOpenMode[] = ['side', 'center', 'full'];
-
-/**
- * How a row open reports (`DatabaseRowOpened`): a block-backed row always
- * opens beside the view, a document row where the view's stored `openIn`
- * says (absent or unknown reads `side`, ADR 0035 §8), and a new-tab open is
- * `full`. Pure, so the rule is tested without a host.
- */
-export function rowOpenParams(
-  source: DataSource,
-  viewId: string,
-  newTab: boolean
-): DatabaseAllViewEvents['DatabaseRowOpened'] {
-  const rowKind = (source as { rowsAreDocuments?: boolean }).rowsAreDocuments
-    ? 'document'
-    : 'block';
-  if (rowKind === 'block') return { mode: 'side', newTab, rowKind };
-  if (newTab) return { mode: 'full', newTab, rowKind };
-  const openIn = (source.viewDataGet(viewId) as { openIn?: unknown })?.openIn;
-  const mode = OPEN_MODES.find(m => m === openIn) ?? 'side';
-  return { mode, newTab, rowKind };
 }

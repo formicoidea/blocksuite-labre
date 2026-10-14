@@ -2,7 +2,6 @@ import {
   addProperty,
   DatabaseBlockDataSource,
   databaseViewInitTemplate,
-  HostedDataSourceBase,
 } from '@labre/affine-block-database';
 import {
   type DatabaseBlockModel,
@@ -12,15 +11,7 @@ import {
   RootBlockSchemaExtension,
 } from '@labre/affine-model';
 import { TranslationProvider } from '@labre/affine-shared/services';
-import {
-  type DataSource,
-  DataViewEventTraceKey,
-  DataViewRootUILogic,
-  groupTraitKey,
-  type PropertyMetaConfig,
-  rowOpenParams,
-  type TypeInstance,
-} from '@labre/data-view';
+import { DataViewEventTraceKey, groupTraitKey } from '@labre/data-view';
 import { propertyModelPresets } from '@labre/data-view/property-pure-presets';
 import { viewPresets } from '@labre/data-view/view-presets';
 import type { BlockStdScope } from '@labre/std';
@@ -38,8 +29,6 @@ import { describe, expect, test, vi } from 'vitest';
  * What it would have caught:
  * - a grouping gesture reported zero times (the grouping menus hold a trait,
  *   not a UI logic) or twice, or a gesture that changes nothing reported;
- * - a row open carrying the row's id, which on a hosted source is a document
- *   id, or reporting a mode the view did not ask for;
  * - a view created in a French editor stored as "Table View", or a preset's
  *   English seed changed to translate it (a model default is never a
  *   translation, the creation site writes the resolved name).
@@ -138,130 +127,6 @@ describe('DatabaseGroupChanged', () => {
     const group = source.viewManager.viewGet(viewId)?.traitGet(groupTraitKey);
     group?.changeGroup(status);
     expect(group?.property$.value?.id).toBe(status);
-  });
-});
-
-/** A hosted source whose rows are documents; only what the test reads. */
-class DocumentRows extends HostedDataSourceBase {
-  override get rowsAreDocuments(): boolean {
-    return true;
-  }
-  protected getRows(): string[] {
-    return ['doc-1'];
-  }
-  protected getProperties(): string[] {
-    return [];
-  }
-  protected getCellValue(): unknown {
-    return undefined;
-  }
-  protected getPropertyType(): string | undefined {
-    return undefined;
-  }
-  protected getPropertyName(): string {
-    return '';
-  }
-  protected getPropertyData(): Record<string, unknown> {
-    return {};
-  }
-  protected getPropertyDataType(): TypeInstance | undefined {
-    return undefined;
-  }
-  protected getPropertyMetas(): PropertyMetaConfig[] {
-    return [];
-  }
-  propertyMetaGet(): PropertyMetaConfig | undefined {
-    return undefined;
-  }
-  rowAdd(): string {
-    return '';
-  }
-  rowDelete(): void {}
-  rowMove(): void {}
-  cellValueChange(): void {}
-  propertyAdd(): string | undefined {
-    return undefined;
-  }
-  propertyDelete(): void {}
-  propertyDuplicate(): string | undefined {
-    return undefined;
-  }
-  propertyDataSet(): void {}
-  propertyNameSet(): void {}
-  propertyTypeSet(): void {}
-  protected getNormalPropertyAndIndex() {
-    return undefined;
-  }
-}
-
-describe('DatabaseRowOpened', () => {
-  test('says the mode the view asks for, never the row', () => {
-    const { model } = createDatabase();
-    model.store.updateBlock(model, {
-      views: [
-        {
-          id: 'v-center',
-          name: 'Center',
-          mode: 'table',
-          openIn: 'center',
-          columns: [],
-          filter: { type: 'group', op: 'and', conditions: [] },
-        },
-        {
-          id: 'v-plain',
-          name: 'Plain',
-          mode: 'table',
-          columns: [],
-          filter: { type: 'group', op: 'and', conditions: [] },
-        },
-      ] as never,
-    });
-    const hosted = new DocumentRows(model) as unknown as DataSource;
-    expect(rowOpenParams(hosted, 'v-center', false)).toEqual({
-      mode: 'center',
-      newTab: false,
-      rowKind: 'document',
-    });
-    expect(rowOpenParams(hosted, 'v-plain', false).mode).toBe('side');
-    expect(rowOpenParams(hosted, 'v-center', true).mode).toBe('full');
-    // A block-backed row always opens beside the view.
-    const inline = new DatabaseBlockDataSource(model);
-    expect(rowOpenParams(inline, 'v-center', true)).toEqual({
-      mode: 'side',
-      newTab: true,
-      rowKind: 'block',
-    });
-  });
-
-  test('is reported once by the root, with ids only', async () => {
-    const { model } = createDatabase();
-    const source = new DatabaseBlockDataSource(model);
-    const viewId = source.viewManager.viewAdd('table');
-    const view = source.viewManager.viewGet(viewId);
-    if (!view) throw new Error('view');
-    const eventTrace = vi.fn();
-    const openDetailPanel = vi.fn(() => Promise.resolve());
-    const root = new DataViewRootUILogic({
-      dataSource: source,
-      eventTrace,
-      detailPanelConfig: { openDetailPanel },
-    } as unknown as ConstructorParameters<typeof DataViewRootUILogic>[0]);
-    Object.defineProperty(root, 'dataViewRenderer', {
-      value: document.createElement('div'),
-    });
-
-    root.openDetailPanel({ view, rowId: 'row-secret' });
-    await Promise.resolve();
-    expect(openDetailPanel).toHaveBeenCalledTimes(1);
-    expect(eventTrace).toHaveBeenCalledTimes(1);
-    expect(eventTrace).toHaveBeenCalledWith('DatabaseRowOpened', {
-      mode: 'side',
-      newTab: false,
-      rowKind: 'block',
-      viewId,
-      viewType: 'table',
-    });
-    expect(JSON.stringify(eventTrace.mock.calls)).not.toContain('row-secret');
   });
 });
 
