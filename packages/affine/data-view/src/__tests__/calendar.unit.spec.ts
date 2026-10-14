@@ -6,6 +6,7 @@ import type { DataSource } from '../core/data-source/base.js';
 import {
   CalendarSingleView,
   type CalendarStoredViewData,
+  calendarViewMeta,
   calendarViewModel,
 } from '../view-presets/calendar/index.js';
 import {
@@ -92,6 +93,8 @@ const createCalendarView = (options?: {
       getAll: () => options?.externalFactories ?? new Map(),
     },
     viewDataGet: () => viewData.value,
+    // The view asks which preset draws its stored mode (shownAsFallback$).
+    viewMetaGet: () => calendarViewMeta,
     viewDataUpdate: (
       _id: string,
       updater: (data: CalendarStoredViewData) => Partial<CalendarStoredViewData>

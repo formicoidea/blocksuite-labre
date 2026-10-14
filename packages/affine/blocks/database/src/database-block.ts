@@ -34,6 +34,7 @@ import {
   renderUniLit,
   type SingleView,
   uniMap,
+  ViewCreationOffKey,
 } from '@labre/data-view';
 import { CalendarExternalSourceProvider } from '@labre/data-view/view-presets';
 import { widgetPresets } from '@labre/data-view/widget-presets';
@@ -73,6 +74,7 @@ import { DatabaseSelection } from './selection.js';
 import { DatabaseDataSourceProvider } from './service/index.js';
 import { currentViewStorage } from './utils/current-view.js';
 import { getSingleDocIdFromText } from './utils/title-doc.js';
+import { DatabaseViewCreationIdentifier } from './view-creation.js';
 import type { DatabaseViewExtensionOptions } from './view';
 
 export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBlockModel> {
@@ -159,6 +161,10 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
   private _buildDataSource(): DataSourceBase {
     const initFn = (dataSource: DataSourceBase) => {
       dataSource.serviceSet(EditorHostKey, this.host);
+      // `{ database: false }` takes view creation away, never the views.
+      if (!this.std.getOptional(DatabaseViewCreationIdentifier)) {
+        dataSource.serviceSet(ViewCreationOffKey, true);
+      }
       this.std.provider
         .getAll(ExternalGroupByConfigProvider)
         .forEach(config => {

@@ -137,8 +137,6 @@
       "true"
     ],
     "packages/affine/blocks/database/src/configs/slash-menu.ts": [
-      "Calendar View",
-      "Display items by date in a calendar.",
       "Display items in a table format.",
       "Kanban View",
       "Kanban View",
@@ -703,8 +701,6 @@
     "packages/affine/data-view/src/widget-presets/views-bar/views-view.ts": [
       "${} More",
       "Create ${}",
-      "Delete",
-      "Duplicate",
       "Edit View",
       "Move Left",
       "Move Right",

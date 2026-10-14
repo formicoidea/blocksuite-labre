@@ -22,6 +22,7 @@ import {
 } from '@labre/affine-block-surface-ref/translations';
 import { ADAPTER_PANEL_WORDINGS } from '@labre/affine-fragment-adapter-panel/translations';
 import { DOC_TITLE_WORDINGS } from '@labre/affine-fragment-doc-title/translations';
+import { DATA_VIEW_WORDINGS } from '@labre/data-view/translations';
 import { OUTLINE_WORDINGS } from '@labre/affine-fragment-outline/translations';
 import { COMPONENTS_WORDINGS } from '@labre/affine-components/translations';
 import {
@@ -417,6 +418,7 @@ const PACKAGE_WORDINGS: readonly (readonly ChromeWording[])[] = [
   PARAGRAPH_WORDINGS,
   ADAPTER_PANEL_WORDINGS,
   DOC_TITLE_WORDINGS,
+  DATA_VIEW_WORDINGS,
   SHAPE_WORDINGS,
   TEXT_WORDINGS,
   MINDMAP_CHROME_WORDINGS,
