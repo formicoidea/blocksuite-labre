@@ -652,6 +652,54 @@ A BPMN read of 2 000 chained tasks takes 235 ms under Node, with no DOM.
 Red zone: `scripts/build-bundles.mjs` gained one conditional line, copying a
 framework package's own `./interchange` export into its bundle's `exports`.
 
+#### Amendment 2026-10-14 — bounded: linear in the file, capped in what it holds
+
+An independent security review of the entries above (394219550) found no
+execution path (the SVG allow-list is stricter than DOMPurify's, a `DOCTYPE`
+and its entities are inert, links are safe) and four denials of service for a
+function with 256 MiB and two seconds of CPU, plus five smaller faults. **Every
+reader behind an `./interchange` entry is now linear in its input and bounded in
+what it holds**, and `packages/affine/all/src/__tests__/interchange-linear-time.unit.spec.ts`
+holds each case against a 1.5 s budget (the import function's own). Before →
+after, at the review's sizes, Node 22:
+
+| fault                                                              | before                  | after             |
+| ------------------------------------------------------------------ | ----------------------- | ----------------- |
+| namespace scope copied per declaring element (SVG / BPMN)          | 28.6 s, 284 MiB / 9.1 s | 0.2 s / 0.2 s     |
+| stack searched per orphan close tag (`<a>`×10 000 `</b>`×10 000)   | 4.3 s                   | 0.1 s             |
+| no cap: 1 MiB of `<a/>` / 2.3 MiB of text                          | 2.9 s, 140 MiB / heap   | refused, keyed    |
+| lazy regex per unclosed draw.io `<diagram>` (352 KiB)              | 15 s                    | 4 ms              |
+| BPMN keep-helpers copying their bag (20 000 children / attributes) | 13.8 s / over 2 min     | 0.2 s / 0.2 s     |
+| tables read by a file's name (`<constructor sourceRef targetRef>`) | untyped `TypeError`     | read              |
+| conformant read noting every fault (20 000 notes)                  | 0.9 s                   | 19 ms, first note |
+| `Math.min(...xs)`, recursive `serializeXmlNode` (100 000)          | `RangeError`            | read              |
+
+The rules this adds to P3:
+
+- `readXml` refuses past `XML_MAX_NODES` (200 000 elements, attributes,
+  character runs, comments, instructions and notes together) or
+  `XML_MAX_CHARACTERS` (2 MiB decoded), **while reading**, with an
+  `InterchangeImportError` keyed `com.labre.interchange.xml.too-large`. Both
+  are options; the defaults are the server's. It is the reader's one throw:
+  malformed input still reads with notes.
+- In conformant mode (BPMN, SVG) the first note stops the read: those callers
+  refuse on any note.
+- Namespaces resolve through one stack per prefix during a depth-first walk
+  (`XmlNamespaceScope`), shared by the element view and the sanitizer. The
+  sanitizer walks the read tree itself and cuts at `MAX_SVG_DEPTH` and at a
+  removed element before resolving anything below; a `<style>` keeps only its
+  own character data, which is what the value check read.
+- A bag or a table read by a name or an id the file chose has no prototype
+  and is filled in place (BPMN and XMI keep-helpers, `READ_ATTRS`,
+  `EDGE_ROLE_OF_ELEMENT`). A minimum or maximum over the file's values is a
+  loop; a walk over the file's tree is a stack.
+- `isSafeSvgValue` refuses `image-set(` (and `-webkit-image-set(`) as it
+  refuses a non-`#` `url(`.
+
+Not covered by the review and left as they are: the XMI reader's own
+recursive walks (`sweep`, `consumeSubtree` and the package walk), bounded only
+by the node cap. If a server reads XMI, they become stacks first.
+
 ## The roadmap
 
 The PO's named matrix, as the initial roadmap. **Not all of it is v1** — this
