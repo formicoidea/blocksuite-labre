@@ -305,12 +305,8 @@
       "Move Up",
       "Paste"
     ],
-    "packages/affine/data-view/src/core/common/properties.ts": [
-      "Properties"
-    ],
     "packages/affine/data-view/src/core/common/property-menu.ts": [
       "Property name",
-      "Property type",
       "Type"
     ],
     "packages/affine/data-view/src/core/detail/detail.ts": [
@@ -587,10 +583,7 @@
       "Ungroup"
     ],
     "packages/affine/data-view/src/view-presets/table/pc/header/database-header-column.ts": [
-      "Delete",
-      "Duplicate",
       "Filter",
-      "Hide In View",
       "Insert Left Column",
       "Insert Right Column",
       "Move Left",
