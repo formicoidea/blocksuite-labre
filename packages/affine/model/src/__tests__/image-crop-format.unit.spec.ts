@@ -15,6 +15,7 @@ import { describe, expect, test } from 'vitest';
 import * as Y from 'yjs';
 
 import {
+  IMAGE_CROP_MASKS,
   type ImageBlockModel,
   ImageBlockSchemaExtension,
   imageCropSourceRect,
@@ -137,6 +138,14 @@ describe('image crop: stored format (ADR 0037)', () => {
   });
 });
 
+describe('IMAGE_CROP_MASKS', () => {
+  // Stored tokens are append-only: a token renamed or removed is a crop an
+  // existing document can no longer reopen on its preset.
+  test('is frozen; a new mask goes at the end', () => {
+    expect(IMAGE_CROP_MASKS).toEqual(['free', '16:9', '4:3', '1:1']);
+  });
+});
+
 describe('readImageCrop', () => {
   test('reads a valid crop and drops an unknown mask token', () => {
     expect(readImageCrop({ x: 0, y: 0, w: 0.5, h: 1 })).toEqual({
@@ -176,11 +185,10 @@ describe('readImageCrop', () => {
     expect(
       imageCropSourceRect({ x: 0.25, y: 0.5, w: 0.5, h: 0.25 }, 800, 400)
     ).toEqual({ x: 200, y: 200, w: 400, h: 100 });
-    expect(imageCropSourceRect(undefined, 800, 400)).toEqual({
-      x: 0,
-      y: 0,
-      w: 800,
-      h: 400,
-    });
+    // Nothing to cut: the caller draws the whole image, never a 0×0 source.
+    expect(imageCropSourceRect(undefined, 800, 400)).toBeNull();
+    expect(
+      imageCropSourceRect({ x: 0.25, y: 0, w: 0.5, h: 1 }, 0, 0)
+    ).toBeNull();
   });
 });

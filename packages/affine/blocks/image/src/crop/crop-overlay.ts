@@ -142,6 +142,9 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
 
   private _dragging = false;
 
+  /** Removes the listeners of the gesture in progress, if any. */
+  private _releaseGesture: (() => void) | null = null;
+
   private readonly _stop = (event: Event) => event.stopPropagation();
 
   private readonly _onOutsidePointer = (event: PointerEvent) => {
@@ -156,8 +159,14 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
     this.onExit();
   };
 
+  /**
+   * The document-wide listeners (a press elsewhere, Escape, Enter) live only
+   * as long as this element: the frame is rendered while it is open and
+   * removed when it closes, which disposes them.
+   */
   override connectedCallback() {
     super.connectedCallback();
+    this.disposables.add(() => this._releaseGesture?.());
     this.disposables.addFromEvent(this, 'pointerdown', this._stop);
     this.disposables.addFromEvent(this, 'click', this._stop);
     this.disposables.addFromEvent(this, 'dblclick', this._stop);
@@ -217,9 +226,7 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
     const finish = (end: PointerEvent, commit: boolean) => {
       end.preventDefault();
       end.stopPropagation();
-      window.removeEventListener('pointermove', onMove, true);
-      window.removeEventListener('pointerup', onUp, true);
-      window.removeEventListener('pointercancel', onCancel, true);
+      this._releaseGesture?.();
       this._dragging = false;
       if (commit) {
         this.onCommit(this.draft);
@@ -230,14 +237,16 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
     const onUp = (end: PointerEvent) => finish(end, true);
     const onCancel = (end: PointerEvent) => finish(end, false);
 
+    this._releaseGesture?.();
     window.addEventListener('pointermove', onMove, true);
     window.addEventListener('pointerup', onUp, true);
     window.addEventListener('pointercancel', onCancel, true);
-    this.disposables.add(() => {
+    this._releaseGesture = () => {
       window.removeEventListener('pointermove', onMove, true);
       window.removeEventListener('pointerup', onUp, true);
       window.removeEventListener('pointercancel', onCancel, true);
-    });
+      this._releaseGesture = null;
+    };
   }
 
   override render() {

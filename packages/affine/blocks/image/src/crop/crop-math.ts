@@ -152,6 +152,26 @@ export function cropBoundFor(
 }
 
 /**
+ * The stored page `width`/`height` of a cropped image whose window was
+ * resized to `box`: the WHOLE picture's size (ADR 0037), never the window's.
+ * The height follows the source's proportions when they are known; an SVG
+ * with no intrinsic size, or a picture not loaded yet, scales the window's
+ * own height instead — writing the window itself would shrink the image on
+ * every resize.
+ */
+export function wholeImageSize(
+  box: { w: number; h: number },
+  crop: CropRect,
+  natural: { width: number; height: number } | null
+): { width: number; height: number } {
+  const width = box.w / crop.w;
+  return {
+    width,
+    height: natural ? (width * natural.height) / natural.width : box.h / crop.h,
+  };
+}
+
+/**
  * Where the WHOLE source sits relative to a box showing `crop`, as CSS
  * percentages of that box: the cropped `<img>` and the crop frame both use it.
  */

@@ -1,9 +1,4 @@
-import {
-  ImageBlockModel,
-  imageCropSourceRect,
-  readImageCrop,
-  type RootBlockModel,
-} from '@labre/affine-model';
+import { ImageBlockModel, type RootBlockModel } from '@labre/affine-model';
 import { FetchUtils, ImageProxyService } from '@labre/affine-shared/adapters';
 import { CANVAS_EXPORT_IGNORE_TAGS } from '@labre/affine-shared/consts';
 import {
@@ -43,6 +38,7 @@ import type { ExtensionType, Store } from '@labre/store';
 import { CanvasRenderer } from '../../renderer/canvas-renderer.js';
 import type { SurfaceBlockComponent } from '../../surface-block.js';
 import { getBgGridGap } from '../../utils/get-bg-grip-gap.js';
+import { drawImageBlock } from './draw-image-block.js';
 
 // oxlint-disable-next-line typescript/consistent-type-imports
 type Html2CanvasFunction = typeof import('html2canvas').default;
@@ -500,25 +496,12 @@ export class ExportManager {
             img.src = URL.createObjectURL(blob);
           });
         const blockBound = xywhArrayToObject(block);
-        const image = await blobToImage(blob);
-        // The box shows the crop only (ADR 0037): draw that part of the
-        // source into it, never the whole picture squeezed.
-        const source = imageCropSourceRect(
-          readImageCrop(block.props.crop),
-          image.naturalWidth,
-          image.naturalHeight
-        );
-        ctx.drawImage(
-          image,
-          source.x,
-          source.y,
-          source.w,
-          source.h,
-          blockBound.x - bound.x,
-          blockBound.y - bound.y,
-          blockBound.w,
-          blockBound.h
-        );
+        drawImageBlock(ctx, await blobToImage(blob), block.props.crop, {
+          x: blockBound.x - bound.x,
+          y: blockBound.y - bound.y,
+          w: blockBound.w,
+          h: blockBound.h,
+        });
       }
       const blockComponent = this.editorHost.view.getBlock(block.id);
       if (blockComponent) {

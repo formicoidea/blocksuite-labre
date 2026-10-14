@@ -78,15 +78,19 @@ export function isWholeImage(rect: Pick<ImageCrop, 'x' | 'y' | 'w' | 'h'>) {
 
 /**
  * The part of the source, in source pixels, a crop keeps — what a raster
- * export hands to `drawImage(image, sx, sy, sw, sh, …)`. The whole image when
- * there is no crop.
+ * export hands to `drawImage(image, sx, sy, sw, sh, …)`.
+ *
+ * `null` when there is nothing to cut: no crop, or a source with no pixel
+ * size (an SVG without intrinsic dimensions loads as 0×0). The caller then
+ * draws the whole image into the box, as before ADR 0037; a source
+ * rectangle of 0×0 would draw nothing at all.
  */
 export function imageCropSourceRect(
   crop: ImageCrop | undefined,
   naturalWidth: number,
   naturalHeight: number
-): { x: number; y: number; w: number; h: number } {
-  if (!crop) return { x: 0, y: 0, w: naturalWidth, h: naturalHeight };
+): { x: number; y: number; w: number; h: number } | null {
+  if (!crop || naturalWidth <= 0 || naturalHeight <= 0) return null;
   return {
     x: crop.x * naturalWidth,
     y: crop.y * naturalHeight,

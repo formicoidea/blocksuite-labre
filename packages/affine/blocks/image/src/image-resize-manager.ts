@@ -7,6 +7,8 @@ import {
 import type { BlockComponent, PointerEventState } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 
+import { wholeImageSize } from './crop/crop-math.js';
+
 export class ImageResizeManager {
   private _activeComponent: BlockComponent | null = null;
 
@@ -33,13 +35,18 @@ export class ImageResizeManager {
       dragModel instanceof ImageBlockModel
         ? readImageCrop(dragModel.props.crop)
         : undefined;
-    const img = this._activeComponent.querySelector('img');
-    if (crop && img?.naturalWidth && img.naturalHeight) {
-      const wholeWidth = width / this._zoom / crop.w;
-      dragModel?.store.updateBlock(dragModel, {
-        width: wholeWidth,
-        height: (wholeWidth * img.naturalHeight) / img.naturalWidth,
-      });
+    if (crop) {
+      const img = this._activeComponent.querySelector('img');
+      dragModel?.store.updateBlock(
+        dragModel,
+        wholeImageSize(
+          { w: width / this._zoom, h: height / this._zoom },
+          crop,
+          img?.naturalWidth && img.naturalHeight
+            ? { width: img.naturalWidth, height: img.naturalHeight }
+            : null
+        )
+      );
       return;
     }
     dragModel?.store.updateBlock(dragModel, {

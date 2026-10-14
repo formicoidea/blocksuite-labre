@@ -21,7 +21,7 @@ import {
 import { BlockFlavourIdentifier } from '@labre/std';
 import type { ExtensionType } from '@labre/store';
 
-import { imageCropToolbarAction } from '../crop/crop-toolbar';
+import { imageCropToolbarAction } from '../crop/crop-toolbar.js';
 import { ImageBlockComponent } from '../image-block';
 import { ImageEdgelessBlockComponent } from '../image-edgeless-block';
 import { IMAGE_TOOLBAR_TURN_INTO_CARD_VIEW } from '../translations';

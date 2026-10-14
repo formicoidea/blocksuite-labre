@@ -22,7 +22,7 @@ import { styleMap } from 'lit/directives/style-map.js';
 import { when } from 'lit/directives/when.js';
 
 import type { ImageBlockPageComponent } from './components/page-image-block';
-import { ImageCropController } from './crop/crop-controller';
+import { ImageCropController } from './crop/crop-controller.js';
 import { IMAGE_LABEL } from './translations';
 import {
   copyImageBlob,

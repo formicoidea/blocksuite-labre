@@ -122,6 +122,23 @@ page.
     lost; the next client paints it cropped again.
   - Its canvas clipboard lists the props it copies, so a 0.49 duplicate of a
     cropped canvas image loses the crop on the copy (never on the original).
+    A 0.49 **cut and paste** goes through the same path: the image it
+    recreates is the original whole picture in the cropped box, without its
+    crop. The bytes are intact and « Rogner » can redo it, but the crop
+    itself is gone from that image.
+  - A 0.49 **page → canvas drag** keeps the key but sizes the box from the
+    whole picture's `width`/`height`, so a recent client then shows the
+    cropped window stretched to the whole picture's proportions until the
+    crop is redone or removed. Nothing is lost.
+  - These three exist only while an older client edits a document a recent
+    one cropped. Labre has one host, which ships the published library to
+    every user at once: they disappear with that release.
+- **Collaboration.** `crop` and `xywh` are two keys, each resolved by Yjs
+  on its own (last writer wins per key). A crop on one peer concurrent with a
+  resize or another crop on a second peer can end with a box from one and a
+  crop from the other: the picture is drawn distorted, but both values are
+  stored and nothing is lost; the next crop or « Image d'origine » restores
+  the proportions.
 - No migration: absent means uncropped, which is every existing image.
 - One more key every future reader of `affine:image` honours. Writers that
   rebuild an image from a hand-picked prop list must add `crop` (the two such

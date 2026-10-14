@@ -19,7 +19,7 @@ import { classMap } from 'lit/directives/class-map.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import { when } from 'lit/directives/when.js';
 
-import { croppedImageStyle } from '../crop/crop-controller';
+import { croppedImageStyle } from '../crop/crop-controller.js';
 import type { ImageBlockComponent } from '../image-block';
 import { ImageResizeManager } from '../image-resize-manager';
 import { IMAGE_LABEL, IMAGE_TOAST_DOWNLOAD_FAILED } from '../translations';

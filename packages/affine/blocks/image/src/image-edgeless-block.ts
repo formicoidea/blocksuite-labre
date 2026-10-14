@@ -15,7 +15,10 @@ import { query } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import { when } from 'lit/directives/when.js';
 
-import { croppedImageStyle, ImageCropController } from './crop/crop-controller';
+import {
+  croppedImageStyle,
+  ImageCropController,
+} from './crop/crop-controller.js';
 import { IMAGE_LABEL, IMAGE_TOAST_DOWNLOAD_FAILED } from './translations';
 import {
   copyImageBlob,

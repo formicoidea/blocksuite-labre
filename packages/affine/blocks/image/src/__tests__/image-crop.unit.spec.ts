@@ -30,6 +30,7 @@ import {
   presetCrop,
   resizeCrop,
   WHOLE_IMAGE,
+  wholeImageSize,
 } from '../crop/crop-math';
 import { writeImageCrop } from '../crop/write-crop';
 
@@ -83,6 +84,21 @@ describe('crop geometry', () => {
     expect(grown.x + grown.w).toBeLessThanOrEqual(1 + 1e-9);
     expect(grown.y + grown.h).toBeLessThanOrEqual(1 + 1e-9);
     close(grown, { x: 0.1, y: 0.1, w: 0.9, h: 0.9 });
+  });
+
+  test('a resized page window stores the WHOLE picture size', () => {
+    const crop = { x: 0.25, y: 0, w: 0.5, h: 0.5 };
+    // Known proportions: the height follows the source.
+    expect(
+      wholeImageSize({ w: 150, h: 75 }, crop, { width: 800, height: 400 })
+    ).toEqual({ width: 300, height: 150 });
+    // An SVG with no intrinsic size, or a picture not loaded yet: the window
+    // is scaled back up on both axes, never written as the whole size —
+    // that shrank the image on every resize.
+    expect(wholeImageSize({ w: 150, h: 60 }, crop, null)).toEqual({
+      width: 300,
+      height: 120,
+    });
   });
 
   test('the canvas box keeps the scale and the place of the kept part', () => {
