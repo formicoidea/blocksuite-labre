@@ -147,3 +147,36 @@ one, made to carry text). What it lacks is a place to store the rules.
   `view-menu-commands.unit.spec.ts`, and the integration specs
   `page/database-color-rules.spec.ts` and
   `page/database-page-view-menu.spec.ts`.
+
+## Amendments
+
+### 2026-10-14: the colour is picked from the canvas swatch grid
+
+Amends the Decision's rule menu ("the options' colour entries") and the
+option menu it shares them with. Asked by the product owner: one colour
+picker component across the canvas and the databases.
+
+- The ten menu rows (`selectOptionColorActions`) give way to one menu entry,
+  `selectOptionColorGrid`: the canvas swatch grid `<edgeless-color-panel>`
+  (`@labre/affine-components/color-picker`), five columns, fed by
+  `selectOptionColorPalettes` with the same ten `selectOptionColors` in the
+  same order. An option's menu and a rule's menu both read it.
+- Nothing stored changes. A swatch's value is `selectOptionColors[i].color`
+  itself, the string the rows wrote; the rule colour whitelist
+  (`colorRulePaint`) is untouched. The scheme handed to the grid is
+  irrelevant to these values: they are CSS variable strings the page's theme
+  resolves.
+- A swatch's label (its `aria-label`) is the colour's name through the
+  existing wordings, resolved by the menu's opener and handed to the grid as
+  the `labelWording` fallback, since a popup has no `std`. The current colour
+  is ringed. A pick closes the menu, as a row did; the rule menu then reopens
+  itself as before.
+- `EdgelessColorButton`'s swatch paints through an inline `fill` declaration
+  as well as the `fill` attribute: `var(...)` in an SVG presentation
+  attribute is resolved by Chromium (measured) but is not something every
+  engine promises. A plain canvas colour paints exactly as before.
+- Lost, recorded: the rows were focusable menu items (arrow keys, Enter);
+  the grid's swatches take a pointer only, like the canvas's.
+- Held by `data-view/src/__tests__/color-grid.unit.spec.ts`, the "picking a
+  rule's colour" block of `color-rules.unit.spec.ts`, and
+  `components/src/__tests__/color-button-paint.unit.spec.ts`.

@@ -17,7 +17,7 @@ import { computed } from '@preact/signals-core';
 import { html } from 'lit';
 import { styleMap } from 'lit/directives/style-map.js';
 
-import { selectOptionColorActions } from '../../../../core/component/tags/color-menu.js';
+import { selectOptionColorGrid } from '../../../../core/component/tags/color-menu.js';
 import { selectOptionColors } from '../../../../core/component/tags/colors.js';
 import type { Variable } from '../../../../core/expression/types.js';
 import { popCreateFilter } from '../../../../core/filter/add-filter.js';
@@ -51,7 +51,7 @@ import {
  * what the view's filter and an option's colour already use, nothing drawn
  * anew: the rule list is a menu, a rule's condition is edited by the view
  * filter's own `<filter-root-view>` and `popCreateFilter`, its colour picked
- * from the select options' entries (`selectOptionColorActions`).
+ * from the select options' swatch grid (`selectOptionColorGrid`).
  */
 
 function swatch(color: string) {
@@ -223,7 +223,7 @@ export function popColorRule(
         }),
         menu.group({
           name: 'color',
-          items: selectOptionColorActions({
+          items: selectOptionColorGrid({
             current: colorRulePaint(rule$.peek()?.color ?? ''),
             say: wording,
             select: color => {

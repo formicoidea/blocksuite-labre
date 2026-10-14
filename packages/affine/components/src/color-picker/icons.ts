@@ -1,6 +1,7 @@
 import { isTransparent } from '@labre/affine-model';
 import { cssVarV2 } from '@labre/affine-shared/theme';
 import { html, svg, type TemplateResult } from 'lit';
+import { styleMap } from 'lit/directives/style-map.js';
 
 export function TransparentIcon(hollowCircle = false) {
   const CircleIcon: TemplateResult | null = hollowCircle
@@ -26,6 +27,14 @@ export function TransparentIcon(hollowCircle = false) {
   `;
 }
 
+/**
+ * A swatch paints through `style` as well as the `fill` attribute: its colour
+ * may be a CSS variable string (the database options' chip colours, ADR 0036
+ * amendment of 2026-10-14), and `var(...)` in an SVG presentation attribute
+ * is an engine's courtesy (Chromium resolves it) where a `fill` declaration
+ * is the CSS rule. The inline style wins and paints a plain colour exactly
+ * as the attribute did.
+ */
 export function CircleIcon(color: string) {
   return html`
     <svg
@@ -34,12 +43,14 @@ export function CircleIcon(color: string) {
       height="20"
       viewBox="0 0 20 20"
       fill="${color}"
+      style=${styleMap({ fill: color })}
     >
       <circle cx="10" cy="10" r="10" />
     </svg>
   `;
 }
 
+/** Painted through `style` too, for the reason {@link CircleIcon} gives. */
 export function HollowCircleIcon(color: string) {
   return html`
     <svg
@@ -48,6 +59,7 @@ export function HollowCircleIcon(color: string) {
       height="20"
       viewBox="0 0 20 20"
       fill="${color}"
+      style=${styleMap({ fill: color })}
     >
       <path
         fill-rule="evenodd"
