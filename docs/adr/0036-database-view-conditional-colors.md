@@ -190,3 +190,72 @@ picker component across the canvas and the databases.
   rule's colour" block of `color-rules.unit.spec.ts`,
   `components/src/__tests__/color-button-paint.unit.spec.ts` and
   `components/src/__tests__/color-panel-keyboard.unit.spec.ts`.
+
+### 2026-10-14: framework pages, softened (red zone: widens the accepted stored colours)
+
+Amends Decision §4 ("Only the palette is painted") and the amendment above.
+Asked by the product owner: keep the ten high-contrast chip colours as the
+first page, and offer every framework's palette as softened variants. **Red
+zone**: a rule colour the painter accepts is a stored value, and this widens
+what it accepts; a maintainer's explicit approval is needed.
+
+- **Pages.** The grid is paged like the canvas carousel (ADR 0027), with its
+  own header, list and paging (`renderPaletteCarousel`,
+  `paletteCarouselPage`, hosted by `<dv-color-carousel>` because a menu
+  entry is re-called on every render). Page one is the ten
+  `selectOptionColors`, never hidden; one page follows per
+  `FrameworkPaletteExtension` the editor registered, in the carousel's order
+  (`contributedFrameworkPalettes`). Those register from each framework's
+  flag-gated view extension, now in both scopes (a database lives in a page),
+  so a framework switched off offers no page: tooling only (ADR 0009). The
+  openers hand their `std` down (the kanban header's own, the cell's
+  `chromeStd` through `TagSelectOptions.std`, the view root's for the rule
+  menu); without one, page one alone, in the DOM it had. The grid opens on
+  the page that holds the current colour.
+- **A softened colour is one stored string**,
+  `color-mix(in srgb, #rrggbb NN%, var(--affine-v2-layer-background-primary))`,
+  built from the framework colour's light value (`softenedChipColor`): 30%
+  of the colour; a colour that is already a mix of at most 35% of some colour
+  with white (a pastel) keeps its light look exactly, its source being that
+  colour mixed back at the share that reproduces it on white. Light and dark
+  follow from the theme's own background token, spelled literally because a
+  host may rename `cssVarV2`'s output and keeps the `--affine-v2-*` names as
+  aliases (the Labre app's `@labre/theme`, its ADR-0043). Measured with the
+  tokens the library's theme ships, every swatch of every framework page
+  carries primary text above AA: worst case 8.8:1 in light (black) and
+  5.4:1 in dark (white). A swatch that is not a plain `#rrggbb`
+  (transparent) offers nothing; identical results on one page are kept once.
+  Swatches keep their framework's names. 8 pages today, of 6 to 16 swatches.
+- **What paints.** `colorRulePaint` accepts, besides the palette and its old
+  spellings, a string passing `isSoftenedChipColor`, a strict match of that
+  exact shape: lowercase `#rrggbb`, an integer share from 1 to 100, that one
+  token, nothing before or after. Anything else is still refused and paints
+  nothing. The check reads the string alone, never a flag or a registered
+  palette, so a stored softened colour paints whatever the host switched off.
+  An option's colour has no such check, before or after: it is painted as
+  stored through `styleMap` (a property value, never a declaration list), so
+  nothing changes there.
+- **Nothing stored changes shape.** No field, no migration; values written
+  before paint as before, and a page-one pick writes exactly the
+  `selectOptionColors[i].color` it wrote.
+- **Older clients.** A 0.49 client (checked against `chore: version packages
+(0.49.0)`) reads no `colorRules` at all and paints none; it keeps the
+  field through its writes, as §"What stays loadable" says. It paints an
+  option's softened colour as stored (`multi-tag-view.ts` put
+  `getColorByColor(option.color)` in `background-color` already), so the
+  chip looks the same there, in both themes. A build with this ADR but not
+  this amendment would read a softened rule colour as unknown: the rule
+  still wins and paints nothing. A browser without `color-mix()` (before
+  Chrome 111, Safari 16.2, Firefox 113) drops the declaration and shows the
+  chip's or the row's own background.
+- **Limits.** The rule list names a softened colour by nothing (the stored
+  string does not say which framework swatch it came from). The full page's
+  "This view" offers framework pages only where the view's root renders
+  inside the editor.
+- Held by `data-view/src/__tests__/softened-chip-color.unit.spec.ts` (the
+  validator guard, injection attempts included),
+  `affine/all/src/__tests__/database/softened-chip-colors.unit.spec.ts`
+  (contrast of every swatch in both themes, pastels, dedupe),
+  the "framework pages" block of `color-grid.unit.spec.ts`, the framework
+  pick in `color-rules.unit.spec.ts` and the page-scope case of
+  `framework-palettes-gating.unit.spec.ts`.

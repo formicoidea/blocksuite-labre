@@ -1,7 +1,11 @@
 import { DataViewPropertiesSettingView } from './common/properties.js';
 import { Button } from './component/button/button.js';
 import { Overflow } from './component/overflow/overflow.js';
-import { MultiTagSelect, MultiTagView } from './component/tags/index.js';
+import {
+  DataViewColorCarousel,
+  MultiTagSelect,
+  MultiTagView,
+} from './component/tags/index.js';
 import { DataViewRootUI } from './data-view.js';
 import { RecordDetail } from './detail/detail.js';
 import { RecordField } from './detail/field.js';
@@ -37,6 +41,7 @@ export function coreEffects() {
   customElements.define('data-view-group-title-boolean-view', BooleanGroupView);
   customElements.define('data-view-group-title-date-view', DateGroupView);
   customElements.define('affine-multi-tag-view', MultiTagView);
+  customElements.define('dv-color-carousel', DataViewColorCarousel);
   customElements.define('uni-lit', UniLit);
   customElements.define('uni-any-render', UniAnyRender);
   customElements.define('variable-ref-view', VariableRefView);

@@ -226,6 +226,7 @@ export function popColorRule(
           items: selectOptionColorGrid({
             current: colorRulePaint(rule$.peek()?.color ?? ''),
             say: wording,
+            std: dataViewLogic.root.dataViewRenderer?.std,
             select: color => {
               colorRuleUpdate(view, ruleId, { color });
               self();

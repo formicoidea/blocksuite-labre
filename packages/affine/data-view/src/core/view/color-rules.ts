@@ -2,6 +2,7 @@ import type { DatabaseViewColorRule } from '@labre/affine-model';
 import { nanoid } from '@labre/store';
 
 import { selectOptionColors } from '../component/tags/colors.js';
+import { isSoftenedChipColor } from '../component/tags/softened-colors.js';
 import { evalFilter } from '../filter/eval.js';
 import type { Filter, FilterGroup } from '../filter/types.js';
 import type { SingleView } from '../view-manager/single-view.js';
@@ -60,9 +61,14 @@ export function viewColorRules(data: object | undefined): ViewColorRule[] {
 /**
  * The palette colour a stored value names, or `undefined` for a value this
  * build does not know. Only a palette colour is ever painted: a stored
- * string is never put into a style as is.
+ * string is never put into a style as is, except a softened framework
+ * colour that passes the strict `isSoftenedChipColor` shape (ADR 0036
+ * amendment of 2026-10-14, "framework pages"). That check reads the string
+ * alone, never a flag or a registered palette, so a rule painted with a
+ * framework page paints whatever the host has switched off.
  */
 export function colorRulePaint(color: string): string | undefined {
+  if (isSoftenedChipColor(color)) return color;
   return selectOptionColors.find(
     item => item.color === color || item.oldColor === color
   )?.color;

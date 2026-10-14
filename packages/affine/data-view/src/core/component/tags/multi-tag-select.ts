@@ -18,7 +18,7 @@ import {
   DeleteIcon,
   MoreHorizontalIcon,
 } from '@blocksuite/icons/lit';
-import { ShadowlessElement } from '@labre/std';
+import { type BlockStdScope, ShadowlessElement } from '@labre/std';
 import { nanoid } from '@labre/store';
 import { autoPlacement, offset, shift } from '@floating-ui/dom';
 import { computed, type ReadonlySignal, signal } from '@preact/signals-core';
@@ -280,6 +280,7 @@ export class MultiTagSelect extends SignalWatcher(
             items: selectOptionColorGrid({
               current: option.color,
               say: wording => this.say(wording),
+              std: this.std,
               select: color => {
                 this.tagManager.changeTag({ id: option.id, color });
               },
@@ -548,6 +549,10 @@ export class MultiTagSelect extends SignalWatcher(
   accessor wording: ((wording: ChromeWording) => string) | undefined =
     undefined;
 
+  /** See `TagSelectOptions.std`: the popup renders outside the editor. */
+  @property({ attribute: false })
+  accessor std: BlockStdScope | undefined = undefined;
+
   private say(wording: ChromeWording) {
     return (this.wording ?? englishWording)(wording);
   }
@@ -650,6 +655,11 @@ export type TagSelectOptions = {
   name: string;
   minWidth?: number;
   container?: HTMLElement;
+  /**
+   * The editor the opener renders in, for the colour grid's framework pages
+   * (ADR 0036 amendment of 2026-10-14); absent, the ten chip colours alone.
+   */
+  std?: BlockStdScope;
 } & TagManagerOptions;
 export const popTagSelect = (target: PopupTarget, ops: TagSelectOptions) => {
   if (IS_MOBILE) {
@@ -671,6 +681,7 @@ export const popTagSelect = (target: PopupTarget, ops: TagSelectOptions) => {
   component.optionEdits = ops.optionEdits ?? 'all';
   component.initialDraftText = ops.initialDraftText;
   component.wording = ops.wording;
+  component.std = ops.std;
   component.onComplete = () => {
     ops.onComplete?.();
     remove();
