@@ -1239,6 +1239,16 @@ export const TOOLBAR_UNGROUP: ChromeWording = [
 ];
 
 /**
+ * "Save as template" — a database view's own menu entry, said identically by
+ * a frame's toolbar (`FrameTemplateProvider`). Was `VIEW_MENU_SAVE_TEMPLATE`
+ * (`database-editor`), whose key it keeps.
+ */
+export const SAVE_AS_TEMPLATE: ChromeWording = [
+  'com.labre.database.view-menu.save-template',
+  'Save as template',
+];
+
+/**
  * "Mind Map" as chrome — the mindmap tool's own name (template-panel tab,
  * senior/quick tool tooltips), said identically by the surface-ref slash
  * menu's "Mind Map" item. Was `MINDMAP_TOOLTIP` (`gfx/mindmap`).
@@ -1457,6 +1467,7 @@ export const CHROME_WORDINGS: readonly ChromeWording[] = [
   IMAGE_LABEL,
   TOOLBAR_INSERT_INTO_PAGE,
   TOOLBAR_UNGROUP,
+  SAVE_AS_TEMPLATE,
   MINDMAP_NAME,
   NEW_DOC_LABEL,
   CATALOGUE_OTHER,

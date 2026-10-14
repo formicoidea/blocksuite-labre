@@ -6,6 +6,7 @@ export * from './frame-highlight-manager';
 export * from './frame-manager';
 export * from './frame-order.js';
 export * from './frame-spec';
+export * from './frame-template.js';
 export * from './frame-tool';
 export * from './frame-toolbar';
 export * from './present-tool';

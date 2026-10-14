@@ -17,6 +17,7 @@ import {
   SurfaceRefBlockSchema,
 } from '@labre/affine-model';
 import {
+  FrameTemplateProvider,
   NotificationProvider,
   TOAST_FRAME_INSERTED_INTO_PAGE,
   TOOLBAR_RENAME,
@@ -34,6 +35,7 @@ import { Bound } from '@labre/global/gfx';
 import {
   EditIcon,
   InsertIntoPageIcon,
+  TemplateIcon,
   UngroupIcon,
 } from '@blocksuite/icons/lit';
 import { type BlockComponent, BlockFlavourIdentifier } from '@labre/std';
@@ -42,10 +44,12 @@ import type { ExtensionType } from '@labre/store';
 import { html } from 'lit';
 
 import { EdgelessFrameManagerIdentifier } from './frame-manager';
+import { saveFrameAsTemplate } from './frame-template';
 import {
   FRAME_TOAST_INSERTED_MESSAGE,
   FRAME_TOOLBAR_BACKGROUND,
   FRAME_TOOLBAR_INSERT_INTO_PAGE,
+  FRAME_TOOLBAR_SAVE_AS_TEMPLATE,
   FRAME_TOOLBAR_UNGROUP,
 } from './translations';
 
@@ -128,6 +132,21 @@ const builtinSurfaceToolbarConfig = {
         if (!rootBlock) return;
 
         mountFrameTitleEditor(model, rootBlock);
+      },
+    },
+    {
+      id: 'b.save-as-template',
+      tooltip: 'Save as template',
+      tooltipWording: FRAME_TOOLBAR_SAVE_AS_TEMPLATE,
+      icon: TemplateIcon(),
+      // No host keeping templates, no button: a save that goes nowhere is a lie.
+      when: ctx =>
+        ctx.getSurfaceModelsByType(FrameBlockModel).length === 1 &&
+        !!ctx.std.getOptional(FrameTemplateProvider),
+      run(ctx) {
+        const model = ctx.getCurrentModelByType(FrameBlockModel);
+        if (!model) return;
+        saveFrameAsTemplate(ctx.std, model).catch(console.error);
       },
     },
     {

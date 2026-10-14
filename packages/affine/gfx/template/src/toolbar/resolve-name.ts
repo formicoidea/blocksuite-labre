@@ -13,7 +13,7 @@ import type { Template } from './template-type.js';
  * through this generic seam.
  *
  * `Template.name` itself stays the STABLE identity `templateFromCommand`
- * bakes in (the drag payload, the `repeat` key, the `templateCache` storage
+ * bakes in (the drag payload, the search, the `templateCache` storage
  * key) — and it is ALSO what gets passed as `translateKey`'s fallback, never
  * `command.labelFallback`: most derived templates leave `name` at its default
  * (the command's own fallback, so the two agree anyway), but a few tiles
