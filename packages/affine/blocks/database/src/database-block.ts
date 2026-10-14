@@ -213,6 +213,8 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
       if (newRowMenu) {
         dataSource.serviceSet(NewRowMenuOpenerKey, {
           label: () => translateKey(this.std, ...DATABASE_NEW_RECORD_MORE),
+          canOpen: viewId =>
+            newRowMenu.canOpen?.({ blockId: this.model.id, viewId }) ?? true,
           open: (anchor, viewId) => {
             newRowMenu.open({ anchor, blockId: this.model.id, viewId });
           },

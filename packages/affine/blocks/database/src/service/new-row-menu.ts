@@ -27,7 +27,21 @@ export interface DatabaseNewRowMenuRequest {
  */
 export interface DatabaseNewRowMenuService {
   open(request: DatabaseNewRowMenuRequest): void;
+  /**
+   * Whether this block and view have a menu to open (a base's own page
+   * does, an inline table of it may not). Asked each time "New" renders, so
+   * the answer may change; answer from what you already hold, it runs on
+   * every render. Absent, every view has one, as in the first release of
+   * the seam. `false` draws the single "New" of 0.48.
+   */
+  canOpen?(request: DatabaseNewRowMenuTarget): boolean;
 }
+
+/** Which "New" asks: the request without its anchor, not drawn yet. */
+export type DatabaseNewRowMenuTarget = Omit<
+  DatabaseNewRowMenuRequest,
+  'anchor'
+>;
 
 export const DatabaseNewRowMenuProvider =
   createIdentifier<DatabaseNewRowMenuService>('LabreDatabaseNewRowMenu');

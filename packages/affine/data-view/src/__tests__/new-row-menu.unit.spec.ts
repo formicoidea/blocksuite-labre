@@ -21,7 +21,11 @@ import { DataViewHeaderToolsAddRow } from '../widget-presets/tools/presets/table
  *   where a host applies its default template;
  * - the chevron also adding a row (its click bubbling to "New");
  * - the chevron without its accessible name, or not saying which view asked;
- * - a read-only view offering either.
+ * - a read-only view offering either;
+ * - the chevron drawn where the host said it has nothing to open
+ *   (`canOpen` false: an inline table of a base), or asked once and
+ *   cached, so a host whose answer changes kept a stale chevron; an opener
+ *   without `canOpen` (the seam's first release) losing its chevron.
  */
 
 beforeAll(() => {
@@ -94,6 +98,31 @@ describe('"New" with a host menu', () => {
     chevron.click();
     expect(opener.open).toHaveBeenCalledWith(chevron, 'view-1');
     expect(addRow).toHaveBeenCalledTimes(1);
+  });
+
+  it('draws the chevron only where canOpen says so, asked at each render', async () => {
+    let allowed = false;
+    const canOpen = vi.fn((_viewId: string) => allowed);
+    const opener = { label: () => 'x', canOpen, open: vi.fn() };
+    const { addRow, logic } = setup({ opener });
+    const tool = await mount(logic);
+
+    expect(canOpen).toHaveBeenCalledWith('view-1');
+    expect(chevronOf(tool)).toBeNull();
+    expect(tool.querySelector('.new-record-split')).toBeNull();
+    newOf(tool).click();
+    expect(addRow).toHaveBeenCalledTimes(1);
+
+    allowed = true;
+    tool.requestUpdate();
+    await tool.updateComplete;
+    expect(chevronOf(tool)).not.toBeNull();
+
+    allowed = false;
+    tool.requestUpdate();
+    await tool.updateComplete;
+    expect(chevronOf(tool)).toBeNull();
+    expect(opener.open).not.toHaveBeenCalled();
   });
 
   it('draws nothing on a read-only view', async () => {
