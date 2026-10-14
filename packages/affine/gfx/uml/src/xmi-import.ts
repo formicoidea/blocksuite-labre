@@ -451,10 +451,14 @@ function carryAttr(
   value: string
 ): void {
   const payload = foreignOf(ctx, owner);
-  payload.attrs = {
-    ...payload.attrs,
-    [scope]: { ...payload.attrs?.[scope], [name]: value },
-  };
+  // In place, in bags with no prototype: a copy per attribute was quadratic,
+  // and the keys are the file's (BPMN's keep-helpers, same review).
+  const attrs = (payload.attrs ??= Object.create(null) as Record<
+    string,
+    Record<string, string>
+  >);
+  (attrs[scope] ??= Object.create(null) as Record<string, string>)[name] =
+    value;
   ctx.counts.carried += 1;
 }
 
@@ -467,7 +471,7 @@ function quarantine(
   entry: Omit<InterchangeNote, 'kind' | 'message'>
 ): void {
   const payload = foreignOf(ctx, owner);
-  payload.quarantined = [...(payload.quarantined ?? []), { fragment, reason }];
+  (payload.quarantined ??= []).push({ fragment, reason });
   ctx.counts.quarantined += 1;
   note(ctx, { kind: 'quarantined', ...entry, message: reason });
 }
@@ -519,53 +523,58 @@ function map(ctx: Context, node: XmlNode): string {
  * model everywhere in this format, and anything else on an element Labre draws
  * is something Labre does not model and must not lose.
  */
-const READ_ATTRS: Readonly<Record<string, readonly string[]>> = {
-  packagedElement: [
-    'xmi:type',
-    'type',
-    'xmi:id',
-    'id',
-    'name',
-    'isAbstract',
-    'classifier',
-    'client',
-    'supplier',
-    'memberEnd',
-    'general',
-    'contract',
-    'source',
-    'target',
-    'kind',
-  ],
-  ownedAttribute: [
-    'xmi:type',
-    'type',
-    'xmi:id',
-    'id',
-    'name',
-    'visibility',
-    'isDerived',
-    'isStatic',
-    // `aggregation` is deliberately NOT here: a Property's aggregation is a
-    // fact this reader does not model on an attribute (it models it on an
-    // association END, where the diamond is drawn), so a file that states one —
-    // `aggregation="none"` included, which is a default spelled out — has it
-    // carried rather than swallowed.
-    'association',
-  ],
-  ownedOperation: [
-    'xmi:type',
-    'type',
-    'xmi:id',
-    'id',
-    'name',
-    'visibility',
-    'isAbstract',
-    'isStatic',
-    'isQuery',
-  ],
-  '': ['xmi:type', 'type', 'xmi:id', 'id', 'name'],
-};
+// No prototype: read by a local name the file chose (`<constructor>`), the
+// BPMN reader's TypeError (security review, 2026-10-14).
+const READ_ATTRS: Readonly<Record<string, readonly string[]>> = Object.assign(
+  Object.create(null) as Record<string, readonly string[]>,
+  {
+    packagedElement: [
+      'xmi:type',
+      'type',
+      'xmi:id',
+      'id',
+      'name',
+      'isAbstract',
+      'classifier',
+      'client',
+      'supplier',
+      'memberEnd',
+      'general',
+      'contract',
+      'source',
+      'target',
+      'kind',
+    ],
+    ownedAttribute: [
+      'xmi:type',
+      'type',
+      'xmi:id',
+      'id',
+      'name',
+      'visibility',
+      'isDerived',
+      'isStatic',
+      // `aggregation` is deliberately NOT here: a Property's aggregation is a
+      // fact this reader does not model on an attribute (it models it on an
+      // association END, where the diamond is drawn), so a file that states one —
+      // `aggregation="none"` included, which is a default spelled out — has it
+      // carried rather than swallowed.
+      'association',
+    ],
+    ownedOperation: [
+      'xmi:type',
+      'type',
+      'xmi:id',
+      'id',
+      'name',
+      'visibility',
+      'isAbstract',
+      'isStatic',
+      'isQuery',
+    ],
+    '': ['xmi:type', 'type', 'xmi:id', 'id', 'name'],
+  }
+);
 
 /** Everything on this element the reader did not read, kept verbatim. */
 function carryUnknownAttrs(
@@ -2739,7 +2748,7 @@ export function umlElementsWithForeign(
   // key, because `ForeignInterchange` is one record per format and the SCOPES
   // inside it are what keep two source elements apart.
   const attrs = residue.reduce<Record<string, Record<string, string>>>(
-    (all, [, payload]) => ({ ...all, ...payload.attrs }),
+    (all, [, payload]) => Object.assign(all, payload.attrs),
     { ...own.attrs }
   );
   const quarantined = [

@@ -38,8 +38,24 @@ import { isCompressedDrawio } from './drawio-import.js';
  * than left as a `TypeError` about an undefined constructor.
  */
 
-/** `<diagram …>PAYLOAD</diagram>` — the first page of an `mxfile`. */
-const DIAGRAM = /<diagram\b[^>]*>([\s\S]*?)<\/diagram>/i;
+/**
+ * `PAYLOAD` in `<diagram …>PAYLOAD</diagram>`, the first page of an `mxfile`.
+ *
+ * Two linear searches rather than one lazy regex: `[\s\S]*?` re-scanned the
+ * rest of the file from every `<diagram` that never closed, 13.7 s for 352 KiB
+ * (security review, 2026-10-14). Only the first open tag can match: when it
+ * has no `>` or no close after it, no later one has either.
+ */
+function diagramPayload(text: string): string | undefined {
+  const open = /<diagram\b/i.exec(text);
+  if (!open) return undefined;
+  const start = text.indexOf('>', open.index);
+  if (start < 0) return undefined;
+  const close = /<\/diagram>/gi;
+  close.lastIndex = start + 1;
+  const end = close.exec(text);
+  return end ? text.slice(start + 1, end.index) : undefined;
+}
 
 /**
  * The most a `<diagram>` payload may inflate to: 20 MiB.
@@ -172,7 +188,7 @@ async function readCapped(
 export async function decodeDrawio(text: string): Promise<string> {
   if (!isCompressedDrawio(text)) return text;
 
-  const payload = DIAGRAM.exec(text)?.[1]?.trim();
+  const payload = diagramPayload(text)?.trim();
   if (!payload) throw refusal('emptyDiagram');
 
   const Decompression = (

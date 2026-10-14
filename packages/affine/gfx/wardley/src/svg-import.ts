@@ -177,13 +177,13 @@ function extentPlot(drawn: DrawnWardleyMap): OwmPlot {
     ...drawn.notes.map(note => note.y),
   ];
   if (xs.length === 0) return { x0: 0, y0: 0, width: 1, height: 1 };
-  const x0 = Math.min(...xs);
-  const y0 = Math.min(...ys);
+  const x0 = xs.reduce((a, b) => Math.min(a, b), Infinity);
+  const y0 = ys.reduce((a, b) => Math.min(a, b), Infinity);
   return {
     x0,
     y0,
-    width: Math.max(Math.max(...xs) - x0, 1),
-    height: Math.max(Math.max(...ys) - y0, 1),
+    width: Math.max(xs.reduce((a, b) => Math.max(a, b), -Infinity) - x0, 1),
+    height: Math.max(ys.reduce((a, b) => Math.max(a, b), -Infinity) - y0, 1),
   };
 }
 

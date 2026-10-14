@@ -342,11 +342,16 @@ export const BPMN_KIND_OF_XML: ReadonlyMap<string, BpmnNodeKind> = new Map(
  * there is no such thing in BPMN, where every connecting object is one of
  * these three.
  */
-const EDGE_ROLE_OF_ELEMENT: Readonly<Record<string, string>> = {
-  sequenceFlow: BPMN_ROLE.sequenceFlow,
-  messageFlow: BPMN_ROLE.messageFlow,
-  association: BPMN_ROLE.association,
-};
+// No prototype: it is read by a name the file chose, and `<constructor>` is
+// one (security review, 2026-10-14).
+const EDGE_ROLE_OF_ELEMENT: Readonly<Record<string, string>> = Object.assign(
+  Object.create(null) as Record<string, string>,
+  {
+    sequenceFlow: BPMN_ROLE.sequenceFlow,
+    messageFlow: BPMN_ROLE.messageFlow,
+    association: BPMN_ROLE.association,
+  }
+);
 
 /**
  * The colour extensions D5 quarantines (case 1), by namespace and by prefix.
@@ -741,22 +746,39 @@ interface Band {
  * everywhere in this format, and everything else on an element Labre draws is
  * something Labre does not model and must not lose.
  */
-const READ_ATTRS: Readonly<Record<string, readonly string[]>> = {
-  definitions: ['id', 'name', 'targetNamespace', 'exporter', 'exporterVersion'],
-  participant: ['id', 'name', 'processRef'],
-  process: ['id', 'name', 'isExecutable'],
-  lane: ['id', 'name'],
-  laneSet: ['id', 'name'],
-  textAnnotation: ['id', 'textFormat'],
-  group: ['id', 'categoryValueRef'],
-  dataObjectReference: ['id', 'name', 'dataObjectRef'],
-  sequenceFlow: ['id', 'name', 'sourceRef', 'targetRef'],
-  messageFlow: ['id', 'name', 'sourceRef', 'targetRef'],
-  // `associationDirection` is read only when it says what the exporter would
-  // write anyway; see the edge reader for the other values.
-  association: ['id', 'name', 'sourceRef', 'targetRef', 'associationDirection'],
-  '': ['id', 'name'],
-};
+// No prototype, like `EDGE_ROLE_OF_ELEMENT`: `READ_ATTRS.constructor` was a
+// function, and `.includes` on it the untyped TypeError the review found.
+const READ_ATTRS: Readonly<Record<string, readonly string[]>> = Object.assign(
+  Object.create(null) as Record<string, readonly string[]>,
+  {
+    definitions: [
+      'id',
+      'name',
+      'targetNamespace',
+      'exporter',
+      'exporterVersion',
+    ],
+    participant: ['id', 'name', 'processRef'],
+    process: ['id', 'name', 'isExecutable'],
+    lane: ['id', 'name'],
+    laneSet: ['id', 'name'],
+    textAnnotation: ['id', 'textFormat'],
+    group: ['id', 'categoryValueRef'],
+    dataObjectReference: ['id', 'name', 'dataObjectRef'],
+    sequenceFlow: ['id', 'name', 'sourceRef', 'targetRef'],
+    messageFlow: ['id', 'name', 'sourceRef', 'targetRef'],
+    // `associationDirection` is read only when it says what the exporter would
+    // write anyway; see the edge reader for the other values.
+    association: [
+      'id',
+      'name',
+      'sourceRef',
+      'targetRef',
+      'associationDirection',
+    ],
+    '': ['id', 'name'],
+  }
+);
 
 /** What a `BPMNShape` says that the drawing already carries. */
 const READ_SHAPE_ATTRS = [
@@ -854,8 +876,15 @@ function layOutTheUndrawn(drafts: readonly Draft[], minted: Draft | undefined) {
   );
   const boxes = placed.map(boundOf);
   const maxX =
-    boxes.length > 0 ? Math.max(...boxes.map(box => box.x + box.w)) : 0;
-  const minY = boxes.length > 0 ? Math.min(...boxes.map(box => box.y)) : 0;
+    boxes.length > 0
+      ? boxes
+          .map(box => box.x + box.w)
+          .reduce((a, b) => Math.max(a, b), -Infinity)
+      : 0;
+  const minY =
+    boxes.length > 0
+      ? boxes.map(box => box.y).reduce((a, b) => Math.min(a, b), Infinity)
+      : 0;
 
   let seat = 0;
   for (const draft of drafts) {
@@ -894,12 +923,20 @@ function layOutTheUndrawn(drafts: readonly Draft[], minted: Draft | undefined) {
     )
     .map(boundOf);
   if (inside.length === 0) return;
-  const left = Math.min(...inside.map(box => box.x)) - MINTED_POOL_PADDING;
-  const top = Math.min(...inside.map(box => box.y)) - MINTED_POOL_PADDING;
+  const left =
+    inside.map(box => box.x).reduce((a, b) => Math.min(a, b), Infinity) -
+    MINTED_POOL_PADDING;
+  const top =
+    inside.map(box => box.y).reduce((a, b) => Math.min(a, b), Infinity) -
+    MINTED_POOL_PADDING;
   const right =
-    Math.max(...inside.map(box => box.x + box.w)) + MINTED_POOL_PADDING;
+    inside
+      .map(box => box.x + box.w)
+      .reduce((a, b) => Math.max(a, b), -Infinity) + MINTED_POOL_PADDING;
   const bottom =
-    Math.max(...inside.map(box => box.y + box.h)) + MINTED_POOL_PADDING;
+    inside
+      .map(box => box.y + box.h)
+      .reduce((a, b) => Math.max(a, b), -Infinity) + MINTED_POOL_PADDING;
   minted.props.xywh = new Bound(
     // The name band is drawn INSIDE the frame and is not part of the plot, so
     // the frame starts a band's width further left than the work does.
@@ -1018,6 +1055,13 @@ export function importBpmnXml(
     seenSourceIds.add(sourceId);
   };
 
+  /*
+   * The four keep-helpers fill their bags IN PLACE: a copy of the bag per entry
+   * made 20 000 carried children 7.4 s and 20 000 unknown attributes over a
+   * minute (security review, 2026-10-14). The bags have no prototype, because
+   * their keys are names and ids the file chose (`__proto__` among them).
+   */
+
   /** One attribute, kept under the scope of the element that carried it. */
   const carryAttr = (
     payload: ForeignInterchange,
@@ -1025,10 +1069,12 @@ export function importBpmnXml(
     name: string,
     value: string
   ) => {
-    payload.attrs = {
-      ...payload.attrs,
-      [scope]: { ...payload.attrs?.[scope], [name]: value },
-    };
+    const attrs = (payload.attrs ??= Object.create(null) as Record<
+      string,
+      Record<string, string>
+    >);
+    (attrs[scope] ??= Object.create(null) as Record<string, string>)[name] =
+      value;
     carried++;
   };
 
@@ -1046,10 +1092,11 @@ export function importBpmnXml(
     sourceId: string | undefined,
     announce = true
   ) => {
-    payload.children = {
-      ...payload.children,
-      [scope]: [...(payload.children?.[scope] ?? []), fragmentOf(child)],
-    };
+    const children = (payload.children ??= Object.create(null) as Record<
+      string,
+      string[]
+    >);
+    (children[scope] ??= []).push(fragmentOf(child));
     carried++;
     if (!announce) return;
     note({
@@ -1068,10 +1115,8 @@ export function importBpmnXml(
     scope: string,
     fragment: string
   ) => {
-    payload.di = {
-      ...payload.di,
-      [scope]: [...(payload.di?.[scope] ?? []), fragment],
-    };
+    const di = (payload.di ??= Object.create(null) as Record<string, string[]>);
+    (di[scope] ??= []).push(fragment);
     carried++;
   };
 
@@ -1086,10 +1131,7 @@ export function importBpmnXml(
     // REPORT note below carries the key.
     reasonKey?: string
   ) => {
-    payload.quarantined = [
-      ...(payload.quarantined ?? []),
-      { fragment, reason },
-    ];
+    (payload.quarantined ??= []).push({ fragment, reason });
     quarantined++;
     note({
       kind: 'quarantined',
@@ -1600,13 +1642,10 @@ export function importBpmnXml(
           const drawn =
             shapes.get(inner)?.element ?? diEdges.get(inner)?.element;
           if (!drawn) continue;
-          payload.quarantined = [
-            ...(payload.quarantined ?? []),
-            {
-              fragment: fragmentOf(drawn),
-              reason: BPMN_QUARANTINE_REASON.expanded,
-            },
-          ];
+          (payload.quarantined ??= []).push({
+            fragment: fragmentOf(drawn),
+            reason: BPMN_QUARANTINE_REASON.expanded,
+          });
         }
         continue;
       }

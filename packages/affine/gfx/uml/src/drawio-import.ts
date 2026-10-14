@@ -1185,8 +1185,12 @@ function geometryOf(cell: DrawioCell): UmlBox | undefined {
 function translate(boxes: Record<string, UmlBox>): Record<string, UmlBox> {
   const entries = Object.entries(boxes);
   if (entries.length === 0) return boxes;
-  const minX = Math.min(...entries.map(([, box]) => box.x));
-  const minY = Math.min(...entries.map(([, box]) => box.y));
+  const minX = entries
+    .map(([, box]) => box.x)
+    .reduce((a, b) => Math.min(a, b), Infinity);
+  const minY = entries
+    .map(([, box]) => box.y)
+    .reduce((a, b) => Math.min(a, b), Infinity);
   // `Object.fromEntries` would give the moved bag a prototype back, and the ids
   // in it are still the file's — so it is filled by hand instead.
   const moved: Record<string, UmlBox> = Object.create(null);

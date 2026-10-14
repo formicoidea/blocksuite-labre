@@ -205,8 +205,12 @@ export function recogniseByShape(
   ];
   if (xs.length === 0) return undefined;
   const extent = {
-    w: Math.max(...xs) - Math.min(...xs),
-    h: Math.max(...ys) - Math.min(...ys),
+    w:
+      xs.reduce((a, b) => Math.max(a, b), -Infinity) -
+      xs.reduce((a, b) => Math.min(a, b), Infinity),
+    h:
+      ys.reduce((a, b) => Math.max(a, b), -Infinity) -
+      ys.reduce((a, b) => Math.min(a, b), Infinity),
   };
   const found = axesOf(segments, extent);
   if (!found) return undefined;
