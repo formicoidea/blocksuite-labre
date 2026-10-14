@@ -888,3 +888,11 @@ properties, mapping })`. `saveViewTemplate(template)` hands the current
   need a stored field on the views (`packages/affine/model`, a red zone),
   left to its own change. A template simply carries whatever the view
   stores, so it will carry them once they exist.
+
+### 2026-10-14: conditional colours are ADR 0036
+
+The "Conditional colours are not built" line of the amendment above is
+superseded by [ADR 0036](./0036-database-view-conditional-colors.md): the
+optional `colorRules` field on a view, painted in core, edited from the view
+settings and from "This view" (`database.view.color-rules`), carried by a
+template and remapped by an import.
