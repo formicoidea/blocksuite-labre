@@ -28,3 +28,5 @@ export const DatabaseDataSourceProvider =
   createIdentifier<DatabaseDataSourceProvider>(
     'affine:database-data-source-provider'
   );
+export * from './open-row.js';
+export * from './properties-panel.js';

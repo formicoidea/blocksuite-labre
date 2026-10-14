@@ -14,6 +14,7 @@ import {
   CommentProviderIdentifier,
   DocModeProvider,
   NotificationProvider,
+  PropertiesPanelProvider,
   type TelemetryEventMap,
   TelemetryProvider,
   TOAST_COPIED_TO_CLIPBOARD,
@@ -31,6 +32,7 @@ import {
   type DataViewWidgetProps,
   defineUniComponent,
   ExternalGroupByConfigProvider,
+  PropertiesPanelOpenerKey,
   renderUniLit,
   type SingleView,
   uniMap,
@@ -74,7 +76,12 @@ import {
 import { BlockRenderer } from './detail-panel/block-renderer.js';
 import { NoteRenderer } from './detail-panel/note-renderer.js';
 import { DatabaseSelection } from './selection.js';
-import { DatabaseDataSourceProvider } from './service/index.js';
+import {
+  databaseOpenRowRequest,
+  DatabaseDataSourceProvider,
+  DatabaseOpenRowProvider,
+  openDatabasePropertiesPanel,
+} from './service/index.js';
 import {
   DATABASE_SOURCE_MISSING,
   DATABASE_SOURCE_MISSING_HINT,
@@ -168,6 +175,13 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
   private _buildDataSource(): DataSourceBase {
     const initFn = (dataSource: DataSourceBase) => {
       dataSource.serviceSet(EditorHostKey, this.host);
+      // With a host properties panel, the view options' "Properties" opens
+      // it (ADR 0035 §9b); without, the data-view's popover stays.
+      if (this.std.getOptional(PropertiesPanelProvider)) {
+        dataSource.serviceSet(PropertiesPanelOpenerKey, viewId => {
+          openDatabasePropertiesPanel(this.std, this.model, viewId);
+        });
+      }
       // `{ database: false }` takes view creation away, never the views.
       if (!this.std.getOptional(DatabaseViewCreationIdentifier)) {
         dataSource.serviceSet(ViewCreationOffKey, true);
@@ -214,6 +228,36 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
     this._dataViewRootLogic = undefined;
     this._sourceVersion++;
     this.requestUpdate();
+  }
+
+  /**
+   * A row that is a document opens where the host says, in the view's
+   * `openIn` mode (ADR 0035 §9a, B9); without an opener, or for a row that is
+   * a block, the caller keeps the peek view and the side detail of 0.48.
+   */
+  private openRowThroughHost(data: {
+    view: SingleView;
+    rowId: string;
+    newTab?: boolean;
+  }): boolean {
+    const opener = this.std.getOptional(DatabaseOpenRowProvider);
+    const source = this.dataSource;
+    const viewData = source.viewDataGet(data.view.id) as
+      | { openIn?: unknown }
+      | undefined;
+    const request = databaseOpenRowRequest({
+      hasOpener: !!opener,
+      rowsAreDocuments:
+        source instanceof HostedDataSourceBase && source.rowsAreDocuments,
+      rowId: data.rowId,
+      viewId: data.view.id,
+      blockId: this.blockId,
+      openIn: viewData?.openIn,
+      newTab: data.newTab,
+    });
+    if (!opener || !request) return false;
+    opener.open(request);
+    return true;
   }
 
   private readonly renderTitle = (dataViewLogic: DataViewUILogicBase) => {
@@ -537,6 +581,7 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
       },
       detailPanelConfig: {
         openDetailPanel: (target, data) => {
+          if (this.openRowThroughHost(data)) return Promise.resolve();
           const peekViewService = this.std.getOptional(PeekViewProvider);
           if (peekViewService) {
             const openDoc = (docId: string) => {

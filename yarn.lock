@@ -2030,8 +2030,19 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@labre/affine-database-editor@workspace:packages/affine/database-editor"
   dependencies:
+    "@blocksuite/icons": "npm:^2.2.12"
+    "@labre/affine-block-database": "workspace:*"
+    "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
+    "@labre/affine-shared": "workspace:*"
+    "@labre/affine-widget-slash-menu": "workspace:*"
+    "@labre/data-view": "workspace:*"
+    "@labre/global": "workspace:*"
     "@labre/std": "workspace:*"
+    "@labre/store": "workspace:*"
+    "@preact/signals-core": "npm:^1.8.0"
+    "@vanilla-extract/vite-plugin": "npm:5.1.4"
+    lit: "npm:^3.2.0"
   languageName: unknown
   linkType: soft
 

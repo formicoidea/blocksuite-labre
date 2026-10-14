@@ -15,3 +15,4 @@ export * from './utils/block-utils';
 export * from './view-creation.js';
 export * from './views';
 export * from '@labre/data-view';
+export * from './linked-view.js';

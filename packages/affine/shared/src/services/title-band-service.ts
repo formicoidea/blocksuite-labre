@@ -50,6 +50,14 @@ export interface TitleBandProperty {
   value: unknown;
   /** A read-only property draws its chip and opens no editor. */
   readonly: boolean;
+  /**
+   * Whether the host takes a write of this property's definition (`data`)
+   * through {@link TitleBandService.setData}; absent means `false`. A select
+   * or multi-select whose options can be created and renamed from its chip
+   * says `true`; one whose option ids are its labels (the Labre app's
+   * `tags`) never does.
+   */
+  dataWritable?: boolean;
 }
 
 /**
@@ -89,6 +97,27 @@ export interface TitleBandService {
    * clears its pending state. `value` is `null` to clear.
    */
   set(docId: string, propertyId: string, value: unknown): Promise<void>;
+
+  /**
+   * Write one property's definition, its `data` (a select's `options`): the
+   * band's one definition write, distinct from `set` (product owner,
+   * 2026-10-14). Called only for a property whose `dataWritable` is `true`
+   * on a chip that is not read-only, and only to create an option or rename
+   * one: the chip's tag menu offers no delete, no colour and no reordering.
+   * `data` is the whole new config, the option list in data-view's shape
+   * (`{ id, value, color }`, a created option first, its id minted by the
+   * library). The library never applies it: the option shows once it arrives
+   * through `sheet$`, so a host applies it to its sheet at once and owns the
+   * rollback. Creating an option is followed at once by a `set` that selects
+   * it: the host applies the two in the order it receives them. A rejection is
+   * the host's to report; the band logs it. Absent, every chip's options are
+   * fixed: no "Create", no option menu (the 0.48 band).
+   */
+  setData?(
+    docId: string,
+    propertyId: string,
+    data: Record<string, unknown>
+  ): Promise<void>;
 
   /**
    * The band's "+" (REQ-PR-4): what it does is the host's (open the

@@ -11,6 +11,7 @@ import { css, html, nothing, unsafeCSS } from 'lit';
 import { property } from 'lit/decorators.js';
 
 import { dataViewCssVariable } from '../common/css-variable.js';
+import type { TagOptionEdits } from '../component/tags/multi-tag-select.js';
 import type { DatabaseFlags, PropertyDataUpdater } from '../types.js';
 import { renderUniLit } from '../utils/uni-component/uni-component.js';
 import type { Cell } from '../view-manager/cell.js';
@@ -35,7 +36,7 @@ import type { PropertyMetaConfig } from './property-config.js';
  * for one value would be a second store. What the presets actually read is
  * small, and this seam provides exactly that and nothing more:
  * - of the property: `name$`, `data$`, `type$`, `readonly$`, `dataUpdate`,
- *   `renderer$`, `meta$`, and `dataCanSet`;
+ *   `renderer$`, `meta$`, `dataCanSet` and `optionEdits`;
  * - of the view: `featureFlags$` (the number format), `serviceGet` (the link
  *   cell's editor host) and `readonly$`;
  * - of the cell: `value$` and `valueSet`, with the JSON value the raw one,
@@ -61,6 +62,12 @@ export interface StandaloneCellSource<
    * renames, recolours, reorders or deletes none.
    */
   dataSet?(data: Data): void;
+  /**
+   * Which option edits `dataSet` stands for; absent, all. `'create-rename'`:
+   * a select creates and renames options and deletes, recolours and
+   * reorders none (`TagOptionEdits`).
+   */
+  readonly optionEdits?: TagOptionEdits;
   /** The view's flags (`enable_number_formatting`); absent, all off. */
   readonly featureFlags$?: ReadonlySignal<DatabaseFlags>;
   /** What `view.serviceGet` answers; absent, nothing. */
@@ -130,6 +137,7 @@ class StandaloneCell<RawValue, Data extends Record<string, unknown>>
       meta$: signal(meta),
       renderer$: signal(meta.renderer.cellRenderer),
       dataCanSet: !!source.dataSet,
+      optionEdits: source.optionEdits,
       dataUpdate: (updater: PropertyDataUpdater<Data>) => {
         if (!source.dataSet) return;
         const data = source.data$.peek();
