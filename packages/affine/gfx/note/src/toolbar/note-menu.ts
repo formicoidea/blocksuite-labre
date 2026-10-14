@@ -1,14 +1,10 @@
-import { addAttachments } from '@labre/affine-block-attachment';
+import { pickAndAddAttachments } from '@labre/affine-block-attachment';
 import { insertLinkByQuickSearchCommand } from '@labre/affine-block-bookmark';
-import { addImages } from '@labre/affine-block-image';
+import { pickAndAddImages } from '@labre/affine-block-image';
 import { DefaultTool } from '@labre/affine-block-surface';
 import { MAX_IMAGE_WIDTH } from '@labre/affine-model';
 import { TelemetryProvider, translateKey } from '@labre/affine-shared/services';
 import type { NoteChildrenFlavour } from '@labre/affine-shared/types';
-import {
-  getImageFilesFromLocal,
-  openSingleFileWith,
-} from '@labre/affine-shared/utils';
 import { EdgelessToolbarToolMixin } from '@labre/affine-widget-edgeless-toolbar';
 import { AttachmentIcon, ImageIcon, LinkIcon } from '@blocksuite/icons/lit';
 import type { ToolOptions } from '@labre/std/gfx';
@@ -61,8 +57,7 @@ export class EdgelessNoteMenu extends EdgelessToolbarToolMixin(LitElement) {
 
   private async _addImages() {
     this._imageLoading = true;
-    const imageFiles = await getImageFilesFromLocal();
-    const ids = await addImages(this.edgeless.std, imageFiles, {
+    const ids = await pickAndAddImages(this.edgeless.std, {
       maxWidth: MAX_IMAGE_WIDTH,
     });
     this._imageLoading = false;
@@ -150,9 +145,8 @@ export class EdgelessNoteMenu extends EdgelessToolbarToolMixin(LitElement) {
               .activeMode=${'background'}
               .tooltip=${translateKey(this.edgeless.std, ...GFX_NOTE_MENU_FILE)}
               @click=${async () => {
-                const file = await openSingleFileWith();
-                if (!file) return;
-                await addAttachments(this.edgeless.std, [file]);
+                const ids = await pickAndAddAttachments(this.edgeless.std);
+                if (!ids.length) return;
                 this.gfx.tool.setTool(DefaultTool);
                 this.edgeless.std
                   .getOptional(TelemetryProvider)

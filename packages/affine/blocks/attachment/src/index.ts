@@ -1,4 +1,10 @@
 export * from './adapters';
+export {
+  addAttachmentsFromAssets,
+  addSiblingAttachmentBlocksFromAssets,
+  pickAndAddAttachments,
+  pickAndAddSiblingAttachmentBlocks,
+} from './asset-picker';
 export * from './attachment-block';
 export * from './attachment-service';
 export { attachmentViewDropdownMenu } from './configs/toolbar';

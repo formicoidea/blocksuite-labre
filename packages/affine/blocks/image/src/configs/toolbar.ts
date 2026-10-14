@@ -25,6 +25,7 @@ import { ImageBlockComponent } from '../image-block';
 import { ImageEdgelessBlockComponent } from '../image-edgeless-block';
 import { IMAGE_TOOLBAR_TURN_INTO_CARD_VIEW } from '../translations';
 import { duplicate } from '../utils';
+import { imageReplaceToolbarAction } from './replace-action.js';
 
 const trackBaseProps = {
   category: 'image',
@@ -43,6 +44,9 @@ const builtinToolbarConfig = {
         block?.download();
       },
     },
+    imageReplaceToolbarAction(
+      ctx => ctx.getCurrentBlockByType(ImageBlockComponent)?.model ?? null
+    ),
     {
       id: 'b.caption',
       tooltip: 'Caption',
@@ -142,6 +146,10 @@ const builtinSurfaceToolbarConfig = {
         block?.download();
       },
     },
+    imageReplaceToolbarAction(
+      ctx =>
+        ctx.getCurrentBlockByType(ImageEdgelessBlockComponent)?.model ?? null
+    ),
     {
       id: 'b.caption',
       tooltip: 'Caption',

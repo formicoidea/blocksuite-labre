@@ -321,12 +321,34 @@ export async function addImages(
 
   if (hasExceeded(std, files)) return [];
 
-  const flavour = ImageBlockSchema.model.flavour;
-
   const propsArray = await Promise.all(
     files.map(file => buildPropsWith(std, file))
   );
 
+  return placeImagesOnCanvas(std, propsArray, options);
+}
+
+export type ImageBlockSource = Pick<
+  Required<ImageBlockProps>,
+  'size' | 'sourceId' | 'width' | 'height'
+>;
+
+/**
+ * Lays image blocks out on the canvas around `options.point` (the viewport's
+ * centre without one), in the viewer's active layer, and selects them. Shared
+ * by the files path (`addImages`) and the asset path
+ * (`addImagesFromAssets`), which only differ in where `sourceId` comes from.
+ */
+export function placeImagesOnCanvas(
+  std: BlockStdScope,
+  propsArray: ImageBlockSource[],
+  options: {
+    point?: IVec;
+    maxWidth?: number;
+    shouldTransformPoint?: boolean;
+  }
+): string[] {
+  const flavour = ImageBlockSchema.model.flavour;
   const gfx = std.get(GfxControllerIdentifier);
   const isMultiple = propsArray.length > 1;
   const inTopLeft = isMultiple;

@@ -1,4 +1,11 @@
 export * from './adapters';
+export {
+  addImagesFromAssets,
+  addSiblingImageBlocksFromAssets,
+  pickAndAddImages,
+  pickAndAddSiblingImageBlocks,
+  replaceImage,
+} from './asset-picker';
 export * from './commands';
 export * from './edgeless-clipboard-config';
 export * from './image-block';

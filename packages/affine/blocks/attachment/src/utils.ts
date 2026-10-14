@@ -200,6 +200,26 @@ export async function addAttachments(
     files.map(file => buildPropsWith(std, file, undefined, 'whiteboard'))
   );
 
+  return placeAttachmentsOnCanvas(std, propsArray, point, shouldTransformPoint);
+}
+
+export type AttachmentBlockSource = Pick<
+  AttachmentBlockProps,
+  'name' | 'size' | 'type' | 'sourceId'
+>;
+
+/**
+ * Lays attachment cards out on the canvas around `point` (the viewport's
+ * centre without one), in the viewer's active layer, and selects them. Shared
+ * by the files path (`addAttachments`) and the asset path
+ * (`addAttachmentsFromAssets`).
+ */
+export function placeAttachmentsOnCanvas(
+  std: BlockStdScope,
+  propsArray: AttachmentBlockSource[],
+  point?: IVec,
+  shouldTransformPoint?: boolean
+): string[] {
   const gfx = std.get(GfxControllerIdentifier);
   let { x, y } = gfx.viewport.center;
   if (point) {
