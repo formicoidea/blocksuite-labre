@@ -1,6 +1,6 @@
 import type { BpmnNodeKind } from '@labre/affine-model';
-import { PointStyle, StrokeStyle } from '@labre/affine-model';
-import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
+import { PointStyle, StrokeStyle } from '@labre/affine-model/headless';
+import { NOTATION_NEUTRALS } from '@labre/affine-shared/headless';
 
 /**
  * Visual constants for the BPMN basics. Style "C" (hybrid): spec-accurate
@@ -327,7 +327,10 @@ export const POOL_LANE_NAME_FONT_SIZE = 13;
  * so this file stays the one place a reader looks for a pool's metrics, and so
  * the declaration keeps reading them from where it always did.
  */
-export { POOL_BAND_WIDTH, POOL_LANE_BAND_WIDTH } from '@labre/affine-model';
+export {
+  POOL_BAND_WIDTH,
+  POOL_LANE_BAND_WIDTH,
+} from '@labre/affine-model/headless';
 
 /**
  * How close to an internal lane boundary a pointer has to be, in MODEL units,

@@ -1,4 +1,4 @@
-import { InterchangeImportError } from '@labre/affine-block-surface';
+import { InterchangeImportError } from '@labre/affine-block-surface/interchange';
 
 import { isCompressedDrawio } from './drawio-import.js';
 

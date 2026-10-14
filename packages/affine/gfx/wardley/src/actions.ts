@@ -32,11 +32,8 @@ import {
 
 import { WARDLEY_BACKGROUND } from './background';
 import { WARDLEY_SVG_IMPORT } from './interchange';
-import {
-  type WardleyExportBoard,
-  wardleyBoardFrom,
-  wardleySafeFilename,
-} from './export';
+import { type WardleyExportBoard, wardleySafeFilename } from './export';
+import { wardleyBoardFrom } from './export-board';
 import { WARDLEY_OWM_EXPORT, WARDLEY_OWM_IMPORT } from './interchange';
 import { INERTIA_SIZE, PORTER_DEFAULT_LETTER } from './node/consts';
 import {

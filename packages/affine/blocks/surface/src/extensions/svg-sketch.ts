@@ -3,7 +3,7 @@ import {
   ShapeType,
   StrokeStyle,
   TextAlign,
-} from '@labre/affine-model';
+} from '@labre/affine-model/headless';
 import type { TranslationParams } from '@labre/affine-shared/services';
 import DOMPurify from 'dompurify';
 

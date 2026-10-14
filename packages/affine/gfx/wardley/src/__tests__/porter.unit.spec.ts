@@ -4,7 +4,8 @@ import { Bound } from '@labre/global/gfx';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createWardleyPorter } from '../actions';
-import { exportWardleyOwmWithWarnings, wardleyBoardFrom } from '../export';
+import { exportWardleyOwmWithWarnings } from '../export';
+import { wardleyBoardFrom } from '../export-board';
 import { porterPanelLayout } from '../legend';
 import { WARDLEY_MORPH_FAMILIES } from '../morph';
 import {

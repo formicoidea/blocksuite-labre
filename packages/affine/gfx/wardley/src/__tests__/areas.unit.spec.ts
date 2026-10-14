@@ -16,7 +16,8 @@ import {
 } from '../actions';
 import { wardleyFillColor } from '../toolbar/node-config';
 import { wardleyCommands } from '../commands';
-import { exportWardleyOwmWithWarnings, wardleyBoardFrom } from '../export';
+import { exportWardleyOwmWithWarnings } from '../export';
+import { wardleyBoardFrom } from '../export-board';
 import { WARDLEY_MORPH_FAMILIES } from '../morph';
 import {
   AREA_FILL,

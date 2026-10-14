@@ -8,9 +8,11 @@ import {
   TextAlign,
   UML_FRAME_BAND_HEIGHT,
   UML_LIFELINE_HEAD,
-  type UmlFragmentOperand,
-  type UmlFragmentOperator,
-  type UmlNodeKind,
+} from '@labre/affine-model/headless';
+import type {
+  UmlFragmentOperand,
+  UmlFragmentOperator,
+  UmlNodeKind,
 } from '@labre/affine-model';
 import { Bound, type IVec } from '@labre/global/gfx';
 import type { ForeignInterchange } from '@labre/std/gfx';

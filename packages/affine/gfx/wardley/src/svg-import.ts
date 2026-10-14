@@ -10,9 +10,9 @@ import {
   sketchSvgTree,
   SVG_SKETCH_EMPTY,
   SvgSketchNotebook,
-} from '@labre/affine-block-surface';
-import { FontFamily, TextAlign } from '@labre/affine-model';
-import { fillPlaceholders } from '@labre/affine-shared/services';
+} from '@labre/affine-block-surface/interchange';
+import { FontFamily, TextAlign } from '@labre/affine-model/headless';
+import { fillPlaceholders } from '@labre/affine-shared/headless';
 
 import {
   OWM_DEFAULT_MAP_WIDTH,

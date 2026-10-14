@@ -1,4 +1,4 @@
-import { BOARD_SVG_MARKER_VERSION } from '@labre/affine-block-surface';
+import { BOARD_SVG_MARKER_VERSION } from '@labre/affine-block-surface/interchange';
 
 import { matchLabels, type OwmPlot, owmPlotOf } from './export.js';
 import type { WardleyNodeKeyword } from './import.js';

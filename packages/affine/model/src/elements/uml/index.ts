@@ -1,4 +1,5 @@
 export * from './band.js';
+export * from './consts.js';
 export * from './diagram.js';
 export * from './fragment.js';
 export * from './lifeline.js';

@@ -1,12 +1,16 @@
-import {
-  InterchangeImportError,
-  type InterchangeImportContext,
-  type InterchangeImportResult,
-  type InterchangeNote,
-  type SerializedElementProps,
+import { InterchangeImportError } from '@labre/affine-block-surface/interchange';
+import type {
+  InterchangeImportContext,
+  InterchangeImportResult,
+  InterchangeNote,
+  SerializedElementProps,
 } from '@labre/affine-block-surface';
 import type { BpmnLane, BpmnNodeKind } from '@labre/affine-model';
-import { ConnectorMode, PointStyle, StrokeStyle } from '@labre/affine-model';
+import {
+  ConnectorMode,
+  PointStyle,
+  StrokeStyle,
+} from '@labre/affine-model/headless';
 import { Bound } from '@labre/global/gfx';
 import type { ForeignInterchange } from '@labre/std/gfx';
 

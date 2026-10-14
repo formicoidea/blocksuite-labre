@@ -6,8 +6,8 @@ import {
   StrokeStyle,
   TextAlign,
   TextDecoration,
-  type UmlNodeKind,
-} from '@labre/affine-model';
+} from '@labre/affine-model/headless';
+import type { UmlNodeKind } from '@labre/affine-model';
 import { Bound } from '@labre/global/gfx';
 
 import type { UmlBox } from './component.js';

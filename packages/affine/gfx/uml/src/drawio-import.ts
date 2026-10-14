@@ -1,6 +1,6 @@
 import type { InterchangeNote } from '@labre/affine-block-surface';
 import type { UmlDiagramKind, UmlFragmentOperator } from '@labre/affine-model';
-import { UML_DIAGRAM_KIND_TAG } from '@labre/affine-model';
+import { UML_DIAGRAM_KIND_TAG } from '@labre/affine-model/headless';
 
 import type { UmlBox } from './component.js';
 import { UML_NODE_BOX } from './consts.js';

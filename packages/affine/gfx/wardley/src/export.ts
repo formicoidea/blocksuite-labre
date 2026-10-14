@@ -1,12 +1,12 @@
-import { backgroundPlot } from '@labre/affine-block-surface';
-import {
+import { backgroundPlot } from '@labre/affine-block-surface/interchange';
+import type {
   ConnectorElementModel,
   TextElementModel,
   WardleyBackgroundElementModel,
-  type WardleyNodeKind,
+  WardleyNodeKind,
   WardleyNodeElementModel,
 } from '@labre/affine-model';
-import { safeFilename } from '@labre/affine-shared/utils';
+import { safeFilename } from '@labre/affine-shared/headless';
 import type {
   ForeignInterchange,
   GfxPrimitiveElementModel,
@@ -316,28 +316,6 @@ export interface WardleyExportBoard {
   labels: TextElementModel[];
   notes: TextElementModel[];
   connectors: ConnectorElementModel[];
-}
-
-export function wardleyBoardFrom(
-  elements: readonly GfxPrimitiveElementModel[]
-): WardleyExportBoard {
-  const maps: WardleyBackgroundElementModel[] = [];
-  const nodes: WardleyNodeElementModel[] = [];
-  const labels: TextElementModel[] = [];
-  const notes: TextElementModel[] = [];
-  const connectors: ConnectorElementModel[] = [];
-
-  for (const element of elements) {
-    if (element instanceof WardleyBackgroundElementModel) maps.push(element);
-    else if (element instanceof WardleyNodeElementModel) nodes.push(element);
-    else if (element instanceof ConnectorElementModel) connectors.push(element);
-    else if (element instanceof TextElementModel) {
-      if (element.role === WARDLEY_ROLE.label) labels.push(element);
-      else if (element.role === undefined) notes.push(element);
-    }
-  }
-
-  return { maps, nodes, labels, notes, connectors };
 }
 
 /**

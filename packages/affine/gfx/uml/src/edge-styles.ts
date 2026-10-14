@@ -1,4 +1,4 @@
-import { PointStyle, StrokeStyle } from '@labre/affine-model';
+import { PointStyle, StrokeStyle } from '@labre/affine-model/headless';
 
 /**
  * The UML line notation, as data — read by the TOOL that arms a fresh connector

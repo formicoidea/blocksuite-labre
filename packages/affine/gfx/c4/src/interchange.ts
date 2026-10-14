@@ -2,7 +2,6 @@ import type {
   InterchangeCapability,
   InterchangeExportCapability,
   InterchangeExporter,
-  InterchangeFormat,
 } from '@labre/affine-block-surface';
 import { interchangeCapabilityId } from '@labre/affine-block-surface';
 import {
@@ -13,10 +12,22 @@ import {
   GroupElementModel,
   TextElementModel,
 } from '@labre/affine-model';
-import { safeFilename } from '@labre/affine-shared/utils';
 import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
 
 import { type C4ExportBoard, exportC4Mermaid } from './export.js';
+import {
+  C4_MERMAID_EXTENSION,
+  C4_MERMAID_FORMAT,
+  C4_MERMAID_MIME,
+  c4SafeFilename,
+} from './interchange-headless.js';
+
+export {
+  C4_MERMAID_EXTENSION,
+  C4_MERMAID_FORMAT,
+  C4_MERMAID_MIME,
+  c4SafeFilename,
+} from './interchange-headless.js';
 
 /**
  * C4's entries in the interchange registry (`docs/adr/0012`, P1).
@@ -38,32 +49,6 @@ import { type C4ExportBoard, exportC4Mermaid } from './export.js';
  * that hands over the whole surface gets every board, one document each, which
  * is the honest whole-surface answer for this framework.
  */
-
-/* ── The format ───────────────────────────────────────────────────────── */
-
-/**
- * mermaid C4 source. **Semantic** — the file carries a model, not a picture, so
- * it takes the whole preservation contract the day an importer is written.
- *
- * `.mmd` is the extension the mermaid CLI and every editor plugin watch for.
- * The format carries no `mime`, where `BPMN_XML_FORMAT` carries
- * `application/xml`, and the difference is the truth rather than an oversight:
- * mermaid has no registered media type, so there is none to declare. What a
- * DOWNLOAD is served as is a different question with an answer — `text/plain`,
- * because an invented type is a file some browsers refuse to save — and that
- * answer is stated on the export result, where it belongs.
- *
- * The charset rides along with it because the text is the whole payload: unlike
- * XML, a mermaid file has no prolog to declare its own encoding in.
- */
-export const C4_MERMAID_EXTENSION = '.mmd';
-export const C4_MERMAID_MIME = 'text/plain;charset=utf-8';
-
-export const C4_MERMAID_FORMAT: InterchangeFormat = {
-  id: 'mermaid',
-  tier: 'semantic',
-  extensions: [C4_MERMAID_EXTENSION],
-};
 
 /* ── Pure board helpers ───────────────────────────────────────────────── */
 
@@ -105,15 +90,6 @@ export function c4BoardFrom(
   }
 
   return { boards, nodes, boundaries, connectors, texts, groups };
-}
-
-/**
- * A name a file system will accept, minus the extension: the shared
- * `safeFilename` with C4's fallback, `diagram`. Held to it by
- * `safe-filename-parity.unit.spec.ts`.
- */
-export function c4SafeFilename(raw: string | undefined): string {
-  return safeFilename(raw, 'diagram');
 }
 
 /* ── The capability ───────────────────────────────────────────────────── */

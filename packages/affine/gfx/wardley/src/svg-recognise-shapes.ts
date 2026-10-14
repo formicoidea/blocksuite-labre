@@ -1,4 +1,4 @@
-import { svgFrameOf } from '@labre/affine-block-surface';
+import { svgFrameOf } from '@labre/affine-block-surface/interchange';
 
 import type { OwmPlot } from './export.js';
 import {

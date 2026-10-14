@@ -3,10 +3,12 @@ import {
   UML_FRAGMENT_BAND,
   UML_FRAME_BAND_HEIGHT,
   UML_LIFELINE_HEAD,
-  type UmlDiagramKind,
-  type UmlFragmentOperand,
-  type UmlFragmentOperator,
-  type UmlNodeKind,
+} from '@labre/affine-model/headless';
+import type {
+  UmlDiagramKind,
+  UmlFragmentOperand,
+  UmlFragmentOperator,
+  UmlNodeKind,
 } from '@labre/affine-model';
 
 import {
