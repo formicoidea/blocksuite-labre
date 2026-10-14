@@ -1,5 +1,12 @@
+import {
+  type ChromeWording,
+  fillPlaceholders,
+  translateKey,
+  type TranslationParams,
+} from '@labre/affine-shared/services';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
-import { ShadowlessElement } from '@labre/std';
+import { type BlockStdScope, ShadowlessElement, stdContext } from '@labre/std';
+import { consume } from '@lit/context';
 import { computed, type ReadonlySignal } from '@preact/signals-core';
 import type { PropertyValues } from 'lit';
 import { property } from 'lit/decorators.js';
@@ -21,6 +28,28 @@ export abstract class BaseCellRenderer<
 
   @property({ attribute: false })
   accessor cell!: Cell<RawValue, JsonValue, Data>;
+
+  /**
+   * The editor the cell renders in, for its chrome wordings only; absent
+   * outside one (a test, a detached mount), and then every wording is its
+   * English fallback. Not `std`: database cells already read theirs from
+   * the data source's host.
+   */
+  @consume({ context: stdContext })
+  accessor chromeStd!: BlockStdScope;
+
+  /**
+   * A wording resolved here, while the cell is in the editor's DOM: the
+   * popups a cell opens (the tag menu, the date picker) render outside it
+   * and receive the resolved text.
+   */
+  readonly wording = (
+    wording: ChromeWording,
+    params?: TranslationParams
+  ): string =>
+    this.chromeStd
+      ? translateKey(this.chromeStd, ...wording, params)
+      : fillPlaceholders(wording[1], params);
 
   readonly$ = computed(() => {
     return this.cell.property.readonly$.value;

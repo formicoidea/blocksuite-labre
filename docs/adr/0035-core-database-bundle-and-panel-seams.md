@@ -541,3 +541,30 @@ data shape table and kanban already store (`columns[].hide`, `filter`,
   `all/src/__tests__/database/gallery-list-views.unit.spec.ts` (the real
   block source, no write on load; a hosted source with document rows) and
   `integration-test/src/__tests__/page/database-gallery-list.spec.ts`.
+
+### 2026-10-14: B17 as built, and new views named at the gesture
+
+Amends §12 and the "Not done" line of the gallery and list amendment above.
+
+- **The taxonomy is the telemetry README's "Databases" section**, the
+  contract: `DatabaseViewAdded { viewType, source }`,
+  `DatabaseViewTypeChanged`, `DatabaseGroupChanged`,
+  `DatabaseRowOpened { mode, newTab, rowKind }` and
+  `DatabaseValuesLoadFailed { retryable }`; filters and sorts keep their
+  historical `CreateDatabaseFilter` and `DatabaseSort*` series rather than
+  starting a second one. Each has one emission point (the creating gesture,
+  `DataViewRootUILogic.openDetailPanel`, `GroupTrait`, the values banner), so
+  gallery and list report through the same paths as table and kanban. Code
+  that holds a view but no UI logic reports through the source's
+  `DataViewEventTraceKey`, which the block sets beside `EditorHostKey`.
+- **The boundary with `base.*`** is written in the README: the library
+  reports what happens inside a mounted database view; the host reports
+  what only it observes (a base created, a row page created or moved,
+  membership, sharing) and never re-reports a gesture the library already
+  reported through a seam.
+- **New views are named at the gesture.** Each preset keeps its English
+  `defaultName` and declares `defaultNameKey`; the views bar, the database
+  slash entries and "Turn into a database" write the name resolved through
+  the catalogue (`viewDefaultName`), so no stored name changes and none is
+  re-translated. A host that creates a view itself (the full-page base, the
+  bundle's view bar) passes the resolved name to `viewAdd(type, name)`.

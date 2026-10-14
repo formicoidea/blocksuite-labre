@@ -35,6 +35,7 @@ export class MultiSelectCell extends BaseCellRenderer<
       onComplete: this._editComplete,
       minWidth: 400,
       initialDraftText,
+      wording: this.wording,
     });
   };
 

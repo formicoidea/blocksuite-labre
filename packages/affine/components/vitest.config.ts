@@ -18,6 +18,7 @@ export default defineConfig({
       'src/__tests__/popup-overflow*.unit.spec.ts',
       'src/__tests__/resource-controller*.unit.spec.ts',
       'src/__tests__/filterable-list*.unit.spec.ts',
+      'src/__tests__/date-picker*.unit.spec.ts',
     ],
     testTimeout: 10000,
     environment: 'happy-dom',

@@ -2,6 +2,7 @@ import type { GroupBy, GroupProperty } from '../../core/common/types.js';
 import type { FilterGroup } from '../../core/filter/types.js';
 import type { Sort } from '../../core/sort/types.js';
 import { type BasicViewDataType, viewType } from '../../core/view/data-view.js';
+import { VIEW_NAME_TABLE } from '../../translations.js';
 import { TableSingleView } from './table-view-manager.js';
 
 export const tableViewType = viewType('table');
@@ -29,7 +30,8 @@ export type TableViewData = BasicViewDataType<
   DataType
 >;
 export const tableViewModel = tableViewType.createModel<TableViewData>({
-  defaultName: 'Table View',
+  defaultName: VIEW_NAME_TABLE[1],
+  defaultNameKey: VIEW_NAME_TABLE[0],
   dataViewManager: TableSingleView,
   defaultData: viewManager => {
     return {

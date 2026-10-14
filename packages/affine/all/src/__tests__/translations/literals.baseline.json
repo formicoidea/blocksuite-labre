@@ -305,14 +305,6 @@
       "Move Up",
       "Paste"
     ],
-    "packages/affine/components/src/date-picker/date-picker.ts": [
-      "Clear",
-      "TODAY",
-      "clear",
-      "next month",
-      "previous month",
-      "today"
-    ],
     "packages/affine/data-view/src/core/common/properties.ts": [
       "Properties"
     ],
@@ -320,26 +312,6 @@
       "Property name",
       "Property type",
       "Type"
-    ],
-    "packages/affine/data-view/src/core/component/tags/colors.ts": [
-      "Blue",
-      "Green",
-      "Grey",
-      "Magenta",
-      "Orange",
-      "Purple",
-      "Red",
-      "Teal",
-      "White",
-      "Yellow"
-    ],
-    "packages/affine/data-view/src/core/component/tags/multi-tag-select.ts": [
-      "Create",
-      "Create",
-      "Delete",
-      "Select tag or create one",
-      "Type here...",
-      "Type here..."
     ],
     "packages/affine/data-view/src/core/detail/detail.ts": [
       "Add Property",
@@ -700,7 +672,6 @@
     ],
     "packages/affine/data-view/src/widget-presets/views-bar/views-view.ts": [
       "${} More",
-      "Create ${}",
       "Edit View",
       "Move Left",
       "Move Right",

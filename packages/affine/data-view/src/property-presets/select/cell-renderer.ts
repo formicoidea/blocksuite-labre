@@ -37,6 +37,7 @@ export class SelectCell extends BaseCellRenderer<
       onComplete: this._editComplete,
       minWidth: 400,
       initialDraftText,
+      wording: this.wording,
     });
   };
 

@@ -3,6 +3,7 @@ import {
   popupTargetFromElement,
 } from '@labre/affine-components/context-menu';
 import { DatePicker } from '@labre/affine-components/date-picker';
+import { formatLocale } from '@labre/affine-shared/services';
 import { createLitPortal } from '@labre/affine-components/portal';
 import { IS_MOBILE } from '@labre/global/env';
 import { flip, offset } from '@floating-ui/dom';
@@ -22,6 +23,14 @@ import { datePropertyModelConfig } from './define.js';
 
 export class DateCell extends BaseCellRenderer<number, number> {
   private _prevPortalAbortController: AbortController | null = null;
+
+  /** The picker opens in a popup: its words and locale are resolved here. */
+  private createDatePicker() {
+    const datePicker = new DatePicker();
+    datePicker.wording = this.wording;
+    if (this.chromeStd) datePicker.locale = formatLocale(this.chromeStd);
+    return datePicker;
+  }
 
   private readonly openDatePicker = () => {
     if (
@@ -57,7 +66,7 @@ export class DateCell extends BaseCellRenderer<number, number> {
                 ${this.formattedTempValue$.value}
               </div>`,
             () => {
-              const datePicker = new DatePicker();
+              const datePicker = this.createDatePicker();
               datePicker.padding = 0;
               datePicker.value = this.tempValue$.value?.getTime() ?? Date.now();
               datePicker.onChange = (date: Date) => {
@@ -87,7 +96,7 @@ export class DateCell extends BaseCellRenderer<number, number> {
           middleware: [offset(10), flip()],
         },
         template: () => {
-          const datePicker = new DatePicker();
+          const datePicker = this.createDatePicker();
           datePicker.value = this.tempValue$.value?.getTime() ?? Date.now();
           datePicker.popup = true;
           datePicker.onClear = () => {

@@ -24,7 +24,11 @@ export interface ViewManager {
 
   viewGet(id: string): SingleView | undefined;
 
-  viewAdd(type: DataViewMode): string;
+  /**
+   * `name` is what the creation site resolved (`viewDefaultName`); absent,
+   * the preset's English `defaultName` is written, as in 0.48.
+   */
+  viewAdd(type: DataViewMode, name?: string): string;
 
   viewDelete(id: string): void;
 
@@ -72,13 +76,13 @@ export class ViewManagerBase implements ViewManager {
     this._currentViewId$.value = id;
   }
 
-  viewAdd(type: DataViewMode): string {
+  viewAdd(type: DataViewMode, name?: string): string {
     const meta = this.dataSource.viewMetaGet(type);
     const data = meta.model.defaultData(this);
     const id = this.dataSource.viewDataAdd({
       ...data,
       id: nanoid(),
-      name: meta.model.defaultName,
+      name: name ?? meta.model.defaultName,
       mode: type,
     });
     this.setCurrentView(id);

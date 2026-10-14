@@ -7,9 +7,11 @@ import {
 } from '@labre/affine-components/context-menu';
 import {
   type ChromeWording,
+  fillPlaceholders,
   TOOLBAR_DELETE,
   TOOLBAR_DUPLICATE,
   translateKey,
+  type TranslationParams,
 } from '@labre/affine-shared/services';
 import { type BlockStdScope, stdContext } from '@labre/std';
 import {
@@ -26,6 +28,8 @@ import { css, html, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 
+import type { ViewMeta } from '../../core/view/data-view.js';
+import { viewDefaultName } from '../../core/view/default-name.js';
 import { modeShownAsFallback } from '../../core/view-manager/single-view.js';
 import {
   duplicateAsShownPreset,
@@ -33,6 +37,7 @@ import {
 } from '../../core/view-manager/view-creation.js';
 import { WidgetBase } from '../../core/widget/widget-base.js';
 import {
+  VIEW_CREATE,
   VIEW_DUPLICATE_AS_TABLE,
   VIEW_SHOWN_AS_TABLE,
 } from '../../translations.js';
@@ -102,8 +107,10 @@ export class DataViewHeaderViews extends WidgetBase {
   accessor std!: BlockStdScope;
 
   /** A popup renders outside the host, so wordings are resolved here. */
-  private wording(wording: ChromeWording) {
-    return this.std ? translateKey(this.std, ...wording) : wording[1];
+  private wording(wording: ChromeWording, params?: TranslationParams) {
+    return this.std
+      ? translateKey(this.std, ...wording, params)
+      : fillPlaceholders(wording[1], params);
   }
 
   /** The host switched view creation off for this source (ADR 0035 §5). */
@@ -111,11 +118,19 @@ export class DataViewHeaderViews extends WidgetBase {
     return this.dataSource.serviceGet(ViewCreationOffKey) === true;
   }
 
-  private addView(type: string) {
-    const id = this.viewManager.viewAdd(type);
+  /**
+   * A view on the block's own source: `existing` (B17). The name is resolved
+   * here, at the gesture, and written as is.
+   */
+  private addView(meta: ViewMeta) {
+    const id = this.viewManager.viewAdd(
+      meta.type,
+      viewDefaultName(meta, this.std)
+    );
     this.viewManager.setCurrentView(id);
-    this.dataViewLogic.root.config.eventTrace('AddDatabaseView', {
-      type: type,
+    this.dataViewLogic.root.config.eventTrace('DatabaseViewAdded', {
+      viewType: meta.type,
+      source: 'existing',
     });
   }
 
@@ -124,10 +139,10 @@ export class DataViewHeaderViews extends WidgetBase {
       popupTargetFromElement(event.currentTarget as HTMLElement),
       this.dataSource.viewMetas.map(v => {
         return menu.action({
-          name: v.model.defaultName,
+          name: viewDefaultName(v, this.std),
           prefix: html`<uni-lit .uni=${v.renderer.icon}></uni-lit>`,
           select: () => {
-            this.addView(v.type);
+            this.addView(v);
           },
         });
       })
@@ -175,11 +190,13 @@ export class DataViewHeaderViews extends WidgetBase {
         menu.group({
           items: this.dataSource.viewMetas.map(v => {
             return menu.action({
-              name: `Create ${v.model.defaultName}`,
+              name: this.wording(VIEW_CREATE, {
+                name: viewDefaultName(v, this.std),
+              }),
               hide: () => this.readonly || this.creationOff,
               prefix: PlusIcon(),
               select: () => {
-                this.addView(v.type);
+                this.addView(v);
               },
             });
           }),

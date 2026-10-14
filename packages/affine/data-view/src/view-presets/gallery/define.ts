@@ -1,4 +1,5 @@
 import { viewType } from '../../core/view/data-view.js';
+import { VIEW_NAME_GALLERY } from '../../translations.js';
 import {
   FlatSingleView,
   type FlatViewDataType,
@@ -16,7 +17,8 @@ export class GallerySingleView extends FlatSingleView<GalleryViewData> {
 }
 
 export const galleryViewModel = galleryViewType.createModel<GalleryViewData>({
-  defaultName: 'Gallery View',
+  defaultName: VIEW_NAME_GALLERY[1],
+  defaultNameKey: VIEW_NAME_GALLERY[0],
   dataViewManager: GallerySingleView,
   defaultData: flatViewDefaultData,
 });

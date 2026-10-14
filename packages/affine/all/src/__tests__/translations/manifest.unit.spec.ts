@@ -96,6 +96,8 @@ const CHROME_TABLE_PREFIXES = [
 const KEPT_SEPARATE_CHROME_WORDS: Readonly<Record<string, string>> = {
   Background: 'frame fill vs text highlight background',
   Close: 'two keys already shipped on main',
+  Clear:
+    "a Cynefin domain's name (framework-owned) vs the date picker's clear button",
   Code: 'view toggle vs inline code format',
   Custom: 'custom colour tab vs custom frame preset (gender differs in French)',
   Elements: 'catalogue category header (derived table) vs C4 legend section',
@@ -121,6 +123,10 @@ const KEPT_SEPARATE_CHROME_WORDS: Readonly<Record<string, string>> = {
   Right: 'mind-map layout direction vs text alignment',
   Shape: "a connector's shape vs the shape tool",
   Text: 'text block type vs link text field vs text tool',
+  // `@labre/affine-components` sits below the slash-menu widget, so the date
+  // picker cannot import the slash menu's wording.
+  Today:
+    "the slash menu's insert-today entry vs the date picker's jump-to-today button",
   'What this export could not write down':
     'one key per writer, both shipped on main',
   // The four merge groups (L7 dedupe) that kept a `keepSeparate` key beside

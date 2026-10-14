@@ -1,6 +1,7 @@
 import { FeatureFlagService } from '@labre/affine-shared/services';
 import { isInsideBlockByFlavour } from '@labre/affine-shared/utils';
 import { type SlashMenuConfig } from '@labre/affine-widget-slash-menu';
+import { viewDefaultName } from '@labre/data-view';
 import { DatabaseTableViewIcon } from '@blocksuite/icons/lit';
 
 import type { DataViewBlockComponent } from '../data-view-block';
@@ -40,7 +41,11 @@ export const dataViewSlashMenuConfig: SlashMenuConfig = {
         const dataView = std.view.getBlock(
           dataViewModel.id
         ) as DataViewBlockComponent | null;
-        dataView?.dataSource.viewManager.viewAdd('table');
+        const dataSource = dataView?.dataSource;
+        dataSource?.viewManager.viewAdd(
+          'table',
+          viewDefaultName(dataSource.viewMetaGet('table'), std)
+        );
 
         if (model.text?.length === 0) {
           model.store.deleteBlock(model);

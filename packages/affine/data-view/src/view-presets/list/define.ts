@@ -1,4 +1,5 @@
 import { viewType } from '../../core/view/data-view.js';
+import { VIEW_NAME_LIST } from '../../translations.js';
 import {
   FlatSingleView,
   type FlatViewDataType,
@@ -16,7 +17,8 @@ export class ListSingleView extends FlatSingleView<ListViewData> {
 }
 
 export const listViewModel = listViewType.createModel<ListViewData>({
-  defaultName: 'List View',
+  defaultName: VIEW_NAME_LIST[1],
+  defaultNameKey: VIEW_NAME_LIST[0],
   dataViewManager: ListSingleView,
   defaultData: flatViewDefaultData,
 });
