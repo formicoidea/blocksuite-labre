@@ -7,6 +7,7 @@ import {
 } from '@labre/store';
 
 import type { BlockMeta } from '../../utils/types.js';
+import type { ImageCrop } from './image-crop.js';
 import { ImageBlockTransformer } from './image-transformer.js';
 
 export type ImageBlockProps = {
@@ -17,6 +18,11 @@ export type ImageBlockProps = {
   rotate: number;
   size?: number;
   comments?: Record<string, boolean>;
+  /**
+   * The part of the source this block shows (ADR 0036). Absent means the
+   * whole image; read it through `readImageCrop`, never directly.
+   */
+  crop?: ImageCrop;
 } & Omit<GfxCommonBlockProps, 'scale'> &
   BlockMeta;
 
@@ -33,6 +39,8 @@ const defaultImageProps: ImageBlockProps = {
   rotate: 0,
   size: -1,
   comments: undefined,
+  // `undefined`, so it is never written on load (ADR 0036).
+  crop: undefined,
   'meta:createdAt': undefined,
   'meta:createdBy': undefined,
   'meta:updatedAt': undefined,
