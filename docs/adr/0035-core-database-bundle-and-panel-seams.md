@@ -578,18 +578,31 @@ host had to decide. No stored format changes; no new host seam.
   third wave. The picker itself (B12) reaches the menu through
   `AddViewSourcePicker` (`createSource`, `extraSourceIds`), adapted where
   the tooling extension registers the menu.
-- **The full page is the inline view on a page.** `<affine-database-page
-.std .hostBlockId>` (`DatabasePageHost`, defined by the always-on
-  extension) renders the host's own page editor on the database document,
-  once per `std`, and scopes it with CSS: every other `affine:database` block
-  (the schema blocks) is not drawn, nor the views' block's own title row
-  (the page title is the database's name). Same block, presets, cells,
-  toolbar and row opening as inline; nothing written. Which block hosts the
-  views is passed in, never read from a `labre:*` key. Without that block it
-  says so (`com.labre.database.page.host-missing`).
+- **The full page draws the host block alone.** `<affine-database-page
+.store .extensions .hostBlockId>` (`DatabasePageHost`, defined by the
+  always-on extension) builds a page editor on the database document with
+  the host's page extensions plus `databasePageRootExtension`, which
+  replaces the page root with `<affine-database-page-root>`: it renders the
+  host database block and its own widgets, nothing else. No note, no schema
+  block, none of the page root's widgets (drag handle, block menu, slash
+  menu, toolbar with "Turn into", box selection) and none of its handlers
+  (Backspace on a block selection, ⌘A, the click below that appends a
+  paragraph). A first version drew the whole page editor and hid the schema
+  blocks in CSS; ⌘A then Backspace, ⌘X, a drag or a file drop still reached
+  them, and they carry the sources (labre ADR-0046): losing one loses the
+  database. Two guards hold what is not drawn out of reach, because a
+  flavour keymap fires for a selection on any MODEL descendant, drawn or
+  not: the store's selection is held to the host (a block or text selection
+  strictly inside it, any other selection on it or inside it,
+  `selectionStaysInHost`), and a drag carrying files never reaches the
+  editor. Same block, presets, cells and row opening as inline; nothing
+  written. Which block hosts the views is passed in, never read from a
+  `labre:*` key. Without that block it says so
+  (`com.labre.database.page.host-missing`).
 - Held by `data-view/src/__tests__/views-bar-overflow.unit.spec.ts`,
   `database-editor/src/__tests__/add-view-menu.unit.spec.ts`,
   `database-editor/src/__tests__/database-page.unit.spec.ts`,
   `blocks/database/src/__tests__/hosted-data-source.unit.spec.ts` (`sourceOf`)
-  and `integration-test/…/page/database-views-bar.spec.ts` (1024px and a
-  narrow bar).
+  `integration-test/…/page/database-views-bar.spec.ts` (1024px and a
+  narrow bar) and `integration-test/…/page/database-page-guards.spec.ts`
+  (each destructive gesture replayed, a click below, a file drop).

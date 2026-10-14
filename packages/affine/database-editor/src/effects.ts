@@ -1,4 +1,5 @@
 import { DatabasePageHost } from './database-page/database-page.js';
+import { DatabasePageRoot } from './database-page/database-page-root.js';
 
 /**
  * The custom elements this package defines, called from
@@ -9,4 +10,5 @@ import { DatabasePageHost } from './database-page/database-page.js';
  */
 export function effects() {
   customElements.define('affine-database-page', DatabasePageHost);
+  customElements.define('affine-database-page-root', DatabasePageRoot);
 }
