@@ -261,6 +261,7 @@ export class StandaloneCellHost extends SignalWatcher(
     const cell = this._cell$.peek();
     if (!cell?.beforeEnterEditMode()) return;
     this.isEditing$.value = true;
+    this.onEditingChange?.(true);
     requestAnimationFrame(() => {
       if (this.isEditing$.peek()) cell.afterEnterEditingMode();
     });
@@ -277,6 +278,7 @@ export class StandaloneCellHost extends SignalWatcher(
       this._exiting = false;
     }
     this.isEditing$.value = false;
+    this.onEditingChange?.(false);
   }
 
   private readonly _selectCurrentCell = (editing: boolean) => {
@@ -353,6 +355,16 @@ export class StandaloneCellHost extends SignalWatcher(
   /** Draws the value and opens no editor. */
   @property({ attribute: false })
   accessor readonly = false;
+
+  /**
+   * Told when the editor opens and closes. The gallery and list presets host
+   * a view's own cells here and lock the view's rows while one edits, as a
+   * table or kanban cell does (`view.lockRows`), so a value that changes the
+   * sort or the filter does not move or drop the row under the editor.
+   */
+  @property({ attribute: false })
+  accessor onEditingChange: ((editing: boolean) => void) | undefined =
+    undefined;
 }
 
 declare global {

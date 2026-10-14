@@ -409,6 +409,20 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
       widgetPresets.tools.viewOptions,
       widgetPresets.tools.tableAddRow,
     ],
+    gallery: [
+      widgetPresets.tools.filter,
+      widgetPresets.tools.sort,
+      widgetPresets.tools.search,
+      widgetPresets.tools.viewOptions,
+      widgetPresets.tools.tableAddRow,
+    ],
+    list: [
+      widgetPresets.tools.filter,
+      widgetPresets.tools.sort,
+      widgetPresets.tools.search,
+      widgetPresets.tools.viewOptions,
+      widgetPresets.tools.tableAddRow,
+    ],
   });
 
   private readonly viewSelection$ = computed(() => {
