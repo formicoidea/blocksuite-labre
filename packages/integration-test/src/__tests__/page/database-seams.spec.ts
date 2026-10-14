@@ -9,6 +9,7 @@ import {
   type DatabaseOpenRowRequest,
   insertLinkedDatabaseView,
 } from '@labre/affine/blocks/database';
+import { viewOpenInSet } from '@labre/affine/data-view';
 import type { DatabaseBlockModel } from '@labre/affine/model';
 import {
   type DataSourcePickerDatabase,
@@ -34,6 +35,8 @@ import { setupEditor } from '../utils/setup.js';
  *   own detail when the host registered an opener, or opening in another
  *   mode than the view's stored `openIn`, or a Ctrl/Cmd click not sent as a
  *   new tab; a row that is a block (an inline database) sent to the host;
+ * - the view setting "Open pages in" (`viewOpenInSet`, B8) writing an
+ *   `openIn` the opener does not read back as the request's `mode`;
  * - the view options' "Properties" popping the popover instead of asking the
  *   host's panel, with the wrong view or source;
  * - the library's properties panel element not drawing the view's own
@@ -154,6 +157,29 @@ describe('opening a row (B9)', () => {
     expect(open).toHaveBeenLastCalledWith(
       expect.objectContaining({ docId: rowIds[1], mode: 'full', newTab: true })
     );
+  });
+
+  test('the "Open pages in" pick changes the mode the host receives', async () => {
+    const open = vi.fn<(request: DatabaseOpenRowRequest) => void>();
+    cleanup = await setupEditor('page', [
+      hostSources,
+      DatabaseOpenRowExtension({ open }),
+    ]);
+    const { model, rowIds } = writeDatabase({ hosted: true });
+    await settle();
+    const view = blockOf(model).dataSource.viewManager.viewGet('gallery-1')!;
+    cardOf(model, rowIds[0]!).click();
+    expect(open).toHaveBeenLastCalledWith(
+      expect.objectContaining({ mode: 'side' })
+    );
+    for (const mode of ['center', 'full', 'side'] as const) {
+      expect(viewOpenInSet(view, mode)).toBe(true);
+      await settle();
+      cardOf(model, rowIds[0]!).click();
+      expect(open).toHaveBeenLastCalledWith(
+        expect.objectContaining({ mode, newTab: false })
+      );
+    }
   });
 
   test('a row that is a block keeps the library path', async () => {

@@ -154,7 +154,7 @@ export class TableViewUI extends DataViewUIBase<TableViewUILogic> {
   }
 
   private renderTable() {
-    const groups = this.logic.view.groupTrait.groupsDataList$.value;
+    const groups = this.logic.view.groupTrait.visibleGroups$.value;
     if (groups) {
       return html`
         <div class="${tableGroupsContainerStyle}">
@@ -170,6 +170,9 @@ export class TableViewUI extends DataViewUIBase<TableViewUILogic> {
             }
           )}
           ${this.logic.renderAddGroup(this.logic.view.groupTrait)}
+          <dv-hidden-groups
+            .groupTrait="${this.logic.view.groupTrait}"
+          ></dv-hidden-groups>
         </div>
       `;
     }

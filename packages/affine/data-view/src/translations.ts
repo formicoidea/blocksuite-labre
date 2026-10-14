@@ -66,12 +66,6 @@ export const VIEW_NAME_LIST: ChromeWording = [
   'List View',
 ];
 
-/** The views bar's "+" menu entry that adds a view of a given layout. */
-export const VIEW_CREATE: ChromeWording = [
-  'com.labre.data-view.view.create',
-  'Create {{name}}',
-];
-
 /* ── The tag menu (select and multi-select cells, the chips band) ─────── */
 
 export const TAG_SELECT_PLACEHOLDER: ChromeWording = [
@@ -97,6 +91,94 @@ export const TAG_COLOR_TEAL: ChromeWording = [
   'Teal',
 ];
 
+/* ── The views bar (ADR 0035 B11, labre PRD REQ-DB-7) ─────────────────── */
+
+/** The button standing for the views whose tabs do not fit; `count` of them. */
+export const VIEWS_BAR_MORE: ChromeWording = [
+  'com.labre.data-view.views-bar.more',
+  '{{count}} more',
+];
+
+/** The "+" after the tabs, as its label and tooltip. */
+export const VIEWS_BAR_ADD_VIEW: ChromeWording = [
+  'com.labre.data-view.views-bar.add-view',
+  'New view',
+];
+
+/** A tab's menu: the name field. */
+export const VIEWS_BAR_VIEW_NAME: ChromeWording = [
+  'com.labre.data-view.views-bar.view-name',
+  'View name',
+];
+
+/** A tab's menu: opens the view's settings. */
+export const VIEWS_BAR_EDIT_VIEW: ChromeWording = [
+  'com.labre.data-view.views-bar.edit-view',
+  'Edit view',
+];
+
+export const VIEWS_BAR_MOVE_LEFT: ChromeWording = [
+  'com.labre.data-view.views-bar.move-left',
+  'Move left',
+];
+
+export const VIEWS_BAR_MOVE_RIGHT: ChromeWording = [
+  'com.labre.data-view.views-bar.move-right',
+  'Move right',
+];
+
+/* ── Grouping and row opening, per view (ADR 0035 §8, B8) ───────────── */
+
+/** A group's menu entry: a view setting, shared by everyone (PRD REQ-DB-16). */
+export const DATA_VIEW_GROUP_HIDE: ChromeWording = [
+  'com.labre.data-view.group.hide',
+  'Hide group',
+];
+
+/** A hidden group's button, in the list at the end of the view. */
+export const DATA_VIEW_GROUP_SHOW: ChromeWording = [
+  'com.labre.data-view.group.show',
+  'Show group',
+];
+
+/** The heading of the hidden groups, listed at the end of the view. */
+export const DATA_VIEW_HIDDEN_GROUPS: ChromeWording = [
+  'com.labre.data-view.group.hidden',
+  'Hidden groups',
+];
+
+/** A group's fold toggle: personal, kept on this device only. */
+export const DATA_VIEW_GROUP_COLLAPSE: ChromeWording = [
+  'com.labre.data-view.group.collapse',
+  'Collapse group',
+];
+
+export const DATA_VIEW_GROUP_EXPAND: ChromeWording = [
+  'com.labre.data-view.group.expand',
+  'Expand group',
+];
+
+/** The view setting naming where a row's page opens (`openIn`). */
+export const DATA_VIEW_OPEN_IN: ChromeWording = [
+  'com.labre.data-view.open-in',
+  'Open pages in',
+];
+
+export const DATA_VIEW_OPEN_IN_SIDE: ChromeWording = [
+  'com.labre.data-view.open-in.side',
+  'Side peek',
+];
+
+export const DATA_VIEW_OPEN_IN_CENTER: ChromeWording = [
+  'com.labre.data-view.open-in.center',
+  'Center peek',
+];
+
+export const DATA_VIEW_OPEN_IN_FULL: ChromeWording = [
+  'com.labre.data-view.open-in.full',
+  'Full page',
+];
+
 /** Walked by `PACKAGE_WORDINGS` in `packages/affine/all/src/translations.ts`. */
 export const DATA_VIEW_WORDINGS: readonly ChromeWording[] = [
   VIEW_SHOWN_AS_TABLE,
@@ -107,9 +189,23 @@ export const DATA_VIEW_WORDINGS: readonly ChromeWording[] = [
   VIEW_NAME_CALENDAR,
   VIEW_NAME_GALLERY,
   VIEW_NAME_LIST,
-  VIEW_CREATE,
   TAG_SELECT_PLACEHOLDER,
   TAG_SELECT_TIP,
   TAG_SELECT_CREATE,
   TAG_COLOR_TEAL,
+  VIEWS_BAR_MORE,
+  VIEWS_BAR_ADD_VIEW,
+  VIEWS_BAR_VIEW_NAME,
+  VIEWS_BAR_EDIT_VIEW,
+  VIEWS_BAR_MOVE_LEFT,
+  VIEWS_BAR_MOVE_RIGHT,
+  DATA_VIEW_GROUP_HIDE,
+  DATA_VIEW_GROUP_SHOW,
+  DATA_VIEW_HIDDEN_GROUPS,
+  DATA_VIEW_GROUP_COLLAPSE,
+  DATA_VIEW_GROUP_EXPAND,
+  DATA_VIEW_OPEN_IN,
+  DATA_VIEW_OPEN_IN_SIDE,
+  DATA_VIEW_OPEN_IN_CENTER,
+  DATA_VIEW_OPEN_IN_FULL,
 ];

@@ -53,7 +53,7 @@ export class KanbanViewUILogic extends DataViewUILogicBase<
 
   groups$ = computed(() => {
     const groupTrait = this.groupTrait$.value;
-    return groupTrait?.groupsDataList$.value || [];
+    return groupTrait?.visibleGroups$.value || [];
   });
 
   private get readonly() {
@@ -253,6 +253,10 @@ export class KanbanViewUI extends DataViewUIBase<KanbanViewUILogic> {
       >
         ${this.renderGroups()}
         ${groupTrait ? this.logic.renderAddGroup(groupTrait) : ''}
+        <dv-hidden-groups
+          class="dv-kanban-hidden-groups"
+          .groupTrait="${groupTrait}"
+        ></dv-hidden-groups>
       </div>
     `;
   }

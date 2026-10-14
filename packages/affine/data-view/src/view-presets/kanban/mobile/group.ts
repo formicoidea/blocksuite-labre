@@ -5,15 +5,22 @@ import {
 } from '@labre/affine-components/context-menu';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
 import { AddCursorIcon } from '@blocksuite/icons/lit';
-import { ShadowlessElement } from '@labre/std';
+import { type BlockStdScope, ShadowlessElement, stdContext } from '@labre/std';
+import { consume } from '@lit/context';
 import { css, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { html } from 'lit/static-html.js';
 
 import { GroupTitle } from '../../../core/group-by/group-title.js';
+import {
+  groupToggleStyles,
+  hideGroupAction,
+  renderGroupToggle,
+} from '../../../core/group-by/group-visibility.js';
 import type { Group } from '../../../core/group-by/trait.js';
 import { dragHandler } from '../../../core/utils/wc-dnd/dnd-context.js';
+import { wordingOf } from '../../../core/utils/wording.js';
 import type { MobileKanbanViewUILogic } from './kanban-view-ui-logic.js';
 
 const styles = css`
@@ -43,6 +50,32 @@ const styles = css`
     gap: 12px;
   }
 
+  .mobile-group-body[hidden] {
+    display: none;
+  }
+
+  @media (pointer: coarse) {
+    .mobile-group-header {
+      height: auto;
+      min-height: 44px;
+    }
+  }
+
+  .mobile-group-header-main {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    overflow: hidden;
+  }
+
+  .dv-kanban-hidden-groups {
+    width: 260px;
+    flex-shrink: 0;
+  }
+
   .mobile-add-card {
     display: flex;
     align-items: center;
@@ -58,7 +91,11 @@ const styles = css`
 export class MobileKanbanGroup extends SignalWatcher(
   WithDisposable(ShadowlessElement)
 ) {
-  static override styles = styles;
+  static override styles = [styles, groupToggleStyles];
+
+  /** Absent outside an editor host: the wordings read English. */
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
 
   private readonly clickAddCard = () => {
     this.view.addCard('end', this.group.key);
@@ -85,6 +122,7 @@ export class MobileKanbanGroup extends SignalWatcher(
               this.requestUpdate();
             },
           }),
+          hideGroupAction(this.group, wordingOf(this.std)),
           menu.action({
             name: 'Delete Cards',
             select: () => {
@@ -99,15 +137,20 @@ export class MobileKanbanGroup extends SignalWatcher(
 
   override render() {
     const cards = this.group.rows;
+    // Folded (personal, B8): the header and its count stay, the cards go.
+    const collapsed = this.group.manager.collapsed$(this.group.key).value;
     return html`
       <div class="mobile-group-header" ${dragHandler(this.group.key)}>
-        ${GroupTitle(this.group, {
-          readonly: this.view.readonly$.value,
-          clickAdd: this.clickAddCardInStart,
-          clickOps: this.clickGroupOptions,
-        })}
+        ${renderGroupToggle(this.group, wordingOf(this.std))}
+        <div class="mobile-group-header-main">
+          ${GroupTitle(this.group, {
+            readonly: this.view.readonly$.value,
+            clickAdd: this.clickAddCardInStart,
+            clickOps: this.clickGroupOptions,
+          })}
+        </div>
       </div>
-      <div class="mobile-group-body">
+      <div class="mobile-group-body" ?hidden="${collapsed}">
         ${repeat(
           cards,
           row => row.rowId,

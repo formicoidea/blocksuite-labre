@@ -106,7 +106,7 @@ export class MobileTableViewUI extends DataViewUIBase<MobileTableViewUILogic> {
   }
 
   private renderTable() {
-    const groups = this.logic.view.groupTrait.groupsDataList$.value;
+    const groups = this.logic.view.groupTrait.visibleGroups$.value;
     if (groups) {
       return html`
         <div style="display:flex;flex-direction: column;gap: 16px;">
@@ -122,6 +122,9 @@ export class MobileTableViewUI extends DataViewUIBase<MobileTableViewUILogic> {
             }
           )}
           ${this.logic.renderAddGroup(this.logic.view.groupTrait)}
+          <dv-hidden-groups
+            .groupTrait="${this.logic.view.groupTrait}"
+          ></dv-hidden-groups>
         </div>
       `;
     }

@@ -2034,6 +2034,7 @@ __metadata:
     "@labre/affine-block-database": "workspace:*"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
+    "@labre/affine-model": "workspace:*"
     "@labre/affine-shared": "workspace:*"
     "@labre/affine-widget-slash-menu": "workspace:*"
     "@labre/data-view": "workspace:*"
@@ -2043,6 +2044,8 @@ __metadata:
     "@preact/signals-core": "npm:^1.8.0"
     "@vanilla-extract/vite-plugin": "npm:5.1.4"
     lit: "npm:^3.2.0"
+    rxjs: "npm:^7.8.1"
+    vitest: "npm:^3.2.3"
   languageName: unknown
   linkType: soft
 

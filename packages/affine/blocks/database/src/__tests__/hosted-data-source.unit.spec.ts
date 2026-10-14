@@ -238,6 +238,22 @@ describe('HostedDataSourceBase: sources (B1)', () => {
     expect(views$.value).toBe(views);
   });
 
+  it('sourceOf resolves any source for the "+ view" menu (B11), writing nothing', () => {
+    const { model, write } = hostModel([
+      { id: 'v1', name: 'Table', mode: 'table', sourceId: 's1' },
+    ]);
+    const s2: HostedSource = { schema: schema('schema-2'), rows: signal([]) };
+    const hosted = new FakeHostedSource(model, id => (id === 's2' ? s2 : null));
+    expect(hosted.resolvesSources).toBe(true);
+    expect(hosted.sourceOf('s2')).toBe(s2);
+    expect(hosted.sourceOf('gone')).toBe(null);
+
+    const inline = new FakeHostedSource(model);
+    expect(inline.resolvesSources).toBe(false);
+    expect(inline.sourceOf('s2')?.schema).toBe(model);
+    expect(write).not.toHaveBeenCalled();
+  });
+
   it('follows a source whose rows change', () => {
     const rows = signal(['a']);
     const { model } = hostModel([

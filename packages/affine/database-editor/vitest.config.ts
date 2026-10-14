@@ -5,6 +5,8 @@ export default defineConfig({
   esbuild: {
     target: 'es2018',
   },
+  // The database block this package extends styles itself with
+  // vanilla-extract (`.css.ts`), which needs its plugin to load in a test.
   plugins: [vanillaExtractPlugin()],
   test: {
     root: './packages/affine/database-editor',

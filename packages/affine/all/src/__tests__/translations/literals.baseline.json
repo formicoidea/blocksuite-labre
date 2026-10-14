@@ -376,7 +376,6 @@
     ],
     "packages/affine/data-view/src/core/group-by/setting.ts": [
       "Day",
-      "Group",
       "Group By",
       "Group By",
       "Group by",
@@ -656,26 +655,11 @@
     ],
     "packages/affine/data-view/src/widget-presets/tools/presets/view-options/view-options.ts": [
       "${} shown",
-      "Delete",
-      "Duplicate",
-      "Filter",
-      "Group",
-      "Layout",
-      "Layout",
-      "Properties",
       "Show Vertical lines",
       "Show block icon",
       "Sort",
       "Sort",
-      "View name",
       "View settings"
-    ],
-    "packages/affine/data-view/src/widget-presets/views-bar/views-view.ts": [
-      "${} More",
-      "Edit View",
-      "Move Left",
-      "Move Right",
-      "View name"
     ],
     "packages/affine/widgets/keyboard-toolbar/src/config.ts": [
       "BulletedList",
