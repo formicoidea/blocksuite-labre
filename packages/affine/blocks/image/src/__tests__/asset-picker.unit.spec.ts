@@ -180,6 +180,29 @@ describe('replaceImage', () => {
     expect(store.canUndo).toBe(false);
   });
 
+  it('drops the crop of the old picture in the same undo step', async () => {
+    const { store, ids, image } = editorStore();
+    const crop = { x: 0.5, y: 0, w: 0.5, h: 1 };
+    store.updateBlock(image(ids.canvasImage), {
+      crop,
+      xywh: '[110,20,100,100]',
+    });
+    store.resetHistory();
+
+    expect(
+      await replaceImage(stdFor(store), image(ids.canvasImage), square)
+    ).toBe(true);
+    const model = image(ids.canvasImage);
+    expect(model.props.crop).toBeUndefined();
+    expect(model.props.sourceId).toBe('new');
+    expect(model.props.xywh).toBe('[110,20,100,100]');
+
+    store.undo();
+    expect({ ...model.props.crop }).toEqual(crop);
+    expect(model.props.sourceId).toBe('old');
+    expect(store.canUndo).toBe(false);
+  });
+
   it('writes nothing for the image already shown', async () => {
     const { store, ids, image } = editorStore();
     const same = { ...square, sourceId: 'old' };
