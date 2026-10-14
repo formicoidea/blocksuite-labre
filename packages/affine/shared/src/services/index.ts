@@ -1,4 +1,5 @@
 export * from './artefact-catalogue-service';
+export * from './asset-picker-service';
 export * from './audit-service';
 export * from './auto-clear-selection-service';
 export * from './block-meta-service';

@@ -1,9 +1,13 @@
-import { getImageFilesFromLocal } from '@labre/affine-shared/utils';
 import type { Command } from '@labre/std';
 import type { BlockModel } from '@labre/store';
 
-import { addSiblingImageBlocks } from '../utils';
+import { pickAndAddSiblingImageBlocks } from '../asset-picker.js';
 
+/**
+ * Inserts images next to the selection: from the host's asset dialog
+ * (`AssetPickerProvider`) when there is one, from the system file chooser
+ * otherwise.
+ */
 export const insertImagesCommand: Command<
   {
     selectedModels?: BlockModel[];
@@ -23,18 +27,16 @@ export const insertImagesCommand: Command<
       : selectedModels[selectedModels.length - 1];
 
   return next({
-    insertedImageIds: getImageFilesFromLocal()
-      .then(files => addSiblingImageBlocks(std, files, targetModel, placement))
-      .then(result => {
-        if (
-          result.length &&
-          removeEmptyLine &&
-          targetModel.text?.length === 0
-        ) {
-          std.store.deleteBlock(targetModel);
-        }
+    insertedImageIds: pickAndAddSiblingImageBlocks(
+      std,
+      targetModel,
+      placement
+    ).then(result => {
+      if (result.length && removeEmptyLine && targetModel.text?.length === 0) {
+        std.store.deleteBlock(targetModel);
+      }
 
-        return result;
-      }),
+      return result;
+    }),
   });
 };

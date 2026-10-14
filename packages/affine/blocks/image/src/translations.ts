@@ -60,6 +60,15 @@ export const IMAGE_TOAST_READ_SIZE_FAILED: ChromeWording = [
 ];
 
 /**
+ * The image toolbar's "Replace" (`configs/replace-action.ts`), offered only
+ * with a host asset dialog (`AssetPickerProvider`).
+ */
+export const IMAGE_TOOLBAR_REPLACE: ChromeWording = [
+  'com.labre.image.toolbar.replace',
+  'Replace',
+];
+
+/**
  * This package's contribution to the translation-key manifest, listed in
  * `PACKAGE_WORDINGS` under source `chrome`
  * (`packages/affine/all/src/translations.ts`). The shared verbs it reuses
@@ -75,4 +84,5 @@ export const IMAGE_WORDINGS: readonly ChromeWording[] = [
   IMAGE_TOAST_DOWNLOADING,
   IMAGE_TOAST_COPIED,
   IMAGE_TOAST_READ_SIZE_FAILED,
+  IMAGE_TOOLBAR_REPLACE,
 ];

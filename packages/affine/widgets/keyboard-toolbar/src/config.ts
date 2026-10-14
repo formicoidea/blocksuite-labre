@@ -1,4 +1,4 @@
-import { addSiblingAttachmentBlocks } from '@labre/affine-block-attachment';
+import { pickAndAddSiblingAttachmentBlocks } from '@labre/affine-block-attachment';
 import { insertDatabaseBlockCommand } from '@labre/affine-block-database';
 import { insertEmptyEmbedIframeCommand } from '@labre/affine-block-embed';
 import { insertImagesCommand } from '@labre/affine-block-image';
@@ -46,11 +46,7 @@ import {
 } from '@labre/affine-shared/commands';
 import { REFERENCE_NODE } from '@labre/affine-shared/consts';
 import type { AffineTextStyleAttributes } from '@labre/affine-shared/types';
-import {
-  createDefaultDoc,
-  openSingleFileWith,
-  type Signal,
-} from '@labre/affine-shared/utils';
+import { createDefaultDoc, type Signal } from '@labre/affine-shared/utils';
 import type { AffineLinkedDocWidget } from '@labre/affine-widget-linked-doc';
 import { viewPresets } from '@labre/data-view/view-presets';
 import { assertType } from '@labre/global/utils';
@@ -422,13 +418,7 @@ const contentMediaToolGroup: KeyboardToolPanelGroup = {
         const model = selectedModels?.[0];
         if (!model) return;
 
-        const file = await openSingleFileWith();
-        if (!file) return;
-
-        await addSiblingAttachmentBlocks(std, [file], model);
-        if (model.text?.length === 0) {
-          std.store.deleteBlock(model);
-        }
+        await pickAndAddSiblingAttachmentBlocks(std, model);
       },
     },
     {
@@ -1044,13 +1034,7 @@ export const defaultKeyboardToolbarConfig: KeyboardToolbarConfig = {
         const model = selectedModels?.[0];
         if (!model) return;
 
-        const file = await openSingleFileWith();
-        if (!file) return;
-
-        await addSiblingAttachmentBlocks(std, [file], model);
-        if (model.text?.length === 0) {
-          std.store.deleteBlock(model);
-        }
+        await pickAndAddSiblingAttachmentBlocks(std, model);
       },
     },
     {
