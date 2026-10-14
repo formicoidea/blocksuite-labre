@@ -1,3 +1,11 @@
+import {
+  effects as colorPickerEffects,
+  type FrameworkPalette,
+} from '@labre/affine-components/color-picker';
+import {
+  effects as menuEffects,
+  popupTargetFromElement,
+} from '@labre/affine-components/context-menu';
 import type { DatabaseViewColorRule } from '@labre/affine-model';
 import { signal } from '@preact/signals-core';
 import {
@@ -11,6 +19,7 @@ import {
 } from 'vitest';
 
 import { selectOptionColors } from '../core/component/tags/colors.js';
+import { softenedChipColor } from '../core/component/tags/softened-colors.js';
 import { coreEffects } from '../core/effect.js';
 import { evalFilter } from '../core/filter/eval.js';
 import type { Filter } from '../core/filter/types.js';
@@ -27,6 +36,7 @@ import {
   viewColorRulesSet,
   viewRowColor,
 } from '../core/view/color-rules.js';
+import type { DataViewUILogicBase } from '../core/view/data-view-base.js';
 import type { ViewManager } from '../core/view-manager/view-manager.js';
 import { propertyPresetsEffects } from '../property-presets/effect.js';
 import { propertyPresets } from '../property-presets/index.js';
@@ -36,6 +46,7 @@ import { galleryEffects } from '../view-presets/gallery/effect.js';
 import { GalleryViewUILogic } from '../view-presets/gallery/gallery-view.js';
 import { GallerySingleView } from '../view-presets/gallery/index.js';
 import { viewPresets } from '../view-presets/index.js';
+import { popColorRule } from '../widget-presets/tools/presets/view-options/color-rules-menu.js';
 import { listEffects } from '../view-presets/list/effect.js';
 import { ListSingleView } from '../view-presets/list/index.js';
 import { ListViewUILogic } from '../view-presets/list/list-view.js';
@@ -56,7 +67,10 @@ import { ListViewUILogic } from '../view-presets/list/list-view.js';
  * - a gallery card or a list row not taking its colour, or keeping it once
  *   the value it matched changed;
  * - the view filter's own reading changed by the colour rules' stricter
- *   one (`evalFilter`'s `undecided`).
+ *   one (`evalFilter`'s `undecided`);
+ * - a rule's colour picked from the swatch grid written as anything but
+ *   the option colour string the menu rows wrote, or written on a
+ *   read-only view.
  */
 
 beforeAll(() => {
@@ -66,6 +80,8 @@ beforeAll(() => {
   }
   if (!customElements.get('dv-gallery-view-ui')) galleryEffects();
   if (!customElements.get('dv-list-view-ui')) listEffects();
+  if (!customElements.get('affine-menu')) menuEffects();
+  if (!customElements.get('edgeless-color-panel')) colorPickerEffects();
 });
 
 afterEach(() => {
@@ -312,6 +328,124 @@ describe('writing the rules', () => {
     expect(fallback.viewDataUpdate).not.toHaveBeenCalled();
   });
 });
+
+describe("picking a rule's colour", () => {
+  type Swatch = HTMLElement & { color: string; active: boolean };
+  async function pick(readonly: boolean, index: number) {
+    const ctx = setup({
+      colorRules: [rule('a', red!.color, statusIs('todo'))],
+      readonly,
+    });
+    const anchor = document.createElement('div');
+    document.body.append(anchor);
+    const back = vi.fn();
+    popColorRule(
+      popupTargetFromElement(anchor),
+      {
+        view: ctx.view,
+        root: { dataViewRenderer: undefined },
+      } as unknown as DataViewUILogicBase,
+      'a',
+      back,
+      ([, fallback]) => fallback
+    );
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    const panel = document.body.querySelector<
+      HTMLElement & { updateComplete: Promise<unknown> }
+    >('edgeless-color-panel');
+    expect(panel).not.toBeNull();
+    await panel!.updateComplete;
+    const swatches = [
+      ...(panel!.shadowRoot?.querySelectorAll<Swatch>(
+        'edgeless-color-button'
+      ) ?? []),
+    ];
+    expect(swatches.map(swatch => swatch.color)).toEqual(
+      selectOptionColors.map(item => item.color)
+    );
+    expect(swatches.findIndex(swatch => swatch.active)).toBe(0);
+    swatches[index]!.click();
+    return ctx;
+  }
+
+  it('writes the option colour string the menu rows wrote', async () => {
+    const { viewData } = await pick(false, 4);
+    expect((viewData.value.colorRules as ViewColorRule[])[0]?.color).toBe(
+      selectOptionColors[4]!.color
+    );
+  });
+
+  it('writes nothing on a read-only view', async () => {
+    const { viewDataUpdate, viewData } = await pick(true, 4);
+    expect(viewDataUpdate).not.toHaveBeenCalled();
+    expect((viewData.value.colorRules as ViewColorRule[])[0]?.color).toBe(
+      red!.color
+    );
+  });
+
+  it("offers the editor's framework pages and writes the softened colour", async () => {
+    const softened = softenedChipColor('#5b9cf6')!;
+    const ctx = setup({
+      colorRules: [rule('a', softened, statusIs('todo'))],
+      readonly: false,
+    });
+    const anchor = document.createElement('div');
+    document.body.append(anchor);
+    popColorRule(
+      popupTargetFromElement(anchor),
+      {
+        view: ctx.view,
+        root: { dataViewRenderer: { std: fakeStd(WARDLEY_LIKE) } },
+      } as unknown as DataViewUILogicBase,
+      'a',
+      vi.fn(),
+      ([, fallback]) => fallback
+    );
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    const carousel = document.body.querySelector<
+      HTMLElement & { updateComplete: Promise<unknown> }
+    >('dv-color-carousel');
+    expect(carousel).not.toBeNull();
+    await carousel!.updateComplete;
+    const panel = carousel!.shadowRoot!.querySelector<
+      HTMLElement & { updateComplete: Promise<unknown> }
+    >('edgeless-color-panel')!;
+    await panel.updateComplete;
+    const swatches = [
+      ...panel.shadowRoot!.querySelectorAll<Swatch>('edgeless-color-button'),
+    ];
+    // The stored softened colour opens its own page, ringed.
+    expect(swatches.map(swatch => swatch.color)).toEqual([
+      softenedChipColor('#3ec9f2'),
+      softened,
+    ]);
+    expect(swatches.findIndex(swatch => swatch.active)).toBe(1);
+    swatches[0]!.click();
+    expect((ctx.viewData.value.colorRules as ViewColorRule[])[0]?.color).toBe(
+      softenedChipColor('#3ec9f2')
+    );
+  });
+});
+
+const WARDLEY_LIKE: FrameworkPalette = {
+  framework: 'wardley',
+  labelWording: ['com.labre.framework.wardley', 'Wardley'],
+  palettes: [
+    { key: 'Wonder', value: '#3ec9f2' },
+    { key: 'Peace', value: '#5b9cf6' },
+    { key: 'Transparent', value: 'transparent' },
+  ],
+};
+
+/** The two things the grid reads off an editor: its palettes, its words. */
+function fakeStd(...palettes: FrameworkPalette[]) {
+  return {
+    provider: {
+      getAll: () => new Map(palettes.map(p => [p.framework, p])),
+    },
+    getOptional: () => null,
+  };
+}
 
 async function settle(root: Element) {
   for (let pass = 0; pass < 4; pass++) {

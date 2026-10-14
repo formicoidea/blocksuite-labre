@@ -79,6 +79,13 @@ export class DddContextMapViewExtension extends ViewExtensionProvider {
 
   override setup(context: ViewExtensionContext) {
     super.setup(context);
+    // The Context Map's page of the colour pickers' carousel
+    // (`docs/adr/0027`). Here, in the flag-gated extension, because offering hues
+    // is TOOLING — the colours already painted on a stored map are content
+    // and do not move (`docs/adr/0009`).
+    // Both scopes, not the canvas alone: the database colour grid offers
+    // this page in a page too, softened (ADR 0036 amendment of 2026-10-14).
+    context.register(FrameworkPaletteExtension(CONTEXT_MAP_FRAMEWORK_PALETTE));
     if (this.isEdgeless(context.scope)) {
       context.register(ValidationRuleExtension(CONTEXT_MAP_RULES));
       context.register(ValidationProfileExtension(CONTEXT_MAP_PROFILES));
@@ -103,13 +110,6 @@ export class DddContextMapViewExtension extends ViewExtensionProvider {
       // profile, so it goes with the flag without either side naming the other.
       context.register(ReadingProfileExtension(CONTEXT_MAP_READING));
       context.register(contextMapSeniorTool);
-      // The Context Map's page of the colour pickers' carousel
-      // (`docs/adr/0027`). Here, beside the senior tool, because offering hues
-      // is TOOLING — the colours already painted on a stored map are content
-      // and do not move (`docs/adr/0009`).
-      context.register(
-        FrameworkPaletteExtension(CONTEXT_MAP_FRAMEWORK_PALETTE)
-      );
       // The Templates-panel category, gated by this framework's own flag like
       // every other framework's: a template is tooling (`docs/adr/0009`), and it
       // is DERIVED from this package's commands, so it registers where they do.

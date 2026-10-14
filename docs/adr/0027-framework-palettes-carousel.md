@@ -248,3 +248,17 @@ where the picker OPENS, the carousel decides what it OFFERS.
 - **Persisting the page the user last paged to** (per document, per
   framework): more state to store and to migrate, for a preference the origin
   rule already guesses correctly.
+
+## Amendments
+
+### 2026-10-14: registered in both scopes
+
+Amends Decision §3. A framework registers its palette from its flag-gated
+view extension as before, but outside its edgeless-only block, so a page
+editor has it too: the database colour grid offers each one, softened into
+chip colours, in a page as on the canvas (ADR 0036 amendment of 2026-10-14,
+"framework pages"). The canvas carousel reads the list in edgeless only, as
+before; a flag switched off still removes the page in both scopes
+(`framework-palettes-gating.unit.spec.ts`). The list is read through
+`contributedFrameworkPalettes(std)`, which `frameworkPaletteGroups` now
+calls too.

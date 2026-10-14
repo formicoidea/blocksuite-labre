@@ -98,6 +98,13 @@ export class EdgyViewExtension extends ViewExtensionProvider {
 
   override setup(context: ViewExtensionContext) {
     super.setup(context);
+    // EDGY's page of the colour pickers' carousel (`docs/adr/0027`). Here,
+    // in the flag-gated extension, because offering hues is TOOLING — the colours
+    // already painted on a stored board are content and do not move
+    // (`docs/adr/0009`).
+    // Both scopes, not the canvas alone: the database colour grid offers
+    // this page in a page too, softened (ADR 0036 amendment of 2026-10-14).
+    context.register(FrameworkPaletteExtension(EDGY_FRAMEWORK_PALETTE));
     if (this.isEdgeless(context.scope)) {
       context.register(ValidationRuleExtension(EDGY_RULES));
       context.register(ValidationProfileExtension(EDGY_PROFILES));
@@ -134,11 +141,6 @@ export class EdgyViewExtension extends ViewExtensionProvider {
       // profile, so it goes with the flag without either side naming the other.
       context.register(ReadingProfileExtension(EDGY_READING));
       context.register(edgySeniorTool);
-      // EDGY's page of the colour pickers' carousel (`docs/adr/0027`). Here,
-      // beside the senior tool, because offering hues is TOOLING — the colours
-      // already painted on a stored board are content and do not move
-      // (`docs/adr/0009`).
-      context.register(FrameworkPaletteExtension(EDGY_FRAMEWORK_PALETTE));
       // The Templates-panel category — tooling, so it goes with the flag (#244).
       context.register(TemplateCategoryExtension(edgyTemplateCategory));
       // The eight EDGY commands: the sub-menu renders them, Settings ›
