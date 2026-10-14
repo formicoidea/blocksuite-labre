@@ -55,6 +55,7 @@ import {
   viewOpenIn,
   viewOpenInSet,
 } from '../../../../core/view/open-in.js';
+import { PropertiesPanelOpenerKey } from '../../../../core/view-manager/properties-panel-opener.js';
 import { WidgetBase } from '../../../../core/widget/widget-base.js';
 import { popFilterRoot } from '../../../quick-setting-bar/filter/root-panel-view.js';
 import { popSortRoot } from '../../../quick-setting-bar/sort/root-panel.js';
@@ -186,6 +187,11 @@ const createSettingMenus = (
         </div>
         ${ArrowRightSmallIcon()}`,
       select: () => {
+        const openPanel = view.serviceGet(PropertiesPanelOpenerKey);
+        if (openPanel) {
+          openPanel(view.id);
+          return;
+        }
         popPropertiesSetting(target, {
           view: view,
           onBack: reopen,

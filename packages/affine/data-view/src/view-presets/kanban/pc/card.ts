@@ -10,6 +10,7 @@ import { classMap } from 'lit/directives/class-map.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { html } from 'lit/static-html.js';
 
+import { isNewTabClick } from '../../../core/utils/new-tab-click.js';
 import type { KanbanColumn } from '../kanban-view-manager.js';
 import type { KanbanViewUILogic } from './kanban-view-ui-logic.js';
 import { openDetail, popCardMenu } from './menu.js';
@@ -292,6 +293,7 @@ export class KanbanCard extends SignalWatcher(
       this.kanbanViewLogic.root.openDetailPanel({
         view: this.view,
         rowId: this.cardId,
+        newTab: isNewTabClick(e),
         onClose: () => {
           if (selection) {
             selection.selection = preSelection;
