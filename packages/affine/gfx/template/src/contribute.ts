@@ -1,5 +1,6 @@
 import {
   FrameTemplateProvider,
+  type FrameTemplateService,
   type SavedFrameTemplate,
 } from '@labre/affine-shared/services';
 import { createIdentifier } from '@labre/global/di';
@@ -59,12 +60,23 @@ export function TemplateCategoryExtension(
  */
 export const SAVED_FRAMES_CATEGORY = 'Saved frames';
 
-function savedFrameTemplate(saved: SavedFrameTemplate): Template {
+function savedFrameTemplate(
+  service: FrameTemplateService,
+  saved: SavedFrameTemplate
+): Template {
   return {
     name: saved.title,
     type: 'template',
     content: saved.snapshot,
     preview: saved.preview,
+    // The panel runs `afterInsert` only once the template job has resolved.
+    afterInsert: service.frameInserted
+      ? std =>
+          service.frameInserted?.({
+            docId: std.store.id,
+            templateId: saved.id,
+          })
+      : undefined,
   };
 }
 
@@ -78,7 +90,8 @@ function savedFramesCategory(std: BlockStdScope): TemplateCategory | null {
   return {
     name: SAVED_FRAMES_CATEGORY,
     nameKey: TEMPLATE_PANEL_CATEGORY_SAVED_FRAMES[0],
-    templates: async () => (await service.list()).map(savedFrameTemplate),
+    templates: async () =>
+      (await service.list()).map(saved => savedFrameTemplate(service, saved)),
   };
 }
 
