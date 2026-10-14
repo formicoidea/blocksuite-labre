@@ -22,7 +22,8 @@ const styles = css`
     display: flex;
     align-items: center;
     padding: 4px;
-    min-height: 20px;
+    /* A finger's target (B5, ADR 0035 §1); was 20px when mobile was read-only. */
+    min-height: 44px;
     border: 1px solid transparent;
     box-sizing: border-box;
   }

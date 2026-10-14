@@ -17,6 +17,8 @@ import type { MobileTableViewUILogic } from './table-view-ui-logic.js';
 export class MobileTableRow extends SignalWatcher(
   WithDisposable(ShadowlessElement)
 ) {
+  // Touch targets are 44px tall (B5, ADR 0035 §1): the row, and each row op
+  // through an invisible hit area, so the ops keep their drawn size.
   static override styles = css`
     .mobile-table-row {
       width: 100%;
@@ -24,7 +26,7 @@ export class MobileTableRow extends SignalWatcher(
       flex-direction: row;
       border-bottom: 1px solid ${unsafeCSS(cssVarV2.layer.insideBorder.border)};
       position: relative;
-      min-height: 34px;
+      min-height: 44px;
     }
 
     .mobile-row-ops {
@@ -33,7 +35,7 @@ export class MobileTableRow extends SignalWatcher(
       margin-top: 5px;
       height: max-content;
       display: flex;
-      gap: 4px;
+      gap: 20px;
       cursor: pointer;
       justify-content: end;
       right: 8px;
@@ -53,6 +55,12 @@ export class MobileTableRow extends SignalWatcher(
       position: relative;
       font-size: 16px;
       color: ${unsafeCSSVarV2('icon/primary')};
+    }
+
+    .mobile-row-op::after {
+      content: '';
+      position: absolute;
+      inset: -10px;
     }
   `;
 
