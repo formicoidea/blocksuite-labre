@@ -589,6 +589,17 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
       })
     );
   }
+
+  /**
+   * Puts the caret on the current view's first cell, where the view has one
+   * (table, kanban; the other presets ignore it): what the page title's
+   * Enter and ArrowDown reach when this block is the page's body
+   * (`<doc-title .bodyBlockId>`, a database's full page, ADR 0035 B13).
+   */
+  focusFirstCell() {
+    this._dataViewRootLogic?.focusFirstCell();
+  }
+
   private get dataViewRootLogic(): DataViewRootUILogic {
     if (!this._dataViewRootLogic) {
       this._dataViewRootLogic = this._buildDataViewRootLogic();
