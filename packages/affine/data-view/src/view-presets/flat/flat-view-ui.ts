@@ -10,6 +10,7 @@ import { consume } from '@lit/context';
 import { cssVarV2 } from '@toeverything/theme/v2';
 import { css, html, nothing, unsafeCSS } from 'lit';
 
+import { renderCellStatus } from '../../core/component/cell-status/cell-status.js';
 import { renderUniLit } from '../../core/utils/uni-component/uni-component.js';
 import {
   DataViewUIBase,
@@ -75,9 +76,16 @@ export abstract class FlatViewUI<
    */
   protected renderCell(property: Property, rowId: string, readonly = false) {
     const view = this.view;
+    const cell = property.cellGetOrCreate(rowId);
+    // As a table cell: a value not yet hydrated mounts no renderer, so nothing
+    // can be edited over it (ADR 0035 §9e).
+    const status = renderCellStatus(cell);
+    if (status) {
+      return html`<span data-property-id="${property.id}">${status}</span>`;
+    }
     return html`<dv-standalone-cell
       data-property-id="${property.id}"
-      .cell="${property.cellGetOrCreate(rowId)}"
+      .cell="${cell}"
       .readonly="${readonly ||
       view.readonly$.value ||
       property.readonly$.value}"

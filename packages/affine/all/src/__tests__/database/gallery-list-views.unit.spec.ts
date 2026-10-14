@@ -4,6 +4,8 @@ import {
   DatabaseBlockDataSource,
   databaseBlockViewConverts,
   databaseBlockViews,
+  HostedDataSourceBase,
+  hostedTitleColumnConfig,
 } from '@labre/affine-block-database';
 import {
   type DatabaseBlockModel,
@@ -12,6 +14,12 @@ import {
   ParagraphBlockSchemaExtension,
   RootBlockSchemaExtension,
 } from '@labre/affine-model';
+import type {
+  CellStatus,
+  PropertyMetaConfig,
+  TypeInstance,
+} from '@labre/data-view';
+import { propertyPresets } from '@labre/data-view/property-presets';
 import { propertyModelPresets } from '@labre/data-view/property-pure-presets';
 import {
   type FlatViewDataType,
@@ -23,7 +31,7 @@ import {
   createAutoIncrementIdGenerator,
   TestWorkspace,
 } from '@labre/store/test';
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 
 /**
  * The gallery and list presets inside the `affine:database` block (ADR 0035
@@ -37,7 +45,10 @@ import { describe, expect, test } from 'vitest';
  *   view is resolved and its rows, properties and cells are read;
  * - a new view storing its visibility in another shape than the
  *   `columns[].hide` table and kanban use;
- * - a property added from a gallery staying hidden in it.
+ * - a property added from a gallery staying hidden in it;
+ * - a hosted source whose rows are documents (B15) titled through its rows
+ *   instead of `titleOf`, or a value it has not delivered (B2) writable from
+ *   a gallery or a list.
  */
 
 const extensions = [
@@ -209,4 +220,111 @@ describe('the gallery and list presets in the database block', () => {
     expect(data.filter).toEqual(filter);
     expect(data.sort).toEqual(sort);
   });
+});
+
+/** A hosted source whose rows are documents, titled from its own store. */
+class DocumentRowsSource extends HostedDataSourceBase {
+  titles: Record<string, string> = { d1: 'Roadmap', d2: 'Budget' };
+  status: Record<string, CellStatus> = { 'd2:p1': 'pending' };
+  readonly getCellValueSpy = vi.fn(
+    (_rowId: string, _propertyId: string): unknown => 'value'
+  );
+  readonly cellValueChange = vi.fn();
+
+  override get rowsAreDocuments(): boolean {
+    return true;
+  }
+  protected override titleOf(rowId: string): string | undefined {
+    return this.titles[rowId];
+  }
+  override cellStatus(rowId: string, propertyId: string): CellStatus {
+    return this.status[`${rowId}:${propertyId}`] ?? 'ready';
+  }
+  protected getRows(): string[] {
+    return ['d1', 'd2'];
+  }
+  protected getProperties(): string[] {
+    return ['title', 'p1'];
+  }
+  protected getCellValue(rowId: string, propertyId: string): unknown {
+    return this.getCellValueSpy(rowId, propertyId);
+  }
+  protected getPropertyType(propertyId: string): string | undefined {
+    return propertyId === 'title' ? 'title' : 'text';
+  }
+  protected getPropertyName(propertyId: string): string {
+    return propertyId;
+  }
+  protected getPropertyData(): Record<string, unknown> {
+    return {};
+  }
+  protected getPropertyDataType(): TypeInstance | undefined {
+    return undefined;
+  }
+  protected getPropertyMetas(): PropertyMetaConfig[] {
+    return [];
+  }
+  propertyMetaGet(type: string): PropertyMetaConfig | undefined {
+    if (type === 'title') return hostedTitleColumnConfig;
+    if (type === 'text') {
+      return propertyPresets.textPropertyConfig as unknown as PropertyMetaConfig;
+    }
+    return undefined;
+  }
+  rowAdd(): string {
+    return '';
+  }
+  rowDelete(): void {}
+  rowMove(): void {}
+  propertyAdd(): string | undefined {
+    return undefined;
+  }
+  propertyDelete(): void {}
+  propertyDuplicate(): string | undefined {
+    return undefined;
+  }
+  propertyDataSet(): void {}
+  propertyNameSet(): void {}
+  propertyTypeSet(): void {}
+  protected getNormalPropertyAndIndex() {
+    return undefined;
+  }
+}
+
+describe('the gallery and list presets over a hosted source', () => {
+  test.each(['gallery', 'list'] as const)(
+    'a %s titles document rows with titleOf and refuses a write over a value still loading',
+    mode => {
+      const { model } = createDatabase([
+        {
+          id: 'view-1',
+          name: 'View',
+          mode,
+          columns: [
+            { id: 'title', hide: false },
+            { id: 'p1', hide: false },
+          ],
+          filter: { type: 'group', op: 'and', conditions: [] },
+        },
+      ]);
+      const source = new DocumentRowsSource(model);
+      const view = source.viewManager.viewGet('view-1') as
+        | GallerySingleView
+        | ListSingleView;
+      expect(view.rows$.value.map(row => row.rowId)).toEqual(['d1', 'd2']);
+      const title = view.titleProperty$.value;
+      expect(title?.id).toBe('title');
+      expect(title?.cellGetOrCreate('d1').value$.value).toBe('Roadmap');
+      expect(source.getCellValueSpy).not.toHaveBeenCalledWith('d1', 'title');
+      // Drawn by the plain-text cell, as the hosted title column of a table.
+      expect(title?.renderer$.value?.view).toBe(
+        hostedTitleColumnConfig.renderer.cellRenderer.view
+      );
+
+      const loading = view.propertyGetOrCreate('p1').cellGetOrCreate('d2');
+      expect(loading.status$?.value).toBe('pending');
+      loading.valueSet('over');
+      expect(source.cellValueChange).not.toHaveBeenCalled();
+    }
+  );
 });

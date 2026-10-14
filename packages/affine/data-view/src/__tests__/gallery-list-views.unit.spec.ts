@@ -2,6 +2,7 @@ import { signal } from '@preact/signals-core';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { coreEffects } from '../core/effect.js';
+import type { CellStatus } from '../core/data-source/hydration.js';
 import type { FilterGroup } from '../core/filter/types.js';
 import type { PropertyMetaConfig } from '../core/property/property-config.js';
 import type { Sort } from '../core/sort/types.js';
@@ -42,7 +43,9 @@ import { ListViewUILogic } from '../view-presets/list/list-view.js';
  * - a click on a value opening the row instead of editing it, or a click on
  *   the card not opening it;
  * - a read-only view offering "New page" or an editor;
- * - a layout switch into a gallery or a list dropping the filter and sort.
+ * - a layout switch into a gallery or a list dropping the filter and sort;
+ * - a value a hosted source has not delivered drawn by its renderer, hence
+ *   editable over, instead of the table's skeleton (ADR 0035 §9e, B2).
  */
 
 beforeAll(() => {
@@ -80,6 +83,7 @@ function setup(options: {
   filter?: FilterGroup;
   sort?: Sort;
   readonly?: boolean;
+  cellStatus?: Record<string, CellStatus>;
 }) {
   const rows = signal(['r1', 'r2', 'r3']);
   const properties = signal(['title', 'status', 'note', 'done']);
@@ -148,6 +152,8 @@ function setup(options: {
     propertyReadonlyGet: () => false,
     propertyMetaGet: (type: string) => metas[type],
     serviceGet: () => null,
+    cellStatus: (rowId: string, propertyId: string) =>
+      options.cellStatus?.[`${rowId}:${propertyId}`] ?? 'ready',
   };
   const manager = { dataSource, readonly$ } as unknown as ViewManager;
   const view =
@@ -339,6 +345,45 @@ describe.each(['gallery', 'list'] as const)('the %s preset', mode => {
     // Read-only, the value lets the click through: the row opens for reading.
     expect(context.openDetailPanel).toHaveBeenCalledTimes(1);
   });
+
+  it('draws a value still loading as the table does: a skeleton, no editor, no write', async () => {
+    const context = setup({
+      mode,
+      cellStatus: { 'r1:status': 'pending', 'r2:status': 'error' },
+    });
+    const ui = await mount(context);
+    const pending = ui.querySelector<HTMLElement>(
+      '[data-row-id="r1"] [data-property-id="status"]'
+    );
+    expect(
+      pending?.querySelector('[data-testid="dv-cell-skeleton"]')
+    ).not.toBeNull();
+    expect(pending?.querySelector('affine-database-select-cell')).toBeNull();
+    expect(pending?.tagName).not.toBe('DV-STANDALONE-CELL');
+    const failed = ui.querySelector(
+      '[data-row-id="r2"] [data-property-id="status"]'
+    );
+    expect(failed?.querySelector('[data-cell-status="error"]')).not.toBeNull();
+    expect(failed?.querySelector('affine-database-select-cell')).toBeNull();
+    // Its neighbours are ready and drawn by their cell.
+    expect(
+      ui.querySelector(
+        '[data-row-id="r1"] dv-standalone-cell[data-property-id="note"]'
+      )
+    ).not.toBeNull();
+
+    // No editor to open: the click reaches the row, which opens.
+    pending?.click();
+    expect(context.openDetailPanel).toHaveBeenCalledTimes(1);
+    expect(context.view.isLocked$.value).toBe(false);
+    // And the cell refuses a write that would land over the missing value.
+    context.view
+      .propertyGetOrCreate('status')
+      .cellGetOrCreate('r1')
+      .valueSet('done');
+    expect(context.cellValueChange).not.toHaveBeenCalled();
+    expect(context.values.get('r1:status')).toBe('todo');
+  });
 });
 
 describe('the list preset', () => {
@@ -349,6 +394,20 @@ describe('the list preset', () => {
     expect(third?.querySelector('[data-property-id="status"]')).toBeNull();
     expect(third?.querySelector('[data-property-id="note"]')).toBeNull();
     expect(third?.querySelector('[data-property-id="title"]')).not.toBeNull();
+  });
+
+  it('keeps the chip of an empty value still loading, as a skeleton', async () => {
+    const context = setup({
+      mode: 'list',
+      cellStatus: { 'r3:status': 'pending' },
+    });
+    const ui = await mount(context);
+    const chip = ui.querySelector(
+      '[data-row-id="r3"] .dv-list-row-properties [data-property-id="status"]'
+    );
+    expect(
+      chip?.querySelector('[data-testid="dv-cell-skeleton"]')
+    ).not.toBeNull();
   });
 });
 

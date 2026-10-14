@@ -153,9 +153,11 @@ export class ListViewUI extends FlatViewUI<ListViewUILogic> {
   private renderRow(rowId: string) {
     const view = this.view;
     const title = view.titleProperty$.value;
-    const chips = view.bodyProperties$.value.filter(
-      property => !property.cellGetOrCreate(rowId).isEmpty$.value
-    );
+    // A value still loading keeps its chip, as a skeleton.
+    const chips = view.bodyProperties$.value.filter(property => {
+      const cell = property.cellGetOrCreate(rowId);
+      return cell.status$?.value === 'pending' || !cell.isEmpty$.value;
+    });
     return html`<div
       class="dv-list-row"
       data-testid="dv-list-row"

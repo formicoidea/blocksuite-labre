@@ -524,6 +524,13 @@ data shape table and kanban already store (`columns[].hide`, `filter`,
 - **One UI for desktop and mobile.** No `mobileLogic`: the cards reflow, the
   list wraps its chips under the title below 640px, touch screens get 44px
   rows. Editing on mobile follows the block's `readonly$` (B5).
+- **Hydration and document rows (§9e, §9f).** A value whose `status$` is not
+  `ready` mounts no cell: the presets draw `renderCellStatus`, as a table
+  cell does, so a pending value is a skeleton nobody can edit over, and a list
+  keeps the chip of an empty value still loading. A source whose rows are
+  documents titles them through `titleOf` with nothing in the presets: the
+  title cell reads `cellValueGet` and `propertyMetaGet('title')`, the
+  hosted title column.
 - **Not done.** No card cover (a `ponytail:` line names the upgrade, a stored
   `header.coverColumn` as the kanban's); no slash-menu entry creating a
   gallery or a list (the views bar and the Layout switch create them); the
@@ -532,5 +539,5 @@ data shape table and kanban already store (`columns[].hide`, `filter`,
   seam.
 - Held by `data-view/src/__tests__/gallery-list-views.unit.spec.ts`,
   `all/src/__tests__/database/gallery-list-views.unit.spec.ts` (the real
-  block source, no write on load) and
+  block source, no write on load; a hosted source with document rows) and
   `integration-test/src/__tests__/page/database-gallery-list.spec.ts`.
