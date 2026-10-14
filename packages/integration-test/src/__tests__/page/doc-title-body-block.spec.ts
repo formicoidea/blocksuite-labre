@@ -155,7 +155,7 @@ describe('<doc-title> without bodyBlockId (0.48)', () => {
     cleanup = await setupEditor('page');
     const { noteId } = writeDatabaseNote();
     await wait(200);
-    const title = document.querySelector<Title>('doc-title')!;
+    const title = window.editor.querySelector<Title>('doc-title')!;
     const before = noteChildren(noteId);
     await press(title, '{Enter}');
     const after = noteChildren(noteId);
@@ -167,7 +167,7 @@ describe('<doc-title> without bodyBlockId (0.48)', () => {
     cleanup = await setupEditor('page');
     const { noteId } = writeDatabaseNote();
     await wait(200);
-    const title = document.querySelector<Title>('doc-title')!;
+    const title = window.editor.querySelector<Title>('doc-title')!;
     const before = noteChildren(noteId);
     await press(title, '{ArrowDown}');
     const after = noteChildren(noteId);
