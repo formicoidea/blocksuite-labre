@@ -28,6 +28,40 @@ export const IMAGE_TOOLBAR_TURN_INTO_CARD_VIEW: ChromeWording = [
   'Turn into card view',
 ];
 
+/**
+ * « Rogner » (ADR 0036): the toolbar button, its presets and the way back to
+ * the whole picture. The ratios are words too — a host may write « 16/9 ».
+ */
+export const IMAGE_TOOLBAR_CROP: ChromeWording = [
+  'com.labre.image.toolbar.crop',
+  'Crop',
+];
+
+export const IMAGE_TOOLBAR_CROP_FREE: ChromeWording = [
+  'com.labre.image.toolbar.crop.free',
+  'Free',
+];
+
+export const IMAGE_TOOLBAR_CROP_16_9: ChromeWording = [
+  'com.labre.image.toolbar.crop.ratio-16-9',
+  '16:9',
+];
+
+export const IMAGE_TOOLBAR_CROP_4_3: ChromeWording = [
+  'com.labre.image.toolbar.crop.ratio-4-3',
+  '4:3',
+];
+
+export const IMAGE_TOOLBAR_CROP_1_1: ChromeWording = [
+  'com.labre.image.toolbar.crop.ratio-1-1',
+  '1:1',
+];
+
+export const IMAGE_TOOLBAR_CROP_ORIGINAL: ChromeWording = [
+  'com.labre.image.toolbar.crop.original',
+  'Original image',
+];
+
 export const IMAGE_PREVIEW_TITLE: ChromeWording = [
   'com.labre.image.preview.title',
   'Image Block',
@@ -70,6 +104,12 @@ export const IMAGE_WORDINGS: readonly ChromeWording[] = [
   IMAGE_SLASH_DESCRIPTION,
   IMAGE_SLASH_PHOTO_CAPTION,
   IMAGE_TOOLBAR_TURN_INTO_CARD_VIEW,
+  IMAGE_TOOLBAR_CROP,
+  IMAGE_TOOLBAR_CROP_FREE,
+  IMAGE_TOOLBAR_CROP_16_9,
+  IMAGE_TOOLBAR_CROP_4_3,
+  IMAGE_TOOLBAR_CROP_1_1,
+  IMAGE_TOOLBAR_CROP_ORIGINAL,
   IMAGE_PREVIEW_TITLE,
   IMAGE_TOAST_DOWNLOAD_FAILED,
   IMAGE_TOAST_DOWNLOADING,

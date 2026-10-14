@@ -13,6 +13,7 @@ import {
   type EmbedCardStyle,
   ListBlockModel,
   NoteBlockModel,
+  readImageCrop,
   RootBlockModel,
 } from '@labre/affine-model';
 import { surfaceRefToEmbed } from '@labre/affine-shared/adapters';
@@ -1100,9 +1101,16 @@ export class DragEventWatcher {
         }
 
         if (block.flavour === 'affine:image') {
-          assertType<{ width: number; height: number }>(block.props);
-          blockBound.w = blockBound.w || block.props.width || 100;
-          blockBound.h = blockBound.h || block.props.height || 100;
+          assertType<{ width: number; height: number; crop?: unknown }>(
+            block.props
+          );
+          // A page image's `width`/`height` are the WHOLE picture; on the
+          // canvas the box is the cropped window (ADR 0036).
+          const crop = readImageCrop(block.props.crop);
+          blockBound.w =
+            blockBound.w || block.props.width * (crop?.w ?? 1) || 100;
+          blockBound.h =
+            blockBound.h || block.props.height * (crop?.h ?? 1) || 100;
         }
 
         if (ignoreOriginalPos) {

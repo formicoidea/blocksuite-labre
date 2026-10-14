@@ -22,6 +22,7 @@ import { styleMap } from 'lit/directives/style-map.js';
 import { when } from 'lit/directives/when.js';
 
 import type { ImageBlockPageComponent } from './components/page-image-block';
+import { ImageCropController } from './crop/crop-controller';
 import { IMAGE_LABEL } from './translations';
 import {
   copyImageBlob,
@@ -45,6 +46,8 @@ export class ImageBlockComponent extends CaptionedBlockComponent<ImageBlockModel
     computed(() => this.model.props.sourceId$.value),
     'Image'
   );
+
+  readonly cropController = new ImageCropController(this, false);
 
   get blobUrl() {
     return this.resourceController.blobUrl$.value;
