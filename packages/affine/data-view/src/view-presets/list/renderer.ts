@@ -7,4 +7,8 @@ import { ListViewUILogic } from './list-view.js';
 export const listViewMeta = listViewModel.createMeta({
   icon: createIcon('DatabaseListViewIcon'),
   pcLogic: () => ListViewUILogic as unknown as DataViewUILogicBaseConstructor,
+  // Named, not left to the pc fallback: a touch screen draws this UI on
+  // purpose (B5, `mobile-editing.unit.spec.ts`).
+  mobileLogic: () =>
+    ListViewUILogic as unknown as DataViewUILogicBaseConstructor,
 });

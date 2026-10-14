@@ -2,7 +2,9 @@ import {
   addProperty,
   databaseBlockProperties,
   DatabaseBlockDataSource,
+  databaseBlockRenderableViews,
   databaseBlockViewConverts,
+  databaseBlockViewMetaGet,
   databaseBlockViews,
   HostedDataSourceBase,
   hostedTitleColumnConfig,
@@ -94,10 +96,16 @@ function createDatabase(views: FlatViewDataType[] = []) {
 }
 
 describe('the gallery and list presets in the database block', () => {
-  test('are registered with the block', () => {
-    const types = databaseBlockViews.map(view => view.type);
-    expect(types).toContain('gallery');
-    expect(types).toContain('list');
+  test('are registered with the block, drawn and creatable', () => {
+    for (const mode of ['gallery', 'list']) {
+      // Drawn: a stored view of this mode is not a table fallback.
+      expect(databaseBlockRenderableViews.map(view => view.type)).toContain(
+        mode
+      );
+      expect(databaseBlockViewMetaGet(mode).type).toBe(mode);
+      // Creatable: the views bar and the Layout switch offer it.
+      expect(databaseBlockViews.map(view => view.type)).toContain(mode);
+    }
   });
 
   test('a stored gallery and list view load without a write', () => {

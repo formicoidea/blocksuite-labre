@@ -152,6 +152,13 @@ function setup(options: {
     propertyReadonlyGet: () => false,
     propertyMetaGet: (type: string) => metas[type],
     serviceGet: () => null,
+    // As the block's: a mode with no preset is drawn as a table.
+    viewMetaGet: (mode: string) =>
+      mode === 'gallery'
+        ? viewPresets.galleryViewMeta
+        : mode === 'list'
+          ? viewPresets.listViewMeta
+          : viewPresets.tableViewMeta,
     cellStatus: (rowId: string, propertyId: string) =>
       options.cellStatus?.[`${rowId}:${propertyId}`] ?? 'ready',
   };

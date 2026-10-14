@@ -521,7 +521,7 @@ data shape table and kanban already store (`columns[].hide`, `filter`,
   the view is shown. A list draws no chip for an empty value. A layout switch
   into a gallery or a list, or out of one into a table or a board, keeps the
   filter and the sort (`flat-converts.ts`); calendar is a source only (§6).
-- **One UI for desktop and mobile.** No `mobileLogic`: the cards reflow, the
+- **One UI for desktop and mobile.** `mobileLogic` is the `pcLogic` class, named so a touch screen draws this UI on purpose (`mobile-editing.unit.spec.ts`): the cards reflow, the
   list wraps its chips under the title below 640px, touch screens get 44px
   rows. Editing on mobile follows the block's `readonly$` (B5).
 - **Hydration and document rows (§9e, §9f).** A value whose `status$` is not
