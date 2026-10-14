@@ -30,6 +30,7 @@ export class SelectCell extends BaseCellRenderer<
       options: this.options$,
       onOptionsChange:
         this.property.dataCanSet === false ? undefined : this._onOptionsChange,
+      optionEdits: this.property.optionEdits,
       value: this._value$,
       onChange: v => {
         this.valueSetImmediate(v[0]);

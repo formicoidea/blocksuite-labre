@@ -2,6 +2,7 @@ import { HostedDataSourceBase } from '@labre/affine-block-database';
 import { menu, type MenuConfig } from '@labre/affine-components/context-menu';
 import {
   type ChromeWording,
+  type DataSourcePickerService,
   translateKey,
 } from '@labre/affine-shared/services';
 import type { AddViewMenu, AddViewMenuContext } from '@labre/data-view';
@@ -27,6 +28,39 @@ export interface AddViewSourcePicker {
   extraSourceIds?(dataSource: HostedDataSourceBase): readonly string[];
   /** Creates a source in this database; resolves to its id, or nothing. */
   createSource?(dataSource: HostedDataSourceBase): Promise<string | undefined>;
+}
+
+/**
+ * The host's data-source picker (`DataSourcePickerProvider`, B12) as "+ view"
+ * reads it, on the database the block shows (`externalSourceId`, the id the
+ * picker lists it under): its sources no view reads yet, and its
+ * `createSource`. "+ view" lists them inline rather than popping the picker
+ * over its own menu: one menu, the presets under each source.
+ */
+export function addViewSourcePicker(
+  picker: DataSourcePickerService
+): AddViewSourcePicker {
+  const databaseOf = (dataSource: HostedDataSourceBase) =>
+    dataSource.hostModel.props.externalSourceId;
+  const createSource = picker.createSource;
+  return {
+    extraSourceIds: dataSource => {
+      const databaseId = databaseOf(dataSource);
+      const database = picker
+        .list()
+        .peek()
+        .find(candidate => candidate.id === databaseId);
+      return database?.sources.map(source => source.id) ?? [];
+    },
+    createSource: createSource
+      ? async dataSource => {
+          const databaseId = databaseOf(dataSource);
+          if (databaseId === undefined) return undefined;
+          const created = await createSource.call(picker, databaseId);
+          return created?.id;
+        }
+      : undefined,
+  };
 }
 
 /**
@@ -68,9 +102,7 @@ export function addViewMenuShape(
  * host source) has one implicit source: the bar keeps its presets list.
  *
  * ponytail: 3 waits for an ADR 0035 amendment that gives the picker an
- * import verb (vague 3, « Cette vue » et import de vue); the picker itself is
- * B12's `DataSourcePickerExtension`, adapted to `AddViewSourcePicker` where
- * the tooling extension registers this menu (`../view.ts`).
+ * import verb, with the host's third wave ("This view" and view import).
  */
 export function databaseAddViewMenu(
   picker: (context: AddViewMenuContext) => AddViewSourcePicker | null

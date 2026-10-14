@@ -13,7 +13,9 @@
  *   current one (a board grouped by a property its source does not have);
  * - an own `sourceId: undefined` key written into the stored view;
  * - the tooling extension no longer registering the menu for the bar;
- * - the inline database (one implicit source) losing its plain presets list.
+ * - the inline database (one implicit source) losing its plain presets list;
+ * - "+ view" reading another database's sources from the host's picker, or
+ *   asking it for a source with no database id.
  */
 import {
   ExternalDataSourceBase,
@@ -30,6 +32,7 @@ import { describe, expect, test, vi } from 'vitest';
 
 import {
   addViewMenuShape,
+  addViewSourcePicker,
   databaseAddViewMenu,
 } from '../view-bar/add-view-menu.js';
 import { addViewOnSource } from '../view-bar/add-view-on-source.js';
@@ -210,7 +213,7 @@ describe('the "+ view" menu registration', () => {
     };
     new DatabaseEditorToolingViewExtension().setup(context as never);
     const override = vi.fn();
-    registered.forEach(ext => ext.setup({ override }));
+    registered.forEach(ext => ext.setup({ override, addImpl: vi.fn() }));
     expect(override).toHaveBeenCalledWith(
       AddViewMenuIdentifier,
       expect.any(Function)
@@ -280,5 +283,34 @@ describe('the "+ view" menu registration', () => {
         addView: () => '',
       })
     ).toBeUndefined();
+  });
+});
+
+describe('addViewSourcePicker', () => {
+  const onDatabase = (externalSourceId: string | undefined) =>
+    ({ hostModel: { props: { externalSourceId } } }) as HostedDataSourceBase;
+  const list = signal([
+    { id: 'db-1', title: 'Clients', sources: [{ id: 's1', title: 'A' }] },
+    { id: 'db-2', title: 'Other', sources: [{ id: 's9', title: 'Z' }] },
+  ]);
+
+  test("lists the sources of the block's own database only", () => {
+    const picker = addViewSourcePicker({ list: () => list });
+    expect(picker.extraSourceIds?.(onDatabase('db-1'))).toEqual(['s1']);
+    expect(picker.extraSourceIds?.(onDatabase(undefined))).toEqual([]);
+  });
+
+  test('creates a source in that database, and none without createSource', async () => {
+    expect(addViewSourcePicker({ list: () => list }).createSource).toBe(
+      undefined
+    );
+    const createSource = vi.fn(async (databaseId: string) => ({
+      id: `${databaseId}-new`,
+      title: '',
+    }));
+    const picker = addViewSourcePicker({ list: () => list, createSource });
+    expect(await picker.createSource?.(onDatabase('db-1'))).toBe('db-1-new');
+    expect(await picker.createSource?.(onDatabase(undefined))).toBe(undefined);
+    expect(createSource).toHaveBeenCalledTimes(1);
   });
 });

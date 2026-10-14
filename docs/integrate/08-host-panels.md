@@ -205,7 +205,7 @@ Mount your own beside the editor. The "Present" button is the host's too:
 
 ## The properties panel
 
-The library draws no properties panel. The title band (the chips under the
+The library draws no page properties panel. The title band (the chips under the
 page title and at the head of the page note) asks the host to show one
 through `PropertiesPanelExtension`, and is fed by `TitleBandExtension`
 (both from `@labre/affine/shared/services`, rows in
@@ -245,12 +245,27 @@ const text = (property: TitleBandProperty) =>
   formatPropertyValue(property, locale);
 ```
 
-| Gesture                     | Call                                              | Note                                                                                                                                                                                                     |
-| --------------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| The band's panel button     | your `open({ scope: 'page', docId })`             | the request names the page; open your panel on its sheet. `scope: 'source'` (a database's source and view) is declared in the type and sent by the database chrome when it ships; handle it or ignore it |
-| Show a value as a chip does | `formatPropertyValue(property, locale?)`          | option labels for a select, the number preset's format, a localized date; `''` for an empty value and for a checkbox, which is a mark you draw                                                           |
-| Tell an empty value         | `isPropertyValueEmpty(property)`                  | nullish, a blank string or an empty list; `false` is a value                                                                                                                                             |
-| Write a value               | your own store, then your `sheet$` signal changes | the band and your panel share one source; the library never applies a value                                                                                                                              |
+| Gesture                                | Call                                                               | Note                                                                                                                                           |
+| -------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| The band's panel button                | your `open({ scope: 'page', docId })`                              | the request names the page; open your panel on its sheet. a page's properties are yours to draw                                                |
+| A database view's options "Properties" | your `open({ scope: 'source', docId, blockId, sourceId, viewId })` | the database block's source (`sourceId` is the block id for a view with no `sourceId`) and the view; mount the library's panel, below          |
+| Show a value as a chip does            | `formatPropertyValue(property, locale?)`                           | option labels for a select, the number preset's format, a localized date; `''` for an empty value and for a checkbox, which is a mark you draw |
+| Tell an empty value                    | `isPropertyValueEmpty(property)`                                   | nullish, a blank string or an empty list; `false` is a value                                                                                   |
+| Write a value                          | your own store, then your `sheet$` signal changes                  | the band and your panel share one source; the library never applies a value                                                                    |
+
+For `scope: 'source'` the library draws the panel: mount
+`affine-database-properties-panel` (`@labre/core-database/view`, defined by
+the bundle's effects) where you want it, with the editor's `std` and the
+request. It is the table view's own properties list (show, hide, reorder,
+the property menu), with "Show all" / "Hide all" and a Close button that
+calls your `close()`; it writes through the view, as the popover does, and
+says "This database is not shown on the page." when the block is gone.
+
+```ts
+const panel = document.createElement('affine-database-properties-panel');
+Object.assign(panel, { std: editor.std, request });
+sidebar.mount(panel);
+```
 
 ## What the module promises
 

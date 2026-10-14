@@ -20,6 +20,9 @@
       "path": "../shared"
     },
     {
+      "path": "../widgets/slash-menu"
+    },
+    {
       "path": "../data-view"
     },
     {
@@ -27,6 +30,9 @@
     },
     {
       "path": "../../framework/std"
+    },
+    {
+      "path": "../../framework/store"
     },
     {
       "path": "../model"

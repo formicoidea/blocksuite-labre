@@ -48,6 +48,7 @@ import {
   bandCellData,
   bandCellMeta,
   bandCellValue,
+  bandOptionsWritable,
   bandWriteValue,
   isBandReadonlyType,
   sameBandValue,
@@ -67,7 +68,7 @@ interface BandSources {
   collapsed$: ReadonlySignal<boolean> | null;
   notShown$: ReadonlySignal<readonly TitleBandNotShownPage[]> | null;
   /** One cell per chip, kept across sheet updates so an open editor stays. */
-  cells: Map<string, { type: string; cell: Cell }>;
+  cells: Map<string, { type: string; optionsWritable: boolean; cell: Cell }>;
 }
 
 /**
@@ -360,6 +361,32 @@ export class TitleBand extends SignalWatcher(
     });
   }
 
+  /**
+   * A definition a select's tag menu commits (a created or renamed option):
+   * handed to the host's `setData`, never applied here.
+   */
+  private _writeData(
+    property: TitleBandProperty,
+    data: Record<string, unknown>
+  ) {
+    const service = this._sources?.service;
+    if (!service?.setData || this._isReadonlyChip(property)) return;
+    if (property.dataWritable !== true) return;
+    let written: Promise<void>;
+    try {
+      written = service.setData(this.docId, property.id, {
+        ...property.data,
+        options: data.options,
+      });
+    } catch (error) {
+      console.error('[title-band] setData threw', error);
+      return;
+    }
+    Promise.resolve(written).catch((error: unknown) => {
+      console.error('[title-band] setData was refused', error);
+    });
+  }
+
   /** A value a cell commits: unchanged, nothing is written. */
   private _commit(prop: TitleBandProperty, cellType: string, value: unknown) {
     if (sameBandValue(cellType, prop.value, value)) return;
@@ -385,11 +412,18 @@ export class TitleBand extends SignalWatcher(
       std.getOptional(StandaloneCellMetaProvider(cellType))
     );
     if (!meta) return null;
+    const cellType = meta.type;
+    const optionsWritable =
+      bandOptionsWritable(cellType, prop, !!sources.service.setData) &&
+      !this._isReadonlyChip(prop);
     const cached = sources.cells.get(prop.id);
-    if (cached?.type === prop.type) return cached.cell;
+    if (
+      cached?.type === prop.type &&
+      cached.optionsWritable === optionsWritable
+    )
+      return cached.cell;
 
     const { id, type } = prop;
-    const cellType = meta.type;
     const current$ = computed(() => {
       const state = sources.sheet$.value;
       if (state.status !== 'ready') return undefined;
@@ -410,8 +444,19 @@ export class TitleBand extends SignalWatcher(
       },
       featureFlags$: this._featureFlags$,
       serviceGet: key => std.getOptional(key),
+      // A chip creates and renames options only, never deletes, recolours
+      // or reorders one (product owner, 2026-10-14).
+      ...(optionsWritable
+        ? {
+            dataSet: (data: Record<string, unknown>) => {
+              const current = current$.peek();
+              if (current) this._writeData(current, data);
+            },
+            optionEdits: 'create-rename' as const,
+          }
+        : {}),
     });
-    sources.cells.set(id, { type, cell });
+    sources.cells.set(id, { type, optionsWritable, cell });
     return cell;
   }
 
