@@ -46,7 +46,8 @@ import {
 } from '../../utils/wc-dnd/sort/sort-context.js';
 import { verticalListSortingStrategy } from '../../utils/wc-dnd/sort/strategies/index.js';
 import { arrayMove } from '../../utils/wc-dnd/utils/array-move.js';
-import { getTagColor, selectOptionColors } from './colors.js';
+import { selectOptionColorActions } from './color-menu.js';
+import { getTagColor } from './colors.js';
 import {
   selectedStyle,
   selectOptionContentStyle,
@@ -276,24 +277,12 @@ export class MultiTagSelect extends SignalWatcher(
           }),
           menu.group({
             name: 'color',
-            items: selectOptionColors.map(item => {
-              const styles = styleMap({
-                backgroundColor: item.color,
-                borderRadius: '50%',
-                width: '20px',
-                height: '20px',
-              });
-              return menu.action({
-                name: item.wording ? this.say(item.wording) : item.name,
-                prefix: html` <div style=${styles}></div>`,
-                isSelected: option.color === item.color,
-                select: () => {
-                  this.tagManager.changeTag({
-                    id: option.id,
-                    color: item.color,
-                  });
-                },
-              });
+            items: selectOptionColorActions({
+              current: option.color,
+              say: wording => this.say(wording),
+              select: color => {
+                this.tagManager.changeTag({ id: option.id, color });
+              },
             }),
           }),
         ],
