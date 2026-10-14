@@ -1,5 +1,8 @@
 import { createIdentifier, type ServiceProvider } from '@labre/global/di';
-import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
+import type {
+  GfxBlockElementModel,
+  GfxPrimitiveElementModel,
+} from '@labre/std/gfx';
 import type { ExtensionType } from '@labre/store';
 
 /**
@@ -34,6 +37,11 @@ import type { ExtensionType } from '@labre/store';
  * beside `ValidationRuleExtension`, because offering to read a file is tooling.
  * Turning a framework's flag off removes its import and export commands; it
  * does not touch one element a past import created. See `docs/adr/0009`.
+ *
+ * One owner is not a framework: `'canvas'`, which writes what the canvas
+ * PAINTS rather than what a framework means (`canvas:drawio:export`,
+ * `docs/adr/0019` amendment of 2026-10-14). It speaks no vocabulary, so no
+ * flag gates it, and the surface registers it unconditionally.
  */
 
 /* ── What a format is ─────────────────────────────────────────────────── */
@@ -251,6 +259,15 @@ export interface InterchangeExportContext {
    * named `Order-to cash` in the XML as well as on the download.
    */
   name?: string;
+  /**
+   * The canvas BLOCKS that go with the elements — notes, frames, edgeless
+   * texts, images — in document order. Optional, and only a writer of what the
+   * canvas paints reads it (`canvas:drawio:export`): a framework's exporter
+   * speaks about its own elements and ignores it, and a caller that passes
+   * none gets exactly what it got before this field existed. Models, never
+   * DI-only types, so labre-mcp can hand over what its store holds.
+   */
+  blocks?: readonly GfxBlockElementModel[];
 }
 
 /** What the caller tells an importer about the source it is handing over. */
@@ -302,6 +319,10 @@ export interface InterchangeImportResult {
  * speaks about itself. Document order is the caller's, and it matters: it is
  * the tie-break the audit and the validation rules already break on, so an
  * export cannot disagree with a badge the user can see.
+ *
+ * A RENDERING is the one exception, and it is the visual tier's: part of a
+ * picture is a smaller picture, so the canvas's draw.io writer is handed the
+ * selection when there is one (`canvas.export.drawio`).
  */
 export type InterchangeExporter = (
   elements: readonly GfxPrimitiveElementModel[],
@@ -377,7 +398,10 @@ export function interchangeCapabilityId(
   return `${framework}${ID_SEPARATOR}${formatId}${ID_SEPARATOR}${direction}`;
 }
 
-/** A framework registers its interchange here; nothing else registers any. */
+/**
+ * A framework registers its interchange here, and so does the canvas (its
+ * generic draw.io writer); nothing else registers any.
+ */
 export const InterchangeIdentifier =
   createIdentifier<InterchangeCapability>('Interchange');
 

@@ -1,0 +1,6 @@
+---
+'@labre/affine-block-surface': minor
+'@labre/affine-gfx-uml': minor
+---
+
+Export the canvas as a draw.io drawing. A new "Export as draw.io" entry (`canvas.export.drawio`) joins PNG and PDF in the canvas's "This view" actions and the palette: it writes the selection, or the whole canvas, as one uncompressed draw.io page (shapes, connectors with their arrows and end labels, texts, groups, notes, frames, edgeless texts, and images as placeholders naming their blob), with colours resolved to values. Given `deliver` (`runViewAction`) it hands the file back and downloads nothing. The writer is the pure `exportCanvasDrawio`, declared in the interchange registry as `canvas:drawio:export` under a new `canvas` owner that no flag gates. `InterchangeExportContext` gains an optional `blocks` field; existing exporters ignore it. Every cell carries its element's `role` as a `labre-role` attribute, and UML's draw.io reader now reads it: a class, interface, enumeration, actor, use case, note or package written by Labre comes back as that artefact with its compartments, and a relationship as its role states it. New keys: `com.labre.command.canvas.export.drawio`, `com.labre.command.canvas.export.drawio.description`.

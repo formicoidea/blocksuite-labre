@@ -788,6 +788,18 @@ const RELATION_OF_ROLE = new Map<string, UmlRelationKind>(
   ])
 );
 
+/**
+ * The relationship a connector ROLE states — `uml:generalization` → `'generalization'`
+ * — or `undefined` for a role that states none. The one reading of
+ * {@link RELATION_ROLE} backwards, exported for the draw.io reader, which meets
+ * the same roles as `labre-role` attributes on a drawing the canvas wrote.
+ */
+export function umlRelationKindOfRole(
+  role: string | undefined
+): UmlRelationKind | undefined {
+  return role === undefined ? undefined : RELATION_OF_ROLE.get(role);
+}
+
 /* ── Geometry ─────────────────────────────────────────────────────────── */
 
 /**
