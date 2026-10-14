@@ -687,7 +687,6 @@
       "Show block icon",
       "Sort",
       "Sort",
-      "View name",
       "View settings"
     ],
     "packages/affine/widgets/keyboard-toolbar/src/config.ts": [
