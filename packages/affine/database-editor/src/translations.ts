@@ -57,6 +57,16 @@ export const VIEW_MENU_OPEN_IN: ChromeWording = [
   'Open pages in',
 ];
 
+/**
+ * "Conditional colors" (ADR 0036): the view settings' own entry
+ * (`DATA_VIEW_COLOR_RULES`), one chrome word, one key, declared once by
+ * `@labre/data-view`, so not listed below.
+ */
+export const VIEW_MENU_COLOR_RULES: ChromeWording = [
+  'com.labre.data-view.color-rules',
+  'Conditional colors',
+];
+
 export const VIEW_MENU_SAVE_TEMPLATE: ChromeWording = [
   'com.labre.database.view-menu.save-template',
   'Save as template',

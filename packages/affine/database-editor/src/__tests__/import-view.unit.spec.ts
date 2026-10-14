@@ -133,6 +133,47 @@ describe('addImportedView', () => {
     });
   });
 
+  test('writes the colour rules remapped, those on an ignored property gone', () => {
+    const { source, views } = hostedSource();
+    const on = (name: string) => ({
+      type: 'group',
+      op: 'and',
+      conditions: [
+        {
+          type: 'filter',
+          left: { type: 'ref', name },
+          function: 'greatThan',
+          args: [{ type: 'literal', value: 10 }],
+        },
+      ],
+    });
+    const id = addImportedView(source, undefined, {
+      ...theirs,
+      view: {
+        ...theirs.view,
+        colorRules: [
+          {
+            id: 'c1',
+            color: 'var(--affine-v2-chip-label-red)',
+            filter: on('their-cost'),
+          },
+          {
+            id: 'c2',
+            color: 'var(--affine-v2-chip-label-red)',
+            filter: on('their-gone'),
+          },
+        ],
+      },
+    });
+    expect(views.find(view => view.id === id)!.colorRules).toEqual([
+      {
+        id: 'c1',
+        color: 'var(--affine-v2-chip-label-red)',
+        filter: on('cost'),
+      },
+    ]);
+  });
+
   test('stores no sourceId on the implicit source', () => {
     const { source, views } = hostedSource();
     const id = addImportedView(source, undefined, theirs);
@@ -157,8 +198,16 @@ describe('addImportedView', () => {
 });
 
 describe('currentViewTemplate', () => {
-  test('the current view without its filters and sorts', () => {
-    const { source } = hostedSource({ sourceId: 's2' });
+  test('the current view without its filters and sorts, with its colour rules', () => {
+    const { source, views } = hostedSource({ sourceId: 's2' });
+    const colorRules = [
+      {
+        id: 'c1',
+        color: 'var(--affine-v2-chip-label-red)',
+        filter: { type: 'group', op: 'and', conditions: [{ type: 'filter' }] },
+      },
+    ];
+    views[0]!.colorRules = colorRules;
     const template = currentViewTemplate(source)!;
     expect(template.databaseId).toBe('labre-base:b1');
     expect(template.sourceId).toBe('s2');
@@ -169,5 +218,6 @@ describe('currentViewTemplate', () => {
       op: 'and',
       conditions: [],
     });
+    expect(template.view.colorRules).toEqual(colorRules);
   });
 });

@@ -3,14 +3,17 @@ import type { DataSourcePickerProperty } from '@labre/affine-shared/services';
 /**
  * What a copied view lost on the way (labre PRD REQ-DB-2: "the dialog says
  * so"): conditions of its filter and keys of its sort that pointed at an
- * ignored property, the grouping by one, and the columns of the ignored
- * properties.
+ * ignored property, the grouping by one, the columns of the ignored
+ * properties, and its colour rules that read one (ADR 0036; `colorRules`
+ * arrived in 0.50, a field a 0.49 reader of this type never reads).
+ * Held by `remap-dropped-signature.unit.spec.ts`.
  */
 export interface RemapDropped {
   filters: number;
   sorts: number;
   group: boolean;
   properties: number;
+  colorRules: number;
 }
 
 export interface RemappedView {
@@ -48,6 +51,10 @@ function isRecord(value: unknown): value is Json {
  *   kept its id;
  * - a manual order of rows (`sort.manuallySort`, a group's
  *   `manuallyCardSort`) names rows of the other database: emptied;
+ * - a colour rule (`colorRules`, ADR 0036) is rewritten as a filter is,
+ *   but a rule that loses any condition is removed whole and counted: a
+ *   rule with fewer conditions would colour rows its author never meant;
+ *   its colour is the shared palette's and is kept as is;
  * - `id`, `name` and `sourceId` are left to the caller; any other key is
  *   copied as is.
  *
@@ -68,6 +75,7 @@ export function remapView(
     sorts: 0,
     group: false,
     properties: 0,
+    colorRules: 0,
   };
   const fromById = new Map(from.map(p => [p.id, p]));
   const toById = new Map(to.map(p => [p.id, p]));
@@ -132,7 +140,7 @@ export function remapView(
     return { value, empty: false };
   };
 
-  const remapFilter = (filter: Json): Json | null => {
+  const remapFilter = (filter: Json, onDrop: () => void): Json | null => {
     if (filter.type === 'group') {
       const conditions = Array.isArray(filter.conditions)
         ? filter.conditions
@@ -140,7 +148,7 @@ export function remapView(
       const kept: Json[] = [];
       for (const condition of conditions) {
         if (!isRecord(condition)) continue;
-        const next = remapFilter(condition);
+        const next = remapFilter(condition, onDrop);
         if (next) kept.push(next);
       }
       return { ...filter, conditions: kept };
@@ -149,7 +157,7 @@ export function remapView(
     const sourceId = typeof left?.name === 'string' ? left.name : undefined;
     const id = target(sourceId);
     if (!sourceId || !id) {
-      dropped.filters += 1;
+      onDrop();
       return null;
     }
     let empty = false;
@@ -162,25 +170,45 @@ export function remapView(
         })
       : filter.args;
     if (empty) {
-      dropped.filters += 1;
+      onDrop();
       return null;
     }
     return { ...filter, left: { ...left, name: id }, args };
   };
 
+  // A nested group left empty is dropped with its conditions; the root
+  // stays, an empty group being "no filter".
+  const prune = (group: Json): Json => ({
+    ...group,
+    conditions: (group.conditions as Json[])
+      .map(c => (c.type === 'group' ? prune(c) : c))
+      .filter(
+        c => c.type !== 'group' || (c.conditions as unknown[]).length > 0
+      ),
+  });
+
   if (isRecord(data.filter)) {
-    const root = remapFilter(data.filter);
-    // A nested group left empty is dropped with its conditions; the root
-    // stays, an empty group being "no filter".
-    const prune = (group: Json): Json => ({
-      ...group,
-      conditions: (group.conditions as Json[])
-        .map(c => (c.type === 'group' ? prune(c) : c))
-        .filter(
-          c => c.type !== 'group' || (c.conditions as unknown[]).length > 0
-        ),
+    const root = remapFilter(data.filter, () => {
+      dropped.filters += 1;
     });
     if (root) data.filter = prune(root);
+  }
+
+  if (Array.isArray(data.colorRules)) {
+    const kept: Json[] = [];
+    for (const rule of data.colorRules) {
+      if (!isRecord(rule) || !isRecord(rule.filter)) continue;
+      let lost = false;
+      const filter = remapFilter(rule.filter, () => {
+        lost = true;
+      });
+      if (lost || !filter) {
+        dropped.colorRules += 1;
+        continue;
+      }
+      kept.push({ ...rule, filter: prune(filter) });
+    }
+    data.colorRules = kept;
   }
 
   if (isRecord(data.sort)) {
@@ -253,6 +281,8 @@ export function defaultMapping(
 /**
  * What a view template keeps of a view (labre PRD REQ-DB-4): everything but
  * its filters, its sorts and its manual orders, which belong to one view.
+ * Its colour rules (`colorRules`, ADR 0036) are kept, conditions included:
+ * REQ-DB-4 names them part of a template.
  */
 export function viewTemplateData(view: Readonly<Json>): Json {
   const data = structuredClone(view) as Json;
