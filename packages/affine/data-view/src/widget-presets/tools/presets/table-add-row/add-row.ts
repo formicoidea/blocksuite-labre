@@ -82,7 +82,7 @@ export class DataViewHeaderToolsAddRow extends WidgetBase {
     >
     </data-view-component-button>`;
     const opener = this.view.serviceGet(NewRowMenuOpenerKey);
-    if (!opener) return button;
+    if (!opener || opener.canOpen?.(this.view.id) === false) return button;
     const label = opener.label();
     return html`<div class="new-record-split">
       ${button}

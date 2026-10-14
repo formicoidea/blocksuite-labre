@@ -804,6 +804,43 @@ B17 item of the B9 amendment above.
   it merged over the stored view, so both survive; a guard holds it
   (`all/src/__tests__/database/database-telemetry.unit.spec.ts`).
 
+### 2026-10-14: a title without a body, and "New" asking whether it has a menu
+
+Two gaps the host found on a base's full page (labre A4). No stored field,
+no new seam, no new flag; two optional members whose absence keeps what
+shipped.
+
+- **`<doc-title .bodyBlockId>`.** On the full page (B13) the title sits
+  above `<affine-database-page>`, but its Enter split the title into a first
+  paragraph of the document's first note and its ArrowDown focused or
+  created one: a note the page never draws, holding the schema blocks that
+  carry the sources. The host swallowed both keys in capture. `DocTitle`
+  gains `bodyBlockId?: string` (default `undefined`, the 0.48 behaviour).
+  Set, the title has no body of its own: Enter and ArrowDown drop the
+  title's caret and call the block's `focusFirstCell` when it has one
+  (`DatabaseBlockComponent.focusFirstCell`, new, the current view's first
+  cell for a table or kanban; the other presets ignore it). Nothing is
+  written, and nothing is focused when the block has no cell to take it.
+  Enter does what ArrowDown does: the title text is stored as typed, so
+  leaving the title is all "validating" it means. The page host does not
+  set it on the title, because the host composes the two elements; it is
+  the host's one line (`title.bodyBlockId = hostBlockId`).
+- **`DatabaseNewRowMenuService.canOpen?({ blockId, viewId })`.** The
+  service is registered once per editor, so the chevron also showed on an
+  inline table of a base, where the host has nothing to open. The block
+  passes it to data-view's `NewRowMenuOpener.canOpen?(viewId)`, which the
+  header's "New" asks at each render: `false` draws the single button of
+  0.48, absent means every view (as the seam first shipped). The request
+  type is `DatabaseNewRowMenuTarget`, the open request without its anchor.
+  It is called on every render of "New": the host answers from what it
+  already holds.
+- Held by `integration-test/…/page/doc-title-body-block.spec.ts` (with and
+  without `bodyBlockId`), `integration-test/…/page/database-seams.spec.ts`
+  (with `canOpen`), `data-view/src/__tests__/new-row-menu.unit.spec.ts`
+  (asked at each render) and
+  `blocks/database/src/__tests__/new-row-menu.unit.spec.ts` (the type only
+  widens).
+
 ### 2026-10-14: "This view" on the full page, and importing a view
 
 Labre PRD REQ-DB-2, DB-4 and DB-10. Amends §9c (the picker) and the "+ view"

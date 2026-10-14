@@ -47,7 +47,8 @@ import { setupEditor } from '../utils/setup.js';
  *   chosen `sourceId`, unrendered, or as more than one undo step;
  * - a database created by the host's `createDatabase` not landing as a view
  *   of its first source;
- * - a chevron beside "New" drawn without the host's menu, the chevron not
+ * - a chevron beside "New" drawn without the host's menu, or where its
+ *   `canOpen` says no (an inline table of a base), the chevron not
  *   naming its block and view, or "New" itself no longer adding a row (where
  *   a host applies its default template) once the menu is there.
  */
@@ -377,5 +378,39 @@ describe('the menu beside "New"', () => {
     await settle();
     expect(model.children.length).toBe(rows + 1);
     expect(open).toHaveBeenCalledTimes(1);
+  });
+
+  test('with canOpen, the chevron shows only where the host says so', async () => {
+    const open = vi.fn<(request: DatabaseNewRowMenuRequest) => void>();
+    let baseId = '';
+    const canOpen = vi.fn(
+      ({ blockId }: Omit<DatabaseNewRowMenuRequest, 'anchor'>) =>
+        blockId === baseId
+    );
+    cleanup = await setupEditor('page', [
+      DatabaseNewRowMenuExtension({ open, canOpen }),
+    ]);
+    const base = writeDatabase({ hosted: false }).model;
+    baseId = base.id;
+    const inline = writeDatabase({ hosted: false }).model;
+    await settle();
+
+    expect(canOpen).toHaveBeenCalledWith({
+      blockId: inline.id,
+      viewId: 'gallery-1',
+    });
+    expect(chevronOf(inline)).toBeNull();
+    const rows = inline.children.length;
+    toolOf(inline).querySelector<HTMLElement>('.new-record')!.click();
+    await settle();
+    expect(inline.children.length).toBe(rows + 1);
+
+    chevronOf(base)!.click();
+    await settle();
+    expect(open).toHaveBeenCalledWith({
+      anchor: chevronOf(base),
+      blockId: base.id,
+      viewId: 'gallery-1',
+    });
   });
 });

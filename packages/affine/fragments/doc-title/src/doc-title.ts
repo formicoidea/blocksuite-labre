@@ -10,7 +10,11 @@ import { focusTextModel, type RichText } from '@labre/affine-rich-text';
 import { TitleBandProvider, translateKey } from '@labre/affine-shared/services';
 import { matchModels } from '@labre/affine-shared/utils';
 import { WithDisposable } from '@labre/global/lit';
-import { ShadowlessElement } from '@labre/std';
+import {
+  type BlockComponent,
+  type BlockStdScope,
+  ShadowlessElement,
+} from '@labre/std';
 import type { Store } from '@labre/store';
 import { effect } from '@preact/signals-core';
 import { css, html, nothing } from 'lit';
@@ -113,9 +117,36 @@ export class DocTitle extends WithDisposable(ShadowlessElement) {
     return this.doc.getBlock(noteId)?.model as NoteBlockModel;
   }
 
+  /**
+   * Leaves the title for `bodyBlockId`: the title loses the caret (its text
+   * is already stored, so that is all "validating" it means), then the block
+   * takes the caret where it can, through its `focusFirstCell` (a database
+   * block's: the first cell of a table or kanban view). A block without one,
+   * or a view without cells, keeps nothing focused. Writes nothing.
+   */
+  private _leaveForBodyBlock(std: BlockStdScope, blockId: string) {
+    this.inlineEditor?.setInlineRange(null);
+    this.inlineEditor?.rootElement?.blur();
+    const block = std.view.getBlock(blockId) as
+      | (BlockComponent & { focusFirstCell?: () => void })
+      | null;
+    block?.focusFirstCell?.();
+  }
+
   private readonly _onTitleKeyDown = (event: KeyboardEvent) => {
     if (event.isComposing || this.doc.readonly) return;
     if (!this._std) return;
+
+    if (
+      this.bodyBlockId !== undefined &&
+      (event.key === 'Enter' || event.key === 'ArrowDown')
+    ) {
+      this._std.event.active = true;
+      event.preventDefault();
+      event.stopPropagation();
+      this._leaveForBodyBlock(this._std, this.bodyBlockId);
+      return;
+    }
 
     if (event.key === 'Enter') {
       this._std.event.active = true;
@@ -309,4 +340,16 @@ export class DocTitle extends WithDisposable(ShadowlessElement) {
 
   @property({ attribute: false })
   accessor wrapText = true;
+
+  /**
+   * The block that is the page's body, when the document's note is not (a
+   * database's full page, ADR 0035 B13: the document holds the database
+   * block and its schema blocks in a note the page never draws). Set, the
+   * title has no body of its own: Enter and ArrowDown leave the title for
+   * this block and never add or focus a paragraph, so nothing is ever
+   * written to the note. Unset (the default), Enter splits the title into a
+   * first paragraph and ArrowDown focuses or creates one, as in 0.48.
+   */
+  @property({ attribute: false })
+  accessor bodyBlockId: string | undefined = undefined;
 }

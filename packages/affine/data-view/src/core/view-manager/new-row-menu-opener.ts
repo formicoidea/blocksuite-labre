@@ -12,6 +12,9 @@ import { createIdentifier } from '@labre/global/di';
  */
 export interface NewRowMenuOpener {
   label(): string;
+  /** Asked at every render of "New"; `false` draws no chevron for this
+   *  view. Absent, the chevron is drawn. */
+  canOpen?(viewId: string): boolean;
   open(anchor: HTMLElement, viewId: string): void;
 }
 

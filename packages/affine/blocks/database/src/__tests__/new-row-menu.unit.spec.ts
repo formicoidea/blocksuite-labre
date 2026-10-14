@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   DatabaseNewRowMenuExtension,
   DatabaseNewRowMenuProvider,
+  type DatabaseNewRowMenuService,
+  type DatabaseNewRowMenuTarget,
 } from '../service/new-row-menu.js';
 import {
   DATABASE_NEW_RECORD_MORE,
@@ -19,7 +21,10 @@ import {
  *   would draw a chevron opening nothing in every host that never heard of
  *   it (`di.addImpl`, or a library default slipped in);
  * - a second registration throwing at boot instead of winning;
- * - the chevron's wording losing its key.
+ * - the chevron's wording losing its key;
+ * - `canOpen` made required, or its request changed shape: a host built on
+ *   the seam's first release (`{ open }` alone) would stop compiling, and
+ *   one that answers per block would stop being asked by block and view.
  *
  * The block's wiring (no chevron without the seam, the chevron's request,
  * the main part still adding a row) is held in a real editor by
@@ -49,6 +54,18 @@ describe('DatabaseNewRowMenuExtension', () => {
         DatabaseNewRowMenuExtension(second),
       ])
     ).toBe(second);
+  });
+
+  it('only widens: open alone still types, canOpen takes the block and the view', () => {
+    const firstRelease: DatabaseNewRowMenuService = { open: () => {} };
+    const target: DatabaseNewRowMenuTarget = { blockId: 'b', viewId: 'v' };
+    const perBlock: DatabaseNewRowMenuService = {
+      open: () => {},
+      canOpen: ({ blockId, viewId }) => blockId === 'b' && viewId === 'v',
+    };
+    expect(firstRelease.canOpen).toBeUndefined();
+    expect(perBlock.canOpen?.(target)).toBe(true);
+    expect(resolve([DatabaseNewRowMenuExtension(perBlock)])).toBe(perBlock);
   });
 
   it('labels the chevron with a key', () => {
