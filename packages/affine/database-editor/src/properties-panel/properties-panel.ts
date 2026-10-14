@@ -50,16 +50,16 @@ export function propertiesPanelView(
  * request). It draws nothing of its own beyond the shared side-panel header:
  * the list is the data-view's own `data-view-properties-setting`, the very
  * list the view options' "Properties" pops, so hiding, showing and
- * reordering write through the same `Property` methods, once.
+ * reordering write through the same `Property` methods, once. A row's click
+ * opens the property's menu (the table header's: rename, type, duplicate,
+ * delete) and "New property" adds one, both from that list.
  *
  * A host mounts it with `std` (the editor that shows the database) and
  * `request`; it follows the block as it mounts and unmounts. Read-only, the
  * list is drawn and inert.
  *
- * ponytail: the panel lists the view's properties and their visibility only;
- * rename, retype and "+ property" stay in the table header's own menu, and
- * the host-panels verbs of §10 (for a host that draws its own panel) are not
- * written: the Labre app mounts this element. Add them to
+ * ponytail: the host-panels verbs of §10 (for a host that draws its own
+ * panel) are not written: the Labre app mounts this element. Add them to
  * `@labre/affine/host-panels` when a host draws its own.
  */
 export class DatabasePropertiesPanel extends SignalWatcher(
@@ -153,6 +153,9 @@ export class DatabasePropertiesPanel extends SignalWatcher(
     return translateKey(this.std, wording[0], wording[1]);
   }
 
+  private readonly _wording = (wording: readonly [string, string]) =>
+    this._t(wording);
+
   private readonly _close = () => {
     this.std.getOptional(PropertiesPanelProvider)?.close();
   };
@@ -205,6 +208,7 @@ export class DatabasePropertiesPanel extends SignalWatcher(
       <div class="affine-database-properties-panel-list" ?inert=${readonly}>
         <data-view-properties-setting
           .view=${view}
+          .wording=${this._wording}
         ></data-view-properties-setting>
       </div>`;
   }

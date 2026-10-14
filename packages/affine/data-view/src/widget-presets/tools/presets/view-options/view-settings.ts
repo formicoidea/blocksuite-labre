@@ -234,7 +234,7 @@ export function openViewSetting(
         openPanel(view.id);
         return;
       }
-      popPropertiesSetting(target, { view, onBack: reopen });
+      popPropertiesSetting(target, { view, onBack: reopen, wording });
       return;
     }
     case 'group': {
