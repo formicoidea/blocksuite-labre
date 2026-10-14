@@ -17,7 +17,7 @@ what `list()` returns under a last "Saved frames" tab
 inserts it as a copy with fresh ids, in the active layer. `frameDeleted` is
 called when this viewer deletes a frame on a writable document, never for
 another peer's deletion, and `frameRestored` when an undo brings it back.
-Without the seam, nothing of this appears. See `docs/integrate/04-host-seams.md`.
+An optional `frameInserted({ docId, templateId })` is called once a saved frame from that tab is on the canvas, so the host can link the images it references to that page. Without the seam, nothing of this appears. See `docs/integrate/04-host-seams.md`.
 
 Removed: `EdgelessTemplatePanel.templates.extend(...)` and
 `TemplateManager.extend`, a module-level registry shared by every editor of the

@@ -33,6 +33,12 @@ export interface SavedFrameTemplate {
   preview?: string;
 }
 
+/** A saved frame inserted into a document, by your id for the template. */
+export interface FrameTemplateInsertion {
+  docId: string;
+  templateId: string;
+}
+
 /** Ids of a frame whose life the host may follow. */
 export interface FrameTemplateFrameRef {
   docId: string;
@@ -56,6 +62,10 @@ export interface FrameTemplateFrameRef {
  * - `frameRestored` is called when this viewer brings back a frame it had
  *   deleted in this session (undo). Whatever `frameDeleted` did must be
  *   undoable by it: move a template to the trash, never destroy it.
+ * - `frameInserted` is called once a saved frame from that category is on the
+ *   canvas (the template job succeeded), with the document it landed in and
+ *   your id for the template: link what the copy references (its images) to
+ *   that document. Not called when the insertion failed.
  *
  * Both notifications may come twice for one gesture (two editors mounted on
  * one document): make them idempotent.
@@ -65,6 +75,7 @@ export interface FrameTemplateService {
   list(): Promise<SavedFrameTemplate[]>;
   frameDeleted?(frame: FrameTemplateFrameRef): void;
   frameRestored?(frame: FrameTemplateFrameRef): void;
+  frameInserted?(insertion: FrameTemplateInsertion): void;
 }
 
 export const FrameTemplateProvider = createIdentifier<FrameTemplateService>(
