@@ -3570,6 +3570,7 @@ __metadata:
     "@labre/affine-block-note": "workspace:*"
     "@labre/affine-block-paragraph": "workspace:*"
     "@labre/affine-block-surface": "workspace:*"
+    "@labre/affine-database-editor": "workspace:*"
     "@labre/affine-gfx-bpmn": "workspace:*"
     "@labre/affine-gfx-c4": "workspace:*"
     "@labre/affine-gfx-connector": "workspace:*"
