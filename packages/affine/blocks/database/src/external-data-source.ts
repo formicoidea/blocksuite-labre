@@ -146,8 +146,12 @@ export abstract class HostedDataSourceBase extends DataSourceBase {
   }
 
   /** The current view's source; `null` when `resolveSource` knows none. */
+  // Without `resolveSource` the current view is not read at all: the
+  // implicit source does not depend on it.
   readonly source$: ReadonlySignal<HostedSource | null> = computed(() =>
-    this.sourceOf(this.currentSourceId$.value)
+    this._resolveSource
+      ? this.sourceOf(this.currentSourceId$.value)
+      : this.sourceOf(undefined)
   );
 
   readonly schema$: ReadonlySignal<DatabaseBlockModel | null> = computed(
