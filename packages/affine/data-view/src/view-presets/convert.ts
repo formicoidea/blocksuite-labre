@@ -1,5 +1,6 @@
 import { createViewConvert } from '../core/view/convert.js';
 import { calendarViewModel } from './calendar/index.js';
+import { flatViewConverts } from './flat/flat-converts.js';
 import { kanbanViewModel } from './kanban/index.js';
 import { tableViewModel } from './table/index.js';
 
@@ -48,4 +49,5 @@ export const viewConverts = [
     sort: data.sort,
     header: calendarCardToHeader(data.card),
   })),
+  ...flatViewConverts,
 ];

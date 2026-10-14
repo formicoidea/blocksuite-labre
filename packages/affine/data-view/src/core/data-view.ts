@@ -14,7 +14,7 @@ import {
   type UIEventHandler,
 } from '@labre/std';
 import { computed, type ReadonlySignal, signal } from '@preact/signals-core';
-import { css, unsafeCSS } from 'lit';
+import { css, type TemplateResult, unsafeCSS } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { ref } from 'lit/directives/ref.js';
@@ -43,12 +43,24 @@ export type DataViewRendererConfig = {
   selection$: ReadonlySignal<DataViewSelection | undefined>;
   setSelection: (selection: DataViewSelection | undefined) => void;
   eventTrace: EventTraceFn<DatabaseAllEvents>;
+  /**
+   * Drawn instead of the current view, header widget included, when it
+   * returns something (a source the view names that the host cannot resolve,
+   * ADR 0035 §7): the caller draws what of its header still makes sense.
+   * Absent: every view draws as in 0.48.
+   */
+  viewPlaceholder?: (logic: DataViewUILogicBase) => TemplateResult | undefined;
   detailPanelConfig: {
     openDetailPanel: (
       target: HTMLElement,
       data: {
         view: SingleView;
         rowId: string;
+        /**
+         * A Ctrl/Cmd click: the host may open the row in a new tab (ADR 0035
+         * §9a). Absent for a gesture with no such modifier.
+         */
+        newTab?: boolean;
       }
     ) => Promise<void>;
   };
@@ -144,9 +156,15 @@ export class DataViewRootUILogic {
     this.currentView$.value?.focusFirstCell();
   };
 
+  /**
+   * The one way a view opens a row, whatever its preset (the database block
+   * routes it to the host's opener or to its own detail panel, ADR 0035 §9a).
+   * `newTab` says the gesture asked for a new tab (`isNewTabClick`).
+   */
   openDetailPanel = (ops: {
     view: SingleView;
     rowId: string;
+    newTab?: boolean;
     onClose?: () => void;
   }) => {
     const openDetailPanel = this.config.detailPanelConfig.openDetailPanel;
@@ -155,6 +173,7 @@ export class DataViewRootUILogic {
       openDetailPanel(target, {
         view: ops.view,
         rowId: ops.rowId,
+        ...(ops.newTab ? { newTab: true } : {}),
       })
         .catch(console.error)
         .finally(ops.onClose);
@@ -203,6 +222,7 @@ export class DataViewRootUI extends SignalWatcher(
   openDetailPanel = (ops: {
     view: SingleView;
     rowId: string;
+    newTab?: boolean;
     onClose?: () => void;
   }) => {
     this.logic.openDetailPanel(ops);
@@ -222,6 +242,14 @@ export class DataViewRootUI extends SignalWatcher(
     const currentView = this.logic.currentView$.value;
     if (!currentView) {
       return;
+    }
+    const placeholder = this.logic.config.viewPlaceholder?.(currentView);
+    if (placeholder) {
+      return html`
+        <div style="display: contents" class="${containerClass}">
+          ${placeholder}
+        </div>
+      `;
     }
     return html`
       <div style="display: contents" class="${containerClass}">

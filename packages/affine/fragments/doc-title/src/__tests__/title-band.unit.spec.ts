@@ -2,6 +2,7 @@ import {
   EdgelessCRUDIdentifier,
   SurfaceBlockSchemaExtension,
 } from '@labre/affine-block-surface';
+import { effects as contextMenuEffects } from '@labre/affine-components/context-menu';
 import { effects as datePickerEffects } from '@labre/affine-components/date-picker';
 import { effects as portalEffects } from '@labre/affine-components/portal';
 import { RefNodeSlotsProvider } from '@labre/affine-inline-reference';
@@ -55,8 +56,10 @@ import { LABRE_TITLE_BAND, TitleBand } from '../title-band/title-band';
  *   its type (ADR 0035 §11 amended 2026-10-13: the checkbox, the tag menu of
  *   a select, the date picker, the number and text inputs), a link by the
  *   cell a package above registers, a type with no cell by its text;
- * - the tag menu offers the host's options and creates none, since the band
- *   cannot write a property's config;
+ * - the tag menu offers the host's options and creates none, unless the host
+ *   takes a definition write (`setData`) for that property (`dataWritable`):
+ *   then it creates and renames options through `setData`, never deletes,
+ *   recolours or reorders one (product owner, 2026-10-14);
  * - a write goes to `set` and the chip shows pending until it settles; the
  *   band never applies the value itself, the host's `sheetimport {
   EdgelessCRUDIdentifier,
@@ -143,6 +146,7 @@ beforeAll(() => {
     customElements.define(LABRE_TITLE_BAND, TitleBand);
   }
   if (!customElements.get('uni-lit')) dataViewEffects();
+  if (!customElements.get('affine-menu')) contextMenuEffects();
   if (!customElements.get('date-picker')) datePickerEffects();
   if (!customElements.get('blocksuite-portal')) portalEffects();
   if (!customElements.get('test-fake-link-cell')) {
@@ -541,6 +545,100 @@ describe('the title band', () => {
     expect(menu!.querySelector('[data-testid="option-more"]')).toBeNull();
     optionNamed(menu!, 'Done').click();
     expect(service.set).toHaveBeenCalledWith(DOC, 'status', 'b');
+  });
+
+  it('creates an option through setData, then selects it through set', async () => {
+    const setData = vi.fn(async () => {});
+    const { service } = bandService(
+      { status: 'ready', properties: [{ ...STATUS, dataWritable: true }] },
+      { setData }
+    );
+    const band = await mount(
+      fakeStd(new Map([[TitleBandProvider, service]])).std
+    );
+    cellOf(chipOf(band, 'status')).click();
+    await frame();
+    const menu = document.querySelector('affine-multi-tag-select')!;
+    expect(menu.onOptionsChange).toBeDefined();
+    expect(menu.optionEdits).toBe('create-rename');
+    const input = menu.querySelector('input')!;
+    input.value = 'Blocked';
+    input.dispatchEvent(new InputEvent('input', { bubbles: true }));
+    await menu.updateComplete;
+    input.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })
+    );
+
+    expect(setData).toHaveBeenCalledTimes(1);
+    const [docId, propertyId, data] = setData.mock.calls[0] as unknown as [
+      string,
+      string,
+      { options: { id: string; value: string }[] },
+    ];
+    expect([docId, propertyId]).toEqual([DOC, 'status']);
+    const created = data.options[0]!;
+    expect(created.value).toBe('Blocked');
+    expect(data.options.slice(1).map(o => o.id)).toEqual(['a', 'b']);
+    // The definition write comes first, then the value write that selects it.
+    expect(service.set).toHaveBeenCalledWith(DOC, 'status', created.id);
+  });
+
+  it('renames an option, and offers no delete, colour or reordering', async () => {
+    const setData = vi.fn(async () => {});
+    const { service } = bandService(
+      { status: 'ready', properties: [{ ...STATUS, dataWritable: true }] },
+      { setData }
+    );
+    const band = await mount(
+      fakeStd(new Map([[TitleBandProvider, service]])).std
+    );
+    cellOf(chipOf(band, 'status')).click();
+    await frame();
+    const menu = document.querySelector('affine-multi-tag-select')!;
+    optionNamed(menu, 'Doing')
+      .querySelector<HTMLElement>('[data-testid="option-more"]')!
+      .click();
+    await frame();
+    const optionMenu = [...document.querySelectorAll('affine-menu')].at(-1)!;
+    const field = optionMenu.querySelector('affine-menu-input')!;
+    await (field as unknown as { updateComplete: Promise<unknown> })
+      .updateComplete;
+    expect(optionMenu.textContent).not.toContain('Delete');
+    expect(optionMenu.querySelectorAll('affine-menu-button')).toHaveLength(0);
+    const rename = (field.shadowRoot ?? field).querySelector('input')!;
+    rename.value = 'In progress';
+    rename.dispatchEvent(new InputEvent('input', { bubbles: true }));
+
+    expect(setData).toHaveBeenLastCalledWith(DOC, 'status', {
+      options: [
+        { id: 'a', value: 'In progress', color: 'var(--affine-tag-blue)' },
+        { id: 'b', value: 'Done', color: 'var(--affine-tag-green)' },
+      ],
+    });
+    expect(service.set).not.toHaveBeenCalled();
+  });
+
+  it('keeps the options fixed without setData, dataWritable or a writable chip', async () => {
+    const setData = vi.fn(async () => {});
+    const cases: [Partial<TitleBandService>, TitleBandProperty, boolean][] = [
+      [{}, { ...STATUS, dataWritable: true }, false],
+      [{ setData }, STATUS, false],
+      [{ setData }, { ...STATUS, dataWritable: true, readonly: true }, false],
+      [{ setData }, { ...STATUS, dataWritable: true }, true],
+    ];
+    for (const [extra, property, writable] of cases) {
+      const { service } = bandService(
+        { status: 'ready', properties: [property] },
+        extra
+      );
+      const band = await mount(
+        fakeStd(new Map([[TitleBandProvider, service]])).std
+      );
+      expect(cellOf(chipOf(band, 'status')).cell.property.dataCanSet).toBe(
+        writable
+      );
+      document.body.innerHTML = '';
+    }
   });
 
   it("adds a tag through the table's multi-select menu", async () => {

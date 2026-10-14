@@ -12,8 +12,11 @@ import { EDGELESS_TOP_CONTENTEDITABLE_SELECTOR } from '@labre/affine-shared/cons
 import {
   BlockCommentManager,
   CommentProviderIdentifier,
+  type DatabaseAllEvents,
   DocModeProvider,
+  type EventTraceFn,
   NotificationProvider,
+  PropertiesPanelProvider,
   type TelemetryEventMap,
   TelemetryProvider,
   TOAST_COPIED_TO_CLIPBOARD,
@@ -25,15 +28,20 @@ import {
   createUniComponentFromWebComponent,
   type DataSourceBase,
   DataViewRootUILogic,
+  DataViewEventTraceKey,
   type DataViewSelection,
   type DataViewUILogicBase,
   type DataViewWidget,
   type DataViewWidgetProps,
   defineUniComponent,
   ExternalGroupByConfigProvider,
+  NewRowMenuOpenerKey,
+  PropertiesPanelOpenerKey,
   renderUniLit,
   type SingleView,
+  traceViewEvent,
   uniMap,
+  ViewCreationOffKey,
 } from '@labre/data-view';
 import { CalendarExternalSourceProvider } from '@labre/data-view/view-presets';
 import { widgetPresets } from '@labre/data-view/widget-presets';
@@ -56,12 +64,15 @@ import { popSideDetail } from './components/layout.js';
 import { DatabaseConfigExtension } from './config.js';
 import { EditorHostKey } from './context/host-context.js';
 import { DatabaseBlockDataSource } from './data-source.js';
+import { HostedDataSourceBase } from './external-data-source.js';
 import {
   databaseBlockStyles,
   databaseContentStyles,
   databaseHeaderBarStyles,
   databaseHeaderContainerStyles,
   databaseOpsStyles,
+  databaseSourceMissingHintStyles,
+  databaseSourceMissingStyles,
   databaseTitleRowStyles,
   databaseTitleStyles,
   databaseToolbarRowStyles,
@@ -70,9 +81,22 @@ import {
 import { BlockRenderer } from './detail-panel/block-renderer.js';
 import { NoteRenderer } from './detail-panel/note-renderer.js';
 import { DatabaseSelection } from './selection.js';
-import { DatabaseDataSourceProvider } from './service/index.js';
+import {
+  databaseOpenRowRequest,
+  DatabaseDataSourceProvider,
+  DatabaseNewRowMenuProvider,
+  DatabaseOpenRowProvider,
+  openDatabasePropertiesPanel,
+  rowOpenedParams,
+} from './service/index.js';
+import {
+  DATABASE_NEW_RECORD_MORE,
+  DATABASE_SOURCE_MISSING,
+  DATABASE_SOURCE_MISSING_HINT,
+} from './translations.js';
 import { currentViewStorage } from './utils/current-view.js';
 import { getSingleDocIdFromText } from './utils/title-doc.js';
+import { DatabaseViewCreationIdentifier } from './view-creation.js';
 import type { DatabaseViewExtensionOptions } from './view';
 
 export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBlockModel> {
@@ -156,9 +180,50 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
   // fresh one bound to the new source.
   private _sourceVersion = 0;
 
+  /**
+   * Every database event leaves here, with the block's id and nothing about
+   * its rows (telemetry README, "Databases"): the root's `eventTrace`, and
+   * the source's `DataViewEventTraceKey` for code that holds only a view.
+   */
+  private readonly traceDatabaseEvent: EventTraceFn<DatabaseAllEvents> = (
+    key,
+    params
+  ) => {
+    const telemetryService = this.std.getOptional(TelemetryProvider);
+    telemetryService?.track(key, {
+      ...(params as TelemetryEventMap[typeof key]),
+      blockId: this.blockId,
+    });
+  };
+
   private _buildDataSource(): DataSourceBase {
     const initFn = (dataSource: DataSourceBase) => {
       dataSource.serviceSet(EditorHostKey, this.host);
+      dataSource.serviceSet(DataViewEventTraceKey, this.traceDatabaseEvent);
+      // With a host properties panel, the view options' "Properties" opens
+      // it (ADR 0035 §9b); without, the data-view's popover stays.
+      if (this.std.getOptional(PropertiesPanelProvider)) {
+        dataSource.serviceSet(PropertiesPanelOpenerKey, viewId => {
+          openDatabasePropertiesPanel(this.std, this.model, viewId);
+        });
+      }
+      // With a host menu beside "New" (its templates), the header draws a
+      // chevron that opens it; the main part still adds a row (`rowAdd`).
+      const newRowMenu = this.std.getOptional(DatabaseNewRowMenuProvider);
+      if (newRowMenu) {
+        dataSource.serviceSet(NewRowMenuOpenerKey, {
+          label: () => translateKey(this.std, ...DATABASE_NEW_RECORD_MORE),
+          canOpen: viewId =>
+            newRowMenu.canOpen?.({ blockId: this.model.id, viewId }) ?? true,
+          open: (anchor, viewId) => {
+            newRowMenu.open({ anchor, blockId: this.model.id, viewId });
+          },
+        });
+      }
+      // `{ database: false }` takes view creation away, never the views.
+      if (!this.std.getOptional(DatabaseViewCreationIdentifier)) {
+        dataSource.serviceSet(ViewCreationOffKey, true);
+      }
       this.std.provider
         .getAll(ExternalGroupByConfigProvider)
         .forEach(config => {
@@ -203,6 +268,44 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
     this.requestUpdate();
   }
 
+  /**
+   * A row that is a document opens where the host says, in the view's
+   * `openIn` mode (ADR 0035 §9a, B9); without an opener, or for a row that is
+   * a block, the caller keeps the peek view and the side detail of 0.48.
+   * Every row open passes here once, so `DatabaseRowOpened` leaves from here
+   * (B17), whichever path then opens the row.
+   */
+  private openRowThroughHost(data: {
+    view: SingleView;
+    rowId: string;
+    newTab?: boolean;
+  }): boolean {
+    const opener = this.std.getOptional(DatabaseOpenRowProvider);
+    const source = this.dataSource;
+    const viewData = source.viewDataGet(data.view.id) as
+      | { openIn?: unknown }
+      | undefined;
+    const rowsAreDocuments =
+      source instanceof HostedDataSourceBase && source.rowsAreDocuments;
+    const request = databaseOpenRowRequest({
+      hasOpener: !!opener,
+      rowsAreDocuments,
+      rowId: data.rowId,
+      viewId: data.view.id,
+      blockId: this.blockId,
+      openIn: viewData?.openIn,
+      newTab: data.newTab,
+    });
+    traceViewEvent(
+      data.view,
+      'DatabaseRowOpened',
+      rowOpenedParams(request, rowsAreDocuments, data.newTab)
+    );
+    if (!opener || !request) return false;
+    opener.open(request);
+    return true;
+  }
+
   private readonly renderTitle = (dataViewLogic: DataViewUILogicBase) => {
     return html` <affine-database-title
       class="${databaseTitleStyles}"
@@ -241,6 +344,17 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
     });
   };
 
+  private renderViewBar(props: DataViewWidgetProps) {
+    return html`<div class="${databaseViewBarContainerStyles}">
+      ${renderUniLit(widgetPresets.viewBar, {
+        ...props,
+        onChangeView: id => {
+          currentViewStorage.setCurrentView(this.blockId, id);
+        },
+      })}
+    </div>`;
+  }
+
   headerWidget: DataViewWidget = defineUniComponent(
     (props: DataViewWidgetProps) => {
       return html`
@@ -249,17 +363,15 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
             ${this.renderTitle(props.dataViewLogic)} ${this.renderDatabaseOps()}
           </div>
           <div class="${databaseToolbarRowStyles} ${databaseHeaderBarStyles}">
-            <div class="${databaseViewBarContainerStyles}">
-              ${renderUniLit(widgetPresets.viewBar, {
-                ...props,
-                onChangeView: id => {
-                  currentViewStorage.setCurrentView(this.blockId, id);
-                },
-              })}
-            </div>
+            ${this.renderViewBar(props)}
             ${renderUniLit(this.toolsWidget, props)}
           </div>
           ${renderUniLit(widgetPresets.quickSettingBar, props)}
+          <affine-database-values-banner
+            .dataSource="${this.dataSource}"
+            .std="${this.std}"
+            .trace="${this.traceDatabaseEvent}"
+          ></affine-database-values-banner>
         </div>
       `;
     }
@@ -344,6 +456,20 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
       widgetPresets.tools.viewOptions,
       widgetPresets.tools.tableAddRow,
     ],
+    gallery: [
+      widgetPresets.tools.filter,
+      widgetPresets.tools.sort,
+      widgetPresets.tools.search,
+      widgetPresets.tools.viewOptions,
+      widgetPresets.tools.tableAddRow,
+    ],
+    list: [
+      widgetPresets.tools.filter,
+      widgetPresets.tools.sort,
+      widgetPresets.tools.search,
+      widgetPresets.tools.viewOptions,
+      widgetPresets.tools.tableAddRow,
+    ],
   });
 
   private readonly viewSelection$ = computed(() => {
@@ -383,6 +509,35 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
     }
     return this.rootComponent;
   }
+
+  // ADR 0035 §7: a view whose source the host cannot resolve keeps the title
+  // and the view bar, so another view can be picked, and draws this instead of
+  // its tools and body: nothing to filter, add or edit, and nothing rewritten.
+  private readonly renderSourceMissing = (
+    dataViewLogic: DataViewUILogicBase
+  ) => {
+    const dataSource = this.dataSource;
+    if (!(dataSource instanceof HostedDataSourceBase)) return undefined;
+    if (!dataSource.sourceMissing$.value) return undefined;
+    return html`<div class="${databaseHeaderContainerStyles}">
+        <div class="${databaseTitleRowStyles}">
+          ${this.renderTitle(dataViewLogic)}
+        </div>
+        <div class="${databaseToolbarRowStyles} ${databaseHeaderBarStyles}">
+          ${this.renderViewBar({ dataViewLogic })}
+        </div>
+      </div>
+      <div
+        class="${databaseSourceMissingStyles}"
+        data-testid="database-source-missing"
+        role="status"
+      >
+        <div>${translateKey(this.std, ...DATABASE_SOURCE_MISSING)}</div>
+        <div class="${databaseSourceMissingHintStyles}">
+          ${translateKey(this.std, ...DATABASE_SOURCE_MISSING_HINT)}
+        </div>
+      </div>`;
+  };
 
   private renderDatabaseOps() {
     if (this.dataSource.readonly$.value) {
@@ -436,6 +591,17 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
       })
     );
   }
+
+  /**
+   * Puts the caret on the current view's first cell, where the view has one
+   * (table, kanban; the other presets ignore it): what the page title's
+   * Enter and ArrowDown reach when this block is the page's body
+   * (`<doc-title .bodyBlockId>`, a database's full page, ADR 0035 B13).
+   */
+  focusFirstCell() {
+    this._dataViewRootLogic?.focusFirstCell();
+  }
+
   private get dataViewRootLogic(): DataViewRootUILogic {
     if (!this._dataViewRootLogic) {
       this._dataViewRootLogic = this._buildDataViewRootLogic();
@@ -464,6 +630,7 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
       setSelection: this.setSelection,
       dataSource: this.dataSource,
       headerWidget: this.headerWidget,
+      viewPlaceholder: this.renderSourceMissing,
       onDrag: this.onDrag,
       clipboard: this.std.clipboard,
       dnd: this.std.dnd,
@@ -477,15 +644,10 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
           }
         },
       },
-      eventTrace: (key, params) => {
-        const telemetryService = this.std.getOptional(TelemetryProvider);
-        telemetryService?.track(key, {
-          ...(params as TelemetryEventMap[typeof key]),
-          blockId: this.blockId,
-        });
-      },
+      eventTrace: this.traceDatabaseEvent,
       detailPanelConfig: {
         openDetailPanel: (target, data) => {
+          if (this.openRowThroughHost(data)) return Promise.resolve();
           const peekViewService = this.std.getOptional(PeekViewProvider);
           if (peekViewService) {
             const openDoc = (docId: string) => {

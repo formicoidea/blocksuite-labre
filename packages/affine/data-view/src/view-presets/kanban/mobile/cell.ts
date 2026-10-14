@@ -12,6 +12,7 @@ import type {
   CellRenderProps,
   DataViewCellLifeCycle,
 } from '../../../core/property/index.js';
+import { renderCellStatus } from '../../../core/component/cell-status/cell-status.js';
 import { renderUniLit } from '../../../core/utils/uni-component/uni-component.js';
 import type { Property } from '../../../core/view-manager/property.js';
 import type { MobileKanbanViewUILogic } from './kanban-view-ui-logic.js';
@@ -22,7 +23,8 @@ const styles = css`
     display: flex;
     align-items: center;
     padding: 4px;
-    min-height: 20px;
+    /* A finger's target (B5, ADR 0035 §1); was 20px when mobile was read-only. */
+    min-height: 44px;
     border: 1px solid transparent;
     box-sizing: border-box;
   }
@@ -129,6 +131,8 @@ export class MobileKanbanCell extends SignalWatcher(
     const renderer = this.column.renderer$.value;
     if (!renderer) return;
     const { view } = renderer;
+    const status = renderCellStatus(props.cell);
+    if (status) return html` ${this.renderIcon()} ${status}`;
     this.view.lockRows(this.isEditing$.value);
     this.dataset['editing'] = `${this.isEditing$.value}`;
     return html` ${this.renderIcon()}

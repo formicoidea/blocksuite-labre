@@ -9,14 +9,18 @@ import {
   insertPositionToIndex,
   type InsertToPosition,
 } from '@labre/affine-shared/utils';
-import { type PropertyMetaConfig, type TypeInstance } from '@labre/data-view';
+import {
+  type PropertyMetaConfig,
+  type TypeInstance,
+  viewDefaultName,
+} from '@labre/data-view';
 import { propertyPresets } from '@labre/data-view/property-presets';
-import type { EditorHost } from '@labre/std';
+import type { BlockStdScope, EditorHost } from '@labre/std';
 import { type BlockModel } from '@labre/store';
 import { computed, signal } from '@preact/signals-core';
 
 import { getIcon } from './block-icons.js';
-import { ExternalDataSourceBase } from './external-data-source.js';
+import { HostedDataSourceBase } from './external-data-source.js';
 import {
   databaseBlockProperties,
   databasePropertyConverts,
@@ -39,11 +43,11 @@ type SpacialProperty = {
 
 /**
  * The inline blob source: rows are the block's children, cells/columns live in
- * the model blob. It implements the {@link ExternalDataSourceBase} data
+ * the model blob. It implements the {@link HostedDataSourceBase} data
  * contract by reading blocksuite signals directly, so it never needs to bump
  * `revision` — reactivity is automatic.
  */
-export class DatabaseBlockDataSource extends ExternalDataSourceBase {
+export class DatabaseBlockDataSource extends HostedDataSourceBase {
   spacialProperties: Record<string, SpacialProperty> = {
     'created-time': {
       valueSet: () => {},
@@ -511,14 +515,22 @@ export class DatabaseBlockDataSource extends ExternalDataSourceBase {
   }
 }
 
+/**
+ * `std` names the first view in the author's language (`viewDefaultName`),
+ * at the gesture; absent, the preset's English name, as in 0.48.
+ */
 export const databaseViewInitTemplate = (
   datasource: DatabaseBlockDataSource,
-  viewType: string
+  viewType: string,
+  std?: BlockStdScope
 ) => {
   Array.from({ length: 3 }).forEach(() => {
     datasource.rowAdd('end');
   });
-  datasource.viewManager.viewAdd(viewType);
+  datasource.viewManager.viewAdd(
+    viewType,
+    viewDefaultName(datasource.viewMetaGet(viewType), std)
+  );
 };
 export const convertToDatabase = (host: EditorHost, viewType: string) => {
   const [_, ctx] = host.std.command.exec(getSelectedModelsCommand, {
@@ -548,7 +560,10 @@ export const convertToDatabase = (host: EditorHost, viewType: string) => {
     return;
   }
   const datasource = new DatabaseBlockDataSource(databaseModel);
-  datasource.viewManager.viewAdd(viewType);
+  datasource.viewManager.viewAdd(
+    viewType,
+    viewDefaultName(datasource.viewMetaGet(viewType), host.std)
+  );
   host.store.moveBlocks(selectedModels, databaseModel);
 
   const selectionManager = host.selection;

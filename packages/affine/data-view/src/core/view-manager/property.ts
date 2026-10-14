@@ -2,6 +2,7 @@ import type { UniComponent } from '@labre/affine-shared/types';
 import type { InsertToPosition } from '@labre/affine-shared/utils';
 import { computed, type ReadonlySignal } from '@preact/signals-core';
 
+import type { TagOptionEdits } from '../component/tags/multi-tag-select.js';
 import type { TypeInstance } from '../logical/type.js';
 import type { CellRenderer, PropertyMetaConfig } from '../property/index.js';
 import type { PropertyDataUpdater } from '../types.js';
@@ -43,6 +44,13 @@ export interface Property<
    * creates, edits and reorders no option (`standalone-cell.ts`).
    */
   readonly dataCanSet?: boolean;
+  /**
+   * Which option edits a select's `dataUpdate` stands for when it writes
+   * (`TagOptionEdits`); absent means all of them. A standalone cell whose
+   * host writes options one create or rename at a time says
+   * `'create-rename'`, and the tag menu offers no delete, colour or reorder.
+   */
+  readonly optionEdits?: TagOptionEdits;
 
   readonly type$: ReadonlySignal<string>;
   readonly typeSet?: (type: string) => void;

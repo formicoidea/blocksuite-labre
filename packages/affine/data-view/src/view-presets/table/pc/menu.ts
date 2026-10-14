@@ -19,13 +19,15 @@ import type { TableViewUILogic } from './table-view-ui-logic.js';
 export const openDetail = (
   tableViewLogic: TableViewUILogic,
   rowId: string,
-  selection: TableSelectionController
+  selection: TableSelectionController,
+  newTab = false
 ) => {
   const old = selection.selection;
   selection.selection = undefined;
   tableViewLogic.root.openDetailPanel({
     view: selection.logic.view,
     rowId: rowId,
+    newTab,
     onClose: () => {
       selection.selection = old;
     },

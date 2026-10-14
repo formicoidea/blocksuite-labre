@@ -28,6 +28,7 @@ export class MultiSelectCell extends BaseCellRenderer<
       options: this.options$,
       onOptionsChange:
         this.property.dataCanSet === false ? undefined : this._onOptionsChange,
+      optionEdits: this.property.optionEdits,
       value: this._value$,
       onChange: v => {
         this.valueSetImmediate(v);
@@ -35,6 +36,7 @@ export class MultiSelectCell extends BaseCellRenderer<
       onComplete: this._editComplete,
       minWidth: 400,
       initialDraftText,
+      wording: this.wording,
     });
   };
 

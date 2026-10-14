@@ -7,6 +7,7 @@ import { property } from 'lit/decorators.js';
 import {
   type CellRenderProps,
   type DataViewCellLifeCycle,
+  renderCellStatus,
   renderUniLit,
 } from '../../../core/index.js';
 import { TableViewAreaSelection } from '../selection';
@@ -128,6 +129,8 @@ export class MobileTableCell extends SignalWatcher(
       return;
     }
     const { view } = renderer;
+    const status = renderCellStatus(this.cell$.value);
+    if (status) return status;
     this.view.lockRows(this.isEditing$.value);
     this.dataset['editing'] = `${this.isEditing$.value}`;
     const props: CellRenderProps = {

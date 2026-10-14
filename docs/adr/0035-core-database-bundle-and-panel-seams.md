@@ -427,3 +427,464 @@ library reuses the components it already designed, never a second drawing.
 - Held by `data-view/src/__tests__/standalone-cell.unit.spec.ts`,
   `fragments/doc-title/src/__tests__/title-band.unit.spec.ts` (each type drawn
   and edited by its cell) and `integration-test/…/edgeless/title-band.spec.ts`.
+
+### 2026-10-14: B14 as built
+
+Records what §4 left open when the package and the script change landed.
+
+- **Entry shape.** An `EDITOR_BUNDLES` entry carries a `label` beside the
+  fields §4 lists: it is the `owner` of the bundle's translation group in
+  `translations.ts` (`EDITOR_TRANSLATION_GROUPS`, one line,
+  `{ owner: 'core-database', … }`), the way `AUXILIARY_BUNDLES` uses it.
+- **`.` is data-only.** The package root exports
+  `databaseEditorTranslationEntries` and nothing that pulls Lit; the two
+  providers live behind `./view`, as for a framework. Both are empty
+  (`ponytail:` lines name B10 to B13) and the list of wordings is empty.
+- **Imports are checked against core alone.** The script rewrites the
+  bundle's `@labre/*` imports with core's shim map only, without the shared
+  bundles a framework may reach, so an import of a framework or of
+  `ddd-shared` fails `build:bundles`; `core-database-boundary.unit.spec.ts`
+  asks the same of the source and also checks that no library package but the
+  umbrella's two stripped assembly files imports the package.
+- **Descriptor.** The emitted `./descriptor` has the multi-extension shape
+  (`coreDatabaseBundle = { flag: 'database', telemetryKey: 'core-database', extensions }`);
+  `telemetryKey` only echoes the label, there is no historical PostHog value.
+- **Emitted bundles.** Every other bundle is byte-identical to 0.48.0's;
+  core differs only by the leftover comments and the empty group list in its
+  `translations.ts` and the `EDITOR_BUNDLES` data in `frameworks.ts`.
+
+### 2026-10-14: B1, B2 and B15 as built
+
+Amends §7, §9e and §9f with what the code had to decide. No stored format
+changes beyond §8 (shipped on its own, `view-basic-data.unit.spec.ts` in
+`affine/model`).
+
+- **The data layer follows the current view.** `HostedDataSourceBase` is still
+  one data source per block. `source$`, `schema$` and `rows$` answer for the
+  current view's `sourceId`: one view is drawn at a time, and property ids
+  never collide across sources (labre ADR-0046 §3: uuids). A per-view data
+  layer would have reshaped every `SingleView` reader in data-view; not done.
+- **No `resolveSource`, no sources.** A source built without it (the inline
+  source, every 0.48 host source, `ExternalDataSourceBase(model)`, kept as an
+  alias) reads the block itself whatever a view's `sourceId` says: the 0.48
+  reading. "Source not found" only exists for a host that resolves sources.
+- **"Source not found" replaces the tools too.** Through an optional
+  `viewPlaceholder(logic)` of `DataViewRendererConfig`, the database block
+  draws its title, its view bar (to pick another view) and the notice
+  (`com.labre.database.source-missing`, `.hint`) instead of the view: no
+  filter, no "+ row", no cell, so nothing can write to a source that is not
+  there, and `readonly$` is left alone.
+- **Hydration never writes.** A cell that is not `ready` mounts no renderer
+  (skeleton or empty, `renderCellStatus`) and `CellBase.valueSet` /
+  `jsonValueSet` refuse it, which covers paste, drag-to-fill, kanban drops and
+  every editor. "Filter and group counts" are, in this code, the group header
+  counts and the column statistics: the filter bar counts rules, not rows.
+  The banner lives in the database block's header (it needs the translation
+  seam), driven by the pure `valuesBannerOf(state, now)`.
+- **The hosted title is a property meta, not a seam.** `hostedTitleColumnConfig`
+  keeps the `title` type (stored columns, `header.titleColumn` and the
+  fixed-property rules unchanged) with a string value drawn by the plain-text
+  cell. A source with `rowsAreDocuments` returns it from `propertyMetaGet`;
+  the base reads `titleOf(rowId)` for that column. The base cannot swap the
+  meta itself: `propertyMetaGet` is a 0.48 host's own method, and taking it
+  over would ask every host for an `override`.
+- Held by `data-view/src/__tests__/hydration-status.unit.spec.ts`,
+  `blocks/database/src/__tests__/hosted-data-source.unit.spec.ts` and
+  `values-banner.unit.spec.ts`.
+
+### 2026-10-14: the gallery and list presets (B6, B7)
+
+Records what B6 and B7 decided where §1 and §8 left it open. Not a red zone:
+the two modes are new values of the open `mode` field, with the per-view
+data shape table and kanban already store (`columns[].hide`, `filter`,
+`sort`); no model field changes.
+
+- **One manager, two drawings.** `FlatSingleView` (`data-view/src/view-presets/flat/`)
+  is the table's manager without widths, statistics and groups: per-view order
+  and visibility, the filter and sort traits, row creation from the filter's
+  default values. `GallerySingleView` and `ListSingleView` only name their
+  mode. Grouping arrives with B8 on the same manager.
+- **The table's cells, not a drawing of their own.** Every value is the cell
+  renderer a table cell mounts, hosted by `<dv-standalone-cell>` with the
+  view's real `Cell` (§11 amended 2026-10-13), so the tag menu, the date picker
+  and the inputs are the table's. The host gains an optional
+  `onEditingChange(editing)`, through which the presets lock the view's rows
+  while a value edits, as a table does.
+- **A row opens; a value edits.** The title is drawn read-only, so a click on
+  it, or anywhere on a card or a row outside its values, or on its open
+  button, opens the row through `root.openDetailPanel`, the path the table's
+  and the kanban's open buttons take (the row-open seam of §9a plugs in
+  there). A click on a value opens its editor. A read-only view lets every
+  click through to the row.
+- **Defaults.** A new gallery or list stores its title shown and every other
+  property hidden (Notion's default for both layouts); a property added from
+  the view is shown. A list draws no chip for an empty value. A layout switch
+  into a gallery or a list, or out of one into a table or a board, keeps the
+  filter and the sort (`flat-converts.ts`); calendar is a source only (§6).
+- **One UI for desktop and mobile.** `mobileLogic` is the `pcLogic` class, named so a touch screen draws this UI on purpose (`mobile-editing.unit.spec.ts`): the cards reflow, the
+  list wraps its chips under the title below 640px, touch screens get 44px
+  rows. Editing on mobile follows the block's `readonly$` (B5).
+- **Hydration and document rows (§9e, §9f).** A value whose `status$` is not
+  `ready` mounts no cell: the presets draw `renderCellStatus`, as a table
+  cell does, so a pending value is a skeleton nobody can edit over, and a list
+  keeps the chip of an empty value still loading. A source whose rows are
+  documents titles them through `titleOf` with nothing in the presets: the
+  title cell reads `cellValueGet` and `propertyMetaGet('title')`, the
+  hosted title column.
+- **Not done.** No card cover (a `ponytail:` line names the upgrade, a stored
+  `header.coverColumn` as the kanban's); no slash-menu entry creating a
+  gallery or a list (the views bar and the Layout switch create them); the
+  views' `defaultName` ("Gallery View", "List View") is a literal, as the
+  table's and the kanban's, until view creation resolves its name through the
+  seam.
+- Held by `data-view/src/__tests__/gallery-list-views.unit.spec.ts`,
+  `all/src/__tests__/database/gallery-list-views.unit.spec.ts` (the real
+  block source, no write on load; a hosted source with document rows) and
+  `integration-test/src/__tests__/page/database-gallery-list.spec.ts`.
+
+### 2026-10-14: B8 as built (per-view settings, `openIn`, grouping on every layout)
+
+Records what B8 decided where §8 left it open. Not a red zone: no stored
+field is added. Grouping reuses the `groupBy` and `groupProperties` table and
+kanban have always stored (`groupProperties[].hide` was stored, always
+`false`, and read by nobody), `openIn` is the optional field §8 shipped on
+its own.
+
+- **Per view, already.** Hidden properties, their order and the sort were
+  per view in every preset (`columns[].hide` and its order, `sort`; B6 and
+  B7 for gallery and list); calculations are the table's column statistics,
+  per view in `columns[].statCalcType`. Gallery and list draw no
+  calculation: there is no column to put one under, and Notion offers none
+  in these layouts; their group headers count rows, as the table's and the
+  board's do.
+- **"Open pages in".** A view setting (side peek, center peek, full page)
+  in the view settings menu, offered only when the source says its rows are
+  documents (`rowsAreDocuments`): a block-backed row keeps the detail panel
+  whatever the view stores. `viewOpenInSet` writes on the pick alone, never
+  when it changes nothing (picking "Side peek" on a view with no `openIn`
+  leaves it absent), never on a read-only or fallback view. `viewOpenIn`
+  reads `side` for an absent or unknown value. Both live in
+  `data-view/src/core/view/open-in.ts`, exported. The row-open seam (B9)
+  reads the same field with its own `openInOf`; `database-seams.spec.ts`
+  holds the two together (a pick changes the `mode` the host's opener
+  receives). A layout switch keeps `openIn` and `sourceId`: the block's
+  `updateView` merges the converted data into the stored view.
+- **Grouping on every layout.** Gallery and list take the table's
+  `GroupTrait` with the table's ops, now one copy for the four presets
+  (`core/group-by/group-properties.ts`); a layout switch into a gallery or a
+  list keeps `groupBy`, as table and kanban kept it between them. A grouped
+  gallery or list draws each group under the table's group header (title,
+  count, "+" adding a row into the group, a menu); a row changes group by
+  its value, not by a drag.
+- **Hidden groups.** "Hide group" is in every group's menu and an eye per
+  group in the view's Group settings; it writes `groupProperties[].hide` for
+  everyone. `GroupTrait.groupsDataList$` keeps every group (a reorder or a
+  card move writes an entry for every key and must keep a hidden one's);
+  layouts draw `visibleGroups$` and end with `<dv-hidden-groups>`, which
+  lists `hiddenGroups$` with a "Show group" button (none on a read-only
+  view). The table's select-all skips hidden groups.
+- **Folded groups are personal.** `localStorage`, key
+  `labre:data-view:group-collapsed:<viewId>:<groupKey>`, only a folded group
+  has an entry; never the document, as the local hide of ADR 0031. Not a
+  host seam: it would be a row in the seams table forever for a device
+  ergonomic. The table used to keep its fold in `sessionStorage`
+  (`affine:table-group:*`), per tab; those entries are not read back. A
+  kanban column folds to its header.
+- **Not done.** The virtual table (`enable_table_virtual_scroll`, off by
+  default) hides hidden groups but neither lists them nor folds (a
+  `ponytail:` line); "Ungroup" and "Delete cards" stay table and board
+  entries of the group menu; the table's own literals ("Expand group",
+  "Collapse group") are left to the data-view wording pass, which can reuse
+  `com.labre.data-view.group.expand` and `.collapse`.
+- Held by `data-view/src/__tests__/grouping-views.unit.spec.ts`,
+  `table-group-collapse.unit.spec.ts`,
+  `all/src/__tests__/database/grouping-open-in.unit.spec.ts` and
+  `integration-test/src/__tests__/page/database-grouping.spec.ts`.
+
+### 2026-10-14: the row-open, properties panel and data-source picker seams as built (B9, B10, B12), and the band's option writes
+
+Records what B9, B10 and B12 decided where §9a to §9c left it open. Not a red
+zone: no stored field changes; every seam is optional and its absence keeps
+0.48.
+
+- **B9, one path.** `DatabaseOpenRowExtension({ open })` lives in
+  `@labre/affine-block-database` and plugs into the block's
+  `openDetailPanel`, which `DataViewRootUILogic.openDetailPanel` calls for
+  every view (table, kanban, gallery, list). The request is
+  `{ docId, mode, newTab, viewId, blockId }`; it goes to the host only for a
+  source with `rowsAreDocuments`, a row that is a block keeps the library's
+  detail. `mode` is the view's stored `openIn`, `side` when absent or
+  unknown; a Ctrl/Cmd click is `newTab: true` with `mode: 'full'`
+  (`isNewTabClick`, data-view core).
+- **B10, the library draws the source panel.** The view options' "Properties"
+  asks `PropertiesPanelProvider` with
+  `{ scope: 'source', docId, blockId, sourceId, viewId }` through a data-view
+  service key (`PropertiesPanelOpenerKey`) the block sets, so data-view
+  imports no seam; `sourceId` is the block id for a view with no `sourceId`.
+  The panel is `affine-database-properties-panel` in the bundle: the table
+  view's own `data-view-properties-setting`, `panelHeaderStyles`, "Show all /
+  Hide all", Close calling the host's `close()`. It writes through the view
+  as the popover does. `ponytail:` the §10 host-panels verbs and commands are
+  not written; the panel is the native list, add when a host panel must
+  write without mounting it.
+- **B12, the identifier in core.** §9c put the picker in the bundle; the
+  identifier `DataSourcePickerProvider` moved to `@labre/affine-shared`
+  because core's own "Table View" / "Kanban View" read `createDatabase` (§3:
+  a seam lives in the lowest package that reads it). The menu
+  (`popDataSourcePicker`, `databaseId` for one database's sources) and the
+  "Linked view of a database" slash entry stay in the bundle. A linked view is
+  one `affine:database` block with the host's `externalSourceId`, the
+  database title, one view with the picked `sourceId`, inserted as one undo
+  step; a board on a source with nothing to group by lands as a table.
+- **The band's option writes.** `TitleBandService.setData?` and
+  `TitleBandProperty.dataWritable?` (both optional, `title-band-signature`
+  guard): a select chip creates and renames options only when both are
+  there and the chip is writable. It is a definition write distinct from the
+  value write: `setData(docId, propertyId, { ...data, options })` first, then
+  the `set` that selects a created option. The tag menu takes
+  `optionEdits: 'create-rename'` (no delete, colour or reorder).
+- **Not done.** The "Open pages in" setting UI (the views bar's), telemetry for
+  a row opened (B17), and the views bar's "+ view" calling the picker.
+- Held by `blocks/database/src/__tests__/open-row.unit.spec.ts`,
+  `creating-entries.unit.spec.ts`, `shared/src/__tests__/services/data-source-picker-null.unit.spec.ts`,
+  `title-band-signature.unit.spec.ts`, `doc-title/src/__tests__/title-band.unit.spec.ts`,
+  `database-editor/src/__tests__/data-source-picker.unit.spec.ts` and
+  `integration-test/src/__tests__/page/database-seams.spec.ts`.
+
+### 2026-10-14: B11 and B13 as built
+
+Amends §1 (the split table) and §9c with what the view bar and the full-page
+host had to decide. No stored format changes; no new host seam.
+
+- **The tabs stay in core.** §1 put "the Notion view bar" in the bundle, but
+  its own test is that a core-only host shows every stored view: the tabs,
+  "N more" and switching are how a view is reached, so they are core's
+  `data-view-header-views`, measured by `component-overflow` through the pure
+  `fitOverflow` (`data-view/src/core/component/overflow/fit.ts`). Tabs keep
+  the order of the views and stop at the first that does not fit; the
+  current view always keeps a tab, in place of the last one that would have
+  fitted. "N more" lists only the views without a tab; "+" is always drawn
+  after them and is the bar's only creation entry (0.48 drew it only when
+  every tab fitted and offered "Create …" inside "N More"). A phone gets 44px
+  targets and nothing else.
+- **What the bundle adds to the bar is "+".** Core reads an
+  `AddViewMenuIdentifier` (`data-view`, the lowest package that reads it,
+  §3) through `std.getOptional`; `DatabaseEditorToolingViewExtension`
+  registers one, so `{ database: false }` drops it with the rest of the
+  creation tooling. It is a registry between library packages, never filled
+  by a host, so it has no row in the seams table. On a source that resolves
+  sources (`HostedDataSourceBase.resolvesSources`, new, with `sourceOf`) it
+  offers "On an existing source" (the sources the views read, one per
+  schema block, a sub-menu each when there are several) and "With a new
+  source" when the picker gives `createSource`; with one source and nothing
+  to create, the presets are the menu, as on an inline database. A view
+  added on a source writes that `sourceId` and re-derives its default data
+  from it, in the gesture's one undo step.
+- **The third entry is not drawn.** labre ADR-0046 §5 and the PRD give "+
+  view" three entries, the third importing a view from another database
+  (REQ-DB-2). This ADR has no seam for it; it waits for an amendment that
+  gives the picker an import verb, with the "This view" work of the host's
+  third wave.
+- **"+ view" reads the picker (closes the B12 "Not done" above).** With a
+  `DataSourcePickerProvider`, the tooling extension adapts it
+  (`addViewSourcePicker`) on the database the block shows, its
+  `externalSourceId` being the id the picker lists it under: the sources
+  of that database no view reads yet join "On an existing source", and
+  "With a new source" calls `createSource(databaseId)` then adds a table on
+  the new source. It lists them inline rather than popping
+  `popDataSourcePicker` over its own menu, so each source keeps its presets.
+  Without a picker, the sources the views read, as the seams table says.
+- **The full page draws the host block alone.** `<affine-database-page
+.store .extensions .hostBlockId>` (`DatabasePageHost`, defined by the
+  always-on extension) builds a page editor on the database document with
+  the host's page extensions plus `databasePageRootExtension`, which
+  replaces the page root with `<affine-database-page-root>`: it renders the
+  host database block and its own widgets, nothing else. No note, no schema
+  block, none of the page root's widgets (drag handle, block menu, slash
+  menu, toolbar with "Turn into", box selection) and none of its handlers
+  (Backspace on a block selection, ⌘A, the click below that appends a
+  paragraph). A first version drew the whole page editor and hid the schema
+  blocks in CSS; ⌘A then Backspace, ⌘X, a drag or a file drop still reached
+  them, and they carry the sources (labre ADR-0046): losing one loses the
+  database. Two guards hold what is not drawn out of reach, because a
+  flavour keymap fires for a selection on any MODEL descendant, drawn or
+  not: the store's selection is held to the host (a block or text selection
+  strictly inside it, any other selection on it or inside it,
+  `selectionStaysInHost`), and a drag carrying files never reaches the
+  editor. Same block, presets, cells and row opening as inline; nothing
+  written. Which block hosts the views is passed in, never read from a
+  `labre:*` key. Without that block it says so
+  (`com.labre.database.page.host-missing`).
+- Held by `data-view/src/__tests__/views-bar-overflow.unit.spec.ts`,
+  `database-editor/src/__tests__/add-view-menu.unit.spec.ts`,
+  `database-editor/src/__tests__/database-page.unit.spec.ts`,
+  `blocks/database/src/__tests__/hosted-data-source.unit.spec.ts` (`sourceOf`)
+  `integration-test/…/page/database-views-bar.spec.ts` (1024px and a
+  narrow bar) and `integration-test/…/page/database-page-guards.spec.ts`
+  (each destructive gesture replayed, a click below, a file drop).
+
+### 2026-10-14: the menu beside "New" and a text column for hosted sources
+
+Two host needs of labre's base templates (labre PRD REQ-DB-6, 14 and 15) and
+of its base columns. Not a red zone: no stored field, no new flag, no new
+bundle; one new seam, optional, whose absence keeps 0.48.
+
+- **The menu beside "New" is a seam in core.** `DatabaseNewRowMenuExtension(service | null)`
+  / `DatabaseNewRowMenuProvider` in `@labre/affine-block-database`, mirroring
+  `DatabaseOpenRowExtension` (§9a): the block reads it with
+  `std.getOptional` when it builds its source and hands data-view an opener
+  (`NewRowMenuOpenerKey`, `data-view/src/core/view-manager/`) with a
+  `serviceSet`, as `PropertiesPanelOpenerKey` (B10), so data-view imports no
+  seam. Core and not the bundle, because "New" is core's: the header tool
+  `data-view-header-tools-add-row` that every view draws (table, kanban,
+  gallery, list, calendar), the full page included, since it draws the same
+  block (B13). The request is `{ anchor, blockId, viewId }`; the host draws
+  the menu and does what it offers. The library knows no template.
+- **"New" is unchanged; the chevron is added.** Absent or `null`, the single
+  button of 0.48. Registered, the same button, then a chevron reusing
+  `data-view-component-button` as a split button, labelled by
+  `com.labre.database.new-record.more` ("Templates and options"), resolved
+  by the block so the wording lives with the seam's other words; 44px on a
+  coarse pointer. The main part still calls `addRow`, hence the source's
+  `rowAdd`: a host applies its default template there, so every way of
+  adding a row (the header, a group's "+", the gallery's "New page" card,
+  the table's last row) gets it without asking the menu. Only the header's
+  "New" draws a chevron; the in-view entries keep their one gesture.
+- **A text column for hosted sources, not for the inline database.**
+  data-view's plain-text preset (`text`, a string value) is `hide: true` and
+  was reachable from no public entry: a host whose values are plain JSON
+  (labre ADR-0046 §3, no `rich-text`) could offer no text column.
+  `hostedTextColumnConfig` (`blocks/database/src/properties/text/hosted.ts`,
+  exported beside `hostedTitleColumnConfig`) is that preset, shown, named as
+  the inline Text column. It is not added to `databaseBlockProperties`: the
+  inline database's Text is `rich-text`, two "Text" types would sit in its
+  menus, and a `text` column stored inline would be a type a 0.48 client
+  does not draw. A host lists it in `getPropertyMetas` and answers it from
+  `propertyMetaGet('text')`; the preset itself is left as it was.
+- Held by `blocks/database/src/__tests__/new-row-menu.unit.spec.ts`,
+  `hosted-data-source.unit.spec.ts` (a hosted text column),
+  `data-view/src/__tests__/new-row-menu.unit.spec.ts` and
+  `integration-test/…/page/database-seams.spec.ts` (without and with the
+  seam).
+
+### 2026-10-14: B17 as built, and new views named at the gesture
+
+Amends §12, the "Not done" line of the gallery and list amendment and the
+B17 item of the B9 amendment above.
+
+- **The taxonomy is the telemetry README's "Databases" section**, the
+  contract: `DatabaseViewAdded { viewType, source }`,
+  `DatabaseViewTypeChanged`, `DatabaseGroupChanged`,
+  `DatabaseRowOpened { mode, newTab, rowKind }` and
+  `DatabaseValuesLoadFailed { retryable }`; filters and sorts keep their
+  historical `CreateDatabaseFilter` and `DatabaseSort*` series rather than
+  starting a second one. Each has one emission point (the creating gesture,
+  the block's `openDetailPanel` once B9's request is built, `GroupTrait`,
+  the values banner), so
+  gallery and list report through the same paths as table and kanban. Code
+  that holds a view but no UI logic reports through the source's
+  `DataViewEventTraceKey`, which the block sets beside `EditorHostKey`.
+- **The boundary with `base.*`** is written in the README: the library
+  reports what happens inside a mounted database view; the host reports
+  what only it observes (a base created, a row page created or moved,
+  membership, sharing) and never re-reports a gesture the library already
+  reported through a seam.
+- **New views are named at the gesture.** Each preset keeps its English
+  `defaultName` and declares `defaultNameKey`; the views bar, the database
+  slash entries and "Turn into a database" write the name resolved through
+  the catalogue (`viewDefaultName`), so no stored name changes and none is
+  re-translated. The bar's `addView`, which B11's `AddViewMenuContext` hands
+  the bundle, resolves the name and reports `DatabaseViewAdded` once, so
+  "on an existing source" and "with a new source" (`source: 'new'`) name and
+  report a view the way the bar's own presets do; the bundle's preset
+  entries show the resolved name too. A host that creates a view itself
+  (the full-page base) passes the resolved name to `viewAdd(type, name)`.
+- **A layout change keeps the view's `sourceId` and `openIn`.**
+  `viewChangeType` rebuilds the view's data, but every block source writes
+  it merged over the stored view, so both survive; a guard holds it
+  (`all/src/__tests__/database/database-telemetry.unit.spec.ts`).
+
+### 2026-10-14: a title without a body, and "New" asking whether it has a menu
+
+Two gaps the host found on a base's full page (labre A4). No stored field,
+no new seam, no new flag; two optional members whose absence keeps what
+shipped.
+
+- **`<doc-title .bodyBlockId>`.** On the full page (B13) the title sits
+  above `<affine-database-page>`, but its Enter split the title into a first
+  paragraph of the document's first note and its ArrowDown focused or
+  created one: a note the page never draws, holding the schema blocks that
+  carry the sources. The host swallowed both keys in capture. `DocTitle`
+  gains `bodyBlockId?: string` (default `undefined`, the 0.48 behaviour).
+  Set, the title has no body of its own: Enter and ArrowDown drop the
+  title's caret and call the block's `focusFirstCell` when it has one
+  (`DatabaseBlockComponent.focusFirstCell`, new, the current view's first
+  cell for a table or kanban; the other presets ignore it). Nothing is
+  written, and nothing is focused when the block has no cell to take it.
+  Enter does what ArrowDown does: the title text is stored as typed, so
+  leaving the title is all "validating" it means. The page host does not
+  set it on the title, because the host composes the two elements; it is
+  the host's one line (`title.bodyBlockId = hostBlockId`).
+- **`DatabaseNewRowMenuService.canOpen?({ blockId, viewId })`.** The
+  service is registered once per editor, so the chevron also showed on an
+  inline table of a base, where the host has nothing to open. The block
+  passes it to data-view's `NewRowMenuOpener.canOpen?(viewId)`, which the
+  header's "New" asks at each render: `false` draws the single button of
+  0.48, absent means every view (as the seam first shipped). The request
+  type is `DatabaseNewRowMenuTarget`, the open request without its anchor.
+  It is called on every render of "New": the host answers from what it
+  already holds.
+- Held by `integration-test/…/page/doc-title-body-block.spec.ts` (with and
+  without `bodyBlockId`), `integration-test/…/page/database-seams.spec.ts`
+  (with `canOpen`), `data-view/src/__tests__/new-row-menu.unit.spec.ts`
+  (asked at each render) and
+  `blocks/database/src/__tests__/new-row-menu.unit.spec.ts` (the type only
+  widens).
+
+### 2026-10-14: "This view" on the full page, and importing a view
+
+Labre PRD REQ-DB-2, DB-4 and DB-10. Amends §9c (the picker) and the "+ view"
+of B11, whose third entry waited for this amendment.
+
+- **The full page's settings are view-menu commands.** The host already
+  lists the current view's own actions in its menu with `getViewActions`
+  and runs them with `runViewAction` (ADR 0034, amendment of 2026-10-13).
+  The full page registers six commands on that surface, from
+  `databasePageRootExtension`, so they exist on the full page and nowhere
+  else: `database.view.layout`, `.group`, `.open-in`, `.properties`,
+  `.save-template` and `.import` (`database-page/view-menu-commands.ts`,
+  `scope: 'page'`, no chord). They are a projection of the view settings,
+  not a second implementation: a setting opens the very menu the view
+  settings' entry opens, through `openSetting(key)` of the view's options
+  button, anchored on it, its "back" leading to the view settings. The
+  entries' openers moved out of `popViewOptions` into
+  `widget-presets/tools/presets/view-options/view-settings.ts`
+  (`popViewSetting`, `viewSettingAvailable`), which both call. A setting is
+  listed where the view settings offer it (grouping needs the group trait,
+  "Open pages in" rows that are pages) and not on a read-only page. They are
+  not in `@labre/affine`'s `getCommands()`: core never imports the bundle.
+- **No new seam: the picker carries the two transfers.** `DataSourcePickerService`
+  gains two optional verbs. `importView(request)` hands the host the
+  database the copy lands in, the current view's `sourceId`, that source's
+  properties and the layouts this database adds; the host lets the reader
+  choose a view and map its properties, then calls `request.add({ view,
+properties, mapping })`. `saveViewTemplate(template)` hands the current
+  view as a template: everything but its filters, sorts and manual orders
+  (REQ-DB-4), with its source's properties. Absent, "+ view" has no import
+  entry and the page lists neither command. "+ view" draws its third entry,
+  "Import a view from another database", when the verb is there.
+- **A copy, never a link.** `add` re-checks read-only, refuses a layout
+  this database does not add (no calendar is created any more), and writes
+  a new view with a new id on the current view's source, as one undo step
+  (`viewDataAdd`), then shows it and reports `DatabaseViewAdded { source:
+'import' }` (the union is append-only, so `import` is appended).
+  `remapView` (pure, exported for the host's dialog to preview the same
+  result) rewrites every property id through the mapping: an ignored
+  property's column leaves, a filter condition or a sort key on it is
+  removed, a grouping by it is undone, a select condition keeps the options
+  of the same name, the rows' manual orders are emptied; it counts what it
+  removed so the dialog can say so.
+- **Conditional colours are not built.** No view stores colour rules; they
+  need a stored field on the views (`packages/affine/model`, a red zone),
+  left to its own change. A template simply carries whatever the view
+  stores, so it will carry them once they exist.

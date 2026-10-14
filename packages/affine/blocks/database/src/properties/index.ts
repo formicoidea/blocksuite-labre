@@ -6,6 +6,8 @@ import { richTextColumnConfig } from './rich-text/cell-renderer.js';
 import { titleColumnConfig } from './title/cell-renderer.js';
 
 export * from './converts.js';
+export { hostedTextColumnConfig } from './text/hosted.js';
+export { hostedTitleColumnConfig } from './title/hosted.js';
 const {
   checkboxPropertyConfig,
   datePropertyConfig,

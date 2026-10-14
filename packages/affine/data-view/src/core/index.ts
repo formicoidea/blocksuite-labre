@@ -1,11 +1,14 @@
 export * from './common/index.js';
 export * from './component/index.js';
 export { DataSourceBase } from './data-source/base.js';
+export * from './data-source/hydration.js';
 export { DataViewRootUILogic } from './data-view.js';
+export { isNewTabClick } from './utils/new-tab-click.js';
 export * from './filter/index.js';
 export * from './group-by';
 export * from './logical/index.js';
 export * from './property/index.js';
+export * from './telemetry.js';
 export type { DataViewSelection } from './types.js';
 export * from './types.js';
 export * from './utils/index.js';

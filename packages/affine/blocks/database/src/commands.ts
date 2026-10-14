@@ -1,5 +1,5 @@
 import type { DatabaseBlockModel } from '@labre/affine-model';
-import type { Command } from '@labre/std';
+import type { BlockStdScope, Command } from '@labre/std';
 import type { BlockModel, Store } from '@labre/store';
 
 import {
@@ -37,7 +37,7 @@ export const insertDatabaseBlockCommand: Command<
 
   if (string == null) return;
 
-  initDatabaseBlock(std.store, targetModel, string, viewType, false);
+  initDatabaseBlock(std.store, targetModel, string, viewType, false, std);
 
   if (removeEmptyLine && targetModel.text?.length === 0) {
     std.store.deleteBlock(targetModel);
@@ -51,7 +51,8 @@ export const initDatabaseBlock = (
   model: BlockModel,
   databaseId: string,
   viewType: string,
-  isAppendNewRow = true
+  isAppendNewRow = true,
+  std?: BlockStdScope
 ) => {
   const blockModel = doc.getBlock(databaseId)?.model as
     | DatabaseBlockModel
@@ -60,7 +61,7 @@ export const initDatabaseBlock = (
     return;
   }
   const datasource = new DatabaseBlockDataSource(blockModel);
-  databaseViewInitTemplate(datasource, viewType);
+  databaseViewInitTemplate(datasource, viewType, std);
   if (isAppendNewRow) {
     const parent = doc.getParent(model);
     if (!parent) return;

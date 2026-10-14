@@ -1,4 +1,5 @@
 import { viewType } from '../../core/view/data-view.js';
+import { VIEW_NAME_CALENDAR } from '../../translations.js';
 import { CalendarSingleView } from './calendar-view-manager.js';
 import type { CalendarViewData } from './types.js';
 
@@ -6,7 +7,8 @@ export const calendarViewType = viewType('calendar');
 
 export const calendarViewModel = calendarViewType.createModel<CalendarViewData>(
   {
-    defaultName: 'Calendar View',
+    defaultName: VIEW_NAME_CALENDAR[1],
+    defaultNameKey: VIEW_NAME_CALENDAR[0],
     dataViewManager: CalendarSingleView,
     defaultData: viewManager => {
       return {

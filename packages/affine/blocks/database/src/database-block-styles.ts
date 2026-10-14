@@ -71,3 +71,20 @@ export const databaseContentStyles = css({
   backgroundColor: 'var(--affine-background-primary-color)',
   borderRadius: '4px',
 });
+
+export const databaseSourceMissingStyles = css({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '4px',
+  margin: '8px 0',
+  padding: '12px',
+  borderRadius: '8px',
+  fontSize: '14px',
+  lineHeight: '22px',
+  color: 'var(--affine-text-primary-color)',
+  backgroundColor: 'var(--affine-hover-color)',
+});
+
+export const databaseSourceMissingHintStyles = css({
+  color: 'var(--affine-text-secondary-color)',
+});

@@ -187,6 +187,38 @@ The other optional blocks (`attachment`, `bookmark`, `code`, `database`,
 render as nothing with their flag off. Each is split the same way when its
 flag is genuinely shipped, never ahead of that.
 
+## Amendment — 2026-10-14: database and data-view are split
+
+The callout amendment above left `database` in the known gap. ADR 0035 §5
+(issue B4) closes it, because a Labre base is a stored database and the
+host's `database` flag must never blank one. Both views are split the
+callout's way:
+
+- `DatabaseRenderViewExtension`, always registered: `effects()` whole (every
+  element it defines draws a stored database: the block, its title, the
+  cells, the row detail and peek), the flavour, the block view (which brings
+  the view presets, the cells and the row opening), and the link cell the
+  title band draws (ADR 0035 §11).
+- `DatabaseViewExtension`, flag-gated: the slash entries that insert a
+  database, `DatabaseViewCreationIdentifier` (absent, the block sets
+  data-view's `ViewCreationOffKey` on its source and the views bar offers no
+  "+" and no "Create …"), and the host's `configure` of the block's "⋯"
+  menu, kept on this class so a host's
+  `viewManager.configure(DatabaseViewExtension, …)` still compiles.
+- `DataViewRenderViewExtension` always on (`effects()`, flavour, block view)
+  and `DataViewViewExtension` gated and empty: the data-view block's one
+  creation path, its slash item, was never registered.
+
+With `{ database: false, 'data-view': false }` a document's databases render
+with every stored view, their cells stay editable, their rows open, a view
+can still switch layout, be renamed, moved or deleted; no database and no
+view can be created. Held by `database-render-gating.unit.spec.ts`
+(`@labre/affine`) and `integration-test/…/page/database-stored-views.spec.ts`.
+
+The same issue set (ADR 0035 §6, B3) removed the other way a stored database
+rendered nothing: a view mode with no preset threw. Not a flag, so not this
+ADR's contract, but the same promise: a stored document renders everywhere.
+
 ## Test coverage and its limit
 
 `reversed-contract-doc.unit.spec.ts` covers the contract at two levels:

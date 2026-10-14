@@ -3,13 +3,17 @@ import { join } from 'node:path';
 
 import { describe, expect, test } from 'vitest';
 
-import { AUXILIARY_BUNDLES, FRAMEWORK_DESCRIPTORS } from '../../frameworks.js';
+import {
+  AUXILIARY_BUNDLES,
+  EDITOR_BUNDLES,
+  FRAMEWORK_DESCRIPTORS,
+} from '../../frameworks.js';
 import { HERE } from './source-files.js';
 
 /**
  * `scripts/build-bundles.mjs` builds `@labre/core` from a COPY of
- * `translations.ts` with every framework's and auxiliary bundle's contribution
- * stripped: one `import { … } from '<pkg>'` statement and one
+ * `translations.ts` with every framework's, auxiliary and editor bundle's
+ * contribution stripped: one `import { … } from '<pkg>'` statement and one
  * `{ owner: '<id>', … }` line each. Anything else naming a package that ships
  * as its own bundle makes core import it, and the release breaks — which is
  * how 0.38.0 failed to publish, found only at `ci:publish`.
@@ -25,6 +29,7 @@ describe('translations.ts keeps the shape the bundle split strips', () => {
   const bundles = [
     ...FRAMEWORK_DESCRIPTORS.map(d => ({ pkg: d.pkg, id: d.id as string })),
     ...AUXILIARY_BUNDLES.map(b => ({ pkg: b.pkg, id: b.label })),
+    ...EDITOR_BUNDLES.map(b => ({ pkg: b.pkg, id: b.label })),
   ];
 
   test.each(bundles)(

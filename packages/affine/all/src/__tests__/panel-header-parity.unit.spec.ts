@@ -4,10 +4,12 @@
  * Why it exists: the selection pane drew its own header (a bold title, a
  * divider, touch-sized text buttons) beside the frame panel's 36px row with a
  * secondary-text title and icon buttons, and the product owner asked for the
- * native one, then the same for the artefact catalogue. The design now lives once, in `panelHeaderStyles`
+ * native one, then the same for the artefact catalogue (and the database
+ * properties panel, ADR 0035 §9b). The design now lives once, in `panelHeaderStyles`
  * (`@labre/affine-shared/styles`), and each panel adopts it whole; this spec
  * fails the day one of them restyles its header on its own instead.
  */
+import { DatabasePropertiesPanel } from '@labre/affine-database-editor/view';
 import { FramePanelHeader } from '@labre/affine-fragment-frame-panel';
 import { panelHeaderStyles } from '@labre/affine-shared/styles';
 import {
@@ -29,6 +31,7 @@ describe('side panel headers', () => {
     ['the frame panel', FramePanelHeader],
     ['the selection pane', EdgelessSelectionPaneWidget],
     ['the artefact catalogue', EdgelessArtefactCatalogueWidget],
+    ['the database properties panel', DatabasePropertiesPanel],
   ])('%s takes its header from panelHeaderStyles', (_, component) => {
     expect(cssTextOf(component.styles)).toContain(panelHeaderStyles.cssText);
   });

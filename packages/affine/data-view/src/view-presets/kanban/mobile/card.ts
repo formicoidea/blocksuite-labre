@@ -72,7 +72,7 @@ const styles = css`
     right: 8px;
     top: 8px;
     display: flex;
-    gap: 4px;
+    gap: 20px;
   }
 
   .mobile-card-op {
@@ -84,6 +84,13 @@ const styles = css`
     background-color: var(--affine-background-primary-color);
     font-size: 16px;
     color: ${unsafeCSSVarV2('icon/primary')};
+  }
+
+  /* A 44px touch target around the drawn 24px op (B5, ADR 0035 §1). */
+  .mobile-card-op::after {
+    content: '';
+    position: absolute;
+    inset: -10px;
   }
 `;
 

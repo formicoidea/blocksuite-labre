@@ -12,5 +12,7 @@ export * from './properties/rich-text/cell-renderer';
 export * from './selection.js';
 export * from './service';
 export * from './utils/block-utils';
+export * from './view-creation.js';
 export * from './views';
 export * from '@labre/data-view';
+export * from './linked-view.js';

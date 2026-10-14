@@ -1,4 +1,7 @@
-import type { DatabaseBlockModel } from '@labre/affine-model';
+import type {
+  DatabaseBlockModel,
+  ViewBasicDataType,
+} from '@labre/affine-model';
 import { FeatureFlagService } from '@labre/affine-shared/services';
 import type { InsertToPosition } from '@labre/affine-shared/utils';
 import {
@@ -12,8 +15,6 @@ import {
   type ViewMeta,
 } from '@labre/data-view';
 import { DisposableGroup } from '@labre/global/disposable';
-import { IS_MOBILE } from '@labre/global/env';
-import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
 import { computed, type ReadonlySignal, signal } from '@preact/signals-core';
 
 import {
@@ -24,9 +25,29 @@ import {
 } from './utils/block-utils.js';
 import {
   databaseBlockViewConverts,
-  databaseBlockViewMap,
+  databaseBlockViewMetaGet,
   databaseBlockViews,
 } from './views/index.js';
+
+/**
+ * One source of a hosted database, as `resolveSource` answers it (ADR 0035
+ * §7, issue B1): the `affine:database` block that owns its schema
+ * (`props.columns`) and its ordered row ids. Where the host keeps its sources
+ * is the host's format; the library never reads it.
+ */
+export interface HostedSource {
+  schema: DatabaseBlockModel;
+  rows: ReadonlySignal<string[]>;
+}
+
+/**
+ * `sourceId` is the current view's stored `sourceId` (ADR 0035 §8), absent
+ * for every view stored before 0.49. `null`: no such source, and the view
+ * draws "Source not found" instead of its body (never an error).
+ */
+export type ResolveHostedSource = (
+  sourceId: string | undefined
+) => HostedSource | null;
 
 /**
  * Intermediate base for `affine:database` data sources whose **view config**
@@ -48,18 +69,111 @@ import {
  * computeds re-run. Defining `rows$`/`properties$` here (not as instance fields
  * reassigned in a subclass constructor) also avoids the "reassign after super"
  * dance.
+ *
+ * Sources (ADR 0035 §7, B1): the views live in `hostModel.props.views`; each
+ * view reads the source its `sourceId` names, through `resolveSource`. The
+ * data layer answers for the CURRENT view's source ({@link source$},
+ * {@link schema$}, {@link rows$}): one view is drawn at a time, and property
+ * ids never collide across sources (host-generated uuids). Without
+ * `resolveSource` the block has one implicit source, itself, whatever a view
+ * says: the 0.48 behaviour, which `ExternalDataSourceBase(model)` keeps.
+ *
+ * Rows that are documents (B15): a source whose rows are documents says so
+ * with {@link rowsAreDocuments}, answers each title from its own store with
+ * {@link titleOf}, and returns `hostedTitleColumnConfig` from
+ * `propertyMetaGet('title')`, so a title is a plain string and no row's
+ * document is loaded to draw it.
  */
-export abstract class ExternalDataSourceBase extends DataSourceBase {
+export abstract class HostedDataSourceBase extends DataSourceBase {
+  /** The block that hosts the views (and, without `resolveSource`, the data). */
   protected readonly _model: DatabaseBlockModel;
+
+  private readonly _resolveSource: ResolveHostedSource | undefined;
 
   /** Bumped by {@link invalidate} to re-run the data-layer computeds. */
   protected readonly revision = signal(0);
 
   protected readonly disposables = new DisposableGroup();
 
-  constructor(model: DatabaseBlockModel) {
+  constructor(
+    hostModel: DatabaseBlockModel,
+    resolveSource?: ResolveHostedSource
+  ) {
     super();
-    this._model = model;
+    this._model = hostModel;
+    this._resolveSource = resolveSource;
+  }
+
+  get hostModel(): DatabaseBlockModel {
+    return this._model;
+  }
+
+  /** The current view's stored `sourceId`; `undefined` reads the implicit source. */
+  readonly currentSourceId$: ReadonlySignal<string | undefined> = computed(
+    () => {
+      const viewId = this.viewManager.currentViewId$.value;
+      if (!viewId) return undefined;
+      const view: ViewBasicDataType | undefined = this.viewDataGet(viewId);
+      return view?.sourceId;
+    }
+  );
+
+  private readonly _implicitRows$: ReadonlySignal<string[]> = computed(() => {
+    void this.revision.value;
+    return this.getRows();
+  });
+
+  /**
+   * Whether views name the source they read: a `resolveSource` was given.
+   * Without it there is one implicit source, the block, whatever `sourceId`
+   * a view stores, so chrome that lists sources has nothing to list.
+   */
+  get resolvesSources(): boolean {
+    return this._resolveSource !== undefined;
+  }
+
+  /**
+   * Any source, by the `sourceId` a view would store, resolved the way the
+   * current view's is ({@link source$}); `null` when there is no such source.
+   * Read by chrome that lists the sources of the views (the "+ view" menu of
+   * `@labre/affine-database-editor`, ADR 0035 B11). Writes nothing.
+   */
+  sourceOf(sourceId: string | undefined): HostedSource | null {
+    if (!this._resolveSource) {
+      return { schema: this._model, rows: this._implicitRows$ };
+    }
+    return this._resolveSource(sourceId);
+  }
+
+  /** The current view's source; `null` when `resolveSource` knows none. */
+  // Without `resolveSource` the current view is not read at all: the
+  // implicit source does not depend on it.
+  readonly source$: ReadonlySignal<HostedSource | null> = computed(() =>
+    this._resolveSource
+      ? this.sourceOf(this.currentSourceId$.value)
+      : this.sourceOf(undefined)
+  );
+
+  readonly schema$: ReadonlySignal<DatabaseBlockModel | null> = computed(
+    () => this.source$.value?.schema ?? null
+  );
+
+  readonly sourceMissing$: ReadonlySignal<boolean> = computed(
+    () => this.source$.value === null
+  );
+
+  /** Each row is a document (ADR 0035 §9a, §9f). Read-only. */
+  get rowsAreDocuments(): boolean {
+    return false;
+  }
+
+  /**
+   * A document row's title from the source's own store, read for the `title`
+   * property when {@link rowsAreDocuments}; `undefined` falls back to
+   * `getCellValue`.
+   */
+  protected titleOf(_rowId: string): string | undefined {
+    return undefined;
   }
 
   /** Notify the view layer that the underlying data changed. */
@@ -96,10 +210,9 @@ export abstract class ExternalDataSourceBase extends DataSourceBase {
 
   // --- reactive bridge over the data contract -----------------------------
 
-  rows$: ReadonlySignal<string[]> = computed(() => {
-    void this.revision.value;
-    return this.getRows();
-  });
+  rows$: ReadonlySignal<string[]> = computed(
+    () => this.source$.value?.rows.value ?? []
+  );
 
   properties$: ReadonlySignal<string[]> = computed(() => {
     void this.revision.value;
@@ -119,6 +232,10 @@ export abstract class ExternalDataSourceBase extends DataSourceBase {
 
   cellValueGet(rowId: string, propertyId: string): unknown {
     void this.revision.value;
+    if (this.rowsAreDocuments && this.getPropertyType(propertyId) === 'title') {
+      const title = this.titleOf(rowId);
+      if (title !== undefined) return title;
+    }
     return this.getCellValue(rowId, propertyId);
   }
 
@@ -155,12 +272,10 @@ export abstract class ExternalDataSourceBase extends DataSourceBase {
     };
   });
 
+  // Mobile edits too (ADR 0035 §1, B5): the table and kanban presets ship
+  // their own touch renderers, chosen by `DataViewRootUILogic`.
   readonly$: ReadonlySignal<boolean> = computed(() => {
-    return (
-      this._model.store.readonly ||
-      // TODO(@L-Sun): use block level readonly
-      IS_MOBILE
-    );
+    return this._model.store.readonly;
   });
 
   viewConverts = databaseBlockViewConverts;
@@ -206,14 +321,7 @@ export abstract class ExternalDataSourceBase extends DataSourceBase {
   }
 
   viewMetaGet(type: string): ViewMeta {
-    const view = databaseBlockViewMap[type];
-    if (!view) {
-      throw new BlockSuiteError(
-        ErrorCode.DatabaseBlockError,
-        `Unknown view type: ${type}`
-      );
-    }
-    return view;
+    return databaseBlockViewMetaGet(type);
   }
 
   viewMetaGetById(viewId: string): ViewMeta | undefined {
@@ -224,3 +332,10 @@ export abstract class ExternalDataSourceBase extends DataSourceBase {
     return this.viewMetaGet(view.mode);
   }
 }
+
+/**
+ * The 0.48 name, kept so a host source written against it compiles unchanged:
+ * `new ExternalDataSourceBase(model)` is a hosted source with one implicit
+ * source, the block itself.
+ */
+export { HostedDataSourceBase as ExternalDataSourceBase };

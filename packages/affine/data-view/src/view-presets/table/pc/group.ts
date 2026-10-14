@@ -9,7 +9,8 @@ import {
   ToggleDownIcon,
   ToggleRightIcon,
 } from '@blocksuite/icons/lit';
-import { ShadowlessElement } from '@labre/std';
+import { type BlockStdScope, ShadowlessElement, stdContext } from '@labre/std';
+import { consume } from '@lit/context';
 import { effect, signal } from '@preact/signals-core';
 import { cssVarV2 } from '@toeverything/theme/v2';
 import { css, html, nothing, unsafeCSS } from 'lit';
@@ -17,11 +18,17 @@ import { property, query } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 
 import { GroupTitle } from '../../../core/group-by/group-title.js';
+import { hideGroupAction } from '../../../core/group-by/group-visibility.js';
 import type { Group } from '../../../core/group-by/trait.js';
 import type { Row } from '../../../core/index.js';
 import { createDndContext } from '../../../core/utils/wc-dnd/dnd-context.js';
 import { defaultActivators } from '../../../core/utils/wc-dnd/sensors/index.js';
 import { linearMove } from '../../../core/utils/wc-dnd/utils/linear-move.js';
+import { wordingOf } from '../../../core/utils/wording.js';
+import {
+  DATA_VIEW_GROUP_COLLAPSE,
+  DATA_VIEW_GROUP_EXPAND,
+} from '../../../translations.js';
 import { getCollapsedState, setCollapsedState } from '../collapsed-state.js';
 import { LEFT_TOOL_BAR_WIDTH } from '../consts.js';
 import { TableViewAreaSelection } from '../selection';
@@ -93,6 +100,10 @@ export class TableGroup extends SignalWatcher(
   WithDisposable(ShadowlessElement)
 ) {
   static override styles = styles;
+
+  /** Absent outside an editor host: the wordings read English. */
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
 
   collapsed$ = signal(false);
 
@@ -180,6 +191,7 @@ export class TableGroup extends SignalWatcher(
           });
         },
       }),
+      hideGroupAction(group, wordingOf(this.std)),
       menu.action({
         name: 'Delete Cards',
         select: () => {
@@ -202,9 +214,11 @@ export class TableGroup extends SignalWatcher(
           class="group-toggle-btn"
           role="button"
           aria-expanded=${this.collapsed$.value ? 'false' : 'true'}
-          aria-label=${this.collapsed$.value
-            ? 'Expand group'
-            : 'Collapse group'}
+          aria-label=${wordingOf(this.std)(
+            this.collapsed$.value
+              ? DATA_VIEW_GROUP_EXPAND
+              : DATA_VIEW_GROUP_COLLAPSE
+          )}
           tabindex="0"
           @click=${this._toggleCollapse}
           @keydown=${(e: KeyboardEvent) => {

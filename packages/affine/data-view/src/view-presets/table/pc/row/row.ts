@@ -14,6 +14,7 @@ import {
   type TableViewSelection,
 } from '../../selection';
 import { cellDivider } from '../../styles';
+import { isNewTabClick } from '../../../../core/utils/new-tab-click.js';
 import type { TableGroup } from '../group.js';
 import { openDetail, popRowMenu } from '../menu.js';
 import type { TableViewUILogic } from '../table-view-ui-logic.js';
@@ -203,7 +204,7 @@ export class TableRowView extends SignalWatcher(
         view.properties$.value,
         v => v.id,
         (column, i) => {
-          const clickDetail = () => {
+          const clickDetail = (event: MouseEvent) => {
             if (!this.selectionController) {
               return;
             }
@@ -215,7 +216,8 @@ export class TableRowView extends SignalWatcher(
             openDetail(
               this.tableViewLogic,
               this.rowId,
-              this.selectionController
+              this.selectionController,
+              isNewTabClick(event)
             );
           };
           const openMenu = (e: MouseEvent) => {

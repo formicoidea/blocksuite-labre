@@ -41,14 +41,22 @@ already in a document keep rendering. The upstream
 `FeatureFlagService` key `enable_callout` is deprecated and no longer read;
 setting it changes nothing.
 
+`database` follows the same rule (ADR 0035 §5): `{ database: false }` removes
+the slash entries that insert a database and the views bar's "+" and
+"Create …", while every database already in a document keeps rendering,
+every stored view included, with editable cells and rows that open. The
+host's additions to the block's "⋯" menu (`configure` on
+`DatabaseViewExtension`) follow the flag too. `data-view` has the same split
+and gates nothing yet.
+
 ## What `false` does
 
-| Layer                                                                                 | Effect of `{ x: false }`                                                                                           |
-| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| creation surfaces (senior button, sub-menu, catalogue, shortcuts, templates category) | removed                                                                                                            |
-| framework elements already on a board                                                 | still rendered and editable                                                                                        |
-| block content already in a document                                                   | still stored; `callout` keeps rendering, any other gated _block_ renders nothing until the flag is back (ADR 0009) |
-| schema, store extension                                                               | untouched: the document loads and round-trips identically                                                          |
+| Layer                                                                                 | Effect of `{ x: false }`                                                                                                                      |
+| ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| creation surfaces (senior button, sub-menu, catalogue, shortcuts, templates category) | removed                                                                                                                                       |
+| framework elements already on a board                                                 | still rendered and editable                                                                                                                   |
+| block content already in a document                                                   | still stored; `callout`, `database` and `data-view` keep rendering, any other gated _block_ renders nothing until the flag is back (ADR 0009) |
+| schema, store extension                                                               | untouched: the document loads and round-trips identically                                                                                     |
 
 Only `getInternalViewExtensions(flags)` reads the object. The schema and
 store functions accept it for source compatibility and ignore it (ADR 0009).

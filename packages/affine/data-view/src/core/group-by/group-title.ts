@@ -4,11 +4,15 @@ import { MoreHorizontalIcon, PlusIcon } from '@blocksuite/icons/lit';
 import { nothing } from 'lit';
 import { html } from 'lit/static-html.js';
 
+import { VALUES_PENDING_MARK, valuesReady } from '../data-source/hydration.js';
 import { renderUniLit } from '../utils/uni-component/uni-component.js';
 import type { Group } from './trait.js';
 import type { GroupRenderProps } from './types.js';
 
 function GroupHeaderCount(group: Group) {
+  if (!valuesReady(group.property.view.manager.dataSource)) {
+    return html` <div class="group-header-count">${VALUES_PENDING_MARK}</div>`;
+  }
   const cards = group.rows;
   if (!cards.length) {
     return;

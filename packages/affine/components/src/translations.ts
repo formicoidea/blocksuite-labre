@@ -105,6 +105,30 @@ export const CONTEXT_MENU_DONE: ChromeWording = [
   'Done',
 ];
 
+/* ── Date picker (database date cells, the chips band, date filters) ─── */
+
+/*
+ * Its caller resolves them (the picker renders in a popup, outside the
+ * editor) and passes `wording`. Day and month names are not keys: they come
+ * from `Intl` in the caller's `locale` (`formatLocale(std)`).
+ */
+export const DATE_PICKER_TODAY: ChromeWording = [
+  'com.labre.date-picker.today',
+  'Today',
+];
+export const DATE_PICKER_CLEAR: ChromeWording = [
+  'com.labre.date-picker.clear',
+  'Clear',
+];
+export const DATE_PICKER_PREVIOUS: ChromeWording = [
+  'com.labre.date-picker.previous-month',
+  'Previous month',
+];
+export const DATE_PICKER_NEXT: ChromeWording = [
+  'com.labre.date-picker.next-month',
+  'Next month',
+];
+
 /* ── Edgeless line style / width panels ─────────────────────────────── */
 
 export const LINE_STYLE_SOLID: ChromeWording = [
@@ -474,6 +498,10 @@ export { ICON_BUTTON_COMING_SOON };
  * restated there.
  */
 export const COMPONENTS_WORDINGS: readonly ChromeWording[] = [
+  DATE_PICKER_TODAY,
+  DATE_PICKER_CLEAR,
+  DATE_PICKER_PREVIOUS,
+  DATE_PICKER_NEXT,
   CAPTION_PLACEHOLDER,
   CARD_STYLE_LABEL,
   FAVICON_ALT,

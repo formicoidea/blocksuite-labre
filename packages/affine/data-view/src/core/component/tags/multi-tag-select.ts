@@ -5,6 +5,10 @@ import {
   type PopupTarget,
   popupTargetFromElement,
 } from '@labre/affine-components/context-menu';
+import {
+  type ChromeWording,
+  TOOLBAR_DELETE,
+} from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { rangeWrap } from '@labre/affine-shared/utils';
 import { IS_MOBILE } from '@labre/global/env';
@@ -27,6 +31,11 @@ import { repeat } from 'lit/directives/repeat.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import { html } from 'lit/static-html.js';
 
+import {
+  TAG_SELECT_CREATE,
+  TAG_SELECT_PLACEHOLDER,
+  TAG_SELECT_TIP,
+} from '../../../translations.js';
 import type { SelectTag } from '../../logical/index.js';
 import { stopPropagation } from '../../utils/event.js';
 import { dragHandler } from '../../utils/wc-dnd/dnd-context.js';
@@ -55,6 +64,8 @@ import {
   tagTextStyle,
 } from './styles-css.js';
 
+export type TagOptionEdits = 'all' | 'create-rename';
+
 type RenderOption = {
   value: string;
   id: string;
@@ -73,9 +84,24 @@ export type TagManagerOptions = {
    * cannot write the property's config, `standalone-cell.ts`).
    */
   onOptionsChange?: (options: SelectTag[]) => void;
+  /**
+   * Which edits `onOptionsChange` takes; absent, `'all'` (the table).
+   * `'create-rename'`: "Create" and the option menu's name only, no delete,
+   * no colour and no reordering: a host that writes an option's definition
+   * one edit at a time and offers no more (the title band, ADR 0035
+   * amendment of 2026-10-14).
+   */
+  optionEdits?: TagOptionEdits;
   onComplete?: () => void;
   initialDraftText?: string;
+  /**
+   * Resolves the menu's own wordings; the caller holds the editor, the
+   * popup renders outside it. Absent, the English fallbacks.
+   */
+  wording?: (wording: ChromeWording) => string;
 };
+
+const englishWording = (wording: ChromeWording) => wording[1];
 
 // Parent elements that can hand over a tag draft typed in the table.
 const TABLE_CELL_HOST_SELECTOR =
@@ -219,20 +245,27 @@ export class MultiTagSelect extends SignalWatcher(
     if (!option) {
       return;
     }
+    const rename = menu.input({
+      initialValue: option.value,
+      onChange: text => {
+        this.tagManager.changeTag({
+          id: option.id,
+          value: text,
+        });
+      },
+    });
+    if (this.optionEdits === 'create-rename') {
+      popMenu(popupTargetFromElement(e.currentTarget as HTMLElement), {
+        options: { items: [rename] },
+      });
+      return;
+    }
     popMenu(popupTargetFromElement(e.currentTarget as HTMLElement), {
       options: {
         items: [
-          menu.input({
-            initialValue: option.value,
-            onChange: text => {
-              this.tagManager.changeTag({
-                id: option.id,
-                value: text,
-              });
-            },
-          }),
+          rename,
           menu.action({
-            name: 'Delete',
+            name: this.say(TOOLBAR_DELETE),
             prefix: DeleteIcon(),
             class: {
               'delete-item': true,
@@ -251,7 +284,7 @@ export class MultiTagSelect extends SignalWatcher(
                 height: '20px',
               });
               return menu.action({
-                name: item.name,
+                name: item.wording ? this.say(item.wording) : item.name,
                 prefix: html` <div style=${styles}></div>`,
                 isSelected: option.color === item.color,
                 select: () => {
@@ -305,7 +338,12 @@ export class MultiTagSelect extends SignalWatcher(
     onDragEnd: evt => {
       const over = evt.over;
       const activeId = evt.active.id;
-      if (over && over.id !== activeId && this.onOptionsChange) {
+      if (
+        over &&
+        over.id !== activeId &&
+        this.onOptionsChange &&
+        this.optionEdits === 'all'
+      ) {
         this.onOptionsChange(
           arrayMove(
             this.options.value,
@@ -352,7 +390,7 @@ export class MultiTagSelect extends SignalWatcher(
         <input
           class="${tagSelectInputStyle}"
           ${ref(this._selectInput)}
-          placeholder="Type here..."
+          placeholder="${this.say(TAG_SELECT_PLACEHOLDER)}"
           .value="${this.text.value}"
           @input="${this._onInput}"
           @keydown="${this._onInputKeydown}"
@@ -378,6 +416,7 @@ export class MultiTagSelect extends SignalWatcher(
 
   private renderTags() {
     const editable = !!this.onOptionsChange;
+    const reorderable = editable && this.optionEdits === 'all';
     return html`
       <div
         style="height: 0.5px;background-color: ${cssVarV2(
@@ -386,7 +425,7 @@ export class MultiTagSelect extends SignalWatcher(
       ></div>
       ${editable
         ? html`<div class="${selectOptionsTipsStyle}">
-            Select tag or create one
+            ${this.say(TAG_SELECT_TIP)}
           </div>`
         : nothing}
       <div data-testid="tag-option-list" class="${selectOptionsContainerStyle}">
@@ -408,7 +447,9 @@ export class MultiTagSelect extends SignalWatcher(
             };
             return html`
               <div
-                ${editable && !select.isCreate ? sortable(select.id) : nothing}
+                ${reorderable && !select.isCreate
+                  ? sortable(select.id)
+                  : nothing}
                 class="${classes}"
                 @mouseenter="${mouseenter}"
                 @click="${select.select}"
@@ -416,9 +457,9 @@ export class MultiTagSelect extends SignalWatcher(
                 <div class="${selectOptionContentStyle}">
                   ${select.isCreate
                     ? html` <div class="${selectOptionNewIconStyle}">
-                        Create
+                        ${this.say(TAG_SELECT_CREATE)}
                       </div>`
-                    : editable
+                    : reorderable
                       ? html`
                           <div
                             ${dragHandler(select.id)}
@@ -501,6 +542,9 @@ export class MultiTagSelect extends SignalWatcher(
     undefined;
 
   @property({ attribute: false })
+  accessor optionEdits: TagOptionEdits = 'all';
+
+  @property({ attribute: false })
   accessor options!: ReadonlySignal<SelectTag[]>;
 
   private readonly selectedIndex$ = signal(0);
@@ -510,6 +554,14 @@ export class MultiTagSelect extends SignalWatcher(
 
   @property({ attribute: false })
   accessor initialDraftText: string | undefined;
+
+  @property({ attribute: false })
+  accessor wording: ((wording: ChromeWording) => string) | undefined =
+    undefined;
+
+  private say(wording: ChromeWording) {
+    return (this.wording ?? englishWording)(wording);
+  }
 }
 
 declare global {
@@ -520,6 +572,7 @@ declare global {
 
 const popMobileTagSelect = (target: PopupTarget, ops: TagSelectOptions) => {
   const tagManager = new TagManager(ops);
+  const say = ops.wording ?? englishWording;
   if (ops.initialDraftText) {
     tagManager.text$.value = ops.initialDraftText;
   }
@@ -558,7 +611,7 @@ const popMobileTagSelect = (target: PopupTarget, ops: TagSelectOptions) => {
               <input
                 .value="${tagManager.text$.value}"
                 @input="${onInput}"
-                placeholder="Type here..."
+                placeholder="${say(TAG_SELECT_PLACEHOLDER)}"
                 type="text"
                 style="outline: none;border: none;flex:1;min-width: 10px"
               />
@@ -580,7 +633,9 @@ const popMobileTagSelect = (target: PopupTarget, ops: TagSelectOptions) => {
                     return html`
                       <div style="display: flex; align-items:center;">
                         ${option.isCreate
-                          ? html` <div style="margin-right: 8px;">Create</div>`
+                          ? html` <div style="margin-right: 8px;">
+                              ${say(TAG_SELECT_CREATE)}
+                            </div>`
                           : ''}
                         <div class="${tagContainerStyle}" style=${style}>
                           <div class="${tagTextStyle}">${option.value}</div>
@@ -624,7 +679,9 @@ export const popTagSelect = (target: PopupTarget, ops: TagSelectOptions) => {
   component.onChange = ops.onChange;
   component.options = ops.options;
   component.onOptionsChange = ops.onOptionsChange;
+  component.optionEdits = ops.optionEdits ?? 'all';
   component.initialDraftText = ops.initialDraftText;
+  component.wording = ops.wording;
   component.onComplete = () => {
     ops.onComplete?.();
     remove();

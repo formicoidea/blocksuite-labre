@@ -87,7 +87,12 @@ export class VirtualTableViewUILogic extends DataViewUILogicBase<
 
   groups$ = computed(() => {
     const groupTrait = this.groupTrait$.value;
-    if (!groupTrait?.groupsDataList$.value) {
+    // ponytail: the virtual grid drops hidden groups but lists none at its
+    // end and folds nothing (B8); it is off by default
+    // (`enable_table_virtual_scroll`). Upgrade: a last grid row drawing
+    // <dv-hidden-groups>, and the fold of `TableGroup` in its group header.
+    const groups = groupTrait?.visibleGroups$.value;
+    if (!groups) {
       return [
         {
           id: '',
@@ -95,7 +100,7 @@ export class VirtualTableViewUILogic extends DataViewUILogicBase<
         },
       ];
     }
-    return groupTrait.groupsDataList$.value.map(group => ({
+    return groups.map(group => ({
       id: group.key,
       rows: group.rows.map(v => v.rowId),
     }));

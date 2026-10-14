@@ -6,6 +6,15 @@ import {
   popupTargetFromElement,
 } from '@labre/affine-components/context-menu';
 import {
+  type ChromeWording,
+  fillPlaceholders,
+  TOOLBAR_DELETE,
+  TOOLBAR_DUPLICATE,
+  translateKey,
+  type TranslationParams,
+} from '@labre/affine-shared/services';
+import { type BlockStdScope, stdContext } from '@labre/std';
+import {
   DeleteIcon,
   DuplicateIcon,
   InfoIcon,
@@ -14,18 +23,70 @@ import {
   MoveRightIcon,
   PlusIcon,
 } from '@blocksuite/icons/lit';
-import { css, html } from 'lit';
+import { IS_MOBILE } from '@labre/global/env';
+import { consume } from '@lit/context';
+import { css, html, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 
+import { viewDefaultName } from '../../core/view/default-name.js';
+import { modeShownAsFallback } from '../../core/view-manager/single-view.js';
+import {
+  AddViewMenuIdentifier,
+  duplicateAsShownPreset,
+  ViewCreationOffKey,
+} from '../../core/view-manager/view-creation.js';
 import { WidgetBase } from '../../core/widget/widget-base.js';
+import {
+  VIEW_DUPLICATE_AS_TABLE,
+  VIEW_SHOWN_AS_TABLE,
+  VIEWS_BAR_ADD_VIEW,
+  VIEWS_BAR_EDIT_VIEW,
+  VIEWS_BAR_MORE,
+  VIEWS_BAR_MOVE_LEFT,
+  VIEWS_BAR_MOVE_RIGHT,
+  VIEWS_BAR_VIEW_NAME,
+} from '../../translations.js';
 
+/** A finger-sized tab, "N more" and "+" on a phone (ADR 0035 §1, B5, B11). */
+export const VIEWS_BAR_TOUCH_TARGET = 44;
+
+/**
+ * The views bar of a database (ADR 0035 B11, labre PRD REQ-DB-7): one tab per
+ * view while the width allows, the rest under "N more", then "+".
+ *
+ * - The tabs are measured by `component-overflow` (`fitOverflow`): views keep
+ *   their order, and the current view's tab is always drawn, in place of the
+ *   last one that would have fitted, so the view you look at never hides.
+ * - "N more" lists the views without a tab; picking one draws it.
+ * - "+" is the bar's only creation entry. It pops the `AddViewMenu` the
+ *   `core-database` bundle registers (sources) when there is one, the
+ *   creatable presets otherwise. Readonly, or with creation switched off for
+ *   the source (`ViewCreationOffKey`, ADR 0035 §5), there is no "+".
+ * - On a phone the tabs, "N more" and "+" are 44px tall, nothing else changes.
+ *
+ * Stays in core: a core-only host must reach every stored view (ADR 0035 §1).
+ */
 export class DataViewHeaderViews extends WidgetBase {
   static override styles = css`
     data-view-header-views {
       height: 28px;
       display: flex;
       user-select: none;
+      gap: 4px;
+      min-width: 0;
+    }
+    data-view-header-views.mobile {
+      height: ${VIEWS_BAR_TOUCH_TARGET}px;
+    }
+    data-view-header-views.mobile .database-view-button {
+      min-height: ${VIEWS_BAR_TOUCH_TARGET}px;
+      min-width: ${VIEWS_BAR_TOUCH_TARGET}px;
+    }
+    data-view-header-views .component-overflow-item {
+      padding-right: 4px;
+    }
+    data-view-header-views .component-overflow-more {
       gap: 4px;
     }
     data-view-header-views::-webkit-scrollbar-thumb {
@@ -72,38 +133,86 @@ export class DataViewHeaderViews extends WidgetBase {
       color: var(--affine-text-primary-color);
       background-color: var(--affine-hover-color-filled);
     }
+
+    .database-view-button .shown-as {
+      font-size: 12px;
+      color: var(--affine-text-secondary-color);
+      padding-right: 2px;
+    }
   `;
 
-  private addView(type: string) {
-    const id = this.viewManager.viewAdd(type);
+  // Absent outside an editor host (a standalone mount): wordings fall back.
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
+
+  /** A popup renders outside the host, so wordings are resolved here. */
+  private wording(wording: ChromeWording, params?: TranslationParams) {
+    return this.std
+      ? translateKey(this.std, ...wording, params)
+      : fillPlaceholders(wording[1], params);
+  }
+
+  /** The host switched view creation off for this source (ADR 0035 §5). */
+  private get creationOff() {
+    return this.dataSource.serviceGet(ViewCreationOffKey) === true;
+  }
+
+  /**
+   * The bar's "add a view of this preset", also handed to the bundle's "+"
+   * menu: the name is resolved here, at the gesture, and written as is
+   * (ADR 0023); `DatabaseViewAdded` is reported once (B17), `source` saying
+   * whether the gesture created the source the view reads.
+   */
+  private readonly addView = (
+    type: string,
+    source: 'existing' | 'new' = 'existing'
+  ) => {
+    const id = this.viewManager.viewAdd(
+      type,
+      viewDefaultName(this.dataSource.viewMetaGet(type), this.std)
+    );
     this.viewManager.setCurrentView(id);
-    this.dataViewLogic.root.config.eventTrace('AddDatabaseView', {
-      type: type,
+    this.onChangeView?.(id);
+    this.dataViewLogic.root.config.eventTrace('DatabaseViewAdded', {
+      viewType: type,
+      source,
+    });
+    return id;
+  };
+
+  private presetItems() {
+    return this.dataSource.viewMetas.map(v => {
+      return menu.action({
+        name: viewDefaultName(v, this.std),
+        testId: 'database-add-view-preset',
+        prefix: html`<uni-lit .uni=${v.renderer.icon}></uni-lit>`,
+        select: () => {
+          this.addView(v.type);
+        },
+      });
     });
   }
 
   _addViewMenu = (event: MouseEvent) => {
+    const items =
+      this.std?.getOptional(AddViewMenuIdentifier)?.items({
+        std: this.std,
+        dataSource: this.dataSource,
+        viewManager: this.viewManager,
+        addView: this.addView,
+      }) ?? this.presetItems();
     popFilterableSimpleMenu(
       popupTargetFromElement(event.currentTarget as HTMLElement),
-      this.dataSource.viewMetas.map(v => {
-        return menu.action({
-          name: v.model.defaultName,
-          prefix: html`<uni-lit .uni=${v.renderer.icon}></uni-lit>`,
-          select: () => {
-            this.addView(v.type);
-          },
-        });
-      })
+      items
     );
   };
 
-  _showMore = (event: MouseEvent) => {
-    const views = this.viewManager.views$.value;
+  _showMore = (event: MouseEvent, hidden: readonly string[]) => {
     popFilterableSimpleMenu(
       popupTargetFromElement(event.currentTarget as HTMLElement),
       [
         menu.group({
-          items: views.flatMap(id => {
+          items: hidden.flatMap(id => {
             const openViewOption = (event: MouseEvent) => {
               event.stopPropagation();
               this.openViewOption(
@@ -122,8 +231,10 @@ export class DataViewHeaderViews extends WidgetBase {
               name: view.name$.value ?? '',
               label: () => html`${view.name$.value}`,
               isSelected: this.viewManager.currentViewId$.value === id,
+              testId: 'database-views-more-item',
               select: () => {
                 this.viewManager.setCurrentView(id);
+                this.onChangeView?.(id);
               },
               postfix: html`<div
                 class="dv-hover dv-round-4"
@@ -132,18 +243,6 @@ export class DataViewHeaderViews extends WidgetBase {
               >
                 ${MoreHorizontalIcon()}
               </div>`,
-            });
-          }),
-        }),
-        menu.group({
-          items: this.dataSource.viewMetas.map(v => {
-            return menu.action({
-              name: `Create ${v.model.defaultName}`,
-              hide: () => this.readonly,
-              prefix: PlusIcon(),
-              select: () => {
-                this.addView(v.type);
-              },
             });
           }),
         }),
@@ -165,20 +264,29 @@ export class DataViewHeaderViews extends WidgetBase {
     if (!view) {
       return;
     }
+    // A view drawn through a fallback preset has read-only settings and data
+    // that is never rewritten (ADR 0035 §6): no rename, no settings, and
+    // "Duplicate as table" in place of a duplicate of a mode we cannot draw.
+    const fallback = view.shownAsFallback$.value;
     popMenu(target, {
       options: {
         items: [
-          menu.input({
-            initialValue: view.name$.value,
-            placeholder: 'View name',
-            onChange: text => {
-              view.nameSet(text);
-            },
-          }),
+          ...(fallback
+            ? []
+            : [
+                menu.input({
+                  initialValue: view.name$.value,
+                  placeholder: this.wording(VIEWS_BAR_VIEW_NAME),
+                  onChange: text => {
+                    view.nameSet(text);
+                  },
+                }),
+              ]),
           menu.group({
             items: [
               menu.action({
-                name: 'Edit View',
+                name: this.wording(VIEWS_BAR_EDIT_VIEW),
+                hide: () => fallback,
                 prefix: InfoIcon(),
                 select: () => {
                   this.closest('affine-data-view-renderer')
@@ -187,7 +295,7 @@ export class DataViewHeaderViews extends WidgetBase {
                 },
               }),
               menu.action({
-                name: 'Move Left',
+                name: this.wording(VIEWS_BAR_MOVE_LEFT),
                 hide: () => index === 0,
                 prefix: MoveLeftIcon(),
                 select: () => {
@@ -199,7 +307,7 @@ export class DataViewHeaderViews extends WidgetBase {
                 },
               }),
               menu.action({
-                name: 'Move Right',
+                name: this.wording(VIEWS_BAR_MOVE_RIGHT),
                 prefix: MoveRightIcon(),
                 hide: () => index === views.length - 1,
                 select: () => {
@@ -215,14 +323,24 @@ export class DataViewHeaderViews extends WidgetBase {
           menu.group({
             items: [
               menu.action({
-                name: 'Duplicate',
+                name: this.wording(TOOLBAR_DUPLICATE),
+                hide: () => fallback,
                 prefix: DuplicateIcon(),
                 select: () => {
                   this.viewManager.viewDuplicate(id);
                 },
               }),
               menu.action({
-                name: 'Delete',
+                name: this.wording(VIEW_DUPLICATE_AS_TABLE),
+                hide: () => !fallback,
+                prefix: DuplicateIcon(),
+                testId: 'database-view-duplicate-as-table',
+                select: () => {
+                  duplicateAsShownPreset(this.viewManager, id);
+                },
+              }),
+              menu.action({
+                name: this.wording(TOOLBAR_DELETE),
                 prefix: DeleteIcon(),
                 select: () => {
                   view.delete();
@@ -236,26 +354,45 @@ export class DataViewHeaderViews extends WidgetBase {
     });
   };
 
-  renderMore = (count: number) => {
+  renderMore = (_count: number, hiddenIndices: readonly number[]) => {
     const views = this.viewManager.views$.value;
-    if (count === views.length) {
-      if (this.readonly) {
-        return;
-      }
-      return html`<div
-        class="database-view-button dv-icon-16 dv-hover"
-        data-testid="database-add-view-button"
-        @click="${this._addViewMenu}"
-      >
-        ${PlusIcon()}
-      </div>`;
-    }
+    const hidden = hiddenIndices.flatMap(index => {
+      const id = views[index];
+      return id ? [id] : [];
+    });
+    const addLabel = this.wording(VIEWS_BAR_ADD_VIEW);
     return html`
-      <div class="database-view-button dv-hover" @click="${this._showMore}">
-        ${views.length - count} More
-      </div>
+      ${hidden.length
+        ? html`<div
+            class="database-view-button dv-hover"
+            data-overflow-more
+            data-testid="database-views-more"
+            @click="${(event: MouseEvent) => this._showMore(event, hidden)}"
+          >
+            ${this.moreLabel(hidden.length)}
+          </div>`
+        : nothing}
+      ${this.readonly || this.creationOff
+        ? nothing
+        : html`<div
+            class="database-view-button dv-icon-16 dv-hover"
+            data-testid="database-add-view-button"
+            role="button"
+            aria-label="${addLabel}"
+            title="${addLabel}"
+            @click="${this._addViewMenu}"
+          >
+            ${PlusIcon()}
+          </div>`}
     `;
   };
+
+  private moreLabel(count: number) {
+    const [key, fallback] = VIEWS_BAR_MORE;
+    return this.std
+      ? translateKey(this.std, key, fallback, { count })
+      : fillPlaceholders(fallback, { count });
+  }
 
   renderViews = () => {
     const views = this.viewManager.views$.value;
@@ -266,14 +403,25 @@ export class DataViewHeaderViews extends WidgetBase {
         selected: this.viewManager.currentViewId$.value === id,
       });
       const view = this.viewManager.viewDataGet(id);
+      const shownAs =
+        view && modeShownAsFallback(this.dataSource, view.mode)
+          ? this.wording(VIEW_SHOWN_AS_TABLE)
+          : undefined;
       return html`
         <div
           class="${classList}"
-          style="margin-right: 4px;"
+          data-testid="database-view-tab"
+          data-view-id="${id}"
+          title="${shownAs ?? nothing}"
           @click="${(event: MouseEvent) => this.clickView(event, id)}"
         >
           <uni-lit class="icon" .uni="${this.getRenderer(id)?.icon}"></uni-lit>
           <div class="name">${view?.name}</div>
+          ${shownAs
+            ? html`<span class="shown-as" data-testid="database-view-shown-as"
+                >${shownAs}</span
+              >`
+            : nothing}
         </div>
       `;
     });
@@ -299,11 +447,19 @@ export class DataViewHeaderViews extends WidgetBase {
     );
   }
 
+  override connectedCallback() {
+    super.connectedCallback();
+    this.classList.toggle('mobile', IS_MOBILE);
+  }
+
   override render() {
+    const views = this.viewManager.views$.value;
+    const current = this.viewManager.currentViewId$.value;
     return html`
       <component-overflow
         .renderItem="${this.renderViews()}"
         .renderMore="${this.renderMore}"
+        .pinned="${current ? views.indexOf(current) : -1}"
       ></component-overflow>
     `;
   }

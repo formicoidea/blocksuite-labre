@@ -5,6 +5,7 @@ import type { FilterGroup } from '../../core/filter/types.js';
 import { defaultGroupBy, getGroupByService, t } from '../../core/index.js';
 import type { Sort } from '../../core/sort/types.js';
 import { type BasicViewDataType, viewType } from '../../core/view/data-view.js';
+import { VIEW_NAME_KANBAN } from '../../translations.js';
 import { KanbanSingleView } from './kanban-view-manager.js';
 
 export const kanbanViewType = viewType('kanban');
@@ -31,7 +32,8 @@ export type KanbanViewData = BasicViewDataType<
   DataType
 >;
 export const kanbanViewModel = kanbanViewType.createModel<KanbanViewData>({
-  defaultName: 'Kanban View',
+  defaultName: VIEW_NAME_KANBAN[1],
+  defaultNameKey: VIEW_NAME_KANBAN[0],
   dataViewManager: KanbanSingleView,
   defaultData: viewManager => {
     const groupByService = getGroupByService(viewManager.dataSource);

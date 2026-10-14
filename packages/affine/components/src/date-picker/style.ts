@@ -33,6 +33,7 @@ export const datePickerStyle = css`
   .interactive.date-picker-small-action,
   .interactive.action-label.today {
     color: var(--affine-icon-color);
+    text-transform: uppercase;
   }
 
   .date-picker-small-action:hover {

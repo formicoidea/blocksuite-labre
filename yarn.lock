@@ -2026,6 +2026,29 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@labre/affine-database-editor@workspace:*, @labre/affine-database-editor@workspace:packages/affine/database-editor":
+  version: 0.0.0-use.local
+  resolution: "@labre/affine-database-editor@workspace:packages/affine/database-editor"
+  dependencies:
+    "@blocksuite/icons": "npm:^2.2.12"
+    "@labre/affine-block-database": "workspace:*"
+    "@labre/affine-components": "workspace:*"
+    "@labre/affine-ext-loader": "workspace:*"
+    "@labre/affine-model": "workspace:*"
+    "@labre/affine-shared": "workspace:*"
+    "@labre/affine-widget-slash-menu": "workspace:*"
+    "@labre/data-view": "workspace:*"
+    "@labre/global": "workspace:*"
+    "@labre/std": "workspace:*"
+    "@labre/store": "workspace:*"
+    "@preact/signals-core": "npm:^1.8.0"
+    "@vanilla-extract/vite-plugin": "npm:5.1.4"
+    lit: "npm:^3.2.0"
+    rxjs: "npm:^7.8.1"
+    vitest: "npm:^3.2.3"
+  languageName: unknown
+  linkType: soft
+
 "@labre/affine-ext-loader@workspace:*, @labre/affine-ext-loader@workspace:packages/affine/ext-loader":
   version: 0.0.0-use.local
   resolution: "@labre/affine-ext-loader@workspace:packages/affine/ext-loader"
@@ -3424,6 +3447,7 @@ __metadata:
     "@labre/affine-block-surface-ref": "workspace:*"
     "@labre/affine-block-table": "workspace:*"
     "@labre/affine-components": "workspace:*"
+    "@labre/affine-database-editor": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
     "@labre/affine-foundation": "workspace:*"
     "@labre/affine-fragment-adapter-panel": "workspace:*"
@@ -3549,6 +3573,7 @@ __metadata:
     "@labre/affine-block-note": "workspace:*"
     "@labre/affine-block-paragraph": "workspace:*"
     "@labre/affine-block-surface": "workspace:*"
+    "@labre/affine-database-editor": "workspace:*"
     "@labre/affine-gfx-bpmn": "workspace:*"
     "@labre/affine-gfx-c4": "workspace:*"
     "@labre/affine-gfx-connector": "workspace:*"

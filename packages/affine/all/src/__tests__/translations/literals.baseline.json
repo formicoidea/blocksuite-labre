@@ -137,8 +137,6 @@
       "true"
     ],
     "packages/affine/blocks/database/src/configs/slash-menu.ts": [
-      "Calendar View",
-      "Display items by date in a calendar.",
       "Display items in a table format.",
       "Kanban View",
       "Kanban View",
@@ -307,14 +305,6 @@
       "Move Up",
       "Paste"
     ],
-    "packages/affine/components/src/date-picker/date-picker.ts": [
-      "Clear",
-      "TODAY",
-      "clear",
-      "next month",
-      "previous month",
-      "today"
-    ],
     "packages/affine/data-view/src/core/common/properties.ts": [
       "Properties"
     ],
@@ -322,26 +312,6 @@
       "Property name",
       "Property type",
       "Type"
-    ],
-    "packages/affine/data-view/src/core/component/tags/colors.ts": [
-      "Blue",
-      "Green",
-      "Grey",
-      "Magenta",
-      "Orange",
-      "Purple",
-      "Red",
-      "Teal",
-      "White",
-      "Yellow"
-    ],
-    "packages/affine/data-view/src/core/component/tags/multi-tag-select.ts": [
-      "Create",
-      "Create",
-      "Delete",
-      "Select tag or create one",
-      "Type here...",
-      "Type here..."
     ],
     "packages/affine/data-view/src/core/detail/detail.ts": [
       "Add Property",
@@ -406,7 +376,6 @@
     ],
     "packages/affine/data-view/src/core/group-by/setting.ts": [
       "Day",
-      "Group",
       "Group By",
       "Group By",
       "Group by",
@@ -686,29 +655,9 @@
     ],
     "packages/affine/data-view/src/widget-presets/tools/presets/view-options/view-options.ts": [
       "${} shown",
-      "Delete",
-      "Duplicate",
-      "Filter",
-      "Group",
-      "Layout",
-      "Layout",
-      "Properties",
-      "Show Vertical lines",
-      "Show block icon",
       "Sort",
       "Sort",
-      "View name",
       "View settings"
-    ],
-    "packages/affine/data-view/src/widget-presets/views-bar/views-view.ts": [
-      "${} More",
-      "Create ${}",
-      "Delete",
-      "Duplicate",
-      "Edit View",
-      "Move Left",
-      "Move Right",
-      "View name"
     ],
     "packages/affine/widgets/keyboard-toolbar/src/config.ts": [
       "BulletedList",

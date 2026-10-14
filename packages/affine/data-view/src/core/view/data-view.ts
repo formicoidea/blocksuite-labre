@@ -25,7 +25,14 @@ export type DataViewMode = string;
 export interface DataViewModelConfig<
   Data extends DataViewDataType = DataViewDataType,
 > {
+  /**
+   * The English name a new view of this preset is given, and the fallback of
+   * {@link defaultNameKey}. A seed: never translated in place, the creation
+   * site writes the resolved name (`viewDefaultName`).
+   */
   defaultName: string;
+  /** The `com.labre.*` key of {@link defaultName}; absent, it is shown as is. */
+  defaultNameKey?: string;
   dataViewManager: new (viewManager: ViewManager, viewId: string) => SingleView;
   defaultData: (viewManager: ViewManager) => Omit<Data, 'id' | 'name' | 'mode'>;
 }

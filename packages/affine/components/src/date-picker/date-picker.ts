@@ -1,3 +1,4 @@
+import type { ChromeWording } from '@labre/affine-shared/services';
 import { clamp } from '@labre/global/gfx';
 import { WithDisposable } from '@labre/global/lit';
 import { isSameDay, isSameMonth, isToday } from 'date-fns';
@@ -12,25 +13,39 @@ import { property } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { styleMap } from 'lit/directives/style-map.js';
 
+import {
+  DATE_PICKER_CLEAR,
+  DATE_PICKER_NEXT,
+  DATE_PICKER_PREVIOUS,
+  DATE_PICKER_TODAY,
+} from '../translations.js';
 import { arrowLeftIcon } from './icons.js';
 import { datePickerStyle } from './style.js';
 import { getMonthMatrix, toDate } from './utils.js';
 
-const days = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-const months = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
+/**
+ * The week header, Sunday first, in two letters: `Intl` short weekdays cut to
+ * two (`Su Mo…` in `en-US`, `Di Lu…` in `fr`), so the default reads as it
+ * did before the names came from `Intl`.
+ */
+export function weekdayLabels(locale: string): string[] {
+  const format = new Intl.DateTimeFormat(locale, { weekday: 'short' });
+  // 2023-01-01 is a Sunday.
+  return Array.from({ length: 7 }, (_, i) => {
+    const name = format.format(new Date(2023, 0, 1 + i)).slice(0, 2);
+    return name.charAt(0).toLocaleUpperCase(locale) + name.slice(1);
+  });
+}
+
+/** The month names of the header and the month grid (`Jan…` in `en-US`). */
+export function monthLabels(locale: string): string[] {
+  const format = new Intl.DateTimeFormat(locale, { month: 'short' });
+  return Array.from({ length: 12 }, (_, i) =>
+    format.format(new Date(2023, i, 1))
+  );
+}
+
+const englishWording = (wording: ChromeWording) => wording[1];
 
 export interface DateCell {
   date: Date;
@@ -89,7 +104,7 @@ export class DatePicker extends WithDisposable(LitElement) {
   }
 
   get dayLabel() {
-    return days[this.day];
+    return weekdayLabels(this.locale)[this.day];
   }
 
   get minHeight() {
@@ -102,7 +117,7 @@ export class DatePicker extends WithDisposable(LitElement) {
   }
 
   get monthLabel() {
-    return months[this.month];
+    return monthLabels(this.locale)[this.month];
   }
 
   get year() {
@@ -159,13 +174,13 @@ export class DatePicker extends WithDisposable(LitElement) {
           () => this._moveMonth(1),
           html`<button
             tabindex="0"
-            aria-label="today"
+            aria-label=${this.say(DATE_PICKER_TODAY)}
             class="action-label interactive today"
             @click=${() => {
               this._onChange(new Date());
             }}
           >
-            <span>TODAY</span>
+            <span>${this.say(DATE_PICKER_TODAY)}</span>
           </button>`
         )}
       </div>
@@ -182,11 +197,11 @@ export class DatePicker extends WithDisposable(LitElement) {
         ? html`<div class="date-picker-footer">
             <button
               tabindex="0"
-              aria-label="clear"
+              aria-label=${this.say(DATE_PICKER_CLEAR)}
               class="footer-button interactive"
               @click=${() => this.onClear?.()}
             >
-              Clear
+              ${this.say(DATE_PICKER_CLEAR)}
             </button>
           </div>`
         : nothing}`;
@@ -195,7 +210,9 @@ export class DatePicker extends WithDisposable(LitElement) {
   /** Week header */
   private _dayHeaderRenderer() {
     return html`<div class="days-header">
-      ${days.map(day => html`<div class="date-cell">${day}</div>`)}
+      ${weekdayLabels(this.locale).map(
+        day => html`<div class="date-cell">${day}</div>`
+      )}
     </div>`;
   }
 
@@ -257,7 +274,7 @@ export class DatePicker extends WithDisposable(LitElement) {
         )}
       </div>
       <div class="date-picker-month">
-        ${months.map((month, index) => {
+        ${monthLabels(this.locale).map((month, index) => {
           const isActive = this.value
             ? isSameMonth(
                 this.value,
@@ -307,7 +324,7 @@ export class DatePicker extends WithDisposable(LitElement) {
     });
     return html`<div class=${classes}>
       <button
-        aria-label="previous month"
+        aria-label=${this.say(DATE_PICKER_PREVIOUS)}
         class="date-picker-small-action interactive left"
         @click=${onPrev}
         ?disabled=${prevDisable}
@@ -316,7 +333,7 @@ export class DatePicker extends WithDisposable(LitElement) {
       </button>
       ${slot ?? nothing}
       <button
-        aria-label="next month"
+        aria-label=${this.say(DATE_PICKER_NEXT)}
         class="date-picker-small-action interactive right"
         @click=${onNext}
         ?disabled=${nextDisable}
@@ -617,6 +634,25 @@ export class DatePicker extends WithDisposable(LitElement) {
   /** Checked date timestamp */
   @property({ type: Number })
   accessor value: number | undefined = undefined;
+
+  /**
+   * The BCP-47 locale of the day and month names (`formatLocale(std)` at the
+   * caller). `en-US` by default, which reads as the picker always did.
+   */
+  @property({ attribute: false })
+  accessor locale = 'en-US';
+
+  /**
+   * Resolves the picker's own wordings: it renders in a popup, outside the
+   * editor, so its caller holds the catalogue. Absent, English.
+   */
+  @property({ attribute: false })
+  accessor wording: ((wording: ChromeWording) => string) | undefined =
+    undefined;
+
+  private say(wording: ChromeWording) {
+    return (this.wording ?? englishWording)(wording);
+  }
 }
 
 declare global {

@@ -78,7 +78,7 @@ Plus the data files hosts read: `src/flags.ts` (the list of flag keys),
 
 ## What is published
 
-The 83 workspace packages are private. `scripts/build-bundles.mjs` generates
+The 84 workspace packages are private. `scripts/build-bundles.mjs` generates
 the npm packages under `@formicoidea/`:
 
 | Bundle                                       | Content                                                                                                                      |
@@ -87,9 +87,13 @@ the npm packages under `@formicoidea/`:
 | `@formicoidea/labre-framework-<id>`          | one framework: `wardley`, `edgy`, `bpmn`, `c4`, `cynefin`, `ddd-event-storming`, `ddd-core-domain`, `ddd-context-map`, `uml` |
 | `@formicoidea/labre-ddd-shared`              | helpers shared by the DDD frameworks                                                                                         |
 | `@formicoidea/labre-framework-ddd-aggregate` | DDD template categories only (not a framework: no senior button)                                                             |
+| `@formicoidea/labre-core-database`           | the database editing chrome (`packages/affine/database-editor`); core alone still renders and edits every stored database    |
 
 The core bundle keeps the same subpaths as the umbrella (`@labre/affine/std`
 becomes `@formicoidea/labre-core/std`). The frameworks are stripped from the
 core's flag list and re-enter through their bundle's `./descriptor`.
+`core-database` is stripped from core's view extensions and translation
+groups but not from its flag list: its gated half sits under core's own
+`database` key (ADR 0035 §4).
 
 Next: [04-extensions-and-assembly.md](04-extensions-and-assembly.md).

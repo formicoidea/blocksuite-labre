@@ -24,7 +24,7 @@ import { html } from 'lit/static-html.js';
 import { inputConfig, typeConfig } from '../../../core/common/property-menu.js';
 import type { Property } from '../../../core/view-manager/property.js';
 import { numberFormats } from '../../../property-presets/number/utils/formats.js';
-import { DEFAULT_COLUMN_TITLE_HEIGHT } from '../consts.js';
+import { MOBILE_TOUCH_TARGET } from '../consts.js';
 import type { TableProperty, TableSingleView } from '../table-view-manager.js';
 
 export class MobileTableColumnHeader extends SignalWatcher(
@@ -234,7 +234,7 @@ export class MobileTableColumnHeader extends SignalWatcher(
   override render() {
     const column = this.column;
     const style = styleMap({
-      height: DEFAULT_COLUMN_TITLE_HEIGHT + 'px',
+      height: MOBILE_TOUCH_TARGET + 'px',
     });
     return html`
       <div
