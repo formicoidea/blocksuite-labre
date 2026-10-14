@@ -542,9 +542,60 @@ data shape table and kanban already store (`columns[].hide`, `filter`,
   block source, no write on load; a hosted source with document rows) and
   `integration-test/src/__tests__/page/database-gallery-list.spec.ts`.
 
+### 2026-10-14: the row-open, properties panel and data-source picker seams as built (B9, B10, B12), and the band's option writes
+
+Records what B9, B10 and B12 decided where §9a to §9c left it open. Not a red
+zone: no stored field changes; every seam is optional and its absence keeps
+0.48.
+
+- **B9, one path.** `DatabaseOpenRowExtension({ open })` lives in
+  `@labre/affine-block-database` and plugs into the block's
+  `openDetailPanel`, which `DataViewRootUILogic.openDetailPanel` calls for
+  every view (table, kanban, gallery, list). The request is
+  `{ docId, mode, newTab, viewId, blockId }`; it goes to the host only for a
+  source with `rowsAreDocuments`, a row that is a block keeps the library's
+  detail. `mode` is the view's stored `openIn`, `side` when absent or
+  unknown; a Ctrl/Cmd click is `newTab: true` with `mode: 'full'`
+  (`isNewTabClick`, data-view core).
+- **B10, the library draws the source panel.** The view options' "Properties"
+  asks `PropertiesPanelProvider` with
+  `{ scope: 'source', docId, blockId, sourceId, viewId }` through a data-view
+  service key (`PropertiesPanelOpenerKey`) the block sets, so data-view
+  imports no seam; `sourceId` is the block id for a view with no `sourceId`.
+  The panel is `affine-database-properties-panel` in the bundle: the table
+  view's own `data-view-properties-setting`, `panelHeaderStyles`, "Show all /
+  Hide all", Close calling the host's `close()`. It writes through the view
+  as the popover does. `ponytail:` the §10 host-panels verbs and commands are
+  not written; the panel is the native list, add when a host panel must
+  write without mounting it.
+- **B12, the identifier in core.** §9c put the picker in the bundle; the
+  identifier `DataSourcePickerProvider` moved to `@labre/affine-shared`
+  because core's own "Table View" / "Kanban View" read `createDatabase` (§3:
+  a seam lives in the lowest package that reads it). The menu
+  (`popDataSourcePicker`, `databaseId` for one database's sources) and the
+  "Linked view of a database" slash entry stay in the bundle. A linked view is
+  one `affine:database` block with the host's `externalSourceId`, the
+  database title, one view with the picked `sourceId`, inserted as one undo
+  step; a board on a source with nothing to group by lands as a table.
+- **The band's option writes.** `TitleBandService.setData?` and
+  `TitleBandProperty.dataWritable?` (both optional, `title-band-signature`
+  guard): a select chip creates and renames options only when both are
+  there and the chip is writable. It is a definition write distinct from the
+  value write: `setData(docId, propertyId, { ...data, options })` first, then
+  the `set` that selects a created option. The tag menu takes
+  `optionEdits: 'create-rename'` (no delete, colour or reorder).
+- **Not done.** The "Open pages in" setting UI (the views bar's), telemetry for
+  a row opened (B17), and the views bar's "+ view" calling the picker.
+- Held by `blocks/database/src/__tests__/open-row.unit.spec.ts`,
+  `creating-entries.unit.spec.ts`, `shared/src/__tests__/services/data-source-picker-null.unit.spec.ts`,
+  `title-band-signature.unit.spec.ts`, `doc-title/src/__tests__/title-band.unit.spec.ts`,
+  `database-editor/src/__tests__/data-source-picker.unit.spec.ts` and
+  `integration-test/src/__tests__/page/database-seams.spec.ts`.
+
 ### 2026-10-14: B17 as built, and new views named at the gesture
 
-Amends §12 and the "Not done" line of the gallery and list amendment above.
+Amends §12, the "Not done" line of the gallery and list amendment and the
+B17 item of the B9 amendment above.
 
 - **The taxonomy is the telemetry README's "Databases" section**, the
   contract: `DatabaseViewAdded { viewType, source }`,
@@ -553,7 +604,8 @@ Amends §12 and the "Not done" line of the gallery and list amendment above.
   `DatabaseValuesLoadFailed { retryable }`; filters and sorts keep their
   historical `CreateDatabaseFilter` and `DatabaseSort*` series rather than
   starting a second one. Each has one emission point (the creating gesture,
-  `DataViewRootUILogic.openDetailPanel`, `GroupTrait`, the values banner), so
+  the block's `openDetailPanel` once B9's request is built, `GroupTrait`,
+  the values banner), so
   gallery and list report through the same paths as table and kanban. Code
   that holds a view but no UI logic reports through the source's
   `DataViewEventTraceKey`, which the block sets beside `EditorHostKey`.

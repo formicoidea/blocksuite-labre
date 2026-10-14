@@ -11,6 +11,7 @@ import { cssVarV2 } from '@toeverything/theme/v2';
 import { css, html, nothing, unsafeCSS } from 'lit';
 
 import { renderCellStatus } from '../../core/component/cell-status/cell-status.js';
+import { isNewTabClick } from '../../core/utils/new-tab-click.js';
 import { renderUniLit } from '../../core/utils/uni-component/uni-component.js';
 import {
   DataViewUIBase,
@@ -49,8 +50,9 @@ export abstract class FlatViewUILogic<
 
   abstract override renderer: UniComponent<unknown>;
 
-  openRow = (rowId: string) => {
-    this.root.openDetailPanel({ view: this.view, rowId });
+  /** A Ctrl/Cmd click asks the host for a new tab (ADR 0035 §9a). */
+  openRow = (rowId: string, newTab = false) => {
+    this.root.openDetailPanel({ view: this.view, rowId, newTab });
   };
 }
 
@@ -102,7 +104,7 @@ export abstract class FlatViewUI<
       title="${label}"
       @click="${(event: MouseEvent) => {
         event.stopPropagation();
-        this.logic.openRow(rowId);
+        this.logic.openRow(rowId, isNewTabClick(event));
       }}"
     >
       ${CenterPeekIcon()}
@@ -117,7 +119,7 @@ export abstract class FlatViewUI<
 
   protected readonly onRowClick = (event: MouseEvent) => {
     const rowId = (event.currentTarget as HTMLElement).dataset.rowId;
-    if (rowId) this.logic.openRow(rowId);
+    if (rowId) this.logic.openRow(rowId, isNewTabClick(event));
   };
 }
 

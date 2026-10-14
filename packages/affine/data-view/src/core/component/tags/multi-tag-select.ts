@@ -64,6 +64,8 @@ import {
   tagTextStyle,
 } from './styles-css.js';
 
+export type TagOptionEdits = 'all' | 'create-rename';
+
 type RenderOption = {
   value: string;
   id: string;
@@ -82,6 +84,14 @@ export type TagManagerOptions = {
    * cannot write the property's config, `standalone-cell.ts`).
    */
   onOptionsChange?: (options: SelectTag[]) => void;
+  /**
+   * Which edits `onOptionsChange` takes; absent, `'all'` (the table).
+   * `'create-rename'`: "Create" and the option menu's name only, no delete,
+   * no colour and no reordering: a host that writes an option's definition
+   * one edit at a time and offers no more (the title band, ADR 0035
+   * amendment of 2026-10-14).
+   */
+  optionEdits?: TagOptionEdits;
   onComplete?: () => void;
   initialDraftText?: string;
   /**
@@ -235,18 +245,25 @@ export class MultiTagSelect extends SignalWatcher(
     if (!option) {
       return;
     }
+    const rename = menu.input({
+      initialValue: option.value,
+      onChange: text => {
+        this.tagManager.changeTag({
+          id: option.id,
+          value: text,
+        });
+      },
+    });
+    if (this.optionEdits === 'create-rename') {
+      popMenu(popupTargetFromElement(e.currentTarget as HTMLElement), {
+        options: { items: [rename] },
+      });
+      return;
+    }
     popMenu(popupTargetFromElement(e.currentTarget as HTMLElement), {
       options: {
         items: [
-          menu.input({
-            initialValue: option.value,
-            onChange: text => {
-              this.tagManager.changeTag({
-                id: option.id,
-                value: text,
-              });
-            },
-          }),
+          rename,
           menu.action({
             name: this.say(TOOLBAR_DELETE),
             prefix: DeleteIcon(),
@@ -321,7 +338,12 @@ export class MultiTagSelect extends SignalWatcher(
     onDragEnd: evt => {
       const over = evt.over;
       const activeId = evt.active.id;
-      if (over && over.id !== activeId && this.onOptionsChange) {
+      if (
+        over &&
+        over.id !== activeId &&
+        this.onOptionsChange &&
+        this.optionEdits === 'all'
+      ) {
         this.onOptionsChange(
           arrayMove(
             this.options.value,
@@ -394,6 +416,7 @@ export class MultiTagSelect extends SignalWatcher(
 
   private renderTags() {
     const editable = !!this.onOptionsChange;
+    const reorderable = editable && this.optionEdits === 'all';
     return html`
       <div
         style="height: 0.5px;background-color: ${cssVarV2(
@@ -424,7 +447,9 @@ export class MultiTagSelect extends SignalWatcher(
             };
             return html`
               <div
-                ${editable && !select.isCreate ? sortable(select.id) : nothing}
+                ${reorderable && !select.isCreate
+                  ? sortable(select.id)
+                  : nothing}
                 class="${classes}"
                 @mouseenter="${mouseenter}"
                 @click="${select.select}"
@@ -434,7 +459,7 @@ export class MultiTagSelect extends SignalWatcher(
                     ? html` <div class="${selectOptionNewIconStyle}">
                         ${this.say(TAG_SELECT_CREATE)}
                       </div>`
-                    : editable
+                    : reorderable
                       ? html`
                           <div
                             ${dragHandler(select.id)}
@@ -515,6 +540,9 @@ export class MultiTagSelect extends SignalWatcher(
   @property({ attribute: false })
   accessor onOptionsChange: ((options: SelectTag[]) => void) | undefined =
     undefined;
+
+  @property({ attribute: false })
+  accessor optionEdits: TagOptionEdits = 'all';
 
   @property({ attribute: false })
   accessor options!: ReadonlySignal<SelectTag[]>;
@@ -651,6 +679,7 @@ export const popTagSelect = (target: PopupTarget, ops: TagSelectOptions) => {
   component.onChange = ops.onChange;
   component.options = ops.options;
   component.onOptionsChange = ops.onOptionsChange;
+  component.optionEdits = ops.optionEdits ?? 'all';
   component.initialDraftText = ops.initialDraftText;
   component.wording = ops.wording;
   component.onComplete = () => {

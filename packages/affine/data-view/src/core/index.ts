@@ -3,6 +3,7 @@ export * from './component/index.js';
 export { DataSourceBase } from './data-source/base.js';
 export * from './data-source/hydration.js';
 export { DataViewRootUILogic } from './data-view.js';
+export { isNewTabClick } from './utils/new-tab-click.js';
 export * from './filter/index.js';
 export * from './group-by';
 export * from './logical/index.js';

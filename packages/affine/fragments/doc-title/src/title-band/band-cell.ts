@@ -153,3 +153,22 @@ export function sameBandValue(
   }
   return a === b;
 }
+
+/**
+ * Whether a chip's tag menu creates and renames options (product owner,
+ * 2026-10-14): a select or multi-select whose host takes a definition write
+ * (`setData`) and says so for this property (`dataWritable: true`). Anything
+ * else keeps its options fixed, the 0.48 band. A read-only chip opens no
+ * editor whatever this says.
+ */
+export function bandOptionsWritable(
+  cellType: string,
+  property: TitleBandProperty,
+  hasSetData: boolean
+): boolean {
+  return (
+    hasSetData &&
+    property.dataWritable === true &&
+    (cellType === 'select' || cellType === 'multi-select')
+  );
+}

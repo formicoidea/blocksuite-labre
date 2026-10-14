@@ -1,9 +1,15 @@
+import { DatabasePropertiesPanel } from './properties-panel/properties-panel.js';
+
 /**
  * The custom elements this package defines, called from
  * `DatabaseEditorViewExtension.effect()`, never at import time.
  *
- * ponytail: empty until the view bar (B11), the full-page host (B13) and the
- * properties panel element (B10) land in this package; each defines its
- * element here and declares it in `HTMLElementTagNameMap`.
+ * ponytail: the view bar (B11) and the full-page host (B13) define theirs
+ * here too when they land, and declare them in `HTMLElementTagNameMap`.
  */
-export function effects() {}
+export function effects() {
+  customElements.define(
+    'affine-database-properties-panel',
+    DatabasePropertiesPanel
+  );
+}

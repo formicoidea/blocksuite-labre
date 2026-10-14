@@ -22,7 +22,6 @@ import { html } from 'lit/static-html.js';
 
 import { dataViewCommonStyle } from './common/css-variable.js';
 import type { DataSource } from './data-source/index.js';
-import { rowOpenParams } from './telemetry.js';
 import type { DataViewSelection } from './types.js';
 import { renderUniLit } from './utils/uni-component/index.js';
 import type { DataViewUILogicBase } from './view/data-view-base.js';
@@ -57,6 +56,11 @@ export type DataViewRendererConfig = {
       data: {
         view: SingleView;
         rowId: string;
+        /**
+         * A Ctrl/Cmd click: the host may open the row in a new tab (ADR 0035
+         * §9a). Absent for a gesture with no such modifier.
+         */
+        newTab?: boolean;
       }
     ) => Promise<void>;
   };
@@ -153,9 +157,9 @@ export class DataViewRootUILogic {
   };
 
   /**
-   * Every row open of every preset goes through here, so `DatabaseRowOpened`
-   * is reported once, here (B17). `newTab` is a Ctrl/Cmd-click (ADR 0035
-   * §9a); the event says which mode the view asked for, never the row.
+   * The one way a view opens a row, whatever its preset (the database block
+   * routes it to the host's opener or to its own detail panel, ADR 0035 §9a).
+   * `newTab` says the gesture asked for a new tab (`isNewTabClick`).
    */
   openDetailPanel = (ops: {
     view: SingleView;
@@ -166,14 +170,10 @@ export class DataViewRootUILogic {
     const openDetailPanel = this.config.detailPanelConfig.openDetailPanel;
     const target = this.dataViewRenderer;
     if (openDetailPanel && target) {
-      this.config.eventTrace('DatabaseRowOpened', {
-        ...rowOpenParams(this.dataSource, ops.view.id, ops.newTab === true),
-        viewId: ops.view.id,
-        viewType: ops.view.type,
-      });
       openDetailPanel(target, {
         view: ops.view,
         rowId: ops.rowId,
+        ...(ops.newTab ? { newTab: true } : {}),
       })
         .catch(console.error)
         .finally(ops.onClose);
