@@ -99,24 +99,24 @@ const { file } = await runViewAction(editor.std, action.id);
 if (file) download(file.blob, file.filename); // yours: a link, a share sheet…
 ```
 
-A `ViewAction` is `{ id, section, label, labelKey, iconKey?, checked?,
-disabled }`:
+A `ViewAction` is `{ id, section, label, labelKey, labelParams?, iconKey?,
+checked?, disabled }`:
 
-| Field      | What it is                                                                                                                                                                                                      |
-| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`       | the command id, stable: key your own icons, test ids and placement on it                                                                                                                                        |
-| `section`  | `'display'` (grid), `'export'` (PNG, PDF, draw.io), `'present'`. Draw a separator between sections, or put one elsewhere (a header "Present" button). Open: a minor may add one                                 |
-| `label`    | resolved through your `TranslationExtension`, else English; `labelKey` is the `com.labre.*` key if you translate yourself                                                                                       |
-| `iconKey`  | `getCommandIcon(std, iconKey)` is the library's Lit icon; or map the key to your own set                                                                                                                        |
-| `checked`  | present on a toggle only (the grid): draw a check or a switch                                                                                                                                                   |
-| `disabled` | listed but refused now (saving the grid on a read-only document). An action that does not apply is not listed at all: "Save the grid for everyone" appears once the viewer toggled the grid, and leaves on save |
+| Field      | What it is                                                                                                                                                                                                                 |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`       | the command id, stable: key your own icons, test ids and placement on it                                                                                                                                                   |
+| `section`  | `'display'` (grid), `'export'` (every file the view can produce, [below](#exports-of-a-view)), `'present'`. Draw a separator between sections, or put one elsewhere (a header "Present" button). Open: a minor may add one |
+| `label`    | resolved through your `TranslationExtension`, else English; `labelKey` is the `com.labre.*` key if you translate yourself, filled with `labelParams` when present (the framework exports)                                  |
+| `iconKey`  | `getCommandIcon(std, iconKey)` is the library's Lit icon; or map the key to your own set                                                                                                                                   |
+| `checked`  | present on a toggle only (the grid): draw a check or a switch                                                                                                                                                              |
+| `disabled` | listed but refused now (saving the grid on a read-only document). An action that does not apply is not listed at all: "Save the grid for everyone" appears once the viewer toggled the grid, and leaves on save            |
 
 What you get today, in order:
 
-| Mode     | Actions                                                                                                                                                  |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| edgeless | `canvas.grid.toggle`, `canvas.grid.saveForEveryone` (after a toggle), `canvas.export.png`, `canvas.export.pdf`, `canvas.export.drawio`, `canvas.present` |
-| page     | none yet                                                                                                                                                 |
+| Mode     | Actions                                                                                                                                                                                                                                                                                    |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| edgeless | `canvas.grid.toggle`, `canvas.grid.saveForEveryone` (after a toggle), `canvas.export.png`, `canvas.export.pdf`, `canvas.export.drawio`, `canvas.export.svg`, `canvas.export.<framework>.<format>` (one per framework format), `page.export.markdown`, `page.export.html`, `canvas.present` |
+| page     | `page.export.markdown`, `page.export.html`                                                                                                                                                                                                                                                 |
 
 **Follow it.** The list reads signals (the grid, its source, the document's
 read-only state): call `getViewActions` inside an `effect` (or a `computed`)
@@ -150,9 +150,41 @@ listed even where the PNG is not. It is also the interchange capability
 `canvas:drawio:export`: a menu that lists one entry per `*:export`
 capability skips that one, or shows draw.io twice.
 
+### Exports of a view
+
+Every file the view the editor shows can produce is a view action of section
+`'export'`, and `getViewExports(std, mode?)` lists exactly those, in the
+listing's order: draw them in ONE "Export…" menu, run the picked one with
+`runViewAction`, and do what you want with the `{ file }` it resolves with
+(ADR 0034, amendment of 2026-10-14). Nothing is downloaded behind your back.
+
+| Id                                   | View         | Listed when                                  | The file                                                                                                        |
+| ------------------------------------ | ------------ | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `canvas.export.png`, `.pdf`          | canvas       | an `ExportManager` is registered             | the canvas as you see it                                                                                        |
+| `canvas.export.drawio`               | canvas       | always                                       | the selection, else the canvas, as a draw.io page                                                               |
+| `canvas.export.svg`                  | canvas       | a `CanvasRenderer` paints the canvas         | the whole canvas as vector SVG; notes, frames, images and embeds are not drawn                                  |
+| `canvas.export.<framework>.<format>` | canvas       | the board holds an element of that framework | the whole board in that framework's format: `bpmn.bpmn`, `c4.mermaid`, `uml.plantuml`, `uml.xmi`, `wardley.owm` |
+| `page.export.markdown`, `.html`      | page, canvas | always                                       | the page; a zip (`index.md` or `index.html` beside `assets/`) when it holds images or files                     |
+
+The framework entries are not registered commands: they are read off the
+interchange registry, one per `*:export` capability a framework registered
+(the canvas's own `canvas:drawio:export` excepted, it is
+`canvas.export.drawio`). A framework whose flag is off registers no
+capability, so its entry is not listed; a framework that adds a format is
+listed with no change on your side. Their label is one key,
+`com.labre.command.canvas.export.interchange` ("Export {{framework}} as
+{{extension}}"), with `labelParams` `{ framework, extension }`, the
+framework's name already resolved through your catalogue; their icon key is
+`canvas.export.interchange`. Each reports its framework's telemetry
+(`FrameworkElementAdded`, element `canvas:export-<format>`), and what the
+writer could not say goes to `NotificationProvider` as a warning. The
+selection exports each framework keeps on its own toolbar (`bpmn.exportXml`,
+`uml.exportXmi`…) are not view actions.
+
 **Flags.** A flag removes tooling, never an entry a document needs:
 `frame: false` registers no `canvas.present`, so it is not listed. The grid
-and the exports are never gated.
+and the canvas's own exports are never gated; a framework's format follows
+its flag.
 
 A React menu, end to end:
 

@@ -2,6 +2,7 @@ import {
   ExportIcon,
   ExportToPdfIcon,
   ExportToPngIcon,
+  ExportToSvgIcon,
   GridIcon,
 } from '@blocksuite/icons/lit';
 import {
@@ -27,10 +28,12 @@ import {
   canvasExportCommands,
   CANVAS_INTERCHANGE,
   canvasGridCommands,
+  canvasSvgExportCommands,
   EdgelessCRUDExtension,
   EdgelessLegacySlotExtension,
   EditPropsMiddlewareBuilder,
   exportSvgCommands,
+  INTERCHANGE_EXPORT_ICON_KEY,
   InterchangeExtension,
   exportSvgToolbarExtension,
   mapQualityCommands,
@@ -155,6 +158,19 @@ export class SurfaceViewExtension extends ViewExtensionProvider {
       context.register(
         CommandExtension(canvasDrawioExportCommands, {
           'canvas.export.drawio': ExportIcon(),
+          // The icon of the view actions derived from the frameworks'
+          // `*:export` capabilities (`interchange-export.ts`): they are
+          // listed by the host façade, never registered as commands, so their
+          // one icon rides on this table.
+          [INTERCHANGE_EXPORT_ICON_KEY]: ExportIcon(),
+        })
+      );
+      // The whole canvas as SVG (ADR 0034, amendment of 2026-10-14): the
+      // renderer replay of `export.svg`, over everything this viewer sees.
+      // Never gated, for the PNG's reason.
+      context.register(
+        CommandExtension(canvasSvgExportCommands, {
+          'canvas.export.svg': ExportToSvgIcon(),
         })
       );
       // User layers (ADR 0031 §2-§6): the viewer's active layer (session

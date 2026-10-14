@@ -4,7 +4,12 @@ import {
   translateKey,
 } from '@labre/affine-shared/services';
 import { downloadBlob, safeFilename } from '@labre/affine-shared/utils';
-import type { AnyCommandDescriptor, BlockStdScope } from '@labre/std';
+import type {
+  AnyCommandDescriptor,
+  BlockStdScope,
+  CommandFile,
+  CommandFileParams,
+} from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 
 import {
@@ -12,7 +17,7 @@ import {
   boardSvgExportOptions,
   DEFAULT_BOARD_SVG_EXPORT_OPTIONS,
 } from './parts.js';
-import { renderBoardSvg } from './render.js';
+import { canvasRendererOf, renderBoardSvg, renderCanvasSvg } from './render.js';
 import { EXPORT_SVG_NOTHING_TO_EXPORT } from './translations.js';
 
 /** What the file is, told to the browser. */
@@ -133,3 +138,62 @@ const exportSvg: AnyCommandDescriptor = {
 };
 
 export const exportSvgCommands: AnyCommandDescriptor[] = [exportSvg];
+
+/**
+ * The whole canvas as an SVG file, or `null` when there is nothing to draw.
+ * Named after the page, like the PNG.
+ */
+export function canvasSvgFile(std: BlockStdScope): CommandFile | null {
+  const rendered = renderCanvasSvg(std);
+  if (!rendered) return null;
+  const title = std.store.workspace.meta.getDocMeta(std.store.id)?.title;
+  return {
+    blob: new Blob([rendered.svg], { type: `${SVG_MIME};charset=utf-8` }),
+    filename: `${safeFilename(title, SVG_FILENAME_FALLBACK)}.svg`,
+  };
+}
+
+/**
+ * "Export as SVG" of the WHOLE canvas, the fourth export of the canvas's
+ * "This view" (ADR 0034, amendment of 2026-10-14), on the model of
+ * `canvas.export.png`: given `params.deliver` (`runViewAction`) it hands the
+ * file over and downloads nothing; without it (the palette) it downloads.
+ *
+ * `export.svg` exports ONE selected board; this exports everything this
+ * viewer sees, with the same renderer replay and the same `data-labre-*`
+ * markers (ADR 0025, ADR 0032). What the replay cannot draw is left out and
+ * the description says so: the canvas' DOM blocks — notes, frames, images,
+ * embeds — have no SVG painter; edgeless texts do.
+ *
+ * `owner: 'core'`, never gated, no `telemetry` (it names no framework,
+ * like the PNG). Listed only where a `CanvasRenderer` paints the canvas.
+ */
+const exportCanvasSvg: AnyCommandDescriptor = {
+  id: 'canvas.export.svg',
+  owner: 'core',
+  kind: 'action',
+  labelKey: 'com.labre.command.canvas.export.svg',
+  labelFallback: 'Export as SVG',
+  descriptionKey: 'com.labre.command.canvas.export.svg.description',
+  descriptionFallback:
+    'Download the whole canvas as a vector SVG file: shapes, lines, texts and boards. Notes, frames and images are not drawn.',
+  category: 'export',
+  iconKey: 'canvas.export.svg',
+  keywords: ['svg', 'vector', 'image', 'export', 'download'],
+  surfaces: ['view-menu', 'palette'],
+  order: 13,
+  scope: 'edgeless',
+  defaultKeys: { mac: [], other: [] },
+  when: std => canvasRendererOf(std) !== null,
+  run: (std, _invocation, params) => {
+    const file = canvasSvgFile(std);
+    if (!file) return;
+    const deliver = (params as CommandFileParams | undefined)?.deliver;
+    if (typeof deliver === 'function') deliver(file);
+    else downloadBlob(file.blob, file.filename);
+  },
+};
+
+export const canvasSvgExportCommands: AnyCommandDescriptor[] = [
+  exportCanvasSvg,
+];

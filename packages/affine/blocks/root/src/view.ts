@@ -1,3 +1,4 @@
+import { ExportToHtmlIcon, ExportToMarkdownIcon } from '@blocksuite/icons/lit';
 import {
   type ViewExtensionContext,
   ViewExtensionProvider,
@@ -18,6 +19,7 @@ import { literal } from 'lit/static-html.js';
 
 import { PageClipboard, ReadOnlyClipboard } from './clipboard';
 import { copyLinkCommands } from './commands/copy-link-commands';
+import { pageExportCommands } from './commands/page-export-commands';
 import { pivotCommands } from './commands/pivot-commands';
 import { readingCommands } from './commands/reading-commands';
 import { tagCommands } from './commands/tag-commands';
@@ -53,6 +55,12 @@ export class RootViewExtension extends ViewExtensionProvider {
         ...readingCommands,
         ...copyLinkCommands,
       ]),
+      // The page as Markdown or HTML (ADR 0034, amendment of 2026-10-14):
+      // view actions of both views, never gated — the page's own text.
+      CommandExtension(pageExportCommands, {
+        'page.export.markdown': ExportToMarkdownIcon(),
+        'page.export.html': ExportToHtmlIcon(),
+      }),
       ShortcutKeymapExtension('global'),
       ToolbarModuleExtension({
         id: BlockFlavourIdentifier(NoteBlockSchema.model.flavour),
