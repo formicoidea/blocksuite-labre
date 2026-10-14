@@ -2,6 +2,7 @@ import { translateKey } from '@labre/affine-shared/services';
 import { type Container, createIdentifier } from '@labre/global/di';
 import {
   BlockComponent,
+  CommandExtension,
   type BlockStdScope,
   BlockSelection,
   BlockViewIdentifier,
@@ -11,6 +12,7 @@ import { css, html } from 'lit';
 import { literal } from 'lit/static-html.js';
 
 import { DATABASE_PAGE_HOST_MISSING } from '../translations.js';
+import { databasePageViewCommands } from './view-menu-commands.js';
 
 const DATABASE_FLAVOUR = 'affine:database';
 
@@ -28,7 +30,8 @@ export const DatabasePageHostBlockIdentifier = createIdentifier<{
  * The extension that turns a page editor into the full page of one database
  * block: the document root draws `<affine-database-page-root>` instead of the
  * page root. `di.override` because the page scope already registered
- * `affine-page-root` for `affine:page`.
+ * `affine-page-root` for `affine:page`. It also registers the page's
+ * "This view" commands (`view-menu-commands.ts`), which exist only here.
  */
 export function databasePageRootExtension(hostBlockId: string) {
   return {
@@ -38,6 +41,7 @@ export function databasePageRootExtension(hostBlockId: string) {
         () => literal`affine-database-page-root`
       );
       di.override(DatabasePageHostBlockIdentifier, () => ({ hostBlockId }));
+      CommandExtension(databasePageViewCommands(hostBlockId)).setup(di);
     },
   };
 }

@@ -328,7 +328,7 @@ carries `fieldId`); the new events do not need it and leave it out.
 
 | Event                      | When                                                    | Required props                                                                     |
 | -------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `DatabaseViewAdded`        | a view is added from a gesture (the views bar's "+")    | `viewType`, `source` (`existing` \| `new`)                                         |
+| `DatabaseViewAdded`        | a view is added from a gesture (the views bar's "+")    | `viewType`, `source` (`existing` \| `new` \| `import`)                             |
 | `DatabaseViewTypeChanged`  | the user picks another layout for a view                | `fromViewType`, `toViewType`                                                       |
 | `CreateDatabaseFilter`     | a filter condition is added (historical name, kept)     | (view params only)                                                                 |
 | `DatabaseSortAdd` …        | a sort is added, changed, reordered, removed or cleared | `fieldType`, `orderType`, `orderIndex` (the historical `DatabaseSort*` series)     |
@@ -341,7 +341,8 @@ carries `fieldId`); the new events do not need it and leave it out.
   `BlockCreated` only; a programmatic view reports nothing). `source` is
   `existing` for a view on a source the database already reads (its own
   included) and `new` when the gesture created the source with it (the
-  bundle's "+ view, with a new source", B12). `DatabaseRowOpened` leaves
+  bundle's "+ view, with a new source", B12), `import` for the copy of
+  another database's view or of a view template (the picker's `importView`). `DatabaseRowOpened` leaves
   the database block's `openDetailPanel`, where every preset's open button,
   card and row land through `DataViewRootUILogic.openDetailPanel`, gallery
   and list included, once B9's row-open request is built: `mode` is the

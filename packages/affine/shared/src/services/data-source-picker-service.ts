@@ -25,6 +25,66 @@ export interface DataSourcePickerDatabase {
   sources: readonly DataSourcePickerSource[];
 }
 
+/** A property of a source as a view refers to it (an import's correspondence). */
+export interface DataSourcePickerProperty {
+  /** The property id the views store. */
+  id: string;
+  name: string;
+  /** The property type (`title`, `select`, `number`…). */
+  type: string;
+  /** A select's options: a filter on it stores their ids. */
+  options?: readonly { id: string; value: string }[];
+}
+
+/**
+ * A view of another database, or a saved view template, to copy into this
+ * database: never linked, the copy is a new view of this database.
+ */
+export interface DataSourcePickerImportedView {
+  /** The stored view as read there (`props.views[i]`, or a template). */
+  view: Readonly<Record<string, unknown>>;
+  /** The properties of the source the view read there. */
+  properties: readonly DataSourcePickerProperty[];
+  /**
+   * Source property id → property of this database, or `null` to ignore
+   * it. An id left out is ignored. A filter or a sort on an ignored property
+   * is removed, a column of it is dropped, a grouping by it is undone.
+   */
+  mapping: Readonly<Record<string, string | null>>;
+}
+
+/** What `importView` hands the host: where the copy lands, and the verb. */
+export interface DataSourcePickerImportRequest {
+  /** The database the copy lands in, as `list()` names it. */
+  databaseId: string;
+  /** The source the copy reads (the current view's); absent, the implicit one. */
+  sourceId?: string;
+  /** The properties of that source, for the correspondence. */
+  properties: readonly DataSourcePickerProperty[];
+  /** The layouts this database can add (preset types). Any other is refused. */
+  layouts: readonly string[];
+  /**
+   * Add the copy as a new view and show it; its id, or `null` when nothing
+   * was added (the page turned read-only, a layout not offered). One undo
+   * step.
+   */
+  add(view: DataSourcePickerImportedView): string | null;
+}
+
+/**
+ * The current view as a template (labre PRD REQ-DB-4): its layout, where its
+ * pages open, its properties shown and their order, its grouping. Never its
+ * filters, its sorts or a manual order: those belong to one view.
+ */
+export interface DataSourcePickerViewTemplate {
+  databaseId: string;
+  sourceId?: string;
+  /** The view's name, as shown. */
+  name: string;
+  view: Readonly<Record<string, unknown>>;
+  properties: readonly DataSourcePickerProperty[];
+}
+
 /**
  * The data-source picker (ADR 0035 §9c, issue B12): the host lists the
  * databases and sources a view may read, and creates them. The library draws
@@ -54,6 +114,20 @@ export interface DataSourcePickerService {
    * `null`. Absent, the picker offers no "New source".
    */
   createSource?(databaseId: string): Promise<DataSourcePickerSource | null>;
+  /**
+   * Import a view of another database into `request.databaseId` (labre PRD
+   * REQ-DB-2, ADR 0035 amendment of 2026-10-14): the host lets the reader
+   * pick a view it may read and map its properties, then calls
+   * `request.add`. Absent, "+ view" offers no import and the full page lists
+   * no "Import a view".
+   */
+  importView?(request: DataSourcePickerImportRequest): void;
+  /**
+   * Keep the current view as a template, where the host keeps templates
+   * (labre: the workspace's library, REQ-DB-15); a later `importView` may
+   * offer it. Resolves `true` once saved. Absent, no "Save as template".
+   */
+  saveViewTemplate?(template: DataSourcePickerViewTemplate): Promise<boolean>;
 }
 
 export const DataSourcePickerProvider =

@@ -93,12 +93,13 @@ export type DatabaseEvents = {
   /**
    * A view was added by a user gesture (ADR 0035 §12, B17): `existing` when
    * it reads a source the database already has (its own included), `new`
-   * when the gesture created the source with it. A database created with its
-   * first view reports `BlockCreated`, not this.
+   * when the gesture created the source with it, `import` when it is the
+   * copy of another database's view or of a view template (0.49, appended).
+   * A database created with its first view reports `BlockCreated`, not this.
    */
   DatabaseViewAdded: TelemetryEvent & {
     viewType: string;
-    source: 'existing' | 'new';
+    source: 'existing' | 'new' | 'import';
   };
   /**
    * A hosted source's values could not be loaded (ADR 0035 §9e, B17): once

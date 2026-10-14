@@ -803,3 +803,51 @@ B17 item of the B9 amendment above.
   `viewChangeType` rebuilds the view's data, but every block source writes
   it merged over the stored view, so both survive; a guard holds it
   (`all/src/__tests__/database/database-telemetry.unit.spec.ts`).
+
+### 2026-10-14: "This view" on the full page, and importing a view
+
+Labre PRD REQ-DB-2, DB-4 and DB-10. Amends §9c (the picker) and the "+ view"
+of B11, whose third entry waited for this amendment.
+
+- **The full page's settings are view-menu commands.** The host already
+  lists the current view's own actions in its menu with `getViewActions`
+  and runs them with `runViewAction` (ADR 0034, amendment of 2026-10-13).
+  The full page registers six commands on that surface, from
+  `databasePageRootExtension`, so they exist on the full page and nowhere
+  else: `database.view.layout`, `.group`, `.open-in`, `.properties`,
+  `.save-template` and `.import` (`database-page/view-menu-commands.ts`,
+  `scope: 'page'`, no chord). They are a projection of the view settings,
+  not a second implementation: a setting opens the very menu the view
+  settings' entry opens, through `openSetting(key)` of the view's options
+  button, anchored on it, its "back" leading to the view settings. The
+  entries' openers moved out of `popViewOptions` into
+  `widget-presets/tools/presets/view-options/view-settings.ts`
+  (`popViewSetting`, `viewSettingAvailable`), which both call. A setting is
+  listed where the view settings offer it (grouping needs the group trait,
+  "Open pages in" rows that are pages) and not on a read-only page. They are
+  not in `@labre/affine`'s `getCommands()`: core never imports the bundle.
+- **No new seam: the picker carries the two transfers.** `DataSourcePickerService`
+  gains two optional verbs. `importView(request)` hands the host the
+  database the copy lands in, the current view's `sourceId`, that source's
+  properties and the layouts this database adds; the host lets the reader
+  choose a view and map its properties, then calls `request.add({ view,
+properties, mapping })`. `saveViewTemplate(template)` hands the current
+  view as a template: everything but its filters, sorts and manual orders
+  (REQ-DB-4), with its source's properties. Absent, "+ view" has no import
+  entry and the page lists neither command. "+ view" draws its third entry,
+  "Import a view from another database", when the verb is there.
+- **A copy, never a link.** `add` re-checks read-only, refuses a layout
+  this database does not add (no calendar is created any more), and writes
+  a new view with a new id on the current view's source, as one undo step
+  (`viewDataAdd`), then shows it and reports `DatabaseViewAdded { source:
+'import' }` (the union is append-only, so `import` is appended).
+  `remapView` (pure, exported for the host's dialog to preview the same
+  result) rewrites every property id through the mapping: an ignored
+  property's column leaves, a filter condition or a sort key on it is
+  removed, a grouping by it is undone, a select condition keeps the options
+  of the same name, the rows' manual orders are emptied; it counts what it
+  removed so the dialog can say so.
+- **Conditional colours are not built.** No view stores colour rules; they
+  need a stored field on the views (`packages/affine/model`, a red zone),
+  left to its own change. A template simply carries whatever the view
+  stores, so it will carry them once they exist.

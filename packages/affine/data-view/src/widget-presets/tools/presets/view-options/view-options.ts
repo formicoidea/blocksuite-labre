@@ -1,6 +1,5 @@
 import {
   menu,
-  type MenuButtonData,
   type MenuConfig,
   popMenu,
   type PopupTarget,
@@ -9,38 +8,26 @@ import {
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import {
   ArrowRightSmallIcon,
-  CenterPeekIcon,
   DeleteIcon,
   DuplicateIcon,
-  ExpandFullIcon,
   FilterIcon,
   GroupingIcon,
   InfoIcon,
   LayoutIcon,
   MoreHorizontalIcon,
   OpenInNewIcon,
-  RightSidebarIcon,
   SortIcon,
 } from '@blocksuite/icons/lit';
-import type { DatabaseViewOpenIn } from '@labre/affine-model';
-import type { ChromeWording } from '@labre/affine-shared/services';
 import { type BlockStdScope, stdContext } from '@labre/std';
 import { consume } from '@lit/context';
-import { css, html, type TemplateResult } from 'lit';
-import { styleMap } from 'lit/directives/style-map.js';
+import { css, html } from 'lit';
 
-import { popPropertiesSetting } from '../../../../core/common/properties.js';
 import { filterTraitKey } from '../../../../core/filter/trait.js';
-import {
-  popGroupSetting,
-  popSelectGroupByProperty,
-} from '../../../../core/group-by/setting.js';
 import { groupTraitKey } from '../../../../core/group-by/trait.js';
 import {
   type DataViewUILogicBase,
   emptyFilterGroup,
   popCreateFilter,
-  renderUniLit,
 } from '../../../../core/index.js';
 import { popCreateSort } from '../../../../core/sort/add-sort.js';
 import { sortTraitKey } from '../../../../core/sort/manager.js';
@@ -50,21 +37,18 @@ import {
   type Wording,
   wordingOf,
 } from '../../../../core/utils/wording.js';
-import {
-  rowsArePages,
-  viewOpenIn,
-  viewOpenInSet,
-} from '../../../../core/view/open-in.js';
-import { PropertiesPanelOpenerKey } from '../../../../core/view-manager/properties-panel-opener.js';
 import { WidgetBase } from '../../../../core/widget/widget-base.js';
 import { popFilterRoot } from '../../../quick-setting-bar/filter/root-panel-view.js';
 import { popSortRoot } from '../../../quick-setting-bar/sort/root-panel.js';
+import { DATA_VIEW_OPEN_IN } from '../../../../translations.js';
 import {
-  DATA_VIEW_OPEN_IN,
-  DATA_VIEW_OPEN_IN_CENTER,
-  DATA_VIEW_OPEN_IN_FULL,
-  DATA_VIEW_OPEN_IN_SIDE,
-} from '../../../../translations.js';
+  openInCurrent,
+  openInOptions,
+  openViewSetting,
+  popViewSetting,
+  type ViewSettingKey,
+  viewSettingAvailable,
+} from './view-settings.js';
 
 const styles = css`
   .affine-database-toolbar-item.more-action {
@@ -105,6 +89,31 @@ export class DataViewHeaderToolsViewOptions extends WidgetBase {
     popViewOptions(target, this.dataViewLogic, undefined, wordingOf(this.std));
   };
 
+  /**
+   * Whether the current view offers setting `key` now (labre PRD REQ-DB-10:
+   * what a host's "This view" menu lists for the full page of a database).
+   */
+  settingAvailable(key: ViewSettingKey): boolean {
+    return viewSettingAvailable(this.dataViewLogic, key);
+  }
+
+  /**
+   * Open the menu of one setting of the current view, anchored on this
+   * button, its "back" leading to the view settings: the entry the view
+   * settings menu would open, for a caller outside it (a host's menu, through
+   * the database page's view-menu commands). Nothing when not offered.
+   */
+  openSetting(key: ViewSettingKey): void {
+    const target = popupTargetFromElement(this);
+    popViewSetting(
+      target,
+      this.dataViewLogic,
+      key,
+      () => this.openMoreAction(target),
+      wordingOf(this.std)
+    );
+  }
+
   override render() {
     if (this.view.readonly$.value) {
       return;
@@ -123,17 +132,6 @@ declare global {
     'data-view-header-tools-view-options': DataViewHeaderToolsViewOptions;
   }
 }
-/** The three places a row's page opens, in the stored order (ADR 0035 §8). */
-const OPEN_IN_CHOICES: readonly {
-  mode: DatabaseViewOpenIn;
-  wording: ChromeWording;
-  icon: () => TemplateResult;
-}[] = [
-  { mode: 'side', wording: DATA_VIEW_OPEN_IN_SIDE, icon: RightSidebarIcon },
-  { mode: 'center', wording: DATA_VIEW_OPEN_IN_CENTER, icon: CenterPeekIcon },
-  { mode: 'full', wording: DATA_VIEW_OPEN_IN_FULL, icon: ExpandFullIcon },
-];
-
 /**
  * "Open pages in" (B8, PRD REQ-DB-11): a view setting shared by everyone,
  * offered only where rows are pages, written on the pick alone.
@@ -143,30 +141,15 @@ const openInMenu = (
   reopen: () => void,
   wording: Wording
 ): MenuConfig | undefined => {
-  const view = dataViewLogic.view;
-  if (!rowsArePages(view.manager.dataSource)) return;
-  const current = viewOpenIn(view.manager.dataSource.viewDataGet(view.id));
-  const currentChoice = OPEN_IN_CHOICES.find(choice => choice.mode === current);
+  if (!viewSettingAvailable(dataViewLogic, 'open-in')) return;
+  const currentChoice = openInCurrent(dataViewLogic);
   return menu.subMenu({
     name: wording(DATA_VIEW_OPEN_IN),
     prefix: OpenInNewIcon(),
     postfix: html` <div style="font-size: 14px;">
       ${currentChoice ? wording(currentChoice.wording) : ''}
     </div>`,
-    options: {
-      title: { text: wording(DATA_VIEW_OPEN_IN) },
-      items: OPEN_IN_CHOICES.map(choice =>
-        menu.action({
-          name: wording(choice.wording),
-          prefix: choice.icon(),
-          isSelected: choice.mode === current,
-          select: () => {
-            viewOpenInSet(view, choice.mode);
-            reopen();
-          },
-        })
-      ),
-    },
+    options: openInOptions(dataViewLogic, reopen, wording),
   });
 };
 
@@ -187,15 +170,7 @@ const createSettingMenus = (
         </div>
         ${ArrowRightSmallIcon()}`,
       select: () => {
-        const openPanel = view.serviceGet(PropertiesPanelOpenerKey);
-        if (openPanel) {
-          openPanel(view.id);
-          return;
-        }
-        popPropertiesSetting(target, {
-          view: view,
-          onBack: reopen,
-        });
+        openViewSetting(target, dataViewLogic, 'properties', reopen, wording);
       },
     })
   );
@@ -293,16 +268,7 @@ const createSettingMenus = (
           </div>
           ${ArrowRightSmallIcon()}`,
         select: () => {
-          const groupBy = groupTrait.property$.value;
-          if (!groupBy) {
-            popSelectGroupByProperty(target, groupTrait, {
-              onSelect: () =>
-                popGroupSetting(target, groupTrait, reopen, wording),
-              onBack: reopen,
-            });
-          } else {
-            popGroupSetting(target, groupTrait, reopen, wording);
-          }
+          openViewSetting(target, dataViewLogic, 'group', reopen, wording);
         },
       })
     );
@@ -343,94 +309,7 @@ export const popViewOptions = (
             </div>
             ${ArrowRightSmallIcon()}`,
           select: () => {
-            const viewTypes = view.manager.viewMetas.map<MenuConfig>(meta => {
-              return menu => {
-                if (!menu.search(meta.model.defaultName)) {
-                  return;
-                }
-                const isSelected =
-                  meta.type === view.manager.currentView$.value?.type;
-                const iconStyle = styleMap({
-                  fontSize: '24px',
-                  color: isSelected
-                    ? 'var(--affine-text-emphasis-color)'
-                    : 'var(--affine-icon-secondary)',
-                });
-                const textStyle = styleMap({
-                  fontSize: '14px',
-                  lineHeight: '22px',
-                  color: isSelected
-                    ? 'var(--affine-text-emphasis-color)'
-                    : 'var(--affine-text-secondary-color)',
-                });
-                const data: MenuButtonData = {
-                  content: () => html`
-                    <div
-                      style="color:var(--affine-text-emphasis-color);width:100%;display: flex;flex-direction: column;align-items: center;justify-content: center;padding: 6px 16px;white-space: nowrap"
-                    >
-                      <div style="${iconStyle}">
-                        ${renderUniLit(meta.renderer.icon)}
-                      </div>
-                      <div style="${textStyle}">${meta.model.defaultName}</div>
-                    </div>
-                  `,
-                  select: () => {
-                    const id = view.manager.currentViewId$.value;
-                    // Re-picking the current layout would reset the view to the
-                    // defaults of its own type, dropping widths and filters.
-                    if (!id || meta.type === view.type) {
-                      return;
-                    }
-                    dataViewLogic.eventTrace('DatabaseViewTypeChanged', {
-                      fromViewType: view.type,
-                      toViewType: meta.type,
-                    });
-                    view.manager.viewChangeType(id, meta.type);
-                    dataViewLogic.clearSelection();
-                  },
-                  class: {},
-                };
-                const containerStyle = styleMap({
-                  flex: '1',
-                });
-                return html` <affine-menu-button
-                  style="${containerStyle}"
-                  .data="${data}"
-                  .menu="${menu}"
-                ></affine-menu-button>`;
-              };
-            });
-            popMenu(target, {
-              options: {
-                title: {
-                  onBack: reopen,
-                  text: 'Layout',
-                },
-                items: [
-                  menu => {
-                    const result = menu.renderItems(viewTypes);
-                    if (result.length) {
-                      return html` <div style="display: flex">${result}</div>`;
-                    }
-                    return html``;
-                  },
-                  // menu.toggleSwitch({
-                  //   name: 'Show block icon',
-                  //   on: true,
-                  //   onChange: value => {
-                  //     console.log(value);
-                  //   },
-                  // }),
-                  // menu.toggleSwitch({
-                  //   name: 'Show Vertical lines',
-                  //   on: true,
-                  //   onChange: value => {
-                  //     console.log(value);
-                  //   },
-                  // }),
-                ],
-              },
-            });
+            openViewSetting(target, dataViewLogic, 'layout', reopen, wording);
           },
           prefix: LayoutIcon(),
         }),

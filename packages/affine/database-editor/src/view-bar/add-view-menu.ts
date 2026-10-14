@@ -2,6 +2,7 @@ import { HostedDataSourceBase } from '@labre/affine-block-database';
 import { menu, type MenuConfig } from '@labre/affine-components/context-menu';
 import {
   type ChromeWording,
+  DataSourcePickerProvider,
   type DataSourcePickerService,
   translateKey,
 } from '@labre/affine-shared/services';
@@ -10,14 +11,19 @@ import {
   type AddViewMenuContext,
   viewDefaultName,
 } from '@labre/data-view';
-import { PlusIcon } from '@blocksuite/icons/lit';
+import { ImportIcon, PlusIcon } from '@blocksuite/icons/lit';
 import { html } from 'lit';
 
 import {
   DATABASE_ADD_VIEW_EXISTING_SOURCE,
+  DATABASE_ADD_VIEW_IMPORT,
   DATABASE_ADD_VIEW_NEW_SOURCE,
   DATABASE_ADD_VIEW_UNTITLED_SOURCE,
 } from '../translations.js';
+import {
+  canImportView,
+  requestViewImport,
+} from '../view-transfer/import-view.js';
 import { addViewOnSource } from './add-view-on-source.js';
 import { type AddViewSource, existingSources } from './add-view-sources.js';
 
@@ -75,16 +81,27 @@ export function addViewSourcePicker(
  */
 export type AddViewMenuShape =
   | { kind: 'presets'; source: AddViewSource | undefined }
-  | { kind: 'entries'; existing: AddViewSource[]; newSource: boolean };
+  | {
+      kind: 'entries';
+      existing: AddViewSource[];
+      newSource: boolean;
+      importView: boolean;
+    };
 
 export function addViewMenuShape(
   sources: AddViewSource[],
-  canCreateSource: boolean
+  canCreateSource: boolean,
+  canImport = false
 ): AddViewMenuShape {
-  if (!canCreateSource && sources.length <= 1) {
+  if (!canCreateSource && !canImport && sources.length <= 1) {
     return { kind: 'presets', source: sources[0] };
   }
-  return { kind: 'entries', existing: sources, newSource: canCreateSource };
+  return {
+    kind: 'entries',
+    existing: sources,
+    newSource: canCreateSource,
+    importView: canImport,
+  };
 }
 
 /**
@@ -99,14 +116,14 @@ export function addViewMenuShape(
  * 2. "With a new source": asks the picker for a source, then adds a table on
  *    it. Absent without the picker's `createSource`: that is the host's kill
  *    switch on creating sources (labre ADR-0046 §10).
- * 3. "Import a view from another database" (labre REQ-DB-2) has no library
- *    seam in ADR 0035: not drawn.
+ * 3. "Import a view from another database" (labre REQ-DB-2): hands the
+ *    picker's `importView` a request whose `add` copies the chosen view
+ *    onto the current view's source (`view-transfer/import-view.ts`, ADR
+ *    0035 amendment of 2026-10-14). Absent without that verb.
  *
  * A data source that does not resolve sources (an inline database, a 0.48
  * host source) has one implicit source: the bar keeps its presets list.
- *
- * ponytail: 3 waits for an ADR 0035 amendment that gives the picker an
- * import verb, with the host's third wave ("This view" and view import).
+
  */
 export function databaseAddViewMenu(
   picker: (context: AddViewMenuContext) => AddViewSourcePicker | null
@@ -143,7 +160,12 @@ export function databaseAddViewMenu(
           })
         );
       const createSource = sourcePicker?.createSource?.bind(sourcePicker);
-      const shape = addViewMenuShape(sources, createSource !== undefined);
+      const hostPicker = context.std?.getOptional(DataSourcePickerProvider);
+      const shape = addViewMenuShape(
+        sources,
+        createSource !== undefined,
+        canImportView(hostPicker, dataSource)
+      );
       if (shape.kind === 'presets') {
         return presetsOn(shape.source);
       }
@@ -194,6 +216,18 @@ export function databaseAddViewMenu(
                 .catch(error => {
                   console.error(error);
                 });
+            },
+          })
+        );
+      }
+      if (shape.importView) {
+        items.push(
+          menu.action({
+            name: wording(DATABASE_ADD_VIEW_IMPORT),
+            prefix: ImportIcon(),
+            testId: 'database-add-view-import',
+            select: () => {
+              requestViewImport(hostPicker, dataSource);
             },
           })
         );

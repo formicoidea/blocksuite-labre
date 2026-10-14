@@ -116,6 +116,8 @@ const KEPT_SEPARATE_CHROME_WORDS: Readonly<Record<string, string>> = {
   // rendering of a stroke.
   General: 'UML catalogue section (derived table) vs canvas style toggle',
   Group: 'verb (group the selection) vs noun (a group)',
+  Layout:
+    "a mind map's branch layout vs a database view's layout (table, kanban)",
   Left: 'mind-map layout direction vs text alignment',
   Light: 'light colour mode vs light font weight',
   Relations:

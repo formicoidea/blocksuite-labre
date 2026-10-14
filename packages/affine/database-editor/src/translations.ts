@@ -21,12 +21,50 @@ export const DATABASE_ADD_VIEW_UNTITLED_SOURCE: ChromeWording = [
   'Untitled source',
 ];
 
+/** The third entry: copy a view of another database (labre REQ-DB-2). */
+export const DATABASE_ADD_VIEW_IMPORT: ChromeWording = [
+  'com.labre.database.add-view.import',
+  'Import a view from another database',
+];
+
 /* ── The full-page database host (ADR 0035 §1, B13) ───────────────────── */
 
 /** The document has no block by the id the host named as the views' host. */
 export const DATABASE_PAGE_HOST_MISSING: ChromeWording = [
   'com.labre.database.page.host-missing',
   'This database has no views to show.',
+];
+
+/* ── The full page's view-menu commands (labre REQ-DB-10) ───────────── */
+
+export const VIEW_MENU_LAYOUT: ChromeWording = [
+  'com.labre.database.view-menu.layout',
+  'Layout',
+];
+
+export const VIEW_MENU_GROUP: ChromeWording = [
+  'com.labre.database.view-menu.group',
+  'Group',
+];
+
+/**
+ * The view settings' own entry (`DATA_VIEW_OPEN_IN`): one chrome word, one
+ * key, declared once by `@labre/data-view`, so not listed below. "Properties"
+ * is the panel title for the same reason (`PROPERTIES_PANEL_TITLE`).
+ */
+export const VIEW_MENU_OPEN_IN: ChromeWording = [
+  'com.labre.data-view.open-in',
+  'Open pages in',
+];
+
+export const VIEW_MENU_SAVE_TEMPLATE: ChromeWording = [
+  'com.labre.database.view-menu.save-template',
+  'Save as template',
+];
+
+export const VIEW_MENU_IMPORT: ChromeWording = [
+  'com.labre.database.view-menu.import',
+  'Import a view…',
 ];
 
 /* ── The properties panel (ADR 0035 §9b, issue B10) ────────────────────── */
@@ -98,6 +136,7 @@ export const SLASH_LINKED_VIEW_DESCRIPTION: ChromeWording = [
 
 const DATABASE_EDITOR_WORDINGS: readonly ChromeWording[] = [
   DATABASE_ADD_VIEW_EXISTING_SOURCE,
+  DATABASE_ADD_VIEW_IMPORT,
   DATABASE_ADD_VIEW_NEW_SOURCE,
   DATABASE_ADD_VIEW_UNTITLED_SOURCE,
   DATABASE_PAGE_HOST_MISSING,
@@ -111,6 +150,10 @@ const DATABASE_EDITOR_WORDINGS: readonly ChromeWording[] = [
   PROPERTIES_PANEL_UNAVAILABLE,
   SLASH_LINKED_VIEW,
   SLASH_LINKED_VIEW_DESCRIPTION,
+  VIEW_MENU_GROUP,
+  VIEW_MENU_IMPORT,
+  VIEW_MENU_LAYOUT,
+  VIEW_MENU_SAVE_TEMPLATE,
 ];
 
 /**

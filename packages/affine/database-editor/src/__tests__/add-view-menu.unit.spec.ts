@@ -96,6 +96,7 @@ describe('addViewMenuShape', () => {
       kind: 'entries',
       existing: two,
       newSource: false,
+      importView: false,
     });
   });
 
@@ -104,6 +105,16 @@ describe('addViewMenuShape', () => {
       kind: 'entries',
       existing: one,
       newSource: true,
+      importView: false,
+    });
+  });
+
+  test('the picker imports: "Import a view" even beside one source', () => {
+    expect(addViewMenuShape(one, false, true)).toEqual({
+      kind: 'entries',
+      existing: one,
+      newSource: false,
+      importView: true,
     });
   });
 });
