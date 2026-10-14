@@ -8,6 +8,7 @@ import {
 
 import { UML_DIAGRAM_FRAME, UML_SUBJECT_FRAME } from './background.js';
 import { umlCommands } from './commands.js';
+import { UML_DRAWIO_DECODE_ERRORS } from './drawio-decode.js';
 import { UML_DRAWIO_REMARKS } from './drawio-import.js';
 import { UML_LAYOUT_REMARKS } from './import.js';
 import {
@@ -78,6 +79,7 @@ const chromeEntries = (): TranslationKeyManifestEntry[] =>
     ...Object.values(UML_PLANTUML_REMARKS),
     ...Object.values(UML_XMI_REMARKS),
     ...Object.values(UML_DRAWIO_REMARKS),
+    ...Object.values(UML_DRAWIO_DECODE_ERRORS),
     ...Object.values(UML_LAYOUT_REMARKS),
   ].map(([key, fallback]) => ({ key, fallback, source: 'chrome' as const }));
 

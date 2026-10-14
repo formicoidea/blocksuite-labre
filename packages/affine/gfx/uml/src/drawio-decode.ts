@@ -1,3 +1,5 @@
+import { InterchangeImportError } from '@labre/affine-block-surface';
+
 import { isCompressedDrawio } from './drawio-import.js';
 
 /**
@@ -40,6 +42,51 @@ import { isCompressedDrawio } from './drawio-import.js';
 const DIAGRAM = /<diagram\b[^>]*>([\s\S]*?)<\/diagram>/i;
 
 /**
+ * The most a `<diagram>` payload may inflate to: 20 MiB.
+ *
+ * A raw deflate stream compresses a run of one byte about a thousand to one,
+ * so the size of the FILE says nothing about the size of what it holds: the
+ * P0 import spike (labre `docs/spikes/2026-10-p0-import-edge-function.md`)
+ * inflated a 398 KiB `.drawio` to 300 MiB and lost the isolate to it, and an
+ * 85 KiB one to 64 MiB in 624 ms. The real corpus is three orders of magnitude
+ * below the ceiling (`drawio-class-iwlayer` inflates to 12 KiB), and a drawing
+ * twenty megabytes of XML long is already more than the canvas draws usefully.
+ *
+ * Counted on the INFLATED BYTES as they stream out, never on the payload: the
+ * compressed size is the attacker's number, the inflated one is ours. The
+ * stream is cancelled the moment the count passes the ceiling, so the memory
+ * the decode can take is bounded by the ceiling plus one chunk.
+ */
+export const DRAWIO_MAX_INFLATED_BYTES = 20 * 1024 * 1024;
+
+/**
+ * The decoder's four refusals, as `[key, English]` pairs (ADR 0023): every one
+ * is thrown as an {@link InterchangeImportError} carrying the key, so a host
+ * that must not echo a reader's sentence (an HTTP response, a log) has a
+ * STATIC identifier to hand on instead, and the editor's catch site translates
+ * it exactly as it translates a reader's own refusal. None takes a parameter:
+ * nothing out of the file is ever put into one.
+ */
+export const UML_DRAWIO_DECODE_ERRORS = {
+  noDecompression: [
+    'com.labre.uml.import.drawio.error.no-decompression',
+    'This runtime cannot read a compressed .drawio file (DecompressionStream is unavailable). Re-save it from draw.io with File › Properties › Compressed turned off.',
+  ],
+  emptyDiagram: [
+    'com.labre.uml.import.drawio.error.empty-diagram',
+    'This .drawio file holds no <diagram> to read.',
+  ],
+  badPayload: [
+    'com.labre.uml.import.drawio.error.bad-payload',
+    'This .drawio file’s <diagram> is neither XML nor a payload this reader could inflate.',
+  ],
+  tooLarge: [
+    'com.labre.uml.import.drawio.error.too-large',
+    'This .drawio file’s <diagram> inflates past the size this reader accepts.',
+  ],
+} as const satisfies Record<string, readonly [key: string, english: string]>;
+
+/**
  * The sentence a host sees when the runtime cannot inflate.
  *
  * Exported so the command's spec can assert the wording rather than a substring
@@ -47,13 +94,57 @@ const DIAGRAM = /<diagram\b[^>]*>([\s\S]*?)<\/diagram>/i;
  * uncompressed" has something to match on.
  */
 export const DRAWIO_NO_DECOMPRESSION =
-  'This runtime cannot read a compressed .drawio file (DecompressionStream is unavailable). Re-save it from draw.io with File › Properties › Compressed turned off.';
+  UML_DRAWIO_DECODE_ERRORS.noDecompression[1];
 
-export const DRAWIO_EMPTY_DIAGRAM =
-  'This .drawio file holds no <diagram> to read.';
+export const DRAWIO_EMPTY_DIAGRAM = UML_DRAWIO_DECODE_ERRORS.emptyDiagram[1];
 
-export const DRAWIO_BAD_PAYLOAD =
-  'This .drawio file’s <diagram> is neither XML nor a payload this reader could inflate.';
+export const DRAWIO_BAD_PAYLOAD = UML_DRAWIO_DECODE_ERRORS.badPayload[1];
+
+export const DRAWIO_TOO_LARGE = UML_DRAWIO_DECODE_ERRORS.tooLarge[1];
+
+const refusal = (
+  which: keyof typeof UML_DRAWIO_DECODE_ERRORS
+): InterchangeImportError => {
+  const [key, message] = UML_DRAWIO_DECODE_ERRORS[which];
+  return new InterchangeImportError(message, { messageKey: key });
+};
+
+/** The ceiling was passed — a sentinel, so the `catch` below can tell it apart. */
+class InflateCeiling extends Error {}
+
+/**
+ * Read a byte stream to its end, refusing past `limit` bytes.
+ *
+ * `new Response(stream).text()` buffers whatever the stream yields, which is
+ * the unbounded read the ceiling exists to replace.
+ */
+async function readCapped(
+  stream: ReadableStream<Uint8Array>,
+  limit: number
+): Promise<Uint8Array> {
+  const reader = stream.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > limit) {
+      // Stops the inflater, rather than letting it run to the end of a stream
+      // nobody will read.
+      await reader.cancel().catch(() => undefined);
+      throw new InflateCeiling();
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
+}
 
 /**
  * An `.drawio` file's text as the `<mxGraphModel>` XML inside it.
@@ -70,7 +161,9 @@ export const DRAWIO_BAD_PAYLOAD =
  * page ever was. The remaining pages are what a second import of the same file
  * is for.
  *
- * Throws, with one of the three sentences above, when it cannot. That is the
+ * Throws an {@link InterchangeImportError}, with one of the four refusals
+ * above, when it cannot — the fourth being a payload that inflates past
+ * {@link DRAWIO_MAX_INFLATED_BYTES}. That is the
  * contract the import pipeline already has for a file it cannot read
  * (`importInterchangeFile` shows the thrown sentence as the failure
  * notification), and it is the right one here: an empty board with a `warning`
@@ -80,12 +173,12 @@ export async function decodeDrawio(text: string): Promise<string> {
   if (!isCompressedDrawio(text)) return text;
 
   const payload = DIAGRAM.exec(text)?.[1]?.trim();
-  if (!payload) throw new Error(DRAWIO_EMPTY_DIAGRAM);
+  if (!payload) throw refusal('emptyDiagram');
 
   const Decompression = (
     globalThis as { DecompressionStream?: typeof DecompressionStream }
   ).DecompressionStream;
-  if (!Decompression) throw new Error(DRAWIO_NO_DECOMPRESSION);
+  if (!Decompression) throw refusal('noDecompression');
 
   let inflated: string;
   try {
@@ -96,11 +189,16 @@ export async function decodeDrawio(text: string): Promise<string> {
       .pipeThrough(new Decompression('deflate-raw'));
     // draw.io deflates the URI-ENCODED xml, so this is percent-escaped text and
     // not the document yet.
-    inflated = decodeURIComponent(await new Response(stream).text());
-  } catch {
-    throw new Error(DRAWIO_BAD_PAYLOAD);
+    inflated = decodeURIComponent(
+      new TextDecoder().decode(
+        await readCapped(stream, DRAWIO_MAX_INFLATED_BYTES)
+      )
+    );
+  } catch (error) {
+    if (error instanceof InflateCeiling) throw refusal('tooLarge');
+    throw refusal('badPayload');
   }
 
-  if (!inflated.includes('<mxGraphModel')) throw new Error(DRAWIO_BAD_PAYLOAD);
+  if (!inflated.includes('<mxGraphModel')) throw refusal('badPayload');
   return inflated;
 }

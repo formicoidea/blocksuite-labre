@@ -1,13 +1,19 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { deflateRawSync } from 'node:zlib';
 
 import { describe, expect, it } from 'vitest';
+
+import { InterchangeImportError } from '@labre/affine-block-surface';
 
 import {
   DRAWIO_BAD_PAYLOAD,
   DRAWIO_EMPTY_DIAGRAM,
+  DRAWIO_MAX_INFLATED_BYTES,
+  DRAWIO_TOO_LARGE,
   decodeDrawio,
+  UML_DRAWIO_DECODE_ERRORS,
 } from '../drawio-decode';
 import { importDrawio } from '../drawio-import';
 
@@ -84,5 +90,66 @@ describe('decoding a .drawio file', () => {
         )
       ).rejects.toThrow(DRAWIO_BAD_PAYLOAD);
     }
+  );
+
+  it('refuses with a static key, so a server can answer without the sentence', async () => {
+    const error = await decodeDrawio(
+      '<mxfile host="app.diagrams.net"><diagram></diagram></mxfile>'
+    ).catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(InterchangeImportError);
+    expect((error as InterchangeImportError).messageKey).toBe(
+      UML_DRAWIO_DECODE_ERRORS.emptyDiagram[0]
+    );
+    expect((error as InterchangeImportError).messageParams).toBeUndefined();
+  });
+});
+
+/**
+ * The decompression bomb of the P0 import spike (labre
+ * `docs/spikes/2026-10-p0-import-edge-function.md`, "Bombe draw.io"): before
+ * the ceiling, `decodeDrawio` buffered whatever the inflater produced, and a
+ * 398 KiB file inflated to 300 MiB and killed the isolate. These specs would
+ * have caught it: each one hands over a payload a few KiB long that inflates
+ * far past the ceiling, and asserts a refusal rather than a string.
+ */
+describe('the inflated-size ceiling', () => {
+  /** An mxfile whose first `<diagram>` inflates to `size` bytes of `%41`. */
+  const bomb = (size: number) => {
+    const payload = deflateRawSync(Buffer.alloc(size, 'A')).toString('base64');
+    return `<mxfile host="app.diagrams.net"><diagram id="b">${payload}</diagram></mxfile>`;
+  };
+
+  it('is 20 MiB', () => {
+    expect(DRAWIO_MAX_INFLATED_BYTES).toBe(20 * 1024 * 1024);
+  });
+
+  it.runIf(canInflate)(
+    'refuses the spike’s 64 MiB bomb with the too-large key',
+    async () => {
+      const error = await decodeDrawio(bomb(64 * 1024 * 1024)).catch(
+        (caught: unknown) => caught
+      );
+      expect(error).toBeInstanceOf(InterchangeImportError);
+      expect((error as InterchangeImportError).message).toBe(DRAWIO_TOO_LARGE);
+      expect((error as InterchangeImportError).messageKey).toBe(
+        UML_DRAWIO_DECODE_ERRORS.tooLarge[0]
+      );
+    },
+    10_000
+  );
+
+  it.runIf(canInflate)(
+    'refuses one byte past the ceiling and inflates what stays under it',
+    async () => {
+      await expect(
+        decodeDrawio(bomb(DRAWIO_MAX_INFLATED_BYTES + 1))
+      ).rejects.toThrow(DRAWIO_TOO_LARGE);
+      // Under the ceiling the payload inflates, and is then refused for what
+      // it is (not an mxGraphModel), not for its size.
+      await expect(decodeDrawio(bomb(64 * 1024))).rejects.toThrow(
+        DRAWIO_BAD_PAYLOAD
+      );
+    },
+    10_000
   );
 });
