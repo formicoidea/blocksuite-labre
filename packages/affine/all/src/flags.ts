@@ -40,16 +40,20 @@
  * Caveats:
  * - The reversal covers **surface elements** (everything living in the surface
  *   `elements` map: brush, mindmap, wardley, edgy, cynefin, estuarine, bpmn,
- *   coreDomain). BLOCKS (database, code, image, latex, frame, edgeless-text, …)
+ *   coreDomain). BLOCKS (code, image, latex, frame, edgeless-text, …)
  *   still have their whole view extension gated, because their renderer and
  *   their tooling live in the same extension. Their data is safe — schema and
  *   store side are unconditional, so the document loads, round-trips and
  *   re-renders untouched once the flag is back on — but a disabled block
  *   currently renders as nothing until its view extension is split the way the
  *   frameworks' were. See the "Consequences" section of `docs/adr/0009`.
- *   `callout` is the one block split so far (2026-10-11 amendment of that
- *   ADR): with `{ callout: false }` a stored callout still renders, stays
- *   editable and keeps its block toolbar; only its creation entries go.
+ *   `callout` was the first block split (2026-10-11 amendment of that ADR):
+ *   with `{ callout: false }` a stored callout still renders, stays editable
+ *   and keeps its block toolbar; only its creation entries go. `database` and
+ *   `data-view` are split the same way (ADR 0035 §5, amendment of ADR 0009):
+ *   with `{ database: false }` a stored database renders, every stored view
+ *   included, its cells stay editable and its rows open; only the slash
+ *   entries and "+ view" go. `data-view` gates nothing yet.
  * - `latex` covers both the latex block and inline latex.
  * - `frame` also covers the frame panel fragment.
  * - `ddd-templates` covers all four DDD Templates-panel categories, so the

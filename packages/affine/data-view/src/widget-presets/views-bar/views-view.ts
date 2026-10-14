@@ -6,6 +6,13 @@ import {
   popupTargetFromElement,
 } from '@labre/affine-components/context-menu';
 import {
+  type ChromeWording,
+  TOOLBAR_DELETE,
+  TOOLBAR_DUPLICATE,
+  translateKey,
+} from '@labre/affine-shared/services';
+import { type BlockStdScope, stdContext } from '@labre/std';
+import {
   DeleteIcon,
   DuplicateIcon,
   InfoIcon,
@@ -14,11 +21,21 @@ import {
   MoveRightIcon,
   PlusIcon,
 } from '@blocksuite/icons/lit';
-import { css, html } from 'lit';
+import { consume } from '@lit/context';
+import { css, html, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 
+import { modeShownAsFallback } from '../../core/view-manager/single-view.js';
+import {
+  duplicateAsShownPreset,
+  ViewCreationOffKey,
+} from '../../core/view-manager/view-creation.js';
 import { WidgetBase } from '../../core/widget/widget-base.js';
+import {
+  VIEW_DUPLICATE_AS_TABLE,
+  VIEW_SHOWN_AS_TABLE,
+} from '../../translations.js';
 
 export class DataViewHeaderViews extends WidgetBase {
   static override styles = css`
@@ -72,7 +89,27 @@ export class DataViewHeaderViews extends WidgetBase {
       color: var(--affine-text-primary-color);
       background-color: var(--affine-hover-color-filled);
     }
+
+    .database-view-button .shown-as {
+      font-size: 12px;
+      color: var(--affine-text-secondary-color);
+      padding-right: 2px;
+    }
   `;
+
+  // Absent outside an editor host (a standalone mount): wordings fall back.
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
+
+  /** A popup renders outside the host, so wordings are resolved here. */
+  private wording(wording: ChromeWording) {
+    return this.std ? translateKey(this.std, ...wording) : wording[1];
+  }
+
+  /** The host switched view creation off for this source (ADR 0035 §5). */
+  private get creationOff() {
+    return this.dataSource.serviceGet(ViewCreationOffKey) === true;
+  }
 
   private addView(type: string) {
     const id = this.viewManager.viewAdd(type);
@@ -139,7 +176,7 @@ export class DataViewHeaderViews extends WidgetBase {
           items: this.dataSource.viewMetas.map(v => {
             return menu.action({
               name: `Create ${v.model.defaultName}`,
-              hide: () => this.readonly,
+              hide: () => this.readonly || this.creationOff,
               prefix: PlusIcon(),
               select: () => {
                 this.addView(v.type);
@@ -165,20 +202,29 @@ export class DataViewHeaderViews extends WidgetBase {
     if (!view) {
       return;
     }
+    // A view drawn through a fallback preset has read-only settings and data
+    // that is never rewritten (ADR 0035 §6): no rename, no settings, and
+    // "Duplicate as table" in place of a duplicate of a mode we cannot draw.
+    const fallback = view.shownAsFallback$.value;
     popMenu(target, {
       options: {
         items: [
-          menu.input({
-            initialValue: view.name$.value,
-            placeholder: 'View name',
-            onChange: text => {
-              view.nameSet(text);
-            },
-          }),
+          ...(fallback
+            ? []
+            : [
+                menu.input({
+                  initialValue: view.name$.value,
+                  placeholder: 'View name',
+                  onChange: text => {
+                    view.nameSet(text);
+                  },
+                }),
+              ]),
           menu.group({
             items: [
               menu.action({
                 name: 'Edit View',
+                hide: () => fallback,
                 prefix: InfoIcon(),
                 select: () => {
                   this.closest('affine-data-view-renderer')
@@ -215,14 +261,24 @@ export class DataViewHeaderViews extends WidgetBase {
           menu.group({
             items: [
               menu.action({
-                name: 'Duplicate',
+                name: this.wording(TOOLBAR_DUPLICATE),
+                hide: () => fallback,
                 prefix: DuplicateIcon(),
                 select: () => {
                   this.viewManager.viewDuplicate(id);
                 },
               }),
               menu.action({
-                name: 'Delete',
+                name: this.wording(VIEW_DUPLICATE_AS_TABLE),
+                hide: () => !fallback,
+                prefix: DuplicateIcon(),
+                testId: 'database-view-duplicate-as-table',
+                select: () => {
+                  duplicateAsShownPreset(this.viewManager, id);
+                },
+              }),
+              menu.action({
+                name: this.wording(TOOLBAR_DELETE),
                 prefix: DeleteIcon(),
                 select: () => {
                   view.delete();
@@ -239,7 +295,7 @@ export class DataViewHeaderViews extends WidgetBase {
   renderMore = (count: number) => {
     const views = this.viewManager.views$.value;
     if (count === views.length) {
-      if (this.readonly) {
+      if (this.readonly || this.creationOff) {
         return;
       }
       return html`<div
@@ -266,14 +322,24 @@ export class DataViewHeaderViews extends WidgetBase {
         selected: this.viewManager.currentViewId$.value === id,
       });
       const view = this.viewManager.viewDataGet(id);
+      const shownAs =
+        view && modeShownAsFallback(this.dataSource, view.mode)
+          ? this.wording(VIEW_SHOWN_AS_TABLE)
+          : undefined;
       return html`
         <div
           class="${classList}"
           style="margin-right: 4px;"
+          title="${shownAs ?? nothing}"
           @click="${(event: MouseEvent) => this.clickView(event, id)}"
         >
           <uni-lit class="icon" .uni="${this.getRenderer(id)?.icon}"></uni-lit>
           <div class="name">${view?.name}</div>
+          ${shownAs
+            ? html`<span class="shown-as" data-testid="database-view-shown-as"
+                >${shownAs}</span
+              >`
+            : nothing}
         </div>
       `;
     });

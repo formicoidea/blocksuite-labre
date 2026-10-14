@@ -5,8 +5,14 @@ import {
   CalloutViewExtension,
 } from '@labre/affine-block-callout/view';
 import { CodeBlockViewExtension } from '@labre/affine-block-code/view';
-import { DataViewViewExtension } from '@labre/affine-block-data-view/view';
-import { DatabaseViewExtension } from '@labre/affine-block-database/view';
+import {
+  DataViewRenderViewExtension,
+  DataViewViewExtension,
+} from '@labre/affine-block-data-view/view';
+import {
+  DatabaseRenderViewExtension,
+  DatabaseViewExtension,
+} from '@labre/affine-block-database/view';
 import {
   DatabaseEditorToolingViewExtension,
   DatabaseEditorViewExtension,
@@ -193,11 +199,14 @@ export function getInternalViewExtensions(flags?: LabreFlags) {
     ...(on('bookmark') ? [BookmarkViewExtension] : []),
     // Split like the frameworks (ADR 0009, #418): a stored callout paints,
     // edits and keeps its block toolbar; the flag removes only the creation
-    // entries (slash item, Turn into). The other blocks are not split yet.
+    // entries (slash item, Turn into). Database and data-view are split the
+    // same way (ADR 0035 §5, B4); the other blocks are not split yet.
     CalloutRenderViewExtension,
     ...(on('callout') ? [CalloutViewExtension] : []),
     ...(on('code') ? [CodeBlockViewExtension] : []),
+    DataViewRenderViewExtension,
     ...(on('data-view') ? [DataViewViewExtension] : []),
+    DatabaseRenderViewExtension,
     ...(on('database') ? [DatabaseViewExtension] : []),
     ...(on('divider') ? [DividerViewExtension] : []),
     ...(on('edgeless-text') ? [EdgelessTextViewExtension] : []),

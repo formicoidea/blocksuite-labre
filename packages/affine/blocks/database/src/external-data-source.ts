@@ -15,8 +15,6 @@ import {
   type ViewMeta,
 } from '@labre/data-view';
 import { DisposableGroup } from '@labre/global/disposable';
-import { IS_MOBILE } from '@labre/global/env';
-import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
 import { computed, type ReadonlySignal, signal } from '@preact/signals-core';
 
 import {
@@ -27,7 +25,7 @@ import {
 } from './utils/block-utils.js';
 import {
   databaseBlockViewConverts,
-  databaseBlockViewMap,
+  databaseBlockViewMetaGet,
   databaseBlockViews,
 } from './views/index.js';
 
@@ -251,12 +249,10 @@ export abstract class HostedDataSourceBase extends DataSourceBase {
     };
   });
 
+  // Mobile edits too (ADR 0035 §1, B5): the table and kanban presets ship
+  // their own touch renderers, chosen by `DataViewRootUILogic`.
   readonly$: ReadonlySignal<boolean> = computed(() => {
-    return (
-      this._model.store.readonly ||
-      // TODO(@L-Sun): use block level readonly
-      IS_MOBILE
-    );
+    return this._model.store.readonly;
   });
 
   viewConverts = databaseBlockViewConverts;
@@ -302,14 +298,7 @@ export abstract class HostedDataSourceBase extends DataSourceBase {
   }
 
   viewMetaGet(type: string): ViewMeta {
-    const view = databaseBlockViewMap[type];
-    if (!view) {
-      throw new BlockSuiteError(
-        ErrorCode.DatabaseBlockError,
-        `Unknown view type: ${type}`
-      );
-    }
-    return view;
+    return databaseBlockViewMetaGet(type);
   }
 
   viewMetaGetById(viewId: string): ViewMeta | undefined {

@@ -2,6 +2,7 @@ import type { InsertToPosition } from '@labre/affine-shared/utils';
 import type { GeneralServiceIdentifier } from '@labre/global/di';
 import { computed, type ReadonlySignal, signal } from '@preact/signals-core';
 
+import type { DataSource } from '../data-source/base.js';
 import type { Variable } from '../expression/types.js';
 import type { PropertyMetaConfig } from '../property/property-config.js';
 import type { TraitKey } from '../traits/key.js';
@@ -12,6 +13,20 @@ import { type Cell, CellBase } from './cell.js';
 import type { Property } from './property.js';
 import { type Row, RowBase } from './row.js';
 import type { ViewManager } from './view-manager.js';
+
+/**
+ * True when a stored `mode` has no preset of its own and the source draws it
+ * through another one (ADR 0035 §6: a `timeline`, a mode from a newer
+ * client, an import). The one spelling of the rule, read by
+ * `SingleView.shownAsFallback$` and by the views bar's tabs, which must not
+ * build a view per tab to ask.
+ */
+export function modeShownAsFallback(
+  dataSource: Pick<DataSource, 'viewMetaGet'>,
+  mode: string
+): boolean {
+  return dataSource.viewMetaGet(mode).type !== mode;
+}
 
 export type MainProperties = {
   titleColumn?: string;
@@ -25,6 +40,11 @@ export interface SingleView {
   readonly manager: ViewManager;
   readonly meta: ViewMeta;
   readonly readonly$: ReadonlySignal<boolean>;
+  /**
+   * The stored mode has no preset here and `meta` is the source's fallback:
+   * the view is drawn, its settings are read-only, its data is never written.
+   */
+  readonly shownAsFallback$: ReadonlySignal<boolean>;
 
   delete(): void;
 
@@ -84,8 +104,38 @@ export abstract class SingleViewBase<
 
   private readonly traitMap = new Map<symbol, unknown>();
 
+  /** The view data exactly as stored, whatever its mode. */
+  private readonly storedData$ = computed(() => {
+    return this.dataSource.viewDataGet(this.id);
+  });
+
+  /**
+   * {@link modeShownAsFallback} for this view. Read from the stored mode,
+   * never from `type`, which a preset may derive from {@link data$}.
+   */
+  readonly shownAsFallback$: ReadonlySignal<boolean> = computed(() => {
+    const mode = this.storedData$.value?.mode;
+    return mode != null && modeShownAsFallback(this.dataSource, mode);
+  });
+
+  /**
+   * A fallback view reads the preset's DEFAULT data, keeping only its id,
+   * name and stored mode: the stored keys belong to a preset this client does
+   * not have, so neither a filter nor a column list is trusted from them, and
+   * the preset draws the source's properties as a fresh view would.
+   */
   data$ = computed(() => {
-    return this.dataSource.viewDataGet(this.id) as ViewData | undefined;
+    const stored = this.storedData$.value;
+    if (!stored || !this.shownAsFallback$.value) {
+      return stored as ViewData | undefined;
+    }
+    const meta = this.dataSource.viewMetaGet(stored.mode);
+    return {
+      ...meta.model.defaultData(this.manager),
+      id: stored.id,
+      name: stored.name,
+      mode: stored.mode,
+    } as ViewData;
   });
 
   abstract detailProperties$: ReadonlySignal<Property[]>;
@@ -215,6 +265,11 @@ export abstract class SingleViewBase<
   }
 
   dataUpdate(updater: (viewData: ViewData) => Partial<ViewData>): void {
+    // A fallback view's stored data is never rewritten (ADR 0035 §6): every
+    // setting it shows is the fallback preset's default, and writing one back
+    // would mix that preset's keys into another mode's data. Cells are the
+    // source's, not the view's, and stay writable.
+    if (this.shownAsFallback$.peek()) return;
     this.dataSource.viewDataUpdate(this.id, updater);
   }
 

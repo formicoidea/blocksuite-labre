@@ -46,6 +46,7 @@ const styles = css`
   .mobile-add-card {
     display: flex;
     align-items: center;
+    min-height: 44px;
     padding: 4px;
     border-radius: 4px;
     font-size: var(--data-view-cell-text-size);
