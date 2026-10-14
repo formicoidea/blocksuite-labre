@@ -12,6 +12,8 @@ export const databaseBlockRenderableViews: ViewMeta[] = [
   viewPresets.tableViewMeta,
   viewPresets.kanbanViewMeta,
   viewPresets.calendarViewMeta,
+  viewPresets.galleryViewMeta,
+  viewPresets.listViewMeta,
 ];
 
 /**
@@ -23,6 +25,8 @@ export const databaseBlockRenderableViews: ViewMeta[] = [
 export const databaseBlockViews: ViewMeta[] = [
   viewPresets.tableViewMeta,
   viewPresets.kanbanViewMeta,
+  viewPresets.galleryViewMeta,
+  viewPresets.listViewMeta,
 ];
 
 /** The preset a mode with none of its own is drawn with. */

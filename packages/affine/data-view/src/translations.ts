@@ -24,6 +24,18 @@ export const VIEW_DUPLICATE_AS_TABLE: ChromeWording = [
   'Duplicate as table',
 ];
 
+/* ── The gallery and list presets (ADR 0035 §1, B6 and B7) ───────────── */
+
+/**
+ * The "New page" card of a gallery and row of a list: adds a row, opens it.
+ * Their open button says the components' "Open" (`OPEN_LABEL`), one chrome
+ * word, one key.
+ */
+export const DATA_VIEW_NEW_PAGE: ChromeWording = [
+  'com.labre.data-view.new-page',
+  'New page',
+];
+
 /* ── The views bar (ADR 0035 B11, labre PRD REQ-DB-7) ─────────────────── */
 
 /** The button standing for the views whose tabs do not fit; `count` of them. */
@@ -64,6 +76,7 @@ export const VIEWS_BAR_MOVE_RIGHT: ChromeWording = [
 export const DATA_VIEW_WORDINGS: readonly ChromeWording[] = [
   VIEW_SHOWN_AS_TABLE,
   VIEW_DUPLICATE_AS_TABLE,
+  DATA_VIEW_NEW_PAGE,
   VIEWS_BAR_MORE,
   VIEWS_BAR_ADD_VIEW,
   VIEWS_BAR_VIEW_NAME,
