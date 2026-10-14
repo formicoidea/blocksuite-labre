@@ -3,9 +3,11 @@ import { cssVarV2 } from '@toeverything/theme/v2';
 import { css, html, nothing, unsafeCSS } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
 
+import { groupToggleStyles } from '../../core/group-by/group-visibility.js';
 import { createUniComponentFromWebComponent } from '../../core/utils/uni-component/uni-component.js';
 import { DATA_VIEW_NEW_PAGE } from '../../translations.js';
 import {
+  flatGroupStyles,
   flatOpenButtonStyles,
   FlatViewUI,
   FlatViewUILogic,
@@ -26,6 +28,8 @@ export class ListViewUILogic extends FlatViewUILogic<ListSingleView> {
 export class ListViewUI extends FlatViewUI<ListViewUILogic> {
   static override styles = [
     flatOpenButtonStyles,
+    flatGroupStyles,
+    groupToggleStyles,
     css`
       dv-list-view-ui {
         display: block;
@@ -183,12 +187,12 @@ export class ListViewUI extends FlatViewUI<ListViewUILogic> {
     </div>`;
   }
 
-  private renderNewRow() {
+  private renderNewRow(groupKey?: string) {
     if (this.view.readonly$.value) return nothing;
     return html`<button
       class="dv-list-new"
       data-testid="dv-flat-new"
-      @click="${() => this.logic.addRow('end')}"
+      @click="${() => this.logic.addRow('end', groupKey)}"
     >
       ${PlusIcon()}<span>${this.wording(DATA_VIEW_NEW_PAGE)}</span>
     </button>`;
@@ -196,14 +200,17 @@ export class ListViewUI extends FlatViewUI<ListViewUILogic> {
 
   override render() {
     return html`${this.renderHeaderWidget()}
-      <div class="dv-list">
-        ${repeat(
-          this.view.rows$.value,
-          row => row.rowId,
-          row => this.renderRow(row.rowId)
-        )}
-        ${this.renderNewRow()}
-      </div>`;
+    ${this.renderGrouped(
+      (rows, group) =>
+        html`<div class="dv-list">
+          ${repeat(
+            rows,
+            row => row.rowId,
+            row => this.renderRow(row.rowId)
+          )}
+          ${this.renderNewRow(group?.key)}
+        </div>`
+    )}`;
   }
 }
 

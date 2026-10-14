@@ -3,9 +3,11 @@ import { cssVarV2 } from '@toeverything/theme/v2';
 import { css, html, nothing, unsafeCSS } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
 
+import { groupToggleStyles } from '../../core/group-by/group-visibility.js';
 import { createUniComponentFromWebComponent } from '../../core/utils/uni-component/uni-component.js';
 import { DATA_VIEW_NEW_PAGE } from '../../translations.js';
 import {
+  flatGroupStyles,
   flatOpenButtonStyles,
   FlatViewUI,
   FlatViewUILogic,
@@ -29,6 +31,8 @@ export class GalleryViewUILogic extends FlatViewUILogic<GallerySingleView> {
 export class GalleryViewUI extends FlatViewUI<GalleryViewUILogic> {
   static override styles = [
     flatOpenButtonStyles,
+    flatGroupStyles,
+    groupToggleStyles,
     css`
       dv-gallery-view-ui {
         display: block;
@@ -168,12 +172,12 @@ export class GalleryViewUI extends FlatViewUI<GalleryViewUILogic> {
     </div>`;
   }
 
-  private renderNewCard() {
+  private renderNewCard(groupKey?: string) {
     if (this.view.readonly$.value) return nothing;
     return html`<button
       class="dv-gallery-new"
       data-testid="dv-flat-new"
-      @click="${() => this.logic.addRow('end')}"
+      @click="${() => this.logic.addRow('end', groupKey)}"
     >
       ${PlusIcon()}<span>${this.wording(DATA_VIEW_NEW_PAGE)}</span>
     </button>`;
@@ -181,14 +185,17 @@ export class GalleryViewUI extends FlatViewUI<GalleryViewUILogic> {
 
   override render() {
     return html`${this.renderHeaderWidget()}
-      <div class="dv-gallery">
-        ${repeat(
-          this.view.rows$.value,
-          row => row.rowId,
-          row => this.renderCard(row.rowId)
-        )}
-        ${this.renderNewCard()}
-      </div>`;
+    ${this.renderGrouped(
+      (rows, group) =>
+        html`<div class="dv-gallery">
+          ${repeat(
+            rows,
+            row => row.rowId,
+            row => this.renderCard(row.rowId)
+          )}
+          ${this.renderNewCard(group?.key)}
+        </div>`
+    )}`;
   }
 }
 

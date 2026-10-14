@@ -9,11 +9,8 @@ import { generateDefaultValues } from '../../core/filter/generate-default-values
 import { FilterTrait, filterTraitKey } from '../../core/filter/trait.js';
 import type { FilterGroup } from '../../core/filter/types.js';
 import { emptyFilterGroup } from '../../core/filter/utils.js';
-import {
-  GroupTrait,
-  groupTraitKey,
-  sortByManually,
-} from '../../core/group-by/trait.js';
+import { groupPropertiesOps } from '../../core/group-by/group-properties.js';
+import { GroupTrait, groupTraitKey } from '../../core/group-by/trait.js';
 import { fromJson } from '../../core/property/utils';
 import { PropertyBase } from '../../core/view-manager/property.js';
 import { SingleViewBase } from '../../core/view-manager/single-view.js';
@@ -74,68 +71,12 @@ export class KanbanSingleView extends SingleViewBase<KanbanViewData> {
           };
         });
       },
-      sortGroup: ids =>
-        sortByManually(
-          ids,
-          v => v,
-          this.view?.groupProperties.map(v => v.key) ?? []
-        ),
-      sortRow: (key, rows) => {
-        const property = this.view?.groupProperties.find(v => v.key === key);
-        return sortByManually(
-          rows,
-          v => v.rowId,
-          property?.manuallyCardSort ?? []
-        );
-      },
-      changeGroupSort: keys => {
-        const map = new Map(this.view?.groupProperties.map(v => [v.key, v]));
-        this.dataUpdate(() => {
-          return {
-            groupProperties: keys.map(key => {
-              const property = map.get(key);
-              if (property) {
-                return property;
-              }
-              return {
-                key,
-                hide: false,
-                manuallyCardSort: [],
-              };
-            }),
-          };
-        });
-      },
-      changeRowSort: (groupKeys, groupKey, keys) => {
-        const map = new Map(this.view?.groupProperties.map(v => [v.key, v]));
-        this.dataUpdate(() => {
-          return {
-            groupProperties: groupKeys.map(key => {
-              if (key === groupKey) {
-                const group = map.get(key);
-                return group
-                  ? {
-                      ...group,
-                      manuallyCardSort: keys,
-                    }
-                  : {
-                      key,
-                      hide: false,
-                      manuallyCardSort: keys,
-                    };
-              } else {
-                return (
-                  map.get(key) ?? {
-                    key,
-                    hide: false,
-                    manuallyCardSort: [],
-                  }
-                );
-              }
-            }),
-          };
-        });
-      },
+      ...groupPropertiesOps(
+        () => this.view?.groupProperties ?? [],
+        groupProperties => {
+          this.dataUpdate(() => ({ groupProperties }));
+        }
+      ),
     })
   );
 
