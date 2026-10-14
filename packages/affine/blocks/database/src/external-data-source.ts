@@ -123,13 +123,32 @@ export abstract class HostedDataSourceBase extends DataSourceBase {
     return this.getRows();
   });
 
-  /** The current view's source; `null` when `resolveSource` knows none. */
-  readonly source$: ReadonlySignal<HostedSource | null> = computed(() => {
+  /**
+   * Whether views name the source they read: a `resolveSource` was given.
+   * Without it there is one implicit source, the block, whatever `sourceId`
+   * a view stores, so chrome that lists sources has nothing to list.
+   */
+  get resolvesSources(): boolean {
+    return this._resolveSource !== undefined;
+  }
+
+  /**
+   * Any source, by the `sourceId` a view would store, resolved the way the
+   * current view's is ({@link source$}); `null` when there is no such source.
+   * Read by chrome that lists the sources of the views (the "+ view" menu of
+   * `@labre/affine-database-editor`, ADR 0035 B11). Writes nothing.
+   */
+  sourceOf(sourceId: string | undefined): HostedSource | null {
     if (!this._resolveSource) {
       return { schema: this._model, rows: this._implicitRows$ };
     }
-    return this._resolveSource(this.currentSourceId$.value);
-  });
+    return this._resolveSource(sourceId);
+  }
+
+  /** The current view's source; `null` when `resolveSource` knows none. */
+  readonly source$: ReadonlySignal<HostedSource | null> = computed(() =>
+    this.sourceOf(this.currentSourceId$.value)
+  );
 
   readonly schema$: ReadonlySignal<DatabaseBlockModel | null> = computed(
     () => this.source$.value?.schema ?? null

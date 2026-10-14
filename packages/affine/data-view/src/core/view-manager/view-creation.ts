@@ -1,6 +1,9 @@
+import type { MenuConfig } from '@labre/affine-components/context-menu';
 import { createIdentifier } from '@labre/global/di';
-import { nanoid } from '@labre/store';
+import type { BlockStdScope } from '@labre/std';
+import { type ExtensionType, nanoid } from '@labre/store';
 
+import type { DataSource } from '../data-source/base.js';
 import type { ViewManager } from './view-manager.js';
 
 /**
@@ -37,4 +40,41 @@ export function duplicateAsShownPreset(
   });
   manager.setCurrentView(id);
   return id;
+}
+
+/** What the views bar hands an {@link AddViewMenu} when "+" is clicked. */
+export interface AddViewMenuContext {
+  /** The editor the bar is mounted in; absent outside one. */
+  std: BlockStdScope | undefined;
+  dataSource: DataSource;
+  viewManager: ViewManager;
+  /**
+   * The bar's own "add a view of this preset": adds it with the preset's
+   * default data, selects it and traces `AddDatabaseView`. Returns its id.
+   */
+  addView: (type: string) => string;
+}
+
+/**
+ * The "+" menu of the views bar, when something above data-view knows more
+ * than the presets (ADR 0035 §1, B11): the `core-database` bundle registers
+ * one from its tooling extension to offer "on an existing source" and "with
+ * a new source". It is a registry between library packages, never filled by
+ * a host. Absent, or answering `undefined` for a data source it does not
+ * handle, the bar offers the creatable presets, as in 0.48.
+ */
+export interface AddViewMenu {
+  items(context: AddViewMenuContext): MenuConfig[] | undefined;
+}
+
+export const AddViewMenuIdentifier = createIdentifier<AddViewMenu>(
+  'DataViewAddViewMenu'
+);
+
+export function AddViewMenuExtension(menu: AddViewMenu): ExtensionType {
+  return {
+    setup: di => {
+      di.override(AddViewMenuIdentifier, () => menu);
+    },
+  };
 }

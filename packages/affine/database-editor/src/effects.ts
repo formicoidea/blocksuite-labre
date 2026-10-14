@@ -1,9 +1,12 @@
+import { DatabasePageHost } from './database-page/database-page.js';
+
 /**
  * The custom elements this package defines, called from
  * `DatabaseEditorViewExtension.effect()`, never at import time.
  *
- * ponytail: empty until the view bar (B11), the full-page host (B13) and the
- * properties panel element (B10) land in this package; each defines its
- * element here and declares it in `HTMLElementTagNameMap`.
+ * ponytail: the properties panel element (B10) defines its element here too
+ * when it lands in this package.
  */
-export function effects() {}
+export function effects() {
+  customElements.define('affine-database-page', DatabasePageHost);
+}

@@ -6,5 +6,30 @@
     "tsBuildInfoFile": "./dist/tsconfig.tsbuildinfo"
   },
   "include": ["./src"],
-  "references": [{ "path": "../ext-loader" }, { "path": "../../framework/std" }]
+  "references": [
+    {
+      "path": "../blocks/database"
+    },
+    {
+      "path": "../components"
+    },
+    {
+      "path": "../ext-loader"
+    },
+    {
+      "path": "../shared"
+    },
+    {
+      "path": "../data-view"
+    },
+    {
+      "path": "../../framework/global"
+    },
+    {
+      "path": "../../framework/std"
+    },
+    {
+      "path": "../model"
+    }
+  ]
 }

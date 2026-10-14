@@ -491,3 +491,55 @@ changes beyond §8 (shipped on its own, `view-basic-data.unit.spec.ts` in
 - Held by `data-view/src/__tests__/hydration-status.unit.spec.ts`,
   `blocks/database/src/__tests__/hosted-data-source.unit.spec.ts` and
   `values-banner.unit.spec.ts`.
+
+### 2026-10-14: B11 and B13 as built
+
+Amends §1 (the split table) and §9c with what the view bar and the full-page
+host had to decide. No stored format changes; no new host seam.
+
+- **The tabs stay in core.** §1 put "the Notion view bar" in the bundle, but
+  its own test is that a core-only host shows every stored view: the tabs,
+  "N more" and switching are how a view is reached, so they are core's
+  `data-view-header-views`, measured by `component-overflow` through the pure
+  `fitOverflow` (`data-view/src/core/component/overflow/fit.ts`). Tabs keep
+  the order of the views and stop at the first that does not fit; the
+  current view always keeps a tab, in place of the last one that would have
+  fitted. "N more" lists only the views without a tab; "+" is always drawn
+  after them and is the bar's only creation entry (0.48 drew it only when
+  every tab fitted and offered "Create …" inside "N More"). A phone gets 44px
+  targets and nothing else.
+- **What the bundle adds to the bar is "+".** Core reads an
+  `AddViewMenuIdentifier` (`data-view`, the lowest package that reads it,
+  §3) through `std.getOptional`; `DatabaseEditorToolingViewExtension`
+  registers one, so `{ database: false }` drops it with the rest of the
+  creation tooling. It is a registry between library packages, never filled
+  by a host, so it has no row in the seams table. On a source that resolves
+  sources (`HostedDataSourceBase.resolvesSources`, new, with `sourceOf`) it
+  offers "On an existing source" (the sources the views read, one per
+  schema block, a sub-menu each when there are several) and "With a new
+  source" when the picker gives `createSource`; with one source and nothing
+  to create, the presets are the menu, as on an inline database. A view
+  added on a source writes that `sourceId` and re-derives its default data
+  from it, in the gesture's one undo step.
+- **The third entry is not drawn.** labre ADR-0046 §5 and the PRD give "+
+  view" three entries, the third importing a view from another database
+  (REQ-DB-2). This ADR has no seam for it; it waits for an amendment that
+  gives the picker an import verb, with the "This view" work of the host's
+  third wave. The picker itself (B12) reaches the menu through
+  `AddViewSourcePicker` (`createSource`, `extraSourceIds`), adapted where
+  the tooling extension registers the menu.
+- **The full page is the inline view on a page.** `<affine-database-page
+.std .hostBlockId>` (`DatabasePageHost`, defined by the always-on
+  extension) renders the host's own page editor on the database document,
+  once per `std`, and scopes it with CSS: every other `affine:database` block
+  (the schema blocks) is not drawn, nor the views' block's own title row
+  (the page title is the database's name). Same block, presets, cells,
+  toolbar and row opening as inline; nothing written. Which block hosts the
+  views is passed in, never read from a `labre:*` key. Without that block it
+  says so (`com.labre.database.page.host-missing`).
+- Held by `data-view/src/__tests__/views-bar-overflow.unit.spec.ts`,
+  `database-editor/src/__tests__/add-view-menu.unit.spec.ts`,
+  `database-editor/src/__tests__/database-page.unit.spec.ts`,
+  `blocks/database/src/__tests__/hosted-data-source.unit.spec.ts` (`sourceOf`)
+  and `integration-test/…/page/database-views-bar.spec.ts` (1024px and a
+  narrow bar).

@@ -698,14 +698,6 @@
       "View name",
       "View settings"
     ],
-    "packages/affine/data-view/src/widget-presets/views-bar/views-view.ts": [
-      "${} More",
-      "Create ${}",
-      "Edit View",
-      "Move Left",
-      "Move Right",
-      "View name"
-    ],
     "packages/affine/widgets/keyboard-toolbar/src/config.ts": [
       "BulletedList",
       "CheckBox",

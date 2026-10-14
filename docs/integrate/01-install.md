@@ -29,8 +29,10 @@ with. Install them together and bump them together.
 stored database still renders and edits cell by cell from core; the bundle
 adds the ways to create and arrange (ADR 0035). Register its two extensions
 from `./descriptor` (`coreDatabaseBundle.extensions`): the one with no
-`flag` always, the other only when the `database` flag is on. Today both are
-empty: wiring them now means nothing to change when the chrome lands.
+`flag` always, the other only when the `database` flag is on. The always-on
+one defines `<affine-database-page>`, the full-page database (see "Full-page
+database" in `04-host-seams.md`); the tooling one gives the view bar's "+"
+its source entries. The tabs and "N more" of the view bar are core's.
 
 ```bash
 pnpm add @formicoidea/labre-core @formicoidea/labre-framework-wardley
