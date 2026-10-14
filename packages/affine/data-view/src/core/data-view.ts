@@ -14,7 +14,7 @@ import {
   type UIEventHandler,
 } from '@labre/std';
 import { computed, type ReadonlySignal, signal } from '@preact/signals-core';
-import { css, unsafeCSS } from 'lit';
+import { css, type TemplateResult, unsafeCSS } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { ref } from 'lit/directives/ref.js';
@@ -43,6 +43,13 @@ export type DataViewRendererConfig = {
   selection$: ReadonlySignal<DataViewSelection | undefined>;
   setSelection: (selection: DataViewSelection | undefined) => void;
   eventTrace: EventTraceFn<DatabaseAllEvents>;
+  /**
+   * Drawn instead of the current view, header widget included, when it
+   * returns something (a source the view names that the host cannot resolve,
+   * ADR 0035 §7): the caller draws what of its header still makes sense.
+   * Absent: every view draws as in 0.48.
+   */
+  viewPlaceholder?: (logic: DataViewUILogicBase) => TemplateResult | undefined;
   detailPanelConfig: {
     openDetailPanel: (
       target: HTMLElement,
@@ -222,6 +229,14 @@ export class DataViewRootUI extends SignalWatcher(
     const currentView = this.logic.currentView$.value;
     if (!currentView) {
       return;
+    }
+    const placeholder = this.logic.config.viewPlaceholder?.(currentView);
+    if (placeholder) {
+      return html`
+        <div style="display: contents" class="${containerClass}">
+          ${placeholder}
+        </div>
+      `;
     }
     return html`
       <div style="display: contents" class="${containerClass}">

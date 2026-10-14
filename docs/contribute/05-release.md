@@ -66,8 +66,10 @@ copy of the root `LICENSE` (npm packs it whatever `files` says), and
 | `@formicoidea/labre-core`                                   | every package except the business frameworks, source-vendored under `src/_pkgs/` |
 | `@formicoidea/labre-framework-<id>`                         | one framework package each; depends on the exact core version                    |
 | `@formicoidea/labre-ddd-shared`, `-framework-ddd-aggregate` | shared DDD helpers and the DDD template categories                               |
+| `@formicoidea/labre-core-database`                          | the database editing chrome; depends on the exact core version                   |
 
-The framework list the build script reads is `packages/affine/all/src/frameworks.ts`.
+The bundle lists the build script reads (`FRAMEWORK_DESCRIPTORS`,
+`AUXILIARY_BUNDLES`, `EDITOR_BUNDLES`) are in `packages/affine/all/src/frameworks.ts`.
 It must stay data-only (no Lit import) so the script can load it.
 
 ## After publishing

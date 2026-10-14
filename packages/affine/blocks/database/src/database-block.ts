@@ -56,12 +56,15 @@ import { popSideDetail } from './components/layout.js';
 import { DatabaseConfigExtension } from './config.js';
 import { EditorHostKey } from './context/host-context.js';
 import { DatabaseBlockDataSource } from './data-source.js';
+import { HostedDataSourceBase } from './external-data-source.js';
 import {
   databaseBlockStyles,
   databaseContentStyles,
   databaseHeaderBarStyles,
   databaseHeaderContainerStyles,
   databaseOpsStyles,
+  databaseSourceMissingHintStyles,
+  databaseSourceMissingStyles,
   databaseTitleRowStyles,
   databaseTitleStyles,
   databaseToolbarRowStyles,
@@ -71,6 +74,10 @@ import { BlockRenderer } from './detail-panel/block-renderer.js';
 import { NoteRenderer } from './detail-panel/note-renderer.js';
 import { DatabaseSelection } from './selection.js';
 import { DatabaseDataSourceProvider } from './service/index.js';
+import {
+  DATABASE_SOURCE_MISSING,
+  DATABASE_SOURCE_MISSING_HINT,
+} from './translations.js';
 import { currentViewStorage } from './utils/current-view.js';
 import { getSingleDocIdFromText } from './utils/title-doc.js';
 import type { DatabaseViewExtensionOptions } from './view';
@@ -241,6 +248,17 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
     });
   };
 
+  private renderViewBar(props: DataViewWidgetProps) {
+    return html`<div class="${databaseViewBarContainerStyles}">
+      ${renderUniLit(widgetPresets.viewBar, {
+        ...props,
+        onChangeView: id => {
+          currentViewStorage.setCurrentView(this.blockId, id);
+        },
+      })}
+    </div>`;
+  }
+
   headerWidget: DataViewWidget = defineUniComponent(
     (props: DataViewWidgetProps) => {
       return html`
@@ -249,17 +267,14 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
             ${this.renderTitle(props.dataViewLogic)} ${this.renderDatabaseOps()}
           </div>
           <div class="${databaseToolbarRowStyles} ${databaseHeaderBarStyles}">
-            <div class="${databaseViewBarContainerStyles}">
-              ${renderUniLit(widgetPresets.viewBar, {
-                ...props,
-                onChangeView: id => {
-                  currentViewStorage.setCurrentView(this.blockId, id);
-                },
-              })}
-            </div>
+            ${this.renderViewBar(props)}
             ${renderUniLit(this.toolsWidget, props)}
           </div>
           ${renderUniLit(widgetPresets.quickSettingBar, props)}
+          <affine-database-values-banner
+            .dataSource="${this.dataSource}"
+            .std="${this.std}"
+          ></affine-database-values-banner>
         </div>
       `;
     }
@@ -398,6 +413,35 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
     return this.rootComponent;
   }
 
+  // ADR 0035 §7: a view whose source the host cannot resolve keeps the title
+  // and the view bar, so another view can be picked, and draws this instead of
+  // its tools and body: nothing to filter, add or edit, and nothing rewritten.
+  private readonly renderSourceMissing = (
+    dataViewLogic: DataViewUILogicBase
+  ) => {
+    const dataSource = this.dataSource;
+    if (!(dataSource instanceof HostedDataSourceBase)) return undefined;
+    if (!dataSource.sourceMissing$.value) return undefined;
+    return html`<div class="${databaseHeaderContainerStyles}">
+        <div class="${databaseTitleRowStyles}">
+          ${this.renderTitle(dataViewLogic)}
+        </div>
+        <div class="${databaseToolbarRowStyles} ${databaseHeaderBarStyles}">
+          ${this.renderViewBar({ dataViewLogic })}
+        </div>
+      </div>
+      <div
+        class="${databaseSourceMissingStyles}"
+        data-testid="database-source-missing"
+        role="status"
+      >
+        <div>${translateKey(this.std, ...DATABASE_SOURCE_MISSING)}</div>
+        <div class="${databaseSourceMissingHintStyles}">
+          ${translateKey(this.std, ...DATABASE_SOURCE_MISSING_HINT)}
+        </div>
+      </div>`;
+  };
+
   private renderDatabaseOps() {
     if (this.dataSource.readonly$.value) {
       return nothing;
@@ -478,6 +522,7 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
       setSelection: this.setSelection,
       dataSource: this.dataSource,
       headerWidget: this.headerWidget,
+      viewPlaceholder: this.renderSourceMissing,
       onDrag: this.onDrag,
       clipboard: this.std.clipboard,
       dnd: this.std.dnd,
