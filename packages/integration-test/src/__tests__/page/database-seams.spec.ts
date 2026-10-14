@@ -5,6 +5,8 @@ import {
   databaseBlockProperties,
   DatabaseBlockDataSource,
   DatabaseDataSourceProvider,
+  DatabaseNewRowMenuExtension,
+  type DatabaseNewRowMenuRequest,
   DatabaseOpenRowExtension,
   type DatabaseOpenRowRequest,
   insertLinkedDatabaseView,
@@ -44,7 +46,10 @@ import { setupEditor } from '../utils/setup.js';
  * - a linked view inserted without the host's database id, without the
  *   chosen `sourceId`, unrendered, or as more than one undo step;
  * - a database created by the host's `createDatabase` not landing as a view
- *   of its first source.
+ *   of its first source;
+ * - a chevron beside "New" drawn without the host's menu, the chevron not
+ *   naming its block and view, or "New" itself no longer adding a row (where
+ *   a host applies its default template) once the menu is there.
  */
 
 /** A host source whose rows are documents (the Labre app's bases). */
@@ -324,5 +329,53 @@ describe('linked views (B12)', () => {
     expect(['kanban', 'table']).toContain(model.props.views[0]!.mode);
     // The slash entry's empty line made way for the view.
     expect(doc.getModelById(lineId)).toBeNull();
+  });
+});
+
+describe('the menu beside "New"', () => {
+  const toolOf = (model: DatabaseBlockModel) =>
+    blockOf(model).querySelector<HTMLElement>(
+      'data-view-header-tools-add-row'
+    )!;
+  const chevronOf = (model: DatabaseBlockModel) =>
+    toolOf(model).querySelector<HTMLElement>(
+      '[data-testid="database-new-record-more"]'
+    );
+
+  test('without the seam, "New" is one button that adds a row', async () => {
+    cleanup = await setupEditor('page');
+    const { model } = writeDatabase({ hosted: false });
+    await settle();
+    expect(chevronOf(model)).toBeNull();
+    const rows = model.children.length;
+    toolOf(model).querySelector<HTMLElement>('.new-record')!.click();
+    await settle();
+    expect(model.children.length).toBe(rows + 1);
+  });
+
+  test('with the seam, the chevron asks the host and "New" still adds', async () => {
+    const open = vi.fn<(request: DatabaseNewRowMenuRequest) => void>();
+    cleanup = await setupEditor('page', [
+      DatabaseNewRowMenuExtension({ open }),
+    ]);
+    const { model } = writeDatabase({ hosted: false });
+    await settle();
+
+    const chevron = chevronOf(model)!;
+    expect(chevron.getAttribute('aria-label')).toBe('Templates and options');
+    const rows = model.children.length;
+    chevron.click();
+    await settle();
+    expect(open).toHaveBeenCalledWith({
+      anchor: chevron,
+      blockId: model.id,
+      viewId: 'gallery-1',
+    });
+    expect(model.children.length).toBe(rows);
+
+    toolOf(model).querySelector<HTMLElement>('.new-record')!.click();
+    await settle();
+    expect(model.children.length).toBe(rows + 1);
+    expect(open).toHaveBeenCalledTimes(1);
   });
 });

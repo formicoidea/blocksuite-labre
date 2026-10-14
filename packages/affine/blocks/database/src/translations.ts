@@ -29,7 +29,16 @@ export const DATABASE_VALUES_ERROR: ChromeWording = [
 // Retry is the resource status's own word (`RESOURCE_STATUS_RETRY`,
 // `@labre/affine-components/translations`): one chrome word, one key.
 
+/* ── The host menu beside "New" (ADR 0035, amendment of 2026-10-14) ──── */
+
+/** The chevron beside "New", as its label and tooltip. */
+export const DATABASE_NEW_RECORD_MORE: ChromeWording = [
+  'com.labre.database.new-record.more',
+  'Templates and options',
+];
+
 export const DATABASE_WORDINGS: readonly ChromeWording[] = [
+  DATABASE_NEW_RECORD_MORE,
   DATABASE_SOURCE_MISSING,
   DATABASE_SOURCE_MISSING_HINT,
   DATABASE_VALUES_ERROR,
