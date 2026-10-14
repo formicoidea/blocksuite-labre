@@ -1,5 +1,6 @@
 import { ATTACHMENT_WORDINGS } from '@labre/affine-block-attachment/translations';
 import { BOOKMARK_WORDINGS } from '@labre/affine-block-bookmark/translations';
+import { DATABASE_WORDINGS } from '@labre/affine-block-database/translations';
 import { EMBED_WORDINGS } from '@labre/affine-block-embed/translations';
 import { EMBED_DOC_WORDINGS } from '@labre/affine-block-embed-doc/translations';
 import {
@@ -417,6 +418,7 @@ const PACKAGE_WORDINGS: readonly (readonly ChromeWording[])[] = [
   PARAGRAPH_WORDINGS,
   ADAPTER_PANEL_WORDINGS,
   DOC_TITLE_WORDINGS,
+  DATABASE_WORDINGS,
   SHAPE_WORDINGS,
   TEXT_WORDINGS,
   MINDMAP_CHROME_WORDINGS,

@@ -427,3 +427,42 @@ library reuses the components it already designed, never a second drawing.
 - Held by `data-view/src/__tests__/standalone-cell.unit.spec.ts`,
   `fragments/doc-title/src/__tests__/title-band.unit.spec.ts` (each type drawn
   and edited by its cell) and `integration-test/…/edgeless/title-band.spec.ts`.
+
+### 2026-10-14: B1, B2 and B15 as built
+
+Amends §7, §9e and §9f with what the code had to decide. No stored format
+changes beyond §8 (shipped on its own, `view-basic-data.unit.spec.ts` in
+`affine/model`).
+
+- **The data layer follows the current view.** `HostedDataSourceBase` is still
+  one data source per block. `source$`, `schema$` and `rows$` answer for the
+  current view's `sourceId`: one view is drawn at a time, and property ids
+  never collide across sources (labre ADR-0046 §3: uuids). A per-view data
+  layer would have reshaped every `SingleView` reader in data-view; not done.
+- **No `resolveSource`, no sources.** A source built without it (the inline
+  source, every 0.48 host source, `ExternalDataSourceBase(model)`, kept as an
+  alias) reads the block itself whatever a view's `sourceId` says: the 0.48
+  reading. "Source not found" only exists for a host that resolves sources.
+- **"Source not found" replaces the tools too.** Through an optional
+  `viewPlaceholder(logic)` of `DataViewRendererConfig`, the database block
+  draws its title, its view bar (to pick another view) and the notice
+  (`com.labre.database.source-missing`, `.hint`) instead of the view: no
+  filter, no "+ row", no cell, so nothing can write to a source that is not
+  there, and `readonly$` is left alone.
+- **Hydration never writes.** A cell that is not `ready` mounts no renderer
+  (skeleton or empty, `renderCellStatus`) and `CellBase.valueSet` /
+  `jsonValueSet` refuse it, which covers paste, drag-to-fill, kanban drops and
+  every editor. "Filter and group counts" are, in this code, the group header
+  counts and the column statistics: the filter bar counts rules, not rows.
+  The banner lives in the database block's header (it needs the translation
+  seam), driven by the pure `valuesBannerOf(state, now)`.
+- **The hosted title is a property meta, not a seam.** `hostedTitleColumnConfig`
+  keeps the `title` type (stored columns, `header.titleColumn` and the
+  fixed-property rules unchanged) with a string value drawn by the plain-text
+  cell. A source with `rowsAreDocuments` returns it from `propertyMetaGet`;
+  the base reads `titleOf(rowId)` for that column. The base cannot swap the
+  meta itself: `propertyMetaGet` is a 0.48 host's own method, and taking it
+  over would ask every host for an `override`.
+- Held by `data-view/src/__tests__/hydration-status.unit.spec.ts`,
+  `blocks/database/src/__tests__/hosted-data-source.unit.spec.ts` and
+  `values-banner.unit.spec.ts`.

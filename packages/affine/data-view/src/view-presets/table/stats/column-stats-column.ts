@@ -15,7 +15,11 @@ import { property } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
 
 import type { Group } from '../../../core/group-by/trait.js';
-import { typeSystem } from '../../../core/index.js';
+import {
+  typeSystem,
+  VALUES_PENDING_MARK,
+  valuesReady,
+} from '../../../core/index.js';
 import { statsFunctions } from '../../../core/statistics/index.js';
 import type { StatisticsConfig } from '../../../core/statistics/types.js';
 import type { TableProperty } from '../table-view-manager.js';
@@ -164,6 +168,10 @@ export class DatabaseColumnStatsCell extends SignalWatcher(
     const func = this.statsFunc$.value;
     if (!func) {
       return null;
+    }
+    const dataSource = this.column.view.manager.dataSource;
+    if (!valuesReady(dataSource)) {
+      return { name: func.displayName, value: VALUES_PENDING_MARK };
     }
     return {
       name: func.displayName,

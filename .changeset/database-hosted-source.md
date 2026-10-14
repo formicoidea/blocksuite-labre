@@ -1,0 +1,15 @@
+---
+'@labre/data-view': minor
+'@labre/affine-block-database': minor
+'@labre/affine': minor
+---
+
+Hosted database sources (ADR 0035 §7, §9e, §9f; issues B1, B2, B15).
+
+`HostedDataSourceBase(hostModel, resolveSource?)` replaces `ExternalDataSourceBase(model)`, which stays exported as an alias with the same one-argument constructor: a 0.48 host source compiles and reads its rows unchanged. The views stay in `hostModel.props.views`; with `resolveSource`, each view reads the source its stored `sourceId` names (absent: the host's implicit source), `resolveSource` returning `{ schema, rows }` (the `affine:database` block that owns the source's schema and a signal of its row ids). The data layer answers for the current view's source (`source$`, `schema$`, `rows$`); a source the host cannot resolve (`null`, `sourceMissing$`) draws "Source not found" under the database title and its view bar instead of the view, never an error, and nothing is rewritten. Without `resolveSource`, every view reads the block itself, as in 0.48. `HostedSource` and `ResolveHostedSource` are exported.
+
+Cell hydration, a widening of the data-source contract: `cellStatus(rowId, propertyId)` (`ready`, `pending`, `error`), `valuesState$` (`{ status: 'loading' | 'ready' | 'error', since }`) and an optional `retryValues()`, `ready` by default on `DataSourceBase`, so the inline source and every 0.48 host source are unchanged. A pending cell draws a skeleton and a failed one stays empty in every table and kanban cell (desktop, virtual and mobile); neither mounts its editor, and `Cell.valueSet` / `jsonValueSet` do nothing on them, so no paste, fill or drop writes over an undelivered value. Group counts and column statistics show "…" until values are ready; a banner says values are still loading after 3 s (`com.labre.database.values.loading`) and, on error, that they could not be loaded (`com.labre.database.values.error`) with Retry (`com.labre.resource.status.retry`, the existing word) when the source offers `retryValues`. New exports in `@labre/data-view`: `CellStatus`, `ValuesState`, `ValuesStatus`, `DataSourceHydration`, `cellStatusOf`, `valuesStateOf`, `valuesReady`, `valuesBannerOf`, `VALUES_READY`, `VALUES_SLOW_AFTER_MS`, `VALUES_PENDING_MARK`, `renderCellStatus`; `Cell` gains an optional `status$`; `DataViewRendererConfig` an optional `viewPlaceholder`.
+
+Rows that are documents: a hosted source overrides `rowsAreDocuments`, answers titles from its own store with `titleOf(rowId)` and returns the new `hostedTitleColumnConfig` from `propertyMetaGet('title')`: the title column keeps its `title` type and fixed rules, its value is a plain string drawn and edited by the plain-text cell, and no row's document is loaded to draw it.
+
+New keys, English fallbacks in `@labre/affine-block-database/translations` (`DATABASE_WORDINGS`, a new entry point): `com.labre.database.source-missing`, `com.labre.database.source-missing.hint`, `com.labre.database.values.loading` and `com.labre.database.values.error`.

@@ -6,7 +6,7 @@ import {
   type GeneralServiceIdentifier,
   type ServiceProvider,
 } from '@labre/global/di';
-import { computed, type ReadonlySignal } from '@preact/signals-core';
+import { computed, type ReadonlySignal, signal } from '@preact/signals-core';
 
 import type { TypeInstance } from '../logical/type.js';
 import type { PropertyMetaConfig } from '../property/property-config.js';
@@ -14,8 +14,14 @@ import type { DatabaseFlags } from '../types.js';
 import type { ViewConvertConfig } from '../view/convert.js';
 import type { DataViewDataType, ViewMeta } from '../view/data-view.js';
 import type { ViewManager } from '../view-manager/view-manager.js';
+import {
+  type CellStatus,
+  type DataSourceHydration,
+  VALUES_READY,
+  type ValuesState,
+} from './hydration.js';
 
-export interface DataSource {
+export interface DataSource extends DataSourceHydration {
   readonly$: ReadonlySignal<boolean>;
   properties$: ReadonlySignal<string[]>;
   featureFlags$: ReadonlySignal<DatabaseFlags>;
@@ -104,6 +110,13 @@ export interface DataSource {
 export const DataSourceScope = createScope('data-source');
 
 export abstract class DataSourceBase implements DataSource {
+  /** Every cell is `ready` unless a source says otherwise (ADR 0035 §9e). */
+  cellStatus(_rowId: string, _propertyId: string): CellStatus {
+    return 'ready';
+  }
+
+  valuesState$: ReadonlySignal<ValuesState> = signal(VALUES_READY);
+
   propertyTypeCanSet(propertyId: string): boolean {
     return !this.isFixedProperty(propertyId);
   }
