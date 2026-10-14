@@ -386,6 +386,17 @@ One thing this ADR asked for that #159 did **not** ship, deliberately:
 surface element — the red zone twice over — and belongs to its own PR under
 human review, which is where it is being done.
 
+#### Amendment 2026-10-14 — one owner that is not a framework ([ADR 0019](0019-uml-import-formats.md))
+
+The registry gains one capability no framework owns: `canvas:drawio:export`,
+the canvas written as a draw.io drawing. Its `framework` field is `canvas`,
+it is registered UNCONDITIONALLY by the surface's view extension (a rendering
+speaks no vocabulary, so no flag gates it — the PNG export's reason), and it is
+handed the canvas blocks through a new optional `InterchangeExportContext.blocks`
+that every other exporter ignores. "Registration is flag-gated" stays true for
+every framework; the reasoning and the limits are ADR 0019's amendment of the
+same date.
+
 ### P2 — Two format tiers, and they promise different things
 
 The tier is declared on the format, and it is the single most load-bearing field

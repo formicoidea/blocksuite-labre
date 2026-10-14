@@ -2,7 +2,11 @@ import type { InterchangeNote } from '@labre/affine-block-surface';
 import type { UmlDiagramKind, UmlFragmentOperator } from '@labre/affine-model';
 import { UML_DIAGRAM_KIND_TAG } from '@labre/affine-model';
 
-import type { UmlBox } from './component.js';
+import {
+  type UmlBox,
+  type UmlComponentElement,
+  umlComponentSiblings,
+} from './component.js';
 import { UML_NODE_BOX } from './consts.js';
 import {
   parseEndLabel,
@@ -12,7 +16,11 @@ import {
 } from './grammar.js';
 import { umlSequenceSlot } from './import.js';
 import { stereotypesOf } from './keywords.js';
-import { ADORNED_RELATION_KINDS, umlLifelineAt } from './model.js';
+import {
+  ADORNED_RELATION_KINDS,
+  umlLifelineAt,
+  umlRelationKindOfRole,
+} from './model.js';
 import type {
   UmlClassifier,
   UmlCombinedFragment,
@@ -29,6 +37,7 @@ import type {
   UmlRelation,
   UmlRelationKind,
 } from './model.js';
+import { UML_ROLE } from './roles.js';
 import {
   decodeXmlText,
   readXml,
@@ -453,11 +462,57 @@ function labelEndOf(geometry: XmlNode | undefined): EdgeLabelEnd {
   return x < 0 ? 'source' : 'target';
 }
 
+/* ── What Labre's own writer says ─────────────────────────────────────── */
+
+/**
+ * The UML node roles a drawing written by Labre's canvas (`canvas:drawio:export`,
+ * `docs/adr/0019` amendment of 2026-10-14) names in its `labre-role`
+ * attributes, and what each one is drawn as here.
+ *
+ * That writer is GENERIC: a classifier leaves as a draw.io group holding the
+ * shape and one text per compartment, each cell carrying the role it had on
+ * the canvas — exactly the arrangement `component.ts` builds, resolved by
+ * {@link umlComponentSiblings}, the function that reads it off the canvas. So
+ * where a role says what a cell IS, it is read instead of guessed from a style
+ * string; everywhere else (a role this table does not list, or a file another
+ * tool wrote) the style heuristics below answer as before. Still the visual
+ * tier: a role is a claim the file makes, and a hand-edited file can make a
+ * false one at no cost but its own drawing (ADR 0032's argument for the SVG
+ * markers).
+ *
+ * Only the kinds this reader already materialises: anything else a role names
+ * is left to the style and, failing that, carried.
+ */
+const LABRE_NODE_KINDS: Readonly<
+  Record<
+    string,
+    { kind: UmlDrawioVertexKind; classifier?: UmlClassifier['kind'] }
+  >
+> = Object.assign(Object.create(null), {
+  [UML_ROLE.class]: { kind: 'classifier', classifier: 'class' },
+  [UML_ROLE.interface]: { kind: 'classifier', classifier: 'interface' },
+  [UML_ROLE.enumeration]: { kind: 'classifier', classifier: 'enumeration' },
+  [UML_ROLE.actor]: { kind: 'actor' },
+  [UML_ROLE['use-case']]: { kind: 'use-case' },
+  [UML_ROLE.note]: { kind: 'note' },
+  [UML_ROLE.package]: { kind: 'package' },
+});
+
+/** A cell's label as plain lines — the compartments, flattened. */
+const plainLines = (value: string): string[] =>
+  drawioCompartments(value).flat();
+
 /* ── The cells ────────────────────────────────────────────────────────── */
 
 interface DrawioCell {
   id: string;
   value: string;
+  /**
+   * The `labre-role` the WRAPPER carries, `''` when it carries none — what
+   * Labre's own draw.io writer (`canvas:drawio:export`) stamps on every cell
+   * of a framework artefact. See {@link LABRE_NODE_KINDS}.
+   */
+  labreRole: string;
   style: MxStyle;
   rawStyle: string;
   parent: string;
@@ -494,6 +549,7 @@ function cellsOf(graph: XmlNode): DrawioCell[] {
       return {
         id: wrapper?.attrs.id ?? node.attrs.id ?? '',
         value: wrapper?.attrs.label ?? node.attrs.value ?? '',
+        labreRole: wrapper?.attrs['labre-role'] ?? '',
         style: parseStyle(rawStyle),
         rawStyle,
         parent: node.attrs.parent ?? '',
@@ -601,6 +657,88 @@ export function importDrawio(
     else childrenOf.set(cell.parent, [cell]);
   }
 
+  // ── A draw.io `group`'s children sit in its coordinates ──────────────
+  //
+  // The one nesting this reader resolves for every cell: draw.io writes a
+  // grouped cell relative to its group, and Labre's own writer groups every
+  // framework artefact. (A lifeline's bar is resolved below, by its own rule.)
+  const groupOffset = (cell: DrawioCell): { x: number; y: number } => {
+    let x = 0;
+    let y = 0;
+    let at = byId.get(cell.parent);
+    for (let hops = 0; at?.vertex && 'group' in at.style && hops < 64; hops++) {
+      const parsed = (name: 'x' | 'y') =>
+        Number.parseFloat(at?.geometry?.attrs[name] ?? '0');
+      if (Number.isFinite(parsed('x'))) x += parsed('x');
+      if (Number.isFinite(parsed('y'))) y += parsed('y');
+      at = byId.get(at.parent);
+    }
+    return { x, y };
+  };
+
+  // ── Labre's own components: a group, a roled shape, its roled words ────
+  //
+  // Read with the canvas's own resolution (`umlComponentSiblings`): the shape
+  // says what the artefact IS, the texts say what is written in which
+  // compartment, and the group and the texts are absorbed into the one
+  // artefact rather than carried as three unknown shapes.
+  const labreComponents = new Map<
+    string,
+    {
+      kind: UmlDrawioVertexKind;
+      classifier?: UmlClassifier['kind'];
+      compartments: string[][];
+    }
+  >();
+  const absorbed = new Set<string>();
+  for (const cell of cells) {
+    if (!cell.vertex || !cell.id || !('group' in cell.style)) continue;
+    const members = (childrenOf.get(cell.id) ?? []).filter(
+      child => child.vertex && child.id
+    );
+    const component = umlComponentSiblings(
+      { id: cell.id, childIds: members.map(member => member.id) },
+      members.map(member => ({
+        id: member.id,
+        ...(member.labreRole ? { role: member.labreRole } : {}),
+        text: plainLines(member.value).join('\n'),
+      }))
+    );
+    const node = component.node;
+    const recognised = node?.role ? LABRE_NODE_KINDS[node.role] : undefined;
+    if (!node || !recognised) continue;
+
+    const linesOf = (tier: UmlComponentElement | undefined) =>
+      tier
+        ? String(tier.text ?? '')
+            .split('\n')
+            .filter(Boolean)
+        : [];
+    const heading = linesOf(
+      component.name ?? component.label ?? component.ident
+    );
+    labreComponents.set(node.id, {
+      ...recognised,
+      compartments: [
+        heading.length > 0
+          ? heading
+          : plainLines(byId.get(node.id)?.value ?? ''),
+        linesOf(component.attributes),
+        linesOf(component.operations),
+      ],
+    });
+    absorbed.add(cell.id);
+    for (const tier of [
+      component.name,
+      component.attributes,
+      component.operations,
+      component.label,
+      component.ident,
+    ]) {
+      if (tier) absorbed.add(tier.id);
+    }
+  }
+
   const classifiers: UmlClassifier[] = [];
   const actors: UmlNodeBase[] = [];
   const useCases: UmlNodeBase[] = [];
@@ -627,6 +765,8 @@ export function importDrawio(
     if (edgeIds.has(cell.parent)) continue;
     // draw.io's two invisible roots — the model and its default layer.
     if (cell.id === '0' || cell.id === '1') continue;
+    // A Labre component's group and words: read with its shape, below.
+    if (absorbed.has(cell.id)) continue;
     // A member row of a stack-laid swimlane belongs to its lane, not the sheet.
     const host = byId.get(cell.parent);
     if (host?.vertex && 'swimlane' in host.style) continue;
@@ -634,12 +774,17 @@ export function importDrawio(
     const children = (childrenOf.get(cell.id) ?? []).filter(
       child => child.vertex
     );
-    const compartments = drawioCompartments(cell.value);
+    const labre = labreComponents.get(cell.id);
+    const compartments = labre?.compartments ?? drawioCompartments(cell.value);
     // §17.2.4's bar is drawn INSIDE the participant's container, so its
     // geometry is relative to it — the one place in this format where a box is
     // not already in sheet coordinates.
     const onLifeline = Boolean(host?.vertex) && spineOf.has(cell.parent);
-    const own = geometryOf(cell);
+    const offset = groupOffset(cell);
+    const drawn = geometryOf(cell);
+    const own = drawn
+      ? { ...drawn, x: drawn.x + offset.x, y: drawn.y + offset.y }
+      : undefined;
     // The PARENT's own `mxGeometry`, not the box this reader gave it: a
     // lifeline's box is rewritten below to the narrow column our element is,
     // and a child's coordinates are relative to the CELL draw.io drew.
@@ -652,11 +797,13 @@ export function importDrawio(
       own && parentBox
         ? { ...own, x: own.x + parentBox.x, y: own.y + parentBox.y }
         : own;
-    const kind = vertexKindOf(cell.style, compartments, children.length > 0, {
-      value: cell.value,
-      onLifeline,
-      width: own?.w ?? 0,
-    });
+    const kind =
+      labre?.kind ??
+      vertexKindOf(cell.style, compartments, children.length > 0, {
+        value: cell.value,
+        onLifeline,
+        width: own?.w ?? 0,
+      });
     if (geometry) boxes[cell.id] = geometry;
 
     if (kind === 'unknown') {
@@ -788,7 +935,7 @@ export function importDrawio(
 
         classifiers.push({
           ...base,
-          kind: classifierKindOf(header.keywords),
+          kind: labre?.classifier ?? classifierKindOf(header.keywords),
           attributes: attributes.map(line => parseProperty(line)),
           operations: operations.map(line => parseOperation(line)),
           slots: [],
@@ -849,9 +996,14 @@ export function importDrawio(
     const label = stereotypesOf(
       drawioCompartments(cell.value).flat().join('\n')
     );
-    const flip = wholeIsTarget(cell.style);
+    // A role Labre's writer stamped states the relationship, and its ends in
+    // the canvas's own direction (ADR 0010) — so it is read as stated and
+    // never flipped. A message role off a spine is not a relation here.
+    const roled = umlRelationKindOfRole(cell.labreRole || undefined);
+    const stated = roled && !roled.startsWith('message-') ? roled : undefined;
+    const flip = stated ? false : wholeIsTarget(cell.style);
     const relation: UmlRelation = {
-      kind: relationKindOf(cell.style, label.keywords),
+      kind: stated ?? relationKindOf(cell.style, label.keywords),
       sourceId: flip ? cell.target : cell.source,
       targetId: flip ? cell.source : cell.target,
       ...(label.name ? { label: label.name } : {}),
@@ -860,7 +1012,7 @@ export function importDrawio(
 
     // A SOLID block head: read as the relationship it is, and named because the
     // file draws it wrong — see {@link isAmbiguousBlockHead}.
-    if (isAmbiguousBlockHead(cell.style)) {
+    if (!stated && isAmbiguousBlockHead(cell.style)) {
       notes.push({
         kind: 'warning',
         sourceId: cell.id,

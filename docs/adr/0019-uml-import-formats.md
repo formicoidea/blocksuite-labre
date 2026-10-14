@@ -303,3 +303,77 @@ than from the second.
 
 **Open question 3 is closed** by ADR [0020](0020-connector-end-labels.md): the
 readers write `sourceLabel` / `targetLabel` instead of carrying end text.
+
+**2026-10-14 — a generic draw.io WRITER, and what it is not.** The PRD of the
+Labre v2 overhaul (« export draw.io générique », journey J8) asks for a
+draw.io export of the canvas: the file a team hands to somebody who works in
+draw.io, the same way a PNG is handed to somebody who reads slides. §1's
+refusal of `uml:drawio:export` stands, and the reason it stands is the reason
+the new writer is not UML's.
+
+- **What ships.** `canvas:drawio:export`, a `visual` capability whose owner is
+  `canvas`, not a framework (`blocks/surface`, `extensions/drawio-export/`).
+  It writes what the canvas PAINTS — a shape as a draw.io shape, a connector
+  as an edge (ends by id, `PointStyle` as draw.io arrows, ADR 0020's end
+  labels as draw.io's own end-label cells at `-1` / `1`), a text as a text, a
+  group as a draw.io group with its children in its coordinates, a note, a
+  frame, an edgeless text, and an image as a placeholder naming its blob
+  (never the bytes, never an address). Colours are resolved to values, light
+  variant. One uncompressed `<mxfile>`, one page, deterministic: a cell's id
+  is the element's id (ADR 0012 D3), z-order is frames then the fractional
+  index then the id, numbers are rounded, nothing is dated. A label is plain
+  text escaped twice (HTML, then XML), so nothing in the file is markup,
+  script or link.
+- **Why now, when §1 said no.** §1 refused a UML writer of draw.io because a
+  UML board leaving as a picture is a re-render posing as a round trip: the
+  model would leave with less than it came with. That is still true, and
+  still refused. What J8 asks for is different in kind: the canvas, whatever
+  drew on it, as a drawing — a Wardley map, a sticky note, a C4 board, a UML
+  sheet — exactly as the PNG export is the canvas as an image. A rendering
+  speaks no framework's vocabulary, so it belongs to no framework; a
+  framework owner would have had to be gated by that framework's flag
+  (ADR 0012 P1), and a picture of what is on the canvas is not a framework's
+  tooling (ADR 0009, the PNG's reason).
+- **What it is not.** Not a semantic export of UML, or of anything: no
+  `interchange` payload is written, no model is promised, no round trip is
+  implied (ADR 0012 P2). A UML diagram still leaves with its model through
+  PlantUML or XMI, and the command's description says "best effort, no round
+  trip" before the file is written.
+- **The one courtesy to a reader.** Every cell carries `labre-type` and, when
+  the element has one, its `role` as `labre-role` — ids and vocabulary, never
+  prose, the rule ADR 0032 set for the SVG markers. This pack's draw.io reader
+  now reads them: a draw.io `group` holding a cell roled as a class,
+  interface, enumeration, actor, use case, note or package is that artefact,
+  its compartments are the texts roled `uml:name` / `uml:attributes` /
+  `uml:operations` / `uml:label`, resolved by `umlComponentSiblings` (the
+  canvas's own resolution), and the group and the texts are absorbed rather
+  than carried. An edge roled with a relationship is read as stated, in the
+  canvas's direction (ADR 0010), without §2's fill and diamond heuristics.
+  Everything else — another tool's file, a role this table does not list — is
+  read exactly as before. The reader also resolves draw.io's `group` nesting
+  for every cell: a grouped cell's geometry is relative to its group, which
+  the reader used to read as absolute. It is still the visual tier: a role is
+  a claim the file makes, and a hand-edited file can make a false one at no
+  cost but its own drawing.
+- **The registry contract widens, compatibly.** `InterchangeExportContext`
+  gains an optional `blocks` (the canvas blocks that go with the elements);
+  only the canvas writer reads it, and a caller or a framework exporter that
+  ignores it behaves exactly as before. The registry docblock's "a framework
+  registers its interchange here; nothing else registers any" now names the
+  canvas as the one other owner, registered unconditionally by the surface's
+  view extension; `interchange-gating.unit.spec.ts` pins that it is the one
+  capability left with every flag off.
+- **The command.** `canvas.export.drawio`, `owner: 'core'`, on `view-menu` and
+  `palette` beside `canvas.export.png` (ADR 0034, amendment of 2026-10-13):
+  the selection when there is one (a selected group or frame brings what it
+  holds), the whole canvas otherwise, without what this viewer hid (ADR 0031);
+  with `deliver` it hands `{ file }` back and downloads nothing. A host that
+  lists a view action per `*:export` capability must skip `canvas:drawio:export`
+  or use this command for it, or the menu shows draw.io twice.
+- **Known losses**, named in the writer's module documentation and once per
+  kind in the result's `warnings`: a freehand stroke and a highlighter are left
+  out, a polygon is drawn as its bounding box, a curved connector is drawn
+  `curved=1` through no waypoint, a block other than the four named above is
+  left out, and a group's or a mindmap's z-position is the position of its
+  first member (draw.io paints a group's children together). Edges are written
+  after every vertex, so a line Labre painted under a shape is drawn over it.

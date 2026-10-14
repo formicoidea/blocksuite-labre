@@ -30,7 +30,7 @@ Plain words for the names you will meet in the code.
 | **gfx**                | The graphics subsystem in `std`: element models, views, renderers, tools, viewport, selection on the canvas.                                                   |
 | **group**              | A surface element that holds other elements. Compound artefacts are groups.                                                                                    |
 | **host**               | The application that mounts the editor (Labre, the playground, your app).                                                                                      |
-| **interchange**        | Import/export of a framework's native format. A capability is `framework:format:direction`.                                                                    |
+| **interchange**        | Import/export of a framework's native format. A capability is `framework:format:direction`; `canvas` owns the generic draw.io export, never gated.             |
 | **layer (user)**       | A named, ordered container of canvas content the user manages in the selection pane: `SurfaceLayerRecord` on the surface, `layer` on each model (ADR 0031).    |
 | **layer manager**      | `LayerManager`: cuts the paint order into runs of canvas elements and of DOM blocks. A rendering device, not a user layer. See `02-data-flow.md`.              |
 | **legend**             | The auto-generated key of symbols placed on a board.                                                                                                           |

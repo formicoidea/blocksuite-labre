@@ -1,4 +1,5 @@
 import {
+  ExportIcon,
   ExportToPdfIcon,
   ExportToPngIcon,
   GridIcon,
@@ -22,12 +23,15 @@ import { effects } from './effects';
 import {
   auditCommands,
   CanvasActiveLayer,
+  canvasDrawioExportCommands,
   canvasExportCommands,
+  CANVAS_INTERCHANGE,
   canvasGridCommands,
   EdgelessCRUDExtension,
   EdgelessLegacySlotExtension,
   EditPropsMiddlewareBuilder,
   exportSvgCommands,
+  InterchangeExtension,
   exportSvgToolbarExtension,
   mapQualityCommands,
   mapQualityWidget,
@@ -140,6 +144,17 @@ export class SurfaceViewExtension extends ViewExtensionProvider {
         CommandExtension(canvasExportCommands, {
           'canvas.export.png': ExportToPngIcon(),
           'canvas.export.pdf': ExportToPdfIcon(),
+        })
+      );
+      // The canvas as a draw.io drawing (ADR 0019, amendment of 2026-10-14):
+      // the third "This view" export, and the registry's one capability no
+      // framework owns. Never gated, for the PNG's reason — it writes what the
+      // canvas paints, whatever drew it — so with every framework off the
+      // registry still answers `canvas:drawio:export`.
+      context.register(InterchangeExtension(CANVAS_INTERCHANGE));
+      context.register(
+        CommandExtension(canvasDrawioExportCommands, {
+          'canvas.export.drawio': ExportIcon(),
         })
       );
       // User layers (ADR 0031 §2-§6): the viewer's active layer (session
