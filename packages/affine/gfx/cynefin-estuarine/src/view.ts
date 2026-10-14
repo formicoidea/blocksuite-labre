@@ -94,6 +94,15 @@ export class CynefinEstuarineViewExtension extends ViewExtensionProvider {
 
   override setup(context: ViewExtensionContext) {
     super.setup(context);
+    // This pack's page of the colour pickers' carousel (`docs/adr/0027`).
+    // Here, in the flag-gated extension, because offering hues is TOOLING — the
+    // colours already painted on a stored board are content and do not move
+    // (`docs/adr/0009`).
+    // Both scopes, not the canvas alone: the database colour grid offers
+    // this page in a page too, softened (ADR 0036 amendment of 2026-10-14).
+    context.register(
+      FrameworkPaletteExtension(CYNEFIN_ESTUARINE_FRAMEWORK_PALETTE)
+    );
     if (this.isEdgeless(context.scope)) {
       // Estuarine's ROOT INSTANCE declaration (WS0.3). Every other framework
       // derives "this element is my frame" from a rule naming the role as its
@@ -133,13 +142,6 @@ export class CynefinEstuarineViewExtension extends ViewExtensionProvider {
       // free element on a Cynefin board carries no role and stays unreadable.
       context.register(ReadingProfileExtension(ESTUARINE_READING));
       context.register(cynefinEstuarineSeniorTool);
-      // This pack's page of the colour pickers' carousel (`docs/adr/0027`).
-      // Here, beside the senior tool, because offering hues is TOOLING — the
-      // colours already painted on a stored board are content and do not move
-      // (`docs/adr/0009`).
-      context.register(
-        FrameworkPaletteExtension(CYNEFIN_ESTUARINE_FRAMEWORK_PALETTE)
-      );
       // Both Templates-panel categories — tooling, so they go with the flag
       // (#244).
       context.register(

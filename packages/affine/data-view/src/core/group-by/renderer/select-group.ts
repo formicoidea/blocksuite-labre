@@ -62,6 +62,7 @@ export class SelectGroupView extends BaseGroup<
           ...selectOptionColorGrid({
             current: this.tag?.color,
             say: wordingOf(this.std),
+            std: this.std,
             select: color => {
               this.updateTag({ color });
             },

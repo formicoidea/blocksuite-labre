@@ -83,6 +83,13 @@ export class DddCoreDomainViewExtension extends ViewExtensionProvider {
 
   override setup(context: ViewExtensionContext) {
     super.setup(context);
+    // The Core Domain Chart's page of the colour pickers' carousel
+    // (`docs/adr/0027`). Here, in the flag-gated extension, because offering hues
+    // is TOOLING — the colours already painted on a stored chart are content
+    // and do not move (`docs/adr/0009`).
+    // Both scopes, not the canvas alone: the database colour grid offers
+    // this page in a page too, softened (ADR 0036 amendment of 2026-10-14).
+    context.register(FrameworkPaletteExtension(CORE_DOMAIN_FRAMEWORK_PALETTE));
     if (this.isEdgeless(context.scope)) {
       context.register(ValidationRuleExtension(CORE_DOMAIN_RULES));
       context.register(ValidationProfileExtension(CORE_DOMAIN_PROFILES));
@@ -106,13 +113,6 @@ export class DddCoreDomainViewExtension extends ViewExtensionProvider {
         context.register(ReadingProfileExtension(reading));
       }
       context.register(coreDomainSeniorTool);
-      // The Core Domain Chart's page of the colour pickers' carousel
-      // (`docs/adr/0027`). Here, beside the senior tool, because offering hues
-      // is TOOLING — the colours already painted on a stored chart are content
-      // and do not move (`docs/adr/0009`).
-      context.register(
-        FrameworkPaletteExtension(CORE_DOMAIN_FRAMEWORK_PALETTE)
-      );
       // The Templates-panel category, gated by this framework's own flag like
       // every other framework's: a template is tooling (`docs/adr/0009`), and it
       // is DERIVED from this package's commands, so it registers where they do.

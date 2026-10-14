@@ -7,12 +7,15 @@ import { IS_MOBILE } from '@labre/global/env';
 import { BlockSuiteError } from '@labre/global/exceptions';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
 import {
+  type BlockStdScope,
   type Clipboard,
   type DndController,
   type EventName,
   ShadowlessElement,
+  stdContext,
   type UIEventHandler,
 } from '@labre/std';
+import { consume } from '@lit/context';
 import { computed, type ReadonlySignal, signal } from '@preact/signals-core';
 import { css, type TemplateResult, unsafeCSS } from 'lit';
 import { property, state } from 'lit/decorators.js';
@@ -211,6 +214,15 @@ export class DataViewRootUI extends SignalWatcher(
 
   @property({ attribute: false })
   accessor logic!: DataViewRootUILogic;
+
+  /**
+   * The editor this view renders in, absent outside one. Read by the menus a
+   * view opens, which render outside it (the colour grid's framework pages,
+   * ADR 0036 amendment of 2026-10-14). Typed as the context provides it,
+   * like the cells' `chromeStd`; it is still absent outside an editor.
+   */
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
 
   @state()
   accessor currentView: string | undefined = undefined;

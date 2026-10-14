@@ -39,6 +39,7 @@ export class SelectCell extends BaseCellRenderer<
       minWidth: 400,
       initialDraftText,
       wording: this.wording,
+      std: this.chromeStd,
     });
   };
 

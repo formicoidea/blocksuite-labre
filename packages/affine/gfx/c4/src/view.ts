@@ -121,6 +121,13 @@ export class C4ViewExtension extends ViewExtensionProvider {
 
   override setup(context: ViewExtensionContext) {
     super.setup(context);
+    // C4's page of the colour pickers' carousel (`docs/adr/0027`). Here,
+    // in the flag-gated extension, because offering hues is TOOLING — the colours
+    // already painted on a stored diagram are content and do not move
+    // (`docs/adr/0009`).
+    // Both scopes, not the canvas alone: the database colour grid offers
+    // this page in a page too, softened (ADR 0036 amendment of 2026-10-14).
+    context.register(FrameworkPaletteExtension(C4_FRAMEWORK_PALETTE));
     if (this.isEdgeless(context.scope)) {
       context.register(ValidationRuleExtension(C4_RULES));
       context.register(ValidationProfileExtension(C4_PROFILES));
@@ -137,11 +144,6 @@ export class C4ViewExtension extends ViewExtensionProvider {
         context.register(ReadingProfileExtension(reading));
       }
       context.register(c4SeniorTool);
-      // C4's page of the colour pickers' carousel (`docs/adr/0027`). Here,
-      // beside the senior tool, because offering hues is TOOLING — the colours
-      // already painted on a stored diagram are content and do not move
-      // (`docs/adr/0009`).
-      context.register(FrameworkPaletteExtension(C4_FRAMEWORK_PALETTE));
       // The Templates-panel category — tooling, so it goes with the flag (#244).
       context.register(TemplateCategoryExtension(c4TemplateCategory));
       context.register(CommandExtension(c4Commands, c4CommandIcons));

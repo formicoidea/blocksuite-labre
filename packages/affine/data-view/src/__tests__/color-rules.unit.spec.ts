@@ -1,4 +1,7 @@
-import { effects as colorPickerEffects } from '@labre/affine-components/color-picker';
+import {
+  effects as colorPickerEffects,
+  type FrameworkPalette,
+} from '@labre/affine-components/color-picker';
 import {
   effects as menuEffects,
   popupTargetFromElement,
@@ -16,6 +19,7 @@ import {
 } from 'vitest';
 
 import { selectOptionColors } from '../core/component/tags/colors.js';
+import { softenedChipColor } from '../core/component/tags/softened-colors.js';
 import { coreEffects } from '../core/effect.js';
 import { evalFilter } from '../core/filter/eval.js';
 import type { Filter } from '../core/filter/types.js';
@@ -337,7 +341,10 @@ describe("picking a rule's colour", () => {
     const back = vi.fn();
     popColorRule(
       popupTargetFromElement(anchor),
-      { view: ctx.view } as unknown as DataViewUILogicBase,
+      {
+        view: ctx.view,
+        root: { dataViewRenderer: undefined },
+      } as unknown as DataViewUILogicBase,
       'a',
       back,
       ([, fallback]) => fallback
@@ -375,7 +382,70 @@ describe("picking a rule's colour", () => {
       red!.color
     );
   });
+
+  it("offers the editor's framework pages and writes the softened colour", async () => {
+    const softened = softenedChipColor('#5b9cf6')!;
+    const ctx = setup({
+      colorRules: [rule('a', softened, statusIs('todo'))],
+      readonly: false,
+    });
+    const anchor = document.createElement('div');
+    document.body.append(anchor);
+    popColorRule(
+      popupTargetFromElement(anchor),
+      {
+        view: ctx.view,
+        root: { dataViewRenderer: { std: fakeStd(WARDLEY_LIKE) } },
+      } as unknown as DataViewUILogicBase,
+      'a',
+      vi.fn(),
+      ([, fallback]) => fallback
+    );
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    const carousel = document.body.querySelector<
+      HTMLElement & { updateComplete: Promise<unknown> }
+    >('dv-color-carousel');
+    expect(carousel).not.toBeNull();
+    await carousel!.updateComplete;
+    const panel = carousel!.shadowRoot!.querySelector<
+      HTMLElement & { updateComplete: Promise<unknown> }
+    >('edgeless-color-panel')!;
+    await panel.updateComplete;
+    const swatches = [
+      ...panel.shadowRoot!.querySelectorAll<Swatch>('edgeless-color-button'),
+    ];
+    // The stored softened colour opens its own page, ringed.
+    expect(swatches.map(swatch => swatch.color)).toEqual([
+      softenedChipColor('#3ec9f2'),
+      softened,
+    ]);
+    expect(swatches.findIndex(swatch => swatch.active)).toBe(1);
+    swatches[0]!.click();
+    expect((ctx.viewData.value.colorRules as ViewColorRule[])[0]?.color).toBe(
+      softenedChipColor('#3ec9f2')
+    );
+  });
 });
+
+const WARDLEY_LIKE: FrameworkPalette = {
+  framework: 'wardley',
+  labelWording: ['com.labre.framework.wardley', 'Wardley'],
+  palettes: [
+    { key: 'Wonder', value: '#3ec9f2' },
+    { key: 'Peace', value: '#5b9cf6' },
+    { key: 'Transparent', value: 'transparent' },
+  ],
+};
+
+/** The two things the grid reads off an editor: its palettes, its words. */
+function fakeStd(...palettes: FrameworkPalette[]) {
+  return {
+    provider: {
+      getAll: () => new Map(palettes.map(p => [p.framework, p])),
+    },
+    getOptional: () => null,
+  };
+}
 
 async function settle(root: Element) {
   for (let pass = 0; pass < 4; pass++) {
