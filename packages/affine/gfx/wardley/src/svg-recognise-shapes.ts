@@ -1,3 +1,4 @@
+import type { XmlElement } from '@labre/affine-block-surface/interchange';
 import { svgFrameOf } from '@labre/affine-block-surface/interchange';
 
 import type { OwmPlot } from './export.js';
@@ -40,7 +41,7 @@ const NAME_REACH = 40;
 const END_SLACK = 3;
 
 interface Segment {
-  element: Element;
+  element: XmlElement;
   x1: number;
   y1: number;
   x2: number;
@@ -89,7 +90,7 @@ function straightPath(d: string): [number, number, number, number] | undefined {
   return [points[0][0], points[0][1], points[1][0], points[1][1]];
 }
 
-function segmentsOf(root: Element): Segment[] {
+function segmentsOf(root: XmlElement): Segment[] {
   const found: Segment[] = [];
   for (const element of Array.from(
     root.querySelectorAll('line, polyline, path')
@@ -157,7 +158,9 @@ function axesOf(
   return undefined;
 }
 
-export function recogniseByShape(root: Element): DrawnWardleyMap | undefined {
+export function recogniseByShape(
+  root: XmlElement
+): DrawnWardleyMap | undefined {
   const segments = segmentsOf(root);
   const circles = Array.from(root.querySelectorAll('circle')).flatMap(
     element => {
@@ -236,9 +239,9 @@ export function recogniseByShape(root: Element): DrawnWardleyMap | undefined {
       ({ circle, distance }) => distance <= Math.max(4 * circle.r, NAME_REACH)
     )
     .sort((a, b) => a.distance - b.distance);
-  const named = new Map<Element, DrawnWardleyNode>();
+  const named = new Map<XmlElement, DrawnWardleyNode>();
   const reach = new Map<DrawnWardleyNode, number>();
-  const usedTexts = new Set<Element>();
+  const usedTexts = new Set<XmlElement>();
   for (const { circle, text } of pairs) {
     if (named.has(circle.element) || usedTexts.has(text.element)) continue;
     usedTexts.add(text.element);

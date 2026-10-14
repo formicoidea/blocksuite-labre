@@ -19,8 +19,11 @@
 export * from './extensions/export-svg/marker-version.js';
 export * from './extensions/interchange.js';
 export * from './extensions/legend-role.js';
+export * from './extensions/svg-sanitize.js';
 export * from './extensions/svg-sketch.js';
 export * from './extensions/svg-sketch-translations.js';
+export * from './extensions/xml-element.js';
+export * from './extensions/xml-reader.js';
 // The board geometry an exporter and a reader both compute with: a
 // background's declaration, its plot and its instance zones. Pure data and
 // arithmetic, editor-free like the rest.

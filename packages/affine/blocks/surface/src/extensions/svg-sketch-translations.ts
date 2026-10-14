@@ -108,6 +108,11 @@ export const SVG_SKETCH_REMOVED_ATTRIBUTE: ChromeWording = [
   'Attributes outside the safe SVG drawing vocabulary — event handlers, script URLs, and anything else the sanitizer does not know — were removed before the file was read.',
 ];
 
+export const SVG_SKETCH_TOO_DEEP: ChromeWording = [
+  'com.labre.interchange.svg.too-deep',
+  'Elements nested more than {{depth}} levels deep were not read.',
+];
+
 export const SVG_SKETCH_EMPTY: ChromeWording = [
   'com.labre.interchange.svg.empty',
   'No shape or text was recognised in this SVG, so nothing was drawn.',
@@ -161,6 +166,7 @@ export const SVG_SKETCH_WORDINGS: readonly ChromeWording[] = [
   SVG_SKETCH_SKIPPED,
   SVG_SKETCH_REMOVED,
   SVG_SKETCH_REMOVED_ATTRIBUTE,
+  SVG_SKETCH_TOO_DEEP,
   SVG_SKETCH_EMPTY,
   SVG_SKETCH_ERROR_MALFORMED_XML,
   SVG_SKETCH_ERROR_NOT_SVG,

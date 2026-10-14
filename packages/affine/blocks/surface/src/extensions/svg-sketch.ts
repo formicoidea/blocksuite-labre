@@ -5,7 +5,6 @@ import {
   TextAlign,
 } from '@labre/affine-model/headless';
 import type { TranslationParams } from '@labre/affine-shared/services';
-import DOMPurify from 'dompurify';
 
 import {
   type InterchangeImportContext,
@@ -14,6 +13,7 @@ import {
   type InterchangeNote,
   type SerializedElementProps,
 } from './interchange.js';
+import { MAX_SVG_DEPTH, sanitizeSvgNode } from './svg-sanitize.js';
 import {
   SVG_SKETCH_CURRENT_COLOR,
   SVG_SKETCH_CURVE,
@@ -35,8 +35,11 @@ import {
   SVG_SKETCH_REMOVED_ATTRIBUTE,
   SVG_SKETCH_SKIPPED,
   SVG_SKETCH_SWITCH,
+  SVG_SKETCH_TOO_DEEP,
   SVG_SKETCH_TRANSFORM,
 } from './svg-sketch-translations.js';
+import type { XmlElement } from './xml-element.js';
+import { readXml } from './xml-reader.js';
 
 /**
  * **SVG → a canvas sketch.** The platform's VISUAL-tier importer, shared by
@@ -139,33 +142,21 @@ export const SVG_SKETCH_MIME = 'image/svg+xml';
 /* ── Small readers ────────────────────────────────────────────────────── */
 
 /**
- * happy-dom (the vitest environment two of the three packages that test this
- * run in) does not implement namespace-aware lookups, so this file walks
- * children by hand and compares `localName`, exactly as the BPMN reader does.
- * `children` is also skipped in favour of `childNodes`, because the former is
- * an `HTMLCollection` whose behaviour on a foreign-namespaced document is one
- * more thing that differs between the two environments.
+ * The walk reads the sanitizer's tree (`svg-sanitize.ts`), a DOM-shaped view
+ * over `readXml` rather than a DOM, so a server reads an `.svg` with no DOM
+ * installed (ADR 0012, P3 as amended 2026-10-14). It compares `localName`
+ * folded to lower case, as it did when that tree came out of an HTML parser.
  */
-const ELEMENT_NODE = 1;
 const TEXT_NODE = 3;
-const CDATA_NODE = 4;
 
-// `Node` and not `Element`, because only `childNodes` is ever read and one
-// caller is DOMPurify's `RETURN_DOM` answer — which its own typed overload
-// declares as a `Node`. Widening the parameter is more honest than casting the
-// argument at that one call site.
-function childElements(parent: Node): Element[] {
-  const found: Element[] = [];
-  for (const node of Array.from(parent.childNodes)) {
-    if (node.nodeType === ELEMENT_NODE) found.push(node as Element);
-  }
-  return found;
+function childElements(parent: XmlElement): XmlElement[] {
+  return parent.children;
 }
 
-const nameOf = (element: Element) => element.localName?.toLowerCase() ?? '';
+const nameOf = (element: XmlElement) => element.localName?.toLowerCase() ?? '';
 
 /** One attribute as a finite number, or the caller's default. */
-function num(element: Element, name: string, fallback = 0): number {
+function num(element: XmlElement, name: string, fallback = 0): number {
   const raw = element.getAttribute(name);
   if (raw === null) return fallback;
   // `parseFloat` and not `Number`, because a length is allowed to carry a unit
@@ -185,7 +176,7 @@ function num(element: Element, name: string, fallback = 0): number {
  * cannot resolve — it depends on a containing block there is none of — so it
  * answers "no length declared" and the caller falls back to 1:1.
  */
-function absoluteLength(element: Element, name: string): number {
+function absoluteLength(element: XmlElement, name: string): number {
   const raw = element.getAttribute(name);
   if (raw === null || raw.includes('%')) return 0;
   const value = Number.parseFloat(raw);
@@ -263,7 +254,7 @@ interface Paint {
 }
 
 /** `style="fill:#fff;stroke:none"`, as a map. Wins over the attribute. */
-function styleMap(element: Element): Map<string, string> {
+function styleMap(element: XmlElement): Map<string, string> {
   const map = new Map<string, string>();
   const raw = element.getAttribute('style');
   if (!raw) return map;
@@ -320,7 +311,7 @@ function fontSizeOf(raw: string, inherited: number, notes: SvgSketchNotebook) {
  * and get the picture visibly wrong.
  */
 function paintOf(
-  element: Element,
+  element: XmlElement,
   inherited: Paint,
   notes: SvgSketchNotebook
 ): Paint {
@@ -371,7 +362,7 @@ function paintOf(
  * way, and an exporter's off-canvas scaffolding is the usual source of a
  * "why is there a huge black box on my board" report.
  */
-function isHidden(element: Element, notes: SvgSketchNotebook): boolean {
+function isHidden(element: XmlElement, notes: SvgSketchNotebook): boolean {
   const style = styleMap(element);
   const display = style.get('display') ?? element.getAttribute('display');
   if (display?.trim() === 'none') {
@@ -404,7 +395,7 @@ function isHidden(element: Element, notes: SvgSketchNotebook): boolean {
  * the backdrop it sits on. It is imported at full strength, which is visible
  * and editable, and the note says the strength changed.
  */
-function noteOpacity(element: Element, notes: SvgSketchNotebook): void {
+function noteOpacity(element: XmlElement, notes: SvgSketchNotebook): void {
   const style = styleMap(element);
   for (const property of ['opacity', 'fill-opacity', 'stroke-opacity']) {
     const raw = style.get(property) ?? element.getAttribute(property);
@@ -519,7 +510,7 @@ const xywh = (x: number, y: number, w: number, h: number) =>
  * `<svg>` is a new viewport, its `x`/`y` place it in the parent's user space,
  * and its own `viewBox` re-origins and re-scales what is inside it.
  */
-function viewportFrame(element: Element, parent: Frame): Frame {
+function viewportFrame(element: XmlElement, parent: Frame): Frame {
   const placed: Frame = {
     ox: px(parent, num(element, 'x')),
     oy: py(parent, num(element, 'y')),
@@ -559,7 +550,7 @@ function viewportFrame(element: Element, parent: Frame): Frame {
  * acceptable is doing it quietly, so each ignored KIND is named once.
  */
 function translated(
-  element: Element,
+  element: XmlElement,
   frame: Frame,
   notes: SvgSketchNotebook
 ): Frame {
@@ -704,7 +695,7 @@ interface Sketch {
   elements: SerializedElementProps[];
   notes: SvgSketchNotebook;
   /** The nodes a caller already claimed — see {@link sketchSvgTree}. */
-  skip: ReadonlySet<Element>;
+  skip: ReadonlySet<XmlElement>;
 }
 
 /** The generic shape props every recognised outline lands with. */
@@ -732,7 +723,7 @@ function shapeProps(
 const EMPTY_BOX_NOTE = 'Shapes with no width or height were skipped.';
 
 function readRect(
-  element: Element,
+  element: XmlElement,
   frame: Frame,
   paint: Paint,
   sketch: Sketch
@@ -778,7 +769,7 @@ function readRect(
 }
 
 function readEllipse(
-  element: Element,
+  element: XmlElement,
   frame: Frame,
   paint: Paint,
   sketch: Sketch
@@ -817,7 +808,7 @@ function readEllipse(
  * axis has a zero-width box to divide by.
  */
 function readPolygon(
-  element: Element,
+  element: XmlElement,
   frame: Frame,
   paint: Paint,
   sketch: Sketch
@@ -939,7 +930,7 @@ const CHARACTER_WIDTH_RATIO = 0.55;
 const LINE_HEIGHT_RATIO = 1.2;
 
 function readText(
-  element: Element,
+  element: XmlElement,
   frame: Frame,
   paint: Paint,
   sketch: Sketch
@@ -947,12 +938,13 @@ function readText(
   const lines: string[] = [];
   const collapse = (raw: string) => raw.replace(/\s+/g, ' ').trim();
 
-  for (const node of Array.from(element.childNodes)) {
-    if (node.nodeType === TEXT_NODE || node.nodeType === CDATA_NODE) {
-      const line = collapse(node.nodeValue ?? '');
+  for (const node of element.childNodes) {
+    if (!('localName' in node)) {
+      // Text and CDATA alike; a comment is not a line.
+      const line = node.nodeType === TEXT_NODE ? collapse(node.nodeValue) : '';
       if (line) lines.push(line);
-    } else if (node.nodeType === ELEMENT_NODE) {
-      const child = node as Element;
+    } else {
+      const child = node;
       if (nameOf(child) !== 'tspan') continue;
       if (isHidden(child, sketch.notes)) continue;
       const line = collapse(child.textContent ?? '');
@@ -1018,11 +1010,8 @@ const CONTAINERS = new Set(['g', 'a']);
  */
 const NON_RENDERING = new Set(['title', 'desc', 'metadata']);
 
-/** The sanitizer's own HTML wrapper, which no `.svg` on a disk ever contained. */
-const PARSER_SCAFFOLDING = new Set(['html', 'head', 'body']);
-
 function walk(
-  parent: Element,
+  parent: XmlElement,
   frame: Frame,
   inherited: Paint,
   sketch: Sketch
@@ -1034,7 +1023,7 @@ function walk(
 
 /** One element and whatever it contains, placed in its parent's frame. */
 function visit(
-  element: Element,
+  element: XmlElement,
   frame: Frame,
   inherited: Paint,
   sketch: Sketch
@@ -1081,7 +1070,7 @@ function visit(
 
 /** One recognised element, as props. Split out so `<switch>` can reuse it. */
 function emit(
-  element: Element,
+  element: XmlElement,
   name: string,
   frame: Frame,
   paint: Paint,
@@ -1167,9 +1156,9 @@ function emit(
  * claims; this module's statement covers only what reaches this walk.
  */
 export function sketchSvgTree(
-  root: Element,
+  root: XmlElement,
   notes: SvgSketchNotebook,
-  options: { skip?: ReadonlySet<Element>; place?: SvgSketchFrame } = {}
+  options: { skip?: ReadonlySet<XmlElement>; place?: SvgSketchFrame } = {}
 ): SerializedElementProps[] {
   const sketch: Sketch = {
     elements: [],
@@ -1203,9 +1192,9 @@ export function sketchSvgTree(
  * The transforms the walk ignores are ignored here too, silently: the walk
  * already says so once per kind when it meets them.
  */
-export function svgFrameOf(element: Element): SvgSketchFrame {
-  const path: Element[] = [];
-  for (let at: Element | null = element; at; at = at.parentElement) {
+export function svgFrameOf(element: XmlElement): SvgSketchFrame {
+  const path: XmlElement[] = [];
+  for (let at: XmlElement | null = element; at; at = at.parentElement) {
     path.unshift(at);
   }
   // The outermost `<svg>` on the path is the root the walk starts from: its
@@ -1228,36 +1217,34 @@ export function svgFrameOf(element: Element): SvgSketchFrame {
 /**
  * The document, sanitized, or an exception naming what is wrong with it.
  *
- * Well-formedness FIRST, because `DOMParser` reports a malformed document as a
- * `parsererror` element rather than by throwing — a verdict in the shape of a
- * document — and because DOMPurify's parser is the forgiving HTML one, which
- * would quietly repair the very thing the caller needs to be told about. So:
- * parse for the verdict, reading nothing out of the result but that; sanitize
- * the SOURCE; and walk only what came back from the sanitizer.
+ * Read with `readXml` in its conformant mode, then filtered by the allow-list
+ * in `svg-sanitize.ts`; the walk and every recogniser see only what came back.
+ * No DOM is involved at any step, so the same function runs in the editor, in
+ * a test and on a server (ADR 0012, P3 as amended 2026-10-14). It replaced
+ * `DOMParser` + DOMPurify, which needed a DOM installed before the library was
+ * even imported (the P0 import spike measured that trap).
+ *
+ * Well-formedness first: anything the reader had to recover from is refused,
+ * with the reader's first remark as the detail, as `DOMParser` used to refuse
+ * it. A `DOCTYPE` is not an error: it is skipped and no entity it declares is
+ * ever expanded, so a `&name;` it declares stays those characters.
  *
  * The sanitizer is not optional and it is not defensive programming. An `.svg`
  * is an executable document — `<script>`, `<foreignObject>` with markup, event
- * handler attributes — handed over by whoever sent the file. The same
- * `USE_PROFILES: { svg: true }` guard is what the edgeless clipboard already
- * puts in front of a pasted SVG.
+ * handler attributes — handed over by whoever sent the file.
  *
  * The first of the two passes {@link parseSvgSketch} is made of, exported so a
  * framework that recognises part of a picture reads the SAME sanitised tree
  * the sketch walks (ADR 0032 §2, §7) — never the source.
  */
-export function sanitizeSvg(source: string, notes: SvgSketchNotebook): Element {
-  const doc = new DOMParser().parseFromString(source, 'image/svg+xml');
-  const error = doc.querySelector('parsererror');
-  if (error) {
-    // The FIRST line only. Chromium's `parsererror` is a whole rendered
-    // document — a heading, the message, then the offending source line with a
-    // caret under it — and pouring that into a toast makes the one sentence
-    // that matters unreadable.
-    const [summary = ''] = (error.textContent ?? '')
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0);
-    const detail = summary.slice(0, 200);
+export function sanitizeSvg(
+  source: string,
+  notes: SvgSketchNotebook
+): XmlElement {
+  const document = readXml(source, { conformant: true });
+  const [complaint] = document.notes;
+  if (complaint !== undefined) {
+    const detail = complaint.slice(0, 200);
     throw new InterchangeImportError(
       `This file is not well-formed XML, so no drawing can be read out of it: ${detail}`,
       {
@@ -1266,39 +1253,28 @@ export function sanitizeSvg(source: string, notes: SvgSketchNotebook): Element {
       }
     );
   }
-  if (nameOf(doc.documentElement) !== 'svg') {
-    const tag = doc.documentElement?.localName ?? 'nothing';
+  if (document.root?.local.toLowerCase() !== 'svg') {
+    const tag = document.root?.local ?? 'nothing';
     throw new InterchangeImportError(
       `An SVG opens on <svg>; this one opens on <${tag}>.`,
       { messageKey: SVG_SKETCH_ERROR_NOT_SVG[0], messageParams: { tag } }
     );
   }
 
-  const clean = DOMPurify.sanitize(source, {
-    USE_PROFILES: { svg: true },
-    RETURN_DOM: true,
-  });
+  const { root, report } = sanitizeSvgNode(document.root);
 
   // …and then say what the sanitizer took, which is NOT the same list as what
   // the walk below skips. `<use>` and `<foreignObject>` never reach the walk at
-  // all — they are two of the SVG format's genuine attack surfaces and DOMPurify
-  // removes them outright — so a drawing built out of symbol instances arrives
-  // empty. Without this the only remark would be "nothing was recognised",
-  // which is true and useless. `DOMPurify.removed` is repopulated by each call
-  // and is read here immediately, before anything else can sanitize.
-  for (const entry of DOMPurify.removed) {
-    const removed = entry as { element?: Node; attribute?: { name?: string } };
-    if (removed.element) {
+  // all — they are two of the SVG format's genuine attack surfaces — so a
+  // drawing built out of symbol instances arrives empty. Without this the only
+  // remark would be "nothing was recognised", which is true and useless.
+  for (const removal of report.removed) {
+    if ('element' in removal) {
       // The node's OWN spelling, because `foreignObject` is camel-cased in the
       // format and a remark that called it `foreignobject` would send its
       // reader looking for something the spec does not have. The dedup key is
       // folded; the sentence is not.
-      const name = removed.element.nodeName ?? '';
-      // The sanitizer parses into an HTML document and reports unwinding its
-      // own wrapper as a removal. Nobody wrote a `<body>` into an `.svg`, and a
-      // remark about one would be this reader telling the user about its own
-      // plumbing.
-      if (PARSER_SCAFFOLDING.has(name.toLowerCase())) continue;
+      const name = removal.element;
       notes.once(
         `removed:${name.toLowerCase()}`,
         `\`<${name}>\` was removed while sanitizing the file — it is one of the constructs an SVG can carry code in — so nothing it drew was imported.`,
@@ -1306,10 +1282,10 @@ export function sanitizeSvg(source: string, notes: SvgSketchNotebook): Element {
         { name },
         name
       );
-    } else if (removed.attribute) {
+    } else {
       // Worded for what this actually is, which is broader than "unsafe": the
-      // sanitizer's allow-list drops an event handler AND a `requiredFeatures`,
-      // and calling the second one dangerous would be this reader accusing a
+      // allow-list drops an event handler AND a `requiredFeatures`, and
+      // calling the second one dangerous would be this reader accusing a
       // perfectly ordinary file of something.
       notes.once(
         'removed-attribute',
@@ -1318,10 +1294,15 @@ export function sanitizeSvg(source: string, notes: SvgSketchNotebook): Element {
       );
     }
   }
+  if (report.tooDeep) {
+    notes.once(
+      'too-deep',
+      `Elements nested more than ${MAX_SVG_DEPTH} levels deep were not read.`,
+      SVG_SKETCH_TOO_DEEP,
+      { depth: MAX_SVG_DEPTH }
+    );
+  }
 
-  // No cast: `RETURN_DOM: true` in the literal selects DOMPurify's typed
-  // overload, which answers an `HTMLElement` — the sanitized body wrapper.
-  const root = childElements(clean).find(child => nameOf(child) === 'svg');
   if (!root) {
     throw new InterchangeImportError(SVG_SKETCH_ERROR_SANITIZED_AWAY[1], {
       messageKey: SVG_SKETCH_ERROR_SANITIZED_AWAY[0],

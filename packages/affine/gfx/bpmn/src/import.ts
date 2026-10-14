@@ -1,4 +1,10 @@
-import { InterchangeImportError } from '@labre/affine-block-surface/interchange';
+import {
+  InterchangeImportError,
+  readXmlElement,
+  type XmlAttribute,
+  type XmlElement,
+  type XmlNode,
+} from '@labre/affine-block-surface/interchange';
 import type {
   InterchangeImportContext,
   InterchangeImportResult,
@@ -228,15 +234,13 @@ export const BPMN_IMPORT_ERRORS = {
  *
  * ## Reading XML by hand, and why
  *
- * The tree is walked child by child rather than through
- * `getElementsByTagNameNS`, which happy-dom does not implement for a parsed XML
- * document: it answers an empty list for every namespaced query, so a unit
- * suite built on it would pass by asserting nothing. The same environment
- * decodes neither numeric character references nor `&apos;` in an attribute
- * value, which is why the escaped-label round trip is pinned in chromium
- * (`integration-test/src/__tests__/edgeless/bpmn.spec.ts`) and not in the unit
- * spec. Both traps are `export.unit.spec.ts`'s findings, inherited rather than
- * rediscovered.
+ * The file is read by the platform's `readXml` and walked through its
+ * DOM-shaped view (`xml-element.ts` in the surface package), child by child,
+ * namespaces resolved. Not `DOMParser`: the P0 import spike measured this
+ * reader on a server, where it needed a DOM installed (jsdom) and grew
+ * quadratically with the file — 5.1 s of CPU at 2 000 tasks. Without a DOM it
+ * runs in a server function, in labre-mcp and in a unit test alike (ADR 0012,
+ * P3 as amended 2026-10-14), in time linear in the file.
  *
  * ## Failure is an exception, not a report
  *
@@ -425,44 +429,37 @@ const NOT_A_BODY = new Set([
   'standardLoopCharacteristics',
 ]);
 
-/* ── Reading the DOM by hand ──────────────────────────────────────────── */
-
-/** The `Node.nodeType`s a fragment can be made of, spelled rather than numbered. */
-const ELEMENT_NODE = 1;
-const TEXT_NODE = 3;
-const CDATA_NODE = 4;
-const PI_NODE = 7;
-const COMMENT_NODE = 8;
+/* ── Reading the tree by hand ─────────────────────────────────────────── */
 
 /** The element children of `node`, in document order. */
-function childrenOf(node: Element): Element[] {
-  return Array.from(node.children);
+function childrenOf(node: XmlElement): XmlElement[] {
+  return node.children;
 }
 
 /** Every element under `node`, at any depth, in document order. */
-function descendantsOf(node: Element): Element[] {
-  return childrenOf(node).flatMap(child => [child, ...descendantsOf(child)]);
+function descendantsOf(node: XmlElement): XmlElement[] {
+  return node.descendants();
 }
 
 /** Is this element in the BPMN MODEL namespace, whatever prefix it wears? */
-function isModel(element: Element): boolean {
+function isModel(element: XmlElement): boolean {
   return element.namespaceURI === BPMN_NS.model;
 }
 
 /** MODEL-namespaced children with this local name, in document order. */
-function modelChildren(parent: Element, local: string): Element[] {
+function modelChildren(parent: XmlElement, local: string): XmlElement[] {
   return childrenOf(parent).filter(
     child => isModel(child) && child.localName === local
   );
 }
 
 /** The first MODEL child with this local name, if any. */
-function modelChild(parent: Element, local: string): Element | undefined {
+function modelChild(parent: XmlElement, local: string): XmlElement | undefined {
   return modelChildren(parent, local)[0];
 }
 
 /** An attribute, or `undefined` — never `null`, which reads as a value. */
-function attrOf(element: Element, name: string): string | undefined {
+function attrOf(element: XmlElement, name: string): string | undefined {
   const value = element.getAttribute(name);
   return value === null ? undefined : value;
 }
@@ -474,7 +471,7 @@ function prefixOf(qualified: string): string {
 }
 
 /** Is this attribute one of the colour extensions D5 quarantines? */
-function isColourAttr(attr: Attr): boolean {
+function isColourAttr(attr: XmlAttribute): boolean {
   return (
     (attr.namespaceURI !== null && COLOUR_NS.has(attr.namespaceURI)) ||
     COLOUR_PREFIX.has(prefixOf(attr.name))
@@ -498,47 +495,66 @@ function isColourAttr(attr: Attr): boolean {
  * written by that writer treat a newline in an attribute value the same way
  * (XML 1.0 §3.3.3 — only a character reference survives normalization).
  */
-function fragmentOf(element: Element): string {
-  const attrs = Array.from(element.attributes)
-    .map(attr => ` ${attr.name}="${escapeAttr(attr.value)}"`)
-    .join('');
+function fragmentOf(element: XmlElement): string {
+  const head = (node: XmlNode) =>
+    `<${node.name}${Object.entries(node.attrs)
+      .map(([name, value]) => ` ${name}="${escapeAttr(value)}"`)
+      .join('')}`;
 
-  const parts: string[] = [];
-  for (const child of Array.from(element.childNodes)) {
-    if (child.nodeType === ELEMENT_NODE) {
-      parts.push(fragmentOf(child as Element));
-    } else if (child.nodeType === TEXT_NODE || child.nodeType === CDATA_NODE) {
-      parts.push(escapeText(child.nodeValue ?? ''));
-    } else if (child.nodeType === COMMENT_NODE) {
-      // A comment inside a vendor extension is documentation somebody wrote by
-      // hand, and dropping it while promising the fragment back "character for
-      // character" would make that promise false in the one place a human
-      // would notice.
-      parts.push(`<!--${child.nodeValue ?? ''}-->`);
-    } else if (child.nodeType === PI_NODE) {
-      const instruction = child as ProcessingInstruction;
-      parts.push(`<?${instruction.target} ${instruction.data}?>`);
+  // An explicit stack: a quarantined fragment is as deep as the file made it.
+  const stack: { node: XmlNode; parts: string[]; next: number }[] = [
+    { node: element.node, parts: [], next: 0 },
+  ];
+  let written = '';
+  while (stack.length > 0) {
+    const frame = stack[stack.length - 1];
+    const content = frame.node.content ?? frame.node.children;
+    if (frame.next < content.length) {
+      const entry = content[frame.next];
+      frame.next += 1;
+      if (!('kind' in entry)) {
+        stack.push({ node: entry, parts: [], next: 0 });
+      } else if (entry.kind === 'text') {
+        frame.parts.push(escapeText(entry.value));
+      } else if (entry.kind === 'comment') {
+        // A comment inside a vendor extension is documentation somebody wrote
+        // by hand, and dropping it while promising the fragment back
+        // "character for character" would make that promise false in the one
+        // place a human would notice.
+        frame.parts.push(`<!--${entry.value}-->`);
+      } else {
+        frame.parts.push(`<?${entry.target} ${entry.data}?>`);
+      }
+      continue;
     }
+    stack.pop();
+    const { node, parts } = frame;
+    const text =
+      parts.length === 0
+        ? `${head(node)} />`
+        : `${head(node)}>${parts.join('')}</${node.name}>`;
+    const parent = stack[stack.length - 1];
+    if (parent) parent.parts.push(text);
+    else written = text;
   }
-
-  const name = element.nodeName;
-  if (parts.length === 0) return `<${name}${attrs} />`;
-  return `<${name}${attrs}>${parts.join('')}</${name}>`;
+  return written;
 }
 
 /**
  * The document, or an exception naming what is wrong with it.
  *
- * `DOMParser` reports a malformed document as a `parsererror` element rather
- * than by throwing, which is a well-formedness answer nobody asked for in the
- * shape of a document — so it is turned into the exception the caller can
- * actually act on.
+ * `readXml` never throws: it reads what it can and says what it had to
+ * recover from. Anything it recovered from is refused here, with its first
+ * remark as the detail, as `DOMParser` refused it before. A `DOCTYPE` is not
+ * an error: it is skipped, and no entity it declares is ever expanded, so a
+ * `&name;` it declares stays those characters (the spike's billion-laughs and
+ * XXE files, `__tests__/import-hostile.unit.spec.ts`).
  */
-function parseDefinitions(source: string): Element {
-  const doc = new DOMParser().parseFromString(source, 'application/xml');
-  const error = doc.querySelector('parsererror');
-  if (error) {
-    const detail = (error.textContent ?? '').trim().slice(0, 200);
+function parseDefinitions(source: string): XmlElement {
+  const { document, root } = readXmlElement(source, { conformant: true });
+  const [complaint] = document.notes;
+  if (complaint !== undefined) {
+    const detail = complaint.slice(0, 200);
     throw new InterchangeImportError(
       `This file is not well-formed XML, so no BPMN can be read out of it: ${detail}`,
       {
@@ -547,7 +563,6 @@ function parseDefinitions(source: string): Element {
       }
     );
   }
-  const root = doc.documentElement;
   if (!root || root.localName !== 'definitions') {
     const tag = root?.localName ?? 'nothing';
     throw new InterchangeImportError(
@@ -605,17 +620,17 @@ interface DiShape {
   bounds: Rect | null;
   /** Position in the plane, which is the order the drawing is stacked in. */
   index: number;
-  element: Element;
+  element: XmlElement;
 }
 
 interface DiEdge {
   waypoints: number;
   index: number;
-  element: Element;
+  element: XmlElement;
 }
 
 /** A `dc:Bounds` child, as four numbers — `null` when it has none, or junk. */
-function boundsOf(shape: Element): Rect | null {
+function boundsOf(shape: XmlElement): Rect | null {
   const box = childrenOf(shape).find(
     child => child.namespaceURI === BPMN_NS.dc && child.localName === 'Bounds'
   );
@@ -641,7 +656,7 @@ function boundsOf(shape: Element): Rect | null {
  * shapes in document order, so reading them back in plane order is what lets
  * the export after an import land on the bytes of the export before it.
  */
-function diagramIndex(definitions: Element): {
+function diagramIndex(definitions: XmlElement): {
   shapes: Map<string, DiShape>;
   edges: Map<string, DiEdge>;
 } {
@@ -802,7 +817,7 @@ function connectorProps(role: string): SerializedElementProps {
  * is no case in which a foreign URI could leak out of here into a UI that would
  * render it as a version.
  */
-function sourceVersionOf(definitions: Element): string | undefined {
+function sourceVersionOf(definitions: XmlElement): string | undefined {
   const version = '2.0';
   const exporter = attrOf(definitions, 'exporter');
   if (exporter === undefined) return version;
@@ -1027,7 +1042,7 @@ export function importBpmnXml(
   const carryChild = (
     payload: ForeignInterchange,
     scope: string,
-    child: Element,
+    child: XmlElement,
     sourceId: string | undefined,
     announce = true
   ) => {
@@ -1086,7 +1101,7 @@ export function importBpmnXml(
 
   /** Every attribute the reader does not model — colours quarantined (D5). */
   const sortAttributes = (
-    element: Element,
+    element: XmlElement,
     payload: ForeignInterchange,
     scope: string,
     sourceId: string | undefined,
@@ -1112,7 +1127,7 @@ export function importBpmnXml(
 
   /** The DI element's own extras: colours quarantined, the rest kept as `di`. */
   const sortShapeExtras = (
-    shape: Element | undefined,
+    shape: XmlElement | undefined,
     payload: ForeignInterchange,
     sourceId: string | undefined
   ) => {
@@ -1139,14 +1154,14 @@ export function importBpmnXml(
 
   /* ── Pools, from participants ──────────────────────────────────────── */
 
-  const processById = new Map<string, Element>();
+  const processById = new Map<string, XmlElement>();
   for (const process of processes) {
     const id = attrOf(process, 'id');
     if (id !== undefined) processById.set(id, process);
   }
 
   /** The process a participant named → the pool that draws the pair. */
-  const poolOfProcess = new Map<Element, Draft>();
+  const poolOfProcess = new Map<XmlElement, Draft>();
 
   const participants = collaborations.flatMap(collaboration =>
     modelChildren(collaboration, 'participant')
@@ -1317,7 +1332,7 @@ export function importBpmnXml(
      * the original is unreadable, and the `childLaneSet` is quarantined —
      * written back beside the flat set, it would describe the pool twice.
      */
-    const walkLanes = (set: Element, path: readonly string[]) => {
+    const walkLanes = (set: XmlElement, path: readonly string[]) => {
       for (const lane of modelChildren(set, 'lane')) {
         const sourceId = attrOf(lane, 'id');
         claim(sourceId, 'lane');
@@ -1449,7 +1464,7 @@ export function importBpmnXml(
    * an exporter has to put it back.
    */
   const readNode = (
-    element: Element,
+    element: XmlElement,
     host: Draft | undefined,
     hostScope: string
   ) => {
@@ -1683,14 +1698,14 @@ export function importBpmnXml(
    * dropped by the next export. See {@link readEdges}.
    */
   const pendingEdges: {
-    element: Element;
+    element: XmlElement;
     host: Draft | undefined;
     hostScope: string;
   }[] = [];
 
   /** `true` when this element WAS an edge, whatever became of it. */
   const collectEdge = (
-    element: Element,
+    element: XmlElement,
     host: Draft | undefined,
     hostScope: string
   ): boolean => {
@@ -1841,7 +1856,7 @@ export function importBpmnXml(
   /* ── The document's own residue (D6) ───────────────────────────────── */
 
   const host = residence();
-  const residue: Element[] = [];
+  const residue: XmlElement[] = [];
   for (const root of childrenOf(definitions)) {
     if (root.namespaceURI === BPMN_NS.bpmndi) continue;
     if (

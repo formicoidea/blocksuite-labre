@@ -39,8 +39,16 @@ const ALLOWED_WORKSPACE = [
   'packages/affine/blocks/surface/',
 ];
 
-/** Third-party packages an `./interchange` graph may load. */
-const ALLOWED_THIRD_PARTY = new Set(['zod', 'dompurify']);
+/**
+ * Third-party packages an `./interchange` graph may load. Not DOMPurify: the
+ * SVG sanitizer is an allow-list on the read tree (`svg-sanitize.ts`), and a
+ * DOM sanitizer would put the DOM back in a server's graph.
+ */
+const ALLOWED_THIRD_PARTY = new Set(['zod']);
+
+/** DOM globals a reader must not touch: a server has none of them. */
+const DOM_GLOBALS =
+  /\b(?:DOMParser|XMLSerializer|DOMPurify|document\.createElement|window\.)/;
 
 /** The frameworks that ship an `./interchange` entry. */
 const WITH_INTERCHANGE = ['bpmn', 'c4', 'uml', 'wardley'];
@@ -85,7 +93,9 @@ const ENTRIES: Entry[] = [
 ];
 
 /** Every module the entry's graph loads, as repo-relative paths. */
-async function graphOf(entry: Entry): Promise<string[]> {
+async function graphOf(
+  entry: Entry
+): Promise<{ modules: string[]; code: string }> {
   const file = manifestOf(entry.dir).exports[entry.subpath];
   const result = await build({
     entryPoints: [join(ROOT, entry.dir, file)],
@@ -99,7 +109,10 @@ async function graphOf(entry: Entry): Promise<string[]> {
     mainFields: ['module', 'main'],
     logLevel: 'silent',
   });
-  return Object.keys(result.metafile.inputs);
+  return {
+    modules: Object.keys(result.metafile.inputs),
+    code: result.outputFiles[0]?.text ?? '',
+  };
 }
 
 const thirdPartyOf = (path: string) =>
@@ -143,9 +156,9 @@ describe('the headless interchange entries', () => {
   });
 
   test.each(ENTRIES)(
-    '$label loads no Lit, no drag-and-drop and no editor',
+    '$label loads no Lit, no drag-and-drop, no DOM and no editor',
     async entry => {
-      const modules = await graphOf(entry);
+      const { modules, code } = await graphOf(entry);
       // A graph that resolved nothing proves nothing.
       expect(modules.length).toBeGreaterThan(1);
       expect(forbidden(entry, modules)).toEqual([]);
@@ -163,6 +176,9 @@ describe('the headless interchange entries', () => {
           /packages\/framework\/(?:std|store|sync)\//.test(path)
         )
       ).toEqual([]);
+      // And no DOM by name, in any module that made it in: the readers are
+      // pure in ADR 0012's amended sense, with no DOM and no editor.
+      expect(DOM_GLOBALS.exec(code)?.[0]).toBeUndefined();
     },
     30_000
   );

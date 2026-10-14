@@ -1,3 +1,4 @@
+import type { XmlElement } from '@labre/affine-block-surface/interchange';
 import type {
   InterchangeImportContext,
   InterchangeImportResult,
@@ -104,13 +105,14 @@ import { WARDLEY_SVG_IMPORT_REMARKS } from './svg-remarks.js';
  */
 
 /** Detection order (ADR 0032 §4): the first certain match wins. */
-const RECOGNISERS: readonly ((root: Element) => DrawnWardleyMap | undefined)[] =
-  [
-    recogniseLabreExport,
-    recogniseWardleyMapRenderer,
-    recogniseOnlineWardleyMaps,
-    recogniseByShape,
-  ];
+const RECOGNISERS: readonly ((
+  root: XmlElement
+) => DrawnWardleyMap | undefined)[] = [
+  recogniseLabreExport,
+  recogniseWardleyMapRenderer,
+  recogniseOnlineWardleyMaps,
+  recogniseByShape,
+];
 
 export function importWardleySvg(
   source: string,
@@ -139,7 +141,7 @@ export function importWardleySvg(
  * (ADR 0032 §5).
  */
 function sketchOnly(
-  root: Element,
+  root: XmlElement,
   notebook: SvgSketchNotebook
 ): InterchangeImportResult {
   const elements = sketchSvgTree(root, notebook);
@@ -200,7 +202,7 @@ function placeOnBoard(file: OwmPlot, board: OwmPlot): SvgSketchFrame {
 }
 
 function mapAndSketch(
-  root: Element,
+  root: XmlElement,
   notebook: SvgSketchNotebook,
   drawn: DrawnWardleyMap
 ): InterchangeImportResult {
