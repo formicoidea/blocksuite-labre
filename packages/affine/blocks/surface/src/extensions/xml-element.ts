@@ -83,26 +83,14 @@ export class XmlElement {
   readonly nodeType = ELEMENT_NODE;
   readonly children: XmlElement[] = [];
   readonly childNodes: (XmlElement | XmlCharacterNode)[] = [];
-  readonly attributes: XmlAttribute[];
 
   constructor(
     /** The reader's node, for a caller that wants its range or its content. */
     readonly node: XmlNode,
     readonly parentElement: XmlElement | null,
     readonly namespaceURI: string | null,
-    scope: ReadonlyMap<string, string>
-  ) {
-    this.attributes = Object.entries(node.attrs).map(([name, value]) => {
-      const colon = name.indexOf(':');
-      const prefix = colon < 0 ? null : name.slice(0, colon);
-      const localName = colon < 0 ? name : name.slice(colon + 1);
-      let namespaceURI: string | null = null;
-      if (name === 'xmlns' || prefix === 'xmlns')
-        namespaceURI = XMLNS_NAMESPACE;
-      else if (prefix !== null) namespaceURI = scope.get(prefix) ?? null;
-      return { name, prefix, localName, namespaceURI, value };
-    });
-  }
+    readonly attributes: XmlAttribute[]
+  ) {}
 
   get localName(): string {
     return this.node.local;
@@ -212,65 +200,108 @@ export class XmlElement {
 }
 
 /**
+ * The namespaces in scope during a depth-first walk, as one stack per prefix:
+ * {@link enter} and {@link exit} cost the element's own declarations, and
+ * {@link resolve} is one lookup. A copied map per declaring element was
+ * quadratic: a root declaring 2 000 prefixes over thousands of
+ * `<g xmlns:q="x"/>` took 28 s and 284 MiB (security review, 2026-10-14).
+ */
+export class XmlNamespaceScope {
+  private readonly bound = new Map<string, string[]>([
+    ['xml', [XML_NAMESPACE]],
+  ]);
+
+  enter(node: XmlNode): void {
+    for (const [prefix, value] of declarationsOf(node)) {
+      const stack = this.bound.get(prefix);
+      if (stack) stack.push(value);
+      else this.bound.set(prefix, [value]);
+    }
+  }
+
+  exit(node: XmlNode): void {
+    for (const [prefix] of declarationsOf(node)) this.bound.get(prefix)?.pop();
+  }
+
+  /** `null` when unbound — or undeclared by `xmlns=""` (Namespaces in XML §6.2). */
+  resolve(prefix: string): string | null {
+    const stack = this.bound.get(prefix);
+    return stack?.at(-1) || null;
+  }
+
+  /** The node's attributes, resolved in this scope (entered first). */
+  attributesOf(node: XmlNode): XmlAttribute[] {
+    return Object.entries(node.attrs).map(([name, value]) => {
+      const colon = name.indexOf(':');
+      const prefix = colon < 0 ? null : name.slice(0, colon);
+      const localName = colon < 0 ? name : name.slice(colon + 1);
+      let namespaceURI: string | null = null;
+      if (name === 'xmlns' || prefix === 'xmlns')
+        namespaceURI = XMLNS_NAMESPACE;
+      else if (prefix !== null) namespaceURI = this.resolve(prefix);
+      return { name, prefix, localName, namespaceURI, value };
+    });
+  }
+}
+
+function* declarationsOf(node: XmlNode): Generator<[string, string]> {
+  for (const name in node.attrs) {
+    if (name === 'xmlns') yield ['', node.attrs[name]];
+    else if (name.startsWith('xmlns:')) yield [name.slice(6), node.attrs[name]];
+  }
+}
+
+/**
  * The element view of a node the reader produced, namespaces resolved from the
  * `xmlns` declarations on the way down (`xml` is bound, as XML says it is).
  * An unbound prefix resolves to `null`, which is what a reader then refuses or
  * ignores: this function never guesses a namespace.
  */
 export function xmlElementOf(root: XmlNode): XmlElement {
-  const scopeOf = (
-    node: XmlNode,
-    inherited: ReadonlyMap<string, string>
-  ): ReadonlyMap<string, string> => {
-    let scope: Map<string, string> | undefined;
-    for (const [name, value] of Object.entries(node.attrs)) {
-      if (name !== 'xmlns' && !name.startsWith('xmlns:')) continue;
-      scope ??= new Map(inherited);
-      const prefix = name === 'xmlns' ? '' : name.slice(6);
-      // `xmlns=""` UNdeclares the default namespace (Namespaces in XML §6.2).
-      if (value === '') scope.delete(prefix);
-      else scope.set(prefix, value);
-    }
-    return scope ?? inherited;
-  };
-
-  const make = (
-    node: XmlNode,
-    parent: XmlElement | null,
-    inherited: ReadonlyMap<string, string>
-  ) => {
-    const scope = scopeOf(node, inherited);
-    const element = new XmlElement(
+  const scope = new XmlNamespaceScope();
+  const make = (node: XmlNode, parent: XmlElement | null) => {
+    scope.enter(node);
+    return new XmlElement(
       node,
       parent,
-      scope.get(node.prefix) ?? null,
-      scope
+      scope.resolve(node.prefix),
+      scope.attributesOf(node)
     );
-    return { element, scope };
   };
+  // A node assembled by hand has no `content`; its children are all it has.
+  const frameOf = (node: XmlNode, element: XmlElement) => ({
+    node,
+    element,
+    entries: node.content ?? node.children,
+    index: 0,
+  });
 
-  const rootScope = new Map([['xml', XML_NAMESPACE]]);
-  const top = make(root, null, rootScope);
-  const stack = [{ ...top, node: root }];
+  const top = make(root, null);
+  const stack = [frameOf(root, top)];
   while (stack.length > 0) {
-    const { element, scope, node } = stack.pop()!;
-    // A node assembled by hand has no `content`; its children are all it has.
-    for (const entry of node.content ?? node.children) {
-      if (!('kind' in entry)) {
-        const child = make(entry, element, scope);
-        element.children.push(child.element);
-        element.childNodes.push(child.element);
-        stack.push({ ...child, node: entry });
-      } else if (entry.kind === 'text') {
-        element.childNodes.push({ nodeType: 3, nodeValue: entry.value });
-      } else if (entry.kind === 'comment') {
-        element.childNodes.push({ nodeType: 8, nodeValue: entry.value });
-      } else {
-        element.childNodes.push({ nodeType: 7, nodeValue: entry.data });
-      }
+    const frame = stack[stack.length - 1];
+    if (frame.index >= frame.entries.length) {
+      scope.exit(frame.node);
+      stack.pop();
+      continue;
+    }
+    const entry = frame.entries[frame.index];
+    frame.index += 1;
+    const { element } = frame;
+    if (!('kind' in entry)) {
+      const child = make(entry, element);
+      element.children.push(child);
+      element.childNodes.push(child);
+      stack.push(frameOf(entry, child));
+    } else if (entry.kind === 'text') {
+      element.childNodes.push({ nodeType: 3, nodeValue: entry.value });
+    } else if (entry.kind === 'comment') {
+      element.childNodes.push({ nodeType: 8, nodeValue: entry.value });
+    } else {
+      element.childNodes.push({ nodeType: 7, nodeValue: entry.data });
     }
   }
-  return top.element;
+  return top;
 }
 
 /** {@link readXml}, then {@link xmlElementOf} on its first root. */

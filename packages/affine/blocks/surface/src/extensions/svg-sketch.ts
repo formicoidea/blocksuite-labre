@@ -820,10 +820,10 @@ function readPolygon(
   }
   const xs = points.map(p => p[0]);
   const ys = points.map(p => p[1]);
-  const minX = Math.min(...xs);
-  const minY = Math.min(...ys);
-  const w = Math.max(...xs) - minX;
-  const h = Math.max(...ys) - minY;
+  const minX = xs.reduce((a, b) => Math.min(a, b), Infinity);
+  const minY = ys.reduce((a, b) => Math.min(a, b), Infinity);
+  const w = xs.reduce((a, b) => Math.max(a, b), -Infinity) - minX;
+  const h = ys.reduce((a, b) => Math.max(a, b), -Infinity) - minY;
 
   if (points.length < 3 || w <= 0 || h <= 0) {
     if (points.length === 0 || w < 0 || h < 0) {
@@ -962,7 +962,9 @@ function readText(
   }
 
   const fontSize = len(frame, paint.fontSize ?? DEFAULT_FONT_SIZE);
-  const widest = Math.max(...lines.map(line => line.length));
+  const widest = lines
+    .map(line => line.length)
+    .reduce((a, b) => Math.max(a, b), -Infinity);
   const w = Math.max(widest * fontSize * CHARACTER_WIDTH_RATIO, fontSize);
   const h = lines.length * fontSize * LINE_HEIGHT_RATIO;
 

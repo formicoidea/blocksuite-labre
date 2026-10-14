@@ -1,5 +1,7 @@
 import type { ChromeWording } from '@labre/affine-shared/services';
 
+import { XML_READ_TOO_LARGE } from './xml-reader.js';
+
 /**
  * The SVG importer's own remarks (`svg-sketch.ts`) — one key per SENTENCE
  * SHAPE, not per exact string: a `{{name}}` hole is filled by
@@ -171,4 +173,7 @@ export const SVG_SKETCH_WORDINGS: readonly ChromeWording[] = [
   SVG_SKETCH_ERROR_MALFORMED_XML,
   SVG_SKETCH_ERROR_NOT_SVG,
   SVG_SKETCH_ERROR_SANITIZED_AWAY,
+  // The shared XML reader's one refusal: no package of its own to list it,
+  // and the SVG sketch is the reader every host already registers.
+  XML_READ_TOO_LARGE,
 ];

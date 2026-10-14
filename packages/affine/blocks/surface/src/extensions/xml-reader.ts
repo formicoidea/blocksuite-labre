@@ -43,8 +43,23 @@
  * of it. {@link serializeXmlNode} re-serializes from the tree instead, and is
  * the fallback for a node assembled rather than read.
  *
+ * ## Bounded, because a server reads it too
+ *
+ * The one exception to "never throws": a document past {@link XML_MAX_NODES}
+ * nodes or {@link XML_MAX_CHARACTERS} characters is refused with an
+ * {@link InterchangeImportError} carrying a static key, at the node that
+ * crosses the line and not after the tree is built. Each node costs about two
+ * hundred bytes of heap, and a 1.5 KiB `.drawio` inflates to a million of
+ * them (the 2026-10-14 security review: 3.2 s and 223 MiB before the cap). The
+ * scan is linear in the source otherwise: an orphan close tag is answered from
+ * a count of open names, not by searching the stack.
+ *
  * Pure: a string in, a tree out. No `std`, no DOM, no clock.
  */
+
+import type { ChromeWording } from '@labre/affine-shared/services';
+
+import { InterchangeImportError } from './interchange.js';
 
 /* ── The tree ─────────────────────────────────────────────────────────── */
 
@@ -121,7 +136,32 @@ export interface XmlReadOptions {
    * the XMI and draw.io readers keep reading exactly what they read before.
    */
   conformant?: boolean;
+  /**
+   * Elements, attributes, character runs, comments, instructions and notes,
+   * counted together. Default {@link XML_MAX_NODES}.
+   */
+  maxNodes?: number;
+  /**
+   * Characters of decoded text, attribute values, comments and instructions.
+   * Default {@link XML_MAX_CHARACTERS}.
+   */
+  maxCharacters?: number;
 }
+
+/**
+ * Safe for a function with 256 MiB and two seconds: the largest file of the
+ * corpus holds a few thousand nodes, a reading at the cap about 40 MiB.
+ */
+export const XML_MAX_NODES = 200_000;
+
+/** 2 MiB of decoded characters, well past any drawing the canvas can show. */
+export const XML_MAX_CHARACTERS = 2 * 1024 * 1024;
+
+/** The reader's one refusal; static, so a server can hand the key on. */
+export const XML_READ_TOO_LARGE: ChromeWording = [
+  'com.labre.interchange.xml.too-large',
+  'This file holds more than an import accepts, so it was not read.',
+];
 
 /** A document, and everything the reader had to complain about to read it. */
 export interface XmlDocument {
@@ -213,27 +253,65 @@ function nodeOf(name: string, start: number): XmlNode {
 }
 
 /**
- * Read a document. Never throws; see the header.
+ * Read a document. Throws only past its size caps; see the header.
  *
  * The scan is a single left-to-right pass with an explicit stack, which is what
  * makes the tolerance cheap: every recovery is "say what is wrong, and carry on
- * from the next `<`", and there is no recursion to unwind.
+ * from the next `<`", and there is no recursion to unwind. In conformant mode
+ * the first note STOPS the read: its callers refuse on any note, and a file
+ * built to raise twenty thousand of them must not get to.
  */
 export function readXml(
   source: string,
   options: XmlReadOptions = {}
 ): XmlDocument {
   const conformant = options.conformant === true;
+  const maxNodes = options.maxNodes ?? XML_MAX_NODES;
+  const maxCharacters = options.maxCharacters ?? XML_MAX_CHARACTERS;
   const notes: string[] = [];
   const roots: XmlNode[] = [];
   const stack: XmlNode[] = [];
+  /** How many of each name are on `stack`: an orphan close costs O(1). */
+  const openNames = new Map<string, number>();
   /** Character data accumulated for the element currently open. */
   const pending: string[] = [];
   let cursor = 0;
+  let nodes = 0;
+  let spent = 0;
+  let stopped = false;
+
+  const spend = (length: number) => {
+    nodes += 1;
+    spent += length;
+    if (nodes > maxNodes || spent > maxCharacters) {
+      throw new InterchangeImportError(XML_READ_TOO_LARGE[1], {
+        messageKey: XML_READ_TOO_LARGE[0],
+      });
+    }
+  };
+
+  const note = (line: string) => {
+    if (stopped) return;
+    spend(0);
+    notes.push(line);
+    stopped = conformant;
+  };
+
+  const enter = (node: XmlNode) => {
+    stack.push(node);
+    openNames.set(node.name, (openNames.get(node.name) ?? 0) + 1);
+  };
+
+  const leave = (): XmlNode => {
+    const node = stack.pop()!;
+    openNames.set(node.name, (openNames.get(node.name) ?? 1) - 1);
+    return node;
+  };
 
   /** Character data, kept for {@link XmlNode.text} and in order in `content`. */
   const characters = (value: string) => {
     if (value.length === 0) return;
+    spend(value.length);
     pending.push(value);
     stack[stack.length - 1]?.content?.push({ kind: 'text', value });
   };
@@ -261,13 +339,13 @@ export function readXml(
       parent.content?.push(node);
     } else {
       if (conformant && roots.length === 1) {
-        notes.push('This file has more than one top-level element.');
+        note('This file has more than one top-level element.');
       }
       roots.push(node);
     }
   };
 
-  while (cursor < source.length) {
+  while (cursor < source.length && !stopped) {
     const open = source.indexOf('<', cursor);
     if (open < 0) {
       characters(decodeXmlText(source.slice(cursor)));
@@ -280,22 +358,19 @@ export function readXml(
     if (source.startsWith('<!--', open)) {
       const end = source.indexOf('-->', open + 4);
       if (end < 0) {
-        notes.push(
-          'A comment in this file is never closed; the rest was read.'
-        );
+        note('A comment in this file is never closed; the rest was read.');
         break;
       }
-      stack[stack.length - 1]?.content?.push({
-        kind: 'comment',
-        value: source.slice(open + 4, end),
-      });
+      const value = source.slice(open + 4, end);
+      spend(value.length);
+      stack[stack.length - 1]?.content?.push({ kind: 'comment', value });
       cursor = end + 3;
       continue;
     }
     if (source.startsWith('<![CDATA[', open)) {
       const end = source.indexOf(']]>', open + 9);
       if (end < 0) {
-        notes.push('A CDATA section in this file is never closed.');
+        note('A CDATA section in this file is never closed.');
         characters(source.slice(open + 9));
         break;
       }
@@ -308,11 +383,12 @@ export function readXml(
     if (source.startsWith('<?', open)) {
       const end = source.indexOf('?>', open + 2);
       if (end < 0) {
-        notes.push('A processing instruction in this file is never closed.');
+        note('A processing instruction in this file is never closed.');
         break;
       }
       const [, target = '', data = ''] =
         /^(\S*)\s*([\s\S]*)$/.exec(source.slice(open + 2, end)) ?? [];
+      spend(target.length + data.length);
       stack[stack.length - 1]?.content?.push({ kind: 'pi', target, data });
       cursor = end + 2;
       continue;
@@ -339,14 +415,18 @@ export function readXml(
     if (source.startsWith('</', open)) {
       const end = source.indexOf('>', open);
       if (end < 0) {
-        notes.push('A close tag in this file is never finished.');
+        note('A close tag in this file is never finished.');
         break;
       }
       flushText();
       const name = source.slice(open + 2, end).trim();
-      const depth = stack.findLastIndex(node => node.name === name);
+      // Searched only when the name IS open, and then everything above the
+      // match is popped: linear overall, where `<a>`×N `</b>`×N was N².
+      const depth = openNames.get(name)
+        ? stack.findLastIndex(node => node.name === name)
+        : -1;
       if (depth < 0) {
-        notes.push(
+        note(
           `</${name}> closes an element this file never opened; it was ignored.`
         );
       } else {
@@ -354,15 +434,14 @@ export function readXml(
         // it, in order. `<a><b></a>` is a file that lost a tag, not a file with
         // no `<b>` in it, and the tree keeps the `<b>`.
         for (let index = stack.length - 1; index > depth; index -= 1) {
-          const orphan = stack.pop()!;
-          notes.push(
+          const orphan = leave();
+          note(
             `<${orphan.name}> is closed by </${name}> rather than by a tag of ` +
               `its own; it was read as far as it goes.`
           );
           close(orphan, open);
         }
-        const node = stack.pop()!;
-        close(node, end + 1);
+        close(leave(), end + 1);
       }
       cursor = end + 1;
       continue;
@@ -376,7 +455,7 @@ export function readXml(
     if (name.length === 0) {
       // A bare `<` in character data — illegal, and every second hand-written
       // file has one. It is kept as the character it is.
-      notes.push(
+      note(
         'A "<" in this file starts no tag; it was read as a plain character.'
       );
       characters('<');
@@ -385,13 +464,14 @@ export function readXml(
     }
 
     flushText();
+    spend(0);
     const node = nodeOf(name, open);
 
     /* ── Its attributes ──────────────────────────────────────────────── */
 
     let selfClosing = false;
     let tagEnd = source.length;
-    while (scan < source.length) {
+    while (scan < source.length && !stopped) {
       while (scan < source.length && /\s/.test(source[scan])) scan += 1;
       if (scan >= source.length) break;
       if (source.startsWith('/>', scan)) {
@@ -416,10 +496,11 @@ export function readXml(
       if (source[scan] !== '=') {
         // A valueless attribute — HTML's habit, not XML's. Recorded as the
         // empty string, which is what every tolerant reader does with one.
-        notes.push(
+        note(
           `The attribute "${attrName}" on <${name}> has no value; it was read ` +
             `as empty.`
         );
+        spend(0);
         node.attrs[attrName] = '';
         continue;
       }
@@ -430,7 +511,7 @@ export function readXml(
       if (quote === '"' || quote === "'") {
         const end = source.indexOf(quote, scan + 1);
         if (end < 0) {
-          notes.push(
+          note(
             `The value of "${attrName}" on <${name}> is never closed; the ` +
               `rest of the file was read as its value.`
           );
@@ -446,26 +527,28 @@ export function readXml(
         const start = scan;
         while (scan < source.length && !/[\s>/]/.test(source[scan])) scan += 1;
         value = source.slice(start, scan);
-        notes.push(
+        note(
           `The value of "${attrName}" on <${name}> is not quoted; it was read ` +
             `up to the next space.`
         );
       }
       // §3.3.3: literal whitespace normalizes BEFORE references decode, so a
       // `&#10;` the writer escaped on purpose stays a newline.
-      node.attrs[attrName] = decodeXmlText(
+      const decoded = decodeXmlText(
         conformant ? value.replaceAll(/\r\n|[\t\n\r]/g, ' ') : value
       );
+      spend(decoded.length);
+      node.attrs[attrName] = decoded;
     }
 
     if (tagEnd === source.length && !selfClosing && source[scan] !== '>') {
-      notes.push(`<${name}> is never finished; the file stops inside its tag.`);
+      note(`<${name}> is never finished; the file stops inside its tag.`);
     }
 
     if (selfClosing) {
       close(node, tagEnd);
     } else {
-      stack.push(node);
+      enter(node);
     }
     cursor = tagEnd;
   }
@@ -475,8 +558,8 @@ export function readXml(
   // Whatever the file left open. Closed at the end of what there was, so the
   // tree holds every element the file named even when it stops mid-document.
   while (stack.length > 0) {
-    const orphan = stack.pop()!;
-    notes.push(`<${orphan.name}> is never closed; it was read to the end.`);
+    const orphan = leave();
+    note(`<${orphan.name}> is never closed; it was read to the end.`);
     close(orphan, source.length);
   }
 
@@ -524,15 +607,31 @@ function escapeAttr(value: string): string {
  * Prefer {@link xmlFragmentOf} whenever the source string is still in hand.
  */
 export function serializeXmlNode(node: XmlNode): string {
-  const attrs = Object.entries(node.attrs)
-    .map(([key, value]) => ` ${key}="${escapeAttr(value)}"`)
-    .join('');
-  const inner = [
-    node.text === undefined ? '' : escapeText(node.text),
-    ...node.children.map(child => serializeXmlNode(child)),
-  ].join('');
-  if (inner.length === 0) return `<${node.name}${attrs}/>`;
-  return `<${node.name}${attrs}>${inner}</${node.name}>`;
+  // A stack of nodes still to open and close tags still to write: a tree as
+  // deep as its author chose costs a loop, not the call stack.
+  const out: string[] = [];
+  const stack: (XmlNode | string)[] = [node];
+  while (stack.length > 0) {
+    const next = stack.pop()!;
+    if (typeof next === 'string') {
+      out.push(next);
+      continue;
+    }
+    const attrs = Object.entries(next.attrs)
+      .map(([key, value]) => ` ${key}="${escapeAttr(value)}"`)
+      .join('');
+    const text = next.text === undefined ? '' : escapeText(next.text);
+    if (text.length === 0 && next.children.length === 0) {
+      out.push(`<${next.name}${attrs}/>`);
+      continue;
+    }
+    out.push(`<${next.name}${attrs}>`, text);
+    stack.push(`</${next.name}>`);
+    for (let index = next.children.length - 1; index >= 0; index -= 1) {
+      stack.push(next.children[index]);
+    }
+  }
+  return out.join('');
 }
 
 /* ── Reading a tree ───────────────────────────────────────────────────── */

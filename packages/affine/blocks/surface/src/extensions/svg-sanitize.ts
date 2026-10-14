@@ -1,7 +1,9 @@
 import {
-  XML_NAMESPACE,
+  type XmlAttribute,
   type XmlElement,
   xmlElementOf,
+  XML_NAMESPACE,
+  XmlNamespaceScope,
   XMLNS_NAMESPACE,
 } from './xml-element.js';
 import type { XmlContent, XmlNode } from './xml-reader.js';
@@ -28,15 +30,16 @@ import type { XmlContent, XmlNode } from './xml-reader.js';
  *   namespaced ones a drawing needs (`xml:space`, the `xmlns` declarations).
  *   So no `on*` handler is ever on a list.
  * - A surviving value is then checked: no `javascript:`, `vbscript:` or
- *   `data:` anywhere, no `url(…)` that is not a same-document `#ref`, no CSS
- *   expression, binding or import, and no backslash (a CSS escape is how the
- *   first three hide).
+ *   `data:` anywhere, no `url(…)` that is not a same-document `#ref`, no
+ *   `image-set(…)` (whose bare strings are URLs), no CSS expression, binding
+ *   or import, and no backslash (a CSS escape is how the first three hide).
  * - `href` / `xlink:href` keep only a same-document `#ref`, except on
  *   `<image>`, which also keeps an inline PNG, JPEG, GIF or WebP. No external
  *   resource survives, so nothing a file names is ever fetched.
  * - A `<style>` sheet that fails the value check is removed whole.
  * - Nothing nested deeper than {@link MAX_SVG_DEPTH} comes through, because
- *   the walks after this one recurse.
+ *   the walks after this one recurse. The cut happens during the walk: what
+ *   lies below it, or below a removed element, is never resolved or copied.
  *
  * It reports what it took, by kind, and the sketch turns that into its notes.
  */
@@ -111,7 +114,7 @@ export function isSafeSvgValue(value: string): boolean {
   const folded = value.replaceAll(/[\u0000- \u007f-\u009f]/g, '').toLowerCase();
   if (folded.includes('\\')) return false;
   if (
-    /javascript:|vbscript:|data:|expression\(|@import|-moz-binding|behavior:/.test(
+    /javascript:|vbscript:|data:|expression\(|@import|-moz-binding|behavior:|image-set\(/.test(
       folded
     )
   ) {
@@ -124,10 +127,7 @@ export function isSafeSvgValue(value: string): boolean {
   return true;
 }
 
-function isAllowedAttribute(
-  attr: XmlElement['attributes'][number],
-  element: string
-): boolean {
+function isAllowedAttribute(attr: XmlAttribute, element: string): boolean {
   if (attr.namespaceURI === XMLNS_NAMESPACE) return true;
   if (attr.namespaceURI === XML_NAMESPACE) return attr.localName === 'space';
   const isHref =
@@ -145,6 +145,20 @@ function isAllowedAttribute(
   const listed =
     ALLOWED_ATTRIBUTES.has(name) || /^(?:data|aria)-[\w.-]+$/.test(name);
   return listed && isSafeSvgValue(attr.value);
+}
+
+/** A sheet's own character data, which is all of it a sanitized `<style>` keeps. */
+function styleEntriesOf(node: XmlNode): XmlContent[] {
+  if (!node.content) {
+    return node.text === undefined ? [] : [{ kind: 'text', value: node.text }];
+  }
+  return node.content.filter(entry => 'kind' in entry && entry.kind === 'text');
+}
+
+function styleTextOf(node: XmlNode): string {
+  return styleEntriesOf(node)
+    .map(entry => ('kind' in entry && entry.kind === 'text' ? entry.value : ''))
+    .join('');
 }
 
 /** One thing the sanitizer took: an element (and its subtree) or an attribute. */
@@ -168,76 +182,92 @@ export function sanitizeSvgNode(source: XmlNode): {
 } {
   const report: SvgSanitizeReport = { removed: [], tooDeep: false };
 
-  const allowed = (element: XmlElement) => {
-    const name = element.localName.toLowerCase();
-    if (
-      element.namespaceURI !== SVG_NAMESPACE &&
-      element.namespaceURI !== null
-    ) {
-      return false;
-    }
-    if (element.namespaceURI === null && element.prefix !== null) return false;
+  const scope = new XmlNamespaceScope();
+
+  /** Entered in `scope` by the caller; exited by the caller too. */
+  const allowed = (node: XmlNode) => {
+    const name = node.local.toLowerCase();
+    const namespaceURI = scope.resolve(node.prefix);
+    if (namespaceURI !== SVG_NAMESPACE && namespaceURI !== null) return false;
+    if (namespaceURI === null && node.prefix !== '') return false;
     if (!ALLOWED_ELEMENTS.has(name)) return false;
-    return name !== 'style' || isSafeSvgValue(element.textContent);
+    return name !== 'style' || isSafeSvgValue(styleTextOf(node));
   };
 
-  const copy = (element: XmlElement): XmlNode => {
-    const name = element.localName.toLowerCase();
+  const copy = (node: XmlNode): XmlNode => {
+    const name = node.local.toLowerCase();
     const attrs: Record<string, string> = Object.create(null);
-    for (const attr of element.attributes) {
+    for (const attr of scope.attributesOf(node)) {
       if (isAllowedAttribute(attr, name)) attrs[attr.name] = attr.value;
       else report.removed.push({ attribute: attr.name });
     }
     return {
-      name: element.nodeName,
-      prefix: element.node.prefix,
-      local: element.localName,
+      name: node.name,
+      prefix: node.prefix,
+      local: node.local,
       attrs,
       children: [],
       content: [],
-      range: element.node.range,
+      range: node.range,
     };
   };
 
-  const raw = xmlElementOf(source);
-  if (!allowed(raw) || raw.localName.toLowerCase() !== 'svg') {
+  scope.enter(source);
+  if (!allowed(source) || source.local.toLowerCase() !== 'svg') {
     return { root: undefined, report };
   }
 
-  const clean = copy(raw);
-  const stack: { from: XmlElement; to: XmlNode; depth: number }[] = [
-    { from: raw, to: clean, depth: 0 },
-  ];
-  while (stack.length > 0) {
-    const { from, to, depth } = stack.pop()!;
+  // Depth-first with an exit step, so the namespace scope and the depth are
+  // those of the element being read, and the report is in document order.
+  const frameOf = (from: XmlNode, to: XmlNode) => {
+    const name = from.local.toLowerCase();
     // `<metadata>` is RDF and vendor bookkeeping the walk drops in silence;
-    // its content is not read, so it is not reported either.
-    if (from.localName.toLowerCase() === 'metadata') continue;
-    const pending: { from: XmlElement; to: XmlNode; depth: number }[] = [];
-    for (const entry of from.childNodes) {
-      if (!('localName' in entry)) {
-        // Character data stays (it is what a `<text>` says); a comment or an
-        // instruction renders nothing and is not carried.
-        if (entry.nodeType === 3) {
-          const text: XmlContent = { kind: 'text', value: entry.nodeValue };
-          to.content!.push(text);
-        }
-        continue;
-      }
-      if (depth + 1 > MAX_SVG_DEPTH) {
-        report.tooDeep = true;
-        continue;
-      }
-      if (!allowed(entry)) {
-        report.removed.push({ element: entry.nodeName });
-        continue;
-      }
-      const child = copy(entry);
-      to.children.push(child);
-      to.content!.push(child);
-      pending.push({ from: entry, to: child, depth: depth + 1 });
+    // its content is not read, so it is not reported either. A `<style>`
+    // keeps its own character data and nothing else: that is the text the
+    // value check read, and checking a subtree per nested sheet was quadratic.
+    const entries: XmlContent[] =
+      name === 'metadata'
+        ? []
+        : name === 'style'
+          ? styleEntriesOf(from)
+          : (from.content ?? from.children);
+    return { from, to, entries, index: 0 };
+  };
+  const clean = copy(source);
+  const stack = [frameOf(source, clean)];
+  while (stack.length > 0) {
+    const frame = stack[stack.length - 1];
+    if (frame.index >= frame.entries.length) {
+      scope.exit(frame.from);
+      stack.pop();
+      continue;
     }
-    stack.push(...pending.reverse());
+    const entry = frame.entries[frame.index];
+    frame.index += 1;
+    if ('kind' in entry) {
+      // Character data stays (it is what a `<text>` says); a comment or an
+      // instruction renders nothing and is not carried.
+      if (entry.kind === 'text') {
+        const text: XmlContent = { kind: 'text', value: entry.value };
+        frame.to.content!.push(text);
+      }
+      continue;
+    }
+    // `stack.length` is the depth of the element about to be entered.
+    if (stack.length > MAX_SVG_DEPTH) {
+      report.tooDeep = true;
+      continue;
+    }
+    scope.enter(entry);
+    if (!allowed(entry)) {
+      scope.exit(entry);
+      report.removed.push({ element: entry.name });
+      continue;
+    }
+    const child = copy(entry);
+    frame.to.children.push(child);
+    frame.to.content!.push(child);
+    stack.push(frameOf(entry, child));
   }
   return { root: xmlElementOf(clean), report };
 }
