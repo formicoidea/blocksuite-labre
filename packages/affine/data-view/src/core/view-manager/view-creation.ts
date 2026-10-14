@@ -50,9 +50,11 @@ export interface AddViewMenuContext {
   viewManager: ViewManager;
   /**
    * The bar's own "add a view of this preset": adds it with the preset's
-   * default data, selects it and traces `AddDatabaseView`. Returns its id.
+   * default data and its name resolved at the gesture, selects it and traces
+   * `DatabaseViewAdded` once, `source` (default `existing`) saying whether the
+   * gesture created the source the view reads. Returns its id.
    */
-  addView: (type: string) => string;
+  addView: (type: string, source?: 'existing' | 'new') => string;
 }
 
 /**

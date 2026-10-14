@@ -5,7 +5,11 @@ import {
   type DataSourcePickerService,
   translateKey,
 } from '@labre/affine-shared/services';
-import type { AddViewMenu, AddViewMenuContext } from '@labre/data-view';
+import {
+  type AddViewMenu,
+  type AddViewMenuContext,
+  viewDefaultName,
+} from '@labre/data-view';
 import { PlusIcon } from '@blocksuite/icons/lit';
 import { html } from 'lit';
 
@@ -130,7 +134,7 @@ export function databaseAddViewMenu(
       const presetsOn = (source: AddViewSource | undefined) =>
         dataSource.viewMetas.map(meta =>
           menu.action({
-            name: meta.model.defaultName,
+            name: viewDefaultName(meta, context.std),
             testId: 'database-add-view-preset',
             prefix: html`<uni-lit .uni=${meta.renderer.icon}></uni-lit>`,
             select: () => {
@@ -179,7 +183,13 @@ export function databaseAddViewMenu(
                   if (sourceId === undefined || dataSource.readonly$.peek()) {
                     return;
                   }
-                  addViewOnSource(context, dataSource, 'table', sourceId);
+                  addViewOnSource(
+                    context,
+                    dataSource,
+                    'table',
+                    sourceId,
+                    'new'
+                  );
                 })
                 .catch(error => {
                   console.error(error);

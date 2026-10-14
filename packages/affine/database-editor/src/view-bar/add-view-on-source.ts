@@ -4,7 +4,8 @@ import type { AddViewMenuContext, DataViewDataType } from '@labre/data-view';
 /**
  * Adds a view of preset `type` that reads `sourceId`, selects it and returns
  * its id (ADR 0035 §7, §8, B11). `sourceId` `undefined` stores none, the
- * reading of every view stored before 0.49.
+ * reading of every view stored before 0.49. `added` is what
+ * `DatabaseViewAdded` reports: `new` when the gesture created the source.
  *
  * A preset's default data is derived from the CURRENT view's source (the data
  * layer follows the current view, ADR 0035 amendment "B1, B2 and B15 as
@@ -18,10 +19,11 @@ export function addViewOnSource(
   context: AddViewMenuContext,
   dataSource: HostedDataSourceBase,
   type: string,
-  sourceId: string | undefined
+  sourceId: string | undefined,
+  added: 'existing' | 'new' = 'existing'
 ): string {
   const schemaBefore = dataSource.schema$.peek()?.id;
-  const id = context.addView(type);
+  const id = context.addView(type, added);
   // Never an own `sourceId: undefined` key: absent is the stored reading.
   const source: { sourceId?: string } =
     sourceId === undefined ? {} : { sourceId };

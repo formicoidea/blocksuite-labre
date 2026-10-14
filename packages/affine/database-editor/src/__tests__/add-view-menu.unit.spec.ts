@@ -199,6 +199,19 @@ describe('addViewOnSource', () => {
     expect(added && 'sourceId' in added).toBe(false);
     expect(spy).not.toHaveBeenCalled();
   });
+
+  test("asks the bar's addView once, saying whether the source is new (B17)", () => {
+    const { dataSource, context } = fakeSource([
+      { id: 'v1', name: 'All', mode: 'table', sourceId: 's1' },
+    ]);
+    const addView = vi.spyOn(context, 'addView');
+    addViewOnSource(context, dataSource, 'kanban', 's1');
+    addViewOnSource(context, dataSource, 'table', 's2', 'new');
+    expect(addView.mock.calls).toEqual([
+      ['kanban', 'existing'],
+      ['table', 'new'],
+    ]);
+  });
 });
 
 describe('the "+ view" menu registration', () => {

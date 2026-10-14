@@ -328,7 +328,7 @@ carries `fieldId`); the new events do not need it and leave it out.
 
 | Event                      | When                                                    | Required props                                                                     |
 | -------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `DatabaseViewAdded`        | a view is added from a gesture ("+ view", "Create …")   | `viewType`, `source` (`existing` \| `new`)                                         |
+| `DatabaseViewAdded`        | a view is added from a gesture (the views bar's "+")    | `viewType`, `source` (`existing` \| `new`)                                         |
 | `DatabaseViewTypeChanged`  | the user picks another layout for a view                | `fromViewType`, `toViewType`                                                       |
 | `CreateDatabaseFilter`     | a filter condition is added (historical name, kept)     | (view params only)                                                                 |
 | `DatabaseSortAdd` …        | a sort is added, changed, reordered, removed or cleared | `fieldType`, `orderType`, `orderIndex` (the historical `DatabaseSort*` series)     |

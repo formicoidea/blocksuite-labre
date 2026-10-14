@@ -11,7 +11,11 @@ import {
   RootBlockSchemaExtension,
 } from '@labre/affine-model';
 import { TranslationProvider } from '@labre/affine-shared/services';
-import { DataViewEventTraceKey, groupTraitKey } from '@labre/data-view';
+import {
+  type DataViewDataType,
+  DataViewEventTraceKey,
+  groupTraitKey,
+} from '@labre/data-view';
 import { propertyModelPresets } from '@labre/data-view/property-pure-presets';
 import { viewPresets } from '@labre/data-view/view-presets';
 import type { BlockStdScope } from '@labre/std';
@@ -29,6 +33,8 @@ import { describe, expect, test, vi } from 'vitest';
  * What it would have caught:
  * - a grouping gesture reported zero times (the grouping menus hold a trait,
  *   not a UI logic) or twice, or a gesture that changes nothing reported;
+ * - a layout change dropping the view's `sourceId` or `openIn`, which
+ *   `viewChangeType` rebuilds the data around (ADR 0035, B17 amendment);
  * - a view created in a French editor stored as "Table View", or a preset's
  *   English seed changed to translate it (a model default is never a
  *   translation, the creation site writes the resolved name).
@@ -161,5 +167,23 @@ describe('the name a new view is given', () => {
         /^com\.labre\.data-view\.view\.default-name\./
       );
     }
+  });
+});
+
+describe('a layout change', () => {
+  test("keeps the view's source and where its rows open", () => {
+    const { model } = createDatabase();
+    const source = new DatabaseBlockDataSource(model);
+    const viewId = source.viewManager.viewAdd('table');
+    source.viewDataUpdate<
+      DataViewDataType & { sourceId?: string; openIn?: string }
+    >(viewId, () => ({ sourceId: 'source-1', openIn: 'center' }));
+    source.viewManager.viewChangeType(viewId, 'kanban');
+    const view = model.props.views.find(v => v.id === viewId) as
+      | { mode: string; sourceId?: string; openIn?: string }
+      | undefined;
+    expect(view?.mode).toBe('kanban');
+    expect(view?.sourceId).toBe('source-1');
+    expect(view?.openIn).toBe('center');
   });
 });
