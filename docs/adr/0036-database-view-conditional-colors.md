@@ -160,13 +160,16 @@ picker component across the canvas and the databases.
   `selectOptionColorGrid`: the canvas swatch grid `<edgeless-color-panel>`
   (`@labre/affine-components/color-picker`), five columns, fed by
   `selectOptionColorPalettes` with the same ten `selectOptionColors` in the
-  same order. An option's menu and a rule's menu both read it.
+  same order. An option's menu, a rule's menu and the kanban group header's
+  option menu (`SelectGroupView`, whose colour names were English until
+  then) all read it.
 - Nothing stored changes. A swatch's value is `selectOptionColors[i].color`
   itself, the string the rows wrote; the rule colour whitelist
   (`colorRulePaint`) is untouched. The scheme handed to the grid is
   irrelevant to these values: they are CSS variable strings the page's theme
   resolves.
-- A swatch's label (its `aria-label`) is the colour's name through the
+- A swatch's label (its `aria-label` and its `title` tooltip, on the canvas
+  too) is the colour's name through the
   existing wordings, resolved by the menu's opener and handed to the grid as
   the `labelWording` fallback, since a popup has no `std`. The current colour
   is ringed. A pick closes the menu, as a row did; the rule menu then reopens
@@ -175,8 +178,15 @@ picker component across the canvas and the databases.
   as well as the `fill` attribute: `var(...)` in an SVG presentation
   attribute is resolved by Chromium (measured) but is not something every
   engine promises. A plain canvas colour paints exactly as before.
-- Lost, recorded: the rows were focusable menu items (arrow keys, Enter);
-  the grid's swatches take a pointer only, like the canvas's.
+- The grid is keyboard-operable, on the canvas too: a `radiogroup` of
+  `radio` swatches with one roving tab stop (the current colour, else the
+  first); the arrows move between swatches (up and down by `columns` when
+  the grid declares them, else by one), Enter or Space picks through the
+  same click a pointer sends, and a focused swatch shows a 2px ring in
+  `layer/insideBorder/primaryBorder`. A key the grid handles goes no further,
+  so the canvas does not also read it. The menu's own arrow navigation (a
+  virtual focus over its rows) does not enter the grid: Tab does.
 - Held by `data-view/src/__tests__/color-grid.unit.spec.ts`, the "picking a
-  rule's colour" block of `color-rules.unit.spec.ts`, and
-  `components/src/__tests__/color-button-paint.unit.spec.ts`.
+  rule's colour" block of `color-rules.unit.spec.ts`,
+  `components/src/__tests__/color-button-paint.unit.spec.ts` and
+  `components/src/__tests__/color-panel-keyboard.unit.spec.ts`.

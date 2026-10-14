@@ -33,7 +33,9 @@ import { propertyPresets } from '../property-presets/index.js';
  *   the former menu rows wrote (a resolved value, a palette key);
  * - a swatch labelled in English under a French host, or the current colour
  *   not ringed;
- * - a pick that leaves the menu open where the rows closed it.
+ * - a pick that leaves the menu open where the rows closed it;
+ * - the kanban group header's option menu keeping rows of its own, with
+ *   English names, or opening on a read-only view.
  */
 
 beforeAll(() => {
@@ -150,5 +152,59 @@ describe('the options colour grid', () => {
       { id: 'a', value: 'Alpha', color: selectOptionColors[6]!.color },
     ]);
     expect(document.querySelector('edgeless-color-panel')).toBeNull();
+  });
+});
+
+describe('the kanban group header', () => {
+  async function header(readonly: boolean) {
+    const updateData = vi.fn();
+    const options = [
+      { id: 'a', value: 'Alpha', color: selectOptionColors[2]!.color },
+      { id: 'b', value: 'Bravo', color: selectOptionColors[5]!.color },
+    ];
+    const element = document.createElement(
+      'data-view-group-title-select-view'
+    ) as HTMLElement & {
+      group: unknown;
+      readonly: boolean;
+      updateComplete: Promise<unknown>;
+    };
+    element.group = {
+      value: 'a',
+      rows: [],
+      property: { data$: signal({ options }) },
+      manager: { updateData },
+    };
+    element.readonly = readonly;
+    document.body.append(element);
+    await element.updateComplete;
+    element
+      .querySelector<HTMLElement>('.data-view-group-title-select-view')!
+      .click();
+    await frame();
+    return { updateData };
+  }
+
+  it("picks an option's colour from the grid, named, writing the chip string", async () => {
+    const { updateData } = await header(false);
+    const swatches = await swatchesOf(document.body);
+    expect(swatches.map(swatch => swatch.label)).toEqual(
+      selectOptionColors.map(item => item.name)
+    );
+    expect(swatches.findIndex(swatch => swatch.active)).toBe(2);
+    swatches[7]!.click();
+    expect(updateData).toHaveBeenCalledTimes(1);
+    expect(updateData.mock.calls[0]?.[0]).toEqual({
+      options: [
+        { id: 'a', value: 'Alpha', color: selectOptionColors[7]!.color },
+        { id: 'b', value: 'Bravo', color: selectOptionColors[5]!.color },
+      ],
+    });
+  });
+
+  it('opens nothing on a read-only view', async () => {
+    const { updateData } = await header(true);
+    expect(document.querySelector('edgeless-color-panel')).toBeNull();
+    expect(updateData).not.toHaveBeenCalled();
   });
 });
