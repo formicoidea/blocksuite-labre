@@ -316,6 +316,75 @@ creates nothing and belongs to no framework. It is enumerated in
 `telemetry` and report the same gesture twice. No ids cross: neither the
 document id nor the anchored block/element ids.
 
+## Databases (ADR 0035 §12, B17)
+
+What a database view's user does, reported by the library where it can see
+it. Every event carries the database block's `blockId` (added by the block's
+tracer) and, for a view-level event, the view's `viewId` and `viewType`. **Ids
+and closed vocabularies only**: never a value, a title, a property or view
+name, an option or a filter operand, and never a row id, which on a hosted
+source is a document id. A property id is opaque (the historical sort series
+carries `fieldId`); the new events do not need it and leave it out.
+
+| Event                      | When                                                    | Required props                                                                     |
+| -------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `DatabaseViewAdded`        | a view is added from a gesture ("+ view", "Create …")   | `viewType`, `source` (`existing` \| `new`)                                         |
+| `DatabaseViewTypeChanged`  | the user picks another layout for a view                | `fromViewType`, `toViewType`                                                       |
+| `CreateDatabaseFilter`     | a filter condition is added (historical name, kept)     | (view params only)                                                                 |
+| `DatabaseSortAdd` …        | a sort is added, changed, reordered, removed or cleared | `fieldType`, `orderType`, `orderIndex` (the historical `DatabaseSort*` series)     |
+| `DatabaseGroupChanged`     | a view is grouped, regrained or ungrouped               | `groupBy` (the group-by config name, `none` when removed), `propertyType?`         |
+| `DatabaseRowOpened`        | a row is opened from any preset                         | `mode` (`side` \| `center` \| `full`), `newTab`, `rowKind` (`document` \| `block`) |
+| `DatabaseValuesLoadFailed` | a hosted source's values could not be loaded            | `retryable`                                                                        |
+
+- **One emission point each.** `DatabaseViewAdded` is emitted by the creating
+  gesture, never by `viewAdd` (a database created with its first view reports
+  `BlockCreated` only; a programmatic view reports nothing). `source` is
+  `existing` for a view on a source the database already reads (its own
+  included) and `new` when the gesture created the source with it (the
+  bundle's "+ view, with a new source", B12). `DatabaseRowOpened` leaves
+  `DataViewRootUILogic.openDetailPanel`, which every preset's open button,
+  card and row go through, gallery and list included: `mode` is what the
+  view's stored `openIn` asks for (absent reads `side`, a block-backed row is
+  always `side`, a Ctrl/Cmd-click is `full` with `newTab: true`), not what the
+  host drew. `DatabaseGroupChanged` leaves `GroupTrait` (`changeGroup`,
+  `changeGroupMode`), which every grouping menu calls, through the source's
+  `DataViewEventTraceKey`. `DatabaseValuesLoadFailed` is a health event, like
+  `DocumentDamaged`: once per failure of a source (its `since`), not per
+  banner drawn.
+- **A gesture that changes nothing emits nothing**: re-picking the current
+  layout, the current grouping or grain, removing a grouping that is not
+  there.
+- **Commands.** No database gesture is a registered command today, so these
+  are emitted from the data-view's `eventTrace`. A database action that
+  becomes a command (the host-panels verbs of B10) reports through
+  `runCommand` and stops emitting from its body, so a gesture still reports
+  once (ADR 0008).
+- **Retired.** `AddDatabaseView` is no longer emitted (since 0.49:
+  `DatabaseViewAdded` carries the source choice); `CreateDatabaseView`,
+  `ChangeDatabaseLayout` and `CreateDatabaseGroup` were never emitted. The
+  four stay in `TelemetryEventMap`, deprecated.
+
+### The boundary with the host's `base.*`
+
+A Labre **base** is the host's object (a document kind with members, rights,
+a parent and rows that are pages, labre ADR-0046); the library only knows
+`affine:database` blocks and their sources, and says `database`, never
+`base`. So:
+
+- **The library emits** the `Database*` events above, for what happens inside
+  a mounted database view, inline or full page, whatever backs its source.
+- **The host emits** `base.*` for what only it observes: a base created (the
+  `feature-base-create` entry, the "Turn into a base" action), a source added
+  or removed outside a view, a row page created, moved into or out of a base,
+  values written through its store, membership and sharing. It joins the two
+  namespaces through ids it owns (which block is a base's descriptor), never
+  by asking the library for a document id.
+- **One gesture, one event.** When the library reports a gesture, the host
+  does not re-report it from its seam: a row opened through
+  `DatabaseOpenRowExtension.open(req)` is already `DatabaseRowOpened`, a view
+  added through the bundle's view bar is already `DatabaseViewAdded`. The
+  host's `base.*` event for the same moment would count it twice.
+
 ## Legacy events
 
 The historical AFFiNE events (`CanvasElementAdded`, `DocCreated`, slash menu,

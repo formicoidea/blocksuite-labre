@@ -295,6 +295,10 @@ export const popViewOptions = (
                     if (!id || meta.type === view.type) {
                       return;
                     }
+                    dataViewLogic.eventTrace('DatabaseViewTypeChanged', {
+                      fromViewType: view.type,
+                      toViewType: meta.type,
+                    });
                     view.manager.viewChangeType(id, meta.type);
                     dataViewLogic.clearSelection();
                   },

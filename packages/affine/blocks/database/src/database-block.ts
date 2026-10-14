@@ -12,7 +12,9 @@ import { EDGELESS_TOP_CONTENTEDITABLE_SELECTOR } from '@labre/affine-shared/cons
 import {
   BlockCommentManager,
   CommentProviderIdentifier,
+  type DatabaseAllEvents,
   DocModeProvider,
+  type EventTraceFn,
   NotificationProvider,
   type TelemetryEventMap,
   TelemetryProvider,
@@ -25,6 +27,7 @@ import {
   createUniComponentFromWebComponent,
   type DataSourceBase,
   DataViewRootUILogic,
+  DataViewEventTraceKey,
   type DataViewSelection,
   type DataViewUILogicBase,
   type DataViewWidget,
@@ -165,9 +168,26 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
   // fresh one bound to the new source.
   private _sourceVersion = 0;
 
+  /**
+   * Every database event leaves here, with the block's id and nothing about
+   * its rows (telemetry README, "Databases"): the root's `eventTrace`, and
+   * the source's `DataViewEventTraceKey` for code that holds only a view.
+   */
+  private readonly traceDatabaseEvent: EventTraceFn<DatabaseAllEvents> = (
+    key,
+    params
+  ) => {
+    const telemetryService = this.std.getOptional(TelemetryProvider);
+    telemetryService?.track(key, {
+      ...(params as TelemetryEventMap[typeof key]),
+      blockId: this.blockId,
+    });
+  };
+
   private _buildDataSource(): DataSourceBase {
     const initFn = (dataSource: DataSourceBase) => {
       dataSource.serviceSet(EditorHostKey, this.host);
+      dataSource.serviceSet(DataViewEventTraceKey, this.traceDatabaseEvent);
       // `{ database: false }` takes view creation away, never the views.
       if (!this.std.getOptional(DatabaseViewCreationIdentifier)) {
         dataSource.serviceSet(ViewCreationOffKey, true);
@@ -280,6 +300,7 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
           <affine-database-values-banner
             .dataSource="${this.dataSource}"
             .std="${this.std}"
+            .trace="${this.traceDatabaseEvent}"
           ></affine-database-values-banner>
         </div>
       `;
@@ -542,13 +563,7 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
           }
         },
       },
-      eventTrace: (key, params) => {
-        const telemetryService = this.std.getOptional(TelemetryProvider);
-        telemetryService?.track(key, {
-          ...(params as TelemetryEventMap[typeof key]),
-          blockId: this.blockId,
-        });
-      },
+      eventTrace: this.traceDatabaseEvent,
       detailPanelConfig: {
         openDetailPanel: (target, data) => {
           const peekViewService = this.std.getOptional(PeekViewProvider);

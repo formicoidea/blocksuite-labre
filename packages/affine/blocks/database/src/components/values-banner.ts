@@ -1,5 +1,9 @@
 import { RESOURCE_STATUS_RETRY } from '@labre/affine-components/translations';
-import { translateKey } from '@labre/affine-shared/services';
+import {
+  type DatabaseAllEvents,
+  type EventTraceFn,
+  translateKey,
+} from '@labre/affine-shared/services';
 import {
   type DataSourceHydration,
   valuesBannerOf,
@@ -24,6 +28,8 @@ import {
  * `retryValues`). It reads the source's `valuesState$` and writes nothing; a
  * source that says nothing about hydration never shows it.
  */
+const reportedFailures = new WeakMap<DataSourceHydration, number>();
+
 export class DatabaseValuesBanner extends SignalWatcher(
   WithDisposable(ShadowlessElement)
 ) {
@@ -62,6 +68,10 @@ export class DatabaseValuesBanner extends SignalWatcher(
   @property({ attribute: false })
   accessor std!: BlockStdScope;
 
+  /** Where `DatabaseValuesLoadFailed` goes (the block's tracer); absent, nowhere. */
+  @property({ attribute: false })
+  accessor trace: EventTraceFn<DatabaseAllEvents> | undefined = undefined;
+
   /** Re-evaluated when the 3 s mark passes; never toggled. */
   private readonly _now$ = signal(Date.now());
 
@@ -77,6 +87,7 @@ export class DatabaseValuesBanner extends SignalWatcher(
         const state = valuesStateOf(this.dataSource);
         clear();
         this._now$.value = Date.now();
+        if (state.status === 'error') this.reportFailure(state.since);
         if (state.status !== 'loading') return;
         const wait = state.since + VALUES_SLOW_AFTER_MS - Date.now();
         if (wait <= 0) return;
@@ -86,6 +97,19 @@ export class DatabaseValuesBanner extends SignalWatcher(
       })
     );
     this.disposables.add(clear);
+  }
+
+  /**
+   * Once per failure of a source (its `since`), not per banner: a block
+   * re-rendered, or two views of one source, report it once.
+   */
+  private reportFailure(since: number) {
+    const source = this.dataSource;
+    if (reportedFailures.get(source) === since) return;
+    reportedFailures.set(source, since);
+    this.trace?.('DatabaseValuesLoadFailed', {
+      retryable: !!source.retryValues,
+    });
   }
 
   private readonly _retry = () => {

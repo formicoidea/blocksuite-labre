@@ -7,6 +7,7 @@ export * from './filter/index.js';
 export * from './group-by';
 export * from './logical/index.js';
 export * from './property/index.js';
+export * from './telemetry.js';
 export type { DataViewSelection } from './types.js';
 export * from './types.js';
 export * from './utils/index.js';

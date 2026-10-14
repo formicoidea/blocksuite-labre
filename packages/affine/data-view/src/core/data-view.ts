@@ -22,6 +22,7 @@ import { html } from 'lit/static-html.js';
 
 import { dataViewCommonStyle } from './common/css-variable.js';
 import type { DataSource } from './data-source/index.js';
+import { rowOpenParams } from './telemetry.js';
 import type { DataViewSelection } from './types.js';
 import { renderUniLit } from './utils/uni-component/index.js';
 import type { DataViewUILogicBase } from './view/data-view-base.js';
@@ -151,14 +152,25 @@ export class DataViewRootUILogic {
     this.currentView$.value?.focusFirstCell();
   };
 
+  /**
+   * Every row open of every preset goes through here, so `DatabaseRowOpened`
+   * is reported once, here (B17). `newTab` is a Ctrl/Cmd-click (ADR 0035
+   * §9a); the event says which mode the view asked for, never the row.
+   */
   openDetailPanel = (ops: {
     view: SingleView;
     rowId: string;
+    newTab?: boolean;
     onClose?: () => void;
   }) => {
     const openDetailPanel = this.config.detailPanelConfig.openDetailPanel;
     const target = this.dataViewRenderer;
     if (openDetailPanel && target) {
+      this.config.eventTrace('DatabaseRowOpened', {
+        ...rowOpenParams(this.dataSource, ops.view.id, ops.newTab === true),
+        viewId: ops.view.id,
+        viewType: ops.view.type,
+      });
       openDetailPanel(target, {
         view: ops.view,
         rowId: ops.rowId,
@@ -210,6 +222,7 @@ export class DataViewRootUI extends SignalWatcher(
   openDetailPanel = (ops: {
     view: SingleView;
     rowId: string;
+    newTab?: boolean;
     onClose?: () => void;
   }) => {
     this.logic.openDetailPanel(ops);

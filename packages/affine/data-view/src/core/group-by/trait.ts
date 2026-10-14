@@ -11,6 +11,7 @@ import {
 
 import type { GroupBy, GroupProperty } from '../common/types.js';
 import type { TypeInstance } from '../logical/type.js';
+import { traceViewEvent } from '../telemetry.js';
 import { createTraitKey } from '../traits/key.js';
 import { computedLock } from '../utils/lock.js';
 import type { Property } from '../view-manager/property.js';
@@ -281,9 +282,16 @@ export class GroupTrait {
    * year — keeping the reading direction.
    */
   changeGroupMode(modeName: string) {
-    const propertyId = this.property$.value?.id;
+    const property = this.property$.value;
+    const propertyId = property?.id;
     if (!propertyId) {
       return;
+    }
+    if (this.groupBy$.value?.name !== modeName) {
+      traceViewEvent(this.view, 'DatabaseGroupChanged', {
+        groupBy: modeName,
+        propertyType: property.type$.value,
+      });
     }
     this.ops.groupBySet({
       type: 'groupBy',
@@ -341,6 +349,9 @@ export class GroupTrait {
 
   changeGroup(columnId: string | undefined) {
     if (columnId == null) {
+      if (this.groupBy$.value) {
+        traceViewEvent(this.view, 'DatabaseGroupChanged', { groupBy: 'none' });
+      }
       this.ops.groupBySet(undefined);
       return;
     }
@@ -357,6 +368,12 @@ export class GroupTrait {
       );
       if (groupBy) {
         groupBy.sort = { desc: !this.sortAsc$.value };
+      }
+      if (groupBy && columnId !== this.groupBy$.value?.columnId) {
+        traceViewEvent(this.view, 'DatabaseGroupChanged', {
+          groupBy: groupBy.name,
+          propertyType: column.type$.value,
+        });
       }
       this.ops.groupBySet(groupBy);
     }
