@@ -6,6 +6,7 @@ import { DataViewRootUI } from './data-view.js';
 import { RecordDetail } from './detail/detail.js';
 import { RecordField } from './detail/field.js';
 import { VariableRefView } from './expression/ref/ref-view.js';
+import { DataViewHiddenGroups } from './group-by/group-visibility.js';
 import { BooleanGroupView } from './group-by/renderer/boolean-group.js';
 import { DateGroupView } from './group-by/renderer/date-group.js';
 import { NumberGroupView } from './group-by/renderer/number-group.js';
@@ -31,6 +32,7 @@ export function coreEffects() {
   customElements.define('data-view-group-title-number-view', NumberGroupView);
   customElements.define('affine-lit-icon', AffineLitIcon);
   customElements.define('data-view-group-setting', GroupSetting);
+  customElements.define('dv-hidden-groups', DataViewHiddenGroups);
   customElements.define('affine-multi-tag-select', MultiTagSelect);
   customElements.define('data-view-group-title-boolean-view', BooleanGroupView);
   customElements.define('data-view-group-title-date-view', DateGroupView);

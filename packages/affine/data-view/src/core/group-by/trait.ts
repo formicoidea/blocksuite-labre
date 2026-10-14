@@ -16,6 +16,7 @@ import { computedLock } from '../utils/lock.js';
 import type { Property } from '../view-manager/property.js';
 import type { Row } from '../view-manager/row.js';
 import type { SingleView } from '../view-manager/single-view.js';
+import { groupCollapsed$, groupCollapsedSet } from './collapsed-state.js';
 import { compareDateKeys } from './compare-date-keys.js';
 import { defaultGroupBy } from './default.js';
 import { findGroupByConfigByName, getGroupByService } from './matcher.js';
@@ -226,6 +227,56 @@ export class GroupTrait {
     this.view.isLocked$
   );
 
+  /**
+   * The groups a view draws: every group but the ones its stored
+   * `groupProperties` hide (ADR 0035 §8, B8). `groupsDataList$` keeps them
+   * all, because a reorder or a card move writes an entry for every key and
+   * must not drop a hidden group's.
+   */
+  visibleGroups$ = computed(() => {
+    const groups = this.groupsDataList$.value;
+    const hidden = this.ops.groupHidden;
+    if (!groups || !hidden) return groups;
+    return groups.filter(group => !hidden(group.key));
+  });
+
+  /** The hidden groups, listed at the end of the view to be shown again. */
+  hiddenGroups$ = computed(() => {
+    const groups = this.groupsDataList$.value;
+    const hidden = this.ops.groupHidden;
+    if (!groups || !hidden) return [];
+    return groups.filter(group => hidden(group.key));
+  });
+
+  /** Whether the view stores hidden groups (every preset of 0.49 does). */
+  get groupsCanHide(): boolean {
+    return this.ops.groupHideSet != null;
+  }
+
+  /**
+   * Hide or show a group for everyone: a view setting, written to the view's
+   * `groupProperties` on the gesture, never when nothing changes.
+   */
+  groupHideSet(groupKey: string, hide: boolean) {
+    const set = this.ops.groupHideSet;
+    const groups = this.groupsDataList$.value;
+    if (!set || !groups || this.view.readonly$.value) return;
+    set(
+      groups.map(group => group.key),
+      groupKey,
+      hide
+    );
+  }
+
+  /** Whether a group is folded: personal, on this device, never stored. */
+  collapsed$(groupKey: string) {
+    return groupCollapsed$(this.view.id, groupKey);
+  }
+
+  collapsedSet(groupKey: string, collapsed: boolean) {
+    groupCollapsedSet(this.view.id, groupKey, collapsed);
+  }
+
   updateData = (data: NonNullable<unknown>) => {
     const property = this.property$.value;
     if (!property) {
@@ -258,6 +309,13 @@ export class GroupTrait {
         groupKeys: string[],
         groupKey: string,
         keys: string[]
+      ) => void;
+      /** Absent: the view hides no group (ops written before 0.49). */
+      groupHidden?: (groupKey: string) => boolean;
+      groupHideSet?: (
+        groupKeys: string[],
+        groupKey: string,
+        hide: boolean
       ) => void;
     }
   ) {

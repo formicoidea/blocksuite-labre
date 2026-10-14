@@ -4,11 +4,14 @@ import {
 } from '@labre/affine-shared/utils';
 import { computed } from '@preact/signals-core';
 
+import type { GroupBy, GroupProperty } from '../../core/common/types.js';
 import { evalFilter } from '../../core/filter/eval.js';
 import { generateDefaultValues } from '../../core/filter/generate-default-values.js';
 import { FilterTrait, filterTraitKey } from '../../core/filter/trait.js';
 import type { FilterGroup } from '../../core/filter/types.js';
 import { emptyFilterGroup } from '../../core/filter/utils.js';
+import { groupPropertiesOps } from '../../core/group-by/group-properties.js';
+import { GroupTrait, groupTraitKey } from '../../core/group-by/trait.js';
 import { fromJson } from '../../core/property/utils.js';
 import { SortManager, sortTraitKey } from '../../core/sort/manager.js';
 import type { Sort } from '../../core/sort/types.js';
@@ -34,6 +37,8 @@ export type FlatViewDataType<Mode extends string = string> = BasicViewDataType<
     columns: FlatViewColumn[];
     filter: FilterGroup;
     sort?: Sort;
+    groupBy?: GroupBy;
+    groupProperties?: GroupProperty[];
   }
 >;
 
@@ -60,7 +65,8 @@ export const flatViewDefaultData = (
  * The manager both ungrouped presets share, gallery and list (ADR 0035 §1,
  * B6 and B7): the table's per-view property order and visibility, filter and
  * sort, and its row creation from the filter's default values, without the
- * table's widths, statistics and groups. Grouping arrives with B8.
+ * table's widths and statistics. Grouping (B8) is the table's too: the same
+ * stored `groupBy` and `groupProperties`, the same trait and ops.
  */
 export abstract class FlatSingleView<
   ViewData extends FlatViewDataType = FlatViewDataType,
@@ -147,6 +153,25 @@ export abstract class FlatSingleView<
     })
   );
 
+  private readonly groupBy$ = computed(() => {
+    return this.data$.value?.groupBy;
+  });
+
+  groupTrait = this.traitSet(
+    groupTraitKey,
+    new GroupTrait(this.groupBy$, this, {
+      groupBySet: groupBy => {
+        this.dataUpdate(() => ({ groupBy }) as Partial<ViewData>);
+      },
+      ...groupPropertiesOps(
+        () => this.data$.value?.groupProperties ?? [],
+        groupProperties => {
+          this.dataUpdate(() => ({ groupProperties }) as Partial<ViewData>);
+        }
+      ),
+    })
+  );
+
   /** Every property's column entry, so a first hide stores the full order. */
   readonly columnsData$ = computed((): FlatViewColumn[] => {
     return this.propertiesRaw$.value.map(property => ({
@@ -173,11 +198,17 @@ export abstract class FlatSingleView<
     return new FlatProperty(this, propertyId);
   }
 
-  override rowAdd(insertPosition: InsertToPosition | number): string {
+  /** A row added from a group's "New page" takes that group's value. */
+  override rowAdd(
+    insertPosition: InsertToPosition | number,
+    groupKey?: string
+  ): string {
     const id = super.rowAdd(insertPosition);
+    if (!id) return id;
     const filter = this.filter$.value;
-    if (!id || filter.conditions.length === 0) return id;
-    const defaultValues = generateDefaultValues(filter, this.vars$.value);
+    const defaultValues = filter.conditions.length
+      ? generateDefaultValues(filter, this.vars$.value)
+      : {};
     Object.entries(defaultValues).forEach(([propertyId, jsonValue]) => {
       const property = this.propertyGetOrCreate(propertyId);
       const propertyMeta = property.meta$.value;
@@ -189,6 +220,8 @@ export abstract class FlatSingleView<
       });
       this.cellGetOrCreate(id, propertyId).valueSet(value);
     });
+    // After the filter's defaults, as in the table: the group clicked wins.
+    if (groupKey != null) this.groupTrait.addToGroup(id, groupKey);
     return id;
   }
 

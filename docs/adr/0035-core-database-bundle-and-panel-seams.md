@@ -542,6 +542,65 @@ data shape table and kanban already store (`columns[].hide`, `filter`,
   block source, no write on load; a hosted source with document rows) and
   `integration-test/src/__tests__/page/database-gallery-list.spec.ts`.
 
+### 2026-10-14: B8 as built (per-view settings, `openIn`, grouping on every layout)
+
+Records what B8 decided where §8 left it open. Not a red zone: no stored
+field is added. Grouping reuses the `groupBy` and `groupProperties` table and
+kanban have always stored (`groupProperties[].hide` was stored, always
+`false`, and read by nobody), `openIn` is the optional field §8 shipped on
+its own.
+
+- **Per view, already.** Hidden properties, their order and the sort were
+  per view in every preset (`columns[].hide` and its order, `sort`; B6 and
+  B7 for gallery and list); calculations are the table's column statistics,
+  per view in `columns[].statCalcType`. Gallery and list draw no
+  calculation: there is no column to put one under, and Notion offers none
+  in these layouts; their group headers count rows, as the table's and the
+  board's do.
+- **"Open pages in".** A view setting (side peek, center peek, full page)
+  in the view settings menu, offered only when the source says its rows are
+  documents (`rowsAreDocuments`): a block-backed row keeps the detail panel
+  whatever the view stores. `viewOpenInSet` writes on the pick alone, never
+  when it changes nothing (picking "Side peek" on a view with no `openIn`
+  leaves it absent), never on a read-only or fallback view. `viewOpenIn`
+  reads `side` for an absent or unknown value. Both live in
+  `data-view/src/core/view/open-in.ts`, exported. The row-open seam (B9)
+  reads the same field with its own `openInOf`; `database-seams.spec.ts`
+  holds the two together (a pick changes the `mode` the host's opener
+  receives). A layout switch keeps `openIn` and `sourceId`: the block's
+  `updateView` merges the converted data into the stored view.
+- **Grouping on every layout.** Gallery and list take the table's
+  `GroupTrait` with the table's ops, now one copy for the four presets
+  (`core/group-by/group-properties.ts`); a layout switch into a gallery or a
+  list keeps `groupBy`, as table and kanban kept it between them. A grouped
+  gallery or list draws each group under the table's group header (title,
+  count, "+" adding a row into the group, a menu); a row changes group by
+  its value, not by a drag.
+- **Hidden groups.** "Hide group" is in every group's menu and an eye per
+  group in the view's Group settings; it writes `groupProperties[].hide` for
+  everyone. `GroupTrait.groupsDataList$` keeps every group (a reorder or a
+  card move writes an entry for every key and must keep a hidden one's);
+  layouts draw `visibleGroups$` and end with `<dv-hidden-groups>`, which
+  lists `hiddenGroups$` with a "Show group" button (none on a read-only
+  view). The table's select-all skips hidden groups.
+- **Folded groups are personal.** `localStorage`, key
+  `labre:data-view:group-collapsed:<viewId>:<groupKey>`, only a folded group
+  has an entry; never the document, as the local hide of ADR 0031. Not a
+  host seam: it would be a row in the seams table forever for a device
+  ergonomic. The table used to keep its fold in `sessionStorage`
+  (`affine:table-group:*`), per tab; those entries are not read back. A
+  kanban column folds to its header.
+- **Not done.** The virtual table (`enable_table_virtual_scroll`, off by
+  default) hides hidden groups but neither lists them nor folds (a
+  `ponytail:` line); "Ungroup" and "Delete cards" stay table and board
+  entries of the group menu; the table's own literals ("Expand group",
+  "Collapse group") are left to the data-view wording pass, which can reuse
+  `com.labre.data-view.group.expand` and `.collapse`.
+- Held by `data-view/src/__tests__/grouping-views.unit.spec.ts`,
+  `table-group-collapse.unit.spec.ts`,
+  `all/src/__tests__/database/grouping-open-in.unit.spec.ts` and
+  `integration-test/src/__tests__/page/database-grouping.spec.ts`.
+
 ### 2026-10-14: the row-open, properties panel and data-source picker seams as built (B9, B10, B12), and the band's option writes
 
 Records what B9, B10 and B12 decided where §9a to §9c left it open. Not a red

@@ -351,7 +351,7 @@ export class TableHotkeysController implements ReactiveController {
             context.get('keyboardState').raw.preventDefault();
             this.selectionController.selection = TableViewRowSelection.create({
               rows:
-                this.logic.view.groupTrait.groupsDataList$.value?.flatMap(
+                this.logic.view.groupTrait.visibleGroups$.value?.flatMap(
                   group =>
                     group?.rows.map(row => ({
                       groupKey: group.key,

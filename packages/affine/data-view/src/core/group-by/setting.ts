@@ -6,17 +6,21 @@ import {
   type PopupTarget,
 } from '@labre/affine-components/context-menu';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
-import { DeleteIcon } from '@blocksuite/icons/lit';
+import { DeleteIcon, InvisibleIcon, ViewIcon } from '@blocksuite/icons/lit';
 import { ShadowlessElement } from '@labre/std';
 import { computed } from '@preact/signals-core';
-import { css, html, unsafeCSS } from 'lit';
+import { css, html, nothing, unsafeCSS } from 'lit';
 import { property, query } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 
+import {
+  DATA_VIEW_GROUP_HIDE,
+  DATA_VIEW_GROUP_SHOW,
+} from '../../translations.js';
 import { KanbanSingleView } from '../../view-presets/kanban/kanban-view-manager.js';
-import { TableSingleView } from '../../view-presets/table/table-view-manager.js';
 import { dataViewCssVariable } from '../common/css-variable.js';
 import { renderUniLit } from '../utils/uni-component/uni-component.js';
+import { englishWording, type Wording } from '../utils/wording.js';
 import { dragHandler } from '../utils/wc-dnd/dnd-context.js';
 import { defaultActivators } from '../utils/wc-dnd/sensors/index.js';
 import {
@@ -25,7 +29,7 @@ import {
 } from '../utils/wc-dnd/sort/sort-context.js';
 import { verticalListSortingStrategy } from '../utils/wc-dnd/sort/strategies/index.js';
 import { getGroupByService } from './matcher.js';
-import type { GroupTrait } from './trait.js';
+import type { Group, GroupTrait } from './trait.js';
 import type { GroupRenderProps } from './types.js';
 
 export class GroupSetting extends SignalWatcher(
@@ -61,10 +65,75 @@ export class GroupSetting extends SignalWatcher(
     .group-item:hover .group-item-drag-bar {
       background-color: #c0bfc1;
     }
+
+    .group-item-visibility {
+      display: flex;
+      flex-shrink: 0;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      margin-left: auto;
+      padding: 0;
+      border: none;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--affine-icon-color);
+      cursor: pointer;
+    }
+
+    .group-item-visibility svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .group-item-visibility:hover {
+      background-color: var(--affine-hover-color);
+    }
+
+    @media (pointer: coarse) {
+      .group-item {
+        align-items: center;
+        min-height: 44px;
+      }
+
+      .group-item-visibility {
+        width: 44px;
+        height: 44px;
+      }
+    }
   `;
 
   @property({ attribute: false })
   accessor groupTrait!: GroupTrait;
+
+  /** Resolved by the menu's opener: a popup renders outside the host. */
+  @property({ attribute: false })
+  accessor wording: Wording = englishWording;
+
+  /**
+   * The eye of a group (B8): hide it from the view for everyone, or show it
+   * again. A hidden group keeps its row here, in its place in the order.
+   */
+  private renderVisibility(group: Group) {
+    const trait = this.groupTrait;
+    if (!trait.groupsCanHide || trait.view.readonly$.value) return nothing;
+    const hidden = trait.hiddenGroups$.value.includes(group);
+    const label = this.wording(
+      hidden ? DATA_VIEW_GROUP_SHOW : DATA_VIEW_GROUP_HIDE
+    );
+    return html`<button
+      class="group-item-visibility"
+      data-testid="dv-group-visibility"
+      aria-label="${label}"
+      title="${label}"
+      aria-pressed="${hidden ? 'true' : 'false'}"
+      @pointerdown="${(event: PointerEvent) => event.stopPropagation()}"
+      @click="${() => trait.groupHideSet(group.key, !hidden)}"
+    >
+      ${hidden ? InvisibleIcon() : ViewIcon()}
+    </button>`;
+  }
 
   groups$ = computed(() => {
     return this.groupTrait.groupsDataList$.value;
@@ -162,6 +231,7 @@ export class GroupSetting extends SignalWatcher(
                   style="position:absolute;left: 0;top: 0;right: 0;bottom: 0;"
                 ></div>
               </div>
+              ${this.renderVisibility(group)}
             </div>`;
           }
         )}
@@ -324,7 +394,8 @@ export const popSelectGroupByProperty = (
 export const popGroupSetting = (
   target: PopupTarget,
   group: GroupTrait,
-  onBack: () => void
+  onBack: () => void,
+  wording?: Wording
 ) => {
   const view = group.view;
   const groupProperty = group.property$.value;
@@ -363,7 +434,7 @@ export const popGroupSetting = (
               options: selectGroupByProperty(group, {
                 onSelect: () => {
                   menuHandler.close();
-                  popGroupSetting(target, group, onBack);
+                  popGroupSetting(target, group, onBack, wording);
                 },
               }),
             }),
@@ -373,7 +444,7 @@ export const popGroupSetting = (
           items: group.isDateGroup$.value
             ? dateGroupSettingItems(group, () => {
                 menuHandler.close();
-                popGroupSetting(target, group, onBack);
+                popGroupSetting(target, group, onBack, wording);
               })
             : [],
         }),
@@ -387,6 +458,7 @@ export const popGroupSetting = (
                   html` <data-view-group-setting
                     @mouseenter="${() => menu.closeSubMenu()}"
                     .groupTrait="${group}"
+                    .wording="${wording ?? englishWording}"
                     .columnId="${groupProperty.id}"
                   ></data-view-group-setting>`,
               ],
@@ -397,7 +469,8 @@ export const popGroupSetting = (
               name: 'Remove grouping',
               prefix: DeleteIcon(),
               class: { 'delete-item': true },
-              hide: () => !(view instanceof TableSingleView),
+              // Every layout but the kanban, which is a grouping (B8).
+              hide: () => view instanceof KanbanSingleView,
               select: () => {
                 group.changeGroup(undefined);
               },

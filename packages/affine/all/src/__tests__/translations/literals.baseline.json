@@ -404,7 +404,6 @@
     ],
     "packages/affine/data-view/src/core/group-by/setting.ts": [
       "Day",
-      "Group",
       "Group By",
       "Group By",
       "Group by",
@@ -684,13 +683,6 @@
     ],
     "packages/affine/data-view/src/widget-presets/tools/presets/view-options/view-options.ts": [
       "${} shown",
-      "Delete",
-      "Duplicate",
-      "Filter",
-      "Group",
-      "Layout",
-      "Layout",
-      "Properties",
       "Show Vertical lines",
       "Show block icon",
       "Sort",

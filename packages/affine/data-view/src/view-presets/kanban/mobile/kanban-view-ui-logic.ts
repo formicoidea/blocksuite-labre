@@ -129,7 +129,7 @@ export class MobileKanbanViewUI extends DataViewUIBase<MobileKanbanViewUILogic> 
   }
 
   override render(): TemplateResult {
-    const groups = this.logic.groupManager.groupsDataList$.value;
+    const groups = this.logic.groupManager.visibleGroups$.value;
     if (!groups) {
       return html``;
     }
@@ -158,6 +158,10 @@ export class MobileKanbanViewUI extends DataViewUIBase<MobileKanbanViewUILogic> 
           }
         )}
         ${this.logic.renderAddGroup()}
+        <dv-hidden-groups
+          class="dv-kanban-hidden-groups"
+          .groupTrait="${this.logic.groupManager}"
+        ></dv-hidden-groups>
       </div>
     `;
   }

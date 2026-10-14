@@ -72,6 +72,58 @@ export const VIEWS_BAR_MOVE_RIGHT: ChromeWording = [
   'Move right',
 ];
 
+/* ── Grouping and row opening, per view (ADR 0035 §8, B8) ───────────── */
+
+/** A group's menu entry: a view setting, shared by everyone (PRD REQ-DB-16). */
+export const DATA_VIEW_GROUP_HIDE: ChromeWording = [
+  'com.labre.data-view.group.hide',
+  'Hide group',
+];
+
+/** A hidden group's button, in the list at the end of the view. */
+export const DATA_VIEW_GROUP_SHOW: ChromeWording = [
+  'com.labre.data-view.group.show',
+  'Show group',
+];
+
+/** The heading of the hidden groups, listed at the end of the view. */
+export const DATA_VIEW_HIDDEN_GROUPS: ChromeWording = [
+  'com.labre.data-view.group.hidden',
+  'Hidden groups',
+];
+
+/** A group's fold toggle: personal, kept on this device only. */
+export const DATA_VIEW_GROUP_COLLAPSE: ChromeWording = [
+  'com.labre.data-view.group.collapse',
+  'Collapse group',
+];
+
+export const DATA_VIEW_GROUP_EXPAND: ChromeWording = [
+  'com.labre.data-view.group.expand',
+  'Expand group',
+];
+
+/** The view setting naming where a row's page opens (`openIn`). */
+export const DATA_VIEW_OPEN_IN: ChromeWording = [
+  'com.labre.data-view.open-in',
+  'Open pages in',
+];
+
+export const DATA_VIEW_OPEN_IN_SIDE: ChromeWording = [
+  'com.labre.data-view.open-in.side',
+  'Side peek',
+];
+
+export const DATA_VIEW_OPEN_IN_CENTER: ChromeWording = [
+  'com.labre.data-view.open-in.center',
+  'Center peek',
+];
+
+export const DATA_VIEW_OPEN_IN_FULL: ChromeWording = [
+  'com.labre.data-view.open-in.full',
+  'Full page',
+];
+
 /** Walked by `PACKAGE_WORDINGS` in `packages/affine/all/src/translations.ts`. */
 export const DATA_VIEW_WORDINGS: readonly ChromeWording[] = [
   VIEW_SHOWN_AS_TABLE,
@@ -83,4 +135,13 @@ export const DATA_VIEW_WORDINGS: readonly ChromeWording[] = [
   VIEWS_BAR_EDIT_VIEW,
   VIEWS_BAR_MOVE_LEFT,
   VIEWS_BAR_MOVE_RIGHT,
+  DATA_VIEW_GROUP_HIDE,
+  DATA_VIEW_GROUP_SHOW,
+  DATA_VIEW_HIDDEN_GROUPS,
+  DATA_VIEW_GROUP_COLLAPSE,
+  DATA_VIEW_GROUP_EXPAND,
+  DATA_VIEW_OPEN_IN,
+  DATA_VIEW_OPEN_IN_SIDE,
+  DATA_VIEW_OPEN_IN_CENTER,
+  DATA_VIEW_OPEN_IN_FULL,
 ];

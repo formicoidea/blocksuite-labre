@@ -9,16 +9,24 @@ import {
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import {
   ArrowRightSmallIcon,
+  CenterPeekIcon,
   DeleteIcon,
   DuplicateIcon,
+  ExpandFullIcon,
   FilterIcon,
   GroupingIcon,
   InfoIcon,
   LayoutIcon,
   MoreHorizontalIcon,
+  OpenInNewIcon,
+  RightSidebarIcon,
   SortIcon,
 } from '@blocksuite/icons/lit';
-import { css, html } from 'lit';
+import type { DatabaseViewOpenIn } from '@labre/affine-model';
+import type { ChromeWording } from '@labre/affine-shared/services';
+import { type BlockStdScope, stdContext } from '@labre/std';
+import { consume } from '@lit/context';
+import { css, html, type TemplateResult } from 'lit';
 import { styleMap } from 'lit/directives/style-map.js';
 
 import { popPropertiesSetting } from '../../../../core/common/properties.js';
@@ -37,10 +45,26 @@ import {
 import { popCreateSort } from '../../../../core/sort/add-sort.js';
 import { sortTraitKey } from '../../../../core/sort/manager.js';
 import { createSortUtils } from '../../../../core/sort/utils.js';
+import {
+  englishWording,
+  type Wording,
+  wordingOf,
+} from '../../../../core/utils/wording.js';
+import {
+  rowsArePages,
+  viewOpenIn,
+  viewOpenInSet,
+} from '../../../../core/view/open-in.js';
 import { PropertiesPanelOpenerKey } from '../../../../core/view-manager/properties-panel-opener.js';
 import { WidgetBase } from '../../../../core/widget/widget-base.js';
 import { popFilterRoot } from '../../../quick-setting-bar/filter/root-panel-view.js';
 import { popSortRoot } from '../../../quick-setting-bar/sort/root-panel.js';
+import {
+  DATA_VIEW_OPEN_IN,
+  DATA_VIEW_OPEN_IN_CENTER,
+  DATA_VIEW_OPEN_IN_FULL,
+  DATA_VIEW_OPEN_IN_SIDE,
+} from '../../../../translations.js';
 
 const styles = css`
   .affine-database-toolbar-item.more-action {
@@ -68,13 +92,17 @@ const styles = css`
 export class DataViewHeaderToolsViewOptions extends WidgetBase {
   static override styles = styles;
 
+  /** Absent outside an editor host: the wordings read English. */
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
+
   clickMoreAction = (e: MouseEvent) => {
     e.stopPropagation();
     this.openMoreAction(popupTargetFromElement(e.currentTarget as HTMLElement));
   };
 
   openMoreAction = (target: PopupTarget) => {
-    popViewOptions(target, this.dataViewLogic);
+    popViewOptions(target, this.dataViewLogic, undefined, wordingOf(this.std));
   };
 
   override render() {
@@ -95,10 +123,58 @@ declare global {
     'data-view-header-tools-view-options': DataViewHeaderToolsViewOptions;
   }
 }
+/** The three places a row's page opens, in the stored order (ADR 0035 §8). */
+const OPEN_IN_CHOICES: readonly {
+  mode: DatabaseViewOpenIn;
+  wording: ChromeWording;
+  icon: () => TemplateResult;
+}[] = [
+  { mode: 'side', wording: DATA_VIEW_OPEN_IN_SIDE, icon: RightSidebarIcon },
+  { mode: 'center', wording: DATA_VIEW_OPEN_IN_CENTER, icon: CenterPeekIcon },
+  { mode: 'full', wording: DATA_VIEW_OPEN_IN_FULL, icon: ExpandFullIcon },
+];
+
+/**
+ * "Open pages in" (B8, PRD REQ-DB-11): a view setting shared by everyone,
+ * offered only where rows are pages, written on the pick alone.
+ */
+const openInMenu = (
+  dataViewLogic: DataViewUILogicBase,
+  reopen: () => void,
+  wording: Wording
+): MenuConfig | undefined => {
+  const view = dataViewLogic.view;
+  if (!rowsArePages(view.manager.dataSource)) return;
+  const current = viewOpenIn(view.manager.dataSource.viewDataGet(view.id));
+  const currentChoice = OPEN_IN_CHOICES.find(choice => choice.mode === current);
+  return menu.subMenu({
+    name: wording(DATA_VIEW_OPEN_IN),
+    prefix: OpenInNewIcon(),
+    postfix: html` <div style="font-size: 14px;">
+      ${currentChoice ? wording(currentChoice.wording) : ''}
+    </div>`,
+    options: {
+      title: { text: wording(DATA_VIEW_OPEN_IN) },
+      items: OPEN_IN_CHOICES.map(choice =>
+        menu.action({
+          name: wording(choice.wording),
+          prefix: choice.icon(),
+          isSelected: choice.mode === current,
+          select: () => {
+            viewOpenInSet(view, choice.mode);
+            reopen();
+          },
+        })
+      ),
+    },
+  });
+};
+
 const createSettingMenus = (
   target: PopupTarget,
   dataViewLogic: DataViewUILogicBase,
-  reopen: () => void
+  reopen: () => void,
+  wording: Wording
 ) => {
   const view = dataViewLogic.view;
   const settingItems: MenuConfig[] = [];
@@ -220,26 +296,30 @@ const createSettingMenus = (
           const groupBy = groupTrait.property$.value;
           if (!groupBy) {
             popSelectGroupByProperty(target, groupTrait, {
-              onSelect: () => popGroupSetting(target, groupTrait, reopen),
+              onSelect: () =>
+                popGroupSetting(target, groupTrait, reopen, wording),
               onBack: reopen,
             });
           } else {
-            popGroupSetting(target, groupTrait, reopen);
+            popGroupSetting(target, groupTrait, reopen, wording);
           }
         },
       })
     );
   }
+  const openIn = openInMenu(dataViewLogic, reopen, wording);
+  if (openIn) settingItems.push(openIn);
   return settingItems;
 };
 export const popViewOptions = (
   target: PopupTarget,
   dataViewLogic: DataViewUILogicBase,
-  onClose?: () => void
+  onClose?: () => void,
+  wording: Wording = englishWording
 ) => {
   const view = dataViewLogic.view;
   const reopen = () => {
-    popViewOptions(target, dataViewLogic);
+    popViewOptions(target, dataViewLogic, undefined, wording);
   };
   const items: MenuConfig[] = [];
   items.push(
@@ -356,7 +436,7 @@ export const popViewOptions = (
 
   items.push(
     menu.group({
-      items: createSettingMenus(target, dataViewLogic, reopen),
+      items: createSettingMenus(target, dataViewLogic, reopen, wording),
     })
   );
   items.push(
