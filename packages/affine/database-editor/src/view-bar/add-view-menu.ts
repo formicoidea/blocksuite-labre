@@ -99,6 +99,7 @@ export function databaseAddViewMenu(
         dataSource.viewMetas.map(meta =>
           menu.action({
             name: meta.model.defaultName,
+            testId: 'database-add-view-preset',
             prefix: html`<uni-lit .uni=${meta.renderer.icon}></uni-lit>`,
             select: () => {
               addViewOnSource(context, dataSource, meta.type, source?.sourceId);

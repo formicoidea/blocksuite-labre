@@ -169,4 +169,35 @@ describe('the views bar', () => {
     );
     expectLayout(mounted.block);
   });
+
+  test('"+" offers the four creatable layouts, gallery and list included', async () => {
+    const mounted = await mount();
+    cleanup = mounted.cleanup;
+    bar(mounted.block)
+      .querySelector<HTMLElement>('[data-testid="database-add-view-button"]')!
+      .click();
+    await wait(150);
+    const items = [
+      ...document.querySelectorAll<HTMLElement>(
+        '[data-testid="database-add-view-preset"]'
+      ),
+    ];
+    const names = items.map(item => item.textContent?.trim());
+    expect(names).toEqual([
+      'Table View',
+      'Kanban View',
+      'Gallery View',
+      'List View',
+    ]);
+
+    // Picking one closes the menu and adds that view, current and a tab.
+    items[3]!.click();
+    await wait(200);
+    const current = mounted.block.dataSource.viewManager.currentView$.value;
+    expect(current?.type).toBe('list');
+    expect(mounted.model.props.views).toHaveLength(VIEW_COUNT + 1);
+    expect(
+      document.querySelector('[data-testid="database-add-view-preset"]')
+    ).toBe(null);
+  });
 });

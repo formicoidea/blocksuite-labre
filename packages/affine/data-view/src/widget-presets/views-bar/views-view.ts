@@ -167,6 +167,7 @@ export class DataViewHeaderViews extends WidgetBase {
     return this.dataSource.viewMetas.map(v => {
       return menu.action({
         name: v.model.defaultName,
+        testId: 'database-add-view-preset',
         prefix: html`<uni-lit .uni=${v.renderer.icon}></uni-lit>`,
         select: () => {
           this.addView(v.type);
