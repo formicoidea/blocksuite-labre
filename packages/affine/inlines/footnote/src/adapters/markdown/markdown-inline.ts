@@ -3,6 +3,7 @@ import {
   FOOTNOTE_DEFINITION_PREFIX,
   MarkdownASTToDeltaExtension,
 } from '@labre/affine-shared/adapters';
+import { isSafeLinkUrl } from '@labre/affine-shared/utils';
 
 export const markdownFootnoteReferenceToDeltaMatcher =
   MarkdownASTToDeltaExtension({
@@ -34,6 +35,14 @@ export const markdownFootnoteReferenceToDeltaMatcher =
         const footnoteReference = FootNoteReferenceParamsSchema.parse(
           footnoteDefinitionJson
         );
+        // A refused scheme is not stored: the footnote keeps its label and
+        // loses the url, which the render side would refuse anyway.
+        if (
+          footnoteReference.url !== undefined &&
+          !isSafeLinkUrl(footnoteReference.url)
+        ) {
+          delete footnoteReference.url;
+        }
 
         // If the footnote reference is an attachment, and the file type is not set,
         // Try to infer the file type from the file name.

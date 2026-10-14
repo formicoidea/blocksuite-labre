@@ -2,6 +2,7 @@ import {
   type HtmlAST,
   HtmlASTToDeltaExtension,
 } from '@labre/affine-shared/adapters';
+import { isSafeLinkUrl } from '@labre/affine-shared/utils';
 import type { Element } from 'hast';
 
 const isElement = (ast: HtmlAST): ast is Element => {
@@ -56,7 +57,9 @@ export const htmlLinkElementToDeltaMatcher = HtmlASTToDeltaExtension({
     }
     return ast.children.flatMap(child =>
       context.toDelta(child, { trim: false }).map(delta => {
-        if (href.startsWith('http')) {
+        // http(s) only, and by the parsed scheme: a prefix test let
+        // `httpx:` or `http-javascript:` through.
+        if (/^https?:/i.test(href.trim()) && isSafeLinkUrl(href)) {
           delta.attributes = {
             ...delta.attributes,
             link: href,
