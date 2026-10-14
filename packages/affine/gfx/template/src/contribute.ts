@@ -73,7 +73,7 @@ function savedFrameTemplate(saved: SavedFrameTemplate): Template {
  * host is asked only when the panel shows the tab or searches across tabs.
  */
 function savedFramesCategory(std: BlockStdScope): TemplateCategory | null {
-  const service = std.getOptional(FrameTemplateProvider);
+  const service = std.provider.getOptional(FrameTemplateProvider);
   if (!service) return null;
   return {
     name: SAVED_FRAMES_CATEGORY,

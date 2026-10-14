@@ -49,11 +49,7 @@ function stdWith(
   const container = new Container();
   TemplateCategoryExtension(...categories).setup(container);
   if (host) FrameTemplateExtension(host).setup(container);
-  const provider = container.provider();
-  return {
-    provider,
-    getOptional: provider.getOptional.bind(provider),
-  } as unknown as BlockStdScope;
+  return { provider: container.provider() } as unknown as BlockStdScope;
 }
 
 describe('templateManagerFor', () => {
