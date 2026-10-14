@@ -13,6 +13,10 @@ import {
   DatabaseRenderViewExtension,
   DatabaseViewExtension,
 } from '@labre/affine-block-database/view';
+import {
+  DatabaseEditorToolingViewExtension,
+  DatabaseEditorViewExtension,
+} from '@labre/affine-database-editor/view';
 import { DividerViewExtension } from '@labre/affine-block-divider/view';
 import { EdgelessTextViewExtension } from '@labre/affine-block-edgeless-text/view';
 import { EmbedViewExtension } from '@labre/affine-block-embed/view';
@@ -223,6 +227,13 @@ export function getInternalViewExtensions(flags?: LabreFlags) {
     // `OPTIONAL_CAPABILITIES` for why it is not an `OPTIONAL_BLOCKS` entry.
     ...(isCapabilityEnabled(flags, 'ai-audit') ? [AuditViewExtension] : []),
     RootViewExtension,
+
+    // Database editing chrome, published apart as `core-database` (ADR 0035
+    // §4, `EDITOR_BUNDLES`): the always-on half and the creation half under
+    // core's own `database` key. Core's published copy loses these two lines;
+    // the playground and the integration suite keep them.
+    DatabaseEditorViewExtension,
+    ...(on('database') ? [DatabaseEditorToolingViewExtension] : []),
 
     // Inline
     InlineCommentViewExtension,

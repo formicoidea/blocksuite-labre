@@ -1,5 +1,6 @@
 import { computed, type ReadonlySignal } from '@preact/signals-core';
 
+import { type CellStatus, cellStatusOf } from '../data-source/hydration.js';
 import { fromJson } from '../property/utils.js';
 import type { Property } from './property.js';
 import type { Row } from './row.js';
@@ -20,6 +21,8 @@ export interface Cell<
   readonly value$: ReadonlySignal<RawValue | undefined>;
   readonly jsonValue$: ReadonlySignal<JsonValue | undefined>;
   readonly stringValue$: ReadonlySignal<string | undefined>;
+  /** Whether the value is the source's real one yet (ADR 0035 §9e). */
+  readonly status$?: ReadonlySignal<CellStatus>;
 
   valueSet(value: RawValue | undefined): void;
   jsonValueSet(value: JsonValue | undefined): void;
@@ -38,6 +41,10 @@ export class CellBase<
   meta$ = computed(() => {
     return this.dataSource.propertyMetaGet(this.property.type$.value);
   });
+
+  status$: ReadonlySignal<CellStatus> = computed(() =>
+    cellStatusOf(this.dataSource, this.rowId, this.propertyId)
+  );
 
   value$ = computed(() => {
     return this.view.manager.dataSource.cellValueGet(
@@ -102,7 +109,14 @@ export class CellBase<
     public rowId: string
   ) {}
 
+  // A value the source has not delivered (or failed to) is never written
+  // over: a paste, a fill or a kanban drop on such a cell does nothing.
+  private get _writable(): boolean {
+    return this.status$.peek() === 'ready';
+  }
+
   valueSet(value: RawValue | undefined): void {
+    if (!this._writable) return;
     this.view.manager.dataSource.cellValueChange(
       this.rowId,
       this.propertyId,
@@ -111,6 +125,7 @@ export class CellBase<
   }
 
   jsonValueSet(value: JsonValue | undefined): void {
+    if (!this._writable) return;
     const meta = this.property.meta$.value;
     if (!meta) {
       return;

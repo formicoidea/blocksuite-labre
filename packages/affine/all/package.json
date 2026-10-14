@@ -35,6 +35,7 @@
     "@labre/affine-block-surface-ref": "workspace:*",
     "@labre/affine-block-table": "workspace:*",
     "@labre/affine-components": "workspace:*",
+    "@labre/affine-database-editor": "workspace:*",
     "@labre/affine-ext-loader": "workspace:*",
     "@labre/affine-foundation": "workspace:*",
     "@labre/affine-fragment-adapter-panel": "workspace:*",

@@ -20,9 +20,17 @@ The source packages (`@labre/*`) are private and never on npm.
 | `@formicoidea/labre-ddd-shared`                                                           | pulled in by the DDD frameworks                                                                                     |
 | `@formicoidea/labre-framework-ddd-aggregate`                                              | DDD template categories (no senior button)                                                                          |
 | `@formicoidea/labre-framework-uml`                                                        | UML, nine diagram kinds: class, package, object, use case, component, deployment, activity, state machine, sequence |
+| `@formicoidea/labre-core-database`                                                        | the database editing chrome (view bar, full-page database, creation entries); optional                              |
 
 Every framework bundle depends on the **exact** core version it was built
 with. Install them together and bump them together.
+
+`@formicoidea/labre-core-database` follows the same rule. Without it, every
+stored database still renders and edits cell by cell from core; the bundle
+adds the ways to create and arrange (ADR 0035). Register its two extensions
+from `./descriptor` (`coreDatabaseBundle.extensions`): the one with no
+`flag` always, the other only when the `database` flag is on. Today both are
+empty: wiring them now means nothing to change when the chrome lands.
 
 ```bash
 pnpm add @formicoidea/labre-core @formicoidea/labre-framework-wardley
@@ -36,8 +44,9 @@ source reads like the library's:
 ```json
 {
   "dependencies": {
-    "@labre/affine": "npm:@formicoidea/labre-core@^0.39.0",
-    "@labre/framework-wardley": "npm:@formicoidea/labre-framework-wardley@^0.39.0"
+    "@labre/affine": "npm:@formicoidea/labre-core@^0.49.0",
+    "@labre/framework-wardley": "npm:@formicoidea/labre-framework-wardley@^0.49.0",
+    "@labre/core-database": "npm:@formicoidea/labre-core-database@^0.49.0"
   }
 }
 ```

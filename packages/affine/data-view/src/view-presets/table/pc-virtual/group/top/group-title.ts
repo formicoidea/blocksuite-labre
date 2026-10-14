@@ -7,6 +7,8 @@ import {
   type Group,
   type GroupRenderProps,
   renderUniLit,
+  VALUES_PENDING_MARK,
+  valuesReady,
 } from '../../../../../core';
 import {
   groupHeaderCount,
@@ -19,6 +21,9 @@ import {
 } from './group-title-css';
 
 function GroupHeaderCount(group: Group) {
+  if (!valuesReady(group.property.view.manager.dataSource)) {
+    return html` <div class="${groupHeaderCount}">${VALUES_PENDING_MARK}</div>`;
+  }
   const cards = group.rows;
   if (!cards.length) {
     return;
