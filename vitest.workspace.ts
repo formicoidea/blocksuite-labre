@@ -6,6 +6,7 @@
  */
 export default [
   'packages/affine/all/vitest.config.ts',
+  'packages/affine/blocks/attachment/vitest.config.ts',
   'packages/affine/blocks/bookmark/vitest.config.ts',
   'packages/affine/blocks/callout/vitest.config.ts',
   'packages/affine/blocks/code/vitest.config.ts',

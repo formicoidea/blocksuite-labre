@@ -1,14 +1,13 @@
-import { openSingleFileWith } from '@labre/affine-shared/utils';
 import { type SlashMenuConfig } from '@labre/affine-widget-slash-menu';
 import { ExportToPdfIcon, FileIcon } from '@blocksuite/icons/lit';
 
+import { pickAndAddSiblingAttachmentBlocks } from '../asset-picker.js';
 import {
   ATTACHMENT_SLASH_DESCRIPTION,
   ATTACHMENT_SLASH_NAME,
   ATTACHMENT_SLASH_PDF_DESCRIPTION,
   ATTACHMENT_SLASH_PDF_NAME,
 } from '../translations';
-import { addSiblingAttachmentBlocks } from '../utils';
 import { AttachmentTooltip, PDFTooltip } from './tooltips';
 
 export const attachmentSlashMenuConfig: SlashMenuConfig = {
@@ -29,15 +28,7 @@ export const attachmentSlashMenuConfig: SlashMenuConfig = {
       when: ({ model }) =>
         model.store.schema.flavourSchemaMap.has('affine:attachment'),
       action: ({ std, model }) => {
-        (async () => {
-          const file = await openSingleFileWith();
-          if (!file) return;
-
-          await addSiblingAttachmentBlocks(std, [file], model);
-          if (model.text?.length === 0) {
-            std.store.deleteBlock(model);
-          }
-        })().catch(console.error);
+        pickAndAddSiblingAttachmentBlocks(std, model).catch(console.error);
       },
     },
     {
@@ -55,15 +46,7 @@ export const attachmentSlashMenuConfig: SlashMenuConfig = {
       when: ({ model }) =>
         model.store.schema.flavourSchemaMap.has('affine:attachment'),
       action: ({ std, model }) => {
-        (async () => {
-          const file = await openSingleFileWith();
-          if (!file) return;
-
-          await addSiblingAttachmentBlocks(std, [file], model);
-          if (model.text?.length === 0) {
-            std.store.deleteBlock(model);
-          }
-        })().catch(console.error);
+        pickAndAddSiblingAttachmentBlocks(std, model).catch(console.error);
       },
     },
   ],
