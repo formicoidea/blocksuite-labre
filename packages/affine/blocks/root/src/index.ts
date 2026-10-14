@@ -1,6 +1,7 @@
 export * from './adapters';
 export * from './clipboard/index.js';
 export * from './commands/copy-link-commands.js';
+export * from './commands/page-export-commands.js';
 export * from './commands/pivot-commands.js';
 export * from './commands/reading-commands.js';
 export * from './commands/tag-commands.js';

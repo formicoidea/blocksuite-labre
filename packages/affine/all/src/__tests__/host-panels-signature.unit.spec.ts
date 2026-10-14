@@ -20,6 +20,7 @@ import {
   getCommandsForSurface,
   getRegisteredCommands,
   getViewActions,
+  getViewExports,
   isPropertyValueEmpty,
   type PropertiesPanelRequest,
   type PropertiesPanelService,
@@ -133,6 +134,18 @@ const viewMenuCalls = async (std: BlockStdScope) => {
 };
 
 /**
+ * The 0.50 exports of a view (ADR 0034, amendment of 2026-10-14): what a
+ * host's one "Export…" menu reads. Same rule: compiles or the build fails.
+ */
+const viewExportCalls = (std: BlockStdScope) => {
+  const exports: ViewAction[] = getViewExports(std);
+  const page: ViewAction[] = getViewExports(std, 'page');
+  const params: Record<string, string | number> | undefined =
+    exports[0]?.labelParams;
+  return { exports, page, params };
+};
+
+/**
  * The 0.47 calls of a host's properties panel (ADR 0035 §9b, §11), verbatim:
  * the sheet it hands the title band, the panel it opens on request, and the
  * chip text it reuses. Same rule as above: compiles or the build fails.
@@ -169,6 +182,8 @@ describe('@labre/affine/host-panels keeps its 0.46 shape', () => {
   test('the 0.46 calls typecheck, and no return gains null', () => {
     expectTypeOf(hostCalls).toBeFunction();
     expectTypeOf(viewMenuCalls).toBeFunction();
+    expectTypeOf(viewExportCalls).toBeFunction();
+    expectTypeOf(getViewExports).returns.toEqualTypeOf<ViewAction[]>();
     expectTypeOf(getViewActions).returns.toEqualTypeOf<ViewAction[]>();
     expectTypeOf(runViewAction).returns.toEqualTypeOf<
       Promise<ViewActionResult>

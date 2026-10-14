@@ -8,6 +8,7 @@ import {
   titleMiddleware,
 } from '@labre/affine-shared/adapters';
 import { CHROME_UNTITLED } from '@labre/affine-shared/services';
+import { safeFilename } from '@labre/affine-shared/utils';
 import { Container } from '@labre/global/di';
 import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
 import { sha } from '@labre/global/utils';
@@ -22,9 +23,10 @@ import { extMimeMap, Transformer } from '@labre/store';
 
 import type { AssetMap, ImportedFileEntry, PathBlobIdMap } from './type.js';
 import {
-  createAssetsArchive,
+  type DocExportFile,
   download,
   type FrontmatterValue,
+  packDocExport,
   parseMatter,
   Unzip,
 } from './utils.js';
@@ -195,47 +197,42 @@ type ImportMarkdownZipOptions = {
 };
 
 /**
- * Exports a doc to a Markdown file or a zip archive containing Markdown and assets.
- * @param doc The doc to export
- * @returns A Promise that resolves when the export is complete
+ * A doc as a Markdown file, or as a zip of the Markdown and its assets when it
+ * holds any — without downloading it. `null` when the doc has no snapshot.
  */
-async function exportDoc(doc: Store) {
+async function docFile(doc: Store): Promise<DocExportFile | null> {
   const provider = doc.provider;
   const job = doc.getTransformer([
     docLinkBaseURLMiddleware(doc.workspace.id),
     titleMiddleware(doc.workspace.meta.docMetas),
   ]);
   const snapshot = job.docToSnapshot(doc);
+  if (!snapshot) return null;
 
   const adapter = new MarkdownAdapter(job, provider);
-  if (!snapshot) {
-    return;
-  }
-
   const markdownResult = await adapter.fromDocSnapshot({
     snapshot,
     assets: job.assetsManager,
   });
-
-  let downloadBlob: Blob;
-  const docTitle = doc.meta?.title || resolveWording(provider, CHROME_UNTITLED);
-  let name: string;
-  const contentBlob = new Blob([markdownResult.file], { type: 'plain/text' });
-  if (markdownResult.assetsIds.length > 0) {
-    if (!job.assets) {
-      throw new BlockSuiteError(ErrorCode.ValueNotExists, 'No assets found');
-    }
-    const zip = await createAssetsArchive(job.assets, markdownResult.assetsIds);
-
-    await zip.file('index.md', contentBlob);
-
-    downloadBlob = await zip.generate();
-    name = `${docTitle}.zip`;
-  } else {
-    downloadBlob = contentBlob;
-    name = `${docTitle}.md`;
+  if (markdownResult.assetsIds.length > 0 && !job.assets) {
+    throw new BlockSuiteError(ErrorCode.ValueNotExists, 'No assets found');
   }
-  download(downloadBlob, name);
+  const untitled = resolveWording(provider, CHROME_UNTITLED);
+  return packDocExport(markdownResult, job.assets, {
+    name: safeFilename(doc.meta?.title, untitled),
+    extension: '.md',
+    mime: 'text/markdown;charset=utf-8',
+  });
+}
+
+/**
+ * Exports a doc to a Markdown file or a zip archive containing Markdown and assets.
+ * @param doc The doc to export
+ * @returns A Promise that resolves when the export is complete
+ */
+async function exportDoc(doc: Store) {
+  const file = await docFile(doc);
+  if (file) download(file.blob, file.filename);
 }
 
 /**
@@ -423,6 +420,7 @@ async function importMarkdownZip({
 }
 
 export const MarkdownTransformer = {
+  docFile,
   exportDoc,
   importMarkdownToBlock,
   importMarkdownToDoc,

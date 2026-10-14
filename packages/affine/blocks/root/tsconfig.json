@@ -32,6 +32,7 @@
     { "path": "../../rich-text" },
     { "path": "../../shared" },
     { "path": "../../widgets/edgeless-toolbar" },
+    { "path": "../../widgets/linked-doc" },
     { "path": "../../data-view" },
     { "path": "../../../framework/global" },
     { "path": "../../../framework/std" },

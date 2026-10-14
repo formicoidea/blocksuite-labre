@@ -193,3 +193,50 @@ registers panels at run time. The properties panel's host side lives in
 `@labre/affine/host-panels` gains the band's vocabulary
 (`formatPropertyValue`, `isPropertyValueEmpty` and the sheet and request
 types), held by `host-panels-signature.unit.spec.ts`.
+
+### 2026-10-14 — The exports of a view, one list
+
+Context: Labre v2 gathers every export behind ONE "Export…" entry of its
+header ⋯ ("This page"), listing the formats of the view shown (P4 default 6,
+contract C). The view actions held PNG, PDF and draw.io; the page view held
+none; Markdown and HTML lived in `MarkdownTransformer.exportDoc` /
+`HtmlTransformer.exportDoc`, which download; the whole-canvas SVG did not
+exist (`export.svg` takes one selected board); each framework's format was a
+selection command on its own toolbar.
+
+Decision, still in the façade's direction, no seam, nothing stored:
+
+1. **The `'export'` category is the mark.** `getViewExports(std, mode?)` is
+   the `'export'` section of `getViewActions`, in its order. Every entry
+   resolves `runViewAction` with `{ file }` and downloads nothing.
+2. **Three core commands** on `'view-menu'` and the palette:
+   `page.export.markdown` and `page.export.html` (root block, `scope:
+'global'`: the page's text is the same in both views; a zip with
+   `assets/` when it holds files), through the new
+   `MarkdownTransformer.docFile` / `HtmlTransformer.docFile`, which
+   `exportDoc` now calls; `canvas.export.svg` (surface, edgeless), the board
+   export's renderer replay over every element and painted block this viewer
+   sees (`renderCanvasSvg`). The canvas's DOM blocks (notes, frames, images,
+   embeds) have no SVG painter and are not drawn; the description says so.
+3. **The framework formats are DERIVED, not registered.** One view action
+   per `*:export` capability a framework registered,
+   `canvas.export.<framework>.<format>`, built at read time from the
+   interchange registry (`interchangeExportActions`), owner and `telemetry`
+   the framework's (element `canvas:export-<format>`), listed while the board
+   holds an element of that framework, writing the whole board (a semantic
+   export is a statement about the board; logic keeps what a viewer hid, ADR
+   0031). The flag decides through the registry: a gated framework registers
+   no capability. Owner `'canvas'` is skipped (`canvas.export.drawio` exists).
+   Registering them as commands was rejected: each would enter `getCommands`,
+   hence the catalogue every framework command must sit in, the
+   per-framework counts and the senior row's cap (C4 sits at 14 of 14), and
+   Settings › Shortcuts, for an entry only a host menu draws. One label key,
+   `com.labre.command.canvas.export.interchange` ("Export {{framework}} as
+   {{extension}}"), so `ViewAction` gains an optional `labelParams`.
+
+Consequences: a framework that declares an exporter is listed with no
+change in the façade or the host. The derived entries are absent from the
+palette and Settings › Shortcuts (each framework keeps its selection export
+there). The full page of a database lists the page exports too, in their own
+section. Guards: `view-actions.unit.spec.ts` (listing, flags, labels,
+telemetry, files), `canvas-svg-export.spec.ts` (integration).

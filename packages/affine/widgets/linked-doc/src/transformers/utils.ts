@@ -237,3 +237,33 @@ export function download(blob: Blob, name: string) {
   element.remove();
   URL.revokeObjectURL(fileURL);
 }
+
+/**
+ * A page exported to a file, before anything is done with it: the bytes and
+ * the name a download would give them. What `exportDoc` downloads, and what
+ * the `page.export.*` view actions hand to the host instead.
+ */
+export interface DocExportFile {
+  blob: Blob;
+  /** Sanitised, extension included: `Order to cash.md` or `Order to cash.zip`. */
+  filename: string;
+}
+
+/**
+ * Pack an adapter's output: the document alone when it references no asset,
+ * else a zip holding it as `index.<ext>` beside an `assets/` folder — the
+ * relative paths the Markdown and HTML adapters write for images point there.
+ */
+export async function packDocExport(
+  result: { file: string; assetsIds: string[] },
+  assets: Map<string, Blob>,
+  { name, extension, mime }: { name: string; extension: string; mime: string }
+): Promise<DocExportFile> {
+  const content = new Blob([result.file], { type: mime });
+  if (result.assetsIds.length === 0) {
+    return { blob: content, filename: `${name}${extension}` };
+  }
+  const zip = await createAssetsArchive(assets, result.assetsIds);
+  await zip.file(`index${extension}`, content);
+  return { blob: await zip.generate(), filename: `${name}.zip` };
+}
