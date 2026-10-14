@@ -27,66 +27,31 @@ function lcs(text1: string, text2: string) {
 
   return dp[text1.length][text2.length];
 }
-const extendTemplate: TemplateManager[] = [];
-
-const flat = <T>(arr: T[][]) =>
-  arr.reduce((pre, current) => {
-    if (current) {
-      return pre.concat(current);
-    }
-
-    return pre;
-  }, []);
-
+/**
+ * The catalogue every editor has, whatever is mounted: `Other`. A host or a
+ * framework adds a category per editor with `TemplateCategoryExtension`; the
+ * module-level `extend(...)` this object carried until 0.49 appended for every
+ * editor of the page and was never emptied.
+ */
 export const builtInTemplates = {
   list: async (category: string): Promise<Template[]> => {
-    const extendTemplates = flat(
-      await Promise.all(extendTemplate.map(manager => manager.list(category)))
-    );
-
-    // eslint-disable-next-line sonarjs/no-empty-collection
     const cate = templates.find(cate => cate.name === category);
-    if (!cate) return extendTemplates;
-
-    const result: Template[] =
-      cate.templates instanceof Function
-        ? await cate.templates()
-        : await Promise.all(Object.values(cate.templates));
-
-    return result.concat(extendTemplates);
+    if (!cate) return [];
+    return cate.templates instanceof Function
+      ? cate.templates()
+      : cate.templates;
   },
 
-  categories: async (): Promise<string[]> => {
-    const extendCates = flat(
-      await Promise.all(extendTemplate.map(manager => manager.categories()))
-    );
+  categories: async (): Promise<string[]> => templates.map(cate => cate.name),
 
-    // eslint-disable-next-line sonarjs/no-empty-collection
-    return templates.map(cate => cate.name).concat(extendCates);
-  },
-
-  categoryLabel: (name: string): string | undefined => {
-    // eslint-disable-next-line sonarjs/no-empty-collection
-    const own = templates.find(cate => cate.name === name)?.nameKey;
-    if (own) return own;
-    for (const manager of extendTemplate) {
-      const key = manager.categoryLabel?.(name);
-      if (key) return key;
-    }
-    return undefined;
-  },
+  categoryLabel: (name: string): string | undefined =>
+    templates.find(cate => cate.name === name)?.nameKey,
 
   search: async (keyword: string, cateName?: string): Promise<Template[]> => {
-    const candidates: Template[] = flat(
-      await Promise.all(
-        extendTemplate.map(manager => manager.search(keyword, cateName))
-      )
-    );
-
+    const candidates: Template[] = [];
     keyword = keyword.trim().toLocaleLowerCase();
 
     await Promise.all(
-      // eslint-disable-next-line sonarjs/no-empty-collection
       templates.map(async categroy => {
         if (cateName && cateName !== categroy.name) {
           return;
@@ -110,11 +75,5 @@ export const builtInTemplates = {
     );
 
     return candidates;
-  },
-
-  extend(manager: TemplateManager) {
-    if (extendTemplate.includes(manager)) return;
-
-    extendTemplate.push(manager);
   },
 } satisfies TemplateManager;

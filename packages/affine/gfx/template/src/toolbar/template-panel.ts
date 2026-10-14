@@ -204,9 +204,10 @@ export class EdgelessTemplatePanel extends WithDisposable(LitElement) {
   `;
 
   /**
-   * The GLOBAL half of the catalogue — `Other` and a host's `extend(...)`.
-   * Framework categories are not here: they live in the editor's DI container
-   * (`TemplateCategoryExtension`) and are read through {@link catalogue}.
+   * The GLOBAL half of the catalogue — `Other`. Framework and host
+   * categories are not here: they live in the editor's DI container
+   * (`TemplateCategoryExtension`, `FrameTemplateProvider`) and are read
+   * through {@link catalogue}.
    */
   static templates = builtInTemplates;
 
@@ -473,10 +474,10 @@ export class EdgelessTemplatePanel extends WithDisposable(LitElement) {
                   ></affine-template-loading>`
                 : repeat(
                     _templates,
-                    // The drag payload, `templateCache` and `isBeingDragged`
-                    // below all key off this SAME identity — never the
-                    // resolved (possibly translated) display name.
-                    template => template.name,
+                    // The template object itself: two saved frames may share
+                    // a title (`FrameTemplateProvider`), and a name key
+                    // would draw one tile for both.
+                    template => template,
                     template => {
                       const preview = template.preview
                         ? template.preview.startsWith('<svg')
@@ -489,8 +490,7 @@ export class EdgelessTemplatePanel extends WithDisposable(LitElement) {
                         : defaultPreview;
 
                       const isBeingDragged =
-                        draggingElement &&
-                        draggingElement.data.name === template.name;
+                        draggingElement && draggingElement.data === template;
                       // The one place that asks the host's catalogue for the
                       // WORDING above the identity — see `resolveTemplateName`.
                       const displayName = resolveTemplateName(

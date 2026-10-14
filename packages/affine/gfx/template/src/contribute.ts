@@ -1,9 +1,14 @@
+import {
+  FrameTemplateProvider,
+  type SavedFrameTemplate,
+} from '@labre/affine-shared/services';
 import { createIdentifier } from '@labre/global/di';
 import type { BlockStdScope } from '@labre/std';
 import type { ExtensionType } from '@labre/store';
 
 import { builtInTemplates } from './toolbar/builtin-templates.js';
 import { resolveTemplateName } from './toolbar/resolve-name.js';
+import { TEMPLATE_PANEL_CATEGORY_SAVED_FRAMES } from './translations.js';
 import type {
   Template,
   TemplateCategory,
@@ -47,6 +52,36 @@ export function TemplateCategoryExtension(
   };
 }
 
+/**
+ * The identity of the host's category of saved frames (the
+ * `FrameTemplateProvider` seam): the stable name the panel remembers and
+ * lists by. Its tab reads {@link TEMPLATE_PANEL_CATEGORY_SAVED_FRAMES}.
+ */
+export const SAVED_FRAMES_CATEGORY = 'Saved frames';
+
+function savedFrameTemplate(saved: SavedFrameTemplate): Template {
+  return {
+    name: saved.title,
+    type: 'template',
+    content: saved.snapshot,
+    preview: saved.preview,
+  };
+}
+
+/**
+ * The host's saved frames as a category, or none without a host. Lazy: the
+ * host is asked only when the panel shows the tab or searches across tabs.
+ */
+function savedFramesCategory(std: BlockStdScope): TemplateCategory | null {
+  const service = std.provider.getOptional(FrameTemplateProvider);
+  if (!service) return null;
+  return {
+    name: SAVED_FRAMES_CATEGORY,
+    nameKey: TEMPLATE_PANEL_CATEGORY_SAVED_FRAMES[0],
+    templates: async () => (await service.list()).map(savedFrameTemplate),
+  };
+}
+
 function loadCategory(category: TemplateCategory): Promise<Template[]> {
   return Array.isArray(category.templates)
     ? Promise.resolve(category.templates)
@@ -54,14 +89,20 @@ function loadCategory(category: TemplateCategory): Promise<Template[]> {
 }
 
 /**
- * The catalogue ONE editor sees: the built-in categories (`Other`, plus
- * whatever a host appended through `EdgelessTemplatePanel.templates.extend`)
- * followed by the categories the view extensions mounted on this `std`
- * registered — i.e. exactly the frameworks whose tooling is on.
+ * The catalogue ONE editor sees: the built-in `Other`, then the categories
+ * the view extensions mounted on this `std` registered — i.e. exactly the
+ * frameworks whose tooling is on — then the host's saved frames, when a
+ * host keeps them (`FrameTemplateProvider`).
+ *
+ * Per editor, from its DI container: the module-level `extend(...)` of
+ * 0.49 and earlier, which appended for every editor and was never emptied,
+ * is gone (a host category is a `TemplateCategoryExtension`).
  */
 export function templateManagerFor(std: BlockStdScope): TemplateManager {
+  const saved = savedFramesCategory(std);
   const contributed = [
     ...std.provider.getAll(TemplateCategoryIdentifier).values(),
+    ...(saved ? [saved] : []),
   ];
   const byName = (name: string) => contributed.find(c => c.name === name);
 
@@ -74,8 +115,6 @@ export function templateManagerFor(std: BlockStdScope): TemplateManager {
     ],
     categoryLabel: name =>
       byName(name)?.nameKey ?? builtInTemplates.categoryLabel(name),
-    // Both halves, so a host's `extend(...)` can still append to a framework's
-    // own category (the global half answers `[]` for a name it does not know).
     list: async name => {
       const category = byName(name);
       return [
