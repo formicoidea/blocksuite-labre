@@ -427,3 +427,46 @@ library reuses the components it already designed, never a second drawing.
 - Held by `data-view/src/__tests__/standalone-cell.unit.spec.ts`,
   `fragments/doc-title/src/__tests__/title-band.unit.spec.ts` (each type drawn
   and edited by its cell) and `integration-test/…/edgeless/title-band.spec.ts`.
+
+### 2026-10-14: the gallery and list presets (B6, B7)
+
+Records what B6 and B7 decided where §1 and §8 left it open. Not a red zone:
+the two modes are new values of the open `mode` field, with the per-view
+data shape table and kanban already store (`columns[].hide`, `filter`,
+`sort`); no model field changes.
+
+- **One manager, two drawings.** `FlatSingleView` (`data-view/src/view-presets/flat/`)
+  is the table's manager without widths, statistics and groups: per-view order
+  and visibility, the filter and sort traits, row creation from the filter's
+  default values. `GallerySingleView` and `ListSingleView` only name their
+  mode. Grouping arrives with B8 on the same manager.
+- **The table's cells, not a drawing of their own.** Every value is the cell
+  renderer a table cell mounts, hosted by `<dv-standalone-cell>` with the
+  view's real `Cell` (§11 amended 2026-10-13), so the tag menu, the date picker
+  and the inputs are the table's. The host gains an optional
+  `onEditingChange(editing)`, through which the presets lock the view's rows
+  while a value edits, as a table does.
+- **A row opens; a value edits.** The title is drawn read-only, so a click on
+  it, or anywhere on a card or a row outside its values, or on its open
+  button, opens the row through `root.openDetailPanel`, the path the table's
+  and the kanban's open buttons take (the row-open seam of §9a plugs in
+  there). A click on a value opens its editor. A read-only view lets every
+  click through to the row.
+- **Defaults.** A new gallery or list stores its title shown and every other
+  property hidden (Notion's default for both layouts); a property added from
+  the view is shown. A list draws no chip for an empty value. A layout switch
+  into a gallery or a list, or out of one into a table or a board, keeps the
+  filter and the sort (`flat-converts.ts`); calendar is a source only (§6).
+- **One UI for desktop and mobile.** No `mobileLogic`: the cards reflow, the
+  list wraps its chips under the title below 640px, touch screens get 44px
+  rows. Editing on mobile follows the block's `readonly$` (B5).
+- **Not done.** No card cover (a `ponytail:` line names the upgrade, a stored
+  `header.coverColumn` as the kanban's); no slash-menu entry creating a
+  gallery or a list (the views bar and the Layout switch create them); the
+  views' `defaultName` ("Gallery View", "List View") is a literal, as the
+  table's and the kanban's, until view creation resolves its name through the
+  seam.
+- Held by `data-view/src/__tests__/gallery-list-views.unit.spec.ts`,
+  `all/src/__tests__/database/gallery-list-views.unit.spec.ts` (the real
+  block source, no write on load) and
+  `integration-test/src/__tests__/page/database-gallery-list.spec.ts`.
