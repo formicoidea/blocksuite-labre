@@ -28,6 +28,7 @@
     { "path": "../blocks/surface-ref" },
     { "path": "../blocks/table" },
     { "path": "../components" },
+    { "path": "../database-editor" },
     { "path": "../ext-loader" },
     { "path": "../foundation" },
     { "path": "../fragments/adapter-panel" },
