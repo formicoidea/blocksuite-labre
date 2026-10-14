@@ -1,5 +1,137 @@
 # @labre/affine
 
+## 0.49.0
+
+### Minor Changes
+
+- 651ffab: New bundle `@formicoidea/labre-core-database`, built from the new package `@labre/affine-database-editor` (ADR 0035 §4). It will hold the database editing chrome (the view bar, the full-page database, the creation entries); in this release its two extensions are registered but empty, so a host can wire them now: `DatabaseEditorViewExtension` always, `DatabaseEditorToolingViewExtension` under the `database` flag, both listed in `coreDatabaseBundle.extensions` from its `./descriptor`. The bundle depends on the exact `@formicoidea/labre-core` version and nothing else; core never imports it, and keeps rendering and editing every stored database without it. The `database` flag stays in core's `flags.ts`. `@labre/affine/frameworks` gains the data-only list `EDITOR_BUNDLES`; the umbrella registers both extensions, so the playground and the integration suite run them. Every other published bundle is unchanged.
+- 651ffab: Two new database views, Gallery and List (ADR 0035 §1, issues B6 and B7), stored under the modes `gallery` and `list`. A gallery draws one card per row, its title then its visible properties; a list draws one line per row, the title on the left and the visible properties as chips on the right (an empty value draws no chip; on a narrow screen the chips wrap under the title). Both are the table transposed, not a new drawing: every value is drawn and edited by the cell renderer a table cell mounts, with the table's tag menu, date picker and inputs, and while a value edits the rows hold still as in a table. Per-view visibility is stored as table and kanban store it, `columns[].hide`, and the view's Properties popover hides, shows and reorders; filter, sort and search are the engine's. "New page" adds a row at the end and opens it; a click on a card or a row outside its values, or on its open button, opens the row through the detail panel, as the table and kanban open buttons do. A new gallery or list shows the title only, as in Notion; switching a table, a board or a calendar to a gallery or a list (and back to a table or a board) keeps the filter and the sort. One UI serves desktop and mobile (44px rows on a touch screen); editing on mobile follows the block's read-only state. A card has no cover image yet. Nothing is written when a stored gallery or list view is drawn. A value a hosted source has not delivered yet draws the table's skeleton and cannot be edited over; a source whose rows are documents titles its cards and rows through `titleOf`, as its table does.
+
+  The database block registers both presets and gives them the table's toolbar (filter, sort, search, view options, New). New key `com.labre.data-view.new-page` ("New page", `@labre/data-view/translations`); the open button reuses `com.labre.open-doc.open`. `<dv-standalone-cell>` gains an optional `onEditingChange(editing)` callback, told when its editor opens and closes.
+
+  A host older than this version meeting a stored `gallery` or `list` view takes its unknown-view path (ADR 0035 §6).
+
+- 651ffab: Grouping on every database layout, hidden and folded groups, and "Open pages in" (ADR 0035 §8, issue B8; no new stored field).
+
+  Gallery and List now group like Table and Board, from the same stored `groupBy` and `groupProperties`: View settings → Group picks the property, each group is drawn under the table's group header (name, count, "+" adding a page into the group, a menu), and switching a layout into a gallery or a list keeps the grouping. In every layout a group can be hidden for everyone ("Hide group" in its menu, or its eye in the Group settings), which writes the existing `groupProperties[].hide`; hidden groups are listed at the end of the view, each with "Show group" (no button on a read-only view). A group can also be folded: a personal state kept in `localStorage` on this device, never in the document; a Board column folds to its header. The table's fold moves from `sessionStorage` to that store, so a fold made before this version is not restored once.
+
+  View settings gain "Open pages in" (side peek, center peek, full page) when the source's rows are documents (`rowsAreDocuments`): it writes the view's optional `openIn` on the pick, never when the pick changes nothing and never on load; absent reads side peek. New exports in `@labre/data-view`: `viewOpenIn`, `viewOpenInSet`, `rowsArePages`, `DEFAULT_OPEN_IN`; `GroupTrait` gains `visibleGroups# @labre/affine, `hiddenGroups# @labre/affine, `groupsCanHide`, `groupHideSet`, `collapsed# @labre/affine and `collapsedSet`, and its ops two optional members, `groupHidden`and`groupHideSet`. `popViewOptions`and`popGroupSetting` take an optional wording resolver as their last argument.
+
+  New keys, English fallbacks in `@labre/data-view/translations`: `com.labre.data-view.group.hide` ("Hide group"), `.group.show` ("Show group"), `.group.hidden` ("Hidden groups"), `.group.collapse` ("Collapse group"), `.group.expand` ("Expand group"), `com.labre.data-view.open-in` ("Open pages in"), `.open-in.side` ("Side peek"), `.open-in.center` ("Center peek"), `.open-in.full` ("Full page").
+
+- 651ffab: Three database seams and option edits from the title band (ADR 0035 §9a to §9c, issues B9, B10, B12). `DatabaseOpenRowExtension({ open })` (`@labre/affine/blocks/database`) receives every row a view opens when the source's rows are documents, with the view's stored `openIn` as `mode` (`side` when absent) and `newTab` for a Ctrl/Cmd click; without it, rows open in the detail panel as before. The view options' "Properties" asks `PropertiesPanelExtension` with `scope: 'source'`, and the bundle's `affine-database-properties-panel` element draws the view's properties list for the host to mount where it wants; without the seam, the popover stays. `DataSourcePickerExtension({ list, createDatabase?, createSource? })` (`@labre/affine/shared/services`) adds a "Linked view of a database" slash entry that inserts a view of an existing source (`popDataSourcePicker` in `@labre/core-database/view`); registered without `createDatabase`, "Table View" and "Kanban View" leave the slash menu, with it they ask the host for a new database. `TitleBandService.setData?` and `TitleBandProperty.dataWritable?` let a select chip create and rename options. New keys: `com.labre.database.properties-panel.{title,show-all,hide-all,unavailable}`, `com.labre.database.picker.{title,new-source,new-database,empty}`, `com.labre.database.slash.linked-view` and `.linked-view.description`. Nothing is written on load.
+- 651ffab: Hosted database sources (ADR 0035 §7, §9e, §9f; issues B1, B2, B15).
+
+  `HostedDataSourceBase(hostModel, resolveSource?)` replaces `ExternalDataSourceBase(model)`, which stays exported as an alias with the same one-argument constructor: a 0.48 host source compiles and reads its rows unchanged. The views stay in `hostModel.props.views`; with `resolveSource`, each view reads the source its stored `sourceId` names (absent: the host's implicit source), `resolveSource` returning `{ schema, rows }` (the `affine:database` block that owns the source's schema and a signal of its row ids). The data layer answers for the current view's source (`source# @labre/affine, `schema# @labre/affine, `rows# @labre/affine); a source the host cannot resolve (`null`, `sourceMissing# @labre/affine) draws "Source not found" under the database title and its view bar instead of the view, never an error, and nothing is rewritten. Without `resolveSource`, every view reads the block itself, as in 0.48. `HostedSource` and `ResolveHostedSource` are exported.
+
+  Cell hydration, a widening of the data-source contract: `cellStatus(rowId, propertyId)` (`ready`, `pending`, `error`), `valuesState# @labre/affine (`{ status: 'loading' | 'ready' | 'error', since }`) and an optional `retryValues()`, `ready`by default on`DataSourceBase`, so the inline source and every 0.48 host source are unchanged. A pending cell draws a skeleton and a failed one stays empty in every table and kanban cell (desktop, virtual and mobile); neither mounts its editor, and `Cell.valueSet`/`jsonValueSet` do nothing on them, so no paste, fill or drop writes over an undelivered value. Group counts and column statistics show "…" until values are ready; a banner says values are still loading after 3 s (`com.labre.database.values.loading`) and, on error, that they could not be loaded (`com.labre.database.values.error`) with Retry (`com.labre.resource.status.retry`, the existing word) when the source offers `retryValues`. New exports in `@labre/data-view`: `CellStatus`, `ValuesState`, `ValuesStatus`, `DataSourceHydration`, `cellStatusOf`, `valuesStateOf`, `valuesReady`, `valuesBannerOf`, `VALUES_READY`, `VALUES_SLOW_AFTER_MS`, `VALUES_PENDING_MARK`, `renderCellStatus`; `Cell`gains an optional`status# @labre/affine; `DataViewRendererConfig` an optional `viewPlaceholder`.
+
+  Rows that are documents: a hosted source overrides `rowsAreDocuments`, answers titles from its own store with `titleOf(rowId)` and returns the new `hostedTitleColumnConfig` from `propertyMetaGet('title')`: the title column keeps its `title` type and fixed rules, its value is a plain string drawn and edited by the plain-text cell, and no row's document is loaded to draw it.
+
+  New keys, English fallbacks in `@labre/affine-block-database/translations` (`DATABASE_WORDINGS`, a new entry point): `com.labre.database.source-missing`, `com.labre.database.source-missing.hint`, `com.labre.database.values.loading` and `com.labre.database.values.error`.
+
+- 651ffab: Two additions for a host that backs a database with its own pages (ADR 0035, amendment of 2026-10-14). **The menu beside "New":** `DatabaseNewRowMenuExtension({ open })` (`@labre/affine/blocks/database`, identifier `DatabaseNewRowMenuProvider`) draws a chevron beside the "New" button of every view (table, kanban, gallery, list, calendar, inline and on the full page); a click calls `open({ anchor, blockId, viewId })` and the host draws its menu (its templates). "New" itself still adds a row through the source's `rowAdd`, where a host applies its default template. Absent or `null`, "New" is the single button it was. The chevron's label and tooltip is the new key `com.labre.database.new-record.more` ("Templates and options"); 44px on a coarse pointer. **A text column for hosted sources:** `hostedTextColumnConfig` (same entry) is data-view's plain-text preset (type `text`, a string value, the table's plain-text cell) offered by "+ property" and "Type" on a source that lists it in `getPropertyMetas` and answers it from `propertyMetaGet('text')`. The inline database does not offer it: its Text stays `rich-text`. No stored field changes.
+- 651ffab: The `database` and `data-view` flags gate tooling, never a stored database (ADR 0009 amendment of 2026-10-14, ADR 0035 §5). The database view is split the callout's way: the new `DatabaseRenderViewExtension` (block view, flavour, `effects()`, the title band's link cell) is always registered, and `DatabaseViewExtension` keeps only the creation tooling under `database`: the slash entries, "+ view" / "Create …" in the views bar (through the new `DatabaseViewCreationIdentifier`; absent, the block sets the new data-view key `ViewCreationOffKey` on its source), and the host's `configure` of the block's "⋯" menu, so `viewManager.configure(DatabaseViewExtension, …)` still compiles. Same split for the data-view block: `DataViewRenderViewExtension` always on, `DataViewViewExtension` gated and empty. With `{ database: false, 'data-view': false }` a stored database renders with all its views, its cells stay editable and its rows open. A host that registers these extensions by hand (rather than through `getInternalViewExtensions`) must add the render halves.
+
+### Patch Changes
+
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+  - @labre/affine-database-editor@0.49.0
+  - @labre/data-view@0.49.0
+  - @labre/affine-components@0.49.0
+  - @labre/affine-block-database@0.49.0
+  - @labre/affine-block-data-view@0.49.0
+  - @labre/affine-shared@0.49.0
+  - @labre/affine-fragment-doc-title@0.49.0
+  - @labre/affine-model@0.49.0
+  - @labre/affine-block-root@0.49.0
+  - @labre/affine-foundation@0.49.0
+  - @labre/affine-widget-keyboard-toolbar@0.49.0
+  - @labre/affine-block-attachment@0.49.0
+  - @labre/affine-block-bookmark@0.49.0
+  - @labre/affine-block-callout@0.49.0
+  - @labre/affine-block-code@0.49.0
+  - @labre/affine-block-divider@0.49.0
+  - @labre/affine-block-edgeless-text@0.49.0
+  - @labre/affine-block-embed@0.49.0
+  - @labre/affine-block-embed-doc@0.49.0
+  - @labre/affine-block-frame@0.49.0
+  - @labre/affine-block-image@0.49.0
+  - @labre/affine-block-latex@0.49.0
+  - @labre/affine-block-list@0.49.0
+  - @labre/affine-block-note@0.49.0
+  - @labre/affine-block-paragraph@0.49.0
+  - @labre/affine-block-surface@0.49.0
+  - @labre/affine-block-surface-ref@0.49.0
+  - @labre/affine-block-table@0.49.0
+  - @labre/affine-fragment-adapter-panel@0.49.0
+  - @labre/affine-fragment-frame-panel@0.49.0
+  - @labre/affine-fragment-outline@0.49.0
+  - @labre/affine-gfx-bpmn@0.49.0
+  - @labre/affine-gfx-brush@0.49.0
+  - @labre/affine-gfx-c4@0.49.0
+  - @labre/affine-gfx-connector@0.49.0
+  - @labre/affine-gfx-cynefin-estuarine@0.49.0
+  - @labre/affine-gfx-ddd-context-map@0.49.0
+  - @labre/affine-gfx-ddd-core-domain@0.49.0
+  - @labre/affine-gfx-ddd-event-storming@0.49.0
+  - @labre/affine-gfx-edgy@0.49.0
+  - @labre/affine-gfx-group@0.49.0
+  - @labre/affine-gfx-link@0.49.0
+  - @labre/affine-gfx-mindmap@0.49.0
+  - @labre/affine-gfx-note@0.49.0
+  - @labre/affine-gfx-pointer@0.49.0
+  - @labre/affine-gfx-shape@0.49.0
+  - @labre/affine-gfx-template@0.49.0
+  - @labre/affine-gfx-text@0.49.0
+  - @labre/affine-gfx-wardley@0.49.0
+  - @labre/affine-inline-footnote@0.49.0
+  - @labre/affine-inline-latex@0.49.0
+  - @labre/affine-inline-link@0.49.0
+  - @labre/affine-inline-preset@0.49.0
+  - @labre/affine-inline-reference@0.49.0
+  - @labre/affine-rich-text@0.49.0
+  - @labre/affine-widget-drag-handle@0.49.0
+  - @labre/affine-widget-edgeless-auto-connect@0.49.0
+  - @labre/affine-widget-edgeless-dragging-area@0.49.0
+  - @labre/affine-widget-edgeless-selected-rect@0.49.0
+  - @labre/affine-widget-edgeless-toolbar@0.49.0
+  - @labre/affine-widget-edgeless-zoom-toolbar@0.49.0
+  - @labre/affine-widget-frame-title@0.49.0
+  - @labre/affine-widget-linked-doc@0.49.0
+  - @labre/affine-widget-note-slicer@0.49.0
+  - @labre/affine-widget-remote-selection@0.49.0
+  - @labre/affine-widget-slash-menu@0.49.0
+  - @labre/affine-widget-toolbar@0.49.0
+  - @labre/affine-gfx-ddd-aggregate@0.49.0
+  - @labre/affine-gfx-ddd-shared@0.49.0
+  - @labre/affine-gfx-uml@0.49.0
+  - @labre/affine-inline-comment@0.49.0
+  - @labre/affine-inline-mention@0.49.0
+  - @labre/affine-widget-page-dragging-area@0.49.0
+  - @labre/affine-widget-scroll-anchoring@0.49.0
+  - @labre/affine-widget-viewport-overlay@0.49.0
+  - @labre/affine-ext-loader@0.49.0
+  - @labre/affine-gfx-turbo-renderer@0.49.0
+  - @labre/global@0.49.0
+  - @labre/std@0.49.0
+  - @labre/store@0.49.0
+  - @labre/sync@0.49.0
+
 ## 0.48.0
 
 ### Patch Changes

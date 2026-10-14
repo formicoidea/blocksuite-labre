@@ -1,5 +1,43 @@
 # @labre/affine-fragment-doc-title
 
+## 0.49.0
+
+### Minor Changes
+
+- 651ffab: Three database seams and option edits from the title band (ADR 0035 §9a to §9c, issues B9, B10, B12). `DatabaseOpenRowExtension({ open })` (`@labre/affine/blocks/database`) receives every row a view opens when the source's rows are documents, with the view's stored `openIn` as `mode` (`side` when absent) and `newTab` for a Ctrl/Cmd click; without it, rows open in the detail panel as before. The view options' "Properties" asks `PropertiesPanelExtension` with `scope: 'source'`, and the bundle's `affine-database-properties-panel` element draws the view's properties list for the host to mount where it wants; without the seam, the popover stays. `DataSourcePickerExtension({ list, createDatabase?, createSource? })` (`@labre/affine/shared/services`) adds a "Linked view of a database" slash entry that inserts a view of an existing source (`popDataSourcePicker` in `@labre/core-database/view`); registered without `createDatabase`, "Table View" and "Kanban View" leave the slash menu, with it they ask the host for a new database. `TitleBandService.setData?` and `TitleBandProperty.dataWritable?` let a select chip create and rename options. New keys: `com.labre.database.properties-panel.{title,show-all,hide-all,unavailable}`, `com.labre.database.picker.{title,new-source,new-database,empty}`, `com.labre.database.slash.linked-view` and `.linked-view.description`. Nothing is written on load.
+- 651ffab: A database's full page no longer writes into its note from the title, and the menu beside "New" can be offered per database (ADR 0035, amendment of 2026-10-14).
+
+  - `<doc-title>` gains `bodyBlockId` (optional). Set to the database block a full page shows, Enter and ArrowDown leave the title for that block (the first cell of a table or kanban view, through the new `DatabaseBlockComponent.focusFirstCell()`) and never add a paragraph to the note. Unset, the title behaves as before.
+  - `DatabaseNewRowMenuService` gains `canOpen?({ blockId, viewId })` (type `DatabaseNewRowMenuTarget`): the chevron beside "New" is drawn only where it returns `true`, asked at each render. Absent, every view keeps its chevron, as before.
+
+### Patch Changes
+
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+  - @labre/data-view@0.49.0
+  - @labre/affine-components@0.49.0
+  - @labre/affine-shared@0.49.0
+  - @labre/affine-model@0.49.0
+  - @labre/affine-block-surface@0.49.0
+  - @labre/affine-inline-reference@0.49.0
+  - @labre/affine-rich-text@0.49.0
+  - @labre/affine-ext-loader@0.49.0
+  - @labre/global@0.49.0
+  - @labre/std@0.49.0
+  - @labre/store@0.49.0
+
 ## 0.48.0
 
 ### Minor Changes

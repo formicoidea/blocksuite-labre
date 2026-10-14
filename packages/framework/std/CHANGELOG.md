@@ -1,5 +1,12 @@
 # @labre/std
 
+## 0.49.0
+
+### Patch Changes
+
+- @labre/global@0.49.0
+- @labre/store@0.49.0
+
 ## 0.48.0
 
 ### Patch Changes

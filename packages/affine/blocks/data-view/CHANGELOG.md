@@ -1,5 +1,39 @@
 # @labre/affine-block-data-view
 
+## 0.49.0
+
+### Minor Changes
+
+- 651ffab: The tag menu, the date picker and new views' names speak the host's catalogue (ADR 0023). The tag menu of select and multi-select cells (the inline table, the bases, the chips band) keys its placeholder, tip, "Create", "Delete" and colour names; the date picker keys "Today", "Clear" and its arrows, and draws its day and month names with `Intl` in the editor's locale (`en-US` by default, which reads as before). A cell resolves these while it is in the editor and hands them to the popup (`BaseCellRenderer.wording`, `TagManagerOptions.wording`, `DatePicker.wording` and `DatePicker.locale`, all optional). A new view is named in the author's language at the gesture: each preset declares `defaultNameKey` beside its unchanged English `defaultName`, `viewDefaultName(meta, std)` resolves it, and `ViewManager.viewAdd(type, name?)`, `databaseViewInitTemplate(…, std?)` and `initDatabaseBlock(…, std?)` write the resolved name; the views bar's `addView`, which `AddViewMenuContext` hands the bundle, resolves it for "on an existing source" and "with a new source" too, and the bundle's preset entries show the resolved name; the table's group fold button keys "Expand group" / "Collapse group" (`com.labre.data-view.group.{expand,collapse}`); without an editor the English seed is written, as in 0.48, and a stored name is never re-translated. `SelectOptionColor` gains an optional `wording`. New keys (FR in the host): `com.labre.data-view.view.default-name.{table,kanban,calendar,gallery,list}`, `com.labre.data-view.tag.{placeholder,tip,create,color.teal}`, `com.labre.date-picker.{today,clear,previous-month,next-month}`; the colours reuse `com.labre.palette-name.*` and "Delete" `com.labre.toolbar.delete`.
+- 651ffab: The `database` and `data-view` flags gate tooling, never a stored database (ADR 0009 amendment of 2026-10-14, ADR 0035 §5). The database view is split the callout's way: the new `DatabaseRenderViewExtension` (block view, flavour, `effects()`, the title band's link cell) is always registered, and `DatabaseViewExtension` keeps only the creation tooling under `database`: the slash entries, "+ view" / "Create …" in the views bar (through the new `DatabaseViewCreationIdentifier`; absent, the block sets the new data-view key `ViewCreationOffKey` on its source), and the host's `configure` of the block's "⋯" menu, so `viewManager.configure(DatabaseViewExtension, …)` still compiles. Same split for the data-view block: `DataViewRenderViewExtension` always on, `DataViewViewExtension` gated and empty. With `{ database: false, 'data-view': false }` a stored database renders with all its views, its cells stay editable and its rows open. A host that registers these extensions by hand (rather than through `getInternalViewExtensions`) must add the render halves.
+
+### Patch Changes
+
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+- Updated dependencies [651ffab]
+  - @labre/data-view@0.49.0
+  - @labre/affine-components@0.49.0
+  - @labre/affine-block-database@0.49.0
+  - @labre/affine-shared@0.49.0
+  - @labre/affine-model@0.49.0
+  - @labre/affine-widget-slash-menu@0.49.0
+  - @labre/affine-ext-loader@0.49.0
+  - @labre/global@0.49.0
+  - @labre/std@0.49.0
+  - @labre/store@0.49.0
+
 ## 0.48.0
 
 ### Patch Changes
