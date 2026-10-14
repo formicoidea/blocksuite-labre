@@ -646,7 +646,7 @@ module graph.** Concretely:
   then holds it like the others.
 
 Measured on the published bundles: the four framework entries together load
-124 modules, 348 KiB minified, and load under plain Node ESM and under Deno.
+126 modules, 330 KiB minified, and load under plain Node ESM and under Deno.
 A BPMN read of 2 000 chained tasks takes 235 ms under Node, with no DOM.
 
 Red zone: `scripts/build-bundles.mjs` gained one conditional line, copying a
