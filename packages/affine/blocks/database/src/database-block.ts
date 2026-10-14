@@ -32,6 +32,7 @@ import {
   type DataViewWidgetProps,
   defineUniComponent,
   ExternalGroupByConfigProvider,
+  NewRowMenuOpenerKey,
   PropertiesPanelOpenerKey,
   renderUniLit,
   type SingleView,
@@ -79,10 +80,12 @@ import { DatabaseSelection } from './selection.js';
 import {
   databaseOpenRowRequest,
   DatabaseDataSourceProvider,
+  DatabaseNewRowMenuProvider,
   DatabaseOpenRowProvider,
   openDatabasePropertiesPanel,
 } from './service/index.js';
 import {
+  DATABASE_NEW_RECORD_MORE,
   DATABASE_SOURCE_MISSING,
   DATABASE_SOURCE_MISSING_HINT,
 } from './translations.js';
@@ -180,6 +183,17 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
       if (this.std.getOptional(PropertiesPanelProvider)) {
         dataSource.serviceSet(PropertiesPanelOpenerKey, viewId => {
           openDatabasePropertiesPanel(this.std, this.model, viewId);
+        });
+      }
+      // With a host menu beside "New" (its templates), the header draws a
+      // chevron that opens it; the main part still adds a row (`rowAdd`).
+      const newRowMenu = this.std.getOptional(DatabaseNewRowMenuProvider);
+      if (newRowMenu) {
+        dataSource.serviceSet(NewRowMenuOpenerKey, {
+          label: () => translateKey(this.std, ...DATABASE_NEW_RECORD_MORE),
+          open: (anchor, viewId) => {
+            newRowMenu.open({ anchor, blockId: this.model.id, viewId });
+          },
         });
       }
       // `{ database: false }` takes view creation away, never the views.

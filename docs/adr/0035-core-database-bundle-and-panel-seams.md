@@ -722,3 +722,47 @@ host had to decide. No stored format changes; no new host seam.
   `integration-test/…/page/database-views-bar.spec.ts` (1024px and a
   narrow bar) and `integration-test/…/page/database-page-guards.spec.ts`
   (each destructive gesture replayed, a click below, a file drop).
+
+### 2026-10-14: the menu beside "New" and a text column for hosted sources
+
+Two host needs of labre's base templates (labre PRD REQ-DB-6, 14 and 15) and
+of its base columns. Not a red zone: no stored field, no new flag, no new
+bundle; one new seam, optional, whose absence keeps 0.48.
+
+- **The menu beside "New" is a seam in core.** `DatabaseNewRowMenuExtension(service | null)`
+  / `DatabaseNewRowMenuProvider` in `@labre/affine-block-database`, mirroring
+  `DatabaseOpenRowExtension` (§9a): the block reads it with
+  `std.getOptional` when it builds its source and hands data-view an opener
+  (`NewRowMenuOpenerKey`, `data-view/src/core/view-manager/`) with a
+  `serviceSet`, as `PropertiesPanelOpenerKey` (B10), so data-view imports no
+  seam. Core and not the bundle, because "New" is core's: the header tool
+  `data-view-header-tools-add-row` that every view draws (table, kanban,
+  gallery, list, calendar), the full page included, since it draws the same
+  block (B13). The request is `{ anchor, blockId, viewId }`; the host draws
+  the menu and does what it offers. The library knows no template.
+- **"New" is unchanged; the chevron is added.** Absent or `null`, the single
+  button of 0.48. Registered, the same button, then a chevron reusing
+  `data-view-component-button` as a split button, labelled by
+  `com.labre.database.new-record.more` ("Templates and options"), resolved
+  by the block so the wording lives with the seam's other words; 44px on a
+  coarse pointer. The main part still calls `addRow`, hence the source's
+  `rowAdd`: a host applies its default template there, so every way of
+  adding a row (the header, a group's "+", the gallery's "New page" card,
+  the table's last row) gets it without asking the menu. Only the header's
+  "New" draws a chevron; the in-view entries keep their one gesture.
+- **A text column for hosted sources, not for the inline database.**
+  data-view's plain-text preset (`text`, a string value) is `hide: true` and
+  was reachable from no public entry: a host whose values are plain JSON
+  (labre ADR-0046 §3, no `rich-text`) could offer no text column.
+  `hostedTextColumnConfig` (`blocks/database/src/properties/text/hosted.ts`,
+  exported beside `hostedTitleColumnConfig`) is that preset, shown, named as
+  the inline Text column. It is not added to `databaseBlockProperties`: the
+  inline database's Text is `rich-text`, two "Text" types would sit in its
+  menus, and a `text` column stored inline would be a type a 0.48 client
+  does not draw. A host lists it in `getPropertyMetas` and answers it from
+  `propertyMetaGet('text')`; the preset itself is left as it was.
+- Held by `blocks/database/src/__tests__/new-row-menu.unit.spec.ts`,
+  `hosted-data-source.unit.spec.ts` (a hosted text column),
+  `data-view/src/__tests__/new-row-menu.unit.spec.ts` and
+  `integration-test/…/page/database-seams.spec.ts` (without and with the
+  seam).

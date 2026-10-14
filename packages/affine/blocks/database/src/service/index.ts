@@ -30,3 +30,4 @@ export const DatabaseDataSourceProvider =
   );
 export * from './open-row.js';
 export * from './properties-panel.js';
+export * from './new-row-menu.js';

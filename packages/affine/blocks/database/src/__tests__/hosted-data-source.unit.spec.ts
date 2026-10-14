@@ -11,7 +11,11 @@ import {
   type HostedSource,
   type ResolveHostedSource,
 } from '../external-data-source.js';
-import { hostedTitleColumnConfig } from '../properties/index.js';
+import {
+  databaseBlockProperties,
+  hostedTextColumnConfig,
+  hostedTitleColumnConfig,
+} from '../properties/index.js';
 
 /**
  * `HostedDataSourceBase(hostModel, resolveSource)` (ADR 0035 §7, §9e, §9f;
@@ -29,7 +33,11 @@ import { hostedTitleColumnConfig } from '../properties/index.js';
  *   written on load);
  * - a hosted source drawing a skeleton without saying so (`ready` default);
  * - the title of a document row read through `getCellValue` (hence through
- *   the row's document) when the source answers it from its own store.
+ *   the row's document) when the source answers it from its own store;
+ * - a hosted source unable to offer a text column: data-view's plain-text
+ *   preset is `hide: true` and was not exported, so a host whose values are
+ *   plain JSON had no text type to list (ADR 0035 amendment of 2026-10-14);
+ *   or that column leaking into the inline database's own types.
  */
 
 type ViewData = { id: string; name: string; mode: string; sourceId?: string };
@@ -313,5 +321,45 @@ describe('HostedDataSourceBase: document rows and their titles (B15)', () => {
     expect(
       raw.fromString({ value: 'New', data: {}, dataSource: {} as never }).value
     ).toBe('New');
+  });
+});
+
+describe('a hosted text column', () => {
+  class TextOfferingSource extends FakeHostedSource {
+    protected override getPropertyMetas(): PropertyMetaConfig[] {
+      return [hostedTitleColumnConfig, hostedTextColumnConfig];
+    }
+  }
+
+  it('is offered by "+ property" on a source that lists it', () => {
+    const { model } = hostModel([]);
+    const source = new TextOfferingSource(model);
+    expect(source.propertyMetas$.value.map(m => m.type)).toEqual(['text']);
+  });
+
+  it("is data-view's plain-text preset, named as the inline Text", () => {
+    const preset = propertyPresets.textPropertyConfig;
+    expect(hostedTextColumnConfig.type).toBe('text');
+    expect(hostedTextColumnConfig.config.hide).toBe(false);
+    expect(hostedTextColumnConfig.config.name).toBe(
+      databaseBlockProperties.richTextColumnConfig.config.name
+    );
+    expect(hostedTextColumnConfig.renderer).toBe(preset.renderer);
+    expect(hostedTextColumnConfig.config.jsonValue).toBe(
+      preset.config.jsonValue
+    );
+    expect(hostedTextColumnConfig.create('Notes')).toEqual({
+      type: 'text',
+      name: 'Notes',
+      data: {},
+    });
+    // The shared preset is left as it was.
+    expect(preset.config.hide).toBe(true);
+  });
+
+  it("stays out of the inline database's own types", () => {
+    expect(
+      Object.values(databaseBlockProperties).map(config => config.type)
+    ).not.toContain('text');
   });
 });
