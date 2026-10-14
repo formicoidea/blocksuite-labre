@@ -49,6 +49,7 @@ import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { Text } from '@labre/store';
 import { TestWorkspace } from '@labre/store/test';
 import { effect, signal } from '@preact/signals-core';
+import * as Y from 'yjs';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { getInternalStoreExtensions } from '../extensions/store.js';
@@ -107,7 +108,18 @@ function mount({
 
   const { store, surface } = createBoard();
   const setTool = vi.fn();
-  const gfx = { surface$: signal(surface), tool: { setTool } };
+  // Enough of the controller for the draw.io export to read the canvas: no
+  // selection, every element, nothing hidden, the stored order.
+  const gfx = {
+    surface$: signal(surface),
+    tool: { setTool },
+    selection: { editing: false, selectedElements: [] },
+    get gfxElements() {
+      return surface.elementModels;
+    },
+    localVisibility: { isHidden: () => false },
+    layer: { compare: () => 0 },
+  };
   const services = new Map<unknown, unknown>();
   const std = {
     store,
@@ -151,16 +163,18 @@ afterEach(() => {
 });
 
 describe('the listing', () => {
-  test('the canvas: the grid, the two exports, Present — in that order', () => {
+  test('the canvas: the grid, the three exports, Present — in that order', () => {
     const { std } = mount();
     expect(ids(std)).toEqual([
       'canvas.grid.toggle',
       'canvas.export.png',
       'canvas.export.pdf',
+      'canvas.export.drawio',
       'canvas.present',
     ]);
     expect(getViewActions(std).map(a => a.section)).toEqual([
       'display',
+      'export',
       'export',
       'export',
       'present',
@@ -184,7 +198,7 @@ describe('the listing', () => {
     // std is rebuilt per switch): the canvas actions are not this view's.
     const { std } = mount();
     expect(getViewActions(std, 'page')).toEqual([]);
-    expect(getViewActions(std, 'edgeless')).toHaveLength(4);
+    expect(getViewActions(std, 'edgeless')).toHaveLength(5);
   });
 
   test('a flag removes a tool, never the rest: frame off, no Present', () => {
@@ -262,6 +276,29 @@ describe('running an entry', () => {
     expect(usage).toEqual(['canvas.export.png']);
   });
 
+  test('draw.io hands back the canvas as a file, and downloads nothing', async () => {
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL');
+    const { std, surface, usage } = mount();
+    // An empty canvas: no file, no error — the PDF's rule.
+    await expect(runViewAction(std, 'canvas.export.drawio')).resolves.toEqual(
+      {}
+    );
+
+    const id = surface.addElement({
+      type: 'shape',
+      xywh: '[10,20,100,50]',
+      text: new Y.Text('Order'),
+    });
+    const { file } = await runViewAction(std, 'canvas.export.drawio');
+    expect(file?.filename).toMatch(/\.drawio$/);
+    const text = await file!.blob.text();
+    expect(text).toContain(
+      `<object id="${id}" label="Order" labre-type="shape">`
+    );
+    expect(createObjectURL).not.toHaveBeenCalled();
+    expect(usage).toEqual(['canvas.export.drawio', 'canvas.export.drawio']);
+  });
+
   test('nothing to draw: no file, no error', async () => {
     const { std } = mount();
     await expect(runViewAction(std, 'canvas.export.pdf')).resolves.toEqual({});
@@ -313,8 +350,13 @@ describe('running an entry', () => {
 describe('with no host', () => {
   test('mounts, reads English, and lists only what it can run', async () => {
     const { std, usage } = mount({ host: false });
-    // No `ExportManager`: the exports do not apply, so they are not listed.
-    expect(ids(std)).toEqual(['canvas.grid.toggle', 'canvas.present']);
+    // No `ExportManager`: the picture exports do not apply, so they are not
+    // listed. draw.io needs no host — it writes what the canvas holds.
+    expect(ids(std)).toEqual([
+      'canvas.grid.toggle',
+      'canvas.export.drawio',
+      'canvas.present',
+    ]);
     expect(getViewActions(std)[0]!.label).toBe('Show or hide the grid');
     await expect(runViewAction(std, 'canvas.export.png')).resolves.toEqual({});
     expect(usage).toEqual([]);

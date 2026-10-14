@@ -18,6 +18,7 @@ export * from './embed-option-service';
 export * from './feature-flag-service';
 export * from './file-size-limit-service';
 export * from './font-loader';
+export * from './frame-template-service';
 export * from './generate-url-service';
 export * from './keymap-override-service';
 export * from './link-preview-service';

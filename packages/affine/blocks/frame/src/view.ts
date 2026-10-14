@@ -12,6 +12,7 @@ import { effects } from './effects';
 import { FrameBlockInteraction } from './frame-block';
 import { FrameHighlightManager } from './frame-highlight-manager';
 import { FrameBlockSpec } from './frame-spec';
+import { FrameTemplateWatcher } from './frame-template';
 import { FrameTool } from './frame-tool';
 import { frameToolbarExtension } from './frame-toolbar';
 import { edgelessNavigatorBgWidget } from './present/navigator-bg-widget';
@@ -37,6 +38,11 @@ export class FrameViewExtension extends ViewExtensionProvider {
       context.register(edgelessNavigatorBgWidget);
       context.register(EdgelessClipboardFrameConfig);
       context.register(FrameBlockInteraction);
+      // One watcher per editor a viewer edits in: a preview mounted on the
+      // same store would report the same deletion a second time.
+      if (!this.isPreview(context.scope)) {
+        context.register(FrameTemplateWatcher);
+      }
       // The presentation order's one write (ADR 0034). The frame panel also
       // mounts in page mode: it runs the imported descriptor, not this
       // registration, so its reorder works in both modes. `canvas.present`

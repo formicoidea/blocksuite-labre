@@ -3,6 +3,7 @@ export * from './canvas-grid';
 export * from './clipboard-config';
 export * from './crud-extension';
 export * from './dom-element-renderer';
+export * from './drawio-export';
 export * from './edit-props-middleware-builder';
 export * from './editor-anchored-panel';
 export * from './element-renderer';

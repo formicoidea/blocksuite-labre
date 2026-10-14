@@ -105,7 +105,7 @@ disabled }`:
 | Field      | What it is                                                                                                                                                                                                      |
 | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `id`       | the command id, stable: key your own icons, test ids and placement on it                                                                                                                                        |
-| `section`  | `'display'` (grid), `'export'` (PNG, PDF), `'present'`. Draw a separator between sections, or put one elsewhere (a header "Present" button). Open: a minor may add one                                          |
+| `section`  | `'display'` (grid), `'export'` (PNG, PDF, draw.io), `'present'`. Draw a separator between sections, or put one elsewhere (a header "Present" button). Open: a minor may add one                                 |
 | `label`    | resolved through your `TranslationExtension`, else English; `labelKey` is the `com.labre.*` key if you translate yourself                                                                                       |
 | `iconKey`  | `getCommandIcon(std, iconKey)` is the library's Lit icon; or map the key to your own set                                                                                                                        |
 | `checked`  | present on a toggle only (the grid): draw a check or a switch                                                                                                                                                   |
@@ -113,10 +113,10 @@ disabled }`:
 
 What you get today, in order:
 
-| Mode     | Actions                                                                                                                          |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| edgeless | `canvas.grid.toggle`, `canvas.grid.saveForEveryone` (after a toggle), `canvas.export.png`, `canvas.export.pdf`, `canvas.present` |
-| page     | none yet                                                                                                                         |
+| Mode     | Actions                                                                                                                                                  |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| edgeless | `canvas.grid.toggle`, `canvas.grid.saveForEveryone` (after a toggle), `canvas.export.png`, `canvas.export.pdf`, `canvas.export.drawio`, `canvas.present` |
+| page     | none yet                                                                                                                                                 |
 
 **Follow it.** The list reads signals (the grid, its source, the document's
 read-only state): call `getViewActions` inside an `effect` (or a `computed`)
@@ -141,6 +141,14 @@ applies, runs nothing.
 your own mode toggle (you own its state and the persisted mode), then run
 `canvas.present` on the new `std` once the canvas has mounted. Labre waits
 100 ms, as the library's frame panel does ([Timing](#timing)).
+
+**draw.io** (`canvas.export.drawio`) writes the selection when there is one,
+the whole canvas otherwise, as one uncompressed draw.io page: a generic
+rendering with roles as `labre-role` attributes, best effort and no round
+trip (ADR 0019, amendment of 2026-10-14). It needs no host service, so it is
+listed even where the PNG is not. It is also the interchange capability
+`canvas:drawio:export`: a menu that lists one entry per `*:export`
+capability skips that one, or shows draw.io twice.
 
 **Flags.** A flag removes tooling, never an entry a document needs:
 `frame: false` registers no `canvas.present`, so it is not listed. The grid
