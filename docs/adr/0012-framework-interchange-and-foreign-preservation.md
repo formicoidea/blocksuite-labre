@@ -592,6 +592,55 @@ import — and it must not drag DI-only types into its signature. `exportBpmnXml
 and `bpmnBoardOf` already satisfy this; every new capability must, and it is
 cheap to check.
 
+#### Amendment 2026-10-14 — "pure" means no DOM and no editor graph; the `./interchange` entries
+
+The labre P0 import spike (`labre/docs/spikes/2026-10-p0-import-edge-function.md`)
+ran every reader in a server function and found P3 kept to the letter and not
+the spirit. Two readers were not pure in practice: the BPMN reader and the SVG
+sketch parsed with `DOMParser` (and DOMPurify), so a server had to install a
+DOM, in the right order, before importing the library, and the BPMN read grew
+quadratically on jsdom (5.1 s of CPU at 2 000 tasks). And no reader was
+reachable without the editor: a package index pulls Lit and
+`@atlaskit/pragmatic-drag-and-drop` with it, 3 858 modules and 18.35 MB.
+
+**P3's "pure" is amended to mean: no `std`, no DOM global, and no editor in the
+module graph.** Concretely:
+
+- Every framework that declares capabilities ships an `./interchange` entry
+  (`bpmn`, `c4`, `uml`, `wardley` today), and core ships
+  `@formicoidea/labre-core/interchange` (the registry types,
+  `InterchangeImportError`, `parseSvgSketch`, `sanitizeSvg`, `readXml` and its
+  DOM-shaped view). No new bundle: they are subpaths of the existing ones.
+  What an entry may load is an allow-list held by
+  `packages/affine/all/src/__tests__/interchange-headless.unit.spec.ts`:
+  `@labre/global`, the model's and shared's `./headless` subpaths, the surface
+  package, `zod`, and no DOM global by name. Widening it is a decision about
+  what a server loads, made here first.
+- XML is read by one reader, `readXml` (moved from `gfx/uml` to the surface
+  package), for XMI, draw.io, BPMN and SVG alike. A `DOCTYPE` is skipped and
+  no entity is ever expanded or fetched. Walks over a file's tree use explicit
+  stacks: the depth of a file is its author's choice.
+- The SVG sanitizer is an allow-list applied to the read tree
+  (`blocks/surface/src/extensions/svg-sanitize.ts`), not DOMPurify on a DOM.
+  Its report keeps the same note vocabulary and order, plus one note for a
+  subtree cut past 256 levels.
+- An exporter that needs an element class (`instanceof`, the C4 Mermaid
+  writer, the OWM writer's board walk) stays in the editor graph; its
+  `./interchange` entry exports what is pure and no more.
+- The one owner that is not a framework, `canvas` (`canvas:drawio:export`,
+  amendment of the same date under P1), has no `./interchange` entry: its
+  writer resolves theme colours (`@toeverything/theme`) and reads model
+  values from the model's barrel, both outside the allow-list. Exposing it to
+  a server first moves the colour resolution to the command side; the guard
+  then holds it like the others.
+
+Measured on the published bundles: the four framework entries together load
+124 modules, 348 KiB minified, and load under plain Node ESM and under Deno.
+A BPMN read of 2 000 chained tasks takes 235 ms under Node, with no DOM.
+
+Red zone: `scripts/build-bundles.mjs` gained one conditional line, copying a
+framework package's own `./interchange` export into its bundle's `exports`.
+
 ## The roadmap
 
 The PO's named matrix, as the initial roadmap. **Not all of it is v1** — this
