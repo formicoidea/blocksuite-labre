@@ -38,6 +38,7 @@ import type { ExtensionType, Store } from '@labre/store';
 import { CanvasRenderer } from '../../renderer/canvas-renderer.js';
 import type { SurfaceBlockComponent } from '../../surface-block.js';
 import { getBgGridGap } from '../../utils/get-bg-grip-gap.js';
+import { drawImageBlock } from './draw-image-block.js';
 
 // oxlint-disable-next-line typescript/consistent-type-imports
 type Html2CanvasFunction = typeof import('html2canvas').default;
@@ -495,13 +496,12 @@ export class ExportManager {
             img.src = URL.createObjectURL(blob);
           });
         const blockBound = xywhArrayToObject(block);
-        ctx.drawImage(
-          await blobToImage(blob),
-          blockBound.x - bound.x,
-          blockBound.y - bound.y,
-          blockBound.w,
-          blockBound.h
-        );
+        drawImageBlock(ctx, await blobToImage(blob), block.props.crop, {
+          x: blockBound.x - bound.x,
+          y: blockBound.y - bound.y,
+          w: blockBound.w,
+          h: blockBound.h,
+        });
       }
       const blockComponent = this.editorHost.view.getBlock(block.id);
       if (blockComponent) {

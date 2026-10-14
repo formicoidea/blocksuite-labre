@@ -14,11 +14,12 @@ import { BlockSelection, ShadowlessElement, TextSelection } from '@labre/std';
 import type { BaseSelection } from '@labre/store';
 import { computed } from '@preact/signals-core';
 import { css, html, type PropertyValues } from 'lit';
-import { property, query } from 'lit/decorators.js';
+import { property, query, state } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import { when } from 'lit/directives/when.js';
 
+import { croppedImageStyle } from '../crop/crop-controller.js';
 import type { ImageBlockComponent } from '../image-block';
 import { ImageResizeManager } from '../image-resize-manager';
 import { IMAGE_LABEL, IMAGE_TOAST_DOWNLOAD_FAILED } from '../translations';
@@ -76,6 +77,12 @@ export class ImageBlockPageComponent extends SignalWatcher(
       height: 100%;
     }
 
+    affine-page-image .labre-image-crop-window {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+
     affine-page-image .comment-highlighted {
       outline: 2px solid ${unsafeCSSVarV2('block/comment/highlightUnderline')};
     }
@@ -84,6 +91,50 @@ export class ImageBlockPageComponent extends SignalWatcher(
   resizeable$ = computed(() => this.block.resizeable$.value);
 
   private _isDragging = false;
+
+  /** The source's pixel size once loaded: the crop's aspect needs it. */
+  @state()
+  private accessor _loadedNatural: { width: number; height: number } | null =
+    null;
+
+  private readonly _onLoad = (event: Event) => {
+    const img = event.currentTarget as HTMLImageElement;
+    if (!img.naturalWidth || !img.naturalHeight) return;
+    const loaded = this._loadedNatural;
+    if (
+      loaded?.width === img.naturalWidth &&
+      loaded.height === img.naturalHeight
+    ) {
+      return;
+    }
+    this._loadedNatural = {
+      width: img.naturalWidth,
+      height: img.naturalHeight,
+    };
+  };
+
+  /**
+   * The box of a cropped page image (ADR 0037). `width`/`height` stay the
+   * displayed size of the WHOLE picture, so the box is the crop's share of it
+   * and cropping keeps the picture's scale. While the size is unknown (no
+   * stored size, image not loaded yet) the image is drawn whole: an empty
+   * box would never load a lazy image.
+   */
+  private _croppedBox(imageSize: { width?: string; height?: string }) {
+    const crop = this.block.cropController.crop$.value;
+    if (!crop) return null;
+    const { width, height } = this._model.props;
+    const natural = width && height ? { width, height } : this._loadedNatural;
+    if (!natural) return null;
+    const aspect = (crop.w * natural.width) / (crop.h * natural.height);
+    const boxWidth = this._isDragging
+      ? imageSize.width
+      : `${natural.width * crop.w}px`;
+    return {
+      crop,
+      style: { width: boxWidth, aspectRatio: `${aspect}` },
+    };
+  }
 
   private get _doc() {
     return this.block.store;
@@ -360,6 +411,7 @@ export class ImageBlockPageComponent extends SignalWatcher(
 
   override render() {
     const imageSize = this._normalizeImageSize();
+    const cropped = this._croppedBox(imageSize);
 
     const imageSelectedRect = this.resizeable$.value
       ? ImageSelectedRect(this._doc.readonly)
@@ -377,18 +429,31 @@ export class ImageBlockPageComponent extends SignalWatcher(
           'resizable-img': true,
           'comment-highlighted': this.block.isCommentHighlighted,
         })}
-        style=${styleMap(imageSize)}
+        style=${styleMap(cropped ? cropped.style : imageSize)}
       >
-        <img
-          class="drag-target"
-          draggable="false"
-          loading="lazy"
-          src=${blobUrl}
-          alt=${caption}
-          @error=${this._handleError}
-        />
-
-        ${imageSelectedRect}
+        ${cropped
+          ? html`<div class="labre-image-crop-window">
+              <img
+                class="drag-target"
+                draggable="false"
+                loading="lazy"
+                src=${blobUrl}
+                alt=${caption}
+                style=${croppedImageStyle(cropped.crop)}
+                @load=${this._onLoad}
+                @error=${this._handleError}
+              />
+            </div>`
+          : html`<img
+              class="drag-target"
+              draggable="false"
+              loading="lazy"
+              src=${blobUrl}
+              alt=${caption}
+              @load=${this._onLoad}
+              @error=${this._handleError}
+            />`}
+        ${imageSelectedRect} ${this.block.cropController.renderOverlay(blobUrl)}
       </div>
 
       ${when(loading, () => html`<div class="loading">${icon}</div>`)}

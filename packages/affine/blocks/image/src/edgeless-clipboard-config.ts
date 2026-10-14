@@ -5,7 +5,7 @@ export class EdgelessClipboardImageConfig extends EdgelessClipboardConfig {
   static override readonly key = 'affine:image';
 
   override async createBlock(image: BlockSnapshot) {
-    const { xywh, rotate, sourceId, size, width, height, caption } =
+    const { xywh, rotate, sourceId, size, width, height, caption, crop } =
       image.props;
 
     if (!this.surface) return null;
@@ -23,6 +23,9 @@ export class EdgelessClipboardImageConfig extends EdgelessClipboardConfig {
         size,
         width,
         height,
+        // The box above is the cropped one: without its crop the copy would
+        // stretch the whole picture into it (ADR 0037).
+        crop,
       },
       this.surface.model.id
     );

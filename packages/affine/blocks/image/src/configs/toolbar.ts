@@ -21,6 +21,7 @@ import {
 import { BlockFlavourIdentifier } from '@labre/std';
 import type { ExtensionType } from '@labre/store';
 
+import { imageCropToolbarAction } from '../crop/crop-toolbar.js';
 import { ImageBlockComponent } from '../image-block';
 import { ImageEdgelessBlockComponent } from '../image-edgeless-block';
 import { IMAGE_TOOLBAR_TURN_INTO_CARD_VIEW } from '../translations';
@@ -62,6 +63,9 @@ const builtinToolbarConfig = {
         });
       },
     },
+    imageCropToolbarAction(ctx =>
+      ctx.getCurrentBlockByType(ImageBlockComponent)
+    ),
     {
       id: 'c.comment',
       ...blockCommentToolbarButton,
@@ -165,6 +169,9 @@ const builtinSurfaceToolbarConfig = {
         });
       },
     },
+    imageCropToolbarAction(ctx =>
+      ctx.getCurrentBlockByType(ImageEdgelessBlockComponent)
+    ),
     {
       id: 'c.comment',
       ...blockCommentToolbarButton,

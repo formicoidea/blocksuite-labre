@@ -170,7 +170,11 @@ export async function replaceImage(
   }
   if (store.readonly || !store.getBlock(model.id)) return false;
   store.captureSync();
-  store.updateBlock(model, replacementProps(model, asset, natural));
+  store.transact(() => {
+    store.updateBlock(model, replacementProps(model, asset, natural));
+    // A crop is a window on the picture it was drawn on (ADR 0037).
+    if (model.props.crop) delete (model.props as { crop?: unknown }).crop;
+  });
   return true;
 }
 
