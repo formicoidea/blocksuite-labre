@@ -17,6 +17,7 @@ import { html, type TemplateResult } from 'lit';
 import { styleMap } from 'lit/directives/style-map.js';
 
 import { popPropertiesSetting } from '../../../../core/common/properties.js';
+import { filterTraitKey } from '../../../../core/filter/trait.js';
 import {
   popGroupSetting,
   popSelectGroupByProperty,
@@ -39,6 +40,7 @@ import {
   DATA_VIEW_OPEN_IN_FULL,
   DATA_VIEW_OPEN_IN_SIDE,
 } from '../../../../translations.js';
+import { popColorRules } from './color-rules-menu.js';
 
 /**
  * The settings of a view that a menu entry opens on its own (labre PRD
@@ -48,7 +50,12 @@ import {
  * library's own menu are one code path: same menus, same writes, same
  * "back" to the view settings. Open: a later minor may add a key.
  */
-export type ViewSettingKey = 'layout' | 'properties' | 'group' | 'open-in';
+export type ViewSettingKey =
+  | 'layout'
+  | 'properties'
+  | 'group'
+  | 'open-in'
+  | 'color-rules';
 
 /** The three places a row's page opens, in the stored order (ADR 0035 §8). */
 const OPEN_IN_CHOICES: readonly {
@@ -63,7 +70,9 @@ const OPEN_IN_CHOICES: readonly {
 
 /**
  * Whether the current view offers `key`: grouping needs the group trait,
- * "Open pages in" a source whose rows are pages (B8). A read-only or
+ * "Open pages in" a source whose rows are pages (B8), conditional colours
+ * the filter trait, whose conditions a rule is made of (ADR 0036; the
+ * calendar has none, and paints no rule). A read-only or
  * fallback view offers nothing: its settings menu is not drawn either.
  */
 export function viewSettingAvailable(
@@ -77,6 +86,8 @@ export function viewSettingAvailable(
       return !!view.traitGet(groupTraitKey);
     case 'open-in':
       return rowsArePages(view.manager.dataSource);
+    case 'color-rules':
+      return !!view.traitGet(filterTraitKey);
     case 'layout':
     case 'properties':
       return true;
@@ -254,6 +265,9 @@ export function openViewSetting(
       popMenu(target, {
         options: openInOptions(dataViewLogic, reopen, wording),
       });
+      return;
+    case 'color-rules':
+      popColorRules(target, dataViewLogic, reopen, wording);
       return;
   }
 }

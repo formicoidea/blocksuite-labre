@@ -179,6 +179,47 @@ export const DATA_VIEW_OPEN_IN_FULL: ChromeWording = [
   'Full page',
 ];
 
+/* ── Conditional colours of a view (ADR 0036) ───────────────────────── */
+
+/** The view setting, its menu title and the full page's "This view" entry. */
+export const DATA_VIEW_COLOR_RULES: ChromeWording = [
+  'com.labre.data-view.color-rules',
+  'Conditional colors',
+];
+
+export const DATA_VIEW_COLOR_RULES_ADD: ChromeWording = [
+  'com.labre.data-view.color-rules.add',
+  'Add a color rule',
+];
+
+/** The title of one rule's menu: its conditions, its colour, its place. */
+export const DATA_VIEW_COLOR_RULE: ChromeWording = [
+  'com.labre.data-view.color-rules.rule',
+  'Color rule',
+];
+
+export const DATA_VIEW_COLOR_RULE_ADD_CONDITION: ChromeWording = [
+  'com.labre.data-view.color-rules.add-condition',
+  'Add a condition',
+];
+
+/** A rule's name in the list when its conditions were all removed. */
+export const DATA_VIEW_COLOR_RULE_NO_CONDITION: ChromeWording = [
+  'com.labre.data-view.color-rules.no-condition',
+  'No condition',
+];
+
+/** The order decides: the first rule that matches a row colours it. */
+export const DATA_VIEW_COLOR_RULE_MOVE_UP: ChromeWording = [
+  'com.labre.data-view.color-rules.move-up',
+  'Move up',
+];
+
+export const DATA_VIEW_COLOR_RULE_MOVE_DOWN: ChromeWording = [
+  'com.labre.data-view.color-rules.move-down',
+  'Move down',
+];
+
 /* ── A view's properties list (view options, side panel) ─────────────── */
 
 /**
@@ -249,6 +290,13 @@ export const DATA_VIEW_WORDINGS: readonly ChromeWording[] = [
   DATA_VIEW_OPEN_IN_SIDE,
   DATA_VIEW_OPEN_IN_CENTER,
   DATA_VIEW_OPEN_IN_FULL,
+  DATA_VIEW_COLOR_RULES,
+  DATA_VIEW_COLOR_RULES_ADD,
+  DATA_VIEW_COLOR_RULE,
+  DATA_VIEW_COLOR_RULE_ADD_CONDITION,
+  DATA_VIEW_COLOR_RULE_NO_CONDITION,
+  DATA_VIEW_COLOR_RULE_MOVE_UP,
+  DATA_VIEW_COLOR_RULE_MOVE_DOWN,
   DATA_VIEW_PROPERTIES,
   DATA_VIEW_NEW_PROPERTY,
   DATA_VIEW_PROPERTY_TYPE,

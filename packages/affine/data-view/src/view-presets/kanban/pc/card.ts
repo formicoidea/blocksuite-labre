@@ -11,6 +11,11 @@ import { repeat } from 'lit/directives/repeat.js';
 import { html } from 'lit/static-html.js';
 
 import { isNewTabClick } from '../../../core/utils/new-tab-click.js';
+import {
+  paintRowColor,
+  ROW_COLOR_PROPERTY,
+  viewRowColor,
+} from '../../../core/view/color-rules.js';
 import type { KanbanColumn } from '../kanban-view-manager.js';
 import type { KanbanViewUILogic } from './kanban-view-ui-logic.js';
 import { openDetail, popCardMenu } from './menu.js';
@@ -24,7 +29,10 @@ const styles = css`
     box-shadow: 0px 2px 3px 0px rgba(0, 0, 0, 0.05);
     border-radius: 8px;
     transition: background-color 100ms ease-in-out;
-    background-color: var(--affine-background-kanban-card-color);
+    background-color: var(
+      ${unsafeCSS(ROW_COLOR_PROPERTY)},
+      var(--affine-background-kanban-card-color)
+    );
   }
 
   affine-data-view-kanban-card:hover {
@@ -310,6 +318,7 @@ export class KanbanCard extends SignalWatcher(
     this.style.border = this.isFocus$.value
       ? '1px solid var(--affine-primary-color)'
       : '';
+    paintRowColor(this, viewRowColor(this.view, this.cardId));
     return html`
       ${this.renderHeader(columns)} ${this.renderBody(columns)}
       ${this.renderOps()}

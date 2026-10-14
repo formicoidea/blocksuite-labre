@@ -2,9 +2,15 @@ import { PlusIcon } from '@blocksuite/icons/lit';
 import { cssVarV2 } from '@toeverything/theme/v2';
 import { css, html, nothing, unsafeCSS } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
+import { styleMap } from 'lit/directives/style-map.js';
 
 import { groupToggleStyles } from '../../core/group-by/group-visibility.js';
 import { createUniComponentFromWebComponent } from '../../core/utils/uni-component/uni-component.js';
+import {
+  ROW_COLOR_PROPERTY,
+  rowColorStyle,
+  viewRowColor,
+} from '../../core/view/color-rules.js';
 import { DATA_VIEW_NEW_PAGE } from '../../translations.js';
 import {
   flatGroupStyles,
@@ -56,7 +62,10 @@ export class GalleryViewUI extends FlatViewUI<GalleryViewUILogic> {
         box-sizing: border-box;
         border: 1px solid ${unsafeCSS(cssVarV2.layer.insideBorder.border)};
         border-radius: 8px;
-        background-color: var(--affine-background-primary-color);
+        background-color: var(
+          ${unsafeCSS(ROW_COLOR_PROPERTY)},
+          var(--affine-background-primary-color)
+        );
         cursor: pointer;
       }
 
@@ -149,6 +158,7 @@ export class GalleryViewUI extends FlatViewUI<GalleryViewUILogic> {
       class="dv-gallery-card"
       data-testid="dv-gallery-card"
       data-row-id="${rowId}"
+      style=${styleMap(rowColorStyle(viewRowColor(view, rowId)))}
       @click="${this.onRowClick}"
     >
       ${title

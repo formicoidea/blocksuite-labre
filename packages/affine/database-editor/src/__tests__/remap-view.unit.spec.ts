@@ -239,3 +239,81 @@ describe('viewTemplateData', () => {
     expect(template.columns).toEqual(stored.columns);
   });
 });
+
+/**
+ * Conditional colours (ADR 0036): a template carries them (REQ-DB-4), an
+ * import rewrites them through the mapping, and a rule that loses any
+ * condition is removed whole and counted apart from the filter's losses,
+ * so the host's dialog can say "1 colour rule removed".
+ */
+describe('colour rules', () => {
+  const red = 'var(--affine-v2-chip-label-red)';
+  const coloured = {
+    ...stored,
+    filter: { type: 'group', op: 'and', conditions: [] },
+    colorRules: [
+      {
+        id: 'r-done',
+        color: red,
+        filter: {
+          type: 'group',
+          op: 'and',
+          conditions: [condition('s-status', ['o-done'])],
+        },
+      },
+      {
+        id: 'r-owner',
+        color: red,
+        filter: {
+          type: 'group',
+          op: 'and',
+          conditions: [condition('s-cost', 3), condition('s-owner', 'Ana')],
+        },
+      },
+      {
+        id: 'r-lost',
+        color: red,
+        filter: {
+          type: 'group',
+          op: 'or',
+          conditions: [condition('s-status', 'o-lost')],
+        },
+      },
+    ],
+  };
+
+  test('are rewritten through the mapping, options by name', () => {
+    const { data, dropped } = remapView(coloured, from, to, mapping);
+    expect(data.colorRules).toEqual([
+      {
+        id: 'r-done',
+        color: red,
+        filter: {
+          type: 'group',
+          op: 'and',
+          conditions: [condition('t-state', ['x-done'])],
+        },
+      },
+    ]);
+    // A rule on an ignored property, a rule on an option this database
+    // lacks: both removed whole, neither counted as a filter.
+    expect(dropped.colorRules).toBe(2);
+    expect(dropped.filters).toBe(0);
+  });
+
+  test('a view without rules gains none, and counts none', () => {
+    const { data, dropped } = remapView(stored, from, to, mapping);
+    expect('colorRules' in data).toBe(false);
+    expect(dropped.colorRules).toBe(0);
+  });
+
+  test('a template keeps them, conditions included', () => {
+    const template = viewTemplateData(coloured);
+    expect(template.colorRules).toEqual(coloured.colorRules);
+    expect(template.filter).toEqual({
+      type: 'group',
+      op: 'and',
+      conditions: [],
+    });
+  });
+});

@@ -4,3 +4,4 @@ export * from './data-view-base.js';
 export * from './default-name.js';
 export * from './types.js';
 export * from './open-in.js';
+export * from './color-rules.js';

@@ -7,6 +7,7 @@ import type { AnyCommandDescriptor, BlockStdScope } from '@labre/std';
 
 import {
   PROPERTIES_PANEL_TITLE,
+  VIEW_MENU_COLOR_RULES,
   VIEW_MENU_GROUP,
   VIEW_MENU_IMPORT,
   VIEW_MENU_LAYOUT,
@@ -49,7 +50,12 @@ import {
  * through core's root shim only (`core-database-boundary.unit.spec.ts`).
  * The integration spec `database-page-view-menu.spec.ts` holds the shape.
  */
-type ViewSettingKey = 'layout' | 'properties' | 'group' | 'open-in';
+type ViewSettingKey =
+  | 'layout'
+  | 'properties'
+  | 'group'
+  | 'open-in'
+  | 'color-rules';
 interface ViewOptionsElement extends Element {
   dataViewLogic: { view: { manager: { dataSource: DataSource } } };
   settingAvailable(key: ViewSettingKey): boolean;
@@ -106,6 +112,7 @@ export function databasePageViewCommands(
     setting(hostBlockId, 'group', VIEW_MENU_GROUP, 1),
     setting(hostBlockId, 'open-in', VIEW_MENU_OPEN_IN, 2),
     setting(hostBlockId, 'properties', PROPERTIES_PANEL_TITLE, 3),
+    setting(hostBlockId, 'color-rules', VIEW_MENU_COLOR_RULES, 4),
     {
       id: 'database.view.save-template',
       owner: 'core',
@@ -114,7 +121,7 @@ export function databasePageViewCommands(
       labelFallback: VIEW_MENU_SAVE_TEMPLATE[1],
       category: 'view',
       surfaces: ['view-menu'],
-      order: 4,
+      order: 5,
       scope: 'page',
       defaultKeys: { mac: [], other: [] },
       when: std => {
@@ -142,7 +149,7 @@ export function databasePageViewCommands(
       labelFallback: VIEW_MENU_IMPORT[1],
       category: 'transfer',
       surfaces: ['view-menu'],
-      order: 5,
+      order: 6,
       scope: 'page',
       defaultKeys: { mac: [], other: [] },
       when: std => {
