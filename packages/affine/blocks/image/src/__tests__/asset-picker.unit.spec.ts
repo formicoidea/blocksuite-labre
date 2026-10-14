@@ -118,10 +118,12 @@ const square: AssetRef = {
   height: 50,
 };
 
+const natural = { width: 50, height: 50 };
+
 describe('replacementProps', () => {
   it('keeps the width of a page image and follows the new ratio', () => {
     const { ids, image } = editorStore();
-    expect(replacementProps(image(ids.pageImage), square, square)).toEqual({
+    expect(replacementProps(image(ids.pageImage), square, natural)).toEqual({
       sourceId: 'new',
       size: 42,
       width: 300,
@@ -131,7 +133,7 @@ describe('replacementProps', () => {
 
   it('leaves a page image shown at its natural size so', () => {
     const { ids, image } = editorStore();
-    expect(replacementProps(image(ids.unsized), square, square)).toEqual({
+    expect(replacementProps(image(ids.unsized), square, natural)).toEqual({
       sourceId: 'new',
       size: 42,
     });
@@ -139,7 +141,7 @@ describe('replacementProps', () => {
 
   it('keeps the corner and the width of a canvas image', () => {
     const { ids, image } = editorStore();
-    expect(replacementProps(image(ids.canvasImage), square, square)).toEqual({
+    expect(replacementProps(image(ids.canvasImage), square, natural)).toEqual({
       sourceId: 'new',
       size: 42,
       xywh: '[10,20,200,200]',

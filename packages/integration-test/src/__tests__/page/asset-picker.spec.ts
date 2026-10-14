@@ -77,10 +77,15 @@ function libraryHost() {
 }
 
 function slashAction(std: BlockStdScope, name: string) {
+  const model = std.store.root!;
   for (const config of std.provider
     .getAll(SlashMenuConfigIdentifier)
     .values()) {
-    for (const item of config.items) {
+    const items =
+      typeof config.items === 'function'
+        ? config.items({ std, model })
+        : config.items;
+    for (const item of items) {
       if (item.name === name && 'action' in item) return item.action;
     }
   }
