@@ -8,13 +8,14 @@ import {
   titleMiddleware,
 } from '@labre/affine-shared/adapters';
 import { CHROME_UNTITLED } from '@labre/affine-shared/services';
+import { safeFilename } from '@labre/affine-shared/utils';
 import { Container } from '@labre/global/di';
 import { sha } from '@labre/global/utils';
 import type { ExtensionType, Schema, Store, Workspace } from '@labre/store';
 import { extMimeMap, Transformer } from '@labre/store';
 
 import type { AssetMap, ImportedFileEntry, PathBlobIdMap } from './type.js';
-import { createAssetsArchive, download, Unzip } from './utils.js';
+import { type DocExportFile, download, packDocExport, Unzip } from './utils.js';
 
 type ImportHTMLToDocOptions = {
   collection: Workspace;
@@ -40,43 +41,40 @@ function getProvider(extensions: ExtensionType[]) {
 }
 
 /**
- * Exports a doc to HTML format.
- *
- * @param doc - The doc to be exported.
- * @returns A Promise that resolves when the export is complete.
+ * A doc as an HTML file, or as a zip of the HTML and its assets when it holds
+ * any — without downloading it. `null` when the doc has no snapshot.
  */
-async function exportDoc(doc: Store) {
+async function docFile(doc: Store): Promise<DocExportFile | null> {
   const provider = doc.provider;
   const job = doc.getTransformer([
     docLinkBaseURLMiddleware(doc.workspace.id),
     titleMiddleware(doc.workspace.meta.docMetas),
   ]);
   const snapshot = job.docToSnapshot(doc);
+  if (!snapshot) return null;
+
   const adapter = new HtmlAdapter(job, provider);
-  if (!snapshot) {
-    return;
-  }
   const htmlResult = await adapter.fromDocSnapshot({
     snapshot,
     assets: job.assetsManager,
   });
+  const untitled = resolveWording(provider, CHROME_UNTITLED);
+  return packDocExport(htmlResult, job.assets, {
+    name: safeFilename(doc.meta?.title, untitled),
+    extension: '.html',
+    mime: 'text/html;charset=utf-8',
+  });
+}
 
-  let downloadBlob: Blob;
-  const docTitle = doc.meta?.title || resolveWording(provider, CHROME_UNTITLED);
-  let name: string;
-  const contentBlob = new Blob([htmlResult.file], { type: 'plain/text' });
-  if (htmlResult.assetsIds.length > 0) {
-    const zip = await createAssetsArchive(job.assets, htmlResult.assetsIds);
-
-    await zip.file('index.html', contentBlob);
-
-    downloadBlob = await zip.generate();
-    name = `${docTitle}.zip`;
-  } else {
-    downloadBlob = contentBlob;
-    name = `${docTitle}.html`;
-  }
-  download(downloadBlob, name);
+/**
+ * Exports a doc to HTML format.
+ *
+ * @param doc - The doc to be exported.
+ * @returns A Promise that resolves when the export is complete.
+ */
+async function exportDoc(doc: Store) {
+  const file = await docFile(doc);
+  if (file) download(file.blob, file.filename);
 }
 
 /**
@@ -209,6 +207,7 @@ async function importHTMLZip({
 }
 
 export const HtmlTransformer = {
+  docFile,
   exportDoc,
   importHTMLToDoc,
   importHTMLZip,

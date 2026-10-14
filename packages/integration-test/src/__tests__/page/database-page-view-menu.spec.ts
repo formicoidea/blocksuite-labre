@@ -75,7 +75,11 @@ const menuButtons = () => [
 
 describe('the full page of a database, "This view"', () => {
   test('lists the view settings the view offers, on the page only', () => {
-    const ids = getViewActions(page.std!, 'page').map(action => action.id);
+    // The page's own exports (`page.export.*`, section `'export'`) are listed
+    // in every page editor, this one included: they are not view settings.
+    const ids = getViewActions(page.std!, 'page')
+      .filter(action => action.section !== 'export')
+      .map(action => action.id);
     expect(ids).toEqual([
       'database.view.layout',
       'database.view.group',

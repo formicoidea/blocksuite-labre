@@ -3,9 +3,9 @@ import { createIdentifier } from '@labre/global/di';
 import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
 import {
-  type GfxBlockElementModel,
+  GfxBlockElementModel,
   GfxControllerIdentifier,
-  type GfxPrimitiveElementModel,
+  GfxPrimitiveElementModel,
 } from '@labre/std/gfx';
 import type { ExtensionType } from '@labre/store';
 
@@ -148,11 +148,8 @@ export function renderBoardSvg(
 ): BoardSvgExport | null {
   const options = given ?? DEFAULT_BOARD_SVG_EXPORT_OPTIONS;
   const gfx = std.get(GfxControllerIdentifier);
-  const renderer = (
-    gfx.surfaceComponent as { renderer?: unknown } | null | undefined
-  )?.renderer;
-
-  if (!(renderer instanceof CanvasRenderer)) {
+  const renderer = canvasRendererOf(std);
+  if (!renderer) {
     throw new Error(
       'SVG export needs the surface to be painted by a CanvasRenderer.'
     );
@@ -197,7 +194,91 @@ export function renderBoardSvg(
     return null;
   }
   const bound = exportBoundOf(options.framework ? board : drawn[0], drawn);
+  return paintSvg(std, renderer, elements, texts, bound);
+}
 
+/**
+ * The surface's painter, or `null` when the canvas is not painted by a
+ * {@link CanvasRenderer} (no surface mounted, a DOM renderer): what the SVG
+ * export replays into its own context.
+ */
+export function canvasRendererOf(std: BlockStdScope): CanvasRenderer | null {
+  const renderer = (
+    std.get(GfxControllerIdentifier).surfaceComponent as
+      | { renderer?: unknown }
+      | null
+      | undefined
+  )?.renderer;
+  return renderer instanceof CanvasRenderer ? renderer : null;
+}
+
+/**
+ * What the WHOLE canvas export draws: every canvas element and every edgeless
+ * text block this viewer sees (ADR 0031: what they hid is neither painted nor
+ * allowed to widen the picture), in the canvas' own z-order.
+ *
+ * The canvas' other blocks — notes, frames, images, embeds, attachments — are
+ * DOM, and no painter draws them into the 2D context (ADR 0025,
+ * Consequences): they are not in the file. A block that registers a
+ * {@link BlockSvgPainterExtension} joins without a change here.
+ */
+export function canvasSvgModels(std: BlockStdScope): {
+  elements: GfxPrimitiveElementModel[];
+  textBlocks: GfxBlockElementModel[];
+} {
+  const gfx = std.get(GfxControllerIdentifier);
+  const elements: GfxPrimitiveElementModel[] = [];
+  const textBlocks: GfxBlockElementModel[] = [];
+  for (const model of [...gfx.gfxElements].sort(gfx.layer.compare)) {
+    if (gfx.localVisibility.isHidden(model)) continue;
+    if (model instanceof GfxPrimitiveElementModel) {
+      elements.push(model);
+    } else if (
+      model instanceof GfxBlockElementModel &&
+      std.getOptional(BlockSvgPainterIdentifier(model.flavour))
+    ) {
+      textBlocks.push(model);
+    }
+  }
+  return { elements, textBlocks };
+}
+
+/**
+ * The whole canvas as one SVG document: {@link renderBoardSvg}'s replay of
+ * the canvas renderers, over everything {@link canvasSvgModels} keeps, framed
+ * by the union of what is painted. `null` when there is nothing to draw, or
+ * no {@link CanvasRenderer} to draw it with.
+ */
+export function renderCanvasSvg(std: BlockStdScope): BoardSvgExport | null {
+  const renderer = canvasRendererOf(std);
+  if (!renderer) return null;
+  const { elements, textBlocks } = canvasSvgModels(std);
+  const drawn = [...elements, ...textBlocks];
+  const [first] = drawn;
+  if (!first) return null;
+  return paintSvg(
+    std,
+    renderer,
+    elements,
+    textBlocks,
+    exportBoundOf(first, drawn)
+  );
+}
+
+/**
+ * Replay `elements` and `texts` into an SVG-emitting 2D context framed by
+ * `bound`, one model per pass, each inside a group carrying its markers (ADR
+ * 0032 §6), in the canvas' own z-order: a text block is painted at its layer
+ * index, between the elements it sits between on screen.
+ */
+function paintSvg(
+  std: BlockStdScope,
+  renderer: CanvasRenderer,
+  elements: readonly GfxPrimitiveElementModel[],
+  texts: readonly GfxBlockElementModel[],
+  bound: Bound
+): BoardSvgExport {
+  const gfx = std.get(GfxControllerIdentifier);
   return runWithRecordingPath2D(() => {
     const { ctx, canvas, serialize, markRoot, markedGroup } = createSvgContext(
       bound.w,
@@ -205,9 +286,6 @@ export function renderBoardSvg(
     );
     const rc = new RoughCanvas(canvas);
     markRoot();
-    // One model per pass, each inside a group carrying its markers (ADR 0032
-    // §6), in the canvas' own z-order: a text block is painted at its layer
-    // index, between the elements it sits between on screen.
     const blocks = new Set<unknown>(texts);
     for (const model of [...elements, ...texts].sort(gfx.layer.compare)) {
       if (!blocks.has(model)) {

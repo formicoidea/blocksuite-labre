@@ -184,4 +184,31 @@ describe('saved frames from the host (FrameTemplateProvider)', () => {
       'Roadmap',
     ]);
   });
+
+  // The panel calls `afterInsert` only after the template job resolved
+  // (`template-panel.ts`), so this is the hook that tells the host a saved
+  // frame landed: it links the images the copy references to that page.
+  it('tells the host which template landed in which document', async () => {
+    const inserted: unknown[] = [];
+    const { service } = host(['Plan']);
+    service.frameInserted = insertion => inserted.push(insertion);
+    const catalogue = templateManagerFor(stdWith([eager], service));
+
+    const [template] = await catalogue.list(SAVED_FRAMES_CATEGORY);
+    template!.afterInsert?.(
+      { store: { id: 'target-doc' } } as unknown as BlockStdScope,
+      []
+    );
+
+    expect(inserted).toEqual([{ docId: 'target-doc', templateId: 't0' }]);
+  });
+
+  it('adds no insertion hook for a host that does not follow insertions', async () => {
+    const { service } = host(['Plan']);
+    const catalogue = templateManagerFor(stdWith([eager], service));
+
+    const [template] = await catalogue.list(SAVED_FRAMES_CATEGORY);
+
+    expect(template!.afterInsert).toBeUndefined();
+  });
 });

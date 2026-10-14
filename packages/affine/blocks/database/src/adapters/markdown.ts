@@ -6,21 +6,19 @@ import {
 import {
   BlockMarkdownAdapterExtension,
   type BlockMarkdownAdapterMatcher,
-  type MarkdownAST,
 } from '@labre/affine-shared/adapters';
 import type { TableRow } from 'mdast';
 
 import { processTable } from './utils';
 
-const DATABASE_NODE_TYPES = new Set(['table', 'tableRow']);
-
-const isDatabaseNode = (node: MarkdownAST) =>
-  DATABASE_NODE_TYPES.has(node.type);
-
 export const databaseBlockMarkdownAdapterMatcher: BlockMarkdownAdapterMatcher =
   {
     flavour: DatabaseBlockSchema.model.flavour,
-    toMatch: o => isDatabaseNode(o.node),
+    // A Markdown table is read by the table block only: pasted or imported,
+    // it becomes an inline table, never a database (labre REQ-IM-2). The
+    // database writes tables on export and reads none, like its HTML and
+    // plain-text matchers.
+    toMatch: () => false,
     fromMatch: o => o.node.flavour === DatabaseBlockSchema.model.flavour,
     toBlockSnapshot: {},
     fromBlockSnapshot: {

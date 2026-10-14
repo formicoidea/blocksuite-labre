@@ -4,8 +4,14 @@ import {
   type FramePreview,
 } from '@labre/affine-fragment-frame-panel';
 import type { FrameBlockModel } from '@labre/affine-model';
-import { DocModeProvider, translateKey } from '@labre/affine-shared/services';
+import { interchangeExportActions } from '@labre/affine-block-surface';
 import {
+  DocModeProvider,
+  type TranslationParams,
+  translateKey,
+} from '@labre/affine-shared/services';
+import {
+  type AnyCommandDescriptor,
   type BlockStdScope,
   type CommandFile,
   type CommandFileParams,
@@ -14,6 +20,8 @@ import {
   runCommandAsync,
 } from '@labre/std';
 import { GfxControllerIdentifier, type GfxModel } from '@labre/std/gfx';
+
+import { frameworkDescriptor } from './frameworks.js';
 
 /**
  * `@labre/affine/host-panels` — the verbs a host's own panel calls (ADR 0034
@@ -205,6 +213,13 @@ export interface ViewAction {
   label: string;
   /** The `com.labre.*` key behind {@link label}, for a host that translates itself. */
   labelKey: string;
+  /**
+   * The `{{name}}` values {@link labelKey} is filled with, for a host that
+   * translates itself — present only on a label that has placeholders (the
+   * framework exports: `{ framework, extension }`, the framework's name
+   * already resolved). {@link label} has them filled in.
+   */
+  labelParams?: TranslationParams;
   /** Stable asset key; `getCommandIcon(std, iconKey)` is the library's icon. */
   iconKey?: string;
   /** Present only on a toggle: the state a check mark shows. */
@@ -226,10 +241,44 @@ export interface ViewActionResult {
   file?: CommandFile;
 }
 
+/** A `'view-menu'` entry, and the `{{name}}` values its label takes. */
+interface ViewMenuEntry {
+  command: AnyCommandDescriptor;
+  labelParams?: TranslationParams;
+}
+
+/**
+ * Everything on the `'view-menu'` surface: the registered commands, then
+ * one export per framework `*:export` capability in the interchange registry
+ * (`interchangeExportActions`, ADR 0034 amendment of 2026-10-14) — derived
+ * at read time, so what a flag removed from the registry is not listed.
+ */
+function viewMenuEntries(std: BlockStdScope): ViewMenuEntry[] {
+  const registered = getRegisteredCommands(std)
+    .filter(command => command.surfaces.includes('view-menu'))
+    .map(command => ({ command }));
+  const derived = interchangeExportActions(std).map(
+    ({ command, capability }) => {
+      const framework = frameworkDescriptor(capability.framework);
+      return {
+        command,
+        labelParams: {
+          framework: framework
+            ? translateKey(std, framework.labelKey, framework.labelFallback)
+            : capability.framework,
+          extension: capability.format.extensions[0],
+        },
+      };
+    }
+  );
+  return [...registered, ...derived];
+}
+
 /**
  * The actions proper to the view the editor shows now, in their declared
  * order: the commands registered on the `'view-menu'` surface whose `scope`
- * is this mode (or `'global'`) and whose `when` holds.
+ * is this mode (or `'global'`) and whose `when` holds, and on the canvas
+ * one export per framework format the interchange registry can write.
  *
  * `mode` is the view the host shows; omitted, it is read from
  * `DocModeProvider`, and a provider that does not know (the library default
@@ -247,22 +296,47 @@ export function getViewActions(
   mode?: 'page' | 'edgeless'
 ): ViewAction[] {
   const view = mode ?? std.getOptional(DocModeProvider)?.getEditorMode();
-  return getRegisteredCommands(std)
-    .filter(command => command.surfaces.includes('view-menu'))
+  return viewMenuEntries(std)
     .filter(
-      command => command.scope === 'global' || !view || command.scope === view
+      ({ command }) =>
+        command.scope === 'global' || !view || command.scope === view
     )
-    .filter(command => !command.when || command.when(std))
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-    .map(command => ({
+    .filter(({ command }) => !command.when || command.when(std))
+    .sort((a, b) => (a.command.order ?? 0) - (b.command.order ?? 0))
+    .map(({ command, labelParams }) => ({
       id: command.id,
       section: command.category ?? 'display',
-      label: translateKey(std, command.labelKey, command.labelFallback),
+      label: translateKey(
+        std,
+        command.labelKey,
+        command.labelFallback,
+        labelParams
+      ),
       labelKey: command.labelKey,
+      ...(labelParams ? { labelParams } : {}),
       ...(command.iconKey ? { iconKey: command.iconKey } : {}),
       ...(command.checked ? { checked: command.checked(std) } : {}),
       disabled: !isCommandAvailable(std, command),
     }));
+}
+
+/**
+ * The exports of the view the editor shows now — the `'export'` section of
+ * {@link getViewActions}, in the same order: what a host lists in ONE
+ * "Export…" menu. On the page: Markdown and HTML. On the canvas: PNG and PDF
+ * (with an `ExportManager`), draw.io, SVG (with a canvas renderer), one entry
+ * per framework format the registry writes (`canvas.export.<framework>.<format>`,
+ * listed while the board holds that framework's elements), then Markdown and
+ * HTML. Every one resolves {@link runViewAction} with `{ file }` and downloads
+ * nothing.
+ */
+export function getViewExports(
+  std: BlockStdScope,
+  mode?: 'page' | 'edgeless'
+): ViewAction[] {
+  return getViewActions(std, mode).filter(
+    action => action.section === 'export'
+  );
 }
 
 /**
@@ -280,9 +354,9 @@ export async function runViewAction(
   std: BlockStdScope,
   id: string
 ): Promise<ViewActionResult> {
-  const command = getRegisteredCommands(std).find(
-    candidate => candidate.id === id && candidate.surfaces.includes('view-menu')
-  );
+  const command = viewMenuEntries(std).find(
+    entry => entry.command.id === id
+  )?.command;
   if (!command) return {};
   if (command.when && !command.when(std)) return {};
   if (!isCommandAvailable(std, command)) return {};

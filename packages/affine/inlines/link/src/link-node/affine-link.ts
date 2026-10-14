@@ -84,6 +84,42 @@ export class AffineLink extends WithDisposable(ShadowlessElement) {
     { enterDelay: 500 }
   );
 
+  /**
+   * Opens this link's toolbar without a hover, as a proposal (see
+   * `proposeLinkViews`). The toolbar keeps the hover contract once the pointer
+   * enters it; until then any key or press outside it closes it, so the
+   * proposal never outlives the next gesture.
+   */
+  proposeViews() {
+    const message$ = this.std.get(ToolbarRegistryIdentifier).message$;
+    let floating: Element | undefined;
+    const controller = new AbortController();
+    const close = (event: Event) => {
+      if (floating && event.composedPath().includes(floating)) return;
+      controller.abort();
+      if (message$.peek()?.element === this) message$.value = null;
+    };
+    const options = { capture: true, signal: controller.signal };
+    document.addEventListener('keydown', close, options);
+    document.addEventListener('pointerdown', close, options);
+    this._disposables.add(() => controller.abort());
+
+    message$.value = {
+      flavour: 'affine:link',
+      element: this,
+      setFloating: element => {
+        floating = element;
+        this._whenHover.setFloating(element);
+      },
+    };
+    // Subscribed after the write: `subscribe` calls back at once with the
+    // current value, which must already be this proposal.
+    const unsubscribe = message$.subscribe(message => {
+      if (message?.element !== this) controller.abort();
+    });
+    controller.signal.addEventListener('abort', unsubscribe);
+  }
+
   override connectedCallback() {
     super.connectedCallback();
 
