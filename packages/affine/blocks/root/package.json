@@ -36,6 +36,7 @@
     "@labre/affine-gfx-pointer": "workspace:*",
     "@labre/affine-gfx-shape": "workspace:*",
     "@labre/affine-gfx-text": "workspace:*",
+    "@labre/affine-inline-link": "workspace:*",
     "@labre/affine-inline-preset": "workspace:*",
     "@labre/affine-model": "workspace:*",
     "@labre/affine-rich-text": "workspace:*",
