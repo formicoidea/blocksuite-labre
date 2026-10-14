@@ -24,12 +24,15 @@ import {
 import { UML_DIAGRAM_KIND_MENU } from './kinds.js';
 import { UML_LEGEND_SECTION_WORDINGS } from './legend.js';
 import { UML_FRAGMENT_OPERATOR_MENU } from './operators.js';
-import { UML_PLANTUML_REMARKS } from './plantuml-import.js';
+import {
+  UML_PLANTUML_ERRORS,
+  UML_PLANTUML_REMARKS,
+} from './plantuml-import.js';
 import { UML_PROFILES } from './profiles.js';
 import { UML_READINGS } from './reading.js';
 import { UML_ROLES } from './roles.js';
 import { UML_RULES } from './rules.js';
-import { UML_XMI_REMARKS } from './xmi-import.js';
+import { UML_XMI_ERRORS, UML_XMI_REMARKS } from './xmi-import.js';
 
 /**
  * The words a placed artefact is SEEDED with — its name compartment, and the
@@ -80,6 +83,8 @@ const chromeEntries = (): TranslationKeyManifestEntry[] =>
     ...Object.values(UML_XMI_REMARKS),
     ...Object.values(UML_DRAWIO_REMARKS),
     ...Object.values(UML_DRAWIO_DECODE_ERRORS),
+    ...Object.values(UML_PLANTUML_ERRORS),
+    ...Object.values(UML_XMI_ERRORS),
     ...Object.values(UML_LAYOUT_REMARKS),
   ].map(([key, fallback]) => ({ key, fallback, source: 'chrome' as const }));
 

@@ -256,8 +256,12 @@ export function umlSequenceFragment(
     return { x: 0, y: y0, w: UML_FRAGMENT_BOX.w, h: Math.max(1, y1 - y0) };
   }
   const centres = columns.map(column => column.x + column.w / 2);
-  const left = Math.min(...centres) - UML_SD_FRAGMENT_PADDING;
-  const right = Math.max(...centres) + UML_SD_FRAGMENT_PADDING;
+  const left =
+    centres.reduce((a, b) => Math.min(a, b), Infinity) -
+    UML_SD_FRAGMENT_PADDING;
+  const right =
+    centres.reduce((a, b) => Math.max(a, b), -Infinity) +
+    UML_SD_FRAGMENT_PADDING;
   return { x: left, y: y0, w: right - left, h: Math.max(1, y1 - y0) };
 }
 
@@ -324,8 +328,12 @@ export function umlInventLayout(
     const inner = children.map(measure);
     const columns = Math.ceil(Math.sqrt(children.length));
     const rows = Math.ceil(children.length / columns);
-    const cellW = Math.max(...inner.map(box => box.w));
-    const cellH = Math.max(...inner.map(box => box.h));
+    const cellW = inner
+      .map(box => box.w)
+      .reduce((a, b) => Math.max(a, b), -Infinity);
+    const cellH = inner
+      .map(box => box.h)
+      .reduce((a, b) => Math.max(a, b), -Infinity);
     const size = {
       w: Math.max(
         node.size.w,
@@ -378,12 +386,12 @@ export function umlInventLayout(
     const children = childrenOf(node);
     if (children.length === 0) return;
     const columns = Math.ceil(Math.sqrt(children.length));
-    const cellW = Math.max(
-      ...children.map(child => (measured.get(child.id) ?? child.size).w)
-    );
-    const cellH = Math.max(
-      ...children.map(child => (measured.get(child.id) ?? child.size).h)
-    );
+    const cellW = children
+      .map(child => (measured.get(child.id) ?? child.size).w)
+      .reduce((a, b) => Math.max(a, b), -Infinity);
+    const cellH = children
+      .map(child => (measured.get(child.id) ?? child.size).h)
+      .reduce((a, b) => Math.max(a, b), -Infinity);
     children.forEach((child, index) => {
       const column = index % columns;
       const row = Math.floor(index / columns);
@@ -1204,12 +1212,26 @@ export function umlElementsFromModel(
     const drawn = drafts
       .map(draft => draft.bounds)
       .filter((box): box is UmlBox => box !== undefined);
-    const left = drawn.length > 0 ? Math.min(...drawn.map(box => box.x)) : 0;
-    const top = drawn.length > 0 ? Math.min(...drawn.map(box => box.y)) : 0;
+    const left =
+      drawn.length > 0
+        ? drawn.map(box => box.x).reduce((a, b) => Math.min(a, b), Infinity)
+        : 0;
+    const top =
+      drawn.length > 0
+        ? drawn.map(box => box.y).reduce((a, b) => Math.min(a, b), Infinity)
+        : 0;
     const right =
-      drawn.length > 0 ? Math.max(...drawn.map(box => box.x + box.w)) : 0;
+      drawn.length > 0
+        ? drawn
+            .map(box => box.x + box.w)
+            .reduce((a, b) => Math.max(a, b), -Infinity)
+        : 0;
     const bottom =
-      drawn.length > 0 ? Math.max(...drawn.map(box => box.y + box.h)) : 0;
+      drawn.length > 0
+        ? drawn
+            .map(box => box.y + box.h)
+            .reduce((a, b) => Math.max(a, b), -Infinity)
+        : 0;
     const frame = {
       x: origin.x,
       y: frameTop,
@@ -1552,7 +1574,9 @@ function placeDrafts(
       .filter((box): box is UmlBox => box !== undefined);
     const below =
       placed.length > 0
-        ? Math.max(...placed.map(box => box.y + box.h)) + UML_IMPORT_GUTTER
+        ? placed
+            .map(box => box.y + box.h)
+            .reduce((a, b) => Math.max(a, b), -Infinity) + UML_IMPORT_GUTTER
         : 0;
 
     // Containment, so the invented layout draws the nesting the file stated:

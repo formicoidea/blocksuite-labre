@@ -154,6 +154,14 @@ export interface XmlReadOptions {
  */
 export const XML_MAX_NODES = 200_000;
 
+/** Notes written in full; the rest are counted in one last note. */
+export const XML_MAX_NOTES = 100;
+
+/** A name as a note quotes it: its first 64 characters. */
+function shown(name: string): string {
+  return name.length > 64 ? `${name.slice(0, 64)}…` : name;
+}
+
 /** 2 MiB of decoded characters, well past any drawing the canvas can show. */
 export const XML_MAX_CHARACTERS = 2 * 1024 * 1024;
 
@@ -290,8 +298,17 @@ export function readXml(
     }
   };
 
+  // A note quotes a name the file chose, and 140 KiB of faults used to make
+  // 20 000 notes and two billion characters, past what `JSON.stringify` takes
+  // (counter-review of 49aa247ce). So: a name is quoted to its first 64
+  // characters, and past XML_MAX_NOTES the rest are counted, not written.
+  let unlisted = 0;
   const note = (line: string) => {
     if (stopped) return;
+    if (notes.length >= XML_MAX_NOTES) {
+      unlisted += 1;
+      return;
+    }
     spend(0);
     notes.push(line);
     stopped = conformant;
@@ -427,7 +444,7 @@ export function readXml(
         : -1;
       if (depth < 0) {
         note(
-          `</${name}> closes an element this file never opened; it was ignored.`
+          `</${shown(name)}> closes an element this file never opened; it was ignored.`
         );
       } else {
         // Everything still open INSIDE the element being closed is closed with
@@ -436,7 +453,7 @@ export function readXml(
         for (let index = stack.length - 1; index > depth; index -= 1) {
           const orphan = leave();
           note(
-            `<${orphan.name}> is closed by </${name}> rather than by a tag of ` +
+            `<${shown(orphan.name)}> is closed by </${shown(name)}> rather than by a tag of ` +
               `its own; it was read as far as it goes.`
           );
           close(orphan, open);
@@ -497,7 +514,7 @@ export function readXml(
         // A valueless attribute — HTML's habit, not XML's. Recorded as the
         // empty string, which is what every tolerant reader does with one.
         note(
-          `The attribute "${attrName}" on <${name}> has no value; it was read ` +
+          `The attribute "${shown(attrName)}" on <${shown(name)}> has no value; it was read ` +
             `as empty.`
         );
         spend(0);
@@ -512,7 +529,7 @@ export function readXml(
         const end = source.indexOf(quote, scan + 1);
         if (end < 0) {
           note(
-            `The value of "${attrName}" on <${name}> is never closed; the ` +
+            `The value of "${shown(attrName)}" on <${shown(name)}> is never closed; the ` +
               `rest of the file was read as its value.`
           );
           value = source.slice(scan + 1);
@@ -528,7 +545,7 @@ export function readXml(
         while (scan < source.length && !/[\s>/]/.test(source[scan])) scan += 1;
         value = source.slice(start, scan);
         note(
-          `The value of "${attrName}" on <${name}> is not quoted; it was read ` +
+          `The value of "${shown(attrName)}" on <${shown(name)}> is not quoted; it was read ` +
             `up to the next space.`
         );
       }
@@ -542,7 +559,9 @@ export function readXml(
     }
 
     if (tagEnd === source.length && !selfClosing && source[scan] !== '>') {
-      note(`<${name}> is never finished; the file stops inside its tag.`);
+      note(
+        `<${shown(name)}> is never finished; the file stops inside its tag.`
+      );
     }
 
     if (selfClosing) {
@@ -559,10 +578,15 @@ export function readXml(
   // tree holds every element the file named even when it stops mid-document.
   while (stack.length > 0) {
     const orphan = leave();
-    note(`<${orphan.name}> is never closed; it was read to the end.`);
+    note(`<${shown(orphan.name)}> is never closed; it was read to the end.`);
     close(orphan, source.length);
   }
 
+  if (unlisted > 0) {
+    notes.push(
+      `+${unlisted} more problems of the kinds above were not listed.`
+    );
+  }
   return { root: roots[0], roots, notes };
 }
 

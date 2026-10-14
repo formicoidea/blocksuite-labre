@@ -179,14 +179,34 @@ export function recogniseByShape(
       ];
     }
   );
+  // The first `<tspan>` under each `<text>`, found in one pass: a
+  // `querySelector` per text rebuilt its subtree each time, O(texts × depth) on
+  // nested texts (counter-review of 49aa247ce). Spans come in document order,
+  // so the first to reach an ancestor is its first; an ancestor already
+  // reached has had every ancestor of its own reached too.
+  const firstSpan = new Map<XmlElement, XmlElement>();
+  const reached = new Set<XmlElement>();
+  for (const span of root.querySelectorAll('tspan')) {
+    for (
+      let at = span.parentElement;
+      at && !reached.has(at);
+      at = at.parentElement
+    ) {
+      reached.add(at);
+      if (at.localName === 'text') firstSpan.set(at, span);
+    }
+  }
   const texts = Array.from(root.querySelectorAll('text')).flatMap(element => {
-    const span = element.querySelector('tspan');
+    const span = firstSpan.get(element);
     const x =
       finiteAttr(element, 'x') ?? (span ? finiteAttr(span, 'x') : undefined);
     const y =
       finiteAttr(element, 'y') ?? (span ? finiteAttr(span, 'y') : undefined);
+    if (x === undefined || y === undefined) return [];
+    // After the position: a text's content is its whole subtree, and a text
+    // with no position is never read.
     const name = textOf(element);
-    if (x === undefined || y === undefined || name.length === 0) return [];
+    if (name.length === 0) return [];
     const frame = svgFrameOf(element);
     return [
       { element, x: frame.ox + x * frame.s, y: frame.oy + y * frame.s, name },

@@ -696,9 +696,33 @@ The rules this adds to P3:
 - `isSafeSvgValue` refuses `image-set(` (and `-webkit-image-set(`) as it
   refuses a non-`#` `url(`.
 
-Not covered by the review and left as they are: the XMI reader's own
-recursive walks (`sweep`, `consumeSubtree` and the package walk), bounded only
-by the node cap. If a server reads XMI, they become stacks first.
+The counter-review of 49aa247ce found eight more in the UML readers, now that
+`./interchange` serves them, and the same spec holds each:
+
+| fault                                                                  | before                 | after            |
+| ---------------------------------------------------------------------- | ---------------------- | ---------------- |
+| unbounded `<<([^>]*)>>` (PlantUML, `stereotypesOf`), 80 / 40 KiB       | 6.5 s / 1.3 s          | 97 ms / 45 ms    |
+| `/<[^>]*>/g` on a draw.io label of repeated `<` (40 KiB)               | 1.2 s                  | 1 ms             |
+| each reader note copying a 20 000-character name (20 000 notes)        | 2.5 s, 770 MiB, 400 MB | 17 ms, 101 notes |
+| XMI recursion, 5 000 nested packages                                   | `RangeError`           | refused, keyed   |
+| `Math.min(...)` in the UML materializer (130 000 classes)              | `RangeError`           | read             |
+| one `querySelector('tspan')` per Wardley `<text>`                      | subtree per text       | one pass         |
+| residue attributes under the id `__proto__`, a `<<constructor>>` state | lost / dropped         | kept             |
+
+- PlantUML source past `PLANTUML_MAX_CHARACTERS` (1 MiB) is refused, keyed
+  `com.labre.uml.import.plantuml.too-large`; a guillemet group is read up to
+  256 characters, like draw.io's.
+- `readXml` quotes a name to 64 characters in a note and writes 100 notes
+  (`XML_MAX_NOTES`), then one `+N more` note.
+- XMI deeper than `XMI_MAX_DEPTH` (1 000 levels) is refused, keyed
+  `com.labre.uml.import.xmi.too-deep`. Its recursive walks (`readPackage`,
+  `consumeSubtree`, `sweep`) are bounded by that cap, not rewritten as stacks.
+- Every table a UML reader reads by a word of the file has no prototype.
+
+What this does not settle: a 200 000-node SVG, within the caps, still reads in
+about two seconds and 340 MiB of heap for the Wardley recogniser (three views
+of the tree). If the function's memory ceiling is hit there, the node cap for
+SVG is the lever.
 
 ## The roadmap
 

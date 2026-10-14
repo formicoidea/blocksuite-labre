@@ -1,3 +1,6 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import {
   InterchangeImportError,
   isSafeSvgValue,
@@ -8,35 +11,54 @@ import {
   XML_MAX_CHARACTERS,
   XML_MAX_NODES,
   XML_READ_TOO_LARGE,
+  XmlElement,
   type XmlNode,
 } from '@labre/affine-block-surface/interchange';
 import { BPMN_XML_IMPORT } from '@labre/affine-gfx-bpmn/interchange';
 import {
+  drawioCompartments,
+  stereotypesOf,
+  UML_XMI_ERRORS,
+  umlElementsWithForeign,
+  XMI_MAX_DEPTH,
+} from '@labre/affine-gfx-uml';
+import {
   decodeDrawio,
   UML_DRAWIO_DECODE_ERRORS,
   UML_DRAWIO_IMPORT,
+  UML_PLANTUML_IMPORT,
+  UML_XMI_IMPORT,
 } from '@labre/affine-gfx-uml/interchange';
-import { describe, expect, it } from 'vitest';
+import { WARDLEY_SVG_IMPORT } from '@labre/affine-gfx-wardley/interchange';
+import { describe, expect, it, vi } from 'vitest';
+
+import { ROOT } from './translations/source-files.js';
 
 /**
- * GUARD — every `./interchange` reader is linear in its input and bounded in
- * what it holds (ADR 0012, P3 as amended 2026-10-14, "Bounded").
+ * GUARD — the denials of service two security reviews found in the
+ * `./interchange` readers stay fixed (ADR 0012, P3 amendment "bounded").
  *
  * A server runs these readers on a stranger's file: the labre import function
- * has 256 MiB and two seconds of CPU. The independent security review of
- * 394219550 found no execution flaw and four denials of service, each one a
- * small file that costs seconds. Every case below is one of them, with the
- * time it took BEFORE the fix (Node 22, the machine the review ran on) and the
- * budget it must now hold. **What it would catch**: a copy per entry where a
- * push did, a search of the stack or of the rest of the file per tag, a cap
- * checked after the tree is built rather than while it grows, a table read by
- * a name the file chose that still has a prototype, a spread or a recursion
- * whose depth is the file's.
+ * has 256 MiB and two seconds of CPU. The review of 394219550 found no
+ * execution flaw and nine faults, the counter-review of 49aa247ce eight more in
+ * the UML readers; each case below is one of them, with what it cost BEFORE the
+ * fix (Node 22) in its comment. **What it would catch**: that fault coming
+ * back — a copy per entry where a push did, a search of the stack or of the
+ * rest of the line per token, a cap checked after the tree is built, a table
+ * read by a name the file chose that has a prototype, a spread over the file's
+ * values, a recursion the file can make deep.
  *
- * The budget is generous on purpose (the same 1.5 s as the import function's
- * own `import-linear-time.test.ts`), and the inputs are half the review's
- * where it was quadratic: a quarter of the time quoted, still seconds, where
- * the fixed readers take a tenth of the budget on an idle machine.
+ * What it does NOT prove: that every reader is linear on every input. It holds
+ * the cases found, no more. The XMI reader's recursions are bounded by a depth
+ * cap ({@link XMI_MAX_DEPTH}), not removed; a 200 000-node SVG still reads in
+ * about two seconds and 340 MiB of heap on an idle machine; the node and
+ * character caps are what bound the rest.
+ *
+ * The time budget is the import function's own 1.5 s
+ * (`import-linear-time.test.ts`): generous, because the suite runs under load,
+ * and the inputs are sized so that the quadratic version took several times
+ * that. Where a timing would not separate before from after, the case counts
+ * what the reader did instead.
  */
 
 const BUDGET_MS = 1_500;
@@ -82,7 +104,7 @@ describe('the interchange readers stay linear on hostile files', () => {
   it('answers an orphan close tag without searching the stack', () => {
     const source = '<a>'.repeat(10_000) + '</b>'.repeat(10_000);
     const [document, ms] = timed(() => readXml(source));
-    expect(document.notes.length).toBeGreaterThan(10_000);
+    expect(document.notes.length).toBeGreaterThan(100);
     expect(ms).toBeLessThan(BUDGET_MS);
   });
 
@@ -196,5 +218,125 @@ describe('the interchange readers stay linear on hostile files', () => {
     const deep = readXml('<a>'.repeat(depth) + '</a>'.repeat(depth));
     // `<a/>` innermost, `<a>…</a>` around it.
     expect(serializeXmlNode(deep.root!)).toHaveLength((depth - 1) * 7 + 4);
+  });
+
+  /* ── Counter-review of 49aa247ce: the UML readers ─────────────────── */
+
+  // U1. `<<([^>]*)>>` re-scanned the line per unclosed `<<`: 80 KiB 6.5 s
+  // (PlantUML) and 40 KiB 1.3 s (`stereotypesOf`). Then a size cap.
+  it('reads unclosed guillemets in linear time, and caps PlantUML', async () => {
+    const started = performance.now();
+    await UML_PLANTUML_IMPORT.run('class A ' + '<'.repeat(80_000), {});
+    expect(performance.now() - started).toBeLessThan(BUDGET_MS);
+    const [, ms] = timed(() => stereotypesOf('<'.repeat(80_000)));
+    expect(ms).toBeLessThan(BUDGET_MS);
+
+    expect(
+      keyOf(() => UML_PLANTUML_IMPORT.run('x'.repeat(2 ** 20 + 1), {}))
+    ).toBe('com.labre.uml.import.plantuml.too-large');
+  });
+
+  // U2. `/<[^>]*>/g` on a label of repeated `<`: 40 KiB 1.2 s.
+  it("strips a draw.io label's tags in linear time", () => {
+    const [lines, ms] = timed(() => drawioCompartments('<'.repeat(80_000)));
+    expect(lines).toHaveLength(1);
+    expect(ms).toBeLessThan(BUDGET_MS);
+    expect(drawioCompartments('a<b>c<d')).toEqual([['ac<d']]);
+  });
+
+  // U3. Each note copied a name the file chose: a 20 000-character name and
+  // 20 000 valueless attributes were 20 000 notes, 400 MB of JSON, 2.5 s.
+  it('quotes a name to 64 characters and lists 100 notes at most', () => {
+    const source = `<${'a'.repeat(20_000)}${' b'.repeat(20_000)}/>`;
+    const { notes } = readXml(source);
+    expect(notes).toHaveLength(101);
+    expect(notes.at(-1)).toMatch(/^\+19900 more/);
+    expect(JSON.stringify(notes).length).toBeLessThan(20_000);
+  });
+
+  // U4. `readPackage`, `consumeSubtree` and `sweep` recurse: 5 000 nested
+  // packages were a bare RangeError.
+  it('refuses an XMI file nested past its depth cap, keyed', () => {
+    const depth = 5_000;
+    const source =
+      '<xmi:XMI xmlns:xmi="http://www.omg.org/spec/XMI/20131001" xmlns:uml="http://www.omg.org/spec/UML/20131001"><uml:Model xmi:id="m" name="M">' +
+      '<packagedElement xmi:type="uml:Package" name="p">'.repeat(depth) +
+      '</packagedElement>'.repeat(depth) +
+      '</uml:Model></xmi:XMI>';
+    expect(keyOf(() => UML_XMI_IMPORT.run(source, {}))).toBe(
+      UML_XMI_ERRORS.tooDeep[0]
+    );
+    expect(XMI_MAX_DEPTH).toBe(1_000);
+  });
+
+  // U5. `Math.min(...)` / `Math.max(...)` over a file's values: 130 000 UML
+  // classes were a RangeError. Held on the source of every package with an
+  // `./interchange` entry, because a runtime case needs 3 s of layout.
+  it('spreads no file-sized array into Math.min or Math.max', () => {
+    const offenders: string[] = [];
+    for (const pkg of [
+      'blocks/surface/src/extensions',
+      'gfx/bpmn/src',
+      'gfx/c4/src',
+      'gfx/uml/src',
+      'gfx/wardley/src',
+    ]) {
+      const dir = join(ROOT, 'packages/affine', pkg);
+      for (const file of readdirSync(dir, {
+        recursive: true,
+        encoding: 'utf8',
+      })) {
+        if (!file.endsWith('.ts') || file.includes('__tests__')) continue;
+        const text = readFileSync(join(dir, file), 'utf8');
+        if (/Math\.(?:min|max)\(\s*\.\.\./.test(text)) {
+          offenders.push(`${pkg}/${file}`);
+        }
+      }
+    }
+    // Fixed-size arrays the file cannot grow: the legend's four Porter
+    // arrows, a label's anchor candidates.
+    expect(offenders.sort()).toEqual([
+      'gfx/wardley/src/export.ts',
+      'gfx/wardley/src/legend.ts',
+    ]);
+  });
+
+  // U6. A `querySelector('tspan')` per `<text>` rebuilt its subtree each time.
+  it("finds each Wardley text's first span in one pass", async () => {
+    const texts = '<text x="1" y="1"><tspan>a</tspan></text>'.repeat(200);
+    const descendants = vi.spyOn(XmlElement.prototype, 'descendants');
+    try {
+      await WARDLEY_SVG_IMPORT.run(`<svg xmlns="${SVG_NS}">${texts}</svg>`, {});
+      expect(descendants.mock.calls.length).toBeLessThan(50);
+    } finally {
+      descendants.mockRestore();
+    }
+  });
+
+  // U7. `Object.assign({...}, …)` set the residue's prototype when a scope
+  // was the id `__proto__`, and its attributes were lost in silence.
+  it('keeps residue attributes filed under the id __proto__', () => {
+    const foreign = {
+      orphan: { id: 'orphan', attrs: { ['__proto__']: { a: '1' } } },
+    };
+    const [first] = umlElementsWithForeign(
+      [{ type: 'shape', interchange: { xmi: { id: 'frame' } } }],
+      foreign,
+      'xmi'
+    );
+    const attrs = (
+      first!.interchange as Record<string, { attrs: Record<string, unknown> }>
+    ).xmi.attrs;
+    expect(Object.hasOwn(attrs, '__proto__')).toBe(true);
+  });
+
+  // U8. `STATE_KIND_OF_STEREOTYPE['constructor']` was `Object`: the
+  // stereotype was taken for a glyph and dropped.
+  it('keeps a <<constructor>> stereotype on a PlantUML state', async () => {
+    const { elements } = await UML_PLANTUML_IMPORT.run(
+      '@startuml\nstate S <<constructor>>\nstate T\nS --> T\n@enduml',
+      {}
+    );
+    expect(JSON.stringify(elements)).toContain('«constructor»');
   });
 });
