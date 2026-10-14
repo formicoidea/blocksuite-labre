@@ -16,7 +16,7 @@ import { type BlockModel } from '@labre/store';
 import { computed, signal } from '@preact/signals-core';
 
 import { getIcon } from './block-icons.js';
-import { ExternalDataSourceBase } from './external-data-source.js';
+import { HostedDataSourceBase } from './external-data-source.js';
 import {
   databaseBlockProperties,
   databasePropertyConverts,
@@ -39,11 +39,11 @@ type SpacialProperty = {
 
 /**
  * The inline blob source: rows are the block's children, cells/columns live in
- * the model blob. It implements the {@link ExternalDataSourceBase} data
+ * the model blob. It implements the {@link HostedDataSourceBase} data
  * contract by reading blocksuite signals directly, so it never needs to bump
  * `revision` — reactivity is automatic.
  */
-export class DatabaseBlockDataSource extends ExternalDataSourceBase {
+export class DatabaseBlockDataSource extends HostedDataSourceBase {
   spacialProperties: Record<string, SpacialProperty> = {
     'created-time': {
       valueSet: () => {},

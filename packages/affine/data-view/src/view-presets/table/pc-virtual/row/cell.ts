@@ -5,7 +5,7 @@ import { computed, effect, signal } from '@preact/signals-core';
 import { css } from 'lit';
 import { property } from 'lit/decorators.js';
 
-import { renderUniLit } from '../../../../core';
+import { renderCellStatus, renderUniLit } from '../../../../core';
 import type {
   CellRenderProps,
   DataViewCellLifeCycle,
@@ -164,6 +164,8 @@ export class DatabaseCellContainer extends SignalWatcher(
       return;
     }
     const { view } = renderer;
+    const status = renderCellStatus(this.cell$.value);
+    if (status) return status;
     this.view.lockRows(this.isEditing$.value);
     this.dataset['editing'] = `${this.isEditing$.value}`;
     const props: CellRenderProps = {
