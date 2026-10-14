@@ -22,6 +22,7 @@ export default [
   'packages/affine/blocks/table/vitest.config.ts',
   'packages/affine/components/vitest.config.ts',
   'packages/affine/data-view/vitest.config.ts',
+  'packages/affine/database-editor/vitest.config.ts',
   'packages/affine/ext-loader/vitest.config.ts',
   'packages/affine/fragments/doc-title/vitest.config.ts',
   'packages/affine/fragments/outline/vitest.config.ts',

@@ -427,3 +427,28 @@ library reuses the components it already designed, never a second drawing.
 - Held by `data-view/src/__tests__/standalone-cell.unit.spec.ts`,
   `fragments/doc-title/src/__tests__/title-band.unit.spec.ts` (each type drawn
   and edited by its cell) and `integration-test/…/edgeless/title-band.spec.ts`.
+
+### 2026-10-14: B14 as built
+
+Records what §4 left open when the package and the script change landed.
+
+- **Entry shape.** An `EDITOR_BUNDLES` entry carries a `label` beside the
+  fields §4 lists: it is the `owner` of the bundle's translation group in
+  `translations.ts` (`EDITOR_TRANSLATION_GROUPS`, one line,
+  `{ owner: 'core-database', … }`), the way `AUXILIARY_BUNDLES` uses it.
+- **`.` is data-only.** The package root exports
+  `databaseEditorTranslationEntries` and nothing that pulls Lit; the two
+  providers live behind `./view`, as for a framework. Both are empty
+  (`ponytail:` lines name B10 to B13) and the list of wordings is empty.
+- **Imports are checked against core alone.** The script rewrites the
+  bundle's `@labre/*` imports with core's shim map only, without the shared
+  bundles a framework may reach, so an import of a framework or of
+  `ddd-shared` fails `build:bundles`; `core-database-boundary.unit.spec.ts`
+  asks the same of the source and also checks that no library package but the
+  umbrella's two stripped assembly files imports the package.
+- **Descriptor.** The emitted `./descriptor` has the multi-extension shape
+  (`coreDatabaseBundle = { flag: 'database', telemetryKey: 'core-database', extensions }`);
+  `telemetryKey` only echoes the label, there is no historical PostHog value.
+- **Emitted bundles.** Every other bundle is byte-identical to 0.48.0's;
+  core differs only by the leftover comments and the empty group list in its
+  `translations.ts` and the `EDITOR_BUNDLES` data in `frameworks.ts`.

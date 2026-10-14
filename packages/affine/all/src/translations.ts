@@ -67,6 +67,7 @@ import {
 } from '@labre/affine-shared/services';
 import { CALLOUT_WORDINGS } from '@labre/affine-block-callout/translations';
 import { CODE_WORDINGS } from '@labre/affine-block-code/translations';
+import { databaseEditorTranslationEntries } from '@labre/affine-database-editor';
 import { LATEX_WORDINGS } from '@labre/affine-block-latex/translations';
 import { NOTE_WORDINGS } from '@labre/affine-block-note/translations';
 import { PARAGRAPH_WORDINGS } from '@labre/affine-block-paragraph/translations';
@@ -166,6 +167,19 @@ const AUXILIARY_TRANSLATION_GROUPS: {
 }[] = [
   // One line per bundle: the bundler strips it by its `owner`.
   { owner: 'ddd-aggregate', entries: dddAggregateTranslationEntries },
+];
+
+/**
+ * The editor bundles' contributions (`EDITOR_BUNDLES` in `frameworks.ts`):
+ * chrome over core's own blocks, shipped apart. Same one-line shape, stripped
+ * from core's copy by its `owner` (the bundle name).
+ */
+const EDITOR_TRANSLATION_GROUPS: {
+  owner: string;
+  entries: readonly TranslationKeyManifestEntry[];
+}[] = [
+  // One line per bundle: the bundler strips it by its `owner`.
+  { owner: 'core-database', entries: databaseEditorTranslationEntries },
 ];
 
 const FRAMEWORK_TRANSLATION_GROUPS: FrameworkTranslationGroup[] = [
@@ -493,6 +507,7 @@ export function getTranslationKeyManifest(): TranslationKeyManifestEntry[] {
     collectTranslationKeys('framework', FRAMEWORK_DESCRIPTORS),
     ...FRAMEWORK_TRANSLATION_GROUPS.map(group => group.entries),
     ...AUXILIARY_TRANSLATION_GROUPS.map(group => group.entries),
+    ...EDITOR_TRANSLATION_GROUPS.map(group => group.entries),
     chromeTableEntries(),
     catalogueCategoryEntries(),
     // The editor's own shared vocabulary — the toasts, the toolbar verbs, the

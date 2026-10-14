@@ -240,6 +240,35 @@ export const AUXILIARY_BUNDLES = [
   },
 ];
 
+/**
+ * Bundles that extend CORE's own blocks with editing chrome (ADR 0035 §2, §4):
+ * `core-*`, released in lockstep with core and pinned to its exact version.
+ * Read by `scripts/build-bundles.mjs` like {@link AUXILIARY_BUNDLES}, with one
+ * difference that is the reason for a third list: the flag of a gated
+ * extension here is core's own key (`database` gates core's creation tooling
+ * too), so the script strips the import, the registrations and the
+ * translation group from core's copies but NEVER the flag from `flags.ts`.
+ *
+ * The chrome only adds ways to create and arrange: a host that installs core
+ * alone still sees and edits every stored database. Guarded by
+ * `core-database-boundary.unit.spec.ts`.
+ */
+export const EDITOR_BUNDLES = [
+  {
+    bundle: 'core-database',
+    label: 'core-database',
+    info: 'coreDatabaseBundle',
+    pkg: '@labre/affine-database-editor',
+    dir: 'affine/database-editor',
+    extensions: [
+      // always-on: view bar, full-page host, properties panel element
+      { viewExtension: 'DatabaseEditorViewExtension' },
+      // creation entries, under core's own key
+      { flag: 'database', viewExtension: 'DatabaseEditorToolingViewExtension' },
+    ],
+  },
+];
+
 const BY_ID = new Map<FrameworkId, FrameworkDescriptor>(
   FRAMEWORK_DESCRIPTORS.map(d => [d.id, d])
 );

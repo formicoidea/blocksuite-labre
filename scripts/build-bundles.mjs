@@ -15,6 +15,9 @@
  *                                 relative paths → zero `@labre/*` runtime deps.
  *   - `@labre/framework-<fw>`   : one per business framework (wardley/edgy/bpmn/
  *                                 cynefin), depending only on `@labre/core`.
+ *   - `@labre/core-<name>`      : editing chrome over core's own blocks
+ *                                 (`core-database`, ADR 0035 §4), depending
+ *                                 only on `@labre/core`.
  *
  * `@labre/core` IS the `@labre/affine` umbrella, retargeted: the umbrella's own
  * src (one-line re-export shims + the assembly files) becomes `core/src`, with
@@ -41,7 +44,8 @@ const UMBRELLA_DIR = path.join(PKGS_DIR, 'affine', 'all');
  * through a type-strip transform. Adding a framework is one descriptor — no
  * edit here. The bundles that are NOT frameworks (templates-only packages with
  * no senior button and no commands) come from `AUXILIARY_BUNDLES` in the same
- * module.
+ * module, and the editor bundles (chrome over core's own blocks) from
+ * `EDITOR_BUNDLES`.
  */
 const FRAMEWORKS_TS = path.join(UMBRELLA_DIR, 'src', 'frameworks.ts');
 
@@ -63,7 +67,7 @@ async function importDataModule(fileAbs) {
   );
 }
 
-const { FRAMEWORK_DESCRIPTORS, AUXILIARY_BUNDLES } =
+const { FRAMEWORK_DESCRIPTORS, AUXILIARY_BUNDLES, EDITOR_BUNDLES } =
   await importDataModule(FRAMEWORKS_TS);
 
 const FRAMEWORKS = [
@@ -92,6 +96,26 @@ const FRAMEWORKS = [
 ];
 
 /**
+ * Editor bundles (`EDITOR_BUNDLES`, ADR 0035 §4): emitted like a framework
+ * bundle (`.`, `./view`, `./descriptor`, exact core pin, LICENSE) and stripped
+ * from core's copies of `extensions/view.ts` and `translations.ts` the same
+ * way, with one difference: a gated extension's flag is core's OWN key
+ * (`database` also gates core's creation tooling), so it is never stripped
+ * from `flags.ts`. They may import core alone: no shared bundle, no framework.
+ */
+const EDITORS = EDITOR_BUNDLES.map(b => ({
+  out: b.bundle,
+  pkg: b.pkg,
+  dir: b.dir,
+  telemetryKey: b.label,
+  id: b.label,
+  info: b.info,
+  extensions: b.extensions.map(e => ({ ext: e.viewExtension, flag: e.flag })),
+  shortcuts: false,
+  editor: true,
+}));
+
+/**
  * Shared (non-framework) bundles: published packages with NO senior button that
  * one or more framework bundles depend on. Like frameworks they are vendored OUT
  * of core, but they are emitted as their own bundle depending only on core.
@@ -106,8 +130,13 @@ const SHARED = [
 
 const FRAMEWORK_PKGS = new Set(FRAMEWORKS.map(f => f.pkg));
 const SHARED_PKGS = new Set(SHARED.map(s => s.pkg));
+const EDITOR_PKGS = new Set(EDITORS.map(e => e.pkg));
 /** Packages that must NOT be vendored into core (they ship as their own bundle). */
-const EXCLUDED_FROM_CORE = new Set([...FRAMEWORK_PKGS, ...SHARED_PKGS]);
+const EXCLUDED_FROM_CORE = new Set([
+  ...FRAMEWORK_PKGS,
+  ...SHARED_PKGS,
+  ...EDITOR_PKGS,
+]);
 
 // Matches a `@labre/*` module specifier in `from '…'`, `import '…'` (side-effect)
 // or `import('…')` position — NOT arbitrary `@labre/…` string literals in code.
@@ -171,11 +200,13 @@ const CORE = `${SCOPE}/labre-core`;
 /** Published bundle name for a workspace pkg that ships as its own bundle. */
 function bundleNameOf(pkg) {
   const b =
-    FRAMEWORKS.find(f => f.pkg === pkg) ?? SHARED.find(s => s.pkg === pkg);
+    FRAMEWORKS.find(f => f.pkg === pkg) ??
+    EDITORS.find(e => e.pkg === pkg) ??
+    SHARED.find(s => s.pkg === pkg);
   return b ? `${SCOPE}/labre-${b.out}` : null;
 }
 
-/** Core packages = umbrella deps minus the frameworks AND the shared bundles. */
+/** Core packages = umbrella deps minus every package that ships as its own bundle. */
 const corePkgNames = Object.keys(umbrella.deps).filter(
   d => d.startsWith('@labre/') && !EXCLUDED_FROM_CORE.has(d)
 );
@@ -332,11 +363,12 @@ function buildCore() {
       path.join(CORE_SRC, '_pkgs', vname(n))
     );
   }
-  // 3. trim every framework from the COPIED assembly files (source untouched),
-  //    derived from FRAMEWORKS so a new senior-button package needs no edit here.
+  // 3. trim every framework and editor bundle from the COPIED assembly files
+  //    (source untouched), derived from FRAMEWORKS and EDITORS so a new package
+  //    that ships apart needs no edit here.
   const viewTs = path.join(CORE_SRC, 'extensions', 'view.ts');
   const flagsTs = path.join(CORE_SRC, 'flags.ts');
-  for (const fw of FRAMEWORKS) {
+  for (const fw of [...FRAMEWORKS, ...EDITORS]) {
     // the framework's `/view` import (single- or multi-line)
     dropStatement(
       viewTs,
@@ -367,7 +399,8 @@ function buildCore() {
       }
     }
     for (const e of fw.extensions) {
-      if (!e.flag) continue;
+      // An editor bundle's flag is core's own key: core keeps it.
+      if (!e.flag || fw.editor) continue;
       dropLines(
         flagsTs,
         new RegExp(`^\\s*'${escapeRe(e.flag)}',\\s*$`),
@@ -609,7 +642,9 @@ function buildFramework(fw, reverseMap) {
   fs.writeFileSync(
     path.join(src, 'descriptor.ts'),
     `import { ${names} } from './view.js';\n\n` +
-      `/** Host wiring for the ${fw.id} framework. */\n` +
+      (fw.editor
+        ? `/** Host wiring for the ${fw.id} bundle. */\n`
+        : `/** Host wiring for the ${fw.id} framework. */\n`) +
       body
   );
 
@@ -619,7 +654,9 @@ function buildFramework(fw, reverseMap) {
     JSON.stringify(
       {
         name: bundleNameOf(fw.pkg),
-        description: `Labre ${fw.id} framework for ${CORE}.`,
+        description: fw.editor
+          ? `Labre ${fw.id} editing chrome for ${CORE}.`
+          : `Labre ${fw.id} framework for ${CORE}.`,
         version: VERSION,
         type: 'module',
         sideEffects: false,
@@ -689,6 +726,9 @@ for (const sh of SHARED) buildShared(sh, coreReverseMap);
 const fwReverseMap = new Map(coreReverseMap);
 for (const sh of SHARED) fwReverseMap.set(sh.pkg, bundleNameOf(sh.pkg));
 for (const fw of FRAMEWORKS) buildFramework(fw, fwReverseMap);
+// editor bundles see core alone: importing a shared bundle or a framework
+// fails here, at release time (ADR 0035 §3)
+for (const ed of EDITORS) buildFramework(ed, coreReverseMap);
 
 console.log(
   `@labre/core: vendored ${core.vendored} packages, ${core.exportsCount} exports, version ${VERSION}`
@@ -697,4 +737,5 @@ console.log(`shared: ${SHARED.map(s => bundleNameOf(s.pkg)).join(', ')}`);
 console.log(
   `frameworks: ${FRAMEWORKS.map(f => bundleNameOf(f.pkg)).join(', ')}`
 );
+console.log(`editors: ${EDITORS.map(e => bundleNameOf(e.pkg)).join(', ')}`);
 console.log(`output: ${path.relative(ROOT, OUT_DIR)}/`);
