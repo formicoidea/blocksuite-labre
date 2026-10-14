@@ -1,4 +1,3 @@
-import { DATA_VIEW_PROPERTIES } from '@labre/data-view/translations';
 import type { ChromeWording } from '@labre/affine-shared/services';
 import type { TranslationKeyManifestEntry } from '@labre/std';
 
@@ -71,10 +70,14 @@ export const VIEW_MENU_IMPORT: ChromeWording = [
 /* ── The properties panel (ADR 0035 §9b, issue B10) ────────────────────── */
 
 /**
- * Declared once by `@labre/data-view` (the list's own title, in its view
- * options popover too), so not listed below.
+ * Declared once by `@labre/data-view` (`DATA_VIEW_PROPERTIES`, the list's own
+ * title, in its view options popover too), so not listed below. Restated, not
+ * imported: this bundle imports core alone (`core-database-boundary`).
  */
-export const PROPERTIES_PANEL_TITLE: ChromeWording = DATA_VIEW_PROPERTIES;
+export const PROPERTIES_PANEL_TITLE: ChromeWording = [
+  'com.labre.database.properties-panel.title',
+  'Properties',
+];
 
 /** The panel's "Show all" over the view's hidden properties. */
 export const PROPERTIES_PANEL_SHOW_ALL: ChromeWording = [
