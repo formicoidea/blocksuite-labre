@@ -25,7 +25,7 @@ export interface CroppableImageBlock {
 }
 
 /**
- * The « Rogner » state of one image block (ADR 0036), shared by the page and
+ * The « Rogner » state of one image block (ADR 0037), shared by the page and
  * the canvas components: which preset the crop frame is open on, if any, and
  * the gestures that write. The frame is local UI and never stored.
  */

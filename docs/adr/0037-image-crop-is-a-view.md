@@ -1,4 +1,4 @@
-# ADR 0036 — An image crop is a stored view, never new bytes
+# ADR 0037 — An image crop is a stored view, never new bytes
 
 - Status: **proposed** (2026-10-14)
 - Deciders: Mathieu Jolly

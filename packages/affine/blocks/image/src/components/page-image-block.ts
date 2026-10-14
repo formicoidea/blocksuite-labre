@@ -114,7 +114,7 @@ export class ImageBlockPageComponent extends SignalWatcher(
   };
 
   /**
-   * The box of a cropped page image (ADR 0036). `width`/`height` stay the
+   * The box of a cropped page image (ADR 0037). `width`/`height` stay the
    * displayed size of the WHOLE picture, so the box is the crop's share of it
    * and cropping keeps the picture's scale. While the size is unknown (no
    * stored size, image not loaded yet) the image is drawn whole: an empty

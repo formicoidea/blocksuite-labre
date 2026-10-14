@@ -1,5 +1,5 @@
 /**
- * The stored crop of an image block (ADR 0036): a view on the source, never
+ * The stored crop of an image block (ADR 0037): a view on the source, never
  * new bytes. The rectangle is normalised to the source image (0..1 on each
  * axis), so it needs no pixel size and survives any resize.
  *

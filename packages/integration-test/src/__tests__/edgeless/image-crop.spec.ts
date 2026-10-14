@@ -1,5 +1,5 @@
 /**
- * « Rogner » end to end (ADR 0036), on the real editor, page and canvas.
+ * « Rogner » end to end (ADR 0037), on the real editor, page and canvas.
  *
  * The picture is 200×100, red on its left half and blue on its right, so a
  * crop is visible in a pixel.
@@ -240,7 +240,7 @@ describe('image crop on the canvas', () => {
         [model]
       );
 
-    // The blob is drawn at the bound's origin: before ADR 0036 the whole
+    // The blob is drawn at the bound's origin: before ADR 0037 the whole
     // picture was squeezed into the box and its red half showed here.
     expect(pixel(canvas!, 25, 50)).toEqual(BLUE);
     expect(pixel(canvas!, 75, 50)).toEqual(BLUE);

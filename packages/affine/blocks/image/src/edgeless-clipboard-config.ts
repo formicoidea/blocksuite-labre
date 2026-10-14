@@ -24,7 +24,7 @@ export class EdgelessClipboardImageConfig extends EdgelessClipboardConfig {
         width,
         height,
         // The box above is the cropped one: without its crop the copy would
-        // stretch the whole picture into it (ADR 0036).
+        // stretch the whole picture into it (ADR 0037).
         crop,
       },
       this.surface.model.id

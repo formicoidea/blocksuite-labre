@@ -27,7 +27,7 @@ export class ImageResizeManager {
     dragModel?.store.captureSync();
     const { width, height } = this._imageContainer.getBoundingClientRect();
     // A cropped page image shows a window on the picture, but `width` and
-    // `height` stay the size of the WHOLE picture (ADR 0036): the HTML
+    // `height` stay the size of the WHOLE picture (ADR 0037): the HTML
     // adapter and an older client draw it whole at that size.
     const crop =
       dragModel instanceof ImageBlockModel

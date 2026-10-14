@@ -501,7 +501,7 @@ export class ExportManager {
           });
         const blockBound = xywhArrayToObject(block);
         const image = await blobToImage(blob);
-        // The box shows the crop only (ADR 0036): draw that part of the
+        // The box shows the crop only (ADR 0037): draw that part of the
         // source into it, never the whole picture squeezed.
         const source = imageCropSourceRect(
           readImageCrop(block.props.crop),

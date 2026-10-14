@@ -31,7 +31,7 @@ const testIdOf = (mask: ImageCropMask) =>
   `image-crop-${mask.replace(':', '-')}`;
 
 /**
- * « Rogner » in the image toolbar (ADR 0036), page and canvas alike: the
+ * « Rogner » in the image toolbar (ADR 0037), page and canvas alike: the
  * toolbar's own `editor-menu-button` of `editor-menu-action`s, nothing drawn
  * anew. Hidden on a readonly page and until the picture has loaded — a preset
  * needs the source's size.

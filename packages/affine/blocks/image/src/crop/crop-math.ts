@@ -4,7 +4,7 @@ import {
   type ImageCropMask,
 } from '@labre/affine-model';
 
-/** A crop rectangle without its mask, normalised to the source (ADR 0036). */
+/** A crop rectangle without its mask, normalised to the source (ADR 0037). */
 export type CropRect = Pick<ImageCrop, 'x' | 'y' | 'w' | 'h'>;
 
 export type CropCorner = 'nw' | 'ne' | 'sw' | 'se';

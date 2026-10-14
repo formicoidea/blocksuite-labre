@@ -19,7 +19,7 @@ export type ImageBlockProps = {
   size?: number;
   comments?: Record<string, boolean>;
   /**
-   * The part of the source this block shows (ADR 0036). Absent means the
+   * The part of the source this block shows (ADR 0037). Absent means the
    * whole image; read it through `readImageCrop`, never directly.
    */
   crop?: ImageCrop;
@@ -39,7 +39,7 @@ const defaultImageProps: ImageBlockProps = {
   rotate: 0,
   size: -1,
   comments: undefined,
-  // `undefined`, so it is never written on load (ADR 0036).
+  // `undefined`, so it is never written on load (ADR 0037).
   crop: undefined,
   'meta:createdAt': undefined,
   'meta:createdBy': undefined,

@@ -29,7 +29,7 @@ export const IMAGE_TOOLBAR_TURN_INTO_CARD_VIEW: ChromeWording = [
 ];
 
 /**
- * « Rogner » (ADR 0036): the toolbar button, its presets and the way back to
+ * « Rogner » (ADR 0037): the toolbar button, its presets and the way back to
  * the whole picture. The ratios are words too — a host may write « 16/9 ».
  */
 export const IMAGE_TOOLBAR_CROP: ChromeWording = [

@@ -24,7 +24,7 @@ const rectStyle = (rect: CropRect) =>
   });
 
 /**
- * The crop frame (ADR 0036): the WHOLE source, laid over the block at the
+ * The crop frame (ADR 0037): the WHOLE source, laid over the block at the
  * place it would occupy uncropped (the parent sizes this element with
  * `wholeImageFrame`), dimmed outside the window being edited.
  *

@@ -1,5 +1,5 @@
 /**
- * « Rogner » (ADR 0036): the geometry of the crop tool and the one write it
+ * « Rogner » (ADR 0037): the geometry of the crop tool and the one write it
  * makes per gesture.
  *
  * This spec would have caught:

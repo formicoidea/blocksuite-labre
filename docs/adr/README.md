@@ -40,7 +40,7 @@ One file per decision. Format and lifecycle in
 | [0033](0033-board-not-resunk-by-its-own-move.md)               | Board not re-sunk by its own move    | accepted                  | A board is lowered under what it covers only when placed; its own move never lowers it.                                                                                             |
 | [0034](0034-panel-seams-and-host-panels-facade.md)             | Panel seams and host-panels façade   | accepted                  | One DI seam per panel the library opens, no router; `@labre/affine/host-panels` gathers the host→editor verbs; one reorder drag; view actions for a host menu (amended 2026-10-13). |
 | [0035](0035-core-database-bundle-and-panel-seams.md)           | Core-database bundle and seams       | proposed                  | Stored databases render in core; the chrome ships as `labre-core-database`; open-row, panel, picker, title-band seams.                                                              |
-| [0036](0036-image-crop-is-a-view.md)                           | Image crop is a view                 | proposed                  | One optional `crop` (normalised rectangle + preset token) on `affine:image`; the bytes never change; a 0.49 client shows the whole image.                                           |
+| [0037](0037-image-crop-is-a-view.md)                           | Image crop is a view                 | proposed                  | One optional `crop` (normalised rectangle + preset token) on `affine:image`; the bytes never change; a 0.49 client shows the whole image.                                           |
 
 Related documents that are not ADRs:
 

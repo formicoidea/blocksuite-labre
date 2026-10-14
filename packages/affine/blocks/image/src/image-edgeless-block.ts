@@ -129,7 +129,7 @@ export class ImageEdgelessBlockComponent extends GfxBlockComponent<ImageBlockMod
     const blobUrl = this.blobUrl;
     const imageLabel = translateKey(this.std, ...IMAGE_LABEL);
     const { rotate = 0, size = 0, caption = imageLabel } = this.model.props;
-    // The box is the visible part (ADR 0036): the source is drawn scaled
+    // The box is the visible part (ADR 0037): the source is drawn scaled
     // and offset inside it, through a window that clips the rest.
     const crop = this.cropController.crop$.value;
 

@@ -1,5 +1,5 @@
 /**
- * ADR 0036 — the image crop is one optional stored key, `prop:crop`.
+ * ADR 0037 — the image crop is one optional stored key, `prop:crop`.
  *
  * This spec would have caught:
  * - a `crop` default other than `undefined`: `sync-controller` writes such a
@@ -57,7 +57,7 @@ function authorImage() {
 const yBlockOf = (spaceDoc: Y.Doc, id: string) =>
   spaceDoc.getMap('blocks').get(id) as Y.Map<unknown>;
 
-/** Every key an image stored before ADR 0036 — no more, no less. */
+/** Every key an image stored before ADR 0037 — no more, no less. */
 const KEYS_BEFORE_CROP = [
   'prop:caption',
   'prop:height',
@@ -74,7 +74,7 @@ const KEYS_BEFORE_CROP = [
   'sys:version',
 ];
 
-describe('image crop: stored format (ADR 0036)', () => {
+describe('image crop: stored format (ADR 0037)', () => {
   test('a new image stores no crop key', () => {
     const { doc, imageId } = authorImage();
     const keys = Array.from(yBlockOf(doc.spaceDoc, imageId).keys()).sort();

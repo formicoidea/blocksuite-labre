@@ -1105,7 +1105,7 @@ export class DragEventWatcher {
             block.props
           );
           // A page image's `width`/`height` are the WHOLE picture; on the
-          // canvas the box is the cropped window (ADR 0036).
+          // canvas the box is the cropped window (ADR 0037).
           const crop = readImageCrop(block.props.crop);
           blockBound.w =
             blockBound.w || block.props.width * (crop?.w ?? 1) || 100;

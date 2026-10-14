@@ -16,7 +16,7 @@ import {
 } from './crop-math.js';
 
 /**
- * Record one crop gesture (ADR 0036). Answers whether anything was written.
+ * Record one crop gesture (ADR 0037). Answers whether anything was written.
  *
  * - Nothing on a readonly store, nothing when the crop (mask included) is
  *   already the one asked for: an unchanged write is an empty undo step.
