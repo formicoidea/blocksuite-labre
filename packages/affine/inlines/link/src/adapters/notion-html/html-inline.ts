@@ -2,6 +2,7 @@ import {
   type HtmlAST,
   NotionHtmlASTToDeltaExtension,
 } from '@labre/affine-shared/adapters';
+import { isSafeLinkUrl } from '@labre/affine-shared/utils';
 import type { Element } from 'hast';
 
 const isElement = (ast: HtmlAST): ast is Element => {
@@ -38,7 +39,7 @@ export const notionHtmlLinkElementToDeltaMatcher =
               return delta;
             }
           }
-          if (href.startsWith('http')) {
+          if (/^https?:/i.test(href.trim()) && isSafeLinkUrl(href)) {
             delta.attributes = {
               ...delta.attributes,
               link: href,

@@ -797,23 +797,31 @@ describe('every producer marker survives sanitising', () => {
   )('%s', (_name, source) => {
     const raw = new DOMParser().parseFromString(source, 'image/svg+xml');
     const clean = sanitizeSvg(source, new SvgSketchNotebook());
-    const ids = (root: ParentNode) =>
-      Array.from(root.querySelectorAll('[id]'))
-        .map(element => element.getAttribute('id')!)
+    // The sanitized tree is the reader's view, not a DOM: both sides are read
+    // through the members they share.
+    const rawAll = [
+      raw.documentElement,
+      ...Array.from(raw.documentElement.querySelectorAll('*')),
+    ];
+    const cleanAll = [clean, ...clean.descendants()];
+    const ids = (all: { getAttribute(name: string): string | null }[]) =>
+      all
+        .map(element => element.getAttribute('id') ?? '')
         .filter(id => MARKED.test(id))
         .sort();
     // The root's own attributes too: Labre's marker version rides on it.
-    const data = (root: Element) =>
-      [root, ...Array.from(root.querySelectorAll('*'))]
+    const data = (
+      all: { attributes: ArrayLike<{ name: string; value: string }> }[]
+    ) =>
+      all
         .flatMap(element =>
-          element
-            .getAttributeNames()
-            .filter(name => name.startsWith('data-'))
-            .map(name => `${name}=${element.getAttribute(name)}`)
+          Array.from(element.attributes)
+            .filter(attr => attr.name.startsWith('data-'))
+            .map(attr => `${attr.name}=${attr.value}`)
         )
         .sort();
-    expect(ids(clean)).toEqual(ids(raw));
-    expect(data(clean)).toEqual(data(raw.documentElement));
+    expect(ids(cleanAll)).toEqual(ids(rawAll));
+    expect(data(cleanAll)).toEqual(data(rawAll));
   });
 });
 

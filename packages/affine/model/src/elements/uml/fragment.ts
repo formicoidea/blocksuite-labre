@@ -5,22 +5,7 @@ import { field } from '@labre/std/gfx';
 import type { FrameworkBackgroundProps } from '../framework-background/index.js';
 import { FrameworkBackgroundElementModel } from '../framework-background/index.js';
 import { umlInNameBand } from './band.js';
-
-/**
- * Height of a combined fragment's OPERATOR BAND — the strip across its top the
- * pentagon tag is drawn in, in model units.
- *
- * Owned by the model for the reason {@link UML_FRAME_BAND_HEIGHT} is: the
- * fragment's own hit test reads it (a fragment is clickable by its tag strip as
- * well as by its border), and `affine-model` cannot reach into
- * `affine-block-surface` where the declaration is resolved.
- *
- * The diagram frame's own 44, and deliberately: §17.6.4 draws the operator in
- * the very same cut-corner pentagon Annex A draws a frame heading in — it IS a
- * frame, nested in another one — and two numbers for one piece of furniture
- * would drift.
- */
-export const UML_FRAGMENT_BAND = 44;
+import { UML_FRAGMENT_BAND } from './consts.js';
 
 /**
  * The INTERACTION OPERATOR of a combined fragment — the word written in its

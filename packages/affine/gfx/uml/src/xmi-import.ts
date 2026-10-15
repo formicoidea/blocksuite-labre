@@ -4,6 +4,7 @@ import type {
   InterchangeReport,
   SerializedElementProps,
 } from '@labre/affine-block-surface';
+import { InterchangeImportError } from '@labre/affine-block-surface/interchange';
 import type { UmlDiagramKind, UmlFragmentOperator } from '@labre/affine-model';
 import type { ForeignInterchange } from '@labre/std/gfx';
 
@@ -190,78 +191,87 @@ export interface UmlXmiImport {
 const META_PREFIXES = new Set(['uml', 'UML', 'Uml']);
 
 /** The classifier metaclasses, and the {@link UmlClassifier.kind} each is. */
-const CLASSIFIER_KIND: Readonly<Record<string, UmlClassifier['kind']>> = {
-  Class: 'class',
-  Interface: 'interface',
-  Enumeration: 'enumeration',
-  InstanceSpecification: 'object',
-  // §10.2 makes a DataType a Classifier with attributes and operations, and the
-  // canvas draws it as the box §9.2.4 draws — which is a class with a keyword
-  // on it. The keyword is added rather than assumed, so the box says what the
-  // file said.
-  DataType: 'class',
-  PrimitiveType: 'class',
-};
+// Tables read by a name the FILE wrote have no prototype (`<constructor>`).
+const CLASSIFIER_KIND: Readonly<Record<string, UmlClassifier['kind']>> =
+  Object.assign(Object.create(null), {
+    Class: 'class',
+    Interface: 'interface',
+    Enumeration: 'enumeration',
+    InstanceSpecification: 'object',
+    // §10.2 makes a DataType a Classifier with attributes and operations, and the
+    // canvas draws it as the box §9.2.4 draws — which is a class with a keyword
+    // on it. The keyword is added rather than assumed, so the box says what the
+    // file said.
+    DataType: 'class',
+    PrimitiveType: 'class',
+  });
 
 /** The metaclasses {@link CLASSIFIER_KIND} maps that need their keyword said. */
-const CLASSIFIER_KEYWORD: Readonly<Record<string, string>> = {
-  DataType: 'datatype',
-  PrimitiveType: 'primitive',
-};
+const CLASSIFIER_KEYWORD: Readonly<Record<string, string>> = Object.assign(
+  Object.create(null),
+  {
+    DataType: 'datatype',
+    PrimitiveType: 'primitive',
+  }
+);
 
 /** The three cubes of §19.4.2, and the one `kind` they differ by. */
-const DEPLOYMENT_KIND: Readonly<Record<string, UmlDeploymentNode['kind']>> = {
-  Node: 'node',
-  Device: 'device',
-  ExecutionEnvironment: 'execution-environment',
-};
+const DEPLOYMENT_KIND: Readonly<Record<string, UmlDeploymentNode['kind']>> =
+  Object.assign(Object.create(null), {
+    Node: 'node',
+    Device: 'device',
+    ExecutionEnvironment: 'execution-environment',
+  });
 
 /** The inverse of `xmi.ts`'s `ACTIVITY_NODE_TYPE`. */
-const ACTIVITY_NODE_KIND: Readonly<Record<string, UmlActivityNodeKind>> = {
-  OpaqueAction: 'action',
-  Action: 'action',
-  CallBehaviorAction: 'action',
-  CallOperationAction: 'action',
-  InitialNode: 'initial',
-  ActivityFinalNode: 'activity-final',
-  FlowFinalNode: 'flow-final',
-  DecisionNode: 'decision',
-  MergeNode: 'decision',
-  ForkNode: 'fork',
-  JoinNode: 'fork',
-  ObjectNode: 'object-node',
-  CentralBufferNode: 'object-node',
-  DataStoreNode: 'object-node',
-  SendSignalAction: 'send-signal',
-  // Ambiguous by design — §16.10.4 draws the hourglass as an AcceptEventAction
-  // whose trigger names a TimeEvent, so the two are told apart by the EVENT and
-  // not by the metaclass. See {@link readActivity}.
-  AcceptEventAction: 'accept-event',
-};
+const ACTIVITY_NODE_KIND: Readonly<Record<string, UmlActivityNodeKind>> =
+  Object.assign(Object.create(null), {
+    OpaqueAction: 'action',
+    Action: 'action',
+    CallBehaviorAction: 'action',
+    CallOperationAction: 'action',
+    InitialNode: 'initial',
+    ActivityFinalNode: 'activity-final',
+    FlowFinalNode: 'flow-final',
+    DecisionNode: 'decision',
+    MergeNode: 'decision',
+    ForkNode: 'fork',
+    JoinNode: 'fork',
+    ObjectNode: 'object-node',
+    CentralBufferNode: 'object-node',
+    DataStoreNode: 'object-node',
+    SendSignalAction: 'send-signal',
+    // Ambiguous by design — §16.10.4 draws the hourglass as an AcceptEventAction
+    // whose trigger names a TimeEvent, so the two are told apart by the EVENT and
+    // not by the metaclass. See {@link readActivity}.
+    AcceptEventAction: 'accept-event',
+  });
 
 /** The inverse of `xmi.ts`'s `PSEUDOSTATE_KIND` (§14.5.7's enumeration). */
-const PSEUDOSTATE_OF_KIND: Readonly<Record<string, UmlPseudostateKind>> = {
-  initial: 'initial',
-  choice: 'choice',
-  junction: 'junction',
-  shallowHistory: 'shallow-history',
-  deepHistory: 'deep-history',
-  entryPoint: 'entry-point',
-  exitPoint: 'exit-point',
-  terminate: 'terminate',
-  fork: 'fork',
-  join: 'fork',
-};
+const PSEUDOSTATE_OF_KIND: Readonly<Record<string, UmlPseudostateKind>> =
+  Object.assign(Object.create(null), {
+    initial: 'initial',
+    choice: 'choice',
+    junction: 'junction',
+    shallowHistory: 'shallow-history',
+    deepHistory: 'deep-history',
+    entryPoint: 'entry-point',
+    exitPoint: 'exit-point',
+    terminate: 'terminate',
+    fork: 'fork',
+    join: 'fork',
+  });
 
 /** The dependency metaclasses, and the relation each states. */
-const DEPENDENCY_KIND: Readonly<Record<string, UmlRelationKind>> = {
-  Dependency: 'dependency',
-  Usage: 'dependency',
-  Abstraction: 'dependency',
-  Realization: 'realization',
-  Deployment: 'deploy',
-  Manifestation: 'manifest',
-};
+const DEPENDENCY_KIND: Readonly<Record<string, UmlRelationKind>> =
+  Object.assign(Object.create(null), {
+    Dependency: 'dependency',
+    Usage: 'dependency',
+    Abstraction: 'dependency',
+    Realization: 'realization',
+    Deployment: 'deploy',
+    Manifestation: 'manifest',
+  });
 
 /** What Labre stamps on the XMI extensions it writes — `xmi.ts`'s `EXTENDER`. */
 const LABRE_EXTENDER = 'labre';
@@ -296,6 +306,36 @@ export const UML_XMI_QUARANTINE_REASON = {
  * cannot become a `[key, english]` pair without breaking that contract. BPMN
  * carries the identical constraint on its own quarantine reasons.
  */
+/**
+ * The deepest an XMI file may nest: 1 000 levels. The reader walks packages,
+ * consumed subtrees and the quarantine sweep by recursion, and 5 000 nested
+ * packages overflowed the stack with a bare `RangeError` (counter-review of
+ * 49aa247ce). A real model nests a few dozen levels; one cap at the door bounds
+ * every recursion below it.
+ */
+export const XMI_MAX_DEPTH = 1_000;
+
+/** The reader's refusal, static so a server can hand the key on (ADR 0023). */
+export const UML_XMI_ERRORS = {
+  tooDeep: [
+    'com.labre.uml.import.xmi.too-deep',
+    'This XMI file nests its elements deeper than an import accepts, so it was not read.',
+  ],
+} as const satisfies Record<string, readonly [key: string, english: string]>;
+
+/** The depth of the deepest element, walked with a stack. */
+function depthOf(roots: readonly XmlNode[]): number {
+  let deepest = 0;
+  const stack = roots.map(node => ({ node, depth: 1 }));
+  while (stack.length > 0) {
+    const { node, depth } = stack.pop()!;
+    deepest = Math.max(deepest, depth);
+    for (const child of node.children)
+      stack.push({ node: child, depth: depth + 1 });
+  }
+  return deepest;
+}
+
 export const UML_XMI_REMARKS = {
   mintedId: [
     'com.labre.uml.import.xmi.minted-id',
@@ -451,10 +491,14 @@ function carryAttr(
   value: string
 ): void {
   const payload = foreignOf(ctx, owner);
-  payload.attrs = {
-    ...payload.attrs,
-    [scope]: { ...payload.attrs?.[scope], [name]: value },
-  };
+  // In place, in bags with no prototype: a copy per attribute was quadratic,
+  // and the keys are the file's (BPMN's keep-helpers, same review).
+  const attrs = (payload.attrs ??= Object.create(null) as Record<
+    string,
+    Record<string, string>
+  >);
+  (attrs[scope] ??= Object.create(null) as Record<string, string>)[name] =
+    value;
   ctx.counts.carried += 1;
 }
 
@@ -467,7 +511,7 @@ function quarantine(
   entry: Omit<InterchangeNote, 'kind' | 'message'>
 ): void {
   const payload = foreignOf(ctx, owner);
-  payload.quarantined = [...(payload.quarantined ?? []), { fragment, reason }];
+  (payload.quarantined ??= []).push({ fragment, reason });
   ctx.counts.quarantined += 1;
   note(ctx, { kind: 'quarantined', ...entry, message: reason });
 }
@@ -519,53 +563,58 @@ function map(ctx: Context, node: XmlNode): string {
  * model everywhere in this format, and anything else on an element Labre draws
  * is something Labre does not model and must not lose.
  */
-const READ_ATTRS: Readonly<Record<string, readonly string[]>> = {
-  packagedElement: [
-    'xmi:type',
-    'type',
-    'xmi:id',
-    'id',
-    'name',
-    'isAbstract',
-    'classifier',
-    'client',
-    'supplier',
-    'memberEnd',
-    'general',
-    'contract',
-    'source',
-    'target',
-    'kind',
-  ],
-  ownedAttribute: [
-    'xmi:type',
-    'type',
-    'xmi:id',
-    'id',
-    'name',
-    'visibility',
-    'isDerived',
-    'isStatic',
-    // `aggregation` is deliberately NOT here: a Property's aggregation is a
-    // fact this reader does not model on an attribute (it models it on an
-    // association END, where the diamond is drawn), so a file that states one —
-    // `aggregation="none"` included, which is a default spelled out — has it
-    // carried rather than swallowed.
-    'association',
-  ],
-  ownedOperation: [
-    'xmi:type',
-    'type',
-    'xmi:id',
-    'id',
-    'name',
-    'visibility',
-    'isAbstract',
-    'isStatic',
-    'isQuery',
-  ],
-  '': ['xmi:type', 'type', 'xmi:id', 'id', 'name'],
-};
+// No prototype: read by a local name the file chose (`<constructor>`), the
+// BPMN reader's TypeError (security review, 2026-10-14).
+const READ_ATTRS: Readonly<Record<string, readonly string[]>> = Object.assign(
+  Object.create(null) as Record<string, readonly string[]>,
+  {
+    packagedElement: [
+      'xmi:type',
+      'type',
+      'xmi:id',
+      'id',
+      'name',
+      'isAbstract',
+      'classifier',
+      'client',
+      'supplier',
+      'memberEnd',
+      'general',
+      'contract',
+      'source',
+      'target',
+      'kind',
+    ],
+    ownedAttribute: [
+      'xmi:type',
+      'type',
+      'xmi:id',
+      'id',
+      'name',
+      'visibility',
+      'isDerived',
+      'isStatic',
+      // `aggregation` is deliberately NOT here: a Property's aggregation is a
+      // fact this reader does not model on an attribute (it models it on an
+      // association END, where the diamond is drawn), so a file that states one —
+      // `aggregation="none"` included, which is a default spelled out — has it
+      // carried rather than swallowed.
+      'association',
+    ],
+    ownedOperation: [
+      'xmi:type',
+      'type',
+      'xmi:id',
+      'id',
+      'name',
+      'visibility',
+      'isAbstract',
+      'isStatic',
+      'isQuery',
+    ],
+    '': ['xmi:type', 'type', 'xmi:id', 'id', 'name'],
+  }
+);
 
 /** Everything on this element the reader did not read, kept verbatim. */
 function carryUnknownAttrs(
@@ -1577,14 +1626,15 @@ function readStateMachine(
 /* ── Interactions (§17) ───────────────────────────────────────────────── */
 
 /** §17.4.3's `messageSort`, read back to the arrow §17.4.4 draws for it. */
-const MESSAGE_KIND_OF_SORT: Readonly<Record<string, UmlMessageKind>> = {
-  synchCall: 'message-sync',
-  asynchCall: 'message-async',
-  asynchSignal: 'message-async',
-  reply: 'message-reply',
-  createMessage: 'message-create',
-  deleteMessage: 'message-delete',
-};
+const MESSAGE_KIND_OF_SORT: Readonly<Record<string, UmlMessageKind>> =
+  Object.assign(Object.create(null), {
+    synchCall: 'message-sync',
+    asynchCall: 'message-async',
+    asynchSignal: 'message-async',
+    reply: 'message-reply',
+    createMessage: 'message-create',
+    deleteMessage: 'message-delete',
+  });
 
 /** The metaclasses §17.2.4 draws as the bar on a spine, whatever the tool. */
 const EXECUTION_TYPES = new Set([
@@ -2448,6 +2498,11 @@ export function importXmi(
   context: InterchangeImportContext = {}
 ): UmlXmiImport {
   const document = readXml(source);
+  if (depthOf(document.roots) > XMI_MAX_DEPTH) {
+    throw new InterchangeImportError(UML_XMI_ERRORS.tooDeep[1], {
+      messageKey: UML_XMI_ERRORS.tooDeep[0],
+    });
+  }
   // The three bags keyed by an id the FILE chose have no prototype: `__proto__`
   // and `constructor` are ids a document is free to use, and on a plain object
   // the first writes through to `Object.prototype` and the second reads a
@@ -2739,8 +2794,12 @@ export function umlElementsWithForeign(
   // key, because `ForeignInterchange` is one record per format and the SCOPES
   // inside it are what keep two source elements apart.
   const attrs = residue.reduce<Record<string, Record<string, string>>>(
-    (all, [, payload]) => ({ ...all, ...payload.attrs }),
-    { ...own.attrs }
+    (all, [, payload]) => Object.assign(all, payload.attrs),
+    // No prototype: a scope is an id the file chose, `__proto__` included.
+    Object.assign(
+      Object.create(null) as Record<string, Record<string, string>>,
+      own.attrs
+    )
   );
   const quarantined = [
     ...(own.quarantined ?? []),

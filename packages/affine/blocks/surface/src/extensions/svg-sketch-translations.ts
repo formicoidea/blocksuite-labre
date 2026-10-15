@@ -1,5 +1,7 @@
 import type { ChromeWording } from '@labre/affine-shared/services';
 
+import { XML_READ_TOO_LARGE } from './xml-reader.js';
+
 /**
  * The SVG importer's own remarks (`svg-sketch.ts`) — one key per SENTENCE
  * SHAPE, not per exact string: a `{{name}}` hole is filled by
@@ -108,6 +110,11 @@ export const SVG_SKETCH_REMOVED_ATTRIBUTE: ChromeWording = [
   'Attributes outside the safe SVG drawing vocabulary — event handlers, script URLs, and anything else the sanitizer does not know — were removed before the file was read.',
 ];
 
+export const SVG_SKETCH_TOO_DEEP: ChromeWording = [
+  'com.labre.interchange.svg.too-deep',
+  'Elements nested more than {{depth}} levels deep were not read.',
+];
+
 export const SVG_SKETCH_EMPTY: ChromeWording = [
   'com.labre.interchange.svg.empty',
   'No shape or text was recognised in this SVG, so nothing was drawn.',
@@ -161,8 +168,12 @@ export const SVG_SKETCH_WORDINGS: readonly ChromeWording[] = [
   SVG_SKETCH_SKIPPED,
   SVG_SKETCH_REMOVED,
   SVG_SKETCH_REMOVED_ATTRIBUTE,
+  SVG_SKETCH_TOO_DEEP,
   SVG_SKETCH_EMPTY,
   SVG_SKETCH_ERROR_MALFORMED_XML,
   SVG_SKETCH_ERROR_NOT_SVG,
   SVG_SKETCH_ERROR_SANITIZED_AWAY,
+  // The shared XML reader's one refusal: no package of its own to list it,
+  // and the SVG sketch is the reader every host already registers.
+  XML_READ_TOO_LARGE,
 ];

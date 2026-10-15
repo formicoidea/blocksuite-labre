@@ -7,8 +7,8 @@ import {
   ShapeStyle,
   StrokeStyle,
   TextFitMode,
-  type WardleyNodeKind,
-} from '@labre/affine-model';
+} from '@labre/affine-model/headless';
+import type { WardleyNodeKind } from '@labre/affine-model';
 import { Bound } from '@labre/global/gfx';
 
 import {

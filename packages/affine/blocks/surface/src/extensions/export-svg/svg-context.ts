@@ -1,5 +1,6 @@
 import { parseCssColor } from '@labre/affine-shared/adapters';
 import { Context } from 'svgcanvas/dist/svgcanvas.esm.js';
+import { BOARD_SVG_MARKER_VERSION } from './marker-version.js';
 
 /**
  * A 2D context that records an SVG document instead of pixels, shaped so the
@@ -439,9 +440,4 @@ export function createSvgContext(width: number, height: number): SvgContext {
   };
 }
 
-/**
- * The marker version an export writes on its root (`data-labre-svg`), and the
- * one a reader of it must know (ADR 0032 §6). Bumped only when the meaning of
- * a marker changes; adding one is not a new version.
- */
-export const BOARD_SVG_MARKER_VERSION = '1';
+export { BOARD_SVG_MARKER_VERSION };

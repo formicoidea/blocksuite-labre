@@ -1,4 +1,5 @@
-import { svgFrameOf } from '@labre/affine-block-surface';
+import type { XmlElement } from '@labre/affine-block-surface/interchange';
+import { svgFrameOf } from '@labre/affine-block-surface/interchange';
 
 import type { OwmPlot } from './export.js';
 import type { WardleyNodeKeyword } from './import.js';
@@ -51,21 +52,21 @@ import { WARDLEY_SVG_IMPORT_REMARKS } from './svg-remarks.js';
  * anything else are left to the sketch.
  */
 
-const LAYER = (root: Element, name: string) =>
+const LAYER = (root: XmlElement, name: string) =>
   root.querySelector(`g[data-layer="${name}"]`) ?? undefined;
 
 /** How far a dependency's end may sit from the centre of its node. */
 const END_REACH = 6;
 
 interface Shape {
-  element: Element;
+  element: XmlElement;
   x: number;
   y: number;
   r: number;
 }
 
 /** A circle's centre and radius in file units, or `undefined` when unreadable. */
-function circleOf(element: Element): Shape | undefined {
+function circleOf(element: XmlElement): Shape | undefined {
   const [cx, cy, r] = ['cx', 'cy', 'r'].map(name => finiteAttr(element, name));
   if (cx === undefined || cy === undefined || r === undefined) return undefined;
   const frame = svgFrameOf(element);
@@ -79,7 +80,7 @@ function circleOf(element: Element): Shape | undefined {
 
 /** A line's two ends in file units. */
 function lineOf(
-  element: Element
+  element: XmlElement
 ): [number, number, number, number] | undefined {
   const values = ['x1', 'y1', 'x2', 'y2'].map(name =>
     finiteAttr(element, name)
@@ -97,7 +98,7 @@ function lineOf(
 
 /** A rect's box in file units. */
 function rectOf(
-  element: Element
+  element: XmlElement
 ): [number, number, number, number] | undefined {
   const values = ['x', 'y', 'width', 'height'].map(name =>
     finiteAttr(element, name)
@@ -113,12 +114,12 @@ function rectOf(
   ];
 }
 
-const visible = (element: Element) =>
+const visible = (element: XmlElement) =>
   !element.classList.contains('hit-area') &&
   element.getAttribute('stroke') !== 'transparent';
 
 /** The plot off the two axis lines, or `undefined`. */
-function plotOf(axes: Element): OwmPlot | undefined {
+function plotOf(axes: XmlElement): OwmPlot | undefined {
   const lines = Array.from(axes.querySelectorAll('line'))
     .map(lineOf)
     .filter((line): line is [number, number, number, number] => !!line);
@@ -144,11 +145,11 @@ function plotOf(axes: Element): OwmPlot | undefined {
  * largest circle that holds them, then named by what the cluster contains.
  */
 function nodesOf(
-  layer: Element,
+  layer: XmlElement,
   live: boolean
-): { node: DrawnWardleyNode; group?: Element; r: number }[] {
-  const found: { node: DrawnWardleyNode; group?: Element; r: number }[] = [];
-  const clusters: { shapes: Shape[]; container: Element }[] = [];
+): { node: DrawnWardleyNode; group?: XmlElement; r: number }[] {
+  const found: { node: DrawnWardleyNode; group?: XmlElement; r: number }[] = [];
+  const clusters: { shapes: Shape[]; container: XmlElement }[] = [];
 
   const units = live
     ? Array.from(layer.children).filter(
@@ -222,7 +223,7 @@ function nodesOf(
 }
 
 export function recogniseWardleyMapRenderer(
-  root: Element
+  root: XmlElement
 ): DrawnWardleyMap | undefined {
   const axes = LAYER(root, 'axes');
   const nodesLayer = LAYER(root, 'nodes');
@@ -359,7 +360,7 @@ export function recogniseWardleyMapRenderer(
         }));
       })
       .sort((a, b) => a.distance - b.distance);
-    const used = new Set<Element>();
+    const used = new Set<XmlElement>();
     for (const { label, target, distance } of pairs) {
       if (used.has(label) || names.has(target.id) || distance > 200) continue;
       used.add(label);

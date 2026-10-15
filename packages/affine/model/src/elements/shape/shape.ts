@@ -31,6 +31,10 @@ import {
   type TextStyleProps,
   TextVerticalAlign,
 } from '../../consts/index.js';
+import {
+  SHAPE_TEXT_PADDING,
+  SHAPE_TEXT_VERTICAL_PADDING,
+} from '../../consts/shape.js';
 import { type Color, DefaultTheme } from '../../themes/index.js';
 import { shapeMethods } from './api/index.js';
 
@@ -82,9 +86,6 @@ export type ShapeProps = BaseElementProps & {
   textFitMode?: TextFitMode;
   maxWidth?: false | number;
 } & Partial<TextStyleProps>;
-
-export const SHAPE_TEXT_PADDING = 20;
-export const SHAPE_TEXT_VERTICAL_PADDING = 10;
 
 export class ShapeElementModel extends GfxPrimitiveElementModel<ShapeProps> {
   /**

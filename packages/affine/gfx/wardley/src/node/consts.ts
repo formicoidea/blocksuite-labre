@@ -1,4 +1,4 @@
-import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
+import { NOTATION_NEUTRALS } from '@labre/affine-shared/headless';
 
 /**
  * Visual constants for Wardley nodes (component + anchor) and the connector /

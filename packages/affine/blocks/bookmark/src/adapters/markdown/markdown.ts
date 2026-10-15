@@ -10,7 +10,16 @@ import {
   isFootnoteDefinitionNode,
   type MarkdownAST,
 } from '@labre/affine-shared/adapters';
+import { isSafeLinkUrl } from '@labre/affine-shared/utils';
 import { nanoid } from '@labre/store';
+
+const safeDecode = (value: string) => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
 
 const isUrlFootnoteDefinitionNode = (node: MarkdownAST) => {
   if (!isFootnoteDefinitionNode(node)) return false;
@@ -19,8 +28,12 @@ const isUrlFootnoteDefinitionNode = (node: MarkdownAST) => {
     const footnoteDefinitionJson = FootNoteReferenceParamsSchema.parse(
       JSON.parse(footnoteDefinition)
     );
+    // A refused scheme makes no bookmark: the definition is left to the
+    // reader's default, and no `javascript:` is stored as a bookmark `url`.
     return (
-      footnoteDefinitionJson.type === 'url' && !!footnoteDefinitionJson.url
+      footnoteDefinitionJson.type === 'url' &&
+      !!footnoteDefinitionJson.url &&
+      isSafeLinkUrl(safeDecode(footnoteDefinitionJson.url))
     );
   } catch {
     return false;

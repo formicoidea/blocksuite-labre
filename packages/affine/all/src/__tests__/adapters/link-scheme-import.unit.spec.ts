@@ -9,8 +9,19 @@
  *
  * remark decodes character references before the matcher sees the url, so the
  * `&#106;` spelling is checked as the plain scheme it decodes to.
+ *
+ * The second half holds the paths #485 left (P4, from the import spike): an
+ * HTML `<a>` (whose `href.startsWith('http')` let `httpx:` through), a
+ * Markdown footnote definition (stored as a footnote `url` AND as a bookmark
+ * block's `url`), and the two writers, which re-emitted whatever a document
+ * held. Would have caught: any of them storing or writing a refused scheme.
  */
-import { MarkdownAdapter } from '@labre/affine-shared/adapters';
+import { DefaultTheme, NoteDisplayMode } from '@labre/affine-model';
+import {
+  HtmlAdapter,
+  MarkdownAdapter,
+  NotionHtmlAdapter,
+} from '@labre/affine-shared/adapters';
 import type { BlockSnapshot } from '@labre/store';
 import { describe, expect, test } from 'vitest';
 
@@ -64,5 +75,120 @@ describe('Markdown link import', () => {
       { insert: 'a', attributes: { link: 'https://example.com/' } },
       { insert: 'b', attributes: { link: 'mailto:someone@example.com' } },
     ]);
+  });
+});
+
+const REFUSED = /javascript|httpx/i;
+
+describe('HTML link import', () => {
+  test('keeps only http(s) links, by parsed scheme', async () => {
+    const adapter = new HtmlAdapter(createJob(), provider);
+    const snapshot = await adapter.toBlockSnapshot({
+      file: '<p>aaa <a href="javascript:alert(1)">bbb</a> <a href="httpx://x.example">ccc</a> <a href="https://example.com/">ddd</a></p>',
+    });
+    const text = JSON.stringify(snapshot);
+    expect(text).not.toMatch(REFUSED);
+    expect(text).toContain('"link":"https://example.com/"');
+    expect(text).toContain('bbb');
+  });
+});
+
+describe('Markdown footnote import', () => {
+  test('stores no refused url, as a footnote or as a bookmark', async () => {
+    const adapter = new MarkdownAdapter(createJob(), provider);
+    const url = encodeURIComponent('javascript:alert(1)');
+    const snapshot = await adapter.toBlockSnapshot({
+      file: `aaa[^1]\n\n[^1]: {"type":"url","url":"${url}","title":"t"}\n`,
+    });
+    const text = JSON.stringify(snapshot);
+    // The definition falls back to the reader's default (its JSON as inert
+    // paragraph text); what must not exist is a link or a url holding it.
+    expect(text).not.toMatch(/"(?:url|link)":"javascript/i);
+    expect(text).not.toContain('affine:bookmark');
+  });
+});
+
+describe('writing a document that holds a refused link', () => {
+  const unsafe = 'javascript:alert(1)';
+  const snapshot: BlockSnapshot = {
+    type: 'block',
+    id: 'page',
+    flavour: 'affine:page',
+    props: { title: { '$blocksuite:internal:text$': true, delta: [] } },
+    children: [
+      {
+        type: 'block',
+        id: 'note',
+        flavour: 'affine:note',
+        props: {
+          xywh: '[0,0,800,95]',
+          background: DefaultTheme.noteBackgrounColor,
+          index: 'a0',
+          hidden: false,
+          displayMode: NoteDisplayMode.DocAndEdgeless,
+        },
+        children: [
+          {
+            type: 'block',
+            id: 'paragraph',
+            flavour: 'affine:paragraph',
+            props: {
+              type: 'text',
+              text: {
+                '$blocksuite:internal:text$': true,
+                delta: [
+                  { insert: 'aaa ' },
+                  { insert: 'bbb', attributes: { link: unsafe } },
+                  {
+                    insert: ' ',
+                    attributes: {
+                      footnote: {
+                        label: '1',
+                        reference: { type: 'url', url: unsafe },
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+            children: [],
+          },
+          {
+            type: 'block',
+            id: 'bookmark',
+            flavour: 'affine:bookmark',
+            props: { style: 'horizontal', url: unsafe, title: 'kept title' },
+            children: [],
+          },
+        ],
+      },
+    ],
+  };
+
+  test('Markdown writes the words and no refused link', async () => {
+    const adapter = new MarkdownAdapter(createJob(), provider);
+    const { file } = await adapter.fromBlockSnapshot({ snapshot });
+    expect(file).not.toMatch(REFUSED);
+    expect(file).toContain('aaa bbb');
+    expect(file).toContain('kept title');
+  });
+
+  test('HTML writes the words and no refused href', async () => {
+    const adapter = new HtmlAdapter(createJob(), provider);
+    const { file } = await adapter.fromBlockSnapshot({ snapshot });
+    expect(file).not.toMatch(REFUSED);
+    expect(file).toContain('bbb');
+  });
+});
+
+describe('Notion HTML bookmark import', () => {
+  test('stores no refused url on a bookmark', async () => {
+    const adapter = new NotionHtmlAdapter(createJob(), provider);
+    const snapshot = await adapter.toBlockSnapshot({
+      file: '<figure><a href="javascript:alert(1)" class="bookmark source"><div class="bookmark-info"><div class="bookmark-text"><div class="bookmark-title">t</div></div></div></a></figure>',
+    });
+    const text = JSON.stringify(snapshot);
+    expect(text).toContain('affine:bookmark');
+    expect(text).not.toMatch(REFUSED);
   });
 });

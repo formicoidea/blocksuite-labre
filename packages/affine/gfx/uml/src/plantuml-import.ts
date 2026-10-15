@@ -1,9 +1,10 @@
 import type { InterchangeNote } from '@labre/affine-block-surface';
-import {
-  UML_DIAGRAM_KIND_TAG,
-  type UmlDiagramKind,
-  type UmlFragmentOperator,
-  type UmlNodeKind,
+import { InterchangeImportError } from '@labre/affine-block-surface/interchange';
+import { UML_DIAGRAM_KIND_TAG } from '@labre/affine-model/headless';
+import type {
+  UmlDiagramKind,
+  UmlFragmentOperator,
+  UmlNodeKind,
 } from '@labre/affine-model';
 
 import type { UmlBox } from './component.js';
@@ -152,6 +153,21 @@ export interface UmlPlantumlImport {
  * They are contributed to the manifest by `./translations.ts`, with the
  * framework, because they ship in the UML bundle rather than in core.
  */
+/**
+ * The most PlantUML source the reader takes: 1 MiB, the size of a diagram
+ * nobody types, and the bound on what the line regexes below can be handed
+ * (the server's budget: 256 MiB, two seconds).
+ */
+export const PLANTUML_MAX_CHARACTERS = 1024 * 1024;
+
+/** The reader's refusal, static so a server can hand the key on (ADR 0023). */
+export const UML_PLANTUML_ERRORS = {
+  tooLarge: [
+    'com.labre.uml.import.plantuml.too-large',
+    'This PlantUML file is longer than an import accepts, so it was not read.',
+  ],
+} as const satisfies Record<string, readonly [key: string, english: string]>;
+
 export const UML_PLANTUML_REMARKS = {
   relationEnd: [
     'com.labre.uml.import.plantuml.relation-end',
@@ -206,25 +222,26 @@ const KIND_OF_TAG = new Map<string, UmlDiagramKind>(
  * boundary box — because that is the only thing this pack draws round a group of
  * use cases, and it is what our own writer emits for one.
  */
-const DECLARATION_KIND: Readonly<Record<string, UmlNodeKind | 'subject'>> = {
-  class: 'class',
-  entity: 'class',
-  interface: 'interface',
-  enum: 'enumeration',
-  enumeration: 'enumeration',
-  object: 'object',
-  package: 'package',
-  namespace: 'package',
-  rectangle: 'subject',
-  folder: 'subject',
-  frame: 'subject',
-  actor: 'actor',
-  usecase: 'use-case',
-  component: 'component',
-  artifact: 'artifact',
-  node: 'node',
-  state: 'state',
-};
+const DECLARATION_KIND: Readonly<Record<string, UmlNodeKind | 'subject'>> =
+  Object.assign(Object.create(null), {
+    class: 'class',
+    entity: 'class',
+    interface: 'interface',
+    enum: 'enumeration',
+    enumeration: 'enumeration',
+    object: 'object',
+    package: 'package',
+    namespace: 'package',
+    rectangle: 'subject',
+    folder: 'subject',
+    frame: 'subject',
+    actor: 'actor',
+    usecase: 'use-case',
+    component: 'component',
+    artifact: 'artifact',
+    node: 'node',
+    state: 'state',
+  });
 
 /** The declaration words, as the alternation the line matcher is built on. */
 const DECLARATION_WORDS = [
@@ -243,18 +260,21 @@ const DECLARATION_WORDS = [
  * (a terminate was borrowing the stop). Reading them the other way would turn a
  * diagram somebody drew into a different one on the way home.
  */
-const STATE_KIND_OF_STEREOTYPE: Readonly<Record<string, UmlNodeKind>> = {
-  start: 'initial',
-  end: 'final-state',
-  choice: 'choice',
-  junction: 'junction',
-  fork: 'fork',
-  history: 'shallow-history',
-  deephistory: 'deep-history',
-  entrypoint: 'entry-point',
-  exitpoint: 'exit-point',
-  terminate: 'terminate',
-};
+// No prototype, like every table here read by a word the FILE wrote:
+// `<<constructor>>` must read as a stereotype, not as `Object`.
+const STATE_KIND_OF_STEREOTYPE: Readonly<Record<string, UmlNodeKind>> =
+  Object.assign(Object.create(null), {
+    start: 'initial',
+    end: 'final-state',
+    choice: 'choice',
+    junction: 'junction',
+    fork: 'fork',
+    history: 'shallow-history',
+    deephistory: 'deep-history',
+    entrypoint: 'entry-point',
+    exitpoint: 'exit-point',
+    terminate: 'terminate',
+  });
 
 /** The vertices §14.2.4.6 files under `Pseudostate`, as a set. */
 const PSEUDOSTATE_KINDS = new Set<string>([
@@ -317,21 +337,31 @@ const OPERATORS: readonly {
  * role, and reading it as prose would import an include as an untyped dependency
  * carrying a stereotype.
  */
-const KEYWORD_ROLE: Readonly<Record<string, UmlRelationKind>> = {
-  include: 'include',
-  extend: 'extend',
-  deploy: 'deploy',
-  manifest: 'manifest',
-  use: 'dependency',
-};
+const KEYWORD_ROLE: Readonly<Record<string, UmlRelationKind>> = Object.assign(
+  Object.create(null),
+  {
+    include: 'include',
+    extend: 'extend',
+    deploy: 'deploy',
+    manifest: 'manifest',
+    use: 'dependency',
+  }
+);
 
 /** PlantUML's contextual beginning-and-end marker (`plantuml.ts`). */
 const TERMINAL = '[*]';
 
 /* ── Reading a line ───────────────────────────────────────────────────── */
 
-/** A `<<stereo>>` / `«stereo»` group, wherever it was written. */
-const STEREOTYPE = /<<([^>]*)>>|«([^»]*)»/g;
+/**
+ * A `<<stereo>>` / `«stereo»` group, wherever it was written.
+ *
+ * Bounded like draw.io's `ASCII_GUILLEMETS`: an unbounded `[^>]*` re-scanned
+ * the rest of the line from every `<<` that never closed, 1.8 s for a 40 KiB
+ * `class A <<<<…` and four times that per doubling (counter-review of
+ * 49aa247ce). No stereotype is 256 characters long.
+ */
+const STEREOTYPE = /<<([^>]{0,256})>>|«([^»]{0,256})»/g;
 
 /** Direction hints inside an arrow — `-down->`, `-up->`: layout, not model. */
 const DIRECTION_HINT = /-(?:left|right|up|down|le|ri|do)-/gi;
@@ -1219,6 +1249,11 @@ function layOut(model: UmlModel, contains: Map<string, string[]>): void {
  * the same source always produces the same models, down to the coordinates.
  */
 export function importPlantuml(source: string): UmlPlantumlImport {
+  if (source.length > PLANTUML_MAX_CHARACTERS) {
+    throw new InterchangeImportError(UML_PLANTUML_ERRORS.tooLarge[1], {
+      messageKey: UML_PLANTUML_ERRORS.tooLarge[0],
+    });
+  }
   const notes: InterchangeNote[] = [];
   const note = (entry: InterchangeNote) => notes.push(entry);
 
@@ -1335,7 +1370,7 @@ function sequenceArrow(
 
 /** §17.6.4's operators, read back off the block keyword that opened them. */
 const FRAGMENT_OPERATOR_OF_WORD: Readonly<Record<string, UmlFragmentOperator>> =
-  {
+  Object.assign(Object.create(null), {
     alt: 'alt',
     opt: 'opt',
     loop: 'loop',
@@ -1348,7 +1383,7 @@ const FRAGMENT_OPERATOR_OF_WORD: Readonly<Record<string, UmlFragmentOperator>> =
     assert: 'assert',
     ignore: 'ignore',
     consider: 'consider',
-  };
+  });
 
 /**
  * The declarations that can only be a CLASS diagram — §9's classifiers and

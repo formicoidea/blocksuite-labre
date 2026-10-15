@@ -2,6 +2,7 @@ import {
   FOOTNOTE_DEFINITION_PREFIX,
   InlineDeltaToMarkdownAdapterExtension,
 } from '@labre/affine-shared/adapters';
+import { isSafeLinkUrl } from '@labre/affine-shared/utils';
 import type { PhrasingContent } from 'mdast';
 
 export const footnoteReferenceDeltaToMarkdownAdapterMatcher =
@@ -25,6 +26,13 @@ export const footnoteReferenceDeltaToMarkdownAdapterMatcher =
       if (!configs.has(footnoteDefinitionKey)) {
         // clone the footnote reference
         const clonedFootnoteReference = { ...footnote.reference };
+        // A stored url with a refused scheme is not written back out.
+        if (
+          clonedFootnoteReference.url &&
+          !isSafeLinkUrl(clonedFootnoteReference.url)
+        ) {
+          delete clonedFootnoteReference.url;
+        }
         // If the footnote reference contains url, encode it
         if (clonedFootnoteReference.url) {
           clonedFootnoteReference.url = encodeURIComponent(

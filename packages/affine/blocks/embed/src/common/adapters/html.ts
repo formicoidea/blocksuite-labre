@@ -1,4 +1,5 @@
 import type { BlockHtmlAdapterMatcher } from '@labre/affine-shared/adapters';
+import { isSafeLinkUrl } from '@labre/affine-shared/utils';
 
 export function createEmbedBlockHtmlAdapterMatcher(
   flavour: string,
@@ -33,9 +34,10 @@ export function createEmbedBlockHtmlAdapterMatcher(
             {
               type: 'element',
               tagName: 'a',
-              properties: {
-                href: o.node.props.url,
-              },
+              // A refused scheme keeps the title and loses the href.
+              properties: isSafeLinkUrl(o.node.props.url)
+                ? { href: o.node.props.url }
+                : {},
               children: [
                 {
                   type: 'text',

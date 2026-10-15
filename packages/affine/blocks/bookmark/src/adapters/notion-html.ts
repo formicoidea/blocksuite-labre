@@ -4,6 +4,7 @@ import {
   type BlockNotionHtmlAdapterMatcher,
   HastUtils,
 } from '@labre/affine-shared/adapters';
+import { isSafeLinkUrl } from '@labre/affine-shared/utils';
 import { nanoid } from '@labre/store';
 
 export const bookmarkBlockNotionHtmlAdapterMatcher: BlockNotionHtmlAdapterMatcher =
@@ -51,7 +52,11 @@ export const bookmarkBlockNotionHtmlAdapterMatcher: BlockNotionHtmlAdapterMatche
               flavour: BookmarkBlockSchema.model.flavour,
               props: {
                 type: 'card',
-                url: bookmarkURL ?? '',
+                // A refused scheme is not stored, as a missing href is not.
+                url:
+                  typeof bookmarkURL === 'string' && isSafeLinkUrl(bookmarkURL)
+                    ? bookmarkURL
+                    : '',
                 title: bookmarkTitle,
                 description: bookmarkDescription,
                 icon: bookmarkIconURL,

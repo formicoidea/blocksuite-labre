@@ -1,7 +1,7 @@
 import {
   backgroundInstanceZones,
   backgroundPlot,
-} from '@labre/affine-block-surface';
+} from '@labre/affine-block-surface/interchange';
 import type {
   BpmnLane,
   BpmnNodeElementModel,

@@ -1,4 +1,5 @@
-import { BOARD_SVG_MARKER_VERSION } from '@labre/affine-block-surface';
+import type { XmlElement } from '@labre/affine-block-surface/interchange';
+import { BOARD_SVG_MARKER_VERSION } from '@labre/affine-block-surface/interchange';
 
 import { matchLabels, type OwmPlot, owmPlotOf } from './export.js';
 import type { WardleyNodeKeyword } from './import.js';
@@ -41,7 +42,7 @@ const NODE_KEYWORD: Record<string, WardleyNodeKeyword> = Object.assign(
 );
 
 interface Marked {
-  element: Element;
+  element: XmlElement;
   id: string;
   type: string;
   role?: string;
@@ -74,7 +75,7 @@ const centreOf = (box: Marked['box']) => ({
 });
 
 /** The words a group's own `<text>`s draw, line after line. */
-function drawnText(element: Element): string {
+function drawnText(element: XmlElement): string {
   return Array.from(element.querySelectorAll('text'))
     .map(text => text.textContent ?? '')
     .join(' ')
@@ -83,7 +84,7 @@ function drawnText(element: Element): string {
 }
 
 export function recogniseLabreExport(
-  root: Element
+  root: XmlElement
 ): DrawnWardleyMap | undefined {
   if (root.getAttribute('data-labre-svg') !== BOARD_SVG_MARKER_VERSION) {
     return undefined;

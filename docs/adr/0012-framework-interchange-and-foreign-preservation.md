@@ -603,6 +603,127 @@ import — and it must not drag DI-only types into its signature. `exportBpmnXml
 and `bpmnBoardOf` already satisfy this; every new capability must, and it is
 cheap to check.
 
+#### Amendment 2026-10-14 — "pure" means no DOM and no editor graph; the `./interchange` entries
+
+The labre P0 import spike (`labre/docs/spikes/2026-10-p0-import-edge-function.md`)
+ran every reader in a server function and found P3 kept to the letter and not
+the spirit. Two readers were not pure in practice: the BPMN reader and the SVG
+sketch parsed with `DOMParser` (and DOMPurify), so a server had to install a
+DOM, in the right order, before importing the library, and the BPMN read grew
+quadratically on jsdom (5.1 s of CPU at 2 000 tasks). And no reader was
+reachable without the editor: a package index pulls Lit and
+`@atlaskit/pragmatic-drag-and-drop` with it, 3 858 modules and 18.35 MB.
+
+**P3's "pure" is amended to mean: no `std`, no DOM global, and no editor in the
+module graph.** Concretely:
+
+- Every framework that declares capabilities ships an `./interchange` entry
+  (`bpmn`, `c4`, `uml`, `wardley` today), and core ships
+  `@formicoidea/labre-core/interchange` (the registry types,
+  `InterchangeImportError`, `parseSvgSketch`, `sanitizeSvg`, `readXml` and its
+  DOM-shaped view). No new bundle: they are subpaths of the existing ones.
+  What an entry may load is an allow-list held by
+  `packages/affine/all/src/__tests__/interchange-headless.unit.spec.ts`:
+  `@labre/global`, the model's and shared's `./headless` subpaths, the surface
+  package, `zod`, and no DOM global by name. Widening it is a decision about
+  what a server loads, made here first.
+- XML is read by one reader, `readXml` (moved from `gfx/uml` to the surface
+  package), for XMI, draw.io, BPMN and SVG alike. A `DOCTYPE` is skipped and
+  no entity is ever expanded or fetched. Walks over a file's tree use explicit
+  stacks: the depth of a file is its author's choice.
+- The SVG sanitizer is an allow-list applied to the read tree
+  (`blocks/surface/src/extensions/svg-sanitize.ts`), not DOMPurify on a DOM.
+  Its report keeps the same note vocabulary and order, plus one note for a
+  subtree cut past 256 levels.
+- An exporter that needs an element class (`instanceof`, the C4 Mermaid
+  writer, the OWM writer's board walk) stays in the editor graph; its
+  `./interchange` entry exports what is pure and no more.
+- The one owner that is not a framework, `canvas` (`canvas:drawio:export`,
+  amendment of the same date under P1), has no `./interchange` entry: its
+  writer resolves theme colours (`@toeverything/theme`) and reads model
+  values from the model's barrel, both outside the allow-list. Exposing it to
+  a server first moves the colour resolution to the command side; the guard
+  then holds it like the others.
+
+Measured on the published bundles: the four framework entries together load
+126 modules, 330 KiB minified, and load under plain Node ESM and under Deno.
+A BPMN read of 2 000 chained tasks takes 235 ms under Node, with no DOM.
+
+Red zone: `scripts/build-bundles.mjs` gained one conditional line, copying a
+framework package's own `./interchange` export into its bundle's `exports`.
+
+#### Amendment 2026-10-14 — bounded: linear in the file, capped in what it holds
+
+An independent security review of the entries above (394219550) found no
+execution path (the SVG allow-list is stricter than DOMPurify's, a `DOCTYPE`
+and its entities are inert, links are safe) and four denials of service for a
+function with 256 MiB and two seconds of CPU, plus five smaller faults. **Every
+reader behind an `./interchange` entry is now linear in its input and bounded in
+what it holds**, and `packages/affine/all/src/__tests__/interchange-linear-time.unit.spec.ts`
+holds each case against a 1.5 s budget (the import function's own). Before →
+after, at the review's sizes, Node 22:
+
+| fault                                                              | before                  | after             |
+| ------------------------------------------------------------------ | ----------------------- | ----------------- |
+| namespace scope copied per declaring element (SVG / BPMN)          | 28.6 s, 284 MiB / 9.1 s | 0.2 s / 0.2 s     |
+| stack searched per orphan close tag (`<a>`×10 000 `</b>`×10 000)   | 4.3 s                   | 0.1 s             |
+| no cap: 1 MiB of `<a/>` / 2.3 MiB of text                          | 2.9 s, 140 MiB / heap   | refused, keyed    |
+| lazy regex per unclosed draw.io `<diagram>` (352 KiB)              | 15 s                    | 4 ms              |
+| BPMN keep-helpers copying their bag (20 000 children / attributes) | 13.8 s / over 2 min     | 0.2 s / 0.2 s     |
+| tables read by a file's name (`<constructor sourceRef targetRef>`) | untyped `TypeError`     | read              |
+| conformant read noting every fault (20 000 notes)                  | 0.9 s                   | 19 ms, first note |
+| `Math.min(...xs)`, recursive `serializeXmlNode` (100 000)          | `RangeError`            | read              |
+
+The rules this adds to P3:
+
+- `readXml` refuses past `XML_MAX_NODES` (200 000 elements, attributes,
+  character runs, comments, instructions and notes together) or
+  `XML_MAX_CHARACTERS` (2 MiB decoded), **while reading**, with an
+  `InterchangeImportError` keyed `com.labre.interchange.xml.too-large`. Both
+  are options; the defaults are the server's. It is the reader's one throw:
+  malformed input still reads with notes.
+- In conformant mode (BPMN, SVG) the first note stops the read: those callers
+  refuse on any note.
+- Namespaces resolve through one stack per prefix during a depth-first walk
+  (`XmlNamespaceScope`), shared by the element view and the sanitizer. The
+  sanitizer walks the read tree itself and cuts at `MAX_SVG_DEPTH` and at a
+  removed element before resolving anything below; a `<style>` keeps only its
+  own character data, which is what the value check read.
+- A bag or a table read by a name or an id the file chose has no prototype
+  and is filled in place (BPMN and XMI keep-helpers, `READ_ATTRS`,
+  `EDGE_ROLE_OF_ELEMENT`). A minimum or maximum over the file's values is a
+  loop; a walk over the file's tree is a stack.
+- `isSafeSvgValue` refuses `image-set(` (and `-webkit-image-set(`) as it
+  refuses a non-`#` `url(`.
+
+The counter-review of 49aa247ce found eight more in the UML readers, now that
+`./interchange` serves them, and the same spec holds each:
+
+| fault                                                                  | before                 | after            |
+| ---------------------------------------------------------------------- | ---------------------- | ---------------- |
+| unbounded `<<([^>]*)>>` (PlantUML, `stereotypesOf`), 80 / 40 KiB       | 6.5 s / 1.3 s          | 97 ms / 45 ms    |
+| `/<[^>]*>/g` on a draw.io label of repeated `<` (40 KiB)               | 1.2 s                  | 1 ms             |
+| each reader note copying a 20 000-character name (20 000 notes)        | 2.5 s, 770 MiB, 400 MB | 17 ms, 101 notes |
+| XMI recursion, 5 000 nested packages                                   | `RangeError`           | refused, keyed   |
+| `Math.min(...)` in the UML materializer (130 000 classes)              | `RangeError`           | read             |
+| one `querySelector('tspan')` per Wardley `<text>`                      | subtree per text       | one pass         |
+| residue attributes under the id `__proto__`, a `<<constructor>>` state | lost / dropped         | kept             |
+
+- PlantUML source past `PLANTUML_MAX_CHARACTERS` (1 MiB) is refused, keyed
+  `com.labre.uml.import.plantuml.too-large`; a guillemet group is read up to
+  256 characters, like draw.io's.
+- `readXml` quotes a name to 64 characters in a note and writes 100 notes
+  (`XML_MAX_NOTES`), then one `+N more` note.
+- XMI deeper than `XMI_MAX_DEPTH` (1 000 levels) is refused, keyed
+  `com.labre.uml.import.xmi.too-deep`. Its recursive walks (`readPackage`,
+  `consumeSubtree`, `sweep`) are bounded by that cap, not rewritten as stacks.
+- Every table a UML reader reads by a word of the file has no prototype.
+
+What this does not settle: a 200 000-node SVG, within the caps, still reads in
+about two seconds and 340 MiB of heap for the Wardley recogniser (three views
+of the tree). If the function's memory ceiling is hit there, the node cap for
+SVG is the lever.
+
 ## The roadmap
 
 The PO's named matrix, as the initial roadmap. **Not all of it is v1** — this

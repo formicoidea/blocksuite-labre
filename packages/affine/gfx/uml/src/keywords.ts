@@ -356,7 +356,9 @@ export interface UmlStereotypes {
  * tool that predates a unicode-safe pipeline writes, and a class pasted in from
  * one would otherwise export as a class named `<<interface>> Foo`.
  */
-const GUILLEMET_GROUP = /«([^»]*)»|<<([^>]*)>>/g;
+// Bounded, as `STEREOTYPE` in `plantuml-import.ts` is and for its reason:
+// `[^>]*` re-scanned the line from every `<<` that never closed.
+const GUILLEMET_GROUP = /«([^»]{0,256})»|<<([^>]{0,256})>>/g;
 
 /** `{abstract}`, with whatever spacing and case the author used (§9.2.4). */
 const ABSTRACT_MARKER = /\{\s*abstract\s*\}/i;

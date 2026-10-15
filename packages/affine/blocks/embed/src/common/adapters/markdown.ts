@@ -1,4 +1,5 @@
 import type { BlockMarkdownAdapterMatcher } from '@labre/affine-shared/adapters';
+import { isSafeLinkUrl } from '@labre/affine-shared/utils';
 
 export function createEmbedBlockMarkdownAdapterMatcher(
   flavour: string,
@@ -14,6 +15,16 @@ export function createEmbedBlockMarkdownAdapterMatcher(
           typeof o.node.props.title !== 'string' ||
           typeof o.node.props.url !== 'string'
         ) {
+          return;
+        }
+        // A url with a refused scheme is not written back out as a link: the
+        // title stays, as text.
+        if (!isSafeLinkUrl(o.node.props.url)) {
+          walkerContext
+            .openNode({ type: 'paragraph', children: [] }, 'children')
+            .openNode({ type: 'text', value: o.node.props.title }, 'children')
+            .closeNode()
+            .closeNode();
           return;
         }
         walkerContext

@@ -1,4 +1,4 @@
-import { safeFilename } from '@labre/affine-shared/utils';
+import { safeFilename } from '@labre/affine-shared/headless';
 
 /**
  * A name a file system will accept, minus the extension: the shared

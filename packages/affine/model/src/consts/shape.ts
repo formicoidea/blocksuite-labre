@@ -45,3 +45,9 @@ export enum ShapeStyle {
   General = 'General',
   Scribbled = 'Scribbled',
 }
+
+// Moved here from `elements/shape/shape.ts`, unchanged, so the model's
+// headless entry exports them without the element class (ADR 0012, P3 as
+// amended 2026-10-14).
+export const SHAPE_TEXT_PADDING = 20;
+export const SHAPE_TEXT_VERTICAL_PADDING = 10;

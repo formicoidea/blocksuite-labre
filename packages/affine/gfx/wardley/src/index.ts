@@ -94,9 +94,9 @@ export {
   owmPointOf,
   WARDLEY_OWM_FORMAT_ID,
   type WardleyExportBoard,
-  wardleyBoardFrom,
   wardleySafeFilename,
 } from './export';
+export { wardleyBoardFrom } from './export-board';
 export { importWardleyOwm } from './import';
 // The SVG reader that recognises a map (ADR 0032), pure for the same reason:
 // labre-mcp calls the very function the command does.

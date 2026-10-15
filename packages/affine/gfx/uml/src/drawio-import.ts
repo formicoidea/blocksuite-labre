@@ -1,6 +1,6 @@
 import type { InterchangeNote } from '@labre/affine-block-surface';
 import type { UmlDiagramKind, UmlFragmentOperator } from '@labre/affine-model';
-import { UML_DIAGRAM_KIND_TAG } from '@labre/affine-model';
+import { UML_DIAGRAM_KIND_TAG } from '@labre/affine-model/headless';
 
 import {
   type UmlBox,
@@ -166,7 +166,6 @@ function parseStyle(raw: string | undefined): MxStyle {
 
 const HR = /<hr\s*\/?>/i;
 const LINE_BREAK = /<br\s*\/?>|<\/p>|<\/div>|<\/li>|<\/tr>/gi;
-const TAGS = /<[^>]*>/g;
 /**
  * Annex C's ASCII guillemets, rescued before the markup strip runs.
  *
@@ -178,6 +177,26 @@ const TAGS = /<[^>]*>/g;
  * the string the tag strip then walks.
  */
 const ASCII_GUILLEMETS = /<<([^<>]{0,64})>>/g;
+/**
+ * The text with every `<…>` taken out — what `/<[^>]*>/g` did, without its
+ * re-scan of the rest of the label from every `<` that never closes (quadratic
+ * on a label of repeated `<`, counter-review of 49aa247ce). An unclosed `<`
+ * stays, as it did.
+ */
+function stripTags(text: string): string {
+  const kept: string[] = [];
+  let from = 0;
+  for (;;) {
+    const open = text.indexOf('<', from);
+    const close = open < 0 ? -1 : text.indexOf('>', open);
+    if (close < 0) break;
+    kept.push(text.slice(from, open));
+    from = close + 1;
+  }
+  kept.push(text.slice(from));
+  return kept.join('');
+}
+
 /** The one entity `decodeXmlText` leaves standing that a LABEL routinely has. */
 const NBSP = /&nbsp;/gi;
 
@@ -208,11 +227,9 @@ export function drawioCompartments(value: string | undefined): string[][] {
     .split(HR)
     .map(part =>
       decodeXmlText(
-        part
-          .replaceAll(LINE_BREAK, '\n')
-          .replaceAll(ASCII_GUILLEMETS, '«$1»')
-          .replaceAll(TAGS, '')
-          .replaceAll(NBSP, ' ')
+        stripTags(
+          part.replaceAll(LINE_BREAK, '\n').replaceAll(ASCII_GUILLEMETS, '«$1»')
+        ).replaceAll(NBSP, ' ')
       )
         .split('\n')
         .map(line => line.trim())
@@ -1185,8 +1202,12 @@ function geometryOf(cell: DrawioCell): UmlBox | undefined {
 function translate(boxes: Record<string, UmlBox>): Record<string, UmlBox> {
   const entries = Object.entries(boxes);
   if (entries.length === 0) return boxes;
-  const minX = Math.min(...entries.map(([, box]) => box.x));
-  const minY = Math.min(...entries.map(([, box]) => box.y));
+  const minX = entries
+    .map(([, box]) => box.x)
+    .reduce((a, b) => Math.min(a, b), Infinity);
+  const minY = entries
+    .map(([, box]) => box.y)
+    .reduce((a, b) => Math.min(a, b), Infinity);
   // `Object.fromEntries` would give the moved bag a prototype back, and the ids
   // in it are still the file's — so it is filled by hand instead.
   const moved: Record<string, UmlBox> = Object.create(null);
