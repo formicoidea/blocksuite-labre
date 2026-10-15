@@ -101,6 +101,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./effects": "./src/effects.ts",
+    "./interchange": "./src/interchange.ts",
     "./ext-loader": "./src/ext-loader/index.ts",
     "./std": "./src/std/index.ts",
     "./std/gfx": "./src/std/gfx.ts",
@@ -291,6 +292,7 @@
     "./shared/adapters": "./src/shared/adapters.ts",
     "./shared/commands": "./src/shared/commands.ts",
     "./shared/consts": "./src/shared/consts.ts",
+    "./shared/headless": "./src/shared/headless.ts",
     "./shared/selection": "./src/shared/selection.ts",
     "./shared/services": "./src/shared/services.ts",
     "./shared/styles": "./src/shared/styles.ts",
@@ -305,6 +307,7 @@
     "./frameworks": "./src/frameworks.ts",
     "./translations": "./src/translations.ts",
     "./model": "./src/model/index.ts",
+    "./model/headless": "./src/model/headless.ts",
     "./sync": "./src/sync/index.ts",
     "./extensions/store": "./src/extensions/store.ts",
     "./extensions/view": "./src/extensions/view.ts",

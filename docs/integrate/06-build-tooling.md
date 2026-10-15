@@ -108,4 +108,28 @@ to import in a settings page. Import `./view` only where the editor mounts.
 `./commands-manifest` is a few hundred bytes: use it to list commands and
 chords in a shortcuts pane without pulling the action graph.
 
+## Reading files on a server
+
+A server that imports a file (a function, an MCP tool) imports the readers
+from the `./interchange` subpaths, never from a package index, which loads the
+editor with Lit and the drag-and-drop adapter:
+
+```ts
+import { parseSvgSketch } from '@formicoidea/labre-core/interchange';
+import { BPMN_XML_IMPORT } from '@formicoidea/labre-framework-bpmn/interchange';
+
+const { elements, report } = BPMN_XML_IMPORT.run(text, { name: 'order' });
+```
+
+`bpmn`, `c4`, `uml` and `wardley` ship one (their import capabilities, plus
+the exporters that need no editor). Everything under them needs no DOM: XML
+is read by the library's own `readXml`, an SVG is sanitized by an allow-list
+on that tree, and no `DOCTYPE` entity is expanded. All four together are about
+350 KiB minified; they load under plain Node ESM and under Deno with a
+`node_modules` directory. A reader refuses a file it cannot read with an
+`InterchangeImportError` whose `messageKey` is static: answer with the key,
+never with `message` (it may quote the file). Bound the input before reading:
+`decodeDrawio` refuses a `<diagram>` that inflates past 20 MiB, and a server
+should cap the file's size itself (the editor applies `FileSizeLimitProvider`).
+
 Next: [07-upgrade.md](07-upgrade.md).

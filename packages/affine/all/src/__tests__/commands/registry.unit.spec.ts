@@ -265,7 +265,17 @@ describe('command registry invariants', () => {
       //
       // …and 34 with the view actions (ADR 0034, amendment of 2026-10-13):
       // `canvas.export.png`, `canvas.export.pdf` and `canvas.present`.
-      core: 34,
+      //
+      // …and 35 with `canvas.export.drawio` (ADR 0019, amendment of
+      // 2026-10-14): the canvas as a draw.io drawing, core-owned for the PNG's
+      // reason — it writes what the canvas paints, whatever drew it.
+      //
+      // …and 38 with the exports of a view (ADR 0034, amendment of
+      // 2026-10-14): `page.export.markdown`, `page.export.html` and
+      // `canvas.export.svg`. The framework exports (`canvas.export.<framework>.
+      // <format>`) are derived from the interchange registry, never registered,
+      // so they count nowhere here.
+      core: 38,
     });
     // 112 since the two SVG fallback imports (`bpmn.importSvg`,
     // `wardley.importSvg`) joined the OWM pair — one SVG row per framework,
@@ -304,7 +314,10 @@ describe('command registry invariants', () => {
     // …and 204 with `canvas.frame.rename` (frames are pane rows again).
     // …and 205 with `canvas.frame.reorder` (ADR 0034).
     // …and 208 with the three view actions (ADR 0034, 2026-10-13).
-    expect(commands).toHaveLength(208);
+    // …and 209 with `canvas.export.drawio` (ADR 0019, amendment of 2026-10-14).
+    // …and 212 with `page.export.markdown`, `page.export.html` and
+    // `canvas.export.svg` (ADR 0034, amendment of 2026-10-14).
+    expect(commands).toHaveLength(212);
   });
 
   /**

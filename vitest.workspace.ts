@@ -6,6 +6,7 @@
  */
 export default [
   'packages/affine/all/vitest.config.ts',
+  'packages/affine/blocks/attachment/vitest.config.ts',
   'packages/affine/blocks/bookmark/vitest.config.ts',
   'packages/affine/blocks/callout/vitest.config.ts',
   'packages/affine/blocks/code/vitest.config.ts',
@@ -14,6 +15,7 @@ export default [
   'packages/affine/blocks/embed/vitest.config.ts',
   'packages/affine/blocks/embed-doc/vitest.config.ts',
   'packages/affine/blocks/frame/vitest.config.ts',
+  'packages/affine/blocks/image/vitest.config.ts',
   'packages/affine/blocks/latex/vitest.config.ts',
   'packages/affine/blocks/note/vitest.config.ts',
   'packages/affine/blocks/root/vitest.config.ts',

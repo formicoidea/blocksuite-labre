@@ -8,7 +8,7 @@ import {
   TextAlign,
   TextFitMode,
   TextVerticalAlign,
-} from '@labre/affine-model';
+} from '@labre/affine-model/headless';
 import { Bound } from '@labre/global/gfx';
 
 import {

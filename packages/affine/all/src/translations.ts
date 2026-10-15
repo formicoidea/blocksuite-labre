@@ -11,6 +11,7 @@ import { IMAGE_WORDINGS } from '@labre/affine-block-image/translations';
 import {
   EXEMPTION_FALLBACK,
   EXPORT_SVG_WORDINGS,
+  INTERCHANGE_EXPORT_WORDINGS,
   PROVENANCE_FALLBACK,
   READING_FRAME_WORDINGS,
   SEVERITY_FALLBACK,
@@ -384,6 +385,12 @@ const CHROME_KEYS: readonly [key: string, fallback: string][] = [
     'com.labre.interchange.import.readonly',
     'This page became read-only while the file was being read, so nothing was imported.',
   ],
+  // The host's upload ceiling (`FileSizeLimitProvider`) applied to an import,
+  // before the file is read. `{{size}}` is the formatted ceiling.
+  [
+    'com.labre.interchange.import.too-large',
+    'This file is larger than {{size}}, the most this editor imports.',
+  ],
   [
     'com.labre.interchange.import.remarks',
     'What the import could not keep as it was',
@@ -459,6 +466,7 @@ const PACKAGE_WORDINGS: readonly (readonly ChromeWording[])[] = [
   ROOT_CHROME_WORDINGS,
   SVG_SKETCH_WORDINGS,
   EXPORT_SVG_WORDINGS,
+  INTERCHANGE_EXPORT_WORDINGS,
   READING_FRAME_WORDINGS,
   STD_WORDINGS,
   ATTACHMENT_WORDINGS,

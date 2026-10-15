@@ -21,10 +21,12 @@ import {
 import { BlockFlavourIdentifier } from '@labre/std';
 import type { ExtensionType } from '@labre/store';
 
+import { imageCropToolbarAction } from '../crop/crop-toolbar.js';
 import { ImageBlockComponent } from '../image-block';
 import { ImageEdgelessBlockComponent } from '../image-edgeless-block';
 import { IMAGE_TOOLBAR_TURN_INTO_CARD_VIEW } from '../translations';
 import { duplicate } from '../utils';
+import { imageReplaceToolbarAction } from './replace-action.js';
 
 const trackBaseProps = {
   category: 'image',
@@ -43,6 +45,9 @@ const builtinToolbarConfig = {
         block?.download();
       },
     },
+    imageReplaceToolbarAction(
+      ctx => ctx.getCurrentBlockByType(ImageBlockComponent)?.model ?? null
+    ),
     {
       id: 'b.caption',
       tooltip: 'Caption',
@@ -58,6 +63,9 @@ const builtinToolbarConfig = {
         });
       },
     },
+    imageCropToolbarAction(ctx =>
+      ctx.getCurrentBlockByType(ImageBlockComponent)
+    ),
     {
       id: 'c.comment',
       ...blockCommentToolbarButton,
@@ -142,6 +150,10 @@ const builtinSurfaceToolbarConfig = {
         block?.download();
       },
     },
+    imageReplaceToolbarAction(
+      ctx =>
+        ctx.getCurrentBlockByType(ImageEdgelessBlockComponent)?.model ?? null
+    ),
     {
       id: 'b.caption',
       tooltip: 'Caption',
@@ -157,6 +169,9 @@ const builtinSurfaceToolbarConfig = {
         });
       },
     },
+    imageCropToolbarAction(ctx =>
+      ctx.getCurrentBlockByType(ImageEdgelessBlockComponent)
+    ),
     {
       id: 'c.comment',
       ...blockCommentToolbarButton,

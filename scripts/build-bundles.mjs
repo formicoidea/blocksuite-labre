@@ -672,6 +672,13 @@ function buildFramework(fw, reverseMap) {
           ...(fw.shortcuts
             ? { './commands-manifest': `./src/${COMMANDS_MANIFEST}` }
             : {}),
+          // The editor-free interchange entry (ADR 0012, P3 as amended
+          // 2026-10-14), carried over from the package's own `exports` when it
+          // declares one. Its graph is held Lit-free by
+          // `interchange-headless.unit.spec.ts` in `packages/affine/all`.
+          ...(byName.get(fw.pkg)?.exports['./interchange']
+            ? { './interchange': byName.get(fw.pkg).exports['./interchange'] }
+            : {}),
         },
         files: ['src'],
         dependencies: {

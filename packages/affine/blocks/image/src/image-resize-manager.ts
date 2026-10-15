@@ -1,3 +1,4 @@
+import { ImageBlockModel, readImageCrop } from '@labre/affine-model';
 import { DocModeProvider } from '@labre/affine-shared/services';
 import {
   getClosestBlockComponentByElement,
@@ -5,6 +6,8 @@ import {
 } from '@labre/affine-shared/utils';
 import type { BlockComponent, PointerEventState } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
+
+import { wholeImageSize } from './crop/crop-math.js';
 
 export class ImageResizeManager {
   private _activeComponent: BlockComponent | null = null;
@@ -25,6 +28,27 @@ export class ImageResizeManager {
     const dragModel = getModelByElement(this._activeComponent);
     dragModel?.store.captureSync();
     const { width, height } = this._imageContainer.getBoundingClientRect();
+    // A cropped page image shows a window on the picture, but `width` and
+    // `height` stay the size of the WHOLE picture (ADR 0037): the HTML
+    // adapter and an older client draw it whole at that size.
+    const crop =
+      dragModel instanceof ImageBlockModel
+        ? readImageCrop(dragModel.props.crop)
+        : undefined;
+    if (crop) {
+      const img = this._activeComponent.querySelector('img');
+      dragModel?.store.updateBlock(
+        dragModel,
+        wholeImageSize(
+          { w: width / this._zoom, h: height / this._zoom },
+          crop,
+          img?.naturalWidth && img.naturalHeight
+            ? { width: img.naturalWidth, height: img.naturalHeight }
+            : null
+        )
+      );
+      return;
+    }
     dragModel?.store.updateBlock(dragModel, {
       width: width / this._zoom,
       height: height / this._zoom,

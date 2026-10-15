@@ -1,5 +1,6 @@
+import type { XmlElement } from '@labre/affine-block-surface/interchange';
 import type { InterchangeNote } from '@labre/affine-block-surface';
-import { svgFrameOf } from '@labre/affine-block-surface';
+import { svgFrameOf } from '@labre/affine-block-surface/interchange';
 
 import type { OwmPlot } from './export.js';
 import type { WardleyNodeKeyword } from './import.js';
@@ -46,7 +47,7 @@ export interface DrawnWardleyMap {
   notes: { text: string; x: number; y: number }[];
   inertias: { x: number; y: number }[];
   /** Every node the recogniser turned into the above; the sketch skips them. */
-  consumed: Set<Element>;
+  consumed: Set<XmlElement>;
   /** What the recogniser has to say about the file (dangling ends, bad numbers). */
   remarks: InterchangeNote[];
 }
@@ -64,7 +65,7 @@ export function startDrawnMap(
     Partial<Pick<DrawnWardleyMap, 'plot'>>
 ): {
   drawn: DrawnWardleyMap;
-  consume: (element: Element | undefined) => void;
+  consume: (element: XmlElement | undefined) => void;
 } {
   const drawn: DrawnWardleyMap = {
     ...head,
@@ -77,7 +78,7 @@ export function startDrawnMap(
     consumed: new Set(),
     remarks: [],
   };
-  const consume = (element: Element | undefined) => {
+  const consume = (element: XmlElement | undefined) => {
     if (element) drawn.consumed.add(element);
   };
   return { drawn, consume };
@@ -90,8 +91,8 @@ export function startDrawnMap(
  * A `Map`, never an object: a hostile file's `__proto__` or `constructor` is a
  * key like any other here, and can never reach a prototype (ADR 0032 §7).
  */
-export function idIndex(root: Element): Map<string, Element> {
-  const index = new Map<string, Element>();
+export function idIndex(root: XmlElement): Map<string, XmlElement> {
+  const index = new Map<string, XmlElement>();
   for (const element of Array.from(root.querySelectorAll('[id]'))) {
     const id = element.getAttribute('id');
     if (id !== null && !index.has(id)) index.set(id, element);
@@ -104,7 +105,7 @@ export function idIndex(root: Element): Map<string, Element> {
  * per line joined by a space, so a name a producer wrapped over two `<tspan>`s
  * reads as the name and not as two words glued together.
  */
-export function textOf(element: Element | undefined): string {
+export function textOf(element: XmlElement | undefined): string {
   if (!element) return '';
   const spans = Array.from(element.children).filter(
     child => child.localName === 'tspan'
@@ -126,7 +127,7 @@ export function textOf(element: Element | undefined): string {
  * whose own `transform` is anything but a translate of finite numbers is
  * refused here, and the caller sends it to the sketch with a remark.
  */
-export function originOf(element: Element): [number, number] | undefined {
+export function originOf(element: XmlElement): [number, number] | undefined {
   const raw = element.getAttribute('transform');
   if (raw !== null && raw.trim().length > 0) {
     const match =
@@ -141,7 +142,10 @@ export function originOf(element: Element): [number, number] | undefined {
 }
 
 /** A finite number off an attribute, or `undefined`. */
-export function finiteAttr(element: Element, name: string): number | undefined {
+export function finiteAttr(
+  element: XmlElement,
+  name: string
+): number | undefined {
   const raw = element.getAttribute(name);
   if (raw === null || raw.trim().length === 0) return undefined;
   const value = Number(raw);

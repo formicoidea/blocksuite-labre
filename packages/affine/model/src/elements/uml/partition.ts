@@ -5,27 +5,7 @@ import { field } from '@labre/std/gfx';
 import type { FrameworkBackgroundProps } from '../framework-background/index.js';
 import { FrameworkBackgroundElementModel } from '../framework-background/index.js';
 import { umlInNameBand } from './band.js';
-
-/**
- * Height of a partition's NAME BAND — the strip its name is written in, in
- * model units.
- *
- * Declared HERE, in the model, and re-exported by `@labre/affine-gfx-uml`, for
- * the reason {@link UML_FRAME_BAND_HEIGHT} is: the partition's own hit test
- * reads it (a swimlane is clickable by its header as well as by its border),
- * and `affine-model` cannot reach into `affine-block-surface` where the
- * declaration is resolved. One number, owned by the layer that both the
- * declaration and the hit test can read.
- *
- * It is the band's THICKNESS whichever edge the band is on — the top for a
- * vertical lane, the left for a horizontal one — because §15.6.4 draws one
- * header strip and turns it with the lane rather than resizing it.
- *
- * 36 against the diagram frame's 44: a partition header is a name and not a
- * `<kind> <name>` heading, and it is written inside a lane that already sits on
- * a sheet, so it reads as a subdivision rather than as a second sheet.
- */
-export const UML_PARTITION_BAND = 36;
+import { UML_PARTITION_BAND } from './consts.js';
 
 /**
  * Which way a partition is sliced — the one thing §15.6.4 lets an author choose

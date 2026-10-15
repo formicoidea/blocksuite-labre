@@ -5,18 +5,7 @@ import { field } from '@labre/std/gfx';
 import type { FrameworkBackgroundProps } from '../framework-background/index.js';
 import { FrameworkBackgroundElementModel } from '../framework-background/index.js';
 import { umlInNameBand } from './band.js';
-
-/**
- * Height of a region's NAME BAND — the strip its name is written in, in model
- * units.
- *
- * Owned by the model for the reason {@link UML_PARTITION_BAND} is: the region's
- * own hit test reads it, and `affine-model` cannot reach into the package where
- * the declaration is resolved. The same 36 the partition uses, and deliberately
- * so — the two are the same piece of furniture, a name written in a strip along
- * the top of a transparent frame, and two numbers would drift.
- */
-export const UML_REGION_BAND = 36;
+import { UML_REGION_BAND } from './consts.js';
 
 export type UmlRegionProps = FrameworkBackgroundProps & {
   /** The state name, written in the band — edited inline on dblclick. */

@@ -62,6 +62,7 @@
     "./selection": "./src/selection/index.ts",
     "./utils": "./src/utils/index.ts",
     "./consts": "./src/consts/index.ts",
+    "./headless": "./src/headless.ts",
     "./types": "./src/types/index.ts",
     "./commands": "./src/commands/index.ts",
     "./theme": "./src/theme/index.ts",

@@ -1,10 +1,11 @@
 import { ConnectorElementModel } from '@labre/affine-model';
 import {
+  FileSizeLimitProvider,
   fillPlaceholders,
   NotificationProvider,
   translateKey,
 } from '@labre/affine-shared/services';
-import { openSingleFileWithSpec } from '@labre/affine-shared/utils';
+import { formatSize, openSingleFileWithSpec } from '@labre/affine-shared/utils';
 import type { ServiceProvider } from '@labre/global/di';
 import { Bound, getCommonBound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
@@ -344,6 +345,14 @@ const IMPORT_DEFAULT_NAME_FALLBACK = 'Imported diagram';
 const IMPORT_READONLY_KEY = 'com.labre.interchange.import.readonly';
 const IMPORT_READONLY_FALLBACK =
   'This page became read-only while the file was being read, so nothing was imported.';
+/**
+ * The file is larger than the host's `FileSizeLimitProvider` allows — the same
+ * ceiling an attachment or an image upload obeys, refused BEFORE a byte of it
+ * is read. `{{size}}` is the formatted ceiling, never the file's own size.
+ */
+const IMPORT_TOO_LARGE_KEY = 'com.labre.interchange.import.too-large';
+const IMPORT_TOO_LARGE_FALLBACK =
+  'This file is larger than {{size}}, the most this editor imports.';
 const IMPORT_REMARKS_KEY = 'com.labre.interchange.import.remarks';
 const IMPORT_REMARKS_FALLBACK = 'What the import could not keep as it was';
 const IMPORT_CONSOLE_KEY = 'com.labre.interchange.import.console';
@@ -648,6 +657,27 @@ export async function importInterchangeFile(
   if (!gfx.surface || std.store.readonly) return;
 
   const { format } = capability;
+
+  // The host's upload ceiling (`FileSizeLimitProvider`, the seam an attachment
+  // and an image already obey), checked on the SIZE before the text is read: a
+  // reader holds the whole file as a string, and the decode step may multiply
+  // it. Optional like every seam — absent, nothing is refused here.
+  const maxFileSize = std.getOptional(FileSizeLimitProvider)?.maxFileSize;
+  if (maxFileSize !== undefined && file.size > maxFileSize) {
+    notifyImport(std, {
+      title: translateKey(std, IMPORT_FAILED_KEY, IMPORT_FAILED_FALLBACK),
+      message: translateKey(
+        std,
+        IMPORT_TOO_LARGE_KEY,
+        IMPORT_TOO_LARGE_FALLBACK,
+        {
+          size: formatSize(maxFileSize) ?? String(maxFileSize),
+        }
+      ),
+      accent: 'error',
+    });
+    return;
+  }
 
   let result: InterchangeImportResult;
   try {

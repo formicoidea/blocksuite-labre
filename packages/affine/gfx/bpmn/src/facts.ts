@@ -2,7 +2,7 @@ import {
   backgroundInstanceZones,
   backgroundPlot,
   containingFrame,
-} from '@labre/affine-block-surface';
+} from '@labre/affine-block-surface/interchange';
 import type { BpmnLane, BpmnPoolElementModel } from '@labre/affine-model';
 import type { Bound } from '@labre/global/gfx';
 

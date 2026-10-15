@@ -3,10 +3,12 @@ import {
   UML_FRAGMENT_BAND,
   UML_FRAME_BAND_HEIGHT,
   UML_LIFELINE_HEAD,
-  type UmlDiagramKind,
-  type UmlFragmentOperand,
-  type UmlFragmentOperator,
-  type UmlNodeKind,
+} from '@labre/affine-model/headless';
+import type {
+  UmlDiagramKind,
+  UmlFragmentOperand,
+  UmlFragmentOperator,
+  UmlNodeKind,
 } from '@labre/affine-model';
 
 import {
@@ -787,6 +789,18 @@ const RELATION_OF_ROLE = new Map<string, UmlRelationKind>(
     kind as UmlRelationKind,
   ])
 );
+
+/**
+ * The relationship a connector ROLE states — `uml:generalization` → `'generalization'`
+ * — or `undefined` for a role that states none. The one reading of
+ * {@link RELATION_ROLE} backwards, exported for the draw.io reader, which meets
+ * the same roles as `labre-role` attributes on a drawing the canvas wrote.
+ */
+export function umlRelationKindOfRole(
+  role: string | undefined
+): UmlRelationKind | undefined {
+  return role === undefined ? undefined : RELATION_OF_ROLE.get(role);
+}
 
 /* ── Geometry ─────────────────────────────────────────────────────────── */
 

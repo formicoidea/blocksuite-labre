@@ -20,7 +20,12 @@
  *   once), waits, hands an export's file back instead of downloading it, and
  *   rejects when the export fails; the palette's path still downloads;
  * - with no host at all (no catalogue, no mode provider, no export manager)
- *   it mounts, reads English and lists nothing it cannot run.
+ *   it mounts, reads English and lists nothing it cannot run;
+ * - the exports of a view (amendment of 2026-10-14) are one section: the
+ *   page as Markdown and HTML in both views, and on the canvas one entry per
+ *   framework `*:export` capability in the interchange registry — derived,
+ *   so a flag that removes the capability removes the entry — each handing
+ *   its file back with the framework's telemetry.
  */
 import { PresentTool } from '@labre/affine-block-frame';
 import {
@@ -41,6 +46,7 @@ import { Container } from '@labre/global/di';
 import {
   type BlockStdScope,
   type CommandFile,
+  CommandTelemetryIdentifier,
   CommandUsageIdentifier,
   getRegisteredCommands,
   runCommand,
@@ -49,12 +55,17 @@ import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { Text } from '@labre/store';
 import { TestWorkspace } from '@labre/store/test';
 import { effect, signal } from '@preact/signals-core';
+import * as Y from 'yjs';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { getInternalStoreExtensions } from '../extensions/store.js';
 import { getInternalViewExtensions } from '../extensions/view.js';
 import type { LabreFlags } from '../flags.js';
-import { getViewActions, runViewAction } from '../host-panels.js';
+import {
+  getViewActions,
+  getViewExports,
+  runViewAction,
+} from '../host-panels.js';
 
 let seq = 0;
 
@@ -107,7 +118,19 @@ function mount({
 
   const { store, surface } = createBoard();
   const setTool = vi.fn();
-  const gfx = { surface$: signal(surface), tool: { setTool } };
+  // Enough of the controller for the draw.io export to read the canvas: no
+  // selection, every element, nothing hidden, the stored order.
+  const gfx = {
+    surface$: signal(surface),
+    surface,
+    tool: { setTool },
+    selection: { editing: false, selectedElements: [] },
+    get gfxElements() {
+      return surface.elementModels;
+    },
+    localVisibility: { isHidden: () => false },
+    layer: { compare: () => 0 },
+  };
   const services = new Map<unknown, unknown>();
   const std = {
     store,
@@ -122,6 +145,12 @@ function mount({
     record: (command: { id: string }) => usage.push(command.id),
     statsOf: () => undefined,
   });
+  const telemetry: unknown[] = [];
+  services.set(
+    CommandTelemetryIdentifier,
+    ({ command }: { command: { telemetry?: unknown } }) =>
+      telemetry.push(command.telemetry)
+  );
   services.set(EditPropsStore, new EditPropsStore(std));
   const grid = new CanvasGrid(std);
   grid.mounted();
@@ -140,10 +169,11 @@ function mount({
       ...exporter,
     });
   }
-  return { std, store, surface, grid, setTool, usage };
+  return { std, store, surface, grid, setTool, usage, telemetry };
 }
 
 const ids = (std: BlockStdScope) => getViewActions(std).map(a => a.id);
+const ids2 = (actions: { id: string }[]) => actions.map(a => a.id);
 
 afterEach(() => {
   localStorage.clear();
@@ -151,23 +181,31 @@ afterEach(() => {
 });
 
 describe('the listing', () => {
-  test('the canvas: the grid, the two exports, Present — in that order', () => {
+  test('the canvas: the grid, the exports, Present — in that order', () => {
     const { std } = mount();
+    // No canvas renderer in this stub, so no SVG; no framework element, so
+    // no framework export.
     expect(ids(std)).toEqual([
       'canvas.grid.toggle',
       'canvas.export.png',
       'canvas.export.pdf',
+      'canvas.export.drawio',
+      'page.export.markdown',
+      'page.export.html',
       'canvas.present',
     ]);
     expect(getViewActions(std).map(a => a.section)).toEqual([
       'display',
       'export',
       'export',
+      'export',
+      'export',
+      'export',
       'present',
     ]);
   });
 
-  test('every entry is a registered command, on the view-menu surface', () => {
+  test('every registered entry is on the view-menu surface', () => {
     const { std } = mount();
     const registered = new Map(getRegisteredCommands(std).map(c => [c.id, c]));
     for (const action of getViewActions(std)) {
@@ -175,16 +213,22 @@ describe('the listing', () => {
     }
   });
 
-  test('the page view lists none of the canvas actions', () => {
-    expect(ids(mount({ scope: 'page' }).std)).toEqual([]);
+  test('the page view lists the page exports and none of the canvas actions', () => {
+    expect(ids(mount({ scope: 'page' }).std)).toEqual([
+      'page.export.markdown',
+      'page.export.html',
+    ]);
   });
 
   test('an explicit mode wins over the provider', () => {
     // The host shows the page while this scope still answers edgeless (the
     // std is rebuilt per switch): the canvas actions are not this view's.
     const { std } = mount();
-    expect(getViewActions(std, 'page')).toEqual([]);
-    expect(getViewActions(std, 'edgeless')).toHaveLength(4);
+    expect(ids2(getViewActions(std, 'page'))).toEqual([
+      'page.export.markdown',
+      'page.export.html',
+    ]);
+    expect(getViewActions(std, 'edgeless')).toHaveLength(7);
   });
 
   test('a flag removes a tool, never the rest: frame off, no Present', () => {
@@ -262,6 +306,29 @@ describe('running an entry', () => {
     expect(usage).toEqual(['canvas.export.png']);
   });
 
+  test('draw.io hands back the canvas as a file, and downloads nothing', async () => {
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL');
+    const { std, surface, usage } = mount();
+    // An empty canvas: no file, no error — the PDF's rule.
+    await expect(runViewAction(std, 'canvas.export.drawio')).resolves.toEqual(
+      {}
+    );
+
+    const id = surface.addElement({
+      type: 'shape',
+      xywh: '[10,20,100,50]',
+      text: new Y.Text('Order'),
+    });
+    const { file } = await runViewAction(std, 'canvas.export.drawio');
+    expect(file?.filename).toMatch(/\.drawio$/);
+    const text = await file!.blob.text();
+    expect(text).toContain(
+      `<object id="${id}" label="Order" labre-type="shape">`
+    );
+    expect(createObjectURL).not.toHaveBeenCalled();
+    expect(usage).toEqual(['canvas.export.drawio', 'canvas.export.drawio']);
+  });
+
   test('nothing to draw: no file, no error', async () => {
     const { std } = mount();
     await expect(runViewAction(std, 'canvas.export.pdf')).resolves.toEqual({});
@@ -313,10 +380,133 @@ describe('running an entry', () => {
 describe('with no host', () => {
   test('mounts, reads English, and lists only what it can run', async () => {
     const { std, usage } = mount({ host: false });
-    // No `ExportManager`: the exports do not apply, so they are not listed.
-    expect(ids(std)).toEqual(['canvas.grid.toggle', 'canvas.present']);
+    // No `ExportManager`: the picture exports do not apply, so they are not
+    // listed. draw.io needs no host — it writes what the canvas holds.
+    expect(ids(std)).toEqual([
+      'canvas.grid.toggle',
+      'canvas.export.drawio',
+      'page.export.markdown',
+      'page.export.html',
+      'canvas.present',
+    ]);
     expect(getViewActions(std)[0]!.label).toBe('Show or hide the grid');
     await expect(runViewAction(std, 'canvas.export.png')).resolves.toEqual({});
     expect(usage).toEqual([]);
+  });
+});
+
+describe('the exports of a view', () => {
+  /** A Wardley map on the canvas: the one thing an `.owm` export writes. */
+  const addMap = (surface: SurfaceBlockModel) =>
+    surface.addElement({
+      type: 'wardley',
+      role: 'wardley:map',
+      xywh: '[0,0,1600,900]',
+    });
+
+  test('getViewExports is the export section, in the listing order', () => {
+    const { std, surface } = mount();
+    addMap(surface);
+    expect(ids2(getViewExports(std))).toEqual([
+      'canvas.export.png',
+      'canvas.export.pdf',
+      'canvas.export.drawio',
+      'canvas.export.wardley.owm',
+      'page.export.markdown',
+      'page.export.html',
+    ]);
+    expect(ids2(getViewExports(std, 'page'))).toEqual([
+      'page.export.markdown',
+      'page.export.html',
+    ]);
+  });
+
+  test('a framework format is listed while the board holds that framework', () => {
+    const { std, surface } = mount();
+    expect(ids(std)).not.toContain('canvas.export.wardley.owm');
+    const id = addMap(surface);
+    expect(ids(std)).toContain('canvas.export.wardley.owm');
+    surface.deleteElement(id);
+    expect(ids(std)).not.toContain('canvas.export.wardley.owm');
+  });
+
+  test('its label names the framework and the extension, through the catalogue', () => {
+    const { std, surface } = mount();
+    addMap(surface);
+    const owm = getViewExports(std).find(
+      a => a.id === 'canvas.export.wardley.owm'
+    )!;
+    expect(owm.label).toBe('Export Wardley map as .owm');
+    expect(owm.labelKey).toBe('com.labre.command.canvas.export.interchange');
+    expect(owm.labelParams).toEqual({
+      framework: 'Wardley map',
+      extension: '.owm',
+    });
+    expect(owm.iconKey).toBe('canvas.export.interchange');
+    expect(owm.disabled).toBe(false);
+  });
+
+  test('a flag that removes the capability removes the entry, not the drawing', () => {
+    const { std, surface } = mount({ flags: { wardley: false } });
+    addMap(surface);
+    expect(ids(std)).not.toContain('canvas.export.wardley.owm');
+    expect(ids(std)).toContain('canvas.export.drawio');
+  });
+
+  test('every framework capability yields one entry, the canvas draw.io none', () => {
+    const { std, surface } = mount();
+    // One element of each framework that writes a format.
+    for (const role of ['bpmn:task', 'c4:system', 'uml:class'] as const) {
+      surface.addElement({ type: 'shape', role, xywh: '[0,0,10,10]' });
+    }
+    addMap(surface);
+    expect(
+      ids(std).filter(id => /^canvas\.export\.\w+\.\w+$/.test(id))
+    ).toEqual([
+      'canvas.export.bpmn.bpmn',
+      'canvas.export.c4.mermaid',
+      'canvas.export.uml.plantuml',
+      'canvas.export.uml.xmi',
+      'canvas.export.wardley.owm',
+    ]);
+    expect(ids(std)).not.toContain('canvas.export.canvas.drawio');
+  });
+
+  test('a framework export hands its file back, with its telemetry', async () => {
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL');
+    const { std, surface, usage, telemetry } = mount();
+    addMap(surface);
+    const { file } = await runViewAction(std, 'canvas.export.wardley.owm');
+    expect(file?.filename).toBe('Board.owm');
+    expect(file?.blob.type).toBe('text/plain;charset=utf-8');
+    expect(await file!.blob.text()).toContain('title Board');
+    expect(createObjectURL).not.toHaveBeenCalled();
+    expect(usage).toEqual(['canvas.export.wardley.owm']);
+    expect(telemetry).toEqual([
+      { framework: 'wardley', element: 'canvas:export-owm' },
+    ]);
+  });
+
+  test('the page as Markdown and as HTML, handed back', async () => {
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL');
+    const { std, store, usage } = mount({ scope: 'page' });
+    const root = store.root!;
+    const note = store.addBlock('affine:note', {}, root.id);
+    store.addBlock(
+      'affine:paragraph',
+      { text: new Text('Order to cash') },
+      note
+    );
+
+    const md = await runViewAction(std, 'page.export.markdown');
+    expect(md.file?.filename).toBe('Board.md');
+    expect(await md.file!.blob.text()).toContain('Order to cash');
+
+    const html = await runViewAction(std, 'page.export.html');
+    expect(html.file?.filename).toBe('Board.html');
+    expect(await html.file!.blob.text()).toContain('Order to cash');
+
+    expect(createObjectURL).not.toHaveBeenCalled();
+    expect(usage).toEqual(['page.export.markdown', 'page.export.html']);
   });
 });

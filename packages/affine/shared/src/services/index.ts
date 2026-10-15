@@ -1,4 +1,5 @@
 export * from './artefact-catalogue-service';
+export * from './asset-picker-service';
 export * from './audit-service';
 export * from './auto-clear-selection-service';
 export * from './block-meta-service';
@@ -18,6 +19,7 @@ export * from './embed-option-service';
 export * from './feature-flag-service';
 export * from './file-size-limit-service';
 export * from './font-loader';
+export * from './frame-template-service';
 export * from './generate-url-service';
 export * from './keymap-override-service';
 export * from './link-preview-service';

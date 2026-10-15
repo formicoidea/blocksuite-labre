@@ -15,6 +15,10 @@ import { query } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import { when } from 'lit/directives/when.js';
 
+import {
+  croppedImageStyle,
+  ImageCropController,
+} from './crop/crop-controller.js';
 import { IMAGE_LABEL, IMAGE_TOAST_DOWNLOAD_FAILED } from './translations';
 import {
   copyImageBlob,
@@ -62,12 +66,24 @@ export class ImageEdgelessBlockComponent extends GfxBlockComponent<ImageBlockMod
       width: 100%;
       height: 100%;
     }
+
+    affine-edgeless-image .resizable-img {
+      position: relative;
+    }
+
+    affine-edgeless-image .labre-image-crop-window {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
   `;
 
   resourceController = new ResourceController(
     computed(() => this.model.props.sourceId$.value),
     'Image'
   );
+
+  readonly cropController = new ImageCropController(this, true);
 
   get blobUrl() {
     return this.resourceController.blobUrl$.value;
@@ -116,6 +132,9 @@ export class ImageEdgelessBlockComponent extends GfxBlockComponent<ImageBlockMod
     const blobUrl = this.blobUrl;
     const imageLabel = translateKey(this.std, ...IMAGE_LABEL);
     const { rotate = 0, size = 0, caption = imageLabel } = this.model.props;
+    // The box is the visible part (ADR 0037): the source is drawn scaled
+    // and offset inside it, through a window that clips the rest.
+    const crop = this.cropController.crop$.value;
 
     const containerStyleMap = styleMap({
       display: 'flex',
@@ -145,14 +164,27 @@ export class ImageEdgelessBlockComponent extends GfxBlockComponent<ImageBlockMod
           blobUrl,
           () => html`
             <div class="resizable-img">
-              <img
-                class="drag-target"
-                draggable="false"
-                loading="lazy"
-                src=${blobUrl}
-                alt=${caption}
-                @error=${this._handleError}
-              />
+              ${crop
+                ? html`<div class="labre-image-crop-window">
+                    <img
+                      class="drag-target"
+                      draggable="false"
+                      loading="lazy"
+                      src=${blobUrl}
+                      alt=${caption}
+                      style=${croppedImageStyle(crop)}
+                      @error=${this._handleError}
+                    />
+                  </div>`
+                : html`<img
+                    class="drag-target"
+                    draggable="false"
+                    loading="lazy"
+                    src=${blobUrl}
+                    alt=${caption}
+                    @error=${this._handleError}
+                  />`}
+              ${this.cropController.renderOverlay(blobUrl, rotate)}
             </div>
             ${when(loading, () => html`<div class="loading">${icon}</div>`)}
             ${when(

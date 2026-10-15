@@ -1,5 +1,8 @@
 import { ConnectorElementModel } from '@labre/affine-model';
-import { NotificationProvider } from '@labre/affine-shared/services';
+import {
+  FileSizeLimitProvider,
+  NotificationProvider,
+} from '@labre/affine-shared/services';
 import { Container } from '@labre/global/di';
 import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
@@ -116,7 +119,9 @@ class StubSurface {
   }
 }
 
-function stubEditor(options: { notify?: boolean; readonly?: boolean } = {}) {
+function stubEditor(
+  options: { notify?: boolean; readonly?: boolean; maxFileSize?: number } = {}
+) {
   const surface = new StubSurface();
   const notify = vi.fn();
   const setViewportByBound = vi.fn();
@@ -134,7 +139,10 @@ function stubEditor(options: { notify?: boolean; readonly?: boolean } = {}) {
     getOptional: (identifier: unknown) =>
       identifier === NotificationProvider && options.notify !== false
         ? { notify }
-        : undefined,
+        : identifier === FileSizeLimitProvider &&
+            options.maxFileSize !== undefined
+          ? { maxFileSize: options.maxFileSize }
+          : undefined,
     store: { readonly: options.readonly === true, captureSync },
   } as unknown as BlockStdScope;
 
@@ -622,6 +630,34 @@ describe('running an import from a file', () => {
     expect(failure.accent).toBe('error');
     // Shown as it is: a wording of ours would know less than the reader's.
     expect(failure.message).toBe('The root element is not a `definitions`.');
+  });
+
+  it('refuses a file over the host’s size limit before reading it', async () => {
+    // The P4 import prerequisite: an import obeys the same
+    // `FileSizeLimitProvider` an attachment does, and refuses on the SIZE —
+    // the text, which a reader holds whole and a decode may multiply, is
+    // never asked for.
+    const { std, surface, notify } = stubEditor({ maxFileSize: 1024 });
+    const text = vi.fn(() => Promise.resolve('anything'));
+    const big = { name: 'big.owm', size: 1025, text } as unknown as File;
+
+    await importInterchangeFile(std, capabilityOf(farFromOrigin), big);
+
+    expect(text).not.toHaveBeenCalled();
+    expect(surface.added).toEqual([]);
+    expect(notify).toHaveBeenCalledTimes(1);
+    const failure = notify.mock.calls[0][0];
+    expect(failure.title).toBe('This file could not be imported');
+    expect(failure.accent).toBe('error');
+    expect(failure.message).toBe(
+      'This file is larger than 1KB, the most this editor imports.'
+    );
+
+    // At the limit, it is read as usual.
+    const atLimit = { name: 'ok.owm', size: 1024, text } as unknown as File;
+    await importInterchangeFile(std, capabilityOf(farFromOrigin), atLimit);
+    expect(text).toHaveBeenCalledTimes(1);
+    expect(surface.added).toHaveLength(3);
   });
 
   it('draws nothing on a read-only document, whichever door is used', async () => {

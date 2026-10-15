@@ -32,6 +32,15 @@ export const TEMPLATE_PANEL_SEARCH_PLACEHOLDER: ChromeWording = [
  */
 export const TEMPLATE_PANEL_CATEGORY_OTHER = CATALOGUE_OTHER;
 
+/**
+ * The tab of the frames a host keeps as templates (`FrameTemplateProvider`,
+ * `SAVED_FRAMES_CATEGORY`); there is no such tab without that host.
+ */
+export const TEMPLATE_PANEL_CATEGORY_SAVED_FRAMES: ChromeWording = [
+  'com.labre.template.panel.category.saved-frames',
+  'Saved frames',
+];
+
 /** The "Template" senior tool's own button name (`SeniorTool.labelKey`). */
 export const TEMPLATE_SENIOR_TOOL_NAME: ChromeWording = [
   'com.labre.template.senior-tool.name',
@@ -75,6 +84,7 @@ export const TEMPLATE_NAME_GANTT_CHART: ChromeWording = [
 export const TEMPLATE_PACKAGE_WORDINGS: readonly ChromeWording[] = [
   TEMPLATE_PANEL_ADD,
   TEMPLATE_PANEL_SEARCH_PLACEHOLDER,
+  TEMPLATE_PANEL_CATEGORY_SAVED_FRAMES,
   TEMPLATE_SENIOR_TOOL_NAME,
   TEMPLATE_NAME_SWOT,
   TEMPLATE_NAME_KANBAN_BOARD,

@@ -1,3 +1,4 @@
+import type { XmlElement } from '@labre/affine-block-surface/interchange';
 import type {
   InterchangeImportContext,
   InterchangeImportResult,
@@ -10,9 +11,9 @@ import {
   sketchSvgTree,
   SVG_SKETCH_EMPTY,
   SvgSketchNotebook,
-} from '@labre/affine-block-surface';
-import { FontFamily, TextAlign } from '@labre/affine-model';
-import { fillPlaceholders } from '@labre/affine-shared/services';
+} from '@labre/affine-block-surface/interchange';
+import { FontFamily, TextAlign } from '@labre/affine-model/headless';
+import { fillPlaceholders } from '@labre/affine-shared/headless';
 
 import {
   OWM_DEFAULT_MAP_WIDTH,
@@ -104,13 +105,14 @@ import { WARDLEY_SVG_IMPORT_REMARKS } from './svg-remarks.js';
  */
 
 /** Detection order (ADR 0032 §4): the first certain match wins. */
-const RECOGNISERS: readonly ((root: Element) => DrawnWardleyMap | undefined)[] =
-  [
-    recogniseLabreExport,
-    recogniseWardleyMapRenderer,
-    recogniseOnlineWardleyMaps,
-    recogniseByShape,
-  ];
+const RECOGNISERS: readonly ((
+  root: XmlElement
+) => DrawnWardleyMap | undefined)[] = [
+  recogniseLabreExport,
+  recogniseWardleyMapRenderer,
+  recogniseOnlineWardleyMaps,
+  recogniseByShape,
+];
 
 export function importWardleySvg(
   source: string,
@@ -139,7 +141,7 @@ export function importWardleySvg(
  * (ADR 0032 §5).
  */
 function sketchOnly(
-  root: Element,
+  root: XmlElement,
   notebook: SvgSketchNotebook
 ): InterchangeImportResult {
   const elements = sketchSvgTree(root, notebook);
@@ -175,13 +177,13 @@ function extentPlot(drawn: DrawnWardleyMap): OwmPlot {
     ...drawn.notes.map(note => note.y),
   ];
   if (xs.length === 0) return { x0: 0, y0: 0, width: 1, height: 1 };
-  const x0 = Math.min(...xs);
-  const y0 = Math.min(...ys);
+  const x0 = xs.reduce((a, b) => Math.min(a, b), Infinity);
+  const y0 = ys.reduce((a, b) => Math.min(a, b), Infinity);
   return {
     x0,
     y0,
-    width: Math.max(Math.max(...xs) - x0, 1),
-    height: Math.max(Math.max(...ys) - y0, 1),
+    width: Math.max(xs.reduce((a, b) => Math.max(a, b), -Infinity) - x0, 1),
+    height: Math.max(ys.reduce((a, b) => Math.max(a, b), -Infinity) - y0, 1),
   };
 }
 
@@ -200,7 +202,7 @@ function placeOnBoard(file: OwmPlot, board: OwmPlot): SvgSketchFrame {
 }
 
 function mapAndSketch(
-  root: Element,
+  root: XmlElement,
   notebook: SvgSketchNotebook,
   drawn: DrawnWardleyMap
 ): InterchangeImportResult {

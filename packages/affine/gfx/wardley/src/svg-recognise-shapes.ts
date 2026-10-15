@@ -1,4 +1,5 @@
-import { svgFrameOf } from '@labre/affine-block-surface';
+import type { XmlElement } from '@labre/affine-block-surface/interchange';
+import { svgFrameOf } from '@labre/affine-block-surface/interchange';
 
 import type { OwmPlot } from './export.js';
 import {
@@ -40,7 +41,7 @@ const NAME_REACH = 40;
 const END_SLACK = 3;
 
 interface Segment {
-  element: Element;
+  element: XmlElement;
   x1: number;
   y1: number;
   x2: number;
@@ -89,7 +90,7 @@ function straightPath(d: string): [number, number, number, number] | undefined {
   return [points[0][0], points[0][1], points[1][0], points[1][1]];
 }
 
-function segmentsOf(root: Element): Segment[] {
+function segmentsOf(root: XmlElement): Segment[] {
   const found: Segment[] = [];
   for (const element of Array.from(
     root.querySelectorAll('line, polyline, path')
@@ -157,7 +158,9 @@ function axesOf(
   return undefined;
 }
 
-export function recogniseByShape(root: Element): DrawnWardleyMap | undefined {
+export function recogniseByShape(
+  root: XmlElement
+): DrawnWardleyMap | undefined {
   const segments = segmentsOf(root);
   const circles = Array.from(root.querySelectorAll('circle')).flatMap(
     element => {
@@ -176,14 +179,34 @@ export function recogniseByShape(root: Element): DrawnWardleyMap | undefined {
       ];
     }
   );
+  // The first `<tspan>` under each `<text>`, found in one pass: a
+  // `querySelector` per text rebuilt its subtree each time, O(texts × depth) on
+  // nested texts (counter-review of 49aa247ce). Spans come in document order,
+  // so the first to reach an ancestor is its first; an ancestor already
+  // reached has had every ancestor of its own reached too.
+  const firstSpan = new Map<XmlElement, XmlElement>();
+  const reached = new Set<XmlElement>();
+  for (const span of root.querySelectorAll('tspan')) {
+    for (
+      let at = span.parentElement;
+      at && !reached.has(at);
+      at = at.parentElement
+    ) {
+      reached.add(at);
+      if (at.localName === 'text') firstSpan.set(at, span);
+    }
+  }
   const texts = Array.from(root.querySelectorAll('text')).flatMap(element => {
-    const span = element.querySelector('tspan');
+    const span = firstSpan.get(element);
     const x =
       finiteAttr(element, 'x') ?? (span ? finiteAttr(span, 'x') : undefined);
     const y =
       finiteAttr(element, 'y') ?? (span ? finiteAttr(span, 'y') : undefined);
+    if (x === undefined || y === undefined) return [];
+    // After the position: a text's content is its whole subtree, and a text
+    // with no position is never read.
     const name = textOf(element);
-    if (x === undefined || y === undefined || name.length === 0) return [];
+    if (name.length === 0) return [];
     const frame = svgFrameOf(element);
     return [
       { element, x: frame.ox + x * frame.s, y: frame.oy + y * frame.s, name },
@@ -202,8 +225,12 @@ export function recogniseByShape(root: Element): DrawnWardleyMap | undefined {
   ];
   if (xs.length === 0) return undefined;
   const extent = {
-    w: Math.max(...xs) - Math.min(...xs),
-    h: Math.max(...ys) - Math.min(...ys),
+    w:
+      xs.reduce((a, b) => Math.max(a, b), -Infinity) -
+      xs.reduce((a, b) => Math.min(a, b), Infinity),
+    h:
+      ys.reduce((a, b) => Math.max(a, b), -Infinity) -
+      ys.reduce((a, b) => Math.min(a, b), Infinity),
   };
   const found = axesOf(segments, extent);
   if (!found) return undefined;
@@ -236,9 +263,9 @@ export function recogniseByShape(root: Element): DrawnWardleyMap | undefined {
       ({ circle, distance }) => distance <= Math.max(4 * circle.r, NAME_REACH)
     )
     .sort((a, b) => a.distance - b.distance);
-  const named = new Map<Element, DrawnWardleyNode>();
+  const named = new Map<XmlElement, DrawnWardleyNode>();
   const reach = new Map<DrawnWardleyNode, number>();
-  const usedTexts = new Set<Element>();
+  const usedTexts = new Set<XmlElement>();
   for (const { circle, text } of pairs) {
     if (named.has(circle.element) || usedTexts.has(text.element)) continue;
     usedTexts.add(text.element);

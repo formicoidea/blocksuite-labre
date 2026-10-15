@@ -1,4 +1,6 @@
 export {
+  canvasSvgExportCommands,
+  canvasSvgFile,
   exportBoardSvg,
   exportSvgCommands,
   selectedBoards,
@@ -19,8 +21,11 @@ export {
   BlockSvgPainterExtension,
   BlockSvgPainterIdentifier,
   boardSvgMarkers,
+  canvasRendererOf,
+  canvasSvgModels,
   exportBoundOf,
   renderBoardSvg,
+  renderCanvasSvg,
   selectBoardElements,
 } from './render.js';
 export { taggedPath2D } from './tagged-path.js';

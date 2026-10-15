@@ -80,9 +80,8 @@ export type TemplateCategory = {
    * key (`com.labre.framework.<id>`, the senior button's); a generic one
    * (`Other`) gets a key of its own. Absent for a category whose display name
    * cannot be attributed to one owner (Cynefin and Estuarine share a single
-   * `cynefin-estuarine` framework key that names neither individually) or that
-   * a host contributed through {@link TemplateManager.extend} — either way
-   * `name` is shown as is.
+   * `cynefin-estuarine` framework key that names neither individually), in
+   * which case `name` is shown as is.
    */
   nameKey?: string;
   templates: Template[] | (() => Promise<Template[]>);
@@ -97,6 +96,4 @@ export interface TemplateManager {
 
   /** {@link TemplateCategory.nameKey} of the category named `name`, if any. */
   categoryLabel?(name: string): string | undefined;
-
-  extend?(manager: TemplateManager): void;
 }

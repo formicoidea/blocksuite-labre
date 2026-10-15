@@ -2,14 +2,17 @@ import { frameCommands } from '@labre/affine-block-frame';
 import {
   copyLinkCommands,
   coreCommands,
+  pageExportCommands,
   pivotCommands,
   readingCommands,
   tagCommands,
 } from '@labre/affine-block-root';
 import {
   auditCommands,
+  canvasDrawioExportCommands,
   canvasExportCommands,
   canvasGridCommands,
+  canvasSvgExportCommands,
   exportSvgCommands,
   mapQualityCommands,
   selectionPaneCommands,
@@ -121,6 +124,7 @@ export function getCommands(flags?: LabreFlags): AnyCommandDescriptor[] {
     [
       ...coreCommands,
       ...copyLinkCommands,
+      ...pageExportCommands,
       ...pivotCommands,
       ...tagCommands,
       ...readingCommands,
@@ -131,6 +135,8 @@ export function getCommands(flags?: LabreFlags): AnyCommandDescriptor[] {
       ...frameCommands,
       ...canvasGridCommands,
       ...canvasExportCommands,
+      ...canvasDrawioExportCommands,
+      ...canvasSvgExportCommands,
       ...userLayerCommands,
       ...edgeDirectionCommands,
       ...(isCapabilityEnabled(flags, 'ai-audit') ? auditCommands : []),

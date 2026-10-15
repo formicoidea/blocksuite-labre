@@ -1,4 +1,5 @@
-import { svgFrameOf } from '@labre/affine-block-surface';
+import type { XmlElement } from '@labre/affine-block-surface/interchange';
+import { svgFrameOf } from '@labre/affine-block-surface/interchange';
 
 import type { OwmPlot } from './export.js';
 import type { WardleyNodeKeyword } from './import.js';
@@ -72,7 +73,7 @@ const after = (id: string, prefix: string) =>
   id.startsWith(prefix) ? id.slice(prefix.length) : undefined;
 
 export function recogniseOnlineWardleyMaps(
-  root: Element
+  root: XmlElement
 ): DrawnWardleyMap | undefined {
   const ids = idIndex(root);
 
@@ -149,7 +150,7 @@ export function recogniseOnlineWardleyMaps(
 
   /* The artefacts. */
   const byId = new Map<string, DrawnWardleyNode>();
-  const twins: { of: string; group: Element }[] = [];
+  const twins: { of: string; group: XmlElement }[] = [];
   for (const [id, group] of ids) {
     const own = after(id, MOVABLE_ELEMENT);
     if (own === undefined) continue;

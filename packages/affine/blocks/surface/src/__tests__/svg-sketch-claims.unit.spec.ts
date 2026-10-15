@@ -195,17 +195,25 @@ describe('what the sanitiser keeps of a producer’s markers', () => {
     }
   });
 
-  it('drops an id that names a property of `document` — and only that', () => {
-    // DOMPurify's DOM-clobbering guard. Pinned so the recognisers' choice
-    // never to rely on such an id (OnlineWardleyMaps writes `links` and
-    // `anchors` on two of its containers) stays a documented fact.
+  it('keeps an id that names a property of `document`: no DOM, no clobbering', () => {
+    // DOMPurify dropped these as a DOM-clobbering guard. The allow-list reads
+    // the file into a plain tree that never becomes a document, so an id is
+    // only ever a string a recogniser compares; the recognisers still never
+    // rely on such an id (OnlineWardleyMaps writes `links` and `anchors` on
+    // two of its containers), and an attribute NAMED `__proto__` is just one
+    // more name off the list.
     const source = svg(
-      '<g id="links"><g id="anchors"/><g id="__proto__"/><g id="pipeline_box_9"/></g>'
+      '<g id="links"><g id="anchors"/><g id="__proto__"/><g id="pipeline_box_9" __proto__="x" constructor="y"/></g>'
     );
     const root = sanitizeSvg(source, new SvgSketchNotebook());
-    const ids = Array.from(root.querySelectorAll('g')).map(g =>
-      g.getAttribute('id')
-    );
-    expect(ids).toEqual([null, null, null, 'pipeline_box_9']);
+    const groups = Array.from(root.querySelectorAll('g'));
+    expect(groups.map(g => g.getAttribute('id'))).toEqual([
+      'links',
+      'anchors',
+      '__proto__',
+      'pipeline_box_9',
+    ]);
+    expect(groups[3].hasAttribute('constructor')).toBe(false);
+    expect(groups[3].getAttribute('toString')).toBeNull();
   });
 });

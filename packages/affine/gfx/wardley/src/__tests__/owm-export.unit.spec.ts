@@ -4,9 +4,9 @@ import {
   exportWardleyOwmWithWarnings,
   owmName,
   owmNumber,
-  wardleyBoardFrom,
   wardleySafeFilename,
 } from '../export';
+import { wardleyBoardFrom } from '../export-board';
 import { LABEL_GAP, MARKET_SIZE, NODE_SIZE } from '../node/consts';
 import { WARDLEY_ROLE } from '../roles';
 import {

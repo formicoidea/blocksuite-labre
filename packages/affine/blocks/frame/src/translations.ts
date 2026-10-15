@@ -1,5 +1,6 @@
 import {
   type ChromeWording,
+  SAVE_AS_TEMPLATE,
   TOOLBAR_INSERT_INTO_PAGE,
   TOOLBAR_UNGROUP,
 } from '@labre/affine-shared/services';
@@ -61,6 +62,22 @@ export const FRAME_TOAST_INSERTED_MESSAGE: ChromeWording = [
 ];
 
 export const FRAME_TOOLBAR_UNGROUP = TOOLBAR_UNGROUP;
+
+/**
+ * "Save as template" (the `FrameTemplateProvider` seam): the button, then
+ * the notification that says how the host's save went.
+ */
+export const FRAME_TOOLBAR_SAVE_AS_TEMPLATE = SAVE_AS_TEMPLATE;
+
+export const FRAME_TOAST_TEMPLATE_SAVED: ChromeWording = [
+  'com.labre.frame.toast.template-saved',
+  'Frame saved as a template',
+];
+
+export const FRAME_TOAST_TEMPLATE_SAVE_FAILED: ChromeWording = [
+  'com.labre.frame.toast.template-save-failed',
+  'The frame could not be saved as a template',
+];
 
 export const FRAME_TOOLBAR_BACKGROUND: ChromeWording = [
   'com.labre.frame.toolbar.background',
@@ -144,6 +161,8 @@ export const FRAME_CHROME_WORDINGS: readonly ChromeWording[] = [
   FRAME_DENSE_MENU_SLIDE,
   FRAME_TOAST_INSERTED_MESSAGE,
   FRAME_TOOLBAR_BACKGROUND,
+  FRAME_TOAST_TEMPLATE_SAVED,
+  FRAME_TOAST_TEMPLATE_SAVE_FAILED,
   FRAME_PRESENT_TOOL_TOOLTIP,
   FRAME_PRESENT_PREVIOUS,
   FRAME_PRESENT_NEXT,

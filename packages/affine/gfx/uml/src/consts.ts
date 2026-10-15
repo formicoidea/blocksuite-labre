@@ -2,8 +2,8 @@ import type { UmlNodeKind } from '@labre/affine-model';
 // The lifeline's column height is a MODEL constant (the element's own bound
 // override reads it), and it is also this file's footprint for the kind — so it
 // is imported as well as re-exported below.
-import { UML_LIFELINE_SPINE } from '@labre/affine-model';
-import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
+import { UML_LIFELINE_SPINE } from '@labre/affine-model/headless';
+import { NOTATION_NEUTRALS } from '@labre/affine-shared/headless';
 
 /**
  * Visual constants for the UML pack.
@@ -123,7 +123,7 @@ export const UML_DIAGRAM_MARGIN = 24;
  * pack's metrics, exactly as `consts.ts` in the C4 pack re-exports
  * `C4_BOARD_TITLE_BAND_HEIGHT`.
  */
-export { UML_FRAME_BAND_HEIGHT } from '@labre/affine-model';
+export { UML_FRAME_BAND_HEIGHT } from '@labre/affine-model/headless';
 
 /** The size a fresh diagram frame is created at — a Context Map sheet's own. */
 export const UML_DIAGRAM_BOX = { w: 1400, h: 900 } as const;
@@ -378,7 +378,10 @@ export const UML_REGION_RADIUS = 16;
  * Re-exported here so this file stays the one place a reader looks for the
  * pack's metrics, exactly as {@link UML_FRAME_BAND_HEIGHT} is.
  */
-export { UML_PARTITION_BAND, UML_REGION_BAND } from '@labre/affine-model';
+export {
+  UML_PARTITION_BAND,
+  UML_REGION_BAND,
+} from '@labre/affine-model/headless';
 
 /* ── The interaction artefacts (phase 3) ───────────────────────────────── */
 
@@ -392,7 +395,10 @@ export { UML_PARTITION_BAND, UML_REGION_BAND } from '@labre/affine-model';
  * Re-exported here so this file stays the one place a reader looks for the
  * pack's metrics, exactly as {@link UML_FRAME_BAND_HEIGHT} is.
  */
-export { UML_LIFELINE_HEAD, UML_LIFELINE_SPINE } from '@labre/affine-model';
+export {
+  UML_LIFELINE_HEAD,
+  UML_LIFELINE_SPINE,
+} from '@labre/affine-model/headless';
 
 /**
  * The dash pattern of a lifeline's SPINE, in model units (§17.3.4).
@@ -443,7 +449,7 @@ export const UML_FRAGMENT_OPERAND_DASH = [10, 6] as const;
  *
  * Re-exported for the reason every other band is.
  */
-export { UML_FRAGMENT_BAND } from '@labre/affine-model';
+export { UML_FRAGMENT_BAND } from '@labre/affine-model/headless';
 
 /**
  * The guard written in an operand's own corner, and its inset from the

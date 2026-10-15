@@ -1,3 +1,4 @@
+import { lonePastedUrl, proposeLinkViews } from '@labre/affine-inline-link';
 import { deleteTextCommand } from '@labre/affine-inline-preset';
 import {
   pasteMiddleware,
@@ -144,6 +145,9 @@ export class PageClipboard extends ReadOnlyClipboard {
         if (!ctx.parentBlock) {
           return;
         }
+        // A lone URL still pastes as a plain link; its views are then offered,
+        // never applied (labre REQ-IM-1).
+        const url = lonePastedUrl(e.clipboardData?.getData('text/plain'));
         this.std.clipboard
           .paste(
             e,
@@ -151,6 +155,7 @@ export class PageClipboard extends ReadOnlyClipboard {
             ctx.parentBlock.model.id,
             ctx.blockIndex ? ctx.blockIndex + 1 : 1
           )
+          .then(() => (url ? proposeLinkViews(this.std, url) : false))
           .catch(console.error);
 
         return next();

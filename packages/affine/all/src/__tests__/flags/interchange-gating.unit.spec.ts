@@ -17,6 +17,11 @@ import { type BlockFlags, OPTIONAL_BLOCKS } from '../../flags.js';
  * off declares no capability. What a past import WROTE is content and is not
  * gated by anything — `reversed-contract-doc.unit.spec.ts` is where that half
  * is pinned, on the same documents, with every flag off.
+ *
+ * One owner is not a framework and has no flag: the CANVAS, whose draw.io
+ * writer exports what the canvas paints (`canvas:drawio:export`, ADR 0019
+ * amendment of 2026-10-14). It is the one capability left with every flag off,
+ * and this spec says so rather than tolerating it.
  */
 
 /** Every optional block AND every framework switched off. */
@@ -42,13 +47,17 @@ function mountEdgelessProvider(flags: BlockFlags) {
  * c4:      mermaid out — 1.
  * wardley: `.owm` out, `.owm` in, `.svg` in — 3.
  * uml:     PlantUML out, PlantUML in, XMI out, XMI in, draw.io in — 5.
+ * canvas:  draw.io out, the generic rendering, never gated — 1.
  *
  * A framework that adds one adds a TERM here and a row to its own test below —
  * spelled as a sum per framework rather than as a total, so a merge that brings
  * two frameworks together adds two terms instead of silently agreeing on a
  * number that is short by one.
  */
-const DECLARED_CAPABILITIES = 3 + 1 + 3 + 5;
+const DECLARED_CAPABILITIES = 3 + 1 + 3 + 5 + 1;
+
+/** What no flag removes: the canvas's own writer. */
+const CANVAS_CAPABILITIES = ['canvas:drawio:export'];
 
 describe('the interchange registry is flag-gated tooling', () => {
   test('BPMN declares both directions of `.bpmn`, and the SVG fallback', () => {
@@ -171,13 +180,36 @@ describe('the interchange registry is flag-gated tooling', () => {
     // …and the asymmetry left is the one ADR 0019 argues for: there is no
     // `uml:drawio:export`, because writing a picture back is a re-render (P2).
     // A board that came in from draw.io leaves through PlantUML or XMI with its
-    // model intact.
+    // model intact — and as a PICTURE through the canvas's generic writer,
+    // which is the canvas's capability and not UML's (amendment 2026-10-14).
     expect(
       found.filter(capability => capability.direction === 'export')
     ).toHaveLength(2);
   });
 
-  test('it declares nothing at all with the flag off', () => {
+  test('the canvas writes draw.io whatever the flags, and owns nothing else', () => {
+    for (const flags of [ALL_ON, ALL_OFF]) {
+      const found = interchangeCapabilities(mountEdgelessProvider(flags), {
+        framework: 'canvas',
+      });
+      expect(found.map(capability => capability.id)).toEqual(
+        CANVAS_CAPABILITIES
+      );
+      // The visual tier, said before the file is written: a rendering, not a
+      // model, so no round trip is promised (ADR 0012 P2).
+      expect(found[0].format.tier).toBe('visual');
+      expect(found[0].direction).toBe('export');
+    }
+    // One draw.io format, two owners and two directions: UML reads it, the
+    // canvas writes it, and neither is the other's.
+    expect(
+      interchangeCapabilities(mountEdgelessProvider(ALL_ON), {
+        format: 'drawio',
+      }).map(capability => capability.id)
+    ).toEqual(['canvas:drawio:export', 'uml:drawio:import']);
+  });
+
+  test('it declares nothing a framework owns with the flag off', () => {
     const provider = mountEdgelessProvider(ALL_OFF);
 
     expect(interchangeCapabilities(provider, { framework: 'bpmn' })).toEqual(
@@ -187,10 +219,13 @@ describe('the interchange registry is flag-gated tooling', () => {
       []
     );
     // Nothing else has slipped a capability in through an always-on extension:
-    // the registry is empty, not merely BPMN-less. This is the assertion that
-    // catches an `InterchangeExtension` registered from a framework's RENDER
-    // view extension instead of its flag-gated one.
-    expect(interchangeCapabilities(provider)).toEqual([]);
+    // the registry holds the canvas's writer and nothing more, not merely no
+    // BPMN. This is the assertion that catches an `InterchangeExtension`
+    // registered from a framework's RENDER view extension instead of its
+    // flag-gated one.
+    expect(
+      interchangeCapabilities(provider).map(capability => capability.id)
+    ).toEqual(CANVAS_CAPABILITIES);
   });
 
   test('what the flag removes is the button, never the drawing', () => {

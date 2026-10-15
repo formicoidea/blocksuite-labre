@@ -28,6 +28,40 @@ export const IMAGE_TOOLBAR_TURN_INTO_CARD_VIEW: ChromeWording = [
   'Turn into card view',
 ];
 
+/**
+ * « Rogner » (ADR 0037): the toolbar button, its presets and the way back to
+ * the whole picture. The ratios are words too — a host may write « 16/9 ».
+ */
+export const IMAGE_TOOLBAR_CROP: ChromeWording = [
+  'com.labre.image.toolbar.crop',
+  'Crop',
+];
+
+export const IMAGE_TOOLBAR_CROP_FREE: ChromeWording = [
+  'com.labre.image.toolbar.crop.free',
+  'Free',
+];
+
+export const IMAGE_TOOLBAR_CROP_16_9: ChromeWording = [
+  'com.labre.image.toolbar.crop.ratio-16-9',
+  '16:9',
+];
+
+export const IMAGE_TOOLBAR_CROP_4_3: ChromeWording = [
+  'com.labre.image.toolbar.crop.ratio-4-3',
+  '4:3',
+];
+
+export const IMAGE_TOOLBAR_CROP_1_1: ChromeWording = [
+  'com.labre.image.toolbar.crop.ratio-1-1',
+  '1:1',
+];
+
+export const IMAGE_TOOLBAR_CROP_ORIGINAL: ChromeWording = [
+  'com.labre.image.toolbar.crop.original',
+  'Original image',
+];
+
 export const IMAGE_PREVIEW_TITLE: ChromeWording = [
   'com.labre.image.preview.title',
   'Image Block',
@@ -60,6 +94,15 @@ export const IMAGE_TOAST_READ_SIZE_FAILED: ChromeWording = [
 ];
 
 /**
+ * The image toolbar's "Replace" (`configs/replace-action.ts`), offered only
+ * with a host asset dialog (`AssetPickerProvider`).
+ */
+export const IMAGE_TOOLBAR_REPLACE: ChromeWording = [
+  'com.labre.image.toolbar.replace',
+  'Replace',
+];
+
+/**
  * This package's contribution to the translation-key manifest, listed in
  * `PACKAGE_WORDINGS` under source `chrome`
  * (`packages/affine/all/src/translations.ts`). The shared verbs it reuses
@@ -70,9 +113,16 @@ export const IMAGE_WORDINGS: readonly ChromeWording[] = [
   IMAGE_SLASH_DESCRIPTION,
   IMAGE_SLASH_PHOTO_CAPTION,
   IMAGE_TOOLBAR_TURN_INTO_CARD_VIEW,
+  IMAGE_TOOLBAR_CROP,
+  IMAGE_TOOLBAR_CROP_FREE,
+  IMAGE_TOOLBAR_CROP_16_9,
+  IMAGE_TOOLBAR_CROP_4_3,
+  IMAGE_TOOLBAR_CROP_1_1,
+  IMAGE_TOOLBAR_CROP_ORIGINAL,
   IMAGE_PREVIEW_TITLE,
   IMAGE_TOAST_DOWNLOAD_FAILED,
   IMAGE_TOAST_DOWNLOADING,
   IMAGE_TOAST_COPIED,
   IMAGE_TOAST_READ_SIZE_FAILED,
+  IMAGE_TOOLBAR_REPLACE,
 ];

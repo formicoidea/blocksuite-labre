@@ -1,4 +1,7 @@
-import type { ChromeWording } from '@labre/affine-shared/services';
+import {
+  type ChromeWording,
+  SAVE_AS_TEMPLATE,
+} from '@labre/affine-shared/services';
 import type { TranslationKeyManifestEntry } from '@labre/std';
 
 /* ── "+ view" (ADR 0035 §1, §9c, B11; labre ADR-0046 §5) ──────────────── */
@@ -67,10 +70,8 @@ export const VIEW_MENU_COLOR_RULES: ChromeWording = [
   'Conditional colors',
 ];
 
-export const VIEW_MENU_SAVE_TEMPLATE: ChromeWording = [
-  'com.labre.database.view-menu.save-template',
-  'Save as template',
-];
+/** Shared with the frame toolbar: one chrome word, one key (`SAVE_AS_TEMPLATE`). */
+export const VIEW_MENU_SAVE_TEMPLATE = SAVE_AS_TEMPLATE;
 
 export const VIEW_MENU_IMPORT: ChromeWording = [
   'com.labre.database.view-menu.import',
@@ -167,7 +168,6 @@ const DATABASE_EDITOR_WORDINGS: readonly ChromeWording[] = [
   VIEW_MENU_GROUP,
   VIEW_MENU_IMPORT,
   VIEW_MENU_LAYOUT,
-  VIEW_MENU_SAVE_TEMPLATE,
 ];
 
 /**

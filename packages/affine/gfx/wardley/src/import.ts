@@ -12,7 +12,7 @@ import {
   ShapeStyle,
   StrokeStyle,
   TextAlign,
-} from '@labre/affine-model';
+} from '@labre/affine-model/headless';
 import type { ForeignInterchange } from '@labre/std/gfx';
 
 import { WARDLEY_BACKGROUND } from './background.js';

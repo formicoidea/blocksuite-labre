@@ -1,6 +1,8 @@
 import {
+  ExportIcon,
   ExportToPdfIcon,
   ExportToPngIcon,
+  ExportToSvgIcon,
   GridIcon,
 } from '@blocksuite/icons/lit';
 import {
@@ -22,12 +24,17 @@ import { effects } from './effects';
 import {
   auditCommands,
   CanvasActiveLayer,
+  canvasDrawioExportCommands,
   canvasExportCommands,
+  CANVAS_INTERCHANGE,
   canvasGridCommands,
+  canvasSvgExportCommands,
   EdgelessCRUDExtension,
   EdgelessLegacySlotExtension,
   EditPropsMiddlewareBuilder,
   exportSvgCommands,
+  INTERCHANGE_EXPORT_ICON_KEY,
+  InterchangeExtension,
   exportSvgToolbarExtension,
   mapQualityCommands,
   mapQualityWidget,
@@ -140,6 +147,30 @@ export class SurfaceViewExtension extends ViewExtensionProvider {
         CommandExtension(canvasExportCommands, {
           'canvas.export.png': ExportToPngIcon(),
           'canvas.export.pdf': ExportToPdfIcon(),
+        })
+      );
+      // The canvas as a draw.io drawing (ADR 0019, amendment of 2026-10-14):
+      // the third "This view" export, and the registry's one capability no
+      // framework owns. Never gated, for the PNG's reason — it writes what the
+      // canvas paints, whatever drew it — so with every framework off the
+      // registry still answers `canvas:drawio:export`.
+      context.register(InterchangeExtension(CANVAS_INTERCHANGE));
+      context.register(
+        CommandExtension(canvasDrawioExportCommands, {
+          'canvas.export.drawio': ExportIcon(),
+          // The icon of the view actions derived from the frameworks'
+          // `*:export` capabilities (`interchange-export.ts`): they are
+          // listed by the host façade, never registered as commands, so their
+          // one icon rides on this table.
+          [INTERCHANGE_EXPORT_ICON_KEY]: ExportIcon(),
+        })
+      );
+      // The whole canvas as SVG (ADR 0034, amendment of 2026-10-14): the
+      // renderer replay of `export.svg`, over everything this viewer sees.
+      // Never gated, for the PNG's reason.
+      context.register(
+        CommandExtension(canvasSvgExportCommands, {
+          'canvas.export.svg': ExportToSvgIcon(),
         })
       );
       // User layers (ADR 0031 §2-§6): the viewer's active layer (session

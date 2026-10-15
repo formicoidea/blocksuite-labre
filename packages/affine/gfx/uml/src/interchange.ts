@@ -8,7 +8,7 @@ import type {
   InterchangeNote,
   InterchangeReport,
 } from '@labre/affine-block-surface';
-import { interchangeCapabilityId } from '@labre/affine-block-surface';
+import { interchangeCapabilityId } from '@labre/affine-block-surface/interchange';
 import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
 
 import { importDrawio, UML_DRAWIO_FORMAT_ID } from './drawio-import.js';

@@ -1,5 +1,6 @@
 import type { InlineHtmlAST } from '@labre/affine-shared/adapters';
 import { InlineDeltaToHtmlAdapterExtension } from '@labre/affine-shared/adapters';
+import { isSafeLinkUrl } from '@labre/affine-shared/utils';
 
 export const linkDeltaToHtmlAdapterMatcher = InlineDeltaToHtmlAdapterExtension({
   name: 'link',
@@ -10,7 +11,8 @@ export const linkDeltaToHtmlAdapterMatcher = InlineDeltaToHtmlAdapterExtension({
       value: delta.insert,
     };
     const link = delta.attributes?.link;
-    if (!link) {
+    // A stored link with a refused scheme is written as its text alone.
+    if (!link || !isSafeLinkUrl(link)) {
       return hast;
     }
     return {

@@ -10,7 +10,7 @@ import { generateFractionalIndexingKeyBetween } from '@labre/affine-shared/utils
 import type { DeltaInsert } from '@labre/store';
 import { nanoid } from '@labre/store';
 import type { Element } from 'hast';
-import type { Table as MarkdownTable } from 'mdast';
+import type { Table as MarkdownTable, Nodes as MarkdownNodes } from 'mdast';
 
 type RichTextType = DeltaInsert[];
 const createRichText = (text: RichTextType) => {
@@ -193,6 +193,31 @@ export const parseTableFromHtml = (
   return createTableProps(rowTextLists);
 };
 
+/**
+ * A cell holds rich text, and no inline matcher turns an `image` into a delta:
+ * `![alt](url)` in a pasted Markdown table used to vanish from its cell. It is
+ * kept as a link named by its alt text (its URL when it has none), so nothing
+ * of the source is lost; the link matcher still refuses an unsafe scheme and
+ * keeps the words (labre REQ-IM-2, "no data loss").
+ */
+function imagesAsLinks<T extends MarkdownNodes>(node: T): T {
+  if (node.type === 'image') {
+    return {
+      type: 'link',
+      url: node.url,
+      title: node.title,
+      children: [{ type: 'text', value: node.alt || node.url }],
+    } as unknown as T;
+  }
+  if (!('children' in node)) return node;
+  return {
+    ...node,
+    children: (node.children as MarkdownNodes[]).map(child =>
+      imagesAsLinks(child)
+    ),
+  };
+}
+
 export const parseTableFromMarkdown = (
   node: MarkdownTable,
   astToDelta: (ast: MarkdownAST) => RichTextType
@@ -201,7 +226,7 @@ export const parseTableFromMarkdown = (
   node.children.forEach(row => {
     const rowText: RichTextType[] = [];
     row.children.forEach(cell => {
-      rowText.push(astToDelta(cell));
+      rowText.push(astToDelta(imagesAsLinks(cell)));
     });
     rowTextLists.push(rowText);
   });
