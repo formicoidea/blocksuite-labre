@@ -127,7 +127,8 @@ export type {
  * among its editor extensions. Gathered here with its types so a host's
  * discussion module imports one entry; `threadExcerpt` is the excerpt the
  * editor hands `openThread`, for a host that starts a discussion from its
- * own UI.
+ * own UI. `ThreadTextRange` (amendment of 2026-10-15) is the opaque text
+ * anchor a request may carry and a mark may hand back.
  */
 export { ThreadMarksExtension } from '@labre/affine-shared/services';
 export type {
@@ -135,6 +136,7 @@ export type {
   ThreadMarksService,
   ThreadMarkTargetType,
   ThreadOpenRequest,
+  ThreadTextRange,
 } from '@labre/affine-shared/services';
 export {
   type ThreadTarget,

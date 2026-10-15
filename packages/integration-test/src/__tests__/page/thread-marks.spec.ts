@@ -7,16 +7,19 @@ import {
   ThreadMarksExtension,
   type ThreadOpenRequest,
 } from '@labre/affine/shared/services';
-import { BlockSelection } from '@labre/affine/std';
+import { BlockSelection, TextSelection } from '@labre/affine/std';
 import { AFFINE_TOOLBAR_WIDGET } from '@labre/affine/widgets/toolbar';
+import type { RichText } from '@labre/affine-rich-text';
 import { Bound } from '@labre/global/gfx';
 import { Text } from '@labre/store';
 import { signal } from '@preact/signals-core';
+import { userEvent } from '@vitest/browser/context';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import * as Y from 'yjs';
 
 import { wait } from '../utils/common.js';
 import { addNote, getDocRootBlock, getSurface } from '../utils/edgeless.js';
+import { pointerDown, pointerMoveTo, pointerUp } from '../utils/pointer.js';
 import { setupEditor } from '../utils/setup.js';
 
 /**
@@ -32,6 +35,10 @@ import { setupEditor } from '../utils/setup.js';
  * - no mark on a canvas element, or one far from its corner;
  * - "Discuss" missing from a selected block's or element's toolbar, or
  *   handing the host the wrong target or no excerpt.
+ * - "Discuss" on a text selection handing no range, or a quote that is not
+ *   the selected text; a returned range not highlighted over its words, a
+ *   click on it not reaching the host, or a deleted run still drawn or
+ *   taking the block's mark with it (ADR 0038, amendment of 2026-10-15).
  */
 
 const WIDGET = 'affine-thread-marks-widget';
@@ -59,14 +66,19 @@ function host(marks: ThreadMark[]) {
   };
 }
 
-const marksOf = (root: { widgetComponents: Record<string, unknown> }) =>
+const drawnOf = (
+  root: { widgetComponents: Record<string, unknown> },
+  testId: string
+) =>
   Array.from(
     (
       root.widgetComponents[WIDGET] as HTMLElement | undefined
-    )?.shadowRoot?.querySelectorAll<HTMLElement>(
-      '[data-testid="thread-mark"]'
-    ) ?? []
+    )?.shadowRoot?.querySelectorAll<HTMLElement>(`[data-testid="${testId}"]`) ??
+      []
   );
+
+const marksOf = (root: { widgetComponents: Record<string, unknown> }) =>
+  drawnOf(root, 'thread-mark');
 
 const toolbarEntry = (
   root: { widgetComponents: Record<string, unknown> },
@@ -170,6 +182,89 @@ describe('thread marks in the page view', () => {
         excerpt: 'Budget',
       })
     );
+  });
+});
+
+describe('a discussion on a text selection', () => {
+  test('select, Discuss, the run is highlighted, a click opens it', async () => {
+    const seam = host([]);
+    cleanup = await setupEditor('page', [seam.extension]);
+    const paragraphId = writeParagraph('Pick a vendor before Q3');
+    await wait(100);
+    const richText = window.editor.host!.querySelector<RichText>(
+      `[data-block-id="${paragraphId}"] rich-text`
+    )!;
+    await userEvent.click(richText);
+
+    const std = window.editor.std;
+    std.selection.setGroup('note', [
+      std.selection.create(TextSelection, {
+        from: { blockId: paragraphId, index: 5, length: 8 },
+        to: null,
+      }),
+    ]);
+    await settle();
+
+    const root = getDocRootBlock(
+      window.doc,
+      window.editor,
+      'page'
+    ) as PageRootBlockComponent;
+    const entry = toolbarEntry(root, 'g.thread-discuss');
+    expect(entry).not.toBeNull();
+    entry!.click();
+    expect(seam.openThread).toHaveBeenCalledTimes(1);
+    const request = seam.openThread.mock.calls[0]![0];
+    expect(request).toMatchObject({
+      docId: window.doc.id,
+      targetType: 'block',
+      targetId: paragraphId,
+      excerpt: 'a vendor',
+    });
+    const range = request.range!;
+    expect(typeof range.start).toBe('string');
+    expect(typeof range.end).toBe('string');
+
+    // The host hands the range back on its mark: the run is highlighted over
+    // "a vendor", and the block keeps its mark.
+    seam.marks$.value = [{ ...mark(paragraphId), range }];
+    std.selection.clear();
+    await settle();
+    const runs = drawnOf(root, 'thread-range');
+    expect(runs.length).toBeGreaterThan(0);
+    expect(marksOf(root)).toHaveLength(1);
+    const words = std.range.textSelectionToRange(
+      std.selection.create(TextSelection, {
+        from: { blockId: paragraphId, index: 5, length: 8 },
+        to: null,
+      })
+    )!;
+    const expected = words.getBoundingClientRect();
+    const drawn = runs[0]!.getBoundingClientRect();
+    expect(Math.abs(drawn.left - expected.left)).toBeLessThan(2);
+    expect(Math.abs(drawn.top - expected.top)).toBeLessThan(2);
+    expect(Math.abs(drawn.width - expected.width)).toBeLessThan(2);
+
+    // A real click on the words opens the discussion again, with the range.
+    await pointerMoveTo(`${WIDGET} [data-testid="thread-range"]`, 0.5, 0.5);
+    await pointerDown();
+    await pointerUp();
+    await settle();
+    expect(seam.openThread).toHaveBeenCalledTimes(2);
+    expect(seam.openThread.mock.calls[1]![0]).toEqual({
+      docId: window.doc.id,
+      targetType: 'block',
+      targetId: paragraphId,
+      excerpt: 'a vendor',
+      range,
+    });
+
+    // The words deleted, the run cannot resolve: no highlight, the block's
+    // mark stays.
+    window.doc.getModelById(paragraphId)!.text!.delete(5, 8);
+    await settle();
+    expect(drawnOf(root, 'thread-range')).toHaveLength(0);
+    expect(marksOf(root)).toHaveLength(1);
   });
 });
 
