@@ -15,6 +15,11 @@ import {
 } from '../../selection';
 import { cellDivider } from '../../styles';
 import { isNewTabClick } from '../../../../core/utils/new-tab-click.js';
+import {
+  paintRowColor,
+  ROW_COLOR_PROPERTY,
+  viewRowColor,
+} from '../../../../core/view/color-rules.js';
 import type { TableGroup } from '../group.js';
 import { openDetail, popRowMenu } from '../menu.js';
 import type { TableViewUILogic } from '../table-view-ui-logic.js';
@@ -23,6 +28,10 @@ export class TableRowView extends SignalWatcher(
   WithDisposable(ShadowlessElement)
 ) {
   static override styles = css`
+    /* A colour rule (ADR 0036) first, so the selection below still wins. */
+    .affine-database-block-row {
+      background-color: var(${unsafeCSS(ROW_COLOR_PROPERTY)}, transparent);
+    }
     .affine-database-block-row:has(.row-select-checkbox.selected) {
       background: var(--affine-primary-color-04);
     }
@@ -177,6 +186,7 @@ export class TableRowView extends SignalWatcher(
 
   protected override render(): unknown {
     const view = this.view;
+    paintRowColor(this, viewRowColor(view, this.rowId));
     return html`
       ${view.readonly$.value
         ? nothing

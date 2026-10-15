@@ -10,6 +10,11 @@ import { classMap } from 'lit/directives/class-map.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { html } from 'lit/static-html.js';
 
+import {
+  paintRowColor,
+  ROW_COLOR_PROPERTY,
+  viewRowColor,
+} from '../../../core/view/color-rules.js';
 import type { KanbanColumn } from '../kanban-view-manager.js';
 import type { MobileKanbanViewUILogic } from './kanban-view-ui-logic.js';
 import { popCardMenu } from './menu.js';
@@ -22,7 +27,10 @@ const styles = css`
     border: 0.5px solid ${unsafeCSS(cssVarV2.layer.insideBorder.border)};
     box-shadow: 0px 2px 3px 0px rgba(0, 0, 0, 0.05);
     border-radius: 8px;
-    background-color: var(--affine-background-kanban-card-color);
+    background-color: var(
+      ${unsafeCSS(ROW_COLOR_PROPERTY)},
+      var(--affine-background-kanban-card-color)
+    );
   }
 
   .mobile-card-header {
@@ -202,6 +210,7 @@ export class MobileKanbanCard extends SignalWatcher(
     const columns = this.view.properties$.value.filter(
       v => !this.view.isInHeader(v.id)
     );
+    paintRowColor(this, viewRowColor(this.view, this.cardId));
     return html`
       ${this.renderHeader(columns)} ${this.renderBody(columns)}
       ${this.renderOps()}

@@ -6,17 +6,15 @@ import {
 } from '@labre/affine-components/context-menu';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
 import {
-  DeleteIcon,
-  DuplicateIcon,
   FilterIcon,
   InsertLeftIcon,
   InsertRightIcon,
   MoveLeftIcon,
   MoveRightIcon,
   SortIcon,
-  ViewIcon,
 } from '@blocksuite/icons/lit';
-import { ShadowlessElement } from '@labre/std';
+import { type BlockStdScope, ShadowlessElement, stdContext } from '@labre/std';
+import { consume } from '@lit/context';
 import { css } from 'lit';
 import { property } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
@@ -24,10 +22,7 @@ import { createRef, ref } from 'lit/directives/ref.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import { html } from 'lit/static-html.js';
 
-import {
-  inputConfig,
-  typeConfig,
-} from '../../../../core/common/property-menu.js';
+import { popPropertyMenu } from '../../../../core/common/property-menu.js';
 import { filterTraitKey } from '../../../../core/filter/trait.js';
 import { firstFilterByRef } from '../../../../core/filter/utils.js';
 import { renderUniLit } from '../../../../core/index.js';
@@ -38,6 +33,7 @@ import {
   dragHandler,
   droppable,
 } from '../../../../core/utils/wc-dnd/dnd-context.js';
+import { wordingOf } from '../../../../core/utils/wording.js';
 import type { Property } from '../../../../core/view-manager/property.js';
 import { numberFormats } from '../../../../property-presets/number/utils/formats.js';
 import {
@@ -208,180 +204,142 @@ export class DatabaseHeaderColumn extends SignalWatcher(
     const enableNumberFormatting =
       this.tableViewManager.featureFlags$.value.enable_number_formatting;
 
-    popMenu(popupTargetFromElement(ele ?? this), {
-      options: {
-        items: [
-          inputConfig(this.column),
-          typeConfig(this.column),
-          // Number format begin
-          ...(enableNumberFormatting
-            ? [
-                menu.subMenu({
-                  name: 'Number Format',
-                  hide: () =>
-                    !this.column.dataUpdate ||
-                    this.column.type$.value !== 'number',
-                  options: {
-                    items: [
-                      numberFormatConfig(this.column),
-                      ...numberFormats.map(format => {
-                        const data = this.column.data$.value;
-                        return menu.action({
-                          isSelected: data.format === format.type,
-                          prefix: html`<span
-                            style="font-size: var(--affine-font-base); scale: 1.2;"
-                            >${format.symbol}</span
-                          >`,
-                          name: format.label,
-                          select: () => {
-                            if (data.format === format.type) return;
-                            this.column.dataUpdate(() => ({
-                              format: format.type,
-                            }));
-                          },
-                        });
-                      }),
-                    ],
-                  },
-                }),
-              ]
-            : []),
-          // Number format end
-          menu.group({
-            items: [
-              menu.action({
-                name: 'Hide In View',
-                prefix: ViewIcon(),
-                hide: () => !this.column.hideCanSet,
-                select: () => {
-                  this.column.hideSet(true);
+    popPropertyMenu(popupTargetFromElement(ele ?? this), this.column, {
+      wording: wordingOf(this.std),
+      afterType: [
+        ...(enableNumberFormatting
+          ? [
+              menu.subMenu({
+                name: 'Number Format',
+                hide: () =>
+                  !this.column.dataUpdate ||
+                  this.column.type$.value !== 'number',
+                options: {
+                  items: [
+                    numberFormatConfig(this.column),
+                    ...numberFormats.map(format => {
+                      const data = this.column.data$.value;
+                      return menu.action({
+                        isSelected: data.format === format.type,
+                        prefix: html`<span
+                          style="font-size: var(--affine-font-base); scale: 1.2;"
+                          >${format.symbol}</span
+                        >`,
+                        name: format.label,
+                        select: () => {
+                          if (data.format === format.type) return;
+                          this.column.dataUpdate(() => ({
+                            format: format.type,
+                          }));
+                        },
+                      });
+                    }),
+                  ],
                 },
               }),
-            ],
-          }),
-          menu.group({
-            items: [
-              menu.action({
-                name: 'Filter',
-                prefix: FilterIcon(),
-                select: () => this._addFilter(),
-              }),
-              menu.action({
-                name: 'Sort Ascending',
-                prefix: SortIcon(),
-                select: () => this._addSort(false),
-              }),
-              menu.action({
-                name: 'Sort Descending',
-                prefix: SortIcon(),
-                select: () => this._addSort(true),
-              }),
-            ],
-          }),
-          menu.group({
-            items: [
-              menu.action({
-                name: 'Insert Left Column',
-                prefix: InsertLeftIcon(),
-                select: () => {
-                  this.tableViewManager.propertyAdd({
-                    id: this.column.id,
-                    before: true,
-                  });
-                  Promise.resolve()
-                    .then(() => {
-                      const pre =
-                        this.previousElementSibling?.previousElementSibling;
-                      if (pre instanceof DatabaseHeaderColumn) {
-                        pre.editTitle();
-                        pre.scrollIntoView({
-                          inline: 'nearest',
-                          block: 'nearest',
-                        });
-                      }
-                    })
-                    .catch(console.error);
-                },
-              }),
-              menu.action({
-                name: 'Insert Right Column',
-                prefix: InsertRightIcon(),
-                select: () => {
-                  this.tableViewManager.propertyAdd({
-                    id: this.column.id,
-                    before: false,
-                  });
-                  Promise.resolve()
-                    .then(() => {
-                      const next = this.nextElementSibling?.nextElementSibling;
-                      if (next instanceof DatabaseHeaderColumn) {
-                        next.editTitle();
-                        next.scrollIntoView({
-                          inline: 'nearest',
-                          block: 'nearest',
-                        });
-                      }
-                    })
-                    .catch(console.error);
-                },
-              }),
-              menu.action({
-                name: 'Move Left',
-                prefix: MoveLeftIcon(),
-                hide: () => this.column.isFirst$.value,
-                select: () => {
-                  const prev = this.column.prev$.value;
-                  if (!prev) {
-                    return;
-                  }
-                  this.column.move({
-                    id: prev.id,
-                    before: true,
-                  });
-                },
-              }),
-              menu.action({
-                name: 'Move Right',
-                prefix: MoveRightIcon(),
-                hide: () => this.column.isLast$.value,
-                select: () => {
-                  const next = this.column.next$.value;
-                  if (!next) {
-                    return;
-                  }
-                  this.column.move({
-                    id: next.id,
-                    before: false,
-                  });
-                },
-              }),
-            ],
-          }),
-          menu.group({
-            items: [
-              menu.action({
-                name: 'Duplicate',
-                prefix: DuplicateIcon(),
-                hide: () => !this.column.canDuplicate,
-                select: () => {
-                  this.column.duplicate?.();
-                },
-              }),
-              menu.action({
-                name: 'Delete',
-                prefix: DeleteIcon(),
-                hide: () => !this.column.canDelete,
-                select: () => {
-                  this.column.delete?.();
-                },
-                class: {
-                  'delete-item': true,
-                },
-              }),
-            ],
-          }),
-        ],
-      },
+            ]
+          : []),
+      ],
+      beforeOperations: [
+        menu.group({
+          items: [
+            menu.action({
+              name: 'Filter',
+              prefix: FilterIcon(),
+              select: () => this._addFilter(),
+            }),
+            menu.action({
+              name: 'Sort Ascending',
+              prefix: SortIcon(),
+              select: () => this._addSort(false),
+            }),
+            menu.action({
+              name: 'Sort Descending',
+              prefix: SortIcon(),
+              select: () => this._addSort(true),
+            }),
+          ],
+        }),
+        menu.group({
+          items: [
+            menu.action({
+              name: 'Insert Left Column',
+              prefix: InsertLeftIcon(),
+              select: () => {
+                this.tableViewManager.propertyAdd({
+                  id: this.column.id,
+                  before: true,
+                });
+                Promise.resolve()
+                  .then(() => {
+                    const pre =
+                      this.previousElementSibling?.previousElementSibling;
+                    if (pre instanceof DatabaseHeaderColumn) {
+                      pre.editTitle();
+                      pre.scrollIntoView({
+                        inline: 'nearest',
+                        block: 'nearest',
+                      });
+                    }
+                  })
+                  .catch(console.error);
+              },
+            }),
+            menu.action({
+              name: 'Insert Right Column',
+              prefix: InsertRightIcon(),
+              select: () => {
+                this.tableViewManager.propertyAdd({
+                  id: this.column.id,
+                  before: false,
+                });
+                Promise.resolve()
+                  .then(() => {
+                    const next = this.nextElementSibling?.nextElementSibling;
+                    if (next instanceof DatabaseHeaderColumn) {
+                      next.editTitle();
+                      next.scrollIntoView({
+                        inline: 'nearest',
+                        block: 'nearest',
+                      });
+                    }
+                  })
+                  .catch(console.error);
+              },
+            }),
+            menu.action({
+              name: 'Move Left',
+              prefix: MoveLeftIcon(),
+              hide: () => this.column.isFirst$.value,
+              select: () => {
+                const prev = this.column.prev$.value;
+                if (!prev) {
+                  return;
+                }
+                this.column.move({
+                  id: prev.id,
+                  before: true,
+                });
+              },
+            }),
+            menu.action({
+              name: 'Move Right',
+              prefix: MoveRightIcon(),
+              hide: () => this.column.isLast$.value,
+              select: () => {
+                const next = this.column.next$.value;
+                if (!next) {
+                  return;
+                }
+                this.column.move({
+                  id: next.id,
+                  before: false,
+                });
+              },
+            }),
+          ],
+        }),
+      ],
     });
   }
 
@@ -474,6 +432,10 @@ export class DatabaseHeaderColumn extends SignalWatcher(
 
   @property({ attribute: false })
   accessor column!: TableProperty;
+
+  /** Absent outside an editor (a unit test): the menu reads English. */
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
 
   @property({ attribute: false })
   accessor grabStatus: 'grabStart' | 'grabEnd' | 'grabbing' = 'grabEnd';

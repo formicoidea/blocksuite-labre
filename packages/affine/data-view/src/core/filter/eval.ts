@@ -42,9 +42,15 @@ const applyFilter = (
   }
 };
 
+/**
+ * `undecided` is what a condition nothing can apply answers: `true` for a
+ * view filter (an unfinished condition hides no row), `false` for a colour
+ * rule (an unfinished condition colours no row, ADR 0036).
+ */
 export const evalFilter = (
   filterGroup: Filter,
-  row: Record<string, unknown>
+  row: Record<string, unknown>,
+  undecided = true
 ): boolean => {
   const evalF = (filter: Filter): boolean => {
     if (filter.type === 'filter') {
@@ -59,7 +65,7 @@ export const evalFilter = (
           return result;
         }
       }
-      return true;
+      return undecided;
     } else if (filter.type === 'group') {
       if (filter.op === 'and') {
         return filter.conditions.every(f => evalF(f));

@@ -98,6 +98,13 @@ export class BpmnViewExtension extends ViewExtensionProvider {
 
   override setup(context: ViewExtensionContext) {
     super.setup(context);
+    // BPMN's page of the colour pickers' carousel (`docs/adr/0027`). Here,
+    // in the flag-gated extension, because offering hues is TOOLING — the colours
+    // already painted on a stored process are content and do not move
+    // (`docs/adr/0009`).
+    // Both scopes, not the canvas alone: the database colour grid offers
+    // this page in a page too, softened (ADR 0036 amendment of 2026-10-14).
+    context.register(FrameworkPaletteExtension(BPMN_FRAMEWORK_PALETTE));
     if (this.isEdgeless(context.scope)) {
       context.register(ValidationRuleExtension(BPMN_RULES));
       context.register(ValidationProfileExtension(BPMN_PROFILES));
@@ -171,11 +178,6 @@ export class BpmnViewExtension extends ViewExtensionProvider {
         context.register(ReadingProfileExtension(reading));
       }
       context.register(bpmnSeniorTool);
-      // BPMN's page of the colour pickers' carousel (`docs/adr/0027`). Here,
-      // beside the senior tool, because offering hues is TOOLING — the colours
-      // already painted on a stored process are content and do not move
-      // (`docs/adr/0009`).
-      context.register(FrameworkPaletteExtension(BPMN_FRAMEWORK_PALETTE));
       // The Templates-panel category — tooling, so it goes with the flag (#244).
       context.register(TemplateCategoryExtension(bpmnTemplateCategory));
       context.register(CommandExtension(bpmnCommands, bpmnCommandIcons));

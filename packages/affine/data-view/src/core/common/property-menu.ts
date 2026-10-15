@@ -1,8 +1,24 @@
-import { menu } from '@labre/affine-components/context-menu';
+import {
+  menu,
+  type MenuConfig,
+  popMenu,
+  type PopupTarget,
+} from '@labre/affine-components/context-menu';
+import {
+  TOOLBAR_DELETE,
+  TOOLBAR_DUPLICATE,
+} from '@labre/affine-shared/services';
+import { DeleteIcon, DuplicateIcon, ViewIcon } from '@blocksuite/icons/lit';
 import { html } from 'lit/static-html.js';
 
+import {
+  DATA_VIEW_PROPERTY_HIDE_IN_VIEW,
+  DATA_VIEW_PROPERTY_TYPE,
+} from '../../translations.js';
 import { renderUniLit } from '../utils/uni-component/index.js';
+import { englishWording, type Wording } from '../utils/wording.js';
 import type { Property } from '../view-manager/property.js';
+import type { SingleView } from '../view-manager/single-view.js';
 
 export const inputConfig = (property: Property) => {
   return menu.input({
@@ -20,7 +36,10 @@ export const inputConfig = (property: Property) => {
     },
   });
 };
-export const typeConfig = (property: Property) => {
+export const typeConfig = (
+  property: Property,
+  wording: Wording = englishWording
+) => {
   return menu.group({
     items: [
       menu.subMenu({
@@ -37,7 +56,7 @@ export const typeConfig = (property: Property) => {
         </div>`,
         options: {
           title: {
-            text: 'Property type',
+            text: wording(DATA_VIEW_PROPERTY_TYPE),
           },
           items: [
             menu.group({
@@ -61,3 +80,123 @@ export const typeConfig = (property: Property) => {
     ],
   });
 };
+
+/** What a property menu's opener adds around the shared entries. */
+export type PropertyMenuSlots = {
+  /** Right after the type (the table's "Number Format"). */
+  afterType?: MenuConfig[];
+  /** Between "Hide In View" and the duplicate/delete group. */
+  beforeOperations?: MenuConfig[];
+  /** The opener's words (`wordingOf(std)`); English without it. */
+  wording?: Wording;
+};
+
+/**
+ * The edit menu of one property: the very menu the table's column header
+ * opens, rename and type first, duplicate and delete last. Every opener
+ * reads it from here (the table header with its own filter, sort, insert
+ * and move entries in `slots`; the properties list of every view as is), so
+ * the title keeps the header's rules wherever it is edited: no type change,
+ * no hide, no delete, because `typeCanSet`, `hideCanSet` and `canDelete` say
+ * so. Rename, type, duplicate and delete write the data source, every view
+ * at once; "Hide In View" writes this view only.
+ *
+ * The caller checks `readonly$` before opening it, as the header does.
+ *
+ * ponytail: "Number Format" stays a table slot (its bar is a table/pc
+ * element, behind `enable_number_formatting`, off in Labre), so the
+ * properties list does not offer it. Move the bar to core and the entry into
+ * this list when the flag ships. The virtual and mobile table headers still
+ * spell their own copy of these entries; point them here in a dedicated pass.
+ */
+export const propertyMenuItems = (
+  property: Property,
+  slots: PropertyMenuSlots = {}
+): MenuConfig[] => {
+  const wording = slots.wording ?? englishWording;
+  return [
+    inputConfig(property),
+    typeConfig(property, wording),
+    ...(slots.afterType ?? []),
+    menu.group({
+      items: [
+        menu.action({
+          name: wording(DATA_VIEW_PROPERTY_HIDE_IN_VIEW),
+          prefix: ViewIcon(),
+          hide: () => !property.hideCanSet,
+          select: () => {
+            property.hideSet(true);
+          },
+        }),
+      ],
+    }),
+    ...(slots.beforeOperations ?? []),
+    menu.group({
+      items: [
+        menu.action({
+          name: wording(TOOLBAR_DUPLICATE),
+          prefix: DuplicateIcon(),
+          hide: () => !property.canDuplicate,
+          select: () => {
+            property.duplicate?.();
+          },
+        }),
+        menu.action({
+          name: wording(TOOLBAR_DELETE),
+          prefix: DeleteIcon(),
+          hide: () => !property.canDelete,
+          select: () => {
+            property.delete?.();
+          },
+          class: {
+            'delete-item': true,
+          },
+        }),
+      ],
+    }),
+  ];
+};
+
+export const popPropertyMenu = (
+  target: PopupTarget,
+  property: Property,
+  slots?: PropertyMenuSlots
+) =>
+  popMenu(target, {
+    options: { items: propertyMenuItems(property, slots) },
+  });
+
+/**
+ * The type picker of a new property, as the virtual table header's "+" and
+ * the record detail's "Add property" draw it: one entry per type the source
+ * offers, named after the type. The property is added at the end of the
+ * source (every view), under the type's own name, and `onAdd` gets its id
+ * so the opener can open its menu for the rename.
+ */
+export const popNewPropertyMenu = (
+  target: PopupTarget,
+  view: SingleView,
+  options: { title: string; onAdd: (id: string) => void }
+) =>
+  popMenu(target, {
+    options: {
+      title: { text: options.title },
+      items: [
+        menu.group({
+          items: view.propertyMetas$.value.map(meta =>
+            menu.action({
+              name: meta.config.name,
+              prefix: renderUniLit(meta.renderer.icon),
+              select: () => {
+                const id = view.propertyAdd('end', {
+                  type: meta.type,
+                  name: meta.config.name,
+                });
+                if (id) options.onAdd(id);
+              },
+            })
+          ),
+        }),
+      ],
+    },
+  });

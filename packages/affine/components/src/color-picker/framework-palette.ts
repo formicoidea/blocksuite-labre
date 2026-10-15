@@ -219,6 +219,22 @@ export function frameworkOfSelection(
 }
 
 /**
+ * The palettes the frameworks whose tooling is on registered with this
+ * editor, in {@link FRAMEWORK_IDS} order so the pages read the same way in
+ * every picker: the canvas carousel below and the database colour grid
+ * (`@labre/data-view`, ADR 0036 amendment of 2026-10-14) both page through
+ * this list.
+ */
+export function contributedFrameworkPalettes(
+  std: BlockStdScope
+): FrameworkPalette[] {
+  return [...std.provider.getAll(FrameworkPaletteIdentifier).values()].sort(
+    (a, b) =>
+      FRAMEWORK_IDS.indexOf(a.framework) - FRAMEWORK_IDS.indexOf(b.framework)
+  );
+}
+
+/**
  * The carousel a contextual toolbar hands its colour picker.
  *
  * The base palette is page one and is ALWAYS there (DESIGN.md, "The Coexisting
@@ -232,12 +248,7 @@ export function frameworkPaletteGroups(
   models: readonly GfxModel[],
   basePalettes: readonly Palette[]
 ): PaletteCarousel {
-  const contributed = [
-    ...std.provider.getAll(FrameworkPaletteIdentifier).values(),
-  ].sort(
-    (a, b) =>
-      FRAMEWORK_IDS.indexOf(a.framework) - FRAMEWORK_IDS.indexOf(b.framework)
-  );
+  const contributed = contributedFrameworkPalettes(std);
 
   const groups: PaletteGroup[] = [
     {

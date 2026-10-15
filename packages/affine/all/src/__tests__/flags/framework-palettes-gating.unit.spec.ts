@@ -143,9 +143,15 @@ describe('the framework palettes are flag-gated tooling', () => {
     expect(palettesOf(mountProvider('edgeless', ALL_ON))).not.toContain('uml');
   });
 
-  test('the page scope contributes no palette at all', () => {
-    // Every registration sits behind `isEdgeless(context.scope)`: a colour
-    // picker with a carousel is an edgeless affordance.
-    expect(palettesOf(mountProvider('page', ALL_ON))).toEqual([]);
+  test('the page scope contributes the same palettes, under the same flags', () => {
+    // Registered in both scopes since the database colour grid offers them,
+    // softened, in a page too (ADR 0036 amendment of 2026-10-14, "framework
+    // pages"). The canvas carousel still reads them in edgeless only; a flag
+    // switched off still takes its page away in both.
+    expect(palettesOf(mountProvider('page', ALL_ON))).toEqual(ALL_PALETTES);
+    expect(palettesOf(mountProvider('page', { wardley: false }))).toEqual(
+      ALL_PALETTES.filter(id => id !== 'wardley')
+    );
+    expect(palettesOf(mountProvider('page', ALL_OFF))).toEqual([]);
   });
 });

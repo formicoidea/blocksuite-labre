@@ -81,6 +81,12 @@ export class EdgelessColorButton extends LitElement {
     :host([active])::after {
       border: 1.5px solid var(--affine-primary-color);
     }
+
+    :host(:focus-visible) {
+      outline: 2px solid ${unsafeCSSVarV2('layer/insideBorder/primaryBorder')};
+      outline-offset: 2px;
+      border-radius: 50%;
+    }
   `;
 
   get preprocessColor() {
@@ -91,7 +97,11 @@ export class EdgelessColorButton extends LitElement {
   override render() {
     const { label, preprocessColor, hollowCircle } = this;
     const additionIcon = AdditionIcon(preprocessColor, !!hollowCircle);
-    return html`<div class="color-unit" aria-label=${ifDefined(label)}>
+    return html`<div
+      class="color-unit"
+      aria-label=${ifDefined(label)}
+      title=${ifDefined(label)}
+    >
       ${additionIcon}
     </div>`;
   }
@@ -168,25 +178,89 @@ export class EdgelessColorPanel extends LitElement {
     }
   }
 
+  override connectedCallback() {
+    super.connectedCallback();
+    if (!this.hasAttribute('role')) this.setAttribute('role', 'radiogroup');
+  }
+
+  /**
+   * The keyboard path of the grid (a roving tab stop, ADR 0036 amendment of
+   * 2026-10-14): Tab reaches one swatch, the current colour or the first;
+   * the arrows move between swatches (up and down by `columns` when the grid
+   * declares them, else by one); Enter or Space picks, through the same
+   * click a pointer sends. A handled key goes no further, so the canvas does
+   * not also read it as a nudge or a pan.
+   */
+  private readonly _onKeydown = (event: KeyboardEvent, index: number) => {
+    if (event.isComposing) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      event.stopPropagation();
+      (event.currentTarget as HTMLElement).click();
+      return;
+    }
+    const perRow = this.columns ?? 1;
+    const step =
+      event.key === 'ArrowLeft'
+        ? -1
+        : event.key === 'ArrowRight'
+          ? 1
+          : event.key === 'ArrowUp'
+            ? -perRow
+            : event.key === 'ArrowDown'
+              ? perRow
+              : 0;
+    if (step === 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const swatches = [
+      ...this.renderRoot.querySelectorAll<HTMLElement>('edgeless-color-button'),
+    ];
+    const next = Math.min(Math.max(index + step, 0), swatches.length - 1);
+    this._focusIndex = next;
+    this.requestUpdate();
+    swatches[next]?.focus();
+  };
+
+  private _focusIndex: number | undefined = undefined;
+
   override render() {
+    const resolvedValue = this.resolvedValue;
+    const resolved = this.palettes.map(palette =>
+      resolveColor(palette.value, this.theme)
+    );
+    const activeIndex = resolved.findIndex(color =>
+      isEqual(color, resolvedValue)
+    );
+    const focusIndex =
+      this._focusIndex !== undefined && this._focusIndex < resolved.length
+        ? this._focusIndex
+        : Math.max(activeIndex, 0);
     return html`
       ${repeat(
         this.palettes,
         palette => palette.key,
-        palette => {
-          const resolvedColor = resolveColor(palette.value, this.theme);
-          const activated = isEqual(resolvedColor, this.resolvedValue);
+        (palette, index) => {
+          const resolvedColor = resolved[index] ?? '';
+          const activated = isEqual(resolvedColor, resolvedValue);
+          const label = resolvePaletteLabel(this.std, palette);
           return html`<edgeless-color-button
             class=${classMap({ large: true })}
-            .label=${resolvePaletteLabel(this.std, palette)}
+            role="radio"
+            aria-checked=${activated ? 'true' : 'false'}
+            aria-label=${label}
+            tabindex=${index === focusIndex ? '0' : '-1'}
+            .label=${label}
             .color=${palette.value}
             .theme=${this.theme}
             .hollowCircle=${this.hollowCircle}
             ?active=${activated}
             @click=${() => {
+              this._focusIndex = index;
               this.select(palette);
               this.value = resolvedColor;
             }}
+            @keydown=${(event: KeyboardEvent) => this._onKeydown(event, index)}
           >
           </edgeless-color-button>`;
         }

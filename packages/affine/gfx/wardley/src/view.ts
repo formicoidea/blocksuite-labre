@@ -106,6 +106,14 @@ export class WardleyViewExtension extends ViewExtensionProvider {
 
   override setup(context: ViewExtensionContext) {
     super.setup(context);
+    // Wardley's page of the colour pickers' carousel (`docs/adr/0027`).
+    // Here, in the flag-gated extension, because offering hues is TOOLING: a map
+    // drawn while the flag was on keeps every colour it was painted with
+    // when the flag goes off — the shelf that offers more of them is what
+    // goes away (`docs/adr/0009`).
+    // Both scopes, not the canvas alone: the database colour grid offers
+    // this page in a page too, softened (ADR 0036 amendment of 2026-10-14).
+    context.register(FrameworkPaletteExtension(WARDLEY_FRAMEWORK_PALETTE));
     if (this.isEdgeless(context.scope)) {
       context.register(ValidationRuleExtension(WARDLEY_RULES));
       context.register(ValidationProfileExtension(WARDLEY_PROFILES));
@@ -205,12 +213,6 @@ export class WardleyViewExtension extends ViewExtensionProvider {
       // the flag without either side naming the other.
       context.register(ReadingProfileExtension(WARDLEY_READING));
       context.register(wardleySeniorTool);
-      // Wardley's page of the colour pickers' carousel (`docs/adr/0027`).
-      // Here, beside the senior tool, because offering hues is TOOLING: a map
-      // drawn while the flag was on keeps every colour it was painted with
-      // when the flag goes off — the shelf that offers more of them is what
-      // goes away (`docs/adr/0009`).
-      context.register(FrameworkPaletteExtension(WARDLEY_FRAMEWORK_PALETTE));
       // The Templates-panel category — tooling, so it goes with the flag (#244).
       context.register(TemplateCategoryExtension(wardleyTemplateCategory));
       // The Wardley commands — thirteen artefacts plus the two directions of

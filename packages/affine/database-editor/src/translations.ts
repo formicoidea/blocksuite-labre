@@ -57,6 +57,16 @@ export const VIEW_MENU_OPEN_IN: ChromeWording = [
   'Open pages in',
 ];
 
+/**
+ * "Conditional colors" (ADR 0036): the view settings' own entry
+ * (`DATA_VIEW_COLOR_RULES`), one chrome word, one key, declared once by
+ * `@labre/data-view`, so not listed below.
+ */
+export const VIEW_MENU_COLOR_RULES: ChromeWording = [
+  'com.labre.data-view.color-rules',
+  'Conditional colors',
+];
+
 export const VIEW_MENU_SAVE_TEMPLATE: ChromeWording = [
   'com.labre.database.view-menu.save-template',
   'Save as template',
@@ -69,6 +79,11 @@ export const VIEW_MENU_IMPORT: ChromeWording = [
 
 /* ── The properties panel (ADR 0035 §9b, issue B10) ────────────────────── */
 
+/**
+ * Declared once by `@labre/data-view` (`DATA_VIEW_PROPERTIES`, the list's own
+ * title, in its view options popover too), so not listed below. Restated, not
+ * imported: this bundle imports core alone (`core-database-boundary`).
+ */
 export const PROPERTIES_PANEL_TITLE: ChromeWording = [
   'com.labre.database.properties-panel.title',
   'Properties',
@@ -146,7 +161,6 @@ const DATABASE_EDITOR_WORDINGS: readonly ChromeWording[] = [
   PICKER_TITLE,
   PROPERTIES_PANEL_HIDE_ALL,
   PROPERTIES_PANEL_SHOW_ALL,
-  PROPERTIES_PANEL_TITLE,
   PROPERTIES_PANEL_UNAVAILABLE,
   SLASH_LINKED_VIEW,
   SLASH_LINKED_VIEW_DESCRIPTION,

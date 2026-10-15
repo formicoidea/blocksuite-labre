@@ -37,6 +37,7 @@ export class MultiSelectCell extends BaseCellRenderer<
       minWidth: 400,
       initialDraftText,
       wording: this.wording,
+      std: this.chromeStd,
     });
   };
 
