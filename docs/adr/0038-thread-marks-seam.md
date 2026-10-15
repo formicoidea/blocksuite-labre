@@ -109,3 +109,65 @@ What the library already had did not fit:
   budget test shows it.
 - A host without the seam pays nothing: the widget renders nothing and
   subscribes to nothing when `ThreadMarksProvider` is absent at mount.
+
+## Amendments
+
+### 2026-10-15: a run of text, anchored without a write
+
+Labre's discussions may anchor to a text selection, not only to a block
+(labre P5, contrat « fil, conversation, thread » §1). The seam widens; no
+field becomes required, so a host built against the first shape compiles and
+behaves as before.
+
+- **`ThreadTextRange = { start: string; end: string }`**, optional `range` on
+  `ThreadOpenRequest` and on `ThreadMark`. Each string is a Yjs relative
+  position on the block's `Y.Text` (`Y.createRelativePositionFromTypeIndex`,
+  `Y.encodeRelativePosition`, then base64): `start` sticks to the first
+  selected character (`assoc = 0`), `end` to the last one (`assoc = -1`), so
+  typing right after the run does not grow it. Opaque to the host, which
+  stores and returns the strings unchanged. `ThreadMarkTargetType` does not
+  gain `'text'`: a union a host `switch`es on never widens in a minor, and a
+  text anchor that lost its run degrades to the block it already names.
+- **"Discuss" on a text selection** targets the block the selection starts
+  in, with the selected run of it; a selection over several blocks takes the
+  first one, on the part of it that is selected. `excerpt` is then that text,
+  cut by `truncateThreadExcerpt`. This replaces §4's "a text selection within
+  one block" (a selection over several blocks offered nothing). A collapsed
+  caret still speaks for the block, without `range`.
+- **The widget highlights a mark's run** in the page view, resolved with
+  `Y.createAbsolutePositionFromRelativePosition` on every render and drawn as
+  the client rects of `std.range.textSelectionToRange` (the technique of
+  `doc-remote-selection`), in the `block/comment/*` colours, with no pointer
+  event. It also follows the document's updates, since a text edit is no
+  block update. A click on the run with nothing selected (`window.getSelection()`
+  collapsed, so a drag-select is not a request) calls `openThread` with the
+  run's `range` and its current text; the click is not consumed, the caret
+  lands where it was put. A run that does not resolve (its text deleted, a
+  forged string, another block's position, a detached text) is not drawn and
+  never throws; the block's mark stays.
+- **Still nothing written.** Encoding and resolving a relative position read
+  item ids; no prop, no attribute in the text. AFFiNE's inline comment
+  (`packages/affine/inlines/comment`) is not used: it writes `comment-<id>`
+  into the delta and erases what its provider no longer knows.
+
+Consequences:
+
+- `@labre/affine/host-panels` also exports the `ThreadTextRange` type, held by
+  `host-panels-signature.unit.spec.ts`; the widget package depends on `yjs`
+  (already a dependency of every host).
+- Guards: `widgets/thread-marks/src/__tests__/text-range.unit.spec.ts`
+  (round trip, edits before, inside and after, a peer's edits, deleted run,
+  forged or foreign strings, no provider, no `update` on the `Y.Doc` while
+  encoding, quoting, offering "Discuss" or drawing) and the text-selection case
+  of `integration-test/src/__tests__/page/thread-marks.spec.ts` (select,
+  "Discuss", the run highlighted over its words, a real click, the run gone
+  once deleted while the block's mark stays).
+- `ponytail:` a run in a canvas note keeps only its block's mark: the widget
+  sits above the canvas and would paint over a shape covering the note.
+  Drawing it there needs the canvas stacking, if a reader asks for it.
+- `ponytail:` the run is redrawn whole on every document update, once a frame
+  at most; a page with hundreds of anchored runs measures each one. A
+  viewport filter is the upgrade path if a budget test shows it.
+- Not done here, host side: detecting an orphan (the block gone) stays the
+  host's, as before; finding the quote again after "Turn into" (a new block id)
+  is a host gesture over the stored excerpt.

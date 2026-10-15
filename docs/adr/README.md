@@ -42,7 +42,7 @@ One file per decision. Format and lifecycle in
 | [0035](0035-core-database-bundle-and-panel-seams.md)           | Core-database bundle and seams       | proposed                  | Stored databases render in core; the chrome ships as `labre-core-database`; open-row, panel, picker, title-band seams.                                                              |
 | [0036](0036-database-view-conditional-colors.md)               | Conditional colours of a view        | accepted                  | One optional `colorRules` on a view: filter conditions, the options' palette, first match wins; painted in core.                                                                    |
 | [0037](0037-image-crop-is-a-view.md)                           | Image crop is a view                 | accepted                  | One optional `crop` (normalised rectangle + preset token) on `affine:image`; the bytes never change; a 0.49 client shows the whole image.                                           |
-| [0038](0038-thread-marks-seam.md)                              | "Has a thread" seam                  | accepted                  | `ThreadMarksExtension({ marks$, openThread })`: a mark on what the host says has a thread, "Discuss" on every toolbar; ids and counts in, an excerpt out; nothing written.          |
+| [0038](0038-thread-marks-seam.md)                              | "Has a thread" seam                  | accepted, amended         | `ThreadMarksExtension({ marks$, openThread })`: a mark on what the host says has a thread, "Discuss" on every toolbar; ids and counts in, an excerpt out; nothing written.          |
 
 Related documents that are not ADRs:
 

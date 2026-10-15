@@ -1,6 +1,10 @@
 import { CommentIcon } from '@blocksuite/icons/lit';
 import { isPainted } from '@labre/affine-block-surface';
 import {
+  getRangeRects,
+  type SelectionRect,
+} from '@labre/affine-shared/commands';
+import {
   type ThreadMark,
   ThreadMarksProvider,
   translateKey,
@@ -9,7 +13,7 @@ import {
   isInsideEdgelessEditor,
   requestThrottledConnectedFrame,
 } from '@labre/affine-shared/utils';
-import { WidgetComponent } from '@labre/std';
+import { TextSelection, WidgetComponent } from '@labre/std';
 import {
   GfxBlockElementModel,
   GfxControllerIdentifier,
@@ -21,6 +25,7 @@ import { css, html, nothing, unsafeCSS } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
 import { styleMap } from 'lit/directives/style-map.js';
 
+import { type ResolvedThreadRange, resolveThreadRange } from './text-range.js';
 import { openThreadOn } from './toolbar.js';
 import { THREAD_DISCUSS } from './translations.js';
 
@@ -40,6 +45,27 @@ export interface ThreadMarkPlace {
 
 export interface PlacedThreadMark extends ThreadMarkPlace {
   mark: ThreadMark;
+}
+
+/** A highlighted run of a marked block, in viewport coordinates. */
+interface ThreadRangeRects {
+  mark: ThreadMark;
+  rects: SelectionRect[];
+}
+
+/** Is the point (viewport coordinates) inside one of the rects? */
+export function hitsThreadRange(
+  rects: readonly SelectionRect[],
+  x: number,
+  y: number
+): boolean {
+  return rects.some(
+    rect =>
+      x >= rect.left &&
+      x <= rect.left + rect.width &&
+      y >= rect.top &&
+      y <= rect.top + rect.height
+  );
 }
 
 /**
@@ -85,6 +111,15 @@ export function placeThreadMarks(
  * on the canvas on the corner of each marked element or block. A click asks
  * the host to open the discussion, exactly as "Discuss" does.
  *
+ * A mark that carries a `range` also highlights that run of its block's text
+ * in the page view (ADR 0038, amendment of 2026-10-15). The run is resolved
+ * from its Yjs relative positions on every render and drawn as the range's
+ * client rects (the technique of `doc-remote-selection`), never as a mark in
+ * the text. The highlight takes no pointer event, so nothing blocks placing
+ * the caret or selecting; a click that lands on it with nothing selected
+ * opens its discussion. A run that no longer resolves is not drawn, and the
+ * block's own mark stays.
+ *
  * It reads the seam and the layout, and writes nothing. Positions are
  * client rects taken relative to the widget's own box and recomputed, once a
  * frame at most, when the marks, the document, the canvas or the window
@@ -115,6 +150,18 @@ export class ThreadMarksWidget extends WidgetComponent {
       box-shadow: var(--affine-shadow-1);
       color: ${unsafeCSS(cssVarV2('text/secondary'))};
       pointer-events: auto;
+    }
+
+    .thread-range {
+      position: absolute;
+      top: 0;
+      left: 0;
+      background-color: ${unsafeCSS(
+        cssVarV2('block/comment/highlightDefault')
+      )};
+      border-bottom: 2px solid
+        ${unsafeCSS(cssVarV2('block/comment/highlightUnderline'))};
+      pointer-events: none;
     }
 
     .thread-mark[data-unread] {
@@ -151,6 +198,12 @@ export class ThreadMarksWidget extends WidgetComponent {
     _disposables.addFromEvent(window, 'resize', this._refresh);
     // Capture: the page view scrolls in a container, not the window.
     _disposables.addFromEvent(window, 'scroll', this._refresh, true);
+    // A highlighted run moves with every keystroke, local or remote, and a
+    // text edit is no block update: follow the document itself.
+    const doc = std.store.spaceDoc;
+    doc.on('update', this._refresh);
+    _disposables.add(() => doc.off('update', this._refresh));
+    _disposables.addFromEvent(std.host, 'click', this._onClick);
 
     const gfx = std.getOptional(GfxControllerIdentifier);
     if (gfx) {
@@ -170,6 +223,70 @@ export class ThreadMarksWidget extends WidgetComponent {
         })
       );
     }
+  }
+
+  /**
+   * A click on a highlighted run opens its discussion. The click is not
+   * consumed: the caret lands where it was put. A click that ends a drag
+   * (something is selected) is a selection, not a request.
+   */
+  private readonly _onClick = (event: MouseEvent) => {
+    if (window.getSelection()?.isCollapsed === false) return;
+    this._openRangeAt(event.clientX, event.clientY);
+  };
+
+  /** Open the discussion of the run under the point, if there is one. */
+  private _openRangeAt(x: number, y: number) {
+    const service = this.std.getOptional(ThreadMarksProvider);
+    if (!service) return;
+    const hit = this._ranges(service.marks$.peek()).find(({ rects }) =>
+      hitsThreadRange(rects, x, y)
+    );
+    if (!hit) return;
+    openThreadOn(this.std, {
+      targetType: 'block',
+      targetId: hit.mark.targetId,
+      range: hit.mark.range,
+    });
+  }
+
+  private _resolve(mark: ThreadMark): ResolvedThreadRange | null {
+    if (mark.targetType !== 'block' || !mark.range) return null;
+    const yText = this.std.store.getModelById(mark.targetId)?.text?.yText;
+    return yText ? resolveThreadRange(yText, mark.range) : null;
+  }
+
+  /**
+   * The runs to highlight, in viewport coordinates, page view only: on the
+   * canvas a note's text may sit under a shape, and this overlay would paint
+   * over it. `ponytail:` a run in a canvas note keeps only its block's mark;
+   * drawing it there needs the canvas stacking, if a reader asks for it.
+   */
+  private _ranges(marks: readonly ThreadMark[]): ThreadRangeRects[] {
+    if (this._edgeless) return [];
+    const drawn: ThreadRangeRects[] = [];
+    for (const mark of marks) {
+      if (!(mark.count > 0)) continue;
+      const run = this._resolve(mark);
+      if (!run) continue;
+      let range: Range | null;
+      try {
+        range = this.std.range.textSelectionToRange(
+          this.std.selection.create(TextSelection, {
+            from: { blockId: mark.targetId, ...run },
+            to: null,
+          })
+        );
+      } catch {
+        // The inline editor has not rendered the latest text yet: the next
+        // frame draws it.
+        range = null;
+      }
+      if (!range) continue;
+      const rects = getRangeRects(range, null);
+      if (rects.length > 0) drawn.push({ mark, rects });
+    }
+    return drawn;
   }
 
   private _locate(mark: ThreadMark, origin: DOMRect): ThreadMarkPlace | null {
@@ -218,10 +335,26 @@ export class ThreadMarksWidget extends WidgetComponent {
 
     const origin = this.getBoundingClientRect();
     const placed = placeThreadMarks(marks, mark => this._locate(mark, origin));
-    if (placed.length === 0) return nothing;
+    const ranges = this._ranges(marks);
+    if (placed.length === 0 && ranges.length === 0) return nothing;
 
     const label = translateKey(this.std, ...THREAD_DISCUSS);
-    return repeat(
+    const highlights = ranges.flatMap(({ mark, rects }) =>
+      rects.map(
+        rect =>
+          html`<div
+            class="thread-range"
+            data-testid="thread-range"
+            data-target-id=${mark.targetId}
+            style=${styleMap({
+              width: `${rect.width}px`,
+              height: `${rect.height}px`,
+              transform: `translate(${rect.left - origin.left}px, ${rect.top - origin.top}px)`,
+            })}
+          ></div>`
+      )
+    );
+    return html`${highlights}${repeat(
       placed,
       ({ mark }) => `${mark.targetType}:${mark.targetId}`,
       ({ mark, x, y, anchor }) =>
@@ -253,7 +386,7 @@ export class ThreadMarksWidget extends WidgetComponent {
           }}
           >${CommentIcon({ width: '16px', height: '16px' })}</icon-button
         >`
-    );
+    )}`;
   }
 }
 

@@ -10,6 +10,22 @@ import type { ReadonlySignal } from '@preact/signals-core';
 export type ThreadMarkTargetType = 'block' | 'element';
 
 /**
+ * A run of text inside one block (ADR 0038, amendment of 2026-10-15): two
+ * Yjs relative positions on the block's `Y.Text`, each encoded with
+ * `Y.encodeRelativePosition` then base64. Opaque to the host, which stores
+ * and returns the two strings as they are; only the library reads them.
+ *
+ * A relative position follows the text through local and remote edits and is
+ * computed by reading, never by writing: nothing lands in the document. When
+ * the text it points at is gone, the range no longer resolves and the library
+ * falls back to the block.
+ */
+export interface ThreadTextRange {
+  start: string;
+  end: string;
+}
+
+/**
  * One marked target of the mounted document, as the host computes it. Ids and
  * counters only: the library never learns what the host attaches to a target,
  * who wrote it or what it says.
@@ -22,6 +38,14 @@ export interface ThreadMark {
   targetId: string;
   count: number;
   unread: boolean;
+  /**
+   * The text the discussion is anchored to, for a `block` target (ignored on
+   * an `element`). Optional (ADR 0038 amendment): without it only the
+   * block's mark is drawn; with it the run is also highlighted in the page
+   * view, and a click on it opens the discussion. A range that no longer
+   * resolves is not drawn, and the block's mark stays.
+   */
+  range?: ThreadTextRange;
 }
 
 /**
@@ -30,7 +54,8 @@ export interface ThreadMark {
  *
  * `excerpt` is computed here because the library knows the content: the
  * block's text (its descendants' for a container such as a note), a canvas
- * element's label as the selection pane reads it, else the kind of target.
+ * element's label as the selection pane reads it, else the kind of target;
+ * for a text range, the text it covers.
  * Whitespace is collapsed and it is cut to at most 280 characters, an
  * ellipsis included (`THREAD_EXCERPT_MAX`). It is a snapshot for the host to
  * store beside its anchor; the library keeps no copy.
@@ -40,6 +65,13 @@ export interface ThreadOpenRequest {
   targetType: ThreadMarkTargetType;
   targetId: string;
   excerpt: string;
+  /**
+   * Set when the discussion starts on a text selection, or on a highlighted
+   * range (ADR 0038 amendment): the block is still `targetId` and
+   * `excerpt` is the selected text itself. Absent for a whole block or an
+   * element.
+   */
+  range?: ThreadTextRange;
 }
 
 /** The longest excerpt `openThread` is ever handed, in code points. */

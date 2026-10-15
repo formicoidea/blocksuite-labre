@@ -3394,6 +3394,7 @@ __metadata:
     "@preact/signals-core": "npm:^1.8.0"
     "@toeverything/theme": "npm:^1.1.15"
     lit: "npm:^3.2.0"
+    yjs: "npm:^13.6.21"
   languageName: unknown
   linkType: soft
 

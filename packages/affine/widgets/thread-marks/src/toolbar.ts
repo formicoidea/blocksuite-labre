@@ -16,16 +16,39 @@ import { GfxPrimitiveElementModel } from '@labre/std/gfx';
 import type { ExtensionType } from '@labre/store';
 
 import { type ThreadTarget, threadExcerpt } from './excerpt.js';
+import { encodeThreadRange } from './text-range.js';
 import { THREAD_DISCUSS } from './translations.js';
 
 /** Containers a discussion never anchors to: the page and the canvas itself. */
 const NOT_A_TARGET = new Set(['affine:page', 'affine:surface']);
 
-function blockTarget(id: string | undefined, ctx: ToolbarContext) {
+function blockTarget(
+  id: string | undefined,
+  ctx: ToolbarContext
+): ThreadTarget | null {
   if (!id) return null;
   const model = ctx.store.getModelById(id);
   if (!model || NOT_A_TARGET.has(model.flavour)) return null;
-  return { targetType: 'block', targetId: model.id } satisfies ThreadTarget;
+  return { targetType: 'block', targetId: model.id };
+}
+
+/**
+ * The block a text selection starts in, with the selected run of it. A
+ * selection over several blocks anchors to the first one, on the part of it
+ * that is selected (ADR 0038, amendment of 2026-10-15). A run that cannot be
+ * encoded (an empty one, a block with no text) leaves the block alone.
+ */
+function textTarget(
+  text: TextSelection,
+  ctx: ToolbarContext
+): ThreadTarget | null {
+  const target = blockTarget(text.from.blockId, ctx);
+  if (!target) return null;
+  const yText = ctx.store.getModelById(target.targetId)?.text?.yText;
+  const range = yText
+    ? encodeThreadRange(yText, text.from.index, text.from.length)
+    : null;
+  return range ? { ...target, range } : target;
 }
 
 /**
@@ -35,8 +58,8 @@ function blockTarget(id: string | undefined, ctx: ToolbarContext) {
  * - On the canvas, exactly one selected model: a canvas element (shape,
  *   connector, group, framework board) is an `element`, a canvas block (note,
  *   frame, image, embed) a `block`.
- * - A text selection within one block: that block (the grain is the block,
- *   never a range of text).
+ * - A text selection: the block it starts in, with the selected run of that
+ *   block's text (ADR 0038, amendment of 2026-10-15).
  * - One selected block, or the block a hover toolbar is drawn for.
  */
 export function threadTargetOf(ctx: ToolbarContext): ThreadTarget | null {
@@ -51,11 +74,7 @@ export function threadTargetOf(ctx: ToolbarContext): ThreadTarget | null {
   }
 
   const text = ctx.selection.find(TextSelection);
-  if (text) {
-    const from = text.from.blockId;
-    const to = text.to?.blockId ?? from;
-    return from === to ? blockTarget(from, ctx) : null;
-  }
+  if (text) return textTarget(text, ctx);
 
   if (ctx.selection.filter(BlockSelection).length > 1) return null;
   return blockTarget(ctx.getCurrentModelBy(BlockSelection)?.id, ctx);
@@ -64,7 +83,8 @@ export function threadTargetOf(ctx: ToolbarContext): ThreadTarget | null {
 /**
  * Ask the host to open the discussion of `target`, with the excerpt the
  * library computes. Nothing is written: no prop, no id in the document.
- * Without the seam, nothing happens.
+ * Without the seam, nothing happens. `range` is handed over only when there
+ * is one, so a host comparing requests sees the first shape for a whole block.
  */
 export function openThreadOn(std: BlockStdScope, target: ThreadTarget) {
   const service = std.getOptional(ThreadMarksProvider);
@@ -74,6 +94,7 @@ export function openThreadOn(std: BlockStdScope, target: ThreadTarget) {
     targetType: target.targetType,
     targetId: target.targetId,
     excerpt: threadExcerpt(std, target),
+    ...(target.range ? { range: target.range } : {}),
   });
 }
 

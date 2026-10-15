@@ -43,6 +43,7 @@ import {
   ThreadMarksExtension,
   type ThreadMarksService,
   type ThreadOpenRequest,
+  type ThreadTextRange,
   threadExcerpt,
 } from '../host-panels.js';
 import { ROOT } from './translations/source-files.js';
@@ -201,6 +202,7 @@ const threadMarksCalls = (
         request.targetType,
         request.targetId,
         request.excerpt,
+        request.range?.start,
       ];
     },
   };
@@ -216,7 +218,16 @@ const threadMarksCalls = (
     targetType: 'block',
     targetId: 'b1',
   });
-  return { registered, none, mark, excerpt };
+  // The text-range amendment widens the seam: an opaque range, optional on
+  // both sides.
+  const range: ThreadTextRange = { start: 's', end: 'e' };
+  const ranged: ThreadMark = { ...mark, targetType: 'block', range };
+  const quote: string = threadExcerpt(std, {
+    targetType: 'block',
+    targetId: 'b1',
+    range,
+  });
+  return { registered, none, mark, excerpt, ranged, quote };
 };
 
 describe('@labre/affine/host-panels keeps its 0.46 shape', () => {
