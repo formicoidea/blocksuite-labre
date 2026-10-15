@@ -1,5 +1,44 @@
 # @labre/data-view
 
+## 0.50.0
+
+### Minor Changes
+
+- f3582d9: The database colour grid (a select option's colour, a conditional colour rule's, the kanban group header's) now pages like the canvas colour picker: the ten chip colours stay on the first page, then one page per framework whose tooling is on, its colours softened into chip colours that read in light and dark (ADR 0036 amendment of 2026-10-14, "framework pages"). A framework switched off offers no page; a colour picked from it keeps painting.
+
+  - A softened colour is stored as one string, `color-mix(in srgb, #rrggbb NN%, var(--affine-v2-layer-background-primary))`: 30% of the framework colour, or, for a colour that is already pastel, the share that keeps its light look exactly. Every swatch carries primary text above WCAG AA in both themes (8.8:1 light, 5.4:1 dark at worst). A host theme must keep the `--affine-v2-layer-background-primary` name defined in both schemes (the Labre theme's `--affine-*` aliases do).
+  - A conditional colour rule now paints such a value too, through a strict check of that exact shape (`isSoftenedChipColor`); any other unknown value is still refused. Picking a first-page colour writes exactly what it wrote before.
+  - New exports from `@labre/data-view`: `softenedChipColor`, `isSoftenedChipColor`, `SOFTENED_BACKGROUND_TOKEN`, `SOFTENED_SHARE`, `PASTEL_MAX_SHARE`, `softenedFrameworkPalettes`, `selectOptionColorPages`, `DataViewColorCarousel` (`<dv-color-carousel>`, registered by `coreEffects`); `selectOptionColorGrid` and `TagSelectOptions` take an optional `std`. From `@labre/affine-components/color-picker`: `contributedFrameworkPalettes(std)`.
+  - Every framework palette (`FrameworkPaletteExtension`) now registers in the page scope as well as the edgeless one, still from the flag-gated view extension.
+
+- f3582d9: A database view can colour its rows and cards by a condition on their properties (conditional colours, ADR 0036).
+
+  - `ViewBasicDataType` gains `colorRules?: DatabaseViewColorRule[]` (`{ id, color, filter }`, new exported types `DatabaseViewColorRule` and `DatabaseViewColorRuleFilter`). Optional and never written until a gesture adds a rule: no migration, a 0.49 client ignores and keeps it. The first rule that matches a row wins; `filter` is a view filter's own group shape, `color` a colour of the select options' palette.
+  - Every table row, board card, gallery card and list row paints its rule's colour as a light background, in core, whatever the flags or bundles. Only a palette colour is painted; an unknown one paints nothing.
+  - The view settings gain "Conditional colors", the rule editor made of the view filter's editor and the options' colour picker; the full page's "This view" lists it as the `'view-menu'` command `database.view.color-rules`.
+  - A view template keeps the rules. `remapView` rewrites them through the property mapping, removes a rule that reads an ignored property, and counts it in the new `RemapDropped.colorRules`, for an import dialog to say so.
+  - `evalFilter(filter, row, undecided?)` gains an optional third argument (default `true`, the previous behaviour). `selectOptionColorActions` is the select options' colour picker as menu entries. Seven new keys under `com.labre.data-view.color-rules`.
+
+- f3582d9: A view's « Properties » list manages the properties, as in Notion, wherever it is drawn: the view options' "Properties" and the database's side panel (`affine-database-properties-panel`), for every view type, kanban, gallery and list included. A click on a row (not its eye, not its drag bar) opens the property's menu, the very one the table's column header opens: rename, type, hide in view, duplicate, delete. A last row « New property » adds one at the end of the source through the type picker, then opens its menu for the rename. Rename, type, duplicate, delete and add write the data source, so every view sees them; hiding and reordering stay per view. Read-only, the rows open nothing and « New property » is not drawn; the title keeps the header's rules (no type change, no hide, no delete). The menu is now one core builder, `propertyMenuItems(property, slots?)` / `popPropertyMenu(target, property, slots?)` in `data-view/src/core/common/property-menu.ts`, which the table header opens with its own entries (number format, filter, sort, insert, move) as slots; the header's menu is unchanged. `data-view-properties-setting` takes an optional `wording` (English without it), as do `popPropertiesSetting`, `typeConfig` and the menu builder; the table header resolves it from the editor. The menu's "Hide In View", "Duplicate" and "Delete", the "Property type" title and the popover's "Properties" now cross the translation seam ("Duplicate" and "Delete" reuse `com.labre.toolbar.{duplicate,delete}`; "Properties" reuses `com.labre.database.properties-panel.title`, now declared by `@labre/data-view` as `DATA_VIEW_PROPERTIES`, `PROPERTIES_PANEL_TITLE` being that wording). Nothing stored changes. New keys (FR in the host): `com.labre.data-view.properties.new`, `com.labre.data-view.property.{type,hide-in-view}`.
+
+### Patch Changes
+
+- f3582d9: A select option's colour and a conditional colour rule's are now picked from the canvas colour grid (`<edgeless-color-panel>`) instead of a list of ten menu rows, in the option menu, the rule menu and the kanban group header: the same ten chip colours, each named in the host's language, the current one ringed. The value written is unchanged, the same `selectOptionColors` string as before (ADR 0036 amendment of 2026-10-14).
+
+  - `selectOptionColorGrid` (the grid as one menu entry) and `selectOptionColorPalettes` replace `selectOptionColorActions`, introduced in the same release.
+  - Every colour panel, the canvas's included, is keyboard-operable: one Tab stop, the arrow keys move between swatches, Enter or Space picks, a focused swatch shows a focus ring. A swatch shows its colour name as a tooltip. Pointer picking is unchanged.
+  - A colour panel swatch also paints through an inline `fill` style, so a CSS variable colour string paints in every engine; a plain colour paints as before.
+
+- Updated dependencies [f3582d9]
+- Updated dependencies [f3582d9]
+- Updated dependencies [f3582d9]
+  - @labre/affine-components@0.50.0
+  - @labre/affine-model@0.50.0
+  - @labre/affine-shared@0.50.0
+  - @labre/global@0.50.0
+  - @labre/std@0.50.0
+  - @labre/store@0.50.0
+
 ## 0.49.0
 
 ### Minor Changes
