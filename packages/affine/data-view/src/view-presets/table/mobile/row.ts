@@ -10,6 +10,11 @@ import { repeat } from 'lit/directives/repeat.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import { html } from 'lit/static-html.js';
 
+import {
+  paintRowColor,
+  ROW_COLOR_PROPERTY,
+  viewRowColor,
+} from '../../../core/view/color-rules.js';
 import { cellDivider } from '../styles.js';
 import { popMobileRowMenu } from './menu.js';
 import type { MobileTableViewUILogic } from './table-view-ui-logic.js';
@@ -27,6 +32,7 @@ export class MobileTableRow extends SignalWatcher(
       border-bottom: 1px solid ${unsafeCSS(cssVarV2.layer.insideBorder.border)};
       position: relative;
       min-height: 44px;
+      background-color: var(${unsafeCSS(ROW_COLOR_PROPERTY)}, transparent);
     }
 
     .mobile-row-ops {
@@ -75,6 +81,7 @@ export class MobileTableRow extends SignalWatcher(
 
   protected override render(): unknown {
     const view = this.view;
+    paintRowColor(this, viewRowColor(view, this.rowId));
     return html`
       ${repeat(
         view.properties$.value,

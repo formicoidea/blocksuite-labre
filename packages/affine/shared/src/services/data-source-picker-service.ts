@@ -48,7 +48,9 @@ export interface DataSourcePickerImportedView {
   /**
    * Source property id → property of this database, or `null` to ignore
    * it. An id left out is ignored. A filter or a sort on an ignored property
-   * is removed, a column of it is dropped, a grouping by it is undone.
+   * is removed, a column of it is dropped, a grouping by it is undone, a
+   * colour rule reading it is removed whole (ADR 0036). `remapView` of the
+   * database editor counts each, for a dialog to say what is lost.
    */
   mapping: Readonly<Record<string, string | null>>;
 }
@@ -73,8 +75,9 @@ export interface DataSourcePickerImportRequest {
 
 /**
  * The current view as a template (labre PRD REQ-DB-4): its layout, where its
- * pages open, its properties shown and their order, its grouping. Never its
- * filters, its sorts or a manual order: those belong to one view.
+ * pages open, its properties shown and their order, its grouping, its
+ * conditional colours (`colorRules`, ADR 0036). Never its filters, its
+ * sorts or a manual order: those belong to one view.
  */
 export interface DataSourcePickerViewTemplate {
   databaseId: string;

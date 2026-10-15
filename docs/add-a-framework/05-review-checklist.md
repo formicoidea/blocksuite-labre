@@ -39,7 +39,8 @@ change to one. Paste it in the PR and tick.**
       exception; identity colours (a colour code recognises a stored element
       by) stay literal.
 - [ ] R36: a framework with its own hues registers them with
-      `FrameworkPaletteExtension` from the flag-gated view extension, reusing
+      `FrameworkPaletteExtension` from the flag-gated view extension (both
+      scopes, outside the edgeless-only block), reusing
       its `*_PALETTE_LIST` and its `com.labre.framework.*` wording.
 - [ ] Rules name a `backgroundRole`; the default profile is the most
       permissive; no rule uses `blocking-overridable`.

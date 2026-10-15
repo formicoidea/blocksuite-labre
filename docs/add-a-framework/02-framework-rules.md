@@ -450,7 +450,7 @@ reads the scale (its background, consts, legend or template spec).
 
 **R36. A framework with its own hues registers them from its FLAG-GATED view
 extension.** One `FrameworkPaletteExtension({ framework, labelWording,
-palettes })` in `…ViewExtension.setup()`, beside the senior tool, carrying the
+palettes })` in `…ViewExtension.setup()`, outside its edgeless-only block, carrying the
 module's existing `*_PALETTE_LIST` and the framework's existing
 `com.labre.framework.*` wording — nothing is restated. Every contextual colour
 picker on the canvas then offers that page in its carousel, opening on it for
@@ -459,7 +459,10 @@ connector's two ends, else the smallest board containing it). Offering hues is
 tooling: with the flag off the page disappears and every colour already stored
 stays (ADR [0009](../adr/0009-reversed-flag-contract.md),
 [0027](../adr/0027-framework-palettes-carousel.md)). A framework whose colours
-come from an official SVG registers nothing. Enforced by
+come from an official SVG registers nothing. The same page is offered,
+softened into chip colours, by the database colour grid in a page and on the
+canvas (ADR [0036](../adr/0036-database-view-conditional-colors.md) amendment
+of 2026-10-14), which is why it registers in both scopes. Enforced by
 `framework-palettes-gating.unit.spec.ts` (`packages/affine/all`), which pins
 the palettes present with the flags on and their absence with them off.
 

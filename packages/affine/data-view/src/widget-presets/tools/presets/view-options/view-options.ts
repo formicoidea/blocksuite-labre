@@ -16,6 +16,7 @@ import {
   LayoutIcon,
   MoreHorizontalIcon,
   OpenInNewIcon,
+  PaletteIcon,
   SortIcon,
 } from '@blocksuite/icons/lit';
 import { type BlockStdScope, stdContext } from '@labre/std';
@@ -40,7 +41,11 @@ import {
 import { WidgetBase } from '../../../../core/widget/widget-base.js';
 import { popFilterRoot } from '../../../quick-setting-bar/filter/root-panel-view.js';
 import { popSortRoot } from '../../../quick-setting-bar/sort/root-panel.js';
-import { DATA_VIEW_OPEN_IN } from '../../../../translations.js';
+import {
+  DATA_VIEW_COLOR_RULES,
+  DATA_VIEW_OPEN_IN,
+} from '../../../../translations.js';
+import { viewColorRules } from '../../../../core/view/color-rules.js';
 import {
   openInCurrent,
   openInOptions,
@@ -269,6 +274,29 @@ const createSettingMenus = (
           ${ArrowRightSmallIcon()}`,
         select: () => {
           openViewSetting(target, dataViewLogic, 'group', reopen, wording);
+        },
+      })
+    );
+  }
+  if (viewSettingAvailable(dataViewLogic, 'color-rules')) {
+    const ruleCount = viewColorRules(
+      view.manager.dataSource.viewDataGet(view.id)
+    ).length;
+    settingItems.push(
+      menu.action({
+        name: wording(DATA_VIEW_COLOR_RULES),
+        prefix: PaletteIcon(),
+        postfix: html` <div style="font-size: 14px;">${ruleCount || ''}</div>
+          ${ArrowRightSmallIcon()}`,
+        testId: 'dv-view-setting-color-rules',
+        select: () => {
+          openViewSetting(
+            target,
+            dataViewLogic,
+            'color-rules',
+            reopen,
+            wording
+          );
         },
       })
     );

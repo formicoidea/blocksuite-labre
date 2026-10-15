@@ -21,7 +21,10 @@ import { setupEditor } from '../utils/setup.js';
  * - running "Layout" opens the very menu the view settings' "Layout" entry
  *   opens, and a pick there changes the view's layout;
  * - running "Properties" opens the view's properties list (no host panel
- *   here, so the data-view's own popover).
+ *   here, so the data-view's own popover);
+ * - running "Conditional colors" opens the rule editor (ADR 0036), whose
+ *   "Add a color rule" goes through the view filter's own condition picker
+ *   and stores a rule on the view.
  */
 
 type DatabasePage = HTMLElement & {
@@ -84,6 +87,7 @@ describe('the full page of a database, "This view"', () => {
       'database.view.layout',
       'database.view.group',
       'database.view.properties',
+      'database.view.color-rules',
     ]);
     // Rows of a block-backed table are not pages: no "Open pages in"; no
     // picker in the suite: no import, no template.
@@ -110,6 +114,28 @@ describe('the full page of a database, "This view"', () => {
     expect(
       document.querySelector('affine-menu'),
       'the properties popover'
+    ).not.toBe(null);
+  });
+
+  test('"Conditional colors" opens the rules, and adding one stores it', async () => {
+    await runViewAction(page.std!, 'database.view.color-rules');
+    await wait(150);
+    const add = document.querySelector<HTMLElement>(
+      '[data-testid="dv-color-rule-add"]'
+    );
+    expect(add, 'the rules menu, with its add entry').not.toBe(null);
+    add!.click();
+    await wait(150);
+    // The view filter's "New filter" menu: its first entry is a property.
+    menuButtons()[0]!.click();
+    await wait(150);
+    const model = doc.getModelById(hostId) as DatabaseBlockModel;
+    const rules = model.props.views[0]?.colorRules;
+    expect(rules).toHaveLength(1);
+    expect(rules?.[0]?.filter.conditions).toHaveLength(1);
+    expect(
+      document.querySelector('[data-testid="dv-color-rule-conditions"]'),
+      'the rule menu, with the filter editor'
     ).not.toBe(null);
   });
 });

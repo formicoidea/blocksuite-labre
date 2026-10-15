@@ -3,6 +3,7 @@ import { describe, expect, expectTypeOf, test } from 'vitest';
 import {
   DATABASE_VIEW_OPEN_IN,
   DatabaseBlockSchema,
+  type DatabaseViewColorRule,
   type DatabaseViewOpenIn,
   type ViewBasicDataType,
 } from '../index.js';
@@ -23,7 +24,10 @@ import {
  *   every document the first time it opens (`sync-controller.ts` writes any
  *   non-`undefined` schema default);
  * - `openIn` values are append-only: the list below may only grow, never
- *   rename or drop an entry a document may hold.
+ *   rename or drop an entry a document may hold;
+ * - `colorRules` (0.50, ADR 0036) is optional too, so a 0.49 view (no
+ *   rules) is still a valid view, and a rule is `{ id, color, filter }`
+ *   with `filter` a view filter's group shape.
  *
  * Typechecked by `yarn build` (tests included); the `expectTypeOf` lines fail
  * the build, not the run.
@@ -65,6 +69,30 @@ describe('ViewBasicDataType (ADR 0035 §8)', () => {
       openIn: 'center',
     };
     expect(hosted.sourceId).toBe('source-1');
+  });
+
+  test('colorRules is optional, and a rule keeps its declared shape', () => {
+    expectTypeOf<ViewBasicDataType['colorRules']>().toEqualTypeOf<
+      DatabaseViewColorRule[] | undefined
+    >();
+    const view049: ViewBasicDataType = { ...view048, openIn: 'side' };
+    expect('colorRules' in view049).toBe(false);
+    expectTypeOf<DatabaseViewColorRule>().toEqualTypeOf<{
+      id: string;
+      color: string;
+      filter: { type: 'group'; op: 'and' | 'or'; conditions: unknown[] };
+    }>();
+    const coloured: ViewBasicDataType = {
+      ...view048,
+      colorRules: [
+        {
+          id: 'rule-1',
+          color: 'var(--affine-v2-chip-label-red)',
+          filter: { type: 'group', op: 'and', conditions: [] },
+        },
+      ],
+    };
+    expect(coloured.colorRules).toHaveLength(1);
   });
 
   test('openIn is append-only: side, center, full, in that order', () => {

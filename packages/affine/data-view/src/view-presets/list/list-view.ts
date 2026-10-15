@@ -2,9 +2,15 @@ import { PlusIcon } from '@blocksuite/icons/lit';
 import { cssVarV2 } from '@toeverything/theme/v2';
 import { css, html, nothing, unsafeCSS } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
+import { styleMap } from 'lit/directives/style-map.js';
 
 import { groupToggleStyles } from '../../core/group-by/group-visibility.js';
 import { createUniComponentFromWebComponent } from '../../core/utils/uni-component/uni-component.js';
+import {
+  ROW_COLOR_PROPERTY,
+  rowColorStyle,
+  viewRowColor,
+} from '../../core/view/color-rules.js';
 import { DATA_VIEW_NEW_PAGE } from '../../translations.js';
 import {
   flatGroupStyles,
@@ -51,6 +57,7 @@ export class ListViewUI extends FlatViewUI<ListViewUILogic> {
         box-sizing: border-box;
         border-bottom: 1px solid
           ${unsafeCSS(cssVarV2.layer.insideBorder.border)};
+        background-color: var(${unsafeCSS(ROW_COLOR_PROPERTY)}, transparent);
         cursor: pointer;
       }
 
@@ -166,6 +173,7 @@ export class ListViewUI extends FlatViewUI<ListViewUILogic> {
       class="dv-list-row"
       data-testid="dv-list-row"
       data-row-id="${rowId}"
+      style=${styleMap(rowColorStyle(viewRowColor(view, rowId)))}
       @click="${this.onRowClick}"
     >
       <div class="dv-list-row-title">

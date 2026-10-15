@@ -3,12 +3,15 @@ import {
   popMenu,
   popupTargetFromElement,
 } from '@labre/affine-components/context-menu';
+import { type BlockStdScope, stdContext } from '@labre/std';
+import { consume } from '@lit/context';
 import { css, html } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 import { styleMap } from 'lit/directives/style-map.js';
 
-import { selectOptionColors } from '../../component/tags/colors.js';
+import { selectOptionColorGrid } from '../../component/tags/color-menu.js';
 import type { SelectTag } from '../../logical/index.js';
+import { wordingOf } from '../../utils/wording.js';
 import { BaseGroup } from './base.js';
 
 export class SelectGroupView extends BaseGroup<
@@ -56,26 +59,22 @@ export class SelectGroupView extends BaseGroup<
               this.updateTag({ value: text });
             },
           }),
-          ...selectOptionColors.map(({ color, name }) => {
-            const styles = styleMap({
-              backgroundColor: color,
-              borderRadius: '50%',
-              width: '20px',
-              height: '20px',
-            });
-            return menu.action({
-              name: name,
-              isSelected: this.tag?.color === color,
-              prefix: html` <div style=${styles}></div>`,
-              select: () => {
-                this.updateTag({ color });
-              },
-            });
+          ...selectOptionColorGrid({
+            current: this.tag?.color,
+            say: wordingOf(this.std),
+            std: this.std,
+            select: color => {
+              this.updateTag({ color });
+            },
           }),
         ],
       },
     });
   };
+
+  /** Absent outside an editor host: the colour names read English. */
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
 
   get tag() {
     return this.data.options?.find(v => v.id === this.value);

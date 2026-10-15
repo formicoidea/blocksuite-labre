@@ -13,7 +13,8 @@
  *   with no group trait, "Open pages in" on rows that are blocks), or on a
  *   read-only page, where the view settings button is not drawn;
  * - a run that draws its own menu instead of the view settings' entry
- *   (`openSetting` of the view's options button);
+ *   (`openSetting` of the view's options button), conditional colours
+ *   (ADR 0036) included;
  * - "Import a view" or "Save as template" offered with no host verb, or
  *   offered on an inline database.
  */
@@ -76,13 +77,14 @@ const byId = (id: string) =>
   databasePageViewCommands('host').find(command => command.id === id)!;
 
 describe('the full page registers its view-menu commands', () => {
-  test('six commands, on the view menu only, no chord, page scope', () => {
+  test('seven commands, on the view menu only, no chord, page scope', () => {
     const commands = registered();
     expect(commands.map(command => command.id)).toEqual([
       'database.view.layout',
       'database.view.group',
       'database.view.open-in',
       'database.view.properties',
+      'database.view.color-rules',
       'database.view.save-template',
       'database.view.import',
     ]);
@@ -102,12 +104,18 @@ describe('a setting', () => {
     expect(byId('database.view.layout').when?.(page.std)).toBe(true);
     expect(byId('database.view.open-in').when?.(page.std)).toBe(true);
     expect(byId('database.view.group').when?.(page.std)).toBe(false);
+    expect(byId('database.view.color-rules').when?.(page.std)).toBe(true);
 
     void byId('database.view.open-in').run(page.std, {
       surface: 'view-menu',
       source: 'context-menu',
     });
     expect(page.openSetting).toHaveBeenCalledWith('open-in');
+    void byId('database.view.color-rules').run(page.std, {
+      surface: 'view-menu',
+      source: 'context-menu',
+    });
+    expect(page.openSetting).toHaveBeenCalledWith('color-rules');
   });
 
   test('is not listed on a read-only page, and follows it back', () => {
