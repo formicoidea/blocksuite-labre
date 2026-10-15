@@ -38,6 +38,7 @@ export * from './quick-search-service';
 export * from './selection-pane-service';
 export * from './telemetry-service';
 export * from './theme-service';
+export * from './thread-marks-service';
 export * from './title-band-service';
 export * from './toolbar-service';
 export * from './translation-service';

@@ -115,6 +115,7 @@ import { PageDraggingAreaViewExtension } from '@labre/affine-widget-page-draggin
 import { RemoteSelectionViewExtension } from '@labre/affine-widget-remote-selection/view';
 import { ScrollAnchoringViewExtension } from '@labre/affine-widget-scroll-anchoring/view';
 import { SlashMenuViewExtension } from '@labre/affine-widget-slash-menu/view';
+import { ThreadMarksViewExtension } from '@labre/affine-widget-thread-marks/view';
 import { ToolbarViewExtension } from '@labre/affine-widget-toolbar/view';
 import { ViewportOverlayViewExtension } from '@labre/affine-widget-viewport-overlay/view';
 
@@ -252,6 +253,7 @@ export function getInternalViewExtensions(flags?: LabreFlags) {
     KeyboardToolbarViewExtension,
     LinkedDocViewExtension,
     RemoteSelectionViewExtension,
+    ThreadMarksViewExtension,
     ScrollAnchoringViewExtension,
     SlashMenuViewExtension,
     ToolbarViewExtension,

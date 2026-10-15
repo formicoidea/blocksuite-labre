@@ -88,6 +88,7 @@
     "@labre/affine-widget-remote-selection": "workspace:*",
     "@labre/affine-widget-scroll-anchoring": "workspace:*",
     "@labre/affine-widget-slash-menu": "workspace:*",
+    "@labre/affine-widget-thread-marks": "workspace:*",
     "@labre/affine-widget-toolbar": "workspace:*",
     "@labre/affine-widget-viewport-overlay": "workspace:*",
     "@labre/data-view": "workspace:*",

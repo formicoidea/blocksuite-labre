@@ -4,6 +4,8 @@ import { join } from 'node:path';
 import type { FrameBlockModel } from '@labre/affine-model';
 import type { BlockStdScope } from '@labre/std';
 import type { GfxController } from '@labre/std/gfx';
+import type { ExtensionType } from '@labre/store';
+import type { ReadonlySignal } from '@preact/signals-core';
 import { describe, expect, expectTypeOf, test } from 'vitest';
 
 import {
@@ -37,6 +39,11 @@ import {
   type TitleBandProperty,
   type TitleBandService,
   type TitleBandSheetState,
+  type ThreadMark,
+  ThreadMarksExtension,
+  type ThreadMarksService,
+  type ThreadOpenRequest,
+  threadExcerpt,
 } from '../host-panels.js';
 import { ROOT } from './translations/source-files.js';
 
@@ -178,6 +185,40 @@ const propertiesPanelCalls = (
   return { panel, text, localized, empty, written, ready };
 };
 
+/**
+ * The thread-marks seam's host side (ADR 0038, 0.52): what the Labre app
+ * registers and what it receives. Same rule: a minor only widens it.
+ */
+const threadMarksCalls = (
+  marks$: ReadonlySignal<readonly ThreadMark[]>,
+  std: BlockStdScope
+) => {
+  const service: ThreadMarksService = {
+    marks$,
+    openThread: (request: ThreadOpenRequest) => {
+      void [
+        request.docId,
+        request.targetType,
+        request.targetId,
+        request.excerpt,
+      ];
+    },
+  };
+  const registered: ExtensionType = ThreadMarksExtension(service);
+  const none: ExtensionType = ThreadMarksExtension(null);
+  const mark: ThreadMark = {
+    targetType: 'element',
+    targetId: 'e1',
+    count: 2,
+    unread: true,
+  };
+  const excerpt: string = threadExcerpt(std, {
+    targetType: 'block',
+    targetId: 'b1',
+  });
+  return { registered, none, mark, excerpt };
+};
+
 describe('@labre/affine/host-panels keeps its 0.46 shape', () => {
   test('the 0.46 calls typecheck, and no return gains null', () => {
     expectTypeOf(hostCalls).toBeFunction();
@@ -189,6 +230,8 @@ describe('@labre/affine/host-panels keeps its 0.46 shape', () => {
       Promise<ViewActionResult>
     >();
     expectTypeOf(propertiesPanelCalls).toBeFunction();
+    expectTypeOf(threadMarksCalls).toBeFunction();
+    expectTypeOf(threadExcerpt).returns.toEqualTypeOf<string>();
     expectTypeOf(formatPropertyValue).returns.toEqualTypeOf<string>();
     expectTypeOf(isPropertyValueEmpty).returns.toEqualTypeOf<boolean>();
     expectTypeOf(fitToModel).returns.toEqualTypeOf<boolean>();

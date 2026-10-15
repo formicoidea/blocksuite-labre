@@ -120,6 +120,27 @@ export type {
   TitleBandSheetState,
 } from '@labre/affine-shared/services';
 
+/*
+ * The "has a thread" seam (ADR 0038). The editor marks what the host says
+ * has a discussion and asks the host to open one, with an excerpt it
+ * computes; the host registers `ThreadMarksExtension({ marks$, openThread })`
+ * among its editor extensions. Gathered here with its types so a host's
+ * discussion module imports one entry; `threadExcerpt` is the excerpt the
+ * editor hands `openThread`, for a host that starts a discussion from its
+ * own UI.
+ */
+export { ThreadMarksExtension } from '@labre/affine-shared/services';
+export type {
+  ThreadMark,
+  ThreadMarksService,
+  ThreadMarkTargetType,
+  ThreadOpenRequest,
+} from '@labre/affine-shared/services';
+export {
+  type ThreadTarget,
+  threadExcerpt,
+} from '@labre/affine-widget-thread-marks';
+
 /**
  * The document's frames in presentation order, first slide first — the order
  * `canvas.frame.reorder` writes and the presentation walks. Works in page mode
