@@ -11,7 +11,8 @@
  * - An excerpt longer than the 280 characters the host stores, or one cut
  *   inside an emoji.
  * - A "Discuss" that speaks for several targets: a discussion anchors to one
- *   block or one element.
+ *   block or one element (a text selection over several blocks speaks for
+ *   the first one).
  *
  * The widget's DOM geometry is not exercised here (happy-dom lays nothing
  * out): `placeThreadMarks` is the rule, `_locate` is stubbed.
@@ -166,6 +167,7 @@ describe('the marks widget', () => {
       getBoundingClientRect: () => new DOMRect(),
       _locate: (m: ThreadMark) =>
         m.targetId === 'gone' ? null : { x: 10, y: 20, anchor: 'side' },
+      _ranges: () => [],
     };
     const result = ThreadMarksWidget.prototype.render.call(
       self as unknown as ThreadMarksWidget
@@ -243,9 +245,11 @@ describe('"Discuss" in the toolbar', () => {
     expect(threadTargetOf(fakeContext(std, { blocks: ['b1', 'b2'] }))).toBe(
       null
     );
+    // A text selection over several blocks anchors to the first one (ADR
+    // 0038, amendment of 2026-10-15); these fakes carry no Y.Text, so no run.
     expect(
       threadTargetOf(fakeContext(std, { text: { from: 'b1', to: 'b2' } }))
-    ).toBe(null);
+    ).toEqual({ targetType: 'block', targetId: 'b1' });
     expect(threadTargetOf(fakeContext(std, { text: { from: 'b2' } }))).toEqual({
       targetType: 'block',
       targetId: 'b2',

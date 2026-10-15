@@ -2,6 +2,7 @@ import { getSurfaceBlock } from '@labre/affine-block-surface';
 import {
   THREAD_EXCERPT_MAX,
   type ThreadMarkTargetType,
+  type ThreadTextRange,
 } from '@labre/affine-shared/services';
 import {
   selectionPaneRowLabel,
@@ -11,10 +12,16 @@ import type { BlockStdScope } from '@labre/std';
 import { GfxBlockElementModel } from '@labre/std/gfx';
 import type { BlockModel } from '@labre/store';
 
-/** A block or a canvas element, by the id the library gave it. */
+import { resolveThreadRange } from './text-range.js';
+
+/**
+ * A block or a canvas element, by the id the library gave it, and for a
+ * block optionally a run of its text (ADR 0038, amendment of 2026-10-15).
+ */
 export interface ThreadTarget {
   targetType: ThreadMarkTargetType;
   targetId: string;
+  range?: ThreadTextRange;
 }
 
 const ELLIPSIS = '…';
@@ -61,6 +68,14 @@ function rawExcerpt(std: BlockStdScope, target: ThreadTarget): string {
   if (target.targetType === 'block') {
     const model = std.store.getModelById(target.targetId);
     if (!model) return '';
+    // A run of text reads as itself: the quote a reader selected. A range
+    // that no longer resolves falls back to the block, like its mark.
+    const yText = model.text?.yText;
+    const run =
+      target.range && yText ? resolveThreadRange(yText, target.range) : null;
+    if (yText && run) {
+      return yText.toString().slice(run.index, run.index + run.length);
+    }
     const text = blockText(model);
     if (text.trim()) return text;
     // A canvas block with no text reads as the selection pane names it: a
