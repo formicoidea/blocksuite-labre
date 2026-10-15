@@ -1,5 +1,115 @@
 # @labre/affine
 
+## 0.51.0
+
+### Minor Changes
+
+- e043634: Readers run on a server, with no DOM and no editor (ADR 0012, P3 as amended).
+
+  - New editor-free subpaths: `@formicoidea/labre-core/interchange` (the interchange registry types, `InterchangeImportError`, `parseSvgSketch`, `sanitizeSvg`, `readXml` and its DOM-shaped view `XmlElement`) and `./interchange` in the bpmn, c4, uml and wardley framework bundles (their import capabilities and the exporters that need no editor). Together about 350 KiB minified; they load under plain Node ESM and Deno. Also `./model/headless` and `./shared/headless` in core, which they import.
+  - The BPMN reader and the SVG sketch no longer use `DOMParser` or DOMPurify. BPMN reads in linear time (2 000 tasks: 235 ms under Node). A `DOCTYPE` is skipped and no entity it declares is expanded or fetched; a declared `&name;` stays those characters where a DOM used to refuse the file or expand it.
+  - `sanitizeSvg` is an allow-list on the read tree and returns an `XmlElement` instead of a DOM `Element` (same members the readers used: `localName`, `namespaceURI`, `attributes`, `getAttribute`, `children`, `childNodes`, `textContent`, `parentElement`, `querySelector(All)` for compound selectors). It removes every `on*` attribute, every `javascript:`, `vbscript:` or `data:` value (an inline PNG, JPEG, GIF or WebP on `<image>` excepted), every `url()` that is not a `#ref`, `<use>`, `<foreignObject>`, `<script>` and the animation elements, and cuts what is nested past 256 levels. An id such as `links` is kept (no DOM, nothing to clobber).
+  - `decodeDrawio` refuses a `<diagram>` that inflates past 20 MiB (`DRAWIO_MAX_INFLATED_BYTES`), reading the stream with a count instead of buffering it, and an import over the host's `FileSizeLimitProvider` limit is refused before the file is read.
+  - Constants that lived beside element classes in `@labre/affine-model` moved to `consts.ts` files (UML frame, fragment, partition and region bands, the UML diagram kind, BPMN pool bands, shape text padding); every existing export path still exports them.
+  - `xml-reader` moved from the UML package to the surface package; UML still exports the same names.
+  - `scripts/build-bundles.mjs` (red zone, one conditional line): a framework bundle's `exports` gains `./interchange` when the package declares it.
+  - New translation keys: `com.labre.interchange.import.too-large`, `com.labre.interchange.svg.too-deep`, `com.labre.uml.import.drawio.error.no-decompression`, `com.labre.uml.import.drawio.error.empty-diagram`, `com.labre.uml.import.drawio.error.bad-payload`, `com.labre.uml.import.drawio.error.too-large`.
+
+- e043634: The exports of a view, as one list a host draws in one "Export…" menu. `getViewExports(std, mode?)` (`@labre/affine/host-panels`) returns the view actions of section `'export'`; each resolves `runViewAction` with `{ file }` and downloads nothing (the palette path still downloads). New view actions: `page.export.markdown` and `page.export.html` in both views (the page through the existing adapters, a zip with an `assets/` folder when it holds images or files), `canvas.export.svg` (the whole canvas as vector SVG through the board export's renderer replay; notes, frames, images and embeds are not drawn), and one `canvas.export.<framework>.<format>` per `*:export` capability a framework registered — `canvas.export.bpmn.bpmn`, `canvas.export.c4.mermaid`, `canvas.export.uml.plantuml`, `canvas.export.uml.xmi`, `canvas.export.wardley.owm` — derived from the interchange registry (so the framework's flag decides), listed while the board holds that framework's elements, writing the whole board and reporting the framework's telemetry (element `canvas:export-<format>`). `ViewAction` gains an optional `labelParams`. `MarkdownTransformer.docFile` and `HtmlTransformer.docFile` return the file `exportDoc` downloads, whose name is now sanitised. New keys: `com.labre.command.page.export.markdown`, `com.labre.command.page.export.markdown.description`, `com.labre.command.page.export.html`, `com.labre.command.page.export.html.description`, `com.labre.command.canvas.export.svg`, `com.labre.command.canvas.export.svg.description`, `com.labre.command.canvas.export.interchange` (`{{framework}}`, `{{extension}}`), `com.labre.command.canvas.export.interchange.warnings`.
+
+### Patch Changes
+
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+  - @labre/affine-shared@0.51.0
+  - @labre/affine-block-image@0.51.0
+  - @labre/affine-block-attachment@0.51.0
+  - @labre/affine-gfx-note@0.51.0
+  - @labre/affine-widget-keyboard-toolbar@0.51.0
+  - @labre/affine-block-surface@0.51.0
+  - @labre/affine-gfx-uml@0.51.0
+  - @labre/affine-block-frame@0.51.0
+  - @labre/affine-gfx-template@0.51.0
+  - @labre/affine-model@0.51.0
+  - @labre/affine-widget-drag-handle@0.51.0
+  - @labre/affine-gfx-bpmn@0.51.0
+  - @labre/affine-gfx-wardley@0.51.0
+  - @labre/affine-gfx-c4@0.51.0
+  - @labre/affine-inline-link@0.51.0
+  - @labre/affine-inline-footnote@0.51.0
+  - @labre/affine-block-bookmark@0.51.0
+  - @labre/affine-block-embed@0.51.0
+  - @labre/affine-block-root@0.51.0
+  - @labre/affine-block-table@0.51.0
+  - @labre/affine-block-database@0.51.0
+  - @labre/affine-widget-linked-doc@0.51.0
+  - @labre/affine-block-callout@0.51.0
+  - @labre/affine-block-code@0.51.0
+  - @labre/affine-block-data-view@0.51.0
+  - @labre/affine-block-divider@0.51.0
+  - @labre/affine-block-edgeless-text@0.51.0
+  - @labre/affine-block-embed-doc@0.51.0
+  - @labre/affine-block-latex@0.51.0
+  - @labre/affine-block-list@0.51.0
+  - @labre/affine-block-note@0.51.0
+  - @labre/affine-block-paragraph@0.51.0
+  - @labre/affine-block-surface-ref@0.51.0
+  - @labre/affine-components@0.51.0
+  - @labre/data-view@0.51.0
+  - @labre/affine-database-editor@0.51.0
+  - @labre/affine-foundation@0.51.0
+  - @labre/affine-fragment-adapter-panel@0.51.0
+  - @labre/affine-fragment-doc-title@0.51.0
+  - @labre/affine-fragment-frame-panel@0.51.0
+  - @labre/affine-fragment-outline@0.51.0
+  - @labre/affine-gfx-brush@0.51.0
+  - @labre/affine-gfx-connector@0.51.0
+  - @labre/affine-gfx-cynefin-estuarine@0.51.0
+  - @labre/affine-gfx-ddd-aggregate@0.51.0
+  - @labre/affine-gfx-ddd-context-map@0.51.0
+  - @labre/affine-gfx-ddd-core-domain@0.51.0
+  - @labre/affine-gfx-ddd-event-storming@0.51.0
+  - @labre/affine-gfx-ddd-shared@0.51.0
+  - @labre/affine-gfx-edgy@0.51.0
+  - @labre/affine-gfx-group@0.51.0
+  - @labre/affine-gfx-link@0.51.0
+  - @labre/affine-gfx-mindmap@0.51.0
+  - @labre/affine-gfx-pointer@0.51.0
+  - @labre/affine-gfx-shape@0.51.0
+  - @labre/affine-gfx-text@0.51.0
+  - @labre/affine-inline-comment@0.51.0
+  - @labre/affine-inline-latex@0.51.0
+  - @labre/affine-inline-mention@0.51.0
+  - @labre/affine-inline-preset@0.51.0
+  - @labre/affine-inline-reference@0.51.0
+  - @labre/affine-rich-text@0.51.0
+  - @labre/affine-widget-edgeless-auto-connect@0.51.0
+  - @labre/affine-widget-edgeless-dragging-area@0.51.0
+  - @labre/affine-widget-edgeless-selected-rect@0.51.0
+  - @labre/affine-widget-edgeless-toolbar@0.51.0
+  - @labre/affine-widget-edgeless-zoom-toolbar@0.51.0
+  - @labre/affine-widget-frame-title@0.51.0
+  - @labre/affine-widget-note-slicer@0.51.0
+  - @labre/affine-widget-page-dragging-area@0.51.0
+  - @labre/affine-widget-remote-selection@0.51.0
+  - @labre/affine-widget-scroll-anchoring@0.51.0
+  - @labre/affine-widget-slash-menu@0.51.0
+  - @labre/affine-widget-toolbar@0.51.0
+  - @labre/affine-widget-viewport-overlay@0.51.0
+  - @labre/affine-ext-loader@0.51.0
+  - @labre/affine-gfx-turbo-renderer@0.51.0
+  - @labre/global@0.51.0
+  - @labre/std@0.51.0
+  - @labre/store@0.51.0
+  - @labre/sync@0.51.0
+
 ## 0.50.0
 
 ### Patch Changes

@@ -1,5 +1,28 @@
 # @labre/affine-gfx-group
 
+## 0.51.0
+
+### Patch Changes
+
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+  - @labre/affine-shared@0.51.0
+  - @labre/affine-block-surface@0.51.0
+  - @labre/affine-model@0.51.0
+  - @labre/affine-components@0.51.0
+  - @labre/affine-gfx-text@0.51.0
+  - @labre/affine-rich-text@0.51.0
+  - @labre/affine-widget-edgeless-toolbar@0.51.0
+  - @labre/affine-ext-loader@0.51.0
+  - @labre/global@0.51.0
+  - @labre/std@0.51.0
+  - @labre/store@0.51.0
+
 ## 0.50.0
 
 ### Patch Changes

@@ -1,5 +1,54 @@
 # @labre/affine-gfx-note
 
+## 0.51.0
+
+### Minor Changes
+
+- e043634: Images and files can come from the host's own asset library, through a new
+  optional host seam, `AssetPickerProvider`
+  (`AssetPickerExtension({ pick })`, `@labre/affine/shared/services`).
+  `pick({ kind: 'image' | 'file', mode: 'insert' | 'replace', multiple?, docId })`
+  resolves with `AssetRef[]` (`{ sourceId, name, type, size, width?, height? }`,
+  blobs the host already stores) or `null` when the viewer cancels. With a host,
+  the slash menu's Image, Attachment and PDF, the mobile keyboard toolbar's
+  Image and Attachment, and the canvas's image and file buttons open it instead
+  of the system file chooser, and the image toolbar gains "Replace" (page and
+  canvas), which swaps the picture in place, keeping the displayed width and
+  following the new ratio, in one undo step. Blocks reference the picked blob by
+  its `sourceId`: the bytes are never sent again. Without a host nothing
+  changes; pasting and dropping files never go through the seam.
+
+  New exports: `addSiblingImageBlocksFromAssets`, `addImagesFromAssets`,
+  `replaceImage`, `pickAndAddSiblingImageBlocks`, `pickAndAddImages`
+  (`@labre/affine/blocks/image`); `addSiblingAttachmentBlocksFromAssets`,
+  `addAttachmentsFromAssets`, `pickAndAddSiblingAttachmentBlocks`,
+  `pickAndAddAttachments` (`@labre/affine/blocks/attachment`). New key:
+  `com.labre.image.toolbar.replace`. No stored format changes.
+
+### Patch Changes
+
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+  - @labre/affine-shared@0.51.0
+  - @labre/affine-block-image@0.51.0
+  - @labre/affine-block-attachment@0.51.0
+  - @labre/affine-block-surface@0.51.0
+  - @labre/affine-model@0.51.0
+  - @labre/affine-block-bookmark@0.51.0
+  - @labre/affine-components@0.51.0
+  - @labre/affine-rich-text@0.51.0
+  - @labre/affine-widget-edgeless-toolbar@0.51.0
+  - @labre/affine-ext-loader@0.51.0
+  - @labre/global@0.51.0
+  - @labre/std@0.51.0
+  - @labre/store@0.51.0
+
 ## 0.50.0
 
 ### Patch Changes

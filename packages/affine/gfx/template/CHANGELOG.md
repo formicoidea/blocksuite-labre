@@ -1,5 +1,52 @@
 # @labre/affine-gfx-template
 
+## 0.51.0
+
+### Minor Changes
+
+- e043634: A frame can be saved as a template, through a new host seam,
+  `FrameTemplateProvider` (`FrameTemplateExtension({ save, list, frameDeleted?, frameRestored? })`,
+  `@labre/affine/shared/services`). With it, the toolbar of one selected frame
+  offers "Save as template" (`com.labre.frame.toolbar.save-as-template`), which
+  hands the host `{ docId, frameId, title, snapshot }`, a snapshot of the frame
+  and everything it holds, and tells the viewer the outcome
+  (`com.labre.frame.toast.template-saved`,
+  `com.labre.frame.toast.template-save-failed`). The canvas Templates panel lists
+  what `list()` returns under a last "Saved frames" tab
+  (`com.labre.template.panel.category.saved-frames`, asked only when shown) and
+  inserts it as a copy with fresh ids, in the active layer. `frameDeleted` is
+  called when this viewer deletes a frame on a writable document, never for
+  another peer's deletion, and `frameRestored` when an undo brings it back.
+  An optional `frameInserted({ docId, templateId })` is called once a saved frame from that tab is on the canvas, so the host can link the images it references to that page. Without the seam, nothing of this appears. See `docs/integrate/04-host-seams.md`.
+
+  Removed: `EdgelessTemplatePanel.templates.extend(...)` and
+  `TemplateManager.extend`, a module-level registry shared by every editor of the
+  page and never emptied. A host category goes through
+  `TemplateCategoryExtension(category)` (`@labre/affine/gfx/template`), per
+  editor; saved frames go through `FrameTemplateProvider`. The panel now keys its
+  tiles by template rather than by name, so two templates with one name show as
+  two tiles.
+
+### Patch Changes
+
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+  - @labre/affine-shared@0.51.0
+  - @labre/affine-block-surface@0.51.0
+  - @labre/affine-model@0.51.0
+  - @labre/affine-components@0.51.0
+  - @labre/affine-rich-text@0.51.0
+  - @labre/affine-widget-edgeless-toolbar@0.51.0
+  - @labre/affine-ext-loader@0.51.0
+  - @labre/global@0.51.0
+  - @labre/std@0.51.0
+  - @labre/store@0.51.0
+
 ## 0.50.0
 
 ### Patch Changes

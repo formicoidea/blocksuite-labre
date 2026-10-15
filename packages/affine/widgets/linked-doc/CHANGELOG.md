@@ -1,5 +1,27 @@
 # @labre/affine-widget-linked-doc
 
+## 0.51.0
+
+### Minor Changes
+
+- e043634: The exports of a view, as one list a host draws in one "Export…" menu. `getViewExports(std, mode?)` (`@labre/affine/host-panels`) returns the view actions of section `'export'`; each resolves `runViewAction` with `{ file }` and downloads nothing (the palette path still downloads). New view actions: `page.export.markdown` and `page.export.html` in both views (the page through the existing adapters, a zip with an `assets/` folder when it holds images or files), `canvas.export.svg` (the whole canvas as vector SVG through the board export's renderer replay; notes, frames, images and embeds are not drawn), and one `canvas.export.<framework>.<format>` per `*:export` capability a framework registered — `canvas.export.bpmn.bpmn`, `canvas.export.c4.mermaid`, `canvas.export.uml.plantuml`, `canvas.export.uml.xmi`, `canvas.export.wardley.owm` — derived from the interchange registry (so the framework's flag decides), listed while the board holds that framework's elements, writing the whole board and reporting the framework's telemetry (element `canvas:export-<format>`). `ViewAction` gains an optional `labelParams`. `MarkdownTransformer.docFile` and `HtmlTransformer.docFile` return the file `exportDoc` downloads, whose name is now sanitised. New keys: `com.labre.command.page.export.markdown`, `com.labre.command.page.export.markdown.description`, `com.labre.command.page.export.html`, `com.labre.command.page.export.html.description`, `com.labre.command.canvas.export.svg`, `com.labre.command.canvas.export.svg.description`, `com.labre.command.canvas.export.interchange` (`{{framework}}`, `{{extension}}`), `com.labre.command.canvas.export.interchange.warnings`.
+
+### Patch Changes
+
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+  - @labre/affine-shared@0.51.0
+  - @labre/affine-model@0.51.0
+  - @labre/affine-components@0.51.0
+  - @labre/affine-inline-reference@0.51.0
+  - @labre/affine-rich-text@0.51.0
+  - @labre/affine-ext-loader@0.51.0
+  - @labre/global@0.51.0
+  - @labre/std@0.51.0
+  - @labre/store@0.51.0
+
 ## 0.50.0
 
 ### Patch Changes

@@ -1,5 +1,22 @@
 # @labre/affine-inline-footnote
 
+## 0.51.0
+
+### Patch Changes
+
+- e043634: A link with a refused scheme (anything `isSafeLinkUrl` refuses: `javascript:`, `data:`, `vbscript:`…) is no longer stored by an import nor written by an export. The Markdown import makes no bookmark for such a footnote definition and drops the url of such a footnote reference; the HTML and Notion HTML imports keep an `<a>` link only for `http:` and `https:` by parsed scheme (the old prefix test let `httpx:` through) and store a Notion bookmark's refused href as an empty url; the Markdown and HTML exports write such a link, footnote url, bookmark or embed card as its text alone.
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+  - @labre/affine-shared@0.51.0
+  - @labre/affine-model@0.51.0
+  - @labre/affine-components@0.51.0
+  - @labre/affine-ext-loader@0.51.0
+  - @labre/global@0.51.0
+  - @labre/std@0.51.0
+  - @labre/store@0.51.0
+
 ## 0.50.0
 
 ### Patch Changes

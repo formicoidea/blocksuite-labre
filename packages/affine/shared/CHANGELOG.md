@@ -1,5 +1,73 @@
 # @labre/affine-shared
 
+## 0.51.0
+
+### Minor Changes
+
+- e043634: Images and files can come from the host's own asset library, through a new
+  optional host seam, `AssetPickerProvider`
+  (`AssetPickerExtension({ pick })`, `@labre/affine/shared/services`).
+  `pick({ kind: 'image' | 'file', mode: 'insert' | 'replace', multiple?, docId })`
+  resolves with `AssetRef[]` (`{ sourceId, name, type, size, width?, height? }`,
+  blobs the host already stores) or `null` when the viewer cancels. With a host,
+  the slash menu's Image, Attachment and PDF, the mobile keyboard toolbar's
+  Image and Attachment, and the canvas's image and file buttons open it instead
+  of the system file chooser, and the image toolbar gains "Replace" (page and
+  canvas), which swaps the picture in place, keeping the displayed width and
+  following the new ratio, in one undo step. Blocks reference the picked blob by
+  its `sourceId`: the bytes are never sent again. Without a host nothing
+  changes; pasting and dropping files never go through the seam.
+
+  New exports: `addSiblingImageBlocksFromAssets`, `addImagesFromAssets`,
+  `replaceImage`, `pickAndAddSiblingImageBlocks`, `pickAndAddImages`
+  (`@labre/affine/blocks/image`); `addSiblingAttachmentBlocksFromAssets`,
+  `addAttachmentsFromAssets`, `pickAndAddSiblingAttachmentBlocks`,
+  `pickAndAddAttachments` (`@labre/affine/blocks/attachment`). New key:
+  `com.labre.image.toolbar.replace`. No stored format changes.
+
+- e043634: A frame can be saved as a template, through a new host seam,
+  `FrameTemplateProvider` (`FrameTemplateExtension({ save, list, frameDeleted?, frameRestored? })`,
+  `@labre/affine/shared/services`). With it, the toolbar of one selected frame
+  offers "Save as template" (`com.labre.frame.toolbar.save-as-template`), which
+  hands the host `{ docId, frameId, title, snapshot }`, a snapshot of the frame
+  and everything it holds, and tells the viewer the outcome
+  (`com.labre.frame.toast.template-saved`,
+  `com.labre.frame.toast.template-save-failed`). The canvas Templates panel lists
+  what `list()` returns under a last "Saved frames" tab
+  (`com.labre.template.panel.category.saved-frames`, asked only when shown) and
+  inserts it as a copy with fresh ids, in the active layer. `frameDeleted` is
+  called when this viewer deletes a frame on a writable document, never for
+  another peer's deletion, and `frameRestored` when an undo brings it back.
+  An optional `frameInserted({ docId, templateId })` is called once a saved frame from that tab is on the canvas, so the host can link the images it references to that page. Without the seam, nothing of this appears. See `docs/integrate/04-host-seams.md`.
+
+  Removed: `EdgelessTemplatePanel.templates.extend(...)` and
+  `TemplateManager.extend`, a module-level registry shared by every editor of the
+  page and never emptied. A host category goes through
+  `TemplateCategoryExtension(category)` (`@labre/affine/gfx/template`), per
+  editor; saved frames go through `FrameTemplateProvider`. The panel now keys its
+  tiles by template rather than by name, so two templates with one name show as
+  two tiles.
+
+- e043634: Readers run on a server, with no DOM and no editor (ADR 0012, P3 as amended).
+
+  - New editor-free subpaths: `@formicoidea/labre-core/interchange` (the interchange registry types, `InterchangeImportError`, `parseSvgSketch`, `sanitizeSvg`, `readXml` and its DOM-shaped view `XmlElement`) and `./interchange` in the bpmn, c4, uml and wardley framework bundles (their import capabilities and the exporters that need no editor). Together about 350 KiB minified; they load under plain Node ESM and Deno. Also `./model/headless` and `./shared/headless` in core, which they import.
+  - The BPMN reader and the SVG sketch no longer use `DOMParser` or DOMPurify. BPMN reads in linear time (2 000 tasks: 235 ms under Node). A `DOCTYPE` is skipped and no entity it declares is expanded or fetched; a declared `&name;` stays those characters where a DOM used to refuse the file or expand it.
+  - `sanitizeSvg` is an allow-list on the read tree and returns an `XmlElement` instead of a DOM `Element` (same members the readers used: `localName`, `namespaceURI`, `attributes`, `getAttribute`, `children`, `childNodes`, `textContent`, `parentElement`, `querySelector(All)` for compound selectors). It removes every `on*` attribute, every `javascript:`, `vbscript:` or `data:` value (an inline PNG, JPEG, GIF or WebP on `<image>` excepted), every `url()` that is not a `#ref`, `<use>`, `<foreignObject>`, `<script>` and the animation elements, and cuts what is nested past 256 levels. An id such as `links` is kept (no DOM, nothing to clobber).
+  - `decodeDrawio` refuses a `<diagram>` that inflates past 20 MiB (`DRAWIO_MAX_INFLATED_BYTES`), reading the stream with a count instead of buffering it, and an import over the host's `FileSizeLimitProvider` limit is refused before the file is read.
+  - Constants that lived beside element classes in `@labre/affine-model` moved to `consts.ts` files (UML frame, fragment, partition and region bands, the UML diagram kind, BPMN pool bands, shape text padding); every existing export path still exports them.
+  - `xml-reader` moved from the UML package to the surface package; UML still exports the same names.
+  - `scripts/build-bundles.mjs` (red zone, one conditional line): a framework bundle's `exports` gains `./interchange` when the package declares it.
+  - New translation keys: `com.labre.interchange.import.too-large`, `com.labre.interchange.svg.too-deep`, `com.labre.uml.import.drawio.error.no-decompression`, `com.labre.uml.import.drawio.error.empty-diagram`, `com.labre.uml.import.drawio.error.bad-payload`, `com.labre.uml.import.drawio.error.too-large`.
+
+### Patch Changes
+
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+  - @labre/affine-model@0.51.0
+  - @labre/global@0.51.0
+  - @labre/std@0.51.0
+  - @labre/store@0.51.0
+
 ## 0.50.0
 
 ### Minor Changes

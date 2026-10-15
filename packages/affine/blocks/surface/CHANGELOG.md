@@ -1,5 +1,52 @@
 # @labre/affine-block-surface
 
+## 0.51.0
+
+### Minor Changes
+
+- e043634: Export the canvas as a draw.io drawing. A new "Export as draw.io" entry (`canvas.export.drawio`) joins PNG and PDF in the canvas's "This view" actions and the palette: it writes the selection, or the whole canvas, as one uncompressed draw.io page (shapes, connectors with their arrows and end labels, texts, groups, notes, frames, edgeless texts, and images as placeholders naming their blob), with colours resolved to values. Given `deliver` (`runViewAction`) it hands the file back and downloads nothing. The writer is the pure `exportCanvasDrawio`, declared in the interchange registry as `canvas:drawio:export` under a new `canvas` owner that no flag gates. `InterchangeExportContext` gains an optional `blocks` field; existing exporters ignore it. Every cell carries its element's `role` as a `labre-role` attribute, and UML's draw.io reader now reads it: a class, interface, enumeration, actor, use case, note or package written by Labre comes back as that artefact with its compartments, and a relationship as its role states it. New keys: `com.labre.command.canvas.export.drawio`, `com.labre.command.canvas.export.drawio.description`.
+- e043634: Interchange readers are linear in the file and bounded in what they hold (ADR 0012, amendment "bounded").
+
+  - `readXml` refuses a document past 200 000 nodes or 2 MiB of decoded characters (`XML_MAX_NODES`, `XML_MAX_CHARACTERS`, options `maxNodes` / `maxCharacters`) while reading, with an `InterchangeImportError` keyed `com.labre.interchange.xml.too-large`. In conformant mode (BPMN, SVG) it stops at its first note.
+  - Namespaces resolve in one lookup per name (`XmlNamespaceScope`); an orphan close tag no longer searches the stack; a draw.io `<diagram>` is found without a backtracking regex; BPMN and XMI keep foreign children and attributes in place, in bags with no prototype, and an element named `constructor` reads as any unknown element.
+  - The SVG sanitizer cuts at 256 levels and below a removed element before reading anything there, keeps only a `<style>`'s own text, and refuses `image-set(…)` as it refuses `url(…)`.
+  - No `Math.min(...xs)` over a file's values and no recursion in `serializeXmlNode`: a 100 000-point polygon or a 100 000-deep tree no longer throws `RangeError`.
+  - The UML readers, served by `./interchange`: PlantUML source past 1 MiB is refused (`PLANTUML_MAX_CHARACTERS`) and a guillemet group is read up to 256 characters; XMI nested past 1 000 levels is refused (`XMI_MAX_DEPTH`); draw.io labels lose their tags without a backtracking regex; the materializer bounds boxes with loops; every table read by a word of the file has no prototype, so `<<constructor>>` stays a stereotype and residue attributes under the id `__proto__` are kept.
+  - `readXml` quotes a name to 64 characters in a note and lists 100 notes (`XML_MAX_NOTES`), then one `+N more` note.
+  - The Wardley SVG recogniser finds each text's first span in one pass.
+  - New translation keys: `com.labre.interchange.xml.too-large`, `com.labre.uml.import.plantuml.too-large`, `com.labre.uml.import.xmi.too-deep`.
+
+- e043634: Readers run on a server, with no DOM and no editor (ADR 0012, P3 as amended).
+
+  - New editor-free subpaths: `@formicoidea/labre-core/interchange` (the interchange registry types, `InterchangeImportError`, `parseSvgSketch`, `sanitizeSvg`, `readXml` and its DOM-shaped view `XmlElement`) and `./interchange` in the bpmn, c4, uml and wardley framework bundles (their import capabilities and the exporters that need no editor). Together about 350 KiB minified; they load under plain Node ESM and Deno. Also `./model/headless` and `./shared/headless` in core, which they import.
+  - The BPMN reader and the SVG sketch no longer use `DOMParser` or DOMPurify. BPMN reads in linear time (2 000 tasks: 235 ms under Node). A `DOCTYPE` is skipped and no entity it declares is expanded or fetched; a declared `&name;` stays those characters where a DOM used to refuse the file or expand it.
+  - `sanitizeSvg` is an allow-list on the read tree and returns an `XmlElement` instead of a DOM `Element` (same members the readers used: `localName`, `namespaceURI`, `attributes`, `getAttribute`, `children`, `childNodes`, `textContent`, `parentElement`, `querySelector(All)` for compound selectors). It removes every `on*` attribute, every `javascript:`, `vbscript:` or `data:` value (an inline PNG, JPEG, GIF or WebP on `<image>` excepted), every `url()` that is not a `#ref`, `<use>`, `<foreignObject>`, `<script>` and the animation elements, and cuts what is nested past 256 levels. An id such as `links` is kept (no DOM, nothing to clobber).
+  - `decodeDrawio` refuses a `<diagram>` that inflates past 20 MiB (`DRAWIO_MAX_INFLATED_BYTES`), reading the stream with a count instead of buffering it, and an import over the host's `FileSizeLimitProvider` limit is refused before the file is read.
+  - Constants that lived beside element classes in `@labre/affine-model` moved to `consts.ts` files (UML frame, fragment, partition and region bands, the UML diagram kind, BPMN pool bands, shape text padding); every existing export path still exports them.
+  - `xml-reader` moved from the UML package to the surface package; UML still exports the same names.
+  - `scripts/build-bundles.mjs` (red zone, one conditional line): a framework bundle's `exports` gains `./interchange` when the package declares it.
+  - New translation keys: `com.labre.interchange.import.too-large`, `com.labre.interchange.svg.too-deep`, `com.labre.uml.import.drawio.error.no-decompression`, `com.labre.uml.import.drawio.error.empty-diagram`, `com.labre.uml.import.drawio.error.bad-payload`, `com.labre.uml.import.drawio.error.too-large`.
+
+- e043634: The exports of a view, as one list a host draws in one "Export…" menu. `getViewExports(std, mode?)` (`@labre/affine/host-panels`) returns the view actions of section `'export'`; each resolves `runViewAction` with `{ file }` and downloads nothing (the palette path still downloads). New view actions: `page.export.markdown` and `page.export.html` in both views (the page through the existing adapters, a zip with an `assets/` folder when it holds images or files), `canvas.export.svg` (the whole canvas as vector SVG through the board export's renderer replay; notes, frames, images and embeds are not drawn), and one `canvas.export.<framework>.<format>` per `*:export` capability a framework registered — `canvas.export.bpmn.bpmn`, `canvas.export.c4.mermaid`, `canvas.export.uml.plantuml`, `canvas.export.uml.xmi`, `canvas.export.wardley.owm` — derived from the interchange registry (so the framework's flag decides), listed while the board holds that framework's elements, writing the whole board and reporting the framework's telemetry (element `canvas:export-<format>`). `ViewAction` gains an optional `labelParams`. `MarkdownTransformer.docFile` and `HtmlTransformer.docFile` return the file `exportDoc` downloads, whose name is now sanitised. New keys: `com.labre.command.page.export.markdown`, `com.labre.command.page.export.markdown.description`, `com.labre.command.page.export.html`, `com.labre.command.page.export.html.description`, `com.labre.command.canvas.export.svg`, `com.labre.command.canvas.export.svg.description`, `com.labre.command.canvas.export.interchange` (`{{framework}}`, `{{extension}}`), `com.labre.command.canvas.export.interchange.warnings`.
+
+### Patch Changes
+
+- e043634: Crop an image, on a page and on the canvas (ADR 0037). The image toolbar gains « Crop » with four presets — Free, 16:9, 4:3, 1:1 — and « Original image » once a crop exists. A preset writes the largest centred window of its ratio and opens the crop frame; in the frame, drag the window to move it and a corner to resize it (the ratio is held unless free); Escape, Enter or a press elsewhere closes it. Each drag is one undo step, nothing is written when nothing changed, and nothing at all on a readonly page. The crop is a view: the image's bytes and `sourceId` never change, and « Original image » removes it.
+
+  Stored format: `affine:image` gains one optional `crop` prop (`{ x, y, w, h, mask? }`, normalised to the source, `mask` an append-only token), default `undefined`, never written on load. Read it with the new `readImageCrop` (a damaged value reads as the whole image); `imageCropSourceRect` gives the source rectangle a raster export draws. On the canvas the box (`xywh`) is the visible part and moves with the crop in the same transaction; on a page `width`/`height` keep describing the whole picture. A client before this change shows the whole image (stretched into the cropped box on the canvas) and keeps the key. The canvas PNG/PDF export, the canvas clipboard and a page image dropped on the canvas honour the crop. New keys: `com.labre.image.toolbar.crop`, `com.labre.image.toolbar.crop.free`, `com.labre.image.toolbar.crop.ratio-16-9`, `com.labre.image.toolbar.crop.ratio-4-3`, `com.labre.image.toolbar.crop.ratio-1-1`, `com.labre.image.toolbar.crop.original`.
+
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+  - @labre/affine-shared@0.51.0
+  - @labre/affine-model@0.51.0
+  - @labre/affine-components@0.51.0
+  - @labre/affine-ext-loader@0.51.0
+  - @labre/global@0.51.0
+  - @labre/std@0.51.0
+  - @labre/store@0.51.0
+
 ## 0.50.0
 
 ### Patch Changes

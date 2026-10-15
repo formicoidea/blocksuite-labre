@@ -1,5 +1,30 @@
 # @labre/affine-model
 
+## 0.51.0
+
+### Minor Changes
+
+- e043634: Crop an image, on a page and on the canvas (ADR 0037). The image toolbar gains « Crop » with four presets — Free, 16:9, 4:3, 1:1 — and « Original image » once a crop exists. A preset writes the largest centred window of its ratio and opens the crop frame; in the frame, drag the window to move it and a corner to resize it (the ratio is held unless free); Escape, Enter or a press elsewhere closes it. Each drag is one undo step, nothing is written when nothing changed, and nothing at all on a readonly page. The crop is a view: the image's bytes and `sourceId` never change, and « Original image » removes it.
+
+  Stored format: `affine:image` gains one optional `crop` prop (`{ x, y, w, h, mask? }`, normalised to the source, `mask` an append-only token), default `undefined`, never written on load. Read it with the new `readImageCrop` (a damaged value reads as the whole image); `imageCropSourceRect` gives the source rectangle a raster export draws. On the canvas the box (`xywh`) is the visible part and moves with the crop in the same transaction; on a page `width`/`height` keep describing the whole picture. A client before this change shows the whole image (stretched into the cropped box on the canvas) and keeps the key. The canvas PNG/PDF export, the canvas clipboard and a page image dropped on the canvas honour the crop. New keys: `com.labre.image.toolbar.crop`, `com.labre.image.toolbar.crop.free`, `com.labre.image.toolbar.crop.ratio-16-9`, `com.labre.image.toolbar.crop.ratio-4-3`, `com.labre.image.toolbar.crop.ratio-1-1`, `com.labre.image.toolbar.crop.original`.
+
+- e043634: Readers run on a server, with no DOM and no editor (ADR 0012, P3 as amended).
+
+  - New editor-free subpaths: `@formicoidea/labre-core/interchange` (the interchange registry types, `InterchangeImportError`, `parseSvgSketch`, `sanitizeSvg`, `readXml` and its DOM-shaped view `XmlElement`) and `./interchange` in the bpmn, c4, uml and wardley framework bundles (their import capabilities and the exporters that need no editor). Together about 350 KiB minified; they load under plain Node ESM and Deno. Also `./model/headless` and `./shared/headless` in core, which they import.
+  - The BPMN reader and the SVG sketch no longer use `DOMParser` or DOMPurify. BPMN reads in linear time (2 000 tasks: 235 ms under Node). A `DOCTYPE` is skipped and no entity it declares is expanded or fetched; a declared `&name;` stays those characters where a DOM used to refuse the file or expand it.
+  - `sanitizeSvg` is an allow-list on the read tree and returns an `XmlElement` instead of a DOM `Element` (same members the readers used: `localName`, `namespaceURI`, `attributes`, `getAttribute`, `children`, `childNodes`, `textContent`, `parentElement`, `querySelector(All)` for compound selectors). It removes every `on*` attribute, every `javascript:`, `vbscript:` or `data:` value (an inline PNG, JPEG, GIF or WebP on `<image>` excepted), every `url()` that is not a `#ref`, `<use>`, `<foreignObject>`, `<script>` and the animation elements, and cuts what is nested past 256 levels. An id such as `links` is kept (no DOM, nothing to clobber).
+  - `decodeDrawio` refuses a `<diagram>` that inflates past 20 MiB (`DRAWIO_MAX_INFLATED_BYTES`), reading the stream with a count instead of buffering it, and an import over the host's `FileSizeLimitProvider` limit is refused before the file is read.
+  - Constants that lived beside element classes in `@labre/affine-model` moved to `consts.ts` files (UML frame, fragment, partition and region bands, the UML diagram kind, BPMN pool bands, shape text padding); every existing export path still exports them.
+  - `xml-reader` moved from the UML package to the surface package; UML still exports the same names.
+  - `scripts/build-bundles.mjs` (red zone, one conditional line): a framework bundle's `exports` gains `./interchange` when the package declares it.
+  - New translation keys: `com.labre.interchange.import.too-large`, `com.labre.interchange.svg.too-deep`, `com.labre.uml.import.drawio.error.no-decompression`, `com.labre.uml.import.drawio.error.empty-diagram`, `com.labre.uml.import.drawio.error.bad-payload`, `com.labre.uml.import.drawio.error.too-large`.
+
+### Patch Changes
+
+- @labre/global@0.51.0
+- @labre/std@0.51.0
+- @labre/store@0.51.0
+
 ## 0.50.0
 
 ### Minor Changes

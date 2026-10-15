@@ -1,5 +1,55 @@
 # @labre/affine-gfx-bpmn
 
+## 0.51.0
+
+### Minor Changes
+
+- e043634: Readers run on a server, with no DOM and no editor (ADR 0012, P3 as amended).
+
+  - New editor-free subpaths: `@formicoidea/labre-core/interchange` (the interchange registry types, `InterchangeImportError`, `parseSvgSketch`, `sanitizeSvg`, `readXml` and its DOM-shaped view `XmlElement`) and `./interchange` in the bpmn, c4, uml and wardley framework bundles (their import capabilities and the exporters that need no editor). Together about 350 KiB minified; they load under plain Node ESM and Deno. Also `./model/headless` and `./shared/headless` in core, which they import.
+  - The BPMN reader and the SVG sketch no longer use `DOMParser` or DOMPurify. BPMN reads in linear time (2 000 tasks: 235 ms under Node). A `DOCTYPE` is skipped and no entity it declares is expanded or fetched; a declared `&name;` stays those characters where a DOM used to refuse the file or expand it.
+  - `sanitizeSvg` is an allow-list on the read tree and returns an `XmlElement` instead of a DOM `Element` (same members the readers used: `localName`, `namespaceURI`, `attributes`, `getAttribute`, `children`, `childNodes`, `textContent`, `parentElement`, `querySelector(All)` for compound selectors). It removes every `on*` attribute, every `javascript:`, `vbscript:` or `data:` value (an inline PNG, JPEG, GIF or WebP on `<image>` excepted), every `url()` that is not a `#ref`, `<use>`, `<foreignObject>`, `<script>` and the animation elements, and cuts what is nested past 256 levels. An id such as `links` is kept (no DOM, nothing to clobber).
+  - `decodeDrawio` refuses a `<diagram>` that inflates past 20 MiB (`DRAWIO_MAX_INFLATED_BYTES`), reading the stream with a count instead of buffering it, and an import over the host's `FileSizeLimitProvider` limit is refused before the file is read.
+  - Constants that lived beside element classes in `@labre/affine-model` moved to `consts.ts` files (UML frame, fragment, partition and region bands, the UML diagram kind, BPMN pool bands, shape text padding); every existing export path still exports them.
+  - `xml-reader` moved from the UML package to the surface package; UML still exports the same names.
+  - `scripts/build-bundles.mjs` (red zone, one conditional line): a framework bundle's `exports` gains `./interchange` when the package declares it.
+  - New translation keys: `com.labre.interchange.import.too-large`, `com.labre.interchange.svg.too-deep`, `com.labre.uml.import.drawio.error.no-decompression`, `com.labre.uml.import.drawio.error.empty-diagram`, `com.labre.uml.import.drawio.error.bad-payload`, `com.labre.uml.import.drawio.error.too-large`.
+
+### Patch Changes
+
+- e043634: Interchange readers are linear in the file and bounded in what they hold (ADR 0012, amendment "bounded").
+
+  - `readXml` refuses a document past 200 000 nodes or 2 MiB of decoded characters (`XML_MAX_NODES`, `XML_MAX_CHARACTERS`, options `maxNodes` / `maxCharacters`) while reading, with an `InterchangeImportError` keyed `com.labre.interchange.xml.too-large`. In conformant mode (BPMN, SVG) it stops at its first note.
+  - Namespaces resolve in one lookup per name (`XmlNamespaceScope`); an orphan close tag no longer searches the stack; a draw.io `<diagram>` is found without a backtracking regex; BPMN and XMI keep foreign children and attributes in place, in bags with no prototype, and an element named `constructor` reads as any unknown element.
+  - The SVG sanitizer cuts at 256 levels and below a removed element before reading anything there, keeps only a `<style>`'s own text, and refuses `image-set(…)` as it refuses `url(…)`.
+  - No `Math.min(...xs)` over a file's values and no recursion in `serializeXmlNode`: a 100 000-point polygon or a 100 000-deep tree no longer throws `RangeError`.
+  - The UML readers, served by `./interchange`: PlantUML source past 1 MiB is refused (`PLANTUML_MAX_CHARACTERS`) and a guillemet group is read up to 256 characters; XMI nested past 1 000 levels is refused (`XMI_MAX_DEPTH`); draw.io labels lose their tags without a backtracking regex; the materializer bounds boxes with loops; every table read by a word of the file has no prototype, so `<<constructor>>` stays a stereotype and residue attributes under the id `__proto__` are kept.
+  - `readXml` quotes a name to 64 characters in a note and lists 100 notes (`XML_MAX_NOTES`), then one `+N more` note.
+  - The Wardley SVG recogniser finds each text's first span in one pass.
+  - New translation keys: `com.labre.interchange.xml.too-large`, `com.labre.uml.import.plantuml.too-large`, `com.labre.uml.import.xmi.too-deep`.
+
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+- Updated dependencies [e043634]
+  - @labre/affine-shared@0.51.0
+  - @labre/affine-block-surface@0.51.0
+  - @labre/affine-gfx-template@0.51.0
+  - @labre/affine-model@0.51.0
+  - @labre/affine-components@0.51.0
+  - @labre/affine-gfx-connector@0.51.0
+  - @labre/affine-gfx-group@0.51.0
+  - @labre/affine-gfx-pointer@0.51.0
+  - @labre/affine-gfx-shape@0.51.0
+  - @labre/affine-widget-edgeless-toolbar@0.51.0
+  - @labre/affine-ext-loader@0.51.0
+  - @labre/global@0.51.0
+  - @labre/std@0.51.0
+  - @labre/store@0.51.0
+
 ## 0.50.0
 
 ### Patch Changes
