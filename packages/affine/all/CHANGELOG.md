@@ -1,5 +1,114 @@
 # @labre/affine
 
+## 0.52.0
+
+### Minor Changes
+
+- 2124f31: A "has a thread" seam, `ThreadMarksProvider`
+  (`ThreadMarksExtension({ marks$, openThread } | null)`,
+  `@labre/affine/shared/services`, also exported by `@labre/affine/host-panels`
+  with its types and `threadExcerpt`). The host hands the editor a signal of
+  `{ targetType: 'block' | 'element', targetId, count, unread }` for the mounted
+  document; the editor draws a small mark (the comment icon and the count, in
+  the accent colour when unread) beside each marked block in the page view and
+  on the corner of each marked block or element on the canvas, and ignores an
+  id it cannot find. Every block and canvas element toolbar, frameworks
+  included, offers "Discuss" (`com.labre.thread.discuss`) when the row speaks for
+  one target. A click on either calls
+  `openThread({ docId, targetType, targetId, excerpt })`, the excerpt being the
+  block's text or the element's label, at most 280 characters. Nothing is
+  written to the document. Without the seam, no mark and no "Discuss". See
+  `docs/integrate/04-host-seams.md` and ADR 0038.
+
+  `isPainted`, the renderers' "is this element painted for this viewer"
+  predicate, is now exported by `@labre/affine/blocks/surface`.
+
+### Patch Changes
+
+- Updated dependencies [2124f31]
+  - @labre/affine-shared@0.52.0
+  - @labre/affine-block-surface@0.52.0
+  - @labre/affine-widget-thread-marks@0.52.0
+  - @labre/affine-block-attachment@0.52.0
+  - @labre/affine-block-bookmark@0.52.0
+  - @labre/affine-block-callout@0.52.0
+  - @labre/affine-block-code@0.52.0
+  - @labre/affine-block-data-view@0.52.0
+  - @labre/affine-block-database@0.52.0
+  - @labre/affine-block-divider@0.52.0
+  - @labre/affine-block-edgeless-text@0.52.0
+  - @labre/affine-block-embed@0.52.0
+  - @labre/affine-block-embed-doc@0.52.0
+  - @labre/affine-block-frame@0.52.0
+  - @labre/affine-block-image@0.52.0
+  - @labre/affine-block-latex@0.52.0
+  - @labre/affine-block-list@0.52.0
+  - @labre/affine-block-note@0.52.0
+  - @labre/affine-block-paragraph@0.52.0
+  - @labre/affine-block-root@0.52.0
+  - @labre/affine-block-surface-ref@0.52.0
+  - @labre/affine-block-table@0.52.0
+  - @labre/affine-components@0.52.0
+  - @labre/data-view@0.52.0
+  - @labre/affine-database-editor@0.52.0
+  - @labre/affine-foundation@0.52.0
+  - @labre/affine-fragment-adapter-panel@0.52.0
+  - @labre/affine-fragment-doc-title@0.52.0
+  - @labre/affine-fragment-frame-panel@0.52.0
+  - @labre/affine-fragment-outline@0.52.0
+  - @labre/affine-gfx-bpmn@0.52.0
+  - @labre/affine-gfx-brush@0.52.0
+  - @labre/affine-gfx-c4@0.52.0
+  - @labre/affine-gfx-connector@0.52.0
+  - @labre/affine-gfx-cynefin-estuarine@0.52.0
+  - @labre/affine-gfx-ddd-aggregate@0.52.0
+  - @labre/affine-gfx-ddd-context-map@0.52.0
+  - @labre/affine-gfx-ddd-core-domain@0.52.0
+  - @labre/affine-gfx-ddd-event-storming@0.52.0
+  - @labre/affine-gfx-ddd-shared@0.52.0
+  - @labre/affine-gfx-edgy@0.52.0
+  - @labre/affine-gfx-group@0.52.0
+  - @labre/affine-gfx-link@0.52.0
+  - @labre/affine-gfx-mindmap@0.52.0
+  - @labre/affine-gfx-note@0.52.0
+  - @labre/affine-gfx-pointer@0.52.0
+  - @labre/affine-gfx-shape@0.52.0
+  - @labre/affine-gfx-template@0.52.0
+  - @labre/affine-gfx-text@0.52.0
+  - @labre/affine-gfx-uml@0.52.0
+  - @labre/affine-gfx-wardley@0.52.0
+  - @labre/affine-inline-comment@0.52.0
+  - @labre/affine-inline-footnote@0.52.0
+  - @labre/affine-inline-latex@0.52.0
+  - @labre/affine-inline-link@0.52.0
+  - @labre/affine-inline-mention@0.52.0
+  - @labre/affine-inline-preset@0.52.0
+  - @labre/affine-inline-reference@0.52.0
+  - @labre/affine-rich-text@0.52.0
+  - @labre/affine-widget-drag-handle@0.52.0
+  - @labre/affine-widget-edgeless-auto-connect@0.52.0
+  - @labre/affine-widget-edgeless-dragging-area@0.52.0
+  - @labre/affine-widget-edgeless-selected-rect@0.52.0
+  - @labre/affine-widget-edgeless-toolbar@0.52.0
+  - @labre/affine-widget-edgeless-zoom-toolbar@0.52.0
+  - @labre/affine-widget-frame-title@0.52.0
+  - @labre/affine-widget-keyboard-toolbar@0.52.0
+  - @labre/affine-widget-linked-doc@0.52.0
+  - @labre/affine-widget-note-slicer@0.52.0
+  - @labre/affine-widget-page-dragging-area@0.52.0
+  - @labre/affine-widget-remote-selection@0.52.0
+  - @labre/affine-widget-scroll-anchoring@0.52.0
+  - @labre/affine-widget-slash-menu@0.52.0
+  - @labre/affine-widget-toolbar@0.52.0
+  - @labre/affine-widget-viewport-overlay@0.52.0
+  - @labre/affine-ext-loader@0.52.0
+  - @labre/affine-gfx-turbo-renderer@0.52.0
+  - @labre/affine-model@0.52.0
+  - @labre/global@0.52.0
+  - @labre/std@0.52.0
+  - @labre/store@0.52.0
+  - @labre/sync@0.52.0
+
 ## 0.51.0
 
 ### Minor Changes

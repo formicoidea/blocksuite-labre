@@ -1,5 +1,39 @@
 # @labre/affine-block-surface
 
+## 0.52.0
+
+### Minor Changes
+
+- 2124f31: A "has a thread" seam, `ThreadMarksProvider`
+  (`ThreadMarksExtension({ marks$, openThread } | null)`,
+  `@labre/affine/shared/services`, also exported by `@labre/affine/host-panels`
+  with its types and `threadExcerpt`). The host hands the editor a signal of
+  `{ targetType: 'block' | 'element', targetId, count, unread }` for the mounted
+  document; the editor draws a small mark (the comment icon and the count, in
+  the accent colour when unread) beside each marked block in the page view and
+  on the corner of each marked block or element on the canvas, and ignores an
+  id it cannot find. Every block and canvas element toolbar, frameworks
+  included, offers "Discuss" (`com.labre.thread.discuss`) when the row speaks for
+  one target. A click on either calls
+  `openThread({ docId, targetType, targetId, excerpt })`, the excerpt being the
+  block's text or the element's label, at most 280 characters. Nothing is
+  written to the document. Without the seam, no mark and no "Discuss". See
+  `docs/integrate/04-host-seams.md` and ADR 0038.
+
+  `isPainted`, the renderers' "is this element painted for this viewer"
+  predicate, is now exported by `@labre/affine/blocks/surface`.
+
+### Patch Changes
+
+- Updated dependencies [2124f31]
+  - @labre/affine-shared@0.52.0
+  - @labre/affine-components@0.52.0
+  - @labre/affine-ext-loader@0.52.0
+  - @labre/affine-model@0.52.0
+  - @labre/global@0.52.0
+  - @labre/std@0.52.0
+  - @labre/store@0.52.0
+
 ## 0.51.0
 
 ### Minor Changes

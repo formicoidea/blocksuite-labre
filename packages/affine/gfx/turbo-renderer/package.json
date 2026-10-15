@@ -29,5 +29,5 @@
     "!src/__tests__",
     "!dist/__tests__"
   ],
-  "version": "0.51.0"
+  "version": "0.52.0"
 }

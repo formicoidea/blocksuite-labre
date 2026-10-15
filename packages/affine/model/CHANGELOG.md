@@ -1,5 +1,13 @@
 # @labre/affine-model
 
+## 0.52.0
+
+### Patch Changes
+
+- @labre/global@0.52.0
+- @labre/std@0.52.0
+- @labre/store@0.52.0
+
 ## 0.51.0
 
 ### Minor Changes
