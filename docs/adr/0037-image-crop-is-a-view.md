@@ -1,6 +1,6 @@
 # ADR 0037 — An image crop is a stored view, never new bytes
 
-- Status: **proposed** (2026-10-14)
+- Status: **accepted** (2026-10-15, approved by merging #496)
 - Deciders: Mathieu Jolly
 - Milestone: Labre v2, phase P4 (lot 2 bis « masques 16:9, Rogner »)
 - **Red zone**: stored format (`packages/affine/model`, block `affine:image`).
