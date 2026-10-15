@@ -1,5 +1,23 @@
 # @labre/affine-block-embed-doc
 
+## 0.53.0
+
+### Patch Changes
+
+- Updated dependencies [3d9e204]
+  - @labre/affine-shared@0.53.0
+  - @labre/affine-block-embed@0.53.0
+  - @labre/affine-block-surface@0.53.0
+  - @labre/affine-components@0.53.0
+  - @labre/affine-inline-reference@0.53.0
+  - @labre/affine-rich-text@0.53.0
+  - @labre/affine-widget-slash-menu@0.53.0
+  - @labre/affine-ext-loader@0.53.0
+  - @labre/affine-model@0.53.0
+  - @labre/global@0.53.0
+  - @labre/std@0.53.0
+  - @labre/store@0.53.0
+
 ## 0.52.0
 
 ### Patch Changes
