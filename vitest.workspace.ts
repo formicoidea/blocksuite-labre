@@ -57,6 +57,7 @@ export default [
   'packages/affine/widgets/edgeless-toolbar/vitest.config.ts',
   'packages/affine/widgets/linked-doc/vitest.config.ts',
   'packages/affine/widgets/slash-menu/vitest.config.ts',
+  'packages/affine/widgets/thread-marks/vitest.config.ts',
   'packages/affine/widgets/toolbar/vitest.config.ts',
   'packages/framework/global/vitest.config.ts',
   'packages/framework/std/vitest.config.ts',

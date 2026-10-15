@@ -81,6 +81,7 @@
     { "path": "../widgets/remote-selection" },
     { "path": "../widgets/scroll-anchoring" },
     { "path": "../widgets/slash-menu" },
+    { "path": "../widgets/thread-marks" },
     { "path": "../widgets/toolbar" },
     { "path": "../widgets/viewport-overlay" },
     { "path": "../data-view" },

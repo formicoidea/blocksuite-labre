@@ -3379,6 +3379,24 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@labre/affine-widget-thread-marks@workspace:*, @labre/affine-widget-thread-marks@workspace:packages/affine/widgets/thread-marks":
+  version: 0.0.0-use.local
+  resolution: "@labre/affine-widget-thread-marks@workspace:packages/affine/widgets/thread-marks"
+  dependencies:
+    "@blocksuite/icons": "npm:^2.2.12"
+    "@labre/affine-block-surface": "workspace:*"
+    "@labre/affine-ext-loader": "workspace:*"
+    "@labre/affine-shared": "workspace:*"
+    "@labre/affine-widget-edgeless-toolbar": "workspace:*"
+    "@labre/global": "workspace:*"
+    "@labre/std": "workspace:*"
+    "@labre/store": "workspace:*"
+    "@preact/signals-core": "npm:^1.8.0"
+    "@toeverything/theme": "npm:^1.1.15"
+    lit: "npm:^3.2.0"
+  languageName: unknown
+  linkType: soft
+
 "@labre/affine-widget-toolbar@workspace:*, @labre/affine-widget-toolbar@workspace:packages/affine/widgets/toolbar":
   version: 0.0.0-use.local
   resolution: "@labre/affine-widget-toolbar@workspace:packages/affine/widgets/toolbar"
@@ -3501,6 +3519,7 @@ __metadata:
     "@labre/affine-widget-remote-selection": "workspace:*"
     "@labre/affine-widget-scroll-anchoring": "workspace:*"
     "@labre/affine-widget-slash-menu": "workspace:*"
+    "@labre/affine-widget-thread-marks": "workspace:*"
     "@labre/affine-widget-toolbar": "workspace:*"
     "@labre/affine-widget-viewport-overlay": "workspace:*"
     "@labre/data-view": "workspace:*"

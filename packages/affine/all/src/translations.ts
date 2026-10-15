@@ -82,6 +82,7 @@ import { EDGELESS_TOOLBAR_WORDINGS } from '@labre/affine-widget-edgeless-toolbar
 import { ZOOM_TOOLBAR_WORDINGS } from '@labre/affine-widget-edgeless-zoom-toolbar/translations';
 import { LINKED_DOC_WORDINGS } from '@labre/affine-widget-linked-doc/translations';
 import { REMOTE_SELECTION_WORDINGS } from '@labre/affine-widget-remote-selection/translations';
+import { THREAD_MARKS_WORDINGS } from '@labre/affine-widget-thread-marks/translations';
 import { SLASH_MENU_WORDINGS } from '@labre/affine-widget-slash-menu/translations';
 import { TOOLBAR_WIDGET_WORDINGS } from '@labre/affine-widget-toolbar/translations';
 import {
@@ -452,6 +453,7 @@ const PACKAGE_WORDINGS: readonly (readonly ChromeWording[])[] = [
   ZOOM_TOOLBAR_WORDINGS,
   LINKED_DOC_WORDINGS,
   REMOTE_SELECTION_WORDINGS,
+  THREAD_MARKS_WORDINGS,
   TOOLBAR_WIDGET_WORDINGS,
   COMPONENTS_WORDINGS,
   INLINE_LATEX_WORDINGS,

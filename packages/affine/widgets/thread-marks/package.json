@@ -1,0 +1,38 @@
+{
+  "name": "@labre/affine-widget-thread-marks",
+  "private": true,
+  "description": "Marks on what the host says has a thread, and the toolbar's Discuss action.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc"
+  },
+  "sideEffects": false,
+  "keywords": [],
+  "author": "lajola",
+  "license": "MPL-2.0",
+  "dependencies": {
+    "@blocksuite/icons": "^2.2.12",
+    "@labre/affine-block-surface": "workspace:*",
+    "@labre/affine-ext-loader": "workspace:*",
+    "@labre/affine-shared": "workspace:*",
+    "@labre/affine-widget-edgeless-toolbar": "workspace:*",
+    "@labre/global": "workspace:*",
+    "@labre/std": "workspace:*",
+    "@labre/store": "workspace:*",
+    "@preact/signals-core": "^1.8.0",
+    "@toeverything/theme": "^1.1.15",
+    "lit": "^3.2.0"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./view": "./src/view.ts",
+    "./translations": "./src/translations.ts"
+  },
+  "files": [
+    "src",
+    "dist",
+    "!src/__tests__",
+    "!dist/__tests__"
+  ],
+  "version": "0.51.0"
+}
