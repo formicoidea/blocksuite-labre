@@ -277,7 +277,7 @@ export function combine(actions: ToolbarActions, context: ToolbarContext) {
   return filtered;
 }
 
-function group(actions: ToolbarAction[]): ToolbarAction[] {
+export function group(actions: ToolbarAction[]): ToolbarAction[] {
   const grouped = groupBy(actions, a => a.id);
 
   const paired = toPairs(grouped).map(([_, items]) => {
@@ -290,9 +290,12 @@ function group(actions: ToolbarAction[]): ToolbarAction[] {
   return paired;
 }
 
+// Only a group's `actions` is a list of entries to merge by id; any other
+// array (a `labelWording` tuple) is a value, and grouping it turned the
+// wording into a keyless object the host's i18next choked on.
 const merge = (a: any, b: any) =>
-  mergeWith(a, b, (obj, src) =>
-    Array.isArray(obj) ? group(obj.concat(src)) : src
+  mergeWith(a, b, (obj, src, key) =>
+    key === 'actions' && Array.isArray(obj) ? group(obj.concat(src)) : src
   );
 
 /**
