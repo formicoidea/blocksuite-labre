@@ -10,6 +10,9 @@
  *   element of the other view), or for a target at `count: 0`.
  * - An excerpt longer than the 280 characters the host stores, or one cut
  *   inside an emoji.
+ * - A mark on a run of text that opened a draft instead of its discussion:
+ *   the click handed the host the block without the run (0.53.0). A mark
+ *   standing for several discussions of one block opens the block.
  * - A "Discuss" that speaks for several targets: a discussion anchors to one
  *   block or one element (a text selection over several blocks speaks for
  *   the first one).
@@ -147,6 +150,30 @@ describe('placeThreadMarks', () => {
     expect(placed[0]!.mark).toMatchObject({ count: 3, unread: true });
   });
 
+  it('keeps the run of text only when every merged mark names it', () => {
+    const run = { start: 'cw==', end: 'dA==' };
+    const other = { start: 'eA==', end: 'eQ==' };
+    expect(
+      placeThreadMarks([mark('b1', { range: run })], locate)[0]!.mark.range
+    ).toEqual(run);
+    expect(
+      placeThreadMarks(
+        [mark('b1', { range: run }), mark('b1', { range: run })],
+        locate
+      )[0]!.mark.range
+    ).toEqual(run);
+    expect(
+      placeThreadMarks(
+        [mark('b1', { range: run }), mark('b1', { range: other })],
+        locate
+      )[0]!.mark.range
+    ).toBeUndefined();
+    expect(
+      placeThreadMarks([mark('b1', { range: run }), mark('b1')], locate)[0]!
+        .mark.range
+    ).toBeUndefined();
+  });
+
   it('tells a block from an element of the same id', () => {
     const placed = placeThreadMarks(
       [mark('x'), mark('x', { targetType: 'element' })],
@@ -192,6 +219,20 @@ describe('the marks widget', () => {
     expect(drawn[0]!.getAttribute('data-target-id')).toBe('b1');
     expect(drawn[0]!.hasAttribute('data-unread')).toBe(true);
     expect(drawn[0]!.getAttribute('aria-label')).toBe('Discuss');
+  });
+
+  it('opens the discussion of a run of text on click, with its run', () => {
+    const run = { start: 'cw==', end: 'dA==' };
+    const service = fakeService([mark('b1', { range: run })]);
+    const { container } = renderWidget(service, [
+      paragraph('b1', 'Pick a vendor'),
+    ]);
+    container
+      .querySelector<HTMLElement>('[data-testid="thread-mark"]')!
+      .click();
+    expect(service.openThread).toHaveBeenCalledWith(
+      expect.objectContaining({ targetId: 'b1', range: run })
+    );
   });
 
   it('opens the thread of a mark on click, with its excerpt', () => {
