@@ -29,6 +29,7 @@ export * from './native-clipboard-service';
 export * from './notification-service';
 export * from './open-doc-config';
 export * from './outline-panel-service';
+export * from './page-drop-service';
 export * from './page-viewport-service';
 export * from './parse-url-service';
 export * from './pivot-materiality-publisher';

@@ -24,6 +24,7 @@ import type {
 import {
   FRAME_TOAST_TEMPLATE_SAVE_FAILED,
   FRAME_TOAST_TEMPLATE_SAVED,
+  FRAME_TOAST_TEMPLATE_VIEW,
 } from './translations.js';
 
 type ElementJSON = Record<string, unknown>;
@@ -219,14 +220,48 @@ export class FrameTemplateWatcher extends LifeCycleWatcher {
 /** Frames whose save is in flight, per document: a double click saves once. */
 const saving = new Set<string>();
 
-function tell(std: BlockStdScope, wording: ChromeWording, success: boolean) {
+interface NoticeAction {
+  key: string;
+  label: string;
+  onClick: () => void;
+}
+
+function tell(
+  std: BlockStdScope,
+  wording: ChromeWording,
+  success: boolean,
+  action?: NoticeAction
+) {
   const text = translateKey(std, ...wording);
   const notification = std.getOptional(NotificationProvider);
   if (notification) {
-    notification.notify({ title: text, accent: success ? 'success' : 'error' });
+    notification.notify({
+      title: text,
+      accent: success ? 'success' : 'error',
+      ...(action ? { actions: [action] } : {}),
+    });
     return;
   }
+  // The plain toast has no button: without a notification service the
+  // action is dropped, and the template is still where the host keeps it.
   toast(std.host, text);
+}
+
+/**
+ * The success notification's « View », when the host can show its templates
+ * (labre P7): it calls `showTemplates` and nothing else. Absent, the
+ * notification has no action, as before 0.54.
+ */
+export function templateViewAction(
+  std: BlockStdScope,
+  service: FrameTemplateService
+): NoticeAction | undefined {
+  if (!service.showTemplates) return undefined;
+  return {
+    key: 'frame-template-view',
+    label: translateKey(std, ...FRAME_TOAST_TEMPLATE_VIEW),
+    onClick: () => service.showTemplates?.(),
+  };
 }
 
 /**
@@ -259,7 +294,12 @@ export async function saveFrameAsTemplate(
       title: snapshot.meta.title,
       snapshot,
     });
-    tell(std, FRAME_TOAST_TEMPLATE_SAVED, true);
+    tell(
+      std,
+      FRAME_TOAST_TEMPLATE_SAVED,
+      true,
+      templateViewAction(std, service)
+    );
   } catch (error) {
     console.error(error);
     tell(std, FRAME_TOAST_TEMPLATE_SAVE_FAILED, false);

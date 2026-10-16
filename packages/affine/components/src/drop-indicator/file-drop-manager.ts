@@ -1,4 +1,5 @@
 import { NoteBlockModel } from '@labre/affine-model';
+import { pageDropVerdict } from '@labre/affine-shared/services';
 import {
   calcDropTarget,
   type DropTarget,
@@ -133,7 +134,21 @@ export class FileDropExtension extends LifeCycleWatcher {
   };
 
   onDragOver = (event: DragEvent) => {
+    // A page the host refuses here (`PageDropProvider`): no drop line, and
+    // no preventDefault, so the browser shows its no-drop cursor and never
+    // fires the drop.
+    const verdict = pageDropVerdict(this.std, event.dataTransfer);
+    if (verdict === 'refuse') {
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'none';
+      this.onDragLeave();
+      return;
+    }
+
     event.preventDefault();
+    // The host's drag allows 'move' only: say so, or the drop never fires.
+    if (verdict === 'accept' && event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move';
+    }
 
     if (this.shouldIgnoreEvent(event)) return;
 
