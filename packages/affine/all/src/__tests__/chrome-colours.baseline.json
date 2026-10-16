@@ -51,7 +51,6 @@
   "packages/affine/data-view/src/view-presets/calendar/pc/styles.ts": 1,
   "packages/affine/data-view/src/view-presets/kanban/mobile/card.ts": 2,
   "packages/affine/data-view/src/view-presets/kanban/pc/card.ts": 2,
-  "packages/affine/data-view/src/view-presets/table/mobile/row.ts": 1,
   "packages/affine/data-view/src/widget-presets/tools/presets/table-add-row/new-record-preview.ts": 1,
   "packages/affine/fragments/frame-panel/src/card/frame-card.ts": 1,
   "packages/affine/fragments/outline/src/outline-viewer.ts": 1,

@@ -280,7 +280,11 @@ export class TableRowView extends SignalWatcher(
             ${!column.readonly$.value &&
             column.view.mainProperties$.value.titleColumn === column.id
               ? html`<div class="row-ops show-on-hover-row">
-                  <div class="row-op" @click="${clickDetail}">
+                  <div
+                    class="row-op"
+                    data-testid="dv-row-open"
+                    @click="${clickDetail}"
+                  >
                     ${CenterPeekIcon()}
                   </div>
                   ${!view.readonly$.value

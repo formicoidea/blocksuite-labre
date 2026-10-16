@@ -41,9 +41,15 @@ export class MobileTableViewUILogic extends DataViewUILogicBase<
 
   clearSelection = () => {};
 
-  addRow = (position: InsertToPosition) => {
+  /**
+   * A new row opens at once, as on the desktop table and the flat views: on a
+   * phone its title and properties are typed in the row page.
+   */
+  addRow = (position: InsertToPosition, groupKey?: string) => {
     if (this.readonly) return;
-    return this.view.rowAdd(position);
+    const rowId = this.view.rowAdd(position, groupKey);
+    if (rowId) this.root.openDetailPanel({ view: this.view, rowId });
+    return rowId;
   };
 
   focusFirstCell = () => {};

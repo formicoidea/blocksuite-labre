@@ -1,4 +1,3 @@
-import { IS_MOBILE } from '@labre/global/env';
 import { html } from 'lit';
 
 import { filterTraitKey } from '../../../core/filter/trait.js';
@@ -9,7 +8,7 @@ export const renderFilterBar = (props: DataViewWidgetProps) => {
   if (!filterTrait) {
     return;
   }
-  if (!IS_MOBILE && !filterTrait.hasFilter$.value) {
+  if (!filterTrait.hasFilter$.value) {
     return;
   }
   return html` <filter-bar

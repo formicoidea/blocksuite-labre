@@ -1,8 +1,9 @@
 import { popupTargetFromElement } from '@labre/affine-components/context-menu';
-import { IS_MOBILE } from '@labre/global/env';
 import { FilterIcon } from '@blocksuite/icons/lit';
 import { computed } from '@preact/signals-core';
 import { cssVarV2 } from '@toeverything/theme/v2';
+import { type BlockStdScope, stdContext } from '@labre/std';
+import { consume } from '@lit/context';
 import { css, html, nothing } from 'lit';
 import { styleMap } from 'lit/directives/style-map.js';
 
@@ -10,7 +11,9 @@ import { popCreateFilter } from '../../../../core/filter/add-filter.js';
 import { filterTraitKey } from '../../../../core/filter/trait.js';
 import type { FilterGroup } from '../../../../core/filter/types.js';
 import { emptyFilterGroup } from '../../../../core/filter/utils.js';
+import { wordingOf } from '../../../../core/utils/wording.js';
 import { WidgetBase } from '../../../../core/widget/widget-base.js';
+import { DATA_VIEW_FILTER } from '../../../../translations.js';
 import {
   createDefaultShowQuickSettingBar,
   ShowQuickSettingBarKey,
@@ -33,7 +36,13 @@ const styles = css`
     background-color: var(--affine-hover-color);
   }
 
-  .affine-database-filter-button {
+  /* Shown on a phone too, its menus as sheets: 44px for a finger (P7). */
+  @media (pointer: coarse) {
+    .affine-database-filter-button {
+      min-width: 44px;
+      min-height: 44px;
+      justify-content: center;
+    }
   }
 `;
 
@@ -82,9 +91,13 @@ export class DataViewHeaderToolsFilter extends WidgetBase {
     return;
   }
 
+  /** Absent outside an editor host: the wordings read English. */
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
+
   override connectedCallback() {
     super.connectedCallback();
-    this.style.display = IS_MOBILE ? 'none' : 'flex';
+    this.style.display = 'flex';
   }
 
   override render() {
@@ -98,6 +111,9 @@ export class DataViewHeaderToolsFilter extends WidgetBase {
       @click="${this.clickFilter}"
       style="${style}"
       class="affine-database-filter-button"
+      data-testid="dv-tools-filter"
+      role="button"
+      aria-label="${wordingOf(this.std)(DATA_VIEW_FILTER)}"
     >
       ${FilterIcon()}
     </div>`;

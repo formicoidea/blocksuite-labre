@@ -1,5 +1,4 @@
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
-import { IS_MOBILE } from '@labre/global/env';
 import { html, nothing } from 'lit';
 
 import {
@@ -19,18 +18,19 @@ export const widgetQuickSettingBar = defineUniComponent(
     const barList = [renderSortBar(props), renderFilterBar(props)].filter(
       Boolean
     );
-    if (!IS_MOBILE) {
-      if (
-        !view.serviceGetOrCreate(
-          ShowQuickSettingBarKey,
-          createDefaultShowQuickSettingBar
-        ).value[view.id]
-      ) {
-        return html``;
-      }
-      if (!barList.length) {
-        return html``;
-      }
+    // The same rule on a phone since its toolbar has the filter and sort
+    // buttons (P7): up to 0.54 the bar stood there on every phone, empty but
+    // for "+ Add filter", as the only way to filter.
+    if (
+      !view.serviceGetOrCreate(
+        ShowQuickSettingBarKey,
+        createDefaultShowQuickSettingBar
+      ).value[view.id]
+    ) {
+      return html``;
+    }
+    if (!barList.length) {
+      return html``;
     }
     return html` <div
       style="display: flex;margin-top: 8px;align-items: center;width: 100%;gap:8px"

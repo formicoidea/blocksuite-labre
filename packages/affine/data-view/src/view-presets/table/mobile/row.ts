@@ -1,8 +1,8 @@
 import { popupTargetFromElement } from '@labre/affine-components/context-menu';
-import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
+import { OPEN_LABEL } from '@labre/affine-components/translations';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
-import { CenterPeekIcon, MoreHorizontalIcon } from '@blocksuite/icons/lit';
-import { ShadowlessElement } from '@labre/std';
+import { type BlockStdScope, ShadowlessElement, stdContext } from '@labre/std';
+import { consume } from '@lit/context';
 import { cssVarV2 } from '@toeverything/theme/v2';
 import { css, nothing, unsafeCSS } from 'lit';
 import { property } from 'lit/decorators.js';
@@ -10,6 +10,7 @@ import { repeat } from 'lit/directives/repeat.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import { html } from 'lit/static-html.js';
 
+import { wordingOf } from '../../../core/utils/wording.js';
 import {
   paintRowColor,
   ROW_COLOR_PROPERTY,
@@ -20,14 +21,30 @@ import { popMobileRowMenu } from './menu.js';
 import { mobileStickyTitle } from './table-view-style.js';
 import type { MobileTableViewUILogic } from './table-view-ui-logic.js';
 
-/** Two 24px ops, the 20px gap between them and their 8px inset. */
-const ROW_OPS_WIDTH = 24 * 2 + 20 + 8;
+/** The "Open" chip's widest drawing, its 8px inset and 4px of air. */
+export const ROW_OPEN_WIDTH = 60 + 8 + 4;
 
+/** How long a finger rests on a row before its menu opens. */
+export const ROW_LONG_PRESS_MS = 500;
+
+/** A finger that travels further is scrolling, not pressing. */
+const LONG_PRESS_SLOP = 8;
+
+/**
+ * A row of the phone table (P7, "Bases éditables sur mobile", after Notion's
+ * phone table). A tap on a cell edits it; the title column carries an "Open"
+ * chip that opens the row through the root's detail panel, the path of the
+ * desktop row's open button; a long press opens the row menu (open, delete).
+ *
+ * Up to 0.54 the title cell carried two floating ops (open and "...") drawn
+ * over the end of the title. The chip reserves its room instead, and the
+ * "..." moved to the long press so deleting a row stays possible on a phone.
+ */
 export class MobileTableRow extends SignalWatcher(
   WithDisposable(ShadowlessElement)
 ) {
-  // Touch targets are 44px tall (B5, ADR 0035 §1): the row, and each row op
-  // through an invisible hit area, so the ops keep their drawn size.
+  // Touch targets are 44px tall (B5, ADR 0035 §1): the row, and the chip
+  // through an invisible hit area, so it keeps its drawn size.
   static override styles = css`
     .mobile-table-row {
       width: 100%;
@@ -37,42 +54,75 @@ export class MobileTableRow extends SignalWatcher(
       position: relative;
       min-height: 44px;
       background-color: var(${unsafeCSS(ROW_COLOR_PROPERTY)}, transparent);
+      -webkit-touch-callout: none;
     }
 
-    .mobile-row-ops {
-      position: relative;
-      width: 0;
-      margin-top: 5px;
-      height: max-content;
-      display: flex;
-      gap: 20px;
-      cursor: pointer;
-      justify-content: end;
+    /* A long press opens the row menu, not a text selection; an edited cell
+       keeps its own. */
+    .mobile-table-row mobile-table-cell:not([data-editing='true']) {
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .mobile-row-open {
+      position: absolute;
+      top: 10px;
       right: 8px;
-    }
-
-    .affine-database-block-row:has([data-editing='true']) .mobile-row-ops {
-      visibility: hidden;
-      opacity: 0;
-    }
-
-    .mobile-row-op {
       display: flex;
-      padding: 4px;
+      align-items: center;
+      height: 24px;
+      max-width: 60px;
+      padding: 0 6px;
+      box-sizing: border-box;
+      border: 1px solid ${unsafeCSS(cssVarV2.layer.insideBorder.border)};
       border-radius: 4px;
-      box-shadow: 0px 0px 4px 0px rgba(66, 65, 73, 0.14);
       background-color: var(--affine-background-primary-color);
-      position: relative;
-      font-size: 16px;
-      color: ${unsafeCSSVarV2('icon/primary')};
+      color: ${unsafeCSS(cssVarV2.text.secondary)};
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 20px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
     }
 
-    .mobile-row-op::after {
+    .mobile-row-open::after {
       content: '';
       position: absolute;
-      inset: -10px;
+      inset: -10px -4px;
+    }
+
+    .mobile-row-title:has(mobile-table-cell[data-editing='true'])
+      .mobile-row-open {
+      display: none;
     }
   `;
+
+  /** Absent outside an editor host: the wordings read English. */
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
+
+  private pressTimer: ReturnType<typeof setTimeout> | undefined;
+
+  private pressOrigin: { x: number; y: number } | undefined;
+
+  /** A long press fired: the click the finger's release makes is eaten. */
+  private pressFired = false;
+
+  private readonly cancelPress = () => {
+    clearTimeout(this.pressTimer);
+    this.pressTimer = undefined;
+    this.pressOrigin = undefined;
+  };
+
+  private readonly openRow = (e: MouseEvent) => {
+    e.stopPropagation();
+    this.tableViewLogic.root.openDetailPanel({
+      view: this.view,
+      rowId: this.rowId,
+    });
+  };
 
   get groupKey() {
     return this.closest('affine-data-view-table-group')?.group?.key;
@@ -81,37 +131,63 @@ export class MobileTableRow extends SignalWatcher(
   override connectedCallback() {
     super.connectedCallback();
     this.classList.add('mobile-table-row');
+    this.disposables.add(this.cancelPress);
+    this.disposables.addFromEvent(this, 'pointerdown', (e: PointerEvent) => {
+      this.pressFired = false;
+      this.cancelPress();
+      if (this.view.readonly$.value) return;
+      this.pressOrigin = { x: e.clientX, y: e.clientY };
+      this.pressTimer = setTimeout(() => {
+        this.cancelPress();
+        this.pressFired = true;
+        popMobileRowMenu(
+          popupTargetFromElement(this),
+          this.rowId,
+          this.tableViewLogic,
+          this.view,
+          wordingOf(this.std)
+        );
+      }, ROW_LONG_PRESS_MS);
+    });
+    this.disposables.addFromEvent(this, 'pointermove', (e: PointerEvent) => {
+      const origin = this.pressOrigin;
+      if (!origin) return;
+      const moved = Math.hypot(e.clientX - origin.x, e.clientY - origin.y);
+      if (moved > LONG_PRESS_SLOP) this.cancelPress();
+    });
+    this.disposables.addFromEvent(this, 'pointerup', this.cancelPress);
+    this.disposables.addFromEvent(this, 'pointercancel', this.cancelPress);
+    // Android opens its own menu on a long press; the row's is the one.
+    this.disposables.addFromEvent(this, 'contextmenu', (e: Event) => {
+      e.preventDefault();
+    });
+    this.disposables.addFromEvent(
+      this,
+      'click',
+      (e: MouseEvent) => {
+        if (!this.pressFired) return;
+        this.pressFired = false;
+        e.stopPropagation();
+        e.preventDefault();
+      },
+      { capture: true }
+    );
   }
 
   protected override render(): unknown {
     const view = this.view;
     paintRowColor(this, viewRowColor(view, this.rowId));
+    const openLabel = wordingOf(this.std)(OPEN_LABEL);
     return html`
       ${repeat(
         view.properties$.value,
         v => v.id,
         (column, i) => {
-          const clickDetail = () => {
-            this.tableViewLogic.root.openDetailPanel({
-              view: this.view,
-              rowId: this.rowId,
-            });
-          };
-          const openMenu = (e: MouseEvent) => {
-            const ele = e.currentTarget as HTMLElement;
-            popMobileRowMenu(
-              popupTargetFromElement(ele),
-              this.rowId,
-              this.tableViewLogic,
-              this.view
-            );
-          };
           const isTitle =
             column.view.mainProperties$.value.titleColumn === column.id;
-          const hasOps = isTitle && !column.readonly$.value;
           return html`
             <div
-              class="${isTitle ? mobileStickyTitle : ''}"
+              class="${isTitle ? `${mobileStickyTitle} mobile-row-title` : ''}"
               style="display: flex;"
             >
               <mobile-table-cell
@@ -119,8 +195,8 @@ export class MobileTableRow extends SignalWatcher(
                 style=${styleMap({
                   width: `${column.width$.value}px`,
                   border: i === 0 ? 'none' : undefined,
-                  // Room for the two row ops drawn over its right end.
-                  paddingRight: hasOps ? `${ROW_OPS_WIDTH}px` : undefined,
+                  // Room for the "Open" chip drawn over its right end.
+                  paddingRight: isTitle ? `${ROW_OPEN_WIDTH}px` : undefined,
                 })}
                 .tableViewLogic="${this.tableViewLogic}"
                 .column="${column}"
@@ -135,16 +211,15 @@ export class MobileTableRow extends SignalWatcher(
               >
               </mobile-table-cell>
               <div class="${cellDivider}"></div>
-              ${hasOps
-                ? html` <div class="mobile-row-ops">
-                    <div class="mobile-row-op" @click="${clickDetail}">
-                      ${CenterPeekIcon()}
-                    </div>
-                    ${!view.readonly$.value
-                      ? html` <div class="mobile-row-op" @click="${openMenu}">
-                          ${MoreHorizontalIcon()}
-                        </div>`
-                      : nothing}
+              ${isTitle
+                ? html`<div
+                    class="mobile-row-open"
+                    data-testid="dv-row-open"
+                    role="button"
+                    aria-label="${openLabel}"
+                    @click="${this.openRow}"
+                  >
+                    ${openLabel}
                   </div>`
                 : nothing}
             </div>

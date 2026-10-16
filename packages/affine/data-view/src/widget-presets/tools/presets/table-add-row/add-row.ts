@@ -9,8 +9,8 @@ import { wordingOf } from '../../../../core/utils/wording.js';
 import { NewRowMenuOpenerKey } from '../../../../core/view-manager/new-row-menu-opener.js';
 import { WidgetBase } from '../../../../core/widget/widget-base.js';
 import {
+  DATA_VIEW_NEW_PAGE,
   DATA_VIEW_NEW_RECORD,
-  DATA_VIEW_NEW_RECORD_SHORT,
 } from '../../../../translations.js';
 
 const styles = css`
@@ -23,6 +23,34 @@ const styles = css`
     .new-record {
       min-height: 44px;
     }
+  }
+
+  /* On a phone, a blue "+" as Notion draws it: 32px drawn, 44px to touch. */
+  .new-record-phone {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    margin: 6px;
+    padding: 0;
+    border: none;
+    border-radius: 8px;
+    background-color: ${unsafeCSSVarV2('button/primary')};
+    color: ${unsafeCSSVarV2('button/pureWhiteText')};
+    font-size: 20px;
+    cursor: pointer;
+  }
+
+  .new-record-phone::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+  }
+
+  .new-record-phone svg {
+    color: inherit;
   }
 
   .new-record svg {
@@ -90,17 +118,26 @@ export class DataViewHeaderToolsAddRow extends WidgetBase {
     if (this.readonly$.value) {
       return;
     }
-    const button = html` <data-view-component-button
-      class="affine-database-toolbar-item new-record"
-      .onClick="${this.onAddNewRecord}"
-      .icon="${PlusIcon()}"
-      .text="${html`<span style="font-weight: 500"
-        >${wordingOf(this.std)(
-          IS_MOBILE ? DATA_VIEW_NEW_RECORD_SHORT : DATA_VIEW_NEW_RECORD
-        )}</span
-      >`}"
-    >
-    </data-view-component-button>`;
+    const wording = wordingOf(this.std);
+    const button = IS_MOBILE
+      ? html`<button
+          class="new-record-phone"
+          data-testid="dv-tools-new-row"
+          aria-label="${wording(DATA_VIEW_NEW_PAGE)}"
+          title="${wording(DATA_VIEW_NEW_PAGE)}"
+          @click="${this.onAddNewRecord}"
+        >
+          ${PlusIcon()}
+        </button>`
+      : html` <data-view-component-button
+          class="affine-database-toolbar-item new-record"
+          .onClick="${this.onAddNewRecord}"
+          .icon="${PlusIcon()}"
+          .text="${html`<span style="font-weight: 500"
+            >${wording(DATA_VIEW_NEW_RECORD)}</span
+          >`}"
+        >
+        </data-view-component-button>`;
     const opener = this.view.serviceGet(NewRowMenuOpenerKey);
     if (!opener || opener.canOpen?.(this.view.id) === false) return button;
     const label = opener.label();
