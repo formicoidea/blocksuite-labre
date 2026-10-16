@@ -121,7 +121,7 @@ export const keyboardToolPanelStyles = css`
     }
 
     button:active {
-      background: #00000012;
+      background: var(--affine-hover-color);
     }
 
     button svg {

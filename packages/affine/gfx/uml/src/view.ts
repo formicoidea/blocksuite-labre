@@ -5,6 +5,7 @@ import {
   ReadingProfileExtension,
   ValidationProfileExtension,
   ValidationRuleExtension,
+  NotationDarkPaletteExtension,
 } from '@labre/affine-block-surface';
 import {
   type ViewExtensionContext,
@@ -79,6 +80,11 @@ export class UmlRenderViewExtension extends ViewExtensionProvider {
 
   override setup(context: ViewExtensionContext) {
     super.setup(context);
+    // Nothing of this notation vanishes on the dark card: it registers an
+    // empty dark palette to say so (ADR 0039, `notation-dark-palettes`).
+    context.register(
+      NotationDarkPaletteExtension({ framework: 'uml', colors: {} })
+    );
     context.register(UmlDiagramView);
     context.register(UmlDiagramRendererExtension);
     context.register(UmlSubjectView);

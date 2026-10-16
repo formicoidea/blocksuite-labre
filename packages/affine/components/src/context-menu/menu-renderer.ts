@@ -20,7 +20,7 @@ import {
   type ReferenceElement,
   shift,
 } from '@floating-ui/dom';
-import { consume } from '@lit/context';
+import { consume, ContextEvent, ContextProvider } from '@lit/context';
 import { css, html, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
 import { createRef, ref } from 'lit/directives/ref.js';
@@ -268,17 +268,22 @@ export class MobileMenuComponent
   accessor std!: BlockStdScope;
 
   static override styles = css`
+    /* A bottom action sheet, not a full-screen page: the view stays visible
+       above it and a tap on the scrim closes it (popMobileMenu). */
     mobile-menu {
-      height: 100%;
+      max-height: 85%;
       font-family: var(--affine-font-family);
       display: flex;
       flex-direction: column;
       user-select: none;
       width: 100%;
       background-color: ${unsafeCSSVarV2('layer/background/secondary')};
-      padding: calc(8px + env(safe-area-inset-top, 0px)) 8px
-        calc(8px + env(safe-area-inset-bottom, 0px)) 8px;
+      padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px)) 8px;
       position: absolute;
+      left: 0;
+      bottom: 0;
+      border-radius: 12px 12px 0 0;
+      box-shadow: var(--affine-overlay-shadow);
       z-index: 999;
       color: ${unsafeCSSVarV2('text/primary')};
     }
@@ -322,6 +327,11 @@ export class MobileMenuComponent
     `;
   }
 
+  /**
+   * Back, title, "Done": the two ends share what the title leaves, so the
+   * title stays centred, and "Done" is never cut, whatever its translation
+   * ("Terminé" overflowed the 50px it had).
+   */
   renderTitle() {
     const title = this.menu.options.title;
     return html`
@@ -329,7 +339,7 @@ export class MobileMenuComponent
         style="display:flex;align-items:center;height: 44px;"
         @mouseenter="${() => this.menu.closeSubMenu()}"
       >
-        <div style="width: 50px;flex-shrink: 0;margin-left: 10px;">
+        <div style="flex: 1 1 0;min-width: 50px;margin-left: 10px;">
           ${title?.onBack
             ? html` <div
                 @click="${() => {
@@ -348,27 +358,33 @@ export class MobileMenuComponent
         </div>
         <div
           style="
-          flex:1;
+          flex: 0 1 auto;
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
           font-size: 17px;
           font-style: normal;
           font-weight: 500;
           line-height: 22px;
           color: var(--affine-text-primary-color);
-          display: flex;
-          justify-content: center;
+          text-align: center;
 "
         >
           ${title?.text}
         </div>
         <div
           @click="${this.onClose}"
+          data-testid="mobile-menu-done"
           style="
           display:flex;
+          justify-content: flex-end;
           font-weight: 500;
           font-size: 17px;
           color: ${unsafeCSSVarV2('button/primary')};
-          width: 50px;
-          flex-shrink: 0;
+          flex: 1 1 0;
+          min-width: max-content;
+          white-space: nowrap;
           margin-right: 10px;
          "
         >
@@ -416,6 +432,8 @@ export type PopupTarget = {
   targetRect: ReferenceElement;
   root: HTMLElement;
   popupStart: () => () => void;
+  /** The element the popup opens from, when there is one. */
+  element?: HTMLElement;
 };
 export const popupTargetFromElement = (element: HTMLElement): PopupTarget => {
   let rect = element.getBoundingClientRect();
@@ -431,6 +449,7 @@ export const popupTargetFromElement = (element: HTMLElement): PopupTarget => {
       },
     },
     root: getDefaultModalRoot(element),
+    element,
     popupStart: () => {
       if (!count) {
         isActive = element.classList.contains('active');
@@ -507,9 +526,37 @@ export type MenuHandler = {
   reopen: () => void;
 };
 
-const popMobileMenu = (options: MenuOptions): MenuHandler => {
+/** The editor an element sits in, asked the way a `@consume` asks. */
+const stdAround = (element: HTMLElement | undefined) => {
+  let std: BlockStdScope | undefined;
+  element?.dispatchEvent(
+    new ContextEvent(stdContext, element, value => {
+      std = value;
+    })
+  );
+  return std;
+};
+
+/**
+ * A phone's sheet hangs from the body, out of the editor's DOM, where nothing
+ * provides `std`: its modal provides the editor of the element it opens from,
+ * so the sheet's "Done" and whatever it renders speak the host's catalogue,
+ * and a sub-menu opened from it finds the same editor again.
+ */
+const popMobileMenu = (
+  options: MenuOptions,
+  target?: PopupTarget
+): MenuHandler => {
   const model = createModal(document.body);
+  const std = stdAround(target?.element);
+  if (std) {
+    new ContextProvider(model, { context: stdContext, initialValue: std });
+  }
   model.style.position = 'fixed';
+  model.style.background = 'var(--affine-v2-layer-background-mobile-modal)';
+  model.addEventListener('click', e => {
+    if (e.target === model) menu.close();
+  });
   const menu = new Menu({
     ...options,
     onClose: () => {
@@ -528,7 +575,7 @@ const popMobileMenu = (options: MenuOptions): MenuHandler => {
     menu,
     reopen: () => {
       menu.close();
-      popMobileMenu(options);
+      popMobileMenu(options, target);
     },
   };
 };
@@ -542,7 +589,7 @@ export const popMenu = (
   }
 ): MenuHandler => {
   if (IS_MOBILE) {
-    return popMobileMenu(props.options);
+    return popMobileMenu(props.options, target);
   }
   const popupEnd = target.popupStart();
   const onClose = () => {

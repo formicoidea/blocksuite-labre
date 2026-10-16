@@ -1,6 +1,7 @@
 import {
   type ElementRenderer,
   ElementRendererExtension,
+  notationColor,
 } from '@labre/affine-block-surface';
 import type { EdgyBoardElementModel } from '@labre/affine-model';
 import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
@@ -20,7 +21,8 @@ const BOARD_BORDER_WIDTH = 2;
 export const edgyBoard: ElementRenderer<EdgyBoardElementModel> = (
   model,
   ctx,
-  matrix
+  matrix,
+  renderer
 ) => {
   const [, , w, h] = model.deserializedXYWH;
   const cx = w / 2;
@@ -34,9 +36,9 @@ export const edgyBoard: ElementRenderer<EdgyBoardElementModel> = (
 
   ctx.beginPath();
   ctx.roundRect(0, 0, w, h, BOARD_RADIUS);
-  ctx.fillStyle = BOARD_FILL;
+  ctx.fillStyle = notationColor(renderer, BOARD_FILL, 'fill');
   ctx.fill();
-  ctx.strokeStyle = BOARD_BORDER;
+  ctx.strokeStyle = notationColor(renderer, BOARD_BORDER);
   ctx.lineWidth = BOARD_BORDER_WIDTH;
   ctx.stroke();
 };

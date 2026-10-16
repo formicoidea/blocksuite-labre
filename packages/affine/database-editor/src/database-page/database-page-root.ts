@@ -114,9 +114,17 @@ export class DatabasePageRoot extends BlockComponent {
       margin: 0 auto;
       padding: 0 var(--affine-editor-side-padding, 24px);
     }
-    /* The page title above is the database's name. */
+    /* The page title above is the database's name. !important: the row is
+       an emotion class (display: flex), which outweighs this selector. */
     affine-database-page-root div:has(> affine-database-title) {
-      display: none;
+      display: none !important;
+    }
+    /* A phone keeps the page root's narrow padding (page-root-block.ts). */
+    @container viewport (width <= 640px) {
+      affine-database-page-root {
+        padding-left: 24px;
+        padding-right: 24px;
+      }
     }
     .affine-database-page-missing {
       padding: 16px 0;

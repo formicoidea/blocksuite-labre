@@ -1,6 +1,7 @@
 import { translateKey } from '@labre/affine-shared/services';
 import type { BlockStdScope } from '@labre/std';
 
+import type { Wording } from '../utils/wording.js';
 import type { DataViewModel } from './data-view.js';
 
 /**
@@ -17,4 +18,16 @@ export function viewDefaultName(
   const { defaultName, defaultNameKey } = meta.model;
   if (!std || !defaultNameKey) return defaultName;
   return translateKey(std, defaultNameKey, defaultName);
+}
+
+/**
+ * A preset's name as a menu shows it (the view settings' "Layout"), through
+ * the opener's words; the English `defaultName` without a key.
+ */
+export function viewPresetName(
+  meta: Pick<DataViewModel, 'model'>,
+  wording: Wording
+): string {
+  const { defaultName, defaultNameKey } = meta.model;
+  return defaultNameKey ? wording([defaultNameKey, defaultName]) : defaultName;
 }

@@ -17,12 +17,17 @@ import {
   type FrameTemplateService,
   type ToolbarAction,
   type ToolbarContext,
+  TranslationProvider,
 } from '@labre/affine-shared/services';
 import type { BlockStdScope } from '@labre/std';
 import { Subject } from 'rxjs';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { FrameDeletionCascade, FrameTemplateWatcher } from '../frame-template';
+import {
+  FrameDeletionCascade,
+  FrameTemplateWatcher,
+  templateViewAction,
+} from '../frame-template';
 import { frameToolbarExtension } from '../frame-toolbar';
 
 function recorder() {
@@ -205,5 +210,48 @@ describe('"Save as template" on the frame toolbar', () => {
 
     expect(when(toolbarContext(service))).toBe(true);
     expect(when(toolbarContext(service, 2))).toBe(false);
+  });
+});
+
+/**
+ * « View » after a save (labre P7): the success notification carries one
+ * action that calls the host's `showTemplates`, worded through the host's
+ * catalogue; a host of the 0.53 shape gets the bare notification it had.
+ */
+describe('« View » on the saved-template notification', () => {
+  function stdTranslating(t?: (key: string) => string) {
+    return {
+      getOptional: (id: unknown) =>
+        id === TranslationProvider && t ? { t } : null,
+    } as unknown as BlockStdScope;
+  }
+
+  it('is absent for a host without showTemplates (the 0.53 shape)', () => {
+    const { service } = recorder();
+    expect(templateViewAction(stdTranslating(), service)).toBeUndefined();
+  });
+
+  it('calls showTemplates, worded by the host catalogue', () => {
+    const { service } = recorder();
+    const showTemplates = vi.fn();
+    const action = templateViewAction(
+      stdTranslating(key =>
+        key === 'com.labre.frame.toast.template-view' ? 'Voir' : ''
+      ),
+      { ...service, showTemplates }
+    );
+
+    expect(action?.label).toBe('Voir');
+    action?.onClick();
+    expect(showTemplates).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back on the English wording without a catalogue', () => {
+    const { service } = recorder();
+    const action = templateViewAction(stdTranslating(), {
+      ...service,
+      showTemplates: () => {},
+    });
+    expect(action?.label).toBe('View');
   });
 });

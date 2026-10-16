@@ -105,11 +105,11 @@ export class DataViewPropertiesSettingView extends SignalWatcher(
       width: 4px;
       height: 12px;
       border-radius: 1px;
-      background-color: #efeff0;
+      background-color: var(--affine-border-color);
     }
 
     .property-item:hover .property-item-drag-bar {
-      background-color: #c0bfc1;
+      background-color: var(--affine-placeholder-color);
     }
 
     .property-item-icon {

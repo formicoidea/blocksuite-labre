@@ -4,6 +4,7 @@ import {
   SpotlightHostExtension,
   ValidationProfileExtension,
   ValidationRuleExtension,
+  NotationDarkPaletteExtension,
 } from '@labre/affine-block-surface';
 import { FrameworkPaletteExtension } from '@labre/affine-components/color-picker';
 import {
@@ -40,6 +41,7 @@ import {
   edgyNodeToolbarExtension,
 } from './toolbar/node-config';
 import { edgySeniorTool } from './toolbar/senior-tool';
+import { EDGY_DARK_PALETTE } from './dark-palette';
 
 /**
  * EDGY rendering — ALWAYS registered, independent of any flag. Disabling `edgy`
@@ -53,6 +55,7 @@ export class EdgyRenderViewExtension extends ViewExtensionProvider {
 
   override setup(context: ViewExtensionContext) {
     super.setup(context);
+    context.register(NotationDarkPaletteExtension(EDGY_DARK_PALETTE));
     context.register(EdgyView);
     context.register(EdgyFacetsRendererExtension);
     context.register(EdgyBoardView);

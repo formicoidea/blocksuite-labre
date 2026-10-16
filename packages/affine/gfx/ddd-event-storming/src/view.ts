@@ -4,6 +4,7 @@ import {
   ReadingProfileExtension,
   ValidationProfileExtension,
   ValidationRuleExtension,
+  NotationDarkPaletteExtension,
 } from '@labre/affine-block-surface';
 import { FrameworkPaletteExtension } from '@labre/affine-components/color-picker';
 import {
@@ -48,6 +49,14 @@ export class DddEventStormingRenderViewExtension extends ViewExtensionProvider {
 
   override setup(context: ViewExtensionContext) {
     super.setup(context);
+    // Nothing of this notation vanishes on the dark card: it registers an
+    // empty dark palette to say so (ADR 0039, `notation-dark-palettes`).
+    context.register(
+      NotationDarkPaletteExtension({
+        framework: 'ddd-event-storming',
+        colors: {},
+      })
+    );
     context.register(EventStormingView);
     context.register(EventStormingRendererExtension);
     // The role VOCABULARY, always on. A role is written in the DOCUMENT, not in

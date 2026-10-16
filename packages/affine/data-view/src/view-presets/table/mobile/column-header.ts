@@ -7,23 +7,29 @@ import {
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
 import {
-  DeleteIcon,
-  DuplicateIcon,
   InsertLeftIcon,
   InsertRightIcon,
   MoveLeftIcon,
   MoveRightIcon,
-  ViewIcon,
 } from '@blocksuite/icons/lit';
-import { ShadowlessElement } from '@labre/std';
+import { type BlockStdScope, ShadowlessElement, stdContext } from '@labre/std';
+import { consume } from '@lit/context';
 import { css } from 'lit';
 import { property } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import { html } from 'lit/static-html.js';
 
-import { inputConfig, typeConfig } from '../../../core/common/property-menu.js';
+import { propertyMenuItems } from '../../../core/common/property-menu.js';
+import { wordingOf } from '../../../core/utils/wording.js';
 import type { Property } from '../../../core/view-manager/property.js';
 import { numberFormats } from '../../../property-presets/number/utils/formats.js';
+import {
+  DATA_VIEW_INSERT_LEFT,
+  DATA_VIEW_INSERT_RIGHT,
+  DATA_VIEW_PROPERTY_SETTINGS,
+  VIEWS_BAR_MOVE_LEFT,
+  VIEWS_BAR_MOVE_RIGHT,
+} from '../../../translations.js';
 import { MOBILE_TOUCH_TARGET } from '../consts.js';
 import type { TableProperty, TableSingleView } from '../table-view-manager.js';
 
@@ -66,17 +72,16 @@ export class MobileTableColumnHeader extends SignalWatcher(
   private popMenu(ele?: HTMLElement) {
     const enableNumberFormatting =
       this.tableViewManager.featureFlags$.value.enable_number_formatting;
+    const wording = wordingOf(this.std);
 
     popMenu(popupTargetFromElement(ele ?? this), {
       options: {
         title: {
-          text: 'Property settings',
+          text: wording(DATA_VIEW_PROPERTY_SETTINGS),
         },
-        items: [
-          inputConfig(this.column),
-          typeConfig(this.column),
-          // Number format begin
-          ...(enableNumberFormatting
+        items: propertyMenuItems(this.column, {
+          wording,
+          afterType: enableNumberFormatting
             ? [
                 menu.subMenu({
                   name: 'Number Format',
@@ -110,123 +115,90 @@ export class MobileTableColumnHeader extends SignalWatcher(
                   },
                 }),
               ]
-            : []),
-          // Number format end
-          menu.group({
-            items: [
-              menu.action({
-                name: 'Hide In View',
-                prefix: ViewIcon(),
-                hide: () => !this.column.hideCanSet,
-                select: () => {
-                  this.column.hideSet(true);
-                },
-              }),
-            ],
-          }),
-          menu.group({
-            items: [
-              menu.action({
-                name: 'Insert Left Column',
-                prefix: InsertLeftIcon(),
-                select: () => {
-                  this.tableViewManager.propertyAdd({
-                    id: this.column.id,
-                    before: true,
-                  });
-                  Promise.resolve()
-                    .then(() => {
-                      const pre =
-                        this.previousElementSibling?.previousElementSibling;
-                      if (pre instanceof MobileTableColumnHeader) {
-                        pre.editTitle();
-                        pre.scrollIntoView({
-                          inline: 'nearest',
-                          block: 'nearest',
-                        });
-                      }
-                    })
-                    .catch(console.error);
-                },
-              }),
-              menu.action({
-                name: 'Insert Right Column',
-                prefix: InsertRightIcon(),
-                select: () => {
-                  this.tableViewManager.propertyAdd({
-                    id: this.column.id,
-                    before: false,
-                  });
-                  Promise.resolve()
-                    .then(() => {
-                      const next = this.nextElementSibling?.nextElementSibling;
-                      if (next instanceof MobileTableColumnHeader) {
-                        next.editTitle();
-                        next.scrollIntoView({
-                          inline: 'nearest',
-                          block: 'nearest',
-                        });
-                      }
-                    })
-                    .catch(console.error);
-                },
-              }),
-              menu.action({
-                name: 'Move Left',
-                prefix: MoveLeftIcon(),
-                hide: () => this.column.isFirst$.value,
-                select: () => {
-                  const pre = this.column.prev$.value;
-                  if (!pre) {
-                    return;
-                  }
-                  this.column.move({
-                    id: pre.id,
-                    before: true,
-                  });
-                },
-              }),
-              menu.action({
-                name: 'Move Right',
-                prefix: MoveRightIcon(),
-                hide: () => this.column.isLast$.value,
-                select: () => {
-                  const next = this.column.next$.value;
-                  if (!next) {
-                    return;
-                  }
-                  this.column.move({
-                    id: next.id,
-                    before: false,
-                  });
-                },
-              }),
-            ],
-          }),
-          menu.group({
-            items: [
-              menu.action({
-                name: 'Duplicate',
-                prefix: DuplicateIcon(),
-                hide: () => !this.column.canDuplicate,
-                select: () => {
-                  this.column.duplicate?.();
-                },
-              }),
-              menu.action({
-                name: 'Delete',
-                prefix: DeleteIcon(),
-                hide: () => !this.column.canDelete,
-                select: () => {
-                  this.column.delete?.();
-                },
-                class: {
-                  'delete-item': true,
-                },
-              }),
-            ],
-          }),
-        ],
+            : [],
+          beforeOperations: [
+            menu.group({
+              items: [
+                menu.action({
+                  name: wording(DATA_VIEW_INSERT_LEFT),
+                  prefix: InsertLeftIcon(),
+                  select: () => {
+                    this.tableViewManager.propertyAdd({
+                      id: this.column.id,
+                      before: true,
+                    });
+                    Promise.resolve()
+                      .then(() => {
+                        const pre =
+                          this.previousElementSibling?.previousElementSibling;
+                        if (pre instanceof MobileTableColumnHeader) {
+                          pre.editTitle();
+                          pre.scrollIntoView({
+                            inline: 'nearest',
+                            block: 'nearest',
+                          });
+                        }
+                      })
+                      .catch(console.error);
+                  },
+                }),
+                menu.action({
+                  name: wording(DATA_VIEW_INSERT_RIGHT),
+                  prefix: InsertRightIcon(),
+                  select: () => {
+                    this.tableViewManager.propertyAdd({
+                      id: this.column.id,
+                      before: false,
+                    });
+                    Promise.resolve()
+                      .then(() => {
+                        const next =
+                          this.nextElementSibling?.nextElementSibling;
+                        if (next instanceof MobileTableColumnHeader) {
+                          next.editTitle();
+                          next.scrollIntoView({
+                            inline: 'nearest',
+                            block: 'nearest',
+                          });
+                        }
+                      })
+                      .catch(console.error);
+                  },
+                }),
+                menu.action({
+                  name: wording(VIEWS_BAR_MOVE_LEFT),
+                  prefix: MoveLeftIcon(),
+                  hide: () => this.column.isFirst$.value,
+                  select: () => {
+                    const pre = this.column.prev$.value;
+                    if (!pre) {
+                      return;
+                    }
+                    this.column.move({
+                      id: pre.id,
+                      before: true,
+                    });
+                  },
+                }),
+                menu.action({
+                  name: wording(VIEWS_BAR_MOVE_RIGHT),
+                  prefix: MoveRightIcon(),
+                  hide: () => this.column.isLast$.value,
+                  select: () => {
+                    const next = this.column.next$.value;
+                    if (!next) {
+                      return;
+                    }
+                    this.column.move({
+                      id: next.id,
+                      before: false,
+                    });
+                  },
+                }),
+              ],
+            }),
+          ],
+        }),
       },
     });
   }
@@ -250,6 +222,10 @@ export class MobileTableColumnHeader extends SignalWatcher(
       </div>
     `;
   }
+
+  /** Absent outside an editor host: the menu reads English. */
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
 
   @property({ attribute: false })
   accessor column!: TableProperty;

@@ -13,14 +13,19 @@ import { html } from 'lit/static-html.js';
 
 import {
   DATA_VIEW_PROPERTY_HIDE_IN_VIEW,
+  DATA_VIEW_PROPERTY_NAME,
   DATA_VIEW_PROPERTY_TYPE,
+  DATA_VIEW_PROPERTY_TYPE_ENTRY,
 } from '../../translations.js';
 import { renderUniLit } from '../utils/uni-component/index.js';
 import { englishWording, type Wording } from '../utils/wording.js';
 import type { Property } from '../view-manager/property.js';
 import type { SingleView } from '../view-manager/single-view.js';
 
-export const inputConfig = (property: Property) => {
+export const inputConfig = (
+  property: Property,
+  wording: Wording = englishWording
+) => {
   return menu.input({
     prefix: html`
       <div class="affine-database-column-type-menu-icon">
@@ -28,7 +33,7 @@ export const inputConfig = (property: Property) => {
       </div>
     `,
     initialValue: property.name$.value,
-    placeholder: 'Property name',
+    placeholder: wording(DATA_VIEW_PROPERTY_NAME),
     // Persist on blur so the typed name survives the menu being dismissed by
     // a click outside, which never fires the completion path.
     onBlur: text => {
@@ -43,7 +48,7 @@ export const typeConfig = (
   return menu.group({
     items: [
       menu.subMenu({
-        name: 'Type',
+        name: wording(DATA_VIEW_PROPERTY_TYPE_ENTRY),
         hide: () => !property.typeCanSet,
         postfix: html` <div
           class="affine-database-column-type-icon"
@@ -106,8 +111,8 @@ export type PropertyMenuSlots = {
  * ponytail: "Number Format" stays a table slot (its bar is a table/pc
  * element, behind `enable_number_formatting`, off in Labre), so the
  * properties list does not offer it. Move the bar to core and the entry into
- * this list when the flag ships. The virtual and mobile table headers still
- * spell their own copy of these entries; point them here in a dedicated pass.
+ * this list when the flag ships. The virtual table header still spells its
+ * own copy of these entries; point it here in a dedicated pass.
  */
 export const propertyMenuItems = (
   property: Property,
@@ -115,7 +120,7 @@ export const propertyMenuItems = (
 ): MenuConfig[] => {
   const wording = slots.wording ?? englishWording;
   return [
-    inputConfig(property),
+    inputConfig(property, wording),
     typeConfig(property, wording),
     ...(slots.afterType ?? []),
     menu.group({

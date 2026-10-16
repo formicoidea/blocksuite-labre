@@ -42,6 +42,8 @@ change to one. Paste it in the PR and tick.**
       `FrameworkPaletteExtension` from the flag-gated view extension (both
       scopes, outside the edgeless-only block), reusing
       its `*_PALETTE_LIST` and its `com.labre.framework.*` wording.
+- [ ] R39: a dark palette (`NotationDarkPaletteExtension`) from the
+      always-on render extension; no hue mapped, low swatches `kept`.
 - [ ] Rules name a `backgroundRole`; the default profile is the most
       permissive; no rule uses `blocking-overridable`.
 - [ ] Every user-visible string is a `com.labre.*` key in `translations.ts`.

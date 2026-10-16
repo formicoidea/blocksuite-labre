@@ -33,8 +33,10 @@ import {
   viewOpenIn,
   viewOpenInSet,
 } from '../../../../core/view/open-in.js';
+import { viewPresetName } from '../../../../core/view/default-name.js';
 import { PropertiesPanelOpenerKey } from '../../../../core/view-manager/properties-panel-opener.js';
 import {
+  DATA_VIEW_LAYOUT,
   DATA_VIEW_OPEN_IN,
   DATA_VIEW_OPEN_IN_CENTER,
   DATA_VIEW_OPEN_IN_FULL,
@@ -131,12 +133,14 @@ export function openInOptions(
 function popLayout(
   target: PopupTarget,
   dataViewLogic: DataViewUILogicBase,
-  reopen: () => void
+  reopen: () => void,
+  wording: Wording
 ) {
   const view = dataViewLogic.view;
   const viewTypes = view.manager.viewMetas.map<MenuConfig>(meta => {
+    const name = viewPresetName(meta, wording);
     return menu => {
-      if (!menu.search(meta.model.defaultName)) {
+      if (!menu.search(name)) {
         return;
       }
       const isSelected = meta.type === view.manager.currentView$.value?.type;
@@ -159,7 +163,7 @@ function popLayout(
             style="color:var(--affine-text-emphasis-color);width:100%;display: flex;flex-direction: column;align-items: center;justify-content: center;padding: 6px 16px;white-space: nowrap"
           >
             <div style="${iconStyle}">${renderUniLit(meta.renderer.icon)}</div>
-            <div style="${textStyle}">${meta.model.defaultName}</div>
+            <div style="${textStyle}">${name}</div>
           </div>
         `,
         select: () => {
@@ -192,7 +196,7 @@ function popLayout(
     options: {
       title: {
         onBack: reopen,
-        text: 'Layout',
+        text: wording(DATA_VIEW_LAYOUT),
       },
       items: [
         menu => {
@@ -237,7 +241,7 @@ export function openViewSetting(
   const view = dataViewLogic.view;
   switch (key) {
     case 'layout':
-      popLayout(target, dataViewLogic, reopen);
+      popLayout(target, dataViewLogic, reopen, wording);
       return;
     case 'properties': {
       const openPanel = view.serviceGet(PropertiesPanelOpenerKey);

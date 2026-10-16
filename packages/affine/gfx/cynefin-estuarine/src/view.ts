@@ -3,6 +3,7 @@ import {
   ReadingProfileExtension,
   ValidationFrameworkExtension,
   validationToolbarConfig,
+  NotationDarkPaletteExtension,
 } from '@labre/affine-block-surface';
 import { FrameworkPaletteExtension } from '@labre/affine-components/color-picker';
 import {
@@ -38,6 +39,7 @@ import {
 } from './templates';
 import { CYNEFIN_ESTUARINE_FRAMEWORK_PALETTE } from './toolbar/palette';
 import { cynefinEstuarineSeniorTool } from './toolbar/senior-tool';
+import { CYNEFIN_ESTUARINE_DARK_PALETTE } from './dark-palette';
 
 /**
  * Cynefin / Estuarine rendering — ALWAYS registered, independent of any flag.
@@ -51,6 +53,9 @@ export class CynefinEstuarineRenderViewExtension extends ViewExtensionProvider {
 
   override setup(context: ViewExtensionContext) {
     super.setup(context);
+    context.register(
+      NotationDarkPaletteExtension(CYNEFIN_ESTUARINE_DARK_PALETTE)
+    );
     context.register(CynefinView);
     context.register(CynefinRendererExtension);
     context.register(EstuarineView);

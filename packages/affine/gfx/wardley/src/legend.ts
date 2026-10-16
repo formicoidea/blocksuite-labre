@@ -568,7 +568,7 @@ function gradientExtra(variant: GradientVariant): CommandLegendExtra {
 /* ── Extra 2: Porter's five forces ────────────────────────────────────── */
 
 /** The panel's own numbers. Model units, like every other measure here. */
-const PORTER_PANEL = {
+export const PORTER_PANEL = {
   pad: 12,
   titleFs: 16,
   titleH: 22,

@@ -5,6 +5,7 @@ import {
   ReadingProfileExtension,
   ValidationProfileExtension,
   ValidationRuleExtension,
+  NotationDarkPaletteExtension,
 } from '@labre/affine-block-surface';
 import { FrameworkPaletteExtension } from '@labre/affine-components/color-picker';
 import {
@@ -43,6 +44,7 @@ import {
 } from './toolbar/config';
 import { C4_FRAMEWORK_PALETTE } from './toolbar/palette';
 import { c4SeniorTool } from './toolbar/senior-tool';
+import { C4_DARK_PALETTE } from './dark-palette';
 
 /**
  * C4 rendering — ALWAYS registered, independent of any flag. Boards, boundaries
@@ -60,6 +62,7 @@ export class C4RenderViewExtension extends ViewExtensionProvider {
 
   override setup(context: ViewExtensionContext) {
     super.setup(context);
+    context.register(NotationDarkPaletteExtension(C4_DARK_PALETTE));
     context.register(C4BoardView);
     context.register(C4BoardRendererExtension);
     context.register(C4BoundaryView);

@@ -132,8 +132,6 @@
       "Table View"
     ],
     "packages/affine/blocks/database/src/components/title/index.ts": [
-      "Untitled",
-      "Untitled",
       "true"
     ],
     "packages/affine/blocks/database/src/configs/slash-menu.ts": [
@@ -305,10 +303,6 @@
       "Move Up",
       "Paste"
     ],
-    "packages/affine/data-view/src/core/common/property-menu.ts": [
-      "Property name",
-      "Type"
-    ],
     "packages/affine/data-view/src/core/detail/detail.ts": [
       "Add Property",
       "Add property"
@@ -360,15 +354,6 @@
       "Type a value...",
       "Type a value...",
       "Unchecked"
-    ],
-    "packages/affine/data-view/src/core/group-by/renderer/number-group.ts": [
-      "Ungroups"
-    ],
-    "packages/affine/data-view/src/core/group-by/renderer/select-group.ts": [
-      "Ungroups"
-    ],
-    "packages/affine/data-view/src/core/group-by/renderer/string-group.ts": [
-      "Ungroups"
     ],
     "packages/affine/data-view/src/core/group-by/setting.ts": [
       "Day",
@@ -504,20 +489,11 @@
       "Move To"
     ],
     "packages/affine/data-view/src/view-presets/table/mobile/column-header.ts": [
-      "Delete",
-      "Duplicate",
-      "Hide In View",
-      "Insert Left Column",
-      "Insert Right Column",
-      "Move Left",
-      "Move Right",
       "Number Format",
-      "Number Format",
-      "Property settings"
+      "Number Format"
     ],
     "packages/affine/data-view/src/view-presets/table/mobile/group.ts": [
       "Delete Cards",
-      "New Record",
       "Ungroup"
     ],
     "packages/affine/data-view/src/view-presets/table/mobile/menu.ts": [
@@ -579,7 +555,6 @@
     ],
     "packages/affine/data-view/src/view-presets/table/pc/group.ts": [
       "Delete Cards",
-      "New Record",
       "Ungroup"
     ],
     "packages/affine/data-view/src/view-presets/table/pc/header/database-header-column.ts": [
@@ -624,9 +599,6 @@
       "Filter group",
       "Or"
     ],
-    "packages/affine/data-view/src/widget-presets/quick-setting-bar/filter/list-view.ts": [
-      "${} Add filter"
-    ],
     "packages/affine/data-view/src/widget-presets/quick-setting-bar/filter/root-panel-view.ts": [
       "Add",
       "Delete",
@@ -638,19 +610,7 @@
       "Delete"
     ],
     "packages/affine/data-view/src/widget-presets/tools/presets/search/search.ts": [
-      "Esc",
-      "Search...",
-      "to clear all"
-    ],
-    "packages/affine/data-view/src/widget-presets/tools/presets/table-add-row/add-row.ts": [
-      "New",
-      "New Record"
-    ],
-    "packages/affine/data-view/src/widget-presets/tools/presets/view-options/view-options.ts": [
-      "${} shown",
-      "Sort",
-      "Sort",
-      "View settings"
+      "Esc"
     ],
     "packages/affine/widgets/keyboard-toolbar/src/config.ts": [
       "BulletedList",

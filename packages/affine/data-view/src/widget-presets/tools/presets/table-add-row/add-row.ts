@@ -1,14 +1,28 @@
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { IS_MOBILE } from '@labre/global/env';
 import { ArrowDownSmallIcon, PlusIcon } from '@blocksuite/icons/lit';
+import { type BlockStdScope, stdContext } from '@labre/std';
+import { consume } from '@lit/context';
 import { css, html } from 'lit';
 
+import { wordingOf } from '../../../../core/utils/wording.js';
 import { NewRowMenuOpenerKey } from '../../../../core/view-manager/new-row-menu-opener.js';
 import { WidgetBase } from '../../../../core/widget/widget-base.js';
+import {
+  DATA_VIEW_NEW_RECORD,
+  DATA_VIEW_NEW_RECORD_SHORT,
+} from '../../../../translations.js';
 
 const styles = css`
   .new-record {
     font-weight: 500;
+  }
+
+  /* A finger needs 44px: the host's touch-target floor (P7). */
+  @media (pointer: coarse) {
+    .new-record {
+      min-height: 44px;
+    }
   }
 
   .new-record svg {
@@ -64,6 +78,10 @@ export class DataViewHeaderToolsAddRow extends WidgetBase {
       ?.open(event.currentTarget as HTMLElement, this.view.id);
   };
 
+  /** Absent outside an editor host: the wordings read English. */
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
+
   private get readonly$() {
     return this.view.readonly$;
   }
@@ -76,9 +94,11 @@ export class DataViewHeaderToolsAddRow extends WidgetBase {
       class="affine-database-toolbar-item new-record"
       .onClick="${this.onAddNewRecord}"
       .icon="${PlusIcon()}"
-      .text="${IS_MOBILE
-        ? html`<span style="font-weight: 500">New</span>`
-        : html`<span style="font-weight: 500">New Record</span>`}"
+      .text="${html`<span style="font-weight: 500"
+        >${wordingOf(this.std)(
+          IS_MOBILE ? DATA_VIEW_NEW_RECORD_SHORT : DATA_VIEW_NEW_RECORD
+        )}</span
+      >`}"
     >
     </data-view-component-button>`;
     const opener = this.view.serviceGet(NewRowMenuOpenerKey);

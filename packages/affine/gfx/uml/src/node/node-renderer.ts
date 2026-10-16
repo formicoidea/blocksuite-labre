@@ -743,7 +743,8 @@ export const umlNode: ElementRenderer<UmlNodeElementModel> = (
   const fill = renderer.getColorValue(
     model.fillColor,
     DefaultTheme.shapeFillColor,
-    true
+    true,
+    'fill'
   );
   const strokeWidth = model.strokeWidth || 1;
 

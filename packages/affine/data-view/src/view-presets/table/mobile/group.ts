@@ -25,6 +25,7 @@ import { wordingOf } from '../../../core/utils/wording.js';
 import {
   DATA_VIEW_GROUP_COLLAPSE,
   DATA_VIEW_GROUP_EXPAND,
+  DATA_VIEW_NEW_RECORD,
 } from '../../../translations.js';
 import { getCollapsedState, setCollapsedState } from '../collapsed-state.js';
 import { LEFT_TOOL_BAR_WIDTH } from '../consts.js';
@@ -230,7 +231,9 @@ export class MobileTableGroup extends SignalWatcher(
               data-test-id="affine-database-add-row-button"
               role="button"
             >
-              ${PlusIcon()}<span style="font-size: 12px">New Record</span>
+              ${PlusIcon()}<span style="font-size: 12px"
+                >${wordingOf(this.std)(DATA_VIEW_NEW_RECORD)}</span
+              >
             </div>
           </div>`}
     `;

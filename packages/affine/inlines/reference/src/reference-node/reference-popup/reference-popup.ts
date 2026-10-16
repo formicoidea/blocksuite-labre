@@ -31,7 +31,7 @@ export class ReferencePopup extends SignalWatcher(
       box-sizing: border-box;
     }
 
-    .overlay-mask {
+    reference-popup .overlay-mask {
       position: fixed;
       z-index: var(--affine-z-index-popover);
       top: 0;
@@ -40,8 +40,8 @@ export class ReferencePopup extends SignalWatcher(
       height: 100vh;
     }
 
-    ${panelBaseStyle('.popover-container')}
-    .popover-container {
+    ${panelBaseStyle('reference-popup .popover-container')}
+    reference-popup .popover-container {
       position: absolute;
       display: flex;
       gap: 8px;
@@ -63,7 +63,7 @@ export class ReferencePopup extends SignalWatcher(
       }
     }
 
-    input {
+    reference-popup input {
       display: flex;
       flex: 1;
       padding: 0;
@@ -71,16 +71,16 @@ export class ReferencePopup extends SignalWatcher(
       background: transparent;
       color: var(--affine-text-primary-color);
     }
-    ${fontXSStyle('input')}
-    input::placeholder {
+    ${fontXSStyle('reference-popup input')}
+    reference-popup input::placeholder {
       color: var(--affine-placeholder-color);
     }
-    input:focus {
+    reference-popup input:focus {
       outline: none;
     }
 
-    ${fontXSStyle('editor-icon-button.save .label')}
-    editor-icon-button.save .label {
+    ${fontXSStyle('reference-popup editor-icon-button.save .label')}
+    reference-popup editor-icon-button.save .label {
       color: inherit;
       text-transform: none;
     }

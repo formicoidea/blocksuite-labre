@@ -1,3 +1,4 @@
+import { DOC_UNTITLED, translateKey } from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { stopPropagation } from '@labre/affine-shared/utils';
 import type { DataViewUILogicBase } from '@labre/data-view';
@@ -64,7 +65,7 @@ export class DatabaseTitle extends SignalWatcher(
     }
 
     .affine-database-title [data-title-empty='true']::before {
-      content: 'Untitled';
+      content: attr(data-untitled);
       position: absolute;
       pointer-events: none;
       color: var(--affine-text-primary-color);
@@ -147,12 +148,16 @@ export class DatabaseTitle extends SignalWatcher(
       height: isEmpty ? 'auto' : 0,
       opacity: isEmpty && !this.isFocus$.value ? 1 : 0,
     });
+    const std = this.database?.std;
+    // A base is a page: its empty title is the page's "Untitled" (P7).
+    const untitled = std ? translateKey(std, ...DOC_UNTITLED) : DOC_UNTITLED[1];
     return html` <div
       class="${classList}"
       data-title-empty="${isEmpty}"
       data-title-focus="${this.isFocus$.value}"
+      data-untitled="${untitled}"
     >
-      <div class="text" style="${untitledStyle}">Untitled</div>
+      <div class="text" style="${untitledStyle}">${untitled}</div>
       <div class="text">${this.text$.value}</div>
       <textarea
         .disabled="${this.readonly$.value}"

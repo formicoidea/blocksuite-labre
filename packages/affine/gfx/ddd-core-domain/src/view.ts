@@ -4,6 +4,7 @@ import {
   ReadingProfileExtension,
   ValidationProfileExtension,
   ValidationRuleExtension,
+  NotationDarkPaletteExtension,
 } from '@labre/affine-block-surface';
 import { FrameworkPaletteExtension } from '@labre/affine-components/color-picker';
 import {
@@ -51,6 +52,11 @@ export class DddCoreDomainRenderViewExtension extends ViewExtensionProvider {
 
   override setup(context: ViewExtensionContext) {
     super.setup(context);
+    // Nothing of this notation vanishes on the dark card: it registers an
+    // empty dark palette to say so (ADR 0039, `notation-dark-palettes`).
+    context.register(
+      NotationDarkPaletteExtension({ framework: 'ddd-core-domain', colors: {} })
+    );
     context.register(CoreDomainView);
     context.register(CoreDomainRendererExtension);
     // The role VOCABULARY, always on. A role is written in the document, not in

@@ -3,8 +3,6 @@ import {
   popMenu,
   popupTargetFromElement,
 } from '@labre/affine-components/context-menu';
-import { type BlockStdScope, stdContext } from '@labre/std';
-import { consume } from '@lit/context';
 import { css, html } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 import { styleMap } from 'lit/directives/style-map.js';
@@ -72,10 +70,6 @@ export class SelectGroupView extends BaseGroup<
     });
   };
 
-  /** Absent outside an editor host: the colour names read English. */
-  @consume({ context: stdContext })
-  accessor std!: BlockStdScope;
-
   get tag() {
     return this.data.options?.find(v => v.id === this.value);
   }
@@ -86,7 +80,7 @@ export class SelectGroupView extends BaseGroup<
       return html` <div
         style="font-size: 14px;color: var(--affine-text-primary-color);line-height: 22px;"
       >
-        Ungroups
+        ${this.ungrouped}
       </div>`;
     }
     const style = styleMap({

@@ -9,6 +9,7 @@ import { styleMap } from 'lit/directives/style-map.js';
 import { html } from 'lit/static-html.js';
 
 import { cellDivider } from '../styles.js';
+import { mobileStickyTitle } from './table-view-style.js';
 import type { TableSingleView } from '../table-view-manager.js';
 
 export class MobileTableHeader extends SignalWatcher(
@@ -52,16 +53,24 @@ export class MobileTableHeader extends SignalWatcher(
               width: `${column.width$.value}px`,
               border: index === 0 ? 'none' : undefined,
             });
+            const isTitle =
+              this.tableViewManager.mainProperties$.value.titleColumn ===
+              column.id;
             return html`
-              <mobile-table-column-header
-                style="${style}"
-                data-column-id="${column.id}"
-                data-column-index="${index}"
-                class="mobile-table-cell"
-                .column="${column}"
-                .tableViewManager="${this.tableViewManager}"
-              ></mobile-table-column-header>
-              <div class="${cellDivider}" style="height: auto;"></div>
+              <div
+                class="${isTitle ? mobileStickyTitle : ''}"
+                style="display: flex;"
+              >
+                <mobile-table-column-header
+                  style="${style}"
+                  data-column-id="${column.id}"
+                  data-column-index="${index}"
+                  class="mobile-table-cell"
+                  .column="${column}"
+                  .tableViewManager="${this.tableViewManager}"
+                ></mobile-table-column-header>
+                <div class="${cellDivider}" style="height: auto;"></div>
+              </div>
             `;
           }
         )}

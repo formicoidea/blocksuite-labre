@@ -40,6 +40,11 @@ export const DATABASE_PAGE_HOST_MISSING: ChromeWording = [
 
 /* ── The full page's view-menu commands (labre REQ-DB-10) ───────────── */
 
+/**
+ * "Layout" and "Group" are the view settings' own entries too: declared once
+ * by `@labre/data-view` (`DATA_VIEW_LAYOUT`, `DATA_VIEW_GROUP`), restated
+ * here, so not listed below.
+ */
 export const VIEW_MENU_LAYOUT: ChromeWording = [
   'com.labre.database.view-menu.layout',
   'Layout',
@@ -165,9 +170,7 @@ const DATABASE_EDITOR_WORDINGS: readonly ChromeWording[] = [
   PROPERTIES_PANEL_UNAVAILABLE,
   SLASH_LINKED_VIEW,
   SLASH_LINKED_VIEW_DESCRIPTION,
-  VIEW_MENU_GROUP,
   VIEW_MENU_IMPORT,
-  VIEW_MENU_LAYOUT,
 ];
 
 /**

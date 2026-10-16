@@ -812,7 +812,7 @@ const textStyleToolItems: KeyboardToolbarItem[] = [
     icon: BoldIcon(),
     background: ({ std }) => {
       const [_, { textAttributes }] = std.command.exec(getTextAttributes);
-      return textAttributes?.bold ? '#00000012' : '';
+      return textAttributes?.bold ? 'var(--affine-hover-color)' : '';
     },
     action: ({ std }) => {
       std.command.exec(toggleBold);
@@ -823,7 +823,7 @@ const textStyleToolItems: KeyboardToolbarItem[] = [
     icon: ItalicIcon(),
     background: ({ std }) => {
       const [_, { textAttributes }] = std.command.exec(getTextAttributes);
-      return textAttributes?.italic ? '#00000012' : '';
+      return textAttributes?.italic ? 'var(--affine-hover-color)' : '';
     },
     action: ({ std }) => {
       std.command.exec(toggleItalic);
@@ -834,7 +834,7 @@ const textStyleToolItems: KeyboardToolbarItem[] = [
     icon: UnderLineIcon(),
     background: ({ std }) => {
       const [_, { textAttributes }] = std.command.exec(getTextAttributes);
-      return textAttributes?.underline ? '#00000012' : '';
+      return textAttributes?.underline ? 'var(--affine-hover-color)' : '';
     },
     action: ({ std }) => {
       std.command.exec(toggleUnderline);
@@ -845,7 +845,7 @@ const textStyleToolItems: KeyboardToolbarItem[] = [
     icon: StrikeThroughIcon(),
     background: ({ std }) => {
       const [_, { textAttributes }] = std.command.exec(getTextAttributes);
-      return textAttributes?.strike ? '#00000012' : '';
+      return textAttributes?.strike ? 'var(--affine-hover-color)' : '';
     },
     action: ({ std }) => {
       std.command.exec(toggleStrike);
@@ -856,7 +856,7 @@ const textStyleToolItems: KeyboardToolbarItem[] = [
     icon: CodeIcon(),
     background: ({ std }) => {
       const [_, { textAttributes }] = std.command.exec(getTextAttributes);
-      return textAttributes?.code ? '#00000012' : '';
+      return textAttributes?.code ? 'var(--affine-hover-color)' : '';
     },
     action: ({ std }) => {
       std.command.exec(toggleCode);
@@ -867,7 +867,7 @@ const textStyleToolItems: KeyboardToolbarItem[] = [
     icon: LinkIcon(),
     background: ({ std }) => {
       const [_, { textAttributes }] = std.command.exec(getTextAttributes);
-      return textAttributes?.link ? '#00000012' : '';
+      return textAttributes?.link ? 'var(--affine-hover-color)' : '';
     },
     action: ({ std }) => {
       std.command.exec(toggleLink);

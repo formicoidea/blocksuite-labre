@@ -25,6 +25,7 @@ import type { TableViewSelectionWithType } from '../selection';
 import type { TableSingleView } from '../table-view-manager.js';
 import {
   mobileTableViewContainer,
+  mobileTableViewHost,
   mobileTableViewWrapper,
 } from './table-view-style.js';
 
@@ -102,7 +103,7 @@ export class MobileTableViewUI extends DataViewUIBase<MobileTableViewUILogic> {
   override connectedCallback(): void {
     super.connectedCallback();
     this.logic.ui$.value = this;
-    this.classList.add(mobileTableViewWrapper);
+    this.classList.add(mobileTableViewHost);
   }
 
   private renderTable() {

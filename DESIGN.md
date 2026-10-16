@@ -227,7 +227,7 @@ Greys that carry a meaning are not neutrals and stay put: C4 external elements (
 
 **The Borrowed Blue Rule.** The accent `#1E96EB` is AFFiNE's, not Labre's, and it is due to be replaced. Always reach it through a token (`cssVarV2('button/primary')`, `var(--affine-primary-color)`), never as a literal hex, so the re-skin is a token change. On the canvas, where a `CanvasRenderingContext2D` cannot take a `var(…)`, resolve the token through `getChromeAccentColor(std)` instead. Enforced by `brand-hex.unit.spec.ts` (`packages/affine/all`), which fails on any literal spelling of the accent outside its one justified exception, the standalone HTML export's stylesheet. Don't give it any new brand meaning in the meantime. The accent's value belongs to the host's theme, not to the library: the library holds only the token, and a host sets the value by substituting the `@toeverything/theme` package with its own (`docs/integrate/04-host-seams.md`, Theme). A host that substitutes nothing paints upstream's blue.
 
-**The Standard-Fidelity Rule.** A framework's notation hues, and any neutral its standard or stencil prescribes, match that source exactly and never follow the app theme, dark mode included. A diagram looks the same in every theme, export and host. If a prescribed colour differs from the published standard, that is a bug.
+**The Standard-Fidelity Rule.** A framework's notation hues match their source exactly and never follow the app theme, dark mode included. If a prescribed colour differs from the published standard, that is a bug. On a dark canvas only the paper and the inks drawn straight on it invert, at render time, through `NOTATION_NEUTRALS_DARK` and the framework's `NotationDarkPaletteExtension`; a stored colour is never rewritten, and the SVG export always paints light (ADR 0039).
 
 **The Wardley Neutrals Rule.** Every neutral a standard doesn't prescribe (inks, greys, borders, card fills, bands) comes from `NOTATION_NEUTRALS`, whose reference is the Wardley map. Don't write a neutral hex in a framework module. A new framework picks its neutrals from the scale and brings only its hues.
 
@@ -369,7 +369,8 @@ The white card that frames a framework's canvas: Card fill and Card Border from 
 ### Don't:
 
 - **Don't** hardcode `#1E96EB` (or any chrome hex). The accent is inherited and due to be replaced, and a literal would block the re-skin.
-- **Don't** make a framework notation follow the app theme or dark mode. Standard fidelity comes first.
+- **Don't** make a framework's hues follow the app theme or dark mode. Standard fidelity comes first; only the paper and its inks invert (ADR 0039).
+- **Don't** write a dark colour into a document, and don't hard-code a raw colour in the chrome: reach it through a token (`chrome-colours.unit.spec.ts`).
 - **Don't** use a notation hue (EDGY green, C4 blue, BPMN red) in the chrome, and don't use the chrome accent inside a notation.
 - **Don't** let the editor toolbar wrap onto a second row or squeeze entries. Overflow goes into the "⋮" menu.
 - **Don't** add a display typeface or a second sans. Inter plus the two mono families is the full set.
@@ -380,4 +381,4 @@ The white card that frames a framework's canvas: Card fill and Card Border from 
 ### Deferred (known, not yet addressed)
 
 - **Accessibility**: secondary text `#8E8D91` on white is about 3.3:1, below AA. White EDGY pictos on the green, cyan and orange facets fall below 3:1. Errors and warnings share one red.
-- **Dark mode on the canvas**: framework boards stay white cards on the dark ground. This follows from the fidelity rules but has not been designed as such.
+- **Dark mode on the canvas, two gaps** (ADR 0039): the experimental DOM renderer paints the light values, and an element a template inserts with no role outside a board is painted as stored.
