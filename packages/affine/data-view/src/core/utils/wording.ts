@@ -1,10 +1,19 @@
 import {
   type ChromeWording,
+  fillPlaceholders,
+  type TranslationParams,
   translateKey,
 } from '@labre/affine-shared/services';
 import type { BlockStdScope } from '@labre/std';
 
-export type Wording = (wording: ChromeWording) => string;
+/**
+ * `params` fills `{{name}}` placeholders; the host pluralises on `count`, the
+ * English fallback stays neutral.
+ */
+export type Wording = (
+  wording: ChromeWording,
+  params?: TranslationParams
+) => string;
 
 /**
  * Resolve the data-view's wordings through the translation seam when an
@@ -14,7 +23,10 @@ export type Wording = (wording: ChromeWording) => string;
  */
 export const wordingOf =
   (std: BlockStdScope | undefined): Wording =>
-  ([key, fallback]) =>
-    std ? translateKey(std, key, fallback) : fallback;
+  ([key, fallback], params) =>
+    std
+      ? translateKey(std, key, fallback, params)
+      : fillPlaceholders(fallback, params);
 
-export const englishWording: Wording = ([, fallback]) => fallback;
+export const englishWording: Wording = ([, fallback], params) =>
+  fillPlaceholders(fallback, params);

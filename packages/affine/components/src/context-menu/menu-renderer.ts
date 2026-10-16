@@ -20,7 +20,7 @@ import {
   type ReferenceElement,
   shift,
 } from '@floating-ui/dom';
-import { consume } from '@lit/context';
+import { consume, ContextEvent, ContextProvider } from '@lit/context';
 import { css, html, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
 import { createRef, ref } from 'lit/directives/ref.js';
@@ -421,6 +421,8 @@ export type PopupTarget = {
   targetRect: ReferenceElement;
   root: HTMLElement;
   popupStart: () => () => void;
+  /** The element the popup opens from, when there is one. */
+  element?: HTMLElement;
 };
 export const popupTargetFromElement = (element: HTMLElement): PopupTarget => {
   let rect = element.getBoundingClientRect();
@@ -436,6 +438,7 @@ export const popupTargetFromElement = (element: HTMLElement): PopupTarget => {
       },
     },
     root: getDefaultModalRoot(element),
+    element,
     popupStart: () => {
       if (!count) {
         isActive = element.classList.contains('active');
@@ -512,8 +515,32 @@ export type MenuHandler = {
   reopen: () => void;
 };
 
-const popMobileMenu = (options: MenuOptions): MenuHandler => {
+/** The editor an element sits in, asked the way a `@consume` asks. */
+const stdAround = (element: HTMLElement | undefined) => {
+  let std: BlockStdScope | undefined;
+  element?.dispatchEvent(
+    new ContextEvent(stdContext, element, value => {
+      std = value;
+    })
+  );
+  return std;
+};
+
+/**
+ * A phone's sheet hangs from the body, out of the editor's DOM, where nothing
+ * provides `std`: its modal provides the editor of the element it opens from,
+ * so the sheet's "Done" and whatever it renders speak the host's catalogue,
+ * and a sub-menu opened from it finds the same editor again.
+ */
+const popMobileMenu = (
+  options: MenuOptions,
+  target?: PopupTarget
+): MenuHandler => {
   const model = createModal(document.body);
+  const std = stdAround(target?.element);
+  if (std) {
+    new ContextProvider(model, { context: stdContext, initialValue: std });
+  }
   model.style.position = 'fixed';
   model.style.background = 'var(--affine-v2-layer-background-mobile-modal)';
   model.addEventListener('click', e => {
@@ -537,7 +564,7 @@ const popMobileMenu = (options: MenuOptions): MenuHandler => {
     menu,
     reopen: () => {
       menu.close();
-      popMobileMenu(options);
+      popMobileMenu(options, target);
     },
   };
 };
@@ -551,7 +578,7 @@ export const popMenu = (
   }
 ): MenuHandler => {
   if (IS_MOBILE) {
-    return popMobileMenu(props.options);
+    return popMobileMenu(props.options, target);
   }
   const popupEnd = target.popupStart();
   const onClose = () => {

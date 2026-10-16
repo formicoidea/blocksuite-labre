@@ -5,6 +5,10 @@ import {
   type PopupTarget,
   popupTargetFromElement,
 } from '@labre/affine-components/context-menu';
+import {
+  TOOLBAR_DELETE,
+  TOOLBAR_DUPLICATE,
+} from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import {
   ArrowRightSmallIcon,
@@ -43,9 +47,20 @@ import { popFilterRoot } from '../../../quick-setting-bar/filter/root-panel-view
 import { popSortRoot } from '../../../quick-setting-bar/sort/root-panel.js';
 import {
   DATA_VIEW_COLOR_RULES,
+  DATA_VIEW_FILTER,
+  DATA_VIEW_FILTER_COUNT,
+  DATA_VIEW_GROUP,
+  DATA_VIEW_LAYOUT,
   DATA_VIEW_OPEN_IN,
+  DATA_VIEW_PROPERTIES,
+  DATA_VIEW_PROPERTIES_SHOWN,
+  DATA_VIEW_SORT,
+  DATA_VIEW_SORT_COUNT,
+  DATA_VIEW_VIEW_SETTINGS,
+  VIEWS_BAR_VIEW_NAME,
 } from '../../../../translations.js';
 import { viewColorRules } from '../../../../core/view/color-rules.js';
+import { viewPresetName } from '../../../../core/view/default-name.js';
 import {
   openInCurrent,
   openInOptions,
@@ -177,10 +192,12 @@ const createSettingMenus = (
   const settingItems: MenuConfig[] = [];
   settingItems.push(
     menu.action({
-      name: 'Properties',
+      name: wording(DATA_VIEW_PROPERTIES),
       prefix: InfoIcon(),
       postfix: html` <div style="font-size: 14px;">
-          ${view.properties$.value.length} shown
+          ${wording(DATA_VIEW_PROPERTIES_SHOWN, {
+            count: view.properties$.value.length,
+          })}
         </div>
         ${ArrowRightSmallIcon()}`,
       select: () => {
@@ -193,14 +210,12 @@ const createSettingMenus = (
     const filterCount = filterTrait.filter$.value.conditions.length;
     settingItems.push(
       menu.action({
-        name: 'Filter',
+        name: wording(DATA_VIEW_FILTER),
         prefix: FilterIcon(),
         postfix: html` <div style="font-size: 14px;">
             ${filterCount === 0
               ? ''
-              : filterCount === 1
-                ? '1 filter'
-                : `${filterCount} filters`}
+              : wording(DATA_VIEW_FILTER_COUNT, { count: filterCount })}
           </div>
           ${ArrowRightSmallIcon()}`,
         select: () => {
@@ -237,14 +252,12 @@ const createSettingMenus = (
     const sortCount = sortTrait.sortList$.value.length;
     settingItems.push(
       menu.action({
-        name: 'Sort',
+        name: wording(DATA_VIEW_SORT),
         prefix: SortIcon(),
         postfix: html` <div style="font-size: 14px;">
             ${sortCount === 0
               ? ''
-              : sortCount === 1
-                ? '1 sort'
-                : `${sortCount} sorts`}
+              : wording(DATA_VIEW_SORT_COUNT, { count: sortCount })}
           </div>
           ${ArrowRightSmallIcon()}`,
         select: () => {
@@ -262,7 +275,7 @@ const createSettingMenus = (
             popSortRoot(target, {
               sortUtils: sortUtils,
               title: {
-                text: 'Sort',
+                text: wording(DATA_VIEW_SORT),
                 onBack: reopen,
               },
             });
@@ -275,7 +288,7 @@ const createSettingMenus = (
   if (groupTrait) {
     settingItems.push(
       menu.action({
-        name: 'Group',
+        name: wording(DATA_VIEW_GROUP),
         prefix: GroupingIcon(),
         postfix: html` <div style="font-size: 14px;">
             ${groupTrait.property$.value?.name$.value ?? ''}
@@ -324,11 +337,14 @@ export const popViewOptions = (
   const reopen = () => {
     popViewOptions(target, dataViewLogic, undefined, wording);
   };
+  const currentLayout = view.manager.viewMetas.find(
+    meta => meta.type === view.type
+  );
   const items: MenuConfig[] = [];
   items.push(
     menu.input({
       initialValue: view.name$.value,
-      placeholder: 'View name',
+      placeholder: wording(VIEWS_BAR_VIEW_NAME),
       onChange: text => {
         view.nameSet(text);
       },
@@ -338,11 +354,9 @@ export const popViewOptions = (
     menu.group({
       items: [
         menu.action({
-          name: 'Layout',
-          postfix: html` <div
-              style="font-size: 14px;text-transform: capitalize;"
-            >
-              ${view.type}
+          name: wording(DATA_VIEW_LAYOUT),
+          postfix: html` <div style="font-size: 14px;">
+              ${currentLayout ? viewPresetName(currentLayout, wording) : ''}
             </div>
             ${ArrowRightSmallIcon()}`,
           select: () => {
@@ -363,14 +377,14 @@ export const popViewOptions = (
     menu.group({
       items: [
         menu.action({
-          name: 'Duplicate',
+          name: wording(TOOLBAR_DUPLICATE),
           prefix: DuplicateIcon(),
           select: () => {
             view.duplicate();
           },
         }),
         menu.action({
-          name: 'Delete',
+          name: wording(TOOLBAR_DELETE),
           prefix: DeleteIcon(),
           select: () => {
             view.delete();
@@ -383,7 +397,7 @@ export const popViewOptions = (
   popMenu(target, {
     options: {
       title: {
-        text: 'View settings',
+        text: wording(DATA_VIEW_VIEW_SETTINGS),
       },
       items,
       onClose: onClose,

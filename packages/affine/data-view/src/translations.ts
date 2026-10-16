@@ -301,6 +301,93 @@ export const DATA_VIEW_SEARCH_CLEAR_HINT: ChromeWording = [
   'to clear all',
 ];
 
+/* ── The view settings and a property's settings (P7, phone sheets) ──── */
+
+/** The title of the view's settings (its "..." button). */
+export const DATA_VIEW_VIEW_SETTINGS: ChromeWording = [
+  'com.labre.data-view.view-settings',
+  'View settings',
+];
+
+/**
+ * The view settings' entries. "Layout" and "Group" are the full page's
+ * "This view" entries for the same settings (`VIEW_MENU_LAYOUT`,
+ * `VIEW_MENU_GROUP` in `@labre/core-database`): one chrome word, one key,
+ * declared here because core draws them too.
+ */
+export const DATA_VIEW_LAYOUT: ChromeWording = [
+  'com.labre.database.view-menu.layout',
+  'Layout',
+];
+
+export const DATA_VIEW_GROUP: ChromeWording = [
+  'com.labre.database.view-menu.group',
+  'Group',
+];
+
+/**
+ * The selection pane's "Filter" (`@labre/affine-widget-edgeless-toolbar`):
+ * one chrome word, one key, declared there, so not listed below.
+ */
+export const DATA_VIEW_FILTER: ChromeWording = [
+  'com.labre.selection-pane.filter',
+  'Filter',
+];
+
+export const DATA_VIEW_SORT: ChromeWording = [
+  'com.labre.data-view.sort',
+  'Sort',
+];
+
+/** Beside "Properties": how many the view shows (`count`). */
+export const DATA_VIEW_PROPERTIES_SHOWN: ChromeWording = [
+  'com.labre.data-view.properties.shown',
+  '{{count}} shown',
+];
+
+/** Beside "Filter" and "Sort": how many the view has (`count`, 1 or more). */
+export const DATA_VIEW_FILTER_COUNT: ChromeWording = [
+  'com.labre.data-view.filter.count',
+  '{{count}} filter(s)',
+];
+
+export const DATA_VIEW_SORT_COUNT: ChromeWording = [
+  'com.labre.data-view.sort.count',
+  '{{count}} sort(s)',
+];
+
+/** The title of a property's menu on a phone (its column header). */
+export const DATA_VIEW_PROPERTY_SETTINGS: ChromeWording = [
+  'com.labre.data-view.property.settings',
+  'Property settings',
+];
+
+/** A property's menu: the name field's placeholder. */
+export const DATA_VIEW_PROPERTY_NAME: ChromeWording = [
+  'com.labre.data-view.property.name',
+  'Property name',
+];
+
+/** A property's menu: the entry opening the type picker. */
+export const DATA_VIEW_PROPERTY_TYPE_ENTRY: ChromeWording = [
+  'com.labre.data-view.property.type-entry',
+  'Type',
+];
+
+/**
+ * The table header's menu: a new property beside this one. Its "Move left"
+ * and "Move right" are the views bar's (`VIEWS_BAR_MOVE_LEFT`, `…_RIGHT`).
+ */
+export const DATA_VIEW_INSERT_LEFT: ChromeWording = [
+  'com.labre.data-view.property.insert-left',
+  'Insert left column',
+];
+
+export const DATA_VIEW_INSERT_RIGHT: ChromeWording = [
+  'com.labre.data-view.property.insert-right',
+  'Insert right column',
+];
+
 /** Walked by `PACKAGE_WORDINGS` in `packages/affine/all/src/translations.ts`. */
 export const DATA_VIEW_WORDINGS: readonly ChromeWording[] = [
   VIEW_SHOWN_AS_TABLE,
@@ -347,4 +434,16 @@ export const DATA_VIEW_WORDINGS: readonly ChromeWording[] = [
   DATA_VIEW_NEW_PROPERTY,
   DATA_VIEW_PROPERTY_TYPE,
   DATA_VIEW_PROPERTY_HIDE_IN_VIEW,
+  DATA_VIEW_VIEW_SETTINGS,
+  DATA_VIEW_LAYOUT,
+  DATA_VIEW_GROUP,
+  DATA_VIEW_SORT,
+  DATA_VIEW_PROPERTIES_SHOWN,
+  DATA_VIEW_FILTER_COUNT,
+  DATA_VIEW_SORT_COUNT,
+  DATA_VIEW_PROPERTY_SETTINGS,
+  DATA_VIEW_PROPERTY_NAME,
+  DATA_VIEW_PROPERTY_TYPE_ENTRY,
+  DATA_VIEW_INSERT_LEFT,
+  DATA_VIEW_INSERT_RIGHT,
 ];

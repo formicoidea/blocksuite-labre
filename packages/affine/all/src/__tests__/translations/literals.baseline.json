@@ -303,10 +303,6 @@
       "Move Up",
       "Paste"
     ],
-    "packages/affine/data-view/src/core/common/property-menu.ts": [
-      "Property name",
-      "Type"
-    ],
     "packages/affine/data-view/src/core/detail/detail.ts": [
       "Add Property",
       "Add property"
@@ -493,16 +489,8 @@
       "Move To"
     ],
     "packages/affine/data-view/src/view-presets/table/mobile/column-header.ts": [
-      "Delete",
-      "Duplicate",
-      "Hide In View",
-      "Insert Left Column",
-      "Insert Right Column",
-      "Move Left",
-      "Move Right",
       "Number Format",
-      "Number Format",
-      "Property settings"
+      "Number Format"
     ],
     "packages/affine/data-view/src/view-presets/table/mobile/group.ts": [
       "Delete Cards",
@@ -623,12 +611,6 @@
     ],
     "packages/affine/data-view/src/widget-presets/tools/presets/search/search.ts": [
       "Esc"
-    ],
-    "packages/affine/data-view/src/widget-presets/tools/presets/view-options/view-options.ts": [
-      "${} shown",
-      "Sort",
-      "Sort",
-      "View settings"
     ],
     "packages/affine/widgets/keyboard-toolbar/src/config.ts": [
       "BulletedList",
