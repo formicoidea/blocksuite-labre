@@ -43,6 +43,7 @@ One file per decision. Format and lifecycle in
 | [0036](0036-database-view-conditional-colors.md)               | Conditional colours of a view        | accepted                  | One optional `colorRules` on a view: filter conditions, the options' palette, first match wins; painted in core.                                                                    |
 | [0037](0037-image-crop-is-a-view.md)                           | Image crop is a view                 | accepted                  | One optional `crop` (normalised rectangle + preset token) on `affine:image`; the bytes never change; a 0.49 client shows the whole image.                                           |
 | [0038](0038-thread-marks-seam.md)                              | "Has a thread" seam                  | accepted, amended         | `ThreadMarksExtension({ marks$, openThread })`: a mark on what the host says has a thread, "Discuss" on every toolbar; ids and counts in, an excerpt out; nothing written.          |
+| [0039](0039-dark-notation-palette.md)                          | Dark notation palette                | accepted                  | On a dark canvas, notation colours resolve through a dark table at paint time; hues stay, the paper and inks invert; SVG export stays light; nothing stored changes.                |
 
 Related documents that are not ADRs:
 

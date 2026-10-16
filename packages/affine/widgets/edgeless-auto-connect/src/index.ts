@@ -124,7 +124,7 @@ export class EdgelessAutoConnectWidget extends WidgetComponent<RootBlockModel> {
     .page-visible-index-label {
       box-sizing: border-box;
       padding: 0px 6px;
-      border: 1px solid #0000001a;
+      border: 1px solid var(--affine-black-10);
 
       width: fit-content;
       height: 24px;
@@ -146,9 +146,9 @@ export class EdgelessAutoConnectWidget extends WidgetComponent<RootBlockModel> {
       width: 48px;
       padding: 4px;
       border-radius: 58px;
-      border: 1px solid rgba(227, 226, 228, 1);
+      border: 1px solid var(--affine-border-color);
       transition: opacity 0.5s ease-in-out;
-      background: rgba(251, 251, 252, 1);
+      background: var(--affine-background-overlay-panel-color);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -164,7 +164,7 @@ export class EdgelessAutoConnectWidget extends WidgetComponent<RootBlockModel> {
     .navigator span {
       display: inline-block;
       height: 8px;
-      border: 1px solid rgba(227, 226, 228, 1);
+      border: 1px solid var(--affine-border-color);
     }
 
     .navigator div:hover {
@@ -410,7 +410,7 @@ export class EdgelessAutoConnectWidget extends WidgetComponent<RootBlockModel> {
     const iconStyle = {
       width: '16px',
       height: '16px',
-      style: 'color:#77757D;',
+      style: 'color:var(--affine-icon-color);',
     };
 
     return html`<div class=${className} style=${navigatorStyle}>

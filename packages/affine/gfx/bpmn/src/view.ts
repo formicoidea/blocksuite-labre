@@ -5,6 +5,7 @@ import {
   ReadingProfileExtension,
   ValidationProfileExtension,
   ValidationRuleExtension,
+  NotationDarkPaletteExtension,
 } from '@labre/affine-block-surface';
 import { FrameworkPaletteExtension } from '@labre/affine-components/color-picker';
 import {
@@ -52,6 +53,11 @@ export class BpmnRenderViewExtension extends ViewExtensionProvider {
 
   override setup(context: ViewExtensionContext) {
     super.setup(context);
+    // Nothing of this notation vanishes on the dark card: it registers an
+    // empty dark palette to say so (ADR 0039, `notation-dark-palettes`).
+    context.register(
+      NotationDarkPaletteExtension({ framework: 'bpmn', colors: {} })
+    );
     context.register(BpmnPoolView);
     context.register(BpmnPoolRendererExtension);
     context.register(BpmnNodeView);

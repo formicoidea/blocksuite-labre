@@ -396,7 +396,8 @@ export const c4Node: ElementRenderer<C4NodeElementModel> = (
   const fill = renderer.getColorValue(
     model.fillColor,
     DefaultTheme.shapeFillColor,
-    true
+    true,
+    'fill'
   );
   const strokeWidth = model.strokeWidth || 1;
 

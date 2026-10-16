@@ -77,7 +77,7 @@ export const COLOR_PICKER_STYLE = css`
     box-sizing: border-box;
 
     font-weight: 400;
-    color: #8e8d91;
+    color: var(--affine-text-secondary-color);
   }
   .modes .mode.light button {
     background: white;

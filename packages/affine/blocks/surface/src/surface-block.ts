@@ -1,4 +1,4 @@
-import type { Color } from '@labre/affine-model';
+import type { Color, ColorScheme } from '@labre/affine-model';
 import {
   FeatureFlagService,
   ThemeProvider,
@@ -167,18 +167,23 @@ export class SurfaceBlockComponent extends BlockComponent<SurfaceBlockModel> {
             fallback,
             themeService.edgelessTheme
           ),
-        getColorValue: (color: Color, fallback?: Color, real?: boolean) =>
+        getColorValue: (
+          color: Color,
+          fallback?: Color,
+          real?: boolean,
+          theme?: ColorScheme
+        ) =>
           themeService.getColorValue(
             color,
             fallback,
             real,
-            themeService.edgelessTheme
+            theme ?? themeService.edgelessTheme
           ),
         getColorScheme: () => themeService.edgelessTheme,
-        getPropertyValue: (property: string) =>
+        getPropertyValue: (property: string, theme?: ColorScheme) =>
           themeService.getCssVariableColor(
             property,
-            themeService.edgelessTheme
+            theme ?? themeService.edgelessTheme
           ),
         selectedElements: () => gfx.selection.selectedIds,
       },

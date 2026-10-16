@@ -1,6 +1,7 @@
 import {
   type ElementRenderer,
   ElementRendererExtension,
+  notationColor,
 } from '@labre/affine-block-surface';
 import { shape as shapeRenderer } from '@labre/affine-gfx-shape';
 import {
@@ -103,7 +104,7 @@ export const wardleyNode: ElementRenderer<WardleyNodeElementModel> = (
   // ── Method: a white component inscribed in the colored outer circle ──
   if (model.kind === 'method') {
     const rInner = R * METHOD.centerRatio;
-    ctx.fillStyle = NODE_FILL;
+    ctx.fillStyle = notationColor(renderer, NODE_FILL, 'fill');
     ctx.lineWidth = strokeWidth;
     ctx.strokeStyle = color;
     ctx.beginPath();

@@ -1,6 +1,7 @@
 import {
   type ElementRenderer,
   ElementRendererExtension,
+  notationColor,
   taggedPath2D,
 } from '@labre/affine-block-surface';
 import type { EstuarineElementModel } from '@labre/affine-model';
@@ -225,6 +226,9 @@ export const estuarine: ElementRenderer<EstuarineElementModel> = (
 ) => {
   const tr = (wording: ChromeWording): string =>
     renderer ? translateKey(renderer.std, ...wording) : wording[1];
+  // The official SVG's inks, through the dark notation table on a dark
+  // canvas (ADR 0039).
+  const ink = (color: string) => notationColor(renderer, color);
   const [, , w, h] = model.deserializedXYWH;
   const cx = w / 2;
   const cy = h / 2;
@@ -248,8 +252,8 @@ export const estuarine: ElementRenderer<EstuarineElementModel> = (
   // Drawn in element coordinates so the e axis spans the real height and the
   // t axis the real width, while `lineWidth` stays one honest thickness
   // instead of being fattened in whichever direction the map was pulled.
-  ctx.strokeStyle = COLORS.axis;
-  ctx.fillStyle = COLORS.axis;
+  ctx.strokeStyle = ink(COLORS.axis);
+  ctx.fillStyle = ink(COLORS.axis);
   ctx.lineWidth = AXIS_WIDTH * fit.strokeScale;
   ctx.beginPath();
   ctx.moveTo(ax(E_AXIS.x), ay(E_AXIS.y1));
@@ -289,7 +293,7 @@ export const estuarine: ElementRenderer<EstuarineElementModel> = (
   const hasSpacing = 'letterSpacing' in ctx;
   const legend = (key: EstuarineLegendKey) => {
     const l = LABELS[key];
-    ctx.fillStyle = l.color;
+    ctx.fillStyle = ink(l.color);
     ctx.font = `600 ${l.size * fit.strokeScale}px ${FONT_FAMILY}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
@@ -310,7 +314,7 @@ export const estuarine: ElementRenderer<EstuarineElementModel> = (
     if (!model[curve.visibleProp]) continue;
     ctx.save();
     applyEstuarineTransform(ctx, w, h);
-    ctx.strokeStyle = curve.color;
+    ctx.strokeStyle = ink(curve.color);
     ctx.lineWidth = curve.width * fit.curveLineScale;
     ctx.globalAlpha = GHOST_ALPHA;
     ctx.setLineDash([...GHOST_DASH]);
@@ -325,7 +329,7 @@ export const estuarine: ElementRenderer<EstuarineElementModel> = (
   // writes as `backgroundPoint`. The glyph and the gap then scale together, so
   // the letter sits the same distance from its axis at every ratio.
   if (model.showAxisLabels) {
-    ctx.fillStyle = COLORS.axisLabel;
+    ctx.fillStyle = ink(COLORS.axisLabel);
     ctx.font = `italic 700 ${AXIS_LABELS.size * k}px Georgia, serif`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';

@@ -56,15 +56,18 @@ export const shape: ElementRenderer<ShapeElementModel> = (
   renderer,
   rc
 ) => {
-  const color = renderer.getColorValue(
-    model.color,
-    DefaultTheme.shapeTextColor,
-    true
-  );
+  // A notation body is a surface: on a dark canvas a white one inverts with
+  // the paper, and the words on it follow their paper (ADR 0039).
   const fillColor = renderer.getColorValue(
     model.fillColor,
     DefaultTheme.shapeFillColor,
-    true
+    true,
+    'fill'
+  );
+  const color = renderer.getInkColorValue(
+    model.color,
+    DefaultTheme.shapeTextColor,
+    model.filled ? model.fillColor : null
   );
   const strokeColor = renderer.getColorValue(
     model.strokeColor,

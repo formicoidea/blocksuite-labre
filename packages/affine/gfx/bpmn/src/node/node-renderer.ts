@@ -265,7 +265,8 @@ export const bpmnNode: ElementRenderer<BpmnNodeElementModel> = (
   const fill = renderer.getColorValue(
     model.fillColor,
     DefaultTheme.shapeFillColor,
-    true
+    true,
+    'fill'
   );
   const half = strokeWidth / 2;
   const x0 = half;

@@ -466,6 +466,18 @@ of 2026-10-14), which is why it registers in both scopes. Enforced by
 `framework-palettes-gating.unit.spec.ts` (`packages/affine/all`), which pins
 the palettes present with the flags on and their absence with them off.
 
+**R39. Every framework registers its dark palette from its ALWAYS-ON render
+extension.** One `NotationDarkPaletteExtension({ framework, colors, kept? })`
+in `…RenderViewExtension.setup()`: the light values of its own that would
+vanish on the dark card (a stencil ink, a near-black label, a pale wash) mapped
+to their dark twins, and in `kept` the swatches that read below 3:1 on the dark
+card and stay because they are the standard's. Hues are never mapped; the
+shared neutrals are mapped once, by the scale. A framework with nothing to map
+registers `colors: {}`. The colours are resolved at paint time and never stored
+(ADR [0039](../adr/0039-dark-notation-palette.md)). Enforced by
+`notation-dark-palettes.unit.spec.ts` (`packages/affine/all`), which paints
+every board in light and in dark and compares their contrast.
+
 ## Identity: one framework is one drawing
 
 **R35. A framework is one drawing.** Split into several frameworks when the

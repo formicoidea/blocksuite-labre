@@ -164,8 +164,8 @@ export class EdgelessAutoComplete extends WithDisposable(LitElement) {
     }
 
     .edgeless-auto-complete-arrow svg {
-      fill: #77757d;
-      color: #77757d;
+      fill: var(--affine-icon-color);
+      color: var(--affine-icon-color);
     }
     .edgeless-auto-complete-arrow:hover svg {
       fill: #ffffff;
