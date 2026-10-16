@@ -35,7 +35,7 @@ const editLinkStyle = css`
   .affine-link-edit-popover input::placeholder {
     color: var(--affine-placeholder-color);
   }
-  input:focus {
+  link-popup input:focus {
     outline: none;
   }
   .affine-link-edit-popover input:focus ~ label,
