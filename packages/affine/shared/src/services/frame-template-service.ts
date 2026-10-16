@@ -67,6 +67,10 @@ export interface FrameTemplateFrameRef {
  *   your id for the template: link what the copy references (its images) to
  *   that document. Not called when the insertion failed.
  *
+ * - `showTemplates` (since 0.54) is called by the « View » action of the
+ *   notification that says a save succeeded: open the place where the viewer
+ *   finds the saved template. Absent, that notification has no action.
+ *
  * Both notifications may come twice for one gesture (two editors mounted on
  * one document): make them idempotent.
  */
@@ -76,6 +80,7 @@ export interface FrameTemplateService {
   frameDeleted?(frame: FrameTemplateFrameRef): void;
   frameRestored?(frame: FrameTemplateFrameRef): void;
   frameInserted?(insertion: FrameTemplateInsertion): void;
+  showTemplates?(): void;
 }
 
 export const FrameTemplateProvider = createIdentifier<FrameTemplateService>(
