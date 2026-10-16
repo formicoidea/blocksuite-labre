@@ -79,6 +79,13 @@ export const FRAME_TOAST_TEMPLATE_SAVE_FAILED: ChromeWording = [
   'The frame could not be saved as a template',
 ];
 
+/** The success notification's action, when the host can show its templates
+ *  (`FrameTemplateService.showTemplates`). */
+export const FRAME_TOAST_TEMPLATE_VIEW: ChromeWording = [
+  'com.labre.frame.toast.template-view',
+  'View',
+];
+
 export const FRAME_TOOLBAR_BACKGROUND: ChromeWording = [
   'com.labre.frame.toolbar.background',
   'Background',
@@ -163,6 +170,7 @@ export const FRAME_CHROME_WORDINGS: readonly ChromeWording[] = [
   FRAME_TOOLBAR_BACKGROUND,
   FRAME_TOAST_TEMPLATE_SAVED,
   FRAME_TOAST_TEMPLATE_SAVE_FAILED,
+  FRAME_TOAST_TEMPLATE_VIEW,
   FRAME_PRESENT_TOOL_TOOLTIP,
   FRAME_PRESENT_PREVIOUS,
   FRAME_PRESENT_NEXT,
