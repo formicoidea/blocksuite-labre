@@ -40,6 +40,17 @@ import {
 import type { Overlay } from './overlay.js';
 import { isPainted } from './paint-predicate.js';
 
+/** The stored fill an element paints as its body, if it paints one. */
+function paperOf(element: SurfaceElementModel): string | null {
+  const { filled, fillColor } = element as {
+    filled?: boolean;
+    fillColor?: unknown;
+  };
+  return filled && typeof fillColor === 'string' && fillColor
+    ? fillColor
+    : null;
+}
+
 type EnvProvider = {
   generateColorProperty: (color: Color, fallback?: Color) => string;
   getColorScheme: () => ColorScheme;
@@ -798,6 +809,7 @@ export class CanvasRenderer {
 
     const tint = this._tintForPass();
     let boards: FrameworkBackgroundElementModel[] | null = null;
+    const papers: SurfaceElementModel[] = [];
 
     for (const element of elements) {
       const display = isPainted(element, this._gfx.localVisibility);
@@ -833,9 +845,12 @@ export class CanvasRenderer {
               (e): e is FrameworkBackgroundElementModel =>
                 e instanceof FrameworkBackgroundElementModel
             );
-            this._notationTint = this._isNotation(element, boards)
-              ? tint
-              : null;
+            this._notationTint =
+              this._isNotation(element, boards) &&
+              !this._sitsOnKeptPaper(element, papers, tint)
+                ? tint
+                : null;
+            if (paperOf(element)) papers.push(element);
           }
           try {
             renderFn(element, ctx, matrix.translate(dx, dy), this, rc, bound);
@@ -1057,6 +1072,29 @@ export class CanvasRenderer {
     } finally {
       this._schemeOverride = previous;
     }
+  }
+
+  /**
+   * "Ink follows its paper" for words that are elements of their own (a C4
+   * title, an Event Storming label): text with no fill of its own, drawn on
+   * the topmost filled element under it that keeps its stored fill, keeps its
+   * stored colour too (ADR 0039). `papers` are the filled elements painted
+   * before it in this pass, in z-order.
+   */
+  private _sitsOnKeptPaper(
+    element: SurfaceElementModel,
+    papers: readonly SurfaceElementModel[],
+    tint: NotationTint
+  ): boolean {
+    if (paperOf(element)) return false;
+    const bound = element.elementBound;
+    for (let i = papers.length - 1; i >= 0; i--) {
+      const paper = papers[i]!;
+      if (paper.elementBound.contains(bound)) {
+        return tint.keepsInkOn(paperOf(paper)!);
+      }
+    }
+    return false;
   }
 
   /** The dark table when this pass paints dark, else `null`. */

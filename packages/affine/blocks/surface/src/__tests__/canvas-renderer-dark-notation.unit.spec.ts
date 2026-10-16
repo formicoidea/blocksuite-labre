@@ -36,6 +36,7 @@ function setup(scheme: ColorScheme) {
   const painted: Painted[] = [];
   const palettes: NotationDarkPalette[] = [
     { framework: 'wardley', colors: { '#666666': '#909090' } },
+    { framework: 'c4', colors: { '#000000': DARK_INK } },
   ];
 
   const renderer = new CanvasRenderer({
@@ -100,10 +101,16 @@ function setup(scheme: ColorScheme) {
     },
   });
 
-  const element = (id: string, color: Color, role?: string) => ({
+  const element = (
+    id: string,
+    color: Color,
+    role?: string,
+    paper?: { filled: boolean; fillColor: string }
+  ) => ({
     id,
     color,
     role,
+    ...paper,
     type: 'shape',
     x: 0,
     y: 0,
@@ -141,6 +148,30 @@ describe('dark notation tint in the canvas renderer', () => {
       ['notation', DARK_INK],
       ['framework-grey', '#909090'],
       ['neutral', INK],
+    ]);
+  });
+
+  it('words of their own follow the fill they sit on', () => {
+    const { painted, paint, element } = setup(ColorScheme.Dark);
+    paint([
+      element('c4-component', INK, 'c4:component', {
+        filled: true,
+        fillColor: '#85bbf0',
+      }),
+      element('title', '#000000', 'c4:title'),
+    ]);
+    paint([
+      element('white-card', INK, 'uml:class', {
+        filled: true,
+        fillColor: '#ffffff',
+      }),
+      element('name', '#000000', 'uml:name'),
+    ]);
+    expect(painted.map(p => [p.id, p.color])).toEqual([
+      ['c4-component', DARK_INK],
+      ['title', '#000000'],
+      ['white-card', DARK_INK],
+      ['name', DARK_INK],
     ]);
   });
 
