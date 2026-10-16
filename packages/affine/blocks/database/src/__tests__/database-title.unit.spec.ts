@@ -69,4 +69,18 @@ describe('database title', () => {
     expect(dataViewLogic.addRow).not.toHaveBeenCalled();
     element.remove();
   });
+
+  // P7: the empty title was a bare "Untitled", in CSS and in the markup, so a
+  // French host drew it in English. Outside a database it reads the fallback.
+  it('draws an empty title from its key', async () => {
+    const { element } = await mountTitle();
+    element.titleText.delete(0, element.titleText.length);
+    element.requestUpdate();
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    await element.updateComplete;
+    const root = element.querySelector('.affine-database-title');
+    expect(root?.getAttribute('data-untitled')).toBe('Untitled');
+    expect(root?.querySelector('.text')?.textContent).toBe('Untitled');
+    element.remove();
+  });
 });

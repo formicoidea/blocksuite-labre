@@ -54,6 +54,9 @@ export class DatabasePageHost extends SignalWatcher(
     }
     affine-database-page > .affine-page-viewport {
       height: 100%;
+      /* The container the page root's narrow-screen query reads. */
+      container-type: inline-size;
+      container-name: viewport;
     }
   `;
 

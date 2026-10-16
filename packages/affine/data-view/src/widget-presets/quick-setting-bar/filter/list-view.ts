@@ -8,7 +8,8 @@ import {
   FilterIcon,
   PlusIcon,
 } from '@blocksuite/icons/lit';
-import { ShadowlessElement } from '@labre/std';
+import { type BlockStdScope, ShadowlessElement, stdContext } from '@labre/std';
+import { consume } from '@lit/context';
 import { computed, type ReadonlySignal } from '@preact/signals-core';
 import { css, html } from 'lit';
 import { property } from 'lit/decorators.js';
@@ -16,7 +17,9 @@ import { property } from 'lit/decorators.js';
 import type { Variable } from '../../../core/expression/types.js';
 import type { Filter, FilterGroup } from '../../../core/filter/types.js';
 import { popCreateFilter } from '../../../core/index.js';
+import { wordingOf } from '../../../core/utils/wording.js';
 import type { DataViewUILogicBase } from '../../../core/view/data-view-base.js';
+import { DATA_VIEW_ADD_FILTER } from '../../../translations.js';
 import { popFilterGroup } from './group-panel-view.js';
 
 export class FilterBar extends SignalWatcher(ShadowlessElement) {
@@ -52,6 +55,13 @@ export class FilterBar extends SignalWatcher(ShadowlessElement) {
       font-style: normal;
       font-weight: 400;
       line-height: 22px;
+    }
+
+    /* A finger needs 44px: the host's touch-target floor (P7). */
+    @media (pointer: coarse) {
+      .filter-bar-add-filter {
+        min-height: 44px;
+      }
     }
 
     filter-bar::-webkit-scrollbar {
@@ -137,7 +147,7 @@ export class FilterBar extends SignalWatcher(ShadowlessElement) {
       class="filter-bar-add-filter dv-icon-16 dv-round-4 dv-hover"
       @click="${this.addFilter}"
     >
-      ${PlusIcon()} Add filter
+      ${PlusIcon()} ${wordingOf(this.std)(DATA_VIEW_ADD_FILTER)}
     </div>`;
   };
 
@@ -211,6 +221,10 @@ export class FilterBar extends SignalWatcher(ShadowlessElement) {
 
   @property({ attribute: false })
   accessor dataViewLogic!: DataViewUILogicBase;
+
+  /** Absent outside an editor host: the wordings read English. */
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
 }
 
 declare global {

@@ -161,7 +161,7 @@ export class DataViewBlockComponent extends CaptionedBlockComponent<DataViewBloc
             style="display:flex;align-items:center;justify-content: space-between;gap: 12px"
             class="database-header-bar"
           >
-            <div style="flex:1">
+            <div style="flex:1;min-width:0">
               ${renderUniLit(widgetPresets.viewBar, props)}
             </div>
             ${renderUniLit(this.toolsWidget, props)}

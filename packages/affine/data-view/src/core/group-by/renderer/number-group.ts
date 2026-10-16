@@ -45,7 +45,7 @@ export class NumberGroupView extends BaseGroup<number, NonNullable<unknown>> {
 
   protected override render(): unknown {
     if (this.value == null) {
-      return html` <div>Ungroups</div>`;
+      return html` <div>${this.ungrouped}</div>`;
     }
     if (this.value >= 10) {
       return html` <div

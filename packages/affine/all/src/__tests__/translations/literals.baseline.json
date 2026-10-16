@@ -132,8 +132,6 @@
       "Table View"
     ],
     "packages/affine/blocks/database/src/components/title/index.ts": [
-      "Untitled",
-      "Untitled",
       "true"
     ],
     "packages/affine/blocks/database/src/configs/slash-menu.ts": [
@@ -361,15 +359,6 @@
       "Type a value...",
       "Unchecked"
     ],
-    "packages/affine/data-view/src/core/group-by/renderer/number-group.ts": [
-      "Ungroups"
-    ],
-    "packages/affine/data-view/src/core/group-by/renderer/select-group.ts": [
-      "Ungroups"
-    ],
-    "packages/affine/data-view/src/core/group-by/renderer/string-group.ts": [
-      "Ungroups"
-    ],
     "packages/affine/data-view/src/core/group-by/setting.ts": [
       "Day",
       "Group By",
@@ -517,7 +506,6 @@
     ],
     "packages/affine/data-view/src/view-presets/table/mobile/group.ts": [
       "Delete Cards",
-      "New Record",
       "Ungroup"
     ],
     "packages/affine/data-view/src/view-presets/table/mobile/menu.ts": [
@@ -579,7 +567,6 @@
     ],
     "packages/affine/data-view/src/view-presets/table/pc/group.ts": [
       "Delete Cards",
-      "New Record",
       "Ungroup"
     ],
     "packages/affine/data-view/src/view-presets/table/pc/header/database-header-column.ts": [
@@ -624,9 +611,6 @@
       "Filter group",
       "Or"
     ],
-    "packages/affine/data-view/src/widget-presets/quick-setting-bar/filter/list-view.ts": [
-      "${} Add filter"
-    ],
     "packages/affine/data-view/src/widget-presets/quick-setting-bar/filter/root-panel-view.ts": [
       "Add",
       "Delete",
@@ -638,13 +622,7 @@
       "Delete"
     ],
     "packages/affine/data-view/src/widget-presets/tools/presets/search/search.ts": [
-      "Esc",
-      "Search...",
-      "to clear all"
-    ],
-    "packages/affine/data-view/src/widget-presets/tools/presets/table-add-row/add-row.ts": [
-      "New",
-      "New Record"
+      "Esc"
     ],
     "packages/affine/data-view/src/widget-presets/tools/presets/view-options/view-options.ts": [
       "${} shown",

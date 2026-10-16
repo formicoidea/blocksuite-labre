@@ -1,6 +1,7 @@
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
-import { IS_MOBILE } from '@labre/global/env';
 import { CloseIcon, SearchIcon } from '@blocksuite/icons/lit';
+import { type BlockStdScope, stdContext } from '@labre/std';
+import { consume } from '@lit/context';
 import { baseTheme } from '@toeverything/theme';
 import { css, html, unsafeCSS } from 'lit';
 import { query, state } from 'lit/decorators.js';
@@ -8,9 +9,14 @@ import { classMap } from 'lit/directives/class-map.js';
 import { styleMap } from 'lit/directives/style-map.js';
 
 import { stopPropagation } from '../../../../core/utils/event.js';
+import { wordingOf } from '../../../../core/utils/wording.js';
 import { WidgetBase } from '../../../../core/widget/widget-base.js';
 import type { KanbanViewUILogic } from '../../../../view-presets/kanban/pc/kanban-view-ui-logic.js';
 import type { VirtualTableViewUILogic } from '../../../../view-presets/table/pc-virtual/table-view-ui-logic.js';
+import {
+  DATA_VIEW_SEARCH_CLEAR_HINT,
+  DATA_VIEW_SEARCH_PLACEHOLDER,
+} from '../../../../translations.js';
 
 const styles = css`
   .affine-database-search-container {
@@ -84,6 +90,23 @@ const styles = css`
     color: var(--affine-placeholder-color);
     font-size: var(--affine-font-sm);
   }
+
+  /* A finger needs 44px: the host's touch-target floor (P7). */
+  @media (pointer: coarse) {
+    .affine-database-search-container {
+      width: 44px;
+      height: 44px;
+    }
+    .search-container-expand {
+      width: 160px;
+    }
+    .affine-database-search-container .affine-database-search-input-icon {
+      left: 10px;
+    }
+    .affine-database-search-input {
+      padding-left: 40px;
+    }
+  }
 `;
 
 export class DataViewHeaderToolsSearch extends WidgetBase<
@@ -131,9 +154,15 @@ export class DataViewHeaderToolsSearch extends WidgetBase<
 
   preventBlur = false;
 
+  /** Absent outside an editor host: the wordings read English. */
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
+
   override connectedCallback() {
     super.connectedCallback();
-    this.style.display = IS_MOBILE ? 'none' : 'flex';
+    // Filter and sort reach a phone through the view menu; search has no
+    // other door, so it stays in the toolbar there too.
+    this.style.display = 'flex';
   }
 
   override render() {
@@ -146,7 +175,7 @@ export class DataViewHeaderToolsSearch extends WidgetBase<
       <label class="${searchToolClassMap}" @click="${this._clickSearch}">
         <div class="affine-database-search-input-icon">${SearchIcon()}</div>
         <input
-          placeholder="Search..."
+          placeholder="${wordingOf(this.std)(DATA_VIEW_SEARCH_PLACEHOLDER)}"
           class="affine-database-search-input"
           @input="${this._onSearch}"
           @click="${(event: MouseEvent) => event.stopPropagation()}"
@@ -168,7 +197,7 @@ export class DataViewHeaderToolsSearch extends WidgetBase<
               })}
               >Esc</span
             >
-            to clear all
+            ${wordingOf(this.std)(DATA_VIEW_SEARCH_CLEAR_HINT)}
           </affine-tooltip>
         </div>
       </label>

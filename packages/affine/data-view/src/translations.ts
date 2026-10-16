@@ -261,11 +261,57 @@ export const DATA_VIEW_PROPERTY_TYPE: ChromeWording = [
   'Property type',
 ];
 
+/* ── The table's chrome on every device (P7, mobile base views) ──────── */
+
+/** The toolbar button and a group's footer row that add a row. */
+export const DATA_VIEW_NEW_RECORD: ChromeWording = [
+  'com.labre.data-view.new-record',
+  'New Record',
+];
+
+/** The same button on a phone, where the toolbar has no room for two words. */
+export const DATA_VIEW_NEW_RECORD_SHORT: ChromeWording = [
+  'com.labre.data-view.new-record.short',
+  'New',
+];
+
+/**
+ * The title of the group holding the rows with no value. Display only: the
+ * stored group key stays `'Ungroups'` (`core/group-by/define.ts`).
+ */
+export const DATA_VIEW_UNGROUPED: ChromeWording = [
+  'com.labre.data-view.group.ungrouped',
+  'Ungroups',
+];
+
+/** The filter bar's button, and the filter group panel's. */
+export const DATA_VIEW_ADD_FILTER: ChromeWording = [
+  'com.labre.data-view.filter.add',
+  'Add filter',
+];
+
+export const DATA_VIEW_SEARCH_PLACEHOLDER: ChromeWording = [
+  'com.labre.data-view.search.placeholder',
+  'Search...',
+];
+
+/** Read after an "Esc" key cap in the search box's clear tooltip. */
+export const DATA_VIEW_SEARCH_CLEAR_HINT: ChromeWording = [
+  'com.labre.data-view.search.clear-hint',
+  'to clear all',
+];
+
 /** Walked by `PACKAGE_WORDINGS` in `packages/affine/all/src/translations.ts`. */
 export const DATA_VIEW_WORDINGS: readonly ChromeWording[] = [
   VIEW_SHOWN_AS_TABLE,
   VIEW_DUPLICATE_AS_TABLE,
   DATA_VIEW_NEW_PAGE,
+  DATA_VIEW_NEW_RECORD,
+  DATA_VIEW_NEW_RECORD_SHORT,
+  DATA_VIEW_UNGROUPED,
+  DATA_VIEW_ADD_FILTER,
+  DATA_VIEW_SEARCH_PLACEHOLDER,
+  DATA_VIEW_SEARCH_CLEAR_HINT,
   VIEW_NAME_TABLE,
   VIEW_NAME_KANBAN,
   VIEW_NAME_CALENDAR,
