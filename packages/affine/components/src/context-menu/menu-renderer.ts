@@ -327,6 +327,11 @@ export class MobileMenuComponent
     `;
   }
 
+  /**
+   * Back, title, "Done": the two ends share what the title leaves, so the
+   * title stays centred, and "Done" is never cut, whatever its translation
+   * ("Terminé" overflowed the 50px it had).
+   */
   renderTitle() {
     const title = this.menu.options.title;
     return html`
@@ -334,7 +339,7 @@ export class MobileMenuComponent
         style="display:flex;align-items:center;height: 44px;"
         @mouseenter="${() => this.menu.closeSubMenu()}"
       >
-        <div style="width: 50px;flex-shrink: 0;margin-left: 10px;">
+        <div style="flex: 1 1 0;min-width: 50px;margin-left: 10px;">
           ${title?.onBack
             ? html` <div
                 @click="${() => {
@@ -353,27 +358,33 @@ export class MobileMenuComponent
         </div>
         <div
           style="
-          flex:1;
+          flex: 0 1 auto;
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
           font-size: 17px;
           font-style: normal;
           font-weight: 500;
           line-height: 22px;
           color: var(--affine-text-primary-color);
-          display: flex;
-          justify-content: center;
+          text-align: center;
 "
         >
           ${title?.text}
         </div>
         <div
           @click="${this.onClose}"
+          data-testid="mobile-menu-done"
           style="
           display:flex;
+          justify-content: flex-end;
           font-weight: 500;
           font-size: 17px;
           color: ${unsafeCSSVarV2('button/primary')};
-          width: 50px;
-          flex-shrink: 0;
+          flex: 1 1 0;
+          min-width: max-content;
+          white-space: nowrap;
           margin-right: 10px;
          "
         >

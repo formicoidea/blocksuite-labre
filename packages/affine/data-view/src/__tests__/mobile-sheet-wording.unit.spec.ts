@@ -24,6 +24,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
  *   Delete), which a French host showed untranslated;
  * - "Done" in English although its key exists, because the sheet found no
  *   editor to translate it with, on the sheet and on a sub-sheet it opens;
+ *   and, once translated, cut to "Termin" by the 50px it was given;
  * - a sheet opened outside any editor that stops reading English.
  */
 vi.mock('@labre/global/env', async importOriginal => ({
@@ -280,6 +281,18 @@ describe('the property settings sheet', () => {
       expect(sheet).toContain(word);
     }
     expect(sheet).not.toMatch(/\b(Done|Insert|Move|Duplicate|Delete|Hide)\b/);
+  });
+
+  it('keeps a translated "Done" whole', async () => {
+    await openPropertySheet('note', frenchStd);
+    const done = document.body.querySelector<HTMLElement>(
+      '[data-testid="mobile-menu-done"]'
+    );
+    expect(done?.textContent?.trim()).toBe('Terminé');
+    // It had a fixed 50px, which cut "Terminé" at 390px.
+    expect(done?.style.width).toBe('');
+    expect(done?.style.whiteSpace).toBe('nowrap');
+    expect(done?.style.minWidth).toBe('max-content');
   });
 
   it('a sub-sheet it opens finds the same editor', async () => {
