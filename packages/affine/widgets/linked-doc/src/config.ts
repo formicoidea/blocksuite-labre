@@ -220,6 +220,14 @@ export function createNewDocMenuGroup(
   };
 }
 
+/**
+ * The default `@` menu REFERENCES a page that exists; it creates nothing.
+ * Creating a page is the slash menu's job ("New Page", which goes through
+ * `LinkedDocCreationProvider`), so the two gestures never overlap: `@` points,
+ * `/` makes (PO, 2026-10-14). The creation group is still exported through
+ * {@link LinkedWidgetUtils} for a host that wants it back in its own
+ * `getMenus`.
+ */
 export function getMenus(
   query: string,
   abort: () => void,
@@ -228,7 +236,6 @@ export function getMenus(
 ): Promise<LinkedMenuGroup[]> {
   return Promise.resolve([
     createLinkedDocMenuGroup(query, abort, editorHost, inlineEditor),
-    createNewDocMenuGroup(query, abort, editorHost, inlineEditor),
   ]);
 }
 

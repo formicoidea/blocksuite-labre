@@ -37,6 +37,12 @@ export const LINKED_DOC_IMPORT: ChromeWording = [
   'Import',
 ];
 
+/** Said when no page matches the query, instead of an empty popover. */
+export const LINKED_DOC_NO_RESULT: ChromeWording = [
+  'com.labre.linked-doc.no-result',
+  'No page found',
+];
+
 /** The "Create doc" item's own wording, interpolated with the truncated name. */
 export const LINKED_DOC_CREATE_DOC: ChromeWording = [
   'com.labre.linked-doc.create-doc',
@@ -115,6 +121,7 @@ export const LINKED_DOC_WORDINGS: readonly ChromeWording[] = [
   LINKED_DOC_LINK_TO_DOC,
   LINKED_DOC_IMPORT,
   LINKED_DOC_CREATE_DOC,
+  LINKED_DOC_NO_RESULT,
   LINKED_DOC_IMPORT_SUCCESS_TOAST,
   LINKED_DOC_OVERFLOW_MORE,
   LINKED_DOC_IMPORT_NOTION_MARKDOWN_DEPRECATED,

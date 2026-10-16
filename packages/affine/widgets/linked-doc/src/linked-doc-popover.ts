@@ -23,7 +23,10 @@ import throttle from 'lodash-es/throttle';
 
 import type { LinkedDocContext, LinkedMenuGroup } from './config.js';
 import { linkedDocPopoverStyles } from './styles.js';
-import { LINKED_DOC_OVERFLOW_MORE } from './translations.js';
+import {
+  LINKED_DOC_NO_RESULT,
+  LINKED_DOC_OVERFLOW_MORE,
+} from './translations.js';
 import { createLinkedDocKeydownInterceptor, resolveSignal } from './utils.js';
 
 @requiredProperties({
@@ -267,69 +270,77 @@ export class LinkedDocPopover extends SignalWatcher(
       };
     });
 
+    const shown = actionGroups.filter(
+      group => (group.items.length > 0 || group.isLoading) && !group.isHidden
+    );
+
+    // An empty box reads as a broken menu: since "@" only references
+    // existing pages, "no match" is an ordinary outcome and says so.
     return html`<div class="linked-doc-popover" style="${style}">
-      ${actionGroups
-        .filter(
-          group =>
-            (group.items.length > 0 || group.isLoading) && !group.isHidden
-        )
-        .map((group, idx) => {
-          return html`
-            <div class="divider" ?hidden=${idx === 0}></div>
-            <div class="group-title">
-              <div class="group-title-text">${group.name}</div>
-              ${group.isLoading
-                ? html`<span class="loading-icon">${LoadingIcon()}</span>`
-                : nothing}
+      ${shown.length === 0
+        ? html`<div class="group-title" data-testid="linked-doc-no-result">
+            <div class="group-title-text">
+              ${translateKey(this.context.std, ...LINKED_DOC_NO_RESULT)}
             </div>
-            <div class="group" style=${group.styles ?? ''}>
-              ${group.items.map(({ key, name, icon, action }) => {
-                const tooltip = this._showTooltip
-                  ? html`<affine-tooltip
-                      tip-position=${'right'}
-                      .tooltipStyle=${css`
-                        * {
-                          color: ${unsafeCSSVar('white')} !important;
-                        }
-                      `}
-                      >${name}</affine-tooltip
-                    >`
-                  : nothing;
-                return html`<icon-button
-                  width="260px"
-                  height="30px"
-                  data-id=${key}
-                  .text=${name}
-                  hover=${this._activatedItemKey === key}
-                  @pointerdown=${(e: PointerEvent) => {
-                    // Prevent event listeners being registered on the root document
-                    // eg., radix-ui dialogs usePointerDownOutside hooks
-                    e.stopPropagation();
-                  }}
-                  @click=${() => {
-                    action()?.catch(console.error);
-                  }}
-                  @mousemove=${() => {
-                    // Use `mousemove` instead of `mouseover` to avoid navigate conflict with keyboard
-                    this._activatedItemKey = key;
-                    // show tooltip whether text length overflows
-                    for (const button of this.iconButtons.values()) {
-                      if (button.dataset.id == key && button.textElement) {
-                        const isOverflowing = this._isTextOverflowing(
-                          button.textElement
-                        );
-                        this._showTooltip = isOverflowing;
-                        break;
+          </div>`
+        : nothing}
+      ${shown.map((group, idx) => {
+        return html`
+          <div class="divider" ?hidden=${idx === 0}></div>
+          <div class="group-title">
+            <div class="group-title-text">${group.name}</div>
+            ${group.isLoading
+              ? html`<span class="loading-icon">${LoadingIcon()}</span>`
+              : nothing}
+          </div>
+          <div class="group" style=${group.styles ?? ''}>
+            ${group.items.map(({ key, name, icon, action }) => {
+              const tooltip = this._showTooltip
+                ? html`<affine-tooltip
+                    tip-position=${'right'}
+                    .tooltipStyle=${css`
+                      * {
+                        color: ${unsafeCSSVar('white')} !important;
                       }
+                    `}
+                    >${name}</affine-tooltip
+                  >`
+                : nothing;
+              return html`<icon-button
+                width="260px"
+                height="30px"
+                data-id=${key}
+                .text=${name}
+                hover=${this._activatedItemKey === key}
+                @pointerdown=${(e: PointerEvent) => {
+                  // Prevent event listeners being registered on the root document
+                  // eg., radix-ui dialogs usePointerDownOutside hooks
+                  e.stopPropagation();
+                }}
+                @click=${() => {
+                  action()?.catch(console.error);
+                }}
+                @mousemove=${() => {
+                  // Use `mousemove` instead of `mouseover` to avoid navigate conflict with keyboard
+                  this._activatedItemKey = key;
+                  // show tooltip whether text length overflows
+                  for (const button of this.iconButtons.values()) {
+                    if (button.dataset.id == key && button.textElement) {
+                      const isOverflowing = this._isTextOverflowing(
+                        button.textElement
+                      );
+                      this._showTooltip = isOverflowing;
+                      break;
                     }
-                  }}
-                >
-                  ${icon} ${tooltip}
-                </icon-button>`;
-              })}
-            </div>
-          `;
-        })}
+                  }
+                }}
+              >
+                ${icon} ${tooltip}
+              </icon-button>`;
+            })}
+          </div>
+        `;
+      })}
     </div>`;
   }
 
