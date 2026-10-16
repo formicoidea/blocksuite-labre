@@ -68,6 +68,9 @@ export function hitsThreadRange(
   );
 }
 
+const sameRange = (a: ThreadMark['range'], b: ThreadMark['range']) =>
+  a?.start === b?.start && a?.end === b?.end;
+
 /**
  * The marks to draw, from what the host says and where the editor finds each
  * target. Pure, so the "ignore what is absent" rule is held by a test:
@@ -75,7 +78,9 @@ export function hitsThreadRange(
  * - a target `locate` cannot find (deleted, of the other view, hidden for this
  *   viewer) is skipped, never an error: an orphan anchor has no mark;
  * - a mark at `count <= 0` is not drawn;
- * - two marks on one target are one mark: counts add up, unread wins.
+ * - two marks on one target are one mark: counts add up, unread wins, and
+ *   the run of text it opens is kept only when every merged mark names the
+ *   same one (a mark that stands for several discussions opens the block).
  */
 export function placeThreadMarks(
   marks: readonly ThreadMark[],
@@ -93,6 +98,7 @@ export function placeThreadMarks(
             ...seen,
             count: seen.count + mark.count,
             unread: seen.unread || mark.unread,
+            range: sameRange(seen.range, mark.range) ? seen.range : undefined,
           }
         : mark
     );
@@ -382,6 +388,7 @@ export class ThreadMarksWidget extends WidgetComponent {
             openThreadOn(this.std, {
               targetType: mark.targetType,
               targetId: mark.targetId,
+              range: mark.range,
             });
           }}
           >${CommentIcon({ width: '16px', height: '16px' })}</icon-button
