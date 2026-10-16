@@ -69,13 +69,16 @@ export class MobileTableCell extends SignalWatcher(
     if (this.view.readonly$.value) {
       return;
     }
-    const setSelection = this.tableViewLogic.setSelection;
-    const viewId = this.tableViewLogic.view.id;
-    if (setSelection && viewId) {
+    // Called on the logic, never detached: `setSelection` is a method of
+    // `DataViewUILogicBase`, and up to 0.54 a detached call threw on every
+    // tap, so no cell of a phone table ever entered editing.
+    const logic = this.tableViewLogic;
+    const viewId = logic.view.id;
+    if (viewId) {
       if (editing && this.cell?.beforeEnterEditMode() === false) {
         return;
       }
-      setSelection({
+      logic.setSelection({
         viewId,
         type: 'table',
         ...TableViewAreaSelection.create({

@@ -269,12 +269,6 @@ export const DATA_VIEW_NEW_RECORD: ChromeWording = [
   'New Record',
 ];
 
-/** The same button on a phone, where the toolbar has no room for two words. */
-export const DATA_VIEW_NEW_RECORD_SHORT: ChromeWording = [
-  'com.labre.data-view.new-record.short',
-  'New',
-];
-
 /**
  * The title of the group holding the rows with no value. Display only: the
  * stored group key stays `'Ungroups'` (`core/group-by/define.ts`).
@@ -394,7 +388,6 @@ export const DATA_VIEW_WORDINGS: readonly ChromeWording[] = [
   VIEW_DUPLICATE_AS_TABLE,
   DATA_VIEW_NEW_PAGE,
   DATA_VIEW_NEW_RECORD,
-  DATA_VIEW_NEW_RECORD_SHORT,
   DATA_VIEW_UNGROUPED,
   DATA_VIEW_ADD_FILTER,
   DATA_VIEW_SEARCH_PLACEHOLDER,

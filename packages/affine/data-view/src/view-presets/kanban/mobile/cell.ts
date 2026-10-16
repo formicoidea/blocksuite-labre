@@ -75,13 +75,16 @@ export class MobileKanbanCell extends SignalWatcher(
     if (this.view.readonly$.value) {
       return;
     }
-    const setSelection = this.kanbanViewLogic.setSelection;
-    const viewId = this.kanbanViewLogic.view.id;
-    if (setSelection && viewId) {
+    // Called on the logic, never detached: `setSelection` is a method of
+    // `DataViewUILogicBase`, and up to 0.54 a detached call threw on every
+    // tap, so no value of a phone card ever entered editing.
+    const logic = this.kanbanViewLogic;
+    const viewId = logic.view.id;
+    if (viewId) {
       if (editing && this.cell?.beforeEnterEditMode() === false) {
         return;
       }
-      setSelection({
+      logic.setSelection({
         viewId,
         type: 'kanban',
         selectionType: 'cell',
@@ -114,12 +117,8 @@ export class MobileKanbanCell extends SignalWatcher(
         }
       })
     );
-    this._disposables.addFromEvent(this, 'click', e => {
-      e.stopPropagation();
-      if (!this.isEditing$.value) {
-        this.selectCurrentCell(!this.column.readonly$.value);
-      }
-    });
+    // No tap-to-edit here: a tap anywhere on a phone's card opens the row
+    // (`MobileKanbanCard`), where its values are edited (P7, after Notion).
   }
 
   override render() {

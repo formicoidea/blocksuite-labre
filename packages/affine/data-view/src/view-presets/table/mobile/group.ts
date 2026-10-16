@@ -25,17 +25,20 @@ import { wordingOf } from '../../../core/utils/wording.js';
 import {
   DATA_VIEW_GROUP_COLLAPSE,
   DATA_VIEW_GROUP_EXPAND,
-  DATA_VIEW_NEW_RECORD,
+  DATA_VIEW_NEW_PAGE,
 } from '../../../translations.js';
 import { getCollapsedState, setCollapsedState } from '../collapsed-state.js';
 import { LEFT_TOOL_BAR_WIDTH } from '../consts.js';
 import type { MobileTableViewUILogic } from './table-view-ui-logic.js';
 
 const styles = css`
+  /* "+ New page" under the rows: a full row, 44px for a finger (P7). */
   .data-view-table-group-add-row {
     display: flex;
     width: 100%;
-    height: 28px;
+    min-height: 44px;
+    box-sizing: border-box;
+    align-items: center;
     position: relative;
     z-index: 0;
     cursor: pointer;
@@ -52,8 +55,8 @@ const styles = css`
     justify-content: center;
     gap: 10px;
     user-select: none;
-    font-size: 12px;
-    line-height: 20px;
+    font-size: 14px;
+    line-height: 22px;
     color: var(--affine-text-secondary-color);
   }
 
@@ -120,12 +123,12 @@ export class MobileTableGroup extends SignalWatcher(
   };
 
   private readonly clickAddRow = () => {
-    this.view.rowAdd('end', this.group?.key);
+    this.tableViewLogic.addRow('end', this.group?.key);
     this.requestUpdate();
   };
 
   private readonly clickAddRowInStart = () => {
-    this.view.rowAdd('start', this.group?.key);
+    this.tableViewLogic.addRow('start', this.group?.key);
     this.requestUpdate();
   };
 
@@ -231,8 +234,8 @@ export class MobileTableGroup extends SignalWatcher(
               data-test-id="affine-database-add-row-button"
               role="button"
             >
-              ${PlusIcon()}<span style="font-size: 12px"
-                >${wordingOf(this.std)(DATA_VIEW_NEW_RECORD)}</span
+              ${PlusIcon()}<span
+                >${wordingOf(this.std)(DATA_VIEW_NEW_PAGE)}</span
               >
             </div>
           </div>`}

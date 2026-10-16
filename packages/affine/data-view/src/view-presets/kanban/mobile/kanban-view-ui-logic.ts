@@ -68,6 +68,8 @@ export class MobileKanbanViewUILogic extends DataViewUILogicBase<
     if (this.readonly) return;
     const id = this.view.rowAdd(position);
     this.ui$.value?.requestUpdate();
+    // The toolbar's "+" opens the new card, as on the desktop board (P7).
+    if (id) this.root.openDetailPanel({ view: this.view, rowId: id });
     return id;
   };
 

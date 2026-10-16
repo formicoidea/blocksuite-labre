@@ -496,10 +496,6 @@
       "Delete Cards",
       "Ungroup"
     ],
-    "packages/affine/data-view/src/view-presets/table/mobile/menu.ts": [
-      "Delete Row",
-      "Expand Row"
-    ],
     "packages/affine/data-view/src/view-presets/table/mobile/table-view-ui-logic.ts": [
       "New Group"
     ],

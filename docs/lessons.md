@@ -251,3 +251,18 @@ Container()` threw "illegal constructor" and the page hung.
     spec that types a literal of the previous shape against the current type
     (`blocks/surface/src/__tests__/reading-frame-wording.unit.spec.ts`,
     `render-board-svg-signature.unit.spec.ts`); `yarn build` typechecks it.
+
+34. **A phone table that never edited, behind a test that said it could.**
+    0.49 made the database writable on mobile (ADR 0035 §1, B5) and pinned it
+    with `blocks/database/src/__tests__/mobile-editing.unit.spec.ts`, which
+    checks that the source is read-only exactly when the store is. No test
+    tapped a cell. Both mobile cells (table, kanban) read
+    `const setSelection = this.tableViewLogic.setSelection` and called it
+    detached; `setSelection` is a method of `DataViewUILogicBase`, so every
+    tap threw on `this.root` and no phone cell ever entered editing, through
+    0.54. The unit specs of the cells mounted a fake logic whose
+    `setSelection` was an arrow function, which hid it.
+    _Rule:_ a "works on mobile" guard drives the gesture on the real logic
+    class (`data-view/src/__tests__/mobile-base-editing.unit.spec.ts` mounts
+    the phone table on a `TableSingleView` and taps); never call a logic's
+    method detached.

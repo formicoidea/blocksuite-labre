@@ -7,6 +7,7 @@ import { OPEN_LABEL } from '@labre/affine-components/translations';
 import type { ChromeWording } from '@labre/affine-shared/services';
 import type { UniComponent } from '@labre/affine-shared/types';
 import type { InsertToPosition } from '@labre/affine-shared/utils';
+import { IS_MOBILE } from '@labre/global/env';
 import { CenterPeekIcon } from '@blocksuite/icons/lit';
 import type { BlockStdScope } from '@labre/std';
 import { stdContext } from '@labre/std';
@@ -87,7 +88,9 @@ export abstract class FlatViewUI<
   /**
    * One property's value, drawn and edited by the cell renderer a table cell
    * mounts. `readonly` draws the value only and lets a click through to the
-   * card or row, which is how the title opens its row.
+   * card or row, which is how the title opens its row. On a phone every value
+   * is drawn so: a tap on a card or a row opens it, its values are edited in
+   * the row page (P7, after Notion's phone gallery and list).
    */
   protected renderCell(property: Property, rowId: string, readonly = false) {
     const view = this.view;
@@ -102,6 +105,7 @@ export abstract class FlatViewUI<
       data-property-id="${property.id}"
       .cell="${cell}"
       .readonly="${readonly ||
+      IS_MOBILE ||
       view.readonly$.value ||
       property.readonly$.value}"
       .onEditingChange="${(editing: boolean) => view.lockRows(editing)}"

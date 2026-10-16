@@ -1,15 +1,18 @@
 import { popupTargetFromElement } from '@labre/affine-components/context-menu';
-import { IS_MOBILE } from '@labre/global/env';
 import { SortIcon } from '@blocksuite/icons/lit';
 import { computed } from '@preact/signals-core';
 import { cssVarV2 } from '@toeverything/theme/v2';
+import { type BlockStdScope, stdContext } from '@labre/std';
+import { consume } from '@lit/context';
 import { css, html, nothing } from 'lit';
 import { styleMap } from 'lit/directives/style-map.js';
 
 import { popCreateSort } from '../../../../core/sort/add-sort.js';
 import { sortTraitKey } from '../../../../core/sort/manager.js';
 import { createSortUtils } from '../../../../core/sort/utils.js';
+import { wordingOf } from '../../../../core/utils/wording.js';
 import { WidgetBase } from '../../../../core/widget/widget-base.js';
+import { DATA_VIEW_SORT } from '../../../../translations.js';
 import {
   createDefaultShowQuickSettingBar,
   ShowQuickSettingBarKey,
@@ -33,7 +36,13 @@ const styles = css`
     background-color: var(--affine-hover-color);
   }
 
-  .affine-database-sort-button {
+  /* Shown on a phone too, its menus as sheets: 44px for a finger (P7). */
+  @media (pointer: coarse) {
+    .affine-database-sort-button {
+      min-width: 44px;
+      min-height: 44px;
+      justify-content: center;
+    }
   }
 `;
 
@@ -87,9 +96,13 @@ export class DataViewHeaderToolsSort extends WidgetBase {
     return;
   }
 
+  /** Absent outside an editor host: the wordings read English. */
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
+
   override connectedCallback() {
     super.connectedCallback();
-    this.style.display = IS_MOBILE ? 'none' : 'flex';
+    this.style.display = 'flex';
   }
 
   override render() {
@@ -103,6 +116,9 @@ export class DataViewHeaderToolsSort extends WidgetBase {
       @click="${this.clickSort}"
       style="${style}"
       class="affine-database-sort-button"
+      data-testid="dv-tools-sort"
+      role="button"
+      aria-label="${wordingOf(this.std)(DATA_VIEW_SORT)}"
     >
       ${SortIcon()}
     </div>`;

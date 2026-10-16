@@ -109,11 +109,24 @@ export class MobileKanbanCard extends SignalWatcher(
 
   private readonly clickCenterPeek = (e: MouseEvent) => {
     e.stopPropagation();
+    this.openCard();
+  };
+
+  /**
+   * A tap on a phone's card opens its row, the path of the open button, as on
+   * Notion's phone board (P7); its "..." keeps the card's menu.
+   */
+  private readonly openCard = () => {
     this.kanbanViewLogic.root.openDetailPanel({
       view: this.view,
       rowId: this.cardId,
     });
   };
+
+  override connectedCallback() {
+    super.connectedCallback();
+    this.disposables.addFromEvent(this, 'click', this.openCard);
+  }
 
   private readonly clickMore = (e: MouseEvent) => {
     e.stopPropagation();

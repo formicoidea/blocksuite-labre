@@ -37,7 +37,6 @@ import { DataViewHeaderViews } from '../widget-presets/views-bar/views-view.js';
 import {
   DATA_VIEW_ADD_FILTER,
   DATA_VIEW_NEW_RECORD,
-  DATA_VIEW_NEW_RECORD_SHORT,
   DATA_VIEW_SEARCH_CLEAR_HINT,
   DATA_VIEW_SEARCH_PLACEHOLDER,
   DATA_VIEW_UNGROUPED,
@@ -142,7 +141,6 @@ test('search stays in the toolbar on a phone', () => {
 test('the table chrome words are keys with an English fallback', () => {
   const words = [
     DATA_VIEW_NEW_RECORD,
-    DATA_VIEW_NEW_RECORD_SHORT,
     DATA_VIEW_UNGROUPED,
     DATA_VIEW_ADD_FILTER,
     DATA_VIEW_SEARCH_PLACEHOLDER,
