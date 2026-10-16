@@ -1,4 +1,9 @@
-import { type Color, ColorScheme } from '@labre/affine-model';
+import {
+  type Color,
+  ColorScheme,
+  ConnectorElementModel,
+  FrameworkBackgroundElementModel,
+} from '@labre/affine-model';
 import { FeatureFlagService } from '@labre/affine-shared/services';
 import { requestConnectedFrame } from '@labre/affine-shared/utils';
 import { DisposableGroup } from '@labre/global/disposable';
@@ -27,14 +32,25 @@ import type { SurfaceElementModel } from '../element-model/base.js';
 import { ElementRendererIdentifier } from '../extensions/element-renderer.js';
 import { RoughCanvas } from '../utils/rough/canvas.js';
 import type { ElementRenderer } from './elements/index.js';
+import {
+  type NotationColorUse,
+  NotationDarkPaletteIdentifier,
+  NotationTint,
+} from './notation-tint.js';
 import type { Overlay } from './overlay.js';
 import { isPainted } from './paint-predicate.js';
 
 type EnvProvider = {
   generateColorProperty: (color: Color, fallback?: Color) => string;
   getColorScheme: () => ColorScheme;
-  getColorValue: (color: Color, fallback?: Color, real?: boolean) => string;
-  getPropertyValue: (property: string) => string;
+  /** `theme` absent: the scheme in force. */
+  getColorValue: (
+    color: Color,
+    fallback?: Color,
+    real?: boolean,
+    theme?: ColorScheme
+  ) => string;
+  getPropertyValue: (property: string, theme?: ColorScheme) => string;
   selectedElements?: () => string[];
 };
 
@@ -186,6 +202,26 @@ export class CanvasRenderer {
 
   viewport: Viewport;
 
+  private readonly _surface: SurfaceBlockModel;
+
+  /** Set by {@link withColorScheme} for the length of one paint. */
+  private _schemeOverride: ColorScheme | null = null;
+
+  /** Built on the first dark paint, from the registered framework entries. */
+  private _darkTint: NotationTint | null = null;
+
+  private _notationTint: NotationTint | null = null;
+
+  /**
+   * The dark notation table while a NOTATION element is being painted on a
+   * dark canvas, `null` otherwise (light scheme, a neutral element, outside a
+   * paint). Painters read it through `notationColor` and
+   * {@link getColorValue}; see `notation-tint.ts` and ADR 0039.
+   */
+  get notationTint(): NotationTint | null {
+    return this._notationTint;
+  }
+
   get stackingCanvas() {
     return this._stackingCanvas;
   }
@@ -214,6 +250,7 @@ export class CanvasRenderer {
       this._initStackingCanvas(options.onStackingCanvasCreated);
     }
 
+    this._surface = options.surfaceModel;
     this._watchSurface(options.surfaceModel);
   }
 
@@ -759,6 +796,9 @@ export class CanvasRenderer {
         filter: ['canvas', 'local'],
       }) as SurfaceElementModel[]);
 
+    const tint = this._tintForPass();
+    let boards: FrameworkBackgroundElementModel[] | null = null;
+
     for (const element of elements) {
       const display = isPainted(element, this._gfx.localVisibility);
       if (display && intersects(getBoundWithRotation(element), bound)) {
@@ -786,7 +826,22 @@ export class CanvasRenderer {
           ctx.globalAlpha = element.opacity ?? 1;
           const dx = element.x - bound.x;
           const dy = element.y - bound.y;
-          renderFn(element, ctx, matrix.translate(dx, dy), this, rc, bound);
+          if (tint) {
+            // Every board of the surface, not of this pass: a stacking canvas
+            // paints one layer, and the board may sit in another.
+            boards ??= this._surface.elementModels.filter(
+              (e): e is FrameworkBackgroundElementModel =>
+                e instanceof FrameworkBackgroundElementModel
+            );
+            this._notationTint = this._isNotation(element, boards)
+              ? tint
+              : null;
+          }
+          try {
+            renderFn(element, ctx, matrix.translate(dx, dy), this, rc, bound);
+          } finally {
+            this._notationTint = null;
+          }
           ctx.restore();
         }
       }
@@ -927,17 +982,115 @@ export class CanvasRenderer {
   }
 
   getColorScheme() {
-    return this.provider.getColorScheme?.() ?? ColorScheme.Light;
-  }
-
-  getColorValue(color: Color, fallback?: Color, real?: boolean) {
     return (
-      this.provider.getColorValue?.(color, fallback, real) ?? 'transparent'
+      this._schemeOverride ??
+      this.provider.getColorScheme?.() ??
+      ColorScheme.Light
     );
   }
 
+  /**
+   * A stored colour, resolved for the scheme in force.
+   *
+   * While a notation element is painted on a dark canvas, a PLAIN stored value
+   * (a string: what every framework writes) goes through the dark notation
+   * table as `use`; a `{ light, dark }` pair already knows its dark side and
+   * is never tinted, nor is a fallback (ADR 0039).
+   */
+  getColorValue(
+    color: Color,
+    fallback?: Color,
+    real?: boolean,
+    use: NotationColorUse = 'ink'
+  ) {
+    const value =
+      this.provider.getColorValue?.(
+        color,
+        fallback,
+        real,
+        this._schemeOverride ?? undefined
+      ) ?? 'transparent';
+    return this._notationTint && typeof color === 'string' && color
+      ? this._notationTint.resolve(value, use)
+      : value;
+  }
+
+  /**
+   * The colour of words drawn on a fill of the same element: tinted like any
+   * ink, unless the fill is painted as stored, in which case the words keep
+   * the colour they were chosen for on it ("ink follows its paper", ADR 0039).
+   * `fill` is `null` when the element draws no fill.
+   */
+  getInkColorValue(color: Color, fallback: Color, fill: Color | null) {
+    const tint = this._notationTint;
+    if (tint && typeof fill === 'string' && fill && tint.keepsInkOn(fill)) {
+      return (
+        this.provider.getColorValue?.(
+          color,
+          fallback,
+          true,
+          this._schemeOverride ?? undefined
+        ) ?? 'transparent'
+      );
+    }
+    return this.getColorValue(color, fallback, true);
+  }
+
   getPropertyValue(property: string) {
-    return this.provider.getPropertyValue?.(property) ?? '';
+    return (
+      this.provider.getPropertyValue?.(
+        property,
+        this._schemeOverride ?? undefined
+      ) ?? ''
+    );
+  }
+
+  /**
+   * Paint with `scheme` whatever the canvas shows. The SVG export paints
+   * light: a file is printed on white and read back by colour (ADR 0039).
+   */
+  withColorScheme<T>(scheme: ColorScheme, paint: () => T): T {
+    const previous = this._schemeOverride;
+    this._schemeOverride = scheme;
+    try {
+      return paint();
+    } finally {
+      this._schemeOverride = previous;
+    }
+  }
+
+  /** The dark table when this pass paints dark, else `null`. */
+  private _tintForPass(): NotationTint | null {
+    if (this.getColorScheme() !== ColorScheme.Dark) return null;
+    this._darkTint ??= new NotationTint([
+      ...this.std.provider.getAll(NotationDarkPaletteIdentifier).values(),
+    ]);
+    return this._darkTint;
+  }
+
+  /**
+   * Whether an element is part of a notation, read off the document as the
+   * colour carousel reads it (ADR 0027): its own role or its being a board,
+   * else (a connector) a role at either end, else a framework board it sits
+   * inside. A neutral element anywhere else is painted exactly as stored.
+   */
+  private _isNotation(
+    element: SurfaceElementModel,
+    boards: readonly FrameworkBackgroundElementModel[]
+  ): boolean {
+    if ((element as { role?: string }).role) return true;
+    // A board is notation whether or not it stamps a role (Cynefin does not).
+    if (element instanceof FrameworkBackgroundElementModel) return true;
+    if (element instanceof ConnectorElementModel) {
+      for (const end of [element.source?.id, element.target?.id]) {
+        const model = end ? this._gfx.getElementById(end) : null;
+        if ((model as { role?: string } | null)?.role) return true;
+      }
+    }
+    const bound = element.elementBound;
+    return boards.some(
+      board => board !== element && board.elementBound.contains(bound)
+    );
   }
 
   getDebugMetrics(): CanvasRendererDebugMetrics {

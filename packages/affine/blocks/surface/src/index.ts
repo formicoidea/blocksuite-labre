@@ -9,6 +9,7 @@ export {
 export { CanvasElementType } from './element-model/index.js';
 export { CanvasRenderer } from './renderer/canvas-renderer.js';
 export { DomRenderer } from './renderer/dom-renderer.js';
+export * from './renderer/notation-tint.js';
 export { isPainted } from './renderer/paint-predicate.js';
 export { ElementHighlightOverlay } from './renderer/element-highlight-overlay.js';
 export type { ElementRenderer } from './renderer/elements/index.js';

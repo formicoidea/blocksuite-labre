@@ -6,6 +6,7 @@ import type {
 import {
   backgroundLabelText,
   createFrameworkBackgroundRenderer,
+  notationColor,
 } from '@labre/affine-block-surface';
 import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
 
@@ -145,7 +146,7 @@ export function withUmlFrameTag<T extends GfxPrimitiveElementModel>(
     // folding back on itself.
     const cut = Math.max(0, Math.min(opts.cut, rect.w, rect.h));
 
-    ctx.strokeStyle = opts.stroke;
+    ctx.strokeStyle = notationColor(renderer, opts.stroke);
     ctx.lineWidth = opts.lineWidth;
     ctx.beginPath();
     ctx.moveTo(x, y);

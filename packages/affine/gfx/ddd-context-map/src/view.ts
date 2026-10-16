@@ -3,6 +3,7 @@ import {
   ReadingProfileExtension,
   ValidationProfileExtension,
   ValidationRuleExtension,
+  NotationDarkPaletteExtension,
 } from '@labre/affine-block-surface';
 import { FrameworkPaletteExtension } from '@labre/affine-components/color-picker';
 import {
@@ -43,6 +44,11 @@ export class DddContextMapRenderViewExtension extends ViewExtensionProvider {
 
   override setup(context: ViewExtensionContext) {
     super.setup(context);
+    // Nothing of this notation vanishes on the dark card: it registers an
+    // empty dark palette to say so (ADR 0039, `notation-dark-palettes`).
+    context.register(
+      NotationDarkPaletteExtension({ framework: 'ddd-context-map', colors: {} })
+    );
     context.register(ContextMapView);
     context.register(ContextMapRendererExtension);
     // The role VOCABULARY, always on. A role is written in the DOCUMENT, not in

@@ -2,6 +2,7 @@ import {
   type CanvasRenderer,
   type ElementRenderer,
   ElementRendererExtension,
+  notationColor,
   taggedPath2D,
 } from '@labre/affine-block-surface';
 import type { CynefinElementModel } from '@labre/affine-model';
@@ -60,6 +61,9 @@ export const cynefin: ElementRenderer<CynefinElementModel> = (
   matrix,
   renderer
 ) => {
+  // The official SVG's inks, on whatever the canvas is: on a dark one they go
+  // through the dark notation table (ADR 0039).
+  const ink = (color: string) => notationColor(renderer, color);
   const tr = (wording: ChromeWording): string =>
     renderer ? translateKey(renderer.std, ...wording) : wording[1];
   // The host's catalogue, or `null` with no host — used to decide whether a
@@ -87,7 +91,7 @@ export const cynefin: ElementRenderer<CynefinElementModel> = (
   ctx.lineCap = 'butt';
 
   // ── Dark boundary strokes (behind the teal curve) ───────────────────
-  ctx.strokeStyle = COLORS.boundary;
+  ctx.strokeStyle = ink(COLORS.boundary);
   for (const [d, lw, miter] of DARK_BACK_PATHS) {
     ctx.lineJoin = miter ? 'miter' : 'round';
     ctx.lineWidth = lw;
@@ -96,7 +100,7 @@ export const cynefin: ElementRenderer<CynefinElementModel> = (
   ctx.lineJoin = 'round';
 
   // ── Dashed boundary (oriented square pavings) ───────────────────────
-  ctx.fillStyle = COLORS.boundary;
+  ctx.fillStyle = ink(COLORS.boundary);
   for (const [x, y, sz, rot] of DASH_RECTS) {
     ctx.save();
     ctx.translate(x, y);
@@ -107,13 +111,13 @@ export const cynefin: ElementRenderer<CynefinElementModel> = (
 
   // ── Teal "iterate" liminal curve ────────────────────────────────────
   if (model.showLiminalLine) {
-    ctx.strokeStyle = COLORS.teal;
+    ctx.strokeStyle = ink(COLORS.teal);
     ctx.lineWidth = TEAL_WIDTH;
     ctx.stroke(taggedPath2D(TEAL_PATH));
   }
 
   // ── Dark boundary strokes (over the teal curve) ─────────────────────
-  ctx.strokeStyle = COLORS.boundary;
+  ctx.strokeStyle = ink(COLORS.boundary);
   for (const [d, lw, miter] of DARK_FRONT_PATHS) {
     ctx.lineJoin = miter ? 'miter' : 'round';
     ctx.lineWidth = lw;
@@ -135,7 +139,7 @@ export const cynefin: ElementRenderer<CynefinElementModel> = (
   // ── Titles: domain headings + A / C marker glyphs and names ─────────
   if (model.showTitles) {
     ctx.textAlign = 'left';
-    ctx.fillStyle = COLORS.heading;
+    ctx.fillStyle = ink(COLORS.heading);
     ctx.font = `700 ${HEADING_SIZE}px ${FONT_FAMILY}`;
     // The user's own word when they have renamed this domain, the catalogue's
     // otherwise — the same precedence a declared background applies.
@@ -145,7 +149,7 @@ export const cynefin: ElementRenderer<CynefinElementModel> = (
 
     ctx.textAlign = 'center';
     for (const m of MARKERS) {
-      ctx.fillStyle = COLORS.body;
+      ctx.fillStyle = ink(COLORS.body);
       ctx.font = `700 38px ${FONT_FAMILY}`;
       // The letter itself is notation, not a word — never translated.
       ctx.fillText(m.letter, m.lx, m.ly);
@@ -159,11 +163,11 @@ export const cynefin: ElementRenderer<CynefinElementModel> = (
     // Subheadings (h2) + decision lines
     ctx.textAlign = 'left';
     for (const d of DOMAINS) {
-      ctx.fillStyle = COLORS.heading;
+      ctx.fillStyle = ink(COLORS.heading);
       ctx.font = `700 15px ${FONT_FAMILY}`;
       ctx.fillText(tr(d.subheading), d.x, d.sy);
 
-      ctx.fillStyle = COLORS.body;
+      ctx.fillStyle = ink(COLORS.body);
       for (const { lead, rest, wording, y } of d.lines) {
         if (hasHost) {
           // A translated sentence: one run, no assumed bold-lead boundary.
@@ -184,19 +188,19 @@ export const cynefin: ElementRenderer<CynefinElementModel> = (
     ctx.textAlign = 'center';
 
     // Teal annotation labels
-    ctx.fillStyle = COLORS.teal;
+    ctx.fillStyle = ink(COLORS.teal);
     ctx.font = `700 15px ${FONT_FAMILY}`;
     for (const [wording, x, y] of TEAL_LABELS) ctx.fillText(tr(wording), x, y);
 
     // Small exaptation sub-labels
-    ctx.fillStyle = COLORS.body;
+    ctx.fillStyle = ink(COLORS.body);
     ctx.font = `10.5px ${FONT_FAMILY}`;
     for (const [wording, x, y] of SMALL_LABELS) {
       ctx.fillText(tr(wording), x, y);
     }
 
     // Marker notes ("prepare to exit")
-    ctx.fillStyle = COLORS.teal;
+    ctx.fillStyle = ink(COLORS.teal);
     ctx.font = `700 15px ${FONT_FAMILY}`;
     for (const m of MARKERS) {
       if (m.note) ctx.fillText(tr(m.note.wording), m.note.x, m.note.y);

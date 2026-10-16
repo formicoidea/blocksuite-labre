@@ -6,6 +6,7 @@ import {
   QualityNudgeExtension,
   ValidationProfileExtension,
   ValidationRuleExtension,
+  NotationDarkPaletteExtension,
 } from '@labre/affine-block-surface';
 import {
   AuditCriterionExtension,
@@ -48,6 +49,7 @@ import {
   wardleyToolbarExtension,
 } from './toolbar/config';
 import { wardleySeniorTool } from './toolbar/senior-tool';
+import { WARDLEY_DARK_PALETTE } from './dark-palette';
 
 /**
  * Wardley rendering — ALWAYS registered, independent of any flag. Disabling
@@ -60,6 +62,7 @@ export class WardleyRenderViewExtension extends ViewExtensionProvider {
 
   override setup(context: ViewExtensionContext) {
     super.setup(context);
+    context.register(NotationDarkPaletteExtension(WARDLEY_DARK_PALETTE));
     context.register(WardleyView);
     context.register(WardleyElementRendererExtension);
     context.register(WardleyNodeView);

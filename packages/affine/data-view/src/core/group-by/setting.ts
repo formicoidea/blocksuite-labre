@@ -54,7 +54,7 @@ export class GroupSetting extends SignalWatcher(
       width: 4px;
       height: 12px;
       border-radius: 1px;
-      background-color: #efeff0;
+      background-color: var(--affine-border-color);
       position: absolute;
       left: 4px;
       top: 0;
@@ -63,7 +63,7 @@ export class GroupSetting extends SignalWatcher(
     }
 
     .group-item:hover .group-item-drag-bar {
-      background-color: #c0bfc1;
+      background-color: var(--affine-placeholder-color);
     }
 
     .group-item-visibility {

@@ -108,7 +108,10 @@ function paint(model: ShapeElementModel) {
     model,
     ctx as never,
     fakeMatrix() as never,
-    { getColorValue: () => '#123456' } as never,
+    {
+      getColorValue: () => '#123456',
+      getInkColorValue: () => '#123456',
+    } as never,
     {} as never,
     { x: 0, y: 0, w: 1000, h: 1000 }
   );

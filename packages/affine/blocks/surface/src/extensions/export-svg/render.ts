@@ -1,4 +1,7 @@
-import { FrameworkBackgroundElementModel } from '@labre/affine-model';
+import {
+  ColorScheme,
+  FrameworkBackgroundElementModel,
+} from '@labre/affine-model';
 import { createIdentifier } from '@labre/global/di';
 import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
@@ -270,6 +273,12 @@ export function renderCanvasSvg(std: BlockStdScope): BoardSvgExport | null {
  * `bound`, one model per pass, each inside a group carrying its markers (ADR
  * 0032 §6), in the canvas' own z-order: a text block is painted at its layer
  * index, between the elements it sits between on screen.
+ *
+ * Always in the LIGHT scheme, whatever the canvas shows (ADR 0039): the file
+ * is printed on white, read back by the SVG importer by its stored colours
+ * (rule R33), and a `{ light, dark }` pair painted on its dark side would turn
+ * a black stroke white on a white page. The PNG export, a picture of the
+ * screen, keeps the scheme in force.
  */
 function paintSvg(
   std: BlockStdScope,
@@ -279,38 +288,38 @@ function paintSvg(
   bound: Bound
 ): BoardSvgExport {
   const gfx = std.get(GfxControllerIdentifier);
-  return runWithRecordingPath2D(() => {
-    const { ctx, canvas, serialize, markRoot, markedGroup } = createSvgContext(
-      bound.w,
-      bound.h
-    );
-    const rc = new RoughCanvas(canvas);
-    markRoot();
-    const blocks = new Set<unknown>(texts);
-    for (const model of [...elements, ...texts].sort(gfx.layer.compare)) {
-      if (!blocks.has(model)) {
-        const element = model as SurfaceElementModel;
-        markedGroup(boardSvgMarkers(element, bound), () =>
-          renderer.renderBoundTo(ctx, rc, bound, [element])
-        );
-        continue;
+  return renderer.withColorScheme(ColorScheme.Light, () =>
+    runWithRecordingPath2D(() => {
+      const { ctx, canvas, serialize, markRoot, markedGroup } =
+        createSvgContext(bound.w, bound.h);
+      const rc = new RoughCanvas(canvas);
+      markRoot();
+      const blocks = new Set<unknown>(texts);
+      for (const model of [...elements, ...texts].sort(gfx.layer.compare)) {
+        if (!blocks.has(model)) {
+          const element = model as SurfaceElementModel;
+          markedGroup(boardSvgMarkers(element, bound), () =>
+            renderer.renderBoundTo(ctx, rc, bound, [element])
+          );
+          continue;
+        }
+        const block = model as GfxBlockElementModel;
+        const paint = std.getOptional(BlockSvgPainterIdentifier(block.flavour));
+        if (!paint) continue;
+        markedGroup(boardSvgMarkers(block, bound), () => {
+          ctx.save();
+          paint(
+            block,
+            ctx,
+            new DOMMatrix().translate(block.x - bound.x, block.y - bound.y),
+            renderer
+          );
+          ctx.restore();
+        });
       }
-      const block = model as GfxBlockElementModel;
-      const paint = std.getOptional(BlockSvgPainterIdentifier(block.flavour));
-      if (!paint) continue;
-      markedGroup(boardSvgMarkers(block, bound), () => {
-        ctx.save();
-        paint(
-          block,
-          ctx,
-          new DOMMatrix().translate(block.x - bound.x, block.y - bound.y),
-          renderer
-        );
-        ctx.restore();
-      });
-    }
-    return { svg: serialize(), bound };
-  });
+      return { svg: serialize(), bound };
+    })
+  );
 }
 
 /**

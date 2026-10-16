@@ -4,6 +4,10 @@ import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
 
 import type { CanvasRenderer } from '../renderer/canvas-renderer.js';
 import type { ElementRenderer } from '../renderer/elements/index.js';
+import {
+  type NotationColorUse,
+  notationColor,
+} from '../renderer/notation-tint.js';
 import type {
   BackgroundAxisDef,
   BackgroundColor,
@@ -151,13 +155,20 @@ export function createFrameworkBackgroundRenderer<
   const palette = def.chrome?.palette;
   const family = def.chrome?.fontFamily ?? DEFAULT_FONT_FAMILY;
   const surface = def.chrome?.surface ?? DEFAULT_BACKGROUND_SURFACE;
-  const color = (c: BackgroundColor | undefined) => backgroundColor(c, palette);
+  const declared = (c: BackgroundColor | undefined) =>
+    backgroundColor(c, palette);
   const texts = backgroundTexts(def);
   // The DECLARATION of the instance partition — how it stacks, how it is drawn.
   // What it contains is the model's business and is read on every paint.
   const instanceZonesDef = def.instanceZones;
 
   return (model, ctx, matrix, renderer) => {
+    // A board is chrome painted at render time, so on a dark canvas every
+    // declared colour goes through the dark notation table (ADR 0039).
+    const color = (
+      c: BackgroundColor | undefined,
+      use: NotationColorUse = 'ink'
+    ) => notationColor(renderer, declared(c), use);
     const props = model as unknown as BackgroundModelLike;
     const visible = (prop: string | undefined) =>
       backgroundVisible(prop, props);
@@ -248,7 +259,7 @@ export function createFrameworkBackgroundRenderer<
     // neither its fill nor its frame is painted.
     const carded = cardPath();
     if (carded && surface.fill) {
-      ctx.fillStyle = color(surface.fill);
+      ctx.fillStyle = color(surface.fill, 'fill');
       ctx.fill();
     }
 
@@ -267,7 +278,7 @@ export function createFrameworkBackgroundRenderer<
         const thickness = top ? Math.min(y0, h) : Math.min(x0, w);
         if (thickness <= 0) continue;
         if (band.fill) {
-          ctx.fillStyle = color(band.fill);
+          ctx.fillStyle = color(band.fill, 'fill');
           if (top) ctx.fillRect(0, 0, w, thickness);
           else ctx.fillRect(0, 0, thickness, h);
         }
@@ -301,7 +312,7 @@ export function createFrameworkBackgroundRenderer<
         if (!visible(wash.visibleProp)) continue;
 
         const gradient = ctx.createLinearGradient(x0, 0, x1, 0);
-        const hex = color(wash.color);
+        const hex = color(wash.color, 'fill');
         for (const [offset, alpha] of wash.stops) {
           gradient.addColorStop(offset, rgba(hex, alpha));
         }
@@ -315,7 +326,7 @@ export function createFrameworkBackgroundRenderer<
       if (!zone.fill) continue;
       if (!inVariant(zone.variants)) continue;
       if (!visible(zone.fillVisibleProp)) continue;
-      ctx.fillStyle = color(zone.fill);
+      ctx.fillStyle = color(zone.fill, 'fill');
       ctx.fillRect(
         x0 + zone.rect.x * pw,
         y0 + zone.rect.y * ph,

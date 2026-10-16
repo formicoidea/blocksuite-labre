@@ -42,7 +42,8 @@ export class MenuInput extends MenuFocusable {
 
     .affine-menu-input:focus {
       border: 1px solid ${unsafeCSSVarV2('layer/insideBorder/primaryBorder')};
-      box-shadow: 0px 0px 0px 2px rgba(28, 158, 228, 0.3);
+      box-shadow: 0px 0px 0px 2px
+        color-mix(in srgb, var(--affine-primary-color) 30%, transparent);
     }
   `;
 

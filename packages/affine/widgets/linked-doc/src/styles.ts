@@ -7,7 +7,7 @@ export const linkedDocWidgetStyles = css`
   .input-mask {
     position: absolute;
     pointer-events: none;
-    background: rgba(0, 0, 0, 0.1);
+    background: var(--affine-black-10);
     border-radius: 4px;
   }
 `;
