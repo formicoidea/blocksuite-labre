@@ -55,15 +55,23 @@ export const databaseTitleRowStyles = css({
   alignItems: 'center',
 });
 
+// Too narrow for the tabs and the tools side by side (a phone, P7), the tools
+// drop to a line of their own, on the right, instead of squeezing the
+// current view's tab to its icon.
 export const databaseToolbarRowStyles = css({
   display: 'flex',
+  flexWrap: 'wrap',
   alignItems: 'center',
   justifyContent: 'space-between',
   gap: '12px',
+  '& data-view-header-tools': {
+    marginLeft: 'auto',
+  },
 });
 
 export const databaseViewBarContainerStyles = css({
-  flex: 1,
+  flex: '1 1 200px',
+  minWidth: 0,
 });
 
 export const databaseContentStyles = css({

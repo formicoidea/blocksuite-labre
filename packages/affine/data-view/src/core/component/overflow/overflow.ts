@@ -80,9 +80,12 @@ export class Overflow extends SignalWatcher(WithDisposable(ShadowlessElement)) {
     );
     const moreWidth = moreButton?.getBoundingClientRect().width;
     if (moreWidth !== undefined) this.moreExtraWidth = moreWidth;
+    // The natural width: a host may let a drawn item give way (the views
+    // bar clips its pinned tab), and a shrunk width fed back here would make
+    // room that is not there, then take it back, pass after pass.
     const widths = Array.from(
       this.items as Iterable<HTMLDivElement>,
-      item => item.getBoundingClientRect().width
+      item => item.scrollWidth
     );
     const drawn = fitOverflow({
       widths,

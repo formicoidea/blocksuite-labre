@@ -76,6 +76,15 @@ const styles = css`
   .more-action.active {
     background: var(--affine-hover-color);
   }
+
+  /* A finger needs 44px: the host's touch-target floor (P7). */
+  @media (pointer: coarse) {
+    .affine-database-toolbar-item.more-action {
+      min-width: 44px;
+      min-height: 44px;
+      justify-content: center;
+    }
+  }
 `;
 
 export class DataViewHeaderToolsViewOptions extends WidgetBase {

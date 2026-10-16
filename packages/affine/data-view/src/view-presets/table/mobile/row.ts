@@ -17,7 +17,11 @@ import {
 } from '../../../core/view/color-rules.js';
 import { cellDivider } from '../styles.js';
 import { popMobileRowMenu } from './menu.js';
+import { mobileStickyTitle } from './table-view-style.js';
 import type { MobileTableViewUILogic } from './table-view-ui-logic.js';
+
+/** Two 24px ops, the 20px gap between them and their 8px inset. */
+const ROW_OPS_WIDTH = 24 * 2 + 20 + 8;
 
 export class MobileTableRow extends SignalWatcher(
   WithDisposable(ShadowlessElement)
@@ -102,13 +106,21 @@ export class MobileTableRow extends SignalWatcher(
               this.view
             );
           };
+          const isTitle =
+            column.view.mainProperties$.value.titleColumn === column.id;
+          const hasOps = isTitle && !column.readonly$.value;
           return html`
-            <div style="display: flex;">
+            <div
+              class="${isTitle ? mobileStickyTitle : ''}"
+              style="display: flex;"
+            >
               <mobile-table-cell
                 class="mobile-table-cell"
                 style=${styleMap({
                   width: `${column.width$.value}px`,
                   border: i === 0 ? 'none' : undefined,
+                  // Room for the two row ops drawn over its right end.
+                  paddingRight: hasOps ? `${ROW_OPS_WIDTH}px` : undefined,
                 })}
                 .tableViewLogic="${this.tableViewLogic}"
                 .column="${column}"
@@ -123,20 +135,19 @@ export class MobileTableRow extends SignalWatcher(
               >
               </mobile-table-cell>
               <div class="${cellDivider}"></div>
+              ${hasOps
+                ? html` <div class="mobile-row-ops">
+                    <div class="mobile-row-op" @click="${clickDetail}">
+                      ${CenterPeekIcon()}
+                    </div>
+                    ${!view.readonly$.value
+                      ? html` <div class="mobile-row-op" @click="${openMenu}">
+                          ${MoreHorizontalIcon()}
+                        </div>`
+                      : nothing}
+                  </div>`
+                : nothing}
             </div>
-            ${!column.readonly$.value &&
-            column.view.mainProperties$.value.titleColumn === column.id
-              ? html` <div class="mobile-row-ops">
-                  <div class="mobile-row-op" @click="${clickDetail}">
-                    ${CenterPeekIcon()}
-                  </div>
-                  ${!view.readonly$.value
-                    ? html` <div class="mobile-row-op" @click="${openMenu}">
-                        ${MoreHorizontalIcon()}
-                      </div>`
-                    : nothing}
-                </div>`
-              : nothing}
           `;
         }
       )}

@@ -83,11 +83,26 @@ export class DataViewHeaderViews extends WidgetBase {
       min-height: ${VIEWS_BAR_TOUCH_TARGET}px;
       min-width: ${VIEWS_BAR_TOUCH_TARGET}px;
     }
+    data-view-header-views component-overflow {
+      flex-wrap: nowrap;
+    }
+    /* The current view's tab is drawn even when it is wider than the room
+       (fitOverflow): it gives way, clipped, instead of wrapping "N more" and
+       "+" onto the filter bar below a bar of fixed height (P7, 390px). */
     data-view-header-views .component-overflow-item {
       padding-right: 4px;
+      min-width: ${VIEWS_BAR_TOUCH_TARGET}px;
+      overflow: hidden;
+    }
+    /* The tab keeps its own width inside a narrowed item: the overflow
+       measures scrollWidth, and a tab that shrank with its item would
+       report room that is not there. */
+    data-view-header-views .component-overflow-item > * {
+      width: max-content;
     }
     data-view-header-views .component-overflow-more {
       gap: 4px;
+      flex-shrink: 0;
     }
     data-view-header-views::-webkit-scrollbar-thumb {
       width: 1px;

@@ -1,6 +1,10 @@
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
-import { ShadowlessElement } from '@labre/std';
+import { type BlockStdScope, ShadowlessElement, stdContext } from '@labre/std';
+import { consume } from '@lit/context';
 import { property } from 'lit/decorators.js';
+
+import { DATA_VIEW_UNGROUPED } from '../../../translations.js';
+import { wordingOf } from '../../utils/wording.js';
 
 import type { Group } from '../trait.js';
 import type { GroupRenderProps } from '../types.js';
@@ -14,6 +18,14 @@ export class BaseGroup<JsonValue, Data extends Record<string, unknown>>
 
   @property({ attribute: false })
   accessor readonly!: boolean;
+
+  /** Absent outside an editor host: the wordings read English. */
+  @consume({ context: stdContext })
+  accessor std!: BlockStdScope;
+
+  get ungrouped() {
+    return wordingOf(this.std)(DATA_VIEW_UNGROUPED);
+  }
 
   updateData(data: Data) {
     this.group.manager.updateData(data);

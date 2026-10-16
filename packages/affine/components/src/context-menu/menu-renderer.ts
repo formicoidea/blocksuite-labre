@@ -268,17 +268,22 @@ export class MobileMenuComponent
   accessor std!: BlockStdScope;
 
   static override styles = css`
+    /* A bottom action sheet, not a full-screen page: the view stays visible
+       above it and a tap on the scrim closes it (popMobileMenu). */
     mobile-menu {
-      height: 100%;
+      max-height: 85%;
       font-family: var(--affine-font-family);
       display: flex;
       flex-direction: column;
       user-select: none;
       width: 100%;
       background-color: ${unsafeCSSVarV2('layer/background/secondary')};
-      padding: calc(8px + env(safe-area-inset-top, 0px)) 8px
-        calc(8px + env(safe-area-inset-bottom, 0px)) 8px;
+      padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px)) 8px;
       position: absolute;
+      left: 0;
+      bottom: 0;
+      border-radius: 12px 12px 0 0;
+      box-shadow: var(--affine-overlay-shadow);
       z-index: 999;
       color: ${unsafeCSSVarV2('text/primary')};
     }
@@ -510,6 +515,10 @@ export type MenuHandler = {
 const popMobileMenu = (options: MenuOptions): MenuHandler => {
   const model = createModal(document.body);
   model.style.position = 'fixed';
+  model.style.background = 'var(--affine-v2-layer-background-mobile-modal)';
+  model.addEventListener('click', e => {
+    if (e.target === model) menu.close();
+  });
   const menu = new Menu({
     ...options,
     onClose: () => {
