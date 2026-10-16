@@ -240,10 +240,11 @@ export class PageDropWatcher extends LifeCycleWatcher {
     std.event.disposables.add(
       std.event.add('nativeDrop', context => {
         const event = context.get('dndState').raw;
-        const id = dropPage(std, event, isInsideEdgelessEditor(std.host));
-        if (!id) return;
-        event.preventDefault();
-        return true;
+        // Never `return true`: that would stop the dispatch before the file
+        // drop's own handler, which clears the drop line it drew.
+        if (dropPage(std, event, isInsideEdgelessEditor(std.host))) {
+          event.preventDefault();
+        }
       })
     );
     const manager = std.store.history.undoManager;

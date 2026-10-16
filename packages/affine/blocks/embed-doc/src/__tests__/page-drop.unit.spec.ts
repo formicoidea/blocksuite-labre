@@ -17,7 +17,12 @@ import { type BlockModel, type Store, Text } from '@labre/store';
 import { TestWorkspace } from '@labre/store/test';
 import { describe, expect, it, vi } from 'vitest';
 
-import { dropPage, placePageCard, runUndoHooks } from '../page-drop/page-drop';
+import {
+  dropPage,
+  PageDropWatcher,
+  placePageCard,
+  runUndoHooks,
+} from '../page-drop/page-drop';
 
 /**
  * A page dragged from the host's sidebar into the open page (labre P7,
@@ -33,7 +38,10 @@ import { dropPage, placePageCard, runUndoHooks } from '../page-drop/page-drop';
  *   re-applied by Mod+Shift+Z (the hooks lost on the redo step's fresh meta);
  * - two cards for one drop when an editor nested in another sees the same
  *   bubbling event;
- * - a host refusal (`drop` returning null) that still writes a card.
+ * - a host refusal (`drop` returning null) that still writes a card;
+ * - a drop handler that answers `true` to the event dispatcher: that stops
+ *   the dispatch before the file drop clears its drop line, which then stayed
+ *   painted on the page after every page drop.
  */
 
 const DRAG_TYPE = 'application/x-host-page';
@@ -296,5 +304,32 @@ describe('dropPage', () => {
       dropPage(std, { ...dragOf('x'), dataTransfer: new DataTransfer() }, false)
     ).toBeNull();
     expect(drop).not.toHaveBeenCalled();
+  });
+});
+
+describe('PageDropWatcher', () => {
+  it('lets the dispatch go on after a drop it handled', () => {
+    const { store } = pageStore();
+    const { service } = host();
+    const handlers: ((context: unknown) => unknown)[] = [];
+    const std = {
+      ...stdFor(store, [[PageDropProvider, service]]),
+      host: Object.assign(document.createElement('div'), { store }),
+      event: {
+        add: (_name: string, handler: (context: unknown) => unknown) => {
+          handlers.push(handler);
+          return () => {};
+        },
+        disposables: { add: () => {} },
+      },
+    } as unknown as BlockStdScope;
+    new PageDropWatcher(std).mounted();
+    const drag = { ...dragOf('child'), preventDefault: vi.fn() };
+
+    const result = handlers[0]?.({ get: () => ({ raw: drag }) });
+
+    expect(cardsOf(store)).toEqual(['child']);
+    expect(drag.preventDefault).toHaveBeenCalled();
+    expect(result).toBeFalsy();
   });
 });
