@@ -14,6 +14,7 @@ import {
   EmbedSyncedDocViewExtensions,
 } from './embed-synced-doc-block';
 import { EmbedSyncedDocInteraction } from './embed-synced-doc-block/configs/edgeless-interaction';
+import { PageDropWatcher } from './page-drop/page-drop';
 
 export class EmbedDocViewExtension extends ViewExtensionProvider {
   override name = 'affine-embed-doc-block';
@@ -27,6 +28,8 @@ export class EmbedDocViewExtension extends ViewExtensionProvider {
     super.setup(context);
     context.register(EmbedLinkedDocViewExtensions);
     context.register(EmbedSyncedDocViewExtensions);
+    // Pages dragged in from the host (PageDropProvider), both views.
+    context.register(PageDropWatcher);
     const isEdgeless = this.isEdgeless(context.scope);
     if (isEdgeless) {
       context.register([
