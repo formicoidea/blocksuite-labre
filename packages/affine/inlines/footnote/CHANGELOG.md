@@ -1,5 +1,22 @@
 # @labre/affine-inline-footnote
 
+## 0.54.0
+
+### Patch Changes
+
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+  - @labre/affine-shared@0.54.0
+  - @labre/affine-components@0.54.0
+  - @labre/affine-ext-loader@0.54.0
+  - @labre/affine-model@0.54.0
+  - @labre/global@0.54.0
+  - @labre/std@0.54.0
+  - @labre/store@0.54.0
+
 ## 0.53.0
 
 ### Patch Changes

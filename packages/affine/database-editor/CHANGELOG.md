@@ -1,5 +1,29 @@
 # @labre/affine-database-editor
 
+## 0.54.0
+
+### Patch Changes
+
+- 5d40ad2: A base's "View settings" and "Property settings" sheets on a phone now speak the host's catalogue: every entry goes through a `com.labre.*` key, and "Done" (`com.labre.context-menu.done`) is translated on the sheet and on any sub-sheet it opens. A phone's sheet hangs from the body, out of the editor's DOM; its modal now provides the editor of the element it opens from (`PopupTarget.element`, optional, set by `popupTargetFromElement`). The view settings' "Layout" shows the preset's translated name, and the phone's column header reads the same property menu as the desktop's (`propertyMenuItems`).
+
+  Reused keys: `com.labre.database.view-menu.layout` and `.group` (now declared by `@labre/data-view`, restated by the database editor), `com.labre.selection-pane.filter`, `com.labre.database.properties-panel.title`, `com.labre.data-view.views-bar.view-name`, `.move-left`, `.move-right`, `com.labre.toolbar.duplicate`, `.delete`. New keys: `com.labre.data-view.view-settings`, `.sort`, `.sort.count`, `.filter.count`, `.properties.shown`, `.property.settings`, `.property.name`, `.property.type-entry`, `.property.insert-left`, `.property.insert-right`. A sheet's "Done" is no longer cut to its first letters by a longer translation ("Terminé"): it takes the width it needs and the title stays centred. "Insert Left Column", "Insert Right Column", "Move Left" and "Move Right" read in sentence case on the phone.
+
+- 5d40ad2: Base views on a phone. The mobile table scrolls sideways inside its own wrapper, the title column stays pinned and opaque, and the row actions no longer cover the title. A context menu on a phone (view settings, filter, sort) opens as a bottom action sheet over a scrim, and a tap on the scrim closes it. The view menu, search, "+ New" and "+ Add filter" are 44px under a coarse pointer. Search now shows on a phone; filter and sort were already in the view menu. "N more" and "+" no longer wrap over "+ Add filter". When the tabs and the tools do not fit side by side, the tools drop to their own line. The full-page base hides its own title row and narrows its margins to 24px under 640px. New keys: `com.labre.data-view.new-record`, `com.labre.data-view.new-record.short`, `com.labre.data-view.group.ungrouped`, `com.labre.data-view.filter.add`, `com.labre.data-view.search.placeholder`, `com.labre.data-view.search.clear-hint`. A base's empty title reads `com.labre.doc.untitled`. No stored format change.
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+  - @labre/affine-shared@0.54.0
+  - @labre/affine-components@0.54.0
+  - @labre/data-view@0.54.0
+  - @labre/affine-block-database@0.54.0
+  - @labre/affine-widget-slash-menu@0.54.0
+  - @labre/affine-ext-loader@0.54.0
+  - @labre/global@0.54.0
+  - @labre/std@0.54.0
+  - @labre/store@0.54.0
+
 ## 0.53.0
 
 ### Patch Changes

@@ -1,5 +1,20 @@
 # @labre/affine-shared
 
+## 0.54.0
+
+### Minor Changes
+
+- 5d40ad2: Dark canvas for the notations (ADR 0039). With `data-theme="dark"` the framework boards are no longer white cards: the paper and the inks drawn on it resolve at paint time through `NOTATION_NEUTRALS_DARK` and each framework's `NotationDarkPaletteExtension`, while the hues of every standard (EDGY's facets, the C4 ladder) stay as drawn. Nothing stored changes, a colour typed by hand is painted as stored, and the SVG export always paints light. New exports: `NOTATION_NEUTRALS_DARK` (`@labre/affine-shared/consts`), `NotationTint`, `notationColor`, `NotationDarkPaletteExtension` and `CanvasRenderer.withColorScheme` / `getInkColorValue` (`@labre/affine-block-surface`). The chrome's last hard-coded light colours (data-view drag bars, colour picker caption, menu input focus ring, scrollbar thumb, `@` menu mask, auto-connect navigator, auto-complete arrows, keyboard toolbar pressed state) now go through theme tokens.
+- 5d40ad2: `FrameTemplateService` gains an optional `showTemplates()`: with it, the notification that says a frame was saved as a template carries a « View » action (`com.labre.frame.toast.template-view`) that calls it, so the host can open the place where its templates are listed. A host without it gets the same notification as before, with no action.
+- 5d40ad2: New host seam `PageDropExtension({ verdict, drop })`: a page dragged from the host's own chrome (a sidebar tree) into the editor. On every dragover the editor asks `verdict({ types, docId })`: a refused page draws no drop line and the browser shows its no-drop cursor (a read-only document always refuses); an accepted one draws the drop line. On the drop the host's `drop({ dataTransfer, docId })` decides what it means (Labre moves the page under the open one) and returns `{ pageId, undo?, redo? }`; the editor places an ordinary `affine:embed-linked-doc` card on the drop line, or centred on the drop point on the canvas, in one undo step that also calls the host's `undo` / `redo`. No stored format changes. Without the seam nothing changes.
+
+### Patch Changes
+
+- @labre/affine-model@0.54.0
+- @labre/global@0.54.0
+- @labre/std@0.54.0
+- @labre/store@0.54.0
+
 ## 0.53.0
 
 ### Minor Changes

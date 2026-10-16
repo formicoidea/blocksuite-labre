@@ -1,5 +1,29 @@
 # @labre/affine-components
 
+## 0.54.0
+
+### Minor Changes
+
+- 5d40ad2: New host seam `PageDropExtension({ verdict, drop })`: a page dragged from the host's own chrome (a sidebar tree) into the editor. On every dragover the editor asks `verdict({ types, docId })`: a refused page draws no drop line and the browser shows its no-drop cursor (a read-only document always refuses); an accepted one draws the drop line. On the drop the host's `drop({ dataTransfer, docId })` decides what it means (Labre moves the page under the open one) and returns `{ pageId, undo?, redo? }`; the editor places an ordinary `affine:embed-linked-doc` card on the drop line, or centred on the drop point on the canvas, in one undo step that also calls the host's `undo` / `redo`. No stored format changes. Without the seam nothing changes.
+
+### Patch Changes
+
+- 5d40ad2: Dark canvas for the notations (ADR 0039). With `data-theme="dark"` the framework boards are no longer white cards: the paper and the inks drawn on it resolve at paint time through `NOTATION_NEUTRALS_DARK` and each framework's `NotationDarkPaletteExtension`, while the hues of every standard (EDGY's facets, the C4 ladder) stay as drawn. Nothing stored changes, a colour typed by hand is painted as stored, and the SVG export always paints light. New exports: `NOTATION_NEUTRALS_DARK` (`@labre/affine-shared/consts`), `NotationTint`, `notationColor`, `NotationDarkPaletteExtension` and `CanvasRenderer.withColorScheme` / `getInkColorValue` (`@labre/affine-block-surface`). The chrome's last hard-coded light colours (data-view drag bars, colour picker caption, menu input focus ring, scrollbar thumb, `@` menu mask, auto-connect navigator, auto-complete arrows, keyboard toolbar pressed state) now go through theme tokens.
+- 5d40ad2: A base's "View settings" and "Property settings" sheets on a phone now speak the host's catalogue: every entry goes through a `com.labre.*` key, and "Done" (`com.labre.context-menu.done`) is translated on the sheet and on any sub-sheet it opens. A phone's sheet hangs from the body, out of the editor's DOM; its modal now provides the editor of the element it opens from (`PopupTarget.element`, optional, set by `popupTargetFromElement`). The view settings' "Layout" shows the preset's translated name, and the phone's column header reads the same property menu as the desktop's (`propertyMenuItems`).
+
+  Reused keys: `com.labre.database.view-menu.layout` and `.group` (now declared by `@labre/data-view`, restated by the database editor), `com.labre.selection-pane.filter`, `com.labre.database.properties-panel.title`, `com.labre.data-view.views-bar.view-name`, `.move-left`, `.move-right`, `com.labre.toolbar.duplicate`, `.delete`. New keys: `com.labre.data-view.view-settings`, `.sort`, `.sort.count`, `.filter.count`, `.properties.shown`, `.property.settings`, `.property.name`, `.property.type-entry`, `.property.insert-left`, `.property.insert-right`. A sheet's "Done" is no longer cut to its first letters by a longer translation ("Terminé"): it takes the width it needs and the title stays centred. "Insert Left Column", "Insert Right Column", "Move Left" and "Move Right" read in sentence case on the phone.
+
+- 5d40ad2: Base views on a phone. The mobile table scrolls sideways inside its own wrapper, the title column stays pinned and opaque, and the row actions no longer cover the title. A context menu on a phone (view settings, filter, sort) opens as a bottom action sheet over a scrim, and a tap on the scrim closes it. The view menu, search, "+ New" and "+ Add filter" are 44px under a coarse pointer. Search now shows on a phone; filter and sort were already in the view menu. "N more" and "+" no longer wrap over "+ Add filter". When the tabs and the tools do not fit side by side, the tools drop to their own line. The full-page base hides its own title row and narrows its margins to 24px under 640px. New keys: `com.labre.data-view.new-record`, `com.labre.data-view.new-record.short`, `com.labre.data-view.group.ungrouped`, `com.labre.data-view.filter.add`, `com.labre.data-view.search.placeholder`, `com.labre.data-view.search.clear-hint`. A base's empty title reads `com.labre.doc.untitled`. No stored format change.
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+  - @labre/affine-shared@0.54.0
+  - @labre/affine-model@0.54.0
+  - @labre/global@0.54.0
+  - @labre/std@0.54.0
+  - @labre/store@0.54.0
+  - @labre/sync@0.54.0
+
 ## 0.53.0
 
 ### Patch Changes

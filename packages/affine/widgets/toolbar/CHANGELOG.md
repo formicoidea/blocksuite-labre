@@ -1,5 +1,25 @@
 # @labre/affine-widget-toolbar
 
+## 0.54.0
+
+### Patch Changes
+
+- 5d40ad2: Selecting a canvas element no longer breaks the toolbar when two modules contribute the same entry (the "Discuss" action): merging them kept their translated label intact instead of turning it into an object the host's translator rejected.
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+  - @labre/affine-block-surface@0.54.0
+  - @labre/affine-shared@0.54.0
+  - @labre/affine-components@0.54.0
+  - @labre/affine-block-database@0.54.0
+  - @labre/affine-block-table@0.54.0
+  - @labre/affine-ext-loader@0.54.0
+  - @labre/affine-model@0.54.0
+  - @labre/global@0.54.0
+  - @labre/std@0.54.0
+
 ## 0.53.0
 
 ### Patch Changes

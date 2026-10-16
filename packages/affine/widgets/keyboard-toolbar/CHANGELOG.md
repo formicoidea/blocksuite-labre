@@ -1,5 +1,43 @@
 # @labre/affine-widget-keyboard-toolbar
 
+## 0.54.0
+
+### Patch Changes
+
+- 5d40ad2: Dark canvas for the notations (ADR 0039). With `data-theme="dark"` the framework boards are no longer white cards: the paper and the inks drawn on it resolve at paint time through `NOTATION_NEUTRALS_DARK` and each framework's `NotationDarkPaletteExtension`, while the hues of every standard (EDGY's facets, the C4 ladder) stay as drawn. Nothing stored changes, a colour typed by hand is painted as stored, and the SVG export always paints light. New exports: `NOTATION_NEUTRALS_DARK` (`@labre/affine-shared/consts`), `NotationTint`, `notationColor`, `NotationDarkPaletteExtension` and `CanvasRenderer.withColorScheme` / `getInkColorValue` (`@labre/affine-block-surface`). The chrome's last hard-coded light colours (data-view drag bars, colour picker caption, menu input focus ring, scrollbar thumb, `@` menu mask, auto-connect navigator, auto-complete arrows, keyboard toolbar pressed state) now go through theme tokens.
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+  - @labre/affine-widget-linked-doc@0.54.0
+  - @labre/affine-block-surface@0.54.0
+  - @labre/affine-shared@0.54.0
+  - @labre/affine-components@0.54.0
+  - @labre/data-view@0.54.0
+  - @labre/affine-block-database@0.54.0
+  - @labre/affine-inline-reference@0.54.0
+  - @labre/affine-inline-link@0.54.0
+  - @labre/affine-block-attachment@0.54.0
+  - @labre/affine-block-embed@0.54.0
+  - @labre/affine-block-image@0.54.0
+  - @labre/affine-block-note@0.54.0
+  - @labre/affine-block-surface-ref@0.54.0
+  - @labre/affine-fragment-doc-title@0.54.0
+  - @labre/affine-block-latex@0.54.0
+  - @labre/affine-block-list@0.54.0
+  - @labre/affine-block-paragraph@0.54.0
+  - @labre/affine-inline-latex@0.54.0
+  - @labre/affine-inline-preset@0.54.0
+  - @labre/affine-rich-text@0.54.0
+  - @labre/affine-ext-loader@0.54.0
+  - @labre/affine-model@0.54.0
+  - @labre/global@0.54.0
+  - @labre/std@0.54.0
+  - @labre/store@0.54.0
+
 ## 0.53.0
 
 ### Patch Changes

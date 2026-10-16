@@ -1,5 +1,25 @@
 # @labre/affine-inline-link
 
+## 0.54.0
+
+### Patch Changes
+
+- 5d40ad2: Two light-DOM popups no longer style the host page: `reference-popup` scoped its `input` rules (they stretched any input of the page to `flex: 1` with no border) and `link-popup` scoped its `input:focus { outline: none }` (it removed the focus ring of every input of the page). A guard (`shadowless-scoped-styles.unit.spec.ts`) fails on any new bare element selector in a `ShadowlessElement`'s styles.
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+  - @labre/affine-shared@0.54.0
+  - @labre/affine-components@0.54.0
+  - @labre/affine-inline-reference@0.54.0
+  - @labre/affine-ext-loader@0.54.0
+  - @labre/affine-model@0.54.0
+  - @labre/global@0.54.0
+  - @labre/std@0.54.0
+  - @labre/store@0.54.0
+
 ## 0.53.0
 
 ### Patch Changes

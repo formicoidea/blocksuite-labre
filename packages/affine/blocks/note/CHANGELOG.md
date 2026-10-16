@@ -1,5 +1,29 @@
 # @labre/affine-block-note
 
+## 0.54.0
+
+### Patch Changes
+
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+  - @labre/affine-block-surface@0.54.0
+  - @labre/affine-shared@0.54.0
+  - @labre/affine-components@0.54.0
+  - @labre/affine-block-embed@0.54.0
+  - @labre/affine-fragment-doc-title@0.54.0
+  - @labre/affine-inline-preset@0.54.0
+  - @labre/affine-rich-text@0.54.0
+  - @labre/affine-widget-slash-menu@0.54.0
+  - @labre/affine-ext-loader@0.54.0
+  - @labre/affine-gfx-turbo-renderer@0.54.0
+  - @labre/affine-model@0.54.0
+  - @labre/global@0.54.0
+  - @labre/std@0.54.0
+  - @labre/store@0.54.0
+
 ## 0.53.0
 
 ### Patch Changes

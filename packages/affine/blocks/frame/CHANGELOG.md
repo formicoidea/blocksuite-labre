@@ -1,5 +1,30 @@
 # @labre/affine-block-frame
 
+## 0.54.0
+
+### Minor Changes
+
+- 5d40ad2: `FrameTemplateService` gains an optional `showTemplates()`: with it, the notification that says a frame was saved as a template carries a « View » action (`com.labre.frame.toast.template-view`) that calls it, so the host can open the place where its templates are listed. A host without it gets the same notification as before, with no action.
+
+### Patch Changes
+
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+  - @labre/affine-block-surface@0.54.0
+  - @labre/affine-shared@0.54.0
+  - @labre/affine-components@0.54.0
+  - @labre/affine-gfx-pointer@0.54.0
+  - @labre/affine-widget-edgeless-toolbar@0.54.0
+  - @labre/affine-widget-frame-title@0.54.0
+  - @labre/affine-ext-loader@0.54.0
+  - @labre/affine-model@0.54.0
+  - @labre/global@0.54.0
+  - @labre/std@0.54.0
+  - @labre/store@0.54.0
+
 ## 0.53.0
 
 ### Patch Changes

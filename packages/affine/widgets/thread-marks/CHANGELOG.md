@@ -1,5 +1,21 @@
 # @labre/affine-widget-thread-marks
 
+## 0.54.0
+
+### Patch Changes
+
+- 5941027: A discussion mark on a run of text now opens that discussion: the click hands the host the run (`range`) along with the block, as the click on the highlighted text already did. A mark that stands for several discussions of one block still asks for the block.
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+- Updated dependencies [5d40ad2]
+  - @labre/affine-block-surface@0.54.0
+  - @labre/affine-shared@0.54.0
+  - @labre/affine-widget-edgeless-toolbar@0.54.0
+  - @labre/affine-ext-loader@0.54.0
+  - @labre/global@0.54.0
+  - @labre/std@0.54.0
+  - @labre/store@0.54.0
+
 ## 0.53.0
 
 ### Minor Changes
