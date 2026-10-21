@@ -320,6 +320,31 @@ function copyLicense(outDir) {
   fs.copyFileSync(license, path.join(outDir, 'LICENSE'));
 }
 
+/**
+ * Copy the architecture map (`architecture/*.c4` and the likeC4 config that
+ * names the project `blocksuite`) to the core bundle's `architecture/` (ADR
+ * 0040 §5). Hosts consume compiled bundles and cannot regenerate the map, so
+ * the tarball carries the one of the version it is. The config travels with
+ * the `.c4` files: without it a host loads them into its own project instead
+ * of importing them as `blocksuite`.
+ */
+function copyArchitecture(outDir) {
+  const from = path.join(ROOT, 'architecture');
+  const names = fs.existsSync(from)
+    ? fs
+        .readdirSync(from)
+        .filter(n => n.endsWith('.c4') || n === 'likec4.config.json')
+    : [];
+  if (!names.some(n => n.endsWith('.c4'))) {
+    throw new Error(
+      `No architecture/*.c4 at ${toPosix(from)} — the core bundle ships the map (ADR 0040)`
+    );
+  }
+  const to = path.join(outDir, 'architecture');
+  fs.mkdirSync(to, { recursive: true });
+  for (const n of names) fs.copyFileSync(path.join(from, n), path.join(to, n));
+}
+
 /** Delete lines matching `re` from a file; assert exactly `expected` removed. */
 function dropLines(fileAbs, re, expected, label) {
   const lines = fs.readFileSync(fileAbs, 'utf8').split('\n');
@@ -473,6 +498,7 @@ function buildCore() {
   }
   // 5. package.json (no @labre/* deps) + the LICENSE npm packs beside it
   copyLicense(CORE_OUT);
+  copyArchitecture(CORE_OUT);
   const exportsMap = { ...umbrella.exports }; // frameworks are not umbrella subpaths
   fs.writeFileSync(
     path.join(CORE_OUT, 'package.json'),
@@ -488,7 +514,7 @@ function buildCore() {
         contributors: ['toeverything'],
         license: 'MPL-2.0',
         exports: exportsMap,
-        files: ['src'],
+        files: ['src', 'architecture'],
         dependencies: thirdPartyDeps(corePkgNames, [UMBRELLA_DIR]),
       },
       null,

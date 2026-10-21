@@ -287,7 +287,9 @@ function compile({ dir, pkg }, paths) {
   const rewritten = explicitifySpecifiers(dir, pkg.name);
 
   pkg.exports = remapExports(pkg.exports);
-  pkg.files = ['dist'];
+  // `dist` replaces `src`; any other entry build-bundles listed (core's
+  // `architecture/`, ADR 0040) stays in the tarball.
+  pkg.files = ['dist', ...(pkg.files ?? []).filter(f => f !== 'src')];
   fs.writeFileSync(
     path.join(dir, 'package.json'),
     JSON.stringify(pkg, null, 2) + '\n'

@@ -44,6 +44,15 @@ jobs:
       - name: Run format check
         run: yarn lint:format
 
+      # ADR 0040: the committed map must be what the code produces, and must
+      # parse. Here rather than in a job of its own: it needs only the install
+      # this job already has. Never the likeC4 MCP or any `--http` server.
+      - name: Check architecture map is up to date
+        run: yarn architecture --check
+
+      - name: Validate architecture map
+        run: yarn likec4 validate architecture
+
   typecheck:
     name: Typecheck & Build
     runs-on: ubuntu-latest

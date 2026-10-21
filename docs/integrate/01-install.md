@@ -82,6 +82,29 @@ green.
   string that marks the core entry and fails when it appears twice
   (`apps/marketing/scripts/assert-single-lib.mjs` in the `labre` repo).
 
+## Architecture map
+
+`@formicoidea/labre-core` carries the library's [likeC4](https://likec4.dev)
+map in `architecture/`: `code.c4`, generated from the imports of the version
+you installed, `model.c4` and a `likec4.config.json` naming the project
+`blocksuite` (ADR 0040). Never regenerate or edit it. likeC4 skips
+`node_modules` when it looks for projects, so copy the folder into your own
+likeC4 workspace, config included, then import its top-level elements, the
+layers `framework`, `model_`, `features`, `assembly` and `tooling`, by
+project name:
+
+```bash
+cp -R node_modules/@labre/affine/architecture architecture/blocksuite
+```
+
+```likec4
+import { framework, features } from 'blocksuite'
+```
+
+Copy again after each upgrade, with the bundles; a nested project stays out
+of yours, so its specification and views do not clash with your own
+([multi-projects](https://likec4.dev/dsl/config/multi-projects/)).
+
 ## Styles
 
 Import once, before mounting:
