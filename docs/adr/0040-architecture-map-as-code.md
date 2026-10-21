@@ -1,7 +1,7 @@
 # ADR 0040 — The library publishes its architecture map, generated from the code
 
 - Status: **proposed** (2026-10-21)
-- Deciders: Mathieu Jolly (likeC4 study and spike, 2026-10-21)
+- Deciders: Mathieu Jolly (likeC4 study, 2026-10-21)
 - **Red zone**: this ADR announces two red-zone changes, each in its own PR
   with a maintainer's explicit approval: a job in `.github/workflows/test.yml`
   and a copy step in `scripts/build-bundles.mjs`. No stored format, schema or
@@ -18,28 +18,22 @@ drifts with every PR. The product owner wants the diagram to be "the code
 seen at a more abstract scale": zoomable from the system to a source folder,
 every element backed by code, never declared by hand.
 
-A throwaway spike (draft PR #506, 2026-10-21) generated a
-[likeC4](https://likec4.dev) model from `packages/**` with a 200-line import
-scanner, then validated, built and queried it:
+Three needs follow for the library:
 
-- 85 packages, 396 `src/*` folders, 3343 folder edges; `likec4 validate`
-  green; static site built in 38 s; drift check by regeneration in memory.
-- "Four layers, one direction" holds: no package cycle, no upward edge, no
-  framework module importing another. The same generator run on
-  `toeverything/AFFiNE` `blocksuite/` (commit 0b69a6d, 2026-10-11) found 7
-  upward `import type` edges closing a 65-package cycle there: the layering
-  is a property of this fork, and nothing guards it today.
-- The likeC4 MCP server (`likec4 mcp --stdio`) answered structural questions
-  in milliseconds (blast radius of `store`, direct `yjs` importers, parity of
-  `gfx/wardley` and `gfx/edgy`).
-- Traps measured: likeC4 reserves ids (`model`, `icons`, `apps`…); tools do
-  not aggregate folder edges to packages; `query-graph` truncates at 100
-  results silently; barrel `index.ts` files create fake folder cycles; a
-  60-package view times out a PNG export.
+- **A map nobody maintains.** Only a map generated from the imports and
+  checked against them in CI stays true; a hand-drawn one is wrong by the next
+  PR.
+- **A map a host can read without the sources.** Hosts consume compiled
+  bundles, so they cannot rebuild the library's map, and they must not need
+  to: the library's map is useful on its own (principle 17, no privileged
+  consumer).
+- **A visible structure.** "Four layers, one direction" and "no framework
+  imports another" are written rules that no tool checks today; a generated
+  graph makes a breach show in a PR diff, and a guard test can assert them.
 
-The library is consumed as compiled bundles, so a host cannot rebuild this
-map from source, and a host must not need to: the map of the library is
-useful on its own (principle 17, no privileged consumer).
+[likeC4](https://likec4.dev) fits: a text model (`.c4`) the code can
+generate, `likec4 validate`, a static site, a React component a host embeds
+without a server, multi-project import, and an MCP server agents can query.
 
 ## Decision
 
