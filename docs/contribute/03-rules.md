@@ -88,11 +88,13 @@ from the code, never drawn ([ADR 0040](../adr/0040-architecture-map-as-code.md))
 - `architecture/code.c4` is written by `yarn architecture`
   (`scripts/architecture.mjs`, dependency-cruiser): layers, package families,
   packages and `src/*` folders, with `uses` (package to package) and
-  `imports` (folder to folder) relations counted in imported files. **Never
+  `imports` (folder to folder) relations titled by their count of (importing file, imported file) pairs. **Never
   edit it by hand.**
 - `yarn architecture --check` exits 1 when the committed map is not what
   the code produces. Run `yarn architecture` and commit the diff: it is the
   architecture change your PR makes, and the reviewer reads it.
+- On a merge conflict in `code.c4`, take either side and rerun
+  `yarn architecture`; never merge it by hand.
 - `architecture/model.c4` holds the element and relationship kinds and the
   views. A view includes by predicate (`include *`, `where kind is …`, a
   scope), never by naming a package, so a new package needs no edit there.

@@ -9,17 +9,17 @@
  * The hierarchy is the repository's and nothing else: layer, then package,
  * then the first folder under the package's `src/`. Packages under
  * `packages/affine/<kind>/` sit in a `family` element named after `<kind>`,
- * so the feature layer zooms in two steps instead of showing 75 packages at
- * once. `packages/playground` and `packages/integration-test` form a fifth,
+ * so the feature layer zooms in two steps instead of showing every feature
+ * package at once. `packages/playground` and `packages/integration-test` form a fifth,
  * `tooling`, layer that sits above the four of CLAUDE.md: they import
  * everything and nothing may import them.
  *
  * Relations come at two grains, each with its own kind, because the likeC4
  * MCP tools do not aggregate folder edges into packages: `uses` (package to
  * package) and `imports` (folder to folder). The title counts imports, one
- * per (file, imported file) pair; the pairs whose every import is
- * `import type` are counted again as "type-only", since they put no edge in
- * the runtime graph but still couple the sources.
+ * per (importing file, imported file) pair; the pairs whose every import is
+ * `import type` or `import('…').T` are counted again as "type-only", since
+ * they put no edge in the runtime graph but still couple the sources.
  *
  * Two kinds of file never make an edge:
  * - tests (`__tests__/`, `*.spec.*`, `*.test.*`, benches, stories) and
@@ -28,7 +28,7 @@
  * - inside a package, a file that only re-exports (a barrel). A barrel's
  *   re-export is plumbing, not use: counting it drew a fake edge from the
  *   barrel's folder to every folder it re-exports and fake folder cycles
- *   (the spike, commit 67eb8ed). An import OF a barrel still counts, against
+ *   (ADR 0040). An import OF a barrel still counts, against
  *   the barrel's folder, and a barrel's re-export of ANOTHER package still
  *   counts: that is a real dependency (`@labre/affine` is mostly such shims).
  *
@@ -199,7 +199,9 @@ async function cruiseImports() {
     ['packages'],
     {
       baseDir: ROOT,
-      includeOnly: '^packages/',
+      // `@labre/` keeps an unresolvable workspace import in the result, so
+      // `buildGraph` can refuse it instead of losing the edge
+      includeOnly: { path: ['^packages/', '^@labre/'] },
       exclude: { path: ['/node_modules/', '/dist/'] },
       doNotFollow: { path: '/node_modules/' },
       tsPreCompilationDeps: true,
@@ -262,8 +264,15 @@ function buildGraph(packages, modules) {
     /** resolved file -> true while every import of it is type-only */
     const targets = new Map();
     for (const dep of dependencies) {
+      if (dep.couldNotResolve && dep.module.startsWith('@labre/'))
+        throw new Error(
+          `${source}: cannot resolve ${dep.module}; is it declared and installed? A map that drops it would hide an edge.`
+        );
       if (!files.has(dep.resolved) || dep.resolved === source) continue;
-      const typeOnly = dep.dependencyTypes.includes('type-only');
+      // `import('x').T` is a type position like `import type`
+      const typeOnly = dep.dependencyTypes.some(
+        t => t === 'type-only' || t === 'type-import'
+      );
       targets.set(
         dep.resolved,
         (targets.get(dep.resolved) ?? true) && typeOnly

@@ -79,3 +79,34 @@ without a server, multi-project import, and an MCP server agents can query.
   predicate; run `yarn architecture` when `--check` fails.
 
 ## Amendments
+
+### 2026-10-21 — What the generator adds to the decision
+
+The first implementation (`scripts/architecture.mjs`) had to settle four
+points the decision left open.
+
+- **A `family` level.** The feature layer holds most of the library's
+  packages; one diagram of all of them is unreadable. Packages under
+  `packages/affine/<kind>/` therefore sit in a `family` element named after
+  `<kind>` (blocks, fragments, gfx, inlines, widgets), between the layer and
+  the package. It is still the repository's own tree, not a hand-placed
+  grouping. A new `<kind>` folder needs a new family view in `model.c4`,
+  since a scoped view names its scope; a new package needs nothing.
+- **A fifth layer, `tooling`.** `packages/playground` and
+  `packages/integration-test` are workspaces too, so they are on the map, in
+  a layer above the four of the rule: they may import everything, nothing may
+  import them. The top-level elements, which hosts import, are `framework`,
+  `model_` (`model` is a likeC4 keyword), `features`, `assembly`, `tooling`.
+- **What makes an edge.** Tests (`__tests__/`, `*.spec.*`, `*.test.*`,
+  benches, stories) and files outside a package's `src/` make no edge; the
+  playground, which has no `src/`, contributes its directories but not its
+  root config files. A file that only re-exports makes no edge inside its own
+  package, because a barrel's re-export is plumbing and would draw fake folder
+  edges and cycles; an import of a barrel counts against the barrel's folder,
+  and a re-export of another package counts as a dependency. Titles count
+  (importing file, imported file) pairs, type-only pairs counted apart; an
+  unresolvable `@labre/` import stops the generator rather than vanish.
+- **The guard test ships with the generator**, not as a follow-up:
+  `packages/affine/all/src/__tests__/architecture-map.unit.spec.ts` reads
+  `code.c4` and asserts no package cycle, no edge up a layer and no framework
+  package importing another.
