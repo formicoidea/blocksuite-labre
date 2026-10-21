@@ -80,6 +80,33 @@ and mention it in the PR body. A new peer-level dependency (anything a host
 also imports) is a red-zone-adjacent change: it affects every host's
 deduplication.
 
+## Architecture map
+
+The library's architecture map lives in `architecture/` and is generated
+from the code, never drawn ([ADR 0040](../adr/0040-architecture-map-as-code.md)).
+
+- `architecture/code.c4` is written by `yarn architecture`
+  (`scripts/architecture.mjs`, dependency-cruiser): layers, package families,
+  packages and `src/*` folders, with `uses` (package to package) and
+  `imports` (folder to folder) relations counted in imported files. **Never
+  edit it by hand.**
+- `yarn architecture --check` exits 1 when the committed map is not what
+  the code produces. Run `yarn architecture` and commit the diff: it is the
+  architecture change your PR makes, and the reviewer reads it.
+- `architecture/model.c4` holds the element and relationship kinds and the
+  views. A view includes by predicate (`include *`, `where kind is …`, a
+  scope), never by naming a package, so a new package needs no edit there.
+- `packages/affine/all/src/__tests__/architecture-map.unit.spec.ts` asserts
+  on the map: no package cycle, no edge up a layer (framework, model,
+  features, assembly, then tooling), no framework package importing another.
+- Check it with `npx likec4 validate architecture`. Browsing it
+  (`likec4 start`, `likec4 build`) needs `react` and `react-dom` 19.3 beside
+  likeC4, which this repo does not install: run likeC4 from a directory that
+  has the three and pass it this `architecture/` path.
+- The likeC4 MCP server runs over stdio only, launched by an agent on a
+  workstation: its `--http` mode has no authentication and is never
+  deployed, exposed or run in CI.
+
 ## Definition of done for any change
 
 1. The change does what the issue says, nothing more.

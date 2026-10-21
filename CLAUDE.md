@@ -32,7 +32,8 @@ One line per location: `path in this repo — what lives there (counterpart in t
 - `packages/affine/all` (`@labre/affine`) — the assembly: `schemas.ts`, `extensions/{store,view}.ts`, `flags.ts`, `frameworks.ts`, `shortcuts.ts`, `translations.ts`, `commands.ts`, and the cross-framework parity tests in `src/__tests__/`.
 - `packages/affine/shared/src/services/` — every host seam (telemetry, translation, notification, image proxy…), one file or folder each.
 - `packages/playground` — the dev app (`yarn dev`, port 5173). `packages/integration-test` — the browser suite.
-- `scripts/` — `build-bundles.mjs`, `compile-bundles.mjs`, `publish-bundles.mjs`, `changelog.mjs`, `vitest-global.js`.
+- `architecture/` — the likeC4 architecture map (ADR 0040): `code.c4` generated from the imports by `scripts/architecture.mjs`, `model.c4` the hand-written kinds and views.
+- `scripts/` — `architecture.mjs`, `build-bundles.mjs`, `compile-bundles.mjs`, `publish-bundles.mjs`, `changelog.mjs`, `vitest-global.js`.
 - `docs/` — entry point `docs/README.md`: four guides (understand, integrate, contribute, add a framework), `principles.md`, `lessons.md`, `adr/README.md`. A change to a rule, a seam or a flag updates the matching page in the same PR. `DESIGN.md` at the root is the visual design system.
 
 ## Library contract
@@ -99,6 +100,7 @@ Entry points, not an exhaustive list. Nothing is authorised by omission: if your
 - Import a package through its entry point, never `dist/` or `src/` of another package; every import is declared in that workspace's `package.json` (`workspace:*`). Nothing under `store/test` is for hosts (ADR 0004).
 - A lower package that must call code living above it takes a registry, never an import: a block drawn into the board SVG export registers a `BlockSvgPainterExtension(flavour, painter)` from its own package (`blocks/surface/src/extensions/export-svg/render.ts`; the edgeless text's lives in `blocks/edgeless-text`); a block with no painter is not drawn.
 - A framework contributes data, not menus: one `CommandDescriptor` per user-facing action; the senior sub-menu, catalogue, palette, shortcuts pane and agent are projections of it. One identity per framework, spelled once in `frameworks.ts` (`FrameworkId` = flag key = command owner = descriptor id; `telemetryKey` is frozen).
+- The architecture map is generated, never drawn (ADR 0040): never edit `architecture/code.c4`; when `yarn architecture --check` fails, run `yarn architecture` and commit the diff, which is the PR's architecture change. A view in `model.c4` includes by predicate (kind, scope, wildcard), never by naming a package. `architecture-map.unit.spec.ts` asserts on the map: no package cycle, no upward edge between layers, no framework importing another. The likeC4 MCP server runs over stdio only, launched on a workstation; its `--http` mode has no authentication and is never deployed, exposed or run in CI.
 - No dependency added for what a few lines can do. A new peer-level dependency (anything a host also imports) is red-zone-adjacent: it affects every host's deduplication. Pin it, say so in the PR body.
 
 ## Lit, signals, DI and the store
@@ -291,7 +293,7 @@ We do not track upstream, but `../AFFiNE-upstream` (shallow clone of toeverythin
 
 ## Commands and local setup
 
-- The commands are the root `package.json` scripts; this file does not copy them. The ones you will run: `yarn dev`, `yarn build`, `yarn test:unit`, `yarn test:integration`, `yarn lint:format`, `yarn format`, `yarn changeset`, `yarn build:bundles`.
+- The commands are the root `package.json` scripts; this file does not copy them. The ones you will run: `yarn dev`, `yarn build`, `yarn test:unit`, `yarn test:integration`, `yarn lint:format`, `yarn format`, `yarn changeset`, `yarn build:bundles`, `yarn architecture`.
 - Node `>=18.19 <27` (`.nvmrc` says 22; Corepack is no longer bundled from Node 25, install it with `npm i -g corepack` there), Yarn 4.7.0 pinned by `packageManager` (Corepack). `yarn install --immutable`; `postinstall` installs the git hooks.
 - Playground: `yarn dev` opens Vite on `http://localhost:5173`. Entries: `/starter/?init` (page), `/starter/?init&mode=edgeless` (whiteboard), `/starter/?init&room=x` plus a second tab on `/starter/?room=x` for collaboration through a broadcast channel. Packages are imported from source, edits reload live. `applyFlags` in the playground console exercises the flag contract.
 - One package's tests run from where its config expects. A `vitest.config.ts` that sets `test.root: './packages/…'` (every `gfx/*/vitest.config.ts`, `model`, `components`, `fragments/outline`, `blocks/{callout,code,frame,latex,note,root,surface-ref}`, `widgets/*`, `inlines/{latex,link}`) runs from the repo root: `npx vitest run --config <pkg>/vitest.config.ts [filter]`; from its own directory it finds no file. One without `test.root` (`affine/all`, `shared`, `blocks/surface`, `framework/*`, every browser-mode config) runs from its package directory: `npx vitest run [filter]`; from the root, `--config` finds no file. `yarn vitest` works only where the package declares `vitest`; `--project` filters hang. Run `yarn test:unit` alone: a concurrent `tsc -b` starves the browser-mode projects. First integration run: `npx playwright install`.
