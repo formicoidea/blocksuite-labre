@@ -44,6 +44,7 @@ One file per decision. Format and lifecycle in
 | [0037](0037-image-crop-is-a-view.md)                           | Image crop is a view                 | accepted                  | One optional `crop` (normalised rectangle + preset token) on `affine:image`; the bytes never change; a 0.49 client shows the whole image.                                           |
 | [0038](0038-thread-marks-seam.md)                              | "Has a thread" seam                  | accepted, amended         | `ThreadMarksExtension({ marks$, openThread })`: a mark on what the host says has a thread, "Discuss" on every toolbar; ids and counts in, an excerpt out; nothing written.          |
 | [0039](0039-dark-notation-palette.md)                          | Dark notation palette                | accepted                  | On a dark canvas, notation colours resolve through a dark table at paint time; hues stay, the paper and inks invert; SVG export stays light; nothing stored changes.                |
+| [0040](0040-architecture-map-as-code.md)                       | Architecture map as code             | proposed                  | `architecture/code.c4` generated from imports, drift-checked in CI, shipped in `labre-core`; likeC4 MCP stdio only.                                                                 |
 
 Related documents that are not ADRs:
 
