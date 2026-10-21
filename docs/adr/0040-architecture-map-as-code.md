@@ -1,6 +1,6 @@
 # ADR 0040 — The library publishes its architecture map, generated from the code
 
-- Status: **proposed** (2026-10-21)
+- Status: **accepted** (2026-10-21)
 - Deciders: Mathieu Jolly (likeC4 study, 2026-10-21)
 - **Red zone**: this ADR announces two red-zone changes, each in its own PR
   with a maintainer's explicit approval: a job in `.github/workflows/test.yml`
