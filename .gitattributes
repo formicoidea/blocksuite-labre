@@ -1,3 +1,8 @@
 # Vitest rewrites snapshot files with LF; keep them LF on disk regardless of
 # core.autocrlf so running the tests never dirties the tree (Windows checkouts).
 *.snap text eol=lf
+
+# The architecture map is compared byte for byte by `yarn architecture --check`
+# and parsed line by line by architecture-map.unit.spec.ts (ADR 0040): a CRLF
+# checkout would fail both.
+architecture/*.c4 text eol=lf
