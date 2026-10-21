@@ -25,10 +25,22 @@ export function runQuery(query: Query, block: Block) {
   const blockViewType = getBlockViewType(query, block);
   block.blockViewType = blockViewType;
 
-  if (blockViewType !== 'hidden') {
+  if (blockViewType !== 'hidden' && canHideBlocks(query)) {
     const queryMode = query.mode;
     setAncestorsToDisplayIfHidden(queryMode, block);
   }
+}
+
+/**
+ * A loose query hides a block only through a `viewType: 'hidden'` entry, so
+ * without one no ancestor can be hidden and the walk below is a no-op. The
+ * walk costs one O(n) `getParent` per ancestor, which made opening a store
+ * with the default query quadratic in the block count (#507, guard
+ * `__tests__/query.unit.spec.ts`).
+ */
+function canHideBlocks(query: Query): boolean {
+  if (query.mode !== 'loose') return true;
+  return query.match.some(entry => entry.viewType === 'hidden');
 }
 
 function getBlockViewType(query: Query, block: Block): BlockViewType {
