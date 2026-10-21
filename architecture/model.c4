@@ -1,0 +1,25 @@
+// Hand-written part of the map: kinds, styles and the entry view.
+// Everything structural lives in generated.c4 (built from packages/**).
+specification {
+  element layer {
+    style { color slate; opacity 10%; border dashed }
+  }
+  element package {
+    style { color primary }
+  }
+  element folder {
+    style { color secondary; size small }
+  }
+  element external {
+    style { color muted; shape storage }
+  }
+}
+
+views {
+  view index {
+    title 'blocksuite-labre: four layers, one direction'
+    description 'Edges are aggregated from file-level imports. Click a layer to zoom.'
+    include *
+    autoLayout TopBottom
+  }
+}
