@@ -1,5 +1,25 @@
 # @labre/affine-block-code
 
+## 0.56.0
+
+### Patch Changes
+
+- Updated dependencies [4b760e7]
+  - @labre/store@0.56.0
+  - @labre/affine-components@0.56.0
+  - @labre/affine-ext-loader@0.56.0
+  - @labre/affine-gfx-turbo-renderer@0.56.0
+  - @labre/affine-inline-comment@0.56.0
+  - @labre/affine-inline-latex@0.56.0
+  - @labre/affine-inline-link@0.56.0
+  - @labre/affine-inline-preset@0.56.0
+  - @labre/affine-model@0.56.0
+  - @labre/affine-rich-text@0.56.0
+  - @labre/affine-shared@0.56.0
+  - @labre/affine-widget-slash-menu@0.56.0
+  - @labre/std@0.56.0
+  - @labre/global@0.56.0
+
 ## 0.55.0
 
 ### Patch Changes
