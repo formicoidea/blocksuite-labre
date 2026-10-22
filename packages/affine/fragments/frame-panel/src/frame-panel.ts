@@ -35,6 +35,8 @@ const styles = css`
 
     overflow: auto;
     overflow-x: hidden;
+    /* A scrollbar appearing must not narrow the fluid cards it scrolls. */
+    scrollbar-gutter: stable;
     scrollbar-width: thin; /* For Firefox */
     scrollbar-color: transparent transparent; /* For Firefox */
   }

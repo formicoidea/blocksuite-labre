@@ -21,10 +21,18 @@ import { property, query, state } from 'lit/decorators.js';
 import { guard } from 'lit/directives/guard.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import debounce from 'lodash-es/debounce';
+
+import { fluidPreviewSize } from './preview-size.js';
+
 const DEFAULT_PREVIEW_CONTAINER_WIDTH = 280;
 const DEFAULT_PREVIEW_CONTAINER_HEIGHT = 166;
 
 const styles = css`
+  frame-preview[data-fluid] {
+    display: block;
+    width: 100%;
+  }
+
   .frame-preview-container {
     display: block;
     width: 100%;
@@ -95,8 +103,15 @@ export class FramePreview extends WithDisposable(ShadowlessElement) {
     return this._viewExtensionManager.get('preview-edgeless');
   }
 
+  private _resizeObserver: ResizeObserver | null = null;
+
   private readonly _updateFrameViewportWH = () => {
     const [, , w, h] = deserializeXYWH(this.frame.xywh);
+    if (this.fluid) {
+      const box = fluidPreviewSize(this._containerWidth, w, h);
+      this.surfaceWidth = box.width;
+      this.surfaceHeight = box.height;
+    }
 
     let scale = 1;
     if (this.fillScreen) {
@@ -140,9 +155,13 @@ export class FramePreview extends WithDisposable(ShadowlessElement) {
           ) {
             return;
           }
+          // Every size, not only the first: a fluid preview follows its
+          // panel's width, and the mini editor's viewport settles on the new
+          // size (debounced) after the box has changed — fitting then is what
+          // keeps the frame filling it. The subject completes with the
+          // viewport, which ends the subscription.
           const viewport = std.get(GfxControllerIdentifier).viewport;
-          const subscription = viewport.sizeUpdated.subscribe(() => {
-            subscription.unsubscribe();
+          viewport.sizeUpdated.subscribe(() => {
             refreshViewport();
           });
         });
@@ -212,16 +231,53 @@ export class FramePreview extends WithDisposable(ShadowlessElement) {
     this._initPreviewDoc();
     this._updateFrameViewportWH();
     this._setFrameDisposables(this.frame);
+    this._observeWidth();
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback();
     this._clearFrameDisposables();
+    this._resizeObserver?.disconnect();
+    this._resizeObserver = null;
+  }
+
+  /** A fluid preview follows its own width: the panel's, as it is resized. */
+  private _observeWidth() {
+    this._resizeObserver?.disconnect();
+    this._resizeObserver = null;
+    if (!this.fluid || typeof ResizeObserver === 'undefined') return;
+    this._resizeObserver = new ResizeObserver(([entry]) => {
+      if (!entry) return;
+      const width = Math.floor(entry.contentRect.width);
+      if (width !== this._containerWidth) this._containerWidth = width;
+    });
+    this._resizeObserver.observe(this);
+  }
+
+  override willUpdate(changed: PropertyValues) {
+    if (changed.has('fluid')) {
+      this.toggleAttribute('data-fluid', this.fluid);
+      if (this.isConnected) this._observeWidth();
+    }
+    // The box was only read at connect and on a frame's own update, so a host
+    // that resized it after mounting kept the old scale.
+    if (
+      changed.has('fluid') ||
+      changed.has('_containerWidth') ||
+      changed.has('surfaceWidth') ||
+      changed.has('surfaceHeight') ||
+      changed.has('fillScreen')
+    ) {
+      this._updateFrameViewportWH();
+    }
   }
 
   override render() {
     const { frame } = this;
-    const noContent = !frame || !frame.xywh;
+    // A fluid preview builds its mini editor once it knows its width, never
+    // at the default box first.
+    const noContent =
+      !frame || !frame.xywh || (this.fluid && this._containerWidth === 0);
 
     return html`<div class="frame-preview-container">
       ${noContent ? nothing : this._renderSurfaceContent()}
@@ -240,8 +296,20 @@ export class FramePreview extends WithDisposable(ShadowlessElement) {
   @property({ attribute: false })
   accessor std!: BlockStdScope;
 
+  /** The width a fluid preview measured on itself; `0` until laid out. */
+  @state()
+  private accessor _containerWidth = 0;
+
   @state()
   accessor fillScreen = false;
+
+  /**
+   * Take the container's width and the frame's proportions (recette 1,
+   * P0-1.2): the box grows and shrinks with the panel, never taller than
+   * wide, and `surfaceWidth` / `surfaceHeight` are computed, not read.
+   */
+  @property({ attribute: false })
+  accessor fluid = false;
 
   @property({ attribute: false })
   accessor frame!: FrameBlockModel;

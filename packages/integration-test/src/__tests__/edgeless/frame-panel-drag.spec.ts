@@ -14,7 +14,9 @@
  * Escape cancelling, and a nudge under 5px staying a click.
  *
  * The panel is mounted on its own, 320px wide, as a host docks it. Frame
- * previews are mini editors: three frames, and generous settling.
+ * previews are mini editors: three frames, and generous settling. The frames
+ * are 16:9 since the cards took the panel's width and the frame's proportions
+ * (recette 1, P0-1.2): three square frames no longer fit the panel's height.
  */
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import type { FramePanel } from '@labre/affine/fragments/frame-panel';
@@ -62,7 +64,7 @@ describe('frame panel drag and drop', () => {
       return edgeless.service.crud.addBlock(
         'affine:frame',
         {
-          xywh: `[${i * 400},0,300,300]`,
+          xywh: `[${i * 500},0,400,225]`,
           title: new Text(`Frame ${i + 1}`),
           presentationIndex: key,
         },

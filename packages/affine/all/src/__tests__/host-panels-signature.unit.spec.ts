@@ -14,6 +14,7 @@ import {
   type CommandFile,
   type CommandInvocation,
   createFramePreview,
+  createPanelReorderDrag,
   fitToModel,
   frameCommands,
   formatPropertyValue,
@@ -24,6 +25,9 @@ import {
   getViewActions,
   getViewExports,
   isPropertyValueEmpty,
+  type PanelDragPoint,
+  type PanelReorderDrag,
+  panelReorderGap,
   type PropertiesPanelRequest,
   type PropertiesPanelService,
   type ReorderFramesParams,
@@ -31,6 +35,7 @@ import {
   runCommand,
   runCommandAsync,
   runViewAction,
+  selectionPaneCommands,
   selectionPaneTree,
   type SelectionPaneNode,
   selectModels,
@@ -154,6 +159,56 @@ const viewExportCalls = (std: BlockStdScope) => {
 };
 
 /**
+ * The 0.57 slide list (recette 1, P0-1.2 to P0-1.4): a fluid preview, the
+ * panels' drag-to-reorder controller, and the frame rename a host runs from
+ * page mode too. Same rule: compiles or the build fails; never invoked.
+ */
+const slideListCalls = (
+  std: BlockStdScope,
+  frame: FrameBlockModel,
+  list: HTMLElement,
+  rows: () => HTMLElement[]
+) => {
+  const fluid: HTMLElement = createFramePreview(std, frame, { fluid: true });
+  const drag: PanelReorderDrag = createPanelReorderDrag<string | null>({
+    readonly: () => std.store.readonly,
+    rows,
+    bounds: () => list,
+    onPickUp: (_press: PanelDragPoint) => {},
+    dropAt: gap => rows()[gap]?.dataset.frameId ?? null,
+    onMove: () => {},
+    onDrop: before => {
+      const reorder = frameCommands.find(c => c.id === 'canvas.frame.reorder');
+      if (reorder) {
+        runCommand(
+          std,
+          reorder,
+          { surface: 'contextual-toolbar', source: 'toolbar:general' },
+          { ids: [frame.id], before }
+        );
+      }
+    },
+    onEnd: () => {},
+    mask: { host: () => document.body, className: 'mask' },
+  });
+  const gap: number = panelReorderGap([], 0);
+  const rename = selectionPaneCommands.find(
+    c => c.id === 'canvas.frame.rename'
+  );
+  if (rename) {
+    runCommand(
+      std,
+      rename,
+      { surface: 'contextual-toolbar', source: 'toolbar:general' },
+      { id: frame.id, title: 'Intro' }
+    );
+  }
+  const swallowed: boolean = drag.consumeSwallowedClick();
+  drag.dispose();
+  return { fluid, gap, swallowed };
+};
+
+/**
  * The 0.47 calls of a host's properties panel (ADR 0035 §9b, §11), verbatim:
  * the sheet it hands the title band, the panel it opens on request, and the
  * chip text it reuses. Same rule as above: compiles or the build fails.
@@ -235,6 +290,7 @@ describe('@labre/affine/host-panels keeps its 0.46 shape', () => {
     expectTypeOf(hostCalls).toBeFunction();
     expectTypeOf(viewMenuCalls).toBeFunction();
     expectTypeOf(viewExportCalls).toBeFunction();
+    expectTypeOf(slideListCalls).toBeFunction();
     expectTypeOf(getViewExports).returns.toEqualTypeOf<ViewAction[]>();
     expectTypeOf(getViewActions).returns.toEqualTypeOf<ViewAction[]>();
     expectTypeOf(runViewAction).returns.toEqualTypeOf<
@@ -260,13 +316,18 @@ describe('@labre/affine/host-panels keeps its 0.46 shape', () => {
 
   test('the façade exports functions, and two data constants', async () => {
     const facade: Record<string, unknown> = await import('../host-panels.js');
-    // The zod schema and the frame descriptors are data a host passes back
-    // to `runCommand`; anything else that is not a function is state, which
-    // the façade does not hold (ADR 0034 §4).
+    // The zod schema and the frame and pane descriptors are data a host
+    // passes back to `runCommand` (the pane's carry `canvas.frame.rename`);
+    // anything else that is not a function is state, which the façade does
+    // not hold (ADR 0034 §4).
     const data = Object.keys(facade)
       .filter(name => typeof facade[name] !== 'function')
       .sort();
-    expect(data).toEqual(['frameCommands', 'reorderFramesParams']);
+    expect(data).toEqual([
+      'frameCommands',
+      'reorderFramesParams',
+      'selectionPaneCommands',
+    ]);
 
     const classes = Object.keys(facade).filter(
       name =>

@@ -32,11 +32,16 @@ const styles = css`
     display: block;
   }
 
+  /*
+    The card takes the panel's width and its preview the frame's proportions
+    (recette 1, P0-1.2): widening the sidebar grows every card, so fewer fit
+    on screen. No fixed size anywhere; a ghost gets its width from the card it
+    copies.
+  */
   .frame-card-container {
     display: flex;
     flex-direction: column;
-    width: 284px;
-    height: 198px;
+    width: 100%;
     gap: 8px;
 
     position: relative;
@@ -45,7 +50,6 @@ const styles = css`
   .frame-card-body {
     display: flex;
     width: 100%;
-    height: 170px;
     box-sizing: border-box;
     justify-content: center;
     align-items: center;
@@ -57,8 +61,15 @@ const styles = css`
     position: relative;
   }
 
+  /* A ring, not a thicker border: the preview inside keeps its width. */
   .frame-card-container.selected .frame-card-body {
-    border: 2px solid var(--affine-primary-color);
+    border-color: var(--affine-primary-color);
+    box-shadow: 0 0 0 1px var(--affine-primary-color);
+  }
+
+  .frame-card-body > frame-preview {
+    border-radius: 7px;
+    overflow: hidden;
   }
 
   .frame-card-container.dragging {
@@ -72,6 +83,11 @@ const styles = css`
 
   .frame-card-container.dragging frame-card-title {
     display: none;
+  }
+
+  /* The copy stacked behind draws no preview: it keeps a card's shape. */
+  .frame-card-container.dragging .frame-card-body {
+    aspect-ratio: 16 / 9;
   }
 
   .frame-card-container.dragging .dragging-card-number {
@@ -176,6 +192,7 @@ export class FrameCard extends WithDisposable(ShadowlessElement) {
         : html`<affine-frame-card-title
             .cardIndex=${this.cardIndex}
             .frame=${this.frame}
+            .std=${this.std}
           ></affine-frame-card-title>`}
       <div
         class="frame-card-body"
@@ -188,6 +205,7 @@ export class FrameCard extends WithDisposable(ShadowlessElement) {
           : html`<frame-preview
               .frame=${this.frame}
               .std=${this.std}
+              .fluid=${true}
             ></frame-preview>`}
         ${this._DraggingCardNumber()}
       </div>
