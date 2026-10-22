@@ -11,7 +11,7 @@
  * Auth: relies on npm's userconfig `.npmrc` (set up by actions/setup-node) plus
  * the `NODE_AUTH_TOKEN` env var.
  */
-import { execSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -66,6 +66,40 @@ for (const { dir, pkg: pj } of ordered) {
   }
 }
 
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+// npm can answer a 5xx to a PUT it has already accepted (npm/cli#6103), and a
+// large tarball (core, ~15 MB) shows on the registry minutes after its PUT: the
+// 0.56.0 release stopped on a 503 with core accepted but not yet visible. So a
+// 5xx is retried, and "cannot publish over" means the registry already holds
+// the version: skip it instead of aborting a half-published release.
+const publish = async dir => {
+  for (let attempt = 1; ; attempt++) {
+    const { status, stderr } = spawnSync(
+      `npm publish --access public --tag ${tag}`,
+      {
+        cwd: dir,
+        shell: true,
+        stdio: ['inherit', 'inherit', 'pipe'],
+        encoding: 'utf8',
+        maxBuffer: 64 * 1024 * 1024,
+      }
+    );
+    process.stderr.write(stderr ?? '');
+    if (status === 0) return 'published';
+    if (/EPUBLISHCONFLICT|cannot publish over/i.test(stderr ?? '')) {
+      return 'already there';
+    }
+    if (attempt >= 4 || !/\bE5\d\d\b/.test(stderr ?? '')) {
+      throw new Error(`npm publish failed in ${dir} (exit ${status})`);
+    }
+    console.log(
+      `registry ${/\bE5\d\d\b/.exec(stderr)?.[0]}, retry ${attempt}/3`
+    );
+    await sleep(attempt * 30_000);
+  }
+};
+
 for (const { dir, pkg: pj } of ordered) {
   const url = `https://registry.npmjs.org/${pj.name.replace('/', '%2F')}/${pj.version}`;
   const res = await fetch(url);
@@ -75,8 +109,9 @@ for (const { dir, pkg: pj } of ordered) {
   }
 
   console.log(`publish ${pj.name}@${pj.version} (tag ${tag})`);
-  execSync(`npm publish --access public --tag ${tag}`, {
-    cwd: dir,
-    stdio: 'inherit',
-  });
+  if ((await publish(dir)) === 'already there') {
+    console.log(
+      `skip ${pj.name}@${pj.version} (accepted by an earlier attempt)`
+    );
+  }
 }

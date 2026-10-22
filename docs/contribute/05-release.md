@@ -42,7 +42,11 @@ yarn ci:publish
 git-ignored `dist-bundles/`, `scripts/compile-bundles.mjs` compiles them and
 rewrites import specifiers so Node resolves them), then
 `scripts/publish-bundles.mjs latest`. A bundle whose version is already on
-the registry is skipped, so re-running is safe. Each generated bundle gets a
+the registry is skipped, so re-running is safe; once `dist-bundles/` is built,
+`node scripts/publish-bundles.mjs latest` alone resumes a release. A registry
+5xx is retried, and a "cannot publish over" answer counts as published: npm
+can accept a PUT and still answer 503, and core shows on the registry minutes
+after its PUT. Each generated bundle gets a
 copy of the root `LICENSE` (npm packs it whatever `files` says), and
 `publish-bundles.mjs` refuses to publish a bundle whose directory has none.
 
