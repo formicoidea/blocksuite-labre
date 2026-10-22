@@ -4,5 +4,7 @@
 
 # The architecture map is compared byte for byte by `yarn architecture --check`
 # and parsed line by line by architecture-map.unit.spec.ts (ADR 0040): a CRLF
-# checkout would fail both.
-architecture/*.c4 text eol=lf
+# checkout would fail both. The bundle script copies the directory byte for
+# byte into the core tarball, so the likeC4 config is pinned too (0.57.0 shipped
+# it in CRLF from a Windows release checkout).
+architecture/* text eol=lf
