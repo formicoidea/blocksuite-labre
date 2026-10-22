@@ -20,7 +20,8 @@ import {
   StandaloneCellMetaProvider,
 } from '@labre/data-view';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
-import { type BlockStdScope, ShadowlessElement } from '@labre/std';
+import { type BlockStdScope, ShadowlessElement, stdContext } from '@labre/std';
+import { ContextProvider } from '@lit/context';
 import {
   LinkedPageIcon,
   PlusIcon,
@@ -29,7 +30,13 @@ import {
   ToggleRightIcon,
 } from '@blocksuite/icons/lit';
 import { computed, type ReadonlySignal, signal } from '@preact/signals-core';
-import { css, html, nothing, type TemplateResult } from 'lit';
+import {
+  css,
+  html,
+  nothing,
+  type PropertyValues,
+  type TemplateResult,
+} from 'lit';
 import { property } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 
@@ -697,6 +704,19 @@ export class TitleBand extends SignalWatcher(
         }
       )}
     </div>`;
+  }
+
+  // The band is drawn in the title, outside `editor-host`, so its cells find
+  // no `stdContext` to consume and their tag menu and date picker spoke
+  // English under a French host (recette 1, 2026-10-22). The band hands them
+  // its own scope.
+  private readonly _stdProvider = new ContextProvider(this, {
+    context: stdContext,
+  });
+
+  override willUpdate(changed: PropertyValues<this>) {
+    super.willUpdate(changed);
+    if (changed.has('std') && this.std) this._stdProvider.setValue(this.std);
   }
 
   override connectedCallback() {

@@ -21,6 +21,7 @@ import {
   TitleBandProvider,
   type TitleBandService,
   type TitleBandSheetState,
+  TranslationProvider,
 } from '@labre/affine-shared/services';
 import {
   BaseCellRenderer,
@@ -545,6 +546,28 @@ describe('the title band', () => {
     expect(menu!.querySelector('[data-testid="option-more"]')).toBeNull();
     optionNamed(menu!, 'Done').click();
     expect(service.set).toHaveBeenCalledWith(DOC, 'status', 'b');
+  });
+
+  it("speaks the host's words in the tag menu, outside editor-host", async () => {
+    const { service } = bandService({ status: 'ready', properties: [STATUS] });
+    const t = (key: string) =>
+      key === 'com.labre.data-view.tag.placeholder'
+        ? 'Saisissez ici…'
+        : undefined;
+    const band = await mount(
+      fakeStd(
+        new Map<unknown, unknown>([
+          [TitleBandProvider, service],
+          [TranslationProvider, { t, language: 'fr' }],
+        ])
+      ).std
+    );
+    cellOf(chipOf(band, 'status')).click();
+    await frame();
+    const input = document.querySelector<HTMLInputElement>(
+      'affine-multi-tag-select input'
+    );
+    expect(input?.placeholder).toBe('Saisissez ici…');
   });
 
   it('creates an option through setData, then selects it through set', async () => {
