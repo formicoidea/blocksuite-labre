@@ -27,6 +27,7 @@ export default [
   'packages/affine/database-editor/vitest.config.ts',
   'packages/affine/ext-loader/vitest.config.ts',
   'packages/affine/fragments/doc-title/vitest.config.ts',
+  'packages/affine/fragments/frame-panel/vitest.config.ts',
   'packages/affine/fragments/outline/vitest.config.ts',
   'packages/affine/gfx/bpmn/vitest.config.ts',
   'packages/affine/gfx/bpmn/vitest.browser.config.ts',
