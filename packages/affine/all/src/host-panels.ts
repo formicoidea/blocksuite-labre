@@ -89,6 +89,7 @@ export {
 export { armArtefact } from '@labre/affine-widget-edgeless-toolbar';
 export {
   type SelectionPaneNode,
+  selectionPaneCommands,
   selectionPaneTree,
 } from '@labre/affine-block-surface';
 export {
@@ -96,6 +97,23 @@ export {
   type ReorderFramesParams,
   reorderFramesParams,
 } from '@labre/affine-block-frame';
+
+/*
+ * The side panels' one drag-to-reorder gesture (ADR 0034 §6), the one the
+ * library's frame panel and selection pane run: a host's slide list hands it
+ * its rows, its drop rule and its write (`canvas.frame.reorder`), and gets the
+ * threshold, the read-only refusal, the cursor mask, Escape and
+ * `pointercancel` as cancels and the swallowed click. A factory, not a class:
+ * the controller it returns is the host's, disposed with its panel. DOM types
+ * only, so a React panel types it without Lit (recette 1, P0-1.3).
+ */
+export {
+  createPanelReorderDrag,
+  type PanelDragPoint,
+  type PanelReorderDrag,
+  type PanelReorderDragOptions,
+  panelReorderGap,
+} from '@labre/affine-shared/utils';
 
 /*
  * The properties panel (ADR 0035 §9b and §11). The editor asks the host to
@@ -191,9 +209,12 @@ export function fitToModel(
  * thumbnail renders one through `ExportManager` instead.
  *
  * Returns the element ready to be appended; `width` and `height` are the
- * preview box in CSS pixels (the panel's card is 280 × 166), `fillScreen`
- * covers the box instead of containing the frame. One mini editor per
- * preview: mount only the cards on screen. The element is defined by the
+ * preview box in CSS pixels, `fillScreen` covers the box instead of
+ * containing the frame. `fluid` (0.57) replaces the fixed box: the preview
+ * takes its container's width and the frame's proportions, never taller than
+ * wide, and follows the container as it is resized — the library's own panel
+ * cards draw it that way (recette 1, P0-1.2); `width` and `height` are then
+ * ignored. One mini editor per preview: mount only the cards on screen. The element is defined by the
  * frame panel's view extension, so it renders nothing in an assembly where the
  * `frame` flag is off (ADR 0009) — the same assembly where there is no frame
  * to preview.
@@ -201,7 +222,12 @@ export function fitToModel(
 export function createFramePreview(
   std: BlockStdScope,
   frame: FrameBlockModel,
-  options: { width?: number; height?: number; fillScreen?: boolean } = {}
+  options: {
+    width?: number;
+    height?: number;
+    fillScreen?: boolean;
+    fluid?: boolean;
+  } = {}
 ): FramePreview {
   const preview = document.createElement(AFFINE_FRAME_PREVIEW) as FramePreview;
   preview.std = std;
@@ -209,6 +235,7 @@ export function createFramePreview(
   if (options.width !== undefined) preview.surfaceWidth = options.width;
   if (options.height !== undefined) preview.surfaceHeight = options.height;
   if (options.fillScreen !== undefined) preview.fillScreen = options.fillScreen;
+  if (options.fluid !== undefined) preview.fluid = options.fluid;
   return preview;
 }
 

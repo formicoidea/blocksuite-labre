@@ -72,13 +72,13 @@ type FrameListItem = {
 const styles = css`
   .frame-list-container {
     display: flex;
-    align-items: start;
+    align-items: stretch;
     box-sizing: border-box;
     flex-direction: column;
     width: 100%;
     gap: 16px;
     position: relative;
-    margin: 0 8px;
+    padding: 0 8px;
   }
 
   .no-frame-container {
@@ -109,8 +109,8 @@ const styles = css`
     background-color: var(--affine-blue-600);
     position: absolute;
     contain: layout size;
-    width: 284px;
-    left: 0;
+    left: 8px;
+    right: 8px;
   }
 
   /*
