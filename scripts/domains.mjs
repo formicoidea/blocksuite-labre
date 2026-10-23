@@ -9,7 +9,8 @@
  * elements of code.c4, never a tag and never a parent. Two halves:
  * - the probable half is `domains.json`, written by the weekly Claude Code
  *   routine and reviewed in its PR: the domain list, and rules mapping a
- *   path prefix (a folder or a file-name prefix) to domain weights. Rules
+ *   path prefix (a folder or a file-name prefix) to domain weights, none
+ *   for technical ground no domain owns. Rules
  *   listed under `validated` were confirmed by a human; the routine never
  *   changes or drops them, so a reviewed answer stays put;
  * - the exact half is this projection: a file takes the weights of the
@@ -37,7 +38,10 @@ const HUB_DEGREE = 20;
 const quote = s => `'${s.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
 const byKey = (a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
 
-/** file -> { domain: weight } normalised to 1, or null when no rule matches. */
+/**
+ * file -> { domain: weight } normalised to 1, `{}` for a rule with no weight
+ * (technical ground no domain owns), or null when no rule matches.
+ */
 function weightsOf(file, rules) {
   let best = null;
   for (const prefix of Object.keys(rules))
@@ -46,9 +50,8 @@ function weightsOf(file, rules) {
   if (!best) return null;
   const weights = Object.entries(rules[best]);
   const total = weights.reduce((sum, [, w]) => sum + w, 0);
-  return total > 0
-    ? Object.fromEntries(weights.map(([d, w]) => [d, w / total]))
-    : null;
+  // a rule with no weight is a decision: the file serves no domain
+  return Object.fromEntries(weights.map(([d, w]) => [d, w / total]));
 }
 
 /** Throws on a domains.json the projection cannot read. */

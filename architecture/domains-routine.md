@@ -31,7 +31,8 @@ than one open at a time.
    - give every unmatched file a rule: prefer a folder or a file-name prefix
      already covering siblings, read the file's header and imports when the
      name is not enough, and weight it across two domains when it truly
-     serves both (weights are normalised per file);
+     serves both (weights are normalised per file); a rule with no weight
+     (`{}`) marks technical ground no domain owns (UI kit, env, HTTP);
    - delete rules matching no file, unless listed under `validated`;
    - revisit a rule only on evidence (the community report, the file's
      imports, a renamed module); never touch a rule listed under
