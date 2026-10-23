@@ -701,10 +701,9 @@ model {
   }
   extend features.blocks.surface {
     metadata {
-      domain ['canvas', 'file', 'workshop', 'layer']
-      domain_canvas '0.66'
+      domain ['canvas', 'file', 'layer']
+      domain_canvas '0.74'
       domain_file '0.18'
-      domain_workshop '0.08'
       domain_layer '0.06'
     }
   }
@@ -764,10 +763,9 @@ model {
   }
   extend features.blocks.surface.extensions {
     metadata {
-      domain ['canvas', 'file', 'workshop', 'layer']
-      domain_canvas '0.35'
+      domain ['canvas', 'file', 'layer']
+      domain_canvas '0.52'
       domain_file '0.30'
-      domain_workshop '0.17'
       domain_layer '0.12'
     }
   }
@@ -1087,7 +1085,7 @@ model {
   extend features.gfx.bpmn {
     metadata {
       domain ['canvas']
-      domain_canvas '0.94'
+      domain_canvas '1.00'
     }
   }
   extend features.gfx.bpmn.node_ {
@@ -1099,7 +1097,7 @@ model {
   extend features.gfx.bpmn.src {
     metadata {
       domain ['canvas']
-      domain_canvas '0.91'
+      domain_canvas '1.00'
     }
   }
   extend features.gfx.bpmn.templates {
@@ -1147,7 +1145,7 @@ model {
   extend features.gfx.c4 {
     metadata {
       domain ['canvas']
-      domain_canvas '0.94'
+      domain_canvas '1.00'
     }
   }
   extend features.gfx.c4.node_ {
@@ -1159,7 +1157,7 @@ model {
   extend features.gfx.c4.src {
     metadata {
       domain ['canvas']
-      domain_canvas '0.92'
+      domain_canvas '1.00'
     }
   }
   extend features.gfx.c4.toolbar {
@@ -1279,14 +1277,13 @@ model {
   extend features.gfx.ddd-context-map {
     metadata {
       domain ['canvas']
-      domain_canvas '0.86'
+      domain_canvas '1.00'
     }
   }
   extend features.gfx.ddd-context-map.src {
     metadata {
-      domain ['canvas', 'workshop']
-      domain_canvas '0.81'
-      domain_workshop '0.19'
+      domain ['canvas']
+      domain_canvas '1.00'
     }
   }
   extend features.gfx.ddd-context-map.toolbar {
@@ -1298,7 +1295,7 @@ model {
   extend features.gfx.ddd-core-domain {
     metadata {
       domain ['canvas']
-      domain_canvas '0.86'
+      domain_canvas '1.00'
     }
   }
   extend features.gfx.ddd-core-domain.core-domain {
@@ -1309,9 +1306,8 @@ model {
   }
   extend features.gfx.ddd-core-domain.src {
     metadata {
-      domain ['canvas', 'workshop']
-      domain_canvas '0.79'
-      domain_workshop '0.21'
+      domain ['canvas']
+      domain_canvas '1.00'
     }
   }
   extend features.gfx.ddd-core-domain.toolbar {
@@ -1323,14 +1319,13 @@ model {
   extend features.gfx.ddd-event-storming {
     metadata {
       domain ['canvas']
-      domain_canvas '0.86'
+      domain_canvas '1.00'
     }
   }
   extend features.gfx.ddd-event-storming.src {
     metadata {
-      domain ['canvas', 'workshop']
-      domain_canvas '0.82'
-      domain_workshop '0.18'
+      domain ['canvas']
+      domain_canvas '1.00'
     }
   }
   extend features.gfx.ddd-event-storming.toolbar {
@@ -1366,7 +1361,7 @@ model {
   extend features.gfx.edgy {
     metadata {
       domain ['canvas']
-      domain_canvas '0.91'
+      domain_canvas '1.00'
     }
   }
   extend features.gfx.edgy.node_ {
@@ -1378,7 +1373,7 @@ model {
   extend features.gfx.edgy.src {
     metadata {
       domain ['canvas']
-      domain_canvas '0.87'
+      domain_canvas '1.00'
     }
   }
   extend features.gfx.edgy.templates {
@@ -1714,7 +1709,7 @@ model {
   extend features.gfx.uml {
     metadata {
       domain ['canvas']
-      domain_canvas '0.95'
+      domain_canvas '1.00'
     }
   }
   extend features.gfx.uml.node_ {
@@ -1726,7 +1721,7 @@ model {
   extend features.gfx.uml.src {
     metadata {
       domain ['canvas']
-      domain_canvas '0.93'
+      domain_canvas '1.00'
     }
   }
   extend features.gfx.uml.toolbar {
@@ -1738,7 +1733,7 @@ model {
   extend features.gfx.wardley {
     metadata {
       domain ['canvas']
-      domain_canvas '0.92'
+      domain_canvas '1.00'
     }
   }
   extend features.gfx.wardley.node_ {
@@ -1750,7 +1745,7 @@ model {
   extend features.gfx.wardley.src {
     metadata {
       domain ['canvas']
-      domain_canvas '0.89'
+      domain_canvas '1.00'
     }
   }
   extend features.gfx.wardley.templates {
@@ -1938,7 +1933,7 @@ model {
       domain ['file', 'collaboration', 'canvas']
       domain_file '0.26'
       domain_collaboration '0.04'
-      domain_canvas '0.02'
+      domain_canvas '0.03'
     }
   }
   extend features.shared.adapters {
@@ -1949,8 +1944,9 @@ model {
   }
   extend features.shared.services {
     metadata {
-      domain ['collaboration']
+      domain ['collaboration', 'canvas']
       domain_collaboration '0.12'
+      domain_canvas '0.06'
     }
   }
   extend features.shared.utils {
@@ -2471,7 +2467,7 @@ views {
   }
   view domain-canvas {
     title 'Domain: canvas'
-    description 'The canvas: basic shapes, connectors, brush, mind maps, the drawing tools, the business frameworks (Wardley, C4, EDGY, BPMN, Cynefin, UML, DDD) and templates. Scored overlay (domains.json), not a parent.'
+    description 'The canvas: basic shapes, connectors, brush, mind maps, the drawing tools, the business frameworks (Wardley, C4, EDGY, BPMN, Cynefin, UML, DDD) and templates, and their notation tooling: validation rules and profiles, nudges, map quality, legends, violation timeline, audit. Scored overlay (domains.json), not a parent.'
     include * where metadata.domain is 'canvas'
     exclude * -> * where kind is imports
   }
@@ -2501,14 +2497,8 @@ views {
   }
   view domain-presentation {
     title 'Domain: presentation'
-    description 'Presenting: frames, the presentation mode, the frame panel, the reading frame and spotlight. Scored overlay (domains.json), not a parent.'
+    description 'Presenting and running a workshop: frames, the presentation mode and slideshow, the frame panel, the reading frame, spotlight, public pages, workshop facilitation widgets and, later, sites. Scored overlay (domains.json), not a parent.'
     include * where metadata.domain is 'presentation'
-    exclude * -> * where kind is imports
-  }
-  view domain-workshop {
-    title 'Domain: workshop'
-    description 'Running a workshop on a board: validation rules and profiles, nudges, map quality, legends, violation timeline, audit. Scored overlay (domains.json), not a parent.'
-    include * where metadata.domain is 'workshop'
     exclude * -> * where kind is imports
   }
 }

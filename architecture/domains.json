@@ -1,13 +1,12 @@
 {
   "domains": {
     "base-view": "Base views: database and data-view blocks, tables, kanban, properties.",
-    "canvas": "The canvas: basic shapes, connectors, brush, mind maps, the drawing tools, the business frameworks (Wardley, C4, EDGY, BPMN, Cynefin, UML, DDD) and templates.",
+    "canvas": "The canvas: basic shapes, connectors, brush, mind maps, the drawing tools, the business frameworks (Wardley, C4, EDGY, BPMN, Cynefin, UML, DDD) and templates, and their notation tooling: validation rules and profiles, nudges, map quality, legends, violation timeline, audit.",
     "collaboration": "Working together: sync and awareness, remote selections, comments and thread marks.",
     "document": "The document: its model and file format, rich text, inline elements and page blocks.",
     "file": "Files: attachments and images, blobs, import and export (Markdown, HTML, SVG, draw.io, notation formats).",
     "layer": "User layers: active layer, shared and local hide, the selection pane.",
-    "presentation": "Presenting: frames, the presentation mode, the frame panel, the reading frame and spotlight.",
-    "workshop": "Running a workshop on a board: validation rules and profiles, nudges, map quality, legends, violation timeline, audit."
+    "presentation": "Presenting and running a workshop: frames, the presentation mode and slideshow, the frame panel, the reading frame, spotlight, public pages, workshop facilitation widgets and, later, sites."
   },
   "rules": {
     "packages/affine/all/src/": {},
@@ -130,7 +129,7 @@
       "file": 0.5
     },
     "packages/affine/blocks/surface/src/extensions/audit": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/blocks/surface/src/extensions/drawio-export": {
       "file": 1
@@ -147,16 +146,16 @@
       "file": 1
     },
     "packages/affine/blocks/surface/src/extensions/legend": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/blocks/surface/src/extensions/map-quality": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/blocks/surface/src/extensions/reading": {
       "presentation": 1
     },
     "packages/affine/blocks/surface/src/extensions/record-action": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/blocks/surface/src/extensions/selection-pane/": {
       "layer": 0.5,
@@ -175,10 +174,10 @@
       "layer": 1
     },
     "packages/affine/blocks/surface/src/extensions/validation": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/blocks/surface/src/extensions/violation-": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/blocks/surface/src/extensions/xml-": {
       "file": 1
@@ -257,10 +256,10 @@
       "canvas": 1
     },
     "packages/affine/gfx/bpmn/src/profiles": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/gfx/bpmn/src/rules": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/gfx/brush/": {
       "canvas": 1
@@ -269,10 +268,10 @@
       "canvas": 1
     },
     "packages/affine/gfx/c4/src/profiles": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/gfx/c4/src/rules": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/gfx/connector/": {
       "canvas": 1
@@ -287,37 +286,37 @@
       "canvas": 1
     },
     "packages/affine/gfx/ddd-context-map/src/nudges": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/gfx/ddd-context-map/src/profiles": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/gfx/ddd-context-map/src/rules": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/gfx/ddd-core-domain/": {
       "canvas": 1
     },
     "packages/affine/gfx/ddd-core-domain/src/nudges": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/gfx/ddd-core-domain/src/profiles": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/gfx/ddd-core-domain/src/rules": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/gfx/ddd-event-storming/": {
       "canvas": 1
     },
     "packages/affine/gfx/ddd-event-storming/src/nudges": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/gfx/ddd-event-storming/src/profiles": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/gfx/ddd-event-storming/src/rules": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/gfx/ddd-shared/": {
       "canvas": 1
@@ -326,13 +325,13 @@
       "canvas": 1
     },
     "packages/affine/gfx/edgy/src/nudges": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/gfx/edgy/src/profiles": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/gfx/edgy/src/rules": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/gfx/group/": {
       "canvas": 1
@@ -365,28 +364,28 @@
       "canvas": 1
     },
     "packages/affine/gfx/uml/src/legend": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/gfx/uml/src/profiles": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/gfx/uml/src/rules": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/gfx/wardley/": {
       "canvas": 1
     },
     "packages/affine/gfx/wardley/src/legend": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/gfx/wardley/src/nudges": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/gfx/wardley/src/profiles": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/gfx/wardley/src/rules": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/inlines/": {
       "document": 1
@@ -497,7 +496,7 @@
       "file": 1
     },
     "packages/affine/shared/src/services/audit-service": {
-      "workshop": 1
+      "canvas": 1
     },
     "packages/affine/shared/src/services/canvas-grid": {
       "canvas": 1
@@ -654,5 +653,36 @@
     "packages/integration-test/": {},
     "packages/playground/": {}
   },
-  "validated": []
+  "validated": [
+    "packages/affine/blocks/surface/src/extensions/audit",
+    "packages/affine/blocks/surface/src/extensions/legend",
+    "packages/affine/blocks/surface/src/extensions/map-quality",
+    "packages/affine/blocks/surface/src/extensions/record-action",
+    "packages/affine/blocks/surface/src/extensions/validation",
+    "packages/affine/blocks/surface/src/extensions/violation-",
+    "packages/affine/gfx/bpmn/src/profiles",
+    "packages/affine/gfx/bpmn/src/rules",
+    "packages/affine/gfx/c4/src/profiles",
+    "packages/affine/gfx/c4/src/rules",
+    "packages/affine/gfx/ddd-context-map/src/nudges",
+    "packages/affine/gfx/ddd-context-map/src/profiles",
+    "packages/affine/gfx/ddd-context-map/src/rules",
+    "packages/affine/gfx/ddd-core-domain/src/nudges",
+    "packages/affine/gfx/ddd-core-domain/src/profiles",
+    "packages/affine/gfx/ddd-core-domain/src/rules",
+    "packages/affine/gfx/ddd-event-storming/src/nudges",
+    "packages/affine/gfx/ddd-event-storming/src/profiles",
+    "packages/affine/gfx/ddd-event-storming/src/rules",
+    "packages/affine/gfx/edgy/src/nudges",
+    "packages/affine/gfx/edgy/src/profiles",
+    "packages/affine/gfx/edgy/src/rules",
+    "packages/affine/gfx/uml/src/legend",
+    "packages/affine/gfx/uml/src/profiles",
+    "packages/affine/gfx/uml/src/rules",
+    "packages/affine/gfx/wardley/src/legend",
+    "packages/affine/gfx/wardley/src/nudges",
+    "packages/affine/gfx/wardley/src/profiles",
+    "packages/affine/gfx/wardley/src/rules",
+    "packages/affine/shared/src/services/audit-service"
+  ]
 }
