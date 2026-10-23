@@ -136,3 +136,7 @@ Decision:
   map no longer has.
 - The routine reads the map through the likeC4 MCP over stdio
   (`scripts/likec4-mcp.mjs`), never over HTTP. No CI job runs it.
+- Same day, maintainer's call: there is no `workshop` domain. Running a
+  workshop is part of `presentation` (public pages, slideshows, workshop
+  widgets, later sites); a notation's tooling (rules, profiles, nudges,
+  legends, map quality, audit) is `canvas`.
