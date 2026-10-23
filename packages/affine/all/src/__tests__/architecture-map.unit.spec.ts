@@ -28,7 +28,11 @@ import { ROOT } from './translations/source-files.js';
  * - a framework package importing another framework package, an edge the
  *   bundle layout has no bundle for (each framework bundle depends on core
  *   and the shared bundle only), which `scripts/build-bundles.mjs` refuses at
- *   release time only.
+ *   release time only;
+ * - a domain overlay (`architecture/domain.c4`, projected from
+ *   `domains.json` by the same command) extending an element the map no
+ *   longer has: shipped in the core bundle, it would break every host's
+ *   `likec4 validate` at upgrade.
  */
 
 const CODE_C4 = readFileSync(join(ROOT, 'architecture', 'code.c4'), 'utf8');
@@ -109,5 +113,18 @@ describe('architecture map (architecture/code.c4)', () => {
       ({ from, to }) => frameworks.has(from) && frameworks.has(to)
     ).map(({ from, to }) => `${from} -> ${to}`);
     expect(crossings).toEqual([]);
+  });
+
+  test('the domain overlay only extends elements of the map', () => {
+    const overlay = readFileSync(
+      join(ROOT, 'architecture', 'domain.c4'),
+      'utf8'
+    );
+    const elements = new Set(fqnByPath(CODE_C4).values());
+    const extended = [...overlay.matchAll(/^ {2}extend (\S+) \{$/gm)].map(
+      m => m[1]
+    );
+    expect(extended.length).toBeGreaterThan(0);
+    expect(extended.filter(fqn => !elements.has(fqn ?? ''))).toEqual([]);
   });
 });

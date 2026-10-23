@@ -110,3 +110,28 @@ points the decision left open.
   `packages/affine/all/src/__tests__/architecture-map.unit.spec.ts` reads
   `code.c4` and asserts no package cycle, no edge up a layer and no framework
   package importing another.
+
+### 2026-10-23 — Business domains as a scored overlay
+
+Need: read the map by business domain (canvas, frameworks, database…) while
+a file sometimes serves two of them, without a tag a contributor must
+remember and without a second hierarchy.
+
+Decision:
+
+- A domain is a scored, multi-valued metadata, never a tag and never a
+  parent: `architecture/domain.c4` extends elements of `code.c4` with
+  `domain [...]` and one `domain_<id> '0.42'` per domain, and declares one
+  `domain-<id>` view per domain. It ships in the core bundle with the rest of
+  `architecture/`, so a host inherits the library's domains.
+- `architecture/domains.json` is the probable half: the domain list and
+  rules mapping a path prefix to domain weights. A weekly Claude Code
+  routine keeps it, through one PR at a time
+  (`architecture/domains-routine.md`); rules listed under `validated` are a
+  maintainer's and the routine never changes them.
+- `domain.c4` is its exact projection by `yarn architecture` (an element's
+  score is the mean of its files' weights) and `--check` holds it like
+  `code.c4`. The guard spec fails when the overlay extends an element the
+  map no longer has.
+- The routine reads the map through the likeC4 MCP over stdio
+  (`scripts/likec4-mcp.mjs`), never over HTTP. No CI job runs it.

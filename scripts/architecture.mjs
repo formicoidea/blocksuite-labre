@@ -2,7 +2,8 @@
  * Generates `architecture/code.c4`, the library's architecture map, from the
  * imports of `packages/**` (ADR 0040, decisions 1 to 4).
  *
- *   yarn architecture           writes architecture/code.c4
+ *   yarn architecture           writes architecture/code.c4 and domain.c4
+ *   yarn architecture --domains prints the domain overlay report (domains.mjs)
  *   yarn architecture --check   exits 1 when the committed file is not what
  *                               the code produces
  *
@@ -42,9 +43,11 @@ import { fileURLToPath } from 'node:url';
 import { cruise } from 'dependency-cruiser';
 import ts from 'typescript';
 
+import { domainReport, emitDomains } from './domains.mjs';
+
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const OUT = join(ROOT, 'architecture', 'code.c4');
 const OUT_REL = 'architecture/code.c4';
+const DOMAIN_REL = 'architecture/domain.c4';
 const REPO_URL =
   'https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main';
 
@@ -245,7 +248,10 @@ function buildGraph(packages, modules) {
     if (!known) folders.set(key, { pkg, name: folder, id, files: 0 });
     return key;
   };
-  for (const file of files.values()) folders.get(folderKey(file)).files += 1;
+  for (const file of files.values()) {
+    file.key = folderKey(file);
+    folders.get(file.key).files += 1;
+  }
 
   const uses = new Map();
   const imports = new Map();
@@ -393,34 +399,59 @@ async function main() {
   const started = Date.now();
   const packages = findPackages();
   const graph = buildGraph(packages, await cruiseImports());
-  const text = emit(packages, graph);
+  const domains = JSON.parse(
+    readFileSync(join(ROOT, 'architecture', 'domains.json'), 'utf8')
+  );
+  const owners = new Map(
+    [...graph.files].map(([file, { pkg, key }]) => [file, [pkg.fqn, key]])
+  );
+  if (process.argv.includes('--domains')) {
+    console.log(domainReport(owners, domains, [...graph.imports.values()]));
+    return;
+  }
+  const outputs = new Map([
+    [OUT_REL, emit(packages, graph)],
+    [
+      DOMAIN_REL,
+      emitDomains(owners, domains, {
+        generator: 'scripts/architecture.mjs',
+        command: 'yarn architecture',
+      }),
+    ],
+  ]);
   const summary = `${packages.length} packages, ${graph.folders.size} folders, ${graph.uses.size} uses, ${graph.imports.size} imports, ${graph.files.size} files, ${Date.now() - started} ms`;
 
   if (!check) {
-    writeFileSync(OUT, text);
-    console.log(`wrote ${OUT_REL}: ${summary}`);
+    for (const [rel, text] of outputs) writeFileSync(join(ROOT, rel), text);
+    console.log(`wrote ${OUT_REL} and ${DOMAIN_REL}: ${summary}`);
     return;
   }
-  let committed = '';
-  try {
-    committed = readFileSync(OUT, 'utf8');
-  } catch {
-    // a missing file is a drift like any other
-  }
-  if (committed === text) {
-    console.log(`${OUT_REL} is up to date: ${summary}`);
-    return;
-  }
-  const a = committed.split('\n');
-  const b = text.split('\n');
-  let line = 0;
-  while (line < a.length && a[line] === b[line]) line += 1;
-  console.error(
-    [
-      `${OUT_REL} is not what the code produces (first difference at line ${line + 1}).`,
+  const drifts = [...outputs].flatMap(([rel, text]) => {
+    let committed = '';
+    try {
+      committed = readFileSync(join(ROOT, rel), 'utf8');
+    } catch {
+      // a missing file is a drift like any other
+    }
+    if (committed === text) return [];
+    const a = committed.split('\n');
+    const b = text.split('\n');
+    let line = 0;
+    while (line < a.length && a[line] === b[line]) line += 1;
+    return [
+      `${rel} is not what the code produces (first difference at line ${line + 1}).`,
       `  committed: ${a[line] ?? '<end of file>'}`,
       `  generated: ${b[line] ?? '<end of file>'}`,
-      'Run `yarn architecture` and commit architecture/code.c4. Never edit it by hand.',
+    ];
+  });
+  if (!drifts.length) {
+    console.log(`${OUT_REL} and ${DOMAIN_REL} are up to date: ${summary}`);
+    return;
+  }
+  console.error(
+    [
+      ...drifts,
+      `Run \`yarn architecture\` and commit ${OUT_REL} and ${DOMAIN_REL}. Never edit them by hand (domains come from architecture/domains.json).`,
     ].join('\n')
   );
   process.exitCode = 1;
