@@ -113,7 +113,8 @@ points the decision left open.
 
 ### 2026-10-23 — Business domains as a scored overlay
 
-Need: read the map by business domain (canvas, frameworks, database…) while
+Need: read the map by business capability, the DDD way (canvas, document,
+base view, presentation, workshop, collaboration, file, layer), while
 a file sometimes serves two of them, without a tag a contributor must
 remember and without a second hierarchy.
 

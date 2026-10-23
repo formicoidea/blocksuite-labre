@@ -1,171 +1,209 @@
 {
   "domains": {
-    "canvas": "The edgeless whiteboard: surface, shapes, connectors, frames, mind maps, layers, the canvas toolbars.",
-    "database": "Database and data-view blocks: tables, kanban, properties, views.",
-    "document-model": "The document model and its persistence: store, sync, schemas and element models (the file format).",
-    "editor-runtime": "The editor runtime shared by both views: DI, commands, selection, events, clipboard, widgets plumbing.",
-    "frameworks": "Business notations drawn on the canvas: Wardley, EDGY, BPMN, C4, Cynefin, UML, DDD.",
-    "host-seams": "What the host fills: telemetry, translation, notifications, image proxy, link preview.",
-    "interchange": "Import and export: Markdown, HTML, SVG and notation interchange formats.",
-    "prose": "Page editing: rich text, inline elements, paragraph, list, code, callout and other page blocks.",
-    "tooling": "Playground, integration suite and test helpers."
+    "base-view": "Base views: database and data-view blocks, tables, kanban, properties.",
+    "canvas": "The canvas: basic shapes, connectors, brush, mind maps, the drawing tools, the business frameworks (Wardley, C4, EDGY, BPMN, Cynefin, UML, DDD) and templates.",
+    "collaboration": "Working together: sync and awareness, remote selections, comments and thread marks.",
+    "document": "The document: its model and file format, rich text, inline elements and page blocks.",
+    "file": "Files: attachments and images, blobs, import and export (Markdown, HTML, SVG, draw.io, notation formats).",
+    "layer": "User layers: active layer, shared and local hide, the selection pane.",
+    "presentation": "Presenting: frames, the presentation mode, the frame panel, the reading frame and spotlight.",
+    "workshop": "Running a workshop on a board: validation rules and profiles, nudges, map quality, legends, violation timeline, audit."
   },
   "rules": {
-    "packages/affine/all/src/": {
-      "editor-runtime": 1
-    },
+    "packages/affine/all/src/": {},
     "packages/affine/all/src/blocks/": {
-      "prose": 1
+      "document": 1
     },
     "packages/affine/all/src/data-view/": {
-      "database": 1
+      "base-view": 1
     },
     "packages/affine/all/src/flags": {
-      "frameworks": 0.5,
-      "host-seams": 0.5
+      "canvas": 0.5
     },
     "packages/affine/all/src/fragments/": {
-      "prose": 1
+      "document": 1
     },
     "packages/affine/all/src/frameworks": {
-      "frameworks": 1
+      "canvas": 1
     },
     "packages/affine/all/src/gfx/": {
       "canvas": 1
     },
-    "packages/affine/all/src/host-panels": {
-      "host-seams": 1
-    },
+    "packages/affine/all/src/host-panels": {},
     "packages/affine/all/src/inlines/": {
-      "prose": 1
+      "document": 1
     },
     "packages/affine/all/src/interchange": {
-      "interchange": 1
+      "file": 1
     },
     "packages/affine/all/src/model/": {
-      "document-model": 1
+      "document": 1
     },
     "packages/affine/all/src/rich-text/": {
-      "prose": 1
+      "document": 1
     },
     "packages/affine/all/src/schemas": {
-      "document-model": 1
+      "document": 1
     },
     "packages/affine/all/src/store/": {
-      "document-model": 1
+      "document": 1
     },
     "packages/affine/all/src/sync/": {
-      "document-model": 1
+      "document": 1
     },
-    "packages/affine/all/src/translations": {
-      "host-seams": 1
-    },
-    "packages/affine/all/src/widgets/": {
-      "editor-runtime": 1
-    },
+    "packages/affine/all/src/translations": {},
+    "packages/affine/all/src/widgets/": {},
     "packages/affine/blocks/attachment/": {
-      "prose": 1
+      "file": 1
     },
     "packages/affine/blocks/bookmark/": {
-      "prose": 1
+      "document": 1
     },
     "packages/affine/blocks/callout/": {
-      "prose": 1
+      "document": 1
     },
     "packages/affine/blocks/code/": {
-      "prose": 1
+      "document": 1
     },
     "packages/affine/blocks/data-view/": {
-      "database": 1
+      "base-view": 1
     },
     "packages/affine/blocks/database/": {
-      "database": 1
+      "base-view": 1
     },
     "packages/affine/blocks/divider/": {
-      "prose": 1
+      "document": 1
     },
     "packages/affine/blocks/edgeless-text/": {
       "canvas": 1
     },
     "packages/affine/blocks/embed-doc/": {
-      "prose": 1
+      "document": 1
     },
     "packages/affine/blocks/embed/": {
-      "prose": 1
+      "document": 1
     },
     "packages/affine/blocks/embed/src/embed-iframe-block/": {
-      "prose": 0.6,
-      "host-seams": 0.4
+      "document": 0.6
     },
     "packages/affine/blocks/frame/": {
-      "canvas": 1
+      "presentation": 0.5,
+      "canvas": 0.5
+    },
+    "packages/affine/blocks/frame/src/present/": {
+      "presentation": 1
     },
     "packages/affine/blocks/image/": {
-      "prose": 1
+      "file": 1
     },
     "packages/affine/blocks/latex/": {
-      "prose": 1
+      "document": 1
     },
     "packages/affine/blocks/list/": {
-      "prose": 1
+      "document": 1
     },
     "packages/affine/blocks/note/": {
-      "prose": 1
+      "document": 1
     },
     "packages/affine/blocks/paragraph/": {
-      "prose": 1
+      "document": 1
     },
-    "packages/affine/blocks/root/": {
-      "editor-runtime": 1
-    },
+    "packages/affine/blocks/root/": {},
     "packages/affine/blocks/root/src/adapters/": {
-      "interchange": 1
+      "file": 1
     },
     "packages/affine/blocks/root/src/clipboard/": {
-      "editor-runtime": 0.5,
-      "interchange": 0.5
+      "file": 0.5
     },
     "packages/affine/blocks/root/src/edgeless/": {
       "canvas": 1
     },
     "packages/affine/blocks/surface-ref/": {
-      "canvas": 1
+      "presentation": 0.5,
+      "document": 0.5
     },
     "packages/affine/blocks/surface/": {
       "canvas": 1
     },
     "packages/affine/blocks/surface/src/adapters/": {
       "canvas": 0.5,
-      "interchange": 0.5
+      "file": 0.5
     },
-    "packages/affine/blocks/surface/src/extensions/export-svg/": {
-      "interchange": 0.5,
+    "packages/affine/blocks/surface/src/extensions/audit": {
+      "workshop": 1
+    },
+    "packages/affine/blocks/surface/src/extensions/drawio-export": {
+      "file": 1
+    },
+    "packages/affine/blocks/surface/src/extensions/export-manager/": {
+      "file": 0.5,
       "canvas": 0.5
     },
+    "packages/affine/blocks/surface/src/extensions/export-svg/": {
+      "file": 0.5,
+      "canvas": 0.5
+    },
+    "packages/affine/blocks/surface/src/extensions/interchange": {
+      "file": 1
+    },
+    "packages/affine/blocks/surface/src/extensions/legend": {
+      "workshop": 1
+    },
+    "packages/affine/blocks/surface/src/extensions/map-quality": {
+      "workshop": 1
+    },
+    "packages/affine/blocks/surface/src/extensions/reading": {
+      "presentation": 1
+    },
+    "packages/affine/blocks/surface/src/extensions/record-action": {
+      "workshop": 1
+    },
+    "packages/affine/blocks/surface/src/extensions/selection-pane/": {
+      "layer": 0.5,
+      "canvas": 0.5
+    },
+    "packages/affine/blocks/surface/src/extensions/spotlight": {
+      "presentation": 1
+    },
+    "packages/affine/blocks/surface/src/extensions/svg-sanitize": {
+      "file": 1
+    },
+    "packages/affine/blocks/surface/src/extensions/svg-sketch": {
+      "file": 1
+    },
+    "packages/affine/blocks/surface/src/extensions/user-layers/": {
+      "layer": 1
+    },
+    "packages/affine/blocks/surface/src/extensions/validation": {
+      "workshop": 1
+    },
+    "packages/affine/blocks/surface/src/extensions/violation-": {
+      "workshop": 1
+    },
+    "packages/affine/blocks/surface/src/extensions/xml-": {
+      "file": 1
+    },
     "packages/affine/blocks/surface/src/framework-background/": {
-      "canvas": 0.5,
-      "frameworks": 0.5
+      "canvas": 1.0
     },
     "packages/affine/blocks/surface/src/interchange-headless": {
-      "interchange": 1
+      "file": 1
     },
     "packages/affine/blocks/table/": {
-      "database": 1
+      "base-view": 1
     },
-    "packages/affine/components/": {
-      "editor-runtime": 1
-    },
+    "packages/affine/components/": {},
     "packages/affine/components/src/block-zero-width": {
-      "prose": 1
+      "document": 1
     },
     "packages/affine/components/src/caption": {
-      "prose": 1
+      "document": 1
     },
     "packages/affine/components/src/card-style-dropdown-menu": {
-      "prose": 1
+      "document": 1
     },
     "packages/affine/components/src/citation": {
-      "prose": 1
+      "document": 1
     },
     "packages/affine/components/src/color-picker": {
       "canvas": 1
@@ -180,85 +218,121 @@
       "canvas": 1
     },
     "packages/affine/components/src/embed-card-modal": {
-      "prose": 1
+      "document": 1
     },
     "packages/affine/components/src/highlight-dropdown-menu": {
-      "prose": 1
+      "document": 1
     },
-    "packages/affine/components/src/link-preview": {
-      "host-seams": 1
-    },
+    "packages/affine/components/src/link-preview": {},
     "packages/affine/components/src/linked-doc-title": {
-      "prose": 1
+      "document": 1
     },
-    "packages/affine/components/src/notification": {
-      "host-seams": 1
-    },
+    "packages/affine/components/src/notification": {},
     "packages/affine/components/src/smooth-corner": {
       "canvas": 1
     },
-    "packages/affine/components/src/toast": {
-      "host-seams": 1
-    },
-    "packages/affine/components/src/translations": {
-      "host-seams": 1
-    },
+    "packages/affine/components/src/toast": {},
+    "packages/affine/components/src/translations": {},
     "packages/affine/data-view/": {
-      "database": 1
+      "base-view": 1
     },
     "packages/affine/database-editor/": {
-      "database": 1
+      "base-view": 1
     },
-    "packages/affine/ext-loader/": {
-      "editor-runtime": 1
-    },
-    "packages/affine/foundation/": {
-      "editor-runtime": 1
-    },
+    "packages/affine/ext-loader/": {},
+    "packages/affine/foundation/": {},
     "packages/affine/fragments/adapter-panel/": {
-      "interchange": 1
+      "file": 1
     },
     "packages/affine/fragments/doc-title/": {
-      "prose": 1
+      "document": 1
     },
     "packages/affine/fragments/frame-panel/": {
-      "canvas": 1
+      "presentation": 1
     },
     "packages/affine/fragments/outline/": {
-      "prose": 1
+      "document": 1
     },
     "packages/affine/gfx/bpmn/": {
-      "frameworks": 1
+      "canvas": 1
+    },
+    "packages/affine/gfx/bpmn/src/profiles": {
+      "workshop": 1
+    },
+    "packages/affine/gfx/bpmn/src/rules": {
+      "workshop": 1
     },
     "packages/affine/gfx/brush/": {
       "canvas": 1
     },
     "packages/affine/gfx/c4/": {
-      "frameworks": 1
+      "canvas": 1
+    },
+    "packages/affine/gfx/c4/src/profiles": {
+      "workshop": 1
+    },
+    "packages/affine/gfx/c4/src/rules": {
+      "workshop": 1
     },
     "packages/affine/gfx/connector/": {
       "canvas": 1
     },
     "packages/affine/gfx/cynefin-estuarine/": {
-      "frameworks": 1
+      "canvas": 1
     },
     "packages/affine/gfx/ddd-aggregate/": {
-      "frameworks": 1
+      "canvas": 1
     },
     "packages/affine/gfx/ddd-context-map/": {
-      "frameworks": 1
+      "canvas": 1
+    },
+    "packages/affine/gfx/ddd-context-map/src/nudges": {
+      "workshop": 1
+    },
+    "packages/affine/gfx/ddd-context-map/src/profiles": {
+      "workshop": 1
+    },
+    "packages/affine/gfx/ddd-context-map/src/rules": {
+      "workshop": 1
     },
     "packages/affine/gfx/ddd-core-domain/": {
-      "frameworks": 1
+      "canvas": 1
+    },
+    "packages/affine/gfx/ddd-core-domain/src/nudges": {
+      "workshop": 1
+    },
+    "packages/affine/gfx/ddd-core-domain/src/profiles": {
+      "workshop": 1
+    },
+    "packages/affine/gfx/ddd-core-domain/src/rules": {
+      "workshop": 1
     },
     "packages/affine/gfx/ddd-event-storming/": {
-      "frameworks": 1
+      "canvas": 1
+    },
+    "packages/affine/gfx/ddd-event-storming/src/nudges": {
+      "workshop": 1
+    },
+    "packages/affine/gfx/ddd-event-storming/src/profiles": {
+      "workshop": 1
+    },
+    "packages/affine/gfx/ddd-event-storming/src/rules": {
+      "workshop": 1
     },
     "packages/affine/gfx/ddd-shared/": {
-      "frameworks": 1
+      "canvas": 1
     },
     "packages/affine/gfx/edgy/": {
-      "frameworks": 1
+      "canvas": 1
+    },
+    "packages/affine/gfx/edgy/src/nudges": {
+      "workshop": 1
+    },
+    "packages/affine/gfx/edgy/src/profiles": {
+      "workshop": 1
+    },
+    "packages/affine/gfx/edgy/src/rules": {
+      "workshop": 1
     },
     "packages/affine/gfx/group/": {
       "canvas": 1
@@ -279,8 +353,7 @@
       "canvas": 1
     },
     "packages/affine/gfx/template/": {
-      "canvas": 0.5,
-      "frameworks": 0.5
+      "canvas": 1.0
     },
     "packages/affine/gfx/text/": {
       "canvas": 1
@@ -289,221 +362,212 @@
       "canvas": 1
     },
     "packages/affine/gfx/uml/": {
-      "frameworks": 1
+      "canvas": 1
+    },
+    "packages/affine/gfx/uml/src/legend": {
+      "workshop": 1
+    },
+    "packages/affine/gfx/uml/src/profiles": {
+      "workshop": 1
+    },
+    "packages/affine/gfx/uml/src/rules": {
+      "workshop": 1
     },
     "packages/affine/gfx/wardley/": {
-      "frameworks": 1
+      "canvas": 1
+    },
+    "packages/affine/gfx/wardley/src/legend": {
+      "workshop": 1
+    },
+    "packages/affine/gfx/wardley/src/nudges": {
+      "workshop": 1
+    },
+    "packages/affine/gfx/wardley/src/profiles": {
+      "workshop": 1
+    },
+    "packages/affine/gfx/wardley/src/rules": {
+      "workshop": 1
     },
     "packages/affine/inlines/": {
-      "prose": 1
+      "document": 1
     },
     "packages/affine/inlines/comment/": {
-      "prose": 0.5,
-      "host-seams": 0.5
+      "collaboration": 1
     },
     "packages/affine/model/": {
-      "document-model": 1
+      "document": 1
     },
     "packages/affine/model/src/blocks/": {
-      "document-model": 0.5,
-      "prose": 0.5
+      "document": 1.0
+    },
+    "packages/affine/model/src/blocks/attachment": {
+      "document": 0.5,
+      "file": 0.5
     },
     "packages/affine/model/src/blocks/database": {
-      "document-model": 0.5,
-      "database": 0.5
+      "document": 0.5,
+      "base-view": 0.5
     },
     "packages/affine/model/src/blocks/edgeless-text": {
-      "document-model": 0.5,
+      "document": 0.5,
       "canvas": 0.5
     },
     "packages/affine/model/src/blocks/frame": {
-      "document-model": 0.5,
-      "canvas": 0.5
+      "document": 0.5,
+      "presentation": 0.5
+    },
+    "packages/affine/model/src/blocks/image": {
+      "document": 0.5,
+      "file": 0.5
     },
     "packages/affine/model/src/blocks/surface-ref": {
-      "document-model": 0.5,
+      "document": 0.5,
       "canvas": 0.5
     },
     "packages/affine/model/src/blocks/table": {
-      "document-model": 0.5,
-      "database": 0.5
+      "document": 0.5,
+      "base-view": 0.5
     },
     "packages/affine/model/src/elements/": {
-      "document-model": 0.5,
+      "document": 0.5,
       "canvas": 0.5
     },
     "packages/affine/model/src/elements/bpmn": {
-      "document-model": 0.5,
-      "frameworks": 0.5
+      "document": 0.5,
+      "canvas": 0.5
     },
     "packages/affine/model/src/elements/c4": {
-      "document-model": 0.5,
-      "frameworks": 0.5
+      "document": 0.5,
+      "canvas": 0.5
     },
     "packages/affine/model/src/elements/context-map": {
-      "document-model": 0.5,
-      "frameworks": 0.5
+      "document": 0.5,
+      "canvas": 0.5
     },
     "packages/affine/model/src/elements/core-domain": {
-      "document-model": 0.5,
-      "frameworks": 0.5
+      "document": 0.5,
+      "canvas": 0.5
     },
     "packages/affine/model/src/elements/cynefin": {
-      "document-model": 0.5,
-      "frameworks": 0.5
+      "document": 0.5,
+      "canvas": 0.5
     },
     "packages/affine/model/src/elements/edgy": {
-      "document-model": 0.5,
-      "frameworks": 0.5
+      "document": 0.5,
+      "canvas": 0.5
     },
     "packages/affine/model/src/elements/estuarine": {
-      "document-model": 0.5,
-      "frameworks": 0.5
+      "document": 0.5,
+      "canvas": 0.5
     },
     "packages/affine/model/src/elements/event-storming": {
-      "document-model": 0.5,
-      "frameworks": 0.5
+      "document": 0.5,
+      "canvas": 0.5
     },
     "packages/affine/model/src/elements/framework-background": {
-      "document-model": 0.5,
-      "frameworks": 0.5
+      "document": 0.5,
+      "canvas": 0.5
     },
     "packages/affine/model/src/elements/uml": {
-      "document-model": 0.5,
-      "frameworks": 0.5
+      "document": 0.5,
+      "canvas": 0.5
     },
     "packages/affine/model/src/elements/wardley": {
-      "document-model": 0.5,
-      "frameworks": 0.5
+      "document": 0.5,
+      "canvas": 0.5
     },
     "packages/affine/rich-text/": {
-      "prose": 1
+      "document": 1
     },
-    "packages/affine/shared/src/": {
-      "editor-runtime": 1
-    },
+    "packages/affine/shared/src/": {},
     "packages/affine/shared/src/adapters/": {
-      "interchange": 1
+      "file": 1
+    },
+    "packages/affine/shared/src/adapters/attachment": {
+      "file": 1
     },
     "packages/affine/shared/src/adapters/clipboard/": {
-      "interchange": 0.5,
-      "editor-runtime": 0.5
+      "file": 0.5
     },
-    "packages/affine/shared/src/services/artefact-catalogue-service": {
-      "host-seams": 1
+    "packages/affine/shared/src/adapters/image": {
+      "file": 1
     },
+    "packages/affine/shared/src/services/artefact-catalogue-service": {},
     "packages/affine/shared/src/services/asset-picker-service": {
-      "host-seams": 1
+      "file": 1
     },
     "packages/affine/shared/src/services/audit-service": {
-      "host-seams": 1
+      "workshop": 1
     },
     "packages/affine/shared/src/services/canvas-grid": {
       "canvas": 1
     },
     "packages/affine/shared/src/services/canvas-local-visibility": {
-      "canvas": 1
+      "layer": 1
     },
-    "packages/affine/shared/src/services/citation-service/": {
-      "host-seams": 1
-    },
+    "packages/affine/shared/src/services/citation-service/": {},
     "packages/affine/shared/src/services/comment-service/": {
-      "host-seams": 1
+      "collaboration": 1
     },
-    "packages/affine/shared/src/services/data-source-picker-service": {
-      "host-seams": 1
-    },
+    "packages/affine/shared/src/services/data-source-picker-service": {},
     "packages/affine/shared/src/services/edit-props-store": {
       "canvas": 1
     },
-    "packages/affine/shared/src/services/embed-iframe/": {
-      "host-seams": 1
-    },
-    "packages/affine/shared/src/services/feature-flag-service": {
-      "host-seams": 1
-    },
+    "packages/affine/shared/src/services/embed-iframe/": {},
+    "packages/affine/shared/src/services/feature-flag-service": {},
     "packages/affine/shared/src/services/file-size-limit-service": {
-      "host-seams": 1
+      "file": 1
     },
-    "packages/affine/shared/src/services/font-loader/": {
-      "host-seams": 1
-    },
+    "packages/affine/shared/src/services/font-loader/": {},
     "packages/affine/shared/src/services/frame-template-service": {
-      "canvas": 0.5,
-      "host-seams": 0.5
+      "canvas": 0.5
     },
-    "packages/affine/shared/src/services/generate-url-service": {
-      "host-seams": 1
-    },
-    "packages/affine/shared/src/services/link-preview-service/": {
-      "host-seams": 1
-    },
-    "packages/affine/shared/src/services/linked-doc-c": {
-      "host-seams": 1
-    },
-    "packages/affine/shared/src/services/notification-service": {
-      "host-seams": 1
-    },
-    "packages/affine/shared/src/services/open-doc-config": {
-      "host-seams": 1
-    },
-    "packages/affine/shared/src/services/outline-panel-service": {
-      "host-seams": 1
-    },
-    "packages/affine/shared/src/services/page-drop-service": {
-      "host-seams": 1
-    },
-    "packages/affine/shared/src/services/parse-url-service": {
-      "host-seams": 1
-    },
-    "packages/affine/shared/src/services/pivot-": {
-      "host-seams": 1
-    },
-    "packages/affine/shared/src/services/properties-panel-service": {
-      "host-seams": 1
-    },
-    "packages/affine/shared/src/services/quick-search-service": {
-      "host-seams": 1
-    },
+    "packages/affine/shared/src/services/generate-url-service": {},
+    "packages/affine/shared/src/services/link-preview-service/": {},
+    "packages/affine/shared/src/services/linked-doc-c": {},
+    "packages/affine/shared/src/services/notification-service": {},
+    "packages/affine/shared/src/services/open-doc-config": {},
+    "packages/affine/shared/src/services/outline-panel-service": {},
+    "packages/affine/shared/src/services/page-drop-service": {},
+    "packages/affine/shared/src/services/parse-url-service": {},
+    "packages/affine/shared/src/services/pivot-": {},
+    "packages/affine/shared/src/services/properties-panel-service": {},
+    "packages/affine/shared/src/services/quick-search-service": {},
     "packages/affine/shared/src/services/selection-pane-service": {
-      "host-seams": 1
+      "layer": 1
     },
-    "packages/affine/shared/src/services/telemetry-service/": {
-      "host-seams": 1
-    },
+    "packages/affine/shared/src/services/telemetry-service/": {},
     "packages/affine/shared/src/services/thread-marks-service": {
-      "host-seams": 1
+      "collaboration": 1
     },
-    "packages/affine/shared/src/services/title-band-service": {
-      "host-seams": 1
-    },
-    "packages/affine/shared/src/services/translation-service/": {
-      "host-seams": 1
-    },
-    "packages/affine/shared/src/services/universe-tag-defs-service": {
-      "host-seams": 1
-    },
+    "packages/affine/shared/src/services/title-band-service": {},
+    "packages/affine/shared/src/services/translation-service/": {},
+    "packages/affine/shared/src/services/universe-tag-defs-service": {},
     "packages/affine/shared/src/services/user-service/": {
-      "host-seams": 1
+      "collaboration": 1
     },
     "packages/affine/shared/src/services/viewport-element-service": {
       "canvas": 1
     },
     "packages/affine/shared/src/utils/canvas-export-colors": {
       "canvas": 0.5,
-      "interchange": 0.5
+      "file": 0.5
     },
     "packages/affine/shared/src/utils/edgeless": {
       "canvas": 1
     },
-    "packages/affine/shared/src/utils/link-preview-refresh": {
-      "host-seams": 1
+    "packages/affine/shared/src/utils/file/": {
+      "file": 1
     },
+    "packages/affine/shared/src/utils/image": {
+      "file": 1
+    },
+    "packages/affine/shared/src/utils/link-preview-refresh": {},
     "packages/affine/shared/src/utils/print-to-pdf": {
-      "interchange": 1
+      "file": 1
     },
     "packages/affine/widgets/drag-handle/": {
-      "prose": 1
+      "document": 1
     },
     "packages/affine/widgets/edgeless-auto-connect/": {
       "canvas": 1
@@ -517,83 +581,78 @@
     "packages/affine/widgets/edgeless-toolbar/": {
       "canvas": 1
     },
+    "packages/affine/widgets/edgeless-toolbar/src/selection-pane/": {
+      "layer": 0.5,
+      "canvas": 0.5
+    },
     "packages/affine/widgets/edgeless-zoom-toolbar/": {
       "canvas": 1
     },
     "packages/affine/widgets/frame-title/": {
-      "canvas": 1
+      "presentation": 0.5,
+      "canvas": 0.5
     },
     "packages/affine/widgets/keyboard-toolbar/": {
-      "prose": 1
+      "document": 1
     },
     "packages/affine/widgets/linked-doc/": {
-      "prose": 1
+      "document": 1
     },
     "packages/affine/widgets/note-slicer/": {
       "canvas": 1
     },
     "packages/affine/widgets/page-dragging-area/": {
-      "prose": 1
+      "document": 1
     },
     "packages/affine/widgets/remote-selection/": {
-      "editor-runtime": 1
+      "collaboration": 1
     },
     "packages/affine/widgets/scroll-anchoring/": {
-      "prose": 1
+      "document": 1
     },
     "packages/affine/widgets/slash-menu/": {
-      "prose": 1
+      "document": 1
     },
     "packages/affine/widgets/thread-marks/": {
-      "host-seams": 1
+      "collaboration": 1
     },
-    "packages/affine/widgets/toolbar/": {
-      "editor-runtime": 1
-    },
+    "packages/affine/widgets/toolbar/": {},
     "packages/affine/widgets/viewport-overlay/": {
       "canvas": 1
     },
-    "packages/framework/global/": {
-      "editor-runtime": 1
-    },
+    "packages/framework/global/": {},
     "packages/framework/global/src/gfx/": {
       "canvas": 1
     },
-    "packages/framework/std/": {
-      "editor-runtime": 1
-    },
+    "packages/framework/std/": {},
     "packages/framework/std/src/gfx/": {
       "canvas": 1
     },
     "packages/framework/std/src/inline/": {
-      "prose": 1
+      "document": 1
     },
-    "packages/framework/std/src/translations": {
-      "host-seams": 1
-    },
+    "packages/framework/std/src/translations": {},
     "packages/framework/store/": {
-      "document-model": 1
+      "document": 1
     },
     "packages/framework/store/src/adapter/": {
-      "interchange": 0.6,
-      "document-model": 0.4
+      "file": 0.6,
+      "document": 0.4
     },
-    "packages/framework/store/src/test/": {
-      "tooling": 1
-    },
+    "packages/framework/store/src/test/": {},
     "packages/framework/store/src/transformer/": {
-      "interchange": 0.5,
-      "document-model": 0.5
+      "file": 0.5,
+      "document": 0.5
     },
     "packages/framework/sync/": {
-      "document-model": 1
+      "collaboration": 0.6,
+      "document": 0.4
     },
-    "packages/integration-test/": {
-      "tooling": 1
+    "packages/framework/sync/src/blob/": {
+      "file": 1
     },
-    "packages/playground/": {
-      "tooling": 1
-    }
+    "packages/integration-test/": {},
+    "packages/playground/": {}
   },
   "validated": []
 }
