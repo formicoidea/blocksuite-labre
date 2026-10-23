@@ -1,5 +1,22 @@
 # @labre/affine-fragment-doc-title
 
+## 0.57.0
+
+### Patch Changes
+
+- 6d784cb: The title band hands its scope to its cells, so the tag menu and the date picker a chip opens speak the host's catalogue (they read English under a French host).
+  - @labre/affine-block-surface@0.57.0
+  - @labre/affine-components@0.57.0
+  - @labre/data-view@0.57.0
+  - @labre/affine-ext-loader@0.57.0
+  - @labre/affine-inline-reference@0.57.0
+  - @labre/affine-model@0.57.0
+  - @labre/affine-rich-text@0.57.0
+  - @labre/affine-shared@0.57.0
+  - @labre/global@0.57.0
+  - @labre/std@0.57.0
+  - @labre/store@0.57.0
+
 ## 0.56.0
 
 ### Patch Changes

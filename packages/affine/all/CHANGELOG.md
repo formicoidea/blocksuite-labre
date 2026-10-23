@@ -1,5 +1,102 @@
 # @labre/affine
 
+## 0.57.0
+
+### Minor Changes
+
+- af9c2ae: The frame panel's cards take the panel's width and the frame's proportions (a portrait frame is capped at a square) and follow the panel when it is resized: a wider panel shows bigger cards, so fewer at once. A double-click on a card's name now opens a field committed once through `canvas.frame.rename`: Enter or leaving the field saves in one undo step, Escape and an unchanged name write nothing, a read-only document opens no field (it was a rich text written on every key). The order still changes by dragging a card, and a double-click on a preview still frames it on the canvas.
+
+  `@labre/affine/host-panels` widens for a host's own slide list: `createFramePreview(std, frame, { fluid: true })` draws the same fluid preview; `createPanelReorderDrag`, `panelReorderGap` and their types are the library panels' drag-to-reorder gesture; `selectionPaneCommands` carries `canvas.frame.rename`, runnable in page mode like `canvas.frame.reorder`. Nothing stored changes.
+
+### Patch Changes
+
+- f080d37: The likeC4 config shipped in the core bundle's `architecture/` keeps LF line endings whatever the release checkout (0.57.0 shipped it in CRLF).
+- e5dae42: The architecture map shipped in the core bundle gains `architecture/domain.c4`: each package and folder carries scored business-domain metadata (`domain`, `domain_<id>`), and one `domain-<id>` view per domain.
+- Updated dependencies [af9c2ae]
+- Updated dependencies [6d784cb]
+  - @labre/affine-fragment-frame-panel@0.57.0
+  - @labre/affine-fragment-doc-title@0.57.0
+  - @labre/affine-block-note@0.57.0
+  - @labre/affine-fragment-outline@0.57.0
+  - @labre/affine-widget-keyboard-toolbar@0.57.0
+  - @labre/affine-block-latex@0.57.0
+  - @labre/affine-block-root@0.57.0
+  - @labre/affine-widget-drag-handle@0.57.0
+  - @labre/affine-widget-note-slicer@0.57.0
+  - @labre/affine-block-database@0.57.0
+  - @labre/affine-block-data-view@0.57.0
+  - @labre/affine-database-editor@0.57.0
+  - @labre/affine-widget-toolbar@0.57.0
+  - @labre/affine-block-attachment@0.57.0
+  - @labre/affine-block-bookmark@0.57.0
+  - @labre/affine-block-callout@0.57.0
+  - @labre/affine-block-code@0.57.0
+  - @labre/affine-block-divider@0.57.0
+  - @labre/affine-block-edgeless-text@0.57.0
+  - @labre/affine-block-embed@0.57.0
+  - @labre/affine-block-embed-doc@0.57.0
+  - @labre/affine-block-frame@0.57.0
+  - @labre/affine-block-image@0.57.0
+  - @labre/affine-block-list@0.57.0
+  - @labre/affine-block-paragraph@0.57.0
+  - @labre/affine-block-surface@0.57.0
+  - @labre/affine-block-surface-ref@0.57.0
+  - @labre/affine-block-table@0.57.0
+  - @labre/affine-components@0.57.0
+  - @labre/data-view@0.57.0
+  - @labre/affine-ext-loader@0.57.0
+  - @labre/affine-foundation@0.57.0
+  - @labre/affine-fragment-adapter-panel@0.57.0
+  - @labre/affine-gfx-bpmn@0.57.0
+  - @labre/affine-gfx-brush@0.57.0
+  - @labre/affine-gfx-c4@0.57.0
+  - @labre/affine-gfx-connector@0.57.0
+  - @labre/affine-gfx-cynefin-estuarine@0.57.0
+  - @labre/affine-gfx-ddd-aggregate@0.57.0
+  - @labre/affine-gfx-ddd-context-map@0.57.0
+  - @labre/affine-gfx-ddd-core-domain@0.57.0
+  - @labre/affine-gfx-ddd-event-storming@0.57.0
+  - @labre/affine-gfx-ddd-shared@0.57.0
+  - @labre/affine-gfx-edgy@0.57.0
+  - @labre/affine-gfx-group@0.57.0
+  - @labre/affine-gfx-link@0.57.0
+  - @labre/affine-gfx-mindmap@0.57.0
+  - @labre/affine-gfx-note@0.57.0
+  - @labre/affine-gfx-pointer@0.57.0
+  - @labre/affine-gfx-shape@0.57.0
+  - @labre/affine-gfx-template@0.57.0
+  - @labre/affine-gfx-text@0.57.0
+  - @labre/affine-gfx-turbo-renderer@0.57.0
+  - @labre/affine-gfx-uml@0.57.0
+  - @labre/affine-gfx-wardley@0.57.0
+  - @labre/affine-inline-comment@0.57.0
+  - @labre/affine-inline-footnote@0.57.0
+  - @labre/affine-inline-latex@0.57.0
+  - @labre/affine-inline-link@0.57.0
+  - @labre/affine-inline-mention@0.57.0
+  - @labre/affine-inline-preset@0.57.0
+  - @labre/affine-inline-reference@0.57.0
+  - @labre/affine-model@0.57.0
+  - @labre/affine-rich-text@0.57.0
+  - @labre/affine-shared@0.57.0
+  - @labre/affine-widget-edgeless-auto-connect@0.57.0
+  - @labre/affine-widget-edgeless-dragging-area@0.57.0
+  - @labre/affine-widget-edgeless-selected-rect@0.57.0
+  - @labre/affine-widget-edgeless-toolbar@0.57.0
+  - @labre/affine-widget-edgeless-zoom-toolbar@0.57.0
+  - @labre/affine-widget-frame-title@0.57.0
+  - @labre/affine-widget-linked-doc@0.57.0
+  - @labre/affine-widget-page-dragging-area@0.57.0
+  - @labre/affine-widget-remote-selection@0.57.0
+  - @labre/affine-widget-scroll-anchoring@0.57.0
+  - @labre/affine-widget-slash-menu@0.57.0
+  - @labre/affine-widget-thread-marks@0.57.0
+  - @labre/affine-widget-viewport-overlay@0.57.0
+  - @labre/global@0.57.0
+  - @labre/std@0.57.0
+  - @labre/store@0.57.0
+  - @labre/sync@0.57.0
+
 ## 0.56.0
 
 ### Minor Changes

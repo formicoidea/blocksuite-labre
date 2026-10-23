@@ -1,5 +1,22 @@
 # @labre/affine-gfx-cynefin-estuarine
 
+## 0.57.0
+
+### Patch Changes
+
+- @labre/affine-block-surface@0.57.0
+- @labre/affine-components@0.57.0
+- @labre/affine-ext-loader@0.57.0
+- @labre/affine-gfx-pointer@0.57.0
+- @labre/affine-gfx-shape@0.57.0
+- @labre/affine-gfx-template@0.57.0
+- @labre/affine-model@0.57.0
+- @labre/affine-shared@0.57.0
+- @labre/affine-widget-edgeless-toolbar@0.57.0
+- @labre/global@0.57.0
+- @labre/std@0.57.0
+- @labre/store@0.57.0
+
 ## 0.56.0
 
 ### Patch Changes

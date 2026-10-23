@@ -1,5 +1,24 @@
 # @labre/affine-block-code
 
+## 0.57.0
+
+### Patch Changes
+
+- @labre/affine-components@0.57.0
+- @labre/affine-ext-loader@0.57.0
+- @labre/affine-gfx-turbo-renderer@0.57.0
+- @labre/affine-inline-comment@0.57.0
+- @labre/affine-inline-latex@0.57.0
+- @labre/affine-inline-link@0.57.0
+- @labre/affine-inline-preset@0.57.0
+- @labre/affine-model@0.57.0
+- @labre/affine-rich-text@0.57.0
+- @labre/affine-shared@0.57.0
+- @labre/affine-widget-slash-menu@0.57.0
+- @labre/global@0.57.0
+- @labre/std@0.57.0
+- @labre/store@0.57.0
+
 ## 0.56.0
 
 ### Patch Changes
