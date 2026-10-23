@@ -1,6 +1,6 @@
 # @labre/affine-fragment-frame-panel
 
-## 0.57.0
+## 0.58.0
 
 ### Minor Changes
 

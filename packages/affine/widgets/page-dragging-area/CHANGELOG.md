@@ -1,6 +1,6 @@
 # @labre/affine-widget-page-dragging-area
 
-## 0.57.0
+## 0.58.0
 
 ### Patch Changes
 

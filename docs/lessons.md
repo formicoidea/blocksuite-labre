@@ -266,3 +266,15 @@ Container()` threw "illegal constructor" and the page hung.
     class (`data-view/src/__tests__/mobile-base-editing.unit.spec.ts` mounts
     the phone table on a `TableSingleView` and taps); never call a logic's
     method detached.
+
+35. **A release published from a version commit that never reached main.**
+    0.57.0 went to npm from a local `chore: version packages` commit
+    (`gitHead` 5e1a8caa9) that was never pushed; main stayed at 0.56.0 with
+    the frame-panel changeset still pending. The next `ci:version` therefore
+    bumped 0.56.0 to 0.57.0 again (the commit was titled 0.58.0), and
+    `ci:publish`, which skips versions already on the registry, published
+    nothing. Fixed by hand to 0.58.0; the 0.58.0 changelog still lists #512,
+    which shipped in 0.57.0.
+    _Rule:_ push and merge the version commit before `ci:publish`, and
+    compare `npm view @formicoidea/labre-core version` with
+    `packages/affine/all/package.json` before `ci:version`.

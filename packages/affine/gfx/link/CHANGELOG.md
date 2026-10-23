@@ -1,6 +1,6 @@
 # @labre/affine-gfx-link
 
-## 0.57.0
+## 0.58.0
 
 ### Patch Changes
 
