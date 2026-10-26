@@ -425,3 +425,32 @@ export type CanvasPaneEvents = {
   CanvasGridToggled: CanvasGridToggledEvent;
   CanvasLayerChanged: CanvasLayerChangedEvent;
 };
+
+/**
+ * `text.invisibles.remove` stripped the invisible characters of the document
+ * (zero-width spaces, word joiners, tag characters…).
+ *
+ * `count` is how many characters the ONE gesture removed, `blockCount` how
+ * many blocks it changed (the canvas counts as one: its elements live in the
+ * surface block). A run that finds nothing reports nothing.
+ *
+ * Counts only: never a character, a block id or any text.
+ */
+export interface InvisibleCharactersRemovedEvent extends TelemetryEvent {
+  count: number;
+  blockCount: number;
+}
+
+/**
+ * `text.invisibles.toggle` switched "show special characters" for this
+ * viewer. `visible` is the state after the gesture. Nothing is written to
+ * the document.
+ */
+export interface InvisibleCharactersToggledEvent extends TelemetryEvent {
+  visible: boolean;
+}
+
+export type InvisibleCharactersEvents = {
+  InvisibleCharactersRemoved: InvisibleCharactersRemovedEvent;
+  InvisibleCharactersToggled: InvisibleCharactersToggledEvent;
+};

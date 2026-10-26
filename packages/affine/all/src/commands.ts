@@ -2,6 +2,7 @@ import { frameCommands } from '@labre/affine-block-frame';
 import {
   copyLinkCommands,
   coreCommands,
+  invisibleCharactersCommands,
   pageExportCommands,
   pivotCommands,
   readingCommands,
@@ -125,6 +126,7 @@ export function getCommands(flags?: LabreFlags): AnyCommandDescriptor[] {
       ...coreCommands,
       ...copyLinkCommands,
       ...pageExportCommands,
+      ...invisibleCharactersCommands,
       ...pivotCommands,
       ...tagCommands,
       ...readingCommands,

@@ -141,6 +141,16 @@ export const ROOT_TOAST_ZOOM_TO_SELECTION: ChromeWording = [
 ];
 
 /**
+ * The toast `text.invisibles.remove` shows through the notification seam.
+ * `{{count}}` is filled by the host's catalogue, which pluralises on it; the
+ * English fallback stays neutral.
+ */
+export const ROOT_TOAST_INVISIBLES_REMOVED: ChromeWording = [
+  'com.labre.command.text.invisibles.removed',
+  '{{count}} invisible characters removed',
+];
+
+/**
  * The Tab/Enter mindmap shortcuts' seed for a freshly added node — the same
  * word `MindmapElementModel.addNode`'s own default falls back to (that
  * default is model/red-zone, left untouched: the creation site now passes
@@ -186,6 +196,7 @@ export const ROOT_CHROME_WORDINGS: readonly ChromeWording[] = [
   ROOT_TOOLBAR_TURN_INTO_LINKED_DOC,
   ROOT_TOOLBAR_EDIT_LINK,
   ROOT_TOAST_ZOOM_TO_SELECTION,
+  ROOT_TOAST_INVISIBLES_REMOVED,
 ];
 
 /** This package's own seed, joined into `PACKAGE_SEED_WORDINGS`. */

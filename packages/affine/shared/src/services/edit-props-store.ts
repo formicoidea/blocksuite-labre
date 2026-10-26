@@ -64,6 +64,10 @@ const LocalPropsSchema = z.object({
    * decides. Owned by `CanvasGrid`.
    */
   localShowGrid: z.boolean(),
+  // This viewer's "show special characters" choice, for every document:
+  // a writer's habit, like a word processor's ¶ button. Absent = the host's
+  // default, else off. Owned by `InvisibleCharacters`.
+  showInvisibles: z.boolean(),
 });
 
 type SessionProps = z.infer<typeof SessionPropsSchema>;
@@ -177,6 +181,8 @@ export class EditPropsStore extends LifeCycleWatcher {
         return 'blocksuite:' + id + ':localHiddenLayers';
       case 'localShowGrid':
         return 'blocksuite:' + id + ':localShowGrid';
+      case 'showInvisibles':
+        return 'blocksuite:showInvisibles';
       default:
         return key;
     }
