@@ -4169,6 +4169,7 @@ bbb
                 },
               },
             },
+            headerRow: true,
           },
           children: [],
         },

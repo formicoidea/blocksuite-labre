@@ -12,6 +12,15 @@ export const cellContainerStyle = css({
   verticalAlign: 'top',
 });
 
+/**
+ * A header cell (ADR 0043). Only a class, so an explicit row or column
+ * background — written inline by `tdStyle` — still wins over the tint.
+ */
+export const headerCellStyle = css({
+  fontWeight: 600,
+  backgroundColor: cssVarV2.table.headerBackground.default,
+});
+
 export const columnOptionsCellStyle = css({
   position: 'absolute',
   height: '0',

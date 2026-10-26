@@ -168,20 +168,36 @@ export const createTableProps = (deltasLists: RichTextType[][]) => {
   };
 };
 
+/**
+ * A row's cells in order, `td` and `th` alike: a body row may open on a `th`
+ * (a header column, which the HTML export writes since ADR 0043), and keeping
+ * only `td` dropped that cell.
+ */
+const rowCells = (tr: Element): Element[] =>
+  tr.children.filter(
+    (child): child is Element =>
+      HastUtils.isElement(child) &&
+      (child.tagName === 'td' || child.tagName === 'th')
+  );
+
 export const parseTableFromHtml = (
   element: Element,
   astToDelta: (ast: HtmlAST) => RichTextType
 ): TableBlockPropsSerialized => {
-  const headerRows = getAllTag(element, 'thead').flatMap(node =>
-    getAllTag(node, 'tr').map(tr => getAllTag(tr, 'th'))
-  );
+  const heads = getAllTag(element, 'thead');
+  const headerRows = heads.flatMap(node => getAllTag(node, 'tr').map(rowCells));
   const bodyRows = getAllTag(element, 'tbody').flatMap(node =>
-    getAllTag(node, 'tr').map(tr => getAllTag(tr, 'td'))
+    getAllTag(node, 'tr').map(rowCells)
   );
   const footerRows = getAllTag(element, 'tfoot').flatMap(node =>
-    getAllTag(node, 'tr').map(tr => getAllTag(tr, 'td'))
+    getAllTag(node, 'tr').map(rowCells)
   );
   const allRows = [...headerRows, ...bodyRows, ...footerRows];
+  // ADR 0043: a `thead` is a header row; a body whose every row opens on a
+  // `th` is a header column. `true` or absent, never `false`.
+  const headerRow = heads.length > 0;
+  const headerColumn =
+    bodyRows.length > 0 && bodyRows.every(cells => cells[0]?.tagName === 'th');
   const rowTextLists: RichTextType[][] = [];
   allRows.forEach(cells => {
     const row: RichTextType[] = [];
@@ -190,7 +206,11 @@ export const parseTableFromHtml = (
     });
     rowTextLists.push(row);
   });
-  return createTableProps(rowTextLists);
+  return {
+    ...createTableProps(rowTextLists),
+    ...(headerRow ? { headerRow: true } : {}),
+    ...(headerColumn ? { headerColumn: true } : {}),
+  };
 };
 
 /**
@@ -230,5 +250,7 @@ export const parseTableFromMarkdown = (
     });
     rowTextLists.push(rowText);
   });
-  return createTableProps(rowTextLists);
+  // GFM has no table without a header row: the first row always was one
+  // (ADR 0043).
+  return { ...createTableProps(rowTextLists), headerRow: true as const };
 };

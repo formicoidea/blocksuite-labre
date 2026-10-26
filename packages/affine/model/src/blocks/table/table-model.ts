@@ -30,6 +30,11 @@ export interface TableBlockProps extends BlockMeta {
   // key = `${rowId}:${columnId}`
   cells: Record<string, TableCell>;
   comments?: Record<string, boolean>;
+  // The first row in display order is a header. `true` or absent, never
+  // `false`: turning it off deletes the key (ADR 0043).
+  headerRow?: true;
+  // The first column in display order is a header; same rule (ADR 0043).
+  headerColumn?: true;
 }
 
 export interface TableCellSerialized {
@@ -42,6 +47,8 @@ export interface TableBlockPropsSerialized {
   rows: Record<string, TableRow>;
   columns: Record<string, TableColumn>;
   cells: Record<string, TableCellSerialized>;
+  headerRow?: true;
+  headerColumn?: true;
 }
 
 export class TableBlockModel extends BlockModel<TableBlockProps> {}
@@ -53,6 +60,10 @@ export const TableBlockSchema = defineBlockSchema({
     columns: {},
     cells: {},
     comments: undefined,
+    // `undefined`, never `false`: a defined default is written into every
+    // table the first time a document opens (ADR 0043).
+    headerRow: undefined,
+    headerColumn: undefined,
     'meta:createdAt': undefined,
     'meta:createdBy': undefined,
     'meta:updatedAt': undefined,
