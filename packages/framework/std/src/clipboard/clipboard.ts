@@ -1,6 +1,7 @@
 import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
 import type {
   BlockSnapshot,
+  InsertedBlockSnapshot,
   Slice,
   Store,
   TransformerMiddleware,
@@ -13,6 +14,12 @@ import { unified } from 'unified';
 import { LifeCycleWatcher } from '../extension/index.js';
 import { ClipboardAdapterConfigIdentifier } from './clipboard-adapter.js';
 import { escapeHTML, onlyContainImgElement } from './utils.js';
+
+/** What `Clipboard.prepareBlockSnapshot` resolves to. */
+export interface PreparedBlockSnapshotPaste {
+  readonly id: string;
+  insert(doc: Store): InsertedBlockSnapshot | undefined;
+}
 
 export class Clipboard extends LifeCycleWatcher {
   static override key = 'clipboard';
@@ -207,6 +214,28 @@ export class Clipboard extends LifeCycleWatcher {
     index?: number
   ) => {
     return this._getJob().snapshotToBlock(snapshot, doc, parent, index);
+  };
+
+  /**
+   * `pasteBlockSnapshot` in two halves (ADR 0042): the returned promise does
+   * the async work and writes nothing; `insert(doc)` then writes
+   * synchronously, so a caller can run it inside its own transaction, and
+   * `flushAfterImport()` runs the import middlewares once that transaction
+   * has ended. Both halves use one transformer, whose middlewares keep their
+   * state between them.
+   */
+  prepareBlockSnapshot = async (
+    snapshot: BlockSnapshot,
+    parent?: string,
+    index?: number
+  ): Promise<PreparedBlockSnapshotPaste | undefined> => {
+    const job = this._getJob();
+    const prepared = await job.prepareSnapshotToBlock(snapshot, parent, index);
+    if (!prepared) return;
+    return {
+      id: prepared.id,
+      insert: (doc: Store) => job.insertPrepared(prepared, doc),
+    };
   };
 
   unuse = (middleware: TransformerMiddleware) => {
