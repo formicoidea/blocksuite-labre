@@ -46,5 +46,8 @@
     "!src/__tests__",
     "!dist/__tests__"
   ],
-  "version": "0.58.0"
+  "version": "0.58.0",
+  "devDependencies": {
+    "@vanilla-extract/vite-plugin": "5.1.4"
+  }
 }

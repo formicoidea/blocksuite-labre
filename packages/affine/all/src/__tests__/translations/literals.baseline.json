@@ -1,8 +1,5 @@
 {
   "kept": {
-    "packages/affine/blocks/code/src/adapters/html.ts": [
-      "Plain Text"
-    ],
     "packages/affine/blocks/embed-doc/src/embed-linked-doc-block/adapters/html.ts": [
       "+ o.node.props.pageId) ??"
     ],

@@ -4643,7 +4643,7 @@ model {
   features.blocks.code.clipboard -[imports]-> framework.global_.disposable '1 import'
   features.blocks.code.clipboard -[imports]-> framework.std.src '1 import'
   features.blocks.code.clipboard -[imports]-> framework.store.src '1 import, 1 type-only'
-  features.blocks.code.code-toolbar -[imports]-> features.blocks.code.src '10 imports, 4 type-only'
+  features.blocks.code.code-toolbar -[imports]-> features.blocks.code.src '11 imports, 4 type-only'
   features.blocks.code.code-toolbar -[imports]-> features.components.filterable-list '1 import'
   features.blocks.code.code-toolbar -[imports]-> features.components.hover '1 import'
   features.blocks.code.code-toolbar -[imports]-> features.components.icons_ '2 imports'

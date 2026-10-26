@@ -233,9 +233,8 @@ Container()` threw "illegal constructor" and the page hung.
     _Rule:_ inside a zod `z.object({...})` literal whose inferred type is
     re-emitted elsewhere, explain a property with `//` line comments, never
     `/** */` (guard: `affine/all/src/__tests__/zod-schema-jsdoc.unit.spec.ts`,
-    for `editor-setting-service.ts`). Still carrying a JSDoc property comment
-    in a zod literal, not converted: `shared/src/services/edit-props-store.ts`
-    and `shared/src/services/link-preview-service/link-preview-cache.ts`.
+    which walks every zod literal of `affine/shared/src` and `affine/model/src`
+    and reports offenders as `file:line`).
 
 33. **A minor that broke a 0.43 host twice: at compile time and at render.**
     0.44.0 made `ReadingProfile.frame.label` and `frame.none` required (#428),

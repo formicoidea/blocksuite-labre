@@ -45,24 +45,18 @@ const LocalPropsSchema = z.object({
 
   autoHideEmbedHTMLFullScreenToolbar: z.boolean(),
   connectorCenterAnchor: z.boolean().default(false),
-  /**
-   * The ids this viewer hid on this document's canvas (ADR 0031 §8). Per
-   * viewer and per document, like the viewport; never written to the
-   * document. Owned by `CanvasLocalVisibility`.
-   */
+  // The ids this viewer hid on this document's canvas (ADR 0031 §8). Per
+  // viewer and per document, like the viewport; never written to the
+  // document. Owned by `CanvasLocalVisibility`.
   localHiddenElements: z.array(z.string()),
-  /**
-   * The user layers this viewer hid on this document's canvas (ADR 0031 §8,
-   * stage 7). Same owner, same key scheme, same lifetime as
-   * `localHiddenElements`; a separate key so the element list keeps the shape
-   * it already has in viewers' storage.
-   */
+  // The user layers this viewer hid on this document's canvas (ADR 0031 §8,
+  // stage 7). Same owner, same key scheme, same lifetime as
+  // `localHiddenElements`; a separate key so the element list keeps the shape
+  // it already has in viewers' storage.
   localHiddenLayers: z.array(z.string()),
-  /**
-   * This viewer's grid override on this document's canvas (ADR 0031 §11),
-   * keyed like the viewport. Absent = the document, the host or the library
-   * decides. Owned by `CanvasGrid`.
-   */
+  // This viewer's grid override on this document's canvas (ADR 0031 §11),
+  // keyed like the viewport. Absent = the document, the host or the library
+  // decides. Owned by `CanvasGrid`.
   localShowGrid: z.boolean(),
 });
 
