@@ -51,12 +51,45 @@ export class DatabasePageHost extends SignalWatcher(
   static override styles = css`
     affine-database-page {
       display: block;
-    }
-    affine-database-page > .affine-page-viewport {
       height: 100%;
+    }
+    /* The page's only scroller, in both directions: the heading and the
+       views scroll as one page, and a wide table widens the page instead of
+       scrolling inside it (labre recette of 2026-10-26: a host viewport
+       around this one showed two scrollbars, then the column header, put
+       back by script on each scroll of a table that scrolled sideways
+       itself, jumped). */
+    affine-database-page > .affine-page-viewport {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow: auto;
       /* The container the page root's narrow-screen query reads. */
       container-type: inline-size;
       container-name: viewport;
+    }
+    /* The editor takes the height the heading leaves (std gives it 100%,
+       which overflowed by the heading's height: a scrollbar on a short
+       table). */
+    affine-database-page > .affine-page-viewport > editor-host {
+      flex: 1 0 auto;
+      height: auto;
+    }
+    /* The heading stays in view when the page scrolls sideways. */
+    affine-database-page > .affine-page-viewport > doc-title {
+      position: sticky;
+      left: 0;
+      width: 100cqw;
+    }
+    /* A database page is a table, not a text: the heading sits on the view
+       bar, without the page title's bottom padding, its band's, or the
+       block's top margin and padding (the root's rule). */
+    affine-database-page
+      > .affine-page-viewport
+      > doc-title
+      .doc-title-container,
+    affine-database-page > .affine-page-viewport > doc-title .doc-title-band {
+      padding-bottom: 0;
     }
   `;
 
@@ -125,9 +158,11 @@ export class DatabasePageHost extends SignalWatcher(
   }
 
   override render() {
-    if (!this.editorHost) return nothing;
-    // The page viewport the page extensions look for above their host.
-    return html`<div class="affine-page-viewport">${this.editorHost}</div>`;
+    // The page viewport the page extensions, and `<doc-title>`, look for
+    // above their host.
+    return html`<div class="affine-page-viewport">
+      ${this.heading ?? nothing}${this.editorHost ?? nothing}
+    </div>`;
   }
 
   @property({ attribute: false })
@@ -136,6 +171,15 @@ export class DatabasePageHost extends SignalWatcher(
   /** The page-scope view extensions the host mounts its page editor with. */
   @property({ attribute: false })
   accessor extensions: BlockStdOptions['extensions'] = [];
+
+  /**
+   * The page title the host draws above the views, a `<doc-title>` with its
+   * `bodyBlockId` set to `hostBlockId`. The page renders it inside its own
+   * viewport, so the title and the views scroll as one page; it shows before
+   * the editor exists.
+   */
+  @property({ attribute: false })
+  accessor heading: HTMLElement | null = null;
 
   /** The id of the `affine:database` block whose `props.views` the page shows. */
   @property({ attribute: false })

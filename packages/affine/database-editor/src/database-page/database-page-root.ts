@@ -119,6 +119,34 @@ export class DatabasePageRoot extends BlockComponent {
     affine-database-page-root div:has(> affine-database-title) {
       display: none !important;
     }
+    /* The view bar sits under the page heading: no top margin or padding
+       of the inline block. The attribute outweighs the block's emotion class
+       (one class); its sides and bottom stay the inline block's. */
+    affine-database-page-root affine-database[data-block-id] {
+      margin-top: 0;
+      padding-top: 0;
+    }
+    /* A table is as wide as its columns: the page scrolls sideways, so the
+       column header sticks natively to the page's top (data-view's column
+       header then leaves it alone). The table's own wrappers stop being
+       scrollers, the view bar stays in view, a viewport wide. */
+    affine-database-page-root:has(dv-table-view-ui) {
+      width: max-content;
+      min-width: 100%;
+    }
+    affine-database-page-root .dv-table-wrapper,
+    affine-database-page-root .dv-table-scroll-container {
+      overflow: visible;
+    }
+    affine-database-page-root affine-database-column-header {
+      position: sticky;
+      top: 0;
+    }
+    affine-database-page-root div:has(> div > affine-database-title) {
+      position: sticky;
+      left: var(--affine-editor-side-padding, 24px);
+      width: calc(100cqw - 2 * var(--affine-editor-side-padding, 24px));
+    }
     /* A phone keeps the page root's narrow padding (page-root-block.ts). */
     @container viewport (width <= 640px) {
       affine-database-page-root {
