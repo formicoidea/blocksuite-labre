@@ -20,7 +20,11 @@
  */
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import { createGroupFromSelectedCommand } from '@labre/affine/gfx/group';
-import { type FrameBlockModel, ShapeType } from '@labre/affine/model';
+import {
+  type FrameBlockModel,
+  NoteDisplayMode,
+  ShapeType,
+} from '@labre/affine/model';
 import type { BlockStdScope } from '@labre/std';
 import type { GfxModel } from '@labre/std/gfx';
 import { beforeEach, describe, expect, test } from 'vitest';
@@ -234,9 +238,16 @@ describe('a paste is one transaction', () => {
     const sourceId = await std.store.blobSync.set(
       new Blob(['hello'], { type: 'text/plain' })
     );
+    // A canvas-only note, not the page note: the page note draws the document
+    // title at its head and its copy does not, so the copy's mask fits it
+    // shorter after its first paint, a layout write of its own like the
+    // edgeless text's below, not one of the paste's.
     const noteId = window.doc.addBlock(
       'affine:note',
-      { xywh: '[0,300,200,100]' },
+      {
+        xywh: '[0,300,200,100]',
+        displayMode: NoteDisplayMode.EdgelessOnly,
+      },
       window.doc.root!.id
     );
     window.doc.addBlock('affine:paragraph', {}, noteId);
