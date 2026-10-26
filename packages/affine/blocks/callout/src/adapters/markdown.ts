@@ -169,8 +169,11 @@ export const calloutBlockMarkdownAdapterMatcher: BlockMarkdownAdapterMatcher = {
           .openNode({
             type: 'paragraph',
             children: [
+              // A raw node, not `text`: the stringifier escapes a `text` that
+              // starts with `[` (`\[!💡]`), which GFM and Obsidian readers
+              // show as a quote with the literal marker (#520).
               {
-                type: 'text',
+                type: 'html',
                 value: `[!${emoji}]`,
               },
             ],

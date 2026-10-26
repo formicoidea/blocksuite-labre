@@ -4,6 +4,18 @@ import {
 } from '@labre/affine-shared/adapters';
 import { isValidUrl } from '@labre/affine-shared/utils';
 
+/**
+ * A list item's marker (`-`, `*`, `+`, `1.`, `1)`) followed by a space or the
+ * end of the line. Its indentation is what nests it, so it is left alone (#519).
+ */
+const LIST_ITEM = /^(?:[*+-]|\d{1,9}[.)])(?:\s|$)/;
+
+/**
+ * Plain text pasted as a slice (BlockSuite #6017, the plain-text adapter):
+ * the first leading space of a line becomes `&#x20;`, so the line keeps its
+ * indentation instead of losing it or turning into an indented code block.
+ * Fenced code, list items and `-` lines are left as written.
+ */
 const codePreprocessor: MarkdownAdapterPreprocessor = {
   name: 'code',
   levels: ['slice'],
@@ -12,7 +24,10 @@ const codePreprocessor: MarkdownAdapterPreprocessor = {
     const lines = content
       .split('\n')
       .map(line => {
-        if (line.trimStart().startsWith('-')) {
+        if (
+          line.trimStart().startsWith('-') ||
+          LIST_ITEM.test(line.trimStart())
+        ) {
           return line;
         }
         let trimmedLine = line.trimStart();
