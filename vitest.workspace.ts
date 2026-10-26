@@ -10,6 +10,7 @@ export default [
   'packages/affine/blocks/bookmark/vitest.config.ts',
   'packages/affine/blocks/callout/vitest.config.ts',
   'packages/affine/blocks/code/vitest.config.ts',
+  'packages/affine/blocks/data-view/vitest.config.ts',
   'packages/affine/blocks/database/vitest.config.ts',
   'packages/affine/blocks/edgeless-text/vitest.config.ts',
   'packages/affine/blocks/embed/vitest.config.ts',
