@@ -183,11 +183,13 @@ describe('saved frames from the host (FrameTemplateProvider)', () => {
   });
 
   it('is searched by title like any other category', async () => {
-    const { service } = host(['Roadmap', 'Retro']);
+    // A title no built-in mask shares (the Slides category has its own
+    // "Roadmap"), so the hit below can only come from the host.
+    const { service } = host(['Road to market', 'Retro']);
     const catalogue = templateManagerFor(stdWith([eager], service));
 
-    expect((await catalogue.search('road')).map(t => t.name)).toEqual([
-      'Roadmap',
+    expect((await catalogue.search('road to')).map(t => t.name)).toEqual([
+      'Road to market',
     ]);
   });
 
