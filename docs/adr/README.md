@@ -46,6 +46,8 @@ One file per decision. Format and lifecycle in
 | [0039](0039-dark-notation-palette.md)                          | Dark notation palette                | accepted                  | On a dark canvas, notation colours resolve through a dark table at paint time; hues stay, the paper and inks invert; SVG export stays light; nothing stored changes.                |
 | [0040](0040-architecture-map-as-code.md)                       | Architecture map as code             | accepted                  | `architecture/code.c4` generated from imports, drift-checked in CI, shipped in `labre-core`; likeC4 MCP stdio only.                                                                 |
 | [0042](0042-paste-prepare-then-write.md)                       | Paste prepares, then writes          | accepted                  | A canvas paste awaits every block's `prepare`, then writes all in two back-to-back transactions: one undo step; transformer split, nothing stored changes.                          |
+| [0043](0043-table-header-row-and-column.md)                    | Table header row and column          | accepted                  | Two optional flags on `affine:table`, `headerRow` / `headerColumn` (`true` or absent): the first row/column is a header; Markdown import sets `headerRow`; HTML export writes `th`. |
+| [0044](0044-replace-shape-and-image.md)                        | Replace shape and image              | accepted                  | A new model at the old one's place, layer, z-order, connectors and container; the id changes; roled, texted, captioned or locked models refused.                                    |
 
 Related documents that are not ADRs:
 

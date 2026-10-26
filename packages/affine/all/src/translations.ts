@@ -69,6 +69,7 @@ import {
   type ChromeWording,
 } from '@labre/affine-shared/services';
 import { CALLOUT_WORDINGS } from '@labre/affine-block-callout/translations';
+import { TABLE_WORDINGS } from '@labre/affine-block-table/translations';
 import { CODE_WORDINGS } from '@labre/affine-block-code/translations';
 import { databaseEditorTranslationEntries } from '@labre/affine-database-editor';
 import { LATEX_WORDINGS } from '@labre/affine-block-latex/translations';
@@ -438,6 +439,7 @@ const PACKAGE_WORDINGS: readonly (readonly ChromeWording[])[] = [
   CODE_WORDINGS,
   LATEX_WORDINGS,
   CALLOUT_WORDINGS,
+  TABLE_WORDINGS,
   PARAGRAPH_WORDINGS,
   ADAPTER_PANEL_WORDINGS,
   DOC_TITLE_WORDINGS,

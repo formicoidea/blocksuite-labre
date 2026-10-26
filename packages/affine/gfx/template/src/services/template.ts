@@ -23,6 +23,7 @@ import type * as Y from 'yjs';
 import {
   createActiveLayerMiddleware,
   createInsertPlaceMiddleware,
+  createPresentationIndexMiddleware,
   createRegenerateIndexMiddleware,
   createStickerMiddleware,
   replaceIdMiddleware,
@@ -420,6 +421,7 @@ export function createTemplateJob(
     const idxGenerator = layer.createIndexGenerator();
 
     middlewares.push(createRegenerateIndexMiddleware(() => idxGenerator()));
+    middlewares.push(createPresentationIndexMiddleware);
   }
 
   if (type === 'sticker') {

@@ -1,4 +1,5 @@
 import {
+  BLOCK_TYPE_QUOTE,
   CATALOGUE_OTHER,
   type ChromeWording,
 } from '@labre/affine-shared/services';
@@ -81,6 +82,377 @@ export const TEMPLATE_NAME_GANTT_CHART: ChromeWording = [
   'Gantt chart',
 ];
 
+/* ── The "Slides" category (16:9 slide masks, `builtin/slides/`) ────────
+ *
+ * Its tab and its tiles are chrome; a tile's name is ALSO written once, at
+ * placement, as the title of the frame the mask inserts (a frame title is
+ * document content, ADR 0023) — one key for both, like the frame tool's own
+ * seed name. Everything painted inside the frame is a seed below.
+ */
+export const TEMPLATE_PANEL_CATEGORY_SLIDES: ChromeWording = [
+  'com.labre.template.slides.category',
+  'Slides',
+];
+export const SLIDE_NAME_COVER: ChromeWording = [
+  'com.labre.template.slides.name.cover',
+  'Cover',
+];
+export const SLIDE_NAME_COVER_IMAGE: ChromeWording = [
+  'com.labre.template.slides.name.cover-image',
+  'Cover with image',
+];
+export const SLIDE_NAME_SECTION: ChromeWording = [
+  'com.labre.template.slides.name.section',
+  'Section',
+];
+export const SLIDE_NAME_STATEMENT: ChromeWording = [
+  'com.labre.template.slides.name.statement',
+  'Statement',
+];
+export const SLIDE_NAME_TEXT_IMAGE: ChromeWording = [
+  'com.labre.template.slides.name.text-image',
+  'Text and image',
+];
+export const SLIDE_NAME_FULL_IMAGE: ChromeWording = [
+  'com.labre.template.slides.name.full-image',
+  'Full image',
+];
+export const SLIDE_NAME_TWO_COLUMNS: ChromeWording = [
+  'com.labre.template.slides.name.two-columns',
+  'Two columns',
+];
+export const SLIDE_NAME_THREE_COLUMNS: ChromeWording = [
+  'com.labre.template.slides.name.three-columns',
+  'Three columns',
+];
+export const SLIDE_NAME_SIX_POINTS: ChromeWording = [
+  'com.labre.template.slides.name.six-points',
+  'Six points',
+];
+export const SLIDE_NAME_IMAGE_CARDS: ChromeWording = [
+  'com.labre.template.slides.name.image-cards',
+  'Image cards',
+];
+export const SLIDE_NAME_AGENDA: ChromeWording = [
+  'com.labre.template.slides.name.agenda',
+  'Agenda',
+];
+/** An alias (L7 dedupe): the quote block's own word, one key. */
+export const SLIDE_NAME_QUOTE = BLOCK_TYPE_QUOTE;
+export const SLIDE_NAME_TESTIMONIALS: ChromeWording = [
+  'com.labre.template.slides.name.testimonials',
+  'Testimonials',
+];
+export const SLIDE_NAME_TEAM: ChromeWording = [
+  'com.labre.template.slides.name.team',
+  'Team',
+];
+export const SLIDE_NAME_CONTACT: ChromeWording = [
+  'com.labre.template.slides.name.contact',
+  'Contact',
+];
+export const SLIDE_NAME_ORG_CHART: ChromeWording = [
+  'com.labre.template.slides.name.org-chart',
+  'Org chart',
+];
+export const SLIDE_NAME_KEY_FIGURES: ChromeWording = [
+  'com.labre.template.slides.name.key-figures',
+  'Key figures',
+];
+export const SLIDE_NAME_TIMELINE: ChromeWording = [
+  'com.labre.template.slides.name.timeline',
+  'Timeline',
+];
+export const SLIDE_NAME_ROADMAP: ChromeWording = [
+  'com.labre.template.slides.name.roadmap',
+  'Roadmap',
+];
+export const SLIDE_NAME_PROCESS: ChromeWording = [
+  'com.labre.template.slides.name.process',
+  'Process',
+];
+export const SLIDE_NAME_MATRIX: ChromeWording = [
+  'com.labre.template.slides.name.matrix',
+  'Two-by-two matrix',
+];
+export const SLIDE_NAME_VENN: ChromeWording = [
+  'com.labre.template.slides.name.venn',
+  'Venn diagram',
+];
+export const SLIDE_NAME_MARKET_SIZE: ChromeWording = [
+  'com.labre.template.slides.name.market-size',
+  'Market size',
+];
+export const SLIDE_NAME_PRICING: ChromeWording = [
+  'com.labre.template.slides.name.pricing',
+  'Pricing',
+];
+export const SLIDE_NAME_LOGO_WALL: ChromeWording = [
+  'com.labre.template.slides.name.logo-wall',
+  'Logo wall',
+];
+
+/**
+ * The slide-mask tile names this package declares (the quote slide's is the
+ * quote block's own, declared in `chrome.ts`).
+ */
+export const SLIDE_NAME_WORDINGS: readonly ChromeWording[] = [
+  SLIDE_NAME_COVER,
+  SLIDE_NAME_COVER_IMAGE,
+  SLIDE_NAME_SECTION,
+  SLIDE_NAME_STATEMENT,
+  SLIDE_NAME_TEXT_IMAGE,
+  SLIDE_NAME_FULL_IMAGE,
+  SLIDE_NAME_TWO_COLUMNS,
+  SLIDE_NAME_THREE_COLUMNS,
+  SLIDE_NAME_SIX_POINTS,
+  SLIDE_NAME_IMAGE_CARDS,
+  SLIDE_NAME_AGENDA,
+  SLIDE_NAME_TESTIMONIALS,
+  SLIDE_NAME_TEAM,
+  SLIDE_NAME_CONTACT,
+  SLIDE_NAME_ORG_CHART,
+  SLIDE_NAME_KEY_FIGURES,
+  SLIDE_NAME_TIMELINE,
+  SLIDE_NAME_ROADMAP,
+  SLIDE_NAME_PROCESS,
+  SLIDE_NAME_MATRIX,
+  SLIDE_NAME_VENN,
+  SLIDE_NAME_MARKET_SIZE,
+  SLIDE_NAME_PRICING,
+  SLIDE_NAME_LOGO_WALL,
+];
+
+/** The seeds a slide mask writes into the document, shared by every mask. */
+export const SLIDE_SEED_EYEBROW: ChromeWording = [
+  'com.labre.template.slides.seed.eyebrow',
+  'Your name · Company name',
+];
+export const SLIDE_SEED_COVER_TITLE: ChromeWording = [
+  'com.labre.template.slides.seed.cover-title',
+  'Presentation title',
+];
+export const SLIDE_SEED_DATE: ChromeWording = [
+  'com.labre.template.slides.seed.date',
+  'Date',
+];
+export const SLIDE_SEED_TITLE: ChromeWording = [
+  'com.labre.template.slides.seed.title',
+  'Describe this slide',
+];
+export const SLIDE_SEED_SUBTITLE: ChromeWording = [
+  'com.labre.template.slides.seed.subtitle',
+  'A short line that sets the context',
+];
+export const SLIDE_SEED_SECTION_TITLE: ChromeWording = [
+  'com.labre.template.slides.seed.section-title',
+  'Section title',
+];
+export const SLIDE_SEED_SECTION_SUBTITLE: ChromeWording = [
+  'com.labre.template.slides.seed.section-subtitle',
+  'Explain what this section is about',
+];
+export const SLIDE_SEED_STATEMENT: ChromeWording = [
+  'com.labre.template.slides.seed.statement',
+  'Add a bold statement to keep your audience focused',
+];
+export const SLIDE_SEED_HEADING: ChromeWording = [
+  'com.labre.template.slides.seed.heading',
+  'A key point, in ten words or less',
+];
+export const SLIDE_SEED_BODY: ChromeWording = [
+  'com.labre.template.slides.seed.body',
+  'Expand on your point: say why your audience should care, and how it ties into the other ideas on this slide.',
+];
+export const SLIDE_SEED_IMAGE: ChromeWording = [
+  'com.labre.template.slides.seed.image',
+  'Image',
+];
+export const SLIDE_SEED_CAPTION: ChromeWording = [
+  'com.labre.template.slides.seed.caption',
+  'A picture may be worth a thousand words, but a caption helps',
+];
+export const SLIDE_SEED_FOOTER: ChromeWording = [
+  'com.labre.template.slides.seed.footer',
+  'Footer',
+];
+export const SLIDE_SEED_AGENDA_TITLE: ChromeWording = [
+  'com.labre.template.slides.seed.agenda-title',
+  'Agenda',
+];
+export const SLIDE_SEED_AGENDA_ITEM: ChromeWording = [
+  'com.labre.template.slides.seed.agenda-item',
+  'Agenda item',
+];
+export const SLIDE_SEED_QUOTE: ChromeWording = [
+  'com.labre.template.slides.seed.quote',
+  '“Add a quote that captures what your audience should remember.”',
+];
+export const SLIDE_SEED_QUOTE_AUTHOR: ChromeWording = [
+  'com.labre.template.slides.seed.quote-author',
+  'Name, Role at Company',
+];
+export const SLIDE_SEED_TESTIMONIALS_TITLE: ChromeWording = [
+  'com.labre.template.slides.seed.testimonials-title',
+  'What our clients say',
+];
+export const SLIDE_SEED_TEAM_TITLE: ChromeWording = [
+  'com.labre.template.slides.seed.team-title',
+  'Meet the team',
+];
+export const SLIDE_SEED_PERSON_NAME: ChromeWording = [
+  'com.labre.template.slides.seed.person-name',
+  'Name',
+];
+export const SLIDE_SEED_PERSON_ROLE: ChromeWording = [
+  'com.labre.template.slides.seed.person-role',
+  'Role',
+];
+export const SLIDE_SEED_CONTACT_TITLE: ChromeWording = [
+  'com.labre.template.slides.seed.contact-title',
+  'Contact',
+];
+export const SLIDE_SEED_CONTACT_ADDRESS: ChromeWording = [
+  'com.labre.template.slides.seed.contact-address',
+  'Address',
+];
+export const SLIDE_SEED_CONTACT_PHONE: ChromeWording = [
+  'com.labre.template.slides.seed.contact-phone',
+  'Phone',
+];
+export const SLIDE_SEED_CONTACT_EMAIL: ChromeWording = [
+  'com.labre.template.slides.seed.contact-email',
+  'Email',
+];
+export const SLIDE_SEED_CONTACT_VALUE: ChromeWording = [
+  'com.labre.template.slides.seed.contact-value',
+  'Add the details here',
+];
+export const SLIDE_SEED_FIGURE: ChromeWording = [
+  'com.labre.template.slides.seed.figure',
+  '99%',
+];
+export const SLIDE_SEED_DETAIL: ChromeWording = [
+  'com.labre.template.slides.seed.detail',
+  'A short description',
+];
+export const SLIDE_SEED_FIGURE_LABEL: ChromeWording = [
+  'com.labre.template.slides.seed.figure-label',
+  'What this number measures',
+];
+export const SLIDE_SEED_MILESTONE: ChromeWording = [
+  'com.labre.template.slides.seed.milestone',
+  'Milestone',
+];
+export const SLIDE_SEED_QUARTER: ChromeWording = [
+  'com.labre.template.slides.seed.quarter',
+  'Q{{n}}',
+];
+export const SLIDE_SEED_STEP: ChromeWording = [
+  'com.labre.template.slides.seed.step',
+  'Step {{n}}',
+];
+export const SLIDE_SEED_AXIS_VALUE: ChromeWording = [
+  'com.labre.template.slides.seed.axis-value',
+  'Value',
+];
+export const SLIDE_SEED_AXIS_EFFORT: ChromeWording = [
+  'com.labre.template.slides.seed.axis-effort',
+  'Effort',
+];
+export const SLIDE_SEED_QUADRANT: ChromeWording = [
+  'com.labre.template.slides.seed.quadrant',
+  'Quadrant',
+];
+export const SLIDE_SEED_VENN_IDEA: ChromeWording = [
+  'com.labre.template.slides.seed.venn-idea',
+  'One idea',
+];
+export const SLIDE_SEED_VENN_OTHER: ChromeWording = [
+  'com.labre.template.slides.seed.venn-other',
+  'Another idea',
+];
+export const SLIDE_SEED_VENN_OVERLAP: ChromeWording = [
+  'com.labre.template.slides.seed.venn-overlap',
+  'The best of both',
+];
+export const SLIDE_SEED_MARKET_TOTAL: ChromeWording = [
+  'com.labre.template.slides.seed.market-total',
+  'Total market',
+];
+export const SLIDE_SEED_MARKET_SERVICEABLE: ChromeWording = [
+  'com.labre.template.slides.seed.market-serviceable',
+  'Serviceable market',
+];
+export const SLIDE_SEED_MARKET_OBTAINABLE: ChromeWording = [
+  'com.labre.template.slides.seed.market-obtainable',
+  'Obtainable market',
+];
+export const SLIDE_SEED_PLAN: ChromeWording = [
+  'com.labre.template.slides.seed.plan',
+  'Plan',
+];
+export const SLIDE_SEED_PRICE: ChromeWording = [
+  'com.labre.template.slides.seed.price',
+  'Price',
+];
+export const SLIDE_SEED_FEATURE: ChromeWording = [
+  'com.labre.template.slides.seed.feature',
+  'A feature of this plan',
+];
+export const SLIDE_SEED_LOGO: ChromeWording = [
+  'com.labre.template.slides.seed.logo',
+  'Logo',
+];
+
+export const SLIDE_SEED_WORDINGS: readonly ChromeWording[] = [
+  SLIDE_SEED_EYEBROW,
+  SLIDE_SEED_COVER_TITLE,
+  SLIDE_SEED_DATE,
+  SLIDE_SEED_TITLE,
+  SLIDE_SEED_SUBTITLE,
+  SLIDE_SEED_SECTION_TITLE,
+  SLIDE_SEED_SECTION_SUBTITLE,
+  SLIDE_SEED_STATEMENT,
+  SLIDE_SEED_HEADING,
+  SLIDE_SEED_BODY,
+  SLIDE_SEED_IMAGE,
+  SLIDE_SEED_CAPTION,
+  SLIDE_SEED_FOOTER,
+  SLIDE_SEED_AGENDA_TITLE,
+  SLIDE_SEED_AGENDA_ITEM,
+  SLIDE_SEED_QUOTE,
+  SLIDE_SEED_QUOTE_AUTHOR,
+  SLIDE_SEED_TESTIMONIALS_TITLE,
+  SLIDE_SEED_TEAM_TITLE,
+  SLIDE_SEED_PERSON_NAME,
+  SLIDE_SEED_PERSON_ROLE,
+  SLIDE_SEED_CONTACT_TITLE,
+  SLIDE_SEED_CONTACT_ADDRESS,
+  SLIDE_SEED_CONTACT_PHONE,
+  SLIDE_SEED_CONTACT_EMAIL,
+  SLIDE_SEED_CONTACT_VALUE,
+  SLIDE_SEED_FIGURE,
+  SLIDE_SEED_DETAIL,
+  SLIDE_SEED_FIGURE_LABEL,
+  SLIDE_SEED_MILESTONE,
+  SLIDE_SEED_QUARTER,
+  SLIDE_SEED_STEP,
+  SLIDE_SEED_AXIS_VALUE,
+  SLIDE_SEED_AXIS_EFFORT,
+  SLIDE_SEED_QUADRANT,
+  SLIDE_SEED_VENN_IDEA,
+  SLIDE_SEED_VENN_OTHER,
+  SLIDE_SEED_VENN_OVERLAP,
+  SLIDE_SEED_MARKET_TOTAL,
+  SLIDE_SEED_MARKET_SERVICEABLE,
+  SLIDE_SEED_MARKET_OBTAINABLE,
+  SLIDE_SEED_PLAN,
+  SLIDE_SEED_PRICE,
+  SLIDE_SEED_FEATURE,
+  SLIDE_SEED_LOGO,
+];
+
 export const TEMPLATE_PACKAGE_WORDINGS: readonly ChromeWording[] = [
   TEMPLATE_PANEL_ADD,
   TEMPLATE_PANEL_SEARCH_PLACEHOLDER,
@@ -91,6 +463,8 @@ export const TEMPLATE_PACKAGE_WORDINGS: readonly ChromeWording[] = [
   TEMPLATE_NAME_BUSINESS_MODEL_CANVAS,
   TEMPLATE_NAME_FISHBONE,
   TEMPLATE_NAME_GANTT_CHART,
+  TEMPLATE_PANEL_CATEGORY_SLIDES,
+  ...SLIDE_NAME_WORDINGS,
 ];
 
 /**
@@ -271,5 +645,7 @@ export const OTHER_TEMPLATE_SEEDS: readonly ChromeWording[] = [
  * `PACKAGE_SEED_WORDINGS` under source `seed`
  * (`packages/affine/all/src/translations.ts`).
  */
-export const TEMPLATE_SEED_WORDINGS: readonly ChromeWording[] =
-  OTHER_TEMPLATE_SEEDS;
+export const TEMPLATE_SEED_WORDINGS: readonly ChromeWording[] = [
+  ...OTHER_TEMPLATE_SEEDS,
+  ...SLIDE_SEED_WORDINGS,
+];

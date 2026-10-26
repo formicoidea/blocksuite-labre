@@ -7,7 +7,7 @@
 ### Basic Usage
 
 ```typescript
-import { affine } from '@labre/affine-shared/test-utils';
+import { affine } from '../../test-utils';
 
 // Create a simple document
 const doc = affine`

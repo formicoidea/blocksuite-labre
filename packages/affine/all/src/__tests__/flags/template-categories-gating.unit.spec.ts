@@ -134,8 +134,8 @@ describe('the Templates-panel categories are flag-gated tooling', () => {
 
   test('the panel reads the built-in half first, then the contributed one', async () => {
     // What `EdgelessTemplatePanel.catalogue` answers, on the std of an editor
-    // with everything off: `Other` comes from `builtInTemplates` and is always
-    // there, Mind Map from the container. The ORDER is the panel's tab order —
+    // with everything off: `Other` and `Slides` come from `builtInTemplates`
+    // and are always there, Mind Map from the container. The ORDER is the panel's tab order —
     // the generic diagrams first, the frameworks after — so it is worth pinning
     // even though the set above is not.
     const provider = mountProvider('edgeless', ALL_OFF);
@@ -145,6 +145,7 @@ describe('the Templates-panel categories are flag-gated tooling', () => {
 
     await expect(catalogue.categories()).resolves.toEqual([
       'Other',
+      'Slides',
       'Mind Map',
     ]);
   });

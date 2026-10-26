@@ -7,6 +7,15 @@ import {
 /** A surface-elements map as it appears inside a template's DocSnapshot. */
 export type SurfaceElementsJSON = Record<string, Record<string, unknown>>;
 
+/** A block the surface holds (a frame), as it appears inside a DocSnapshot. */
+export type SurfaceChildBlockJSON = {
+  type: 'block';
+  id: string;
+  flavour: string;
+  props: Record<string, unknown>;
+  children: [];
+};
+
 /**
  * Serialize a plain string into the surface `Y.Text` JSON form used inside
  * snapshots (the shape inner-text / label field). Mirrors what
@@ -42,10 +51,15 @@ export function surfaceYMap(json: Record<string, unknown>) {
  * (group-aware) and only then mints fresh keys — and it skips any element that
  * carries no `index` at all. So a missing `index` is filled in here, in key
  * (insertion) order, which is the order a creation action added the elements.
+ *
+ * `blocks` are the surface's own child blocks — a slide mask's frame. They
+ * keep the props they are given: the template job remaps their ids, their
+ * `childElementIds` and their `index` on insert like any frame's.
  */
 export function makeTemplateSnapshot(
   elements: SurfaceElementsJSON,
-  title = 'Template'
+  title = 'Template',
+  blocks: SurfaceChildBlockJSON[] = []
 ) {
   const indexed: SurfaceElementsJSON = {};
   let last: string | null = null;
@@ -95,7 +109,7 @@ export function makeTemplateSnapshot(
           id: 'block:template-surface',
           flavour: 'affine:surface',
           props: { elements: indexed },
-          children: [],
+          children: blocks,
         },
       ],
     },

@@ -320,6 +320,9 @@ function paint(type: string, tint: NotationTint | null) {
   });
   const renderer = {
     std: { getOptional: () => null },
+    // Off-screen as far as the lane focus outline is concerned: it only
+    // paints on the editor's own canvases, never in an export.
+    stackingCanvas: [] as HTMLCanvasElement[],
     notationTint: tint,
   };
   (render as unknown as (...args: unknown[]) => void)(

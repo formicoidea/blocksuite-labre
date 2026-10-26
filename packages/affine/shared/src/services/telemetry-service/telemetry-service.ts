@@ -8,6 +8,7 @@ import type {
   AuditEvents,
   BlockLifecycleEvents,
   CanvasPaneEvents,
+  InvisibleCharactersEvents,
   DocumentHealthEvents,
   FrameworkDiagramEvents,
   ValidationEvents,
@@ -25,6 +26,7 @@ import type {
   EdgelessToolPickedEvent,
   ElementCreationEvent,
   ElementLockEvent,
+  ElementReplacedEvent,
   ElementUpdatedEvent,
   LatexEvent,
   LinkedDocCreatedEvent,
@@ -44,6 +46,7 @@ export type TelemetryEventMap = OutDatabaseAllEvents &
   ValidationEvents &
   AuditEvents &
   CanvasPaneEvents &
+  InvisibleCharactersEvents &
   DocumentHealthEvents & {
     DocCreated: DocCreatedEvent;
     Link: TelemetryEvent;
@@ -52,6 +55,7 @@ export type TelemetryEventMap = OutDatabaseAllEvents &
     CanvasElementAdded: ElementCreationEvent;
     CanvasElementUpdated: ElementUpdatedEvent;
     EdgelessElementLocked: ElementLockEvent;
+    ElementReplaced: ElementReplacedEvent;
     ExpandedAndCollapsed: MindMapCollapseEvent;
     AttachmentReloadedEvent:
       | AttachmentReloadedEvent

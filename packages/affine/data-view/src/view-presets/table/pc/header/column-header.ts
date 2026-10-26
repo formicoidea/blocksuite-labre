@@ -73,6 +73,12 @@ export class DatabaseColumnHeader extends SignalWatcher(
         if (!scrollContainer) {
           return;
         }
+        // A host page that makes the header natively sticky (the full-page
+        // database, ADR 0035 amendment of 2026-10-26) needs no follow-up:
+        // this translate, a frame late, would double its offset.
+        if (getComputedStyle(this).position === 'sticky') {
+          return;
+        }
         this.autoSetHeaderPosition(group, scrollContainer);
       });
       this.disposables.add(cancel);

@@ -31,7 +31,11 @@ import { html, nothing, type TemplateResult } from 'lit';
 import { query } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { styleMap } from 'lit/directives/style-map.js';
-import { bundledLanguagesInfo, type ThemedToken } from 'shiki';
+import {
+  type BundledLanguageInfo,
+  bundledLanguagesInfo,
+  type ThemedToken,
+} from 'shiki';
 
 import { CodeBlockConfigExtension } from './code-block-config.js';
 import { CodeBlockInlineManagerExtension } from './code-block-inline.js';
@@ -43,6 +47,31 @@ import {
 } from './line-numbers.js';
 import { codeBlockStyles } from './styles.js';
 import { CODE_COPY_FAILED, CODE_PLAIN_TEXT_LANGUAGE } from './translations.js';
+
+/**
+ * The language a stored `language` value stands for: matched on the id, the
+ * display name or an alias, so a document whose block says `'TypeScript'` or
+ * `'ts'` highlights as `typescript`. `undefined` (unknown or `null`) means
+ * plain text.
+ *
+ * Derived, never written back: the render path used to normalise the stored
+ * value to the id and to null an unknown one, which wrote to the store on every
+ * mount — on a readonly store, from a remote peer's render, and as an undo
+ * entry nobody made. The stored value stays what the author or the importer
+ * wrote; only a gesture (the language picker) changes it.
+ */
+export function resolveCodeLanguage(
+  language: string | null,
+  langs: readonly BundledLanguageInfo[]
+): BundledLanguageInfo | undefined {
+  if (language === null) return undefined;
+  return langs.find(
+    info =>
+      info.id === language ||
+      info.name === language ||
+      info.aliases?.includes(language)
+  );
+}
 
 export class CodeBlockComponent extends CaptionedBlockComponent<CodeBlockModel> {
   static override styles = codeBlockStyles;
@@ -65,17 +94,16 @@ export class CodeBlockComponent extends CaptionedBlockComponent<CodeBlockModel> 
 
   highlightTokens$: Signal<ThemedToken[][]> = signal([]);
 
-  languageName$: Signal<string> = computed(() => {
-    const lang = this.model.props.language$.value;
-    if (lang === null) {
-      return translateKey(this.std, ...CODE_PLAIN_TEXT_LANGUAGE);
-    }
+  /** The language the block highlights as, see `resolveCodeLanguage`. */
+  languageInfo$: Signal<BundledLanguageInfo | undefined> = computed(() =>
+    resolveCodeLanguage(this.model.props.language$.value, this.langs)
+  );
 
-    const matchedInfo = this.langs.find(info => info.id === lang);
-    return matchedInfo
-      ? matchedInfo.name
-      : translateKey(this.std, ...CODE_PLAIN_TEXT_LANGUAGE);
-  });
+  languageName$: Signal<string> = computed(
+    () =>
+      this.languageInfo$.value?.name ??
+      translateKey(this.std, ...CODE_PLAIN_TEXT_LANGUAGE)
+  );
 
   get inlineEditor() {
     const inlineRoot = this.querySelector<InlineRootElement>(
@@ -141,21 +169,14 @@ export class CodeBlockComponent extends CaptionedBlockComponent<CodeBlockModel> 
 
   private _updateHighlightTokens() {
     const requestId = ++this._highlightRequestId;
-    const modelLang = this.model.props.language$.value;
-    if (modelLang === null) {
-      this.highlightTokens$.value = [];
-      return;
-    }
-
-    const matchedInfo = this.langs.find(
-      info =>
-        info.id === modelLang ||
-        info.name === modelLang ||
-        info.aliases?.includes(modelLang)
+    // Resolved here rather than read from `languageInfo$`: the race spec
+    // drives this method on a stub that has no component field initializers.
+    const matchedInfo = resolveCodeLanguage(
+      this.model.props.language$.value,
+      this.langs
     );
 
     if (matchedInfo) {
-      this.model.props.language$.value = matchedInfo.id;
       const langImport = matchedInfo.import;
       const lang = matchedInfo.id;
 
@@ -189,8 +210,6 @@ export class CodeBlockComponent extends CaptionedBlockComponent<CodeBlockModel> 
       }
     } else {
       this.highlightTokens$.value = [];
-      // clear language if not found
-      this.model.props.language$.value = null;
     }
   }
 
@@ -476,7 +495,7 @@ export class CodeBlockComponent extends CaptionedBlockComponent<CodeBlockModel> 
 
     const preview = this.preview$.value;
     const previewContext = this.std.getOptional(
-      CodeBlockPreviewIdentifier(this.model.props.language ?? '')
+      CodeBlockPreviewIdentifier(this.languageInfo$.value?.id ?? '')
     );
     const shouldRenderPreview = preview && previewContext;
     const collapsed = this.collapsed$.value;

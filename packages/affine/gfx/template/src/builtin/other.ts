@@ -170,7 +170,7 @@ function line(
 }
 
 /** Resolve a wording through the host, or its English fallback with no host. */
-function tr(
+export function tr(
   std: BlockStdScope | undefined,
   wording: ChromeWording,
   params?: TranslationParams
