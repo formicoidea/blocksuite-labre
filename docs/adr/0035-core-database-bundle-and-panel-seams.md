@@ -896,3 +896,29 @@ superseded by [ADR 0036](./0036-database-view-conditional-colors.md): the
 optional `colorRules` field on a view, painted in core, edited from the view
 settings and from "This view" (`database.view.color-rules`), carried by a
 template and remapped by an import.
+
+### 2026-10-26: the full page holds its heading, one scroller
+
+The host composed the full page (B13) as its own `.affine-page-viewport`
+holding `<doc-title>` then `<affine-database-page>`, which renders a second
+viewport around its editor. Both viewports scroll: on a long table the page
+showed two vertical scrollbars, the table's inside the page's (labre recette
+of 2026-10-26). The page's spacing was also a text page's: the title's 38px
+bottom padding and the inline block's 8px top margin and padding stood
+between the name and the view bar.
+
+- `DatabasePageHost` gains `heading?: HTMLElement | null` (default `null`,
+  the previous rendering). The page renders it first inside its own
+  viewport, before the editor exists too; that viewport is the page's only
+  scroller (`overflow-y: auto`, the element fills its host's height). The
+  host passes its `<doc-title>` (with `bodyBlockId`) instead of wrapping both
+  in a viewport of its own. `doc-title` still finds the editor through its
+  nearest `.affine-page-viewport`.
+- On this page only, the heading sits on the view bar: the title's and its
+  band's bottom padding are zero, and the root removes the block's top
+  margin and padding. Text pages and the inline block keep theirs.
+- No stored field, no seam, no flag. A host that keeps its own viewport
+  still mounts and still shows two scrollers, as before.
+- Held by `database-editor/src/__tests__/database-page-root-styles.unit.spec.ts`
+  and `integration-test/…/page/doc-title-body-block.spec.ts`, which mounts
+  the title through `heading`.

@@ -119,6 +119,13 @@ export class DatabasePageRoot extends BlockComponent {
     affine-database-page-root div:has(> affine-database-title) {
       display: none !important;
     }
+    /* The view bar sits under the page heading: no top margin or padding
+       of the inline block. The attribute outweighs the block's emotion class
+       (one class); its sides and bottom stay the inline block's. */
+    affine-database-page-root affine-database[data-block-id] {
+      margin-top: 0;
+      padding-top: 0;
+    }
     /* A phone keeps the page root's narrow padding (page-root-block.ts). */
     @container viewport (width <= 640px) {
       affine-database-page-root {

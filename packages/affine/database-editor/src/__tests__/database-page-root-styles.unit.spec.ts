@@ -8,6 +8,13 @@
  * emotion class (`display: flex`), which outweighs it. The row « Untitled ⋯ »
  * showed under the page title. The rule is `!important` for that reason.
  * The page also keeps the page root's narrow side padding on a phone.
+ *
+ * And the page is one scroller with its heading on the view bar (ADR 0035
+ * amendment of 2026-10-26). What it would have caught (labre recette,
+ * 2026-10-26): the host wrapped the title and the page in a viewport of its
+ * own around the page's, and a long table showed two vertical scrollbars;
+ * the title's 38px bottom padding and the block's 8px top margin and padding
+ * stood between the name and the view bar.
  */
 import { describe, expect, test } from 'vitest';
 
@@ -25,6 +32,36 @@ describe('the full page of a database', () => {
   test('hides the database title row over its emotion class', () => {
     expect(cssOf(DatabasePageRoot.styles)).toMatch(
       /affine-database-page-root div:has\(> affine-database-title\) \{ display: none !important; \}/
+    );
+  });
+
+  test('renders its heading first in its own viewport, before the editor', async () => {
+    if (!customElements.get('affine-database-page')) {
+      customElements.define('affine-database-page', DatabasePageHost);
+    }
+    const page = document.createElement('affine-database-page');
+    const heading = document.createElement('doc-title');
+    page.heading = heading;
+    document.body.append(page);
+    await page.updateComplete;
+    const viewport = page.querySelector(':scope > .affine-page-viewport');
+    expect(viewport?.firstElementChild).toBe(heading);
+    page.remove();
+  });
+
+  test('is its only scroller, its heading on the view bar', () => {
+    const host = cssOf(DatabasePageHost.styles);
+    expect(host).toMatch(
+      /affine-database-page > \.affine-page-viewport \{ display: flex; flex-direction: column; height: 100%; overflow-y: auto;/
+    );
+    expect(host).toMatch(
+      /affine-database-page > \.affine-page-viewport > editor-host \{ flex: 1 0 auto; height: auto; \}/
+    );
+    expect(host).toMatch(
+      /affine-database-page > \.affine-page-viewport > doc-title \.doc-title-container, affine-database-page > \.affine-page-viewport > doc-title \.doc-title-band \{ padding-bottom: 0; \}/
+    );
+    expect(cssOf(DatabasePageRoot.styles)).toMatch(
+      /affine-database-page-root affine-database\[data-block-id\] \{ margin-top: 0; padding-top: 0; \}/
     );
   });
 
