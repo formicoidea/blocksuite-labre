@@ -54,13 +54,18 @@ function stdWith(
 
 describe('templateManagerFor', () => {
   it('lists the built-in categories first, then the contributed ones', async () => {
-    // `Other` is not contributed by anyone and is always there; the two
+    // `Other` and `Slides` are contributed by no one and always there; the two
     // registered categories follow, in registration order. That order is the
     // panel's tab order, so the generic diagrams stay on the left whatever a
     // framework adds.
     const catalogue = templateManagerFor(stdWith([eager, lazy]));
 
-    expect(await catalogue.categories()).toEqual(['Other', 'Eager', 'Lazy']);
+    expect(await catalogue.categories()).toEqual([
+      'Other',
+      'Slides',
+      'Eager',
+      'Lazy',
+    ]);
   });
 
   it('lists a contributed category, whichever shape its pack has', async () => {
@@ -156,6 +161,7 @@ describe('saved frames from the host (FrameTemplateProvider)', () => {
 
     expect(await catalogue.categories()).toEqual([
       'Other',
+      'Slides',
       'Eager',
       SAVED_FRAMES_CATEGORY,
     ]);

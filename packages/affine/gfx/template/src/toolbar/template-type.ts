@@ -51,6 +51,13 @@ export type Template = {
   nameKey?: string;
 
   /**
+   * Plain English words a search may match besides the name ("cover",
+   * "agenda", "kpi"), like `CommandDescriptor.keywords`. Not displayed, so
+   * not keyed: they widen what a search finds, they never label anything.
+   */
+  keywords?: string[];
+
+  /**
    * Rebuild {@link content} in the inserting editor's language — the seeds a
    * template writes into the document (a component's name, a lane's title) go
    * through the translation seam at placement, like a creation action's
