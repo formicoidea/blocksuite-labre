@@ -25,6 +25,7 @@ import {
   DEFAULT_BACKGROUND_SURFACE,
   warnBrokenBackgroundColor,
 } from './def.js';
+import { BACKGROUND_TEXT_FIT_PADDING, ellipsizeToWidth } from './ellipsis.js';
 import type { BackgroundModelLike } from './labels.js';
 import {
   backgroundInVariant,
@@ -220,26 +221,72 @@ export function createFrameworkBackgroundRenderer<
       ay: number,
       style: BackgroundTextStyle,
       align: BackgroundTextDef['align'],
-      vertical: boolean
+      vertical: boolean,
+      /**
+       * The length the words may take, in model units; absent draws them
+       * whole. Measured AFTER the font is set, so the cut is in the font the
+       * words are drawn in.
+       */
+      room?: number
     ) => {
       if (!words) return;
+      const fit = (font: string) => {
+        if (room === undefined) return words;
+        ctx.font = font;
+        return ellipsizeToWidth(ctx, words, room);
+      };
       if (vertical) {
+        const font = fontOf(style, family);
+        const shown = fit(font);
+        if (!shown) return;
         ctx.save();
         ctx.translate(ax, ay);
         ctx.rotate(-Math.PI / 2);
-        ctx.font = fontOf(style, family);
+        ctx.font = font;
         ctx.fillStyle = color(style.color);
         ctx.textAlign = align ?? 'center';
         ctx.textBaseline = style.baseline ?? 'alphabetic';
-        ctx.fillText(words, 0, 0);
+        ctx.fillText(shown, 0, 0);
         ctx.restore();
         return;
       }
-      ctx.font = fontOf(style, family);
+      const font = fontOf(style, family);
+      const shown = fit(font);
+      if (!shown) return;
+      ctx.font = font;
       ctx.fillStyle = color(style.color);
       ctx.textAlign = align ?? 'left';
       ctx.textBaseline = style.baseline ?? 'alphabetic';
-      ctx.fillText(words, ax, ay);
+      ctx.fillText(shown, ax, ay);
+    };
+
+    /**
+     * The room a fitted declared text has: from its anchor to the card's
+     * edges along the direction it reads, on the side(s) its alignment grows
+     * towards, less {@link BACKGROUND_TEXT_FIT_PADDING} at each end. A vertical
+     * text reads bottom-to-top, so `left` grows UP from its anchor.
+     */
+    const roomAlong = (
+      ax: number,
+      ay: number,
+      align: BackgroundTextDef['align'],
+      vertical: boolean
+    ) => {
+      const pad = BACKGROUND_TEXT_FIT_PADDING;
+      if (vertical) {
+        const up = ay - pad;
+        const down = h - ay - pad;
+        const side = align ?? 'center';
+        if (side === 'left') return up;
+        if (side === 'right') return down;
+        return 2 * Math.min(up, down);
+      }
+      const leftward = ax - pad;
+      const rightward = w - ax - pad;
+      const side = align ?? 'left';
+      if (side === 'left') return rightward;
+      if (side === 'right') return leftward;
+      return 2 * Math.min(leftward, rightward);
     };
 
     // ── 1. The card, and the bands that dress it ────────────────────────
@@ -406,13 +453,17 @@ export function createFrameworkBackgroundRenderer<
       if (!inVariant(text.variants)) continue;
       if (!visible(text.visibleProp)) continue;
       const [tx, ty] = backgroundPoint(text.anchor, plot);
+      const vertical = text.vertical === true;
       drawText(
         backgroundLabelText(text, props, translation),
         tx,
         ty,
         text.style,
         text.align,
-        text.vertical === true
+        vertical,
+        text.fit === 'ellipsis'
+          ? roomAlong(tx, ty, text.align, vertical)
+          : undefined
       );
     }
 
@@ -433,6 +484,7 @@ export function createFrameworkBackgroundRenderer<
       const dx = zoneLabel.dx ?? DEFAULT_INSTANCE_ZONE_LABEL_DX;
       const dy = zoneLabel.dy ?? DEFAULT_INSTANCE_ZONE_LABEL_DY;
       const stackY = instanceZonesDef?.stack === 'y';
+      const fitZone = zoneLabel.fit === 'ellipsis';
 
       for (const zone of instanceZones) {
         // The strip is drawn for EVERY zone, named or not: it is the lane's
@@ -485,7 +537,10 @@ export function createFrameworkBackgroundRenderer<
             strip.y + strip.h / 2,
             style,
             'center',
-            stackY
+            stackY,
+            fitZone
+              ? (stackY ? strip.h : strip.w) - 2 * BACKGROUND_TEXT_FIT_PADDING
+              : undefined
           );
           continue;
         }
@@ -496,7 +551,10 @@ export function createFrameworkBackgroundRenderer<
           y0 + zone.rect.y * ph + dy,
           zoneLabel.style,
           'left',
-          false
+          false,
+          fitZone
+            ? zone.rect.w * pw - dx - BACKGROUND_TEXT_FIT_PADDING
+            : undefined
         );
       }
     }
