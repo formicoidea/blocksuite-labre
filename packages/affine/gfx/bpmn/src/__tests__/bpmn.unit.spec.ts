@@ -290,13 +290,14 @@ describe('the bpmn command inventory', () => {
     .filter(c => c.surfaces.includes('senior-menu'))
     .map(c => c.id);
 
-  it('declares twenty-six commands, every one of them in the catalogue', () => {
-    // Twenty-six since `bpmn.importSvg`: 17 artefacts, 3 connecting-object
-    // tools, the pool, the two lane gestures, and the THREE whose subject is
-    // the BOARD rather than an element — the `.bpmn` format out and in, plus
-    // the visual-tier SVG fallback (`docs/adr/0012`, P2).
-    expect(bpmnCommands).toHaveLength(26);
-    expect(new Set(bpmnCommands.map(c => c.id)).size).toBe(26);
+  it('declares twenty-eight commands, every one of them in the catalogue', () => {
+    // Twenty-eight since the lane reorder: 17 artefacts, 3 connecting-object
+    // tools, the pool, the four lane gestures (add, remove, move up, move
+    // down), and the THREE whose subject is the BOARD rather than an element
+    // — the `.bpmn` format out and in, plus the visual-tier SVG fallback
+    // (`docs/adr/0012`, P2).
+    expect(bpmnCommands).toHaveLength(28);
+    expect(new Set(bpmnCommands.map(c => c.id)).size).toBe(28);
     for (const command of bpmnCommands) {
       expect(command.owner, command.id).toBe('bpmn');
       expect(command.scope, command.id).toBe('edgeless');
@@ -423,12 +424,14 @@ describe('the bpmn command inventory', () => {
       'bpmn.messageFlowTool',
       'bpmn.associationTool',
     ]);
-    // The pool and the two gestures that divide it — filed together even
-    // though eleven declarations separate the first two.
+    // The pool and the four gestures that divide and order it — filed
+    // together even though eleven declarations separate the first two.
     expect(ids('swimlanes')).toEqual([
       'bpmn.addPool',
       'bpmn.addLane',
       'bpmn.removeLane',
+      'bpmn.moveLaneUp',
+      'bpmn.moveLaneDown',
     ]);
     // …and the format, both ways, plus the SVG fallback that arrives third
     // because it is declared third. Out before in, which is the order they

@@ -1,4 +1,6 @@
 import {
+  backgroundInstanceZones,
+  backgroundPlot,
   DefaultTool,
   EdgelessCRUDIdentifier,
   generateElementId,
@@ -14,6 +16,7 @@ import {
   type BpmnLane,
   type BpmnNodeKind,
   BpmnPoolElementModel,
+  ConnectorElementModel,
   ConnectorMode,
 } from '@labre/affine-model';
 import {
@@ -23,7 +26,13 @@ import {
 import { downloadBlob } from '@labre/affine-shared/utils';
 import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
-import { type GfxController, GfxControllerIdentifier } from '@labre/std/gfx';
+import {
+  type GfxController,
+  GfxControllerIdentifier,
+  GfxGroupLikeElementModel,
+} from '@labre/std/gfx';
+
+import { BPMN_POOL_BACKGROUND } from './background.js';
 
 import {
   BPMN_EDGE_STYLE,
@@ -41,6 +50,7 @@ import {
   type BpmnExportBoard,
   exportBpmnXmlWithWarnings,
 } from './export.js';
+import { bpmnLaneOf } from './facts.js';
 import {
   BPMN_SVG_IMPORT,
   BPMN_XML_EXPORT,
@@ -356,12 +366,14 @@ export function addBpmnLane(std: BlockStdScope): void {
 }
 
 /**
- * Remove the LAST lane of every selected pool.
+ * Remove the FOCUSED lane of every selected pool, or its LAST lane when none is
+ * focused.
  *
- * The last one and not the selected one, because a lane is not selectable: it
- * is a slice of the pool's plot, painted by the background primitive, with no
- * element of its own. Removing from the end is the gesture that undoes the one
- * that added it.
+ * Focused and not selected, because a lane is not selectable: it is a slice of
+ * the pool's plot, painted by the background primitive, with no element of its
+ * own. A single click on its title strip, in a selected pool, focuses it
+ * ({@link bpmnFocusedLaneIndex}). With nothing focused, removing from the end
+ * is the gesture that undoes the one that added it.
  *
  * ## Nothing moves
  *
@@ -380,7 +392,17 @@ export function removeBpmnLane(std: BlockStdScope): void {
 
   std.store.captureSync();
   for (const model of withLanes) {
-    writeLanes(std, model, bpmnLanesOf(model).slice(0, -1));
+    const lanes = bpmnLanesOf(model);
+    // The FOCUSED lane when the user picked one (a click on its title strip),
+    // the last one otherwise — which is still the one the previous "Add lane"
+    // added.
+    const focused = bpmnFocusedLaneIndex(std, model);
+    const gone = focused ?? lanes.length - 1;
+    writeLanes(
+      std,
+      model,
+      lanes.filter((_, i) => i !== gone)
+    );
   }
 }
 
@@ -621,4 +643,157 @@ export function renameBpmnLane(
   );
   std.store.captureSync();
   writeLanes(std, model, next);
+}
+
+/**
+ * Move the lane at `from` to `to` inside `pool`, carrying what is drawn in it.
+ *
+ * A lane is a slice of the pool's plot, and what is "in" it is decided by
+ * geometry: the centre of an artefact, read by {@link bpmnLaneOf}. Reordering
+ * the `lanes` array alone would leave every task where it was on the canvas and
+ * silently hand it to whichever lane now covers that spot — the user moves the
+ * Sales lane up and finds their sales tasks filed under Ops. So the gesture
+ * moves both: the array is reordered, and every unlocked artefact wholly inside
+ * the pool is translated by the vertical shift of the lane its centre was in.
+ * Connectors attached to them follow through the connector watcher, as on any
+ * other move.
+ *
+ * A GESTURE-time write, not a cascade: it runs once, on the author's client,
+ * from a command, and a peer receives the reorder and the moves as ordinary
+ * updates. No stored-format change either: the same `lanes` array, the same
+ * `xywh` props.
+ *
+ * One `captureSync`, then one `transact`, so the reorder and every move are ONE
+ * undo step. Refused — and nothing written, so no empty undo entry — on a
+ * read-only document, a locked pool, an index that names no lane, or a move to
+ * where the lane already is. Returns whether it wrote.
+ *
+ * ponytail: a connector attached to nothing, drawn inside a lane, stays where
+ * it is, and a locked artefact is left behind; the upgrade is to translate the
+ * free endpoints too, here and nowhere else.
+ */
+export function moveBpmnLane(
+  std: BlockStdScope,
+  pool: BpmnPoolElementModel,
+  from: number,
+  to: number
+): boolean {
+  if (std.store.readonly || pool.isLocked()) return false;
+  if (from === to) return false;
+  const lanes = bpmnLanesOf(pool);
+  if (!lanes[from] || !lanes[to]) return false;
+
+  const next = [...lanes];
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+
+  // Each band's top, before and after, read off the painted partition: the
+  // normalisation the renderer and the audit use, so an artefact moves by
+  // exactly the distance its lane moves on the canvas.
+  const frame = pool.elementBound;
+  const plot = backgroundPlot(BPMN_POOL_BACKGROUND, frame.w, frame.h);
+  const topsOf = (rows: readonly BpmnLane[]) =>
+    new Map(
+      backgroundInstanceZones(BPMN_POOL_BACKGROUND, { lanes: rows }).map(
+        zone => [zone.id, zone.rect.y * plot.height] as const
+      )
+    );
+  const before = topsOf(lanes);
+  const after = topsOf(next);
+  const prefix = BPMN_POOL_BACKGROUND.instanceZones?.idPrefix ?? 'lane';
+
+  // Membership BEFORE the write: once the array is reordered the bands are
+  // where the lanes are going, and a centre would read the wrong lane.
+  const moves: { id: string; xywh: string }[] = [];
+  for (const element of gfxOf(std).grid.search(frame, { strict: true })) {
+    if (element === pool || element.isLocked()) continue;
+    // A connector follows its endpoints; a group or a mind map derives its
+    // bound from its children, which are moved on their own.
+    if (element instanceof ConnectorElementModel) continue;
+    if (element instanceof GfxGroupLikeElementModel) continue;
+    const bound = Bound.deserialize(element.xywh);
+    const lane = bpmnLaneOf(pool, bound);
+    if (!lane) continue;
+    const key = `${prefix}:${lane.id}`;
+    const dy = (after.get(key) ?? 0) - (before.get(key) ?? 0);
+    if (dy === 0) continue;
+    moves.push({ id: element.id, xywh: bound.moveDelta(0, dy).serialize() });
+  }
+
+  std.store.captureSync();
+  std.store.transact(() => {
+    writeLanes(std, pool, next);
+    const crud = std.get(EdgelessCRUDIdentifier);
+    for (const { id, xywh } of moves) crud.updateElement(id, { xywh });
+  });
+  return true;
+}
+
+/**
+ * Something that knows which lane of a pool is FOCUSED — the pool's view
+ * (`BpmnPoolView`) in an editor, a plain object in a test.
+ *
+ * A lane is not an element, so it cannot be selected; the lane commands need
+ * another way to know which lane the user means. The focus is set by a single
+ * click on a lane's title strip in a selected pool, and it is on-screen state
+ * and nothing more: held by the view, never stored, never synced, dropped when
+ * the pool is deselected. Another viewer of the same document has their own or
+ * none. An id rather than an index, so the focus follows the lane it names
+ * through a move.
+ */
+export interface BpmnLaneFocusHolder {
+  readonly focusedLaneId: string | null;
+}
+
+/**
+ * The index of `pool`'s focused lane in this editor, or `null` when none is
+ * focused or the focused one is gone (removed by a peer, undone away).
+ *
+ * Read through {@link BpmnLaneFocusHolder} rather than the view class, so the
+ * commands do not import the view.
+ */
+export function bpmnFocusedLaneIndex(
+  std: BlockStdScope,
+  pool: BpmnPoolElementModel
+): number | null {
+  const holder = gfxOf(std).view?.get(pool.id) as
+    | Partial<BpmnLaneFocusHolder>
+    | null
+    | undefined;
+  const id = holder?.focusedLaneId;
+  if (!id) return null;
+  const index = bpmnLanesOf(pool).findIndex(lane => lane.id === id);
+  return index < 0 ? null : index;
+}
+
+/**
+ * The selected pool whose focused lane can move one step `by` (`-1` up, `1`
+ * down), and the lane's index — `null` when no such pool is selected.
+ *
+ * The first one that qualifies: a lane is focused by clicking it, on one pool
+ * at a time, so a selection holding two pools still names at most one lane.
+ */
+export function bpmnLaneToMove(
+  std: BlockStdScope,
+  by: -1 | 1
+): { pool: BpmnPoolElementModel; index: number } | null {
+  for (const pool of bpmnPoolsForLaneEdit(std)) {
+    const index = bpmnFocusedLaneIndex(std, pool);
+    if (index === null) continue;
+    if (!bpmnLanesOf(pool)[index + by]) continue;
+    return { pool, index };
+  }
+  return null;
+}
+
+/** Move the focused lane of the selected pool one step up. */
+export function moveBpmnLaneUp(std: BlockStdScope): void {
+  const target = bpmnLaneToMove(std, -1);
+  if (target) moveBpmnLane(std, target.pool, target.index, target.index - 1);
+}
+
+/** Move the focused lane of the selected pool one step down. */
+export function moveBpmnLaneDown(std: BlockStdScope): void {
+  const target = bpmnLaneToMove(std, 1);
+  if (target) moveBpmnLane(std, target.pool, target.index, target.index + 1);
 }
