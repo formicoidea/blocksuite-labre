@@ -18,6 +18,7 @@ import { styleMap } from 'lit/directives/style-map.js';
 import { html } from 'lit/static-html.js';
 
 import type { CodeBlockComponent } from '../..';
+import { resolveCodeLanguage } from '../../code-block.js';
 import {
   CODE_PLAIN_TEXT_LANGUAGE,
   CODE_SEARCH_FOR_LANGUAGE,
@@ -94,9 +95,15 @@ export class LanguageListButton extends WithDisposable(
           sortedBundledLanguages.splice(index, 1);
           sortedBundledLanguages.unshift(item);
         }
-        this.blockComponent.store.transact(() => {
-          this.blockComponent.model.props.language$.value = languageOf(item);
-        });
+        const { store, model } = this.blockComponent;
+        // The button is disabled on a readonly store, but a list opened
+        // before the store turned readonly can still fire.
+        if (store.readonly) return;
+        const language = languageOf(item);
+        // An unchanged write would push an empty undo entry.
+        if (model.props.language === language) return;
+        store.captureSync();
+        store.updateBlock(model, { language });
 
         const std = this.blockComponent.std;
         const mode =
@@ -110,8 +117,15 @@ export class LanguageListButton extends WithDisposable(
           control: item.name,
         });
       },
+      // Against the resolved id, so a block stored as `'TypeScript'` or
+      // with an unknown language still marks its entry (Plain Text for the
+      // latter).
       active: item =>
-        languageOf(item) === this.blockComponent.model.props.language,
+        languageOf(item) ===
+        (resolveCodeLanguage(
+          this.blockComponent.model.props.language,
+          this.blockComponent.langs
+        )?.id ?? null),
       items: this._sortedBundledLanguages,
     };
 

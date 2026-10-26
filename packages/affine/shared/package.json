@@ -28,7 +28,7 @@
     "@types/lodash-es": "^4.17.12",
     "@types/mdast": "^4.0.4",
     "bytes": "^3.1.2",
-    "dompurify": "^3.4.13",
+    "dompurify": "^3.4.16",
     "fractional-indexing": "^3.2.0",
     "lit": "^3.2.0",
     "lodash-es": "^4.17.21",
@@ -68,8 +68,7 @@
     "./theme": "./src/theme/index.ts",
     "./styles": "./src/styles/index.ts",
     "./services": "./src/services/index.ts",
-    "./adapters": "./src/adapters/index.ts",
-    "./test-utils": "./src/__tests__/test-utils/index.ts"
+    "./adapters": "./src/adapters/index.ts"
   },
   "files": [
     "src",

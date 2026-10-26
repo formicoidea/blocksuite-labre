@@ -2639,11 +2639,11 @@ World!
         ],
       };
 
-      const markdown = `> \\[!💡]
+      const markdown = `> [!💡]
 >
 > First callout
 
-> \\[!]
+> [!]
 >
 > Warning second callout without emoji
 >
@@ -4169,6 +4169,7 @@ bbb
                 },
               },
             },
+            headerRow: true,
           },
           children: [],
         },

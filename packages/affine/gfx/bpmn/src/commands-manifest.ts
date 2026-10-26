@@ -202,6 +202,22 @@ export const bpmnCommandsManifest: ShortcutManifestEntry[] = [
     defaultKeys: { mac: [], other: [] },
   },
   {
+    id: 'bpmn.moveLaneUp',
+    owner: 'bpmn',
+    labelKey: 'com.labre.commands.bpmn.moveLaneUp',
+    labelFallback: 'Move lane up',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
+    id: 'bpmn.moveLaneDown',
+    owner: 'bpmn',
+    labelKey: 'com.labre.commands.bpmn.moveLaneDown',
+    labelFallback: 'Move lane down',
+    scope: 'edgeless',
+    defaultKeys: { mac: [], other: [] },
+  },
+  {
     id: 'bpmn.exportXml',
     owner: 'bpmn',
     labelKey: 'com.labre.commands.bpmn.exportXml',

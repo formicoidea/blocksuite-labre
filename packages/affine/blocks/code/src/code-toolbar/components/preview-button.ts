@@ -82,7 +82,7 @@ export class PreviewButton extends WithDisposable(SignalWatcher(LitElement)) {
   }
 
   override render() {
-    const lang = this.blockComponent.model.props.language$.value ?? '';
+    const lang = this.blockComponent.languageInfo$.value?.id ?? '';
     const previewContext = this.blockComponent.std.getOptional(
       CodeBlockPreviewIdentifier(lang)
     );

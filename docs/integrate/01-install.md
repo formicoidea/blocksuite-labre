@@ -66,7 +66,8 @@ some of them directly, so pin them once at the app level to avoid duplicates:
 - `@preact/signals-core` (1.14.4 or later; the library relies on its
   `batch()` semantics)
 - `@toeverything/theme` (the CSS variables every component reads)
-- `katex` (if you render formulas), `rxjs`
+- `katex` (0.18 or later, if you render formulas; the stylesheet you import
+  must come from the same copy the library renders with), `rxjs`
 
 ## One copy, or nothing works
 
@@ -112,8 +113,13 @@ Import once, before mounting:
 ```ts
 import '@labre/affine/effects'; // registers every custom element
 import '@toeverything/theme/style.css'; // the --affine-* variables
-import 'katex/dist/katex.min.css'; // only if you use formulas
+import 'katex/dist/katex.min.css'; // only if you use formulas; katex >= 0.18
 ```
+
+KaTeX 0.18 prefixes its internal classes (`base` became `katex-base`,
+`strut` became `katex-strut`, and so on): a 0.16 stylesheet over the 0.18
+markup the library emits mis-renders every formula. Resolve `katex` to 0.18
+or later on your side.
 
 The library ships vanilla-extract `.css.ts` files. Your bundler needs the
 plugin; see [06-build-tooling.md](06-build-tooling.md).

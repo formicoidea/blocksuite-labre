@@ -118,6 +118,10 @@ export const BPMN_POOL_BACKGROUND: FrameworkBackgroundDef = {
         // pool is the same stroke, so the lanes read as the frame continued.
         divider: { color: '@frame', width: POOL_FRAME_WIDTH },
       },
+      // One line in a 24-unit strip: a name longer than its lane is cut with
+      // an ellipsis rather than run into the next lane. The stored name stays
+      // whole, and the rename editor shows it in full.
+      fit: 'ellipsis',
       style: {
         size: POOL_LANE_NAME_FONT_SIZE,
         color: '@name',
@@ -170,6 +174,10 @@ export const BPMN_POOL_BACKGROUND: FrameworkBackgroundDef = {
           },
           // Read bottom-to-top, as the spec draws a vertical pool name.
           vertical: true,
+          // One line in a 28-unit band: a name longer than the pool is cut
+          // with an ellipsis rather than run out of the frame. The stored name
+          // stays whole.
+          fit: 'ellipsis',
         },
       },
     ],

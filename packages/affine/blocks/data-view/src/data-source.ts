@@ -122,10 +122,14 @@ export class BlockQueryDataSource extends DataSourceBase {
   cellValueChange(rowId: string, propertyId: string, value: unknown): void {
     const viewColumn = this.getViewColumn(propertyId);
     if (viewColumn) {
-      this.block.props.cells[rowId] = {
-        ...this.block.props.cells[rowId],
-        [propertyId]: value,
-      };
+      // A nested prop write goes through the props proxy with its own origin,
+      // which the undo manager does not track: transact makes it undoable.
+      this.block.store.transact(() => {
+        this.block.props.cells[rowId] = {
+          ...this.block.props.cells[rowId],
+          [propertyId]: value,
+        };
+      });
       return;
     }
     const block = this.blockMap.get(rowId);
@@ -223,7 +227,10 @@ export class BlockQueryDataSource extends DataSourceBase {
   propertyDelete(_id: string): void {
     const index = this.block.props.columns.findIndex(v => v.id === _id);
     if (index >= 0) {
-      this.block.props.columns.splice(index, 1);
+      // Same origin trap as `cellValueChange`.
+      this.block.store.transact(() => {
+        this.block.props.columns.splice(index, 1);
+      });
     }
   }
 
