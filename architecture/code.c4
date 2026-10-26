@@ -1125,7 +1125,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/surface
         metadata {
           path 'packages/affine/blocks/surface'
-          files '144'
+          files '145'
         }
         adapters = folder 'adapters/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/surface/src/adapters
@@ -1159,7 +1159,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/surface/src/framework-background
           metadata {
             path 'packages/affine/blocks/surface/src/framework-background'
-            files '9'
+            files '10'
           }
         }
         renderer = folder 'renderer/' {
