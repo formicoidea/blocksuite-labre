@@ -723,3 +723,106 @@ describe('a declaration that says nothing about instance zones', () => {
     expect(withProp.dashes).toEqual(before.dashes);
   });
 });
+
+/* -------------------------------------------------------------------------- */
+/* Fitting a name to its strip                                                 */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Why this block exists: a BPMN lane name longer than its lane ran straight
+ * out of its 24-unit title strip, across the divider and into the next lane,
+ * because the primitive drew every name with one `fillText` and never measured
+ * it. A declaration now opts into `fit: 'ellipsis'`, which cuts the name to the
+ * strip with "…" while the stored name stays whole.
+ *
+ * Measured on a REAL Chromium 2D context (this suite runs in browser mode), so
+ * the assertion is about pixels a reader would see, not about a stub's idea of
+ * a glyph width. A declaration WITHOUT `fit` must paint exactly what it painted
+ * before — C4 and UML ride this primitive with exact-drawing tests.
+ */
+describe('a zone name cut to the strip it is written in', () => {
+  const FITTED: FrameworkBackgroundDef = {
+    ...BANDED,
+    instanceZones: {
+      ...LANES,
+      label: { style: LABEL_STYLE, band: { width: 24 }, fit: 'ellipsis' },
+    },
+  };
+  const UNFITTED: FrameworkBackgroundDef = {
+    ...BANDED,
+    instanceZones: {
+      ...LANES,
+      label: { style: LABEL_STYLE, band: { width: 24 } },
+    },
+  };
+
+  const LONG = 'Regional procurement and supplier onboarding coordination team';
+
+  function paintReal(def: FrameworkBackgroundDef, model: object) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 440;
+    canvas.height = 320;
+    const ctx = canvas.getContext('2d')!;
+    const drawn: Array<{ text: string; font: string }> = [];
+    const fillText = ctx.fillText.bind(ctx);
+    ctx.fillText = (text: string, x: number, y: number) => {
+      drawn.push({ text, font: ctx.font });
+      fillText(text, x, y);
+    };
+    const render = createFrameworkBackgroundRenderer(def) as unknown as (
+      m: unknown,
+      c: unknown,
+      x: unknown
+    ) => void;
+    render(
+      { deserializedXYWH: [0, 0, 440, 320], rotate: 0, ...model },
+      ctx,
+      new DOMMatrix()
+    );
+    const width = (text: string, font: string) => {
+      ctx.font = font;
+      return ctx.measureText(text).width;
+    };
+    return { drawn, width };
+  }
+
+  // Plot 400 × 300 at (20, 10); two lanes of equal weight, so each strip is
+  // 150 units long — room 150 less 4 at each end.
+  const lanes = {
+    lanes: [
+      { id: 'a', name: LONG, size: 1 },
+      { id: 'b', name: 'Ops', size: 1 },
+    ],
+  };
+  const ROOM = 150 - 8;
+
+  it('cuts a name longer than its strip and ends it with an ellipsis', () => {
+    const { drawn, width } = paintReal(FITTED, lanes);
+    const long = drawn[0];
+
+    expect(long.text).not.toBe(LONG);
+    expect(long.text.endsWith('…')).toBe(true);
+    expect(LONG.startsWith(long.text.slice(0, -1))).toBe(true);
+    expect(width(long.text, long.font)).toBeLessThanOrEqual(ROOM);
+    // The longest cut that fits: one more character would not.
+    const next = LONG.slice(0, long.text.length) + '…';
+    expect(width(next, long.font)).toBeGreaterThan(ROOM);
+  });
+
+  it('leaves a name that fits untouched', () => {
+    const { drawn } = paintReal(FITTED, lanes);
+    expect(drawn[1].text).toBe('Ops');
+  });
+
+  it('draws the whole name when the declaration does not ask to fit', () => {
+    const { drawn } = paintReal(UNFITTED, lanes);
+    expect(drawn.map(d => d.text)).toEqual([LONG, 'Ops']);
+  });
+
+  it('paints a declaration without `fit` operation for operation as before', () => {
+    // The stub has no `measureText`: a declaration that does not opt in must
+    // never measure, so this would throw if it did.
+    const rec = paint(UNFITTED, lanes, 440, 320);
+    expect(rec.texts.map(t => t.text)).toEqual([LONG, 'Ops']);
+  });
+});

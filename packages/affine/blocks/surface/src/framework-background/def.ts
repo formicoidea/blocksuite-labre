@@ -132,6 +132,18 @@ export interface BackgroundTextDef extends BackgroundLabelSource {
   vertical?: boolean;
   /** Model prop gating this text. Absent means always drawn. */
   visibleProp?: string;
+  /**
+   * What happens to words longer than the room they are written in.
+   *
+   * Absent — what every declaration written before this existed says — draws
+   * the words whole, however far they run. `'ellipsis'` cuts them to the room
+   * between the anchor and the card's edges along the text's direction, minus
+   * a small padding, ending with "…" (`ellipsis.ts`). Opt-in, because the
+   * frameworks that do not ask for it have exact-drawing tests and labels that
+   * are meant to overhang. Named consumer: the BPMN participant name, written
+   * up a one-line band where a long name used to run out of the pool.
+   */
+  fit?: 'ellipsis';
 }
 
 /** One graduation on an axis. */
@@ -341,6 +353,13 @@ export interface BackgroundInstanceZonesDef {
     dy?: number;
     /** Present = band placement. */
     band?: BackgroundInstanceZoneBandDef;
+    /**
+     * `'ellipsis'` cuts a name longer than its room — the strip's length under
+     * a band, the zone's width from the inset under the corner — and ends it
+     * with "…", as {@link BackgroundTextDef.fit} does. Absent draws the name
+     * whole. Named consumer: the BPMN lane title, a one-line strip.
+     */
+    fit?: 'ellipsis';
   };
   /**
    * Prefix of the reported zone ids: `'lane'` reports `lane:sales`.
