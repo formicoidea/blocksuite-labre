@@ -39,6 +39,10 @@ import {
 } from '@labre/affine-block-surface';
 import { StoreExtensionManager } from '@labre/affine-ext-loader';
 import type { GroupElementModel } from '@labre/affine-model';
+import {
+  referenceWorkload,
+  sweepEachMs,
+} from '@labre/affine-shared/test-utils';
 import type { BlockStdScope } from '@labre/std';
 import {
   compareLayer,
@@ -58,7 +62,22 @@ import { getInternalStoreExtensions } from '../extensions/store.js';
 const FRAME_BUDGET_MS = 16;
 
 /** Samples per measurement; the best one is asserted (load-tolerant). */
-const SAMPLES = 10;
+const SAMPLES = 21;
+
+/**
+ * Keys sorted by the reference workload (`referenceWorkload`): sized so one
+ * pass costs about what the 820-model build does, so both feel the same load.
+ */
+const REFERENCE_SIZE = 20_000;
+
+/**
+ * How many reference passes the build may cost when the machine is loaded.
+ * Measured: the build reads ×1.1–2.0 of the reference, alone and with six
+ * copies of this file running at once. ×4 keeps the frame budget's own
+ * headroom (about ×3 over the idle build) and fails a regression that only
+ * the build pays.
+ */
+const REFERENCE_RATIO = 4;
 
 let boardSeq = 0;
 
@@ -632,29 +651,35 @@ describe('the tree is cheap', () => {
     const models = gfxFor(store, surface).gfxElements;
     expect(models).toHaveLength(820);
 
-    let best = Infinity;
     let tree: SelectionPaneNode[] = [];
-    // Best of several samples, and the sweep is prolonged while no sample has
-    // made the budget: alone the build takes about a third of it, but the
-    // whole unit suite runs in parallel and a starved worker measured 18 ms
-    // on its best of ten. A real regression fails every sample, so the cap
-    // only costs time when the budget is truly broken.
-    const deadline = performance.now() + 3_000;
-    for (
-      let i = 0;
-      i < SAMPLES || (best >= FRAME_BUDGET_MS && performance.now() < deadline);
-      i++
-    ) {
-      const start = performance.now();
-      tree = buildSelectionPaneTree(models);
-      best = Math.min(best, performance.now() - start);
-    }
+    // The build and a code-independent reference workload, interleaved in
+    // one sweep. Alone the build takes about a third of the frame, but under
+    // the full parallel unit run a starved worker measured 17–18 ms on its
+    // BEST sample: sustained load inflates every sample, so a best-of alone
+    // cannot hold an absolute budget there. The reference pays the same
+    // starvation, so the bound is the frame on an idle machine and
+    // REFERENCE_RATIO reference passes on a loaded one — whichever is larger.
+    // A real regression moves the build and not the reference.
+    const [build, reference] = sweepEachMs(
+      [
+        () => {
+          tree = buildSelectionPaneTree(models);
+        },
+        referenceWorkload(REFERENCE_SIZE),
+      ],
+      SAMPLES
+    );
+    const bound = Math.max(FRAME_BUDGET_MS, reference.best * REFERENCE_RATIO);
 
     // The default layer, holding 500 loose rows (100 of them a frame's
     // members), 100 groups and 20 frames.
     expect(tree).toHaveLength(1);
     expect(rowsOf(tree)).toHaveLength(620);
-    expect(best).toBeLessThan(FRAME_BUDGET_MS);
+    expect(
+      build.best,
+      `build best ${build.best.toFixed(2)} ms (median ${build.median.toFixed(2)}), ` +
+        `reference best ${reference.best.toFixed(2)} ms, bound ${bound.toFixed(2)} ms`
+    ).toBeLessThan(bound);
   }, 30_000);
 
   // The tree orders rows across ancestors on chains it reads once per model,
