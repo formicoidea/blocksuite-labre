@@ -212,3 +212,19 @@ export const bpmnLaneRemoveIcon = svg`<svg width="24" height="24" viewBox="0 0 2
   <path d="M8 12 H20.5" stroke="currentColor" stroke-width="1.6"/>
   <path d="M12.4 15.1 H16.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
 </svg>`;
+
+/** Move lane up — the pool cut in two, with an arrow rising out of the lower band. */
+export const bpmnLaneUpIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="3.5" y="5.5" width="17" height="13" rx="1.5" stroke="currentColor" stroke-width="1.6"/>
+  <path d="M8 5.5 V18.5" stroke="currentColor" stroke-width="1.6"/>
+  <path d="M8 12 H20.5" stroke="currentColor" stroke-width="1.6"/>
+  <path d="M14.25 16.6 V13.6 M12.6 15 L14.25 13.4 L15.9 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+
+/** Move lane down — the same pool, with an arrow falling out of the upper band. */
+export const bpmnLaneDownIcon = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="3.5" y="5.5" width="17" height="13" rx="1.5" stroke="currentColor" stroke-width="1.6"/>
+  <path d="M8 5.5 V18.5" stroke="currentColor" stroke-width="1.6"/>
+  <path d="M8 12 H20.5" stroke="currentColor" stroke-width="1.6"/>
+  <path d="M14.25 7.4 V10.4 M12.6 9 L14.25 10.6 L15.9 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;

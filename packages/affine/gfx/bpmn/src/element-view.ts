@@ -1,10 +1,21 @@
-import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
+import {
+  EdgelessCRUDIdentifier,
+  type SurfaceBlockComponent,
+} from '@labre/affine-block-surface';
 import type { BpmnLane, BpmnPoolElementModel } from '@labre/affine-model';
+import {
+  ToolbarFlag,
+  ToolbarRegistryIdentifier,
+} from '@labre/affine-shared/services';
 import type { EditorHost, PointerEventState } from '@labre/std';
 import type { PointTestOptions } from '@labre/std/gfx';
 import { GfxElementModelView } from '@labre/std/gfx';
 
-import { bpmnLanesOf, renameBpmnLane } from './actions.js';
+import {
+  type BpmnLaneFocusHolder,
+  bpmnLanesOf,
+  renameBpmnLane,
+} from './actions.js';
 import { POOL_LANE_MIN_HEIGHT } from './consts.js';
 import {
   bpmnLaneBoundaryAt,
@@ -24,7 +35,11 @@ import {
  *   renderer paints the name in, rather than a second set of metrics that would
  *   one day disagree with it;
  * - **drag on an internal lane boundary** moves the separator, taking from one
- *   lane and giving to the other.
+ *   lane and giving to the other;
+ * - **click in a lane's title band of a SELECTED pool** focuses that lane —
+ *   the lane "Move lane up / down" and "Remove lane" act on. On-screen state
+ *   only ({@link BpmnLaneFocusHolder}): never stored, outlined on the canvas
+ *   by the renderer, dropped when the pool leaves the selection.
  *
  * Both renames are ZONED to their band (PO recette, 2026-08-26). The whole pool
  * used to open the participant editor, which was right while a pool had one
@@ -65,10 +80,20 @@ import {
  * local point by `-model.rotate` about the element centre, at the one function
  * that has the element in hand (`_localPoint`), not a new declared field.
  */
-export class BpmnPoolView extends GfxElementModelView<BpmnPoolElementModel> {
+export class BpmnPoolView
+  extends GfxElementModelView<BpmnPoolElementModel>
+  implements BpmnLaneFocusHolder
+{
   static override type: string = 'bpmnPool';
 
   private _nameEditor: HTMLInputElement | null = null;
+
+  private _focusedLaneId: string | null = null;
+
+  /** The focused lane's id — see {@link BpmnLaneFocusHolder}. */
+  get focusedLaneId(): string | null {
+    return this._focusedLaneId;
+  }
 
   /** The boundary the pointer is over, and the handlers armed for it. */
   private _armed: { index: number; disposers: (() => void)[] } | null = null;
@@ -89,8 +114,20 @@ export class BpmnPoolView extends GfxElementModelView<BpmnPoolElementModel> {
     super.onCreated();
     this.on('dblclick', e => this._onDblClick(e));
     this.on('pointermove', e => this._updateHover(e));
-    this.on('pointerdown', e => this._updateHover(e));
+    this.on('pointerdown', e => {
+      this._updateHover(e);
+      this._focusAt(e);
+    });
     this.on('pointerleave', () => this._leave());
+    // The focus belongs to a pool the user is working on: once it leaves the
+    // selection, there is no lane to act on and nothing to outline.
+    this.disposable.add(
+      this.gfx.selection.slots.updated.subscribe(() => {
+        if (this._focusedLaneId === null) return;
+        if (this.gfx.selection.selectedIds.includes(this.model.id)) return;
+        this._setFocus(null);
+      })
+    );
   }
 
   override onDestroyed(): void {
@@ -298,6 +335,38 @@ export class BpmnPoolView extends GfxElementModelView<BpmnPoolElementModel> {
     this.gfx.std.store.captureSync();
     this.model.pop('lanes');
     this._disarm();
+  }
+
+  /* ── Lane focus ────────────────────────────────────────────────────── */
+
+  /**
+   * A press in a lane's title band of a SELECTED pool focuses that lane; a
+   * press in the participant band clears the focus. Anywhere else leaves it.
+   *
+   * On `pointerdown`, which this view already listens to, and NOT on `click`:
+   * a view that registers a handler reports the event as handled, and a
+   * registered `click` would take click-to-select away from the default tool.
+   * Selected first, for the reason the separator drag gives: a first click on
+   * a pool is "work on this pool", not "pick this lane".
+   */
+  private _focusAt(e: PointerEventState): void {
+    if (!this.gfx.selection.selectedIds.includes(this.model.id)) return;
+    const target = this._targetAt(this._localPoint(e));
+    if (target === null) return;
+    const lane =
+      target.kind === 'lane' ? bpmnLanesOf(this.model)[target.index] : null;
+    this._setFocus(lane?.id ?? null);
+  }
+
+  private _setFocus(id: string | null): void {
+    if (this._focusedLaneId === id) return;
+    this._focusedLaneId = id;
+    // The outline is painted by the canvas renderer, and the toolbar decides
+    // whether to offer the reorder commands: both have to be told.
+    (this.gfx.surfaceComponent as SurfaceBlockComponent | null)?.refresh();
+    this.gfx.std
+      .getOptional(ToolbarRegistryIdentifier)
+      ?.flags.refresh(ToolbarFlag.Surface);
   }
 
   /* ── In-place naming ───────────────────────────────────────────────── */

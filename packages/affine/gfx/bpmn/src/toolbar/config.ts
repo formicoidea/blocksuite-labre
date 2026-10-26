@@ -23,7 +23,9 @@ import { html, type TemplateResult } from 'lit';
 import {
   bpmnExportXmlIcon,
   bpmnLaneAddIcon,
+  bpmnLaneDownIcon,
   bpmnLaneRemoveIcon,
+  bpmnLaneUpIcon,
 } from './icons.js';
 
 const ResizeIcon = html`<svg
@@ -149,6 +151,22 @@ export const bpmnPoolToolbarConfig = {
       'com.labre.commands.bpmn.removeLane',
       'Remove lane',
       bpmnLaneRemoveIcon
+    ),
+    // Reorder, beside add and remove: they act on the FOCUSED lane (a click on
+    // its title strip) and only show while one is focused and can move.
+    commandAction(
+      'b.move-lane-up',
+      'bpmn.moveLaneUp',
+      'com.labre.commands.bpmn.moveLaneUp',
+      'Move lane up',
+      bpmnLaneUpIcon
+    ),
+    commandAction(
+      'b.move-lane-down',
+      'bpmn.moveLaneDown',
+      'com.labre.commands.bpmn.moveLaneDown',
+      'Move lane down',
+      bpmnLaneDownIcon
     ),
     // …and, in the "⋮", the one thing you do to a finished process rather than
     // to the shape of a pool: take it away as a file.

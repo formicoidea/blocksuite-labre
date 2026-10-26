@@ -51,7 +51,12 @@ function setup(props: { lanes?: typeof LANES } = {}) {
 
   const gfx = {
     viewport: { toModelCoord: (x: number, y: number) => [x, y], zoom: 1 },
-    selection: { set: vi.fn(), selectedIds: [] as string[] },
+    selection: {
+      set: vi.fn(),
+      selectedIds: [] as string[],
+      // The view drops its lane focus when the pool leaves the selection.
+      slots: { updated: { subscribe: () => ({ unsubscribe: vi.fn() }) } },
+    },
     cursor$: { value: 'default' },
     std: {
       store: { captureSync: vi.fn(), readonly: false },

@@ -125,7 +125,11 @@ describe('command registry invariants', () => {
       // it deliberately does NOT contest the sub-menu (see its own comment in
       // `gfx/bpmn/src/commands.ts`) — the catalogue grew by one, the
       // nomination pool did not.
-      bpmn: 26,
+      // 28 since the lane reorder: `bpmn.moveLaneUp` and `bpmn.moveLaneDown`,
+      // selection-scoped like the other two lane gestures and, like them,
+      // outside the sub-menu — the catalogue grew by two, the nomination pool
+      // did not.
+      bpmn: 28,
       // 14: the thirteen-entry toolbox (nine elements, two boundaries, the
       // board and the relationship tool) plus `c4.exportMermaid`, whose subject
       // is a SELECTED board and which declines the sub-menu. Fourteen against a
@@ -317,7 +321,8 @@ describe('command registry invariants', () => {
     // …and 209 with `canvas.export.drawio` (ADR 0019, amendment of 2026-10-14).
     // …and 212 with `page.export.markdown`, `page.export.html` and
     // `canvas.export.svg` (ADR 0034, amendment of 2026-10-14).
-    expect(commands).toHaveLength(212);
+    // …and 214 with `bpmn.moveLaneUp` and `bpmn.moveLaneDown`.
+    expect(commands).toHaveLength(214);
   });
 
   /**
