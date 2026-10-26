@@ -2397,13 +2397,13 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/gfx/template
         metadata {
           path 'packages/affine/gfx/template'
-          files '21'
+          files '25'
         }
         builtin = folder 'builtin/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/gfx/template/src/builtin
           metadata {
             path 'packages/affine/gfx/template/src/builtin'
-            files '1'
+            files '5'
           }
         }
         services = folder 'services/' {
@@ -3974,12 +3974,12 @@ model {
   features.gfx.template -[uses]-> features.blocks.surface '5 imports'
   features.gfx.template -[uses]-> features.components '2 imports'
   features.gfx.template -[uses]-> features.ext-loader '1 import'
-  features.gfx.template -[uses]-> features.shared '10 imports'
+  features.gfx.template -[uses]-> features.shared '12 imports, 1 type-only'
   features.gfx.template -[uses]-> features.widgets.edgeless-toolbar '3 imports'
   features.gfx.template -[uses]-> framework.global_ '10 imports, 1 type-only'
-  features.gfx.template -[uses]-> framework.std '14 imports, 8 type-only'
+  features.gfx.template -[uses]-> framework.std '16 imports, 9 type-only'
   features.gfx.template -[uses]-> framework.store '3 imports, 2 type-only'
-  features.gfx.template -[uses]-> model_.model_ '3 imports, 2 type-only'
+  features.gfx.template -[uses]-> model_.model_ '5 imports, 2 type-only'
   features.gfx.text -[uses]-> features.blocks.surface '9 imports'
   features.gfx.text -[uses]-> features.components '3 imports'
   features.gfx.text -[uses]-> features.ext-loader '2 imports'
@@ -6630,12 +6630,13 @@ model {
   features.gfx.shape_.toolbar -[imports]-> framework.global_.gfx '1 import'
   features.gfx.shape_.toolbar -[imports]-> framework.std.src '1 import'
   features.gfx.shape_.toolbar -[imports]-> model_.model_.src '3 imports'
-  features.gfx.template.builtin -[imports]-> features.gfx.template.src '2 imports'
-  features.gfx.template.builtin -[imports]-> features.gfx.template.toolbar '1 import, 1 type-only'
-  features.gfx.template.builtin -[imports]-> features.shared.consts '1 import'
-  features.gfx.template.builtin -[imports]-> features.shared.services '1 import'
-  features.gfx.template.builtin -[imports]-> framework.std.src '1 import, 1 type-only'
-  features.gfx.template.builtin -[imports]-> model_.model_.src '1 import'
+  features.gfx.template.builtin -[imports]-> features.gfx.template.src '6 imports'
+  features.gfx.template.builtin -[imports]-> features.gfx.template.toolbar '2 imports, 2 type-only'
+  features.gfx.template.builtin -[imports]-> features.shared.consts '2 imports'
+  features.gfx.template.builtin -[imports]-> features.shared.services '2 imports, 1 type-only'
+  features.gfx.template.builtin -[imports]-> framework.std.gfx '1 import'
+  features.gfx.template.builtin -[imports]-> framework.std.src '2 imports, 2 type-only'
+  features.gfx.template.builtin -[imports]-> model_.model_.src '3 imports'
   features.gfx.template.services -[imports]-> features.blocks.surface.src '2 imports'
   features.gfx.template.services -[imports]-> framework.global_.exceptions '1 import'
   features.gfx.template.services -[imports]-> framework.global_.gfx '2 imports'
@@ -6656,7 +6657,7 @@ model {
   features.gfx.template.toolbar -[imports]-> features.blocks.surface.src '2 imports'
   features.gfx.template.toolbar -[imports]-> features.components.icons_ '1 import'
   features.gfx.template.toolbar -[imports]-> features.components.toolbar '1 import'
-  features.gfx.template.toolbar -[imports]-> features.gfx.template.builtin '1 import'
+  features.gfx.template.toolbar -[imports]-> features.gfx.template.builtin '2 imports'
   features.gfx.template.toolbar -[imports]-> features.gfx.template.services '1 import'
   features.gfx.template.toolbar -[imports]-> features.gfx.template.src '4 imports'
   features.gfx.template.toolbar -[imports]-> features.shared.services '2 imports'

@@ -1,11 +1,15 @@
 import { otherTemplateCategory } from '../builtin/other.js';
+import { slidesTemplateCategory } from '../builtin/slides/index.js';
 import type {
   Template,
   TemplateCategory,
   TemplateManager,
 } from './template-type.js';
 
-export const templates: TemplateCategory[] = [otherTemplateCategory];
+export const templates: TemplateCategory[] = [
+  otherTemplateCategory,
+  slidesTemplateCategory,
+];
 
 /** A category's pack, whichever of its two shapes (array or thunk) it has. */
 export function loadTemplates(category: TemplateCategory): Promise<Template[]> {
@@ -37,7 +41,7 @@ export function templateMatches(
 }
 
 /**
- * The catalogue every editor has, whatever is mounted: `Other`. A host or a
+ * The catalogue every editor has, whatever is mounted: `Other` and `Slides`. A host or a
  * framework adds a category per editor with `TemplateCategoryExtension`; the
  * module-level `extend(...)` this object carried until 0.49 appended for every
  * editor of the page and was never emptied.
