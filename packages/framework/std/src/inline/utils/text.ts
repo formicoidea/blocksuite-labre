@@ -1,7 +1,16 @@
-import { ZERO_WIDTH_FOR_EMPTY_LINE } from '../consts.js';
+/**
+ * Whether `text` is a placeholder rather than text of the model: the
+ * zero-width character an empty line or an embed gap renders (`v-text`'s
+ * `empty`, rendered as `data-v-empty`). Decided by the attribute, never by
+ * the content: a zero-width space the user stored, alone in its run (or in
+ * its own span when special characters are shown), is one character long.
+ */
+export function isPlaceholderText(text: Text): boolean {
+  return text.parentElement?.dataset.vEmpty === 'true';
+}
 
 export function calculateTextLength(text: Text): number {
-  if (text.wholeText === ZERO_WIDTH_FOR_EMPTY_LINE) {
+  if (isPlaceholderText(text)) {
     return 0;
   } else {
     return text.wholeText.length;

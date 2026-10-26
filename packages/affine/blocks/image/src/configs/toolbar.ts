@@ -26,6 +26,7 @@ import { ImageBlockComponent } from '../image-block';
 import { ImageEdgelessBlockComponent } from '../image-edgeless-block';
 import { IMAGE_TOOLBAR_TURN_INTO_CARD_VIEW } from '../translations';
 import { duplicate } from '../utils';
+import { imageReplaceWithShapeToolbarAction } from '../replace/toolbar.js';
 import { imageReplaceToolbarAction } from './replace-action.js';
 
 const trackBaseProps = {
@@ -154,6 +155,7 @@ const builtinSurfaceToolbarConfig = {
       ctx =>
         ctx.getCurrentBlockByType(ImageEdgelessBlockComponent)?.model ?? null
     ),
+    imageReplaceWithShapeToolbarAction,
     {
       id: 'b.caption',
       tooltip: 'Caption',

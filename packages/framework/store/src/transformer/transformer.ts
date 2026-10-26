@@ -54,6 +54,29 @@ interface DraftBlockTreeNode {
   children: Array<DraftBlockTreeNode>;
 }
 
+/**
+ * A block snapshot converted to draft models and not written yet: what
+ * {@link Transformer.prepareSnapshotToBlock} returns and
+ * {@link Transformer.insertPrepared} writes. `id` is the id the root block
+ * will have, after the `beforeImport` middlewares (a replaced one).
+ */
+export interface PreparedBlockSnapshot {
+  readonly id: string;
+  readonly tree: DraftBlockTreeNode;
+  readonly parent?: string;
+  readonly index?: number;
+}
+
+/**
+ * What {@link Transformer.insertPrepared} wrote. A block model only exists
+ * once the transaction that wrote it has ended, so the `afterImport` events
+ * wait for `flushAfterImport`, which returns the root model.
+ */
+export interface InsertedBlockSnapshot {
+  readonly id: string;
+  flushAfterImport(): BlockModel | null;
+}
+
 // The number of blocks to insert in one batch
 const BATCH_SIZE = 100;
 
@@ -190,6 +213,79 @@ export class Transformer {
       console.error(error);
       return;
     }
+  };
+
+  /**
+   * The first half of {@link snapshotToBlock}: fires `beforeImport` and
+   * converts every node (the block transformers await their blobs here), and
+   * writes nothing. Pair it with {@link insertPrepared} on the SAME
+   * transformer: a middleware keeps its state per transformer
+   * (`replaceIdMiddleware`'s id map). Split so that a gesture can await every
+   * preparation first, then write them all in one synchronous transaction —
+   * one undo step whatever the preparation took (ADR 0042).
+   */
+  prepareSnapshotToBlock = async (
+    snapshot: BlockSnapshot,
+    parent?: string,
+    index?: number
+  ): Promise<PreparedBlockSnapshot | undefined> => {
+    try {
+      BlockSnapshotSchema.parse(snapshot);
+      this._triggerBeforeImportEvent(snapshot, parent, index);
+
+      const flatSnapshots: FlatSnapshot[] = [];
+      this._flattenSnapshot(snapshot, flatSnapshots, parent, index);
+      const tree = await this._convertFlatSnapshots(flatSnapshots);
+
+      return { id: tree.draft.id, tree, parent, index };
+    } catch (error) {
+      console.error(`Error when preparing snapshot to block:`);
+      console.error(error);
+      return;
+    }
+  };
+
+  /**
+   * The second half of {@link snapshotToBlock}: adds the prepared blocks to
+   * `doc` synchronously, without the yield every `BATCH_SIZE` blocks, so the
+   * caller may run it inside its own `store.transact`. The `afterImport`
+   * events (middlewares write props from them) wait for `flushAfterImport()`,
+   * to call once that transaction has ended and the models exist.
+   */
+  insertPrepared = (
+    prepared: PreparedBlockSnapshot,
+    doc: Store
+  ): InsertedBlockSnapshot | undefined => {
+    const inserted: DraftBlockTreeNode[] = [];
+    try {
+      this._insertBlockTreeSync(
+        [prepared.tree],
+        doc,
+        inserted,
+        prepared.parent,
+        prepared.index
+      );
+    } catch (error) {
+      console.error(`Error when inserting prepared snapshot:`);
+      console.error(error);
+      if (inserted.length === 0) return;
+    }
+
+    return {
+      id: prepared.id,
+      flushAfterImport: () => {
+        for (const node of inserted) {
+          const model = doc.getBlock(node.draft.id)?.model;
+          if (!model) continue;
+          this._slots.afterImport.next({
+            type: 'block',
+            model,
+            snapshot: node.snapshot,
+          });
+        }
+        return doc.getBlock(prepared.id)?.model ?? null;
+      },
+    };
   };
 
   snapshotToDoc = async (snapshot: DocSnapshot): Promise<Store | undefined> => {
@@ -571,6 +667,26 @@ export class Transformer {
     return counter;
   }
 
+  private _insertBlockTreeSync(
+    nodes: DraftBlockTreeNode[],
+    doc: Store,
+    inserted: DraftBlockTreeNode[],
+    parentId?: string,
+    startIndex?: number
+  ) {
+    nodes.forEach((node, index) => {
+      const { id, flavour, props } = node.draft;
+      const actualIndex =
+        startIndex !== undefined ? startIndex + index : undefined;
+      doc.addBlock(flavour, { id, ...props }, parentId, actualIndex);
+      inserted.push(node);
+
+      if (node.children.length > 0) {
+        this._insertBlockTreeSync(node.children, doc, inserted, id);
+      }
+    });
+  }
+
   private _rebuildBlockTree(
     draftModels: {
       draft: DraftModel;
@@ -619,6 +735,8 @@ export class Transformer {
 
     const blockTree = await this._convertFlatSnapshots(flatSnapshots);
 
+    // Not `insertPrepared`: an import may hold thousands of blocks, and this
+    // path yields to the main thread every BATCH_SIZE of them.
     await this._insertBlockTree([blockTree], doc, parent, index);
 
     return doc.getBlock(snapshot.id)?.model ?? null;

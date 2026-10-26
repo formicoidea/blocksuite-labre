@@ -3,6 +3,7 @@ import {
   type ClipboardConfigCreationContext,
   EdgelessClipboardConfigIdentifier,
   EdgelessCRUDIdentifier,
+  type PreparedClipboardBlock,
   resolveCreationLayer,
   writeModelLayer,
 } from '@labre/affine-block-surface';
@@ -101,50 +102,30 @@ export const createElementsFromClipboardDataCommand: Command<Input, Output> = (
       oldParents,
       context.originalIndexes
     );
-    const blockIndexes = new Map<GfxBlockElementModel, string>();
-    // What each block's snapshot asked for, read before its config creates
-    // it; applied in the final transaction (`keepSourceLayerAndHide`).
-    const blockRequests = new Map<GfxBlockElementModel, BlockRequest>();
-
-    // Canvas elements are written in as few transactions as the blocks allow,
-    // so a peer receives one update for a run of them instead of one per
-    // element (plus one per index fix-up). A block cannot join: its config's
-    // `createBlock` may be async (notes, texts, images and attachments go
-    // through the transformer, which awaits), and a Yjs transaction cannot
-    // span an `await`. So the run of canvas elements before a block is written
-    // first — the block may reference them (a frame's `childElementIds`) —
-    // and the last run is written together with the final indexes.
-    // ponytail: a block still costs its own transactions; a two-phase config
-    // contract (async prepare, then a sync write) is the upgrade path.
-    const pendingCanvasElements: SerializedElement[] = [];
+    // The paste prepares first and writes afterwards (ADR 0042). Phase A
+    // awaits every block config's `prepare` (blob fetches, snapshot
+    // conversions) and writes nothing. Then two synchronous transactions back
+    // to back, after one `captureSync`: the first writes every canvas element
+    // and every block in the pasted order (a frame's `childElementIds` and a
+    // group's `children` name copies written before them), the second runs
+    // what needs the models, which the store creates only when the first
+    // ends — import middlewares, final indexes, layers, frame release. One
+    // undo step whatever the blob fetch took, and two updates for a peer.
+    // ponytail: a host config still on an async `createBlock` (the default
+    // `prepare`) writes after both and may cost its own undo step, and a
+    // container pasted with it misses that child; the writes run on the main
+    // thread in one go, so a note of thousands of blocks blocks it while it
+    // is written — split it into its own transactions if that ever shows.
+    type PastedBlock = {
+      oldId: string;
+      prepared: PreparedClipboardBlock;
+      requested: BlockRequest;
+    };
+    type Written = PastedBlock & { newId: string };
+    const items: ({ element: SerializedElement } | PastedBlock)[] = [];
     const seen = new Set<string>();
 
-    const createPendingCanvasElements = () => {
-      for (const data of pendingCanvasElements) {
-        data.index = newIndexes.get(data.id) ?? data.index;
-        const element = createCanvasElement(
-          std,
-          data,
-          context,
-          getNewXYWH(data.xywh)
-        );
-        if (!element) continue;
-
-        canvasElements.push(element);
-        allElements.push(element);
-        context.oldToNewIdMap.set(data.id, element.id);
-      }
-      pendingCanvasElements.length = 0;
-    };
-
-    // One gesture, one undo step: close whatever the previous gesture left
-    // open in the undo manager's capture window.
-    // ponytail: the paste's own transactions then merge only while each ends
-    // within that window (500 ms) of the one before, so a block whose creation
-    // takes longer splits the step; the two-phase contract above removes the
-    // ceiling (the budget spec measures it on 406 elements).
-    std.store.captureSync();
-
+    // Phase A: prepare, write nothing.
     for (const data of elementsRawData) {
       // Clipboard data written before `sortEdgelessElements` deduplicated can
       // list one element twice; the first copy is the one its container maps.
@@ -154,12 +135,8 @@ export const createElementsFromClipboardDataCommand: Command<Input, Output> = (
       const { data: blockSnapshot } = BlockSnapshotSchema.safeParse(data);
       if (!blockSnapshot) {
         assertType<SerializedElement>(data);
-        pendingCanvasElements.push(data);
+        items.push({ element: data });
         continue;
-      }
-
-      if (pendingCanvasElements.length > 0) {
-        std.store.transact(createPendingCanvasElements);
       }
 
       const oldId = blockSnapshot.id;
@@ -190,44 +167,103 @@ export const createElementsFromClipboardDataCommand: Command<Input, Output> = (
         layer: blockSnapshot.props.layer,
         hiddenForEveryone: blockSnapshot.props.hiddenForEveryone,
       };
-      const newId = await config.createBlock(blockSnapshot, context);
-      if (!newId) continue;
-
-      const block = std.store.getBlock(newId);
-      if (!block) continue;
-
-      assertType<GfxBlockElementModel>(block.model);
-      blockRequests.set(block.model, requested);
-      blockModels.push(block.model);
-      allElements.push(block.model);
-      context.oldToNewIdMap.set(oldId, newId);
-      const index = newIndexes.get(oldId);
-      if (index) blockIndexes.set(block.model, index);
+      const prepared = await config.prepare(blockSnapshot, context);
+      if (!prepared) continue;
+      items.push({ oldId, prepared, requested });
     }
 
-    std.store.transact(() => {
-      createPendingCanvasElements();
+    // The preparation awaited: the document may have turned readonly since.
+    if (std.store.readonly) return { canvasElements, blockModels };
 
-      const parents = new Map<string, string>();
+    const written: Written[] = [];
+    const legacy: { block: PastedBlock; id: Promise<string | null> }[] = [];
+
+    // One gesture, one undo step: close whatever the previous gesture left
+    // open in the undo manager's capture window. Taken after the preparation,
+    // so its duration no longer matters.
+    std.store.captureSync();
+
+    std.store.transact(() => {
+      for (const item of items) {
+        if ('element' in item) {
+          const data = item.element;
+          data.index = newIndexes.get(data.id) ?? data.index;
+          const element = createCanvasElement(
+            std,
+            data,
+            context,
+            getNewXYWH(data.xywh)
+          );
+          if (!element) continue;
+
+          canvasElements.push(element);
+          allElements.push(element);
+          context.oldToNewIdMap.set(data.id, element.id);
+          continue;
+        }
+
+        let newId: string | null | Promise<string | null> = null;
+        try {
+          newId = item.prepared.write();
+        } catch (error) {
+          console.error(`Failed to paste block(id: ${item.oldId})`, error);
+          continue;
+        }
+        if (newId instanceof Promise) {
+          legacy.push({ block: item, id: newId });
+          continue;
+        }
+        if (!newId) continue;
+        context.oldToNewIdMap.set(item.oldId, newId);
+        written.push({ ...item, newId });
+      }
+    });
+
+    const parents = new Map<string, string>();
+    const finish = (blocks: Written[]) => {
+      blocks.forEach(({ prepared }) => prepared.afterWrite?.());
+
+      const crud = std.get(EdgelessCRUDIdentifier);
+      for (const { oldId, newId, requested } of blocks) {
+        const block = std.store.getBlock(newId);
+        if (!block) continue;
+
+        assertType<GfxBlockElementModel>(block.model);
+        blockModels.push(block.model);
+        allElements.push(block.model);
+
+        // A block config chooses its own index (a frame takes the top of the
+        // board, a note the transformer's): set the planned one afterwards.
+        const index = newIndexes.get(oldId);
+        if (index && block.model.index !== index) {
+          crud.updateElement(block.model.id, { index });
+        }
+        keepSourceLayerAndHide(std, block.model, requested);
+      }
+
       oldParents.forEach((oldParent, oldChild) => {
         const child = context.oldToNewIdMap.get(oldChild);
         const parent = context.oldToNewIdMap.get(oldParent);
         if (child && parent) parents.set(child, parent);
       });
-
       releaseChildrenFromAdoptingFrames(std, allElements, parents);
+    };
 
-      // A block config chooses its own index (a frame takes the top of the
-      // board, a note the transformer's): set the planned one afterwards.
-      const crud = std.get(EdgelessCRUDIdentifier);
-      blockIndexes.forEach((index, block) => {
-        if (block.index !== index) crud.updateElement(block.id, { index });
-      });
+    std.store.transact(() => finish(written));
 
-      blockRequests.forEach((requested, block) =>
-        keepSourceLayerAndHide(std, block, requested)
+    if (legacy.length > 0) {
+      console.warn(
+        'EdgelessClipboardConfig: an async createBlock wrote after the paste; implement prepare() to keep the paste one undo step (ADR 0042).'
       );
-    });
+      const late: Written[] = [];
+      for (const { block, id } of legacy) {
+        const newId = await id;
+        if (!newId) continue;
+        context.oldToNewIdMap.set(block.oldId, newId);
+        late.push({ ...block, newId });
+      }
+      if (!std.store.readonly) std.store.transact(() => finish(late));
+    }
 
     return {
       canvasElements: canvasElements,
@@ -247,16 +283,16 @@ type BlockRequest = { layer: unknown; hiddenForEveryone: unknown };
  * `crud.addElement`, which forwards every serialized prop (ADR 0031 §6 and
  * "What stays loadable"): its `layer` when it names a layer of this surface,
  * else the active one, and its `hiddenForEveryone`. Most
- * `EdgelessClipboardConfig.createBlock` rebuild the block from a handful of
+ * `EdgelessClipboardConfig.prepare` rebuild the block from a handful of
  * the snapshot's props (frame, image, attachment, bookmark, the embeds…), so
  * a duplicate fell in the active layer and came back visible. The rule is
  * applied once here, for every config, rather than in each of them; nothing
  * is written when the config already carried both.
  *
- * `requested` is read BEFORE `createBlock`: the snapshot-pasting configs
+ * `requested` is read BEFORE `prepare`: the snapshot-pasting configs
  * stamp `snapshot.props` in place, and an explicit default-layer request from
  * a clone gesture (`prepareCloneData`) is gone from it afterwards. Called
- * inside the paste's final transaction, beside the index fix-ups, so it adds
+ * inside the paste's second transaction, beside the index fix-ups, so it adds
  * no update of its own.
  */
 function keepSourceLayerAndHide(

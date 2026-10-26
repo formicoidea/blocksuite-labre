@@ -11,10 +11,20 @@
  * Asserted on the observable effect: the `update` events of the document's
  * Y.Doc, a second Y.Doc that receives only those updates (what a remote peer
  * gets), and one real Ctrl+Z.
+ *
+ * Blocks too (ADR 0042): a note, an edgeless text, an image and an attachment
+ * were each written after their own await (the transformer, the blob fetch),
+ * so a fetch slower than the undo manager's 500 ms capture window split one
+ * duplicate across several Ctrl+Z. The paste now prepares every block first
+ * and writes them all in two transactions back to back.
  */
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import { createGroupFromSelectedCommand } from '@labre/affine/gfx/group';
-import { type FrameBlockModel, ShapeType } from '@labre/affine/model';
+import {
+  type FrameBlockModel,
+  NoteDisplayMode,
+  ShapeType,
+} from '@labre/affine/model';
 import type { BlockStdScope } from '@labre/std';
 import type { GfxModel } from '@labre/std/gfx';
 import { beforeEach, describe, expect, test } from 'vitest';
@@ -222,5 +232,124 @@ describe('a paste is one transaction', () => {
     ].filter(e => !sources.includes(e));
     expect(copies.length).toBe(sources.length);
     expect(signature(copies)).toEqual(expected);
+  });
+
+  test('blocks behind a slow blob fetch: one Ctrl+Z, at most two updates', async () => {
+    const sourceId = await std.store.blobSync.set(
+      new Blob(['hello'], { type: 'text/plain' })
+    );
+    // A canvas-only note, not the page note: the page note draws the document
+    // title at its head and its copy does not, so the copy's mask fits it
+    // shorter after its first paint, a layout write of its own like the
+    // edgeless text's below, not one of the paste's.
+    const noteId = window.doc.addBlock(
+      'affine:note',
+      {
+        xywh: '[0,300,200,100]',
+        displayMode: NoteDisplayMode.EdgelessOnly,
+      },
+      window.doc.root!.id
+    );
+    window.doc.addBlock('affine:paragraph', {}, noteId);
+    const textId = service.crud.addBlock(
+      'affine:edgeless-text',
+      { xywh: '[300,0,100,50]' },
+      service.surface.id
+    )!;
+    const imageId = service.crud.addBlock(
+      'affine:image',
+      { sourceId, xywh: '[0,0,200,100]', width: 200, height: 100 },
+      service.surface.id
+    )!;
+    const attachmentId = service.crud.addBlock(
+      'affine:attachment',
+      {
+        sourceId,
+        name: 'hello.txt',
+        size: 5,
+        type: 'text/plain',
+        xywh: '[500,0,240,80]',
+      },
+      service.surface.id
+    )!;
+    await wait();
+
+    const flavours = [
+      'affine:note',
+      'affine:edgeless-text',
+      'affine:image',
+      'affine:attachment',
+    ];
+    const counts = () =>
+      flavours.map(flavour => window.doc.getModelsByFlavour(flavour).length);
+    const before = counts();
+    const blockIds = (doc: Y.Doc) => [...doc.getMap('blocks').keys()].sort();
+
+    // Each blob fetch outlasts the undo manager's capture window.
+    const blobSync = std.workspace.blobSync;
+    const get = blobSync.get;
+    blobSync.get = async (id: string) => {
+      await wait(650);
+      return get.call(blobSync, id);
+    };
+    try {
+      const spaceDoc = std.store.spaceDoc;
+      const peer = new Y.Doc();
+      Y.applyUpdate(peer, Y.encodeStateAsUpdate(spaceDoc));
+      const updates: Uint8Array[] = [];
+      // The edgeless text fits its box to its text after its first paint
+      // (`_updateW` / `_updateH`), in transactions of its own: the view's
+      // layout, not the paste's writes, set apart here.
+      const pasteUpdates: Uint8Array[] = [];
+      const onUpdate = (
+        update: Uint8Array,
+        _origin: unknown,
+        _doc: Y.Doc,
+        transaction: Y.Transaction
+      ) => {
+        updates.push(update);
+        let layoutOnly = true;
+        transaction.changed.forEach((keys, type) => {
+          const flavour =
+            type instanceof Y.Map ? type.get('sys:flavour') : null;
+          if (
+            flavour !== 'affine:edgeless-text' ||
+            [...keys].some(key => key !== 'prop:xywh')
+          ) {
+            layoutOnly = false;
+          }
+        });
+        if (!layoutOnly) pasteUpdates.push(update);
+      };
+      spaceDoc.on('update', onUpdate);
+
+      service.gfx.selection.set({
+        elements: [noteId, textId, imageId, attachmentId],
+        editing: false,
+      });
+      pressMod('d');
+      for (
+        let i = 0;
+        i < 60 && counts().some((n, j) => n !== 2 * before[j]);
+        i++
+      ) {
+        await wait(100);
+      }
+      await wait(300);
+      spaceDoc.off('update', onUpdate);
+
+      expect(counts()).toEqual(before.map(n => 2 * n));
+      expect(pasteUpdates.length).toBeGreaterThan(0);
+      expect(pasteUpdates.length).toBeLessThanOrEqual(2);
+      updates.forEach(update => Y.applyUpdate(peer, update));
+      expect(blockIds(peer)).toEqual(blockIds(spaceDoc));
+    } finally {
+      blobSync.get = get;
+    }
+
+    pressMod('z');
+    await wait(100);
+
+    expect(counts()).toEqual(before);
   });
 });

@@ -27,6 +27,14 @@ export class TableDataManager {
     () =>
       `${this.virtualRowCount$.value + this.rows$.value.length} x ${this.virtualColumnCount$.value + this.columns$.value.length}`
   );
+  /** ADR 0043: anything but a stored `true` reads as off. */
+  readonly headerRow$ = computed(
+    () => this.model.props.headerRow$.value === true
+  );
+  readonly headerColumn$ = computed(
+    () => this.model.props.headerColumn$.value === true
+  );
+
   readonly rows$ = computed(() => {
     return Object.values(this.model.props.rows$.value).sort((a, b) =>
       a.order > b.order ? 1 : -1
@@ -229,10 +237,46 @@ export class TableDataManager {
     });
   }
 
+  /**
+   * One call per gesture (a resize drag writes once, on release; a fit writes
+   * once), so the `captureSync` here makes each gesture its own undo step.
+   */
   setColumnWidth(columnId: string, width: number) {
-    this.model.store.transact(() => {
-      if (this.model.props.columns[columnId]) {
-        this.model.props.columns[columnId].width = width;
+    const store = this.model.store;
+    if (store.readonly) return;
+    const column = this.model.props.columns[columnId];
+    if (!column || column.width === width) return;
+    store.captureSync();
+    store.transact(() => {
+      const target = this.model.props.columns[columnId];
+      if (target) {
+        target.width = width;
+      }
+    });
+  }
+
+  setHeaderRow(on: boolean) {
+    this.setHeader('headerRow', on);
+  }
+
+  setHeaderColumn(on: boolean) {
+    this.setHeader('headerColumn', on);
+  }
+
+  /**
+   * `true` or absent, never `false` (ADR 0043): turning a header off deletes
+   * the key, so an off table stores exactly what a pre-0043 table stored.
+   */
+  private setHeader(key: 'headerRow' | 'headerColumn', on: boolean) {
+    const store = this.model.store;
+    if (store.readonly) return;
+    if ((this.model.props[key] === true) === on) return;
+    store.captureSync();
+    store.transact(() => {
+      if (on) {
+        this.model.props[key] = true;
+      } else {
+        delete this.model.props[key];
       }
     });
   }

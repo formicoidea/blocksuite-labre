@@ -23,6 +23,9 @@ import {
   exportBpmnXmlFile,
   importBpmnSvgFile,
   importBpmnXmlFile,
+  bpmnLaneToMove,
+  moveBpmnLaneDown,
+  moveBpmnLaneUp,
   removeBpmnLane,
 } from './actions';
 import {
@@ -48,7 +51,9 @@ import {
   bpmnImportSvgIcon,
   bpmnImportXmlIcon,
   bpmnLaneAddIcon,
+  bpmnLaneDownIcon,
   bpmnLaneRemoveIcon,
+  bpmnLaneUpIcon,
   bpmnMessageIcon,
   bpmnPoolIcon,
   bpmnSequenceIcon,
@@ -669,7 +674,7 @@ const laneCommands: CommandDescriptor[] = [
     labelFallback: 'Remove lane',
     descriptionKey: 'com.labre.commands.bpmn.removeLane.description',
     descriptionFallback:
-      'Remove the last lane of the selected pool. Nothing drawn in it moves.',
+      'Remove the focused lane of the selected pool, or its last lane. Nothing drawn in it moves.',
     iconKey: 'bpmn.lane-remove',
     order: SPECS.length + 1,
     run: removeBpmnLane,
@@ -677,6 +682,38 @@ const laneCommands: CommandDescriptor[] = [
     // …and additionally: a pool with no lane has none to remove.
     when: std =>
       bpmnPoolsForLaneEdit(std).some(model => bpmnLanesOf(model).length > 0),
+  },
+  // The two REORDER commands act on the FOCUSED lane — the one a single click
+  // on its title strip picked in the selected pool (`bpmnFocusedLaneIndex`).
+  // A lane is not an element and cannot be selected, so without a focus there
+  // is no lane to move and the commands are not offered at all.
+  {
+    ...LANE_COMMON,
+    id: 'bpmn.moveLaneUp',
+    labelKey: 'com.labre.commands.bpmn.moveLaneUp',
+    labelFallback: 'Move lane up',
+    descriptionKey: 'com.labre.commands.bpmn.moveLaneUp.description',
+    descriptionFallback:
+      'Move the focused lane above the one before it, with everything drawn in it.',
+    iconKey: 'bpmn.lane-up',
+    order: SPECS.length + 5,
+    run: moveBpmnLaneUp,
+    telemetry: { framework: 'bpmn', element: 'pool:lane-move-up' },
+    when: std => bpmnLaneToMove(std, -1) !== null,
+  },
+  {
+    ...LANE_COMMON,
+    id: 'bpmn.moveLaneDown',
+    labelKey: 'com.labre.commands.bpmn.moveLaneDown',
+    labelFallback: 'Move lane down',
+    descriptionKey: 'com.labre.commands.bpmn.moveLaneDown.description',
+    descriptionFallback:
+      'Move the focused lane below the one after it, with everything drawn in it.',
+    iconKey: 'bpmn.lane-down',
+    order: SPECS.length + 6,
+    run: moveBpmnLaneDown,
+    telemetry: { framework: 'bpmn', element: 'pool:lane-move-down' },
+    when: std => bpmnLaneToMove(std, 1) !== null,
   },
 ];
 
@@ -906,6 +943,8 @@ export const bpmnCommandIcons: Record<string, TemplateResult> = {
   'bpmn.pool': bpmnPoolIcon,
   'bpmn.lane-add': bpmnLaneAddIcon,
   'bpmn.lane-remove': bpmnLaneRemoveIcon,
+  'bpmn.lane-up': bpmnLaneUpIcon,
+  'bpmn.lane-down': bpmnLaneDownIcon,
   'bpmn.export-xml': bpmnExportXmlIcon,
   'bpmn.import-xml': bpmnImportXmlIcon,
   'bpmn.import-svg': bpmnImportSvgIcon,

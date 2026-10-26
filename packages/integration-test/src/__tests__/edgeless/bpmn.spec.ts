@@ -108,9 +108,10 @@ describe('BPMN framework elements', () => {
       expect(model.type).toBe('bpmnNode');
       expect(model.kind).toBe(kind);
       expect(model.shapeType).toBe(shapeType);
-      // Inherits native shape behaviour + restricts connector anchors to centre.
+      // Inherits native shape behaviour, and keeps the native anchors of its
+      // outline: a flow object is not centre-only (BPMN_CENTRE_ANCHORED).
       expect(model instanceof ShapeElementModel).toBe(true);
-      expect(model.centerAnchorOnly).toBe(true);
+      expect(model.centerAnchorOnly).toBe(false);
     }
   });
 
@@ -454,7 +455,8 @@ describe('the BPMN toolbox past fourteen', () => {
   const catalogueRoot = () => catalogueWidget()?.shadowRoot ?? null;
 
   test('the sub-menu overflows: thirteen ranked slots plus More artefacts', () => {
-    // 26 declared, 15 of them nominated for the row — and the fifteen are all
+    // 28 declared (26 plus the two lane moves, catalogue-only like the other
+    // lane gestures), 15 of them nominated for the row — and the fifteen are all
     // that gets ranked (PO ruling of 2026-08-28). `bpmn.exportXml` draws
     // nothing you chose and is therefore in the catalogue and out of the
     // sub-menu, like the two lane gestures, however often it is invoked;
@@ -467,7 +469,7 @@ describe('the BPMN toolbox past fourteen', () => {
     // (`docs/adr/0012`, P2). The catalogue grew, the fifteen did not.
     expect(
       getCommandsForSurface(edgeless.std, 'bpmn', 'catalogue')
-    ).toHaveLength(26);
+    ).toHaveLength(28);
     expect(
       getCommandsForSurface(edgeless.std, 'bpmn', 'senior-menu')
     ).toHaveLength(15);
