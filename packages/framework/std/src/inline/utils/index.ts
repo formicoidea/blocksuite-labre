@@ -9,3 +9,4 @@ export * from './range-conversion.js';
 export * from './renderer.js';
 export * from './text.js';
 export * from './transform-input.js';
+export * from './invisible-characters.js';

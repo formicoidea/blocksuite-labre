@@ -279,7 +279,11 @@ describe('command registry invariants', () => {
       // `canvas.export.svg`. The framework exports (`canvas.export.<framework>.
       // <format>`) are derived from the interchange registry, never registered,
       // so they count nowhere here.
-      core: 38,
+      //
+      // …and 40 with the special characters: `text.invisibles.toggle` and
+      // `text.invisibles.remove`, core-owned because text belongs to no
+      // framework.
+      core: 40,
     });
     // 112 since the two SVG fallback imports (`bpmn.importSvg`,
     // `wardley.importSvg`) joined the OWM pair — one SVG row per framework,
@@ -322,7 +326,8 @@ describe('command registry invariants', () => {
     // …and 212 with `page.export.markdown`, `page.export.html` and
     // `canvas.export.svg` (ADR 0034, amendment of 2026-10-14).
     // …and 214 with `bpmn.moveLaneUp` and `bpmn.moveLaneDown`.
-    expect(commands).toHaveLength(214);
+    // …and 216 with `text.invisibles.toggle` and `text.invisibles.remove`.
+    expect(commands).toHaveLength(216);
   });
 
   /**
@@ -369,6 +374,10 @@ describe('command registry invariants', () => {
     // a save that changes nothing in the document reports nothing.
     'canvas.grid.toggle',
     'canvas.grid.saveForEveryone',
+    // `InvisibleCharactersRemoved` carries what the gesture removed, and the
+    // toggle reports the state it left, like the grid's.
+    'text.invisibles.toggle',
+    'text.invisibles.remove',
   ];
 
   test('a self-emitting command never also declares telemetry', () => {
