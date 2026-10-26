@@ -1531,6 +1531,7 @@ __metadata:
     "@preact/signals-core": "npm:^1.8.0"
     "@toeverything/theme": "npm:^1.1.15"
     "@types/mdast": "npm:^4.0.4"
+    "@vanilla-extract/vite-plugin": "npm:5.1.4"
     lit: "npm:^3.2.0"
     minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"

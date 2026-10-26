@@ -8,17 +8,11 @@ import { z } from 'zod';
 import { LinkPreviewStorage } from './link-preview-storage';
 
 export const LinkPreviewCacheConfigSchema = z.object({
-  /**
-   * The maximum number of items in the cache
-   */
+  // The maximum number of items in the cache
   cacheSize: z.number(),
-  /**
-   * The time to live for the memory cache
-   */
+  // The time to live for the memory cache
   memoryTTL: z.number(),
-  /**
-   * The time to live for the local storage cache
-   */
+  // The time to live for the local storage cache
   localStorageTTL: z.number(),
 });
 
