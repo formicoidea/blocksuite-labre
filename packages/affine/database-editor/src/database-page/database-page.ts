@@ -53,14 +53,17 @@ export class DatabasePageHost extends SignalWatcher(
       display: block;
       height: 100%;
     }
-    /* The page's only scroller: the heading and the views scroll as one
-       page, the table never scrolls vertically inside it (labre recette of
-       2026-10-26: a host viewport around this one showed two scrollbars). */
+    /* The page's only scroller, in both directions: the heading and the
+       views scroll as one page, and a wide table widens the page instead of
+       scrolling inside it (labre recette of 2026-10-26: a host viewport
+       around this one showed two scrollbars, then the column header, put
+       back by script on each scroll of a table that scrolled sideways
+       itself, jumped). */
     affine-database-page > .affine-page-viewport {
       display: flex;
       flex-direction: column;
       height: 100%;
-      overflow-y: auto;
+      overflow: auto;
       /* The container the page root's narrow-screen query reads. */
       container-type: inline-size;
       container-name: viewport;
@@ -71,6 +74,12 @@ export class DatabasePageHost extends SignalWatcher(
     affine-database-page > .affine-page-viewport > editor-host {
       flex: 1 0 auto;
       height: auto;
+    }
+    /* The heading stays in view when the page scrolls sideways. */
+    affine-database-page > .affine-page-viewport > doc-title {
+      position: sticky;
+      left: 0;
+      width: 100cqw;
     }
     /* A database page is a table, not a text: the heading sits on the view
        bar, without the page title's bottom padding, its band's, or the

@@ -922,3 +922,15 @@ between the name and the view bar.
 - Held by `database-editor/src/__tests__/database-page-root-styles.unit.spec.ts`
   and `integration-test/…/page/doc-title-body-block.spec.ts`, which mounts
   the title through `heading`.
+- Later the same day, the page scrolls both ways (labre recette): the table
+  kept its own sideways scroller, so data-view's column header could not
+  stick natively and its script put it back on each scroll, a frame late,
+  and it jumped. On this page only, a table view makes the root as wide as
+  its columns (`width: max-content`, at least the page), the table's wrapper
+  and scroller (`dv-table-wrapper`, `dv-table-scroll-container`, stable
+  classes added for this) stop being scrollers, the column header is
+  `position: sticky; top: 0`, and the heading and the view bar stay in view
+  sideways (`position: sticky`, a viewport wide). Data-view's script leaves
+  a header that is already sticky alone. The inline table and the other
+  views keep their behaviour. Held by
+  `integration-test/…/page/database-page-scroll.spec.ts`.

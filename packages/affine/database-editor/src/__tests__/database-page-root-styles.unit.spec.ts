@@ -14,7 +14,10 @@
  * 2026-10-26): the host wrapped the title and the page in a viewport of its
  * own around the page's, and a long table showed two vertical scrollbars;
  * the title's 38px bottom padding and the block's 8px top margin and padding
- * stood between the name and the view bar.
+ * stood between the name and the view bar. Then the column header, put back
+ * by script on each scroll of a table that scrolled sideways itself, jumped
+ * while the page scrolled: the page now scrolls both ways and the header
+ * sticks natively.
  */
 import { describe, expect, test } from 'vitest';
 
@@ -52,7 +55,7 @@ describe('the full page of a database', () => {
   test('is its only scroller, its heading on the view bar', () => {
     const host = cssOf(DatabasePageHost.styles);
     expect(host).toMatch(
-      /affine-database-page > \.affine-page-viewport \{ display: flex; flex-direction: column; height: 100%; overflow-y: auto;/
+      /affine-database-page > \.affine-page-viewport \{ display: flex; flex-direction: column; height: 100%; overflow: auto;/
     );
     expect(host).toMatch(
       /affine-database-page > \.affine-page-viewport > editor-host \{ flex: 1 0 auto; height: auto; \}/
@@ -62,6 +65,26 @@ describe('the full page of a database', () => {
     );
     expect(cssOf(DatabasePageRoot.styles)).toMatch(
       /affine-database-page-root affine-database\[data-block-id\] \{ margin-top: 0; padding-top: 0; \}/
+    );
+  });
+
+  test('scrolls sideways as a page, its column header natively sticky', () => {
+    const host = cssOf(DatabasePageHost.styles);
+    const root = cssOf(DatabasePageRoot.styles);
+    expect(host).toMatch(
+      /affine-database-page > \.affine-page-viewport > doc-title \{ position: sticky; left: 0; width: 100cqw; \}/
+    );
+    expect(root).toMatch(
+      /affine-database-page-root:has\(dv-table-view-ui\) \{ width: max-content; min-width: 100%; \}/
+    );
+    expect(root).toMatch(
+      /affine-database-page-root \.dv-table-wrapper, affine-database-page-root \.dv-table-scroll-container \{ overflow: visible; \}/
+    );
+    expect(root).toMatch(
+      /affine-database-page-root affine-database-column-header \{ position: sticky; top: 0; \}/
+    );
+    expect(root).toMatch(
+      /affine-database-page-root div:has\(> div > affine-database-title\) \{ position: sticky; left: var\(--affine-editor-side-padding, 24px\);/
     );
   });
 

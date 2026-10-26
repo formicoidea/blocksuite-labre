@@ -197,10 +197,13 @@ export class TableViewUI extends DataViewUIBase<TableViewUILogic> {
             dataViewLogic: this.logic,
           })
         : ''}
-      <div class="${tableWrapperStyle}" style="${wrapperStyle}">
+      <div
+        class="${tableWrapperStyle} dv-table-wrapper"
+        style="${wrapperStyle}"
+      >
         <div
           ${ref(this.logic.scrollContainer$)}
-          class="${tableScrollContainerStyle}"
+          class="${tableScrollContainerStyle} dv-table-scroll-container"
           @wheel="${this.logic.onWheel}"
         >
           <div
