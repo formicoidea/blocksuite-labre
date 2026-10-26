@@ -72,6 +72,10 @@ afterEach(() => {
   document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
 });
 
+// Sections every page editor lists whatever its view: not the view's own
+// settings, which is what this suite checks.
+const EDITOR_WIDE_SECTIONS = new Set(['export', 'display', 'text']);
+
 const menuButtons = () => [
   ...document.querySelectorAll<HTMLElement>('affine-menu-button'),
 ];
@@ -79,9 +83,10 @@ const menuButtons = () => [
 describe('the full page of a database, "This view"', () => {
   test('lists the view settings the view offers, on the page only', () => {
     // The page's own exports (`page.export.*`, section `'export'`) are listed
-    // in every page editor, this one included: they are not view settings.
+    // in every page editor, this one included, and so are the special-character
+    // actions (sections `display` and `text`): none of them is a view setting.
     const ids = getViewActions(page.std!, 'page')
-      .filter(action => action.section !== 'export')
+      .filter(action => !EDITOR_WIDE_SECTIONS.has(action.section))
       .map(action => action.id);
     expect(ids).toEqual([
       'database.view.layout',
