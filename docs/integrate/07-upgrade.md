@@ -55,6 +55,15 @@ Typical changes a host sees, from the Labre app's history:
 Six weeks of library in one hop produced three compile breaks and one silent
 behaviour change. Upgrade at every minor.
 
+## 0.58 → the next release (katex 0.18)
+
+No compile break. One peer moves from 0.16 to 0.18: the formula blocks render with
+KaTeX 0.18, which prefixes its internal CSS classes.
+
+| Kind                   | Change                                                                                                             | What to do                                                                                                                                     |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| a peer moves a version | `katex` `^0.18.10` (was `^0.16.11`); `@types/katex` is no longer declared, katex ships its own types since 0.16.18 | bump `katex` to 0.18 or later together with the `@formicoidea/*` ranges, so `katex/dist/katex.min.css` matches the markup; drop `@types/katex` |
+
 ## 0.45 → 0.46
 
 One intended compile break, for a host that registered the sidebar seam
