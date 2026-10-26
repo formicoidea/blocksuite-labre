@@ -1,12 +1,16 @@
-import { EdgelessClipboardConfig } from '@labre/affine-block-surface';
+import {
+  type ClipboardConfigCreationContext,
+  EdgelessClipboardConfig,
+  type PreparedClipboardBlock,
+} from '@labre/affine-block-surface';
 import { type BlockSnapshot } from '@labre/store';
 
 export class EdgelessClipboardEdgelessTextConfig extends EdgelessClipboardConfig {
   static override readonly key = 'affine:edgeless-text';
 
-  override async createBlock(
+  override async prepare(
     edgelessText: BlockSnapshot
-  ): Promise<string | null> {
+  ): Promise<PreparedClipboardBlock | null> {
     const oldId = edgelessText.id;
     delete edgelessText.props.index;
     if (!edgelessText.props.xywh) {
@@ -18,16 +22,23 @@ export class EdgelessClipboardEdgelessTextConfig extends EdgelessClipboardConfig
     if (!this.surface) {
       return null;
     }
-    const newId = await this.onBlockSnapshotPaste(
+    const prepared = await this.prepareBlockSnapshotPaste(
       edgelessText,
       this.std.store,
       this.surface.model.id
     );
-    if (!newId) {
+    if (!prepared) {
       console.error(`Failed to paste EdgelessText block(id: ${oldId})`);
       return null;
     }
 
-    return newId;
+    return prepared;
+  }
+
+  override createBlock(
+    edgelessText: BlockSnapshot,
+    context: ClipboardConfigCreationContext
+  ): Promise<string | null> {
+    return this.createPreparedBlock(edgelessText, context);
   }
 }
