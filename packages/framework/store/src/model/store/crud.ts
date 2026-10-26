@@ -9,23 +9,102 @@ import { internalPrimitives } from '../block/zod.js';
 
 export class DocCRUD {
   get root(): string | null {
-    let rootId: string | null = null;
-    this._yBlocks.forEach(yBlock => {
-      const flavour = yBlock.get('sys:flavour') as string;
-      const schema = this._schema.flavourSchemaMap.get(flavour);
-      if (!schema) return;
-
-      if (schema.model.role === 'root') {
-        rootId = yBlock.get('sys:id') as string;
-      }
-    });
-    return rootId;
+    return this._ensureIndex().root;
   }
+
+  /**
+   * In-memory index of the tree: `childId -> parentId` plus the root id,
+   * rebuilt lazily after any structural change. Nothing here is written to Yjs
+   * (ADR 0041).
+   *
+   * Why: `root` scanned every block and `getParent` walked the tree from the
+   * root, so a load path calling `getParent` once per block was quadratic
+   * (#507: 11 s for 4000 blocks under a query with `viewType: 'hidden'`, whose
+   * `setAncestorsToDisplayIfHidden` climbs the ancestors of every block). #508
+   * only skipped that walk for queries that cannot hide blocks; the index
+   * makes the walk itself linear.
+   *
+   * Invalidation contract:
+   * - every transaction, local, remote (`Y.applyUpdate`) or undo, reaches
+   *   `beforeObserverCalls` before any observer runs, so observers and
+   *   everything after them read a fresh index;
+   * - inside a transaction, before that event, only the mutators below write
+   *   the tree (`sys:children`, the blocks map): each drops the index before
+   *   its first write, so a throw half-way leaves no stale index, and again
+   *   after its last one, so a read in between cannot cache a half-written
+   *   tree. A new writer of `sys:children` must do the same.
+   */
+  private _index: {
+    root: string | null;
+    parentOf: Map<string, string>;
+  } | null = null;
+
+  /** Once deaf to remote changes, every read rebuilds (the pre-#507 cost). */
+  private _live = false;
+
+  private readonly _onBeforeObserverCalls = (transaction: Y.Transaction) => {
+    if (!this._index) return;
+    // `changed` only lists types that existed before the transaction: a block
+    // created in it shows up through the blocks map, a children array created
+    // in it through its block's `sys:children` key.
+    for (const [type, keys] of transaction.changed) {
+      if (
+        (type as unknown) === this._yBlocks ||
+        type._item?.parentSub === 'sys:children' ||
+        keys.has('sys:children') ||
+        keys.has('sys:flavour') ||
+        keys.has('sys:id')
+      ) {
+        this._index = null;
+        return;
+      }
+    }
+  };
 
   constructor(
     private readonly _yBlocks: Y.Map<YBlock>,
     private readonly _schema: Schema
-  ) {}
+  ) {
+    if (!_yBlocks.doc) return;
+    _yBlocks.doc.on('beforeObserverCalls', this._onBeforeObserverCalls);
+    this._live = true;
+  }
+
+  dispose() {
+    this._yBlocks.doc?.off('beforeObserverCalls', this._onBeforeObserverCalls);
+    this._live = false;
+    this._index = null;
+  }
+
+  // Same answers as the former scan + DFS: the last root in map order, and the
+  // first parent met in a pre-order walk from it. Orphans have none, nor does
+  // the root even when some block lists it as a child. A block listed twice
+  // keeps its first parent and its subtree is walked once, which also ends a
+  // cycle where the former DFS overflowed the stack.
+  private _ensureIndex() {
+    if (this._index) return this._index;
+    let root: string | null = null;
+    this._yBlocks.forEach(yBlock => {
+      const schema = this._schema.flavourSchemaMap.get(
+        yBlock.get('sys:flavour') as string
+      );
+      if (schema?.model.role === 'root') root = yBlock.get('sys:id') as string;
+    });
+    const parentOf = new Map<string, string>();
+    const walk = (parentId: string) => {
+      const children = this._yBlocks.get(parentId)?.get('sys:children');
+      if (!children) return;
+      for (const childId of children.toArray()) {
+        if (childId === root || parentOf.has(childId)) continue;
+        parentOf.set(childId, parentId);
+        walk(childId);
+      }
+    };
+    if (root) walk(root);
+    const index = { root, parentOf };
+    if (this._live) this._index = index;
+    return index;
+  }
 
   private _getSiblings<T>(
     id: string,
@@ -72,6 +151,12 @@ export class DocCRUD {
 
     this._schema.validate(flavour, parentFlavour as string);
 
+    // Read the index before the first write; a root-role block never has a
+    // default parent, so the new block cannot change the answer.
+    const parentId =
+      parent ?? (schema.model.role === 'root' ? null : this.root);
+
+    this._index = null;
     const yBlock = new Y.Map() as YBlock;
     this._yBlocks.set(id, yBlock);
 
@@ -116,9 +201,6 @@ export class DocCRUD {
       });
     }
 
-    const parentId =
-      parent ?? (schema.model.role === 'root' ? null : this.root);
-
     if (!parentId) return;
 
     const yParent = this._yBlocks.get(parentId);
@@ -132,6 +214,7 @@ export class DocCRUD {
           : parentIndex
         : yParentChildren.length;
     yParentChildren.insert(index, [id]);
+    this._index = null;
   }
 
   deleteBlock(
@@ -163,6 +246,7 @@ export class DocCRUD {
     const yParentChildren = yParent.get('sys:children') as Y.Array<string>;
     const modelIndex = yParentChildren.toArray().indexOf(id);
 
+    this._index = null;
     if (modelIndex > -1) {
       yParentChildren.delete(modelIndex, 1);
     }
@@ -226,6 +310,7 @@ export class DocCRUD {
     apply();
 
     this._yBlocks.delete(id);
+    this._index = null;
   }
 
   getNext(id: string) {
@@ -240,26 +325,7 @@ export class DocCRUD {
   }
 
   getParent(targetId: string): string | null {
-    const root = this.root;
-    if (!root || root === targetId) return null;
-
-    const findParent = (parentId: string): string | null => {
-      const parentYBlock = this._yBlocks.get(parentId);
-      if (!parentYBlock) return null;
-
-      const children = parentYBlock.get('sys:children');
-
-      for (const childId of children.toArray()) {
-        if (childId === targetId) return parentId;
-
-        const parent = findParent(childId);
-        if (parent != null) return parent;
-      }
-
-      return null;
-    };
-
-    return findParent(root);
+    return this._ensureIndex().parentOf.get(targetId) ?? null;
   }
 
   getPrev(id: string) {
@@ -342,6 +408,7 @@ export class DocCRUD {
     });
 
     let insertIndex = 0;
+    this._index = null;
     Array.from(childBlocksPerParent.entries()).forEach(
       ([parentBlock, blocksToMove], index) => {
         const targetParentBlock = this._yBlocks.get(newParent);
@@ -387,6 +454,7 @@ export class DocCRUD {
         targetParentChildren.insert(insertIndex, blocksToMove);
       }
     );
+    this._index = null;
   }
 
   updateBlockChildren(id: string, children: string[]) {
@@ -394,7 +462,9 @@ export class DocCRUD {
     if (!yBlock) return;
 
     const yChildrenArray = yBlock.get('sys:children') as Y.Array<string>;
+    this._index = null;
     yChildrenArray.delete(0, yChildrenArray.length);
     yChildrenArray.push(children);
+    this._index = null;
   }
 }

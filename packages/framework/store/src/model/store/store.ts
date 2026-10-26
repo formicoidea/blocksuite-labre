@@ -215,6 +215,49 @@ export class Store {
 
   private readonly _blocks = signal<Record<string, Block>>({});
 
+  /**
+   * The blocks record while a batch runs, `null` otherwise (#507, ADR 0041).
+   *
+   * Adding a block used to copy the whole record into a new one, once per
+   * block: quadratic when a store opens on n blocks, and far slower with real
+   * string ids than with integer-like ones, which V8 copies on a fast path
+   * (2000 string ids: 2.6 s under any query). A batch copies the record once,
+   * adds and removes blocks in this draft, and assigns `_blocks` once at the
+   * end, so its subscribers are notified once.
+   *
+   * The store's own reads (`getBlock`, `hasBlock`, `getParent`,
+   * `blockSize`…) go through `_peekBlocks()` and see each block as soon as
+   * its `add` is handled, as before; `blockUpdated` still fires per block.
+   * Only a direct read of `store.blocks` sees the batch at its end. Batches:
+   * the init loop of the constructor, and a transaction that adds or removes
+   * more than one block; a single block keeps the per-block assignment.
+   */
+  private _blocksDraft: Record<string, Block> | null = null;
+
+  private _blocksDraftChanged = false;
+
+  private _peekBlocks(): Record<string, Block> {
+    return this._blocksDraft ?? this._blocks.peek();
+  }
+
+  private _batchBlocks(fn: () => void) {
+    // A batch opened inside another one is part of it: the outer one assigns.
+    if (this._blocksDraft) {
+      fn();
+      return;
+    }
+    const draft = { ...this._blocks.peek() };
+    this._blocksDraft = draft;
+    this._blocksDraftChanged = false;
+    try {
+      fn();
+    } finally {
+      this._blocksDraft = null;
+      // An unchanged batch notifies nobody, like the per-block path.
+      if (this._blocksDraftChanged) this._blocks.value = draft;
+    }
+  }
+
   private readonly _crud: DocCRUD;
 
   private readonly _query: Query = {
@@ -293,7 +336,7 @@ export class Store {
    * @category Block CRUD
    */
   get blockSize() {
-    return Object.values(this._blocks.peek()).length;
+    return Object.values(this._peekBlocks()).length;
   }
 
   /**
@@ -596,13 +639,15 @@ export class Store {
     }
 
     this._yBlocks.observeDeep(this._handleYEvents);
-    this._yBlocks.forEach((_, id) => {
-      this._handleYBlockAdd(id, false);
+    this._batchBlocks(() => {
+      this._yBlocks.forEach((_, id) => {
+        this._handleYBlockAdd(id, false);
 
-      if (id in this._blocks.peek()) {
-        return;
-      }
-      this._onBlockAdded(id, false, true);
+        if (id in this._peekBlocks()) {
+          return;
+        }
+        this._onBlockAdded(id, false, true);
+      });
     });
 
     this._subscribeToSlots();
@@ -648,7 +693,7 @@ export class Store {
 
   private _onBlockAdded(id: string, isLocal: boolean, init: boolean) {
     try {
-      if (id in this._blocks.peek()) {
+      if (id in this._peekBlocks()) {
         return;
       }
       const yBlock = this._yBlocks.get(id);
@@ -676,10 +721,15 @@ export class Store {
       const block = new Block(this._schema, yBlock, this, options);
       this._runQuery(block);
 
-      this._blocks.value = {
-        ...this._blocks.value,
-        [id]: block,
-      };
+      if (this._blocksDraft) {
+        this._blocksDraft[id] = block;
+        this._blocksDraftChanged = true;
+      } else {
+        this._blocks.value = {
+          ...this._blocks.value,
+          [id]: block,
+        };
+      }
       block.model.created.next();
 
       if (block.model.role === 'root') {
@@ -718,8 +768,13 @@ export class Store {
         isLocal,
       });
 
-      const { [id]: _, ...blocks } = this._blocks.peek();
-      this._blocks.value = blocks;
+      if (this._blocksDraft) {
+        delete this._blocksDraft[id];
+        this._blocksDraftChanged = true;
+      } else {
+        const { [id]: _, ...blocks } = this._blocks.peek();
+        this._blocks.value = blocks;
+      }
 
       block.model.deleted.next();
       block.model.dispose();
@@ -977,7 +1032,7 @@ export class Store {
    * @category Block CRUD
    */
   getBlock(id: string): Block | undefined {
-    return this._blocks.peek()[id];
+    return this._peekBlocks()[id];
   }
 
   /**
@@ -988,7 +1043,9 @@ export class Store {
    * @category Block CRUD
    */
   getBlock$(id: string): Block | undefined {
-    return this._blocks.value[id];
+    // Subscribes to the record, answers from the draft during a batch.
+    const blocks = this._blocks.value;
+    return (this._blocksDraft ?? blocks)[id];
   }
 
   /**
@@ -1015,7 +1072,7 @@ export class Store {
     const flavours =
       typeof blockFlavour === 'string' ? [blockFlavour] : blockFlavour;
 
-    return Object.values(this._blocks.peek()).filter(({ flavour }) =>
+    return Object.values(this._peekBlocks()).filter(({ flavour }) =>
       flavours.includes(flavour)
     );
   }
@@ -1027,7 +1084,7 @@ export class Store {
    * @category Block CRUD
    */
   getAllModels() {
-    return Object.values(this._blocks.peek()).map(block => block.model);
+    return Object.values(this._peekBlocks()).map(block => block.model);
   }
 
   /**
@@ -1053,7 +1110,7 @@ export class Store {
     const parentId = this._crud.getParent(targetId);
     if (!parentId) return null;
 
-    const parent = this._blocks.peek()[parentId];
+    const parent = this._peekBlocks()[parentId];
     if (!parent) return null;
 
     return parent.model;
@@ -1125,7 +1182,7 @@ export class Store {
    * @category Block CRUD
    */
   hasBlock(id: string) {
-    return id in this._blocks.peek();
+    return id in this._peekBlocks();
   }
 
   /**
@@ -1252,6 +1309,7 @@ export class Store {
     this.slots.blockUpdated.complete();
     this.slots.yBlockUpdated.complete();
     this.disposableGroup.dispose();
+    this._crud.dispose();
     this._isDisposed = true;
   }
 
@@ -1293,6 +1351,19 @@ export class Store {
   }
 
   private readonly _handleYEvents = (events: Y.YEvent<YBlock | Y.Text>[]) => {
-    events.forEach(event => this._handleYEvent(event));
+    const handle = () => events.forEach(event => this._handleYEvent(event));
+    // One transaction that adds or removes several blocks (a remote load, a
+    // paste, a subtree deletion) assigns the blocks record once (#507); a
+    // single block keeps the per-block path unchanged.
+    const keys = events.reduce(
+      (count, event) =>
+        event.target === this._yBlocks ? count + event.keys.size : count,
+      0
+    );
+    if (keys > 1) {
+      this._batchBlocks(handle);
+      return;
+    }
+    handle();
   };
 }

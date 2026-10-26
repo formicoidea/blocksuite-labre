@@ -34,9 +34,10 @@ export function runQuery(query: Query, block: Block) {
 /**
  * A loose query hides a block only through a `viewType: 'hidden'` entry, so
  * without one no ancestor can be hidden and the walk below is a no-op. The
- * walk costs one O(n) `getParent` per ancestor, which made opening a store
+ * walk cost one O(n) `getParent` per ancestor, which made opening a store
  * with the default query quadratic in the block count (#507, guard
- * `__tests__/query.unit.spec.ts`).
+ * `__tests__/query.unit.spec.ts`); `getParent` is now an index lookup
+ * (ADR 0041), and skipping the no-op walk still saves the calls.
  */
 function canHideBlocks(query: Query): boolean {
   if (query.mode !== 'loose') return true;

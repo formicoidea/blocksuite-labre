@@ -278,3 +278,19 @@ Container()` threw "illegal constructor" and the page hung.
     _Rule:_ push and merge the version commit before `ci:publish`, and
     compare `npm view @formicoidea/labre-core version` with
     `packages/affine/all/package.json` before `ci:version`.
+
+36. **A load that was quadratic twice, and a bench whose ids hid the second.**
+    Opening a store asked every block for its parent, and each answer walked
+    the tree: quadratic (#507). #508 skipped that walk for the queries that
+    cannot hide blocks, so the default query looked fixed while a
+    `viewType: 'hidden'` query stayed quadratic; the in-memory parent index
+    (ADR 0041) made the walk itself linear. A second cost remained: the
+    store copied its whole blocks record once per added block. Every bench
+    built its document with the test fixture's auto-increment ids, which V8
+    copies on a fast path, so 2000 blocks looked like 300 ms; with string
+    ids, as in a real document, they took 1.26 s under the default query and
+    7.5 s under a hidden one. With both fixes: 56 ms and 42 ms.
+    _Rule:_ a per-block call that walks the tree, or a per-block copy of a
+    collection, is quadratic on a load path. Measure a load with real-shaped
+    string ids and with the hidden query, because the default one no longer
+    exercises the walk (`packages/framework/store/src/__tests__/parent-index.unit.spec.ts`).

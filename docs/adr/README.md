@@ -45,6 +45,7 @@ One file per decision. Format and lifecycle in
 | [0038](0038-thread-marks-seam.md)                              | "Has a thread" seam                  | accepted, amended         | `ThreadMarksExtension({ marks$, openThread })`: a mark on what the host says has a thread, "Discuss" on every toolbar; ids and counts in, an excerpt out; nothing written.          |
 | [0039](0039-dark-notation-palette.md)                          | Dark notation palette                | accepted                  | On a dark canvas, notation colours resolve through a dark table at paint time; hues stay, the paper and inks invert; SVG export stays light; nothing stored changes.                |
 | [0040](0040-architecture-map-as-code.md)                       | Architecture map as code             | accepted                  | `architecture/code.c4` generated from imports, drift-checked in CI, shipped in `labre-core`; likeC4 MCP stdio only.                                                                 |
+| [0041](0041-parent-index-in-doc-crud.md)                       | Linear store open                    | accepted                  | `root` and `getParent` read a lazy in-memory parent index; a load assigns the blocks record once. Opening any store is linear. Red zone, nothing stored changes.                    |
 
 Related documents that are not ADRs:
 
