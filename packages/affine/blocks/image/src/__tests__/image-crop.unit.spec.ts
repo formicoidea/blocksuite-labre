@@ -28,6 +28,7 @@ import {
   maskRatio,
   moveCrop,
   presetCrop,
+  ratioCrop,
   resizeCrop,
   WHOLE_IMAGE,
   wholeImageSize,
@@ -52,6 +53,22 @@ describe('crop geometry', () => {
     close(presetCrop('1:1', 2000, 1000), { x: 0.25, y: 0, w: 0.5, h: 1 });
     close(presetCrop('free', 2000, 1000), WHOLE_IMAGE);
     expect(maskRatio('4:3', 0, 100)).toBeNull();
+  });
+
+  test('a ratio crop cuts a picture to a box (ADR 0044)', () => {
+    // A 2:1 box on a square picture: the whole width, the middle half.
+    close(ratioCrop(2, 400, 400), { x: 0, y: 0.25, w: 1, h: 0.5 });
+    // A 1:2 box on a 1600×900 picture: full height, 450 px of width.
+    close(ratioCrop(0.5, 1600, 900), {
+      x: (1 - 450 / 1600) / 2,
+      y: 0,
+      w: 450 / 1600,
+      h: 1,
+    });
+    // Same proportions, or nothing known: the whole picture.
+    close(ratioCrop(16 / 9, 1600, 900), WHOLE_IMAGE);
+    close(ratioCrop(0, 1600, 900), WHOLE_IMAGE);
+    close(ratioCrop(2, 0, 900), WHOLE_IMAGE);
   });
 
   test('moving keeps the window inside the image', () => {

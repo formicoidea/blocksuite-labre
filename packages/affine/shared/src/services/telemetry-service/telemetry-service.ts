@@ -26,6 +26,7 @@ import type {
   EdgelessToolPickedEvent,
   ElementCreationEvent,
   ElementLockEvent,
+  ElementReplacedEvent,
   ElementUpdatedEvent,
   LatexEvent,
   LinkedDocCreatedEvent,
@@ -54,6 +55,7 @@ export type TelemetryEventMap = OutDatabaseAllEvents &
     CanvasElementAdded: ElementCreationEvent;
     CanvasElementUpdated: ElementUpdatedEvent;
     EdgelessElementLocked: ElementLockEvent;
+    ElementReplaced: ElementReplacedEvent;
     ExpandedAndCollapsed: MindMapCollapseEvent;
     AttachmentReloadedEvent:
       | AttachmentReloadedEvent
