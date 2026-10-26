@@ -57,8 +57,9 @@ interface TableBlockProps {
 
 Cells stay `<td>` (the selection and rectangle helpers query `td`); a header
 cell carries `data-header` and a class that sets `font-weight: 600` and the
-`table.headerBackground.default` theme token. An explicit row or column
-background still wins over the header tint.
+`layer.background.secondary` theme token (`table.headerBackground.default`
+is the page colour in both themes, so it shows no tint). An explicit row or
+column background still wins over the header tint.
 
 ### Adapters
 
