@@ -14,9 +14,11 @@
  * would have caught the walk running on every block of a default store: it
  * counts `getParent` calls while a store opens on an existing document.
  *
- * A store opened with a query that can hide blocks still walks, and is still
- * quadratic; the second half of this spec pins that the walk keeps un-hiding
- * ancestors there, so the guard is not widened past what it can prove.
+ * A store opened with a query that can hide blocks still walks; each step is
+ * now a lookup in the in-memory parent index (ADR 0041), whose scaling is held
+ * by `parent-index.unit.spec.ts`. The second half of this spec pins that the
+ * walk keeps un-hiding ancestors there, so the guard is not widened past what
+ * it can prove.
  */
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
