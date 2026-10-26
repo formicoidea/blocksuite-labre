@@ -39,10 +39,6 @@ import {
 } from '@labre/affine-block-surface';
 import { StoreExtensionManager } from '@labre/affine-ext-loader';
 import type { GroupElementModel } from '@labre/affine-model';
-import {
-  referenceWorkload,
-  sweepEachMs,
-} from '@labre/affine-shared/test-utils';
 import type { BlockStdScope } from '@labre/std';
 import {
   compareLayer,
@@ -57,6 +53,7 @@ import { Subject } from 'rxjs';
 import { describe, expect, test } from 'vitest';
 
 import { getInternalStoreExtensions } from '../extensions/store.js';
+import { referenceWorkload, sweepEachMs } from './utils/bench';
 
 /** One 60 fps frame — the budget the Wardley bench holds the engine to. */
 const FRAME_BUDGET_MS = 16;
