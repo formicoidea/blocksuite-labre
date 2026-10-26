@@ -524,6 +524,12 @@ model {
       domain_file '1.00'
     }
   }
+  extend features.blocks.image.replace {
+    metadata {
+      domain ['file']
+      domain_file '1.00'
+    }
+  }
   extend features.blocks.image.src {
     metadata {
       domain ['file']

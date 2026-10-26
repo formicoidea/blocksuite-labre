@@ -831,7 +831,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/image
         metadata {
           path 'packages/affine/blocks/image'
-          files '37'
+          files '40'
         }
         adapters = folder 'adapters/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/image/src/adapters
@@ -873,6 +873,13 @@ model {
           metadata {
             path 'packages/affine/blocks/image/src/preview-image'
             files '2'
+          }
+        }
+        replace = folder 'replace/' {
+          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/image/src/replace
+          metadata {
+            path 'packages/affine/blocks/image/src/replace'
+            files '3'
           }
         }
         src = folder 'src/' {
@@ -3420,7 +3427,7 @@ model {
   assembly.all -[uses]-> features.blocks.embed '6 imports'
   assembly.all -[uses]-> features.blocks.embed-doc '6 imports'
   assembly.all -[uses]-> features.blocks.frame '8 imports'
-  assembly.all -[uses]-> features.blocks.image '6 imports'
+  assembly.all -[uses]-> features.blocks.image '7 imports'
   assembly.all -[uses]-> features.blocks.latex '6 imports'
   assembly.all -[uses]-> features.blocks.list '5 imports'
   assembly.all -[uses]-> features.blocks.note '6 imports'
@@ -3606,16 +3613,16 @@ model {
   features.blocks.frame -[uses]-> framework.std '24 imports, 7 type-only'
   features.blocks.frame -[uses]-> framework.store '6 imports, 3 type-only'
   features.blocks.frame -[uses]-> model_.model_ '11 imports, 4 type-only'
-  features.blocks.image -[uses]-> features.blocks.surface '3 imports'
+  features.blocks.image -[uses]-> features.blocks.surface '4 imports'
   features.blocks.image -[uses]-> features.components '15 imports, 3 type-only'
   features.blocks.image -[uses]-> features.ext-loader '2 imports'
   features.blocks.image -[uses]-> features.gfx.turbo-renderer '3 imports, 1 type-only'
-  features.blocks.image -[uses]-> features.shared '34 imports'
+  features.blocks.image -[uses]-> features.shared '37 imports'
   features.blocks.image -[uses]-> features.widgets.slash-menu '2 imports, 1 type-only'
-  features.blocks.image -[uses]-> framework.global_ '10 imports, 1 type-only'
-  features.blocks.image -[uses]-> framework.std '18 imports, 4 type-only'
+  features.blocks.image -[uses]-> framework.global_ '11 imports, 1 type-only'
+  features.blocks.image -[uses]-> framework.std '24 imports, 6 type-only'
   features.blocks.image -[uses]-> framework.store '12 imports, 9 type-only'
-  features.blocks.image -[uses]-> model_.model_ '19 imports, 4 type-only'
+  features.blocks.image -[uses]-> model_.model_ '22 imports, 4 type-only'
   features.blocks.latex -[uses]-> features.blocks.note '1 import'
   features.blocks.latex -[uses]-> features.components '2 imports'
   features.blocks.latex -[uses]-> features.ext-loader '2 imports'
@@ -4417,7 +4424,7 @@ model {
   assembly.all.src -[imports]-> features.blocks.embed-doc.src '1 import'
   assembly.all.src -[imports]-> features.blocks.embed.src '1 import'
   assembly.all.src -[imports]-> features.blocks.frame.src '3 imports'
-  assembly.all.src -[imports]-> features.blocks.image.src '1 import'
+  assembly.all.src -[imports]-> features.blocks.image.src '2 imports'
   assembly.all.src -[imports]-> features.blocks.latex.src '1 import'
   assembly.all.src -[imports]-> features.blocks.note.src '1 import'
   assembly.all.src -[imports]-> features.blocks.paragraph.src '1 import'
@@ -5109,6 +5116,7 @@ model {
   features.blocks.image.components -[imports]-> framework.store.src '1 import, 1 type-only'
   features.blocks.image.configs -[imports]-> features.blocks.image.commands '1 import'
   features.blocks.image.configs -[imports]-> features.blocks.image.crop '1 import'
+  features.blocks.image.configs -[imports]-> features.blocks.image.replace '1 import'
   features.blocks.image.configs -[imports]-> features.blocks.image.src '7 imports'
   features.blocks.image.configs -[imports]-> features.shared.commands '1 import'
   features.blocks.image.configs -[imports]-> features.shared.services '2 imports'
@@ -5128,11 +5136,21 @@ model {
   features.blocks.image.preview-image -[imports]-> features.shared.theme '1 import'
   features.blocks.image.preview-image -[imports]-> framework.std.src '2 imports'
   features.blocks.image.preview-image -[imports]-> model_.model_.src '1 import, 1 type-only'
+  features.blocks.image.replace -[imports]-> features.blocks.image.crop '1 import'
+  features.blocks.image.replace -[imports]-> features.blocks.image.src '5 imports, 1 type-only'
+  features.blocks.image.replace -[imports]-> features.blocks.surface.src '1 import'
+  features.blocks.image.replace -[imports]-> features.shared.services '2 imports'
+  features.blocks.image.replace -[imports]-> features.shared.utils '1 import'
+  features.blocks.image.replace -[imports]-> framework.global_.gfx '1 import'
+  features.blocks.image.replace -[imports]-> framework.std.gfx '2 imports'
+  features.blocks.image.replace -[imports]-> framework.std.src '3 imports, 2 type-only'
+  features.blocks.image.replace -[imports]-> model_.model_.src '3 imports'
   features.blocks.image.src -[imports]-> features.blocks.image.adapters '1 import'
   features.blocks.image.src -[imports]-> features.blocks.image.components '4 imports, 1 type-only'
   features.blocks.image.src -[imports]-> features.blocks.image.configs '2 imports'
   features.blocks.image.src -[imports]-> features.blocks.image.crop '4 imports'
   features.blocks.image.src -[imports]-> features.blocks.image.preview-image '2 imports'
+  features.blocks.image.src -[imports]-> features.blocks.image.replace '2 imports'
   features.blocks.image.src -[imports]-> features.blocks.surface.src '3 imports'
   features.blocks.image.src -[imports]-> features.components.caption '2 imports, 1 type-only'
   features.blocks.image.src -[imports]-> features.components.drop-indicator '1 import'
@@ -5150,7 +5168,7 @@ model {
   features.blocks.image.src -[imports]-> framework.global_.env '1 import'
   features.blocks.image.src -[imports]-> framework.global_.gfx '2 imports'
   features.blocks.image.src -[imports]-> framework.std.gfx '4 imports'
-  features.blocks.image.src -[imports]-> framework.std.src '6 imports, 2 type-only'
+  features.blocks.image.src -[imports]-> framework.std.src '7 imports, 2 type-only'
   features.blocks.image.src -[imports]-> framework.store.src '4 imports, 4 type-only'
   features.blocks.image.src -[imports]-> model_.model_.src '8 imports, 1 type-only'
   features.blocks.image.turbo -[imports]-> features.gfx.turbo-renderer.painter '1 import'
