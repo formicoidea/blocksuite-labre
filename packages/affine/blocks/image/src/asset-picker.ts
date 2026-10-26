@@ -56,7 +56,7 @@ async function naturalSize(
   return isSize(size.width, size.height) ? size : null;
 }
 
-async function imagePropsFrom(
+export async function imagePropsFrom(
   std: BlockStdScope,
   assets: readonly AssetRef[]
 ): Promise<ImageBlockSource[]> {

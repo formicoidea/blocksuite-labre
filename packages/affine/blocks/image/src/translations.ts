@@ -103,6 +103,31 @@ export const IMAGE_TOOLBAR_REPLACE: ChromeWording = [
 ];
 
 /**
+ * « Replace with image » on a shape and « Replace with shape » on a canvas
+ * image (ADR 0044): the toolbar entries and the commands they run share these
+ * keys, so the palette and the toolbar say the same words.
+ */
+export const IMAGE_REPLACE_WITH_IMAGE: ChromeWording = [
+  'com.labre.image.replace.with-image',
+  'Replace with image',
+];
+
+export const IMAGE_REPLACE_WITH_IMAGE_DESCRIPTION: ChromeWording = [
+  'com.labre.image.replace.with-image.description',
+  'Put a picture in place of this shape, cut to its box.',
+];
+
+export const IMAGE_REPLACE_WITH_SHAPE: ChromeWording = [
+  'com.labre.image.replace.with-shape',
+  'Replace with shape',
+];
+
+export const IMAGE_REPLACE_WITH_SHAPE_DESCRIPTION: ChromeWording = [
+  'com.labre.image.replace.with-shape.description',
+  'Put a rectangle in place of this image.',
+];
+
+/**
  * This package's contribution to the translation-key manifest, listed in
  * `PACKAGE_WORDINGS` under source `chrome`
  * (`packages/affine/all/src/translations.ts`). The shared verbs it reuses
@@ -125,4 +150,8 @@ export const IMAGE_WORDINGS: readonly ChromeWording[] = [
   IMAGE_TOAST_COPIED,
   IMAGE_TOAST_READ_SIZE_FAILED,
   IMAGE_TOOLBAR_REPLACE,
+  IMAGE_REPLACE_WITH_IMAGE,
+  IMAGE_REPLACE_WITH_IMAGE_DESCRIPTION,
+  IMAGE_REPLACE_WITH_SHAPE,
+  IMAGE_REPLACE_WITH_SHAPE_DESCRIPTION,
 ];
