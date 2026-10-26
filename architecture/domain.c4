@@ -683,7 +683,7 @@ model {
   extend features.blocks.root {
     metadata {
       domain ['canvas', 'file']
-      domain_canvas '0.50'
+      domain_canvas '0.49'
       domain_file '0.15'
     }
   }
@@ -1951,7 +1951,7 @@ model {
   extend features.shared.services {
     metadata {
       domain ['collaboration', 'canvas']
-      domain_collaboration '0.12'
+      domain_collaboration '0.11'
       domain_canvas '0.06'
     }
   }
@@ -2292,7 +2292,7 @@ model {
     metadata {
       domain ['canvas', 'document']
       domain_canvas '0.31'
-      domain_document '0.26'
+      domain_document '0.27'
     }
   }
   extend framework.std.gfx {

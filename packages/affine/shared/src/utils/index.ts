@@ -13,6 +13,7 @@ export * from './file';
 export * from './fractional-indexing';
 export * from './image';
 export * from './insert';
+export * from './invisible-characters';
 export * from './is-abort-error';
 export * from './label-mode';
 export * from './link-preview-refresh';

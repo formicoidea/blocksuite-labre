@@ -17,6 +17,10 @@ export const GeneralSettingSchema = z
     // A line comment, not JSDoc: see the guard in
     // `affine/all/src/__tests__/zod-schema-jsdoc.unit.spec.ts`.
     edgelessShowGrid: z.boolean().optional(),
+    // The host's (or the user's) default for "show special characters"
+    // (`text.invisibles.toggle`). Absent means off. A viewer's own toggle
+    // wins over it. A line comment, not JSDoc (same guard as above).
+    showInvisibles: z.boolean().optional(),
     docCanvasPreferView: z
       .enum(['affine:embed-linked-doc', 'affine:embed-synced-doc'])
       .default('affine:embed-synced-doc'),

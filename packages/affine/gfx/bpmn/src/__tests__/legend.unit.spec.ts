@@ -229,8 +229,8 @@ describe('the box, and the button that fills it', () => {
     const ids = bpmnPoolToolingToolbarConfig.actions.map(action => action.id);
     expect(ids).toContain('c.legend');
     // The row sorts lexicographically by id: `b.legend` would wedge the button
-    // between `b.add-lane` and `b.remove-lane`.
-    expect('b.remove-lane' < 'c.legend').toBe(true);
+    // between `b.lane-1-add` and `b.lane-4-remove`.
+    expect('b.lane-4-remove' < 'c.legend').toBe(true);
     expect('c.legend' < 'z.validation').toBe(true);
     // Merged with the generic dropdown, because a flavour carries exactly one
     // toolbar module.

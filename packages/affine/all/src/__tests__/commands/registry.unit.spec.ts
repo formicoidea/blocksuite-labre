@@ -125,7 +125,11 @@ describe('command registry invariants', () => {
       // it deliberately does NOT contest the sub-menu (see its own comment in
       // `gfx/bpmn/src/commands.ts`) — the catalogue grew by one, the
       // nomination pool did not.
-      bpmn: 26,
+      // 28 since the lane reorder: `bpmn.moveLaneUp` and `bpmn.moveLaneDown`,
+      // selection-scoped like the other two lane gestures and, like them,
+      // outside the sub-menu — the catalogue grew by two, the nomination pool
+      // did not.
+      bpmn: 28,
       // 14: the thirteen-entry toolbox (nine elements, two boundaries, the
       // board and the relationship tool) plus `c4.exportMermaid`, whose subject
       // is a SELECTED board and which declines the sub-menu. Fourteen against a
@@ -276,10 +280,13 @@ describe('command registry invariants', () => {
       // <format>`) are derived from the interchange registry, never registered,
       // so they count nowhere here.
       //
-      // …and 40 with `canvas.shape.replaceWithImage` and
+      // …and 40 with the special characters: `text.invisibles.toggle` and
+      // `text.invisibles.remove`, core-owned because text belongs to no
+      // framework.
+      // …and 42 with `canvas.shape.replaceWithImage` and
       // `canvas.image.replaceWithShape` (ADR 0044): a shape and an image belong
       // to no framework; they ride the `image` flag.
-      core: 40,
+      core: 42,
     });
     // 112 since the two SVG fallback imports (`bpmn.importSvg`,
     // `wardley.importSvg`) joined the OWM pair — one SVG row per framework,
@@ -321,8 +328,10 @@ describe('command registry invariants', () => {
     // …and 209 with `canvas.export.drawio` (ADR 0019, amendment of 2026-10-14).
     // …and 212 with `page.export.markdown`, `page.export.html` and
     // `canvas.export.svg` (ADR 0034, amendment of 2026-10-14).
-    // …and 214 with the two replace commands (ADR 0044).
-    expect(commands).toHaveLength(214);
+    // …and 214 with `bpmn.moveLaneUp` and `bpmn.moveLaneDown`.
+    // …and 216 with `text.invisibles.toggle` and `text.invisibles.remove`.
+    // …and 218 with the two replace commands (ADR 0044).
+    expect(commands).toHaveLength(218);
   });
 
   /**
@@ -369,6 +378,10 @@ describe('command registry invariants', () => {
     // a save that changes nothing in the document reports nothing.
     'canvas.grid.toggle',
     'canvas.grid.saveForEveryone',
+    // `InvisibleCharactersRemoved` carries what the gesture removed, and the
+    // toggle reports the state it left, like the grid's.
+    'text.invisibles.toggle',
+    'text.invisibles.remove',
     // ADR 0044: whether anything was replaced is a fact of the invocation (a
     // cancelled file chooser replaces nothing), and `ElementReplaced` is not
     // a framework creation event.

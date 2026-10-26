@@ -1,7 +1,7 @@
 import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
 
 import type { VElement, VLine } from '../components/index.js';
-import { INLINE_ROOT_ATTR, ZERO_WIDTH_FOR_EMPTY_LINE } from '../consts.js';
+import { INLINE_ROOT_ATTR } from '../consts.js';
 import type { DomPoint, TextPoint } from '../types.js';
 import {
   isInlineRoot,
@@ -9,7 +9,11 @@ import {
   isVElement,
   isVLine,
 } from './guard.js';
-import { calculateTextLength, getTextNodesFromElement } from './text.js';
+import {
+  calculateTextLength,
+  getTextNodesFromElement,
+  isPlaceholderText,
+} from './text.js';
 
 export function nativePointToTextPoint(
   node: unknown,
@@ -76,7 +80,7 @@ export function textPointToDomPoint(
     index += calculateTextLength(text);
   }
 
-  if (text.wholeText !== ZERO_WIDTH_FOR_EMPTY_LINE) {
+  if (!isPlaceholderText(text)) {
     index += offset;
   }
 

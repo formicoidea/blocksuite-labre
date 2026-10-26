@@ -8,6 +8,7 @@ import type {
   AuditEvents,
   BlockLifecycleEvents,
   CanvasPaneEvents,
+  InvisibleCharactersEvents,
   DocumentHealthEvents,
   FrameworkDiagramEvents,
   ValidationEvents,
@@ -45,6 +46,7 @@ export type TelemetryEventMap = OutDatabaseAllEvents &
   ValidationEvents &
   AuditEvents &
   CanvasPaneEvents &
+  InvisibleCharactersEvents &
   DocumentHealthEvents & {
     DocCreated: DocCreatedEvent;
     Link: TelemetryEvent;

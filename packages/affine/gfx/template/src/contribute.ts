@@ -7,7 +7,12 @@ import { createIdentifier } from '@labre/global/di';
 import type { BlockStdScope } from '@labre/std';
 import type { ExtensionType } from '@labre/store';
 
-import { builtInTemplates } from './toolbar/builtin-templates.js';
+import {
+  builtInTemplates,
+  loadTemplates,
+  templateMatches,
+  templates as builtInCategories,
+} from './toolbar/builtin-templates.js';
 import { resolveTemplateName } from './toolbar/resolve-name.js';
 import { TEMPLATE_PANEL_CATEGORY_SAVED_FRAMES } from './translations.js';
 import type {
@@ -95,12 +100,6 @@ function savedFramesCategory(std: BlockStdScope): TemplateCategory | null {
   };
 }
 
-function loadCategory(category: TemplateCategory): Promise<Template[]> {
-  return Array.isArray(category.templates)
-    ? Promise.resolve(category.templates)
-    : category.templates();
-}
-
 /**
  * The catalogue ONE editor sees: the built-in `Other`, then the categories
  * the view extensions mounted on this `std` registered — i.e. exactly the
@@ -131,25 +130,24 @@ export function templateManagerFor(std: BlockStdScope): TemplateManager {
     list: async name => {
       const category = byName(name);
       return [
-        ...(category ? await loadCategory(category) : []),
+        ...(category ? await loadTemplates(category) : []),
         ...(await builtInTemplates.list(name)),
       ];
     },
     search: async (keyword, name) => {
-      const k = keyword.trim().toLocaleLowerCase();
-      const pool = name ? [byName(name)].filter(c => !!c) : contributed;
-      // Matches the ENGLISH name (`templateFromCommand`'s baked-in `name`,
-      // still what a catalogue-less playground shows) or the host's own
-      // translation of it (`resolveTemplateName`, through the command's
-      // `labelKey`) — a search box must not go blind on a translated tile.
-      const own = (await Promise.all(pool.map(loadCategory)))
+      // Built-in first, then contributed: the tab order. One pool and one
+      // predicate for both halves, so `Other` is searched exactly like a
+      // framework's category — the ENGLISH name (`templateFromCommand`'s
+      // baked-in `name`, still what a catalogue-less playground shows) or the
+      // host's own translation of it (`resolveTemplateName`, through the
+      // tile's `nameKey` or the command's `labelKey`): a search box must not
+      // go blind on a translated tile.
+      const pool = [...builtInCategories, ...contributed].filter(
+        c => !name || c.name === name
+      );
+      return (await Promise.all(pool.map(loadTemplates)))
         .flat()
-        .filter(
-          t =>
-            t.name?.toLocaleLowerCase().includes(k) ||
-            resolveTemplateName(std, t).toLocaleLowerCase().includes(k)
-        );
-      return [...(await builtInTemplates.search(keyword, name)), ...own];
+        .filter(t => templateMatches(t, keyword, resolveTemplateName(std, t)));
     },
   };
 }

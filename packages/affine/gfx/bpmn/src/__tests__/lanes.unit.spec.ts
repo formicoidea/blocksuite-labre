@@ -6,15 +6,18 @@ import {
 import { type BpmnLane, BpmnPoolElementModel } from '@labre/affine-model';
 import type { BlockStdScope } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
+import { Bound } from '@labre/global/gfx';
 import { describe, expect, it } from 'vitest';
 
 import {
   addBpmnLane,
   bpmnLanesOf,
   bpmnPoolsForLaneEdit,
+  moveBpmnLane,
   removeBpmnLane,
   renameBpmnLane,
 } from '../actions';
+import { bpmnLaneOf } from '../facts';
 import { BPMN_POOL_BACKGROUND } from '../background';
 import { bpmnCommands } from '../commands';
 import {
@@ -73,16 +76,28 @@ function fakePool(id: string, lanes?: BpmnLane[], locked = false) {
   };
 }
 
+/** A plain canvas artefact, as the lane move reads and writes it. */
+interface FakeElement {
+  id: string;
+  xywh: string;
+  isLocked: () => boolean;
+}
+
 /** A `std` holding just enough for the lane actions: a selection and a CRUD. */
 function fakeStd(
   pools: BpmnPoolElementModel[],
   options: {
     readonly?: boolean;
     translate?: (key: string, params?: unknown) => string | undefined;
+    /** What the canvas holds besides the pools, for `grid.search`. */
+    elements?: FakeElement[];
+    /** The focused lane id per pool id, as the pool views would hold it. */
+    focus?: Record<string, string>;
   } = {}
 ) {
   const updates: { id: string; props: Record<string, unknown> }[] = [];
   let captures = 0;
+  let transacts = 0;
 
   const crud = {
     updateElement: (id: string, props: Record<string, unknown>) => {
@@ -91,16 +106,35 @@ function fakeStd(
         string,
         unknown
       >;
-      if (target) Object.assign(target, props);
+      const element =
+        target ?? options.elements?.find(candidate => candidate.id === id);
+      if (element) Object.assign(element, props);
     },
   };
-  const gfx = { selection: { selectedElements: pools } };
+  const gfx = {
+    selection: { selectedElements: pools },
+    // Every element WHOLLY inside the bound, as `strict: true` asks.
+    grid: {
+      search: (bound: Bound) =>
+        (options.elements ?? []).filter(element =>
+          bound.contains(Bound.deserialize(element.xywh))
+        ),
+    },
+    view: {
+      get: (id: string) =>
+        options.focus?.[id] ? { focusedLaneId: options.focus[id] } : null,
+    },
+  };
 
   const std = {
     store: {
       readonly: options.readonly === true,
       captureSync: () => {
         captures++;
+      },
+      transact: (fn: () => void) => {
+        transacts++;
+        fn();
       },
     },
     get: (identifier: unknown) =>
@@ -113,7 +147,12 @@ function fakeStd(
       options.translate ? { t: options.translate } : undefined,
   } as unknown as BlockStdScope;
 
-  return { std, updates, captures: () => captures };
+  return {
+    std,
+    updates,
+    captures: () => captures,
+    transacts: () => transacts,
+  };
 }
 
 const sizes = (model: BpmnPoolElementModel) =>
@@ -615,5 +654,234 @@ describe('the two lane commands', () => {
     });
     expect(addLane.when?.(locked.std)).toBe(false);
     expect(removeLane.when?.(locked.std)).toBe(false);
+  });
+});
+
+/* ── Reordering ─────────────────────────────────────────────────────── */
+
+/**
+ * Why these specs exist: a pool's lanes could be added, removed, renamed and
+ * resized, but not reordered — the only way to put "Customer" above "Sales"
+ * was to delete lanes and redraw their content. A lane is geometry, so a
+ * reorder that only permuted the `lanes` array would leave every task where it
+ * was and silently file it under another lane; these pin that the move carries
+ * what is drawn in the lane, in one undo step, and refuses where a gesture must.
+ */
+
+/** A pool laid out on the canvas, so lane membership can be measured. */
+function placedPool(
+  lanes: BpmnLane[],
+  options: { locked?: boolean; xywh?: [number, number, number, number] } = {}
+) {
+  const { model } = fakePool('pool', lanes, options.locked === true);
+  const xywh = options.xywh ?? [0, 0, 560, 200];
+  Object.defineProperties(model, {
+    elementBound: { get: () => new Bound(...xywh) },
+    deserializedXYWH: { value: xywh },
+  });
+  return model;
+}
+
+const task = (id: string, xywh: [number, number, number, number]) => {
+  const element: FakeElement = {
+    id,
+    xywh: new Bound(...xywh).serialize(),
+    isLocked: () => false,
+  };
+  return element;
+};
+
+const laneIdOf = (pool: BpmnPoolElementModel, element: FakeElement) =>
+  bpmnLaneOf(pool, Bound.deserialize(element.xywh))?.id ?? null;
+
+describe('moving a lane', () => {
+  // Two equal lanes in a 200-unit pool: `a` covers y 0–100, `b` y 100–200.
+  const LANES = (): BpmnLane[] => [
+    { id: 'a', name: 'Sales', size: 1 },
+    { id: 'b', name: 'Ops', size: 1 },
+  ];
+
+  it('swaps the lanes, keeping their ids, names and sizes', () => {
+    const pool = placedPool(LANES());
+    const { std } = fakeStd([pool]);
+
+    expect(moveBpmnLane(std, pool, 1, 0)).toBe(true);
+    expect(bpmnLanesOf(pool)).toEqual([
+      { id: 'b', name: 'Ops', size: 1 },
+      { id: 'a', name: 'Sales', size: 1 },
+    ]);
+  });
+
+  it('carries what is drawn in each lane, so it stays in that lane', () => {
+    const pool = placedPool(LANES());
+    const inA = task('t1', [100, 30, 60, 40]);
+    const inB = task('t2', [100, 130, 60, 40]);
+    const { std } = fakeStd([pool], { elements: [inA, inB] });
+
+    expect(laneIdOf(pool, inA)).toBe('a');
+    expect(laneIdOf(pool, inB)).toBe('b');
+    moveBpmnLane(std, pool, 1, 0);
+
+    // `b` is now on top and `a` under it, and each task went with its lane.
+    expect(inB.xywh).toBe(new Bound(100, 30, 60, 40).serialize());
+    expect(inA.xywh).toBe(new Bound(100, 130, 60, 40).serialize());
+    expect(laneIdOf(pool, inA)).toBe('a');
+    expect(laneIdOf(pool, inB)).toBe('b');
+  });
+
+  it('shifts each lane by its neighbour height when the sizes differ', () => {
+    // `a` is 50 tall, `b` 150: moving `a` below `b` drops the content of `a`
+    // by 150 and lifts the content of `b` by 50.
+    const pool = placedPool([
+      { id: 'a', size: 1 },
+      { id: 'b', size: 3 },
+    ]);
+    const inA = task('t1', [100, 15, 40, 20]);
+    const inB = task('t2', [100, 110, 40, 30]);
+    const { std } = fakeStd([pool], { elements: [inA, inB] });
+
+    moveBpmnLane(std, pool, 0, 1);
+
+    expect(inA.xywh).toBe(new Bound(100, 165, 40, 20).serialize());
+    expect(inB.xywh).toBe(new Bound(100, 60, 40, 30).serialize());
+    expect(laneIdOf(pool, inA)).toBe('a');
+    expect(laneIdOf(pool, inB)).toBe('b');
+  });
+
+  it('leaves alone what is outside the pool, and what is locked', () => {
+    const pool = placedPool(LANES());
+    const outside = task('out', [700, 30, 60, 40]);
+    const locked = { ...task('lock', [100, 30, 60, 40]), isLocked: () => true };
+    const { std, updates } = fakeStd([pool], { elements: [outside, locked] });
+
+    moveBpmnLane(std, pool, 1, 0);
+
+    expect(outside.xywh).toBe(new Bound(700, 30, 60, 40).serialize());
+    expect(locked.xywh).toBe(new Bound(100, 30, 60, 40).serialize());
+    expect(updates.map(update => update.id)).toEqual(['pool']);
+  });
+
+  it('is ONE undo step: one capture, one transaction', () => {
+    const pool = placedPool(LANES());
+    const { std, captures, transacts } = fakeStd([pool], {
+      elements: [task('t1', [100, 30, 60, 40])],
+    });
+
+    moveBpmnLane(std, pool, 0, 1);
+    expect(captures()).toBe(1);
+    expect(transacts()).toBe(1);
+  });
+
+  it('writes nothing on a read-only document or a locked pool', () => {
+    const readonly = placedPool(LANES());
+    const ro = fakeStd([readonly], { readonly: true });
+    expect(moveBpmnLane(ro.std, readonly, 1, 0)).toBe(false);
+    expect(ro.updates).toEqual([]);
+    expect(ro.captures()).toBe(0);
+
+    const locked = placedPool(LANES(), { locked: true });
+    const lk = fakeStd([locked]);
+    expect(moveBpmnLane(lk.std, locked, 1, 0)).toBe(false);
+    expect(lk.updates).toEqual([]);
+    expect(lk.captures()).toBe(0);
+  });
+
+  it('writes nothing past either end, or onto the lane itself', () => {
+    const pool = placedPool(LANES());
+    const { std, updates, captures } = fakeStd([pool]);
+
+    expect(moveBpmnLane(std, pool, 0, -1)).toBe(false);
+    expect(moveBpmnLane(std, pool, 1, 2)).toBe(false);
+    expect(moveBpmnLane(std, pool, 1, 1)).toBe(false);
+    expect(updates).toEqual([]);
+    // No empty undo entry either.
+    expect(captures()).toBe(0);
+  });
+});
+
+describe('the focused lane', () => {
+  const command = (id: string) => {
+    const found = bpmnCommands.find(candidate => candidate.id === id);
+    expect(found, id).toBeDefined();
+    return found!;
+  };
+  const up = command('bpmn.moveLaneUp');
+  const down = command('bpmn.moveLaneDown');
+  const removeLane = command('bpmn.removeLane');
+  const THREE = (): BpmnLane[] => [
+    { id: 'a', size: 1 },
+    { id: 'b', size: 1 },
+    { id: 'c', size: 1 },
+  ];
+
+  it('offers the reorder commands only once a lane is focused', () => {
+    const pool = placedPool(THREE());
+    const unfocused = fakeStd([pool]);
+    expect(up.when?.(unfocused.std)).toBe(false);
+    expect(down.when?.(unfocused.std)).toBe(false);
+
+    const focused = fakeStd([pool], { focus: { pool: 'b' } });
+    expect(up.when?.(focused.std)).toBe(true);
+    expect(down.when?.(focused.std)).toBe(true);
+  });
+
+  it('withholds the step that would leave the pool', () => {
+    const pool = placedPool(THREE());
+    const top = fakeStd([pool], { focus: { pool: 'a' } });
+    expect(up.when?.(top.std)).toBe(false);
+    expect(down.when?.(top.std)).toBe(true);
+
+    const bottom = fakeStd([pool], { focus: { pool: 'c' } });
+    expect(up.when?.(bottom.std)).toBe(true);
+    expect(down.when?.(bottom.std)).toBe(false);
+  });
+
+  it('withholds them on a read-only document or a locked pool', () => {
+    const pool = placedPool(THREE());
+    const ro = fakeStd([pool], { readonly: true, focus: { pool: 'b' } });
+    expect(up.when?.(ro.std)).toBe(false);
+
+    const locked = placedPool(THREE(), { locked: true });
+    const lk = fakeStd([locked], { focus: { pool: 'b' } });
+    expect(down.when?.(lk.std)).toBe(false);
+  });
+
+  it('moves the focused lane one step', () => {
+    const pool = placedPool(THREE());
+    const { std } = fakeStd([pool], { focus: { pool: 'b' } });
+
+    up.run(std, { surface: 'contextual-toolbar', source: 'toolbar:general' });
+    expect(bpmnLanesOf(pool).map(lane => lane.id)).toEqual(['b', 'a', 'c']);
+  });
+
+  it('removes the focused lane, and the last one when none is', () => {
+    const focusedPool = placedPool(THREE());
+    const focused = fakeStd([focusedPool], { focus: { pool: 'b' } });
+    removeLane.run(focused.std, {
+      surface: 'contextual-toolbar',
+      source: 'toolbar:general',
+    });
+    expect(bpmnLanesOf(focusedPool).map(lane => lane.id)).toEqual(['a', 'c']);
+
+    const plainPool = placedPool(THREE());
+    const plain = fakeStd([plainPool]);
+    removeLane.run(plain.std, {
+      surface: 'contextual-toolbar',
+      source: 'toolbar:general',
+    });
+    expect(bpmnLanesOf(plainPool).map(lane => lane.id)).toEqual(['a', 'b']);
+  });
+
+  it('declares the reorder commands like the other lane commands', () => {
+    for (const descriptor of [up, down]) {
+      expect(descriptor.kind).toBe('action');
+      expect(descriptor.category).toBe('swimlanes');
+      expect(descriptor.availability).toBe('selection');
+      expect(descriptor.surfaces).toContain('contextual-toolbar');
+      expect(descriptor.surfaces).not.toContain('senior-menu');
+      expect(descriptor.iconKey).toBeTruthy();
+    }
+    expect(up.telemetry?.element).toBe('pool:lane-move-up');
+    expect(down.telemetry?.element).toBe('pool:lane-move-down');
   });
 });

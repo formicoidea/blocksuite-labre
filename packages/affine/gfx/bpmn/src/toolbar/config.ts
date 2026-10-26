@@ -23,7 +23,9 @@ import { html, type TemplateResult } from 'lit';
 import {
   bpmnExportXmlIcon,
   bpmnLaneAddIcon,
+  bpmnLaneDownIcon,
   bpmnLaneRemoveIcon,
+  bpmnLaneUpIcon,
 } from './icons.js';
 
 const ResizeIcon = html`<svg
@@ -134,21 +136,37 @@ export const bpmnPoolToolbarConfig = {
     ),
     // The two lane gestures, next to the resize toggle: everything on this row
     // is about the SHAPE of the pool rather than about what is drawn in it.
-    // Add before remove, because that is the order they can be used in — a pool
-    // has no lane to remove until one has been added.
+    // Actions sort by id: add, move up, move down, remove — the order a lane
+    // is handled in, with remove last because it is the destructive one.
     commandAction(
-      'b.add-lane',
+      'b.lane-1-add',
       'bpmn.addLane',
       'com.labre.commands.bpmn.addLane',
       'Add lane',
       bpmnLaneAddIcon
     ),
     commandAction(
-      'b.remove-lane',
+      'b.lane-4-remove',
       'bpmn.removeLane',
       'com.labre.commands.bpmn.removeLane',
       'Remove lane',
       bpmnLaneRemoveIcon
+    ),
+    // Reorder, beside add and remove: they act on the FOCUSED lane (a click on
+    // its title strip) and only show while one is focused and can move.
+    commandAction(
+      'b.lane-2-up',
+      'bpmn.moveLaneUp',
+      'com.labre.commands.bpmn.moveLaneUp',
+      'Move lane up',
+      bpmnLaneUpIcon
+    ),
+    commandAction(
+      'b.lane-3-down',
+      'bpmn.moveLaneDown',
+      'com.labre.commands.bpmn.moveLaneDown',
+      'Move lane down',
+      bpmnLaneDownIcon
     ),
     // …and, in the "⋮", the one thing you do to a finished process rather than
     // to the shape of a pool: take it away as a file.
@@ -175,8 +193,8 @@ export const bpmnPoolToolbarExtension = ToolbarModuleExtension({
  * up — the same merge C4's board makes for the same reason).
  *
  * `c.legend` and not `b.legend`: the toolbar sorts lexicographically by id
- * after partitioning by placement, and `'b.add-lane' < 'b.legend' <
- * 'b.remove-lane'` would wedge the button between the two lane gestures. `c.`
+ * after partitioning by placement, and `'b.lane-1-add' < 'b.legend' <
+ * 'b.lane-4-remove'` would wedge the button between the two lane gestures. `c.`
  * puts it where it belongs — resize · add lane · remove lane · **Legend** ·
  * Validation, with Export XML in the "⋮".
  *

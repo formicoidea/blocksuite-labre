@@ -60,14 +60,15 @@ export const tableBlockHtmlAdapterMatcher: BlockHtmlAdapterMatcher = {
   fromBlockSnapshot: {
     enter: (o, context) => {
       const { walkerContext } = context;
-      const { columns, rows, cells } = o.node
+      const { columns, rows, cells, headerRow, headerColumn } = o.node
         .props as unknown as TableBlockPropsSerialized;
       const table = processTable(columns, rows, cells);
       const createAstTableCell = (
-        children: InlineHtmlAST[]
+        children: InlineHtmlAST[],
+        header: boolean
       ): InlineHtmlAST => ({
         type: 'element',
-        tagName: 'td',
+        tagName: header ? 'th' : 'td',
         properties: Object.create(null),
         children: [
           {
@@ -90,22 +91,35 @@ export const tableBlockHtmlAdapterMatcher: BlockHtmlAdapterMatcher = {
 
       const { deltaConverter } = context;
 
-      const tableBodyAst: Element = {
+      // ADR 0043: the header row goes in a `thead`, header cells are `th`.
+      const hasHeaderRow = headerRow === true && table.rows.length > 0;
+      const hasHeaderColumn = headerColumn === true;
+      const astRows = table.rows.map((v, rowIndex) => {
+        return createAstTableRow(
+          v.cells.map((cell, columnIndex) => {
+            return createAstTableCell(
+              typeof cell.value === 'string'
+                ? [{ type: 'text', value: cell.value }]
+                : deltaConverter.deltaToAST(cell.value.delta),
+              (hasHeaderRow && rowIndex === 0) ||
+                (hasHeaderColumn && columnIndex === 0)
+            );
+          })
+        );
+      });
+      const section = (tagName: string, children: Element[]): Element => ({
         type: 'element',
-        tagName: 'tbody',
+        tagName,
         properties: Object.create(null),
-        children: table.rows.map(v => {
-          return createAstTableRow(
-            v.cells.map(cell => {
-              return createAstTableCell(
-                typeof cell.value === 'string'
-                  ? [{ type: 'text', value: cell.value }]
-                  : deltaConverter.deltaToAST(cell.value.delta)
-              );
-            })
-          );
-        }),
-      };
+        children,
+      });
+      const tableChildren: Element[] = hasHeaderRow
+        ? [section('thead', astRows.slice(0, 1))]
+        : [];
+      const bodyRows = hasHeaderRow ? astRows.slice(1) : astRows;
+      if (!hasHeaderRow || bodyRows.length > 0) {
+        tableChildren.push(section('tbody', bodyRows));
+      }
 
       walkerContext
         .openNode({
@@ -115,7 +129,7 @@ export const tableBlockHtmlAdapterMatcher: BlockHtmlAdapterMatcher = {
             border: true,
             style: 'border-collapse: collapse;border-spacing: 0;',
           },
-          children: [tableBodyAst],
+          children: tableChildren,
         })
         .closeNode();
 

@@ -5,6 +5,7 @@ import {
 } from '@labre/affine-ext-loader';
 import { NoteBlockSchema } from '@labre/affine-model';
 import {
+  InvisibleCharacters,
   ToolbarModuleExtension,
   ViewportElementExtension,
 } from '@labre/affine-shared/services';
@@ -19,6 +20,7 @@ import { literal } from 'lit/static-html.js';
 
 import { PageClipboard, ReadOnlyClipboard } from './clipboard';
 import { copyLinkCommands } from './commands/copy-link-commands';
+import { invisibleCharactersCommands } from './commands/invisible-characters-commands';
 import { pageExportCommands } from './commands/page-export-commands';
 import { pivotCommands } from './commands/pivot-commands';
 import { readingCommands } from './commands/reading-commands';
@@ -54,6 +56,7 @@ export class RootViewExtension extends ViewExtensionProvider {
         ...tagCommands,
         ...readingCommands,
         ...copyLinkCommands,
+        ...invisibleCharactersCommands,
       ]),
       // The page as Markdown or HTML (ADR 0034, amendment of 2026-10-14):
       // view actions of both views, never gated — the page's own text.
@@ -62,6 +65,9 @@ export class RootViewExtension extends ViewExtensionProvider {
         'page.export.html': ExportToHtmlIcon(),
       }),
       ShortcutKeymapExtension('global'),
+      // "Show special characters", this viewer's display choice, read by
+      // every `v-text` under the host; both views, previews included.
+      InvisibleCharacters,
       ToolbarModuleExtension({
         id: BlockFlavourIdentifier(NoteBlockSchema.model.flavour),
         config: builtinToolbarConfig,

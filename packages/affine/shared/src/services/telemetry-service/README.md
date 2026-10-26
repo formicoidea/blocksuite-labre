@@ -332,6 +332,25 @@ creates nothing and belongs to no framework. It is enumerated in
 `telemetry` and report the same gesture twice. No ids cross: neither the
 document id nor the anchored block/element ids.
 
+## Special characters
+
+| Event                        | When                                        | Required props        |
+| ---------------------------- | ------------------------------------------- | --------------------- |
+| `InvisibleCharactersRemoved` | `text.invisibles.remove` removed characters | `count`, `blockCount` |
+| `InvisibleCharactersToggled` | "show special characters" is switched       | `visible`             |
+
+`InvisibleCharactersRemoved` is emitted by `text.invisibles.remove` from its
+body, for `doc.copyLink`'s reason: the counts are facts of the invocation and
+the command belongs to no framework (it is in `registry.unit.spec.ts`'s
+`SELF_EMITTING_COMMANDS`). `count` is how many characters the gesture
+removed, `blockCount` how many blocks it changed — the canvas counts as one,
+its elements live in the surface block. A run that finds nothing reports
+nothing. Counts only: never a character, an id or any text.
+
+`InvisibleCharactersToggled` is emitted by `text.invisibles.toggle` from its
+body, like `CanvasGridToggled`: `visible` is the state after the gesture, a
+viewer's own display choice that writes nothing to the document.
+
 ## Databases (ADR 0035 §12, B17)
 
 What a database view's user does, reported by the library where it can see
