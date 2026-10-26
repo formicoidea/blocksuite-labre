@@ -108,9 +108,10 @@ describe('BPMN framework elements', () => {
       expect(model.type).toBe('bpmnNode');
       expect(model.kind).toBe(kind);
       expect(model.shapeType).toBe(shapeType);
-      // Inherits native shape behaviour + restricts connector anchors to centre.
+      // Inherits native shape behaviour, and keeps the native anchors of its
+      // outline: a flow object is not centre-only (BPMN_CENTRE_ANCHORED).
       expect(model instanceof ShapeElementModel).toBe(true);
-      expect(model.centerAnchorOnly).toBe(true);
+      expect(model.centerAnchorOnly).toBe(false);
     }
   });
 

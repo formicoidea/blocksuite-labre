@@ -162,7 +162,9 @@ export function createBpmnPool(std: BlockStdScope) {
 /**
  * Arm the native connector tool, pre-styled for a BPMN sequence flow:
  * orthogonal, solid, with a filled triangle head. The user then draws from
- * one node to another (endpoints attach to centers).
+ * one node to another, attaching at the anchor of each outline they pick (a
+ * gateway's corners, an activity's side midpoints, an event's cardinal points;
+ * `BPMN_CENTRE_ANCHORED`).
  */
 export function activateBpmnSequenceFlow(std: BlockStdScope) {
   gfxOf(std).tool.setTool(ConnectorTool, {
