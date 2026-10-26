@@ -78,7 +78,7 @@ model {
       link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/framework/std
       metadata {
         path 'packages/framework/std'
-        files '156'
+        files '157'
       }
       clipboard = folder 'clipboard/' {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/framework/std/src/clipboard
@@ -119,7 +119,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/framework/std/src/inline
         metadata {
           path 'packages/framework/std/src/inline'
-          files '41'
+          files '42'
         }
       }
       scope = folder 'scope/' {
@@ -1055,7 +1055,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/root
         metadata {
           path 'packages/affine/blocks/root'
-          files '52'
+          files '53'
         }
         adapters = folder 'adapters/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/root/src/adapters
@@ -1075,7 +1075,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/root/src/commands
           metadata {
             path 'packages/affine/blocks/root/src/commands'
-            files '5'
+            files '6'
           }
         }
         configs = folder 'configs/' {
@@ -2761,7 +2761,7 @@ model {
       link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/shared
       metadata {
         path 'packages/affine/shared'
-        files '250'
+        files '252'
       }
       adapters = folder 'adapters/' {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/shared/src/adapters
@@ -2795,7 +2795,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/shared/src/services
         metadata {
           path 'packages/affine/shared/src/services'
-          files '86'
+          files '87'
         }
       }
       src = folder 'src/' {
@@ -2830,7 +2830,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/shared/src/utils
         metadata {
           path 'packages/affine/shared/src/utils'
-          files '58'
+          files '59'
         }
       }
     }
@@ -3683,12 +3683,12 @@ model {
   features.blocks.root -[uses]-> features.inlines.link_ '1 import'
   features.blocks.root -[uses]-> features.inlines.preset '2 imports'
   features.blocks.root -[uses]-> features.rich-text '2 imports'
-  features.blocks.root -[uses]-> features.shared '48 imports, 1 type-only'
+  features.blocks.root -[uses]-> features.shared '50 imports, 1 type-only'
   features.blocks.root -[uses]-> features.widgets.edgeless-toolbar '2 imports'
   features.blocks.root -[uses]-> features.widgets.linked-doc '1 import'
   features.blocks.root -[uses]-> framework.global_ '22 imports'
-  features.blocks.root -[uses]-> framework.std '53 imports, 19 type-only'
-  features.blocks.root -[uses]-> framework.store '14 imports, 9 type-only'
+  features.blocks.root -[uses]-> framework.std '55 imports, 20 type-only'
+  features.blocks.root -[uses]-> framework.store '15 imports, 10 type-only'
   features.blocks.root -[uses]-> model_.model_ '24 imports, 6 type-only'
   features.blocks.surface -[uses]-> features.components '5 imports, 1 type-only'
   features.blocks.surface -[uses]-> features.ext-loader '2 imports'
@@ -4072,8 +4072,8 @@ model {
   features.rich-text -[uses]-> framework.std '8 imports, 5 type-only'
   features.rich-text -[uses]-> framework.store '4 imports, 2 type-only'
   features.rich-text -[uses]-> model_.model_ '1 import'
-  features.shared -[uses]-> framework.global_ '91 imports, 15 type-only'
-  features.shared -[uses]-> framework.std '83 imports, 41 type-only'
+  features.shared -[uses]-> framework.global_ '92 imports, 16 type-only'
+  features.shared -[uses]-> framework.std '86 imports, 41 type-only'
   features.shared -[uses]-> framework.store '114 imports, 82 type-only'
   features.shared -[uses]-> model_.model_ '45 imports, 16 type-only'
   features.widgets.drag-handle -[uses]-> features.blocks.callout '1 import, 1 type-only'
@@ -4217,7 +4217,7 @@ model {
   features.widgets.viewport-overlay -[uses]-> features.ext-loader '1 import'
   features.widgets.viewport-overlay -[uses]-> framework.std '1 import'
   features.widgets.viewport-overlay -[uses]-> model_.model_ '1 import, 1 type-only'
-  framework.std -[uses]-> framework.global_ '103 imports, 16 type-only'
+  framework.std -[uses]-> framework.global_ '105 imports, 16 type-only'
   framework.std -[uses]-> framework.store '58 imports, 41 type-only'
   framework.store -[uses]-> framework.global_ '30 imports, 3 type-only'
   framework.store -[uses]-> framework.sync '2 imports, 1 type-only'
@@ -5332,12 +5332,15 @@ model {
   features.blocks.root.clipboard -[imports]-> framework.global_.disposable '2 imports'
   features.blocks.root.clipboard -[imports]-> framework.std.src '2 imports, 1 type-only'
   features.blocks.root.clipboard -[imports]-> framework.store.src '1 import, 1 type-only'
+  features.blocks.root.commands -[imports]-> features.blocks.root.src '1 import'
   features.blocks.root.commands -[imports]-> features.blocks.surface.src '1 import'
-  features.blocks.root.commands -[imports]-> features.shared.services '3 imports'
-  features.blocks.root.commands -[imports]-> features.shared.utils '1 import'
+  features.blocks.root.commands -[imports]-> features.shared.services '4 imports'
+  features.blocks.root.commands -[imports]-> features.shared.utils '2 imports'
   features.blocks.root.commands -[imports]-> features.widgets.linked-doc.src '1 import'
   features.blocks.root.commands -[imports]-> framework.std.gfx '3 imports'
-  features.blocks.root.commands -[imports]-> framework.std.src '5 imports, 2 type-only'
+  features.blocks.root.commands -[imports]-> framework.std.inline '1 import'
+  features.blocks.root.commands -[imports]-> framework.std.src '6 imports, 3 type-only'
+  features.blocks.root.commands -[imports]-> framework.store.src '1 import, 1 type-only'
   features.blocks.root.commands -[imports]-> model_.model_.src '1 import, 1 type-only'
   features.blocks.root.configs -[imports]-> features.blocks.database.src '1 import'
   features.blocks.root.configs -[imports]-> features.blocks.embed.src '1 import'
@@ -5419,7 +5422,7 @@ model {
   features.blocks.root.preview -[imports]-> model_.model_.src '2 imports, 1 type-only'
   features.blocks.root.src -[imports]-> features.blocks.root.adapters '1 import'
   features.blocks.root.src -[imports]-> features.blocks.root.clipboard '1 import'
-  features.blocks.root.src -[imports]-> features.blocks.root.commands '5 imports'
+  features.blocks.root.src -[imports]-> features.blocks.root.commands '6 imports'
   features.blocks.root.src -[imports]-> features.blocks.root.configs '1 import'
   features.blocks.root.src -[imports]-> features.blocks.root.edgeless '5 imports, 1 type-only'
   features.blocks.root.src -[imports]-> features.blocks.root.keyboard '2 imports'
@@ -6962,13 +6965,14 @@ model {
   features.shared.services -[imports]-> features.shared.selection '1 import'
   features.shared.services -[imports]-> features.shared.types '2 imports, 2 type-only'
   features.shared.services -[imports]-> features.shared.utils '6 imports'
-  features.shared.services -[imports]-> framework.global_.di '43 imports'
+  features.shared.services -[imports]-> framework.global_.di '44 imports, 1 type-only'
   features.shared.services -[imports]-> framework.global_.disposable '4 imports, 1 type-only'
   features.shared.services -[imports]-> framework.global_.env '1 import'
   features.shared.services -[imports]-> framework.global_.exceptions '3 imports'
   features.shared.services -[imports]-> framework.global_.utils '4 imports, 2 type-only'
   features.shared.services -[imports]-> framework.std.gfx '7 imports, 2 type-only'
-  features.shared.services -[imports]-> framework.std.src '34 imports, 11 type-only'
+  features.shared.services -[imports]-> framework.std.inline '1 import'
+  features.shared.services -[imports]-> framework.std.src '35 imports, 11 type-only'
   features.shared.services -[imports]-> framework.store.src '51 imports, 38 type-only'
   features.shared.services -[imports]-> model_.model_.src '16 imports, 10 type-only'
   features.shared.styles -[imports]-> features.shared.theme '1 import'
@@ -6985,7 +6989,7 @@ model {
   features.shared.utils -[imports]-> framework.global_.exceptions '1 import'
   features.shared.utils -[imports]-> framework.global_.gfx '5 imports, 2 type-only'
   features.shared.utils -[imports]-> framework.std.gfx '2 imports, 1 type-only'
-  features.shared.utils -[imports]-> framework.std.inline '1 import, 1 type-only'
+  features.shared.utils -[imports]-> framework.std.inline '2 imports, 1 type-only'
   features.shared.utils -[imports]-> framework.std.src '12 imports, 9 type-only'
   features.shared.utils -[imports]-> framework.store.src '16 imports, 14 type-only'
   features.shared.utils -[imports]-> model_.model_.src '13 imports, 3 type-only'
@@ -7387,16 +7391,16 @@ model {
   framework.std.gfx -[imports]-> framework.std.utils '9 imports'
   framework.std.gfx -[imports]-> framework.std.view_ '13 imports, 10 type-only'
   framework.std.gfx -[imports]-> framework.store.src '13 imports, 7 type-only'
-  framework.std.inline -[imports]-> framework.global_.di '3 imports'
+  framework.std.inline -[imports]-> framework.global_.di '4 imports'
   framework.std.inline -[imports]-> framework.global_.disposable '2 imports'
   framework.std.inline -[imports]-> framework.global_.env '1 import'
   framework.std.inline -[imports]-> framework.global_.exceptions '6 imports'
-  framework.std.inline -[imports]-> framework.global_.lit '1 import'
+  framework.std.inline -[imports]-> framework.global_.lit '2 imports'
   framework.std.inline -[imports]-> framework.std.extension '1 import'
   framework.std.inline -[imports]-> framework.std.scope '1 import, 1 type-only'
   framework.std.inline -[imports]-> framework.std.selection '3 imports'
   framework.std.inline -[imports]-> framework.std.src '1 import'
-  framework.std.inline -[imports]-> framework.std.view_ '4 imports, 2 type-only'
+  framework.std.inline -[imports]-> framework.std.view_ '5 imports, 2 type-only'
   framework.std.inline -[imports]-> framework.store.src '21 imports, 19 type-only'
   framework.std.scope -[imports]-> framework.global_.di '1 import'
   framework.std.scope -[imports]-> framework.global_.exceptions '1 import'
