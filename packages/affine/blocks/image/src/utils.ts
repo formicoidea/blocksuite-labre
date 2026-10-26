@@ -257,6 +257,21 @@ async function buildPropsWith(std: BlockStdScope, file: File) {
   return { size, sourceId, ...imageSize } satisfies Partial<ImageBlockProps>;
 }
 
+/**
+ * One picture from the system file chooser, uploaded to the blob store and
+ * measured, for a gesture that writes it itself (ADR 0044). `null` when the
+ * file is not an image, is over the size limit or cannot be measured; the
+ * user has been told why by a toast.
+ */
+export async function imageSourceFromFile(
+  std: BlockStdScope,
+  file: File
+): Promise<ImageBlockSource | null> {
+  if (!file.type.startsWith('image/')) return null;
+  if (hasExceeded(std, [file])) return null;
+  return buildPropsWith(std, file).catch(() => null);
+}
+
 export async function addSiblingImageBlocks(
   std: BlockStdScope,
   files: File[],

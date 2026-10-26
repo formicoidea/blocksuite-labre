@@ -63,6 +63,47 @@ export type BpmnNodeKind =
   | 'group';
 
 /**
+ * Which kinds a connector may attach to at the CENTRE only.
+ *
+ * Every BPMN node used to be centre-only, so a sequence flow could only aim at
+ * the middle of a task and clip at its outline; the user could not choose the
+ * side a flow leaves a gateway by, which is half of how a BPMN diagram is
+ * read. A flow object now keeps the native anchors the connector manager casts
+ * from the centre to its outline (`getAnchors`, `gfx/connector`): the four
+ * corners of a gateway's diamond, the side midpoints of an activity's or a
+ * data shape's rectangle, the four cardinal points of an event's circle. The
+ * centre stays offered too, behind the user's `connectorCenterAnchor` setting.
+ *
+ * A `group` stays centre-only: no flow attaches to a group (BPMN 2.0.2 §10.4),
+ * so it has no side worth offering, and a lasso drawn round a process must not
+ * sprout anchor dots over the nodes it encloses.
+ *
+ * A getter over a table, not a stored prop: nothing is written, and an existing
+ * connector keeps its `[0.5, 0.5]` endpoints and still stops at the outline.
+ * Total over {@link BpmnNodeKind}, so a new kind is a compile error until it
+ * says which it is.
+ */
+export const BPMN_CENTRE_ANCHORED = {
+  startEvent: false,
+  startEventMessage: false,
+  startEventTimer: false,
+  endEvent: false,
+  endEventMessage: false,
+  endEventTerminate: false,
+  task: false,
+  taskUser: false,
+  taskService: false,
+  subProcess: false,
+  callActivity: false,
+  gatewayExclusive: false,
+  gatewayParallel: false,
+  dataObject: false,
+  dataStore: false,
+  textAnnotation: false,
+  group: true,
+} as const satisfies Record<BpmnNodeKind, boolean>;
+
+/**
  * A BPMN flow-object node. Extends {@link ShapeElementModel} (a native shape)
  * so it inherits ALL shape behaviour — editable stroke width / colors, inner
  * text, native resize, the shape context toolbar — for free. `kind`
@@ -79,12 +120,15 @@ export class BpmnNodeElementModel extends ShapeElementModel {
   }
 
   /**
-   * Connector anchors are restricted to the center for BPMN nodes (read by the
-   * connector manager / tool), so sequence flows attach to the node center and
-   * clip at the perimeter.
+   * Whether connectors may attach to this node's centre only (read by the
+   * connector manager / tool). Per kind, from {@link BPMN_CENTRE_ANCHORED}:
+   * a flow object keeps the native anchors of its outline, a group does not.
+   *
+   * `true` for an unknown kind — a value a newer client wrote — which is what
+   * every kind answered before the table existed.
    */
   get centerAnchorOnly() {
-    return true;
+    return BPMN_CENTRE_ANCHORED[this.kind] ?? true;
   }
 
   @field('task' as BpmnNodeKind)

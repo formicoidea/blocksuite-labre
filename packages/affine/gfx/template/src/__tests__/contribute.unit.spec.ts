@@ -49,7 +49,13 @@ function stdWith(
   const container = new Container();
   TemplateCategoryExtension(...categories).setup(container);
   if (host) FrameTemplateExtension(host).setup(container);
-  return { provider: container.provider() } as unknown as BlockStdScope;
+  const provider = container.provider();
+  // `getOptional` too: the search resolves each tile's displayed name through
+  // the translation seam, and the built-in tiles carry a `nameKey`.
+  return {
+    provider,
+    getOptional: provider.getOptional.bind(provider),
+  } as unknown as BlockStdScope;
 }
 
 describe('templateManagerFor', () => {

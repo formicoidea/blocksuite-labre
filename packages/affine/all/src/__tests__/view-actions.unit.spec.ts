@@ -40,6 +40,7 @@ import {
   CanvasGrid,
   DocModeProvider,
   EditPropsStore,
+  InvisibleCharacters,
   TranslationProvider,
 } from '@labre/affine-shared/services';
 import { Container } from '@labre/global/di';
@@ -169,7 +170,7 @@ function mount({
       ...exporter,
     });
   }
-  return { std, store, surface, grid, setTool, usage, telemetry };
+  return { std, store, surface, grid, services, setTool, usage, telemetry };
 }
 
 const ids = (std: BlockStdScope) => getViewActions(std).map(a => a.id);
@@ -187,6 +188,7 @@ describe('the listing', () => {
     // no framework export.
     expect(ids(std)).toEqual([
       'canvas.grid.toggle',
+      'text.invisibles.remove',
       'canvas.export.png',
       'canvas.export.pdf',
       'canvas.export.drawio',
@@ -196,6 +198,7 @@ describe('the listing', () => {
     ]);
     expect(getViewActions(std).map(a => a.section)).toEqual([
       'display',
+      'text',
       'export',
       'export',
       'export',
@@ -215,6 +218,7 @@ describe('the listing', () => {
 
   test('the page view lists the page exports and none of the canvas actions', () => {
     expect(ids(mount({ scope: 'page' }).std)).toEqual([
+      'text.invisibles.remove',
       'page.export.markdown',
       'page.export.html',
     ]);
@@ -225,10 +229,11 @@ describe('the listing', () => {
     // std is rebuilt per switch): the canvas actions are not this view's.
     const { std } = mount();
     expect(ids2(getViewActions(std, 'page'))).toEqual([
+      'text.invisibles.remove',
       'page.export.markdown',
       'page.export.html',
     ]);
-    expect(getViewActions(std, 'edgeless')).toHaveLength(7);
+    expect(getViewActions(std, 'edgeless')).toHaveLength(8);
   });
 
   test('a flag removes a tool, never the rest: frame off, no Present', () => {
@@ -384,6 +389,7 @@ describe('with no host', () => {
     // listed. draw.io needs no host — it writes what the canvas holds.
     expect(ids(std)).toEqual([
       'canvas.grid.toggle',
+      'text.invisibles.remove',
       'canvas.export.drawio',
       'page.export.markdown',
       'page.export.html',
@@ -508,5 +514,57 @@ describe('the exports of a view', () => {
 
     expect(createObjectURL).not.toHaveBeenCalled();
     expect(usage).toEqual(['page.export.markdown', 'page.export.html']);
+  });
+});
+
+describe('special characters (text.invisibles.*)', () => {
+  /** The real `InvisibleCharacters`, as the root view extension registers it. */
+  function mountWithDisplay(scope: 'edgeless' | 'page' = 'edgeless') {
+    const mounted = mount({ scope });
+    const display = new InvisibleCharacters(mounted.std);
+    mounted.services.set(InvisibleCharacters, display);
+    return { ...mounted, display };
+  }
+
+  test('both views list the toggle and the removal, after the grid', () => {
+    expect(ids(mountWithDisplay().std).slice(0, 3)).toEqual([
+      'canvas.grid.toggle',
+      'text.invisibles.toggle',
+      'text.invisibles.remove',
+    ]);
+    expect(ids(mountWithDisplay('page').std)).toEqual([
+      'text.invisibles.toggle',
+      'text.invisibles.remove',
+      'page.export.markdown',
+      'page.export.html',
+    ]);
+  });
+
+  test('the toggle carries a check that follows the display', async () => {
+    const { std, display } = mountWithDisplay('page');
+    const seen: (boolean | undefined)[] = [];
+    const stop = effect(() => {
+      seen.push(
+        getViewActions(std).find(a => a.id === 'text.invisibles.toggle')
+          ?.checked
+      );
+    });
+    // Through the command, with no telemetry provider: it still toggles.
+    await runViewAction(std, 'text.invisibles.toggle');
+    display.toggle();
+    stop();
+    expect(seen).toEqual([false, true, false]);
+  });
+
+  test('a reader may show the characters but not remove them', () => {
+    const { std, store } = mountWithDisplay('page');
+    store.readonly = true;
+    const actions = getViewActions(std);
+    expect(actions.find(a => a.id === 'text.invisibles.toggle')!.disabled).toBe(
+      false
+    );
+    expect(actions.find(a => a.id === 'text.invisibles.remove')!.disabled).toBe(
+      true
+    );
   });
 });

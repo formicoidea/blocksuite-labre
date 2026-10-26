@@ -34,11 +34,13 @@ import { computed, effect, signal } from '@preact/signals-core';
 import { html, nothing } from 'lit';
 import { property, query } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
+import { ifDefined } from 'lit/directives/if-defined.js';
 import { ref } from 'lit/directives/ref.js';
 import { styleMap } from 'lit/directives/style-map.js';
 
 import { colorList } from './color';
 import { ColumnMaxWidth, DefaultColumnWidth } from './consts';
+import { headerToggleMenuItem } from './header-menu';
 import type { SelectionController } from './selection-controller';
 import {
   type TableAreaSelection,
@@ -51,6 +53,7 @@ import {
   columnOptionsCellStyle,
   columnOptionsStyle,
   columnRightIndicatorStyle,
+  headerCellStyle,
   rowBottomIndicatorStyle,
   rowOptionsCellStyle,
   rowOptionsStyle,
@@ -111,6 +114,30 @@ export class TableCell extends SignalWatcher(
       ?.topContenteditableElement;
   }
 
+  /**
+   * The header toggle sits in the first row's / first column's menu only: the
+   * header is positional (ADR 0043), so no other row could be the one it
+   * marks.
+   */
+  private headerToggle(kind: 'row' | 'column') {
+    const std = this.closest<TableBlockComponent>('affine-table')?.std;
+    const dataManager = this.dataManager;
+    return kind === 'row'
+      ? headerToggleMenuItem(std, kind, dataManager.headerRow$.peek(), on =>
+          dataManager.setHeaderRow(on)
+        )
+      : headerToggleMenuItem(std, kind, dataManager.headerColumn$.peek(), on =>
+          dataManager.setHeaderColumn(on)
+        );
+  }
+
+  private get isHeader() {
+    return (
+      (this.rowIndex === 0 && this.dataManager.headerRow$.value) ||
+      (this.columnIndex === 0 && this.dataManager.headerColumn$.value)
+    );
+  }
+
   openColumnOptions(
     target: PopupTarget,
     column: TableColumn,
@@ -156,6 +183,7 @@ export class TableCell extends SignalWatcher(
                   ),
                 },
               }),
+              ...(columnIndex === 0 ? [this.headerToggle('column')] : []),
               ...(column.backgroundColor
                 ? [
                     menu.action({
@@ -282,6 +310,7 @@ export class TableCell extends SignalWatcher(
                   ),
                 },
               }),
+              ...(rowIndex === 0 ? [this.headerToggle('row')] : []),
               ...(row.backgroundColor
                 ? [
                     menu.action({
@@ -723,9 +752,21 @@ export class TableCell extends SignalWatcher(
       .catch(console.error);
   }
 
+  private tdClass() {
+    return classMap({
+      [cellContainerStyle]: true,
+      [headerCellStyle]: this.isHeader,
+    });
+  }
+
   override render() {
+    const header = this.isHeader ? '' : undefined;
     if (!this.text) {
-      return html`<td class=${cellContainerStyle} style=${this.tdStyle()}>
+      return html`<td
+        class=${this.tdClass()}
+        data-header=${ifDefined(header)}
+        style=${this.tdStyle()}
+      >
         <div
           style=${styleMap({
             padding: '8px 12px',
@@ -746,7 +787,8 @@ export class TableCell extends SignalWatcher(
           this.tdMouseLeave();
         }}
         @contextmenu=${this.onContextMenu}
-        class=${cellContainerStyle}
+        class=${this.tdClass()}
+        data-header=${ifDefined(header)}
         style=${this.tdStyle()}
       >
         <rich-text

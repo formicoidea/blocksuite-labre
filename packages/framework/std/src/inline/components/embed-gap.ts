@@ -8,5 +8,5 @@ export const EmbedGap = html`<span
     padding: '0 0.5px',
     outline: 'none',
   })}
-  ><v-text></v-text
+  ><v-text empty></v-text
 ></span>`;

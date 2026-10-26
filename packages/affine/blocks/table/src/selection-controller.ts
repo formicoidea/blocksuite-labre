@@ -15,6 +15,7 @@ import {
   TableSelectionData,
 } from './selection-schema';
 import type { TableBlockComponent } from './table-block';
+import { tableContainer } from './table-block-css';
 import {
   createColumnDragPreview,
   createRowDragPreview,
@@ -24,6 +25,24 @@ import {
 import { cleanSelection, isTableDragHandle } from './utils';
 type Cells = string[][];
 const TEXT = 'text/plain';
+
+/**
+ * The width that makes a column end where the table's scroll box ends: what
+ * the box offers minus what the other columns already take, never below
+ * `ColumnMinWidth`. `undefined` when nothing is left to give, so the caller
+ * writes nothing.
+ */
+export function remainingColumnWidth(
+  available: number,
+  otherColumnsWidth: number
+): number | undefined {
+  const remainder = Math.floor(available - otherColumnsWidth);
+  if (!Number.isFinite(remainder) || remainder <= 0) return;
+  return Math.max(ColumnMinWidth, remainder);
+}
+
+const px = (value: string) => parseFloat(value) || 0;
+
 export class SelectionController implements ReactiveController {
   constructor(public readonly host: TableBlockComponent) {
     this.host.addController(this);
@@ -95,10 +114,59 @@ export class SelectionController implements ReactiveController {
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
   }
+  /**
+   * Double-click on a column's resize handle: the column takes the room left
+   * between the table and the right edge of its scroll box. Measured in the
+   * table's own unscaled pixels (`clientWidth` ignores the edgeless zoom, the
+   * cells' rects do not, hence `getScale()`); the container's own padding and
+   * the virtual padding around the table are not room a column can take.
+   */
+  fitColumnToRemainingSpace(columnId: string) {
+    if (this.dataManager.readonly$.peek()) return;
+    const container = this.host.querySelector<HTMLElement>(
+      `.${tableContainer}`
+    );
+    const firstRow = this.host.querySelector('tr');
+    if (!container || !firstRow) return;
+    const containerStyle = getComputedStyle(container);
+    const inner = container.firstElementChild;
+    const innerStyle =
+      inner instanceof HTMLElement ? getComputedStyle(inner) : undefined;
+    const available =
+      container.clientWidth -
+      px(containerStyle.paddingLeft) -
+      px(containerStyle.paddingRight) -
+      px(innerStyle?.paddingLeft ?? '') -
+      px(innerStyle?.paddingRight ?? '');
+    const scale = this.scale;
+    let others = 0;
+    firstRow
+      .querySelectorAll<HTMLElement>('td[data-column-id]')
+      .forEach(cell => {
+        if (cell.dataset['columnId'] === columnId) return;
+        others += cell.getBoundingClientRect().width / scale;
+      });
+    const width = remainingColumnWidth(available, others);
+    if (width === undefined) return;
+    this.dataManager.setColumnWidth(columnId, width);
+  }
+
   dragListener() {
     if (IS_MOBILE || this.dataManager.readonly$.value) {
       return;
     }
+    this.host.disposables.addFromEvent(this.host, 'dblclick', event => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      const handle = target.closest<HTMLElement>(
+        '[data-width-adjust-column-id]'
+      );
+      const columnId = handle?.dataset['widthAdjustColumnId'];
+      if (!columnId) return;
+      event.preventDefault();
+      event.stopPropagation();
+      this.fitColumnToRemainingSpace(columnId);
+    });
     // Keep the pointer sequence inside the table too: in edgeless the canvas
     // listens for `pointerdown` and would start dragging the block.
     this.host.disposables.addFromEvent(this.host, 'pointerdown', event => {

@@ -33,6 +33,7 @@ type DatabasePage = HTMLElement & {
   store: Store;
   extensions: ExtensionType[];
   hostBlockId: string;
+  heading: HTMLElement | null;
 };
 
 type Title = HTMLElement & {
@@ -90,12 +91,10 @@ describe('<doc-title> on a database full page (bodyBlockId)', () => {
     cleanup = await setupEditor('page');
     ({ noteId, hostId } = writeDatabaseNote());
 
-    // As a host mounts it: the title above the page, in one viewport.
+    // As a host mounts it: the title as the page's heading, in its viewport.
     const app = window.editor.parentElement!;
     const extensions = window.editor.pageSpecs;
     window.editor.remove();
-    const viewport = document.createElement('div');
-    viewport.className = 'affine-page-viewport';
     title = document.createElement('doc-title') as Title;
     title.doc = doc;
     title.bodyBlockId = hostId;
@@ -104,15 +103,15 @@ describe('<doc-title> on a database full page (bodyBlockId)', () => {
     page.store = doc;
     page.extensions = extensions;
     page.hostBlockId = hostId;
-    viewport.append(title, page);
-    app.append(viewport);
+    page.heading = title;
+    app.append(page);
     await wait(200);
     writes = 0;
     const watch = doc.slots.blockUpdated.subscribe(() => writes++);
     const previous = cleanup;
     cleanup = () => {
       watch.unsubscribe();
-      viewport.remove();
+      page.remove();
       previous();
     };
   }

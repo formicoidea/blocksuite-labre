@@ -34,7 +34,7 @@ export const codeBlockNotionHtmlAdapterMatcher: BlockNotionHtmlAdapterMatcher =
               id: nanoid(),
               flavour: CodeBlockSchema.model.flavour,
               props: {
-                language: 'Plain Text',
+                language: null,
                 wrap,
                 text: {
                   '$blocksuite:internal:text$': true,

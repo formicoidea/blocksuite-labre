@@ -46,8 +46,25 @@ export function presetCrop(
   naturalWidth: number,
   naturalHeight: number
 ): CropRect {
-  const k = maskRatio(mask, naturalWidth, naturalHeight);
-  if (k === null) return WHOLE_IMAGE;
+  if (mask === 'free') return WHOLE_IMAGE;
+  return ratioCrop(MASK_RATIOS[mask], naturalWidth, naturalHeight);
+}
+
+/**
+ * The largest centred rectangle whose width over height, in SOURCE PIXELS, is
+ * `ratio`: a preset's window, and the cut a shape's box makes in the picture
+ * that replaces it (ADR 0044). The whole image when the size or the ratio is
+ * unknown.
+ */
+export function ratioCrop(
+  ratio: number,
+  naturalWidth: number,
+  naturalHeight: number
+): CropRect {
+  if (!(ratio > 0) || naturalWidth <= 0 || naturalHeight <= 0) {
+    return WHOLE_IMAGE;
+  }
+  const k = (ratio * naturalHeight) / naturalWidth;
   let w = k;
   let h = 1;
   if (w > 1) {

@@ -1,7 +1,9 @@
 import { frameCommands } from '@labre/affine-block-frame';
+import { imageReplaceCommands } from '@labre/affine-block-image';
 import {
   copyLinkCommands,
   coreCommands,
+  invisibleCharactersCommands,
   pageExportCommands,
   pivotCommands,
   readingCommands,
@@ -125,6 +127,7 @@ export function getCommands(flags?: LabreFlags): AnyCommandDescriptor[] {
       ...coreCommands,
       ...copyLinkCommands,
       ...pageExportCommands,
+      ...invisibleCharactersCommands,
       ...pivotCommands,
       ...tagCommands,
       ...readingCommands,
@@ -133,6 +136,9 @@ export function getCommands(flags?: LabreFlags): AnyCommandDescriptor[] {
       ...exportSvgCommands,
       ...selectionPaneCommands,
       ...frameCommands,
+      // ADR 0044: registered by the image view extension, so they go with
+      // the `image` flag here too.
+      ...(isBlockEnabled(flags, 'image') ? imageReplaceCommands : []),
       ...canvasGridCommands,
       ...canvasExportCommands,
       ...canvasDrawioExportCommands,

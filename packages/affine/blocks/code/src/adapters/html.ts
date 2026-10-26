@@ -46,7 +46,7 @@ export const codeBlockHtmlAdapterMatcher: BlockHtmlAdapterMatcher = {
             id: nanoid(),
             flavour: 'affine:code',
             props: {
-              language: codeLang ?? 'Plain Text',
+              language: codeLang ?? null,
               wrap,
               text: {
                 '$blocksuite:internal:text$': true,

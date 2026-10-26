@@ -7,6 +7,7 @@ import type { ConnectorElementModel } from '@labre/affine-model';
 import { Bound } from '@labre/global/gfx';
 import { assertType } from '@labre/global/utils';
 import type { BlockStdScope } from '@labre/std';
+import { generateKeyBetweenV2 } from '@labre/std/gfx';
 import type { BlockSnapshot, SnapshotNode } from '@labre/store';
 
 import type { SlotBlockPayload, TemplateJob } from './template.js';
@@ -178,6 +179,55 @@ export const replaceIdMiddleware = (job: TemplateJob) => {
       blockJson.props.childElementIds = newChildElementIds;
     }
   };
+};
+
+/**
+ * Every inserted frame takes a fresh `presentationIndex` AFTER the last frame
+ * of the document, the template's frames keeping their relative order. A
+ * saved frame's snapshot carries its source's key, so without this the copy
+ * shared the source's slideshow position, and so did every further insertion;
+ * the clipboard has always minted fresh keys on paste
+ * (`EdgelessClipboardFrameConfig`, `newPresentationIndexes`).
+ *
+ * Keyed by the snapshot OBJECT, not its id, so it works on either side of
+ * `replaceIdMiddleware` (`template-presentation-index.unit.spec.ts`).
+ */
+export const createPresentationIndexMiddleware = (job: TemplateJob) => {
+  const fresh = new Map<BlockSnapshot, string>();
+  const keyOf = (props: Record<string, unknown>) =>
+    typeof props.presentationIndex === 'string' ? props.presentationIndex : '';
+
+  job.slots.beforeInsert.subscribe(payload => {
+    if (payload.type === 'template') {
+      const inserted: BlockSnapshot[] = [];
+      job.walk(block => {
+        if (block.flavour === 'affine:frame') inserted.push(block);
+      });
+      if (!inserted.length) return;
+
+      // The document's frames are all still the existing ones here.
+      let last: string | null = null;
+      for (const model of job.model.store.getModelsByFlavour('affine:frame')) {
+        const key = keyOf(model.props as Record<string, unknown>);
+        if (key && (last === null || key > last)) last = key;
+      }
+
+      inserted
+        .sort((a, b) => {
+          const ka = keyOf(a.props);
+          const kb = keyOf(b.props);
+          return ka < kb ? -1 : ka > kb ? 1 : 0;
+        })
+        .forEach(block => {
+          last = generateKeyBetweenV2(last, null);
+          fresh.set(block, last);
+        });
+      return;
+    }
+
+    const key = fresh.get(payload.data.blockJson);
+    if (key) payload.data.blockJson.props.presentationIndex = key;
+  });
 };
 
 export const createInsertPlaceMiddleware = (targetPlace: Bound) => {

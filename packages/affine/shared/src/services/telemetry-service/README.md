@@ -154,6 +154,22 @@ How often this fires is the measurement of whether the DRAWING gesture
 announces itself well enough (M1): links reversed constantly mean the hint is
 wrong.
 
+## Replacing a shape by an image, and back (ADR 0044)
+
+« Replace with image » on a shape and « Replace with shape » on a canvas image
+put a model of the other kind at the old one's place and delete the old one.
+
+| Event             | When                                         | Required props                                         |
+| ----------------- | -------------------------------------------- | ------------------------------------------------------ |
+| `ElementReplaced` | the user replaces a shape or an image (0044) | `from` (`shape` \| `image`), `to` (`shape` \| `image`) |
+
+Kinds only: never the two ids, never the picture's `sourceId`, never content.
+Shape → image also emits `BlockCreated { blockType: 'affine:image' }`, because
+an image block is inserted by a user action and "images created" stays one
+series; image → shape inserts no block and emits only `ElementReplaced`. Both
+are emitted by the command body (`canvas.shape.replaceWithImage`,
+`canvas.image.replaceWithShape`); a refused gesture emits nothing.
+
 ## Validation arbitrations (PF8)
 
 No rule is a wall: every violation can be waived, and every waiver is reported.
@@ -315,6 +331,25 @@ creates nothing and belongs to no framework. It is enumerated in
 `registry.unit.spec.ts`'s `SELF_EMITTING_COMMANDS` so it can never also declare
 `telemetry` and report the same gesture twice. No ids cross: neither the
 document id nor the anchored block/element ids.
+
+## Special characters
+
+| Event                        | When                                        | Required props        |
+| ---------------------------- | ------------------------------------------- | --------------------- |
+| `InvisibleCharactersRemoved` | `text.invisibles.remove` removed characters | `count`, `blockCount` |
+| `InvisibleCharactersToggled` | "show special characters" is switched       | `visible`             |
+
+`InvisibleCharactersRemoved` is emitted by `text.invisibles.remove` from its
+body, for `doc.copyLink`'s reason: the counts are facts of the invocation and
+the command belongs to no framework (it is in `registry.unit.spec.ts`'s
+`SELF_EMITTING_COMMANDS`). `count` is how many characters the gesture
+removed, `blockCount` how many blocks it changed — the canvas counts as one,
+its elements live in the surface block. A run that finds nothing reports
+nothing. Counts only: never a character, an id or any text.
+
+`InvisibleCharactersToggled` is emitted by `text.invisibles.toggle` from its
+body, like `CanvasGridToggled`: `visible` is the state after the gesture, a
+viewer's own display choice that writes nothing to the document.
 
 ## Databases (ADR 0035 §12, B17)
 
