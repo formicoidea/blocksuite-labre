@@ -84,6 +84,7 @@ import { DatabaseSelection } from './selection.js';
 import {
   databaseOpenRowRequest,
   DatabaseDataSourceProvider,
+  DatabaseInitialViewProvider,
   DatabaseNewRowMenuProvider,
   DatabaseOpenRowProvider,
   openDatabasePropertiesPanel,
@@ -94,7 +95,7 @@ import {
   DATABASE_SOURCE_MISSING,
   DATABASE_SOURCE_MISSING_HINT,
 } from './translations.js';
-import { currentViewStorage } from './utils/current-view.js';
+import { currentViewStorage, initialViewId } from './utils/current-view.js';
 import { getSingleDocIdFromText } from './utils/title-doc.js';
 import { DatabaseViewCreationIdentifier } from './view-creation.js';
 import type { DatabaseViewExtensionOptions } from './view';
@@ -246,10 +247,12 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
       provider && this.model.props.externalSourceId
         ? provider.createDataSource(this.model, initFn)
         : new DatabaseBlockDataSource(this.model, initFn);
-    const id = currentViewStorage.getCurrentView(this.model.id);
-    if (id && dataSource.viewManager.viewGet(id)) {
-      dataSource.viewManager.setCurrentView(id);
-    }
+    const id = initialViewId(
+      this.model.id,
+      viewId => dataSource.viewManager.viewGet(viewId) != null,
+      this.std.getOptional(DatabaseInitialViewProvider)
+    );
+    if (id) dataSource.viewManager.setCurrentView(id);
     return dataSource;
   }
 
