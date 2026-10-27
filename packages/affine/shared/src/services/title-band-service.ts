@@ -127,6 +127,16 @@ export interface TitleBandService {
   add?(docId: string): void;
 
   /**
+   * Configure one property (recette 3, 0.60): a right-click on a chip's name
+   * asks the host to open the menu its own panel opens for that property
+   * (name, type, options, visibility, order, delete), under `anchor`, the
+   * name the reader clicked. The band then keeps the browser's menu from
+   * showing. Not on a read-only document, nor for a touch long-press, which
+   * stays the browser's. Absent, a right-click on a name is the browser's.
+   */
+  configure?(docId: string, propertyId: string, anchor: HTMLElement): void;
+
+  /**
    * Whether the band is collapsed for this document. The host decides where
    * that is remembered (the Labre app: per device, REQ-PR-6). Absent, the
    * band opens expanded every time and a collapse lasts while it is mounted.
