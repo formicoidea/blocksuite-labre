@@ -1,4 +1,4 @@
-import { signal } from '@preact/signals-core';
+import { type ReadonlySignal, signal } from '@preact/signals-core';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import type {
@@ -16,8 +16,12 @@ import type {
  * What it would have caught: either field made required (every 0.48 host a
  * compile error at upgrade), or `setData` folded into `set` (a value write and
  * a definition write are two different rights on the host side).
+ * 0.60 adds `children$?` (labre ADR-0045 amended 2026-10-27: a child's own
+ * card drops the link arrow), optional and absent below.
+ *
  * `yarn build` typechecks it; the runtime half is in
- * `fragments/doc-title/src/__tests__/title-band.unit.spec.ts`.
+ * `fragments/doc-title/src/__tests__/title-band.unit.spec.ts` and
+ * `blocks/embed-doc/src/__tests__/child-card-icon.unit.spec.ts`.
  */
 
 /** A property exactly as a 0.48 host builds it. */
@@ -59,6 +63,12 @@ describe('TitleBandService only widens', () => {
     >();
     expectTypeOf<TitleBandProperty['dataWritable']>().toEqualTypeOf<
       boolean | undefined
+    >();
+  });
+
+  it('keeps the children optional', () => {
+    expectTypeOf<TitleBandService['children$']>().toEqualTypeOf<
+      ((docId: string) => ReadonlySignal<readonly string[]>) | undefined
     >();
   });
 });

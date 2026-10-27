@@ -146,6 +146,17 @@ export interface TitleBandService {
    * the host's reading of the document. Absent or empty, no row.
    */
   notShown$?(docId: string): ReadonlySignal<readonly TitleBandNotShownPage[]>;
+
+  /**
+   * The ids of the child pages of document `docId` in the host's page tree
+   * (labre ADR-0045, amended 2026-10-27). A linked-doc card or a synced-doc
+   * embed of one of them, in that document, is the child's own card: it is
+   * drawn with the plain page (or canvas) icon, without the link arrow an
+   * inline `@` reference keeps. Read inside the card's icon computation, so
+   * a move redraws it. The library never computes a parent or a child.
+   * Absent, every card keeps the arrow (0.59).
+   */
+  children$?(docId: string): ReadonlySignal<readonly string[]>;
 }
 
 export const TitleBandProvider =
