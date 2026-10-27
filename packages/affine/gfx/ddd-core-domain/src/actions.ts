@@ -1,18 +1,14 @@
 import { backgroundSize } from '@labre/affine-block-surface';
 import { ConnectorTool } from '@labre/affine-gfx-connector';
-import { MOVEMENT_COLOR } from '@labre/affine-gfx-ddd-shared';
-import { ConnectorMode, PointStyle, StrokeStyle } from '@labre/affine-model';
-import { Bound } from '@labre/global/gfx';
+import { ConnectorMode } from '@labre/affine-model';
 import type { BlockStdScope } from '@labre/std';
 import { type GfxController, GfxControllerIdentifier } from '@labre/std/gfx';
 
 import { CORE_DOMAIN_BACKGROUND } from './core-domain/background';
 import { CORE_DOMAIN_ROLE } from './roles';
+import { coreDomainChartElement, coreDomainMovementStyle } from './toolbox';
 
 type Surface = NonNullable<GfxController['surface']>;
-
-/** The stroke width the movement arrow has always been drawn at. */
-const MOVEMENT_STROKE_WIDTH = 2;
 
 /**
  * Post a Core Domain Chart background, centred on `(cx, cy)`.
@@ -29,12 +25,13 @@ export function createCoreDomainChart(
   cy: number
 ): string {
   const { width, height } = backgroundSize(CORE_DOMAIN_BACKGROUND);
-  return surface.addElement({
-    type: CORE_DOMAIN_BACKGROUND.type,
-    role: CORE_DOMAIN_BACKGROUND.role,
-    resizeEnabled: CORE_DOMAIN_BACKGROUND.geometry.resizable,
-    xywh: new Bound(cx - width / 2, cy - height / 2, width, height).serialize(),
+  // The chart's props come from the toolbox (`docs/adr/0045`), the one
+  // assembly a host with no editor also calls; the centre is the caller's.
+  const { id: _local, ...props } = coreDomainChartElement({
+    x: cx - width / 2,
+    y: cy - height / 2,
   });
+  return surface.addElement(props);
 }
 
 /**
@@ -57,13 +54,9 @@ export function activateMovement(std: BlockStdScope): void {
     mode: ConnectorMode.Straight,
     role: CORE_DOMAIN_ROLE.movement,
     // The look rides on the activation, never through the last-props store:
-    // the plain connector tool must keep the user's own style (#144 M1).
-    style: {
-      stroke: MOVEMENT_COLOR,
-      strokeStyle: StrokeStyle.Dash,
-      strokeWidth: MOVEMENT_STROKE_WIDTH,
-      frontEndpointStyle: PointStyle.None,
-      rearEndpointStyle: PointStyle.Arrow,
-    },
+    // the plain connector tool must keep the user's own style (#144 M1). It is
+    // the toolbox's (`coreDomainMovementStyle`, `docs/adr/0045`), so a
+    // movement drawn here and one built by a host look the same.
+    style: coreDomainMovementStyle(),
   });
 }

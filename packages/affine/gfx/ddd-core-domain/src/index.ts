@@ -40,3 +40,12 @@ export {
   CORE_DOMAIN_READING,
   CORE_DOMAIN_READINGS,
 } from './reading.js';
+// The toolbar as pure builders (`docs/adr/0045`), also on `./interchange`.
+export {
+  CORE_DOMAIN_TOOLBOX,
+  coreDomainChartElement,
+  coreDomainMarkerElements,
+  coreDomainMovementElement,
+  coreDomainMovementStyle,
+  coreDomainSubdomainElements,
+} from './toolbox.js';

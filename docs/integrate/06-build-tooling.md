@@ -192,4 +192,11 @@ comes back as its shadow, its face carrying the role and the words
 (`{ name: 'Order placed' }`, or the toolbar's seed) and their group; a flow
 attaches to the face, `<local>:face`.
 
+The Core Domain Chart ships `CORE_DOMAIN_TOOLBOX` on
+`@formicoidea/labre-framework-ddd-core-domain/interchange`, from the same
+shared builders: item ids `chart`, the five sub-domain dots (`big-bet`,
+`platform`, `outsourced`, `bc-current`, `bc-future`) and the three Team
+Topologies markers (`collaboration`, `xaas`, `facilitating`), each dot and
+marker captioned by its `name` slot; link id `movement`.
+
 Next: [07-upgrade.md](07-upgrade.md).
