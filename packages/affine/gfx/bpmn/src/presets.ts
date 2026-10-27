@@ -1,5 +1,6 @@
 import type { BpmnNodeKind } from '@labre/affine-model';
 import {
+  ConnectorMode,
   FontFamily,
   SHAPE_TEXT_PADDING,
   SHAPE_TEXT_VERTICAL_PADDING,
@@ -13,9 +14,11 @@ import { Bound } from '@labre/global/gfx';
 
 import {
   ACTIVITY_FIT_REF,
+  BPMN_EDGE_STYLE,
   BPMN_LABEL_GAP,
   BPMN_LABEL_H,
   BPMN_LABEL_W,
+  type BpmnEdgeKey,
   CALL_ACTIVITY_WIDTH,
   END_WIDTH,
   EVENT_END,
@@ -451,6 +454,25 @@ export function bpmnPoolProps(box: {
     role: BPMN_ROLE.pool,
     ...(box.name === undefined ? {} : { name: box.name }),
     xywh: box.xywh,
+  };
+}
+
+/**
+ * One BPMN connecting object, as the props `surface.addElement` takes, ends
+ * left to the caller: the role, the orthogonal mode the tools arm the
+ * connector with, and the line {@link BPMN_EDGE_STYLE} says it looks like.
+ *
+ * The importer and the toolbox both write a flow through here, so a flow read
+ * out of a `.bpmn` file and one a host places are the line the tool draws.
+ */
+export function bpmnConnectorProps(
+  edge: BpmnEdgeKey
+): Record<string, unknown> & { type: string } {
+  return {
+    type: 'connector',
+    role: BPMN_ROLE[edge],
+    mode: ConnectorMode.Orthogonal,
+    ...BPMN_EDGE_STYLE[edge],
   };
 }
 

@@ -367,8 +367,8 @@ export const POOL_LANE_MIN_HEIGHT = 24;
  * participant, and a second lane that matched the first one's height would
  * claim room the process has not asked for.
  *
- * `actions.ts` and the templates still write these two numbers themselves; the
- * declaration names them so there is somewhere for them to converge.
+ * The toolbox draws its pool at them (`bpmnPoolElement`, which `createBpmnPool`
+ * calls); the templates lay their pools out at sizes of their own.
  */
 export const POOL_REF_WIDTH = 560;
 export const POOL_REF_HEIGHT = 200;
