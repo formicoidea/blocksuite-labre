@@ -1,7 +1,7 @@
 # ADR 0045 — Headless toolbox: a framework's toolbar items as pure builders
 
-- Status: **proposed** (2026-10-27, for the maintainer's approval with the
-  first framework)
+- Status: **accepted** (2026-10-27, approved by the maintainer with the first
+  framework, C4)
 - Deciders: Mathieu Jolly
 - Related ADRs: [0012](0012-framework-interchange-and-foreign-preservation.md)
   (P3: readers are pure and editor-free; the materializer contract),

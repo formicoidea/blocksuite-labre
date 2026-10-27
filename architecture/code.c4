@@ -298,7 +298,7 @@ model {
       link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/model
       metadata {
         path 'packages/affine/model'
-        files '150'
+        files '151'
       }
       blocks = folder 'blocks/' {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/model/src/blocks
@@ -318,7 +318,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/model/src/elements
         metadata {
           path 'packages/affine/model/src/elements'
-          files '66'
+          files '67'
         }
       }
       src = folder 'src/' {
@@ -1132,7 +1132,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/surface
         metadata {
           path 'packages/affine/blocks/surface'
-          files '147'
+          files '148'
         }
         adapters = folder 'adapters/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/surface/src/adapters
@@ -1159,7 +1159,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/surface/src/extensions
           metadata {
             path 'packages/affine/blocks/surface/src/extensions'
-            files '65'
+            files '66'
           }
         }
         framework-background = folder 'framework-background/' {
@@ -1844,7 +1844,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/gfx/c4
         metadata {
           path 'packages/affine/gfx/c4'
-          files '35'
+          files '38'
         }
         node_ = folder 'node/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/gfx/c4/src/node
@@ -1857,7 +1857,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/gfx/c4/src
           metadata {
             path 'packages/affine/gfx/c4/src'
-            files '26'
+            files '29'
           }
         }
         toolbar = folder 'toolbar/' {
@@ -3809,7 +3809,7 @@ model {
   features.gfx.brush -[uses]-> framework.global_ '5 imports, 2 type-only'
   features.gfx.brush -[uses]-> framework.std '8 imports, 3 type-only'
   features.gfx.brush -[uses]-> model_.model_ '9 imports, 3 type-only'
-  features.gfx.c4 -[uses]-> features.blocks.surface '16 imports, 6 type-only'
+  features.gfx.c4 -[uses]-> features.blocks.surface '17 imports, 7 type-only'
   features.gfx.c4 -[uses]-> features.components '2 imports, 1 type-only'
   features.gfx.c4 -[uses]-> features.ext-loader '1 import'
   features.gfx.c4 -[uses]-> features.gfx.connector '1 import'
@@ -3822,7 +3822,7 @@ model {
   features.gfx.c4 -[uses]-> features.widgets.edgeless-toolbar '2 imports'
   features.gfx.c4 -[uses]-> framework.global_ '3 imports, 1 type-only'
   features.gfx.c4 -[uses]-> framework.std '21 imports, 12 type-only'
-  features.gfx.c4 -[uses]-> model_.model_ '17 imports, 8 type-only'
+  features.gfx.c4 -[uses]-> model_.model_ '22 imports, 12 type-only'
   features.gfx.connector -[uses]-> features.blocks.surface '12 imports, 2 type-only'
   features.gfx.connector -[uses]-> features.components '3 imports, 1 type-only'
   features.gfx.connector -[uses]-> features.ext-loader '2 imports'
@@ -6125,21 +6125,20 @@ model {
   features.gfx.c4.node_ -[imports]-> features.gfx.text.src '1 import'
   features.gfx.c4.node_ -[imports]-> framework.std.gfx '2 imports'
   features.gfx.c4.node_ -[imports]-> model_.model_.src '3 imports'
-  features.gfx.c4.src -[imports]-> features.blocks.surface.src '14 imports, 6 type-only'
+  features.gfx.c4.src -[imports]-> features.blocks.surface.src '15 imports, 7 type-only'
   features.gfx.c4.src -[imports]-> features.components.color-picker '1 import'
   features.gfx.c4.src -[imports]-> features.ext-loader.src '1 import'
   features.gfx.c4.src -[imports]-> features.gfx.c4.node_ '3 imports'
   features.gfx.c4.src -[imports]-> features.gfx.c4.toolbar '7 imports'
   features.gfx.c4.src -[imports]-> features.gfx.connector.src '1 import'
   features.gfx.c4.src -[imports]-> features.gfx.template.src '2 imports'
-  features.gfx.c4.src -[imports]-> features.shared.consts '1 import'
   features.gfx.c4.src -[imports]-> features.shared.services '5 imports, 1 type-only'
-  features.gfx.c4.src -[imports]-> features.shared.src '1 import'
+  features.gfx.c4.src -[imports]-> features.shared.src '2 imports'
   features.gfx.c4.src -[imports]-> features.shared.utils '1 import'
   features.gfx.c4.src -[imports]-> framework.global_.gfx '3 imports, 1 type-only'
   features.gfx.c4.src -[imports]-> framework.std.gfx '9 imports, 5 type-only'
   features.gfx.c4.src -[imports]-> framework.std.src '9 imports, 7 type-only'
-  features.gfx.c4.src -[imports]-> model_.model_.src '13 imports, 8 type-only'
+  features.gfx.c4.src -[imports]-> model_.model_.src '18 imports, 12 type-only'
   features.gfx.c4.toolbar -[imports]-> features.blocks.surface.src '1 import'
   features.gfx.c4.toolbar -[imports]-> features.components.color-picker '1 import, 1 type-only'
   features.gfx.c4.toolbar -[imports]-> features.gfx.c4.src '2 imports'
