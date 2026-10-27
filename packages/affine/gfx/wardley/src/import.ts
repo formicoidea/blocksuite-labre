@@ -34,8 +34,6 @@ import {
   INERTIA_SIZE,
   LABEL_GAP,
   LABEL_FONT_SIZE,
-  LINK_GREY,
-  LINK_STROKE_WIDTH,
   MARKET_DOT_RING,
   MARKET_DOT_SIZE,
   MARKET_DOT_STROKE_WIDTH,
@@ -57,6 +55,10 @@ import {
   wardleyNodeProps,
 } from './presets.js';
 import { WARDLEY_ROLE } from './roles.js';
+import {
+  wardleyChangeArrowElement,
+  wardleyDependencyElement,
+} from './toolbox.js';
 
 /**
  * The OWM import remarks whose wording is FIXED, as `[key, English]` pairs.
@@ -1079,37 +1081,19 @@ export function layoutWardleyStatements(
     );
   }
 
+  // The two edges are the toolbar's own (`toolbox.ts`, `docs/adr/0045`): an
+  // arrow read from a file and one drawn with the tool are one assembly.
   evolutions.forEach((evolution, index) => {
-    elements.push({
-      type: 'connector',
-      mode: ConnectorMode.Straight,
-      role: WARDLEY_ROLE.changeArrow,
-      stroke: WARDLEY_RED,
-      strokeStyle: StrokeStyle.Dash,
-      strokeWidth: LINK_STROKE_WIDTH,
-      frontEndpointStyle: PointStyle.None,
-      rearEndpointStyle: PointStyle.Triangle,
-      source: { id: identity(evolution) },
-      target: { id: twinHandles[index] },
-    });
+    elements.push(
+      wardleyChangeArrowElement(identity(evolution), twinHandles[index])
+    );
   });
 
   for (const link of links) {
-    elements.push({
-      type: 'connector',
-      mode: ConnectorMode.Straight,
-      // The value-chain link. `source` is the CONSUMER and `target` is what it
-      // needs — the verb of `wardley:dependency` (ADR 0010), which is exactly
-      // what `A->B` says in this DSL. Never inverted.
-      role: WARDLEY_ROLE.dependency,
-      stroke: LINK_GREY,
-      strokeStyle: StrokeStyle.Solid,
-      strokeWidth: LINK_STROKE_WIDTH,
-      frontEndpointStyle: PointStyle.None,
-      rearEndpointStyle: PointStyle.None,
-      source: { id: link.from },
-      target: { id: link.to },
-    });
+    // The value-chain link. `source` is the CONSUMER and `target` is what it
+    // needs — the verb of `wardley:dependency` (ADR 0010), which is exactly
+    // what `A->B` says in this DSL. Never inverted.
+    elements.push(wardleyDependencyElement(link.from, link.to));
   }
 
   for (const inertia of inertias) {

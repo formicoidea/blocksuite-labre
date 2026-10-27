@@ -1,0 +1,5 @@
+---
+'@labre/affine': minor
+---
+
+Wardley's toolbar can now be used without an editor (ADR 0045). `@formicoidea/labre-framework-wardley/interchange` exports `WARDLEY_TOOLBOX`, the list of the toolbar's items (the four map backgrounds, component, component + method, market, ecosystem, anchor, pipeline, inertia, Porter's forces, accelerator, decelerator, rectangular area) and its two links (dependency, evolution arrow), each with a pure builder that returns the elements the toolbar places: a node with its `wardley:label` name and their group, the market's dots and triangle, the pipeline's handle and nested groups, the Porter circle with its letter and four arrows. The builders are also exported from the package index as `wardleyMapElement`, `wardleyNodeElements`, `wardleyMarketElements`, `wardleyPipelineElements`, `wardleyPorterElements`, `wardleyInertiaElement`, `wardleyAreaElement`, `wardleyDependencyElement` and `wardleyChangeArrowElement`, with the `WardleyMapTexts` and `WardleyNodeItemKind` types; `WARDLEY_AXIS_SEED` is now exported too. The toolbar actions and the OWM reader's links now call them. The polygon area is a drawing tool and is not in the toolbox.
