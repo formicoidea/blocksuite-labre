@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import type { DatabaseInitialViewService } from '../service/initial-view.js';
+
 const currentViewListSchema = z.array(
   z.object({
     blockId: z.string(),
@@ -50,3 +52,20 @@ const createCurrentViewStorage = () => {
 };
 
 export const currentViewStorage = createCurrentViewStorage();
+
+/**
+ * The view a database opens on: the host's choice when the block has it
+ * (`DatabaseInitialViewProvider`), else the one this tab last showed, else
+ * `undefined` (the view manager's first view). Reads only.
+ */
+export function initialViewId(
+  blockId: string,
+  exists: (viewId: string) => boolean,
+  host?: DatabaseInitialViewService | null
+): string | undefined {
+  const asked = host?.initialView({ blockId });
+  if (asked && exists(asked)) return asked;
+  const stored = currentViewStorage.getCurrentView(blockId);
+  if (stored && exists(stored)) return stored;
+  return undefined;
+}

@@ -5,6 +5,7 @@ import {
   databaseBlockProperties,
   DatabaseBlockDataSource,
   DatabaseDataSourceProvider,
+  DatabaseInitialViewExtension,
   DatabaseNewRowMenuExtension,
   type DatabaseNewRowMenuRequest,
   DatabaseOpenRowExtension,
@@ -50,7 +51,10 @@ import { setupEditor } from '../utils/setup.js';
  * - a chevron beside "New" drawn without the host's menu, or where its
  *   `canOpen` says no (an inline table of a base), the chevron not
  *   naming its block and view, or "New" itself no longer adding a row (where
- *   a host applies its default template) once the menu is there.
+ *   a host applies its default template) once the menu is there;
+ * - a database opening on another view than its first without the host
+ *   asking, the host's view not opened, or opening on it writing anything
+ *   into the views.
  */
 
 /** A host source whose rows are documents (the Labre app's bases). */
@@ -412,5 +416,42 @@ describe('the menu beside "New"', () => {
       blockId: base.id,
       viewId: 'gallery-1',
     });
+  });
+});
+
+describe('the view a database opens on', () => {
+  const withTwoViews = () => {
+    const written = writeDatabase({ hosted: false });
+    const [first] = written.model.props.views;
+    window.doc.updateBlock(written.model, {
+      views: [first, { ...first, id: 'gallery-2', name: 'Second' }],
+    } as never);
+    return written.model;
+  };
+  const currentOf = (model: DatabaseBlockModel) =>
+    blockOf(model).dataSource.viewManager.currentViewId$.value;
+
+  test('without the seam, the first view', async () => {
+    cleanup = await setupEditor('page');
+    const model = withTwoViews();
+    await settle();
+    expect(currentOf(model)).toBe('gallery-1');
+  });
+
+  test("with the seam, the host's view, and nothing written", async () => {
+    let target = '';
+    const initialView = vi.fn(({ blockId }: { blockId: string }) =>
+      blockId === target ? 'gallery-2' : undefined
+    );
+    cleanup = await setupEditor('page', [
+      DatabaseInitialViewExtension({ initialView }),
+    ]);
+    const model = withTwoViews();
+    target = model.id;
+    const before = JSON.stringify(model.props.views);
+    await settle();
+    expect(initialView).toHaveBeenCalledWith({ blockId: model.id });
+    expect(currentOf(model)).toBe('gallery-2');
+    expect(JSON.stringify(model.props.views)).toBe(before);
   });
 });
