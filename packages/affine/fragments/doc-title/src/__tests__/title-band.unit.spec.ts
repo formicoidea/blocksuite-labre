@@ -369,13 +369,16 @@ describe('the title band', () => {
     }
   });
 
-  it('shows a skeleton while the sheet loads', async () => {
+  // Recette 3: the host's only loading indicator is a spinner, never a
+  // skeleton (ADR-0057 on the Labre side); the band drew two grey chips.
+  it('shows a spinner, no skeleton, while the sheet loads', async () => {
     const { service } = bandService({ status: 'loading' });
     const { std } = fakeStd(new Map([[TitleBandProvider, service]]));
     const band = await mount(std);
-    expect(q(band, 'title-band-loading')?.getAttribute('aria-busy')).toBe(
-      'true'
-    );
+    const loading = q(band, 'title-band-loading');
+    expect(loading?.getAttribute('aria-busy')).toBe('true');
+    expect(loading?.querySelector('svg .spinner')).not.toBeNull();
+    expect(band.querySelector('[class*="skeleton"]')).toBeNull();
   });
 
   it('draws one chip per visible property, in order, an empty one included', async () => {

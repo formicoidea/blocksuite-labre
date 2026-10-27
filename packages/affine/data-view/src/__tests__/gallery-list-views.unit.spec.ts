@@ -45,7 +45,7 @@ import { ListViewUILogic } from '../view-presets/list/list-view.js';
  * - a read-only view offering "New page" or an editor;
  * - a layout switch into a gallery or a list dropping the filter and sort;
  * - a value a hosted source has not delivered drawn by its renderer, hence
- *   editable over, instead of the table's skeleton (ADR 0035 §9e, B2).
+ *   editable over, instead of the table's spinner (ADR 0035 §9e, B2).
  */
 
 beforeAll(() => {
@@ -353,7 +353,7 @@ describe.each(['gallery', 'list'] as const)('the %s preset', mode => {
     expect(context.openDetailPanel).toHaveBeenCalledTimes(1);
   });
 
-  it('draws a value still loading as the table does: a skeleton, no editor, no write', async () => {
+  it('draws a value still loading as the table does: a spinner, no editor, no write', async () => {
     const context = setup({
       mode,
       cellStatus: { 'r1:status': 'pending', 'r2:status': 'error' },
@@ -363,7 +363,7 @@ describe.each(['gallery', 'list'] as const)('the %s preset', mode => {
       '[data-row-id="r1"] [data-property-id="status"]'
     );
     expect(
-      pending?.querySelector('[data-testid="dv-cell-skeleton"]')
+      pending?.querySelector('[data-testid="dv-cell-loading"]')
     ).not.toBeNull();
     expect(pending?.querySelector('affine-database-select-cell')).toBeNull();
     expect(pending?.tagName).not.toBe('DV-STANDALONE-CELL');
@@ -403,7 +403,7 @@ describe('the list preset', () => {
     expect(third?.querySelector('[data-property-id="title"]')).not.toBeNull();
   });
 
-  it('keeps the chip of an empty value still loading, as a skeleton', async () => {
+  it('keeps the chip of an empty value still loading, with its spinner', async () => {
     const context = setup({
       mode: 'list',
       cellStatus: { 'r3:status': 'pending' },
@@ -413,7 +413,7 @@ describe('the list preset', () => {
       '[data-row-id="r3"] .dv-list-row-properties [data-property-id="status"]'
     );
     expect(
-      chip?.querySelector('[data-testid="dv-cell-skeleton"]')
+      chip?.querySelector('[data-testid="dv-cell-loading"]')
     ).not.toBeNull();
   });
 });
