@@ -189,8 +189,6 @@ describe('standalone image (#521)', () => {
     ).toBlockSnapshot({
       file: markdown,
       assets,
-      workspaceId: '',
-      pageId: '',
     });
     return snapshot.children.map(shape);
   }
