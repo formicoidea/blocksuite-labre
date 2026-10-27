@@ -51,8 +51,9 @@ export interface BlockCreationEvent extends TelemetryEvent {
 
 /**
  * A canvas model replaced by a model of another kind at its place (ADR 0044):
- * a shape by an image, an image by a shape. Kinds only — never the ids, never
- * the picture's `sourceId`, never content.
+ * a shape by an image, an image by a shape — or a canvas image's picture by
+ * another (`image` → `image`, amendment of 2026-10-27). Kinds only — never
+ * the ids, never the picture's `sourceId`, never content.
  */
 export interface ElementReplacedEvent extends TelemetryEvent {
   page?: 'whiteboard editor';

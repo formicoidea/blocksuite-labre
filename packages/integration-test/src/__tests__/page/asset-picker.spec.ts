@@ -7,8 +7,8 @@
  * What it would have caught:
  * - a slash entry that still opens the file chooser with a host, or uploads
  *   the bytes again instead of referencing the blob the host stores;
- * - "Replace" missing from the real toolbar with a host, or drawn without
- *   one;
+ * - "Replace" missing from the real toolbar, with a host or without one (the
+ *   system file chooser stands in since ADR 0044's amendment of 2026-10-27);
  * - a replacement that changes the displayed width, keeps the old ratio or
  *   takes more than one undo step.
  */
@@ -217,7 +217,7 @@ describe('the asset dialog in a page', () => {
 });
 
 describe('the image toolbar without a host', () => {
-  test('offers no Replace', async () => {
+  test('still offers Replace', async () => {
     const cleanup = await setupEditor('page');
     try {
       const root = getDocRootBlock(window.doc, window.editor, 'page');
@@ -247,9 +247,12 @@ describe('the image toolbar without a host', () => {
         toolbar?.querySelector('[data-toolbar-action-id="a.download"]'),
         'the image toolbar is shown'
       ).toBeTruthy();
+      // Offered all the same: without a library the system file chooser
+      // stands in (ADR 0044, amendment of 2026-10-27). Not clicked here, a
+      // real file chooser would open.
       expect(
         toolbar?.querySelector('[data-toolbar-action-id="a.replace"]')
-      ).toBe(null);
+      ).not.toBe(null);
     } finally {
       cleanup();
     }
@@ -281,16 +284,23 @@ describe('the asset dialog on the canvas', () => {
       edgeless.gfx.selection.set({ elements: [imageId], editing: false });
       await settle();
 
+      // On the canvas « Replace » is a menu (ADR 0044, amendment of
+      // 2026-10-27); its « Replace with image » asks the host.
       const replace = (
         edgeless.widgetComponents[AFFINE_TOOLBAR_WIDGET] as
           | { toolbar?: HTMLElement }
           | undefined
       )?.toolbar?.querySelector<HTMLElement>(
-        '[data-toolbar-action-id="a.replace"]'
+        '[data-testid="image-replace-with-image"]'
       );
       expect(replace, 'the canvas image toolbar has no Replace').toBeTruthy();
       await clickEntry(replace!);
       await settle();
+      expect(host.requests.at(-1)).toMatchObject({
+        kind: 'image',
+        mode: 'replace',
+        multiple: false,
+      });
 
       const image = window.doc.getModelById(imageId) as ImageBlockModel;
       expect(image.props.sourceId).toBe(host.assets.image!.sourceId);

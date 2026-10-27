@@ -94,8 +94,10 @@ export const IMAGE_TOAST_READ_SIZE_FAILED: ChromeWording = [
 ];
 
 /**
- * The image toolbar's "Replace" (`configs/replace-action.ts`), offered only
- * with a host asset dialog (`AssetPickerProvider`).
+ * The image toolbar's "Replace": the page button (`configs/replace-action.ts`)
+ * and the canvas menu that holds « Replace with image » and « Replace with
+ * shape » (`replace/toolbar.ts`, ADR 0044 amendment of 2026-10-27). Offered
+ * with or without a host: without one, the system file chooser.
  */
 export const IMAGE_TOOLBAR_REPLACE: ChromeWording = [
   'com.labre.image.toolbar.replace',
@@ -115,6 +117,12 @@ export const IMAGE_REPLACE_WITH_IMAGE: ChromeWording = [
 export const IMAGE_REPLACE_WITH_IMAGE_DESCRIPTION: ChromeWording = [
   'com.labre.image.replace.with-image.description',
   'Put a picture in place of this shape, cut to its box.',
+];
+
+/** `canvas.image.replaceWithImage`: the same label, said of an image. */
+export const IMAGE_REPLACE_PICTURE_DESCRIPTION: ChromeWording = [
+  'com.labre.image.replace.picture.description',
+  'Put another picture in this image, from the library or a file.',
 ];
 
 export const IMAGE_REPLACE_WITH_SHAPE: ChromeWording = [
@@ -152,6 +160,7 @@ export const IMAGE_WORDINGS: readonly ChromeWording[] = [
   IMAGE_TOOLBAR_REPLACE,
   IMAGE_REPLACE_WITH_IMAGE,
   IMAGE_REPLACE_WITH_IMAGE_DESCRIPTION,
+  IMAGE_REPLACE_PICTURE_DESCRIPTION,
   IMAGE_REPLACE_WITH_SHAPE,
   IMAGE_REPLACE_WITH_SHAPE_DESCRIPTION,
 ];

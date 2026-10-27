@@ -166,9 +166,13 @@ put a model of the other kind at the old one's place and delete the old one.
 Kinds only: never the two ids, never the picture's `sourceId`, never content.
 Shape → image also emits `BlockCreated { blockType: 'affine:image' }`, because
 an image block is inserted by a user action and "images created" stays one
-series; image → shape inserts no block and emits only `ElementReplaced`. Both
-are emitted by the command body (`canvas.shape.replaceWithImage`,
-`canvas.image.replaceWithShape`); a refused gesture emits nothing.
+series; image → shape inserts no block and emits only `ElementReplaced`.
+Another picture in the same image (`canvas.image.replaceWithImage`, amendment
+of 2026-10-27) emits `ElementReplaced { from: 'image', to: 'image' }` and
+nothing else. All are emitted by the command body
+(`canvas.shape.replaceWithImage`, `canvas.image.replaceWithShape`,
+`canvas.image.replaceWithImage`); a refused or cancelled gesture emits
+nothing.
 
 ## Validation arbitrations (PF8)
 

@@ -16,9 +16,17 @@
  *   or a read-only document being replaced;
  * - the commands emitting anything but kinds (`ElementReplaced`), plus
  *   `BlockCreated` for the image block shape → image inserts.
+ *
+ * Since the amendment of 2026-10-27 (the canvas image's « Replace » menu):
+ * - « Replace with shape » ignoring the shape picked in its sub-menu (or its
+ *   corner radius), or the palette losing its default rectangle;
+ * - `canvas.image.replaceWithImage` skipping the host's library when there
+ *   is one, or doing nothing without a host instead of opening the system
+ *   file chooser; a new block where the picture alone should change.
  */
 import {
   imageReplaceCommands,
+  REPLACE_IMAGE_WITH_IMAGE,
   REPLACE_IMAGE_WITH_SHAPE,
   REPLACE_SHAPE_WITH_IMAGE,
   replaceImageWithShape,
@@ -29,25 +37,37 @@ import {
   type SurfaceBlockModel,
 } from '@labre/affine-block-surface';
 import { StoreExtensionManager } from '@labre/affine-ext-loader';
-import type {
-  ConnectorElementModel,
-  FrameBlockModel,
-  GroupElementModel,
-  ImageBlockModel,
-  ShapeElementModel,
+import {
+  type ConnectorElementModel,
+  type FrameBlockModel,
+  type GroupElementModel,
+  type ImageBlockModel,
+  type ShapeElementModel,
+  ShapeType,
 } from '@labre/affine-model';
 import {
   AssetPickerProvider,
   EditPropsStore,
+  FileSizeLimitProvider,
   TelemetryProvider,
 } from '@labre/affine-shared/services';
+import { openFilesWith } from '@labre/affine-shared/utils';
 import { type BlockStdScope, runCommandAsync } from '@labre/std';
 import { DEFAULT_LAYER_ID, GfxControllerIdentifier } from '@labre/std/gfx';
 import { type Store, Text } from '@labre/store';
 import { TestWorkspace } from '@labre/store/test';
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 
 import { getInternalStoreExtensions } from '../extensions/store.js';
+
+vi.mock('@labre/affine-components/toast', () => ({ toast: vi.fn() }));
+vi.mock('@labre/affine-shared/utils', async importOriginal => ({
+  ...(await importOriginal<typeof import('@labre/affine-shared/utils')>()),
+  // The system file chooser, answered by each test; cancelled by default.
+  openFilesWith: vi.fn(async () => null),
+  // happy-dom never decodes an image: the measured size is given here.
+  readImageSize: vi.fn(async () => ({ width: 80, height: 20 })),
+}));
 
 let seq = 0;
 
@@ -324,6 +344,37 @@ describe('replace an image with a shape', () => {
     expect(store.canUndo).toBe(false);
   });
 
+  test('puts the PICKED shape, with its corner radius, in the same box', () => {
+    const { store, surface, image, connectorId } = imageScene();
+    const { std } = mount(store, surface);
+
+    const id = replaceImageWithShape(std, image, {
+      shapeType: ShapeType.Ellipse,
+    })!;
+
+    const shape = surface.getElementById(id) as ShapeElementModel;
+    expect(shape.shapeType).toBe('ellipse');
+    expect(shape.radius).toBe(0);
+    expect(shape.xywh).toBe('[10,20,200,100]');
+    expect(
+      (surface.getElementById(connectorId) as ConnectorElementModel).target.id
+    ).toBe(id);
+  });
+
+  test('a rounded rectangle is a rect with a radius', () => {
+    const { store, surface, image } = imageScene();
+    const { std } = mount(store, surface);
+
+    const id = replaceImageWithShape(std, image, {
+      shapeType: ShapeType.Rect,
+      radius: 0.1,
+    })!;
+
+    const shape = surface.getElementById(id) as ShapeElementModel;
+    expect(shape.shapeType).toBe('rect');
+    expect(shape.radius).toBe(0.1);
+  });
+
   test('swaps a group member in place', () => {
     const { store, surface, groupId, groupedId } = imageScene();
     const { std } = mount(store, surface);
@@ -444,6 +495,10 @@ describe('the commands', () => {
     await runCommandAsync(std, toShape, INVOCATION);
 
     expect(surface.getElementById(selected[0])?.type).toBe('shape');
+    // No `shapeType`: the palette's and the agent's rectangle, as in v1.
+    expect(
+      (surface.getElementById(selected[0]) as ShapeElementModel).shapeType
+    ).toBe('rect');
     expect(events).toEqual([
       {
         name: 'ElementReplaced',
@@ -456,5 +511,119 @@ describe('the commands', () => {
         },
       },
     ]);
+  });
+
+  /** A canvas image, selected, made the way the toolbar would find it. */
+  function selectedImage() {
+    const { store, surface, shapeId } = shapeScene();
+    const mounted = mount(store, surface);
+    const shape = surface.getElementById(shapeId) as ShapeElementModel;
+    const imageId = replaceShapeWithImage(mounted.std, shape, PICTURE)!;
+    store.resetHistory();
+    mounted.selected.splice(0, mounted.selected.length, imageId);
+    return { store, surface, imageId, ...mounted };
+  }
+
+  test('image → shape draws the shape picked in the sub-menu', async () => {
+    const { surface, std, selected } = selectedImage();
+
+    await runCommandAsync(std, command(REPLACE_IMAGE_WITH_SHAPE), INVOCATION, {
+      shapeType: 'ellipse',
+    });
+
+    const shape = surface.getElementById(selected[0]) as ShapeElementModel;
+    expect(shape.shapeType).toBe('ellipse');
+    expect(shape.xywh).toBe('[10,20,200,100]');
+  });
+
+  test('image → shape refuses a shape type it does not know, writing nothing', async () => {
+    const { store, std, imageId } = selectedImage();
+
+    await runCommandAsync(std, command(REPLACE_IMAGE_WITH_SHAPE), INVOCATION, {
+      shapeType: 'hexagon',
+    });
+
+    expect(store.getModelById(imageId)).not.toBeNull();
+    expect(store.canUndo).toBe(false);
+  });
+
+  test('image → image asks the host library for one picture, keeps the block', async () => {
+    const { store, std, imageId, events, services } = selectedImage();
+    const requests: unknown[] = [];
+    services.set(AssetPickerProvider, {
+      pick: async (request: unknown) => {
+        requests.push(request);
+        return [{ sourceId: 'blob-2', size: 9, width: 100, height: 50 }].map(
+          ref => ({ ...ref, name: 'b.png', type: 'image/png' })
+        );
+      },
+    });
+    vi.mocked(openFilesWith).mockClear();
+
+    const toImage = command(REPLACE_IMAGE_WITH_IMAGE);
+    expect(toImage.when!(std)).toBe(true);
+    await runCommandAsync(std, toImage, INVOCATION);
+
+    expect(requests).toEqual([
+      { kind: 'image', mode: 'replace', multiple: false, docId: store.id },
+    ]);
+    expect(openFilesWith).not.toHaveBeenCalled();
+    const image = store.getModelById(imageId) as ImageBlockModel;
+    expect(image.props.sourceId).toBe('blob-2');
+    // The corner and the width stay, the height follows the new 2:1 ratio.
+    expect(image.props.xywh).toBe('[10,20,200,100]');
+    expect(events).toEqual([
+      {
+        name: 'ElementReplaced',
+        props: {
+          page: 'whiteboard editor',
+          from: 'image',
+          to: 'image',
+          control: 'toolbar:general',
+          module: 'contextual-toolbar',
+        },
+      },
+    ]);
+  });
+
+  test('image → image opens the system file chooser without a host', async () => {
+    const { store, std, imageId, events, services } = selectedImage();
+    services.set(FileSizeLimitProvider, { maxFileSize: 1024 * 1024 });
+    vi.mocked(openFilesWith).mockClear();
+    vi.mocked(openFilesWith).mockResolvedValueOnce([
+      new File(['png'], 'c.png', { type: 'image/png' }),
+    ]);
+
+    await runCommandAsync(std, command(REPLACE_IMAGE_WITH_IMAGE), INVOCATION);
+
+    expect(openFilesWith).toHaveBeenCalledWith('Images', false);
+    const image = store.getModelById(imageId) as ImageBlockModel;
+    expect(image.props.sourceId).not.toBe('blob-1');
+    expect([image.props.width, image.props.height]).toEqual([80, 20]);
+    expect(events.map(e => e.name)).toEqual(['ElementReplaced']);
+  });
+
+  test('image → image writes and reports nothing when the chooser is cancelled', async () => {
+    const { store, std, imageId, events } = selectedImage();
+    vi.mocked(openFilesWith).mockResolvedValueOnce(null);
+
+    await runCommandAsync(std, command(REPLACE_IMAGE_WITH_IMAGE), INVOCATION);
+
+    expect(
+      (store.getModelById(imageId) as ImageBlockModel).props.sourceId
+    ).toBe('blob-1');
+    expect(store.canUndo).toBe(false);
+    expect(events).toEqual([]);
+  });
+
+  test('image → image is not offered on a shape, nor on a read-only document', () => {
+    const { store, surface, shapeId } = shapeScene();
+    const { std, selected } = mount(store, surface);
+    selected.push(shapeId);
+    expect(command(REPLACE_IMAGE_WITH_IMAGE).when!(std)).toBe(false);
+
+    const picked = selectedImage();
+    picked.store.readonly = true;
+    expect(command(REPLACE_IMAGE_WITH_IMAGE).when!(picked.std)).toBe(false);
   });
 });

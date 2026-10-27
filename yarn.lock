@@ -1726,6 +1726,7 @@ __metadata:
     "@labre/affine-block-surface": "workspace:*"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
+    "@labre/affine-gfx-shape": "workspace:*"
     "@labre/affine-gfx-turbo-renderer": "workspace:*"
     "@labre/affine-model": "workspace:*"
     "@labre/affine-shared": "workspace:*"

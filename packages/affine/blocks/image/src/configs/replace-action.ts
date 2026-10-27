@@ -1,8 +1,7 @@
 import type { ImageBlockModel } from '@labre/affine-model';
-import {
-  AssetPickerProvider,
-  type ToolbarAction,
-  type ToolbarContext,
+import type {
+  ToolbarAction,
+  ToolbarContext,
 } from '@labre/affine-shared/services';
 import { ReplaceIcon } from '@blocksuite/icons/lit';
 
@@ -10,10 +9,13 @@ import { pickAndReplaceImage } from '../asset-picker.js';
 import { IMAGE_TOOLBAR_REPLACE } from '../translations.js';
 
 /**
- * "Replace" on the image toolbar, page and canvas alike: opens the host's
- * asset dialog in `replace` mode and swaps the picture in place
- * (`replaceImage`). It exists only with an `AssetPickerProvider` and on a
- * writable document: without a host there is no library to pick from.
+ * "Replace" on the PAGE image toolbar: swaps the picture in place
+ * (`pickAndReplaceImage`), from the host's asset dialog in `replace` mode when
+ * there is one, from the system file chooser otherwise — so it is offered
+ * without a host too (ADR 0044, amendment of 2026-10-27). Hidden on a
+ * read-only document. The canvas toolbar has a « Replace » MENU instead
+ * (`replace/toolbar.ts`), which reaches the same picking helper through
+ * `canvas.image.replaceWithImage`.
  */
 export function imageReplaceToolbarAction(
   getModel: (ctx: ToolbarContext) => ImageBlockModel | null
@@ -23,10 +25,7 @@ export function imageReplaceToolbarAction(
     tooltip: 'Replace',
     tooltipWording: IMAGE_TOOLBAR_REPLACE,
     icon: ReplaceIcon(),
-    when: ctx =>
-      !ctx.readonly &&
-      !!ctx.std.getOptional(AssetPickerProvider) &&
-      getModel(ctx) !== null,
+    when: ctx => !ctx.readonly && getModel(ctx) !== null,
     run(ctx) {
       const model = getModel(ctx);
       if (!model) return;
