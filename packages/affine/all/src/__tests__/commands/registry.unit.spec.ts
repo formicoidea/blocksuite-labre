@@ -286,7 +286,9 @@ describe('command registry invariants', () => {
       // …and 42 with `canvas.shape.replaceWithImage` and
       // `canvas.image.replaceWithShape` (ADR 0044): a shape and an image belong
       // to no framework; they ride the `image` flag.
-      core: 42,
+      // …and 43 with `canvas.image.replaceWithImage` (ADR 0044, amendment of
+      // 2026-10-27): another picture in a canvas image, same flag.
+      core: 43,
     });
     // 112 since the two SVG fallback imports (`bpmn.importSvg`,
     // `wardley.importSvg`) joined the OWM pair — one SVG row per framework,
@@ -331,7 +333,8 @@ describe('command registry invariants', () => {
     // …and 214 with `bpmn.moveLaneUp` and `bpmn.moveLaneDown`.
     // …and 216 with `text.invisibles.toggle` and `text.invisibles.remove`.
     // …and 218 with the two replace commands (ADR 0044).
-    expect(commands).toHaveLength(218);
+    // …and 219 with `canvas.image.replaceWithImage` (ADR 0044, 2026-10-27).
+    expect(commands).toHaveLength(219);
   });
 
   /**
@@ -387,6 +390,7 @@ describe('command registry invariants', () => {
     // a framework creation event.
     'canvas.shape.replaceWithImage',
     'canvas.image.replaceWithShape',
+    'canvas.image.replaceWithImage',
   ];
 
   test('a self-emitting command never also declares telemetry', () => {

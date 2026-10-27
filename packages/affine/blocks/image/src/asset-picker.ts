@@ -12,6 +12,7 @@ import {
 } from '@labre/affine-shared/services';
 import {
   getImageFilesFromLocal,
+  openFilesWith,
   readImageSize,
 } from '@labre/affine-shared/utils';
 import { Bound, type IVec } from '@labre/global/gfx';
@@ -23,6 +24,7 @@ import {
   addImages,
   addSiblingImageBlocks,
   type ImageBlockSource,
+  imageSourceFromFile,
   placeImagesOnCanvas,
 } from './utils.js';
 
@@ -168,7 +170,28 @@ export async function replaceImage(
     toast(std.host, translateKey(std, ...IMAGE_TOAST_READ_SIZE_FAILED));
     return false;
   }
+  return replaceImageSource(model, {
+    sourceId: asset.sourceId,
+    size: asset.size,
+    ...natural,
+  });
+}
+
+/**
+ * The write half of {@link replaceImage}, for a picture already measured
+ * ({@link pickImageSource}): same refusals, same one undo step, synchronous,
+ * so a caller re-reads its target after a dialog and writes at once.
+ */
+export function replaceImageSource(
+  model: ImageBlockModel,
+  source: ImageBlockSource
+): boolean {
+  const { store } = model;
   if (store.readonly || !store.getBlock(model.id)) return false;
+  if (!source.sourceId || !isSize(source.width, source.height)) return false;
+  if (source.sourceId === model.props.sourceId$.peek()) return false;
+  const natural = { width: source.width, height: source.height };
+  const asset = { sourceId: source.sourceId, size: source.size };
   store.captureSync();
   store.transact(() => {
     store.updateBlock(model, replacementProps(model, asset, natural));
@@ -231,21 +254,45 @@ export async function pickAndAddImages(
 }
 
 /**
- * The image toolbar's "Replace": only with a host (`false` otherwise, and
- * the toolbar does not offer it), one ref, `mode: 'replace'`.
+ * One picture to put in place of another, measured: the host's asset dialog
+ * when there is one (`replace` mode, one asset), the system file chooser
+ * otherwise (the file goes up through the blob source, like every
+ * file-chooser path). `null` when cancelled, when the ref is not an image or
+ * when its size cannot be read.
+ *
+ * Shared by the page toolbar's "Replace", the canvas image's « Replace with
+ * image » (`canvas.image.replaceWithImage`) and the shape's (ADR 0044,
+ * amendment of 2026-10-27): there is one way to choose a picture.
+ */
+export async function pickImageSource(
+  std: BlockStdScope
+): Promise<ImageBlockSource | null> {
+  const picked = pickRequest(std, {
+    kind: 'image',
+    mode: 'replace',
+    multiple: false,
+  });
+  if (picked) {
+    const assets = await picked;
+    if (!assets?.length) return null;
+    const [props] = await imagePropsFrom(std, assets.slice(0, 1));
+    return props ?? null;
+  }
+  const [file] = (await openFilesWith('Images', false)) ?? [];
+  return file ? imageSourceFromFile(std, file) : null;
+}
+
+/**
+ * The page toolbar's "Replace": {@link pickImageSource}, then
+ * {@link replaceImageSource} on the block as it is AFTER the dialog (it may
+ * be gone, or the document read-only, by then).
  */
 export async function pickAndReplaceImage(
   std: BlockStdScope,
   model: ImageBlockModel
 ): Promise<boolean> {
   if (model.store.readonly) return false;
-  const picked = pickRequest(std, {
-    kind: 'image',
-    mode: 'replace',
-    multiple: false,
-  });
-  if (!picked) return false;
-  const [asset] = (await picked) ?? [];
-  if (!asset) return false;
-  return replaceImage(std, model, asset);
+  const source = await pickImageSource(std);
+  if (!source) return false;
+  return replaceImageSource(model, source);
 }

@@ -8,8 +8,9 @@
  *   takes two undo steps;
  * - a write on a read-only document, or an empty undo entry when the picked
  *   image is the one already shown;
- * - an editor without a host losing its file chooser, or offered "Replace"
- *   with no library to pick from.
+ * - an editor without a host losing its file chooser, or "Replace" hidden
+ *   without a host when the system file chooser can stand in for the library
+ *   (ADR 0044, amendment of 2026-10-27).
  */
 import { SurfaceBlockSchemaExtension } from '@labre/affine-block-surface';
 import {
@@ -26,6 +27,7 @@ import {
 } from '@labre/affine-shared/services';
 import {
   getImageFilesFromLocal,
+  openFilesWith,
   readImageSize,
 } from '@labre/affine-shared/utils';
 import type { BlockStdScope } from '@labre/std';
@@ -38,6 +40,7 @@ import {
   pickAndAddSiblingImageBlocks,
   pickAndReplaceImage,
   replaceImage,
+  replaceImageSource,
   replacementProps,
 } from '../asset-picker';
 import { imageReplaceToolbarAction } from '../configs/replace-action';
@@ -46,6 +49,8 @@ vi.mock('@labre/affine-components/toast', () => ({ toast: vi.fn() }));
 vi.mock('@labre/affine-shared/utils', async importOriginal => ({
   ...(await importOriginal<typeof import('@labre/affine-shared/utils')>()),
   getImageFilesFromLocal: vi.fn(async () => []),
+  // The system file chooser of "Replace" without a host: cancelled.
+  openFilesWith: vi.fn(async () => null),
   // happy-dom never decodes an image: the measured size is given here.
   readImageSize: vi.fn(async () => ({ width: 80, height: 20 })),
 }));
@@ -330,13 +335,17 @@ describe('the image entries, with and without a host', () => {
     expect(store.canUndo).toBe(false);
   });
 
-  it('replace through the host in replace mode, and not at all without one', async () => {
+  it('replace through the host in replace mode, through the file chooser without one', async () => {
     const { store, ids, image } = editorStore();
     const pick = vi.fn(async () => [square]);
+    vi.mocked(openFilesWith).mockClear();
 
+    // No host: the system file chooser, here cancelled, so nothing written.
     expect(await pickAndReplaceImage(stdFor(store), image(ids.pageImage))).toBe(
       false
     );
+    expect(openFilesWith).toHaveBeenCalledWith('Images', false);
+    expect(store.canUndo).toBe(false);
     expect(
       await pickAndReplaceImage(stdFor(store, { pick }), image(ids.pageImage))
     ).toBe(true);
@@ -346,6 +355,31 @@ describe('the image entries, with and without a host', () => {
       multiple: false,
       docId: store.id,
     });
+    expect(openFilesWith).toHaveBeenCalledTimes(1);
+    expect(image(ids.pageImage).props.sourceId).toBe('new');
+  });
+});
+
+describe('replaceImageSource', () => {
+  it('writes a measured picture in one undo step, and refuses the same one', () => {
+    const { store, ids, image } = editorStore();
+    const picture = { sourceId: 'new', size: 42, width: 50, height: 50 };
+
+    expect(replaceImageSource(image(ids.canvasImage), picture)).toBe(true);
+    expect(image(ids.canvasImage).props.xywh).toBe('[10,20,200,200]');
+    expect(replaceImageSource(image(ids.canvasImage), picture)).toBe(false);
+    store.undo();
+    expect(image(ids.canvasImage).props.sourceId).toBe('old');
+    expect(store.canUndo).toBe(false);
+  });
+
+  it('writes nothing on a read-only document', () => {
+    const { store, ids, image } = editorStore();
+    readonly(store);
+    const picture = { sourceId: 'new', size: 42, width: 50, height: 50 };
+
+    expect(replaceImageSource(image(ids.canvasImage), picture)).toBe(false);
+    expect(image(ids.canvasImage).props.sourceId).toBe('old');
   });
 });
 
@@ -359,12 +393,12 @@ describe('"Replace" on the image toolbar', () => {
     } as unknown as ToolbarContext;
   }
 
-  it('is not offered without a host', () => {
+  it('is offered without a host (the file chooser stands in)', () => {
     const { store, ids, image } = editorStore();
     const action = imageReplaceToolbarAction(() => image(ids.pageImage));
     const when = action.when as (ctx: ToolbarContext) => boolean;
 
-    expect(when(ctxFor(store))).toBe(false);
+    expect(when(ctxFor(store))).toBe(true);
   });
 
   it('is offered with a host, on a writable document only', () => {

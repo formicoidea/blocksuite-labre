@@ -156,14 +156,24 @@ export function replaceShapeWithImage(
   return id;
 }
 
+/** Which shape takes the image's place: a rectangle unless told otherwise. */
+export type ReplacementShape = {
+  shapeType?: ShapeType;
+  /** The corner radius, a fraction of the box (the rounded rectangle's 0.1). */
+  radius?: number;
+};
+
 /**
- * Put a rectangle in place of `image`, at its box, rotation, depth and layer.
+ * Put a shape in place of `image` — a rectangle by default, or the
+ * `shapeType` and `radius` picked in « Replace with shape » (ADR 0044,
+ * amendment of 2026-10-27) — at its box, rotation, depth and layer.
  * The blob stays in the asset store (undo brings the image back, and other
  * pages may show it). Answers the new shape's id, or `null` when refused.
  */
 export function replaceImageWithShape(
   std: BlockStdScope,
-  image: ImageBlockModel
+  image: ImageBlockModel,
+  shape: ReplacementShape = {}
 ): string | null {
   const surface = surfaceOf(std);
   if (!surface || !canReplaceImageWithShape(std, image)) return null;
@@ -171,8 +181,8 @@ export function replaceImageWithShape(
 
   const props: Record<string, unknown> = {
     type: 'shape',
-    shapeType: ShapeType.Rect,
-    radius: 0,
+    shapeType: shape.shapeType ?? ShapeType.Rect,
+    radius: shape.radius ?? 0,
     xywh: image.xywh,
     rotate: image.props.rotate ?? 0,
     index: image.index,

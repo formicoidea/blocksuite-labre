@@ -125,3 +125,45 @@ content. Both commands are listed among the self-emitting ones of
   both models for a moment, never a dangling connector.
 - A framework that wants a picture in a notation slot needs its own decision;
   this gesture refuses roled shapes on purpose.
+
+## Amendments
+
+### 2026-10-27 — one « Replace » menu on a canvas image, a choice of shape, an image command
+
+The product owner's remark: replacing gave no choice. From a shape it could
+only be an image, from an image only a rectangle, and the image's own
+« Replace » (another picture) vanished without a host, which read as "the
+library is not reachable".
+
+- **One menu.** The canvas image toolbar draws ONE « Replace » menu button
+  (`editor-menu-button`, the crop menu's shape) where it drew two buttons
+  (`a.replace`, `a.replace-with-shape`). It keeps the id `a.replace`, so it
+  sits where « Replace » sat. Its entries: « Replace with image » and
+  « Replace with shape »; each shows only when its command would act
+  (`blocks/image/src/replace/toolbar.ts`).
+- **A choice of shape.** « Replace with shape » is a sub-menu listing the
+  shape tool's own shapes (`ShapeComponentConfig` of `@labre/affine-gfx-shape`:
+  names, icons and wordings), drawn with `renderPickerMenuItems`.
+  `canvas.image.replaceWithShape` takes two new optional params, `shapeType`
+  (the `ShapeType` enum) and `radius` (0 to 0.5 of the box, the rounded
+  rectangle's 0.1); absent, the v1 rectangle, so the palette and the agent
+  are unchanged. `replaceImageWithShape` takes them instead of hardcoding a
+  rectangle. `@labre/affine-block-image` now depends on
+  `@labre/affine-gfx-shape`; the reverse stays forbidden.
+- **An image command.** « Replace with image » on an image is
+  `canvas.image.replaceWithImage` (owner `core`, surfaces `contextual-toolbar`
+  and `palette`, not `agent`: a dialog is answered by a person). It swaps the
+  picture of the same block (same id, corner, width and caption, the height
+  follows the ratio, a crop is dropped; `replaceImageSource`), from the
+  host's `AssetPickerProvider` in `replace` mode when there is one, from the
+  system file chooser otherwise. The same helper (`pickImageSource`) serves
+  the shape's « Replace with image » and the PAGE toolbar's « Replace », which
+  is now offered without a host too. A locked image is refused; a captioned
+  one is not, since nothing it holds is dropped. It emits
+  `ElementReplaced { from: 'image', to: 'image' }` from its body (listed among
+  the self-emitting commands).
+- The shape toolbar keeps « Replace with image » as is and gains no shape
+  entry: « Switch shape type » already replaces a shape by another one.
+- Still no stored-format change: the shapes written are the ones the shape
+  tool writes (a polygon without `vertices` paints its default pentagon, as
+  after « Switch shape type »).
