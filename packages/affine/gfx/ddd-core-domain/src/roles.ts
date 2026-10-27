@@ -1,4 +1,7 @@
-import { CD_SUBDOMAINS, TEAM_TOPOLOGIES } from '@labre/affine-gfx-ddd-shared';
+import {
+  CD_SUBDOMAINS,
+  TEAM_TOPOLOGIES,
+} from '@labre/affine-gfx-ddd-shared/headless';
 import type { RoleDef, RoleDefs, RoleId } from '@labre/std/gfx';
 
 /**

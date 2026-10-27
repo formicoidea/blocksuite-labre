@@ -1,12 +1,11 @@
 import { backgroundSize, DefaultTool } from '@labre/affine-block-surface';
 import { ConnectorTool } from '@labre/affine-gfx-connector';
-import { LABEL_COLOR } from '@labre/affine-gfx-ddd-shared';
-import { ConnectorMode, PointStyle, StrokeStyle } from '@labre/affine-model';
-import { Bound } from '@labre/global/gfx';
+import { ConnectorMode } from '@labre/affine-model';
 import type { GfxController } from '@labre/std/gfx';
 
 import { EVENT_STORMING_BACKGROUND } from './background';
 import { ES_ROLE } from './roles';
+import { eventStormingBoardElement, eventStormingFlowStyle } from './toolbox';
 
 /**
  * Creation / activation actions for the Event Storming toolbox — the BEHAVIOUR
@@ -16,27 +15,18 @@ import { ES_ROLE } from './roles';
  * registry's `runCommand` (`docs/adr/0008`).
  */
 
-const FLOW_STROKE_WIDTH = 2;
-
 /** Create the board at the viewport centre, select it, return to the default tool. */
 export function createEventStormingBoard(gfx: GfxController): void {
   if (!gfx.surface) return;
   const { width, height } = backgroundSize(EVENT_STORMING_BACKGROUND);
   const { centerX, centerY } = gfx.viewport;
-  const id = gfx.surface.addElement({
-    type: EVENT_STORMING_BACKGROUND.type,
-    // The board is a first-class role: rules frame stickies against `es:board`,
-    // never against the `eventStorming` element type. The declaration owns it,
-    // so a templated board and a hand-drawn one agree.
-    role: EVENT_STORMING_BACKGROUND.role,
-    resizeEnabled: EVENT_STORMING_BACKGROUND.geometry.resizable,
-    xywh: new Bound(
-      centerX - width / 2,
-      centerY - height / 2,
-      width,
-      height
-    ).serialize(),
+  // The board's props come from the toolbox (`docs/adr/0045`), the one
+  // assembly a host with no editor also calls; the viewport centre is ours.
+  const { id: _local, ...props } = eventStormingBoardElement({
+    x: centerX - width / 2,
+    y: centerY - height / 2,
   });
+  const id = gfx.surface.addElement(props);
   gfx.doc.captureSync();
   gfx.tool.setTool(DefaultTool);
   gfx.selection.set({ elements: [id], editing: false });
@@ -72,16 +62,10 @@ export function activateEventStormingFlow(gfx: GfxController): void {
     mode: ConnectorMode.Straight,
     role: ES_ROLE.flow,
     // The look rides on the activation, never through the last-props store:
-    // the plain connector tool must keep the user's own style (#144 M1).
-    style: {
-      stroke: LABEL_COLOR,
-      strokeStyle: StrokeStyle.Solid,
-      strokeWidth: FLOW_STROKE_WIDTH,
-      frontEndpointStyle: PointStyle.None,
-      // The arrow points at what FOLLOWS, which is the target: the role's
-      // verb is "leads to", so the source is what happens first.
-      rearEndpointStyle: PointStyle.Arrow,
-    },
+    // the plain connector tool must keep the user's own style (#144 M1). It is
+    // the toolbox's (`eventStormingFlowStyle`, `docs/adr/0045`), so a flow
+    // drawn here and one built by a host look the same.
+    style: eventStormingFlowStyle(),
   });
   // The Event Storming palette stays open (native sub-menu behaviour): it only
   // closes on re-click of the senior button, another senior tool, or Escape.

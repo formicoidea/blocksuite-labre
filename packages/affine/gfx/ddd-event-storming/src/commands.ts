@@ -6,7 +6,6 @@ import {
   eventStormingToolbarIcon,
   LABEL_COLOR,
   placeDddElement,
-  STICKY_SIZE,
 } from '@labre/affine-gfx-ddd-shared';
 import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
 import {
@@ -23,6 +22,7 @@ import { svg, type TemplateResult } from 'lit';
 
 import { activateEventStormingFlow, createEventStormingBoard } from './actions';
 import { ES_ROLE, ES_STICKY_ROLE } from './roles';
+import { eventStormingStickyOpts } from './toolbox';
 
 /**
  * The automatic legend's own section titles — text stamped onto the board the
@@ -60,17 +60,6 @@ const diamondSwatch = (color: string) =>
   svg`<svg width="24" height="24" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" transform="rotate(45 12 12)" fill="${color}"/></svg>`;
 const flowSwatch = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M4 12 H18" stroke="currentColor" stroke-width="2"/><path d="M16 8 L20 12 L16 16" stroke="currentColor" stroke-width="2" fill="none"/></svg>`;
 const boardSwatch = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="4" width="19" height="16" rx="2" fill="${NOTATION_NEUTRALS.cardFill}" stroke="currentColor" stroke-width="1.6"/><rect x="5" y="7.5" width="4" height="4" rx="1" fill="#F5963B"/><rect x="10.5" y="7.5" width="4" height="4" rx="1" fill="#5BA3DB"/><rect x="16" y="7.5" width="4" height="4" rx="1" fill="#FAF2C9" stroke="#c9bd7f" stroke-width="0.6"/><path d="M4.5 16.5 H19.5" stroke="currentColor" stroke-width="1.2"/><path d="M17.5 14.8 L19.8 16.5 L17.5 18.2" stroke="currentColor" stroke-width="1.2"/></svg>`;
-
-/**
- * The aggregate is created BIG — 160 against the standard 120.
- *
- * Size is half of how the notation distinguishes it: on a real wall the
- * aggregate is the large pale sticky a run of commands lands on, and the
- * colour ladder in `ES_STICKIES` carries the other half. Declared here rather
- * than in the shared palette because it is a FORMAT, not a colour: the palette
- * says which yellow, the toolbox says how big.
- */
-const AGGREGATE_SIZE = 160;
 
 interface Spec {
   id: string;
@@ -112,24 +101,23 @@ const SPECS: Spec[] = [
       icon: squareSwatch(preset.fill),
       run: std =>
         placeDddElement(std, (surface, cx, cy) =>
-          addSticky(surface, std, cx, cy, {
-            fill: preset.fill,
-            text: preset.text,
-            // Translated HERE and once: the caption is document content the
-            // moment it lands (ADR 0023), so the host's catalogue is asked at
-            // placement and never again.
-            label: translateKey(
-              std,
-              esStickySeedKey(preset.kind),
-              preset.label
-            ),
-            size: preset.kind === 'aggregate' ? AGGREGATE_SIZE : STICKY_SIZE,
-            // The role is what makes a sticky a domain EVENT rather than an
-            // orange square: every rule in `rules.ts` reads it, and a sticky
-            // placed before WS5 carries none and is never evaluated
-            // (promesse #71).
-            role: ES_STICKY_ROLE[preset.kind],
-          })
+          addSticky(
+            surface,
+            std,
+            cx,
+            cy,
+            // Colours, size (the aggregate is bigger) and role come from the
+            // toolbox (`docs/adr/0045`), the one assembly a host with no
+            // editor also calls. A sticky placed before WS5 carries no role
+            // and is never evaluated (promesse #71).
+            eventStormingStickyOpts(
+              preset.kind,
+              // Translated HERE and once: the caption is document content the
+              // moment it lands (ADR 0023), so the host's catalogue is asked
+              // at placement and never again.
+              translateKey(std, esStickySeedKey(preset.kind), preset.label)
+            )
+          )
         ),
       // Row and command out of the SAME preset, so the colour ladder the legend
       // shows is by construction the colour ladder on the wall — and a tenth
@@ -149,20 +137,20 @@ const SPECS: Spec[] = [
     icon: diamondSwatch(ES_HOTSPOT.fill),
     run: std =>
       placeDddElement(std, (surface, cx, cy) =>
-        addSticky(surface, std, cx, cy, {
-          fill: ES_HOTSPOT.fill,
-          text: ES_HOTSPOT.text,
-          // Translated HERE and once, like every sticky above (ADR 0023).
-          label: translateKey(
-            std,
-            esStickySeedKey('hotspot'),
-            ES_HOTSPOT.label
-          ),
-          shapeType: 'diamond',
-          // Typed like the rest, and cited by no grammar triplet on purpose —
-          // an arc onto a hotspot is a question being parked. See `rules.ts`.
-          role: ES_STICKY_ROLE.hotspot,
-        })
+        addSticky(
+          surface,
+          std,
+          cx,
+          cy,
+          // A diamond, typed like the rest and cited by no grammar triplet on
+          // purpose — an arc onto a hotspot is a question being parked. See
+          // `rules.ts`. Translated HERE and once, like every sticky above
+          // (ADR 0023).
+          eventStormingStickyOpts(
+            'hotspot',
+            translateKey(std, esStickySeedKey('hotspot'), ES_HOTSPOT.label)
+          )
+        )
       ),
     // In its own preset, a diamond rather than a square, and therefore its own
     // row — appended after the eight by its `order` rather than by hand.

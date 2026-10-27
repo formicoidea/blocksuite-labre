@@ -1,5 +1,19 @@
 # @labre/affine-database-editor
 
+## 0.60.0
+
+### Patch Changes
+
+- @labre/affine-block-database@0.60.0
+- @labre/affine-components@0.60.0
+- @labre/data-view@0.60.0
+- @labre/affine-ext-loader@0.60.0
+- @labre/affine-shared@0.60.0
+- @labre/affine-widget-slash-menu@0.60.0
+- @labre/global@0.60.0
+- @labre/std@0.60.0
+- @labre/store@0.60.0
+
 ## 0.59.0
 
 ### Minor Changes

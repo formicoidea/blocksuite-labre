@@ -34,3 +34,13 @@ export {
   DddEventStormingViewExtension,
 } from './view.js';
 export { EVENT_STORMING_READING } from './reading.js';
+// The toolbar as pure builders (`docs/adr/0045`), also on `./interchange`.
+export { AGGREGATE_SIZE } from './sticky-size.js';
+export {
+  EVENT_STORMING_TOOLBOX,
+  eventStormingBoardElement,
+  eventStormingFlowElement,
+  eventStormingFlowStyle,
+  eventStormingStickyElements,
+  eventStormingStickyOpts,
+} from './toolbox.js';

@@ -2019,7 +2019,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/gfx/ddd-core-domain
         metadata {
           path 'packages/affine/gfx/ddd-core-domain'
-          files '22'
+          files '24'
         }
         core-domain = folder 'core-domain/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/gfx/ddd-core-domain/src/core-domain
@@ -2032,7 +2032,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/gfx/ddd-core-domain/src
           metadata {
             path 'packages/affine/gfx/ddd-core-domain/src'
-            files '14'
+            files '16'
           }
         }
         toolbar = folder 'toolbar/' {
@@ -2047,13 +2047,13 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/gfx/ddd-event-storming
         metadata {
           path 'packages/affine/gfx/ddd-event-storming'
-          files '22'
+          files '25'
         }
         src = folder 'src/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/gfx/ddd-event-storming/src
           metadata {
             path 'packages/affine/gfx/ddd-event-storming/src'
-            files '17'
+            files '20'
           }
         }
         toolbar = folder 'toolbar/' {
@@ -3864,7 +3864,7 @@ model {
   features.gfx.ddd-context-map -[uses]-> framework.global_ '1 import'
   features.gfx.ddd-context-map -[uses]-> framework.std '11 imports, 5 type-only'
   features.gfx.ddd-context-map -[uses]-> model_.model_ '5 imports, 2 type-only'
-  features.gfx.ddd-core-domain -[uses]-> features.blocks.surface '11 imports, 5 type-only'
+  features.gfx.ddd-core-domain -[uses]-> features.blocks.surface '12 imports, 5 type-only'
   features.gfx.ddd-core-domain -[uses]-> features.components '2 imports, 1 type-only'
   features.gfx.ddd-core-domain -[uses]-> features.ext-loader '1 import'
   features.gfx.ddd-core-domain -[uses]-> features.gfx.connector '1 import'
@@ -3876,12 +3876,12 @@ model {
   features.gfx.ddd-core-domain -[uses]-> features.widgets.edgeless-toolbar '2 imports'
   features.gfx.ddd-core-domain -[uses]-> framework.global_ '1 import'
   features.gfx.ddd-core-domain -[uses]-> framework.std '11 imports, 7 type-only'
-  features.gfx.ddd-core-domain -[uses]-> model_.model_ '5 imports, 2 type-only'
-  features.gfx.ddd-event-storming -[uses]-> features.blocks.surface '11 imports, 5 type-only'
+  features.gfx.ddd-core-domain -[uses]-> model_.model_ '6 imports, 2 type-only'
+  features.gfx.ddd-event-storming -[uses]-> features.blocks.surface '12 imports, 5 type-only'
   features.gfx.ddd-event-storming -[uses]-> features.components '2 imports, 1 type-only'
   features.gfx.ddd-event-storming -[uses]-> features.ext-loader '1 import'
   features.gfx.ddd-event-storming -[uses]-> features.gfx.connector '1 import'
-  features.gfx.ddd-event-storming -[uses]-> features.gfx.ddd-shared '9 imports'
+  features.gfx.ddd-event-storming -[uses]-> features.gfx.ddd-shared '10 imports'
   features.gfx.ddd-event-storming -[uses]-> features.gfx.pointer '1 import'
   features.gfx.ddd-event-storming -[uses]-> features.gfx.shape_ '1 import'
   features.gfx.ddd-event-storming -[uses]-> features.gfx.template '2 imports'
@@ -3889,7 +3889,7 @@ model {
   features.gfx.ddd-event-storming -[uses]-> features.widgets.edgeless-toolbar '2 imports'
   features.gfx.ddd-event-storming -[uses]-> framework.global_ '1 import'
   features.gfx.ddd-event-storming -[uses]-> framework.std '11 imports, 6 type-only'
-  features.gfx.ddd-event-storming -[uses]-> model_.model_ '5 imports, 2 type-only'
+  features.gfx.ddd-event-storming -[uses]-> model_.model_ '6 imports, 2 type-only'
   features.gfx.ddd-shared -[uses]-> features.blocks.surface '5 imports, 1 type-only'
   features.gfx.ddd-shared -[uses]-> features.gfx.group_ '1 import'
   features.gfx.ddd-shared -[uses]-> features.gfx.pointer '1 import'
@@ -6303,14 +6303,14 @@ model {
   features.gfx.ddd-core-domain.core-domain -[imports]-> features.blocks.surface.src '4 imports, 1 type-only'
   features.gfx.ddd-core-domain.core-domain -[imports]-> features.gfx.ddd-core-domain.src '1 import'
   features.gfx.ddd-core-domain.core-domain -[imports]-> features.gfx.ddd-shared.src '1 import'
-  features.gfx.ddd-core-domain.core-domain -[imports]-> features.shared.consts '1 import'
   features.gfx.ddd-core-domain.core-domain -[imports]-> features.shared.services '1 import, 1 type-only'
+  features.gfx.ddd-core-domain.core-domain -[imports]-> features.shared.src '1 import'
   features.gfx.ddd-core-domain.core-domain -[imports]-> model_.model_.src '3 imports, 2 type-only'
-  features.gfx.ddd-core-domain.src -[imports]-> features.blocks.surface.src '7 imports, 4 type-only'
+  features.gfx.ddd-core-domain.src -[imports]-> features.blocks.surface.src '8 imports, 4 type-only'
   features.gfx.ddd-core-domain.src -[imports]-> features.components.color-picker '1 import'
   features.gfx.ddd-core-domain.src -[imports]-> features.ext-loader.src '1 import'
   features.gfx.ddd-core-domain.src -[imports]-> features.gfx.connector.src '1 import'
-  features.gfx.ddd-core-domain.src -[imports]-> features.gfx.ddd-core-domain.core-domain '7 imports'
+  features.gfx.ddd-core-domain.src -[imports]-> features.gfx.ddd-core-domain.core-domain '8 imports'
   features.gfx.ddd-core-domain.src -[imports]-> features.gfx.ddd-core-domain.toolbar '5 imports'
   features.gfx.ddd-core-domain.src -[imports]-> features.gfx.ddd-shared.src '6 imports'
   features.gfx.ddd-core-domain.src -[imports]-> features.gfx.template.src '2 imports'
@@ -6319,26 +6319,27 @@ model {
   features.gfx.ddd-core-domain.src -[imports]-> framework.global_.gfx '1 import'
   features.gfx.ddd-core-domain.src -[imports]-> framework.std.gfx '5 imports, 3 type-only'
   features.gfx.ddd-core-domain.src -[imports]-> framework.std.src '6 imports, 4 type-only'
-  features.gfx.ddd-core-domain.src -[imports]-> model_.model_.src '2 imports'
+  features.gfx.ddd-core-domain.src -[imports]-> model_.model_.src '3 imports'
   features.gfx.ddd-core-domain.toolbar -[imports]-> features.components.color-picker '1 import, 1 type-only'
   features.gfx.ddd-core-domain.toolbar -[imports]-> features.gfx.ddd-shared.src '2 imports'
   features.gfx.ddd-core-domain.toolbar -[imports]-> features.gfx.pointer.src '1 import'
   features.gfx.ddd-core-domain.toolbar -[imports]-> features.gfx.shape_.src '1 import'
   features.gfx.ddd-core-domain.toolbar -[imports]-> features.shared.services '1 import, 1 type-only'
   features.gfx.ddd-core-domain.toolbar -[imports]-> features.widgets.edgeless-toolbar.src '2 imports'
-  features.gfx.ddd-event-storming.src -[imports]-> features.blocks.surface.src '10 imports, 5 type-only'
+  features.gfx.ddd-event-storming.src -[imports]-> features.blocks.surface.src '11 imports, 5 type-only'
   features.gfx.ddd-event-storming.src -[imports]-> features.components.color-picker '1 import'
   features.gfx.ddd-event-storming.src -[imports]-> features.ext-loader.src '1 import'
   features.gfx.ddd-event-storming.src -[imports]-> features.gfx.connector.src '1 import'
   features.gfx.ddd-event-storming.src -[imports]-> features.gfx.ddd-event-storming.toolbar '6 imports'
-  features.gfx.ddd-event-storming.src -[imports]-> features.gfx.ddd-shared.src '7 imports'
+  features.gfx.ddd-event-storming.src -[imports]-> features.gfx.ddd-shared.src '8 imports'
   features.gfx.ddd-event-storming.src -[imports]-> features.gfx.template.src '2 imports'
-  features.gfx.ddd-event-storming.src -[imports]-> features.shared.consts '3 imports'
+  features.gfx.ddd-event-storming.src -[imports]-> features.shared.consts '2 imports'
   features.gfx.ddd-event-storming.src -[imports]-> features.shared.services '2 imports'
+  features.gfx.ddd-event-storming.src -[imports]-> features.shared.src '1 import'
   features.gfx.ddd-event-storming.src -[imports]-> framework.global_.gfx '1 import'
   features.gfx.ddd-event-storming.src -[imports]-> framework.std.gfx '5 imports, 3 type-only'
   features.gfx.ddd-event-storming.src -[imports]-> framework.std.src '5 imports, 3 type-only'
-  features.gfx.ddd-event-storming.src -[imports]-> model_.model_.src '4 imports, 2 type-only'
+  features.gfx.ddd-event-storming.src -[imports]-> model_.model_.src '5 imports, 2 type-only'
   features.gfx.ddd-event-storming.toolbar -[imports]-> features.blocks.surface.src '1 import'
   features.gfx.ddd-event-storming.toolbar -[imports]-> features.components.color-picker '1 import, 1 type-only'
   features.gfx.ddd-event-storming.toolbar -[imports]-> features.gfx.ddd-shared.src '2 imports'

@@ -184,4 +184,19 @@ The Context Map ships one too, `CONTEXT_MAP_TOOLBOX` on
 built by `@formicoidea/labre-ddd-shared/headless`, the editor-free entry of the
 DDD boards' shared bundle, which a server installs beside the framework.
 
+Event Storming ships `EVENT_STORMING_TOOLBOX` on
+`@formicoidea/labre-framework-ddd-event-storming/interchange`, built the same
+way: item ids being the sticky kinds (`domain-event`, `command`, `aggregate`…,
+`external-system`, `hotspot`) plus `board`, the one link id `flow`. A sticky
+comes back as its shadow, its face carrying the role and the words
+(`{ name: 'Order placed' }`, or the toolbar's seed) and their group; a flow
+attaches to the face, `<local>:face`.
+
+The Core Domain Chart ships `CORE_DOMAIN_TOOLBOX` on
+`@formicoidea/labre-framework-ddd-core-domain/interchange`, from the same
+shared builders: item ids `chart`, the five sub-domain dots (`big-bet`,
+`platform`, `outsourced`, `bc-current`, `bc-future`) and the three Team
+Topologies markers (`collaboration`, `xaas`, `facilitating`), each dot and
+marker captioned by its `name` slot; link id `movement`.
+
 Next: [07-upgrade.md](07-upgrade.md).

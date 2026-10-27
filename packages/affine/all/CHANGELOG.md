@@ -1,5 +1,104 @@
 # @labre/affine
 
+## 0.60.0
+
+### Minor Changes
+
+- c0e7767: BPMN's toolbar can now be used without an editor (ADR 0045). `@formicoidea/labre-framework-bpmn/interchange` exports `BPMN_TOOLBOX`, the list of the toolbar's items (the pool, every event, activity, gateway, data shape, the text annotation and the group, and the sequence flow, message flow and association links), each with a pure builder that returns the elements the toolbar places: an event, a gateway or a data shape as the bare symbol, its `bpmn:label` text and their group; an activity, the annotation or the group as one element carrying its name; a pool with the lanes it is given; a flow connector in its tool's line. A host with no editor (a server, an MCP tool) writes them with `surface.addElement` or the import materializer and gets the same elements as a user. The builders are also exported from the package index as `bpmnNodeElements`, `bpmnPoolElement` and `bpmnFlowElement`, with the `BpmnNodeTexts` and `BpmnPoolTexts` types; the toolbar actions and the BPMN XML importer now share them.
+- 0da6aab: C4's toolbar can now be used without an editor (ADR 0045). `@formicoidea/labre-framework-c4/interchange` exports `C4_TOOLBOX`, the list of the toolbar's items (board, every component kind, the two boundaries, the relationship), each with a pure builder that returns the elements the toolbar places: a component's shape, its three written tiers and their group, a board, a boundary, a relationship connector. A host with no editor (a server, an MCP tool) writes them with `surface.addElement` or the import materializer and gets the same elements as a user. The builders are also exported from the package index as `c4NodeElements`, `c4BoardElement`, `c4BoundaryElement` and `c4RelationshipElement`; the toolbar actions now call them. `@formicoidea/labre-core/interchange` exports the `FrameworkToolbox`, `ToolboxItem`, `ToolboxLink` and `ToolboxPoint` types, and `@formicoidea/labre-core/model/headless` now exports `C4_BOARD_TITLE_BAND_HEIGHT`.
+- 67f58c7: The Cynefin and estuarine toolbar can now be used without an editor (ADR 0045). `@formicoidea/labre-framework-cynefin` gains an `./interchange` entry exporting `CYNEFIN_ESTUARINE_TOOLBOX`, the list of the toolbar's items (the Cynefin framework background, the estuarine map, the constraint hexagon), each with a pure builder that returns the element the toolbar places; the hexagon takes an optional name, written as its inner text. A host with no editor (a server, an MCP tool) writes them with `surface.addElement` or the import materializer and gets the same elements as a user. The builders are also exported from the package index as `cynefinElement`, `estuarineMapElement` and `constraintHexagonElement`; the toolbar actions now call them.
+- b56685c: The Context Map's toolbar can now be used without an editor (ADR 0045, amendment of 2026-10-27). `@formicoidea/labre-framework-ddd-context-map/interchange` is a new entry exporting `CONTEXT_MAP_TOOLBOX` (the board, the bounded context, the cloud and the nine relationship patterns, each with a pure builder) and the builders `contextMapBoardElement`, `contextMapContextElement`, `contextMapSystemElements`, `contextMapRelationshipElement` and `contextMapRelationshipStyle`, also exported from the package index. `@formicoidea/labre-ddd-shared/headless` is a new entry carrying the DDD tables and the pure element builders `stickyElements`, `bubbleElement`, `dotElements`, `markerElements`, `cloudElements`, `dddConnectorElement` and `dddShapeElement`; the prefabs (`addSticky`, `addBubble`, `addDot`, `addMarker`, `addCloud`, `addConnector`) now write what they return, and the package index exports them with the types `StickyOpts`, `MarkerOpts`, `DddConnectorEnd` and `DddConnectorOpts`. `@formicoidea/labre-core/interchange` now exports `LABEL_COLOR`, `LABEL_FONT` and `LABEL_FONT_SIZE`.
+- b39b319: The Core Domain Chart's toolbar can now be used without an editor (ADR 0045). `@formicoidea/labre-framework-ddd-core-domain/interchange` is a new entry exporting `CORE_DOMAIN_TOOLBOX` (the chart, the five sub-domain dots, the three Team Topologies markers and the movement over time, each with a pure builder) and the builders `coreDomainChartElement`, `coreDomainSubdomainElements`, `coreDomainMarkerElements`, `coreDomainMovementElement` and `coreDomainMovementStyle`, also exported from the package index. The dots and markers are built by the shared `dotElements` and `markerElements` of `@formicoidea/labre-ddd-shared/headless`, the very builders the palette's prefabs write.
+- f3894fa: Event Storming's toolbar can now be used without an editor (ADR 0045). `@formicoidea/labre-framework-ddd-event-storming/interchange` is a new entry exporting `EVENT_STORMING_TOOLBOX` (the board, the eight colour-coded stickies and the hotspot, each with a pure builder, and the flow as its one link) and the builders `eventStormingBoardElement`, `eventStormingStickyElements`, `eventStormingStickyOpts`, `eventStormingFlowElement` and `eventStormingFlowStyle`, with `AGGREGATE_SIZE`, all also exported from the package index. The stickies are built by `stickyElements` from `@formicoidea/labre-ddd-shared/headless`, the builder the palette's prefab writes, and the toolbar's board, stickies and flow now read their props from the same builders, so nothing stored changes.
+- 3c4db02: EDGY's toolbar can now be used without an editor (ADR 0045). `@formicoidea/labre-framework-edgy` gains an `./interchange` entry exporting `EDGY_TOOLBOX`, the list of the toolbar's items (the facets background, the board, People, Outcome, Object, Activity, the relation), each with a pure builder that returns the elements the toolbar places: a facets background with its three names, a board, a box carrying its name, People's glyph, name and their group, a relation connector. "EDGY dynamic" is not an item: it inserts a template snapshot. A host with no editor (a server, an MCP tool) writes them with `surface.addElement` or the import materializer and gets the same elements as a user. The builders are also exported from the package index as `edgyFacetsElement`, `edgyBoardElement`, `edgyBoxElement`, `edgyPeopleElements` and `edgyRelationElement`, with `EDGY_FACETS_SIZE` and `EDGY_PEOPLE_SIZE`; the toolbar actions now call them.
+- af5756a: UML's toolbar can now be used without an editor (ADR 0045). `@formicoidea/labre-framework-uml/interchange` exports `UML_TOOLBOX`, the list of the toolbar's items that place elements (the diagram frame, the subject, the partition, the region, the combined fragment and the interaction use, every one of the 38 node kinds, and the 20 relationships as links), each with a pure builder that returns the elements the toolbar places: a classifier as its shape, its name, attributes and operations compartments and their group; a glyph as its shape, its one word and their group; a mark (an initial node, a fork…) as the shape alone; a frame with its role, kind or operator; a relationship connector in its tool's line. A host with no editor (a server, an MCP tool) writes them with `surface.addElement` or the import materializer and gets the same elements as a user. The builders are also exported from the package index as `umlNodeElements`, `umlFrameElement` and `umlRelationElement`, with the `UmlNodeTexts` and `UmlFrameOptions` types and the `UML_FRAME_SEED` table; the assembly they share with the PlantUML, XMI and draw.io readers is exported as `umlArtefactElements`, `umlFrameProps`, `umlConnectorProps` and `UML_FRAME_BOX` (with `UmlTierTexts`, `UmlArtefactPart`, `UmlFrameType`), and the body compartment's seed as `umlBodySeed`. The toolbar actions, the edge tools and the readers now share them.
+- dbb08c3: Wardley's toolbar can now be used without an editor (ADR 0045). `@formicoidea/labre-framework-wardley/interchange` exports `WARDLEY_TOOLBOX`, the list of the toolbar's items (the four map backgrounds, component, component + method, market, ecosystem, anchor, pipeline, inertia, Porter's forces, accelerator, decelerator, rectangular area) and its two links (dependency, evolution arrow), each with a pure builder that returns the elements the toolbar places: a node with its `wardley:label` name and their group, the market's dots and triangle, the pipeline's handle and nested groups, the Porter circle with its letter and four arrows. The builders are also exported from the package index as `wardleyMapElement`, `wardleyNodeElements`, `wardleyMarketElements`, `wardleyPipelineElements`, `wardleyPorterElements`, `wardleyInertiaElement`, `wardleyAreaElement`, `wardleyDependencyElement` and `wardleyChangeArrowElement`, with the `WardleyMapTexts` and `WardleyNodeItemKind` types; `WARDLEY_AXIS_SEED` is now exported too. The toolbar actions and the OWM reader's links now call them. The polygon area is a drawing tool and is not in the toolbox.
+
+### Patch Changes
+
+- @labre/affine-block-attachment@0.60.0
+- @labre/affine-block-bookmark@0.60.0
+- @labre/affine-block-callout@0.60.0
+- @labre/affine-block-code@0.60.0
+- @labre/affine-block-data-view@0.60.0
+- @labre/affine-block-database@0.60.0
+- @labre/affine-block-divider@0.60.0
+- @labre/affine-block-edgeless-text@0.60.0
+- @labre/affine-block-embed@0.60.0
+- @labre/affine-block-embed-doc@0.60.0
+- @labre/affine-block-frame@0.60.0
+- @labre/affine-block-image@0.60.0
+- @labre/affine-block-latex@0.60.0
+- @labre/affine-block-list@0.60.0
+- @labre/affine-block-note@0.60.0
+- @labre/affine-block-paragraph@0.60.0
+- @labre/affine-block-root@0.60.0
+- @labre/affine-block-surface@0.60.0
+- @labre/affine-block-surface-ref@0.60.0
+- @labre/affine-block-table@0.60.0
+- @labre/affine-components@0.60.0
+- @labre/data-view@0.60.0
+- @labre/affine-database-editor@0.60.0
+- @labre/affine-ext-loader@0.60.0
+- @labre/affine-foundation@0.60.0
+- @labre/affine-fragment-adapter-panel@0.60.0
+- @labre/affine-fragment-doc-title@0.60.0
+- @labre/affine-fragment-frame-panel@0.60.0
+- @labre/affine-fragment-outline@0.60.0
+- @labre/affine-gfx-bpmn@0.60.0
+- @labre/affine-gfx-brush@0.60.0
+- @labre/affine-gfx-c4@0.60.0
+- @labre/affine-gfx-connector@0.60.0
+- @labre/affine-gfx-cynefin-estuarine@0.60.0
+- @labre/affine-gfx-ddd-aggregate@0.60.0
+- @labre/affine-gfx-ddd-context-map@0.60.0
+- @labre/affine-gfx-ddd-core-domain@0.60.0
+- @labre/affine-gfx-ddd-event-storming@0.60.0
+- @labre/affine-gfx-ddd-shared@0.60.0
+- @labre/affine-gfx-edgy@0.60.0
+- @labre/affine-gfx-group@0.60.0
+- @labre/affine-gfx-link@0.60.0
+- @labre/affine-gfx-mindmap@0.60.0
+- @labre/affine-gfx-note@0.60.0
+- @labre/affine-gfx-pointer@0.60.0
+- @labre/affine-gfx-shape@0.60.0
+- @labre/affine-gfx-template@0.60.0
+- @labre/affine-gfx-text@0.60.0
+- @labre/affine-gfx-turbo-renderer@0.60.0
+- @labre/affine-gfx-uml@0.60.0
+- @labre/affine-gfx-wardley@0.60.0
+- @labre/affine-inline-comment@0.60.0
+- @labre/affine-inline-footnote@0.60.0
+- @labre/affine-inline-latex@0.60.0
+- @labre/affine-inline-link@0.60.0
+- @labre/affine-inline-mention@0.60.0
+- @labre/affine-inline-preset@0.60.0
+- @labre/affine-inline-reference@0.60.0
+- @labre/affine-model@0.60.0
+- @labre/affine-rich-text@0.60.0
+- @labre/affine-shared@0.60.0
+- @labre/affine-widget-drag-handle@0.60.0
+- @labre/affine-widget-edgeless-auto-connect@0.60.0
+- @labre/affine-widget-edgeless-dragging-area@0.60.0
+- @labre/affine-widget-edgeless-selected-rect@0.60.0
+- @labre/affine-widget-edgeless-toolbar@0.60.0
+- @labre/affine-widget-edgeless-zoom-toolbar@0.60.0
+- @labre/affine-widget-frame-title@0.60.0
+- @labre/affine-widget-keyboard-toolbar@0.60.0
+- @labre/affine-widget-linked-doc@0.60.0
+- @labre/affine-widget-note-slicer@0.60.0
+- @labre/affine-widget-page-dragging-area@0.60.0
+- @labre/affine-widget-remote-selection@0.60.0
+- @labre/affine-widget-scroll-anchoring@0.60.0
+- @labre/affine-widget-slash-menu@0.60.0
+- @labre/affine-widget-thread-marks@0.60.0
+- @labre/affine-widget-toolbar@0.60.0
+- @labre/affine-widget-viewport-overlay@0.60.0
+- @labre/global@0.60.0
+- @labre/std@0.60.0
+- @labre/store@0.60.0
+- @labre/sync@0.60.0
+
 ## 0.59.0
 
 ### Minor Changes
