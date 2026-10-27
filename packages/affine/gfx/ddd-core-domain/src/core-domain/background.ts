@@ -3,8 +3,11 @@ import type {
   BackgroundTextStyle,
   FrameworkBackgroundDef,
 } from '@labre/affine-block-surface';
-import { CD_SUBDOMAINS, FONT_FAMILY } from '@labre/affine-gfx-ddd-shared';
-import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
+import {
+  CD_SUBDOMAINS,
+  FONT_FAMILY,
+} from '@labre/affine-gfx-ddd-shared/headless';
+import { NOTATION_NEUTRALS } from '@labre/affine-shared/headless';
 
 import { CORE_DOMAIN_ROLE } from '../roles';
 
