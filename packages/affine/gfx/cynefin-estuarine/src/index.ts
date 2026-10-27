@@ -12,3 +12,10 @@ export {
   type EstuarineRoleId,
 } from './estuarine/roles';
 export { ESTUARINE_READING } from './estuarine/reading';
+// The toolbar as pure builders (`docs/adr/0045`), also on `./interchange`.
+export {
+  constraintHexagonElement,
+  CYNEFIN_ESTUARINE_TOOLBOX,
+  cynefinElement,
+  estuarineMapElement,
+} from './toolbox.js';
