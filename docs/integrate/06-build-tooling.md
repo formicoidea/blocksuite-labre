@@ -162,4 +162,11 @@ and their group, an activity as one element; a flow attaches to the symbol,
 `<local>:node`; a pool takes its lanes one name per line (`{ name: 'Client',
 lanes: 'Sales\nOps' }`).
 
+Wardley ships `WARDLEY_TOOLBOX` on `@formicoidea/labre-framework-wardley/interchange`:
+one component added to an existing map is `component.build(at, { name })`, a
+node, its `wardley:label` name and their group; the market, the pipeline and
+Porter's forces come with their own wiring. The polygon area is a drawing tool
+and is not in it; a rectangular area comes out on top, and sending it under
+the components it covers is the caller's (the editor does it on placement).
+
 Next: [07-upgrade.md](07-upgrade.md).

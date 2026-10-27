@@ -97,6 +97,22 @@ export {
   wardleySafeFilename,
 } from './export';
 export { wardleyBoardFrom } from './export-board';
+// The toolbar as pure builders (`docs/adr/0045`), also on `./interchange`.
+export {
+  WARDLEY_AXIS_SEED,
+  WARDLEY_TOOLBOX,
+  wardleyAreaElement,
+  wardleyChangeArrowElement,
+  wardleyDependencyElement,
+  wardleyInertiaElement,
+  wardleyMapElement,
+  type WardleyMapTexts,
+  wardleyMarketElements,
+  type WardleyNodeItemKind,
+  wardleyNodeElements,
+  wardleyPipelineElements,
+  wardleyPorterElements,
+} from './toolbox.js';
 export { importWardleyOwm } from './import';
 // The SVG reader that recognises a map (ADR 0032), pure for the same reason:
 // labre-mcp calls the very function the command does.
