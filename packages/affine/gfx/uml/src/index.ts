@@ -38,6 +38,9 @@ export * from './operators.js';
 export * from './presets.js';
 export * from './reading.js';
 export * from './roles.js';
+// The toolbar as pure builders (`docs/adr/0045`), also on `./interchange`:
+// every item that places elements, for a host with no editor.
+export * from './toolbox.js';
 
 /* ── What a finished diagram is HELD TO: the rule pack and its two levels ─ */
 export * from './profiles.js';

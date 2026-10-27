@@ -159,4 +159,14 @@ and their group, an activity as one element; a flow attaches to the symbol,
 `<local>:node`; a pool takes its lanes one name per line (`{ name: 'Client',
 lanes: 'Sales\nOps' }`).
 
+UML ships `UML_TOOLBOX` on `@formicoidea/labre-framework-uml/interchange`, item
+ids being the node kinds (`class`, `use-case`, `lifeline`…) plus `diagram`,
+`subject`, `partition`, `region`, `fragment` and `interaction-use`, link ids the
+relationships (`composition`, `message-sync`…). A classifier comes back as the
+shape, its compartments and their group, its members one per line
+(`{ name: 'Order', attributes: '+ id : OrderId', operations: '+ pay()' }`); an
+empty compartment stays empty, an absent one takes the toolbar's seed. A link
+attaches to the shape, `<local>:shape`. The PlantUML, XMI and draw.io readers
+write an artefact through the same assembly.
+
 Next: [07-upgrade.md](07-upgrade.md).

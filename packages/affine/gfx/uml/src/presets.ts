@@ -1,4 +1,6 @@
+import type { SerializedElementProps } from '@labre/affine-block-surface/interchange';
 import {
+  ConnectorMode,
   FontFamily,
   FontStyle,
   FontWeight,
@@ -10,16 +12,29 @@ import {
 import type { UmlNodeKind } from '@labre/affine-model';
 import { Bound } from '@labre/global/gfx';
 
-import type { UmlBox } from './component.js';
 import {
+  type UmlBox,
+  umlCompartmentBoxes,
+  umlLabelRoleOf,
+} from './component.js';
+import {
+  UML_BODY_FONT_SIZE,
   UML_CARD,
+  UML_DIAGRAM_BOX,
+  UML_EDGE_WIDTH,
+  UML_FRAGMENT_BOX,
   UML_INK,
   UML_NAME_FONT_SIZE,
   UML_NODE_BOX,
   UML_NODE_RADIUS,
   UML_NODE_STROKE_WIDTH,
+  UML_PARTITION_BOX,
+  UML_REGION_BOX,
+  UML_SUBJECT_BOX,
 } from './consts.js';
-import { UML_ROLE_OF_KIND } from './roles.js';
+import { UML_EDGE_STYLE, type UmlEdgeRole } from './edge-styles.js';
+import { UML_UNLABELLED_KINDS } from './keywords.js';
+import { UML_ROLE, UML_ROLE_OF_KIND } from './roles.js';
 
 /**
  * What a UML shape IS, as props — the ONE description the creation site, the
@@ -368,4 +383,225 @@ export function umlNameDecoration(
   kind: UmlNodeKind
 ): TextDecoration | undefined {
   return kind === 'object' ? TextDecoration.Underline : undefined;
+}
+
+/* ── The whole artefact: shape, tiers, group ──────────────────────────── */
+
+/**
+ * The glyph kinds whose one tier is a `uml:name` rather than a `uml:label`.
+ *
+ * The line between the two is drawn by `roles.ts` and it is not about having a
+ * rectangle: `uml:name` is the tier a KEYWORD may be written on and the grammar
+ * reads back, `uml:label` is a name and nothing else. So:
+ *
+ *  - a **package** name is a namespace, parseable and qualified (§12.2.4), and a
+ *    **note**'s text is what the exporter writes as the comment's body;
+ *  - the three **deployment cubes** are named INSIDE their front face, over a
+ *    keyword line — `«device»`, `«executionEnvironment»` (§19.4.4) — which is
+ *    exactly what a name compartment is for. It is also load-bearing rather than
+ *    tidy: the morph's `afterMorph` rewrites `uml:name` and only that, so a cube
+ *    labelled instead of named would morph into a device that never said so.
+ *
+ * Everything else here carries a LABEL: a port's word sits beside a 16-unit
+ * square and the two interface marks' beside a ball and a socket, none of them
+ * inside anything, and none of them ever carrying a keyword.
+ *
+ * Written once, here, since {@link umlArtefactElements} became the one assembly
+ * (`docs/adr/0045`): the toolbar and the importers each used to keep a copy.
+ */
+const NAMED_GLYPH_KINDS: ReadonlySet<UmlNodeKind> = new Set<UmlNodeKind>([
+  'package',
+  'note',
+  'node',
+  'device',
+  'execution-environment',
+]);
+
+/** The words of an artefact, tier by tier, written exactly as given. */
+export interface UmlTierTexts {
+  name: string;
+  /** The second compartment, one member per line; `''` when absent. */
+  attributes?: string;
+  /** The third compartment, one member per line; `''` when absent. */
+  operations?: string;
+}
+
+/** The elements of one artefact, as {@link umlArtefactElements} names them. */
+export type UmlArtefactPart =
+  | 'shape'
+  | 'name'
+  | 'attributes'
+  | 'operations'
+  | 'group';
+
+/**
+ * One UML artefact in `box`, as the elements a document holds: the shape, the
+ * tiers its kind is worth, and the group that makes them one thing, LAST.
+ *
+ * The ONE assembly of an artefact (`docs/adr/0045`): the toolbar's actions
+ * (through the toolbox, `toolbox.ts`), a host with no editor (the same
+ * toolbox) and every importer (`umlElementsFromModel`, `import.ts`) write
+ * through here, so a class drawn by hand, one placed by a host and one read
+ * out of a `.puml` file are the same five elements, down to the stroke width.
+ * What differs between them is what they pass: where the box is, the words
+ * (the toolbar's seeds, a host's texts, the file's own), and the ids.
+ *
+ * ## How many tiers is the LAYOUT's answer, not this function's
+ *
+ * A tier is written for each box {@link umlCompartmentBoxes} returns and for
+ * no other: a class gets name, attributes and operations; an object, a
+ * component, an artifact and a state a name over one body tier; a glyph its
+ * one word, placed against its picture. A mark the notation draws no word on
+ * ({@link UML_UNLABELLED_KINDS}) is the SHAPE alone, and therefore no group
+ * either: a group of one element is a wrapper a user would have to descend
+ * through to reach the mark it holds.
+ *
+ * ## The name tier
+ *
+ * `uml:name` on a divided box and on the five {@link NAMED_GLYPH_KINDS};
+ * otherwise the kind's label role ({@link umlLabelRoleOf}: a lifeline's head
+ * is `uml:lifeline-ident`, every other single word `uml:label`). Bold on a
+ * divided box only, where it is the heading; read LEFT on a note, which holds
+ * a sentence rather than a title (Annex A); underlined on an instance
+ * ({@link umlNameDecoration}). A compartment of features is a list of
+ * signatures and is read down its left edge (§9.5.4).
+ *
+ * ## Ids
+ *
+ * `id(part)` is asked once per element, in painting order — shape, name,
+ * attributes, operations, group — and only for the elements written: the
+ * importer mints its `uml-import-<n>` names in that order, the toolbox
+ * prefixes a local name.
+ */
+export function umlArtefactElements(
+  kind: UmlNodeKind,
+  box: UmlBox,
+  tiers: UmlTierTexts,
+  id: (part: UmlArtefactPart) => string
+): SerializedElementProps[] {
+  const shape = {
+    // NO `text`: the words are the tiers below, and the shape is a body and
+    // nothing else (R16).
+    ...umlNodeProps(kind, {
+      xywh: new Bound(box.x, box.y, box.w, box.h).serialize(),
+    }),
+    id: id('shape'),
+  };
+  if (UML_UNLABELLED_KINDS.has(kind)) return [shape];
+
+  const boxes = umlCompartmentBoxes(kind, box.x, box.y, box.w, box.h);
+  const compartmented = boxes.attributes !== undefined;
+  const members: SerializedElementProps[] = [
+    shape,
+    {
+      ...umlTextProps(
+        compartmented || NAMED_GLYPH_KINDS.has(kind)
+          ? UML_ROLE.name
+          : umlLabelRoleOf(kind),
+        boxes.name,
+        {
+          fontSize: UML_NAME_FONT_SIZE,
+          align: kind === 'note' ? TextAlign.Left : TextAlign.Center,
+          ...(compartmented ? { bold: true } : {}),
+          decoration: umlNameDecoration(kind),
+        }
+      ),
+      id: id('name'),
+      text: tiers.name,
+    },
+  ];
+  for (const [part, role, tierBox] of [
+    ['attributes', UML_ROLE.attributes, boxes.attributes],
+    ['operations', UML_ROLE.operations, boxes.operations],
+  ] as const) {
+    if (!tierBox) continue;
+    members.push({
+      ...umlTextProps(role, tierBox, {
+        fontSize: UML_BODY_FONT_SIZE,
+        align: TextAlign.Left,
+      }),
+      id: id(part),
+      text: tiers[part] ?? '',
+    });
+  }
+  return [
+    ...members,
+    {
+      type: 'group',
+      id: id('group'),
+      // A plain record is a legal `children`: the group's own `propsToY` takes
+      // the KEYS. No title, deliberately: the group renderer paints one only
+      // while the artefact is selected, and a package announcing itself as
+      // "Group 3" above its own name is a label nobody wrote.
+      children: Object.fromEntries(members.map(m => [m.id, true])),
+    },
+  ];
+}
+
+/* ── The frames ───────────────────────────────────────────────────────── */
+
+/** The five background elements a UML diagram is drawn on and in. */
+export type UmlFrameType =
+  | 'umlDiagram'
+  | 'umlSubject'
+  | 'umlPartition'
+  | 'umlRegion'
+  | 'umlFragment';
+
+/** The box each frame is created at, by the toolbar and the importers. */
+export const UML_FRAME_BOX: Readonly<
+  Record<UmlFrameType, { readonly w: number; readonly h: number }>
+> = {
+  umlDiagram: UML_DIAGRAM_BOX,
+  umlSubject: UML_SUBJECT_BOX,
+  umlPartition: UML_PARTITION_BOX,
+  umlRegion: UML_REGION_BOX,
+  umlFragment: UML_FRAGMENT_BOX,
+};
+
+/** The role each frame carries — one table, read by every creation site. */
+const UML_FRAME_ROLE: Readonly<Record<UmlFrameType, string>> = {
+  umlDiagram: UML_ROLE.diagram,
+  umlSubject: UML_ROLE.subject,
+  umlPartition: UML_ROLE.partition,
+  umlRegion: UML_ROLE.region,
+  umlFragment: UML_ROLE.fragment,
+};
+
+/**
+ * A frame's props: its type, its role, the fields the caller states (a name, a
+ * diagram's kind, a fragment's operator…) and its box. The toolbox and the
+ * importers both write a frame through here, so the role a frame is born with
+ * is the one table above.
+ */
+export function umlFrameProps(
+  type: UmlFrameType,
+  box: { xywh: string },
+  fields: Record<string, unknown>
+): SerializedElementProps {
+  return { type, role: UML_FRAME_ROLE[type], ...fields, xywh: box.xywh };
+}
+
+/* ── The relationships ────────────────────────────────────────────────── */
+
+/**
+ * One UML relationship, as the props `surface.addElement` takes, ends left to
+ * the caller: the role, the STRAIGHT mode, the ink and the line
+ * {@link UML_EDGE_STYLE} says the relationship looks like.
+ *
+ * The edge tools arm the connector with it (`activateUmlEdge`), the toolbox
+ * builds a host's connector from it and the importers draw a file's
+ * relations through it, so the three are one line. STRAIGHT, always: a class
+ * diagram is a graph, not a process laid out in lanes, and the elbows of an
+ * orthogonal router would read as a route through the diagram nobody drew.
+ */
+export function umlConnectorProps(edge: UmlEdgeRole) {
+  return {
+    type: 'connector' as const,
+    role: UML_ROLE[edge],
+    mode: ConnectorMode.Straight,
+    stroke: UML_INK,
+    strokeWidth: UML_EDGE_WIDTH,
+    ...UML_EDGE_STYLE[edge],
+  };
 }
