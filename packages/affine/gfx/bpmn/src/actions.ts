@@ -36,7 +36,6 @@ import { BPMN_POOL_BACKGROUND } from './background.js';
 
 import {
   BPMN_EDGE_STYLE,
-  bpmnLabelMode,
   LANE_NAME_FALLBACK,
   LANE_NAME_KEY,
   NODE_LABEL,
@@ -44,6 +43,8 @@ import {
   NODE_SIZE,
   POOL_NAME_FALLBACK,
   POOL_NAME_KEY,
+  POOL_REF_HEIGHT,
+  POOL_REF_WIDTH,
 } from './consts';
 import {
   BPMN_FORMAT_ID,
@@ -59,13 +60,8 @@ import {
   bpmnBoardFrom,
   bpmnSafeFilename,
 } from './interchange.js';
-import {
-  bpmnLabelBoxFor,
-  bpmnLabelProps,
-  bpmnNodeProps,
-  bpmnPoolProps,
-} from './presets.js';
 import { BPMN_ROLE } from './roles';
+import { bpmnNodeElements, bpmnPoolElement } from './toolbox.js';
 
 /**
  * Standalone creation/activation actions for the BPMN toolbox — lifted out of
@@ -112,33 +108,38 @@ export function createBpmnNode(std: BlockStdScope, kind: BpmnNodeKind) {
 
   const { w, h } = NODE_SIZE[kind];
   const { centerX: cx, centerY: cy } = gfx.viewport;
-  // Translated HERE and once: the caption is document content the moment it
-  // lands, so the host's catalogue is asked at placement and never again
-  // (`nodeLabelKey`, and #183 on why a French board should not start in
-  // English).
-  const seed = NODE_LABEL[kind]
-    ? translateKey(std, nodeLabelKey(kind), NODE_LABEL[kind])
-    : undefined;
-  const external = bpmnLabelMode(kind) === 'external';
-
-  // What a node IS lives in one place (`./presets.ts`), because the importer
-  // creates the same artefacts out of a `.bpmn` file and the two must not
-  // drift: a task read from a file and a task drawn here are one element type
-  // in the document, down to the stroke width. The gesture owns the BOX and
-  // nothing else.
-  const id = surface.addElement(
-    bpmnNodeProps(kind, {
-      xywh: new Bound(cx - w / 2, cy - h / 2, w, h).serialize(),
-      text: external ? undefined : seed,
-    })
+  // The elements come from the ONE assembly a host with no editor also calls
+  // (`toolbox.ts`, `docs/adr/0045`), on the presets the importer reads too
+  // (`presets.ts`): a task drawn here, one read from a `.bpmn` file and one a
+  // host places are one element type in the document, down to the stroke
+  // width. What only an editor has stays here: the viewport centre, and the
+  // caption translated HERE and once (`nodeLabelKey`, and #183 on why a French
+  // board should not start in English).
+  const elements = bpmnNodeElements(
+    kind,
+    { x: cx - w / 2, y: cy - h / 2 },
+    { name: translateKey(std, nodeLabelKey(kind), NODE_LABEL[kind]) }
   );
-  if (!external || seed === undefined) {
-    finish(gfx, id);
-    return;
+  const minted = new Map<string, string>();
+  for (const { id: local, ...props } of elements) {
+    if (props.type === 'group') {
+      // Through the native group command and not `addElement`: the group's
+      // seed title is numbered against the groups already on the board, and
+      // its user layer is its highest member's (ADR 0031) — both the editor's.
+      const children = Object.keys(props.children as Record<string, true>);
+      finish(
+        gfx,
+        group(
+          gfx,
+          children.map(child => minted.get(child) ?? child)
+        )
+      );
+      return;
+    }
+    minted.set(local as string, surface.addElement(props));
   }
-  const { x, y } = bpmnLabelBoxFor(kind, cx, cy);
-  const labelId = surface.addElement(bpmnLabelProps(seed, x, y));
-  finish(gfx, group(gfx, [id, labelId]));
+  const id = minted.get(`${kind}:node`);
+  if (id) finish(gfx, id);
 }
 
 /** Create a pool (background container) centred on the viewport. */
@@ -147,26 +148,23 @@ export function createBpmnPool(std: BlockStdScope) {
   const surface = gfx.surface;
   if (!surface) return;
 
-  const w = 560;
-  const h = 200;
   const { centerX: cx, centerY: cy } = gfx.viewport;
-  // What a pool IS lives in one place (`./presets.ts`), beside what a node is
-  // and for the same reason: the shipped cards build their participants from it
-  // too, so a pool laid out by a template and one dropped from the toolbox
-  // cannot say different things. The gesture owns the BOX and nothing else.
+  // What a pool IS lives in one place (`bpmnPoolElement`, `toolbox.ts`, over
+  // `bpmnPoolProps`), beside what a node is and for the same reason: the
+  // shipped cards and a host build their participants from it too, so a pool
+  // laid out by a template, one a host places and one dropped from the toolbox
+  // cannot say different things. The gesture owns the centre and nothing else.
   //
   // The NAME is the one exception, and it is written HERE rather than left to
   // the model's default (`BpmnPoolElementModel.name = 'Pool'`, a red-zone
   // field: a document created before this key existed keeps its literal
   // 'Pool' verbatim). Resolved at placement and never again — content from
   // the moment it lands, exactly like a node's caption.
-  const id = surface.addElement(
-    bpmnPoolProps({
-      xywh: new Bound(cx - w / 2, cy - h / 2, w, h).serialize(),
-      name: translateKey(std, POOL_NAME_KEY, POOL_NAME_FALLBACK),
-    })
+  const { id: _local, ...props } = bpmnPoolElement(
+    { x: cx - POOL_REF_WIDTH / 2, y: cy - POOL_REF_HEIGHT / 2 },
+    { name: translateKey(std, POOL_NAME_KEY, POOL_NAME_FALLBACK) }
   );
-  finish(gfx, id);
+  finish(gfx, surface.addElement(props));
 }
 
 /**

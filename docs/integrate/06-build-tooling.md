@@ -137,7 +137,8 @@ should cap the file's size itself (the editor applies `FileSizeLimitProvider`).
 The same `./interchange` subpaths carry a framework's TOOLBOX when it has one
 (ADR 0045): every toolbar item as a pure builder that returns the elements the
 toolbar places, in the contract a reader's result follows (local ids, a group
-after its members). C4 ships one:
+after its members). C4 and EDGY ship one (`EDGY_TOOLBOX` holds every item
+but the "EDGY dynamic" template, which inserts a snapshot). C4's:
 
 ```ts
 import { C4_TOOLBOX } from '@formicoidea/labre-framework-c4/interchange';
@@ -152,6 +153,12 @@ const elements = container?.build(
 
 A builder places one item where it is told and writes the texts it is given or
 the English seed; layout and translation stay with the caller.
+
+BPMN ships `BPMN_TOOLBOX` on `@formicoidea/labre-framework-bpmn/interchange`:
+an event, a gateway or a data shape comes back as the symbol, its `bpmn:label`
+and their group, an activity as one element; a flow attaches to the symbol,
+`<local>:node`; a pool takes its lanes one name per line (`{ name: 'Client',
+lanes: 'Sales\nOps' }`).
 
 Wardley ships `WARDLEY_TOOLBOX` on `@formicoidea/labre-framework-wardley/interchange`:
 one component added to an existing map is `component.build(at, { name })`, a

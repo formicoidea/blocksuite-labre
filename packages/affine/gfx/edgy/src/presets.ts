@@ -1,9 +1,12 @@
+import type { EdgyNodeKind } from '@labre/affine-model';
+// Values from the headless entry, never the model index: the toolbox
+// (`toolbox.ts`, `docs/adr/0045`) builds on these presets from the
+// editor-free `./interchange` entry.
 import {
-  type EdgyNodeKind,
   FontFamily,
   ShapeStyle,
   TextAlign,
-} from '@labre/affine-model';
+} from '@labre/affine-model/headless';
 import { Bound } from '@labre/global/gfx';
 
 import {
@@ -43,6 +46,12 @@ export type EdgyBoxKind = 'outcome' | 'object' | 'activity';
  * used to spell the same `1.5` out a second time.
  */
 export const FACETS_SCALE = 1.5;
+
+/** Default blank-board size. */
+export const EDGY_BOARD_SIZE = { w: 1600, h: 1000 } as const;
+
+/** Stroke width the 24 template relations are drawn with. */
+export const RELATION_STROKE_WIDTH = 2;
 
 /**
  * An EDGY node, as props.

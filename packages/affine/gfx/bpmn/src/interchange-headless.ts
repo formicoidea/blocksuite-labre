@@ -117,3 +117,14 @@ export const BPMN_SVG_IMPORT: InterchangeImportCapability = {
   direction: 'import',
   run: parseSvgSketch,
 };
+
+// The toolbar as pure builders (`docs/adr/0045`): what a host with no editor
+// places to draw the very elements a user places from the toolbar.
+export {
+  BPMN_TOOLBOX,
+  bpmnFlowElement,
+  bpmnNodeElements,
+  type BpmnNodeTexts,
+  bpmnPoolElement,
+  type BpmnPoolTexts,
+} from './toolbox.js';

@@ -54,6 +54,15 @@ export {
   type BpmnNodePreset,
   NODE_PRESETS,
 } from './presets.js';
+// The toolbar as pure builders (`docs/adr/0045`), also on `./interchange`.
+export {
+  BPMN_TOOLBOX,
+  bpmnFlowElement,
+  bpmnNodeElements,
+  type BpmnNodeTexts,
+  bpmnPoolElement,
+  type BpmnPoolTexts,
+} from './toolbox.js';
 // What an artefact may BECOME: the declared families, and the spec the generic
 // morph module is registered with. Data a host can read without an editor.
 export { BPMN_MORPH_FAMILIES, BPMN_MORPH_SPEC } from './morph.js';
