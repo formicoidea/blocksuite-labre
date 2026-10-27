@@ -13,6 +13,13 @@ import { BpmnPoolView } from '../element-view';
  * can land on one when the board is small on screen. Neither is a selection
  * zone — picking asks the MODEL, which knows only the painted geometry — so
  * they are declared on the VIEW, which is what the pointer router consults.
+ *
+ * A third joined them when the title bands started to GROW with their names
+ * (`fit: 'wrap'`, PO 2026-10-27): the model selects by the DECLARED band widths,
+ * because `affine-model` cannot measure text, so the part of a band a long name
+ * widened is reachable only through the view. This spec would catch a rename
+ * double-click on the outer line of a long name falling through to the flow
+ * area.
  */
 
 const W = 560;
@@ -26,7 +33,7 @@ const LANES = [
 
 const PICK = { hitThreshold: 10, zoom: 1 };
 
-function setup(props: { lanes?: typeof LANES } = {}) {
+function setup(props: { lanes?: typeof LANES; name?: string } = {}) {
   const model = {
     id: 'pool',
     deserializedXYWH: [0, 0, W, H],
@@ -36,6 +43,7 @@ function setup(props: { lanes?: typeof LANES } = {}) {
     h: H,
     rotate: 0,
     lanes: props.lanes,
+    name: props.name,
     isLocked: () => false,
     // The real model's answer, called through the very prototype the document
     // uses — border band, participant band, lane strip.
@@ -106,5 +114,16 @@ describe('where a BPMN pool answers the pointer', () => {
     expect(at(view, 300, 100)).toBe(false);
     // …while the participant band is still there to be renamed.
     expect(at(view, 14, 100)).toBe(true);
+  });
+
+  it('hears the rename on a participant band a long name has widened', () => {
+    // Past the zoom-grown target a short name gets at zoom 1 (44 units, capped
+    // at twice the declared 28): only a band that GREW reaches x = 60.
+    const long = Array.from(
+      { length: 4 },
+      () => 'Supplier onboarding office'
+    ).join(' ');
+    expect(at(setup({ name: 'Customer' }), 60, 100)).toBe(false);
+    expect(at(setup({ name: long }), 60, 100)).toBe(true);
   });
 });

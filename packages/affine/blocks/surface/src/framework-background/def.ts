@@ -140,11 +140,34 @@ export interface BackgroundTextDef extends BackgroundLabelSource {
    * between the anchor and the card's edges along the text's direction, minus
    * a small padding, ending with "…" (`ellipsis.ts`). Opt-in, because the
    * frameworks that do not ask for it have exact-drawing tests and labels that
-   * are meant to overhang. Named consumer: the BPMN participant name, written
-   * up a one-line band where a long name used to run out of the pool.
+   * are meant to overhang.
+   *
+   * `'wrap'` breaks the words into lines over the same room and stacks them
+   * ACROSS the text's direction, at most {@link maxLines}, the last one cut
+   * with "…" if the words still do not fit. It is honoured on a SIDE BAND's
+   * label ({@link BackgroundSideBandDef}), whose band then grows to hold the
+   * lines (`backgroundBandWidths`); any other text has no band to grow and
+   * treats `'wrap'` as `'ellipsis'`. Named consumer: the BPMN participant name,
+   * written up its band, which thickens as the name needs more lines (PO,
+   * 2026-10-27) rather than cutting it as PR #532 did.
+   *
+   * Append-only, like every enum-like value a declaration states.
    */
-  fit?: 'ellipsis';
+  fit?: 'ellipsis' | 'wrap';
+  /**
+   * Under `fit: 'wrap'`, the most lines the words may take before the last one
+   * is cut with "…". Defaults to {@link DEFAULT_BACKGROUND_WRAP_MAX_LINES}.
+   * Ignored by every other fit.
+   */
+  maxLines?: number;
 }
+
+/**
+ * How many lines a `fit: 'wrap'` label takes when its declaration names no
+ * `maxLines`: enough for a sentence-long name, few enough that a pasted
+ * paragraph does not turn a title band into a column.
+ */
+export const DEFAULT_BACKGROUND_WRAP_MAX_LINES = 3;
 
 /** One graduation on an axis. */
 export interface BackgroundTickDef {
@@ -284,7 +307,10 @@ export interface BackgroundInstanceZoneItem {
  * wrong.
  */
 export interface BackgroundInstanceZoneBandDef {
-  /** Strip thickness in FIXED model units — across the stacking direction. */
+  /**
+   * Strip thickness in FIXED model units — across the stacking direction. The
+   * MINIMUM thickness under a `fit: 'wrap'` label, which may grow it.
+   */
   width: number;
   /** The line between the strip and the rest of the zone. Absent means none. */
   divider?: BackgroundStroke;
@@ -357,9 +383,24 @@ export interface BackgroundInstanceZonesDef {
      * `'ellipsis'` cuts a name longer than its room — the strip's length under
      * a band, the zone's width from the inset under the corner — and ends it
      * with "…", as {@link BackgroundTextDef.fit} does. Absent draws the name
-     * whole. Named consumer: the BPMN lane title, a one-line strip.
+     * whole.
+     *
+     * `'wrap'` breaks a name into lines stacked across the strip, at most
+     * {@link maxLines}, and every strip of the instance grows to the SAME
+     * thickness: the one its most demanding name needs, never less than
+     * {@link BackgroundInstanceZoneBandDef.width} (`backgroundBandWidths`). One
+     * thickness, because strips of different widths would stagger the lanes'
+     * leading edges and read as lanes nested at different depths. Band
+     * placement only: the corner placement has no strip to grow and treats
+     * `'wrap'` as `'ellipsis'`. Named consumer: the BPMN lane title (PO,
+     * 2026-10-27).
      */
-    fit?: 'ellipsis';
+    fit?: 'ellipsis' | 'wrap';
+    /**
+     * Under `fit: 'wrap'`, the most lines a name may take. Defaults to
+     * {@link DEFAULT_BACKGROUND_WRAP_MAX_LINES}.
+     */
+    maxLines?: number;
   };
   /**
    * Prefix of the reported zone ids: `'lane'` reports `lane:sales`.
@@ -423,6 +464,17 @@ export interface BackgroundSurfaceDef {
  * declaration state a different thickness would be two numbers that must agree
  * and one day will not. An element smaller than its own margin clamps the band
  * to the element, which is the only case where the two can disagree.
+ *
+ * ## A band that grows with its label
+ *
+ * Under a `fit: 'wrap'` label the declared margin is the MINIMUM thickness:
+ * the band grows to `lines × line height + 2 × padding` when the words need
+ * more lines than it holds, and the plot gives up the extra room with it.
+ * Derived at paint time from the measured words, never stored — the one
+ * resolver is `backgroundBandWidths`, and the renderer, the label hit boxes
+ * and a framework's own hit tests all read the margin it returns. The label
+ * keeps its offset from the MIDDLE of the band, so a label centred in the
+ * declared band stays centred in the grown one.
  *
  * A band is part of the CARD, not a layer over it: it is painted over the
  * card's fill and under its border, so the frame keeps outlining the whole
@@ -540,13 +592,22 @@ export const DEFAULT_BACKGROUND_SURFACE: BackgroundSurfaceDef = {
   fill: NOTATION_NEUTRALS.cardFill,
 };
 
-/** The plot rectangle of a background of size `w × h`, in element-local units. */
+/**
+ * The plot rectangle of a background of size `w × h`, in element-local units.
+ *
+ * `margin` defaults to the DECLARED one. The painted chrome — the renderer, the
+ * label hit boxes, a framework's own hit tests — passes the margin
+ * `backgroundBandWidths` resolved instead, which a wrapped band label may have
+ * grown. The semantic readers (facts, audit, rules, interchange exports) keep
+ * the declared plot: where an artefact sits in a frame is a question about the
+ * frame, and its answer must not change because somebody renamed it.
+ */
 export function backgroundPlot(
   def: FrameworkBackgroundDef,
   w: number,
-  h: number
+  h: number,
+  margin: BackgroundInset = def.geometry.margin
 ) {
-  const { margin } = def.geometry;
   const x0 = margin.left;
   const y0 = margin.top;
   const x1 = w - margin.right;
@@ -724,19 +785,25 @@ export interface BackgroundRect {
  * Clamped to the plot, the way a side band clamps to an element narrower than
  * its own margin ({@link BackgroundSideBandDef}) — the same degenerate case,
  * and the same answer.
+ *
+ * `bandWidth` defaults to the DECLARED strip width; the painted chrome passes
+ * the one `backgroundBandWidths` resolved, which a wrapped name may have grown
+ * — and which is the same for every zone of the instance.
  */
 export function backgroundInstanceZoneBand(
   def: FrameworkBackgroundDef,
   zone: BackgroundInstanceZone,
-  plot: ReturnType<typeof backgroundPlot>
+  plot: ReturnType<typeof backgroundPlot>,
+  bandWidth?: number
 ): BackgroundRect | null {
   const spec = def.instanceZones;
   const band = spec?.label?.band;
   if (spec === undefined || band === undefined) return null;
-  if (!(band.width > 0)) return null;
+  const thickness = bandWidth ?? band.width;
+  if (!(thickness > 0)) return null;
 
   if (spec.stack === 'y') {
-    const width = Math.min(band.width, plot.width);
+    const width = Math.min(thickness, plot.width);
     if (!(width > 0)) return null;
     return {
       x: plot.x0,
@@ -745,7 +812,7 @@ export function backgroundInstanceZoneBand(
       h: zone.rect.h * plot.height,
     };
   }
-  const height = Math.min(band.width, plot.height);
+  const height = Math.min(thickness, plot.height);
   if (!(height > 0)) return null;
   return {
     x: plot.x0 + zone.rect.x * plot.width,

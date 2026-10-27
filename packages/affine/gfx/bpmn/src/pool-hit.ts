@@ -1,8 +1,10 @@
 import {
+  backgroundBandWidths,
   type BackgroundRect,
   backgroundInstanceZoneBand,
   backgroundInstanceZones,
   backgroundPlot,
+  measureBackgroundText,
 } from '@labre/affine-block-surface';
 
 import { BPMN_POOL_BACKGROUND } from './background.js';
@@ -18,8 +20,18 @@ import { POOL_LANE_GRAB } from './consts.js';
  *
  * Every box is derived from `backgroundInstanceZones` /
  * `backgroundInstanceZoneBand` — the same two functions the renderer paints
- * from and the audit reports from. Nothing here restates a coordinate, so a
- * target cannot drift away from the thing it is a target for.
+ * from and the audit reports from — at the band widths `backgroundBandWidths`
+ * resolves, the one resolver the renderer sizes the bands with. A long name
+ * WIDENS its band (it wraps onto more lines), and the rename target widens with
+ * it: a double-click on the second line of a participant name is a
+ * double-click on that name. Measured with `measureBackgroundText`, the same
+ * metrics the canvas paints with wherever a document exists. Nothing here
+ * restates a coordinate, so a target cannot drift away from the thing it is a
+ * target for.
+ *
+ * The model's own `includesPoint` (`affine-model`, headless, no text
+ * measurement) still selects by the DECLARED widths; the grown part of a band
+ * answers the pool's gestures through the view, which asks these functions.
  *
  * ponytail: a ROTATED pool is not accounted for — the caller converts by
  * subtraction, so every box assumes an upright pool. Same reserve
@@ -28,10 +40,26 @@ import { POOL_LANE_GRAB } from './consts.js';
  * `-model.rotate` about the element centre, in the caller that has the element.
  */
 
-/** What these functions need of a pool: its box and its lanes. */
+/**
+ * What these functions need of a pool: its box, its lanes and its name — the
+ * name and the lane names size the bands.
+ */
 export interface BpmnPoolGeometry {
   deserializedXYWH: readonly number[];
   lanes?: unknown;
+  name?: unknown;
+}
+
+/** The pool's bands as painted: the margin and strip width the names need. */
+export function bpmnPoolLayout(model: BpmnPoolGeometry) {
+  const [, , w, h] = model.deserializedXYWH;
+  return backgroundBandWidths(
+    BPMN_POOL_BACKGROUND,
+    model as unknown as Readonly<Record<string, unknown>>,
+    w,
+    h,
+    measureBackgroundText
+  );
 }
 
 /** A lane band and, when the declaration asks for one, its title strip. */
@@ -49,7 +77,8 @@ export interface BpmnPoolBands {
 /** The lane bands of this pool, or `null` when it has no usable partition. */
 export function bpmnPoolBands(model: BpmnPoolGeometry): BpmnPoolBands | null {
   const [, , w, h] = model.deserializedXYWH;
-  const plot = backgroundPlot(BPMN_POOL_BACKGROUND, w, h);
+  const layout = bpmnPoolLayout(model);
+  const plot = backgroundPlot(BPMN_POOL_BACKGROUND, w, h, layout.margin);
   if (!(plot.width > 0) || !(plot.height > 0)) return null;
 
   const zones = backgroundInstanceZones(
@@ -63,7 +92,12 @@ export function bpmnPoolBands(model: BpmnPoolGeometry): BpmnPoolBands | null {
     bands: zones.map(zone => ({
       top: plot.y0 + zone.rect.y * plot.height,
       height: zone.rect.h * plot.height,
-      strip: backgroundInstanceZoneBand(BPMN_POOL_BACKGROUND, zone, plot),
+      strip: backgroundInstanceZoneBand(
+        BPMN_POOL_BACKGROUND,
+        zone,
+        plot,
+        layout.zoneBandWidth
+      ),
     })),
   };
 }
@@ -161,10 +195,10 @@ export function bpmnInPoolTitleBand(
   zoom: number
 ): boolean {
   const [, , w, h] = model.deserializedXYWH;
-  const plot = backgroundPlot(BPMN_POOL_BACKGROUND, w, h);
-  // The band IS the margin, clamped to a pool narrower than its own margin —
-  // the same degenerate case the renderer clamps.
-  const painted = Math.min(plot.x0, w);
+  // The band IS the margin — as wide as the wrapped name needs — clamped to a
+  // pool narrower than its own margin, the same degenerate case the renderer
+  // clamps.
+  const painted = Math.min(bpmnPoolLayout(model).margin.left, w);
   if (!(painted > 0)) return false;
   // Grown rightwards, capped at twice the margin: past that lies the lane
   // strip, which has its own claim on those units — see `bpmnPoolTargetAt`.

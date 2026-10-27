@@ -43,7 +43,15 @@ import { BPMN_ROLE } from './roles';
  *
  * The left margin IS the name band: `margin.left` is both the room the flow
  * area gives up and the width of the strip the participant name is written in
- * (see `BackgroundSideBandDef`).
+ * (see `BackgroundSideBandDef`) — its MINIMUM width. The name WRAPS up the band
+ * (`fit: 'wrap'`), on words, into as many as three lines side by side, and the
+ * band thickens to hold them: one line fits the declared 28 units, every
+ * further line adds one line height. The PO preferred this to the ellipsis cut
+ * PR #532 shipped (2026-10-27): a band that grows with its name reads as a
+ * title, a name cut short reads as a bug. A name past three lines is still cut
+ * with "…" on the last one, so a pasted paragraph does not eat the pool. The
+ * thickness is derived at paint time (`backgroundBandWidths`) and never
+ * stored, and the stored name stays whole.
  *
  * ## The lanes
  *
@@ -60,6 +68,10 @@ import { BPMN_ROLE } from './roles';
  *
  * Each lane wears its own title band inside the pool's — a narrower strip, no
  * fill, one divider, the name turned on its side, exactly as BPMN 2.0 draws it.
+ * A lane name wraps the same way, up to two lines, and every lane's strip takes
+ * the thickness the most demanding name needs (PO, 2026-10-27): strips of
+ * different widths would stagger the lanes' leading edges, and lanes of one
+ * pool are siblings, so they share one edge.
  * The strip is CHROME inside the lane and not a smaller lane: a task dropped on
  * a lane's title band is in that lane, because in BPMN the band belongs to it.
  */
@@ -118,10 +130,13 @@ export const BPMN_POOL_BACKGROUND: FrameworkBackgroundDef = {
         // pool is the same stroke, so the lanes read as the frame continued.
         divider: { color: '@frame', width: POOL_FRAME_WIDTH },
       },
-      // One line in a 24-unit strip: a name longer than its lane is cut with
-      // an ellipsis rather than run into the next lane. The stored name stays
+      // Wrapped across the strip, which grows to hold the lines — every lane's
+      // strip to the same thickness. Two lines at most: a lane title is a
+      // label, and past two a third line would cost the flow area more than
+      // the name gains; past that it is cut with "…". The stored name stays
       // whole, and the rename editor shows it in full.
-      fit: 'ellipsis',
+      fit: 'wrap',
+      maxLines: 2,
       style: {
         size: POOL_LANE_NAME_FONT_SIZE,
         color: '@name',
@@ -174,10 +189,12 @@ export const BPMN_POOL_BACKGROUND: FrameworkBackgroundDef = {
           },
           // Read bottom-to-top, as the spec draws a vertical pool name.
           vertical: true,
-          // One line in a 28-unit band: a name longer than the pool is cut
-          // with an ellipsis rather than run out of the frame. The stored name
-          // stays whole.
-          fit: 'ellipsis',
+          // Wrapped up the band, which grows to hold the lines (three at
+          // most, the last cut with "…" if the name is longer still). The
+          // anchor stays half the DECLARED width in from the plot edge; the
+          // primitive keeps it in the middle of the grown band.
+          fit: 'wrap',
+          maxLines: 3,
         },
       },
     ],

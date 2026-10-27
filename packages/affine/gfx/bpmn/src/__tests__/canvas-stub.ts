@@ -162,10 +162,10 @@ export function recordingCtx() {
       });
     }),
     createLinearGradient: vi.fn(() => ({ addColorStop: () => {} })),
-    // The pool's names are cut to their band (`fit: 'ellipsis'`), which
+    // The pool's names are fitted to their band (`fit: 'wrap'`), which
     // measures them. A fixed 6 units per code point: narrow enough that every
-    // name these specs write fits, deterministic so none depends on a font.
-    // The cut itself is asserted with real metrics in the browser spec.
+    // name these specs write fits one line, deterministic so none depends on a font.
+    // The wrap itself is asserted with real metrics in the browser spec.
     measureText: vi.fn((text: string) => ({
       width: Array.from(text).length * 6,
     })),

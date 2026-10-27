@@ -11,6 +11,7 @@ import { GfxControllerIdentifier } from '@labre/std/gfx';
 
 import type { BpmnLaneFocusHolder } from './actions.js';
 import { BPMN_POOL_BACKGROUND } from './background';
+import { bpmnPoolLayout } from './pool-hit.js';
 
 /**
  * The pool as the framework-background primitive paints it.
@@ -70,7 +71,14 @@ export const bpmnPool: ElementRenderer<BpmnPoolElementModel> = (
   if (!id) return;
 
   const [, , w, h] = model.deserializedXYWH;
-  const plot = backgroundPlot(BPMN_POOL_BACKGROUND, w, h);
+  // The outline hugs the flow area as PAINTED, i.e. right of a participant
+  // band a long name may have widened.
+  const plot = backgroundPlot(
+    BPMN_POOL_BACKGROUND,
+    w,
+    h,
+    bpmnPoolLayout(model).margin
+  );
   const prefix = BPMN_POOL_BACKGROUND.instanceZones?.idPrefix ?? 'lane';
   const zone = backgroundInstanceZones(
     BPMN_POOL_BACKGROUND,

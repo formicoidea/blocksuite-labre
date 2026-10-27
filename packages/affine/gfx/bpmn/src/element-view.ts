@@ -185,9 +185,14 @@ export class BpmnPoolView
    * - the internal LANE SEPARATORS, twelve-unit strips in the middle of the
    *   flow area, which arm the drag that moves them;
    * - the zoom-GROWN rename targets, which reach past the painted bands when
-   *   the board is small on screen so a fingertip can still land on one.
+   *   the board is small on screen so a fingertip can still land on one;
+   * - the part of a title band a long name has WIDENED past its declared
+   *   width (the name wraps onto more lines and the band grows with it,
+   *   `backgroundBandWidths`). The model selects by the declared widths, since
+   *   it cannot measure text; the rename double-click must still land on every
+   *   line painted, so `pool-hit.ts` aims at the band as painted.
    *
-   * Neither is a selection zone — a click in the flow area still goes to
+   * None is a selection zone — a click in the flow area still goes to
    * whatever the user dropped there, because picking asks the MODEL. This
    * override only decides where the pool's own gestures are heard, which is why
    * it is declared here, beside the code that draws and handles them, rather

@@ -299,8 +299,8 @@ function stub() {
     rotate: vi.fn(() => {
       rotated = true;
     }),
-    // Six units a character: the ellipsis cut (`fit: 'ellipsis'`) measures
-    // before it draws, and the names below all fit their band.
+    // Six units a character: the band fit (`fit: 'wrap'`) measures before it
+    // draws, and the names below all fit their band on one line.
     measureText: vi.fn((text: string) => ({ width: text.length * 6 })),
     fillText: vi.fn((text: string, x: number, y: number) => {
       fonts.push(ctx.font);
