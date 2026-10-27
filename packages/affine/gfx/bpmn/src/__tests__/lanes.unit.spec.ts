@@ -26,6 +26,7 @@ import {
   bpmnLaneTitleBandAt,
   bpmnPoolBands,
   bpmnPoolTargetAt,
+  cachePaintedBands,
 } from '../pool-hit';
 import {
   POOL_BAND_WIDTH,
@@ -313,6 +314,30 @@ describe('lane title strips that grow with their names', () => {
     expect(bpmnPoolTargetAt(model, [x, 150], 10)).toEqual({
       kind: 'lane',
       index: 1,
+    });
+  });
+
+  it('caches the band widths only when they changed', () => {
+    // One guard for both writers (renderer and view): a `@local()` write
+    // repaints, so an equal write must not happen at all.
+    const model: { paintedBands?: { margin: number; zoneBandWidth: number } } =
+      {};
+    const margin = { ...BPMN_POOL_BACKGROUND.geometry.margin, left: 46 };
+
+    expect(cachePaintedBands(model, { margin, zoneBandWidth: 42 })).toBe(true);
+    const first = model.paintedBands;
+    expect(first).toEqual({ margin: 46, zoneBandWidth: 42 });
+
+    expect(cachePaintedBands(model, { margin, zoneBandWidth: 42 })).toBe(false);
+    expect(model.paintedBands).toBe(first);
+
+    // No strip declared resolves to the declared lane width.
+    expect(cachePaintedBands(model, { margin, zoneBandWidth: undefined })).toBe(
+      true
+    );
+    expect(model.paintedBands).toEqual({
+      margin: 46,
+      zoneBandWidth: POOL_LANE_BAND_WIDTH,
     });
   });
 

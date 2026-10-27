@@ -20,8 +20,17 @@ import { POOL_LANE_MIN_HEIGHT } from './consts.js';
 import {
   bpmnLaneBoundaryAt,
   bpmnPoolBands,
+  bpmnPoolMeasuredLayout,
   bpmnPoolTargetAt,
+  cachePaintedBands,
 } from './pool-hit.js';
+
+/**
+ * The props whose change moves a title band: the names it is sized by, and the
+ * box whose height a name wraps along. `paintedBands` itself is NOT here — the
+ * cache's own write must never re-enter the code that writes it.
+ */
+const BAND_PROPS = new Set(['name', 'lanes', 'xywh']);
 
 /**
  * View for a BPMN pool. Three direct gestures live here:
@@ -112,6 +121,18 @@ export class BpmnPoolView
 
   override onCreated(): void {
     super.onCreated();
+    // Picking asks the MODEL, which selects by `paintedBands`. The renderer
+    // writes it after each paint, but a hidden tab never paints and the first
+    // click can come before the first frame: the view measures it now, and
+    // again whenever a band can have moved, so picking never waits for a
+    // frame. One measure per update; the renderer's write after the next
+    // paint lands on the same numbers and writes nothing.
+    this._refreshPaintedBands();
+    this.disposable.add(
+      this.model.propsUpdated.subscribe(({ key }) => {
+        if (BAND_PROPS.has(key)) this._refreshPaintedBands();
+      })
+    );
     this.on('dblclick', e => this._onDblClick(e));
     this.on('pointermove', e => this._updateHover(e));
     this.on('pointerdown', e => {
@@ -128,6 +149,10 @@ export class BpmnPoolView
         this._setFocus(null);
       })
     );
+  }
+
+  private _refreshPaintedBands(): void {
+    cachePaintedBands(this.model, bpmnPoolMeasuredLayout(this.model));
   }
 
   override onDestroyed(): void {

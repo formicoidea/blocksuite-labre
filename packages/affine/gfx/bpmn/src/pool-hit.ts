@@ -9,7 +9,7 @@ import {
 } from '@labre/affine-block-surface';
 
 import { BPMN_POOL_BACKGROUND } from './background.js';
-import { POOL_LANE_GRAB } from './consts.js';
+import { POOL_LANE_BAND_WIDTH, POOL_LANE_GRAB } from './consts.js';
 
 /**
  * Where a pointer is on a pool, in ELEMENT-LOCAL model units.
@@ -73,6 +73,18 @@ export function bpmnPoolLayout(model: BpmnPoolGeometry): {
       zoneBandWidth: painted.zoneBandWidth,
     };
   }
+  return bpmnPoolMeasuredLayout(model);
+}
+
+/**
+ * The pool's bands MEASURED now, from its name and lanes, ignoring any cache:
+ * what the view writes into `paintedBands` before the first paint and after
+ * every change that moves a band.
+ */
+export function bpmnPoolMeasuredLayout(model: BpmnPoolGeometry): {
+  margin: BackgroundInset;
+  zoneBandWidth: number | undefined;
+} {
   const [, , w, h] = model.deserializedXYWH;
   return backgroundBandWidths(
     BPMN_POOL_BACKGROUND,
@@ -81,6 +93,30 @@ export function bpmnPoolLayout(model: BpmnPoolGeometry): {
     h,
     measureBackgroundText
   );
+}
+
+/**
+ * Write the band widths into the model's `paintedBands` cache — the one place
+ * that does, for both writers: the renderer after each paint (the measured
+ * truth on the canvas) and the view on creation and on every change that moves
+ * a band, so picking never waits for a frame (a hidden tab never paints).
+ *
+ * Writes ONLY when a width changed and returns whether it wrote: a `@local()`
+ * write emits `elementUpdated`, which repaints, so writing an equal value on
+ * every paint would repaint forever.
+ */
+export function cachePaintedBands(
+  model: { paintedBands?: { margin: number; zoneBandWidth: number } },
+  layout: { margin: BackgroundInset; zoneBandWidth: number | undefined }
+): boolean {
+  const margin = layout.margin.left;
+  const zoneBandWidth = layout.zoneBandWidth ?? POOL_LANE_BAND_WIDTH;
+  const previous = model.paintedBands;
+  if (previous?.margin === margin && previous.zoneBandWidth === zoneBandWidth) {
+    return false;
+  }
+  model.paintedBands = { margin, zoneBandWidth };
+  return true;
 }
 
 /** A lane band and, when the declaration asks for one, its title strip. */

@@ -34,6 +34,7 @@ const LANES = [
 const PICK = { hitThreshold: 10, zoom: 1 };
 
 function setup(props: { lanes?: typeof LANES; name?: string } = {}) {
+  const listeners: Array<(event: { key: string }) => void> = [];
   const model = {
     id: 'pool',
     deserializedXYWH: [0, 0, W, H],
@@ -44,6 +45,15 @@ function setup(props: { lanes?: typeof LANES; name?: string } = {}) {
     rotate: 0,
     lanes: props.lanes,
     name: props.name,
+    // The view re-measures its bands when a name, the lanes or the box change.
+    propsUpdated: {
+      subscribe: (listener: (event: { key: string }) => void) => {
+        listeners.push(listener);
+        return { unsubscribe: vi.fn() };
+      },
+    },
+    /** What the surface does after an update: one event per changed key. */
+    emit: (key: string) => listeners.forEach(listener => listener({ key })),
     isLocked: () => false,
     // The real model's answer, called through the very prototype the document
     // uses — border band, participant band, lane strip.
@@ -125,5 +135,31 @@ describe('where a BPMN pool answers the pointer', () => {
     ).join(' ');
     expect(at(setup({ name: 'Customer' }), 60, 100)).toBe(false);
     expect(at(setup({ name: long }), 60, 100)).toBe(true);
+  });
+
+  it('measures the bands the model picks by before any paint, and on a rename', () => {
+    // Picking asks the MODEL (`paintedBands`); a hidden tab never paints, so
+    // the view writes the cache itself — at creation and whenever a name, the
+    // lanes or the box change, never on the cache's own update (no loop).
+    const long = Array.from(
+      { length: 4 },
+      () => 'Supplier onboarding office'
+    ).join(' ');
+    const view = setup({ name: long });
+    const model = view.model as unknown as {
+      name: string;
+      paintedBands?: { margin: number };
+      emit: (key: string) => void;
+      includesPoint: (x: number, y: number, o: object) => boolean;
+    };
+    expect(model.paintedBands?.margin).toBeGreaterThan(56);
+    expect(model.includesPoint(60, 100, PICK)).toBe(true);
+
+    model.name = 'Customer';
+    model.emit('paintedBands');
+    expect(model.paintedBands?.margin).toBeGreaterThan(56);
+    model.emit('name');
+    expect(model.paintedBands?.margin).toBe(28);
+    expect(model.includesPoint(60, 100, PICK)).toBe(false);
   });
 });

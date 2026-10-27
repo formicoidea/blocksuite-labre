@@ -11,8 +11,7 @@ import { GfxControllerIdentifier } from '@labre/std/gfx';
 
 import type { BpmnLaneFocusHolder } from './actions.js';
 import { BPMN_POOL_BACKGROUND } from './background';
-import { POOL_LANE_BAND_WIDTH } from './consts.js';
-import { bpmnPoolLayout } from './pool-hit.js';
+import { bpmnPoolLayout, cachePaintedBands } from './pool-hit.js';
 
 /**
  * The pool as the framework-background primitive paints it.
@@ -29,18 +28,10 @@ const paintPool = createFrameworkBackgroundRenderer<BpmnPoolElementModel>(
     // The model cannot measure text, so picking would select by the DECLARED
     // band widths while a long name paints them wider. Cache what was painted
     // on the model's `@local()` `paintedBands` (never stored), and only when
-    // it changed: a local write is an `elementUpdated`, which repaints.
+    // it changed: a local write is an `elementUpdated`, which repaints. The
+    // view writes the same cache before any paint (`element-view.ts`).
     onBands: (model, layout) => {
-      const margin = layout.margin.left;
-      const zoneBandWidth = layout.zoneBandWidth ?? POOL_LANE_BAND_WIDTH;
-      const previous = model.paintedBands;
-      if (
-        previous?.margin === margin &&
-        previous.zoneBandWidth === zoneBandWidth
-      ) {
-        return;
-      }
-      model.paintedBands = { margin, zoneBandWidth };
+      cachePaintedBands(model, layout);
     },
   }
 );
