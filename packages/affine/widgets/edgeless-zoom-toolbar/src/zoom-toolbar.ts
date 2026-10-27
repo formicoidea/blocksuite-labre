@@ -112,7 +112,11 @@ export class EdgelessZoomToolbar extends WithDisposable(LitElement) {
     return this.gfx.viewport;
   }
 
+  // The buttons read `locked` at render only, and locking repaints nothing
+  // (the image crop frame locks the viewport while open, ADR 0037): every
+  // click is checked again here.
   setZoomByStep = (step: number) => {
+    if (this.locked) return;
     this.viewport.smoothZoom(clamp(this.zoom + step, ZOOM_MIN, ZOOM_MAX));
   };
 
@@ -172,7 +176,9 @@ export class EdgelessZoomToolbar extends WithDisposable(LitElement) {
           .tooltip=${translateKey(this.std, ...ZOOM_FIT_TO_SCREEN_TOOLTIP)}
           .tipPosition=${this._isVerticalBar() ? 'right' : 'top-end'}
           .arrow=${!this._isVerticalBar()}
-          @click=${() => this.gfx.fitToScreen()}
+          @click=${() => {
+            if (!this.locked) this.gfx.fitToScreen();
+          }}
           .iconContainerPadding=${4}
           .iconSize=${'24px'}
           .disabled=${locked}
@@ -192,7 +198,9 @@ export class EdgelessZoomToolbar extends WithDisposable(LitElement) {
         </edgeless-tool-icon-button>
         <button
           class="zoom-percent"
-          @click=${() => this.viewport.smoothZoom(1)}
+          @click=${() => {
+            if (!this.locked) this.viewport.smoothZoom(1);
+          }}
           .disabled=${locked}
         >
           ${formattedZoom}

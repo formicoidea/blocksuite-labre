@@ -125,6 +125,7 @@ export class ImageBlockComponent extends CaptionedBlockComponent<ImageBlockModel
 
     this.disposables.add(this.resourceController.subscribe());
     this.disposables.add(this.resourceController);
+    this.disposables.add(() => this.cropController.stop());
 
     this.disposables.add(
       this.model.props.sourceId$.subscribe(() => {

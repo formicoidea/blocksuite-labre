@@ -13,7 +13,13 @@
  *   or reaches the canvas as a drag of the image;
  * - a page crop that resizes the whole picture instead of opening a window
  *   on it;
- * - the frame opening, or a preset writing, on a readonly page.
+ * - the frame opening, or a preset writing, on a readonly page;
+ * - a canvas frame opened under live selection handles, which sit on its
+ *   corners and swallow the crop gesture, or over a canvas that still zooms
+ *   under the wheel (the PO could not crop, 2026-10-27);
+ * - a wheel over the frame that zooms the canvas instead of the picture,
+ *   drifts away from the pointer, or writes more than one undo step;
+ * - Escape leaving the handles hidden or the viewport locked.
  */
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import { CanvasRenderer, ExportManager } from '@labre/affine/blocks/surface';
@@ -210,6 +216,78 @@ describe('image crop on the canvas', () => {
     );
     await wait();
     expect(overlayOf(block)).toBeNull();
+  });
+
+  test('the frame owns the canvas: no handles, no zoom, the wheel crops', async () => {
+    const { model, block } = await canvasImage();
+    const { gfx } = getDocRootBlock(
+      window.doc,
+      window.editor,
+      'edgeless'
+    ) as EdgelessRootBlockComponent;
+    const widget = document.querySelector('edgeless-selected-rect');
+    const countHandles = () =>
+      (widget?.shadowRoot ?? widget)?.querySelectorAll('.handle').length ?? 0;
+
+    gfx.selection.set({ elements: [model.id], editing: false });
+    await wait();
+    // Selected: the handles are there, which makes the next check meaningful.
+    expect(countHandles()).toBeGreaterThan(0);
+    expect(gfx.viewport.locked).toBe(false);
+
+    block.cropController.choose('free');
+    await wait();
+    const overlay = overlayOf(block) as HTMLElement;
+    expect(overlay).not.toBeNull();
+    expect(countHandles()).toBe(0);
+    expect(gfx.selection.editing).toBe(true);
+    expect(gfx.viewport.locked).toBe(true);
+
+    // Three ticks up at three quarters of the width, mid height.
+    window.doc.resetHistory();
+    const zoom = gfx.viewport.zoom;
+    const box = overlay.getBoundingClientRect();
+    const clientX = box.left + box.width * 0.75;
+    const clientY = box.top + box.height * 0.5;
+    for (let i = 0; i < 3; i++) {
+      overlay.dispatchEvent(
+        new WheelEvent('wheel', {
+          bubbles: true,
+          composed: true,
+          cancelable: true,
+          deltaY: -100,
+          clientX,
+          clientY,
+        })
+      );
+    }
+    // Nothing is written while the wheel turns.
+    expect(model.props.crop).toBeUndefined();
+    await until(() => model.props.crop !== undefined, 'the wheel commit');
+
+    const crop = { ...model.props.crop };
+    const scale = 1.05 ** -3;
+    expect(crop.w).toBeCloseTo(scale, 3);
+    expect(crop.h).toBeCloseTo(scale, 3);
+    // The point under the pointer did not move in the source.
+    expect(crop.x).toBeCloseTo(0.75 - 0.75 * scale, 3);
+    expect(crop.y).toBeCloseTo(0.5 - 0.5 * scale, 3);
+    expect(gfx.viewport.zoom).toBe(zoom);
+
+    // One scroll, one undo step.
+    window.doc.undo();
+    expect(model.props.crop).toBeUndefined();
+    window.doc.redo();
+
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })
+    );
+    await wait();
+    expect(overlayOf(block)).toBeNull();
+    expect(gfx.viewport.locked).toBe(false);
+    expect(gfx.selection.editing).toBe(false);
+    expect(gfx.selection.has(model.id)).toBe(true);
+    expect(countHandles()).toBeGreaterThan(0);
   });
 
   test('the PNG export draws the kept part only', async () => {

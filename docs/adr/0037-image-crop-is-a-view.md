@@ -148,3 +148,29 @@ page.
 - Not done: cropping a canvas frame or an embed, a mask shape other than a
   rectangle, and a crop in the SVG/draw.io writers (draw.io receives the
   cropped box with the whole picture's reference).
+
+## Amendments
+
+### 2026-10-27 — the open frame owns the canvas, the wheel crops
+
+The frame opened on a canvas image under the selected-rect handles, which sit
+on its corners and took the press, and the wheel still zoomed the canvas, so
+the picture could not be zoomed inside its window. Nothing stored changes.
+
+- While the frame is open on the canvas, the image is selected in **editing**
+  state (the selected-rect widget draws no handle then) and the viewport is
+  **locked** (no wheel, pinch, pan or zoom-toolbar zoom). `ImageCropController`
+  takes both when the frame opens and gives both back in `stop()`, the one
+  close path of Escape, Enter, a press elsewhere, « Image d'origine », the
+  block leaving the DOM and a selection moved elsewhere; the viewport returns
+  to the lock it had before. The page has no canvas and takes neither.
+- The wheel over the frame scales the window about the pointer (1.05 per 100
+  units of `deltaY`, at most three steps per event), the mask's ratio held,
+  inside the image and never below `IMAGE_CROP_MIN_SIDE`. One scroll is one
+  write and one undo step: the draft is committed once the wheel has been
+  quiet for 150 ms, or at once when a drag starts or the frame is left by
+  Escape, Enter or a press elsewhere; a frame closed by the toolbar or the
+  block leaving drops a scroll still pending.
+- The zoom toolbar re-checks `viewport.locked` on click (it read it at render
+  only, and a lock repaints nothing), and `Alt-2` (zoom to selection) now
+  respects the lock like the other zoom shortcuts.

@@ -8,12 +8,17 @@ import { styleMap } from 'lit/directives/style-map.js';
 import {
   type CropCorner,
   type CropRect,
+  cropWheelFactor,
   moveCrop,
   resizeCrop,
   WHOLE_IMAGE,
+  zoomCrop,
 } from './crop-math.js';
 
 const CORNERS: readonly CropCorner[] = ['nw', 'ne', 'sw', 'se'];
+
+/** Quiet time after the last wheel event that ends one wheel gesture. */
+const WHEEL_COMMIT_DELAY_MS = 150;
 
 const rectStyle = (rect: CropRect) =>
   styleMap({
@@ -33,9 +38,17 @@ const rectStyle = (rect: CropRect) =>
  * release hands it to `onCommit` once — one gesture, one write, one undo
  * step, decided by the caller (`writeImageCrop`).
  *
- * Pointer events never reach the editor while the frame is open: a press on
- * the frame would otherwise start a canvas drag or a page selection. Escape,
- * Enter or a press anywhere else calls `onExit`.
+ * The wheel over the frame zooms the picture inside it: it scales the window
+ * about the pointer, the ratio held, inside the image. One scroll is one
+ * write: the draft is handed to `onCommit` once the wheel has been quiet for
+ * a moment, or at once when a drag starts or the frame is left by Escape,
+ * Enter or a press elsewhere. A frame closed by anything else (the toolbar,
+ * the block leaving) drops a scroll still pending rather than write after it.
+ *
+ * Pointer and wheel events never reach the editor while the frame is open: a
+ * press on the frame would otherwise start a canvas drag or a page
+ * selection, a wheel would zoom or scroll the canvas. Escape, Enter or a
+ * press anywhere else calls `onExit`.
  */
 export class ImageCropOverlay extends WithDisposable(LitElement) {
   static override styles = css`
@@ -142,6 +155,9 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
 
   private _dragging = false;
 
+  /** The pending end of a wheel gesture, `null` when none is under way. */
+  private _wheelTimer: ReturnType<typeof setTimeout> | null = null;
+
   /** Removes the listeners of the gesture in progress, if any. */
   private _releaseGesture: (() => void) | null = null;
 
@@ -149,6 +165,7 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
 
   private readonly _onOutsidePointer = (event: PointerEvent) => {
     if (event.composedPath().includes(this)) return;
+    this._commitWheel();
     this.onExit();
   };
 
@@ -156,7 +173,51 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
     if (event.key !== 'Escape' && event.key !== 'Enter') return;
     event.preventDefault();
     event.stopPropagation();
+    this._commitWheel();
     this.onExit();
+  };
+
+  /** Ends the wheel gesture under way, if any, with its one write. */
+  private _commitWheel() {
+    if (this._wheelTimer === null) return;
+    clearTimeout(this._wheelTimer);
+    this._wheelTimer = null;
+    this.onCommit(this.draft);
+  }
+
+  private _dropWheel() {
+    if (this._wheelTimer === null) return;
+    clearTimeout(this._wheelTimer);
+    this._wheelTimer = null;
+  }
+
+  private readonly _onWheel = (event: WheelEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (this._dragging) return;
+    const { width, height, cos, sin, scale } = this._geometry();
+    if (width <= 0 || height <= 0) return;
+    // The pointer in the source's normalised coordinates: the frame is the
+    // whole source, possibly rotated about its centre.
+    const box = this.getBoundingClientRect();
+    const cdx = event.clientX - (box.left + box.width / 2);
+    const cdy = event.clientY - (box.top + box.height / 2);
+    const px = ((cdx * cos + cdy * sin) / scale + width / 2) / width;
+    const py = ((-cdx * sin + cdy * cos) / scale + height / 2) / height;
+    // A line or page delta (Firefox) counts as one full step per unit.
+    const deltaY = event.deltaMode === 0 ? event.deltaY : event.deltaY * 100;
+    this.draft = zoomCrop(
+      this.draft,
+      cropWheelFactor(deltaY),
+      Math.min(Math.max(px, 0), 1),
+      Math.min(Math.max(py, 0), 1),
+      this.ratio
+    );
+    if (this._wheelTimer !== null) clearTimeout(this._wheelTimer);
+    this._wheelTimer = setTimeout(
+      () => this._commitWheel(),
+      WHEEL_COMMIT_DELAY_MS
+    );
   };
 
   /**
@@ -167,9 +228,13 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
   override connectedCallback() {
     super.connectedCallback();
     this.disposables.add(() => this._releaseGesture?.());
+    this.disposables.add(() => this._dropWheel());
     this.disposables.addFromEvent(this, 'pointerdown', this._stop);
     this.disposables.addFromEvent(this, 'click', this._stop);
     this.disposables.addFromEvent(this, 'dblclick', this._stop);
+    this.disposables.addFromEvent(this, 'wheel', this._onWheel, {
+      passive: false,
+    });
     this.disposables.addFromEvent(
       document,
       'pointerdown',
@@ -180,7 +245,10 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
   }
 
   override willUpdate(changed: PropertyValues<this>) {
-    if (changed.has('crop') && !this._dragging) this.draft = this.crop;
+    if (!changed.has('crop') || this._dragging) return;
+    // A crop written meanwhile (a preset, a peer) wins over a pending scroll.
+    this._dropWheel();
+    this.draft = this.crop;
   }
 
   /**
@@ -203,6 +271,7 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
     if (event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
+    this._commitWheel();
 
     const start = this.draft;
     const originX = event.clientX;
