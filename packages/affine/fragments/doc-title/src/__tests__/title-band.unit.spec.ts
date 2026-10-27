@@ -802,6 +802,35 @@ describe('the title band', () => {
     expect(panel.open).toHaveBeenCalledWith({ scope: 'page', docId: DOC });
   });
 
+  // Recette 3, P3-x: a "+" on the collapsed row added a property nobody
+  // saw, so the reader clicked it again without knowing it had worked.
+  it('draws the "+" only while the band is expanded', async () => {
+    const add = vi.fn();
+    const { service } = bandService(
+      { status: 'ready', properties: [STATUS, OWNER] },
+      { add }
+    );
+    const band = await mount(
+      fakeStd(new Map([[TitleBandProvider, service]])).std
+    );
+    expect(q(band, 'title-band-add')).not.toBeNull();
+    (q(band, 'title-band-collapse') as HTMLButtonElement).click();
+    await band.updateComplete;
+    expect(q(band, 'title-band-add')).toBeNull();
+    (q(band, 'title-band-expand') as HTMLButtonElement).click();
+    await band.updateComplete;
+    expect(q(band, 'title-band-add')).not.toBeNull();
+
+    const { service: empty } = bandService(
+      { status: 'ready', properties: [] },
+      { add }
+    );
+    const first = await mount(
+      fakeStd(new Map([[TitleBandProvider, empty]])).std
+    );
+    expect(q(first, 'title-band-add')).not.toBeNull();
+  });
+
   it('collapses, remembered by the host when it can, locally otherwise', async () => {
     const { service } = bandService({
       status: 'ready',

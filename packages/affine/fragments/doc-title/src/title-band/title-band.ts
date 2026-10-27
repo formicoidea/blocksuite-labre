@@ -538,8 +538,18 @@ export class TitleBand extends SignalWatcher(
     </div>`;
   }
 
-  private _renderTools(sources: BandSources, hasPanel: boolean) {
-    const canAdd = !!sources.service.add && !this._readonly;
+  /**
+   * `withAdd: false` on the collapsed row: a "+" there added a property the
+   * reader could not see (recette 3, P3-x), so it only shows once the chips
+   * it adds to are drawn. A page with no property has nothing to collapse
+   * and keeps its "+".
+   */
+  private _renderTools(
+    sources: BandSources,
+    hasPanel: boolean,
+    withAdd = true
+  ) {
+    const canAdd = withAdd && !!sources.service.add && !this._readonly;
     return html`${canAdd
       ? html`<button
           class="labre-title-band-icon-button"
@@ -610,7 +620,7 @@ export class TitleBand extends SignalWatcher(
             >${this._t(TITLE_BAND_EXPAND, properties.length)}</span
           >
         </button>
-        ${this._renderTools(sources, hasPanel)}
+        ${this._renderTools(sources, hasPanel, false)}
       </div>`;
     }
 
