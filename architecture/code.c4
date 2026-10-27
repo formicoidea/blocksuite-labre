@@ -1774,7 +1774,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/gfx/bpmn
         metadata {
           path 'packages/affine/gfx/bpmn'
-          files '33'
+          files '34'
         }
         node_ = folder 'node/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/gfx/bpmn/src/node
@@ -1787,7 +1787,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/gfx/bpmn/src
           metadata {
             path 'packages/affine/gfx/bpmn/src'
-            files '23'
+            files '24'
           }
         }
         templates = folder 'templates/' {
@@ -3788,7 +3788,7 @@ model {
   features.fragments.outline -[uses]-> framework.std '12 imports, 2 type-only'
   features.fragments.outline -[uses]-> framework.store '5 imports, 5 type-only'
   features.fragments.outline -[uses]-> model_.model_ '10 imports, 3 type-only'
-  features.gfx.bpmn -[uses]-> features.blocks.surface '19 imports, 5 type-only'
+  features.gfx.bpmn -[uses]-> features.blocks.surface '20 imports, 6 type-only'
   features.gfx.bpmn -[uses]-> features.components '2 imports, 1 type-only'
   features.gfx.bpmn -[uses]-> features.ext-loader '1 import'
   features.gfx.bpmn -[uses]-> features.gfx.connector '1 import'
@@ -3798,9 +3798,9 @@ model {
   features.gfx.bpmn -[uses]-> features.gfx.template '2 imports'
   features.gfx.bpmn -[uses]-> features.shared '13 imports, 1 type-only'
   features.gfx.bpmn -[uses]-> features.widgets.edgeless-toolbar '3 imports'
-  features.gfx.bpmn -[uses]-> framework.global_ '6 imports, 2 type-only'
+  features.gfx.bpmn -[uses]-> framework.global_ '7 imports, 2 type-only'
   features.gfx.bpmn -[uses]-> framework.std '21 imports, 12 type-only'
-  features.gfx.bpmn -[uses]-> model_.model_ '20 imports, 8 type-only'
+  features.gfx.bpmn -[uses]-> model_.model_ '20 imports, 9 type-only'
   features.gfx.brush -[uses]-> features.blocks.surface '12 imports, 1 type-only'
   features.gfx.brush -[uses]-> features.components '4 imports'
   features.gfx.brush -[uses]-> features.ext-loader '2 imports'
@@ -6065,7 +6065,7 @@ model {
   features.gfx.bpmn.node_ -[imports]-> features.gfx.shape_.src '2 imports'
   features.gfx.bpmn.node_ -[imports]-> framework.std.gfx '1 import'
   features.gfx.bpmn.node_ -[imports]-> model_.model_.src '2 imports'
-  features.gfx.bpmn.src -[imports]-> features.blocks.surface.src '16 imports, 5 type-only'
+  features.gfx.bpmn.src -[imports]-> features.blocks.surface.src '17 imports, 6 type-only'
   features.gfx.bpmn.src -[imports]-> features.components.color-picker '1 import'
   features.gfx.bpmn.src -[imports]-> features.ext-loader.src '1 import'
   features.gfx.bpmn.src -[imports]-> features.gfx.bpmn.node_ '2 imports'
@@ -6077,10 +6077,10 @@ model {
   features.gfx.bpmn.src -[imports]-> features.shared.services '5 imports'
   features.gfx.bpmn.src -[imports]-> features.shared.src '1 import'
   features.gfx.bpmn.src -[imports]-> features.shared.utils '2 imports'
-  features.gfx.bpmn.src -[imports]-> framework.global_.gfx '5 imports, 2 type-only'
+  features.gfx.bpmn.src -[imports]-> framework.global_.gfx '6 imports, 2 type-only'
   features.gfx.bpmn.src -[imports]-> framework.std.gfx '10 imports, 6 type-only'
   features.gfx.bpmn.src -[imports]-> framework.std.src '7 imports, 5 type-only'
-  features.gfx.bpmn.src -[imports]-> model_.model_.src '15 imports, 8 type-only'
+  features.gfx.bpmn.src -[imports]-> model_.model_.src '15 imports, 9 type-only'
   features.gfx.bpmn.templates -[imports]-> features.gfx.bpmn.src '4 imports'
   features.gfx.bpmn.templates -[imports]-> features.gfx.template.src '1 import'
   features.gfx.bpmn.templates -[imports]-> features.shared.services '1 import'

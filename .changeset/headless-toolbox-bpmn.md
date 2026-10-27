@@ -1,0 +1,5 @@
+---
+'@labre/affine': minor
+---
+
+BPMN's toolbar can now be used without an editor (ADR 0045). `@formicoidea/labre-framework-bpmn/interchange` exports `BPMN_TOOLBOX`, the list of the toolbar's items (the pool, every event, activity, gateway, data shape, the text annotation and the group, and the sequence flow, message flow and association links), each with a pure builder that returns the elements the toolbar places: an event, a gateway or a data shape as the bare symbol, its `bpmn:label` text and their group; an activity, the annotation or the group as one element carrying its name; a pool with the lanes it is given; a flow connector in its tool's line. A host with no editor (a server, an MCP tool) writes them with `surface.addElement` or the import materializer and gets the same elements as a user. The builders are also exported from the package index as `bpmnNodeElements`, `bpmnPoolElement` and `bpmnFlowElement`, with the `BpmnNodeTexts` and `BpmnPoolTexts` types; the toolbar actions and the BPMN XML importer now share them.
