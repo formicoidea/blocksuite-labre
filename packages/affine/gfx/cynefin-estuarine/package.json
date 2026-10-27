@@ -32,6 +32,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./commands-manifest": "./src/commands-manifest.ts",
+    "./interchange": "./src/interchange-headless.ts",
     "./view": "./src/view.ts"
   },
   "files": [

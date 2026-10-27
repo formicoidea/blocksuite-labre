@@ -137,7 +137,9 @@ should cap the file's size itself (the editor applies `FileSizeLimitProvider`).
 The same `./interchange` subpaths carry a framework's TOOLBOX when it has one
 (ADR 0045): every toolbar item as a pure builder that returns the elements the
 toolbar places, in the contract a reader's result follows (local ids, a group
-after its members). C4 ships one:
+after its members). C4 and Cynefin/estuarine
+(`@formicoidea/labre-framework-cynefin/interchange`, `CYNEFIN_ESTUARINE_TOOLBOX`)
+ship one. C4's:
 
 ```ts
 import { C4_TOOLBOX } from '@formicoidea/labre-framework-c4/interchange';

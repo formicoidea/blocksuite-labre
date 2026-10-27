@@ -51,7 +51,7 @@ const DOM_GLOBALS =
   /\b(?:DOMParser|XMLSerializer|DOMPurify|document\.createElement|window\.)/;
 
 /** The frameworks that ship an `./interchange` entry. */
-const WITH_INTERCHANGE = ['bpmn', 'c4', 'uml', 'wardley'];
+const WITH_INTERCHANGE = ['bpmn', 'c4', 'cynefin-estuarine', 'uml', 'wardley'];
 
 interface Entry {
   label: string;
