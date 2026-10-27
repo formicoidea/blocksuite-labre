@@ -1942,7 +1942,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/gfx/cynefin-estuarine
         metadata {
           path 'packages/affine/gfx/cynefin-estuarine'
-          files '31'
+          files '33'
         }
         cynefin = folder 'cynefin/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/gfx/cynefin-estuarine/src/cynefin
@@ -1962,7 +1962,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/gfx/cynefin-estuarine/src
           metadata {
             path 'packages/affine/gfx/cynefin-estuarine/src'
-            files '10'
+            files '12'
           }
         }
         templates = folder 'templates/' {
@@ -3834,7 +3834,7 @@ model {
   features.gfx.connector -[uses]-> framework.std '24 imports, 8 type-only'
   features.gfx.connector -[uses]-> framework.store '2 imports, 2 type-only'
   features.gfx.connector -[uses]-> model_.model_ '19 imports, 3 type-only'
-  features.gfx.cynefin-estuarine -[uses]-> features.blocks.surface '16 imports, 3 type-only'
+  features.gfx.cynefin-estuarine -[uses]-> features.blocks.surface '18 imports, 5 type-only'
   features.gfx.cynefin-estuarine -[uses]-> features.components '2 imports, 1 type-only'
   features.gfx.cynefin-estuarine -[uses]-> features.ext-loader '1 import'
   features.gfx.cynefin-estuarine -[uses]-> features.gfx.pointer '2 imports'
@@ -6237,11 +6237,11 @@ model {
   features.gfx.cynefin-estuarine.estuarine -[imports]-> framework.std.gfx '3 imports, 1 type-only'
   features.gfx.cynefin-estuarine.estuarine -[imports]-> framework.std.src '1 import'
   features.gfx.cynefin-estuarine.estuarine -[imports]-> model_.model_.src '5 imports, 3 type-only'
-  features.gfx.cynefin-estuarine.src -[imports]-> features.blocks.surface.src '4 imports, 1 type-only'
+  features.gfx.cynefin-estuarine.src -[imports]-> features.blocks.surface.src '6 imports, 3 type-only'
   features.gfx.cynefin-estuarine.src -[imports]-> features.components.color-picker '1 import'
   features.gfx.cynefin-estuarine.src -[imports]-> features.ext-loader.src '1 import'
   features.gfx.cynefin-estuarine.src -[imports]-> features.gfx.cynefin-estuarine.cynefin '7 imports'
-  features.gfx.cynefin-estuarine.src -[imports]-> features.gfx.cynefin-estuarine.estuarine '15 imports'
+  features.gfx.cynefin-estuarine.src -[imports]-> features.gfx.cynefin-estuarine.estuarine '17 imports'
   features.gfx.cynefin-estuarine.src -[imports]-> features.gfx.cynefin-estuarine.templates '2 imports'
   features.gfx.cynefin-estuarine.src -[imports]-> features.gfx.cynefin-estuarine.toolbar '6 imports'
   features.gfx.cynefin-estuarine.src -[imports]-> features.gfx.template.src '1 import'
