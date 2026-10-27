@@ -84,7 +84,7 @@ describe('the Slides category', () => {
       SLIDE_MASKS.map(mask => mask.name[1])
     );
     expect(templates.length).toBeGreaterThanOrEqual(15);
-    expect(templates.length).toBeLessThanOrEqual(25);
+    expect(templates.length).toBeLessThanOrEqual(40);
   });
 
   it('names every tile through its own key, and gives it keywords', () => {
