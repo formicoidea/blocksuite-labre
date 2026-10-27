@@ -438,10 +438,10 @@ export const UML_HEAD_LABEL_KINDS: ReadonlySet<UmlNodeKind> =
  * single role could only ever have asked them the same question (`roles.ts`).
  *
  * It does NOT answer for the compartmented kinds or for the five glyphs named
- * rather than labelled (`actions.ts`, `NAMED_GLYPHS`): those carry `uml:name`,
- * which is a different statement — a tier a keyword may be written over — and a
- * helper that folded all three answers together would be a second place to
- * decide what the grammar reads.
+ * rather than labelled (`presets.ts`, `NAMED_GLYPH_KINDS`): those carry
+ * `uml:name`, which is a different statement — a tier a keyword may be written
+ * over — and a helper that folded all three answers together would be a second
+ * place to decide what the grammar reads.
  */
 export function umlLabelRoleOf(kind: UmlNodeKind): UmlRoleId {
   return UML_HEAD_LABEL_KINDS.has(kind)

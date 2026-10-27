@@ -169,4 +169,14 @@ Porter's forces come with their own wiring. The polygon area is a drawing tool
 and is not in it; a rectangular area comes out on top, and sending it under
 the components it covers is the caller's (the editor does it on placement).
 
+UML ships `UML_TOOLBOX` on `@formicoidea/labre-framework-uml/interchange`, item
+ids being the node kinds (`class`, `use-case`, `lifeline`…) plus `diagram`,
+`subject`, `partition`, `region`, `fragment` and `interaction-use`, link ids the
+relationships (`composition`, `message-sync`…). A classifier comes back as the
+shape, its compartments and their group, its members one per line
+(`{ name: 'Order', attributes: '+ id : OrderId', operations: '+ pay()' }`); an
+empty compartment stays empty, an absent one takes the toolbar's seed. A link
+attaches to the shape, `<local>:shape`. The PlantUML, XMI and draw.io readers
+write an artefact through the same assembly.
+
 Next: [07-upgrade.md](07-upgrade.md).

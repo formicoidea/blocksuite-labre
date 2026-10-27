@@ -4,8 +4,6 @@ import type {
 } from '@labre/affine-block-surface';
 import {
   connectorEndLabelBox,
-  ConnectorMode,
-  TextAlign,
   UML_FRAME_BAND_HEIGHT,
   UML_LIFELINE_HEAD,
 } from '@labre/affine-model/headless';
@@ -17,31 +15,15 @@ import type {
 import { Bound, type IVec } from '@labre/global/gfx';
 import type { ForeignInterchange } from '@labre/std/gfx';
 
-import {
-  type UmlBox,
-  umlCompartmentBoxes,
-  umlLabelRoleOf,
-} from './component.js';
-import {
-  UML_BODY_FONT_SIZE,
-  UML_DIAGRAM_BOX,
-  UML_EDGE_WIDTH,
-  UML_FRAGMENT_BOX,
-  UML_INK,
-  UML_NAME_FONT_SIZE,
-  UML_NODE_BOX,
-  UML_PARTITION_BOX,
-  UML_REGION_BOX,
-  UML_SUBJECT_BOX,
-} from './consts.js';
-import { UML_EDGE_STYLE } from './edge-styles.js';
+import type { UmlBox } from './component.js';
+import { UML_DIAGRAM_BOX, UML_FRAGMENT_BOX, UML_NODE_BOX } from './consts.js';
 import {
   type UmlAssociationEnd,
   formatActivityEdgeLabel,
   formatEndLabel,
   formatTransitionLabel,
 } from './grammar.js';
-import { guillemets, UML_UNLABELLED_KINDS } from './keywords.js';
+import { guillemets } from './keywords.js';
 import {
   type UmlClassifier,
   umlGuardText,
@@ -52,8 +34,12 @@ import {
   type UmlRelationKind,
   type UmlState,
 } from './model.js';
-import { umlNameDecoration, umlNodeProps, umlTextProps } from './presets.js';
-import { UML_ROLE } from './roles.js';
+import {
+  UML_FRAME_BOX,
+  umlArtefactElements,
+  umlConnectorProps,
+  umlFrameProps,
+} from './presets.js';
 
 /**
  * The **one materializer** every UML importer ends on — a model in, the
@@ -77,11 +63,12 @@ import { UML_ROLE } from './roles.js';
  *
  * ## Never a size, never a colour, never a seed
  *
- * Every prop below comes out of {@link umlNodeProps}, {@link umlTextProps} and
- * {@link umlCompartmentBoxes} — the very three functions the creation site calls
- * (R17). Not one measurement is restated here, so an imported class and a drawn
- * one are the same element down to the stroke width, and a restyle that moves
- * the pack moves the import with it.
+ * Every artefact below comes out of {@link umlArtefactElements}, every frame
+ * out of {@link umlFrameProps} and every line out of {@link umlConnectorProps}
+ * — the very assembly the toolbar and the toolbox call (R17,
+ * `docs/adr/0045`). Not one measurement is restated here, so an imported class
+ * and a drawn one are the same element down to the stroke width, and a restyle
+ * that moves the pack moves the import with it.
  *
  * ## The two names an element carries, and they are not the same name
  *
@@ -473,24 +460,6 @@ function stateBodyText(state: UmlState): string {
 /* ── What a draft is ──────────────────────────────────────────────────── */
 
 /**
- * The glyph kinds whose one tier is a `uml:name` rather than a `uml:label`.
- *
- * A transcription of `actions.ts`'s own `NAMED_GLYPHS`, kept here rather than
- * imported because that module reaches for the editor (`BlockStdScope`, the gfx
- * controller, the surface) and a reader must not: P3 is what lets labre-mcp call
- * this file with no DI in sight. `import.unit.spec.ts` re-runs the creation
- * commands against a recording surface and compares the tier roles, so the two
- * statements cannot drift in silence.
- */
-const NAMED_GLYPH_KINDS: ReadonlySet<UmlNodeKind> = new Set<UmlNodeKind>([
-  'package',
-  'note',
-  'node',
-  'device',
-  'execution-environment',
-]);
-
-/**
  * A glyph that is drawn AGAINST another artefact rather than laid out beside it.
  *
  * The two geometric readings `model.ts` makes — a port on its component's border
@@ -556,22 +525,6 @@ interface UmlDraft {
   connectable?: boolean;
 }
 
-/** The four background frames, and the box each is created at. */
-const FRAME_BOX = {
-  umlSubject: UML_SUBJECT_BOX,
-  umlPartition: UML_PARTITION_BOX,
-  umlRegion: UML_REGION_BOX,
-  umlFragment: UML_FRAGMENT_BOX,
-} as const;
-
-/** The role each background frame carries — one table, read once below. */
-const FRAME_ROLE = {
-  umlSubject: UML_ROLE.subject,
-  umlPartition: UML_ROLE.partition,
-  umlRegion: UML_ROLE.region,
-  umlFragment: UML_ROLE.fragment,
-} as const;
-
 /** Every artefact one model draws, in the order a reader should meet them. */
 function draftsOf(model: UmlModel): UmlDraft[] {
   const drafts: UmlDraft[] = [];
@@ -601,7 +554,7 @@ function draftsOf(model: UmlModel): UmlDraft[] {
       element,
       name: record.name,
       ...(orientation ? { orientation } : {}),
-      size: FRAME_BOX[element],
+      size: UML_FRAME_BOX[element],
       ...(record.bounds ? { bounds: record.bounds } : {}),
     });
   };
@@ -781,7 +734,7 @@ function draftsOf(model: UmlModel): UmlDraft[] {
               })),
             }
           : {}),
-        size: FRAME_BOX.umlFragment,
+        size: UML_FRAME_BOX.umlFragment,
         ...(fragment.bounds ? { bounds: fragment.bounds } : {}),
       });
     }
@@ -1252,12 +1205,12 @@ export function umlElementsFromModel(
       frame.y + UML_FRAME_BAND_HEIGHT + UML_IMPORT_CONTAINER_INSET - top;
 
     elements.push({
-      type: 'umlDiagram',
+      ...umlFrameProps(
+        'umlDiagram',
+        { xywh: new Bound(frame.x, frame.y, frame.w, frame.h).serialize() },
+        { name: model.diagram.name, kind: model.diagram.kind }
+      ),
       id: mint(),
-      role: UML_ROLE.diagram,
-      name: model.diagram.name,
-      kind: model.diagram.kind,
-      xywh: new Bound(frame.x, frame.y, frame.w, frame.h).serialize(),
       ...payload(formatId, model.diagram.id),
     });
 
@@ -1288,113 +1241,56 @@ export function umlElementsFromModel(
           boxOf.set(draft.sourceId, placed);
         }
         elements.push({
-          type: draft.element,
+          ...umlFrameProps(
+            draft.element,
+            { xywh },
+            {
+              name: draft.name ?? '',
+              // The model defaults a band to vertical, and a creation that
+              // restated the default would be a second place for it to be
+              // changed.
+              ...(draft.orientation === 'horizontal'
+                ? { orientation: 'horizontal' }
+                : {}),
+              // §17.6.4's operator and its operand bands. `alt` is the model's
+              // own default and is written all the same: unlike an
+              // orientation, the operator IS the fragment, and a document that
+              // left it out would be one whose pentagon depends on a default
+              // nobody can see.
+              ...(draft.operator ? { operator: draft.operator } : {}),
+              ...(draft.operands ? { operands: draft.operands } : {}),
+            }
+          ),
           id,
-          role: FRAME_ROLE[draft.element],
-          name: draft.name ?? '',
-          // The model defaults a band to vertical, and a creation that restated
-          // the default would be a second place for it to be changed.
-          ...(draft.orientation === 'horizontal'
-            ? { orientation: 'horizontal' }
-            : {}),
-          // §17.6.4's operator and its operand bands. `alt` is the model's own
-          // default and is written all the same: unlike an orientation, the
-          // operator IS the fragment, and a document that left it out would be
-          // one whose pentagon depends on a default nobody can see.
-          ...(draft.operator ? { operator: draft.operator } : {}),
-          ...(draft.operands ? { operands: draft.operands } : {}),
-          xywh,
           ...payload(formatId, draft.sourceId),
         });
         continue;
       }
 
-      const kind = draft.kind!;
-      const shapeId = mint();
+      // The artefact the toolbar draws, through the ONE assembly the toolbar
+      // and a host with no editor call too (`umlArtefactElements`,
+      // `docs/adr/0045`): the shape, the tiers the kind is worth, the group
+      // last — with the FILE's words in the tiers, never a seed, and this
+      // reader's own names minted in painting order.
+      const [shape, ...rest] = umlArtefactElements(
+        draft.kind!,
+        placed,
+        draft.tiers ?? { name: '' },
+        mint
+      );
+      if (!shape) continue;
       // An interface MARK answers for nothing: §10.4.4 draws it as the notation
       // for a relationship rather than as an element, which is exactly why
       // `model.ts` keeps it out of `artefactOf`. A connector must never resolve
       // to a lollipop.
       if (draft.sourceId && draft.connectable !== false) {
-        shapeOf.set(draft.sourceId, shapeId);
+        shapeOf.set(draft.sourceId, shape.id as string);
         boxOf.set(draft.sourceId, placed);
       }
-      elements.push({
-        ...umlNodeProps(kind, { xywh }),
-        id: shapeId,
-        ...payload(formatId, draft.sourceId),
-      });
-
-      const children: string[] = [shapeId];
-      const boxes = umlCompartmentBoxes(
-        kind,
-        placed.x,
-        placed.y,
-        placed.w,
-        placed.h
+      elements.push(
+        { ...shape, ...payload(formatId, draft.sourceId) },
+        ...rest
       );
-      const tiers = draft.tiers ?? { name: '' };
-
-      // A mark the notation draws no words on is the SHAPE and nothing else —
-      // and therefore no group either, because a group of one element is a
-      // wrapper a user would have to descend through (`actions.ts`).
-      if (!UML_UNLABELLED_KINDS.has(kind)) {
-        const compartmented = boxes.attributes !== undefined;
-        const tierId = mint();
-        children.push(tierId);
-        elements.push({
-          ...umlTextProps(
-            compartmented || NAMED_GLYPH_KINDS.has(kind)
-              ? UML_ROLE.name
-              : // A lifeline's head is `uml:lifeline-ident`, every other single
-                // word is `uml:label` — the creation path's own table, read
-                // rather than restated (`component.ts`).
-                umlLabelRoleOf(kind),
-            boxes.name,
-            {
-              fontSize: UML_NAME_FONT_SIZE,
-              // A note holds a sentence rather than a title (Annex A), and a
-              // centred paragraph is the one thing on a UML diagram that reads
-              // as a poem.
-              align: kind === 'note' ? TextAlign.Left : TextAlign.Center,
-              // The classifier's name is the heading of a divided box; a
-              // glyph's one word is not.
-              ...(compartmented ? { bold: true } : {}),
-              // The toolbox's own preset: an instance's name is underlined.
-              decoration: umlNameDecoration(kind),
-            }
-          ),
-          id: tierId,
-          text: tiers.name,
-        });
-
-        for (const [role, box, words] of [
-          [UML_ROLE.attributes, boxes.attributes, tiers.attributes],
-          [UML_ROLE.operations, boxes.operations, tiers.operations],
-        ] as const) {
-          if (!box) continue;
-          const bodyId = mint();
-          children.push(bodyId);
-          elements.push({
-            ...umlTextProps(role, box, {
-              fontSize: UML_BODY_FONT_SIZE,
-              align: TextAlign.Left,
-            }),
-            id: bodyId,
-            text: words ?? '',
-          });
-        }
-      }
-
-      if (children.length > 1) {
-        // LAST, so it is written after everything it holds — and so the caller's
-        // map already answers for every child by the time this row is created.
-        elements.push({
-          type: 'group',
-          id: mint(),
-          children: Object.fromEntries(children.map(child => [child, true])),
-        });
-      }
     }
 
     // `relations` AND the behaviour edges that live on the Activity and the
@@ -1424,16 +1320,10 @@ export function umlElementsFromModel(
               boxOf.get(edge.targetId)
             );
       elements.push({
-        type: 'connector',
+        // The line the edge tool draws (`umlConnectorProps`): STRAIGHT, the
+        // pack's ink, the relationship's own ends.
+        ...umlConnectorProps(edge.kind),
         id: mint(),
-        role: UML_ROLE[edge.kind],
-        // STRAIGHT, always: UML's lines state a relationship between two
-        // classifiers, and the elbows of an orthogonal router would read as a
-        // route through the diagram that nobody drew (`actions.ts`).
-        mode: ConnectorMode.Straight,
-        stroke: UML_INK,
-        strokeWidth: UML_EDGE_WIDTH,
-        ...UML_EDGE_STYLE[edge.kind],
         source: { id: source, position: anchors?.source ?? [0.5, 0.5] },
         target: { id: target, position: anchors?.target ?? [0.5, 0.5] },
         ...(edge.label ? { text: edge.label } : {}),

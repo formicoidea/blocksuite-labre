@@ -11,3 +11,14 @@
  */
 export * from './drawio-decode.js';
 export * from './interchange.js';
+
+// The toolbar as pure builders (`docs/adr/0045`): what a host with no editor
+// places to draw the very elements a user places from the toolbar.
+export {
+  UML_TOOLBOX,
+  umlFrameElement,
+  type UmlFrameOptions,
+  umlNodeElements,
+  type UmlNodeTexts,
+  umlRelationElement,
+} from './toolbox.js';

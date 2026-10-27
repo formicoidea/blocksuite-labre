@@ -1,11 +1,10 @@
 import {
   DefaultTool,
   runInterchangeImportFile,
+  type SerializedElementProps,
 } from '@labre/affine-block-surface';
 import { ConnectorTool } from '@labre/affine-gfx-connector';
 import {
-  ConnectorMode,
-  TextAlign,
   type UmlDiagramKind,
   UmlDiagramElementModel,
   type UmlFragmentOperator,
@@ -13,34 +12,16 @@ import {
 } from '@labre/affine-model';
 import { translateKey } from '@labre/affine-shared/services';
 import { downloadBlob } from '@labre/affine-shared/utils';
-import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
 import {
   type GfxController,
   GfxControllerIdentifier,
   type GfxPrimitiveElementModel,
-  type SurfaceBlockModel,
 } from '@labre/std/gfx';
 
-import {
-  type UmlBox,
-  umlCompartmentBoxes,
-  umlLabelRoleOf,
-} from './component.js';
-import {
-  UML_BODY_FONT_SIZE,
-  UML_DIAGRAM_BOX,
-  UML_EDGE_WIDTH,
-  UML_FRAGMENT_BOX,
-  UML_INK,
-  UML_NAME_FONT_SIZE,
-  UML_NODE_BOX,
-  UML_PARTITION_BOX,
-  UML_REGION_BOX,
-  UML_SUBJECT_BOX,
-} from './consts.js';
+import { UML_NODE_BOX } from './consts.js';
 import { decodeDrawio } from './drawio-decode.js';
-import { UML_EDGE_STYLE, type UmlEdgeRole } from './edge-styles.js';
+import type { UmlEdgeRole } from './edge-styles.js';
 import { umlSafeFilename } from './filename.js';
 import {
   UML_DRAWIO_IMPORT,
@@ -50,23 +31,19 @@ import {
   UML_XMI_IMPORT,
 } from './interchange.js';
 import {
-  UML_ATTRIBUTES_SEED,
-  UML_ATTRIBUTES_SEED_KEY,
   UML_NAME_SEED,
   UML_OPERATIONS_SEED,
   UML_OPERATIONS_SEED_KEY,
-  UML_SLOTS_SEED,
-  UML_SLOTS_SEED_KEY,
   UML_UNLABELLED_KINDS,
+  umlBodySeed,
   umlSeedKey,
 } from './keywords.js';
-import { umlNameDecoration, umlNodeProps, umlTextProps } from './presets.js';
 import {
-  UML_ROLE,
-  umlDiagramRoleKey,
-  umlRoleKey,
-  umlSubjectRoleKey,
-} from './roles.js';
+  umlConnectorProps,
+  UML_FRAME_BOX,
+  type UmlFrameType,
+} from './presets.js';
+import { UML_FRAME_SEED, umlFrameElement, umlNodeElements } from './toolbox.js';
 
 /**
  * Standalone creation/activation actions for the UML toolbox — the same shape
@@ -84,20 +61,83 @@ function finish(gfx: GfxController, id: string) {
   // Keep the palette open (native sub-menu behaviour).
 }
 
-/** One compartment of a component, as a canvas TEXT element. */
-function addTier(
-  surface: SurfaceBlockModel,
-  index: string,
-  role: string,
-  text: string,
-  box: UmlBox,
-  options: Parameters<typeof umlTextProps>[2]
+/**
+ * Write a toolbox builder's elements (`toolbox.ts`, `docs/adr/0045`) the way
+ * the toolbar does, and say what the gesture produced.
+ *
+ * What only an editor has stays here: the layer index, minted per element in
+ * painting order — a stability statement, since two elements sharing an index
+ * sort by nanoid — and the surface's own ids, which a group's `children` is
+ * rewritten to name. The group is LAST in a builder's list, so every member
+ * already has its id when the group is written.
+ *
+ * Returns the group's id when there is one, else the first element's: what a
+ * gesture selects.
+ */
+function place(
+  gfx: GfxController,
+  elements: readonly SerializedElementProps[]
+): string | undefined {
+  const surface = gfx.surface;
+  if (!surface) return undefined;
+  const minted = new Map<string, string>();
+  let first: string | undefined;
+  let group: string | undefined;
+  for (const { id: local, ...props } of elements) {
+    if (props.type === 'group') {
+      // A plain record is a legal `children`: the group's own `propsToY` takes
+      // the KEYS and forces every value to `true`.
+      props.children = Object.fromEntries(
+        Object.keys(props.children as Record<string, true>).map(child => [
+          minted.get(child) ?? child,
+          true,
+        ])
+      );
+    }
+    const id = surface.addElement({
+      ...props,
+      index: gfx.layer.generateIndex(),
+    });
+    minted.set(local as string, id);
+    first ??= id;
+    if (props.type === 'group') group = id;
+  }
+  return group ?? first;
+}
+
+/** A frame centred on the viewport, written and selected. */
+function createUmlFrame(
+  std: BlockStdScope,
+  type: UmlFrameType,
+  name: string | undefined,
+  options?: Parameters<typeof umlFrameElement>[4]
+) {
+  const gfx = gfxOf(std);
+  const surface = gfx.surface;
+  if (!surface) return;
+
+  const { w, h } = UML_FRAME_BOX[type];
+  const { centerX: cx, centerY: cy } = gfx.viewport;
+  const { id: _local, ...props } = umlFrameElement(
+    type,
+    { x: cx - w / 2, y: cy - h / 2 },
+    name,
+    type,
+    options
+  );
+  finish(gfx, surface.addElement(props));
+}
+
+/**
+ * A frame's default name, resolved through the translation seam at placement
+ * and never again: content from the moment it lands (#183).
+ */
+function frameName(
+  std: BlockStdScope,
+  type: keyof typeof UML_FRAME_SEED
 ): string {
-  return surface.addElement({
-    ...umlTextProps(role, box, options),
-    text,
-    index,
-  });
+  const [key, english] = UML_FRAME_SEED[type];
+  return translateKey(std, key, english);
 }
 
 /* ── The sheet and the frame on it ─────────────────────────────────────── */
@@ -123,22 +163,10 @@ export function createUmlDiagram(
   std: BlockStdScope,
   kind: UmlDiagramKind = 'class'
 ) {
-  const gfx = gfxOf(std);
-  const surface = gfx.surface;
-  if (!surface) return;
-
-  const { w, h } = UML_DIAGRAM_BOX;
-  const { centerX: cx, centerY: cy } = gfx.viewport;
-  const id = surface.addElement({
-    type: 'umlDiagram',
-    // The FRAME the elements are drawn on, and a role of its own: a rule written
-    // on the artefacts must never fall on the sheet holding them.
-    role: UML_ROLE.diagram,
-    name: translateKey(std, umlDiagramRoleKey, 'Diagram'),
-    kind,
-    xywh: new Bound(cx - w / 2, cy - h / 2, w, h).serialize(),
-  });
-  finish(gfx, id);
+  // The FRAME the elements are drawn on, with a role of its own
+  // (`umlFrameProps`): a rule written on the artefacts must never fall on the
+  // sheet holding them.
+  createUmlFrame(std, 'umlDiagram', frameName(std, 'umlDiagram'), { kind });
 }
 
 /**
@@ -149,31 +177,8 @@ export function createUmlDiagram(
  * ONE name, so there is nothing for a discriminant to discriminate.
  */
 export function createUmlSubject(std: BlockStdScope) {
-  const gfx = gfxOf(std);
-  const surface = gfx.surface;
-  if (!surface) return;
-
-  const { w, h } = UML_SUBJECT_BOX;
-  const { centerX: cx, centerY: cy } = gfx.viewport;
-  const id = surface.addElement({
-    type: 'umlSubject',
-    role: UML_ROLE.subject,
-    name: translateKey(std, umlSubjectRoleKey, 'Subject'),
-    xywh: new Bound(cx - w / 2, cy - h / 2, w, h).serialize(),
-  });
-  finish(gfx, id);
+  createUmlFrame(std, 'umlSubject', frameName(std, 'umlSubject'));
 }
-
-/**
- * The two behaviour BACKGROUNDS, named through the same seam the subject is.
- *
- * `umlRoleKey` rather than a `umlPartitionRoleKey` export, and it is the same
- * string either way (`roles.ts` derives both from the role's local name): a
- * default name is asked for ONCE, at creation, and it is the author's content
- * from that moment on — so the call site needs the key and nothing else.
- */
-const umlPartitionRoleKey = umlRoleKey('partition');
-const umlRegionRoleKey = umlRoleKey('region');
 
 /**
  * Create an activity PARTITION — a swimlane (§15.6.4), the band an activity
@@ -199,19 +204,7 @@ const umlRegionRoleKey = umlRoleKey('region');
  * turns a column into a row.
  */
 export function createUmlPartition(std: BlockStdScope) {
-  const gfx = gfxOf(std);
-  const surface = gfx.surface;
-  if (!surface) return;
-
-  const { w, h } = UML_PARTITION_BOX;
-  const { centerX: cx, centerY: cy } = gfx.viewport;
-  const id = surface.addElement({
-    type: 'umlPartition',
-    role: UML_ROLE.partition,
-    name: translateKey(std, umlPartitionRoleKey, 'Partition'),
-    xywh: new Bound(cx - w / 2, cy - h / 2, w, h).serialize(),
-  });
-  finish(gfx, id);
+  createUmlFrame(std, 'umlPartition', frameName(std, 'umlPartition'));
 }
 
 /**
@@ -228,19 +221,7 @@ export function createUmlPartition(std: BlockStdScope) {
  * into.
  */
 export function createUmlRegion(std: BlockStdScope) {
-  const gfx = gfxOf(std);
-  const surface = gfx.surface;
-  if (!surface) return;
-
-  const { w, h } = UML_REGION_BOX;
-  const { centerX: cx, centerY: cy } = gfx.viewport;
-  const id = surface.addElement({
-    type: 'umlRegion',
-    role: UML_ROLE.region,
-    name: translateKey(std, umlRegionRoleKey, 'Region'),
-    xywh: new Bound(cx - w / 2, cy - h / 2, w, h).serialize(),
-  });
-  finish(gfx, id);
+  createUmlFrame(std, 'umlRegion', frameName(std, 'umlRegion'));
 }
 
 /* ── Phase 3: the combined fragment (§17.6.4) and the interaction use ───── */
@@ -287,19 +268,7 @@ export function createUmlFragment(
   std: BlockStdScope,
   operator: UmlFragmentOperator = 'alt'
 ) {
-  const gfx = gfxOf(std);
-  const surface = gfx.surface;
-  if (!surface) return;
-
-  const { w, h } = UML_FRAGMENT_BOX;
-  const { centerX: cx, centerY: cy } = gfx.viewport;
-  const id = surface.addElement({
-    type: 'umlFragment',
-    role: UML_ROLE.fragment,
-    operator,
-    xywh: new Bound(cx - w / 2, cy - h / 2, w, h).serialize(),
-  });
-  finish(gfx, id);
+  createUmlFrame(std, 'umlFragment', undefined, { operator });
 }
 
 /**
@@ -423,43 +392,43 @@ export type UmlGlyphKind =
   | 'destruction';
 
 /**
- * The glyph kinds whose one tier is a `uml:name` rather than a `uml:label`.
+ * Place an artefact centred on the viewport and select what the gesture
+ * produced: the GROUP when the kind has words, the SHAPE when it is a mark.
  *
- * The line between the two is drawn by `roles.ts` and it is not about having a
- * rectangle: `uml:name` is the tier a KEYWORD may be written on and the grammar
- * reads back, `uml:label` is a name and nothing else. So:
- *
- *  - a **package** name is a namespace, parseable and qualified (§12.2.4), and a
- *    **note**'s text is what the exporter writes as the comment's body;
- *  - the three **deployment cubes** are named INSIDE their front face, over a
- *    keyword line — `«device»`, `«executionEnvironment»` (§19.4.4) — which is
- *    exactly what a name compartment is for. It is also load-bearing rather than
- *    tidy: the morph's `afterMorph` rewrites `uml:name` and only that, so a cube
- *    labelled instead of named would morph into a device that never said so.
- *
- * Everything else here carries a LABEL: a port's word sits beside a 16-unit
- * square and the two interface marks' beside a ball and a socket, none of them
- * inside anything, and none of them ever carrying a keyword.
+ * The elements come from the ONE assembly a host with no editor and every
+ * importer also call (`umlNodeElements`, `toolbox.ts`, over
+ * `umlArtefactElements`, `presets.ts`, `docs/adr/0045`). What only an editor
+ * has stays here: the viewport centre, and every seed resolved through the
+ * translation SEAM — the words a gesture writes are persisted, so a host that
+ * has a catalogue must be asked before they land: a package dropped in a
+ * French editor is never called "Package" afterwards (R30). Resolved once,
+ * here; content from that moment on.
  */
-const NAMED_GLYPHS = new Set<UmlGlyphKind>([
-  'package',
-  'note',
-  'node',
-  'device',
-  'execution-environment',
-]);
+function createUmlArtefact(std: BlockStdScope, kind: UmlNodeKind) {
+  const gfx = gfxOf(std);
+  if (!gfx.surface) return;
 
-/**
- * Where the viewport centre puts a node of this kind.
- *
- * Shared by the two creation functions so a class and a use case are centred by
- * the same arithmetic — the geometry is the only thing the two gestures have in
- * common, and it is worth not writing twice.
- */
-function centredBox(gfx: GfxController, kind: UmlNodeKind) {
   const { w, h } = UML_NODE_BOX[kind];
   const { centerX: cx, centerY: cy } = gfx.viewport;
-  return { x: cx - w / 2, y: cy - h / 2, w, h };
+  const [bodyKey, bodyText] = umlBodySeed(kind);
+  const elements = umlNodeElements(
+    kind,
+    { x: cx - w / 2, y: cy - h / 2 },
+    // A mark asks for no key: there is no word to translate.
+    UML_UNLABELLED_KINDS.has(kind)
+      ? {}
+      : {
+          name: translateKey(std, umlSeedKey(kind), UML_NAME_SEED[kind]),
+          attributes: bodyKey ? translateKey(std, bodyKey, bodyText) : bodyText,
+          operations: translateKey(
+            std,
+            UML_OPERATIONS_SEED_KEY,
+            UML_OPERATIONS_SEED
+          ),
+        }
+  );
+  const id = place(gfx, elements);
+  if (id) finish(gfx, id);
 }
 
 /**
@@ -479,14 +448,14 @@ function centredBox(gfx: GfxController, kind: UmlNodeKind) {
  *
  * ## `uml:name` for five of them, `uml:label` for the rest
  *
- * See {@link NAMED_GLYPHS}: a package, a note and the three cubes carry a NAME
- * the grammar parses a keyword off; a port, a ball and a socket carry a LABEL.
- * Keeping them apart is what lets the exporter read a tier without first asking
- * what shape it is under.
+ * See `NAMED_GLYPH_KINDS` (`presets.ts`): a package, a note and the three
+ * cubes carry a NAME the grammar parses a keyword off; a port, a ball and a
+ * socket carry a LABEL. Keeping them apart is what lets the exporter read a
+ * tier without first asking what shape it is under.
  *
  * ## The label is where the notation puts it, and that is not this file's call
  *
- * The box comes out of {@link umlCompartmentBoxes}, which is where every
+ * The box comes out of `umlCompartmentBoxes`, which is where every
  * "beside the glyph" and "inside the front face" decision is written down: a
  * port's label sits next to the square rather than on it (the square is 16
  * units, and words do not fit in it), an interface mark's sits beside the ball
@@ -522,96 +491,8 @@ function centredBox(gfx: GfxController, kind: UmlNodeKind) {
  * rules off and the exporter reads.
  */
 export function createUmlNode(std: BlockStdScope, kind: UmlGlyphKind) {
-  const gfx = gfxOf(std);
-  const surface = gfx.surface;
-  if (!surface) return;
-
-  const { x, y, w, h } = centredBox(gfx, kind);
-
-  const shapeId = surface.addElement({
-    // Every prop the kind is worth, from the ONE table the morph also reads
-    // (`presets.ts`). NO `text`: the words are the child below, and the shape is
-    // a body and nothing else.
-    ...umlNodeProps(kind, { xywh: new Bound(x, y, w, h).serialize() }),
-    index: gfx.layer.generateIndex(),
-  });
-
-  // The marks the notation draws without a word on them: the shape IS the
-  // artefact, so there is nothing to group it with and nothing to seed.
-  if (UML_UNLABELLED_KINDS.has(kind)) {
-    finish(gfx, shapeId);
-    return;
-  }
-
-  const { name: box } = umlCompartmentBoxes(kind, x, y, w, h);
-  const isLabel = !NAMED_GLYPHS.has(kind);
-  const textId = addTier(
-    surface,
-    gfx.layer.generateIndex(),
-    // WHICH label role is the kind's own answer, not this file's: a lifeline's
-    // head carries `uml:lifeline-ident` and every other single word carries
-    // `uml:label` (`component.ts`, {@link umlLabelRoleOf}).
-    isLabel ? umlLabelRoleOf(kind) : UML_ROLE.name,
-    // Through the SEAM, like the frames above: the words a gesture writes are
-    // persisted, so a host that has a catalogue must be asked before they land
-    // — a package dropped in a French editor is never called "Package"
-    // afterwards (R30). Resolved once, here; content from that moment on.
-    translateKey(std, umlSeedKey(kind), UML_NAME_SEED[kind]),
-    box,
-    {
-      fontSize: UML_NAME_FONT_SIZE,
-      align: kind === 'note' ? TextAlign.Left : TextAlign.Center,
-    }
-  );
-
-  // The group LAST, so it is written after everything it holds: the elements are
-  // created in painting order — the shape first and the words above it — and the
-  // group's own `xywh` is derived from its children.
-  const groupId = surface.addElement({
-    type: 'group',
-    index: gfx.layer.generateIndex(),
-    // A plain record is a legal `children`: the group's own `propsToY` takes the
-    // KEYS and forces every value to `true`.
-    children: { [shapeId]: true, [textId]: true },
-    // No title, deliberately. The group renderer paints one only while the
-    // artefact is selected, and a package announcing itself as "Group 3" above
-    // its own name is a label nobody wrote.
-  });
-
-  finish(gfx, groupId);
+  createUmlArtefact(std, kind);
 }
-
-/**
- * What the SECOND compartment says on a fresh artefact, where it is not the
- * §9.5.4 attribute line every classifier gets.
- *
- * Two exceptions and a default, rather than three entries, because the default
- * is the rule: `+ attribute : Type` is what a divided rectangle's body tier
- * holds unless the kind's own clause says otherwise.
- *
- *  - an **object**'s tier holds SLOTS (§9.8.4) — `attribute = value`, an
- *    instance giving its classifier's features values rather than redeclaring
- *    them;
- *  - a **state**'s holds INTERNAL ACTIVITIES (§14.2.4.4) and is seeded EMPTY.
- *    That is the one place in this pack where a blank tier is the right
- *    stencil, and it is the exporter that decides it: `model.ts` reads
- *    `entry / …`, `do / …` and `exit / …` off these lines and treats a label
- *    with nothing after it as no behaviour at all, so a seeded `entry / ` would
- *    be a prompt that reads as content and exports as nothing. §14.2.4's own
- *    figures draw exactly this — a named state with a ruled-off compartment
- *    waiting to be filled — and the author types the first line the grammar
- *    then reads back.
- *
- * Each is paired with the key it is the English default of, and the state's is
- * `null` for the reason an unlabelled kind contributes none: there is no word
- * to translate.
- */
-const BODY_SEED: Partial<
-  Record<UmlClassifierKind, readonly [key: string | null, text: string]>
-> = {
-  object: [UML_SLOTS_SEED_KEY, UML_SLOTS_SEED],
-  state: [null, ''],
-};
 
 /**
  * Create one of the COMPARTMENTED artefacts — a class, an interface, an
@@ -620,12 +501,13 @@ const BODY_SEED: Partial<
  *
  * ## How many tiers is the LAYOUT's answer, not this file's
  *
- * The walk below writes a tier for each box `umlCompartmentBoxes` returns and
- * for no other, which is what lets two kinds be added to the notation without a
- * line changing here: a component and an artifact arrive with the name tier and
- * the one body tier §11.6.4 and §19.3.4 draw them with, because that is what the
- * layout hands over. The alternative — a table of tier counts in this file —
- * would be a second statement of the geometry, and the first one to drift.
+ * The assembly (`umlArtefactElements`) writes a tier for each box
+ * `umlCompartmentBoxes` returns and for no other, which is what lets two kinds
+ * be added to the notation without a line changing here: a component and an
+ * artifact arrive with the name tier and the one body tier §11.6.4 and §19.3.4
+ * draw them with, because that is what the layout hands over. The alternative
+ * — a table of tier counts in this file — would be a second statement of the
+ * geometry, and the first one to drift.
  *
  * ## Four or five elements, and the object is the four
  *
@@ -657,74 +539,7 @@ export function createUmlClassifier(
   std: BlockStdScope,
   kind: UmlClassifierKind
 ) {
-  const gfx = gfxOf(std);
-  const surface = gfx.surface;
-  if (!surface) return;
-
-  const { x, y, w, h } = centredBox(gfx, kind);
-
-  const shapeId = surface.addElement({
-    ...umlNodeProps(kind, { xywh: new Bound(x, y, w, h).serialize() }),
-    index: gfx.layer.generateIndex(),
-  });
-
-  const boxes = umlCompartmentBoxes(kind, x, y, w, h);
-  const children: Record<string, true> = { [shapeId]: true };
-
-  children[
-    addTier(
-      surface,
-      gfx.layer.generateIndex(),
-      UML_ROLE.name,
-      // Through the seam, exactly as {@link createUmlNode} writes its one tier.
-      translateKey(std, umlSeedKey(kind), UML_NAME_SEED[kind]),
-      boxes.name,
-      {
-        fontSize: UML_NAME_FONT_SIZE,
-        align: TextAlign.Center,
-        bold: true,
-        decoration: umlNameDecoration(kind),
-      }
-    )
-  ] = true;
-
-  if (boxes.attributes) {
-    const [bodyKey, bodyText] = BODY_SEED[kind] ?? [
-      UML_ATTRIBUTES_SEED_KEY,
-      UML_ATTRIBUTES_SEED,
-    ];
-    children[
-      addTier(
-        surface,
-        gfx.layer.generateIndex(),
-        UML_ROLE.attributes,
-        bodyKey ? translateKey(std, bodyKey, bodyText) : bodyText,
-        boxes.attributes,
-        { fontSize: UML_BODY_FONT_SIZE, align: TextAlign.Left }
-      )
-    ] = true;
-  }
-
-  if (boxes.operations) {
-    children[
-      addTier(
-        surface,
-        gfx.layer.generateIndex(),
-        UML_ROLE.operations,
-        translateKey(std, UML_OPERATIONS_SEED_KEY, UML_OPERATIONS_SEED),
-        boxes.operations,
-        { fontSize: UML_BODY_FONT_SIZE, align: TextAlign.Left }
-      )
-    ] = true;
-  }
-
-  const groupId = surface.addElement({
-    type: 'group',
-    index: gfx.layer.generateIndex(),
-    children,
-  });
-
-  finish(gfx, groupId);
+  createUmlArtefact(std, kind);
 }
 
 /* ── The relationships ─────────────────────────────────────────────────── */
@@ -746,7 +561,7 @@ export type { UmlEdgeRole };
  * Because UML has twelve of them and they differ on three props out of a table
  * that is otherwise identical — the same mode, the same ink, the same weight. A
  * dozen near-identical functions would be a dozen places for a stroke width to
- * drift, and {@link UML_EDGE_STYLE} is the notation itself, which is the thing
+ * drift, and `UML_EDGE_STYLE` is the notation itself, which is the thing
  * worth reading. It is also what made phase 2 free: `deploy`, `manifest` and
  * `communication-path` arm through this function without a line changing in it.
  *
@@ -764,15 +579,10 @@ export type { UmlEdgeRole };
  * keep the user's own style (#144 M1).
  */
 export function activateUmlEdge(std: BlockStdScope, role: UmlEdgeRole) {
-  gfxOf(std).tool.setTool(ConnectorTool, {
-    mode: ConnectorMode.Straight,
-    role: UML_ROLE[role],
-    style: {
-      stroke: UML_INK,
-      strokeWidth: UML_EDGE_WIDTH,
-      ...UML_EDGE_STYLE[role],
-    },
-  });
+  // The line a host's connector and an imported one are drawn in too
+  // (`umlConnectorProps`, `docs/adr/0045`): one table, read three ways.
+  const { type: _type, role: roleId, mode, ...style } = umlConnectorProps(role);
+  gfxOf(std).tool.setTool(ConnectorTool, { mode, role: roleId, style });
   // Keep the palette open (native sub-menu behaviour).
 }
 

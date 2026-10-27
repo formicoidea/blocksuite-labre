@@ -332,6 +332,39 @@ export const UML_SLOTS_SEED = 'attribute = value';
 /** Its own key, resolved at placement like the two above. */
 export const UML_SLOTS_SEED_KEY = 'com.labre.uml.seed.slots';
 
+/**
+ * What the SECOND compartment says on a fresh artefact, as `[key, English]`:
+ * the §9.5.4 attribute line every divided box gets, except two.
+ *
+ * Two exceptions and a default, rather than one entry per kind, because the
+ * default is the rule: `+ attribute : Type` is what a divided rectangle's body
+ * tier holds unless the kind's own clause says otherwise.
+ *
+ *  - an **object**'s tier holds SLOTS (§9.8.4) — `attribute = value`, an
+ *    instance giving its classifier's features values rather than redeclaring
+ *    them;
+ *  - a **state**'s holds INTERNAL ACTIVITIES (§14.2.4.4) and is seeded EMPTY.
+ *    That is the one place in this pack where a blank tier is the right
+ *    stencil, and it is the exporter that decides it: `model.ts` reads
+ *    `entry / …`, `do / …` and `exit / …` off these lines and treats a label
+ *    with nothing after it as no behaviour at all, so a seeded `entry / ` would
+ *    be a prompt that reads as content and exports as nothing. §14.2.4's own
+ *    figures draw exactly this — a named state with a ruled-off compartment
+ *    waiting to be filled — and the author types the first line the grammar
+ *    then reads back.
+ *
+ * The state's key is `null` for the reason an unlabelled kind contributes
+ * none: there is no word to translate. The toolbar resolves the key at
+ * placement; a host with no editor takes the English (`toolbox.ts`).
+ */
+export function umlBodySeed(
+  kind: UmlNodeKind
+): readonly [key: string | null, text: string] {
+  if (kind === 'object') return [UML_SLOTS_SEED_KEY, UML_SLOTS_SEED];
+  if (kind === 'state') return [null, ''];
+  return [UML_ATTRIBUTES_SEED_KEY, UML_ATTRIBUTES_SEED];
+}
+
 /* ── Reading one back ─────────────────────────────────────────────────── */
 
 /** What a name compartment states, once its notation has been read off it. */
