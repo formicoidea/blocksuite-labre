@@ -8,6 +8,8 @@
  *   as a callout through a parser that resolves the escape; GFM / Obsidian
  *   readers, and an agent rewriting what `readDocMarkdown` showed it, see a
  *   quote with the text `[!💡]`;
+ * - #521: a standalone image (mdast wraps it in a paragraph) imported with an
+ *   empty `affine:paragraph` above the image block;
  * - #519: the code preprocessor (slice level) rewriting the first leading
  *   space of every line to `&#x20;` except for `-` lines, so a `1.`, `*` or
  *   `+` sub-list stopped being a list item and folded into its parent's text.
@@ -17,7 +19,11 @@
  */
 import { DefaultTheme, NoteDisplayMode } from '@labre/affine-model';
 import { MarkdownAdapter } from '@labre/affine-shared/adapters';
-import type { BlockSnapshot } from '@labre/store';
+import {
+  AssetsManager,
+  type BlockSnapshot,
+  MemoryBlobCRUD,
+} from '@labre/store';
 import { describe, expect, test } from 'vitest';
 
 import { createJob } from '../utils/create-job.js';
@@ -166,5 +172,42 @@ describe('nested lists in a slice (#519)', () => {
       { flavour: 'affine:paragraph', type: 'text', text: '    bbb' },
       { flavour: 'affine:paragraph', type: 'text', text: ' emphasis kept' },
     ]);
+  });
+});
+
+describe('standalone image (#521)', () => {
+  // mdast wraps a lone image in a paragraph; the paragraph matcher used to
+  // open an empty `affine:paragraph` above the image block.
+  async function importWithAsset(markdown: string): Promise<Shape[]> {
+    const blobCRUD = new MemoryBlobCRUD();
+    await blobCRUD.set('blob-a', new Blob());
+    const assets = new AssetsManager({ blob: blobCRUD });
+    assets.getPathBlobIdMap().set('assets/a.png', 'blob-a');
+    const snapshot = await new MarkdownAdapter(
+      createJob(),
+      provider
+    ).toBlockSnapshot({
+      file: markdown,
+      assets,
+      workspaceId: '',
+      pageId: '',
+    });
+    return snapshot.children.map(shape);
+  }
+
+  test('emits the image block alone, no empty paragraph', async () => {
+    expect(
+      await importWithAsset('Texte avant\n\n![schéma](assets/a.png)\n\nAprès')
+    ).toEqual([
+      { flavour: 'affine:paragraph', type: 'text', text: 'Texte avant' },
+      { flavour: 'affine:image' },
+      { flavour: 'affine:paragraph', type: 'text', text: 'Après' },
+    ]);
+  });
+
+  test('two images on consecutive lines are two blocks and nothing else', async () => {
+    expect(
+      await importWithAsset('![a](assets/a.png)\n![b](assets/a.png)')
+    ).toEqual([{ flavour: 'affine:image' }, { flavour: 'affine:image' }]);
   });
 });

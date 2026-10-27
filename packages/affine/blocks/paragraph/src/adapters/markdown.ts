@@ -24,6 +24,15 @@ const PARAGRAPH_MDAST_TYPE = new Set(['paragraph', 'heading', 'blockquote']);
 const isParagraphMDASTType = (node: MarkdownAST) =>
   PARAGRAPH_MDAST_TYPE.has(node.type);
 
+const isImageOnlyParagraph = (node: MarkdownAST) =>
+  node.type === 'paragraph' &&
+  node.children.some(child => child.type === 'image') &&
+  node.children.every(
+    child =>
+      child.type === 'image' ||
+      (child.type === 'text' && child.value.trim() === '')
+  );
+
 export const paragraphBlockMarkdownAdapterMatcher: BlockMarkdownAdapterMatcher =
   {
     flavour: ParagraphBlockSchema.model.flavour,
@@ -34,6 +43,13 @@ export const paragraphBlockMarkdownAdapterMatcher: BlockMarkdownAdapterMatcher =
         const { walkerContext, deltaConverter } = context;
         switch (o.node.type) {
           case 'paragraph': {
+            // mdast wraps a standalone image (or images split by a line
+            // break) in a paragraph; the image matcher emits the block itself,
+            // so opening a paragraph here left an empty one above it (#521).
+            // Markdown cannot express an empty paragraph: none is lost.
+            if (isImageOnlyParagraph(o.node)) {
+              return;
+            }
             walkerContext.setGlobalContext(IN_PARAGRAPH_NODE_CONTEXT_KEY, true);
             walkerContext
               .openNode(
