@@ -484,6 +484,26 @@ export class TitleBand extends SignalWatcher(
     this._openPanel();
   };
 
+  /** The host's menu for the property, under its name (`configure`). */
+  private _onNameContextMenu(
+    sources: BandSources,
+    prop: TitleBandProperty,
+    event: MouseEvent
+  ) {
+    const configure = sources.service.configure;
+    if (!configure || this._readonly) return;
+    // A touch long-press is the browser's (text selection), as before.
+    if ((event as PointerEvent).pointerType === 'touch') return;
+    event.preventDefault();
+    event.stopPropagation();
+    configure.call(
+      sources.service,
+      sources.docId,
+      prop.id,
+      event.currentTarget as HTMLElement
+    );
+  }
+
   private _renderFallback(prop: TitleBandProperty) {
     const text = formatPropertyValue(prop, this._locale);
     return html`<span
@@ -523,7 +543,13 @@ export class TitleBand extends SignalWatcher(
         this._onChip(event, false);
       }}
     >
-      <span class="labre-title-band-chip-name">${prop.name}</span>
+      <span
+        class="labre-title-band-chip-name"
+        data-testid="title-band-chip-name"
+        @contextmenu=${(event: MouseEvent) =>
+          this._onNameContextMenu(sources, prop, event)}
+        >${prop.name}</span
+      >
       ${cell
         ? html`<dv-standalone-cell
             class="labre-title-band-chip-value"

@@ -805,6 +805,68 @@ describe('the title band', () => {
     expect(panel.open).toHaveBeenCalledWith({ scope: 'page', docId: DOC });
   });
 
+  // Recette 3: a right-click on a chip's name opens the host's menu for that
+  // property, under the name, as its panel's label and handle do; the
+  // browser's menu stays shut. Without `configure`, on a read-only document
+  // or for a touch long-press, the right-click stays the browser's.
+  it('asks the host to configure a property on a right-click of its name', async () => {
+    const configure = vi.fn();
+    const { service } = bandService(
+      { status: 'ready', properties: [STATUS, OWNER] },
+      { configure }
+    );
+    const band = await mount(
+      fakeStd(new Map([[TitleBandProvider, service]])).std
+    );
+    const name = chipOf(band, 'owner').querySelector<HTMLElement>(
+      '[data-testid="title-band-chip-name"]'
+    )!;
+    const right = new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+    });
+    name.dispatchEvent(right);
+    expect(right.defaultPrevented).toBe(true);
+    expect(configure).toHaveBeenCalledWith(DOC, 'owner', name);
+    expect(service.set).not.toHaveBeenCalled();
+
+    const touch = new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+    });
+    Object.defineProperty(touch, 'pointerType', { value: 'touch' });
+    name.dispatchEvent(touch);
+    expect(touch.defaultPrevented).toBe(false);
+    expect(configure).toHaveBeenCalledTimes(1);
+
+    const { service: bare } = bandService({
+      status: 'ready',
+      properties: [OWNER],
+    });
+    const plain = await mount(
+      fakeStd(new Map([[TitleBandProvider, bare]])).std
+    );
+    const native = new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+    });
+    q(plain, 'title-band-chip-name')!.dispatchEvent(native);
+    expect(native.defaultPrevented).toBe(false);
+
+    const readonlyConfigure = vi.fn();
+    const { service: locked } = bandService(
+      { status: 'ready', properties: [OWNER] },
+      { configure: readonlyConfigure }
+    );
+    const ro = await mount(
+      fakeStd(new Map([[TitleBandProvider, locked]]), true).std
+    );
+    q(ro, 'title-band-chip-name')!.dispatchEvent(
+      new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+    );
+    expect(readonlyConfigure).not.toHaveBeenCalled();
+  });
+
   // Recette 3, P3-x: a "+" on the collapsed row added a property nobody
   // saw, so the reader clicked it again without knowing it had worked.
   it('draws the "+" only while the band is expanded', async () => {
