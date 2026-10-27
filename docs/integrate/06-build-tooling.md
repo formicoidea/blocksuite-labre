@@ -137,7 +137,8 @@ should cap the file's size itself (the editor applies `FileSizeLimitProvider`).
 The same `./interchange` subpaths carry a framework's TOOLBOX when it has one
 (ADR 0045): every toolbar item as a pure builder that returns the elements the
 toolbar places, in the contract a reader's result follows (local ids, a group
-after its members). C4 ships one:
+after its members). C4 and EDGY ship one (`EDGY_TOOLBOX` holds every item
+but the "EDGY dynamic" template, which inserts a snapshot). C4's:
 
 ```ts
 import { C4_TOOLBOX } from '@formicoidea/labre-framework-c4/interchange';
