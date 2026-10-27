@@ -1,4 +1,5 @@
 import {
+  type BackgroundInset,
   backgroundBandWidths,
   type BackgroundRect,
   backgroundInstanceZoneBand,
@@ -48,10 +49,30 @@ export interface BpmnPoolGeometry {
   deserializedXYWH: readonly number[];
   lanes?: unknown;
   name?: unknown;
+  /** What the renderer last painted — `BpmnPoolElementModel.paintedBands`. */
+  paintedBands?: { margin: number; zoneBandWidth: number };
 }
 
-/** The pool's bands as painted: the margin and strip width the names need. */
-export function bpmnPoolLayout(model: BpmnPoolGeometry) {
+/**
+ * The pool's bands as painted: the margin and strip width the names need.
+ *
+ * The widths the renderer cached on the model when it has painted the pool —
+ * the very numbers the model's `includesPoint` selects by, so a rename target
+ * and a selection click agree to the unit; measured here otherwise (a pool not
+ * painted yet, a headless caller).
+ */
+export function bpmnPoolLayout(model: BpmnPoolGeometry): {
+  margin: BackgroundInset;
+  zoneBandWidth: number | undefined;
+} {
+  const declared = BPMN_POOL_BACKGROUND.geometry.margin;
+  const painted = model.paintedBands;
+  if (painted) {
+    return {
+      margin: { ...declared, left: painted.margin },
+      zoneBandWidth: painted.zoneBandWidth,
+    };
+  }
   const [, , w, h] = model.deserializedXYWH;
   return backgroundBandWidths(
     BPMN_POOL_BACKGROUND,

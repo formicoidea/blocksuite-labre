@@ -26,6 +26,7 @@ import {
   warnBrokenBackgroundColor,
 } from './def.js';
 import {
+  type BackgroundBandLayout,
   backgroundBandWidths,
   backgroundFont,
   backgroundTextRoom,
@@ -144,13 +145,29 @@ function rgba(hex: string, alpha: number) {
 const DEFAULT_INSTANCE_ZONE_LABEL_DX = 8;
 const DEFAULT_INSTANCE_ZONE_LABEL_DY = 18;
 
+/** What a framework may ask of the renderer beyond the declaration. */
+export interface FrameworkBackgroundRendererOptions<T> {
+  /**
+   * Called on every paint with the band widths that paint measured
+   * (`backgroundBandWidths`), before anything is drawn. Named consumer: the
+   * BPMN pool, which caches them on its model (`paintedBands`, a `@local()`
+   * field, never stored) so that picking — which asks the headless model —
+   * selects by the bands as painted. A consumer that writes must write only
+   * when the widths changed: a local write repaints.
+   */
+  onBands?: (model: T, layout: BackgroundBandLayout) => void;
+}
+
 /**
  * Build the canvas renderer of one declaration. Pure: the same declaration
  * always paints the same picture for the same model and size.
  */
 export function createFrameworkBackgroundRenderer<
   T extends GfxPrimitiveElementModel,
->(def: FrameworkBackgroundDef): ElementRenderer<T> {
+>(
+  def: FrameworkBackgroundDef,
+  options: FrameworkBackgroundRendererOptions<T> = {}
+): ElementRenderer<T> {
   const palette = def.chrome?.palette;
   const family = def.chrome?.fontFamily ?? DEFAULT_BACKGROUND_FONT_FAMILY;
   const surface = def.chrome?.surface ?? DEFAULT_BACKGROUND_SURFACE;
@@ -216,6 +233,7 @@ export function createFrameworkBackgroundRenderer<
       },
       translation
     );
+    options.onBands?.(model, layout);
     const plot = backgroundPlot(def, w, h, layout.margin);
     const { x0, y0, x1, y1 } = plot;
     const pw = plot.width;

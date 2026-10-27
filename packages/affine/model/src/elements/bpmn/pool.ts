@@ -1,7 +1,7 @@
 import type { SerializedXYWH } from '@labre/global/gfx';
 import { rotatePoint } from '@labre/global/gfx';
 import type { PointTestOptions } from '@labre/std/gfx';
-import { field } from '@labre/std/gfx';
+import { field, local } from '@labre/std/gfx';
 
 import type { FrameworkBackgroundProps } from '../framework-background/index.js';
 import { FrameworkBackgroundElementModel } from '../framework-background/index.js';
@@ -106,6 +106,26 @@ export class BpmnPoolElementModel extends FrameworkBackgroundElementModel<BpmnPo
   accessor lanes: BpmnLane[] | undefined = undefined;
 
   /**
+   * The title band widths the renderer last PAINTED this pool with: the
+   * participant band (`margin`) and the shared lane strip (`zoneBandWidth`).
+   *
+   * The bands grow with their names (`fit: 'wrap'`, PO 2026-10-27), which is a
+   * function of measured text, and this package cannot measure text. So the
+   * BPMN renderer, which does, caches what it painted here after each paint,
+   * and {@link includesPoint} selects by it: a click on a band widened by a
+   * two-line name picks the pool, as the painted band promises.
+   *
+   * A derived, view-time fact cached on the model, NEVER stored — the reasoning
+   * ADR 0031 applies to the local hide: `@local()` lives in `_local` and is not
+   * written to the Y.Map, so no document carries it, no peer receives it and no
+   * snapshot serialises it. Undefined until the first paint; a pool never
+   * painted (headless) selects by the declared widths.
+   */
+  @local()
+  accessor paintedBands: { margin: number; zoneBandWidth: number } | undefined =
+    undefined;
+
+  /**
    * A pool is picked by its BORDER — and by its TITLE BANDS, which is the one
    * carve-out the recette kept (issue #194).
    *
@@ -152,11 +172,16 @@ export class BpmnPoolElementModel extends FrameworkBackgroundElementModel<BpmnPo
 
     if (ly < 0 || ly > h || lx < 0) return false;
 
+    // As wide as last painted (`paintedBands`), the declared widths until then.
     // Clamped to a pool narrower than its own margin — the degenerate case the
     // renderer clamps too.
-    const band = Math.min(POOL_BAND_WIDTH, w);
+    const painted = this.paintedBands ?? {
+      margin: POOL_BAND_WIDTH,
+      zoneBandWidth: POOL_LANE_BAND_WIDTH,
+    };
+    const band = Math.min(painted.margin, w);
     const lanes = this.hasUsableLane
-      ? Math.min(POOL_LANE_BAND_WIDTH, w - band)
+      ? Math.min(painted.zoneBandWidth, w - band)
       : 0;
     return lx <= band + Math.max(lanes, 0);
   }

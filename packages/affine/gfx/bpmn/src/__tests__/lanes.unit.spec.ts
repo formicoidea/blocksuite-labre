@@ -315,6 +315,20 @@ describe('lane title strips that grow with their names', () => {
       index: 1,
     });
   });
+
+  it('aims at the widths the renderer cached, so picking and renaming agree', () => {
+    // `paintedBands` is what the model's `includesPoint` selects by; the
+    // rename targets must read the same numbers rather than re-measure.
+    const model = {
+      ...pool([{ id: 'a', name: 'Sales', size: 1 }]),
+      paintedBands: { margin: 46, zoneBandWidth: 42 },
+    };
+    const { plot, bands } = bpmnPoolBands(model)!;
+    expect(plot.x0).toBe(46);
+    expect(bands[0].strip).toMatchObject({ x: 46, w: 42 });
+    expect(bpmnInPoolTitleBand(model, [45, 100], 10)).toBe(true);
+    expect(bpmnLaneTitleBandAt(model, [85, 100], 10)).toBe(0);
+  });
 });
 
 describe('adding a lane', () => {

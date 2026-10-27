@@ -270,6 +270,37 @@ describe('a BPMN pool is picked by its border and its title bands', () => {
     expect(pool.includesPoint(540, 100, PICK)).toBe(true);
     expect(pool.includesPoint(20, 100, PICK)).toBe(false);
   });
+
+  /**
+   * The title bands GROW with their names (`fit: 'wrap'`, PO 2026-10-27), and
+   * only the renderer can measure a name. It caches the widths it painted on
+   * the model's `@local()` `paintedBands`, never stored. This would catch a
+   * click on the widened part of a band (a two-line participant name, a
+   * two-line lane name) selecting nothing, because picking asks the model,
+   * and a pool that was never painted losing the declared bands.
+   */
+  it('takes the bands as WIDE as they were painted', () => {
+    const pool = detached(BpmnPoolElementModel, { ...POOL, lanes: LANES });
+    (pool as unknown as { _local: Map<string, unknown> })._local.set(
+      'paintedBands',
+      { margin: 46, zoneBandWidth: 42 }
+    );
+
+    expect(pool.paintedBands).toEqual({ margin: 46, zoneBandWidth: 42 });
+    // Past the declared 28 + 24, inside the painted participant band…
+    expect(pool.includesPoint(60, 100, PICK)).toBe(true);
+    // …and inside the painted lane strip (46..88).
+    expect(pool.includesPoint(85, 150, PICK)).toBe(true);
+    // The flow area still belongs to what is drawn on it.
+    expect(pool.includesPoint(95, 150, PICK)).toBe(false);
+  });
+
+  it('falls back to the declared bands for a pool never painted', () => {
+    const pool = detached(BpmnPoolElementModel, { ...POOL, lanes: LANES });
+    expect(pool.paintedBands).toBeUndefined();
+    expect(pool.includesPoint(60, 100, PICK)).toBe(false);
+    expect(pool.includesPoint(51, 100, PICK)).toBe(true);
+  });
 });
 
 describe('a C4 board is picked by its border and its title band', () => {
