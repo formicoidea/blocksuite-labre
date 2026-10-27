@@ -1,4 +1,4 @@
-import { ES_HOTSPOT, ES_STICKIES } from '@labre/affine-gfx-ddd-shared';
+import { ES_HOTSPOT, ES_STICKIES } from '@labre/affine-gfx-ddd-shared/headless';
 import type { RoleDef, RoleDefs } from '@labre/std/gfx';
 
 /**

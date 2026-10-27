@@ -1,6 +1,9 @@
 import type { FrameworkBackgroundDef } from '@labre/affine-block-surface';
-import { ES_STICKIES, FONT_FAMILY } from '@labre/affine-gfx-ddd-shared';
-import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
+import {
+  ES_STICKIES,
+  FONT_FAMILY,
+} from '@labre/affine-gfx-ddd-shared/headless';
+import { NOTATION_NEUTRALS } from '@labre/affine-shared/headless';
 
 import { ES_ROLE } from './roles';
 

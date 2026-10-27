@@ -61,6 +61,7 @@ const WITH_INTERCHANGE = [
   'c4',
   'cynefin-estuarine',
   'ddd-context-map',
+  'ddd-event-storming',
   'edgy',
   'uml',
   'wardley',
