@@ -16,7 +16,7 @@ import type {
  * What it would have caught: either field made required (every 0.48 host a
  * compile error at upgrade), or `setData` folded into `set` (a value write and
  * a definition write are two different rights on the host side).
- * 0.60 adds `children$?` (labre ADR-0045 amended 2026-10-27: a child's own
+ * 0.61 adds `children$?` (labre ADR-0045 amended 2026-10-27: a child's own
  * card drops the link arrow), optional and absent below.
  *
  * `yarn build` typechecks it; the runtime half is in
