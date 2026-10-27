@@ -1,12 +1,11 @@
 import { backgroundSize, DefaultTool } from '@labre/affine-block-surface';
 import { ConnectorTool } from '@labre/affine-gfx-connector';
-import { LABEL_COLOR } from '@labre/affine-gfx-ddd-shared';
-import { ConnectorMode, PointStyle, StrokeStyle } from '@labre/affine-model';
-import { Bound } from '@labre/global/gfx';
+import { ConnectorMode } from '@labre/affine-model';
 import type { GfxController } from '@labre/std/gfx';
 
 import { CONTEXT_MAP_BACKGROUND } from './background';
 import { CM_PATTERN_ROLE, type ContextMapPatternKind } from './roles';
+import { contextMapBoardElement, contextMapRelationshipStyle } from './toolbox';
 
 /**
  * Creation / activation actions for the Context Map toolbox — the BEHAVIOUR
@@ -16,27 +15,18 @@ import { CM_PATTERN_ROLE, type ContextMapPatternKind } from './roles';
  * registry's `runCommand` (`docs/adr/0008`).
  */
 
-const RELATIONSHIP_STROKE_WIDTH = 2;
-
 /** Create the board at the viewport centre, select it, return to the default tool. */
 export function createContextMapBoard(gfx: GfxController): void {
   if (!gfx.surface) return;
   const { width, height } = backgroundSize(CONTEXT_MAP_BACKGROUND);
   const { centerX, centerY } = gfx.viewport;
-  const id = gfx.surface.addElement({
-    type: CONTEXT_MAP_BACKGROUND.type,
-    // The board is a first-class role: rules frame contexts against
-    // `context-map:board`, never against the `contextMap` element type. The
-    // declaration owns it, so a templated board and a hand-drawn one agree.
-    role: CONTEXT_MAP_BACKGROUND.role,
-    resizeEnabled: CONTEXT_MAP_BACKGROUND.geometry.resizable,
-    xywh: new Bound(
-      centerX - width / 2,
-      centerY - height / 2,
-      width,
-      height
-    ).serialize(),
+  // The board's props come from the toolbox (`docs/adr/0045`), the one
+  // assembly a host with no editor also calls; the viewport centre is ours.
+  const { id: _local, ...props } = contextMapBoardElement({
+    x: centerX - width / 2,
+    y: centerY - height / 2,
   });
+  const id = gfx.surface.addElement(props);
   gfx.doc.captureSync();
   gfx.tool.setTool(DefaultTool);
   gfx.selection.set({ elements: [id], editing: false });
@@ -74,24 +64,16 @@ export function createContextMapBoard(gfx: GfxController): void {
  */
 export function activateContextMapRelationship(
   gfx: GfxController,
-  kind: ContextMapPatternKind,
-  style: { upDown: boolean; dashed: boolean }
+  kind: ContextMapPatternKind
 ): void {
   gfx.tool.setTool(ConnectorTool, {
     mode: ConnectorMode.Straight,
     role: CM_PATTERN_ROLE[kind],
     // The look rides on the activation, never through the last-props store:
-    // the plain connector tool must keep the user's own style (#144 M1).
-    style: {
-      stroke: LABEL_COLOR,
-      strokeStyle: style.dashed ? StrokeStyle.Dash : StrokeStyle.Solid,
-      strokeWidth: RELATIONSHIP_STROKE_WIDTH,
-      frontEndpointStyle: PointStyle.None,
-      // The arrow points at the DOWNSTREAM end, which is the target: the
-      // role's verb is "is upstream of", so the source is the upstream
-      // context.
-      rearEndpointStyle: style.upDown ? PointStyle.Arrow : PointStyle.None,
-    },
+    // the plain connector tool must keep the user's own style (#144 M1). It is
+    // the toolbox's (`contextMapRelationshipStyle`, `docs/adr/0045`), so a
+    // relationship drawn here and one built by a host look the same.
+    style: contextMapRelationshipStyle(kind),
   });
   // The Context Map palette stays open (native sub-menu behaviour): it only
   // closes on re-click of the senior button, another senior tool, or Escape.

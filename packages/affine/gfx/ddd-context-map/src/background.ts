@@ -1,6 +1,10 @@
 import type { FrameworkBackgroundDef } from '@labre/affine-block-surface';
-import { CLOUD, CM_BUBBLE, FONT_FAMILY } from '@labre/affine-gfx-ddd-shared';
-import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
+import {
+  CLOUD,
+  CM_BUBBLE,
+  FONT_FAMILY,
+} from '@labre/affine-gfx-ddd-shared/headless';
+import { NOTATION_NEUTRALS } from '@labre/affine-shared/headless';
 
 import { CONTEXT_MAP_ROLE } from './roles';
 

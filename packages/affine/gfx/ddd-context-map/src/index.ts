@@ -19,3 +19,12 @@ export {
   DddContextMapViewExtension,
 } from './view.js';
 export { CONTEXT_MAP_READING } from './reading.js';
+// The toolbar as pure builders (`docs/adr/0045`), also on `./interchange`.
+export {
+  CONTEXT_MAP_TOOLBOX,
+  contextMapBoardElement,
+  contextMapContextElement,
+  contextMapRelationshipElement,
+  contextMapRelationshipStyle,
+  contextMapSystemElements,
+} from './toolbox.js';

@@ -34,6 +34,7 @@ import {
 } from '@labre/std/gfx';
 
 import { EdgelessCRUDIdentifier } from './crud-extension.js';
+import { LABEL_COLOR, LABEL_FONT, LABEL_FONT_SIZE } from './legend-label.js';
 import { LEGEND_ROLE } from './legend-role.js';
 
 /**
@@ -88,17 +89,7 @@ export interface LegendLayout {
 /** A block of the box that is not a row. See {@link CommandLegendBox.extras}. */
 export type LegendExtra = CommandLegendExtra;
 
-/**
- * The ink and the type a notation writes its labels in: this box's rows, and
- * the words the DDD prefabs set beside a dot or a marker.
- *
- * Declared HERE and re-exported by `@labre/affine-gfx-ddd-shared`, rather than
- * the other way round, because that bundle depends on this one and a legend
- * must not depend on a DDD bundle to be drawn.
- */
-export const LABEL_COLOR = NOTATION_NEUTRALS.ink;
-export const LABEL_FONT = 'blocksuite:surface:Inter';
-export const LABEL_FONT_SIZE = 14;
+export { LABEL_COLOR, LABEL_FONT, LABEL_FONT_SIZE } from './legend-label.js';
 
 const NO_STROKE = '#00000000';
 

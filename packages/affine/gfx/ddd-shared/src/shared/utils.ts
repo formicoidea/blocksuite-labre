@@ -5,5 +5,3 @@
  * copied here, and in two other packages besides (R37, one source of truth).
  */
 export { refScale } from '@labre/affine-block-surface';
-
-export const FONT_FAMILY = 'Inter, sans-serif';

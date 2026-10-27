@@ -1,4 +1,4 @@
-import { CM_RELATIONSHIPS } from '@labre/affine-gfx-ddd-shared';
+import { CM_RELATIONSHIPS } from '@labre/affine-gfx-ddd-shared/headless';
 import type { RoleDef, RoleDefs } from '@labre/std/gfx';
 
 /**

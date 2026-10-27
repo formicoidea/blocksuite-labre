@@ -1,0 +1,5 @@
+---
+'@labre/affine': minor
+---
+
+The Context Map's toolbar can now be used without an editor (ADR 0045, amendment of 2026-10-27). `@formicoidea/labre-framework-ddd-context-map/interchange` is a new entry exporting `CONTEXT_MAP_TOOLBOX` (the board, the bounded context, the cloud and the nine relationship patterns, each with a pure builder) and the builders `contextMapBoardElement`, `contextMapContextElement`, `contextMapSystemElements`, `contextMapRelationshipElement` and `contextMapRelationshipStyle`, also exported from the package index. `@formicoidea/labre-ddd-shared/headless` is a new entry carrying the DDD tables and the pure element builders `stickyElements`, `bubbleElement`, `dotElements`, `markerElements`, `cloudElements`, `dddConnectorElement` and `dddShapeElement`; the prefabs (`addSticky`, `addBubble`, `addDot`, `addMarker`, `addCloud`, `addConnector`) now write what they return, and the package index exports them with the types `StickyOpts`, `MarkerOpts`, `DddConnectorEnd` and `DddConnectorOpts`. `@formicoidea/labre-core/interchange` now exports `LABEL_COLOR`, `LABEL_FONT` and `LABEL_FONT_SIZE`.

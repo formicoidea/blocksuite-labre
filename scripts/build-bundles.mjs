@@ -758,6 +758,17 @@ for (const sh of SHARED) buildShared(sh, coreReverseMap);
 // frameworks may also import sibling shared bundles → map those to bundle names
 const fwReverseMap = new Map(coreReverseMap);
 for (const sh of SHARED) fwReverseMap.set(sh.pkg, bundleNameOf(sh.pkg));
+// …and their subpaths (`/headless`, ADR 0045 amendment of 2026-10-27), which
+// `buildShared` already publishes from the package's own `exports`.
+for (const sh of SHARED) {
+  for (const sub of Object.keys(byName.get(sh.pkg).exports)) {
+    if (sub === '.') continue;
+    fwReverseMap.set(
+      sh.pkg + sub.slice(1),
+      bundleNameOf(sh.pkg) + sub.slice(1)
+    );
+  }
+}
 for (const fw of FRAMEWORKS) buildFramework(fw, fwReverseMap);
 // editor bundles see core alone: importing a shared bundle or a framework
 // fails here, at release time (ADR 0035 §3)
