@@ -108,6 +108,15 @@ export {
   c4BoardFrom,
   c4SafeFilename,
 } from './interchange.js';
+// The toolbar as pure builders (`docs/adr/0045`), also on `./interchange`.
+export {
+  C4_TOOLBOX,
+  c4BoardElement,
+  c4BoundaryElement,
+  c4NodeElements,
+  type C4NodeTexts,
+  c4RelationshipElement,
+} from './toolbox.js';
 export {
   C4_ELEMENT_MATRIX,
   C4_RELATIONSHIP_MATRIX,

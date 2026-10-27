@@ -1,10 +1,10 @@
+import type { C4NodeKind } from '@labre/affine-model';
 import {
-  type C4NodeKind,
   FontFamily,
   ShapeStyle,
   StrokeStyle,
   TextAlign,
-} from '@labre/affine-model';
+} from '@labre/affine-model/headless';
 
 import {
   NODE_PALETTE,

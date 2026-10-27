@@ -18,6 +18,7 @@
  */
 export * from './extensions/export-svg/marker-version.js';
 export * from './extensions/interchange.js';
+export * from './extensions/toolbox.js';
 export * from './extensions/legend-role.js';
 export * from './extensions/svg-sanitize.js';
 export * from './extensions/svg-sketch.js';

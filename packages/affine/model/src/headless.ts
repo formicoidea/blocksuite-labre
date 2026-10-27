@@ -13,6 +13,7 @@
  */
 export * from './consts/index.js';
 export * from './elements/bpmn/consts.js';
+export * from './elements/c4/consts.js';
 export * from './elements/connector/end-label.js';
 export { DEFAULT_POLYGON_VERTICES } from './elements/shape/api/polygon.js';
 export * from './elements/uml/consts.js';
