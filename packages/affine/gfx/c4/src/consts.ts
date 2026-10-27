@@ -1,5 +1,5 @@
 import type { C4BoundaryVariant, C4NodeKind } from '@labre/affine-model';
-import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
+import { NOTATION_NEUTRALS } from '@labre/affine-shared/headless';
 
 /**
  * Visual constants for the C4 pack.
@@ -389,7 +389,7 @@ export const BOARD_MARGIN = 24;
  * board's metrics, and so the declaration keeps reading it from where it always
  * did — under its own name, since a margin that is a painted band is a band.
  */
-export { C4_BOARD_TITLE_BAND_HEIGHT } from '@labre/affine-model';
+export { C4_BOARD_TITLE_BAND_HEIGHT } from '@labre/affine-model/headless';
 
 /* ── The boundary ──────────────────────────────────────────────────────── */
 

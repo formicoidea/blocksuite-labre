@@ -5,25 +5,18 @@ import {
   type C4BoundaryVariant,
   type C4NodeKind,
   ConnectorMode,
-  FontFamily,
-  FontStyle,
-  FontWeight,
   PointStyle,
   StrokeStyle,
-  TextAlign,
 } from '@labre/affine-model';
 import { translateKey } from '@labre/affine-shared/services';
 import { downloadBlob } from '@labre/affine-shared/utils';
-import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
 import {
   type GfxController,
   GfxControllerIdentifier,
   type GfxPrimitiveElementModel,
-  type SurfaceBlockModel,
 } from '@labre/std/gfx';
 
-import { type C4TierBox, c4TierBoxes } from './component';
 import {
   BOARD_REF_HEIGHT,
   BOARD_REF_WIDTH,
@@ -31,22 +24,18 @@ import {
   boundaryLabelKey,
   BOUNDARY_REF_HEIGHT,
   BOUNDARY_REF_WIDTH,
-  DESCRIPTION_FONT_SIZE,
   DESCRIPTION_PLACEHOLDER,
   DESCRIPTION_PLACEHOLDER_KEY,
   NODE_LABEL,
   nodeLabelKey,
-  NODE_PALETTE,
   NODE_SIZE,
   RELATIONSHIP_STROKE,
   RELATIONSHIP_WIDTH,
-  TITLE_FONT_SIZE,
-  TYPE_FONT_SIZE,
 } from './consts';
 import type { C4ExportBoard } from './export';
 import { C4_MERMAID_EXPORT, c4BoardFrom, c4SafeFilename } from './interchange';
-import { c4NodeProps } from './presets';
 import { C4_BOUNDARY_ROLE, C4_ROLE, c4BoardRoleKey } from './roles';
+import { c4BoardElement, c4BoundaryElement, c4NodeElements } from './toolbox';
 import { c4TypePlaceholder } from './type-line';
 
 /**
@@ -63,48 +52,6 @@ function finish(gfx: GfxController, id: string) {
   gfx.tool.setTool(DefaultTool);
   gfx.selection.set({ elements: [id], editing: false });
   // Keep the palette open (native sub-menu behaviour).
-}
-
-/**
- * One of a component's two written tiers, as a canvas TEXT element.
- *
- * Every style prop is passed EXPLICITLY, and that is not belt and braces: both
- * creation APIs run the new props through `EditPropsStore.applyLastProps('text',
- * …)`, which merges whatever the user last set on a free text element
- * underneath — a 24px face, a colour from another diagram, a left alignment.
- * Explicit props win the merge, so the only ones that survive it are the ones
- * written here. A type line inheriting the colour of the last sticky note
- * somebody typed would be a notation set by accident.
- *
- * `hasMaxWidth` is what keeps a long sentence inside the element instead of
- * running out over the canvas: the box wraps at its own width and grows
- * downward, and the group grows with it, so a component always contains its own
- * words.
- */
-function addTier(
-  surface: SurfaceBlockModel,
-  index: string,
-  role: string,
-  text: string,
-  fontSize: number,
-  fontWeight: FontWeight,
-  color: string,
-  box: C4TierBox
-): string {
-  return surface.addElement({
-    type: 'text',
-    role,
-    text,
-    index,
-    color,
-    fontFamily: FontFamily.Inter,
-    fontSize,
-    fontWeight,
-    fontStyle: FontStyle.Normal,
-    textAlign: TextAlign.Center,
-    hasMaxWidth: true,
-    xywh: new Bound(box.x, box.y, box.w, box.h).serialize(),
-  });
 }
 
 /**
@@ -160,90 +107,47 @@ export function createC4Node(std: BlockStdScope, kind: C4NodeKind) {
 
   const { w, h } = NODE_SIZE[kind];
   const { centerX: cx, centerY: cy } = gfx.viewport;
-  const x = cx - w / 2;
-  const y = cy - h / 2;
-  const paint = NODE_PALETTE[kind];
 
-  const shapeId = surface.addElement({
-    // Every prop the kind is worth, from the ONE table the morph also reads
-    // (`presets.ts`) — so a component drawn here and one morphed into this kind
-    // from the toolbar are the same element, whatever either is restyled to.
-    // NO `text`: the name is the `c4:title` child below, and the shape is a
-    // body and nothing else.
-    ...c4NodeProps(kind, { xywh: new Bound(x, y, w, h).serialize() }),
-    index: gfx.layer.generateIndex(),
-  });
-
-  const boxes = c4TierBoxes(kind, x, y, w, h);
-  const titleId = addTier(
-    surface,
-    gfx.layer.generateIndex(),
-    C4_ROLE.title,
-    // The kind's own label — `Person`, `Web app`. A name and a prompt at once,
-    // which is why the exporter writes it through unchanged. Resolved HERE,
-    // once, exactly like a BPMN node's caption (`nodeLabelKey`): content from
-    // the moment it lands, so a component drawn in a translated host starts in
-    // that language.
-    translateKey(std, nodeLabelKey(kind), NODE_LABEL[kind]),
-    TITLE_FONT_SIZE,
-    // The one tier with weight on it: it is the heading of the box, and at 20px
-    // against a 16px sentence the size alone does not carry that.
-    FontWeight.SemiBold,
-    paint.text,
-    boxes.title
+  // The five elements come from the ONE assembly a host with no editor also
+  // calls (`toolbox.ts`, `docs/adr/0045`), so a component placed here and one
+  // placed by a host are the same element. What only an editor has stays
+  // here: the viewport centre, the seeds resolved in the host's language
+  // (`docs/adr/0023`: a creation site writes the resolved value) and the layer
+  // indexes. The indexes are stability statements, not layering ones: the
+  // five are written in painting order, the shape first and the words above
+  // it, because two elements sharing an index sort by nanoid.
+  const elements = c4NodeElements(
+    kind,
+    { x: cx - w / 2, y: cy - h / 2 },
+    {
+      title: translateKey(std, nodeLabelKey(kind), NODE_LABEL[kind]),
+      typeLine: c4TypePlaceholder(kind, std),
+      description: translateKey(
+        std,
+        DESCRIPTION_PLACEHOLDER_KEY,
+        DESCRIPTION_PLACEHOLDER
+      ),
+    }
   );
-  const typeLineId = addTier(
-    surface,
-    gfx.layer.generateIndex(),
-    C4_ROLE['type-line'],
-    // Resolved at placement, like the title above: `c4TypePlaceholder` reads
-    // through the host's catalogue for both halves of the prompt (the
-    // bracketed word AND the technology slot), and `C4TypeLineWatcher`
-    // (`node/type-line-watcher.ts`) now recomputes the canonical line the same
-    // way on every edit commit, so a translated seed here is no longer
-    // reverted to English the first time an author opens and closes the
-    // tier's editor without typing anything. `technologyOfTypeLine` and
-    // `c4StatedTechnology` (`component.ts`) recognise EITHER the English
-    // literal or the host's own resolved word (`type-line.ts`).
-    c4TypePlaceholder(kind, std),
-    TYPE_FONT_SIZE,
-    FontWeight.Regular,
-    paint.text,
-    boxes.typeLine
-  );
-  const descriptionId = addTier(
-    surface,
-    gfx.layer.generateIndex(),
-    C4_ROLE.description,
-    // Resolved at placement like the title above. `c4StatedDescription`
-    // (`component.ts`) still compares the stored text against the ENGLISH
-    // `DESCRIPTION_PLACEHOLDER` to read "nothing stated yet" — this lot's own
-    // French proposal for this key is the identical word ('description'), so
-    // the shipped catalogue keeps that comparison true; a host catalogue that
-    // chose a different wording would regain the same residual risk the type
-    // line carries permanently (see `notes`).
-    translateKey(std, DESCRIPTION_PLACEHOLDER_KEY, DESCRIPTION_PLACEHOLDER),
-    DESCRIPTION_FONT_SIZE,
-    FontWeight.Regular,
-    paint.text,
-    boxes.description
-  );
-
-  const groupId = surface.addElement({
-    type: 'group',
-    index: gfx.layer.generateIndex(),
-    // A plain record is a legal `children`: the group's own `propsToY` takes the
-    // KEYS and forces every value to `true`.
-    children: {
-      [shapeId]: true,
-      [titleId]: true,
-      [typeLineId]: true,
-      [descriptionId]: true,
-    },
-    // No title, deliberately. The group renderer paints one only while the
-    // component is selected, and a component announcing itself as "Group 3"
-    // above its own name is a label nobody wrote.
-  });
+  const minted = new Map<string, string>();
+  for (const { id: local, ...props } of elements) {
+    if (props.type === 'group') {
+      // A plain record is a legal `children`: the group's own `propsToY` takes
+      // the KEYS and forces every value to `true`.
+      props.children = Object.fromEntries(
+        Object.keys(props.children as Record<string, true>).map(child => [
+          minted.get(child) ?? child,
+          true,
+        ])
+      );
+    }
+    minted.set(
+      local as string,
+      surface.addElement({ ...props, index: gfx.layer.generateIndex() })
+    );
+  }
+  const groupId = minted.get(`${kind}:group`);
+  if (!groupId) return;
 
   // The GROUP is what the gesture produced, so the group is what is selected: a
   // click selects the component, a double-click descends into the tier under
@@ -258,26 +162,17 @@ export function createC4Board(std: BlockStdScope) {
   if (!surface) return;
 
   const { centerX: cx, centerY: cy } = gfx.viewport;
-  const id = surface.addElement({
-    type: 'c4Board',
-    // The FRAME the elements are drawn on, and a role of its own: a rule written
-    // on the artefacts must never fall on the sheet holding them.
-    role: C4_ROLE.board,
+  const { id: _local, ...props } = c4BoardElement(
+    { x: cx - BOARD_REF_WIDTH / 2, y: cy - BOARD_REF_HEIGHT / 2 },
     // The sheet's own name, written HERE rather than left to the model's
     // default so that a board drawn in a translated host starts in that
     // language (#183). It is content from that moment on — the title is
     // editable on a double-click — so it is asked for once and never
     // re-resolved. The key is the BOARD ROLE's: the two are the same noun, and
     // a second key would ask a host to word "C4 diagram" twice.
-    name: translateKey(std, c4BoardRoleKey, 'C4 diagram'),
-    xywh: new Bound(
-      cx - BOARD_REF_WIDTH / 2,
-      cy - BOARD_REF_HEIGHT / 2,
-      BOARD_REF_WIDTH,
-      BOARD_REF_HEIGHT
-    ).serialize(),
-  });
-  finish(gfx, id);
+    translateKey(std, c4BoardRoleKey, 'C4 diagram')
+  );
+  finish(gfx, surface.addElement(props));
 }
 
 /**
@@ -289,9 +184,10 @@ export function createC4Board(std: BlockStdScope) {
  * `variantProp` in `background.ts`). The name is document data from that moment
  * on — renaming a boundary never contradicts its variant.
  *
- * ## The role and the variant are written HERE, together, or not at all
+ * ## The role and the variant are written together, or not at all
  *
- * This is the ONE place either field is written, and it writes both from the same
+ * `c4BoundaryElement` (`toolbox.ts`) is the ONE place either field is written,
+ * for this action and for a host with no editor, and it writes both from the same
  * argument: the `variant` the renderer and the exporter read, and the child ROLE
  * the zoom rules read ({@link C4_BOUNDARY_ROLE}). They are two spellings of one
  * fact — which level this frame is drawn at — and nothing downstream can tell
@@ -310,25 +206,15 @@ export function createC4Boundary(
   if (!surface) return;
 
   const { centerX: cx, centerY: cy } = gfx.viewport;
-  const id = surface.addElement({
-    type: 'c4Boundary',
-    // The CHILD role matching the variant — never the parent, which is now the
-    // role of a boundary drawn before the split and of nothing this editor
-    // creates. See the note above.
-    role: C4_BOUNDARY_ROLE[variant],
+  const { id: _local, ...props } = c4BoundaryElement(
+    variant,
+    { x: cx - BOUNDARY_REF_WIDTH / 2, y: cy - BOUNDARY_REF_HEIGHT / 2 },
     // Resolved HERE, once — the boundary's name is exported verbatim
     // (`export.ts`) with no placeholder comparison, so it is as safe to
     // translate as a component's title.
-    name: translateKey(std, boundaryLabelKey(variant), BOUNDARY_LABEL[variant]),
-    variant,
-    xywh: new Bound(
-      cx - BOUNDARY_REF_WIDTH / 2,
-      cy - BOUNDARY_REF_HEIGHT / 2,
-      BOUNDARY_REF_WIDTH,
-      BOUNDARY_REF_HEIGHT
-    ).serialize(),
-  });
-  finish(gfx, id);
+    translateKey(std, boundaryLabelKey(variant), BOUNDARY_LABEL[variant])
+  );
+  finish(gfx, surface.addElement(props));
 }
 
 /**

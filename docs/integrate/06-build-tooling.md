@@ -132,4 +132,25 @@ never with `message` (it may quote the file). Bound the input before reading:
 `decodeDrawio` refuses a `<diagram>` that inflates past 20 MiB, and a server
 should cap the file's size itself (the editor applies `FileSizeLimitProvider`).
 
+## Drawing toolbar items on a server
+
+The same `./interchange` subpaths carry a framework's TOOLBOX when it has one
+(ADR 0045): every toolbar item as a pure builder that returns the elements the
+toolbar places, in the contract a reader's result follows (local ids, a group
+after its members). C4 ships one:
+
+```ts
+import { C4_TOOLBOX } from '@formicoidea/labre-framework-c4/interchange';
+
+const container = C4_TOOLBOX.items.find(i => i.id === 'container');
+const elements = container?.build(
+  { x: 0, y: 0 },
+  { title: 'API', technology: 'Java' },
+  'api'
+);
+```
+
+A builder places one item where it is told and writes the texts it is given or
+the English seed; layout and translation stay with the caller.
+
 Next: [07-upgrade.md](07-upgrade.md).

@@ -46,3 +46,14 @@ export const C4_MERMAID_FORMAT: InterchangeFormat = {
 export function c4SafeFilename(raw: string | undefined): string {
   return safeFilename(raw, 'diagram');
 }
+
+// The toolbar as pure builders (`docs/adr/0045`): what a host with no editor
+// places to draw the very elements a user places from the toolbar.
+export {
+  C4_TOOLBOX,
+  c4BoardElement,
+  c4BoundaryElement,
+  c4NodeElements,
+  type C4NodeTexts,
+  c4RelationshipElement,
+} from './toolbox.js';

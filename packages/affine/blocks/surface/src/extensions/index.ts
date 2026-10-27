@@ -10,6 +10,7 @@ export * from './element-renderer';
 export * from './export-manager';
 export * from './export-svg';
 export * from './interchange';
+export * from './toolbox';
 export * from './interchange-export';
 export * from './interchange-import';
 export * from './legacy-slot-extension';
