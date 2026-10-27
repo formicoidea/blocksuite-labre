@@ -192,6 +192,43 @@ export const SLIDE_NAME_LOGO_WALL: ChromeWording = [
   'Logo wall',
 ];
 
+export const SLIDE_NAME_GANTT: ChromeWording = [
+  'com.labre.template.slides.name.gantt',
+  'Gantt plan',
+];
+export const SLIDE_NAME_CHART_TEXT: ChromeWording = [
+  'com.labre.template.slides.name.chart-text',
+  'Chart and text',
+];
+export const SLIDE_NAME_THREE_CHARTS: ChromeWording = [
+  'com.labre.template.slides.name.three-charts',
+  'Three charts',
+];
+export const SLIDE_NAME_COLLAGE: ChromeWording = [
+  'com.labre.template.slides.name.collage',
+  'Text and collage',
+];
+export const SLIDE_NAME_BENTO: ChromeWording = [
+  'com.labre.template.slides.name.bento',
+  'Picture bento',
+];
+export const SLIDE_NAME_IMAGE_GRID: ChromeWording = [
+  'com.labre.template.slides.name.image-grid',
+  'Picture grid',
+];
+export const SLIDE_NAME_FEATURE_BENTO: ChromeWording = [
+  'com.labre.template.slides.name.feature-bento',
+  'Feature bento',
+];
+export const SLIDE_NAME_PHONE: ChromeWording = [
+  'com.labre.template.slides.name.phone',
+  'Phone mockup',
+];
+export const SLIDE_NAME_TABLET: ChromeWording = [
+  'com.labre.template.slides.name.tablet',
+  'Tablet mockup',
+];
+
 /**
  * The slide-mask tile names this package declares (the quote slide's is the
  * quote block's own, declared in `chrome.ts`).
@@ -221,6 +258,15 @@ export const SLIDE_NAME_WORDINGS: readonly ChromeWording[] = [
   SLIDE_NAME_MARKET_SIZE,
   SLIDE_NAME_PRICING,
   SLIDE_NAME_LOGO_WALL,
+  SLIDE_NAME_GANTT,
+  SLIDE_NAME_CHART_TEXT,
+  SLIDE_NAME_THREE_CHARTS,
+  SLIDE_NAME_COLLAGE,
+  SLIDE_NAME_BENTO,
+  SLIDE_NAME_IMAGE_GRID,
+  SLIDE_NAME_FEATURE_BENTO,
+  SLIDE_NAME_PHONE,
+  SLIDE_NAME_TABLET,
 ];
 
 /** The seeds a slide mask writes into the document, shared by every mask. */
@@ -405,6 +451,25 @@ export const SLIDE_SEED_LOGO: ChromeWording = [
   'Logo',
 ];
 
+/** The label of a chart placeholder: a dashed zone, like a picture's. */
+export const SLIDE_SEED_CHART: ChromeWording = [
+  'com.labre.template.slides.seed.chart',
+  'Chart',
+];
+/** The label of a device mockup's screen zone. */
+export const SLIDE_SEED_SCREEN: ChromeWording = [
+  'com.labre.template.slides.seed.screen',
+  'Screen',
+];
+export const SLIDE_SEED_TASK: ChromeWording = [
+  'com.labre.template.slides.seed.task',
+  'Task',
+];
+export const SLIDE_SEED_MONTH: ChromeWording = [
+  'com.labre.template.slides.seed.month',
+  'Month {{n}}',
+];
+
 export const SLIDE_SEED_WORDINGS: readonly ChromeWording[] = [
   SLIDE_SEED_EYEBROW,
   SLIDE_SEED_COVER_TITLE,
@@ -451,6 +516,10 @@ export const SLIDE_SEED_WORDINGS: readonly ChromeWording[] = [
   SLIDE_SEED_PRICE,
   SLIDE_SEED_FEATURE,
   SLIDE_SEED_LOGO,
+  SLIDE_SEED_CHART,
+  SLIDE_SEED_SCREEN,
+  SLIDE_SEED_TASK,
+  SLIDE_SEED_MONTH,
 ];
 
 export const TEMPLATE_PACKAGE_WORDINGS: readonly ChromeWording[] = [

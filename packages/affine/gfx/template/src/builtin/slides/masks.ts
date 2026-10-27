@@ -5,16 +5,23 @@ import type {
 
 import {
   SLIDE_NAME_AGENDA,
+  SLIDE_NAME_BENTO,
+  SLIDE_NAME_CHART_TEXT,
+  SLIDE_NAME_COLLAGE,
   SLIDE_NAME_CONTACT,
   SLIDE_NAME_COVER,
   SLIDE_NAME_COVER_IMAGE,
+  SLIDE_NAME_FEATURE_BENTO,
   SLIDE_NAME_FULL_IMAGE,
+  SLIDE_NAME_GANTT,
   SLIDE_NAME_IMAGE_CARDS,
+  SLIDE_NAME_IMAGE_GRID,
   SLIDE_NAME_KEY_FIGURES,
   SLIDE_NAME_LOGO_WALL,
   SLIDE_NAME_MARKET_SIZE,
   SLIDE_NAME_MATRIX,
   SLIDE_NAME_ORG_CHART,
+  SLIDE_NAME_PHONE,
   SLIDE_NAME_PRICING,
   SLIDE_NAME_PROCESS,
   SLIDE_NAME_QUOTE,
@@ -22,9 +29,11 @@ import {
   SLIDE_NAME_SECTION,
   SLIDE_NAME_SIX_POINTS,
   SLIDE_NAME_STATEMENT,
+  SLIDE_NAME_TABLET,
   SLIDE_NAME_TEAM,
   SLIDE_NAME_TESTIMONIALS,
   SLIDE_NAME_TEXT_IMAGE,
+  SLIDE_NAME_THREE_CHARTS,
   SLIDE_NAME_THREE_COLUMNS,
   SLIDE_NAME_TIMELINE,
   SLIDE_NAME_TWO_COLUMNS,
@@ -35,6 +44,7 @@ import {
   SLIDE_SEED_AXIS_VALUE,
   SLIDE_SEED_BODY,
   SLIDE_SEED_CAPTION,
+  SLIDE_SEED_CHART,
   SLIDE_SEED_CONTACT_ADDRESS,
   SLIDE_SEED_CONTACT_EMAIL,
   SLIDE_SEED_CONTACT_PHONE,
@@ -53,6 +63,7 @@ import {
   SLIDE_SEED_MARKET_SERVICEABLE,
   SLIDE_SEED_MARKET_TOTAL,
   SLIDE_SEED_MILESTONE,
+  SLIDE_SEED_MONTH,
   SLIDE_SEED_PERSON_NAME,
   SLIDE_SEED_PERSON_ROLE,
   SLIDE_SEED_PLAN,
@@ -61,11 +72,13 @@ import {
   SLIDE_SEED_QUARTER,
   SLIDE_SEED_QUOTE,
   SLIDE_SEED_QUOTE_AUTHOR,
+  SLIDE_SEED_SCREEN,
   SLIDE_SEED_SECTION_SUBTITLE,
   SLIDE_SEED_SECTION_TITLE,
   SLIDE_SEED_STATEMENT,
   SLIDE_SEED_STEP,
   SLIDE_SEED_SUBTITLE,
+  SLIDE_SEED_TASK,
   SLIDE_SEED_TEAM_TITLE,
   SLIDE_SEED_TESTIMONIALS_TITLE,
   SLIDE_SEED_TITLE,
@@ -722,6 +735,205 @@ const contact: SlideMask = {
   ],
 };
 
+/* ── Placeholder families ─────────────────────────────────────────────── */
+
+/**
+ * The families the first set deferred (README, "Deferred") for want of a
+ * chart, a photo or a device frame: built with the same dashed grey zone a
+ * picture gets, labelled for what the author drops in. A chart or a device
+ * frame is artwork the author brings; the mask only keeps its place.
+ */
+
+/** A chart placeholder: a fill zone labelled "Chart". */
+function chart(x: number, y: number, w: number, h: number): SlideImageZone {
+  return image(x, y, w, h, { label: SLIDE_SEED_CHART });
+}
+
+/** A device frame: a quiet outline around a screen zone. */
+function device(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  bezel: number
+): SlideZone[] {
+  return [
+    card(x, y, w, h, { stroke: 'muted' }),
+    image(x + bezel, y + bezel, w - 2 * bezel, h - 2 * bezel, {
+      label: SLIDE_SEED_SCREEN,
+    }),
+  ];
+}
+
+/** Gantt bars in column units: [start, length], staggered like a plan. */
+const GANTT_BARS: [number, number][] = [
+  [0, 1.2],
+  [0.55, 1.9],
+  [1.95, 1.8],
+  [1.95, 1.8],
+  [3, 3],
+  [3.8, 2.2],
+  [4.4, 1.6],
+  [5, 1],
+];
+
+const gantt: SlideMask = {
+  id: 'gantt',
+  name: SLIDE_NAME_GANTT,
+  keywords: ['gantt', 'plan', 'schedule', 'tasks', 'months', 'timeline'],
+  variant: 'paper',
+  zones: [
+    title(),
+    ...columns(6, 0).flatMap(({ x, w }, i) => [
+      ...(i > 0 ? [line([x, 190], [x, 800])] : []),
+      text('caption', SLIDE_SEED_MONTH, x, 760, w, {
+        ...centred,
+        ...muted,
+        params: { n: i + 1 },
+      }),
+    ]),
+    ...GANTT_BARS.map(([start, length], r) =>
+      card(
+        Math.round(M + (start * CONTENT) / 6),
+        200 + r * 68,
+        Math.round((length * CONTENT) / 6),
+        56,
+        { label: SLIDE_SEED_TASK, filled: true }
+      )
+    ),
+  ],
+};
+
+const chartText: SlideMask = {
+  id: 'chart-text',
+  name: SLIDE_NAME_CHART_TEXT,
+  keywords: ['chart', 'graph', 'data', 'figures', 'explain', 'bar', 'line'],
+  variant: 'paper',
+  zones: [
+    title(SLIDE_SEED_TITLE, { w: 760 }),
+    text('body', SLIDE_SEED_BODY, M, 680, 700, { lines: 3, ...muted }),
+    chart(880, 200, 624, 560),
+  ],
+};
+
+const threeCharts: SlideMask = {
+  id: 'three-charts',
+  name: SLIDE_NAME_THREE_CHARTS,
+  keywords: ['charts', 'graphs', 'pie', 'donut', 'compare', 'data'],
+  variant: 'paper',
+  zones: [
+    title(SLIDE_SEED_TITLE, centred),
+    ...columns(3).flatMap(({ x, w }) => [
+      chart(x, 220, w, 380),
+      text('body', SLIDE_SEED_DETAIL, x, 640, w, {
+        lines: 3,
+        ...centred,
+        ...muted,
+      }),
+    ]),
+  ],
+};
+
+const collage: SlideMask = {
+  id: 'collage',
+  name: SLIDE_NAME_COLLAGE,
+  keywords: ['collage', 'photos', 'pictures', 'gallery', 'text', 'mosaic'],
+  variant: 'paper',
+  zones: [
+    title(SLIDE_SEED_TITLE, { w: 560 }),
+    text('body', SLIDE_SEED_BODY, M, 640, 560, { lines: 4, ...muted }),
+    image(700, 80, 440, 740),
+    image(1190, 80, 314, 350),
+    image(1190, 470, 314, 350),
+  ],
+};
+
+const bento: SlideMask = {
+  id: 'bento',
+  name: SLIDE_NAME_BENTO,
+  keywords: ['bento', 'photos', 'pictures', 'collage', 'mosaic', 'gallery'],
+  variant: 'paper',
+  zones: [
+    image(M, 80, 940, 350),
+    image(1076, 80, 428, 350),
+    image(M, 470, 428, 350),
+    image(564, 470, 940, 350),
+  ],
+};
+
+const imageGrid: SlideMask = {
+  id: 'image-grid',
+  name: SLIDE_NAME_IMAGE_GRID,
+  keywords: ['grid', 'photos', 'pictures', 'gallery', 'six', 'mosaic'],
+  variant: 'paper',
+  zones: [80, 470].flatMap(y =>
+    columns(3, 40).map(({ x, w }) => image(x, y, w, 350))
+  ),
+};
+
+/** A key-figure card: the number, then what it measures. */
+function figureCard(x: number, y: number, w: number, h: number): SlideZone[] {
+  return [
+    card(x, y, w, h),
+    text('figure', SLIDE_SEED_FIGURE, x + 40, y + 30, 320),
+    text('body', SLIDE_SEED_FIGURE_LABEL, x + 400, y + 72, w - 440, {
+      lines: 2,
+      ...muted,
+    }),
+  ];
+}
+
+/** A feature card: a heading, a line of body and a picture. */
+function featureCard(x: number, y: number, w: number, h: number): SlideZone[] {
+  return [
+    card(x, y, w, h),
+    text('heading', SLIDE_SEED_HEADING, x + 40, y + 40, w - 80, { lines: 2 }),
+    text('body', SLIDE_SEED_DETAIL, x + 40, y + 140, w - 80, {
+      lines: 2,
+      ...muted,
+    }),
+    image(x + 40, y + 220, w - 80, h - 260),
+  ];
+}
+
+const featureBento: SlideMask = {
+  id: 'feature-bento',
+  name: SLIDE_NAME_FEATURE_BENTO,
+  keywords: ['bento', 'features', 'metrics', 'kpi', 'product', 'highlights'],
+  variant: 'paper',
+  zones: [
+    ...featureCard(M, 80, 520, 500),
+    ...figureCard(660, 80, 844, 190),
+    image(660, 310, 300, 270),
+    ...featureCard(1000, 310, 504, 510),
+    ...figureCard(M, 620, 864, 200),
+  ],
+};
+
+const phone: SlideMask = {
+  id: 'phone',
+  name: SLIDE_NAME_PHONE,
+  keywords: ['phone', 'mobile', 'mockup', 'app', 'device', 'screen'],
+  variant: 'paper',
+  zones: [
+    title(SLIDE_SEED_TITLE, { w: 760 }),
+    text('body', SLIDE_SEED_BODY, M, 700, 760, { lines: 2, ...muted }),
+    ...device(1040, 60, 400, 780, 24),
+  ],
+};
+
+const tablet: SlideMask = {
+  id: 'tablet',
+  name: SLIDE_NAME_TABLET,
+  keywords: ['tablet', 'mockup', 'app', 'device', 'screen', 'laptop'],
+  variant: 'paper',
+  zones: [
+    title(SLIDE_SEED_TITLE, { w: 700 }),
+    text('body', SLIDE_SEED_BODY, M, 680, 700, { lines: 3, ...muted }),
+    ...device(900, 90, 700, 720, 36),
+  ],
+};
+
 /** Every mask, in the panel's order: a deck reads top to bottom. */
 export const SLIDE_MASKS: readonly SlideMask[] = [
   cover,
@@ -735,9 +947,18 @@ export const SLIDE_MASKS: readonly SlideMask[] = [
   threeColumns,
   sixPoints,
   imageCards,
+  collage,
+  bento,
+  imageGrid,
+  featureBento,
+  phone,
+  tablet,
   keyFigures,
+  chartText,
+  threeCharts,
   timeline,
   roadmap,
+  gantt,
   process,
   matrix,
   venn,

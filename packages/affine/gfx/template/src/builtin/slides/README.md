@@ -10,51 +10,65 @@ The set was drawn from the PO's reference deck, 146 pitch.com-style slides,
 clustered into layout families. One mask per family that frames, shapes,
 texts and connectors can build; the rest is deferred below.
 
+A **placeholder** mask stands for artwork the canvas does not draw (a chart,
+a photo, a device frame): it keeps the place with the same dashed grey zone a
+picture gets, labelled `Chart`, `Image` or `Screen`, and the author replaces
+the zone with the real thing (the shape toolbar's "Replace with image"). The
+Gantt plan duplicates the `Other` → Gantt chart template on purpose: a deck
+wants it as a slide, in the deck's own type and paper.
+
 ## Families
 
-| Family                | Reference slides   | Mask                                          | Status       |
-| --------------------- | ------------------ | --------------------------------------------- | ------------ |
-| Cover                 | 1, 3               | `cover` (Cover)                               | built        |
-| Cover with picture    | 2, 5, 6, 7         | `cover-image` (Cover with image)              | built        |
-| Section divider       | 4, 6, 7            | `section` (Section), inverse                  | built        |
-| Statement             | 9, 10, 33          | `statement` (Statement), inverse              | built        |
-| Agenda                | 75–84              | `agenda` (Agenda)                             | built        |
-| Text and picture      | 11–20, 23          | `text-image` (Text and image)                 | built        |
-| Picture with caption  | 8, 41, 42          | `full-image` (Full image)                     | built        |
-| Two columns           | 32, 35, 36         | `two-columns` (Two columns)                   | built        |
-| Three or four columns | 30, 37, 38, 40     | `three-columns` (Three columns)               | built        |
-| Points grid           | 28, 39             | `six-points` (Six points)                     | built        |
-| Picture cards         | 24–27, 92, 93, 146 | `image-cards` (Image cards)                   | built        |
-| Key figures           | 120–128            | `key-figures` (Key figures)                   | built        |
-| Timeline              | 65, 68, 70, 71     | `timeline` (Timeline)                         | built        |
-| Roadmap by quarter    | 66, 67, 72         | `roadmap` (Roadmap)                           | built        |
-| Process               | 61, 64, 69         | `process` (Process)                           | built        |
-| 2 × 2 matrix          | 62, 63             | `matrix` (Two-by-two matrix)                  | built        |
-| Venn                  | 58, 59             | `venn` (Venn diagram)                         | built        |
-| Market size           | 56, 57             | `market-size` (Market size)                   | built        |
-| Org chart             | 96–98              | `org-chart` (Org chart)                       | built        |
-| Pricing               | 115–118            | `pricing` (Pricing)                           | built        |
-| Logo wall             | 111–114            | `logo-wall` (Logo wall)                       | built        |
-| Quote                 | 99–102             | `quote` (Quote), inverse                      | built        |
-| Testimonials          | 103–110            | `testimonials` (Testimonials)                 | built        |
-| Team                  | 87–91, 94, 95      | `team` (Team)                                 | built        |
-| Contact               | 85, 86             | `contact` (Contact)                           | built        |
-| Gantt plan            | 73, 74             | covered by the `Other` → Gantt chart template | not repeated |
+| Family                | Reference slides   | Mask                             | Status      |
+| --------------------- | ------------------ | -------------------------------- | ----------- |
+| Cover                 | 1, 3               | `cover` (Cover)                  | built       |
+| Cover with picture    | 2, 5, 6, 7         | `cover-image` (Cover with image) | built       |
+| Section divider       | 4, 6, 7            | `section` (Section), inverse     | built       |
+| Statement             | 9, 10, 33          | `statement` (Statement), inverse | built       |
+| Agenda                | 75–84              | `agenda` (Agenda)                | built       |
+| Text and picture      | 11–20, 23          | `text-image` (Text and image)    | built       |
+| Picture with caption  | 8, 41, 42          | `full-image` (Full image)        | built       |
+| Two columns           | 32, 35, 36         | `two-columns` (Two columns)      | built       |
+| Three or four columns | 30, 37, 38, 40     | `three-columns` (Three columns)  | built       |
+| Points grid           | 28, 39             | `six-points` (Six points)        | built       |
+| Picture cards         | 24–27, 92, 93, 146 | `image-cards` (Image cards)      | built       |
+| Key figures           | 120–128            | `key-figures` (Key figures)      | built       |
+| Timeline              | 65, 68, 70, 71     | `timeline` (Timeline)            | built       |
+| Roadmap by quarter    | 66, 67, 72         | `roadmap` (Roadmap)              | built       |
+| Process               | 61, 64, 69         | `process` (Process)              | built       |
+| 2 × 2 matrix          | 62, 63             | `matrix` (Two-by-two matrix)     | built       |
+| Venn                  | 58, 59             | `venn` (Venn diagram)            | built       |
+| Market size           | 56, 57             | `market-size` (Market size)      | built       |
+| Org chart             | 96–98              | `org-chart` (Org chart)          | built       |
+| Pricing               | 115–118            | `pricing` (Pricing)              | built       |
+| Logo wall             | 111–114            | `logo-wall` (Logo wall)          | built       |
+| Quote                 | 99–102             | `quote` (Quote), inverse         | built       |
+| Testimonials          | 103–110            | `testimonials` (Testimonials)    | built       |
+| Team                  | 87–91, 94, 95      | `team` (Team)                    | built       |
+| Contact               | 85, 86             | `contact` (Contact)              | built       |
+| Gantt plan            | 73, 74             | `gantt` (Gantt plan)             | built       |
+| Chart and text        | 43–51              | `chart-text` (Chart and text)    | placeholder |
+| Three charts          | 51                 | `three-charts` (Three charts)    | placeholder |
+| Photo collage         | 21, 22, 129        | `collage` (Text and collage)     | placeholder |
+| Picture bento         | 130, 131           | `bento` (Picture bento)          | placeholder |
+| Picture grid          | 132, 133           | `image-grid` (Picture grid)      | placeholder |
+| Feature bento         | 134–136            | `feature-bento` (Feature bento)  | placeholder |
+| Phone mockup          | 137–143            | `phone` (Phone mockup)           | placeholder |
+| Tablet mockup         | 144, 145           | `tablet` (Tablet mockup)         | placeholder |
 
 ## Deferred
 
 Families that need a capability the canvas does not have; each one is a
-debt item, not a missing mask.
+debt item, not a missing mask. The chart, photo and device families once
+listed here are built as placeholder masks above (PO decision, 2026-10-27):
+a dashed zone beats no mask. A chart drawn from a data series, a laptop or a
+watch frame stay out: nothing on the canvas draws them.
 
-| Family                                             | Reference slides | Why                                                                                               |
-| -------------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------- |
-| Charts (bar, line, area, pie, donut, chart + text) | 43–51            | a chart drawn from a data series; the canvas has no chart element                                 |
-| Data tables (cohorts, headings × rows, two tables) | 52–55            | a table with cells; no table element on the canvas (the database block is page-side)              |
-| Feature comparison table                           | 119              | same, a table of check marks                                                                      |
-| Funnel                                             | 60               | a triangle sliced in bands needs polygon slicing that keeps its proportions when resized          |
-| Photo collages                                     | 21, 22, 129–133  | a bento of pictures only reads with real images; dashed boxes alone are not a layout worth a mask |
-| Feature bento with figures and chart               | 132–136          | collage plus an embedded chart                                                                    |
-| Device mockups (phone, tablet, laptop, watch)      | 134, 136–145     | device frames are artwork (images or stencils) the library does not ship                          |
+| Family                                             | Reference slides | Why                                                                                      |
+| -------------------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------- |
+| Data tables (cohorts, headings × rows, two tables) | 52–55            | a table with cells; no table element on the canvas (the database block is page-side)     |
+| Feature comparison table                           | 119              | same, a table of check marks                                                             |
+| Funnel                                             | 60               | a triangle sliced in bands needs polygon slicing that keeps its proportions when resized |
 
 ## Choices
 
