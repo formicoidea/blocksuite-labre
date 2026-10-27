@@ -2,6 +2,7 @@ import { EdgelessCRUDIdentifier } from '@labre/affine-block-surface';
 import {
   EMBED_CARD_HEIGHT,
   EMBED_CARD_WIDTH,
+  LINKED_DOC_NOTE_STYLE,
 } from '@labre/affine-shared/consts';
 import { TelemetryProvider } from '@labre/affine-shared/services';
 import { getLastNoteBlock } from '@labre/affine-shared/utils';
@@ -58,7 +59,11 @@ function insertInPage(std: BlockStdScope, pageId: string): string | null {
   if (!root) return null;
   const noteId =
     getLastNoteBlock(store)?.id ?? store.addBlock('affine:note', {}, root.id);
-  return store.addBlock(LINKED_DOC, { pageId }, noteId);
+  return store.addBlock(
+    LINKED_DOC,
+    { pageId, style: LINKED_DOC_NOTE_STYLE },
+    noteId
+  );
 }
 
 function insertOnCanvas(std: BlockStdScope, pageId: string): string | null {

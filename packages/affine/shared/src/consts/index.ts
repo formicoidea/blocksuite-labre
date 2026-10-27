@@ -21,6 +21,16 @@ export const PAGE_HEADER_HEIGHT = 53;
 export const EMBED_CARD_MIN_WIDTH = 450;
 
 /**
+ * The style of a page's `affine:embed-linked-doc` card the library places in
+ * a note when no one chose one: the one-line card ("Small horizontal style").
+ * Product owner, labre recette 3 P2-7b (ADR-0045 amended 2026-10-27): the
+ * default view of a child page's card or of a link to a page is the line. A
+ * creation site writes it, never the model's default (`horizontal`), which
+ * every stored card already carries. Canvas cards keep their own style.
+ */
+export const LINKED_DOC_NOTE_STYLE = 'list' satisfies EmbedCardStyle;
+
+/**
  * The smallest a thing you TAP may be, in CSS pixels.
  *
  * 44 is the figure both platform guidelines settle on (WCAG 2.2's target-size
