@@ -5,6 +5,8 @@ import {
   readImageCrop,
 } from '@labre/affine-model';
 import { Bound } from '@labre/global/gfx';
+import type { BlockStdScope } from '@labre/std';
+import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { computed, signal } from '@preact/signals-core';
 import { html, nothing } from 'lit';
 import { styleMap } from 'lit/directives/style-map.js';
@@ -21,6 +23,8 @@ import { writeImageCrop } from './write-crop.js';
 /** What the controller needs from the block it serves, page or canvas. */
 export interface CroppableImageBlock {
   readonly model: ImageBlockModel;
+  /** Read on the canvas only, to take the selection and the viewport. */
+  readonly std: Pick<BlockStdScope, 'get'>;
   querySelector<E extends Element = Element>(selectors: string): E | null;
 }
 
@@ -28,6 +32,14 @@ export interface CroppableImageBlock {
  * The « Rogner » state of one image block (ADR 0037), shared by the page and
  * the canvas components: which preset the crop frame is open on, if any, and
  * the gestures that write. The frame is local UI and never stored.
+ *
+ * On the canvas the open frame owns the pointer and the wheel: the image is
+ * selected in EDITING state, which hides the selected-rect handles that
+ * would otherwise sit on the frame's corners, and the viewport is locked,
+ * so the wheel zooms the picture inside the frame rather than the canvas.
+ * Both are taken by one open path and given back by one `stop`, whatever
+ * closes the frame (Escape, Enter, a press elsewhere, the toolbar, the block
+ * leaving the DOM, the selection moving elsewhere), so they cannot drift.
  */
 export class ImageCropController {
   /** The mask the crop frame is open on, `null` when it is closed. */
@@ -36,6 +48,9 @@ export class ImageCropController {
   readonly crop$ = computed(() =>
     readImageCrop(this._block.model.props.crop$.value)
   );
+
+  /** Gives the canvas back; set while the frame is open on the canvas. */
+  private _release: (() => void) | null = null;
 
   constructor(
     private readonly _block: CroppableImageBlock,
@@ -78,7 +93,32 @@ export class ImageCropController {
       if (!natural) return;
       this.commit(presetCrop(mask, natural.width, natural.height), mask);
     }
+    this._open(mask);
+  }
+
+  private _open(mask: ImageCropMask) {
     this.editing$.value = mask;
+    if (!this._onCanvas || this._release) return;
+
+    const { selection, viewport } = this._block.std.get(
+      GfxControllerIdentifier
+    );
+    const { id, store } = this._block.model;
+    const wasLocked = viewport.locked;
+    viewport.locked = true;
+    selection.set({ elements: [id], editing: true });
+    // Another selection (a shortcut, the selection pane, a peer's undo
+    // removing the block) closes the frame instead of leaving it orphaned.
+    const watch = selection.slots.updated.subscribe(() => {
+      if (!selection.editing || !selection.has(id)) this.stop();
+    });
+    this._release = () => {
+      watch.unsubscribe();
+      viewport.locked = wasLocked;
+      if (selection.editing && selection.has(id) && store.hasBlock(id)) {
+        selection.set({ elements: [id], editing: false });
+      }
+    };
   }
 
   commit(rect: CropRect, mask = this.editing$.peek() ?? 'free') {
@@ -87,11 +127,15 @@ export class ImageCropController {
 
   /** « Image d'origine »: removes the crop; the bytes never changed. */
   restoreOriginal() {
-    this.editing$.value = null;
+    this.stop();
     return writeImageCrop(this._block.model, undefined, 'free', this._onCanvas);
   }
 
+  /** Closes the frame and gives the canvas back; harmless when closed. */
   stop() {
+    const release = this._release;
+    this._release = null;
+    release?.();
     this.editing$.value = null;
   }
 
@@ -114,7 +158,7 @@ export class ImageCropController {
       .ratio=${ratio}
       .rotate=${rotate}
       .onCommit=${(rect: CropRect) => {
-        this.commit(rect);
+        this.commit(rect, mask);
       }}
       .onExit=${() => this.stop()}
     ></affine-image-crop-overlay>`;

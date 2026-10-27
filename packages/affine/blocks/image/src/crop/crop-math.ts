@@ -135,6 +135,61 @@ export function resizeCrop(
   };
 }
 
+/** Scale of the window per 100 units of wheel `deltaY`. */
+export const CROP_WHEEL_STEP = 1.05;
+
+/** At most this many steps per wheel event: a fast flick stays readable. */
+const CROP_WHEEL_MAX_STEPS = 3;
+
+/**
+ * The window's scale for one wheel event: below 1 when the wheel turns up
+ * (`deltaY < 0`), which shrinks the window and so zooms into the picture.
+ */
+export function cropWheelFactor(deltaY: number): number {
+  const steps = clamp(
+    deltaY / 100,
+    -CROP_WHEEL_MAX_STEPS,
+    CROP_WHEEL_MAX_STEPS
+  );
+  return CROP_WHEEL_STEP ** steps;
+}
+
+/**
+ * The window scaled by `factor` about a point of the source (`px`, `py`,
+ * normalised): that point stays under the pointer. The aspect is `k`
+ * (normalised `w / h`) when a mask holds one, else the window's own; the
+ * window never outgrows the image nor shrinks below the minimum side, and is
+ * then pushed back inside the image.
+ */
+export function zoomCrop(
+  start: CropRect,
+  factor: number,
+  px: number,
+  py: number,
+  k: number | null
+): CropRect {
+  const ratio = k ?? start.w / start.h;
+  const min = IMAGE_CROP_MIN_SIDE;
+  let w = start.w * factor;
+  let h = w / ratio;
+  // Fit inside the image first, then grow to the minimum: a ratio too
+  // extreme for both keeps the minimum, as `resizeCrop` does.
+  const shrink = Math.min(1, 1 / w, 1 / h);
+  w *= shrink;
+  h *= shrink;
+  const grow = Math.max(1, min / w, min / h);
+  w *= grow;
+  h *= grow;
+  const sx = w / start.w;
+  const sy = h / start.h;
+  return {
+    x: clamp(px - (px - start.x) * sx, 0, Math.max(0, 1 - w)),
+    y: clamp(py - (py - start.y) * sy, 0, Math.max(0, 1 - h)),
+    w,
+    h,
+  };
+}
+
 export function sameCropRect(a: CropRect, b: CropRect): boolean {
   return (
     Math.abs(a.x - b.x) < EPSILON &&
