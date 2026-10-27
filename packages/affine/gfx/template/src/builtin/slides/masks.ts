@@ -887,12 +887,12 @@ function figureCard(x: number, y: number, w: number, h: number): SlideZone[] {
 function featureCard(x: number, y: number, w: number, h: number): SlideZone[] {
   return [
     card(x, y, w, h),
-    text('heading', SLIDE_SEED_HEADING, x + 40, y + 40, w - 80),
-    text('body', SLIDE_SEED_DETAIL, x + 40, y + 90, w - 80, {
+    text('heading', SLIDE_SEED_HEADING, x + 40, y + 40, w - 80, { lines: 2 }),
+    text('body', SLIDE_SEED_DETAIL, x + 40, y + 140, w - 80, {
       lines: 2,
       ...muted,
     }),
-    image(x + 40, y + 190, w - 80, h - 230),
+    image(x + 40, y + 220, w - 80, h - 260),
   ];
 }
 
