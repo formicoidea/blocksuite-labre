@@ -934,3 +934,16 @@ between the name and the view bar.
   a header that is already sticky alone. The inline table and the other
   views keep their behaviour. Held by
   `integration-test/…/page/database-page-scroll.spec.ts`.
+
+### 2026-10-27: a value on its way draws a spinner, not a skeleton
+
+Amends §9e and the B2 line. A `pending` cell (`renderCellStatus`) and the
+title band's loading row now draw the library's spinner (`LoadingIcon`,
+`@labre/affine-components/icons`) centred in what loads, instead of a grey
+skeleton: the Labre app allows a spinner as its only loading indicator
+(its ADR-0057, recette 3). Nothing else changes: a pending cell mounts no
+editor and takes no write. The test id is now `dv-cell-loading` (was
+`dv-cell-skeleton`); the band keeps `title-band-loading`. `LoadingIcon`
+rotates by SMIL instead of a `<style>` inside its SVG, which was a global
+sheet in light DOM and would not render under happy-dom. Held by
+`hydration-status.unit.spec.ts` and `title-band.unit.spec.ts`.

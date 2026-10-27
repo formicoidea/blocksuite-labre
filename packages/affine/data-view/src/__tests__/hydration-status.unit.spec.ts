@@ -23,7 +23,7 @@ import type { SingleView } from '../core/view-manager/single-view.js';
  *
  * What it would have caught:
  * - a source that says NOTHING about hydration (the inline source, every 0.48
- *   host source) drawing a skeleton, an ellipsis or a banner: it must stay
+ *   host source) drawing a spinner, an ellipsis or a banner: it must stay
  *   `ready`, the 0.48 behaviour, with no member to implement;
  * - the 3 s rule drifting (a banner at once, or never);
  * - a pending or failed cell being written over by `valueSet` /
@@ -58,7 +58,7 @@ describe('a source that says nothing is ready (the 0.48 behaviour)', () => {
     expect(valuesBannerOf(valuesStateOf({}), Date.now())).toBe('none');
   });
 
-  it('draws no skeleton for a ready cell or a cell with no status', () => {
+  it('draws no spinner for a ready cell or a cell with no status', () => {
     expect(renderCellStatus(fakeCell('ready'))).toBeUndefined();
     expect(renderCellStatus(fakeCell())).toBeUndefined();
     expect(renderCellStatus(undefined)).toBeUndefined();
@@ -66,16 +66,17 @@ describe('a source that says nothing is ready (the 0.48 behaviour)', () => {
 });
 
 describe('cell status', () => {
-  it('draws a skeleton while pending and an empty cell on error', () => {
+  it('draws a spinner, never a skeleton, while pending and an empty cell on error', () => {
     const host = document.createElement('div');
     render(renderCellStatus(fakeCell('pending')), host);
-    expect(host.querySelector('[data-testid="dv-cell-skeleton"]')).not.toBe(
+    expect(host.querySelector('[data-testid="dv-cell-loading"]')).not.toBe(
       null
     );
+    expect(host.querySelector('svg .spinner')).not.toBe(null);
 
     render(renderCellStatus(fakeCell('error')), host);
     expect(host.querySelector('[data-cell-status="error"]')).not.toBe(null);
-    expect(host.querySelector('[data-testid="dv-cell-skeleton"]')).toBe(null);
+    expect(host.querySelector('[data-testid="dv-cell-loading"]')).toBe(null);
     expect(host.textContent?.trim()).toBe('');
   });
 

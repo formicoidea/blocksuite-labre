@@ -1,15 +1,15 @@
 import { css } from '@emotion/css';
 
-// The title band's loading chip, in a cell (`labre-title-band-skeleton`):
-// same hover tone, same radius, no motion to honour or disable.
-export const cellSkeletonStyle = css({
-  display: 'block',
-  width: '60%',
-  maxWidth: '120px',
-  height: '16px',
-  margin: '8px',
-  borderRadius: '6px',
-  backgroundColor: 'var(--affine-hover-color)',
+// A cell whose value is on its way: a spinner centred in the cell, the
+// height of a drawn one, never a skeleton (recette 3; the host's rule,
+// ADR-0057 on the Labre side).
+export const cellLoadingStyle = css({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: '100%',
+  minHeight: '32px',
+  fontSize: '16px',
 });
 
 export const cellEmptyStyle = css({

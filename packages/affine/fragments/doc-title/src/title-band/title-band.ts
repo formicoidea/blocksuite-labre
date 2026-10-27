@@ -1,3 +1,4 @@
+import { LoadingIcon } from '@labre/affine-components/icons';
 import { RefNodeSlotsProvider } from '@labre/affine-inline-reference';
 import {
   DOC_UNTITLED,
@@ -233,12 +234,11 @@ export class TitleBand extends SignalWatcher(
       color: var(--affine-placeholder-color);
     }
 
-    .labre-title-band-skeleton {
-      display: inline-block;
-      width: 96px;
-      height: 20px;
-      border-radius: 6px;
-      background-color: var(--affine-hover-color);
+    /* The host's rule: a spinner centred in what loads, never a skeleton
+       (recette 3; ADR-0057 on the Labre side). */
+    .labre-title-band-row.labre-title-band-loading {
+      justify-content: center;
+      font-size: 16px;
     }
 
     .labre-title-band-not-shown-label {
@@ -584,14 +584,13 @@ export class TitleBand extends SignalWatcher(
     const state = sources.sheet$.value;
     if (state.status === 'loading') {
       return html`<div
-        class="labre-title-band-row"
+        class="labre-title-band-row labre-title-band-loading"
         role="status"
         aria-busy="true"
         aria-label=${this._t(TITLE_BAND_LOADING)}
         data-testid="title-band-loading"
       >
-        <span class="labre-title-band-skeleton"></span>
-        <span class="labre-title-band-skeleton"></span>
+        ${LoadingIcon()}
       </div>`;
     }
     if (state.status !== 'ready') return nothing;
