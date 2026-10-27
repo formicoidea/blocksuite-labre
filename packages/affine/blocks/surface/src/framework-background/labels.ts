@@ -5,6 +5,12 @@ import type {
   BackgroundTextDef,
   FrameworkBackgroundDef,
 } from './def.js';
+import {
+  backgroundBandWidths,
+  backgroundWrapLineHeight,
+  type BackgroundTextMeasure,
+  estimateBackgroundText,
+} from './band-widths.js';
 import { backgroundPlot, backgroundPoint } from './def.js';
 
 /** A background element, seen from the primitive: a bag of declared props. */
@@ -235,16 +241,26 @@ export function backgroundTexts(
  * not user text, and is not offered for editing.
  *
  * Positions come from the same declaration the renderer paints from, so the
- * boxes track the drawn text by construction.
+ * boxes track the drawn text by construction — including a band grown by a
+ * wrapped label, read off the same resolver (`backgroundBandWidths`, measured
+ * here without a painting context), with one box round all of its lines.
  */
 export function backgroundLabelHits(
   def: FrameworkBackgroundDef,
   model: BackgroundModelLike,
   w: number,
   h: number,
-  translation?: TranslationService | null
+  translation?: TranslationService | null,
+  /**
+   * How a wrapped band label is measured to size its band. The estimate by
+   * default, since this function is reachable from the headless `./interchange`
+   * entry; a view passes `measureBackgroundText` so its boxes sit on the band
+   * as painted.
+   */
+  measure: BackgroundTextMeasure = estimateBackgroundText
 ): BackgroundLabelHit[] {
-  const plot = backgroundPlot(def, w, h);
+  const layout = backgroundBandWidths(def, model, w, h, measure, translation);
+  const plot = backgroundPlot(def, w, h, layout.margin);
   const hits: BackgroundLabelHit[] = [];
 
   for (const text of backgroundTexts(def)) {
@@ -256,20 +272,34 @@ export function backgroundLabelHits(
     if (!backgroundVisible(text.visibleProp, model)) continue;
 
     const words = backgroundLabelText(text, model, translation);
-    const [ax, ay] = backgroundPoint(text.anchor, plot);
+    const [px, py] = backgroundPoint(text.anchor, plot);
+    const wrap = layout.labels.get(text);
+    const ax = px + (wrap?.shift[0] ?? 0);
+    const ay = py + (wrap?.shift[1] ?? 0);
+
+    const lines = wrap && wrap.lines.length > 1 ? wrap.lines : [words];
+    const lineHeight = backgroundWrapLineHeight(text.style);
+    const boxes = lines.map((line, i) => {
+      // The renderer's own stacking: centred on the anchor, across the text.
+      const across = (i - (lines.length - 1) / 2) * lineHeight;
+      return backgroundTextHitBox(
+        line,
+        text.style.size,
+        text.vertical ? ax + across : ax,
+        text.vertical ? ay : ay + across,
+        text.align,
+        text.vertical
+      );
+    });
 
     hits.push({
       id: text.id,
       prop: text.prop,
       text: words,
-      ...backgroundTextHitBox(
-        words,
-        text.style.size,
-        ax,
-        ay,
-        text.align,
-        text.vertical
-      ),
+      minX: Math.min(...boxes.map(box => box.minX)),
+      minY: Math.min(...boxes.map(box => box.minY)),
+      maxX: Math.max(...boxes.map(box => box.maxX)),
+      maxY: Math.max(...boxes.map(box => box.maxY)),
     });
   }
 

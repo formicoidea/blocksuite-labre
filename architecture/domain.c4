@@ -709,8 +709,8 @@ model {
     metadata {
       domain ['canvas', 'file', 'layer']
       domain_canvas '0.74'
-      domain_file '0.18'
-      domain_layer '0.06'
+      domain_file '0.17'
+      domain_layer '0.05'
     }
   }
   extend features.blocks.surface-ref {
