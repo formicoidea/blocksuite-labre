@@ -28,7 +28,8 @@
     "yjs": "^13.6.21"
   },
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./headless": "./src/headless.ts"
   },
   "files": [
     "src",

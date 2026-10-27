@@ -179,4 +179,9 @@ empty compartment stays empty, an absent one takes the toolbar's seed. A link
 attaches to the shape, `<local>:shape`. The PlantUML, XMI and draw.io readers
 write an artefact through the same assembly.
 
+The Context Map ships one too, `CONTEXT_MAP_TOOLBOX` on
+`@formicoidea/labre-framework-ddd-context-map/interchange`; its artefacts are
+built by `@formicoidea/labre-ddd-shared/headless`, the editor-free entry of the
+DDD boards' shared bundle, which a server installs beside the framework.
+
 Next: [07-upgrade.md](07-upgrade.md).

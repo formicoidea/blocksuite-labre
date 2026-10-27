@@ -1,4 +1,5 @@
 export * from './shared/consts.js';
+export * from './shared/elements.js';
 export * from './shared/prefabs.js';
 export * from './shared/utils.js';
 export * from './toolbar/icons.js';

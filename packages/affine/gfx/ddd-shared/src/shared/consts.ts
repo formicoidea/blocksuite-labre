@@ -1,4 +1,4 @@
-import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
+import { NOTATION_NEUTRALS } from '@labre/affine-shared/headless';
 
 /**
  * Shared DDD palette and sizes. Every tool composes the same irreducible units
@@ -20,6 +20,13 @@ import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
  * second key here for the same English word would only be the drift the
  * manifest guard exists to catch.
  */
+
+/**
+ * The boards' chrome font. Declared here rather than in `utils.ts`, which
+ * re-exports the editor's `refScale`, so the editor-free entry (`headless.ts`)
+ * can carry it to a board's declaration.
+ */
+export const FONT_FAMILY = 'Inter, sans-serif';
 
 /** Square sticky side (px, canvas reference). */
 export const STICKY_SIZE = 120;
@@ -236,4 +243,4 @@ export {
   LABEL_COLOR,
   LABEL_FONT,
   LABEL_FONT_SIZE,
-} from '@labre/affine-block-surface';
+} from '@labre/affine-block-surface/interchange';

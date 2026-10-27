@@ -27,25 +27,14 @@ import {
   createContextMapBoard,
 } from './actions';
 import { CM_PATTERN_ROLE, CONTEXT_MAP_ROLE } from './roles';
+import {
+  CONTEXT_MAP_SEED_BOUNDED_CONTEXT,
+  CONTEXT_MAP_SEED_CLOUD,
+} from './seeds';
 
-/**
- * The seeds baked into a placed artefact: the bounded-context bubble's
- * default caption, and the general-purpose cloud's. The nine relationship
- * patterns carry no seed of their own — since WS2 the palette ARMS the
- * connector tool rather than dropping a labelled group, so no word is
- * written into the document for them any more
- * (`activateContextMapRelationship`). Declared here, beside the commands that
- * write them, and imported by `translations.ts` — never the other way, which
- * would cycle back into `contextMapCommands`.
- */
-export const CONTEXT_MAP_SEED_BOUNDED_CONTEXT: ChromeWording = [
-  'com.labre.ddd-context-map.seed.bounded-context',
-  'Bounded Context',
-];
-export const CONTEXT_MAP_SEED_CLOUD: ChromeWording = [
-  'com.labre.ddd-context-map.seed.cloud',
-  'System',
-];
+// Declared in `seeds.ts` (editor-free, for the toolbox) and re-exported here,
+// where `translations.ts` has always read them.
+export { CONTEXT_MAP_SEED_BOUNDED_CONTEXT, CONTEXT_MAP_SEED_CLOUD };
 
 /**
  * The automatic legend's own section titles — text stamped onto the board the
@@ -195,8 +184,7 @@ const SPECS: Spec[] = [
       run: std =>
         activateContextMapRelationship(
           std.get(GfxControllerIdentifier),
-          preset.kind,
-          { upDown: preset.upDown, dashed: preset.dashed }
+          preset.kind
         ),
       // One row per PATTERN, not one for `context-map:relationship`: a legend
       // that said "Relationship" would document nothing a reader could use. Both

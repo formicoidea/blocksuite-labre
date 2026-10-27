@@ -37,6 +37,11 @@ const ALLOWED_WORKSPACE = [
   'packages/affine/model/',
   'packages/affine/shared/',
   'packages/affine/blocks/surface/',
+  // The DDD boards' shared tables and element builders, through its
+  // `./headless` entry only (ADR 0045 amendment of 2026-10-27): the three
+  // boards' toolboxes build their artefacts from them, and a board may import
+  // `ddd-shared` but never another board. Its own entry is held below.
+  'packages/affine/gfx/ddd-shared/',
 ];
 
 /**
@@ -55,6 +60,7 @@ const WITH_INTERCHANGE = [
   'bpmn',
   'c4',
   'cynefin-estuarine',
+  'ddd-context-map',
   'edgy',
   'uml',
   'wardley',
@@ -88,6 +94,11 @@ const ENTRIES: Entry[] = [
   {
     label: 'shared ./headless',
     dir: 'packages/affine/shared',
+    subpath: './headless',
+  },
+  {
+    label: 'ddd-shared ./headless',
+    dir: 'packages/affine/gfx/ddd-shared',
     subpath: './headless',
   },
   ...FRAMEWORK_DESCRIPTORS.filter(

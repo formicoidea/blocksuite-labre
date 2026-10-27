@@ -1,46 +1,45 @@
-import { DefaultTool } from '@labre/affine-block-surface';
-import { createGroupCommand } from '@labre/affine-gfx-group';
 import {
-  ConnectorMode,
-  FontWeight,
-  PointStyle,
-  ShapeStyle,
-  StrokeStyle,
-  TextFitMode,
-} from '@labre/affine-model';
-import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
-import { Bound } from '@labre/global/gfx';
+  DefaultTool,
+  type SerializedElementProps,
+} from '@labre/affine-block-surface';
+import { createGroupCommand } from '@labre/affine-gfx-group';
 import type { BlockStdScope } from '@labre/std';
 import { type GfxController, GfxControllerIdentifier } from '@labre/std/gfx';
 import * as Y from 'yjs';
 
 import {
   CLOUD,
-  CLOUD_VERTICES,
   CM_BUBBLE,
   DOT_SIZE,
-  LABEL_COLOR,
-  LABEL_FONT,
-  LABEL_FONT_SIZE,
   MARKER_SIZE,
-  SHADOW_COLOR,
-  SHADOW_OFFSET,
-  STICKY_FONT,
-  STICKY_FONT_SIZE,
-  STICKY_RADIUS,
   STICKY_SIZE,
-} from './consts';
+} from './consts.js';
+import {
+  bubbleElement,
+  cloudElements,
+  dddConnectorElement,
+  dddShapeElement,
+  dotElements,
+  markerElements,
+  type ShapeOpts,
+  stickyElements,
+} from './elements.js';
 
 /**
  * Irreducible reusable units composed by all three DDD sub-menus. Each helper
- * wraps native `surface.addElement` (shape / text / connector / group); nothing
- * here defines a new element type, so the same builders back Event Storming
- * stickies, Context Map bubbles + relationships and Core Domain dots + arrows.
+ * writes the elements its pure builder returns (`elements.ts`,
+ * `docs/adr/0045`) through native `surface.addElement` (shape / text /
+ * connector) and the group command; nothing here defines a new element type,
+ * so the same builders back Event Storming stickies, Context Map bubbles +
+ * relationships and Core Domain dots + arrows, here and on a host with no
+ * editor.
+ *
+ * What stays here is what only an editor has: the viewport centre the
+ * prefabs are placed around, and the group command, which names the group
+ * ("Group N", resolved in the host's language) and stamps its user layer.
  */
 
 type Surface = NonNullable<GfxController['surface']>;
-
-const NO_STROKE = '#00000000';
 
 /**
  * Build one DDD artefact at the viewport centre and select it, leaving the
@@ -69,37 +68,49 @@ export function groupIds(std: BlockStdScope, ids: string[]): string {
   return result.groupId || ids[0];
 }
 
-export interface ShapeOpts {
-  shapeType?: 'rect' | 'ellipse' | 'diamond';
-  fill: string;
-  /**
-   * Semantic role (`<framework>:<role>`) stamped on the shape, so a validation
-   * rule can recognise it. `undefined` writes NOTHING — no `role` key is
-   * persisted and the artefact stays a neutral drawing, which is what every
-   * caller that does not pass one keeps getting and what every DDD artefact
-   * created before this parameter existed already is.
-   */
-  role?: string;
-  stroke?: string;
-  strokeWidth?: number;
-  radius?: number;
-  /**
-   * Shape-owned centred label. The text belongs to the shape itself (edited
-   * by double-click, moves/resizes with it) with the given text-fit mode —
-   * `contained` mimics a physical post-it.
-   */
-  label?: {
-    text: string;
-    color: string;
-    fontFamily: string;
-    fontSize: number;
-    fit: TextFitMode;
-  };
+/**
+ * A shape's label as the `Y.Text` the prefabs have always written. The shape
+ * model's `propsToY` makes the same `Y.Text` of a string, so this changes
+ * nothing stored; it keeps what `addElement` receives from a prefab what it
+ * was before the builders existed.
+ */
+function withYText<T extends Record<string, unknown>>(props: T): T {
+  return props.type === 'shape' && typeof props.text === 'string'
+    ? { ...props, text: new Y.Text(props.text) }
+    : props;
 }
 
 /**
- * The props a DDD shape is CREATED with, as a record — the write of
- * {@link addShape}, minus the write.
+ * Write a builder's elements in order, minting real ids for the local ones;
+ * a group goes through the group command with its members' minted ids.
+ * Returns the id of the last element: the group of a composite, the element
+ * itself otherwise.
+ */
+function addElements(
+  surface: Surface,
+  std: BlockStdScope | undefined,
+  elements: readonly SerializedElementProps[]
+): string {
+  const minted = new Map<string, string>();
+  let last = '';
+  for (const { id: local, ...props } of elements) {
+    if (props.type === 'group' && std) {
+      const children = Object.keys(props.children as Record<string, true>);
+      last = groupIds(
+        std,
+        children.map(child => minted.get(child) ?? child)
+      );
+    } else {
+      last = surface.addElement(withYText(props));
+    }
+    if (typeof local === 'string') minted.set(local, last);
+  }
+  return last;
+}
+
+/**
+ * The props a DDD shape is CREATED with, as a record — the write of the
+ * prefabs, minus the write.
  *
  * Split out for the Core Domain morph, and for the reason C4's `presets.ts`
  * gives: a kind's appearance is written by the preset of the kind it was created
@@ -115,74 +126,7 @@ export function dddShapeProps(
   h: number,
   opts: ShapeOpts
 ): Record<string, unknown> & { type: string } {
-  const {
-    shapeType = 'rect',
-    fill,
-    stroke = NO_STROKE,
-    strokeWidth = 0,
-    radius = 0,
-    label,
-    role,
-  } = opts;
-  return {
-    type: 'shape',
-    // `undefined` writes nothing: a neutral artefact keeps no `role` key.
-    role,
-    shapeType,
-    filled: true,
-    fillColor: fill,
-    strokeColor: stroke,
-    strokeWidth,
-    shapeStyle: ShapeStyle.General,
-    roughness: 0,
-    radius,
-    xywh: new Bound(x, y, w, h).serialize(),
-    ...(label
-      ? {
-          text: new Y.Text(label.text),
-          color: label.color,
-          fontFamily: label.fontFamily,
-          fontSize: label.fontSize,
-          textAlign: 'center',
-          textFitMode: label.fit,
-        }
-      : {}),
-  };
-}
-
-function addShape(
-  surface: Surface,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  opts: ShapeOpts
-): string {
-  return surface.addElement(dddShapeProps(x, y, w, h, opts));
-}
-
-function addText(
-  surface: Surface,
-  x: number,
-  y: number,
-  w: number,
-  text: string,
-  color: string,
-  fontFamily: string,
-  fontSize: number,
-  textAlign: 'left' | 'center' = 'center',
-  bold = false
-): string {
-  return surface.addElement({
-    type: 'text',
-    text,
-    color,
-    fontFamily,
-    fontSize,
-    textAlign,
-    fontWeight: bold ? FontWeight.SemiBold : FontWeight.Regular,
-    xywh: new Bound(x, y, w, fontSize + 10).serialize(),
-  });
+  return withYText(dddShapeElement(x, y, w, h, opts));
 }
 
 /**
@@ -211,42 +155,12 @@ export function addSticky(
     role?: string;
   }
 ): string {
-  const {
-    fill,
-    text,
-    label,
-    shapeType = 'rect',
-    size = STICKY_SIZE,
-    role,
-  } = opts;
-  const half = size / 2;
-  const radius = shapeType === 'rect' ? STICKY_RADIUS : 0;
-  const shadow = addShape(
+  const half = (opts.size ?? STICKY_SIZE) / 2;
+  return addElements(
     surface,
-    cx - half + SHADOW_OFFSET,
-    cy - half + SHADOW_OFFSET,
-    size,
-    size,
-    {
-      shapeType,
-      fill: SHADOW_COLOR,
-      radius,
-    }
+    std,
+    stickyElements({ x: cx - half, y: cy - half }, opts)
   );
-  const face = addShape(surface, cx - half, cy - half, size, size, {
-    shapeType,
-    fill,
-    radius,
-    role,
-    label: {
-      text: label,
-      color: text,
-      fontFamily: STICKY_FONT,
-      fontSize: STICKY_FONT_SIZE,
-      fit: TextFitMode.Contained,
-    },
-  });
-  return groupIds(std, [shadow, face]);
 }
 
 /**
@@ -261,50 +175,10 @@ export function addBubble(
   label: string,
   role?: string
 ): string {
-  const { w, h, radius, fill, stroke, text } = CM_BUBBLE;
-  return addShape(surface, cx - w / 2, cy - h / 2, w, h, {
-    fill,
-    stroke,
-    strokeWidth: 1.5,
-    radius,
-    role,
-    label: {
-      text: label,
-      color: text,
-      fontFamily: LABEL_FONT,
-      fontSize: LABEL_FONT_SIZE,
-      fit: TextFitMode.Overflow,
-    },
-  });
-}
-
-/** The ink every Core Domain artefact is outlined with: the shared scale's. */
-const ARTEFACT_STROKE = NOTATION_NEUTRALS.ink;
-
-/**
- * What a Core Domain DOT is, as shape options — read by the creation site below
- * and by the morph, so the two can never disagree about what a platform
- * sub-domain looks like. See {@link dddShapeProps}.
- */
-export function dotShapeOpts(fill: string, role?: string): ShapeOpts {
-  return {
-    shapeType: 'ellipse',
-    fill,
-    stroke: ARTEFACT_STROKE,
-    strokeWidth: 1.5,
-    role,
-  };
-}
-
-/** What a Team Topologies MARKER square is, the same way. */
-export function markerShapeOpts(fill: string, role?: string): ShapeOpts {
-  return {
-    fill,
-    stroke: ARTEFACT_STROKE,
-    strokeWidth: 1.5,
-    radius: 4,
-    role,
-  };
+  const { w, h } = CM_BUBBLE;
+  return addElements(surface, undefined, [
+    bubbleElement({ x: cx - w / 2, y: cy - h / 2 }, label, role),
+  ]);
 }
 
 /** A Core Domain dot (sub-domain / bounded context); optional label to its right. */
@@ -319,27 +193,11 @@ export function addDot(
   role?: string
 ): string {
   const d = DOT_SIZE;
-  const dot = addShape(
+  return addElements(
     surface,
-    cx - d / 2,
-    cy - d / 2,
-    d,
-    d,
-    dotShapeOpts(fill, role)
+    std,
+    dotElements({ x: cx - d / 2, y: cy - d / 2 }, fill, label, role)
   );
-  if (!label) return dot;
-  const lbl = addText(
-    surface,
-    cx + d / 2 + 6,
-    cy - LABEL_FONT_SIZE / 2,
-    170,
-    label,
-    LABEL_COLOR,
-    LABEL_FONT,
-    LABEL_FONT_SIZE,
-    'left'
-  );
-  return groupIds(std, [dot, lbl]);
 }
 
 /** A relationship connector (the single connector unit reused for all patterns). */
@@ -358,25 +216,9 @@ export function addConnector(
     role?: string;
   } = {}
 ): string {
-  const {
-    rearArrow = false,
-    dashed = false,
-    stroke = LABEL_COLOR,
-    strokeWidth = 2,
-    role,
-  } = opts;
-  return surface.addElement({
-    type: 'connector',
-    role,
-    mode: ConnectorMode.Straight,
-    stroke,
-    strokeWidth,
-    strokeStyle: dashed ? StrokeStyle.Dash : StrokeStyle.Solid,
-    frontEndpointStyle: PointStyle.None,
-    rearEndpointStyle: rearArrow ? PointStyle.Arrow : PointStyle.None,
-    source: { position: [x1, y1] },
-    target: { position: [x2, y2] },
-  });
+  return surface.addElement(
+    dddConnectorElement({ position: [x1, y1] }, { position: [x2, y2] }, opts)
+  );
 }
 
 /**
@@ -394,43 +236,12 @@ export function addMarker(
   cy: number,
   opts: { fill: string; letter: string; label?: string; role?: string }
 ): string {
-  const { fill, letter, label, role } = opts;
   const s = MARKER_SIZE;
-  const box = addShape(
+  return addElements(
     surface,
-    cx - s / 2,
-    cy - s / 2,
-    s,
-    s,
-    markerShapeOpts(fill, role)
+    std,
+    markerElements({ x: cx - s / 2, y: cy - s / 2 }, opts)
   );
-  const glyph = addText(
-    surface,
-    cx - s / 2,
-    cy - 9,
-    s,
-    letter,
-    NOTATION_NEUTRALS.ink,
-    LABEL_FONT,
-    15
-  );
-  const ids = [box, glyph];
-  if (label) {
-    ids.push(
-      addText(
-        surface,
-        cx + s / 2 + 6,
-        cy - LABEL_FONT_SIZE / 2,
-        150,
-        label,
-        LABEL_COLOR,
-        LABEL_FONT,
-        LABEL_FONT_SIZE,
-        'left'
-      )
-    );
-  }
-  return groupIds(std, ids);
 }
 
 /** A cloud (Big Ball of Mud / general-purpose boundary): a smoothed closed bezier polygon. */
@@ -442,33 +253,10 @@ export function addCloud(
   label?: string,
   role?: string
 ): string {
-  const { w, h, fill, stroke } = CLOUD;
-  const cloud = surface.addElement({
-    type: 'shape',
-    shapeType: 'polygon',
-    vertices: CLOUD_VERTICES,
-    isClosed: true,
-    filled: true,
-    fillColor: fill,
-    strokeColor: stroke,
-    strokeWidth: 1.5,
-    shapeStyle: ShapeStyle.General,
-    roughness: 0,
-    xywh: new Bound(cx - w / 2, cy - h / 2, w, h).serialize(),
-    // On the POLYGON, never on the group: the polygon is what a relationship
-    // binds to and what the legend scan meets.
-    ...(role ? { role } : {}),
-  });
-  if (!label) return cloud;
-  const lbl = addText(
+  const { w, h } = CLOUD;
+  return addElements(
     surface,
-    cx - w / 2 + 12,
-    cy - LABEL_FONT_SIZE / 2,
-    w - 24,
-    label,
-    NOTATION_NEUTRALS.ink,
-    LABEL_FONT,
-    LABEL_FONT_SIZE
+    std,
+    cloudElements({ x: cx - w / 2, y: cy - h / 2 }, label, role)
   );
-  return groupIds(std, [cloud, lbl]);
 }

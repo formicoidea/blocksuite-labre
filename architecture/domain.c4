@@ -770,8 +770,8 @@ model {
   extend features.blocks.surface.extensions {
     metadata {
       domain ['canvas', 'file', 'layer']
-      domain_canvas '0.52'
-      domain_file '0.30'
+      domain_canvas '0.53'
+      domain_file '0.29'
       domain_layer '0.12'
     }
   }

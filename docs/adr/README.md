@@ -49,7 +49,7 @@ One file per decision. Format and lifecycle in
 | [0042](0042-paste-prepare-then-write.md)                       | Paste prepares, then writes          | accepted                  | A canvas paste awaits every block's `prepare`, then writes all in two back-to-back transactions: one undo step; transformer split, nothing stored changes.                          |
 | [0043](0043-table-header-row-and-column.md)                    | Table header row and column          | accepted                  | Two optional flags on `affine:table`, `headerRow` / `headerColumn` (`true` or absent): the first row/column is a header; Markdown import sets `headerRow`; HTML export writes `th`. |
 | [0044](0044-replace-shape-and-image.md)                        | Replace shape and image              | accepted                  | A new model at the old one's place, layer, z-order, connectors and container; the id changes; roled, texted, captioned or locked models refused.                                    |
-| [0045](0045-headless-toolbox.md)                               | Headless toolbox                     | accepted                  | A framework's toolbar items as pure builders on `./interchange`, called by the editor actions and by a host with no editor.                                                         |
+| [0045](0045-headless-toolbox.md)                               | Headless toolbox                     | accepted, amended         | A framework's toolbar items as pure builders on `./interchange`, called by the editor actions and by a host with no editor.                                                         |
 
 Related documents that are not ADRs:
 

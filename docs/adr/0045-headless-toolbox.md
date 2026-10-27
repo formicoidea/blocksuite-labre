@@ -96,3 +96,50 @@ does not have; it gets its own decision.
   graph; a builder that needs the editor fails it.
 - The toolbox list is data a host can show: item id, label key and fallback,
   text slots.
+
+## Amended 2026-10-27 — the DDD boards build from `ddd-shared/headless`
+
+**Red zone: publish script, awaiting the maintainer's approval.** This
+amendment changes `scripts/build-bundles.mjs` and widens the allow-list of
+`interchange-headless.unit.spec.ts`; neither is merged without the
+maintainer's explicit approval.
+
+The three DDD boards (Context Map, Core Domain Chart, Event Storming) draw
+their artefacts from one shared package, `@labre/affine-gfx-ddd-shared`
+(published as `labre-ddd-shared`): the palette tables (`CM_BUBBLE`,
+`CM_RELATIONSHIPS`, `CLOUD`, `ES_STICKIES`, `CD_SUBDOMAINS`,
+`TEAM_TOPOLOGIES`…) and the prefabs that place a sticky, a bubble, a dot, a
+marker or a cloud. A board may import `ddd-shared` and never another board,
+so the one assembly of each artefact this ADR asks for can only live there.
+Its package index loads the editor (the prefabs need `std`, the senior button
+is Lit), so a board's `./interchange` could not reach it.
+
+Decided:
+
+1. `ddd-shared` gains a `./headless` entry: its tables (`shared/consts.ts`)
+   and the pure element builders (`shared/elements.ts`: `stickyElements`,
+   `bubbleElement`, `dotElements`, `markerElements`, `cloudElements`,
+   `dddConnectorElement`, `dddShapeElement`). The prefabs write what these
+   return, adding only what an editor has (the viewport centre, the group
+   command's "Group N" title and user layer). The package index re-exports
+   all of it unchanged.
+2. `interchange-headless.unit.spec.ts` allows `packages/affine/gfx/ddd-shared/`
+   in a framework's `./interchange` graph, and bundles `ddd-shared ./headless`
+   as an entry of its own, held to the same rules (no Lit, no store, no DOM).
+3. `scripts/build-bundles.mjs` maps a shared bundle's SUBPATHS for the
+   framework bundles, not only its root: `@labre/affine-gfx-ddd-shared/headless`
+   becomes `@formicoidea/labre-ddd-shared/headless`. `buildShared` already
+   published every `exports` key of the package; the rewrite table was the
+   only thing missing, and without it the release would refuse the board's
+   import.
+4. `LABEL_COLOR`, `LABEL_FONT` and `LABEL_FONT_SIZE` move to an editor-free
+   module of the surface (`extensions/legend-label.ts`) exported on
+   `./interchange`, re-exported unchanged by `legend.ts`.
+
+Rejected: a copy of each board's tables in the board, held by a parity test.
+Three copies of the palettes, plus the cloud's outline generator, to avoid a
+rewrite table line; and the copies would not be the one assembly this ADR
+asks for.
+
+The Context Map ships its toolbox with this amendment; the Core Domain Chart
+and Event Storming follow on the same entry.
