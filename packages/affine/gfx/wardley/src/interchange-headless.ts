@@ -107,3 +107,21 @@ export const WARDLEY_SVG_IMPORT: InterchangeImportCapability = {
   direction: 'import',
   run: importWardleySvg,
 };
+
+// The toolbar as pure builders (`docs/adr/0045`): what a host with no editor
+// places to draw the very elements a user places from the toolbar.
+export {
+  WARDLEY_AXIS_SEED,
+  WARDLEY_TOOLBOX,
+  wardleyAreaElement,
+  wardleyChangeArrowElement,
+  wardleyDependencyElement,
+  wardleyInertiaElement,
+  wardleyMapElement,
+  type WardleyMapTexts,
+  wardleyMarketElements,
+  type WardleyNodeItemKind,
+  wardleyNodeElements,
+  wardleyPipelineElements,
+  wardleyPorterElements,
+} from './toolbox.js';

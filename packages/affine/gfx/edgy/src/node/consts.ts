@@ -1,5 +1,5 @@
 import type { EdgyNodeKind } from '@labre/affine-model';
-import { NOTATION_NEUTRALS } from '@labre/affine-shared/consts';
+import { NOTATION_NEUTRALS } from '@labre/affine-shared/headless';
 
 /**
  * Visual constants for the four EDGY base-element nodes. Each node is a NATIVE

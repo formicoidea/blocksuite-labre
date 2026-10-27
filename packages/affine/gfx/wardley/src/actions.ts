@@ -4,6 +4,7 @@ import {
   DefaultTool,
   indexOverBackgrounds,
   runInterchangeImportFile,
+  type SerializedElementProps,
   type StackedElement,
 } from '@labre/affine-block-surface';
 import { ConnectorTool } from '@labre/affine-gfx-connector';
@@ -11,7 +12,6 @@ import { createGroupCommand } from '@labre/affine-gfx-group';
 import { PolygonTool } from '@labre/affine-gfx-shape';
 import {
   ConnectorMode,
-  FontWeight,
   FrameworkBackgroundElementModel,
   TextElementModel,
   WardleyBackgroundElementModel,
@@ -35,31 +35,31 @@ import { WARDLEY_SVG_IMPORT } from './interchange';
 import { type WardleyExportBoard, wardleySafeFilename } from './export';
 import { wardleyBoardFrom } from './export-board';
 import { WARDLEY_OWM_EXPORT, WARDLEY_OWM_IMPORT } from './interchange';
-import { INERTIA_SIZE, PORTER_DEFAULT_LETTER } from './node/consts';
+import { INERTIA_SIZE, PORTER_SIZE } from './node/consts';
 import {
   type WardleyAreaShape,
   wardleyAreaBox,
   wardleyAreaProps,
   type WardleyArtefactKind,
-  wardleyCanonicalBox,
+  WARDLEY_AREA_SIZE,
   WARDLEY_EDGE_STYLE,
-  wardleyHandleBox,
-  wardleyHandleProps,
-  wardleyInertiaProps,
-  wardleyLabelBoxFor,
-  wardleyLabelProps,
-  wardleyMarketDotBoxes,
-  wardleyMarketDotProps,
-  wardleyMarketLinkPairs,
-  wardleyMarketLinkProps,
+  type WardleyLabelledKind,
   WARDLEY_NODE_LABEL,
+  WARDLEY_NODE_SIZE,
   wardleyNodeLabelKey,
-  wardleyNodeProps,
-  wardleyPorterArrowProps,
-  wardleyPorterArrows,
-  wardleyPorterLetterProps,
 } from './presets';
 import { WARDLEY_ROLE } from './roles';
+import {
+  WARDLEY_AXIS_SEED,
+  wardleyAreaElement,
+  wardleyInertiaElement,
+  wardleyMapElement,
+  wardleyMarketElements,
+  type WardleyNodeItemKind,
+  wardleyNodeElements,
+  wardleyPipelineElements,
+  wardleyPorterElements,
+} from './toolbox';
 
 /**
  * Standalone creation/activation actions for the Wardley toolbox — the
@@ -72,65 +72,29 @@ import { WARDLEY_ROLE } from './roles';
  * segment/module discrimination it carried is now `CommandInvocation.surface`.
  */
 
-/**
- * The three axis words a translated variant's background is seeded with —
- * declared once, so the resolver below and the manifest
- * (`../translations.ts`) read the very same fallback.
- */
-export const WARDLEY_AXIS_SEED = {
-  opportunity: {
-    key: 'com.labre.wardley.seed.axis-opportunity',
-    fallback: 'Opportunity',
-  },
-  benefit: {
-    key: 'com.labre.wardley.seed.axis-benefit',
-    fallback: 'Benefit',
-  },
-  investment: {
-    key: 'com.labre.wardley.seed.axis-investment',
-    fallback: 'Investment',
-  },
-} as const;
+// Declared with the editor-free toolbox (`docs/adr/0045`), which writes the
+// English fallbacks; re-exported here unchanged.
+export { WARDLEY_AXIS_SEED };
 
 /**
- * Per-variant default label overrides applied at creation (all remain editable
- * afterwards via the inline editor / toggles). The gradient itself is driven by
- * `variant` in the renderer.
+ * The three axis words a translated variant's background is seeded with,
+ * resolved through the host's catalogue.
  *
  * Resolved through the translation seam since the i18n pass (#278): the ten
  * label props still default to `undefined` on the declaration itself, but
  * `opportunity` and `benefit` are the two variants whose Y axis is PROSE the
- * gesture bakes into the document at creation — `WARDLEY_AXIS_SEED` above is
- * what a host's catalogue is offered for the three words, resolved HERE, once,
- * exactly like every other seed in this file. `classic` and
- * `evolution-gradient` keep the classic labels (Value Chain / Uncharted /
- * Industrialized…), which are declaration `labelKey`s and were already fully
- * localisable — this function names no override for them.
+ * gesture bakes into the document at creation — `WARDLEY_AXIS_SEED` is what a
+ * host's catalogue is offered for the three words, resolved HERE, once,
+ * exactly like every other seed in this file. Which variant writes which word
+ * is the builder's (`wardleyMapElement`).
  */
-function backgroundVariantDefaults(
-  gfx: GfxController
-): Record<WardleyBgVariant, Record<string, unknown>> {
+function axisSeeds(gfx: GfxController) {
   const axis = (def: { key: string; fallback: string }) =>
     translateKey(gfx.std, def.key, def.fallback);
   return {
-    classic: {},
-    // The Y axis becomes "Opportunity"; phase labels keep the classic defaults.
-    opportunity: {
-      yAxisTitle: axis(WARDLEY_AXIS_SEED.opportunity),
-      showVisibilityLabels: false,
-      showCornerLabels: false,
-    },
-    // The Y axis splits into Benefit (top) / Investment (bottom) around a zero
-    // line drawn by the renderer.
-    benefit: {
-      yAxisTitle: '',
-      visibilityHigh: axis(WARDLEY_AXIS_SEED.benefit),
-      visibilityLow: axis(WARDLEY_AXIS_SEED.investment),
-      showCornerLabels: false,
-    },
-    // Keeps the classic labels (Value Chain / Uncharted / Industrialized…); only
-    // the grey gradient differs.
-    'evolution-gradient': {},
+    opportunity: axis(WARDLEY_AXIS_SEED.opportunity),
+    benefit: axis(WARDLEY_AXIS_SEED.benefit),
+    investment: axis(WARDLEY_AXIS_SEED.investment),
   };
 }
 
@@ -173,42 +137,68 @@ function group(gfx: GfxController, ids: string[]) {
 }
 
 /**
- * Add a wardley node of one kind, at its canonical size, centred on (cx, cy).
+ * Write what a toolbox builder returned (`toolbox.ts`, `docs/adr/0045`) and
+ * return the id of the LAST element — the outermost group of a composite, or
+ * the one element of a single artefact — which is what the gesture selects.
  *
- * The APPEARANCE is {@link wardleyNodeProps}' and nothing else: the palette and
- * the "Change type" dropdown read that one description, so a market drawn here
- * and a component morphed into one are the same element (`presets.ts`).
- *
- * `extra` is for what a preset cannot carry — the Porter's-forces letter, which
- * is CONTENT the author then edits, not a look. `wardleyMorphProps` strips
- * `text` for exactly that reason, so a preset that wrote one would be a preset
- * the morph has to un-write.
+ * The builder is the ONE assembly of an artefact, shared with a host that has
+ * no editor; what stays here is what only an editor has. Local ids are minted
+ * in order, so a connector's ends and a group's members, which always come
+ * after the elements they name, resolve to the real ids. A group goes through
+ * {@link createGroupCommand} as it always has, which writes the group's
+ * translated title and its layer: the builder only says who the members are.
  */
-function addNode(
-  surface: Surface,
-  kind: WardleyArtefactKind,
-  cx: number,
-  cy: number,
-  extra: Record<string, unknown> = {}
-) {
-  return surface.addElement({
-    ...wardleyNodeProps(kind, { xywh: wardleyCanonicalBox(kind, cx, cy) }),
-    ...extra,
-  });
+function place(gfx: GfxController, elements: SerializedElementProps[]) {
+  const surface = gfx.surface;
+  if (!surface) return;
+  const minted = new Map<string, string>();
+  const real = (local: string) => minted.get(local) ?? local;
+  let last: string | undefined;
+  for (const { id: local, ...props } of elements) {
+    if (props.type === 'group') {
+      const children = Object.keys(props.children as Record<string, true>);
+      last = group(gfx, children.map(real));
+    } else {
+      for (const end of ['source', 'target'] as const) {
+        const ref = props[end] as { id?: string } | undefined;
+        if (ref?.id !== undefined) props[end] = { ...ref, id: real(ref.id) };
+      }
+      last = surface.addElement(props);
+    }
+    if (typeof local === 'string' && last) minted.set(local, last);
+  }
+  return last;
 }
 
-/** Add a native free-text label (same Inter family as the axis labels). */
-function addLabel(
-  surface: Surface,
-  text: string,
-  x: number,
-  y: number,
-  textAlign: 'left' | 'center' | 'right' = 'left',
-  fontWeight: FontWeight = FontWeight.Regular
-) {
-  return surface.addElement(
-    wardleyLabelProps(text, x, y, textAlign, fontWeight)
+/** The point that centres a box of `w`×`h` on the viewport. */
+function viewportTopLeft(gfx: GfxController, w: number, h: number) {
+  const { centerX, centerY } = gfx.viewport;
+  return { x: centerX - w / 2, y: centerY - h / 2 };
+}
+
+/**
+ * A labelled kind's name prompt, resolved HERE, once — the prompt a node
+ * nobody has named still carries, exactly like a BPMN node's caption.
+ * `gfx.std` is how this file reaches the translation seam: these creation
+ * sites take `GfxController`, not `BlockStdScope`, directly (`WardleyView`
+ * reads the same member).
+ */
+function seedName(gfx: GfxController, kind: WardleyLabelledKind) {
+  return translateKey(
+    gfx.std,
+    wardleyNodeLabelKey(kind),
+    WARDLEY_NODE_LABEL[kind]
   );
+}
+
+/** Place a node + name composite of one kind, centred on the viewport. */
+function placeNode(gfx: GfxController, kind: WardleyNodeItemKind) {
+  const { w, h } = WARDLEY_NODE_SIZE[kind];
+  const id = place(
+    gfx,
+    wardleyNodeElements(kind, viewportTopLeft(gfx, w, h), seedName(gfx, kind))
+  );
+  if (id) finish(gfx, id);
 }
 
 /** Create a wardley map background of the given variant, viewport-centered. */
@@ -228,32 +218,18 @@ export function createWardleyBackground(
     atLeastWidth = Math.max(atLeastWidth, ew);
     atLeastHeight = Math.max(atLeastHeight, eh);
   }
-  const { width, height } = backgroundSize(
-    WARDLEY_BACKGROUND,
-    atLeastWidth,
-    atLeastHeight
-  );
+  const size = backgroundSize(WARDLEY_BACKGROUND, atLeastWidth, atLeastHeight);
 
-  const { centerX, centerY } = gfx.viewport;
-  const id = gfx.surface.addElement({
-    type: WARDLEY_BACKGROUND.type,
-    // The map is a first-class role: validation rules position artefacts
-    // against `wardley:map`, never against the `wardley` element type. The
-    // declaration owns it, so a templated map and a hand-drawn one agree.
-    role: WARDLEY_BACKGROUND.role,
-    // A map is a frame you place things on, not a shape you nudge — the
-    // declaration decides, and the toolbar toggle takes over from there.
-    resizeEnabled: WARDLEY_BACKGROUND.geometry.resizable,
-    variant,
-    ...backgroundVariantDefaults(gfx)[variant],
-    xywh: new Bound(
-      centerX - width / 2,
-      centerY - height / 2,
-      width,
-      height
-    ).serialize(),
-  });
-  finish(gfx, id);
+  const id = place(gfx, [
+    wardleyMapElement(
+      variant,
+      viewportTopLeft(gfx, size.width, size.height),
+      axisSeeds(gfx),
+      undefined,
+      size
+    ),
+  ]);
+  if (id) finish(gfx, id);
 }
 
 /**
@@ -265,40 +241,14 @@ export function createWardleyNode(
   gfx: GfxController,
   kind: WardleySingleCircleKind
 ) {
-  const surface = gfx.surface;
-  if (!surface) return;
-
-  const { centerX: cx, centerY: cy } = gfx.viewport;
-
-  const nodeId = addNode(surface, kind, cx, cy);
-  const { x, y, textAlign } = wardleyLabelBoxFor(kind, cx, cy);
-  const labelId = addLabel(
-    surface,
-    // Resolved HERE, once — the prompt a node nobody has named still carries,
-    // exactly like a BPMN node's caption. `gfx.std` is how this file reaches
-    // the translation seam: these creation sites take `GfxController`, not
-    // `BlockStdScope`, directly (`WardleyView` reads the same member).
-    translateKey(gfx.std, wardleyNodeLabelKey(kind), WARDLEY_NODE_LABEL[kind]),
-    x,
-    y,
-    textAlign
-  );
-
-  finish(gfx, group(gfx, [nodeId, labelId]));
+  placeNode(gfx, kind);
 }
 
 /** Create an inertia bar (filled black rect). */
 export function createWardleyInertia(gfx: GfxController) {
-  if (!gfx.surface) return;
-
   const { w, h } = INERTIA_SIZE;
-  const { centerX, centerY } = gfx.viewport;
-  const id = gfx.surface.addElement(
-    wardleyInertiaProps({
-      xywh: new Bound(centerX - w / 2, centerY - h / 2, w, h).serialize(),
-    })
-  );
-  finish(gfx, id);
+  const id = place(gfx, [wardleyInertiaElement(viewportTopLeft(gfx, w, h))]);
+  if (id) finish(gfx, id);
 }
 
 /**
@@ -309,36 +259,15 @@ export function createWardleyInertia(gfx: GfxController) {
  * moves as one. Pure composition of native elements — no custom type / view.
  */
 export function createWardleyPipeline(gfx: GfxController) {
-  if (!gfx.surface) return;
-
-  const { centerX: cx, centerY: cy } = gfx.viewport;
-
-  // Body: a WardleyNode rect, made non-connectable by `kind: 'pipeline'`.
-  const bodyId = addNode(gfx.surface, 'pipeline', cx, cy);
-
-  // Handle: a node-sized WardleyNode square straddling the top edge. Inherits
-  // `centerAnchorOnly` so connectors attach to its center only.
-  const handleId = gfx.surface.addElement(
-    wardleyHandleProps({ xywh: wardleyHandleBox(cx, cy) })
+  const { w, h } = WARDLEY_NODE_SIZE.pipeline;
+  const id = place(
+    gfx,
+    wardleyPipelineElements(
+      viewportTopLeft(gfx, w, h),
+      seedName(gfx, 'pipeline')
+    )
   );
-
-  // Label centered horizontally on the pipeline, sitting ABOVE the handle.
-  const { x, y, textAlign } = wardleyLabelBoxFor('pipeline', cx, cy);
-  const labelId = addLabel(
-    gfx.surface,
-    translateKey(
-      gfx.std,
-      wardleyNodeLabelKey('pipeline'),
-      WARDLEY_NODE_LABEL.pipeline
-    ),
-    x,
-    y,
-    textAlign
-  );
-
-  // Nested groups: (handle + label), then (body + that group).
-  const innerId = group(gfx, [handleId, labelId]);
-  finish(gfx, group(gfx, [bodyId, innerId]));
+  if (id) finish(gfx, id);
 }
 
 /**
@@ -349,38 +278,12 @@ export function createWardleyPipeline(gfx: GfxController) {
  * everything is grouped into one object.
  */
 export function createWardleyMarket(gfx: GfxController) {
-  const surface = gfx.surface;
-  if (!surface) return;
-
-  const { centerX: cx, centerY: cy } = gfx.viewport;
-
-  // Outer circle = the market node (connectable, center-only).
-  const circleId = addNode(surface, 'market', cx, cy);
-
-  // 3 inner component nodes (thick border, no label) at the triangle vertices.
-  const dotIds = wardleyMarketDotBoxes(cx, cy).map(xywh =>
-    surface.addElement(wardleyMarketDotProps({ xywh }))
+  const { w, h } = WARDLEY_NODE_SIZE.market;
+  const id = place(
+    gfx,
+    wardleyMarketElements(viewportTopLeft(gfx, w, h), seedName(gfx, 'market'))
   );
-
-  // Triangle: 3 attached connectors (auto-route center-to-center, clipped).
-  const connIds = wardleyMarketLinkPairs(dotIds).map(([a, b]) =>
-    surface.addElement(wardleyMarketLinkProps(a, b))
-  );
-
-  const { x, y, textAlign } = wardleyLabelBoxFor('market', cx, cy);
-  const labelId = addLabel(
-    surface,
-    translateKey(
-      gfx.std,
-      wardleyNodeLabelKey('market'),
-      WARDLEY_NODE_LABEL.market
-    ),
-    x,
-    y,
-    textAlign
-  );
-
-  finish(gfx, group(gfx, [circleId, ...dotIds, ...connIds, labelId]));
+  if (id) finish(gfx, id);
 }
 
 /**
@@ -401,24 +304,11 @@ export function createWardleyMarket(gfx: GfxController) {
  * outside the rim — exactly as the market's triangle is its own.
  */
 export function createWardleyPorter(gfx: GfxController) {
-  const surface = gfx.surface;
-  if (!surface) return;
-
-  const { centerX: cx, centerY: cy } = gfx.viewport;
-
-  const circleId = addNode(
-    surface,
-    'porter',
-    cx,
-    cy,
-    wardleyPorterLetterProps(PORTER_DEFAULT_LETTER)
+  const id = place(
+    gfx,
+    wardleyPorterElements(viewportTopLeft(gfx, PORTER_SIZE, PORTER_SIZE))
   );
-
-  const arrowIds = wardleyPorterArrows(cx, cy).map(arrow =>
-    surface.addElement(wardleyPorterArrowProps(arrow))
-  );
-
-  finish(gfx, group(gfx, [circleId, ...arrowIds]));
+  if (id) finish(gfx, id);
 }
 
 /**
@@ -444,31 +334,13 @@ export function createWardleyPorter(gfx: GfxController) {
  * SemiBold, which no other Wardley label is: these two are annotations laid
  * over a map that is already full of names, and the weight is what keeps the
  * word readable as a remark ABOUT the map rather than as one more component.
+ * Both rules are the builder's (`wardleyNodeElements`).
  */
 export function createWardleyAccelerator(
   gfx: GfxController,
   kind: 'accelerator' | 'decelerator'
 ) {
-  const surface = gfx.surface;
-  if (!surface) return;
-
-  const { centerX: cx, centerY: cy } = gfx.viewport;
-
-  const nodeId = addNode(surface, kind, cx, cy);
-
-  // Which side, and which alignment, are the placement's answer: the
-  // decelerator's mirrored label is one of the two rules `presets.ts` states.
-  const { x, y, textAlign } = wardleyLabelBoxFor(kind, cx, cy);
-  const labelId = addLabel(
-    surface,
-    translateKey(gfx.std, wardleyNodeLabelKey(kind), WARDLEY_NODE_LABEL[kind]),
-    x,
-    y,
-    textAlign,
-    FontWeight.SemiBold
-  );
-
-  finish(gfx, group(gfx, [nodeId, labelId]));
+  placeNode(gfx, kind);
 }
 
 /**
@@ -495,8 +367,17 @@ export function createWardleyArea(gfx: GfxController, shape: WardleyAreaShape) {
   if (!surface) return;
 
   const { centerX: cx, centerY: cy } = gfx.viewport;
-  const xywh = wardleyAreaBox(shape, cx, cy);
-  const id = surface.addElement(wardleyAreaProps(shape, { xywh }));
+  // The rectangle is a toolbox item (`wardleyAreaElement`); the polygon is
+  // drawn corner by corner from the palette ({@link activateWardleyAreaPolygon})
+  // and placed whole only by a caller of this function.
+  const { w, h } = WARDLEY_AREA_SIZE.rect;
+  const id =
+    shape === 'rect'
+      ? place(gfx, [wardleyAreaElement(viewportTopLeft(gfx, w, h))])
+      : surface.addElement(
+          wardleyAreaProps(shape, { xywh: wardleyAreaBox(shape, cx, cy) })
+        );
+  if (!id) return;
 
   lowerWardleyArea(gfx, id);
 

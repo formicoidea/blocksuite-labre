@@ -137,7 +137,10 @@ should cap the file's size itself (the editor applies `FileSizeLimitProvider`).
 The same `./interchange` subpaths carry a framework's TOOLBOX when it has one
 (ADR 0045): every toolbar item as a pure builder that returns the elements the
 toolbar places, in the contract a reader's result follows (local ids, a group
-after its members). C4 ships one:
+after its members). C4, EDGY (`EDGY_TOOLBOX` holds every item but the "EDGY
+dynamic" template, which inserts a snapshot) and Cynefin/estuarine
+(`@formicoidea/labre-framework-cynefin/interchange`, `CYNEFIN_ESTUARINE_TOOLBOX`)
+ship one. C4's:
 
 ```ts
 import { C4_TOOLBOX } from '@formicoidea/labre-framework-c4/interchange';
@@ -158,6 +161,13 @@ an event, a gateway or a data shape comes back as the symbol, its `bpmn:label`
 and their group, an activity as one element; a flow attaches to the symbol,
 `<local>:node`; a pool takes its lanes one name per line (`{ name: 'Client',
 lanes: 'Sales\nOps' }`).
+
+Wardley ships `WARDLEY_TOOLBOX` on `@formicoidea/labre-framework-wardley/interchange`:
+one component added to an existing map is `component.build(at, { name })`, a
+node, its `wardley:label` name and their group; the market, the pipeline and
+Porter's forces come with their own wiring. The polygon area is a drawing tool
+and is not in it; a rectangular area comes out on top, and sending it under
+the components it covers is the caller's (the editor does it on placement).
 
 UML ships `UML_TOOLBOX` on `@formicoidea/labre-framework-uml/interchange`, item
 ids being the node kinds (`class`, `use-case`, `lifeline`…) plus `diagram`,

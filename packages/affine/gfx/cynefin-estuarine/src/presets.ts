@@ -1,4 +1,7 @@
-import { ShapeStyle, TextFitMode } from '@labre/affine-model';
+// Values from the headless entry, never the model index: the toolbox
+// (`toolbox.ts`, `docs/adr/0045`) builds on these presets from the
+// editor-free `./interchange` entry.
+import { ShapeStyle, TextFitMode } from '@labre/affine-model/headless';
 
 import { REF_H as CYN_H, REF_W as CYN_W } from './cynefin/consts';
 import {
