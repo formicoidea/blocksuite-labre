@@ -153,4 +153,10 @@ const elements = container?.build(
 A builder places one item where it is told and writes the texts it is given or
 the English seed; layout and translation stay with the caller.
 
+BPMN ships `BPMN_TOOLBOX` on `@formicoidea/labre-framework-bpmn/interchange`:
+an event, a gateway or a data shape comes back as the symbol, its `bpmn:label`
+and their group, an activity as one element; a flow attaches to the symbol,
+`<local>:node`; a pool takes its lanes one name per line (`{ name: 'Client',
+lanes: 'Sales\nOps' }`).
+
 Next: [07-upgrade.md](07-upgrade.md).

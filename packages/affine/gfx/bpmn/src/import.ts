@@ -12,26 +12,15 @@ import type {
   SerializedElementProps,
 } from '@labre/affine-block-surface';
 import type { BpmnLane, BpmnNodeKind } from '@labre/affine-model';
-import {
-  ConnectorMode,
-  PointStyle,
-  StrokeStyle,
-} from '@labre/affine-model/headless';
 import { Bound } from '@labre/global/gfx';
 import type { ForeignInterchange } from '@labre/std/gfx';
 
 import {
-  ASSOCIATION_STROKE,
-  ASSOCIATION_WIDTH,
   bpmnLabelMode,
-  MESSAGE_STROKE,
-  MESSAGE_WIDTH,
   NODE_SIZE,
   POOL_BAND_WIDTH,
   POOL_REF_HEIGHT,
   POOL_REF_WIDTH,
-  SEQUENCE_STROKE,
-  SEQUENCE_WIDTH,
 } from './consts.js';
 import {
   BPMN_FORMAT_ID,
@@ -43,7 +32,12 @@ import {
   escapeAttr,
   escapeText,
 } from './export.js';
-import { bpmnLabelBoxUnder, bpmnLabelProps, bpmnNodeProps } from './presets.js';
+import {
+  bpmnConnectorProps,
+  bpmnLabelBoxUnder,
+  bpmnLabelProps,
+  bpmnNodeProps,
+} from './presets.js';
 import { BPMN_ROLE } from './roles.js';
 
 /**
@@ -796,39 +790,19 @@ const SWEEP_COLUMNS = 4;
 /** The margin between a minted pool's plot and the work inside it. */
 const MINTED_POOL_PADDING = 40;
 
-/** The connector a role is drawn as — the styles the tools arm, one table. */
+/**
+ * The connector a role is drawn as — the styles the tools arm, one table
+ * (`bpmnConnectorProps`). A role this reader does not know keeps its own name
+ * and takes the sequence flow's line.
+ */
 function connectorProps(role: string): SerializedElementProps {
-  const base = { type: 'connector', role, mode: ConnectorMode.Orthogonal };
-  if (role === BPMN_ROLE.messageFlow) {
-    return {
-      ...base,
-      stroke: MESSAGE_STROKE,
-      strokeWidth: MESSAGE_WIDTH,
-      strokeStyle: StrokeStyle.Dash,
-      frontEndpointStyle: PointStyle.Circle,
-      rearEndpointStyle: PointStyle.Arrow,
-    };
-  }
-  if (role === BPMN_ROLE.association) {
-    return {
-      ...base,
-      stroke: ASSOCIATION_STROKE,
-      strokeWidth: ASSOCIATION_WIDTH,
-      strokeStyle: StrokeStyle.Dash,
-      // No head at either end: an association claims no direction, and an
-      // arrowhead would be the picture claiming one (`docs/adr/0010`).
-      frontEndpointStyle: PointStyle.None,
-      rearEndpointStyle: PointStyle.None,
-    };
-  }
-  return {
-    ...base,
-    stroke: SEQUENCE_STROKE,
-    strokeWidth: SEQUENCE_WIDTH,
-    strokeStyle: StrokeStyle.Solid,
-    frontEndpointStyle: PointStyle.None,
-    rearEndpointStyle: PointStyle.Triangle,
-  };
+  const edge =
+    role === BPMN_ROLE.messageFlow
+      ? 'messageFlow'
+      : role === BPMN_ROLE.association
+        ? 'association'
+        : 'sequenceFlow';
+  return { ...bpmnConnectorProps(edge), role };
 }
 
 /**
