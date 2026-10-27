@@ -4,43 +4,43 @@ import { createGroupCommand } from '@labre/affine-gfx-group';
 import { createTemplateJob } from '@labre/affine-gfx-template';
 import { ConnectorMode, PointStyle, StrokeStyle } from '@labre/affine-model';
 import { translateKey } from '@labre/affine-shared/services';
-import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
 import { type GfxController, GfxControllerIdentifier } from '@labre/std/gfx';
 
-import { CROP_LABELED } from './consts';
 import { edgyElementLabel, edgyElementLabelKey } from './metamodel';
 import {
-  LABEL_GAP,
   NODE_LABEL,
   nodeLabelKey,
   NODE_SIZE,
   NODE_STROKE,
 } from './node/consts';
 import {
+  EDGY_BOARD_SIZE,
   type EdgyBoxKind,
-  EDGY_LABEL_W,
-  edgyLabelProps,
-  edgyNodeProps,
-  edgyNodeTextProps,
-  FACETS_SCALE,
+  RELATION_STROKE_WIDTH,
 } from './presets';
 import { EDGY_ROLE } from './roles';
 import { edgyDynamicTemplate } from './templates/dynamic';
-
-/** Stroke width the 24 template relations are drawn with. */
-const RELATION_STROKE_WIDTH = 2;
+import {
+  EDGY_FACETS_SIZE,
+  EDGY_PEOPLE_SIZE,
+  edgyBoardElement,
+  edgyBoxElement,
+  edgyFacetsElement,
+  edgyPeopleElements,
+} from './toolbox';
 
 /**
  * Standalone creation actions for the EDGY toolbox — the behaviour layer,
  * lifted out of `toolbar/edgy-menu.ts` by PF3 so the menu can become a pure
  * renderer over the command registry. They emit no telemetry: the single
  * emission point is `runCommand` (`docs/adr/0008`).
+ *
+ * What they place comes from the ONE assembly a host with no editor also
+ * calls (`toolbox.ts`, `docs/adr/0045`); what stays here is what only an
+ * editor has: the viewport centre, the seeds resolved in the host's language
+ * (`docs/adr/0023`), the group command and the selection.
  */
-
-/** Default blank-board size. */
-const BOARD_W = 1600;
-const BOARD_H = 1000;
 
 const gfxOf = (std: BlockStdScope) => std.get(GfxControllerIdentifier);
 
@@ -59,44 +59,25 @@ export function createEdgyFacets(std: BlockStdScope) {
   const gfx = gfxOf(std);
   if (!gfx.surface) return;
 
-  const width = CROP_LABELED.w * FACETS_SCALE;
-  const height = CROP_LABELED.h * FACETS_SCALE;
+  const { w, h } = EDGY_FACETS_SIZE;
   const { centerX, centerY } = gfx.viewport;
-  const id = gfx.surface.addElement({
-    type: 'edgy',
-    cropToCircles: true,
-    // The frame: what makes this an EDGY board rather than three circles, and
-    // what a finding is attributed to.
-    role: EDGY_ROLE.facets,
+  const zone = (name: 'identity' | 'architecture' | 'experience') =>
+    translateKey(std, edgyElementLabelKey(name), edgyElementLabel(name));
+  const { id: _local, ...props } = edgyFacetsElement(
+    { x: centerX - w / 2, y: centerY - h / 2 },
     // The three facet names, written HERE rather than left to the model's
     // defaults (`EdgyFacetsElementModel.identityLabel` etc — a red-zone
     // field: a document created before this key existed keeps its literal
     // 'Identity' / 'Architecture' / 'Experience' verbatim). Shares its key
     // with the very same words wherever the metamodel names a zone
     // (`edgyElementLabelKey`, `templates/dynamic.ts`, `templates/index.ts`).
-    identityLabel: translateKey(
-      std,
-      edgyElementLabelKey('identity'),
-      edgyElementLabel('identity')
-    ),
-    architectureLabel: translateKey(
-      std,
-      edgyElementLabelKey('architecture'),
-      edgyElementLabel('architecture')
-    ),
-    experienceLabel: translateKey(
-      std,
-      edgyElementLabelKey('experience'),
-      edgyElementLabel('experience')
-    ),
-    xywh: new Bound(
-      centerX - width / 2,
-      centerY - height / 2,
-      width,
-      height
-    ).serialize(),
-  });
-  finish(gfx, id);
+    {
+      identity: zone('identity'),
+      architecture: zone('architecture'),
+      experience: zone('experience'),
+    }
+  );
+  finish(gfx, gfx.surface.addElement(props));
 }
 
 /**
@@ -134,20 +115,13 @@ export function createEdgyBoard(std: BlockStdScope) {
   const gfx = gfxOf(std);
   if (!gfx.surface) return;
 
+  const { w, h } = EDGY_BOARD_SIZE;
   const { centerX, centerY } = gfx.viewport;
-  const id = gfx.surface.addElement({
-    type: 'edgyBoard',
-    // The blank board is a frame too: the same rules apply to what is drawn on
-    // it, and the same map-wide arbitration has to have somewhere to live.
-    role: EDGY_ROLE.board,
-    xywh: new Bound(
-      centerX - BOARD_W / 2,
-      centerY - BOARD_H / 2,
-      BOARD_W,
-      BOARD_H
-    ).serialize(),
+  const { id: _local, ...props } = edgyBoardElement({
+    x: centerX - w / 2,
+    y: centerY - h / 2,
   });
-  finish(gfx, id);
+  finish(gfx, gfx.surface.addElement(props));
 }
 
 /** Create a box base element (outcome / object / activity) with inner text. */
@@ -159,17 +133,14 @@ export function createEdgyBox(std: BlockStdScope, kind: EdgyBoxKind) {
   const { w, h } = NODE_SIZE[kind];
   const { centerX: cx, centerY: cy } = gfx.viewport;
 
-  const id = surface.addElement({
-    ...edgyNodeProps(kind, {
-      xywh: new Bound(cx - w / 2, cy - h / 2, w, h).serialize(),
-    }),
+  const { id: _local, ...props } = edgyBoxElement(
+    kind,
+    { x: cx - w / 2, y: cy - h / 2 },
     // Translated HERE and once: what a gesture writes onto the canvas is
     // document content the moment it lands (`nodeLabelKey`).
-    ...edgyNodeTextProps(
-      translateKey(std, nodeLabelKey(kind), NODE_LABEL[kind])
-    ),
-  });
-  finish(gfx, id);
+    translateKey(std, nodeLabelKey(kind), NODE_LABEL[kind])
+  );
+  finish(gfx, surface.addElement(props));
 }
 
 /**
@@ -181,24 +152,30 @@ export function createEdgyPeople(std: BlockStdScope) {
   const surface = gfx.surface;
   if (!surface) return;
 
-  const { w, h } = NODE_SIZE.people;
   const { centerX: cx, centerY: cy } = gfx.viewport;
 
-  const nodeId = surface.addElement(
-    edgyNodeProps('people', {
-      xywh: new Bound(cx - w / 2, cy - h / 2, w, h).serialize(),
-    })
+  // The GLYPH, not the whole item, sits on the viewport centre, as it always
+  // has: the item's box is as wide as the name and starts at the glyph's top.
+  const elements = edgyPeopleElements(
+    {
+      x: cx - EDGY_PEOPLE_SIZE.w / 2,
+      y: cy - NODE_SIZE.people.h / 2,
+    },
+    translateKey(std, nodeLabelKey('people'), NODE_LABEL.people)
   );
-  const labelId = surface.addElement(
-    edgyLabelProps(
-      translateKey(std, nodeLabelKey('people'), NODE_LABEL.people),
-      cx - EDGY_LABEL_W / 2,
-      cy + h / 2 + LABEL_GAP
-    )
-  );
+  const members: string[] = [];
+  for (const { id: _local, ...props } of elements) {
+    // The builder's group is for a host with no editor. Here the editor's own
+    // group command makes it, because it writes what only an editor has: the
+    // numbered "Group N" title from the host's catalogue and the user layer.
+    if (props.type === 'group') continue;
+    members.push(surface.addElement(props));
+  }
+  const nodeId = members[0];
+  if (!nodeId) return;
 
   const [, result] = std.command.exec(createGroupCommand, {
-    elements: [nodeId, labelId],
+    elements: members,
   });
   finish(gfx, result.groupId || nodeId);
 }

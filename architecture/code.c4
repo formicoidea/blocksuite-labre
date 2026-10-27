@@ -2096,7 +2096,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/gfx/edgy
         metadata {
           path 'packages/affine/gfx/edgy'
-          files '34'
+          files '37'
         }
         node_ = folder 'node/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/gfx/edgy/src/node
@@ -2109,7 +2109,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/gfx/edgy/src
           metadata {
             path 'packages/affine/gfx/edgy/src'
-            files '23'
+            files '26'
           }
         }
         templates = folder 'templates/' {
@@ -3897,7 +3897,7 @@ model {
   features.gfx.ddd-shared -[uses]-> framework.global_ '2 imports'
   features.gfx.ddd-shared -[uses]-> framework.std '4 imports, 3 type-only'
   features.gfx.ddd-shared -[uses]-> model_.model_ '1 import'
-  features.gfx.edgy -[uses]-> features.blocks.surface '14 imports, 5 type-only'
+  features.gfx.edgy -[uses]-> features.blocks.surface '15 imports, 6 type-only'
   features.gfx.edgy -[uses]-> features.components '2 imports, 1 type-only'
   features.gfx.edgy -[uses]-> features.ext-loader '1 import'
   features.gfx.edgy -[uses]-> features.gfx.connector '1 import'
@@ -3909,7 +3909,7 @@ model {
   features.gfx.edgy -[uses]-> features.widgets.edgeless-toolbar '3 imports'
   features.gfx.edgy -[uses]-> framework.global_ '4 imports, 1 type-only'
   features.gfx.edgy -[uses]-> framework.std '18 imports, 7 type-only'
-  features.gfx.edgy -[uses]-> model_.model_ '15 imports, 7 type-only'
+  features.gfx.edgy -[uses]-> model_.model_ '17 imports, 8 type-only'
   features.gfx.group_ -[uses]-> features.blocks.surface '6 imports'
   features.gfx.group_ -[uses]-> features.components '1 import'
   features.gfx.group_ -[uses]-> features.ext-loader '2 imports'
@@ -6360,14 +6360,14 @@ model {
   features.gfx.ddd-shared.toolbar -[imports]-> framework.std.src '1 import, 1 type-only'
   features.gfx.edgy.node_ -[imports]-> features.blocks.surface.src '1 import'
   features.gfx.edgy.node_ -[imports]-> features.gfx.shape_.src '2 imports'
-  features.gfx.edgy.node_ -[imports]-> features.shared.consts '1 import'
+  features.gfx.edgy.node_ -[imports]-> features.shared.src '1 import'
   features.gfx.edgy.node_ -[imports]-> framework.std.gfx '1 import'
   features.gfx.edgy.node_ -[imports]-> model_.model_.src '3 imports, 1 type-only'
-  features.gfx.edgy.src -[imports]-> features.blocks.surface.src '11 imports, 5 type-only'
+  features.gfx.edgy.src -[imports]-> features.blocks.surface.src '12 imports, 6 type-only'
   features.gfx.edgy.src -[imports]-> features.components.color-picker '1 import'
   features.gfx.edgy.src -[imports]-> features.ext-loader.src '1 import'
   features.gfx.edgy.src -[imports]-> features.gfx.connector.src '1 import'
-  features.gfx.edgy.src -[imports]-> features.gfx.edgy.node_ '8 imports'
+  features.gfx.edgy.src -[imports]-> features.gfx.edgy.node_ '9 imports'
   features.gfx.edgy.src -[imports]-> features.gfx.edgy.templates '3 imports'
   features.gfx.edgy.src -[imports]-> features.gfx.edgy.toolbar '8 imports'
   features.gfx.edgy.src -[imports]-> features.gfx.group_.src '1 import'
@@ -6377,7 +6377,7 @@ model {
   features.gfx.edgy.src -[imports]-> framework.global_.gfx '3 imports, 1 type-only'
   features.gfx.edgy.src -[imports]-> framework.std.gfx '8 imports, 2 type-only'
   features.gfx.edgy.src -[imports]-> framework.std.src '5 imports, 3 type-only'
-  features.gfx.edgy.src -[imports]-> model_.model_.src '9 imports, 6 type-only'
+  features.gfx.edgy.src -[imports]-> model_.model_.src '11 imports, 7 type-only'
   features.gfx.edgy.templates -[imports]-> features.gfx.edgy.node_ '2 imports'
   features.gfx.edgy.templates -[imports]-> features.gfx.edgy.src '8 imports'
   features.gfx.edgy.templates -[imports]-> features.gfx.template.src '2 imports'
