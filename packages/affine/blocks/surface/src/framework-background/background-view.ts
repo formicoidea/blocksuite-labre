@@ -10,6 +10,7 @@ import { GfxElementModelView } from '@labre/std/gfx';
 import { EdgelessCRUDIdentifier } from '../extensions/crud-extension.js';
 import type { FrameworkBackgroundDef } from './def.js';
 import { backgroundLabelHits, hitTestBackgroundLabel } from './labels.js';
+import { measureBackgroundText } from './measure-text.js';
 
 /** A label a double-click may rename: the prop to write, and the words shown. */
 export interface EditableBackgroundLabel {
@@ -269,7 +270,8 @@ export abstract class DeclaredBackgroundView<
         this.model as unknown as Record<string, unknown>,
         w,
         h,
-        this.gfx.std.getOptional(TranslationProvider)
+        this.gfx.std.getOptional(TranslationProvider),
+        measureBackgroundText
       ),
       lx,
       ly

@@ -10,9 +10,16 @@
  * - a canvas crop that keeps the box and squeezes the picture, or moves the
  *   kept part elsewhere on the canvas (rotation included);
  * - a gesture split into several undo steps, an unchanged gesture pushing an
- *   empty one, a write on a readonly store, or a crop that touches the bytes.
+ *   empty one, a write on a readonly store, or a crop that touches the bytes;
+ * - a wheel over the frame that drifts away from the pointer, loses the
+ *   mask's ratio, leaves the image or shrinks below the minimum side;
+ * - a canvas frame that opens with the selection handles still live on its
+ *   corners or the canvas still zooming under the wheel (the PO could not
+ *   crop, 2026-10-27), or a close path that leaves the image in editing
+ *   state or the viewport locked.
  */
 import {
+  IMAGE_CROP_MIN_SIDE,
   type ImageBlockModel,
   ImageBlockSchemaExtension,
   NoteBlockSchemaExtension,
@@ -25,6 +32,7 @@ import { describe, expect, test } from 'vitest';
 
 import {
   cropBoundFor,
+  cropWheelFactor,
   maskRatio,
   moveCrop,
   presetCrop,
@@ -32,7 +40,9 @@ import {
   resizeCrop,
   WHOLE_IMAGE,
   wholeImageSize,
+  zoomCrop,
 } from '../crop/crop-math';
+import { ImageCropController } from '../crop/crop-controller';
 import { writeImageCrop } from '../crop/write-crop';
 
 const close = (actual: Record<string, number>, expected: typeof actual) => {
@@ -236,5 +246,187 @@ describe('writeImageCrop', () => {
       writeImageCrop(model, { x: 0, y: 0, w: 0.5, h: 0.5 }, 'free', false)
     ).toBe(false);
     expect(model.props.crop).toBeUndefined();
+  });
+});
+
+describe('wheel zoom in the frame', () => {
+  const start = { x: 0.2, y: 0.2, w: 0.4, h: 0.4 };
+
+  test('the wheel up shrinks the window, the wheel down grows it', () => {
+    expect(cropWheelFactor(-100)).toBeCloseTo(1 / 1.05, 6);
+    expect(cropWheelFactor(100)).toBeCloseTo(1.05, 6);
+    // A flick is bounded.
+    expect(cropWheelFactor(-10_000)).toBeCloseTo(1.05 ** -3, 6);
+  });
+
+  test('the point under the pointer stays under it', () => {
+    const px = 0.3;
+    const py = 0.5;
+    const zoomed = zoomCrop(start, 0.5, px, py, null);
+    close(zoomed, { w: 0.2, h: 0.2 });
+    expect((px - zoomed.x) / zoomed.w).toBeCloseTo((px - start.x) / start.w, 6);
+    expect((py - zoomed.y) / zoomed.h).toBeCloseTo((py - start.y) / start.h, 6);
+  });
+
+  test("the mask's ratio is held, else the window's own", () => {
+    const wide = { x: 0.1, y: 0.3, w: 0.8, h: 0.4 };
+    const free = zoomCrop(wide, 0.5, 0.5, 0.5, null);
+    expect(free.w / free.h).toBeCloseTo(2, 6);
+    // A mask holding 1:1 on a window drawn 2:1 snaps to the mask.
+    const held = zoomCrop(wide, 0.5, 0.5, 0.5, 1);
+    expect(held.w / held.h).toBeCloseTo(1, 6);
+  });
+
+  test('the window stays inside the image', () => {
+    // Growing about a corner pushes the window back in.
+    const corner = zoomCrop(
+      { x: 0.5, y: 0.5, w: 0.5, h: 0.5 },
+      1.5,
+      0.75,
+      0.75,
+      null
+    );
+    close(corner, { x: 0.25, y: 0.25, w: 0.75, h: 0.75 });
+    // Growing past the image fits it, the ratio held.
+    const huge = zoomCrop({ x: 0, y: 0.25, w: 1, h: 0.5 }, 3, 0.5, 0.5, 2);
+    close(huge, { x: 0, y: 0.25, w: 1, h: 0.5 });
+  });
+
+  test('the window never shrinks below the minimum side', () => {
+    const tiny = zoomCrop(
+      { x: 0.5, y: 0.5, w: 0.03, h: 0.03 },
+      0.1,
+      0.5,
+      0.5,
+      null
+    );
+    expect(tiny.w).toBeCloseTo(IMAGE_CROP_MIN_SIDE, 6);
+    expect(tiny.h).toBeCloseTo(IMAGE_CROP_MIN_SIDE, 6);
+  });
+});
+
+/** The gfx controller as the crop frame uses it: a selection and a viewport. */
+function stubCanvas() {
+  const listeners = new Set<() => void>();
+  let state = { elements: [] as string[], editing: false };
+  const selection = {
+    get editing() {
+      return state.editing;
+    },
+    has: (id: string) => state.elements.includes(id),
+    set(next: { elements: string[]; editing?: boolean }) {
+      state = { elements: next.elements, editing: next.editing ?? false };
+      listeners.forEach(listener => listener());
+    },
+    slots: {
+      updated: {
+        subscribe(listener: () => void) {
+          listeners.add(listener);
+          return { unsubscribe: () => listeners.delete(listener) };
+        },
+      },
+    },
+  };
+  const viewport = { locked: false };
+  return { selection, viewport, listeners };
+}
+
+function canvasController() {
+  const { store, model } = authorImage({ xywh: '[0,0,400,200]' });
+  const gfx = stubCanvas();
+  const block = {
+    model,
+    std: { get: () => gfx } as never,
+    querySelector: () => null,
+  };
+  const controller = new ImageCropController(block, true);
+  return { store, model, gfx, controller };
+}
+
+describe('the canvas while the frame is open', () => {
+  test('opening selects the image in editing state and locks the viewport', () => {
+    const { model, gfx, controller } = canvasController();
+
+    controller.choose('free');
+    expect(gfx.selection.has(model.id)).toBe(true);
+    expect(gfx.selection.editing).toBe(true);
+    expect(gfx.viewport.locked).toBe(true);
+
+    // Switching preset keeps the one session.
+    controller.choose('1:1');
+    expect(gfx.listeners.size).toBe(1);
+
+    controller.stop();
+    expect(controller.editing$.value).toBeNull();
+    expect(gfx.selection.has(model.id)).toBe(true);
+    expect(gfx.selection.editing).toBe(false);
+    expect(gfx.viewport.locked).toBe(false);
+    expect(gfx.listeners.size).toBe(0);
+    // A second stop is harmless.
+    expect(() => controller.stop()).not.toThrow();
+  });
+
+  test('a viewport locked before stays locked after', () => {
+    const { gfx, controller } = canvasController();
+    gfx.viewport.locked = true;
+    controller.choose('free');
+    controller.stop();
+    expect(gfx.viewport.locked).toBe(true);
+  });
+
+  test('the original image closes the frame and gives the canvas back', () => {
+    const { gfx, controller } = canvasController();
+    controller.choose('16:9');
+    controller.restoreOriginal();
+    expect(controller.editing$.value).toBeNull();
+    expect(gfx.selection.editing).toBe(false);
+    expect(gfx.viewport.locked).toBe(false);
+  });
+
+  test('a selection moved elsewhere closes the frame', () => {
+    const { gfx, controller } = canvasController();
+    controller.choose('free');
+    gfx.selection.set({ elements: ['other'] });
+    expect(controller.editing$.value).toBeNull();
+    expect(gfx.viewport.locked).toBe(false);
+    // The new selection is the author's, not overwritten.
+    expect(gfx.selection.has('other')).toBe(true);
+  });
+
+  test('a deleted block closes without selecting a ghost', () => {
+    const { store, model, gfx, controller } = canvasController();
+    controller.choose('free');
+    store.deleteBlock(model);
+    expect(() => controller.stop()).not.toThrow();
+    expect(gfx.viewport.locked).toBe(false);
+    // The stub keeps the stale id; the real selection drops it on delete.
+    expect(gfx.selection.editing).toBe(true);
+  });
+
+  test('a readonly store opens nothing', () => {
+    const { store, gfx, controller } = canvasController();
+    store.readonly = true;
+    controller.choose('free');
+    expect(controller.editing$.value).toBeNull();
+    expect(gfx.viewport.locked).toBe(false);
+    expect(gfx.selection.editing).toBe(false);
+  });
+
+  test('the page opens the frame without touching a canvas', () => {
+    const { model } = authorImage({ width: 400, height: 300 });
+    const block = {
+      model,
+      std: {
+        get: () => {
+          throw new Error('the page has no canvas');
+        },
+      } as never,
+      querySelector: () => null,
+    };
+    const controller = new ImageCropController(block, false);
+    controller.choose('free');
+    expect(controller.editing$.value).toBe('free');
+    controller.stop();
+    expect(controller.editing$.value).toBeNull();
   });
 });

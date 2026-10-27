@@ -11,6 +11,7 @@ import { GfxControllerIdentifier } from '@labre/std/gfx';
 
 import type { BpmnLaneFocusHolder } from './actions.js';
 import { BPMN_POOL_BACKGROUND } from './background';
+import { bpmnPoolLayout, cachePaintedBands } from './pool-hit.js';
 
 /**
  * The pool as the framework-background primitive paints it.
@@ -21,8 +22,19 @@ import { BPMN_POOL_BACKGROUND } from './background';
  * filled band and rotated name is now a declaration any other framework can
  * write for itself.
  */
-const paintPool =
-  createFrameworkBackgroundRenderer<BpmnPoolElementModel>(BPMN_POOL_BACKGROUND);
+const paintPool = createFrameworkBackgroundRenderer<BpmnPoolElementModel>(
+  BPMN_POOL_BACKGROUND,
+  {
+    // The model cannot measure text, so picking would select by the DECLARED
+    // band widths while a long name paints them wider. Cache what was painted
+    // on the model's `@local()` `paintedBands` (never stored), and only when
+    // it changed: a local write is an `elementUpdated`, which repaints. The
+    // view writes the same cache before any paint (`element-view.ts`).
+    onBands: (model, layout) => {
+      cachePaintedBands(model, layout);
+    },
+  }
+);
 
 /** Width of the focused lane's outline, in model units. */
 const FOCUS_OUTLINE_WIDTH = 2;
@@ -70,7 +82,14 @@ export const bpmnPool: ElementRenderer<BpmnPoolElementModel> = (
   if (!id) return;
 
   const [, , w, h] = model.deserializedXYWH;
-  const plot = backgroundPlot(BPMN_POOL_BACKGROUND, w, h);
+  // The outline hugs the flow area as PAINTED, i.e. right of a participant
+  // band a long name may have widened.
+  const plot = backgroundPlot(
+    BPMN_POOL_BACKGROUND,
+    w,
+    h,
+    bpmnPoolLayout(model).margin
+  );
   const prefix = BPMN_POOL_BACKGROUND.instanceZones?.idPrefix ?? 'lane';
   const zone = backgroundInstanceZones(
     BPMN_POOL_BACKGROUND,

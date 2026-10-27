@@ -25,6 +25,14 @@ import {
   DEFAULT_BACKGROUND_SURFACE,
   warnBrokenBackgroundColor,
 } from './def.js';
+import {
+  type BackgroundBandLayout,
+  backgroundBandWidths,
+  backgroundFont,
+  backgroundTextRoom,
+  backgroundWrapLineHeight,
+  DEFAULT_BACKGROUND_FONT_FAMILY,
+} from './band-widths.js';
 import { BACKGROUND_TEXT_FIT_PADDING, ellipsizeToWidth } from './ellipsis.js';
 import type { BackgroundModelLike } from './labels.js';
 import {
@@ -123,15 +131,6 @@ function rgba(hex: string, alpha: number) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
-function fontOf(style: BackgroundTextStyle, fallbackFamily: string) {
-  const italic = style.italic ? 'italic ' : '';
-  const weight = style.weight ? `${style.weight} ` : '';
-  return `${italic}${weight}${style.size}px ${style.family ?? fallbackFamily}`;
-}
-
-/** The family a declaration that names none falls back to. */
-const DEFAULT_FONT_FAMILY = 'Inter, sans-serif';
-
 /**
  * Where an instance zone's name sits in its band when the declaration states no
  * offset: 8 model units in from the leading edge, 18 down from the top of the
@@ -146,15 +145,31 @@ const DEFAULT_FONT_FAMILY = 'Inter, sans-serif';
 const DEFAULT_INSTANCE_ZONE_LABEL_DX = 8;
 const DEFAULT_INSTANCE_ZONE_LABEL_DY = 18;
 
+/** What a framework may ask of the renderer beyond the declaration. */
+export interface FrameworkBackgroundRendererOptions<T> {
+  /**
+   * Called on every paint with the band widths that paint measured
+   * (`backgroundBandWidths`), before anything is drawn. Named consumer: the
+   * BPMN pool, which caches them on its model (`paintedBands`, a `@local()`
+   * field, never stored) so that picking — which asks the headless model —
+   * selects by the bands as painted. A consumer that writes must write only
+   * when the widths changed: a local write repaints.
+   */
+  onBands?: (model: T, layout: BackgroundBandLayout) => void;
+}
+
 /**
  * Build the canvas renderer of one declaration. Pure: the same declaration
  * always paints the same picture for the same model and size.
  */
 export function createFrameworkBackgroundRenderer<
   T extends GfxPrimitiveElementModel,
->(def: FrameworkBackgroundDef): ElementRenderer<T> {
+>(
+  def: FrameworkBackgroundDef,
+  options: FrameworkBackgroundRendererOptions<T> = {}
+): ElementRenderer<T> {
   const palette = def.chrome?.palette;
-  const family = def.chrome?.fontFamily ?? DEFAULT_FONT_FAMILY;
+  const family = def.chrome?.fontFamily ?? DEFAULT_BACKGROUND_FONT_FAMILY;
   const surface = def.chrome?.surface ?? DEFAULT_BACKGROUND_SURFACE;
   const declared = (c: BackgroundColor | undefined) =>
     backgroundColor(c, palette);
@@ -203,7 +218,23 @@ export function createFrameworkBackgroundRenderer<
         .translateSelf(-cx, -cy)
     );
 
-    const plot = backgroundPlot(def, w, h);
+    // The bands as thick as their wrapped labels need, measured on this very
+    // context so the band holds exactly the lines painted in it. Every piece of
+    // chrome below paints from this plot; a declaration that wraps nothing gets
+    // its declared margin back without a measurement.
+    const layout = backgroundBandWidths(
+      def,
+      props,
+      w,
+      h,
+      (text, font) => {
+        ctx.font = font;
+        return ctx.measureText(text).width;
+      },
+      translation
+    );
+    options.onBands?.(model, layout);
+    const plot = backgroundPlot(def, w, h, layout.margin);
     const { x0, y0, x1, y1 } = plot;
     const pw = plot.width;
     const ph = plot.height;
@@ -227,66 +258,51 @@ export function createFrameworkBackgroundRenderer<
        * whole. Measured AFTER the font is set, so the cut is in the font the
        * words are drawn in.
        */
-      room?: number
+      room?: number,
+      /**
+       * The lines a wrapped label was broken into by `backgroundBandWidths`,
+       * drawn instead of `words`: stacked ACROSS the text's direction and
+       * centred on the anchor, one line height apart. Taken from the resolver
+       * rather than wrapped again here, so the band and its lines are one
+       * measurement.
+       */
+      wrapped?: readonly string[]
     ) => {
       if (!words) return;
-      const fit = (font: string) => {
-        if (room === undefined) return words;
+      const font = backgroundFont(style, family);
+      let shown: readonly string[];
+      if (wrapped) shown = wrapped;
+      else if (room === undefined) shown = [words];
+      else {
         ctx.font = font;
-        return ellipsizeToWidth(ctx, words, room);
-      };
-      if (vertical) {
-        const font = fontOf(style, family);
-        const shown = fit(font);
-        if (!shown) return;
-        ctx.save();
-        ctx.translate(ax, ay);
-        ctx.rotate(-Math.PI / 2);
+        shown = [ellipsizeToWidth(ctx, words, room)];
+      }
+      const lineHeight = backgroundWrapLineHeight(style);
+      shown.forEach((text, i) => {
+        if (!text) return;
+        // Zero for a single line, which is drawn exactly where it always was.
+        const across = (i - (shown.length - 1) / 2) * lineHeight;
+        if (vertical) {
+          // Rotated -90°, the next line is to the RIGHT of the one before:
+          // the glyphs' tops point left, so a reader turning their head reads
+          // the lines left to right.
+          ctx.save();
+          ctx.translate(ax + across, ay);
+          ctx.rotate(-Math.PI / 2);
+          ctx.font = font;
+          ctx.fillStyle = color(style.color);
+          ctx.textAlign = align ?? 'center';
+          ctx.textBaseline = style.baseline ?? 'alphabetic';
+          ctx.fillText(text, 0, 0);
+          ctx.restore();
+          return;
+        }
         ctx.font = font;
         ctx.fillStyle = color(style.color);
-        ctx.textAlign = align ?? 'center';
+        ctx.textAlign = align ?? 'left';
         ctx.textBaseline = style.baseline ?? 'alphabetic';
-        ctx.fillText(shown, 0, 0);
-        ctx.restore();
-        return;
-      }
-      const font = fontOf(style, family);
-      const shown = fit(font);
-      if (!shown) return;
-      ctx.font = font;
-      ctx.fillStyle = color(style.color);
-      ctx.textAlign = align ?? 'left';
-      ctx.textBaseline = style.baseline ?? 'alphabetic';
-      ctx.fillText(shown, ax, ay);
-    };
-
-    /**
-     * The room a fitted declared text has: from its anchor to the card's
-     * edges along the direction it reads, on the side(s) its alignment grows
-     * towards, less {@link BACKGROUND_TEXT_FIT_PADDING} at each end. A vertical
-     * text reads bottom-to-top, so `left` grows UP from its anchor.
-     */
-    const roomAlong = (
-      ax: number,
-      ay: number,
-      align: BackgroundTextDef['align'],
-      vertical: boolean
-    ) => {
-      const pad = BACKGROUND_TEXT_FIT_PADDING;
-      if (vertical) {
-        const up = ay - pad;
-        const down = h - ay - pad;
-        const side = align ?? 'center';
-        if (side === 'left') return up;
-        if (side === 'right') return down;
-        return 2 * Math.min(up, down);
-      }
-      const leftward = ax - pad;
-      const rightward = w - ax - pad;
-      const side = align ?? 'left';
-      if (side === 'left') return rightward;
-      if (side === 'right') return leftward;
-      return 2 * Math.min(leftward, rightward);
+        ctx.fillText(text, ax, ay + across);
+      });
     };
 
     // ── 1. The card, and the bands that dress it ────────────────────────
@@ -452,7 +468,12 @@ export function createFrameworkBackgroundRenderer<
     for (const text of texts) {
       if (!inVariant(text.variants)) continue;
       if (!visible(text.visibleProp)) continue;
-      const [tx, ty] = backgroundPoint(text.anchor, plot);
+      const [px, py] = backgroundPoint(text.anchor, plot);
+      // A wrapped band label keeps its place relative to the middle of its
+      // band, however much the band grew (`BackgroundWrappedLabel.shift`).
+      const wrap = layout.labels.get(text);
+      const tx = px + (wrap?.shift[0] ?? 0);
+      const ty = py + (wrap?.shift[1] ?? 0);
       const vertical = text.vertical === true;
       drawText(
         backgroundLabelText(text, props, translation),
@@ -461,9 +482,11 @@ export function createFrameworkBackgroundRenderer<
         text.style,
         text.align,
         vertical,
-        text.fit === 'ellipsis'
-          ? roomAlong(tx, ty, text.align, vertical)
-          : undefined
+        // `'wrap'` on a text with no band to grow is cut like `'ellipsis'`.
+        text.fit !== undefined
+          ? backgroundTextRoom(tx, ty, text.align, vertical, w, h)
+          : undefined,
+        wrap?.lines
       );
     }
 
@@ -484,7 +507,7 @@ export function createFrameworkBackgroundRenderer<
       const dx = zoneLabel.dx ?? DEFAULT_INSTANCE_ZONE_LABEL_DX;
       const dy = zoneLabel.dy ?? DEFAULT_INSTANCE_ZONE_LABEL_DY;
       const stackY = instanceZonesDef?.stack === 'y';
-      const fitZone = zoneLabel.fit === 'ellipsis';
+      const fitZone = zoneLabel.fit !== undefined;
 
       for (const zone of instanceZones) {
         // The strip is drawn for EVERY zone, named or not: it is the lane's
@@ -493,7 +516,7 @@ export function createFrameworkBackgroundRenderer<
         // a lane that silently loses its structure. The NAME is what is
         // conditional, exactly as under the corner placement.
         const strip = labelBand
-          ? backgroundInstanceZoneBand(def, zone, plot)
+          ? backgroundInstanceZoneBand(def, zone, plot, layout.zoneBandWidth)
           : null;
 
         if (strip && labelBand?.divider) {
@@ -540,7 +563,8 @@ export function createFrameworkBackgroundRenderer<
             stackY,
             fitZone
               ? (stackY ? strip.h : strip.w) - 2 * BACKGROUND_TEXT_FIT_PADDING
-              : undefined
+              : undefined,
+            layout.zoneLines.get(zone.id)
           );
           continue;
         }

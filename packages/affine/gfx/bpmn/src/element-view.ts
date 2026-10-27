@@ -20,8 +20,17 @@ import { POOL_LANE_MIN_HEIGHT } from './consts.js';
 import {
   bpmnLaneBoundaryAt,
   bpmnPoolBands,
+  bpmnPoolMeasuredLayout,
   bpmnPoolTargetAt,
+  cachePaintedBands,
 } from './pool-hit.js';
+
+/**
+ * The props whose change moves a title band: the names it is sized by, and the
+ * box whose height a name wraps along. `paintedBands` itself is NOT here — the
+ * cache's own write must never re-enter the code that writes it.
+ */
+const BAND_PROPS = new Set(['name', 'lanes', 'xywh']);
 
 /**
  * View for a BPMN pool. Three direct gestures live here:
@@ -112,6 +121,18 @@ export class BpmnPoolView
 
   override onCreated(): void {
     super.onCreated();
+    // Picking asks the MODEL, which selects by `paintedBands`. The renderer
+    // writes it after each paint, but a hidden tab never paints and the first
+    // click can come before the first frame: the view measures it now, and
+    // again whenever a band can have moved, so picking never waits for a
+    // frame. One measure per update; the renderer's write after the next
+    // paint lands on the same numbers and writes nothing.
+    this._refreshPaintedBands();
+    this.disposable.add(
+      this.model.propsUpdated.subscribe(({ key }) => {
+        if (BAND_PROPS.has(key)) this._refreshPaintedBands();
+      })
+    );
     this.on('dblclick', e => this._onDblClick(e));
     this.on('pointermove', e => this._updateHover(e));
     this.on('pointerdown', e => {
@@ -128,6 +149,10 @@ export class BpmnPoolView
         this._setFocus(null);
       })
     );
+  }
+
+  private _refreshPaintedBands(): void {
+    cachePaintedBands(this.model, bpmnPoolMeasuredLayout(this.model));
   }
 
   override onDestroyed(): void {
@@ -185,9 +210,14 @@ export class BpmnPoolView
    * - the internal LANE SEPARATORS, twelve-unit strips in the middle of the
    *   flow area, which arm the drag that moves them;
    * - the zoom-GROWN rename targets, which reach past the painted bands when
-   *   the board is small on screen so a fingertip can still land on one.
+   *   the board is small on screen so a fingertip can still land on one;
+   * - the part of a title band a long name has WIDENED past its declared
+   *   width (the name wraps onto more lines and the band grows with it,
+   *   `backgroundBandWidths`). The model selects by the declared widths, since
+   *   it cannot measure text; the rename double-click must still land on every
+   *   line painted, so `pool-hit.ts` aims at the band as painted.
    *
-   * Neither is a selection zone — a click in the flow area still goes to
+   * None is a selection zone — a click in the flow area still goes to
    * whatever the user dropped there, because picking asks the MODEL. This
    * override only decides where the pool's own gestures are heard, which is why
    * it is declared here, beside the code that draws and handles them, rather

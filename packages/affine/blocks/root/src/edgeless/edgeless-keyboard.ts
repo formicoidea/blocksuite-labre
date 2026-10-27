@@ -342,6 +342,7 @@ export class EdgelessPageKeyboardManager extends PageKeyboardManager {
         },
         'Alt-2': ctx => {
           ctx.get('defaultState').event.preventDefault();
+          if (this.rootComponent.service.locked) return;
 
           const selectedElements = this.gfx.selection.selectedElements;
 

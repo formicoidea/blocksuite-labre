@@ -230,6 +230,29 @@ describe('the pool the primitive paints', () => {
   });
 
   /**
+   * The one deliberate geometry change since the old renderer: a name that
+   * needs more than one line WRAPS up the band and the band THICKENS to hold
+   * the lines (PO, 2026-10-27, replacing the ellipsis cut of PR #532). Every
+   * literal above still holds for a name on one line; this pins the growth —
+   * 3 lines × 18 (15 × 1.2) + 2 × 4 of padding = 62, the name kept in the
+   * middle of the grown band (31) — at the stub's 6 units per character.
+   */
+  it('thickens the band for a name that needs more lines', () => {
+    const rec = render(
+      pool({
+        name: 'Group procurement supplier onboarding and contract management office',
+      })
+    );
+    expect(rec.rects).toEqual([{ x: 0, y: 0, w: 62, h: 200, fill: BAND }]);
+    expect(rec.segments).toEqual([{ x1: 62, y1: 0, x2: 62, y2: 200 }]);
+    expect(rec.texts.map(t => [t.text, t.x, t.y])).toEqual([
+      ['Group procurement supplier', 13, 100],
+      ['onboarding and contract', 31, 100],
+      ['management office', 49, 100],
+    ]);
+  });
+
+  /**
    * The guard the lane work is answerable to: EVERY assertion above is written
    * for a pool with no `lanes` key, which is every pool in every document
    * authored before B4. The lane title bands are painted from the model, so a

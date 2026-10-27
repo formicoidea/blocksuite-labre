@@ -24,7 +24,9 @@ import {
   bpmnInPoolTitleBand,
   bpmnLaneBoundaryAt,
   bpmnLaneTitleBandAt,
+  bpmnPoolBands,
   bpmnPoolTargetAt,
+  cachePaintedBands,
 } from '../pool-hit';
 import {
   POOL_BAND_WIDTH,
@@ -251,6 +253,106 @@ describe('the pool declares that its instances carry lanes', () => {
       w: POOL_LANE_BAND_WIDTH,
       h: 100,
     });
+  });
+});
+
+/**
+ * The lane title strips GROW with their names and share one thickness (PO,
+ * 2026-10-27, replacing the one-line ellipsis cut of PR #532). Would catch a
+ * declaration back on `'ellipsis'`, a strip that does not widen for a long
+ * name, two lanes of one pool with strips of different widths — staggered
+ * leading edges — and a rename target narrower than the strip painted.
+ */
+describe('lane title strips that grow with their names', () => {
+  const spec = BPMN_POOL_BACKGROUND.instanceZones?.label;
+  const LONG = 'Group procurement, supplier onboarding and contracts';
+  const pool = (lanes: BpmnLane[]) => ({
+    deserializedXYWH: [0, 0, 560, 200],
+    name: 'Customer',
+    lanes,
+  });
+
+  it('wraps the lane name, two lines at most', () => {
+    expect(spec?.fit).toBe('wrap');
+    expect(spec?.maxLines).toBe(2);
+    // The participant name wraps too, three lines at most.
+    const name = BPMN_POOL_BACKGROUND.chrome?.sideBands?.[0]?.label;
+    expect(name?.fit).toBe('wrap');
+    expect(name?.maxLines).toBe(3);
+  });
+
+  it('keeps the declared strip while every name fits one line', () => {
+    const { bands } = bpmnPoolBands(
+      pool([
+        { id: 'a', name: 'Sales', size: 1 },
+        { id: 'b', name: 'Ops', size: 1 },
+      ])
+    )!;
+    expect(bands.map(b => b.strip?.w)).toEqual([
+      POOL_LANE_BAND_WIDTH,
+      POOL_LANE_BAND_WIDTH,
+    ]);
+  });
+
+  it('widens EVERY strip to what the longest name needs', () => {
+    const model = pool([
+      { id: 'a', name: LONG, size: 1 },
+      { id: 'b', name: 'Ops', size: 1 },
+    ]);
+    const { bands } = bpmnPoolBands(model)!;
+    const [first, second] = bands.map(b => b.strip!);
+    expect(first.w).toBeGreaterThan(POOL_LANE_BAND_WIDTH);
+    expect(second.w).toBe(first.w);
+    expect(second.x).toBe(first.x);
+
+    // The short-named lane is renamed from the far edge of its widened strip,
+    // past the declared 24 units. Zoom 10, so the touch-sized growth (44 view
+    // pixels, 4.4 units) does not reach there on its own.
+    const x = first.x + first.w - 1;
+    expect(x).toBeGreaterThan(POOL_BAND_WIDTH + POOL_LANE_BAND_WIDTH);
+    expect(bpmnLaneTitleBandAt(model, [x, 150], 10)).toBe(1);
+    expect(bpmnPoolTargetAt(model, [x, 150], 10)).toEqual({
+      kind: 'lane',
+      index: 1,
+    });
+  });
+
+  it('caches the band widths only when they changed', () => {
+    // One guard for both writers (renderer and view): a `@local()` write
+    // repaints, so an equal write must not happen at all.
+    const model: { paintedBands?: { margin: number; zoneBandWidth: number } } =
+      {};
+    const margin = { ...BPMN_POOL_BACKGROUND.geometry.margin, left: 46 };
+
+    expect(cachePaintedBands(model, { margin, zoneBandWidth: 42 })).toBe(true);
+    const first = model.paintedBands;
+    expect(first).toEqual({ margin: 46, zoneBandWidth: 42 });
+
+    expect(cachePaintedBands(model, { margin, zoneBandWidth: 42 })).toBe(false);
+    expect(model.paintedBands).toBe(first);
+
+    // No strip declared resolves to the declared lane width.
+    expect(cachePaintedBands(model, { margin, zoneBandWidth: undefined })).toBe(
+      true
+    );
+    expect(model.paintedBands).toEqual({
+      margin: 46,
+      zoneBandWidth: POOL_LANE_BAND_WIDTH,
+    });
+  });
+
+  it('aims at the widths the renderer cached, so picking and renaming agree', () => {
+    // `paintedBands` is what the model's `includesPoint` selects by; the
+    // rename targets must read the same numbers rather than re-measure.
+    const model = {
+      ...pool([{ id: 'a', name: 'Sales', size: 1 }]),
+      paintedBands: { margin: 46, zoneBandWidth: 42 },
+    };
+    const { plot, bands } = bpmnPoolBands(model)!;
+    expect(plot.x0).toBe(46);
+    expect(bands[0].strip).toMatchObject({ x: 46, w: 42 });
+    expect(bpmnInPoolTitleBand(model, [45, 100], 10)).toBe(true);
+    expect(bpmnLaneTitleBandAt(model, [85, 100], 10)).toBe(0);
   });
 });
 

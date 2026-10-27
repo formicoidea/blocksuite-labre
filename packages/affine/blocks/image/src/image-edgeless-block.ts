@@ -120,6 +120,9 @@ export class ImageEdgelessBlockComponent extends GfxBlockComponent<ImageBlockMod
 
     this.disposables.add(this.resourceController.subscribe());
     this.disposables.add(this.resourceController);
+    // A crop frame left open would keep the canvas locked and the image in
+    // editing state after the block is gone (ADR 0037, 2026-10-27).
+    this.disposables.add(() => this.cropController.stop());
 
     this.disposables.add(
       this.model.props.sourceId$.subscribe(() => {

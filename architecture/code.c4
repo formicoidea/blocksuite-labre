@@ -1132,7 +1132,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/surface
         metadata {
           path 'packages/affine/blocks/surface'
-          files '145'
+          files '147'
         }
         adapters = folder 'adapters/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/surface/src/adapters
@@ -1166,7 +1166,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/surface/src/framework-background
           metadata {
             path 'packages/affine/blocks/surface/src/framework-background'
-            files '10'
+            files '12'
           }
         }
         renderer = folder 'renderer/' {
@@ -3700,7 +3700,7 @@ model {
   features.blocks.root -[uses]-> model_.model_ '24 imports, 6 type-only'
   features.blocks.surface -[uses]-> features.components '5 imports, 1 type-only'
   features.blocks.surface -[uses]-> features.ext-loader '2 imports'
-  features.blocks.surface -[uses]-> features.shared '65 imports, 13 type-only'
+  features.blocks.surface -[uses]-> features.shared '66 imports, 14 type-only'
   features.blocks.surface -[uses]-> framework.global_ '52 imports, 8 type-only'
   features.blocks.surface -[uses]-> framework.std '98 imports, 36 type-only'
   features.blocks.surface -[uses]-> framework.store '26 imports, 20 type-only'
@@ -5538,7 +5538,7 @@ model {
   features.blocks.surface.extensions -[imports]-> model_.model_.src '18 imports, 6 type-only'
   features.blocks.surface.framework-background -[imports]-> features.blocks.surface.extensions '1 import'
   features.blocks.surface.framework-background -[imports]-> features.blocks.surface.renderer '3 imports, 2 type-only'
-  features.blocks.surface.framework-background -[imports]-> features.shared.services '3 imports, 1 type-only'
+  features.blocks.surface.framework-background -[imports]-> features.shared.services '4 imports, 2 type-only'
   features.blocks.surface.framework-background -[imports]-> features.shared.src '1 import'
   features.blocks.surface.framework-background -[imports]-> framework.global_.disposable '1 import'
   features.blocks.surface.framework-background -[imports]-> framework.global_.gfx '3 imports, 1 type-only'
