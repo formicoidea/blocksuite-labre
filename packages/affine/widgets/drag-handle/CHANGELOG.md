@@ -1,5 +1,23 @@
 # @labre/affine-widget-drag-handle
 
+## 0.59.0
+
+### Patch Changes
+
+- @labre/affine-block-note@0.59.0
+- @labre/affine-block-callout@0.59.0
+- @labre/affine-block-embed@0.59.0
+- @labre/affine-block-list@0.59.0
+- @labre/affine-block-paragraph@0.59.0
+- @labre/affine-block-surface@0.59.0
+- @labre/affine-components@0.59.0
+- @labre/affine-ext-loader@0.59.0
+- @labre/affine-model@0.59.0
+- @labre/affine-shared@0.59.0
+- @labre/global@0.59.0
+- @labre/std@0.59.0
+- @labre/store@0.59.0
+
 ## 0.58.0
 
 ### Patch Changes

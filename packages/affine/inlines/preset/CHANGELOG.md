@@ -1,5 +1,24 @@
 # @labre/affine-inline-preset
 
+## 0.59.0
+
+### Patch Changes
+
+- @labre/affine-components@0.59.0
+- @labre/affine-ext-loader@0.59.0
+- @labre/affine-inline-comment@0.59.0
+- @labre/affine-inline-footnote@0.59.0
+- @labre/affine-inline-latex@0.59.0
+- @labre/affine-inline-link@0.59.0
+- @labre/affine-inline-mention@0.59.0
+- @labre/affine-inline-reference@0.59.0
+- @labre/affine-model@0.59.0
+- @labre/affine-rich-text@0.59.0
+- @labre/affine-shared@0.59.0
+- @labre/global@0.59.0
+- @labre/std@0.59.0
+- @labre/store@0.59.0
+
 ## 0.58.0
 
 ### Patch Changes

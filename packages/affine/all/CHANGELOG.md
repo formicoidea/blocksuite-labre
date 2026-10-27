@@ -1,5 +1,139 @@
 # @labre/affine
 
+## 0.59.0
+
+### Minor Changes
+
+- 00eab7f: BPMN lanes can be reordered: click a lane's title band in a selected pool to focus it, then use "Move lane up" or "Move lane down" on the pool toolbar. Everything drawn in the lane moves with it, in one undo step. "Remove lane" now removes the focused lane, or the last one when none is focused.
+- 52770cf: BPMN nodes now offer connection anchors on their outline: the four corners of a gateway, the side midpoints of a task or data shape, and the four cardinal points of an event, so a sequence flow can leave a node by the side you choose. Groups stay centre-only, and existing connectors are unchanged.
+- 7925609: BPMN pool and lane title bands now grow with their names: a long participant name wraps onto up to three lines up its band, a long lane name onto up to two, and the band thickens to hold them instead of cutting the name. All lanes of a pool share the widest lane band, so their edges stay aligned. Only a name longer still is cut with an ellipsis; the stored name stays whole, nothing new is saved in the document, and the SVG export paints the same bands. The framework-background primitive gains `fit: 'wrap'` (with `maxLines`) for side-band and lane-band labels, and `backgroundBandWidths` to read the resulting band widths.
+- c8599e5: The page note on the canvas now shows the document title by default, editable like the rest of the note once it is being edited and read-only on a read-only document. `NoteConfigExtension`'s `pageBlockTitle` became optional and may return `nothing`: a host that renders its own title registers `pageBlockTitle` (returning `nothing` to draw none on the canvas); a host that registered one keeps its title unchanged.
+- 6d3a53a: Special characters. Two new core commands on the palette, the agent and the host's view menu (`getViewActions`), in both views:
+
+  - `text.invisibles.toggle` ("Show special characters", `checked`): this viewer sees a dot per space, an arrow per tab, a degree sign per no-break space, a red mark per invisible character, and ↵ / ¶ at line ends. Nothing is written to the document; the choice is kept per viewer in `localStorage`. A host may set the default with the new optional `showInvisibles` field of `EditorSettingProvider` (absent: off). Telemetry `InvisibleCharactersToggled { visible }`.
+  - `text.invisibles.remove` ("Remove invisible characters", editable documents only): strips the zero-width spaces (U+200B), word joiners (U+2060), BOMs (U+FEFF), soft hyphens (U+00AD), U+180E, the invisible operators (U+2061–U+2064), the tag characters (U+E0000–U+E007F) and stray zero-width joiners from every text of the document — paragraphs, title, table and database cells, canvas labels — in one undo step. Code blocks, emoji sequences, subdivision flags, the ZWNJ (U+200C) and the French no-break spaces (U+00A0, U+202F) are kept. Toast through the notification seam (`com.labre.command.text.invisibles.removed`, `{{count}}`); telemetry `InvisibleCharactersRemoved { count, blockCount }`.
+
+  The inline editor now tells a placeholder from text by the `data-v-empty` attribute, not by its content: a zero-width space a user stored alone in a run no longer shifts the caret.
+
+- 8c3f7de: The canvas image toolbar now has one "Replace" menu instead of two buttons. "Replace with image" puts another picture in the image, from the host's image library when one is connected or from the system file chooser otherwise, so it is available without a host too; "Replace with shape" opens a sub-menu of the shape tool's shapes (rectangle, ellipse, diamond, triangle, polygon, rounded rectangle) and puts the chosen one in the image's place, connectors kept. The new command `canvas.image.replaceWithImage` reaches the same action from the palette, and `canvas.image.replaceWithShape` accepts optional `shapeType` and `radius` params (a rectangle when absent). The page image toolbar's "Replace" is now offered without a host as well, falling back to the file chooser.
+- 1e13312: Replace a shape by an image, and an image by a shape, on the canvas (ADR 0044).
+  A plain shape's toolbar gains « Replace with image »: the picture comes from the
+  host's `AssetPickerProvider` when one is registered, from the system file
+  chooser otherwise, and is cut to the shape's box (the largest centred crop of
+  its proportions, ADR 0037). A canvas image's toolbar gains « Replace with
+  shape », which puts a rectangle in its place. Both keep the box, rotation,
+  z-order, user layer, connectors, group and frame of what they replace, in one
+  undo step; the new model has a new id. Notation shapes (with a role), shapes
+  with text, images with a caption or comments, and locked models are not
+  offered. New commands `canvas.shape.replaceWithImage` and
+  `canvas.image.replaceWithShape` (core, behind the `image` flag), new telemetry
+  event `ElementReplaced { from, to }` (kinds only), new wording keys
+  `com.labre.image.replace.with-image`, `com.labre.image.replace.with-shape` and
+  their `.description`. `reassociateConnectors(surface, oldId, newId)` is now
+  exported by `@labre/affine-block-surface` beside the command it backs.
+- 363f971: Nine more slide masks in the Templates panel's "Slides" category: a Gantt plan, and the chart, photo collage, bento, picture grid, feature bento, phone and tablet families, each drawn with dashed grey placeholder zones ("Chart", "Image", "Screen") the author replaces with the real artwork.
+- 38c702f: Templates panel: a built-in **Slides** category of 25 16:9 slide masks (cover, section, statement, agenda, text and image, columns, image cards, key figures, timeline, roadmap, process, 2 × 2 matrix, Venn, market size, org chart, pricing, logo wall, quote, testimonials, team, contact…). Each mask inserts one 1600 × 900 frame titled after the mask, holding its title, texts, dashed image zones, a footer and a slide number written at insertion from the frame's place in the deck. Colours are base-palette pairs, so a slide follows the dark canvas. Every word is a `com.labre.template.slides.*` key with an English fallback (the quote slide reuses `com.labre.block-type.quote`); a host catalogue adds the French. `Template` gains an optional `keywords` list, and `makeTemplateSnapshot` an optional list of surface child blocks (the frame).
+- 67e7cad: The simple table gets a header row and a header column (ADR 0043): a "Header row" toggle in the first row's menu and a "Header column" toggle in the first column's menu, stored as two optional keys (`headerRow`, `headerColumn`; `true` or absent) that older documents never gain on open. Header cells render bold on the theme's table header tint; an explicit row or column colour still wins. The HTML export writes `<thead>`/`<th>`, the HTML import reads a `<thead>` (and a column of leading `<th>`) back, and the Markdown import now marks the first row of every GFM table as a header, so an imported or pasted Markdown table shows a bold first row. Double-clicking a column's resize handle fits that column to the room left in the table's box. New keys `com.labre.table.header-row` and `com.labre.table.header-column` (English fallbacks shipped).
+
+### Patch Changes
+
+- 9837447: BPMN pool and lane names no longer run out of their band: a name longer than the band is cut with an ellipsis on the canvas and in the SVG export, while the stored name stays whole and the rename editor still shows it in full.
+- 40933ef: Code block: the stored `language` is no longer rewritten while rendering (alias → id normalisation and the unknown → `null` fallback are derived for display), so opening a document writes nothing and a read-only store stays untouched; the language picker writes through `updateBlock` after `captureSync`, one undo step; the HTML and Notion importers store `null` for plain text instead of `'Plain Text'`.
+- b109c70: Make two data-view block edits undoable: changing a cell of one of the block's own columns and deleting one of those columns now take one undo step each, where Ctrl+Z used to skip them. Remove the `@labre/affine-shared/test-utils` export (the `./test-utils` entry of `@labre/affine-shared`): it exposed internal test fixtures, no host imported it, and there is no replacement.
+- 88cd1f5: Raise the dompurify floor to ^3.4.16 (from ^3.4.13) for GHSA-p98j-92pf-mc4p. Same major; dompurify is a peer-level dependency hosts also import, so dedupe it to 3.4.16 or later on the host side.
+- 88cd1f5: Raise the happy-dom floor of the unit-test environment to ^21.0.4 (from ^20.8.9). Dev-only: no host-visible change.
+- a782219: Cropping an image on the canvas no longer fights the canvas: while the crop frame is open the selection handles are hidden and the canvas zoom and pan are locked, so the frame's own corners can be dragged. The mouse wheel over the crop frame now zooms the picture inside it, around the pointer, in one undo step per scroll; this works on pages too.
+- 88cd1f5: Raise the katex floor to ^0.18.10 (from ^0.16.11). KaTeX 0.18 prefixes its internal CSS classes, so a host must bump `katex` to 0.18 or later together with the `@formicoidea/*` ranges: the `katex/dist/katex.min.css` it imports and the runtime the library renders with must match. `@types/katex` is no longer needed, katex ships its own types.
+- 469efae: Markdown adapters: a callout exports its marker unescaped (`> [!💡]`, not `> \[!💡]`) so GFM and Obsidian readers and a write-back keep it a callout (#520); a slice import keeps nested lists under `1.`, `1)`, `*` and `+` items, which the plain-text preprocessor used to fold into their parent's text (#519).
+- 9144c78: Markdown import no longer leaves an empty paragraph above a standalone image: a paragraph that holds only images (and line breaks between them) emits the image blocks alone (#521).
+- 53c225d: Pasting or duplicating notes, texts, images and attachments on the canvas is one undo step whatever the blob fetch time.
+- 833eb52: Opening a large document is now linear in the number of blocks, whatever the view (#507): parent lookups are indexed in memory instead of walking the tree each time, and the store records the blocks it loads in one step instead of copying its list once per block. Opening 4000 blocks drops from about 4.2 s to under 0.1 s, and from about 34 s to under 0.1 s when the view hides blocks. Nothing stored changes.
+- b430209: The Templates panel search now finds the built-in templates (SWOT, Kanban board, Business Model Canvas, Fishbone, Gantt chart) by their English or translated name. A frame inserted from a template, a saved frame included, now takes its own slideshow position after the existing frames instead of sharing the source frame's.
+- 88cd1f5: Raise the vite floor of the playground, the integration suite and the workspace root to ^7.3.7 (from ^7.3.5). Dev-only, dev server and test runner: no host-visible change.
+- Updated dependencies [8c10a71]
+  - @labre/affine-database-editor@0.59.0
+  - @labre/data-view@0.59.0
+  - @labre/affine-block-data-view@0.59.0
+  - @labre/affine-block-database@0.59.0
+  - @labre/affine-block-root@0.59.0
+  - @labre/affine-foundation@0.59.0
+  - @labre/affine-fragment-doc-title@0.59.0
+  - @labre/affine-widget-keyboard-toolbar@0.59.0
+  - @labre/affine-widget-toolbar@0.59.0
+  - @labre/affine-block-note@0.59.0
+  - @labre/affine-fragment-outline@0.59.0
+  - @labre/affine-block-latex@0.59.0
+  - @labre/affine-widget-drag-handle@0.59.0
+  - @labre/affine-widget-note-slicer@0.59.0
+  - @labre/affine-block-attachment@0.59.0
+  - @labre/affine-block-bookmark@0.59.0
+  - @labre/affine-block-callout@0.59.0
+  - @labre/affine-block-code@0.59.0
+  - @labre/affine-block-divider@0.59.0
+  - @labre/affine-block-edgeless-text@0.59.0
+  - @labre/affine-block-embed@0.59.0
+  - @labre/affine-block-embed-doc@0.59.0
+  - @labre/affine-block-frame@0.59.0
+  - @labre/affine-block-image@0.59.0
+  - @labre/affine-block-list@0.59.0
+  - @labre/affine-block-paragraph@0.59.0
+  - @labre/affine-block-surface@0.59.0
+  - @labre/affine-block-surface-ref@0.59.0
+  - @labre/affine-block-table@0.59.0
+  - @labre/affine-components@0.59.0
+  - @labre/affine-ext-loader@0.59.0
+  - @labre/affine-fragment-adapter-panel@0.59.0
+  - @labre/affine-fragment-frame-panel@0.59.0
+  - @labre/affine-gfx-bpmn@0.59.0
+  - @labre/affine-gfx-brush@0.59.0
+  - @labre/affine-gfx-c4@0.59.0
+  - @labre/affine-gfx-connector@0.59.0
+  - @labre/affine-gfx-cynefin-estuarine@0.59.0
+  - @labre/affine-gfx-ddd-aggregate@0.59.0
+  - @labre/affine-gfx-ddd-context-map@0.59.0
+  - @labre/affine-gfx-ddd-core-domain@0.59.0
+  - @labre/affine-gfx-ddd-event-storming@0.59.0
+  - @labre/affine-gfx-ddd-shared@0.59.0
+  - @labre/affine-gfx-edgy@0.59.0
+  - @labre/affine-gfx-group@0.59.0
+  - @labre/affine-gfx-link@0.59.0
+  - @labre/affine-gfx-mindmap@0.59.0
+  - @labre/affine-gfx-note@0.59.0
+  - @labre/affine-gfx-pointer@0.59.0
+  - @labre/affine-gfx-shape@0.59.0
+  - @labre/affine-gfx-template@0.59.0
+  - @labre/affine-gfx-text@0.59.0
+  - @labre/affine-gfx-turbo-renderer@0.59.0
+  - @labre/affine-gfx-uml@0.59.0
+  - @labre/affine-gfx-wardley@0.59.0
+  - @labre/affine-inline-comment@0.59.0
+  - @labre/affine-inline-footnote@0.59.0
+  - @labre/affine-inline-latex@0.59.0
+  - @labre/affine-inline-link@0.59.0
+  - @labre/affine-inline-mention@0.59.0
+  - @labre/affine-inline-preset@0.59.0
+  - @labre/affine-inline-reference@0.59.0
+  - @labre/affine-model@0.59.0
+  - @labre/affine-rich-text@0.59.0
+  - @labre/affine-shared@0.59.0
+  - @labre/affine-widget-edgeless-auto-connect@0.59.0
+  - @labre/affine-widget-edgeless-dragging-area@0.59.0
+  - @labre/affine-widget-edgeless-selected-rect@0.59.0
+  - @labre/affine-widget-edgeless-toolbar@0.59.0
+  - @labre/affine-widget-edgeless-zoom-toolbar@0.59.0
+  - @labre/affine-widget-frame-title@0.59.0
+  - @labre/affine-widget-linked-doc@0.59.0
+  - @labre/affine-widget-page-dragging-area@0.59.0
+  - @labre/affine-widget-remote-selection@0.59.0
+  - @labre/affine-widget-scroll-anchoring@0.59.0
+  - @labre/affine-widget-slash-menu@0.59.0
+  - @labre/affine-widget-thread-marks@0.59.0
+  - @labre/affine-widget-viewport-overlay@0.59.0
+  - @labre/global@0.59.0
+  - @labre/std@0.59.0
+  - @labre/store@0.59.0
+  - @labre/sync@0.59.0
+
 ## 0.58.0
 
 ### Minor Changes

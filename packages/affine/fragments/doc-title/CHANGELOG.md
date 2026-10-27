@@ -1,5 +1,22 @@
 # @labre/affine-fragment-doc-title
 
+## 0.59.0
+
+### Patch Changes
+
+- Updated dependencies [8c10a71]
+  - @labre/data-view@0.59.0
+  - @labre/affine-block-surface@0.59.0
+  - @labre/affine-components@0.59.0
+  - @labre/affine-ext-loader@0.59.0
+  - @labre/affine-inline-reference@0.59.0
+  - @labre/affine-model@0.59.0
+  - @labre/affine-rich-text@0.59.0
+  - @labre/affine-shared@0.59.0
+  - @labre/global@0.59.0
+  - @labre/std@0.59.0
+  - @labre/store@0.59.0
+
 ## 0.58.0
 
 ### Patch Changes
