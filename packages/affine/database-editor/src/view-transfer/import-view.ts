@@ -25,31 +25,34 @@ import { remapView, viewTemplateData } from './remap-view.js';
  * the current view's source, never a link.
  */
 
+/** A property's select options as a correspondence reads them; none when it has no list. */
+export function propertyOptions(
+  options: unknown
+): Pick<DataSourcePickerProperty, 'options'> {
+  if (!Array.isArray(options)) return {};
+  return {
+    options: options.flatMap(option =>
+      typeof option?.id === 'string'
+        ? [{ id: option.id, value: String(option.value ?? '') }]
+        : []
+    ),
+  };
+}
+
 /** The properties of the current view's source, as a correspondence reads them. */
 export function sourceProperties(
   dataSource: DataSource
 ): DataSourcePickerProperty[] {
-  return dataSource.properties$.peek().map(id => {
-    const options = dataSource.propertyDataGet(id)?.options;
-    return {
-      id,
-      name: dataSource.propertyNameGet(id),
-      type: dataSource.propertyTypeGet(id) ?? '',
-      ...(Array.isArray(options)
-        ? {
-            options: options.flatMap(option =>
-              typeof option?.id === 'string'
-                ? [{ id: option.id, value: String(option.value ?? '') }]
-                : []
-            ),
-          }
-        : {}),
-    };
-  });
+  return dataSource.properties$.peek().map(id => ({
+    id,
+    name: dataSource.propertyNameGet(id),
+    type: dataSource.propertyTypeGet(id) ?? '',
+    ...propertyOptions(dataSource.propertyDataGet(id)?.options),
+  }));
 }
 
 /** The database a block shows, as the picker names it; none for an inline one. */
-function databaseIdOf(dataSource: DataSource): string | undefined {
+export function databaseIdOf(dataSource: DataSource): string | undefined {
   if (!(dataSource instanceof HostedDataSourceBase)) return undefined;
   if (!dataSource.resolvesSources) return undefined;
   return dataSource.hostModel.props.externalSourceId;

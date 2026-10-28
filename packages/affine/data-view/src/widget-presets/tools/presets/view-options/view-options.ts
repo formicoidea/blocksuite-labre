@@ -42,6 +42,7 @@ import {
   type Wording,
   wordingOf,
 } from '../../../../core/utils/wording.js';
+import { ViewSettingsMenuIdentifier } from '../../../../core/view-manager/view-settings-menu.js';
 import { WidgetBase } from '../../../../core/widget/widget-base.js';
 import { popFilterRoot } from '../../../quick-setting-bar/filter/root-panel-view.js';
 import { popSortRoot } from '../../../quick-setting-bar/sort/root-panel.js';
@@ -115,7 +116,13 @@ export class DataViewHeaderToolsViewOptions extends WidgetBase {
   };
 
   openMoreAction = (target: PopupTarget) => {
-    popViewOptions(target, this.dataViewLogic, undefined, wordingOf(this.std));
+    popViewOptions(
+      target,
+      this.dataViewLogic,
+      undefined,
+      wordingOf(this.std),
+      this.std
+    );
   };
 
   /**
@@ -327,15 +334,23 @@ const createSettingMenus = (
   if (openIn) settingItems.push(openIn);
   return settingItems;
 };
+/**
+ * The view settings menu. `std` (optional and last, so a 0.61 caller
+ * compiles unchanged) is the editor the view is drawn in: with it, the
+ * entries a {@link ViewSettingsMenuIdentifier} offers join the Layout group,
+ * after "Layout" (the `core-database` bundle's "Source"); without it, the
+ * 0.61 menu.
+ */
 export const popViewOptions = (
   target: PopupTarget,
   dataViewLogic: DataViewUILogicBase,
   onClose?: () => void,
-  wording: Wording = englishWording
+  wording: Wording = englishWording,
+  std?: BlockStdScope
 ) => {
   const view = dataViewLogic.view;
   const reopen = () => {
-    popViewOptions(target, dataViewLogic, undefined, wording);
+    popViewOptions(target, dataViewLogic, undefined, wording, std);
   };
   const currentLayout = view.manager.viewMetas.find(
     meta => meta.type === view.type
@@ -364,6 +379,13 @@ export const popViewOptions = (
           },
           prefix: LayoutIcon(),
         }),
+        ...(std?.getOptional(ViewSettingsMenuIdentifier)?.items({
+          std,
+          dataViewLogic,
+          target,
+          reopen,
+          wording,
+        }) ?? []),
       ],
     })
   );

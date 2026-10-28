@@ -1,9 +1,14 @@
 import {
+  type PopupTarget,
+  popupTargetFromElement,
+} from '@labre/affine-components/context-menu';
+import {
   type ChromeWording,
   DataSourcePickerProvider,
 } from '@labre/affine-shared/services';
-import type { DataSource } from '@labre/data-view';
+import { type DataSource, ViewSettingsMenuIdentifier } from '@labre/data-view';
 import type { AnyCommandDescriptor, BlockStdScope } from '@labre/std';
+import type { ReadonlySignal } from '@preact/signals-core';
 
 import {
   PROPERTIES_PANEL_TITLE,
@@ -13,7 +18,12 @@ import {
   VIEW_MENU_LAYOUT,
   VIEW_MENU_OPEN_IN,
   VIEW_MENU_SAVE_TEMPLATE,
+  VIEW_SETTINGS_SOURCE,
 } from '../translations.js';
+import {
+  changeSourceTarget,
+  popChangeSourcePicker,
+} from '../view-settings/source-entry.js';
 import {
   canImportView,
   currentViewTemplate,
@@ -56,10 +66,18 @@ type ViewSettingKey =
   | 'group'
   | 'open-in'
   | 'color-rules';
-interface ViewOptionsElement extends Element {
-  dataViewLogic: { view: { manager: { dataSource: DataSource } } };
+interface ViewOptionsElement extends HTMLElement {
+  dataViewLogic: {
+    view: {
+      id: string;
+      readonly$: ReadonlySignal<boolean>;
+      shownAsFallback$: ReadonlySignal<boolean>;
+      manager: { dataSource: DataSource };
+    };
+  };
   settingAvailable(key: ViewSettingKey): boolean;
   openSetting(key: ViewSettingKey): void;
+  openMoreAction(target: PopupTarget): void;
 }
 
 /** The current view's options button on the page: what knows the view. */
@@ -74,6 +92,20 @@ function viewOptions(std: BlockStdScope, hostBlockId: string) {
 
 function dataSourceOf(std: BlockStdScope, hostBlockId: string) {
   return viewOptions(std, hostBlockId)?.dataViewLogic.view.manager.dataSource;
+}
+
+/**
+ * The current view's "Source", where the view settings offer it: the same
+ * predicate (`changeSourceTarget`), and only with the tooling extension's
+ * entry registered, so `{ database: false }` drops both.
+ */
+function sourceChange(std: BlockStdScope, hostBlockId: string) {
+  if (!std.getOptional(ViewSettingsMenuIdentifier)) return;
+  const options = viewOptions(std, hostBlockId);
+  if (!options) return;
+  const view = options.dataViewLogic.view;
+  const change = changeSourceTarget(std, view.manager.dataSource, view);
+  return change && { options, change };
 }
 
 function setting(
@@ -109,10 +141,33 @@ export function databasePageViewCommands(
     std.getOptional(DataSourcePickerProvider);
   return [
     setting(hostBlockId, 'layout', VIEW_MENU_LAYOUT, 0),
-    setting(hostBlockId, 'group', VIEW_MENU_GROUP, 1),
-    setting(hostBlockId, 'open-in', VIEW_MENU_OPEN_IN, 2),
-    setting(hostBlockId, 'properties', PROPERTIES_PANEL_TITLE, 3),
-    setting(hostBlockId, 'color-rules', VIEW_MENU_COLOR_RULES, 4),
+    {
+      id: 'database.view.source',
+      owner: 'core',
+      kind: 'action',
+      labelKey: VIEW_SETTINGS_SOURCE[0],
+      labelFallback: VIEW_SETTINGS_SOURCE[1],
+      category: 'view',
+      surfaces: ['view-menu'],
+      order: 1,
+      scope: 'page',
+      defaultKeys: { mac: [], other: [] },
+      when: std => !!sourceChange(std, hostBlockId),
+      // The picker the entry opens, anchored on the options button, its
+      // "back" opening the view settings there.
+      run: std => {
+        const found = sourceChange(std, hostBlockId);
+        if (!found) return;
+        const target = popupTargetFromElement(found.options);
+        popChangeSourcePicker(std, target, found.change, () =>
+          found.options.openMoreAction(target)
+        );
+      },
+    },
+    setting(hostBlockId, 'group', VIEW_MENU_GROUP, 2),
+    setting(hostBlockId, 'open-in', VIEW_MENU_OPEN_IN, 3),
+    setting(hostBlockId, 'properties', PROPERTIES_PANEL_TITLE, 4),
+    setting(hostBlockId, 'color-rules', VIEW_MENU_COLOR_RULES, 5),
     {
       id: 'database.view.save-template',
       owner: 'core',
@@ -121,7 +176,7 @@ export function databasePageViewCommands(
       labelFallback: VIEW_MENU_SAVE_TEMPLATE[1],
       category: 'view',
       surfaces: ['view-menu'],
-      order: 5,
+      order: 6,
       scope: 'page',
       defaultKeys: { mac: [], other: [] },
       when: std => {
@@ -149,7 +204,7 @@ export function databasePageViewCommands(
       labelFallback: VIEW_MENU_IMPORT[1],
       category: 'transfer',
       surfaces: ['view-menu'],
-      order: 6,
+      order: 7,
       scope: 'page',
       defaultKeys: { mac: [], other: [] },
       when: std => {

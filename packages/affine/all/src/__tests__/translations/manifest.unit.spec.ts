@@ -124,6 +124,10 @@ const KEPT_SEPARATE_CHROME_WORDS: Readonly<Record<string, string>> = {
     'catalogue category header vs framework legend sections (framework-owned keys)',
   Right: 'mind-map layout direction vs text alignment',
   Shape: "a connector's shape vs the shape tool",
+  // The core-database bundle cannot import the adapter panel's wording (no
+  // dependency between them), and the two are not one word in context.
+  Source:
+    "the adapter panel's HTML source view vs a database view's data source",
   Text: 'text block type vs link text field vs text tool',
   // `@labre/affine-components` sits below the slash-menu widget, so the date
   // picker cannot import the slash menu's wording.
