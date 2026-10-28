@@ -438,10 +438,14 @@ only:
 5. **The renderer package is not imported** (it loads resvg); the shape is
    checked by hand in `renderer-json-import.ts`, whose module documentation
    holds the field-by-field table.
-6. **The method rides on the method node's colours** (the renderer's own
-   look: category colour, recommendation fill) until the method node gains
-   real method and nature parameters (branch `feat/wardley-method-nature`);
-   `methodLook` / `methodOf` are the one place that changes then.
+6. **The method is the method node's `wardley:method` tag**
+   ([ADR 0046](0046-wardley-method-node-nature-and-method-tags.md)): a known
+   category and recommendation set it through `wardleyMethodOf`, nothing of
+   its look is written (the ring is derived from the tag), and the writer
+   reads it back through `wardleyMethodParts`. A pair naming none of the nine
+   leaves the node untagged (it paints as Make) and is reported as dropped;
+   an untagged method node is written as `buying-policy` with no
+   recommendation.
 
 Registering the two rows gives the editor an "Export Wardley as .json" view
 action and a `.json` entry in the import picker, both projections of the

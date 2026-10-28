@@ -6,8 +6,9 @@ import type {
 } from '@labre/affine-block-surface/interchange';
 
 import { owmDefaultPlot } from './export.js';
+import { wardleyMethodOf } from './method.js';
+import { WARDLEY_METHOD_TAG_ID, WARDLEY_NATURE_TAG_ID } from './natures.js';
 import { INERTIA_SIZE, PIPELINE_WIDTH } from './node/consts.js';
-import { WARDLEY_NATURE_TAG_ID } from './natures.js';
 import { WARDLEY_NODE_SIZE } from './presets.js';
 import {
   descriptionSlot,
@@ -23,7 +24,6 @@ import {
   jsonStepElement,
   jsonTitleElement,
   LABRE_NATURES,
-  methodLook,
   PHASE_LINES,
   relationLook,
   type RelationType,
@@ -121,7 +121,7 @@ const R = WARDLEY_JSON_IMPORT_REMARKS;
  * | `nature` activity / data / practice / knowledge  | the `wardley:nature` tag; the other five are dropped                          |
  * | `description`                                    | a free text under the name, in the component's group                         |
  * | `color`                                          | the node's stroke (an unknown name paints black, as in the renderer)         |
- * | `method` (category, recommendation)              | the method item's colours (`methodLook`)                                      |
+ * | `method` (category, recommendation)              | the method item and its `wardley:method` tag; a pair naming none of the nine leaves it untagged (it paints as Make) |
  * | `accelerator` / `deaccelerator`                  | the toolbox climate arrow beside the node, where the renderer draws it      |
  * | `step`                                           | a numbered plain dot at the node's upper left, in its group                  |
  * | `evolvesTo[].position` / `evolveType` / `inertia` | the toolbox change arrow to that point, `evolveType` as its label, an inertia item on each phase line it crosses (at its middle when it crosses none) |
@@ -653,8 +653,8 @@ function applyColour(
 ) {
   const color = component.raw.color;
   if (color === undefined) return;
-  // A method node's two colours ARE its method, so a `color` on one has no
-  // paint left to take.
+  // A method node's ring is painted from its method tag (ADR 0046), so a
+  // `color` on one has no paint left to take.
   if (typeof color !== 'string' || component.kind === 'method') {
     drop('color');
     return;
@@ -676,26 +676,33 @@ function applyNature(
     drop('nature');
     return;
   }
-  node.tags = {
-    [WARDLEY_NATURE_TAG_ID]: [`${WARDLEY_NATURE_TAG_ID}/${nature}`],
-  };
+  tag(node, WARDLEY_NATURE_TAG_ID, `${WARDLEY_NATURE_TAG_ID}/${nature}`);
 }
 
 /**
- * A method node's look for the file's `method`.
- *
- * ponytail: the colours stand in for the method until the method node gains
- * real method and nature parameters (`feat/wardley-method-nature`); then this
- * writes those, and `methodOf` on the export side reads them.
+ * The file's `method` as the method node's `wardley:method` tag (ADR 0046).
+ * Nothing about its look is written: the ring is derived from the tag when it
+ * is painted. A pair that names none of the nine (a category a renderer config
+ * made up, a recommendation outside its three) leaves the node untagged, which
+ * paints as Make, and the report says the method was dropped.
  */
 function applyMethod(
   method: unknown,
   node: SerializedElementProps,
   drop: (kind: string) => void
 ) {
-  const look = methodLook(method);
-  if (look) Object.assign(node, look);
-  else drop('method');
+  const { category, recommendation } = isRecord(method) ? method : {};
+  const value = wardleyMethodOf(
+    typeof category === 'string' ? category : null,
+    typeof recommendation === 'string' ? recommendation : null
+  );
+  if (value === null) drop('method');
+  else tag(node, WARDLEY_METHOD_TAG_ID, value);
+}
+
+/** One more tag value on a node's `tags`, as `surface.addElement` takes them. */
+function tag(node: SerializedElementProps, tagId: string, value: string) {
+  node.tags = { ...(node.tags as Json | undefined), [tagId]: [value] };
 }
 
 /** The map's own fields a `renderConfig` sets; the rest of it is dropped. */

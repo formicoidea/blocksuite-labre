@@ -2,7 +2,8 @@ import { Bound } from '@labre/global/gfx';
 
 import { WARDLEY_BACKGROUND } from './background.js';
 import { matchLabels, owmDefaultPlot, owmPlotOf } from './export.js';
-import { WARDLEY_NATURE_TAG_ID } from './natures.js';
+import { wardleyMethodParts } from './method.js';
+import { WARDLEY_METHOD_TAG_ID, WARDLEY_NATURE_TAG_ID } from './natures.js';
 import { HANDLE_SIZE, PIPELINE_HEIGHT } from './node/consts.js';
 import {
   type WardleyArtefactKind,
@@ -22,7 +23,6 @@ import {
   jsonLabelUnshift,
   jsonStepCentre,
   LABRE_NATURES,
-  methodOf,
   relationOf,
   rendererColourName,
   rendererCoordsOf,
@@ -43,7 +43,7 @@ import { WARDLEY_ROLE } from './roles.js';
  * - a component is a Wardley node of a component kind, its type its `kind`,
  *   its place its centre on the first map's plot, its nature the
  *   `wardley:nature` tag, its colour its stroke, its method the method node's
- *   colours (`methodOf`);
+ *   `wardley:method` tag (`methodOf`);
  * - its name, description, step dot and range bar are found in its GROUP
  *   first (the reader puts them there), by what they are: the text with the
  *   `wardley:label` role, a plain text, a plain ellipse holding a number, a
@@ -559,13 +559,7 @@ export function exportWardleyRendererJson(
     }
 
     if (kind === 'method') {
-      // ponytail: read from the node's colours until the method node gains
-      // real method parameters (`feat/wardley-method-nature`). A method the
-      // colours do not name is still a method, with no recommendation.
-      out.method = methodOf(node) ?? {
-        category: 'buying-policy',
-        recommendation: '',
-      };
+      out.method = methodOf(node);
     } else {
       const colour = colourOf(node);
       if (colour !== undefined) out.color = colour;
@@ -725,19 +719,41 @@ function renderConfigOf(map: Element): Json | undefined {
 
 /* ── A node's parameters ──────────────────────────────────────────────── */
 
-/** The `wardley:nature` value a node carries, if it is one of the four. */
-function natureOf(node: Element): string | undefined {
+/** The values a node carries for one tag, from a live `Y.Map` or stored props. */
+function tagValues(node: Element, tagId: string): readonly unknown[] {
   const tags = node.tags as
     | { get?: (key: string) => unknown; [key: string]: unknown }
     | undefined;
-  if (!tags) return undefined;
-  const values =
-    typeof tags.get === 'function'
-      ? tags.get(WARDLEY_NATURE_TAG_ID)
-      : tags[WARDLEY_NATURE_TAG_ID];
-  if (!Array.isArray(values)) return undefined;
+  if (!tags) return [];
+  const values = typeof tags.get === 'function' ? tags.get(tagId) : tags[tagId];
+  return Array.isArray(values) ? values : [];
+}
+
+/** The `wardley:nature` value a node carries, if it is one of the four. */
+function natureOf(node: Element): string | undefined {
+  const values = tagValues(node, WARDLEY_NATURE_TAG_ID);
   const prefix = `${WARDLEY_NATURE_TAG_ID}/`;
   return LABRE_NATURES.find(nature => values.includes(`${prefix}${nature}`));
+}
+
+/**
+ * A method node's `wardley:method` tag as the renderer's pair (ADR 0046), the
+ * recommendation spelled as the renderer's legend keys are (`Uncharted`). An
+ * untagged node, which paints as Make, says there IS a method but not which:
+ * it is written as `buying-policy` with no recommendation (PO, 2026-10-28).
+ */
+function methodOf(node: Element): { category: string; recommendation: string } {
+  for (const value of tagValues(node, WARDLEY_METHOD_TAG_ID)) {
+    const parts = wardleyMethodParts(typeof value === 'string' ? value : null);
+    if (parts) {
+      return {
+        category: parts.family,
+        recommendation:
+          parts.phase.charAt(0).toUpperCase() + parts.phase.slice(1),
+      };
+    }
+  }
+  return { category: 'buying-policy', recommendation: '' };
 }
 
 /** The renderer `color` of a node: its stroke, unless it is the toolbar's. */

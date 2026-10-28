@@ -9,18 +9,20 @@ import {
   WARDLEY_JSON_FORMAT,
   WARDLEY_JSON_IMPORT,
 } from '../interchange-headless';
-import { WARDLEY_NATURE_TAG_ID } from '../natures';
+import { wardleyMethodOf } from '../method';
+import {
+  WARDLEY_METHOD,
+  WARDLEY_METHOD_TAG_ID,
+  WARDLEY_NATURE_TAG_ID,
+} from '../natures';
 import { INERTIA_SIZE, LINK_GREY, LINK_STROKE_WIDTH } from '../node/consts';
 import { WARDLEY_NODE_SIZE } from '../presets';
 import {
   CONSTRAINT_COLOUR,
-  DEFAULT_METHOD_CATEGORIES,
   FLOW_COLOUR,
   jsonDecoratorCentre,
   jsonLabelBox,
   jsonLabelOffset,
-  methodLook,
-  methodOf,
   PHASE_LINES,
   RELATION_WIDTH,
   relationLook,
@@ -328,13 +330,15 @@ describe('a rich map (épargne salariale, from the renderer’s data/)', () => {
     );
   });
 
-  it('keeps a category the map declares out: the colour is the type', () => {
-    // `sourcing` is declared in this map's renderConfig; Labre knows the
-    // renderer's three categories only, so the node keeps the method item's
-    // own look and the report says the method was dropped.
+  it('leaves a method of a category the map made up untagged', () => {
+    // `sourcing` is declared in this map's renderConfig; Labre has no custom
+    // category, so the node is a method with no method tag (it paints as
+    // Make), nothing of its look is written, and the report says the method
+    // was dropped.
     const toolbar = wardleyNodeElements('method', { x: 0, y: 0 })[0]!;
     const node = byId(elements, 'tenue-compte:node');
     expect(node?.kind).toBe('method');
+    expect((node?.tags as Json)[WARDLEY_METHOD_TAG_ID]).toBeUndefined();
     expect(node?.fillColor).toBe(toolbar.fillColor);
     expect(node?.strokeColor).toBe(toolbar.strokeColor);
     expect(report.notes.map(n => n.element)).toContain('method');
@@ -582,6 +586,15 @@ describe('a pipeline (the renderer’s own API map, from data/)', () => {
     expect((back.components as Json[]).filter(c => c.description)).toHaveLength(
       described.length
     );
+    // Its component methods use the renderer's own categories: each
+    // comes back through the method tag as the file wrote it.
+    const methods = (list: Json[]) =>
+      list
+        .filter(c => c.type === 'component' && c.method)
+        .map(c => [c.label.name, c.method])
+        .sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+    expect(methods(back.components).length).toBeGreaterThan(0);
+    expect(methods(back.components)).toEqual(methods(source.components));
     expect(cycle(once).text).toBe(once);
   });
 });
@@ -593,15 +606,6 @@ describe('the shared look tables invert', () => {
         expect(relationOf(relationLook(type, style))).toEqual(
           style === undefined ? { type } : { type, style }
         );
-      }
-    }
-  });
-
-  it('reads a default method back from the node’s colours', () => {
-    for (const category of Object.keys(DEFAULT_METHOD_CATEGORIES)) {
-      for (const recommendation of DEFAULT_METHOD_CATEGORIES[category]!.steps) {
-        const method = { category, recommendation };
-        expect(methodOf(methodLook(method)!)).toEqual(method);
       }
     }
   });
@@ -624,6 +628,72 @@ describe('the shared look tables invert', () => {
           placed.textAlign
         )
       ).toEqual(offset);
+    }
+  });
+});
+
+describe('a method is the method node’s tag (ADR 0046)', () => {
+  const PAIRS = [
+    ['buying-policy', 'Uncharted', WARDLEY_METHOD.make],
+    ['buying-policy', 'Transitional', WARDLEY_METHOD.buy],
+    ['buying-policy', 'Industrialized', WARDLEY_METHOD.outsource],
+    ['project-management', 'Uncharted', WARDLEY_METHOD.agile],
+    ['project-management', 'Transitional', WARDLEY_METHOD.lean],
+    ['project-management', 'Industrialized', WARDLEY_METHOD.sixSigma],
+    ['attitudes', 'Uncharted', WARDLEY_METHOD.pioneers],
+    ['attitudes', 'Transitional', WARDLEY_METHOD.settlers],
+    ['attitudes', 'Industrialized', WARDLEY_METHOD.townPlanners],
+  ] as const;
+  const mapWith = (method: unknown, nature?: string) => ({
+    title: 'Methods',
+    components: [
+      {
+        id: 'm',
+        label: { name: 'Billing' },
+        type: 'component',
+        ...(nature ? { subtype: 'functional', nature } : {}),
+        position: { evolution: { scalar: 0.5 }, visibility: { scalar: 0.5 } },
+        method,
+      },
+    ],
+    relations: [],
+  });
+  const toolbar = wardleyNodeElements('method', { x: 0, y: 0 })[0]!;
+
+  it('round-trips each of the nine through the tag, writing no colour', () => {
+    for (const [category, recommendation, value] of PAIRS) {
+      const map = mapWith({ category, recommendation }, 'activity');
+      const node = byId(read(map).elements, 'm:node');
+      expect(wardleyMethodOf(category, recommendation)).toBe(value);
+      expect(node?.tags).toEqual({
+        [WARDLEY_NATURE_TAG_ID]: [`${WARDLEY_NATURE_TAG_ID}/activity`],
+        [WARDLEY_METHOD_TAG_ID]: [value],
+      });
+      // The ring is derived from the tag when painted: nothing written.
+      expect(node?.fillColor).toBe(toolbar.fillColor);
+      expect(node?.strokeColor).toBe(toolbar.strokeColor);
+      const back = JSON.parse(cycle(JSON.stringify(map)).text) as Json;
+      expect(back.components[0].method).toEqual({ category, recommendation });
+      expect(back.components[0].nature).toBe('activity');
+    }
+  });
+
+  it('leaves an unknown pair untagged and writes it back as buying-policy', () => {
+    for (const method of [
+      { category: 'sourcing', recommendation: 'Acheter' },
+      { category: 'buying-policy', recommendation: 'Someday' },
+    ]) {
+      const map = mapWith(method);
+      const { elements, report } = read(map);
+      const node = byId(elements, 'm:node');
+      expect(node?.kind).toBe('method');
+      expect(node?.tags).toBeUndefined();
+      expect(report.notes.map(n => n.element)).toContain('method');
+      const back = JSON.parse(cycle(JSON.stringify(map)).text) as Json;
+      expect(back.components[0].method).toEqual({
+        category: 'buying-policy',
+        recommendation: '',
+      });
     }
   });
 });
