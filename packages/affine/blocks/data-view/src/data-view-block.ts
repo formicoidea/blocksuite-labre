@@ -46,12 +46,17 @@ import { BlockQueryDataSource } from './data-source.js';
 import type { DataViewBlockModel } from './data-view-model.js';
 
 export class DataViewBlockComponent extends CaptionedBlockComponent<DataViewBlockModel> {
+  // A light-DOM sheet scoped on this block's own tag. Upstream scoped it on
+  // the database block's tag, so it was this sheet that painted the database
+  // block's `--affine-background-primary-color` card, a second colour on a
+  // page whose background is another token (the playground in dark mode).
+  // Neither block paints a background: the page's shows through
+  // (`block-styles-scope.unit.spec.ts`).
   static override styles = css`
-    ${unsafeCSS(dataViewCommonStyle('affine-database'))}
-    affine-database {
+    ${unsafeCSS(dataViewCommonStyle('affine-data-view'))}
+    affine-data-view {
       display: block;
       border-radius: 8px;
-      background-color: var(--affine-background-primary-color);
       padding: 8px;
       margin: 8px -8px -8px;
     }

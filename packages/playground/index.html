@@ -18,7 +18,9 @@
         overflow: hidden;
         margin: 0;
         padding: 0;
-        background-color: var(--affine-white-90);
+        /* The page background of the editor, as the integration host paints
+           it: what a block that paints nothing shows through. */
+        background-color: var(--affine-background-primary-color);
         transition: background-color 0.3s;
       }
 
