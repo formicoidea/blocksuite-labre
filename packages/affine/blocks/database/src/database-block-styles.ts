@@ -1,10 +1,14 @@
 import { css } from '@emotion/css';
 import { cssVarV2 } from '@toeverything/theme/v2';
 
+// The block paints no background of its own: the page's shows through, as
+// for a note, so a host whose page colour is not
+// `--affine-background-primary-color` never sees a second card (the
+// playground did, in dark mode). The sticky column header keeps that token,
+// the page background every host sets.
 export const databaseBlockStyles = css({
   display: 'block',
   borderRadius: '8px',
-  backgroundColor: 'var(--affine-background-primary-color)',
   padding: '8px',
   margin: '8px -8px -8px',
   // Drawn as the page (`isStandaloneDatabase`): the view bar sits under the
@@ -93,7 +97,6 @@ export const databaseViewBarContainerStyles = css({
 
 export const databaseContentStyles = css({
   position: 'relative',
-  backgroundColor: 'var(--affine-background-primary-color)',
   borderRadius: '4px',
 });
 
