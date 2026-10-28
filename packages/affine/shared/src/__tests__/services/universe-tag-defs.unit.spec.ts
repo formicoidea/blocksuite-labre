@@ -384,6 +384,26 @@ describe('tagDefsTranslationEntries', () => {
     ]);
   });
 
+  test('a value group title is one entry, however many values share it', () => {
+    // ADR 0046: Wardley's three method families each title three values.
+    const group = { label: 'Buying policy', labelKey: 'k.group' };
+    const entries = tagDefsTranslationEntries(
+      pack({
+        tags: [
+          nature({
+            values: [
+              { id: 'wardley:nature/data', label: 'Data', group },
+              { id: 'wardley:nature/activity', label: 'Activity', group },
+            ],
+          }),
+        ],
+      })
+    );
+    expect(entries).toEqual([
+      { key: 'k.group', fallback: 'Buying policy', source: 'tag' },
+    ]);
+  });
+
   test('a host pack with no `labelKey` at all contributes nothing', () => {
     expect(tagDefsTranslationEntries(pack())).toEqual([]);
   });

@@ -23,8 +23,8 @@ import { WARDLEY_ROLE } from './roles';
  *
  * ## Why it applies to `wardley:component` and not to `'*'`
  *
- * A nature qualifies a component. `market` and `ecosystem` specialise
- * `wardley:component`, so they get it for free through `roleIsA` — that is the
+ * A nature qualifies a component. `market`, `ecosystem` and `method`
+ * specialise `wardley:component`, so they get it for free through `roleIsA` — that is the
  * entire reason role hierarchy is data. The `anchor` (a user / need) is
  * deliberately NOT a child of `component` and is deliberately NOT qualified
  * here: a need has no nature, it has a demand. The map itself, the change
@@ -85,6 +85,71 @@ export const WARDLEY_COMPETITION = {
   establish: `${WARDLEY_COMPETITION_TAG_ID}/establish`,
 } as const;
 
+/**
+ * The **method** tag — how a component + method is sourced, run or staffed.
+ *
+ * The third tag of this pack, written on `wardley:method` alone. Since that
+ * role specialises `wardley:component` (ADR 0046), a method node is offered
+ * the nature AND this tag in the same dropdown, while a plain component — the
+ * parent, which a child's tag never reaches — is offered the nature only.
+ *
+ * ## Nine values in one tag, not a category tag and a recommendation tag
+ *
+ * Simon Wardley's three method families each say one thing per evolution
+ * phase: a buying policy makes, buys or outsources; project management runs
+ * agile, lean or six sigma; attitudes are pioneers, settlers or town planners.
+ * The wardley-map-renderer JSON spells the same thing as a pair —
+ * `method: { category, recommendation }`, recommendation one of Uncharted /
+ * Transitional / Industrialized — and the two encodings are the same nine
+ * facts. One value per fact is the shape that admits nothing else: two tags
+ * would let a board say "Transitional" with no family, which nothing can paint
+ * and no reader can name. The pair stays one pure lookup away in `method.ts`,
+ * both directions.
+ *
+ * The family is still shown twice (PO decision, 2026-10-28): each value has its
+ * `group` — the family's title, which the picker prints as a sub-title above
+ * its three values — and each of the nine has its own prefabricated ring
+ * (`METHOD_STYLE`), which is how the map tells them apart. No family beyond
+ * these three: a category the renderer config invented is not a method here.
+ *
+ * `cardinality: 'single'` because the renderer gives a component ONE method,
+ * and because the drawing has one ring to show it with.
+ *
+ * Labels are the practitioners' own words — Make, Buy, Outsource in the PO's
+ * wording — short on purpose: the trigger of the dropdown prints the values
+ * in force ("Activity, Buy").
+ */
+export const WARDLEY_METHOD_TAG_ID = 'wardley:method';
+
+/** The nine methods, as value ids. Ids are forever; a def is only deprecated. */
+export const WARDLEY_METHOD = {
+  make: `${WARDLEY_METHOD_TAG_ID}/make`,
+  buy: `${WARDLEY_METHOD_TAG_ID}/buy`,
+  outsource: `${WARDLEY_METHOD_TAG_ID}/outsource`,
+  agile: `${WARDLEY_METHOD_TAG_ID}/agile`,
+  lean: `${WARDLEY_METHOD_TAG_ID}/lean`,
+  sixSigma: `${WARDLEY_METHOD_TAG_ID}/six-sigma`,
+  pioneers: `${WARDLEY_METHOD_TAG_ID}/pioneers`,
+  settlers: `${WARDLEY_METHOD_TAG_ID}/settlers`,
+  townPlanners: `${WARDLEY_METHOD_TAG_ID}/town-planners`,
+} as const;
+
+/** The three families' titles: the picker's sub-titles and the legend's. */
+export const WARDLEY_METHOD_GROUP = {
+  buyingPolicy: {
+    label: 'Buying policy',
+    labelKey: 'com.labre.wardley.tag.method.group.buying-policy',
+  },
+  projectManagement: {
+    label: 'Project management',
+    labelKey: 'com.labre.wardley.tag.method.group.project-management',
+  },
+  attitudes: {
+    label: 'Attitudes',
+    labelKey: 'com.labre.wardley.tag.method.group.attitudes',
+  },
+} as const;
+
 export const WARDLEY_TAG_DEFS: UniverseTagDefs = {
   formatVersion: 1,
   // The id of this PACK, not of the framework: several packs may extend
@@ -104,12 +169,13 @@ export const WARDLEY_TAG_DEFS: UniverseTagDefs = {
       descriptionKey: 'com.labre.wardley.tag.nature.description',
       cardinality: 'single',
       appliesTo: [WARDLEY_ROLE.component],
-      // No `order`, on either tag of this pack: an absent order sorts by SEED
+      // No `order`, on any tag of this pack: an absent order sorts by SEED
       // order, which is what puts the library's pack ahead of a client's
       // extension without either having to know about the other. A number here
-      // would be a claim about packs that do not exist yet — and it would say
-      // nothing anyway, since the two tags below apply to disjoint roles and
-      // are therefore never offered in the same dropdown.
+      // would be a claim about packs that do not exist yet. Seed order is also
+      // the one dropdown that holds two of them — a method node's — right:
+      // what the component IS (this tag) reads before how it is sourced
+      // (`wardley:method`, last).
       values: [
         {
           id: WARDLEY_NATURE.activity,
@@ -180,6 +246,96 @@ export const WARDLEY_TAG_DEFS: UniverseTagDefs = {
           description: 'Pressure on a newcomer trying to get into a market.',
           descriptionKey:
             'com.labre.wardley.tag.competition.establish.description',
+        },
+      ],
+    },
+    {
+      id: WARDLEY_METHOD_TAG_ID,
+      label: 'Method',
+      labelKey: 'com.labre.wardley.tag.method',
+      description:
+        'How this component is sourced, run or staffed: a buying policy, a project management method or an attitude, at the phase it suits.',
+      descriptionKey: 'com.labre.wardley.tag.method.description',
+      cardinality: 'single',
+      appliesTo: [WARDLEY_ROLE.method],
+      // Family by family, and within one family in evolution order: the
+      // dropdown reads as the three rows of Wardley's own table.
+      values: [
+        {
+          id: WARDLEY_METHOD.make,
+          group: WARDLEY_METHOD_GROUP.buyingPolicy,
+          label: 'Make',
+          labelKey: 'com.labre.wardley.tag.method.make',
+          description: 'Buying policy, uncharted: make it yourself.',
+          descriptionKey: 'com.labre.wardley.tag.method.make.description',
+        },
+        {
+          id: WARDLEY_METHOD.buy,
+          group: WARDLEY_METHOD_GROUP.buyingPolicy,
+          label: 'Buy',
+          labelKey: 'com.labre.wardley.tag.method.buy',
+          description: 'Buying policy, transitional: buy a product.',
+          descriptionKey: 'com.labre.wardley.tag.method.buy.description',
+        },
+        {
+          id: WARDLEY_METHOD.outsource,
+          group: WARDLEY_METHOD_GROUP.buyingPolicy,
+          label: 'Outsource',
+          labelKey: 'com.labre.wardley.tag.method.outsource',
+          description:
+            'Buying policy, industrialized: rent it as a commodity or a utility.',
+          descriptionKey: 'com.labre.wardley.tag.method.outsource.description',
+        },
+        {
+          id: WARDLEY_METHOD.agile,
+          group: WARDLEY_METHOD_GROUP.projectManagement,
+          label: 'Agile',
+          labelKey: 'com.labre.wardley.tag.method.agile',
+          description: 'Project management, uncharted: explore and adapt.',
+          descriptionKey: 'com.labre.wardley.tag.method.agile.description',
+        },
+        {
+          id: WARDLEY_METHOD.lean,
+          group: WARDLEY_METHOD_GROUP.projectManagement,
+          label: 'Lean',
+          labelKey: 'com.labre.wardley.tag.method.lean',
+          description: 'Project management, transitional: remove waste.',
+          descriptionKey: 'com.labre.wardley.tag.method.lean.description',
+        },
+        {
+          id: WARDLEY_METHOD.sixSigma,
+          group: WARDLEY_METHOD_GROUP.projectManagement,
+          label: 'Six Sigma',
+          labelKey: 'com.labre.wardley.tag.method.six-sigma',
+          description: 'Project management, industrialized: remove deviation.',
+          descriptionKey: 'com.labre.wardley.tag.method.six-sigma.description',
+        },
+        {
+          id: WARDLEY_METHOD.pioneers,
+          group: WARDLEY_METHOD_GROUP.attitudes,
+          label: 'Pioneers',
+          labelKey: 'com.labre.wardley.tag.method.pioneers',
+          description: 'Attitude, uncharted: people who explore the unknown.',
+          descriptionKey: 'com.labre.wardley.tag.method.pioneers.description',
+        },
+        {
+          id: WARDLEY_METHOD.settlers,
+          group: WARDLEY_METHOD_GROUP.attitudes,
+          label: 'Settlers',
+          labelKey: 'com.labre.wardley.tag.method.settlers',
+          description:
+            'Attitude, transitional: people who turn a prototype into a product.',
+          descriptionKey: 'com.labre.wardley.tag.method.settlers.description',
+        },
+        {
+          id: WARDLEY_METHOD.townPlanners,
+          group: WARDLEY_METHOD_GROUP.attitudes,
+          label: 'Town planners',
+          labelKey: 'com.labre.wardley.tag.method.town-planners',
+          description:
+            'Attitude, industrialized: people who industrialise into a commodity.',
+          descriptionKey:
+            'com.labre.wardley.tag.method.town-planners.description',
         },
       ],
     },

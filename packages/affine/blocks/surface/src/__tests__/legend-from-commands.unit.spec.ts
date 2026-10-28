@@ -5,7 +5,11 @@ import {
   type BlockStdScope,
   type CommandLegendEntry,
 } from '@labre/std';
-import { RoleVocabularyIdentifier, type RoleDefs } from '@labre/std/gfx';
+import {
+  type GfxPrimitiveElementModel,
+  RoleVocabularyIdentifier,
+  type RoleDefs,
+} from '@labre/std/gfx';
 import { describe, expect, it, vi } from 'vitest';
 
 import { EdgelessCRUDIdentifier } from '../extensions/crud-extension';
@@ -13,6 +17,7 @@ import {
   createBoardLegend,
   LEGEND_ROLE,
   legendFromCommands,
+  tagValuesOf,
 } from '../extensions/legend';
 
 /**
@@ -74,6 +79,8 @@ const row = (color = '#F5963B') => ({ swatch: 'square' as const, color });
 interface FixtureElement {
   id?: string;
   role?: string;
+  /** Stored tag values, in the plain shape `readElementTags` also reads. */
+  tags?: Record<string, string[]>;
   /** `'shape'` unless the case is about a group (a legend wrapper is one). */
   type?: string;
   xywh: string;
@@ -1004,5 +1011,82 @@ describe('createBoardLegend', () => {
     expect(added[1].text).toBe('Key');
     const H = 16 * 2 + 32 + 26 + 36;
     expect(added[0].xywh).toBe(new Bound(50, 800 - 56 - H, 300, H).serialize());
+  });
+});
+
+/**
+ * A row lit by a tag VALUE rather than by its role alone (ADR 0046): Wardley's
+ * component + method puts one legend row per method used, each with its own
+ * ring. What these pin: a value row lights only when an element of the role
+ * carries that value, one row per value however many elements carry it, and
+ * a role-less element's tags (a legend's own swatch) light nothing.
+ */
+describe('rows lit by a tag value', () => {
+  const METHODS = [
+    command({
+      id: 'fx.addMethod',
+      category: 'stickies',
+      order: 1,
+      legend: [
+        { role: 'fx:event', row: row() },
+        {
+          role: 'fx:event',
+          row: row('#000000'),
+          tag: ['fx:method', 'fx:method/make'],
+          labelWording: ['com.labre.fx.method.make', 'Make'],
+        },
+        {
+          role: 'fx:event',
+          row: row('#444444'),
+          tag: ['fx:method', 'fx:method/buy'],
+          labelWording: ['com.labre.fx.method.buy', 'Buy'],
+        },
+      ] satisfies CommandLegendEntry[],
+    }),
+  ];
+  const tagged = (x: number, valueId: string, role = 'fx:event') => ({
+    ...at(x, 100, role),
+    tags: { 'fx:method': [valueId] },
+  });
+
+  it('lists a value only when the board uses it, once', () => {
+    const texts = (added: Record<string, unknown>[]) =>
+      added.filter(props => props.type === 'text').map(props => props.text);
+
+    const used = stub(METHODS, [
+      at(100, 100, 'fx:event'),
+      tagged(200, 'fx:method/buy'),
+      tagged(300, 'fx:method/buy'),
+    ]);
+    createBoardLegend(used.std, BG, 'ddd-event-storming');
+    expect(texts(used.added)).toEqual(['Legend', 'Stickies', 'Event', 'Buy']);
+
+    const unused = stub(METHODS, [at(100, 100, 'fx:event')]);
+    createBoardLegend(unused.std, BG, 'ddd-event-storming');
+    expect(texts(unused.added)).toEqual(['Legend', 'Stickies', 'Event']);
+  });
+
+  it('reads the values off role-bearing elements only', () => {
+    const { std } = stub(METHODS);
+    const sections = legendFromCommands(
+      std,
+      'ddd-event-storming',
+      new Set(['fx:event']),
+      tagValuesOf([
+        { role: 'fx:event', tags: { 'fx:method': ['fx:method/buy'] } },
+        // A swatch: no role, so its tag is nobody's.
+        { tags: { 'fx:method': ['fx:method/make'] } },
+      ] as unknown as GfxPrimitiveElementModel[])
+    );
+    expect(labels(sections)).toEqual([['Event', 'Buy']]);
+  });
+
+  it('lists nothing for a value when no element of the role carries it', () => {
+    const { std } = stub(METHODS);
+    expect(
+      labels(
+        legendFromCommands(std, 'ddd-event-storming', new Set(['fx:event']))
+      )
+    ).toEqual([['Event']]);
   });
 });

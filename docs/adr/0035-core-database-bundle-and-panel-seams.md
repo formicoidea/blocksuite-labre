@@ -977,3 +977,108 @@ the row disappears from Labre; the seam stays for any other host.
 - Held by `embed-doc/src/__tests__/child-card-icon.unit.spec.ts` (no
   provider, a band without `children$`, a child, a move) and
   `card-line-style.unit.spec.ts`.
+
+### 2026-10-28: database v2 — a derived layout, the source chosen after the gesture, and changed from the view's settings
+
+Asked by the product owner on 2026-10-28, after reading that the full page
+and the inline block share one engine but that the full page re-dresses the
+inline rendering through CSS keyed on its own root's tag name (the amendment
+of 2026-10-26 above), and that a view's source is chosen once, when the view
+is added. Three decisions, no stored field, no flag, no new seam: the picker
+seam (§9c) carries everything. CSV import and database templates stay out
+(product owner, same day). Each view keeps its own configuration (filters,
+sorts, grouping, columns, `sourceId`, §8); the schema stays the source's.
+
+- **A. The layout is derived, never declared.** The database block measures
+  two facts of the DOM it is drawn in and sets `data-standalone` on itself
+  when both hold: its parent block component is the root component (inline,
+  the parent is always a note; the full page's root renders the host block
+  directly), and a `<doc-title>` whose `body-block-id` is its id sits in its
+  scroll container (`getScrollContainer`, the one `.affine-page-viewport`).
+  `DocTitle.bodyBlockId` reflects as `body-block-id` so the fact is
+  observable and a `MutationObserver` follows it. The block hands data-view
+  the same fact as a signal under `PageLayoutKey` (`data-view`, the lowest
+  reader, through `serviceSet` like `PropertiesPanelOpenerKey`), and the
+  table view sets `data-page-layout` on itself. The rules of 2026-10-26 move
+  to their owners: the title row hidden, the block's top margin and padding
+  zero and the header container sticky in `blocks/database`'s own styles,
+  keyed on `data-standalone`; the wrapper and scroller `overflow: visible`,
+  the sticky column header and the `max-content` width in the table preset,
+  keyed on `data-page-layout`; the column header reads the key instead of
+  probing `position: sticky`. `database-page-root.ts` keeps only what is the
+  page root's (width, side padding, the missing notice) and one width rule
+  keyed on the explicit `dv-table-view-ui[data-page-layout]`, since a kanban
+  keeps its own sideways scroller. No selector names the root any more.
+  Degraded rendering: a page mounted without a heading draws the block as
+  inline (title row shown, its own scroller), accepted. Nothing is stored
+  and nothing is written: the attribute is a measurement.
+- **B. The gesture is the write; the source is chosen just after.** With a
+  picker and the bundle's creation menu, "Table View" and "Kanban View"
+  insert a native `affine:database` at once (zero rows, since its rows would
+  be orphaned by the connection) and open a popover anchored on it offering
+  "New empty source" (`createDatabase()`) and "Link an existing source" (the
+  picker's list, without its "New…" entries). Core reaches the popover
+  through `DatabaseCreationMenuIdentifier` (`blocks/database`), a registry
+  between library packages on the `AddViewMenuIdentifier` model, never a
+  host seam. Connecting (`connectDatabaseToSource`) writes `externalSourceId`,
+  the title when empty, `columns: []` and the view's `sourceId` with its
+  default data re-derived over the host source, and removes the native rows,
+  as one undo step distinct from the insertion: the undo manager merges by
+  time window only, and folding two gestures would need a store verb (red
+  zone). Undo once is therefore the "popover closed" state, a native inline
+  database, which closing the popover also leaves. Without a picker, the
+  native three-row database of 0.48; with a picker but without the bundle's
+  menu, the 0.49 path (`createHostedDatabaseView`) is kept. "Turn into a
+  database" and the mobile keyboard toolbar keep inserting a native database
+  (follow-ups).
+- **C. A view changes its source from its settings.** data-view's view
+  options menu gains `ViewSettingsMenuIdentifier` (core, the lowest reader,
+  read with `std.getOptional`; `popViewOptions` takes an optional trailing
+  `std`, a widening); the bundle contributes "Source", after Layout, on a
+  `HostedDataSourceBase` that resolves sources, writable, with a picker. It
+  pops the picker on this database's sources, "New source" included through
+  `createSource`. A pick rewrites the current view through
+  `remapView(view, from, to, defaultMapping(from, to))` plus the new
+  `sourceId`, silently (id first, then same name and type; an orphaned
+  filter, sort, column or grouping is dropped, as the product owner chose
+  over a dialog; the `dropped` counts stay available for a later toast),
+  `captureSync()` then one write; picking the current source writes nothing.
+  `database.view.source` joins the full page's "This view" commands and pops
+  the same picker on the options button; `ViewSettingKey` is not widened.
+  One event, `DatabaseViewSourceChanged { source: 'existing' | 'new' }`, ids
+  only.
+- **D. The database is a package family of its own.** Asked the same day:
+  the layout and the connection are not enough, the source tree must say
+  what the database now is, a first-class element of the library beside the
+  gfx frameworks. After A, B and C land, a migration PR of its own, with no
+  behaviour change, moves the four packages into a new family
+  `packages/affine/database/` and renames them: `data-view` becomes
+  `database/engine` (`@labre/affine-database-engine`, the view engine),
+  `blocks/database` becomes `database/block` (`@labre/affine-database-block`,
+  the `affine:database` block), `blocks/data-view` becomes
+  `database/view-block` (`@labre/affine-database-view-block`) and
+  `database-editor` becomes `database/editor` (its name,
+  `@labre/affine-database-editor`, already fits). The schema stays in
+  `affine/model` (the file format). The published bundles keep their names
+  (`labre-core`, `labre-core-database`): `EDITOR_BUNDLES.dir` and the bundle
+  script's exclusion list follow the move, the architecture map reads the
+  new family by predicate (`model.c4` gains the `database` kind beside
+  `gfx`), `vitest.workspace.ts` and the composite `tsconfig` references
+  follow. Renaming a workspace package is host-visible when a host imports
+  it directly (the Labre app imports `@labre/data-view`): the changeset is a
+  **major** and the report names the old and new specifiers; no
+  compatibility alias is kept (an unusable entry point is deleted, not kept
+  as noise). `git mv` keeps the history.
+- Held by `blocks/database/src/__tests__/standalone-layout.unit.spec.ts`,
+  `data-view/src/__tests__/page-layout.unit.spec.ts`,
+  `database-editor/src/__tests__/database-page-root-styles.unit.spec.ts`
+  (the root's styles name neither `affine-database-title` nor `dv-table-`),
+  `integration-test/…/page/database-standalone-layout.spec.ts` (A);
+  `blocks/database/src/__tests__/creating-entries.unit.spec.ts`,
+  `connect-database-to-source.unit.spec.ts`,
+  `database-editor/src/__tests__/creation-popover.unit.spec.ts`,
+  `integration-test/…/page/database-creation-popover.spec.ts` (B);
+  `database-editor/src/__tests__/change-source.unit.spec.ts`,
+  `view-settings-source.unit.spec.ts`, `view-menu-commands.unit.spec.ts`,
+  `all/src/__tests__/database/view-source-telemetry.unit.spec.ts`,
+  `integration-test/…/page/database-change-source.spec.ts` (C).

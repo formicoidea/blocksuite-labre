@@ -784,6 +784,16 @@ drifted from the flag spellings (telemetry `'cynefin'` vs flag
 plans, and inherits #68's warning that the value rename breaks
 already-collected PostHog data and must be sequenced first.
 
+> **Amended 2026-10-28 (ADR 0046, Wardley methods).** `TagValueDef` gains an
+> optional, cosmetic `group: { label, labelKey? }`: the sub-title a picker
+> files the value under when one tag's values fall into families (Wardley's
+> nine methods under Buying policy, Project management and Attitudes). Values
+> sharing a group are consecutive in the pack; the picker opens a sub-title
+> each time the group changes. Last pack wins, like `label`; a group's
+> `labelKey` is listed once in the translation manifest. Absent, a value is
+> listed under its tag's title alone, exactly as before. Runtime
+> configuration, never persisted: no stored format changes.
+
 ## Compatibility
 
 | Direction                      | Behaviour                                                                                                                                                                                                                                                                                                                                          |

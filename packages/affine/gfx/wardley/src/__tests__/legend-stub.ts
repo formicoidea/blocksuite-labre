@@ -49,7 +49,12 @@ export function legendOf(
 ): Added[] {
   const added: Added[] = [];
   const gfx = {
-    surface: { addElement: (props: Added) => (added.push(props), 'x') },
+    surface: {
+      addElement: (props: Added) => (added.push(props), 'x'),
+      // A method swatch looks its element up to tag it (ADR 0046); this
+      // double keeps no models, so the swatch stays a bare glyph here.
+      getElementById: () => null,
+    },
     getElementsByBound: () => present,
     selection: { set: vi.fn() },
     layer: { canvasElements: [] as { type: string }[] },

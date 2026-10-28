@@ -67,6 +67,9 @@ describe('the pack the library ships', () => {
       // Free, through `roleIsA` — the entire reason role hierarchy is data.
       WARDLEY_ROLE.market,
       WARDLEY_ROLE.ecosystem,
+      // A component + method is a component in a ring (ADR 0046): its nature
+      // is picked exactly as a plain component's, from the same tag.
+      WARDLEY_ROLE.method,
     ]) {
       expect(tagAppliesToRole(nature, role, WARDLEY_ROLES), role).toBe(true);
     }
