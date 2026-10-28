@@ -58,11 +58,11 @@ export const AssetPickerProvider =
 
 /**
  * Host seam: the asset dialog. Present, the slash menu's Image, Attachment
- * and PDF, the mobile keyboard toolbar's Image and Attachment, and the
- * canvas's image and file buttons open it, and the image toolbar gains
- * "Replace". Absent, every one of those opens the system file chooser as
- * before, and there is no "Replace". Pasting and dropping files never go
- * through it.
+ * and PDF, the mobile keyboard toolbar's Image and Attachment, the canvas's
+ * image and file buttons and its "Add file" tool open it, and the image
+ * toolbar gains "Replace". Absent, every one of those opens the system file
+ * chooser as before, and there is no "Replace". Pasting and dropping files
+ * never go through it.
  *
  * `di.override`, like `FrameTemplateExtension`, so a later registration
  * always wins and registering twice never throws at boot.
