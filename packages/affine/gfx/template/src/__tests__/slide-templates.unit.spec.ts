@@ -11,11 +11,20 @@
  * - a raw hex: a mask's elements carry no role and sit on no framework
  *   board, so they are painted as stored on a dark canvas (ADR 0039, point
  *   6) — only the base palette's `{ light, dark }` pairs follow the theme;
+ * - a black slide: the PO wants every slide of a deck on white (recette of
+ *   0.60, the section, statement and quote masks shipped black in 0.60);
+ * - a word under WCAG AA (4.5:1) on its slide, light or dark side: the
+ *   secondary words were medium grey, 3.1:1 on white;
  * - a tile a search cannot find by its keywords, or a category that drops
  *   out of the built-in half of the panel;
  * - a slide number written into a read-only store, or counted wrongly.
  */
-import { type Color, DefaultTheme } from '@labre/affine-model';
+import {
+  type Color,
+  ColorScheme,
+  DefaultTheme,
+  resolveColor,
+} from '@labre/affine-model';
 import { TranslationProvider } from '@labre/affine-shared/services';
 import { darkThemeV2, lightThemeV2 } from '@toeverything/theme/v2';
 import type { BlockStdScope } from '@labre/std';
@@ -65,6 +74,19 @@ function framesOf(content: unknown) {
 const bound = (xywh: unknown) => JSON.parse(xywh as string) as number[];
 const insertOf = (value: unknown) =>
   (value as { delta?: { insert?: string }[] } | undefined)?.delta?.[0]?.insert;
+
+/** WCAG 2 contrast ratio of two `#rrggbb` colours. */
+function contrast(a: string, b: string) {
+  const luminance = (hex: string) => {
+    const [r, g, b] = [1, 3, 5].map(i => {
+      const v = parseInt(hex.slice(i, i + 2), 16) / 255;
+      return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+  };
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi! + 0.05) / (lo! + 0.05);
+}
 
 const hostWith = (
   t?: (key: string, params?: Record<string, string | number>) => string
@@ -181,6 +203,33 @@ describe.each(templates.map(t => [t.name!, t] as [string, Template]))(
       }
     });
 
+    it('is a white slide, white on a light canvas and the white note on a dark one', () => {
+      expect(framesOf(template.content)[0]!.props['background']).toEqual(
+        DefaultTheme.NoteBackgroundColorMap['White']
+      );
+    });
+
+    it('sets every word at AA contrast on what it sits on, in both themes', () => {
+      const paper = frames[0]!.props['background'] as Color;
+      for (const [id, element] of Object.entries(elements)) {
+        if (!element['color']) continue;
+        // A shape's label sits on its fill when it has one, else on the paper.
+        const ground =
+          element['type'] === 'shape' && element['filled']
+            ? (element['fillColor'] as Color)
+            : paper;
+        for (const scheme of [ColorScheme.Light, ColorScheme.Dark]) {
+          expect(
+            contrast(
+              resolveColor(element['color'] as Color, scheme),
+              resolveColor(ground, scheme)
+            ),
+            `${id} (${scheme})`
+          ).toBeGreaterThanOrEqual(4.5);
+        }
+      }
+    });
+
     it('paints only with the base palette, its paper and ink as pairs', () => {
       // The base palette, and the theme's own canvas tokens as the pairs
       // `getColorByKey` would build from them.
@@ -210,14 +259,9 @@ describe.each(templates.map(t => [t.name!, t] as [string, Template]))(
             true
           );
         }
-        if (element['type'] === 'text' && element['color']) {
+        if (element['type'] === 'text') {
           // Words sit straight on the paper: they must flip with it.
-          const ink = element['color'] as Color;
-          if (typeof ink === 'string') {
-            expect(ink, `${id} muted ink`).toBe(
-              DefaultTheme.StrokeColorShortMap['Grey']
-            );
-          }
+          expect(typeof element['color'], `${id} ink is a pair`).toBe('object');
         }
       }
     });

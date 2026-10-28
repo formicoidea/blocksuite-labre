@@ -91,7 +91,6 @@ import {
   SLIDE_MARGIN,
   SLIDE_WIDTH,
   type SlideTextRole,
-  type SlideVariant,
 } from './consts.js';
 
 /**
@@ -183,7 +182,6 @@ export type SlideMask = {
   name: ChromeWording;
   /** Plain English search words besides the name (`Template.keywords`). */
   keywords: string[];
-  variant: SlideVariant;
   zones: SlideZone[];
 };
 
@@ -284,7 +282,6 @@ const cover: SlideMask = {
   id: 'cover',
   name: SLIDE_NAME_COVER,
   keywords: ['cover', 'title', 'opening', 'first slide', 'pitch'],
-  variant: 'paper',
   zones: [
     text('caption', SLIDE_SEED_EYEBROW, M, 330, CONTENT, {
       ...centred,
@@ -299,7 +296,6 @@ const coverImage: SlideMask = {
   id: 'cover-image',
   name: SLIDE_NAME_COVER_IMAGE,
   keywords: ['cover', 'title', 'tagline', 'picture', 'photo', 'hero'],
-  variant: 'paper',
   zones: [
     text('display', SLIDE_SEED_COVER_TITLE, M, 330, 620, { lines: 2 }),
     text('body', SLIDE_SEED_SUBTITLE, M, 500, 620, { lines: 2, ...muted }),
@@ -311,7 +307,6 @@ const section: SlideMask = {
   id: 'section',
   name: SLIDE_NAME_SECTION,
   keywords: ['section', 'divider', 'chapter', 'break', 'part'],
-  variant: 'inverse',
   zones: [
     text('display', SLIDE_SEED_SECTION_TITLE, M, 600, CONTENT),
     text('body', SLIDE_SEED_SECTION_SUBTITLE, M, 690, CONTENT, muted),
@@ -322,7 +317,6 @@ const statement: SlideMask = {
   id: 'statement',
   name: SLIDE_NAME_STATEMENT,
   keywords: ['statement', 'big idea', 'headline', 'message', 'claim'],
-  variant: 'inverse',
   zones: [
     text('caption', SLIDE_SEED_SUBTITLE, M, 300, CONTENT, muted),
     text('display', SLIDE_SEED_STATEMENT, M, 340, 1100, { lines: 3 }),
@@ -333,7 +327,6 @@ const agenda: SlideMask = {
   id: 'agenda',
   name: SLIDE_NAME_AGENDA,
   keywords: ['agenda', 'contents', 'outline', 'summary', 'plan'],
-  variant: 'paper',
   zones: [
     title(SLIDE_SEED_AGENDA_TITLE),
     ...[0, 1, 2, 3, 4].flatMap(i => {
@@ -351,7 +344,6 @@ const textImage: SlideMask = {
   id: 'text-image',
   name: SLIDE_NAME_TEXT_IMAGE,
   keywords: ['text', 'picture', 'photo', 'split', 'describe', 'half'],
-  variant: 'paper',
   zones: [
     title(SLIDE_SEED_TITLE, { w: 720 }),
     text('heading', SLIDE_SEED_HEADING, M, 240, 720, muted),
@@ -366,7 +358,6 @@ const fullImage: SlideMask = {
   id: 'full-image',
   name: SLIDE_NAME_FULL_IMAGE,
   keywords: ['picture', 'photo', 'screenshot', 'visual', 'caption'],
-  variant: 'paper',
   zones: [
     title(),
     image(M, 160, CONTENT, 600),
@@ -381,7 +372,6 @@ const twoColumns: SlideMask = {
   id: 'two-columns',
   name: SLIDE_NAME_TWO_COLUMNS,
   keywords: ['columns', 'compare', 'versus', 'before after', 'pros cons'],
-  variant: 'paper',
   zones: [
     title(),
     ...columns(2).flatMap(({ x, w }) => [
@@ -395,7 +385,6 @@ const threeColumns: SlideMask = {
   id: 'three-columns',
   name: SLIDE_NAME_THREE_COLUMNS,
   keywords: ['columns', 'three points', 'pillars', 'ideas', 'list'],
-  variant: 'paper',
   zones: [
     title(),
     ...columns(3).flatMap(({ x, w }, i) => [
@@ -410,7 +399,6 @@ const sixPoints: SlideMask = {
   id: 'six-points',
   name: SLIDE_NAME_SIX_POINTS,
   keywords: ['grid', 'points', 'features', 'benefits', 'list'],
-  variant: 'paper',
   zones: [
     title(),
     ...[240, 530].flatMap(y =>
@@ -426,7 +414,6 @@ const imageCards: SlideMask = {
   id: 'image-cards',
   name: SLIDE_NAME_IMAGE_CARDS,
   keywords: ['cards', 'pictures', 'gallery', 'products', 'features'],
-  variant: 'paper',
   zones: [
     title(),
     ...columns(3).flatMap(({ x, w }) => [
@@ -441,7 +428,6 @@ const keyFigures: SlideMask = {
   id: 'key-figures',
   name: SLIDE_NAME_KEY_FIGURES,
   keywords: ['metrics', 'kpi', 'numbers', 'statistics', 'data', 'results'],
-  variant: 'paper',
   zones: [
     title(),
     ...columns(3).flatMap(({ x, w }) => [
@@ -456,7 +442,6 @@ const timeline: SlideMask = {
   id: 'timeline',
   name: SLIDE_NAME_TIMELINE,
   keywords: ['timeline', 'milestones', 'history', 'schedule', 'dates'],
-  variant: 'paper',
   zones: [
     title(),
     line([M, 470], [M + CONTENT, 470]),
@@ -481,7 +466,6 @@ const roadmap: SlideMask = {
   id: 'roadmap',
   name: SLIDE_NAME_ROADMAP,
   keywords: ['roadmap', 'plan', 'quarters', 'gantt', 'milestones'],
-  variant: 'paper',
   zones: [
     title(),
     ...columns(4, 0).flatMap(({ x, w }, i) => [
@@ -505,7 +489,6 @@ const process: SlideMask = {
   id: 'process',
   name: SLIDE_NAME_PROCESS,
   keywords: ['process', 'steps', 'flow', 'workflow', 'how it works'],
-  variant: 'paper',
   zones: [
     title(),
     ...columns(5, 57).flatMap(({ x, w }, i, all) => [
@@ -537,7 +520,6 @@ const matrix: SlideMask = {
     'prioritization',
     'value effort',
   ],
-  variant: 'paper',
   zones: [
     title(),
     line([260, 780], [260, 210], true),
@@ -561,7 +543,6 @@ const venn: SlideMask = {
   id: 'venn',
   name: SLIDE_NAME_VENN,
   keywords: ['venn', 'overlap', 'intersection', 'circles', 'sweet spot'],
-  variant: 'paper',
   zones: [
     title(),
     card(400, 200, 520, 520, { shape: 'ellipse', stroke: 'muted' }),
@@ -580,7 +561,6 @@ const marketSize: SlideMask = {
   id: 'market-size',
   name: SLIDE_NAME_MARKET_SIZE,
   keywords: ['market', 'tam sam som', 'opportunity', 'sizing', 'circles'],
-  variant: 'paper',
   zones: [
     title(),
     ...[
@@ -622,7 +602,6 @@ const orgChart: SlideMask = {
     'reporting',
     'structure',
   ],
-  variant: 'paper',
   zones: [
     title(),
     ...person(650, 220),
@@ -639,7 +618,6 @@ const pricing: SlideMask = {
   id: 'pricing',
   name: SLIDE_NAME_PRICING,
   keywords: ['pricing', 'plans', 'tiers', 'offer', 'packages'],
-  variant: 'paper',
   zones: [
     title(SLIDE_SEED_TITLE, centred),
     ...columns(3).flatMap(({ x, w }) => [
@@ -658,7 +636,6 @@ const logoWall: SlideMask = {
   id: 'logo-wall',
   name: SLIDE_NAME_LOGO_WALL,
   keywords: ['logos', 'clients', 'partners', 'customers', 'trusted by'],
-  variant: 'paper',
   zones: [
     title(SLIDE_SEED_TITLE, centred),
     ...[300, 480].flatMap(y =>
@@ -673,7 +650,6 @@ const quote: SlideMask = {
   id: 'quote',
   name: SLIDE_NAME_QUOTE,
   keywords: ['quote', 'citation', 'testimonial', 'voice', 'customer'],
-  variant: 'inverse',
   zones: [
     text('title', SLIDE_SEED_QUOTE, 200, 300, 1200, { lines: 3, ...centred }),
     text('body', SLIDE_SEED_QUOTE_AUTHOR, 200, 520, 1200, {
@@ -687,7 +663,6 @@ const testimonials: SlideMask = {
   id: 'testimonials',
   name: SLIDE_NAME_TESTIMONIALS,
   keywords: ['testimonials', 'quotes', 'reviews', 'customers', 'clients'],
-  variant: 'paper',
   zones: [
     title(SLIDE_SEED_TESTIMONIALS_TITLE, centred),
     ...columns(3).flatMap(({ x, w }) => [
@@ -705,7 +680,6 @@ const team: SlideMask = {
   id: 'team',
   name: SLIDE_NAME_TEAM,
   keywords: ['team', 'people', 'staff', 'leadership', 'about us'],
-  variant: 'paper',
   zones: [
     title(SLIDE_SEED_TEAM_TITLE, centred),
     ...columns(4).flatMap(({ x, w }) => [
@@ -720,7 +694,6 @@ const contact: SlideMask = {
   id: 'contact',
   name: SLIDE_NAME_CONTACT,
   keywords: ['contact', 'address', 'email', 'phone', 'closing', 'thank you'],
-  variant: 'paper',
   zones: [
     image(0, 0, 640, SLIDE_HEIGHT),
     text('title', SLIDE_SEED_CONTACT_TITLE, 736, TITLE_Y, 768),
@@ -781,7 +754,6 @@ const gantt: SlideMask = {
   id: 'gantt',
   name: SLIDE_NAME_GANTT,
   keywords: ['gantt', 'plan', 'schedule', 'tasks', 'months', 'timeline'],
-  variant: 'paper',
   zones: [
     title(),
     ...columns(6, 0).flatMap(({ x, w }, i) => [
@@ -808,7 +780,6 @@ const chartText: SlideMask = {
   id: 'chart-text',
   name: SLIDE_NAME_CHART_TEXT,
   keywords: ['chart', 'graph', 'data', 'figures', 'explain', 'bar', 'line'],
-  variant: 'paper',
   zones: [
     title(SLIDE_SEED_TITLE, { w: 760 }),
     text('body', SLIDE_SEED_BODY, M, 680, 700, { lines: 3, ...muted }),
@@ -820,7 +791,6 @@ const threeCharts: SlideMask = {
   id: 'three-charts',
   name: SLIDE_NAME_THREE_CHARTS,
   keywords: ['charts', 'graphs', 'pie', 'donut', 'compare', 'data'],
-  variant: 'paper',
   zones: [
     title(SLIDE_SEED_TITLE, centred),
     ...columns(3).flatMap(({ x, w }) => [
@@ -838,7 +808,6 @@ const collage: SlideMask = {
   id: 'collage',
   name: SLIDE_NAME_COLLAGE,
   keywords: ['collage', 'photos', 'pictures', 'gallery', 'text', 'mosaic'],
-  variant: 'paper',
   zones: [
     title(SLIDE_SEED_TITLE, { w: 560 }),
     text('body', SLIDE_SEED_BODY, M, 640, 560, { lines: 4, ...muted }),
@@ -852,7 +821,6 @@ const bento: SlideMask = {
   id: 'bento',
   name: SLIDE_NAME_BENTO,
   keywords: ['bento', 'photos', 'pictures', 'collage', 'mosaic', 'gallery'],
-  variant: 'paper',
   zones: [
     image(M, 80, 940, 350),
     image(1076, 80, 428, 350),
@@ -865,7 +833,6 @@ const imageGrid: SlideMask = {
   id: 'image-grid',
   name: SLIDE_NAME_IMAGE_GRID,
   keywords: ['grid', 'photos', 'pictures', 'gallery', 'six', 'mosaic'],
-  variant: 'paper',
   zones: [80, 470].flatMap(y =>
     columns(3, 40).map(({ x, w }) => image(x, y, w, 350))
   ),
@@ -900,7 +867,6 @@ const featureBento: SlideMask = {
   id: 'feature-bento',
   name: SLIDE_NAME_FEATURE_BENTO,
   keywords: ['bento', 'features', 'metrics', 'kpi', 'product', 'highlights'],
-  variant: 'paper',
   zones: [
     ...featureCard(M, 80, 520, 500),
     ...figureCard(660, 80, 844, 190),
@@ -914,7 +880,6 @@ const phone: SlideMask = {
   id: 'phone',
   name: SLIDE_NAME_PHONE,
   keywords: ['phone', 'mobile', 'mockup', 'app', 'device', 'screen'],
-  variant: 'paper',
   zones: [
     title(SLIDE_SEED_TITLE, { w: 760 }),
     text('body', SLIDE_SEED_BODY, M, 700, 760, { lines: 2, ...muted }),
@@ -926,7 +891,6 @@ const tablet: SlideMask = {
   id: 'tablet',
   name: SLIDE_NAME_TABLET,
   keywords: ['tablet', 'mockup', 'app', 'device', 'screen', 'laptop'],
-  variant: 'paper',
   zones: [
     title(SLIDE_SEED_TITLE, { w: 700 }),
     text('body', SLIDE_SEED_BODY, M, 680, 700, { lines: 3, ...muted }),
