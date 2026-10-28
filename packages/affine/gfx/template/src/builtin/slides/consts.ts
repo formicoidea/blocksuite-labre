@@ -3,9 +3,9 @@ import { HEADING_SCALE } from '@labre/affine-shared/consts';
 import { darkThemeV2, lightThemeV2 } from '@toeverything/theme/v2';
 
 /**
- * The slide masks' one system: geometry, typography and the two paper
- * variants. Every mask in `masks.ts` reads these and restates none of them,
- * so a size or a colour changes here, once, for the whole set.
+ * The slide masks' one system: geometry, typography and the one paper.
+ * Every mask in `masks.ts` reads these and restates none of them, so a size
+ * or a colour changes here, once, for the whole set.
  */
 
 /** A 16:9 slide, the frame menu's own `16:9` preset (1600 × 900). */
@@ -95,8 +95,10 @@ export type SlidePalette = {
   paper: Color;
   /** Titles, headings, body text, key figures. */
   ink: Color;
-  /** Eyebrows, captions, footer, slide number, axis labels. */
+  /** Eyebrows, captions, footer, slide number, axis labels, details. */
   muted: Color;
+  /** Rules, arrows and the outlines meant to be seen (a Venn circle). */
+  rule: Color;
   /** Hairlines, card outlines, the fill of a placeholder. */
   hairline: Color;
   /** The dashed outline of a fill zone. */
@@ -116,28 +118,29 @@ const NOTE_GREY: Color = {
 };
 
 /**
- * Two variants, so the set reads as one deck: `paper`, a light slide that
- * turns dark grey on a dark canvas, and `inverse`, the ink slide of a section
- * divider, a statement or a quote, which swaps paper and ink.
+ * One paper for every mask: white, turning dark grey on a dark canvas. The
+ * set once had an `inverse` black slide (section, statement, quote); the PO
+ * wants every slide of a deck on white (recette of 0.60), so a deck reads as
+ * one sheet and prints as one.
+ *
+ * Words reach WCAG AA (4.5:1) on both sides of the paper, which the base
+ * palette's medium grey does not (`#929292` on white is 3.1:1): secondary
+ * words are set in ink, and their tone is carried by their role's size.
+ * The medium grey stays for rules and outlines, where 3:1 is the bar.
+ *
+ * ponytail: `muted` is the ink pair, so a muted line looks like an ink one
+ * at the same size. The ceiling is a deck with no tonal step between a
+ * heading and its detail; the upgrade is a darker grey `{ light, dark }`
+ * pair in the base palette (one AA on white and on `#252525`), set here.
  */
-export const SLIDE_PALETTES = {
-  paper: {
-    paper: DefaultTheme.NoteBackgroundColorMap['White'] as Color,
-    ink: DefaultTheme.black,
-    muted: MEDIUM_GREY,
-    hairline: NOTE_GREY,
-    zoneStroke: MEDIUM_GREY,
-  },
-  inverse: {
-    paper: DefaultTheme.black,
-    ink: DefaultTheme.white,
-    muted: MEDIUM_GREY,
-    hairline: MEDIUM_GREY,
-    zoneStroke: MEDIUM_GREY,
-  },
-} as const satisfies Record<string, SlidePalette>;
-
-export type SlideVariant = keyof typeof SLIDE_PALETTES;
+export const SLIDE_PALETTE = {
+  paper: DefaultTheme.NoteBackgroundColorMap['White'] as Color,
+  ink: DefaultTheme.black,
+  muted: DefaultTheme.black,
+  rule: MEDIUM_GREY,
+  hairline: NOTE_GREY,
+  zoneStroke: MEDIUM_GREY,
+} as const satisfies SlidePalette;
 
 /** Stroke widths, model units. */
 export const SLIDE_HAIRLINE_WIDTH = 2;

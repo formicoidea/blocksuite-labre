@@ -1,14 +1,17 @@
 /**
  * Attachments from the host's asset library (`AssetPickerProvider`, labre
  * P4): the slash menu's Attachment and PDF and the mobile keyboard toolbar
- * go through `pickAndAddSiblingAttachmentBlocks`.
+ * go through `pickAndAddSiblingAttachmentBlocks`; the card toolbar's
+ * "Replace" through `pickAttachmentSource`.
  *
  * What it would have caught:
  * - a card that re-sends the bytes (`blobSync.set`) instead of referencing
  *   the blob the host already stores, or loses the ref's name, type or size;
  * - a write on a read-only document, or a cancelled dialog that still
  *   removes the line the gesture was typed on;
- * - an editor without a host losing its file chooser.
+ * - an editor without a host losing its file chooser;
+ * - "Replace" on a card opening the system file chooser with the seam
+ *   registered (labre recette of 2026-10-28).
  */
 import {
   AttachmentBlockSchemaExtension,
@@ -30,6 +33,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   addSiblingAttachmentBlocksFromAssets,
   pickAndAddSiblingAttachmentBlocks,
+  pickAttachmentSource,
 } from '../asset-picker';
 
 vi.mock('@labre/affine-shared/utils', async importOriginal => ({
@@ -167,5 +171,55 @@ describe('the attachment entries, with and without a host', () => {
 
     expect(flavours()).toEqual(['affine:paragraph', 'affine:paragraph']);
     expect(store.canUndo).toBe(false);
+  });
+});
+
+describe("the card's Replace, with and without a host", () => {
+  it('asks the host for one file to replace with, by reference', async () => {
+    const { store, set } = pageStore();
+    vi.mocked(openSingleFileWith).mockClear();
+    const pick = vi.fn(async () => [pdf]);
+
+    const source = await pickAttachmentSource(stdFor(store, { pick }));
+
+    expect(pick).toHaveBeenCalledWith({
+      kind: 'file',
+      mode: 'replace',
+      multiple: false,
+      docId: store.id,
+    });
+    expect(source).toEqual({
+      sourceId: 'sha',
+      name: 'plan.pdf',
+      type: 'application/pdf',
+      size: 1234,
+    });
+    expect(openSingleFileWith).not.toHaveBeenCalled();
+    expect(set).not.toHaveBeenCalled();
+  });
+
+  it('answers nothing when the viewer cancels the dialog', async () => {
+    const { store } = pageStore();
+
+    expect(
+      await pickAttachmentSource(stdFor(store, { pick: async () => [] }))
+    ).toBeNull();
+  });
+
+  it('uploads the chosen file without a host', async () => {
+    const { store, set } = pageStore();
+    const file = new File(['x'], 'plan.pdf', { type: 'application/pdf' });
+    vi.mocked(openSingleFileWith).mockClear();
+    vi.mocked(openSingleFileWith).mockResolvedValueOnce(file);
+
+    const source = await pickAttachmentSource(stdFor(store));
+
+    expect(openSingleFileWith).toHaveBeenCalledTimes(1);
+    expect(set).toHaveBeenCalledWith(file);
+    expect(source).toMatchObject({
+      name: 'plan.pdf',
+      type: 'application/pdf',
+      size: 1,
+    });
   });
 });

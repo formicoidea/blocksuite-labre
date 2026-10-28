@@ -1,5 +1,8 @@
 import { insertContent } from '@labre/affine-rich-text';
-import { REFERENCE_NODE } from '@labre/affine-shared/consts';
+import {
+  LINKED_DOC_NOTE_STYLE,
+  REFERENCE_NODE,
+} from '@labre/affine-shared/consts';
 import {
   LinkedDocCreationProvider,
   TelemetryProvider,
@@ -84,7 +87,7 @@ function insertCard(
   }
   const cardId = store.addBlock(
     LINKED_DOC,
-    { pageId },
+    { pageId, style: LINKED_DOC_NOTE_STYLE },
     parent,
     parent.children.indexOf(anchor) + 1
   );

@@ -43,6 +43,7 @@ import { guard } from 'lit/directives/guard.js';
 import { type StyleInfo, styleMap } from 'lit/directives/style-map.js';
 import * as Y from 'yjs';
 
+import { cardIcon } from '../common/child-card.js';
 import { isDocTrashed } from '../common/doc-trashed.js';
 import { EMBED_DOC_CARD_EMPTY_CONTENT } from '../translations.js';
 import type { EmbedSyncedDocCard } from './components/embed-synced-doc-card.js';
@@ -349,9 +350,7 @@ export class EmbedSyncedDocBlockComponent extends EmbedBlockComponent<EmbedSynce
 
   icon$ = computed(() => {
     const { pageId, params } = this.model.props;
-    return this.std
-      .get(DocDisplayMetaProvider)
-      .icon(pageId, { params, referenced: true }).value;
+    return cardIcon(this.std, this.store.id, { pageId, params });
   });
 
   open = (event?: Partial<DocLinkClickedEvent>) => {

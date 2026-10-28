@@ -369,13 +369,16 @@ describe('the title band', () => {
     }
   });
 
-  it('shows a skeleton while the sheet loads', async () => {
+  // Recette 3: the host's only loading indicator is a spinner, never a
+  // skeleton (ADR-0057 on the Labre side); the band drew two grey chips.
+  it('shows a spinner, no skeleton, while the sheet loads', async () => {
     const { service } = bandService({ status: 'loading' });
     const { std } = fakeStd(new Map([[TitleBandProvider, service]]));
     const band = await mount(std);
-    expect(q(band, 'title-band-loading')?.getAttribute('aria-busy')).toBe(
-      'true'
-    );
+    const loading = q(band, 'title-band-loading');
+    expect(loading?.getAttribute('aria-busy')).toBe('true');
+    expect(loading?.querySelector('svg .spinner')).not.toBeNull();
+    expect(band.querySelector('[class*="skeleton"]')).toBeNull();
   });
 
   it('draws one chip per visible property, in order, an empty one included', async () => {
@@ -800,6 +803,97 @@ describe('the title band', () => {
     expect(add).toHaveBeenCalledWith(DOC);
     (q(band, 'title-band-open-panel') as HTMLButtonElement).click();
     expect(panel.open).toHaveBeenCalledWith({ scope: 'page', docId: DOC });
+  });
+
+  // Recette 3: a right-click on a chip's name opens the host's menu for that
+  // property, under the name, as its panel's label and handle do; the
+  // browser's menu stays shut. Without `configure`, on a read-only document
+  // or for a touch long-press, the right-click stays the browser's.
+  it('asks the host to configure a property on a right-click of its name', async () => {
+    const configure = vi.fn();
+    const { service } = bandService(
+      { status: 'ready', properties: [STATUS, OWNER] },
+      { configure }
+    );
+    const band = await mount(
+      fakeStd(new Map([[TitleBandProvider, service]])).std
+    );
+    const name = chipOf(band, 'owner').querySelector<HTMLElement>(
+      '[data-testid="title-band-chip-name"]'
+    )!;
+    const right = new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+    });
+    name.dispatchEvent(right);
+    expect(right.defaultPrevented).toBe(true);
+    expect(configure).toHaveBeenCalledWith(DOC, 'owner', name);
+    expect(service.set).not.toHaveBeenCalled();
+
+    const touch = new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+    });
+    Object.defineProperty(touch, 'pointerType', { value: 'touch' });
+    name.dispatchEvent(touch);
+    expect(touch.defaultPrevented).toBe(false);
+    expect(configure).toHaveBeenCalledTimes(1);
+
+    const { service: bare } = bandService({
+      status: 'ready',
+      properties: [OWNER],
+    });
+    const plain = await mount(
+      fakeStd(new Map([[TitleBandProvider, bare]])).std
+    );
+    const native = new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+    });
+    q(plain, 'title-band-chip-name')!.dispatchEvent(native);
+    expect(native.defaultPrevented).toBe(false);
+
+    const readonlyConfigure = vi.fn();
+    const { service: locked } = bandService(
+      { status: 'ready', properties: [OWNER] },
+      { configure: readonlyConfigure }
+    );
+    const ro = await mount(
+      fakeStd(new Map([[TitleBandProvider, locked]]), true).std
+    );
+    q(ro, 'title-band-chip-name')!.dispatchEvent(
+      new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+    );
+    expect(readonlyConfigure).not.toHaveBeenCalled();
+  });
+
+  // Recette 3, P3-x: a "+" on the collapsed row added a property nobody
+  // saw, so the reader clicked it again without knowing it had worked.
+  it('draws the "+" only while the band is expanded', async () => {
+    const add = vi.fn();
+    const { service } = bandService(
+      { status: 'ready', properties: [STATUS, OWNER] },
+      { add }
+    );
+    const band = await mount(
+      fakeStd(new Map([[TitleBandProvider, service]])).std
+    );
+    expect(q(band, 'title-band-add')).not.toBeNull();
+    (q(band, 'title-band-collapse') as HTMLButtonElement).click();
+    await band.updateComplete;
+    expect(q(band, 'title-band-add')).toBeNull();
+    (q(band, 'title-band-expand') as HTMLButtonElement).click();
+    await band.updateComplete;
+    expect(q(band, 'title-band-add')).not.toBeNull();
+
+    const { service: empty } = bandService(
+      { status: 'ready', properties: [] },
+      { add }
+    );
+    const first = await mount(
+      fakeStd(new Map([[TitleBandProvider, empty]])).std
+    );
+    expect(q(first, 'title-band-add')).not.toBeNull();
   });
 
   it('collapses, remembered by the host when it can, locally otherwise', async () => {

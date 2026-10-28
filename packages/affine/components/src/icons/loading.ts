@@ -1,6 +1,12 @@
 import { cssVarV2 } from '@toeverything/theme/v2';
 import { html } from 'lit';
 
+/**
+ * The library's spinner. Rotated by SMIL, not by a `<style>` inside the
+ * SVG: that sheet was global in light DOM (any `.spinner` of the page
+ * spun), and a binding after it fails to render under happy-dom, so no
+ * unit spec could mount a view that draws it.
+ */
 export const LoadingIcon = ({
   size = '1em',
   progress = 0.2,
@@ -19,17 +25,6 @@ export const LoadingIcon = ({
     xmlns="http://www.w3.org/2000/svg"
     fill="none"
   >
-    <style>
-      .spinner {
-        transform-origin: center;
-        animation: spinner_animate 0.75s infinite linear;
-      }
-      @keyframes spinner_animate {
-        100% {
-          transform: rotate(360deg);
-        }
-      }
-    </style>
     <circle cx="12" cy="12" r="8" stroke="${ringColor}" stroke-width="4" />
     <circle
       class="spinner"
@@ -43,5 +38,14 @@ export const LoadingIcon = ({
       Math.PI *
       8 *
       (1 - progress)}"
-    />
+    >
+      <animateTransform
+        attributeName="transform"
+        type="rotate"
+        from="0 12 12"
+        to="360 12 12"
+        dur="0.75s"
+        repeatCount="indefinite"
+      />
+    </circle>
   </svg>`;

@@ -565,7 +565,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/database
         metadata {
           path 'packages/affine/blocks/database'
-          files '60'
+          files '61'
         }
         adapters = folder 'adapters/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/database/src/adapters
@@ -613,7 +613,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/database/src/service
           metadata {
             path 'packages/affine/blocks/database/src/service'
-            files '4'
+            files '5'
           }
         }
         src = folder 'src/' {
@@ -761,13 +761,13 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/embed-doc
         metadata {
           path 'packages/affine/blocks/embed-doc'
-          files '45'
+          files '46'
         }
         common = folder 'common/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/embed-doc/src/common
           metadata {
             path 'packages/affine/blocks/embed-doc/src/common'
-            files '2'
+            files '3'
           }
         }
         embed-linked-doc-block = folder 'embed-linked-doc-block/' {
@@ -1525,7 +1525,7 @@ model {
       link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/data-view
       metadata {
         path 'packages/affine/data-view'
-        files '348'
+        files '349'
       }
       core = folder 'core/' {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/data-view/src/core
@@ -1538,7 +1538,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/data-view/src/property-presets
         metadata {
           path 'packages/affine/data-view/src/property-presets'
-          files '30'
+          files '31'
         }
       }
       src = folder 'src/' {
@@ -3560,9 +3560,9 @@ model {
   features.blocks.database -[uses]-> features.shared '39 imports, 7 type-only'
   features.blocks.database -[uses]-> features.widgets.drag-handle '1 import'
   features.blocks.database -[uses]-> features.widgets.slash-menu '2 imports, 1 type-only'
-  features.blocks.database -[uses]-> framework.global_ '14 imports'
+  features.blocks.database -[uses]-> framework.global_ '15 imports'
   features.blocks.database -[uses]-> framework.std '17 imports, 7 type-only'
-  features.blocks.database -[uses]-> framework.store '21 imports, 13 type-only'
+  features.blocks.database -[uses]-> framework.store '22 imports, 14 type-only'
   features.blocks.database -[uses]-> model_.model_ '19 imports, 11 type-only'
   features.blocks.divider -[uses]-> features.components '1 import'
   features.blocks.divider -[uses]-> features.ext-loader '2 imports'
@@ -3584,7 +3584,7 @@ model {
   features.blocks.embed -[uses]-> features.blocks.surface '18 imports'
   features.blocks.embed -[uses]-> features.components '18 imports'
   features.blocks.embed -[uses]-> features.ext-loader '2 imports'
-  features.blocks.embed -[uses]-> features.shared '89 imports, 5 type-only'
+  features.blocks.embed -[uses]-> features.shared '90 imports, 5 type-only'
   features.blocks.embed -[uses]-> features.widgets.slash-menu '10 imports, 5 type-only'
   features.blocks.embed -[uses]-> framework.global_ '11 imports'
   features.blocks.embed -[uses]-> framework.std '41 imports, 10 type-only'
@@ -3596,12 +3596,12 @@ model {
   features.blocks.embed-doc -[uses]-> features.ext-loader '4 imports'
   features.blocks.embed-doc -[uses]-> features.inlines.reference '2 imports'
   features.blocks.embed-doc -[uses]-> features.rich-text '1 import'
-  features.blocks.embed-doc -[uses]-> features.shared '37 imports, 1 type-only'
+  features.blocks.embed-doc -[uses]-> features.shared '39 imports, 1 type-only'
   features.blocks.embed-doc -[uses]-> features.widgets.slash-menu '1 import'
   features.blocks.embed-doc -[uses]-> framework.global_ '10 imports'
-  features.blocks.embed-doc -[uses]-> framework.std '19 imports, 4 type-only'
+  features.blocks.embed-doc -[uses]-> framework.std '20 imports, 5 type-only'
   features.blocks.embed-doc -[uses]-> framework.store '16 imports, 11 type-only'
-  features.blocks.embed-doc -[uses]-> model_.model_ '27 imports, 4 type-only'
+  features.blocks.embed-doc -[uses]-> model_.model_ '28 imports, 5 type-only'
   features.blocks.frame -[uses]-> features.blocks.surface '12 imports'
   features.blocks.frame -[uses]-> features.components '5 imports'
   features.blocks.frame -[uses]-> features.ext-loader '2 imports'
@@ -3732,7 +3732,7 @@ model {
   features.components -[uses]-> framework.store '8 imports, 7 type-only'
   features.components -[uses]-> framework.sync '1 import, 1 type-only'
   features.components -[uses]-> model_.model_ '16 imports, 5 type-only'
-  features.data-view -[uses]-> features.components '72 imports, 3 type-only'
+  features.data-view -[uses]-> features.components '73 imports, 3 type-only'
   features.data-view -[uses]-> features.shared '84 imports, 42 type-only'
   features.data-view -[uses]-> framework.global_ '95 imports, 5 type-only'
   features.data-view -[uses]-> framework.std '81 imports, 10 type-only'
@@ -3763,6 +3763,7 @@ model {
   features.fragments.adapter-panel -[uses]-> framework.std '2 imports, 2 type-only'
   features.fragments.adapter-panel -[uses]-> framework.store '2 imports, 2 type-only'
   features.fragments.doc-title -[uses]-> features.blocks.surface '1 import'
+  features.fragments.doc-title -[uses]-> features.components '1 import'
   features.fragments.doc-title -[uses]-> features.data-view '3 imports'
   features.fragments.doc-title -[uses]-> features.ext-loader '1 import'
   features.fragments.doc-title -[uses]-> features.inlines.reference '1 import'
@@ -4069,7 +4070,7 @@ model {
   features.inlines.preset -[uses]-> model_.model_ '3 imports'
   features.inlines.reference -[uses]-> features.components '5 imports, 1 type-only'
   features.inlines.reference -[uses]-> features.ext-loader '2 imports'
-  features.inlines.reference -[uses]-> features.shared '23 imports, 8 type-only'
+  features.inlines.reference -[uses]-> features.shared '24 imports, 8 type-only'
   features.inlines.reference -[uses]-> framework.global_ '3 imports'
   features.inlines.reference -[uses]-> framework.std '13 imports, 5 type-only'
   features.inlines.reference -[uses]-> framework.store '2 imports, 2 type-only'
@@ -4792,9 +4793,9 @@ model {
   features.blocks.database.properties -[imports]-> framework.store.src '5 imports, 1 type-only'
   features.blocks.database.service -[imports]-> features.data-view.src '1 import, 1 type-only'
   features.blocks.database.service -[imports]-> features.shared.services '1 import'
-  features.blocks.database.service -[imports]-> framework.global_.di '3 imports'
+  features.blocks.database.service -[imports]-> framework.global_.di '4 imports'
   features.blocks.database.service -[imports]-> framework.std.src '1 import, 1 type-only'
-  features.blocks.database.service -[imports]-> framework.store.src '2 imports, 2 type-only'
+  features.blocks.database.service -[imports]-> framework.store.src '3 imports, 3 type-only'
   features.blocks.database.service -[imports]-> model_.model_.src '3 imports, 2 type-only'
   features.blocks.database.src -[imports]-> features.blocks.database.adapters '1 import'
   features.blocks.database.src -[imports]-> features.blocks.database.components '4 imports'
@@ -4829,6 +4830,7 @@ model {
   features.blocks.database.src -[imports]-> framework.std.src '7 imports, 3 type-only'
   features.blocks.database.src -[imports]-> framework.store.src '7 imports, 4 type-only'
   features.blocks.database.src -[imports]-> model_.model_.src '9 imports, 7 type-only'
+  features.blocks.database.utils -[imports]-> features.blocks.database.service '1 import, 1 type-only'
   features.blocks.database.utils -[imports]-> features.shared.types '1 import, 1 type-only'
   features.blocks.database.utils -[imports]-> features.shared.utils '1 import'
   features.blocks.database.utils -[imports]-> framework.store.src '2 imports, 2 type-only'
@@ -4874,11 +4876,12 @@ model {
   features.blocks.embed-doc.common -[imports]-> features.blocks.embed.src '1 import'
   features.blocks.embed-doc.common -[imports]-> features.ext-loader.src '1 import'
   features.blocks.embed-doc.common -[imports]-> features.shared.consts '1 import'
+  features.blocks.embed-doc.common -[imports]-> features.shared.services '1 import'
   features.blocks.embed-doc.common -[imports]-> features.shared.utils '1 import'
-  features.blocks.embed-doc.common -[imports]-> framework.std.src '1 import'
+  features.blocks.embed-doc.common -[imports]-> framework.std.src '2 imports, 1 type-only'
   features.blocks.embed-doc.common -[imports]-> framework.store.src '2 imports, 2 type-only'
-  features.blocks.embed-doc.common -[imports]-> model_.model_.src '1 import'
-  features.blocks.embed-doc.embed-linked-doc-block -[imports]-> features.blocks.embed-doc.common '2 imports'
+  features.blocks.embed-doc.common -[imports]-> model_.model_.src '2 imports, 1 type-only'
+  features.blocks.embed-doc.embed-linked-doc-block -[imports]-> features.blocks.embed-doc.common '3 imports'
   features.blocks.embed-doc.embed-linked-doc-block -[imports]-> features.blocks.embed-doc.embed-synced-doc-block '2 imports'
   features.blocks.embed-doc.embed-linked-doc-block -[imports]-> features.blocks.embed-doc.src '3 imports'
   features.blocks.embed-doc.embed-linked-doc-block -[imports]-> features.blocks.embed.src '4 imports'
@@ -4890,7 +4893,7 @@ model {
   features.blocks.embed-doc.embed-linked-doc-block -[imports]-> features.inlines.reference.src '1 import'
   features.blocks.embed-doc.embed-linked-doc-block -[imports]-> features.rich-text.src '1 import'
   features.blocks.embed-doc.embed-linked-doc-block -[imports]-> features.shared.adapters '3 imports'
-  features.blocks.embed-doc.embed-linked-doc-block -[imports]-> features.shared.consts '4 imports'
+  features.blocks.embed-doc.embed-linked-doc-block -[imports]-> features.shared.consts '5 imports'
   features.blocks.embed-doc.embed-linked-doc-block -[imports]-> features.shared.services '3 imports'
   features.blocks.embed-doc.embed-linked-doc-block -[imports]-> features.shared.theme '1 import'
   features.blocks.embed-doc.embed-linked-doc-block -[imports]-> features.shared.utils '4 imports'
@@ -4899,7 +4902,7 @@ model {
   features.blocks.embed-doc.embed-linked-doc-block -[imports]-> framework.std.src '5 imports, 2 type-only'
   features.blocks.embed-doc.embed-linked-doc-block -[imports]-> framework.store.src '8 imports, 5 type-only'
   features.blocks.embed-doc.embed-linked-doc-block -[imports]-> model_.model_.src '11 imports, 2 type-only'
-  features.blocks.embed-doc.embed-synced-doc-block -[imports]-> features.blocks.embed-doc.common '2 imports'
+  features.blocks.embed-doc.embed-synced-doc-block -[imports]-> features.blocks.embed-doc.common '3 imports'
   features.blocks.embed-doc.embed-synced-doc-block -[imports]-> features.blocks.embed-doc.src '4 imports'
   features.blocks.embed-doc.embed-synced-doc-block -[imports]-> features.blocks.embed.src '5 imports'
   features.blocks.embed-doc.embed-synced-doc-block -[imports]-> features.blocks.surface.src '3 imports'
@@ -4942,7 +4945,7 @@ model {
   features.blocks.embed.common -[imports]-> features.components.caption '1 import'
   features.blocks.embed.common -[imports]-> features.components.icons_ '1 import'
   features.blocks.embed.common -[imports]-> features.shared.adapters '4 imports, 3 type-only'
-  features.blocks.embed.common -[imports]-> features.shared.consts '2 imports'
+  features.blocks.embed.common -[imports]-> features.shared.consts '3 imports'
   features.blocks.embed.common -[imports]-> features.shared.services '3 imports'
   features.blocks.embed.common -[imports]-> features.shared.theme '1 import'
   features.blocks.embed.common -[imports]-> features.shared.utils '4 imports'
@@ -5801,6 +5804,7 @@ model {
   features.components.view-dropdown-menu -[imports]-> framework.std.src '1 import'
   features.data-view.core -[imports]-> features.components.color-picker '2 imports'
   features.data-view.core -[imports]-> features.components.context-menu '17 imports, 3 type-only'
+  features.data-view.core -[imports]-> features.components.icons_ '1 import'
   features.data-view.core -[imports]-> features.components.src '1 import'
   features.data-view.core -[imports]-> features.data-view.src '7 imports'
   features.data-view.core -[imports]-> features.data-view.view-presets '5 imports, 3 type-only'
@@ -5962,6 +5966,7 @@ model {
   features.fragments.doc-title.src -[imports]-> framework.store.src '1 import, 1 type-only'
   features.fragments.doc-title.src -[imports]-> model_.model_.src '1 import'
   features.fragments.doc-title.title-band -[imports]-> features.blocks.surface.src '1 import'
+  features.fragments.doc-title.title-band -[imports]-> features.components.icons_ '1 import'
   features.fragments.doc-title.title-band -[imports]-> features.data-view.property-presets '1 import'
   features.fragments.doc-title.title-band -[imports]-> features.data-view.src '2 imports'
   features.fragments.doc-title.title-band -[imports]-> features.fragments.doc-title.src '1 import'
@@ -6939,7 +6944,7 @@ model {
   features.inlines.reference.reference-node -[imports]-> features.components.src '1 import'
   features.inlines.reference.reference-node -[imports]-> features.components.toolbar '1 import, 1 type-only'
   features.inlines.reference.reference-node -[imports]-> features.inlines.reference.src '1 import'
-  features.inlines.reference.reference-node -[imports]-> features.shared.consts '2 imports'
+  features.inlines.reference.reference-node -[imports]-> features.shared.consts '3 imports'
   features.inlines.reference.reference-node -[imports]-> features.shared.services '5 imports, 2 type-only'
   features.inlines.reference.reference-node -[imports]-> features.shared.styles '2 imports'
   features.inlines.reference.reference-node -[imports]-> features.shared.types '3 imports, 3 type-only'

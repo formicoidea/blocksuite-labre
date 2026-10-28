@@ -6,6 +6,7 @@ import {
   NoteDisplayMode,
   ParagraphBlockModel,
 } from '@labre/affine-model';
+import { LINKED_DOC_NOTE_STYLE } from '@labre/affine-shared/consts';
 import {
   CHROME_UNTITLED,
   NotificationProvider,
@@ -185,6 +186,7 @@ export async function convertSelectedBlocksToLinkedDoc(
       {
         flavour: 'affine:embed-linked-doc',
         pageId: linkedDoc.id,
+        style: LINKED_DOC_NOTE_STYLE,
       },
     ],
     'before'
