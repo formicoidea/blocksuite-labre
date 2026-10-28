@@ -11,6 +11,7 @@ import {
   addAttachments,
   addSiblingAttachmentBlocks,
   type AttachmentBlockSource,
+  getFileType,
   placeAttachmentsOnCanvas,
 } from './utils.js';
 
@@ -126,4 +127,31 @@ export async function pickAndAddAttachments(
   const file = await openSingleFileWith();
   if (!file) return [];
   return addAttachments(std, [file]);
+}
+
+/**
+ * What the attachment toolbar's "Replace" puts in the card: the host's asset
+ * dialog when there is one (`kind: 'file'`, `mode: 'replace'`, first ref
+ * used, by reference), the system file chooser otherwise (the file goes up
+ * through the blob source, as before). `null` when cancelled.
+ */
+export async function pickAttachmentSource(
+  std: BlockStdScope
+): Promise<AttachmentBlockSource | null> {
+  const picker = std.getOptional(AssetPickerProvider);
+  if (picker) {
+    const [asset] =
+      (await picker.pick({
+        kind: 'file',
+        mode: 'replace',
+        multiple: false,
+        docId: std.store.id,
+      })) ?? [];
+    return asset ? (attachmentPropsFrom([asset])[0] ?? null) : null;
+  }
+  const file = await openSingleFileWith();
+  if (!file) return null;
+  const sourceId = await std.store.blobSync.set(file);
+  const type = await getFileType(file);
+  return { sourceId, name: file.name, type, size: file.size };
 }
