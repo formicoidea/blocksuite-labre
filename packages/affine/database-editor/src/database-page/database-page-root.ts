@@ -101,6 +101,14 @@ export function selectionStaysInHost(
  * last block that appends a paragraph): nothing on this page can select,
  * move or delete what it does not draw, and nothing inserts into the note.
  *
+ * The page's look is not this root's: the block derives it from where it is
+ * drawn (ADR 0035 amendment of 2026-10-28). Rendered directly by this root,
+ * under a `<doc-title>` that names it as its body, it hides its own title
+ * row, drops its top margin and keeps its view bar in view sideways
+ * (`data-standalone`), and its table sticks its column header to the page
+ * (`data-page-layout`). Mounted without that heading, the block renders as
+ * inline, its title shown. This root only widens with such a table.
+ *
  * It writes nothing, on mount or later. A document with no database block by
  * that id draws a notice; the block may arrive through sync, so the notice
  * follows additions and deletions.
@@ -114,38 +122,12 @@ export class DatabasePageRoot extends BlockComponent {
       margin: 0 auto;
       padding: 0 var(--affine-editor-side-padding, 24px);
     }
-    /* The page title above is the database's name. !important: the row is
-       an emotion class (display: flex), which outweighs this selector. */
-    affine-database-page-root div:has(> affine-database-title) {
-      display: none !important;
-    }
-    /* The view bar sits under the page heading: no top margin or padding
-       of the inline block. The attribute outweighs the block's emotion class
-       (one class); its sides and bottom stay the inline block's. */
-    affine-database-page-root affine-database[data-block-id] {
-      margin-top: 0;
-      padding-top: 0;
-    }
-    /* A table is as wide as its columns: the page scrolls sideways, so the
-       column header sticks natively to the page's top (data-view's column
-       header then leaves it alone). The table's own wrappers stop being
-       scrollers, the view bar stays in view, a viewport wide. */
-    affine-database-page-root:has(dv-table-view-ui) {
+    /* A table laid out as the page is as wide as its columns
+       (data-view's data-page-layout): the root grows with it, so the page
+       scrolls sideways. A board keeps its own sideways scroller. */
+    affine-database-page-root:has(dv-table-view-ui[data-page-layout]) {
       width: max-content;
       min-width: 100%;
-    }
-    affine-database-page-root .dv-table-wrapper,
-    affine-database-page-root .dv-table-scroll-container {
-      overflow: visible;
-    }
-    affine-database-page-root affine-database-column-header {
-      position: sticky;
-      top: 0;
-    }
-    affine-database-page-root div:has(> div > affine-database-title) {
-      position: sticky;
-      left: var(--affine-editor-side-padding, 24px);
-      width: calc(100cqw - 2 * var(--affine-editor-side-padding, 24px));
     }
     /* A phone keeps the page root's narrow padding (page-root-block.ts). */
     @container viewport (width <= 640px) {
