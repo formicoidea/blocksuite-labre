@@ -1,22 +1,30 @@
 import { Bound } from '@labre/global/gfx';
-import type { ForeignInterchange } from '@labre/std/gfx';
 
 import { WARDLEY_BACKGROUND } from './background.js';
 import { matchLabels, owmDefaultPlot, owmPlotOf } from './export.js';
+import { WARDLEY_NATURE_TAG_ID } from './natures.js';
 import { HANDLE_SIZE, PIPELINE_HEIGHT } from './node/consts.js';
 import {
   type WardleyArtefactKind,
   wardleyLabelBoxFor,
+  WARDLEY_NODE_SIZE,
   wardleyNodeProps,
 } from './presets.js';
 import {
-  JSON_ATTR,
-  JSON_SCOPE,
+  type Box,
+  descriptionSlot,
+  EVOLVE_TYPES,
+  isDefaultLabelOffset,
+  isRangeShape,
   type JsonComponentKind,
-  jsonCarriedOf,
   jsonDecoratorCentre,
-  jsonInertiaCentre,
-  rendererColour,
+  jsonLabelOffset,
+  jsonLabelUnshift,
+  jsonStepCentre,
+  LABRE_NATURES,
+  methodOf,
+  relationOf,
+  rendererColourName,
   rendererCoordsOf,
   round3,
   sameColour,
@@ -27,32 +35,37 @@ import { WARDLEY_ROLE } from './roles.js';
  * A Wardley board as a `@formicoidea/wardley-map-renderer` JSON map — the
  * inverse of `renderer-json-import.ts` (ADR 0012, amendment of 2026-10-28).
  *
- * ## Structural, so it needs no editor
+ * ## What it reads: what the canvas shows, and nothing stored
  *
- * The OWM writer picks its artefacts by `instanceof` (`export-board.ts`),
- * which loads the element classes; this one reads what every element holds
- * whatever it is — `type`, `role`, `kind`, its box, its text, its two ends,
- * its `interchange` — so it runs on live models and on stored props alike, and
- * lives on the `./interchange` entry beside its reader.
+ * No foreign id and no foreign field rides on any element, so this writer
+ * reads what is VISIBLE and recognises each piece by what it is:
  *
- * ## What comes back
+ * - a component is a Wardley node of a component kind, its type its `kind`,
+ *   its place its centre on the first map's plot, its nature the
+ *   `wardley:nature` tag, its colour its stroke, its method the method node's
+ *   colours (`methodOf`);
+ * - its name, description, step dot and range bar are found in its GROUP
+ *   first (the reader puts them there), by what they are: the text with the
+ *   `wardley:label` role, a plain text, a plain ellipse holding a number, a
+ *   thin plain rect. Ungrouped, each is looked for in its slot;
+ * - a climate arrow is a decorator of the component whose slot it sits in; an
+ *   inertia bar on an evolution arrow is that evolution's inertia; an arrow's
+ *   label, when it is a renderer evolution type, is its `evolveType`;
+ * - a dependency link's colour and width say its relation type, its words
+ *   the flow's label;
+ * - the plain text right above the map is the title, the one right under it
+ *   the context; the map's own labels and toggles are its `renderConfig`.
  *
- * Each component from the board: its id (`interchange.json.id`, or the
- * element's own when the file gave none or two elements claim one), the name
- * beside it, its type from the node's kind, its centre on the first map's
- * plot to three decimals (the renderer's rounding), its decorators from the
- * climate arrows and inertia bars in their slots, its evolutions from the
- * change arrows leaving it. Every field the reader carried is merged back
- * UNDER what the board says, so a field the board draws always wins. A
- * relation is a dependency, consumer first. What the board holds and the
- * format has no word for is a warning, never a silent drop.
+ * Ids are Labre's: a component's is the slug of its name (`paiement`,
+ * `paiement-2`), a relation's `r1`… What the format has no word for, and a
+ * free text or shape nobody claims, is left out with a warning.
  *
- * A coordinate is clamped to 0…1, because the renderer refuses anything else
- * and this file is written to be rendered; the warning names what was off.
+ * It needs no editor: it reads stored fields, never `instanceof`, so it runs
+ * on live models and stored props alike and lives on `./interchange`.
  */
 
 export interface WardleyJsonExportOptions {
-  /** The board's title, used when the map came from no file that had one. */
+  /** The page's title, written when no title text sits above the map. */
   name?: string;
 }
 
@@ -63,21 +76,31 @@ interface Element {
   role?: string;
   kind?: string;
   xywh?: string;
-  elementBound?: { x: number; y: number; w: number; h: number };
+  elementBound?: Box;
   text?: unknown;
+  textAlign?: unknown;
+  shapeType?: unknown;
+  fillColor?: unknown;
   strokeColor?: unknown;
+  stroke?: unknown;
+  strokeWidth?: unknown;
+  strokeStyle?: unknown;
+  tags?: unknown;
+  children?: unknown;
+  childIds?: unknown;
   source?: { id?: string; position?: unknown };
   target?: { id?: string; position?: unknown };
-  interchange?: Record<string, ForeignInterchange>;
+  [field: string]: unknown;
 }
 
 type Json = Record<string, unknown>;
-type Box = { x: number; y: number; w: number; h: number };
 
-/** How far a decorator may sit from its slot and still belong to the node. */
+/** How far a piece may sit from its slot and still belong to the node. */
 const SLOT_TOLERANCE = 24;
 /** How far an inertia bar may sit off an evolution arrow and still be on it. */
 const ARROW_TOLERANCE = 12;
+/** How far above or under the map a title or a context may sit. */
+const MARGIN_REACH = 120;
 
 const COMPONENT_KINDS: readonly string[] = [
   'anchor',
@@ -109,16 +132,8 @@ export function exportWardleyRendererJson(
     );
   }
   const plot = map ? owmPlotOf(boxOf(map)) : owmDefaultPlot();
-  const mapCarried = map ? jsonCarriedOf(map) : undefined;
-  const documentAttrs = mapCarried?.attrs?.[JSON_SCOPE.document];
-  const named = options.name?.trim() ? options.name : undefined;
-  const fileTitle = documentAttrs?.[JSON_ATTR.title];
-  // The file's title wins over the caller's name, as OWM's does (D3): record
-  // what the file said, never what the host happens to call the page.
-  const title = fileTitle ?? named ?? '';
-  const documentRest = parsed(documentAttrs?.[JSON_ATTR.rest]) ?? {};
 
-  /* ── The artefacts ────────────────────────────────────────────────── */
+  /* ── What is on the board ─────────────────────────────────────────── */
 
   const nodes = elements.filter(
     e => e.type === 'wardleyNode' && e.role !== undefined
@@ -127,20 +142,57 @@ export function exportWardleyRendererJson(
   const labels = elements.filter(
     e => e.type === 'text' && e.role === WARDLEY_ROLE.label
   );
+  const plainTexts = elements.filter(
+    e => e.type === 'text' && e.role === undefined
+  );
+  const plainShapes = elements.filter(
+    e => e.type === 'shape' && e.role === undefined
+  );
   const connectors = elements.filter(e => e.type === 'connector');
   const bars = elements.filter(e => e.role === WARDLEY_ROLE.inertia);
+  const groups = elements.filter(e => e.type === 'group');
+  const byId = new Map(elements.map(e => [e.id, e]));
 
-  const components = nodes.filter(n => COMPONENT_KINDS.includes(n.kind ?? ''));
-  const pipelines = nodes.filter(n => n.kind === 'pipeline');
+  const written = nodes.filter(
+    n => COMPONENT_KINDS.includes(n.kind ?? '') || n.kind === 'pipeline'
+  );
+  const pipelines = written.filter(n => n.kind === 'pipeline');
   const climate = nodes.filter(
     n => n.kind === 'accelerator' || n.kind === 'decelerator'
   );
   const handles = nodes.filter(n => n.kind === 'handle');
-  const written = nodes.filter(
-    n => COMPONENT_KINDS.includes(n.kind ?? '') || n.kind === 'pipeline'
-  );
+  const claimed = new Set<Element>();
 
-  /** The pipeline a handle sits on: astride its body's top edge. */
+  /* ── Title and context: the plain texts just above and under the map ─ */
+
+  let title: string | undefined;
+  let mapContext: string | undefined;
+  if (map) {
+    const box = boxOf(map);
+    const beside = (text: Element) => {
+      const b = boxOf(text);
+      return b.x < box.x + box.w && b.x + b.w > box.x;
+    };
+    const above = nearest(
+      plainTexts.filter(t => beside(t) && boxOf(t).y + boxOf(t).h <= box.y + 1),
+      t => box.y - (boxOf(t).y + boxOf(t).h)
+    );
+    if (above && above.distance <= MARGIN_REACH) {
+      title = textOf(above.item);
+      claimed.add(above.item);
+    }
+    const under = nearest(
+      plainTexts.filter(t => beside(t) && boxOf(t).y >= box.y + box.h - 1),
+      t => boxOf(t).y - (box.y + box.h)
+    );
+    if (under && under.distance <= MARGIN_REACH) {
+      mapContext = textOf(under.item);
+      claimed.add(under.item);
+    }
+  }
+
+  /* ── The pipeline a handle sits on: astride its body's top edge ───── */
+
   const ownerOfHandle = new Map<string, Element>();
   const handleOf = new Map<string, Element>();
   for (const handle of handles) {
@@ -159,57 +211,154 @@ export function exportWardleyRendererJson(
     }
   }
 
-  /* ── Names ────────────────────────────────────────────────────────── */
+  /* ── A component's own pieces: its group first ────────────────────── */
 
-  const taken = new Set<Element>();
-  const nameOf = new Map<string, string>();
-  for (const pipeline of pipelines) {
-    // A pipeline's name sits above its HANDLE, which is where the toolbar
-    // writes it; the body may be any width, so the shared matcher, which
-    // predicts from the body, would look in the wrong place.
-    const body = boxOf(pipeline);
-    const handle = handleOf.get(pipeline.id);
-    const cx = handle ? centreOf(boxOf(handle)).x : body.x + body.w / 2;
-    const slot = wardleyLabelBoxFor(
-      'pipeline',
-      cx,
-      body.y + PIPELINE_HEIGHT / 2
-    );
-    let best: { label: Element; distance: number } | undefined;
-    for (const label of labels) {
-      if (taken.has(label)) continue;
-      const b = boxOf(label);
-      const distance = Math.hypot(b.x - slot.x, b.y - slot.y);
-      if (distance <= SLOT_TOLERANCE && (!best || distance < best.distance)) {
-        best = { label, distance };
-      }
-    }
-    if (best) {
-      taken.add(best.label);
-      nameOf.set(pipeline.id, textOf(best.label));
+  const parentOf = new Map<string, Element>();
+  for (const group of groups) {
+    for (const child of childIdsOf(group)) {
+      if (!parentOf.has(child)) parentOf.set(child, group);
     }
   }
+  /** Everything in the node's group, when that group is the node's own. */
+  const ownGroup = (node: Element): Element[] => {
+    const group = parentOf.get(node.id);
+    if (!group) return [];
+    const members: Element[] = [];
+    const walk = (g: Element) => {
+      for (const id of childIdsOf(g)) {
+        const child = byId.get(id);
+        if (!child) continue;
+        if (child.type === 'group') walk(child);
+        else members.push(child);
+      }
+    };
+    walk(group);
+    // A group a user made around several components is not one component's.
+    const artefacts = members.filter(
+      m =>
+        m.type === 'wardleyNode' && m.role !== undefined && m.kind !== 'handle'
+    );
+    return artefacts.length === 1 ? members : [];
+  };
+
+  interface Pieces {
+    label?: Element;
+    description?: Element;
+    step?: Element;
+    range?: Element;
+  }
+  const piecesOf = new Map<string, Pieces>();
+  for (const node of [...written, ...climate]) {
+    const pieces: Pieces = {};
+    for (const member of ownGroup(node)) {
+      if (member === node || claimed.has(member)) continue;
+      if (member.type === 'text' && member.role === WARDLEY_ROLE.label) {
+        pieces.label ??= member;
+      } else if (member.type === 'text' && member.role === undefined) {
+        pieces.description ??= member;
+      } else if (isStep(member)) {
+        pieces.step ??= member;
+      } else if (isRange(member)) {
+        pieces.range ??= member;
+      } else continue;
+      claimed.add(member);
+    }
+    piecesOf.set(node.id, pieces);
+  }
+
+  /* ── Names left ungrouped: by place ───────────────────────────────── */
+
+  for (const pipeline of pipelines) {
+    const pieces = piecesOf.get(pipeline.id)!;
+    if (pieces.label) continue;
+    const slot = pipelineLabelSlot(pipeline, handleOf.get(pipeline.id));
+    const found = nearest(
+      labels.filter(l => !claimed.has(l)),
+      l => Math.hypot(boxOf(l).x - slot.x, boxOf(l).y - slot.y)
+    );
+    if (found && found.distance <= SLOT_TOLERANCE) {
+      pieces.label = found.item;
+      claimed.add(found.item);
+    }
+  }
+  const unnamedNodes = [...written, ...climate].filter(
+    n => n.kind !== 'pipeline' && !piecesOf.get(n.id)?.label
+  );
+  const freeLabels = labels.filter(l => !claimed.has(l));
   const matched = matchLabels(
-    [...components, ...climate].map(node => ({
+    unnamedNodes.map(node => ({
       id: node.id,
       kind: node.kind ?? '',
       role: node.role,
       elementBound: boxOf(node),
     })),
-    labels
-      .filter(label => !taken.has(label))
-      .map(label => ({ text: textOf(label), elementBound: boxOf(label) }))
+    // The matcher answers with each label's text; handing it the label's id
+    // as its text gets the element back.
+    freeLabels.map(label => ({ text: label.id, elementBound: boxOf(label) }))
   );
-  for (const [id, name] of matched) nameOf.set(id, name);
+  for (const [nodeId, labelId] of matched) {
+    const label = byId.get(labelId);
+    if (!label) continue;
+    piecesOf.get(nodeId)!.label = label;
+    claimed.add(label);
+  }
 
-  /* ── Ids: the file's, unless two elements claim one ───────────────── */
+  /* ── The other pieces left ungrouped: by place ────────────────────── */
 
+  for (const node of written) {
+    if (node.kind === 'pipeline') continue;
+    const pieces = piecesOf.get(node.id)!;
+    const c = centreOf(boxOf(node));
+    const kind = node.kind as JsonComponentKind;
+    if (!pieces.description && pieces.label) {
+      const slot = descriptionSlot(boxOf(pieces.label));
+      const found = nearest(
+        plainTexts.filter(t => !claimed.has(t)),
+        t => Math.hypot(boxOf(t).x - slot.x, boxOf(t).y - slot.y)
+      );
+      if (found && found.distance <= SLOT_TOLERANCE / 2) {
+        pieces.description = found.item;
+        claimed.add(found.item);
+      }
+    }
+    if (!pieces.step) {
+      const slot = jsonStepCentre(kind, c.x, c.y);
+      const found = nearest(
+        plainShapes.filter(s => !claimed.has(s) && isStep(s)),
+        s => distanceTo(centreOf(boxOf(s)), slot)
+      );
+      if (found && found.distance <= SLOT_TOLERANCE / 2) {
+        pieces.step = found.item;
+        claimed.add(found.item);
+      }
+    }
+    if (!pieces.range) {
+      const found = plainShapes.find(s => {
+        if (claimed.has(s) || !isRange(s)) return false;
+        const b = boxOf(s);
+        return (
+          Math.abs(b.y + b.h / 2 - c.y) <= 2 && b.x <= c.x && c.x <= b.x + b.w
+        );
+      });
+      if (found) {
+        pieces.range = found;
+        claimed.add(found);
+      }
+    }
+  }
+
+  /* ── Ids: Labre's, minted from the names ──────────────────────────── */
+
+  const nameOf = (node: Element) => {
+    const label = piecesOf.get(node.id)?.label;
+    return label ? textOf(label) : '';
+  };
   const used = new Set<string>();
   const idOf = new Map<string, string>();
   for (const node of written) {
-    const carried = jsonCarriedOf(node)?.id;
-    let id = carried && !used.has(carried) ? carried : node.id;
-    for (let n = 2; used.has(id); n += 1) id = `${node.id}-${n}`;
+    const stem = slug(nameOf(node)) || node.id;
+    let id = stem;
+    for (let n = 2; used.has(id); n += 1) id = `${stem}-${n}`;
     used.add(id);
     idOf.set(node.id, id);
   }
@@ -228,7 +377,7 @@ export function exportWardleyRendererJson(
     from: Element;
     start: { x: number; y: number };
     end: { x: number; y: number };
-    rest: Json;
+    evolveType?: string;
     inertia: boolean;
   }
   const arrows: Arrow[] = [];
@@ -245,42 +394,41 @@ export function exportWardleyRendererJson(
       looseArrows += 1;
       continue;
     }
+    const label = textOf(connector).trim().toLowerCase();
+    const evolveType = EVOLVE_TYPES.find(type => type === label);
     arrows.push({
       from,
       start: centreOf(boxOf(sourceNode)),
       end,
-      rest: selfRest(connector),
+      ...(evolveType === undefined ? {} : { evolveType }),
       inertia: false,
     });
   }
 
-  /* ── Decorators: whose slot is each one in ────────────────────────── */
+  /* ── Decorators: which slot each one is in ────────────────────────── */
 
   const decorated = new Map<string, Set<string>>();
-  const flag = (node: Element, what: string) => {
-    const set = decorated.get(node.id) ?? new Set<string>();
-    set.add(what);
-    decorated.set(node.id, set);
-  };
   let looseClimate = 0;
   for (const arrow of climate) {
     const which = arrow.kind as 'accelerator' | 'decelerator';
     const at = centreOf(boxOf(arrow));
-    const owner = nearest(components, node => {
-      const c = centreOf(boxOf(node));
-      const slot = jsonDecoratorCentre(
-        node.kind as JsonComponentKind,
-        which,
-        c.x,
-        c.y
-      );
-      return Math.hypot(at.x - slot.cx, at.y - slot.cy);
-    });
+    const owner = nearest(
+      written.filter(n => n.kind !== 'pipeline'),
+      node => {
+        const c = centreOf(boxOf(node));
+        const slot = jsonDecoratorCentre(
+          node.kind as JsonComponentKind,
+          which,
+          c.x,
+          c.y
+        );
+        return distanceTo(at, slot);
+      }
+    );
     if (owner && owner.distance <= SLOT_TOLERANCE) {
-      flag(
-        owner.item,
-        which === 'accelerator' ? 'accelerator' : 'deaccelerator'
-      );
+      const set = decorated.get(owner.item.id) ?? new Set<string>();
+      set.add(which === 'accelerator' ? 'accelerator' : 'deaccelerator');
+      decorated.set(owner.item.id, set);
     } else looseClimate += 1;
   }
   let looseBars = 0;
@@ -291,55 +439,102 @@ export function exportWardleyRendererJson(
     );
     if (onArrow && onArrow.distance <= ARROW_TOLERANCE) {
       onArrow.item.inertia = true;
-      continue;
-    }
-    const owner = nearest(components, node => {
-      const c = centreOf(boxOf(node));
-      const slot = jsonInertiaCentre(node.kind as JsonComponentKind, c.x, c.y);
-      return Math.hypot(at.x - slot.cx, at.y - slot.cy);
-    });
-    if (owner && owner.distance <= SLOT_TOLERANCE) flag(owner.item, 'inertia');
-    else looseBars += 1;
+    } else looseBars += 1;
   }
 
   /* ── Components ───────────────────────────────────────────────────── */
 
   let clamped = 0;
+  const clamp = (value: number) => {
+    const bounded = Math.min(1, Math.max(0, value));
+    if (round3(bounded) !== round3(value)) clamped += 1;
+    return round3(bounded);
+  };
   const coords = (x: number, y: number) => {
     const { evolution, visibility } = rendererCoordsOf(plot, x, y);
-    const clamp = (value: number) => {
-      const bounded = Math.min(1, Math.max(0, value));
-      if (round3(bounded) !== round3(value)) clamped += 1;
-      return round3(bounded);
-    };
     return { evolution: clamp(evolution), visibility: clamp(visibility) };
   };
 
   const unnamed: string[] = [];
-  const out: Json[] = written.map(node => {
+  const unqualified: string[] = [];
+  const components: Json[] = written.map(node => {
     const id = idOf.get(node.id)!;
-    const self = jsonCarriedOf(node)?.attrs?.[JSON_SCOPE.self] ?? {};
-    const rest = parsed(self[JSON_ATTR.rest]) ?? {};
-    const carriedEvolutions = Array.isArray(rest.evolvesTo)
-      ? rest.evolvesTo
-      : [];
-    delete rest.evolvesTo;
-    const name = nameOf.get(node.id) ?? '';
+    const pieces = piecesOf.get(node.id)!;
+    const name = nameOf(node);
     if (name.length === 0) unnamed.push(id);
-    const subtype = parsedValue(self[JSON_ATTR.subtype]);
     const box = boxOf(node);
-    const centre = coords(box.x + box.w / 2, box.y + box.h / 2);
+    const centre = centreOf(box);
+    const at = coords(centre.x, centre.y);
+    const kind = node.kind ?? 'component';
+    const out: Json = { id, label: { name } };
 
-    const mapped: Json = {
-      id,
-      label: { name },
-      ...typeOf(node.kind ?? '', subtype),
-      position: {
-        evolution: { scalar: centre.evolution },
-        visibility: { scalar: centre.visibility },
-      },
+    /* The name's offset, when it is not where the toolbar puts it. */
+    if (pieces.label) {
+      const offset =
+        kind === 'pipeline'
+          ? pipelineLabelOffset(plot, node, handleOf.get(node.id), pieces.label)
+          : jsonLabelOffset(
+              plot,
+              WARDLEY_NODE_SIZE[kind as WardleyArtefactKind].w,
+              centre.x,
+              centre.y,
+              boxOf(pieces.label),
+              pieces.label.textAlign
+            );
+      if (!isDefaultLabelOffset(offset)) {
+        (out.label as Json).position = offset;
+      }
+    }
+
+    /* Type, subtype, nature. */
+    const nature = natureOf(node);
+    if (kind === 'anchor') out.type = 'anchor';
+    else if (kind === 'pipeline') out.type = 'pipeline';
+    else out.type = 'component';
+    if (kind === 'market' || kind === 'ecosystem') out.subtype = kind;
+    if (nature !== undefined) {
+      // The renderer accepts these four natures on a `functional` component
+      // only, so the subtype is written with them.
+      if (kind === 'component' || kind === 'method') {
+        out.subtype = 'functional';
+        out.nature = nature;
+      } else unqualified.push(id);
+    }
+
+    out.position = {
+      evolution: { scalar: at.evolution },
+      visibility: { scalar: at.visibility },
     };
-    if (node.kind === 'pipeline') {
+    if (pieces.range) {
+      const r = boxOf(pieces.range);
+      (out.position as Json).evolution = {
+        scalar: at.evolution,
+        range: [coords(r.x, r.y).evolution, coords(r.x + r.w, r.y).evolution],
+      };
+    }
+    if (pieces.description) {
+      const text = textOf(pieces.description);
+      if (text.trim()) out.description = text;
+    }
+
+    const evolutions = arrows
+      .filter(arrow => arrow.from === node)
+      .map(arrow => {
+        const target = coords(arrow.end.x, arrow.end.y);
+        return {
+          position: {
+            evolution: { scalar: target.evolution },
+            visibility: { scalar: target.visibility },
+          },
+          ...(arrow.evolveType === undefined
+            ? {}
+            : { evolveType: arrow.evolveType }),
+          ...(arrow.inertia ? { inertia: true } : {}),
+        };
+      });
+    if (evolutions.length > 0) out.evolvesTo = evolutions;
+
+    if (kind === 'pipeline') {
       const topLeft = coords(box.x, box.y);
       const bottomRight = coords(box.x + box.w, box.y + box.h);
       const handle = handleOf.get(node.id);
@@ -347,59 +542,45 @@ export function exportWardleyRendererJson(
         ? coords(centreOf(boxOf(handle)).x, box.y).evolution
         : undefined;
       const middle = round3((topLeft.evolution + bottomRight.evolution) / 2);
-      mapped.pipelineGeometry = {
+      out.pipelineGeometry = {
         evoStart: topLeft.evolution,
         evoEnd: bottomRight.evolution,
         visStart: topLeft.visibility,
         visEnd: bottomRight.visibility,
-        ...(handleEvolution !== undefined &&
-        (handleEvolution !== middle || self[JSON_ATTR.handle] === 'true')
+        ...(handleEvolution !== undefined && handleEvolution !== middle
           ? { handleEvolution }
           : {}),
       };
     }
-    const colour = colourOf(node, parsedValue(self[JSON_ATTR.color]));
-    if (colour !== undefined) mapped.color = colour;
-    const method = parsedValue(self[JSON_ATTR.method]);
-    if (node.kind === 'method') {
-      // A method drawn here says there IS one, not which: what the file named
-      // comes back, and a method placed from the toolbar is a buying policy,
-      // which is what Labre's build / buy / outsource is.
-      mapped.method = method ?? {
+
+    if (kind === 'method') {
+      // ponytail: read from the node's colours until the method node gains
+      // real method parameters (`feat/wardley-method-nature`). A method the
+      // colours do not name is still a method, with no recommendation.
+      out.method = methodOf(node) ?? {
         category: 'buying-policy',
         recommendation: '',
       };
-    } else if (method !== undefined && node.kind !== 'component') {
-      // A pipeline, a market, an ecosystem or an anchor has no method item to
-      // be drawn as, so the file's method rides along; a plain COMPONENT is
-      // one somebody turned out of a method, and the method goes with it.
-      mapped.method = method;
+    } else {
+      const colour = colourOf(node);
+      if (colour !== undefined) out.color = colour;
     }
-    for (const what of decorated.get(node.id) ?? []) mapped[what] = true;
-    const evolutions = arrows
-      .filter(arrow => arrow.from === node)
-      .map(arrow => {
-        const target = coords(arrow.end.x, arrow.end.y);
-        return ordered(
-          merge(arrow.rest, {
-            position: {
-              evolution: { scalar: target.evolution },
-              visibility: { scalar: target.visibility },
-            },
-            ...(arrow.inertia ? { inertia: true } : {}),
-          }),
-          ['position', 'evolveType', 'inertia']
-        );
-      });
-    if (evolutions.length + carriedEvolutions.length > 0) {
-      mapped.evolvesTo = [...evolutions, ...carriedEvolutions];
+    for (const flag of decorated.get(node.id) ?? []) out[flag] = true;
+    if (pieces.step) {
+      const number = Number.parseInt(textOf(pieces.step), 10);
+      const fill = pieces.step.fillColor;
+      out.step = {
+        number,
+        ...(typeof fill === 'string' && !sameColour(fill, '#cc0000')
+          ? { color: rendererColourName(fill) }
+          : {}),
+      };
     }
-    return ordered(merge(rest, mapped), COMPONENT_ORDER);
+    return out;
   });
 
   /* ── Relations ────────────────────────────────────────────────────── */
 
-  const relationIds = new Set<string>();
   let looseLinks = 0;
   const relations: Json[] = [];
   for (const connector of connectors) {
@@ -410,59 +591,43 @@ export function exportWardleyRendererJson(
       looseLinks += 1;
       continue;
     }
-    const rest = selfRest(connector);
-    const carried = jsonCarriedOf(connector)?.id;
-    let id = carried && !relationIds.has(carried) ? carried : connector.id;
-    for (let n = 2; relationIds.has(id); n += 1) id = `${connector.id}-${n}`;
-    relationIds.add(id);
+    const { type, style } = relationOf(connector);
     const label = textOf(connector).trim();
-    // The words on the link are the flow's label; a link whose words were
-    // removed carries no flow any more, whatever style the file gave it.
-    if (label.length === 0) delete rest.flow;
-    relations.push(
-      ordered(
-        merge(rest, {
-          id,
-          consumer: idOf.get(consumer.id)!,
-          supplier: idOf.get(supplier.id)!,
-          type: typeof rest.type === 'string' ? rest.type : 'DependsOn',
-          ...(label.length > 0 ? { flow: { label } } : {}),
-        }),
-        ['id', 'consumer', 'supplier', 'type', 'flow']
-      )
-    );
+    relations.push({
+      id: `r${relations.length + 1}`,
+      consumer: idOf.get(consumer.id)!,
+      supplier: idOf.get(supplier.id)!,
+      type,
+      // The renderer's `flow` needs a label, so a style alone is not written.
+      ...(label.length > 0
+        ? { flow: { label, ...(style === undefined ? {} : { style }) } }
+        : {}),
+    });
   }
 
-  /* ── What the reader could not draw, back verbatim ───────────────── */
+  /* ── The document ─────────────────────────────────────────────────── */
 
-  const carriedOf = (scope: string) =>
-    (mapCarried?.children?.[scope] ?? []).flatMap(text => {
-      const value = parsedValue(text);
-      return value === undefined ? [] : [value];
-    });
-
-  const document = ordered(
-    {
-      ...documentRest,
-      title,
-      components: [...out, ...carriedOf(JSON_SCOPE.components)],
-      relations: [...relations, ...carriedOf(JSON_SCOPE.relations)],
-    },
-    ['title', 'context', 'components', 'relations', 'renderConfig']
-  );
+  const renderConfig = map ? renderConfigOf(map) : undefined;
+  const document: Json = {
+    title: title ?? options.name?.trim() ?? '',
+    ...(mapContext === undefined ? {} : { context: mapContext }),
+    components,
+    relations,
+    ...(renderConfig === undefined ? {} : { renderConfig }),
+  };
 
   /* ── What the format could not say ───────────────────────────────── */
 
   const count = (n: number, one: string, many: string) =>
     `${n} ${n === 1 ? one : many}`;
-  if (fileTitle !== undefined && named !== undefined && fileTitle !== named) {
-    warnings.push(
-      `This map came from a file titled "${fileTitle}", and that is the title written out, not "${named}".`
-    );
-  }
   if (unnamed.length > 0) {
     warnings.push(
       `${count(unnamed.length, 'component has', 'components have')} no name on the map and ${unnamed.length === 1 ? 'was' : 'were'} written with an empty one: ${unnamed.slice(0, 5).join(', ')}.`
+    );
+  }
+  if (unqualified.length > 0) {
+    warnings.push(
+      `The renderer gives a nature to a plain component only, so the nature of ${unqualified.slice(0, 5).join(', ')} was not written.`
     );
   }
   if (clamped > 0) {
@@ -470,29 +635,25 @@ export function exportWardleyRendererJson(
       `${count(clamped, 'coordinate falls', 'coordinates fall')} outside the map's plot and ${clamped === 1 ? 'was' : 'were'} written at its edge: the renderer reads 0…1 only.`
     );
   }
-  const porters = nodes.filter(n => n.kind === 'porter').length;
-  if (porters > 0) {
-    warnings.push(
-      `${count(porters, "Porter's forces glyph", "Porter's forces glyphs")} could not be written: the renderer JSON has no word for one.`
-    );
+  for (const [kind, what] of [
+    ['porter', "Porter's forces glyph"],
+    ['area', 'area'],
+  ] as const) {
+    const n = nodes.filter(node => node.kind === kind).length;
+    if (n > 0) {
+      warnings.push(
+        `${count(n, what, `${what}s`)} could not be written: the renderer JSON has no word for ${n === 1 ? 'it' : 'them'}.`
+      );
+    }
   }
-  const areas = nodes.filter(n => n.kind === 'area').length;
-  if (areas > 0) {
-    warnings.push(
-      `${count(areas, 'area', 'areas')} could not be written: the renderer JSON has no word for a zone of the map.`
-    );
-  }
-  const notes = map
-    ? elements.filter(
-        e =>
-          e.type === 'text' &&
-          e.role === undefined &&
-          inside(centreOf(boxOf(e)), boxOf(map))
+  const strays = map
+    ? [...plainTexts, ...plainShapes].filter(
+        e => !claimed.has(e) && inside(centreOf(boxOf(e)), boxOf(map))
       ).length
     : 0;
-  if (notes > 0) {
+  if (strays > 0) {
     warnings.push(
-      `${count(notes, 'free text', 'free texts')} on the map could not be written: the renderer JSON has no note.`
+      `${count(strays, 'free text or shape', 'free texts or shapes')} on the map belong to no component, so ${strays === 1 ? 'it was' : 'they were'} not written.`
     );
   }
   if (looseLinks > 0) {
@@ -507,12 +668,12 @@ export function exportWardleyRendererJson(
   }
   if (looseClimate > 0) {
     warnings.push(
-      `${count(looseClimate, 'accelerator or decelerator sits', 'accelerators or decelerators sit')} under no component, and the renderer draws one only on a component, so ${looseClimate === 1 ? 'it was' : 'they were'} left out.`
+      `${count(looseClimate, 'accelerator or decelerator sits', 'accelerators or decelerators sit')} beside no component, and the renderer draws one only on a component, so ${looseClimate === 1 ? 'it was' : 'they were'} left out.`
     );
   }
   if (looseBars > 0) {
     warnings.push(
-      `${count(looseBars, 'inertia bar sits', 'inertia bars sit')} on no evolution arrow and beside no component, so ${looseBars === 1 ? 'it was' : 'they were'} left out.`
+      `${count(looseBars, 'inertia bar sits', 'inertia bars sit')} on no evolution arrow, so ${looseBars === 1 ? 'it was' : 'they were'} left out.`
     );
   }
 
@@ -520,75 +681,124 @@ export function exportWardleyRendererJson(
   return { text, warnings };
 }
 
-/* ── What a component is, in the renderer's words ─────────────────────── */
+/* ── What the map says of itself ──────────────────────────────────────── */
 
-const COMPONENT_ORDER = [
-  'id',
-  'label',
-  'type',
-  'subtype',
-  'nature',
-  'position',
-  'description',
-  'evolvesTo',
-  'pipelineGeometry',
-  'color',
-  'method',
-  'inertia',
-  'accelerator',
-  'deaccelerator',
-  'step',
-];
-
-/**
- * `type` and `subtype` from the node's kind. A market or an ecosystem IS its
- * subtype; a component or a method keeps the one the file gave it unless that
- * one named a kind the node no longer is; an anchor has none.
- */
-function typeOf(kind: string, carried: unknown): Json {
-  switch (kind) {
-    case 'anchor':
-      return { type: 'anchor' };
-    case 'market':
-    case 'ecosystem':
-      return { type: 'component', subtype: kind };
-    case 'pipeline':
-      return {
-        type: 'pipeline',
-        ...(carried === undefined ? {} : { subtype: carried }),
-      };
-    default:
-      return carried === undefined ||
-        carried === 'market' ||
-        carried === 'ecosystem'
-        ? { type: 'component' }
-        : { type: 'component', subtype: carried };
+/** The map's own labels and toggles, as the `renderConfig` that sets them. */
+function renderConfigOf(map: Element): Json | undefined {
+  const display: Json = {};
+  if (map.showXAxis === false) display.axisEvolution = false;
+  if (map.showYAxis === false) display.axisValueChain = false;
+  if (map.showColumnDividers === false && map.showColumnLabels === false) {
+    display.phases = false;
   }
+  const background: Json = {};
+  const axis = (text: unknown) =>
+    typeof text === 'string' ? { default: { label: { text } } } : undefined;
+  const x = axis(map.xAxisTitle);
+  const y = axis(map.yAxisTitle);
+  if (x) background.axisEvolution = x;
+  if (y) background.axisValueChain = y;
+  const phases = [0, 1, 2, 3].map(index => map[`phase${index}`]);
+  let last = -1;
+  phases.forEach((text, index) => {
+    if (typeof text === 'string') last = index;
+  });
+  if (last >= 0) {
+    background.phases = {
+      default: {
+        labels: phases
+          .slice(0, last + 1)
+          .map(text => (typeof text === 'string' ? { text } : {})),
+      },
+    };
+  }
+  const config: Json = {};
+  if (Object.keys(display).length > 0) config.display = display;
+  if (Object.keys(background).length > 0) config.style = { background };
+  return Object.keys(config).length > 0 ? config : undefined;
 }
 
-/**
- * The renderer `color` of a node: the file's own word while the board still
- * paints it, the stroke's hex once somebody changed it, nothing while the
- * node keeps the toolbar's stroke.
- */
-function colourOf(node: Element, carried: unknown): string | undefined {
+/* ── A node's parameters ──────────────────────────────────────────────── */
+
+/** The `wardley:nature` value a node carries, if it is one of the four. */
+function natureOf(node: Element): string | undefined {
+  const tags = node.tags as
+    | { get?: (key: string) => unknown; [key: string]: unknown }
+    | undefined;
+  if (!tags) return undefined;
+  const values =
+    typeof tags.get === 'function'
+      ? tags.get(WARDLEY_NATURE_TAG_ID)
+      : tags[WARDLEY_NATURE_TAG_ID];
+  if (!Array.isArray(values)) return undefined;
+  const prefix = `${WARDLEY_NATURE_TAG_ID}/`;
+  return LABRE_NATURES.find(nature => values.includes(`${prefix}${nature}`));
+}
+
+/** The renderer `color` of a node: its stroke, unless it is the toolbar's. */
+function colourOf(node: Element): string | undefined {
   const stroke = node.strokeColor;
+  if (typeof stroke !== 'string' || !stroke.startsWith('#')) return undefined;
   const preset = wardleyNodeProps(node.kind as WardleyArtefactKind, {
     xywh: '[0,0,0,0]',
   }).strokeColor;
-  if (typeof carried === 'string') {
-    const painted = rendererColour(carried);
-    if (painted ? sameColour(stroke, painted) : sameColour(stroke, preset)) {
-      return carried;
-    }
-  }
-  if (typeof stroke === 'string' && stroke.startsWith('#')) {
-    return sameColour(stroke, preset) ? undefined : stroke;
-  }
-  return undefined;
+  return sameColour(stroke, preset) ? undefined : rendererColourName(stroke);
+}
+
+/** A pipeline's name slot: centred above its handle, as the toolbar writes it. */
+function pipelineLabelSlot(pipeline: Element, handle: Element | undefined) {
+  const body = boxOf(pipeline);
+  const cx = handle ? centreOf(boxOf(handle)).x : body.x + body.w / 2;
+  return wardleyLabelBoxFor('pipeline', cx, body.y + PIPELINE_HEIGHT / 2);
+}
+
+function pipelineLabelOffset(
+  plot: ReturnType<typeof owmPlotOf>,
+  pipeline: Element,
+  handle: Element | undefined,
+  label: Element
+) {
+  const slot = pipelineLabelSlot(pipeline, handle);
+  const box = boxOf(label);
+  return jsonLabelUnshift(plot, { x: box.x - slot.x, y: box.y - slot.y });
+}
+
+const isStep = (element: Element) =>
+  element.type === 'shape' &&
+  element.role === undefined &&
+  element.shapeType === 'ellipse' &&
+  /^\d+$/.test(textOf(element).trim());
+
+const isRange = (element: Element) =>
+  element.type === 'shape' &&
+  element.role === undefined &&
+  isRangeShape(element.shapeType, boxOf(element));
+
+/** A name of the renderer's id alphabet: lower case, ascii, dashes. */
+function slug(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 /* ── The pieces ───────────────────────────────────────────────────────── */
+
+/** A group's member ids, from a live model (`childIds`) or stored props. */
+function childIdsOf(group: Element): string[] {
+  if (Array.isArray(group.childIds)) return group.childIds as string[];
+  const children = group.children as
+    | { keys?: () => Iterable<string> }
+    | Record<string, unknown>
+    | undefined;
+  if (!children) return [];
+  if (typeof children.keys === 'function') {
+    return [...(children.keys as () => Iterable<string>)()];
+  }
+  return Object.keys(children);
+}
 
 function boxOf(element: Element): Box {
   if (element.elementBound) {
@@ -604,13 +814,18 @@ function boxOf(element: Element): Box {
 
 const centreOf = (box: Box) => ({ x: box.x + box.w / 2, y: box.y + box.h / 2 });
 
+const distanceTo = (
+  a: { x: number; y: number },
+  b: { cx: number; cy: number }
+) => Math.hypot(a.x - b.cx, a.y - b.cy);
+
 const inside = (point: { x: number; y: number }, box: Box) =>
   point.x >= box.x &&
   point.x <= box.x + box.w &&
   point.y >= box.y &&
   point.y <= box.y + box.h;
 
-/** A text element's words, whether a `Y.Text` or a plain string. */
+/** A text's words, whether a `Y.Text` or a plain string. */
 function textOf(element: { text?: unknown }): string {
   const text = element.text;
   return text === undefined || text === null ? '' : String(text);
@@ -665,51 +880,4 @@ function segmentDistance(
           Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / length)
         );
   return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
-}
-
-/** The carried `rest` of an element's own payload, as an object. */
-function selfRest(element: Element): Json {
-  return (
-    parsed(
-      jsonCarriedOf(element)?.attrs?.[JSON_SCOPE.self]?.[JSON_ATTR.rest]
-    ) ?? {}
-  );
-}
-
-function parsedValue(text: string | undefined): unknown {
-  if (text === undefined) return undefined;
-  try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    return undefined;
-  }
-}
-
-/** A carried JSON object, or `undefined` when there is none. */
-function parsed(text: string | undefined): Json | undefined {
-  const value = parsedValue(text);
-  return isRecord(value) ? value : undefined;
-}
-
-const isRecord = (value: unknown): value is Json =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
-/** `over` laid over `under`, object by object; `over` wins everywhere else. */
-function merge(under: unknown, over: Json): Json {
-  const base: Json = isRecord(under) ? { ...under } : {};
-  for (const [key, value] of Object.entries(over)) {
-    base[key] =
-      isRecord(value) && isRecord(base[key]) ? merge(base[key], value) : value;
-  }
-  return base;
-}
-
-/** The same object, its known keys first in the renderer's own order. */
-function ordered(value: Json, order: readonly string[]): Json {
-  const out: Json = {};
-  for (const key of order) if (key in value) out[key] = value[key];
-  for (const [key, field] of Object.entries(value)) {
-    if (!(key in out)) out[key] = field;
-  }
-  return out;
 }

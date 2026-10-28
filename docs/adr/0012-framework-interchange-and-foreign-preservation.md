@@ -397,7 +397,7 @@ that every other exporter ignores. "Registration is flag-gated" stays true for
 every framework; the reasoning and the limits are ADR 0019's amendment of the
 same date.
 
-#### Amendment 2026-10-28 — a second Wardley language: the renderer JSON, drawn with the toolbox
+#### Amendment 2026-10-28 — a second Wardley language: the renderer JSON, drawn with the toolbox, nothing kept that does not show
 
 Wardley gains a second semantic format beside OWM: the JSON of
 `@formicoidea/wardley-map-renderer` (schema version 1.0.0-beta.5), both
@@ -411,40 +411,37 @@ back with `wardley:owm:export`, and its bench found what that path does to a
 map a model is editing: a duplicate component at the target of every
 `evolve` (the OWM reader draws an evolved twin), a pipeline's name written
 twice and its square centred, and the squares and colours of the source
-gone. The JSON reader is not a second layout of its own: **every element it
-writes is a `WARDLEY_TOOLBOX` builder's** ([ADR 0045](0045-headless-toolbox.md)),
-so a map read from JSON is made of exactly the elements a user places from
-the toolbar. An evolution is the toolbar's change arrow with a free end at
-the target point, which is what the Arrow tool leaves when it is dropped on
-the empty map; no twin is drawn, because the renderer draws none. A pipeline
-is the toolbar's item with its body stretched to `pipelineGeometry`.
-Decorators the renderer draws off a component (`accelerator`,
-`deaccelerator`, `inertia`) are the toolbar's own items placed in a slot
-beside it, and the writer reads them back from that slot.
+gone.
 
-What it decides beyond OWM:
+Decided with the PO, and a deliberate departure from D1–D3 for this format
+only:
 
-1. **The writer is headless.** It reads stored fields (`type`, `role`,
-   `kind`, the box, the text, the two ends, `interchange`) instead of picking
-   models by `instanceof`, so it lives on `./interchange` beside its reader
-   and runs on live models and stored props alike. OWM's export stays where
-   it is.
-2. **Carried fields ride on the element they belong to**, under
-   `interchange.json.attrs['@self']`: `rest` is a JSON object of every field
-   of the component, relation or evolution the board does not draw, merged
-   UNDER what the board says on export, so a field the board draws always
-   wins. Entries the reader cannot draw (no id, name, type or number; a
-   relation naming no component) ride whole on the map under `@components` /
-   `@relations` and are written back verbatim. The file's `title` and its
-   other top-level fields ride on the map under `@document`.
-3. **A bad document is a report.** Text that is not JSON, or JSON with no
-   `components` list, imports nothing and says why in one keyed note; the
-   reader never throws.
-4. **The renderer package is not imported.** It loads resvg, a native binary,
-   which the `./interchange` graph exists to keep out; the shape is checked by
-   hand in `renderer-json-import.ts`, which names the schema version it
-   follows. The field-by-field table and the losses are that file's module
-   documentation.
+1. **Every Wardley element is a `WARDLEY_TOOLBOX` builder's**
+   ([ADR 0045](0045-headless-toolbox.md)), given its real parameters (kind,
+   `wardley:nature` tag, colours, the name's position). An evolution is the
+   toolbar's change arrow with a free end at the target point, which is what
+   the Arrow tool leaves when dropped on the empty map; no twin is drawn.
+   What the toolbox has no item for (a description, a step, an evolution
+   range, the title, the context) is a plain shape or a free text, grouped
+   with its component where it has one.
+2. **Nothing is carried.** No foreign id and no foreign field is stored on any
+   element: ids belong to Labre (the writer mints them from the names), and
+   a field the canvas cannot show is dropped and named in the import report.
+   D1's middle state and D2's payload are not used by this format; the
+   report's `carried` is always 0.
+3. **The writer reads back what is visible**, recognising each piece by what
+   it is: its group first, then its place, then nothing (a free text or a
+   shape no component claims is left out with a warning). It reads stored
+   fields, not `instanceof`, so it needs no editor and lives on
+   `./interchange` beside its reader.
+4. **A bad document is a report**, never an exception.
+5. **The renderer package is not imported** (it loads resvg); the shape is
+   checked by hand in `renderer-json-import.ts`, whose module documentation
+   holds the field-by-field table.
+6. **The method rides on the method node's colours** (the renderer's own
+   look: category colour, recommendation fill) until the method node gains
+   real method and nature parameters (branch `feat/wardley-method-nature`);
+   `methodLook` / `methodOf` are the one place that changes then.
 
 Registering the two rows gives the editor an "Export Wardley as .json" view
 action and a `.json` entry in the import picker, both projections of the

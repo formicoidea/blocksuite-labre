@@ -9,13 +9,23 @@ import {
   WARDLEY_JSON_FORMAT,
   WARDLEY_JSON_IMPORT,
 } from '../interchange-headless';
-import { INERTIA_SIZE } from '../node/consts';
+import { WARDLEY_NATURE_TAG_ID } from '../natures';
+import { INERTIA_SIZE, LINK_GREY, LINK_STROKE_WIDTH } from '../node/consts';
 import { WARDLEY_NODE_SIZE } from '../presets';
 import {
+  CONSTRAINT_COLOUR,
+  DEFAULT_METHOD_CATEGORIES,
+  FLOW_COLOUR,
   jsonDecoratorCentre,
+  jsonLabelBox,
+  jsonLabelOffset,
+  methodLook,
+  methodOf,
+  PHASE_LINES,
+  RELATION_WIDTH,
+  relationLook,
+  relationOf,
   rendererPointOf,
-  round3,
-  WARDLEY_JSON_FORMAT_ID,
 } from '../renderer-json';
 import { exportWardleyRendererJson } from '../renderer-json-export';
 import {
@@ -37,19 +47,20 @@ import PIPELINE from './corpus/renderer-json/wardleyapi-pipeline.json?raw';
 
 /**
  * The wardley-map-renderer JSON, both ways (ADR 0012, amendment of
- * 2026-10-28).
+ * 2026-10-28, and the PO's mapping of the same day).
  *
  * What it would have caught: a map read from JSON made of anything but the
- * toolbar's own artefacts (the OWM reader's wider labels, larger anchor, no
- * group); a second component drawn at the target of an evolution, which the
- * OWM path did and the connector's bench caught; a pipeline whose body is
- * centred instead of spanning its geometry; the renderer's visibility read
- * the OWM way up; a field of the file dropped on the way back
- * (`export(import(x))` is the file); a bad document thrown from inside the
- * reader instead of reported.
+ * toolbar's own artefacts; a second component drawn at an evolution's
+ * target (the OWM path's, caught by the connector's bench); a pipeline whose
+ * body does not span its geometry; the renderer's visibility read the OWM way
+ * up; ANY foreign id or field stored on an element (nothing is carried); a
+ * displayed field that does not come back (name offset, nature, method,
+ * description, step, range, decorators, evolution type and inertia, relation
+ * type and flow, title, context, the map's labels); a writer whose output
+ * moves when read and written again; a bad document thrown instead of
+ * reported.
  */
 
-type Props = SerializedElementProps & Record<string, unknown>;
 type Json = Record<string, any>;
 
 /** The renderer README's quick start, verbatim. */
@@ -79,58 +90,40 @@ const read = (map: unknown) =>
 
 /**
  * What `materializeInterchangeImport` does, on plain props: a surface id per
- * element, a local name or a source id resolved to it (the source id first,
- * as there), a group's children and a connector's ends rewritten. The writer
- * reads stored fields only, so it is handed these props as a host's store
- * would hold them.
+ * element, a local name resolved to it, a group's children and a connector's
+ * ends rewritten. The writer reads stored fields only, so it is handed these
+ * props as a host's store would hold them.
  */
-function materialize(elements: readonly SerializedElementProps[]): Props[] {
-  const bySource = new Map<string, string>();
+function materialize(elements: readonly SerializedElementProps[]): Json[] {
   const byLocal = new Map<string, string>();
   const surface = elements.map((props, index) => {
     const id = `s${index + 1}`;
-    const source = (props.interchange as Json | undefined)?.[
-      WARDLEY_JSON_FORMAT_ID
-    ]?.id as string | undefined;
-    if (source !== undefined && !bySource.has(source)) bySource.set(source, id);
     if (typeof props.id === 'string' && !byLocal.has(props.id)) {
       byLocal.set(props.id, id);
     }
-    return { ...props, id } as Props;
+    return { ...props, id } as Json;
   });
-  const resolve = (name: string) => bySource.get(name) ?? byLocal.get(name);
+  const resolve = (name: string) => byLocal.get(name) ?? name;
   for (const element of surface) {
     if (element.type === 'group') {
       element.children = Object.fromEntries(
-        Object.keys(element.children as Json).map(child => [
-          resolve(child) ?? child,
-          true,
-        ])
+        Object.keys(element.children).map(child => [resolve(child), true])
       );
     }
     for (const side of ['source', 'target'] as const) {
-      const end = element[side] as { id?: string } | undefined;
-      if (end?.id !== undefined) {
-        element[side] = { ...end, id: resolve(end.id) ?? end.id };
-      }
+      const end = element[side];
+      if (end?.id !== undefined)
+        element[side] = { ...end, id: resolve(end.id) };
     }
   }
   return surface;
 }
 
-const roundTrip = (source: string) =>
-  JSON.parse(
-    exportWardleyRendererJson(
-      materialize(importWardleyRendererJson(source).elements)
-    ).text
-  ) as Json;
+const write = (elements: readonly Json[], name?: string) =>
+  exportWardleyRendererJson(elements, name === undefined ? {} : { name });
 
-/** An element without the keys a test does not compare. */
-const without = (element: Json | undefined, ...keys: string[]) => {
-  const copy: Json = { ...element };
-  for (const key of keys) delete copy[key];
-  return copy;
-};
+const cycle = (source: string) =>
+  write(materialize(importWardleyRendererJson(source).elements));
 
 const plot = owmDefaultPlot();
 
@@ -150,17 +143,8 @@ const centre = (xywh: unknown) => {
   return { x: b.x + b.w / 2, y: b.y + b.h / 2 };
 };
 
-/** The kind a renderer component is drawn as. */
-const kindOf = (c: Json) =>
-  c.type === 'anchor'
-    ? 'anchor'
-    : c.type === 'pipeline'
-      ? 'pipeline'
-      : c.subtype === 'market' || c.subtype === 'ecosystem'
-        ? c.subtype
-        : c.method
-          ? 'method'
-          : 'component';
+const byId = (elements: readonly SerializedElementProps[], id: string) =>
+  elements.find(e => e.id === id);
 
 describe('the declaration', () => {
   it('is the triple, semantic, one format object for both directions', () => {
@@ -178,74 +162,87 @@ describe('the declaration', () => {
     expect(WARDLEY_INTERCHANGE).toContain(WARDLEY_JSON_IMPORT);
   });
 
-  it('names the file after the board and runs on stored props', () => {
+  it('names the file after the page, and the title after the text above the map', () => {
     const result = WARDLEY_JSON_EXPORT.run(
       materialize(read(QUICK_START).elements) as never,
       { name: 'Tea/shop' }
     );
     expect(result.filename).toBe('Tea-shop.json');
     expect(result.mime).toBe('application/json');
-    // The file's own title wins over the page's name, and that is said.
     expect(JSON.parse(result.text).title).toBe('Tea shop');
-    expect(result.warnings?.join('\n')).toContain('Tea shop');
+    // No title text: the page's name is the title.
+    const untitled = read({ ...QUICK_START, title: '' }).elements;
+    expect(JSON.parse(write(materialize(untitled), 'Kitchen').text).title).toBe(
+      'Kitchen'
+    );
+  });
+});
+
+describe('nothing foreign is stored', () => {
+  it('writes no interchange payload on any element', () => {
+    for (const source of [JSON.stringify(QUICK_START), EPARGNE, PIPELINE]) {
+      const { elements, report } = read(source);
+      expect(elements.filter(e => 'interchange' in e)).toEqual([]);
+      expect(report.carried).toBe(0);
+    }
   });
 });
 
 describe('the README quick start', () => {
   const { elements, report } = read(QUICK_START);
 
-  it('lays the toolbar’s map down first', () => {
-    expect(without(elements[0], 'interchange')).toEqual(
-      wardleyMapElement('classic', { x: 0, y: 0 })
-    );
+  it('lays the toolbar’s map down first, the title above it', () => {
+    expect(elements[0]).toEqual(wardleyMapElement('classic', { x: 0, y: 0 }));
+    const title = byId(elements, 'title');
+    expect(title?.text).toBe('Tea shop');
+    expect(title?.role).toBeUndefined();
+    expect(Bound.deserialize(title?.xywh as string).maxY).toBeLessThan(0);
   });
 
-  it('draws each component with the toolbar’s own builder', () => {
-    const customer = wardleyNodeElements(
-      'anchor',
-      atOf('anchor', 0.5, 0.05),
-      'Customer',
-      'customer'
-    );
-    const cup = wardleyNodeElements(
-      'component',
-      atOf('component', 0.85, 0.25),
-      'Cup of tea',
-      'cup-of-tea'
-    );
-    for (const expected of [...customer, ...cup]) {
-      const actual = elements.find(e => e.id === expected.id);
-      expect(without(actual, 'interchange')).toEqual(expected);
+  it('draws each component exactly as the toolbar does', () => {
+    const expected = [
+      ...wardleyNodeElements(
+        'anchor',
+        atOf('anchor', 0.5, 0.05),
+        'Customer',
+        'customer'
+      ),
+      ...wardleyNodeElements(
+        'component',
+        atOf('component', 0.85, 0.25),
+        'Cup of tea',
+        'cup-of-tea'
+      ),
+    ];
+    for (const piece of expected) {
+      expect(byId(elements, piece.id as string)).toEqual(piece);
     }
-    expect(elements.find(e => e.id === 'customer:node')?.interchange).toEqual({
-      json: { id: 'customer' },
-    });
   });
 
   it('reads visibility the renderer’s way up: 0 is the top', () => {
-    const customer = centre(elements.find(e => e.id === 'customer:node')?.xywh);
-    const cup = centre(elements.find(e => e.id === 'cup-of-tea:node')?.xywh);
+    const customer = centre(byId(elements, 'customer:node')?.xywh);
+    const cup = centre(byId(elements, 'cup-of-tea:node')?.xywh);
     expect(customer.y).toBeLessThan(cup.y);
-    // 0.05 is near the TOP of the plot, OWM's 0.95.
     expect(customer.y - plot.y0).toBeCloseTo(0.05 * plot.height, 6);
   });
 
   it('draws the relation as the Link tool does, consumer first', () => {
     const link = elements.find(e => e.role === WARDLEY_ROLE.dependency);
-    expect(without(link, 'interchange')).toEqual(
-      wardleyDependencyElement('customer:node', 'cup-of-tea:node')
-    );
-    expect(link?.interchange).toEqual({ json: { id: 'r1' } });
+    expect(link).toEqual({
+      ...wardleyDependencyElement('customer:node', 'cup-of-tea:node'),
+      ...relationLook('DependsOn', undefined),
+    });
+    expect(link?.stroke).toBe(LINK_GREY);
+    expect(link?.strokeWidth).toBe(LINK_STROKE_WIDTH);
   });
 
   it('reports what it drew', () => {
-    // The title, two components and one relation.
     expect(report).toMatchObject({ mapped: 4, carried: 0, quarantined: 0 });
     expect(report.notes).toEqual([]);
   });
 
-  it('comes back as the same map, the default relation type written out', () => {
-    expect(roundTrip(JSON.stringify(QUICK_START))).toEqual({
+  it('comes back as the same map, ids minted from the names', () => {
+    expect(JSON.parse(cycle(JSON.stringify(QUICK_START)).text)).toEqual({
       ...QUICK_START,
       relations: [{ ...QUICK_START.relations[0], type: 'DependsOn' }],
     });
@@ -255,33 +252,104 @@ describe('the README quick start', () => {
 describe('a rich map (épargne salariale, from the renderer’s data/)', () => {
   const source = JSON.parse(EPARGNE) as Json;
   const { elements, report } = read(EPARGNE);
+  const component = (id: string) =>
+    (source.components as Json[]).find(c => c.id === id)!;
 
-  it('draws every component with the toolbar’s builder for its kind', () => {
+  it('draws every node with the toolbar’s builder for its kind', () => {
+    const without = (element: Json | undefined, ...keys: string[]) => {
+      const copy: Json = { ...element };
+      for (const key of keys) delete copy[key];
+      return copy;
+    };
     for (const c of source.components as Json[]) {
-      const kind = kindOf(c);
+      const kind =
+        c.type === 'anchor'
+          ? 'anchor'
+          : c.subtype === 'market'
+            ? 'market'
+            : c.method
+              ? 'method'
+              : 'component';
       const at = atOf(
         kind,
         c.position.evolution.scalar,
         c.position.visibility.scalar
       );
-      const expected =
+      const built =
         kind === 'market'
           ? wardleyMarketElements(at, c.label.name, c.id)
           : wardleyNodeElements(kind, at, c.label.name, c.id);
-      for (const piece of expected) {
-        const actual = elements.find(e => e.id === piece.id);
-        expect(without(actual, 'interchange'), piece.id as string).toEqual(
-          piece
+      for (const piece of built) {
+        const actual = byId(elements, piece.id as string);
+        // The node's parameters (nature, method colours), the name's offset
+        // and the group's extra members are the file's; the rest is the
+        // toolbar's, to the last prop.
+        const own = [
+          'tags',
+          'fillColor',
+          'strokeColor',
+          'xywh',
+          'textAlign',
+          'children',
+        ];
+        expect(without(actual, ...own), String(piece.id)).toEqual(
+          without(piece, ...own)
         );
       }
-      expect(
-        (elements.find(e => e.id === `${c.id}:node`)?.interchange as Json).json
-          .id
-      ).toBe(c.id);
+      expect(centre(byId(elements, `${c.id}:node`)?.xywh)).toEqual(
+        centre(built[0]?.xywh)
+      );
     }
   });
 
-  it('draws an evolution as an arrow to a point, never a second component', () => {
+  it('sets the nature tag, and drops the natures Labre has no value for', () => {
+    expect(byId(elements, 'portail-salarie:node')?.tags).toEqual({
+      [WARDLEY_NATURE_TAG_ID]: [`${WARDLEY_NATURE_TAG_ID}/activity`],
+    });
+    // A method carries its nature too.
+    expect(byId(elements, 'fiscalite-social:node')?.tags).toEqual({
+      [WARDLEY_NATURE_TAG_ID]: [`${WARDLEY_NATURE_TAG_ID}/knowledge`],
+    });
+    // `generic` on an anchor, `natural` on a user need: no value here.
+    expect(byId(elements, 'salarie:node')?.tags).toBeUndefined();
+    expect(byId(elements, 'besoin-epargner:node')?.tags).toBeUndefined();
+    expect(report.notes.find(n => n.element === 'nature')?.messageKey).toBe(
+      WARDLEY_JSON_IMPORT_REMARKS.droppedField[0]
+    );
+  });
+
+  it('colours a method by the category the map declares', () => {
+    const categories = {
+      sourcing: {
+        colour: '#2563eb',
+        steps: ['Construire', 'Acheter', 'Externaliser'],
+      },
+    };
+    expect(byId(elements, 'tenue-compte:node')).toMatchObject(
+      methodLook(component('tenue-compte').method, categories)!
+    );
+    expect(byId(elements, 'tenue-compte:node')?.fillColor).toBe('#2563ebff');
+  });
+
+  it('replays the name’s offset', () => {
+    const label = byId(elements, 'salarie:label');
+    const [cx, cy] = rendererPointOf(plot, 0.12, 0.05);
+    const c = component('salarie');
+    const [ex, ey] = rendererPointOf(
+      plot,
+      c.position.evolution.scalar,
+      c.position.visibility.scalar
+    );
+    const placed = jsonLabelBox(plot, WARDLEY_NODE_SIZE.anchor.w, ex, ey, {
+      dx: 12,
+      dy: -10,
+    });
+    const box = Bound.deserialize(label?.xywh as string);
+    expect([box.x, box.y]).toEqual([placed.x, placed.y]);
+    expect([cx, cy].every(Number.isFinite)).toBe(true);
+  });
+
+  it('draws an evolution as an arrow to a point labelled with its type', () => {
     const nodes = elements.filter(
       e => e.type === 'wardleyNode' && e.role !== undefined
     );
@@ -290,84 +358,147 @@ describe('a rich map (épargne salariale, from the renderer’s data/)', () => {
     );
     // One node per component, plus the two climate arrows: no twin.
     expect(nodes.length - climate.length).toBe(source.components.length);
-
     const arrows = elements.filter(e => e.role === WARDLEY_ROLE.changeArrow);
     expect(arrows).toHaveLength(3);
-    const simulateur = arrows.find(
-      a => (a.source as Json).id === 'simulateur:node'
-    );
-    const [tx, ty] = rendererPointOf(plot, 0.66, 0.34);
-    expect(simulateur).toEqual({
-      ...wardleyChangeArrowElement('simulateur:node', 'simulateur:node'),
+    const [tx, ty] = rendererPointOf(plot, 0.78, 0.5);
+    expect(
+      arrows.find(a => (a.source as Json).id === 'conformite:node')
+    ).toEqual({
+      ...wardleyChangeArrowElement(
+        'conformite:node',
+        'conformite:node',
+        'forced'
+      ),
       target: { position: [tx, ty] },
-      interchange: {
-        json: { attrs: { '@self': { rest: '{"evolveType":"natural"}' } } },
+    });
+  });
+
+  it('puts an evolution’s inertia on each phase line it crosses', () => {
+    // 0.37 → 0.58 crosses the line at 0.4.
+    const bars = elements.filter(e =>
+      String(e.id).startsWith('fiscalite-social:evolve-1:inertia')
+    );
+    expect(bars).toHaveLength(1);
+    const [x] = rendererPointOf(plot, PHASE_LINES[1]!, 0);
+    const [, y] = rendererPointOf(plot, 0, 0.48);
+    expect(centre(bars[0]?.xywh)).toEqual({ x, y });
+    expect(bars[0]?.role).toBe(WARDLEY_ROLE.inertia);
+    expect(Bound.deserialize(bars[0]?.xywh as string).w).toBe(INERTIA_SIZE.w);
+  });
+
+  it('puts a climate arrow where the renderer does: beside the node', () => {
+    const [cx, cy] = rendererPointOf(plot, 0.63, 0.22);
+    const slot = jsonDecoratorCentre('component', 'accelerator', cx, cy);
+    expect(
+      centre(byId(elements, 'portail-salarie:accelerator:node')?.xywh)
+    ).toEqual({ x: slot.cx, y: slot.cy });
+    const [dx] = rendererPointOf(plot, 0.5, 0.58);
+    expect(
+      centre(byId(elements, 'connecteur-paie:decelerator:node')?.xywh).x
+    ).toBeLessThan(dx);
+  });
+
+  it('draws the step dot in the component’s group', () => {
+    const dot = byId(elements, 'simulateur:step');
+    expect(dot).toMatchObject({
+      type: 'shape',
+      shapeType: 'ellipse',
+      text: '1',
+    });
+    expect(dot?.role).toBeUndefined();
+    expect(
+      Object.keys(byId(elements, 'simulateur:group')?.children as Json)
+    ).toContain('simulateur:step');
+  });
+
+  it('draws Flow blue and thick, Constraint black and as thick', () => {
+    const links = elements.filter(e => e.role === WARDLEY_ROLE.dependency);
+    const flow = links.find(l => l.text === 'valeurs liquidatives');
+    expect(flow).toMatchObject({
+      stroke: FLOW_COLOUR,
+      strokeWidth: RELATION_WIDTH,
+      strokeStyle: 'dash',
+    });
+    const constraint = links.find(
+      l =>
+        (l.source as Json).id === 'conformite:node' &&
+        l.stroke === CONSTRAINT_COLOUR
+    );
+    expect(constraint?.strokeWidth).toBe(RELATION_WIDTH);
+    expect(RELATION_WIDTH).toBeGreaterThan(LINK_STROKE_WIDTH);
+  });
+
+  it('applies the map’s own labels and drops the rest of renderConfig', () => {
+    expect(elements[0]).toMatchObject({
+      xAxisTitle: 'Évolution',
+      yAxisTitle: 'Chaîne de valeur',
+      phase0: 'Genèse',
+    });
+    expect(report.notes.map(n => n.element)).toContain('renderConfig');
+  });
+
+  it('gives back every field the canvas shows', () => {
+    const back = JSON.parse(cycle(EPARGNE).text) as Json;
+    const slugOf = new Map(
+      (source.components as Json[]).map(c => [
+        c.id,
+        c.label.name
+          .normalize('NFD')
+          .replace(/[̀-ͯ]/g, '')
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, ''),
+      ])
+    );
+    expect(back.components).toHaveLength(source.components.length);
+    for (const c of source.components as Json[]) {
+      const out = (back.components as Json[]).find(
+        o => o.id === slugOf.get(c.id)
+      )!;
+      expect(out, c.id).toBeDefined();
+      expect(out.label).toEqual(c.label);
+      expect(out.position).toEqual(c.position);
+      expect(out.type).toBe(c.type);
+      if (['activity', 'data', 'practice', 'knowledge'].includes(c.nature)) {
+        expect(out.nature).toBe(c.nature);
+        expect(out.subtype).toBe('functional');
+      } else expect(out.nature).toBeUndefined();
+      expect(out.step).toEqual(c.step);
+      expect(out.accelerator).toEqual(c.accelerator);
+      expect(out.deaccelerator).toEqual(c.deaccelerator);
+      expect(out.evolvesTo).toEqual(c.evolvesTo);
+      // A category the map declared comes back under the default category of
+      // its colour, until the method node has real parameters.
+      expect(Boolean(out.method)).toBe(Boolean(c.method));
+    }
+    const pairs = (rels: Json[], map: (id: string) => string | undefined) =>
+      rels.map(r => [map(r.consumer), map(r.supplier), r.type, r.flow]);
+    expect(pairs(back.relations, id => id)).toEqual(
+      pairs(source.relations, id => slugOf.get(id))
+    );
+    expect(back.relations.map((r: Json) => r.id)).toEqual(
+      source.relations.map((_: Json, i: number) => `r${i + 1}`)
+    );
+    expect(back.renderConfig).toEqual({
+      style: {
+        background: {
+          axisEvolution: { default: { label: { text: 'Évolution' } } },
+          axisValueChain: { default: { label: { text: 'Chaîne de valeur' } } },
+          phases: source.renderConfig.style.background.phases,
+        },
       },
     });
   });
 
-  it('puts an evolution’s inertia on its arrow, a decorator in its slot', () => {
-    const bar = elements.find(
-      e => e.id === 'fiscalite-social:evolve-1:inertia'
-    );
-    const from = rendererPointOf(plot, 0.37, 0.48);
-    const to = rendererPointOf(plot, 0.58, 0.48);
-    expect(centre(bar?.xywh)).toEqual({
-      x: (from[0] + to[0]) / 2,
-      y: (from[1] + to[1]) / 2,
-    });
-    expect(bar?.role).toBe(WARDLEY_ROLE.inertia);
-    expect(Bound.deserialize(bar?.xywh as string).w).toBe(INERTIA_SIZE.w);
-
-    const [cx, cy] = rendererPointOf(plot, 0.63, 0.22);
-    const slot = jsonDecoratorCentre('component', 'accelerator', cx, cy);
-    const size = WARDLEY_NODE_SIZE.accelerator;
-    expect(
-      elements.filter(e =>
-        e.id?.toString().startsWith('portail-salarie:accelerator')
-      )
-    ).toEqual(
-      wardleyNodeElements(
-        'accelerator',
-        { x: slot.cx - size.w / 2, y: slot.cy - size.h / 2 },
-        undefined,
-        'portail-salarie:accelerator'
-      )
-    );
-    expect(
-      elements.some(e => e.id === 'connecteur-paie:decelerator:node')
-    ).toBe(true);
-  });
-
-  it('carries what the board does not draw, by name', () => {
-    const carried = report.notes
-      .filter(note => note.kind === 'carried')
-      .map(note => note.element);
-    expect(carried).toEqual(
-      expect.arrayContaining([
-        'label.position',
-        'nature',
-        'step',
-        'subtype',
-        'method',
-        'renderConfig',
-        'evolvesTo.evolveType',
-        'relation.type',
-        'relation.flow',
-      ])
-    );
-    expect(report.notes.every(n => n.messageKey !== undefined)).toBe(true);
-    expect(report.quarantined).toBe(0);
-  });
-
-  it('comes back whole: export(import(x)) is x', () => {
-    expect(roundTrip(EPARGNE)).toEqual(source);
+  it('is a fixed point after one cycle', () => {
+    const once = cycle(EPARGNE).text;
+    expect(cycle(once).text).toBe(once);
   });
 });
 
 describe('a pipeline (the renderer’s own API map, from data/)', () => {
   const source = JSON.parse(PIPELINE) as Json;
-  const { elements } = read(PIPELINE);
+  const { elements, report } = read(PIPELINE);
   const pipeline = (source.components as Json[]).find(
     c => c.type === 'pipeline'
   )!;
@@ -383,228 +514,256 @@ describe('a pipeline (the renderer’s own API map, from data/)', () => {
       pipeline.id
     );
     for (const piece of built) {
-      const actual = elements.find(e => e.id === piece.id);
-      expect(without(actual, 'interchange', 'xywh')).toEqual(
-        without(piece, 'xywh')
-      );
-      if (piece.id !== `${pipeline.id}:node`) {
-        expect(actual?.xywh).toEqual(piece.xywh);
-      }
+      const actual = byId(elements, piece.id as string);
+      if (piece.type === 'group') continue;
+      if (piece.id === `${pipeline.id}:node`) {
+        expect(Bound.deserialize(actual?.xywh as string).toXYWH()).toEqual([
+          left,
+          top,
+          right - left,
+          bottom - top,
+        ]);
+        expect({ ...actual, xywh: piece.xywh }).toEqual(piece);
+      } else expect(actual).toEqual(piece);
     }
-    const body = elements.find(e => e.id === `${pipeline.id}:node`);
-    expect(Bound.deserialize(body?.xywh as string).toXYWH()).toEqual([
-      left,
-      top,
-      right - left,
-      bottom - top,
-    ]);
-    // The name is drawn once, above the handle.
-    expect(
-      elements.filter(e => e.type === 'text' && e.text === pipeline.label.name)
-    ).toHaveLength(1);
+    // A pipeline has no method item: its method is dropped.
+    expect(report.notes.map(n => n.element)).toContain('pipeline method');
   });
 
-  it('comes back whole but for the pipeline’s own position and place', () => {
-    const back = roundTrip(PIPELINE);
-    const byId = (a: Json, b: Json) => String(a.id).localeCompare(String(b.id));
-    const expected = (source.components as Json[]).map(c =>
-      c.id === pipeline.id
-        ? {
-            ...c,
-            // The renderer does not draw it; the body's centre comes back.
-            position: {
-              evolution: { scalar: round3((g.evoStart + g.evoEnd) / 2) },
-              visibility: { scalar: round3((g.visStart + g.visEnd) / 2) },
-            },
-          }
-        : c
+  it('writes a description as a free text in the component’s group', () => {
+    const description = byId(elements, `${pipeline.id}:description`);
+    expect(description).toMatchObject({
+      type: 'text',
+      text: pipeline.description,
+    });
+    expect(description?.role).toBeUndefined();
+    expect(
+      Object.keys(byId(elements, `${pipeline.id}:group`)?.children as Json)
+    ).toContain(`${pipeline.id}:description`);
+  });
+
+  it('draws the context under the map', () => {
+    const context = byId(elements, 'context');
+    expect(context?.text).toBe(source.context);
+    expect(Bound.deserialize(context?.xywh as string).y).toBeGreaterThan(
+      Bound.deserialize(elements[0]?.xywh as string).maxY
     );
-    // A body is laid under the components it holds, so pipelines come back
-    // first; nothing in the format reads the order.
-    expect(back.components[0].id).toBe(pipeline.id);
-    expect({ ...back, components: [...back.components].sort(byId) }).toEqual({
-      ...source,
-      components: expected.sort(byId),
+  });
+
+  it('gives back its geometry, descriptions and context, and holds still', () => {
+    const once = cycle(PIPELINE).text;
+    const back = JSON.parse(once) as Json;
+    const out = (back.components as Json[]).find(c => c.type === 'pipeline')!;
+    expect(out.pipelineGeometry).toEqual(g);
+    expect(out.description).toBe(pipeline.description);
+    expect(back.context).toBe(source.context);
+    const described = (source.components as Json[]).filter(c => c.description);
+    expect((back.components as Json[]).filter(c => c.description)).toHaveLength(
+      described.length
+    );
+    expect(cycle(once).text).toBe(once);
+  });
+});
+
+describe('the shared look tables invert', () => {
+  it('reads a relation’s type and style back from its colour and width', () => {
+    for (const type of ['DependsOn', 'Flow', 'Constraint'] as const) {
+      for (const style of [undefined, 'dashed', 'bold'] as const) {
+        expect(relationOf(relationLook(type, style))).toEqual(
+          style === undefined ? { type } : { type, style }
+        );
+      }
+    }
+  });
+
+  it('reads a default method back from the node’s colours', () => {
+    for (const category of Object.keys(DEFAULT_METHOD_CATEGORIES)) {
+      for (const recommendation of DEFAULT_METHOD_CATEGORIES[category]!.steps) {
+        const method = { category, recommendation };
+        expect(methodOf(methodLook(method)!)).toEqual(method);
+      }
+    }
+  });
+
+  it('puts a name at an offset and reads the offset back', () => {
+    for (const offset of [
+      { dx: 9, dy: 4 },
+      { dx: 30, dy: -12 },
+      { dx: -15, dy: 8 },
+      { dx: 0, dy: -20 },
+    ]) {
+      const placed = jsonLabelBox(plot, 18, 400, 300, offset);
+      expect(
+        jsonLabelOffset(
+          plot,
+          18,
+          400,
+          300,
+          { x: placed.x, y: placed.y, w: 120, h: 26 },
+          placed.textAlign
+        )
+      ).toEqual(offset);
+    }
+  });
+});
+
+describe('an evolution that crosses no phase line', () => {
+  it('still gets its inertia bar, at its middle', () => {
+    const map = {
+      title: 'Short move',
+      components: [
+        {
+          id: 'k',
+          label: { name: 'Kettle' },
+          type: 'component',
+          position: {
+            evolution: { scalar: 0.45 },
+            visibility: { scalar: 0.3 },
+          },
+          evolvesTo: [
+            {
+              position: {
+                evolution: { scalar: 0.6 },
+                visibility: { scalar: 0.3 },
+              },
+              inertia: true,
+            },
+          ],
+          inertia: true,
+        },
+      ],
+      relations: [],
+    };
+    const { elements, report } = read(map);
+    const bars = elements.filter(e => e.role === WARDLEY_ROLE.inertia);
+    expect(bars).toHaveLength(1);
+    const [x1, y] = rendererPointOf(plot, 0.45, 0.3);
+    const [x2] = rendererPointOf(plot, 0.6, 0.3);
+    expect(centre(bars[0]?.xywh)).toEqual({ x: (x1 + x2) / 2, y });
+    // A component's own `inertia` is dropped (formicoidea/wardley-map-renderer#5).
+    expect(report.notes.map(n => n.element)).toContain('inertia');
+    expect(JSON.parse(cycle(JSON.stringify(map)).text).components[0]).toEqual({
+      ...map.components[0],
+      id: 'kettle',
+      inertia: undefined,
     });
   });
 });
 
-describe('colours and a component’s own decorators', () => {
-  const map = {
-    title: 'Decorated',
-    components: [
-      {
-        id: 'k',
-        label: { name: 'Kettle' },
-        type: 'component',
-        position: { evolution: { scalar: 0.4 }, visibility: { scalar: 0.3 } },
-        color: 'red-600',
-        inertia: true,
-        accelerator: true,
-        deaccelerator: true,
-      },
-      {
-        id: 't',
-        label: { name: 'Tea' },
-        type: 'component',
-        position: { evolution: { scalar: 0.7 }, visibility: { scalar: 0.6 } },
-        color: 'teal-500',
-      },
-    ],
-    relations: [],
-  };
-  const { elements, report } = read(map);
-
-  it('paints a colour the renderer can name, and carries one it cannot', () => {
-    expect(elements.find(e => e.id === 'k:node')?.strokeColor).toBe('#dc2626');
-    expect(elements.find(e => e.id === 't:node')?.strokeColor).toBe(
-      wardleyNodeElements('component', { x: 0, y: 0 })[0].strokeColor
-    );
-    expect(report.notes.map(n => n.element)).toContain('color');
-  });
-
-  it('draws the inertia bar and both climate arrows from the toolbar', () => {
-    expect(elements.find(e => e.id === 'k:inertia')?.role).toBe(
-      WARDLEY_ROLE.inertia
-    );
-    expect(elements.find(e => e.id === 'k:accelerator:node')?.kind).toBe(
-      'accelerator'
-    );
-    expect(elements.find(e => e.id === 'k:decelerator:node')?.kind).toBe(
-      'decelerator'
-    );
-  });
-
-  it('comes back whole', () => {
-    expect(roundTrip(JSON.stringify(map))).toEqual(map);
-  });
-
-  it('writes a stroke somebody changed as its hex', () => {
-    const board = materialize(elements).map(e =>
-      (e.interchange as Json | undefined)?.json?.id === 't'
-        ? { ...e, strokeColor: '#123456' }
-        : e
-    );
-    const back = JSON.parse(exportWardleyRendererJson(board).text) as Json;
-    expect(back.components[1].color).toBe('#123456');
-  });
-});
-
 describe('a bad document is a report, never a throw', () => {
-  const key = (r: ReturnType<typeof read>) =>
+  const keys = (r: ReturnType<typeof read>) =>
     r.report.notes.map(note => note.messageKey);
 
   it('refuses text that is not JSON', () => {
     const result = read('{ not json');
     expect(result.elements).toEqual([]);
-    expect(key(result)).toEqual([WARDLEY_JSON_IMPORT_REMARKS.notJson[0]]);
+    expect(keys(result)).toEqual([WARDLEY_JSON_IMPORT_REMARKS.notJson[0]]);
   });
 
   it('refuses JSON that is not a map', () => {
     for (const text of ['[1, 2]', '{"title": "x"}', 'null', '42']) {
       const result = read(text);
       expect(result.elements).toEqual([]);
-      expect(key(result)).toEqual([WARDLEY_JSON_IMPORT_REMARKS.notAMap[0]]);
+      expect(keys(result)).toEqual([WARDLEY_JSON_IMPORT_REMARKS.notAMap[0]]);
     }
   });
 
-  it('keeps an undrawable component and a dangling relation, and says so', () => {
-    const broken = { id: 'ghost', label: { name: 'Ghost' }, type: 'component' };
-    const dangling = { id: 'r9', consumer: 'customer', supplier: 'nobody' };
+  it('drops an undrawable component and a dangling relation, and says so', () => {
     const map = {
       ...QUICK_START,
-      components: [...QUICK_START.components, broken],
-      relations: [...QUICK_START.relations, dangling],
+      components: [
+        ...QUICK_START.components,
+        { id: 'ghost', label: { name: 'Ghost' }, type: 'component' },
+      ],
+      relations: [
+        ...QUICK_START.relations,
+        { id: 'r9', consumer: 'customer', supplier: 'nobody' },
+      ],
+      extra: 1,
     };
     const result = read(map);
-    expect(key(result)).toEqual(
+    expect(keys(result)).toEqual(
       expect.arrayContaining([
         WARDLEY_JSON_IMPORT_REMARKS.invalidComponent[0],
         WARDLEY_JSON_IMPORT_REMARKS.undeclaredEnd[0],
+        WARDLEY_JSON_IMPORT_REMARKS.droppedField[0],
       ])
     );
-    expect(result.report.carried).toBe(2);
-    // Not drawn, and written back as they were.
-    expect(result.elements.some(e => e.id === 'ghost:node')).toBe(false);
-    const back = roundTrip(JSON.stringify(map));
-    expect(back.components).toContainEqual(broken);
-    expect(back.relations).toContainEqual(dangling);
+    const back = JSON.parse(cycle(JSON.stringify(map)).text) as Json;
+    expect(back.components).toHaveLength(2);
+    expect(back.relations).toHaveLength(1);
+    expect(back.extra).toBeUndefined();
   });
 });
 
 describe('a board drawn from the toolbar', () => {
   const item = (id: string) => WARDLEY_TOOLBOX.items.find(i => i.id === id)!;
-  const [kx, ky] = rendererPointOf(plot, 0.3, 0.4);
-  const size = WARDLEY_NODE_SIZE.component;
-  const slot = jsonDecoratorCentre('component', 'accelerator', kx, ky);
-  const acc = WARDLEY_NODE_SIZE.accelerator;
   const [tx, ty] = rendererPointOf(plot, 0.6, 0.7);
-  const board = materialize([
+  const props = [
     ...item('map').build({ x: 0, y: 0 }, {}, 'map'),
     ...item('component').build(
-      { x: kx - size.w / 2, y: ky - size.h / 2 },
-      { name: 'Kettle' },
-      'kettle'
+      atOf('component', 0.3, 0.4),
+      { name: 'Paiement' },
+      'a'
     ),
     ...item('component').build(
       atOf('component', 0.6, 0.7),
-      { name: 'Tea' },
-      'tea'
+      { name: 'Paiement' },
+      'b'
     ),
-    ...item('accelerator').build(
-      { x: slot.cx - acc.w / 2, y: slot.cy - acc.h / 2 },
-      { name: 'Faster' },
-      'faster'
-    ),
-    wardleyDependencyElement('kettle:node', 'tea:node', 'water'),
     {
-      ...wardleyChangeArrowElement('kettle:node', 'kettle:node'),
+      ...wardleyDependencyElement('a:node', 'b:node', 'argent'),
+      ...relationLook('Flow', undefined),
+    },
+    {
+      ...wardleyChangeArrowElement('a:node', 'a:node', 'late'),
       target: { position: [tx, ty] },
     },
-  ]);
+  ];
 
-  it('writes ids, names, positions, the link, the arrow and the decorator', () => {
-    const { text, warnings } = exportWardleyRendererJson(board, {
-      name: 'Kitchen',
-    });
+  it('mints ids from the names and reads the link’s type off its look', () => {
+    const board = materialize(props);
+    // The user drags the second name above its node: an offset to write.
+    const label = board.find(e => e.text === 'Paiement' && e.id === 's6')!;
+    const box = Bound.deserialize(label.xywh);
+    label.xywh = `[${box.x},${box.y - 40},${box.w},${box.h}]`;
+    const { text, warnings } = write(board, 'Kitchen');
     const map = JSON.parse(text) as Json;
-    const kettle = board.find(e => e.id === 's2')!;
-    expect(kettle.kind).toBe('component');
-    expect(map).toEqual({
-      title: 'Kitchen',
-      components: [
-        {
-          id: 's2',
-          label: { name: 'Kettle' },
-          type: 'component',
-          position: { evolution: { scalar: 0.3 }, visibility: { scalar: 0.4 } },
-          evolvesTo: [
-            {
-              position: {
-                evolution: { scalar: 0.6 },
-                visibility: { scalar: 0.7 },
-              },
-            },
-          ],
-          accelerator: true,
-        },
-        {
-          id: 's5',
-          label: { name: 'Tea' },
-          type: 'component',
-          position: { evolution: { scalar: 0.6 }, visibility: { scalar: 0.7 } },
-        },
-      ],
-      relations: [
-        {
-          id: 's11',
-          consumer: 's2',
-          supplier: 's5',
-          type: 'DependsOn',
-          flow: { label: 'water' },
-        },
-      ],
-    });
+    expect(map.components.map((c: Json) => c.id)).toEqual([
+      'paiement',
+      'paiement-2',
+    ]);
+    expect(map.components[0].evolvesTo).toEqual([
+      {
+        position: { evolution: { scalar: 0.6 }, visibility: { scalar: 0.7 } },
+        evolveType: 'late',
+      },
+    ]);
+    expect(map.components[1].label.position.dy).toBeLessThan(0);
+    expect(map.relations).toEqual([
+      {
+        id: 'r1',
+        consumer: 'paiement',
+        supplier: 'paiement-2',
+        type: 'Flow',
+        flow: { label: 'argent' },
+      },
+    ]);
+    expect(map.title).toBe('Kitchen');
     expect(warnings).toEqual([]);
+  });
+
+  it('warns about a free text on the map that belongs to no component', () => {
+    const board = materialize([
+      ...props,
+      {
+        type: 'text',
+        id: 'stray',
+        text: 'remember the milk',
+        xywh: '[700,400,200,20]',
+      },
+    ]);
+    const { warnings } = write(board);
+    expect(warnings.join('\n')).toContain('belong to no component');
   });
 });

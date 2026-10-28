@@ -13,7 +13,6 @@ import {
 
 import { WARDLEY_OWM_FORMAT_ID, wardleySafeFilename } from './export.js';
 import { importWardleyOwm } from './import.js';
-import { WARDLEY_JSON_FORMAT_ID } from './renderer-json.js';
 import { exportWardleyRendererJson } from './renderer-json-export.js';
 import { importWardleyRendererJson } from './renderer-json-import.js';
 import { importWardleySvg } from './svg-import.js';
@@ -118,21 +117,21 @@ export const WARDLEY_SVG_IMPORT: InterchangeImportCapability = {
 /* ── The wardley-map-renderer JSON (semantic) ─────────────────────────── */
 
 /**
- * The JSON language of `@formicoidea/wardley-map-renderer`. **Semantic**, like
- * OWM: an `(evolution, visibility)` pair IS a position, so the preservation
- * contract applies and the round trip is owed (ADR 0012, amendment of
- * 2026-10-28 under P1).
+ * The JSON language of `@formicoidea/wardley-map-renderer`. **Semantic**: an
+ * `(evolution, visibility)` pair IS a position. Unlike OWM it keeps nothing
+ * it cannot show: no foreign id and no foreign field rides on an element, and
+ * what the canvas cannot display is dropped and reported (ADR 0012,
+ * amendment of 2026-10-28 under P1).
  *
  * Both directions are here, unlike OWM's: the writer reads elements by their
  * stored fields rather than by `instanceof`, so it loads no element class and
- * a host with no editor exports with it too. The two share this FORMAT
- * object, whose id is the payload key (D2).
+ * a host with no editor exports with it too.
  */
 export const WARDLEY_JSON_EXTENSION = '.json';
 export const WARDLEY_JSON_MIME = 'application/json';
 
 export const WARDLEY_JSON_FORMAT: InterchangeFormat = {
-  id: WARDLEY_JSON_FORMAT_ID,
+  id: 'json',
   tier: 'semantic',
   extensions: [WARDLEY_JSON_EXTENSION],
   mime: WARDLEY_JSON_MIME,

@@ -4,18 +4,31 @@ import type {
   InterchangeNote,
   SerializedElementProps,
 } from '@labre/affine-block-surface/interchange';
-import type { ForeignInterchange } from '@labre/std/gfx';
 
 import { owmDefaultPlot } from './export.js';
 import { INERTIA_SIZE, PIPELINE_WIDTH } from './node/consts.js';
+import { WARDLEY_NATURE_TAG_ID } from './natures.js';
 import { WARDLEY_NODE_SIZE } from './presets.js';
 import {
-  JSON_ATTR,
-  JSON_SCOPE,
+  descriptionSlot,
+  EVOLVE_TYPES,
   type JsonComponentKind,
+  jsonContextElement,
   jsonDecoratorCentre,
-  jsonInertiaCentre,
-  jsonPayload,
+  jsonDescriptionElement,
+  jsonLabelBox,
+  jsonLabelShift,
+  jsonRangeElement,
+  jsonStepCentre,
+  jsonStepElement,
+  jsonTitleElement,
+  LABRE_NATURES,
+  type MethodCategories,
+  methodCategoriesOf,
+  methodLook,
+  PHASE_LINES,
+  relationLook,
+  type RelationType,
   rendererColour,
   rendererPointOf,
 } from './renderer-json.js';
@@ -47,15 +60,15 @@ export const WARDLEY_JSON_IMPORT_REMARKS = {
   ],
   invalidComponent: [
     'com.labre.wardley.import.json.remark.invalid-component',
-    'this component lacks an id, a name, a type or a numeric position, so it was not drawn. It is kept verbatim and written back on the next export.',
+    'this component lacks an id, a name, a type or a numeric position, so it was not imported.',
   ],
   invalidRelation: [
     'com.labre.wardley.import.json.remark.invalid-relation',
-    'a relation lacks its consumer or its supplier, so it was not drawn. It is kept verbatim and written back on the next export.',
+    'a relation lacks its consumer or its supplier, so it was not imported.',
   ],
   undeclaredEnd: [
     'com.labre.wardley.import.json.remark.undeclared-end',
-    'a relation names this, and no component of the file has this id. The relation is kept verbatim and written back on the next export, but not drawn.',
+    'a relation names this, and no component of the file has this id, so the relation was not imported.',
   ],
   duplicateId: [
     'com.labre.wardley.import.json.remark.duplicate-id',
@@ -63,7 +76,7 @@ export const WARDLEY_JSON_IMPORT_REMARKS = {
   ],
   invalidEvolution: [
     'com.labre.wardley.import.json.remark.invalid-evolution',
-    'an evolution of this component has no numeric target position, so it was not drawn. It is kept and written back on the next export.',
+    'an evolution of this component has no numeric target position, so it was not imported.',
   ],
   outOfRange: [
     'com.labre.wardley.import.json.remark.out-of-range',
@@ -73,9 +86,9 @@ export const WARDLEY_JSON_IMPORT_REMARKS = {
     'com.labre.wardley.import.json.remark.no-geometry',
     'this pipeline has no usable `pipelineGeometry`, so it was drawn at the toolbar’s size around its position. The file did not say how wide it is.',
   ],
-  carriedField: [
-    'com.labre.wardley.import.json.remark.carried-field',
-    '{{count}} `{{kind}}` field(s) kept on the map and written back on the next export. Nothing on this canvas draws them.',
+  droppedField: [
+    'com.labre.wardley.import.json.remark.dropped-field',
+    '{{count}} `{{kind}}` field(s) have nothing on this canvas to show them, so they were not imported.',
   ],
 } as const satisfies Record<string, readonly [key: string, english: string]>;
 
@@ -83,63 +96,59 @@ const R = WARDLEY_JSON_IMPORT_REMARKS;
 
 /**
  * A `@formicoidea/wardley-map-renderer` JSON map, read as a Wardley map made
- * of the TOOLBAR's own artefacts (ADR 0012 P3, ADR 0045).
+ * of what a user places from the TOOLBAR (ADR 0012 P3, ADR 0045, PO decisions
+ * of 2026-10-28).
  *
- * ## Why the toolbox, and not the OWM reader's layout
+ * ## Only what shows, made of the toolbar's own artefacts
  *
- * The OWM reader draws its own composites (a wider label, a larger anchor,
- * no group) and draws an `evolve` as a second component plus an arrow. A
- * map read that way and handed to a model to edit came back from the
- * connector's bench with a duplicate component at the target of every
- * evolution, a pipeline named twice with its square centred, and the source's
- * squares and colours gone. Every element here is a `WARDLEY_TOOLBOX`
- * builder's, so a map read from JSON is made of exactly what a user places
- * from the toolbar, and nothing else.
+ * The OWM path the connector used drew a second component at the target of
+ * every evolution, a pipeline's name twice with its square centred, and lost
+ * the source's squares and colours (the connector's bench). Here every
+ * Wardley element is a `WARDLEY_TOOLBOX` builder's, given its real
+ * parameters; what the toolbox has no item for is a plain shape or a free
+ * text, grouped with the component it belongs to; and what nothing can show
+ * is dropped and named in the report. No id and no field of the file is
+ * stored on any element.
+ *
+ * ## The mapping
+ *
+ * | renderer field                                   | on the canvas                                                                 |
+ * | ------------------------------------------------ | ----------------------------------------------------------------------------- |
+ * | `type` anchor / component / pipeline; `subtype` market / ecosystem; a `method` | the toolbox anchor, component, pipeline, market, ecosystem, method item |
+ * | `subtype` userNeed / solution / supplier / functional | a plain component (the subtype has no look)                              |
+ * | `label.name` / `label.position`                  | the toolbox name, moved by the offset (`jsonLabelBox`)                        |
+ * | `position.*.scalar`                              | the node's centre on the plot (visibility 0 is the TOP)                       |
+ * | `position.evolution.range`                       | a thin plain rect at the node's height, under it, in its group               |
+ * | `nature` activity / data / practice / knowledge  | the `wardley:nature` tag; the other five are dropped                          |
+ * | `description`                                    | a free text under the name, in the component's group                         |
+ * | `color`                                          | the node's stroke (an unknown name paints black, as in the renderer)         |
+ * | `method` (category, recommendation)              | the method item's colours (`methodLook`)                                      |
+ * | `accelerator` / `deaccelerator`                  | the toolbox climate arrow beside the node, where the renderer draws it      |
+ * | `step`                                           | a numbered plain dot at the node's upper left, in its group                  |
+ * | `evolvesTo[].position` / `evolveType` / `inertia` | the toolbox change arrow to that point, `evolveType` as its label, an inertia item on each phase line it crosses (at its middle when it crosses none) |
+ * | `pipelineGeometry`                               | the pipeline's body stretched to the box, its handle at `handleEvolution`    |
+ * | `relations[]` and their `type`, `flow`           | the toolbox dependency link, consumer first; Flow blue and thicker, Constraint black and as thick; `flow.label` its text, `flow.style` its dash or double width |
+ * | `title` / `context`                              | free texts above / under the map                                              |
+ * | `renderConfig` axis and phase labels and toggles | the map's own fields                                                          |
+ * | `id`s, component `inertia`, a pipeline's `position`, subtype / nature on a pipeline, the rest of `renderConfig`, unknown fields | **dropped**, named in the report |
  *
  * ## An evolution is an arrow to a point, never a twin
  *
- * The renderer draws `evolvesTo` as an arrow and no second node, and the
- * toolbar's Arrow tool, dragged from a component and dropped on the empty
- * map, leaves exactly that: the change-arrow connector with a free end
- * (`ConnectorTool.dragEnd` keeps `target: { position }`). So each target is
- * that connector, built by `wardleyChangeArrowElement` and given the point.
- *
- * ## The mapping (field → what draws it), and the loss table
- *
- * | renderer field                                  | on the board                                                        |
- * | ----------------------------------------------- | ------------------------------------------------------------------- |
- * | `type: anchor`                                  | the `anchor` item                                                   |
- * | `type: component`                               | the `component` item; with a `method`, the `method` item            |
- * | `subtype: market` / `ecosystem`                 | the `market` / `ecosystem` item                                     |
- * | `type: pipeline` + `pipelineGeometry`           | the `pipeline` item, its body stretched to the geometry, its handle at `handleEvolution` |
- * | `id`                                            | `interchange.json.id` on the node, given back on export             |
- * | `label.name`                                    | the name the toolbar writes beside the node                         |
- * | `position.evolution` / `visibility` `.scalar`   | the node's centre on the map's plot, to three decimals              |
- * | `evolvesTo[].position`                          | a `change-arrow` from the node to that point                        |
- * | `evolvesTo[].inertia`                           | an `inertia` bar at the arrow's midpoint                            |
- * | `inertia`                                       | an `inertia` bar right of the node's name                           |
- * | `accelerator` / `deaccelerator`                 | the `accelerator` / `decelerator` item under the node               |
- * | `color` (a renderer name or `#hex`)             | the node's stroke                                                   |
- * | `relations[]` (`consumer` → `supplier`)         | a `dependency`, consumer first (ADR 0010); `flow.label` its text    |
- * | `title`                                         | the board's name, kept on the map and written back                  |
- * | `label.position`, `nature`, `description`, `step`, `subtype` (other), `method.category` / `recommendation`, `position.evolution.range`, `evolvesTo[].evolveType`, relation `type` (Flow, Constraint) and `flow.style`, `context`, `renderConfig`, any unknown field | **carried**: kept on the element (`interchange.json`) and written back, not drawn |
- * | a component, relation or evolution this reader cannot draw (missing id, name, type or number; an undeclared end) | **carried** whole on the map and written back, with a warning |
- * | `accelerator` / `deaccelerator` / `inertia` on a pipeline                 | **carried**: the toolbar has no place for them on a pipeline |
- * | `false` for `inertia`, `accelerator`, `deaccelerator`                      | **lost**: written back absent, which the renderer reads the same |
- * | a pipeline's own `position`                                                | **lost**: the renderer draws the geometry, and the writer gives back the body's centre |
- *
- * Nothing is quarantined: every carried field is a statement of its own
- * that the drawing cannot contradict.
+ * The toolbar's Arrow tool, dragged from a component and dropped on the empty
+ * map, leaves the change-arrow connector with a free end
+ * (`ConnectorTool.dragEnd` keeps `target: { position }`), and the renderer
+ * draws an evolution as an arrow and no second node. So it is that.
  *
  * ## A bad document is a report
  *
- * Text that is not JSON, or JSON with no `components` list, comes back as an
- * empty import whose report says why — never as an exception from inside
- * the reader.
+ * Text that is not JSON, or JSON with no `components` list, imports nothing
+ * and the report says why; the reader never throws.
  */
 export function importWardleyRendererJson(
   source: string,
-  context: InterchangeImportContext = {}
+  // The caller's name is no title: the map's name is the page's, and only a
+  // title the file wrote becomes a text on the canvas.
+  _context: InterchangeImportContext = {}
 ): InterchangeImportResult {
   let root: unknown;
   try {
@@ -152,12 +161,9 @@ export function importWardleyRendererJson(
   }
 
   const notes: InterchangeNote[] = [];
-  const carriedKinds = new Map<string, number>();
-  const carryKinds = (paths: readonly string[]) => {
-    for (const path of paths) {
-      carriedKinds.set(path, (carriedKinds.get(path) ?? 0) + 1);
-    }
-  };
+  const dropped = new Map<string, number>();
+  const drop = (kind: string) =>
+    dropped.set(kind, (dropped.get(kind) ?? 0) + 1);
   const warn = (
     [key, message]: readonly [string, string],
     sourceId?: string,
@@ -171,26 +177,27 @@ export function importWardleyRendererJson(
       ...(element === undefined ? {} : { element }),
     });
 
-  /* ── The document ─────────────────────────────────────────────────── */
+  /* ── The map, its title and its context ───────────────────────────── */
 
-  const titled = typeof root.title === 'string';
-  const title = titled
-    ? (root.title as string)
-    : context.name?.replace(/\.json$/i, '').trim() || undefined;
-  const documentRest = Object.fromEntries(
-    Object.entries(root).filter(
-      ([key]) => !['title', 'components', 'relations'].includes(key)
-    )
-  );
-  const relations: unknown[] = Array.isArray(root.relations)
-    ? root.relations
-    : [];
-  if (root.relations !== undefined && !Array.isArray(root.relations)) {
-    documentRest.relations = root.relations;
+  const plot = owmDefaultPlot();
+  const categories = methodCategoriesOf(root.renderConfig);
+  const map = wardleyMapElement('classic', { x: 0, y: 0 });
+  Object.assign(map, mapFieldsOf(root.renderConfig, drop));
+  const mapBox = boxOf(map);
+  const texts: SerializedElementProps[] = [];
+  const display = isRecord(root.renderConfig)
+    ? root.renderConfig.display
+    : undefined;
+  const titleShown = !isRecord(display) || display.title !== false;
+  if (typeof root.title === 'string' && root.title.trim() && titleShown) {
+    texts.push(jsonTitleElement(root.title, mapBox, 'title'));
   }
-  carryKinds(Object.keys(documentRest));
-  const carriedComponents: string[] = [];
-  const carriedRelations: string[] = [];
+  if (typeof root.context === 'string' && root.context.trim()) {
+    texts.push(jsonContextElement(root.context, mapBox, 'context'));
+  }
+  for (const key of Object.keys(root)) {
+    if (!TOP_LEVEL.includes(key)) drop(key);
+  }
 
   /* ── Components: which are drawable, and under which local name ───── */
 
@@ -200,7 +207,6 @@ export function importWardleyRendererJson(
   for (const raw of root.components as unknown[]) {
     const component = drawable(raw);
     if (!component) {
-      carriedComponents.push(JSON.stringify(raw));
       warn(
         R.invalidComponent,
         isRecord(raw) && typeof raw.id === 'string' ? raw.id : undefined,
@@ -212,8 +218,8 @@ export function importWardleyRendererJson(
     seen.set(component.id, count);
     if (count > 1) warn(R.duplicateId, component.id, 'component');
     // A second component under one id gets a local name of its own, so its
-    // group and its arrows still find IT; relations naming the id mean the
-    // first, which is the materializer's rule and the renderer's lookup.
+    // group and its arrows still find IT; a relation naming the id means the
+    // first.
     component.local = count === 1 ? component.id : `${component.id}#${count}`;
     components.push(component);
     if (!byId.has(component.id)) byId.set(component.id, component);
@@ -221,24 +227,9 @@ export function importWardleyRendererJson(
 
   /* ── Laying out ───────────────────────────────────────────────────── */
 
-  const plot = owmDefaultPlot();
-  const elements: SerializedElementProps[] = [];
-  const map = wardleyMapElement('classic', { x: 0, y: 0 });
-  const mapPayload: ForeignInterchange = {};
-  const documentAttrs: Record<string, string> = {};
-  if (title !== undefined) documentAttrs[JSON_ATTR.title] = title;
-  if (Object.keys(documentRest).length > 0) {
-    documentAttrs[JSON_ATTR.rest] = JSON.stringify(documentRest);
-  }
-  if (Object.keys(documentAttrs).length > 0) {
-    mapPayload.attrs = { [JSON_SCOPE.document]: documentAttrs };
-  }
-  elements.push(map);
-
-  const nodes: SerializedElementProps[] = [];
+  const pieces: SerializedElementProps[] = [];
   const decorations: SerializedElementProps[] = [];
   const arrows: SerializedElementProps[] = [];
-  let mappedArrows = 0;
 
   // Pipelines first: a body is drawn under the components it holds.
   const ordered = [
@@ -246,16 +237,27 @@ export function importWardleyRendererJson(
     ...components.filter(c => c.kind !== 'pipeline'),
   ];
   for (const component of ordered) {
-    const { evolution, visibility } = component;
+    const { raw, evolution, visibility } = component;
     if ([evolution, visibility].some(value => value < 0 || value > 1)) {
-      warn(R.outOfRange, component.id, component.raw.type as string);
+      warn(R.outOfRange, component.id, String(raw.type));
+    }
+    for (const key of Object.keys(raw)) {
+      if (!COMPONENT_FIELDS.includes(key)) drop(key);
     }
     const [cx, cy] = rendererPointOf(plot, evolution, visibility);
-    const { payload, carried } = componentPayload(component);
-    carryKinds(carried);
+    const local = component.local;
+    const extras: SerializedElementProps[] = [];
+    const under: SerializedElementProps[] = [];
+    let built: SerializedElementProps[];
 
     if (component.kind === 'pipeline') {
-      const built = pipelineOf(component, plot, cx, cy, () =>
+      for (const key of ['subtype', 'nature', 'method', 'step']) {
+        if (raw[key] !== undefined) drop(`pipeline ${key}`);
+      }
+      for (const key of ['accelerator', 'deaccelerator', 'inertia']) {
+        if (raw[key] === true) drop(`pipeline ${key}`);
+      }
+      built = pipelineOf(component, plot, cx, cy, () =>
         notes.push({
           kind: 'invented-layout',
           sourceId: component.id,
@@ -264,28 +266,104 @@ export function importWardleyRendererJson(
           message: R.noGeometry[1],
         })
       );
-      decorate(built, `${component.local}:node`, payload, component.stroke);
-      nodes.push(...built);
-      const handle = boxCentre(byLocal(built, `${component.local}:handle`));
-      component.end = `${component.local}:handle`;
+      const handle = centreOf(boxOf(byLocal(built, `${local}:handle`)));
+      component.end = `${local}:handle`;
       component.at = handle;
+      const label = byLocal(built, `${local}:label`);
+      const offset = labelOffsetOf(raw);
+      if (offset) {
+        // A pipeline's name is centred above its handle; an offset moves it
+        // by its difference from the renderer's default, as for any name.
+        const box = boxOf(label);
+        const shift = jsonLabelShift(plot, offset);
+        label.xywh = boxString({
+          ...box,
+          x: box.x + shift.x,
+          y: box.y + shift.y,
+        });
+      }
+      if (typeof raw.description === 'string' && raw.description.trim()) {
+        extras.push(
+          jsonDescriptionElement(
+            raw.description,
+            descriptionSlot(boxOf(label)),
+            `${local}:description`
+          )
+        );
+      }
+      if (raw.color !== undefined) {
+        if (typeof raw.color === 'string') {
+          byLocal(built, `${local}:node`).strokeColor = rendererColour(
+            raw.color
+          );
+        } else drop('color');
+      }
     } else {
       const kind = component.kind;
       const { w, h } = WARDLEY_NODE_SIZE[kind];
       const at = { x: cx - w / 2, y: cy - h / 2 };
-      const name = component.name;
-      const built =
+      built =
         kind === 'market'
-          ? wardleyMarketElements(at, name, component.local)
-          : wardleyNodeElements(kind, at, name, component.local);
-      decorate(built, `${component.local}:node`, payload, component.stroke);
-      nodes.push(...built);
-      component.end = `${component.local}:node`;
+          ? wardleyMarketElements(at, component.name, local)
+          : wardleyNodeElements(kind, at, component.name, local);
+      const node = byLocal(built, `${local}:node`);
+      const label = byLocal(built, `${local}:label`);
+      component.end = `${local}:node`;
       component.at = { x: cx, y: cy };
 
+      /* The name, where the file moved it. */
+      const offset = labelOffsetOf(raw);
+      if (offset) {
+        const placed = jsonLabelBox(plot, w, cx, cy, offset);
+        const box = boxOf(label);
+        label.xywh = boxString({ ...box, x: placed.x, y: placed.y });
+        label.textAlign = placed.textAlign;
+      }
+
+      /* The node's own parameters. */
+      applyColour(component, node, drop);
+      applyNature(raw, kind, node, drop);
+      if (kind === 'method') applyMethod(raw.method, categories, node, drop);
+      else if (raw.method !== undefined) drop('method');
+      if (raw.subtype !== undefined && !DRAWN_SUBTYPES.includes(raw.subtype)) {
+        // userNeed, solution, supplier, functional: a plain component, which
+        // is what each of them looks like here (PO, 2026-10-28).
+        if (raw.subtype !== 'functional') drop('subtype');
+      }
+      if (raw.inertia === true) drop('inertia');
+
+      /* What the toolbox has no item for: plain pieces in the group. */
+      if (typeof raw.description === 'string' && raw.description.trim()) {
+        extras.push(
+          jsonDescriptionElement(
+            raw.description,
+            descriptionSlot(boxOf(label)),
+            `${local}:description`
+          )
+        );
+      }
+      const step = stepOf(raw.step);
+      if (step) {
+        extras.push(
+          jsonStepElement(
+            jsonStepCentre(kind, cx, cy),
+            step.number,
+            step.color === undefined ? undefined : rendererColour(step.color),
+            `${local}:step`
+          )
+        );
+      } else if (raw.step !== undefined) drop('step');
+      const range = rangeOf(raw);
+      if (range) {
+        const [left] = rendererPointOf(plot, range[0], visibility);
+        const [right] = rendererPointOf(plot, range[1], visibility);
+        under.push(jsonRangeElement(left, right, cy, `${local}:range`));
+      }
+
+      /* The climate arrows, where the renderer draws them. */
       for (const which of ['accelerator', 'decelerator'] as const) {
         const flag = which === 'accelerator' ? 'accelerator' : 'deaccelerator';
-        if (component.raw[flag] !== true) continue;
+        if (raw[flag] !== true) continue;
         const centre = jsonDecoratorCentre(kind, which, cx, cy);
         const size = WARDLEY_NODE_SIZE[which];
         decorations.push(
@@ -293,16 +371,12 @@ export function importWardleyRendererJson(
             which,
             { x: centre.cx - size.w / 2, y: centre.cy - size.h / 2 },
             undefined,
-            `${component.local}:${which}`
+            `${local}:${which}`
           )
         );
       }
-      if (component.raw.inertia === true) {
-        decorations.push(
-          barAt(jsonInertiaCentre(kind, cx, cy), `${component.local}:inertia`)
-        );
-      }
     }
+    pieces.push(...withExtras(built, `${local}:group`, under, extras));
 
     /* Each evolution: the toolbar's arrow, dropped on the target point. */
     const from = component.at;
@@ -312,26 +386,24 @@ export function importWardleyRendererJson(
         target.evolution,
         target.visibility
       );
-      const self: Record<string, string> = {};
-      if (Object.keys(target.rest).length > 0) {
-        self[JSON_ATTR.rest] = JSON.stringify(target.rest);
-        carryKinds(pathsOf(target.rest).map(path => `evolvesTo.${path}`));
-      }
       arrows.push({
-        ...wardleyChangeArrowElement(component.end, component.end),
+        ...wardleyChangeArrowElement(
+          component.end,
+          component.end,
+          target.evolveType
+        ),
         target: { position: [tx, ty] },
-        ...withPayload({
-          ...(Object.keys(self).length > 0
-            ? { attrs: { [JSON_SCOPE.self]: self } }
-            : {}),
-        }),
       });
-      mappedArrows += 1;
       if (target.inertia) {
-        decorations.push(
-          barAt(
-            { cx: (from.x + tx) / 2, cy: (from.y + ty) / 2 },
-            `${component.local}:evolve-${index + 1}:inertia`
+        inertiaCentres(
+          plot,
+          from,
+          { x: tx, y: ty },
+          component.evolution,
+          target.evolution
+        ).forEach((centre, n) =>
+          decorations.push(
+            barAt(centre, `${local}:evolve-${index + 1}:inertia-${n + 1}`)
           )
         );
       }
@@ -343,6 +415,9 @@ export function importWardleyRendererJson(
 
   /* ── Relations ────────────────────────────────────────────────────── */
 
+  const relations: unknown[] = Array.isArray(root.relations)
+    ? root.relations
+    : [];
   const links: SerializedElementProps[] = [];
   for (const raw of relations) {
     if (
@@ -350,76 +425,57 @@ export function importWardleyRendererJson(
       typeof raw.consumer !== 'string' ||
       typeof raw.supplier !== 'string'
     ) {
-      carriedRelations.push(JSON.stringify(raw));
       warn(R.invalidRelation, undefined, 'relation');
       continue;
     }
     const consumer = byId.get(raw.consumer);
     const supplier = byId.get(raw.supplier);
     if (!consumer || !supplier) {
-      carriedRelations.push(JSON.stringify(raw));
       for (const end of [raw.consumer, raw.supplier]) {
         if (!byId.has(end)) warn(R.undeclaredEnd, end, 'relation');
       }
       continue;
     }
-    const { label, rest } = relationParts(raw);
-    carryKinds(pathsOf(rest).map(path => `relation.${path}`));
+    const type: RelationType =
+      raw.type === 'Flow' || raw.type === 'Constraint' ? raw.type : 'DependsOn';
+    const flow = isRecord(raw.flow) ? raw.flow : undefined;
+    const label = typeof flow?.label === 'string' ? flow.label : undefined;
     links.push({
       // `consumer` is the one that depends, so it is the SOURCE: the verb of
       // `wardley:dependency` (ADR 0010), never inverted.
       ...wardleyDependencyElement(consumer.end, supplier.end, label),
-      ...withPayload({
-        ...(typeof raw.id === 'string' ? { id: raw.id } : {}),
-        ...(Object.keys(rest).length > 0
-          ? {
-              attrs: {
-                [JSON_SCOPE.self]: { [JSON_ATTR.rest]: JSON.stringify(rest) },
-              },
-            }
-          : {}),
-      }),
+      ...relationLook(type, flow?.style),
     });
   }
 
-  /* ── What could not be drawn rides on the map, verbatim ──────────── */
-
-  const children: Record<string, string[]> = {};
-  if (carriedComponents.length > 0) {
-    children[JSON_SCOPE.components] = carriedComponents;
-  }
-  if (carriedRelations.length > 0) {
-    children[JSON_SCOPE.relations] = carriedRelations;
-  }
-  if (Object.keys(children).length > 0) mapPayload.children = children;
-  Object.assign(map, withPayload(mapPayload));
-
-  for (const [kind, count] of carriedKinds) {
+  for (const [kind, count] of dropped) {
     notes.push({
-      kind: 'carried',
+      kind: 'warning',
       element: kind,
-      messageKey: R.carriedField[0],
+      messageKey: R.droppedField[0],
       // Filled from the declared wording, so the sentence a host translates
       // and the one a host with no catalogue reads cannot drift apart.
-      message: R.carriedField[1]
+      message: R.droppedField[1]
         .replace('{{count}}', String(count))
         .replace('{{kind}}', kind),
       messageParams: { count, kind },
     });
   }
 
-  elements.push(...nodes, ...decorations, ...links, ...arrows);
-
-  const carriedFields = [...carriedKinds.values()].reduce((a, b) => a + b, 0);
+  const elements = [
+    map,
+    ...pieces,
+    ...decorations,
+    ...links,
+    ...arrows,
+    ...texts,
+  ];
   return {
     elements,
     report: {
-      mapped:
-        (titled ? 1 : 0) + components.length + links.length + mappedArrows,
-      carried:
-        carriedFields + carriedComponents.length + carriedRelations.length,
-      // Every carried field is a sentence of its own that the drawing cannot
-      // contradict, so nothing needs keeping out of the next export (D5).
+      mapped: texts.length + components.length + links.length + arrows.length,
+      // Nothing is kept that the canvas does not show (PO, 2026-10-28).
+      carried: 0,
       quarantined: 0,
       notes,
     },
@@ -436,6 +492,36 @@ const isRecord = (value: unknown): value is Json =>
 const finite = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value);
 
+const TOP_LEVEL = [
+  'title',
+  'context',
+  'components',
+  'relations',
+  'renderConfig',
+];
+
+/** The component fields something on the canvas shows (`id` and `position`
+ *  place it; the pipeline's own position is dropped on its branch). */
+const COMPONENT_FIELDS = [
+  'id',
+  'label',
+  'type',
+  'subtype',
+  'nature',
+  'position',
+  'description',
+  'evolvesTo',
+  'pipelineGeometry',
+  'color',
+  'method',
+  'inertia',
+  'accelerator',
+  'deaccelerator',
+  'step',
+];
+
+const DRAWN_SUBTYPES: readonly unknown[] = ['market', 'ecosystem'];
+
 /** A component this reader can draw, and where its pieces go. */
 interface Drawable {
   raw: Json;
@@ -444,12 +530,11 @@ interface Drawable {
   kind: JsonComponentKind | 'pipeline';
   evolution: number;
   visibility: number;
-  stroke?: string;
   evolutions: {
     evolution: number;
     visibility: number;
     inertia: boolean;
-    rest: Json;
+    evolveType?: string;
   }[];
   invalidEvolutions: number;
   /** The local name its pieces are built under. */
@@ -486,8 +571,6 @@ function drawable(raw: unknown): Drawable | undefined {
     if (target) evolutions.push(target);
     else invalidEvolutions += 1;
   }
-  const stroke =
-    typeof raw.color === 'string' ? rendererColour(raw.color) : undefined;
   return {
     raw,
     id: raw.id,
@@ -495,7 +578,6 @@ function drawable(raw: unknown): Drawable | undefined {
     kind,
     evolution,
     visibility,
-    ...(stroke === undefined ? {} : { stroke }),
     evolutions,
     invalidEvolutions,
     local: raw.id,
@@ -527,103 +609,164 @@ function targetOf(entry: unknown): Drawable['evolutions'][number] | undefined {
   const e = isRecord(evolution) ? evolution.scalar : undefined;
   const v = isRecord(visibility) ? visibility.scalar : undefined;
   if (!finite(e) || !finite(v)) return undefined;
-  const rest = clone(entry);
-  removePath(rest, ['position', 'evolution', 'scalar']);
-  removePath(rest, ['position', 'visibility', 'scalar']);
-  if (typeof entry.inertia === 'boolean') delete rest.inertia;
-  return { evolution: e, visibility: v, inertia: entry.inertia === true, rest };
-}
-
-/* ── What rides on a component's node ─────────────────────────────────── */
-
-/**
- * The payload of a component's node, and the paths it carries.
- *
- * `rest` is the component minus every field the board draws, so the writer
- * merges what the board says over it and the file comes back whole. The
- * three fields the board draws only in part ride beside it on their own,
- * because the writer decides on them from the board: `subtype` (a market or
- * an ecosystem is the node's kind), `method` (the method item says there is
- * one, not which), `color` (the stroke, when the renderer can name it).
- */
-function componentPayload(component: Drawable): {
-  payload: ForeignInterchange;
-  carried: string[];
-} {
-  const raw = component.raw;
-  const pipeline = component.kind === 'pipeline';
-  const rest = clone(raw);
-  for (const key of ['id', 'type', 'evolvesTo', 'subtype', 'method', 'color']) {
-    delete rest[key];
-  }
-  removePath(rest, ['label', 'name']);
-  removePath(rest, ['position', 'evolution', 'scalar']);
-  removePath(rest, ['position', 'visibility', 'scalar']);
-  if (pipeline && geometryOf(raw)) {
-    delete rest.pipelineGeometry;
-    // The body is drawn from the geometry; the position of a pipeline with
-    // one is not drawn by the renderer either, and comes back as its centre.
-    delete rest.position;
-  }
-  if (!pipeline) {
-    for (const flag of ['inertia', 'accelerator', 'deaccelerator']) {
-      if (typeof raw[flag] === 'boolean') delete rest[flag];
-    }
-  }
-  const invalid = (Array.isArray(raw.evolvesTo) ? raw.evolvesTo : []).filter(
-    entry => !targetOf(entry)
-  );
-  if (invalid.length > 0) rest.evolvesTo = invalid;
-  else if (raw.evolvesTo !== undefined && !Array.isArray(raw.evolvesTo)) {
-    rest.evolvesTo = raw.evolvesTo;
-  }
-
-  const self: Record<string, string> = {};
-  const carried = pathsOf(rest);
-  if (Object.keys(rest).length > 0) self[JSON_ATTR.rest] = JSON.stringify(rest);
-  // Whether the file named the handle itself, so the writer names it back
-  // even where it sits at the middle, which is the renderer's default.
-  if (pipeline && geometryOf(raw)?.handleEvolution !== undefined) {
-    self[JSON_ATTR.handle] = 'true';
-  }
-  const drawnSubtype =
-    component.kind === 'market' || component.kind === 'ecosystem';
-  if (raw.subtype !== undefined) {
-    self[JSON_ATTR.subtype] = JSON.stringify(raw.subtype);
-    if (!drawnSubtype) carried.push('subtype');
-  }
-  if (raw.method !== undefined) {
-    self[JSON_ATTR.method] = JSON.stringify(raw.method);
-    carried.push('method');
-  }
-  if (raw.color !== undefined) {
-    self[JSON_ATTR.color] = JSON.stringify(raw.color);
-    if (component.stroke === undefined) carried.push('color');
-  }
+  const evolveType = EVOLVE_TYPES.find(type => type === entry.evolveType);
   return {
-    payload: {
-      id: component.id,
-      ...(Object.keys(self).length > 0
-        ? { attrs: { [JSON_SCOPE.self]: self } }
-        : {}),
-    },
-    carried,
+    evolution: e,
+    visibility: v,
+    inertia: entry.inertia === true,
+    ...(evolveType === undefined ? {} : { evolveType }),
   };
 }
 
-/** A relation's drawn label, and every field the board does not draw. */
-function relationParts(raw: Json): { label?: string; rest: Json } {
-  const rest = clone(raw);
-  for (const key of ['id', 'consumer', 'supplier']) delete rest[key];
-  if (rest.type === 'DependsOn') delete rest.type;
-  let label: string | undefined;
-  if (isRecord(rest.flow) && typeof rest.flow.label === 'string') {
-    label = rest.flow.label;
-    delete rest.flow.label;
-    if (Object.keys(rest.flow).length === 0) delete rest.flow;
+const labelOffsetOf = (raw: Json) => {
+  const position = isRecord(raw.label) ? raw.label.position : undefined;
+  if (!isRecord(position) || !finite(position.dx) || !finite(position.dy)) {
+    return undefined;
   }
-  return { ...(label === undefined ? {} : { label }), rest };
+  return { dx: position.dx, dy: position.dy };
+};
+
+const stepOf = (step: unknown) => {
+  if (!isRecord(step) || !finite(step.number)) return undefined;
+  return {
+    number: step.number,
+    ...(typeof step.color === 'string' ? { color: step.color } : {}),
+  };
+};
+
+const rangeOf = (raw: Json): [number, number] | undefined => {
+  const position = isRecord(raw.position) ? raw.position : undefined;
+  const range = isRecord(position?.evolution)
+    ? position.evolution.range
+    : undefined;
+  if (!Array.isArray(range) || !finite(range[0]) || !finite(range[1])) {
+    return undefined;
+  }
+  return [range[0], range[1]];
+};
+
+/* ── A node's parameters ──────────────────────────────────────────────── */
+
+function applyColour(
+  component: Drawable,
+  node: SerializedElementProps,
+  drop: (kind: string) => void
+) {
+  const color = component.raw.color;
+  if (color === undefined) return;
+  // A method node's two colours ARE its method, so a `color` on one has no
+  // paint left to take.
+  if (typeof color !== 'string' || component.kind === 'method') {
+    drop('color');
+    return;
+  }
+  node.strokeColor = rendererColour(color);
 }
+
+function applyNature(
+  raw: Json,
+  kind: JsonComponentKind,
+  node: SerializedElementProps,
+  drop: (kind: string) => void
+) {
+  if (raw.nature === undefined) return;
+  const nature = LABRE_NATURES.find(value => value === raw.nature);
+  // The tag qualifies a component; an anchor has no nature here, and the
+  // renderer's five other natures have no value (PO, 2026-10-28).
+  if (nature === undefined || kind === 'anchor') {
+    drop('nature');
+    return;
+  }
+  node.tags = {
+    [WARDLEY_NATURE_TAG_ID]: [`${WARDLEY_NATURE_TAG_ID}/${nature}`],
+  };
+}
+
+/**
+ * A method node's look for the file's `method`.
+ *
+ * ponytail: the colours stand in for the method until the method node gains
+ * real method and nature parameters (`feat/wardley-method-nature`); then this
+ * writes those, and `methodOf` on the export side reads them.
+ */
+function applyMethod(
+  method: unknown,
+  categories: MethodCategories,
+  node: SerializedElementProps,
+  drop: (kind: string) => void
+) {
+  const look = methodLook(method, categories);
+  if (look) Object.assign(node, look);
+  else drop('method');
+}
+
+/** The map's own fields a `renderConfig` sets; the rest of it is dropped. */
+function mapFieldsOf(
+  config: unknown,
+  drop: (kind: string) => void
+): Record<string, unknown> {
+  if (config === undefined) return {};
+  if (!isRecord(config)) {
+    drop('renderConfig');
+    return {};
+  }
+  const out: Record<string, unknown> = {};
+  let used = 0;
+  const display = isRecord(config.display) ? config.display : {};
+  if (display.axisEvolution === false) out.showXAxis = false;
+  if (display.axisValueChain === false) out.showYAxis = false;
+  if (display.phases === false) {
+    out.showColumnDividers = false;
+    out.showColumnLabels = false;
+  }
+  for (const key of ['axisEvolution', 'axisValueChain', 'phases', 'title']) {
+    if (display[key] !== undefined) used += 1;
+  }
+  const background = isRecord(config.style)
+    ? (config.style as Json).background
+    : undefined;
+  const facet = (name: string) => {
+    const element = isRecord(background) ? background[name] : undefined;
+    if (!isRecord(element)) return undefined;
+    const pick = (side: unknown) => (isRecord(side) ? side : {});
+    return { ...pick(element.default), ...pick(element.override) };
+  };
+  const axisText = (name: string) => {
+    const label = facet(name)?.label;
+    return isRecord(label) && typeof label.text === 'string'
+      ? label.text
+      : undefined;
+  };
+  const x = axisText('axisEvolution');
+  const y = axisText('axisValueChain');
+  if (x !== undefined) (out.xAxisTitle = x), (used += 1);
+  if (y !== undefined) (out.yAxisTitle = y), (used += 1);
+  const phases = facet('phases')?.labels;
+  if (Array.isArray(phases)) {
+    phases.slice(0, 4).forEach((label, index) => {
+      if (isRecord(label) && typeof label.text === 'string') {
+        out[`phase${index}`] = label.text;
+        used += 1;
+      }
+    });
+  }
+  // The method categories a map declares colour its method nodes.
+  const decorators = isRecord(config.style)
+    ? (config.style as Json).decorators
+    : undefined;
+  if (isRecord(decorators) && decorators.method !== undefined) {
+    used += leafCount(decorators.method);
+  }
+  if (leafCount(config) > used) drop('renderConfig');
+  return out;
+}
+
+const leafCount = (value: unknown): number =>
+  isRecord(value)
+    ? Object.values(value).reduce<number>((n, v) => n + leafCount(v), 0)
+    : Array.isArray(value)
+      ? value.reduce<number>((n, v) => n + leafCount(v), 0)
+      : 1;
 
 /* ── The pieces ───────────────────────────────────────────────────────── */
 
@@ -641,8 +784,9 @@ function geometryOf(raw: Json):
   if (!isRecord(geometry)) return undefined;
   const { evoStart, evoEnd, visStart, visEnd, handleEvolution } = geometry;
   if (![evoStart, evoEnd, visStart, visEnd].every(finite)) return undefined;
-  if (handleEvolution !== undefined && !finite(handleEvolution))
+  if (handleEvolution !== undefined && !finite(handleEvolution)) {
     return undefined;
+  }
   return {
     evoStart: evoStart as number,
     evoEnd: evoEnd as number,
@@ -656,7 +800,8 @@ function geometryOf(raw: Json):
  * The pipeline item, as the toolbar builds it, around the handle the file
  * places; its body then takes the geometry's box, the one gesture a user makes
  * after placing one. A pipeline with no usable geometry is the toolbar's item
- * centred on the component's position, and the report says so.
+ * centred on the component's position, and the report says so. Its own
+ * `position` places nothing else: the renderer draws the geometry.
  */
 function pipelineOf(
   component: Drawable,
@@ -677,23 +822,49 @@ function pipelineOf(
   }
   const [x1, y1] = rendererPointOf(plot, geometry.evoStart, geometry.visStart);
   const [x2, y2] = rendererPointOf(plot, geometry.evoEnd, geometry.visEnd);
-  const left = Math.min(x1, x2);
-  const top = Math.min(y1, y2);
-  const width = Math.max(Math.abs(x2 - x1), 1);
-  const height = Math.max(Math.abs(y2 - y1), 1);
   const [handleX] = rendererPointOf(
     plot,
     geometry.handleEvolution ?? (geometry.evoStart + geometry.evoEnd) / 2,
     0
   );
+  const top = Math.min(y1, y2);
   const built = wardleyPipelineElements(
     { x: handleX - PIPELINE_WIDTH / 2, y: top },
     component.name,
     component.local
   );
-  const body = byLocal(built, `${component.local}:node`);
-  body.xywh = `[${left},${top},${width},${height}]`;
+  byLocal(built, `${component.local}:node`).xywh = boxString({
+    x: Math.min(x1, x2),
+    y: top,
+    w: Math.max(Math.abs(x2 - x1), 1),
+    h: Math.max(Math.abs(y2 - y1), 1),
+  });
   return built;
+}
+
+/**
+ * Where an evolution's inertia goes: on every phase line the arrow crosses,
+ * as the renderer draws it, and at the arrow's middle when it crosses none —
+ * "if there is an inertia bar, draw it" (PO, 2026-10-28).
+ */
+function inertiaCentres(
+  plot: ReturnType<typeof owmDefaultPlot>,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  fromEvolution: number,
+  toEvolution: number
+): { cx: number; cy: number }[] {
+  const low = Math.min(fromEvolution, toEvolution);
+  const high = Math.max(fromEvolution, toEvolution);
+  const crossed = PHASE_LINES.filter(line => line > low && line < high);
+  if (crossed.length === 0) {
+    return [{ cx: (from.x + to.x) / 2, cy: (from.y + to.y) / 2 }];
+  }
+  return crossed.map(line => {
+    const t = (line - fromEvolution) / (toEvolution - fromEvolution);
+    const [x] = rendererPointOf(plot, line, 0);
+    return { cx: x, cy: from.y + t * (to.y - from.y) };
+  });
 }
 
 /** The toolbar's inertia bar, centred on a point. */
@@ -710,16 +881,32 @@ function barAt(
   );
 }
 
-/** Put a component's payload, and its colour, on the node a builder made. */
-function decorate(
+/**
+ * A builder's elements with a component's own plain pieces joining its OUTER
+ * group, so its description, step dot and range bar move with it. Members
+ * come before their group (ADR 0012 D3); `under` comes first of all, so the
+ * range bar is painted beneath the node.
+ */
+function withExtras(
   built: SerializedElementProps[],
-  nodeId: string,
-  payload: ForeignInterchange,
-  stroke: string | undefined
-) {
-  const node = byLocal(built, nodeId);
-  Object.assign(node, withPayload(payload));
-  if (stroke !== undefined) node.strokeColor = stroke;
+  groupId: string,
+  under: readonly SerializedElementProps[],
+  extras: readonly SerializedElementProps[]
+): SerializedElementProps[] {
+  const group = byLocal(built, groupId);
+  const joined = [...under, ...extras].map(piece => [piece.id, true]);
+  return [
+    ...under,
+    ...built.filter(element => element !== group),
+    ...extras,
+    {
+      ...group,
+      children: {
+        ...(group.children as Record<string, boolean>),
+        ...Object.fromEntries(joined),
+      },
+    },
+  ];
 }
 
 function byLocal(
@@ -732,15 +919,18 @@ function byLocal(
   return found;
 }
 
-function boxCentre(element: SerializedElementProps): { x: number; y: number } {
+function boxOf(element: SerializedElementProps) {
   const [x, y, w, h] = JSON.parse(String(element.xywh)) as number[];
-  return { x: x + w / 2, y: y + h / 2 };
+  return { x, y, w, h };
 }
 
-const withPayload = (payload: ForeignInterchange) => {
-  const interchange = jsonPayload(payload);
-  return interchange ? { interchange } : {};
-};
+const centreOf = (box: { x: number; y: number; w: number; h: number }) => ({
+  x: box.x + box.w / 2,
+  y: box.y + box.h / 2,
+});
+
+const boxString = (box: { x: number; y: number; w: number; h: number }) =>
+  `[${box.x},${box.y},${box.w},${box.h}]`;
 
 /** The empty import a refusal is, with its one sentence. */
 function refused([key, message]: readonly [
@@ -756,37 +946,4 @@ function refused([key, message]: readonly [
       notes: [{ kind: 'warning', messageKey: key, message }],
     },
   };
-}
-
-const clone = (value: Json): Json => JSON.parse(JSON.stringify(value)) as Json;
-
-/** Delete a nested key, and every object the deletion leaves empty. */
-function removePath(target: Json, path: readonly string[]) {
-  const [head, ...tail] = path;
-  if (head === undefined) return;
-  if (tail.length === 0) {
-    delete target[head];
-    return;
-  }
-  const next = target[head];
-  if (!isRecord(next)) return;
-  removePath(next, tail);
-  if (Object.keys(next).length === 0) delete target[head];
-}
-
-/**
- * The carried fields of a payload, named the way the report names them: a
- * key, or a dotted path through `label` and `position`, whose children are
- * fields in their own right (`label.position`, `position.evolution.range`).
- */
-function pathsOf(rest: Json, prefix = ''): string[] {
-  const nested: Record<string, readonly string[]> = {
-    '': ['label', 'position'],
-    'position.': ['evolution', 'visibility'],
-  };
-  return Object.entries(rest).flatMap(([key, value]) =>
-    nested[prefix]?.includes(key) && isRecord(value)
-      ? pathsOf(value, `${prefix}${key}.`)
-      : [`${prefix}${key}`]
-  );
 }
