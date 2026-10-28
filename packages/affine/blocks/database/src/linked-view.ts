@@ -91,6 +91,75 @@ export function insertLinkedDatabaseView(
 }
 
 /**
+ * Turns the native database a creation entry just inserted into a view of a
+ * host source (ADR 0035 §5, amendment of 2026-10-28): the block takes the
+ * database's `externalSourceId`, its title when the block has none, an empty
+ * schema of its own, and its first view reads `sourceId`, with that view's
+ * data re-derived over the host's source; the native rows are deleted. The
+ * view keeps its id, mode and name: the reader sees the same view, now fed
+ * by the source.
+ *
+ * One gesture, one undo step: after a `captureSync`, every write sits in one
+ * `transact`, so one undo gives the native database back, rows included. The
+ * block rebuilds its own data source on `externalSourceId$`.
+ *
+ * Returns `false` and writes nothing on a read-only document, on a block
+ * already connected to a source (`externalSourceId`), without a host data
+ * source (`DatabaseDataSourceProvider`) or without a view to keep.
+ */
+export function connectDatabaseToSource(
+  std: BlockStdScope,
+  model: DatabaseBlockModel,
+  choice: {
+    database: Pick<DataSourcePickerDatabase, 'id' | 'title'>;
+    sourceId: string;
+  }
+): boolean {
+  const { store } = std;
+  if (store.readonly) return false;
+  if (model.props.externalSourceId !== undefined) return false;
+  const provider = std.getOptional(DatabaseDataSourceProvider);
+  if (!provider) return false;
+  const [first] = model.props.views;
+  if (!first) return false;
+  const { database, sourceId } = choice;
+  const view = { id: first.id, name: first.name, mode: first.mode };
+
+  store.captureSync();
+  store.transact(() => {
+    const title = model.props.title;
+    // The title is edited in place, not replaced: the block's title editor
+    // stays bound to the same text.
+    if (title.length === 0 && database.title) title.insert(database.title, 0);
+    // The view names its source before its data is derived: a hosted source
+    // reads the current view's `sourceId` to know which schema it shows.
+    store.updateBlock(model, {
+      externalSourceId: database.id,
+      columns: [],
+      views: [{ ...view, sourceId }],
+    });
+    const dataSource = provider.createDataSource(model);
+    try {
+      dataSource.viewManager.setCurrentView(view.id);
+      store.updateBlock(model, {
+        views: [
+          {
+            ...defaultViewData(dataSource, view.mode),
+            id: view.id,
+            name: view.name,
+            sourceId,
+          },
+        ],
+      });
+    } finally {
+      dataSource.dispose();
+    }
+    for (const row of [...model.children]) store.deleteBlock(row);
+  });
+  return true;
+}
+
+/**
  * A preset's default view data over `dataSource`, named and typed. A preset
  * that cannot build one over this source (a board with no property to group
  * by, the case of every freshly created host database) gives a table: the

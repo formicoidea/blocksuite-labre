@@ -37,13 +37,21 @@ export interface DataSourcePickerOptions {
    */
   databaseId?: string;
   onPick: (choice: DataSourceChoice) => void;
+  /**
+   * Offer "New database" and "New source" where the host creates them;
+   * `true` when absent. The creation popover passes `false`: its own "New
+   * empty source" is the way to create, its "Link an existing source" only
+   * links (ADR 0035 amendment of 2026-10-28).
+   */
+  offerCreate?: boolean;
 }
 
 function sourceItems(
   std: BlockStdScope,
   picker: DataSourcePickerService,
   database: DataSourcePickerDatabase,
-  onPick: DataSourcePickerOptions['onPick']
+  onPick: DataSourcePickerOptions['onPick'],
+  offerCreate: boolean
 ): MenuConfig[] {
   const t = (wording: readonly [string, string]) =>
     translateKey(std, wording[0], wording[1]);
@@ -57,7 +65,7 @@ function sourceItems(
     })
   );
   const createSource = picker.createSource;
-  if (createSource && !std.store.readonly) {
+  if (createSource && offerCreate && !std.store.readonly) {
     items.push(
       menu.action({
         name: t(PICKER_NEW_SOURCE),
@@ -96,20 +104,22 @@ export function dataSourcePickerItems(
 ): MenuConfig[] {
   const t = (wording: readonly [string, string]) =>
     translateKey(std, wording[0], wording[1]);
-  const { onPick, databaseId } = options;
+  const { onPick, databaseId, offerCreate = true } = options;
   const list = picker.list();
   if (databaseId !== undefined) {
     return [
       menu.dynamic(() => {
         const database = list.value.find(d => d.id === databaseId);
-        return database ? sourceItems(std, picker, database, onPick) : [];
+        return database
+          ? sourceItems(std, picker, database, onPick, offerCreate)
+          : [];
       }),
     ];
   }
   const items: MenuConfig[] = [
     menu.dynamic(() => {
       const databases = list.value;
-      if (databases.length === 0 && !picker.createDatabase) {
+      if (databases.length === 0 && !(offerCreate && picker.createDatabase)) {
         return [
           menu.action({
             name: t(PICKER_EMPTY),
@@ -123,13 +133,13 @@ export function dataSourcePickerItems(
           name: database.title || t(DOC_UNTITLED),
           prefix: DatabaseTableViewIcon(),
           options: {
-            items: sourceItems(std, picker, database, onPick),
+            items: sourceItems(std, picker, database, onPick, offerCreate),
           },
         })
       );
     }),
   ];
-  const createDatabase = picker.createDatabase;
+  const createDatabase = offerCreate ? picker.createDatabase : undefined;
   if (createDatabase && !std.store.readonly) {
     items.push(
       menu.group({

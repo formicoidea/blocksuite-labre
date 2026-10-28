@@ -30,6 +30,26 @@ export const DATABASE_ADD_VIEW_IMPORT: ChromeWording = [
   'Import a view from another database',
 ];
 
+/* ── The creation popover (ADR 0035 §5, amendment of 2026-10-28) ──────── */
+
+/** The popover over a database just inserted, before it has a source. */
+export const DATABASE_CREATION_TITLE: ChromeWording = [
+  'com.labre.database.creation.title',
+  'Connect a source',
+];
+
+/** Asks the host for a new database and connects the block to its source. */
+export const DATABASE_CREATION_NEW_SOURCE: ChromeWording = [
+  'com.labre.database.creation.new-source',
+  'New empty source',
+];
+
+/** The sources of the databases the host lists, without "New database". */
+export const DATABASE_CREATION_LINK_EXISTING: ChromeWording = [
+  'com.labre.database.creation.link-existing',
+  'Link an existing source',
+];
+
 /* ── The full-page database host (ADR 0035 §1, B13) ───────────────────── */
 
 /** The document has no block by the id the host named as the views' host. */
@@ -173,6 +193,9 @@ const DATABASE_EDITOR_WORDINGS: readonly ChromeWording[] = [
   DATABASE_ADD_VIEW_IMPORT,
   DATABASE_ADD_VIEW_NEW_SOURCE,
   DATABASE_ADD_VIEW_UNTITLED_SOURCE,
+  DATABASE_CREATION_LINK_EXISTING,
+  DATABASE_CREATION_NEW_SOURCE,
+  DATABASE_CREATION_TITLE,
   DATABASE_PAGE_HOST_MISSING,
   PICKER_EMPTY,
   PICKER_NEW_DATABASE,
