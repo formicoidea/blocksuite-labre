@@ -2,7 +2,7 @@ import { formatPropertyValue } from '@labre/affine-fragment-doc-title';
 import {
   formatNumber,
   NumberFormatSchema,
-} from '@labre/data-view/property-pure-presets';
+} from '@labre/affine-database-engine/property-pure-presets';
 import { describe, expect, test } from 'vitest';
 
 /**

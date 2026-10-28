@@ -8,9 +8,9 @@ import {
   type ParagraphType,
 } from '@labre/affine/model';
 import { Text, type Workspace } from '@labre/affine/store';
-import { groupTraitKey } from '@labre/data-view';
-import { propertyPresets } from '@labre/data-view/property-presets';
-import { viewPresets } from '@labre/data-view/view-presets';
+import { groupTraitKey } from '@labre/affine-database-engine';
+import { propertyPresets } from '@labre/affine-database-engine/property-presets';
+import { viewPresets } from '@labre/affine-database-engine/view-presets';
 
 import type { InitFn } from './utils.js';
 

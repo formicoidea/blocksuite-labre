@@ -1,1 +1,1 @@
-export * from '@labre/data-view/effects';
+export * from '@labre/affine-database-engine/effects';

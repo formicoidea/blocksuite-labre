@@ -497,13 +497,13 @@ describe('getTranslationKeyManifest', () => {
 
     /**
      * `Database` is the only group deliberately left out: it belongs to the
-     * postponed `blocks/database` / `blocks/data-view` surfaces (ADR 0023,
+     * postponed `database/block` / `database/view-block` surfaces (ADR 0023,
      * "Consequences"), whose English is pinned in `literals.baseline.json`
      * under `deferred`. It renders its raw name, exactly as every group did
      * before the table existed.
      */
     const SLASH_GROUPS_WITHOUT_A_WORDING: Readonly<Record<string, string>> = {
-      Database: 'postponed surface (blocks/database, blocks/data-view)',
+      Database: 'postponed surface (database/block, database/view-block)',
     };
 
     /**

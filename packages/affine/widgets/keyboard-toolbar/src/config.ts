@@ -1,5 +1,5 @@
 import { pickAndAddSiblingAttachmentBlocks } from '@labre/affine-block-attachment';
-import { insertDatabaseBlockCommand } from '@labre/affine-block-database';
+import { insertDatabaseBlockCommand } from '@labre/affine-database-block';
 import { insertEmptyEmbedIframeCommand } from '@labre/affine-block-embed';
 import { insertImagesCommand } from '@labre/affine-block-image';
 import { insertLatexBlockCommand } from '@labre/affine-block-latex';
@@ -48,7 +48,7 @@ import { REFERENCE_NODE } from '@labre/affine-shared/consts';
 import type { AffineTextStyleAttributes } from '@labre/affine-shared/types';
 import { createDefaultDoc, type Signal } from '@labre/affine-shared/utils';
 import type { AffineLinkedDocWidget } from '@labre/affine-widget-linked-doc';
-import { viewPresets } from '@labre/data-view/view-presets';
+import { viewPresets } from '@labre/affine-database-engine/view-presets';
 import { assertType } from '@labre/global/utils';
 import {
   AttachmentIcon,

@@ -1,4 +1,4 @@
-import { type SelectTag, t, typeSystem } from '@labre/data-view';
+import { type SelectTag, t, typeSystem } from '@labre/affine-database-engine';
 import { describe, expect, test } from 'vitest';
 
 describe('subtyping', () => {

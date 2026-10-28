@@ -15,11 +15,11 @@
  * tooling half is pinned to follow the flag, so moving a creation entry into
  * the render half fails too.
  */
-import { DatabaseViewCreationIdentifier } from '@labre/affine-block-database';
-import { DatabaseViewExtension } from '@labre/affine-block-database/view';
+import { DatabaseViewCreationIdentifier } from '@labre/affine-database-block';
+import { DatabaseViewExtension } from '@labre/affine-database-block/view';
 import { ViewExtensionManager } from '@labre/affine-ext-loader';
 import { SlashMenuConfigIdentifier } from '@labre/affine-widget-slash-menu';
-import { StandaloneCellMetaProvider } from '@labre/data-view';
+import { StandaloneCellMetaProvider } from '@labre/affine-database-engine';
 import { Container } from '@labre/global/di';
 import { BlockFlavourIdentifier, BlockViewIdentifier } from '@labre/std';
 import { literal } from 'lit/static-html.js';

@@ -1,1 +1,1 @@
-export * from '@labre/affine-block-database/view';
+export * from '@labre/affine-database-block/view';

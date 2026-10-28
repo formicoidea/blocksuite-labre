@@ -101,16 +101,16 @@ Prettier on staged files.
 
 ## Layout to know
 
-| Path                                                                | What                                   |
-| ------------------------------------------------------------------- | -------------------------------------- |
-| `packages/framework/`                                               | store, sync, std, global               |
-| `packages/affine/model/`                                            | schemas and element models             |
-| `packages/affine/{blocks,gfx,widgets,fragments,components,shared}/` | features                               |
-| `packages/affine/all/`                                              | assembly, flags, framework descriptors |
-| `packages/playground/`                                              | dev app                                |
-| `packages/integration-test/`                                        | browser tests                          |
-| `scripts/`                                                          | bundle build and publish               |
-| `docs/adr/`                                                         | decisions                              |
-| `.changeset/`                                                       | pending release notes                  |
+| Path                                                                         | What                                   |
+| ---------------------------------------------------------------------------- | -------------------------------------- |
+| `packages/framework/`                                                        | store, sync, std, global               |
+| `packages/affine/model/`                                                     | schemas and element models             |
+| `packages/affine/{blocks,database,gfx,widgets,fragments,components,shared}/` | features                               |
+| `packages/affine/all/`                                                       | assembly, flags, framework descriptors |
+| `packages/playground/`                                                       | dev app                                |
+| `packages/integration-test/`                                                 | browser tests                          |
+| `scripts/`                                                                   | bundle build and publish               |
+| `docs/adr/`                                                                  | decisions                              |
+| `.changeset/`                                                                | pending release notes                  |
 
 Next: [02-workflow.md](02-workflow.md).

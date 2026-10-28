@@ -7,7 +7,7 @@
   },
   "include": ["./src"],
   "references": [
-    { "path": "../../blocks/database" },
+    { "path": "../../database/block" },
     { "path": "../../blocks/surface" },
     { "path": "../../blocks/table" },
     { "path": "../../components" },

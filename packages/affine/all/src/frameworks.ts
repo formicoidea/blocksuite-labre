@@ -259,7 +259,7 @@ export const EDITOR_BUNDLES = [
     label: 'core-database',
     info: 'coreDatabaseBundle',
     pkg: '@labre/affine-database-editor',
-    dir: 'affine/database-editor',
+    dir: 'affine/database/editor',
     extensions: [
       // always-on: view bar, full-page host, properties panel element
       { viewExtension: 'DatabaseEditorViewExtension' },

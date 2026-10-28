@@ -1,5 +1,5 @@
 // Import models only, the bundled file should not include anything else.
-import { DataViewBlockSchema } from '@labre/affine-block-data-view';
+import { DataViewBlockSchema } from '@labre/affine-database-view-block';
 import { SurfaceBlockSchema } from '@labre/affine-block-surface';
 import {
   AttachmentBlockSchema,

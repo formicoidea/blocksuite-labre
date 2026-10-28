@@ -13,7 +13,7 @@ import { setupEditor } from '../utils/setup.js';
  * (ADR 0035 §5 and §6, issues B3 and B4).
  *
  * The unit guards pin the pieces: `unknown-view-fallback.unit.spec.ts`
- * (`blocks/database`) that an unknown mode resolves to the table preset and
+ * (`database/block`) that an unknown mode resolves to the table preset and
  * writes nothing, `database-render-gating.unit.spec.ts` (`affine/all`) that
  * the block view stays registered with `{ database: false, 'data-view': false }`.
  * Neither renders the block in an editor. This one does: a database written

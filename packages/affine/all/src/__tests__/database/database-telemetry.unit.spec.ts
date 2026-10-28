@@ -2,7 +2,7 @@ import {
   addProperty,
   DatabaseBlockDataSource,
   databaseViewInitTemplate,
-} from '@labre/affine-block-database';
+} from '@labre/affine-database-block';
 import {
   type DatabaseBlockModel,
   DatabaseBlockSchemaExtension,
@@ -15,9 +15,9 @@ import {
   type DataViewDataType,
   DataViewEventTraceKey,
   groupTraitKey,
-} from '@labre/data-view';
-import { propertyModelPresets } from '@labre/data-view/property-pure-presets';
-import { viewPresets } from '@labre/data-view/view-presets';
+} from '@labre/affine-database-engine';
+import { propertyModelPresets } from '@labre/affine-database-engine/property-pure-presets';
+import { viewPresets } from '@labre/affine-database-engine/view-presets';
 import type { BlockStdScope } from '@labre/std';
 import { Text } from '@labre/store';
 import {

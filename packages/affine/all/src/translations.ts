@@ -1,6 +1,6 @@
 import { ATTACHMENT_WORDINGS } from '@labre/affine-block-attachment/translations';
 import { BOOKMARK_WORDINGS } from '@labre/affine-block-bookmark/translations';
-import { DATABASE_WORDINGS } from '@labre/affine-block-database/translations';
+import { DATABASE_WORDINGS } from '@labre/affine-database-block/translations';
 import { EMBED_WORDINGS } from '@labre/affine-block-embed/translations';
 import { EMBED_DOC_WORDINGS } from '@labre/affine-block-embed-doc/translations';
 import {
@@ -24,7 +24,7 @@ import {
 } from '@labre/affine-block-surface-ref/translations';
 import { ADAPTER_PANEL_WORDINGS } from '@labre/affine-fragment-adapter-panel/translations';
 import { DOC_TITLE_WORDINGS } from '@labre/affine-fragment-doc-title/translations';
-import { DATA_VIEW_WORDINGS } from '@labre/data-view/translations';
+import { DATA_VIEW_WORDINGS } from '@labre/affine-database-engine/translations';
 import { OUTLINE_WORDINGS } from '@labre/affine-fragment-outline/translations';
 import { COMPONENTS_WORDINGS } from '@labre/affine-components/translations';
 import {

@@ -129,8 +129,8 @@ export const SLASH_MENU_DELETE_DESCRIPTION: ChromeWording = [
  * The inventory covers template literals too: the `<Name>` is read between the
  * `_` and the `@`, whichever way the group string was built.
  *
- * NOT included: `Database`, used only by the postponed `blocks/database` and
- * `blocks/data-view` — the PO's decision excludes those surfaces, and
+ * NOT included: `Database`, used only by the postponed `database/block` and
+ * `database/view-block` — the PO's decision excludes those surfaces, and
  * `Database` has no other user today. A framework or a later lot that adds a
  * group name not in this table is unaffected: `slashMenuGroupWording` returns
  * `undefined` and the header renders the raw group name, same as before any

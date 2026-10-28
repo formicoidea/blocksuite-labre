@@ -5,7 +5,7 @@ import {
   SOFTENED_BACKGROUND_TOKEN,
   softenedChipColor,
   softenedFrameworkPalettes,
-} from '@labre/data-view';
+} from '@labre/affine-database-engine';
 import { Container } from '@labre/global/di';
 import { darkCssVariables, lightCssVariables } from '@toeverything/theme';
 import {

@@ -215,114 +215,6 @@ model {
       domain_document '1.00'
     }
   }
-  extend features.blocks.data-view {
-    metadata {
-      domain ['base-view']
-      domain_base_view '1.00'
-    }
-  }
-  extend features.blocks.data-view.block-meta {
-    metadata {
-      domain ['base-view']
-      domain_base_view '1.00'
-    }
-  }
-  extend features.blocks.data-view.columns {
-    metadata {
-      domain ['base-view']
-      domain_base_view '1.00'
-    }
-  }
-  extend features.blocks.data-view.configs {
-    metadata {
-      domain ['base-view']
-      domain_base_view '1.00'
-    }
-  }
-  extend features.blocks.data-view.src {
-    metadata {
-      domain ['base-view']
-      domain_base_view '1.00'
-    }
-  }
-  extend features.blocks.data-view.views_ {
-    metadata {
-      domain ['base-view']
-      domain_base_view '1.00'
-    }
-  }
-  extend features.blocks.database {
-    metadata {
-      domain ['base-view']
-      domain_base_view '1.00'
-    }
-  }
-  extend features.blocks.database.adapters {
-    metadata {
-      domain ['base-view']
-      domain_base_view '1.00'
-    }
-  }
-  extend features.blocks.database.components {
-    metadata {
-      domain ['base-view']
-      domain_base_view '1.00'
-    }
-  }
-  extend features.blocks.database.configs {
-    metadata {
-      domain ['base-view']
-      domain_base_view '1.00'
-    }
-  }
-  extend features.blocks.database.context {
-    metadata {
-      domain ['base-view']
-      domain_base_view '1.00'
-    }
-  }
-  extend features.blocks.database.detail-panel {
-    metadata {
-      domain ['base-view']
-      domain_base_view '1.00'
-    }
-  }
-  extend features.blocks.database.properties {
-    metadata {
-      domain ['base-view']
-      domain_base_view '1.00'
-    }
-  }
-  extend features.blocks.database.service {
-    metadata {
-      domain ['base-view']
-      domain_base_view '1.00'
-    }
-  }
-  extend features.blocks.database.src {
-    metadata {
-      domain ['base-view']
-      domain_base_view '1.00'
-    }
-  }
-  extend features.blocks.database.utils {
-    metadata {
-      domain ['base-view']
-      domain_base_view '1.00'
-    }
-  }
-  extend features.blocks.database.views_ {
-    metadata {
-      domain ['base-view']
-      domain_base_view '1.00'
-    }
-  }
-  extend features.blocks.database.widgets {
-    metadata {
-      domain ['base-view']
-      domain_base_view '1.00'
-    }
-  }
   extend features.blocks.divider {
     metadata {
       domain ['document']
@@ -908,79 +800,187 @@ model {
       domain_canvas '1.00'
     }
   }
-  extend features.data-view {
+  extend features.database.block {
     metadata {
       domain ['base-view']
       domain_base_view '1.00'
     }
   }
-  extend features.data-view.core {
+  extend features.database.block.adapters {
     metadata {
       domain ['base-view']
       domain_base_view '1.00'
     }
   }
-  extend features.data-view.property-presets {
+  extend features.database.block.components {
     metadata {
       domain ['base-view']
       domain_base_view '1.00'
     }
   }
-  extend features.data-view.src {
+  extend features.database.block.configs {
     metadata {
       domain ['base-view']
       domain_base_view '1.00'
     }
   }
-  extend features.data-view.view-presets {
+  extend features.database.block.context {
     metadata {
       domain ['base-view']
       domain_base_view '1.00'
     }
   }
-  extend features.data-view.widget-presets {
+  extend features.database.block.detail-panel {
     metadata {
       domain ['base-view']
       domain_base_view '1.00'
     }
   }
-  extend features.database-editor {
+  extend features.database.block.properties {
     metadata {
       domain ['base-view']
       domain_base_view '1.00'
     }
   }
-  extend features.database-editor.database-page {
+  extend features.database.block.service {
     metadata {
       domain ['base-view']
       domain_base_view '1.00'
     }
   }
-  extend features.database-editor.properties-panel {
+  extend features.database.block.src {
     metadata {
       domain ['base-view']
       domain_base_view '1.00'
     }
   }
-  extend features.database-editor.src {
+  extend features.database.block.utils {
     metadata {
       domain ['base-view']
       domain_base_view '1.00'
     }
   }
-  extend features.database-editor.view-bar {
+  extend features.database.block.views_ {
     metadata {
       domain ['base-view']
       domain_base_view '1.00'
     }
   }
-  extend features.database-editor.view-settings {
+  extend features.database.block.widgets {
     metadata {
       domain ['base-view']
       domain_base_view '1.00'
     }
   }
-  extend features.database-editor.view-transfer {
+  extend features.database.editor {
+    metadata {
+      domain ['base-view']
+      domain_base_view '1.00'
+    }
+  }
+  extend features.database.editor.database-page {
+    metadata {
+      domain ['base-view']
+      domain_base_view '1.00'
+    }
+  }
+  extend features.database.editor.properties-panel {
+    metadata {
+      domain ['base-view']
+      domain_base_view '1.00'
+    }
+  }
+  extend features.database.editor.src {
+    metadata {
+      domain ['base-view']
+      domain_base_view '1.00'
+    }
+  }
+  extend features.database.editor.view-bar {
+    metadata {
+      domain ['base-view']
+      domain_base_view '1.00'
+    }
+  }
+  extend features.database.editor.view-settings {
+    metadata {
+      domain ['base-view']
+      domain_base_view '1.00'
+    }
+  }
+  extend features.database.editor.view-transfer {
+    metadata {
+      domain ['base-view']
+      domain_base_view '1.00'
+    }
+  }
+  extend features.database.engine {
+    metadata {
+      domain ['base-view']
+      domain_base_view '1.00'
+    }
+  }
+  extend features.database.engine.core {
+    metadata {
+      domain ['base-view']
+      domain_base_view '1.00'
+    }
+  }
+  extend features.database.engine.property-presets {
+    metadata {
+      domain ['base-view']
+      domain_base_view '1.00'
+    }
+  }
+  extend features.database.engine.src {
+    metadata {
+      domain ['base-view']
+      domain_base_view '1.00'
+    }
+  }
+  extend features.database.engine.view-presets {
+    metadata {
+      domain ['base-view']
+      domain_base_view '1.00'
+    }
+  }
+  extend features.database.engine.widget-presets {
+    metadata {
+      domain ['base-view']
+      domain_base_view '1.00'
+    }
+  }
+  extend features.database.view-block {
+    metadata {
+      domain ['base-view']
+      domain_base_view '1.00'
+    }
+  }
+  extend features.database.view-block.block-meta {
+    metadata {
+      domain ['base-view']
+      domain_base_view '1.00'
+    }
+  }
+  extend features.database.view-block.columns {
+    metadata {
+      domain ['base-view']
+      domain_base_view '1.00'
+    }
+  }
+  extend features.database.view-block.configs {
+    metadata {
+      domain ['base-view']
+      domain_base_view '1.00'
+    }
+  }
+  extend features.database.view-block.src {
+    metadata {
+      domain ['base-view']
+      domain_base_view '1.00'
+    }
+  }
+  extend features.database.view-block.views_ {
     metadata {
       domain ['base-view']
       domain_base_view '1.00'

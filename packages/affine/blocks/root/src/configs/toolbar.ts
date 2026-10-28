@@ -1,7 +1,7 @@
 import {
   convertToDatabase,
   DATABASE_CONVERT_WHITE_LIST,
-} from '@labre/affine-block-database';
+} from '@labre/affine-database-block';
 import {
   convertSelectedBlocksToLinkedDoc,
   getTitleFromSelectedModels,
@@ -54,7 +54,7 @@ import {
   TOOLBAR_DUPLICATE,
   translateKey,
 } from '@labre/affine-shared/services';
-import { tableViewMeta } from '@labre/data-view/view-presets';
+import { tableViewMeta } from '@labre/affine-database-engine/view-presets';
 import {
   CopyIcon,
   DatabaseTableViewIcon,

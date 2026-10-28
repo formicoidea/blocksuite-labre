@@ -86,6 +86,13 @@ views {
     autoLayout LeftRight
   }
 
+  view family-database of features.database {
+    title 'affine/database'
+    include features.database.*
+    exclude * -> * where kind is imports
+    autoLayout LeftRight
+  }
+
   view family-fragments of features.fragments {
     title 'affine/fragments'
     include features.fragments.*

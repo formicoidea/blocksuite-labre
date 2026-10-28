@@ -52,7 +52,11 @@ One package per feature, under `packages/affine/`:
 - `fragments/<name>`: UI attached to the document, outside the editor.
 - `components/`: shared UI atoms (icons, menus, tooltips).
 - `shared/`: services, commands, styles, adapters used by several features.
-- `inlines/`, `rich-text/`, `data-view/`: text editing and table views.
+- `database/<name>`: the database family: the view engine (`engine`: tables,
+  kanban, properties), the `affine:database` and `affine:data-view` blocks
+  (`block`, `view-block`) and the editing chrome (`editor`, published as
+  `labre-core-database`).
+- `inlines/`, `rich-text/`: text editing.
 - `ext-loader/`: the provider classes every feature uses to declare its
   extensions.
 
@@ -87,7 +91,7 @@ the npm packages under `@formicoidea/`:
 | `@formicoidea/labre-framework-<id>`          | one framework: `wardley`, `edgy`, `bpmn`, `c4`, `cynefin`, `ddd-event-storming`, `ddd-core-domain`, `ddd-context-map`, `uml` |
 | `@formicoidea/labre-ddd-shared`              | helpers shared by the DDD frameworks                                                                                         |
 | `@formicoidea/labre-framework-ddd-aggregate` | DDD template categories only (not a framework: no senior button)                                                             |
-| `@formicoidea/labre-core-database`           | the database editing chrome (`packages/affine/database-editor`); core alone still renders and edits every stored database    |
+| `@formicoidea/labre-core-database`           | the database editing chrome (`packages/affine/database/editor`); core alone still renders and edits every stored database    |
 
 The core bundle keeps the same subpaths as the umbrella (`@labre/affine/std`
 becomes `@formicoidea/labre-core/std`). The frameworks are stripped from the

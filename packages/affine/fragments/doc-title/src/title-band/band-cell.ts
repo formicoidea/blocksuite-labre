@@ -3,8 +3,8 @@ import {
   type PropertyMetaConfig,
   type SelectTag,
   selectOptionColors,
-} from '@labre/data-view';
-import { propertyPresets } from '@labre/data-view/property-presets';
+} from '@labre/affine-database-engine';
+import { propertyPresets } from '@labre/affine-database-engine/property-presets';
 
 import { chipOptions } from './format.js';
 
