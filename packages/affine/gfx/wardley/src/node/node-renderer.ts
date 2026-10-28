@@ -13,18 +13,18 @@ import { elementTagValues } from '@labre/std/gfx';
 
 import { wardleyMethodStyle } from '../method.js';
 import { WARDLEY_METHOD_TAG_ID } from '../natures.js';
-import { ANCHOR, ECOSYSTEM, METHOD, NODE_FILL } from './consts';
+import { ANCHOR, ECOSYSTEM, METHOD, METHOD_STYLE, NODE_FILL } from './consts';
 
 /**
- * The outer ring of a method node, repainted from its `wardley:method` tag
- * with that method's prefabricated style (`METHOD_STYLE`, ADR 0046).
+ * The outer ring of a method node, painted with its method's prefabricated
+ * style (`METHOD_STYLE`, ADR 0046): the one its `wardley:method` tag names,
+ * and `make` — the buying-policy family's first value, the node's default
+ * style (PO decision, 2026-10-28) — when it carries no tag or a value no pack
+ * of this version names.
  *
- * Derived at paint time and never written back, which is what keeps every
- * node drawn before the tag existed exactly as it was: no tag, or a value no
- * pack of this version names, and the native ellipse underneath — the stored
- * fill and stroke, the "colour = phase" palette's — is left alone. With one,
- * the ring is the method's and the stored fill no longer shows; clearing the
- * tag gives it back untouched, because nothing overwrote it.
+ * Derived at paint time and never written back. The stored fill and stroke
+ * the "colour = phase" palette wrote stay in the document untouched; they no
+ * longer reach the ring, which is the method's on every method node.
  *
  * Painted OVER the native ellipse, on its exact path (the shape renderer's
  * own inset of half a stroke, both radii, so a node stretched into an oval is
@@ -42,10 +42,9 @@ function paintMethodRing(
   h: number,
   strokeWidth: number
 ) {
-  const style = wardleyMethodStyle(
-    elementTagValues(model, WARDLEY_METHOD_TAG_ID)[0]
-  );
-  if (!style) return;
+  const style =
+    wardleyMethodStyle(elementTagValues(model, WARDLEY_METHOD_TAG_ID)[0]) ??
+    METHOD_STYLE.make;
 
   // Both radii are positive: the caller has already returned on a node too
   // small for its own stroke.

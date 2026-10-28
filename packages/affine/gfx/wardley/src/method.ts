@@ -78,7 +78,7 @@ const STYLE_OF_VALUE: Readonly<Record<string, WardleyMethodStyle>> = {
  * Total over anything a DOCUMENT can carry: defs are runtime configuration and
  * are never persisted, so a node may hold a value whose pack was removed or a
  * newer client added. Such a value names no family, and the node paints as an
- * untagged one rather than guessing a colour.
+ * untagged one (`make`, the default style) rather than guessing another.
  */
 export function wardleyMethodParts(
   valueId: string | null | undefined
@@ -118,8 +118,8 @@ export function wardleyMethodOf(
 
 /**
  * The prefabricated ring a method value paints (`METHOD_STYLE`), `null`
- * when the value names no method — the caller then paints the node's own
- * stored fill, exactly as before the tag existed.
+ * when the value names no method — the painter then falls back on `make`,
+ * the method node's default style.
  */
 export function wardleyMethodStyle(
   valueId: string | null | undefined

@@ -131,8 +131,8 @@ const METHOD_STYLE_OF: Record<
  * A method node's ring follows its `wardley:method` tag (ADR 0046): each of
  * the nine values paints its own prefabricated style. What these pin is the
  * contract both ways — a tagged node paints the method, and a node with no
- * method tag paints exactly what it painted before the tag existed, so every
- * map drawn with the "colour = phase" palette keeps its colours.
+ * method tag paints the default style, Make, exactly as a Make node (the
+ * stored "colour = phase" fill no longer shows on any method node).
  */
 describe('the ring of a component + method', () => {
   /** A method node carrying `tags`, on a real `Y.Doc` (see `natures`). */
@@ -164,20 +164,32 @@ describe('the ring of a component + method', () => {
     return rec;
   }
 
-  it('without a method tag, paints only the inner component, as before', () => {
+  /**
+   * The rule changed with the PO's decision of 2026-10-28: a method node's
+   * default style is the buying-policy family's first value, so a node with
+   * no method tag no longer shows its stored fill — it paints exactly what a
+   * Make node paints.
+   */
+  it('without a method tag, paints exactly what a Make node paints', () => {
+    const make = paint(
+      methodNode({ [WARDLEY_METHOD_TAG_ID]: [WARDLEY_METHOD.make] })
+    );
     const cases: Array<Record<string, string[]> | undefined> = [
       undefined,
       // A nature alone says nothing about the method.
       { [WARDLEY_NATURE_TAG_ID]: [WARDLEY_NATURE.activity] },
-      // A value no pack of this version names: no colour is guessed.
+      // A value no pack of this version names: the default, not a guess.
       { [WARDLEY_METHOD_TAG_ID]: ['wardley:method/retired'] },
     ];
     for (const tags of cases) {
       const rec = paint(methodNode(tags));
-      expect(rec.ellipses, JSON.stringify(tags)).toEqual([]);
-      expect(rec.fills).toEqual([NODE_FILL]);
-      expect(rec.strokes).toEqual(['#111111']);
+      const where = JSON.stringify(tags);
+      expect(rec.ellipses, where).toEqual(make.ellipses);
+      expect(rec.fills, where).toEqual(make.fills);
+      expect(rec.strokes, where).toEqual(make.strokes);
+      expect(rec.lineWidths, where).toEqual(make.lineWidths);
     }
+    expect(make.fills).toEqual([NODE_FILL, METHOD_STYLE.make.fill, NODE_FILL]);
   });
 
   it('paints the ring over the native ellipse, on its own path', () => {

@@ -2,8 +2,10 @@
 
 - Status: **accepted** (2026-10-28, PO decision on importing
   wardley-map-renderer maps, revised the same day after the PO's review of
-  PR #556: prefabricated styles, Make, grouped dropdown, legend rows;
-  awaiting the maintainer's review of the PR)
+  PR #556: prefabricated styles, Make, grouped dropdown, legend rows; and
+  again: the palette's own swatches by key, light swatches for the
+  "transparent" fills, an untagged node painted as Make; awaiting the
+  maintainer's review of the PR)
 - Deciders: Mathieu Jolly
 - Related ADRs: [0007](0007-universe-tag-defs-format.md) (tag defs are data
   the host seeds; ids are forever; values are never persisted as defs),
@@ -131,22 +133,29 @@ listed after the last family, under no sub-title.
 
 `METHOD_STYLE` (`node/consts.ts`) gives each of the nine a fill, a line and a
 line width, built from named tokens only. "Wardley blue" and "Wardley violet"
-are the palette's Peace and War, now named constants (`WARDLEY_PEACE`,
-`WARDLEY_PEACE_LIGHT`, `WARDLEY_WAR`, `WARDLEY_WAR_LIGHT`) that the colour
-picker's swatches read too. Dark values come from the notation tint (ADR
-0039): the ink and the greys invert, hues stay.
+are the colour picker's own swatches **Peace** and **War**, read by their keys
+from the picker's swatch table, `WARDLEY_PALETTES`, under no new name (PO
+decision): the table and its nine wordings moved word for word from
+`toolbar/node-config.ts` to `node/consts.ts`, with `export` as the only change,
+because the toolbar module already imports `node/consts.ts` (an import loop
+otherwise) and the node painter must not load toolbar code. `swatch(key)`
+accepts only the keys in `METHOD_SWATCH_KEYS`, and a guard test checks each
+is in the table. A "transparent" fill is the border swatch's own light variant
+(PO decision): Peace light under Peace, War light under War, and the same rule
+for any Wonder use. Dark values come from the notation tint (ADR 0039): the
+ink and the greys invert, the palette's swatches stay.
 
-| Value         | Fill (light → dark)                           | Line (light → dark)       | Width |
-| ------------- | --------------------------------------------- | ------------------------- | ----- |
-| Make          | `METHOD_FILL` `#d9d9d9` → `#313131`           | ink `#1f2328` → `#eaeaea` | 2     |
-| Buy           | `METHOD_BUY_FILL` `#8c8c8c` → `#6b6b6b`       | ink                       | 2     |
-| Outsource     | `METHOD_OUTSOURCE_FILL` `#404040` → `#b5b5b5` | ink                       | 2     |
-| Agile         | ink at 15 % `#1f232826` → `#eaeaea26`         | the same                  | 1.5   |
-| Lean          | ink at 35 % `#1f232859` → `#eaeaea59`         | the same                  | 1.5   |
-| Six Sigma     | ink at 55 % `#1f23288c` → `#eaeaea8c`         | the same                  | 1.5   |
-| Pioneers      | Peace light at 50 % `#c6dbfc80` (kept)        | Peace `#5b9cf6` (kept)    | 2     |
-| Settlers      | Peace `#5b9cf6` (kept)                        | Peace                     | 2     |
-| Town planners | War at 40 % `#9d6df066` (kept)                | War `#9d6df0` (kept)      | 2     |
+| Value         | Fill (light → dark)                           | Line (light → dark)             | Width |
+| ------------- | --------------------------------------------- | ------------------------------- | ----- |
+| Make          | `METHOD_FILL` `#d9d9d9` → `#313131`           | ink `#1f2328` → `#eaeaea`       | 2     |
+| Buy           | `METHOD_BUY_FILL` `#8c8c8c` → `#6b6b6b`       | ink                             | 2     |
+| Outsource     | `METHOD_OUTSOURCE_FILL` `#404040` → `#b5b5b5` | ink                             | 2     |
+| Agile         | ink at 15 % `#1f232826` → `#eaeaea26`         | the same                        | 1.5   |
+| Lean          | ink at 35 % `#1f232859` → `#eaeaea59`         | the same                        | 1.5   |
+| Six Sigma     | ink at 55 % `#1f23288c` → `#eaeaea8c`         | the same                        | 1.5   |
+| Pioneers      | swatch 'Peace light' `#c6dbfc` (kept)         | swatch 'Peace' `#5b9cf6` (kept) | 2     |
+| Settlers      | swatch 'Peace' `#5b9cf6` (kept)               | swatch 'Peace'                  | 2     |
+| Town planners | swatch 'War light' `#d9c9fa` (kept)           | swatch 'War' `#9d6df0` (kept)   | 2     |
 
 - **Buying policy** is Wardley's own style, the one OWM draws: a thick ink
   border around a grey that darkens with the phase. The darkest step is
@@ -158,15 +167,17 @@ picker's swatches read too. Dark values come from the notation tint (ADR
   alphas, line and fill alike, so it has no border of another colour. The
   tint keeps a stored alpha, so the dark card paints the same three
   intensities in its light ink.
-- **Attitudes** are the Wardley palette: pioneers a light blue wash in a blue
-  border, settlers solid blue, town planners a violet wash in a violet
-  border.
+- **Attitudes** are the Wardley palette: pioneers Peace light in a Peace
+  border, settlers solid Peace, town planners War light in a War border.
 
 Families differ by their border (thick ink, none, hue), values within a
 family by their fill; the nine pictures are distinct on both cards and none is
-a plain component's white disc (`method.unit.spec.ts`). Make is the closest
-to an untagged method node (Method grey in a 1-unit rim), which is the
-legacy picture of the same idea; its 2-unit ink border tells them apart.
+a plain component's white disc (`method.unit.spec.ts`).
+
+**The default style is Make** (PO decision, 2026-10-28): the method node's
+default family is the buying policy, so a node with no method tag, or with a
+value no pack of this version names, paints exactly what a Make node paints
+(`node-renderer.unit.spec.ts` compares the two draws).
 
 #### Painting
 
@@ -177,20 +188,22 @@ of the nine, paints over the native ellipse on its exact path: the paper,
 fill and line (so no dark edge of the native rim survives under a wash), then
 the style's fill and line, every colour through `notationColor`. The line is
 never thinner than the node's own rim. The inner white component is drawn on
-top as before.
+top as before, in the node's stored stroke colour and width.
 
-- **No tag, or a value no pack of this version names**: nothing changes. The
-  native ellipse paints the stored `fillColor` and `strokeColor`, so every
-  method node drawn before this ADR keeps its colours.
-- **The fill-colour palette stays, as the fallback, not as an override.** On a
-  node with a method tag the stored fill no longer shows; clearing the tag
-  gives it back untouched, because nothing overwrote it. The colour picker
-  stays on the toolbar: it still sets the stroke colour, width and style of
-  the inner component, and the fill of an untagged node. Making a picked fill
-  win over the tag would need to tell a deliberate fill from the creation
-  default (`METHOD_FILL`, always written), which the document cannot do; and
-  writing colours from the tag (a watcher, as the Porter letter does) would
-  store the same fact twice and let the two disagree after a repaint.
+- **Existing method nodes change look.** Every method node paints a method
+  style now, Make when untagged, so the fill an author picked with the
+  "colour = phase" palette no longer shows on any of them. Nothing is
+  rewritten: the stored `fillColor` and `strokeColor` stay in the document, and a
+  client older than 0.62 still paints them.
+- **What the colour picker still does on a method node.** Its fill swatches
+  have no visible effect on the ring any more. Its stroke colour, width and
+  style still reach the inner white component's outline, and the width also
+  thickens the ring (never thinner than the rim). Proposed, not done here:
+  take the fill half of the picker off the method node's toolbar (keep the
+  stroke controls), since a fill that paints nothing is a control that lies.
+  That is a toolbar change for a follow-up PR, once the PO confirms.
+- Writing colours from the tag (a watcher, as the Porter letter does) was
+  rejected: it would store the same fact twice and let the two disagree.
 
 ### 4. The legend lists every method the map uses
 
@@ -227,6 +240,7 @@ picture), and a regenerate redraws it from the keys, as for any row
 - The OWM export still writes a method node as a plain component with a
   warning; mapping `make` / `buy` / `outsource` to OWM's decorators is a
   separate change, like the renderer import itself (#555).
-- A client older than 0.62 opening a board with a method tag paints the stored
-  fill (it does not read the tag) and offers no Method section; the tag is
-  preserved.
+- Every existing method node changes look on upgrade: it paints Make (or its
+  tagged method) instead of its stored fill. A client older than 0.62 opening
+  the same board paints the stored fill (it reads no tag) and offers no
+  Method section; the tag is preserved.

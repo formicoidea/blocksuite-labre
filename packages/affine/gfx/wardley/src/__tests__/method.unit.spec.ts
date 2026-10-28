@@ -39,10 +39,9 @@ import {
   METHOD_FILL,
   METHOD_OUTSOURCE_FILL,
   NODE_FILL,
+  METHOD_SWATCH_KEYS,
   NODE_STROKE,
-  WARDLEY_PEACE,
-  WARDLEY_PEACE_LIGHT,
-  WARDLEY_WAR,
+  WARDLEY_PALETTES,
 } from '../node/consts';
 import { WARDLEY_ROLE, WARDLEY_ROLES } from '../roles';
 import { legendOf, textsOf } from './legend-stub';
@@ -191,6 +190,10 @@ describe('the dropdown reads family by family', () => {
   });
 });
 
+/** A colour picker swatch's colour, by the key it is offered under. */
+const swatch = (key: string) =>
+  WARDLEY_PALETTES.find(palette => palette.key === key)?.value as string;
+
 /** Each value's ring, spelled with the named tokens it is made of. */
 const STYLES: ReadonlyArray<[string, string, string, number]> = [
   [WARDLEY_METHOD.make, METHOD_FILL, NODE_STROKE, 2],
@@ -199,9 +202,10 @@ const STYLES: ReadonlyArray<[string, string, string, number]> = [
   [WARDLEY_METHOD.agile, `${NODE_STROKE}26`, `${NODE_STROKE}26`, 1.5],
   [WARDLEY_METHOD.lean, `${NODE_STROKE}59`, `${NODE_STROKE}59`, 1.5],
   [WARDLEY_METHOD.sixSigma, `${NODE_STROKE}8c`, `${NODE_STROKE}8c`, 1.5],
-  [WARDLEY_METHOD.pioneers, `${WARDLEY_PEACE_LIGHT}80`, WARDLEY_PEACE, 2],
-  [WARDLEY_METHOD.settlers, WARDLEY_PEACE, WARDLEY_PEACE, 2],
-  [WARDLEY_METHOD.townPlanners, `${WARDLEY_WAR}66`, WARDLEY_WAR, 2],
+  // "Transparent" is the border swatch's light variant (PO, 2026-10-28).
+  [WARDLEY_METHOD.pioneers, swatch('Peace light'), swatch('Peace'), 2],
+  [WARDLEY_METHOD.settlers, swatch('Peace'), swatch('Peace'), 2],
+  [WARDLEY_METHOD.townPlanners, swatch('War light'), swatch('War'), 2],
 ];
 
 describe('the prefabricated ring of each method', () => {
@@ -209,13 +213,23 @@ describe('the prefabricated ring of each method', () => {
     expect(wardleyMethodStyle(id)).toEqual({ fill, stroke, lineWidth });
   });
 
-  test('the palette tokens are the swatches the colour picker offers', () => {
-    // "Wardley blue" and "Wardley violet" are Peace and War: named once.
-    expect([WARDLEY_PEACE, WARDLEY_PEACE_LIGHT, WARDLEY_WAR]).toEqual([
-      '#5b9cf6',
-      '#c6dbfc',
-      '#9d6df0',
-    ]);
+  /**
+   * GUARD: the rings read the colour picker's own swatches by their key
+   * (ADR 0046). Renaming or removing a swatch the rings use would otherwise
+   * surface only as a throw when the module loads; this names the key.
+   */
+  test('every swatch key the rings use exists in the swatch table', () => {
+    const keys = new Set(WARDLEY_PALETTES.map(palette => palette.key));
+    for (const key of METHOD_SWATCH_KEYS) {
+      expect(keys.has(key), key).toBe(true);
+    }
+  });
+
+  test('the blues and violet are the picker swatches Peace and War', () => {
+    // "Wardley blue" and "Wardley violet", in the PO's words.
+    expect(
+      ['Peace', 'Peace light', 'War', 'War light'].map(key => swatch(key))
+    ).toEqual(['#5b9cf6', '#c6dbfc', '#9d6df0', '#d9c9fa']);
     expect([METHOD_FILL, METHOD_BUY_FILL, METHOD_OUTSOURCE_FILL]).toEqual([
       '#d9d9d9',
       '#8c8c8c',
