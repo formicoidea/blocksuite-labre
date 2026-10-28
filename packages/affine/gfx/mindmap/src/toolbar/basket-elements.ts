@@ -1,5 +1,8 @@
-import { addAttachments } from '@labre/affine-block-attachment';
-import { addImages } from '@labre/affine-block-image';
+import {
+  addAttachments,
+  addAttachmentsFromAssets,
+} from '@labre/affine-block-attachment';
+import { addImages, addImagesFromAssets } from '@labre/affine-block-image';
 import {
   CanvasElementType,
   EdgelessCRUDIdentifier,
@@ -14,6 +17,8 @@ import {
   TextElementModel,
 } from '@labre/affine-model';
 import {
+  AssetPickerProvider,
+  type AssetRef,
   FeatureFlagService,
   TelemetryProvider,
   translateKey,
@@ -161,7 +166,47 @@ export const textRender: DraggableTool['render'] = async (bound, edgeless) => {
   return id;
 };
 
+/**
+ * The canvas's "Add file" (the promoted senior tool, and the media item of the
+ * mind map basket): the host's asset dialog when there is one
+ * (`AssetPickerProvider`, `kind: 'file'`, one ref), the system file chooser
+ * otherwise. Either way an image lands as an image block and anything else as
+ * an attachment card, at `bound`'s corner.
+ *
+ * It used to call the file chooser unconditionally, so with the seam present
+ * the canvas's image and file buttons of the note menu opened the dialog
+ * while this one, the most visible, still opened the system chooser (labre
+ * recette of 2026-10-28).
+ */
 export const mediaRender: DraggableTool['render'] = async (bound, edgeless) => {
+  const std = edgeless.std;
+  const point: IVec = [bound.x, bound.y];
+  const picker = std.getOptional(AssetPickerProvider);
+  if (picker) {
+    let asset: AssetRef | undefined;
+    try {
+      [asset] =
+        (await picker.pick({
+          kind: 'file',
+          mode: 'insert',
+          multiple: false,
+          docId: std.store.id,
+        })) ?? [];
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
+    if (!asset) return null;
+    const [id] = asset.type.startsWith('image/')
+      ? await addImagesFromAssets(std, [asset], {
+          point,
+          maxWidth: MAX_IMAGE_WIDTH,
+          shouldTransformPoint: false,
+        })
+      : addAttachmentsFromAssets(std, [asset], point, false);
+    return id ?? null;
+  }
+
   let file: File | null = null;
   try {
     file = await openSingleFileWith();
@@ -172,8 +217,6 @@ export const mediaRender: DraggableTool['render'] = async (bound, edgeless) => {
   if (!file) return null;
 
   const files = [file];
-  const std = edgeless.std;
-  const point: IVec = [bound.x, bound.y];
 
   // image
   if (file.type.startsWith('image/')) {

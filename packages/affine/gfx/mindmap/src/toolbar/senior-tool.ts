@@ -78,8 +78,9 @@ export const textSeniorTool = SeniorToolExtension(
 
 /**
  * Standalone "Add file" tool. Promoted out of the former "Others" submenu: a
- * single tap opens the file picker and inserts the image/attachment at the
- * viewport center. Reuses the submenu's `mediaRender` action.
+ * single tap opens the host's asset dialog (or the file picker without one)
+ * and inserts the image/attachment at the viewport center. Reuses the
+ * submenu's `mediaRender` action.
  */
 export const mediaSeniorTool = SeniorToolExtension(
   'edgeless-media',

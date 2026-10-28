@@ -1,3 +1,4 @@
+import { LoadingIcon } from '@labre/affine-components/icons';
 import { RefNodeSlotsProvider } from '@labre/affine-inline-reference';
 import {
   DOC_UNTITLED,
@@ -233,12 +234,11 @@ export class TitleBand extends SignalWatcher(
       color: var(--affine-placeholder-color);
     }
 
-    .labre-title-band-skeleton {
-      display: inline-block;
-      width: 96px;
-      height: 20px;
-      border-radius: 6px;
-      background-color: var(--affine-hover-color);
+    /* The host's rule: a spinner centred in what loads, never a skeleton
+       (recette 3; ADR-0057 on the Labre side). */
+    .labre-title-band-row.labre-title-band-loading {
+      justify-content: center;
+      font-size: 16px;
     }
 
     .labre-title-band-not-shown-label {
@@ -484,6 +484,26 @@ export class TitleBand extends SignalWatcher(
     this._openPanel();
   };
 
+  /** The host's menu for the property, under its name (`configure`). */
+  private _onNameContextMenu(
+    sources: BandSources,
+    prop: TitleBandProperty,
+    event: MouseEvent
+  ) {
+    const configure = sources.service.configure;
+    if (!configure || this._readonly) return;
+    // A touch long-press is the browser's (text selection), as before.
+    if ((event as PointerEvent).pointerType === 'touch') return;
+    event.preventDefault();
+    event.stopPropagation();
+    configure.call(
+      sources.service,
+      sources.docId,
+      prop.id,
+      event.currentTarget as HTMLElement
+    );
+  }
+
   private _renderFallback(prop: TitleBandProperty) {
     const text = formatPropertyValue(prop, this._locale);
     return html`<span
@@ -523,7 +543,13 @@ export class TitleBand extends SignalWatcher(
         this._onChip(event, false);
       }}
     >
-      <span class="labre-title-band-chip-name">${prop.name}</span>
+      <span
+        class="labre-title-band-chip-name"
+        data-testid="title-band-chip-name"
+        @contextmenu=${(event: MouseEvent) =>
+          this._onNameContextMenu(sources, prop, event)}
+        >${prop.name}</span
+      >
       ${cell
         ? html`<dv-standalone-cell
             class="labre-title-band-chip-value"
@@ -538,8 +564,18 @@ export class TitleBand extends SignalWatcher(
     </div>`;
   }
 
-  private _renderTools(sources: BandSources, hasPanel: boolean) {
-    const canAdd = !!sources.service.add && !this._readonly;
+  /**
+   * `withAdd: false` on the collapsed row: a "+" there added a property the
+   * reader could not see (recette 3, P3-x), so it only shows once the chips
+   * it adds to are drawn. A page with no property has nothing to collapse
+   * and keeps its "+".
+   */
+  private _renderTools(
+    sources: BandSources,
+    hasPanel: boolean,
+    withAdd = true
+  ) {
+    const canAdd = withAdd && !!sources.service.add && !this._readonly;
     return html`${canAdd
       ? html`<button
           class="labre-title-band-icon-button"
@@ -574,14 +610,13 @@ export class TitleBand extends SignalWatcher(
     const state = sources.sheet$.value;
     if (state.status === 'loading') {
       return html`<div
-        class="labre-title-band-row"
+        class="labre-title-band-row labre-title-band-loading"
         role="status"
         aria-busy="true"
         aria-label=${this._t(TITLE_BAND_LOADING)}
         data-testid="title-band-loading"
       >
-        <span class="labre-title-band-skeleton"></span>
-        <span class="labre-title-band-skeleton"></span>
+        ${LoadingIcon()}
       </div>`;
     }
     if (state.status !== 'ready') return nothing;
@@ -610,7 +645,7 @@ export class TitleBand extends SignalWatcher(
             >${this._t(TITLE_BAND_EXPAND, properties.length)}</span
           >
         </button>
-        ${this._renderTools(sources, hasPanel)}
+        ${this._renderTools(sources, hasPanel, false)}
       </div>`;
     }
 

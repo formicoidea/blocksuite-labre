@@ -23,8 +23,8 @@ wants it as a slide, in the deck's own type and paper.
 | --------------------- | ------------------ | -------------------------------- | ----------- |
 | Cover                 | 1, 3               | `cover` (Cover)                  | built       |
 | Cover with picture    | 2, 5, 6, 7         | `cover-image` (Cover with image) | built       |
-| Section divider       | 4, 6, 7            | `section` (Section), inverse     | built       |
-| Statement             | 9, 10, 33          | `statement` (Statement), inverse | built       |
+| Section divider       | 4, 6, 7            | `section` (Section)              | built       |
+| Statement             | 9, 10, 33          | `statement` (Statement)          | built       |
 | Agenda                | 75–84              | `agenda` (Agenda)                | built       |
 | Text and picture      | 11–20, 23          | `text-image` (Text and image)    | built       |
 | Picture with caption  | 8, 41, 42          | `full-image` (Full image)        | built       |
@@ -42,7 +42,7 @@ wants it as a slide, in the deck's own type and paper.
 | Org chart             | 96–98              | `org-chart` (Org chart)          | built       |
 | Pricing               | 115–118            | `pricing` (Pricing)              | built       |
 | Logo wall             | 111–114            | `logo-wall` (Logo wall)          | built       |
-| Quote                 | 99–102             | `quote` (Quote), inverse         | built       |
+| Quote                 | 99–102             | `quote` (Quote)                  | built       |
 | Testimonials          | 103–110            | `testimonials` (Testimonials)    | built       |
 | Team                  | 87–91, 94, 95      | `team` (Team)                    | built       |
 | Contact               | 85, 86             | `contact` (Contact)              | built       |
@@ -72,11 +72,16 @@ watch frame stay out: nothing on the canvas draws them.
 
 ## Choices
 
-- **Two variants**: `paper` (a light slide that turns dark grey on a dark
-  canvas) and `inverse` (section, statement, quote: paper and ink swapped).
+- **One paper**: every mask is a white slide that turns dark grey on a dark
+  canvas. The section, statement and quote masks were once black
+  (`inverse`); the PO wants a deck on white throughout (recette of 0.60).
   Colours are the base palette's `{ light, dark }` pairs or values readable
   on both papers, never a raw hex: a mask's elements carry no role, so a dark
   canvas paints them as stored (ADR 0039).
+- **Words in ink**: every word reaches WCAG AA (4.5:1) on both sides of the
+  paper. The base palette has no grey that does (`#929292` on white is
+  3.1:1), so a secondary line is ink and its tone is its size; the medium
+  grey stays for rules and outlines (3:1).
 - **Type** is `HEADING_SCALE` × 1.5: slide title = H1, headings = H3, body
   = 15 px body, display = the doc title, a key figure = twice the title.
 - **Slide number**: written once at insertion (`numberSlide`), the frame's

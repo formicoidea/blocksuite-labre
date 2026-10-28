@@ -25,7 +25,7 @@ import {
   TOAST_COPIED_TO_CLIPBOARD,
   translateKey,
 } from '@labre/affine-shared/services';
-import { formatSize, openSingleFileWith } from '@labre/affine-shared/utils';
+import { formatSize } from '@labre/affine-shared/utils';
 import {
   AttachmentIcon,
   ResetIcon,
@@ -43,9 +43,10 @@ import { styleMap } from 'lit/directives/style-map.js';
 import { when } from 'lit/directives/when.js';
 import { filter } from 'rxjs/operators';
 
+import { pickAttachmentSource } from './asset-picker.js';
 import { AttachmentEmbedProvider } from './embed';
 import { styles } from './styles';
-import { downloadAttachmentBlob, getFileType, refreshData } from './utils';
+import { downloadAttachmentBlob, refreshData } from './utils';
 import {
   ATTACHMENT_BUTTON_RELOAD,
   ATTACHMENT_BUTTON_RETRY,
@@ -160,12 +161,11 @@ export class AttachmentBlockComponent extends CaptionedBlockComponent<Attachment
     const state = this.resourceController.state$.peek();
     if (state.uploading) return;
 
-    const file = await openSingleFileWith();
-    if (!file) return;
-
-    const sourceId = await this.std.store.blobSync.set(file);
-    const type = await getFileType(file);
-    const { name, size } = file;
+    const source = await pickAttachmentSource(this.std);
+    // The dialog is async: the card may be gone, or the page read-only, by now.
+    if (!source || this.std.store.readonly) return;
+    if (!this.std.store.getBlock(this.blockId)) return;
+    const { name, size, type, sourceId } = source;
 
     let embed = this.model.props.embed$.value ?? false;
 

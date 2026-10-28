@@ -934,3 +934,46 @@ between the name and the view bar.
   a header that is already sticky alone. The inline table and the other
   views keep their behaviour. Held by
   `integration-test/…/page/database-page-scroll.spec.ts`.
+
+### 2026-10-27: a value on its way draws a spinner, not a skeleton
+
+Amends §9e and the B2 line. A `pending` cell (`renderCellStatus`) and the
+title band's loading row now draw the library's spinner (`LoadingIcon`,
+`@labre/affine-components/icons`) centred in what loads, instead of a grey
+skeleton: the Labre app allows a spinner as its only loading indicator
+(its ADR-0057, recette 3). Nothing else changes: a pending cell mounts no
+editor and takes no write. The test id is now `dv-cell-loading` (was
+`dv-cell-skeleton`); the band keeps `title-band-loading`. `LoadingIcon`
+rotates by SMIL instead of a `<style>` inside its SVG, which was a global
+sheet in light DOM and would not render under happy-dom. Held by
+`hydration-status.unit.spec.ts` and `title-band.unit.spec.ts`.
+
+### 2026-10-27: a child's own card drops the link arrow; page cards in a note are lines
+
+Amends §9d (and the title band row of `docs/integrate/04-host-seams.md`).
+Asked by the product owner in the Labre recette 3 (P2-7, labre ADR-0045
+amended the same day): the host stops supplying `notShown$` (a page moved
+under another now gets its card at the end of it, written by the host), so
+the row disappears from Labre; the seam stays for any other host.
+
+- **`TitleBandService.children$(docId)`, optional.** The ids of the
+  document's child pages in the host's tree. A linked-doc card or a
+  synced-doc embed of one of them, in that document, draws the plain page (or
+  canvas) icon; any other card, and every inline `@` reference, keeps the
+  linked-page icon with its arrow. The card reads it inside its icon
+  computation (`embed-doc/src/common/child-card.ts`), so a move redraws it.
+  An existing seam carries it rather than a new one: the band is already the
+  host's voice on the page's children, and a host built against 0.59 can
+  implement the optional method before it upgrades. Without it, every card
+  keeps the arrow (0.59). No stored prop: the distinction is the host's tree,
+  never the card's.
+- **A page card placed in a note is a line.** `LINKED_DOC_NOTE_STYLE`
+  (`'list'`, "Small horizontal style") is written by every site that places
+  a page card in a note when no one chose a style: the slash menu's "New
+  Page", a page drop, "Show here" in the page view, "Linked doc", an inline
+  reference turned into a card, "Create linked doc" from a selection. The
+  model's default (`horizontal`) does not change: every stored card already
+  carries it. Canvas cards keep their style (`vertical`).
+- Held by `embed-doc/src/__tests__/child-card-icon.unit.spec.ts` (no
+  provider, a band without `children$`, a child, a move) and
+  `card-line-style.unit.spec.ts`.

@@ -55,6 +55,7 @@ import throttle from 'lodash-es/throttle';
 import { filter } from 'rxjs/operators';
 import * as Y from 'yjs';
 
+import { cardIcon } from '../common/child-card.js';
 import { isDocTrashed } from '../common/doc-trashed.js';
 import { renderLinkedDocInCard } from '../common/render-linked-doc';
 import { SyncedDocErrorIcon } from '../embed-synced-doc-block/styles.js';
@@ -214,12 +215,9 @@ export class EmbedLinkedDocBlockComponent extends EmbedBlockComponent<EmbedLinke
     });
   });
 
-  icon$ = computed(() => {
-    const { pageId, params, title } = this.referenceInfo$.value;
-    return this.std
-      .get(DocDisplayMetaProvider)
-      .icon(pageId, { params, title, referenced: true }).value;
-  });
+  icon$ = computed(() =>
+    cardIcon(this.std, this.store.id, this.referenceInfo$.value)
+  );
 
   open = ({
     openMode,

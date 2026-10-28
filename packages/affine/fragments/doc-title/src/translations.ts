@@ -52,7 +52,7 @@ export const TITLE_BAND_EXPAND: ChromeWording = [
   'Properties ({{count}})',
 ];
 
-/** The accessible name of the skeleton drawn while the sheet loads. */
+/** The accessible name of the spinner drawn while the sheet loads. */
 export const TITLE_BAND_LOADING: ChromeWording = [
   'com.labre.title-band.loading',
   'Loading properties',

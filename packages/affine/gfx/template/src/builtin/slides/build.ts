@@ -28,7 +28,7 @@ import {
   SLIDE_HEIGHT,
   SLIDE_LINE_HEIGHT,
   SLIDE_MARGIN,
-  SLIDE_PALETTES,
+  SLIDE_PALETTE,
   SLIDE_RADIUS,
   SLIDE_TYPE,
   SLIDE_WIDTH,
@@ -104,7 +104,7 @@ function shapeElement(
     type: 'shape',
     shapeType: opts.shapeType,
     filled: opts.fill !== null,
-    fillColor: opts.fill ?? SLIDE_PALETTES.paper.paper,
+    fillColor: opts.fill ?? SLIDE_PALETTE.paper,
     strokeColor: opts.stroke,
     strokeWidth: opts.dash ? SLIDE_ZONE_STROKE_WIDTH : SLIDE_HAIRLINE_WIDTH,
     strokeStyle: opts.dash ? StrokeStyle.Dash : StrokeStyle.Solid,
@@ -162,7 +162,7 @@ function zoneElement(
       return shapeElement(zone.x, zone.y, zone.w, zone.h, {
         shapeType: zone.shape ?? 'rect',
         fill: zone.filled ? palette.hairline : null,
-        stroke: zone.stroke === 'muted' ? palette.muted : palette.hairline,
+        stroke: zone.stroke === 'muted' ? palette.rule : palette.hairline,
         dash: false,
         radius: SLIDE_RADIUS,
         label: zone.label ? tr(std, zone.label, zone.params) : undefined,
@@ -181,7 +181,7 @@ function zoneElement(
       return {
         type: 'connector',
         mode: ConnectorMode.Straight,
-        stroke: palette.muted,
+        stroke: palette.rule,
         strokeWidth: SLIDE_HAIRLINE_WIDTH,
         strokeStyle: StrokeStyle.Solid,
         frontEndpointStyle: PointStyle.None,
@@ -197,7 +197,7 @@ export function slideElements(
   mask: SlideMask,
   std?: BlockStdScope
 ): SurfaceElementsJSON {
-  const palette = SLIDE_PALETTES[mask.variant];
+  const palette = SLIDE_PALETTE;
   const elements: SurfaceElementsJSON = {};
   mask.zones.forEach((zone, i) => {
     elements[`z${i}`] = zoneElement(zone, palette, std);
@@ -254,7 +254,7 @@ function slideFrame(
         '$blocksuite:internal:text$': true,
         delta: [{ insert: name }],
       },
-      background: SLIDE_PALETTES[mask.variant].paper,
+      background: SLIDE_PALETTE.paper,
       xywh: xywh(0, 0, SLIDE_WIDTH, SLIDE_HEIGHT),
       index: 'a0',
       childElementIds: Object.fromEntries(
@@ -356,7 +356,7 @@ function previewZone(zone: SlideZone, palette: SlidePalette): string {
       const fill = filled ? light(palette.hairline) : 'none';
       const stroke = light(
         zone.kind === 'card' && zone.stroke === 'muted'
-          ? palette.muted
+          ? palette.rule
           : zone.kind === 'image'
             ? palette.zoneStroke
             : palette.hairline
@@ -370,7 +370,7 @@ function previewZone(zone: SlideZone, palette: SlidePalette): string {
     case 'dot':
       return `<circle cx="${zone.x + zone.size / 2}" cy="${zone.y + zone.size / 2}" r="${zone.size / 2}" fill="${light(palette.ink)}"/>`;
     case 'line':
-      return `<path d="M${zone.from[0]} ${zone.from[1]} L${zone.to[0]} ${zone.to[1]}" stroke="${light(palette.muted)}" stroke-width="6"/>`;
+      return `<path d="M${zone.from[0]} ${zone.from[1]} L${zone.to[0]} ${zone.to[1]}" stroke="${light(palette.rule)}" stroke-width="6"/>`;
   }
 }
 
@@ -382,7 +382,7 @@ function previewZone(zone: SlideZone, palette: SlidePalette): string {
  * panel.
  */
 export function slidePreview(mask: SlideMask): string {
-  const palette = SLIDE_PALETTES[mask.variant];
+  const palette = SLIDE_PALETTE;
   const body = mask.zones.map(zone => previewZone(zone, palette)).join('');
-  return `<svg width="100%" height="100%" viewBox="-20 -20 ${SLIDE_WIDTH + 40} ${SLIDE_HEIGHT + 40}" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="${SLIDE_WIDTH}" height="${SLIDE_HEIGHT}" rx="16" fill="${light(palette.paper)}" stroke="${light(SLIDE_PALETTES.paper.hairline)}" stroke-width="8"/>${body}</svg>`;
+  return `<svg width="100%" height="100%" viewBox="-20 -20 ${SLIDE_WIDTH + 40} ${SLIDE_HEIGHT + 40}" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="${SLIDE_WIDTH}" height="${SLIDE_HEIGHT}" rx="16" fill="${light(palette.paper)}" stroke="${light(palette.hairline)}" stroke-width="8"/>${body}</svg>`;
 }

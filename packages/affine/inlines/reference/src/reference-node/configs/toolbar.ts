@@ -1,4 +1,5 @@
 import { notifyLinkedDocSwitchedToEmbed } from '@labre/affine-components/notification';
+import { LINKED_DOC_NOTE_STYLE } from '@labre/affine-shared/consts';
 import {
   ActionPlacement,
   DocDisplayMetaProvider,
@@ -86,7 +87,7 @@ export const builtinInlineReferenceToolbarConfig = {
 
             const blockId = ctx.store.addBlock(
               'affine:embed-linked-doc',
-              referenceInfo,
+              { ...referenceInfo, style: LINKED_DOC_NOTE_STYLE },
               parent,
               index + 1
             );
