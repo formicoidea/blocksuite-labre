@@ -467,6 +467,24 @@ export const popupTargetFromElement = (element: HTMLElement): PopupTarget => {
     },
   };
 };
+/**
+ * The open popups, oldest first. Escape closes the newest, wherever the focus
+ * is: a menu's own Escape lives on its search input (`MenuComponent`), so a
+ * menu that keeps itself open on a click (a colour swatch, "Add a condition",
+ * the filter editor's own popups) lost it with the focus, and nothing closed
+ * it any more (product owner, 2026-10-28). Listened to in the bubbling phase,
+ * so an input that handles Escape itself and stops it keeps its own close.
+ */
+const openPopups: Array<() => void> = [];
+
+const onDocumentKeydown = (event: KeyboardEvent) => {
+  if (event.key !== 'Escape' || event.defaultPrevented) return;
+  const close = openPopups.at(-1);
+  if (!close) return;
+  event.preventDefault();
+  close();
+};
+
 export const createPopup = (
   target: PopupTarget,
   content: HTMLElement,
@@ -477,12 +495,21 @@ export const createPopup = (
   }
 ) => {
   const close = () => {
+    const index = openPopups.indexOf(close);
+    if (index >= 0) openPopups.splice(index, 1);
+    if (!openPopups.length) {
+      document.removeEventListener('keydown', onDocumentKeydown);
+    }
     // Removing the modal does not stop the positioning loop: without this the
     // `autoUpdate` listeners outlive the popup and leak.
     cleanup();
     modal.remove();
     options?.onClose?.();
   };
+  if (!openPopups.length) {
+    document.addEventListener('keydown', onDocumentKeydown);
+  }
+  openPopups.push(close);
   const modal = createModal(target.root);
   const cleanup = autoUpdate(target.targetRect, content, () => {
     computePosition(target.targetRect, content, {
