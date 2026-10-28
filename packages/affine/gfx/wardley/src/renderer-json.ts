@@ -105,17 +105,62 @@ export interface Box {
 }
 
 /**
- * The renderer's default canvas plot, in its pixels (1600 × 800 less its
- * fixed 28 / 20 / 28 / 28 margins), and its default name offset
- * (`NODE_RADIUS + 4`, `4`): `label.position` is measured in these.
+ * The canvas a renderer map is drawn on, in its pixels: `label.position` is
+ * an offset in these, so it is scaled by the plot of THIS canvas, never of a
+ * fixed one (PO, 2026-10-28).
  */
-const RENDERER_PLOT = { w: 1552, h: 744 };
+export interface RendererCanvas {
+  w: number;
+  h: number;
+}
+
+/** The renderer's default canvas (its `DEFAULT_RENDER_CONFIG`). */
+export const DEFAULT_RENDERER_CANVAS: RendererCanvas = { w: 1600, h: 800 };
+
+/**
+ * The canvas a map's `renderConfig` declares, as the renderer resolves it
+ * (`build-context.ts`, `render-config-v3.ts`): the output size
+ * (`style.view`) wins over the canvas size (`style.background.canvas`),
+ * each its `default` merged with its `override`, and the default canvas fills
+ * whatever neither gives, axis by axis.
+ */
+export function rendererCanvasOf(renderConfig: unknown): RendererCanvas {
+  const style = (renderConfig as { style?: Record<string, unknown> } | null)
+    ?.style;
+  const merged = (element: unknown) => {
+    const facets = (element ?? {}) as { default?: unknown; override?: unknown };
+    return {
+      ...(typeof facets.default === 'object' ? facets.default : {}),
+      ...(typeof facets.override === 'object' ? facets.override : {}),
+    } as { width?: unknown; height?: unknown };
+  };
+  const view = merged(style?.view);
+  const canvas = merged(
+    (style?.background as { canvas?: unknown } | undefined)?.canvas
+  );
+  const size = (...values: unknown[]) =>
+    values.find(
+      (value): value is number =>
+        typeof value === 'number' && Number.isFinite(value) && value > 0
+    );
+  return {
+    w: size(view.width, canvas.width) ?? DEFAULT_RENDERER_CANVAS.w,
+    h: size(view.height, canvas.height) ?? DEFAULT_RENDERER_CANVAS.h,
+  };
+}
+
+/**
+ * The renderer's fixed margins (28 left, 20 right, 28 top, 28 bottom), whose
+ * inside is the plot, and its default name offset (`NODE_RADIUS + 4`, `4`),
+ * a constant in pixels whatever the canvas.
+ */
+const RENDERER_MARGIN = { x: 48, y: 56 };
 const RENDERER_LABEL = { dx: 9, dy: 4 };
 
-/** Renderer pixels → surface units, on `plot`. */
-const scaleOf = (plot: OwmPlot) => ({
-  sx: plot.width / RENDERER_PLOT.w,
-  sy: plot.height / RENDERER_PLOT.h,
+/** Renderer pixels on `canvas` → surface units on `plot`. */
+const scaleOf = (plot: OwmPlot, canvas: RendererCanvas) => ({
+  sx: plot.width / (canvas.w - RENDERER_MARGIN.x),
+  sy: plot.height / (canvas.h - RENDERER_MARGIN.y),
 });
 
 /**
@@ -132,9 +177,10 @@ export function jsonLabelBox(
   w: number,
   cx: number,
   cy: number,
-  offset: { dx: number; dy: number }
+  offset: { dx: number; dy: number },
+  canvas: RendererCanvas = DEFAULT_RENDERER_CANVAS
 ): { x: number; y: number; textAlign: 'left' | 'right' | 'center' } {
-  const { sx, sy } = scaleOf(plot);
+  const { sx, sy } = scaleOf(plot, canvas);
   const y = cy + (offset.dy - RENDERER_LABEL.dy) * sy - WARDLEY_LABEL_H / 2;
   if (offset.dx > 0) {
     const x = cx + w / 2 + LABEL_GAP + (offset.dx - RENDERER_LABEL.dx) * sx;
@@ -154,9 +200,10 @@ export function jsonLabelOffset(
   cx: number,
   cy: number,
   label: Box,
-  textAlign: unknown
+  textAlign: unknown,
+  canvas: RendererCanvas = DEFAULT_RENDERER_CANVAS
 ): { dx: number; dy: number } {
-  const { sx, sy } = scaleOf(plot);
+  const { sx, sy } = scaleOf(plot, canvas);
   const dy = (label.y + label.h / 2 - cy) / sy + RENDERER_LABEL.dy;
   let dx: number;
   if (textAlign === 'right') {
@@ -176,9 +223,10 @@ export function jsonLabelOffset(
  */
 export function jsonLabelShift(
   plot: OwmPlot,
-  offset: { dx: number; dy: number }
+  offset: { dx: number; dy: number },
+  canvas: RendererCanvas = DEFAULT_RENDERER_CANVAS
 ): { x: number; y: number } {
-  const { sx, sy } = scaleOf(plot);
+  const { sx, sy } = scaleOf(plot, canvas);
   return {
     x: (offset.dx - RENDERER_LABEL.dx) * sx,
     y: (offset.dy - RENDERER_LABEL.dy) * sy,
@@ -188,9 +236,10 @@ export function jsonLabelShift(
 /** The inverse of {@link jsonLabelShift}. */
 export function jsonLabelUnshift(
   plot: OwmPlot,
-  shift: { x: number; y: number }
+  shift: { x: number; y: number },
+  canvas: RendererCanvas = DEFAULT_RENDERER_CANVAS
 ): { dx: number; dy: number } {
-  const { sx, sy } = scaleOf(plot);
+  const { sx, sy } = scaleOf(plot, canvas);
   return {
     dx: round2(shift.x / sx + RENDERER_LABEL.dx),
     dy: round2(shift.y / sy + RENDERER_LABEL.dy),
@@ -467,9 +516,12 @@ export const LABRE_NATURES = [
  * ponytail: the method rides on the node's two colours until the method node
  * gains real method and nature parameters (branch
  * `feat/wardley-method-nature`); then {@link methodLook} and {@link methodOf}
- * read and write those, and nothing else here moves. Until then a category
- * the map declares itself is drawn in its colour and comes back under the
- * default category of that colour, if there is one.
+ * read and write those, and nothing else here moves.
+ *
+ * Only the renderer's three categories exist: in Labre the colour IS the
+ * type, so a category a map declares in its `renderConfig` is no method this
+ * canvas knows, and its node keeps the method item's own look (PO,
+ * 2026-10-28).
  */
 export type MethodCategories = Record<
   string,
@@ -486,39 +538,16 @@ export const DEFAULT_METHOD_CATEGORIES: MethodCategories = {
   attitudes: { colour: '#f59e0b', steps: DEFAULT_STEPS },
 };
 
-/** The defaults, plus the categories a map's `renderConfig` declares. */
-export function methodCategoriesOf(renderConfig: unknown): MethodCategories {
-  const out: MethodCategories = { ...DEFAULT_METHOD_CATEGORIES };
-  const declared = (
-    renderConfig as { style?: { decorators?: { method?: unknown } } }
-  )?.style?.decorators?.method;
-  if (typeof declared !== 'object' || declared === null) return out;
-  for (const [category, style] of Object.entries(declared)) {
-    const facets = style as { default?: unknown; override?: unknown };
-    const merged = {
-      ...(typeof facets?.default === 'object' ? facets.default : {}),
-      ...(typeof facets?.override === 'object' ? facets.override : {}),
-    } as { color?: unknown; legend?: unknown };
-    const colour =
-      typeof merged.color === 'string' ? merged.color : out[category]?.colour;
-    if (colour === undefined) continue;
-    const steps =
-      typeof merged.legend === 'object' && merged.legend !== null
-        ? Object.keys(merged.legend)
-        : (out[category]?.steps ?? DEFAULT_STEPS);
-    out[category] = { colour, steps };
-  }
-  return out;
-}
-
 /** A renderer `method` as the method node's colours, or `undefined`. */
 export function methodLook(
-  method: unknown,
-  categories: MethodCategories = DEFAULT_METHOD_CATEGORIES
+  method: unknown
 ): { fillColor: string; strokeColor: string } | undefined {
   if (typeof method !== 'object' || method === null) return undefined;
   const { category, recommendation } = method as Record<string, unknown>;
-  const found = typeof category === 'string' ? categories[category] : undefined;
+  const found =
+    typeof category === 'string'
+      ? DEFAULT_METHOD_CATEGORIES[category]
+      : undefined;
   if (!found || !/^#[0-9a-f]{6}$/i.test(found.colour)) return undefined;
   const step = found.steps.indexOf(recommendation as string);
   const alpha = METHOD_ALPHA[step];

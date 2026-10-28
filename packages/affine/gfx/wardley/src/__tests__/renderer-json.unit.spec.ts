@@ -25,6 +25,7 @@ import {
   RELATION_WIDTH,
   relationLook,
   relationOf,
+  rendererCanvasOf,
   rendererPointOf,
 } from '../renderer-json';
 import { exportWardleyRendererJson } from '../renderer-json-export';
@@ -126,6 +127,15 @@ const cycle = (source: string) =>
   write(materialize(importWardleyRendererJson(source).elements));
 
 const plot = owmDefaultPlot();
+
+/** An offset on the épargne map's 1800 × 1000 canvas, on the default one. */
+const onDefaultCanvas = (offset: { dx: number; dy: number }) => {
+  const round2 = (value: number) => Math.round(value * 100) / 100;
+  return {
+    dx: round2(((offset.dx - 9) * (1600 - 48)) / (1800 - 48) + 9),
+    dy: round2(((offset.dy - 4) * (800 - 56)) / (1000 - 56) + 4),
+  };
+};
 
 /** Where the toolbar places an item of `kind` centred on a renderer position. */
 function atOf(
@@ -318,35 +328,40 @@ describe('a rich map (épargne salariale, from the renderer’s data/)', () => {
     );
   });
 
-  it('colours a method by the category the map declares', () => {
-    const categories = {
-      sourcing: {
-        colour: '#2563eb',
-        steps: ['Construire', 'Acheter', 'Externaliser'],
-      },
-    };
-    expect(byId(elements, 'tenue-compte:node')).toMatchObject(
-      methodLook(component('tenue-compte').method, categories)!
-    );
-    expect(byId(elements, 'tenue-compte:node')?.fillColor).toBe('#2563ebff');
+  it('keeps a category the map declares out: the colour is the type', () => {
+    // `sourcing` is declared in this map's renderConfig; Labre knows the
+    // renderer's three categories only, so the node keeps the method item's
+    // own look and the report says the method was dropped.
+    const toolbar = wardleyNodeElements('method', { x: 0, y: 0 })[0]!;
+    const node = byId(elements, 'tenue-compte:node');
+    expect(node?.kind).toBe('method');
+    expect(node?.fillColor).toBe(toolbar.fillColor);
+    expect(node?.strokeColor).toBe(toolbar.strokeColor);
+    expect(report.notes.map(n => n.element)).toContain('method');
+    expect(component('tenue-compte').method.category).toBe('sourcing');
   });
 
-  it('replays the name’s offset', () => {
-    const label = byId(elements, 'salarie:label');
-    const [cx, cy] = rendererPointOf(plot, 0.12, 0.05);
+  it('replays the name’s offset on the canvas the map declares', () => {
     const c = component('salarie');
-    const [ex, ey] = rendererPointOf(
+    const [cx, cy] = rendererPointOf(
       plot,
       c.position.evolution.scalar,
       c.position.visibility.scalar
     );
-    const placed = jsonLabelBox(plot, WARDLEY_NODE_SIZE.anchor.w, ex, ey, {
-      dx: 12,
-      dy: -10,
-    });
-    const box = Bound.deserialize(label?.xywh as string);
+    // This map declares an 1800 × 1000 canvas.
+    expect(rendererCanvasOf(source.renderConfig)).toEqual({ w: 1800, h: 1000 });
+    const placed = jsonLabelBox(
+      plot,
+      WARDLEY_NODE_SIZE.anchor.w,
+      cx,
+      cy,
+      c.label.position,
+      { w: 1800, h: 1000 }
+    );
+    const box = Bound.deserialize(
+      byId(elements, 'salarie:label')?.xywh as string
+    );
     expect([box.x, box.y]).toEqual([placed.x, placed.y]);
-    expect([cx, cy].every(Number.isFinite)).toBe(true);
   });
 
   it('draws an evolution as an arrow to a point labelled with its type', () => {
@@ -456,7 +471,13 @@ describe('a rich map (épargne salariale, from the renderer’s data/)', () => {
         o => o.id === slugOf.get(c.id)
       )!;
       expect(out, c.id).toBeDefined();
-      expect(out.label).toEqual(c.label);
+      // An offset comes back in the pixels of the renderer's default canvas,
+      // which is the one the written file is drawn on: same place on the plot.
+      expect(out.label).toEqual(
+        c.label.position
+          ? { ...c.label, position: onDefaultCanvas(c.label.position) }
+          : c.label
+      );
       expect(out.position).toEqual(c.position);
       expect(out.type).toBe(c.type);
       if (['activity', 'data', 'practice', 'knowledge'].includes(c.nature)) {
@@ -604,6 +625,97 @@ describe('the shared look tables invert', () => {
         )
       ).toEqual(offset);
     }
+  });
+});
+
+describe('a name offset is measured on the canvas the map declares', () => {
+  const mapOn = (canvas: { width: number; height: number } | undefined) => ({
+    title: 'Offsets',
+    components: [
+      {
+        id: 'right',
+        label: { name: 'Right', position: { dx: 40, dy: -20 } },
+        type: 'component',
+        position: { evolution: { scalar: 0.3 }, visibility: { scalar: 0.4 } },
+      },
+      {
+        id: 'left',
+        label: { name: 'Left', position: { dx: -40, dy: 16 } },
+        type: 'component',
+        position: { evolution: { scalar: 0.7 }, visibility: { scalar: 0.6 } },
+      },
+    ],
+    relations: [],
+    ...(canvas
+      ? {
+          renderConfig: {
+            style: { background: { canvas: { default: canvas } } },
+          },
+        }
+      : {}),
+  });
+  const labelOf = (map: unknown, id: string) =>
+    Bound.deserialize(
+      read(map).elements.find(e => e.id === `${id}:label`)?.xywh as string
+    );
+
+  it('places the same offset differently on two canvases, as the renderer does', () => {
+    for (const [id, evolution, visibility, offset] of [
+      ['right', 0.3, 0.4, { dx: 40, dy: -20 }],
+      ['left', 0.7, 0.6, { dx: -40, dy: 16 }],
+    ] as const) {
+      const [cx, cy] = rendererPointOf(plot, evolution, visibility);
+      for (const canvas of [
+        { w: 1600, h: 800 },
+        { w: 3200, h: 1600 },
+      ]) {
+        const declared =
+          canvas.w === 1600 ? undefined : { width: canvas.w, height: canvas.h };
+        const placed = jsonLabelBox(plot, 18, cx, cy, offset, canvas);
+        const box = labelOf(mapOn(declared), id);
+        expect([box.x, box.y], `${id} on ${canvas.w}`).toEqual([
+          placed.x,
+          placed.y,
+        ]);
+      }
+      // Twice the canvas, the same pixels are half as far on the plot.
+      const small = labelOf(mapOn(undefined), id);
+      const large = labelOf(mapOn({ width: 3200, height: 1600 }), id);
+      expect(small.y).not.toBe(large.y);
+    }
+  });
+
+  it('reads the canvas the renderer reads: view, then canvas, then default', () => {
+    expect(rendererCanvasOf(undefined)).toEqual({ w: 1600, h: 800 });
+    expect(
+      rendererCanvasOf({
+        style: {
+          background: {
+            canvas: { default: { width: 1800 }, override: { height: 900 } },
+          },
+        },
+      })
+    ).toEqual({ w: 1800, h: 900 });
+    expect(
+      rendererCanvasOf({
+        style: {
+          view: { default: { width: 1200 } },
+          background: { canvas: { default: { width: 1800, height: 1000 } } },
+        },
+      })
+    ).toEqual({ w: 1200, h: 1000 });
+  });
+
+  it('writes the offset back on the default canvas', () => {
+    const back = JSON.parse(
+      cycle(JSON.stringify(mapOn({ width: 3200, height: 1600 }))).text
+    ) as Json;
+    const right = (back.components as Json[]).find(c => c.id === 'right')!;
+    // (40 − 9) px on a 3152-wide plot is (40 − 9) × 1552 / 3152 on 1552.
+    expect(right.label.position.dx).toBeCloseTo(
+      ((40 - 9) * 1552) / 3152 + 9,
+      1
+    );
   });
 });
 

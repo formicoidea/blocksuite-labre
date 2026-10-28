@@ -23,12 +23,11 @@ import {
   jsonStepElement,
   jsonTitleElement,
   LABRE_NATURES,
-  type MethodCategories,
-  methodCategoriesOf,
   methodLook,
   PHASE_LINES,
   relationLook,
   type RelationType,
+  rendererCanvasOf,
   rendererColour,
   rendererPointOf,
 } from './renderer-json.js';
@@ -180,7 +179,7 @@ export function importWardleyRendererJson(
   /* ── The map, its title and its context ───────────────────────────── */
 
   const plot = owmDefaultPlot();
-  const categories = methodCategoriesOf(root.renderConfig);
+  const canvas = rendererCanvasOf(root.renderConfig);
   const map = wardleyMapElement('classic', { x: 0, y: 0 });
   Object.assign(map, mapFieldsOf(root.renderConfig, drop));
   const mapBox = boxOf(map);
@@ -275,7 +274,7 @@ export function importWardleyRendererJson(
         // A pipeline's name is centred above its handle; an offset moves it
         // by its difference from the renderer's default, as for any name.
         const box = boxOf(label);
-        const shift = jsonLabelShift(plot, offset);
+        const shift = jsonLabelShift(plot, offset, canvas);
         label.xywh = boxString({
           ...box,
           x: box.x + shift.x,
@@ -314,7 +313,7 @@ export function importWardleyRendererJson(
       /* The name, where the file moved it. */
       const offset = labelOffsetOf(raw);
       if (offset) {
-        const placed = jsonLabelBox(plot, w, cx, cy, offset);
+        const placed = jsonLabelBox(plot, w, cx, cy, offset, canvas);
         const box = boxOf(label);
         label.xywh = boxString({ ...box, x: placed.x, y: placed.y });
         label.textAlign = placed.textAlign;
@@ -323,7 +322,7 @@ export function importWardleyRendererJson(
       /* The node's own parameters. */
       applyColour(component, node, drop);
       applyNature(raw, kind, node, drop);
-      if (kind === 'method') applyMethod(raw.method, categories, node, drop);
+      if (kind === 'method') applyMethod(raw.method, node, drop);
       else if (raw.method !== undefined) drop('method');
       if (raw.subtype !== undefined && !DRAWN_SUBTYPES.includes(raw.subtype)) {
         // userNeed, solution, supplier, functional: a plain component, which
@@ -691,11 +690,10 @@ function applyNature(
  */
 function applyMethod(
   method: unknown,
-  categories: MethodCategories,
   node: SerializedElementProps,
   drop: (kind: string) => void
 ) {
-  const look = methodLook(method, categories);
+  const look = methodLook(method);
   if (look) Object.assign(node, look);
   else drop('method');
 }
@@ -750,12 +748,18 @@ function mapFieldsOf(
       }
     });
   }
-  // The method categories a map declares colour its method nodes.
-  const decorators = isRecord(config.style)
-    ? (config.style as Json).decorators
-    : undefined;
-  if (isRecord(decorators) && decorators.method !== undefined) {
-    used += leafCount(decorators.method);
+  // The canvas size is read too: it is what a name's offset is measured on
+  // (`rendererCanvasOf`).
+  const style = isRecord(config.style) ? config.style : {};
+  const canvas = isRecord(background) ? background.canvas : undefined;
+  for (const element of [style.view, canvas]) {
+    if (!isRecord(element)) continue;
+    for (const side of [element.default, element.override]) {
+      if (!isRecord(side)) continue;
+      for (const key of ['width', 'height']) {
+        if (side[key] !== undefined) used += 1;
+      }
+    }
   }
   if (leafCount(config) > used) drop('renderConfig');
   return out;

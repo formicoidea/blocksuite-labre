@@ -468,7 +468,12 @@ export function exportWardleyRendererJson(
     const kind = node.kind ?? 'component';
     const out: Json = { id, label: { name } };
 
-    /* The name's offset, when it is not where the toolbar puts it. */
+    /*
+     * The name's offset, when it is not where the toolbar puts it. In the
+     * pixels of the renderer's DEFAULT canvas: the file written declares none,
+     * so that is the canvas it is drawn on, and the name lands where it is
+     * here, relative to the plot.
+     */
     if (pieces.label) {
       const offset =
         kind === 'pipeline'
