@@ -349,7 +349,11 @@ export class DocTitle extends WithDisposable(ShadowlessElement) {
    * this block and never add or focus a paragraph, so nothing is ever
    * written to the note. Unset (the default), Enter splits the title into a
    * first paragraph and ArrowDown focuses or creates one, as in 0.48.
+   *
+   * Reflected as `body-block-id`: the database block reads it to know it is
+   * drawn as the page under this heading (its standalone layout, ADR 0035
+   * amendment of 2026-10-28). Unset, Lit draws no attribute.
    */
-  @property({ attribute: false })
+  @property({ attribute: 'body-block-id', reflect: true })
   accessor bodyBlockId: string | undefined = undefined;
 }

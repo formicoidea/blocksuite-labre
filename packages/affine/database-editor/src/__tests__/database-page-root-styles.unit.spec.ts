@@ -1,23 +1,21 @@
 /**
- * GUARD — on a database's full page, the database's own title row stays
- * hidden: the page title above it is the database's name (ADR 0035 B13).
+ * GUARD — a database's full page is one scroller with its heading on the
+ * view bar (ADR 0035 amendment of 2026-10-26), and the database's own look
+ * on that page is the block's, not this root's (amendment of 2026-10-28).
  *
- * What it would have caught (P7, 2026-10-16): the hiding rule
- * `affine-database-page-root div:has(> affine-database-title)` has a
- * specificity of three type selectors, and the row it targets carries an
- * emotion class (`display: flex`), which outweighs it. The row « Untitled ⋯ »
- * showed under the page title. The rule is `!important` for that reason.
- * The page also keeps the page root's narrow side padding on a phone.
+ * What it would have caught (labre recette, 2026-10-26): the host wrapped
+ * the title and the page in a viewport of its own around the page's, and a
+ * long table showed two vertical scrollbars; the title's 38px bottom padding
+ * stood between the name and the view bar. The page also keeps the page
+ * root's narrow side padding on a phone.
  *
- * And the page is one scroller with its heading on the view bar (ADR 0035
- * amendment of 2026-10-26). What it would have caught (labre recette,
- * 2026-10-26): the host wrapped the title and the page in a viewport of its
- * own around the page's, and a long table showed two vertical scrollbars;
- * the title's 38px bottom padding and the block's 8px top margin and padding
- * stood between the name and the view bar. Then the column header, put back
- * by script on each scroll of a table that scrolled sideways itself, jumped
- * while the page scrolled: the page now scrolls both ways and the header
- * sticks natively.
+ * And the root reaching into the block again (2026-10-28): the hidden title
+ * row (an `!important` rule fighting the row's emotion class, P7,
+ * 2026-10-16), the block's top margin, the table's wrappers and its sticky
+ * column header were rules of this root, so a page mounted without a
+ * heading lost the database's name and a board inherited a table's rules.
+ * The block now derives them from where it is drawn (`data-standalone`,
+ * `data-page-layout`); this root only widens with such a table.
  */
 import { describe, expect, test } from 'vitest';
 
@@ -32,12 +30,6 @@ const cssOf = (styles: unknown) =>
     .replace(/\s+/g, ' ');
 
 describe('the full page of a database', () => {
-  test('hides the database title row over its emotion class', () => {
-    expect(cssOf(DatabasePageRoot.styles)).toMatch(
-      /affine-database-page-root div:has\(> affine-database-title\) \{ display: none !important; \}/
-    );
-  });
-
   test('renders its heading first in its own viewport, before the editor', async () => {
     if (!customElements.get('affine-database-page')) {
       customElements.define('affine-database-page', DatabasePageHost);
@@ -63,29 +55,26 @@ describe('the full page of a database', () => {
     expect(host).toMatch(
       /affine-database-page > \.affine-page-viewport > doc-title \.doc-title-container, affine-database-page > \.affine-page-viewport > doc-title \.doc-title-band \{ padding-bottom: 0; \}/
     );
+  });
+
+  test('keeps its heading in view sideways, and widens with a page table', () => {
+    expect(cssOf(DatabasePageHost.styles)).toMatch(
+      /affine-database-page > \.affine-page-viewport > doc-title \{ position: sticky; left: 0; width: 100cqw; \}/
+    );
     expect(cssOf(DatabasePageRoot.styles)).toMatch(
-      /affine-database-page-root affine-database\[data-block-id\] \{ margin-top: 0; padding-top: 0; \}/
+      /affine-database-page-root:has\(dv-table-view-ui\[data-page-layout\]\) \{ width: max-content; min-width: 100%; \}/
     );
   });
 
-  test('scrolls sideways as a page, its column header natively sticky', () => {
-    const host = cssOf(DatabasePageHost.styles);
+  test('leaves the database block and its table to themselves', () => {
     const root = cssOf(DatabasePageRoot.styles);
-    expect(host).toMatch(
-      /affine-database-page > \.affine-page-viewport > doc-title \{ position: sticky; left: 0; width: 100cqw; \}/
-    );
-    expect(root).toMatch(
-      /affine-database-page-root:has\(dv-table-view-ui\) \{ width: max-content; min-width: 100%; \}/
-    );
-    expect(root).toMatch(
-      /affine-database-page-root \.dv-table-wrapper, affine-database-page-root \.dv-table-scroll-container \{ overflow: visible; \}/
-    );
-    expect(root).toMatch(
-      /affine-database-page-root affine-database-column-header \{ position: sticky; top: 0; \}/
-    );
-    expect(root).toMatch(
-      /affine-database-page-root div:has\(> div > affine-database-title\) \{ position: sticky; left: var\(--affine-editor-side-padding, 24px\);/
-    );
+    expect(root).not.toContain('affine-database-title');
+    // The table's classes (`.dv-table-wrapper`, `.dv-table-scroll-container`);
+    // `dv-table-view-ui[data-page-layout]` above is the one read it keeps.
+    expect(root).not.toContain('.dv-table-');
+    expect(root).not.toContain('affine-database[');
+    expect(root).not.toContain('affine-database-column-header');
+    expect(root).not.toContain('!important');
   });
 
   test('narrows its side padding in a narrow viewport container', () => {

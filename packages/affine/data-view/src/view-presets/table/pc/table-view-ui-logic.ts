@@ -17,6 +17,7 @@ import {
   createUniComponentFromWebComponent,
   renderUniLit,
 } from '../../../core/index.js';
+import { PageLayoutKey } from '../../../core/view-manager/page-layout.js';
 import {
   DataViewUIBase,
   DataViewUILogicBase,
@@ -182,6 +183,11 @@ export class TableViewUI extends DataViewUIBase<TableViewUILogic> {
   }
 
   override render(): TemplateResult {
+    // Read in the render, so the table follows the block's measure.
+    this.toggleAttribute(
+      'data-page-layout',
+      !!this.logic.view.serviceGet(PageLayoutKey)?.value
+    );
     const vPadding = this.logic.root.config.virtualPadding$.value;
     const wrapperStyle = styleMap({
       marginLeft: `-${vPadding}px`,

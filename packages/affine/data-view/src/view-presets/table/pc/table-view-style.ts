@@ -10,6 +10,23 @@ export const tableViewStyle = css({
   '& *': {
     boxSizing: 'border-box',
   },
+
+  // The views are the page (`PageLayoutKey`, a database's full page): the
+  // table is as wide as its columns and the page scrolls sideways, so its
+  // own wrappers stop being scrollers and the column header sticks natively
+  // to the page's top (the header's script then leaves it alone).
+  '&[data-page-layout]': {
+    width: 'max-content',
+    minWidth: '100%',
+  },
+  '&[data-page-layout] .dv-table-wrapper, &[data-page-layout] .dv-table-scroll-container':
+    {
+      overflow: 'visible',
+    },
+  '&[data-page-layout] affine-database-column-header': {
+    position: 'sticky',
+    top: 0,
+  },
 });
 export const tableWrapperStyle = css({
   overflowY: 'auto',

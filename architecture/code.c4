@@ -565,7 +565,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/database
         metadata {
           path 'packages/affine/blocks/database'
-          files '61'
+          files '62'
         }
         adapters = folder 'adapters/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/database/src/adapters
@@ -620,7 +620,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/database/src
           metadata {
             path 'packages/affine/blocks/database/src'
-            files '16'
+            files '17'
           }
         }
         utils = folder 'utils/' {
@@ -1525,13 +1525,13 @@ model {
       link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/data-view
       metadata {
         path 'packages/affine/data-view'
-        files '349'
+        files '350'
       }
       core = folder 'core/' {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/data-view/src/core
         metadata {
           path 'packages/affine/data-view/src/core'
-          files '164'
+          files '165'
         }
       }
       property-presets = folder 'property-presets/' {
@@ -3557,7 +3557,7 @@ model {
   features.blocks.database -[uses]-> features.inlines.preset '3 imports'
   features.blocks.database -[uses]-> features.inlines.reference '1 import'
   features.blocks.database -[uses]-> features.rich-text '2 imports, 2 type-only'
-  features.blocks.database -[uses]-> features.shared '39 imports, 7 type-only'
+  features.blocks.database -[uses]-> features.shared '41 imports, 7 type-only'
   features.blocks.database -[uses]-> features.widgets.drag-handle '1 import'
   features.blocks.database -[uses]-> features.widgets.slash-menu '2 imports, 1 type-only'
   features.blocks.database -[uses]-> framework.global_ '15 imports'
@@ -3734,7 +3734,7 @@ model {
   features.components -[uses]-> model_.model_ '16 imports, 5 type-only'
   features.data-view -[uses]-> features.components '73 imports, 3 type-only'
   features.data-view -[uses]-> features.shared '84 imports, 42 type-only'
-  features.data-view -[uses]-> framework.global_ '95 imports, 5 type-only'
+  features.data-view -[uses]-> framework.global_ '96 imports, 5 type-only'
   features.data-view -[uses]-> framework.std '81 imports, 10 type-only'
   features.data-view -[uses]-> framework.store '12 imports, 3 type-only'
   features.data-view -[uses]-> model_.model_ '7 imports, 4 type-only'
@@ -4820,7 +4820,7 @@ model {
   features.blocks.database.src -[imports]-> features.shared.consts '1 import'
   features.blocks.database.src -[imports]-> features.shared.services '4 imports, 1 type-only'
   features.blocks.database.src -[imports]-> features.shared.theme '1 import'
-  features.blocks.database.src -[imports]-> features.shared.utils '2 imports, 1 type-only'
+  features.blocks.database.src -[imports]-> features.shared.utils '4 imports, 1 type-only'
   features.blocks.database.src -[imports]-> features.widgets.drag-handle.src '1 import'
   features.blocks.database.src -[imports]-> features.widgets.slash-menu.src '1 import'
   features.blocks.database.src -[imports]-> framework.global_.di '1 import'
@@ -5812,7 +5812,7 @@ model {
   features.data-view.core -[imports]-> features.shared.theme '5 imports'
   features.data-view.core -[imports]-> features.shared.types '12 imports, 12 type-only'
   features.data-view.core -[imports]-> features.shared.utils '10 imports, 8 type-only'
-  features.data-view.core -[imports]-> framework.global_.di '8 imports, 1 type-only'
+  features.data-view.core -[imports]-> framework.global_.di '9 imports, 1 type-only'
   features.data-view.core -[imports]-> framework.global_.disposable '4 imports, 4 type-only'
   features.data-view.core -[imports]-> framework.global_.env '3 imports'
   features.data-view.core -[imports]-> framework.global_.exceptions '3 imports'
@@ -5836,7 +5836,7 @@ model {
   features.data-view.src -[imports]-> features.shared.services '1 import, 1 type-only'
   features.data-view.view-presets -[imports]-> features.components.context-menu '32 imports'
   features.data-view.view-presets -[imports]-> features.components.src '3 imports'
-  features.data-view.view-presets -[imports]-> features.data-view.core '223 imports, 68 type-only'
+  features.data-view.view-presets -[imports]-> features.data-view.core '225 imports, 68 type-only'
   features.data-view.view-presets -[imports]-> features.data-view.property-presets '7 imports'
   features.data-view.view-presets -[imports]-> features.data-view.src '11 imports'
   features.data-view.view-presets -[imports]-> features.data-view.widget-presets '2 imports'
