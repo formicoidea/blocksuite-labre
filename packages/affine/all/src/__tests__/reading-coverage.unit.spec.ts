@@ -103,11 +103,12 @@ const UNREAD_NODE_ROLES: Readonly<Record<string, string>> = {
   // Wardley's own product decision: the reading is about the VALUE CHAIN.
   // A need has a demand, not a nature; a force and an accelerator press on the
   // chain from outside it; an area is a region; a pipeline's connections go
-  // through its handle; an inertia bar is a mark on a divider.
+  // through its handle; an inertia bar is a mark on a divider. A component +
+  // method is NOT here since ADR 0046: the white circle inside its ring is a
+  // component, and it is read as one.
   'wardley:anchor': 'not a link in the value chain',
   'wardley:pipeline': 'not a link in the value chain',
   'wardley:handle': 'not a link in the value chain',
-  'wardley:method': 'not a link in the value chain',
   'wardley:porter': 'not a link in the value chain',
   'wardley:accelerator': 'not a link in the value chain',
   'wardley:decelerator': 'not a link in the value chain',

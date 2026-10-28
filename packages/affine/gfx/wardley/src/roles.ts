@@ -9,8 +9,8 @@ import type { RoleDef, RoleDefs } from '@labre/std/gfx';
  * already picks when choosing the artefact in the toolbox, plus the typed
  * `dependency` EDGE carried by the Wardley link connector.
  *
- * Hierarchy is DATA (`parent`), never TS inheritance: `market` and `ecosystem`
- * specialise `component`, so a rule written on `wardley:component` applies to
+ * Hierarchy is DATA (`parent`), never TS inheritance: `market`, `ecosystem`
+ * and `method` specialise `component`, so a rule written on `wardley:component` applies to
  * them for free (see `roleIsA`). The `anchor` (user / need) is a role of its
  * own — a component with no need of its own — and is deliberately NOT a child
  * of `component`.
@@ -113,8 +113,21 @@ const DEFS: readonly RoleDef[] = [
     labelKey: 'com.labre.wardley.role.ecosystem',
     labelFallback: 'Ecosystem',
   },
+  /**
+   * A component + method: a white component inscribed in a ring that says how
+   * it is sourced, run or staffed (`natures.ts`, the `wardley:method` tag).
+   *
+   * A child of `component` (ADR 0046), and the white circle is why: what sits
+   * inside the ring IS a link in the value chain, with a nature, a phase and
+   * consumers above it, and the ring is a decision about that link. Before
+   * 0.62 the role had no parent, so the nature picker never reached it, the
+   * reading panel skipped it and W3 never measured it — a component drawn
+   * with a method lost every fact a plain one carried. Through `roleIsA` it
+   * now gets them all, exactly as a market and an ecosystem do.
+   */
   {
     id: WARDLEY_ROLE.method,
+    parent: WARDLEY_ROLE.component,
     kind: 'node',
     labelKey: 'com.labre.wardley.role.method',
     labelFallback: 'Method',

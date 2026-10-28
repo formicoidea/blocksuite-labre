@@ -354,6 +354,16 @@ export interface CommandLegendEntry {
    * from one command and span four.
    */
   section?: readonly [key: string, fallback: string];
+  /**
+   * Light the row only when an element of `role` on the board carries this
+   * tag VALUE (`[tagId, valueId]`), one row per value used — Wardley's nine
+   * methods, each with its own prefabricated ring (ADR 0046). Without it a row
+   * is lit by the role alone, as it always was.
+   *
+   * Read off the stored ids, never the tag registry: a legend describes what
+   * the document says, whichever pack this deployment seeded.
+   */
+  tag?: readonly [tagId: string, valueId: string];
 }
 
 /**

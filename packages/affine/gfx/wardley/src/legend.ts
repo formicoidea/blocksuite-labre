@@ -10,6 +10,11 @@ import {
   translateKey,
 } from '@labre/affine-shared/services';
 import { Bound } from '@labre/global/gfx';
+import {
+  GfxControllerIdentifier,
+  GfxPrimitiveElementModel,
+  setElementTag,
+} from '@labre/std/gfx';
 import type {
   BlockStdScope,
   CommandLegendBox,
@@ -38,6 +43,7 @@ import {
   wardleyPorterArrows,
   type WardleyArtefactKind,
 } from './presets';
+import { WARDLEY_METHOD_TAG_ID, WARDLEY_TAG_DEFS } from './natures';
 import { WARDLEY_ROLE } from './roles';
 
 /**
@@ -392,7 +398,7 @@ const LEGEND_DESC = {
   ],
   [WARDLEY_ROLE.method]: [
     'com.labre.wardley.legend.desc.method',
-    'Component + method (color = phase)',
+    'Component + method (the ring names the method)',
   ],
   [WARDLEY_ROLE.pipeline]: [
     'com.labre.wardley.legend.desc.pipeline',
@@ -438,6 +444,79 @@ export const WARDLEY_LEGEND_DESC_WORDINGS: readonly ChromeWording[] =
  * catalogue category (Nodes, Connectors, Areas), so a section is declared by
  * filing a command rather than by a second list.
  */
+export function wardleyLegendEntries(
+  role: WardleyLegendRole
+): CommandLegendEntry | CommandLegendEntry[] {
+  const entry = wardleyLegendEntry(role);
+  return role === WARDLEY_ROLE.method
+    ? [entry, ...WARDLEY_METHOD_LEGEND_ENTRIES]
+    : entry;
+}
+
+/* ── One row per method used (ADR 0046) ──────────────────────────────── */
+
+/**
+ * A method's swatch: a method node at the method row's size, carrying the
+ * method tag, so it is painted by the very ring painter the map's nodes go
+ * through — the swatch cannot drift from the node it explains.
+ *
+ * The swatch carries no role (the platform strips it, and `glyphProps` never
+ * sets one), so its tag is nobody's: no rule reads it, and the next legend's
+ * scan, which reads tags off role-bearing elements only, does not list it.
+ */
+function drawMethodSwatch(
+  valueId: string
+): NonNullable<CommandLegendRow['draw']> {
+  return (surface, box, std) => {
+    const [w, h] = METHOD_SWATCH_SIZE;
+    const id = surface.addElement({
+      ...glyphProps('method'),
+      xywh: centred(box.x + box.w / 2, box.y + box.h / 2, w, h),
+    });
+    const swatch = std.get(GfxControllerIdentifier).surface?.getElementById(id);
+    if (swatch instanceof GfxPrimitiveElementModel) {
+      setElementTag(swatch, WARDLEY_METHOD_TAG_ID, [valueId]);
+    }
+    return [id];
+  };
+}
+
+/** The method row's own swatch size (`WARDLEY_LEGEND_ROWS`). */
+const METHOD_SWATCH_SIZE = [18, 18] as const;
+
+/**
+ * The nine method rows, lit one by one by the values the board USES
+ * (`CommandLegendEntry.tag`), under the family's title as the sub-title and
+ * with the value's own label — the very wordings of the picker, so the legend
+ * and the dropdown say the same word. Each row is a text element of the box
+ * like every other, which the author rewrites in place to tell the story of
+ * the picture.
+ */
+const WARDLEY_METHOD_LEGEND_ENTRIES: readonly CommandLegendEntry[] = (() => {
+  const tag = WARDLEY_TAG_DEFS.tags.find(
+    def => def.id === WARDLEY_METHOD_TAG_ID
+  );
+  if (!tag || tag.values === 'open') return [];
+  return tag.values.map(value => ({
+    role: WARDLEY_ROLE.method,
+    tag: [WARDLEY_METHOD_TAG_ID, value.id] as const,
+    row: {
+      swatch: 'custom' as const,
+      color: NODE_FILL,
+      draw: drawMethodSwatch(value.id),
+    },
+    labelWording: [value.labelKey ?? value.id, value.label] as const,
+    ...(value.group
+      ? {
+          section: [
+            value.group.labelKey ?? value.group.label,
+            value.group.label,
+          ] as const,
+        }
+      : {}),
+  }));
+})();
+
 export function wardleyLegendEntry(
   role: WardleyLegendRole
 ): CommandLegendEntry {

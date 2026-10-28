@@ -186,3 +186,16 @@ Telemetry is unchanged: `FrameworkLegendCreated` is still emitted once per
 press, and still does not distinguish a creation from a refresh. Adding a
 `mode` dimension would be a taxonomy change (`telemetry-service/README.md` and
 the host's PostHog side) and was not asked for.
+
+**2026-10-28 — a row may be lit by a tag VALUE, one row per value used.**
+ADR 0046 (Wardley component + method). `CommandLegendEntry.tag`
+(`[tagId, valueId]`, optional) lights a row only when an element of its role on
+the board carries that value; without it a row is lit by its role, as before.
+Rows are de-duplicated by role and value, so the nine Wardley methods are nine
+rows under the one `wardley:method` role. The values are read off the stored
+ids of ROLE-BEARING elements (`tagValuesOf`, `readElementTags`), never the tag
+registry: a legend describes what the document says, and a legend's own
+swatches, which carry no role, never list themselves. Detection is still by
+role first; a tag only narrows a row that the role already lights.
+`legendFromCommands` takes the values as an optional fourth parameter, so its
+three-argument callers are unchanged.
