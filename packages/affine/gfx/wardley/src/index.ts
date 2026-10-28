@@ -126,6 +126,9 @@ export {
   wardleyPorterElements,
 } from './toolbox.js';
 export { importWardleyOwm } from './import';
+// The renderer JSON, both ways, pure for the same reason (ADR 0012).
+export { exportWardleyRendererJson } from './renderer-json-export';
+export { importWardleyRendererJson } from './renderer-json-import';
 // The SVG reader that recognises a map (ADR 0032), pure for the same reason:
 // labre-mcp calls the very function the command does.
 export { importWardleySvg } from './svg-import';
@@ -143,6 +146,11 @@ export {
 // without one either (P3).
 export {
   WARDLEY_INTERCHANGE,
+  WARDLEY_JSON_EXPORT,
+  WARDLEY_JSON_EXTENSION,
+  WARDLEY_JSON_FORMAT,
+  WARDLEY_JSON_IMPORT,
+  WARDLEY_JSON_MIME,
   WARDLEY_OWM_EXPORT,
   WARDLEY_OWM_EXTENSION,
   WARDLEY_OWM_FORMAT,

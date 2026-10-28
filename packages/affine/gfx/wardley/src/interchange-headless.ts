@@ -1,4 +1,6 @@
 import type {
+  InterchangeExportCapability,
+  InterchangeExporter,
   InterchangeFormat,
   InterchangeImportCapability,
 } from '@labre/affine-block-surface/interchange';
@@ -9,17 +11,21 @@ import {
   SVG_SKETCH_MIME,
 } from '@labre/affine-block-surface/interchange';
 
-import { WARDLEY_OWM_FORMAT_ID } from './export.js';
+import { WARDLEY_OWM_FORMAT_ID, wardleySafeFilename } from './export.js';
 import { importWardleyOwm } from './import.js';
+import { exportWardleyRendererJson } from './renderer-json-export.js';
+import { importWardleyRendererJson } from './renderer-json-import.js';
 import { importWardleySvg } from './svg-import.js';
 
 /**
- * `@labre/affine-gfx-wardley/interchange` — Wardley's formats and its two
- * READERS, with no editor behind them (ADR 0012, P3 as amended 2026-10-14).
+ * `@labre/affine-gfx-wardley/interchange` — Wardley's formats, its READERS
+ * and the one writer that needs no editor, with no editor behind them
+ * (ADR 0012, P3 as amended 2026-10-14).
  *
- * What a server needs to read an `.owm` or an `.svg` as a map: the format
- * declarations and the import capabilities, whose `run` is a pure function of
- * text. The OWM EXPORT capability is not here: it picks the artefacts out of
+ * What a server needs to read an `.owm`, an `.svg` or a renderer `.json` as a
+ * map: the format declarations and the import capabilities, whose `run` is a
+ * pure function of text, plus the renderer JSON's export, which reads stored
+ * fields only (see its declaration). The OWM EXPORT capability is not here: it picks the artefacts out of
  * live element models (`wardleyBoardFrom`, by `instanceof`), which is the
  * editor graph this entry exists to leave out. It stays in `interchange.ts`,
  * which re-exports everything below. The serializer itself
@@ -107,6 +113,68 @@ export const WARDLEY_SVG_IMPORT: InterchangeImportCapability = {
   direction: 'import',
   run: importWardleySvg,
 };
+
+/* ── The wardley-map-renderer JSON (semantic) ─────────────────────────── */
+
+/**
+ * The JSON language of `@formicoidea/wardley-map-renderer`. **Semantic**: an
+ * `(evolution, visibility)` pair IS a position. Unlike OWM it keeps nothing
+ * it cannot show: no foreign id and no foreign field rides on an element, and
+ * what the canvas cannot display is dropped and reported (ADR 0012,
+ * amendment of 2026-10-28 under P1).
+ *
+ * Both directions are here, unlike OWM's: the writer reads elements by their
+ * stored fields rather than by `instanceof`, so it loads no element class and
+ * a host with no editor exports with it too.
+ */
+export const WARDLEY_JSON_EXTENSION = '.json';
+export const WARDLEY_JSON_MIME = 'application/json';
+
+export const WARDLEY_JSON_FORMAT: InterchangeFormat = {
+  id: 'json',
+  tier: 'semantic',
+  extensions: [WARDLEY_JSON_EXTENSION],
+  mime: WARDLEY_JSON_MIME,
+};
+
+/**
+ * `wardley:json:import` — a renderer JSON map, drawn with the toolbar's own
+ * builders: an evolution is the change arrow dropped on its target point,
+ * never a second component (`renderer-json-import.ts`).
+ */
+export const WARDLEY_JSON_IMPORT: InterchangeImportCapability = {
+  id: interchangeCapabilityId('wardley', WARDLEY_JSON_FORMAT.id, 'import'),
+  framework: 'wardley',
+  format: WARDLEY_JSON_FORMAT,
+  direction: 'import',
+  run: importWardleyRendererJson,
+};
+
+/** The board as a renderer JSON map; `warnings` only when something was lost. */
+const runWardleyJsonExport: InterchangeExporter = (elements, context) => {
+  const name = wardleySafeFilename(context.name);
+  const { text, warnings } = exportWardleyRendererJson(elements, {
+    name: context.name,
+  });
+  return {
+    text,
+    filename: `${name}${WARDLEY_JSON_EXTENSION}`,
+    mime: WARDLEY_JSON_MIME,
+    ...(warnings.length > 0 ? { warnings } : {}),
+  };
+};
+
+/** `wardley:json:export` — the map back in the renderer's language. */
+export const WARDLEY_JSON_EXPORT: InterchangeExportCapability = {
+  id: interchangeCapabilityId('wardley', WARDLEY_JSON_FORMAT.id, 'export'),
+  framework: 'wardley',
+  format: WARDLEY_JSON_FORMAT,
+  direction: 'export',
+  run: runWardleyJsonExport,
+};
+
+export { exportWardleyRendererJson } from './renderer-json-export.js';
+export { importWardleyRendererJson } from './renderer-json-import.js';
 
 // The toolbar as pure builders (`docs/adr/0045`): what a host with no editor
 // places to draw the very elements a user places from the toolbar.

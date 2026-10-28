@@ -397,6 +397,60 @@ that every other exporter ignores. "Registration is flag-gated" stays true for
 every framework; the reasoning and the limits are ADR 0019's amendment of the
 same date.
 
+#### Amendment 2026-10-28 — a second Wardley language: the renderer JSON, drawn with the toolbox, nothing kept that does not show
+
+Wardley gains a second semantic format beside OWM: the JSON of
+`@formicoidea/wardley-map-renderer` (schema version 1.0.0-beta.5), both
+directions, `wardley:json:import` and `wardley:json:export`, format id
+`json`, on the `./interchange` entry and in `WARDLEY_INTERCHANGE`. OWM stays,
+unchanged, for the editor's import and export; the workspace connector moves
+to JSON.
+
+Why. The connector read maps from OWM with `WARDLEY_OWM_IMPORT` and gave them
+back with `wardley:owm:export`, and its bench found what that path does to a
+map a model is editing: a duplicate component at the target of every
+`evolve` (the OWM reader draws an evolved twin), a pipeline's name written
+twice and its square centred, and the squares and colours of the source
+gone.
+
+Decided with the PO, and a deliberate departure from D1–D3 for this format
+only:
+
+1. **Every Wardley element is a `WARDLEY_TOOLBOX` builder's**
+   ([ADR 0045](0045-headless-toolbox.md)), given its real parameters (kind,
+   `wardley:nature` tag, colours, the name's position). An evolution is the
+   toolbar's change arrow with a free end at the target point, which is what
+   the Arrow tool leaves when dropped on the empty map; no twin is drawn.
+   What the toolbox has no item for (a description, a step, an evolution
+   range, the title, the context) is a plain shape or a free text, grouped
+   with its component where it has one.
+2. **Nothing is carried.** No foreign id and no foreign field is stored on any
+   element: ids belong to Labre (the writer mints them from the names), and
+   a field the canvas cannot show is dropped and named in the import report.
+   D1's middle state and D2's payload are not used by this format; the
+   report's `carried` is always 0.
+3. **The writer reads back what is visible**, recognising each piece by what
+   it is: its group first, then its place, then nothing (a free text or a
+   shape no component claims is left out with a warning). It reads stored
+   fields, not `instanceof`, so it needs no editor and lives on
+   `./interchange` beside its reader.
+4. **A bad document is a report**, never an exception.
+5. **The renderer package is not imported** (it loads resvg); the shape is
+   checked by hand in `renderer-json-import.ts`, whose module documentation
+   holds the field-by-field table.
+6. **The method is the method node's `wardley:method` tag**
+   ([ADR 0046](0046-wardley-method-node-nature-and-method-tags.md)): a known
+   category and recommendation set it through `wardleyMethodOf`, nothing of
+   its look is written (the ring is derived from the tag), and the writer
+   reads it back through `wardleyMethodParts`. A pair naming none of the nine
+   leaves the node untagged (it paints as Make) and is reported as dropped;
+   an untagged method node is written as `buying-policy` with no
+   recommendation.
+
+Registering the two rows gives the editor an "Export Wardley as .json" view
+action and a `.json` entry in the import picker, both projections of the
+registry (ADR 0034), with no command of their own.
+
 ### P2 — Two format tiers, and they promise different things
 
 The tier is declared on the format, and it is the single most load-bearing field
