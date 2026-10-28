@@ -1047,6 +1047,28 @@ sorts, grouping, columns, `sourceId`, §8); the schema stays the source's.
   the same picker on the options button; `ViewSettingKey` is not widened.
   One event, `DatabaseViewSourceChanged { source: 'existing' | 'new' }`, ids
   only.
+- **D. The database is a package family of its own.** Asked the same day:
+  the layout and the connection are not enough, the source tree must say
+  what the database now is, a first-class element of the library beside the
+  gfx frameworks. After A, B and C land, a migration PR of its own, with no
+  behaviour change, moves the four packages into a new family
+  `packages/affine/database/` and renames them: `data-view` becomes
+  `database/engine` (`@labre/affine-database-engine`, the view engine),
+  `blocks/database` becomes `database/block` (`@labre/affine-database-block`,
+  the `affine:database` block), `blocks/data-view` becomes
+  `database/view-block` (`@labre/affine-database-view-block`) and
+  `database-editor` becomes `database/editor` (its name,
+  `@labre/affine-database-editor`, already fits). The schema stays in
+  `affine/model` (the file format). The published bundles keep their names
+  (`labre-core`, `labre-core-database`): `EDITOR_BUNDLES.dir` and the bundle
+  script's exclusion list follow the move, the architecture map reads the
+  new family by predicate (`model.c4` gains the `database` kind beside
+  `gfx`), `vitest.workspace.ts` and the composite `tsconfig` references
+  follow. Renaming a workspace package is host-visible when a host imports
+  it directly (the Labre app imports `@labre/data-view`): the changeset is a
+  **major** and the report names the old and new specifiers; no
+  compatibility alias is kept (an unusable entry point is deleted, not kept
+  as noise). `git mv` keeps the history.
 - Held by `blocks/database/src/__tests__/standalone-layout.unit.spec.ts`,
   `data-view/src/__tests__/page-layout.unit.spec.ts`,
   `database-editor/src/__tests__/database-page-root-styles.unit.spec.ts`
