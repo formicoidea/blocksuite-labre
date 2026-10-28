@@ -27,7 +27,8 @@ export interface AssetRef {
  *
  * - `kind`: `image` for an image block, `file` for an attachment card.
  * - `mode`: `insert` adds new blocks; `replace` swaps the picture of one
- *   existing image (one ref is used, the first).
+ *   existing image, or the file of one attachment card (one ref is used, the
+ *   first).
  * - `multiple`: whether more than one ref is welcome (the image insertions).
  * - `docId`: the document the result lands in, so the host can attach the
  *   asset to that page (a guest of the page must be able to read it).
@@ -59,10 +60,10 @@ export const AssetPickerProvider =
 /**
  * Host seam: the asset dialog. Present, the slash menu's Image, Attachment
  * and PDF, the mobile keyboard toolbar's Image and Attachment, the canvas's
- * image and file buttons and its "Add file" tool open it, and the image
- * toolbar gains "Replace". Absent, every one of those opens the system file
- * chooser as before, and there is no "Replace". Pasting and dropping files
- * never go through it.
+ * image and file buttons and its "Add file" tool, and the attachment card's
+ * "Replace" open it, and the image toolbar gains "Replace". Absent, every
+ * one of those opens the system file chooser as before, and the image
+ * toolbar has no "Replace". Pasting and dropping files never go through it.
  *
  * `di.override`, like `FrameTemplateExtension`, so a later registration
  * always wins and registering twice never throws at boot.
