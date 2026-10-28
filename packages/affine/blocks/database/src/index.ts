@@ -2,6 +2,7 @@ export * from './adapters';
 export * from './commands';
 export * from './config';
 export * from './context';
+export * from './creation-menu.js';
 export * from './data-source';
 export * from './database-block';
 export * from './external-data-source';

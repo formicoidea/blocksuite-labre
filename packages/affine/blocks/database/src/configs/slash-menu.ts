@@ -16,6 +16,7 @@ import {
 import type { BlockStdScope } from '@labre/std';
 
 import { insertDatabaseBlockCommand } from '../commands';
+import { DatabaseCreationMenuIdentifier } from '../creation-menu.js';
 import { createHostedDatabaseView } from '../linked-view.js';
 import { KanbanViewTooltip, TableViewTooltip } from './tooltips';
 
@@ -29,10 +30,60 @@ function canCreateDatabase(std: BlockStdScope): boolean {
   return !picker || !!picker.createDatabase;
 }
 
+/**
+ * A native database after the selection, replacing the slash entry's empty
+ * line, reported once as `BlockCreated`. Returns its id, or `undefined` when
+ * nothing was inserted.
+ */
+function insertNativeDatabase(
+  std: BlockStdScope,
+  viewType: string,
+  initialRows?: number
+): string | undefined {
+  let inserted: string | undefined;
+  std.command
+    .chain()
+    .pipe(getSelectedModelsCommand)
+    .pipe(insertDatabaseBlockCommand, {
+      viewType,
+      place: 'after',
+      removeEmptyLine: true,
+      initialRows,
+    })
+    .pipe(({ insertedDatabaseBlockId }) => {
+      if (insertedDatabaseBlockId) {
+        inserted = insertedDatabaseBlockId;
+        const telemetry = std.getOptional(TelemetryProvider);
+        telemetry?.track('BlockCreated', {
+          blockType: 'affine:database',
+        });
+      }
+    })
+    .run();
+  return inserted;
+}
+
+/**
+ * Three ways in, by what is registered (ADR 0035 §5, amendment of
+ * 2026-10-28):
+ *
+ * - a picker and the bundle's creation menu: the database lands at once,
+ *   native and with no row, and the menu opens over it to connect it to a
+ *   source (`connectDatabaseToSource`). Dismissed, the native database stays
+ *   and renders: nothing is lost by closing the popover;
+ * - a picker alone (a core-only host): the host's `createDatabase` first,
+ *   then a view of its first source, as in 0.61;
+ * - no picker: a native inline database with 3 rows, as in 0.48.
+ */
 function createDatabaseAction(viewType: string): SlashMenuActionItem['action'] {
   return ({ std }) => {
     const picker = std.getOptional(DataSourcePickerProvider);
-    if (picker) {
+    if (!picker) {
+      insertNativeDatabase(std, viewType);
+      return;
+    }
+    const menu = std.getOptional(DatabaseCreationMenuIdentifier);
+    if (!menu) {
       const [, { selectedModels }] = std.command.exec(getSelectedModelsCommand);
       const after = selectedModels?.at(-1);
       if (!after) return;
@@ -43,23 +94,14 @@ function createDatabaseAction(viewType: string): SlashMenuActionItem['action'] {
       }).catch(console.error);
       return;
     }
-    std.command
-      .chain()
-      .pipe(getSelectedModelsCommand)
-      .pipe(insertDatabaseBlockCommand, {
-        viewType,
-        place: 'after',
-        removeEmptyLine: true,
+    const blockId = insertNativeDatabase(std, viewType, 0);
+    if (!blockId) return;
+    std.host.updateComplete
+      .then(() => {
+        const anchor = std.view.getBlock(blockId);
+        if (anchor) menu.open({ std, blockId, anchor });
       })
-      .pipe(({ insertedDatabaseBlockId }) => {
-        if (insertedDatabaseBlockId) {
-          const telemetry = std.getOptional(TelemetryProvider);
-          telemetry?.track('BlockCreated', {
-            blockType: 'affine:database',
-          });
-        }
-      })
-      .run();
+      .catch(console.error);
   };
 }
 

@@ -13,12 +13,19 @@ export const insertDatabaseBlockCommand: Command<
     viewType: string;
     place?: 'after' | 'before';
     removeEmptyLine?: boolean;
+    /**
+     * Empty rows the new database starts with, 3 when absent (0.48). The
+     * creation popover inserts none: the rows come with the source the
+     * reader picks (ADR 0035 amendment of 2026-10-28).
+     */
+    initialRows?: number;
   },
   {
     insertedDatabaseBlockId: string;
   }
 > = (ctx, next) => {
-  const { selectedModels, viewType, place, removeEmptyLine, std } = ctx;
+  const { selectedModels, viewType, place, removeEmptyLine, initialRows, std } =
+    ctx;
   if (!selectedModels?.length) return;
 
   const targetModel =
@@ -37,7 +44,15 @@ export const insertDatabaseBlockCommand: Command<
 
   if (string == null) return;
 
-  initDatabaseBlock(std.store, targetModel, string, viewType, false, std);
+  initDatabaseBlock(
+    std.store,
+    targetModel,
+    string,
+    viewType,
+    false,
+    std,
+    initialRows
+  );
 
   if (removeEmptyLine && targetModel.text?.length === 0) {
     std.store.deleteBlock(targetModel);
@@ -52,7 +67,8 @@ export const initDatabaseBlock = (
   databaseId: string,
   viewType: string,
   isAppendNewRow = true,
-  std?: BlockStdScope
+  std?: BlockStdScope,
+  initialRows?: number
 ) => {
   const blockModel = doc.getBlock(databaseId)?.model as
     | DatabaseBlockModel
@@ -61,7 +77,7 @@ export const initDatabaseBlock = (
     return;
   }
   const datasource = new DatabaseBlockDataSource(blockModel);
-  databaseViewInitTemplate(datasource, viewType, std);
+  databaseViewInitTemplate(datasource, viewType, std, initialRows);
   if (isAppendNewRow) {
     const parent = doc.getParent(model);
     if (!parent) return;

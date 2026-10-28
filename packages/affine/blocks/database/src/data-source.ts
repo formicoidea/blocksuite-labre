@@ -517,14 +517,17 @@ export class DatabaseBlockDataSource extends HostedDataSourceBase {
 
 /**
  * `std` names the first view in the author's language (`viewDefaultName`),
- * at the gesture; absent, the preset's English name, as in 0.48.
+ * at the gesture; absent, the preset's English name, as in 0.48. `rows` empty
+ * rows come with it: 3 as in 0.48, none for a database whose source is still
+ * to be chosen (the creation popover, ADR 0035 amendment of 2026-10-28).
  */
 export const databaseViewInitTemplate = (
   datasource: DatabaseBlockDataSource,
   viewType: string,
-  std?: BlockStdScope
+  std?: BlockStdScope,
+  rows = 3
 ) => {
-  Array.from({ length: 3 }).forEach(() => {
+  Array.from({ length: rows }).forEach(() => {
     datasource.rowAdd('end');
   });
   datasource.viewManager.viewAdd(
