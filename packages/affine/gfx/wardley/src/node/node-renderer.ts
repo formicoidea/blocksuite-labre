@@ -1,4 +1,5 @@
 import {
+  type CanvasRenderer,
   type ElementRenderer,
   ElementRendererExtension,
   notationColor,
@@ -8,8 +9,65 @@ import {
   type WardleyNodeElementModel,
   DefaultTheme,
 } from '@labre/affine-model';
+import { elementTagValues } from '@labre/std/gfx';
 
+import { wardleyMethodRing } from '../method.js';
+import { WARDLEY_METHOD_TAG_ID } from '../natures.js';
 import { ANCHOR, ECOSYSTEM, METHOD, NODE_FILL } from './consts';
+
+/**
+ * The outer ring of a method node, repainted from its `wardley:method` tag
+ * (ADR 0046): the family's hue on the line, and the phase in how much of it
+ * fills the ring — none, 40 %, all of it.
+ *
+ * Derived at paint time and never written back, which is what keeps every
+ * node drawn before the tag existed exactly as it was: no tag, or a value no
+ * pack of this version names, and the native ellipse underneath — the stored
+ * fill and stroke, the "colour = phase" palette's — is left alone. With one,
+ * the ring is the method's and the stored fill no longer shows; clearing the
+ * tag gives it back untouched, because nothing overwrote it.
+ *
+ * Painted OVER the native ellipse, on its exact path (the shape renderer's
+ * own inset of half a stroke, both radii, so a node stretched into an oval is
+ * covered too): the paper first, so a 40 % fill reads the same over any
+ * stored fill, then the hue. The ring's line is wider than the node's rim
+ * (`METHOD_RING_WIDTH`), so no dark edge of the native stroke survives it.
+ */
+function paintMethodRing(
+  model: WardleyNodeElementModel,
+  ctx: CanvasRenderingContext2D,
+  renderer: CanvasRenderer,
+  w: number,
+  h: number,
+  strokeWidth: number
+) {
+  const ring = wardleyMethodRing(
+    elementTagValues(model, WARDLEY_METHOD_TAG_ID)[0]
+  );
+  if (!ring) return;
+
+  // Both radii are positive: the caller has already returned on a node too
+  // small for its own stroke.
+  ctx.beginPath();
+  ctx.ellipse(
+    w / 2,
+    h / 2,
+    w / 2 - strokeWidth / 2,
+    h / 2 - strokeWidth / 2,
+    0,
+    0,
+    Math.PI * 2
+  );
+  ctx.fillStyle = notationColor(renderer, NODE_FILL, 'fill');
+  ctx.fill();
+  if (ring.fill) {
+    ctx.fillStyle = ring.fill;
+    ctx.fill();
+  }
+  ctx.lineWidth = Math.max(strokeWidth, ring.lineWidth);
+  ctx.strokeStyle = ring.stroke;
+  ctx.stroke();
+}
 
 /**
  * Renderer for a Wardley node. The circle is drawn by REUSING the native shape
@@ -103,6 +161,7 @@ export const wardleyNode: ElementRenderer<WardleyNodeElementModel> = (
 
   // ── Method: a white component inscribed in the colored outer circle ──
   if (model.kind === 'method') {
+    paintMethodRing(model, ctx, renderer, w, h, strokeWidth);
     const rInner = R * METHOD.centerRatio;
     ctx.fillStyle = notationColor(renderer, NODE_FILL, 'fill');
     ctx.lineWidth = strokeWidth;

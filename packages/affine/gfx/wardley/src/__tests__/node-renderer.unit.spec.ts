@@ -1,6 +1,14 @@
 import type { WardleyNodeElementModel } from '@labre/affine-model';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
+import * as Y from 'yjs';
 
+import {
+  WARDLEY_METHOD,
+  WARDLEY_METHOD_TAG_ID,
+  WARDLEY_NATURE,
+  WARDLEY_NATURE_TAG_ID,
+} from '../natures';
+import { METHOD_FAMILY_COLOR, NODE_FILL } from '../node/consts';
 import { wardleyNode } from '../node/node-renderer';
 import { recordingCtx, stubMatrix } from './canvas-stub';
 
@@ -105,5 +113,105 @@ describe('a Wardley node with no room for its glyph', () => {
     );
     expect(rec.curves).toHaveLength(1);
     expect(rec.curves[0].r).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * A method node's ring follows its `wardley:method` tag (ADR 0046): the
+ * family's hue on the line, the phase in the fill. What these pin is the
+ * contract both ways — a tagged node paints the method, and a node with no
+ * method tag paints exactly what it painted before the tag existed, so every
+ * map drawn with the "colour = phase" palette keeps its colours.
+ */
+describe('the ring of a component + method', () => {
+  /** A method node carrying `tags`, on a real `Y.Doc` (see `natures`). */
+  function methodNode(tags?: Record<string, string[]>) {
+    const model = nodeModel('method', { w: 40, h: 40 }, 1) as unknown as {
+      tags?: Y.Map<string[]>;
+    };
+    if (tags) {
+      const doc = new Y.Doc();
+      const map = doc.getMap('tags') as Y.Map<string[]>;
+      doc.transact(() => {
+        for (const [k, v] of Object.entries(tags)) map.set(k, v);
+      });
+      model.tags = map;
+    }
+    return model as unknown as WardleyNodeElementModel;
+  }
+
+  function paint(model: WardleyNodeElementModel) {
+    const rec = recordingCtx();
+    wardleyNode(
+      model,
+      rec.ctx,
+      stubMatrix(),
+      rendererStub,
+      null as never,
+      null as never
+    );
+    return rec;
+  }
+
+  it('without a method tag, paints only the inner component, as before', () => {
+    const cases: Array<Record<string, string[]> | undefined> = [
+      undefined,
+      // A nature alone says nothing about the method.
+      { [WARDLEY_NATURE_TAG_ID]: [WARDLEY_NATURE.activity] },
+      // A value no pack of this version names: no colour is guessed.
+      { [WARDLEY_METHOD_TAG_ID]: ['wardley:method/retired'] },
+    ];
+    for (const tags of cases) {
+      const rec = paint(methodNode(tags));
+      expect(rec.ellipses, JSON.stringify(tags)).toEqual([]);
+      expect(rec.fills).toEqual([NODE_FILL]);
+      expect(rec.strokes).toEqual(['#111111']);
+    }
+  });
+
+  it('paints the ring over the native ellipse, on its own path', () => {
+    const rec = paint(
+      methodNode({ [WARDLEY_METHOD_TAG_ID]: [WARDLEY_METHOD.buy] })
+    );
+    // The shape renderer insets half a stroke: 40 wide, 1 thick → 19.5.
+    expect(rec.ellipses).toEqual([{ x: 20, y: 20, rx: 19.5, ry: 19.5 }]);
+  });
+
+  it('an uncharted method is the family hue as an outline on the paper', () => {
+    const rec = paint(
+      methodNode({ [WARDLEY_METHOD_TAG_ID]: [WARDLEY_METHOD.build] })
+    );
+    // Paper under the ring, then the inner component's own paper.
+    expect(rec.fills).toEqual([NODE_FILL, NODE_FILL]);
+    expect(rec.strokes).toEqual([
+      METHOD_FAMILY_COLOR['buying-policy'],
+      '#111111',
+    ]);
+    expect(rec.lineWidths[0]).toBe(2);
+  });
+
+  it('a transitional method fills the ring at 40 %', () => {
+    const rec = paint(
+      methodNode({ [WARDLEY_METHOD_TAG_ID]: [WARDLEY_METHOD.lean] })
+    );
+    const hue = METHOD_FAMILY_COLOR['project-management'];
+    expect(rec.fills).toEqual([NODE_FILL, `${hue}66`, NODE_FILL]);
+    expect(rec.strokes[0]).toBe(hue);
+    expect(rec.lineWidths[0]).toBe(1.5);
+  });
+
+  it('an industrialized method fills the ring in full', () => {
+    const rec = paint(
+      methodNode({ [WARDLEY_METHOD_TAG_ID]: [WARDLEY_METHOD.townPlanners] })
+    );
+    const hue = METHOD_FAMILY_COLOR.attitudes;
+    expect(rec.fills).toEqual([NODE_FILL, hue, NODE_FILL]);
+    expect(rec.strokes[0]).toBe(hue);
+  });
+
+  it('never paints the ring thinner than the rim of the node', () => {
+    const model = methodNode({ [WARDLEY_METHOD_TAG_ID]: [WARDLEY_METHOD.buy] });
+    (model as unknown as { strokeWidth: number }).strokeWidth = 3;
+    expect(paint(model).lineWidths[0]).toBe(3);
   });
 });

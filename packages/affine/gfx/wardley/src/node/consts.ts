@@ -126,7 +126,9 @@ export const ECOSYSTEM_LABEL = 'Ecosystem';
  * Method node: a component inscribed in a slightly larger outer circle whose
  * FILL color encodes the chosen method (editable via the toolbar). Glyph = the
  * outer circle (colored fill + border, the base ellipse) + a white component
- * circle drawn at its center. Default fill is a neutral grey.
+ * circle drawn at its center. Default fill is a neutral grey. Once a
+ * `wardley:method` tag names the method, the ring is painted from the tag
+ * instead and the stored fill stops showing (ADR 0046, `../method.ts`).
  */
 export const METHOD_SIZE = 35;
 export const METHOD_FILL = '#d9d9d9';
@@ -134,6 +136,38 @@ export const METHOD = {
   centerRatio: 0.5, // inner white component radius / R
 };
 export const METHOD_LABEL = 'Component';
+
+/**
+ * The ring's hue per method family, once a `wardley:method` tag says which
+ * (ADR 0046). The wardley-map-renderer's defaults to the digit, so a map
+ * imported from its JSON looks on the board the way it looked there. Hues of a
+ * notation: they stay as they are on a dark card (ADR 0039).
+ */
+export const METHOD_FAMILY_COLOR = {
+  'buying-policy': '#2563eb',
+  'project-management': '#16a34a',
+  attitudes: '#f59e0b',
+} as const;
+
+/**
+ * How a transitional method fills its ring: the family hue at 40 %, the
+ * renderer's `fill-opacity="0.4"`, as the alpha tail of an 8-digit hex
+ * (0.4 × 255 = 102 = 0x66). An uncharted method is the ring alone on the
+ * paper, an industrialized one the hue in full.
+ */
+export const METHOD_TRANSITIONAL_ALPHA = '66';
+
+/**
+ * The ring's stroke under a method tag, never thinner than these: an outline
+ * is the whole of what an uncharted method shows, so it gets the renderer's
+ * 2; the two filled ones take its 1.5. Both are wider than the node's own
+ * 1-unit rim, which the ring is painted over and must cover to its
+ * anti-aliased edge.
+ */
+export const METHOD_RING_WIDTH = {
+  outline: 2,
+  filled: 1.5,
+} as const;
 
 /**
  * Porter's forces (composite): a large white circle carrying ONE letter, pushed

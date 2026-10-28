@@ -10,10 +10,22 @@ export { wardleyTranslationEntries } from './translations.js';
 export {
   WARDLEY_COMPETITION,
   WARDLEY_COMPETITION_TAG_ID,
+  WARDLEY_METHOD,
+  WARDLEY_METHOD_TAG_ID,
   WARDLEY_NATURE,
   WARDLEY_NATURE_TAG_ID,
   WARDLEY_TAG_DEFS,
 } from './natures';
+// The method value and the renderer JSON's `{ category, recommendation }`
+// pair, both directions, for an importer — and a host reading a map without
+// an editor — to write and read the tag without re-deriving the table.
+export {
+  type WardleyMethodFamily,
+  wardleyMethodOf,
+  wardleyMethodParts,
+  type WardleyMethodParts,
+  type WardleyMethodPhase,
+} from './method.js';
 // The letter and the tag, related in both directions. Exported for the reason
 // the presets are: a host laying out or reading a map without an editor —
 // labre-mcp does — must be able to say which force a glyph marks without

@@ -50,6 +50,7 @@ One file per decision. Format and lifecycle in
 | [0043](0043-table-header-row-and-column.md)                    | Table header row and column          | accepted                  | Two optional flags on `affine:table`, `headerRow` / `headerColumn` (`true` or absent): the first row/column is a header; Markdown import sets `headerRow`; HTML export writes `th`. |
 | [0044](0044-replace-shape-and-image.md)                        | Replace shape and image              | accepted                  | A new model at the old one's place, layer, z-order, connectors and container; the id changes; roled, texted, captioned or locked models refused.                                    |
 | [0045](0045-headless-toolbox.md)                               | Headless toolbox                     | accepted, amended         | A framework's toolbar items as pure builders on `./interchange`, called by the editor actions and by a host with no editor.                                                         |
+| [0046](0046-wardley-method-node-nature-and-method-tags.md)     | Wardley component + method           | accepted                  | The method node specialises component (nature, reading, W3); its method is one nine-value tag; the ring is painted from the tag, the stored fill is the fallback.                   |
 
 Related documents that are not ADRs:
 

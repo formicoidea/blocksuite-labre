@@ -2530,7 +2530,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/gfx/wardley
         metadata {
           path 'packages/affine/gfx/wardley'
-          files '49'
+          files '50'
         }
         node_ = folder 'node/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/gfx/wardley/src/node
@@ -2543,7 +2543,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/gfx/wardley/src
           metadata {
             path 'packages/affine/gfx/wardley/src'
-            files '37'
+            files '38'
           }
         }
         templates = folder 'templates/' {
@@ -4019,7 +4019,7 @@ model {
   features.gfx.wardley -[uses]-> features.shared '18 imports, 3 type-only'
   features.gfx.wardley -[uses]-> features.widgets.edgeless-toolbar '3 imports'
   features.gfx.wardley -[uses]-> framework.global_ '6 imports'
-  features.gfx.wardley -[uses]-> framework.std '21 imports, 12 type-only'
+  features.gfx.wardley -[uses]-> framework.std '22 imports, 12 type-only'
   features.gfx.wardley -[uses]-> model_.model_ '21 imports, 7 type-only'
   features.inlines.comment -[uses]-> features.ext-loader '1 import'
   features.inlines.comment -[uses]-> features.rich-text '1 import'
@@ -6765,9 +6765,9 @@ model {
   features.gfx.uml.toolbar -[imports]-> model_.model_.src '1 import'
   features.gfx.wardley.node_ -[imports]-> features.blocks.surface.src '1 import'
   features.gfx.wardley.node_ -[imports]-> features.gfx.shape_.src '2 imports'
-  features.gfx.wardley.node_ -[imports]-> features.gfx.wardley.src '3 imports'
+  features.gfx.wardley.node_ -[imports]-> features.gfx.wardley.src '5 imports'
   features.gfx.wardley.node_ -[imports]-> features.shared.src '1 import'
-  features.gfx.wardley.node_ -[imports]-> framework.std.gfx '1 import'
+  features.gfx.wardley.node_ -[imports]-> framework.std.gfx '2 imports'
   features.gfx.wardley.node_ -[imports]-> model_.model_.src '3 imports, 1 type-only'
   features.gfx.wardley.src -[imports]-> features.blocks.surface.src '25 imports, 11 type-only'
   features.gfx.wardley.src -[imports]-> features.components.color-picker '1 import'
@@ -6776,7 +6776,7 @@ model {
   features.gfx.wardley.src -[imports]-> features.gfx.group_.src '1 import'
   features.gfx.wardley.src -[imports]-> features.gfx.shape_.src '1 import'
   features.gfx.wardley.src -[imports]-> features.gfx.template.src '1 import'
-  features.gfx.wardley.src -[imports]-> features.gfx.wardley.node_ '12 imports'
+  features.gfx.wardley.src -[imports]-> features.gfx.wardley.node_ '13 imports'
   features.gfx.wardley.src -[imports]-> features.gfx.wardley.templates '3 imports'
   features.gfx.wardley.src -[imports]-> features.gfx.wardley.toolbar '8 imports'
   features.gfx.wardley.src -[imports]-> features.shared.consts '1 import'
