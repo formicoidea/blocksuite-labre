@@ -1,5 +1,15 @@
 # @labre/affine-widget-viewport-overlay
 
+## 0.61.0
+
+### Patch Changes
+
+- @labre/affine-ext-loader@0.61.0
+- @labre/affine-model@0.61.0
+- @labre/affine-shared@0.61.0
+- @labre/global@0.61.0
+- @labre/std@0.61.0
+
 ## 0.60.0
 
 ### Patch Changes
