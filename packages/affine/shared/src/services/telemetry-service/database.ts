@@ -37,6 +37,16 @@ export type DatabaseViewEvents = {
     toViewType: string;
   };
   /**
+   * The user pointed a view at another source of its database, from the
+   * view settings' "Source" or the full page's `database.view.source`
+   * (0.62): `existing` for a source the database already had, `new` when
+   * the gesture created it. Ids only: never the source's id or title. A pick
+   * of the view's own source changes nothing and reports nothing.
+   */
+  DatabaseViewSourceChanged: TelemetryEvent & {
+    source: 'existing' | 'new';
+  };
+  /**
    * The user grouped a view, changed its grain or removed the grouping (B17).
    * `groupBy` is the group-by config name (`select`, `date-month`…), `none`
    * once removed; `propertyType` the grouped property's type. Never the

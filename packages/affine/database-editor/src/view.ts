@@ -5,7 +5,10 @@ import {
 import { DatabaseCreationMenuExtension } from '@labre/affine-block-database';
 import { DataSourcePickerProvider } from '@labre/affine-shared/services';
 import { SlashMenuConfigExtension } from '@labre/affine-widget-slash-menu';
-import { AddViewMenuExtension } from '@labre/data-view';
+import {
+  AddViewMenuExtension,
+  ViewSettingsMenuExtension,
+} from '@labre/data-view';
 
 import { databaseCreationMenu } from './creation-popover.js';
 import { effects } from './effects.js';
@@ -14,6 +17,7 @@ import {
   addViewSourcePicker,
   databaseAddViewMenu,
 } from './view-bar/add-view-menu.js';
+import { databaseViewSettingsMenu } from './view-settings/source-entry.js';
 
 /**
  * The database editing chrome a stored database shows whatever the flags say
@@ -37,9 +41,11 @@ export class DatabaseEditorViewExtension extends ViewExtensionProvider {
  * The database creation entries, under core's own `database` flag (ADR 0035
  * §4, §5): "+ view" with its source choice (B11), fed by the host's
  * data-source picker when there is one, "Linked view of a database"
- * (B12), drawn only when the host fills the picker, and the popover that
+ * (B12), drawn only when the host fills the picker, the popover that
  * core's "Table View" / "Kanban View" open over the database they insert
- * when the host fills it (amendment of 2026-10-28). No new flag key:
+ * when the host fills it, and the view settings' "Source", drawn only on a
+ * database whose views name their source, with the picker (ADR 0035
+ * amendment of 2026-10-28). No new flag key:
  * `{ database: false }` removes these with core's own creation tooling and
  * leaves every stored database rendering.
  */
@@ -55,6 +61,7 @@ export class DatabaseEditorToolingViewExtension extends ViewExtensionProvider {
           return picker ? addViewSourcePicker(picker) : null;
         })
       ),
+      ViewSettingsMenuExtension(databaseViewSettingsMenu()),
       SlashMenuConfigExtension(
         'affine:database-linked-view',
         linkedViewSlashMenuConfig

@@ -20,7 +20,7 @@ import {
 } from './actions';
 import {
   WARDLEY_LEGEND_BOX,
-  wardleyLegendEntry,
+  wardleyLegendEntries,
   type WardleyLegendRole,
 } from './legend';
 import { WARDLEY_ROLE, WARDLEY_ROLES, type WardleyRoleId } from './roles';
@@ -88,7 +88,7 @@ interface Spec {
   edgeRole?: WardleyRoleId;
   /**
    * The role this entry puts a LINE in the map's legend for — the swatch, and
-   * the sentence that explains it, from {@link wardleyLegendEntry}.
+   * the sentence that explains it, from {@link wardleyLegendEntries}.
    *
    * Absent on the four backgrounds, which are the sheet the legend is drawn ON
    * ({@link WARDLEY_LEGEND_BOX} is theirs instead), and declared TWICE on the
@@ -387,7 +387,7 @@ const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, order) => ({
   // the sheet's own command carries the box the rows are drawn in. Which
   // sub-title a row files under is `category`, so the sections are the very
   // groups the catalogue already shows.
-  ...(spec.legendRole ? { legend: wardleyLegendEntry(spec.legendRole) } : {}),
+  ...(spec.legendRole ? { legend: wardleyLegendEntries(spec.legendRole) } : {}),
   ...(spec.id === 'addBackground' ? { legendBox: WARDLEY_LEGEND_BOX } : {}),
 }));
 

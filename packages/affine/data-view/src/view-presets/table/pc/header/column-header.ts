@@ -9,6 +9,7 @@ import { repeat } from 'lit/directives/repeat.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import { html } from 'lit/static-html.js';
 
+import { PageLayoutKey } from '../../../../core/view-manager/page-layout.js';
 import { cellDivider } from '../../styles.js';
 import type { TableGroup } from '../group.js';
 import { tableStyle } from '../table-view-style';
@@ -73,10 +74,15 @@ export class DatabaseColumnHeader extends SignalWatcher(
         if (!scrollContainer) {
           return;
         }
-        // A host page that makes the header natively sticky (the full-page
-        // database, ADR 0035 amendment of 2026-10-26) needs no follow-up:
-        // this translate, a frame late, would double its offset.
-        if (getComputedStyle(this).position === 'sticky') {
+        // When the views are the page (`PageLayoutKey`, ADR 0035 amendments
+        // of 2026-10-26 and 2026-10-28) the header is natively sticky: this
+        // translate, a frame late, would double its offset. One left from
+        // before the page layout applied is dropped.
+        if (this.tableViewLogic.view.serviceGet(PageLayoutKey)?.peek()) {
+          if (this.preMove !== 0) {
+            this.preMove = 0;
+            this.style.transform = '';
+          }
           return;
         }
         this.autoSetHeaderPosition(group, scrollContainer);

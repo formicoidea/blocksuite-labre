@@ -974,6 +974,12 @@ model {
       domain_base_view '1.00'
     }
   }
+  extend features.database-editor.view-settings {
+    metadata {
+      domain ['base-view']
+      domain_base_view '1.00'
+    }
+  }
   extend features.database-editor.view-transfer {
     metadata {
       domain ['base-view']

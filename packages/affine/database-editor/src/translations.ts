@@ -103,6 +103,19 @@ export const VIEW_MENU_IMPORT: ChromeWording = [
   'Import a view…',
 ];
 
+/* ── A view's source (ADR 0035 amendment of 2026-10-28) ───────────────── */
+
+/**
+ * The view settings' "Source" and the full page's `database.view.source`:
+ * one chrome word, one key. Its menu reuses the picker's words
+ * (`PICKER_TITLE`, `PICKER_NEW_SOURCE`) and an untitled source reads
+ * `DATABASE_ADD_VIEW_UNTITLED_SOURCE`.
+ */
+export const VIEW_SETTINGS_SOURCE: ChromeWording = [
+  'com.labre.database.view-settings.source',
+  'Source',
+];
+
 /* ── The properties panel (ADR 0035 §9b, issue B10) ────────────────────── */
 
 /**
@@ -194,6 +207,7 @@ const DATABASE_EDITOR_WORDINGS: readonly ChromeWording[] = [
   SLASH_LINKED_VIEW,
   SLASH_LINKED_VIEW_DESCRIPTION,
   VIEW_MENU_IMPORT,
+  VIEW_SETTINGS_SOURCE,
 ];
 
 /**

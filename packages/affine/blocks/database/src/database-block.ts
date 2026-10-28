@@ -9,6 +9,7 @@ import { PeekViewProvider } from '@labre/affine-components/peek';
 import { toast } from '@labre/affine-components/toast';
 import type { DatabaseBlockModel } from '@labre/affine-model';
 import { EDGELESS_TOP_CONTENTEDITABLE_SELECTOR } from '@labre/affine-shared/consts';
+import { getScrollContainer } from '@labre/affine-shared/utils';
 import {
   BlockCommentManager,
   CommentProviderIdentifier,
@@ -36,6 +37,7 @@ import {
   defineUniComponent,
   ExternalGroupByConfigProvider,
   NewRowMenuOpenerKey,
+  PageLayoutKey,
   PropertiesPanelOpenerKey,
   renderUniLit,
   type SingleView,
@@ -81,6 +83,7 @@ import {
 import { BlockRenderer } from './detail-panel/block-renderer.js';
 import { NoteRenderer } from './detail-panel/note-renderer.js';
 import { DatabaseSelection } from './selection.js';
+import { isStandaloneDatabase } from './standalone-layout.js';
 import {
   databaseOpenRowRequest,
   DatabaseDataSourceProvider,
@@ -201,6 +204,7 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
     const initFn = (dataSource: DataSourceBase) => {
       dataSource.serviceSet(EditorHostKey, this.host);
       dataSource.serviceSet(DataViewEventTraceKey, this.traceDatabaseEvent);
+      dataSource.serviceSet(PageLayoutKey, this.standalone$);
       // With a host properties panel, the view options' "Properties" opens
       // it (ADR 0035 §9b); without, the data-view's popover stays.
       if (this.std.getOptional(PropertiesPanelProvider)) {
@@ -489,6 +493,53 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
 
   private readonly virtualPadding$ = signal(0);
 
+  /**
+   * Whether this block is drawn as the page itself (`isStandaloneDatabase`,
+   * ADR 0035 amendment of 2026-10-28): handed to data-view as
+   * `PageLayoutKey` and reflected as `data-standalone` for the block's own
+   * styles. Measured from the DOM, never stored: nothing is written when it
+   * changes.
+   */
+  readonly standalone$ = signal(false);
+
+  refreshStandalone() {
+    const standalone = isStandaloneDatabase(this, this.blockId);
+    this.toggleAttribute('data-standalone', standalone);
+    this.standalone$.value = standalone;
+  }
+
+  /**
+   * Re-measures when a block mounts or leaves (the parent test), and when a
+   * page heading arrives in the scroll container, leaves it or names
+   * another body block (the title test). Every `<doc-title>` of the
+   * container is watched, so a title whose `body-block-id` is set after it
+   * mounted is seen too.
+   */
+  private watchStandalone() {
+    const observer = new MutationObserver(() => {
+      this.refreshStandalone();
+      observe();
+    });
+    const observe = () => {
+      observer.disconnect();
+      const container = getScrollContainer(this);
+      observer.observe(container, { childList: true });
+      container.querySelectorAll('doc-title').forEach(title => {
+        observer.observe(title, {
+          attributes: true,
+          attributeFilter: ['body-block-id'],
+        });
+      });
+    };
+    observe();
+    this.disposables.add(() => observer.disconnect());
+    this.disposables.add(
+      this.std.view.viewUpdated.subscribe(({ type }) => {
+        if (type === 'block') this.refreshStandalone();
+      })
+    );
+  }
+
   get optionsConfig(): DatabaseViewExtensionOptions {
     return {
       configure: (_model, options) => options,
@@ -561,6 +612,8 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
     this.setAttribute(RANGE_SYNC_EXCLUDE_ATTR, 'true');
     this.classList.add(databaseBlockStyles);
     this.listenFullWidthChange();
+    this.refreshStandalone();
+    this.watchStandalone();
 
     // Rebuild the source whenever the block is re-pointed at (or detached from)
     // an external collection. The first (synchronous) emission is skipped: the

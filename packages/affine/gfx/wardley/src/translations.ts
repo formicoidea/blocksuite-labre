@@ -33,7 +33,7 @@ import {
   WARDLEY_TEMPLATE_NAME_LINK,
 } from './templates/index.js';
 import { WARDLEY_TOOLBAR_WORDINGS } from './toolbar/config.js';
-import { WARDLEY_PALETTE_WORDINGS } from './toolbar/node-config.js';
+import { WARDLEY_PALETTE_WORDINGS } from './node/consts.js';
 
 /**
  * The prompt every labelled artefact is created NEXT TO — the fallback IS

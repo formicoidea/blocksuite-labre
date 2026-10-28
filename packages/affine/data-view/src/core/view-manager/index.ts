@@ -6,3 +6,5 @@ export * from './view-manager.js';
 export * from './properties-panel-opener.js';
 export * from './view-creation.js';
 export * from './new-row-menu-opener.js';
+export * from './view-settings-menu.js';
+export * from './page-layout.js';

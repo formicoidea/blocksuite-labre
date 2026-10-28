@@ -66,6 +66,9 @@ export function recordingCtx() {
   const dashes: number[][] = [];
   const fills: string[] = [];
   const strokes: string[] = [];
+  /** `ellipse` calls, with the line width in force when each was stroked. */
+  const ellipses: Array<{ x: number; y: number; rx: number; ry: number }> = [];
+  const lineWidths: number[] = [];
   const transform: Array<[string, ...number[]]> = [];
 
   let mx = 0;
@@ -108,6 +111,13 @@ export function recordingCtx() {
       if (r < 0) throw new Error(`IndexSizeError: negative radius ${r}`);
       curves.push({ x, y, r });
     }),
+    // Same refusal as `arc`: Canvas2D throws on a negative radius.
+    ellipse: vi.fn((x: number, y: number, rx: number, ry: number) => {
+      if (rx < 0 || ry < 0) {
+        throw new Error(`IndexSizeError: negative radius ${rx}, ${ry}`);
+      }
+      ellipses.push({ x, y, rx, ry });
+    }),
     clip: vi.fn(),
     bezierCurveTo: vi.fn(),
     fill: vi.fn(() => {
@@ -115,6 +125,7 @@ export function recordingCtx() {
     }),
     stroke: vi.fn(() => {
       strokes.push(ctx.strokeStyle);
+      lineWidths.push(ctx.lineWidth);
     }),
     fillRect: vi.fn((x: number, y: number, w: number, h: number) => {
       if (typeof ctx.fillStyle === 'string') {
@@ -185,6 +196,8 @@ export function recordingCtx() {
     dashes,
     fills,
     strokes,
+    ellipses,
+    lineWidths,
     transform,
     get paths() {
       return collectPaths();
