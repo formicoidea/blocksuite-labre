@@ -1,0 +1,58 @@
+{
+  "name": "@labre/affine-database-engine",
+  "private": true,
+  "description": "Database view engine: views, properties and view widgets of the database family.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc"
+  },
+  "sideEffects": false,
+  "keywords": [],
+  "author": "lajola",
+  "contributors": [
+    "toeverything"
+  ],
+  "license": "MPL-2.0",
+  "dependencies": {
+    "@blocksuite/icons": "^2.2.12",
+    "@emotion/css": "^11.13.5",
+    "@emotion/hash": "^0.9.2",
+    "@floating-ui/dom": "^1.6.13",
+    "@labre/affine-components": "workspace:*",
+    "@labre/affine-model": "workspace:*",
+    "@labre/affine-shared": "workspace:*",
+    "@labre/global": "workspace:*",
+    "@labre/std": "workspace:*",
+    "@labre/store": "workspace:*",
+    "@lit/context": "^1.1.2",
+    "@preact/signals-core": "^1.8.0",
+    "@toeverything/theme": "^1.1.15",
+    "@types/lodash-es": "^4.17.12",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.0.0",
+    "lit": "^3.2.0",
+    "lodash-es": "^4.17.21",
+    "rxjs": "^7.8.1",
+    "yjs": "^13.6.21",
+    "zod": "^3.23.8"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./property-presets": "./src/property-presets/index.ts",
+    "./property-pure-presets": "./src/property-presets/pure-index.ts",
+    "./view-presets": "./src/view-presets/index.ts",
+    "./widget-presets": "./src/widget-presets/index.ts",
+    "./effects": "./src/effects.ts",
+    "./translations": "./src/translations.ts"
+  },
+  "files": [
+    "src",
+    "dist",
+    "!src/__tests__",
+    "!dist/__tests__"
+  ],
+  "devDependencies": {
+    "vitest": "^3.2.3"
+  },
+  "version": "0.61.0"
+}

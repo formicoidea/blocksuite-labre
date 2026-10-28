@@ -3,7 +3,7 @@ import {
   DatabaseDataSourceProvider,
   HostedDataSourceBase,
   type HostedSource,
-} from '@labre/affine-block-database';
+} from '@labre/affine-database-block';
 import { DropIndicator } from '@labre/affine-components/drop-indicator';
 import { changeViewSource } from '@labre/affine-database-editor';
 import {
@@ -19,7 +19,7 @@ import type {
   DataSourceBase,
   PropertyMetaConfig,
   TypeInstance,
-} from '@labre/data-view';
+} from '@labre/affine-database-engine';
 import type { BlockStdScope } from '@labre/std';
 import { Text } from '@labre/store';
 import {

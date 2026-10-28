@@ -7,7 +7,7 @@ import {
   getCell,
   getProperty,
   updateCell,
-} from '@labre/affine-block-database';
+} from '@labre/affine-database-block';
 import {
   type CellDataType,
   type ColumnDataType,
@@ -17,11 +17,11 @@ import {
   ParagraphBlockSchemaExtension,
   RootBlockSchemaExtension,
 } from '@labre/affine-model';
-import { propertyModelPresets } from '@labre/data-view/property-pure-presets';
+import { propertyModelPresets } from '@labre/affine-database-engine/property-pure-presets';
 import type {
   TableSingleView,
   TableViewData,
-} from '@labre/data-view/view-presets';
+} from '@labre/affine-database-engine/view-presets';
 import type { BlockModel, Store } from '@labre/store';
 import { Text } from '@labre/store';
 import {

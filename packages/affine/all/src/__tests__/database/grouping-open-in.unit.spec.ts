@@ -1,7 +1,7 @@
 import {
   addProperty,
   DatabaseBlockDataSource,
-} from '@labre/affine-block-database';
+} from '@labre/affine-database-block';
 import {
   type DatabaseBlockModel,
   DatabaseBlockSchemaExtension,
@@ -14,8 +14,8 @@ import {
   rowsArePages,
   viewOpenIn,
   viewOpenInSet,
-} from '@labre/data-view';
-import { propertyModelPresets } from '@labre/data-view/property-pure-presets';
+} from '@labre/affine-database-engine';
+import { propertyModelPresets } from '@labre/affine-database-engine/property-pure-presets';
 import { Text } from '@labre/store';
 import {
   createAutoIncrementIdGenerator,

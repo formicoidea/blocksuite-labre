@@ -29,9 +29,9 @@ import {
   type MultiTagSelect,
   type PropertyMetaConfig,
   type StandaloneCellHost,
-} from '@labre/data-view';
-import { effects as dataViewEffects } from '@labre/data-view/effects';
-import { propertyPresets } from '@labre/data-view/property-presets';
+} from '@labre/affine-database-engine';
+import { effects as dataViewEffects } from '@labre/affine-database-engine/effects';
+import { propertyPresets } from '@labre/affine-database-engine/property-presets';
 import type { BlockStdScope } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { type Store, Text } from '@labre/store';
@@ -91,9 +91,9 @@ import {
   type MultiTagSelect,
   type PropertyMetaConfig,
   type StandaloneCellHost,
-} from '@labre/data-view';
-import { effects as dataViewEffects } from '@labre/data-view/effects';
-import { propertyPresets } from '@labre/data-view/property-presets';
+} from '@labre/affine-database-engine';
+import { effects as dataViewEffects } from '@labre/affine-database-engine/effects';
+import { propertyPresets } from '@labre/affine-database-engine/property-presets';
 import type { BlockStdScope } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { type Store, Text } from '@labre/store';

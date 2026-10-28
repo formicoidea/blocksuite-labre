@@ -8,11 +8,11 @@ import { CodeBlockViewExtension } from '@labre/affine-block-code/view';
 import {
   DataViewRenderViewExtension,
   DataViewViewExtension,
-} from '@labre/affine-block-data-view/view';
+} from '@labre/affine-database-view-block/view';
 import {
   DatabaseRenderViewExtension,
   DatabaseViewExtension,
-} from '@labre/affine-block-database/view';
+} from '@labre/affine-database-block/view';
 import {
   DatabaseEditorToolingViewExtension,
   DatabaseEditorViewExtension,

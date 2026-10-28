@@ -19,7 +19,7 @@ import {
   type DatabaseFlags,
   type StandaloneCellHost,
   StandaloneCellMetaProvider,
-} from '@labre/data-view';
+} from '@labre/affine-database-engine';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
 import { type BlockStdScope, ShadowlessElement, stdContext } from '@labre/std';
 import { ContextProvider } from '@lit/context';

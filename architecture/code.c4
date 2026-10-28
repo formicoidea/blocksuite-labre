@@ -519,132 +519,6 @@ model {
           }
         }
       }
-      data-view = package '@labre/affine-block-data-view' {
-        link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/data-view
-        metadata {
-          path 'packages/affine/blocks/data-view'
-          files '15'
-        }
-        block-meta = folder 'block-meta/' {
-          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/data-view/src/block-meta
-          metadata {
-            path 'packages/affine/blocks/data-view/src/block-meta'
-            files '3'
-          }
-        }
-        columns = folder 'columns/' {
-          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/data-view/src/columns
-          metadata {
-            path 'packages/affine/blocks/data-view/src/columns'
-            files '1'
-          }
-        }
-        configs = folder 'configs/' {
-          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/data-view/src/configs
-          metadata {
-            path 'packages/affine/blocks/data-view/src/configs'
-            files '2'
-          }
-        }
-        src = folder 'src/' {
-          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/data-view/src
-          metadata {
-            path 'packages/affine/blocks/data-view/src'
-            files '8'
-          }
-        }
-        views_ = folder 'views/' {
-          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/data-view/src/views
-          metadata {
-            path 'packages/affine/blocks/data-view/src/views'
-            files '1'
-          }
-        }
-      }
-      database = package '@labre/affine-block-database' {
-        link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/database
-        metadata {
-          path 'packages/affine/blocks/database'
-          files '63'
-        }
-        adapters = folder 'adapters/' {
-          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/database/src/adapters
-          metadata {
-            path 'packages/affine/blocks/database/src/adapters'
-            files '7'
-          }
-        }
-        components = folder 'components/' {
-          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/database/src/components
-          metadata {
-            path 'packages/affine/blocks/database/src/components'
-            files '3'
-          }
-        }
-        configs = folder 'configs/' {
-          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/database/src/configs
-          metadata {
-            path 'packages/affine/blocks/database/src/configs'
-            files '2'
-          }
-        }
-        context = folder 'context/' {
-          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/database/src/context
-          metadata {
-            path 'packages/affine/blocks/database/src/context'
-            files '2'
-          }
-        }
-        detail-panel = folder 'detail-panel/' {
-          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/database/src/detail-panel
-          metadata {
-            path 'packages/affine/blocks/database/src/detail-panel'
-            files '2'
-          }
-        }
-        properties = folder 'properties/' {
-          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/database/src/properties
-          metadata {
-            path 'packages/affine/blocks/database/src/properties'
-            files '19'
-          }
-        }
-        service = folder 'service/' {
-          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/database/src/service
-          metadata {
-            path 'packages/affine/blocks/database/src/service'
-            files '5'
-          }
-        }
-        src = folder 'src/' {
-          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/database/src
-          metadata {
-            path 'packages/affine/blocks/database/src'
-            files '18'
-          }
-        }
-        utils = folder 'utils/' {
-          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/database/src/utils
-          metadata {
-            path 'packages/affine/blocks/database/src/utils'
-            files '3'
-          }
-        }
-        views_ = folder 'views/' {
-          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/database/src/views
-          metadata {
-            path 'packages/affine/blocks/database/src/views'
-            files '1'
-          }
-        }
-        widgets = folder 'widgets/' {
-          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/database/src/widgets
-          metadata {
-            path 'packages/affine/blocks/database/src/widgets'
-            files '1'
-          }
-        }
-      }
       divider = package '@labre/affine-block-divider' {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/divider
         metadata {
@@ -1521,94 +1395,226 @@ model {
         }
       }
     }
-    data-view = package '@labre/data-view' {
-      link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/data-view
+    database = family 'affine/database' {
+      link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database
       metadata {
-        path 'packages/affine/data-view'
-        files '351'
+        path 'packages/affine/database'
       }
-      core = folder 'core/' {
-        link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/data-view/src/core
+      block = package '@labre/affine-database-block' {
+        link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/block
         metadata {
-          path 'packages/affine/data-view/src/core'
-          files '166'
+          path 'packages/affine/database/block'
+          files '63'
+        }
+        adapters = folder 'adapters/' {
+          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/block/src/adapters
+          metadata {
+            path 'packages/affine/database/block/src/adapters'
+            files '7'
+          }
+        }
+        components = folder 'components/' {
+          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/block/src/components
+          metadata {
+            path 'packages/affine/database/block/src/components'
+            files '3'
+          }
+        }
+        configs = folder 'configs/' {
+          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/block/src/configs
+          metadata {
+            path 'packages/affine/database/block/src/configs'
+            files '2'
+          }
+        }
+        context = folder 'context/' {
+          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/block/src/context
+          metadata {
+            path 'packages/affine/database/block/src/context'
+            files '2'
+          }
+        }
+        detail-panel = folder 'detail-panel/' {
+          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/block/src/detail-panel
+          metadata {
+            path 'packages/affine/database/block/src/detail-panel'
+            files '2'
+          }
+        }
+        properties = folder 'properties/' {
+          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/block/src/properties
+          metadata {
+            path 'packages/affine/database/block/src/properties'
+            files '19'
+          }
+        }
+        service = folder 'service/' {
+          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/block/src/service
+          metadata {
+            path 'packages/affine/database/block/src/service'
+            files '5'
+          }
+        }
+        src = folder 'src/' {
+          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/block/src
+          metadata {
+            path 'packages/affine/database/block/src'
+            files '18'
+          }
+        }
+        utils = folder 'utils/' {
+          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/block/src/utils
+          metadata {
+            path 'packages/affine/database/block/src/utils'
+            files '3'
+          }
+        }
+        views_ = folder 'views/' {
+          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/block/src/views
+          metadata {
+            path 'packages/affine/database/block/src/views'
+            files '1'
+          }
+        }
+        widgets = folder 'widgets/' {
+          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/block/src/widgets
+          metadata {
+            path 'packages/affine/database/block/src/widgets'
+            files '1'
+          }
         }
       }
-      property-presets = folder 'property-presets/' {
-        link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/data-view/src/property-presets
+      editor = package '@labre/affine-database-editor' {
+        link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/editor
         metadata {
-          path 'packages/affine/data-view/src/property-presets'
-          files '31'
+          path 'packages/affine/database/editor'
+          files '18'
+        }
+        database-page = folder 'database-page/' {
+          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/editor/src/database-page
+          metadata {
+            path 'packages/affine/database/editor/src/database-page'
+            files '3'
+          }
+        }
+        properties-panel = folder 'properties-panel/' {
+          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/editor/src/properties-panel
+          metadata {
+            path 'packages/affine/database/editor/src/properties-panel'
+            files '1'
+          }
+        }
+        src = folder 'src/' {
+          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/editor/src
+          metadata {
+            path 'packages/affine/database/editor/src'
+            files '7'
+          }
+        }
+        view-bar = folder 'view-bar/' {
+          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/editor/src/view-bar
+          metadata {
+            path 'packages/affine/database/editor/src/view-bar'
+            files '3'
+          }
+        }
+        view-settings = folder 'view-settings/' {
+          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/editor/src/view-settings
+          metadata {
+            path 'packages/affine/database/editor/src/view-settings'
+            files '1'
+          }
+        }
+        view-transfer = folder 'view-transfer/' {
+          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/editor/src/view-transfer
+          metadata {
+            path 'packages/affine/database/editor/src/view-transfer'
+            files '3'
+          }
         }
       }
-      src = folder 'src/' {
-        link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/data-view/src
+      engine = package '@labre/affine-database-engine' {
+        link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/engine
         metadata {
-          path 'packages/affine/data-view/src'
-          files '3'
+          path 'packages/affine/database/engine'
+          files '351'
+        }
+        core = folder 'core/' {
+          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/engine/src/core
+          metadata {
+            path 'packages/affine/database/engine/src/core'
+            files '166'
+          }
+        }
+        property-presets = folder 'property-presets/' {
+          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/engine/src/property-presets
+          metadata {
+            path 'packages/affine/database/engine/src/property-presets'
+            files '31'
+          }
+        }
+        src = folder 'src/' {
+          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/engine/src
+          metadata {
+            path 'packages/affine/database/engine/src'
+            files '3'
+          }
+        }
+        view-presets = folder 'view-presets/' {
+          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/engine/src/view-presets
+          metadata {
+            path 'packages/affine/database/engine/src/view-presets'
+            files '128'
+          }
+        }
+        widget-presets = folder 'widget-presets/' {
+          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/engine/src/widget-presets
+          metadata {
+            path 'packages/affine/database/engine/src/widget-presets'
+            files '23'
+          }
         }
       }
-      view-presets = folder 'view-presets/' {
-        link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/data-view/src/view-presets
+      view-block = package '@labre/affine-database-view-block' {
+        link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/view-block
         metadata {
-          path 'packages/affine/data-view/src/view-presets'
-          files '128'
+          path 'packages/affine/database/view-block'
+          files '15'
         }
-      }
-      widget-presets = folder 'widget-presets/' {
-        link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/data-view/src/widget-presets
-        metadata {
-          path 'packages/affine/data-view/src/widget-presets'
-          files '23'
+        block-meta = folder 'block-meta/' {
+          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/view-block/src/block-meta
+          metadata {
+            path 'packages/affine/database/view-block/src/block-meta'
+            files '3'
+          }
         }
-      }
-    }
-    database-editor = package '@labre/affine-database-editor' {
-      link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database-editor
-      metadata {
-        path 'packages/affine/database-editor'
-        files '18'
-      }
-      database-page = folder 'database-page/' {
-        link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database-editor/src/database-page
-        metadata {
-          path 'packages/affine/database-editor/src/database-page'
-          files '3'
+        columns = folder 'columns/' {
+          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/view-block/src/columns
+          metadata {
+            path 'packages/affine/database/view-block/src/columns'
+            files '1'
+          }
         }
-      }
-      properties-panel = folder 'properties-panel/' {
-        link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database-editor/src/properties-panel
-        metadata {
-          path 'packages/affine/database-editor/src/properties-panel'
-          files '1'
+        configs = folder 'configs/' {
+          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/view-block/src/configs
+          metadata {
+            path 'packages/affine/database/view-block/src/configs'
+            files '2'
+          }
         }
-      }
-      src = folder 'src/' {
-        link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database-editor/src
-        metadata {
-          path 'packages/affine/database-editor/src'
-          files '7'
+        src = folder 'src/' {
+          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/view-block/src
+          metadata {
+            path 'packages/affine/database/view-block/src'
+            files '8'
+          }
         }
-      }
-      view-bar = folder 'view-bar/' {
-        link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database-editor/src/view-bar
-        metadata {
-          path 'packages/affine/database-editor/src/view-bar'
-          files '3'
-        }
-      }
-      view-settings = folder 'view-settings/' {
-        link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database-editor/src/view-settings
-        metadata {
-          path 'packages/affine/database-editor/src/view-settings'
-          files '1'
-        }
-      }
-      view-transfer = folder 'view-transfer/' {
-        link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database-editor/src/view-transfer
-        metadata {
-          path 'packages/affine/database-editor/src/view-transfer'
-          files '3'
+        views_ = folder 'views/' {
+          link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/view-block/src/views
+          metadata {
+            path 'packages/affine/database/view-block/src/views'
+            files '1'
+          }
         }
       }
     }
@@ -3427,8 +3433,6 @@ model {
   assembly.all -[uses]-> features.blocks.bookmark '6 imports'
   assembly.all -[uses]-> features.blocks.callout '6 imports'
   assembly.all -[uses]-> features.blocks.code '6 imports'
-  assembly.all -[uses]-> features.blocks.data-view '6 imports'
-  assembly.all -[uses]-> features.blocks.database '6 imports'
   assembly.all -[uses]-> features.blocks.divider '5 imports'
   assembly.all -[uses]-> features.blocks.edgeless-text '5 imports'
   assembly.all -[uses]-> features.blocks.embed '6 imports'
@@ -3444,8 +3448,10 @@ model {
   assembly.all -[uses]-> features.blocks.surface-ref '6 imports'
   assembly.all -[uses]-> features.blocks.table '6 imports'
   assembly.all -[uses]-> features.components '47 imports, 13 type-only'
-  assembly.all -[uses]-> features.data-view '3 imports'
-  assembly.all -[uses]-> features.database-editor '2 imports'
+  assembly.all -[uses]-> features.database.block '6 imports'
+  assembly.all -[uses]-> features.database.editor '2 imports'
+  assembly.all -[uses]-> features.database.engine '3 imports'
+  assembly.all -[uses]-> features.database.view-block '6 imports'
   assembly.all -[uses]-> features.ext-loader '3 imports'
   assembly.all -[uses]-> features.foundation '5 imports'
   assembly.all -[uses]-> features.fragments.adapter-panel '4 imports'
@@ -3548,29 +3554,6 @@ model {
   features.blocks.code -[uses]-> framework.std '17 imports, 2 type-only'
   features.blocks.code -[uses]-> framework.store '11 imports, 7 type-only'
   features.blocks.code -[uses]-> model_.model_ '12 imports, 4 type-only'
-  features.blocks.data-view -[uses]-> features.blocks.database '3 imports'
-  features.blocks.data-view -[uses]-> features.components '5 imports'
-  features.blocks.data-view -[uses]-> features.data-view '11 imports, 4 type-only'
-  features.blocks.data-view -[uses]-> features.ext-loader '2 imports'
-  features.blocks.data-view -[uses]-> features.shared '6 imports'
-  features.blocks.data-view -[uses]-> features.widgets.slash-menu '1 import, 1 type-only'
-  features.blocks.data-view -[uses]-> framework.global_ '2 imports, 1 type-only'
-  features.blocks.data-view -[uses]-> framework.std '5 imports, 2 type-only'
-  features.blocks.data-view -[uses]-> framework.store '5 imports, 3 type-only'
-  features.blocks.data-view -[uses]-> model_.model_ '3 imports, 2 type-only'
-  features.blocks.database -[uses]-> features.components '8 imports, 1 type-only'
-  features.blocks.database -[uses]-> features.data-view '42 imports, 10 type-only'
-  features.blocks.database -[uses]-> features.ext-loader '2 imports'
-  features.blocks.database -[uses]-> features.inlines.preset '3 imports'
-  features.blocks.database -[uses]-> features.inlines.reference '1 import'
-  features.blocks.database -[uses]-> features.rich-text '2 imports, 2 type-only'
-  features.blocks.database -[uses]-> features.shared '41 imports, 7 type-only'
-  features.blocks.database -[uses]-> features.widgets.drag-handle '1 import'
-  features.blocks.database -[uses]-> features.widgets.slash-menu '2 imports, 1 type-only'
-  features.blocks.database -[uses]-> framework.global_ '16 imports'
-  features.blocks.database -[uses]-> framework.std '18 imports, 8 type-only'
-  features.blocks.database -[uses]-> framework.store '23 imports, 15 type-only'
-  features.blocks.database -[uses]-> model_.model_ '19 imports, 11 type-only'
   features.blocks.divider -[uses]-> features.components '1 import'
   features.blocks.divider -[uses]-> features.ext-loader '2 imports'
   features.blocks.divider -[uses]-> features.rich-text '1 import'
@@ -3676,7 +3659,6 @@ model {
   features.blocks.paragraph -[uses]-> model_.model_ '17 imports, 4 type-only'
   features.blocks.root -[uses]-> features.blocks.attachment '2 imports'
   features.blocks.root -[uses]-> features.blocks.bookmark '2 imports'
-  features.blocks.root -[uses]-> features.blocks.database '1 import'
   features.blocks.root -[uses]-> features.blocks.edgeless-text '1 import'
   features.blocks.root -[uses]-> features.blocks.embed '3 imports'
   features.blocks.root -[uses]-> features.blocks.frame '9 imports'
@@ -3685,7 +3667,8 @@ model {
   features.blocks.root -[uses]-> features.blocks.paragraph '2 imports'
   features.blocks.root -[uses]-> features.blocks.surface '18 imports, 1 type-only'
   features.blocks.root -[uses]-> features.components '5 imports, 1 type-only'
-  features.blocks.root -[uses]-> features.data-view '1 import'
+  features.blocks.root -[uses]-> features.database.block '1 import'
+  features.blocks.root -[uses]-> features.database.engine '1 import'
   features.blocks.root -[uses]-> features.ext-loader '2 imports'
   features.blocks.root -[uses]-> features.gfx.brush '1 import'
   features.blocks.root -[uses]-> features.gfx.connector '2 imports'
@@ -3739,25 +3722,48 @@ model {
   features.components -[uses]-> framework.store '8 imports, 7 type-only'
   features.components -[uses]-> framework.sync '1 import, 1 type-only'
   features.components -[uses]-> model_.model_ '16 imports, 5 type-only'
-  features.data-view -[uses]-> features.components '74 imports, 4 type-only'
-  features.data-view -[uses]-> features.shared '84 imports, 42 type-only'
-  features.data-view -[uses]-> framework.global_ '97 imports, 5 type-only'
-  features.data-view -[uses]-> framework.std '82 imports, 11 type-only'
-  features.data-view -[uses]-> framework.store '13 imports, 4 type-only'
-  features.data-view -[uses]-> model_.model_ '7 imports, 4 type-only'
-  features.database-editor -[uses]-> features.blocks.database '9 imports, 2 type-only'
-  features.database-editor -[uses]-> features.components '6 imports'
-  features.database-editor -[uses]-> features.data-view '8 imports, 2 type-only'
-  features.database-editor -[uses]-> features.ext-loader '1 import'
-  features.database-editor -[uses]-> features.shared '16 imports, 3 type-only'
-  features.database-editor -[uses]-> features.widgets.slash-menu '2 imports, 1 type-only'
-  features.database-editor -[uses]-> framework.global_ '3 imports'
-  features.database-editor -[uses]-> framework.std '8 imports, 5 type-only'
-  features.database-editor -[uses]-> framework.store '1 import'
+  features.database.block -[uses]-> features.components '8 imports, 1 type-only'
+  features.database.block -[uses]-> features.database.engine '42 imports, 10 type-only'
+  features.database.block -[uses]-> features.ext-loader '2 imports'
+  features.database.block -[uses]-> features.inlines.preset '3 imports'
+  features.database.block -[uses]-> features.inlines.reference '1 import'
+  features.database.block -[uses]-> features.rich-text '2 imports, 2 type-only'
+  features.database.block -[uses]-> features.shared '41 imports, 7 type-only'
+  features.database.block -[uses]-> features.widgets.drag-handle '1 import'
+  features.database.block -[uses]-> features.widgets.slash-menu '2 imports, 1 type-only'
+  features.database.block -[uses]-> framework.global_ '16 imports'
+  features.database.block -[uses]-> framework.std '18 imports, 8 type-only'
+  features.database.block -[uses]-> framework.store '23 imports, 15 type-only'
+  features.database.block -[uses]-> model_.model_ '19 imports, 11 type-only'
+  features.database.editor -[uses]-> features.components '6 imports'
+  features.database.editor -[uses]-> features.database.block '9 imports, 2 type-only'
+  features.database.editor -[uses]-> features.database.engine '8 imports, 2 type-only'
+  features.database.editor -[uses]-> features.ext-loader '1 import'
+  features.database.editor -[uses]-> features.shared '16 imports, 3 type-only'
+  features.database.editor -[uses]-> features.widgets.slash-menu '2 imports, 1 type-only'
+  features.database.editor -[uses]-> framework.global_ '3 imports'
+  features.database.editor -[uses]-> framework.std '8 imports, 5 type-only'
+  features.database.editor -[uses]-> framework.store '1 import'
+  features.database.engine -[uses]-> features.components '74 imports, 4 type-only'
+  features.database.engine -[uses]-> features.shared '84 imports, 42 type-only'
+  features.database.engine -[uses]-> framework.global_ '97 imports, 5 type-only'
+  features.database.engine -[uses]-> framework.std '82 imports, 11 type-only'
+  features.database.engine -[uses]-> framework.store '13 imports, 4 type-only'
+  features.database.engine -[uses]-> model_.model_ '7 imports, 4 type-only'
+  features.database.view-block -[uses]-> features.components '5 imports'
+  features.database.view-block -[uses]-> features.database.block '3 imports'
+  features.database.view-block -[uses]-> features.database.engine '11 imports, 4 type-only'
+  features.database.view-block -[uses]-> features.ext-loader '2 imports'
+  features.database.view-block -[uses]-> features.shared '6 imports'
+  features.database.view-block -[uses]-> features.widgets.slash-menu '1 import, 1 type-only'
+  features.database.view-block -[uses]-> framework.global_ '2 imports, 1 type-only'
+  features.database.view-block -[uses]-> framework.std '5 imports, 2 type-only'
+  features.database.view-block -[uses]-> framework.store '5 imports, 3 type-only'
+  features.database.view-block -[uses]-> model_.model_ '3 imports, 2 type-only'
   features.ext-loader -[uses]-> framework.global_ '3 imports'
   features.ext-loader -[uses]-> framework.store '4 imports, 4 type-only'
   features.foundation -[uses]-> features.components '31 imports'
-  features.foundation -[uses]-> features.data-view '1 import'
+  features.foundation -[uses]-> features.database.engine '1 import'
   features.foundation -[uses]-> features.ext-loader '2 imports'
   features.foundation -[uses]-> features.rich-text '1 import'
   features.foundation -[uses]-> features.shared '5 imports'
@@ -3771,7 +3777,7 @@ model {
   features.fragments.adapter-panel -[uses]-> framework.store '2 imports, 2 type-only'
   features.fragments.doc-title -[uses]-> features.blocks.surface '1 import'
   features.fragments.doc-title -[uses]-> features.components '1 import'
-  features.fragments.doc-title -[uses]-> features.data-view '3 imports'
+  features.fragments.doc-title -[uses]-> features.database.engine '3 imports'
   features.fragments.doc-title -[uses]-> features.ext-loader '1 import'
   features.fragments.doc-title -[uses]-> features.inlines.reference '1 import'
   features.fragments.doc-title -[uses]-> features.rich-text '1 import'
@@ -4153,7 +4159,6 @@ model {
   features.widgets.frame-title -[uses]-> framework.std '8 imports, 1 type-only'
   features.widgets.frame-title -[uses]-> model_.model_ '4 imports, 2 type-only'
   features.widgets.keyboard-toolbar -[uses]-> features.blocks.attachment '1 import'
-  features.widgets.keyboard-toolbar -[uses]-> features.blocks.database '1 import'
   features.widgets.keyboard-toolbar -[uses]-> features.blocks.embed '1 import'
   features.widgets.keyboard-toolbar -[uses]-> features.blocks.image '1 import'
   features.widgets.keyboard-toolbar -[uses]-> features.blocks.latex '1 import'
@@ -4163,7 +4168,8 @@ model {
   features.widgets.keyboard-toolbar -[uses]-> features.blocks.surface '1 import'
   features.widgets.keyboard-toolbar -[uses]-> features.blocks.surface-ref '1 import'
   features.widgets.keyboard-toolbar -[uses]-> features.components '2 imports'
-  features.widgets.keyboard-toolbar -[uses]-> features.data-view '1 import'
+  features.widgets.keyboard-toolbar -[uses]-> features.database.block '1 import'
+  features.widgets.keyboard-toolbar -[uses]-> features.database.engine '1 import'
   features.widgets.keyboard-toolbar -[uses]-> features.ext-loader '1 import'
   features.widgets.keyboard-toolbar -[uses]-> features.fragments.doc-title '1 import'
   features.widgets.keyboard-toolbar -[uses]-> features.inlines.latex '1 import'
@@ -4221,10 +4227,10 @@ model {
   features.widgets.thread-marks -[uses]-> features.widgets.edgeless-toolbar '1 import'
   features.widgets.thread-marks -[uses]-> framework.std '7 imports, 1 type-only'
   features.widgets.thread-marks -[uses]-> framework.store '2 imports, 2 type-only'
-  features.widgets.toolbar -[uses]-> features.blocks.database '1 import'
   features.widgets.toolbar -[uses]-> features.blocks.surface '1 import'
   features.widgets.toolbar -[uses]-> features.blocks.table '1 import'
   features.widgets.toolbar -[uses]-> features.components '2 imports'
+  features.widgets.toolbar -[uses]-> features.database.block '1 import'
   features.widgets.toolbar -[uses]-> features.ext-loader '1 import'
   features.widgets.toolbar -[uses]-> features.shared '5 imports, 1 type-only'
   features.widgets.toolbar -[uses]-> framework.global_ '3 imports'
@@ -4243,7 +4249,7 @@ model {
   model_.model_ -[uses]-> framework.store '36 imports, 1 type-only'
   tooling.integration-test -[uses]-> assembly.all '10 imports, 2 type-only'
   tooling.playground -[uses]-> assembly.all '97 imports, 19 type-only'
-  tooling.playground -[uses]-> features.data-view '3 imports'
+  tooling.playground -[uses]-> features.database.engine '3 imports'
   tooling.playground -[uses]-> features.shared '5 imports, 1 type-only'
   tooling.playground -[uses]-> framework.sync '3 imports, 3 type-only'
   tooling.playground -[uses]-> model_.model_ '3 imports, 1 type-only'
@@ -4254,8 +4260,6 @@ model {
   assembly.all.blocks -[imports]-> features.blocks.bookmark.src '3 imports'
   assembly.all.blocks -[imports]-> features.blocks.callout.src '3 imports'
   assembly.all.blocks -[imports]-> features.blocks.code.src '3 imports'
-  assembly.all.blocks -[imports]-> features.blocks.data-view.src '3 imports'
-  assembly.all.blocks -[imports]-> features.blocks.database.src '3 imports'
   assembly.all.blocks -[imports]-> features.blocks.divider.src '3 imports'
   assembly.all.blocks -[imports]-> features.blocks.edgeless-text.src '3 imports'
   assembly.all.blocks -[imports]-> features.blocks.embed-doc.src '3 imports'
@@ -4270,6 +4274,8 @@ model {
   assembly.all.blocks -[imports]-> features.blocks.surface-ref.src '3 imports'
   assembly.all.blocks -[imports]-> features.blocks.surface.src '3 imports'
   assembly.all.blocks -[imports]-> features.blocks.table.src '3 imports'
+  assembly.all.blocks -[imports]-> features.database.block.src '3 imports'
+  assembly.all.blocks -[imports]-> features.database.view-block.src '3 imports'
   assembly.all.components -[imports]-> features.components.block-selection '1 import'
   assembly.all.components -[imports]-> features.components.block-zero-width '1 import'
   assembly.all.components -[imports]-> features.components.caption '1 import'
@@ -4303,15 +4309,13 @@ model {
   assembly.all.components -[imports]-> features.components.toolbar '1 import'
   assembly.all.components -[imports]-> features.components.tooltip-content-with-shortcut '1 import'
   assembly.all.components -[imports]-> features.components.view-dropdown-menu '1 import'
-  assembly.all.data-view -[imports]-> features.data-view.src '2 imports'
+  assembly.all.data-view -[imports]-> features.database.engine.src '2 imports'
   assembly.all.ext-loader -[imports]-> features.ext-loader.src '1 import'
   assembly.all.extensions -[imports]-> assembly.all.src '3 imports, 1 type-only'
   assembly.all.extensions -[imports]-> features.blocks.attachment.src '2 imports'
   assembly.all.extensions -[imports]-> features.blocks.bookmark.src '2 imports'
   assembly.all.extensions -[imports]-> features.blocks.callout.src '2 imports'
   assembly.all.extensions -[imports]-> features.blocks.code.src '2 imports'
-  assembly.all.extensions -[imports]-> features.blocks.data-view.src '2 imports'
-  assembly.all.extensions -[imports]-> features.blocks.database.src '2 imports'
   assembly.all.extensions -[imports]-> features.blocks.divider.src '2 imports'
   assembly.all.extensions -[imports]-> features.blocks.edgeless-text.src '2 imports'
   assembly.all.extensions -[imports]-> features.blocks.embed-doc.src '2 imports'
@@ -4326,7 +4330,9 @@ model {
   assembly.all.extensions -[imports]-> features.blocks.surface-ref.src '2 imports'
   assembly.all.extensions -[imports]-> features.blocks.surface.src '2 imports'
   assembly.all.extensions -[imports]-> features.blocks.table.src '2 imports'
-  assembly.all.extensions -[imports]-> features.database-editor.src '1 import'
+  assembly.all.extensions -[imports]-> features.database.block.src '2 imports'
+  assembly.all.extensions -[imports]-> features.database.editor.src '1 import'
+  assembly.all.extensions -[imports]-> features.database.view-block.src '2 imports'
   assembly.all.extensions -[imports]-> features.ext-loader.src '2 imports'
   assembly.all.extensions -[imports]-> features.foundation.src '2 imports'
   assembly.all.extensions -[imports]-> features.fragments.adapter-panel.src '1 import'
@@ -4428,8 +4434,6 @@ model {
   assembly.all.src -[imports]-> features.blocks.bookmark.src '1 import'
   assembly.all.src -[imports]-> features.blocks.callout.src '1 import'
   assembly.all.src -[imports]-> features.blocks.code.src '1 import'
-  assembly.all.src -[imports]-> features.blocks.data-view.src '1 import'
-  assembly.all.src -[imports]-> features.blocks.database.src '1 import'
   assembly.all.src -[imports]-> features.blocks.embed-doc.src '1 import'
   assembly.all.src -[imports]-> features.blocks.embed.src '1 import'
   assembly.all.src -[imports]-> features.blocks.frame.src '3 imports'
@@ -4455,8 +4459,10 @@ model {
   assembly.all.src -[imports]-> features.components.toggle-button '1 import, 1 type-only'
   assembly.all.src -[imports]-> features.components.toolbar '1 import, 1 type-only'
   assembly.all.src -[imports]-> features.components.view-dropdown-menu '1 import, 1 type-only'
-  assembly.all.src -[imports]-> features.data-view.src '1 import'
-  assembly.all.src -[imports]-> features.database-editor.src '1 import'
+  assembly.all.src -[imports]-> features.database.block.src '1 import'
+  assembly.all.src -[imports]-> features.database.editor.src '1 import'
+  assembly.all.src -[imports]-> features.database.engine.src '1 import'
+  assembly.all.src -[imports]-> features.database.view-block.src '1 import'
   assembly.all.src -[imports]-> features.fragments.adapter-panel.src '1 import'
   assembly.all.src -[imports]-> features.fragments.doc-title.src '2 imports'
   assembly.all.src -[imports]-> features.fragments.frame-panel.src '2 imports'
@@ -4711,139 +4717,6 @@ model {
   features.blocks.code.turbo -[imports]-> framework.std.gfx '1 import'
   features.blocks.code.turbo -[imports]-> framework.std.src '1 import, 1 type-only'
   features.blocks.code.turbo -[imports]-> framework.store.src '1 import, 1 type-only'
-  features.blocks.data-view.block-meta -[imports]-> features.data-view.src '1 import, 1 type-only'
-  features.blocks.data-view.block-meta -[imports]-> framework.global_.disposable '1 import, 1 type-only'
-  features.blocks.data-view.block-meta -[imports]-> framework.store.src '1 import, 1 type-only'
-  features.blocks.data-view.block-meta -[imports]-> model_.model_.src '1 import'
-  features.blocks.data-view.columns -[imports]-> features.blocks.database.src '1 import'
-  features.blocks.data-view.columns -[imports]-> features.data-view.property-presets '1 import'
-  features.blocks.data-view.columns -[imports]-> features.data-view.src '1 import, 1 type-only'
-  features.blocks.data-view.configs -[imports]-> features.blocks.data-view.src '1 import, 1 type-only'
-  features.blocks.data-view.configs -[imports]-> features.data-view.src '1 import'
-  features.blocks.data-view.configs -[imports]-> features.shared.services '1 import'
-  features.blocks.data-view.configs -[imports]-> features.shared.utils '1 import'
-  features.blocks.data-view.configs -[imports]-> features.widgets.slash-menu.src '1 import, 1 type-only'
-  features.blocks.data-view.src -[imports]-> features.blocks.data-view.block-meta '2 imports, 1 type-only'
-  features.blocks.data-view.src -[imports]-> features.blocks.data-view.columns '1 import'
-  features.blocks.data-view.src -[imports]-> features.blocks.database.src '2 imports'
-  features.blocks.data-view.src -[imports]-> features.components.caption '1 import'
-  features.blocks.data-view.src -[imports]-> features.components.context-menu '1 import'
-  features.blocks.data-view.src -[imports]-> features.components.icons_ '1 import'
-  features.blocks.data-view.src -[imports]-> features.components.peek '1 import'
-  features.blocks.data-view.src -[imports]-> features.components.toast '1 import'
-  features.blocks.data-view.src -[imports]-> features.data-view.property-presets '1 import'
-  features.blocks.data-view.src -[imports]-> features.data-view.src '3 imports, 1 type-only'
-  features.blocks.data-view.src -[imports]-> features.data-view.widget-presets '1 import'
-  features.blocks.data-view.src -[imports]-> features.ext-loader.src '2 imports'
-  features.blocks.data-view.src -[imports]-> features.shared.consts '1 import'
-  features.blocks.data-view.src -[imports]-> features.shared.services '1 import'
-  features.blocks.data-view.src -[imports]-> features.shared.utils '2 imports'
-  features.blocks.data-view.src -[imports]-> framework.global_.exceptions '1 import'
-  features.blocks.data-view.src -[imports]-> framework.std.inline '1 import'
-  features.blocks.data-view.src -[imports]-> framework.std.src '4 imports, 2 type-only'
-  features.blocks.data-view.src -[imports]-> framework.store.src '4 imports, 2 type-only'
-  features.blocks.data-view.src -[imports]-> model_.model_.src '2 imports, 2 type-only'
-  features.blocks.data-view.views_ -[imports]-> features.data-view.src '1 import, 1 type-only'
-  features.blocks.data-view.views_ -[imports]-> features.data-view.view-presets '1 import'
-  features.blocks.database.adapters -[imports]-> features.blocks.database.properties '1 import'
-  features.blocks.database.adapters -[imports]-> features.data-view.src '1 import'
-  features.blocks.database.adapters -[imports]-> features.shared.adapters '4 imports'
-  features.blocks.database.adapters -[imports]-> framework.store.src '3 imports, 2 type-only'
-  features.blocks.database.adapters -[imports]-> model_.model_.src '5 imports, 1 type-only'
-  features.blocks.database.components -[imports]-> features.blocks.database.src '2 imports, 1 type-only'
-  features.blocks.database.components -[imports]-> features.components.context-menu '1 import'
-  features.blocks.database.components -[imports]-> features.components.src '1 import'
-  features.blocks.database.components -[imports]-> features.data-view.src '2 imports, 1 type-only'
-  features.blocks.database.components -[imports]-> features.shared.services '2 imports'
-  features.blocks.database.components -[imports]-> features.shared.theme '1 import'
-  features.blocks.database.components -[imports]-> features.shared.utils '1 import'
-  features.blocks.database.components -[imports]-> framework.global_.lit '2 imports'
-  features.blocks.database.components -[imports]-> framework.std.src '3 imports'
-  features.blocks.database.components -[imports]-> framework.store.src '1 import, 1 type-only'
-  features.blocks.database.configs -[imports]-> features.blocks.database.src '3 imports'
-  features.blocks.database.configs -[imports]-> features.data-view.view-presets '1 import'
-  features.blocks.database.configs -[imports]-> features.shared.commands '1 import'
-  features.blocks.database.configs -[imports]-> features.shared.services '1 import'
-  features.blocks.database.configs -[imports]-> features.shared.utils '1 import'
-  features.blocks.database.configs -[imports]-> features.widgets.slash-menu.src '1 import, 1 type-only'
-  features.blocks.database.configs -[imports]-> framework.std.src '1 import, 1 type-only'
-  features.blocks.database.context -[imports]-> framework.global_.di '1 import'
-  features.blocks.database.context -[imports]-> framework.std.src '1 import, 1 type-only'
-  features.blocks.database.detail-panel -[imports]-> features.blocks.database.utils '1 import'
-  features.blocks.database.detail-panel -[imports]-> features.data-view.src '2 imports, 2 type-only'
-  features.blocks.database.detail-panel -[imports]-> features.data-view.view-presets '1 import, 1 type-only'
-  features.blocks.database.detail-panel -[imports]-> features.inlines.preset.src '1 import'
-  features.blocks.database.detail-panel -[imports]-> features.shared.consts '1 import'
-  features.blocks.database.detail-panel -[imports]-> features.shared.services '1 import'
-  features.blocks.database.detail-panel -[imports]-> features.shared.types '1 import, 1 type-only'
-  features.blocks.database.detail-panel -[imports]-> features.shared.utils '1 import'
-  features.blocks.database.detail-panel -[imports]-> framework.global_.lit '2 imports'
-  features.blocks.database.detail-panel -[imports]-> framework.std.src '2 imports'
-  features.blocks.database.detail-panel -[imports]-> framework.store.src '1 import, 1 type-only'
-  features.blocks.database.detail-panel -[imports]-> model_.model_.src '1 import'
-  features.blocks.database.properties -[imports]-> features.blocks.database.context '5 imports'
-  features.blocks.database.properties -[imports]-> features.blocks.database.src '2 imports, 2 type-only'
-  features.blocks.database.properties -[imports]-> features.blocks.database.utils '3 imports'
-  features.blocks.database.properties -[imports]-> features.data-view.property-presets '6 imports'
-  features.blocks.database.properties -[imports]-> features.data-view.src '14 imports, 2 type-only'
-  features.blocks.database.properties -[imports]-> features.data-view.view-presets '1 import'
-  features.blocks.database.properties -[imports]-> features.inlines.preset.src '2 imports'
-  features.blocks.database.properties -[imports]-> features.inlines.reference.src '1 import'
-  features.blocks.database.properties -[imports]-> features.rich-text.src '2 imports, 2 type-only'
-  features.blocks.database.properties -[imports]-> features.shared.services '3 imports'
-  features.blocks.database.properties -[imports]-> features.shared.theme '2 imports'
-  features.blocks.database.properties -[imports]-> features.shared.types '3 imports, 3 type-only'
-  features.blocks.database.properties -[imports]-> features.shared.utils '4 imports'
-  features.blocks.database.properties -[imports]-> framework.global_.env '2 imports'
-  features.blocks.database.properties -[imports]-> framework.global_.gfx '1 import'
-  features.blocks.database.properties -[imports]-> framework.std.inline '1 import, 1 type-only'
-  features.blocks.database.properties -[imports]-> framework.store.src '5 imports, 1 type-only'
-  features.blocks.database.service -[imports]-> features.data-view.src '1 import, 1 type-only'
-  features.blocks.database.service -[imports]-> features.shared.services '1 import'
-  features.blocks.database.service -[imports]-> framework.global_.di '4 imports'
-  features.blocks.database.service -[imports]-> framework.std.src '1 import, 1 type-only'
-  features.blocks.database.service -[imports]-> framework.store.src '3 imports, 3 type-only'
-  features.blocks.database.service -[imports]-> model_.model_.src '3 imports, 2 type-only'
-  features.blocks.database.src -[imports]-> features.blocks.database.adapters '1 import'
-  features.blocks.database.src -[imports]-> features.blocks.database.components '4 imports'
-  features.blocks.database.src -[imports]-> features.blocks.database.configs '1 import'
-  features.blocks.database.src -[imports]-> features.blocks.database.context '1 import'
-  features.blocks.database.src -[imports]-> features.blocks.database.detail-panel '4 imports'
-  features.blocks.database.src -[imports]-> features.blocks.database.properties '7 imports'
-  features.blocks.database.src -[imports]-> features.blocks.database.service '2 imports'
-  features.blocks.database.src -[imports]-> features.blocks.database.utils '4 imports'
-  features.blocks.database.src -[imports]-> features.blocks.database.views_ '1 import'
-  features.blocks.database.src -[imports]-> features.components.caption '1 import'
-  features.blocks.database.src -[imports]-> features.components.context-menu '2 imports, 1 type-only'
-  features.blocks.database.src -[imports]-> features.components.drop-indicator '1 import'
-  features.blocks.database.src -[imports]-> features.components.peek '1 import'
-  features.blocks.database.src -[imports]-> features.components.toast '1 import'
-  features.blocks.database.src -[imports]-> features.data-view.property-presets '1 import'
-  features.blocks.database.src -[imports]-> features.data-view.src '7 imports, 2 type-only'
-  features.blocks.database.src -[imports]-> features.data-view.view-presets '2 imports'
-  features.blocks.database.src -[imports]-> features.data-view.widget-presets '1 import'
-  features.blocks.database.src -[imports]-> features.ext-loader.src '2 imports'
-  features.blocks.database.src -[imports]-> features.shared.commands '1 import'
-  features.blocks.database.src -[imports]-> features.shared.consts '1 import'
-  features.blocks.database.src -[imports]-> features.shared.services '4 imports, 1 type-only'
-  features.blocks.database.src -[imports]-> features.shared.theme '1 import'
-  features.blocks.database.src -[imports]-> features.shared.utils '4 imports, 1 type-only'
-  features.blocks.database.src -[imports]-> features.widgets.drag-handle.src '1 import'
-  features.blocks.database.src -[imports]-> features.widgets.slash-menu.src '1 import'
-  features.blocks.database.src -[imports]-> framework.global_.di '2 imports'
-  features.blocks.database.src -[imports]-> framework.global_.disposable '1 import'
-  features.blocks.database.src -[imports]-> framework.global_.gfx '1 import'
-  features.blocks.database.src -[imports]-> framework.std.inline '1 import'
-  features.blocks.database.src -[imports]-> framework.std.src '8 imports, 4 type-only'
-  features.blocks.database.src -[imports]-> framework.store.src '8 imports, 5 type-only'
-  features.blocks.database.src -[imports]-> model_.model_.src '9 imports, 7 type-only'
-  features.blocks.database.utils -[imports]-> features.blocks.database.service '1 import, 1 type-only'
-  features.blocks.database.utils -[imports]-> features.shared.types '1 import, 1 type-only'
-  features.blocks.database.utils -[imports]-> features.shared.utils '1 import'
-  features.blocks.database.utils -[imports]-> framework.store.src '2 imports, 2 type-only'
-  features.blocks.database.utils -[imports]-> model_.model_.src '1 import, 1 type-only'
-  features.blocks.database.views_ -[imports]-> features.data-view.src '1 import, 1 type-only'
-  features.blocks.database.views_ -[imports]-> features.data-view.view-presets '1 import'
   features.blocks.divider.adapters -[imports]-> features.shared.adapters '4 imports'
   features.blocks.divider.adapters -[imports]-> framework.store.src '4 imports, 1 type-only'
   features.blocks.divider.adapters -[imports]-> model_.model_.src '4 imports'
@@ -5376,14 +5249,14 @@ model {
   features.blocks.root.commands -[imports]-> framework.std.src '6 imports, 3 type-only'
   features.blocks.root.commands -[imports]-> framework.store.src '1 import, 1 type-only'
   features.blocks.root.commands -[imports]-> model_.model_.src '1 import, 1 type-only'
-  features.blocks.root.configs -[imports]-> features.blocks.database.src '1 import'
   features.blocks.root.configs -[imports]-> features.blocks.embed.src '1 import'
   features.blocks.root.configs -[imports]-> features.blocks.note.src '1 import'
   features.blocks.root.configs -[imports]-> features.blocks.root.src '1 import'
   features.blocks.root.configs -[imports]-> features.components.highlight-dropdown-menu '1 import, 1 type-only'
   features.blocks.root.configs -[imports]-> features.components.toast '1 import'
   features.blocks.root.configs -[imports]-> features.components.toolbar '1 import'
-  features.blocks.root.configs -[imports]-> features.data-view.view-presets '1 import'
+  features.blocks.root.configs -[imports]-> features.database.block.src '1 import'
+  features.blocks.root.configs -[imports]-> features.database.engine.view-presets '1 import'
   features.blocks.root.configs -[imports]-> features.inlines.preset.src '1 import'
   features.blocks.root.configs -[imports]-> features.rich-text.src '1 import'
   features.blocks.root.configs -[imports]-> features.shared.commands '1 import'
@@ -5809,113 +5682,246 @@ model {
   features.components.view-dropdown-menu -[imports]-> features.shared.services '1 import'
   features.components.view-dropdown-menu -[imports]-> framework.global_.lit '1 import'
   features.components.view-dropdown-menu -[imports]-> framework.std.src '1 import'
-  features.data-view.core -[imports]-> features.components.color-picker '2 imports'
-  features.data-view.core -[imports]-> features.components.context-menu '18 imports, 4 type-only'
-  features.data-view.core -[imports]-> features.components.icons_ '1 import'
-  features.data-view.core -[imports]-> features.components.src '1 import'
-  features.data-view.core -[imports]-> features.data-view.src '7 imports'
-  features.data-view.core -[imports]-> features.data-view.view-presets '5 imports, 3 type-only'
-  features.data-view.core -[imports]-> features.shared.services '13 imports, 6 type-only'
-  features.data-view.core -[imports]-> features.shared.theme '5 imports'
-  features.data-view.core -[imports]-> features.shared.types '12 imports, 12 type-only'
-  features.data-view.core -[imports]-> features.shared.utils '10 imports, 8 type-only'
-  features.data-view.core -[imports]-> framework.global_.di '10 imports, 1 type-only'
-  features.data-view.core -[imports]-> framework.global_.disposable '4 imports, 4 type-only'
-  features.data-view.core -[imports]-> framework.global_.env '3 imports'
-  features.data-view.core -[imports]-> framework.global_.exceptions '3 imports'
-  features.data-view.core -[imports]-> framework.global_.lit '19 imports'
-  features.data-view.core -[imports]-> framework.std.src '27 imports, 7 type-only'
-  features.data-view.core -[imports]-> framework.store.src '6 imports, 2 type-only'
-  features.data-view.core -[imports]-> model_.model_.src '6 imports, 3 type-only'
-  features.data-view.property-presets -[imports]-> features.components.context-menu '3 imports'
-  features.data-view.property-presets -[imports]-> features.components.date-picker '1 import'
-  features.data-view.property-presets -[imports]-> features.components.portal '1 import'
-  features.data-view.property-presets -[imports]-> features.data-view.core '50 imports, 2 type-only'
-  features.data-view.property-presets -[imports]-> features.shared.services '1 import'
-  features.data-view.property-presets -[imports]-> features.shared.theme '1 import'
-  features.data-view.property-presets -[imports]-> framework.global_.env '2 imports'
-  features.data-view.property-presets -[imports]-> framework.global_.gfx '1 import'
-  features.data-view.property-presets -[imports]-> framework.store.src '2 imports'
-  features.data-view.src -[imports]-> features.data-view.core '1 import'
-  features.data-view.src -[imports]-> features.data-view.property-presets '1 import'
-  features.data-view.src -[imports]-> features.data-view.view-presets '1 import'
-  features.data-view.src -[imports]-> features.data-view.widget-presets '1 import'
-  features.data-view.src -[imports]-> features.shared.services '1 import, 1 type-only'
-  features.data-view.view-presets -[imports]-> features.components.context-menu '32 imports'
-  features.data-view.view-presets -[imports]-> features.components.src '3 imports'
-  features.data-view.view-presets -[imports]-> features.data-view.core '225 imports, 68 type-only'
-  features.data-view.view-presets -[imports]-> features.data-view.property-presets '7 imports'
-  features.data-view.view-presets -[imports]-> features.data-view.src '11 imports'
-  features.data-view.view-presets -[imports]-> features.data-view.widget-presets '2 imports'
-  features.data-view.view-presets -[imports]-> features.shared.services '3 imports'
-  features.data-view.view-presets -[imports]-> features.shared.theme '10 imports'
-  features.data-view.view-presets -[imports]-> features.shared.types '2 imports, 2 type-only'
-  features.data-view.view-presets -[imports]-> features.shared.utils '17 imports, 12 type-only'
-  features.data-view.view-presets -[imports]-> framework.global_.di '1 import'
-  features.data-view.view-presets -[imports]-> framework.global_.disposable '3 imports'
-  features.data-view.view-presets -[imports]-> framework.global_.env '1 import'
-  features.data-view.view-presets -[imports]-> framework.global_.exceptions '2 imports'
-  features.data-view.view-presets -[imports]-> framework.global_.gfx '1 import'
-  features.data-view.view-presets -[imports]-> framework.global_.lit '38 imports'
-  features.data-view.view-presets -[imports]-> framework.std.src '43 imports, 4 type-only'
-  features.data-view.view-presets -[imports]-> framework.store.src '5 imports, 2 type-only'
-  features.data-view.widget-presets -[imports]-> features.components.context-menu '12 imports'
-  features.data-view.widget-presets -[imports]-> features.data-view.core '91 imports, 24 type-only'
-  features.data-view.widget-presets -[imports]-> features.data-view.src '9 imports'
-  features.data-view.widget-presets -[imports]-> features.data-view.view-presets '2 imports, 2 type-only'
-  features.data-view.widget-presets -[imports]-> features.shared.services '4 imports, 1 type-only'
-  features.data-view.widget-presets -[imports]-> features.shared.theme '5 imports'
-  features.data-view.widget-presets -[imports]-> framework.global_.di '1 import'
-  features.data-view.widget-presets -[imports]-> framework.global_.env '3 imports'
-  features.data-view.widget-presets -[imports]-> framework.global_.lit '5 imports'
-  features.data-view.widget-presets -[imports]-> framework.std.src '12 imports'
-  features.data-view.widget-presets -[imports]-> model_.model_.src '1 import, 1 type-only'
-  features.database-editor.database-page -[imports]-> features.components.context-menu '1 import'
-  features.database-editor.database-page -[imports]-> features.data-view.src '1 import'
-  features.database-editor.database-page -[imports]-> features.database-editor.src '2 imports'
-  features.database-editor.database-page -[imports]-> features.database-editor.view-settings '1 import'
-  features.database-editor.database-page -[imports]-> features.database-editor.view-transfer '1 import'
-  features.database-editor.database-page -[imports]-> features.shared.services '2 imports'
-  features.database-editor.database-page -[imports]-> framework.global_.di '1 import'
-  features.database-editor.database-page -[imports]-> framework.global_.lit '1 import'
-  features.database-editor.database-page -[imports]-> framework.std.src '3 imports, 1 type-only'
-  features.database-editor.properties-panel -[imports]-> features.blocks.database.src '1 import'
-  features.database-editor.properties-panel -[imports]-> features.data-view.src '1 import'
-  features.database-editor.properties-panel -[imports]-> features.database-editor.src '1 import'
-  features.database-editor.properties-panel -[imports]-> features.shared.services '1 import'
-  features.database-editor.properties-panel -[imports]-> features.shared.styles '1 import'
-  features.database-editor.properties-panel -[imports]-> framework.global_.lit '1 import'
-  features.database-editor.properties-panel -[imports]-> framework.std.src '1 import'
-  features.database-editor.src -[imports]-> features.blocks.database.src '3 imports'
-  features.database-editor.src -[imports]-> features.components.context-menu '3 imports'
-  features.database-editor.src -[imports]-> features.data-view.src '1 import'
-  features.database-editor.src -[imports]-> features.database-editor.database-page '3 imports'
-  features.database-editor.src -[imports]-> features.database-editor.properties-panel '2 imports'
-  features.database-editor.src -[imports]-> features.database-editor.view-bar '1 import'
-  features.database-editor.src -[imports]-> features.database-editor.view-settings '1 import'
-  features.database-editor.src -[imports]-> features.ext-loader.src '1 import'
-  features.database-editor.src -[imports]-> features.shared.commands '1 import'
-  features.database-editor.src -[imports]-> features.shared.services '5 imports'
-  features.database-editor.src -[imports]-> features.shared.utils '1 import'
-  features.database-editor.src -[imports]-> features.widgets.slash-menu.src '2 imports, 1 type-only'
-  features.database-editor.src -[imports]-> framework.std.src '3 imports, 3 type-only'
-  features.database-editor.view-bar -[imports]-> features.blocks.database.src '2 imports, 1 type-only'
-  features.database-editor.view-bar -[imports]-> features.components.context-menu '1 import'
-  features.database-editor.view-bar -[imports]-> features.data-view.src '2 imports, 1 type-only'
-  features.database-editor.view-bar -[imports]-> features.database-editor.src '1 import'
-  features.database-editor.view-bar -[imports]-> features.database-editor.view-transfer '1 import'
-  features.database-editor.view-bar -[imports]-> features.shared.services '1 import'
-  features.database-editor.view-settings -[imports]-> features.blocks.database.src '1 import'
-  features.database-editor.view-settings -[imports]-> features.components.context-menu '1 import'
-  features.database-editor.view-settings -[imports]-> features.data-view.src '1 import, 1 type-only'
-  features.database-editor.view-settings -[imports]-> features.database-editor.src '2 imports'
-  features.database-editor.view-settings -[imports]-> features.database-editor.view-transfer '2 imports'
-  features.database-editor.view-settings -[imports]-> features.shared.services '1 import'
-  features.database-editor.view-settings -[imports]-> framework.std.src '1 import, 1 type-only'
-  features.database-editor.view-transfer -[imports]-> features.blocks.database.src '2 imports, 1 type-only'
-  features.database-editor.view-transfer -[imports]-> features.data-view.src '2 imports'
-  features.database-editor.view-transfer -[imports]-> features.shared.services '3 imports, 3 type-only'
-  features.database-editor.view-transfer -[imports]-> framework.store.src '1 import'
+  features.database.block.adapters -[imports]-> features.database.block.properties '1 import'
+  features.database.block.adapters -[imports]-> features.database.engine.src '1 import'
+  features.database.block.adapters -[imports]-> features.shared.adapters '4 imports'
+  features.database.block.adapters -[imports]-> framework.store.src '3 imports, 2 type-only'
+  features.database.block.adapters -[imports]-> model_.model_.src '5 imports, 1 type-only'
+  features.database.block.components -[imports]-> features.components.context-menu '1 import'
+  features.database.block.components -[imports]-> features.components.src '1 import'
+  features.database.block.components -[imports]-> features.database.block.src '2 imports, 1 type-only'
+  features.database.block.components -[imports]-> features.database.engine.src '2 imports, 1 type-only'
+  features.database.block.components -[imports]-> features.shared.services '2 imports'
+  features.database.block.components -[imports]-> features.shared.theme '1 import'
+  features.database.block.components -[imports]-> features.shared.utils '1 import'
+  features.database.block.components -[imports]-> framework.global_.lit '2 imports'
+  features.database.block.components -[imports]-> framework.std.src '3 imports'
+  features.database.block.components -[imports]-> framework.store.src '1 import, 1 type-only'
+  features.database.block.configs -[imports]-> features.database.block.src '3 imports'
+  features.database.block.configs -[imports]-> features.database.engine.view-presets '1 import'
+  features.database.block.configs -[imports]-> features.shared.commands '1 import'
+  features.database.block.configs -[imports]-> features.shared.services '1 import'
+  features.database.block.configs -[imports]-> features.shared.utils '1 import'
+  features.database.block.configs -[imports]-> features.widgets.slash-menu.src '1 import, 1 type-only'
+  features.database.block.configs -[imports]-> framework.std.src '1 import, 1 type-only'
+  features.database.block.context -[imports]-> framework.global_.di '1 import'
+  features.database.block.context -[imports]-> framework.std.src '1 import, 1 type-only'
+  features.database.block.detail-panel -[imports]-> features.database.block.utils '1 import'
+  features.database.block.detail-panel -[imports]-> features.database.engine.src '2 imports, 2 type-only'
+  features.database.block.detail-panel -[imports]-> features.database.engine.view-presets '1 import, 1 type-only'
+  features.database.block.detail-panel -[imports]-> features.inlines.preset.src '1 import'
+  features.database.block.detail-panel -[imports]-> features.shared.consts '1 import'
+  features.database.block.detail-panel -[imports]-> features.shared.services '1 import'
+  features.database.block.detail-panel -[imports]-> features.shared.types '1 import, 1 type-only'
+  features.database.block.detail-panel -[imports]-> features.shared.utils '1 import'
+  features.database.block.detail-panel -[imports]-> framework.global_.lit '2 imports'
+  features.database.block.detail-panel -[imports]-> framework.std.src '2 imports'
+  features.database.block.detail-panel -[imports]-> framework.store.src '1 import, 1 type-only'
+  features.database.block.detail-panel -[imports]-> model_.model_.src '1 import'
+  features.database.block.properties -[imports]-> features.database.block.context '5 imports'
+  features.database.block.properties -[imports]-> features.database.block.src '2 imports, 2 type-only'
+  features.database.block.properties -[imports]-> features.database.block.utils '3 imports'
+  features.database.block.properties -[imports]-> features.database.engine.property-presets '6 imports'
+  features.database.block.properties -[imports]-> features.database.engine.src '14 imports, 2 type-only'
+  features.database.block.properties -[imports]-> features.database.engine.view-presets '1 import'
+  features.database.block.properties -[imports]-> features.inlines.preset.src '2 imports'
+  features.database.block.properties -[imports]-> features.inlines.reference.src '1 import'
+  features.database.block.properties -[imports]-> features.rich-text.src '2 imports, 2 type-only'
+  features.database.block.properties -[imports]-> features.shared.services '3 imports'
+  features.database.block.properties -[imports]-> features.shared.theme '2 imports'
+  features.database.block.properties -[imports]-> features.shared.types '3 imports, 3 type-only'
+  features.database.block.properties -[imports]-> features.shared.utils '4 imports'
+  features.database.block.properties -[imports]-> framework.global_.env '2 imports'
+  features.database.block.properties -[imports]-> framework.global_.gfx '1 import'
+  features.database.block.properties -[imports]-> framework.std.inline '1 import, 1 type-only'
+  features.database.block.properties -[imports]-> framework.store.src '5 imports, 1 type-only'
+  features.database.block.service -[imports]-> features.database.engine.src '1 import, 1 type-only'
+  features.database.block.service -[imports]-> features.shared.services '1 import'
+  features.database.block.service -[imports]-> framework.global_.di '4 imports'
+  features.database.block.service -[imports]-> framework.std.src '1 import, 1 type-only'
+  features.database.block.service -[imports]-> framework.store.src '3 imports, 3 type-only'
+  features.database.block.service -[imports]-> model_.model_.src '3 imports, 2 type-only'
+  features.database.block.src -[imports]-> features.components.caption '1 import'
+  features.database.block.src -[imports]-> features.components.context-menu '2 imports, 1 type-only'
+  features.database.block.src -[imports]-> features.components.drop-indicator '1 import'
+  features.database.block.src -[imports]-> features.components.peek '1 import'
+  features.database.block.src -[imports]-> features.components.toast '1 import'
+  features.database.block.src -[imports]-> features.database.block.adapters '1 import'
+  features.database.block.src -[imports]-> features.database.block.components '4 imports'
+  features.database.block.src -[imports]-> features.database.block.configs '1 import'
+  features.database.block.src -[imports]-> features.database.block.context '1 import'
+  features.database.block.src -[imports]-> features.database.block.detail-panel '4 imports'
+  features.database.block.src -[imports]-> features.database.block.properties '7 imports'
+  features.database.block.src -[imports]-> features.database.block.service '2 imports'
+  features.database.block.src -[imports]-> features.database.block.utils '4 imports'
+  features.database.block.src -[imports]-> features.database.block.views_ '1 import'
+  features.database.block.src -[imports]-> features.database.engine.property-presets '1 import'
+  features.database.block.src -[imports]-> features.database.engine.src '7 imports, 2 type-only'
+  features.database.block.src -[imports]-> features.database.engine.view-presets '2 imports'
+  features.database.block.src -[imports]-> features.database.engine.widget-presets '1 import'
+  features.database.block.src -[imports]-> features.ext-loader.src '2 imports'
+  features.database.block.src -[imports]-> features.shared.commands '1 import'
+  features.database.block.src -[imports]-> features.shared.consts '1 import'
+  features.database.block.src -[imports]-> features.shared.services '4 imports, 1 type-only'
+  features.database.block.src -[imports]-> features.shared.theme '1 import'
+  features.database.block.src -[imports]-> features.shared.utils '4 imports, 1 type-only'
+  features.database.block.src -[imports]-> features.widgets.drag-handle.src '1 import'
+  features.database.block.src -[imports]-> features.widgets.slash-menu.src '1 import'
+  features.database.block.src -[imports]-> framework.global_.di '2 imports'
+  features.database.block.src -[imports]-> framework.global_.disposable '1 import'
+  features.database.block.src -[imports]-> framework.global_.gfx '1 import'
+  features.database.block.src -[imports]-> framework.std.inline '1 import'
+  features.database.block.src -[imports]-> framework.std.src '8 imports, 4 type-only'
+  features.database.block.src -[imports]-> framework.store.src '8 imports, 5 type-only'
+  features.database.block.src -[imports]-> model_.model_.src '9 imports, 7 type-only'
+  features.database.block.utils -[imports]-> features.database.block.service '1 import, 1 type-only'
+  features.database.block.utils -[imports]-> features.shared.types '1 import, 1 type-only'
+  features.database.block.utils -[imports]-> features.shared.utils '1 import'
+  features.database.block.utils -[imports]-> framework.store.src '2 imports, 2 type-only'
+  features.database.block.utils -[imports]-> model_.model_.src '1 import, 1 type-only'
+  features.database.block.views_ -[imports]-> features.database.engine.src '1 import, 1 type-only'
+  features.database.block.views_ -[imports]-> features.database.engine.view-presets '1 import'
+  features.database.editor.database-page -[imports]-> features.components.context-menu '1 import'
+  features.database.editor.database-page -[imports]-> features.database.editor.src '2 imports'
+  features.database.editor.database-page -[imports]-> features.database.editor.view-settings '1 import'
+  features.database.editor.database-page -[imports]-> features.database.editor.view-transfer '1 import'
+  features.database.editor.database-page -[imports]-> features.database.engine.src '1 import'
+  features.database.editor.database-page -[imports]-> features.shared.services '2 imports'
+  features.database.editor.database-page -[imports]-> framework.global_.di '1 import'
+  features.database.editor.database-page -[imports]-> framework.global_.lit '1 import'
+  features.database.editor.database-page -[imports]-> framework.std.src '3 imports, 1 type-only'
+  features.database.editor.properties-panel -[imports]-> features.database.block.src '1 import'
+  features.database.editor.properties-panel -[imports]-> features.database.editor.src '1 import'
+  features.database.editor.properties-panel -[imports]-> features.database.engine.src '1 import'
+  features.database.editor.properties-panel -[imports]-> features.shared.services '1 import'
+  features.database.editor.properties-panel -[imports]-> features.shared.styles '1 import'
+  features.database.editor.properties-panel -[imports]-> framework.global_.lit '1 import'
+  features.database.editor.properties-panel -[imports]-> framework.std.src '1 import'
+  features.database.editor.src -[imports]-> features.components.context-menu '3 imports'
+  features.database.editor.src -[imports]-> features.database.block.src '3 imports'
+  features.database.editor.src -[imports]-> features.database.editor.database-page '3 imports'
+  features.database.editor.src -[imports]-> features.database.editor.properties-panel '2 imports'
+  features.database.editor.src -[imports]-> features.database.editor.view-bar '1 import'
+  features.database.editor.src -[imports]-> features.database.editor.view-settings '1 import'
+  features.database.editor.src -[imports]-> features.database.engine.src '1 import'
+  features.database.editor.src -[imports]-> features.ext-loader.src '1 import'
+  features.database.editor.src -[imports]-> features.shared.commands '1 import'
+  features.database.editor.src -[imports]-> features.shared.services '5 imports'
+  features.database.editor.src -[imports]-> features.shared.utils '1 import'
+  features.database.editor.src -[imports]-> features.widgets.slash-menu.src '2 imports, 1 type-only'
+  features.database.editor.src -[imports]-> framework.std.src '3 imports, 3 type-only'
+  features.database.editor.view-bar -[imports]-> features.components.context-menu '1 import'
+  features.database.editor.view-bar -[imports]-> features.database.block.src '2 imports, 1 type-only'
+  features.database.editor.view-bar -[imports]-> features.database.editor.src '1 import'
+  features.database.editor.view-bar -[imports]-> features.database.editor.view-transfer '1 import'
+  features.database.editor.view-bar -[imports]-> features.database.engine.src '2 imports, 1 type-only'
+  features.database.editor.view-bar -[imports]-> features.shared.services '1 import'
+  features.database.editor.view-settings -[imports]-> features.components.context-menu '1 import'
+  features.database.editor.view-settings -[imports]-> features.database.block.src '1 import'
+  features.database.editor.view-settings -[imports]-> features.database.editor.src '2 imports'
+  features.database.editor.view-settings -[imports]-> features.database.editor.view-transfer '2 imports'
+  features.database.editor.view-settings -[imports]-> features.database.engine.src '1 import, 1 type-only'
+  features.database.editor.view-settings -[imports]-> features.shared.services '1 import'
+  features.database.editor.view-settings -[imports]-> framework.std.src '1 import, 1 type-only'
+  features.database.editor.view-transfer -[imports]-> features.database.block.src '2 imports, 1 type-only'
+  features.database.editor.view-transfer -[imports]-> features.database.engine.src '2 imports'
+  features.database.editor.view-transfer -[imports]-> features.shared.services '3 imports, 3 type-only'
+  features.database.editor.view-transfer -[imports]-> framework.store.src '1 import'
+  features.database.engine.core -[imports]-> features.components.color-picker '2 imports'
+  features.database.engine.core -[imports]-> features.components.context-menu '18 imports, 4 type-only'
+  features.database.engine.core -[imports]-> features.components.icons_ '1 import'
+  features.database.engine.core -[imports]-> features.components.src '1 import'
+  features.database.engine.core -[imports]-> features.database.engine.src '7 imports'
+  features.database.engine.core -[imports]-> features.database.engine.view-presets '5 imports, 3 type-only'
+  features.database.engine.core -[imports]-> features.shared.services '13 imports, 6 type-only'
+  features.database.engine.core -[imports]-> features.shared.theme '5 imports'
+  features.database.engine.core -[imports]-> features.shared.types '12 imports, 12 type-only'
+  features.database.engine.core -[imports]-> features.shared.utils '10 imports, 8 type-only'
+  features.database.engine.core -[imports]-> framework.global_.di '10 imports, 1 type-only'
+  features.database.engine.core -[imports]-> framework.global_.disposable '4 imports, 4 type-only'
+  features.database.engine.core -[imports]-> framework.global_.env '3 imports'
+  features.database.engine.core -[imports]-> framework.global_.exceptions '3 imports'
+  features.database.engine.core -[imports]-> framework.global_.lit '19 imports'
+  features.database.engine.core -[imports]-> framework.std.src '27 imports, 7 type-only'
+  features.database.engine.core -[imports]-> framework.store.src '6 imports, 2 type-only'
+  features.database.engine.core -[imports]-> model_.model_.src '6 imports, 3 type-only'
+  features.database.engine.property-presets -[imports]-> features.components.context-menu '3 imports'
+  features.database.engine.property-presets -[imports]-> features.components.date-picker '1 import'
+  features.database.engine.property-presets -[imports]-> features.components.portal '1 import'
+  features.database.engine.property-presets -[imports]-> features.database.engine.core '50 imports, 2 type-only'
+  features.database.engine.property-presets -[imports]-> features.shared.services '1 import'
+  features.database.engine.property-presets -[imports]-> features.shared.theme '1 import'
+  features.database.engine.property-presets -[imports]-> framework.global_.env '2 imports'
+  features.database.engine.property-presets -[imports]-> framework.global_.gfx '1 import'
+  features.database.engine.property-presets -[imports]-> framework.store.src '2 imports'
+  features.database.engine.src -[imports]-> features.database.engine.core '1 import'
+  features.database.engine.src -[imports]-> features.database.engine.property-presets '1 import'
+  features.database.engine.src -[imports]-> features.database.engine.view-presets '1 import'
+  features.database.engine.src -[imports]-> features.database.engine.widget-presets '1 import'
+  features.database.engine.src -[imports]-> features.shared.services '1 import, 1 type-only'
+  features.database.engine.view-presets -[imports]-> features.components.context-menu '32 imports'
+  features.database.engine.view-presets -[imports]-> features.components.src '3 imports'
+  features.database.engine.view-presets -[imports]-> features.database.engine.core '225 imports, 68 type-only'
+  features.database.engine.view-presets -[imports]-> features.database.engine.property-presets '7 imports'
+  features.database.engine.view-presets -[imports]-> features.database.engine.src '11 imports'
+  features.database.engine.view-presets -[imports]-> features.database.engine.widget-presets '2 imports'
+  features.database.engine.view-presets -[imports]-> features.shared.services '3 imports'
+  features.database.engine.view-presets -[imports]-> features.shared.theme '10 imports'
+  features.database.engine.view-presets -[imports]-> features.shared.types '2 imports, 2 type-only'
+  features.database.engine.view-presets -[imports]-> features.shared.utils '17 imports, 12 type-only'
+  features.database.engine.view-presets -[imports]-> framework.global_.di '1 import'
+  features.database.engine.view-presets -[imports]-> framework.global_.disposable '3 imports'
+  features.database.engine.view-presets -[imports]-> framework.global_.env '1 import'
+  features.database.engine.view-presets -[imports]-> framework.global_.exceptions '2 imports'
+  features.database.engine.view-presets -[imports]-> framework.global_.gfx '1 import'
+  features.database.engine.view-presets -[imports]-> framework.global_.lit '38 imports'
+  features.database.engine.view-presets -[imports]-> framework.std.src '43 imports, 4 type-only'
+  features.database.engine.view-presets -[imports]-> framework.store.src '5 imports, 2 type-only'
+  features.database.engine.widget-presets -[imports]-> features.components.context-menu '12 imports'
+  features.database.engine.widget-presets -[imports]-> features.database.engine.core '91 imports, 24 type-only'
+  features.database.engine.widget-presets -[imports]-> features.database.engine.src '9 imports'
+  features.database.engine.widget-presets -[imports]-> features.database.engine.view-presets '2 imports, 2 type-only'
+  features.database.engine.widget-presets -[imports]-> features.shared.services '4 imports, 1 type-only'
+  features.database.engine.widget-presets -[imports]-> features.shared.theme '5 imports'
+  features.database.engine.widget-presets -[imports]-> framework.global_.di '1 import'
+  features.database.engine.widget-presets -[imports]-> framework.global_.env '3 imports'
+  features.database.engine.widget-presets -[imports]-> framework.global_.lit '5 imports'
+  features.database.engine.widget-presets -[imports]-> framework.std.src '12 imports'
+  features.database.engine.widget-presets -[imports]-> model_.model_.src '1 import, 1 type-only'
+  features.database.view-block.block-meta -[imports]-> features.database.engine.src '1 import, 1 type-only'
+  features.database.view-block.block-meta -[imports]-> framework.global_.disposable '1 import, 1 type-only'
+  features.database.view-block.block-meta -[imports]-> framework.store.src '1 import, 1 type-only'
+  features.database.view-block.block-meta -[imports]-> model_.model_.src '1 import'
+  features.database.view-block.columns -[imports]-> features.database.block.src '1 import'
+  features.database.view-block.columns -[imports]-> features.database.engine.property-presets '1 import'
+  features.database.view-block.columns -[imports]-> features.database.engine.src '1 import, 1 type-only'
+  features.database.view-block.configs -[imports]-> features.database.engine.src '1 import'
+  features.database.view-block.configs -[imports]-> features.database.view-block.src '1 import, 1 type-only'
+  features.database.view-block.configs -[imports]-> features.shared.services '1 import'
+  features.database.view-block.configs -[imports]-> features.shared.utils '1 import'
+  features.database.view-block.configs -[imports]-> features.widgets.slash-menu.src '1 import, 1 type-only'
+  features.database.view-block.src -[imports]-> features.components.caption '1 import'
+  features.database.view-block.src -[imports]-> features.components.context-menu '1 import'
+  features.database.view-block.src -[imports]-> features.components.icons_ '1 import'
+  features.database.view-block.src -[imports]-> features.components.peek '1 import'
+  features.database.view-block.src -[imports]-> features.components.toast '1 import'
+  features.database.view-block.src -[imports]-> features.database.block.src '2 imports'
+  features.database.view-block.src -[imports]-> features.database.engine.property-presets '1 import'
+  features.database.view-block.src -[imports]-> features.database.engine.src '3 imports, 1 type-only'
+  features.database.view-block.src -[imports]-> features.database.engine.widget-presets '1 import'
+  features.database.view-block.src -[imports]-> features.database.view-block.block-meta '2 imports, 1 type-only'
+  features.database.view-block.src -[imports]-> features.database.view-block.columns '1 import'
+  features.database.view-block.src -[imports]-> features.ext-loader.src '2 imports'
+  features.database.view-block.src -[imports]-> features.shared.consts '1 import'
+  features.database.view-block.src -[imports]-> features.shared.services '1 import'
+  features.database.view-block.src -[imports]-> features.shared.utils '2 imports'
+  features.database.view-block.src -[imports]-> framework.global_.exceptions '1 import'
+  features.database.view-block.src -[imports]-> framework.std.inline '1 import'
+  features.database.view-block.src -[imports]-> framework.std.src '4 imports, 2 type-only'
+  features.database.view-block.src -[imports]-> framework.store.src '4 imports, 2 type-only'
+  features.database.view-block.src -[imports]-> model_.model_.src '2 imports, 2 type-only'
+  features.database.view-block.views_ -[imports]-> features.database.engine.src '1 import, 1 type-only'
+  features.database.view-block.views_ -[imports]-> features.database.engine.view-presets '1 import'
   features.ext-loader.src -[imports]-> framework.global_.di '2 imports'
   features.ext-loader.src -[imports]-> framework.global_.exceptions '1 import'
   features.ext-loader.src -[imports]-> framework.store.src '4 imports, 4 type-only'
@@ -5949,7 +5955,7 @@ model {
   features.foundation.src -[imports]-> features.components.toolbar '1 import'
   features.foundation.src -[imports]-> features.components.tooltip-content-with-shortcut '1 import'
   features.foundation.src -[imports]-> features.components.view-dropdown-menu '1 import'
-  features.foundation.src -[imports]-> features.data-view.src '1 import'
+  features.foundation.src -[imports]-> features.database.engine.src '1 import'
   features.foundation.src -[imports]-> features.ext-loader.src '2 imports'
   features.foundation.src -[imports]-> features.rich-text.src '1 import'
   features.foundation.src -[imports]-> features.shared.adapters '2 imports'
@@ -5984,8 +5990,8 @@ model {
   features.fragments.doc-title.src -[imports]-> model_.model_.src '1 import'
   features.fragments.doc-title.title-band -[imports]-> features.blocks.surface.src '1 import'
   features.fragments.doc-title.title-band -[imports]-> features.components.icons_ '1 import'
-  features.fragments.doc-title.title-band -[imports]-> features.data-view.property-presets '1 import'
-  features.fragments.doc-title.title-band -[imports]-> features.data-view.src '2 imports'
+  features.fragments.doc-title.title-band -[imports]-> features.database.engine.property-presets '1 import'
+  features.fragments.doc-title.title-band -[imports]-> features.database.engine.src '2 imports'
   features.fragments.doc-title.title-band -[imports]-> features.fragments.doc-title.src '1 import'
   features.fragments.doc-title.title-band -[imports]-> features.inlines.reference.src '1 import'
   features.fragments.doc-title.title-band -[imports]-> features.shared.consts '1 import'
@@ -7242,7 +7248,6 @@ model {
   features.widgets.frame-title.src -[imports]-> framework.std.src '4 imports, 1 type-only'
   features.widgets.frame-title.src -[imports]-> model_.model_.src '4 imports, 2 type-only'
   features.widgets.keyboard-toolbar.src -[imports]-> features.blocks.attachment.src '1 import'
-  features.widgets.keyboard-toolbar.src -[imports]-> features.blocks.database.src '1 import'
   features.widgets.keyboard-toolbar.src -[imports]-> features.blocks.embed.src '1 import'
   features.widgets.keyboard-toolbar.src -[imports]-> features.blocks.image.src '1 import'
   features.widgets.keyboard-toolbar.src -[imports]-> features.blocks.latex.src '1 import'
@@ -7253,7 +7258,8 @@ model {
   features.widgets.keyboard-toolbar.src -[imports]-> features.blocks.surface.src '1 import'
   features.widgets.keyboard-toolbar.src -[imports]-> features.components.embed-card-modal '1 import'
   features.widgets.keyboard-toolbar.src -[imports]-> features.components.toast '1 import'
-  features.widgets.keyboard-toolbar.src -[imports]-> features.data-view.view-presets '1 import'
+  features.widgets.keyboard-toolbar.src -[imports]-> features.database.block.src '1 import'
+  features.widgets.keyboard-toolbar.src -[imports]-> features.database.engine.view-presets '1 import'
   features.widgets.keyboard-toolbar.src -[imports]-> features.ext-loader.src '1 import'
   features.widgets.keyboard-toolbar.src -[imports]-> features.fragments.doc-title.src '1 import'
   features.widgets.keyboard-toolbar.src -[imports]-> features.inlines.latex.src '1 import'
@@ -7383,10 +7389,10 @@ model {
   features.widgets.thread-marks.src -[imports]-> framework.std.gfx '3 imports'
   features.widgets.thread-marks.src -[imports]-> framework.std.src '4 imports, 1 type-only'
   features.widgets.thread-marks.src -[imports]-> framework.store.src '2 imports, 2 type-only'
-  features.widgets.toolbar.src -[imports]-> features.blocks.database.src '1 import'
   features.widgets.toolbar.src -[imports]-> features.blocks.surface.src '1 import'
   features.widgets.toolbar.src -[imports]-> features.blocks.table.src '1 import'
   features.widgets.toolbar.src -[imports]-> features.components.toolbar '2 imports'
+  features.widgets.toolbar.src -[imports]-> features.database.block.src '1 import'
   features.widgets.toolbar.src -[imports]-> features.ext-loader.src '1 import'
   features.widgets.toolbar.src -[imports]-> features.shared.services '3 imports, 1 type-only'
   features.widgets.toolbar.src -[imports]-> features.shared.theme '1 import'
@@ -7587,9 +7593,9 @@ model {
   tooling.playground.apps_ -[imports]-> assembly.all.store '26 imports, 10 type-only'
   tooling.playground.apps_ -[imports]-> assembly.all.sync '1 import'
   tooling.playground.apps_ -[imports]-> assembly.all.widgets '4 imports'
-  tooling.playground.apps_ -[imports]-> features.data-view.property-presets '1 import'
-  tooling.playground.apps_ -[imports]-> features.data-view.src '1 import'
-  tooling.playground.apps_ -[imports]-> features.data-view.view-presets '1 import'
+  tooling.playground.apps_ -[imports]-> features.database.engine.property-presets '1 import'
+  tooling.playground.apps_ -[imports]-> features.database.engine.src '1 import'
+  tooling.playground.apps_ -[imports]-> features.database.engine.view-presets '1 import'
   tooling.playground.apps_ -[imports]-> features.shared.adapters '2 imports'
   tooling.playground.apps_ -[imports]-> features.shared.commands '1 import'
   tooling.playground.apps_ -[imports]-> features.shared.types '1 import, 1 type-only'

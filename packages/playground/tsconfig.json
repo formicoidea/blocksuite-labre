@@ -12,7 +12,7 @@
     { "path": "../affine/components" },
     { "path": "../affine/model" },
     { "path": "../affine/shared" },
-    { "path": "../affine/data-view" },
+    { "path": "../affine/database/engine" },
     { "path": "../integration-test" }
   ]
 }

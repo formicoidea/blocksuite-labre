@@ -64,12 +64,6 @@
     "packages/affine/blocks/code/": {
       "document": 1
     },
-    "packages/affine/blocks/data-view/": {
-      "base-view": 1
-    },
-    "packages/affine/blocks/database/": {
-      "base-view": 1
-    },
     "packages/affine/blocks/divider/": {
       "document": 1
     },
@@ -232,10 +226,16 @@
     },
     "packages/affine/components/src/toast": {},
     "packages/affine/components/src/translations": {},
-    "packages/affine/data-view/": {
+    "packages/affine/database/block/": {
       "base-view": 1
     },
-    "packages/affine/database-editor/": {
+    "packages/affine/database/editor/": {
+      "base-view": 1
+    },
+    "packages/affine/database/engine/": {
+      "base-view": 1
+    },
+    "packages/affine/database/view-block/": {
       "base-view": 1
     },
     "packages/affine/ext-loader/": {},

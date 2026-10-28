@@ -82,7 +82,7 @@ describe('the core-database bundle boundary', () => {
   test('EDITOR_BUNDLES declares the database-editor package once', () => {
     expect(EDITOR_BUNDLES.map(b => b.pkg)).toEqual([EDITOR_PKG]);
     expect(editor?.bundle).toBe('core-database');
-    expect(editor?.dir).toBe('affine/database-editor');
+    expect(editor?.dir).toBe('affine/database/editor');
   });
 
   test('no library package imports it but the two assembly files the bundle script strips', () => {
@@ -93,7 +93,7 @@ describe('the core-database bundle boundary', () => {
     const offending = allSourceFiles()
       .map(file => ({ file: toRepoRelative(file), source: file }))
       .filter(
-        ({ file }) => !file.startsWith('packages/affine/database-editor/')
+        ({ file }) => !file.startsWith('packages/affine/database/editor/')
       )
       .filter(({ source }) =>
         labreSpecifiers(readFileSync(source, 'utf8')).some(

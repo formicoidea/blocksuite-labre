@@ -8,7 +8,7 @@ import {
   databaseBlockViews,
   HostedDataSourceBase,
   hostedTitleColumnConfig,
-} from '@labre/affine-block-database';
+} from '@labre/affine-database-block';
 import {
   type DatabaseBlockModel,
   DatabaseBlockSchemaExtension,
@@ -20,14 +20,14 @@ import type {
   CellStatus,
   PropertyMetaConfig,
   TypeInstance,
-} from '@labre/data-view';
-import { propertyPresets } from '@labre/data-view/property-presets';
-import { propertyModelPresets } from '@labre/data-view/property-pure-presets';
+} from '@labre/affine-database-engine';
+import { propertyPresets } from '@labre/affine-database-engine/property-presets';
+import { propertyModelPresets } from '@labre/affine-database-engine/property-pure-presets';
 import {
   type FlatViewDataType,
   GallerySingleView,
   ListSingleView,
-} from '@labre/data-view/view-presets';
+} from '@labre/affine-database-engine/view-presets';
 import { Text } from '@labre/store';
 import {
   createAutoIncrementIdGenerator,

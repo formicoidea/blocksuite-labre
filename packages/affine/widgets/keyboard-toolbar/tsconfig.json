@@ -8,7 +8,7 @@
   "include": ["./src"],
   "references": [
     { "path": "../../blocks/attachment" },
-    { "path": "../../blocks/database" },
+    { "path": "../../database/block" },
     { "path": "../../blocks/embed" },
     { "path": "../../blocks/image" },
     { "path": "../../blocks/latex" },
@@ -28,7 +28,7 @@
     { "path": "../../model" },
     { "path": "../../rich-text" },
     { "path": "../../shared" },
-    { "path": "../../data-view" },
+    { "path": "../../database/engine" },
     { "path": "../../../framework/global" },
     { "path": "../../../framework/std" },
     { "path": "../../../framework/store" }

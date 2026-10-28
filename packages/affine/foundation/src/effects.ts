@@ -28,7 +28,7 @@ import { effects as componentToolbarEffects } from '@labre/affine-components/too
 import { effects as componentTooltipContentWithShortcutEffects } from '@labre/affine-components/tooltip-content-with-shortcut';
 import { effects as componentViewDropdownMenuEffects } from '@labre/affine-components/view-dropdown-menu';
 import { effects as richTextEffects } from '@labre/affine-rich-text/effects';
-import { effects as dataViewEffects } from '@labre/data-view/effects';
+import { effects as dataViewEffects } from '@labre/affine-database-engine/effects';
 import { effects as stdEffects } from '@labre/std/effects';
 
 export function effects() {

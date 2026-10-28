@@ -173,7 +173,7 @@ describe('declared dependencies guard', () => {
  * `@blocksuite/icons/rc` loads `react/jsx-runtime` at run time with no `react`
  * declared anywhere a host installs; `@labre/affine-shared` keeping its
  * `vitest` helpers in `src/test-utils`, outside `__tests__`, so the core
- * bundle shipped them; and `@labre/data-view` listing `vitest` under
+ * bundle shipped them; and `@labre/affine-database-engine` listing `vitest` under
  * `dependencies` (the manifest half of the same leak).
  *
  * ## Scope

@@ -399,10 +399,10 @@ function allFileTextPairs(counts: CountsByFile): [string, string][] {
  * SURFACE itself — not any one string on it — is out of scope for now.
  */
 const DEFERRED_DIRS = [
-  'packages/affine/data-view/',
-  'packages/affine/blocks/database/',
+  'packages/affine/database/engine/',
+  'packages/affine/database/block/',
   'packages/affine/blocks/table/',
-  'packages/affine/blocks/data-view/',
+  'packages/affine/database/view-block/',
   'packages/affine/blocks/embed/src/embed-youtube-block/',
   'packages/affine/blocks/embed/src/embed-loom-block/',
   'packages/affine/blocks/embed/src/embed-figma-block/',

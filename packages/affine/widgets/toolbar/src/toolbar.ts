@@ -1,4 +1,4 @@
-import { DatabaseSelection } from '@labre/affine-block-database';
+import { DatabaseSelection } from '@labre/affine-database-block';
 import { EdgelessLegacySlotIdentifier } from '@labre/affine-block-surface';
 import { TableSelection } from '@labre/affine-block-table';
 import {

@@ -222,7 +222,7 @@ export function frameworkOfSelection(
  * The palettes the frameworks whose tooling is on registered with this
  * editor, in {@link FRAMEWORK_IDS} order so the pages read the same way in
  * every picker: the canvas carousel below and the database colour grid
- * (`@labre/data-view`, ADR 0036 amendment of 2026-10-14) both page through
+ * (`@labre/affine-database-engine`, ADR 0036 amendment of 2026-10-14) both page through
  * this list.
  */
 export function contributedFrameworkPalettes(
