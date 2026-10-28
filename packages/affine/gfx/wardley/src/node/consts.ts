@@ -1,4 +1,6 @@
+import type { NamedPalette } from '@labre/affine-components/color-picker';
 import { NOTATION_NEUTRALS } from '@labre/affine-shared/headless';
+import type { ChromeWording } from '@labre/affine-shared/services';
 
 /**
  * Visual constants for Wardley nodes (component + anchor) and the connector /
@@ -126,7 +128,10 @@ export const ECOSYSTEM_LABEL = 'Ecosystem';
  * Method node: a component inscribed in a slightly larger outer circle whose
  * FILL color encodes the chosen method (editable via the toolbar). Glyph = the
  * outer circle (colored fill + border, the base ellipse) + a white component
- * circle drawn at its center. Default fill is a neutral grey.
+ * circle drawn at its center. Default fill is a neutral grey, still written at
+ * creation, but no longer what paints the ring: the ring is the method's
+ * prefabricated style, `make` when no `wardley:method` tag names one
+ * (`METHOD_STYLE`, ADR 0046).
  */
 export const METHOD_SIZE = 35;
 export const METHOD_FILL = '#d9d9d9';
@@ -134,6 +139,237 @@ export const METHOD = {
   centerRatio: 0.5, // inner white component radius / R
 };
 export const METHOD_LABEL = 'Component';
+
+/*
+ * The Wardley swatch table, moved here word for word from
+ * `../toolbar/node-config.ts` (only `export` added, ADR 0046): the method
+ * rings below are painted from Peace and War, and the toolbar module already
+ * imports this file, so the ring styles could not import the table back from
+ * there without an import loop — nor pull toolbar code into the node painter
+ * and the headless entry. The colour picker still builds its list from it.
+ */
+/**
+ * The nine Wardley swatches' own names, resolved by `resolvePaletteLabel`
+ * (`@labre/affine-components/color-picker`) through each swatch's own
+ * {@link NamedPalette.labelWording} — the framework-agnostic mechanism a
+ * gfx module uses to name a palette without touching `Palette`
+ * (`packages/affine/model`, RED ZONE) or importing another framework.
+ *
+ * Exported so `../translations.ts` can list them in the manifest under
+ * source `chrome`, the same treatment `WARDLEY_TOOLBAR_WORDINGS` already
+ * gets — a swatch's name is toolbar chrome, re-rendered on every locale
+ * switch, never seeded into a document.
+ */
+export const WARDLEY_PALETTE_WORDING_WONDER: ChromeWording = [
+  'com.labre.wardley.palette.wonder',
+  'Wonder',
+];
+export const WARDLEY_PALETTE_WORDING_PEACE: ChromeWording = [
+  'com.labre.wardley.palette.peace',
+  'Peace',
+];
+export const WARDLEY_PALETTE_WORDING_WAR: ChromeWording = [
+  'com.labre.wardley.palette.war',
+  'War',
+];
+export const WARDLEY_PALETTE_WORDING_WONDER_LIGHT: ChromeWording = [
+  'com.labre.wardley.palette.wonder-light',
+  'Wonder light',
+];
+export const WARDLEY_PALETTE_WORDING_PEACE_LIGHT: ChromeWording = [
+  'com.labre.wardley.palette.peace-light',
+  'Peace light',
+];
+export const WARDLEY_PALETTE_WORDING_WAR_LIGHT: ChromeWording = [
+  'com.labre.wardley.palette.war-light',
+  'War light',
+];
+export const WARDLEY_PALETTE_WORDING_RED: ChromeWording = [
+  'com.labre.wardley.palette.wardley-red',
+  'Wardley red',
+];
+export const WARDLEY_PALETTE_WORDING_INERTIA: ChromeWording = [
+  'com.labre.wardley.palette.inertia',
+  'Inertia',
+];
+export const WARDLEY_PALETTE_WORDING_METHOD_GREY: ChromeWording = [
+  'com.labre.wardley.palette.method-grey',
+  'Method grey',
+];
+
+export const WARDLEY_PALETTE_WORDINGS: readonly ChromeWording[] = [
+  WARDLEY_PALETTE_WORDING_WONDER,
+  WARDLEY_PALETTE_WORDING_PEACE,
+  WARDLEY_PALETTE_WORDING_WAR,
+  WARDLEY_PALETTE_WORDING_WONDER_LIGHT,
+  WARDLEY_PALETTE_WORDING_PEACE_LIGHT,
+  WARDLEY_PALETTE_WORDING_WAR_LIGHT,
+  WARDLEY_PALETTE_WORDING_RED,
+  WARDLEY_PALETTE_WORDING_INERTIA,
+  WARDLEY_PALETTE_WORDING_METHOD_GREY,
+];
+
+/**
+ * The Wardley **evolution cycle**, surfaced as ready-made swatches in the node
+ * colour picker: Wonder / Peace / War, the three climatic phases a component
+ * travels through in Simon Wardley's pattern — saturated first, then the light
+ * shades for a fill under a label — followed by the three colours the notation
+ * itself already uses (the evolution arrow's red, the inertia bar, a method's
+ * neutral fill).
+ *
+ * They are SHORTCUTS, never constraints: nothing in the map reads a colour, so
+ * an author is free to ignore them, and the custom picker stays one click away.
+ */
+export const WARDLEY_PALETTES: NamedPalette[] = [
+  {
+    key: 'Wonder',
+    value: '#3ec9f2',
+    labelWording: WARDLEY_PALETTE_WORDING_WONDER,
+  },
+  {
+    key: 'Peace',
+    value: '#5b9cf6',
+    labelWording: WARDLEY_PALETTE_WORDING_PEACE,
+  },
+  { key: 'War', value: '#9d6df0', labelWording: WARDLEY_PALETTE_WORDING_WAR },
+  {
+    key: 'Wonder light',
+    value: '#b9e9fa',
+    labelWording: WARDLEY_PALETTE_WORDING_WONDER_LIGHT,
+  },
+  {
+    key: 'Peace light',
+    value: '#c6dbfc',
+    labelWording: WARDLEY_PALETTE_WORDING_PEACE_LIGHT,
+  },
+  {
+    key: 'War light',
+    value: '#d9c9fa',
+    labelWording: WARDLEY_PALETTE_WORDING_WAR_LIGHT,
+  },
+  {
+    key: 'Wardley red',
+    value: WARDLEY_RED,
+    labelWording: WARDLEY_PALETTE_WORDING_RED,
+  },
+  {
+    key: 'Inertia',
+    value: INERTIA_COLOR,
+    labelWording: WARDLEY_PALETTE_WORDING_INERTIA,
+  },
+  {
+    key: 'Method grey',
+    value: METHOD_FILL,
+    labelWording: WARDLEY_PALETTE_WORDING_METHOD_GREY,
+  },
+];
+
+/**
+ * The two greys of the buying-policy ramp below Method grey (`METHOD_FILL`,
+ * which is "make"): the three steps of Wardley's own make / buy / outsource
+ * shading, light to dark, about 85 %, 55 % and 25 % of white. The darkest is
+ * one notch off OWM's `#444444` on purpose: that literal is C4's stencil grey,
+ * the dark tables are one table across frameworks, and Wardley's ramp must
+ * not take its dark value from another framework's (`notation-dark-palettes`).
+ * Both have a dark entry in `../dark-palette.ts` that keeps the ramp's order
+ * on the dark card.
+ */
+export const METHOD_BUY_FILL = '#8c8c8c';
+export const METHOD_OUTSOURCE_FILL = '#404040';
+
+/**
+ * The swatch keys the method rings are made of. `swatch` accepts these and
+ * no other, so a key used below is always one the guard test checks.
+ */
+export const METHOD_SWATCH_KEYS = [
+  'Peace',
+  'Peace light',
+  'War',
+  'War light',
+] as const;
+
+/**
+ * A Wardley swatch's colour, by the key the colour picker names it with.
+ * Throws on a key the table does not hold: a renamed swatch must fail the
+ * build (`method.unit.spec.ts` pins every key used here), never paint a ring
+ * in no colour.
+ */
+function swatch(key: (typeof METHOD_SWATCH_KEYS)[number]): string {
+  const value = WARDLEY_PALETTES.find(palette => palette.key === key)?.value;
+  if (typeof value !== 'string') {
+    throw new Error(`No Wardley swatch "${key}" with a plain colour.`);
+  }
+  return value;
+}
+
+/** One method's prefabricated ring: what fills it, what draws its line. */
+export interface WardleyMethodStyle {
+  fill: string;
+  stroke: string;
+  /** The ring's line width, never thinner than the node's own rim. */
+  lineWidth: number;
+}
+
+/** `'#rrggbb'` at `alpha` (two hex digits), as a stored 8-digit hex. */
+const withAlpha = (hex: string, alpha: string) => `${hex}${alpha}`;
+
+/**
+ * The nine methods' rings, PO decision of 2026-10-28: in Labre the colour
+ * defines the method, family by family (ADR 0046).
+ *
+ * - **Buying policy** — Wardley's own style: the ink border, thick, around a
+ *   grey that darkens with the phase (make, buy, outsource).
+ * - **Project management** — intensity of grey: the ink itself at 15 %, 35 %
+ *   and 55 %, with no border of another colour. Ink with an alpha tail, so the
+ *   dark card paints the same intensities in its own light ink (a stored
+ *   `#rrggbbaa` keeps its alpha through the tint).
+ * - **Attitudes** — the Wardley palette's own swatches, a "transparent" fill
+ *   being the light variant of the border's swatch (PO decision,
+ *   2026-10-28): pioneers Peace light in a Peace border, settlers solid
+ *   Peace, town planners War light in a War border.
+ *
+ * Told apart family by family by the border (ink, none, hue) and within a
+ * family by the fill, and none of them is a plain component's white disc.
+ *
+ * A method node with no method tag paints `make`, the buying-policy family's
+ * first value: the default style of the node IS that family (PO decision,
+ * 2026-10-28), so its stored fill no longer shows on any method node.
+ */
+export const METHOD_STYLE = {
+  make: { fill: METHOD_FILL, stroke: NODE_STROKE, lineWidth: 2 },
+  buy: { fill: METHOD_BUY_FILL, stroke: NODE_STROKE, lineWidth: 2 },
+  outsource: { fill: METHOD_OUTSOURCE_FILL, stroke: NODE_STROKE, lineWidth: 2 },
+  agile: {
+    fill: withAlpha(NODE_STROKE, '26'),
+    stroke: withAlpha(NODE_STROKE, '26'),
+    lineWidth: 1.5,
+  },
+  lean: {
+    fill: withAlpha(NODE_STROKE, '59'),
+    stroke: withAlpha(NODE_STROKE, '59'),
+    lineWidth: 1.5,
+  },
+  sixSigma: {
+    fill: withAlpha(NODE_STROKE, '8c'),
+    stroke: withAlpha(NODE_STROKE, '8c'),
+    lineWidth: 1.5,
+  },
+  pioneers: {
+    fill: swatch('Peace light'),
+    stroke: swatch('Peace'),
+    lineWidth: 2,
+  },
+  settlers: {
+    fill: swatch('Peace'),
+    stroke: swatch('Peace'),
+    lineWidth: 2,
+  },
+  townPlanners: {
+    fill: swatch('War light'),
+    stroke: swatch('War'),
+    lineWidth: 2,
+  },
+} as const satisfies Record<string, WardleyMethodStyle>;
 
 /**
  * Porter's forces (composite): a large white circle carrying ONE letter, pushed

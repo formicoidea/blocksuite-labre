@@ -239,6 +239,53 @@ function runTagSet(
   );
 }
 
+/** One value of a tag, as a toggling row of the dropdown. */
+function renderOption(
+  ctx: ToolbarContext,
+  target: TagTarget,
+  def: TagDef,
+  value: TagValueDef,
+  selected: string[]
+): TemplateResult {
+  const on = selected.includes(value.id);
+  const valueLabel = translateTagLabel(ctx.std, value) || value.id;
+  // `data-toggle` beside `data-option`: the row draws like a native option,
+  // but clicking the value in FORCE is how it is un-picked (`toggleValue`),
+  // whatever the tag's cardinality. Without it the selected row inherits
+  // `editor-menu-action`'s inert `pointer-events: none` — the tick lands
+  // under the pointer, the click reaches the section instead, and a
+  // qualification can be set but never cleared with a real mouse.
+  return html`<editor-menu-action
+    data-option
+    data-toggle
+    data-testid="element-tag-option"
+    data-tag-id=${def.id}
+    data-value-id=${value.id}
+    data-selected=${on ? 'true' : nothing}
+    aria-label=${valueLabel}
+    aria-pressed=${on}
+    @click=${() => toggleValue(ctx, target, def, value.id)}
+  >
+    <span class="label">${valueLabel}</span>
+    ${on ? CheckIcon : nothing}
+  </editor-menu-action>`;
+}
+
+/**
+ * The sub-title a value's `group` opens (ADR 0046): smaller and bolder than
+ * the tag's own title above it, so "Method" reads as the question and "Buying
+ * policy" as one family of answers.
+ */
+function renderGroupTitle(def: TagDef, title: string): TemplateResult {
+  return html`<div
+    data-testid="element-tag-group"
+    data-tag-id=${def.id}
+    style="padding: 6px 8px 2px; font-size: 11px; font-weight: 600; color: var(--affine-text-secondary-color);"
+  >
+    ${title}
+  </div>`;
+}
+
 /** One titled block of the dropdown — one tag. */
 function renderSection(
   ctx: ToolbarContext,
@@ -248,29 +295,20 @@ function renderSection(
   const selected = elementTagValues(target.element, def.id);
   const label = translateTagLabel(ctx.std, def) || def.id;
 
-  const options = offeredValues(def, selected).map(value => {
-    const on = selected.includes(value.id);
-    const valueLabel = translateTagLabel(ctx.std, value) || value.id;
-    // `data-toggle` beside `data-option`: the row draws like a native option,
-    // but clicking the value in FORCE is how it is un-picked (`toggleValue`),
-    // whatever the tag's cardinality. Without it the selected row inherits
-    // `editor-menu-action`'s inert `pointer-events: none` — the tick lands
-    // under the pointer, the click reaches the section instead, and a
-    // qualification can be set but never cleared with a real mouse.
-    return html`<editor-menu-action
-      data-option
-      data-toggle
-      data-testid="element-tag-option"
-      data-tag-id=${def.id}
-      data-value-id=${value.id}
-      data-selected=${on ? 'true' : nothing}
-      aria-label=${valueLabel}
-      aria-pressed=${on}
-      @click=${() => toggleValue(ctx, target, def, value.id)}
-    >
-      <span class="label">${valueLabel}</span>
-      ${on ? CheckIcon : nothing}
-    </editor-menu-action>`;
+  // A value's `group` opens a sub-title each time it changes, so a tag whose
+  // values fall into families reads family by family. A value with no group
+  // (an unknown id kept on the element, a host pack's) closes the run.
+  let open: string | undefined;
+  const options = offeredValues(def, selected).flatMap(value => {
+    const title = value.group
+      ? translateTagLabel(ctx.std, value.group) || value.group.label
+      : undefined;
+    const row = renderOption(ctx, target, def, value, selected);
+    const previous = open;
+    open = title;
+    return title !== undefined && title !== previous
+      ? [renderGroupTitle(def, title), row]
+      : [row];
   });
 
   return html`<div

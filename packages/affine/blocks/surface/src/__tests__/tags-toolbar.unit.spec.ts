@@ -339,3 +339,92 @@ describe('an option row reads like the native menus', () => {
     expect(off.querySelector('svg')).toBeNull();
   });
 });
+
+/**
+ * A tag whose values fall into families reads family by family (ADR 0046):
+ * Wardley's nine methods sit under Buying policy, Project management and
+ * Attitudes. The sub-title is DATA on the value (`group`), and a value with no
+ * group — an id a document carries that no def explains — is listed after the
+ * last family without inheriting its title.
+ */
+describe('a tag whose values are grouped', () => {
+  const GROUPED: UniverseTagDefs = {
+    ...PACK,
+    tags: [
+      {
+        id: 'wardley:method',
+        label: 'Method',
+        cardinality: 'single',
+        appliesTo: ['wardley:component'],
+        values: [
+          {
+            id: 'wardley:method/make',
+            label: 'Make',
+            group: { label: 'Buying policy' },
+          },
+          {
+            id: 'wardley:method/buy',
+            label: 'Buy',
+            group: { label: 'Buying policy' },
+          },
+          {
+            id: 'wardley:method/agile',
+            label: 'Agile',
+            group: { label: 'Project management', labelKey: 'k.pm' },
+          },
+        ],
+      },
+    ],
+  };
+
+  const hosts: HTMLElement[] = [];
+  afterEach(() => {
+    while (hosts.length) hosts.pop()!.remove();
+  });
+
+  /** The section's rows, in order: a group title as `# title`. */
+  function rows(tags?: Record<string, string[]>): string[] {
+    const ctx = context([element('wardley:component', tags)], [GROUPED]);
+    (ctx.std as unknown as { getOptional: () => unknown }).getOptional =
+      () => ({
+        t: (key: string) => (key === 'k.pm' ? 'Gestion de projet' : undefined),
+      });
+    const action = config.actions?.[0] as {
+      content: (c: ToolbarContext) => TemplateResult | null;
+    };
+    const host = document.createElement('div');
+    document.body.append(host);
+    hosts.push(host);
+    render(action.content(ctx), host);
+    return Array.from(
+      host.querySelectorAll<HTMLElement>(
+        '[data-testid="element-tag-group"], [data-testid="element-tag-option"]'
+      )
+    ).map(el =>
+      el.dataset.testid === 'element-tag-group'
+        ? `# ${el.textContent!.trim()}`
+        : el.dataset.valueId!
+    );
+  }
+
+  it('opens one sub-title per family, translated, ahead of its values', () => {
+    expect(rows()).toEqual([
+      '# Buying policy',
+      'wardley:method/make',
+      'wardley:method/buy',
+      '# Gestion de projet',
+      'wardley:method/agile',
+    ]);
+  });
+
+  it('files an unexplained value after the families, under no title', () => {
+    expect(rows({ 'wardley:method': ['wardley:method/retired'] })).toEqual([
+      '# Buying policy',
+      'wardley:method/make',
+      'wardley:method/buy',
+      '# Gestion de projet',
+      'wardley:method/agile',
+      'wardley:method/retired',
+    ]);
+  });
+});
