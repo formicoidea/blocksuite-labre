@@ -1525,13 +1525,13 @@ model {
       link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/data-view
       metadata {
         path 'packages/affine/data-view'
-        files '350'
+        files '351'
       }
       core = folder 'core/' {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/data-view/src/core
         metadata {
           path 'packages/affine/data-view/src/core'
-          files '165'
+          files '166'
         }
       }
       property-presets = folder 'property-presets/' {
@@ -1567,7 +1567,7 @@ model {
       link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database-editor
       metadata {
         path 'packages/affine/database-editor'
-        files '15'
+        files '17'
       }
       database-page = folder 'database-page/' {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database-editor/src/database-page
@@ -1597,11 +1597,18 @@ model {
           files '3'
         }
       }
+      view-settings = folder 'view-settings/' {
+        link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database-editor/src/view-settings
+        metadata {
+          path 'packages/affine/database-editor/src/view-settings'
+          files '1'
+        }
+      }
       view-transfer = folder 'view-transfer/' {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database-editor/src/view-transfer
         metadata {
           path 'packages/affine/database-editor/src/view-transfer'
-          files '2'
+          files '3'
         }
       }
     }
@@ -3732,20 +3739,20 @@ model {
   features.components -[uses]-> framework.store '8 imports, 7 type-only'
   features.components -[uses]-> framework.sync '1 import, 1 type-only'
   features.components -[uses]-> model_.model_ '16 imports, 5 type-only'
-  features.data-view -[uses]-> features.components '73 imports, 3 type-only'
+  features.data-view -[uses]-> features.components '74 imports, 4 type-only'
   features.data-view -[uses]-> features.shared '84 imports, 42 type-only'
-  features.data-view -[uses]-> framework.global_ '96 imports, 5 type-only'
-  features.data-view -[uses]-> framework.std '81 imports, 10 type-only'
-  features.data-view -[uses]-> framework.store '12 imports, 3 type-only'
+  features.data-view -[uses]-> framework.global_ '97 imports, 5 type-only'
+  features.data-view -[uses]-> framework.std '82 imports, 11 type-only'
+  features.data-view -[uses]-> framework.store '13 imports, 4 type-only'
   features.data-view -[uses]-> model_.model_ '7 imports, 4 type-only'
-  features.database-editor -[uses]-> features.blocks.database '5 imports, 1 type-only'
-  features.database-editor -[uses]-> features.components '3 imports'
-  features.database-editor -[uses]-> features.data-view '6 imports, 2 type-only'
+  features.database-editor -[uses]-> features.blocks.database '7 imports, 2 type-only'
+  features.database-editor -[uses]-> features.components '5 imports'
+  features.database-editor -[uses]-> features.data-view '8 imports, 2 type-only'
   features.database-editor -[uses]-> features.ext-loader '1 import'
-  features.database-editor -[uses]-> features.shared '13 imports, 2 type-only'
+  features.database-editor -[uses]-> features.shared '15 imports, 3 type-only'
   features.database-editor -[uses]-> features.widgets.slash-menu '2 imports, 1 type-only'
   features.database-editor -[uses]-> framework.global_ '3 imports'
-  features.database-editor -[uses]-> framework.std '6 imports, 3 type-only'
+  features.database-editor -[uses]-> framework.std '7 imports, 4 type-only'
   features.database-editor -[uses]-> framework.store '1 import'
   features.ext-loader -[uses]-> framework.global_ '3 imports'
   features.ext-loader -[uses]-> framework.store '4 imports, 4 type-only'
@@ -5803,7 +5810,7 @@ model {
   features.components.view-dropdown-menu -[imports]-> framework.global_.lit '1 import'
   features.components.view-dropdown-menu -[imports]-> framework.std.src '1 import'
   features.data-view.core -[imports]-> features.components.color-picker '2 imports'
-  features.data-view.core -[imports]-> features.components.context-menu '17 imports, 3 type-only'
+  features.data-view.core -[imports]-> features.components.context-menu '18 imports, 4 type-only'
   features.data-view.core -[imports]-> features.components.icons_ '1 import'
   features.data-view.core -[imports]-> features.components.src '1 import'
   features.data-view.core -[imports]-> features.data-view.src '7 imports'
@@ -5812,13 +5819,13 @@ model {
   features.data-view.core -[imports]-> features.shared.theme '5 imports'
   features.data-view.core -[imports]-> features.shared.types '12 imports, 12 type-only'
   features.data-view.core -[imports]-> features.shared.utils '10 imports, 8 type-only'
-  features.data-view.core -[imports]-> framework.global_.di '9 imports, 1 type-only'
+  features.data-view.core -[imports]-> framework.global_.di '10 imports, 1 type-only'
   features.data-view.core -[imports]-> framework.global_.disposable '4 imports, 4 type-only'
   features.data-view.core -[imports]-> framework.global_.env '3 imports'
   features.data-view.core -[imports]-> framework.global_.exceptions '3 imports'
   features.data-view.core -[imports]-> framework.global_.lit '19 imports'
-  features.data-view.core -[imports]-> framework.std.src '26 imports, 6 type-only'
-  features.data-view.core -[imports]-> framework.store.src '5 imports, 1 type-only'
+  features.data-view.core -[imports]-> framework.std.src '27 imports, 7 type-only'
+  features.data-view.core -[imports]-> framework.store.src '6 imports, 2 type-only'
   features.data-view.core -[imports]-> model_.model_.src '6 imports, 3 type-only'
   features.data-view.property-presets -[imports]-> features.components.context-menu '3 imports'
   features.data-view.property-presets -[imports]-> features.components.date-picker '1 import'
@@ -5853,7 +5860,7 @@ model {
   features.data-view.view-presets -[imports]-> framework.std.src '43 imports, 4 type-only'
   features.data-view.view-presets -[imports]-> framework.store.src '5 imports, 2 type-only'
   features.data-view.widget-presets -[imports]-> features.components.context-menu '12 imports'
-  features.data-view.widget-presets -[imports]-> features.data-view.core '90 imports, 24 type-only'
+  features.data-view.widget-presets -[imports]-> features.data-view.core '91 imports, 24 type-only'
   features.data-view.widget-presets -[imports]-> features.data-view.src '9 imports'
   features.data-view.widget-presets -[imports]-> features.data-view.view-presets '2 imports, 2 type-only'
   features.data-view.widget-presets -[imports]-> features.shared.services '4 imports, 1 type-only'
@@ -5863,8 +5870,10 @@ model {
   features.data-view.widget-presets -[imports]-> framework.global_.lit '5 imports'
   features.data-view.widget-presets -[imports]-> framework.std.src '12 imports'
   features.data-view.widget-presets -[imports]-> model_.model_.src '1 import, 1 type-only'
-  features.database-editor.database-page -[imports]-> features.data-view.src '1 import, 1 type-only'
+  features.database-editor.database-page -[imports]-> features.components.context-menu '1 import'
+  features.database-editor.database-page -[imports]-> features.data-view.src '1 import'
   features.database-editor.database-page -[imports]-> features.database-editor.src '2 imports'
+  features.database-editor.database-page -[imports]-> features.database-editor.view-settings '1 import'
   features.database-editor.database-page -[imports]-> features.database-editor.view-transfer '1 import'
   features.database-editor.database-page -[imports]-> features.shared.services '2 imports'
   features.database-editor.database-page -[imports]-> framework.global_.di '1 import'
@@ -5883,6 +5892,7 @@ model {
   features.database-editor.src -[imports]-> features.database-editor.database-page '3 imports'
   features.database-editor.src -[imports]-> features.database-editor.properties-panel '2 imports'
   features.database-editor.src -[imports]-> features.database-editor.view-bar '1 import'
+  features.database-editor.src -[imports]-> features.database-editor.view-settings '1 import'
   features.database-editor.src -[imports]-> features.ext-loader.src '1 import'
   features.database-editor.src -[imports]-> features.shared.commands '1 import'
   features.database-editor.src -[imports]-> features.shared.services '4 imports'
@@ -5895,9 +5905,16 @@ model {
   features.database-editor.view-bar -[imports]-> features.database-editor.src '1 import'
   features.database-editor.view-bar -[imports]-> features.database-editor.view-transfer '1 import'
   features.database-editor.view-bar -[imports]-> features.shared.services '1 import'
-  features.database-editor.view-transfer -[imports]-> features.blocks.database.src '1 import'
-  features.database-editor.view-transfer -[imports]-> features.data-view.src '1 import'
-  features.database-editor.view-transfer -[imports]-> features.shared.services '2 imports, 2 type-only'
+  features.database-editor.view-settings -[imports]-> features.blocks.database.src '1 import'
+  features.database-editor.view-settings -[imports]-> features.components.context-menu '1 import'
+  features.database-editor.view-settings -[imports]-> features.data-view.src '1 import, 1 type-only'
+  features.database-editor.view-settings -[imports]-> features.database-editor.src '2 imports'
+  features.database-editor.view-settings -[imports]-> features.database-editor.view-transfer '2 imports'
+  features.database-editor.view-settings -[imports]-> features.shared.services '1 import'
+  features.database-editor.view-settings -[imports]-> framework.std.src '1 import, 1 type-only'
+  features.database-editor.view-transfer -[imports]-> features.blocks.database.src '2 imports, 1 type-only'
+  features.database-editor.view-transfer -[imports]-> features.data-view.src '2 imports'
+  features.database-editor.view-transfer -[imports]-> features.shared.services '3 imports, 3 type-only'
   features.database-editor.view-transfer -[imports]-> framework.store.src '1 import'
   features.ext-loader.src -[imports]-> framework.global_.di '2 imports'
   features.ext-loader.src -[imports]-> framework.global_.exceptions '1 import'

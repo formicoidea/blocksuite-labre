@@ -4,7 +4,10 @@ import {
 } from '@labre/affine-ext-loader';
 import { DataSourcePickerProvider } from '@labre/affine-shared/services';
 import { SlashMenuConfigExtension } from '@labre/affine-widget-slash-menu';
-import { AddViewMenuExtension } from '@labre/data-view';
+import {
+  AddViewMenuExtension,
+  ViewSettingsMenuExtension,
+} from '@labre/data-view';
 
 import { effects } from './effects.js';
 import { linkedViewSlashMenuConfig } from './linked-view-slash-menu.js';
@@ -12,6 +15,7 @@ import {
   addViewSourcePicker,
   databaseAddViewMenu,
 } from './view-bar/add-view-menu.js';
+import { databaseViewSettingsMenu } from './view-settings/source-entry.js';
 
 /**
  * The database editing chrome a stored database shows whatever the flags say
@@ -35,7 +39,9 @@ export class DatabaseEditorViewExtension extends ViewExtensionProvider {
  * The database creation entries, under core's own `database` flag (ADR 0035
  * §4, §5): "+ view" with its source choice (B11), fed by the host's
  * data-source picker when there is one, and "Linked view of a database"
- * (B12), drawn only when the host fills the picker. No new flag key:
+ * (B12), drawn only when the host fills the picker, and the view settings'
+ * "Source" (ADR 0035 amendment of 2026-10-28), drawn only on a database
+ * whose views name their source, with the picker. No new flag key:
  * `{ database: false }` removes these with core's own creation tooling and
  * leaves every stored database rendering.
  */
@@ -51,6 +57,7 @@ export class DatabaseEditorToolingViewExtension extends ViewExtensionProvider {
           return picker ? addViewSourcePicker(picker) : null;
         })
       ),
+      ViewSettingsMenuExtension(databaseViewSettingsMenu()),
       SlashMenuConfigExtension(
         'affine:database-linked-view',
         linkedViewSlashMenuConfig

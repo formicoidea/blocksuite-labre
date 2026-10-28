@@ -365,15 +365,16 @@ name, an option or a filter operand, and never a row id, which on a hosted
 source is a document id. A property id is opaque (the historical sort series
 carries `fieldId`); the new events do not need it and leave it out.
 
-| Event                      | When                                                    | Required props                                                                     |
-| -------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `DatabaseViewAdded`        | a view is added from a gesture (the views bar's "+")    | `viewType`, `source` (`existing` \| `new` \| `import`)                             |
-| `DatabaseViewTypeChanged`  | the user picks another layout for a view                | `fromViewType`, `toViewType`                                                       |
-| `CreateDatabaseFilter`     | a filter condition is added (historical name, kept)     | (view params only)                                                                 |
-| `DatabaseSortAdd` …        | a sort is added, changed, reordered, removed or cleared | `fieldType`, `orderType`, `orderIndex` (the historical `DatabaseSort*` series)     |
-| `DatabaseGroupChanged`     | a view is grouped, regrained or ungrouped               | `groupBy` (the group-by config name, `none` when removed), `propertyType?`         |
-| `DatabaseRowOpened`        | a row is opened from any preset                         | `mode` (`side` \| `center` \| `full`), `newTab`, `rowKind` (`document` \| `block`) |
-| `DatabaseValuesLoadFailed` | a hosted source's values could not be loaded            | `retryable`                                                                        |
+| Event                       | When                                                    | Required props                                                                     |
+| --------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `DatabaseViewAdded`         | a view is added from a gesture (the views bar's "+")    | `viewType`, `source` (`existing` \| `new` \| `import`)                             |
+| `DatabaseViewTypeChanged`   | the user picks another layout for a view                | `fromViewType`, `toViewType`                                                       |
+| `DatabaseViewSourceChanged` | a view is pointed at another source of its database     | `source` (`existing` \| `new`)                                                     |
+| `CreateDatabaseFilter`      | a filter condition is added (historical name, kept)     | (view params only)                                                                 |
+| `DatabaseSortAdd` …         | a sort is added, changed, reordered, removed or cleared | `fieldType`, `orderType`, `orderIndex` (the historical `DatabaseSort*` series)     |
+| `DatabaseGroupChanged`      | a view is grouped, regrained or ungrouped               | `groupBy` (the group-by config name, `none` when removed), `propertyType?`         |
+| `DatabaseRowOpened`         | a row is opened from any preset                         | `mode` (`side` \| `center` \| `full`), `newTab`, `rowKind` (`document` \| `block`) |
+| `DatabaseValuesLoadFailed`  | a hosted source's values could not be loaded            | `retryable`                                                                        |
 
 - **One emission point each.** `DatabaseViewAdded` is emitted by the creating
   gesture, never by `viewAdd` (a database created with its first view reports
@@ -390,12 +391,16 @@ carries `fieldId`); the new events do not need it and leave it out.
   opens the row itself (no host opener, or a block-backed row); it says what
   was asked, not what the host drew. `DatabaseGroupChanged` leaves `GroupTrait` (`changeGroup`,
   `changeGroupMode`), which every grouping menu calls, through the source's
-  `DataViewEventTraceKey`. `DatabaseValuesLoadFailed` is a health event, like
+  `DataViewEventTraceKey`. `DatabaseViewSourceChanged` leaves the bundle's
+  `changeViewSource`, which the view settings' "Source" and the full page's
+  `database.view.source` both call, through the same key; `source` is `new`
+  when the pick created the source (the picker's `createSource`).
+  `DatabaseValuesLoadFailed` is a health event, like
   `DocumentDamaged`: once per failure of a source (its `since`), not per
   banner drawn.
 - **A gesture that changes nothing emits nothing**: re-picking the current
-  layout, the current grouping or grain, removing a grouping that is not
-  there.
+  layout, the current grouping or grain, the view's own source, removing a
+  grouping that is not there.
 - **Commands.** No database gesture is a registered command today, so these
   are emitted from the data-view's `eventTrace`. A database action that
   becomes a command (the host-panels verbs of B10) reports through
