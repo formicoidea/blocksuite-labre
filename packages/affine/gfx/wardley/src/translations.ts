@@ -18,6 +18,7 @@ import { WARDLEY_NUDGES } from './nudges.js';
 import { WARDLEY_NODE_LABEL, wardleyNodeLabelKey } from './presets.js';
 import { WARDLEY_PROFILES } from './profiles.js';
 import { WARDLEY_READING } from './reading.js';
+import { WARDLEY_JSON_IMPORT_REMARKS } from './renderer-json-import.js';
 import { WARDLEY_ROLES } from './roles.js';
 import { WARDLEY_RULES } from './rules.js';
 import { WARDLEY_SVG_IMPORT_REMARKS } from './svg-remarks.js';
@@ -100,13 +101,15 @@ const templateNameEntries = (): TranslationKeyManifestEntry[] =>
 
 /**
  * The fixed-wording import remarks: the OWM reader's
- * ({@link WARDLEY_OWM_IMPORT_REMARKS}) and the SVG reader's
- * ({@link WARDLEY_SVG_IMPORT_REMARKS}).
+ * ({@link WARDLEY_OWM_IMPORT_REMARKS}), the SVG reader's
+ * ({@link WARDLEY_SVG_IMPORT_REMARKS}) and the renderer JSON reader's
+ * ({@link WARDLEY_JSON_IMPORT_REMARKS}).
  */
 const importRemarkEntries = (): TranslationKeyManifestEntry[] =>
   [
     ...Object.values(WARDLEY_OWM_IMPORT_REMARKS),
     ...Object.values(WARDLEY_SVG_IMPORT_REMARKS),
+    ...Object.values(WARDLEY_JSON_IMPORT_REMARKS),
   ].map(([key, english]) => ({
     key,
     fallback: english,

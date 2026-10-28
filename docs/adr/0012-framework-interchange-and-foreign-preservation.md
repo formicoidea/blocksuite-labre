@@ -397,6 +397,59 @@ that every other exporter ignores. "Registration is flag-gated" stays true for
 every framework; the reasoning and the limits are ADR 0019's amendment of the
 same date.
 
+#### Amendment 2026-10-28 — a second Wardley language: the renderer JSON, drawn with the toolbox
+
+Wardley gains a second semantic format beside OWM: the JSON of
+`@formicoidea/wardley-map-renderer` (schema version 1.0.0-beta.5), both
+directions, `wardley:json:import` and `wardley:json:export`, format id
+`json`, on the `./interchange` entry and in `WARDLEY_INTERCHANGE`. OWM stays,
+unchanged, for the editor's import and export; the workspace connector moves
+to JSON.
+
+Why. The connector read maps from OWM with `WARDLEY_OWM_IMPORT` and gave them
+back with `wardley:owm:export`, and its bench found what that path does to a
+map a model is editing: a duplicate component at the target of every
+`evolve` (the OWM reader draws an evolved twin), a pipeline's name written
+twice and its square centred, and the squares and colours of the source
+gone. The JSON reader is not a second layout of its own: **every element it
+writes is a `WARDLEY_TOOLBOX` builder's** ([ADR 0045](0045-headless-toolbox.md)),
+so a map read from JSON is made of exactly the elements a user places from
+the toolbar. An evolution is the toolbar's change arrow with a free end at
+the target point, which is what the Arrow tool leaves when it is dropped on
+the empty map; no twin is drawn, because the renderer draws none. A pipeline
+is the toolbar's item with its body stretched to `pipelineGeometry`.
+Decorators the renderer draws off a component (`accelerator`,
+`deaccelerator`, `inertia`) are the toolbar's own items placed in a slot
+beside it, and the writer reads them back from that slot.
+
+What it decides beyond OWM:
+
+1. **The writer is headless.** It reads stored fields (`type`, `role`,
+   `kind`, the box, the text, the two ends, `interchange`) instead of picking
+   models by `instanceof`, so it lives on `./interchange` beside its reader
+   and runs on live models and stored props alike. OWM's export stays where
+   it is.
+2. **Carried fields ride on the element they belong to**, under
+   `interchange.json.attrs['@self']`: `rest` is a JSON object of every field
+   of the component, relation or evolution the board does not draw, merged
+   UNDER what the board says on export, so a field the board draws always
+   wins. Entries the reader cannot draw (no id, name, type or number; a
+   relation naming no component) ride whole on the map under `@components` /
+   `@relations` and are written back verbatim. The file's `title` and its
+   other top-level fields ride on the map under `@document`.
+3. **A bad document is a report.** Text that is not JSON, or JSON with no
+   `components` list, imports nothing and says why in one keyed note; the
+   reader never throws.
+4. **The renderer package is not imported.** It loads resvg, a native binary,
+   which the `./interchange` graph exists to keep out; the shape is checked by
+   hand in `renderer-json-import.ts`, which names the schema version it
+   follows. The field-by-field table and the losses are that file's module
+   documentation.
+
+Registering the two rows gives the editor an "Export Wardley as .json" view
+action and a `.json` entry in the import picker, both projections of the
+registry (ADR 0034), with no command of their own.
+
 ### P2 — Two format tiers, and they promise different things
 
 The tier is declared on the format, and it is the single most load-bearing field

@@ -8,6 +8,8 @@ import { interchangeCapabilityId } from '@labre/affine-block-surface';
 import { exportWardleyOwmWithWarnings, wardleySafeFilename } from './export.js';
 import { wardleyBoardFrom } from './export-board.js';
 import {
+  WARDLEY_JSON_EXPORT,
+  WARDLEY_JSON_IMPORT,
   WARDLEY_OWM_EXTENSION,
   WARDLEY_OWM_FORMAT,
   WARDLEY_OWM_IMPORT,
@@ -16,6 +18,11 @@ import {
 } from './interchange-headless.js';
 
 export {
+  WARDLEY_JSON_EXPORT,
+  WARDLEY_JSON_EXTENSION,
+  WARDLEY_JSON_FORMAT,
+  WARDLEY_JSON_IMPORT,
+  WARDLEY_JSON_MIME,
   WARDLEY_OWM_EXTENSION,
   WARDLEY_OWM_FORMAT,
   WARDLEY_OWM_IMPORT,
@@ -27,7 +34,10 @@ export {
 /**
  * Wardley's entries in the interchange registry (`docs/adr/0012`, P1).
  *
- * Two formats and three rows. Both directions of the OWM DSL — the export is
+ * Three formats and five rows. Both directions of the renderer JSON
+ * (`renderer-json-import.ts`, `renderer-json-export.ts`), the language the
+ * workspace connector trades maps in, built with the toolbar's builders. Both
+ * directions of the OWM DSL — the export is
  * the row the ADR records as **owed** (a Wardley serializer exists today in
  * labre-mcp, outside this repo, and is the one violation of P3 the ADR names;
  * it exists here now, so that repo becomes a caller and its copy is deleted),
@@ -87,6 +97,8 @@ export const WARDLEY_OWM_EXPORT: InterchangeExportCapability = {
 
 /** Everything Wardley registers, in one list the view extension hands over. */
 export const WARDLEY_INTERCHANGE: readonly InterchangeCapability[] = [
+  WARDLEY_JSON_EXPORT,
+  WARDLEY_JSON_IMPORT,
   WARDLEY_OWM_EXPORT,
   WARDLEY_OWM_IMPORT,
   WARDLEY_SVG_IMPORT,

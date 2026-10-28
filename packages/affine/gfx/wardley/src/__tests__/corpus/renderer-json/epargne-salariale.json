@@ -1,0 +1,682 @@
+{
+  "title": "SI Épargne Salariale — Carte Wardley",
+  "components": [
+    {
+      "id": "salarie",
+      "label": {
+        "name": "Salarié",
+        "position": {
+          "dx": 12,
+          "dy": -10
+        }
+      },
+      "type": "anchor",
+      "nature": "generic",
+      "position": {
+        "evolution": {
+          "scalar": 0.42
+        },
+        "visibility": {
+          "scalar": 0.02
+        }
+      }
+    },
+    {
+      "id": "employeur",
+      "label": {
+        "name": "Employeur / RH",
+        "position": {
+          "dx": 12,
+          "dy": -10
+        }
+      },
+      "type": "anchor",
+      "nature": "group",
+      "position": {
+        "evolution": {
+          "scalar": 0.28
+        },
+        "visibility": {
+          "scalar": 0.02
+        }
+      }
+    },
+    {
+      "id": "besoin-epargner",
+      "label": {
+        "name": "Épargner & arbitrer"
+      },
+      "type": "component",
+      "subtype": "userNeed",
+      "nature": "anthropic",
+      "position": {
+        "evolution": {
+          "scalar": 0.34
+        },
+        "visibility": {
+          "scalar": 0.11
+        }
+      }
+    },
+    {
+      "id": "besoin-piloter",
+      "label": {
+        "name": "Piloter les dispositifs"
+      },
+      "type": "component",
+      "subtype": "userNeed",
+      "nature": "anthropic",
+      "position": {
+        "evolution": {
+          "scalar": 0.26
+        },
+        "visibility": {
+          "scalar": 0.12
+        }
+      }
+    },
+    {
+      "id": "portail-salarie",
+      "label": {
+        "name": "Portail salarié"
+      },
+      "type": "component",
+      "subtype": "functional",
+      "nature": "activity",
+      "position": {
+        "evolution": {
+          "scalar": 0.63
+        },
+        "visibility": {
+          "scalar": 0.22
+        }
+      },
+      "accelerator": true
+    },
+    {
+      "id": "espace-rh",
+      "label": {
+        "name": "Espace RH (back-office)"
+      },
+      "type": "component",
+      "subtype": "functional",
+      "nature": "activity",
+      "position": {
+        "evolution": {
+          "scalar": 0.55
+        },
+        "visibility": {
+          "scalar": 0.24
+        }
+      }
+    },
+    {
+      "id": "simulateur",
+      "label": {
+        "name": "Simulateur d'arbitrage"
+      },
+      "type": "component",
+      "subtype": "functional",
+      "nature": "activity",
+      "position": {
+        "evolution": {
+          "scalar": 0.4
+        },
+        "visibility": {
+          "scalar": 0.34
+        }
+      },
+      "step": {
+        "number": 1
+      },
+      "evolvesTo": [
+        {
+          "position": {
+            "evolution": {
+              "scalar": 0.66
+            },
+            "visibility": {
+              "scalar": 0.34
+            }
+          },
+          "evolveType": "natural"
+        }
+      ]
+    },
+    {
+      "id": "gestion-versements",
+      "label": {
+        "name": "Gestion des versements (I/P/abondement)"
+      },
+      "type": "component",
+      "subtype": "functional",
+      "nature": "activity",
+      "position": {
+        "evolution": {
+          "scalar": 0.45
+        },
+        "visibility": {
+          "scalar": 0.4
+        }
+      }
+    },
+    {
+      "id": "gestion-dispositifs",
+      "label": {
+        "name": "Gestion des dispositifs (PEE / PER-COL)"
+      },
+      "type": "component",
+      "subtype": "functional",
+      "nature": "activity",
+      "position": {
+        "evolution": {
+          "scalar": 0.4
+        },
+        "visibility": {
+          "scalar": 0.43
+        }
+      }
+    },
+    {
+      "id": "fiscalite-social",
+      "label": {
+        "name": "Calcul fiscalité & social"
+      },
+      "type": "component",
+      "subtype": "functional",
+      "nature": "knowledge",
+      "position": {
+        "evolution": {
+          "scalar": 0.37
+        },
+        "visibility": {
+          "scalar": 0.48
+        }
+      },
+      "method": {
+        "category": "sourcing",
+        "recommendation": "Construire"
+      },
+      "evolvesTo": [
+        {
+          "position": {
+            "evolution": {
+              "scalar": 0.58
+            },
+            "visibility": {
+              "scalar": 0.48
+            }
+          },
+          "evolveType": "natural",
+          "inertia": true
+        }
+      ]
+    },
+    {
+      "id": "conformite",
+      "label": {
+        "name": "Conformité KYC / LCB-FT"
+      },
+      "type": "component",
+      "subtype": "functional",
+      "nature": "practice",
+      "position": {
+        "evolution": {
+          "scalar": 0.58
+        },
+        "visibility": {
+          "scalar": 0.5
+        }
+      },
+      "evolvesTo": [
+        {
+          "position": {
+            "evolution": {
+              "scalar": 0.78
+            },
+            "visibility": {
+              "scalar": 0.5
+            }
+          },
+          "evolveType": "forced"
+        }
+      ]
+    },
+    {
+      "id": "connecteur-paie",
+      "label": {
+        "name": "Connecteurs paie"
+      },
+      "type": "component",
+      "subtype": "functional",
+      "nature": "activity",
+      "position": {
+        "evolution": {
+          "scalar": 0.5
+        },
+        "visibility": {
+          "scalar": 0.58
+        }
+      },
+      "deaccelerator": true
+    },
+    {
+      "id": "referentiel-salaries",
+      "label": {
+        "name": "Référentiel salariés (SIRH)"
+      },
+      "type": "component",
+      "subtype": "functional",
+      "nature": "data",
+      "position": {
+        "evolution": {
+          "scalar": 0.6
+        },
+        "visibility": {
+          "scalar": 0.52
+        }
+      },
+      "method": {
+        "category": "sourcing",
+        "recommendation": "Acheter"
+      }
+    },
+    {
+      "id": "valorisation-vl",
+      "label": {
+        "name": "Valorisation des parts (VL)"
+      },
+      "type": "component",
+      "subtype": "functional",
+      "nature": "data",
+      "position": {
+        "evolution": {
+          "scalar": 0.66
+        },
+        "visibility": {
+          "scalar": 0.55
+        }
+      }
+    },
+    {
+      "id": "tenue-compte",
+      "label": {
+        "name": "Tenue de compte-conservation"
+      },
+      "type": "component",
+      "subtype": "functional",
+      "nature": "activity",
+      "position": {
+        "evolution": {
+          "scalar": 0.72
+        },
+        "visibility": {
+          "scalar": 0.5
+        }
+      },
+      "method": {
+        "category": "sourcing",
+        "recommendation": "Externaliser"
+      }
+    },
+    {
+      "id": "societe-gestion",
+      "label": {
+        "name": "Sociétés de gestion (FCPE)"
+      },
+      "type": "component",
+      "subtype": "market",
+      "position": {
+        "evolution": {
+          "scalar": 0.8
+        },
+        "visibility": {
+          "scalar": 0.64
+        }
+      }
+    },
+    {
+      "id": "signature-electronique",
+      "label": {
+        "name": "Signature électronique"
+      },
+      "type": "component",
+      "subtype": "functional",
+      "nature": "activity",
+      "position": {
+        "evolution": {
+          "scalar": 0.74
+        },
+        "visibility": {
+          "scalar": 0.62
+        }
+      },
+      "method": {
+        "category": "sourcing",
+        "recommendation": "Acheter"
+      }
+    },
+    {
+      "id": "auth-sso",
+      "label": {
+        "name": "Authentification / SSO"
+      },
+      "type": "component",
+      "subtype": "functional",
+      "nature": "activity",
+      "position": {
+        "evolution": {
+          "scalar": 0.86
+        },
+        "visibility": {
+          "scalar": 0.66
+        }
+      }
+    },
+    {
+      "id": "paiement-sepa",
+      "label": {
+        "name": "Paiement SEPA"
+      },
+      "type": "component",
+      "subtype": "functional",
+      "nature": "activity",
+      "position": {
+        "evolution": {
+          "scalar": 0.9
+        },
+        "visibility": {
+          "scalar": 0.74
+        }
+      }
+    },
+    {
+      "id": "hebergement",
+      "label": {
+        "name": "Hébergement cloud"
+      },
+      "type": "component",
+      "subtype": "functional",
+      "nature": "activity",
+      "position": {
+        "evolution": {
+          "scalar": 0.95
+        },
+        "visibility": {
+          "scalar": 0.84
+        }
+      },
+      "method": {
+        "category": "sourcing",
+        "recommendation": "Externaliser"
+      }
+    }
+  ],
+  "relations": [
+    {
+      "id": "r1",
+      "consumer": "salarie",
+      "supplier": "besoin-epargner",
+      "type": "DependsOn"
+    },
+    {
+      "id": "r2",
+      "consumer": "employeur",
+      "supplier": "besoin-piloter",
+      "type": "DependsOn"
+    },
+    {
+      "id": "r3",
+      "consumer": "besoin-epargner",
+      "supplier": "portail-salarie",
+      "type": "DependsOn"
+    },
+    {
+      "id": "r4",
+      "consumer": "besoin-piloter",
+      "supplier": "espace-rh",
+      "type": "DependsOn"
+    },
+    {
+      "id": "r5",
+      "consumer": "portail-salarie",
+      "supplier": "simulateur",
+      "type": "DependsOn"
+    },
+    {
+      "id": "r6",
+      "consumer": "portail-salarie",
+      "supplier": "gestion-versements",
+      "type": "DependsOn"
+    },
+    {
+      "id": "r7",
+      "consumer": "portail-salarie",
+      "supplier": "auth-sso",
+      "type": "DependsOn"
+    },
+    {
+      "id": "r8",
+      "consumer": "espace-rh",
+      "supplier": "gestion-dispositifs",
+      "type": "DependsOn"
+    },
+    {
+      "id": "r9",
+      "consumer": "espace-rh",
+      "supplier": "gestion-versements",
+      "type": "DependsOn"
+    },
+    {
+      "id": "r10",
+      "consumer": "espace-rh",
+      "supplier": "auth-sso",
+      "type": "DependsOn"
+    },
+    {
+      "id": "r11",
+      "consumer": "simulateur",
+      "supplier": "valorisation-vl",
+      "type": "DependsOn"
+    },
+    {
+      "id": "r12",
+      "consumer": "gestion-versements",
+      "supplier": "gestion-dispositifs",
+      "type": "DependsOn"
+    },
+    {
+      "id": "r13",
+      "consumer": "gestion-versements",
+      "supplier": "fiscalite-social",
+      "type": "DependsOn"
+    },
+    {
+      "id": "r14",
+      "consumer": "gestion-versements",
+      "supplier": "connecteur-paie",
+      "type": "DependsOn"
+    },
+    {
+      "id": "r15",
+      "consumer": "gestion-versements",
+      "supplier": "paiement-sepa",
+      "type": "DependsOn"
+    },
+    {
+      "id": "r16",
+      "consumer": "gestion-dispositifs",
+      "supplier": "tenue-compte",
+      "type": "DependsOn"
+    },
+    {
+      "id": "r17",
+      "consumer": "gestion-dispositifs",
+      "supplier": "conformite",
+      "type": "DependsOn"
+    },
+    {
+      "id": "r18",
+      "consumer": "gestion-dispositifs",
+      "supplier": "referentiel-salaries",
+      "type": "DependsOn"
+    },
+    {
+      "id": "r19",
+      "consumer": "tenue-compte",
+      "supplier": "societe-gestion",
+      "type": "DependsOn"
+    },
+    {
+      "id": "r20",
+      "consumer": "tenue-compte",
+      "supplier": "valorisation-vl",
+      "type": "Flow",
+      "flow": {
+        "label": "valeurs liquidatives",
+        "style": "dashed"
+      }
+    },
+    {
+      "id": "r21",
+      "consumer": "tenue-compte",
+      "supplier": "signature-electronique",
+      "type": "DependsOn"
+    },
+    {
+      "id": "r22",
+      "consumer": "valorisation-vl",
+      "supplier": "societe-gestion",
+      "type": "DependsOn"
+    },
+    {
+      "id": "r23",
+      "consumer": "referentiel-salaries",
+      "supplier": "connecteur-paie",
+      "type": "DependsOn"
+    },
+    {
+      "id": "r24",
+      "consumer": "conformite",
+      "supplier": "fiscalite-social",
+      "type": "Constraint"
+    },
+    {
+      "id": "r25",
+      "consumer": "tenue-compte",
+      "supplier": "paiement-sepa",
+      "type": "DependsOn"
+    },
+    {
+      "id": "r26",
+      "consumer": "portail-salarie",
+      "supplier": "hebergement",
+      "type": "DependsOn"
+    },
+    {
+      "id": "r27",
+      "consumer": "tenue-compte",
+      "supplier": "hebergement",
+      "type": "DependsOn"
+    }
+  ],
+  "renderConfig": {
+    "rendering": {
+      "locale": "fr",
+      "avoidCollisions": true
+    },
+    "display": {
+      "legend": true
+    },
+    "style": {
+      "legend": {
+        "default": {
+          "box": {
+            "position": "bottom-left"
+          }
+        }
+      },
+      "background": {
+        "canvas": {
+          "default": {
+            "width": 1800,
+            "height": 1000
+          }
+        },
+        "axisEvolution": {
+          "default": {
+            "label": {
+              "text": "Évolution"
+            }
+          }
+        },
+        "axisValueChain": {
+          "default": {
+            "label": {
+              "text": "Chaîne de valeur"
+            }
+          }
+        },
+        "phases": {
+          "default": {
+            "labels": [
+              {
+                "text": "Genèse"
+              },
+              {
+                "text": "Sur-mesure"
+              },
+              {
+                "text": "Produit"
+              },
+              {
+                "text": "Commodité"
+              }
+            ]
+          }
+        }
+      },
+      "nodes": {
+        "byType": {
+          "anchor": {
+            "override": {
+              "symbol": {
+                "stroke": "#f59e0b"
+              }
+            }
+          }
+        },
+        "bySubtype": {
+          "userNeed": {
+            "override": {
+              "symbol": {
+                "stroke": "#dc2626"
+              }
+            }
+          },
+          "market": {
+            "override": {
+              "symbol": {
+                "stroke": "#059669"
+              }
+            }
+          }
+        }
+      },
+      "decorators": {
+        "method": {
+          "sourcing": {
+            "default": {
+              "color": "#2563eb",
+              "legend": {
+                "Construire": "Construire",
+                "Acheter": "Acheter",
+                "Externaliser": "Externaliser"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

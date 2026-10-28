@@ -1,0 +1,5 @@
+---
+'@labre/affine': minor
+---
+
+Wardley maps can be read and written in the JSON language of `@formicoidea/wardley-map-renderer` (ADR 0012, amendment of 2026-10-28), beside OWM. `@formicoidea/labre-framework-wardley/interchange` and the package index export `WARDLEY_JSON_IMPORT` (`wardley:json:import`), `WARDLEY_JSON_EXPORT` (`wardley:json:export`), `WARDLEY_JSON_FORMAT`, `WARDLEY_JSON_EXTENSION`, `WARDLEY_JSON_MIME`, `importWardleyRendererJson` and `exportWardleyRendererJson`; both capabilities join `WARDLEY_INTERCHANGE`, so the editor lists an "Export Wardley as .json" view action and reads `.json` maps. The reader draws every element with the `WARDLEY_TOOLBOX` builders (an evolution is the toolbar's change arrow to the target point, never a second component; a pipeline spans its geometry), carries what the board does not draw on the element and writes it back, and reports a bad document instead of throwing. The writer needs no editor: it reads stored fields, so it runs on live models and stored props alike. Ten new import remark keys `com.labre.wardley.import.json.remark.*` join the manifest.

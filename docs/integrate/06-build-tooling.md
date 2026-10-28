@@ -132,6 +132,14 @@ never with `message` (it may quote the file). Bound the input before reading:
 `decodeDrawio` refuses a `<diagram>` that inflates past 20 MiB, and a server
 should cap the file's size itself (the editor applies `FileSizeLimitProvider`).
 
+Wardley reads and writes two languages there: OWM (`WARDLEY_OWM_IMPORT`; its
+export needs the editor) and the JSON of `@formicoidea/wardley-map-renderer`,
+both ways with no editor (`WARDLEY_JSON_IMPORT`, `WARDLEY_JSON_EXPORT`, ids
+`wardley:json:import` / `wardley:json:export`). The JSON reader draws with
+the toolbox builders below, an evolution being a change arrow to a point,
+and refuses a bad document with a report, never an exception; the writer
+takes the board's elements, live models or stored props.
+
 ## Drawing toolbar items on a server
 
 The same `./interchange` subpaths carry a framework's TOOLBOX when it has one

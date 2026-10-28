@@ -1,0 +1,1109 @@
+{
+  "title": "Wardley Maps API — System Map",
+  "context": "Self-referential Wardley Map of the WardleyAPI service: from user needs through rendering pipeline to infrastructure.",
+  "components": [
+    {
+      "id": "user-need-map",
+      "label": {
+        "name": "Map Generation Need",
+        "position": {
+          "dx": 15,
+          "dy": -10
+        }
+      },
+      "type": "component",
+      "nature": "natural",
+      "position": {
+        "evolution": {
+          "scalar": 0.25
+        },
+        "visibility": {
+          "scalar": 0.05
+        }
+      },
+      "description": "End-user wants to generate a Wardley Map from a natural language prompt",
+      "subtype": "userNeed"
+    },
+    {
+      "id": "user-need-render",
+      "label": {
+        "name": "Visual Render Need"
+      },
+      "type": "component",
+      "nature": "natural",
+      "position": {
+        "evolution": {
+          "scalar": 0.35
+        },
+        "visibility": {
+          "scalar": 0.05
+        }
+      },
+      "description": "End-user needs a visual SVG/PNG output of the map",
+      "subtype": "userNeed"
+    },
+    {
+      "id": "api-gateway",
+      "label": {
+        "name": "API Gateway (/v1/render)"
+      },
+      "type": "component",
+      "nature": "activity",
+      "position": {
+        "evolution": {
+          "scalar": 0.55
+        },
+        "visibility": {
+          "scalar": 0.15
+        }
+      },
+      "description": "Hono-based HTTP endpoint with RFC 7807 error handling, API key auth, rate limiting",
+      "method": {
+        "category": "buying-policy",
+        "recommendation": "Transitional"
+      },
+      "subtype": "functional"
+    },
+    {
+      "id": "openapi-spec",
+      "label": {
+        "name": "OpenAPI Specification"
+      },
+      "type": "component",
+      "nature": "data",
+      "position": {
+        "evolution": {
+          "scalar": 0.65
+        },
+        "visibility": {
+          "scalar": 0.18
+        }
+      },
+      "description": "Auto-generated from Zod schemas via triple sync pattern",
+      "subtype": "functional"
+    },
+    {
+      "id": "json-pivot",
+      "label": {
+        "name": "JSON Pivot Format",
+        "position": {
+          "dx": 15,
+          "dy": 5
+        }
+      },
+      "type": "component",
+      "nature": "data",
+      "position": {
+        "evolution": {
+          "scalar": 0.4
+        },
+        "visibility": {
+          "scalar": 0.25
+        }
+      },
+      "description": "Central JSON schema (WardleyMapSchema) — richer semantics than OWM maps-as-code",
+      "method": {
+        "category": "buying-policy",
+        "recommendation": "Transitional"
+      },
+      "evolvesTo": [
+        {
+          "position": {
+            "evolution": {
+              "scalar": 0.6
+            },
+            "visibility": {
+              "scalar": 0.25
+            }
+          },
+          "evolveType": "natural"
+        }
+      ],
+      "subtype": "functional"
+    },
+    {
+      "id": "render-config",
+      "label": {
+        "name": "RenderConfig v2"
+      },
+      "type": "component",
+      "nature": "data",
+      "position": {
+        "evolution": {
+          "scalar": 0.35
+        },
+        "visibility": {
+          "scalar": 0.3
+        }
+      },
+      "description": "Nested config schema: theme, palette, font, layerToggles, coordinateSpace, legend",
+      "method": {
+        "category": "project-management",
+        "recommendation": "Transitional"
+      },
+      "subtype": "functional"
+    },
+    {
+      "id": "resolve-config",
+      "label": {
+        "name": "4-Tier Config Resolution"
+      },
+      "type": "component",
+      "nature": "practice",
+      "position": {
+        "evolution": {
+          "scalar": 0.3
+        },
+        "visibility": {
+          "scalar": 0.35
+        }
+      },
+      "description": "resolveConfig() with TIERED_RENDER_CONFIG_TAXONOMY: platform > layout > author > viewer",
+      "method": {
+        "category": "attitudes",
+        "recommendation": "Uncharted"
+      },
+      "subtype": "functional"
+    },
+    {
+      "id": "constraint-graph",
+      "label": {
+        "name": "Constraint Graph",
+        "position": {
+          "dx": -80,
+          "dy": 0
+        }
+      },
+      "type": "component",
+      "nature": "practice",
+      "position": {
+        "evolution": {
+          "scalar": 0.25
+        },
+        "visibility": {
+          "scalar": 0.4
+        }
+      },
+      "description": "Declarative cross-field constraints: legendBounds, layerDependencies, phaseStyleAlignment",
+      "subtype": "functional"
+    },
+    {
+      "id": "render-orchestrator",
+      "label": {
+        "name": "Render Orchestrator"
+      },
+      "type": "component",
+      "nature": "activity",
+      "position": {
+        "evolution": {
+          "scalar": 0.4
+        },
+        "visibility": {
+          "scalar": 0.35
+        }
+      },
+      "description": "2-phase pipeline: Phase 1 (geometry) then Phase 2 (SVG layers)",
+      "method": {
+        "category": "buying-policy",
+        "recommendation": "Transitional"
+      },
+      "subtype": "functional"
+    },
+    {
+      "id": "geometry-phase",
+      "label": {
+        "name": "Geometry Engine (Phase 1)"
+      },
+      "type": "component",
+      "nature": "activity",
+      "position": {
+        "evolution": {
+          "scalar": 0.45
+        },
+        "visibility": {
+          "scalar": 0.45
+        }
+      },
+      "description": "Converts normalised [0-1] coords to pixel positions",
+      "subtype": "functional"
+    },
+    {
+      "id": "svg-layers",
+      "label": {
+        "name": "SVG Layer Renderers (Phase 2)"
+      },
+      "type": "pipeline",
+      "position": {
+        "evolution": {
+          "scalar": 0.4
+        },
+        "visibility": {
+          "scalar": 0.55
+        }
+      },
+      "description": "Modular layer registry: background, axes, nodes, edges, evolvesTo, labels, legend, pipelines",
+      "method": {
+        "category": "project-management",
+        "recommendation": "Transitional"
+      },
+      "pipelineGeometry": {
+        "evoStart": 0.3,
+        "evoEnd": 0.55,
+        "visStart": 0.5,
+        "visEnd": 0.65
+      }
+    },
+    {
+      "id": "layer-nodes",
+      "label": {
+        "name": "Nodes Layer"
+      },
+      "type": "component",
+      "nature": "activity",
+      "position": {
+        "evolution": {
+          "scalar": 0.45
+        },
+        "visibility": {
+          "scalar": 0.55
+        }
+      },
+      "description": "Renders component circles with type-specific symbols: market, ecosystem, standard",
+      "subtype": "functional"
+    },
+    {
+      "id": "layer-legend",
+      "label": {
+        "name": "Legend Layer"
+      },
+      "type": "component",
+      "nature": "activity",
+      "position": {
+        "evolution": {
+          "scalar": 0.35
+        },
+        "visibility": {
+          "scalar": 0.58
+        }
+      },
+      "description": "Auto-generated legend with type swatches and evolve style entries",
+      "subtype": "functional"
+    },
+    {
+      "id": "layer-axes",
+      "label": {
+        "name": "Axes & Phase Dividers"
+      },
+      "type": "component",
+      "nature": "activity",
+      "position": {
+        "evolution": {
+          "scalar": 0.5
+        },
+        "visibility": {
+          "scalar": 0.55
+        }
+      },
+      "description": "Evolution X-axis, Value Chain Y-axis, phase divider lines",
+      "subtype": "functional"
+    },
+    {
+      "id": "png-rasterizer",
+      "label": {
+        "name": "PNG Rasterizer (resvg-js)"
+      },
+      "type": "component",
+      "position": {
+        "evolution": {
+          "scalar": 0.65
+        },
+        "visibility": {
+          "scalar": 0.6
+        }
+      },
+      "description": "SVG to PNG conversion via resvg-js with font embedding",
+      "method": {
+        "category": "buying-policy",
+        "recommendation": "Transitional"
+      }
+    },
+    {
+      "id": "llm-extraction",
+      "label": {
+        "name": "LLM Component Extraction",
+        "position": {
+          "dx": 15,
+          "dy": 5
+        }
+      },
+      "type": "component",
+      "nature": "activity",
+      "position": {
+        "evolution": {
+          "scalar": 0.15
+        },
+        "visibility": {
+          "scalar": 0.45
+        }
+      },
+      "description": "Extracts components, relations, and initial evolution from NL prompt via Claude API",
+      "method": {
+        "category": "attitudes",
+        "recommendation": "Uncharted"
+      },
+      "evolvesTo": [
+        {
+          "position": {
+            "evolution": {
+              "scalar": 0.35
+            },
+            "visibility": {
+              "scalar": 0.45
+            }
+          },
+          "evolveType": "natural"
+        }
+      ],
+      "subtype": "functional"
+    },
+    {
+      "id": "steering-model",
+      "label": {
+        "name": "Evolution Steering (Gemma-2-2B)",
+        "position": {
+          "dx": -100,
+          "dy": -12
+        }
+      },
+      "type": "component",
+      "nature": "knowledge",
+      "position": {
+        "evolution": {
+          "scalar": 0.1
+        },
+        "visibility": {
+          "scalar": 0.55
+        }
+      },
+      "description": "Small model steered with activation vectors for evolution scoring",
+      "method": {
+        "category": "buying-policy",
+        "recommendation": "Uncharted"
+      },
+      "evolvesTo": [
+        {
+          "position": {
+            "evolution": {
+              "scalar": 0.3
+            },
+            "visibility": {
+              "scalar": 0.55
+            }
+          },
+          "evolveType": "forced",
+          "inertia": true
+        }
+      ],
+      "subtype": "functional"
+    },
+    {
+      "id": "validation-engine",
+      "label": {
+        "name": "Hardcoded Validation"
+      },
+      "type": "component",
+      "nature": "practice",
+      "position": {
+        "evolution": {
+          "scalar": 0.55
+        },
+        "visibility": {
+          "scalar": 0.5
+        }
+      },
+      "description": "Zod schema validation + sanitizeMap() legacy type migration",
+      "method": {
+        "category": "project-management",
+        "recommendation": "Transitional"
+      },
+      "subtype": "functional"
+    },
+    {
+      "id": "dataset-mapkeep",
+      "label": {
+        "name": "MapKeep Dataset (67 maps)"
+      },
+      "type": "component",
+      "nature": "data",
+      "position": {
+        "evolution": {
+          "scalar": 0.3
+        },
+        "visibility": {
+          "scalar": 0.7
+        }
+      },
+      "description": "Extracted via Tampermonkey userscript — 2867 components, 2340 edges",
+      "subtype": "functional"
+    },
+    {
+      "id": "dataset-owm",
+      "label": {
+        "name": "OWM Dataset (349 maps)"
+      },
+      "type": "component",
+      "nature": "data",
+      "position": {
+        "evolution": {
+          "scalar": 0.45
+        },
+        "visibility": {
+          "scalar": 0.7
+        }
+      },
+      "description": "Open source maps from 6 collections — 9312 components, 11106 edges",
+      "subtype": "functional"
+    },
+    {
+      "id": "anthropic-api",
+      "label": {
+        "name": "Claude API (Anthropic)"
+      },
+      "type": "component",
+      "position": {
+        "evolution": {
+          "scalar": 0.55
+        },
+        "visibility": {
+          "scalar": 0.75
+        }
+      },
+      "description": "LLM inference provider for component extraction",
+      "method": {
+        "category": "project-management",
+        "recommendation": "Transitional"
+      }
+    },
+    {
+      "id": "hono-framework",
+      "label": {
+        "name": "Hono (Web Framework)"
+      },
+      "type": "component",
+      "position": {
+        "evolution": {
+          "scalar": 0.75
+        },
+        "visibility": {
+          "scalar": 0.8
+        }
+      },
+      "method": {
+        "category": "attitudes",
+        "recommendation": "Industrialized"
+      }
+    },
+    {
+      "id": "zod",
+      "label": {
+        "name": "Zod (Schema Validation)"
+      },
+      "type": "component",
+      "position": {
+        "evolution": {
+          "scalar": 0.72
+        },
+        "visibility": {
+          "scalar": 0.82
+        }
+      },
+      "method": {
+        "category": "buying-policy",
+        "recommendation": "Industrialized"
+      }
+    },
+    {
+      "id": "typescript",
+      "label": {
+        "name": "TypeScript"
+      },
+      "type": "component",
+      "position": {
+        "evolution": {
+          "scalar": 0.82
+        },
+        "visibility": {
+          "scalar": 0.9
+        }
+      },
+      "method": {
+        "category": "project-management",
+        "recommendation": "Industrialized"
+      }
+    },
+    {
+      "id": "pnpm-turborepo",
+      "label": {
+        "name": "pnpm + Turborepo"
+      },
+      "type": "component",
+      "position": {
+        "evolution": {
+          "scalar": 0.78
+        },
+        "visibility": {
+          "scalar": 0.92
+        }
+      },
+      "method": {
+        "category": "attitudes",
+        "recommendation": "Industrialized"
+      }
+    },
+    {
+      "id": "competitor-wardleymapsai",
+      "label": {
+        "name": "wardleymaps.ai (Craddock)",
+        "position": {
+          "dx": 20,
+          "dy": -10
+        }
+      },
+      "type": "component",
+      "position": {
+        "evolution": {
+          "scalar": 0.4
+        },
+        "visibility": {
+          "scalar": 0.1
+        }
+      },
+      "description": "Wraps OpenAI, no steering — competitor reference point",
+      "subtype": "market"
+    },
+    {
+      "id": "mermaid-wardley",
+      "label": {
+        "name": "Mermaid.js Wardley Support"
+      },
+      "type": "component",
+      "position": {
+        "evolution": {
+          "scalar": 0.55
+        },
+        "visibility": {
+          "scalar": 0.12
+        }
+      },
+      "description": "Native Wardley Map syntax in Mermaid — commodity rendering",
+      "subtype": "market"
+    },
+    {
+      "id": "ecosystem-owm",
+      "label": {
+        "name": "OWM Ecosystem",
+        "position": {
+          "dx": 20,
+          "dy": 0
+        }
+      },
+      "type": "component",
+      "position": {
+        "evolution": {
+          "scalar": 0.5
+        },
+        "visibility": {
+          "scalar": 0.08
+        }
+      },
+      "description": "Open Wardley Mapping community — data sources, conventions, tools",
+      "subtype": "ecosystem"
+    },
+    {
+      "id": "auth-ratelimit",
+      "label": {
+        "name": "Auth & Rate Limiting"
+      },
+      "type": "component",
+      "nature": "activity",
+      "position": {
+        "evolution": {
+          "scalar": 0.65
+        },
+        "visibility": {
+          "scalar": 0.22
+        }
+      },
+      "description": "API key validation + sliding window rate limiter middleware",
+      "method": {
+        "category": "attitudes",
+        "recommendation": "Transitional"
+      },
+      "subtype": "functional"
+    },
+    {
+      "id": "rfc7807-errors",
+      "label": {
+        "name": "RFC 7807 Problem Details"
+      },
+      "type": "component",
+      "nature": "practice",
+      "position": {
+        "evolution": {
+          "scalar": 0.6
+        },
+        "visibility": {
+          "scalar": 0.28
+        }
+      },
+      "description": "Typed problem URIs + LLM-actionable hint field on every error",
+      "method": {
+        "category": "buying-policy",
+        "recommendation": "Transitional"
+      },
+      "subtype": "functional"
+    },
+    {
+      "id": "i18n",
+      "label": {
+        "name": "i18n (en/fr)"
+      },
+      "type": "component",
+      "nature": "knowledge",
+      "position": {
+        "evolution": {
+          "scalar": 0.5
+        },
+        "visibility": {
+          "scalar": 0.4
+        }
+      },
+      "description": "Locale-driven axis labels, phase labels, legend labels",
+      "subtype": "functional"
+    },
+    {
+      "id": "note-benchmark",
+      "label": {
+        "name": "Benchmark: LLM beats random by 15.6% MAE",
+        "position": {
+          "dx": 10,
+          "dy": -12
+        }
+      },
+      "type": "component",
+      "position": {
+        "evolution": {
+          "scalar": 0.12
+        },
+        "visibility": {
+          "scalar": 0.65
+        }
+      },
+      "description": "Gemini 3 Flash: MAE 0.259 vs 0.307 random. Commodity 71%, Genesis 6%."
+    },
+    {
+      "id": "anchor-value",
+      "label": {
+        "name": "Map-as-Decision-Tool"
+      },
+      "type": "anchor",
+      "position": {
+        "evolution": {
+          "scalar": 0.2
+        },
+        "visibility": {
+          "scalar": 0.02
+        }
+      },
+      "description": "Strategic anchor: maps should inform decisions, not just visualize"
+    }
+  ],
+  "relations": [
+    {
+      "id": "rel-user-need-map-api-gateway-0",
+      "consumer": "user-need-map",
+      "supplier": "api-gateway",
+      "type": "DependsOn"
+    },
+    {
+      "id": "rel-user-need-render-api-gateway-1",
+      "consumer": "user-need-render",
+      "supplier": "api-gateway",
+      "type": "DependsOn"
+    },
+    {
+      "id": "rel-api-gateway-json-pivot-2",
+      "consumer": "api-gateway",
+      "supplier": "json-pivot",
+      "type": "DependsOn"
+    },
+    {
+      "id": "rel-api-gateway-auth-ratelimit-3",
+      "consumer": "api-gateway",
+      "supplier": "auth-ratelimit",
+      "type": "DependsOn"
+    },
+    {
+      "id": "rel-api-gateway-rfc7807-errors-4",
+      "consumer": "api-gateway",
+      "supplier": "rfc7807-errors",
+      "type": "DependsOn"
+    },
+    {
+      "id": "rel-api-gateway-openapi-spec-5",
+      "consumer": "api-gateway",
+      "supplier": "openapi-spec",
+      "type": "DependsOn"
+    },
+    {
+      "id": "rel-json-pivot-llm-extraction-6",
+      "consumer": "json-pivot",
+      "supplier": "llm-extraction",
+      "type": "DependsOn",
+      "flow": {
+        "label": "NL to components",
+        "style": "dashed"
+      }
+    },
+    {
+      "id": "rel-json-pivot-validation-engine-7",
+      "consumer": "json-pivot",
+      "supplier": "validation-engine",
+      "type": "DependsOn"
+    },
+    {
+      "id": "rel-json-pivot-render-orchestrator-8",
+      "consumer": "json-pivot",
+      "supplier": "render-orchestrator",
+      "type": "DependsOn"
+    },
+    {
+      "id": "rel-render-orchestrator-render-config-9",
+      "consumer": "render-orchestrator",
+      "supplier": "render-config",
+      "type": "DependsOn"
+    },
+    {
+      "id": "rel-render-orchestrator-resolve-config-10",
+      "consumer": "render-orchestrator",
+      "supplier": "resolve-config",
+      "type": "DependsOn"
+    },
+    {
+      "id": "rel-resolve-config-constraint-graph-11",
+      "consumer": "resolve-config",
+      "supplier": "constraint-graph",
+      "type": "DependsOn"
+    },
+    {
+      "id": "rel-render-orchestrator-geometry-phase-12",
+      "consumer": "render-orchestrator",
+      "supplier": "geometry-phase",
+      "type": "DependsOn"
+    },
+    {
+      "id": "rel-render-orchestrator-svg-layers-13",
+      "consumer": "render-orchestrator",
+      "supplier": "svg-layers",
+      "type": "DependsOn"
+    },
+    {
+      "id": "rel-svg-layers-layer-nodes-14",
+      "consumer": "svg-layers",
+      "supplier": "layer-nodes",
+      "type": "DependsOn"
+    },
+    {
+      "id": "rel-svg-layers-layer-legend-15",
+      "consumer": "svg-layers",
+      "supplier": "layer-legend",
+      "type": "DependsOn"
+    },
+    {
+      "id": "rel-svg-layers-layer-axes-16",
+      "consumer": "svg-layers",
+      "supplier": "layer-axes",
+      "type": "DependsOn"
+    },
+    {
+      "id": "rel-render-orchestrator-png-rasterizer-17",
+      "consumer": "render-orchestrator",
+      "supplier": "png-rasterizer",
+      "type": "DependsOn"
+    },
+    {
+      "id": "rel-render-orchestrator-i18n-18",
+      "consumer": "render-orchestrator",
+      "supplier": "i18n",
+      "type": "DependsOn"
+    },
+    {
+      "id": "rel-llm-extraction-anthropic-api-19",
+      "consumer": "llm-extraction",
+      "supplier": "anthropic-api",
+      "type": "DependsOn",
+      "flow": {
+        "label": "inference",
+        "style": "solid"
+      }
+    },
+    {
+      "id": "rel-llm-extraction-steering-model-20",
+      "consumer": "llm-extraction",
+      "supplier": "steering-model",
+      "type": "DependsOn",
+      "flow": {
+        "label": "evolution scores",
+        "style": "dashed"
+      }
+    },
+    {
+      "id": "rel-steering-model-dataset-mapkeep-21",
+      "consumer": "steering-model",
+      "supplier": "dataset-mapkeep",
+      "type": "DependsOn",
+      "flow": {
+        "label": "training data",
+        "style": "dashed"
+      }
+    },
+    {
+      "id": "rel-steering-model-dataset-owm-22",
+      "consumer": "steering-model",
+      "supplier": "dataset-owm",
+      "type": "DependsOn",
+      "flow": {
+        "label": "training data",
+        "style": "dashed"
+      }
+    },
+    {
+      "id": "rel-api-gateway-hono-framework-23",
+      "consumer": "api-gateway",
+      "supplier": "hono-framework",
+      "type": "DependsOn"
+    },
+    {
+      "id": "rel-validation-engine-zod-24",
+      "consumer": "validation-engine",
+      "supplier": "zod",
+      "type": "DependsOn"
+    },
+    {
+      "id": "rel-openapi-spec-zod-25",
+      "consumer": "openapi-spec",
+      "supplier": "zod",
+      "type": "DependsOn"
+    },
+    {
+      "id": "rel-hono-framework-typescript-26",
+      "consumer": "hono-framework",
+      "supplier": "typescript",
+      "type": "DependsOn"
+    },
+    {
+      "id": "rel-zod-typescript-27",
+      "consumer": "zod",
+      "supplier": "typescript",
+      "type": "DependsOn"
+    },
+    {
+      "id": "rel-typescript-pnpm-turborepo-28",
+      "consumer": "typescript",
+      "supplier": "pnpm-turborepo",
+      "type": "DependsOn"
+    },
+    {
+      "id": "rel-user-need-map-anchor-value-29",
+      "consumer": "user-need-map",
+      "supplier": "anchor-value",
+      "type": "Flow",
+      "flow": {
+        "label": "strategic intent",
+        "style": "bold"
+      }
+    },
+    {
+      "id": "rel-competitor-wardleymapsai-anthropic-api-30",
+      "consumer": "competitor-wardleymapsai",
+      "supplier": "anthropic-api",
+      "type": "Constraint",
+      "flow": {
+        "label": "market pressure",
+        "style": "dashed"
+      }
+    },
+    {
+      "id": "rel-ecosystem-owm-dataset-owm-31",
+      "consumer": "ecosystem-owm",
+      "supplier": "dataset-owm",
+      "type": "Flow",
+      "flow": {
+        "label": "community maps",
+        "style": "solid"
+      }
+    }
+  ],
+  "renderConfig": {
+    "display": {
+      "axisEvolution": true,
+      "axisValueChain": true,
+      "phases": true,
+      "legend": true
+    },
+    "rendering": {
+      "theme": "default",
+      "locale": "fr",
+      "avoidCollisions": true
+    },
+    "style": {
+      "movement": {
+        "natural": {
+          "override": {
+            "line": {
+              "color": "#2563eb",
+              "dash": "6 3"
+            }
+          }
+        },
+        "forced": {
+          "override": {
+            "line": {
+              "color": "#dc2626",
+              "dash": "4 2"
+            }
+          }
+        },
+        "ecosystem": {
+          "override": {
+            "line": {
+              "color": "#7c3aed",
+              "dash": "8 4"
+            }
+          }
+        },
+        "late": {
+          "override": {
+            "line": {
+              "color": "#d97706",
+              "dash": "2 2"
+            }
+          }
+        },
+        "default": {
+          "override": {
+            "line": {
+              "color": "#64748b"
+            }
+          }
+        }
+      },
+      "legend": {
+        "default": {
+          "box": {
+            "position": "top-right"
+          }
+        }
+      },
+      "background": {
+        "canvas": {
+          "default": {
+            "width": 1600,
+            "height": 900,
+            "fill": "#fafafa"
+          }
+        },
+        "axisValueChain": {
+          "default": {
+            "label": {
+              "text": "Chaine de valeur"
+            }
+          }
+        },
+        "phases": {
+          "default": {
+            "labels": [
+              {
+                "text": "Genese"
+              },
+              {
+                "text": "Sur-mesure"
+              },
+              {
+                "text": "Produit"
+              },
+              {
+                "text": "Commodity"
+              }
+            ]
+          }
+        }
+      },
+      "nodes": {
+        "default": {
+          "override": {
+            "symbol": {
+              "radius": 5,
+              "stroke": "#334155"
+            }
+          }
+        },
+        "bySubtype": {
+          "userNeed": {
+            "override": {
+              "symbol": {
+                "radius": 7,
+                "stroke": "#dc2626"
+              }
+            }
+          },
+          "market": {
+            "override": {
+              "symbol": {
+                "radius": 8,
+                "stroke": "#059669"
+              }
+            }
+          },
+          "ecosystem": {
+            "override": {
+              "symbol": {
+                "radius": 10,
+                "stroke": "#7c3aed"
+              }
+            }
+          },
+          "note": {
+            "override": {
+              "symbol": {
+                "stroke": "#94a3b8"
+              }
+            }
+          }
+        },
+        "byType": {
+          "anchor": {
+            "override": {
+              "symbol": {
+                "radius": 6,
+                "stroke": "#f59e0b"
+              }
+            }
+          },
+          "pipeline": {
+            "override": {
+              "symbol": {
+                "stroke": "#6366f1"
+              }
+            }
+          }
+        }
+      },
+      "global": {
+        "strokeWidth": 1.2,
+        "fontFamily": "Inter, sans-serif",
+        "labelScale": 0.95
+      }
+    }
+  }
+}
