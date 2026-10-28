@@ -45,7 +45,7 @@ function mountEdgelessProvider(flags: BlockFlags) {
  *
  * bpmn:    `.bpmn` out, `.bpmn` in, `.svg` in — 3.
  * c4:      mermaid out — 1.
- * wardley: `.owm` out, `.owm` in, `.svg` in — 3.
+ * wardley: renderer JSON out, JSON in, `.owm` out, `.owm` in, `.svg` in — 5.
  * uml:     PlantUML out, PlantUML in, XMI out, XMI in, draw.io in — 5.
  * canvas:  draw.io out, the generic rendering, never gated — 1.
  *
@@ -54,7 +54,7 @@ function mountEdgelessProvider(flags: BlockFlags) {
  * two frameworks together adds two terms instead of silently agreeing on a
  * number that is short by one.
  */
-const DECLARED_CAPABILITIES = 3 + 1 + 3 + 5 + 1;
+const DECLARED_CAPABILITIES = 3 + 1 + 5 + 5 + 1;
 
 /** What no flag removes: the canvas's own writer. */
 const CANVAS_CAPABILITIES = ['canvas:drawio:export'];
@@ -84,26 +84,31 @@ describe('the interchange registry is flag-gated tooling', () => {
     ]);
   });
 
-  test('Wardley declares both OWM directions and the SVG fallback', () => {
+  test('Wardley declares both JSON and OWM directions and the SVG fallback', () => {
     const found = interchangeCapabilities(mountEdgelessProvider(ALL_ON), {
       framework: 'wardley',
     });
 
-    // Three rows across TWO formats, sorted by id. The OWM pair is the row ADR
-    // 0012 records as OWED — the Wardley serializer used to live in labre-mcp,
-    // outside this repo, which is the ADR's one named violation of P3 — and the
-    // SVG row is the visual-tier fallback beside it.
+    // Five rows across THREE formats, sorted by id. The renderer JSON pair
+    // (#555) and the OWM pair — the row ADR 0012 records as OWED: the Wardley
+    // serializer used to live in labre-mcp, outside this repo, which is the
+    // ADR's one named violation of P3 — and the SVG row is the visual-tier
+    // fallback beside them.
     expect(found.map(capability => capability.id)).toEqual([
+      'wardley:json:export',
+      'wardley:json:import',
       'wardley:owm:export',
       'wardley:owm:import',
       'wardley:svg:import',
     ]);
     // …and the tiers differ, which is the whole of what a user is entitled to
     // expect (P2). A `[visibility, evolution]` pair IS a position on the two
-    // axes, so the OWM import is a translation and owes the full preservation
-    // contract; the SVG one owes recognition, and says so before the file is
-    // read.
+    // axes, so the JSON and OWM imports are translations and owe the full
+    // preservation contract; the SVG one owes recognition, and says so before
+    // the file is read.
     expect(found.map(capability => capability.format.tier)).toEqual([
+      'semantic',
+      'semantic',
       'semantic',
       'semantic',
       'visual',

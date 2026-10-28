@@ -417,6 +417,7 @@ describe('the exports of a view', () => {
       'canvas.export.png',
       'canvas.export.pdf',
       'canvas.export.drawio',
+      'canvas.export.wardley.json',
       'canvas.export.wardley.owm',
       'page.export.markdown',
       'page.export.html',
@@ -473,6 +474,7 @@ describe('the exports of a view', () => {
       'canvas.export.c4.mermaid',
       'canvas.export.uml.plantuml',
       'canvas.export.uml.xmi',
+      'canvas.export.wardley.json',
       'canvas.export.wardley.owm',
     ]);
     expect(ids(std)).not.toContain('canvas.export.canvas.drawio');
