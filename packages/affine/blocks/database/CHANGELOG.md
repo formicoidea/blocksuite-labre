@@ -1,5 +1,23 @@
 # @labre/affine-block-database
 
+## 0.61.0
+
+### Patch Changes
+
+- @labre/affine-components@0.61.0
+- @labre/data-view@0.61.0
+- @labre/affine-ext-loader@0.61.0
+- @labre/affine-inline-preset@0.61.0
+- @labre/affine-inline-reference@0.61.0
+- @labre/affine-model@0.61.0
+- @labre/affine-rich-text@0.61.0
+- @labre/affine-shared@0.61.0
+- @labre/affine-widget-drag-handle@0.61.0
+- @labre/affine-widget-slash-menu@0.61.0
+- @labre/global@0.61.0
+- @labre/std@0.61.0
+- @labre/store@0.61.0
+
 ## 0.60.0
 
 ### Patch Changes

@@ -1,5 +1,41 @@
 # @labre/affine-block-root
 
+## 0.61.0
+
+### Patch Changes
+
+- @labre/affine-gfx-mindmap@0.61.0
+- @labre/affine-block-attachment@0.61.0
+- @labre/affine-block-bookmark@0.61.0
+- @labre/affine-block-database@0.61.0
+- @labre/affine-block-edgeless-text@0.61.0
+- @labre/affine-block-embed@0.61.0
+- @labre/affine-block-frame@0.61.0
+- @labre/affine-block-image@0.61.0
+- @labre/affine-block-note@0.61.0
+- @labre/affine-block-paragraph@0.61.0
+- @labre/affine-block-surface@0.61.0
+- @labre/affine-components@0.61.0
+- @labre/data-view@0.61.0
+- @labre/affine-ext-loader@0.61.0
+- @labre/affine-gfx-brush@0.61.0
+- @labre/affine-gfx-connector@0.61.0
+- @labre/affine-gfx-group@0.61.0
+- @labre/affine-gfx-note@0.61.0
+- @labre/affine-gfx-pointer@0.61.0
+- @labre/affine-gfx-shape@0.61.0
+- @labre/affine-gfx-text@0.61.0
+- @labre/affine-inline-link@0.61.0
+- @labre/affine-inline-preset@0.61.0
+- @labre/affine-model@0.61.0
+- @labre/affine-rich-text@0.61.0
+- @labre/affine-shared@0.61.0
+- @labre/affine-widget-edgeless-toolbar@0.61.0
+- @labre/affine-widget-linked-doc@0.61.0
+- @labre/global@0.61.0
+- @labre/std@0.61.0
+- @labre/store@0.61.0
+
 ## 0.60.0
 
 ### Patch Changes

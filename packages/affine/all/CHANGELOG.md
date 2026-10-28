@@ -1,5 +1,105 @@
 # @labre/affine
 
+## 0.61.0
+
+### Minor Changes
+
+- cd3b734: Page cards placed in a note now default to the one-line view (`style: 'list'`, "Small horizontal style"): the slash menu's "New Page", a page dropped from the host's sidebar into a note, "Show here" in the page view, "Linked doc" from the quick search, an inline reference turned into a card and "Create linked doc" from a text selection. The new `LINKED_DOC_NOTE_STYLE` constant (`@labre/affine-shared/consts`) names it; cards on the canvas keep their style and stored cards are untouched. The title band seam gains an optional `TitleBandService.children$(docId)`: the ids of the document's child pages in the host's tree. A linked-doc card or a synced-doc embed of one of them draws the plain page (or canvas) icon, without the arrow of the linked-page icon that an inline `@` reference keeps. Without it, every card keeps the arrow, as before. `notShown# @labre/affine
+  is unchanged.
+- cd3b734: A host can choose the view a database opens on. `DatabaseInitialViewExtension({ initialView })` (`@labre/affine/blocks/database`) is asked `initialView({ blockId })` once, when the block builds its data source; a view id the block has opens that view, anything else keeps the previous behaviour (the view this tab last showed, else the first). Absent or `null`, nothing changes. Opening on a view writes nothing to the document.
+
+### Patch Changes
+
+- cd3b734: "Replace" on an attachment card's toolbar now opens the host's asset dialog when an `AssetPickerExtension` is registered: `pick({ kind: 'file', mode: 'replace', multiple: false, docId })`, the card takes the first ref's `sourceId`, `name`, `type` and `size` by reference (no `BlobSource.set`), in one undo step. Without the seam it still opens the system file chooser and uploads the file. A host's `pick` may now receive `kind: 'file'` with `mode: 'replace'`.
+- cd3b734: The canvas's "Add file" tool (the senior button, and the media item of the mind map basket) now opens the host's asset dialog when an `AssetPickerExtension` is registered, like the note menu's Image and File buttons already did: `pick({ kind: 'file', mode: 'insert', multiple: false, docId })`, an `image/*` ref lands as an image block and any other as an attachment card, by reference (no `BlobSource.set`). Without the seam it still opens the system file chooser.
+- cd3b734: A text or number cell of a table now saves what is typed as it is typed (after a short pause, 400 ms), when its input loses the focus and when the cell goes away while editing, not only when the selection leaves the cell (Enter, Tab, Escape, another cell). A click outside the editor used to lose the edit. A cell left with nothing new typed writes nothing, so a host is not sent an unchanged value and a value another peer wrote meanwhile is kept. Escape still leaves the cell and keeps what was typed. The plain-text cell serves a hosted source's text and title columns and the title band; the number cell every number column.
+- cd3b734: A value still on its way now draws a spinner instead of a grey skeleton: a pending cell of a database view (table, kanban, gallery, list) shows the library's `LoadingIcon` centred in the cell, and the title band shows it centred while a page's properties load. A pending cell still mounts no editor and takes no write. The cell's test id is now `dv-cell-loading` (was `dv-cell-skeleton`); the band keeps `title-band-loading`. `LoadingIcon` now rotates by SMIL instead of a `<style>` in its SVG, which applied to every `.spinner` of the page.
+- cd3b734: The "+" of the property band under a page title (add a property) now shows only while the band is expanded. On the collapsed row it added a property the reader could not see. A page with no property keeps its "+", since there is nothing to collapse.
+- cd3b734: `TitleBandService.configure(docId, propertyId, anchor)`, optional: a right-click on a property chip's name under the page title (and in the note header on the canvas) asks the host to open its menu for that property under the name, and keeps the browser's menu from showing. Not on a read-only document, nor for a touch long-press. Without it, the right-click is the browser's, as before.
+- Updated dependencies [cd3b734]
+  - @labre/affine-gfx-template@0.61.0
+  - @labre/affine-gfx-bpmn@0.61.0
+  - @labre/affine-gfx-c4@0.61.0
+  - @labre/affine-gfx-cynefin-estuarine@0.61.0
+  - @labre/affine-gfx-ddd-aggregate@0.61.0
+  - @labre/affine-gfx-ddd-context-map@0.61.0
+  - @labre/affine-gfx-ddd-core-domain@0.61.0
+  - @labre/affine-gfx-ddd-event-storming@0.61.0
+  - @labre/affine-gfx-edgy@0.61.0
+  - @labre/affine-gfx-mindmap@0.61.0
+  - @labre/affine-gfx-uml@0.61.0
+  - @labre/affine-gfx-wardley@0.61.0
+  - @labre/affine-block-root@0.61.0
+  - @labre/affine-widget-edgeless-selected-rect@0.61.0
+  - @labre/affine-widget-note-slicer@0.61.0
+  - @labre/affine-block-attachment@0.61.0
+  - @labre/affine-block-bookmark@0.61.0
+  - @labre/affine-block-callout@0.61.0
+  - @labre/affine-block-code@0.61.0
+  - @labre/affine-block-data-view@0.61.0
+  - @labre/affine-block-database@0.61.0
+  - @labre/affine-block-divider@0.61.0
+  - @labre/affine-block-edgeless-text@0.61.0
+  - @labre/affine-block-embed@0.61.0
+  - @labre/affine-block-embed-doc@0.61.0
+  - @labre/affine-block-frame@0.61.0
+  - @labre/affine-block-image@0.61.0
+  - @labre/affine-block-latex@0.61.0
+  - @labre/affine-block-list@0.61.0
+  - @labre/affine-block-note@0.61.0
+  - @labre/affine-block-paragraph@0.61.0
+  - @labre/affine-block-surface@0.61.0
+  - @labre/affine-block-surface-ref@0.61.0
+  - @labre/affine-block-table@0.61.0
+  - @labre/affine-components@0.61.0
+  - @labre/data-view@0.61.0
+  - @labre/affine-database-editor@0.61.0
+  - @labre/affine-ext-loader@0.61.0
+  - @labre/affine-foundation@0.61.0
+  - @labre/affine-fragment-adapter-panel@0.61.0
+  - @labre/affine-fragment-doc-title@0.61.0
+  - @labre/affine-fragment-frame-panel@0.61.0
+  - @labre/affine-fragment-outline@0.61.0
+  - @labre/affine-gfx-brush@0.61.0
+  - @labre/affine-gfx-connector@0.61.0
+  - @labre/affine-gfx-ddd-shared@0.61.0
+  - @labre/affine-gfx-group@0.61.0
+  - @labre/affine-gfx-link@0.61.0
+  - @labre/affine-gfx-note@0.61.0
+  - @labre/affine-gfx-pointer@0.61.0
+  - @labre/affine-gfx-shape@0.61.0
+  - @labre/affine-gfx-text@0.61.0
+  - @labre/affine-gfx-turbo-renderer@0.61.0
+  - @labre/affine-inline-comment@0.61.0
+  - @labre/affine-inline-footnote@0.61.0
+  - @labre/affine-inline-latex@0.61.0
+  - @labre/affine-inline-link@0.61.0
+  - @labre/affine-inline-mention@0.61.0
+  - @labre/affine-inline-preset@0.61.0
+  - @labre/affine-inline-reference@0.61.0
+  - @labre/affine-model@0.61.0
+  - @labre/affine-rich-text@0.61.0
+  - @labre/affine-shared@0.61.0
+  - @labre/affine-widget-drag-handle@0.61.0
+  - @labre/affine-widget-edgeless-auto-connect@0.61.0
+  - @labre/affine-widget-edgeless-dragging-area@0.61.0
+  - @labre/affine-widget-edgeless-toolbar@0.61.0
+  - @labre/affine-widget-edgeless-zoom-toolbar@0.61.0
+  - @labre/affine-widget-frame-title@0.61.0
+  - @labre/affine-widget-keyboard-toolbar@0.61.0
+  - @labre/affine-widget-linked-doc@0.61.0
+  - @labre/affine-widget-page-dragging-area@0.61.0
+  - @labre/affine-widget-remote-selection@0.61.0
+  - @labre/affine-widget-scroll-anchoring@0.61.0
+  - @labre/affine-widget-slash-menu@0.61.0
+  - @labre/affine-widget-thread-marks@0.61.0
+  - @labre/affine-widget-toolbar@0.61.0
+  - @labre/affine-widget-viewport-overlay@0.61.0
+  - @labre/global@0.61.0
+  - @labre/std@0.61.0
+  - @labre/store@0.61.0
+  - @labre/sync@0.61.0
+
 ## 0.60.0
 
 ### Minor Changes
