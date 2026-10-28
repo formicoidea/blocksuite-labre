@@ -25,7 +25,11 @@ import {
   AREA_FILL,
   INERTIA_COLOR,
   METHOD_FILL,
+  WARDLEY_PEACE,
+  WARDLEY_PEACE_LIGHT,
   WARDLEY_RED,
+  WARDLEY_WAR,
+  WARDLEY_WAR_LIGHT,
 } from '../node/consts';
 
 /** The two hex digits `AREA_FILL` carries — the zone's ~25 % opacity. */
@@ -137,10 +141,10 @@ const WARDLEY_PALETTES: NamedPalette[] = [
   },
   {
     key: 'Peace',
-    value: '#5b9cf6',
+    value: WARDLEY_PEACE,
     labelWording: WARDLEY_PALETTE_WORDING_PEACE,
   },
-  { key: 'War', value: '#9d6df0', labelWording: WARDLEY_PALETTE_WORDING_WAR },
+  { key: 'War', value: WARDLEY_WAR, labelWording: WARDLEY_PALETTE_WORDING_WAR },
   {
     key: 'Wonder light',
     value: '#b9e9fa',
@@ -148,12 +152,12 @@ const WARDLEY_PALETTES: NamedPalette[] = [
   },
   {
     key: 'Peace light',
-    value: '#c6dbfc',
+    value: WARDLEY_PEACE_LIGHT,
     labelWording: WARDLEY_PALETTE_WORDING_PEACE_LIGHT,
   },
   {
     key: 'War light',
-    value: '#d9c9fa',
+    value: WARDLEY_WAR_LIGHT,
     labelWording: WARDLEY_PALETTE_WORDING_WAR_LIGHT,
   },
   {

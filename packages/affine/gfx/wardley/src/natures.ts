@@ -96,28 +96,34 @@ export const WARDLEY_COMPETITION = {
  * ## Nine values in one tag, not a category tag and a recommendation tag
  *
  * Simon Wardley's three method families each say one thing per evolution
- * phase: a buying policy builds, buys or outsources; project management runs
+ * phase: a buying policy makes, buys or outsources; project management runs
  * agile, lean or six sigma; attitudes are pioneers, settlers or town planners.
  * The wardley-map-renderer JSON spells the same thing as a pair —
  * `method: { category, recommendation }`, recommendation one of Uncharted /
  * Transitional / Industrialized — and the two encodings are the same nine
  * facts. One value per fact is the shape that admits nothing else: two tags
  * would let a board say "Transitional" with no family, which nothing can paint
- * (the ring's hue IS the family) and no reader can name. The pair stays one
- * pure lookup away in `method.ts`, both directions.
+ * and no reader can name. The pair stays one pure lookup away in `method.ts`,
+ * both directions.
+ *
+ * The family is still shown twice (PO decision, 2026-10-28): each value has its
+ * `group` — the family's title, which the picker prints as a sub-title above
+ * its three values — and each of the nine has its own prefabricated ring
+ * (`METHOD_STYLE`), which is how the map tells them apart. No family beyond
+ * these three: a category the renderer config invented is not a method here.
  *
  * `cardinality: 'single'` because the renderer gives a component ONE method,
  * and because the drawing has one ring to show it with.
  *
- * Labels are the practitioners' own words, short on purpose: the trigger of
- * the dropdown prints the values in force ("Activity, Buy"), and the family
- * shows on the map the moment one is picked, in the ring's colour.
+ * Labels are the practitioners' own words — Make, Buy, Outsource in the PO's
+ * wording — short on purpose: the trigger of the dropdown prints the values
+ * in force ("Activity, Buy").
  */
 export const WARDLEY_METHOD_TAG_ID = 'wardley:method';
 
 /** The nine methods, as value ids. Ids are forever; a def is only deprecated. */
 export const WARDLEY_METHOD = {
-  build: `${WARDLEY_METHOD_TAG_ID}/build`,
+  make: `${WARDLEY_METHOD_TAG_ID}/make`,
   buy: `${WARDLEY_METHOD_TAG_ID}/buy`,
   outsource: `${WARDLEY_METHOD_TAG_ID}/outsource`,
   agile: `${WARDLEY_METHOD_TAG_ID}/agile`,
@@ -126,6 +132,22 @@ export const WARDLEY_METHOD = {
   pioneers: `${WARDLEY_METHOD_TAG_ID}/pioneers`,
   settlers: `${WARDLEY_METHOD_TAG_ID}/settlers`,
   townPlanners: `${WARDLEY_METHOD_TAG_ID}/town-planners`,
+} as const;
+
+/** The three families' titles: the picker's sub-titles and the legend's. */
+export const WARDLEY_METHOD_GROUP = {
+  buyingPolicy: {
+    label: 'Buying policy',
+    labelKey: 'com.labre.wardley.tag.method.group.buying-policy',
+  },
+  projectManagement: {
+    label: 'Project management',
+    labelKey: 'com.labre.wardley.tag.method.group.project-management',
+  },
+  attitudes: {
+    label: 'Attitudes',
+    labelKey: 'com.labre.wardley.tag.method.group.attitudes',
+  },
 } as const;
 
 export const WARDLEY_TAG_DEFS: UniverseTagDefs = {
@@ -240,14 +262,16 @@ export const WARDLEY_TAG_DEFS: UniverseTagDefs = {
       // dropdown reads as the three rows of Wardley's own table.
       values: [
         {
-          id: WARDLEY_METHOD.build,
-          label: 'Build',
-          labelKey: 'com.labre.wardley.tag.method.build',
-          description: 'Buying policy, uncharted: build it yourself.',
-          descriptionKey: 'com.labre.wardley.tag.method.build.description',
+          id: WARDLEY_METHOD.make,
+          group: WARDLEY_METHOD_GROUP.buyingPolicy,
+          label: 'Make',
+          labelKey: 'com.labre.wardley.tag.method.make',
+          description: 'Buying policy, uncharted: make it yourself.',
+          descriptionKey: 'com.labre.wardley.tag.method.make.description',
         },
         {
           id: WARDLEY_METHOD.buy,
+          group: WARDLEY_METHOD_GROUP.buyingPolicy,
           label: 'Buy',
           labelKey: 'com.labre.wardley.tag.method.buy',
           description: 'Buying policy, transitional: buy a product.',
@@ -255,6 +279,7 @@ export const WARDLEY_TAG_DEFS: UniverseTagDefs = {
         },
         {
           id: WARDLEY_METHOD.outsource,
+          group: WARDLEY_METHOD_GROUP.buyingPolicy,
           label: 'Outsource',
           labelKey: 'com.labre.wardley.tag.method.outsource',
           description:
@@ -263,6 +288,7 @@ export const WARDLEY_TAG_DEFS: UniverseTagDefs = {
         },
         {
           id: WARDLEY_METHOD.agile,
+          group: WARDLEY_METHOD_GROUP.projectManagement,
           label: 'Agile',
           labelKey: 'com.labre.wardley.tag.method.agile',
           description: 'Project management, uncharted: explore and adapt.',
@@ -270,6 +296,7 @@ export const WARDLEY_TAG_DEFS: UniverseTagDefs = {
         },
         {
           id: WARDLEY_METHOD.lean,
+          group: WARDLEY_METHOD_GROUP.projectManagement,
           label: 'Lean',
           labelKey: 'com.labre.wardley.tag.method.lean',
           description: 'Project management, transitional: remove waste.',
@@ -277,6 +304,7 @@ export const WARDLEY_TAG_DEFS: UniverseTagDefs = {
         },
         {
           id: WARDLEY_METHOD.sixSigma,
+          group: WARDLEY_METHOD_GROUP.projectManagement,
           label: 'Six Sigma',
           labelKey: 'com.labre.wardley.tag.method.six-sigma',
           description: 'Project management, industrialized: remove deviation.',
@@ -284,6 +312,7 @@ export const WARDLEY_TAG_DEFS: UniverseTagDefs = {
         },
         {
           id: WARDLEY_METHOD.pioneers,
+          group: WARDLEY_METHOD_GROUP.attitudes,
           label: 'Pioneers',
           labelKey: 'com.labre.wardley.tag.method.pioneers',
           description: 'Attitude, uncharted: people who explore the unknown.',
@@ -291,6 +320,7 @@ export const WARDLEY_TAG_DEFS: UniverseTagDefs = {
         },
         {
           id: WARDLEY_METHOD.settlers,
+          group: WARDLEY_METHOD_GROUP.attitudes,
           label: 'Settlers',
           labelKey: 'com.labre.wardley.tag.method.settlers',
           description:
@@ -299,6 +329,7 @@ export const WARDLEY_TAG_DEFS: UniverseTagDefs = {
         },
         {
           id: WARDLEY_METHOD.townPlanners,
+          group: WARDLEY_METHOD_GROUP.attitudes,
           label: 'Town planners',
           labelKey: 'com.labre.wardley.tag.method.town-planners',
           description:

@@ -11,14 +11,13 @@ import {
 } from '@labre/affine-model';
 import { elementTagValues } from '@labre/std/gfx';
 
-import { wardleyMethodRing } from '../method.js';
+import { wardleyMethodStyle } from '../method.js';
 import { WARDLEY_METHOD_TAG_ID } from '../natures.js';
 import { ANCHOR, ECOSYSTEM, METHOD, NODE_FILL } from './consts';
 
 /**
  * The outer ring of a method node, repainted from its `wardley:method` tag
- * (ADR 0046): the family's hue on the line, and the phase in how much of it
- * fills the ring — none, 40 %, all of it.
+ * with that method's prefabricated style (`METHOD_STYLE`, ADR 0046).
  *
  * Derived at paint time and never written back, which is what keeps every
  * node drawn before the tag existed exactly as it was: no tag, or a value no
@@ -29,9 +28,11 @@ import { ANCHOR, ECOSYSTEM, METHOD, NODE_FILL } from './consts';
  *
  * Painted OVER the native ellipse, on its exact path (the shape renderer's
  * own inset of half a stroke, both radii, so a node stretched into an oval is
- * covered too): the paper first, so a 40 % fill reads the same over any
- * stored fill, then the hue. The ring's line is wider than the node's rim
- * (`METHOD_RING_WIDTH`), so no dark edge of the native stroke survives it.
+ * covered too). The paper goes down first, line included, so a wash or a
+ * borderless grey reads the same over any stored fill and no dark edge of the
+ * native rim survives under it; then the style's fill and line. Every colour
+ * goes through the notation tint, so a grey of the ramp and the ink at an
+ * alpha take their dark-card value (ADR 0039) and the hues stay.
  */
 function paintMethodRing(
   model: WardleyNodeElementModel,
@@ -41,10 +42,10 @@ function paintMethodRing(
   h: number,
   strokeWidth: number
 ) {
-  const ring = wardleyMethodRing(
+  const style = wardleyMethodStyle(
     elementTagValues(model, WARDLEY_METHOD_TAG_ID)[0]
   );
-  if (!ring) return;
+  if (!style) return;
 
   // Both radii are positive: the caller has already returned on a node too
   // small for its own stroke.
@@ -58,14 +59,15 @@ function paintMethodRing(
     0,
     Math.PI * 2
   );
-  ctx.fillStyle = notationColor(renderer, NODE_FILL, 'fill');
+  const paper = notationColor(renderer, NODE_FILL, 'fill');
+  ctx.lineWidth = Math.max(strokeWidth, style.lineWidth);
+  ctx.fillStyle = paper;
   ctx.fill();
-  if (ring.fill) {
-    ctx.fillStyle = ring.fill;
-    ctx.fill();
-  }
-  ctx.lineWidth = Math.max(strokeWidth, ring.lineWidth);
-  ctx.strokeStyle = ring.stroke;
+  ctx.strokeStyle = paper;
+  ctx.stroke();
+  ctx.fillStyle = notationColor(renderer, style.fill, 'fill');
+  ctx.fill();
+  ctx.strokeStyle = notationColor(renderer, style.stroke, 'ink');
   ctx.stroke();
 }
 

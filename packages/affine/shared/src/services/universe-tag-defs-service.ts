@@ -84,6 +84,15 @@ export type TagValueDef = {
   descriptionKey?: string;
   /** Advisory colour token. The library may ignore it; it never affects layout. */
   color?: string;
+  /**
+   * The sub-title this value is filed under in a picker, when one tag's values
+   * fall into families — Wardley's nine methods under Buying policy, Project
+   * management and Attitudes (ADR 0046). Values sharing a `group` should be
+   * consecutive in the pack: a picker opens a new sub-title each time the
+   * group changes. Cosmetic, like `label` (last pack wins); absent, the value
+   * is listed under its tag's title alone, as before this field existed.
+   */
+  group?: { label: string; labelKey?: string };
   /** Hidden from pickers; still displayed when already present on an element. */
   deprecated?: boolean;
 };
@@ -227,7 +236,18 @@ export function tagDefsTranslationEntries(
       });
     }
     if (tag.values !== 'open') {
+      // A group's title is shared by every value filed under it: listed once.
+      const groupKeys = new Set<string>();
       for (const value of tag.values) {
+        const group = value.group;
+        if (group?.labelKey && !groupKeys.has(group.labelKey)) {
+          groupKeys.add(group.labelKey);
+          out.push({
+            key: group.labelKey,
+            fallback: group.label,
+            source: 'tag',
+          });
+        }
         if (value.labelKey) {
           out.push({
             key: value.labelKey,

@@ -138,36 +138,90 @@ export const METHOD = {
 export const METHOD_LABEL = 'Component';
 
 /**
- * The ring's hue per method family, once a `wardley:method` tag says which
- * (ADR 0046). The wardley-map-renderer's defaults to the digit, so a map
- * imported from its JSON looks on the board the way it looked there. Hues of a
- * notation: they stay as they are on a dark card (ADR 0039).
+ * The four hues of the Wardley palette the method styles are made of — the
+ * swatches the node colour picker already offers as Peace, Peace light, War
+ * and War light (`../toolbar/node-config.ts` reads these same constants), so a
+ * method's ring and a hand-picked fill are the same blue and the same violet.
+ * "Wardley blue" is Peace, "Wardley violet" is War. Hues: they stay as they
+ * are on a dark card (ADR 0039).
  */
-export const METHOD_FAMILY_COLOR = {
-  'buying-policy': '#2563eb',
-  'project-management': '#16a34a',
-  attitudes: '#f59e0b',
-} as const;
+export const WARDLEY_PEACE = '#5b9cf6';
+export const WARDLEY_PEACE_LIGHT = '#c6dbfc';
+export const WARDLEY_WAR = '#9d6df0';
+export const WARDLEY_WAR_LIGHT = '#d9c9fa';
 
 /**
- * How a transitional method fills its ring: the family hue at 40 %, the
- * renderer's `fill-opacity="0.4"`, as the alpha tail of an 8-digit hex
- * (0.4 × 255 = 102 = 0x66). An uncharted method is the ring alone on the
- * paper, an industrialized one the hue in full.
+ * The two greys of the buying-policy ramp below Method grey (`METHOD_FILL`,
+ * which is "make"): the three steps of Wardley's own make / buy / outsource
+ * shading, light to dark, about 85 %, 55 % and 25 % of white. The darkest is
+ * one notch off OWM's `#444444` on purpose: that literal is C4's stencil grey,
+ * the dark tables are one table across frameworks, and Wardley's ramp must
+ * not take its dark value from another framework's (`notation-dark-palettes`).
+ * Both have a dark entry in `../dark-palette.ts` that keeps the ramp's order
+ * on the dark card.
  */
-export const METHOD_TRANSITIONAL_ALPHA = '66';
+export const METHOD_BUY_FILL = '#8c8c8c';
+export const METHOD_OUTSOURCE_FILL = '#404040';
+
+/** One method's prefabricated ring: what fills it, what draws its line. */
+export interface WardleyMethodStyle {
+  fill: string;
+  stroke: string;
+  /** The ring's line width, never thinner than the node's own rim. */
+  lineWidth: number;
+}
+
+/** `'#rrggbb'` at `alpha` (two hex digits), as a stored 8-digit hex. */
+const withAlpha = (hex: string, alpha: string) => `${hex}${alpha}`;
 
 /**
- * The ring's stroke under a method tag, never thinner than these: an outline
- * is the whole of what an uncharted method shows, so it gets the renderer's
- * 2; the two filled ones take its 1.5. Both are wider than the node's own
- * 1-unit rim, which the ring is painted over and must cover to its
- * anti-aliased edge.
+ * The nine methods' rings, PO decision of 2026-10-28: in Labre the colour
+ * defines the method, family by family (ADR 0046).
+ *
+ * - **Buying policy** — Wardley's own style: the ink border, thick, around a
+ *   grey that darkens with the phase (make, buy, outsource).
+ * - **Project management** — intensity of grey: the ink itself at 15 %, 35 %
+ *   and 55 %, with no border of another colour. Ink with an alpha tail, so the
+ *   dark card paints the same intensities in its own light ink (a stored
+ *   `#rrggbbaa` keeps its alpha through the tint).
+ * - **Attitudes** — the Wardley palette: pioneers a light blue wash in a blue
+ *   border, settlers solid blue, town planners a violet wash in a violet
+ *   border.
+ *
+ * Told apart family by family by the border (ink, none, hue) and within a
+ * family by the fill, and none of them is a plain component's white disc.
  */
-export const METHOD_RING_WIDTH = {
-  outline: 2,
-  filled: 1.5,
-} as const;
+export const METHOD_STYLE = {
+  make: { fill: METHOD_FILL, stroke: NODE_STROKE, lineWidth: 2 },
+  buy: { fill: METHOD_BUY_FILL, stroke: NODE_STROKE, lineWidth: 2 },
+  outsource: { fill: METHOD_OUTSOURCE_FILL, stroke: NODE_STROKE, lineWidth: 2 },
+  agile: {
+    fill: withAlpha(NODE_STROKE, '26'),
+    stroke: withAlpha(NODE_STROKE, '26'),
+    lineWidth: 1.5,
+  },
+  lean: {
+    fill: withAlpha(NODE_STROKE, '59'),
+    stroke: withAlpha(NODE_STROKE, '59'),
+    lineWidth: 1.5,
+  },
+  sixSigma: {
+    fill: withAlpha(NODE_STROKE, '8c'),
+    stroke: withAlpha(NODE_STROKE, '8c'),
+    lineWidth: 1.5,
+  },
+  pioneers: {
+    fill: withAlpha(WARDLEY_PEACE_LIGHT, '80'),
+    stroke: WARDLEY_PEACE,
+    lineWidth: 2,
+  },
+  settlers: { fill: WARDLEY_PEACE, stroke: WARDLEY_PEACE, lineWidth: 2 },
+  townPlanners: {
+    fill: withAlpha(WARDLEY_WAR, '66'),
+    stroke: WARDLEY_WAR,
+    lineWidth: 2,
+  },
+} as const satisfies Record<string, WardleyMethodStyle>;
 
 /**
  * Porter's forces (composite): a large white circle carrying ONE letter, pushed

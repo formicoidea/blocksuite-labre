@@ -1,17 +1,13 @@
 import { WARDLEY_METHOD } from './natures.js';
-import {
-  METHOD_FAMILY_COLOR,
-  METHOD_RING_WIDTH,
-  METHOD_TRANSITIONAL_ALPHA,
-} from './node/consts.js';
+import { METHOD_STYLE, type WardleyMethodStyle } from './node/consts.js';
 
 /**
  * The method tag and the pair the wardley-map-renderer JSON spells it as, in
- * both directions, and the ring each value paints (ADR 0046).
+ * both directions, and the prefabricated ring each value paints (ADR 0046).
  *
  * A pure module on purpose, like `porter-competition.ts`: this is the only
  * place a `wardley:method/...` value id is related to a family, a phase and a
- * colour. The renderer reads it to paint, an import reads it to write the tag,
+ * style. The renderer reads it to paint, an import reads it to write the tag,
  * and nothing here touches an element, a surface or a registry — the painting
  * of a stored document never depends on which tag pack the host seeded.
  */
@@ -40,7 +36,7 @@ export interface WardleyMethodParts {
 }
 
 const PARTS_OF_VALUE: Readonly<Record<string, WardleyMethodParts>> = {
-  [WARDLEY_METHOD.build]: { family: 'buying-policy', phase: 'uncharted' },
+  [WARDLEY_METHOD.make]: { family: 'buying-policy', phase: 'uncharted' },
   [WARDLEY_METHOD.buy]: { family: 'buying-policy', phase: 'transitional' },
   [WARDLEY_METHOD.outsource]: {
     family: 'buying-policy',
@@ -61,6 +57,18 @@ const PARTS_OF_VALUE: Readonly<Record<string, WardleyMethodParts>> = {
     family: 'attitudes',
     phase: 'industrialized',
   },
+};
+
+const STYLE_OF_VALUE: Readonly<Record<string, WardleyMethodStyle>> = {
+  [WARDLEY_METHOD.make]: METHOD_STYLE.make,
+  [WARDLEY_METHOD.buy]: METHOD_STYLE.buy,
+  [WARDLEY_METHOD.outsource]: METHOD_STYLE.outsource,
+  [WARDLEY_METHOD.agile]: METHOD_STYLE.agile,
+  [WARDLEY_METHOD.lean]: METHOD_STYLE.lean,
+  [WARDLEY_METHOD.sixSigma]: METHOD_STYLE.sixSigma,
+  [WARDLEY_METHOD.pioneers]: METHOD_STYLE.pioneers,
+  [WARDLEY_METHOD.settlers]: METHOD_STYLE.settlers,
+  [WARDLEY_METHOD.townPlanners]: METHOD_STYLE.townPlanners,
 };
 
 /**
@@ -89,8 +97,9 @@ export function wardleyMethodParts(
  * Forgiving in case and surrounding blanks only — the renderer's own keys are
  * capitalised (`Uncharted`) and its categories kebab-case — and strict
  * everywhere else: a category the renderer config made up (its `methods` list
- * is open) has no ring colour here, and an importer keeps it as foreign data
- * (ADR 0012) rather than painting it as the nearest family.
+ * is open) is not a method here — Labre has no custom category (PO decision,
+ * 2026-10-28) — and an importer keeps it as foreign data (ADR 0012) rather
+ * than filing it under the nearest family.
  */
 export function wardleyMethodOf(
   category: string | null | undefined,
@@ -107,40 +116,16 @@ export function wardleyMethodOf(
   return null;
 }
 
-/** What a method value paints the ring with. */
-export interface WardleyMethodRing {
-  /** The ring's line, the family hue. */
-  stroke: string;
-  /**
-   * What fills the ring on top of the paper, `null` for an outline: the paper
-   * alone shows through an uncharted method.
-   */
-  fill: string | null;
-  /** The ring's minimum line width. */
-  lineWidth: number;
-}
-
 /**
- * The ring a method value paints, `null` when the value names no method — the
- * caller then paints the node's own stored fill, exactly as before the tag
- * existed.
+ * The prefabricated ring a method value paints (`METHOD_STYLE`), `null`
+ * when the value names no method — the caller then paints the node's own
+ * stored fill, exactly as before the tag existed.
  */
-export function wardleyMethodRing(
+export function wardleyMethodStyle(
   valueId: string | null | undefined
-): WardleyMethodRing | null {
-  const parts = wardleyMethodParts(valueId);
-  if (!parts) return null;
-  const hue = METHOD_FAMILY_COLOR[parts.family];
-  switch (parts.phase) {
-    case 'uncharted':
-      return { stroke: hue, fill: null, lineWidth: METHOD_RING_WIDTH.outline };
-    case 'transitional':
-      return {
-        stroke: hue,
-        fill: `${hue}${METHOD_TRANSITIONAL_ALPHA}`,
-        lineWidth: METHOD_RING_WIDTH.filled,
-      };
-    case 'industrialized':
-      return { stroke: hue, fill: hue, lineWidth: METHOD_RING_WIDTH.filled };
-  }
+): WardleyMethodStyle | null {
+  if (typeof valueId !== 'string') return null;
+  return Object.hasOwn(STYLE_OF_VALUE, valueId)
+    ? STYLE_OF_VALUE[valueId]
+    : null;
 }

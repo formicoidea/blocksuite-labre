@@ -8,7 +8,7 @@ import {
   WARDLEY_NATURE,
   WARDLEY_NATURE_TAG_ID,
 } from '../natures';
-import { METHOD_FAMILY_COLOR, NODE_FILL } from '../node/consts';
+import { METHOD_STYLE, NODE_FILL } from '../node/consts';
 import { wardleyNode } from '../node/node-renderer';
 import { recordingCtx, stubMatrix } from './canvas-stub';
 
@@ -116,9 +116,20 @@ describe('a Wardley node with no room for its glyph', () => {
   });
 });
 
+/** Each value id's style, keyed as `WARDLEY_METHOD` keys both. */
+const METHOD_STYLE_OF: Record<
+  string,
+  (typeof METHOD_STYLE)[keyof typeof METHOD_STYLE]
+> = Object.fromEntries(
+  (Object.keys(WARDLEY_METHOD) as (keyof typeof WARDLEY_METHOD)[]).map(key => [
+    WARDLEY_METHOD[key],
+    METHOD_STYLE[key],
+  ])
+);
+
 /**
- * A method node's ring follows its `wardley:method` tag (ADR 0046): the
- * family's hue on the line, the phase in the fill. What these pin is the
+ * A method node's ring follows its `wardley:method` tag (ADR 0046): each of
+ * the nine values paints its own prefabricated style. What these pin is the
  * contract both ways — a tagged node paints the method, and a node with no
  * method tag paints exactly what it painted before the tag existed, so every
  * map drawn with the "colour = phase" palette keeps its colours.
@@ -177,36 +188,19 @@ describe('the ring of a component + method', () => {
     expect(rec.ellipses).toEqual([{ x: 20, y: 20, rx: 19.5, ry: 19.5 }]);
   });
 
-  it('an uncharted method is the family hue as an outline on the paper', () => {
-    const rec = paint(
-      methodNode({ [WARDLEY_METHOD_TAG_ID]: [WARDLEY_METHOD.build] })
-    );
-    // Paper under the ring, then the inner component's own paper.
-    expect(rec.fills).toEqual([NODE_FILL, NODE_FILL]);
-    expect(rec.strokes).toEqual([
-      METHOD_FAMILY_COLOR['buying-policy'],
-      '#111111',
-    ]);
-    expect(rec.lineWidths[0]).toBe(2);
-  });
-
-  it('a transitional method fills the ring at 40 %', () => {
-    const rec = paint(
-      methodNode({ [WARDLEY_METHOD_TAG_ID]: [WARDLEY_METHOD.lean] })
-    );
-    const hue = METHOD_FAMILY_COLOR['project-management'];
-    expect(rec.fills).toEqual([NODE_FILL, `${hue}66`, NODE_FILL]);
-    expect(rec.strokes[0]).toBe(hue);
-    expect(rec.lineWidths[0]).toBe(1.5);
-  });
-
-  it('an industrialized method fills the ring in full', () => {
-    const rec = paint(
-      methodNode({ [WARDLEY_METHOD_TAG_ID]: [WARDLEY_METHOD.townPlanners] })
-    );
-    const hue = METHOD_FAMILY_COLOR.attitudes;
-    expect(rec.fills).toEqual([NODE_FILL, hue, NODE_FILL]);
-    expect(rec.strokes[0]).toBe(hue);
+  it('paints each method with its own prefabricated style', () => {
+    for (const id of Object.values(WARDLEY_METHOD)) {
+      const style = METHOD_STYLE_OF[id];
+      const rec = paint(methodNode({ [WARDLEY_METHOD_TAG_ID]: [id] }));
+      // Paper down first, fill and line both; then the style; then the inner
+      // component's own paper and the node's ink.
+      expect(rec.fills, id).toEqual([NODE_FILL, style.fill, NODE_FILL]);
+      expect(rec.strokes, id).toEqual([NODE_FILL, style.stroke, '#111111']);
+      expect(rec.lineWidths.slice(0, 2), id).toEqual([
+        style.lineWidth,
+        style.lineWidth,
+      ]);
+    }
   });
 
   it('never paints the ring thinner than the rim of the node', () => {

@@ -25,6 +25,7 @@ import {
 } from '@labre/std';
 import {
   GfxControllerIdentifier,
+  readElementTags,
   roleIsA,
   RoleVocabularyIdentifier,
   type GfxController,
@@ -439,6 +440,34 @@ function rolesOf(elements: readonly GfxPrimitiveElementModel[]): Set<RoleId> {
 }
 
 /**
+ * The tag values each role carries inside a scanned perimeter, as
+ * {@link tagValueKey}s: what lights a row declared with
+ * {@link CommandLegendEntry.tag} (ADR 0046). Role-less elements contribute
+ * nothing, for the reason {@link rolesInBound} gives, which is also what keeps
+ * a legend's own swatches out of the next legend.
+ */
+export type TagValuesByRole = ReadonlyMap<RoleId, ReadonlySet<string>>;
+
+/** One tag value as a set key. A newline appears in no id. */
+const tagValueKey = (tagId: string, valueId: string) => `${tagId}\n${valueId}`;
+
+/** {@link TagValuesByRole} over a perimeter already scanned. */
+export function tagValuesOf(
+  elements: readonly GfxPrimitiveElementModel[]
+): Map<RoleId, Set<string>> {
+  const out = new Map<RoleId, Set<string>>();
+  for (const el of elements) {
+    if (el.role === undefined) continue;
+    for (const [tagId, values] of Object.entries(readElementTags(el))) {
+      let keys = out.get(el.role);
+      if (!keys) out.set(el.role, (keys = new Set()));
+      for (const valueId of values) keys.add(tagValueKey(tagId, valueId));
+    }
+  }
+  return out;
+}
+
+/**
  * The legends ALREADY drawn on this board — what turns the button's second
  * press into "regenerate" rather than a second stacked box (issue #391).
  *
@@ -585,7 +614,8 @@ function resolveSection(
 export function legendFromCommands(
   std: BlockStdScope,
   owner: CommandOwner,
-  present: ReadonlySet<RoleId>
+  present: ReadonlySet<RoleId>,
+  tagged: TagValuesByRole = new Map()
 ): LegendSection[] {
   const roles = vocabularyOf(std);
   const commands = getRegisteredCommands(std)
@@ -593,7 +623,9 @@ export function legendFromCommands(
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
   const drafts: SectionDraft[] = [];
-  const seen = new Set<RoleId>();
+  // A role row is de-duplicated by role; a tag row by role AND value, so the
+  // nine Wardley methods are nine rows under one role.
+  const seen = new Set<string>();
   const presentRoles = [...present];
 
   for (const command of commands) {
@@ -609,11 +641,18 @@ export function legendFromCommands(
       let draft = drafts.find(d => d.key === key);
       if (!draft) drafts.push((draft = { key, title, rows: [] }));
 
-      const lit = entry.exact
-        ? present.has(entry.role)
-        : presentRoles.some(role => roleIsA(role, entry.role, roles));
-      if (!lit || seen.has(entry.role)) continue;
-      seen.add(entry.role);
+      const matches = (role: RoleId) =>
+        entry.exact ? role === entry.role : roleIsA(role, entry.role, roles);
+      const value = entry.tag ? tagValueKey(...entry.tag) : undefined;
+      const lit = presentRoles.some(
+        role =>
+          matches(role) &&
+          (value === undefined || tagged.get(role)?.has(value) === true)
+      );
+      const rowKey =
+        value === undefined ? entry.role : `${entry.role}\n${value}`;
+      if (!lit || seen.has(rowKey)) continue;
+      seen.add(rowKey);
 
       draft.rows.push({
         ...entry.row,
@@ -670,8 +709,14 @@ export function createBoardLegend(
   // the outgoing wrapper is dropped from the scan so `core:legend` is not among
   // the roles the rows are derived from. Its glyphs carry no role at all.
   const outgoing = new Set<GfxPrimitiveElementModel>(previous);
-  const present = rolesOf(inside.filter(el => !outgoing.has(el)));
-  const sections = legendFromCommands(std, owner, present);
+  const scanned = inside.filter(el => !outgoing.has(el));
+  const present = rolesOf(scanned);
+  const sections = legendFromCommands(
+    std,
+    owner,
+    present,
+    tagValuesOf(scanned)
+  );
   const box = boardLegendBox(std, owner);
   const layout: LegendLayout = {
     width: box?.width,
