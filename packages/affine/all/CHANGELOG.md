@@ -1,5 +1,99 @@
 # @labre/affine
 
+## 1.1.0
+
+### Minor Changes
+
+- 989f4ba: New optional `requireSource` on the data-source picker (`DataSourcePickerExtension({ ..., requireSource: true })`). The source decides, never the row count: a database with no source and no row, or whose source the host no longer resolves, draws an empty view ("No source connected") with a "Connect a source" button that reopens the creation popover (connecting the block, or re-pointing the hosted view); a database with no source but native rows shows them read-only; a connected database with no row is an ordinary table. Closing the popover still writes nothing. With a host picker, the mobile keyboard toolbar's "Table view" / "Kanban view" now run the slash entries' gesture, and "Create Table" is hidden when a source is required. New: `sourceRequirement`, `reconnectDatabaseView`, `canConvertToDatabase`, `canCreateDatabase`, `createDatabaseByGesture`, `HostedDataSourceBase.locked# @labre/affine
+, `DatabaseCreationRequest.viewId` (`@labre/affine/blocks/database`), a `testId`on context-menu sub-menu entries, and three keys,`com.labre.database.source-required`, `.hint`and`.read-only`; the button reuses `com.labre.database.creation.title`, whose declaration moves to core (`DATABASE_CREATION_TITLE`, same key). Test ids for a host's end-to-end suite: `database-creation-new-source`, `database-creation-link-existing-entry`, `database-source-required`, `database-source-required-connect`, `database-source-required-read-only`. A host without a picker sees no change; a host with a picker but without the option sees only the mobile toolbar change.
+- cae7eb9: New optional `createDatabaseFrom({ title, properties, rows })` and `rowBodies` on the data-source picker (`DataSourcePickerExtension`). Under `requireSource`, "Create Table" on selected paragraphs and the new "Move into a database" button over native rows shown read-only hand their content to it (titles as rich-text deltas, values as stored, nested blocks as page bodies when `rowBodies` is set, else refused) and connect the block to the database it answers, in one undo step; nothing is written on a refusal, a rejection, a read-only document or content changed meanwhile. New: `turnBlocksIntoSource`, `moveDatabaseRowsIntoSource`, `moveDatabaseIntoSource`, `blocksContent`, `databaseContent`, `canTurnIntoSource` (`@labre/affine/blocks/database`), the `DataSourcePickerContent` and `DataSourcePickerRow` types, three keys (`com.labre.database.turn-into.move`, `.failed`, `.nested`) and the test id `database-source-required-move`. A host that does not set `requireSource` sees no change.
+- dd92980: Two optional members on the data-source picker. `deleteView(request)`: deleting a view of a host database (a block with an `externalSourceId`, on a writable document) asks the host first; it removes the view with `request.remove()` (one undo step, `false` when it could not), or keeps it by not calling it. Never called for a deleted block, an undo, a redo or a remote change. `viewHistory(view, 'undo' | 'redo')` reports each local undo and redo of such a removal. New types `DataSourcePickerViewRef` and `DataSourcePickerViewDeletion` (`@labre/affine/shared/services`). A host that sets neither sees no change.
+
+### Patch Changes
+
+- @labre/affine-block-attachment@1.1.0
+- @labre/affine-block-bookmark@1.1.0
+- @labre/affine-block-callout@1.1.0
+- @labre/affine-block-code@1.1.0
+- @labre/affine-block-divider@1.1.0
+- @labre/affine-block-edgeless-text@1.1.0
+- @labre/affine-block-embed@1.1.0
+- @labre/affine-block-embed-doc@1.1.0
+- @labre/affine-block-frame@1.1.0
+- @labre/affine-block-image@1.1.0
+- @labre/affine-block-latex@1.1.0
+- @labre/affine-block-list@1.1.0
+- @labre/affine-block-note@1.1.0
+- @labre/affine-block-paragraph@1.1.0
+- @labre/affine-block-root@1.1.0
+- @labre/affine-block-surface@1.1.0
+- @labre/affine-block-surface-ref@1.1.0
+- @labre/affine-block-table@1.1.0
+- @labre/affine-components@1.1.0
+- @labre/affine-database-block@1.1.0
+- @labre/affine-database-editor@1.1.0
+- @labre/affine-database-engine@1.1.0
+- @labre/affine-database-view-block@1.1.0
+- @labre/affine-ext-loader@1.1.0
+- @labre/affine-foundation@1.1.0
+- @labre/affine-fragment-adapter-panel@1.1.0
+- @labre/affine-fragment-doc-title@1.1.0
+- @labre/affine-fragment-frame-panel@1.1.0
+- @labre/affine-fragment-outline@1.1.0
+- @labre/affine-gfx-bpmn@1.1.0
+- @labre/affine-gfx-brush@1.1.0
+- @labre/affine-gfx-c4@1.1.0
+- @labre/affine-gfx-connector@1.1.0
+- @labre/affine-gfx-cynefin-estuarine@1.1.0
+- @labre/affine-gfx-ddd-aggregate@1.1.0
+- @labre/affine-gfx-ddd-context-map@1.1.0
+- @labre/affine-gfx-ddd-core-domain@1.1.0
+- @labre/affine-gfx-ddd-event-storming@1.1.0
+- @labre/affine-gfx-ddd-shared@1.1.0
+- @labre/affine-gfx-edgy@1.1.0
+- @labre/affine-gfx-group@1.1.0
+- @labre/affine-gfx-link@1.1.0
+- @labre/affine-gfx-mindmap@1.1.0
+- @labre/affine-gfx-note@1.1.0
+- @labre/affine-gfx-pointer@1.1.0
+- @labre/affine-gfx-shape@1.1.0
+- @labre/affine-gfx-template@1.1.0
+- @labre/affine-gfx-text@1.1.0
+- @labre/affine-gfx-turbo-renderer@1.1.0
+- @labre/affine-gfx-uml@1.1.0
+- @labre/affine-gfx-wardley@1.1.0
+- @labre/affine-inline-comment@1.1.0
+- @labre/affine-inline-footnote@1.1.0
+- @labre/affine-inline-latex@1.1.0
+- @labre/affine-inline-link@1.1.0
+- @labre/affine-inline-mention@1.1.0
+- @labre/affine-inline-preset@1.1.0
+- @labre/affine-inline-reference@1.1.0
+- @labre/affine-model@1.1.0
+- @labre/affine-rich-text@1.1.0
+- @labre/affine-shared@1.1.0
+- @labre/affine-widget-drag-handle@1.1.0
+- @labre/affine-widget-edgeless-auto-connect@1.1.0
+- @labre/affine-widget-edgeless-dragging-area@1.1.0
+- @labre/affine-widget-edgeless-selected-rect@1.1.0
+- @labre/affine-widget-edgeless-toolbar@1.1.0
+- @labre/affine-widget-edgeless-zoom-toolbar@1.1.0
+- @labre/affine-widget-frame-title@1.1.0
+- @labre/affine-widget-keyboard-toolbar@1.1.0
+- @labre/affine-widget-linked-doc@1.1.0
+- @labre/affine-widget-note-slicer@1.1.0
+- @labre/affine-widget-page-dragging-area@1.1.0
+- @labre/affine-widget-remote-selection@1.1.0
+- @labre/affine-widget-scroll-anchoring@1.1.0
+- @labre/affine-widget-slash-menu@1.1.0
+- @labre/affine-widget-thread-marks@1.1.0
+- @labre/affine-widget-toolbar@1.1.0
+- @labre/affine-widget-viewport-overlay@1.1.0
+- @labre/global@1.1.0
+- @labre/std@1.1.0
+- @labre/store@1.1.0
+- @labre/sync@1.1.0
+
 ## 1.0.0
 
 ### Major Changes
