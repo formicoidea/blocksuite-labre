@@ -2,7 +2,10 @@ import type {
   DatabaseBlockModel,
   ViewBasicDataType,
 } from '@labre/affine-model';
-import { FeatureFlagService } from '@labre/affine-shared/services';
+import {
+  DataSourcePickerProvider,
+  FeatureFlagService,
+} from '@labre/affine-shared/services';
 import type { InsertToPosition } from '@labre/affine-shared/utils';
 import {
   type DatabaseFlags,
@@ -23,6 +26,7 @@ import {
   moveViewTo,
   updateView,
 } from './utils/block-utils.js';
+import { deleteViewThroughHost } from './view-deletion.js';
 import {
   databaseBlockViewConverts,
   databaseBlockViewMetaGet,
@@ -309,8 +313,26 @@ export abstract class HostedDataSourceBase extends DataSourceBase {
   }
 
   viewDataDelete(viewId: string): void {
-    this._model.store.captureSync();
-    deleteView(this._model, viewId);
+    deleteViewThroughHost({
+      model: this._model,
+      viewId,
+      picker: this.serviceGet(DataSourcePickerProvider),
+      removeNow: () => {
+        this._model.store.captureSync();
+        deleteView(this._model, viewId);
+      },
+      // The view manager moved on when the gesture was made; a removal the
+      // host made later must not leave a vanished view current.
+      afterRemove: () => {
+        const manager = this.viewManager;
+        const views = manager.views$.peek();
+        const current = manager.currentViewId$.peek();
+        const next = views[0];
+        if (current !== undefined && !views.includes(current) && next) {
+          manager.setCurrentView(next);
+        }
+      },
+    });
   }
 
   viewDataDuplicate(id: string): string {

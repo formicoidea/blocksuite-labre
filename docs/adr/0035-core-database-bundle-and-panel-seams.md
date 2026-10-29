@@ -1190,3 +1190,38 @@ the host names it.
   (`com.labre.database.turn-into.failed`, `.nested`).
 - Held by `database/block/src/__tests__/turn-into-source.unit.spec.ts` and
   `integration-test/…/page/database-creation-popover.spec.ts`.
+
+### 2026-10-29: a host decides what a deleted view takes with it
+
+Asked by the Labre product owner on 2026-10-29 (labre lot C): in Labre a
+source goes to its trash when the last view reading it is deleted, with a
+confirmation that announces what goes, and an undo of the deletion brings
+the source back. Until now deleting a view only removed it from its block
+(one undo step) and the host learnt nothing.
+
+- **Two optional members of the picker seam (§9c)**, a widening only:
+  `deleteView?(request)` and `viewHistory?(view, step)`. Absent, the view is
+  removed at once, as in 1.0.
+- **A request, not a notification.** The host must announce what goes
+  BEFORE the view goes, so the gesture hands it a request (the style of
+  `importView`'s `request.add`): `{ databaseId, sourceId?, viewId,
+viewName, docId, blockId, remove() }`. `remove()` is the 1.0 removal, one
+  undo step, then the next view is shown; it returns `false` on a page
+  turned read-only, a view already gone, or a second call. Not calling it
+  keeps the view.
+- **When.** Only the delete gesture of a view (its tab menu, its settings),
+  through `HostedDataSourceBase.viewDataDelete`, on a block with an
+  `externalSourceId` on a writable document. Never for a deleted block
+  (removing a block hides what it shows, it does not delete it), an undo, a
+  redo, a remote change or a native database. The data source reads the
+  picker from its own scope: the database block puts it there when it
+  builds its data source.
+- **Undo and redo.** `remove()` tags its undo step (`meta`); a local undo
+  of it calls `viewHistory(view, 'undo')`, a redo `'redo'`. Yjs builds a
+  new step for each replay, so the tag is carried to it and an undo, redo,
+  undo… chain keeps reporting. One listener pair per undo manager, so a
+  block that is not mounted when its removal is undone still reports it. A
+  remote update never pops a step and reports nothing; a host failure in
+  `viewHistory` is logged and never breaks the undo.
+- No stored field, no schema, no displayed string. Held by
+  `database/block/src/__tests__/view-deletion.unit.spec.ts`.
