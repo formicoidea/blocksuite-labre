@@ -2,10 +2,12 @@ import zod from 'zod';
 
 import { t } from '../../core/logical/type-presets.js';
 import { propertyType } from '../../core/property/property-config.js';
+import { DATA_VIEW_TYPE_PROGRESS } from '../../translations.js';
 export const progressPropertyType = propertyType('progress');
 
 export const progressPropertyModelConfig = progressPropertyType.modelConfig({
-  name: 'Progress',
+  name: DATA_VIEW_TYPE_PROGRESS[1],
+  nameWording: DATA_VIEW_TYPE_PROGRESS,
   propertyData: {
     schema: zod.object({}),
     default: () => ({}),

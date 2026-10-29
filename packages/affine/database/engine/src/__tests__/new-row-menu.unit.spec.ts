@@ -10,8 +10,8 @@ import type { DataViewUILogicBase } from '../core/view/data-view-base.js';
 import { DataViewHeaderToolsAddRow } from '../widget-presets/tools/presets/table-add-row/add-row.js';
 
 /**
- * The header's "New" of every view (table, kanban, gallery, list, calendar,
- * and the full page, which draws the same block) and the host menu beside it
+ * The header's "New" of every view (table, kanban, gallery, list, and the
+ * full page, which draws the same block) and the host menu beside it
  * (ADR 0035 amendment of 2026-10-14).
  *
  * What it would have caught:

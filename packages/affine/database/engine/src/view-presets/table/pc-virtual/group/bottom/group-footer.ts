@@ -9,6 +9,8 @@ import { TableViewAreaSelection } from '../../../selection';
 import type { VirtualTableViewUILogic } from '../../table-view-ui-logic';
 import type { TableGridGroup } from '../../types';
 import * as styles from './group-footer-css';
+import { DATA_VIEW_NEW_RECORD } from '../../../../../translations.js';
+import { wordingFrom } from '../../../../../core/utils/wording.js';
 
 export class TableGroupFooter extends WithDisposable(ShadowlessElement) {
   @property({ attribute: false })
@@ -86,7 +88,7 @@ export class TableGroupFooter extends WithDisposable(ShadowlessElement) {
                 role="button"
               >
                 ${PlusIcon()}<span class="${styles.addRowText}"
-                  >New Record</span
+                  >${wordingFrom(this)(DATA_VIEW_NEW_RECORD)}</span
                 >
               </div>
             </div>

@@ -23,6 +23,7 @@ export const hostedTextColumnConfig = {
   config: {
     ...textPropertyConfig.config,
     name: richTextPropertyModelConfig.config.name,
+    nameWording: richTextPropertyModelConfig.config.nameWording,
     hide: false,
   },
 } as PropertyMetaConfig;

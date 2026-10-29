@@ -1,10 +1,12 @@
 import type { ChromeWording } from '@labre/affine-shared/services';
 
 /**
- * The view engine's own wordings. Most of the data-view's chrome is still a
- * deferred surface of the literal ratchet (`DEFERRED_DIRS` in
- * `affine/all/src/__tests__/translations/literals.unit.spec.ts`); what is
- * declared here is what was written after that decision, keyed from the start.
+ * The view engine's own wordings. The data-view's chrome was a deferred
+ * surface of the literal ratchet (`DEFERRED_DIRS` in
+ * `affine/all/src/__tests__/translations/literals.unit.spec.ts`) until the
+ * recette of 1.1 keyed it (#572); the ratchet now holds it. A label declared
+ * as data (a filter, a property type, a statistic, a number format) carries
+ * its wording beside its English text and is resolved where it is drawn.
  */
 
 /* ── A view whose mode has no preset here (ADR 0035 §6) ───────────────── */
@@ -52,10 +54,6 @@ export const VIEW_NAME_TABLE: ChromeWording = [
 export const VIEW_NAME_KANBAN: ChromeWording = [
   'com.labre.data-view.view.default-name.kanban',
   'Kanban View',
-];
-export const VIEW_NAME_CALENDAR: ChromeWording = [
-  'com.labre.data-view.view.default-name.calendar',
-  'Calendar View',
 ];
 export const VIEW_NAME_GALLERY: ChromeWording = [
   'com.labre.data-view.view.default-name.gallery',
@@ -400,6 +398,612 @@ export const DATA_VIEW_ROWS_LOCKED: ChromeWording = [
 ];
 
 /** Walked by `PACKAGE_WORDINGS` in `packages/affine/all/src/translations.ts`. */
+/* ── Data-view chrome keyed at the recette of 1.1 (#572) ── */
+
+export const DATA_VIEW_SHOW_ALL: ChromeWording = [
+  'com.labre.data-view.properties.show-all',
+  'Show All',
+];
+
+export const DATA_VIEW_HIDE_ALL: ChromeWording = [
+  'com.labre.data-view.properties.hide-all',
+  'Hide All',
+];
+
+export const DATA_VIEW_ADD_PROPERTY: ChromeWording = [
+  'com.labre.data-view.detail.add-property',
+  'Add property',
+];
+
+export const DATA_VIEW_EMPTY_VALUE: ChromeWording = [
+  'com.labre.data-view.detail.empty',
+  'Empty',
+];
+
+export const DATA_VIEW_FILTER_NEW: ChromeWording = [
+  'com.labre.data-view.filter.new',
+  'New filter',
+];
+
+export const DATA_VIEW_FILTER_ADD_GROUP: ChromeWording = [
+  'com.labre.data-view.filter.add-group',
+  'Add filter group',
+];
+
+export const DATA_VIEW_FILTER_GROUP: ChromeWording = [
+  'com.labre.data-view.filter.group',
+  'Filter group',
+];
+
+export const DATA_VIEW_FILTERS: ChromeWording = [
+  'com.labre.data-view.filter.title',
+  'Filters',
+];
+
+export const DATA_VIEW_FILTER_AND: ChromeWording = [
+  'com.labre.data-view.filter.and',
+  'And',
+];
+
+export const DATA_VIEW_FILTER_OR: ChromeWording = [
+  'com.labre.data-view.filter.or',
+  'Or',
+];
+
+export const DATA_VIEW_FILTER_WHERE: ChromeWording = [
+  'com.labre.data-view.filter.where',
+  'Where',
+];
+
+export const DATA_VIEW_FILTER_TURN_INTO_GROUP: ChromeWording = [
+  'com.labre.data-view.filter.turn-into-group',
+  'Turn into group',
+];
+
+export const DATA_VIEW_FILTER_WRAP_IN_GROUP: ChromeWording = [
+  'com.labre.data-view.filter.wrap-in-group',
+  'Wrap in group',
+];
+
+export const DATA_VIEW_FILTER_VALUE_PLACEHOLDER: ChromeWording = [
+  'com.labre.data-view.filter.value-placeholder',
+  'Type a value...',
+];
+
+export const DATA_VIEW_FILTER_INVALID: ChromeWording = [
+  'com.labre.data-view.filter.invalid',
+  'Invalid filter rule',
+];
+
+export const DATA_VIEW_FILTER_NOT: ChromeWording = [
+  'com.labre.data-view.filter.not',
+  'Not {{value}}',
+];
+
+export const DATA_VIEW_FILTER_IS_CHECKED: ChromeWording = [
+  'com.labre.data-view.filter.fn.is-checked',
+  'Is checked',
+];
+
+export const DATA_VIEW_FILTER_IS_UNCHECKED: ChromeWording = [
+  'com.labre.data-view.filter.fn.is-unchecked',
+  'Is unchecked',
+];
+
+export const DATA_VIEW_FILTER_BEFORE: ChromeWording = [
+  'com.labre.data-view.filter.fn.before',
+  'Before',
+];
+
+export const DATA_VIEW_FILTER_AFTER: ChromeWording = [
+  'com.labre.data-view.filter.fn.after',
+  'After',
+];
+
+export const DATA_VIEW_FILTER_CONTAINS_ONE_OF: ChromeWording = [
+  'com.labre.data-view.filter.fn.contains-one-of',
+  'Contains one of',
+];
+
+export const DATA_VIEW_FILTER_NOT_CONTAINS_ONE_OF: ChromeWording = [
+  'com.labre.data-view.filter.fn.does-not-contain-one-of',
+  'Does not contain one of',
+];
+
+export const DATA_VIEW_FILTER_CONTAINS_ALL: ChromeWording = [
+  'com.labre.data-view.filter.fn.contains-all',
+  'Contains all',
+];
+
+export const DATA_VIEW_FILTER_NOT_CONTAINS_ALL: ChromeWording = [
+  'com.labre.data-view.filter.fn.does-not-contain-all',
+  'Does not contain all',
+];
+
+export const DATA_VIEW_FILTER_CONTAINS: ChromeWording = [
+  'com.labre.data-view.filter.fn.contains',
+  'Contains',
+];
+
+export const DATA_VIEW_FILTER_NOT_CONTAINS: ChromeWording = [
+  'com.labre.data-view.filter.fn.does-not-contain',
+  'Does not contain',
+];
+
+export const DATA_VIEW_FILTER_STARTS_WITH: ChromeWording = [
+  'com.labre.data-view.filter.fn.starts-with',
+  'Starts with',
+];
+
+export const DATA_VIEW_FILTER_ENDS_WITH: ChromeWording = [
+  'com.labre.data-view.filter.fn.ends-with',
+  'Ends with',
+];
+
+export const DATA_VIEW_FILTER_IS: ChromeWording = [
+  'com.labre.data-view.filter.fn.is',
+  'Is',
+];
+
+export const DATA_VIEW_FILTER_IS_NOT: ChromeWording = [
+  'com.labre.data-view.filter.fn.is-not',
+  'Is not',
+];
+
+export const DATA_VIEW_FILTER_IS_ONE_OF: ChromeWording = [
+  'com.labre.data-view.filter.fn.is-one-of',
+  'Is one of',
+];
+
+export const DATA_VIEW_FILTER_IS_NOT_ONE_OF: ChromeWording = [
+  'com.labre.data-view.filter.fn.is-not-one-of',
+  'Is not one of',
+];
+
+export const DATA_VIEW_FILTER_IS_NOT_EMPTY: ChromeWording = [
+  'com.labre.data-view.filter.fn.is-not-empty',
+  'Is not empty',
+];
+
+export const DATA_VIEW_FILTER_IS_EMPTY: ChromeWording = [
+  'com.labre.data-view.filter.fn.is-empty',
+  'Is empty',
+];
+
+export const DATA_VIEW_SORT_NEW: ChromeWording = [
+  'com.labre.data-view.sort.new',
+  'New sort',
+];
+
+export const DATA_VIEW_SORT_ADD: ChromeWording = [
+  'com.labre.data-view.sort.add',
+  'Add sort',
+];
+
+export const DATA_VIEW_GROUP_BY: ChromeWording = [
+  'com.labre.data-view.group.by',
+  'Group by',
+];
+
+export const DATA_VIEW_GROUP_REMOVE: ChromeWording = [
+  'com.labre.data-view.group.remove',
+  'Remove grouping',
+];
+
+export const DATA_VIEW_GROUP_DATES_BY: ChromeWording = [
+  'com.labre.data-view.group.dates-by',
+  'Group dates by',
+];
+
+export const DATA_VIEW_GROUP_ORDER: ChromeWording = [
+  'com.labre.data-view.group.order',
+  'Order',
+];
+
+export const DATA_VIEW_GROUP_OLDEST_FIRST: ChromeWording = [
+  'com.labre.data-view.group.oldest-first',
+  'Oldest first',
+];
+
+export const DATA_VIEW_GROUP_NEWEST_FIRST: ChromeWording = [
+  'com.labre.data-view.group.newest-first',
+  'Newest first',
+];
+
+export const DATA_VIEW_GROUP_DATE_RELATIVE: ChromeWording = [
+  'com.labre.data-view.group.date.relative',
+  'Relative',
+];
+
+export const DATA_VIEW_GROUP_DATE_DAY: ChromeWording = [
+  'com.labre.data-view.group.date.day',
+  'Day',
+];
+
+export const DATA_VIEW_GROUP_DATE_WEEK_MON: ChromeWording = [
+  'com.labre.data-view.group.date.week-monday',
+  'Week (starts Monday)',
+];
+
+export const DATA_VIEW_GROUP_DATE_WEEK_SUN: ChromeWording = [
+  'com.labre.data-view.group.date.week-sunday',
+  'Week (starts Sunday)',
+];
+
+export const DATA_VIEW_GROUP_DATE_MONTH: ChromeWording = [
+  'com.labre.data-view.group.date.month',
+  'Month',
+];
+
+export const DATA_VIEW_GROUP_DATE_YEAR: ChromeWording = [
+  'com.labre.data-view.group.date.year',
+  'Year',
+];
+
+export const DATA_VIEW_GROUP_NEW: ChromeWording = [
+  'com.labre.data-view.group.new',
+  'New Group',
+];
+
+export const DATA_VIEW_GROUP_DELETE_CARDS: ChromeWording = [
+  'com.labre.data-view.group.delete-cards',
+  'Delete Cards',
+];
+
+export const DATA_VIEW_GROUP_ADD: ChromeWording = [
+  'com.labre.data-view.group.add',
+  'Add',
+];
+
+export const DATA_VIEW_TYPE_CHECKBOX: ChromeWording = [
+  'com.labre.data-view.property-type.checkbox',
+  'Checkbox',
+];
+
+export const DATA_VIEW_TYPE_DATE: ChromeWording = [
+  'com.labre.data-view.property-type.date',
+  'Date',
+];
+
+export const DATA_VIEW_TYPE_MULTI_SELECT: ChromeWording = [
+  'com.labre.data-view.property-type.multi-select',
+  'Multi-select',
+];
+
+export const DATA_VIEW_TYPE_NUMBER: ChromeWording = [
+  'com.labre.data-view.property-type.number',
+  'Number',
+];
+
+export const DATA_VIEW_TYPE_PROGRESS: ChromeWording = [
+  'com.labre.data-view.property-type.progress',
+  'Progress',
+];
+
+export const DATA_VIEW_TYPE_SELECT: ChromeWording = [
+  'com.labre.data-view.property-type.select',
+  'Select',
+];
+
+export const DATA_VIEW_TYPE_PLAIN_TEXT: ChromeWording = [
+  'com.labre.data-view.property-type.plain-text',
+  'Plain-Text',
+];
+
+export const DATA_VIEW_NUMBER_FORMAT: ChromeWording = [
+  'com.labre.data-view.number-format',
+  'Number Format',
+];
+
+export const DATA_VIEW_NUMBER_FORMAT_COMMAS: ChromeWording = [
+  'com.labre.data-view.number-format.number-with-commas',
+  'Number With Commas',
+];
+
+export const DATA_VIEW_NUMBER_FORMAT_PERCENT: ChromeWording = [
+  'com.labre.data-view.number-format.percent',
+  'Percent',
+];
+
+export const DATA_VIEW_NUMBER_FORMAT_YEN: ChromeWording = [
+  'com.labre.data-view.number-format.yen',
+  'Japanese Yen',
+];
+
+export const DATA_VIEW_NUMBER_FORMAT_CNY: ChromeWording = [
+  'com.labre.data-view.number-format.yuan',
+  'Chinese Yuan',
+];
+
+export const DATA_VIEW_NUMBER_FORMAT_INR: ChromeWording = [
+  'com.labre.data-view.number-format.rupee',
+  'Indian Rupee',
+];
+
+export const DATA_VIEW_NUMBER_FORMAT_USD: ChromeWording = [
+  'com.labre.data-view.number-format.us-dollar',
+  'US Dollar',
+];
+
+export const DATA_VIEW_NUMBER_FORMAT_EUR: ChromeWording = [
+  'com.labre.data-view.number-format.euro',
+  'Euro',
+];
+
+export const DATA_VIEW_NUMBER_FORMAT_GBP: ChromeWording = [
+  'com.labre.data-view.number-format.pound',
+  'British Pound',
+];
+
+export const DATA_VIEW_DECIMALS_DECREASE: ChromeWording = [
+  'com.labre.data-view.number-format.decrease-decimals',
+  'Decrease decimal places',
+];
+
+export const DATA_VIEW_DECIMALS_INCREASE: ChromeWording = [
+  'com.labre.data-view.number-format.increase-decimals',
+  'Increase decimal places',
+];
+
+export const DATA_VIEW_SORT_ASCENDING: ChromeWording = [
+  'com.labre.data-view.property.sort-ascending',
+  'Sort Ascending',
+];
+
+export const DATA_VIEW_SORT_DESCENDING: ChromeWording = [
+  'com.labre.data-view.property.sort-descending',
+  'Sort Descending',
+];
+
+export const DATA_VIEW_ROW_EXPAND: ChromeWording = [
+  'com.labre.data-view.row.expand',
+  'Expand Row',
+];
+
+export const DATA_VIEW_ROW_INSERT_BEFORE: ChromeWording = [
+  'com.labre.data-view.row.insert-before',
+  'Insert Before',
+];
+
+export const DATA_VIEW_ROW_INSERT_AFTER: ChromeWording = [
+  'com.labre.data-view.row.insert-after',
+  'Insert After',
+];
+
+export const DATA_VIEW_ROW_DELETE: ChromeWording = [
+  'com.labre.data-view.row.delete',
+  'Delete Row',
+];
+
+export const DATA_VIEW_ROWS_DELETE: ChromeWording = [
+  'com.labre.data-view.row.delete-many',
+  'Delete Rows',
+];
+
+export const DATA_VIEW_CARD_EXPAND: ChromeWording = [
+  'com.labre.data-view.card.expand',
+  'Expand Card',
+];
+
+export const DATA_VIEW_CARD_MOVE_TO: ChromeWording = [
+  'com.labre.data-view.card.move-to',
+  'Move To',
+];
+
+export const DATA_VIEW_CARD_DELETE: ChromeWording = [
+  'com.labre.data-view.card.delete',
+  'Delete Card',
+];
+
+export const DATA_VIEW_CELLS_COPIED: ChromeWording = [
+  'com.labre.data-view.clipboard.cells-copied',
+  'Cells copied to the clipboard: {{count}}',
+];
+
+export const DATA_VIEW_ROWS_COPIED: ChromeWording = [
+  'com.labre.data-view.clipboard.rows-copied',
+  'Rows copied to the clipboard: {{count}}',
+];
+
+export const DATA_VIEW_STATS_CALCULATE: ChromeWording = [
+  'com.labre.data-view.stats.calculate',
+  'Calculate',
+];
+
+export const DATA_VIEW_STATS_GROUP_COUNT: ChromeWording = [
+  'com.labre.data-view.stats.group.count',
+  'Count',
+];
+
+export const DATA_VIEW_STATS_GROUP_MORE: ChromeWording = [
+  'com.labre.data-view.stats.group.more',
+  'More options',
+];
+
+export const DATA_VIEW_STATS_COUNT_ALL: ChromeWording = [
+  'com.labre.data-view.stats.count-all',
+  'Count All',
+];
+
+export const DATA_VIEW_STATS_ALL: ChromeWording = [
+  'com.labre.data-view.stats.count-all.short',
+  'All',
+];
+
+export const DATA_VIEW_STATS_COUNT_VALUES: ChromeWording = [
+  'com.labre.data-view.stats.count-values',
+  'Count Values',
+];
+
+export const DATA_VIEW_STATS_VALUES: ChromeWording = [
+  'com.labre.data-view.stats.count-values.short',
+  'Values',
+];
+
+export const DATA_VIEW_STATS_COUNT_UNIQUE: ChromeWording = [
+  'com.labre.data-view.stats.count-unique-values',
+  'Count Unique Values',
+];
+
+export const DATA_VIEW_STATS_UNIQUE: ChromeWording = [
+  'com.labre.data-view.stats.count-unique-values.short',
+  'Unique Values',
+];
+
+export const DATA_VIEW_STATS_COUNT_EMPTY: ChromeWording = [
+  'com.labre.data-view.stats.count-empty',
+  'Count Empty',
+];
+
+export const DATA_VIEW_STATS_COUNT_NOT_EMPTY: ChromeWording = [
+  'com.labre.data-view.stats.count-not-empty',
+  'Count Not Empty',
+];
+
+export const DATA_VIEW_STATS_NOT_EMPTY: ChromeWording = [
+  'com.labre.data-view.stats.not-empty.short',
+  'Not Empty',
+];
+
+export const DATA_VIEW_STATS_PERCENT_EMPTY: ChromeWording = [
+  'com.labre.data-view.stats.percent-empty',
+  'Percent Empty',
+];
+
+export const DATA_VIEW_STATS_PERCENT_NOT_EMPTY: ChromeWording = [
+  'com.labre.data-view.stats.percent-not-empty',
+  'Percent Not Empty',
+];
+
+export const DATA_VIEW_STATS_COUNT_UNCHECKED: ChromeWording = [
+  'com.labre.data-view.stats.count-unchecked',
+  'Count Unchecked',
+];
+
+export const DATA_VIEW_STATS_UNCHECKED: ChromeWording = [
+  'com.labre.data-view.stats.unchecked.short',
+  'Unchecked',
+];
+
+export const DATA_VIEW_STATS_COUNT_CHECKED: ChromeWording = [
+  'com.labre.data-view.stats.count-checked',
+  'Count Checked',
+];
+
+export const DATA_VIEW_STATS_CHECKED: ChromeWording = [
+  'com.labre.data-view.stats.checked.short',
+  'Checked',
+];
+
+export const DATA_VIEW_STATS_PERCENT_UNCHECKED: ChromeWording = [
+  'com.labre.data-view.stats.percent-unchecked',
+  'Percent Unchecked',
+];
+
+export const DATA_VIEW_STATS_PERCENT_CHECKED: ChromeWording = [
+  'com.labre.data-view.stats.percent-checked',
+  'Percent Checked',
+];
+
+export const DATA_VIEW_STATS_SUM: ChromeWording = [
+  'com.labre.data-view.stats.sum',
+  'Sum',
+];
+
+export const DATA_VIEW_STATS_AVERAGE: ChromeWording = [
+  'com.labre.data-view.stats.average',
+  'Average',
+];
+
+export const DATA_VIEW_STATS_MEDIAN: ChromeWording = [
+  'com.labre.data-view.stats.median',
+  'Median',
+];
+
+export const DATA_VIEW_STATS_MIN: ChromeWording = [
+  'com.labre.data-view.stats.min',
+  'Min',
+];
+
+export const DATA_VIEW_STATS_MAX: ChromeWording = [
+  'com.labre.data-view.stats.max',
+  'Max',
+];
+
+export const DATA_VIEW_STATS_RANGE: ChromeWording = [
+  'com.labre.data-view.stats.range',
+  'Range',
+];
+
+export const DATA_VIEW_SEARCH_ESCAPE: ChromeWording = [
+  'com.labre.data-view.search.escape-key',
+  'Esc',
+];
+
+/* ── Grouping settings ── */
+
+export const DATA_VIEW_GROUPS: ChromeWording = [
+  'com.labre.data-view.group.groups',
+  'Groups',
+];
+
+/* ── Date groups and sort rules ── */
+
+export const DATA_VIEW_DATE_TODAY: ChromeWording = [
+  'com.labre.data-view.group.date.today',
+  'Today',
+];
+
+export const DATA_VIEW_DATE_TOMORROW: ChromeWording = [
+  'com.labre.data-view.group.date.tomorrow',
+  'Tomorrow',
+];
+
+export const DATA_VIEW_DATE_YESTERDAY: ChromeWording = [
+  'com.labre.data-view.group.date.yesterday',
+  'Yesterday',
+];
+
+export const DATA_VIEW_DATE_NEXT_7_DAYS: ChromeWording = [
+  'com.labre.data-view.group.date.next-7-days',
+  'Next 7 days',
+];
+
+export const DATA_VIEW_DATE_NEXT_30_DAYS: ChromeWording = [
+  'com.labre.data-view.group.date.next-30-days',
+  'Next 30 days',
+];
+
+export const DATA_VIEW_DATE_LAST_7_DAYS: ChromeWording = [
+  'com.labre.data-view.group.date.last-7-days',
+  'Last 7 days',
+];
+
+export const DATA_VIEW_DATE_LAST_30_DAYS: ChromeWording = [
+  'com.labre.data-view.group.date.last-30-days',
+  'Last 30 days',
+];
+
+export const DATA_VIEW_GROUP_NO_VALUE: ChromeWording = [
+  'com.labre.data-view.group.no-value',
+  'No {{name}}',
+];
+
+export const DATA_VIEW_SORT_INVALID: ChromeWording = [
+  'com.labre.data-view.sort.invalid',
+  'This rule is invalid, click to delete',
+];
+
+export const DATA_VIEW_SORT_ASC: ChromeWording = [
+  'com.labre.data-view.sort.ascending',
+  'Ascending',
+];
+
+export const DATA_VIEW_SORT_DESC: ChromeWording = [
+  'com.labre.data-view.sort.descending',
+  'Descending',
+];
+
 export const DATA_VIEW_WORDINGS: readonly ChromeWording[] = [
   VIEW_SHOWN_AS_TABLE,
   VIEW_DUPLICATE_AS_TABLE,
@@ -411,7 +1015,6 @@ export const DATA_VIEW_WORDINGS: readonly ChromeWording[] = [
   DATA_VIEW_SEARCH_CLEAR_HINT,
   VIEW_NAME_TABLE,
   VIEW_NAME_KANBAN,
-  VIEW_NAME_CALENDAR,
   VIEW_NAME_GALLERY,
   VIEW_NAME_LIST,
   TAG_SELECT_PLACEHOLDER,
@@ -458,4 +1061,124 @@ export const DATA_VIEW_WORDINGS: readonly ChromeWording[] = [
   DATA_VIEW_INSERT_RIGHT,
   DATA_VIEW_PROPERTIES_LOCKED,
   DATA_VIEW_ROWS_LOCKED,
+  DATA_VIEW_SHOW_ALL,
+  DATA_VIEW_HIDE_ALL,
+  DATA_VIEW_ADD_PROPERTY,
+  DATA_VIEW_EMPTY_VALUE,
+  DATA_VIEW_FILTER_NEW,
+  DATA_VIEW_FILTER_ADD_GROUP,
+  DATA_VIEW_FILTER_GROUP,
+  DATA_VIEW_FILTERS,
+  DATA_VIEW_FILTER_AND,
+  DATA_VIEW_FILTER_OR,
+  DATA_VIEW_FILTER_WHERE,
+  DATA_VIEW_FILTER_TURN_INTO_GROUP,
+  DATA_VIEW_FILTER_WRAP_IN_GROUP,
+  DATA_VIEW_FILTER_VALUE_PLACEHOLDER,
+  DATA_VIEW_FILTER_INVALID,
+  DATA_VIEW_FILTER_NOT,
+  DATA_VIEW_FILTER_IS_CHECKED,
+  DATA_VIEW_FILTER_IS_UNCHECKED,
+  DATA_VIEW_FILTER_BEFORE,
+  DATA_VIEW_FILTER_AFTER,
+  DATA_VIEW_FILTER_CONTAINS_ONE_OF,
+  DATA_VIEW_FILTER_NOT_CONTAINS_ONE_OF,
+  DATA_VIEW_FILTER_CONTAINS_ALL,
+  DATA_VIEW_FILTER_NOT_CONTAINS_ALL,
+  DATA_VIEW_FILTER_CONTAINS,
+  DATA_VIEW_FILTER_NOT_CONTAINS,
+  DATA_VIEW_FILTER_STARTS_WITH,
+  DATA_VIEW_FILTER_ENDS_WITH,
+  DATA_VIEW_FILTER_IS,
+  DATA_VIEW_FILTER_IS_NOT,
+  DATA_VIEW_FILTER_IS_ONE_OF,
+  DATA_VIEW_FILTER_IS_NOT_ONE_OF,
+  DATA_VIEW_FILTER_IS_NOT_EMPTY,
+  DATA_VIEW_FILTER_IS_EMPTY,
+  DATA_VIEW_SORT_NEW,
+  DATA_VIEW_SORT_ADD,
+  DATA_VIEW_GROUP_BY,
+  DATA_VIEW_GROUP_REMOVE,
+  DATA_VIEW_GROUP_DATES_BY,
+  DATA_VIEW_GROUP_ORDER,
+  DATA_VIEW_GROUP_OLDEST_FIRST,
+  DATA_VIEW_GROUP_NEWEST_FIRST,
+  DATA_VIEW_GROUP_DATE_RELATIVE,
+  DATA_VIEW_GROUP_DATE_DAY,
+  DATA_VIEW_GROUP_DATE_WEEK_MON,
+  DATA_VIEW_GROUP_DATE_WEEK_SUN,
+  DATA_VIEW_GROUP_DATE_MONTH,
+  DATA_VIEW_GROUP_DATE_YEAR,
+  DATA_VIEW_GROUP_NEW,
+  DATA_VIEW_GROUP_DELETE_CARDS,
+  DATA_VIEW_GROUP_ADD,
+  DATA_VIEW_TYPE_CHECKBOX,
+  DATA_VIEW_TYPE_DATE,
+  DATA_VIEW_TYPE_MULTI_SELECT,
+  DATA_VIEW_TYPE_NUMBER,
+  DATA_VIEW_TYPE_PROGRESS,
+  DATA_VIEW_TYPE_SELECT,
+  DATA_VIEW_TYPE_PLAIN_TEXT,
+  DATA_VIEW_NUMBER_FORMAT,
+  DATA_VIEW_NUMBER_FORMAT_COMMAS,
+  DATA_VIEW_NUMBER_FORMAT_PERCENT,
+  DATA_VIEW_NUMBER_FORMAT_YEN,
+  DATA_VIEW_NUMBER_FORMAT_CNY,
+  DATA_VIEW_NUMBER_FORMAT_INR,
+  DATA_VIEW_NUMBER_FORMAT_USD,
+  DATA_VIEW_NUMBER_FORMAT_EUR,
+  DATA_VIEW_NUMBER_FORMAT_GBP,
+  DATA_VIEW_DECIMALS_DECREASE,
+  DATA_VIEW_DECIMALS_INCREASE,
+  DATA_VIEW_SORT_ASCENDING,
+  DATA_VIEW_SORT_DESCENDING,
+  DATA_VIEW_ROW_EXPAND,
+  DATA_VIEW_ROW_INSERT_BEFORE,
+  DATA_VIEW_ROW_INSERT_AFTER,
+  DATA_VIEW_ROW_DELETE,
+  DATA_VIEW_ROWS_DELETE,
+  DATA_VIEW_CARD_EXPAND,
+  DATA_VIEW_CARD_MOVE_TO,
+  DATA_VIEW_CARD_DELETE,
+  DATA_VIEW_CELLS_COPIED,
+  DATA_VIEW_ROWS_COPIED,
+  DATA_VIEW_STATS_CALCULATE,
+  DATA_VIEW_STATS_GROUP_COUNT,
+  DATA_VIEW_STATS_GROUP_MORE,
+  DATA_VIEW_STATS_COUNT_ALL,
+  DATA_VIEW_STATS_ALL,
+  DATA_VIEW_STATS_COUNT_VALUES,
+  DATA_VIEW_STATS_VALUES,
+  DATA_VIEW_STATS_COUNT_UNIQUE,
+  DATA_VIEW_STATS_UNIQUE,
+  DATA_VIEW_STATS_COUNT_EMPTY,
+  DATA_VIEW_STATS_COUNT_NOT_EMPTY,
+  DATA_VIEW_STATS_NOT_EMPTY,
+  DATA_VIEW_STATS_PERCENT_EMPTY,
+  DATA_VIEW_STATS_PERCENT_NOT_EMPTY,
+  DATA_VIEW_STATS_COUNT_UNCHECKED,
+  DATA_VIEW_STATS_UNCHECKED,
+  DATA_VIEW_STATS_COUNT_CHECKED,
+  DATA_VIEW_STATS_CHECKED,
+  DATA_VIEW_STATS_PERCENT_UNCHECKED,
+  DATA_VIEW_STATS_PERCENT_CHECKED,
+  DATA_VIEW_STATS_SUM,
+  DATA_VIEW_STATS_AVERAGE,
+  DATA_VIEW_STATS_MEDIAN,
+  DATA_VIEW_STATS_MIN,
+  DATA_VIEW_STATS_MAX,
+  DATA_VIEW_STATS_RANGE,
+  DATA_VIEW_SEARCH_ESCAPE,
+  DATA_VIEW_GROUPS,
+  DATA_VIEW_DATE_TODAY,
+  DATA_VIEW_DATE_TOMORROW,
+  DATA_VIEW_DATE_YESTERDAY,
+  DATA_VIEW_DATE_NEXT_7_DAYS,
+  DATA_VIEW_DATE_NEXT_30_DAYS,
+  DATA_VIEW_DATE_LAST_7_DAYS,
+  DATA_VIEW_DATE_LAST_30_DAYS,
+  DATA_VIEW_GROUP_NO_VALUE,
+  DATA_VIEW_SORT_INVALID,
+  DATA_VIEW_SORT_ASC,
+  DATA_VIEW_SORT_DESC,
 ];

@@ -121,8 +121,9 @@ export class DocTitle extends WithDisposable(ShadowlessElement) {
    * Leaves the title for `bodyBlockId`: the title loses the caret (its text
    * is already stored, so that is all "validating" it means), then the block
    * takes the caret where it can, through its `focusFirstCell` (a database
-   * block's: the first cell of a table or kanban view). A block without one,
-   * or a view without cells, keeps nothing focused. Writes nothing.
+   * block's: the first cell of a table, the first card's or row's title in
+   * editing on a kanban, a gallery or a list). A block without one, or a
+   * view without rows, keeps nothing focused. Writes nothing.
    */
   private _leaveForBodyBlock(std: BlockStdScope, blockId: string) {
     this.inlineEditor?.setInlineRange(null);

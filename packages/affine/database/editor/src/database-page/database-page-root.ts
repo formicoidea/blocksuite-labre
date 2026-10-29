@@ -128,10 +128,25 @@ export class DatabasePageRoot extends BlockComponent {
     affine-database-page-root:has(dv-table-view-ui[data-page-layout]) {
       width: max-content;
       min-width: 100%;
+      /* Widened, the root is no longer centred by its auto margins: it
+         pads its left side by what centring gave the page heading (whose
+         container in doc-title is the same max-width, centred in the
+         viewport), so the heading, the view bar and the rows share one left
+         edge and the table grows to the right (labre recette of 1.1). The
+         block's sticky view bar reads the same inset. */
+      --affine-database-page-inset: max(
+        0px,
+        calc((100cqw - var(--affine-editor-width, 100cqw)) / 2)
+      );
+      padding-left: calc(
+        var(--affine-database-page-inset) +
+          var(--affine-editor-side-padding, 24px)
+      );
     }
     /* A phone keeps the page root's narrow padding (page-root-block.ts). */
     @container viewport (width <= 640px) {
-      affine-database-page-root {
+      affine-database-page-root,
+      affine-database-page-root:has(dv-table-view-ui[data-page-layout]) {
         padding-left: 24px;
         padding-right: 24px;
       }

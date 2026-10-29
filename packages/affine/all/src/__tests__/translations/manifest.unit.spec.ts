@@ -129,6 +129,17 @@ const KEPT_SEPARATE_CHROME_WORDS: Readonly<Record<string, string>> = {
   Source:
     "the adapter panel's HTML source view vs a database view's data source",
   Text: 'text block type vs link text field vs text tool',
+  // The database family's chrome, keyed at the recette of 1.1 (#572): the
+  // database engine depends on none of these packages, and the words are
+  // not one in context.
+  Add: "the template panel's add button vs a board group's add-a-card button",
+  Date: "the slash menu's date section vs a database property type",
+  Empty: "an HTML embed with no content vs a record's empty value",
+  Select: 'the select tool (a verb) vs a database property type (a noun)',
+  Title:
+    "the page title's placeholder vs a database property type (Notion says « Name »)",
+  Tomorrow: "the slash menu's insert-tomorrow entry vs a date group's name",
+  Yesterday: "the slash menu's insert-yesterday entry vs a date group's name",
   // `@labre/affine-components` sits below the slash-menu widget, so the date
   // picker cannot import the slash menu's wording.
   Today:

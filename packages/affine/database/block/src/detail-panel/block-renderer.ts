@@ -10,6 +10,7 @@ import { ShadowlessElement } from '@labre/std';
 import { cssVarV2 } from '@toeverything/theme/v2';
 import { css, html, unsafeCSS } from 'lit';
 import { property } from 'lit/decorators.js';
+import { DOC_UNTITLED, translateKey } from '@labre/affine-shared/services';
 
 export class BlockRenderer
   extends WithDisposable(ShadowlessElement)
@@ -37,8 +38,8 @@ export class BlockRenderer
       line-height: 24px;
     }
 
-    database-datasource-block-renderer.empty rich-text::before {
-      content: 'Untitled';
+    database-datasource-block-renderer.empty[data-untitled] rich-text::before {
+      content: attr(data-untitled);
       position: absolute;
       color: var(--affine-text-disable-color);
       font-size: 15px;
@@ -121,6 +122,8 @@ export class BlockRenderer
     if (!model) {
       return;
     }
+    // Read by the empty title's placeholder (`::before`), in the host's words.
+    this.dataset.untitled = translateKey(this.host.std, ...DOC_UNTITLED);
     return html`
       ${this.renderIcon()}
       <rich-text

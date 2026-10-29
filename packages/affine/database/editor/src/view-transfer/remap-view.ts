@@ -24,6 +24,17 @@ export interface RemappedView {
 
 type Json = Record<string, unknown>;
 
+/**
+ * A plain, JSON-safe copy of a stored view. A host may hand the store's
+ * live view (a reactive `Proxy` over the block's props), which
+ * `structuredClone` refuses with a `DataCloneError` (labre hit it on
+ * import); view data is JSON by construction (ADR 0035 §8), so a JSON
+ * round-trip copies every key a view can hold, whatever the input.
+ */
+function plainCopy(view: Readonly<Json>): Json {
+  return JSON.parse(JSON.stringify(view)) as Json;
+}
+
 const OPTION_TYPES = new Set(['select', 'multi-select']);
 
 /** The `header` keys of the presets that name a property. */
@@ -66,7 +77,7 @@ export function remapView(
   to: readonly DataSourcePickerProperty[],
   mapping: Readonly<Record<string, string | null>>
 ): RemappedView {
-  const data = structuredClone(view) as Json;
+  const data = plainCopy(view);
   delete data.id;
   delete data.name;
   delete data.sourceId;
@@ -285,7 +296,7 @@ export function defaultMapping(
  * REQ-DB-4 names them part of a template.
  */
 export function viewTemplateData(view: Readonly<Json>): Json {
-  const data = structuredClone(view) as Json;
+  const data = plainCopy(view);
   delete data.id;
   delete data.sourceId;
   delete data.sort;

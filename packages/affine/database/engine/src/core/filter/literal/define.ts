@@ -6,6 +6,8 @@ import { html } from 'lit';
 import { t } from '../../logical/type-presets.js';
 import { createLiteral } from './create.js';
 import type { LiteralItemsConfig } from './types.js';
+import { DATA_VIEW_FILTER_VALUE_PLACEHOLDER } from '../../../translations.js';
+import { englishWording } from '../../utils/wording.js';
 
 export const allLiteralConfig: LiteralItemsConfig[] = [
   createLiteral({
@@ -49,23 +51,23 @@ export const allLiteralConfig: LiteralItemsConfig[] = [
   }),
   createLiteral({
     type: t.string.instance(),
-    getItems: (_type, value, onChange) => {
+    getItems: (_type, value, onChange, wording = englishWording) => {
       return [
         menu.input({
           initialValue: value.value ?? '',
           onChange: onChange,
-          placeholder: 'Type a value...',
+          placeholder: wording(DATA_VIEW_FILTER_VALUE_PLACEHOLDER),
         }),
       ];
     },
   }),
   createLiteral({
     type: t.number.instance(),
-    getItems: (_type, value, onChange) => {
+    getItems: (_type, value, onChange, wording = englishWording) => {
       return [
         menu.input({
           initialValue: value.value?.toString(10) ?? '',
-          placeholder: 'Type a value...',
+          placeholder: wording(DATA_VIEW_FILTER_VALUE_PLACEHOLDER),
           onChange: text => {
             const number = Number.parseFloat(text);
             if (Number.isNaN(number)) {

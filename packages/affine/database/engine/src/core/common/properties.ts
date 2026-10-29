@@ -18,6 +18,8 @@ import {
   DATA_VIEW_NEW_PROPERTY,
   DATA_VIEW_PROPERTIES,
   DATA_VIEW_PROPERTY_TYPE,
+  DATA_VIEW_HIDE_ALL,
+  DATA_VIEW_SHOW_ALL,
 } from '../../translations.js';
 import { dragHandler } from '../utils/wc-dnd/dnd-context.js';
 import { defaultActivators } from '../utils/wc-dnd/sensors/index.js';
@@ -178,9 +180,12 @@ export class DataViewPropertiesSettingView extends SignalWatcher(
 
   private readonly _openMenu = (property: Property, row: HTMLElement) => {
     if (this.view.readonly$.value) return;
-    popPropertyMenu(popupTargetFromElement(row), property, {
-      wording: this.wording,
-    });
+    popPropertyMenu(
+      popupTargetFromElement(row),
+      property,
+      { wording: this.wording },
+      { beside: true }
+    );
   };
 
   private readonly _newProperty = (event: MouseEvent) => {
@@ -188,6 +193,7 @@ export class DataViewPropertiesSettingView extends SignalWatcher(
     const button = event.currentTarget as HTMLElement;
     popNewPropertyMenu(popupTargetFromElement(button), this.view, {
       title: this.wording(DATA_VIEW_PROPERTY_TYPE),
+      wording: this.wording,
       onAdd: id => {
         this.updateComplete
           .then(() => {
@@ -362,7 +368,9 @@ export const popPropertiesSetting = (
             class="properties-group-op"
             @click="${clickChangeAll}"
           >
-            ${isAllShowed ? 'Hide All' : 'Show All'}
+            ${(props.wording ?? englishWording)(
+              isAllShowed ? DATA_VIEW_HIDE_ALL : DATA_VIEW_SHOW_ALL
+            )}
           </div>`;
         },
       },

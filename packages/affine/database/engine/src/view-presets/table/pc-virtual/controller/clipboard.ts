@@ -11,6 +11,11 @@ import {
   type TableViewSelectionWithType,
 } from '../../selection';
 import type { VirtualTableViewUILogic } from '../table-view-ui-logic.js';
+import {
+  DATA_VIEW_CELLS_COPIED,
+  DATA_VIEW_ROWS_COPIED,
+} from '../../../../translations.js';
+import { wordingFrom } from '../../../../core/utils/wording.js';
 const BLOCKSUITE_DATABASE_TABLE = 'blocksuite/database/table';
 type JsonAreaData = string[][];
 const TEXT = 'text/plain';
@@ -58,12 +63,14 @@ export class TableClipboardController implements ReactiveController {
       .then(() => {
         if (area[0]?.row) {
           this.notification.toast(
-            `${area.length} row${area.length > 1 ? 's' : ''} copied to clipboard`
+            wordingFrom(this.logic.ui$.value)(DATA_VIEW_ROWS_COPIED, {
+              count: area.length,
+            })
           );
         } else {
           const count = area.flatMap(row => row.cells).length;
           this.notification.toast(
-            `${count} cell${count > 1 ? 's' : ''} copied to clipboard`
+            wordingFrom(this.logic.ui$.value)(DATA_VIEW_CELLS_COPIED, { count })
           );
         }
       })

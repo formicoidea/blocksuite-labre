@@ -22,6 +22,7 @@ import { compareDateKeys } from './compare-date-keys.js';
 import { defaultGroupBy } from './default.js';
 import { findGroupByConfigByName, getGroupByService } from './matcher.js';
 import type { GroupByConfig } from './types.js';
+import { type Wording } from '../utils/wording.js';
 
 export type GroupInfo<
   RawValue = unknown,
@@ -58,6 +59,13 @@ export class Group<
     }
     return this.groupInfo.config.groupName(type, this.value);
   });
+
+  /** {@link name$} in the words `wording` resolves (a date group's "Today"). */
+  nameIn(wording: Wording): string {
+    const type = this.property.dataType$.value;
+    if (!type) return '';
+    return this.groupInfo.config.groupName(type, this.value, wording);
+  }
 
   private get config() {
     return this.groupInfo.config;

@@ -14,6 +14,15 @@ import { html } from 'lit';
 
 import type { KanbanSelectionController } from './controller/selection.js';
 import type { KanbanViewUILogic } from './kanban-view-ui-logic.js';
+import {
+  DATA_VIEW_CARD_EXPAND,
+  DATA_VIEW_CARD_MOVE_TO,
+  DATA_VIEW_ROW_INSERT_BEFORE,
+  DATA_VIEW_ROW_INSERT_AFTER,
+  DATA_VIEW_CARD_DELETE,
+  DATA_VIEW_UNGROUPED,
+} from '../../../translations.js';
+import { wordingFrom } from '../../../core/utils/wording.js';
 
 export const openDetail = (
   kanbanViewLogic: KanbanViewUILogic,
@@ -39,14 +48,14 @@ export const popCardMenu = (
 ) => {
   popFilterableSimpleMenu(ele, [
     menu.action({
-      name: 'Expand Card',
+      name: wordingFrom(ele.element)(DATA_VIEW_CARD_EXPAND),
       prefix: ExpandFullIcon(),
       select: () => {
         openDetail(kanbanViewLogic, rowId, selection);
       },
     }),
     menu.subMenu({
-      name: 'Move To',
+      name: wordingFrom(ele.element)(DATA_VIEW_CARD_MOVE_TO),
       prefix: ArrowRightBigIcon(),
       options: {
         items:
@@ -60,7 +69,10 @@ export const popCardMenu = (
             })
             .map(group => {
               return menu.action({
-                name: group.value != null ? group.name$.value : 'Ungroup',
+                name:
+                  group.value != null
+                    ? group.name$.value
+                    : wordingFrom(ele.element)(DATA_VIEW_UNGROUPED),
                 select: () => {
                   selection.moveCard(rowId, group.key);
                 },
@@ -72,7 +84,7 @@ export const popCardMenu = (
       name: '',
       items: [
         menu.action({
-          name: 'Insert Before',
+          name: wordingFrom(ele.element)(DATA_VIEW_ROW_INSERT_BEFORE),
           hide: () => selection.view.rowsLocked$.value,
           prefix: html` <div
             style="transform: rotate(90deg);display:flex;align-items:center;"
@@ -84,7 +96,7 @@ export const popCardMenu = (
           },
         }),
         menu.action({
-          name: 'Insert After',
+          name: wordingFrom(ele.element)(DATA_VIEW_ROW_INSERT_AFTER),
           hide: () => selection.view.rowsLocked$.value,
           prefix: html` <div
             style="transform: rotate(90deg);display:flex;align-items:center;"
@@ -101,7 +113,7 @@ export const popCardMenu = (
       name: '',
       items: [
         menu.action({
-          name: 'Delete Card',
+          name: wordingFrom(ele.element)(DATA_VIEW_CARD_DELETE),
           class: {
             'delete-item': true,
           },

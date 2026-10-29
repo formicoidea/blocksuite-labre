@@ -30,8 +30,10 @@ import {
  * - the header's "+" opening the settings of the previous last property:
  *   the header was looked up before it drew the new one;
  * - filter and sort hidden from a phone's toolbar, or under a finger's 44px;
- * - "+" and "+ New page" adding a row a phone then has to find, instead of
- *   opening it as the desktop table's "New" does;
+ * - "+" and "+ New page" adding a row a phone then has to find, or opening
+ *   it, instead of putting its title in editing as every view's "New" does
+ *   since the recette of 1.1 (product owner, P3-15; it opened the row
+ *   from P7 to 1.1);
  * - a tap on a kanban card, a gallery card or a list row editing the value
  *   under the finger instead of opening the row.
  */
@@ -430,19 +432,36 @@ describe('the header "+" on a phone', () => {
 });
 
 describe('adding a row on a phone', () => {
-  it('"+ New page" under the rows adds a row at the end and opens it', async () => {
-    const { ui, rowAdd, root, view } = await mountTable({ std: frenchStd });
-    const footer = ui.querySelector<HTMLElement>(
+  /** The new row's title cell, in editing, and nothing opened. */
+  async function expectTitleEditing(
+    mounted: Awaited<ReturnType<typeof mountTable>>
+  ) {
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    await settle();
+    expect(mounted.root.openDetailPanel).not.toHaveBeenCalled();
+    expect(mounted.root.selection$.value).toMatchObject({
+      type: 'table',
+      selectionType: 'area',
+      isEditing: true,
+      focus: { rowIndex: 3 },
+    });
+    expect(mounted.cell('r4', 'title').dataset.editing).toBe('true');
+  }
+
+  it('"+ New page" under the rows adds a row at the end, its title in editing', async () => {
+    const mounted = await mountTable({ std: frenchStd });
+    const footer = mounted.ui.querySelector<HTMLElement>(
       '.data-view-table-group-add-row'
     )!;
     expect(footer.textContent).toContain('Nouvelle page');
     footer.click();
-    expect(rowAdd).toHaveBeenCalledWith('end');
-    expect(root.openDetailPanel).toHaveBeenCalledWith({ view, rowId: 'r4' });
+    expect(mounted.rowAdd).toHaveBeenCalledWith('end');
+    await expectTitleEditing(mounted);
   });
 
-  it('the toolbar draws a blue "+" that adds a row and opens it', async () => {
-    const { logic, rowAdd, root, view } = await mountTable();
+  it('the toolbar draws a blue "+" that adds a row, its title in editing', async () => {
+    const mounted = await mountTable();
+    const { logic, rowAdd } = mounted;
     const tool = document.createElement(
       'test-dv-tools-add-row'
     ) as DataViewHeaderToolsAddRow;
@@ -456,7 +475,7 @@ describe('adding a row on a phone', () => {
     expect(button.textContent?.trim()).toBe('');
     button.click();
     expect(rowAdd).toHaveBeenCalledWith('start');
-    expect(root.openDetailPanel).toHaveBeenCalledWith({ view, rowId: 'r4' });
+    await expectTitleEditing(mounted);
   });
 });
 

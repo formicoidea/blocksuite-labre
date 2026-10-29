@@ -157,7 +157,7 @@ describe('a source whose host locks its properties', () => {
     const { q, openHeaderMenu } = await mount(false);
     expect(q('[data-testid="dv-table-add-column"]')).not.toBeNull();
     const menu = await openHeaderMenu();
-    for (const entry of ['Insert Left Column', 'Duplicate', 'Delete']) {
+    for (const entry of ['Insert left column', 'Duplicate', 'Delete']) {
       expect(menu).toContain(entry);
     }
     expect(document.querySelector('affine-menu-input')).not.toBeNull();
@@ -180,7 +180,7 @@ describe('a source whose host locks its properties', () => {
     expect(menu).toContain('The properties of this source are locked');
     expect(menu).toContain('Hide In View');
     expect(menu).toContain('Sort Ascending');
-    for (const entry of ['Insert Left Column', 'Duplicate', 'Delete']) {
+    for (const entry of ['Insert left column', 'Duplicate', 'Delete']) {
       expect(menu).not.toContain(entry);
     }
     expect(document.querySelector('affine-menu-input')).toBeNull();

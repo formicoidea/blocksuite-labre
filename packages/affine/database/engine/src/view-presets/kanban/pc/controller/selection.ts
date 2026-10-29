@@ -1,6 +1,12 @@
 import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
 import type { ReactiveController } from 'lit';
 
+import {
+  firstDrawnRow,
+  locateRow,
+  type RowLocation,
+} from '../../../../core/group-by/locate-row.js';
+
 import type {
   KanbanCardSelection,
   KanbanCardSelectionCard,
@@ -167,19 +173,37 @@ export class KanbanSelectionController implements ReactiveController {
     }
   }
 
+  /**
+   * The first card's title in editing (the page title's Enter, ADR 0035
+   * B13): the first card of the first unfolded group that has one, not of
+   * the first group, which is often an empty "Ungrouped".
+   */
   focusFirstCell() {
-    const group = this.logic.groups$.value?.[0];
-    const card = group?.rows[0];
-    const columnId = card && this.view.getHeaderTitle(card.rowId)?.id;
-    if (group && card && columnId) {
-      this.selection = {
-        selectionType: 'cell',
-        groupKey: group.key,
-        cardId: card.rowId,
-        columnId,
-        isEditing: false,
-      };
-    }
+    const view = this.view;
+    const first = firstDrawnRow(view.groupTrait, view.rows$.peek());
+    if (first) this.editTitle(first);
+  }
+
+  /** Selects the title cell of the card `rowId` in editing. */
+  editCardTitle(rowId: string) {
+    const view = this.view;
+    const at = locateRow(view.groupTrait, view.rows$.peek(), rowId);
+    if (at) this.editTitle(at);
+  }
+
+  private editTitle(at: RowLocation) {
+    // The column a group's own "New" edits (`pc/group.ts`).
+    const columnId =
+      this.view.mainProperties$.peek().titleColumn ||
+      this.view.propertyIds$.peek()[0];
+    if (at.groupKey === undefined || !columnId) return;
+    this.selection = {
+      selectionType: 'cell',
+      groupKey: at.groupKey,
+      cardId: at.rowId,
+      columnId,
+      isEditing: true,
+    };
   }
 
   focusIn() {

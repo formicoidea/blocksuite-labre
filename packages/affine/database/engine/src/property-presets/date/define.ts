@@ -4,9 +4,11 @@ import zod from 'zod';
 
 import { t } from '../../core/logical/type-presets.js';
 import { propertyType } from '../../core/property/property-config.js';
+import { DATA_VIEW_TYPE_DATE } from '../../translations.js';
 export const datePropertyType = propertyType('date');
 export const datePropertyModelConfig = datePropertyType.modelConfig({
-  name: 'Date',
+  name: DATA_VIEW_TYPE_DATE[1],
+  nameWording: DATA_VIEW_TYPE_DATE,
   propertyData: {
     schema: zod.object({}),
     default: () => ({}),

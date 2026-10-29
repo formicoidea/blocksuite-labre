@@ -23,6 +23,9 @@ import {
 import { statsFunctions } from '../../../core/statistics/index.js';
 import type { StatisticsConfig } from '../../../core/statistics/types.js';
 import type { TableProperty } from '../table-view-manager.js';
+import { sayLabel, wordingFrom } from '../../../core/utils/wording.js';
+import { DATA_VIEW_STATS_CALCULATE } from '../../../translations.js';
+import { LINE_STYLE_NONE } from '@labre/affine-components/translations';
 
 const styles = css`
   .stats-cell {
@@ -114,15 +117,20 @@ export class DatabaseColumnStatsCell extends SignalWatcher(
   });
 
   openMenu = (ev: MouseEvent) => {
+    const wording = wordingFrom(this);
     const menus: MenuConfig[] = Object.entries(this.groups$.value).map(
       ([group, funcs]) => {
         return menu.subMenu({
-          name: group,
+          name: sayLabel(wording, group, Object.values(funcs)[0]?.groupWording),
           options: {
             items: Object.values(funcs).map(func => {
               return menu.action({
                 isSelected: func.type === this.column.statCalcOp$.value,
-                name: func.menuName ?? func.type,
+                name: sayLabel(
+                  wording,
+                  func.menuName ?? func.type,
+                  func.menuWording
+                ),
                 select: () => {
                   this.column.updateStatCalcOp(func.type);
                 },
@@ -137,7 +145,7 @@ export class DatabaseColumnStatsCell extends SignalWatcher(
         items: [
           menu.action({
             isSelected: !this.column.statCalcOp$.value,
-            name: 'None',
+            name: wording(LINE_STYLE_NONE),
             select: () => {
               this.column.updateStatCalcOp();
             },
@@ -170,15 +178,18 @@ export class DatabaseColumnStatsCell extends SignalWatcher(
       return null;
     }
     const dataSource = this.column.view.manager.dataSource;
+    const wording = wordingFrom(this);
+    const name = sayLabel(wording, func.displayName ?? '', func.displayWording);
     if (!valuesReady(dataSource)) {
-      return { name: func.displayName, value: VALUES_PENDING_MARK };
+      return { name, value: VALUES_PENDING_MARK };
     }
     return {
-      name: func.displayName,
+      name,
       value:
         func.impl?.(this.values$.value, {
           meta,
           dataSource: this.column.view.manager.dataSource,
+          wording,
         }) ?? '',
     };
   });
@@ -234,7 +245,8 @@ export class DatabaseColumnStatsCell extends SignalWatcher(
     >
       <div class="content">
         ${!this.statsResult$.value
-          ? html`Calculate ${ArrowDownSmallIcon()}`
+          ? html`${wordingFrom(this)(DATA_VIEW_STATS_CALCULATE)}
+            ${ArrowDownSmallIcon()}`
           : html`
               <span class="label">${this.statsResult$.value.name}</span>
               <span class="value">${this.statsResult$.value.value} </span>

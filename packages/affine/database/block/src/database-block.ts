@@ -24,6 +24,8 @@ import {
   TelemetryProvider,
   TOAST_COPIED_TO_CLIPBOARD,
   translateKey,
+  TOOLBAR_COPY,
+  TOOLBAR_COMMENT,
 } from '@labre/affine-shared/services';
 import { getDropResult } from '@labre/affine-widget-drag-handle';
 import {
@@ -47,7 +49,6 @@ import {
   uniMap,
   ViewCreationOffKey,
 } from '@labre/affine-database-engine';
-import { CalendarExternalSourceProvider } from '@labre/affine-database-engine/view-presets';
 import { widgetPresets } from '@labre/affine-database-engine/widget-presets';
 import { Rect } from '@labre/global/gfx';
 import {
@@ -106,6 +107,8 @@ import {
   DATABASE_SOURCE_REQUIRED,
   DATABASE_SOURCE_REQUIRED_HINT,
   DATABASE_SOURCE_REQUIRED_READ_ONLY,
+  DATABASE_DELETE,
+  DATABASE_TITLE_LABEL,
 } from './translations.js';
 import {
   canTurnIntoSource,
@@ -122,7 +125,7 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
       items: [
         menu.input({
           initialValue: this.model.props.title.toString(),
-          placeholder: 'Database title',
+          placeholder: translateKey(this.std, ...DATABASE_TITLE_LABEL),
           onChange: text => {
             this.model.props.title.replace(
               0,
@@ -133,7 +136,7 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
         }),
         menu.action({
           prefix: CommentIcon(),
-          name: 'Comment',
+          name: translateKey(this.std, ...TOOLBAR_COMMENT),
           hide: () => !this.std.getOptional(CommentProviderIdentifier),
           select: () => {
             this.std.getOptional(CommentProviderIdentifier)?.addComment([
@@ -145,7 +148,7 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
         }),
         menu.action({
           prefix: CopyIcon(),
-          name: 'Copy',
+          name: translateKey(this.std, ...TOOLBAR_COPY),
           select: () => {
             const slice = Slice.fromModels(this.store, [this.model]);
             this.std.clipboard
@@ -166,7 +169,7 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
               class: {
                 'delete-item': true,
               },
-              name: 'Delete Database',
+              name: translateKey(this.std, ...DATABASE_DELETE),
               select: () => {
                 this.model.children.slice().forEach(block => {
                   this.store.deleteBlock(block);
@@ -253,14 +256,6 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
           dataSource.serviceSet(
             ExternalGroupByConfigProvider(config.name),
             config
-          );
-        });
-      this.std.provider
-        .getAll(CalendarExternalSourceProvider)
-        .forEach(source => {
-          dataSource.serviceSet(
-            CalendarExternalSourceProvider(source.id),
-            source
           );
         });
     };
@@ -480,12 +475,6 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
     kanban: [
       widgetPresets.tools.filter,
       widgetPresets.tools.sort,
-      widgetPresets.tools.search,
-      widgetPresets.tools.viewOptions,
-      widgetPresets.tools.tableAddRow,
-    ],
-    calendar: [
-      widgetPresets.tools.filter,
       widgetPresets.tools.search,
       widgetPresets.tools.viewOptions,
       widgetPresets.tools.tableAddRow,

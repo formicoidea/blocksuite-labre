@@ -328,16 +328,22 @@ describe.each(['gallery', 'list'] as const)('the %s preset', mode => {
     expect(context.openDetailPanel).toHaveBeenCalledTimes(3);
   });
 
-  it('adds a row at the end and opens it', async () => {
+  it('adds a row at the end and puts its title in editing', async () => {
     const context = setup({ mode });
     const ui = await mount(context);
     const add = ui.querySelector<HTMLElement>('[data-testid="dv-flat-new"]');
     expect(add?.textContent).toContain('New page');
     add?.click();
     expect(context.rowAdd).toHaveBeenCalledWith('end');
-    expect(context.openDetailPanel.mock.calls[0]?.[0]).toMatchObject({
-      rowId: 'r4',
-    });
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    await ui.updateComplete;
+    await new Promise(resolve => setTimeout(resolve, 0));
+    // P3-15: "New" no longer opens the row.
+    expect(context.openDetailPanel).not.toHaveBeenCalled();
+    const title = ui.querySelector<HTMLElement>(
+      '[data-row-id="r4"] dv-standalone-cell[data-property-id="title"]'
+    );
+    expect(title?.dataset.editing).toBe('true');
   });
 
   it('offers no editor and no "New page" when read-only', async () => {
@@ -451,7 +457,6 @@ describe('a new gallery or list view', () => {
     for (const [from, to] of <[string, string][]>[
       ['table', 'gallery'],
       ['kanban', 'list'],
-      ['calendar', 'gallery'],
       ['gallery', 'list'],
       ['list', 'table'],
       ['gallery', 'kanban'],
@@ -468,12 +473,6 @@ describe('a new gallery or list view', () => {
         } as FlatViewDataType)
       ).toEqual({ filter, sort });
     }
-    // Nothing converts into a calendar from the new presets.
-    expect(
-      viewConverts.filter(
-        c => c.to === 'calendar' && (c.from === 'gallery' || c.from === 'list')
-      )
-    ).toEqual([]);
   });
 
   it('is a preset of this package, under its stored mode', () => {

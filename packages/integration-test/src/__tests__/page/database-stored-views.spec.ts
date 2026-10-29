@@ -16,13 +16,13 @@ import { setupEditor } from '../utils/setup.js';
  * (`database/block`) that an unknown mode resolves to the table preset and
  * writes nothing, `database-render-gating.unit.spec.ts` (`affine/all`) that
  * the block view stays registered with `{ database: false, 'data-view': false }`.
- * Neither renders the block in an editor. This one does: a database written
- * the way a 0.48 client wrote it (a table, a calendar) plus two views no
- * preset here knows (`timeline`, an invented mode) is mounted in a real page
- * editor, each view is opened in turn and must paint (the calendar as a
- * calendar, the other two as a table tagged "Shown as a table"), and the
- * stored `props.views` must come out deep-equal. With both flags off the
- * same document still paints, minus the views bar's "+".
+ * Neither renders the block in an editor. This one does: a database holding
+ * a table, a calendar as 1.x stored it (its preset left the library in 2.0,
+ * ADR 0035 amendment of 2026-10-29) and two views no preset ever knew
+ * (`timeline`, an invented mode) is mounted in a real page editor, each view
+ * is opened in turn and must paint (the last three as a table tagged "Shown
+ * as a table"), and the stored `props.views` must come out deep-equal. With
+ * both flags off the same document still paints, minus the views bar's "+".
  */
 
 const TIMELINE = {
@@ -32,6 +32,17 @@ const TIMELINE = {
   range: { start: 'start', end: 'end' },
 };
 const INVENTED = { id: 'v-invented', name: 'Later', mode: 'swimlane-2031' };
+/** A calendar as 0.48 to 1.x stored it. */
+const CALENDAR = {
+  id: 'v-calendar',
+  name: 'Calendar View',
+  mode: 'calendar',
+  filter: { type: 'group', op: 'and', conditions: [] },
+  date: {},
+  card: { visiblePropertyIds: [] },
+  sources: { workspaceCalendar: { enabled: true } },
+  ui: {},
+};
 
 function writeDatabase() {
   const note = doc.addBlock('affine:note', {}, doc.root!.id);
@@ -41,12 +52,11 @@ function writeDatabase() {
   writer.rowAdd('end');
   writer.rowAdd('end');
   const tableId = writer.viewManager.viewAdd('table');
-  const calendarId = writer.viewManager.viewAdd('calendar');
   doc.updateBlock(model, {
-    views: [...model.props.views, TIMELINE, INVENTED] as never,
+    views: [...model.props.views, CALENDAR, TIMELINE, INVENTED] as never,
   });
   writer.dispose();
-  return { id, model, tableId, calendarId };
+  return { id, model, tableId };
 }
 
 const snapshot = (model: DatabaseBlockModel) =>
@@ -69,12 +79,12 @@ async function open(block: DatabaseBlockComponent, viewId: string) {
 
 function expectEveryViewPaints(
   block: DatabaseBlockComponent,
-  ids: { tableId: string; calendarId: string }
+  ids: { tableId: string }
 ) {
   return async () => {
     for (const [viewId, tag, shownAs] of [
       [ids.tableId, 'dv-table-view-ui', false],
-      [ids.calendarId, 'affine-data-view-calendar', false],
+      [CALENDAR.id, 'dv-table-view-ui', true],
       [TIMELINE.id, 'dv-table-view-ui', true],
       [INVENTED.id, 'dv-table-view-ui', true],
     ] as const) {
@@ -89,10 +99,10 @@ function expectEveryViewPaints(
         expect(hint?.textContent?.trim()).toBe('Shown as a table');
       }
     }
-    // Two views fall back, so two tabs carry the hint.
+    // Three views fall back, so three tabs carry the hint.
     expect(
       block.querySelectorAll('[data-testid="database-view-shown-as"]').length
-    ).toBe(2);
+    ).toBe(3);
   };
 }
 

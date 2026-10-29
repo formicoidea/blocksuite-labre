@@ -28,6 +28,11 @@
  *   rows hidden or left editable, or a hosted view whose source is gone kept
  *   as "Source not found" instead of offering a source and re-pointing;
  *   without it, the empty view drawn at all;
+ * - "Link an existing source" → database → source leaving the popover
+ *   open, or a layer that swallows the next click (#571: a pick two levels
+ *   down closed its own menu and its parent, never the root), and the
+ *   third level drawn back over the first menu instead of beside the
+ *   second. Asserted inside the test: `afterEach` removes every layer;
  * - the stable test ids a host's end-to-end suite selects the entries by;
  * - "Create Table" or "Move into a database" under `requireSource` leaving
  *   the paragraphs or the native rows, not connecting the block to the
@@ -287,6 +292,12 @@ describe('creating a database with a host picker', () => {
     await tableView();
     await settle();
     const model = database()!;
+    // The popover where a host's page puts it, right of the middle: the
+    // second level then has more room on its left than on its right, which
+    // is where the 1.1 placement drew the third level (#571). Nothing
+    // re-places the popover: its anchor is a rectangle, not an element.
+    const at = popover()!.getBoundingClientRect().left + 150;
+    popover()!.style.left = `${at}px`;
 
     byTestId('database-creation-link-existing-entry')!.click();
     await settle();
@@ -298,8 +309,30 @@ describe('creating a database with a host picker', () => {
       .click();
     await settle();
     expect(byTestId('data-source-picker-new-source')).toBeNull();
-    byTestId('data-source-picker-source-src-2')!.click();
+
+    // #571: the third level (the database's sources) opens beside the
+    // second, never back over the first.
+    const sourceItem = byTestId('data-source-picker-source-src-2')!;
+    const first = popover()!.getBoundingClientRect();
+    const second = sub.getBoundingClientRect();
+    const third = sourceItem.closest('affine-menu')!.getBoundingClientRect();
+    expect(second.left).toBeGreaterThanOrEqual(first.right - 1);
+    expect(third.left).toBeGreaterThanOrEqual(second.right - 1);
+
+    sourceItem.click();
     await settle();
+
+    // #571: the pick closes the WHOLE popover, as "New empty source" does,
+    // and leaves no layer to swallow the next click. Asserted here, before
+    // `afterEach` removes the layers, which is how the 1.1 spec missed it.
+    expect(popover()).toBeNull();
+    expect(document.querySelector('affine-menu')).toBeNull();
+    const block = blockOf(model)!.getBoundingClientRect();
+    const hit = document.elementFromPoint(
+      block.left + block.width / 2,
+      block.top + Math.min(block.height / 2, 20)
+    );
+    expect(blockOf(model)!.contains(hit)).toBe(true);
 
     expect(model.props.externalSourceId).toBe('host:plan');
     expect(model.props.views[0]).toMatchObject({ sourceId: 'src-2' });

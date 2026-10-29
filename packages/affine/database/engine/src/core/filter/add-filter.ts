@@ -11,6 +11,11 @@ import type { Variable } from '../expression/index.js';
 import { renderUniLit } from '../utils/index.js';
 import type { Filter } from './types.js';
 import { firstFilterByRef, firstFilterInGroup } from './utils.js';
+import {
+  DATA_VIEW_FILTER_NEW,
+  DATA_VIEW_FILTER_ADD_GROUP,
+} from '../../translations.js';
+import { wordingFrom } from '../utils/wording.js';
 
 export const popCreateFilter = (
   target: PopupTarget,
@@ -30,7 +35,7 @@ export const popCreateFilter = (
       onClose: props.onClose,
       title: {
         onBack: props.onBack,
-        text: 'New filter',
+        text: wordingFrom(target.element)(DATA_VIEW_FILTER_NEW),
       },
       items: [
         menu.group({
@@ -53,7 +58,7 @@ export const popCreateFilter = (
           name: '',
           items: [
             menu.action({
-              name: 'Add filter group',
+              name: wordingFrom(target.element)(DATA_VIEW_FILTER_ADD_GROUP),
               prefix: AddCursorIcon(),
               select: () => {
                 props.onSelect(firstFilterInGroup(props.vars.value));

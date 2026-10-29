@@ -16,6 +16,7 @@ import type { VirtualTableViewUILogic } from '../../../../view-presets/table/pc-
 import {
   DATA_VIEW_SEARCH_CLEAR_HINT,
   DATA_VIEW_SEARCH_PLACEHOLDER,
+  DATA_VIEW_SEARCH_ESCAPE,
 } from '../../../../translations.js';
 
 const styles = css`
@@ -195,7 +196,7 @@ export class DataViewHeaderToolsSearch extends WidgetBase<
                 borderRadius: '4px',
                 background: 'var(--affine-white-10)',
               })}
-              >Esc</span
+              >${wordingOf(this.std)(DATA_VIEW_SEARCH_ESCAPE)}</span
             >
             ${wordingOf(this.std)(DATA_VIEW_SEARCH_CLEAR_HINT)}
           </affine-tooltip>

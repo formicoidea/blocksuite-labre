@@ -317,3 +317,34 @@ describe('colour rules', () => {
     });
   });
 });
+
+/**
+ * A host may hand the store's live view, a reactive `Proxy` over the
+ * block's props: `structuredClone` refused it with a `DataCloneError` and
+ * the import crashed in labre. Any JSON-shaped input must work.
+ */
+describe('a live (proxied) view', () => {
+  // The structured clone algorithm refuses every `Proxy`, as it refuses
+  // the store's; a `get` trap stands for its reactive reads.
+  const live = <T extends object>(data: T): T =>
+    new Proxy(data, { get: (target, key) => Reflect.get(target, key) });
+  const proxied = live({
+    ...stored,
+    columns: stored.columns.map(column => live(column)),
+  });
+
+  test('the stand-in is refused by structuredClone, as the store proxy is', () => {
+    expect(() => structuredClone(proxied)).toThrow();
+  });
+
+  test('remapView copies it and remaps as the plain view', () => {
+    const fromPlain = remapView(stored, from, to, mapping);
+    const fromLive = remapView(proxied, from, to, mapping);
+    expect(fromLive).toEqual(fromPlain);
+    expect(fromLive.data.columns).not.toBe(proxied.columns);
+  });
+
+  test('viewTemplateData copies it as the plain view', () => {
+    expect(viewTemplateData(proxied)).toEqual(viewTemplateData(stored));
+  });
+});

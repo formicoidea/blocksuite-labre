@@ -9,6 +9,7 @@ import {
   TOOLBAR_DUPLICATE,
 } from '@labre/affine-shared/services';
 import { DeleteIcon, DuplicateIcon, ViewIcon } from '@blocksuite/icons/lit';
+import { autoPlacement, offset, shift } from '@floating-ui/dom';
 import { html } from 'lit/static-html.js';
 
 import {
@@ -19,9 +20,21 @@ import {
   DATA_VIEW_PROPERTY_TYPE_ENTRY,
 } from '../../translations.js';
 import { renderUniLit } from '../utils/uni-component/index.js';
-import { englishWording, type Wording } from '../utils/wording.js';
+import {
+  englishWording,
+  type Wording,
+  propertyTypeName,
+} from '../utils/wording.js';
 import type { Property } from '../view-manager/property.js';
 import type { SingleView } from '../view-manager/single-view.js';
+
+/** The name of the type `property` has, in the host language. */
+const currentTypeName = (property: Property, wording: Wording) => {
+  const meta = property.view.propertyMetas$.value.find(
+    v => v.type === property.type$.value
+  );
+  return meta ? propertyTypeName(wording, meta.config) : undefined;
+};
 
 /**
  * The name of a property whose source its host locked (ADR 0035 amendment
@@ -86,10 +99,7 @@ export const typeConfig = (
           class="affine-database-column-type-icon"
           style="color: var(--affine-text-secondary-color);gap:4px;font-size: 14px;"
         >
-          ${renderUniLit(property.icon)}
-          ${property.view.propertyMetas$.value.find(
-            v => v.type === property.type$.value
-          )?.config.name}
+          ${renderUniLit(property.icon)} ${currentTypeName(property, wording)}
         </div>`,
         options: {
           title: {
@@ -100,7 +110,7 @@ export const typeConfig = (
               items: property.view.propertyMetas$.value.map(config => {
                 return menu.action({
                   isSelected: config.type === property.type$.value,
-                  name: config.config.name,
+                  name: propertyTypeName(wording, config.config),
                   prefix: renderUniLit(config.renderer.icon),
                   select: () => {
                     if (property.type$.value === config.type) {
@@ -194,13 +204,29 @@ export const propertyMenuItems = (
   ];
 };
 
+/**
+ * A property menu opened from a list of properties sits BESIDE the list, on
+ * the side with more room, and stays inside the viewport: below the row it
+ * covered the list, and in a host's narrow sidebar (labre, about 470px) it
+ * hid the very rows it edits, its « Type » sub-menu half off screen (labre
+ * recette of 1.1). The sub-menu then opens on the same side
+ * (`nestedSubMenuPosition`).
+ */
+export const besideListMiddleware = () => [
+  autoPlacement({ allowedPlacements: ['right-start', 'left-start'] }),
+  offset(4),
+  shift({ padding: 8, crossAxis: true }),
+];
+
 export const popPropertyMenu = (
   target: PopupTarget,
   property: Property,
-  slots?: PropertyMenuSlots
+  slots?: PropertyMenuSlots,
+  placement: { beside?: boolean } = {}
 ) =>
   popMenu(target, {
     options: { items: propertyMenuItems(property, slots) },
+    middleware: placement.beside ? besideListMiddleware() : undefined,
   });
 
 /**
@@ -213,21 +239,23 @@ export const popPropertyMenu = (
 export const popNewPropertyMenu = (
   target: PopupTarget,
   view: SingleView,
-  options: { title: string; onAdd: (id: string) => void }
-) =>
-  popMenu(target, {
+  options: { title: string; onAdd: (id: string) => void; wording?: Wording }
+) => {
+  const wording = options.wording ?? englishWording;
+  return popMenu(target, {
     options: {
       title: { text: options.title },
       items: [
         menu.group({
           items: view.propertyMetas$.value.map(meta =>
             menu.action({
-              name: meta.config.name,
+              name: propertyTypeName(wording, meta.config),
               prefix: renderUniLit(meta.renderer.icon),
               select: () => {
+                // Written resolved: a stored name is never re-translated.
                 const id = view.propertyAdd('end', {
                   type: meta.type,
-                  name: meta.config.name,
+                  name: propertyTypeName(wording, meta.config),
                 });
                 if (id) options.onAdd(id);
               },
@@ -237,3 +265,4 @@ export const popNewPropertyMenu = (
       ],
     },
   });
+};

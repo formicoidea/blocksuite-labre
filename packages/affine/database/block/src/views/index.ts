@@ -6,15 +6,14 @@ import {
 
 /**
  * Every preset a stored `affine:database` view can be drawn with (ADR 0035
- * §6). Calendar stays here: calendar views were creatable until 0.48, so
- * documents hold them, and a stored calendar keeps rendering and editing as a
- * calendar. Never shrink this list: a mode that leaves it falls back to a
- * table on every document that stores it.
+ * §6). A mode that leaves this list falls back to a table on every document
+ * that stores it, so shrinking it is a major and an ADR decision: calendar
+ * left it in 2.0 (ADR 0035 amendment of 2026-10-29), and a stored calendar
+ * now draws as a table through `databaseBlockViewMetaGet`.
  */
 export const databaseBlockRenderableViews: ViewMeta[] = [
   viewPresets.tableViewMeta,
   viewPresets.kanbanViewMeta,
-  viewPresets.calendarViewMeta,
   viewPresets.galleryViewMeta,
   viewPresets.listViewMeta,
 ];
@@ -22,8 +21,7 @@ export const databaseBlockRenderableViews: ViewMeta[] = [
 /**
  * The presets a user can CREATE, a subset of the renderable ones: what the
  * data source answers as `viewMetas`, so the views bar ("+", "Create …") and
- * the Layout switch list only these. Calendar left it after 0.48 (ADR 0035 §6,
- * labre ADR-0046 §8): no new calendar, the stored ones still render.
+ * the Layout switch list only these.
  */
 export const databaseBlockViews: ViewMeta[] = [
   viewPresets.tableViewMeta,
@@ -57,9 +55,8 @@ export function databaseBlockViewMetaGet(mode: string): ViewMeta {
 const creatableModes = new Set(databaseBlockViews.map(view => view.type));
 
 /**
- * Conversions INTO a creatable preset only: switching a view's layout to
- * calendar would create a calendar. The conversions out of calendar stay, so a
- * stored calendar can still become a table or a board.
+ * Conversions INTO a creatable preset only: a layout switch never creates a
+ * view a user could not have added.
  */
 export const databaseBlockViewConverts = viewConverts.filter(convert =>
   creatableModes.has(convert.to)

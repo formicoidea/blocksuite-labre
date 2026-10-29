@@ -73,9 +73,9 @@ const OPEN_IN_CHOICES: readonly {
 /**
  * Whether the current view offers `key`: grouping needs the group trait,
  * "Open pages in" a source whose rows are pages (B8), conditional colours
- * the filter trait, whose conditions a rule is made of (ADR 0036; the
- * calendar has none, and paints no rule). A read-only or
- * fallback view offers nothing: its settings menu is not drawn either.
+ * the filter trait, whose conditions a rule is made of (ADR 0036). A
+ * read-only or fallback view offers nothing: its settings menu is not drawn
+ * either.
  */
 export function viewSettingAvailable(
   dataViewLogic: DataViewUILogicBase,

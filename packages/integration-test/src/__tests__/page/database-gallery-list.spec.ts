@@ -24,7 +24,8 @@ import { setupEditor } from '../utils/setup.js';
  * - a stored view rewritten by being drawn (`props.views` must not move);
  * - a value drawn by anything but the table's cell, or a click on it that
  *   opens the row instead of the table's tag menu;
- * - "New page" not adding a row to the block, or not opening it.
+ * - "New page" not adding a row to the block, or opening it instead of
+ *   putting its title in editing (product owner, recette P3-15).
  */
 
 const options = [
@@ -165,16 +166,22 @@ describe('database gallery and list views', () => {
     await settle();
   });
 
-  test('"New page" adds a row to the block and opens it', async () => {
+  test('"New page" adds a row to the block and puts its title in editing', async () => {
     await showView('list-1');
     block()
       .querySelector<HTMLElement>('dv-list-view-ui [data-testid="dv-flat-new"]')
       ?.click();
     await settle();
     expect(model.children).toHaveLength(4);
+    const rows = block().querySelectorAll<HTMLElement>(
+      'dv-list-view-ui [data-testid="dv-list-row"]'
+    );
+    expect(rows).toHaveLength(4);
+    const added = model.children.at(-1)!.id;
+    const row = [...rows].find(element => element.dataset.rowId === added);
     expect(
-      block().querySelectorAll('dv-list-view-ui [data-testid="dv-list-row"]')
-    ).toHaveLength(4);
-    expect(document.querySelector('center-peek')).not.toBeNull();
+      row?.querySelector('dv-standalone-cell[data-editing="true"]')
+    ).not.toBeNull();
+    expect(document.querySelector('center-peek')).toBeNull();
   });
 });

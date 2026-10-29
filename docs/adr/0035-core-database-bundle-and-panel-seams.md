@@ -1284,3 +1284,37 @@ sourceId)`, an optional member of the picker (§9c), a widening only. It
   `database/block/src/__tests__/source-policy.unit.spec.ts`,
   `database/engine/src/__tests__/new-row-menu.unit.spec.ts` and
   `integration-test/…/page/database-source-policy.spec.ts`.
+
+### 2026-10-29: the calendar view is removed (§6 amended, 2.0)
+
+Decided by the product owner on 2026-10-29, after the Labre recette of 1.1:
+no Labre base holds a calendar view, and keeping a render-only preset paid
+for a whole view family (its layout, its drag and drop, its wordings, its
+external-source seam) that no host draws. §6 said "calendar is
+render-only"; it now says **calendar is gone**.
+
+- **Removed.** `view-presets/calendar` of `@labre/affine-database-engine`
+  and everything it exported (`calendarViewMeta`, `calendarViewModel`,
+  `CalendarSingleView`, `CalendarExternalSourceProvider`, the layout
+  helpers, the `affine-data-view-calendar` element), the
+  `viewPresets.calendarViewMeta` entry, the conversions out of calendar, the
+  calendar tools of the database block and the key
+  `com.labre.data-view.view.default-name.calendar`. A public export is not a
+  persisted identifier: deleted, not deprecated (CLAUDE.md, product owner
+  decision of 2026-10-06). **Major** (2.0): a host that imported any of them
+  gets a compile error.
+- **Stored calendars keep rendering.** `mode: 'calendar'` is never removed
+  from a document and nothing is written on load. A stored calendar takes
+  §6's unknown-view path: drawn by the table preset over the source's
+  properties, its tab saying "Shown as a table", its settings read-only, its
+  stored data untouched, "Duplicate as table" as the way out. It never
+  throws (the invariant of this ADR and of the host's
+  `unknown-view-fallback`).
+- **Stored format.** Unchanged: the view data is an open record per mode
+  (§8); `mode` stays any string. A 1.x client reading a document written by
+  2.0 sees the same calendar view it wrote.
+- Held by `database/block/src/__tests__/unknown-view-fallback.unit.spec.ts`
+  (a calendar as 1.x stored it mounts as a table, deep-equal before and
+  after; no preset, menu or conversion names calendar) and
+  `integration-test/…/page/database-stored-views.spec.ts` (it paints as a
+  table, flags on and off).

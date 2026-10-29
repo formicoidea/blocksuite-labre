@@ -33,7 +33,11 @@ import {
   dragHandler,
   droppable,
 } from '../../../../core/utils/wc-dnd/dnd-context.js';
-import { wordingOf } from '../../../../core/utils/wording.js';
+import {
+  wordingOf,
+  propertyTypeName,
+  wordingFrom,
+} from '../../../../core/utils/wording.js';
 import type { Property } from '../../../../core/view-manager/property.js';
 import { numberFormats } from '../../../../property-presets/number/utils/formats.js';
 import {
@@ -48,6 +52,16 @@ import {
   getVerticalIndicator,
   startDragWidthAdjustmentBar,
 } from './vertical-indicator.js';
+import {
+  DATA_VIEW_NUMBER_FORMAT,
+  DATA_VIEW_FILTER,
+  DATA_VIEW_SORT_ASCENDING,
+  DATA_VIEW_SORT_DESCENDING,
+  DATA_VIEW_INSERT_LEFT,
+  DATA_VIEW_INSERT_RIGHT,
+  VIEWS_BAR_MOVE_LEFT,
+  VIEWS_BAR_MOVE_RIGHT,
+} from '../../../../translations.js';
 
 export class DatabaseHeaderColumn extends SignalWatcher(
   WithDisposable(ShadowlessElement)
@@ -77,11 +91,12 @@ export class DatabaseHeaderColumn extends SignalWatcher(
       return;
     }
     event.stopPropagation();
+    const wording = wordingFrom(this);
     popMenu(popupTargetFromElement(this), {
       options: {
         items: this.tableViewManager.propertyMetas$.value.map(config => {
           return menu.action({
-            name: config.config.name,
+            name: propertyTypeName(wording, config.config),
             isSelected: config.type === this.column.type$.value,
             prefix: renderUniLit(config.renderer.icon),
             select: () => {
@@ -210,7 +225,7 @@ export class DatabaseHeaderColumn extends SignalWatcher(
         ...(enableNumberFormatting
           ? [
               menu.subMenu({
-                name: 'Number Format',
+                name: wordingFrom(this)(DATA_VIEW_NUMBER_FORMAT),
                 hide: () =>
                   !this.column.dataUpdate ||
                   this.column.type$.value !== 'number',
@@ -225,7 +240,7 @@ export class DatabaseHeaderColumn extends SignalWatcher(
                           style="font-size: var(--affine-font-base); scale: 1.2;"
                           >${format.symbol}</span
                         >`,
-                        name: format.label,
+                        name: wordingFrom(this)(format.labelWording),
                         select: () => {
                           if (data.format === format.type) return;
                           this.column.dataUpdate(() => ({
@@ -244,17 +259,17 @@ export class DatabaseHeaderColumn extends SignalWatcher(
         menu.group({
           items: [
             menu.action({
-              name: 'Filter',
+              name: wordingFrom(this)(DATA_VIEW_FILTER),
               prefix: FilterIcon(),
               select: () => this._addFilter(),
             }),
             menu.action({
-              name: 'Sort Ascending',
+              name: wordingFrom(this)(DATA_VIEW_SORT_ASCENDING),
               prefix: SortIcon(),
               select: () => this._addSort(false),
             }),
             menu.action({
-              name: 'Sort Descending',
+              name: wordingFrom(this)(DATA_VIEW_SORT_DESCENDING),
               prefix: SortIcon(),
               select: () => this._addSort(true),
             }),
@@ -263,7 +278,7 @@ export class DatabaseHeaderColumn extends SignalWatcher(
         menu.group({
           items: [
             menu.action({
-              name: 'Insert Left Column',
+              name: wordingFrom(this)(DATA_VIEW_INSERT_LEFT),
               hide: () => this.tableViewManager.propertiesLocked$.value,
               prefix: InsertLeftIcon(),
               select: () => {
@@ -287,7 +302,7 @@ export class DatabaseHeaderColumn extends SignalWatcher(
               },
             }),
             menu.action({
-              name: 'Insert Right Column',
+              name: wordingFrom(this)(DATA_VIEW_INSERT_RIGHT),
               hide: () => this.tableViewManager.propertiesLocked$.value,
               prefix: InsertRightIcon(),
               select: () => {
@@ -310,7 +325,7 @@ export class DatabaseHeaderColumn extends SignalWatcher(
               },
             }),
             menu.action({
-              name: 'Move Left',
+              name: wordingFrom(this)(VIEWS_BAR_MOVE_LEFT),
               prefix: MoveLeftIcon(),
               hide: () => this.column.isFirst$.value,
               select: () => {
@@ -325,7 +340,7 @@ export class DatabaseHeaderColumn extends SignalWatcher(
               },
             }),
             menu.action({
-              name: 'Move Right',
+              name: wordingFrom(this)(VIEWS_BAR_MOVE_RIGHT),
               prefix: MoveRightIcon(),
               hide: () => this.column.isLast$.value,
               select: () => {

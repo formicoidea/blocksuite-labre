@@ -23,6 +23,8 @@ import { dataViewCommonStyle } from '../common/css-variable.js';
 import { renderUniLit } from '../utils/uni-component/uni-component.js';
 import type { SingleView } from '../view-manager/single-view.js';
 import { DetailSelection } from './selection.js';
+import { propertyTypeName, wordingFrom } from '../utils/wording.js';
+import { DATA_VIEW_ADD_PROPERTY } from '../../translations.js';
 
 export type DetailSlotProps = {
   view: SingleView;
@@ -110,21 +112,22 @@ export class RecordDetail extends SignalWatcher(
   static override styles = styles;
 
   _clickAddProperty = () => {
+    const wording = wordingFrom(this);
     popMenu(popupTargetFromElement(this.addPropertyButton), {
       options: {
         title: {
-          text: 'Add property',
+          text: wording(DATA_VIEW_ADD_PROPERTY),
         },
         items: [
           menu.group({
             items: this.view.propertyMetas$.value.map(meta => {
               return menu.action({
-                name: meta.config.name,
+                name: propertyTypeName(wording, meta.config),
                 prefix: renderUniLit(meta.renderer.icon),
                 select: () => {
                   this.view.propertyAdd('end', {
                     type: meta.type,
-                    name: meta.config.name,
+                    name: propertyTypeName(wording, meta.config),
                   });
                 },
               });
@@ -262,7 +265,7 @@ export class RecordDetail extends SignalWatcher(
                 @click="${this._clickAddProperty}"
               >
                 <div class="icon">${PlusIcon()}</div>
-                Add Property
+                ${wordingFrom(this)(DATA_VIEW_ADD_PROPERTY)}
               </div>`
             : nothing}
         </div>

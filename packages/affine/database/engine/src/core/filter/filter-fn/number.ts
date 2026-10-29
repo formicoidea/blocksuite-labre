@@ -7,7 +7,7 @@ export const numberFilter = [
     self: t.number.instance(),
     args: [t.number.instance()] as const,
     label: '=',
-    shortString: v => (v ? ` = ${v.value}` : undefined),
+    shortString: (_wording, v) => (v ? ` = ${v.value}` : undefined),
     impl: (self, target) => {
       if (self == null) {
         return false;
@@ -21,7 +21,7 @@ export const numberFilter = [
     self: t.number.instance(),
     args: [t.number.instance()] as const,
     label: '≠',
-    shortString: v => (v ? ` ≠ ${v.value}` : undefined),
+    shortString: (_wording, v) => (v ? ` ≠ ${v.value}` : undefined),
     impl: (self, target) => {
       if (self == null) {
         return false;
@@ -34,7 +34,7 @@ export const numberFilter = [
     self: t.number.instance(),
     args: [t.number.instance()] as const,
     label: '>',
-    shortString: v => (v ? ` > ${v.value}` : undefined),
+    shortString: (_wording, v) => (v ? ` > ${v.value}` : undefined),
     impl: (self, target) => {
       if (self == null) {
         return false;
@@ -48,7 +48,7 @@ export const numberFilter = [
     self: t.number.instance(),
     args: [t.number.instance()] as const,
     label: '<',
-    shortString: v => (v ? ` < ${v.value}` : undefined),
+    shortString: (_wording, v) => (v ? ` < ${v.value}` : undefined),
     impl: (self, target) => {
       if (self == null) {
         return false;
@@ -62,7 +62,7 @@ export const numberFilter = [
     self: t.number.instance(),
     args: [t.number.instance()] as const,
     label: '≥',
-    shortString: v => (v ? ` ≥ ${v.value}` : undefined),
+    shortString: (_wording, v) => (v ? ` ≥ ${v.value}` : undefined),
     impl: (self, target) => {
       if (self == null) {
         return false;
@@ -76,7 +76,7 @@ export const numberFilter = [
     self: t.number.instance(),
     args: [t.number.instance()] as const,
     label: '≤',
-    shortString: v => (v ? ` ≤ ${v.value}` : undefined),
+    shortString: (_wording, v) => (v ? ` ≤ ${v.value}` : undefined),
     impl: (self, target) => {
       if (self == null) {
         return false;

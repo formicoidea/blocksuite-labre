@@ -25,7 +25,11 @@ import { setupEditor } from '../utils/setup.js';
  *   opening the new property's menu;
  * - a delete from the list leaving the column in the block;
  * - the table header's menu losing its own entries (filter, sort, insert)
- *   or the shared ones (duplicate, delete) in the move to one builder.
+ *   or the shared ones (duplicate, delete) in the move to one builder;
+ * - in a host's narrow left sidebar (labre, about 470px), a property's menu
+ *   drawn over the list it edits, or its « Type » sub-menu half off screen
+ *   (labre recette of 1.1): the menu sits beside the list, both inside the
+ *   viewport.
  */
 
 const settle = async () => {
@@ -201,11 +205,64 @@ describe('the properties list of a view', () => {
       'Hide In View',
       'Filter',
       'Sort Ascending',
-      'Insert Left Column',
+      'Insert left column',
       'Duplicate',
       'Delete',
     ]) {
       expect(menu).toContain(entry);
+    }
+  });
+
+  test('in a narrow left sidebar, the menu sits beside the list, its Type menu on screen', async () => {
+    block().dataSource.viewManager.setCurrentView('kanban-1');
+    await settle();
+    // The list as a host mounts it in its left sidebar.
+    const sidebar = document.createElement('div');
+    Object.assign(sidebar.style, {
+      position: 'fixed',
+      left: '0',
+      top: '0',
+      width: '470px',
+      height: '100%',
+      zIndex: '10',
+      background: 'white',
+    });
+    const list = document.createElement(
+      'data-view-properties-setting'
+    ) as HTMLElement & { view: unknown };
+    list.view = block().dataSource.viewManager.currentView$.value!;
+    sidebar.append(list);
+    document.body.append(sidebar);
+    try {
+      await settle();
+      const row = rowOf(list, status);
+      row.click();
+      await settle();
+      const menus = () => [...document.querySelectorAll('affine-menu')];
+      const propertyMenu = menus().at(-1)!.getBoundingClientRect();
+      const listBox = list.getBoundingClientRect();
+      // Beside the list, not over its rows.
+      expect(propertyMenu.left).toBeGreaterThanOrEqual(listBox.right - 1);
+      expect(propertyMenu.right).toBeLessThanOrEqual(window.innerWidth);
+
+      const type = [
+        ...document.querySelectorAll<HTMLElement>('affine-menu-sub-menu'),
+      ].find(entry => entry.textContent?.includes('Type'))!;
+      type.click();
+      await settle();
+      const typeMenu = menus().at(-1)!.getBoundingClientRect();
+      expect(typeMenu.left).toBeGreaterThanOrEqual(0);
+      expect(typeMenu.top).toBeGreaterThanOrEqual(0);
+      expect(typeMenu.right).toBeLessThanOrEqual(window.innerWidth);
+      expect(typeMenu.bottom).toBeLessThanOrEqual(window.innerHeight);
+      // Beside the property menu, not over it, and not back over the list.
+      const overlaps =
+        typeMenu.left < propertyMenu.right &&
+        typeMenu.right > propertyMenu.left;
+      expect(overlaps).toBe(false);
+      expect(typeMenu.left).toBeGreaterThanOrEqual(listBox.right - 1);
+    } finally {
+      sidebar.remove();
     }
   });
 });

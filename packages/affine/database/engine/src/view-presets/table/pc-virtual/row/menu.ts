@@ -15,6 +15,15 @@ import { html } from 'lit';
 import { TableViewRowSelection } from '../../selection';
 import type { TableSelectionController } from '../controller/selection';
 import type { VirtualTableViewUILogic } from '../table-view-ui-logic';
+import {
+  DATA_VIEW_ROWS_DELETE,
+  DATA_VIEW_ROW_EXPAND,
+  DATA_VIEW_ROW_INSERT_BEFORE,
+  DATA_VIEW_ROW_INSERT_AFTER,
+  DATA_VIEW_ROW_DELETE,
+} from '../../../../translations.js';
+import { TOOLBAR_COPY } from '@labre/affine-shared/services';
+import { wordingFrom } from '../../../../core/utils/wording.js';
 
 export const openDetail = (
   tableViewLogic: VirtualTableViewUILogic,
@@ -48,7 +57,7 @@ export const popRowMenu = (
         name: '',
         items: [
           menu.action({
-            name: 'Copy',
+            name: wordingFrom(ele.element)(TOOLBAR_COPY),
             prefix: html` <div
               style="transform: rotate(90deg);display:flex;align-items:center;"
             >
@@ -64,7 +73,7 @@ export const popRowMenu = (
         name: '',
         items: [
           menu.action({
-            name: 'Delete Rows',
+            name: wordingFrom(ele.element)(DATA_VIEW_ROWS_DELETE),
             class: {
               'delete-item': true,
             },
@@ -83,7 +92,7 @@ export const popRowMenu = (
   if (!row) return;
   popFilterableSimpleMenu(ele, [
     menu.action({
-      name: 'Expand Row',
+      name: wordingFrom(ele.element)(DATA_VIEW_ROW_EXPAND),
       prefix: ExpandFullIcon(),
       select: () => {
         openDetail(tableViewLogic, row.id, selectionController);
@@ -93,7 +102,7 @@ export const popRowMenu = (
       name: '',
       items: [
         menu.action({
-          name: 'Insert Before',
+          name: wordingFrom(ele.element)(DATA_VIEW_ROW_INSERT_BEFORE),
           prefix: html` <div
             style="transform: rotate(90deg);display:flex;align-items:center;"
           >
@@ -104,7 +113,7 @@ export const popRowMenu = (
           },
         }),
         menu.action({
-          name: 'Insert After',
+          name: wordingFrom(ele.element)(DATA_VIEW_ROW_INSERT_AFTER),
           prefix: html` <div
             style="transform: rotate(90deg);display:flex;align-items:center;"
           >
@@ -119,7 +128,7 @@ export const popRowMenu = (
     menu.group({
       items: [
         menu.action({
-          name: 'Delete Row',
+          name: wordingFrom(ele.element)(DATA_VIEW_ROW_DELETE),
           class: { 'delete-item': true },
           prefix: DeleteIcon(),
           select: () => {

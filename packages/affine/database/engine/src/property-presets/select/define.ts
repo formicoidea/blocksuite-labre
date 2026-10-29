@@ -4,13 +4,15 @@ import zod from 'zod';
 import { getTagColor } from '../../core/component/tags/colors.js';
 import { type SelectTag, SelectTagSchema, t } from '../../core/index.js';
 import { propertyType } from '../../core/property/property-config.js';
+import { DATA_VIEW_TYPE_SELECT } from '../../translations.js';
 export const selectPropertyType = propertyType('select');
 export const SelectPropertySchema = zod.object({
   options: zod.array(SelectTagSchema),
 });
 export type SelectPropertyData = zod.infer<typeof SelectPropertySchema>;
 export const selectPropertyModelConfig = selectPropertyType.modelConfig({
-  name: 'Select',
+  name: DATA_VIEW_TYPE_SELECT[1],
+  nameWording: DATA_VIEW_TYPE_SELECT,
   propertyData: {
     schema: SelectPropertySchema,
     default: () => ({

@@ -85,6 +85,65 @@ export const DATABASE_NEW_RECORD_MORE: ChromeWording = [
   'Templates and options',
 ];
 
+/* ── Database chrome keyed at the recette of 1.1 (#572) ── */
+
+export const DATABASE_TYPE_CREATED_TIME: ChromeWording = [
+  'com.labre.database.property-type.created-time',
+  'Created Time',
+];
+
+export const DATABASE_TYPE_LINK: ChromeWording = [
+  'com.labre.database.property-type.link',
+  'Link',
+];
+
+export const DATABASE_TYPE_TEXT: ChromeWording = [
+  'com.labre.database.property-type.text',
+  'Text',
+];
+
+export const DATABASE_TYPE_TITLE: ChromeWording = [
+  'com.labre.database.property-type.title',
+  'Title',
+];
+
+export const DATABASE_SLASH_TABLE_DESCRIPTION: ChromeWording = [
+  'com.labre.database.slash.table.description',
+  'Display items in a table format.',
+];
+
+export const DATABASE_SLASH_KANBAN_DESCRIPTION: ChromeWording = [
+  'com.labre.database.slash.kanban.description',
+  'Visualize data in a dashboard.',
+];
+
+export const DATABASE_TITLE_LABEL: ChromeWording = [
+  'com.labre.database.title.label',
+  'Database title',
+];
+
+export const DATABASE_DELETE: ChromeWording = [
+  'com.labre.database.delete',
+  'Delete Database',
+];
+
+export const DATABASE_DRAG_PREVIEW: ChromeWording = [
+  'com.labre.database.drag-preview',
+  'Database Block',
+];
+
+export const DATABASE_DETAIL_EMPTY_HINT: ChromeWording = [
+  'com.labre.database.detail.empty-hint',
+  'Click to create a linked doc in center peek.',
+];
+
+/* ── The data-view block's slash entry ── */
+
+export const DATABASE_SLASH_TODO: ChromeWording = [
+  'com.labre.database.slash.todo',
+  'Todo',
+];
+
 export const DATABASE_WORDINGS: readonly ChromeWording[] = [
   DATABASE_CREATION_TITLE,
   DATABASE_MOVE_INTO_SOURCE,
@@ -98,4 +157,15 @@ export const DATABASE_WORDINGS: readonly ChromeWording[] = [
   DATABASE_TURN_INTO_NESTED,
   DATABASE_VALUES_ERROR,
   DATABASE_VALUES_LOADING,
+  DATABASE_TYPE_CREATED_TIME,
+  DATABASE_TYPE_LINK,
+  DATABASE_TYPE_TEXT,
+  DATABASE_TYPE_TITLE,
+  DATABASE_SLASH_TABLE_DESCRIPTION,
+  DATABASE_SLASH_KANBAN_DESCRIPTION,
+  DATABASE_TITLE_LABEL,
+  DATABASE_DELETE,
+  DATABASE_DRAG_PREVIEW,
+  DATABASE_DETAIL_EMPTY_HINT,
+  DATABASE_SLASH_TODO,
 ];

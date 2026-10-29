@@ -1,5 +1,9 @@
 import { RefNodeSlotsProvider } from '@labre/affine-inline-reference';
-import { ParseDocUrlProvider } from '@labre/affine-shared/services';
+import {
+  ParseDocUrlProvider,
+  DOC_UNTITLED,
+  translateKey,
+} from '@labre/affine-shared/services';
 import {
   isSafeLinkUrl,
   isValidUrl,
@@ -121,7 +125,10 @@ export class LinkCell extends BaseCellRenderer<string, string> {
     if (title == null) {
       return;
     }
-    return title || 'Untitled';
+    return (
+      title ||
+      (this.std ? translateKey(this.std, ...DOC_UNTITLED) : DOC_UNTITLED[1])
+    );
   });
 
   renderLink() {

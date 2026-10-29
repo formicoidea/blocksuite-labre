@@ -16,11 +16,25 @@ import { repeat } from 'lit/directives/repeat.js';
 import {
   DATA_VIEW_GROUP_HIDE,
   DATA_VIEW_GROUP_SHOW,
+  DATA_VIEW_GROUP,
+  DATA_VIEW_GROUP_BY,
+  DATA_VIEW_GROUP_REMOVE,
+  DATA_VIEW_GROUP_DATES_BY,
+  DATA_VIEW_GROUP_ORDER,
+  DATA_VIEW_GROUP_OLDEST_FIRST,
+  DATA_VIEW_GROUP_NEWEST_FIRST,
+  DATA_VIEW_GROUP_DATE_RELATIVE,
+  DATA_VIEW_GROUP_DATE_DAY,
+  DATA_VIEW_GROUP_DATE_WEEK_MON,
+  DATA_VIEW_GROUP_DATE_WEEK_SUN,
+  DATA_VIEW_GROUP_DATE_MONTH,
+  DATA_VIEW_GROUP_DATE_YEAR,
+  DATA_VIEW_GROUPS,
 } from '../../translations.js';
 import { KanbanSingleView } from '../../view-presets/kanban/kanban-view-manager.js';
 import { dataViewCssVariable } from '../common/css-variable.js';
 import { renderUniLit } from '../utils/uni-component/uni-component.js';
-import { englishWording, type Wording } from '../utils/wording.js';
+import { englishWording, type Wording, wordingFrom } from '../utils/wording.js';
 import { dragHandler } from '../utils/wc-dnd/dnd-context.js';
 import { defaultActivators } from '../utils/wc-dnd/sensors/index.js';
 import {
@@ -31,6 +45,7 @@ import { verticalListSortingStrategy } from '../utils/wc-dnd/sort/strategies/ind
 import { getGroupByService } from './matcher.js';
 import type { Group, GroupTrait } from './trait.js';
 import type { GroupRenderProps } from './types.js';
+import { type ChromeWording } from '@labre/affine-shared/services';
 
 export class GroupSetting extends SignalWatcher(
   WithDisposable(ShadowlessElement)
@@ -199,7 +214,7 @@ export class GroupSetting extends SignalWatcher(
         <div
           style="padding: 0 4px; font-size: 12px;color: var(--affine-text-secondary-color);line-height: 20px;"
         >
-          Groups
+          ${this.wording(DATA_VIEW_GROUPS)}
         </div>
         <div></div>
       </div>
@@ -247,36 +262,39 @@ export class GroupSetting extends SignalWatcher(
  * The grains a date property can be read at, in the order the picker offers
  * them. Keys match the group-by config names registered in `define.ts`.
  */
-const dateGroupModes: { name: string; label: string }[] = [
-  { name: 'date-relative', label: 'Relative' },
-  { name: 'date-day', label: 'Day' },
-  { name: 'date-week-mon', label: 'Week (starts Monday)' },
-  { name: 'date-week-sun', label: 'Week (starts Sunday)' },
-  { name: 'date-month', label: 'Month' },
-  { name: 'date-year', label: 'Year' },
+const dateGroupModes: { name: string; label: ChromeWording }[] = [
+  { name: 'date-relative', label: DATA_VIEW_GROUP_DATE_RELATIVE },
+  { name: 'date-day', label: DATA_VIEW_GROUP_DATE_DAY },
+  { name: 'date-week-mon', label: DATA_VIEW_GROUP_DATE_WEEK_MON },
+  { name: 'date-week-sun', label: DATA_VIEW_GROUP_DATE_WEEK_SUN },
+  { name: 'date-month', label: DATA_VIEW_GROUP_DATE_MONTH },
+  { name: 'date-year', label: DATA_VIEW_GROUP_DATE_YEAR },
 ];
 
-const dateGroupModeLabel = (name: string | undefined) =>
-  dateGroupModes.find(mode => mode.name === name)?.label ?? '';
+const dateGroupModeLabel = (wording: Wording, name: string | undefined) => {
+  const mode = dateGroupModes.find(mode => mode.name === name);
+  return mode ? wording(mode.label) : '';
+};
 
 const dateGroupSettingItems = (
   group: GroupTrait,
-  reopen: () => void
+  reopen: () => void,
+  wording: Wording
 ): MenuConfig[] => [
   menu.subMenu({
-    name: 'Group dates by',
+    name: wording(DATA_VIEW_GROUP_DATES_BY),
     postfix: html`
       <div
         style="font-size: 12px;line-height: 20px;color: var(--affine-text-secondary-color);margin-right: 4px;margin-left: 8px;"
       >
-        ${dateGroupModeLabel(group.groupInfo$.value?.config.name)}
+        ${dateGroupModeLabel(wording, group.groupInfo$.value?.config.name)}
       </div>
     `,
     options: {
-      title: { text: 'Group dates by' },
+      title: { text: wording(DATA_VIEW_GROUP_DATES_BY) },
       items: dateGroupModes.map<MenuConfig>(mode =>
         menu.action({
-          name: mode.label,
+          name: wording(mode.label),
           isSelected: group.groupInfo$.value?.config.name === mode.name,
           select: () => {
             group.changeGroupMode(mode.name);
@@ -287,19 +305,23 @@ const dateGroupSettingItems = (
     },
   }),
   menu.subMenu({
-    name: 'Order',
+    name: wording(DATA_VIEW_GROUP_ORDER),
     postfix: html`
       <div
         style="font-size: 12px;line-height: 20px;color: var(--affine-text-secondary-color);margin-right: 4px;margin-left: 8px;"
       >
-        ${group.sortAsc$.value ? 'Oldest first' : 'Newest first'}
+        ${wording(
+          group.sortAsc$.value
+            ? DATA_VIEW_GROUP_OLDEST_FIRST
+            : DATA_VIEW_GROUP_NEWEST_FIRST
+        )}
       </div>
     `,
     options: {
-      title: { text: 'Order' },
+      title: { text: wording(DATA_VIEW_GROUP_ORDER) },
       items: [
         menu.action({
-          name: 'Oldest first',
+          name: wording(DATA_VIEW_GROUP_OLDEST_FIRST),
           isSelected: group.sortAsc$.value,
           select: () => {
             group.setDateSortOrder(true);
@@ -307,7 +329,7 @@ const dateGroupSettingItems = (
           },
         }),
         menu.action({
-          name: 'Newest first',
+          name: wording(DATA_VIEW_GROUP_NEWEST_FIRST),
           isSelected: !group.sortAsc$.value,
           select: () => {
             group.setDateSortOrder(false);
@@ -325,13 +347,16 @@ export const selectGroupByProperty = (
     onSelect?: (id?: string) => void;
     onClose?: () => void;
     onBack?: () => void;
+    /** The opener's words; English without it. */
+    wording?: Wording;
   }
 ): MenuOptions => {
   const view = group.view;
+  const wording = ops?.wording ?? englishWording;
   return {
     onClose: ops?.onClose,
     title: {
-      text: 'Group by',
+      text: wording(DATA_VIEW_GROUP_BY),
       onBack: ops?.onBack,
     },
     items: [
@@ -367,7 +392,7 @@ export const selectGroupByProperty = (
             hide: () =>
               view instanceof KanbanSingleView || group.property$.value == null,
             class: { 'delete-item': true },
-            name: 'Remove Grouping',
+            name: wording(DATA_VIEW_GROUP_REMOVE),
             select: () => {
               group.changeGroup(undefined);
               ops?.onSelect?.();
@@ -388,7 +413,10 @@ export const popSelectGroupByProperty = (
   }
 ) => {
   popMenu(target, {
-    options: selectGroupByProperty(group, ops),
+    options: selectGroupByProperty(group, {
+      ...ops,
+      wording: wordingFrom(target.element),
+    }),
   });
 };
 export const popGroupSetting = (
@@ -407,17 +435,18 @@ export const popGroupSetting = (
     return;
   }
   const icon = groupProperty.icon;
+  const say = wording ?? englishWording;
   const menuHandler = popMenu(target, {
     options: {
       title: {
-        text: 'Group',
+        text: say(DATA_VIEW_GROUP),
         onBack: onBack,
       },
       items: [
         menu.group({
           items: [
             menu.subMenu({
-              name: 'Group By',
+              name: say(DATA_VIEW_GROUP_BY),
               postfix: html`
                 <div
                   style="display:flex;align-items:center;gap: 4px;font-size: 12px;line-height: 20px;color: var(--affine-text-secondary-color);margin-right: 4px;margin-left: 8px;"
@@ -428,10 +457,11 @@ export const popGroupSetting = (
               `,
               label: () => html`
                 <div style="color: var(--affine-text-secondary-color);">
-                  Group By
+                  ${say(DATA_VIEW_GROUP_BY)}
                 </div>
               `,
               options: selectGroupByProperty(group, {
+                wording: say,
                 onSelect: () => {
                   menuHandler.close();
                   popGroupSetting(target, group, onBack, wording);
@@ -442,10 +472,14 @@ export const popGroupSetting = (
         }),
         menu.group({
           items: group.isDateGroup$.value
-            ? dateGroupSettingItems(group, () => {
-                menuHandler.close();
-                popGroupSetting(target, group, onBack, wording);
-              })
+            ? dateGroupSettingItems(
+                group,
+                () => {
+                  menuHandler.close();
+                  popGroupSetting(target, group, onBack, wording);
+                },
+                say
+              )
             : [],
         }),
         menu.group({
@@ -466,7 +500,7 @@ export const popGroupSetting = (
         menu.group({
           items: [
             menu.action({
-              name: 'Remove grouping',
+              name: say(DATA_VIEW_GROUP_REMOVE),
               prefix: DeleteIcon(),
               class: { 'delete-item': true },
               // Every layout but the kanban, which is a grouping (B8).

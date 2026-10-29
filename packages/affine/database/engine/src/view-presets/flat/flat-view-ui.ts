@@ -12,12 +12,14 @@ import { CenterPeekIcon } from '@blocksuite/icons/lit';
 import type { BlockStdScope } from '@labre/std';
 import { stdContext } from '@labre/std';
 import { consume } from '@lit/context';
+import { signal } from '@preact/signals-core';
 import { cssVarV2 } from '@toeverything/theme/v2';
 import { css, html, nothing, unsafeCSS } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
 
 import { renderCellStatus } from '../../core/component/cell-status/cell-status.js';
 import { GroupTitle } from '../../core/group-by/group-title.js';
+import { firstDrawnRow } from '../../core/group-by/locate-row.js';
 import {
   hideGroupAction,
   renderGroupToggle,
@@ -41,13 +43,67 @@ import type { FlatSingleView } from './flat-view-manager.js';
  * the table's and the kanban's open buttons take. Grouped (B8), each group
  * draws under the table's group header; drag and drop of rows between groups
  * is not offered: a row changes group by editing its value.
+ *
+ * The title is drawn read-only, so a click on it opens the row; the one row
+ * named by `editingTitleimport {
+  popFilterableSimpleMenu,
+  popupTargetFromElement,
+} from '@labre/affine-components/context-menu';
+import { translateKey } from '@labre/affine-shared/services';
+import { OPEN_LABEL } from '@labre/affine-components/translations';
+import type { ChromeWording } from '@labre/affine-shared/services';
+import type { UniComponent } from '@labre/affine-shared/types';
+import type { InsertToPosition } from '@labre/affine-shared/utils';
+import { IS_MOBILE } from '@labre/global/env';
+import { CenterPeekIcon } from '@blocksuite/icons/lit';
+import type { BlockStdScope } from '@labre/std';
+import { stdContext } from '@labre/std';
+import { consume } from '@lit/context';
+import { signal } from '@preact/signals-core';
+import { cssVarV2 } from '@toeverything/theme/v2';
+import { css, html, nothing, unsafeCSS } from 'lit';
+import { repeat } from 'lit/directives/repeat.js';
+
+import { renderCellStatus } from '../../core/component/cell-status/cell-status.js';
+import { GroupTitle } from '../../core/group-by/group-title.js';
+import { firstDrawnRow } from '../../core/group-by/locate-row.js';
+import {
+  hideGroupAction,
+  renderGroupToggle,
+} from '../../core/group-by/group-visibility.js';
+import type { Group } from '../../core/group-by/trait.js';
+import { isNewTabClick } from '../../core/utils/new-tab-click.js';
+import { renderUniLit } from '../../core/utils/uni-component/uni-component.js';
+import {
+  DataViewUIBase,
+  DataViewUILogicBase,
+} from '../../core/view/data-view-base.js';
+import type { Property } from '../../core/view-manager/property.js';
+import type { Row } from '../../core/view-manager/row.js';
+import type { FlatSingleView } from './flat-view-manager.js';
+
+ draws it editable, which is how "New" and the
+ * page title's Enter put a title in editing (`editTitle`).
  */
 export abstract class FlatViewUILogic<
   View extends FlatSingleView = FlatSingleView,
 > extends DataViewUILogicBase<View> {
+  ui$ = signal<FlatViewUI | undefined>(undefined);
+
+  /** The row whose title is drawn editable, while it edits. */
+  readonly editingTitle$ = signal<string | undefined>(undefined);
+
   clearSelection = () => {};
 
-  focusFirstCell = () => {};
+  /**
+   * The page title's Enter (ADR 0035 B13): the first card's or row's title
+   * in editing, top of the first unfolded group. Writes nothing.
+   */
+  focusFirstCell = () => {
+    const view = this.view;
+    const first = firstDrawnRow(view.groupTrait, view.rows$.peek());
+    if (first) this.editTitle(first.rowId);
+  };
 
   showIndicator = (_evt: MouseEvent) => false;
 
@@ -55,12 +111,44 @@ export abstract class FlatViewUILogic<
 
   moveTo = (_id: string, _evt: MouseEvent) => {};
 
+  /**
+   * "New" adds the row and puts its title in editing, as a table's "New
+   * record" does: it no longer opens the row (product owner, recette
+   * P3-15). On a phone, where a card's values are edited in the row page
+   * (P7), it still opens it.
+   */
   addRow = (position: InsertToPosition, groupKey?: string) => {
     if (this.view.readonly$.value) return;
     const rowId = this.view.rowAdd(position, groupKey);
-    if (rowId) this.openRow(rowId);
+    if (!rowId) return rowId;
+    if (IS_MOBILE) this.openRow(rowId);
+    else this.editTitle(rowId);
     return rowId;
   };
+
+  /** Draws the title of `rowId` editable and opens its editor. */
+  editTitle(rowId: string) {
+    if (IS_MOBILE || this.view.readonly$.peek()) return;
+    const titleId = this.view.titleProperty$.peek()?.id;
+    if (!titleId) return;
+    this.editingTitle$.value = rowId;
+    // Once the row is drawn and its title re-rendered editable.
+    requestAnimationFrame(() => {
+      const ui = this.ui$.peek();
+      ui?.updateComplete
+        .then(() => {
+          const row = [
+            ...ui.querySelectorAll<HTMLElement>('[data-row-id]'),
+          ].find(element => element.dataset.rowId === rowId);
+          const cell = [
+            ...(row?.querySelectorAll('dv-standalone-cell') ?? []),
+          ].find(element => element.dataset.propertyId === titleId);
+          if (cell) cell.edit();
+          else this.editingTitle$.value = undefined;
+        })
+        .catch(console.error);
+    });
+  }
 
   abstract override renderer: UniComponent<unknown>;
 
@@ -73,6 +161,14 @@ export abstract class FlatViewUILogic<
 export abstract class FlatViewUI<
   Logic extends FlatViewUILogic = FlatViewUILogic,
 > extends DataViewUIBase<Logic> {
+  override connectedCallback() {
+    super.connectedCallback();
+    this.logic.ui$.value = this;
+    this.disposables.add(() => {
+      if (this.logic.ui$.peek() === this) this.logic.ui$.value = undefined;
+    });
+  }
+
   /** Absent outside an editor (a unit test): the wordings read English. */
   @consume({ context: stdContext })
   accessor std!: BlockStdScope;
@@ -94,6 +190,11 @@ export abstract class FlatViewUI<
    */
   protected renderCell(property: Property, rowId: string, readonly = false) {
     const view = this.view;
+    const logic = this.logic;
+    const titleEditing =
+      readonly &&
+      logic.editingTitle$.value === rowId &&
+      view.titleProperty$.value?.id === property.id;
     const cell = property.cellGetOrCreate(rowId);
     // As a table cell: a value not yet hydrated mounts no renderer, so nothing
     // can be edited over it (ADR 0035 §9e).
@@ -104,11 +205,16 @@ export abstract class FlatViewUI<
     return html`<dv-standalone-cell
       data-property-id="${property.id}"
       .cell="${cell}"
-      .readonly="${readonly ||
+      .readonly="${(readonly && !titleEditing) ||
       IS_MOBILE ||
       view.readonly$.value ||
       property.readonly$.value}"
-      .onEditingChange="${(editing: boolean) => view.lockRows(editing)}"
+      .onEditingChange="${(editing: boolean) => {
+        view.lockRows(editing);
+        if (!editing && logic.editingTitle$.peek() === rowId) {
+          logic.editingTitle$.value = undefined;
+        }
+      }}"
     ></dv-standalone-cell>`;
   }
 

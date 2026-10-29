@@ -6,6 +6,8 @@ import {
 
 import { renderUniLit } from '../utils/index.js';
 import type { SortUtils } from './utils.js';
+import { DATA_VIEW_SORT_NEW } from '../../translations.js';
+import { wordingFrom } from '../utils/wording.js';
 
 export const popCreateSort = (
   target: PopupTarget,
@@ -19,7 +21,7 @@ export const popCreateSort = (
     options: {
       onClose: props.onClose,
       title: {
-        text: 'New sort',
+        text: wordingFrom(target.element)(DATA_VIEW_SORT_NEW),
         onBack: props.onBack,
       },
       items: [

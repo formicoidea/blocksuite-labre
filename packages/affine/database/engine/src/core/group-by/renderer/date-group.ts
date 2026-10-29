@@ -4,6 +4,11 @@ import { css, html } from 'lit';
 import { property } from 'lit/decorators.js';
 
 import type { Group } from '../trait.js';
+import {
+  DATA_VIEW_GROUP_NO_VALUE,
+  DATA_VIEW_UNGROUPED,
+} from '../../../translations.js';
+import { wordingFrom } from '../../utils/wording.js';
 
 export class DateGroupView extends SignalWatcher(
   WithDisposable(ShadowlessElement)
@@ -39,13 +44,18 @@ export class DateGroupView extends SignalWatcher(
   accessor group!: Group;
 
   protected override render() {
-    const name = this.group.name$.value;
+    const wording = wordingFrom(this);
+    // Read for its signal: a date group renames itself when the day turns.
+    this.group.name$.value;
+    const name = this.group.nameIn(wording);
     // Use contextual name based on the property when value is null
     const displayName =
       name ||
       (this.group.value === null
-        ? `No ${this.group.property.name$.value}`
-        : 'Ungroups');
+        ? wording(DATA_VIEW_GROUP_NO_VALUE, {
+            name: this.group.property.name$.value,
+          })
+        : wording(DATA_VIEW_UNGROUPED));
     return html`<div class="dv-date-group">
       <span>${displayName}</span>
     </div>`;

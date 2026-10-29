@@ -30,6 +30,14 @@ import {
   sortable,
 } from '../../../core/utils/wc-dnd/sort/sort-context.js';
 import { verticalListSortingStrategy } from '../../../core/utils/wc-dnd/sort/strategies/index.js';
+import {
+  DATA_VIEW_SORT_ADD,
+  DATA_VIEW_SORT_ASC,
+  DATA_VIEW_SORT_DESC,
+  DATA_VIEW_SORT_INVALID,
+} from '../../../translations.js';
+import { TOOLBAR_DELETE } from '@labre/affine-shared/services';
+import { wordingFrom } from '../../../core/utils/wording.js';
 
 export class SortRootView extends SignalWatcher(
   WithDisposable(ShadowlessElement)
@@ -99,11 +107,13 @@ export class SortRootView extends SignalWatcher(
               <data-view-component-button
                 style="color: var(--affine-error-color);border-color: color: var(--affine-error-color)"
                 @click="${deleteRule}"
-                .text="${html`This rule is invalid, click to delete`}"
+                .text="${wordingFrom(this)(DATA_VIEW_SORT_INVALID)}"
               ></data-view-component-button>
             `;
           } else {
-            const descName = sort.desc ? 'Descending' : 'Ascending';
+            const descName = wordingFrom(this)(
+              sort.desc ? DATA_VIEW_SORT_DESC : DATA_VIEW_SORT_ASC
+            );
             const clickField = (event: MouseEvent) => {
               popMenu(
                 popupTargetFromElement(event.currentTarget as HTMLElement),
@@ -133,7 +143,9 @@ export class SortRootView extends SignalWatcher(
                   options: {
                     items: [false, true].map(desc => {
                       return menu.action({
-                        name: desc ? 'Descending' : 'Ascending',
+                        name: wordingFrom(this)(
+                          desc ? DATA_VIEW_SORT_DESC : DATA_VIEW_SORT_ASC
+                        ),
                         isSelected: desc === sort.desc,
                         select: () => {
                           changeRule({ ...sort, desc });
@@ -217,7 +229,7 @@ export const popSortRoot = (
           ></sort-root-view>`;
         },
         menu.action({
-          name: 'Add sort',
+          name: wordingFrom(this)(DATA_VIEW_SORT_ADD),
           prefix: PlusIcon(),
           select: ele => {
             popCreateSort(popupTargetFromElement(ele), {
@@ -227,7 +239,7 @@ export const popSortRoot = (
           },
         }),
         menu.action({
-          name: 'Delete',
+          name: wordingFrom(this)(TOOLBAR_DELETE),
           class: { 'delete-item': true },
           prefix: DeleteIcon(),
           select: () => {

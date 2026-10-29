@@ -159,7 +159,6 @@ describe('the name a new view is given', () => {
     for (const meta of [
       viewPresets.tableViewMeta,
       viewPresets.kanbanViewMeta,
-      viewPresets.calendarViewMeta,
       viewPresets.galleryViewMeta,
       viewPresets.listViewMeta,
     ]) {

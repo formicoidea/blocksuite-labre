@@ -25,6 +25,9 @@ import { setupEditor } from '../utils/setup.js';
  * - Enter or ArrowDown in the title adding a block (or writing anything)
  *   once the title names its body block;
  * - ArrowDown not handing the caret to that block (its first cell);
+ * - Enter on a kanban, gallery or list doing nothing: it puts the first
+ *   card's or row's title in editing, writing nothing (recette of 1.1; a
+ *   table selects its first cell, as before);
  * - the default title losing its 0.48 behaviour: Enter adds a first
  *   paragraph, ArrowDown creates one when the note has no text block.
  */
@@ -50,8 +53,8 @@ afterEach(() => {
   cleanup = undefined;
 });
 
-/** A note holding a database with a table and a row, as a base's document. */
-function writeDatabaseNote() {
+/** A note holding a database with one view and a row, as a base's document. */
+function writeDatabaseNote(mode = 'table') {
   const noteId = doc.addBlock('affine:note', {}, doc.root!.id);
   const hostId = doc.addBlock(
     'affine:database',
@@ -61,7 +64,7 @@ function writeDatabaseNote() {
   const writer = new DatabaseBlockDataSource(
     doc.getModelById(hostId) as DatabaseBlockModel
   );
-  writer.viewManager.viewAdd('table');
+  writer.viewManager.viewAdd(mode);
   writer.rowAdd('end');
   writer.dispose();
   doc.resetHistory();
@@ -87,9 +90,9 @@ describe('<doc-title> on a database full page (bodyBlockId)', () => {
   let hostId = '';
   let writes = 0;
 
-  async function mount() {
+  async function mount(mode = 'table') {
     cleanup = await setupEditor('page');
-    ({ noteId, hostId } = writeDatabaseNote());
+    ({ noteId, hostId } = writeDatabaseNote(mode));
 
     // As a host mounts it: the title as the page's heading, in its viewport.
     const app = window.editor.parentElement!;
@@ -147,6 +150,41 @@ describe('<doc-title> on a database full page (bodyBlockId)', () => {
     expect(held?.blockId, 'a selection in the database').toBe(hostId);
     expect(title.inlineEditor!.getInlineRange()).toBe(null);
   });
+
+  test('Enter on a kanban puts the first card title in editing', async () => {
+    await mount('kanban');
+    await press(title, '{Enter}');
+    const std = page.querySelector<EditorHost>('editor-host')!.std;
+    const held = std.selection.value.find(
+      selection => selection.type === 'database'
+    ) as { viewSelection?: Record<string, unknown> } | undefined;
+    const rowId = doc.getModelById(hostId)!.children[0]!.id;
+    expect(held?.viewSelection).toMatchObject({
+      selectionType: 'cell',
+      cardId: rowId,
+      isEditing: true,
+    });
+    expect(writes, 'nothing written').toBe(0);
+  });
+
+  for (const mode of ['gallery', 'list']) {
+    test(`Enter on a ${mode} puts the first row title in editing`, async () => {
+      await mount(mode);
+      await press(title, '{Enter}');
+      const rowId = doc.getModelById(hostId)!.children[0]!.id;
+      const row = [
+        ...page.querySelectorAll<HTMLElement>(
+          `dv-${mode}-view-ui [data-row-id]`
+        ),
+      ].find(element => element.dataset.rowId === rowId);
+      expect(
+        row?.querySelector('dv-standalone-cell[data-editing="true"]'),
+        'the first title edits'
+      ).not.toBeNull();
+      expect(title.inlineEditor!.getInlineRange()).toBe(null);
+      expect(writes, 'nothing written').toBe(0);
+    });
+  }
 });
 
 describe('<doc-title> without bodyBlockId (0.48)', () => {

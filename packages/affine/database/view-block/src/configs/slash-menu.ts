@@ -1,4 +1,7 @@
-import { FeatureFlagService } from '@labre/affine-shared/services';
+import {
+  FeatureFlagService,
+  BLOCK_TYPE_TODO_LIST,
+} from '@labre/affine-shared/services';
 import { isInsideBlockByFlavour } from '@labre/affine-shared/utils';
 import { type SlashMenuConfig } from '@labre/affine-widget-slash-menu';
 import { viewDefaultName } from '@labre/affine-database-engine';
@@ -6,6 +9,7 @@ import { DatabaseTableViewIcon } from '@blocksuite/icons/lit';
 
 import type { DataViewBlockComponent } from '../data-view-block';
 import { ToDoListTooltip } from './tooltips';
+import { DATABASE_SLASH_TODO } from '@labre/affine-database-block/translations';
 
 export const dataViewSlashMenuConfig: SlashMenuConfig = {
   disableWhen: ({ model }) => {
@@ -13,12 +17,14 @@ export const dataViewSlashMenuConfig: SlashMenuConfig = {
   },
   items: [
     {
-      name: 'Todo',
+      name: DATABASE_SLASH_TODO[1],
+      nameWording: DATABASE_SLASH_TODO,
       searchAlias: ['todo view'],
       icon: DatabaseTableViewIcon(),
       tooltip: {
         figure: ToDoListTooltip,
-        caption: 'To-do List',
+        caption: BLOCK_TYPE_TODO_LIST[1],
+        captionWording: BLOCK_TYPE_TODO_LIST,
       },
       group: '7_Database@1',
       when: ({ model, std }) =>

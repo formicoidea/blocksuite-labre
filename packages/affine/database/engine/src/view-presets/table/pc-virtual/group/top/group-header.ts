@@ -14,6 +14,9 @@ import type { VirtualTableViewUILogic } from '../../table-view-ui-logic';
 import type { TableGridGroup } from '../../types';
 import * as styles from './group-header-css';
 import { GroupTitle } from './group-title';
+import { DATA_VIEW_GROUP_DELETE_CARDS } from '../../../../../translations.js';
+import { wordingFrom } from '../../../../../core/utils/wording.js';
+import { TOOLBAR_UNGROUP } from '@labre/affine-shared/services';
 export class TableGroupHeader extends SignalWatcher(
   WithDisposable(ShadowlessElement)
 ) {
@@ -84,7 +87,7 @@ export class TableGroupHeader extends SignalWatcher(
     const ele = e.currentTarget as HTMLElement;
     popFilterableSimpleMenu(popupTargetFromElement(ele), [
       menu.action({
-        name: 'Ungroup',
+        name: wordingFrom(this)(TOOLBAR_UNGROUP),
         hide: () => group.value == null,
         select: () => {
           group.rows.forEach(row => {
@@ -93,7 +96,7 @@ export class TableGroupHeader extends SignalWatcher(
         },
       }),
       menu.action({
-        name: 'Delete Cards',
+        name: wordingFrom(this)(DATA_VIEW_GROUP_DELETE_CARDS),
         select: () => {
           this.tableViewManager.rowsDelete(group.rows.map(row => row.rowId));
           this.requestUpdate();

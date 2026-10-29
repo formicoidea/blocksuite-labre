@@ -2,6 +2,7 @@ import type { UniComponent } from '@labre/affine-shared/types';
 
 import type { TypeInstance, ValueTypeOf } from '../logical/type.js';
 import type { Group } from './trait.js';
+import { type Wording } from '../utils/wording.js';
 export interface GroupRenderProps<
   JsonValue = unknown,
   Data extends Record<string, unknown> = Record<string, unknown>,
@@ -20,7 +21,12 @@ export type GroupByConfig<
 > = {
   name: string;
   matchType: MatchType;
-  groupName: (type: MatchType, value: GroupValue | null) => string;
+  /** `wording` names a group in the host's words; English when absent. */
+  groupName: (
+    type: MatchType,
+    value: GroupValue | null,
+    wording?: Wording
+  ) => string;
   defaultKeys: (type: MatchType) => {
     key: string;
     value: GroupValue | null;
