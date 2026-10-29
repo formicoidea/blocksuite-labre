@@ -121,6 +121,7 @@ export class MobileTableColumnHeader extends SignalWatcher(
               items: [
                 menu.action({
                   name: wording(DATA_VIEW_INSERT_LEFT),
+                  hide: () => this.tableViewManager.propertiesLocked$.value,
                   prefix: InsertLeftIcon(),
                   select: () => {
                     this.tableViewManager.propertyAdd({
@@ -144,6 +145,7 @@ export class MobileTableColumnHeader extends SignalWatcher(
                 }),
                 menu.action({
                   name: wording(DATA_VIEW_INSERT_RIGHT),
+                  hide: () => this.tableViewManager.propertiesLocked$.value,
                   prefix: InsertRightIcon(),
                   select: () => {
                     this.tableViewManager.propertyAdd({

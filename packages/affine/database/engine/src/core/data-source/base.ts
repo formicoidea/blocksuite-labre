@@ -23,6 +23,14 @@ import {
 
 export interface DataSource extends DataSourceHydration {
   readonly$: ReadonlySignal<boolean>;
+  /**
+   * The current view's source refuses new, renamed, deleted, duplicated or
+   * retyped properties (a host's policy, ADR 0035 amendment of 2026-10-29).
+   * Absent, nothing is locked. Read through `SingleView.propertiesLocked$`.
+   */
+  propertiesLocked$?: ReadonlySignal<boolean>;
+  /** The current view's source refuses new rows; absent, it takes them. */
+  rowsLocked$?: ReadonlySignal<boolean>;
   properties$: ReadonlySignal<string[]>;
   featureFlags$: ReadonlySignal<DatabaseFlags>;
 
@@ -116,6 +124,11 @@ export abstract class DataSourceBase implements DataSource {
   }
 
   valuesState$: ReadonlySignal<ValuesState> = signal(VALUES_READY);
+
+  /** Nothing is locked unless a source says so (`HostedDataSourceBase`). */
+  readonly propertiesLocked$: ReadonlySignal<boolean> = signal(false);
+
+  readonly rowsLocked$: ReadonlySignal<boolean> = signal(false);
 
   propertyTypeCanSet(propertyId: string): boolean {
     return !this.isFixedProperty(propertyId);

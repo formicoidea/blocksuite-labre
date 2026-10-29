@@ -354,7 +354,7 @@ export class TableGroup extends SignalWatcher(
           }
         )}
       </div>
-      ${this.view.readonly$.value
+      ${this.view.readonly$.value || this.view.rowsLocked$.value
         ? null
         : html` <div
             class="data-view-table-group-add-row dv-hover"

@@ -73,6 +73,7 @@ export const popCardMenu = (
       items: [
         menu.action({
           name: 'Insert Before',
+          hide: () => kanbanViewLogic.view.rowsLocked$.value,
           prefix: html` <div
             style="transform: rotate(90deg);display:flex;align-items:center;"
           >
@@ -88,6 +89,7 @@ export const popCardMenu = (
         }),
         menu.action({
           name: 'Insert After',
+          hide: () => kanbanViewLogic.view.rowsLocked$.value,
           prefix: html` <div
             style="transform: rotate(90deg);display:flex;align-items:center;"
           >

@@ -42,7 +42,7 @@ export class MobileTableHeader extends SignalWatcher(
    * drawn the new column, so the sheet opened on the previous last property.
    */
   private readonly _onAddColumn = () => {
-    if (this.readonly) return;
+    if (this.readonly || this.tableViewManager.propertiesLocked$.value) return;
     const id = this.tableViewManager.propertyAdd('end');
     if (!id) return;
     this.updateComplete
@@ -95,7 +95,7 @@ export class MobileTableHeader extends SignalWatcher(
             `;
           }
         )}
-        ${this.readonly
+        ${this.readonly || this.tableViewManager.propertiesLocked$.value
           ? nothing
           : html`<div
               @click="${this._onAddColumn}"

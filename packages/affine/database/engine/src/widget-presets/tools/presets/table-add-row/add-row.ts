@@ -3,14 +3,15 @@ import { IS_MOBILE } from '@labre/global/env';
 import { ArrowDownSmallIcon, PlusIcon } from '@blocksuite/icons/lit';
 import { type BlockStdScope, stdContext } from '@labre/std';
 import { consume } from '@lit/context';
-import { css, html } from 'lit';
+import { css, html, nothing } from 'lit';
 
-import { wordingOf } from '../../../../core/utils/wording.js';
+import { type Wording, wordingOf } from '../../../../core/utils/wording.js';
 import { NewRowMenuOpenerKey } from '../../../../core/view-manager/new-row-menu-opener.js';
 import { WidgetBase } from '../../../../core/widget/widget-base.js';
 import {
   DATA_VIEW_NEW_PAGE,
   DATA_VIEW_NEW_RECORD,
+  DATA_VIEW_ROWS_LOCKED,
 } from '../../../../translations.js';
 
 const styles = css`
@@ -58,6 +59,28 @@ const styles = css`
     color: ${unsafeCSSVarV2('icon/primary')};
   }
 
+  .new-record-locked {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: ${unsafeCSSVarV2('text/disable')};
+    font-size: 14px;
+    cursor: not-allowed;
+  }
+
+  .new-record-phone.new-record-locked {
+    padding: 0;
+    background-color: ${unsafeCSSVarV2('button/disable')};
+  }
+
+  .new-record-locked svg {
+    color: inherit;
+  }
+
   /* A split button only when the host offers a menu beside "New"
      (NewRowMenuOpenerKey): without it, the single button above. */
   .new-record-split {
@@ -94,13 +117,13 @@ export class DataViewHeaderToolsAddRow extends WidgetBase {
   static override styles = styles;
 
   private readonly onAddNewRecord = () => {
-    if (this.readonly$.value) return;
+    if (this.readonly$.value || this.view.rowsLocked$.value) return;
     this.dataViewLogic.addRow?.('start');
   };
 
   private readonly onOpenMenu = (event: MouseEvent) => {
     event.stopPropagation();
-    if (this.readonly$.value) return;
+    if (this.readonly$.value || this.view.rowsLocked$.value) return;
     this.view
       .serviceGet(NewRowMenuOpenerKey)
       ?.open(event.currentTarget as HTMLElement, this.view.id);
@@ -114,11 +137,34 @@ export class DataViewHeaderToolsAddRow extends WidgetBase {
     return this.view.readonly$;
   }
 
+  /**
+   * The host locked new rows of this source (ADR 0035 amendment of
+   * 2026-10-29): "New" stays where it was, disabled, with the reason, and
+   * its menu (the host's templates) goes, since applying one adds a row.
+   */
+  private renderLocked(wording: Wording) {
+    const hint = wording(DATA_VIEW_ROWS_LOCKED);
+    return html`<button
+      class="${IS_MOBILE ? 'new-record-phone' : 'new-record'} new-record-locked"
+      data-testid="dv-tools-new-row-locked"
+      aria-disabled="true"
+      aria-label="${hint}"
+      title="${hint}"
+    >
+      ${PlusIcon()}${IS_MOBILE
+        ? nothing
+        : html`<span style="font-weight: 500"
+            >${wording(DATA_VIEW_NEW_RECORD)}</span
+          >`}
+    </button>`;
+  }
+
   override render() {
     if (this.readonly$.value) {
       return;
     }
     const wording = wordingOf(this.std);
+    if (this.view.rowsLocked$.value) return this.renderLocked(wording);
     const button = IS_MOBILE
       ? html`<button
           class="new-record-phone"
