@@ -43,6 +43,24 @@ export const DATABASE_CREATION_TITLE: ChromeWording = [
   'Connect a source',
 ];
 
+/* ── Turning a table into a source (ADR 0035, amendment of 2026-10-29) ── */
+
+/** Over native rows shown read-only: moves them into a new host database. */
+export const DATABASE_MOVE_INTO_SOURCE: ChromeWording = [
+  'com.labre.database.turn-into.move',
+  'Move into a database',
+];
+
+export const DATABASE_TURN_INTO_FAILED: ChromeWording = [
+  'com.labre.database.turn-into.failed',
+  'The table could not be created. Nothing was changed.',
+];
+
+export const DATABASE_TURN_INTO_NESTED: ChromeWording = [
+  'com.labre.database.turn-into.nested',
+  'Rows with nested blocks cannot be moved here. Nothing was changed.',
+];
+
 /* ── Cell hydration (ADR 0035 §9e, issue B2) ───────────────────────────── */
 
 /** After 3 s of loading (`VALUES_SLOW_AFTER_MS`). */
@@ -69,12 +87,15 @@ export const DATABASE_NEW_RECORD_MORE: ChromeWording = [
 
 export const DATABASE_WORDINGS: readonly ChromeWording[] = [
   DATABASE_CREATION_TITLE,
+  DATABASE_MOVE_INTO_SOURCE,
   DATABASE_NEW_RECORD_MORE,
   DATABASE_SOURCE_MISSING,
   DATABASE_SOURCE_MISSING_HINT,
   DATABASE_SOURCE_REQUIRED,
   DATABASE_SOURCE_REQUIRED_HINT,
   DATABASE_SOURCE_REQUIRED_READ_ONLY,
+  DATABASE_TURN_INTO_FAILED,
+  DATABASE_TURN_INTO_NESTED,
   DATABASE_VALUES_ERROR,
   DATABASE_VALUES_LOADING,
 ];

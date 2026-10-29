@@ -28,9 +28,13 @@
  *   rows hidden or left editable, or a hosted view whose source is gone kept
  *   as "Source not found" instead of offering a source and re-pointing;
  *   without it, the empty view drawn at all;
- * - the stable test ids a host's end-to-end suite selects the entries by.
+ * - the stable test ids a host's end-to-end suite selects the entries by;
+ * - "Create Table" or "Move into a database" under `requireSource` leaving
+ *   the paragraphs or the native rows, not connecting the block to the
+ *   source `createDatabaseFrom` answered, or taking more than one undo step.
  */
 import {
+  convertToDatabase,
   type DatabaseBlockComponent,
   DatabaseBlockDataSource,
   DatabaseDataSourceProvider,
@@ -42,8 +46,8 @@ import {
   TelemetryExtension,
 } from '@labre/affine/shared/services';
 import { SlashMenuConfigIdentifier } from '@labre/affine/widgets/slash-menu';
-import { type BlockStdScope, TextSelection } from '@labre/std';
-import type { BlockModel, ExtensionType } from '@labre/store';
+import { BlockSelection, type BlockStdScope, TextSelection } from '@labre/std';
+import { type BlockModel, type ExtensionType, Text } from '@labre/store';
 import { computed, signal } from '@preact/signals-core';
 import { userEvent } from '@vitest/browser/context';
 import {
@@ -101,6 +105,12 @@ const FRESH: DataSourcePickerDatabase = {
   sources: [{ id: 'src-new', title: 'Untitled' }],
 };
 
+const FROM: DataSourcePickerDatabase = {
+  id: 'host:from',
+  title: 'From',
+  sources: [{ id: 'src-from', title: 'Rows' }],
+};
+
 const settle = async () => {
   await wait(100);
   for (let i = 0; i < 4; i++) {
@@ -138,17 +148,20 @@ describe('creating a database with a host picker', () => {
   let std!: BlockStdScope;
   let noteId!: string;
   let createDatabase!: ReturnType<typeof vi.fn>;
+  let createDatabaseFrom!: ReturnType<typeof vi.fn>;
   let created!: string[];
 
   beforeEach(async () => {
     created = [];
     createDatabase = vi.fn(async () => FRESH);
+    createDatabaseFrom = vi.fn(async () => FROM);
     const cleanup = await setupEditor('page', [
       hostSources,
       DataSourcePickerExtension({
         list: () => signal([PLAN]),
         createDatabase,
         requireSource,
+        createDatabaseFrom: requireSource ? createDatabaseFrom : undefined,
       }),
       TelemetryExtension({
         track: (name, props) => {
@@ -416,6 +429,61 @@ describe('creating a database with a host picker', () => {
       expect(model.props.externalSourceId).toBe('host:plan');
       expect(model.props.views[0]).toMatchObject({ sourceId: 'src-2' });
       expect(required()).toBeNull();
+    });
+
+    test('"Move into a database" moves native rows into a new source', async () => {
+      const model = await dismissed();
+      window.doc.addBlock(
+        'affine:paragraph',
+        { text: new Text('Row') },
+        model.id
+      );
+      await settle();
+      expect(readOnlyNotice()).not.toBeNull();
+
+      byTestId('database-source-required-move')!.click();
+      await settle();
+
+      expect(createDatabaseFrom).toHaveBeenCalledTimes(1);
+      expect(model.props.externalSourceId).toBe('host:from');
+      expect(model.children).toHaveLength(0);
+      expect(model.props.views[0]).toMatchObject({ sourceId: 'src-from' });
+      expect(readOnlyNotice()).toBeNull();
+      expect(blockOf(model)!.dataSource.readonly$.value).toBe(false);
+
+      window.doc.undo();
+      await settle();
+      expect(model.props.externalSourceId).toBeUndefined();
+      expect(model.children).toHaveLength(1);
+    });
+
+    test('"Create Table" turns paragraphs into a source, one undo step', async () => {
+      const ids = ['One', 'Two'].map(text =>
+        window.doc.addBlock(
+          'affine:paragraph',
+          { text: new Text(text) },
+          noteId
+        )
+      );
+      await settle();
+      std.selection.setGroup(
+        'note',
+        ids.map(blockId => std.selection.create(BlockSelection, { blockId }))
+      );
+      window.doc.captureSync();
+      convertToDatabase(std.host, 'table');
+      await settle();
+
+      expect(createDatabaseFrom).toHaveBeenCalledTimes(1);
+      const model = database()!;
+      expect(model.props.externalSourceId).toBe('host:from');
+      expect(model.props.views[0]).toMatchObject({ sourceId: 'src-from' });
+      for (const id of ids) expect(window.doc.getBlock(id)).toBeUndefined();
+
+      window.doc.undo();
+      await settle();
+      expect(database()).toBeUndefined();
+      for (const id of ids) expect(window.doc.getBlock(id)).toBeDefined();
     });
   });
 });

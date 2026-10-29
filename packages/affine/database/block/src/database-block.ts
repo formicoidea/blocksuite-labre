@@ -6,6 +6,7 @@ import {
 } from '@labre/affine-components/context-menu';
 import { DropIndicator } from '@labre/affine-components/drop-indicator';
 import { PeekViewProvider } from '@labre/affine-components/peek';
+import { LoadingIcon } from '@labre/affine-components/icons';
 import { toast } from '@labre/affine-components/toast';
 import type { DatabaseBlockModel } from '@labre/affine-model';
 import { EDGELESS_TOP_CONTENTEDITABLE_SELECTOR } from '@labre/affine-shared/consts';
@@ -97,6 +98,7 @@ import {
 } from './service/index.js';
 import {
   DATABASE_CREATION_TITLE,
+  DATABASE_MOVE_INTO_SOURCE,
   DATABASE_NEW_RECORD_MORE,
   DATABASE_SOURCE_MISSING,
   DATABASE_SOURCE_MISSING_HINT,
@@ -104,6 +106,10 @@ import {
   DATABASE_SOURCE_REQUIRED_HINT,
   DATABASE_SOURCE_REQUIRED_READ_ONLY,
 } from './translations.js';
+import {
+  canTurnIntoSource,
+  moveDatabaseRowsIntoSource,
+} from './turn-into-source.js';
 import { currentViewStorage, initialViewId } from './utils/current-view.js';
 import { getSingleDocIdFromText } from './utils/title-doc.js';
 import { DatabaseViewCreationIdentifier } from './view-creation.js';
@@ -673,14 +679,32 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
       </div>`;
   };
 
+  /** "Move into a database" is waiting for the host: one call at a time. */
+  private readonly moving$ = signal(false);
+
+  private readonly moveIntoSource = () => {
+    if (this.moving$.peek()) return;
+    this.moving$.value = true;
+    moveDatabaseRowsIntoSource(this.std, this.model)
+      .catch(console.error)
+      .finally(() => {
+        this.moving$.value = false;
+      });
+  };
+
   /**
    * Native rows under a host that requires a source (`sourceRequirement` is
-   * `'read-only'`): the rows render, locked (`locked$`), with this notice.
+   * `'read-only'`): the rows render, locked (`locked$`), with this notice and,
+   * where the host turns content into a source (`createDatabaseFrom`) and
+   * the document is writable, "Move into a database"; a spinner while the
+   * host answers.
    */
   private renderReadOnlyNotice() {
     if (sourceRequirement(this.std, this.model) !== 'read-only') {
       return nothing;
     }
+    const canMove = canTurnIntoSource(this.std) && !this.store.readonly$.value;
+    const moving = this.moving$.value;
     return html`<div
       class="${databaseSourceMissingStyles}"
       data-testid="database-source-required-read-only"
@@ -690,6 +714,16 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
       <div class="${databaseSourceMissingHintStyles}">
         ${translateKey(this.std, ...DATABASE_SOURCE_REQUIRED_READ_ONLY)}
       </div>
+      ${canMove
+        ? html`<data-view-component-button
+            data-testid="database-source-required-move"
+            hoverType="border"
+            aria-busy="${moving}"
+            .icon="${moving ? LoadingIcon() : undefined}"
+            .onClick="${this.moveIntoSource}"
+            .text="${translateKey(this.std, ...DATABASE_MOVE_INTO_SOURCE)}"
+          ></data-view-component-button>`
+        : nothing}
     </div>`;
   }
 
