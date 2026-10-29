@@ -32,12 +32,6 @@ export const DATABASE_ADD_VIEW_IMPORT: ChromeWording = [
 
 /* ── The creation popover (ADR 0035 §5, amendment of 2026-10-28) ──────── */
 
-/** The popover over a database just inserted, before it has a source. */
-export const DATABASE_CREATION_TITLE: ChromeWording = [
-  'com.labre.database.creation.title',
-  'Connect a source',
-];
-
 /** Asks the host for a new database and connects the block to its source. */
 export const DATABASE_CREATION_NEW_SOURCE: ChromeWording = [
   'com.labre.database.creation.new-source',
@@ -195,7 +189,6 @@ const DATABASE_EDITOR_WORDINGS: readonly ChromeWording[] = [
   DATABASE_ADD_VIEW_UNTITLED_SOURCE,
   DATABASE_CREATION_LINK_EXISTING,
   DATABASE_CREATION_NEW_SOURCE,
-  DATABASE_CREATION_TITLE,
   DATABASE_PAGE_HOST_MISSING,
   PICKER_EMPTY,
   PICKER_NEW_DATABASE,

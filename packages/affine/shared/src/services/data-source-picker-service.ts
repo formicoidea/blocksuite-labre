@@ -113,6 +113,17 @@ export interface DataSourcePickerService {
    */
   createDatabase?(): Promise<DataSourcePickerDatabase | null>;
   /**
+   * No native table beside your databases (ADR 0035 amendment of
+   * 2026-10-29): a database block with no source (`externalSourceId`) and no
+   * row draws an empty view instead of the native one (no row, no "New",
+   * no view bar, nothing typed or pasted into it) with a "Connect a source"
+   * button that reopens the creation popover. Closing that popover writes
+   * nothing. A native database that has rows still renders them. Absent or
+   * `false`: closed without a choice, the popover leaves a native inline
+   * database, as in 1.0.
+   */
+  requireSource?: boolean;
+  /**
    * Create a source in `databaseId`; it resolves to the new source, or
    * `null`. Absent, the picker offers no "New source".
    */
