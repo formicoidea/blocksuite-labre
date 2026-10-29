@@ -57,11 +57,13 @@ export const databaseHeaderContainerStyles = css({
   display: 'flex',
   flexDirection: 'column',
   // Drawn as the page, which scrolls sideways under a wide table: the view
-  // bar stays in view, a viewport wide.
+  // bar stays in view, a viewport wide, inside the inset the full page's
+  // root sets to keep it under the centred heading (0 elsewhere).
   'affine-database[data-standalone] &': {
     position: 'sticky',
-    left: 'var(--affine-editor-side-padding, 24px)',
-    width: 'calc(100cqw - 2 * var(--affine-editor-side-padding, 24px))',
+    left: 'calc(var(--affine-editor-side-padding, 24px) + var(--affine-database-page-inset, 0px))',
+    width:
+      'calc(100cqw - 2 * var(--affine-editor-side-padding, 24px) - 2 * var(--affine-database-page-inset, 0px))',
   },
 });
 

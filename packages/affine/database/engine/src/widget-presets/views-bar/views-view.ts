@@ -69,12 +69,17 @@ export const VIEWS_BAR_TOUCH_TARGET = 44;
  */
 export class DataViewHeaderViews extends WidgetBase {
   static override styles = css`
+    /* The bar hangs its first tab's inset into the gutter: the tab keeps
+       its 4px padding for its hover background, and its icon lines up with
+       the database title and the rows above and below (labre recette of
+       1.1: the icon sat 4px right of both). */
     data-view-header-views {
       height: 28px;
       display: flex;
       user-select: none;
       gap: 4px;
       min-width: 0;
+      margin-left: -4px;
     }
     data-view-header-views.mobile {
       height: ${VIEWS_BAR_TOUCH_TARGET}px;

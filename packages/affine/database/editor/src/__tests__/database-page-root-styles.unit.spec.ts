@@ -62,7 +62,21 @@ describe('the full page of a database', () => {
       /affine-database-page > \.affine-page-viewport > doc-title \{ position: sticky; left: 0; width: 100cqw; \}/
     );
     expect(cssOf(DatabasePageRoot.styles)).toMatch(
-      /affine-database-page-root:has\(dv-table-view-ui\[data-page-layout\]\) \{ width: max-content; min-width: 100%; \}/
+      /affine-database-page-root:has\(dv-table-view-ui\[data-page-layout\]\) \{ width: max-content; min-width: 100%;/
+    );
+  });
+
+  // Widened, the root lost its centring and the view bar and the rows
+  // started left of the centred heading: it now pads by the heading's
+  // centring inset, which the block's sticky view bar reads too (labre
+  // recette of 1.1; held in a browser by database-view-bar-alignment.spec).
+  test('keeps a widened page under its centred heading', () => {
+    const root = cssOf(DatabasePageRoot.styles);
+    expect(root).toContain(
+      '--affine-database-page-inset: max( 0px, calc((100cqw - var(--affine-editor-width, 100cqw)) / 2) );'
+    );
+    expect(root).toContain(
+      'padding-left: calc( var(--affine-database-page-inset) + var(--affine-editor-side-padding, 24px) );'
     );
   });
 
@@ -79,7 +93,7 @@ describe('the full page of a database', () => {
 
   test('narrows its side padding in a narrow viewport container', () => {
     expect(cssOf(DatabasePageRoot.styles)).toMatch(
-      /@container viewport \(width <= 640px\) \{ affine-database-page-root \{ padding-left: 24px; padding-right: 24px; \} \}/
+      /@container viewport \(width <= 640px\) \{ affine-database-page-root, affine-database-page-root:has\(dv-table-view-ui\[data-page-layout\]\) \{ padding-left: 24px; padding-right: 24px; \} \}/
     );
     expect(cssOf(DatabasePageHost.styles)).toContain(
       'container-name: viewport'
