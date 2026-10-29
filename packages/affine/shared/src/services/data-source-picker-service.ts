@@ -1,5 +1,5 @@
 import { createIdentifier } from '@labre/global/di';
-import type { ExtensionType } from '@labre/store';
+import type { BlockSnapshot, DeltaInsert, ExtensionType } from '@labre/store';
 import type { ReadonlySignal } from '@preact/signals-core';
 
 /** One source of a host database, as the picker lists it. */
@@ -88,6 +88,39 @@ export interface DataSourcePickerViewTemplate {
   properties: readonly DataSourcePickerProperty[];
 }
 
+/** One row of a table turned into a source (`createDatabaseFrom`). */
+export interface DataSourcePickerRow {
+  /**
+   * The row's title as a rich-text delta: links, mentions (`reference`),
+   * bold… Keep what your title property allows.
+   */
+  title: readonly DeltaInsert[];
+  /**
+   * Property id (of `DataSourcePickerContent.properties`) → the value as the
+   * library stores it: a number, a boolean, a date's epoch milliseconds, a
+   * select's option id (or ids), a rich text as a delta. A property left
+   * out has no value.
+   */
+  values: Readonly<Record<string, unknown>>;
+  /** The row's nested blocks, for its page body; empty when it has none. */
+  body: readonly BlockSnapshot[];
+}
+
+/** What `createDatabaseFrom` turns into a database. */
+export interface DataSourcePickerContent {
+  /** The database's name: the table's title, or empty for you to name it. */
+  title: string;
+  /**
+   * Its properties in order, the title first (type `title`). Their types are
+   * the library's (`title`, `rich-text`, `number`, `select`,
+   * `multi-select`, `checkbox`, `date`, `link`, `progress`…): map each to
+   * one of yours, or drop it.
+   */
+  properties: readonly DataSourcePickerProperty[];
+  /** The rows, in order. */
+  rows: readonly DataSourcePickerRow[];
+}
+
 /**
  * The data-source picker (ADR 0035 §9c, issue B12): the host lists the
  * databases and sources a view may read, and creates them. The library draws
@@ -122,6 +155,25 @@ export interface DataSourcePickerService {
    * Closing the popover writes nothing. Absent or `false`: as in 1.0.
    */
   requireSource?: boolean;
+  /**
+   * Create a database holding `content` and resolve to it, with at least one
+   * source, or `null` when nothing was created (ADR 0035 amendment of
+   * 2026-10-29, "turn into a source"). One call, so the rows land together
+   * or not at all. With `requireSource`, "Create Table" on selected
+   * paragraphs and "Move into a database" on a database with native rows
+   * call it, then connect the block to the database's first source in one
+   * undo step; an undo leaves your database in place. Absent, both are
+   * hidden when a source is required.
+   */
+  createDatabaseFrom?(
+    content: DataSourcePickerContent
+  ): Promise<DataSourcePickerDatabase | null>;
+  /**
+   * With `createDatabaseFrom`: you keep a row's nested blocks as its page
+   * body (`DataSourcePickerRow.body`). Absent, a conversion whose rows have
+   * nested blocks is refused with a notice and writes nothing.
+   */
+  rowBodies?: boolean;
   /**
    * Create a source in `databaseId`; it resolves to the new source, or
    * `null`. Absent, the picker offers no "New source".

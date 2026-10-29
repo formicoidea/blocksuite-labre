@@ -1147,3 +1147,46 @@ product owner on review of #566:
 - Held by `database/block/src/__tests__/source-requirement.unit.spec.ts`,
   `database/editor/src/__tests__/creation-popover.unit.spec.ts` and
   `integration-test/…/page/database-creation-popover.spec.ts`.
+
+### 2026-10-29: turning a table into a source
+
+Asked by the Labre product owner on review of #566: under `requireSource`,
+"Create Table" (turn into) and the native rows shown read-only become a
+**database view with a new source holding their data**, never a native
+database. Defaults set by the coordinator the same day: the row title keeps
+its inline formatting as far as the host property allows; nested blocks
+become the row's page body if the host keeps one, else the conversion is
+refused with a fixed message; after an undo the host's database stays (the
+host cleans up); the new database is named after the table's title, else
+the host names it.
+
+- **The seam.** `DataSourcePickerService.createDatabaseFrom?(content)`, one
+  atomic call (the rows land together or not at all) resolving to the new
+  database or `null`, and `rowBodies?: boolean` (the host keeps nested
+  blocks as page bodies). `content` is `{ title, properties, rows }`:
+  properties in order, the title first, typed with the library's types
+  (`title`, `rich-text`, `number`, `select` with its options…), which
+  the host maps to its own or drops; each row is `{ title, values, body }`,
+  the title a rich-text delta (bold, links, mentions as `reference`), the
+  values as stored (a rich text as a delta), the body the nested blocks as
+  snapshots. Absent, both entries are hidden where a source is required.
+- **"Create Table"** (`convertToDatabase`, `turnBlocksIntoSource`): one row
+  per selected block, a selected block nested in another riding in its
+  body. Once the host answers, a view of its first source takes the
+  paragraphs' place (`insertLinkedDatabaseView`, then the deletions) in
+  one undo step; an undo gives the paragraphs back.
+- **"Move into a database"** (`moveDatabaseRowsIntoSource`,
+  `moveDatabaseIntoSource`), on the read-only notice: the native columns
+  and rows go to the host; the block takes the database's
+  `externalSourceId`, its title when it has none and an empty schema;
+  EVERY view is kept by id, name and layout and reads the new source, its
+  data re-derived (its filters, sorts and columns named native property
+  ids, which the host's are not); the native rows are deleted. One undo
+  step, which gives the native database back. A spinner while the host
+  answers, one call at a time.
+- **Nothing is written** until the host answers, nor when it answers
+  `null` or rejects, when the document turned read-only, or when the
+  content changed while it answered: a fixed notice says so
+  (`com.labre.database.turn-into.failed`, `.nested`).
+- Held by `database/block/src/__tests__/turn-into-source.unit.spec.ts` and
+  `integration-test/…/page/database-creation-popover.spec.ts`.

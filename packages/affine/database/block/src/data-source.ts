@@ -25,6 +25,7 @@ import {
   databaseBlockProperties,
   databasePropertyConverts,
 } from './properties/index.js';
+import { canTurnIntoSource, turnBlocksIntoSource } from './turn-into-source.js';
 import {
   addProperty,
   copyCellsByProperty,
@@ -535,6 +536,12 @@ export const databaseViewInitTemplate = (
     viewDefaultName(datasource.viewMetaGet(viewType), std)
   );
 };
+/**
+ * "Create Table": the selected blocks become a database's rows. Under a host
+ * that requires a source they become a source of the host's instead
+ * (`turnBlocksIntoSource`, ADR 0035 amendment of 2026-10-29), never a
+ * native database it would show read-only.
+ */
 export const convertToDatabase = (host: EditorHost, viewType: string) => {
   const [_, ctx] = host.std.command.exec(getSelectedModelsCommand, {
     types: ['block', 'text'],
@@ -542,6 +549,15 @@ export const convertToDatabase = (host: EditorHost, viewType: string) => {
   const { selectedModels } = ctx;
   const firstModel = selectedModels?.[0];
   if (!firstModel) return;
+
+  if (canTurnIntoSource(host.std)) {
+    turnBlocksIntoSource(host.std, selectedModels, viewType)
+      .then(written => {
+        if (written) host.selection.clear();
+      })
+      .catch(console.error);
+    return;
+  }
 
   host.store.captureSync();
 

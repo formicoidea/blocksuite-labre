@@ -251,12 +251,77 @@ export function reconnectDatabaseView(
 }
 
 /**
- * Whether "Create Table" (`convertToDatabase`) may run: it moves blocks into
- * a native database, which a host that requires a source would show
- * read-only at once, so it is offered only where no source is required.
+ * Whether "Create Table" (`convertToDatabase`) may run. Where no source is
+ * required, it moves the blocks into a native database, as in 1.0. Where
+ * one is, it turns them into a source of the host's (`createDatabaseFrom`,
+ * ADR 0035 amendment of 2026-10-29), and is hidden without that method: a
+ * native database would be shown read-only at once.
  */
 export function canConvertToDatabase(std: BlockStdScope): boolean {
-  return std.getOptional(DataSourcePickerProvider)?.requireSource !== true;
+  const picker = std.getOptional(DataSourcePickerProvider);
+  return picker?.requireSource !== true || !!picker.createDatabaseFrom;
+}
+
+/**
+ * Moves a database with native rows into the host source just created from
+ * them (`createDatabaseFrom`, ADR 0035 amendment of 2026-10-29): the block
+ * takes the database's `externalSourceId`, its title when it has none, an
+ * empty schema of its own; EVERY view is kept by id, name and layout and
+ * reads `sourceId`, its data re-derived over the source (its filters, sorts
+ * and columns named native property ids, which the host's are not); the
+ * native rows are deleted. One undo step, which gives the native database
+ * back; the host's database stays. Returns `false` and writes nothing on a
+ * read-only document, on a block already connected, or without a host data
+ * source.
+ */
+export function moveDatabaseIntoSource(
+  std: BlockStdScope,
+  model: DatabaseBlockModel,
+  choice: {
+    database: Pick<DataSourcePickerDatabase, 'id' | 'title'>;
+    sourceId: string;
+  }
+): boolean {
+  const { store } = std;
+  if (store.readonly) return false;
+  if (model.props.externalSourceId !== undefined) return false;
+  const provider = std.getOptional(DatabaseDataSourceProvider);
+  if (!provider) return false;
+  const { database, sourceId } = choice;
+  const views = model.props.views.map(view => ({
+    id: view.id,
+    name: view.name,
+    mode: view.mode,
+  }));
+
+  store.captureSync();
+  store.transact(() => {
+    const title = model.props.title;
+    if (title.length === 0 && database.title) title.insert(database.title, 0);
+    store.updateBlock(model, {
+      externalSourceId: database.id,
+      columns: [],
+      views: views.map(view => ({ ...view, sourceId })),
+    });
+    const dataSource = provider.createDataSource(model);
+    try {
+      store.updateBlock(model, {
+        views: views.map(view => {
+          dataSource.viewManager.setCurrentView(view.id);
+          return {
+            ...defaultViewData(dataSource, view.mode),
+            id: view.id,
+            name: view.name,
+            sourceId,
+          };
+        }),
+      });
+    } finally {
+      dataSource.dispose();
+    }
+    for (const row of [...model.children]) store.deleteBlock(row);
+  });
+  return true;
 }
 
 /**
