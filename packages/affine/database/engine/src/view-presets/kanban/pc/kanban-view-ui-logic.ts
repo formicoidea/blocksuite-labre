@@ -64,16 +64,20 @@ export class KanbanViewUILogic extends DataViewUILogicBase<
     this.selectionController.clear();
   };
 
+  /**
+   * "New" adds the card and puts its title in editing, as a group's own
+   * "New" does: it no longer opens the card (product owner, recette P3-15).
+   * Nothing is written but the row.
+   */
   addRow = (position: InsertToPosition) => {
     if (this.readonly) return;
     const rowId = this.view.rowAdd(position);
+    this.ui$.value?.requestUpdate();
     if (rowId) {
-      this.root.openDetailPanel({
-        view: this.view,
-        rowId,
+      requestAnimationFrame(() => {
+        this.selectionController.editCardTitle(rowId);
       });
     }
-    this.ui$.value?.requestUpdate();
     return rowId;
   };
 

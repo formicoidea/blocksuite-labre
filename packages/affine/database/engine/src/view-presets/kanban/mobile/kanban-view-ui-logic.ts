@@ -17,6 +17,7 @@ import {
   createUniComponentFromWebComponent,
   renderUniLit,
 } from '../../../core/index.js';
+import { locateRow } from '../../../core/group-by/locate-row.js';
 import { sortable } from '../../../core/utils/wc-dnd/sort/sort-context.js';
 import {
   DataViewUIBase,
@@ -64,12 +65,33 @@ export class MobileKanbanViewUILogic extends DataViewUILogicBase<
 
   clearSelection = () => {};
 
+  /**
+   * The toolbar's "+" adds the card and puts its title in editing, as on
+   * the desktop board: it no longer opens the card (product owner, recette
+   * P3-15). Nothing is written but the row.
+   */
   addRow = (position: InsertToPosition) => {
     if (this.readonly) return;
     const id = this.view.rowAdd(position);
     this.ui$.value?.requestUpdate();
-    // The toolbar's "+" opens the new card, as on the desktop board (P7).
-    if (id) this.root.openDetailPanel({ view: this.view, rowId: id });
+    if (!id) return;
+    requestAnimationFrame(() => {
+      const view = this.view;
+      const at = locateRow(view.groupTrait, view.rows$.peek(), id);
+      const columnId =
+        view.mainProperties$.peek().titleColumn || view.propertyIds$.peek()[0];
+      if (!at || at.groupKey === undefined || !columnId) return;
+      // The phone cells follow the logic's selection (`mobile/cell.ts`).
+      this.setSelection({
+        viewId: view.id,
+        type: 'kanban',
+        selectionType: 'cell',
+        groupKey: at.groupKey,
+        cardId: id,
+        columnId,
+        isEditing: true,
+      });
+    });
     return id;
   };
 

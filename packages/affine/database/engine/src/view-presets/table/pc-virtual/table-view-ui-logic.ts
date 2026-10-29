@@ -12,6 +12,7 @@ import { styleMap } from 'lit/directives/style-map.js';
 import { html } from 'lit/static-html.js';
 
 import { dv } from '../../../core/common/dv-css.js';
+import { locateRow } from '../../../core/group-by/locate-row.js';
 import {
   type GroupTrait,
   groupTraitKey,
@@ -26,6 +27,7 @@ import {
 } from '../../../core/view/data-view-base.js';
 import {
   type TableSingleView,
+  TableViewAreaSelection,
   TableViewRowSelection,
   type TableViewSelectionWithType,
 } from '../../index.js';
@@ -110,8 +112,29 @@ export class VirtualTableViewUILogic extends DataViewUILogicBase<
     this.selectionController.clear();
   };
 
+  /**
+   * "New" adds the row and puts its title in editing, as the table's own
+   * "New record" footer does: it no longer opens the row (product owner,
+   * recette P3-15). Nothing is written but the row.
+   */
   addRow = (position: InsertToPosition) => {
-    return this.view.rowAdd(position);
+    if (this.view.readonly$.peek()) return;
+    const rowId = this.view.rowAdd(position);
+    if (!rowId) return;
+    requestAnimationFrame(() => {
+      const view = this.view;
+      const at = locateRow(view.groupTrait, view.rows$.peek(), rowId);
+      const columnIndex = view.properties$
+        .peek()
+        .findIndex(property => property.type$.peek() === 'title');
+      if (!at || columnIndex < 0) return;
+      this.selectionController.selection = TableViewAreaSelection.create({
+        groupKey: at.groupKey,
+        focus: { rowIndex: at.rowIndex, columnIndex },
+        isEditing: true,
+      });
+    });
+    return rowId;
   };
 
   focusFirstCell = () => {
