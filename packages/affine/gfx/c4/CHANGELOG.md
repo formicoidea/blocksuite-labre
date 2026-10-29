@@ -1,5 +1,24 @@
 # @labre/affine-gfx-c4
 
+## 1.1.0
+
+### Patch Changes
+
+- @labre/affine-block-surface@1.1.0
+- @labre/affine-components@1.1.0
+- @labre/affine-ext-loader@1.1.0
+- @labre/affine-gfx-connector@1.1.0
+- @labre/affine-gfx-ddd-shared@1.1.0
+- @labre/affine-gfx-pointer@1.1.0
+- @labre/affine-gfx-shape@1.1.0
+- @labre/affine-gfx-template@1.1.0
+- @labre/affine-gfx-text@1.1.0
+- @labre/affine-model@1.1.0
+- @labre/affine-shared@1.1.0
+- @labre/affine-widget-edgeless-toolbar@1.1.0
+- @labre/global@1.1.0
+- @labre/std@1.1.0
+
 ## 1.0.0
 
 ### Patch Changes

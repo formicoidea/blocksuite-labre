@@ -1,5 +1,21 @@
 # @labre/affine-block-image
 
+## 1.1.0
+
+### Patch Changes
+
+- @labre/affine-block-surface@1.1.0
+- @labre/affine-components@1.1.0
+- @labre/affine-ext-loader@1.1.0
+- @labre/affine-gfx-shape@1.1.0
+- @labre/affine-gfx-turbo-renderer@1.1.0
+- @labre/affine-model@1.1.0
+- @labre/affine-shared@1.1.0
+- @labre/affine-widget-slash-menu@1.1.0
+- @labre/global@1.1.0
+- @labre/std@1.1.0
+- @labre/store@1.1.0
+
 ## 1.0.0
 
 ### Patch Changes

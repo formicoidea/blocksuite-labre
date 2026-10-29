@@ -1,5 +1,0 @@
----
-'@labre/affine': minor
----
-
-New optional `createDatabaseFrom({ title, properties, rows })` and `rowBodies` on the data-source picker (`DataSourcePickerExtension`). Under `requireSource`, "Create Table" on selected paragraphs and the new "Move into a database" button over native rows shown read-only hand their content to it (titles as rich-text deltas, values as stored, nested blocks as page bodies when `rowBodies` is set, else refused) and connect the block to the database it answers, in one undo step; nothing is written on a refusal, a rejection, a read-only document or content changed meanwhile. New: `turnBlocksIntoSource`, `moveDatabaseRowsIntoSource`, `moveDatabaseIntoSource`, `blocksContent`, `databaseContent`, `canTurnIntoSource` (`@labre/affine/blocks/database`), the `DataSourcePickerContent` and `DataSourcePickerRow` types, three keys (`com.labre.database.turn-into.move`, `.failed`, `.nested`) and the test id `database-source-required-move`. A host that does not set `requireSource` sees no change.
