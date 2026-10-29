@@ -1,5 +1,6 @@
 import {
   connectDatabaseToSource,
+  DATABASE_CREATION_TITLE,
   type DatabaseCreationMenu,
   type DatabaseCreationRequest,
 } from '@labre/affine-database-block';
@@ -22,7 +23,6 @@ import { dataSourcePickerItems } from './data-source-picker.js';
 import {
   DATABASE_CREATION_LINK_EXISTING,
   DATABASE_CREATION_NEW_SOURCE,
-  DATABASE_CREATION_TITLE,
 } from './translations.js';
 
 type ConnectedModel = Parameters<typeof connectDatabaseToSource>[1];
@@ -97,8 +97,11 @@ export function databaseCreationItems(
  * 2026-10-28): "Table View" and "Kanban View" insert a native database at
  * once and open this popover over it, so a host's database is created or
  * linked only when the reader says which. Escape or a click outside closes
- * it and leaves the native database, which renders and stays editable.
- * Without a host picker the entries never call it.
+ * it and leaves the native database, which renders and stays editable; a
+ * host that sets `requireSource` gets it drawn as an empty view whose
+ * "Connect a source" reopens this popover (ADR 0035 amendment of
+ * 2026-10-29). Closing writes nothing either way. Without a host picker the
+ * entries never call it.
  */
 export function databaseCreationMenu(): DatabaseCreationMenu {
   return {

@@ -18,7 +18,13 @@
  *   second remove it);
  * - Escape on the popover removing the database or leaving it unrendered;
  * - `BlockCreated` reported twice (once by the insertion, once by the
- *   connection) or not at all.
+ *   connection) or not at all;
+ * - with `requireSource` (ADR 0035 amendment of 2026-10-29): Escape writing
+ *   anything or asking the host anything, the rowless database drawing a
+ *   native table (rows could be added beside the host's databases), its
+ *   "Connect a source" missing or not reopening the popover, read-only
+ *   still offering it, or a native database with rows hidden; without it,
+ *   the empty view drawn at all.
  */
 import {
   type DatabaseBlockComponent,
@@ -36,7 +42,16 @@ import { type BlockStdScope, TextSelection } from '@labre/std';
 import type { BlockModel, ExtensionType } from '@labre/store';
 import { signal } from '@preact/signals-core';
 import { userEvent } from '@vitest/browser/context';
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  test,
+  vi,
+} from 'vitest';
 
 import { wait } from '../utils/common.js';
 import { addNote } from '../utils/edgeless.js';
@@ -101,6 +116,9 @@ const popover = () =>
 const byTestId = (id: string) =>
   document.querySelector<HTMLElement>(`[data-testid="${id}"]`);
 
+/** The picker's `requireSource`, set by the suite that tests it. */
+let requireSource: boolean | undefined;
+
 describe('creating a database with a host picker', () => {
   let std!: BlockStdScope;
   let noteId!: string;
@@ -112,7 +130,11 @@ describe('creating a database with a host picker', () => {
     createDatabase = vi.fn(async () => FRESH);
     const cleanup = await setupEditor('page', [
       hostSources,
-      DataSourcePickerExtension({ list: () => signal([PLAN]), createDatabase }),
+      DataSourcePickerExtension({
+        list: () => signal([PLAN]),
+        createDatabase,
+        requireSource,
+      }),
       TelemetryExtension({
         track: (name, props) => {
           if (name === 'BlockCreated') {
@@ -228,6 +250,8 @@ describe('creating a database with a host picker', () => {
     expect(blockOf(model)?.querySelector('affine-data-view-renderer')).not.toBe(
       null
     );
+    expect(blockOf(model)?.querySelector('dv-table-view-ui')).not.toBeNull();
+    expect(byTestId('database-source-required')).toBeNull();
     expect(createDatabase).not.toHaveBeenCalled();
   });
 
@@ -257,5 +281,84 @@ describe('creating a database with a host picker', () => {
     expect(blockOf(model)!.dataSource).toBeInstanceOf(DocumentRowsSource);
     expect(createDatabase).not.toHaveBeenCalled();
     expect(created).toEqual(['affine:database']);
+  });
+
+  describe('when the host requires a source', () => {
+    beforeAll(() => {
+      requireSource = true;
+    });
+    afterAll(() => {
+      requireSource = undefined;
+    });
+
+    const required = () => byTestId('database-source-required');
+    const connectButton = () => byTestId('database-source-required-connect');
+
+    test('Escape writes nothing and leaves an empty view that offers the source', async () => {
+      await tableView();
+      await settle();
+      const model = database()!;
+      const before = JSON.stringify(model.props.views);
+
+      await userEvent.keyboard('{Escape}');
+      await settle();
+
+      expect(popover()).toBeNull();
+      expect(createDatabase).not.toHaveBeenCalled();
+      expect(model.props.externalSourceId).toBeUndefined();
+      expect(model.children).toHaveLength(0);
+      expect(JSON.stringify(model.props.views)).toBe(before);
+      expect(required()).not.toBeNull();
+      expect(blockOf(model)?.querySelector('dv-table-view-ui')).toBeNull();
+      expect(blockOf(model)?.querySelector('.new-record')).toBeNull();
+
+      connectButton()!.click();
+      await settle();
+      expect(popover()).not.toBeNull();
+      byTestId('database-creation-new-source')!.click();
+      await settle();
+
+      expect(createDatabase).toHaveBeenCalledTimes(1);
+      expect(model.props.externalSourceId).toBe('host:fresh');
+      expect(model.props.views[0]).toMatchObject({ sourceId: 'src-new' });
+      expect(required()).toBeNull();
+      expect(blockOf(model)!.dataSource).toBeInstanceOf(DocumentRowsSource);
+
+      // Undoing the connection gives the rowless database back: empty again.
+      window.doc.undo();
+      await settle();
+      expect(database()!.props.externalSourceId).toBeUndefined();
+      expect(required()).not.toBeNull();
+    });
+
+    test('read-only, the empty view offers nothing', async () => {
+      await tableView();
+      await settle();
+      await userEvent.keyboard('{Escape}');
+      await settle();
+      std.store.readonly = true;
+      try {
+        await settle();
+        expect(required()).not.toBeNull();
+        expect(connectButton()).toBeNull();
+      } finally {
+        std.store.readonly = false;
+      }
+    });
+
+    test('a native database with rows still renders them', async () => {
+      await tableView();
+      await settle();
+      await userEvent.keyboard('{Escape}');
+      await settle();
+      const model = database()!;
+      expect(required()).not.toBeNull();
+
+      window.doc.addBlock('affine:paragraph', {}, model.id);
+      await settle();
+
+      expect(required()).toBeNull();
+      expect(blockOf(model)?.querySelector('dv-table-view-ui')).not.toBeNull();
+    });
   });
 });

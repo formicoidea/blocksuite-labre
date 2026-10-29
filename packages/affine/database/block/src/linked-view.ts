@@ -4,6 +4,7 @@ import type {
 } from '@labre/affine-model';
 import {
   type DataSourcePickerDatabase,
+  DataSourcePickerProvider,
   type DataSourcePickerService,
   TelemetryProvider,
 } from '@labre/affine-shared/services';
@@ -157,6 +158,26 @@ export function connectDatabaseToSource(
     for (const row of [...model.children]) store.deleteBlock(row);
   });
   return true;
+}
+
+/**
+ * Whether a database waits for its source (ADR 0035 amendment of
+ * 2026-10-29): the host requires one (`requireSource`), the block has none
+ * and it holds no row. Such a block draws an empty view that offers to
+ * connect one, never the native table, so no native row is ever written
+ * beside the host's databases. A native database WITH rows renders them
+ * whatever the host requires (documents render forever): the rule targets
+ * the creation gesture left unfinished, whose database is inserted rowless.
+ */
+export function awaitsSource(
+  std: BlockStdScope,
+  model: DatabaseBlockModel
+): boolean {
+  return (
+    std.getOptional(DataSourcePickerProvider)?.requireSource === true &&
+    model.props.externalSourceId === undefined &&
+    model.children.length === 0
+  );
 }
 
 /**

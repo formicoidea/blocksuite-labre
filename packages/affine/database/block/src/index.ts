@@ -17,3 +17,6 @@ export * from './view-creation.js';
 export * from './views';
 export * from '@labre/affine-database-engine';
 export * from './linked-view.js';
+// The creation popover (`@labre/affine-database-editor`) titles itself with
+// the wording core declares for its "Connect a source" button.
+export { DATABASE_CREATION_TITLE } from './translations.js';

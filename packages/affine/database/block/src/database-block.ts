@@ -64,6 +64,7 @@ import { keyed } from 'lit/directives/keyed.js';
 
 import { popSideDetail } from './components/layout.js';
 import { DatabaseConfigExtension } from './config.js';
+import { DatabaseCreationMenuIdentifier } from './creation-menu.js';
 import { EditorHostKey } from './context/host-context.js';
 import { DatabaseBlockDataSource } from './data-source.js';
 import { HostedDataSourceBase } from './external-data-source.js';
@@ -82,6 +83,7 @@ import {
 } from './database-block-styles.js';
 import { BlockRenderer } from './detail-panel/block-renderer.js';
 import { NoteRenderer } from './detail-panel/note-renderer.js';
+import { awaitsSource } from './linked-view.js';
 import { DatabaseSelection } from './selection.js';
 import { isStandaloneDatabase } from './standalone-layout.js';
 import {
@@ -94,9 +96,12 @@ import {
   rowOpenedParams,
 } from './service/index.js';
 import {
+  DATABASE_CREATION_TITLE,
   DATABASE_NEW_RECORD_MORE,
   DATABASE_SOURCE_MISSING,
   DATABASE_SOURCE_MISSING_HINT,
+  DATABASE_SOURCE_REQUIRED,
+  DATABASE_SOURCE_REQUIRED_HINT,
 } from './translations.js';
 import { currentViewStorage, initialViewId } from './utils/current-view.js';
 import { getSingleDocIdFromText } from './utils/title-doc.js';
@@ -593,6 +598,54 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
       </div>`;
   };
 
+  /**
+   * A database waiting for its source (`awaitsSource`: a host that sets
+   * `requireSource`, ADR 0035 amendment of 2026-10-29) draws its title and
+   * this in place of the view bar, the tools and the body: no row, no "New",
+   * no cell to type or paste into, so nothing native is written. The button
+   * reopens the creation popover over the block, the gesture finished later;
+   * a read-only document, or a host without the bundle's creation menu, gets
+   * the notice alone.
+   */
+  private readonly renderAwaitingSource = (
+    dataViewLogic: DataViewUILogicBase
+  ) => {
+    if (!awaitsSource(this.std, this.model)) return undefined;
+    const creationMenu = this.std.getOptional(DatabaseCreationMenuIdentifier);
+    const connect =
+      creationMenu && !this.store.readonly$.value
+        ? () =>
+            creationMenu.open({
+              std: this.std,
+              blockId: this.blockId,
+              anchor: this,
+            })
+        : undefined;
+    return html`<div class="${databaseHeaderContainerStyles}">
+        <div class="${databaseTitleRowStyles}">
+          ${this.renderTitle(dataViewLogic)} ${this.renderDatabaseOps()}
+        </div>
+      </div>
+      <div
+        class="${databaseSourceMissingStyles}"
+        data-testid="database-source-required"
+        role="status"
+      >
+        <div>${translateKey(this.std, ...DATABASE_SOURCE_REQUIRED)}</div>
+        <div class="${databaseSourceMissingHintStyles}">
+          ${translateKey(this.std, ...DATABASE_SOURCE_REQUIRED_HINT)}
+        </div>
+        ${connect
+          ? html`<data-view-component-button
+              data-testid="database-source-required-connect"
+              hoverType="border"
+              .onClick="${connect}"
+              .text="${translateKey(this.std, ...DATABASE_CREATION_TITLE)}"
+            ></data-view-component-button>`
+          : nothing}
+      </div>`;
+  };
+
   private renderDatabaseOps() {
     if (this.dataSource.readonly$.value) {
       return nothing;
@@ -686,7 +739,8 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
       setSelection: this.setSelection,
       dataSource: this.dataSource,
       headerWidget: this.headerWidget,
-      viewPlaceholder: this.renderSourceMissing,
+      viewPlaceholder: logic =>
+        this.renderAwaitingSource(logic) ?? this.renderSourceMissing(logic),
       onDrag: this.onDrag,
       clipboard: this.std.clipboard,
       dnd: this.std.dnd,

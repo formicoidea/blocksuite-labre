@@ -1082,3 +1082,44 @@ sorts, grouping, columns, `sourceId`, §8); the schema stays the source's.
   `view-settings-source.unit.spec.ts`, `view-menu-commands.unit.spec.ts`,
   `all/src/__tests__/database/view-source-telemetry.unit.spec.ts`,
   `integration-test/…/page/database-change-source.spec.ts` (C).
+
+### 2026-10-29: B, a host may require a source
+
+Asked by the Labre product owner on 2026-10-29: in Labre a table or a
+kanban inserted on a page is always backed by a base, so the native inline
+database that B leaves when the popover is closed without a choice must not
+become a native table there. A first reading (closing the popover runs "New
+empty source") was withdrawn the same day: "if no source is selected, the
+view must be empty, that's all". Nothing is created, connected or written
+on closing.
+
+- **The option.** `DataSourcePickerService.requireSource?: boolean`, an
+  optional field of the existing picker seam (§9c), so no new seam and a
+  widening only. Absent or `false`, B is unchanged.
+- **The rule (`awaitsSource`, `database/block`).** With the option, a
+  database block with no `externalSourceId` AND no row waits for its source:
+  it draws its title, its ops menu and a notice ("No source connected")
+  through the data-view's `viewPlaceholder`, the hook the missing source of
+  §7 already uses, in place of the view bar, the tools and the body. No row
+  is drawn, so there is no "New", no cell to type or paste into, and no
+  view to add: nothing native can be written beside the host's databases.
+  A "Connect a source" button reopens the creation popover
+  (`DatabaseCreationMenuIdentifier`) over the block, so the gesture can be
+  finished later; it is absent on a read-only document and without the
+  bundle's creation menu.
+- **Existing native databases.** A native database that HAS rows renders
+  them whatever the host requires: documents render forever, and the
+  decision is about the creation gesture, whose database is inserted
+  rowless. Consequence accepted: a native database whose last row is
+  deleted waits for a source too, and connecting it replaces its native
+  schema (`connectDatabaseToSource`, as in B).
+- **Undo, copy, paste.** Nothing is written by the rule, so undo is B's:
+  undoing a connection gives the rowless database back, which waits again.
+  A copy carries the block's props and children, so a waiting block pastes
+  as a waiting block, and a connected one as connected. "Turn into a
+  database" and the mobile keyboard toolbar still insert native databases
+  with rows (B's follow-ups), which this rule does not hide.
+- Held by `database/block/src/__tests__/awaits-source.unit.spec.ts` and
+  `integration-test/…/page/database-creation-popover.spec.ts` (Escape
+  writes nothing, the empty view, "Connect a source", read-only, a native
+  database with rows).
