@@ -4,7 +4,9 @@ import {
   autoPlacement,
   autoUpdate,
   computePosition,
+  flip,
   offset,
+  shift,
 } from '@floating-ui/dom';
 import { html, nothing, type TemplateResult } from 'lit';
 import { property } from 'lit/decorators.js';
@@ -12,7 +14,7 @@ import { classMap } from 'lit/directives/class-map.js';
 import { ifDefined } from 'lit/directives/if-defined.js';
 
 import { MenuFocusable } from './focusable.js';
-import { Menu, type MenuOptions } from './menu.js';
+import { Menu, type MenuOptions, type SubMenuSide } from './menu.js';
 import { popMenu, popupTargetFromElement } from './menu-renderer.js';
 import type { MenuItemRender } from './types.js';
 
@@ -32,6 +34,28 @@ export const subMenuPlacements = autoPlacement({
   allowedPlacements: ['right-start', 'left-start', 'right-end', 'left-end'],
 });
 export const subMenuMiddleware = [subMenuOffset, subMenuPlacements];
+
+/**
+ * Where a nested sub-menu opens: on the side its parent opened on, right for
+ * a menu's first sub-menu, the other side only when it does not fit there.
+ * `autoPlacement` took the side with the most room, so a third level drawn
+ * from a menu sitting right of the page's middle went left, back over the
+ * first menu, instead of beside the second (#571).
+ */
+export function nestedSubMenuPosition(parentSide: SubMenuSide | undefined) {
+  const side = parentSide ?? 'right';
+  const other = side === 'right' ? 'left' : 'right';
+  return {
+    placement: `${side}-start` as const,
+    middleware: [
+      subMenuOffset,
+      flip({
+        fallbackPlacements: [`${other}-start`, `${side}-end`, `${other}-end`],
+      }),
+      shift({ padding: 8 }),
+    ],
+  };
+}
 
 export class MenuSubMenu extends MenuFocusable {
   createTime = 0;
@@ -66,7 +90,13 @@ export class MenuSubMenu extends MenuFocusable {
     const focus = this.menu.currentFocused$.value;
     const menu = new Menu({
       ...this.data.options,
+      // An entry picked at any depth completes the whole chain: this menu's
+      // own completion runs too, so a pick two levels down closes the root
+      // as a pick one level down always did (#571: "Link an existing source"
+      // → database → source left the creation popover open, and the next
+      // click only closed it).
       onComplete: () => {
+        this.menu.options.onComplete?.();
         this.menu.close();
       },
       onClose: () => {
@@ -77,11 +107,11 @@ export class MenuSubMenu extends MenuFocusable {
       },
     });
     this.menu.menuElement.parentElement?.append(menu.menuElement);
+    const position = nestedSubMenuPosition(this.menu.side);
     const unsub = autoUpdate(this, menu.menuElement, () => {
-      computePosition(this, menu.menuElement, {
-        middleware: subMenuMiddleware,
-      })
-        .then(({ x, y }) => {
+      computePosition(this, menu.menuElement, position)
+        .then(({ x, y, placement }) => {
+          menu.side = placement.startsWith('left') ? 'left' : 'right';
           menu.menuElement.style.left = `${x}px`;
           menu.menuElement.style.top = `${y}px`;
         })

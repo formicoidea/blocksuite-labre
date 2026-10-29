@@ -41,8 +41,17 @@ export function onMenuOpen(listener: MenuOpenListener) {
   };
 }
 
+/** The side of its parent a sub-menu opened on. */
+export type SubMenuSide = 'left' | 'right';
+
 export class Menu {
   private _cleanupFns: Array<() => void> = [];
+
+  /**
+   * Set once a sub-menu is placed; its own sub-menus open on the same side
+   * (`nestedSubMenuPosition`). Undefined for a root menu.
+   */
+  side: SubMenuSide | undefined = undefined;
 
   private readonly _currentFocused$ = signal<MenuFocusable>();
 
