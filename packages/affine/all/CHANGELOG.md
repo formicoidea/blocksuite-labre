@@ -1,5 +1,117 @@
 # @labre/affine
 
+## 1.0.0
+
+### Major Changes
+
+- afee5da: The database packages move into `packages/affine/database/` and are renamed: `@labre/data-view` becomes `@labre/affine-database-engine`, `@labre/affine-block-database` becomes `@labre/affine-database-block` and `@labre/affine-block-data-view` becomes `@labre/affine-database-view-block` (`@labre/affine-database-editor` keeps its name). A host importing `@labre/data-view`, `@labre/affine-block-database` or `@labre/affine-block-data-view` directly updates its specifiers, subpaths included (`@labre/data-view/view-presets` becomes `@labre/affine-database-engine/view-presets`); no alias is kept. The published bundles are unchanged: same names (`labre-core`, `labre-core-database`), same entry points, same behaviour.
+
+### Minor Changes
+
+- 25ff5d5: A view of a hosted database can be pointed at another of its sources. "Source" in the view settings (after "Layout") and `database.view.source` on the full page open the data-source picker on that database's sources; a pick switches the view as one undo step, keeping every column, filter, sort, grouping and colour rule whose property the other source has (same name and type), and "New source" appears when the host gives `createSource`. It is reported as `DatabaseViewSourceChanged { source: 'existing' | 'new' }`. `popViewOptions` takes an optional last `std` parameter; with it, entries a `ViewSettingsMenuExtension` registers join the Layout group. A 0.61 caller compiles and draws the same menu.
+- f5ce965: With a host data-source picker that creates databases, "Table View" and "Kanban View" now insert the database at once and offer its source in a popover ("New empty source", "Link an existing source"), connected in one undo step; closing the popover keeps the native database. New: `connectDatabaseToSource`, `DatabaseCreationMenuExtension` / `DatabaseCreationMenuIdentifier` (`@labre/affine/blocks/database`), `databaseCreationMenu` (`@labre/core-database/view`), the optional `initialRows` of `insertDatabaseBlockCommand` and `databaseViewInitTemplate`, and the picker's `offerCreate` option. A host without the `core-database` bundle keeps the 0.61 path.
+- b8159a6: A Wardley "component + method" node can now be given a nature and a method from its toolbar, in the same "Qualify" dropdown and with the same labels as a plain component's nature (ADR 0046).
+
+  - The role `wardley:method` now specialises `wardley:component`: the method node is offered the `wardley:nature` tag, is read by the reading panel like a component, is measured by the overlap rule (W3) and lights the "Component" legend row, as a market and an ecosystem already did.
+  - New tag `wardley:method` in the Wardley pack, single-valued, on method nodes only, with nine values in three families, shown in the dropdown under their family titles: Buying policy (`make`, `buy`, `outsource`), Project management (`agile`, `lean`, `six-sigma`), Attitudes (`pioneers`, `settlers`, `town-planners`).
+  - Each method paints its own prefabricated ring: buying policy in shades of grey inside a thick ink border, project management as an intensity of the ink, attitudes from the colour picker's own Wardley swatches read by their keys (Pioneers: Peace light in a Peace border; Settlers: solid Peace; Town planners: War light in a War border). Derived at paint time, never written. Dark mode follows the notation tint.
+  - **Existing method nodes change look**: a method node with no method tag now paints the Make style (the buying-policy default), so the fill picked with the "colour = phase" palette no longer shows on any method node. The stored colours are kept in the document, untouched. The fill swatches of the colour picker have no visible effect on a method node any more; its stroke controls still set the inner component's outline.
+  - The Wardley swatch table `WARDLEY_PALETTES` and its nine `WARDLEY_PALETTE_WORDING_*` constants (and `WARDLEY_PALETTE_WORDINGS`) moved, unchanged, from the toolbar module to `node/consts.ts` inside the package (not a public export), so the method rings can read the same swatches as the colour picker.
+  - The legend lists every method the map uses, one row per value under its family's title, with a swatch painted like the node. Each row is an editable text of the legend box. The "Component + method" row now reads "Component + method (the ring names the method)".
+  - New optional fields: `TagValueDef.group` (`{ label, labelKey? }`, a value's sub-title in a picker; its key is listed once in `tagDefsTranslationEntries`) and `CommandLegendEntry.tag` (`[tagId, valueId]`, a legend row lit only when that value is used). `legendFromCommands` takes the board's tag values as an optional fourth argument; `tagValuesOf(elements)` builds it.
+  - New exports from the Wardley bundle: `WARDLEY_METHOD`, `WARDLEY_METHOD_TAG_ID`, `wardleyMethodOf(category, recommendation)` and `wardleyMethodParts(valueId)` (the wardley-map-renderer JSON pair, both directions), and the types `WardleyMethodFamily`, `WardleyMethodPhase`, `WardleyMethodParts`.
+  - New translation keys (English fallbacks shipped, French belongs to the host): `com.labre.wardley.tag.method`, `com.labre.wardley.tag.method.description`; `com.labre.wardley.tag.method.group.buying-policy`, `.group.project-management`, `.group.attitudes`; and for each of `make`, `buy`, `outsource`, `agile`, `lean`, `six-sigma`, `pioneers`, `settlers`, `town-planners`: `com.labre.wardley.tag.method.<value>` and `com.labre.wardley.tag.method.<value>.description`. Changed English: `com.labre.wardley.legend.desc.method`.
+
+- af4e030: Wardley maps can be read and written in the JSON language of `@formicoidea/wardley-map-renderer` (ADR 0012, amendment of 2026-10-28), beside OWM. `@formicoidea/labre-framework-wardley/interchange` and the package index export `WARDLEY_JSON_IMPORT` (`wardley:json:import`), `WARDLEY_JSON_EXPORT` (`wardley:json:export`), `WARDLEY_JSON_FORMAT`, `WARDLEY_JSON_EXTENSION`, `WARDLEY_JSON_MIME`, `importWardleyRendererJson` and `exportWardleyRendererJson`; both capabilities join `WARDLEY_INTERCHANGE`, so the editor lists an "Export Wardley as .json" view action and reads `.json` maps. The reader draws every Wardley element with the `WARDLEY_TOOLBOX` builders and their real parameters (kind, the `wardley:nature` and `wardley:method` tags, colours, the name's offset); an evolution is the toolbar's change arrow to the target point, labelled with its type, never a second component; a description, a step, an evolution range, the title and the context are plain shapes and free texts. Nothing it cannot show is stored: no foreign id, no carried field, and the report names what was dropped. The writer needs no editor and reads back what is visible, minting ids from the names. Ten import remark keys `com.labre.wardley.import.json.remark.*` join the manifest.
+
+### Patch Changes
+
+- faf1a90: A database derives its full-page layout from the page it is drawn in: rendered by the full page's root under a `<doc-title>` whose `bodyBlockId` names it, it hides its own title row and top margin and its table sticks its column header to the page; a full page mounted without that heading now renders the database as inline, its title shown, instead of hiding it anyway. `<doc-title>` reflects `bodyBlockId` as its `body-block-id` attribute. Nothing is written to measure it.
+- 4c01e42: The database block paints no background of its own: the page's shows through, as for a note. The `affine:data-view` block's sheet styles its own tag instead of `affine-database` (it painted the database block's `--affine-background-primary-color` card, a second colour on a page whose background is another token). The sticky column header keeps the page token.
+- d6b1cab: Escape closes the newest open popup wherever the focus is (the conditional colours editor, "Add a condition", the filter editor's own popups and "New filter" stayed open once the focus left the menu's search field). A popup closed another way is forgotten, so a later Escape never closes it twice.
+  - @labre/affine-block-attachment@1.0.0
+  - @labre/affine-block-bookmark@1.0.0
+  - @labre/affine-block-callout@1.0.0
+  - @labre/affine-block-code@1.0.0
+  - @labre/affine-block-divider@1.0.0
+  - @labre/affine-block-edgeless-text@1.0.0
+  - @labre/affine-block-embed@1.0.0
+  - @labre/affine-block-embed-doc@1.0.0
+  - @labre/affine-block-frame@1.0.0
+  - @labre/affine-block-image@1.0.0
+  - @labre/affine-block-latex@1.0.0
+  - @labre/affine-block-list@1.0.0
+  - @labre/affine-block-note@1.0.0
+  - @labre/affine-block-paragraph@1.0.0
+  - @labre/affine-block-root@1.0.0
+  - @labre/affine-block-surface@1.0.0
+  - @labre/affine-block-surface-ref@1.0.0
+  - @labre/affine-block-table@1.0.0
+  - @labre/affine-components@1.0.0
+  - @labre/affine-database-block@1.0.0
+  - @labre/affine-database-editor@1.0.0
+  - @labre/affine-database-engine@1.0.0
+  - @labre/affine-database-view-block@1.0.0
+  - @labre/affine-ext-loader@1.0.0
+  - @labre/affine-foundation@1.0.0
+  - @labre/affine-fragment-adapter-panel@1.0.0
+  - @labre/affine-fragment-doc-title@1.0.0
+  - @labre/affine-fragment-frame-panel@1.0.0
+  - @labre/affine-fragment-outline@1.0.0
+  - @labre/affine-gfx-bpmn@1.0.0
+  - @labre/affine-gfx-brush@1.0.0
+  - @labre/affine-gfx-c4@1.0.0
+  - @labre/affine-gfx-connector@1.0.0
+  - @labre/affine-gfx-cynefin-estuarine@1.0.0
+  - @labre/affine-gfx-ddd-aggregate@1.0.0
+  - @labre/affine-gfx-ddd-context-map@1.0.0
+  - @labre/affine-gfx-ddd-core-domain@1.0.0
+  - @labre/affine-gfx-ddd-event-storming@1.0.0
+  - @labre/affine-gfx-ddd-shared@1.0.0
+  - @labre/affine-gfx-edgy@1.0.0
+  - @labre/affine-gfx-group@1.0.0
+  - @labre/affine-gfx-link@1.0.0
+  - @labre/affine-gfx-mindmap@1.0.0
+  - @labre/affine-gfx-note@1.0.0
+  - @labre/affine-gfx-pointer@1.0.0
+  - @labre/affine-gfx-shape@1.0.0
+  - @labre/affine-gfx-template@1.0.0
+  - @labre/affine-gfx-text@1.0.0
+  - @labre/affine-gfx-turbo-renderer@1.0.0
+  - @labre/affine-gfx-uml@1.0.0
+  - @labre/affine-gfx-wardley@1.0.0
+  - @labre/affine-inline-comment@1.0.0
+  - @labre/affine-inline-footnote@1.0.0
+  - @labre/affine-inline-latex@1.0.0
+  - @labre/affine-inline-link@1.0.0
+  - @labre/affine-inline-mention@1.0.0
+  - @labre/affine-inline-preset@1.0.0
+  - @labre/affine-inline-reference@1.0.0
+  - @labre/affine-model@1.0.0
+  - @labre/affine-rich-text@1.0.0
+  - @labre/affine-shared@1.0.0
+  - @labre/affine-widget-drag-handle@1.0.0
+  - @labre/affine-widget-edgeless-auto-connect@1.0.0
+  - @labre/affine-widget-edgeless-dragging-area@1.0.0
+  - @labre/affine-widget-edgeless-selected-rect@1.0.0
+  - @labre/affine-widget-edgeless-toolbar@1.0.0
+  - @labre/affine-widget-edgeless-zoom-toolbar@1.0.0
+  - @labre/affine-widget-frame-title@1.0.0
+  - @labre/affine-widget-keyboard-toolbar@1.0.0
+  - @labre/affine-widget-linked-doc@1.0.0
+  - @labre/affine-widget-note-slicer@1.0.0
+  - @labre/affine-widget-page-dragging-area@1.0.0
+  - @labre/affine-widget-remote-selection@1.0.0
+  - @labre/affine-widget-scroll-anchoring@1.0.0
+  - @labre/affine-widget-slash-menu@1.0.0
+  - @labre/affine-widget-thread-marks@1.0.0
+  - @labre/affine-widget-toolbar@1.0.0
+  - @labre/affine-widget-viewport-overlay@1.0.0
+  - @labre/global@1.0.0
+  - @labre/std@1.0.0
+  - @labre/store@1.0.0
+  - @labre/sync@1.0.0
+
 ## 0.61.0
 
 ### Minor Changes

@@ -1,5 +1,20 @@
 # @labre/affine-block-table
 
+## 1.0.0
+
+### Patch Changes
+
+- @labre/affine-components@1.0.0
+- @labre/affine-ext-loader@1.0.0
+- @labre/affine-inline-preset@1.0.0
+- @labre/affine-model@1.0.0
+- @labre/affine-rich-text@1.0.0
+- @labre/affine-shared@1.0.0
+- @labre/affine-widget-slash-menu@1.0.0
+- @labre/global@1.0.0
+- @labre/std@1.0.0
+- @labre/store@1.0.0
+
 ## 0.61.0
 
 ### Patch Changes

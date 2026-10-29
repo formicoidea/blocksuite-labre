@@ -1,5 +1,35 @@
 # @labre/affine-widget-keyboard-toolbar
 
+## 1.0.0
+
+### Patch Changes
+
+- @labre/affine-block-attachment@1.0.0
+- @labre/affine-block-embed@1.0.0
+- @labre/affine-block-image@1.0.0
+- @labre/affine-block-latex@1.0.0
+- @labre/affine-block-list@1.0.0
+- @labre/affine-block-note@1.0.0
+- @labre/affine-block-paragraph@1.0.0
+- @labre/affine-block-surface@1.0.0
+- @labre/affine-block-surface-ref@1.0.0
+- @labre/affine-components@1.0.0
+- @labre/affine-database-block@1.0.0
+- @labre/affine-database-engine@1.0.0
+- @labre/affine-ext-loader@1.0.0
+- @labre/affine-fragment-doc-title@1.0.0
+- @labre/affine-inline-latex@1.0.0
+- @labre/affine-inline-link@1.0.0
+- @labre/affine-inline-preset@1.0.0
+- @labre/affine-inline-reference@1.0.0
+- @labre/affine-model@1.0.0
+- @labre/affine-rich-text@1.0.0
+- @labre/affine-shared@1.0.0
+- @labre/affine-widget-linked-doc@1.0.0
+- @labre/global@1.0.0
+- @labre/std@1.0.0
+- @labre/store@1.0.0
+
 ## 0.61.0
 
 ### Patch Changes

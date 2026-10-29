@@ -1,5 +1,19 @@
 # @labre/affine-widget-toolbar
 
+## 1.0.0
+
+### Patch Changes
+
+- @labre/affine-block-surface@1.0.0
+- @labre/affine-block-table@1.0.0
+- @labre/affine-components@1.0.0
+- @labre/affine-database-block@1.0.0
+- @labre/affine-ext-loader@1.0.0
+- @labre/affine-model@1.0.0
+- @labre/affine-shared@1.0.0
+- @labre/global@1.0.0
+- @labre/std@1.0.0
+
 ## 0.61.0
 
 ### Patch Changes
