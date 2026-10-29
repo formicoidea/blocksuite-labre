@@ -27,6 +27,12 @@ export const DATABASE_SOURCE_REQUIRED_HINT: ChromeWording = [
   'Connect a source to show its rows here.',
 ];
 
+/** Over native rows shown read-only, under the same host. */
+export const DATABASE_SOURCE_REQUIRED_READ_ONLY: ChromeWording = [
+  'com.labre.database.source-required.read-only',
+  'This table is not in a base: its rows are read-only.',
+];
+
 /**
  * The creation popover's title (`@labre/affine-database-editor`) and the
  * button of a database waiting for its source: one chrome word, one key,
@@ -68,6 +74,7 @@ export const DATABASE_WORDINGS: readonly ChromeWording[] = [
   DATABASE_SOURCE_MISSING_HINT,
   DATABASE_SOURCE_REQUIRED,
   DATABASE_SOURCE_REQUIRED_HINT,
+  DATABASE_SOURCE_REQUIRED_READ_ONLY,
   DATABASE_VALUES_ERROR,
   DATABASE_VALUES_LOADING,
 ];

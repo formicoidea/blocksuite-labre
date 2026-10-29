@@ -161,23 +161,102 @@ export function connectDatabaseToSource(
 }
 
 /**
- * Whether a database waits for its source (ADR 0035 amendment of
- * 2026-10-29): the host requires one (`requireSource`), the block has none
- * and it holds no row. Such a block draws an empty view that offers to
- * connect one, never the native table, so no native row is ever written
- * beside the host's databases. A native database WITH rows renders them
- * whatever the host requires (documents render forever): the rule targets
- * the creation gesture left unfinished, whose database is inserted rowless.
+ * What a database shows under a host that requires a source
+ * (`requireSource`, ADR 0035 amendment of 2026-10-29, product owner's
+ * decision of the same day). The SOURCE decides, never the row count:
+ *
+ * - `'none'`: the host does not require one, or the block reads a source it
+ *   resolves. A hosted database with no row is an ordinary empty table.
+ * - `'connect'`: no source and no row (the creation gesture left
+ *   unfinished), or a hosted source the host no longer resolves (the source
+ *   or its base deleted). An empty view offering "Connect a source".
+ * - `'read-only'`: no source but native rows (a database written before
+ *   1.0, by a host without a picker, or pasted from one). The rows render,
+ *   since documents render forever, and nothing native can be edited.
+ *
+ * Nothing is stored: a native database and the gesture left unfinished are
+ * the same bytes, so neither may be edited natively.
  */
-export function awaitsSource(
+export type SourceRequirement = 'none' | 'connect' | 'read-only';
+
+export function sourceRequirement(
   std: BlockStdScope,
-  model: DatabaseBlockModel
+  model: DatabaseBlockModel,
+  sourceMissing = false
+): SourceRequirement {
+  if (std.getOptional(DataSourcePickerProvider)?.requireSource !== true) {
+    return 'none';
+  }
+  if (model.props.externalSourceId === undefined) {
+    return model.children.length === 0 ? 'connect' : 'read-only';
+  }
+  return sourceMissing ? 'connect' : 'none';
+}
+
+/**
+ * Re-points one view of a hosted database whose source the host no longer
+ * resolves (ADR 0035 amendment of 2026-10-29): the block takes the picked
+ * database's `externalSourceId` when it differs, and the view reads
+ * `sourceId` with its data re-derived over it (`defaultViewData`: its id
+ * and name kept, its layout too where the preset can build over the new
+ * source). The other views are left as they are. One undo step. Returns
+ * `false` and writes nothing on a read-only document, on a block with no
+ * source (`connectDatabaseToSource` connects those), without a host data
+ * source or without that view.
+ */
+export function reconnectDatabaseView(
+  std: BlockStdScope,
+  model: DatabaseBlockModel,
+  choice: {
+    database: Pick<DataSourcePickerDatabase, 'id'>;
+    sourceId: string;
+    viewId: string;
+  }
 ): boolean {
-  return (
-    std.getOptional(DataSourcePickerProvider)?.requireSource === true &&
-    model.props.externalSourceId === undefined &&
-    model.children.length === 0
-  );
+  const { store } = std;
+  if (store.readonly) return false;
+  if (model.props.externalSourceId === undefined) return false;
+  const provider = std.getOptional(DatabaseDataSourceProvider);
+  if (!provider) return false;
+  const { database, sourceId, viewId } = choice;
+  const index = model.props.views.findIndex(view => view.id === viewId);
+  const current = model.props.views[index];
+  if (!current) return false;
+  const view = { id: current.id, name: current.name, mode: current.mode };
+  const withView = (data: ViewBasicDataType) =>
+    model.props.views.map((old, i) => (i === index ? data : old));
+
+  store.captureSync();
+  store.transact(() => {
+    if (model.props.externalSourceId !== database.id) {
+      store.updateBlock(model, { externalSourceId: database.id });
+    }
+    store.updateBlock(model, { views: withView({ ...view, sourceId }) });
+    const dataSource = provider.createDataSource(model);
+    try {
+      dataSource.viewManager.setCurrentView(view.id);
+      store.updateBlock(model, {
+        views: withView({
+          ...defaultViewData(dataSource, view.mode),
+          id: view.id,
+          name: view.name,
+          sourceId,
+        }),
+      });
+    } finally {
+      dataSource.dispose();
+    }
+  });
+  return true;
+}
+
+/**
+ * Whether "Create Table" (`convertToDatabase`) may run: it moves blocks into
+ * a native database, which a host that requires a source would show
+ * read-only at once, so it is offered only where no source is required.
+ */
+export function canConvertToDatabase(std: BlockStdScope): boolean {
+  return std.getOptional(DataSourcePickerProvider)?.requireSource !== true;
 }
 
 /**

@@ -19,12 +19,16 @@
  * - Escape on the popover removing the database or leaving it unrendered;
  * - `BlockCreated` reported twice (once by the insertion, once by the
  *   connection) or not at all;
- * - with `requireSource` (ADR 0035 amendment of 2026-10-29): Escape writing
- *   anything or asking the host anything, the rowless database drawing a
- *   native table (rows could be added beside the host's databases), its
- *   "Connect a source" missing or not reopening the popover, read-only
- *   still offering it, or a native database with rows hidden; without it,
- *   the empty view drawn at all.
+ * - with `requireSource` (ADR 0035 amendment of 2026-10-29, product
+ *   owner's decision of the same day: the SOURCE decides, never the row
+ *   count): Escape writing anything or asking the host anything, the
+ *   rowless native database drawing a table, its "Connect a source" missing
+ *   or not reopening the popover, read-only still offering it, a connected
+ *   database with no row not drawn as an ordinary editable table, native
+ *   rows hidden or left editable, or a hosted view whose source is gone kept
+ *   as "Source not found" instead of offering a source and re-pointing;
+ *   without it, the empty view drawn at all;
+ * - the stable test ids a host's end-to-end suite selects the entries by.
  */
 import {
   type DatabaseBlockComponent,
@@ -40,7 +44,7 @@ import {
 import { SlashMenuConfigIdentifier } from '@labre/affine/widgets/slash-menu';
 import { type BlockStdScope, TextSelection } from '@labre/std';
 import type { BlockModel, ExtensionType } from '@labre/store';
-import { signal } from '@preact/signals-core';
+import { computed, signal } from '@preact/signals-core';
 import { userEvent } from '@vitest/browser/context';
 import {
   afterAll,
@@ -57,11 +61,22 @@ import { wait } from '../utils/common.js';
 import { addNote } from '../utils/edgeless.js';
 import { setupEditor } from '../utils/setup.js';
 
-/** A host source whose rows are documents (the Labre app's bases). */
+/** A source id the host no longer resolves: its source was deleted. */
+const GONE = 'src-gone';
+
+/**
+ * A host source whose rows are documents (the Labre app's bases). A view
+ * reading `GONE` reads nothing, as a host resolver answers for a deleted
+ * source.
+ */
 class DocumentRowsSource extends DatabaseBlockDataSource {
   override get rowsAreDocuments() {
     return true;
   }
+
+  override readonly sourceMissing$ = computed(
+    () => this.currentSourceId$.value === GONE
+  );
 }
 
 const hostSources: ExtensionType = {
@@ -260,9 +275,7 @@ describe('creating a database with a host picker', () => {
     await settle();
     const model = database()!;
 
-    document
-      .querySelector<HTMLElement>('.database-creation-link-existing')!
-      .click();
+    byTestId('database-creation-link-existing-entry')!.click();
     await settle();
     const sub = byTestId('database-creation-link-existing')!;
     // Linking only links: no way to create from here.
@@ -293,6 +306,16 @@ describe('creating a database with a host picker', () => {
 
     const required = () => byTestId('database-source-required');
     const connectButton = () => byTestId('database-source-required-connect');
+    const readOnlyNotice = () => byTestId('database-source-required-read-only');
+
+    /** "Table View", then Escape: the gesture left unfinished. */
+    async function dismissed() {
+      await tableView();
+      await settle();
+      await userEvent.keyboard('{Escape}');
+      await settle();
+      return database()!;
+    }
 
     test('Escape writes nothing and leaves an empty view that offers the source', async () => {
       await tableView();
@@ -310,7 +333,7 @@ describe('creating a database with a host picker', () => {
       expect(JSON.stringify(model.props.views)).toBe(before);
       expect(required()).not.toBeNull();
       expect(blockOf(model)?.querySelector('dv-table-view-ui')).toBeNull();
-      expect(blockOf(model)?.querySelector('.new-record')).toBeNull();
+      expect(byTestId('dv-tools-new-row')).toBeNull();
 
       connectButton()!.click();
       await settle();
@@ -321,8 +344,12 @@ describe('creating a database with a host picker', () => {
       expect(createDatabase).toHaveBeenCalledTimes(1);
       expect(model.props.externalSourceId).toBe('host:fresh');
       expect(model.props.views[0]).toMatchObject({ sourceId: 'src-new' });
+      // Connected with no row: an ordinary, editable, empty table.
+      expect(model.children).toHaveLength(0);
       expect(required()).toBeNull();
       expect(blockOf(model)!.dataSource).toBeInstanceOf(DocumentRowsSource);
+      expect(blockOf(model)!.dataSource.readonly$.value).toBe(false);
+      expect(blockOf(model)?.querySelector('dv-table-view-ui')).not.toBeNull();
 
       // Undoing the connection gives the rowless database back: empty again.
       window.doc.undo();
@@ -332,10 +359,7 @@ describe('creating a database with a host picker', () => {
     });
 
     test('read-only, the empty view offers nothing', async () => {
-      await tableView();
-      await settle();
-      await userEvent.keyboard('{Escape}');
-      await settle();
+      await dismissed();
       std.store.readonly = true;
       try {
         await settle();
@@ -346,19 +370,52 @@ describe('creating a database with a host picker', () => {
       }
     });
 
-    test('a native database with rows still renders them', async () => {
-      await tableView();
-      await settle();
-      await userEvent.keyboard('{Escape}');
-      await settle();
-      const model = database()!;
-      expect(required()).not.toBeNull();
-
+    test('native rows render read-only, whatever their count', async () => {
+      const model = await dismissed();
       window.doc.addBlock('affine:paragraph', {}, model.id);
       await settle();
 
       expect(required()).toBeNull();
+      expect(readOnlyNotice()).not.toBeNull();
       expect(blockOf(model)?.querySelector('dv-table-view-ui')).not.toBeNull();
+      expect(blockOf(model)!.dataSource.readonly$.value).toBe(true);
+      expect(byTestId('dv-tools-new-row')).toBeNull();
+    });
+
+    test('a hosted view whose source is gone offers a source and is re-pointed', async () => {
+      const model = await dismissed();
+      connectButton()!.click();
+      await settle();
+      byTestId('database-creation-new-source')!.click();
+      await settle();
+      expect(model.props.externalSourceId).toBe('host:fresh');
+
+      // The host deletes the source: the view now reads nothing.
+      window.doc.updateBlock(model, {
+        views: model.props.views.map(view => ({ ...view, sourceId: GONE })),
+      });
+      await settle();
+      expect(required()).not.toBeNull();
+      expect(byTestId('database-source-missing')).toBeNull();
+
+      connectButton()!.click();
+      await settle();
+      byTestId('database-creation-link-existing-entry')!.click();
+      await settle();
+      [
+        ...byTestId(
+          'database-creation-link-existing'
+        )!.querySelectorAll<HTMLElement>('affine-menu-sub-menu'),
+      ]
+        .find(item => item.textContent?.includes('Plan'))!
+        .click();
+      await settle();
+      byTestId('data-source-picker-source-src-2')!.click();
+      await settle();
+
+      expect(model.props.externalSourceId).toBe('host:plan');
+      expect(model.props.views[0]).toMatchObject({ sourceId: 'src-2' });
+      expect(required()).toBeNull();
     });
   });
 });

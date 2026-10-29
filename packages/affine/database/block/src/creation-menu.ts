@@ -9,6 +9,12 @@ export interface DatabaseCreationRequest {
   blockId: string;
   /** The block's element, to hang the menu from. */
   anchor: HTMLElement;
+  /**
+   * The view to connect, when the block already has a source the host no
+   * longer resolves ("Connect a source" of its empty view, ADR 0035
+   * amendment of 2026-10-29). Absent: the block's first view.
+   */
+  viewId?: string;
 }
 
 /**

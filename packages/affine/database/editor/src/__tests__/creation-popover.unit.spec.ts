@@ -13,7 +13,13 @@
  *   with no source) still connecting the block, or a pick connecting
  *   another block, another database or another source;
  * - the tooling extension no longer registering the menu core's entries
- *   read (`DatabaseCreationMenuIdentifier`).
+ *   read (`DatabaseCreationMenuIdentifier`);
+ * - a hosted block whose source is gone (ADR 0035 amendment of 2026-10-29)
+ *   connected with `connectDatabaseToSource`, which refuses it, instead of
+ *   re-pointing the asked view (`reconnectDatabaseView`);
+ * - the entries without the stable test ids a host's end-to-end suite
+ *   selects them by (`database-creation-new-source`,
+ *   `database-creation-link-existing-entry`).
  */
 import { DatabaseCreationMenuIdentifier } from '@labre/affine-database-block';
 import {
@@ -33,9 +39,11 @@ import { databaseCreationItems } from '../creation-popover.js';
 import { DatabaseEditorToolingViewExtension } from '../view.js';
 
 const connect = vi.hoisted(() => vi.fn(() => true));
+const reconnect = vi.hoisted(() => vi.fn(() => true));
 vi.mock('@labre/affine-database-block', async importOriginal => ({
   ...(await importOriginal<typeof import('@labre/affine-database-block')>()),
   connectDatabaseToSource: connect,
+  reconnectDatabaseView: reconnect,
 }));
 
 beforeAll(() => {
@@ -45,6 +53,7 @@ beforeAll(() => {
 afterEach(() => {
   document.body.innerHTML = '';
   connect.mockClear();
+  reconnect.mockClear();
 });
 
 const PLAN: DataSourcePickerDatabase = {
@@ -61,13 +70,20 @@ const PEOPLE: DataSourcePickerDatabase = {
   sources: [{ id: 's-3', title: 'Team' }],
 };
 
-const BLOCK = { id: 'block-1', flavour: 'affine:database' };
+const BLOCK = {
+  id: 'block-1',
+  flavour: 'affine:database',
+  props: { views: [{ id: 'v-1' }] } as {
+    externalSourceId?: string;
+    views: { id: string }[];
+  },
+};
 
-function fakeStd(): BlockStdScope {
+function fakeStd(block: typeof BLOCK = BLOCK): BlockStdScope {
   return {
     store: {
       readonly: false,
-      getModelById: (id: string) => (id === BLOCK.id ? BLOCK : null),
+      getModelById: (id: string) => (id === BLOCK.id ? block : null),
     },
     getOptional: () => null,
   } as unknown as BlockStdScope;
@@ -76,14 +92,17 @@ function fakeStd(): BlockStdScope {
 const frame = () =>
   new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
 
-async function open(picker: DataSourcePickerService) {
-  const std = fakeStd();
+async function open(
+  picker: DataSourcePickerService,
+  std = fakeStd(),
+  viewId?: string
+) {
   const anchor = document.createElement('div');
   document.body.append(anchor);
   popMenu(popupTargetFromElement(anchor), {
     options: {
       testId: 'database-creation-popover',
-      items: databaseCreationItems(std, picker, BLOCK.id),
+      items: databaseCreationItems(std, picker, BLOCK.id, viewId),
     },
   });
   await frame();
@@ -103,6 +122,9 @@ describe('the creation popover', () => {
     });
     expect(byTestId('database-creation-new-source')).not.toBeNull();
     expect(linkEntry()).not.toBeNull();
+    expect(linkEntry()!.dataset.testid).toBe(
+      'database-creation-link-existing-entry'
+    );
   });
 
   test('no "Link an existing source" over an empty list', async () => {
@@ -175,6 +197,51 @@ describe('the creation popover', () => {
     }
     expect(createDatabase).toHaveBeenCalledTimes(2);
     expect(connect).not.toHaveBeenCalled();
+  });
+});
+
+describe('a hosted block whose source is gone', () => {
+  const hosted = () =>
+    fakeStd({
+      ...BLOCK,
+      props: { externalSourceId: 'db-gone', views: [{ id: 'v-1' }] },
+    });
+
+  test('"New empty source" re-points the asked view', async () => {
+    const std = await open(
+      { list: () => signal([]), createDatabase: vi.fn(async () => PEOPLE) },
+      hosted(),
+      'v-2'
+    );
+    byTestId('database-creation-new-source')!.click();
+    await vi.waitFor(() => expect(reconnect).toHaveBeenCalledTimes(1));
+    expect(connect).not.toHaveBeenCalled();
+    expect(reconnect).toHaveBeenCalledWith(std, expect.anything(), {
+      database: PEOPLE,
+      sourceId: 's-3',
+      viewId: 'v-2',
+    });
+  });
+
+  test('a linked source re-points the first view when none is asked', async () => {
+    const std = await open({ list: () => signal([PLAN]) }, hosted());
+    linkEntry()!.click();
+    await frame();
+    [
+      ...byTestId(
+        'database-creation-link-existing'
+      )!.querySelectorAll<HTMLElement>('affine-menu-sub-menu'),
+    ]
+      .find(item => item.textContent?.includes('Plan'))!
+      .click();
+    await frame();
+    byTestId('data-source-picker-source-s-1')!.click();
+    expect(connect).not.toHaveBeenCalled();
+    expect(reconnect).toHaveBeenCalledWith(std, expect.anything(), {
+      database: PLAN,
+      sourceId: 's-1',
+      viewId: 'v-1',
+    });
   });
 });
 

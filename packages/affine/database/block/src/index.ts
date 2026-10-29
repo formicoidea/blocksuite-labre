@@ -1,5 +1,9 @@
 export * from './adapters';
 export * from './commands';
+export {
+  canCreateDatabase,
+  createDatabaseByGesture,
+} from './configs/slash-menu.js';
 export * from './config';
 export * from './context';
 export * from './creation-menu.js';

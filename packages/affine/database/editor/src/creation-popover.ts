@@ -3,6 +3,7 @@ import {
   DATABASE_CREATION_TITLE,
   type DatabaseCreationMenu,
   type DatabaseCreationRequest,
+  reconnectDatabaseView,
 } from '@labre/affine-database-block';
 import {
   menu,
@@ -42,19 +43,31 @@ function databaseModel(
  * The popover's items, from the picker alone (held by
  * `creation-popover.unit.spec.ts`): "New empty source" when the host creates
  * a database, "Link an existing source" when it lists one, each connecting
- * the block it was opened over (`connectDatabaseToSource`). A cancelled
- * creation (`null`, or a database with no source) writes nothing.
+ * the block it was opened over: `connectDatabaseToSource` for a block with
+ * no source, `reconnectDatabaseView` on `viewId` (else the first view) for
+ * a hosted block whose source the host no longer resolves (ADR 0035
+ * amendment of 2026-10-29). A cancelled creation (`null`, or a database
+ * with no source) writes nothing.
  */
 export function databaseCreationItems(
   std: BlockStdScope,
   picker: DataSourcePickerService,
-  blockId: string
+  blockId: string,
+  viewId?: string
 ): MenuConfig[] {
   const t = (wording: readonly [string, string]) =>
     translateKey(std, wording[0], wording[1]);
   const connect = (database: DataSourcePickerDatabase, sourceId: string) => {
     const model = databaseModel(std, blockId);
-    if (model) connectDatabaseToSource(std, model, { database, sourceId });
+    if (!model) return;
+    if (model.props.externalSourceId === undefined) {
+      connectDatabaseToSource(std, model, { database, sourceId });
+      return;
+    }
+    const view = viewId ?? model.props.views[0]?.id;
+    if (view) {
+      reconnectDatabaseView(std, model, { database, sourceId, viewId: view });
+    }
   };
   const createDatabase = picker.createDatabase;
   const list = picker.list();
@@ -77,9 +90,9 @@ export function databaseCreationItems(
     menu.subMenu({
       name: t(DATABASE_CREATION_LINK_EXISTING),
       prefix: LinkIcon(),
-      // A sub-menu entry takes no test id: the class names the entry, the
-      // test id the menu it opens.
+      // The entry's test id names the entry, the options' the menu it opens.
       class: 'database-creation-link-existing',
+      testId: 'database-creation-link-existing-entry',
       hide: () => list.value.length === 0,
       options: {
         testId: 'database-creation-link-existing',
@@ -105,14 +118,14 @@ export function databaseCreationItems(
  */
 export function databaseCreationMenu(): DatabaseCreationMenu {
   return {
-    open: ({ std, blockId, anchor }: DatabaseCreationRequest) => {
+    open: ({ std, blockId, anchor, viewId }: DatabaseCreationRequest) => {
       const picker = std.getOptional(DataSourcePickerProvider);
       if (!picker) return;
       popMenu(popupTargetFromElement(anchor), {
         options: {
           title: { text: translateKey(std, ...DATABASE_CREATION_TITLE) },
           testId: 'database-creation-popover',
-          items: databaseCreationItems(std, picker, blockId),
+          items: databaseCreationItems(std, picker, blockId, viewId),
         },
       });
     },

@@ -9,6 +9,7 @@ import {
 import { html, nothing, type TemplateResult } from 'lit';
 import { property } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
+import { ifDefined } from 'lit/directives/if-defined.js';
 
 import { MenuFocusable } from './focusable.js';
 import { Menu, type MenuOptions } from './menu.js';
@@ -20,6 +21,8 @@ export type MenuSubMenuData = {
   options: MenuOptions;
   select?: () => void;
   class?: string;
+  /** Names the entry itself; `options.testId` names the menu it opens. */
+  testId?: string;
 };
 export const subMenuOffset = offset({
   mainAxis: 16,
@@ -96,7 +99,12 @@ export class MenuSubMenu extends MenuFocusable {
       'affine-menu-button': true,
       focused: this.isFocused$.value,
     });
-    return html` <div class="${classString}">${this.data.content()}</div>`;
+    return html` <div
+      class="${classString}"
+      data-testid=${ifDefined(this.data.testId)}
+    >
+      ${this.data.content()}
+    </div>`;
   }
 
   @property({ attribute: false })
@@ -143,7 +151,12 @@ export class MobileSubMenu extends MenuFocusable {
       'mobile-menu-button': true,
       focused: this.isFocused$.value,
     });
-    return html` <div class="${classString}">${this.data.content()}</div>`;
+    return html` <div
+      class="${classString}"
+      data-testid=${ifDefined(this.data.testId)}
+    >
+      ${this.data.content()}
+    </div>`;
   }
 
   @property({ attribute: false })
@@ -173,6 +186,7 @@ export const subMenuItems = {
       postfix?: TemplateResult;
       prefix?: TemplateResult;
       class?: string;
+      testId?: string;
       options: MenuOptions;
       disableArrow?: boolean;
       hide?: () => boolean;
@@ -190,6 +204,7 @@ export const subMenuItems = {
             ${config.postfix}
             ${config.disableArrow ? nothing : ArrowRightSmallIcon()} `,
         class: config.class,
+        testId: config.testId,
         options: config.options,
       };
       return renderSubMenu(data, menu);

@@ -83,7 +83,7 @@ import {
 } from './database-block-styles.js';
 import { BlockRenderer } from './detail-panel/block-renderer.js';
 import { NoteRenderer } from './detail-panel/note-renderer.js';
-import { awaitsSource } from './linked-view.js';
+import { sourceRequirement } from './linked-view.js';
 import { DatabaseSelection } from './selection.js';
 import { isStandaloneDatabase } from './standalone-layout.js';
 import {
@@ -102,6 +102,7 @@ import {
   DATABASE_SOURCE_MISSING_HINT,
   DATABASE_SOURCE_REQUIRED,
   DATABASE_SOURCE_REQUIRED_HINT,
+  DATABASE_SOURCE_REQUIRED_READ_ONLY,
 } from './translations.js';
 import { currentViewStorage, initialViewId } from './utils/current-view.js';
 import { getSingleDocIdFromText } from './utils/title-doc.js';
@@ -262,6 +263,14 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
       this.std.getOptional(DatabaseInitialViewProvider)
     );
     if (id) dataSource.viewManager.setCurrentView(id);
+    // A native database under a host that requires a source is never edited
+    // natively, whatever its row count (`sourceRequirement`).
+    if (
+      dataSource instanceof DatabaseBlockDataSource &&
+      sourceRequirement(this.std, this.model) !== 'none'
+    ) {
+      dataSource.locked$.value = true;
+    }
     return dataSource;
   }
 
@@ -379,6 +388,7 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
             ${renderUniLit(this.toolsWidget, props)}
           </div>
           ${renderUniLit(widgetPresets.quickSettingBar, props)}
+          ${this.renderReadOnlyNotice()}
           <affine-database-values-banner
             .dataSource="${this.dataSource}"
             .std="${this.std}"
@@ -599,18 +609,27 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
   };
 
   /**
-   * A database waiting for its source (`awaitsSource`: a host that sets
-   * `requireSource`, ADR 0035 amendment of 2026-10-29) draws its title and
-   * this in place of the view bar, the tools and the body: no row, no "New",
-   * no cell to type or paste into, so nothing native is written. The button
-   * reopens the creation popover over the block, the gesture finished later;
-   * a read-only document, or a host without the bundle's creation menu, gets
-   * the notice alone.
+   * A database a host that requires a source must connect first
+   * (`sourceRequirement` is `'connect'`, ADR 0035 amendment of 2026-10-29):
+   * no source and no row, or a hosted source the host no longer resolves.
+   * Drawn in place of the tools and the body: no row, no "New", no cell to
+   * type or paste into, so nothing is written. A hosted block keeps its view
+   * bar, since another of its views may still read a source. The button
+   * reopens the creation popover over the block, for the current view; a
+   * read-only document, or a host without the bundle's creation menu, gets
+   * the notice alone. Takes precedence over "Source not found" (§7).
    */
-  private readonly renderAwaitingSource = (
+  private readonly renderSourceRequired = (
     dataViewLogic: DataViewUILogicBase
   ) => {
-    if (!awaitsSource(this.std, this.model)) return undefined;
+    const dataSource = this.dataSource;
+    const sourceMissing =
+      dataSource instanceof HostedDataSourceBase &&
+      dataSource.sourceMissing$.value;
+    if (sourceRequirement(this.std, this.model, sourceMissing) !== 'connect') {
+      return undefined;
+    }
+    const hosted = this.model.props.externalSourceId !== undefined;
     const creationMenu = this.std.getOptional(DatabaseCreationMenuIdentifier);
     const connect =
       creationMenu && !this.store.readonly$.value
@@ -619,12 +638,20 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
               std: this.std,
               blockId: this.blockId,
               anchor: this,
+              viewId: dataViewLogic.view.id,
             })
         : undefined;
     return html`<div class="${databaseHeaderContainerStyles}">
         <div class="${databaseTitleRowStyles}">
-          ${this.renderTitle(dataViewLogic)} ${this.renderDatabaseOps()}
+          ${this.renderTitle(dataViewLogic)}
         </div>
+        ${hosted
+          ? html`<div
+              class="${databaseToolbarRowStyles} ${databaseHeaderBarStyles}"
+            >
+              ${this.renderViewBar({ dataViewLogic })}
+            </div>`
+          : nothing}
       </div>
       <div
         class="${databaseSourceMissingStyles}"
@@ -645,6 +672,26 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
           : nothing}
       </div>`;
   };
+
+  /**
+   * Native rows under a host that requires a source (`sourceRequirement` is
+   * `'read-only'`): the rows render, locked (`locked$`), with this notice.
+   */
+  private renderReadOnlyNotice() {
+    if (sourceRequirement(this.std, this.model) !== 'read-only') {
+      return nothing;
+    }
+    return html`<div
+      class="${databaseSourceMissingStyles}"
+      data-testid="database-source-required-read-only"
+      role="status"
+    >
+      <div>${translateKey(this.std, ...DATABASE_SOURCE_REQUIRED)}</div>
+      <div class="${databaseSourceMissingHintStyles}">
+        ${translateKey(this.std, ...DATABASE_SOURCE_REQUIRED_READ_ONLY)}
+      </div>
+    </div>`;
+  }
 
   private renderDatabaseOps() {
     if (this.dataSource.readonly$.value) {
@@ -740,7 +787,7 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
       dataSource: this.dataSource,
       headerWidget: this.headerWidget,
       viewPlaceholder: logic =>
-        this.renderAwaitingSource(logic) ?? this.renderSourceMissing(logic),
+        this.renderSourceRequired(logic) ?? this.renderSourceMissing(logic),
       onDrag: this.onDrag,
       clipboard: this.std.clipboard,
       dnd: this.std.dnd,

@@ -1086,40 +1086,64 @@ sorts, grouping, columns, `sourceId`, §8); the schema stays the source's.
 ### 2026-10-29: B, a host may require a source
 
 Asked by the Labre product owner on 2026-10-29: in Labre a table or a
-kanban inserted on a page is always backed by a base, so the native inline
-database that B leaves when the popover is closed without a choice must not
-become a native table there. A first reading (closing the popover runs "New
-empty source") was withdrawn the same day: "if no source is selected, the
-view must be empty, that's all". Nothing is created, connected or written
-on closing.
+kanban on a page is always backed by a base. Two readings were withdrawn the
+same day: closing the popover runs "New empty source" ("if no source is
+selected, the view must be empty, that's all"), then a rule on "no source
+AND no row" ("no rows does NOT mean no source"). What stands, decided by the
+product owner on review of #566:
 
 - **The option.** `DataSourcePickerService.requireSource?: boolean`, an
-  optional field of the existing picker seam (§9c), so no new seam and a
-  widening only. Absent or `false`, B is unchanged.
-- **The rule (`awaitsSource`, `database/block`).** With the option, a
-  database block with no `externalSourceId` AND no row waits for its source:
-  it draws its title, its ops menu and a notice ("No source connected")
-  through the data-view's `viewPlaceholder`, the hook the missing source of
-  §7 already uses, in place of the view bar, the tools and the body. No row
-  is drawn, so there is no "New", no cell to type or paste into, and no
-  view to add: nothing native can be written beside the host's databases.
-  A "Connect a source" button reopens the creation popover
-  (`DatabaseCreationMenuIdentifier`) over the block, so the gesture can be
-  finished later; it is absent on a read-only document and without the
-  bundle's creation menu.
-- **Existing native databases.** A native database that HAS rows renders
-  them whatever the host requires: documents render forever, and the
-  decision is about the creation gesture, whose database is inserted
-  rowless. Consequence accepted: a native database whose last row is
-  deleted waits for a source too, and connecting it replaces its native
-  schema (`connectDatabaseToSource`, as in B).
-- **Undo, copy, paste.** Nothing is written by the rule, so undo is B's:
-  undoing a connection gives the rowless database back, which waits again.
-  A copy carries the block's props and children, so a waiting block pastes
-  as a waiting block, and a connected one as connected. "Turn into a
-  database" and the mobile keyboard toolbar still insert native databases
-  with rows (B's follow-ups), which this rule does not hide.
-- Held by `database/block/src/__tests__/awaits-source.unit.spec.ts` and
-  `integration-test/…/page/database-creation-popover.spec.ts` (Escape
-  writes nothing, the empty view, "Connect a source", read-only, a native
-  database with rows).
+  optional field of the existing picker seam (§9c): no new seam, a widening.
+  Absent or `false`, B is unchanged.
+- **The source decides, never the row count** (`sourceRequirement`,
+  `database/block`). Nothing is stored: a native database and a creation
+  gesture left unfinished are the same bytes (no `externalSourceId`, views
+  without `sourceId`), so the rule cannot tell them apart and does not try.
+
+| Block                                                                | Shows                                                                                                                                       |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| a source the host resolves, rows or none                             | the ordinary editable table (`'none'`)                                                                                                      |
+| no source, no row (the popover dismissed)                            | an empty view: title, "No source connected", "Connect a source" (`'connect'`)                                                               |
+| no source, native rows (before 1.0, a host without picker, pasted)   | the rows READ-ONLY with a notice (`'read-only'`); documents render forever                                                                  |
+| a hosted source the host no longer resolves (source or base deleted) | the same empty view as `'connect'`, view bar kept (another view may still read a source), replacing "Source not found" (§7) under this host |
+
+- **Read-only is the data source's.** `HostedDataSourceBase.locked$` joins
+  `readonly$`, which every write path of the view layer already reads
+  (cells, paste, drag, "New", view and property menus); the block sets it
+  on the native source of a block with no source. So a native database is
+  never edited, whatever its row count, and no row is ever added beside the
+  host's databases.
+- **"Connect a source"** reopens the creation popover
+  (`DatabaseCreationMenuIdentifier`) over the block, for its current view
+  (`DatabaseCreationRequest.viewId`, a widening of a registry between
+  library packages). A block with no source is connected as in B
+  (`connectDatabaseToSource`); a hosted view whose source is gone is
+  re-pointed (`reconnectDatabaseView`): the block takes the picked
+  database's `externalSourceId` when it differs, the view its `sourceId`
+  and data re-derived over it, the other views untouched, one undo step.
+  The button is absent on a read-only document and without the bundle's
+  menu. Closing the popover writes nothing.
+- **One creation gesture.** The mobile keyboard toolbar's "Table view" and
+  "Kanban view" run the slash entries' gesture (`createDatabaseByGesture`):
+  with a picker they no longer insert three native rows the host would not
+  see. This closes B's follow-up for every host with a picker, not only one
+  that sets the option.
+- **"Create Table" (`convertToDatabase`) is hidden** when the host requires
+  a source (`canConvertToDatabase`): it would build a native database shown
+  read-only at once. The "turn into a base" flow (`createDatabaseFrom`, the
+  "Move into a base" button of the read-only notice) is a PR of its own.
+- **Deleting a source** (the last view reading it, and the original source
+  taking its base along) is the host's, through a hook of its own PR; nothing
+  here deletes or creates a source.
+- **Test ids** for a host's end-to-end suite: `database-creation-new-source`,
+  `database-creation-link-existing-entry` (a sub-menu entry now takes a
+  `testId` of its own, beside the one of the menu it opens,
+  `database-creation-link-existing`), `database-source-required`,
+  `database-source-required-connect`, `database-source-required-read-only`.
+- **Undo, copy, paste.** The rule writes nothing, so undo is B's: undoing
+  a connection gives the database with no source back, which shows the
+  empty view again. A copy carries the block's props and children, so it
+  pastes in the same state.
+- Held by `database/block/src/__tests__/source-requirement.unit.spec.ts`,
+  `database/editor/src/__tests__/creation-popover.unit.spec.ts` and
+  `integration-test/…/page/database-creation-popover.spec.ts`.

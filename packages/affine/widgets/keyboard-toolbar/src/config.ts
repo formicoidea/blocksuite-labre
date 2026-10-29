@@ -1,5 +1,8 @@
 import { pickAndAddSiblingAttachmentBlocks } from '@labre/affine-block-attachment';
-import { insertDatabaseBlockCommand } from '@labre/affine-database-block';
+import {
+  canCreateDatabase,
+  createDatabaseByGesture,
+} from '@labre/affine-database-block';
 import { insertEmptyEmbedIframeCommand } from '@labre/affine-block-embed';
 import { insertImagesCommand } from '@labre/affine-block-image';
 import { insertLatexBlockCommand } from '@labre/affine-block-latex';
@@ -745,34 +748,23 @@ const databaseToolGroup: KeyboardToolPanelGroup = {
       name: 'Table view',
       icon: DatabaseTableViewIcon(),
       showWhen: ({ std }) =>
-        std.store.schema.flavourSchemaMap.has('affine:database'),
+        std.store.schema.flavourSchemaMap.has('affine:database') &&
+        canCreateDatabase(std),
+      // The slash entries' gesture (ADR 0035 amendment of 2026-10-29): with
+      // a host picker, the popover over a rowless database, never 3 native
+      // rows the host would not see.
       action: ({ std }) => {
-        std.command
-          .chain()
-          .pipe(getSelectedModelsCommand)
-          .pipe(insertDatabaseBlockCommand, {
-            viewType: viewPresets.tableViewMeta.type,
-            place: 'after',
-            removeEmptyLine: true,
-          })
-          .run();
+        createDatabaseByGesture(std, viewPresets.tableViewMeta.type);
       },
     },
     {
       name: 'Kanban view',
       icon: DatabaseKanbanViewIcon(),
       showWhen: ({ std }) =>
-        std.store.schema.flavourSchemaMap.has('affine:database'),
+        std.store.schema.flavourSchemaMap.has('affine:database') &&
+        canCreateDatabase(std),
       action: ({ std }) => {
-        std.command
-          .chain()
-          .pipe(getSelectedModelsCommand)
-          .pipe(insertDatabaseBlockCommand, {
-            viewType: viewPresets.kanbanViewMeta.type,
-            place: 'after',
-            removeEmptyLine: true,
-          })
-          .run();
+        createDatabaseByGesture(std, viewPresets.kanbanViewMeta.type);
       },
     },
   ],
