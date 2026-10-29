@@ -35,6 +35,17 @@ import {
   getDepth,
   popFilterGroup,
 } from './group-panel-view.js';
+import {
+  TOOLBAR_DUPLICATE,
+  TOOLBAR_DELETE,
+} from '@labre/affine-shared/services';
+import { wordingFrom } from '../../../core/utils/wording.js';
+import {
+  DATA_VIEW_FILTERS,
+  DATA_VIEW_FILTER_TURN_INTO_GROUP,
+  DATA_VIEW_FILTER_WRAP_IN_GROUP,
+  DATA_VIEW_GROUP_ADD,
+} from '../../../translations.js';
 
 export class FilterRootView extends SignalWatcher(ShadowlessElement) {
   static override styles = css`
@@ -210,7 +221,11 @@ export class FilterRootView extends SignalWatcher(ShadowlessElement) {
     }
     popFilterableSimpleMenu(popupTargetFromElement(target), [
       menu.action({
-        name: filter.type === 'filter' ? 'Turn into group' : 'Wrap in group',
+        name: wordingFrom(this)(
+          filter.type === 'filter'
+            ? DATA_VIEW_FILTER_TURN_INTO_GROUP
+            : DATA_VIEW_FILTER_WRAP_IN_GROUP
+        ),
         prefix: ConvertIcon(),
         onHover: hover => {
           this.containerClass = hover
@@ -227,7 +242,7 @@ export class FilterRootView extends SignalWatcher(ShadowlessElement) {
         },
       }),
       menu.action({
-        name: 'Duplicate',
+        name: wordingFrom(this)(TOOLBAR_DUPLICATE),
         prefix: DuplicateIcon(),
         onHover: hover => {
           this.containerClass = hover
@@ -248,7 +263,7 @@ export class FilterRootView extends SignalWatcher(ShadowlessElement) {
         name: '',
         items: [
           menu.action({
-            name: 'Delete',
+            name: wordingFrom(this)(TOOLBAR_DELETE),
             prefix: DeleteIcon(),
             class: { 'delete-item': true },
             onHover: hover => {
@@ -386,7 +401,7 @@ export const popFilterRoot = (
   popMenu(target, {
     options: {
       title: {
-        text: 'Filters',
+        text: wordingFrom(target.element)(DATA_VIEW_FILTERS),
         onBack: props.onBack,
       },
       items: [
@@ -405,7 +420,7 @@ export const popFilterRoot = (
         menu.group({
           items: [
             menu.action({
-              name: 'Add',
+              name: wordingFrom(target.element)(DATA_VIEW_GROUP_ADD),
               prefix: PlusIcon(),
               select: ele => {
                 const value = filterTrait.filter$.value;

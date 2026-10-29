@@ -21,15 +21,17 @@ import { GroupTitle } from '../../../core/group-by/group-title.js';
 import { hideGroupAction } from '../../../core/group-by/group-visibility.js';
 import type { Group } from '../../../core/group-by/trait.js';
 import type { Row } from '../../../core/index.js';
-import { wordingOf } from '../../../core/utils/wording.js';
+import { wordingOf, wordingFrom } from '../../../core/utils/wording.js';
 import {
   DATA_VIEW_GROUP_COLLAPSE,
   DATA_VIEW_GROUP_EXPAND,
   DATA_VIEW_NEW_PAGE,
+  DATA_VIEW_GROUP_DELETE_CARDS,
 } from '../../../translations.js';
 import { getCollapsedState, setCollapsedState } from '../collapsed-state.js';
 import { LEFT_TOOL_BAR_WIDTH } from '../consts.js';
 import type { MobileTableViewUILogic } from './table-view-ui-logic.js';
+import { TOOLBAR_UNGROUP } from '@labre/affine-shared/services';
 
 const styles = css`
   /* "+ New page" under the rows: a full row, 44px for a finger (P7). */
@@ -140,7 +142,7 @@ export class MobileTableGroup extends SignalWatcher(
     const ele = e.currentTarget as HTMLElement;
     popFilterableSimpleMenu(popupTargetFromElement(ele), [
       menu.action({
-        name: 'Ungroup',
+        name: wordingFrom(this)(TOOLBAR_UNGROUP),
         hide: () => group.value == null,
         select: () => {
           group.rows.forEach(row => {
@@ -150,7 +152,7 @@ export class MobileTableGroup extends SignalWatcher(
       }),
       hideGroupAction(group, wordingOf(this.std)),
       menu.action({
-        name: 'Delete Cards',
+        name: wordingFrom(this)(DATA_VIEW_GROUP_DELETE_CARDS),
         select: () => {
           this.view.rowsDelete(group.rows.map(row => row.rowId));
           this.requestUpdate();

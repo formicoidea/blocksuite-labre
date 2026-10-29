@@ -40,6 +40,8 @@ import {
   tableViewStyle,
   tableWrapperStyle,
 } from './table-view-style';
+import { DATA_VIEW_GROUP_NEW } from '../../../translations.js';
+import { wordingFrom } from '../../../core/utils/wording.js';
 
 export class TableViewUILogic extends DataViewUILogicBase<
   TableSingleView,
@@ -155,7 +157,7 @@ export class TableViewUILogic extends DataViewUILogicBase<
     return html` <div style="display:flex;">
       <div class="${addGroupStyle}" @click="${add}">
         <div class="${addGroupIconStyle}">${AddCursorIcon()}</div>
-        <div>New Group</div>
+        <div>${wordingFrom(this.ui$.value)(DATA_VIEW_GROUP_NEW)}</div>
       </div>
     </div>`;
   };

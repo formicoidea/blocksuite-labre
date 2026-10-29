@@ -52,6 +52,8 @@ import {
   getScrollContainer,
   GridVirtualScroll,
 } from './virtual/virtual-scroll.js';
+import { DATA_VIEW_GROUP_NEW } from '../../../translations.js';
+import { wordingFrom } from '../../../core/utils/wording.js';
 
 export class VirtualTableViewUILogic extends DataViewUILogicBase<
   TableSingleView,
@@ -201,7 +203,7 @@ export class VirtualTableViewUILogic extends DataViewUILogicBase<
     return html` <div style="display:flex;">
       <div class="${dv.hover} ${dv.round8} ${styles.addGroup}" @click="${add}">
         <div class="${dv.icon16}" style="display:flex;">${AddCursorIcon()}</div>
-        <div>New Group</div>
+        <div>${wordingFrom(this.ui$.value)(DATA_VIEW_GROUP_NEW)}</div>
       </div>
     </div>`;
   };

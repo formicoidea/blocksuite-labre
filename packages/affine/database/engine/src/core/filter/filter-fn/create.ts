@@ -5,6 +5,8 @@ import type {
   TypeVarDefinitionInstance,
   TypeVarReferenceInstance,
 } from '../../logical/type-variable.js';
+import { type ChromeWording } from '@labre/affine-shared/services';
+import { type Wording } from '../../utils/wording.js';
 
 export type FilterConfig<
   Self extends TypeInstance = TypeInstance,
@@ -13,7 +15,14 @@ export type FilterConfig<
 > = {
   name: string;
   label: string;
+  /** {@link label} as a key with its English fallback (#572). */
+  labelWording?: ChromeWording;
+  /**
+   * The condition's value as the filter bar shows it after the property
+   * name; `wording` resolves its words in the host's language.
+   */
   shortString: (
+    wording: Wording,
     ...args: {
       [K in keyof Args]:
         | {

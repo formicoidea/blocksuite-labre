@@ -205,7 +205,7 @@ describe('the properties list of a view', () => {
       'Hide In View',
       'Filter',
       'Sort Ascending',
-      'Insert Left Column',
+      'Insert left column',
       'Duplicate',
       'Delete',
     ]) {

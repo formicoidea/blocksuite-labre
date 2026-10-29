@@ -29,6 +29,7 @@ import {
   DATA_VIEW_PROPERTY_SETTINGS,
   VIEWS_BAR_MOVE_LEFT,
   VIEWS_BAR_MOVE_RIGHT,
+  DATA_VIEW_NUMBER_FORMAT,
 } from '../../../translations.js';
 import { MOBILE_TOUCH_TARGET } from '../consts.js';
 import type { TableProperty, TableSingleView } from '../table-view-manager.js';
@@ -84,13 +85,13 @@ export class MobileTableColumnHeader extends SignalWatcher(
           afterType: enableNumberFormatting
             ? [
                 menu.subMenu({
-                  name: 'Number Format',
+                  name: wording(DATA_VIEW_NUMBER_FORMAT),
                   hide: () =>
                     !this.column.dataUpdate ||
                     this.column.type$.value !== 'number',
                   options: {
                     title: {
-                      text: 'Number Format',
+                      text: wording(DATA_VIEW_NUMBER_FORMAT),
                     },
                     items: [
                       numberFormatConfig(this.column),
@@ -102,7 +103,7 @@ export class MobileTableColumnHeader extends SignalWatcher(
                             style="font-size: var(--affine-font-base); scale: 1.2;"
                             >${format.symbol}</span
                           >`,
-                          name: format.label,
+                          name: wording(format.labelWording),
                           select: () => {
                             if (data.format === format.type) return;
                             this.column.dataUpdate(() => ({

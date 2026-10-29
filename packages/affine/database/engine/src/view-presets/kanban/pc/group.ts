@@ -20,8 +20,13 @@ import {
 } from '../../../core/group-by/group-visibility.js';
 import type { Group } from '../../../core/group-by/trait.js';
 import { dragHandler } from '../../../core/utils/wc-dnd/dnd-context.js';
-import { wordingOf } from '../../../core/utils/wording.js';
+import { wordingOf, wordingFrom } from '../../../core/utils/wording.js';
 import type { KanbanViewUILogic } from './kanban-view-ui-logic.js';
+import {
+  DATA_VIEW_GROUP_DELETE_CARDS,
+  DATA_VIEW_GROUP_ADD,
+} from '../../../translations.js';
+import { TOOLBAR_UNGROUP } from '@labre/affine-shared/services';
 
 const styles = css`
   affine-data-view-kanban-group {
@@ -172,7 +177,7 @@ export class KanbanGroup extends SignalWatcher(
     const ele = e.currentTarget as HTMLElement;
     popFilterableSimpleMenu(popupTargetFromElement(ele), [
       menu.action({
-        name: 'Ungroup',
+        name: wordingFrom(this)(TOOLBAR_UNGROUP),
         hide: () => this.group.value == null,
         select: () => {
           this.group.rows.forEach(row => {
@@ -183,7 +188,7 @@ export class KanbanGroup extends SignalWatcher(
       }),
       hideGroupAction(this.group, wordingOf(this.std)),
       menu.action({
-        name: 'Delete Cards',
+        name: wordingFrom(this)(DATA_VIEW_GROUP_DELETE_CARDS),
         select: () => {
           this.view.rowsDelete(this.group.rows.map(row => row.rowId));
           this.requestUpdate();
@@ -230,7 +235,7 @@ export class KanbanGroup extends SignalWatcher(
               >
                 ${AddCursorIcon()}
               </div>
-              Add
+              ${wordingFrom(this)(DATA_VIEW_GROUP_ADD)}
             </div>`}
       </div>
     `;

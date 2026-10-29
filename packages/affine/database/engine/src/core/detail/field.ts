@@ -25,6 +25,17 @@ import type {
 import { renderUniLit } from '../utils/uni-component/uni-component.js';
 import type { Property } from '../view-manager/property.js';
 import type { SingleView } from '../view-manager/single-view.js';
+import {
+  DATA_VIEW_PROPERTY_SETTINGS,
+  DATA_VIEW_EMPTY_VALUE,
+} from '../../translations.js';
+import {
+  TOOLBAR_MOVE_UP,
+  TOOLBAR_MOVE_DOWN,
+  TOOLBAR_DUPLICATE,
+  TOOLBAR_DELETE,
+} from '@labre/affine-shared/services';
+import { wordingFrom } from '../utils/wording.js';
 
 export class RecordField extends SignalWatcher(
   WithDisposable(ShadowlessElement)
@@ -102,7 +113,7 @@ export class RecordField extends SignalWatcher(
     }
 
     .field-content.empty::before {
-      content: 'Empty';
+      content: attr(data-empty-label);
       color: var(--affine-text-disable-color);
       font-size: 14px;
       line-height: 22px;
@@ -125,7 +136,7 @@ export class RecordField extends SignalWatcher(
     popMenu(popupTargetFromElement(ele), {
       options: {
         title: {
-          text: 'Property settings',
+          text: wordingFrom(this)(DATA_VIEW_PROPERTY_SETTINGS),
         },
         items: [
           menu.group({
@@ -134,7 +145,7 @@ export class RecordField extends SignalWatcher(
           menu.group({
             items: [
               menu.action({
-                name: 'Move Up',
+                name: wordingFrom(this)(TOOLBAR_MOVE_UP),
                 prefix: html` <div
                   style="transform: rotate(90deg);display:flex;align-items:center;"
                 >
@@ -156,7 +167,7 @@ export class RecordField extends SignalWatcher(
                 },
               }),
               menu.action({
-                name: 'Move Down',
+                name: wordingFrom(this)(TOOLBAR_MOVE_DOWN),
                 prefix: html` <div
                   style="transform: rotate(90deg);display:flex;align-items:center;"
                 >
@@ -184,7 +195,7 @@ export class RecordField extends SignalWatcher(
             name: 'operation',
             items: [
               menu.action({
-                name: 'Duplicate',
+                name: wordingFrom(this)(TOOLBAR_DUPLICATE),
                 prefix: DuplicateIcon(),
                 hide: () => !this.column.canDuplicate,
                 select: () => {
@@ -192,7 +203,7 @@ export class RecordField extends SignalWatcher(
                 },
               }),
               menu.action({
-                name: 'Delete',
+                name: wordingFrom(this)(TOOLBAR_DELETE),
                 prefix: DeleteIcon(),
                 hide: () => !this.column.canDelete,
                 select: () => {
@@ -263,7 +274,11 @@ export class RecordField extends SignalWatcher(
           <div class="filed-name">${column.name$.value}</div>
         </div>
       </div>
-      <div @click="${this._click}" class="${contentClass}">
+      <div
+        @click="${this._click}"
+        class="${contentClass}"
+        data-empty-label="${wordingFrom(this)(DATA_VIEW_EMPTY_VALUE)}"
+      >
         ${renderUniLit(view, props, {
           ref: this._cell,
           class: 'kanban-cell',

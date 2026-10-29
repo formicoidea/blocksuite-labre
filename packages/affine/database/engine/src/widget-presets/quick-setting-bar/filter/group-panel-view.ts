@@ -25,6 +25,21 @@ import { repeat } from 'lit/directives/repeat.js';
 import type { Variable } from '../../../core/expression/types.js';
 import type { Filter, FilterGroup } from '../../../core/filter/types.js';
 import { firstFilter, firstFilterInGroup } from '../../../core/filter/utils.js';
+import {
+  DATA_VIEW_FILTER_AND,
+  DATA_VIEW_FILTER_OR,
+  DATA_VIEW_FILTER_TURN_INTO_GROUP,
+  DATA_VIEW_FILTER_WRAP_IN_GROUP,
+  DATA_VIEW_FILTER_WHERE,
+  DATA_VIEW_ADD_FILTER,
+  DATA_VIEW_FILTER_ADD_GROUP,
+  DATA_VIEW_FILTER_GROUP,
+} from '../../../translations.js';
+import {
+  TOOLBAR_DUPLICATE,
+  TOOLBAR_DELETE,
+} from '@labre/affine-shared/services';
+import { wordingFrom } from '../../../core/utils/wording.js';
 
 export const popAddNewFilter = (
   target: PopupTarget,
@@ -36,7 +51,7 @@ export const popAddNewFilter = (
 ) => {
   popFilterableSimpleMenu(target, [
     menu.action({
-      name: 'Add filter',
+      name: wordingFrom(target.element)(DATA_VIEW_ADD_FILTER),
       select: () => {
         props.onChange({
           ...props.value,
@@ -45,7 +60,7 @@ export const popAddNewFilter = (
       },
     }),
     menu.action({
-      name: 'Add filter group',
+      name: wordingFrom(target.element)(DATA_VIEW_FILTER_ADD_GROUP),
       select: () => {
         props.onChange({
           ...props.value,
@@ -208,7 +223,7 @@ export class FilterGroupView extends SignalWatcher(ShadowlessElement) {
       popupTargetFromElement(event.currentTarget as HTMLElement),
       [
         menu.action({
-          name: 'And',
+          name: wordingFrom(this)(DATA_VIEW_FILTER_AND),
           select: () => {
             this.onChange({
               ...this.filterGroup.value,
@@ -217,7 +232,7 @@ export class FilterGroupView extends SignalWatcher(ShadowlessElement) {
           },
         }),
         menu.action({
-          name: 'Or',
+          name: wordingFrom(this)(DATA_VIEW_FILTER_OR),
           select: () => {
             this.onChange({
               ...this.filterGroup.value,
@@ -239,8 +254,8 @@ export class FilterGroupView extends SignalWatcher(ShadowlessElement) {
   };
 
   private readonly opMap = {
-    and: 'And',
-    or: 'Or',
+    and: DATA_VIEW_FILTER_AND,
+    or: DATA_VIEW_FILTER_OR,
   };
 
   @property({ attribute: false })
@@ -270,8 +285,11 @@ export class FilterGroupView extends SignalWatcher(ShadowlessElement) {
       menu.group({
         items: [
           menu.action({
-            name:
-              filter.type === 'filter' ? 'Turn into group' : 'Wrap in group',
+            name: wordingFrom(this)(
+              filter.type === 'filter'
+                ? DATA_VIEW_FILTER_TURN_INTO_GROUP
+                : DATA_VIEW_FILTER_WRAP_IN_GROUP
+            ),
             prefix: ConvertIcon(),
             onHover: hover => {
               this.containerClass = hover
@@ -288,7 +306,7 @@ export class FilterGroupView extends SignalWatcher(ShadowlessElement) {
             },
           }),
           menu.action({
-            name: 'Duplicate',
+            name: wordingFrom(this)(TOOLBAR_DUPLICATE),
             prefix: DuplicateIcon(),
             onHover: hover => {
               this.containerClass = hover
@@ -314,7 +332,7 @@ export class FilterGroupView extends SignalWatcher(ShadowlessElement) {
         name: '',
         items: [
           menu.action({
-            name: 'Delete',
+            name: wordingFrom(this)(TOOLBAR_DELETE),
             prefix: DeleteIcon(),
             class: { 'delete-item': true },
             onHover: hover => {
@@ -348,14 +366,16 @@ export class FilterGroupView extends SignalWatcher(ShadowlessElement) {
           };
           let op: TemplateResult;
           if (i === 0) {
-            op = html` <div class="filter-group-op">Where</div>`;
+            op = html` <div class="filter-group-op">
+              ${wordingFrom(this)(DATA_VIEW_FILTER_WHERE)}
+            </div>`;
           } else {
             op = html`
               <div
                 class="filter-group-op filter-group-op-clickable"
                 @click="${this._selectOp}"
               >
-                ${this.opMap[data.op]}
+                ${wordingFrom(this)(this.opMap[data.op])}
               </div>
             `;
           }
@@ -447,7 +467,7 @@ export const popFilterGroup = (
   popMenu(target, {
     options: {
       title: {
-        text: 'Filter group',
+        text: wordingFrom(target.element)(DATA_VIEW_FILTER_GROUP),
         onBack: props.onBack,
       },
       items: [
@@ -465,7 +485,7 @@ export const popFilterGroup = (
         menu.group({
           items: [
             menu.action({
-              name: 'Delete',
+              name: wordingFrom(target.element)(TOOLBAR_DELETE),
               class: { 'delete-item': true },
               prefix: DeleteIcon(),
               select: () => {

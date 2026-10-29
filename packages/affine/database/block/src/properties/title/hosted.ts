@@ -24,6 +24,7 @@ import { titleColumnType, titlePropertyModelConfig } from './define.js';
 export const hostedTitlePropertyModelConfig = titleColumnType.modelConfig({
   // One wording and one data shape with the inline title column.
   name: titlePropertyModelConfig.config.name,
+  nameWording: titlePropertyModelConfig.config.nameWording,
   propertyData: titlePropertyModelConfig.config.propertyData,
   jsonValue: {
     schema: zod.string(),

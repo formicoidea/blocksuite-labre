@@ -399,10 +399,13 @@ function allFileTextPairs(counts: CountsByFile): [string, string][] {
  * SURFACE itself — not any one string on it — is out of scope for now.
  */
 const DEFERRED_DIRS = [
-  'packages/affine/database/engine/',
-  'packages/affine/database/block/',
+  // The database family was keyed at the recette of 1.1 (#572) but for
+  // its slash tooltips, which are illustrations (an SVG drawing a fake
+  // table), and the Notion import adapter, which runs headless.
+  'packages/affine/database/block/src/configs/tooltips.ts',
+  'packages/affine/database/view-block/src/configs/tooltips.ts',
+  'packages/affine/database/block/src/adapters/notion-html.ts',
   'packages/affine/blocks/table/',
-  'packages/affine/database/view-block/',
   'packages/affine/blocks/embed/src/embed-youtube-block/',
   'packages/affine/blocks/embed/src/embed-loom-block/',
   'packages/affine/blocks/embed/src/embed-figma-block/',
@@ -672,6 +675,25 @@ const KEPT_HITS: readonly { file: string; text: string }[] = [
   // - the diagnostic-panel messages built in universe-tag-defs-service.ts —
   //   the `message` argument of a local `issue(...)` HELPER call, not a
   //   `message: '…'` object property, so P3 does not match it.
+
+  // The database family, keyed at the recette of 1.1 (#572), leaves these
+  // detector hits that no reader sees: a `…title="true"` data attribute
+  // (the title textarea's `data-block-is-database-title`), the sort id the
+  // board gives a group with no key, and the number format bar's sample,
+  // two HTML entities around a formatted number.
+  {
+    file: 'packages/affine/database/block/src/components/title/index.ts',
+    text: 'true',
+  },
+  ...[
+    'packages/affine/database/engine/src/core/group-by/setting.ts',
+    'packages/affine/database/engine/src/core/group-by/setting.ts',
+    'packages/affine/database/engine/src/view-presets/kanban/pc/kanban-view-ui-logic.ts',
+  ].map(file => ({ file, text: 'default key' })),
+  ...[
+    'packages/affine/database/engine/src/view-presets/table/pc/header/number-format-bar.ts',
+    'packages/affine/database/engine/src/view-presets/table/pc-virtual/group/top/header/number-format-bar.ts',
+  ].map(file => ({ file, text: '&lpar;&nbsp;${}&nbsp;&rpar;' })),
 ];
 
 const keptLookup = new Set(KEPT_HITS.map(({ file, text }) => `${file} ${text}`));

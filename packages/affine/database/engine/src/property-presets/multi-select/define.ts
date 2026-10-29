@@ -5,11 +5,13 @@ import { getTagColor } from '../../core/component/tags/colors.js';
 import { type SelectTag, t } from '../../core/index.js';
 import { propertyType } from '../../core/property/property-config.js';
 import { SelectPropertySchema } from '../select/define.js';
+import { DATA_VIEW_TYPE_MULTI_SELECT } from '../../translations.js';
 export const multiSelectPropertyType = propertyType('multi-select');
 
 export const multiSelectPropertyModelConfig =
   multiSelectPropertyType.modelConfig({
-    name: 'Multi-select',
+    name: DATA_VIEW_TYPE_MULTI_SELECT[1],
+    nameWording: DATA_VIEW_TYPE_MULTI_SELECT,
     propertyData: {
       schema: SelectPropertySchema,
       default: () => ({

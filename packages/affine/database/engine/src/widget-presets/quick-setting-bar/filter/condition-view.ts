@@ -28,8 +28,20 @@ import {
   type TypeInstance,
   typeSystem,
 } from '../../../core/index.js';
+import { TOOLBAR_DELETE } from '@labre/affine-shared/services';
+import {
+  sayLabel,
+  type Wording,
+  wordingFrom,
+} from '../../../core/utils/wording.js';
+import { DATA_VIEW_FILTER_INVALID } from '../../../translations.js';
 
 export class FilterConditionView extends SignalWatcher(ShadowlessElement) {
+  /** The words of the editor this condition is drawn in; English outside. */
+  private get wording(): Wording {
+    return wordingFrom(this);
+  }
+
   static override styles = css`
     filter-condition-view {
     }
@@ -104,7 +116,7 @@ export class FilterConditionView extends SignalWatcher(ShadowlessElement) {
           menu.group({
             items: [
               menu.action({
-                name: fn.label,
+                name: sayLabel(this.wording, fn.label, fn.labelWording),
                 postfix: ArrowRightSmallIcon(),
                 select: ele => {
                   popMenu(popupTargetFromElement(ele), {
@@ -128,7 +140,7 @@ export class FilterConditionView extends SignalWatcher(ShadowlessElement) {
           menu.group({
             items: [
               menu.action({
-                name: 'Delete',
+                name: this.wording(TOOLBAR_DELETE),
                 class: { 'delete-item': true },
                 prefix: DeleteIcon(),
                 select: () => {
@@ -201,7 +213,7 @@ export class FilterConditionView extends SignalWatcher(ShadowlessElement) {
     return filterMatcher.filterListBySelfType(type).map(v => {
       const selected = v.name === filter.function;
       return menu.action({
-        name: v.label,
+        name: sayLabel(this.wording, v.label, v.labelWording),
         isSelected: selected,
         select: () => {
           this.setFilter({
@@ -239,7 +251,7 @@ export class FilterConditionView extends SignalWatcher(ShadowlessElement) {
       if (!argType) return undefined;
       return { value: v, type: argType };
     });
-    const valueString = data.shortString?.(...argDataList) ?? '';
+    const valueString = data.shortString?.(this.wording, ...argDataList) ?? '';
     if (valueString) {
       return `${name}${valueString}`;
     }
@@ -263,7 +275,8 @@ export class FilterConditionView extends SignalWatcher(ShadowlessElement) {
           ...filter,
           args: args,
         });
-      }
+      },
+      this.wording
     );
   }
 
@@ -280,7 +293,7 @@ export class FilterConditionView extends SignalWatcher(ShadowlessElement) {
     if (!leftVar) {
       return html` <data-view-component-button
         hoverType="border"
-        .text="${html`Invalid filter rule`}"
+        .text="${this.wording(DATA_VIEW_FILTER_INVALID)}"
       ></data-view-component-button>`;
     }
     return html`

@@ -3,6 +3,7 @@ import type { ZodType } from 'zod';
 
 import type { DataSource } from '../data-source/base.js';
 import type { TypeInstance } from '../logical/type.js';
+import { type ChromeWording } from '@labre/affine-shared/services';
 
 export type WithCommonPropertyConfig<T = {}> = T & {
   dataSource: DataSource;
@@ -15,6 +16,12 @@ export type GetJsonValueFromConfig<T> =
   T extends PropertyConfig<any, any, infer R> ? R : never;
 export type PropertyConfig<Data, RawValue = unknown, JsonValue = unknown> = {
   name: string;
+  /**
+   * {@link name} as a key with its English fallback (#572): the type's name
+   * in the host's language, in every type menu and as the name a new
+   * property is given (written resolved, at the gesture).
+   */
+  nameWording?: ChromeWording;
   hide?: boolean;
   propertyData: {
     schema: ZodType<Data>;

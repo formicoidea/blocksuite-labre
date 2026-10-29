@@ -11,6 +11,8 @@ import { html } from 'lit/static-html.js';
 
 import { groupTraitKey } from '../../../core/group-by/trait.js';
 import type { SingleView } from '../../../core/index.js';
+import { DATA_VIEW_GROUP } from '../../../translations.js';
+import { wordingFrom } from '../../../core/utils/wording.js';
 
 const styles = css`
   affine-data-view-kanban-header {
@@ -60,7 +62,9 @@ export class KanbanHeader extends SignalWatcher(
     return html`
       <div></div>
       <div>
-        <div class="select-group" @click="${this.clickGroup}">Group</div>
+        <div class="select-group" @click="${this.clickGroup}">
+          ${wordingFrom(this)(DATA_VIEW_GROUP)}
+        </div>
       </div>
     `;
   }

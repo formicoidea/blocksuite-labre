@@ -1,12 +1,31 @@
 import { t } from '../logical/index.js';
 import { createStatisticConfig } from './create.js';
 import type { StatisticsConfig } from './types.js';
+import {
+  DATA_VIEW_STATS_GROUP_COUNT,
+  DATA_VIEW_STATS_COUNT_ALL,
+  DATA_VIEW_STATS_COUNT_VALUES,
+  DATA_VIEW_STATS_COUNT_UNIQUE,
+  DATA_VIEW_STATS_COUNT_EMPTY,
+  DATA_VIEW_STATS_COUNT_NOT_EMPTY,
+  DATA_VIEW_STATS_PERCENT_EMPTY,
+  DATA_VIEW_STATS_PERCENT_NOT_EMPTY,
+  DATA_VIEW_STATS_ALL,
+  DATA_VIEW_STATS_VALUES,
+  DATA_VIEW_STATS_UNIQUE,
+  DATA_VIEW_STATS_NOT_EMPTY,
+  DATA_VIEW_NUMBER_FORMAT_PERCENT,
+  DATA_VIEW_EMPTY_VALUE,
+} from '../../translations.js';
 
 export const anyTypeStatsFunctions: StatisticsConfig[] = [
   createStatisticConfig({
-    group: 'Count',
-    menuName: 'Count All',
-    displayName: 'All',
+    group: DATA_VIEW_STATS_GROUP_COUNT[1],
+    groupWording: DATA_VIEW_STATS_GROUP_COUNT,
+    menuName: DATA_VIEW_STATS_COUNT_ALL[1],
+    menuWording: DATA_VIEW_STATS_COUNT_ALL,
+    displayName: DATA_VIEW_STATS_ALL[1],
+    displayWording: DATA_VIEW_STATS_ALL,
     type: 'count-all',
     dataType: t.unknown.instance(),
     impl: data => {
@@ -14,9 +33,12 @@ export const anyTypeStatsFunctions: StatisticsConfig[] = [
     },
   }),
   createStatisticConfig({
-    group: 'Count',
-    menuName: 'Count Values',
-    displayName: 'Values',
+    group: DATA_VIEW_STATS_GROUP_COUNT[1],
+    groupWording: DATA_VIEW_STATS_GROUP_COUNT,
+    menuName: DATA_VIEW_STATS_COUNT_VALUES[1],
+    menuWording: DATA_VIEW_STATS_COUNT_VALUES,
+    displayName: DATA_VIEW_STATS_VALUES[1],
+    displayWording: DATA_VIEW_STATS_VALUES,
     type: 'count-values',
     dataType: t.unknown.instance(),
     impl: data => {
@@ -30,9 +52,12 @@ export const anyTypeStatsFunctions: StatisticsConfig[] = [
     },
   }),
   createStatisticConfig({
-    group: 'Count',
-    menuName: 'Count Unique Values',
-    displayName: 'Unique Values',
+    group: DATA_VIEW_STATS_GROUP_COUNT[1],
+    groupWording: DATA_VIEW_STATS_GROUP_COUNT,
+    menuName: DATA_VIEW_STATS_COUNT_UNIQUE[1],
+    menuWording: DATA_VIEW_STATS_COUNT_UNIQUE,
+    displayName: DATA_VIEW_STATS_UNIQUE[1],
+    displayWording: DATA_VIEW_STATS_UNIQUE,
     type: 'count-unique-values',
     dataType: t.unknown.instance(),
     impl: data => {
@@ -48,9 +73,12 @@ export const anyTypeStatsFunctions: StatisticsConfig[] = [
     },
   }),
   createStatisticConfig({
-    group: 'Count',
-    menuName: 'Count Empty',
-    displayName: 'Empty',
+    group: DATA_VIEW_STATS_GROUP_COUNT[1],
+    groupWording: DATA_VIEW_STATS_GROUP_COUNT,
+    menuName: DATA_VIEW_STATS_COUNT_EMPTY[1],
+    menuWording: DATA_VIEW_STATS_COUNT_EMPTY,
+    displayName: DATA_VIEW_EMPTY_VALUE[1],
+    displayWording: DATA_VIEW_EMPTY_VALUE,
     type: 'count-empty',
     dataType: t.unknown.instance(),
     impl: (data, { meta, dataSource }) => {
@@ -61,9 +89,12 @@ export const anyTypeStatsFunctions: StatisticsConfig[] = [
     },
   }),
   createStatisticConfig({
-    group: 'Count',
-    menuName: 'Count Not Empty',
-    displayName: 'Not Empty',
+    group: DATA_VIEW_STATS_GROUP_COUNT[1],
+    groupWording: DATA_VIEW_STATS_GROUP_COUNT,
+    menuName: DATA_VIEW_STATS_COUNT_NOT_EMPTY[1],
+    menuWording: DATA_VIEW_STATS_COUNT_NOT_EMPTY,
+    displayName: DATA_VIEW_STATS_NOT_EMPTY[1],
+    displayWording: DATA_VIEW_STATS_NOT_EMPTY,
     type: 'count-not-empty',
     dataType: t.unknown.instance(),
     impl: (data, { meta, dataSource }) => {
@@ -74,9 +105,12 @@ export const anyTypeStatsFunctions: StatisticsConfig[] = [
     },
   }),
   createStatisticConfig({
-    group: 'Percent',
-    menuName: 'Percent Empty',
-    displayName: 'Empty',
+    group: DATA_VIEW_NUMBER_FORMAT_PERCENT[1],
+    groupWording: DATA_VIEW_NUMBER_FORMAT_PERCENT,
+    menuName: DATA_VIEW_STATS_PERCENT_EMPTY[1],
+    menuWording: DATA_VIEW_STATS_PERCENT_EMPTY,
+    displayName: DATA_VIEW_EMPTY_VALUE[1],
+    displayWording: DATA_VIEW_EMPTY_VALUE,
     type: 'percent-empty',
     dataType: t.unknown.instance(),
     impl: (data, { meta, dataSource }) => {
@@ -88,9 +122,12 @@ export const anyTypeStatsFunctions: StatisticsConfig[] = [
     },
   }),
   createStatisticConfig({
-    group: 'Percent',
-    menuName: 'Percent Not Empty',
-    displayName: 'Not Empty',
+    group: DATA_VIEW_NUMBER_FORMAT_PERCENT[1],
+    groupWording: DATA_VIEW_NUMBER_FORMAT_PERCENT,
+    menuName: DATA_VIEW_STATS_PERCENT_NOT_EMPTY[1],
+    menuWording: DATA_VIEW_STATS_PERCENT_NOT_EMPTY,
+    displayName: DATA_VIEW_STATS_NOT_EMPTY[1],
+    displayWording: DATA_VIEW_STATS_NOT_EMPTY,
     type: 'percent-not-empty',
     dataType: t.unknown.instance(),
     impl: (data, { meta, dataSource }) => {

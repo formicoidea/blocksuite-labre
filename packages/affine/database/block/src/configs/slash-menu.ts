@@ -19,6 +19,14 @@ import { insertDatabaseBlockCommand } from '../commands';
 import { DatabaseCreationMenuIdentifier } from '../creation-menu.js';
 import { createHostedDatabaseView } from '../linked-view.js';
 import { KanbanViewTooltip, TableViewTooltip } from './tooltips';
+import {
+  DATABASE_SLASH_KANBAN_DESCRIPTION,
+  DATABASE_SLASH_TABLE_DESCRIPTION,
+} from '../translations.js';
+import {
+  VIEW_NAME_TABLE,
+  VIEW_NAME_KANBAN,
+} from '@labre/affine-database-engine/translations';
 
 /**
  * With a data-source picker the host owns database creation (ADR 0035 §5):
@@ -124,13 +132,16 @@ export const databaseSlashMenuConfig: SlashMenuConfig = {
   disableWhen: ({ model }) => model.flavour === 'affine:database',
   items: [
     {
-      name: 'Table View',
-      description: 'Display items in a table format.',
+      name: VIEW_NAME_TABLE[1],
+      nameWording: VIEW_NAME_TABLE,
+      description: DATABASE_SLASH_TABLE_DESCRIPTION[1],
+      descriptionWording: DATABASE_SLASH_TABLE_DESCRIPTION,
       searchAlias: ['database'],
       icon: DatabaseTableViewIcon(),
       tooltip: {
         figure: TableViewTooltip,
-        caption: 'Table View',
+        caption: VIEW_NAME_TABLE[1],
+        captionWording: VIEW_NAME_TABLE,
       },
       group: '7_Database@0',
       when: ({ model, std }) =>
@@ -140,13 +151,16 @@ export const databaseSlashMenuConfig: SlashMenuConfig = {
     },
 
     {
-      name: 'Kanban View',
-      description: 'Visualize data in a dashboard.',
+      name: VIEW_NAME_KANBAN[1],
+      nameWording: VIEW_NAME_KANBAN,
+      description: DATABASE_SLASH_KANBAN_DESCRIPTION[1],
+      descriptionWording: DATABASE_SLASH_KANBAN_DESCRIPTION,
       searchAlias: ['database'],
       icon: DatabaseKanbanViewIcon(),
       tooltip: {
         figure: KanbanViewTooltip,
-        caption: 'Kanban View',
+        caption: VIEW_NAME_KANBAN[1],
+        captionWording: VIEW_NAME_KANBAN,
       },
       group: '7_Database@2',
       when: ({ model, std }) =>

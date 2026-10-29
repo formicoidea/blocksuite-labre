@@ -2,6 +2,7 @@ import zod from 'zod';
 
 import { t } from '../../core/logical/type-presets.js';
 import { propertyType } from '../../core/property/property-config.js';
+import { DATA_VIEW_TYPE_CHECKBOX } from '../../translations.js';
 export const checkboxPropertyType = propertyType('checkbox');
 
 const FALSE_VALUES = new Set([
@@ -20,7 +21,8 @@ const FALSE_VALUES = new Set([
 ]);
 
 export const checkboxPropertyModelConfig = checkboxPropertyType.modelConfig({
-  name: 'Checkbox',
+  name: DATA_VIEW_TYPE_CHECKBOX[1],
+  nameWording: DATA_VIEW_TYPE_CHECKBOX,
   propertyData: {
     schema: zod.object({}),
     default: () => ({}),

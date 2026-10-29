@@ -3,6 +3,8 @@ import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { DatabaseListViewIcon } from '@blocksuite/icons/lit';
 import { BlockComponent } from '@labre/std';
 import { css, html } from 'lit';
+import { translateKey } from '@labre/affine-shared/services';
+import { DATABASE_DRAG_PREVIEW } from './translations.js';
 
 export class DatabaseDndPreviewBlockComponent extends BlockComponent<DatabaseBlockModel> {
   static override styles = css`
@@ -45,7 +47,9 @@ export class DatabaseDndPreviewBlockComponent extends BlockComponent<DatabaseBlo
     >
       <div class="database-preview-content">
         ${DatabaseListViewIcon({ width: '24px', height: '24px' })}
-        <span class="text">Database Block</span>
+        <span class="text"
+          >${translateKey(this.std, ...DATABASE_DRAG_PREVIEW)}</span
+        >
       </div>
     </div>`;
   }

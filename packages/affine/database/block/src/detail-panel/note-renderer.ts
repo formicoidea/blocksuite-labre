@@ -6,7 +6,7 @@ import {
   type RootBlockModel,
 } from '@labre/affine-model';
 import { REFERENCE_NODE } from '@labre/affine-shared/consts';
-import { TelemetryProvider } from '@labre/affine-shared/services';
+import { TelemetryProvider, translateKey } from '@labre/affine-shared/services';
 import type { AffineTextAttributes } from '@labre/affine-shared/types';
 import { createDefaultDoc, matchModels } from '@labre/affine-shared/utils';
 import type {
@@ -22,6 +22,7 @@ import { css, html, unsafeCSS } from 'lit';
 import { property } from 'lit/decorators.js';
 
 import { isPureText } from '../utils/title-doc.js';
+import { DATABASE_DETAIL_EMPTY_HINT } from '../translations.js';
 
 export class NoteRenderer
   extends SignalWatcher(WithDisposable(ShadowlessElement))
@@ -111,7 +112,7 @@ export class NoteRenderer
           @click="${this.addNote}"
           style="max-width: var(--affine-editor-width);margin: auto;cursor: pointer;color: var(--affine-text-disable-color)"
         >
-          Click to create a linked doc in center peek.
+          ${translateKey(this.host.std, ...DATABASE_DETAIL_EMPTY_HINT)}
         </div>
       </div>`;
     }

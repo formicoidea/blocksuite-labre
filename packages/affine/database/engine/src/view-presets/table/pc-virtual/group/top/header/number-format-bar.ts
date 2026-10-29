@@ -5,6 +5,11 @@ import { property } from 'lit/decorators.js';
 
 import type { Property } from '../../../../../../core/view-manager/property';
 import { formatNumber } from '../../../../../../property-presets/number/utils/formatter';
+import {
+  DATA_VIEW_DECIMALS_DECREASE,
+  DATA_VIEW_DECIMALS_INCREASE,
+} from '../../../../../../translations.js';
+import { wordingFrom } from '../../../../../../core/utils/wording.js';
 
 const IncreaseDecimalPlacesIcon = html`
   <svg
@@ -108,7 +113,7 @@ export class DatabaseNumberFormatBar extends WithDisposable(LitElement) {
         <div class="number-format-decimal-places">
           <button
             class="number-format-toolbar-button"
-            aria-label="decrease decimal places"
+            aria-label="${wordingFrom(this)(DATA_VIEW_DECIMALS_DECREASE)}"
             @click=${this._decrementDecimalPlaces}
           >
             ${DecreaseDecimalPlacesIcon}
@@ -116,7 +121,7 @@ export class DatabaseNumberFormatBar extends WithDisposable(LitElement) {
 
           <button
             class="number-format-toolbar-button"
-            aria-label="increase decimal places"
+            aria-label="${wordingFrom(this)(DATA_VIEW_DECIMALS_INCREASE)}"
             @click=${this._incrementDecimalPlaces}
           >
             ${IncreaseDecimalPlacesIcon}

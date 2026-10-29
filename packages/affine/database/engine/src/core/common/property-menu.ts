@@ -19,9 +19,21 @@ import {
   DATA_VIEW_PROPERTY_TYPE_ENTRY,
 } from '../../translations.js';
 import { renderUniLit } from '../utils/uni-component/index.js';
-import { englishWording, type Wording } from '../utils/wording.js';
+import {
+  englishWording,
+  type Wording,
+  propertyTypeName,
+} from '../utils/wording.js';
 import type { Property } from '../view-manager/property.js';
 import type { SingleView } from '../view-manager/single-view.js';
+
+/** The name of the type `property` has, in the host language. */
+const currentTypeName = (property: Property, wording: Wording) => {
+  const meta = property.view.propertyMetas$.value.find(
+    v => v.type === property.type$.value
+  );
+  return meta ? propertyTypeName(wording, meta.config) : undefined;
+};
 
 export const inputConfig = (
   property: Property,
@@ -55,10 +67,7 @@ export const typeConfig = (
           class="affine-database-column-type-icon"
           style="color: var(--affine-text-secondary-color);gap:4px;font-size: 14px;"
         >
-          ${renderUniLit(property.icon)}
-          ${property.view.propertyMetas$.value.find(
-            v => v.type === property.type$.value
-          )?.config.name}
+          ${renderUniLit(property.icon)} ${currentTypeName(property, wording)}
         </div>`,
         options: {
           title: {
@@ -69,7 +78,7 @@ export const typeConfig = (
               items: property.view.propertyMetas$.value.map(config => {
                 return menu.action({
                   isSelected: config.type === property.type$.value,
-                  name: config.config.name,
+                  name: propertyTypeName(wording, config.config),
                   prefix: renderUniLit(config.renderer.icon),
                   select: () => {
                     if (property.type$.value === config.type) {
@@ -198,21 +207,23 @@ export const popPropertyMenu = (
 export const popNewPropertyMenu = (
   target: PopupTarget,
   view: SingleView,
-  options: { title: string; onAdd: (id: string) => void }
-) =>
-  popMenu(target, {
+  options: { title: string; onAdd: (id: string) => void; wording?: Wording }
+) => {
+  const wording = options.wording ?? englishWording;
+  return popMenu(target, {
     options: {
       title: { text: options.title },
       items: [
         menu.group({
           items: view.propertyMetas$.value.map(meta =>
             menu.action({
-              name: meta.config.name,
+              name: propertyTypeName(wording, meta.config),
               prefix: renderUniLit(meta.renderer.icon),
               select: () => {
+                // Written resolved: a stored name is never re-translated.
                 const id = view.propertyAdd('end', {
                   type: meta.type,
-                  name: meta.config.name,
+                  name: propertyTypeName(wording, meta.config),
                 });
                 if (id) options.onAdd(id);
               },
@@ -222,3 +233,4 @@ export const popNewPropertyMenu = (
       ],
     },
   });
+};

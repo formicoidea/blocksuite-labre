@@ -14,6 +14,15 @@ import { html } from 'lit';
 
 import { groupTraitKey } from '../../../core/group-by/trait.js';
 import type { MobileKanbanViewUILogic } from './kanban-view-ui-logic.js';
+import {
+  DATA_VIEW_CARD_EXPAND,
+  DATA_VIEW_CARD_MOVE_TO,
+  DATA_VIEW_ROW_INSERT_BEFORE,
+  DATA_VIEW_ROW_INSERT_AFTER,
+  DATA_VIEW_CARD_DELETE,
+  DATA_VIEW_UNGROUPED,
+} from '../../../translations.js';
+import { wordingFrom } from '../../../core/utils/wording.js';
 
 export const popCardMenu = (
   ele: PopupTarget,
@@ -29,7 +38,7 @@ export const popCardMenu = (
     menu.group({
       items: [
         menu.action({
-          name: 'Expand Card',
+          name: wordingFrom(ele.element)(DATA_VIEW_CARD_EXPAND),
           prefix: ExpandFullIcon(),
           select: () => {
             kanbanViewLogic.root.openDetailPanel({
@@ -43,7 +52,7 @@ export const popCardMenu = (
     menu.group({
       items: [
         menu.subMenu({
-          name: 'Move To',
+          name: wordingFrom(ele.element)(DATA_VIEW_CARD_MOVE_TO),
           prefix: ArrowRightBigIcon(),
           options: {
             items:
@@ -53,7 +62,10 @@ export const popCardMenu = (
                 })
                 .map(group => {
                   return menu.action({
-                    name: group.value != null ? group.name$.value : 'Ungroup',
+                    name:
+                      group.value != null
+                        ? group.name$.value
+                        : wordingFrom(ele.element)(DATA_VIEW_UNGROUPED),
                     select: () => {
                       groupTrait.moveCardTo(
                         cardId,
@@ -72,7 +84,7 @@ export const popCardMenu = (
       name: '',
       items: [
         menu.action({
-          name: 'Insert Before',
+          name: wordingFrom(ele.element)(DATA_VIEW_ROW_INSERT_BEFORE),
           prefix: html` <div
             style="transform: rotate(90deg);display:flex;align-items:center;"
           >
@@ -87,7 +99,7 @@ export const popCardMenu = (
           },
         }),
         menu.action({
-          name: 'Insert After',
+          name: wordingFrom(ele.element)(DATA_VIEW_ROW_INSERT_AFTER),
           prefix: html` <div
             style="transform: rotate(90deg);display:flex;align-items:center;"
           >
@@ -106,7 +118,7 @@ export const popCardMenu = (
     menu.group({
       items: [
         menu.action({
-          name: 'Delete Card',
+          name: wordingFrom(ele.element)(DATA_VIEW_CARD_DELETE),
           class: {
             'delete-item': true,
           },

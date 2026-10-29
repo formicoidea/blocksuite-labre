@@ -38,6 +38,22 @@
       "Symbols",
       "Travel & Places"
     ],
+    "packages/affine/database/block/src/components/title/index.ts": [
+      "true"
+    ],
+    "packages/affine/database/engine/src/core/group-by/setting.ts": [
+      "default key",
+      "default key"
+    ],
+    "packages/affine/database/engine/src/view-presets/kanban/pc/kanban-view-ui-logic.ts": [
+      "default key"
+    ],
+    "packages/affine/database/engine/src/view-presets/table/pc-virtual/group/top/header/number-format-bar.ts": [
+      "&lpar;&nbsp;${}&nbsp;&rpar;"
+    ],
+    "packages/affine/database/engine/src/view-presets/table/pc/header/number-format-bar.ts": [
+      "&lpar;&nbsp;${}&nbsp;&rpar;"
+    ],
     "packages/affine/fragments/doc-title/src/doc-title.ts": [
       "true"
     ],
@@ -224,17 +240,6 @@
     "packages/affine/database/block/src/adapters/notion-html.ts": [
       "Table View"
     ],
-    "packages/affine/database/block/src/components/title/index.ts": [
-      "true"
-    ],
-    "packages/affine/database/block/src/configs/slash-menu.ts": [
-      "Display items in a table format.",
-      "Kanban View",
-      "Kanban View",
-      "Table View",
-      "Table View",
-      "Visualize data in a dashboard."
-    ],
     "packages/affine/database/block/src/configs/tooltips.ts": [
       "Display items in a table format.",
       "Done",
@@ -259,310 +264,9 @@
       "Untitled Table",
       "Visualize data in a dashboard."
     ],
-    "packages/affine/database/block/src/database-block.ts": [
-      "Database title",
-      "Delete Database"
-    ],
-    "packages/affine/database/block/src/database-dnd-preview-block.ts": [
-      "Database Block"
-    ],
-    "packages/affine/database/block/src/detail-panel/block-renderer.ts": [
-      "Untitled"
-    ],
-    "packages/affine/database/block/src/detail-panel/note-renderer.ts": [
-      "Click to create a linked doc in center peek."
-    ],
-    "packages/affine/database/block/src/properties/created-time/define.ts": [
-      "Created Time"
-    ],
-    "packages/affine/database/block/src/properties/link/cell-renderer.ts": [
-      "Untitled"
-    ],
-    "packages/affine/database/block/src/properties/link/define.ts": [
-      "Link"
-    ],
-    "packages/affine/database/block/src/properties/rich-text/define.ts": [
-      "Text"
-    ],
-    "packages/affine/database/block/src/properties/title/define.ts": [
-      "Title"
-    ],
-    "packages/affine/database/engine/src/core/detail/detail.ts": [
-      "Add Property",
-      "Add property"
-    ],
-    "packages/affine/database/engine/src/core/detail/field.ts": [
-      "Delete",
-      "Duplicate",
-      "Empty",
-      "Move Down",
-      "Move Up",
-      "Property settings"
-    ],
-    "packages/affine/database/engine/src/core/filter/add-filter.ts": [
-      "Add filter group",
-      "New filter"
-    ],
-    "packages/affine/database/engine/src/core/filter/filter-fn/boolean.ts": [
-      "Is checked",
-      "Is unchecked"
-    ],
-    "packages/affine/database/engine/src/core/filter/filter-fn/date.ts": [
-      "After",
-      "Before"
-    ],
-    "packages/affine/database/engine/src/core/filter/filter-fn/multi-tag.ts": [
-      "Contains all",
-      "Contains one of",
-      "Does not contains all",
-      "Does not contains one of"
-    ],
-    "packages/affine/database/engine/src/core/filter/filter-fn/string.ts": [
-      "Contains",
-      "Does no contains",
-      "Ends with",
-      "Is",
-      "Is not",
-      "Starts with"
-    ],
-    "packages/affine/database/engine/src/core/filter/filter-fn/tag.ts": [
-      "Is not one of",
-      "Is one of"
-    ],
-    "packages/affine/database/engine/src/core/filter/filter-fn/unknown.ts": [
-      "Is empty",
-      "Is not empty"
-    ],
-    "packages/affine/database/engine/src/core/filter/literal/define.ts": [
-      "Checked",
-      "Type a value...",
-      "Type a value...",
-      "Unchecked"
-    ],
-    "packages/affine/database/engine/src/core/group-by/setting.ts": [
-      "Day",
-      "Group By",
-      "Group By",
-      "Group by",
-      "Group dates by",
-      "Group dates by",
-      "Groups",
-      "Month",
-      "Newest first",
-      "Oldest first",
-      "Order",
-      "Order",
-      "Relative",
-      "Remove Grouping",
-      "Remove grouping",
-      "Week (starts Monday)",
-      "Week (starts Sunday)",
-      "Year",
-      "default key",
-      "default key"
-    ],
-    "packages/affine/database/engine/src/core/sort/add-sort.ts": [
-      "New sort"
-    ],
-    "packages/affine/database/engine/src/core/statistics/number.ts": [
-      "None",
-      "None",
-      "None"
-    ],
-    "packages/affine/database/engine/src/property-presets/checkbox/define.ts": [
-      "Checkbox"
-    ],
-    "packages/affine/database/engine/src/property-presets/date/define.ts": [
-      "Date"
-    ],
-    "packages/affine/database/engine/src/property-presets/multi-select/define.ts": [
-      "Multi-select"
-    ],
-    "packages/affine/database/engine/src/property-presets/number/define.ts": [
-      "Number"
-    ],
-    "packages/affine/database/engine/src/property-presets/number/utils/formats.ts": [
-      "British Pound",
-      "Chinese Yuan",
-      "Euro",
-      "Indian Rupee",
-      "Japanese Yen",
-      "Number",
-      "Number With Commas",
-      "Percent",
-      "US Dollar"
-    ],
-    "packages/affine/database/engine/src/property-presets/progress/define.ts": [
-      "Progress"
-    ],
-    "packages/affine/database/engine/src/property-presets/select/define.ts": [
-      "Select"
-    ],
-    "packages/affine/database/engine/src/property-presets/text/define.ts": [
-      "Plain-Text"
-    ],
-    "packages/affine/database/engine/src/view-presets/kanban/mobile/group.ts": [
-      "Add",
-      "Delete Cards",
-      "Ungroup"
-    ],
-    "packages/affine/database/engine/src/view-presets/kanban/mobile/menu.ts": [
-      "Delete Card",
-      "Expand Card",
-      "Insert After",
-      "Insert Before",
-      "Move To"
-    ],
-    "packages/affine/database/engine/src/view-presets/kanban/pc/group.ts": [
-      "Add",
-      "Delete Cards",
-      "Ungroup"
-    ],
-    "packages/affine/database/engine/src/view-presets/kanban/pc/header.ts": [
-      "Group"
-    ],
-    "packages/affine/database/engine/src/view-presets/kanban/pc/kanban-view-ui-logic.ts": [
-      "default key"
-    ],
-    "packages/affine/database/engine/src/view-presets/kanban/pc/menu.ts": [
-      "Delete Card",
-      "Expand Card",
-      "Insert After",
-      "Insert Before",
-      "Move To"
-    ],
-    "packages/affine/database/engine/src/view-presets/table/mobile/column-header.ts": [
-      "Number Format",
-      "Number Format"
-    ],
-    "packages/affine/database/engine/src/view-presets/table/mobile/group.ts": [
-      "Delete Cards",
-      "Ungroup"
-    ],
-    "packages/affine/database/engine/src/view-presets/table/mobile/table-view-ui-logic.ts": [
-      "New Group"
-    ],
-    "packages/affine/database/engine/src/view-presets/table/pc-virtual/controller/clipboard.ts": [
-      "${} cell${} copied to clipboard",
-      "${} row${} copied to clipboard"
-    ],
-    "packages/affine/database/engine/src/view-presets/table/pc-virtual/group/bottom/group-footer.ts": [
-      "New Record"
-    ],
-    "packages/affine/database/engine/src/view-presets/table/pc-virtual/group/bottom/stats/column-stats-column.ts": [
-      "None"
-    ],
-    "packages/affine/database/engine/src/view-presets/table/pc-virtual/group/top/group-header.ts": [
-      "Delete Cards",
-      "Ungroup"
-    ],
-    "packages/affine/database/engine/src/view-presets/table/pc-virtual/group/top/header/column-header.ts": [
-      "Property type"
-    ],
-    "packages/affine/database/engine/src/view-presets/table/pc-virtual/group/top/header/number-format-bar.ts": [
-      "&lpar;&nbsp;${}&nbsp;&rpar;",
-      "decrease decimal places",
-      "increase decimal places"
-    ],
-    "packages/affine/database/engine/src/view-presets/table/pc-virtual/group/top/header/single-column-header.ts": [
-      "Delete",
-      "Duplicate",
-      "Filter",
-      "Hide In View",
-      "Insert Left Column",
-      "Insert Right Column",
-      "Move Left",
-      "Move Right",
-      "Number Format",
-      "Sort Ascending",
-      "Sort Descending"
-    ],
-    "packages/affine/database/engine/src/view-presets/table/pc-virtual/row/menu.ts": [
-      "Copy",
-      "Delete Row",
-      "Delete Rows",
-      "Expand Row",
-      "Insert After",
-      "Insert Before"
-    ],
-    "packages/affine/database/engine/src/view-presets/table/pc-virtual/table-view-ui-logic.ts": [
-      "New Group"
-    ],
-    "packages/affine/database/engine/src/view-presets/table/pc/controller/clipboard.ts": [
-      "${} cell${} copied to clipboard",
-      "${} row${} copied to clipboard"
-    ],
-    "packages/affine/database/engine/src/view-presets/table/pc/group.ts": [
-      "Delete Cards",
-      "Ungroup"
-    ],
-    "packages/affine/database/engine/src/view-presets/table/pc/header/database-header-column.ts": [
-      "Filter",
-      "Insert Left Column",
-      "Insert Right Column",
-      "Move Left",
-      "Move Right",
-      "Number Format",
-      "Sort Ascending",
-      "Sort Descending"
-    ],
-    "packages/affine/database/engine/src/view-presets/table/pc/header/number-format-bar.ts": [
-      "&lpar;&nbsp;${}&nbsp;&rpar;",
-      "decrease decimal places",
-      "increase decimal places"
-    ],
-    "packages/affine/database/engine/src/view-presets/table/pc/menu.ts": [
-      "Copy",
-      "Delete Row",
-      "Delete Rows",
-      "Expand Row",
-      "Insert After",
-      "Insert Before"
-    ],
-    "packages/affine/database/engine/src/view-presets/table/pc/table-view-ui-logic.ts": [
-      "New Group"
-    ],
-    "packages/affine/database/engine/src/view-presets/table/stats/column-stats-column.ts": [
-      "None"
-    ],
-    "packages/affine/database/engine/src/widget-presets/quick-setting-bar/filter/condition-view.ts": [
-      "Delete"
-    ],
-    "packages/affine/database/engine/src/widget-presets/quick-setting-bar/filter/group-panel-view.ts": [
-      "Add filter",
-      "Add filter group",
-      "And",
-      "Delete",
-      "Delete",
-      "Duplicate",
-      "Filter group",
-      "Or"
-    ],
-    "packages/affine/database/engine/src/widget-presets/quick-setting-bar/filter/root-panel-view.ts": [
-      "Add",
-      "Delete",
-      "Duplicate",
-      "Filters"
-    ],
-    "packages/affine/database/engine/src/widget-presets/quick-setting-bar/sort/root-panel.ts": [
-      "Add sort",
-      "Delete"
-    ],
-    "packages/affine/database/engine/src/widget-presets/tools/presets/search/search.ts": [
-      "Esc"
-    ],
-    "packages/affine/database/view-block/src/configs/slash-menu.ts": [
-      "To-do List",
-      "Todo"
-    ],
     "packages/affine/database/view-block/src/configs/tooltips.ts": [
       "Here is an example of todo list.",
       "Make a list for building preview."
-    ],
-    "packages/affine/database/view-block/src/data-view-block.ts": [
-      "Copy",
-      "Delete Database",
-      "Untitled"
     ],
     "packages/affine/widgets/keyboard-toolbar/src/config.ts": [
       "BulletedList",

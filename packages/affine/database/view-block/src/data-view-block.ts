@@ -18,6 +18,9 @@ import {
   NotificationProvider,
   type TelemetryEventMap,
   TelemetryProvider,
+  DOC_UNTITLED,
+  TOOLBAR_COPY,
+  translateKey,
 } from '@labre/affine-shared/services';
 import {
   createRecordDetail,
@@ -44,6 +47,7 @@ import { html } from 'lit/static-html.js';
 
 import { BlockQueryDataSource } from './data-source.js';
 import type { DataViewBlockModel } from './data-view-model.js';
+import { DATABASE_DELETE } from '@labre/affine-database-block/translations';
 
 export class DataViewBlockComponent extends CaptionedBlockComponent<DataViewBlockModel> {
   // A light-DOM sheet scoped on this block's own tag. Upstream scoped it on
@@ -100,14 +104,14 @@ export class DataViewBlockComponent extends CaptionedBlockComponent<DataViewBloc
         items: [
           menu.input({
             initialValue: this.model.props.title,
-            placeholder: 'Untitled',
+            placeholder: translateKey(this.std, ...DOC_UNTITLED),
             onChange: text => {
               this.model.props.title = text;
             },
           }),
           menu.action({
             prefix: CopyIcon,
-            name: 'Copy',
+            name: translateKey(this.std, ...TOOLBAR_COPY),
             select: () => {
               const slice = Slice.fromModels(this.store, [this.model]);
               this.std.clipboard.copySlice(slice).catch(console.error);
@@ -121,7 +125,7 @@ export class DataViewBlockComponent extends CaptionedBlockComponent<DataViewBloc
                 class: {
                   'delete-item': true,
                 },
-                name: 'Delete Database',
+                name: translateKey(this.std, ...DATABASE_DELETE),
                 select: () => {
                   this.model.children.slice().forEach(block => {
                     this.store.deleteBlock(block);

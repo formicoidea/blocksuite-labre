@@ -21,6 +21,16 @@ import { NumberGroupView } from './renderer/number-group.js';
 import { SelectGroupView } from './renderer/select-group.js';
 import { StringGroupView } from './renderer/string-group.js';
 import type { GroupByConfig } from './types.js';
+import {
+  DATA_VIEW_DATE_TODAY,
+  DATA_VIEW_DATE_TOMORROW,
+  DATA_VIEW_DATE_YESTERDAY,
+  DATA_VIEW_DATE_NEXT_7_DAYS,
+  DATA_VIEW_DATE_NEXT_30_DAYS,
+  DATA_VIEW_DATE_LAST_7_DAYS,
+  DATA_VIEW_DATE_LAST_30_DAYS,
+} from '../../translations.js';
+import { englishWording, type Wording } from '../utils/wording.js';
 
 export const createGroupByConfig = <
   Data extends Record<string, unknown>,
@@ -50,12 +60,13 @@ const rangeLabel = (a: Date, b: Date) =>
 const buildDateCfg = (
   name: string,
   grouper: (ms: number | null) => { key: string; value: number | null }[],
-  groupName: (v: number | null) => string
+  groupName: (v: number | null, wording: Wording) => string
 ): GroupByConfig =>
   createGroupByConfig({
     name,
     matchType: t.date.instance(),
-    groupName: (_t, v: number | null) => groupName(v),
+    groupName: (_t, v: number | null, wording = englishWording) =>
+      groupName(v, wording),
     defaultKeys: _t => [ungroups],
     valuesGroup: (v: number | null, _t) => grouper(v),
     addToGroup: (group: number | null, _old: number | null) => group,
@@ -86,24 +97,24 @@ const dateRelativeCfg = buildDateCfg(
     const month = startOfMonth(day);
     return [{ key: `${+month}`, value: +month }];
   },
-  v => {
+  (v, wording) => {
     if (v == null) return '';
     const day = startOfDay(new Date(v));
     const daysDiff = differenceInCalendarDays(day, startOfDay(new Date()));
 
-    if (isToday(day)) return 'Today';
-    if (isTomorrow(day)) return 'Tomorrow';
-    if (isYesterday(day)) return 'Yesterday';
+    if (isToday(day)) return wording(DATA_VIEW_DATE_TODAY);
+    if (isTomorrow(day)) return wording(DATA_VIEW_DATE_TOMORROW);
+    if (isYesterday(day)) return wording(DATA_VIEW_DATE_YESTERDAY);
 
     if (daysDiff > 0) {
-      if (daysDiff <= 7) return 'Next 7 days';
-      if (daysDiff <= 30) return 'Next 30 days';
+      if (daysDiff <= 7) return wording(DATA_VIEW_DATE_NEXT_7_DAYS);
+      if (daysDiff <= 30) return wording(DATA_VIEW_DATE_NEXT_30_DAYS);
       return fmt(new Date(v), 'MMM yyyy');
     }
 
     const daysAgo = -daysDiff;
-    if (daysAgo <= 7) return 'Last 7 days';
-    if (daysAgo <= 30) return 'Last 30 days';
+    if (daysAgo <= 7) return wording(DATA_VIEW_DATE_LAST_7_DAYS);
+    if (daysAgo <= 30) return wording(DATA_VIEW_DATE_LAST_30_DAYS);
     return fmt(new Date(v), 'MMM yyyy');
   }
 );

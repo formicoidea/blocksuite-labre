@@ -3,6 +3,13 @@ import { t } from '../../logical/type-presets.js';
 import { tRef, tVar } from '../../logical/type-variable.js';
 import { createFilter } from './create.js';
 import { tagToString } from './utils.js';
+import {
+  DATA_VIEW_FILTER_CONTAINS_ONE_OF,
+  DATA_VIEW_FILTER_NOT_CONTAINS_ONE_OF,
+  DATA_VIEW_FILTER_CONTAINS_ALL,
+  DATA_VIEW_FILTER_NOT_CONTAINS_ALL,
+  DATA_VIEW_FILTER_NOT,
+} from '../../../translations.js';
 
 const optionName = 'option' as const;
 export const multiTagFilter = [
@@ -11,8 +18,9 @@ export const multiTagFilter = [
     vars: [tVar(optionName, t.tag.instance())] as const,
     self: ct.array.instance(tRef(optionName)),
     args: [ct.array.instance(tRef(optionName))] as const,
-    label: 'Contains one of',
-    shortString: v =>
+    label: DATA_VIEW_FILTER_CONTAINS_ONE_OF[1],
+    labelWording: DATA_VIEW_FILTER_CONTAINS_ONE_OF,
+    shortString: (_wording, v) =>
       v ? `: ${tagToString(v.value, v.type.element)}` : undefined,
     impl: (self, value) => {
       if (!value.length) {
@@ -36,9 +44,12 @@ export const multiTagFilter = [
     vars: [tVar(optionName, t.tag.instance())] as const,
     self: ct.array.instance(tRef(optionName)),
     args: [ct.array.instance(tRef(optionName))] as const,
-    label: 'Does not contains one of',
-    shortString: v =>
-      v ? `: Not ${tagToString(v.value, v.type.element)}` : undefined,
+    label: DATA_VIEW_FILTER_NOT_CONTAINS_ONE_OF[1],
+    labelWording: DATA_VIEW_FILTER_NOT_CONTAINS_ONE_OF,
+    shortString: (wording, v) =>
+      v
+        ? `: ${wording(DATA_VIEW_FILTER_NOT, { value: tagToString(v.value, v.type.element) ?? '' })}`
+        : undefined,
     impl: (self, value) => {
       if (!value.length) {
         return true;
@@ -54,8 +65,9 @@ export const multiTagFilter = [
     vars: [tVar(optionName, t.tag.instance())] as const,
     self: ct.array.instance(tRef(optionName)),
     args: [ct.array.instance(tRef(optionName))] as const,
-    label: 'Contains all',
-    shortString: v =>
+    label: DATA_VIEW_FILTER_CONTAINS_ALL[1],
+    labelWording: DATA_VIEW_FILTER_CONTAINS_ALL,
+    shortString: (_wording, v) =>
       v ? `: ${tagToString(v.value, v.type.element)}` : undefined,
     impl: (self, value) => {
       if (!value.length) {
@@ -73,9 +85,12 @@ export const multiTagFilter = [
     vars: [tVar(optionName, t.tag.instance())] as const,
     self: ct.array.instance(tRef(optionName)),
     args: [ct.array.instance(tRef(optionName))] as const,
-    label: 'Does not contains all',
-    shortString: v =>
-      v ? `: Not ${tagToString(v.value, v.type.element)}` : undefined,
+    label: DATA_VIEW_FILTER_NOT_CONTAINS_ALL[1],
+    labelWording: DATA_VIEW_FILTER_NOT_CONTAINS_ALL,
+    shortString: (wording, v) =>
+      v
+        ? `: ${wording(DATA_VIEW_FILTER_NOT, { value: tagToString(v.value, v.type.element) ?? '' })}`
+        : undefined,
     impl: (self, value) => {
       if (!value.length) {
         return true;

@@ -18,6 +18,11 @@ import { LEFT_TOOL_BAR_WIDTH } from '../../../../consts';
 import { cellDivider } from '../../../../styles';
 import type { VirtualTableViewUILogic } from '../../../table-view-ui-logic';
 import * as styles from './column-header-css';
+import {
+  propertyTypeName,
+  wordingFrom,
+} from '../../../../../../core/utils/wording.js';
+import { DATA_VIEW_PROPERTY_TYPE } from '../../../../../../translations.js';
 const leftBarStyle = css({
   width: LEFT_TOOL_BAR_WIDTH,
 });
@@ -27,21 +32,22 @@ export class VirtualTableHeader extends SignalWatcher(
   private readonly _onAddColumn = (e: MouseEvent) => {
     if (this.readonly) return;
     const ele = e.currentTarget as HTMLElement;
+    const wording = wordingFrom(ele);
     popMenu(popupTargetFromElement(ele), {
       options: {
         title: {
-          text: 'Property type',
+          text: wording(DATA_VIEW_PROPERTY_TYPE),
         },
         items: [
           menu.group({
             items: this.tableViewManager.propertyMetas$.value.map(config => {
               return menu.action({
-                name: config.config.name,
+                name: propertyTypeName(wording, config.config),
                 prefix: renderUniLit(config.renderer.icon),
                 select: () => {
                   const id = this.tableViewManager.propertyAdd('end', {
                     type: config.type,
-                    name: config.config.name,
+                    name: propertyTypeName(wording, config.config),
                   });
                   if (id) {
                     requestAnimationFrame(() => {

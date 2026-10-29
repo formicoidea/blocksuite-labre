@@ -24,11 +24,12 @@ import type { Row } from '../../../core/index.js';
 import { createDndContext } from '../../../core/utils/wc-dnd/dnd-context.js';
 import { defaultActivators } from '../../../core/utils/wc-dnd/sensors/index.js';
 import { linearMove } from '../../../core/utils/wc-dnd/utils/linear-move.js';
-import { wordingOf } from '../../../core/utils/wording.js';
+import { wordingOf, wordingFrom } from '../../../core/utils/wording.js';
 import {
   DATA_VIEW_GROUP_COLLAPSE,
   DATA_VIEW_GROUP_EXPAND,
   DATA_VIEW_NEW_RECORD,
+  DATA_VIEW_GROUP_DELETE_CARDS,
 } from '../../../translations.js';
 import { getCollapsedState, setCollapsedState } from '../collapsed-state.js';
 import { LEFT_TOOL_BAR_WIDTH } from '../consts.js';
@@ -36,6 +37,7 @@ import { TableViewAreaSelection } from '../selection';
 import { DataViewColumnPreview } from './header/column-renderer.js';
 import { getVerticalIndicator } from './header/vertical-indicator.js';
 import type { TableViewUILogic } from './table-view-ui-logic.js';
+import { TOOLBAR_UNGROUP } from '@labre/affine-shared/services';
 
 const styles = css`
   affine-data-view-table-group:hover .group-header-op {
@@ -184,7 +186,7 @@ export class TableGroup extends SignalWatcher(
     const ele = e.currentTarget as HTMLElement;
     popFilterableSimpleMenu(popupTargetFromElement(ele), [
       menu.action({
-        name: 'Ungroup',
+        name: wordingFrom(this)(TOOLBAR_UNGROUP),
         hide: () => group.value == null,
         select: () => {
           group.rows.forEach(row => {
@@ -194,7 +196,7 @@ export class TableGroup extends SignalWatcher(
       }),
       hideGroupAction(group, wordingOf(this.std)),
       menu.action({
-        name: 'Delete Cards',
+        name: wordingFrom(this)(DATA_VIEW_GROUP_DELETE_CARDS),
         select: () => {
           this.view.rowsDelete(group.rows.map(row => row.rowId));
           this.requestUpdate();

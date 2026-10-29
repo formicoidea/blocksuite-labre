@@ -32,6 +32,8 @@ import {
   mobileTableViewHost,
   mobileTableViewWrapper,
 } from './table-view-style.js';
+import { DATA_VIEW_GROUP_NEW } from '../../../translations.js';
+import { wordingFrom } from '../../../core/utils/wording.js';
 
 export class MobileTableViewUILogic extends DataViewUILogicBase<
   TableSingleView,
@@ -120,7 +122,7 @@ export class MobileTableViewUILogic extends DataViewUILogicBase<
         @click="${add}"
       >
         <div class="dv-icon-16" style="display:flex;">${AddCursorIcon()}</div>
-        <div>New Group</div>
+        <div>${wordingFrom(this.ui$.value)(DATA_VIEW_GROUP_NEW)}</div>
       </div>
     </div>`;
   };

@@ -3,6 +3,11 @@ import { t } from '../../logical/type-presets.js';
 import { tRef, tVar } from '../../logical/type-variable.js';
 import { createFilter } from './create.js';
 import { tagToString } from './utils.js';
+import {
+  DATA_VIEW_FILTER_IS_ONE_OF,
+  DATA_VIEW_FILTER_IS_NOT_ONE_OF,
+  DATA_VIEW_FILTER_NOT,
+} from '../../../translations.js';
 
 const optionName = 'options' as const;
 export const tagFilter = [
@@ -11,8 +16,9 @@ export const tagFilter = [
     vars: [tVar(optionName, t.tag.instance())] as const,
     self: tRef(optionName),
     args: [ct.array.instance(tRef(optionName))] as const,
-    label: 'Is one of',
-    shortString: v =>
+    label: DATA_VIEW_FILTER_IS_ONE_OF[1],
+    labelWording: DATA_VIEW_FILTER_IS_ONE_OF,
+    shortString: (_wording, v) =>
       v ? `: ${tagToString(v.value, v.type.element)}` : undefined,
     impl: (self, value) => {
       if (!value.length) {
@@ -30,9 +36,12 @@ export const tagFilter = [
     vars: [tVar(optionName, t.tag.instance())] as const,
     self: tRef(optionName),
     args: [ct.array.instance(tRef(optionName))] as const,
-    label: 'Is not one of',
-    shortString: v =>
-      v ? `: Not ${tagToString(v.value, v.type.element)}` : undefined,
+    label: DATA_VIEW_FILTER_IS_NOT_ONE_OF[1],
+    labelWording: DATA_VIEW_FILTER_IS_NOT_ONE_OF,
+    shortString: (wording, v) =>
+      v
+        ? `: ${wording(DATA_VIEW_FILTER_NOT, { value: tagToString(v.value, v.type.element) ?? '' })}`
+        : undefined,
     impl: (self, value) => {
       if (!value.length) {
         return true;

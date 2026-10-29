@@ -7,6 +7,7 @@ import zod from 'zod';
 
 import { EditorHostKey } from '../../context/host-context.js';
 import { isLinkedDoc } from '../../utils/title-doc.js';
+import { DATABASE_TYPE_TEXT } from '../../translations.js';
 
 export const richTextColumnType = propertyType('rich-text');
 export type RichTextCellType = Text | Text['yText'];
@@ -18,7 +19,8 @@ export const toYText = (text?: RichTextCellType): undefined | Text['yText'] => {
 };
 
 export const richTextPropertyModelConfig = richTextColumnType.modelConfig({
-  name: 'Text',
+  name: DATABASE_TYPE_TEXT[1],
+  nameWording: DATABASE_TYPE_TEXT,
   propertyData: {
     schema: zod.object({}),
     default: () => ({}),

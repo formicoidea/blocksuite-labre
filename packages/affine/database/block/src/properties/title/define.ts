@@ -5,11 +5,13 @@ import zod from 'zod';
 
 import { EditorHostKey } from '../../context/host-context.js';
 import { isLinkedDoc } from '../../utils/title-doc.js';
+import { DATABASE_TYPE_TITLE } from '../../translations.js';
 
 export const titleColumnType = propertyType('title');
 
 export const titlePropertyModelConfig = titleColumnType.modelConfig({
-  name: 'Title',
+  name: DATABASE_TYPE_TITLE[1],
+  nameWording: DATABASE_TYPE_TITLE,
   propertyData: {
     schema: zod.object({}),
     default: () => ({}),
