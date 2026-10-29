@@ -272,10 +272,18 @@ export abstract class HostedDataSourceBase extends DataSourceBase {
     };
   });
 
+  /**
+   * Refuses every edit on a writable store: a database with no source, under
+   * a host that requires one, shows its native rows read-only (ADR 0035
+   * amendment of 2026-10-29). Every write path of the view layer reads
+   * `readonly$` (cells, paste, drag, "New", view and property menus).
+   */
+  readonly locked$ = signal(false);
+
   // Mobile edits too (ADR 0035 §1, B5): the table and kanban presets ship
   // their own touch renderers, chosen by `DataViewRootUILogic`.
   readonly$: ReadonlySignal<boolean> = computed(() => {
-    return this._model.store.readonly;
+    return this._model.store.readonly || this.locked$.value;
   });
 
   viewConverts = databaseBlockViewConverts;

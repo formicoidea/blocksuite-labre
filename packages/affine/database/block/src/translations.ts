@@ -27,6 +27,12 @@ export const DATABASE_SOURCE_REQUIRED_HINT: ChromeWording = [
   'Connect a source to show its rows here.',
 ];
 
+/** Over native rows shown read-only, under the same host. */
+export const DATABASE_SOURCE_REQUIRED_READ_ONLY: ChromeWording = [
+  'com.labre.database.source-required.read-only',
+  'This table has no source: its rows are read-only.',
+];
+
 /**
  * The creation popover's title (`@labre/affine-database-editor`) and the
  * button of a database waiting for its source: one chrome word, one key,
@@ -35,6 +41,24 @@ export const DATABASE_SOURCE_REQUIRED_HINT: ChromeWording = [
 export const DATABASE_CREATION_TITLE: ChromeWording = [
   'com.labre.database.creation.title',
   'Connect a source',
+];
+
+/* ── Turning a table into a source (ADR 0035, amendment of 2026-10-29) ── */
+
+/** Over native rows shown read-only: moves them into a new host database. */
+export const DATABASE_MOVE_INTO_SOURCE: ChromeWording = [
+  'com.labre.database.turn-into.move',
+  'Move into a database',
+];
+
+export const DATABASE_TURN_INTO_FAILED: ChromeWording = [
+  'com.labre.database.turn-into.failed',
+  'The table could not be created. Nothing was changed.',
+];
+
+export const DATABASE_TURN_INTO_NESTED: ChromeWording = [
+  'com.labre.database.turn-into.nested',
+  'Rows with nested blocks cannot be moved here. Nothing was changed.',
 ];
 
 /* ── Cell hydration (ADR 0035 §9e, issue B2) ───────────────────────────── */
@@ -63,11 +87,15 @@ export const DATABASE_NEW_RECORD_MORE: ChromeWording = [
 
 export const DATABASE_WORDINGS: readonly ChromeWording[] = [
   DATABASE_CREATION_TITLE,
+  DATABASE_MOVE_INTO_SOURCE,
   DATABASE_NEW_RECORD_MORE,
   DATABASE_SOURCE_MISSING,
   DATABASE_SOURCE_MISSING_HINT,
   DATABASE_SOURCE_REQUIRED,
   DATABASE_SOURCE_REQUIRED_HINT,
+  DATABASE_SOURCE_REQUIRED_READ_ONLY,
+  DATABASE_TURN_INTO_FAILED,
+  DATABASE_TURN_INTO_NESTED,
   DATABASE_VALUES_ERROR,
   DATABASE_VALUES_LOADING,
 ];

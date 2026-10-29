@@ -25,7 +25,7 @@ import { KanbanViewTooltip, TableViewTooltip } from './tooltips';
  * its `createDatabase` is the only way in, and without it no entry creates
  * one. Without a picker, a native inline database, as in 0.48.
  */
-function canCreateDatabase(std: BlockStdScope): boolean {
+export function canCreateDatabase(std: BlockStdScope): boolean {
   const picker = std.getOptional(DataSourcePickerProvider);
   return !picker || !!picker.createDatabase;
 }
@@ -74,35 +74,45 @@ function insertNativeDatabase(
  * - a picker alone (a core-only host): the host's `createDatabase` first,
  *   then a view of its first source, as in 0.61;
  * - no picker: a native inline database with 3 rows, as in 0.48.
+ *
+ * The one creation gesture: the slash entries and the mobile keyboard
+ * toolbar's "Table view" / "Kanban view" both run it (ADR 0035 amendment of
+ * 2026-10-29), so neither inserts native rows a host's picker would not see.
  */
+export function createDatabaseByGesture(
+  std: BlockStdScope,
+  viewType: string
+): void {
+  if (!canCreateDatabase(std)) return;
+  const picker = std.getOptional(DataSourcePickerProvider);
+  if (!picker) {
+    insertNativeDatabase(std, viewType);
+    return;
+  }
+  const menu = std.getOptional(DatabaseCreationMenuIdentifier);
+  if (!menu) {
+    const [, { selectedModels }] = std.command.exec(getSelectedModelsCommand);
+    const after = selectedModels?.at(-1);
+    if (!after) return;
+    createHostedDatabaseView(std, picker, {
+      after,
+      viewType,
+      removeEmptyLine: true,
+    }).catch(console.error);
+    return;
+  }
+  const blockId = insertNativeDatabase(std, viewType, 0);
+  if (!blockId) return;
+  std.host.updateComplete
+    .then(() => {
+      const anchor = std.view.getBlock(blockId);
+      if (anchor) menu.open({ std, blockId, anchor });
+    })
+    .catch(console.error);
+}
+
 function createDatabaseAction(viewType: string): SlashMenuActionItem['action'] {
-  return ({ std }) => {
-    const picker = std.getOptional(DataSourcePickerProvider);
-    if (!picker) {
-      insertNativeDatabase(std, viewType);
-      return;
-    }
-    const menu = std.getOptional(DatabaseCreationMenuIdentifier);
-    if (!menu) {
-      const [, { selectedModels }] = std.command.exec(getSelectedModelsCommand);
-      const after = selectedModels?.at(-1);
-      if (!after) return;
-      createHostedDatabaseView(std, picker, {
-        after,
-        viewType,
-        removeEmptyLine: true,
-      }).catch(console.error);
-      return;
-    }
-    const blockId = insertNativeDatabase(std, viewType, 0);
-    if (!blockId) return;
-    std.host.updateComplete
-      .then(() => {
-        const anchor = std.view.getBlock(blockId);
-        if (anchor) menu.open({ std, blockId, anchor });
-      })
-      .catch(console.error);
-  };
+  return ({ std }) => createDatabaseByGesture(std, viewType);
 }
 
 /**

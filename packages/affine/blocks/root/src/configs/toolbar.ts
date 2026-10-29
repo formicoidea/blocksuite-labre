@@ -1,4 +1,5 @@
 import {
+  canConvertToDatabase,
   convertToDatabase,
   DATABASE_CONVERT_WHITE_LIST,
 } from '@labre/affine-database-block';
@@ -214,7 +215,8 @@ const turnIntoDatabase = {
   tooltip: 'Create Table',
   tooltipWording: ROOT_TOOLBAR_CREATE_TABLE,
   icon: DatabaseTableViewIcon(),
-  when({ chain }) {
+  when({ chain, std }) {
+    if (!canConvertToDatabase(std)) return false;
     const middleware = (count = 0) => {
       return (ctx: { selectedBlocks: BlockComponent[] }, next: () => void) => {
         const { selectedBlocks } = ctx;
