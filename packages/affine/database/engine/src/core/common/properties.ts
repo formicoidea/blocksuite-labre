@@ -178,9 +178,12 @@ export class DataViewPropertiesSettingView extends SignalWatcher(
 
   private readonly _openMenu = (property: Property, row: HTMLElement) => {
     if (this.view.readonly$.value) return;
-    popPropertyMenu(popupTargetFromElement(row), property, {
-      wording: this.wording,
-    });
+    popPropertyMenu(
+      popupTargetFromElement(row),
+      property,
+      { wording: this.wording },
+      { beside: true }
+    );
   };
 
   private readonly _newProperty = (event: MouseEvent) => {

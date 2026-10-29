@@ -17,6 +17,7 @@ import {
   computePosition,
   type Middleware,
   offset,
+  type Placement,
   type ReferenceElement,
   shift,
 } from '@floating-ui/dom';
@@ -492,6 +493,8 @@ export const createPopup = (
     onClose?: () => void;
     middleware?: Array<Middleware | null | undefined | false>;
     container?: HTMLElement;
+    /** Told where the popup was placed, at each placement. */
+    onPlaced?: (placement: Placement) => void;
   }
 ) => {
   const close = () => {
@@ -515,7 +518,8 @@ export const createPopup = (
     computePosition(target.targetRect, content, {
       middleware: options?.middleware ?? [shift({ crossAxis: true })],
     })
-      .then(({ x, y }) => {
+      .then(({ x, y, placement }) => {
+        options?.onPlaced?.(placement);
         Object.assign(content.style, {
           left: `${x}px`,
           top: `${y}px`,
@@ -631,6 +635,11 @@ export const popMenu = (
   const closePopup = createPopup(target, menu.menuElement, {
     onClose: () => {
       menu.close();
+    },
+    // A menu placed beside its anchor opens its sub-menus on that side too.
+    onPlaced: placement => {
+      if (placement.startsWith('left')) menu.side = 'left';
+      else if (placement.startsWith('right')) menu.side = 'right';
     },
     middleware: props.middleware ?? [
       autoPlacement({

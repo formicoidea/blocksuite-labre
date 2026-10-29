@@ -9,6 +9,7 @@ import {
   TOOLBAR_DUPLICATE,
 } from '@labre/affine-shared/services';
 import { DeleteIcon, DuplicateIcon, ViewIcon } from '@blocksuite/icons/lit';
+import { autoPlacement, offset, shift } from '@floating-ui/dom';
 import { html } from 'lit/static-html.js';
 
 import {
@@ -162,13 +163,29 @@ export const propertyMenuItems = (
   ];
 };
 
+/**
+ * A property menu opened from a list of properties sits BESIDE the list, on
+ * the side with more room, and stays inside the viewport: below the row it
+ * covered the list, and in a host's narrow sidebar (labre, about 470px) it
+ * hid the very rows it edits, its « Type » sub-menu half off screen (labre
+ * recette of 1.1). The sub-menu then opens on the same side
+ * (`nestedSubMenuPosition`).
+ */
+export const besideListMiddleware = () => [
+  autoPlacement({ allowedPlacements: ['right-start', 'left-start'] }),
+  offset(4),
+  shift({ padding: 8, crossAxis: true }),
+];
+
 export const popPropertyMenu = (
   target: PopupTarget,
   property: Property,
-  slots?: PropertyMenuSlots
+  slots?: PropertyMenuSlots,
+  placement: { beside?: boolean } = {}
 ) =>
   popMenu(target, {
     options: { items: propertyMenuItems(property, slots) },
+    middleware: placement.beside ? besideListMiddleware() : undefined,
   });
 
 /**
