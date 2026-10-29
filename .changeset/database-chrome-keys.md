@@ -1,9 +1,0 @@
----
-'@labre/affine': major
----
-
-Fix #572: the database chrome that was hard-coded in English now goes through the translation seam, about 130 new `com.labre.data-view.*` / `com.labre.database.*` keys with English fallbacks (listed by `yarn i18n:manifest`): the slash entries' descriptions (their names and captions reuse the view default names), filter operators and the filter and sort panels, grouping and date groups, the footer « Calculate » menu and its statistics, property type names (also the name a new property is given, written resolved), number formats, row, card and group menus, the record detail, toasts and placeholders. The database packages leave the literal ratchet's deferred surface, so a new hard-coded string there fails the build. English fixes: « Does not contain » (was « Does not contains » / « Does no contains »), « Insert left column » and « Move left » in the table header (the keys the phone header already used).
-
-Breaking for a host that declares its own data-view filter: `FilterConfig.shortString` takes a `Wording` first, `(wording, ...args)`. Widenings: optional `labelWording` on filters, `nameWording` on property configs, `groupWording` / `menuWording` / `displayWording` on statistics (and an optional `wording` in a statistic's `impl` info), `wording` options on `popNewPropertyMenu` and `selectGroupByProperty`, an optional `wording` argument to a literal's `getItems` and to `GroupByConfig.groupName`; `NumberCellFormat.labelWording` is required. New helpers `wordingFrom(element)`, `stdAround(element)`, `sayLabel` and `propertyTypeName` in the engine's wording utilities.
-
-Still English, by design or out of reach: the slash tooltips' illustrations, the Notion import adapter (headless), the fixed « Block Type » property and the « Column » seed of a native source's new property (no editor to ask), the date group month and day formats (date-fns patterns, not keys), and the checkbox value's « True » / « False » text form.

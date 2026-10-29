@@ -1,5 +1,115 @@
 # @labre/affine
 
+## 2.0.0
+
+### Major Changes
+
+- ba393cf: The calendar view is removed (ADR 0035, amendment of 2026-10-29; product owner decision). `view-presets/calendar` of `@labre/affine-database-engine` is deleted with everything it exported: `calendarViewMeta`, `calendarViewModel`, `CalendarSingleView`, `CalendarExternalSourceProvider`, the calendar layout helpers and the `affine-data-view-calendar` element, plus `viewPresets.calendarViewMeta`, the conversions out of calendar and the key `com.labre.data-view.view.default-name.calendar`. A host that imported one gets a compile error: drop the import. Stored documents are untouched: a stored `calendar` view now takes the unknown-view path, drawn as a table tagged "Shown as a table", its settings read-only, its stored data never rewritten, "Duplicate as table" as the way out. It never throws.
+- ba393cf: Fix #572: the database chrome that was hard-coded in English now goes through the translation seam, about 130 new `com.labre.data-view.*` / `com.labre.database.*` keys with English fallbacks (listed by `yarn i18n:manifest`): the slash entries' descriptions (their names and captions reuse the view default names), filter operators and the filter and sort panels, grouping and date groups, the footer « Calculate » menu and its statistics, property type names (also the name a new property is given, written resolved), number formats, row, card and group menus, the record detail, toasts and placeholders. The database packages leave the literal ratchet's deferred surface, so a new hard-coded string there fails the build. English fixes: « Does not contain » (was « Does not contains » / « Does no contains »), « Insert left column » and « Move left » in the table header (the keys the phone header already used).
+
+  Breaking for a host that declares its own data-view filter: `FilterConfig.shortString` takes a `Wording` first, `(wording, ...args)`. Widenings: optional `labelWording` on filters, `nameWording` on property configs, `groupWording` / `menuWording` / `displayWording` on statistics (and an optional `wording` in a statistic's `impl` info), `wording` options on `popNewPropertyMenu` and `selectGroupByProperty`, an optional `wording` argument to a literal's `getItems` and to `GroupByConfig.groupName`; `NumberCellFormat.labelWording` is required. New helpers `wordingFrom(element)`, `stdAround(element)`, `sayLabel` and `propertyTypeName` in the engine's wording utilities.
+
+  Still English, by design or out of reach: the slash tooltips' illustrations, the Notion import adapter (headless), the fixed « Block Type » property and the « Column » seed of a native source's new property (no editor to ask), the date group month and day formats (date-fns patterns, not keys), and the checkbox value's « True » / « False » text form.
+
+### Minor Changes
+
+- ba393cf: "New" (the toolbar's `addRow`) adds the row and puts its title in editing in every view, as a table's "New record" footer does, instead of opening the row (product owner, recette P3-15): table (also the virtual table and the phone table), kanban (desktop and phone: the new card's title), gallery and list (the new card's or row's title, drawn editable while it edits). Nothing else is written. On a phone, a gallery or a list still opens the new row, since their values are edited in the row page there (P7). A host whose own tests expected the row page to open after "New" updates them.
+- f0ba9b9: A host may lock a source's properties and its new rows. New optional `sourcePolicy(databaseId, sourceId)` on the data-source picker, answering a signal of `{ propertiesLocked, rowsLocked }` (new type `DataSourcePickerSourcePolicy`, `@labre/affine/shared/services`) for every view of a host database (a block with an `externalSourceId`) that reads that source; a flip of the signal reaches the open views. Properties locked: no "+" column, no "Insert left / right", no rename, type change, duplicate or delete in a property's menu (its name shown read-only with "The properties of this source are locked"), no "New property" in the properties list or the record detail; hiding, ordering, widths, filters, sorts, groups, colour rules and cell values stay. Rows locked: "New" drawn disabled with "New pages cannot be added to this source" and without its menu, no "+" in group headers, table footers, boards, galleries and lists, no "Insert before / after" on a card, no keyboard row; existing rows stay editable and deletable. Both are also refused by the view layer (`SingleView.rowAdd` answers `''`, `propertyAdd` `undefined`, and a property's `nameSet`, `typeSet`, `duplicate` and `delete` write nothing), read from the new `SingleView.propertiesLocked# @labre/affine
+/ `rowsLocked# @labre/affine
+  , `Property.nameCanSet` and `DataSource.propertiesLocked# @labre/affine
+/ `rowsLocked# @labre/affine
+  . Two new keys: `com.labre.data-view.source.properties-locked`, `com.labre.data-view.source.rows-locked`. A host without `sourcePolicy` sees no change.
+- ba393cf: Enter (or ArrowDown) in the page title of a database's full page (`<doc-title .bodyBlockId>`) now hands the caret to a kanban, a gallery or a list too: the first card's or row's title (top of the first unfolded group with one) goes into editing, writing nothing. A table still selects its first cell. The kanban used to aim at the first group even when it was empty.
+
+### Patch Changes
+
+- ba393cf: Fix #571: picking an entry two menu levels down (the creation popover's « Link an existing source » → database → source) closes the whole menu chain, as a pick one level down always did; the popover no longer stays open over the page and the next click is no longer swallowed. A nested sub-menu opens on the side its parent opened on (right first) and flips only when it does not fit, so the third level draws beside the second instead of back over the first.
+- ba393cf: A property's menu opened from a view's « Properties » list sits beside the list, on the side with more room, and stays inside the viewport: below the row it covered the list, and in a host's narrow sidebar (about 470px) it hid the rows it edits while its « Type » sub-menu hung half off screen. A sub-menu now opens on the side its menu was placed on and shifts back into the viewport. `popPropertyMenu` takes an optional fourth argument `{ beside: true }`.
+- ba393cf: `remapView` and `viewTemplateData` (`@labre/affine-database-editor`) accept a store's live view: they copied their input with `structuredClone`, which throws a `DataCloneError` on a `Proxy`, so a host passing the block's reactive view data crashed (seen in labre on import). They now take a JSON copy, which holds every key a view stores.
+- ba393cf: The database view bar left-aligns with the title and the rows, inline and on the full page: the first tab's icon sat 4px right of both (the tab's padding, now hung into the gutter). On the full page, a table wide enough for the page layout no longer starts left of the centred page heading: the root pads by the heading's centring inset (`--affine-database-page-inset`), which the sticky view bar reads too.
+  - @labre/affine-block-attachment@2.0.0
+  - @labre/affine-block-bookmark@2.0.0
+  - @labre/affine-block-callout@2.0.0
+  - @labre/affine-block-code@2.0.0
+  - @labre/affine-block-divider@2.0.0
+  - @labre/affine-block-edgeless-text@2.0.0
+  - @labre/affine-block-embed@2.0.0
+  - @labre/affine-block-embed-doc@2.0.0
+  - @labre/affine-block-frame@2.0.0
+  - @labre/affine-block-image@2.0.0
+  - @labre/affine-block-latex@2.0.0
+  - @labre/affine-block-list@2.0.0
+  - @labre/affine-block-note@2.0.0
+  - @labre/affine-block-paragraph@2.0.0
+  - @labre/affine-block-root@2.0.0
+  - @labre/affine-block-surface@2.0.0
+  - @labre/affine-block-surface-ref@2.0.0
+  - @labre/affine-block-table@2.0.0
+  - @labre/affine-components@2.0.0
+  - @labre/affine-database-block@2.0.0
+  - @labre/affine-database-editor@2.0.0
+  - @labre/affine-database-engine@2.0.0
+  - @labre/affine-database-view-block@2.0.0
+  - @labre/affine-ext-loader@2.0.0
+  - @labre/affine-foundation@2.0.0
+  - @labre/affine-fragment-adapter-panel@2.0.0
+  - @labre/affine-fragment-doc-title@2.0.0
+  - @labre/affine-fragment-frame-panel@2.0.0
+  - @labre/affine-fragment-outline@2.0.0
+  - @labre/affine-gfx-bpmn@2.0.0
+  - @labre/affine-gfx-brush@2.0.0
+  - @labre/affine-gfx-c4@2.0.0
+  - @labre/affine-gfx-connector@2.0.0
+  - @labre/affine-gfx-cynefin-estuarine@2.0.0
+  - @labre/affine-gfx-ddd-aggregate@2.0.0
+  - @labre/affine-gfx-ddd-context-map@2.0.0
+  - @labre/affine-gfx-ddd-core-domain@2.0.0
+  - @labre/affine-gfx-ddd-event-storming@2.0.0
+  - @labre/affine-gfx-ddd-shared@2.0.0
+  - @labre/affine-gfx-edgy@2.0.0
+  - @labre/affine-gfx-group@2.0.0
+  - @labre/affine-gfx-link@2.0.0
+  - @labre/affine-gfx-mindmap@2.0.0
+  - @labre/affine-gfx-note@2.0.0
+  - @labre/affine-gfx-pointer@2.0.0
+  - @labre/affine-gfx-shape@2.0.0
+  - @labre/affine-gfx-template@2.0.0
+  - @labre/affine-gfx-text@2.0.0
+  - @labre/affine-gfx-turbo-renderer@2.0.0
+  - @labre/affine-gfx-uml@2.0.0
+  - @labre/affine-gfx-wardley@2.0.0
+  - @labre/affine-inline-comment@2.0.0
+  - @labre/affine-inline-footnote@2.0.0
+  - @labre/affine-inline-latex@2.0.0
+  - @labre/affine-inline-link@2.0.0
+  - @labre/affine-inline-mention@2.0.0
+  - @labre/affine-inline-preset@2.0.0
+  - @labre/affine-inline-reference@2.0.0
+  - @labre/affine-model@2.0.0
+  - @labre/affine-rich-text@2.0.0
+  - @labre/affine-shared@2.0.0
+  - @labre/affine-widget-drag-handle@2.0.0
+  - @labre/affine-widget-edgeless-auto-connect@2.0.0
+  - @labre/affine-widget-edgeless-dragging-area@2.0.0
+  - @labre/affine-widget-edgeless-selected-rect@2.0.0
+  - @labre/affine-widget-edgeless-toolbar@2.0.0
+  - @labre/affine-widget-edgeless-zoom-toolbar@2.0.0
+  - @labre/affine-widget-frame-title@2.0.0
+  - @labre/affine-widget-keyboard-toolbar@2.0.0
+  - @labre/affine-widget-linked-doc@2.0.0
+  - @labre/affine-widget-note-slicer@2.0.0
+  - @labre/affine-widget-page-dragging-area@2.0.0
+  - @labre/affine-widget-remote-selection@2.0.0
+  - @labre/affine-widget-scroll-anchoring@2.0.0
+  - @labre/affine-widget-slash-menu@2.0.0
+  - @labre/affine-widget-thread-marks@2.0.0
+  - @labre/affine-widget-toolbar@2.0.0
+  - @labre/affine-widget-viewport-overlay@2.0.0
+  - @labre/global@2.0.0
+  - @labre/std@2.0.0
+  - @labre/store@2.0.0
+  - @labre/sync@2.0.0
+
 ## 1.1.0
 
 ### Minor Changes
