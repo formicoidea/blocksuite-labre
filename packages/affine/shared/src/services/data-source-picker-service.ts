@@ -122,6 +122,33 @@ export interface DataSourcePickerContent {
 }
 
 /**
+ * A view of a host database, where it is stored (ADR 0035 amendment of
+ * 2026-10-29, "a host decides what a deleted view takes with it").
+ */
+export interface DataSourcePickerViewRef {
+  /** The block's `externalSourceId`, as `list()` names the database. */
+  databaseId: string;
+  /** The view's stored `sourceId`; absent, the host's implicit source. */
+  sourceId?: string;
+  viewId: string;
+  /** The document (store id) and the `affine:database` block holding it. */
+  docId: string;
+  blockId: string;
+}
+
+/** What `deleteView` hands the host: the view, and the verb that removes it. */
+export interface DataSourcePickerViewDeletion extends DataSourcePickerViewRef {
+  /** The view's name, as stored ('' when it has none). */
+  viewName: string;
+  /**
+   * Remove the view from its block, as one undo step, and show the next
+   * one. `false` when nothing was removed: the page turned read-only, the
+   * view is already gone, or `remove` was already called.
+   */
+  remove(): boolean;
+}
+
+/**
  * The data-source picker (ADR 0035 §9c, issue B12): the host lists the
  * databases and sources a view may read, and creates them. The library draws
  * the picker (`@labre/affine-database-editor`), inserts the view and never
@@ -193,6 +220,21 @@ export interface DataSourcePickerService {
    * offer it. Resolves `true` once saved. Absent, no "Save as template".
    */
   saveViewTemplate?(template: DataSourcePickerViewTemplate): Promise<boolean>;
+  /**
+   * A reader asked to delete a view of one of your databases (a block with
+   * an `externalSourceId`, on a writable document): decide what goes with
+   * it, ask what you must, then call `request.remove()`; not calling it
+   * keeps the view. Called once per gesture ("Delete" in the view's tab
+   * menu or its settings), never for a deleted block, an undo, a redo or a
+   * remote change. Absent, the view is removed at once, as in 1.0.
+   */
+  deleteView?(request: DataSourcePickerViewDeletion): void;
+  /**
+   * An undo (`'undo'`: the view is back) or a redo (`'redo'`: it is gone
+   * again) of a removal made by `request.remove()`, on this client. Never
+   * for a remote change. Nothing to confirm: it already happened.
+   */
+  viewHistory?(view: DataSourcePickerViewRef, step: 'undo' | 'redo'): void;
 }
 
 export const DataSourcePickerProvider =

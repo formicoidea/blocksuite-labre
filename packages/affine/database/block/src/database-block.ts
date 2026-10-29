@@ -15,6 +15,7 @@ import {
   BlockCommentManager,
   CommentProviderIdentifier,
   type DatabaseAllEvents,
+  DataSourcePickerProvider,
   DocModeProvider,
   type EventTraceFn,
   NotificationProvider,
@@ -237,6 +238,11 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
           },
         });
       }
+      // A view of a host database is deleted through the host's request
+      // (`deleteView`, ADR 0035 amendment of 2026-10-29); the data source
+      // reads the picker from its own scope, below the editor's.
+      const picker = this.std.getOptional(DataSourcePickerProvider);
+      if (picker) dataSource.serviceSet(DataSourcePickerProvider, picker);
       // `{ database: false }` takes view creation away, never the views.
       if (!this.std.getOptional(DatabaseViewCreationIdentifier)) {
         dataSource.serviceSet(ViewCreationOffKey, true);
