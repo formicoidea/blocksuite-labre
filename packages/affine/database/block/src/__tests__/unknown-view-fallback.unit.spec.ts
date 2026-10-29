@@ -1,20 +1,21 @@
 /**
- * A stored view whose mode has no preset here renders as a table; calendar is
- * render-only (ADR 0035 §6, issue B3; labre ADR-0046 §8).
+ * A stored view whose mode has no preset here renders as a table (ADR 0035
+ * §6, issue B3; labre ADR-0046 §8); since 2.0 that includes `calendar`,
+ * whose preset left the library (ADR 0035 amendment of 2026-10-29).
  *
  * Up to 0.48 `viewMetaGet` threw `Unknown view type` for any mode outside
  * table / kanban / calendar: one `timeline` view from an import, or a
  * `gallery` written by a newer client, and the whole database rendered
- * nothing. This suite mounts a database holding a `calendar`, a `timeline`
- * and an invented mode and would have caught that throw, plus the three ways
- * the fix could quietly go wrong:
+ * nothing. This suite mounts a database holding a `calendar` as a 1.x
+ * client stored it, a `timeline` and an invented mode, and would have
+ * caught that throw, plus the ways the fix could quietly go wrong:
  *
  * - writing on load: a fallback view must leave `props.views` deep-equal,
  *   its settings must not write either, while its cells stay editable;
- * - offering calendar again: creatable ⊂ renderable, and no menu the source
- *   feeds (views bar "+" / "Create …", Layout, conversions, slash entries)
- *   names calendar as a target, while a stored calendar keeps its preset and
- *   its conversions out;
+ * - the calendar removal turning a stored calendar into an error, a blank
+ *   database or a rewritten view, instead of the readable table fallback;
+ * - offering calendar again: no preset, and no menu the source feeds (views
+ *   bar "+" / "Create …", Layout, conversions, slash entries) names it;
  * - a mode spelled like an `Object` member (`constructor`, `__proto__`)
  *   finding a prototype member instead of the fallback.
  *
@@ -66,6 +67,18 @@ const TIMELINE = {
   filter: { kind: 'not-a-filter-group' },
 };
 
+/** A calendar as 0.48 to 1.x stored it (`calendarViewModel.defaultData`). */
+const CALENDAR = {
+  id: 'v-calendar',
+  name: 'Calendar View',
+  mode: 'calendar',
+  filter: { type: 'group', op: 'and', conditions: [] },
+  date: { startColumnId: 'p-date' },
+  card: { titleColumnId: 'p-title', visiblePropertyIds: [] },
+  sources: { workspaceCalendar: { enabled: true } },
+  ui: {},
+};
+
 const INVENTED = {
   id: 'v-invented',
   name: 'From the future',
@@ -111,19 +124,16 @@ function createDatabase() {
     databaseId
   );
 
-  // Written the way a 0.48 client wrote them: a table and a calendar through
-  // the view manager, then two views no preset here knows.
+  // A table through the view manager, then three views no preset here
+  // knows: a calendar of 1.x, an import's timeline, a newer client's mode.
   const writer = new DatabaseBlockDataSource(model);
   const tableId = writer.viewManager.viewAdd(viewPresets.tableViewMeta.type);
-  const calendarId = writer.viewManager.viewAdd(
-    viewPresets.calendarViewMeta.type
-  );
   store.updateBlock(model, {
-    views: [...model.props.views, TIMELINE, INVENTED] as never,
+    views: [...model.props.views, CALENDAR, TIMELINE, INVENTED] as never,
   });
   writer.dispose();
 
-  return { store, model, status, rowId, tableId, calendarId };
+  return { store, model, status, rowId, tableId };
 }
 
 beforeAll(() => {
@@ -136,13 +146,13 @@ const storedViews = (model: DatabaseBlockModel) =>
 
 describe('an unknown view mode renders as a table', () => {
   test('a database holding calendar, timeline and an invented mode mounts', () => {
-    const { model, status, rowId, tableId, calendarId } = createDatabase();
+    const { model, status, rowId, tableId } = createDatabase();
     const before = storedViews(model);
 
     // As on load: a fresh source, every view built, every UI logic made.
     const source = new DatabaseBlockDataSource(model);
     const root = new DataViewRootUILogic({ dataSource: source } as never);
-    for (const id of [tableId, calendarId, TIMELINE.id, INVENTED.id]) {
+    for (const id of [tableId, CALENDAR.id, TIMELINE.id, INVENTED.id]) {
       source.viewManager.setCurrentView(id);
       const logic = root.currentView$.value;
       expect(logic, id).toBeDefined();
@@ -156,14 +166,15 @@ describe('an unknown view mode renders as a table', () => {
     }
 
     const meta = (id: string) => source.viewManager.viewGet(id)?.meta.type;
-    expect(meta(calendarId)).toBe('calendar');
+    expect(meta(tableId)).toBe('table');
+    expect(meta(CALENDAR.id)).toBe('table');
     expect(meta(TIMELINE.id)).toBe('table');
     expect(meta(INVENTED.id)).toBe('table');
 
     const shown = (id: string) =>
       source.viewManager.viewGet(id)?.shownAsFallback$.value;
     expect(shown(tableId)).toBe(false);
-    expect(shown(calendarId)).toBe(false);
+    expect(shown(CALENDAR.id)).toBe(true);
     expect(shown(TIMELINE.id)).toBe(true);
     expect(shown(INVENTED.id)).toBe(true);
 
@@ -218,10 +229,8 @@ describe('an unknown view mode renders as a table', () => {
     expect(source.viewManager.currentViewId$.value).toBe(id);
 
     // Not offered for a view this client draws with its own preset.
-    const calendarId = (before[1] as { id: string }).id;
-    expect(duplicateAsShownPreset(source.viewManager, calendarId)).toBe(
-      undefined
-    );
+    const tableId = (before[0] as { id: string }).id;
+    expect(duplicateAsShownPreset(source.viewManager, tableId)).toBe(undefined);
   });
 
   test.each(['constructor', '__proto__', 'toString', '', 'TABLE'])(
@@ -232,15 +241,29 @@ describe('an unknown view mode renders as a table', () => {
   );
 });
 
-describe('calendar renders but is never created', () => {
+describe('calendar is gone (2.0): drawn as a table, never created', () => {
   const types = (metas: { type: string }[]) => metas.map(meta => meta.type);
 
-  test('creatable presets are a subset of the renderable ones', () => {
+  test('creatable presets are a subset of the renderable ones, neither has calendar', () => {
     const renderable = new Set(types(databaseBlockRenderableViews));
     for (const type of types(databaseBlockViews)) {
       expect(renderable.has(type), type).toBe(true);
     }
-    expect(renderable.has('calendar')).toBe(true);
+    expect(renderable.has('calendar')).toBe(false);
+    expect(Object.keys(viewPresets).join()).not.toMatch(/calendar/i);
+  });
+
+  test('a stored calendar reads as a table, its name and rows kept, nothing written', () => {
+    const { model, rowId } = createDatabase();
+    const before = storedViews(model);
+    const source = new DatabaseBlockDataSource(model);
+    const view = source.viewManager.viewGet(CALENDAR.id) as TableSingleView;
+
+    expect(view.type).toBe('calendar');
+    expect(view.meta.type).toBe('table');
+    expect(view.name$.value).toBe('Calendar View');
+    expect(view.rows$.value.map(row => row.rowId)).toEqual([rowId]);
+    expect(storedViews(model)).toEqual(before);
   });
 
   test('neither the views bar nor Layout lists calendar', () => {
@@ -251,22 +274,22 @@ describe('calendar renders but is never created', () => {
     expect(types(source.viewManager.viewMetas)).not.toContain('calendar');
   });
 
-  test('no conversion goes into calendar, the ones out of it stay', () => {
+  test('no conversion goes into or out of calendar', () => {
     const { model } = createDatabase();
     const source = new DatabaseBlockDataSource(model);
     for (const converts of [databaseBlockViewConverts, source.viewConverts]) {
-      expect(converts.filter(c => c.to === 'calendar')).toEqual([]);
       expect(
-        converts.filter(c => c.from === 'calendar').map(c => c.to)
-      ).toEqual(expect.arrayContaining(['table', 'kanban']));
+        converts.filter(c => c.to === 'calendar' || c.from === 'calendar')
+      ).toEqual([]);
     }
   });
 
-  test('a stored calendar can still be switched to a table', () => {
-    const { model, calendarId } = createDatabase();
+  test('"Duplicate as table" is the way out of a stored calendar', () => {
+    const { model } = createDatabase();
     const source = new DatabaseBlockDataSource(model);
-    source.viewManager.viewChangeType(calendarId, 'table');
-    expect(source.viewManager.viewGet(calendarId)?.type).toBe('table');
+    const id = duplicateAsShownPreset(source.viewManager, CALENDAR.id);
+    expect(id).toBeDefined();
+    expect(source.viewManager.viewGet(id!)?.type).toBe('table');
   });
 
   test('no slash entry creates a calendar', () => {

@@ -55,6 +55,18 @@ Typical changes a host sees, from the Labre app's history:
 Six weeks of library in one hop produced three compile breaks and one silent
 behaviour change. Upgrade at every minor.
 
+## 1.1 → 2.0 (the calendar view is removed)
+
+One intended compile break, for a host that imported the calendar preset: it
+is deleted, not deprecated (ADR 0035, amendment of 2026-10-29). Stored
+documents are untouched. What a host sees:
+
+| Kind                | Change                                                                                                                                                                  | What to do                                                                                                     |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| exports are removed | `calendarViewMeta`, `calendarViewModel`, `CalendarSingleView`, `CalendarExternalSourceProvider` and the rest of `view-presets/calendar`; `viewPresets.calendarViewMeta` | compile error if you imported one: drop the import (a calendar source you registered has nothing left to feed) |
+| a behaviour changes | a stored `calendar` view draws as a table, tagged "Shown as a table", its settings read-only, its stored data untouched; "Duplicate as table" makes an editable copy    | nothing; a smoke test that looked for `affine-data-view-calendar` looks for `dv-table-view-ui` instead         |
+| a key is removed    | `com.labre.data-view.view.default-name.calendar`                                                                                                                        | drop it from your catalogue (`yarn i18n:manifest`)                                                             |
+
 ## 0.58 → the next release (katex 0.18)
 
 No compile break. One peer moves from 0.16 to 0.18: the formula blocks render with

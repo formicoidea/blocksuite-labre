@@ -401,47 +401,6 @@
     "packages/affine/database/engine/src/property-presets/text/define.ts": [
       "Plain-Text"
     ],
-    "packages/affine/database/engine/src/view-presets/calendar/calendar-view-manager.ts": [
-      "Date",
-      "End Date",
-      "Untitled"
-    ],
-    "packages/affine/database/engine/src/view-presets/calendar/pc/actions.ts": [
-      "Calendar event"
-    ],
-    "packages/affine/database/engine/src/view-presets/calendar/pc/dnd.ts": [
-      "Untitled"
-    ],
-    "packages/affine/database/engine/src/view-presets/calendar/pc/view.ts": [
-      "${} ${}",
-      "+ New row",
-      "Add a row to any date, it'll appear here on the calendar.",
-      "Calendar by",
-      "Connect calendar",
-      "Create date property",
-      "Create date property",
-      "Date",
-      "Date",
-      "Date range",
-      "Dismiss",
-      "End date",
-      "External calendars",
-      "Failed to load calendar entries",
-      "New row",
-      "New row",
-      "Next month",
-      "None",
-      "Nothing here yet",
-      "Previous month",
-      "Select or create date property",
-      "Show all workspace calendars",
-      "Today",
-      "Untitled",
-      "Untitled",
-      "Untitled",
-      "Untitled",
-      "Untitled"
-    ],
     "packages/affine/database/engine/src/view-presets/kanban/mobile/group.ts": [
       "Add",
       "Delete Cards",

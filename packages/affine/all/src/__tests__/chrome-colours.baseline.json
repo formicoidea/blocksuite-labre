@@ -47,7 +47,6 @@
   "packages/affine/components/src/icons/text.ts": 57,
   "packages/affine/database/block/src/components/layout.ts": 1,
   "packages/affine/database/block/src/configs/tooltips.ts": 53,
-  "packages/affine/database/engine/src/view-presets/calendar/pc/styles.ts": 1,
   "packages/affine/database/engine/src/view-presets/kanban/mobile/card.ts": 2,
   "packages/affine/database/engine/src/view-presets/kanban/pc/card.ts": 2,
   "packages/affine/database/engine/src/widget-presets/tools/presets/table-add-row/new-record-preview.ts": 1,

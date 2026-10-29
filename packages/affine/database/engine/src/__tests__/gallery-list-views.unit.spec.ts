@@ -451,7 +451,6 @@ describe('a new gallery or list view', () => {
     for (const [from, to] of <[string, string][]>[
       ['table', 'gallery'],
       ['kanban', 'list'],
-      ['calendar', 'gallery'],
       ['gallery', 'list'],
       ['list', 'table'],
       ['gallery', 'kanban'],
@@ -468,12 +467,6 @@ describe('a new gallery or list view', () => {
         } as FlatViewDataType)
       ).toEqual({ filter, sort });
     }
-    // Nothing converts into a calendar from the new presets.
-    expect(
-      viewConverts.filter(
-        c => c.to === 'calendar' && (c.from === 'gallery' || c.from === 'list')
-      )
-    ).toEqual([]);
   });
 
   it('is a preset of this package, under its stored mode', () => {

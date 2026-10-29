@@ -51,7 +51,7 @@ export const DatabaseNewRowMenuProvider =
  * say it does not.
  *
  * Absent or `null`, "New" is the single button of 0.48 in every view (table,
- * kanban, gallery, list, calendar) and on the full page: no chevron.
+ * kanban, gallery, list) and on the full page: no chevron.
  *
  * `di.override`, so a later registration wins and registering twice never
  * throws at boot.

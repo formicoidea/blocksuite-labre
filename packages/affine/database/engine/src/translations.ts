@@ -53,10 +53,6 @@ export const VIEW_NAME_KANBAN: ChromeWording = [
   'com.labre.data-view.view.default-name.kanban',
   'Kanban View',
 ];
-export const VIEW_NAME_CALENDAR: ChromeWording = [
-  'com.labre.data-view.view.default-name.calendar',
-  'Calendar View',
-];
 export const VIEW_NAME_GALLERY: ChromeWording = [
   'com.labre.data-view.view.default-name.gallery',
   'Gallery View',
@@ -394,7 +390,6 @@ export const DATA_VIEW_WORDINGS: readonly ChromeWording[] = [
   DATA_VIEW_SEARCH_CLEAR_HINT,
   VIEW_NAME_TABLE,
   VIEW_NAME_KANBAN,
-  VIEW_NAME_CALENDAR,
   VIEW_NAME_GALLERY,
   VIEW_NAME_LIST,
   TAG_SELECT_PLACEHOLDER,
