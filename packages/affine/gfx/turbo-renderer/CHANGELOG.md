@@ -1,5 +1,13 @@
 # @labre/affine-gfx-turbo-renderer
 
+## 2.0.0
+
+### Patch Changes
+
+- @labre/global@2.0.0
+- @labre/std@2.0.0
+- @labre/store@2.0.0
+
 ## 1.1.0
 
 ### Patch Changes
