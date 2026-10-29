@@ -25,7 +25,9 @@ import { DataViewHeaderToolsAddRow } from '../widget-presets/tools/presets/table
  * - the chevron drawn where the host said it has nothing to open
  *   (`canOpen` false: an inline table of a base), or asked once and
  *   cached, so a host whose answer changes kept a stale chevron; an opener
- *   without `canOpen` (the seam's first release) losing its chevron.
+ *   without `canOpen` (the seam's first release) losing its chevron;
+ * - a source whose host blocks new rows (ADR 0035 amendment of 2026-10-29)
+ *   still offering "New" or its menu, or hiding "New" without the reason.
  */
 
 beforeAll(() => {
@@ -42,11 +44,16 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-function setup(options: { opener?: NewRowMenuOpener; readonly?: boolean }) {
+function setup(options: {
+  opener?: NewRowMenuOpener;
+  readonly?: boolean;
+  rowsLocked?: boolean;
+}) {
   const addRow = vi.fn();
   const view = {
     id: 'view-1',
     readonly$: signal(options.readonly ?? false),
+    rowsLocked$: signal(options.rowsLocked ?? false),
     serviceGet: (key: unknown) =>
       key === NewRowMenuOpenerKey ? (options.opener ?? null) : null,
   };
@@ -131,5 +138,25 @@ describe('"New" with a host menu', () => {
     const tool = await mount(logic);
     expect(chevronOf(tool)).toBeNull();
     expect(tool.querySelector('data-view-component-button')).toBeNull();
+  });
+});
+
+describe('"New" on a source whose host blocks new rows', () => {
+  it('is drawn disabled with the reason, without its menu, and adds nothing', async () => {
+    const opener = { label: () => 'x', open: vi.fn() };
+    const { addRow, logic } = setup({ opener, rowsLocked: true });
+    const tool = await mount(logic);
+    const locked = tool.querySelector<HTMLElement>(
+      '[data-testid="dv-tools-new-row-locked"]'
+    )!;
+    expect(locked.getAttribute('aria-disabled')).toBe('true');
+    expect(locked.getAttribute('title')).toBe(
+      'New pages cannot be added to this source'
+    );
+    expect(chevronOf(tool)).toBeNull();
+    expect(tool.querySelector('data-view-component-button')).toBeNull();
+    locked.click();
+    expect(addRow).not.toHaveBeenCalled();
+    expect(opener.open).not.toHaveBeenCalled();
   });
 });

@@ -226,6 +226,7 @@ export class TableSelectionController implements ReactiveController {
     before: boolean
   ) {
     const id = this.view.rowAdd({ before, id: rowId });
+    if (!id) return;
     if (groupKey != null) {
       this.view.groupTrait.moveCardTo(id, undefined, groupKey, {
         before,

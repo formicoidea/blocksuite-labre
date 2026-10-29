@@ -184,7 +184,7 @@ export class DataViewPropertiesSettingView extends SignalWatcher(
   };
 
   private readonly _newProperty = (event: MouseEvent) => {
-    if (this.view.readonly$.value) return;
+    if (this.view.readonly$.value || this.view.propertiesLocked$.value) return;
     const button = event.currentTarget as HTMLElement;
     popNewPropertyMenu(popupTargetFromElement(button), this.view, {
       title: this.wording(DATA_VIEW_PROPERTY_TYPE),
@@ -242,7 +242,9 @@ export class DataViewPropertiesSettingView extends SignalWatcher(
   };
 
   private _renderNewProperty() {
-    if (this.view.readonly$.value) return nothing;
+    if (this.view.readonly$.value || this.view.propertiesLocked$.value) {
+      return nothing;
+    }
     return html`<div
       class="property-item property-item-new"
       data-testid="data-view-properties-new"

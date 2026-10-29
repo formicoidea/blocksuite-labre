@@ -183,7 +183,9 @@ export class GalleryViewUI extends FlatViewUI<GalleryViewUILogic> {
   }
 
   private renderNewCard(groupKey?: string) {
-    if (this.view.readonly$.value) return nothing;
+    if (this.view.readonly$.value || this.view.rowsLocked$.value) {
+      return nothing;
+    }
     return html`<button
       class="dv-gallery-new"
       data-testid="dv-flat-new"

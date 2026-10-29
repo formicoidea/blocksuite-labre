@@ -382,6 +382,23 @@ export const DATA_VIEW_INSERT_RIGHT: ChromeWording = [
   'Insert right column',
 ];
 
+/* ── A source its host locked (ADR 0035 amendment of 2026-10-29) ─────── */
+
+/**
+ * In a property's menu, under its name shown read-only: the host locked
+ * the properties of the source this view reads.
+ */
+export const DATA_VIEW_PROPERTIES_LOCKED: ChromeWording = [
+  'com.labre.data-view.source.properties-locked',
+  'The properties of this source are locked',
+];
+
+/** The toolbar's "New", drawn disabled: the host locked new rows. */
+export const DATA_VIEW_ROWS_LOCKED: ChromeWording = [
+  'com.labre.data-view.source.rows-locked',
+  'New pages cannot be added to this source',
+];
+
 /** Walked by `PACKAGE_WORDINGS` in `packages/affine/all/src/translations.ts`. */
 export const DATA_VIEW_WORDINGS: readonly ChromeWording[] = [
   VIEW_SHOWN_AS_TABLE,
@@ -439,4 +456,6 @@ export const DATA_VIEW_WORDINGS: readonly ChromeWording[] = [
   DATA_VIEW_PROPERTY_TYPE_ENTRY,
   DATA_VIEW_INSERT_LEFT,
   DATA_VIEW_INSERT_RIGHT,
+  DATA_VIEW_PROPERTIES_LOCKED,
+  DATA_VIEW_ROWS_LOCKED,
 ];

@@ -25,7 +25,7 @@ export class VirtualTableHeader extends SignalWatcher(
   WithDisposable(ShadowlessElement)
 ) {
   private readonly _onAddColumn = (e: MouseEvent) => {
-    if (this.readonly) return;
+    if (this.readonly || this.tableViewManager.propertiesLocked$.value) return;
     const ele = e.currentTarget as HTMLElement;
     popMenu(popupTargetFromElement(ele), {
       options: {
@@ -106,12 +106,16 @@ export class VirtualTableHeader extends SignalWatcher(
             `;
           }
         )}
-        <div
-          @click="${this._onAddColumn}"
-          class="${styles.headerAddColumnButton}"
-        >
-          ${PlusIcon()}
-        </div>
+        ${this.tableViewManager.propertiesLocked$.value
+          ? // The column keeps its place, so the header stays aligned.
+            html`<div class="${styles.headerAddColumnButton}"></div>`
+          : html`<div
+              @click="${this._onAddColumn}"
+              class="${styles.headerAddColumnButton}"
+              data-testid="dv-table-add-column"
+            >
+              ${PlusIcon()}
+            </div>`}
         <div class="scale-div" style="width: 1px;height: 1px;"></div>
       </div>
     `;

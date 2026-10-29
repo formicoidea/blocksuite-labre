@@ -1225,3 +1225,62 @@ viewName, docId, blockId, remove() }`. `remove()` is the 1.0 removal, one
   `viewHistory` is logged and never breaks the undo.
 - No stored field, no schema, no displayed string. Held by
   `database/block/src/__tests__/view-deletion.unit.spec.ts`.
+
+### 2026-10-29: a host may lock a source's properties and its new rows
+
+Asked by the Labre product owner on 2026-10-29: a workspace setting
+« Sources de données » lists every source of every base with three
+switches. Two of them must hold in the editor, for every view of a host
+database that reads the source: "properties locked" (no property added,
+renamed, deleted, duplicated or retyped) and "adding pages blocked" (no new
+row). The third, "source cannot be deleted", is the host's alone, through
+`deleteView`.
+
+- **The seam.** `DataSourcePickerService.sourcePolicy?(databaseId,
+sourceId)`, an optional member of the picker (§9c), a widening only. It
+  answers a `ReadonlySignal<DataSourcePickerSourcePolicy>`
+  (`{ propertiesLocked, rowsLocked }`) so a switch flipped by another user
+  reaches the open views without a reload. Absent, nothing is locked, as in
+  1.1. On the picker rather than on the host's data source: the host
+  already registers it, the data source already reads it from its scope
+  (`deleteView`), and a host whose data source is the library's native one
+  can still lock.
+- **Where it is read.** `HostedDataSourceBase` asks it for the block's
+  `externalSourceId` and the CURRENT view's `sourceId` (one view is drawn
+  at a time, as for `schema$` and `rows$`), again only when either changes,
+  and exposes `propertiesLocked$` / `rowsLocked$`; `DataSourceBase` answers
+  `false` for every other source. A native database (no `externalSourceId`)
+  never asks. A host that throws reads as unlocked and is logged.
+- **Refused, not only hidden.** `SingleViewBase.propertyAdd` answers
+  `undefined` and `rowAdd` answers `''` (the signature hosts call stays
+  `string`; callers test the id), `PropertyBase.nameSet`, `typeSet`,
+  `duplicate` and `delete` write nothing, and `canDelete`, `canDuplicate`,
+  `typeCanSet` and the new optional `Property.nameCanSet` say `false`.
+  Every menu, header, panel and shortcut of every preset edits through
+  these, so a control missed by the chrome still writes nothing. The host's
+  own data-source methods are not wrapped: a host calling them directly is
+  its own judge (it can read `propertiesLocked$` / `rowsLocked$` there).
+- **The chrome.** Properties: the table header's "+" keeps its place but
+  draws nothing; a property's menu shows its name read-only with "The
+  properties of this source are locked"
+  (`com.labre.data-view.source.properties-locked`) and loses type, insert,
+  duplicate and delete; the type icon opens nothing; « New property » of
+  the properties list and "Add property" of the record detail are gone.
+  Rows: "New" is drawn disabled with "New pages cannot be added to this
+  source" (`com.labre.data-view.source.rows-locked`, its `title` and
+  `aria-label`) and without its menu (the host's templates add a row);
+  the "+" of group headers, table footers, boards, galleries and lists, a
+  card's "Insert before / after" and the keyboard's new row are gone.
+- **What stays.** Per-view settings (hide, order, width, filters, sorts,
+  grouping, colour rules), cell values, deleting rows. Select options stay
+  editable under a properties lock: creating a tag while typing a value is
+  a value gesture, and the request names the property, not its options. A
+  read-only document is read-only whatever the policy.
+- **Not covered.** The calendar preset (being removed) relies on the
+  view-layer refusal alone. No telemetry: the lock is the host's setting,
+  which the host already knows, and a refused gesture is a control that is
+  not drawn.
+- No stored field, no schema. Held by
+  `database/block/src/__tests__/source-policy.unit.spec.ts`,
+  `database/engine/src/__tests__/new-row-menu.unit.spec.ts` and
+  `integration-test/…/page/database-source-policy.spec.ts`.

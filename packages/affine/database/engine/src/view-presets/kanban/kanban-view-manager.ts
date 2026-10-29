@@ -117,6 +117,7 @@ export class KanbanSingleView extends SingleViewBase<KanbanViewData> {
 
   addCard(position: InsertToPosition, group: string) {
     const id = this.rowAdd(position);
+    if (!id) return id;
     this.groupTrait.addToGroup(id, group);
 
     const filter = this.filter$.value;

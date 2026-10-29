@@ -71,9 +71,11 @@ export const GroupTitle = (
     </div>
     ${!ops.readonly
       ? html` <div class="${opsClass}">
-          <div @click="${ops.clickAdd}" class="${groupHeaderOp}">
-            ${PlusIcon()}
-          </div>
+          ${groupData.property.view.rowsLocked$.value
+            ? nothing
+            : html`<div @click="${ops.clickAdd}" class="${groupHeaderOp}">
+                ${PlusIcon()}
+              </div>`}
           <div @click="${ops.clickOps}" class="${groupHeaderOp}">
             ${MoreHorizontalIcon()}
           </div>

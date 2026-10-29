@@ -196,7 +196,9 @@ export class ListViewUI extends FlatViewUI<ListViewUILogic> {
   }
 
   private renderNewRow(groupKey?: string) {
-    if (this.view.readonly$.value) return nothing;
+    if (this.view.readonly$.value || this.view.rowsLocked$.value) {
+      return nothing;
+    }
     return html`<button
       class="dv-list-new"
       data-testid="dv-flat-new"
