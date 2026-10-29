@@ -45,6 +45,18 @@ export interface SingleView {
    * the view is drawn, its settings are read-only, its data is never written.
    */
   readonly shownAsFallback$: ReadonlySignal<boolean>;
+  /**
+   * The source's properties are locked by its host (ADR 0035 amendment of
+   * 2026-10-29): `propertyAdd` adds nothing, and every property says it
+   * cannot be renamed, retyped, duplicated or deleted. Per-view settings
+   * (hide, order, width, filters, sorts, groups, colours) are unaffected.
+   */
+  readonly propertiesLocked$: ReadonlySignal<boolean>;
+  /**
+   * The source takes no new row (same amendment): `rowAdd` adds nothing
+   * and answers `''`. Existing rows stay editable and deletable.
+   */
+  readonly rowsLocked$: ReadonlySignal<boolean>;
 
   delete(): void;
 
@@ -165,6 +177,14 @@ export abstract class SingleViewBase<
   abstract propertiesRaw$: ReadonlySignal<Property[]>;
 
   abstract readonly$: ReadonlySignal<boolean>;
+
+  readonly propertiesLocked$: ReadonlySignal<boolean> = computed(
+    () => this.dataSource.propertiesLocked$?.value ?? false
+  );
+
+  readonly rowsLocked$: ReadonlySignal<boolean> = computed(
+    () => this.dataSource.rowsLocked$?.value ?? false
+  );
 
   rowsRaw$ = computed(() => {
     return this.dataSource.rows$.value.map(id => this.rowGetOrCreate(id));
@@ -302,6 +322,10 @@ export abstract class SingleViewBase<
       name?: string;
     }
   ): string | undefined {
+    // Refused here, not only hidden: every gesture that adds a property
+    // (a header's "+", "Insert left", the properties list, the record
+    // detail) passes through this method.
+    if (this.propertiesLocked$.peek()) return;
     const id = this.dataSource.propertyAdd(position, ops);
     if (!id) {
       return;
@@ -314,6 +338,9 @@ export abstract class SingleViewBase<
   abstract propertyGetOrCreate(propertyId: string): Property;
 
   rowAdd(insertPosition: InsertToPosition | number): string {
+    // `''` rather than `undefined`: the signature is one hosts call, and a
+    // return type never gains a case in a minor. Callers test the id.
+    if (this.rowsLocked$.peek()) return '';
     this.lockRows(false);
     return this.dataSource.rowAdd(insertPosition);
   }

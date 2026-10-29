@@ -4,6 +4,7 @@ import type {
 } from '@labre/affine-model';
 import {
   DataSourcePickerProvider,
+  type DataSourcePickerSourcePolicy,
   FeatureFlagService,
 } from '@labre/affine-shared/services';
 import type { InsertToPosition } from '@labre/affine-shared/utils';
@@ -283,6 +284,35 @@ export abstract class HostedDataSourceBase extends DataSourceBase {
    * `readonly$` (cells, paste, drag, "New", view and property menus).
    */
   readonly locked$ = signal(false);
+
+  /**
+   * The host's lock on the current view's source (`sourcePolicy` of the
+   * picker, ADR 0035 amendment of 2026-10-29), asked again only when the
+   * block's database or the view's source changes; the host's signal then
+   * carries every flip to the open views. `null`: nothing locked (a native
+   * database, no picker, no `sourcePolicy`, or a host that threw).
+   */
+  private readonly hostPolicy$: ReadonlySignal<ReadonlySignal<DataSourcePickerSourcePolicy> | null> =
+    computed(() => {
+      const databaseId = this._model.props.externalSourceId$.value;
+      if (!databaseId) return null;
+      const picker = this.serviceGet(DataSourcePickerProvider);
+      if (!picker?.sourcePolicy) return null;
+      try {
+        return picker.sourcePolicy(databaseId, this.currentSourceId$.value);
+      } catch (error) {
+        console.error(error);
+        return null;
+      }
+    });
+
+  override readonly propertiesLocked$: ReadonlySignal<boolean> = computed(
+    () => this.hostPolicy$.value?.value.propertiesLocked === true
+  );
+
+  override readonly rowsLocked$: ReadonlySignal<boolean> = computed(
+    () => this.hostPolicy$.value?.value.rowsLocked === true
+  );
 
   // Mobile edits too (ADR 0035 §1, B5): the table and kanban presets ship
   // their own touch renderers, chosen by `DataViewRootUILogic`.

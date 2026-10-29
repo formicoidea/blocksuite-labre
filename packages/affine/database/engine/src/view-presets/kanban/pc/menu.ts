@@ -85,6 +85,7 @@ export const popCardMenu = (
       items: [
         menu.action({
           name: wordingFrom(ele.element)(DATA_VIEW_ROW_INSERT_BEFORE),
+          hide: () => selection.view.rowsLocked$.value,
           prefix: html` <div
             style="transform: rotate(90deg);display:flex;align-items:center;"
           >
@@ -96,6 +97,7 @@ export const popCardMenu = (
         }),
         menu.action({
           name: wordingFrom(ele.element)(DATA_VIEW_ROW_INSERT_AFTER),
+          hide: () => selection.view.rowsLocked$.value,
           prefix: html` <div
             style="transform: rotate(90deg);display:flex;align-items:center;"
           >

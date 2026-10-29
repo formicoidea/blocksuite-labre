@@ -529,6 +529,7 @@ export class KanbanSelectionController implements ReactiveController {
 
     const { cardId, groupKey } = selection.cards[0];
     const id = this.view.addCard({ before: false, id: cardId }, groupKey);
+    if (!id) return;
 
     requestAnimationFrame(() => {
       const columnId = this.view.mainProperties$.value.titleColumn;
@@ -562,6 +563,7 @@ export class KanbanSelectionController implements ReactiveController {
 
     const { cardId, groupKey } = selection.cards[0];
     const id = this.view.addCard({ before: true, id: cardId }, groupKey);
+    if (!id) return;
 
     requestAnimationFrame(() => {
       const columnId = this.view.mainProperties$.value.titleColumn;

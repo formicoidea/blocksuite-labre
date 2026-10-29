@@ -13,6 +13,7 @@ import { autoPlacement, offset, shift } from '@floating-ui/dom';
 import { html } from 'lit/static-html.js';
 
 import {
+  DATA_VIEW_PROPERTIES_LOCKED,
   DATA_VIEW_PROPERTY_HIDE_IN_VIEW,
   DATA_VIEW_PROPERTY_NAME,
   DATA_VIEW_PROPERTY_TYPE,
@@ -35,10 +36,41 @@ const currentTypeName = (property: Property, wording: Wording) => {
   return meta ? propertyTypeName(wording, meta.config) : undefined;
 };
 
+/**
+ * The name of a property whose source its host locked (ADR 0035 amendment
+ * of 2026-10-29): shown, not editable, with the reason under it, so a menu
+ * that lost its rename, type, duplicate and delete says why.
+ */
+const lockedNameConfig =
+  (property: Property, wording: Wording): MenuConfig =>
+  () => html`
+    <div
+      data-testid="dv-property-locked"
+      style="display:flex;flex-direction:column;gap:4px;padding:4px 6px;margin-bottom:8px;"
+    >
+      <div
+        style="display:flex;align-items:center;gap:4px;font-size:14px;line-height:22px;"
+      >
+        <div class="affine-database-column-type-menu-icon">
+          ${renderUniLit(property.icon)}
+        </div>
+        <span>${property.name$.value}</span>
+      </div>
+      <div
+        style="font-size:12px;line-height:20px;color:var(--affine-text-secondary-color);"
+      >
+        ${wording(DATA_VIEW_PROPERTIES_LOCKED)}
+      </div>
+    </div>
+  `;
+
 export const inputConfig = (
   property: Property,
   wording: Wording = englishWording
-) => {
+): MenuConfig => {
+  if (property.nameCanSet === false) {
+    return lockedNameConfig(property, wording);
+  }
   return menu.input({
     prefix: html`
       <div class="affine-database-column-type-menu-icon">

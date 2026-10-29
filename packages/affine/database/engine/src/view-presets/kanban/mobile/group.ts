@@ -170,7 +170,7 @@ export class MobileKanbanGroup extends SignalWatcher(
             `;
           }
         )}
-        ${this.view.readonly$.value
+        ${this.view.readonly$.value || this.view.rowsLocked$.value
           ? nothing
           : html` <div class="mobile-add-card" @click="${this.clickAddCard}">
               <div

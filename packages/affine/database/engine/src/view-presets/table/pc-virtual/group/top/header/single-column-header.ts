@@ -96,7 +96,7 @@ export class DatabaseHeaderColumn extends SignalWatcher(
     if (this.tableViewManager.readonly$.value) {
       return;
     }
-    if (this.column.type$.value === 'title') {
+    if (this.column.type$.value === 'title' || !this.column.typeCanSet) {
       return;
     }
     event.stopPropagation();
@@ -302,6 +302,7 @@ export class DatabaseHeaderColumn extends SignalWatcher(
             items: [
               menu.action({
                 name: wordingFrom(this)(DATA_VIEW_INSERT_LEFT),
+                hide: () => this.tableViewManager.propertiesLocked$.value,
                 prefix: InsertLeftIcon(),
                 select: () => {
                   this.tableViewManager.propertyAdd({
@@ -325,6 +326,7 @@ export class DatabaseHeaderColumn extends SignalWatcher(
               }),
               menu.action({
                 name: wordingFrom(this)(DATA_VIEW_INSERT_RIGHT),
+                hide: () => this.tableViewManager.propertiesLocked$.value,
                 prefix: InsertRightIcon(),
                 select: () => {
                   this.tableViewManager.propertyAdd({

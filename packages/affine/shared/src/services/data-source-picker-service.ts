@@ -136,6 +136,27 @@ export interface DataSourcePickerViewRef {
   blockId: string;
 }
 
+/**
+ * What a host locks on one of its sources (ADR 0035 amendment of
+ * 2026-10-29, "a host may lock a source's properties and its new rows").
+ * Both apply to every view, in every document, that reads the source; a
+ * read-only document is read-only whatever they say.
+ */
+export interface DataSourcePickerSourcePolicy {
+  /**
+   * No property of the source is added, renamed, deleted, duplicated or
+   * changed in type, from any menu, button or shortcut. What one view does
+   * with a property (hide, order, width, filter, sort, group, colour rules)
+   * and every cell value stay editable, select options included.
+   */
+  propertiesLocked: boolean;
+  /**
+   * No row is added to the source ("New" and its menu, every "+", the
+   * keyboard's new row). Existing rows stay editable and deletable.
+   */
+  rowsLocked: boolean;
+}
+
 /** What `deleteView` hands the host: the view, and the verb that removes it. */
 export interface DataSourcePickerViewDeletion extends DataSourcePickerViewRef {
   /** The view's name, as stored ('' when it has none). */
@@ -235,6 +256,20 @@ export interface DataSourcePickerService {
    * for a remote change. Nothing to confirm: it already happened.
    */
   viewHistory?(view: DataSourcePickerViewRef, step: 'undo' | 'redo'): void;
+  /**
+   * What you lock on source `sourceId` of database `databaseId` (the
+   * view's stored `sourceId`; absent, your implicit source), as a signal:
+   * flip it and every open view of that source follows, without a reload.
+   * Read when a view of one of your databases (a block with an
+   * `externalSourceId`) is drawn or switches source. MUST return
+   * synchronously and MUST NOT throw; a throw reads as nothing locked.
+   * Absent, nothing is locked, as in 1.1 (ADR 0035 amendment of
+   * 2026-10-29).
+   */
+  sourcePolicy?(
+    databaseId: string,
+    sourceId: string | undefined
+  ): ReadonlySignal<DataSourcePickerSourcePolicy>;
 }
 
 export const DataSourcePickerProvider =

@@ -74,7 +74,8 @@ export class TableGroupFooter extends WithDisposable(ShadowlessElement) {
 
   override render() {
     return html`
-      ${this.tableViewManager.readonly$.value
+      ${this.tableViewManager.readonly$.value ||
+      this.tableViewManager.rowsLocked$.value
         ? null
         : html`
             <div

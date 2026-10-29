@@ -58,6 +58,11 @@ export interface Property<
 
   readonly name$: ReadonlySignal<string>;
   nameSet(name: string): void;
+  /**
+   * Whether `nameSet` writes anything; absent means it does. False while
+   * the source's properties are locked (`SingleView.propertiesLocked$`).
+   */
+  readonly nameCanSet?: boolean;
 
   readonly hide$: ReadonlySignal<boolean>;
   hideSet(hide: boolean): void;
@@ -133,12 +138,26 @@ export abstract class PropertyBase<
     return this.meta$.value?.renderer.cellRenderer;
   });
 
+  /*
+   * A source whose properties its host locked (ADR 0035 amendment of
+   * 2026-10-29) refuses each of these writes here, not only in the menus
+   * that hide them: every menu, header and panel of every preset edits a
+   * property through this class. Cell values never pass here.
+   */
+  private get locked(): boolean {
+    return this.view.propertiesLocked$.peek();
+  }
+
   get delete(): (() => void) | undefined {
-    return () => this.dataSource.propertyDelete(this.id);
+    return () => {
+      if (this.locked) return;
+      this.dataSource.propertyDelete(this.id);
+    };
   }
 
   get duplicate(): (() => void) | undefined {
     return () => {
+      if (this.locked) return;
       const id = this.dataSource.propertyDuplicate(this.id);
       if (!id) {
         return;
@@ -192,7 +211,10 @@ export abstract class PropertyBase<
   });
 
   get typeSet(): undefined | ((type: string) => void) {
-    return type => this.dataSource.propertyTypeSet(this.id, type);
+    return type => {
+      if (this.locked) return;
+      this.dataSource.propertyTypeSet(this.id, type);
+    };
   }
 
   constructor(
@@ -203,13 +225,16 @@ export abstract class PropertyBase<
     return this.view.manager.dataSource;
   }
   get canDelete(): boolean {
-    return this.dataSource.propertyCanDelete(this.id);
+    return !this.locked && this.dataSource.propertyCanDelete(this.id);
   }
   get canDuplicate(): boolean {
-    return this.dataSource.propertyCanDuplicate(this.id);
+    return !this.locked && this.dataSource.propertyCanDuplicate(this.id);
   }
   get typeCanSet(): boolean {
-    return this.dataSource.propertyTypeCanSet(this.id);
+    return !this.locked && this.dataSource.propertyTypeCanSet(this.id);
+  }
+  get nameCanSet(): boolean {
+    return !this.locked;
   }
   get hideCanSet(): boolean {
     return this.type$.value !== 'title';
@@ -234,6 +259,7 @@ export abstract class PropertyBase<
   abstract hideSet(hide: boolean): void;
 
   nameSet(name: string): void {
+    if (this.locked) return;
     this.dataSource.propertyNameSet(this.id, name);
   }
 

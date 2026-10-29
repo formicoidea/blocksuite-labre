@@ -259,7 +259,7 @@ export class RecordDetail extends SignalWatcher(
               );
             }
           )}
-          ${!this.readonly
+          ${!this.readonly && !this.view.propertiesLocked$.value
             ? html` <div
                 class="add-property"
                 @click="${this._clickAddProperty}"

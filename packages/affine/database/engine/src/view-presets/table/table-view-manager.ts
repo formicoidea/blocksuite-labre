@@ -166,6 +166,7 @@ export class TableSingleView extends SingleViewBase<TableViewData> {
     groupKey?: string
   ): string {
     const id = super.rowAdd(insertPosition);
+    if (!id) return id;
 
     const filter = this.filter$.value;
     if (filter.conditions.length > 0) {

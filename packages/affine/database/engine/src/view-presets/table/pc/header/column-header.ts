@@ -22,7 +22,7 @@ export class DatabaseColumnHeader extends SignalWatcher(
   static override styles = styles;
 
   private readonly _onAddColumn = (e: MouseEvent) => {
-    if (this.readonly) return;
+    if (this.readonly || this.tableViewManager.propertiesLocked$.value) return;
     this.tableViewManager.propertyAdd('end');
     const ele = e.currentTarget as HTMLElement;
     requestAnimationFrame(() => {
@@ -123,12 +123,16 @@ export class DatabaseColumnHeader extends SignalWatcher(
             `;
           }
         )}
-        <div
-          @click="${this._onAddColumn}"
-          class="header-add-column-button dv-hover"
-        >
-          ${PlusIcon()}
-        </div>
+        ${this.tableViewManager.propertiesLocked$.value
+          ? // The column keeps its place, so the header stays aligned.
+            html`<div class="header-add-column-button"></div>`
+          : html`<div
+              @click="${this._onAddColumn}"
+              class="header-add-column-button dv-hover"
+              data-testid="dv-table-add-column"
+            >
+              ${PlusIcon()}
+            </div>`}
         <div class="scale-div" style="width: 1px;height: 1px;"></div>
       </div>
     `;
