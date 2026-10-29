@@ -74,10 +74,7 @@ export function changeViewSource(
     ? schemaProperties(fromSchema)
     : sourceProperties(dataSource);
   const to = schemaProperties(target.schema);
-  // A stored view is the block's reactive proxy, which `structuredClone`
-  // (inside `remapView`) refuses; its plain JSON is what the view stores.
-  const plain = JSON.parse(JSON.stringify(view)) as Record<string, unknown>;
-  const { data } = remapView(plain, from, to, defaultMapping(from, to));
+  const { data } = remapView(view, from, to, defaultMapping(from, to));
   // The block's `updateView` merges over the stored view: a key the remap
   // removed (a grouping by a property the target lacks) is cleared with an
   // own `undefined`, as the group trait's `groupBySet(undefined)` clears it.
