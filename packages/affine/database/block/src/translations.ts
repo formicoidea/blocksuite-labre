@@ -30,7 +30,7 @@ export const DATABASE_SOURCE_REQUIRED_HINT: ChromeWording = [
 /** Over native rows shown read-only, under the same host. */
 export const DATABASE_SOURCE_REQUIRED_READ_ONLY: ChromeWording = [
   'com.labre.database.source-required.read-only',
-  'This table is not in a base: its rows are read-only.',
+  'This table has no source: its rows are read-only.',
 ];
 
 /**
