@@ -26,6 +26,14 @@ export type MenuOptions = {
   testId?: string;
 };
 
+/**
+ * A name as the menus' search compares it: case and accents folded, so
+ * "SOURCÉ" finds "Source" (labre recette of 2.2).
+ */
+export function foldForSearch(name: string): string {
+  return name.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+}
+
 // Global menu open listener type
 type MenuOpenListener = (menu: Menu) => (() => void) | void;
 
@@ -170,7 +178,7 @@ export class Menu {
   }
 
   search(name: string) {
-    return name.toLowerCase().includes(this.searchName$.value.toLowerCase());
+    return foldForSearch(name).includes(foldForSearch(this.searchName$.value));
   }
 
   setFocusOnly(ele?: MenuFocusable) {

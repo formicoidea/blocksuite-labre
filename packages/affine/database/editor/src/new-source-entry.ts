@@ -1,4 +1,5 @@
 import {
+  foldForSearch,
   type Menu,
   menu,
   type MenuConfig,
@@ -208,9 +209,12 @@ function namesReadFor(parent: Menu, naming: DataSourcePickerSourceNaming) {
 /**
  * "Create source “typed”" at the end of a searched list of sources (labre
  * recette of 2.1): drawn while the search holds a name no listed source
- * bears and the host accepts (`'ok'`); it creates that name at once, the
- * search having been the naming step. Absent without the host's naming:
- * an unnamed source would not be the one the entry announces.
+ * bears (case and accents folded); it creates that name at once, the search
+ * having been the naming step. When the host refuses the name (a source of
+ * another database bears it), the entry stays, disabled, worded with the
+ * host's verdict: hidden, it left "No results" and no reason (labre recette
+ * of 2.2). Absent without the host's naming: an unnamed source would not be
+ * the one the entry announces.
  */
 export function typedSourceEntry(
   std: BlockStdScope | undefined,
@@ -223,10 +227,35 @@ export function typedSourceEntry(
     const typed = parent.searchName$.value;
     const name = typed.trim();
     if (!name) return;
-    const key = name.toLowerCase();
-    if (listed.some(title => title.trim().toLowerCase() === key)) return;
+    const key = foldForSearch(name);
+    if (listed.some(title => foldForSearch(title.trim()) === key)) return;
     if (!namesReadFor(parent, naming)) return;
-    if (verdictOf(naming, name) !== 'ok') return;
+    const verdict = verdictOf(naming, name);
+    if (verdict !== 'ok') {
+      return html`<div
+        role="status"
+        aria-disabled="true"
+        data-testid="${entry.testId}-typed"
+        data-verdict=${verdict}
+        style=${styleMap({
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
+          padding: '4px',
+          fontSize: '14px',
+          lineHeight: '22px',
+          color: 'var(--affine-text-disable-color)',
+          cursor: 'default',
+        })}
+      >
+        ${PlusIcon()}
+        <span style="color: var(--affine-error-color)"
+          >${std
+            ? translateKey(std, ...VERDICT_WORDING[verdict])
+            : VERDICT_WORDING[verdict][1]}</span
+        >
+      </div>`;
+    }
     // The typed text verbatim, so the menu's own search keeps the entry.
     const params = { name: typed };
     return menu.action({

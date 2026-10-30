@@ -1366,6 +1366,12 @@ be created from the list.
   source bears and the host's `sourceName.check` answers `'ok'`, its names
   read by one `suggest()` when the menu opens. It creates that name,
   trimmed, at once: the search was the naming step. No seam change.
+- **A refused name** (amended at the recette of 2.2): when `check` answers
+  `'taken'` or `'empty'`, the entry stays, disabled, worded with the
+  verdict (`com.labre.database.source-name.*`), so a name another
+  database's source bears is explained rather than left as "No results".
+  The menus' search folds accents as well as case (`foldForSearch`), for
+  the filter and for the exact match against the listed sources.
 - **Not offered** without `sourceName` (an unnamed source is not the one
   the entry announces), nor in "Link an existing source", which only links.
 - Wordings `com.labre.database.source-search.{placeholder,create}`, the
