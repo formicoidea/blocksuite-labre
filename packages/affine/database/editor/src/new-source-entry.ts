@@ -264,6 +264,7 @@ export function typedSourceEntry(
         : SOURCE_SEARCH_CREATE[1].replace('{{name}}', typed),
       prefix: PlusIcon(),
       testId: `${entry.testId}-typed`,
+      class: { 'enter-default': true },
       select: () => entry.create(name),
     })(parent);
   };

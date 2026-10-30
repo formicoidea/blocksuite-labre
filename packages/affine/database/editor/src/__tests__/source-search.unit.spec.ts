@@ -8,11 +8,14 @@
  * database's source bears hid the entry, leaving "No results" and no reason;
  * "SOURCÉ" did not find "Source". At the recette of 2.2.1: "+ view" kept
  * its "On an existing source" / "With a new source" entries beside the
- * search, and a host without naming got no creation from the search.
+ * search, and a host without naming got no creation from the search. At the
+ * recette of 2.3: Enter on "Bilan" created nothing until ArrowDown, and the
+ * placeholder was cut at the menu's 180px.
  */
 import { HostedDataSourceBase } from '@labre/affine-database-block';
 import {
   effects as contextMenuEffects,
+  MenuComponent,
   popMenu,
   popupTargetFromElement,
 } from '@labre/affine-components/context-menu';
@@ -43,6 +46,7 @@ beforeAll(() => {
 
 afterEach(() => {
   document.body.innerHTML = '';
+  vi.mocked(addViewOnSource).mockClear();
 });
 
 const PLAN: DataSourcePickerDatabase = {
@@ -120,6 +124,70 @@ describe('searching a list of sources', () => {
       'style.opacity',
       '1'
     );
+  });
+
+  const enter = (input: HTMLInputElement) =>
+    input.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })
+    );
+
+  test('Enter on a query no source matches creates it', async () => {
+    const createSource = vi.fn(async () => ({ id: 's-3', title: 'Bilan' }));
+    const { onPick, search } = await open({
+      list: () => signal([PLAN]),
+      createSource,
+      sourceName: hostNaming(['Projects', 'Risks']),
+    });
+    await type(search, 'Bilan');
+    await vi.waitFor(() => expect(typed()).not.toBeNull());
+    enter(search);
+    await vi.waitFor(() => expect(onPick).toHaveBeenCalledTimes(1));
+    expect(createSource.mock.calls[0]).toEqual(['db-plan', 'Bilan']);
+  });
+
+  test('Enter on a query one source matches picks it, creates nothing', async () => {
+    const createSource = vi.fn(async () => ({ id: 's-3', title: 'x' }));
+    const { onPick, search } = await open({
+      list: () => signal([PLAN]),
+      createSource,
+      sourceName: hostNaming(['Projects', 'Risks']),
+    });
+    await type(search, 'ris');
+    await vi.waitFor(() => expect(typed()).not.toBeNull());
+    enter(search);
+    expect(onPick).toHaveBeenCalledTimes(1);
+    expect(onPick.mock.calls[0]![0]).toMatchObject({
+      sourceId: 's-2',
+      source: 'existing',
+    });
+    expect(createSource).not.toHaveBeenCalled();
+  });
+
+  test('Enter on a refused name creates nothing', async () => {
+    const createSource = vi.fn(async () => ({ id: 's-3', title: 'x' }));
+    const { onPick, search } = await open({
+      list: () => signal([PLAN]),
+      createSource,
+      sourceName: hostNaming(['Projects', 'Risks', 'Archive']),
+    });
+    await type(search, 'archive');
+    await vi.waitFor(() => expect(typed()?.dataset.verdict).toBe('taken'));
+    enter(search);
+    await frame();
+    expect(onPick).not.toHaveBeenCalled();
+    expect(createSource).not.toHaveBeenCalled();
+  });
+
+  test('its menu is wide enough for its placeholder', async () => {
+    await open({ list: () => signal([PLAN]) });
+    const menu = byTestId('data-source-picker')!;
+    expect(menu.hasAttribute('data-search-field')).toBe(true);
+    // No layout under this test DOM: the rule is read from the stylesheet.
+    // Labre's French placeholder is 212px in Inter 14px, plus 66px of chrome.
+    const css = MenuComponent.styles.toString();
+    const width =
+      /affine-menu\[data-search-field\]\s*\{\s*min-width:\s*(\d+)px/.exec(css);
+    expect(Number(width?.[1])).toBeGreaterThanOrEqual(278);
   });
 
   test('typing filters the sources', async () => {
@@ -293,6 +361,19 @@ describe('"+ view", one list of sources', () => {
       's3',
       'new'
     );
+  });
+
+  test('Enter on a query no source matches creates it, then a table', async () => {
+    const createSource = vi.fn(
+      async (_dataSource: HostedDataSourceBase, _name?: string) => 's3'
+    );
+    const { search } = await openAddView(createSource);
+    await type(search, 'Bilan');
+    search.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })
+    );
+    await vi.waitFor(() => expect(addViewOnSource).toHaveBeenCalledTimes(1));
+    expect(createSource).toHaveBeenCalledWith(expect.anything(), 'Bilan');
   });
 
   test('without createSource, the search only filters', async () => {

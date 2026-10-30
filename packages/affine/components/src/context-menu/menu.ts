@@ -160,8 +160,33 @@ export class Menu {
     this._subMenu$.value = menu;
   }
 
+  /**
+   * Enter in the search field: the highlighted item; with nothing
+   * highlighted and a query typed, the one item the filter left, or, when
+   * the filter left none, the item marked `enter-default` (labre recette of
+   * 2.3: "Bilan" then Enter created nothing until ArrowDown highlighted the
+   * entry). Several left: nothing, the person picks with the arrows.
+   */
   pressEnter() {
-    this._currentFocused$.value?.onPressEnter();
+    const focused = this._currentFocused$.value;
+    if (focused) {
+      focused.onPressEnter();
+      return;
+    }
+    if (!this.showSearch$.value) return;
+    const items = this.menuElement
+      .getFocusableElements()
+      .filter(ele => ele instanceof MenuFocusable);
+    const isDefault = (ele: MenuFocusable) =>
+      ele.querySelector('.enter-default') !== null;
+    const left = items.filter(ele => !isDefault(ele));
+    const target =
+      left.length === 1
+        ? left[0]
+        : left.length === 0
+          ? items.find(isDefault)
+          : undefined;
+    target?.onPressEnter();
   }
 
   renderItems(items: MenuConfig[]) {

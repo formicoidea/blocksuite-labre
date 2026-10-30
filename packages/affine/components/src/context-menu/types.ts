@@ -5,6 +5,8 @@ import type { Menu, MenuConfig } from './menu.js';
 
 export type MenuClass = ClassInfo & {
   'delete-item'?: boolean;
+  /** What Enter in the search field takes when nothing is highlighted ({@link Menu.pressEnter}). */
+  'enter-default'?: boolean;
 };
 export type MenuItemRender<Props> = (props: Props) => MenuConfig;
 
