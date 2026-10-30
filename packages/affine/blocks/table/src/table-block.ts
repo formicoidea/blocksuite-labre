@@ -2,7 +2,6 @@ import { CaptionedBlockComponent } from '@labre/affine-components/caption';
 import type { TableBlockModel } from '@labre/affine-model';
 import { EDGELESS_TOP_CONTENTEDITABLE_SELECTOR } from '@labre/affine-shared/consts';
 import { DocModeProvider } from '@labre/affine-shared/services';
-import { VirtualPaddingController } from '@labre/affine-shared/utils';
 import { IS_MOBILE } from '@labre/global/env';
 import type { BlockComponent } from '@labre/std';
 import { RANGE_SYNC_EXCLUDE_ATTR } from '@labre/std/inline';
@@ -48,9 +47,6 @@ export class TableBlockComponent extends CaptionedBlockComponent<TableBlockModel
     }
     return this.rootComponent;
   }
-
-  private readonly virtualPaddingController: VirtualPaddingController =
-    new VirtualPaddingController(this);
 
   table$ = signal<HTMLTableElement>();
 
@@ -134,24 +130,20 @@ export class TableBlockComponent extends CaptionedBlockComponent<TableBlockModel
   override renderBlock() {
     const rows = this.dataManager.uiRows$.value;
     const columns = this.dataManager.uiColumns$.value;
-    const virtualPadding = this.virtualPaddingController.virtualPadding$.value;
+    // The scroller is the text column, its 10px left padding (the row
+    // handles) hung into the gutter: a wide table scrolls within the column
+    // the person writes in, not across the whole editor (labre recette of
+    // 2.1; it used to bleed by its distance to the editor's edge minus 72px).
     return html`
       <div
         contenteditable="false"
         class=${tableContainer}
         style=${styleMap({
-          marginLeft: `-${virtualPadding + 10}px`,
-          marginRight: `-${virtualPadding}px`,
+          marginLeft: '-10px',
           position: 'relative',
         })}
       >
-        <div
-          style=${styleMap({
-            paddingLeft: `${virtualPadding}px`,
-            paddingRight: `${virtualPadding}px`,
-            width: 'max-content',
-          })}
-        >
+        <div style=${styleMap({ width: 'max-content' })}>
           <table class=${tableWrapper} ${ref(this.table$)}>
             <tbody class=${table}>
               ${repeat(
