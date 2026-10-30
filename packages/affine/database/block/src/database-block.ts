@@ -60,7 +60,6 @@ import {
 import { type BlockComponent, BlockSelection } from '@labre/std';
 import { RANGE_SYNC_EXCLUDE_ATTR } from '@labre/std/inline';
 import { Slice } from '@labre/store';
-import { autoUpdate } from '@floating-ui/dom';
 import { computed, signal } from '@preact/signals-core';
 import { html, nothing } from 'lit';
 import { keyed } from 'lit/directives/keyed.js';
@@ -507,6 +506,13 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
     return databaseSelection?.viewSelection;
   });
 
+  /**
+   * Always 0: a table or a board scrolls within the text column (labre
+   * recette of 2.1). The block used to measure its distance to the editor's
+   * edge (minus 72px) and bleed its scroller into the page's gutters, so a
+   * wide inline view scrolled across the whole editor. The signal stays: the
+   * views read it as their side padding.
+   */
   private readonly virtualPadding$ = signal(0);
 
   /**
@@ -740,7 +746,6 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
 
     this.setAttribute(RANGE_SYNC_EXCLUDE_ATTR, 'true');
     this.classList.add(databaseBlockStyles);
-    this.listenFullWidthChange();
     this.refreshStandalone();
     this.watchStandalone();
 
@@ -761,20 +766,6 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
     this._dataSource = undefined;
     this._dataViewRootLogic = undefined;
     super.disconnectedCallback();
-  }
-
-  listenFullWidthChange() {
-    if (this.std.get(DocModeProvider).getEditorMode() === 'edgeless') {
-      return;
-    }
-    this.disposables.add(
-      autoUpdate(this.host, this, () => {
-        const padding =
-          this.getBoundingClientRect().left -
-          this.host.getBoundingClientRect().left;
-        this.virtualPadding$.value = Math.max(0, padding - 72);
-      })
-    );
   }
 
   /**
