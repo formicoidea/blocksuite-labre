@@ -37,7 +37,11 @@ import {
   type DataSourceChoice,
   popDataSourcePicker,
 } from '../data-source-picker.js';
-import { databaseAddViewMenu } from '../view-bar/add-view-menu.js';
+import {
+  addViewSourcePicker,
+  type AddViewSourcePicker,
+  databaseAddViewMenu,
+} from '../view-bar/add-view-menu.js';
 import { addViewOnSource } from '../view-bar/add-view-on-source.js';
 
 beforeAll(() => {
@@ -303,6 +307,7 @@ function hostedPlan() {
         ],
       },
       readonly$: { value: signal(false) },
+      hostModel: { value: { props: { externalSourceId: 'db-plan' } } },
     }
   );
 }
@@ -313,7 +318,8 @@ describe('"+ view", one list of sources', () => {
       dataSource: HostedDataSourceBase,
       name?: string
     ) => Promise<string | undefined>,
-    sources?: { id: string; title: string }[]
+    sources?: { id: string; title: string }[],
+    adapter?: AddViewSourcePicker
   ) {
     const dataSource = hostedPlan();
     const context = {
@@ -322,10 +328,13 @@ describe('"+ view", one list of sources', () => {
       viewManager: {},
       addView: () => '',
     } as unknown as AddViewMenuContext;
-    const addView = databaseAddViewMenu(() => ({
-      createSource,
-      sources: sources && (() => sources),
-    }));
+    const addView = databaseAddViewMenu(
+      () =>
+        adapter ?? {
+          createSource,
+          sources: sources && (() => sources),
+        }
+    );
     const items = addView.items(context)!;
     const placeholder = addView.searchPlaceholder?.(context);
     const anchor = document.createElement('div');
@@ -421,6 +430,42 @@ describe('"+ view", one list of sources', () => {
       'table',
       's9'
     );
+  });
+
+  test('a host list that fills with the menu open shows its sources', async () => {
+    // labre recette of 2.3.2: the host fills its list after the first list().
+    const list = signal<readonly DataSourcePickerDatabase[]>([]);
+    const { menu } = await openAddView(
+      undefined,
+      undefined,
+      addViewSourcePicker({
+        list: () => list,
+        createSource: async () => ({ id: 's3', title: 'x' }),
+      })
+    );
+    expect(byTestId('database-add-view-source-s9')).toBeNull();
+    list.value = [
+      {
+        id: 'db-plan',
+        title: 'Plan',
+        sources: [
+          { id: 's1', title: 'Projects' },
+          { id: 's2', title: 'Risks' },
+          { id: 's9', title: 'Bilan' },
+        ],
+      },
+    ];
+    await frame();
+    const ids = [
+      ...menu.querySelectorAll<HTMLElement>(
+        '[data-testid^="database-add-view-source-"]'
+      ),
+    ].map(el => el.dataset.testid);
+    expect(ids).toEqual([
+      'database-add-view-source-s1',
+      'database-add-view-source-s2',
+      'database-add-view-source-s9',
+    ]);
   });
 
   test('without createSource, the search only filters', async () => {
