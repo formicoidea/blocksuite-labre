@@ -1,5 +1,20 @@
 # @labre/affine-block-list
 
+## 2.1.1
+
+### Patch Changes
+
+- @labre/affine-components@2.1.1
+- @labre/affine-ext-loader@2.1.1
+- @labre/affine-gfx-turbo-renderer@2.1.1
+- @labre/affine-inline-preset@2.1.1
+- @labre/affine-model@2.1.1
+- @labre/affine-rich-text@2.1.1
+- @labre/affine-shared@2.1.1
+- @labre/global@2.1.1
+- @labre/std@2.1.1
+- @labre/store@2.1.1
+
 ## 2.1.0
 
 ### Patch Changes
