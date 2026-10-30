@@ -1,5 +1,12 @@
 # @labre/std
 
+## 2.2.1
+
+### Patch Changes
+
+- @labre/global@2.2.1
+- @labre/store@2.2.1
+
 ## 2.2.0
 
 ### Patch Changes
