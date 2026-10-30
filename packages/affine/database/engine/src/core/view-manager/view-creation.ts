@@ -67,6 +67,11 @@ export interface AddViewMenuContext {
  */
 export interface AddViewMenu {
   items(context: AddViewMenuContext): MenuConfig[] | undefined;
+  /**
+   * The placeholder of the menu's search field, shown from the start when
+   * given; absent or `undefined`, the field shows once something is typed.
+   */
+  searchPlaceholder?(context: AddViewMenuContext): string | undefined;
 }
 
 export const AddViewMenuIdentifier = createIdentifier<AddViewMenu>(

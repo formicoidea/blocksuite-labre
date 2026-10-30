@@ -214,17 +214,21 @@ export class DataViewHeaderViews extends WidgetBase {
   }
 
   _addViewMenu = (event: MouseEvent) => {
-    const items =
-      this.std?.getOptional(AddViewMenuIdentifier)?.items({
-        std: this.std,
-        dataSource: this.dataSource,
-        viewManager: this.viewManager,
-        addView: this.addView,
-      }) ?? this.presetItems();
-    popFilterableSimpleMenu(
-      popupTargetFromElement(event.currentTarget as HTMLElement),
-      items
-    );
+    const addViewMenu = this.std?.getOptional(AddViewMenuIdentifier);
+    const context = {
+      std: this.std,
+      dataSource: this.dataSource,
+      viewManager: this.viewManager,
+      addView: this.addView,
+    };
+    const items = addViewMenu?.items(context);
+    const placeholder = items && addViewMenu?.searchPlaceholder?.(context);
+    popMenu(popupTargetFromElement(event.currentTarget as HTMLElement), {
+      options: {
+        items: items ?? this.presetItems(),
+        search: placeholder ? { placeholder } : undefined,
+      },
+    });
   };
 
   _showMore = (event: MouseEvent, hidden: readonly string[]) => {

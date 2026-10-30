@@ -7,8 +7,8 @@
  * - a source listed twice because one view names it and an older one (no
  *   `sourceId`) reads it as the host's first source;
  * - a source that no longer resolves offered as a place to add a view;
- * - "With a new source" drawn without the picker's `createSource` (the
- *   host's kill switch on creating sources, labre ADR-0046 §10);
+ * - "Create source" drawn without the picker's `createSource` (the host's
+ *   kill switch on creating sources, labre ADR-0046 §10);
  * - a view added on another source keeping default data derived from the
  *   current one (a board grouped by a property its source does not have);
  * - an own `sourceId: undefined` key written into the stored view;
@@ -91,29 +91,29 @@ describe('addViewMenuShape', () => {
     });
   });
 
-  test('several sources: "On an existing source", no "With a new source"', () => {
+  test('several sources: the list, nothing to create', () => {
     expect(addViewMenuShape(two, false)).toEqual({
-      kind: 'entries',
-      existing: two,
-      newSource: false,
+      kind: 'list',
+      sources: two,
+      create: false,
       importView: false,
     });
   });
 
-  test('createSource given: "With a new source" even beside one source', () => {
+  test('createSource given: the list, with its creation, even of one source', () => {
     expect(addViewMenuShape(one, true)).toEqual({
-      kind: 'entries',
-      existing: one,
-      newSource: true,
+      kind: 'list',
+      sources: one,
+      create: true,
       importView: false,
     });
   });
 
-  test('the picker imports: "Import a view" even beside one source', () => {
+  test('the picker imports: the list, with "Import a view", even of one source', () => {
     expect(addViewMenuShape(one, false, true)).toEqual({
-      kind: 'entries',
-      existing: one,
-      newSource: false,
+      kind: 'list',
+      sources: one,
+      create: false,
       importView: true,
     });
   });

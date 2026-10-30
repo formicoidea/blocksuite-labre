@@ -274,10 +274,10 @@ describe('"Source" in the view settings', () => {
     expect(blockOf(model).textContent).toContain('Projects field');
   });
 
-  test('"New source" asks the host, then switches onto it', async () => {
+  test('a name typed in the search creates the source, then switches onto it', async () => {
     const track = vi.fn();
     let hidden = '';
-    const createSource = vi.fn(async (_databaseId: string) =>
+    const createSource = vi.fn(async (_databaseId: string, _name?: string) =>
       addSource(window.doc, hidden, 'src-c', 'Ideas')
     );
     cleanup = await setupEditor('page', [
@@ -293,11 +293,20 @@ describe('"Source" in the view settings', () => {
     await openViewSettings(model);
     byTestId('dv-view-setting-source')!.click();
     await settle();
-    byTestId('data-source-picker-new-source')!.click();
+    // One source list (ADR 0035 amendment of 2026-10-30): the search is
+    // the naming step, no "New source" sub-step.
+    expect(byTestId('data-source-picker-new-source')).toBeNull();
+    const search = byTestId(
+      'data-source-picker'
+    )!.querySelector<HTMLInputElement>('input.affine-menu-search')!;
+    search.value = 'Ideas';
+    search.dispatchEvent(new InputEvent('input', { bubbles: true }));
+    await settle();
+    byTestId('data-source-picker-new-source-typed')!.click();
     await vi.waitFor(() => expect(sourceIdOf(model)).toBe('src-c'));
     await settle();
 
-    expect(createSource).toHaveBeenCalledWith(PLAN_ID);
+    expect(createSource).toHaveBeenCalledWith(PLAN_ID, 'Ideas');
     expect(blockOf(model).textContent).toContain('Ideas field');
     expect(track).toHaveBeenCalledWith(
       'DatabaseViewSourceChanged',

@@ -1372,8 +1372,46 @@ be created from the list.
   database's source bears is explained rather than left as "No results".
   The menus' search folds accents as well as case (`foldForSearch`), for
   the filter and for the exact match against the listed sources.
-- **Not offered** without `sourceName` (an unnamed source is not the one
-  the entry announces), nor in "Link an existing source", which only links.
+- **Not offered** in "Link an existing source", which only links. (Without
+  `sourceName` it was not offered either, until the amendment below.)
 - Wordings `com.labre.database.source-search.{placeholder,create}`, the
   second with `{{name}}`. Held by
   `database/editor/src/__tests__/source-search.unit.spec.ts`.
+
+### 2026-10-30: one source list for the view settings and "+ view"
+
+Asked by the Labre product owner on 2026-10-30, at the recette of 2.2.1:
+the two gestures that pick a source of this database (a view's settings ›
+"Source", and "+ view") drew two different lists, the first without its
+search field, the second behind "On an existing source" and "With a new
+source". They become one list. This supersedes the three entries of "+
+view" (labre PRD REQ-DB-7, §B11 above).
+
+- **The list.** The search field shown from the start, even over one
+  source ("Search or create a source", focused on open); the sources of
+  this database, filtered by the folded query; last, "Create source
+  “typed”" while the query is not empty and no listed source bears it,
+  disabled with the host's verdict when `sourceName.check` refuses it.
+  The search is the naming step: no "New source" sub-step in this list.
+  Without `sourceName`, the typed name is created as is (the same rule in
+  every list that carries `typedSourceEntry`).
+- **View settings › "Source"** (`popChangeSourcePicker`): under "Choose a
+  source" and its back, each source an action, the view's current one
+  checked (the menu's `isSelected`, picking it again only closes);
+  "Create source" calls `createSource(databaseId, name)` then points the
+  view at the new source (`changeViewSource`, `'new'`).
+- **"+ view"** (`databaseAddViewMenu`), when there is something to choose
+  (several sources, or a way to create or import one): the search field
+  (`AddViewMenu.searchPlaceholder`, a widening of data-view's registry);
+  each source a sub-menu of the presets; "Create source", which creates
+  the source then adds a table on it; under a divider, "Import a view from
+  another database". One source and nothing to create or import: the
+  presets are still the menu itself.
+- **Unchanged.** The picker across databases (the "Linked view of a
+  database" slash entry, "Link an existing source") and "New database" /
+  "New empty source", which keep `newSourceEntry`.
+- Wordings: `com.labre.database.source-search.placeholder` now reads
+  "Search or create a source"; `com.labre.database.add-view.existing-source`
+  and `com.labre.database.add-view.new-source` are removed. Held by
+  `view-settings-source.unit.spec.ts`, `source-search.unit.spec.ts` and
+  `add-view-menu.unit.spec.ts` (`database/editor/src/__tests__/`).
