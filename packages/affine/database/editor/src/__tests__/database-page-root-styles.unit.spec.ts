@@ -16,6 +16,11 @@
  * heading lost the database's name and a board inherited a table's rules.
  * The block now derives them from where it is drawn (`data-standalone`,
  * `data-page-layout`); this root only widens with such a table.
+ *
+ * And its gutters (labre recette of 2.0): a widened root sized in the content
+ * box overflowed by both paddings, so every page showed a sideways
+ * scrollbar; a phone's fixed 24px left the sticky view bar at the host's
+ * wider gutter; a wide table was cut at the page's edges.
  */
 import { describe, expect, test } from 'vitest';
 
@@ -62,7 +67,7 @@ describe('the full page of a database', () => {
       /affine-database-page > \.affine-page-viewport > doc-title \{ position: sticky; left: 0; width: 100cqw; \}/
     );
     expect(cssOf(DatabasePageRoot.styles)).toMatch(
-      /affine-database-page-root:has\(dv-table-view-ui\[data-page-layout\]\) \{ width: max-content; min-width: 100%;/
+      /affine-database-page-root:has\(dv-table-view-ui\[data-page-layout\]\) \{ width: max-content; min-width: 100%; [^}]*box-sizing: border-box;/
     );
   });
 
@@ -93,10 +98,20 @@ describe('the full page of a database', () => {
 
   test('narrows its side padding in a narrow viewport container', () => {
     expect(cssOf(DatabasePageRoot.styles)).toMatch(
-      /@container viewport \(width <= 640px\) \{ affine-database-page-root, affine-database-page-root:has\(dv-table-view-ui\[data-page-layout\]\) \{ padding-left: 24px; padding-right: 24px; \} \}/
+      /@container viewport \(width <= 640px\) \{ affine-database-page-root \{ --affine-editor-side-padding: 24px; \} \}/
     );
     expect(cssOf(DatabasePageHost.styles)).toContain(
       'container-name: viewport'
+    );
+  });
+
+  test('fades a wide table into its gutters, its scrollbars kept', () => {
+    const host = cssOf(DatabasePageHost.styles);
+    expect(host).toContain(
+      '--affine-database-page-fade: min( var(--affine-editor-side-padding, 24px), 24px );'
+    );
+    expect(host).toMatch(
+      /mask: linear-gradient\( to right, transparent, #000 var\(--affine-database-page-fade\), #000 calc\(100% - var\(--affine-database-page-fade\)\), transparent \) padding-box add, linear-gradient\(#000 0 0\) border-box exclude, linear-gradient\(#000 0 0\) padding-box;/
     );
   });
 });
