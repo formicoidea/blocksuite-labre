@@ -167,6 +167,33 @@ export const PICKER_NEW_DATABASE: ChromeWording = [
 ];
 
 /** The picker on a host that lists no database and creates none. */
+/* ── Naming a new source (ADR 0035 amendment of 2026-10-30) ───────────── */
+
+export const SOURCE_NAME_PLACEHOLDER: ChromeWording = [
+  'com.labre.database.source-name.placeholder',
+  'Source name',
+];
+
+export const SOURCE_NAME_OK: ChromeWording = [
+  'com.labre.database.source-name.ok',
+  'Available',
+];
+
+export const SOURCE_NAME_TAKEN: ChromeWording = [
+  'com.labre.database.source-name.taken',
+  'Another source already has this name.',
+];
+
+export const SOURCE_NAME_CREATE: ChromeWording = [
+  'com.labre.database.source-name.create',
+  'Create source',
+];
+
+export const SOURCE_NAME_EMPTY: ChromeWording = [
+  'com.labre.database.source-name.empty',
+  'Give the source a name.',
+];
+
 export const PICKER_EMPTY: ChromeWording = [
   'com.labre.database.picker.empty',
   'No database to show',
@@ -199,6 +226,11 @@ const DATABASE_EDITOR_WORDINGS: readonly ChromeWording[] = [
   PROPERTIES_PANEL_UNAVAILABLE,
   SLASH_LINKED_VIEW,
   SLASH_LINKED_VIEW_DESCRIPTION,
+  SOURCE_NAME_CREATE,
+  SOURCE_NAME_EMPTY,
+  SOURCE_NAME_OK,
+  SOURCE_NAME_PLACEHOLDER,
+  SOURCE_NAME_TAKEN,
   VIEW_MENU_IMPORT,
   VIEW_SETTINGS_SOURCE,
 ];

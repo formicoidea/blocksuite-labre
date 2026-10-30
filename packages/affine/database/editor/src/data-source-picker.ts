@@ -11,9 +11,10 @@ import {
   DOC_UNTITLED,
   translateKey,
 } from '@labre/affine-shared/services';
-import { DatabaseTableViewIcon, PlusIcon } from '@blocksuite/icons/lit';
+import { DatabaseTableViewIcon } from '@blocksuite/icons/lit';
 import type { BlockStdScope } from '@labre/std';
 
+import { named, newSourceEntry } from './new-source-entry.js';
 import {
   PICKER_EMPTY,
   PICKER_NEW_DATABASE,
@@ -67,13 +68,12 @@ function sourceItems(
   const createSource = picker.createSource;
   if (createSource && offerCreate && !std.store.readonly) {
     items.push(
-      menu.action({
+      newSourceEntry(std, picker.sourceName, {
         name: t(PICKER_NEW_SOURCE),
-        prefix: PlusIcon(),
         testId: 'data-source-picker-new-source',
-        select: () => {
+        create: sourceName => {
           createSource
-            .call(picker, database.id)
+            .call(picker, database.id, ...named(sourceName))
             .then(created => {
               if (!created) return;
               onPick({
@@ -144,13 +144,12 @@ export function dataSourcePickerItems(
     items.push(
       menu.group({
         items: [
-          menu.action({
+          newSourceEntry(std, picker.sourceName, {
             name: t(PICKER_NEW_DATABASE),
-            prefix: PlusIcon(),
             testId: 'data-source-picker-new-database',
-            select: () => {
+            create: sourceName => {
               createDatabase
-                .call(picker)
+                .call(picker, ...named(sourceName))
                 .then(database => {
                   const first = database?.sources[0];
                   if (!database || !first) return;

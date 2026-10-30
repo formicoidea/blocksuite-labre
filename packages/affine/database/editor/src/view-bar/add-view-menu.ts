@@ -4,6 +4,7 @@ import {
   type ChromeWording,
   DataSourcePickerProvider,
   type DataSourcePickerService,
+  type DataSourcePickerSourceNaming,
   translateKey,
 } from '@labre/affine-shared/services';
 import {
@@ -11,7 +12,7 @@ import {
   type AddViewMenuContext,
   viewDefaultName,
 } from '@labre/affine-database-engine';
-import { ImportIcon, PlusIcon } from '@blocksuite/icons/lit';
+import { ImportIcon } from '@blocksuite/icons/lit';
 import { html } from 'lit';
 
 import {
@@ -24,6 +25,7 @@ import {
   canImportView,
   requestViewImport,
 } from '../view-transfer/import-view.js';
+import { named, newSourceEntry } from '../new-source-entry.js';
 import { addViewOnSource } from './add-view-on-source.js';
 import { type AddViewSource, existingSources } from './add-view-sources.js';
 
@@ -37,7 +39,12 @@ export interface AddViewSourcePicker {
   /** Sources of this database that no view reads yet. */
   extraSourceIds?(dataSource: HostedDataSourceBase): readonly string[];
   /** Creates a source in this database; resolves to its id, or nothing. */
-  createSource?(dataSource: HostedDataSourceBase): Promise<string | undefined>;
+  createSource?(
+    dataSource: HostedDataSourceBase,
+    sourceName?: string
+  ): Promise<string | undefined>;
+  /** How the host names a new source; absent, "With a new source" creates at once. */
+  sourceName?: DataSourcePickerSourceNaming;
 }
 
 /**
@@ -63,13 +70,18 @@ export function addViewSourcePicker(
       return database?.sources.map(source => source.id) ?? [];
     },
     createSource: createSource
-      ? async dataSource => {
+      ? async (dataSource, sourceName) => {
           const databaseId = databaseOf(dataSource);
           if (databaseId === undefined) return undefined;
-          const created = await createSource.call(picker, databaseId);
+          const created = await createSource.call(
+            picker,
+            databaseId,
+            ...named(sourceName)
+          );
           return created?.id;
         }
       : undefined,
+    sourceName: picker.sourceName,
   };
 }
 
@@ -193,12 +205,11 @@ export function databaseAddViewMenu(
       }
       if (shape.newSource && createSource) {
         items.push(
-          menu.action({
+          newSourceEntry(context.std, sourcePicker?.sourceName, {
             name: wording(DATABASE_ADD_VIEW_NEW_SOURCE),
-            prefix: PlusIcon(),
             testId: 'database-add-view-new-source',
-            select: () => {
-              createSource(dataSource)
+            create: sourceName => {
+              createSource(dataSource, ...named(sourceName))
                 .then(sourceId => {
                   // The source arrived after a round trip: the page may have
                   // turned read-only meanwhile.

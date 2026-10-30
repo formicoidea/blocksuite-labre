@@ -157,6 +157,30 @@ export interface DataSourcePickerSourcePolicy {
   rowsLocked: boolean;
 }
 
+/** The host's word on a name typed for a new source. */
+export type DataSourcePickerSourceNameVerdict = 'ok' | 'empty' | 'taken';
+
+/**
+ * How a new source is named (ADR 0035 amendment of 2026-10-30, "a new
+ * source is named in the menu"): the rule is the host's, the library only
+ * draws the step.
+ */
+export interface DataSourcePickerSourceNaming {
+  /**
+   * The name the field opens with, called once each time the naming step
+   * opens. It may resolve late (read your names first); a rejection opens
+   * the field empty.
+   */
+  suggest(): string | Promise<string>;
+  /**
+   * Your verdict on `name`, as typed (untrimmed), on every keystroke: only
+   * `'ok'` creates. Called after `suggest` has settled, so a list `suggest`
+   * read is there to check against. MUST return synchronously and MUST NOT
+   * throw; a throw reads as `'empty'`.
+   */
+  check(name: string): DataSourcePickerSourceNameVerdict;
+}
+
 /** What `deleteView` hands the host: the view, and the verb that removes it. */
 export interface DataSourcePickerViewDeletion extends DataSourcePickerViewRef {
   /** The view's name, as stored ('' when it has none). */
@@ -192,7 +216,9 @@ export interface DataSourcePickerService {
    * switch, and the creating slash entries ("Table View", "Kanban View")
    * leave the menu.
    */
-  createDatabase?(): Promise<DataSourcePickerDatabase | null>;
+  createDatabase?(
+    sourceName?: string
+  ): Promise<DataSourcePickerDatabase | null>;
   /**
    * No native table beside your databases (ADR 0035 amendment of
    * 2026-10-29). The source decides, never the row count: a database block
@@ -226,7 +252,22 @@ export interface DataSourcePickerService {
    * Create a source in `databaseId`; it resolves to the new source, or
    * `null`. Absent, the picker offers no "New source".
    */
-  createSource?(databaseId: string): Promise<DataSourcePickerSource | null>;
+  createSource?(
+    databaseId: string,
+    sourceName?: string
+  ): Promise<DataSourcePickerSource | null>;
+  /**
+   * Name a new source where it is created (ADR 0035 amendment of
+   * 2026-10-30): "New source", "New database", "With a new source" and
+   * "New empty source" open a step in the same menu cascade, a field
+   * opening on `suggest()`, your verdict under it and "Create", and pass
+   * the trimmed name to `createSource` / `createDatabase` as `sourceName`
+   * (the new database's first source). Enter creates when you say `'ok'`;
+   * Escape leaves the field and creates nothing. A call made outside
+   * those menus (the 0.61 slash entries) passes no name. Absent, the
+   * entries create at once and never pass a name, as in 2.0.
+   */
+  sourceName?: DataSourcePickerSourceNaming;
   /**
    * Import a view of another database into `request.databaseId` (labre PRD
    * REQ-DB-2, ADR 0035 amendment of 2026-10-14): the host lets the reader
