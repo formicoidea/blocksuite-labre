@@ -14,7 +14,12 @@ import {
 import { DatabaseTableViewIcon } from '@blocksuite/icons/lit';
 import type { BlockStdScope } from '@labre/std';
 
-import { named, newSourceEntry } from './new-source-entry.js';
+import {
+  named,
+  newSourceEntry,
+  sourceSearch,
+  typedSourceEntry,
+} from './new-source-entry.js';
 import {
   PICKER_EMPTY,
   PICKER_NEW_DATABASE,
@@ -67,27 +72,34 @@ function sourceItems(
   );
   const createSource = picker.createSource;
   if (createSource && offerCreate && !std.store.readonly) {
+    const entry = {
+      name: t(PICKER_NEW_SOURCE),
+      testId: 'data-source-picker-new-source',
+      create: (sourceName: string | undefined) => {
+        createSource
+          .call(picker, database.id, ...named(sourceName))
+          .then(created => {
+            if (!created) return;
+            onPick({
+              database: {
+                ...database,
+                sources: [...database.sources, created],
+              },
+              sourceId: created.id,
+              source: 'new',
+            });
+          })
+          .catch(console.error);
+      },
+    };
     items.push(
-      newSourceEntry(std, picker.sourceName, {
-        name: t(PICKER_NEW_SOURCE),
-        testId: 'data-source-picker-new-source',
-        create: sourceName => {
-          createSource
-            .call(picker, database.id, ...named(sourceName))
-            .then(created => {
-              if (!created) return;
-              onPick({
-                database: {
-                  ...database,
-                  sources: [...database.sources, created],
-                },
-                sourceId: created.id,
-                source: 'new',
-              });
-            })
-            .catch(console.error);
-        },
-      })
+      newSourceEntry(std, picker.sourceName, entry),
+      typedSourceEntry(
+        std,
+        picker.sourceName,
+        database.sources.map(source => source.title),
+        entry
+      )
     );
   }
   return items;
@@ -133,6 +145,7 @@ export function dataSourcePickerItems(
           name: database.title || t(DOC_UNTITLED),
           prefix: DatabaseTableViewIcon(),
           options: {
+            search: sourceSearch(std),
             items: sourceItems(std, picker, database, onPick, offerCreate),
           },
         })
@@ -182,6 +195,8 @@ export function popDataSourcePicker(
     options: {
       title: { text: translateKey(std, ...PICKER_TITLE) },
       testId: 'data-source-picker',
+      // A flat list of sources; the list of databases keeps the hidden search.
+      search: options.databaseId === undefined ? undefined : sourceSearch(std),
       items: dataSourcePickerItems(std, picker, options),
     },
   });

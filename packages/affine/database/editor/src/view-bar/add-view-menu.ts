@@ -25,7 +25,12 @@ import {
   canImportView,
   requestViewImport,
 } from '../view-transfer/import-view.js';
-import { named, newSourceEntry } from '../new-source-entry.js';
+import {
+  named,
+  newSourceEntry,
+  sourceSearch,
+  typedSourceEntry,
+} from '../new-source-entry.js';
 import { addViewOnSource } from './add-view-on-source.js';
 import { type AddViewSource, existingSources } from './add-view-sources.js';
 
@@ -182,53 +187,73 @@ export function databaseAddViewMenu(
         return presetsOn(shape.source);
       }
       const { existing } = shape;
+      const newSource =
+        shape.newSource && createSource
+          ? {
+              name: wording(DATABASE_ADD_VIEW_NEW_SOURCE),
+              testId: 'database-add-view-new-source',
+              create: (sourceName: string | undefined) => {
+                createSource(dataSource, ...named(sourceName))
+                  .then(sourceId => {
+                    // The source arrived after a round trip: the page may
+                    // have turned read-only meanwhile.
+                    if (sourceId === undefined || dataSource.readonly$.peek()) {
+                      return;
+                    }
+                    addViewOnSource(
+                      context,
+                      dataSource,
+                      'table',
+                      sourceId,
+                      'new'
+                    );
+                  })
+                  .catch(error => {
+                    console.error(error);
+                  });
+              },
+            }
+          : undefined;
       const items: MenuConfig[] = [];
-      if (existing.length > 0) {
+      if (existing.length === 1) {
         items.push(
           menu.subMenu({
             name: wording(DATABASE_ADD_VIEW_EXISTING_SOURCE),
+            options: { items: presetsOn(existing[0]) },
+          })
+        );
+      } else if (existing.length > 1) {
+        const sourceMenus: MenuConfig[] = existing.map(source =>
+          menu.subMenu({
+            name: source.title || wording(DATABASE_ADD_VIEW_UNTITLED_SOURCE),
+            options: { items: presetsOn(source) },
+          })
+        );
+        if (newSource) {
+          sourceMenus.push(
+            typedSourceEntry(
+              context.std,
+              sourcePicker?.sourceName,
+              existing.map(source => source.title),
+              newSource
+            )
+          );
+        }
+        items.push(
+          menu.subMenu({
+            name: wording(DATABASE_ADD_VIEW_EXISTING_SOURCE),
+            testId: 'database-add-view-existing-source',
             options: {
-              items:
-                existing.length === 1
-                  ? presetsOn(existing[0])
-                  : existing.map(source =>
-                      menu.subMenu({
-                        name:
-                          source.title ||
-                          wording(DATABASE_ADD_VIEW_UNTITLED_SOURCE),
-                        options: { items: presetsOn(source) },
-                      })
-                    ),
+              testId: 'database-add-view-sources',
+              search: sourceSearch(context.std),
+              items: sourceMenus,
             },
           })
         );
       }
-      if (shape.newSource && createSource) {
+      if (newSource) {
         items.push(
-          newSourceEntry(context.std, sourcePicker?.sourceName, {
-            name: wording(DATABASE_ADD_VIEW_NEW_SOURCE),
-            testId: 'database-add-view-new-source',
-            create: sourceName => {
-              createSource(dataSource, ...named(sourceName))
-                .then(sourceId => {
-                  // The source arrived after a round trip: the page may have
-                  // turned read-only meanwhile.
-                  if (sourceId === undefined || dataSource.readonly$.peek()) {
-                    return;
-                  }
-                  addViewOnSource(
-                    context,
-                    dataSource,
-                    'table',
-                    sourceId,
-                    'new'
-                  );
-                })
-                .catch(error => {
-                  console.error(error);
-                });
-            },
-          })
+          newSourceEntry(context.std, sourcePicker?.sourceName, newSource)
         );
       }
       if (shape.importView) {

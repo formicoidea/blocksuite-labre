@@ -1346,3 +1346,28 @@ wants the name asked in the same cascade as the rest of the gesture.
   menu to hold a step) pass no name: the host names that source itself.
 - Wordings `com.labre.database.source-name.{placeholder,ok,taken,empty,create}`.
   Held by `database/editor/src/__tests__/new-source-entry.unit.spec.ts`.
+
+### 2026-10-30: a list of sources is searched, and the search names a new one
+
+Asked by the Labre product owner on 2026-10-30, at the recette of 2.1: the
+lists of sources read as unsearchable (the context menu's type-to-search
+field only shows once something is typed), and a name typed there could not
+be created from the list.
+
+- **The field.** Every menu that lists sources shows the context menu's own
+  search field from the start (`MenuOptions.search.placeholder`, "Search
+  sources"): the picker on one database (the flat list), each database's
+  sub-menu in the picker and in "Link an existing source", and "+ view" ›
+  "On an existing source" when it lists more than one source. The list of
+  databases keeps the hidden field. Typing filters by title, as before.
+- **Create from the search.** Where that menu already creates a source
+  ("New source", "With a new source"), it ends with "Create source
+  “typed”" (`typedSourceEntry`) while the search holds a name no listed
+  source bears and the host's `sourceName.check` answers `'ok'`, its names
+  read by one `suggest()` when the menu opens. It creates that name,
+  trimmed, at once: the search was the naming step. No seam change.
+- **Not offered** without `sourceName` (an unnamed source is not the one
+  the entry announces), nor in "Link an existing source", which only links.
+- Wordings `com.labre.database.source-search.{placeholder,create}`, the
+  second with `{{name}}`. Held by
+  `database/editor/src/__tests__/source-search.unit.spec.ts`.

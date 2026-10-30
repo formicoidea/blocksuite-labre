@@ -194,6 +194,19 @@ export const SOURCE_NAME_EMPTY: ChromeWording = [
   'Give the source a name.',
 ];
 
+/* ── Searching a list of sources (labre recette of 2.1) ───────────────── */
+
+export const SOURCE_SEARCH_PLACEHOLDER: ChromeWording = [
+  'com.labre.database.source-search.placeholder',
+  'Search sources',
+];
+
+/** `{{name}}` is the name as typed in the search field. */
+export const SOURCE_SEARCH_CREATE: ChromeWording = [
+  'com.labre.database.source-search.create',
+  'Create source “{{name}}”',
+];
+
 export const PICKER_EMPTY: ChromeWording = [
   'com.labre.database.picker.empty',
   'No database to show',
