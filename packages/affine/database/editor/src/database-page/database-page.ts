@@ -67,6 +67,27 @@ export class DatabasePageHost extends SignalWatcher(
       /* The container the page root's narrow-screen query reads. */
       container-type: inline-size;
       container-name: viewport;
+      /* A wide table scrolled sideways fades into the gutters instead of
+         being cut at the page's edges (labre recette of 2.0). The fade
+         stays in the gutter (at most 24px, the phone's), so nothing at
+         rest is faded. Its layer covers the padding box only: the two
+         layers below it give back the scrollbars, which sit between the
+         padding box and the border box. */
+      --affine-database-page-fade: min(
+        var(--affine-editor-side-padding, 24px),
+        24px
+      );
+      mask:
+        linear-gradient(
+            to right,
+            transparent,
+            #000 var(--affine-database-page-fade),
+            #000 calc(100% - var(--affine-database-page-fade)),
+            transparent
+          )
+          padding-box add,
+        linear-gradient(#000 0 0) border-box exclude,
+        linear-gradient(#000 0 0) padding-box;
     }
     /* The editor takes the height the heading leaves (std gives it 100%,
        which overflowed by the heading's height: a scrollbar on a short

@@ -128,6 +128,10 @@ export class DatabasePageRoot extends BlockComponent {
     affine-database-page-root:has(dv-table-view-ui[data-page-layout]) {
       width: max-content;
       min-width: 100%;
+      /* The paddings sit inside that 100%: in the content box a table
+         narrower than the page overflowed by both gutters, and every page
+         showed a sideways scrollbar (labre recette of 2.0). */
+      box-sizing: border-box;
       /* Widened, the root is no longer centred by its auto margins: it
          pads its left side by what centring gave the page heading (whose
          container in doc-title is the same max-width, centred in the
@@ -143,12 +147,13 @@ export class DatabasePageRoot extends BlockComponent {
           var(--affine-editor-side-padding, 24px)
       );
     }
-    /* A phone keeps the page root's narrow padding (page-root-block.ts). */
+    /* A phone keeps the page root's narrow padding (page-root-block.ts).
+       The variable, not the padding: the block's sticky view bar reads it,
+       and a fixed 24px left the bar at the host's wider gutter, right of
+       the title and the rows (labre recette of 2.0). */
     @container viewport (width <= 640px) {
-      affine-database-page-root,
-      affine-database-page-root:has(dv-table-view-ui[data-page-layout]) {
-        padding-left: 24px;
-        padding-right: 24px;
+      affine-database-page-root {
+        --affine-editor-side-padding: 24px;
       }
     }
     .affine-database-page-missing {
