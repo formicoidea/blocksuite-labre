@@ -1,5 +1,20 @@
 # @labre/affine-gfx-template
 
+## 2.3.1
+
+### Patch Changes
+
+- @labre/affine-block-surface@2.3.1
+- @labre/affine-components@2.3.1
+- @labre/affine-ext-loader@2.3.1
+- @labre/affine-model@2.3.1
+- @labre/affine-rich-text@2.3.1
+- @labre/affine-shared@2.3.1
+- @labre/affine-widget-edgeless-toolbar@2.3.1
+- @labre/global@2.3.1
+- @labre/std@2.3.1
+- @labre/store@2.3.1
+
 ## 2.3.0
 
 ### Patch Changes

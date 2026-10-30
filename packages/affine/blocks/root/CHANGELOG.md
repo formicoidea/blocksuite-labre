@@ -1,5 +1,41 @@
 # @labre/affine-block-root
 
+## 2.3.1
+
+### Patch Changes
+
+- @labre/affine-block-attachment@2.3.1
+- @labre/affine-block-bookmark@2.3.1
+- @labre/affine-block-edgeless-text@2.3.1
+- @labre/affine-block-embed@2.3.1
+- @labre/affine-block-frame@2.3.1
+- @labre/affine-block-image@2.3.1
+- @labre/affine-block-note@2.3.1
+- @labre/affine-block-paragraph@2.3.1
+- @labre/affine-block-surface@2.3.1
+- @labre/affine-components@2.3.1
+- @labre/affine-database-block@2.3.1
+- @labre/affine-database-engine@2.3.1
+- @labre/affine-ext-loader@2.3.1
+- @labre/affine-gfx-brush@2.3.1
+- @labre/affine-gfx-connector@2.3.1
+- @labre/affine-gfx-group@2.3.1
+- @labre/affine-gfx-mindmap@2.3.1
+- @labre/affine-gfx-note@2.3.1
+- @labre/affine-gfx-pointer@2.3.1
+- @labre/affine-gfx-shape@2.3.1
+- @labre/affine-gfx-text@2.3.1
+- @labre/affine-inline-link@2.3.1
+- @labre/affine-inline-preset@2.3.1
+- @labre/affine-model@2.3.1
+- @labre/affine-rich-text@2.3.1
+- @labre/affine-shared@2.3.1
+- @labre/affine-widget-edgeless-toolbar@2.3.1
+- @labre/affine-widget-linked-doc@2.3.1
+- @labre/global@2.3.1
+- @labre/std@2.3.1
+- @labre/store@2.3.1
+
 ## 2.3.0
 
 ### Patch Changes
