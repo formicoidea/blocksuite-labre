@@ -18,6 +18,11 @@ export type MenuInputData = {
   onComplete?: (value: string) => void;
   onChange?: (value: string) => void;
   onBlur?: (value: string) => void;
+  /**
+   * Enter on the field, before the menu closes; `false` keeps the menu
+   * open on the field (a value the step refuses). Escape never calls it.
+   */
+  onEnter?: (value: string) => boolean | void;
   disableAutoFocus?: boolean;
 };
 
@@ -71,6 +76,7 @@ export class MenuInput extends MenuFocusable {
       return;
     }
     if (e.key === 'Enter') {
+      if (this.data.onEnter?.(this.inputRef.value) === false) return;
       this.complete();
       // Blur before the menu goes away: unmounting a focused input does not
       // emit `blur`, and blur is where the value is saved.
@@ -231,6 +237,7 @@ export const menuInputItems = {
       onComplete?: (value: string) => void;
       onChange?: (value: string) => void;
       onBlur?: (value: string) => void;
+      onEnter?: (value: string) => boolean | void;
       class?: string;
       style?: Readonly<StyleInfo>;
     }) =>
@@ -245,6 +252,7 @@ export const menuInputItems = {
         onComplete: config.onComplete,
         onChange: config.onChange,
         onBlur: config.onBlur,
+        onEnter: config.onEnter,
       };
       const style = styleMap({
         display: 'flex',

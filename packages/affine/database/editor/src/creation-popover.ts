@@ -17,10 +17,11 @@ import {
   type DataSourcePickerService,
   translateKey,
 } from '@labre/affine-shared/services';
-import { LinkIcon, PlusIcon } from '@blocksuite/icons/lit';
+import { LinkIcon } from '@blocksuite/icons/lit';
 import type { BlockStdScope } from '@labre/std';
 
 import { dataSourcePickerItems } from './data-source-picker.js';
+import { named, newSourceEntry } from './new-source-entry.js';
 import {
   DATABASE_CREATION_LINK_EXISTING,
   DATABASE_CREATION_NEW_SOURCE,
@@ -71,22 +72,24 @@ export function databaseCreationItems(
   };
   const createDatabase = picker.createDatabase;
   const list = picker.list();
-  return [
-    menu.action({
+  const newSource =
+    createDatabase &&
+    newSourceEntry(std, picker.sourceName, {
       name: t(DATABASE_CREATION_NEW_SOURCE),
-      prefix: PlusIcon(),
       testId: 'database-creation-new-source',
-      hide: () => !createDatabase || std.store.readonly,
-      select: () => {
+      create: sourceName => {
         createDatabase
-          ?.call(picker)
+          .call(picker, ...named(sourceName))
           .then(database => {
             const source = database?.sources[0];
             if (database && source) connect(database, source.id);
           })
           .catch(console.error);
       },
-    }),
+    });
+  return [
+    (popover, index) =>
+      newSource && !std.store.readonly ? newSource(popover, index) : undefined,
     menu.subMenu({
       name: t(DATABASE_CREATION_LINK_EXISTING),
       prefix: LinkIcon(),

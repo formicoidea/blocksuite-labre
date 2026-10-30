@@ -1318,3 +1318,31 @@ render-only"; it now says **calendar is gone**.
   after; no preset, menu or conversion names calendar) and
   `integration-test/…/page/database-stored-views.spec.ts` (it paints as a
   table, flags on and off).
+
+### 2026-10-30: a new source is named in the menu that creates it
+
+Asked by the Labre product owner on 2026-10-30, after the recette of 2.0:
+Labre names every source at its creation, unique in its workspace, and drew
+a modal dialog of its own over the picker's popover to ask for it. The PO
+wants the name asked in the same cascade as the rest of the gesture.
+
+- **The seam.** `DataSourcePickerService.sourceName?`, an optional
+  `{ suggest(): string | Promise<string>; check(name): 'ok' | 'empty' |
+'taken' }`, a widening only. The rule stays the host's (which names
+  count, how they compare); the library draws the step. `createSource`
+  and `createDatabase` gain an optional `sourceName` argument (the new
+  database's first source), passed only when the step ran, so a host
+  without naming is called exactly as in 2.0.
+- **The step.** Every entry that creates a source ("New source", "New
+  database", "With a new source", "New empty source") becomes a sub-menu
+  (`newSourceEntry`, `@labre/affine-database-editor`): the context menu's
+  input on `suggest()`, the host's verdict under it as a status line
+  (secondary text when available, the error colour otherwise), and
+  "Create source". Only `'ok'` creates, by "Create source" or Enter; a
+  refused Enter keeps the step open (`MenuInputData.onEnter` answering
+  `false`). Escape leaves the field and creates nothing, as the context
+  menu does. Each opening asks for a new suggestion.
+- **Not named.** The 0.61 slash entries (`createHostedDatabaseView`, no
+  menu to hold a step) pass no name: the host names that source itself.
+- Wordings `com.labre.database.source-name.{placeholder,ok,taken,empty,create}`.
+  Held by `database/editor/src/__tests__/new-source-entry.unit.spec.ts`.
