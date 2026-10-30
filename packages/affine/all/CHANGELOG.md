@@ -1,5 +1,93 @@
 # @labre/affine
 
+## 2.3.2
+
+### Patch Changes
+
+- 42db539: "+ view" lists the same sources as a view's settings › "Source": the host picker's sources of this database, in its order and under its titles, including one no view reads yet (its schema not loaded, it used to be dropped until a view read it), then any source a view reads that the picker does not list. The exact match that hides "Create source" compares against exactly those titles. Without the picker, the views' sources only, as before. The bundle-internal `AddViewSourcePicker.extraSourceIds` becomes `sources`.
+  - @labre/affine-block-attachment@2.3.2
+  - @labre/affine-block-bookmark@2.3.2
+  - @labre/affine-block-callout@2.3.2
+  - @labre/affine-block-code@2.3.2
+  - @labre/affine-block-divider@2.3.2
+  - @labre/affine-block-edgeless-text@2.3.2
+  - @labre/affine-block-embed@2.3.2
+  - @labre/affine-block-embed-doc@2.3.2
+  - @labre/affine-block-frame@2.3.2
+  - @labre/affine-block-image@2.3.2
+  - @labre/affine-block-latex@2.3.2
+  - @labre/affine-block-list@2.3.2
+  - @labre/affine-block-note@2.3.2
+  - @labre/affine-block-paragraph@2.3.2
+  - @labre/affine-block-root@2.3.2
+  - @labre/affine-block-surface@2.3.2
+  - @labre/affine-block-surface-ref@2.3.2
+  - @labre/affine-block-table@2.3.2
+  - @labre/affine-components@2.3.2
+  - @labre/affine-database-block@2.3.2
+  - @labre/affine-database-editor@2.3.2
+  - @labre/affine-database-engine@2.3.2
+  - @labre/affine-database-view-block@2.3.2
+  - @labre/affine-ext-loader@2.3.2
+  - @labre/affine-foundation@2.3.2
+  - @labre/affine-fragment-adapter-panel@2.3.2
+  - @labre/affine-fragment-doc-title@2.3.2
+  - @labre/affine-fragment-frame-panel@2.3.2
+  - @labre/affine-fragment-outline@2.3.2
+  - @labre/affine-gfx-bpmn@2.3.2
+  - @labre/affine-gfx-brush@2.3.2
+  - @labre/affine-gfx-c4@2.3.2
+  - @labre/affine-gfx-connector@2.3.2
+  - @labre/affine-gfx-cynefin-estuarine@2.3.2
+  - @labre/affine-gfx-ddd-aggregate@2.3.2
+  - @labre/affine-gfx-ddd-context-map@2.3.2
+  - @labre/affine-gfx-ddd-core-domain@2.3.2
+  - @labre/affine-gfx-ddd-event-storming@2.3.2
+  - @labre/affine-gfx-ddd-shared@2.3.2
+  - @labre/affine-gfx-edgy@2.3.2
+  - @labre/affine-gfx-group@2.3.2
+  - @labre/affine-gfx-link@2.3.2
+  - @labre/affine-gfx-mindmap@2.3.2
+  - @labre/affine-gfx-note@2.3.2
+  - @labre/affine-gfx-pointer@2.3.2
+  - @labre/affine-gfx-shape@2.3.2
+  - @labre/affine-gfx-template@2.3.2
+  - @labre/affine-gfx-text@2.3.2
+  - @labre/affine-gfx-turbo-renderer@2.3.2
+  - @labre/affine-gfx-uml@2.3.2
+  - @labre/affine-gfx-wardley@2.3.2
+  - @labre/affine-inline-comment@2.3.2
+  - @labre/affine-inline-footnote@2.3.2
+  - @labre/affine-inline-latex@2.3.2
+  - @labre/affine-inline-link@2.3.2
+  - @labre/affine-inline-mention@2.3.2
+  - @labre/affine-inline-preset@2.3.2
+  - @labre/affine-inline-reference@2.3.2
+  - @labre/affine-model@2.3.2
+  - @labre/affine-rich-text@2.3.2
+  - @labre/affine-shared@2.3.2
+  - @labre/affine-widget-drag-handle@2.3.2
+  - @labre/affine-widget-edgeless-auto-connect@2.3.2
+  - @labre/affine-widget-edgeless-dragging-area@2.3.2
+  - @labre/affine-widget-edgeless-selected-rect@2.3.2
+  - @labre/affine-widget-edgeless-toolbar@2.3.2
+  - @labre/affine-widget-edgeless-zoom-toolbar@2.3.2
+  - @labre/affine-widget-frame-title@2.3.2
+  - @labre/affine-widget-keyboard-toolbar@2.3.2
+  - @labre/affine-widget-linked-doc@2.3.2
+  - @labre/affine-widget-note-slicer@2.3.2
+  - @labre/affine-widget-page-dragging-area@2.3.2
+  - @labre/affine-widget-remote-selection@2.3.2
+  - @labre/affine-widget-scroll-anchoring@2.3.2
+  - @labre/affine-widget-slash-menu@2.3.2
+  - @labre/affine-widget-thread-marks@2.3.2
+  - @labre/affine-widget-toolbar@2.3.2
+  - @labre/affine-widget-viewport-overlay@2.3.2
+  - @labre/global@2.3.2
+  - @labre/std@2.3.2
+  - @labre/store@2.3.2
+  - @labre/sync@2.3.2
+
 ## 2.3.1
 
 ### Patch Changes
