@@ -28,7 +28,12 @@ export type MenuInputData = {
 
 export class MenuInput extends MenuFocusable {
   static override styles = css`
+    /* Its own box, not the host's: a host without a global border-box
+       reset (labre) drew the field's padding and border past the menu's
+       right edge (labre recette of 2.1). */
     .affine-menu-input {
+      box-sizing: border-box;
+      min-width: 0;
       flex: 1;
       outline: none;
       border-radius: 4px;
