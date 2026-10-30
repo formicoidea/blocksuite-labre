@@ -322,7 +322,7 @@
     "!src/__tests__",
     "!dist/__tests__"
   ],
-  "version": "2.1.1",
+  "version": "2.1.2",
   "devDependencies": {
     "@preact/signals-core": "^1.8.0",
     "@toeverything/theme": "^1.1.15",
