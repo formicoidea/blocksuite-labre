@@ -1,5 +1,17 @@
 # @labre/affine-widget-thread-marks
 
+## 2.1.1
+
+### Patch Changes
+
+- @labre/affine-block-surface@2.1.1
+- @labre/affine-ext-loader@2.1.1
+- @labre/affine-shared@2.1.1
+- @labre/affine-widget-edgeless-toolbar@2.1.1
+- @labre/global@2.1.1
+- @labre/std@2.1.1
+- @labre/store@2.1.1
+
 ## 2.1.0
 
 ### Patch Changes
