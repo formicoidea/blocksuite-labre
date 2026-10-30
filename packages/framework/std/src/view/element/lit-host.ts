@@ -42,6 +42,18 @@ export class EditorHost extends SignalWatcher(
       display: block;
       height: 100%;
     }
+    /* The library is drawn in the border box (the playground sets it on
+       every element). It sets it on its own roots rather than asking every
+       host for a global reset: a host without one (labre) drew widths that
+       counted padding twice, a page root overflowing by its gutters, a menu
+       field past its menu (docs/integrate/02-mount.md « The box model »).
+       One type selector, so any component's class rule still wins. */
+    editor-host,
+    editor-host *,
+    editor-host *::before,
+    editor-host *::after {
+      box-sizing: border-box;
+    }
   `;
 
   private readonly _renderModel = (model: BlockModel): TemplateResult => {

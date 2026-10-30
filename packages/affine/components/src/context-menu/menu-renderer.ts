@@ -40,6 +40,15 @@ export class MenuComponent
   accessor std!: BlockStdScope;
 
   static override styles = css`
+    /* A menu portals out of the editor (to the body by default), so it
+       carries the editor host's border box itself (std's EditorHost). */
+    affine-menu,
+    affine-menu *,
+    affine-menu *::before,
+    affine-menu *::after {
+      box-sizing: border-box;
+    }
+
     affine-menu {
       font-family: var(--affine-font-family);
       display: flex;

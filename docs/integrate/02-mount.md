@@ -149,6 +149,28 @@ The full reference container, with the page viewport CSS and the
 `<doc-title>` fragment, is
 `packages/integration-test/src/editors/editor-container.ts`.
 
+### The box model
+
+The library is drawn in the border box: a width includes its padding and
+border. It does not ask the host for a global `* { box-sizing: border-box }`
+reset; it sets the border box on its own roots:
+
+- `editor-host` and everything inside it (std's `EditorHost`), which covers
+  the blocks, their widgets and the menus portaled into the editor;
+- `affine-menu` and everything inside it, for a menu portaled to the body.
+
+What stays the host's:
+
+- its own elements outside `editor-host` (the chrome around the editor, a
+  panel the host draws), sized as the host's CSS decides;
+- a portal rendered into a shadow root (`createLitPortal` with `shadowDom`):
+  a light-DOM rule does not reach it, so its component sets its own box.
+
+A host with a global reset changes nothing. A host without one gets the same
+layout as the playground, which is the reference (labre recette of 2.1: a
+page root overflowing by its gutters and a menu field past its menu came
+from a host without that reset).
+
 ## 5. Mount and dispose
 
 ```ts
