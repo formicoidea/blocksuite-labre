@@ -2,6 +2,7 @@ import {
   type Menu,
   menu,
   type MenuConfig,
+  type MenuOptions,
 } from '@labre/affine-components/context-menu';
 import {
   type ChromeWording,
@@ -11,7 +12,7 @@ import {
 } from '@labre/affine-shared/services';
 import { PlusIcon } from '@blocksuite/icons/lit';
 import type { BlockStdScope } from '@labre/std';
-import { computed, signal } from '@preact/signals-core';
+import { computed, type Signal, signal } from '@preact/signals-core';
 import { html } from 'lit';
 import { styleMap } from 'lit/directives/style-map.js';
 
@@ -21,6 +22,8 @@ import {
   SOURCE_NAME_OK,
   SOURCE_NAME_PLACEHOLDER,
   SOURCE_NAME_TAKEN,
+  SOURCE_SEARCH_CREATE,
+  SOURCE_SEARCH_PLACEHOLDER,
 } from './translations.js';
 
 export interface NewSourceEntry {
@@ -163,6 +166,76 @@ export function newSourceEntry(
           }),
         ],
       },
+    })(parent);
+  };
+}
+
+/**
+ * The search field of a menu that lists sources (labre recette of 2.1): the
+ * menu's own type-to-search, shown from the start so the list reads as
+ * searchable.
+ */
+export function sourceSearch(
+  std: BlockStdScope | undefined
+): MenuOptions['search'] {
+  return {
+    placeholder: std
+      ? translateKey(std, ...SOURCE_SEARCH_PLACEHOLDER)
+      : SOURCE_SEARCH_PLACEHOLDER[1],
+  };
+}
+
+// Per menu: the host's names are read once it opens (`suggest`), since
+// `check` answers against the names the last `suggest` read.
+const namesRead = new WeakMap<Menu, Signal<boolean>>();
+
+function namesReadFor(parent: Menu, naming: DataSourcePickerSourceNaming) {
+  let read$ = namesRead.get(parent);
+  if (!read$) {
+    const created$ = signal(false);
+    read$ = created$;
+    namesRead.set(parent, created$);
+    Promise.resolve()
+      .then(() => naming.suggest())
+      .catch(console.error)
+      .finally(() => {
+        created$.value = true;
+      });
+  }
+  return read$.value;
+}
+
+/**
+ * "Create source “typed”" at the end of a searched list of sources (labre
+ * recette of 2.1): drawn while the search holds a name no listed source
+ * bears and the host accepts (`'ok'`); it creates that name at once, the
+ * search having been the naming step. Absent without the host's naming:
+ * an unnamed source would not be the one the entry announces.
+ */
+export function typedSourceEntry(
+  std: BlockStdScope | undefined,
+  naming: DataSourcePickerSourceNaming | undefined,
+  listed: readonly string[],
+  entry: NewSourceEntry
+): MenuConfig {
+  return parent => {
+    if (!naming) return;
+    const typed = parent.searchName$.value;
+    const name = typed.trim();
+    if (!name) return;
+    const key = name.toLowerCase();
+    if (listed.some(title => title.trim().toLowerCase() === key)) return;
+    if (!namesReadFor(parent, naming)) return;
+    if (verdictOf(naming, name) !== 'ok') return;
+    // The typed text verbatim, so the menu's own search keeps the entry.
+    const params = { name: typed };
+    return menu.action({
+      name: std
+        ? translateKey(std, ...SOURCE_SEARCH_CREATE, params)
+        : SOURCE_SEARCH_CREATE[1].replace('{{name}}', typed),
+      prefix: PlusIcon(),
+      testId: `${entry.testId}-typed`,
+      select: () => entry.create(name),
     })(parent);
   };
 }
