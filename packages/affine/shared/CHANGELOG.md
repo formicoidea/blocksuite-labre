@@ -1,5 +1,14 @@
 # @labre/affine-shared
 
+## 2.3.1
+
+### Patch Changes
+
+- @labre/affine-model@2.3.1
+- @labre/global@2.3.1
+- @labre/std@2.3.1
+- @labre/store@2.3.1
+
 ## 2.3.0
 
 ### Patch Changes
