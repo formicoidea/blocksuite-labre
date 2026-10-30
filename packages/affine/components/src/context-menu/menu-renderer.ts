@@ -66,6 +66,14 @@ export class MenuComponent
       color: ${unsafeCSSVarV2('text/primary')};
     }
 
+    /* A search field shown from the start carries its placeholder whole
+       (labre recette of 2.3: « Rechercher ou créer une source », 212px in
+       Inter 14px, was cut). The field is the menu less 66px: its padding,
+       border, icon and gap, and the menu's padding. */
+    affine-menu[data-search-field] {
+      min-width: 288px;
+    }
+
     .affine-menu-search-container {
       border-radius: 4px;
       display: flex;
@@ -195,6 +203,7 @@ export class MenuComponent
 
   renderSearch() {
     const config = this.menu.options.search;
+    this.toggleAttribute('data-search-field', Boolean(config?.placeholder));
     const showSearch = this.menu.showSearch$.value || config?.placeholder;
     const searchStyle = styleMap({
       opacity: showSearch ? '1' : '0',
