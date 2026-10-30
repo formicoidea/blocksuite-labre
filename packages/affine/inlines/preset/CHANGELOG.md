@@ -1,5 +1,24 @@
 # @labre/affine-inline-preset
 
+## 2.4.0
+
+### Patch Changes
+
+- @labre/affine-components@2.4.0
+- @labre/affine-ext-loader@2.4.0
+- @labre/affine-inline-comment@2.4.0
+- @labre/affine-inline-footnote@2.4.0
+- @labre/affine-inline-latex@2.4.0
+- @labre/affine-inline-link@2.4.0
+- @labre/affine-inline-mention@2.4.0
+- @labre/affine-inline-reference@2.4.0
+- @labre/affine-model@2.4.0
+- @labre/affine-rich-text@2.4.0
+- @labre/affine-shared@2.4.0
+- @labre/global@2.4.0
+- @labre/std@2.4.0
+- @labre/store@2.4.0
+
 ## 2.3.3
 
 ### Patch Changes
