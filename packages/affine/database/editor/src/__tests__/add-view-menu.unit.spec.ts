@@ -69,12 +69,46 @@ describe('existingSources', () => {
     );
   });
 
-  test("the picker's sources no view reads come after, deduplicated", () => {
+  test("the picker's list comes first, in its order and under its titles", () => {
+    expect(
+      existingSources({
+        viewSourceIds: ['s1', 's2'],
+        resolve,
+        listed: [
+          { id: 's2', title: 'Risks' },
+          { id: 's1', title: 'Clients' },
+        ],
+      })
+    ).toEqual([
+      { sourceId: 's2', schemaId: 'block-s2', title: 'Risks' },
+      { sourceId: 's1', schemaId: 'block-s1', title: 'Clients' },
+    ]);
+  });
+
+  test('a listed source whose schema is not loaded is still offered', () => {
+    // labre recette of 2.3.1: no view reads "Bilan", so it does not resolve.
     expect(
       existingSources({
         viewSourceIds: ['s1'],
         resolve,
-        extraSourceIds: ['s1', 's2'],
+        listed: [
+          { id: 's1', title: 'Clients' },
+          { id: 's9', title: 'Bilan' },
+        ],
+      }).map(s => [s.sourceId, s.title])
+    ).toEqual([
+      ['s1', 'Clients'],
+      ['s9', 'Bilan'],
+    ]);
+  });
+
+  test('a source a view reads that the picker does not list comes after', () => {
+    expect(
+      existingSources({
+        // The unnamed view reads s1's schema: it is s1, not one more.
+        viewSourceIds: [undefined, 's2'],
+        resolve,
+        listed: [{ id: 's1', title: 'Clients' }],
       }).map(s => s.sourceId)
     ).toEqual(['s1', 's2']);
   });
@@ -320,8 +354,10 @@ describe('addViewSourcePicker', () => {
 
   test("lists the sources of the block's own database only", () => {
     const picker = addViewSourcePicker({ list: () => list });
-    expect(picker.extraSourceIds?.(onDatabase('db-1'))).toEqual(['s1']);
-    expect(picker.extraSourceIds?.(onDatabase(undefined))).toEqual([]);
+    expect(picker.sources?.(onDatabase('db-1'))).toEqual([
+      { id: 's1', title: 'A' },
+    ]);
+    expect(picker.sources?.(onDatabase(undefined))).toEqual([]);
   });
 
   test('creates a source in that database, and none without createSource', async () => {

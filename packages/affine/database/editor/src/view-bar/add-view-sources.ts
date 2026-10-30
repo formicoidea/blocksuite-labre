@@ -1,7 +1,6 @@
 /**
- * The sources "+ view" offers (ADR 0035 §1, §9c, B11; labre ADR-0046 §5:
- * "+ view has three entries: on an existing source, with a new source, import
- * a view from another database").
+ * The sources "+ view" offers (ADR 0035 §1, §9c, B11; one source list with a
+ * view's settings › "Source", amendment of 2026-10-30).
  *
  * Pure, so the list is held by a unit spec without a DOM. "Existing" means
  * the sources the block's views already read, in the order of the views,
@@ -12,9 +11,12 @@
  * view added there names its source. A view whose source does not resolve is
  * skipped: nothing can be added on a source that is not there.
  *
- * `extraSourceIds` is for the data-source picker (B12): the sources of this
- * database that no view reads yet, appended after the shown ones,
- * deduplicated the same way.
+ * `listed` is the data-source picker's (B12) list of this database's
+ * sources, the one the view settings show: with it, those come first, in the
+ * picker's order and under its titles, whether their schema is loaded or
+ * not (labre recette of 2.3.1: a source no view reads does not resolve until
+ * a view reads it, and was dropped), then the sources views read that the
+ * picker does not list.
  */
 export interface AddViewSource {
   /** What the new view stores as its `sourceId`; `undefined` stores none. */
@@ -32,7 +34,7 @@ export interface AddViewSourceReader {
   resolve: (
     sourceId: string | undefined
   ) => { schemaId: string; title: string } | null;
-  extraSourceIds?: readonly string[];
+  listed?: readonly { id: string; title: string }[];
 }
 
 export function existingSources(reader: AddViewSourceReader): AddViewSource[] {
@@ -54,6 +56,20 @@ export function existingSources(reader: AddViewSourceReader): AddViewSource[] {
     });
   };
   reader.viewSourceIds.forEach(add);
-  reader.extraSourceIds?.forEach(add);
-  return [...bySchema.values()];
+  const fromViews = [...bySchema.values()];
+  if (!reader.listed) return fromViews;
+  const listed: AddViewSource[] = reader.listed.map(source => ({
+    sourceId: source.id,
+    // Unloaded, its id stands for its schema: nothing else can match it.
+    schemaId: reader.resolve(source.id)?.schemaId ?? source.id,
+    title: source.title,
+  }));
+  const ids = new Set(listed.map(source => source.sourceId));
+  const schemas = new Set(listed.map(source => source.schemaId));
+  return [
+    ...listed,
+    ...fromViews.filter(
+      source => !ids.has(source.sourceId) && !schemas.has(source.schemaId)
+    ),
+  ];
 }

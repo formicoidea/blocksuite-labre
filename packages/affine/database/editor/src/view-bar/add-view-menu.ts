@@ -30,12 +30,14 @@ import { type AddViewSource, existingSources } from './add-view-sources.js';
 /**
  * What the data-source picker seam (ADR 0035 §9c, B12) gives "+ view", as
  * this menu reads it. Both optional: without `createSource` there is no
- * "Create source “typed”"; without `extraSourceIds` only the sources the views
+ * "Create source “typed”"; without `sources` only the sources the views
  * already read are listed (the seams table's "When absent").
  */
 export interface AddViewSourcePicker {
-  /** Sources of this database that no view reads yet. */
-  extraSourceIds?(dataSource: HostedDataSourceBase): readonly string[];
+  /** The sources of this database, as the host lists them (the view settings' list). */
+  sources?(
+    dataSource: HostedDataSourceBase
+  ): readonly { id: string; title: string }[];
   /** Creates a source in this database; resolves to its id, or nothing. */
   createSource?(
     dataSource: HostedDataSourceBase,
@@ -48,8 +50,7 @@ export interface AddViewSourcePicker {
 /**
  * The host's data-source picker (`DataSourcePickerProvider`, B12) as "+ view"
  * reads it, on the database the block shows (`externalSourceId`, the id the
- * picker lists it under): its sources no view reads yet, and its
- * `createSource`. "+ view" lists them inline rather than popping the picker
+ * picker lists it under): its sources, and its `createSource`. "+ view" lists them inline rather than popping the picker
  * over its own menu: one menu, the presets under each source.
  */
 export function addViewSourcePicker(
@@ -59,13 +60,14 @@ export function addViewSourcePicker(
     dataSource.hostModel.props.externalSourceId;
   const createSource = picker.createSource;
   return {
-    extraSourceIds: dataSource => {
+    sources: dataSource => {
       const databaseId = databaseOf(dataSource);
-      const database = picker
-        .list()
-        .peek()
-        .find(candidate => candidate.id === databaseId);
-      return database?.sources.map(source => source.id) ?? [];
+      return (
+        picker
+          .list()
+          .peek()
+          .find(candidate => candidate.id === databaseId)?.sources ?? []
+      );
     },
     createSource: createSource
       ? async (dataSource, sourceName) => {
@@ -133,7 +135,7 @@ function addViewPlan(
         ? { schemaId: schema.id, title: schema.props.title.toString() }
         : null;
     },
-    extraSourceIds: sourcePicker?.extraSourceIds?.(dataSource),
+    listed: sourcePicker?.sources?.(dataSource),
   });
   const createSource = sourcePicker?.createSource?.bind(sourcePicker);
   const hostPicker = context.std?.getOptional(DataSourcePickerProvider);
