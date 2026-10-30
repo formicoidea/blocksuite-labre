@@ -293,7 +293,15 @@ function hostedPlan() {
             ? { schema: { id: `b-${id}`, props: { title: titles[id] } } }
             : null,
       },
-      viewMetas: { value: [] },
+      viewMetas: {
+        value: [
+          {
+            type: 'table',
+            model: { defaultName: 'Table View' },
+            renderer: { icon: undefined },
+          },
+        ],
+      },
       readonly$: { value: signal(false) },
     }
   );
@@ -304,7 +312,8 @@ describe('"+ view", one list of sources', () => {
     createSource?: (
       dataSource: HostedDataSourceBase,
       name?: string
-    ) => Promise<string | undefined>
+    ) => Promise<string | undefined>,
+    sources?: { id: string; title: string }[]
   ) {
     const dataSource = hostedPlan();
     const context = {
@@ -313,7 +322,10 @@ describe('"+ view", one list of sources', () => {
       viewManager: {},
       addView: () => '',
     } as unknown as AddViewMenuContext;
-    const addView = databaseAddViewMenu(() => ({ createSource }));
+    const addView = databaseAddViewMenu(() => ({
+      createSource,
+      sources: sources && (() => sources),
+    }));
     const items = addView.items(context)!;
     const placeholder = addView.searchPlaceholder?.(context);
     const anchor = document.createElement('div');
@@ -374,6 +386,41 @@ describe('"+ view", one list of sources', () => {
     );
     await vi.waitFor(() => expect(addViewOnSource).toHaveBeenCalledTimes(1));
     expect(createSource).toHaveBeenCalledWith(expect.anything(), 'Bilan');
+  });
+
+  test("lists the picker's sources, one no view reads included, and adds on it", async () => {
+    // labre recette of 2.3.1: "Bilan" does not resolve until a view reads it.
+    const { context, dataSource, menu, search } = await openAddView(
+      async () => 's3',
+      [
+        { id: 's1', title: 'Projects' },
+        { id: 's2', title: 'Risks' },
+        { id: 's9', title: 'Bilan' },
+      ]
+    );
+    const ids = [
+      ...menu.querySelectorAll<HTMLElement>(
+        '[data-testid^="database-add-view-source-"]'
+      ),
+    ].map(el => el.dataset.testid);
+    expect(ids).toEqual([
+      'database-add-view-source-s1',
+      'database-add-view-source-s2',
+      'database-add-view-source-s9',
+    ]);
+
+    await type(search, 'bilan');
+    expect(menu.textContent).not.toContain('No results');
+    expect(byTestId('database-add-view-new-source-typed')).toBeNull();
+    byTestId('database-add-view-source-s9')!.click();
+    await frame();
+    byTestId('database-add-view-preset')!.click();
+    expect(addViewOnSource).toHaveBeenCalledWith(
+      context,
+      dataSource,
+      'table',
+      's9'
+    );
   });
 
   test('without createSource, the search only filters', async () => {
