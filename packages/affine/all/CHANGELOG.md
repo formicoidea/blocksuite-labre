@@ -1,5 +1,94 @@
 # @labre/affine
 
+## 2.1.3
+
+### Patch Changes
+
+- 73acb86: The library draws in the border box without asking the host for a global reset: `editor-host` and everything inside it, and every `affine-menu`, set `box-sizing: border-box`. A host without a global `* { box-sizing: border-box }` (labre) now gets the playground's layout; a host with one sees no change. The contract is in `docs/integrate/02-mount.md` « The box model ».
+- 1c29364: A wide table block scrolls within the text column, as an inline database now does: it no longer bleeds its scroller into the page's gutters (its distance to the editor's edge, minus 72px); only its 10px of row handles hang into the gutter. `VirtualPaddingController` is deprecated, no block uses it any more.
+  - @labre/affine-block-attachment@2.1.3
+  - @labre/affine-block-bookmark@2.1.3
+  - @labre/affine-block-callout@2.1.3
+  - @labre/affine-block-code@2.1.3
+  - @labre/affine-block-divider@2.1.3
+  - @labre/affine-block-edgeless-text@2.1.3
+  - @labre/affine-block-embed@2.1.3
+  - @labre/affine-block-embed-doc@2.1.3
+  - @labre/affine-block-frame@2.1.3
+  - @labre/affine-block-image@2.1.3
+  - @labre/affine-block-latex@2.1.3
+  - @labre/affine-block-list@2.1.3
+  - @labre/affine-block-note@2.1.3
+  - @labre/affine-block-paragraph@2.1.3
+  - @labre/affine-block-root@2.1.3
+  - @labre/affine-block-surface@2.1.3
+  - @labre/affine-block-surface-ref@2.1.3
+  - @labre/affine-block-table@2.1.3
+  - @labre/affine-components@2.1.3
+  - @labre/affine-database-block@2.1.3
+  - @labre/affine-database-editor@2.1.3
+  - @labre/affine-database-engine@2.1.3
+  - @labre/affine-database-view-block@2.1.3
+  - @labre/affine-ext-loader@2.1.3
+  - @labre/affine-foundation@2.1.3
+  - @labre/affine-fragment-adapter-panel@2.1.3
+  - @labre/affine-fragment-doc-title@2.1.3
+  - @labre/affine-fragment-frame-panel@2.1.3
+  - @labre/affine-fragment-outline@2.1.3
+  - @labre/affine-gfx-bpmn@2.1.3
+  - @labre/affine-gfx-brush@2.1.3
+  - @labre/affine-gfx-c4@2.1.3
+  - @labre/affine-gfx-connector@2.1.3
+  - @labre/affine-gfx-cynefin-estuarine@2.1.3
+  - @labre/affine-gfx-ddd-aggregate@2.1.3
+  - @labre/affine-gfx-ddd-context-map@2.1.3
+  - @labre/affine-gfx-ddd-core-domain@2.1.3
+  - @labre/affine-gfx-ddd-event-storming@2.1.3
+  - @labre/affine-gfx-ddd-shared@2.1.3
+  - @labre/affine-gfx-edgy@2.1.3
+  - @labre/affine-gfx-group@2.1.3
+  - @labre/affine-gfx-link@2.1.3
+  - @labre/affine-gfx-mindmap@2.1.3
+  - @labre/affine-gfx-note@2.1.3
+  - @labre/affine-gfx-pointer@2.1.3
+  - @labre/affine-gfx-shape@2.1.3
+  - @labre/affine-gfx-template@2.1.3
+  - @labre/affine-gfx-text@2.1.3
+  - @labre/affine-gfx-turbo-renderer@2.1.3
+  - @labre/affine-gfx-uml@2.1.3
+  - @labre/affine-gfx-wardley@2.1.3
+  - @labre/affine-inline-comment@2.1.3
+  - @labre/affine-inline-footnote@2.1.3
+  - @labre/affine-inline-latex@2.1.3
+  - @labre/affine-inline-link@2.1.3
+  - @labre/affine-inline-mention@2.1.3
+  - @labre/affine-inline-preset@2.1.3
+  - @labre/affine-inline-reference@2.1.3
+  - @labre/affine-model@2.1.3
+  - @labre/affine-rich-text@2.1.3
+  - @labre/affine-shared@2.1.3
+  - @labre/affine-widget-drag-handle@2.1.3
+  - @labre/affine-widget-edgeless-auto-connect@2.1.3
+  - @labre/affine-widget-edgeless-dragging-area@2.1.3
+  - @labre/affine-widget-edgeless-selected-rect@2.1.3
+  - @labre/affine-widget-edgeless-toolbar@2.1.3
+  - @labre/affine-widget-edgeless-zoom-toolbar@2.1.3
+  - @labre/affine-widget-frame-title@2.1.3
+  - @labre/affine-widget-keyboard-toolbar@2.1.3
+  - @labre/affine-widget-linked-doc@2.1.3
+  - @labre/affine-widget-note-slicer@2.1.3
+  - @labre/affine-widget-page-dragging-area@2.1.3
+  - @labre/affine-widget-remote-selection@2.1.3
+  - @labre/affine-widget-scroll-anchoring@2.1.3
+  - @labre/affine-widget-slash-menu@2.1.3
+  - @labre/affine-widget-thread-marks@2.1.3
+  - @labre/affine-widget-toolbar@2.1.3
+  - @labre/affine-widget-viewport-overlay@2.1.3
+  - @labre/global@2.1.3
+  - @labre/std@2.1.3
+  - @labre/store@2.1.3
+  - @labre/sync@2.1.3
+
 ## 2.1.2
 
 ### Patch Changes
