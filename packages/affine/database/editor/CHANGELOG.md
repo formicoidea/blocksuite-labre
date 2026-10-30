@@ -1,5 +1,19 @@
 # @labre/affine-database-editor
 
+## 2.3.0
+
+### Patch Changes
+
+- @labre/affine-components@2.3.0
+- @labre/affine-database-block@2.3.0
+- @labre/affine-database-engine@2.3.0
+- @labre/affine-ext-loader@2.3.0
+- @labre/affine-shared@2.3.0
+- @labre/affine-widget-slash-menu@2.3.0
+- @labre/global@2.3.0
+- @labre/std@2.3.0
+- @labre/store@2.3.0
+
 ## 2.2.1
 
 ### Patch Changes

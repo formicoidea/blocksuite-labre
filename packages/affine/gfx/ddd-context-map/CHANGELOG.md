@@ -1,5 +1,25 @@
 # @labre/affine-gfx-ddd-context-map
 
+## 2.3.0
+
+### Patch Changes
+
+- @labre/affine-block-surface@2.3.0
+- @labre/affine-components@2.3.0
+- @labre/affine-ext-loader@2.3.0
+- @labre/affine-gfx-connector@2.3.0
+- @labre/affine-gfx-ddd-shared@2.3.0
+- @labre/affine-gfx-group@2.3.0
+- @labre/affine-gfx-pointer@2.3.0
+- @labre/affine-gfx-shape@2.3.0
+- @labre/affine-gfx-template@2.3.0
+- @labre/affine-model@2.3.0
+- @labre/affine-shared@2.3.0
+- @labre/affine-widget-edgeless-toolbar@2.3.0
+- @labre/global@2.3.0
+- @labre/std@2.3.0
+- @labre/store@2.3.0
+
 ## 2.2.1
 
 ### Patch Changes
