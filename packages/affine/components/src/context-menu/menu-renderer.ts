@@ -66,8 +66,12 @@ export class MenuComponent
       border: 1px solid ${unsafeCSSVarV2('input/border/default')};
     }
 
+    /* Shrinks with its row: an input's intrinsic width (min-width: auto)
+       kept it 190px wide past the menu's edge (labre recette of 2.1). */
     .affine-menu-search {
       flex: 1;
+      min-width: 0;
+      width: 100%;
       outline: none;
       font-size: 14px;
       line-height: 22px;
