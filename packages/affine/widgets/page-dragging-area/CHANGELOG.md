@@ -1,5 +1,16 @@
 # @labre/affine-widget-page-dragging-area
 
+## 2.2.0
+
+### Patch Changes
+
+- @labre/affine-ext-loader@2.2.0
+- @labre/affine-model@2.2.0
+- @labre/affine-shared@2.2.0
+- @labre/global@2.2.0
+- @labre/std@2.2.0
+- @labre/store@2.2.0
+
 ## 2.1.3
 
 ### Patch Changes
