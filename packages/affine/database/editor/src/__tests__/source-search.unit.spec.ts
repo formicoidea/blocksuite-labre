@@ -4,7 +4,9 @@
  * What it would have caught (labre recette of 2.1, 2026-10-30): the picker's
  * list of sources showed no search field (the menu's search only appeared
  * once something was typed), and a name typed there that no source bears
- * could not be created from the list.
+ * could not be created from the list. At the recette of 2.2: a name another
+ * database's source bears hid the entry, leaving "No results" and no reason;
+ * "SOURCÉ" did not find "Source".
  */
 import {
   effects as contextMenuEffects,
@@ -115,6 +117,19 @@ describe('searching a list of sources', () => {
     expect(sources()).toEqual(['data-source-picker-source-s-2']);
   });
 
+  test('the filter and the exact match ignore case and accents', async () => {
+    const createSource = vi.fn(async () => ({ id: 's-3', title: 'x' }));
+    const { search } = await open({
+      list: () => signal([PLAN]),
+      createSource,
+      sourceName: hostNaming(['Projects', 'Risks']),
+    });
+    await type(search, 'RÏSKS');
+    await frame();
+    expect(sources()).toEqual(['data-source-picker-source-s-2']);
+    expect(typed()).toBeNull();
+  });
+
   test('a name no source bears is created as typed, trimmed', async () => {
     const createSource = vi.fn(async () => ({ id: 's-3', title: 'Budget' }));
     const { onPick, search } = await open({
@@ -131,7 +146,27 @@ describe('searching a list of sources', () => {
     expect(onPick.mock.calls[0]![0]).toMatchObject({ source: 'new' });
   });
 
-  test('a listed name, a name the host has taken or no name offers no creation', async () => {
+  test('a name the host has taken stays, disabled, with its verdict', async () => {
+    const createSource = vi.fn(async () => ({ id: 's-3', title: 'x' }));
+    const { search } = await open({
+      list: () => signal([PLAN]),
+      createSource,
+      sourceName: hostNaming(['Projects', 'Risks', 'Archive']),
+    });
+    await type(search, 'archive');
+    await vi.waitFor(() => expect(typed()).not.toBeNull());
+    expect(typed()!.dataset.verdict).toBe('taken');
+    expect(typed()!.getAttribute('aria-disabled')).toBe('true');
+    expect(typed()!.textContent).toContain(
+      'Another source already has this name.'
+    );
+    expect(document.body.textContent).not.toContain('No results');
+    typed()!.click();
+    await frame();
+    expect(createSource).not.toHaveBeenCalled();
+  });
+
+  test('a listed name or no name offers no creation', async () => {
     const createSource = vi.fn(async () => ({ id: 's-3', title: 'x' }));
     const { search } = await open({
       list: () => signal([PLAN]),
@@ -139,9 +174,6 @@ describe('searching a list of sources', () => {
       sourceName: hostNaming(['Projects', 'Risks', 'Archive']),
     });
     await type(search, 'risks');
-    await frame();
-    expect(typed()).toBeNull();
-    await type(search, 'archive');
     await frame();
     expect(typed()).toBeNull();
     await type(search, '   ');
