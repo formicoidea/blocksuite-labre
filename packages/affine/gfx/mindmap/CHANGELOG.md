@@ -1,5 +1,27 @@
 # @labre/affine-gfx-mindmap
 
+## 2.0.1
+
+### Patch Changes
+
+- @labre/affine-block-attachment@2.0.1
+- @labre/affine-block-image@2.0.1
+- @labre/affine-block-surface@2.0.1
+- @labre/affine-components@2.0.1
+- @labre/affine-ext-loader@2.0.1
+- @labre/affine-gfx-connector@2.0.1
+- @labre/affine-gfx-pointer@2.0.1
+- @labre/affine-gfx-shape@2.0.1
+- @labre/affine-gfx-template@2.0.1
+- @labre/affine-gfx-text@2.0.1
+- @labre/affine-model@2.0.1
+- @labre/affine-rich-text@2.0.1
+- @labre/affine-shared@2.0.1
+- @labre/affine-widget-edgeless-toolbar@2.0.1
+- @labre/global@2.0.1
+- @labre/std@2.0.1
+- @labre/store@2.0.1
+
 ## 2.0.0
 
 ### Patch Changes
