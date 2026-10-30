@@ -15,7 +15,9 @@
  *   block's database);
  * - a throwing resolver breaking the view instead of reading as missing;
  * - an unreadable database read as "Source not found" (or "Connect a
- *   source") rather than as `'unshared'`;
+ *   source") rather than as `'unshared'`, or a source in the trash (labre
+ *   recette of 2.4) rather than as `'trashed'`: "Connect a source" would
+ *   re-point the view away from a source the reader may restore;
  * - `sourcePolicy`, `deleteView` or the properties panel's request keyed by
  *   the block's database for a view that reads another one;
  * - `reconnectDatabaseView` rewriting the block's `externalSourceId` under
@@ -257,6 +259,29 @@ describe('a view of another database', () => {
     expect(hosted.sourceUnavailable$.value).toBe('unshared');
     expect(hosted.sourceMissing$.value).toBe(true);
     expect(hosted.source$.value).toBeNull();
+    expect(hosted.rows$.value).toEqual([]);
+  });
+
+  test("a source in the trash is 'trashed', in this database or another", () => {
+    const { model } = database([...STORED_23, FOREIGN]);
+    const hosted = build(model, () => ({ unavailable: 'trashed' }), optedIn());
+    for (const view of ['v-1', 'v-3']) {
+      hosted.viewManager.setCurrentView(view);
+      expect(hosted.sourceUnavailable$.value).toBe('trashed');
+      expect(hosted.sourceMissing$.value).toBe(true);
+      expect(hosted.source$.value).toBeNull();
+    }
+  });
+
+  test('a reason this build does not know reads as no source', () => {
+    const { model } = database(STORED_23);
+    const hosted = build(
+      model,
+      () => ({ unavailable: 'archived' }) as never,
+      optedIn()
+    );
+    expect(hosted.sourceUnavailable$.value).toBeNull();
+    expect(hosted.sourceMissing$.value).toBe(true);
     expect(hosted.rows$.value).toEqual([]);
   });
 

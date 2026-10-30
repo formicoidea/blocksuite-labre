@@ -33,7 +33,9 @@ import { setupEditor } from '../utils/setup.js';
  *   the other database's view not reaching the host's `rowAdd` (the view
  *   left read-only);
  * - an unreadable database drawn as an error, as "Source not found" or with
- *   "Connect a source", instead of "Database not shared".
+ *   "Connect a source", instead of "Database not shared"; a source in the
+ *   trash offered "Connect a source" (under `requireSource`) instead of
+ *   "Source in the trash".
  */
 
 const PLAN = 'host:plan';
@@ -271,5 +273,29 @@ describe('a view of another database', () => {
     expect(notice!.textContent).toContain('Database not shared');
     expect(byTestId('database-source-missing')).toBeNull();
     expect(byTestId('database-source-required-connect')).toBeNull();
+  });
+
+  test('a source in the trash draws "Source in the trash", never "Connect a source"', async () => {
+    cleanup = await setupEditor('page', [
+      hostSources,
+      DataSourcePickerExtension({
+        list: () => signal([]),
+        crossDatabaseViews: true,
+        requireSource: true,
+      }),
+    ]);
+    const model = writeDatabase({ sourceId: 'src-a', columns: [] });
+    sources[`${PLAN}/src-a`] = { unavailable: 'trashed' };
+    const before = JSON.stringify(model.props.views);
+    await settle();
+    const notice = blockOf(model).querySelector<HTMLElement>(
+      '[data-testid="database-source-trashed"]'
+    );
+    expect(notice).not.toBeNull();
+    expect(notice!.textContent).toContain('Source in the trash');
+    expect(byTestId('database-source-required')).toBeNull();
+    expect(byTestId('database-source-required-connect')).toBeNull();
+    expect(byTestId('database-source-missing')).toBeNull();
+    expect(JSON.stringify(model.props.views)).toBe(before);
   });
 });

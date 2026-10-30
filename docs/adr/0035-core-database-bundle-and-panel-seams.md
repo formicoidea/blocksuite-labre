@@ -1446,12 +1446,19 @@ databaseId?)` takes the database too. A throwing resolver is logged and
   stay on the block's database, and a view naming another database reads as
   "Source not found" without the resolver being asked (a host unaware of
   `databaseId` would look for its `sourceId` in the block's database).
-- **"Database not shared".** A resolver may answer `{ unavailable:
-'unshared' }` (`HostedSourceUnavailable`) for a database the reader may
-  not read: the view keeps its title and view bar and draws "Database not
-  shared" with a hint (`com.labre.database.source-unshared`, `.hint`,
-  `sourceUnavailable$`), never an error, never "Source not found" and never
-  "Connect a source". `null` keeps the 2.3 behaviour.
+- **"Database not shared", "Source in the trash".** A resolver may answer
+  `HostedSourceUnavailable`, `{ unavailable: 'unshared' | 'trashed' }`:
+  `'unshared'` for a database the reader may not read, `'trashed'` for a
+  source in the trash, of this database or another (labre recette of 2.4,
+  PO decision: such a view shows the notice until the source is restored).
+  The view keeps its title and view bar and draws "Database not shared"
+  (`com.labre.database.source-unshared`, `.hint`) or "Source in the trash"
+  (`com.labre.database.source-trashed`, `.hint`) with its hint
+  (`sourceUnavailable$`): never an error, never "Source not found" and never
+  "Connect a source", even under `requireSource`, since re-pointing the view
+  would lose a source the reader may get back; nothing is written. A reason
+  this build does not know reads as no source. `null` keeps the 2.3
+  behaviour.
 - **Keyed by the view's database.** `sourcePolicy`, `deleteView`'s
   request, the properties panel's request (`databaseId`, only when it is
   another database), `importView`'s request (and the copy, which keeps the

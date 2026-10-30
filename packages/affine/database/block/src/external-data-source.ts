@@ -47,14 +47,23 @@ export interface HostedSource {
 }
 
 /**
- * A source the host knows but the reader may not read (ADR 0035 amendment
- * of 2026-10-30): a view reading a source of another database that is not
- * shared with them. The view draws "Database not shared" in place of its
- * body, never an error and never "Connect a source".
+ * A source the host knows but the view cannot read now (ADR 0035 amendment
+ * of 2026-10-30): `'unshared'`, it belongs to a database that is not shared
+ * with the reader ("Database not shared"); `'trashed'`, it is in the trash
+ * and may be restored ("Source in the trash"), whatever its database. The
+ * view draws that notice in place of its body, never an error and never
+ * "Connect a source", which would re-point the view away for good.
  */
+export type HostedSourceUnavailableReason = 'unshared' | 'trashed';
+
 export interface HostedSourceUnavailable {
-  unavailable: 'unshared';
+  unavailable: HostedSourceUnavailableReason;
 }
+
+const UNAVAILABLE_REASONS: readonly string[] = [
+  'unshared',
+  'trashed',
+] satisfies readonly HostedSourceUnavailableReason[];
 
 /** Whether a resolver's answer is {@link HostedSourceUnavailable}. */
 export function isHostedSourceUnavailable(
@@ -64,7 +73,7 @@ export function isHostedSourceUnavailable(
     typeof answer === 'object' &&
     answer !== null &&
     'unavailable' in answer &&
-    answer.unavailable === 'unshared'
+    UNAVAILABLE_REASONS.includes(answer.unavailable)
   );
 }
 
@@ -216,7 +225,16 @@ export abstract class HostedDataSourceBase extends DataSourceBase {
     const database = databaseId ?? home;
     if (database !== home && !this.crossDatabaseViews) return null;
     try {
-      return this._resolveSource(sourceId, database) ?? null;
+      const answer = this._resolveSource(sourceId, database) ?? null;
+      // A reason this build does not know is no source, never a schema.
+      if (
+        answer &&
+        'unavailable' in answer &&
+        !isHostedSourceUnavailable(answer)
+      ) {
+        return null;
+      }
+      return answer;
     } catch (error) {
       console.error(error);
       return null;
@@ -267,15 +285,15 @@ export abstract class HostedDataSourceBase extends DataSourceBase {
   /**
    * Why the current view's source cannot be read, when the host says so
    * (ADR 0035 amendment of 2026-10-30): `'unshared'`, its database is not
-   * shared with the reader; the block draws "Database not shared". `null`
-   * otherwise, "Source not found" included.
+   * shared with the reader ("Database not shared"); `'trashed'`, the source
+   * is in the trash ("Source in the trash"). `null` otherwise, "Source not
+   * found" included.
    */
-  readonly sourceUnavailable$: ReadonlySignal<
-    HostedSourceUnavailable['unavailable'] | null
-  > = computed(() => {
-    const answer = this._answer$.value;
-    return isHostedSourceUnavailable(answer) ? answer.unavailable : null;
-  });
+  readonly sourceUnavailable$: ReadonlySignal<HostedSourceUnavailableReason | null> =
+    computed(() => {
+      const answer = this._answer$.value;
+      return isHostedSourceUnavailable(answer) ? answer.unavailable : null;
+    });
 
   /** Each row is a document (ADR 0035 §9a, §9f). Read-only. */
   get rowsAreDocuments(): boolean {

@@ -106,6 +106,8 @@ import {
   DATABASE_SOURCE_REQUIRED,
   DATABASE_SOURCE_REQUIRED_HINT,
   DATABASE_SOURCE_REQUIRED_READ_ONLY,
+  DATABASE_SOURCE_TRASHED,
+  DATABASE_SOURCE_TRASHED_HINT,
   DATABASE_SOURCE_UNSHARED,
   DATABASE_SOURCE_UNSHARED_HINT,
   DATABASE_DELETE,
@@ -618,19 +620,27 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
   };
 
   /**
-   * A view whose source belongs to a database the reader may not read (the
-   * resolver answers `{ unavailable: 'unshared' }`, ADR 0035 amendment of
-   * 2026-10-30): the title and the view bar, then "Database not shared" and
-   * its hint in place of the body. Never an error and never "Connect a
-   * source": the view is right, the reader lacks the rights. Takes
-   * precedence over the two notices below; nothing is written.
+   * A view whose source the host knows but the view cannot read now (the
+   * resolver answers `{ unavailable }`, ADR 0035 amendment of 2026-10-30):
+   * the title and the view bar, then the reason and its hint in place of
+   * the body. `'unshared'`: its database is not shared with the reader
+   * ("Database not shared"). `'trashed'`: the source is in the trash
+   * ("Source in the trash"), shown until it is restored. Never an error and
+   * never "Connect a source": the view is right, and re-pointing it would
+   * lose a source the reader may get back. Takes precedence over the two
+   * notices below; nothing is written.
    */
-  private readonly renderSourceUnshared = (
+  private readonly renderSourceUnavailable = (
     dataViewLogic: DataViewUILogicBase
   ) => {
     const dataSource = this.dataSource;
     if (!(dataSource instanceof HostedDataSourceBase)) return undefined;
-    if (dataSource.sourceUnavailable$.value !== 'unshared') return undefined;
+    const reason = dataSource.sourceUnavailable$.value;
+    if (reason === null) return undefined;
+    const [title, hint] =
+      reason === 'trashed'
+        ? [DATABASE_SOURCE_TRASHED, DATABASE_SOURCE_TRASHED_HINT]
+        : [DATABASE_SOURCE_UNSHARED, DATABASE_SOURCE_UNSHARED_HINT];
     return html`<div class="${databaseHeaderContainerStyles}">
         <div class="${databaseTitleRowStyles}">
           ${this.renderTitle(dataViewLogic)}
@@ -641,12 +651,12 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
       </div>
       <div
         class="${databaseSourceMissingStyles}"
-        data-testid="database-source-unshared"
+        data-testid="database-source-${reason}"
         role="status"
       >
-        <div>${translateKey(this.std, ...DATABASE_SOURCE_UNSHARED)}</div>
+        <div>${translateKey(this.std, ...title)}</div>
         <div class="${databaseSourceMissingHintStyles}">
-          ${translateKey(this.std, ...DATABASE_SOURCE_UNSHARED_HINT)}
+          ${translateKey(this.std, ...hint)}
         </div>
       </div>`;
   };
@@ -843,7 +853,7 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
       dataSource: this.dataSource,
       headerWidget: this.headerWidget,
       viewPlaceholder: logic =>
-        this.renderSourceUnshared(logic) ??
+        this.renderSourceUnavailable(logic) ??
         this.renderSourceRequired(logic) ??
         this.renderSourceMissing(logic),
       onDrag: this.onDrag,
