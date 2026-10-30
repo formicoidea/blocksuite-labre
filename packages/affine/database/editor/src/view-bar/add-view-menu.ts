@@ -50,8 +50,11 @@ export interface AddViewSourcePicker {
 /**
  * The host's data-source picker (`DataSourcePickerProvider`, B12) as "+ view"
  * reads it, on the database the block shows (`externalSourceId`, the id the
- * picker lists it under): its sources, and its `createSource`. "+ view" lists them inline rather than popping the picker
- * over its own menu: one menu, the presets under each source.
+ * picker lists it under): its sources, and its `createSource`. "+ view"
+ * lists them inline rather than popping the picker over its own menu: one
+ * menu, the presets under each source. `sources` reads the host's list as a
+ * signal, asked for once per adapter: a host may fill it after its first
+ * `list()` (labre recette of 2.3.2), and the open menu redraws then.
  */
 export function addViewSourcePicker(
   picker: DataSourcePickerService
@@ -59,14 +62,13 @@ export function addViewSourcePicker(
   const databaseOf = (dataSource: HostedDataSourceBase) =>
     dataSource.hostModel.props.externalSourceId;
   const createSource = picker.createSource;
+  let list: ReturnType<DataSourcePickerService['list']> | undefined;
   return {
     sources: dataSource => {
       const databaseId = databaseOf(dataSource);
+      list ??= picker.list();
       return (
-        picker
-          .list()
-          .peek()
-          .find(candidate => candidate.id === databaseId)?.sources ?? []
+        list.value.find(candidate => candidate.id === databaseId)?.sources ?? []
       );
     },
     createSource: createSource
@@ -116,16 +118,12 @@ export function addViewMenuShape(
   };
 }
 
-/** What both the items and the search field of "+ view" are drawn from. */
-function addViewPlan(
-  context: AddViewMenuContext,
-  picker: (context: AddViewMenuContext) => AddViewSourcePicker | null
-) {
-  const { dataSource } = context;
-  if (!(dataSource instanceof HostedDataSourceBase)) return;
-  if (!dataSource.resolvesSources) return;
-  const sourcePicker = picker(context);
-  const sources = existingSources({
+/** The sources "+ view" lists now; read in a `menu.dynamic`, it follows the host's list. */
+function readSources(
+  dataSource: HostedDataSourceBase,
+  sourcePicker: AddViewSourcePicker | null
+): AddViewSource[] {
+  return existingSources({
     viewSourceIds: dataSource.viewDataList$
       .peek()
       .map(view => (view as { sourceId?: string }).sourceId),
@@ -137,6 +135,22 @@ function addViewPlan(
     },
     listed: sourcePicker?.sources?.(dataSource),
   });
+}
+
+/**
+ * What both the items and the search field of "+ view" are drawn from. The
+ * shape is decided at the opening, on the sources known then: a host list
+ * still on its way leaves the views' sources, and with a way to create or
+ * import a source the list shape applies anyway.
+ */
+function addViewPlan(
+  context: AddViewMenuContext,
+  sourcePicker: AddViewSourcePicker | null
+) {
+  const { dataSource } = context;
+  if (!(dataSource instanceof HostedDataSourceBase)) return;
+  if (!dataSource.resolvesSources) return;
+  const sources = readSources(dataSource, sourcePicker);
   const createSource = sourcePicker?.createSource?.bind(sourcePicker);
   const hostPicker = context.std?.getOptional(DataSourcePickerProvider);
   const shape = addViewMenuShape(
@@ -144,7 +158,7 @@ function addViewPlan(
     createSource !== undefined,
     canImportView(hostPicker, dataSource)
   );
-  return { dataSource, sourcePicker, createSource, hostPicker, shape };
+  return { dataSource, createSource, hostPicker, shape };
 }
 
 /**
@@ -175,14 +189,16 @@ export function databaseAddViewMenu(
 ): AddViewMenu {
   return {
     searchPlaceholder: context => {
-      if (addViewPlan(context, picker)?.shape.kind !== 'list') return;
+      if (addViewPlan(context, picker(context))?.shape.kind !== 'list') {
+        return;
+      }
       return sourceSearch(context.std)?.placeholder;
     },
     items: context => {
-      const plan = addViewPlan(context, picker);
+      const sourcePicker = picker(context);
+      const plan = addViewPlan(context, sourcePicker);
       if (!plan) return;
-      const { dataSource, sourcePicker, createSource, hostPicker, shape } =
-        plan;
+      const { dataSource, createSource, hostPicker, shape } = plan;
       const wording = (w: ChromeWording) =>
         context.std ? translateKey(context.std, ...w) : w[1];
       const presetsOn = (source: AddViewSource | undefined) =>
@@ -199,45 +215,54 @@ export function databaseAddViewMenu(
       if (shape.kind === 'presets') {
         return presetsOn(shape.source);
       }
-      const items: MenuConfig[] = shape.sources.map(source =>
-        menu.subMenu({
-          name: source.title || wording(DATABASE_ADD_VIEW_UNTITLED_SOURCE),
-          testId: `database-add-view-source-${source.sourceId}`,
-          options: { items: presetsOn(source) },
-        })
-      );
-      if (shape.create && createSource) {
-        items.push(
-          typedSourceEntry(
-            context.std,
-            sourcePicker?.sourceName,
-            shape.sources.map(source => source.title),
-            {
-              testId: 'database-add-view-new-source',
-              create: sourceName => {
-                createSource(dataSource, ...named(sourceName))
-                  .then(sourceId => {
-                    // The source arrived after a round trip: the page may
-                    // have turned read-only meanwhile.
-                    if (sourceId === undefined || dataSource.readonly$.peek()) {
-                      return;
-                    }
-                    addViewOnSource(
-                      context,
-                      dataSource,
-                      'table',
-                      sourceId,
-                      'new'
-                    );
-                  })
-                  .catch(error => {
-                    console.error(error);
-                  });
-              },
+      const create =
+        shape.create && createSource
+          ? (sourceName: string | undefined) => {
+              createSource(dataSource, ...named(sourceName))
+                .then(sourceId => {
+                  // The source arrived after a round trip: the page may
+                  // have turned read-only meanwhile.
+                  if (sourceId === undefined || dataSource.readonly$.peek()) {
+                    return;
+                  }
+                  addViewOnSource(
+                    context,
+                    dataSource,
+                    'table',
+                    sourceId,
+                    'new'
+                  );
+                })
+                .catch(error => {
+                  console.error(error);
+                });
             }
-          )
-        );
-      }
+          : undefined;
+      const items: MenuConfig[] = [
+        // Read while drawing, so a host list that arrives with the menu
+        // open shows up (labre recette of 2.3.2).
+        menu.dynamic(() => {
+          const sources = readSources(dataSource, sourcePicker);
+          const entries: MenuConfig[] = sources.map(source =>
+            menu.subMenu({
+              name: source.title || wording(DATABASE_ADD_VIEW_UNTITLED_SOURCE),
+              testId: `database-add-view-source-${source.sourceId}`,
+              options: { items: presetsOn(source) },
+            })
+          );
+          if (create) {
+            entries.push(
+              typedSourceEntry(
+                context.std,
+                sourcePicker?.sourceName,
+                sources.map(source => source.title),
+                { testId: 'database-add-view-new-source', create }
+              )
+            );
+          }
+          return entries;
+        }),
+      ];
       if (shape.importView) {
         items.push(
           menu.group({
