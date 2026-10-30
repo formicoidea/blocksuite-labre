@@ -5,6 +5,11 @@ import type { ReactiveController } from 'lit';
 
 import { DocModeProvider } from '../services/doc-mode-service';
 
+/**
+ * @deprecated No block uses it any more: a table or a database scrolls within
+ * the text column (labre recette of 2.1). Kept exported for hosts that read
+ * it; a later major removes it.
+ */
 export class VirtualPaddingController implements ReactiveController {
   public readonly virtualPadding$ = signal(0);
   constructor(private readonly block: BlockComponent) {
