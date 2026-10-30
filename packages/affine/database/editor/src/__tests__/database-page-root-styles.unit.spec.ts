@@ -21,6 +21,11 @@
  * box overflowed by both paddings, so every page showed a sideways
  * scrollbar; a phone's fixed 24px left the sticky view bar at the host's
  * wider gutter; a wide table was cut at the page's edges.
+ *
+ * And its widths (labre recette of 2.1): every page width read `100cqw` of
+ * the scroller, which in Chrome counts its vertical scrollbar, so a base
+ * long enough to scroll down overflowed sideways by that scrollbar's width.
+ * The widths now read the editor host, a child of the scroller.
  */
 import { describe, expect, test } from 'vitest';
 
@@ -55,7 +60,7 @@ describe('the full page of a database', () => {
       /affine-database-page > \.affine-page-viewport \{ display: flex; flex-direction: column; height: 100%; overflow: auto;/
     );
     expect(host).toMatch(
-      /affine-database-page > \.affine-page-viewport > editor-host \{ flex: 1 0 auto; height: auto; \}/
+      /affine-database-page > \.affine-page-viewport > editor-host \{ flex: 1 0 auto; height: auto; container-type: inline-size; container-name: viewport; \}/
     );
     expect(host).toMatch(
       /affine-database-page > \.affine-page-viewport > doc-title \.doc-title-container, affine-database-page > \.affine-page-viewport > doc-title \.doc-title-band \{ padding-bottom: 0; \}/
@@ -64,7 +69,7 @@ describe('the full page of a database', () => {
 
   test('keeps its heading in view sideways, and widens with a page table', () => {
     expect(cssOf(DatabasePageHost.styles)).toMatch(
-      /affine-database-page > \.affine-page-viewport > doc-title \{ position: sticky; left: 0; width: 100cqw; \}/
+      /affine-database-page > \.affine-page-viewport > doc-title \{ position: sticky; left: 0; width: 100%; \}/
     );
     expect(cssOf(DatabasePageRoot.styles)).toMatch(
       /affine-database-page-root:has\(dv-table-view-ui\[data-page-layout\]\) \{ width: max-content; min-width: 100%; [^}]*box-sizing: border-box;/

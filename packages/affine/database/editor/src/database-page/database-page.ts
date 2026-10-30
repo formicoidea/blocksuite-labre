@@ -64,7 +64,10 @@ export class DatabasePageHost extends SignalWatcher(
       flex-direction: column;
       height: 100%;
       overflow: auto;
-      /* The container the page root's narrow-screen query reads. */
+      /* The container the heading's narrow-screen query reads (doc-title,
+         outside the editor). Never a width to size with: on a scroller,
+         Chrome's 100cqw counts its vertical scrollbar (the editor-host
+         rule below). */
       container-type: inline-size;
       container-name: viewport;
       /* A wide table scrolled sideways fades into the gutters instead of
@@ -91,16 +94,25 @@ export class DatabasePageHost extends SignalWatcher(
     }
     /* The editor takes the height the heading leaves (std gives it 100%,
        which overflowed by the heading's height: a scrollbar on a short
-       table). */
+       table).
+       It is also the container the page's widths read (the root's inset,
+       its narrow-screen query, the block's sticky view bar): a child of
+       the scroller, its width is the visible one. The scroller's own 100cqw
+       counted its vertical scrollbar, so as soon as a base scrolled down
+       the page overflowed sideways by that scrollbar's width and showed a
+       horizontal one (labre recette of 2.1). */
     affine-database-page > .affine-page-viewport > editor-host {
       flex: 1 0 auto;
       height: auto;
+      container-type: inline-size;
+      container-name: viewport;
     }
-    /* The heading stays in view when the page scrolls sideways. */
+    /* The heading stays in view when the page scrolls sideways, as wide as
+       the scroller shows (100%, not the scroller's 100cqw: see above). */
     affine-database-page > .affine-page-viewport > doc-title {
       position: sticky;
       left: 0;
-      width: 100cqw;
+      width: 100%;
     }
     /* A database page is a table, not a text: the heading sits on the view
        bar, without the page title's bottom padding, its band's, or the
