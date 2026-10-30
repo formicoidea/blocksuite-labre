@@ -11,7 +11,10 @@
  *   longer created, labre P3);
  * - the copy not shown once added, or reported as anything but an import;
  * - a request sent for an inline database, which no picker names;
- * - a template carrying the view's filters or sorts (REQ-DB-4).
+ * - a template carrying the view's filters or sorts (REQ-DB-4);
+ * - (ADR 0035 amendment of 2026-10-30) a request or a template naming the
+ *   block's database for a view that reads another one, or the copy of
+ *   such a view losing that database.
  */
 import { HostedDataSourceBase } from '@labre/affine-database-block';
 import type {
@@ -28,13 +31,16 @@ import {
   requestViewImport,
 } from '../view-transfer/import-view.js';
 
-function hostedSource(opts: { sourceId?: string; readonly?: boolean } = {}) {
+function hostedSource(
+  opts: { sourceId?: string; readonly?: boolean; databaseId?: string } = {}
+) {
   const views: Record<string, unknown>[] = [
     {
       id: 'v-here',
       name: 'Table',
       mode: 'table',
       ...(opts.sourceId ? { sourceId: opts.sourceId } : {}),
+      ...(opts.databaseId ? { databaseId: opts.databaseId } : {}),
       columns: [],
       filter: { type: 'group', op: 'and', conditions: [{ type: 'filter' }] },
       sort: { sortBy: [], manuallySort: [] },
@@ -100,6 +106,28 @@ describe('requestViewImport', () => {
       { id: 'title', name: 'Name', type: 'title' },
       { id: 'cost', name: 'Cost', type: 'number' },
     ]);
+  });
+
+  test("names the view's database when it reads another one, and the copy keeps it", () => {
+    const { source, views } = hostedSource({
+      sourceId: 's-team',
+      databaseId: 'labre-base:people',
+    });
+    const importView = vi.fn();
+    requestViewImport(
+      { importView } as unknown as DataSourcePickerService,
+      source
+    );
+    const request = importView.mock
+      .calls[0]![0] as DataSourcePickerImportRequest;
+    expect(request.databaseId).toBe('labre-base:people');
+    expect(request.sourceId).toBe('s-team');
+    const id = request.add(theirs);
+    expect(views.find(view => view.id === id)).toMatchObject({
+      sourceId: 's-team',
+      databaseId: 'labre-base:people',
+    });
+    expect(currentViewTemplate(source)?.databaseId).toBe('labre-base:people');
   });
 
   test('sends nothing on a read-only page', () => {

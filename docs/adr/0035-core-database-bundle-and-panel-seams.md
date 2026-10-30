@@ -1415,3 +1415,75 @@ view" (labre PRD REQ-DB-7, §B11 above).
   and `com.labre.database.add-view.new-source` are removed. Held by
   `view-settings-source.unit.spec.ts`, `source-search.unit.spec.ts` and
   `add-view-menu.unit.spec.ts` (`database/editor/src/__tests__/`).
+
+### 2026-10-30: a view may read a source of another database
+
+**Red zone** (stored format, §8): one optional field appended to the stored
+view data. Decided by the Labre product owner on 2026-10-30 (labre ticket
+« Base de données v3 »): a view of a database block may read a source that
+belongs to ANOTHER database. It is a live reference: the rows stay in that
+database, and what may be edited (cells, new rows, properties) is that
+database's rights, which the host decides per source.
+
+- **Stored format.** `ViewBasicDataType.databaseId?: string`: the database
+  of the view's source, written only when it is not the block's own
+  (`externalSourceId`). Absent means the block's database, so every view
+  stored before 2.4 reads exactly as it did; nothing writes it on load; a
+  2.3 client ignores it and keeps it through its own writes (`updateView`
+  merges), and looks for `sourceId` in the block's database (with unique
+  host source ids, "Source not found"). `remapView` and `viewTemplateData`
+  drop it with `sourceId` (a copy names the source it reads where it
+  lands); a duplicated view keeps it.
+- **The resolver.** `ResolveHostedSource` becomes `(sourceId, databaseId?)
+=> HostedSource | HostedSourceUnavailable | null`: `HostedDataSourceBase`
+  always passes the view's `databaseId`, else the block's
+  `externalSourceId` (`currentDatabaseId$`), so a one-argument resolver
+  keeps compiling and reading its own database. `sourceOf(sourceId,
+databaseId?)` takes the database too. A throwing resolver is logged and
+  reads as no source.
+- **The opt-in.** `DataSourcePickerService.crossDatabaseViews?: boolean`, a
+  widening of the picker seam (§9c). Without it nothing changes: the lists
+  stay on the block's database, and a view naming another database reads as
+  "Source not found" without the resolver being asked (a host unaware of
+  `databaseId` would look for its `sourceId` in the block's database).
+- **"Database not shared".** A resolver may answer `{ unavailable:
+'unshared' }` (`HostedSourceUnavailable`) for a database the reader may
+  not read: the view keeps its title and view bar and draws "Database not
+  shared" with a hint (`com.labre.database.source-unshared`, `.hint`,
+  `sourceUnavailable$`), never an error, never "Source not found" and never
+  "Connect a source". `null` keeps the 2.3 behaviour.
+- **Keyed by the view's database.** `sourcePolicy`, `deleteView`'s
+  request, the properties panel's request (`databaseId`, only when it is
+  another database), `importView`'s request (and the copy, which keeps the
+  view's database) and `saveViewTemplate` name the VIEW's database.
+- **One workspace list.** With the opt-in, the view settings' "Source" and
+  "+ view" list the sources of every database `list()` returns, as one flat
+  list (`workspaceSources`, `@labre/affine-database-editor`): this block's
+  database first, in the host's order, then the others by name (accents and
+  case folded, numbers numeric; ties by database title), each labelled on
+  the right with its database's title (grey). The search filters on the
+  source name. The check on the view's source matches database AND source.
+  "Create source “typed”" still creates in the block's database. A pick
+  writes `databaseId` (`changeViewSource`, `addViewOnSource`); going back
+  to the block's database removes it, and the same `sourceId` in another
+  database is another source. Source names are unique workspace-wide on the
+  host's side (`sourceName.check`).
+- **"Connect a source" no longer moves the block's other views.**
+  `reconnectDatabaseView` rewrote the block's `externalSourceId`, so the
+  block's OTHER views then resolved their `sourceId` in the picked database
+  (amends the amendment of 2026-10-29, "B, a host may require a source").
+  Now: a block whose only view is reconnected moves to the picked database
+  as before (no `databaseId` written); a block with other views, under the
+  opt-in, keeps its `externalSourceId` and only the reconnected view names
+  the picked database; without the opt-in a view cannot name another
+  database, so the block still moves, as in 2.3.
+- **Refused names.** The disabled "Create source" line of a refused name
+  (amendment above) loses its "+": it read as a button.
+- Held by `model/src/__tests__/view-basic-data.unit.spec.ts`,
+  `database/block/src/__tests__/cross-database-views.unit.spec.ts`,
+  `hosted-data-source.unit.spec.ts`, `database/editor/src/__tests__/`
+  `workspace-sources.unit.spec.ts`, `change-source.unit.spec.ts`,
+  `view-settings-source.unit.spec.ts`, `add-view-menu.unit.spec.ts`,
+  `import-view.unit.spec.ts`, `remap-view.unit.spec.ts`,
+  `source-search.unit.spec.ts` and
+  `integration-test/…/page/database-cross-database-view.spec.ts`.

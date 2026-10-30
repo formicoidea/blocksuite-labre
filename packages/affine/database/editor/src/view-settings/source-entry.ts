@@ -8,6 +8,7 @@ import {
 import {
   DataSourcePickerProvider,
   type DataSourcePickerService,
+  DOC_UNTITLED,
   translateKey,
 } from '@labre/affine-shared/services';
 import type {
@@ -30,6 +31,13 @@ import {
 } from '../translations.js';
 import { changeViewSource } from '../view-transfer/change-source.js';
 import { databaseIdOf } from '../view-transfer/import-view.js';
+import {
+  crossDatabaseViews,
+  databaseLabel,
+  inDatabase,
+  isViewSource,
+  workspaceSources,
+} from '../workspace-sources.js';
 
 /**
  * "Source" in a view's settings (ADR 0035 amendment of 2026-10-28): which
@@ -96,6 +104,13 @@ export function currentSourceTitle(
  * closes), and "Create source “typed”" last, which creates the typed name
  * through `createSource` and points the view at it. The search is the naming
  * step: no "New source" sub-step here.
+ *
+ * Under a host with `crossDatabaseViews` (amendment of 2026-10-30, "a view
+ * may read a source of another database"), the list holds every database's
+ * sources (`workspaceSources`): this one's first, then the others by name,
+ * labelled with their database; the check matches database and source; a
+ * pick of another database's source stores it on the view. "Create source"
+ * still creates in this block's database.
  */
 export function popChangeSourcePicker(
   std: BlockStdScope,
@@ -106,9 +121,19 @@ export function popChangeSourcePicker(
   const { dataSource, databaseId, picker, viewId } = change;
   const list = picker.list();
   const createSource = picker.createSource;
-  const current = (
-    dataSource.viewDataGet(viewId) as { sourceId?: unknown } | undefined
-  )?.sourceId;
+  const across = crossDatabaseViews(picker);
+  const stored = dataSource.viewDataGet(viewId) as
+    | { sourceId?: unknown; databaseId?: unknown }
+    | undefined;
+  const current =
+    typeof stored?.sourceId === 'string' ? stored.sourceId : undefined;
+  // The block's own database reads as absent, as `WorkspaceSource` says it.
+  const currentDatabase =
+    typeof stored?.databaseId === 'string' && stored.databaseId !== databaseId
+      ? stored.databaseId
+      : undefined;
+  const untitled = translateKey(std, ...DATABASE_ADD_VIEW_UNTITLED_SOURCE);
+  const untitledDatabase = translateKey(std, ...DOC_UNTITLED);
   return popMenu(target, {
     options: {
       title: { text: translateKey(std, ...PICKER_TITLE), onBack: reopen },
@@ -116,23 +141,27 @@ export function popChangeSourcePicker(
       search: sourceSearch(std),
       items: [
         menu.dynamic(() => {
-          const sources =
-            list.value.find(database => database.id === databaseId)?.sources ??
-            [];
-          const items = sources.map(source =>
-            menu.action({
-              name:
-                source.title ||
-                translateKey(std, ...DATABASE_ADD_VIEW_UNTITLED_SOURCE),
+          const sources = workspaceSources(list.value, databaseId, across);
+          const items = sources.map(source => {
+            const selected = isViewSource(source, current, currentDatabase);
+            return menu.action({
+              name: source.title || untitled,
               prefix: DatabaseTableViewIcon(),
-              isSelected: source.id === current,
-              testId: `data-source-picker-source-${source.id}`,
+              postfix: databaseLabel(source, untitledDatabase, selected),
+              isSelected: selected,
+              testId: `data-source-picker-source-${source.sourceId}`,
               select: () => {
-                if (source.id === current) return;
-                changeViewSource(dataSource, viewId, source.id, 'existing');
+                if (selected) return;
+                changeViewSource(
+                  dataSource,
+                  viewId,
+                  source.sourceId,
+                  'existing',
+                  ...inDatabase(source.databaseId)
+                );
               },
-            })
-          );
+            });
+          });
           if (!createSource || std.store.readonly) return items;
           return [
             ...items,

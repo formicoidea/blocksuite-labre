@@ -15,7 +15,10 @@
  * - the tooling extension no longer registering the menu for the bar;
  * - the inline database (one implicit source) losing its plain presets list;
  * - "+ view" reading another database's sources from the host's picker, or
- *   asking it for a source with no database id.
+ *   asking it for a source with no database id;
+ * - (ADR 0035 amendment of 2026-10-30) another database's sources offered
+ *   without the host's `crossDatabaseViews`, or with it but not labelled
+ *   or not by name, or a view added on one without its `databaseId`.
  */
 import {
   ExternalDataSourceBase,
@@ -245,6 +248,26 @@ describe('addViewOnSource', () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
+  test("on another database's source: stores that database with the source", () => {
+    const { views, dataSource, context } = fakeSource([
+      { id: 'v1', name: 'All', mode: 'table', sourceId: 's1' },
+    ]);
+    const id = addViewOnSource(
+      context,
+      dataSource,
+      'table',
+      's2',
+      'existing',
+      'db-2'
+    );
+    expect(views.peek().find(v => v.id === id)).toMatchObject({
+      sourceId: 's2',
+      databaseId: 'db-2',
+    });
+    const home = addViewOnSource(context, dataSource, 'table', 's1');
+    expect('databaseId' in views.peek().find(v => v.id === home)!).toBe(false);
+  });
+
   test("asks the bar's addView once, saying whether the source is new (B17)", () => {
     const { dataSource, context } = fakeSource([
       { id: 'v1', name: 'All', mode: 'table', sourceId: 's1' },
@@ -372,5 +395,27 @@ describe('addViewSourcePicker', () => {
     expect(await picker.createSource?.(onDatabase('db-1'))).toBe('db-1-new');
     expect(await picker.createSource?.(onDatabase(undefined))).toBe(undefined);
     expect(createSource).toHaveBeenCalledTimes(1);
+  });
+
+  test("lists the other databases' sources only with crossDatabaseViews", () => {
+    expect(
+      addViewSourcePicker({ list: () => list }).otherSources
+    ).toBeUndefined();
+    const across = addViewSourcePicker({
+      list: () => list,
+      crossDatabaseViews: true,
+    });
+    expect(across.otherSources?.(onDatabase('db-1'))).toEqual([
+      {
+        sourceId: 's9',
+        schemaId: 'db-2:s9',
+        title: 'Z',
+        databaseId: 'db-2',
+        databaseTitle: 'Other',
+      },
+    ]);
+    expect(across.sources?.(onDatabase('db-1'))).toEqual([
+      { id: 's1', title: 'A' },
+    ]);
   });
 });

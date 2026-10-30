@@ -10,6 +10,7 @@ export * from './creation-menu.js';
 export * from './data-source';
 export * from './database-block';
 export * from './external-data-source';
+export * from './view-database.js';
 export * from './detail-panel/block-renderer';
 export * from './detail-panel/note-renderer';
 export * from './properties';

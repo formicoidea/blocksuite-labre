@@ -231,6 +231,8 @@ export function typedSourceEntry(
     if (listed.some(title => foldForSearch(title.trim()) === key)) return;
     if (naming && !namesReadFor(parent, naming)) return;
     const verdict = naming ? verdictOf(naming, name) : 'ok';
+    // No "+" on a refused name (labre recette of 2.3.3): an icon made the
+    // status line read as a button.
     if (verdict !== 'ok') {
       return html`<div
         role="status"
@@ -248,7 +250,6 @@ export function typedSourceEntry(
           cursor: 'default',
         })}
       >
-        ${PlusIcon()}
         <span style="color: var(--affine-error-color)"
           >${std
             ? translateKey(std, ...VERDICT_WORDING[verdict])

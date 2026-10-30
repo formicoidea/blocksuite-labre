@@ -18,7 +18,12 @@
  * - a write when the view already reads the source (an empty undo entry),
  *   on a read-only page, or for a source `resolveSource` does not know;
  * - `DatabaseViewSourceChanged` reported twice, not at all, or with
- *   anything but the closed `source` and the view's ids.
+ *   anything but the closed `source` and the view's ids;
+ * - (ADR 0035 amendment of 2026-10-30) a source of another database
+ *   stored without its `databaseId`, a view going back to its block's
+ *   database keeping one, the same `sourceId` in another database read as
+ *   "already reads it", or another database resolved for a host that did
+ *   not opt in (`crossDatabaseViews`).
  */
 import {
   HostedDataSourceBase,
@@ -32,6 +37,7 @@ import {
   ParagraphBlockSchemaExtension,
   RootBlockSchemaExtension,
 } from '@labre/affine-model';
+import { DataSourcePickerProvider } from '@labre/affine-shared/services';
 import {
   DataViewEventTraceKey,
   type PropertyMetaConfig,
@@ -118,7 +124,7 @@ const condition = (name: string, fn: string, value: unknown) => ({
   args: [{ type: 'literal', value }],
 });
 
-function setup(view: Record<string, unknown> = {}) {
+function setup(view: Record<string, unknown> = {}, crossDatabaseViews = false) {
   const collection = new TestWorkspace({
     id: 'test-collection',
     idGenerator: createAutoIncrementIdGenerator(),
@@ -212,6 +218,12 @@ function setup(view: Record<string, unknown> = {}) {
     sourceId => sources[sourceId ?? 'src-a'] ?? null
   );
   dataSource.serviceSet(DataViewEventTraceKey, trace);
+  if (crossDatabaseViews) {
+    dataSource.serviceSet(DataSourcePickerProvider, {
+      list: () => signal([]),
+      crossDatabaseViews: true,
+    });
+  }
   dataSource.viewManager.setCurrentView('v1');
   doc.resetHistory();
   return { doc, host, dataSource, trace, projects };
@@ -337,5 +349,51 @@ describe('changeViewSource', () => {
       viewId: 'v1',
       viewType: 'table',
     });
+  });
+});
+
+describe('changeViewSource across databases', () => {
+  test("writes the other database's id, and removes it back home", () => {
+    const { doc, host, dataSource } = setup({}, true);
+    expect(
+      changeViewSource(dataSource, 'v1', 'src-b', 'existing', 'host:people')
+    ).toBe(true);
+    expect(storedView(host)).toMatchObject({
+      sourceId: 'src-b',
+      databaseId: 'host:people',
+    });
+    expect(undoSteps(doc)).toBe(1);
+
+    expect(changeViewSource(dataSource, 'v1', 'src-a', 'existing')).toBe(true);
+    expect(storedView(host).sourceId).toBe('src-a');
+    expect(storedView(host).databaseId).toBeUndefined();
+  });
+
+  test('the same sourceId in another database is another source', () => {
+    const { host, dataSource } = setup({}, true);
+    expect(
+      changeViewSource(dataSource, 'v1', 'src-a', 'existing', 'host:people')
+    ).toBe(true);
+    expect(storedView(host).databaseId).toBe('host:people');
+    // Naming the block's own database is the block's database.
+    expect(
+      changeViewSource(dataSource, 'v1', 'src-a', 'existing', 'host:people')
+    ).toBe(false);
+  });
+
+  test("naming the block's own database writes no databaseId key", () => {
+    const { host, dataSource } = setup({}, true);
+    changeViewSource(dataSource, 'v1', 'src-b', 'existing', 'host:plan');
+    expect(storedView(host).sourceId).toBe('src-b');
+    expect('databaseId' in storedView(host)).toBe(false);
+  });
+
+  test('without crossDatabaseViews, another database is never resolved', () => {
+    const { host, dataSource } = setup();
+    const before = JSON.parse(JSON.stringify(host.props.views));
+    expect(
+      changeViewSource(dataSource, 'v1', 'src-b', 'existing', 'host:people')
+    ).toBe(false);
+    expect(host.props.views).toEqual(before);
   });
 });

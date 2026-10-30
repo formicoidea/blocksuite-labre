@@ -106,6 +106,8 @@ import {
   DATABASE_SOURCE_REQUIRED,
   DATABASE_SOURCE_REQUIRED_HINT,
   DATABASE_SOURCE_REQUIRED_READ_ONLY,
+  DATABASE_SOURCE_UNSHARED,
+  DATABASE_SOURCE_UNSHARED_HINT,
   DATABASE_DELETE,
   DATABASE_TITLE_LABEL,
 } from './translations.js';
@@ -616,6 +618,40 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
   };
 
   /**
+   * A view whose source belongs to a database the reader may not read (the
+   * resolver answers `{ unavailable: 'unshared' }`, ADR 0035 amendment of
+   * 2026-10-30): the title and the view bar, then "Database not shared" and
+   * its hint in place of the body. Never an error and never "Connect a
+   * source": the view is right, the reader lacks the rights. Takes
+   * precedence over the two notices below; nothing is written.
+   */
+  private readonly renderSourceUnshared = (
+    dataViewLogic: DataViewUILogicBase
+  ) => {
+    const dataSource = this.dataSource;
+    if (!(dataSource instanceof HostedDataSourceBase)) return undefined;
+    if (dataSource.sourceUnavailable$.value !== 'unshared') return undefined;
+    return html`<div class="${databaseHeaderContainerStyles}">
+        <div class="${databaseTitleRowStyles}">
+          ${this.renderTitle(dataViewLogic)}
+        </div>
+        <div class="${databaseToolbarRowStyles} ${databaseHeaderBarStyles}">
+          ${this.renderViewBar({ dataViewLogic })}
+        </div>
+      </div>
+      <div
+        class="${databaseSourceMissingStyles}"
+        data-testid="database-source-unshared"
+        role="status"
+      >
+        <div>${translateKey(this.std, ...DATABASE_SOURCE_UNSHARED)}</div>
+        <div class="${databaseSourceMissingHintStyles}">
+          ${translateKey(this.std, ...DATABASE_SOURCE_UNSHARED_HINT)}
+        </div>
+      </div>`;
+  };
+
+  /**
    * A database a host that requires a source must connect first
    * (`sourceRequirement` is `'connect'`, ADR 0035 amendment of 2026-10-29):
    * no source and no row, or a hosted source the host no longer resolves.
@@ -807,7 +843,9 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
       dataSource: this.dataSource,
       headerWidget: this.headerWidget,
       viewPlaceholder: logic =>
-        this.renderSourceRequired(logic) ?? this.renderSourceMissing(logic),
+        this.renderSourceUnshared(logic) ??
+        this.renderSourceRequired(logic) ??
+        this.renderSourceMissing(logic),
       onDrag: this.onDrag,
       clipboard: this.std.clipboard,
       dnd: this.std.dnd,

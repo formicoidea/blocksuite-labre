@@ -27,6 +27,7 @@ import {
   moveViewTo,
   updateView,
 } from './utils/block-utils.js';
+import { viewDatabaseId } from './view-database.js';
 import { deleteViewThroughHost } from './view-deletion.js';
 import {
   databaseBlockViewConverts,
@@ -46,13 +47,40 @@ export interface HostedSource {
 }
 
 /**
+ * A source the host knows but the reader may not read (ADR 0035 amendment
+ * of 2026-10-30): a view reading a source of another database that is not
+ * shared with them. The view draws "Database not shared" in place of its
+ * body, never an error and never "Connect a source".
+ */
+export interface HostedSourceUnavailable {
+  unavailable: 'unshared';
+}
+
+/** Whether a resolver's answer is {@link HostedSourceUnavailable}. */
+export function isHostedSourceUnavailable(
+  answer: HostedSource | HostedSourceUnavailable | null | undefined
+): answer is HostedSourceUnavailable {
+  return (
+    typeof answer === 'object' &&
+    answer !== null &&
+    'unavailable' in answer &&
+    answer.unavailable === 'unshared'
+  );
+}
+
+/**
  * `sourceId` is the current view's stored `sourceId` (ADR 0035 §8), absent
- * for every view stored before 0.49. `null`: no such source, and the view
- * draws "Source not found" instead of its body (never an error).
+ * for every view stored before 0.49. `databaseId` is the database it
+ * belongs to: the view's stored `databaseId`, else the block's
+ * `externalSourceId` (ADR 0035 amendment of 2026-10-30); a resolver of one
+ * argument keeps reading its own block's database. `null`: no such source,
+ * and the view draws "Source not found" instead of its body (never an
+ * error); {@link HostedSourceUnavailable}: the reader may not read it.
  */
 export type ResolveHostedSource = (
-  sourceId: string | undefined
-) => HostedSource | null;
+  sourceId: string | undefined,
+  databaseId?: string
+) => HostedSource | HostedSourceUnavailable | null;
 
 /**
  * Intermediate base for `affine:database` data sources whose **view config**
@@ -123,6 +151,41 @@ export abstract class HostedDataSourceBase extends DataSourceBase {
     }
   );
 
+  /**
+   * The block's database (`externalSourceId`), the one a view without a
+   * stored `databaseId` reads. Optional chaining: a host's test double of
+   * the model may carry `views$` alone.
+   */
+  get homeDatabaseId(): string | undefined {
+    return this._model.props.externalSourceId$?.value;
+  }
+
+  /**
+   * The database of the current view's source (ADR 0035 amendment of
+   * 2026-10-30): its stored `databaseId`, else the block's. Every call
+   * keyed by a database (the resolver, `sourcePolicy`, `deleteView`, the
+   * properties panel) names this one.
+   */
+  readonly currentDatabaseId$: ReadonlySignal<string | undefined> = computed(
+    () => {
+      const viewId = this.viewManager.currentViewId$.value;
+      const view = viewId ? this.viewDataGet(viewId) : undefined;
+      return viewDatabaseId(view) ?? this.homeDatabaseId;
+    }
+  );
+
+  /**
+   * Whether the host resolves a view's source in another database
+   * (`crossDatabaseViews` of the picker in this data source's scope).
+   * Without it a view naming another database reads as missing: a host
+   * unaware of `databaseId` would look for its `sourceId` in this one.
+   */
+  get crossDatabaseViews(): boolean {
+    return (
+      this.serviceGet(DataSourcePickerProvider)?.crossDatabaseViews === true
+    );
+  }
+
   private readonly _implicitRows$: ReadonlySignal<string[]> = computed(() => {
     void this.revision.value;
     return this.getRows();
@@ -138,34 +201,81 @@ export abstract class HostedDataSourceBase extends DataSourceBase {
   }
 
   /**
-   * Any source, by the `sourceId` a view would store, resolved the way the
-   * current view's is ({@link source$}); `null` when there is no such source.
-   * Read by chrome that lists the sources of the views (the "+ view" menu of
-   * `@labre/affine-database-editor`, ADR 0035 B11). Writes nothing.
+   * The resolver's answer for `sourceId` of `databaseId` (absent: the
+   * block's database). Another database is asked only when the host opts in
+   * (`crossDatabaseViews`); a throw is logged and reads as no source.
    */
-  sourceOf(sourceId: string | undefined): HostedSource | null {
+  private resolve(
+    sourceId: string | undefined,
+    databaseId: string | undefined
+  ): HostedSource | HostedSourceUnavailable | null {
     if (!this._resolveSource) {
       return { schema: this._model, rows: this._implicitRows$ };
     }
-    return this._resolveSource(sourceId);
+    const home = this.homeDatabaseId;
+    const database = databaseId ?? home;
+    if (database !== home && !this.crossDatabaseViews) return null;
+    try {
+      return this._resolveSource(sourceId, database) ?? null;
+    } catch (error) {
+      console.error(error);
+      return null;
+    }
   }
 
-  /** The current view's source; `null` when `resolveSource` knows none. */
+  /**
+   * Any source, by the `sourceId` a view would store and its `databaseId`
+   * (absent: the block's database), resolved the way the current view's is
+   * ({@link source$}); `null` when there is no such source or the reader
+   * may not read it. Read by chrome that lists the sources of the views
+   * (the "+ view" menu of `@labre/affine-database-editor`, ADR 0035 B11).
+   * Writes nothing.
+   */
+  sourceOf(
+    sourceId: string | undefined,
+    databaseId?: string
+  ): HostedSource | null {
+    const answer = this.resolve(sourceId, databaseId);
+    return isHostedSourceUnavailable(answer) ? null : answer;
+  }
+
   // Without `resolveSource` the current view is not read at all: the
   // implicit source does not depend on it.
-  readonly source$: ReadonlySignal<HostedSource | null> = computed(() =>
+  private readonly _answer$: ReadonlySignal<
+    HostedSource | HostedSourceUnavailable | null
+  > = computed(() =>
     this._resolveSource
-      ? this.sourceOf(this.currentSourceId$.value)
-      : this.sourceOf(undefined)
+      ? this.resolve(this.currentSourceId$.value, this.currentDatabaseId$.value)
+      : this.resolve(undefined, undefined)
   );
+
+  /** The current view's source; `null` when `resolveSource` knows none. */
+  readonly source$: ReadonlySignal<HostedSource | null> = computed(() => {
+    const answer = this._answer$.value;
+    return isHostedSourceUnavailable(answer) ? null : answer;
+  });
 
   readonly schema$: ReadonlySignal<DatabaseBlockModel | null> = computed(
     () => this.source$.value?.schema ?? null
   );
 
+  /** Nothing to draw: no such source, or one the reader may not read. */
   readonly sourceMissing$: ReadonlySignal<boolean> = computed(
     () => this.source$.value === null
   );
+
+  /**
+   * Why the current view's source cannot be read, when the host says so
+   * (ADR 0035 amendment of 2026-10-30): `'unshared'`, its database is not
+   * shared with the reader; the block draws "Database not shared". `null`
+   * otherwise, "Source not found" included.
+   */
+  readonly sourceUnavailable$: ReadonlySignal<
+    HostedSourceUnavailable['unavailable'] | null
+  > = computed(() => {
+    const answer = this._answer$.value;
+    return isHostedSourceUnavailable(answer) ? answer.unavailable : null;
+  });
 
   /** Each row is a document (ADR 0035 §9a, §9f). Read-only. */
   get rowsAreDocuments(): boolean {
@@ -288,13 +398,16 @@ export abstract class HostedDataSourceBase extends DataSourceBase {
   /**
    * The host's lock on the current view's source (`sourcePolicy` of the
    * picker, ADR 0035 amendment of 2026-10-29), asked again only when the
-   * block's database or the view's source changes; the host's signal then
-   * carries every flip to the open views. `null`: nothing locked (a native
-   * database, no picker, no `sourcePolicy`, or a host that threw).
+   * view's database or its source changes; the host's signal then carries
+   * every flip to the open views. `null`: nothing locked (a native
+   * database, no picker, no `sourcePolicy`, or a host that threw). The
+   * database is the VIEW's (amendment of 2026-10-30): a view reading
+   * another database's source follows that database's rules.
    */
   private readonly hostPolicy$: ReadonlySignal<ReadonlySignal<DataSourcePickerSourcePolicy> | null> =
     computed(() => {
-      const databaseId = this._model.props.externalSourceId$.value;
+      if (!this.homeDatabaseId) return null;
+      const databaseId = this.currentDatabaseId$.value;
       if (!databaseId) return null;
       const picker = this.serviceGet(DataSourcePickerProvider);
       if (!picker?.sourcePolicy) return null;

@@ -112,7 +112,16 @@ const mapping = {
 describe('remapView', () => {
   const { data, dropped } = remapView(stored, from, to, mapping);
 
-  test('leaves id, name and sourceId to the caller and keeps the rest', () => {
+  test('leaves id, name, sourceId and databaseId to the caller and keeps the rest', () => {
+    // A view of another database (ADR 0035 amendment of 2026-10-30): the
+    // copy names the source it reads where it lands, never the original's.
+    const foreign = remapView(
+      { ...stored, databaseId: 'host:people' },
+      from,
+      to,
+      mapping
+    ).data;
+    expect('databaseId' in foreign).toBe(false);
     expect(data.id).toBeUndefined();
     expect(data.name).toBeUndefined();
     expect(data.sourceId).toBeUndefined();
@@ -225,6 +234,9 @@ describe('viewTemplateData', () => {
     const template = viewTemplateData(stored);
     expect(template.id).toBeUndefined();
     expect(template.sourceId).toBeUndefined();
+    expect(
+      'databaseId' in viewTemplateData({ ...stored, databaseId: 'host:x' })
+    ).toBe(false);
     expect(template.sort).toBeUndefined();
     expect(template.filter).toEqual({
       type: 'group',

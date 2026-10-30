@@ -195,14 +195,24 @@ export function sourceRequirement(
 
 /**
  * Re-points one view of a hosted database whose source the host no longer
- * resolves (ADR 0035 amendment of 2026-10-29): the block takes the picked
- * database's `externalSourceId` when it differs, and the view reads
- * `sourceId` with its data re-derived over it (`defaultViewData`: its id
- * and name kept, its layout too where the preset can build over the new
- * source). The other views are left as they are. One undo step. Returns
- * `false` and writes nothing on a read-only document, on a block with no
- * source (`connectDatabaseToSource` connects those), without a host data
- * source or without that view.
+ * resolves (ADR 0035 amendment of 2026-10-29): the view reads `sourceId`
+ * with its data re-derived over it (`defaultViewData`: its id and name
+ * kept, its layout too where the preset can build over the new source).
+ * One undo step. Returns `false` and writes nothing on a read-only
+ * document, on a block with no source (`connectDatabaseToSource` connects
+ * those), without a host data source or without that view.
+ *
+ * Where the picked database is not the block's (amendment of 2026-10-30):
+ * rewriting the block's `externalSourceId` moved EVERY view of the block to
+ * that database, the others then resolving their `sourceId` there. So:
+ * - a block with this one view moves to the picked database, as before
+ *   (nothing else reads the old one; the view stores no `databaseId`);
+ * - a block with other views, under a host with `crossDatabaseViews`, keeps
+ *   its `externalSourceId`, and only this view names the picked database
+ *   (`databaseId`); the other views are untouched;
+ * - without `crossDatabaseViews` a view cannot name another database, so
+ *   the block still moves, as in 2.3 (the host's to opt in).
+ * Picking the block's own database clears the view's `databaseId`.
  */
 export function reconnectDatabaseView(
   std: BlockStdScope,
@@ -222,17 +232,31 @@ export function reconnectDatabaseView(
   const index = model.props.views.findIndex(view => view.id === viewId);
   const current = model.props.views[index];
   if (!current) return false;
+  const picker = std.getOptional(DataSourcePickerProvider);
+  const foreign = database.id !== model.props.externalSourceId;
+  const moveBlock =
+    foreign &&
+    (model.props.views.length === 1 || picker?.crossDatabaseViews !== true);
+  // Never an own `databaseId: undefined` key: absent is the block's database.
+  const source = {
+    sourceId,
+    ...(foreign && !moveBlock ? { databaseId: database.id } : {}),
+  };
   const view = { id: current.id, name: current.name, mode: current.mode };
   const withView = (data: ViewBasicDataType) =>
     model.props.views.map((old, i) => (i === index ? data : old));
 
   store.captureSync();
   store.transact(() => {
-    if (model.props.externalSourceId !== database.id) {
+    if (moveBlock) {
       store.updateBlock(model, { externalSourceId: database.id });
     }
-    store.updateBlock(model, { views: withView({ ...view, sourceId }) });
-    const dataSource = provider.createDataSource(model);
+    store.updateBlock(model, { views: withView({ ...view, ...source }) });
+    // The picker rides in the data source's scope, as the block puts it:
+    // a source of another database resolves only under `crossDatabaseViews`.
+    const dataSource = provider.createDataSource(model, created => {
+      if (picker) created.serviceSet(DataSourcePickerProvider, picker);
+    });
     try {
       dataSource.viewManager.setCurrentView(view.id);
       store.updateBlock(model, {
@@ -240,7 +264,7 @@ export function reconnectDatabaseView(
           ...defaultViewData(dataSource, view.mode),
           id: view.id,
           name: view.name,
-          sourceId,
+          ...source,
         }),
       });
     } finally {

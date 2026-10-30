@@ -17,35 +17,40 @@ import type {
  * own source current, and when that is another schema the default data is
  * derived again from it. All three writes are one gesture: the add captures
  * the undo step, the two updates land in it.
+ *
+ * `databaseId` names the database of a source of ANOTHER database than the
+ * block's (ADR 0035 amendment of 2026-10-30), written with `sourceId`;
+ * absent, the view reads the block's database and stores no such key.
  */
 export function addViewOnSource(
   context: AddViewMenuContext,
   dataSource: HostedDataSourceBase,
   type: string,
   sourceId: string | undefined,
-  added: 'existing' | 'new' = 'existing'
+  added: 'existing' | 'new' = 'existing',
+  databaseId?: string
 ): string {
   const schemaBefore = dataSource.schema$.peek()?.id;
   const id = context.addView(type, added);
   // Never an own `sourceId: undefined` key: absent is the stored reading.
-  const source: { sourceId?: string } =
-    sourceId === undefined ? {} : { sourceId };
-  if (sourceId !== undefined) {
-    dataSource.viewDataUpdate<DataViewDataType & { sourceId?: string }>(
-      id,
-      () => source
-    );
+  const source: { sourceId?: string; databaseId?: string } = {
+    ...(sourceId === undefined ? {} : { sourceId }),
+    ...(databaseId === undefined ? {} : { databaseId }),
+  };
+  if (sourceId !== undefined || databaseId !== undefined) {
+    dataSource.viewDataUpdate<
+      DataViewDataType & { sourceId?: string; databaseId?: string }
+    >(id, () => source);
   }
   if (dataSource.schema$.peek()?.id === schemaBefore) {
     return id;
   }
   const meta = dataSource.viewMetaGet(type);
-  dataSource.viewDataUpdate<DataViewDataType & { sourceId?: string }>(
-    id,
-    () => ({
-      ...meta.model.defaultData(context.viewManager),
-      ...source,
-    })
-  );
+  dataSource.viewDataUpdate<
+    DataViewDataType & { sourceId?: string; databaseId?: string }
+  >(id, () => ({
+    ...meta.model.defaultData(context.viewManager),
+    ...source,
+  }));
   return id;
 }

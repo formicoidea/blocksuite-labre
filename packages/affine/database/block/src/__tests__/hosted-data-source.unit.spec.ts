@@ -228,10 +228,11 @@ describe('HostedDataSourceBase: sources (B1)', () => {
     expect(source.rows$.value).toEqual(['c']);
     expect(source.schema$.value).toBe(sources.s2?.schema);
 
-    // A view stored before 0.49 has no sourceId: the host picks.
+    // A view stored before 0.49 has no sourceId: the host picks. The
+    // second argument is the database (none on this bare model, 2.4).
     source.viewManager.setCurrentView('v3');
     expect(source.rows$.value).toEqual(['a', 'b']);
-    expect(resolve).toHaveBeenLastCalledWith(undefined);
+    expect(resolve).toHaveBeenLastCalledWith(undefined, undefined);
 
     expect(write).not.toHaveBeenCalled();
   });
