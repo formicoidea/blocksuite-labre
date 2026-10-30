@@ -15,7 +15,12 @@
  *   marking the view's current source, a "New source" sub-step beside the
  *   search, or a name typed there not creating the source the view then
  *   reads;
- * - the tooling extension no longer registering the entry.
+ * - the tooling extension no longer registering the entry;
+ * - (ADR 0035 amendment of 2026-10-30) another database's sources listed
+ *   without the host's `crossDatabaseViews`, or with it: not after this
+ *   database's, not by name, without their database's label, the check
+ *   matching a source id of another database, a pick not naming that
+ *   database, or "Create source" creating anywhere but in this database.
  */
 import { HostedDataSourceBase } from '@labre/affine-database-block';
 import {
@@ -68,6 +73,15 @@ const PEOPLE: DataSourcePickerDatabase = {
   title: 'People',
   sources: [{ id: 's-3', title: 'Team' }],
 };
+const ARCHIVE: DataSourcePickerDatabase = {
+  id: 'host:archive',
+  title: 'Archive',
+  // The same source id as one of Plan's: another source.
+  sources: [
+    { id: 's-1', title: 'Alumni' },
+    { id: 's-4', title: 'Zeta' },
+  ],
+};
 
 function hosted(
   opts: {
@@ -75,6 +89,7 @@ function hosted(
     title?: string;
     database?: string;
     current?: string;
+    currentDatabase?: string;
   } = {}
 ) {
   return Object.assign(
@@ -87,7 +102,11 @@ function hosted(
       schema$: signal({
         props: { title: { toString: () => opts.title ?? 'Projects' } },
       }),
-      viewDataGet: () => ({ id: 'v1', sourceId: opts.current ?? 's-1' }),
+      viewDataGet: () => ({
+        id: 'v1',
+        sourceId: opts.current ?? 's-1',
+        ...(opts.currentDatabase ? { databaseId: opts.currentDatabase } : {}),
+      }),
     }
   );
 }
@@ -99,11 +118,13 @@ function context(
     readonly?: boolean;
     fallback?: boolean;
     createSource?: DataSourcePickerService['createSource'];
+    crossDatabaseViews?: boolean;
   } = {}
 ) {
   const picker: DataSourcePickerService = {
-    list: () => signal([PLAN, PEOPLE]),
+    list: () => signal([PEOPLE, ARCHIVE, PLAN]),
     createSource: opts.createSource,
+    crossDatabaseViews: opts.crossDatabaseViews,
   };
   const std = {
     store: { readonly: false },
@@ -241,6 +262,85 @@ describe('the view settings "Source"', () => {
       's-9',
       'new'
     );
+  });
+
+  const entries = () =>
+    [
+      ...byTestId('data-source-picker')!.querySelectorAll<HTMLElement>(
+        '[data-testid^="data-source-picker-source-"]'
+      ),
+    ].map(entry => [
+      entry.querySelector('.affine-menu-action-text')?.textContent?.trim(),
+      entry
+        .querySelector('[data-testid="source-database-label"]')
+        ?.textContent?.trim() ?? null,
+    ]);
+
+  test("with crossDatabaseViews: this database's sources first, then the others by name, labelled", async () => {
+    await openList({ crossDatabaseViews: true });
+    expect(entries()).toEqual([
+      ['Projects', null],
+      ['Risks', null],
+      ['Alumni', 'Archive'],
+      ['Team', 'People'],
+      ['Zeta', 'Archive'],
+    ]);
+  });
+
+  test("the check matches the view's database and source", async () => {
+    await openList({
+      crossDatabaseViews: true,
+      dataSource: hosted({ current: 's-1', currentDatabase: 'host:archive' }),
+    });
+    const checked = [
+      ...document.querySelectorAll<HTMLElement>('.selected-item'),
+    ].map(entry => entry.textContent?.trim());
+    expect(checked).toHaveLength(1);
+    expect(checked[0]).toContain('Alumni');
+  });
+
+  test("a pick of another database's source names that database", async () => {
+    const { view } = await openList({ crossDatabaseViews: true });
+    const team = [
+      ...document.querySelectorAll<HTMLElement>(
+        '[data-testid="data-source-picker-source-s-3"]'
+      ),
+    ];
+    expect(team).toHaveLength(1);
+    team[0]!.click();
+    expect(changeViewSource).toHaveBeenCalledWith(
+      view.manager.dataSource,
+      'v1',
+      's-3',
+      'existing',
+      'host:people'
+    );
+  });
+
+  test('the search filters on the source name, not the database', async () => {
+    const { search } = await openList({ crossDatabaseViews: true });
+    search.value = 'archive';
+    search.dispatchEvent(new InputEvent('input', { bubbles: true }));
+    await frame();
+    expect(entries().filter(([, label]) => label !== null)).toEqual([]);
+    search.value = 'tea';
+    search.dispatchEvent(new InputEvent('input', { bubbles: true }));
+    await frame();
+    expect(entries()).toEqual([['Team', 'People']]);
+  });
+
+  test('"Create source" still creates in this database', async () => {
+    const createSource = vi.fn(async () => ({ id: 's-9', title: 'Budget' }));
+    const { search } = await openList({
+      crossDatabaseViews: true,
+      createSource,
+    });
+    search.value = 'Budget';
+    search.dispatchEvent(new InputEvent('input', { bubbles: true }));
+    await frame();
+    byTestId('data-source-picker-new-source-typed')!.click();
+    await vi.waitFor(() => expect(changeViewSource).toHaveBeenCalledTimes(1));
+    expect(createSource).toHaveBeenCalledWith('host:plan', 'Budget');
   });
 
   test("the picker's back reopens the view settings", async () => {

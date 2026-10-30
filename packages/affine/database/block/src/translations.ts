@@ -14,6 +14,36 @@ export const DATABASE_SOURCE_MISSING_HINT: ChromeWording = [
 ];
 
 /**
+ * Drawn in place of a view whose source belongs to a database the reader
+ * may not read (the resolver answers `{ unavailable: 'unshared' }`, ADR 0035
+ * amendment of 2026-10-30): never an error, never "Connect a source".
+ */
+export const DATABASE_SOURCE_UNSHARED: ChromeWording = [
+  'com.labre.database.source-unshared',
+  'Database not shared',
+];
+
+export const DATABASE_SOURCE_UNSHARED_HINT: ChromeWording = [
+  'com.labre.database.source-unshared.hint',
+  'This view reads a source of a database that is not shared with you.',
+];
+
+/**
+ * Drawn in place of a view whose source is in the trash (the resolver
+ * answers `{ unavailable: 'trashed' }`, ADR 0035 amendment of 2026-10-30):
+ * restorable, so never "Connect a source".
+ */
+export const DATABASE_SOURCE_TRASHED: ChromeWording = [
+  'com.labre.database.source-trashed',
+  'Source in the trash',
+];
+
+export const DATABASE_SOURCE_TRASHED_HINT: ChromeWording = [
+  'com.labre.database.source-trashed.hint',
+  'This view reads a source that is in the trash. Restore it to see its rows.',
+];
+
+/**
  * Drawn in place of a database that waits for its source, when the host
  * requires one (`requireSource`, ADR 0035 amendment of 2026-10-29).
  */
@@ -153,6 +183,10 @@ export const DATABASE_WORDINGS: readonly ChromeWording[] = [
   DATABASE_SOURCE_REQUIRED,
   DATABASE_SOURCE_REQUIRED_HINT,
   DATABASE_SOURCE_REQUIRED_READ_ONLY,
+  DATABASE_SOURCE_TRASHED,
+  DATABASE_SOURCE_TRASHED_HINT,
+  DATABASE_SOURCE_UNSHARED,
+  DATABASE_SOURCE_UNSHARED_HINT,
   DATABASE_TURN_INTO_FAILED,
   DATABASE_TURN_INTO_NESTED,
   DATABASE_VALUES_ERROR,

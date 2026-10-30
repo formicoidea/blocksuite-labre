@@ -58,6 +58,14 @@ export type DatabaseViewColorRule = {
  * until a gesture adds a rule, ordered (the first rule that matches a row
  * wins), ignored by a 0.49 client, which keeps it through its own writes
  * (`updateView` merges into the stored view).
+ * `databaseId` arrived in 2.4 (ADR 0035 amendment of 2026-10-30, red zone):
+ * the database the view's source belongs to, written only when it is not
+ * the block's own (`externalSourceId`), so a view may read a source of
+ * another database. Absent means the block's database: every view stored
+ * before 2.4 reads exactly as it did, and nothing writes it on load. A 2.3
+ * client ignores it and looks for `sourceId` in the block's database (where
+ * a host whose source ids are unique finds none: "Source not found"), and
+ * keeps it through its own writes, as for `colorRules`.
  * Held by `view-basic-data.unit.spec.ts`.
  */
 export type ViewBasicDataType = {
@@ -65,6 +73,7 @@ export type ViewBasicDataType = {
   name: string;
   mode: string;
   sourceId?: string;
+  databaseId?: string;
   openIn?: DatabaseViewOpenIn;
   colorRules?: DatabaseViewColorRule[];
 };

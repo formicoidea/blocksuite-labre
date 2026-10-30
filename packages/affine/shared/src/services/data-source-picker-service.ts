@@ -57,7 +57,11 @@ export interface DataSourcePickerImportedView {
 
 /** What `importView` hands the host: where the copy lands, and the verb. */
 export interface DataSourcePickerImportRequest {
-  /** The database the copy lands in, as `list()` names it. */
+  /**
+   * The database of the source the copy reads, as `list()` names it: the
+   * block's, or the current view's own when it reads a source of another
+   * database (`crossDatabaseViews`).
+   */
   databaseId: string;
   /** The source the copy reads (the current view's); absent, the implicit one. */
   sourceId?: string;
@@ -80,6 +84,7 @@ export interface DataSourcePickerImportRequest {
  * sorts or a manual order: those belong to one view.
  */
 export interface DataSourcePickerViewTemplate {
+  /** The database of the view's source (the view's own, else the block's). */
   databaseId: string;
   sourceId?: string;
   /** The view's name, as shown. */
@@ -126,7 +131,11 @@ export interface DataSourcePickerContent {
  * 2026-10-29, "a host decides what a deleted view takes with it").
  */
 export interface DataSourcePickerViewRef {
-  /** The block's `externalSourceId`, as `list()` names the database. */
+  /**
+   * The database of the view's source, as `list()` names it: the view's
+   * stored `databaseId` when it reads a source of another database
+   * (`crossDatabaseViews`), else the block's `externalSourceId`.
+   */
   databaseId: string;
   /** The view's stored `sourceId`; absent, the host's implicit source. */
   sourceId?: string;
@@ -311,6 +320,21 @@ export interface DataSourcePickerService {
     databaseId: string,
     sourceId: string | undefined
   ): ReadonlySignal<DataSourcePickerSourcePolicy>;
+  /**
+   * A view may read a source of ANOTHER database (ADR 0035 amendment of
+   * 2026-10-30): a live reference, the rows staying in that database. With
+   * `true`, the view settings' "Source" and "+ view" list the sources of
+   * every database `list()` returns, this block's first (in your order),
+   * then the others by name, each labelled with its database's title; a
+   * pick of another database's source stores that database on the view
+   * (`databaseId`), and your `DatabaseDataSourceProvider`'s resolver
+   * receives it as its second argument. Every call keyed by a database
+   * (`sourcePolicy`, `deleteView`, `importView`, the properties panel's
+   * request) then names the VIEW's database. Absent or `false`: the lists
+   * stay on this block's database, as in 2.3, and a view stored with
+   * another database's `databaseId` reads as "Source not found".
+   */
+  crossDatabaseViews?: boolean;
 }
 
 export const DataSourcePickerProvider =

@@ -27,7 +27,10 @@ import {
  *   rename or drop an entry a document may hold;
  * - `colorRules` (0.50, ADR 0036) is optional too, so a 0.49 view (no
  *   rules) is still a valid view, and a rule is `{ id, color, filter }`
- *   with `filter` a view filter's group shape.
+ *   with `filter` a view filter's group shape;
+ * - `databaseId` (2.4, ADR 0035 amendment of 2026-10-30) is optional too:
+ *   a view stored by 2.3 (no such key) is still a valid view and reads the
+ *   block's database; only a view reading another database writes it.
  *
  * Typechecked by `yarn build` (tests included); the `expectTypeOf` lines fail
  * the build, not the run.
@@ -93,6 +96,19 @@ describe('ViewBasicDataType (ADR 0035 §8)', () => {
       ],
     };
     expect(coloured.colorRules).toHaveLength(1);
+  });
+
+  test('databaseId is optional, absent on every view stored before 2.4', () => {
+    expectTypeOf<ViewBasicDataType['databaseId']>().toEqualTypeOf<
+      string | undefined
+    >();
+    const view23: ViewBasicDataType = { ...view048, sourceId: 'source-1' };
+    expect('databaseId' in view23).toBe(false);
+    const foreign: ViewBasicDataType = {
+      ...view23,
+      databaseId: 'host:people',
+    };
+    expect(foreign.databaseId).toBe('host:people');
   });
 
   test('openIn is append-only: side, center, full, in that order', () => {

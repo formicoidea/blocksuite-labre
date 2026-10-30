@@ -1,4 +1,7 @@
-import { HostedDataSourceBase } from '@labre/affine-database-block';
+import {
+  HostedDataSourceBase,
+  viewDatabaseId,
+} from '@labre/affine-database-block';
 import type {
   DataSourcePickerImportedView,
   DataSourcePickerImportRequest,
@@ -71,14 +74,17 @@ export function canImportView(
 }
 
 /**
- * Add `imported` as a new view of `dataSource`, on `sourceId`, and show it;
- * its id, or `null` when nothing was added. Re-checks read-only (the host's
- * dialog took time) and refuses a layout this database does not add.
+ * Add `imported` as a new view of `dataSource`, on `sourceId` (of
+ * `databaseId`, a source of another database, ADR 0035 amendment of
+ * 2026-10-30), and show it; its id, or `null` when nothing was added.
+ * Re-checks read-only (the host's dialog took time) and refuses a layout
+ * this database does not add.
  */
 export function addImportedView(
   dataSource: DataSource,
   sourceId: string | undefined,
-  imported: DataSourcePickerImportedView
+  imported: DataSourcePickerImportedView,
+  databaseId?: string
 ): string | null {
   if (dataSource.readonly$.peek()) return null;
   const mode = imported.view.mode;
@@ -106,6 +112,7 @@ export function addImportedView(
     name,
     mode,
     ...(sourceId === undefined ? {} : { sourceId }),
+    ...(databaseId === undefined ? {} : { databaseId }),
   } as DataViewDataType);
   dataSource.viewManager.setCurrentView(id);
   dataSource.serviceGet(DataViewEventTraceKey)?.('DatabaseViewAdded', {
@@ -124,6 +131,21 @@ function currentSourceId(dataSource: DataSource): string | undefined {
 }
 
 /**
+ * The current view's stored `databaseId` when it reads a source of another
+ * database than its block's (ADR 0035 amendment of 2026-10-30); absent,
+ * the block's.
+ */
+function currentForeignDatabase(
+  dataSource: DataSource,
+  home: string
+): string | undefined {
+  const viewId = dataSource.viewManager.currentViewId$.peek();
+  const view = viewId ? dataSource.viewDataGet(viewId) : undefined;
+  const databaseId = viewDatabaseId(view);
+  return databaseId === home ? undefined : databaseId;
+}
+
+/**
  * Ask the host to import a view into `dataSource` (the full page's "Import a
  * view", the "+ view" third entry). Nothing without the picker's verb, on a
  * read-only page or an inline database.
@@ -137,12 +159,14 @@ export function requestViewImport(
   if (!importView || databaseId === undefined) return;
   if (dataSource.readonly$.peek()) return;
   const sourceId = currentSourceId(dataSource);
+  // The copy reads the current view's source, in that view's database.
+  const foreign = currentForeignDatabase(dataSource, databaseId);
   const request: DataSourcePickerImportRequest = {
-    databaseId,
+    databaseId: foreign ?? databaseId,
     ...(sourceId === undefined ? {} : { sourceId }),
     properties: sourceProperties(dataSource),
     layouts: dataSource.viewMetas.map(meta => meta.type),
-    add: imported => addImportedView(dataSource, sourceId, imported),
+    add: imported => addImportedView(dataSource, sourceId, imported, foreign),
   };
   importView.call(picker, request);
 }
@@ -157,7 +181,7 @@ export function currentViewTemplate(
   if (databaseId === undefined || !view) return null;
   const sourceId = currentSourceId(dataSource);
   return {
-    databaseId,
+    databaseId: currentForeignDatabase(dataSource, databaseId) ?? databaseId,
     ...(sourceId === undefined ? {} : { sourceId }),
     name: view.name,
     view: viewTemplateData(view as unknown as Record<string, unknown>),

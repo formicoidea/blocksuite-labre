@@ -5,6 +5,8 @@ import {
 } from '@labre/affine-shared/services';
 import type { BlockStdScope } from '@labre/std';
 
+import { viewDatabaseId } from '../view-database.js';
+
 export type DatabasePropertiesPanelRequest = Extract<
   PropertiesPanelRequest,
   { scope: 'source' }
@@ -16,18 +18,21 @@ export type DatabasePropertiesPanelRequest = Extract<
  * the source it reads. A view with no stored `sourceId` reads the block's
  * implicit source, named here by the block's own id: the host that resolves
  * sources reads it as "the view's default source", any other host as the
- * block itself.
+ * block itself. A view reading a source of another database names it
+ * (`databaseId`, ADR 0035 amendment of 2026-10-30); absent, the block's.
  */
 export function databasePropertiesPanelRequest(
   model: DatabaseBlockModel,
   viewId: string
 ): DatabasePropertiesPanelRequest {
   const view = model.props.views.find(v => v.id === viewId);
+  const databaseId = viewDatabaseId(view);
   return {
     scope: 'source',
     docId: model.store.id,
     blockId: model.id,
     sourceId: view?.sourceId ?? model.id,
+    ...(databaseId === undefined ? {} : { databaseId }),
     viewId,
   };
 }

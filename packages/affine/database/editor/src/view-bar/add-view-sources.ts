@@ -25,6 +25,13 @@ export interface AddViewSource {
   schemaId: string;
   /** The source's name as its schema block's title holds it; may be empty. */
   title: string;
+  /**
+   * A source of ANOTHER database (ADR 0035 amendment of 2026-10-30, under
+   * `crossDatabaseViews`): what the new view stores as its `databaseId`,
+   * and the title its entry is labelled with. Absent: the block's database.
+   */
+  databaseId?: string;
+  databaseTitle?: string;
 }
 
 export interface AddViewSourceReader {

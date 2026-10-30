@@ -1,10 +1,14 @@
-import { HostedDataSourceBase } from '@labre/affine-database-block';
+import {
+  HostedDataSourceBase,
+  viewDatabaseId,
+} from '@labre/affine-database-block';
 import { menu, type MenuConfig } from '@labre/affine-components/context-menu';
 import {
   type ChromeWording,
   DataSourcePickerProvider,
   type DataSourcePickerService,
   type DataSourcePickerSourceNaming,
+  DOC_UNTITLED,
   translateKey,
 } from '@labre/affine-shared/services';
 import {
@@ -24,6 +28,11 @@ import {
   requestViewImport,
 } from '../view-transfer/import-view.js';
 import { named, sourceSearch, typedSourceEntry } from '../new-source-entry.js';
+import {
+  crossDatabaseViews,
+  databaseLabel,
+  workspaceSources,
+} from '../workspace-sources.js';
 import { addViewOnSource } from './add-view-on-source.js';
 import { type AddViewSource, existingSources } from './add-view-sources.js';
 
@@ -38,6 +47,12 @@ export interface AddViewSourcePicker {
   sources?(
     dataSource: HostedDataSourceBase
   ): readonly { id: string; title: string }[];
+  /**
+   * The sources of the OTHER databases, in the order to list them, under a
+   * host with `crossDatabaseViews` (ADR 0035 amendment of 2026-10-30);
+   * absent or empty, "+ view" lists this database's alone, as in 2.3.
+   */
+  otherSources?(dataSource: HostedDataSourceBase): readonly AddViewSource[];
   /** Creates a source in this database; resolves to its id, or nothing. */
   createSource?(
     dataSource: HostedDataSourceBase,
@@ -54,7 +69,9 @@ export interface AddViewSourcePicker {
  * lists them inline rather than popping the picker over its own menu: one
  * menu, the presets under each source. `sources` reads the host's list as a
  * signal, asked for once per adapter: a host may fill it after its first
- * `list()` (labre recette of 2.3.2), and the open menu redraws then.
+ * `list()` (labre recette of 2.3.2), and the open menu redraws then. With
+ * `crossDatabaseViews`, `otherSources` reads the other databases' sources
+ * from the same list (`workspaceSources`: by name, labelled).
  */
 export function addViewSourcePicker(
   picker: DataSourcePickerService
@@ -63,14 +80,36 @@ export function addViewSourcePicker(
     dataSource.hostModel.props.externalSourceId;
   const createSource = picker.createSource;
   let list: ReturnType<DataSourcePickerService['list']> | undefined;
+  const databases = () => {
+    list ??= picker.list();
+    return list.value;
+  };
   return {
     sources: dataSource => {
       const databaseId = databaseOf(dataSource);
-      list ??= picker.list();
       return (
-        list.value.find(candidate => candidate.id === databaseId)?.sources ?? []
+        databases().find(candidate => candidate.id === databaseId)?.sources ??
+        []
       );
     },
+    otherSources: crossDatabaseViews(picker)
+      ? dataSource =>
+          workspaceSources(databases(), databaseOf(dataSource), true).flatMap(
+            source =>
+              source.databaseId === undefined
+                ? []
+                : [
+                    {
+                      sourceId: source.sourceId,
+                      // Unloaded: its database and id stand for its schema.
+                      schemaId: `${source.databaseId}:${source.sourceId}`,
+                      title: source.title,
+                      databaseId: source.databaseId,
+                      databaseTitle: source.databaseTitle,
+                    },
+                  ]
+          )
+      : undefined,
     createSource: createSource
       ? async (dataSource, sourceName) => {
           const databaseId = databaseOf(dataSource);
@@ -118,14 +157,25 @@ export function addViewMenuShape(
   };
 }
 
-/** The sources "+ view" lists now; read in a `menu.dynamic`, it follows the host's list. */
+/**
+ * The sources "+ view" lists now; read in a `menu.dynamic`, it follows the
+ * host's list. This database's first (the views' and the host's), then,
+ * under `crossDatabaseViews`, the other databases' (ADR 0035 amendment of
+ * 2026-10-30). A view reading another database's source names none of this
+ * database's.
+ */
 function readSources(
   dataSource: HostedDataSourceBase,
   sourcePicker: AddViewSourcePicker | null
 ): AddViewSource[] {
-  return existingSources({
+  const home = dataSource.hostModel.props.externalSourceId;
+  const own = existingSources({
     viewSourceIds: dataSource.viewDataList$
       .peek()
+      .filter(view => {
+        const databaseId = viewDatabaseId(view);
+        return databaseId === undefined || databaseId === home;
+      })
       .map(view => (view as { sourceId?: string }).sourceId),
     resolve: sourceId => {
       const schema = dataSource.sourceOf(sourceId)?.schema;
@@ -135,6 +185,7 @@ function readSources(
     },
     listed: sourcePicker?.sources?.(dataSource),
   });
+  return [...own, ...(sourcePicker?.otherSources?.(dataSource) ?? [])];
 }
 
 /**
@@ -170,7 +221,10 @@ function addViewPlan(
  * 1. The search field, shown from the start (`searchPlaceholder`).
  * 2. Each source of this database (`existingSources`), a sub-menu of the
  *    creatable presets. With one source and nothing to create or import,
- *    the presets are the menu itself, as in 0.48.
+ *    the presets are the menu itself, as in 0.48. Under a host with
+ *    `crossDatabaseViews`, then each source of the other databases, by
+ *    name, labelled with its database; a view added there stores it
+ *    (`databaseId`, ADR 0035 amendment of 2026-10-30).
  * 3. "Create source “typed”" (`typedSourceEntry`): creates the typed name
  *    through the picker's `createSource`, then adds a table on it. Absent
  *    without `createSource`: the host's kill switch on creating sources
@@ -208,7 +262,23 @@ export function databaseAddViewMenu(
             testId: 'database-add-view-preset',
             prefix: html`<uni-lit .uni=${meta.renderer.icon}></uni-lit>`,
             select: () => {
-              addViewOnSource(context, dataSource, meta.type, source?.sourceId);
+              if (source?.databaseId === undefined) {
+                addViewOnSource(
+                  context,
+                  dataSource,
+                  meta.type,
+                  source?.sourceId
+                );
+                return;
+              }
+              addViewOnSource(
+                context,
+                dataSource,
+                meta.type,
+                source.sourceId,
+                'existing',
+                source.databaseId
+              );
             },
           })
         );
@@ -246,6 +316,18 @@ export function databaseAddViewMenu(
           const entries: MenuConfig[] = sources.map(source =>
             menu.subMenu({
               name: source.title || wording(DATABASE_ADD_VIEW_UNTITLED_SOURCE),
+              postfix:
+                source.sourceId === undefined
+                  ? undefined
+                  : databaseLabel(
+                      {
+                        sourceId: source.sourceId,
+                        title: source.title,
+                        databaseId: source.databaseId,
+                        databaseTitle: source.databaseTitle,
+                      },
+                      wording(DOC_UNTITLED)
+                    ),
               testId: `database-add-view-source-${source.sourceId}`,
               options: { items: presetsOn(source) },
             })

@@ -243,6 +243,9 @@ describe('searching a list of sources', () => {
     expect(typed()!.textContent).toContain(
       'Another source already has this name.'
     );
+    // No "+": the status line must not read as a button (labre recette of
+    // 2.3.3).
+    expect(typed()!.querySelector('svg')).toBeNull();
     expect(document.body.textContent).not.toContain('No results');
     typed()!.click();
     await frame();

@@ -17,7 +17,10 @@ export interface RemapDropped {
 }
 
 export interface RemappedView {
-  /** The view's data for this database, without `id`, `name` or `sourceId`. */
+  /**
+   * The view's data for this database, without `id`, `name`, `sourceId` or
+   * `databaseId`.
+   */
   data: Record<string, unknown>;
   dropped: RemapDropped;
 }
@@ -66,8 +69,10 @@ function isRecord(value: unknown): value is Json {
  *   but a rule that loses any condition is removed whole and counted: a
  *   rule with fewer conditions would colour rows its author never meant;
  *   its colour is the shared palette's and is kept as is;
- * - `id`, `name` and `sourceId` are left to the caller; any other key is
- *   copied as is.
+ * - `id`, `name`, `sourceId` and `databaseId` (the database of a source of
+ *   another database, ADR 0035 amendment of 2026-10-30) are left to the
+ *   caller: a copy names the source it reads where it lands; any other key
+ *   is copied as is.
  *
  * A mapping onto a property that `to` does not have counts as ignored.
  */
@@ -81,6 +86,7 @@ export function remapView(
   delete data.id;
   delete data.name;
   delete data.sourceId;
+  delete data.databaseId;
   const dropped: RemapDropped = {
     filters: 0,
     sorts: 0,
@@ -299,6 +305,7 @@ export function viewTemplateData(view: Readonly<Json>): Json {
   const data = plainCopy(view);
   delete data.id;
   delete data.sourceId;
+  delete data.databaseId;
   delete data.sort;
   if (isRecord(data.filter)) data.filter = { ...data.filter, conditions: [] };
   if (Array.isArray(data.groupProperties)) {

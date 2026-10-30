@@ -22,6 +22,13 @@ export type PropertiesPanelRequest =
       docId: string;
       blockId: string;
       sourceId: string;
+      /**
+       * The database `sourceId` belongs to, only when the view reads a
+       * source of another database than its block's (the view's stored
+       * `databaseId`, ADR 0035 amendment of 2026-10-30). Absent: the
+       * block's own database, as before 2.4.
+       */
+      databaseId?: string;
       viewId?: string;
     };
 

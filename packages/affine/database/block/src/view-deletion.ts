@@ -6,6 +6,8 @@ import type {
 } from '@labre/affine-shared/services';
 import type * as Y from 'yjs';
 
+import { viewDatabaseId } from './view-database.js';
+
 /**
  * A host decides what a deleted view takes with it (ADR 0035 amendment of
  * 2026-10-29). Labre sends a source to its trash with the last view reading
@@ -91,9 +93,9 @@ export function deleteViewThroughHost(options: {
 }): void {
   const { model, viewId, picker, removeNow, afterRemove } = options;
   const store = model.store;
-  const databaseId = model.props.externalSourceId;
+  const home = model.props.externalSourceId;
   const deleteView = picker?.deleteView;
-  if (!picker || !deleteView || !databaseId || store.readonly) {
+  if (!picker || !deleteView || !home || store.readonly) {
     removeNow();
     return;
   }
@@ -101,7 +103,9 @@ export function deleteViewThroughHost(options: {
   if (!view) return;
 
   const ref: DataSourcePickerViewRef = {
-    databaseId,
+    // The database of the view's source (ADR 0035 amendment of 2026-10-30):
+    // the host trashes a source of THAT database with its last view.
+    databaseId: viewDatabaseId(view) ?? home,
     viewId,
     docId: store.id,
     blockId: model.id,
