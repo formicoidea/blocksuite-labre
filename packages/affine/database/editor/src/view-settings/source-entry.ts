@@ -22,7 +22,7 @@ import type { BlockStdScope } from '@labre/std';
 import type { ReadonlySignal } from '@preact/signals-core';
 import { html } from 'lit';
 
-import { dataSourcePickerItems } from '../data-source-picker.js';
+import { named, sourceSearch, typedSourceEntry } from '../new-source-entry.js';
 import {
   DATABASE_ADD_VIEW_UNTITLED_SOURCE,
   PICKER_TITLE,
@@ -33,8 +33,8 @@ import { databaseIdOf } from '../view-transfer/import-view.js';
 
 /**
  * "Source" in a view's settings (ADR 0035 amendment of 2026-10-28): which
- * source of its database the view reads, and the picker to point it at
- * another, "New source" included when the host gives `createSource`. One
+ * source of its database the view reads, and the list to point it at
+ * another or at one created from its search (`createSource`). One
  * predicate and one opener for the two places that offer it, the view
  * settings menu (`databaseViewSettingsMenu`) and the full page's
  * `database.view.source` command, so they cannot disagree.
@@ -89,10 +89,13 @@ export function currentSourceTitle(
 }
 
 /**
- * Pop the picker on this database's sources at `target`, its "back" reopening
- * the view settings (`reopen`); a pick points the view at it. The picker's
- * own items (`dataSourcePickerItems`, "New source" through `createSource`)
- * under its own title, so it reads as the "+ view" picker does.
+ * Pop the list of this database's sources at `target`, its "back" reopening
+ * the view settings (`reopen`); a pick points the view at it. One source list
+ * with "+ view" (ADR 0035 amendment of 2026-10-30): the search field shown
+ * from the start, the view's current source checked (picking it again only
+ * closes), and "Create source “typed”" last, which creates the typed name
+ * through `createSource` and points the view at it. The search is the naming
+ * step: no "New source" sub-step here.
  */
 export function popChangeSourcePicker(
   std: BlockStdScope,
@@ -101,16 +104,59 @@ export function popChangeSourcePicker(
   reopen: () => void
 ): MenuHandler {
   const { dataSource, databaseId, picker, viewId } = change;
+  const list = picker.list();
+  const createSource = picker.createSource;
+  const current = (
+    dataSource.viewDataGet(viewId) as { sourceId?: unknown } | undefined
+  )?.sourceId;
   return popMenu(target, {
     options: {
       title: { text: translateKey(std, ...PICKER_TITLE), onBack: reopen },
       testId: 'data-source-picker',
-      items: dataSourcePickerItems(std, picker, {
-        databaseId,
-        onPick: ({ sourceId, source }) => {
-          changeViewSource(dataSource, viewId, sourceId, source);
-        },
-      }),
+      search: sourceSearch(std),
+      items: [
+        menu.dynamic(() => {
+          const sources =
+            list.value.find(database => database.id === databaseId)?.sources ??
+            [];
+          const items = sources.map(source =>
+            menu.action({
+              name:
+                source.title ||
+                translateKey(std, ...DATABASE_ADD_VIEW_UNTITLED_SOURCE),
+              prefix: DatabaseTableViewIcon(),
+              isSelected: source.id === current,
+              testId: `data-source-picker-source-${source.id}`,
+              select: () => {
+                if (source.id === current) return;
+                changeViewSource(dataSource, viewId, source.id, 'existing');
+              },
+            })
+          );
+          if (!createSource || std.store.readonly) return items;
+          return [
+            ...items,
+            typedSourceEntry(
+              std,
+              picker.sourceName,
+              sources.map(source => source.title),
+              {
+                testId: 'data-source-picker-new-source',
+                create: sourceName => {
+                  createSource
+                    .call(picker, databaseId, ...named(sourceName))
+                    .then(created => {
+                      if (created) {
+                        changeViewSource(dataSource, viewId, created.id, 'new');
+                      }
+                    })
+                    .catch(console.error);
+                },
+              }
+            ),
+          ];
+        }),
+      ],
     },
   });
 }

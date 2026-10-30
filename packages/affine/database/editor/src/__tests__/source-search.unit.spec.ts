@@ -6,12 +6,17 @@
  * once something was typed), and a name typed there that no source bears
  * could not be created from the list. At the recette of 2.2: a name another
  * database's source bears hid the entry, leaving "No results" and no reason;
- * "SOURCÉ" did not find "Source".
+ * "SOURCÉ" did not find "Source". At the recette of 2.2.1: "+ view" kept
+ * its "On an existing source" / "With a new source" entries beside the
+ * search, and a host without naming got no creation from the search.
  */
+import { HostedDataSourceBase } from '@labre/affine-database-block';
 import {
   effects as contextMenuEffects,
+  popMenu,
   popupTargetFromElement,
 } from '@labre/affine-components/context-menu';
+import type { AddViewMenuContext } from '@labre/affine-database-engine';
 import type {
   DataSourcePickerDatabase,
   DataSourcePickerService,
@@ -21,10 +26,16 @@ import type { BlockStdScope } from '@labre/std';
 import { signal } from '@preact/signals-core';
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 
+vi.mock('../view-bar/add-view-on-source.js', () => ({
+  addViewOnSource: vi.fn(() => 'v-new'),
+}));
+
 import {
   type DataSourceChoice,
   popDataSourcePicker,
 } from '../data-source-picker.js';
+import { databaseAddViewMenu } from '../view-bar/add-view-menu.js';
+import { addViewOnSource } from '../view-bar/add-view-on-source.js';
 
 beforeAll(() => {
   if (!customElements.get('affine-menu')) contextMenuEffects();
@@ -104,7 +115,7 @@ const typed = () => byTestId('data-source-picker-new-source-typed');
 describe('searching a list of sources', () => {
   test('shows its search field before anything is typed', async () => {
     const { search } = await open({ list: () => signal([PLAN]) });
-    expect(search.placeholder).toBe('Search sources');
+    expect(search.placeholder).toBe('Search or create a source');
     expect(search.closest('.affine-menu-search-container')).toHaveProperty(
       'style.opacity',
       '1'
@@ -182,13 +193,111 @@ describe('searching a list of sources', () => {
     expect(createSource).not.toHaveBeenCalled();
   });
 
-  test('without the host naming, the search creates nothing', async () => {
-    const { search } = await open({
+  test('without the host naming, the typed name is created as is', async () => {
+    const createSource = vi.fn(async () => ({ id: 's-3', title: 'Budget' }));
+    const { onPick, search } = await open({
       list: () => signal([PLAN]),
-      createSource: vi.fn(async () => ({ id: 's-3', title: 'x' })),
+      createSource,
     });
     await type(search, 'Budget');
+    typed()!.click();
+    await vi.waitFor(() => expect(onPick).toHaveBeenCalledTimes(1));
+    expect(createSource.mock.calls[0]).toEqual(['db-plan', 'Budget']);
+  });
+});
+
+/** A hosted data source reading two sources, as "+ view" reads it. */
+function hostedPlan() {
+  const titles: Record<string, string> = { s1: 'Projects', s2: 'Risks' };
+  return Object.defineProperties(
+    Object.create(HostedDataSourceBase.prototype) as HostedDataSourceBase,
+    {
+      _resolveSource: { value: () => null },
+      viewDataList$: {
+        value: signal([
+          { id: 'v1', sourceId: 's1' },
+          { id: 'v2', sourceId: 's2' },
+        ]),
+      },
+      sourceOf: {
+        value: (id: string) =>
+          id in titles
+            ? { schema: { id: `b-${id}`, props: { title: titles[id] } } }
+            : null,
+      },
+      viewMetas: { value: [] },
+      readonly$: { value: signal(false) },
+    }
+  );
+}
+
+describe('"+ view", one list of sources', () => {
+  async function openAddView(
+    createSource?: (
+      dataSource: HostedDataSourceBase,
+      name?: string
+    ) => Promise<string | undefined>
+  ) {
+    const dataSource = hostedPlan();
+    const context = {
+      std: undefined,
+      dataSource,
+      viewManager: {},
+      addView: () => '',
+    } as unknown as AddViewMenuContext;
+    const addView = databaseAddViewMenu(() => ({ createSource }));
+    const items = addView.items(context)!;
+    const placeholder = addView.searchPlaceholder?.(context);
+    const anchor = document.createElement('div');
+    document.body.append(anchor);
+    popMenu(popupTargetFromElement(anchor), {
+      options: {
+        testId: 'add-view',
+        items,
+        search: placeholder ? { placeholder } : undefined,
+      },
+    });
     await frame();
-    expect(typed()).toBeNull();
+    const menu = byTestId('add-view')!;
+    const search = menu.querySelector<HTMLInputElement>(
+      'input.affine-menu-search'
+    )!;
+    return { dataSource, context, menu, search };
+  }
+
+  test('lists the sources under its search field, no other entry', async () => {
+    const { menu, search } = await openAddView(async () => 's3');
+    expect(search.placeholder).toBe('Search or create a source');
+    const ids = [...menu.querySelectorAll<HTMLElement>('[data-testid]')].map(
+      el => el.dataset.testid
+    );
+    expect(ids).toEqual([
+      'database-add-view-source-s1',
+      'database-add-view-source-s2',
+    ]);
+    expect(menu.textContent).not.toContain('On an existing source');
+    expect(menu.textContent).not.toContain('With a new source');
+  });
+
+  test('a typed name is created, then a table is added on it', async () => {
+    const createSource = vi.fn(async () => 's3');
+    const { dataSource, context, search } = await openAddView(createSource);
+    await type(search, ' Budget ');
+    byTestId('database-add-view-new-source-typed')!.click();
+    await vi.waitFor(() => expect(addViewOnSource).toHaveBeenCalledTimes(1));
+    expect(createSource).toHaveBeenCalledWith(dataSource, 'Budget');
+    expect(addViewOnSource).toHaveBeenCalledWith(
+      context,
+      dataSource,
+      'table',
+      's3',
+      'new'
+    );
+  });
+
+  test('without createSource, the search only filters', async () => {
+    const { search } = await openAddView();
+    await type(search, 'Budget');
+    expect(byTestId('database-add-view-new-source-typed')).toBeNull();
   });
 });

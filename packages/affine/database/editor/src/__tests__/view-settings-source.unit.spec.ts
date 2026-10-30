@@ -11,6 +11,10 @@
  *   showing an empty postfix;
  * - its picker offering another database's sources, a pick not pointing
  *   the view at the source, or no way back to the view settings;
+ * - (labre recette of 2.2.1) its list showing no search field, nothing
+ *   marking the view's current source, a "New source" sub-step beside the
+ *   search, or a name typed there not creating the source the view then
+ *   reads;
  * - the tooling extension no longer registering the entry.
  */
 import { HostedDataSourceBase } from '@labre/affine-database-block';
@@ -23,6 +27,7 @@ import {
 import {
   type DataSourcePickerDatabase,
   DataSourcePickerProvider,
+  type DataSourcePickerService,
 } from '@labre/affine-shared/services';
 import {
   type DataViewUILogicBase,
@@ -65,7 +70,12 @@ const PEOPLE: DataSourcePickerDatabase = {
 };
 
 function hosted(
-  opts: { resolves?: boolean; title?: string; database?: string } = {}
+  opts: {
+    resolves?: boolean;
+    title?: string;
+    database?: string;
+    current?: string;
+  } = {}
 ) {
   return Object.assign(
     Object.create(HostedDataSourceBase.prototype) as HostedDataSourceBase,
@@ -77,6 +87,7 @@ function hosted(
       schema$: signal({
         props: { title: { toString: () => opts.title ?? 'Projects' } },
       }),
+      viewDataGet: () => ({ id: 'v1', sourceId: opts.current ?? 's-1' }),
     }
   );
 }
@@ -87,9 +98,13 @@ function context(
     picker?: boolean;
     readonly?: boolean;
     fallback?: boolean;
+    createSource?: DataSourcePickerService['createSource'];
   } = {}
 ) {
-  const picker = { list: () => signal([PLAN, PEOPLE]) };
+  const picker: DataSourcePickerService = {
+    list: () => signal([PLAN, PEOPLE]),
+    createSource: opts.createSource,
+  };
   const std = {
     store: { readonly: false },
     getOptional: (id: unknown) =>
@@ -171,6 +186,60 @@ describe('the view settings "Source"', () => {
       'v1',
       's-2',
       'existing'
+    );
+  });
+
+  async function openList(opts: Parameters<typeof context>[0] = {}) {
+    const result = context(opts);
+    await draw(result.ctx, databaseViewSettingsMenu().items(result.ctx)!);
+    byTestId('dv-view-setting-source')!.click();
+    await frame();
+    const list = byTestId('data-source-picker')!;
+    const search = list.querySelector<HTMLInputElement>(
+      'input.affine-menu-search'
+    )!;
+    return { ...result, search };
+  }
+
+  const isChecked = (id: string) =>
+    byTestId(id)!.classList.contains('selected-item');
+
+  test("checks the view's current source only; picking it again changes nothing", async () => {
+    await openList({ dataSource: hosted({ current: 's-2' }) });
+    expect(isChecked('data-source-picker-source-s-2')).toBe(true);
+    expect(isChecked('data-source-picker-source-s-1')).toBe(false);
+    byTestId('data-source-picker-source-s-2')!.click();
+    expect(changeViewSource).not.toHaveBeenCalled();
+  });
+
+  test('shows its search field with a single source, and no "New source"', async () => {
+    const { search } = await openList({
+      dataSource: hosted({ database: 'host:people', current: 's-3' }),
+      createSource: vi.fn(async () => ({ id: 's-9', title: 'x' })),
+    });
+    expect(search.placeholder).toBe('Search or create a source');
+    expect(search.closest('.affine-menu-search-container')).toHaveProperty(
+      'style.opacity',
+      '1'
+    );
+    expect(byTestId('data-source-picker-source-s-3')).not.toBeNull();
+    expect(byTestId('data-source-picker-new-source')).toBeNull();
+  });
+
+  test('a typed name is created, trimmed, and the view points at it', async () => {
+    const createSource = vi.fn(async () => ({ id: 's-9', title: 'Budget' }));
+    const { search, view } = await openList({ createSource });
+    search.value = ' Budget ';
+    search.dispatchEvent(new InputEvent('input', { bubbles: true }));
+    await frame();
+    byTestId('data-source-picker-new-source-typed')!.click();
+    await vi.waitFor(() => expect(changeViewSource).toHaveBeenCalledTimes(1));
+    expect(createSource).toHaveBeenCalledWith('host:plan', 'Budget');
+    expect(changeViewSource).toHaveBeenCalledWith(
+      view.manager.dataSource,
+      'v1',
+      's-9',
+      'new'
     );
   });
 

@@ -213,24 +213,24 @@ function namesReadFor(parent: Menu, naming: DataSourcePickerSourceNaming) {
  * having been the naming step. When the host refuses the name (a source of
  * another database bears it), the entry stays, disabled, worded with the
  * host's verdict: hidden, it left "No results" and no reason (labre recette
- * of 2.2). Absent without the host's naming: an unnamed source would not be
- * the one the entry announces.
+ * of 2.2). Without the host's naming the typed name is created as is
+ * (labre recette of 2.2.1: the search is the one naming step of a list of
+ * sources).
  */
 export function typedSourceEntry(
   std: BlockStdScope | undefined,
   naming: DataSourcePickerSourceNaming | undefined,
   listed: readonly string[],
-  entry: NewSourceEntry
+  entry: Pick<NewSourceEntry, 'testId' | 'create'>
 ): MenuConfig {
   return parent => {
-    if (!naming) return;
     const typed = parent.searchName$.value;
     const name = typed.trim();
     if (!name) return;
     const key = foldForSearch(name);
     if (listed.some(title => foldForSearch(title.trim()) === key)) return;
-    if (!namesReadFor(parent, naming)) return;
-    const verdict = verdictOf(naming, name);
+    if (naming && !namesReadFor(parent, naming)) return;
+    const verdict = naming ? verdictOf(naming, name) : 'ok';
     if (verdict !== 'ok') {
       return html`<div
         role="status"
