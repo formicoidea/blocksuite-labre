@@ -1,5 +1,19 @@
 # @labre/affine-gfx-brush
 
+## 2.3.3
+
+### Patch Changes
+
+- @labre/affine-block-surface@2.3.3
+- @labre/affine-components@2.3.3
+- @labre/affine-ext-loader@2.3.3
+- @labre/affine-model@2.3.3
+- @labre/affine-shared@2.3.3
+- @labre/affine-widget-edgeless-toolbar@2.3.3
+- @labre/global@2.3.3
+- @labre/std@2.3.3
+- @labre/store@2.3.3
+
 ## 2.3.2
 
 ### Patch Changes
