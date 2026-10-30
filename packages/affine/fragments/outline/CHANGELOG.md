@@ -1,5 +1,20 @@
 # @labre/affine-fragment-outline
 
+## 2.4.0
+
+### Patch Changes
+
+- @labre/affine-block-note@2.4.0
+- @labre/affine-components@2.4.0
+- @labre/affine-ext-loader@2.4.0
+- @labre/affine-fragment-doc-title@2.4.0
+- @labre/affine-model@2.4.0
+- @labre/affine-rich-text@2.4.0
+- @labre/affine-shared@2.4.0
+- @labre/global@2.4.0
+- @labre/std@2.4.0
+- @labre/store@2.4.0
+
 ## 2.3.3
 
 ### Patch Changes
