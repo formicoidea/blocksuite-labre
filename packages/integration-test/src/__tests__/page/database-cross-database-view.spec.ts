@@ -298,4 +298,32 @@ describe('a view of another database', () => {
     expect(byTestId('database-source-missing')).toBeNull();
     expect(JSON.stringify(model.props.views)).toBe(before);
   });
+
+  test('a database still loading draws a spinner, never "Connect a source"', async () => {
+    cleanup = await setupEditor('page', [
+      hostSources,
+      DataSourcePickerExtension({
+        list: () => signal([]),
+        crossDatabaseViews: true,
+        requireSource: true,
+      }),
+    ]);
+    const model = writeDatabase({
+      sourceId: 'src-p',
+      databaseId: PEOPLE,
+      columns: [],
+    });
+    sources[`${PEOPLE}/src-p`] = { unavailable: 'loading' };
+    const before = JSON.stringify(model.props.views);
+    await settle();
+    const notice = blockOf(model).querySelector<HTMLElement>(
+      '[data-testid="database-source-loading"]'
+    );
+    expect(notice).not.toBeNull();
+    expect(notice!.getAttribute('aria-busy')).toBe('true');
+    expect(byTestId('database-source-required')).toBeNull();
+    expect(byTestId('database-source-required-connect')).toBeNull();
+    expect(byTestId('database-source-missing')).toBeNull();
+    expect(JSON.stringify(model.props.views)).toBe(before);
+  });
 });

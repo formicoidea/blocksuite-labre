@@ -625,7 +625,8 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
    * the title and the view bar, then the reason and its hint in place of
    * the body. `'unshared'`: its database is not shared with the reader
    * ("Database not shared"). `'trashed'`: the source is in the trash
-   * ("Source in the trash"), shown until it is restored. Never an error and
+   * ("Source in the trash"), shown until it is restored. `'loading'`: its
+   * database is not loaded yet, a spinner and no words. Never an error and
    * never "Connect a source": the view is right, and re-pointing it would
    * lose a source the reader may get back. Takes precedence over the two
    * notices below; nothing is written.
@@ -637,18 +638,30 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
     if (!(dataSource instanceof HostedDataSourceBase)) return undefined;
     const reason = dataSource.sourceUnavailable$.value;
     if (reason === null) return undefined;
+    const header = html`<div class="${databaseHeaderContainerStyles}">
+      <div class="${databaseTitleRowStyles}">
+        ${this.renderTitle(dataViewLogic)}
+      </div>
+      <div class="${databaseToolbarRowStyles} ${databaseHeaderBarStyles}">
+        ${this.renderViewBar({ dataViewLogic })}
+      </div>
+    </div>`;
+    if (reason === 'loading') {
+      return html`${header}
+        <div
+          class="${databaseSourceMissingStyles}"
+          data-testid="database-source-loading"
+          role="status"
+          aria-busy="true"
+        >
+          ${LoadingIcon()}
+        </div>`;
+    }
     const [title, hint] =
       reason === 'trashed'
         ? [DATABASE_SOURCE_TRASHED, DATABASE_SOURCE_TRASHED_HINT]
         : [DATABASE_SOURCE_UNSHARED, DATABASE_SOURCE_UNSHARED_HINT];
-    return html`<div class="${databaseHeaderContainerStyles}">
-        <div class="${databaseTitleRowStyles}">
-          ${this.renderTitle(dataViewLogic)}
-        </div>
-        <div class="${databaseToolbarRowStyles} ${databaseHeaderBarStyles}">
-          ${this.renderViewBar({ dataViewLogic })}
-        </div>
-      </div>
+    return html`${header}
       <div
         class="${databaseSourceMissingStyles}"
         data-testid="database-source-${reason}"

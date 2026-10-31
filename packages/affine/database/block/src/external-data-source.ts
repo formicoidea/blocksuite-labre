@@ -50,11 +50,13 @@ export interface HostedSource {
  * A source the host knows but the view cannot read now (ADR 0035 amendment
  * of 2026-10-30): `'unshared'`, it belongs to a database that is not shared
  * with the reader ("Database not shared"); `'trashed'`, it is in the trash
- * and may be restored ("Source in the trash"), whatever its database. The
- * view draws that notice in place of its body, never an error and never
- * "Connect a source", which would re-point the view away for good.
+ * and may be restored ("Source in the trash"), whatever its database;
+ * `'loading'`, its database is not loaded yet (labre recette of 2.4.1: a view
+ * of another database drew "Connect a source" until it loaded). The view
+ * draws that notice in place of its body, never an error and never "Connect
+ * a source", which would re-point the view away for good.
  */
-export type HostedSourceUnavailableReason = 'unshared' | 'trashed';
+export type HostedSourceUnavailableReason = 'unshared' | 'trashed' | 'loading';
 
 export interface HostedSourceUnavailable {
   unavailable: HostedSourceUnavailableReason;
@@ -63,6 +65,7 @@ export interface HostedSourceUnavailable {
 const UNAVAILABLE_REASONS: readonly string[] = [
   'unshared',
   'trashed',
+  'loading',
 ] satisfies readonly HostedSourceUnavailableReason[];
 
 /** Whether a resolver's answer is {@link HostedSourceUnavailable}. */
@@ -286,8 +289,8 @@ export abstract class HostedDataSourceBase extends DataSourceBase {
    * Why the current view's source cannot be read, when the host says so
    * (ADR 0035 amendment of 2026-10-30): `'unshared'`, its database is not
    * shared with the reader ("Database not shared"); `'trashed'`, the source
-   * is in the trash ("Source in the trash"). `null` otherwise, "Source not
-   * found" included.
+   * is in the trash ("Source in the trash"); `'loading'`, its database is
+   * not loaded yet (a spinner). `null` otherwise, "Source not found" included.
    */
   readonly sourceUnavailable$: ReadonlySignal<HostedSourceUnavailableReason | null> =
     computed(() => {

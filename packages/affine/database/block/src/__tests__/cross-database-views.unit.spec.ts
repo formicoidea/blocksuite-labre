@@ -17,7 +17,9 @@
  * - an unreadable database read as "Source not found" (or "Connect a
  *   source") rather than as `'unshared'`, or a source in the trash (labre
  *   recette of 2.4) rather than as `'trashed'`: "Connect a source" would
- *   re-point the view away from a source the reader may restore;
+ *   re-point the view away from a source the reader may restore; or a
+ *   database still loading (labre recette of 2.4.1) rather than as
+ *   `'loading'`: "Connect a source" was offered until it loaded;
  * - `sourcePolicy`, `deleteView` or the properties panel's request keyed by
  *   the block's database for a view that reads another one;
  * - `reconnectDatabaseView` rewriting the block's `externalSourceId` under
@@ -271,6 +273,15 @@ describe('a view of another database', () => {
       expect(hosted.sourceMissing$.value).toBe(true);
       expect(hosted.source$.value).toBeNull();
     }
+  });
+
+  test("a database not loaded yet is 'loading', never a missing source", () => {
+    const { model } = database([FOREIGN]);
+    const hosted = build(model, () => ({ unavailable: 'loading' }), optedIn());
+    expect(hosted.sourceUnavailable$.value).toBe('loading');
+    expect(hosted.sourceMissing$.value).toBe(true);
+    expect(hosted.source$.value).toBeNull();
+    expect(hosted.rows$.value).toEqual([]);
   });
 
   test('a reason this build does not know reads as no source', () => {
