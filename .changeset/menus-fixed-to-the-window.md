@@ -1,5 +1,0 @@
----
-'@labre/affine': patch
----
-
-A desktop menu and its sub-menus no longer open partly under the host's sidebar on a narrow window (labre recette of 2.4: the view settings' "Source" list, "+ view" and its sub-menu, 288px wide). They hung in the editor host, inside the database full page's `.affine-page-viewport`, which scrolls, masks its gutters and contains its editor: the menu was cut at the viewport's left edge, where the sidebar begins, and a menu past its right edge widened the scroller, which the search field's focus then scrolled, sliding the database under the sidebar. A popup is now placed against the window (`position: fixed`, floating-ui `strategy: 'fixed'`, exported as `POPUP_STRATEGY`), the database full page names itself the root its popups hang from, outside its viewport (`POPUP_ROOT_ATTR`, `data-popup-root`, read first by `getDefaultModalRoot`), and a popup hung outside an editor host gets the editor's `std` from its modal, as the phone's sheet does. A popup is also attached before its first placement, which measured a detached, zero-size element.

@@ -1,5 +1,16 @@
 # @labre/affine-inline-mention
 
+## 2.4.1
+
+### Patch Changes
+
+- @labre/affine-ext-loader@2.4.1
+- @labre/affine-model@2.4.1
+- @labre/affine-shared@2.4.1
+- @labre/global@2.4.1
+- @labre/std@2.4.1
+- @labre/store@2.4.1
+
 ## 2.4.0
 
 ### Patch Changes
