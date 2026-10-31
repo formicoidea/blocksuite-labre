@@ -1,3 +1,4 @@
+import { POPUP_ROOT_ATTR } from '@labre/affine-components/context-menu';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
 import {
   type BlockStdOptions,
@@ -153,6 +154,10 @@ export class DatabasePageHost extends SignalWatcher(
 
   override connectedCallback() {
     super.connectedCallback();
+    // The popups of the page hang here, beside its viewport: the viewport
+    // masks and contains what it holds, so a menu hung in the editor was cut
+    // at its edges, under the host's sidebar (labre recette of 2.4).
+    this.setAttribute(POPUP_ROOT_ATTR, '');
     this.addEventListener('dragover', stopFileDrop, true);
     this.addEventListener('drop', stopFileDrop, true);
     this.holdSelection();

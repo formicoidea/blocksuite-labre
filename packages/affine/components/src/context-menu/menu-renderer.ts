@@ -429,7 +429,19 @@ declare global {
   }
 }
 
+/**
+ * Marks the element the popups opened inside it hang from, before the
+ * editor host: a host that clips what it holds names an ancestor outside
+ * the clipping box (the database full page, whose scroller masks and
+ * contains its editor). `createPopup` gives such a popup the editor's `std`.
+ */
+export const POPUP_ROOT_ATTR = 'data-popup-root';
+
 export const getDefaultModalRoot = (ele: HTMLElement) => {
+  const declared = ele.closest<HTMLElement>(`[${POPUP_ROOT_ATTR}]`);
+  if (declared) {
+    return declared;
+  }
   const host: HTMLElement | null =
     ele.closest('editor-host') ?? ele.closest('.data-view-popup-container');
   if (host) {
@@ -508,6 +520,19 @@ const onDocumentKeydown = (event: KeyboardEvent) => {
   close();
 };
 
+/**
+ * How a desktop popup and its sub-menus are placed: against the window, not
+ * the box they hang in. That box sits in a host's scroller: placed absolute,
+ * a popup was cut at the scroller's edges, the part past its left edge going
+ * under the host's sidebar, and the part past its right edge widened the
+ * scroll area, which the search field's focus then scrolled, sliding the view
+ * under the sidebar too (labre recette of 2.4, a narrow window). Fixed, it is
+ * neither cut nor counted by a scroller, and `shift` keeps it inside the
+ * window, as long as no ancestor of its modal contains or masks it (then the
+ * clipping box names a root outside itself: `POPUP_ROOT_ATTR`).
+ */
+export const POPUP_STRATEGY = 'fixed' as const;
+
 export const createPopup = (
   target: PopupTarget,
   content: HTMLElement,
@@ -536,8 +561,21 @@ export const createPopup = (
   }
   openPopups.push(close);
   const modal = createModal(target.root);
+  // A modal hung outside the editor (`POPUP_ROOT_ATTR`) asks for `std` where
+  // nothing provides it: it provides the editor of the element it opens from.
+  if (!target.root.closest('editor-host')) {
+    const std = stdAround(target.element);
+    if (std) {
+      new ContextProvider(modal, { context: stdContext, initialValue: std });
+    }
+  }
+  // Measured in the DOM: the first placement of a detached popup read a
+  // zero size and picked its side from it.
+  modal.append(content);
+  content.style.position = POPUP_STRATEGY;
   const cleanup = autoUpdate(target.targetRect, content, () => {
     computePosition(target.targetRect, content, {
+      strategy: POPUP_STRATEGY,
       middleware: options?.middleware ?? [shift({ crossAxis: true })],
     })
       .then(({ x, y, placement }) => {
@@ -549,7 +587,6 @@ export const createPopup = (
       })
       .catch(console.error);
   });
-  modal.append(content);
 
   modal.onpointerdown = ev => {
     if (ev.target === modal) {
