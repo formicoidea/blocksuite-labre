@@ -15,7 +15,11 @@ import { ifDefined } from 'lit/directives/if-defined.js';
 
 import { MenuFocusable } from './focusable.js';
 import { Menu, type MenuOptions, type SubMenuSide } from './menu.js';
-import { popMenu, popupTargetFromElement } from './menu-renderer.js';
+import {
+  POPUP_STRATEGY,
+  popMenu,
+  popupTargetFromElement,
+} from './menu-renderer.js';
 import type { MenuItemRender } from './types.js';
 
 export type MenuSubMenuData = {
@@ -47,6 +51,7 @@ export function nestedSubMenuPosition(parentSide: SubMenuSide | undefined) {
   const other = side === 'right' ? 'left' : 'right';
   return {
     placement: `${side}-start` as const,
+    strategy: POPUP_STRATEGY,
     middleware: [
       subMenuOffset,
       flip({
@@ -107,6 +112,7 @@ export class MenuSubMenu extends MenuFocusable {
       },
     });
     this.menu.menuElement.parentElement?.append(menu.menuElement);
+    menu.menuElement.style.position = POPUP_STRATEGY;
     const position = nestedSubMenuPosition(this.menu.side);
     const unsub = autoUpdate(this, menu.menuElement, () => {
       computePosition(this, menu.menuElement, position)
