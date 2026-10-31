@@ -1,5 +1,17 @@
 # @labre/affine-inline-comment
 
+## 2.5.0
+
+### Patch Changes
+
+- @labre/affine-ext-loader@2.5.0
+- @labre/affine-model@2.5.0
+- @labre/affine-rich-text@2.5.0
+- @labre/affine-shared@2.5.0
+- @labre/global@2.5.0
+- @labre/std@2.5.0
+- @labre/store@2.5.0
+
 ## 2.4.1
 
 ### Patch Changes

@@ -1,5 +1,21 @@
 # @labre/affine-block-bookmark
 
+## 2.5.0
+
+### Patch Changes
+
+- @labre/affine-block-embed@2.5.0
+- @labre/affine-block-embed-doc@2.5.0
+- @labre/affine-block-surface@2.5.0
+- @labre/affine-components@2.5.0
+- @labre/affine-ext-loader@2.5.0
+- @labre/affine-model@2.5.0
+- @labre/affine-shared@2.5.0
+- @labre/affine-widget-slash-menu@2.5.0
+- @labre/global@2.5.0
+- @labre/std@2.5.0
+- @labre/store@2.5.0
+
 ## 2.4.1
 
 ### Patch Changes
