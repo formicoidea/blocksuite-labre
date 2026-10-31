@@ -1,5 +1,24 @@
 # @labre/affine-block-code
 
+## 2.4.1
+
+### Patch Changes
+
+- @labre/affine-components@2.4.1
+- @labre/affine-ext-loader@2.4.1
+- @labre/affine-gfx-turbo-renderer@2.4.1
+- @labre/affine-inline-comment@2.4.1
+- @labre/affine-inline-latex@2.4.1
+- @labre/affine-inline-link@2.4.1
+- @labre/affine-inline-preset@2.4.1
+- @labre/affine-model@2.4.1
+- @labre/affine-rich-text@2.4.1
+- @labre/affine-shared@2.4.1
+- @labre/affine-widget-slash-menu@2.4.1
+- @labre/global@2.4.1
+- @labre/std@2.4.1
+- @labre/store@2.4.1
+
 ## 2.4.0
 
 ### Patch Changes
