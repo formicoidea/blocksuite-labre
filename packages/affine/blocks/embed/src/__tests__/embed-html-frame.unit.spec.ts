@@ -1,7 +1,14 @@
+/**
+ * The html block runs in the shared frame (ADR 0047, ADR 0048), which holds the
+ * protocol and the sandbox (`components/src/__tests__/html-frame.unit.spec.ts`).
+ *
+ * What it would have caught: a stored block losing its `srcdoc` fallback, which
+ * only this block has, or a block that is not interactive, as it always was, or one
+ * that asks for scripts: it has no gesture to start them.
+ */
 import { render, type TemplateResult } from 'lit';
-import { beforeAll, describe, expect, test, vi } from 'vitest';
+import { beforeAll, describe, expect, test } from 'vitest';
 
-import { HOST_PAGE_SANDBOX } from '../common/iframe-sandbox.js';
 import { EmbedHtmlBlockComponent } from '../embed-html-block/embed-html-block.js';
 import { EmbedHtmlConfigExtension } from '../embed-html-block/embed-html-config.js';
 
@@ -26,61 +33,28 @@ function mount(config?: { frameUrl?: string }) {
   });
   const container = document.createElement('div');
   render(block.renderBlock() as TemplateResult, container);
-  const iframe = container.querySelector('iframe') as HTMLIFrameElement;
-  return { block, iframe };
+  return container.querySelector('labre-html-frame') as HTMLElement & {
+    frameUrl: string | null;
+    html: string;
+    interactive: boolean;
+    scripts: boolean;
+    noScroll: boolean;
+    srcdocFallback: boolean;
+  };
 }
-
-// The private handler is the whole protocol: exercised without a real frame.
-function answer(
-  block: EmbedHtmlBlockComponent,
-  iframe: HTMLIFrameElement,
-  event: Partial<MessageEvent>
-) {
-  Object.defineProperty(block, 'iframe', { value: iframe });
-  (
-    block as unknown as { _answerFrame: (e: Partial<MessageEvent>) => void }
-  )._answerFrame(event);
-}
-
-function fakeFrame() {
-  const contentWindow = { postMessage: vi.fn() };
-  const iframe = { contentWindow } as unknown as HTMLIFrameElement;
-  return { contentWindow, iframe };
-}
-
-const READY = { type: 'labre:embed-html-ready' };
 
 describe('the html block and its frame', () => {
-  test('without a host page it stays on srcdoc', () => {
-    const { iframe } = mount();
-    expect(iframe.getAttribute('src')).toBeNull();
-    expect(iframe.srcdoc).toContain('<p>stored</p>');
-    expect(iframe.getAttribute('sandbox')).toBe('allow-scripts');
+  test('it keeps its stored html and its srcdoc fallback', () => {
+    const frame = mount();
+    expect(frame.html).toContain('<p>stored</p>');
+    expect(frame.frameUrl).toBeNull();
+    expect(frame.srcdocFallback).toBe(true);
+    expect(frame.interactive).toBe(true);
+    expect(frame.scripts).toBeFalsy();
+    expect(frame.noScroll).toBe(true);
   });
 
-  test('with a host page it loads it, sandboxed, and keeps the html out of the markup', () => {
-    const { iframe } = mount({ frameUrl: '/frame.html' });
-    expect(iframe.getAttribute('src')).toBe('/frame.html');
-    expect(iframe.srcdoc).toBe('');
-    expect(iframe.getAttribute('sandbox')).toBe(HOST_PAGE_SANDBOX);
-  });
-
-  test('it sends the stored html to its own frame when asked', () => {
-    const { block } = mount({ frameUrl: '/frame.html' });
-    const { contentWindow, iframe } = fakeFrame();
-    answer(block, iframe, { source: contentWindow as never, data: READY });
-    expect(contentWindow.postMessage).toHaveBeenCalledOnce();
-    expect(contentWindow.postMessage.mock.calls[0]?.[0].html).toContain(
-      '<p>stored</p>'
-    );
-  });
-
-  test('it answers no other window, and no other message', () => {
-    const { block } = mount({ frameUrl: '/frame.html' });
-    const { contentWindow, iframe } = fakeFrame();
-    answer(block, iframe, { source: window, data: READY });
-    answer(block, iframe, { source: contentWindow as never, data: {} });
-    answer(block, iframe, { source: contentWindow as never, data: null });
-    expect(contentWindow.postMessage).not.toHaveBeenCalled();
+  test('it names the page of its host', () => {
+    expect(mount({ frameUrl: '/frame.html' }).frameUrl).toBe('/frame.html');
   });
 });

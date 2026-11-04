@@ -28,7 +28,7 @@ export interface AssetRef {
  * - `kind`: `image` for an image block, `file` for an attachment card.
  * - `mode`: `insert` adds new blocks; `replace` swaps the picture of one
  *   existing image, or the file of one attachment card (one ref is used, the
- *   first).
+ *   first). A card answered with an `image/*` ref becomes an image block.
  * - `multiple`: whether more than one ref is welcome (the image insertions).
  * - `docId`: the document the result lands in, so the host can attach the
  *   asset to that page (a guest of the page must be able to read it).

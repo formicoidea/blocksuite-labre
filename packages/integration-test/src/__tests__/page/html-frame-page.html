@@ -1,0 +1,22 @@
+<!doctype html>
+<!--
+  The page ADR 0047 asks of a host, for `attachment-html.spec.ts`: it writes no
+  html and hands it to a frame it isolates, and lets its scripts run only on an
+  explicit `scripts: true` (ADR 0048).
+-->
+<meta charset="utf-8" />
+<title>html frame</title>
+<iframe sandbox=""></iframe>
+<script>
+  window.addEventListener('message', event => {
+    if (event.source !== window.parent) return;
+    if (typeof event.data?.html !== 'string') return;
+    const frame = document.querySelector('iframe');
+    frame.setAttribute(
+      'sandbox',
+      event.data.scripts === true ? 'allow-scripts' : ''
+    );
+    frame.srcdoc = event.data.html;
+  });
+  window.parent.postMessage({ type: 'labre:embed-html-ready' }, '*');
+</script>

@@ -20,11 +20,12 @@
 export const TRUSTED_SANDBOX =
   'allow-same-origin allow-scripts allow-forms allow-presentation';
 
-/**
- * Sandbox granted to an arbitrary url: the generic provider, or no provider at
- * all. Without `allow-same-origin` the frame runs on an opaque origin.
- */
-export const UNTRUSTED_SANDBOX = 'allow-scripts';
+// Two levels live with the shared frame that applies them, below this package
+// (ADR 0048): the page a host names, and an arbitrary url.
+export {
+  HOST_PAGE_SANDBOX,
+  UNTRUSTED_SANDBOX,
+} from '@labre/affine-components/html-frame';
 
 /**
  * Sandbox granted to the dedicated third-party players whose `src` is built
@@ -43,12 +44,3 @@ export const UNTRUSTED_SANDBOX = 'allow-scripts';
  */
 export const PROVIDER_PLAYER_SANDBOX =
   'allow-same-origin allow-scripts allow-presentation';
-
-/**
- * Sandbox of the page a host names for the html block (ADR 0047). That page is
- * the host's own code and holds no block content, it hands the html to a frame
- * it isolates itself. It must keep its origin: with `allow-scripts` alone it
- * turns opaque, and a frame whose response says `frame-ancestors 'self'` refuses
- * to load in it (measured in Chromium, Firefox and WebKit).
- */
-export const HOST_PAGE_SANDBOX = 'allow-same-origin allow-scripts';

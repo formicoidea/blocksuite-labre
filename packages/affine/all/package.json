@@ -281,6 +281,7 @@
     "./components/peek": "./src/components/peek.ts",
     "./components/portal": "./src/components/portal.ts",
     "./components/smooth-corner": "./src/components/smooth-corner.ts",
+    "./components/html-frame": "./src/components/html-frame.ts",
     "./components/toast": "./src/components/toast.ts",
     "./components/toggle-button": "./src/components/toggle-button.ts",
     "./components/toggle-switch": "./src/components/toggle-switch.ts",

@@ -47,6 +47,7 @@
     "./resource": "./src/resource/index.ts",
     "./portal": "./src/portal/index.ts",
     "./hover": "./src/hover/index.ts",
+    "./html-frame": "./src/html-frame/index.ts",
     "./icon-button": "./src/icon-button/index.ts",
     "./icon-picker": "./src/icon-picker/index.ts",
     "./toolbar": "./src/toolbar/index.ts",

@@ -25,7 +25,7 @@ import {
   TOAST_COPIED_TO_CLIPBOARD,
   translateKey,
 } from '@labre/affine-shared/services';
-import { formatSize } from '@labre/affine-shared/utils';
+import { formatSize, withTempBlobData } from '@labre/affine-shared/utils';
 import {
   AttachmentIcon,
   ResetIcon,
@@ -171,9 +171,12 @@ export class AttachmentBlockComponent extends CaptionedBlockComponent<Attachment
     // The dialog is async: the card may be gone, or the page read-only, by now.
     if (!source || this.std.store.readonly) return;
     if (!this.std.store.getBlock(this.blockId)) return;
-    const { name, size, type, sourceId } = source;
+    const { name, size, type, sourceId, width, height } = source;
 
     let embed = this.model.props.embed$.value ?? false;
+
+    const provider = this.std.get(AttachmentEmbedProvider);
+    let becomesImage = false;
 
     this.std.store.captureSync();
     this.std.store.transact(() => {
@@ -185,7 +188,9 @@ export class AttachmentBlockComponent extends CaptionedBlockComponent<Attachment
         embed: false,
       });
 
-      const provider = this.std.get(AttachmentEmbedProvider);
+      becomesImage = provider.shouldBeConverted(this.model);
+      if (becomesImage) return;
+
       embed &&= provider.embedded(this.model);
 
       if (embed) {
@@ -195,6 +200,17 @@ export class AttachmentBlockComponent extends CaptionedBlockComponent<Attachment
       // Reloads
       this.reload();
     });
+
+    // An image is an image block, whatever the card showed before. Outside the
+    // transaction: the conversion reads back the block it adds, which a store
+    // only holds once the transaction ends. With its size known it runs now, in
+    // the same undo step, and this component's model is gone when it returns.
+    if (becomesImage) {
+      if (sourceId && width && height) {
+        withTempBlobData().saveImageData(sourceId, { width, height });
+      }
+      provider.convertTo(this.model);
+    }
   };
 
   private _selectBlock() {
@@ -451,17 +467,28 @@ export class AttachmentBlockComponent extends CaptionedBlockComponent<Attachment
     const resolvedState = this.resolvedState$.value;
     const cardStyle = this.model.props.style$.value ?? AttachmentBlockStyles[1];
 
+    const thumbnail =
+      resolvedState.state === 'none' && this.blobUrl
+        ? this.std
+            .get(AttachmentEmbedProvider)
+            .renderThumbnail(this.model, this._maxFileSize)
+        : null;
+    const cardState = thumbnail
+      ? { ...resolvedState, kind: thumbnail }
+      : resolvedState;
+
     const classInfo = {
       'affine-attachment-card': true,
       [cardStyle]: true,
       loading: resolvedState.loading,
       error: resolvedState.error,
+      'has-thumbnail': Boolean(thumbnail),
     };
 
     return when(
       cardStyle === 'cubeThick',
-      () => this.renderWithVertical(classInfo, resolvedState),
-      () => this.renderWithHorizontal(classInfo, resolvedState)
+      () => this.renderWithVertical(classInfo, cardState),
+      () => this.renderWithHorizontal(classInfo, cardState)
     );
   };
 
@@ -479,7 +506,7 @@ export class AttachmentBlockComponent extends CaptionedBlockComponent<Attachment
 
     return html`
       <div class="affine-attachment-embed-container">
-        ${guard([this._refreshKey$.value], () => render(model, blobUrl))}
+        ${guard([this._refreshKey$.value], () => render(model, blobUrl, std))}
       </div>
       ${when(enabled, () => {
         const resolvedState = this.resolvedState$.value;

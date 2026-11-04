@@ -3,6 +3,7 @@ import { ViewExtensionManager } from '@labre/affine/ext-loader';
 import { getInternalViewExtensions } from '@labre/affine/extensions/view';
 import { RefNodeSlotsProvider } from '@labre/affine/inlines/reference';
 import {
+  EmbedHtmlConfigExtension,
   CommunityCanvasTextFonts,
   DocModeProvider,
   EditorSettingExtension,
@@ -137,7 +138,11 @@ export function createTestEditor(store: Store, workspace: Workspace) {
   editor.autofocus = true;
   editor.doc = store;
 
-  const defaultExtensions = getTestCommonExtensions(editor);
+  // A page like the one ADR 0047 asks of a host (`public/html-frame.html`).
+  const defaultExtensions = [
+    ...getTestCommonExtensions(editor),
+    EmbedHtmlConfigExtension({ frameUrl: '/html-frame.html' }),
+  ];
   editor.pageSpecs = [...viewManager.get('page'), ...defaultExtensions];
   editor.edgelessSpecs = [...viewManager.get('edgeless'), ...defaultExtensions];
 

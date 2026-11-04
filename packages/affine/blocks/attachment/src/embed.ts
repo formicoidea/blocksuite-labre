@@ -7,7 +7,10 @@ import {
   EMBED_CARD_HEIGHT,
   EMBED_CARD_WIDTH,
 } from '@labre/affine-shared/consts';
-import { FileSizeLimitProvider } from '@labre/affine-shared/services';
+import {
+  EmbedHtmlConfigExtension,
+  FileSizeLimitProvider,
+} from '@labre/affine-shared/services';
 import {
   readImageSize,
   transformModel,
@@ -16,13 +19,15 @@ import {
 import type { Container } from '@labre/global/di';
 import { createIdentifier } from '@labre/global/di';
 import { Bound } from '@labre/global/gfx';
-import { type BlockStdScope, StdIdentifier } from '@labre/std';
+import { BlockSelection, type BlockStdScope, StdIdentifier } from '@labre/std';
+import { GfxControllerIdentifier } from '@labre/std/gfx';
 import type { ExtensionType } from '@labre/store';
 import { Extension } from '@labre/store';
 import type { TemplateResult } from 'lit';
 import { html } from 'lit';
 import { styleMap } from 'lit/directives/style-map.js';
 
+import { isHtmlAttachment } from './html-attachment';
 import { getAttachmentBlob } from './utils';
 
 export type AttachmentEmbedConfig = {
@@ -30,7 +35,11 @@ export type AttachmentEmbedConfig = {
   /**
    * Check if the attachment can be turned into embed view.
    */
-  check: (model: AttachmentBlockModel, maxFileSize: number) => boolean;
+  check: (
+    model: AttachmentBlockModel,
+    maxFileSize: number,
+    std?: BlockStdScope
+  ) => boolean;
   /**
    * The action will be executed when the 「Turn into embed view」 button is clicked.
    */
@@ -43,7 +52,16 @@ export type AttachmentEmbedConfig = {
    */
   render?: (
     model: AttachmentBlockModel,
-    blobUrl: string
+    blobUrl: string,
+    std?: BlockStdScope
+  ) => TemplateResult | null;
+
+  /**
+   * Draws in the card in place of the file icon. Absent, the card keeps the icon.
+   */
+  renderThumbnail?: (
+    model: AttachmentBlockModel,
+    std: BlockStdScope
   ) => TemplateResult | null;
 
   /**
@@ -89,6 +107,12 @@ export class AttachmentEmbedService extends Extension {
     return this.std.get(FileSizeLimitProvider).maxFileSize;
   }
 
+  private _configOf(model: AttachmentBlockModel, maxFileSize: number) {
+    return this.values.find(config =>
+      config.check(model, maxFileSize, this.std)
+    );
+  }
+
   get keys() {
     return this.configs.keys();
   }
@@ -114,7 +138,7 @@ export class AttachmentEmbedService extends Extension {
 
   // Converts to embed view.
   convertTo(model: AttachmentBlockModel, maxFileSize = this._maxFileSize) {
-    const config = this.values.find(config => config.check(model, maxFileSize));
+    const config = this._configOf(model, maxFileSize);
 
     if (config?.action) {
       config.action(model, this.std)?.catch(console.error);
@@ -125,12 +149,21 @@ export class AttachmentEmbedService extends Extension {
   }
 
   embedded(model: AttachmentBlockModel, maxFileSize = this._maxFileSize) {
-    return this.values.some(config => config.check(model, maxFileSize));
+    return this.values.some(config =>
+      config.check(model, maxFileSize, this.std)
+    );
   }
 
   getRender(model: AttachmentBlockModel, maxFileSize = this._maxFileSize) {
+    return this._configOf(model, maxFileSize)?.render ?? null;
+  }
+
+  renderThumbnail(
+    model: AttachmentBlockModel,
+    maxFileSize = this._maxFileSize
+  ) {
     return (
-      this.values.find(config => config.check(model, maxFileSize))?.render ??
+      this._configOf(model, maxFileSize)?.renderThumbnail?.(model, this.std) ??
       null
     );
   }
@@ -139,20 +172,14 @@ export class AttachmentEmbedService extends Extension {
     model: AttachmentBlockModel,
     maxFileSize = this._maxFileSize
   ) {
-    return (
-      this.values.find(config => config.check(model, maxFileSize))
-        ?.shouldShowStatus ?? false
-    );
+    return this._configOf(model, maxFileSize)?.shouldShowStatus ?? false;
   }
 
   shouldBeConverted(
     model: AttachmentBlockModel,
     maxFileSize = this._maxFileSize
   ) {
-    return (
-      this.values.find(config => config.check(model, maxFileSize))
-        ?.shouldBeConverted ?? false
-    );
+    return this._configOf(model, maxFileSize)?.shouldBeConverted ?? false;
   }
 }
 
@@ -167,7 +194,11 @@ const embedConfig: AttachmentEmbedConfig[] = [
       const component = std.view.getBlock(model.id);
       if (!component) return;
 
-      await turnIntoImageBlock(model);
+      // Read now: the block is about to go. A selection left on it keeps a
+      // stray toolbar on the canvas.
+      const select = selectionFollowing(std, model.id);
+      const imageId = await turnIntoImageBlock(model);
+      if (imageId) select(imageId);
     },
   },
   {
@@ -250,19 +281,80 @@ const embedConfig: AttachmentEmbedConfig[] = [
         controls
       ></audio>`,
   },
+  {
+    name: 'html',
+    shouldShowStatus: true,
+    // Without a page from the host it stays a card: never a `srcdoc` for this
+    // case, and never the blob url, which has the app's origin (ADR 0048).
+    check: (model, maxFileSize, std) =>
+      isHtmlAttachment(model.props) &&
+      model.props.size <= maxFileSize &&
+      Boolean(std && htmlFrameUrl(std)),
+    action: model => {
+      // Around its centre: anchored by its corner, a wide view leaves its buttons
+      // off the screen on a canvas (ADR 0048).
+      const bound = Bound.fromCenter(
+        Bound.deserialize(model.props.xywh).center,
+        EMBED_CARD_WIDTH.html,
+        EMBED_CARD_HEIGHT.html
+      );
+      model.store.updateBlock(model, {
+        embed: true,
+        style: 'html',
+        xywh: bound.serialize(),
+      });
+    },
+    render: (model, _, std) => (std ? renderHtmlView(model, std, true) : null),
+    renderThumbnail: (model, std) => renderHtmlView(model, std, false),
+  },
 ];
 
+function htmlFrameUrl(std: BlockStdScope) {
+  return std.getOptional(EmbedHtmlConfigExtension.identifier)?.frameUrl ?? null;
+}
+
+function renderHtmlView(
+  model: AttachmentBlockModel,
+  std: BlockStdScope,
+  embed: boolean
+) {
+  const frameUrl = htmlFrameUrl(std);
+  if (!frameUrl) return null;
+  return html`<affine-attachment-html-view
+    .model=${model}
+    .std=${std}
+    .frameUrl=${frameUrl}
+    ?embed=${embed}
+  ></affine-attachment-html-view>`;
+}
+
+/** What selects another block the way `blockId` is selected now, if it is. */
+function selectionFollowing(std: BlockStdScope, blockId: string) {
+  const { selection: surface } = std.get(GfxControllerIdentifier);
+  if (surface.has(blockId)) {
+    return (id: string) => surface.set({ elements: [id], editing: false });
+  }
+  const { selection } = std;
+  if (selection.filter(BlockSelection).some(s => s.blockId === blockId)) {
+    return (id: string) =>
+      selection.setGroup('note', [
+        selection.create(BlockSelection, { blockId: id }),
+      ]);
+  }
+  return () => undefined;
+}
+
 /**
- * Turn the attachment block into an image block.
+ * Turn the attachment block into an image block. Answers the image's id.
  */
 async function turnIntoImageBlock(model: AttachmentBlockModel) {
   if (!model.store.schema.flavourSchemaMap.has('affine:image')) {
     console.error('The image flavour is not supported!');
-    return;
+    return null;
   }
 
   const sourceId = model.props.sourceId;
-  if (!sourceId) return;
+  if (!sourceId) return null;
 
   const { saveAttachmentData, getImageData } = withTempBlobData();
   saveAttachmentData(sourceId, { name: model.props.name });
@@ -298,8 +390,10 @@ async function turnIntoImageBlock(model: AttachmentBlockModel) {
     sourceId,
     caption: model.props.caption,
     size: model.props.size,
+    // Its place on a canvas is its depth too.
+    index: model.props.index,
     ...imageSize,
     ...others,
   };
-  transformModel(model, 'affine:image', imageProp);
+  return transformModel(model, 'affine:image', imageProp);
 }

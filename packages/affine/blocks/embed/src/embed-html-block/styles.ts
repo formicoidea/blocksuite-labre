@@ -50,12 +50,6 @@ export const styles = css`
     height: 100%;
   }
 
-  .embed-html-block-iframe-wrapper > iframe {
-    width: 100%;
-    height: 100%;
-    border: none;
-  }
-
   .embed-html-block-iframe-wrapper affine-menu {
     min-width: 296px;
   }

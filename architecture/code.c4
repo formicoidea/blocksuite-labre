@@ -355,7 +355,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/attachment
         metadata {
           path 'packages/affine/blocks/attachment'
-          files '23'
+          files '26'
         }
         adapters = folder 'adapters/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/attachment/src/adapters
@@ -382,7 +382,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/attachment/src
           metadata {
             path 'packages/affine/blocks/attachment/src'
-            files '14'
+            files '17'
           }
         }
       }
@@ -565,7 +565,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/embed
         metadata {
           path 'packages/affine/blocks/embed'
-          files '127'
+          files '128'
         }
         common = folder 'common/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/embed/src/common
@@ -599,7 +599,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/embed/src/embed-html-block
           metadata {
             path 'packages/affine/blocks/embed/src/embed-html-block'
-            files '9'
+            files '10'
           }
         }
         embed-iframe-block = folder 'embed-iframe-block/' {
@@ -1140,7 +1140,7 @@ model {
       link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/components
       metadata {
         path 'packages/affine/components'
-        files '140'
+        files '142'
       }
       block-selection = folder 'block-selection/' {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/components/src/block-selection
@@ -1252,6 +1252,13 @@ model {
         metadata {
           path 'packages/affine/components/src/hover'
           files '6'
+        }
+      }
+      html-frame = folder 'html-frame/' {
+        link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/components/src/html-frame
+        metadata {
+          path 'packages/affine/components/src/html-frame'
+          files '2'
         }
       }
       icon-button = folder 'icon-button/' {
@@ -2781,7 +2788,7 @@ model {
       link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/shared
       metadata {
         path 'packages/affine/shared'
-        files '252'
+        files '253'
       }
       adapters = folder 'adapters/' {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/shared/src/adapters
@@ -2815,7 +2822,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/shared/src/services
         metadata {
           path 'packages/affine/shared/src/services'
-          files '87'
+          files '88'
         }
       }
       src = folder 'src/' {
@@ -3245,7 +3252,7 @@ model {
       link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/all
       metadata {
         path 'packages/affine/all'
-        files '228'
+        files '229'
       }
       blocks = folder 'blocks/' {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/all/src/blocks
@@ -3258,7 +3265,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/all/src/components
         metadata {
           path 'packages/affine/all/src/components'
-          files '33'
+          files '34'
         }
       }
       data-view = folder 'data-view/' {
@@ -3447,7 +3454,7 @@ model {
   assembly.all -[uses]-> features.blocks.surface '10 imports'
   assembly.all -[uses]-> features.blocks.surface-ref '6 imports'
   assembly.all -[uses]-> features.blocks.table '6 imports'
-  assembly.all -[uses]-> features.components '47 imports, 13 type-only'
+  assembly.all -[uses]-> features.components '48 imports, 13 type-only'
   assembly.all -[uses]-> features.database.block '6 imports'
   assembly.all -[uses]-> features.database.editor '2 imports'
   assembly.all -[uses]-> features.database.engine '3 imports'
@@ -3511,14 +3518,14 @@ model {
   assembly.all -[uses]-> framework.sync '1 import'
   assembly.all -[uses]-> model_.model_ '4 imports, 1 type-only'
   features.blocks.attachment -[uses]-> features.blocks.surface '4 imports'
-  features.blocks.attachment -[uses]-> features.components '10 imports'
+  features.blocks.attachment -[uses]-> features.components '11 imports'
   features.blocks.attachment -[uses]-> features.ext-loader '2 imports'
-  features.blocks.attachment -[uses]-> features.shared '23 imports'
+  features.blocks.attachment -[uses]-> features.shared '26 imports'
   features.blocks.attachment -[uses]-> features.widgets.slash-menu '2 imports, 1 type-only'
-  features.blocks.attachment -[uses]-> framework.global_ '6 imports, 1 type-only'
-  features.blocks.attachment -[uses]-> framework.std '11 imports, 3 type-only'
-  features.blocks.attachment -[uses]-> framework.store '9 imports, 5 type-only'
-  features.blocks.attachment -[uses]-> model_.model_ '11 imports, 1 type-only'
+  features.blocks.attachment -[uses]-> framework.global_ '8 imports, 1 type-only'
+  features.blocks.attachment -[uses]-> framework.std '13 imports, 5 type-only'
+  features.blocks.attachment -[uses]-> framework.store '10 imports, 6 type-only'
+  features.blocks.attachment -[uses]-> model_.model_ '13 imports, 3 type-only'
   features.blocks.bookmark -[uses]-> features.blocks.embed '7 imports'
   features.blocks.bookmark -[uses]-> features.blocks.embed-doc '1 import'
   features.blocks.bookmark -[uses]-> features.blocks.surface '3 imports'
@@ -3572,9 +3579,9 @@ model {
   features.blocks.edgeless-text -[uses]-> framework.store '2 imports, 2 type-only'
   features.blocks.edgeless-text -[uses]-> model_.model_ '4 imports'
   features.blocks.embed -[uses]-> features.blocks.surface '18 imports'
-  features.blocks.embed -[uses]-> features.components '18 imports'
+  features.blocks.embed -[uses]-> features.components '20 imports'
   features.blocks.embed -[uses]-> features.ext-loader '2 imports'
-  features.blocks.embed -[uses]-> features.shared '90 imports, 5 type-only'
+  features.blocks.embed -[uses]-> features.shared '91 imports, 5 type-only'
   features.blocks.embed -[uses]-> features.widgets.slash-menu '10 imports, 5 type-only'
   features.blocks.embed -[uses]-> framework.global_ '11 imports'
   features.blocks.embed -[uses]-> framework.std '41 imports, 10 type-only'
@@ -4095,7 +4102,7 @@ model {
   features.rich-text -[uses]-> framework.store '4 imports, 2 type-only'
   features.rich-text -[uses]-> model_.model_ '1 import'
   features.shared -[uses]-> framework.global_ '92 imports, 16 type-only'
-  features.shared -[uses]-> framework.std '86 imports, 41 type-only'
+  features.shared -[uses]-> framework.std '87 imports, 41 type-only'
   features.shared -[uses]-> framework.store '114 imports, 82 type-only'
   features.shared -[uses]-> model_.model_ '45 imports, 16 type-only'
   features.widgets.drag-handle -[uses]-> features.blocks.callout '1 import, 1 type-only'
@@ -4292,6 +4299,7 @@ model {
   assembly.all.components -[imports]-> features.components.filterable-list '1 import'
   assembly.all.components -[imports]-> features.components.highlight-dropdown-menu '1 import'
   assembly.all.components -[imports]-> features.components.hover '1 import'
+  assembly.all.components -[imports]-> features.components.html-frame '1 import'
   assembly.all.components -[imports]-> features.components.icon-button '1 import'
   assembly.all.components -[imports]-> features.components.icons_ '1 import'
   assembly.all.components -[imports]-> features.components.link-preview '1 import'
@@ -4558,22 +4566,24 @@ model {
   features.blocks.attachment.src -[imports]-> features.blocks.surface.src '4 imports'
   features.blocks.attachment.src -[imports]-> features.components.caption '1 import'
   features.blocks.attachment.src -[imports]-> features.components.drop-indicator '1 import'
+  features.blocks.attachment.src -[imports]-> features.components.html-frame '1 import'
   features.blocks.attachment.src -[imports]-> features.components.icons_ '1 import'
   features.blocks.attachment.src -[imports]-> features.components.peek '1 import'
   features.blocks.attachment.src -[imports]-> features.components.resource '1 import'
   features.blocks.attachment.src -[imports]-> features.components.toast '2 imports'
   features.blocks.attachment.src -[imports]-> features.ext-loader.src '2 imports'
-  features.blocks.attachment.src -[imports]-> features.shared.consts '3 imports'
-  features.blocks.attachment.src -[imports]-> features.shared.services '6 imports'
+  features.blocks.attachment.src -[imports]-> features.shared.consts '4 imports'
+  features.blocks.attachment.src -[imports]-> features.shared.services '8 imports'
   features.blocks.attachment.src -[imports]-> features.shared.theme '1 import'
   features.blocks.attachment.src -[imports]-> features.shared.utils '5 imports'
   features.blocks.attachment.src -[imports]-> features.widgets.slash-menu.src '1 import'
   features.blocks.attachment.src -[imports]-> framework.global_.di '1 import'
-  features.blocks.attachment.src -[imports]-> framework.global_.gfx '3 imports, 1 type-only'
+  features.blocks.attachment.src -[imports]-> framework.global_.gfx '4 imports, 1 type-only'
+  features.blocks.attachment.src -[imports]-> framework.global_.lit '1 import'
   features.blocks.attachment.src -[imports]-> framework.std.gfx '3 imports'
-  features.blocks.attachment.src -[imports]-> framework.std.src '6 imports, 2 type-only'
-  features.blocks.attachment.src -[imports]-> framework.store.src '5 imports, 3 type-only'
-  features.blocks.attachment.src -[imports]-> model_.model_.src '7 imports'
+  features.blocks.attachment.src -[imports]-> framework.std.src '8 imports, 4 type-only'
+  features.blocks.attachment.src -[imports]-> framework.store.src '6 imports, 4 type-only'
+  features.blocks.attachment.src -[imports]-> model_.model_.src '9 imports, 2 type-only'
   features.blocks.bookmark.adapters -[imports]-> features.blocks.embed.src '3 imports'
   features.blocks.bookmark.adapters -[imports]-> features.shared.adapters '5 imports'
   features.blocks.bookmark.adapters -[imports]-> features.shared.utils '2 imports'
@@ -4823,6 +4833,7 @@ model {
   features.blocks.embed.common -[imports]-> features.blocks.embed.src '1 import'
   features.blocks.embed.common -[imports]-> features.blocks.surface.src '3 imports'
   features.blocks.embed.common -[imports]-> features.components.caption '1 import'
+  features.blocks.embed.common -[imports]-> features.components.html-frame '1 import'
   features.blocks.embed.common -[imports]-> features.components.icons_ '1 import'
   features.blocks.embed.common -[imports]-> features.shared.adapters '4 imports, 3 type-only'
   features.blocks.embed.common -[imports]-> features.shared.consts '3 imports'
@@ -4879,7 +4890,7 @@ model {
   features.blocks.embed.embed-html-block -[imports]-> features.blocks.surface.src '1 import'
   features.blocks.embed.embed-html-block -[imports]-> features.components.context-menu '1 import'
   features.blocks.embed.embed-html-block -[imports]-> features.components.toast '1 import'
-  features.blocks.embed.embed-html-block -[imports]-> features.shared.services '3 imports'
+  features.blocks.embed.embed-html-block -[imports]-> features.shared.services '4 imports'
   features.blocks.embed.embed-html-block -[imports]-> features.shared.utils '1 import'
   features.blocks.embed.embed-html-block -[imports]-> framework.std.src '3 imports'
   features.blocks.embed.embed-html-block -[imports]-> framework.store.src '3 imports, 2 type-only'
@@ -4938,6 +4949,7 @@ model {
   features.blocks.embed.src -[imports]-> features.blocks.embed.embed-iframe-block '11 imports'
   features.blocks.embed.src -[imports]-> features.blocks.embed.embed-loom-block '6 imports'
   features.blocks.embed.src -[imports]-> features.blocks.embed.embed-youtube-block '6 imports'
+  features.blocks.embed.src -[imports]-> features.components.html-frame '1 import'
   features.blocks.embed.src -[imports]-> features.ext-loader.src '2 imports'
   features.blocks.embed.src -[imports]-> features.shared.services '2 imports'
   features.blocks.embed.src -[imports]-> framework.std.src '1 import, 1 type-only'
@@ -7034,7 +7046,7 @@ model {
   features.shared.services -[imports]-> framework.global_.utils '4 imports, 2 type-only'
   features.shared.services -[imports]-> framework.std.gfx '7 imports, 2 type-only'
   features.shared.services -[imports]-> framework.std.inline '1 import'
-  features.shared.services -[imports]-> framework.std.src '35 imports, 11 type-only'
+  features.shared.services -[imports]-> framework.std.src '36 imports, 11 type-only'
   features.shared.services -[imports]-> framework.store.src '51 imports, 38 type-only'
   features.shared.services -[imports]-> model_.model_.src '16 imports, 10 type-only'
   features.shared.styles -[imports]-> features.shared.theme '1 import'

@@ -10,9 +10,15 @@
  * - "Replace" missing from the real toolbar, with a host or without one (the
  *   system file chooser stands in since ADR 0044's amendment of 2026-10-27);
  * - a replacement that changes the displayed width, keeps the old ratio or
- *   takes more than one undo step.
+ *   takes more than one undo step;
+ * - an attachment card replaced by an image that stays a card, moves, loses its
+ *   depth on the canvas, leaves the selection on the block that went (a stray
+ *   toolbar on the canvas), or takes more than one undo step to come back.
  */
-import type { ImageBlockModel } from '@labre/affine/model';
+import type {
+  AttachmentBlockModel,
+  ImageBlockModel,
+} from '@labre/affine/model';
 import {
   type AssetPickerRequest,
   AssetPickerExtension,
@@ -213,6 +219,198 @@ describe('the asset dialog in a page', () => {
     window.doc.undo();
     expect([image.props.width, image.props.height]).toEqual([200, 200]);
     expect(image.props.sourceId).not.toBe(host.assets.image!.sourceId);
+  });
+});
+
+describe("the attachment card's Replace", () => {
+  let host: ReturnType<typeof libraryHost>;
+  let cleanup: () => void;
+
+  const replaceFromToolbar = async (
+    root: { widgetComponents: Record<string, unknown> },
+    action: string
+  ) => {
+    const entry = (
+      root.widgetComponents[AFFINE_TOOLBAR_WIDGET] as
+        | { toolbar?: HTMLElement }
+        | undefined
+    )?.toolbar?.querySelector<HTMLElement>(
+      `[data-toolbar-action-id="${action}"]`
+    );
+    expect(entry, 'the attachment toolbar has no Replace').toBeTruthy();
+    await clickEntry(entry!);
+    await settle();
+  };
+
+  const addHtmlCard = async (parent: string) => {
+    const file = new Blob(['<p>a report</p>'], { type: 'text/html' });
+    const sourceId = await window.doc.blobSync.set(file);
+    return {
+      sourceId,
+      id: window.doc.addBlock(
+        'affine:attachment',
+        {
+          name: 'report.html',
+          type: 'text/html',
+          size: file.size,
+          sourceId,
+        },
+        parent
+      ),
+    };
+  };
+
+  describe('in a page', () => {
+    let noteId: string;
+    let std: BlockStdScope;
+
+    beforeEach(async () => {
+      host = libraryHost();
+      cleanup = await setupEditor('page', [AssetPickerExtension(host.service)]);
+      await host.stock();
+      noteId = addNote(window.doc);
+      std = window.editor.std;
+      std.event.active = true;
+      return () => cleanup();
+    });
+
+    const select = async (blockId: string) => {
+      window.doc.captureSync();
+      window.editor.host!.focus();
+      std.selection.setGroup('note', [
+        std.selection.create(BlockSelection, { blockId }),
+      ]);
+      await settle();
+    };
+
+    test('answered with an image, the card is an image block in its place, one undo step', async () => {
+      // addNote already wrote the paragraph before the card.
+      const { id, sourceId } = await addHtmlCard(noteId);
+      window.doc.addBlock('affine:paragraph', {}, noteId);
+      host.assets.file = host.assets.image;
+      await select(id);
+
+      await replaceFromToolbar(
+        getDocRootBlock(window.doc, window.editor, 'page'),
+        'c.replace'
+      );
+
+      const flavours = () =>
+        window.doc.getBlock(noteId)!.model.children.map(c => c.flavour);
+      expect(host.requests.at(-1)).toMatchObject({
+        kind: 'file',
+        mode: 'replace',
+      });
+      expect(window.doc.getBlock(id)).toBeFalsy();
+      expect(flavours()).toEqual([
+        'affine:paragraph',
+        'affine:image',
+        'affine:paragraph',
+      ]);
+      const image = window.doc.getBlock(noteId)!.model
+        .children[1] as ImageBlockModel;
+      expect(image.props.sourceId).toBe(host.assets.image!.sourceId);
+      expect([image.props.width, image.props.height]).toEqual([80, 20]);
+      expect(
+        std.selection.filter(BlockSelection).map(s => s.blockId),
+        'the selection follows the block'
+      ).toEqual([image.id]);
+
+      window.doc.undo();
+      expect(flavours()).toEqual([
+        'affine:paragraph',
+        'affine:attachment',
+        'affine:paragraph',
+      ]);
+      const card = window.doc.getBlock(noteId)!.model
+        .children[1] as AttachmentBlockModel;
+      expect(card.props.sourceId).toBe(sourceId);
+      expect(card.props.name).toBe('report.html');
+    });
+
+    test('answered with a file, it stays a card; cancelled, nothing changes', async () => {
+      const { id, sourceId } = await addHtmlCard(noteId);
+      await select(id);
+      const card = window.doc.getModelById(id) as AttachmentBlockModel;
+
+      const pdf = host.assets.file;
+      host.assets.file = undefined;
+      await replaceFromToolbar(
+        getDocRootBlock(window.doc, window.editor, 'page'),
+        'c.replace'
+      );
+      expect(card.props.sourceId).toBe(sourceId);
+
+      host.assets.file = pdf;
+      await replaceFromToolbar(
+        getDocRootBlock(window.doc, window.editor, 'page'),
+        'c.replace'
+      );
+      expect(window.doc.getModelById(id)).toBe(card);
+      expect(card.props.name).toBe('plan.pdf');
+    });
+  });
+
+  test('on the canvas, the image takes its corner and its depth', async () => {
+    host = libraryHost();
+    cleanup = await setupEditor('edgeless', [
+      AssetPickerExtension(host.service),
+    ]);
+    try {
+      await host.stock();
+      host.assets.file = host.assets.image;
+      const edgeless = getDocRootBlock(window.doc, window.editor, 'edgeless');
+      edgeless.std.event.active = true;
+      const surfaceId = edgeless.service.surface.id;
+      const file = new Blob(['<p>a report</p>'], { type: 'text/html' });
+      const id = edgeless.service.crud.addBlock(
+        'affine:attachment',
+        {
+          name: 'report.html',
+          type: 'text/html',
+          size: file.size,
+          sourceId: await window.doc.blobSync.set(file),
+          style: 'cubeThick',
+          xywh: '[100,100,170,132]',
+        },
+        surfaceId
+      )!;
+      const above = edgeless.service.crud.addBlock(
+        'affine:attachment',
+        { name: 'above.pdf', type: 'application/pdf', xywh: '[0,0,170,132]' },
+        surfaceId
+      )!;
+      const card = window.doc.getModelById(id) as AttachmentBlockModel;
+      const { index } = card.props;
+      window.doc.captureSync();
+      edgeless.gfx.selection.set({ elements: [id], editing: false });
+      await settle();
+
+      await replaceFromToolbar(edgeless, 'd.replace');
+
+      expect(window.doc.getBlock(id)).toBeFalsy();
+      const [image] = window.doc.getModelsByFlavour(
+        'affine:image'
+      ) as ImageBlockModel[];
+      expect(image?.props.xywh).toBe('[100,100,80,20]');
+      expect(image?.props.index).toBe(index);
+      expect(
+        edgeless.gfx.selection.selectedIds,
+        'the selection follows the block'
+      ).toEqual([image?.id]);
+      expect(
+        (window.doc.getModelById(above) as AttachmentBlockModel).props.index >
+          index
+      ).toBe(true);
+
+      window.doc.undo();
+      expect(window.doc.getModelsByFlavour('affine:image')).toHaveLength(0);
+      expect(window.doc.getModelsByFlavour('affine:attachment')).toHaveLength(
+        2
+      );
+    } finally {
+      cleanup();
+    }
   });
 });
 

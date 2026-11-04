@@ -93,6 +93,35 @@ export const ATTACHMENT_BUTTON_RELOAD: ChromeWording = [
 ];
 
 /**
+ * The controls of an html attachment's embed view (`html-view.ts`). "Interact"
+ * lets the pointer into the preview; a press outside ends it.
+ */
+export const ATTACHMENT_HTML_INTERACT: ChromeWording = [
+  'com.labre.attachment.html.interact',
+  'Interact',
+];
+
+export const ATTACHMENT_HTML_STOP_INTERACTING: ChromeWording = [
+  'com.labre.attachment.html.stop-interacting',
+  'Stop interacting',
+];
+
+export const ATTACHMENT_HTML_FULLSCREEN: ChromeWording = [
+  'com.labre.attachment.html.fullscreen',
+  'Full screen',
+];
+
+export const ATTACHMENT_HTML_RESIZE: ChromeWording = [
+  'com.labre.attachment.html.resize',
+  'Change the height',
+];
+
+export const ATTACHMENT_HTML_EXIT_FULLSCREEN: ChromeWording = [
+  'com.labre.attachment.html.exit-fullscreen',
+  'Exit full screen',
+];
+
+/**
  * This package's contribution to the translation-key manifest, listed in
  * `PACKAGE_WORDINGS` under source `chrome`
  * (`packages/affine/all/src/translations.ts`). The shared verbs it reuses
@@ -112,4 +141,9 @@ export const ATTACHMENT_WORDINGS: readonly ChromeWording[] = [
   ATTACHMENT_BUTTON_UPGRADE,
   ATTACHMENT_BUTTON_RETRY,
   ATTACHMENT_BUTTON_RELOAD,
+  ATTACHMENT_HTML_INTERACT,
+  ATTACHMENT_HTML_STOP_INTERACTING,
+  ATTACHMENT_HTML_FULLSCREEN,
+  ATTACHMENT_HTML_EXIT_FULLSCREEN,
+  ATTACHMENT_HTML_RESIZE,
 ];

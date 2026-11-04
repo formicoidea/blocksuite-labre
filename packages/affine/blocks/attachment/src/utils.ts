@@ -25,6 +25,7 @@ import type { BlockModel } from '@labre/store';
 
 import type { AttachmentBlockComponent } from './attachment-block';
 import { attachmentBlobType } from './blob-type.js';
+import { withHtmlDefaultView } from './html-attachment.js';
 import {
   ATTACHMENT_TOAST_DOWNLOAD_FAILED,
   ATTACHMENT_TOAST_DOWNLOADING,
@@ -174,7 +175,10 @@ export async function addSiblingAttachmentBlocks(
   const flavour = AttachmentBlockSchema.model.flavour;
 
   const propsArray = await Promise.all(
-    files.map(file => buildPropsWith(std, file, embed))
+    files.map(async file => {
+      const props = await buildPropsWith(std, file, embed);
+      return embed === undefined ? withHtmlDefaultView(std, props) : props;
+    })
   );
 
   const blockIds = std.store.addSiblingBlocks(
@@ -232,15 +236,20 @@ export function placeAttachmentsOnCanvas(
   }
 
   const xy = [x, y];
-  const style = 'cubeThick';
   const gap = 32;
-  const width = EMBED_CARD_WIDTH.cubeThick;
-  const height = EMBED_CARD_HEIGHT.cubeThick;
   const flavour = AttachmentBlockSchema.model.flavour;
 
-  const blocks = propsArray.map((props, index) => {
+  const blocks = propsArray.map((source, index) => {
+    const props = withHtmlDefaultView(std, source);
+    const style = 'style' in props ? props.style : 'cubeThick';
     const center = Vec.addScalar(xy, index * gap);
-    const xywh = Bound.fromCenter(center, width, height).serialize();
+    // Around the point, whatever the size: a wide embed view anchored by its corner
+    // would leave its buttons off the screen.
+    const xywh = Bound.fromCenter(
+      center,
+      EMBED_CARD_WIDTH[style],
+      EMBED_CARD_HEIGHT[style]
+    ).serialize();
     return { flavour, blockProps: { ...props, style, xywh } };
   });
 
