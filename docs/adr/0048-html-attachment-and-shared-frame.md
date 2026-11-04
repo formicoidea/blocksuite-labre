@@ -121,3 +121,81 @@ opens the page.
 No capture in the document or in the blob store, no server rendering, no new block,
 no flag (an html file is content, and ADR 0009 forbids gating content), no reading
 of the workspace's data from the frame.
+
+## Amendment of 2026-11-04: the html block is retired, and a link card imports its page
+
+Decisions of the product owner, not reopened here. What they replace above: decision 1's
+last sentence, decision 2's mention of the block, decision 3's name for the seam,
+decision 5's `srcdoc` exception and decision 12's paragraph on the block.
+
+### The block
+
+1. **`affine:embed-html` renders a card, in a page and on the canvas, and runs nothing.**
+   No frame, no `srcdoc`, no read of `html`, which stays in the document untouched. The
+   product owner accepts the break: the stored html of such a block is no longer shown,
+   and nobody has counted them.
+2. **The type stays declared.** Measured (`retired-embed-html.unit.spec.ts`): on a flavour
+   it does not know, `new Block` throws `schema for flavour ... not found`, the store's
+   `_onBlockAdded` catches it and logs, and the block is gone from the page with no word
+   to the reader, the rest of the document staying. A card is honest; a silence is not.
+3. **Nothing creates one any more on the canvas.** The clipboard config is gone: a paste
+   or a duplicate reads `EdgelessClipboardConfigIdentifier` and skips a flavour without
+   one. The toolbar of a page keeps Delete alone. `ponytail:` copying one of these cards
+   in a page still writes another card, through the snapshot path, which has no list of
+   flavours to refuse; it is inert, and refusing it means a new hook in the transformer.
+4. **What is dead went with it:** `srcdocFallback`, `noScroll`, `CLOSED_SANDBOX`, the
+   `srcdoc` branch of `labre-html-frame`, the fullscreen toolbar, the tooltips, the
+   clipboard config. Without `frameUrl` the frame renders nothing.
+5. **Deviation from AFFiNE:** upstream's `affine:embed-html` renders its html and takes
+   part in the clipboard. Here it is a read-only card whose schema survives so documents
+   open. A document from upstream with such a block stays readable, and its html does not
+   run.
+
+### The seam
+
+6. **`EmbedHtmlConfigExtension` is now `HtmlFileConfigExtension`**, key `affine:html-file`:
+   the name of a retired block said nothing of what it configures, and it has not been
+   published, so the rename costs nothing. The wire name `labre:embed-html-ready` stays:
+   changing it would change a script a host has pinned by hash, for no reader's benefit.
+7. **The import goes through the same seam**, `HtmlFileConfig.importPage`, rather than a new
+   row of the seams table. It takes `{ url, docId }` and answers `imported`, `cancelled`
+   or `refused`.
+8. **The host answers with a reference, `AssetRef`, not with a `File`.** Two reasons, read
+   in the host's upload path. `BlobSource.set` is local-first, so a library that stored
+   the bytes itself would write a block a refused upload then leaves broken, where the
+   decision is that a refusal keeps the card. And what the host knows about the file
+   (where it came from) goes on a row that only exists once the upload has landed. The
+   asset picker already speaks `AssetRef`, so nothing new is asked of a block.
+9. **The library knows nothing else.** No fetch, no right, no quota, no relation between a
+   page and a file, nothing of the page's title or url in the document: the url is the
+   card's own prop, and it goes when the card goes.
+
+### The button
+
+10. **It sits in the card's toolbar, for any url**, in a page and on the canvas, when the host
+    provides `importPage`, the document is writable and the card is not a citation, which
+    its footnote holds. It writes nothing until pressed, and a pasted url stays what it was.
+11. **The gesture is one undo step.** The attachment takes the card's place (in a page its
+    index, on a canvas its centre, its layer and its connectors) and its caption, in its
+    embed view when `frameUrl` is set. Every attachment of the document holding `replaces`
+    takes the new file in the same step. An undo gives the card and the old file back: the
+    bytes are the host's to keep until then.
+12. **The wait is the card's, not the button's.** The state hangs on the model, because the
+    toolbar is drawn again on every selection and a second press must not start a second
+    import. A card deleted, or a document turned read-only, while the host reads the page
+    writes nothing.
+13. **An imported page runs no script without the reader's gesture**: it opens closed, like any
+    html file (decision 12).
+
+14. **The first press on a block of an unfocused editor keeps the selection** (`std`,
+    `range-binding.ts`). The focus a block selection takes puts a caret in the document's first
+    text, whose `selectionchange` replaced the selection and closed the toolbar it had just opened,
+    so the button took two presses. The native range is cleared right after that focus.
+
+### Consequences
+
+- A host that set `EmbedHtmlConfigExtension` renames one import. A host without `frameUrl`
+  that relied on the block's `srcdoc` sees cards: there is no way back but the product
+  owner's.
+- `@labre/affine-block-bookmark` now depends on `@labre/affine-block-attachment`, for the
+  default view of an html file. Nothing goes the other way.

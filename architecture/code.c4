@@ -390,7 +390,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/bookmark
         metadata {
           path 'packages/affine/blocks/bookmark'
-          files '26'
+          files '28'
         }
         adapters = folder 'adapters/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/bookmark/src/adapters
@@ -410,7 +410,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/bookmark/src/components
           metadata {
             path 'packages/affine/blocks/bookmark/src/components'
-            files '2'
+            files '3'
           }
         }
         configs = folder 'configs/' {
@@ -424,7 +424,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/bookmark/src
           metadata {
             path 'packages/affine/blocks/bookmark/src'
-            files '10'
+            files '11'
           }
         }
       }
@@ -565,7 +565,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/embed
         metadata {
           path 'packages/affine/blocks/embed'
-          files '128'
+          files '124'
         }
         common = folder 'common/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/embed/src/common
@@ -599,7 +599,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/embed/src/embed-html-block
           metadata {
             path 'packages/affine/blocks/embed/src/embed-html-block'
-            files '10'
+            files '6'
           }
         }
         embed-iframe-block = folder 'embed-iframe-block/' {
@@ -3526,17 +3526,18 @@ model {
   features.blocks.attachment -[uses]-> framework.std '13 imports, 5 type-only'
   features.blocks.attachment -[uses]-> framework.store '10 imports, 6 type-only'
   features.blocks.attachment -[uses]-> model_.model_ '13 imports, 3 type-only'
+  features.blocks.bookmark -[uses]-> features.blocks.attachment '1 import'
   features.blocks.bookmark -[uses]-> features.blocks.embed '7 imports'
   features.blocks.bookmark -[uses]-> features.blocks.embed-doc '1 import'
-  features.blocks.bookmark -[uses]-> features.blocks.surface '3 imports'
-  features.blocks.bookmark -[uses]-> features.components '4 imports'
+  features.blocks.bookmark -[uses]-> features.blocks.surface '4 imports'
+  features.blocks.bookmark -[uses]-> features.components '6 imports'
   features.blocks.bookmark -[uses]-> features.ext-loader '2 imports'
-  features.blocks.bookmark -[uses]-> features.shared '24 imports'
+  features.blocks.bookmark -[uses]-> features.shared '28 imports'
   features.blocks.bookmark -[uses]-> features.widgets.slash-menu '1 import'
-  features.blocks.bookmark -[uses]-> framework.global_ '2 imports'
-  features.blocks.bookmark -[uses]-> framework.std '9 imports, 2 type-only'
-  features.blocks.bookmark -[uses]-> framework.store '7 imports, 4 type-only'
-  features.blocks.bookmark -[uses]-> model_.model_ '12 imports, 2 type-only'
+  features.blocks.bookmark -[uses]-> framework.global_ '4 imports'
+  features.blocks.bookmark -[uses]-> framework.std '12 imports, 2 type-only'
+  features.blocks.bookmark -[uses]-> framework.store '8 imports, 5 type-only'
+  features.blocks.bookmark -[uses]-> model_.model_ '14 imports, 4 type-only'
   features.blocks.callout -[uses]-> features.components '4 imports'
   features.blocks.callout -[uses]-> features.ext-loader '2 imports'
   features.blocks.callout -[uses]-> features.inlines.preset '1 import'
@@ -3578,14 +3579,14 @@ model {
   features.blocks.edgeless-text -[uses]-> framework.std '4 imports'
   features.blocks.edgeless-text -[uses]-> framework.store '2 imports, 2 type-only'
   features.blocks.edgeless-text -[uses]-> model_.model_ '4 imports'
-  features.blocks.embed -[uses]-> features.blocks.surface '18 imports'
-  features.blocks.embed -[uses]-> features.components '20 imports'
+  features.blocks.embed -[uses]-> features.blocks.surface '17 imports'
+  features.blocks.embed -[uses]-> features.components '17 imports'
   features.blocks.embed -[uses]-> features.ext-loader '2 imports'
-  features.blocks.embed -[uses]-> features.shared '91 imports, 5 type-only'
+  features.blocks.embed -[uses]-> features.shared '88 imports, 5 type-only'
   features.blocks.embed -[uses]-> features.widgets.slash-menu '10 imports, 5 type-only'
   features.blocks.embed -[uses]-> framework.global_ '11 imports'
   features.blocks.embed -[uses]-> framework.std '41 imports, 10 type-only'
-  features.blocks.embed -[uses]-> framework.store '25 imports, 19 type-only'
+  features.blocks.embed -[uses]-> framework.store '24 imports, 19 type-only'
   features.blocks.embed -[uses]-> model_.model_ '56 imports, 15 type-only'
   features.blocks.embed-doc -[uses]-> features.blocks.embed '10 imports'
   features.blocks.embed-doc -[uses]-> features.blocks.surface '7 imports'
@@ -4594,15 +4595,16 @@ model {
   features.blocks.bookmark.commands -[imports]-> features.shared.services '2 imports'
   features.blocks.bookmark.commands -[imports]-> framework.std.src '2 imports, 2 type-only'
   features.blocks.bookmark.commands -[imports]-> model_.model_.src '1 import, 1 type-only'
-  features.blocks.bookmark.components -[imports]-> features.blocks.bookmark.src '3 imports, 1 type-only'
+  features.blocks.bookmark.components -[imports]-> features.blocks.bookmark.src '5 imports, 1 type-only'
   features.blocks.bookmark.components -[imports]-> features.blocks.embed.src '1 import'
-  features.blocks.bookmark.components -[imports]-> features.components.icons_ '1 import'
+  features.blocks.bookmark.components -[imports]-> features.components.icons_ '2 imports'
   features.blocks.bookmark.components -[imports]-> features.shared.adapters '1 import'
-  features.blocks.bookmark.components -[imports]-> features.shared.services '1 import'
+  features.blocks.bookmark.components -[imports]-> features.shared.services '2 imports'
   features.blocks.bookmark.components -[imports]-> features.shared.utils '1 import'
-  features.blocks.bookmark.components -[imports]-> framework.global_.lit '1 import'
-  features.blocks.bookmark.components -[imports]-> framework.std.src '1 import'
-  features.blocks.bookmark.configs -[imports]-> features.blocks.bookmark.src '2 imports'
+  features.blocks.bookmark.components -[imports]-> framework.global_.lit '2 imports'
+  features.blocks.bookmark.components -[imports]-> framework.std.src '2 imports'
+  features.blocks.bookmark.components -[imports]-> model_.model_.src '1 import, 1 type-only'
+  features.blocks.bookmark.configs -[imports]-> features.blocks.bookmark.src '3 imports'
   features.blocks.bookmark.configs -[imports]-> features.blocks.embed.src '1 import'
   features.blocks.bookmark.configs -[imports]-> features.blocks.surface.src '2 imports'
   features.blocks.bookmark.configs -[imports]-> features.components.embed-card-modal '1 import'
@@ -4616,21 +4618,24 @@ model {
   features.blocks.bookmark.configs -[imports]-> framework.std.src '1 import'
   features.blocks.bookmark.configs -[imports]-> framework.store.src '2 imports, 1 type-only'
   features.blocks.bookmark.configs -[imports]-> model_.model_.src '2 imports'
+  features.blocks.bookmark.src -[imports]-> features.blocks.attachment.src '1 import'
   features.blocks.bookmark.src -[imports]-> features.blocks.bookmark.adapters '1 import'
-  features.blocks.bookmark.src -[imports]-> features.blocks.bookmark.components '1 import'
+  features.blocks.bookmark.src -[imports]-> features.blocks.bookmark.components '2 imports'
   features.blocks.bookmark.src -[imports]-> features.blocks.bookmark.configs '2 imports'
-  features.blocks.bookmark.src -[imports]-> features.blocks.surface.src '1 import'
+  features.blocks.bookmark.src -[imports]-> features.blocks.surface.src '2 imports'
   features.blocks.bookmark.src -[imports]-> features.components.caption '1 import'
+  features.blocks.bookmark.src -[imports]-> features.components.toast '1 import'
   features.blocks.bookmark.src -[imports]-> features.ext-loader.src '2 imports'
   features.blocks.bookmark.src -[imports]-> features.shared.adapters '1 import'
-  features.blocks.bookmark.src -[imports]-> features.shared.consts '1 import'
-  features.blocks.bookmark.src -[imports]-> features.shared.services '3 imports'
+  features.blocks.bookmark.src -[imports]-> features.shared.consts '2 imports'
+  features.blocks.bookmark.src -[imports]-> features.shared.services '4 imports'
   features.blocks.bookmark.src -[imports]-> features.shared.theme '1 import'
-  features.blocks.bookmark.src -[imports]-> features.shared.utils '2 imports'
-  features.blocks.bookmark.src -[imports]-> framework.std.gfx '1 import'
-  features.blocks.bookmark.src -[imports]-> framework.std.src '3 imports'
-  features.blocks.bookmark.src -[imports]-> framework.store.src '1 import, 1 type-only'
-  features.blocks.bookmark.src -[imports]-> model_.model_.src '4 imports, 1 type-only'
+  features.blocks.bookmark.src -[imports]-> features.shared.utils '3 imports'
+  features.blocks.bookmark.src -[imports]-> framework.global_.gfx '1 import'
+  features.blocks.bookmark.src -[imports]-> framework.std.gfx '2 imports'
+  features.blocks.bookmark.src -[imports]-> framework.std.src '4 imports'
+  features.blocks.bookmark.src -[imports]-> framework.store.src '2 imports, 2 type-only'
+  features.blocks.bookmark.src -[imports]-> model_.model_.src '5 imports, 2 type-only'
   features.blocks.callout.adapters -[imports]-> features.shared.adapters '1 import'
   features.blocks.callout.adapters -[imports]-> framework.store.src '1 import'
   features.blocks.callout.adapters -[imports]-> model_.model_.src '1 import'
@@ -4887,13 +4892,9 @@ model {
   features.blocks.embed.embed-github-block -[imports]-> model_.model_.src '9 imports, 2 type-only'
   features.blocks.embed.embed-html-block -[imports]-> features.blocks.embed.common '3 imports'
   features.blocks.embed.embed-html-block -[imports]-> features.blocks.embed.src '1 import'
-  features.blocks.embed.embed-html-block -[imports]-> features.blocks.surface.src '1 import'
-  features.blocks.embed.embed-html-block -[imports]-> features.components.context-menu '1 import'
-  features.blocks.embed.embed-html-block -[imports]-> features.components.toast '1 import'
-  features.blocks.embed.embed-html-block -[imports]-> features.shared.services '4 imports'
-  features.blocks.embed.embed-html-block -[imports]-> features.shared.utils '1 import'
+  features.blocks.embed.embed-html-block -[imports]-> features.shared.services '2 imports'
   features.blocks.embed.embed-html-block -[imports]-> framework.std.src '3 imports'
-  features.blocks.embed.embed-html-block -[imports]-> framework.store.src '3 imports, 2 type-only'
+  features.blocks.embed.embed-html-block -[imports]-> framework.store.src '2 imports, 2 type-only'
   features.blocks.embed.embed-html-block -[imports]-> model_.model_.src '4 imports, 1 type-only'
   features.blocks.embed.embed-iframe-block -[imports]-> features.blocks.embed.common '5 imports'
   features.blocks.embed.embed-iframe-block -[imports]-> features.blocks.embed.src '7 imports'
@@ -4945,11 +4946,10 @@ model {
   features.blocks.embed.embed-youtube-block -[imports]-> model_.model_.src '9 imports, 2 type-only'
   features.blocks.embed.src -[imports]-> features.blocks.embed.embed-figma-block '6 imports'
   features.blocks.embed.src -[imports]-> features.blocks.embed.embed-github-block '6 imports'
-  features.blocks.embed.src -[imports]-> features.blocks.embed.embed-html-block '5 imports'
+  features.blocks.embed.src -[imports]-> features.blocks.embed.embed-html-block '4 imports'
   features.blocks.embed.src -[imports]-> features.blocks.embed.embed-iframe-block '11 imports'
   features.blocks.embed.src -[imports]-> features.blocks.embed.embed-loom-block '6 imports'
   features.blocks.embed.src -[imports]-> features.blocks.embed.embed-youtube-block '6 imports'
-  features.blocks.embed.src -[imports]-> features.components.html-frame '1 import'
   features.blocks.embed.src -[imports]-> features.ext-loader.src '2 imports'
   features.blocks.embed.src -[imports]-> features.shared.services '2 imports'
   features.blocks.embed.src -[imports]-> framework.std.src '1 import, 1 type-only'

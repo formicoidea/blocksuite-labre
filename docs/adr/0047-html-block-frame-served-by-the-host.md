@@ -1,7 +1,9 @@
 # ADR 0047 — The html block may run in a page its host serves
 
 - Status: **proposed** (2026-11-03, amended 2026-11-04, awaiting the product
-  owner's review)
+  owner's review). The block itself is retired by the amendment of 2026-11-04 of
+  [ADR 0048](0048-html-attachment-and-shared-frame.md): no `srcdoc` is left, and
+  what follows now applies to the html attachment, through `HtmlFileConfigExtension`.
 - Deciders: Mathieu Jolly
 - Related ADRs: [0028](0028-iframe-sandbox-policy.md) (every iframe is
   sandboxed; the CSP is the host's business; this ADR adds its fourth level)
