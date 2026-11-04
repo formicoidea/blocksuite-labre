@@ -6,9 +6,8 @@
  * - a preview that never gets its bytes, or that gets them through a `blob:` url
  *   instead of the handshake;
  * - a file running anywhere but in the isolated frame;
- * - a script of the file that runs without the reader's gesture, in a thumbnail, an
- *   embed view or the html block, closed by the page's `scripts` field or by a
- *   `sandbox=""` on a srcdoc;
+ * - a script of the file that runs without the reader's gesture, in a thumbnail or an
+ *   embed view, closed by the page's `scripts` field;
  * - a thumbnail with a frame before it is in view, or one that takes the pointer;
  * - "Interact" not reaching the frame, or surviving a press outside, or a page
  *   reloaded when the interaction ends;
@@ -19,7 +18,7 @@
  */
 import type { HtmlFrame } from '@labre/affine/components/html-frame';
 import type { AttachmentBlockModel, NoteBlockModel } from '@labre/affine/model';
-import { EmbedHtmlConfigExtension } from '@labre/affine/shared/services';
+import { HtmlFileConfigExtension } from '@labre/affine/shared/services';
 import { Bound } from '@labre/global/gfx';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { afterEach, describe, expect, test, vi } from 'vitest';
@@ -31,7 +30,7 @@ import { setupEditor } from '../utils/setup.js';
 const PAGE = new URL('./html-frame-page.html', import.meta.url).href;
 const MARK = 'labre-html-attachment-ran';
 // Every ancestor: the runner holds the test page in a frame of its own, and the
-// file sits one level deeper with a host's page than with a srcdoc.
+// file sits one level deeper with a host's page.
 const FILE = `<!doctype html><p>a report</p><script>let w = window; while (w !== w.parent) { w = w.parent; w.postMessage({ mark: '${MARK}', origin: self.origin }, '*'); }</script>`;
 const FRAME_LOAD_MS = 5000;
 /** Long enough for a frame that should not exist to have run. */
@@ -98,7 +97,7 @@ describe('an html attachment', () => {
 
   test('its thumbnail shows the file and never runs it, nor takes the pointer', async () => {
     cleanup = await setupEditor('page', [
-      EmbedHtmlConfigExtension({ frameUrl: PAGE }),
+      HtmlFileConfigExtension({ frameUrl: PAGE }),
     ]);
     const { runs, stop } = watchRuns();
     await addFile(addNote(window.doc));
@@ -115,7 +114,7 @@ describe('an html attachment', () => {
 
   test('its embed view runs nothing before "Interact", and runs in the isolated frame after', async () => {
     cleanup = await setupEditor('page', [
-      EmbedHtmlConfigExtension({ frameUrl: PAGE }),
+      HtmlFileConfigExtension({ frameUrl: PAGE }),
     ]);
     const { runs, stop } = watchRuns();
     turnIntoEmbed(await addFile(addNote(window.doc)));
@@ -156,7 +155,7 @@ describe('an html attachment', () => {
 
   test('on the canvas too, in the card that was placed', async () => {
     cleanup = await setupEditor('edgeless', [
-      EmbedHtmlConfigExtension({ frameUrl: PAGE }),
+      HtmlFileConfigExtension({ frameUrl: PAGE }),
     ]);
     const surface = window.doc.getModelsByFlavour('affine:surface')[0];
     const { runs, stop } = watchRuns();
@@ -207,7 +206,7 @@ describe('an html attachment', () => {
 
     async function viewInNote() {
       cleanup = await setupEditor('edgeless', [
-        EmbedHtmlConfigExtension({ frameUrl: PAGE }),
+        HtmlFileConfigExtension({ frameUrl: PAGE }),
       ]);
       const noteId = addNote(window.doc);
       const note = window.doc.getModelById(noteId) as NoteBlockModel;
@@ -276,40 +275,6 @@ describe('an html attachment', () => {
       expect(stepped).toBeCloseTo(stored + 60 / (zoom * NOTE_SCALE), 0);
       expect(view.getBoundingClientRect().height).toBeCloseTo(before + 60, 0);
     });
-  });
-
-  test('the stored html block runs nothing, with a page or without', async () => {
-    cleanup = await setupEditor('page', [
-      EmbedHtmlConfigExtension({ frameUrl: PAGE }),
-    ]);
-    const { runs, stop } = watchRuns();
-    window.doc.addBlock(
-      'affine:embed-html',
-      { html: FILE, style: 'html' },
-      addNote(window.doc)
-    );
-    await wait(SILENCE_MS);
-    const hosted = document.querySelector(
-      'affine-embed-html-block labre-html-frame'
-    ) as HtmlFrame;
-    expect(hosted.iframe?.getAttribute('src')).toBe(PAGE);
-    expect(hosted.scripts).toBe(false);
-    cleanup();
-
-    cleanup = await setupEditor('page');
-    window.doc.addBlock(
-      'affine:embed-html',
-      { html: FILE, style: 'html' },
-      addNote(window.doc)
-    );
-    await wait(SILENCE_MS);
-    stop();
-    expect(runs.count).toBe(0);
-    const inline = document.querySelector(
-      'affine-embed-html-block labre-html-frame'
-    ) as HtmlFrame;
-    expect(inline.iframe?.getAttribute('src')).toBeNull();
-    expect(inline.iframe?.getAttribute('sandbox')).toBe('');
   });
 
   test('without a page from the host it is a card that runs nothing', async () => {

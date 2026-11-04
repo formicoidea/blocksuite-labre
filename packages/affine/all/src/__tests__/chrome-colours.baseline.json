@@ -10,8 +10,6 @@
   "packages/affine/blocks/embed/src/embed-figma-block/styles.ts": 5,
   "packages/affine/blocks/embed/src/embed-github-block/configs/tooltips.ts": 5,
   "packages/affine/blocks/embed/src/embed-github-block/styles.ts": 7,
-  "packages/affine/blocks/embed/src/embed-html-block/configs/tooltips.ts": 23,
-  "packages/affine/blocks/embed/src/embed-html-block/styles.ts": 1,
   "packages/affine/blocks/embed/src/embed-iframe-block/components/embed-iframe-error-card.ts": 1,
   "packages/affine/blocks/embed/src/embed-iframe-block/components/embed-iframe-loading-card.ts": 1,
   "packages/affine/blocks/embed/src/embed-iframe-block/configs/slash-menu/tooltip.ts": 4,

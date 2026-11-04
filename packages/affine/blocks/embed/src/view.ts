@@ -14,10 +14,7 @@ import {
   EmbedGithubViewExtensions,
 } from './embed-github-block';
 import { EmbedGithubBlockInteraction } from './embed-github-block/embed-edgeless-github-block';
-import {
-  EdgelessClipboardEmbedHtmlConfig,
-  EmbedHtmlViewExtensions,
-} from './embed-html-block';
+import { EmbedHtmlViewExtensions } from './embed-html-block';
 import { EmbedEdgelessHtmlBlockInteraction } from './embed-html-block/embed-edgeless-html-block';
 import {
   EdgelessClipboardEmbedIframeConfig,
@@ -56,7 +53,6 @@ export class EmbedViewExtension extends ViewExtensionProvider {
       context.register([
         EdgelessClipboardEmbedFigmaConfig,
         EdgelessClipboardEmbedGithubConfig,
-        EdgelessClipboardEmbedHtmlConfig,
         EdgelessClipboardEmbedLoomConfig,
         EdgelessClipboardEmbedYoutubeConfig,
         EdgelessClipboardEmbedIframeConfig,

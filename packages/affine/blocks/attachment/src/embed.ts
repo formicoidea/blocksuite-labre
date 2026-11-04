@@ -8,7 +8,7 @@ import {
   EMBED_CARD_WIDTH,
 } from '@labre/affine-shared/consts';
 import {
-  EmbedHtmlConfigExtension,
+  HtmlFileConfigExtension,
   FileSizeLimitProvider,
 } from '@labre/affine-shared/services';
 import {
@@ -310,7 +310,7 @@ const embedConfig: AttachmentEmbedConfig[] = [
 ];
 
 function htmlFrameUrl(std: BlockStdScope) {
-  return std.getOptional(EmbedHtmlConfigExtension.identifier)?.frameUrl ?? null;
+  return std.getOptional(HtmlFileConfigExtension.identifier)?.frameUrl ?? null;
 }
 
 function renderHtmlView(

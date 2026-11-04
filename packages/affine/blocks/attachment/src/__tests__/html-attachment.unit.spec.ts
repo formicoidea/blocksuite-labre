@@ -11,7 +11,7 @@
  * - a host's `AttachmentEmbedConfig` of the previous shape no longer compiling.
  */
 import type { AttachmentBlockModel } from '@labre/affine-model';
-import { EmbedHtmlConfigExtension } from '@labre/affine-shared/services';
+import { HtmlFileConfigExtension } from '@labre/affine-shared/services';
 import { FileSizeLimitProvider } from '@labre/affine-shared/services';
 import { Container } from '@labre/global/di';
 import { type BlockStdScope, StdIdentifier } from '@labre/std';
@@ -43,7 +43,7 @@ function provider(frameUrl?: string) {
   const std = {
     get: (identifier: never) => di.provider().get(identifier),
     getOptional: (identifier: unknown) =>
-      identifier === EmbedHtmlConfigExtension.identifier && frameUrl
+      identifier === HtmlFileConfigExtension.identifier && frameUrl
         ? { frameUrl }
         : null,
   } as unknown as BlockStdScope;
