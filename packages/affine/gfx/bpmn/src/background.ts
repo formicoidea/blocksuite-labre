@@ -137,6 +137,9 @@ export const BPMN_POOL_BACKGROUND: FrameworkBackgroundDef = {
       // whole, and the rename editor shows it in full.
       fit: 'wrap',
       maxLines: 2,
+      // The author's size for every lane title of this pool, when they picked
+      // one in the toolbar; the declared size below otherwise (ADR 0049).
+      sizeProp: 'laneFontSize',
       style: {
         size: POOL_LANE_NAME_FONT_SIZE,
         color: '@name',
@@ -180,6 +183,9 @@ export const BPMN_POOL_BACKGROUND: FrameworkBackgroundDef = {
           // `x: 0` is the inner edge of the band; half a band width back from
           // it is the middle of the strip.
           anchor: { x: 0, y: 0.5, dx: -POOL_BAND_WIDTH / 2 },
+          // The author's size, when they picked one in the toolbar; the band
+          // thickens to hold it like it does a second line (ADR 0049).
+          sizeProp: 'nameFontSize',
           style: {
             size: POOL_NAME_FONT_SIZE,
             weight: 600,

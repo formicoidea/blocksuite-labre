@@ -13,13 +13,23 @@ import {
   ToolbarModuleExtension,
   translateKey,
 } from '@labre/affine-shared/services';
+import { getMostCommonValue } from '@labre/affine-shared/utils';
 import {
   BlockFlavourIdentifier,
   getRegisteredCommands,
   runCommand,
 } from '@labre/std';
+import { signal } from '@preact/signals-core';
 import { html, type TemplateResult } from 'lit';
 
+import {
+  BPMN_LANE_TITLE_SIZE,
+  BPMN_POOL_TITLE_SIZE,
+  POOL_LANE_NAME_FONT_SIZE,
+  POOL_LANE_NAME_FONT_SIZES,
+  POOL_NAME_FONT_SIZE,
+  POOL_NAME_FONT_SIZES,
+} from '../consts.js';
 import {
   bpmnExportXmlIcon,
   bpmnLaneAddIcon,
@@ -126,6 +136,90 @@ function commandAction(
 const findCommand = (ctx: ToolbarContext, id: string) =>
   getRegisteredCommands(ctx.std).find(candidate => candidate.id === id);
 
+type BpmnPoolSizeProp = 'nameFontSize' | 'laneFontSize';
+
+/** What a pool that stores no size paints, per prop. */
+const DECLARED_SIZE: Record<BpmnPoolSizeProp, number> = {
+  nameFontSize: POOL_NAME_FONT_SIZE,
+  laneFontSize: POOL_LANE_NAME_FONT_SIZE,
+};
+
+/**
+ * Write a picked title size onto every selected pool: one gesture, one undo
+ * step (`captureSync` first), nothing written on a readonly store, and a pool
+ * already showing that size left alone, since an unchanged write still pushes
+ * an undo entry. A pool that stores no size shows the declared one, so picking
+ * the declared size on it writes nothing: the key stays absent until the
+ * author changes what is painted.
+ *
+ * Exported for the spec, which drives it without a toolbar.
+ */
+export function setBpmnPoolTitleSize(
+  ctx: Pick<ToolbarContext, 'std'>,
+  models: readonly BpmnPoolElementModel[],
+  prop: BpmnPoolSizeProp,
+  size: number
+): void {
+  const store = ctx.std.store;
+  if (store.readonly) return;
+  const changed = models.filter(
+    model => (model[prop] ?? DECLARED_SIZE[prop]) !== size
+  );
+  if (!changed.length) return;
+
+  store.captureSync();
+  const crud = ctx.std.get(EdgelessCRUDIdentifier);
+  changed.forEach(model => crud.updateElement(model.id, { [prop]: size }));
+}
+
+/**
+ * A title-size dropdown, the shape of the text toolbar's `d.font-size`
+ * (`gfx/text/src/toolbar/actions.ts`) with the pool's own steps: a title band
+ * is not a free text, and the text list's 16 to 128 would let one name eat the
+ * flow area. The free input is clamped to the same range.
+ */
+function titleSizeAction(
+  id: string,
+  prop: BpmnPoolSizeProp,
+  label: ChromeWording,
+  sizes: readonly number[],
+  when?: (models: readonly BpmnPoolElementModel[]) => boolean
+) {
+  const items = sizes.map(value => ({ value }));
+  return {
+    id,
+    content(ctx: ToolbarContext) {
+      const models = ctx.getSurfaceModelsByType(BpmnPoolElementModel);
+      if (!models.length) return null;
+      if (when && !when(models)) return null;
+
+      const shown = models.map(model => ({
+        size: model[prop] ?? DECLARED_SIZE[prop],
+      }));
+      const size$ = signal(
+        getMostCommonValue(shown, 'size') ?? DECLARED_SIZE[prop]
+      );
+
+      const onPick = (e: CustomEvent<number>) => {
+        e.stopPropagation();
+        setBpmnPoolTitleSize(ctx, models, prop, e.detail);
+      };
+
+      return html`<affine-size-dropdown-menu
+        @select=${onPick}
+        .label=${translateKey(ctx.std, ...label)}
+        .sizes=${items}
+        .minSize=${sizes[0]}
+        .maxSize=${sizes[sizes.length - 1]}
+        .size$=${size$}
+      ></affine-size-dropdown-menu>`;
+    },
+  };
+}
+
+const hasLanes = (models: readonly BpmnPoolElementModel[]) =>
+  models.some(model => (model.lanes?.length ?? 0) > 0);
+
 export const bpmnPoolToolbarConfig = {
   actions: [
     booleanToggle(
@@ -167,6 +261,22 @@ export const bpmnPoolToolbarConfig = {
       'com.labre.commands.bpmn.moveLaneDown',
       'Move lane down',
       bpmnLaneDownIcon
+    ),
+    // The author's title sizes (ADR 0049), after the lane gestures: they are
+    // about how the pool reads rather than how it is cut. `b.size-*` sorts
+    // after `b.lane-*` and before the gated row's `c.legend`.
+    titleSizeAction(
+      'b.size-1-title',
+      'nameFontSize',
+      BPMN_POOL_TITLE_SIZE,
+      POOL_NAME_FONT_SIZES
+    ),
+    titleSizeAction(
+      'b.size-2-lanes',
+      'laneFontSize',
+      BPMN_LANE_TITLE_SIZE,
+      POOL_LANE_NAME_FONT_SIZES,
+      hasLanes
     ),
     // …and, in the "⋮", the one thing you do to a finished process rather than
     // to the shape of a pool: take it away as a file.

@@ -38,6 +38,7 @@ import type { BackgroundModelLike } from './labels.js';
 import {
   backgroundInVariant,
   backgroundLabelText,
+  backgroundSizedStyle,
   backgroundTexts,
   backgroundVisible,
 } from './labels.js';
@@ -479,7 +480,7 @@ export function createFrameworkBackgroundRenderer<
         backgroundLabelText(text, props, translation),
         tx,
         ty,
-        text.style,
+        backgroundSizedStyle(text.style, text.sizeProp, props),
         text.align,
         vertical,
         // `'wrap'` on a text with no band to grow is cut like `'ellipsis'`.
@@ -508,6 +509,11 @@ export function createFrameworkBackgroundRenderer<
       const dy = zoneLabel.dy ?? DEFAULT_INSTANCE_ZONE_LABEL_DY;
       const stackY = instanceZonesDef?.stack === 'y';
       const fitZone = zoneLabel.fit !== undefined;
+      const zoneStyle = backgroundSizedStyle(
+        zoneLabel.style,
+        zoneLabel.sizeProp,
+        props
+      );
 
       for (const zone of instanceZones) {
         // The strip is drawn for EVERY zone, named or not: it is the lane's
@@ -553,7 +559,7 @@ export function createFrameworkBackgroundRenderer<
           // what the style says: the room the text is given is the width of the
           // strip, and a baseline anchor there would push the words against the
           // divider.
-          const style = { ...zoneLabel.style, baseline: 'middle' as const };
+          const style = { ...zoneStyle, baseline: 'middle' as const };
           drawText(
             zone.name,
             strip.x + strip.w / 2,
@@ -573,7 +579,7 @@ export function createFrameworkBackgroundRenderer<
           zone.name,
           x0 + zone.rect.x * pw + dx,
           y0 + zone.rect.y * ph + dy,
-          zoneLabel.style,
+          zoneStyle,
           'left',
           false,
           fitZone
