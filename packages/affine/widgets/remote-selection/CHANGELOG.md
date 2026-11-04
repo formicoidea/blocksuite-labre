@@ -1,5 +1,24 @@
 # @labre/affine-widget-remote-selection
 
+## 3.0.0
+
+### Patch Changes
+
+- Updated dependencies [0d3dac4]
+- Updated dependencies [0610ec1]
+- Updated dependencies [260fcd6]
+- Updated dependencies [ee98d7e]
+- Updated dependencies [56c1183]
+- Updated dependencies [3dd3c9f]
+  - @labre/affine-shared@3.0.0
+  - @labre/global@3.0.0
+  - @labre/affine-components@3.0.0
+  - @labre/affine-block-surface@3.0.0
+  - @labre/affine-ext-loader@3.0.0
+  - @labre/affine-model@3.0.0
+  - @labre/std@3.0.0
+  - @labre/store@3.0.0
+
 ## 2.5.0
 
 ### Patch Changes
