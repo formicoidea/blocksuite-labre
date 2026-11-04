@@ -484,6 +484,11 @@ export function getNearestConnectableAnchor(
   );
 }
 
+/** A rotation turns a bound about its centre, so the centre needs none. */
+function connectableCenter(ele: GfxModel) {
+  return new PointLocation(Bound.deserialize(ele.xywh).center);
+}
+
 function closestPoint(
   points: PointLocation[],
   point: IVec
@@ -989,6 +994,16 @@ function computeOffset(startBound: Bound | null, endBound: Bound | null) {
   return [startOffset, endOffset];
 }
 
+/**
+ * The first point of the route outside the end's bound. An end that is not
+ * on its bound edge is pushed out along a ray cast from inside; when that ray
+ * meets no edge (the end lies OUTSIDE the bound, or a coordinate is NaN) the
+ * point is returned unchanged. This used to throw "Failed to get line
+ * intersections for getNextPoint" from inside a microtask, unhandled in prod;
+ * `generateOrthogonalConnectorPath` now rejects such ends before they get
+ * here, so this is the last line of defence, never the route taken
+ * (`orthogonal-degenerate-route.unit.spec.ts`).
+ */
 function getNextPoint(
   bound: Bound,
   point: PointLocation,
@@ -1018,12 +1033,7 @@ function getNextPoint(
           result,
           [bound.maxX + 10, result[1]]
         );
-        if (!intersects) {
-          throw new BlockSuiteError(
-            BlockSuiteError.ErrorCode.ValueNotExists,
-            'Failed to get line intersections for getNextPoint'
-          );
-        }
+        if (!intersects) return result;
         result[0] = intersects[0] + offsetX;
       } else {
         const intersects = lineIntersects(
@@ -1032,12 +1042,7 @@ function getNextPoint(
           result,
           [bound.x - 10, result[1]]
         );
-        if (!intersects) {
-          throw new BlockSuiteError(
-            BlockSuiteError.ErrorCode.ValueNotExists,
-            'Failed to get line intersections for getNextPoint'
-          );
-        }
+        if (!intersects) return result;
         result[0] = intersects[0] - offsetX;
       }
     } else {
@@ -1048,12 +1053,7 @@ function getNextPoint(
           result,
           [result[0], bound.maxY + 10]
         );
-        if (!intersects) {
-          throw new BlockSuiteError(
-            BlockSuiteError.ErrorCode.ValueNotExists,
-            'Failed to get line intersections for getNextPoint'
-          );
-        }
+        if (!intersects) return result;
         result[1] = intersects[1] + offsetY;
       } else {
         const intersects = lineIntersects(
@@ -1062,12 +1062,7 @@ function getNextPoint(
           result,
           [result[0], bound.y - 10]
         );
-        if (!intersects) {
-          throw new BlockSuiteError(
-            BlockSuiteError.ErrorCode.ValueNotExists,
-            'Failed to get line intersections for getNextPoint'
-          );
-        }
+        if (!intersects) return result;
         result[1] = intersects[1] - offsetY;
       }
     }
@@ -1377,6 +1372,37 @@ export class ConnectionOverlay extends Overlay {
   }
 }
 
+const ON_EDGE_EPSILON = 0.0001;
+
+function isFinitePoint(point: IVec) {
+  return Number.isFinite(point[0]) && Number.isFinite(point[1]);
+}
+
+/**
+ * The orthogonal router assumes each bound end lies on or inside a bound with
+ * an area: getNextPoint pushes it out across an edge, pushGapMidPoint reads
+ * the edges facing it. A flat or NaN bound (the [0,0,0,0] defaults of #318),
+ * or an end outside its bound (a stored position outside [0,1]) breaks both.
+ * The tolerance is getNextPoint's own `almostEqual` epsilon: a point that
+ * close to an edge is on it there, anything further out has no edge to cross.
+ */
+function isRoutableEnd(bound: Bound | null, point: IVec) {
+  if (!bound) return true;
+  const { x, y, w, h } = bound;
+  if (![x, y, w, h].every(Number.isFinite) || w <= 0 || h <= 0) return false;
+  return bound.expand(ON_EDGE_EPSILON).isPointInBound(point, 0);
+}
+
+let degenerateRouteWarned = false;
+
+function warnDegenerateRouteOnce() {
+  if (degenerateRouteWarned) return;
+  degenerateRouteWarned = true;
+  console.warn(
+    'Connector: an orthogonal route had a degenerate end (flat or NaN bound, or an end outside its element); drawn as a direct path.'
+  );
+}
+
 export class PathGenerator {
   protected _aStarRunner: AStarRunner | null = null;
 
@@ -1428,6 +1454,25 @@ export class PathGenerator {
   }
 
   generateOrthogonalConnectorPath(input: OrthogonalConnectorInput): IVec[] {
+    // A route never throws: it runs inside the connector watcher's microtask
+    // and during paint, where an exception escapes every handler. An input
+    // the router cannot handle degrades — no point to draw, an empty path
+    // (`updatePath` keeps the last bound); a point fine but an end unroutable,
+    // the direct elbow. Nothing is written either way: path and xywh are
+    // `@local` (orthogonal-degenerate-route.unit.spec.ts).
+    const { startPoint: start, endPoint: end } = input;
+    if (!isFinitePoint(start) || !isFinitePoint(end)) {
+      warnDegenerateRouteOnce();
+      return [];
+    }
+    if (
+      !isRoutableEnd(input.startBound, start) ||
+      !isRoutableEnd(input.endBound, end)
+    ) {
+      warnDegenerateRouteOnce();
+      return getDirectPath(start, end);
+    }
+
     const info = this._prepareOrthogonalConnectorInfo(input);
     const [startPoint, endPoint, nextStartPoint, lastEndPoint] = info;
     const [, , , , startBound, endBound, expandStartBound, expandEndBound] =
@@ -1609,20 +1654,29 @@ export class ConnectorPathGenerator extends PathGenerator {
       const startAnchors = getAnchors(start);
       const endAnchors = getAnchors(end);
       let minDist = Infinity;
-      let minStartAnchor = new PointLocation();
-      let minEndAnchor = new PointLocation();
       for (const sa of startAnchors) {
         for (const ea of endAnchors) {
           const dist = Vec.dist(sa.point, ea.point);
           if (dist + 0.1 < minDist) {
             minDist = dist;
-            minStartAnchor = sa.point;
-            minEndAnchor = ea.point;
+            startPoint = sa.point;
+            endPoint = ea.point;
           }
         }
       }
-      startPoint = minStartAnchor;
-      endPoint = minEndAnchor;
+      // An end with no anchor at all (a non-shape element whose xywh is the
+      // [0,0,0,0] default #318 left, or a NaN bound) used to keep a [0,0]
+      // sentinel, routed against the element's real bound: the throw in
+      // getNextPoint. The element's centre stands in for the missing anchor,
+      // so the connector stays drawn (orthogonal-degenerate-route spec).
+      if (!startPoint || !endPoint) {
+        startPoint =
+          getNearestConnectableAnchor(start, connectableCenter(end)) ??
+          connectableCenter(start);
+        endPoint =
+          getNearestConnectableAnchor(end, startPoint) ??
+          connectableCenter(end);
+      }
     } else {
       startPoint = this._getConnectionPoint(connector, 'source');
       endPoint = this._getConnectionPoint(connector, 'target');
