@@ -4,7 +4,11 @@ import {
 } from '@labre/affine-ext-loader';
 import { AttachmentBlockSchema } from '@labre/affine-model';
 import { SlashMenuConfigExtension } from '@labre/affine-widget-slash-menu';
-import { BlockViewExtension, FlavourExtension } from '@labre/std';
+import {
+  BlockViewExtension,
+  CommandExtension,
+  FlavourExtension,
+} from '@labre/std';
 import { literal } from 'lit/static-html.js';
 
 import { AttachmentBlockInteraction } from './attachment-edgeless-block.js';
@@ -17,6 +21,7 @@ import {
   AttachmentEmbedConfigExtension,
   AttachmentEmbedService,
 } from './embed';
+import { attachmentReplaceCommands } from './replace-commands.js';
 
 const flavour = AttachmentBlockSchema.model.flavour;
 
@@ -46,6 +51,7 @@ export class AttachmentViewExtension extends ViewExtensionProvider {
     if (this.isEdgeless(context.scope)) {
       context.register(EdgelessClipboardAttachmentConfig);
       context.register(AttachmentBlockInteraction);
+      context.register(CommandExtension(attachmentReplaceCommands));
     }
   }
 }

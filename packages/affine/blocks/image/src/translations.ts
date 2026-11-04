@@ -109,20 +109,20 @@ export const IMAGE_TOOLBAR_REPLACE: ChromeWording = [
  * image (ADR 0044): the toolbar entries and the commands they run share these
  * keys, so the palette and the toolbar say the same words.
  */
-export const IMAGE_REPLACE_WITH_IMAGE: ChromeWording = [
-  'com.labre.image.replace.with-image',
-  'Replace with image',
+export const IMAGE_REPLACE_WITH_ASSET: ChromeWording = [
+  'com.labre.image.replace.with-asset',
+  'Replace with image or file',
 ];
 
 export const IMAGE_REPLACE_WITH_IMAGE_DESCRIPTION: ChromeWording = [
   'com.labre.image.replace.with-image.description',
-  'Put a picture in place of this shape, cut to its box.',
+  'Put an image or a file in place of this shape, in its box.',
 ];
 
 /** `canvas.image.replaceWithImage`: the same label, said of an image. */
 export const IMAGE_REPLACE_PICTURE_DESCRIPTION: ChromeWording = [
   'com.labre.image.replace.picture.description',
-  'Put another picture in this image, from the library or a file.',
+  'Put another image or a file in place of this image, in its frame.',
 ];
 
 export const IMAGE_REPLACE_WITH_SHAPE: ChromeWording = [
@@ -158,7 +158,7 @@ export const IMAGE_WORDINGS: readonly ChromeWording[] = [
   IMAGE_TOAST_COPIED,
   IMAGE_TOAST_READ_SIZE_FAILED,
   IMAGE_TOOLBAR_REPLACE,
-  IMAGE_REPLACE_WITH_IMAGE,
+  IMAGE_REPLACE_WITH_ASSET,
   IMAGE_REPLACE_WITH_IMAGE_DESCRIPTION,
   IMAGE_REPLACE_PICTURE_DESCRIPTION,
   IMAGE_REPLACE_WITH_SHAPE,

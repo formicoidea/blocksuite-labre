@@ -16,6 +16,7 @@
   "dependencies": {
     "@blocksuite/icons": "^2.2.12",
     "@floating-ui/dom": "^1.6.13",
+    "@labre/affine-block-image": "workspace:*",
     "@labre/affine-block-surface": "workspace:*",
     "@labre/affine-components": "workspace:*",
     "@labre/affine-ext-loader": "workspace:*",

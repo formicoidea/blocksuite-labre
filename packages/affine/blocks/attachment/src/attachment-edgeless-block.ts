@@ -46,13 +46,17 @@ export class AttachmentEdgelessBlockComponent extends toGfxBlockComponent(
     const width = EMBED_CARD_WIDTH[cardStyle];
     const height = EMBED_CARD_HEIGHT[cardStyle];
     const bound = this.model.elementBound;
-    const scaleX = bound.w / width;
-    const scaleY = bound.h / height;
+    // Contained, in the middle of the box: a « Replace » leaves a card in a frame of
+    // any proportions (ADR 0044, amendment of 2026-11-04), and stretched words read
+    // badly. A card resized by hand keeps its ratio, so this is its old scale.
+    const scale = Math.min(bound.w / width, bound.h / height);
+    const left = (bound.w - width * scale) / 2;
+    const top = (bound.h - height * scale) / 2;
 
     this.containerStyleMap = styleMap({
       width: `${width}px`,
       height: `${height}px`,
-      transform: `scale(${scaleX}, ${scaleY})`,
+      transform: `translate(${left}px, ${top}px) scale(${scale})`,
       transformOrigin: '0 0',
       overflow: 'hidden',
     });

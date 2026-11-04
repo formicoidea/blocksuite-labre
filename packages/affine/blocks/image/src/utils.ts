@@ -272,6 +272,39 @@ export async function imageSourceFromFile(
   return buildPropsWith(std, file).catch(() => null);
 }
 
+/** A file that is not a picture, as an attachment holds it. */
+export type FileReplacement = {
+  sourceId: string;
+  name: string;
+  type: string;
+  size: number;
+};
+
+/**
+ * A file the system chooser answered to a « Replace », uploaded. `null` over the
+ * size limit (said in a toast) or when the upload is refused.
+ */
+export async function fileSourceFromFile(
+  std: BlockStdScope,
+  file: File
+): Promise<FileReplacement | null> {
+  if (hasExceeded(std, [file])) return null;
+  try {
+    const sourceId = await std.store.blobSync.set(file);
+    let { type } = file;
+    if (!type) {
+      const FileType = await import('file-type');
+      const sniffed = await FileType.fileTypeFromBuffer(
+        await file.arrayBuffer()
+      );
+      type = sniffed?.mime ?? '';
+    }
+    return { sourceId, name: file.name, type, size: file.size };
+  } catch {
+    return null;
+  }
+}
+
 export async function addSiblingImageBlocks(
   std: BlockStdScope,
   files: File[],

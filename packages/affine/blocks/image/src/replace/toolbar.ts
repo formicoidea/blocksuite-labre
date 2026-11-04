@@ -25,12 +25,16 @@ import {
   ShapeIcon,
 } from '@blocksuite/icons/lit';
 import type { ButtonPopperOptions } from '@labre/affine-shared/utils';
-import { BlockFlavourIdentifier, runCommand } from '@labre/std';
+import {
+  BlockFlavourIdentifier,
+  type BlockStdScope,
+  runCommand,
+} from '@labre/std';
 import { html, nothing } from 'lit';
 import { createRef, ref } from 'lit/directives/ref.js';
 
 import {
-  IMAGE_REPLACE_WITH_IMAGE,
+  IMAGE_REPLACE_WITH_ASSET,
   IMAGE_REPLACE_WITH_SHAPE,
   IMAGE_TOOLBAR_REPLACE,
 } from '../translations.js';
@@ -42,6 +46,7 @@ import {
   replaceImageWithShapeCommand,
   replaceShapeWithImageCommand,
 } from './commands.js';
+import type { ReplacementShape } from './replace-model.js';
 
 const FROM_TOOLBAR = {
   surface: 'contextual-toolbar',
@@ -69,13 +74,14 @@ const SUBMENU_POPPER: Partial<ButtonPopperOptions> = {
 
 function renderShapeSubmenu(
   ctx: ToolbarContext,
-  outer: ReturnType<typeof createRef<EditorMenuButton>>
+  outer: ReturnType<typeof createRef<EditorMenuButton>>,
+  toShape: (std: BlockStdScope, shape: ReplacementShape) => void
 ) {
   const label = translateKey(ctx.std, ...IMAGE_REPLACE_WITH_SHAPE);
   const onPick = (name: ShapeName | null) => {
     if (!name) return;
     outer.value?.hide();
-    runCommand(ctx.std, replaceImageWithShapeCommand, FROM_TOOLBAR, {
+    toShape(ctx.std, {
       shapeType: getShapeType(name),
       radius: getShapeRadius(name),
     });
@@ -118,75 +124,84 @@ function renderShapeSubmenu(
 }
 
 /**
- * « Replace » on a canvas image's toolbar (ADR 0044, amendment of
- * 2026-10-27): ONE menu where there were two buttons, because the product
- * owner wants the choice in one place — « Replace with image » (another
- * picture, from the host's library or the system file chooser,
- * `canvas.image.replaceWithImage`) and « Replace with shape », a sub-menu of
- * the shape tool's shapes (`canvas.image.replaceWithShape` with the picked
- * `shapeType` and `radius`). It keeps the id `a.replace`, so it sits where the
- * old « Replace » did. Each entry shows only when its command would act.
+ * « Replace » on a canvas element's toolbar (ADR 0044, amendments of 2026-10-27 and
+ * 2026-11-04): ONE menu, for an image and for an attachment. An entry opens the
+ * dialog, whose answer may be any type, and a sub-menu lists the shape tool's shapes.
+ * Each entry shows only when its command would act.
  */
-export const imageReplaceMenuToolbarAction: ToolbarAction = {
-  id: 'a.replace',
-  when: ctx =>
-    !ctx.readonly &&
-    (replaceablePicture(ctx.std) !== null ||
-      replaceableImage(ctx.std) !== null),
-  content(ctx) {
-    const picture = replaceablePicture(ctx.std) !== null;
-    const toShape = replaceableImage(ctx.std) !== null;
-    if (!picture && !toShape) return null;
-    const label = translateKey(ctx.std, ...IMAGE_TOOLBAR_REPLACE);
-    const withImage = translateKey(ctx.std, ...IMAGE_REPLACE_WITH_IMAGE);
-    const outer = createRef<EditorMenuButton>();
+export function replaceMenuToolbarAction(how: {
+  id: string;
+  canPick: (std: BlockStdScope) => boolean;
+  canShape: (std: BlockStdScope) => boolean;
+  pick: (std: BlockStdScope) => void;
+  toShape: (std: BlockStdScope, shape: ReplacementShape) => void;
+  disabled?: (ctx: ToolbarContext) => boolean;
+}): ToolbarAction {
+  return {
+    id: how.id,
+    when: ctx =>
+      !ctx.readonly && (how.canPick(ctx.std) || how.canShape(ctx.std)),
+    content(ctx) {
+      const picture = how.canPick(ctx.std);
+      const toShape = how.canShape(ctx.std);
+      if (!picture && !toShape) return null;
+      const label = translateKey(ctx.std, ...IMAGE_TOOLBAR_REPLACE);
+      const withImage = translateKey(ctx.std, ...IMAGE_REPLACE_WITH_ASSET);
+      const outer = createRef<EditorMenuButton>();
 
-    return html`
-      <editor-menu-button
-        ${ref(outer)}
-        data-testid="image-replace-menu"
-        .contentPadding=${'8px'}
-        .button=${html`
-          <editor-icon-button
-            aria-label=${label}
-            data-testid="image-replace-button"
-            .tooltip=${label}
-          >
-            ${ReplaceIcon()} ${EditorChevronDown}
-          </editor-icon-button>
-        `}
-      >
-        <div data-size="large" data-orientation="vertical">
-          ${picture
-            ? html`
-                <editor-menu-action
-                  aria-label=${withImage}
-                  data-testid="image-replace-with-image"
-                  @click=${() =>
-                    runCommand(
-                      ctx.std,
-                      replaceImageWithImageCommand,
-                      FROM_TOOLBAR
-                    )}
-                >
-                  ${ImageIcon()}
-                  <span class="label">${withImage}</span>
-                </editor-menu-action>
-              `
-            : nothing}
-          ${toShape ? renderShapeSubmenu(ctx, outer) : nothing}
-        </div>
-      </editor-menu-button>
-    `;
-  },
-};
+      return html`
+        <editor-menu-button
+          ${ref(outer)}
+          data-testid="image-replace-menu"
+          .contentPadding=${'8px'}
+          .button=${html`
+            <editor-icon-button
+              aria-label=${label}
+              data-testid="image-replace-button"
+              .tooltip=${label}
+              .disabled=${how.disabled?.(ctx) ?? false}
+            >
+              ${ReplaceIcon()} ${EditorChevronDown}
+            </editor-icon-button>
+          `}
+        >
+          <div data-size="large" data-orientation="vertical">
+            ${picture
+              ? html`
+                  <editor-menu-action
+                    aria-label=${withImage}
+                    data-testid="image-replace-with-image"
+                    @click=${() => how.pick(ctx.std)}
+                  >
+                    ${ImageIcon()}
+                    <span class="label">${withImage}</span>
+                  </editor-menu-action>
+                `
+              : nothing}
+            ${toShape ? renderShapeSubmenu(ctx, outer, how.toShape) : nothing}
+          </div>
+        </editor-menu-button>
+      `;
+    },
+  };
+}
+
+/** It keeps the id `a.replace`, so it sits where the old « Replace » did. */
+export const imageReplaceMenuToolbarAction = replaceMenuToolbarAction({
+  id: 'a.replace',
+  canPick: std => replaceablePicture(std) !== null,
+  canShape: std => replaceableImage(std) !== null,
+  pick: std => runCommand(std, replaceImageWithImageCommand, FROM_TOOLBAR),
+  toShape: (std, shape) =>
+    runCommand(std, replaceImageWithShapeCommand, FROM_TOOLBAR, shape),
+});
 
 const shapeReplaceToolbarConfig = {
   actions: [
     {
       id: 'h.replace-with-image',
-      tooltip: IMAGE_REPLACE_WITH_IMAGE[1],
-      tooltipWording: IMAGE_REPLACE_WITH_IMAGE,
+      tooltip: IMAGE_REPLACE_WITH_ASSET[1],
+      tooltipWording: IMAGE_REPLACE_WITH_ASSET,
       icon: ImageIcon(),
       when: ctx => !ctx.readonly && replaceableShape(ctx.std) !== null,
       run: ctx =>

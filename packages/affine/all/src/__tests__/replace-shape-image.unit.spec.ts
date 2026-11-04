@@ -51,7 +51,7 @@ import {
   FileSizeLimitProvider,
   TelemetryProvider,
 } from '@labre/affine-shared/services';
-import { openFilesWith } from '@labre/affine-shared/utils';
+import { openSingleFileWith } from '@labre/affine-shared/utils';
 import { type BlockStdScope, runCommandAsync } from '@labre/std';
 import { DEFAULT_LAYER_ID, GfxControllerIdentifier } from '@labre/std/gfx';
 import { type Store, Text } from '@labre/store';
@@ -64,7 +64,7 @@ vi.mock('@labre/affine-components/toast', () => ({ toast: vi.fn() }));
 vi.mock('@labre/affine-shared/utils', async importOriginal => ({
   ...(await importOriginal<typeof import('@labre/affine-shared/utils')>()),
   // The system file chooser, answered by each test; cancelled by default.
-  openFilesWith: vi.fn(async () => null),
+  openSingleFileWith: vi.fn(async () => null),
   // happy-dom never decodes an image: the measured size is given here.
   readImageSize: vi.fn(async () => ({ width: 80, height: 20 })),
 }));
@@ -558,7 +558,7 @@ describe('the commands', () => {
         );
       },
     });
-    vi.mocked(openFilesWith).mockClear();
+    vi.mocked(openSingleFileWith).mockClear();
 
     const toImage = command(REPLACE_IMAGE_WITH_IMAGE);
     expect(toImage.when!(std)).toBe(true);
@@ -567,10 +567,10 @@ describe('the commands', () => {
     expect(requests).toEqual([
       { kind: 'image', mode: 'replace', multiple: false, docId: store.id },
     ]);
-    expect(openFilesWith).not.toHaveBeenCalled();
+    expect(openSingleFileWith).not.toHaveBeenCalled();
     const image = store.getModelById(imageId) as ImageBlockModel;
     expect(image.props.sourceId).toBe('blob-2');
-    // The corner and the width stay, the height follows the new 2:1 ratio.
+    // The frame does not move (ADR 0044, amendment of 2026-11-04).
     expect(image.props.xywh).toBe('[10,20,200,100]');
     expect(events).toEqual([
       {
@@ -589,14 +589,14 @@ describe('the commands', () => {
   test('image → image opens the system file chooser without a host', async () => {
     const { store, std, imageId, events, services } = selectedImage();
     services.set(FileSizeLimitProvider, { maxFileSize: 1024 * 1024 });
-    vi.mocked(openFilesWith).mockClear();
-    vi.mocked(openFilesWith).mockResolvedValueOnce([
-      new File(['png'], 'c.png', { type: 'image/png' }),
-    ]);
+    vi.mocked(openSingleFileWith).mockClear();
+    vi.mocked(openSingleFileWith).mockResolvedValueOnce(
+      new File(['png'], 'c.png', { type: 'image/png' })
+    );
 
     await runCommandAsync(std, command(REPLACE_IMAGE_WITH_IMAGE), INVOCATION);
 
-    expect(openFilesWith).toHaveBeenCalledWith('Images', false);
+    expect(openSingleFileWith).toHaveBeenCalledTimes(1);
     const image = store.getModelById(imageId) as ImageBlockModel;
     expect(image.props.sourceId).not.toBe('blob-1');
     expect([image.props.width, image.props.height]).toEqual([80, 20]);
@@ -605,7 +605,7 @@ describe('the commands', () => {
 
   test('image → image writes and reports nothing when the chooser is cancelled', async () => {
     const { store, std, imageId, events } = selectedImage();
-    vi.mocked(openFilesWith).mockResolvedValueOnce(null);
+    vi.mocked(openSingleFileWith).mockResolvedValueOnce(null);
 
     await runCommandAsync(std, command(REPLACE_IMAGE_WITH_IMAGE), INVOCATION);
 

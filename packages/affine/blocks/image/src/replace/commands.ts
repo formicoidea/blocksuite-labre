@@ -9,10 +9,12 @@ import type {
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { z } from 'zod';
 
-import { pickImageSource, replaceImageSource } from '../asset-picker.js';
+import { type AssetPickerRequest } from '@labre/affine-shared/services';
+
+import { pickReplacement, type ReplacementAnswer } from '../asset-picker.js';
 import {
   IMAGE_REPLACE_PICTURE_DESCRIPTION,
-  IMAGE_REPLACE_WITH_IMAGE,
+  IMAGE_REPLACE_WITH_ASSET,
   IMAGE_REPLACE_WITH_IMAGE_DESCRIPTION,
   IMAGE_REPLACE_WITH_SHAPE,
   IMAGE_REPLACE_WITH_SHAPE_DESCRIPTION,
@@ -21,7 +23,7 @@ import {
   canReplaceImageWithShape,
   canReplaceShapeWithImage,
   replaceImageWithShape,
-  replaceShapeWithImage,
+  replaceWithAnswer,
 } from './replace-model.js';
 
 /**
@@ -57,7 +59,7 @@ export const replaceWithShapeParams = replaceElementParams.extend({
 
 export type ReplaceWithShapeParams = z.infer<typeof replaceWithShapeParams>;
 
-function target(std: BlockStdScope, params: unknown): unknown {
+export function replaceTarget(std: BlockStdScope, params: unknown): unknown {
   const parsed = replaceElementParams.safeParse(params ?? {});
   if (!parsed.success) return null;
   const gfx = std.get(GfxControllerIdentifier);
@@ -69,13 +71,13 @@ function target(std: BlockStdScope, params: unknown): unknown {
 
 /** The shape the command would replace, or `null`. */
 export function replaceableShape(std: BlockStdScope, params?: unknown) {
-  const model = target(std, params);
+  const model = replaceTarget(std, params);
   return canReplaceShapeWithImage(std, model) ? model : null;
 }
 
 /** The canvas image the command would replace, or `null`. */
 export function replaceableImage(std: BlockStdScope, params?: unknown) {
-  const model = target(std, params);
+  const model = replaceTarget(std, params);
   return model instanceof ImageBlockModel &&
     canReplaceImageWithShape(std, model)
     ? model
@@ -89,32 +91,84 @@ export function replaceableImage(std: BlockStdScope, params?: unknown) {
  * may not.
  */
 export function replaceablePicture(std: BlockStdScope, params?: unknown) {
-  const model = target(std, params);
+  const model = replaceTarget(std, params);
   if (std.store.readonly || !(model instanceof ImageBlockModel)) return null;
   if (model.parent?.flavour !== 'affine:surface') return null;
   return model.isLocked() ? null : model;
 }
 
-function track(
+type ReplacedKind = 'shape' | 'image' | 'attachment';
+
+const CREATED_FLAVOUR = {
+  image: 'affine:image',
+  attachment: 'affine:attachment',
+} as const;
+
+/**
+ * Kinds only, never an id, a `sourceId` or content. A block inserted by a user action
+ * is also `BlockCreated`, so "images created" stays one series.
+ */
+export function reportReplaced(
   std: BlockStdScope,
-  invocation: CommandInvocation,
-  from: 'shape' | 'image',
-  to: 'shape' | 'image'
+  invocation: Pick<CommandInvocation, 'source' | 'surface'>,
+  from: ReplacedKind,
+  to: ReplacedKind
 ) {
-  std.getOptional(TelemetryProvider)?.track('ElementReplaced', {
+  const telemetry = std.getOptional(TelemetryProvider);
+  const common = {
     page: 'whiteboard editor',
-    from,
-    to,
     control: invocation.source,
     module: invocation.surface,
-  });
+  } as const;
+  if (to !== 'shape' && to !== from) {
+    telemetry?.track('BlockCreated', {
+      ...common,
+      blockType: CREATED_FLAVOUR[to],
+    });
+  }
+  telemetry?.track('ElementReplaced', { ...common, from, to });
 }
 
-function select(std: BlockStdScope, id: string) {
+export function selectReplaced(std: BlockStdScope, id: string) {
   std.get(GfxControllerIdentifier).selection.set({
     elements: [id],
     editing: false,
   });
+}
+
+/**
+ * The dialog, then the target as it is AFTER it (the dialog took time: it may be gone,
+ * locked or the document read-only by now), then the answer, whatever its type.
+ */
+export async function replaceFromDialog<M extends object>(
+  std: BlockStdScope,
+  invocation: CommandInvocation,
+  params: unknown,
+  how: {
+    target: (std: BlockStdScope, params: unknown) => M | null;
+    from: ReplacedKind;
+    request: AssetPickerRequest['kind'];
+    write: (
+      std: BlockStdScope,
+      model: M,
+      answer: ReplacementAnswer
+    ) => string | null;
+  }
+) {
+  if (!how.target(std, params)) return;
+  const answer = await pickReplacement(std, how.request);
+  if (!answer) return;
+  const model = how.target(std, params);
+  if (!model) return;
+  const id = how.write(std, model, answer);
+  if (!id) return;
+  if (id !== (model as { id?: string }).id) selectReplaced(std, id);
+  reportReplaced(
+    std,
+    invocation,
+    how.from,
+    answer.kind === 'image' ? 'image' : 'attachment'
+  );
 }
 
 export const REPLACE_SHAPE_WITH_IMAGE = 'canvas.shape.replaceWithImage';
@@ -126,11 +180,11 @@ export const replaceShapeWithImageCommand: CommandDescriptor<ReplaceElementParam
     id: REPLACE_SHAPE_WITH_IMAGE,
     owner: 'core',
     kind: 'action',
-    labelKey: IMAGE_REPLACE_WITH_IMAGE[0],
-    labelFallback: IMAGE_REPLACE_WITH_IMAGE[1],
+    labelKey: IMAGE_REPLACE_WITH_ASSET[0],
+    labelFallback: IMAGE_REPLACE_WITH_ASSET[1],
     descriptionKey: IMAGE_REPLACE_WITH_IMAGE_DESCRIPTION[0],
     descriptionFallback: IMAGE_REPLACE_WITH_IMAGE_DESCRIPTION[1],
-    keywords: ['replace', 'image', 'picture', 'shape'],
+    keywords: ['replace', 'image', 'picture', 'shape', 'file'],
     // Not `agent`: the picture comes from a dialog a person answers.
     surfaces: ['contextual-toolbar', 'palette'],
     scope: 'edgeless',
@@ -138,25 +192,13 @@ export const replaceShapeWithImageCommand: CommandDescriptor<ReplaceElementParam
     availability: 'editable',
     when: std => replaceableShape(std) !== null,
     params: replaceElementParams,
-    run: async (std, invocation, params) => {
-      if (!replaceableShape(std, params)) return;
-      const image = await pickImageSource(std);
-      if (!image) return;
-      // Re-read: the dialog took time, the shape may be gone, locked or the
-      // document read-only by now.
-      const shape = replaceableShape(std, params);
-      if (!shape) return;
-      const id = replaceShapeWithImage(std, shape, image);
-      if (!id) return;
-      select(std, id);
-      std.getOptional(TelemetryProvider)?.track('BlockCreated', {
-        page: 'whiteboard editor',
-        blockType: 'affine:image',
-        control: invocation.source,
-        module: invocation.surface,
-      });
-      track(std, invocation, 'shape', 'image');
-    },
+    run: (std, invocation, params) =>
+      replaceFromDialog(std, invocation, params, {
+        target: replaceableShape,
+        from: 'shape',
+        request: 'image',
+        write: replaceWithAnswer,
+      }),
   };
 
 export const replaceImageWithShapeCommand: CommandDescriptor<ReplaceWithShapeParams> =
@@ -183,28 +225,28 @@ export const replaceImageWithShapeCommand: CommandDescriptor<ReplaceWithShapePar
       const { shapeType, radius } = parsed.data;
       const id = replaceImageWithShape(std, image, { shapeType, radius });
       if (!id) return;
-      select(std, id);
-      track(std, invocation, 'image', 'shape');
+      selectReplaced(std, id);
+      reportReplaced(std, invocation, 'image', 'shape');
     },
   };
 
 /**
- * « Replace with image » on a canvas IMAGE (ADR 0044, amendment of
- * 2026-10-27): another picture in the same block, from the host's library
- * when there is one, from the system file chooser otherwise — so the entry
- * exists without a host. The block keeps its id, corner, width and caption
- * (`replaceImageSource`); it reports `ElementReplaced { image → image }`.
+ * The dialog entry on a canvas IMAGE (ADR 0044, amendments of 2026-10-27 and
+ * 2026-11-04): from the host's library when there is one, from the system file
+ * chooser otherwise, so it exists without a host. A picture stays in the same block,
+ * its id, frame and caption kept; a file takes its place. The id says image: ids are
+ * never removed.
  */
 export const replaceImageWithImageCommand: CommandDescriptor<ReplaceElementParams> =
   {
     id: REPLACE_IMAGE_WITH_IMAGE,
     owner: 'core',
     kind: 'action',
-    labelKey: IMAGE_REPLACE_WITH_IMAGE[0],
-    labelFallback: IMAGE_REPLACE_WITH_IMAGE[1],
+    labelKey: IMAGE_REPLACE_WITH_ASSET[0],
+    labelFallback: IMAGE_REPLACE_WITH_ASSET[1],
     descriptionKey: IMAGE_REPLACE_PICTURE_DESCRIPTION[0],
     descriptionFallback: IMAGE_REPLACE_PICTURE_DESCRIPTION[1],
-    keywords: ['replace', 'image', 'picture', 'library', 'swap'],
+    keywords: ['replace', 'image', 'picture', 'library', 'swap', 'file'],
     // Not `agent`: the picture comes from a dialog a person answers.
     surfaces: ['contextual-toolbar', 'palette'],
     scope: 'edgeless',
@@ -212,15 +254,13 @@ export const replaceImageWithImageCommand: CommandDescriptor<ReplaceElementParam
     availability: 'editable',
     when: std => replaceablePicture(std) !== null,
     params: replaceElementParams,
-    run: async (std, invocation, params) => {
-      if (!replaceablePicture(std, params)) return;
-      const source = await pickImageSource(std);
-      if (!source) return;
-      // Re-read after the dialog, like the shape's.
-      const image = replaceablePicture(std, params);
-      if (!image || !replaceImageSource(image, source)) return;
-      track(std, invocation, 'image', 'image');
-    },
+    run: (std, invocation, params) =>
+      replaceFromDialog(std, invocation, params, {
+        target: replaceablePicture,
+        from: 'image',
+        request: 'image',
+        write: replaceWithAnswer,
+      }),
   };
 
 export const imageReplaceCommands: AnyCommandDescriptor[] = [
