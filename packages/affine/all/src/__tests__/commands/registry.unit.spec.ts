@@ -290,7 +290,9 @@ describe('command registry invariants', () => {
       // 2026-10-27): another picture in a canvas image, same flag.
       // …and 45 with `canvas.attachment.replace` and `replaceWithShape` (amendment of
       // 2026-11-04): an attachment has no flag.
-      core: 45,
+      // …and 46 with `selection.export.svg`: the selection as SVG, core-owned
+      // for `export.svg`'s reason — it draws whatever is selected.
+      core: 46,
     });
     // 112 since the two SVG fallback imports (`bpmn.importSvg`,
     // `wardley.importSvg`) joined the OWM pair — one SVG row per framework,
@@ -337,7 +339,8 @@ describe('command registry invariants', () => {
     // …and 218 with the two replace commands (ADR 0044).
     // …and 219 with `canvas.image.replaceWithImage` (ADR 0044, 2026-10-27).
     // …and 221 with the two of an attachment (ADR 0044, 2026-11-04).
-    expect(commands).toHaveLength(221);
+    // …and 222 with `selection.export.svg`.
+    expect(commands).toHaveLength(222);
   });
 
   /**
