@@ -870,7 +870,8 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
    * The gesture is the side panels' one controller (`createPanelReorderDrag`,
    * `@labre/affine-shared/utils`, ADR 0034), shared with the frame panel:
    * threshold, read-only refusal, mask and cursor, Escape and `pointercancel`
-   * as cancels, the swallowed click. What is the pane's own is below: which
+   * as cancels, the swallowed click, and the list scrolling while a row is
+   * held near its top or bottom edge. What is the pane's own is below: which
    * rows move (the pressed row, or the whole selection of one stack), where a
    * gap lands them in their stack, the ghost and the line, and the write.
    */
@@ -880,6 +881,8 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       readonly: () => this.std.store.readonly,
       rows: () => this._shownRows().map(({ element }) => element),
       bounds: () => this._paneBody(),
+      // The body is the box that scrolls (`overflow-y: auto`).
+      scroller: () => this._paneBody(),
       onPickUp: () => this._pickUp(),
       dropAt: (gap, point) => this._dropAt(gap, point.clientY),
       onMove: (drop, point) => {
