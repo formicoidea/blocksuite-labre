@@ -1,4 +1,4 @@
-import { SignalWatcher, WithDisposable } from '@labre/global/lit';
+import { SignalWatcher, styleMap, WithDisposable } from '@labre/global/lit';
 import { PlusIcon } from '@blocksuite/icons/lit';
 import { ShadowlessElement } from '@labre/std';
 import {
@@ -13,7 +13,6 @@ import { html } from 'lit';
 import { property } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { ref } from 'lit/directives/ref.js';
-import { styleMap } from 'lit/directives/style-map.js';
 
 import {
   addColumnButtonStyle,

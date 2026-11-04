@@ -1,12 +1,11 @@
 import { getRangeByPositions } from '@labre/affine-shared/utils';
 import { DisposableGroup } from '@labre/global/disposable';
-import { SignalWatcher, WithDisposable } from '@labre/global/lit';
+import { SignalWatcher, styleMap, WithDisposable } from '@labre/global/lit';
 import { ShadowlessElement } from '@labre/std';
 import { computed, type ReadonlySignal } from '@preact/signals-core';
 import type { ReactiveController } from 'lit';
 import { css, html } from 'lit';
 import { property } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
 
 import { autoScrollOnBoundary } from '../../../../core/utils/auto-scroll.js';
 import { startDrag } from '../../../../core/utils/drag.js';

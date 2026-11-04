@@ -7,7 +7,7 @@ import {
 } from '@labre/affine-shared/services';
 import { DisposableGroup } from '@labre/global/disposable';
 import { Bound, deserializeXYWH } from '@labre/global/gfx';
-import { WithDisposable } from '@labre/global/lit';
+import { styleMap, WithDisposable } from '@labre/global/lit';
 import {
   BlockStdScope,
   type EditorHost,
@@ -19,7 +19,6 @@ import { type ExtensionType, type Query, type Store } from '@labre/store';
 import { css, html, nothing, type PropertyValues } from 'lit';
 import { property, query, state } from 'lit/decorators.js';
 import { guard } from 'lit/directives/guard.js';
-import { styleMap } from 'lit/directives/style-map.js';
 import debounce from 'lodash-es/debounce';
 
 import { fluidPreviewSize } from './preview-size.js';

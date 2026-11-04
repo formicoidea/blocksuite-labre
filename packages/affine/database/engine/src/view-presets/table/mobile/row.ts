@@ -1,13 +1,12 @@
 import { popupTargetFromElement } from '@labre/affine-components/context-menu';
 import { OPEN_LABEL } from '@labre/affine-components/translations';
-import { SignalWatcher, WithDisposable } from '@labre/global/lit';
+import { SignalWatcher, styleMap, WithDisposable } from '@labre/global/lit';
 import { type BlockStdScope, ShadowlessElement, stdContext } from '@labre/std';
 import { consume } from '@lit/context';
 import { cssVarV2 } from '@toeverything/theme/v2';
 import { css, nothing, unsafeCSS } from 'lit';
 import { property } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
-import { styleMap } from 'lit/directives/style-map.js';
 import { html } from 'lit/static-html.js';
 
 import { wordingOf } from '../../../core/utils/wording.js';

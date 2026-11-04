@@ -2,14 +2,13 @@ import { DOC_UNTITLED, translateKey } from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { stopPropagation } from '@labre/affine-shared/utils';
 import type { DataViewUILogicBase } from '@labre/affine-database-engine';
-import { SignalWatcher, WithDisposable } from '@labre/global/lit';
+import { SignalWatcher, styleMap, WithDisposable } from '@labre/global/lit';
 import { ShadowlessElement } from '@labre/std';
 import type { Text } from '@labre/store';
 import { signal } from '@preact/signals-core';
 import { css, html } from 'lit';
 import { property, query } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
-import { styleMap } from 'lit/directives/style-map.js';
 
 import type { DatabaseBlockComponent } from '../../database-block.js';
 

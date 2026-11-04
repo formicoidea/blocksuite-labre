@@ -1,10 +1,9 @@
 import type { NoteBlockModel } from '@labre/affine-model';
 import { almostEqual, Bound } from '@labre/global/gfx';
-import { SignalWatcher, WithDisposable } from '@labre/global/lit';
+import { SignalWatcher, styleMap, WithDisposable } from '@labre/global/lit';
 import { type EditorHost, ShadowlessElement } from '@labre/std';
 import { html } from 'lit';
 import { property } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
 
 import { ACTIVE_NOTE_EXTRA_PADDING } from '../note-edgeless-block.css';
 

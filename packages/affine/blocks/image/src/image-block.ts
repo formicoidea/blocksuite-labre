@@ -18,7 +18,7 @@ import { computed } from '@preact/signals-core';
 import { cssVarV2 } from '@toeverything/theme/v2';
 import { html } from 'lit';
 import { query } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 import { when } from 'lit/directives/when.js';
 
 import type { ImageBlockPageComponent } from './components/page-image-block';

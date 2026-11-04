@@ -1,7 +1,7 @@
 import type { ResizeHandle } from '@labre/std/gfx';
 import { html, nothing } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 export enum HandleDirection {
   Bottom = 'bottom',

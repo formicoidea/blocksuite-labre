@@ -25,7 +25,7 @@ import type { ExtensionType } from '@labre/store';
 import { Extension } from '@labre/store';
 import type { TemplateResult } from 'lit';
 import { html } from 'lit';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 import { isHtmlAttachment } from './html-attachment';
 import { getAttachmentBlob } from './utils';

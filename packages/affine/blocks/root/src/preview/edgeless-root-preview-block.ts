@@ -24,7 +24,7 @@ import {
 } from '@labre/std/gfx';
 import { css, html } from 'lit';
 import { query, state } from 'lit/decorators.js';
-import { type StyleInfo, styleMap } from 'lit/directives/style-map.js';
+import { type StyleInfo, styleMap } from '@labre/global/lit';
 
 import { isCanvasElement } from '../edgeless/utils/query';
 

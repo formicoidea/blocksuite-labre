@@ -1,9 +1,8 @@
 import type { FrameBlockModel } from '@labre/affine-model';
-import { WithDisposable } from '@labre/global/lit';
+import { styleMap, WithDisposable } from '@labre/global/lit';
 import { type BlockStdScope, ShadowlessElement } from '@labre/std';
 import { css, html, nothing } from 'lit';
 import { property, query } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
 
 export type ReorderEvent = CustomEvent<{
   currentNumber: number;

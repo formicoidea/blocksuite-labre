@@ -1,7 +1,7 @@
 import { css, html, LitElement, nothing, type PropertyValues } from 'lit';
 import { property, query, state } from 'lit/decorators.js';
 import { keyed } from 'lit/directives/keyed.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 export type HtmlFrameContent = string | Blob;
 

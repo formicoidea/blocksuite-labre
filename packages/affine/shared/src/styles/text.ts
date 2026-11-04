@@ -1,4 +1,4 @@
-import type { StyleInfo } from 'lit/directives/style-map.js';
+import { type StyleInfo } from '@labre/global/lit';
 
 import type { AffineTextAttributes } from '../types';
 

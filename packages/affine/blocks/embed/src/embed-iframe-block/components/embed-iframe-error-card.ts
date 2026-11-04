@@ -7,7 +7,7 @@ import {
   translateKey,
 } from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
-import { WithDisposable } from '@labre/global/lit';
+import { styleMap, WithDisposable } from '@labre/global/lit';
 import { EditIcon, InformationIcon, ResetIcon } from '@blocksuite/icons/lit';
 import type { BlockStdScope } from '@labre/std';
 import { flip, offset } from '@floating-ui/dom';
@@ -15,7 +15,6 @@ import { baseTheme } from '@toeverything/theme';
 import { css, html, LitElement, nothing, unsafeCSS } from 'lit';
 import { property, query } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
-import { styleMap } from 'lit/directives/style-map.js';
 
 import { ERROR_CARD_DEFAULT_HEIGHT } from '../consts';
 import { EmbedIframeError, type EmbedIframeStatusCardOptions } from '../types';

@@ -5,7 +5,7 @@ import { cssVarV2 } from '@toeverything/theme/v2';
 import { type BlockStdScope, stdContext } from '@labre/std';
 import { consume } from '@lit/context';
 import { css, html, nothing } from 'lit';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 import { popCreateFilter } from '../../../../core/filter/add-filter.js';
 import { filterTraitKey } from '../../../../core/filter/trait.js';

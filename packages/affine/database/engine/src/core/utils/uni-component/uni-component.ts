@@ -2,13 +2,12 @@ import type {
   UniComponent,
   UniComponentReturn,
 } from '@labre/affine-shared/types';
-import { SignalWatcher } from '@labre/global/lit';
+import { SignalWatcher, type StyleInfo, styleMap } from '@labre/global/lit';
 import { ShadowlessElement } from '@labre/std';
 import type { Signal } from '@preact/signals-core';
 import type { LitElement, PropertyValues, TemplateResult } from 'lit';
 import { css, html } from 'lit';
 import { property } from 'lit/decorators.js';
-import { type StyleInfo, styleMap } from 'lit/directives/style-map.js';
 
 export const renderUniLit = <Props, Expose extends NonNullable<unknown>>(
   uni: UniComponent<Props, Expose> | undefined,

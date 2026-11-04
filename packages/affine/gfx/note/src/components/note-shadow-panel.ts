@@ -3,12 +3,11 @@ import {
   type ChromeWording,
   translateKey,
 } from '@labre/affine-shared/services';
-import { WithDisposable } from '@labre/global/lit';
+import { styleMap, WithDisposable } from '@labre/global/lit';
 import type { BlockStdScope } from '@labre/std';
 import { css, html, LitElement } from 'lit';
 import { property } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
-import { styleMap } from 'lit/directives/style-map.js';
 
 import {
   GFX_NOTE_SHADOW_FLOATION,
@@ -117,15 +116,16 @@ export class EdgelessNoteShadowPanel extends WithDisposable(LitElement) {
       (shadow, index) =>
         html`<style>
             .item-icon svg rect:first-of-type {
-              fill: ${this.background.startsWith('--')
-                ? `var(${this.background})`
-                : this.background};
+              fill: var(--note-shadow-panel-background);
             }
           </style>
           <div
             class="item"
             @click=${() => this.onSelect(shadow.type)}
             style=${styleMap({
+              '--note-shadow-panel-background': this.background.startsWith('--')
+                ? `var(${this.background})`
+                : this.background,
               border:
                 this.value === shadow.type
                   ? '1px solid var(--affine-brand-color)'

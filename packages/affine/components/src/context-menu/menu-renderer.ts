@@ -1,7 +1,7 @@
 import { translateKey } from '@labre/affine-shared/services';
 import { unsafeCSSVar, unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { IS_MOBILE } from '@labre/global/env';
-import { SignalWatcher, WithDisposable } from '@labre/global/lit';
+import { SignalWatcher, styleMap, WithDisposable } from '@labre/global/lit';
 import {
   ArrowLeftBigIcon,
   ArrowLeftSmallIcon,
@@ -25,7 +25,6 @@ import { consume, ContextEvent, ContextProvider } from '@lit/context';
 import { css, html, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
 import { createRef, ref } from 'lit/directives/ref.js';
-import { styleMap } from 'lit/directives/style-map.js';
 
 import type { MenuFocusable } from './focusable.js';
 import { Menu, type MenuConfig, type MenuOptions } from './menu.js';

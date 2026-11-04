@@ -12,7 +12,7 @@ import { GfxViewInteractionExtension } from '@labre/std/gfx';
 import { computed } from '@preact/signals-core';
 import { css, html } from 'lit';
 import { query } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 import { when } from 'lit/directives/when.js';
 
 import {

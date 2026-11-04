@@ -24,7 +24,7 @@ import {
 } from '@blocksuite/icons/lit';
 import type { GfxModel } from '@labre/std/gfx';
 import { html } from 'lit';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 import {
   ROOT_ALIGN_BOTTOM,

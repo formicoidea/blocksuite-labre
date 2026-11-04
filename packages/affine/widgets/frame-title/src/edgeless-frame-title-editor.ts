@@ -2,14 +2,13 @@ import { FrameBlockModel } from '@labre/affine-model';
 import type { RichText } from '@labre/affine-rich-text';
 import { toOverlayCoord } from '@labre/affine-shared/utils';
 import { Bound } from '@labre/global/gfx';
-import { WithDisposable } from '@labre/global/lit';
+import { styleMap, WithDisposable } from '@labre/global/lit';
 import { type BlockComponent, ShadowlessElement } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { RANGE_SYNC_EXCLUDE_ATTR } from '@labre/std/inline';
 import { cssVarV2 } from '@toeverything/theme/v2';
 import { css, html, nothing } from 'lit';
 import { property, query } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
 
 import {
   AFFINE_FRAME_TITLE_WIDGET,

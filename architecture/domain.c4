@@ -2285,7 +2285,7 @@ model {
   extend framework.global_ {
     metadata {
       domain ['canvas']
-      domain_canvas '0.44'
+      domain_canvas '0.43'
     }
   }
   extend framework.global_.gfx {

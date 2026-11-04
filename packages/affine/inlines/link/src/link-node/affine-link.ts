@@ -8,7 +8,7 @@ import {
 import { affineTextStyles } from '@labre/affine-shared/styles';
 import type { AffineTextAttributes } from '@labre/affine-shared/types';
 import { isSafeLinkUrl, normalizeUrl } from '@labre/affine-shared/utils';
-import { WithDisposable } from '@labre/global/lit';
+import { type StyleInfo, styleMap, WithDisposable } from '@labre/global/lit';
 import type { BlockComponent, BlockStdScope } from '@labre/std';
 import { BLOCK_ID_ATTR, ShadowlessElement } from '@labre/std';
 import {
@@ -19,7 +19,6 @@ import {
 import type { DeltaInsert } from '@labre/store';
 import { css, html, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
-import { type StyleInfo, styleMap } from 'lit/directives/style-map.js';
 
 export class AffineLink extends WithDisposable(ShadowlessElement) {
   static override styles = css`

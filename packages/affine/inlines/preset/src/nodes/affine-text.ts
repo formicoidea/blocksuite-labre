@@ -5,7 +5,7 @@ import { ZERO_WIDTH_FOR_EMPTY_LINE } from '@labre/std/inline';
 import type { DeltaInsert } from '@labre/store';
 import { html } from 'lit';
 import { property } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 export class AffineText extends ShadowlessElement {
   override render() {

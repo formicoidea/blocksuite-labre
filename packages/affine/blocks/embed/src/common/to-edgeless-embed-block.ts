@@ -9,7 +9,7 @@ import {
   toGfxBlockComponent,
 } from '@labre/std';
 import type { GfxBlockElementModel } from '@labre/std/gfx';
-import type { StyleInfo } from 'lit/directives/style-map.js';
+import { type StyleInfo } from '@labre/global/lit';
 
 import type { EmbedBlockComponent } from './embed-block-element.js';
 

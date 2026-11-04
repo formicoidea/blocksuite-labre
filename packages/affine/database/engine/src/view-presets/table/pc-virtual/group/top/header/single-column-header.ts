@@ -4,7 +4,7 @@ import {
   popMenu,
   popupTargetFromElement,
 } from '@labre/affine-components/context-menu';
-import { SignalWatcher, WithDisposable } from '@labre/global/lit';
+import { SignalWatcher, styleMap, WithDisposable } from '@labre/global/lit';
 import {
   DeleteIcon,
   DuplicateIcon,
@@ -21,7 +21,6 @@ import { css } from 'lit';
 import { property } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { createRef, ref } from 'lit/directives/ref.js';
-import { styleMap } from 'lit/directives/style-map.js';
 import { html } from 'lit/static-html.js';
 
 import { renderUniLit } from '../../../../../../core';

@@ -10,7 +10,7 @@ import {
 } from '@labre/affine-shared/consts';
 import { toGfxBlockComponent } from '@labre/std';
 import { GfxViewInteractionExtension } from '@labre/std/gfx';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 import { AttachmentBlockComponent } from './attachment-block.js';
 import { isHtmlAttachment } from './html-attachment.js';

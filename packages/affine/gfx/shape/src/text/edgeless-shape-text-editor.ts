@@ -19,7 +19,7 @@ import {
 } from '@labre/affine-shared/utils';
 import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
 import { Bound, toRadian, Vec } from '@labre/global/gfx';
-import { WithDisposable } from '@labre/global/lit';
+import { styleMap, WithDisposable } from '@labre/global/lit';
 import {
   type BlockComponent,
   type BlockStdScope,
@@ -31,7 +31,6 @@ import { InlineEditor, RANGE_SYNC_EXCLUDE_ATTR } from '@labre/std/inline';
 import { consume } from '@lit/context';
 import { html, nothing } from 'lit';
 import { property, query } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
 import * as Y from 'yjs';
 
 import { effectiveShapeFontSize } from '../element-renderer/shape/utils.js';

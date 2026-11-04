@@ -5,7 +5,7 @@ import { cssVarV2 } from '@toeverything/theme/v2';
 import { type BlockStdScope, stdContext } from '@labre/std';
 import { consume } from '@lit/context';
 import { css, html, nothing } from 'lit';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 import { popCreateSort } from '../../../../core/sort/add-sort.js';
 import { sortTraitKey } from '../../../../core/sort/manager.js';

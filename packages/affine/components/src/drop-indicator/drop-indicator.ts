@@ -1,7 +1,7 @@
 import { type Rect } from '@labre/global/gfx';
 import { css, html, LitElement } from 'lit';
 import { property, state } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 export class DropIndicator extends LitElement {
   static override styles = css`

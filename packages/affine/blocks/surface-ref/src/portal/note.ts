@@ -8,13 +8,12 @@ import {
 } from '@labre/affine-shared/consts';
 import { ThemeProvider } from '@labre/affine-shared/services';
 import { deserializeXYWH } from '@labre/global/gfx';
-import { WithDisposable } from '@labre/global/lit';
+import { styleMap, WithDisposable } from '@labre/global/lit';
 import { BlockStdScope, type EditorHost, ShadowlessElement } from '@labre/std';
 import { RANGE_QUERY_EXCLUDE_ATTR } from '@labre/std/inline';
 import { type BlockModel, type Query } from '@labre/store';
 import { css, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
 import { html } from 'lit/static-html.js';
 
 export class SurfaceRefNotePortal extends WithDisposable(ShadowlessElement) {

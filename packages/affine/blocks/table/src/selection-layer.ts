@@ -1,9 +1,8 @@
-import { SignalWatcher, WithDisposable } from '@labre/global/lit';
+import { SignalWatcher, styleMap, WithDisposable } from '@labre/global/lit';
 import { ShadowlessElement } from '@labre/std';
 import { computed, effect, signal } from '@preact/signals-core';
 import { html } from 'lit';
 import { property } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
 
 import type { SelectionController } from './selection-controller';
 

@@ -10,7 +10,7 @@ import { BlockSelection } from '@labre/std';
 import { html } from 'lit';
 import { property } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 import { EmbedBlockComponent } from '../common/embed-block-element.js';
 import { PROVIDER_PLAYER_SANDBOX } from '../common/iframe-sandbox.js';

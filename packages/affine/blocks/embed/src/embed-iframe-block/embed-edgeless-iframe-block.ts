@@ -3,7 +3,7 @@ import { EmbedIframeBlockSchema } from '@labre/affine-model';
 import { Bound, clamp } from '@labre/global/gfx';
 import { toGfxBlockComponent } from '@labre/std';
 import { GfxViewInteractionExtension } from '@labre/std/gfx';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 import { html } from 'lit/static-html.js';
 
 import { EmbedIframeBlockComponent } from './embed-iframe-block';

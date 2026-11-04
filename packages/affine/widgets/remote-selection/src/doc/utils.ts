@@ -1,5 +1,5 @@
 import type { DirectiveResult } from 'lit/directive.js';
-import { styleMap, type StyleMapDirective } from 'lit/directives/style-map.js';
+import { styleMap, type StyleMapDirective } from '@labre/global/lit';
 
 import type { SelectionRect } from './doc-remote-selection.js';
 

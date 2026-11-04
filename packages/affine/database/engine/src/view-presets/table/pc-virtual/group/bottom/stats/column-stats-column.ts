@@ -4,7 +4,7 @@ import {
   popMenu,
   popupTargetFromElement,
 } from '@labre/affine-components/context-menu';
-import { SignalWatcher, WithDisposable } from '@labre/global/lit';
+import { SignalWatcher, styleMap, WithDisposable } from '@labre/global/lit';
 import { ArrowDownSmallIcon } from '@blocksuite/icons/lit';
 import { ShadowlessElement } from '@labre/std';
 import { Text } from '@labre/store';
@@ -12,7 +12,6 @@ import { autoPlacement, offset } from '@floating-ui/dom';
 import { computed, signal } from '@preact/signals-core';
 import { css, html } from 'lit';
 import { property } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
 
 import {
   typeSystem,

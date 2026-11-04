@@ -27,7 +27,7 @@ import { type GfxController, GfxControllerIdentifier } from '@labre/std/gfx';
 import { css, html, nothing, type TemplateResult } from 'lit';
 import { state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 import { literal, unsafeStatic } from 'lit/static-html.js';
 
 import {

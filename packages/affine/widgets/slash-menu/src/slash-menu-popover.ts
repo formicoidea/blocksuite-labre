@@ -17,13 +17,12 @@ import {
   isControlledKeyboardEvent,
   substringMatchScore,
 } from '@labre/affine-shared/utils';
-import { WithDisposable } from '@labre/global/lit';
+import { styleMap, WithDisposable } from '@labre/global/lit';
 import { ArrowDownSmallIcon } from '@blocksuite/icons/lit';
 import { autoPlacement, offset } from '@floating-ui/dom';
 import { html, LitElement, nothing, type PropertyValues } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { ifDefined } from 'lit/directives/if-defined.js';
-import { styleMap } from 'lit/directives/style-map.js';
 import { when } from 'lit/directives/when.js';
 import groupBy from 'lodash-es/groupBy';
 import throttle from 'lodash-es/throttle';

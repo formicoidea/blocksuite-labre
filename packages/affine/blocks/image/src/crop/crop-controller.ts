@@ -9,7 +9,7 @@ import type { BlockStdScope } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { computed, signal } from '@preact/signals-core';
 import { html, nothing } from 'lit';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 import {
   type CropRect,

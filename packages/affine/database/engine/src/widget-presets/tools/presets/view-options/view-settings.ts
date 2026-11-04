@@ -14,7 +14,7 @@ import {
 import type { DatabaseViewOpenIn } from '@labre/affine-model';
 import type { ChromeWording } from '@labre/affine-shared/services';
 import { html, type TemplateResult } from 'lit';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 import { popPropertiesSetting } from '../../../../core/common/properties.js';
 import { filterTraitKey } from '../../../../core/filter/trait.js';

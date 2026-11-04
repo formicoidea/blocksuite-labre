@@ -14,12 +14,11 @@ import {
   EdgelessDraggableElementController,
   EdgelessToolbarToolMixin,
 } from '@labre/affine-widget-edgeless-toolbar';
-import { SignalWatcher } from '@labre/global/lit';
+import { SignalWatcher, styleMap } from '@labre/global/lit';
 import { css, html, LitElement, nothing } from 'lit';
 import { property, query, state } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { repeat } from 'lit/directives/repeat.js';
-import { styleMap } from 'lit/directives/style-map.js';
 
 import { ShapeTool } from '../shape-tool.js';
 import { ellipseSvg, roundedSvg, triangleSvg } from '../toolbar/icons.js';

@@ -12,7 +12,7 @@ import {
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { rangeWrap } from '@labre/affine-shared/utils';
 import { IS_MOBILE } from '@labre/global/env';
-import { SignalWatcher, WithDisposable } from '@labre/global/lit';
+import { SignalWatcher, styleMap, WithDisposable } from '@labre/global/lit';
 import {
   CloseIcon,
   DeleteIcon,
@@ -28,7 +28,6 @@ import { property } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { createRef, ref } from 'lit/directives/ref.js';
 import { repeat } from 'lit/directives/repeat.js';
-import { styleMap } from 'lit/directives/style-map.js';
 import { html } from 'lit/static-html.js';
 
 import {

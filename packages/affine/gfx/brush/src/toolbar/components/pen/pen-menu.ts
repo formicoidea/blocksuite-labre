@@ -11,7 +11,7 @@ import {
 } from '@labre/affine-shared/services';
 import type { ColorEvent } from '@labre/affine-shared/utils';
 import { EdgelessToolbarToolMixin } from '@labre/affine-widget-edgeless-toolbar';
-import { SignalWatcher } from '@labre/global/lit';
+import { SignalWatcher, styleMap } from '@labre/global/lit';
 import {
   computed,
   type ReadonlySignal,
@@ -19,7 +19,6 @@ import {
 } from '@preact/signals-core';
 import { css, html, LitElement, type TemplateResult } from 'lit';
 import { property } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
 
 import { BrushTool } from '../../../brush-tool';
 import { HighlighterTool } from '../../../highlighter-tool';

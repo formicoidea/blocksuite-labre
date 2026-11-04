@@ -1,10 +1,9 @@
 import type { MenuItemGroup } from '@labre/affine-components/toolbar';
 import { renderGroups } from '@labre/affine-components/toolbar';
-import { SignalWatcher, WithDisposable } from '@labre/global/lit';
+import { SignalWatcher, styleMap, WithDisposable } from '@labre/global/lit';
 import { ShadowlessElement } from '@labre/std';
 import { html } from 'lit';
 import { property } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
 
 import type { CodeBlockToolbarContext } from '../context.js';
 

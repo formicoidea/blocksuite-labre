@@ -10,7 +10,7 @@ import type { BlockComponent } from '@labre/std';
 import { flip, offset } from '@floating-ui/dom';
 import { css, html } from 'lit';
 import { query } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 import { getCalloutEmojiMarginTop } from './emoji-margin.js';
 export class CalloutBlockComponent extends CaptionedBlockComponent<CalloutBlockModel> {

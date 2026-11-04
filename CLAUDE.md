@@ -108,6 +108,7 @@ Entry points, not an exhaustive list. Nothing is authorised by omission: if your
 ## Lit, signals, DI and the store
 
 - Blocks render in light DOM (`ShadowlessElement`): their styles are global, so scope every selector with the block's own class. Widgets and toolbar chrome keep shadow DOM.
+- `styleMap` comes from `@labre/global/lit`, never from Lit: a value in a style may come from the document, and there one value sets one property (`style-map-boundary.unit.spec.ts`). A style that holds a value goes through it, never through a string or a `<style>` sheet.
 - Mixin order is always `SignalWatcher(WithDisposable(Base))`; every subscription goes in `this._disposables`. No ad-hoc teardown.
 - Read signals inside `render()`, derive with `computed`, group writes with `batch`, `peek()` outside a reactive context. **Never force a repaint by toggling a value off and on**: since signals-core 1.14 a batch ending on its initial value notifies nobody; bump a revision counter.
 - DI: `createIdentifier<T>('Name')`, `di.override` / `di.addImpl` in `setup(di)`. Duplicate registration throws at boot; when two modules attach to one flavour, give the key an owner (`toolbarModuleKey(..., 'wardley-morph')`). Editor-scoped stateful services extend `LifeCycleWatcher`.

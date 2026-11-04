@@ -5,7 +5,7 @@ import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { effect } from '@preact/signals-core';
 import { css, html, nothing, unsafeCSS } from 'lit';
 import { state } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 import { literal, unsafeStatic } from 'lit/static-html.js';
 
 import {

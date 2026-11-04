@@ -9,7 +9,7 @@ import { css } from '@emotion/css';
 import { computed, signal } from '@preact/signals-core';
 import { type TemplateResult } from 'lit';
 import { ref } from 'lit/directives/ref.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 import { html } from 'lit/static-html.js';
 
 import {

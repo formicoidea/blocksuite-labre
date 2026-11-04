@@ -14,14 +14,13 @@ import {
 } from '@labre/affine-shared/utils';
 import { EdgelessDraggableElementController } from '@labre/affine-widget-edgeless-toolbar';
 import type { Bound } from '@labre/global/gfx';
-import { WithDisposable } from '@labre/global/lit';
+import { styleMap, WithDisposable } from '@labre/global/lit';
 import type { BlockComponent } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { baseTheme } from '@toeverything/theme';
 import { css, html, LitElement, nothing, unsafeCSS } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
-import { styleMap } from 'lit/directives/style-map.js';
 import { unsafeSVG } from 'lit/directives/unsafe-svg.js';
 
 import { templateManagerFor } from '../contribute.js';

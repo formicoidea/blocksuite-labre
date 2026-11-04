@@ -1,7 +1,7 @@
 import { isTransparent } from '@labre/affine-model';
 import { cssVarV2 } from '@labre/affine-shared/theme';
 import { html, svg, type TemplateResult } from 'lit';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 export function TransparentIcon(hollowCircle = false) {
   const CircleIcon: TemplateResult | null = hollowCircle

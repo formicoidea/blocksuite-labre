@@ -6,7 +6,7 @@ import { baseTheme } from '@toeverything/theme';
 import { css, html, unsafeCSS } from 'lit';
 import { query, state } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 import { stopPropagation } from '../../../../core/utils/event.js';
 import { wordingOf } from '../../../../core/utils/wording.js';

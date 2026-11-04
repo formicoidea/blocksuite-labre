@@ -47,7 +47,7 @@ import { css, html, nothing } from 'lit';
 import { query } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { guard } from 'lit/directives/guard.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 @Peekable({
   enableOn: (block: SurfaceRefBlockComponent) => !!block.referenceModel,

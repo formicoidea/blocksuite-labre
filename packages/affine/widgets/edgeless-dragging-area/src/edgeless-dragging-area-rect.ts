@@ -4,7 +4,7 @@ import { WidgetComponent, WidgetViewExtension } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { cssVarV2 } from '@toeverything/theme/v2';
 import { css, html, nothing, unsafeCSS } from 'lit';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 import { literal, unsafeStatic } from 'lit/static-html.js';
 
 export const EDGELESS_DRAGGING_AREA_WIDGET = 'edgeless-dragging-area-rect';

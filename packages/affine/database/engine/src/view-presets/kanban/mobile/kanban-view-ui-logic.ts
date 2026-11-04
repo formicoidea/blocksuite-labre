@@ -10,7 +10,7 @@ import { css } from '@emotion/css';
 import { signal } from '@preact/signals-core';
 import type { TemplateResult } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 import { html } from 'lit/static-html.js';
 
 import {

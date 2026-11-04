@@ -62,7 +62,7 @@ import {
 import { css, html, nothing, unsafeCSS } from 'lit';
 import { state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 import { literal, unsafeStatic } from 'lit/static-html.js';
 
 import {

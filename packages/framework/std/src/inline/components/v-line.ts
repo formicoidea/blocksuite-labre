@@ -2,7 +2,7 @@ import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
 import type { DeltaInsert } from '@labre/store';
 import { html, LitElement, type TemplateResult } from 'lit';
 import { property } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 import { INLINE_ROOT_ATTR, ZERO_WIDTH_FOR_EMPTY_LINE } from '../consts.js';
 import type { InlineRootElement } from '../inline-editor.js';

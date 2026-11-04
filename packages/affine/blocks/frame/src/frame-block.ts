@@ -17,7 +17,7 @@ import { cssVarV2 } from '@toeverything/theme/v2';
 import { html } from 'lit';
 import { state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 import {
   EdgelessFrameManagerIdentifier,

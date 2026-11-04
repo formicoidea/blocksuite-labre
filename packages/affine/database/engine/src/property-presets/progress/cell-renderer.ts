@@ -1,6 +1,6 @@
 import { html } from 'lit';
 import { query, state } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 import { BaseCellRenderer } from '../../core/property/index.js';
 import { createFromBaseCellRenderer } from '../../core/property/renderer.js';

@@ -2,7 +2,7 @@ import { PlusIcon } from '@blocksuite/icons/lit';
 import { cssVarV2 } from '@toeverything/theme/v2';
 import { css, html, nothing, unsafeCSS } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 import { groupToggleStyles } from '../../core/group-by/group-visibility.js';
 import { createUniComponentFromWebComponent } from '../../core/utils/uni-component/uni-component.js';

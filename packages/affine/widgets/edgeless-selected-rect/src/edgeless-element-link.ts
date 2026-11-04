@@ -16,7 +16,7 @@ import {
 import { OpenInNewIcon, RightSidebarIcon } from '@blocksuite/icons/lit';
 import { css, html, nothing } from 'lit';
 import { state } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 import {
   EDGELESS_LINK_OPEN_DOC,

@@ -15,7 +15,7 @@ import type { BaseSelection, UserInfo } from '@labre/store';
 import { computed, effect } from '@preact/signals-core';
 import { css, html, nothing } from 'lit';
 import { state } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 import throttle from 'lodash-es/throttle';
 
 import { RemoteColorManager } from '../manager/remote-color-manager';
