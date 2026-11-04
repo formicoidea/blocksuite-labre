@@ -85,6 +85,7 @@ import {
   SELECTION_PANE_SHOW_FOR_EVERYONE,
   SELECTION_PANE_UNLOCK,
 } from '../translations.js';
+import { DockedPanelInset } from '../docked-panel-inset.js';
 import {
   paneDropAbove,
   type PaneDropRow,
@@ -557,6 +558,9 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
   /** The sibling lists before the filter: what a drop is computed in. */
   private _lists: PaneLists = paneLists([]);
 
+  /** The canvas this panel covers while open, told to the viewport (#433). */
+  private readonly _inset = new DockedPanelInset('selection-pane');
+
   get paneOpen() {
     return this._open;
   }
@@ -621,6 +625,7 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
       subscription.unsubscribe();
       reorder.dispose();
       if (this._reorder === reorder) this._reorder = null;
+      this._inset.withdraw();
     });
   }
 
@@ -1408,6 +1413,12 @@ export class EdgelessSelectionPaneWidget extends WidgetComponent<RootBlockModel>
   }
 
   override updated() {
+    this._inset.sync(
+      this._gfx.viewport,
+      this.shadowRoot?.querySelector<HTMLElement>(
+        '[data-testid="selection-pane-panel"]'
+      ) ?? null
+    );
     const input = this.shadowRoot?.querySelector<HTMLInputElement>(
       '[data-testid="selection-pane-rename"]'
     );
