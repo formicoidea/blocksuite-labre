@@ -18,7 +18,13 @@
  *   corners and swallow the crop gesture, or over a canvas that still zooms
  *   under the wheel (the PO could not crop, 2026-10-27);
  * - a wheel over the frame that zooms the canvas instead of the picture,
- *   drifts away from the pointer, or writes more than one undo step;
+ *   zooms off the frame's centre, moves the box, or writes more than one
+ *   undo step;
+ * - a drag inside the frame that moves the frame instead of panning the
+ *   picture behind it, or moves the canvas box (PO acceptance, 2026-11-04);
+ * - a zoom slider missing from above the frame, writing while held, zooming
+ *   off the centre or moving the box; on a page, a zoom that changes the
+ *   size of the window instead of the size of the whole picture;
  * - Escape leaving the handles hidden or the viewport locked.
  */
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
@@ -89,11 +95,16 @@ async function dragHandle(
   const handle = overlay.shadowRoot!.querySelector<HTMLElement>(
     `[data-corner="${corner}"]`
   )!;
-  const box = handle.getBoundingClientRect();
+  await dragFrom(handle, dx, dy);
+}
+
+/** One pointer gesture from the centre of `target`, in two moves. */
+async function dragFrom(target: HTMLElement, dx: number, dy: number) {
+  const box = target.getBoundingClientRect();
   const x = box.left + box.width / 2;
   const y = box.top + box.height / 2;
   const init = { bubbles: true, composed: true, button: 0, pointerId: 1 };
-  handle.dispatchEvent(
+  target.dispatchEvent(
     new PointerEvent('pointerdown', { ...init, clientX: x, clientY: y })
   );
   document.dispatchEvent(
@@ -269,9 +280,11 @@ describe('image crop on the canvas', () => {
     const scale = 1.05 ** -3;
     expect(crop.w).toBeCloseTo(scale, 3);
     expect(crop.h).toBeCloseTo(scale, 3);
-    // The point under the pointer did not move in the source.
-    expect(crop.x).toBeCloseTo(0.75 - 0.75 * scale, 3);
+    // The picture zooms about the frame's centre, wherever the pointer is,
+    // and the frame (the box) does not move (PO acceptance, 2026-11-04).
+    expect(crop.x).toBeCloseTo(0.5 - 0.5 * scale, 3);
     expect(crop.y).toBeCloseTo(0.5 - 0.5 * scale, 3);
+    expect(model.xywh).toBe('[0,0,200,100]');
     expect(gfx.viewport.zoom).toBe(zoom);
 
     // One scroll, one undo step.
@@ -288,6 +301,89 @@ describe('image crop on the canvas', () => {
     expect(gfx.selection.editing).toBe(false);
     expect(gfx.selection.has(model.id)).toBe(true);
     expect(countHandles()).toBeGreaterThan(0);
+  });
+
+  test('a drag inside the frame pans the picture, never the frame', async () => {
+    const { model, block } = await canvasImage();
+    block.cropController.choose('1:1');
+    await wait();
+    expect(model.xywh).toBe('[50,0,100,100]');
+    const overlay = overlayOf(block) as HTMLElement;
+    const frame = overlay.shadowRoot!.querySelector<HTMLElement>(
+      '[data-testid="image-crop-window"]'
+    )!;
+    const before = frame.getBoundingClientRect();
+
+    window.doc.resetHistory();
+    // A quarter of the window to the right: the picture follows the hand,
+    // so the window shows what was on its left.
+    await dragFrom(frame, before.width / 4, 0);
+
+    const crop = { ...model.props.crop };
+    expect(crop.x).toBeCloseTo(0.25 - 0.5 / 4, 3);
+    expect(crop.y).toBeCloseTo(0, 3);
+    expect(crop.w).toBeCloseTo(0.5, 6);
+    expect(crop.h).toBeCloseTo(1, 6);
+    expect(model.xywh).toBe('[50,0,100,100]');
+    const after = frame.getBoundingClientRect();
+    expect(after.left).toBeCloseTo(before.left, 0);
+    expect(after.width).toBeCloseTo(before.width, 0);
+
+    // One drag, one undo step.
+    window.doc.undo();
+    expect(model.props.crop?.x).toBeCloseTo(0.25, 6);
+    expect(model.xywh).toBe('[50,0,100,100]');
+  });
+
+  test('the zoom slider above the frame zooms the picture behind it', async () => {
+    const { model, block } = await canvasImage();
+    block.cropController.choose('1:1');
+    await wait();
+    const overlay = overlayOf(block) as HTMLElement;
+    const frame = overlay
+      .shadowRoot!.querySelector<HTMLElement>(
+        '[data-testid="image-crop-window"]'
+      )!
+      .getBoundingClientRect();
+    const slider = overlay.shadowRoot!.querySelector<HTMLElement>(
+      '[data-testid="image-crop-zoom"]'
+    )!;
+    const track = slider.getBoundingClientRect();
+    expect(track.width).toBeGreaterThan(0);
+    // Above the frame, centred on it.
+    expect(track.bottom).toBeLessThanOrEqual(frame.top + 1);
+    expect(track.left + track.width / 2).toBeCloseTo(
+      frame.left + frame.width / 2,
+      0
+    );
+
+    window.doc.resetHistory();
+    // A third of the track (16px items, the track runs between their
+    // centres): 1x + 3 × 1/3 = 2x.
+    const init = { bubbles: true, composed: true, button: 0, pointerId: 1 };
+    const clientX = track.left + 8 + (track.width - 16) / 3;
+    const clientY = track.top + track.height / 2;
+    slider.dispatchEvent(
+      new PointerEvent('pointerdown', { ...init, clientX, clientY })
+    );
+    // Nothing is written while the slider is held.
+    expect(model.props.crop?.w).toBeCloseTo(0.5, 6);
+    slider.dispatchEvent(
+      new PointerEvent('pointerup', { ...init, clientX, clientY })
+    );
+    await wait();
+
+    const crop = { ...model.props.crop };
+    expect(crop.w).toBeCloseTo(0.25, 2);
+    expect(crop.h).toBeCloseTo(0.5, 2);
+    // About the frame's centre, the box unmoved.
+    expect(crop.x + crop.w / 2).toBeCloseTo(0.5, 3);
+    expect(crop.y + crop.h / 2).toBeCloseTo(0.5, 3);
+    expect(model.xywh).toBe('[50,0,100,100]');
+
+    window.doc.undo();
+    expect(model.props.crop?.w).toBeCloseTo(0.5, 6);
+    expect(window.doc.canUndo).toBe(false);
   });
 
   test('the PNG export draws the kept part only', async () => {
@@ -376,6 +472,37 @@ describe('image crop on a page', () => {
     const img = imgOf(image)!.getBoundingClientRect();
     expect(img.width).toBeCloseTo(200, 0);
     expect(img.left).toBeCloseTo(box.left - 50, 0);
+
+    // The slider's End key zooms to 4x behind the frame: the window keeps
+    // its size on the page, so the WHOLE picture's stored size grows.
+    const slider = overlayOf(image)!.shadowRoot!.querySelector<HTMLElement>(
+      '[data-testid="image-crop-zoom"]'
+    )!;
+    slider
+      .shadowRoot!.querySelector<HTMLElement>('[role="slider"]')!
+      .dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'End',
+          bubbles: true,
+          composed: true,
+          cancelable: true,
+        })
+      );
+    await until(() => (model.props.crop?.w ?? 1) < 0.2, 'the slider commit');
+    expect(model.props.crop?.w).toBeCloseTo(0.125, 6);
+    expect(model.props.width).toBeCloseTo(800, 6);
+    expect(model.props.height).toBeCloseTo(400, 6);
+    await wait();
+    const zoomed = image
+      .querySelector<HTMLElement>('.resizable-img')!
+      .getBoundingClientRect();
+    expect(zoomed.width).toBeCloseTo(100, 0);
+    expect(zoomed.height).toBeCloseTo(100, 0);
+
+    // The zoom, size and crop together, is one undo step.
+    window.doc.undo();
+    expect(model.props.width).toBe(200);
+    expect(model.props.crop?.w).toBeCloseTo(0.5, 6);
 
     image.cropController.restoreOriginal();
     await wait();
