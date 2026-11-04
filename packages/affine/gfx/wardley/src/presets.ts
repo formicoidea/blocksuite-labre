@@ -207,8 +207,11 @@ export const wardleyNodeLabelKey = (kind: WardleyLabelledKind) =>
 
 /**
  * The fill a kind is born with. White for every circle that means "a thing on
- * the value chain"; the method's grey is the one that carries meaning — it
- * ENCODES the chosen method and stays editable from the toolbar.
+ * the value chain". The method's grey no longer carries meaning: since ADR 0046
+ * the method is the `wardley:method` tag and the ring painted from it (Make
+ * when untagged) covers this fill. It stays the method's birth fill, and the
+ * morph writes it like any other preset key, so a morphed method and a drawn
+ * one are the same stack of props.
  */
 const NODE_FILL_OF: Record<WardleyArtefactKind, string> = {
   component: NODE_FILL,
@@ -909,6 +912,7 @@ export function wardleyMorphProps(
  */
 export const WARDLEY_MORPHABLE_KINDS: readonly WardleyArtefactKind[] = [
   'component',
+  'method',
   'market',
   'ecosystem',
   'pipeline',

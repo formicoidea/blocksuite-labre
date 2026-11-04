@@ -39,34 +39,45 @@ import { WARDLEY_ROLE } from './roles';
  * What a Wardley artefact may BECOME — the declaration behind the "Change type"
  * dropdown on a selected component's contextual toolbar.
  *
- * ## One family, and why it is exactly these four
+ * ## One family, and why it is exactly these five
  *
- * A component, a market, an ecosystem and a pipeline are four ways of saying
- * the SAME thing: something the value chain depends on. The map's own reading
- * agrees — `roles.ts` makes `market` and `ecosystem` children of `component` in
- * the role tree — and the modelling gesture the morph exists for is the one
- * every mapper makes: you draw a component, you look at the map, and you
- * realise that what you drew is a market of many suppliers, or a whole
- * ecosystem, or a pipeline of choices. Today that costs a delete, a re-draw,
- * every dependency re-attached and the name typed again.
+ * A component, a component + method, a market, an ecosystem and a pipeline are
+ * five ways of saying the SAME thing: something the value chain depends on. The
+ * map's own reading agrees — `roles.ts` makes `method`, `market` and
+ * `ecosystem` children of `component` in the role tree — and the modelling
+ * gesture the morph exists for is the one every mapper makes: you draw a
+ * component, you look at the map, and you realise that what you drew is
+ * sourced in a way worth saying, or a market of many suppliers, or a whole
+ * ecosystem, or a pipeline of choices. Without the morph that costs a delete, a
+ * re-draw, every dependency re-attached and the name typed again.
  *
  * The family is DATA and nothing derives it — the same call BPMN and C4 make.
  * Deriving it from `roleIsA` would have been wrong in both directions here: it
  * would reach from market to component and not back, and it would say nothing
  * at all about the pipeline, which is not a specialisation of anything and is
- * still the fourth way of drawing the same claim.
+ * still another way of drawing the same claim.
  *
- * ## The two kinds deliberately left out
+ * ## Why the method joined (ADR 0046, amendment of 2026-11-04)
+ *
+ * It was left out while its grey FILL encoded the chosen method: morphing away
+ * would have discarded that decision, morphing in would have had to invent one.
+ * Since ADR 0046 the method is the `wardley:method` TAG, and the ring is painted
+ * from it — Make when no tag names one (`node/node-renderer.ts`). So nothing is
+ * invented on the way in: a component that becomes a component + method paints
+ * Make until the author picks another. And nothing is lost on the way out: the
+ * morph never writes `tags`, so the tag stays stored, inert on any other kind
+ * (the ring is painted for `kind === 'method'` only, the legend row reads the
+ * `wardley:method` role), and is back in force when the artefact morphs into a
+ * method again. No code in `afterMorph` for it: the ring is the renderer's, the
+ * size and the name's place come from the presets like every other member's.
+ *
+ * ## The one kind deliberately left out
  *
  * - **`anchor`** is the user, and the need they have. It is a role of its own
  *   precisely because it is NOT a component (`roles.ts`): it is what the value
  *   chain hangs from, not a link in it. A menu offering "turn this user into a
  *   pipeline" would invite a map with no anchor at all — the one thing a
  *   Wardley map cannot be read without.
- * - **`method`** is not an artefact but an annotation ON one: the coloured ring
- *   says how a component is being BUILT (buy / build / outsource), and its fill
- *   encodes the choice. Morphing it away would silently discard that decision,
- *   and morphing into it would have to invent one.
  *
  * `handle` is in no family either, and does not need excluding by name: it is
  * not an artefact at all, so nothing selects it and {@link wardleyNodeOfComponent}
@@ -75,14 +86,16 @@ import { WARDLEY_ROLE } from './roles';
 export const WARDLEY_MORPH_FAMILIES: readonly (readonly WardleyMorphKind[])[] =
   [
     // Declaration order is menu order, and it opens on the plain component: the
-    // undecorated artefact is the honest first draft, and the three others are
+    // undecorated artefact is the honest first draft, and the others are
     // refinements of it — the same call `commands.ts` makes about the senior row.
-    ['component', 'market', 'ecosystem', 'pipeline'],
+    // The method comes next (PO decision): it is the same circle, decorated.
+    ['component', 'method', 'market', 'ecosystem', 'pipeline'],
   ];
 
 /** The kinds this framework offers as morph targets. */
 export type WardleyMorphKind =
   | 'component'
+  | 'method'
   | 'market'
   | 'ecosystem'
   | 'pipeline';
@@ -160,7 +173,9 @@ function* descendants(group: GroupElementModel): Generator<GfxModel> {
  * - with a ROLE, which leaves out the market's three neutral dots — they are the
  *   glyph's wiring and carry none by construction (`presets.ts`);
  * - whose kind is in the family, which leaves out the pipeline's `handle` and
- *   any `anchor` or `method` somebody grouped in beside the artefact.
+ *   any `anchor` somebody grouped in beside the artefact. A method grouped in
+ *   beside a component is a second member of the family, so that group is the
+ *   two-candidate refusal below.
  *
  * TWO candidates is a REFUSAL rather than a first-wins pick, exactly as C4's
  * resolution refuses a group of two components: morphing "it" would mean

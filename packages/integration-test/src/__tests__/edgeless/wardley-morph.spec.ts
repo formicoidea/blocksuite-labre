@@ -22,6 +22,7 @@ import {
   toolbarModuleKey,
 } from '@labre/affine/shared/services';
 import { getRegisteredCommands, runCommand } from '@labre/affine/std';
+import { readElementTags } from '@labre/affine/std/gfx';
 import {
   AFFINE_TOOLBAR_WIDGET,
   type AffineToolbarWidget,
@@ -406,9 +407,11 @@ describe('morphing a Wardley artefact into a nearby one', () => {
       const options = Array.from(
         host.querySelectorAll('[data-testid="element-morph-option"]')
       );
-      // Declaration order is menu order, and it opens on the plain component.
+      // Declaration order is menu order, and it opens on the plain component;
+      // the method follows it (ADR 0046, amendment of 2026-11-04).
       expect(options.map(el => el.getAttribute('data-value'))).toEqual([
         'component',
+        'method',
         'market',
         'ecosystem',
         'pipeline',
@@ -433,15 +436,13 @@ describe('morphing a Wardley artefact into a nearby one', () => {
     }
   });
 
-  test('an anchor, a method and a plain group are offered nothing', async () => {
+  test('an anchor and a plain group are offered nothing', async () => {
     const config = morphToolbarConfig(WARDLEY_MORPH_SPEC);
     const surface = surfaceModel();
     const component = await draw('wardley.addComponent');
-    // Not `draw`: these two resolve to NOTHING, which is the claim.
+    // Not `draw`: this one resolves to NOTHING, which is the claim.
     const anchor = await drawGroup('wardley.addAnchor');
-    const method = await drawGroup('wardley.addMethod');
     expect(wardleyNodeOfComponent(anchor)).toBeUndefined();
-    expect(wardleyNodeOfComponent(method)).toBeUndefined();
 
     // A lasso somebody drew round two shapes: a group, and not one of ours.
     const first = surface.addElement({
@@ -466,11 +467,9 @@ describe('morphing a Wardley artefact into a nearby one', () => {
       return typeof config.when === 'function' ? config.when(ctx) : config.when;
     };
 
-    // The anchor is what the value chain HANGS FROM and the method is an
-    // annotation whose fill encodes a decision: neither is in the family, so
-    // neither is ever offered the menu.
+    // The anchor is what the value chain HANGS FROM: not in the family, so
+    // never offered the menu.
     expect(refuses(anchor)).toBe(false);
-    expect(refuses(method)).toBe(false);
     expect(refuses(plain)).toBe(false);
     // …and one real component beside any of them is still nothing: the
     // resolution is per element, so a selection the menu could only half answer
@@ -479,5 +478,41 @@ describe('morphing a Wardley artefact into a nearby one', () => {
     expect(refuses(component.group, anchor)).toBe(false);
     // The component alone, on the other hand, is offered its family.
     expect(refuses(component.group)).toBe(true);
+  });
+
+  /**
+   * The component + method joined the family (ADR 0046, amendment of
+   * 2026-11-04): it used to be refused the menu while its fill encoded the
+   * method. What this would have caught: the method group not resolving in a
+   * real editor, or a morph that dropped or wrote the `wardley:method` tag — it
+   * stays stored, inert, on a component and is back in force on the way home.
+   */
+  test('a component + method is offered its family and keeps its tag', async () => {
+    const config = morphToolbarConfig(WARDLEY_MORPH_SPEC);
+    const { group, node } = await draw('wardley.addMethod');
+    expect(node.kind).toBe('method');
+    const ctx = select(group);
+    expect(
+      typeof config.when === 'function' ? config.when(ctx) : config.when
+    ).toBe(true);
+
+    const tags = { 'wardley:method': ['wardley:method/buy'] };
+    surfaceModel().updateElement(node.id, { tags });
+    await wait();
+    const centre = centreOf(node);
+
+    applyMorph(ctx, WARDLEY_MORPH_SPEC, 'component');
+    await wait(200);
+    expect(node.kind).toBe('component');
+    expect(node.deserializedXYWH[2]).toBe(WARDLEY_NODE_SIZE.component.w);
+    expect(centreOf(node)).toEqual(centre);
+    expect(readElementTags(node)).toEqual(tags);
+
+    applyMorph(select(group), WARDLEY_MORPH_SPEC, 'method');
+    await wait(200);
+    expect(node.kind).toBe('method');
+    expect(node.role).toBe(WARDLEY_ROLE.method);
+    expect(node.deserializedXYWH[2]).toBe(WARDLEY_NODE_SIZE.method.w);
+    expect(readElementTags(node)).toEqual(tags);
   });
 });

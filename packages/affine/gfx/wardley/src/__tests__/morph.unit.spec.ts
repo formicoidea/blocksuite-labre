@@ -54,21 +54,31 @@ const FAMILY = WARDLEY_MORPH_FAMILIES.flat();
 const EVERY_KIND = Object.keys(WARDLEY_NODE_SIZE) as WardleyArtefactKind[];
 
 describe('the declared family', () => {
-  it('is the four ways of drawing one link in the value chain', () => {
+  it('is the five ways of drawing one link in the value chain', () => {
     expect(WARDLEY_MORPH_FAMILIES).toEqual([
       // Declaration order is menu order, and it opens on the plain component:
-      // the undecorated artefact is the honest first draft.
-      ['component', 'market', 'ecosystem', 'pipeline'],
+      // the undecorated artefact is the honest first draft. The method comes
+      // next, as the same circle decorated (PO decision, ADR 0046 amendment of
+      // 2026-11-04).
+      ['component', 'method', 'market', 'ecosystem', 'pipeline'],
     ]);
   });
 
-  it('never offers the anchor or the method, in either direction', () => {
+  /**
+   * The method joined the family (ADR 0046, amendment of 2026-11-04). It was
+   * excluded while its grey fill encoded the chosen method, so a morph would
+   * have discarded or invented a decision. The method is now a TAG, which the
+   * morph never writes, and an untagged method paints Make. This would have
+   * caught the method falling out of the family again.
+   */
+  it('offers the method, in both directions', () => {
+    expect(FAMILY).toContain('method');
+  });
+
+  it('never offers the anchor, in either direction', () => {
     // The anchor is what the value chain HANGS FROM, not a link in it — a role
-    // of its own in `roles.ts` for exactly that reason. The method is an
-    // annotation ON a component whose fill encodes a decision, and morphing it
-    // away would discard that decision silently.
+    // of its own in `roles.ts` for exactly that reason.
     expect(FAMILY).not.toContain('anchor');
-    expect(FAMILY).not.toContain('method');
     // …and the handle is not an artefact at all: nobody draws one, so it is not
     // in the model's own list of things this pack presets either.
     expect(FAMILY).not.toContain('handle');
@@ -84,9 +94,9 @@ describe('the declared family', () => {
     for (const kind of FAMILY) {
       expect(WARDLEY_MORPH_SPEC.roleOf(kind)).toBe(WARDLEY_ROLE[kind]);
     }
-    // Four kinds, four roles: unlike C4's `person`/`person-ext`, nothing
-    // collapses here — a market IS a different claim from a component, and the
-    // role tree says so by making one the parent of the other.
+    // One role per kind: unlike C4's `person`/`person-ext`, nothing collapses
+    // here — a market or a method IS a different claim from a component, and
+    // the role tree says so by making one the parent of the other.
     expect(
       new Set(FAMILY.map(kind => WARDLEY_MORPH_SPEC.roleOf(kind))).size
     ).toBe(FAMILY.length);
@@ -100,6 +110,12 @@ describe('the declared family', () => {
       fallback: 'Market',
     });
     expect(WARDLEY_MORPH_SPEC.labelOf('pipeline').fallback).toBe('Pipeline');
+    // The method's wording is its creation command's, key included: no new
+    // i18n key for the menu entry.
+    expect(WARDLEY_MORPH_SPEC.labelOf('method')).toEqual({
+      key: 'com.labre.keyboardShortcuts.wardley.addMethod',
+      fallback: 'Component + method',
+    });
     for (const kind of FAMILY) {
       expect(WARDLEY_MORPH_SPEC.iconOf(kind), kind).toBeTruthy();
     }
@@ -144,7 +160,12 @@ describe('the patch one kind is worth', () => {
     // rest of the family are opaque white ellipses. Two keys would leave a
     // "pipeline" still drawn as a circle.
     expect(wardleyMorphProps('pipeline').shapeType).toBe('rect');
-    for (const kind of ['component', 'market', 'ecosystem'] as const) {
+    for (const kind of [
+      'component',
+      'method',
+      'market',
+      'ecosystem',
+    ] as const) {
       expect(wardleyMorphProps(kind).shapeType, kind).toBe('ellipse');
     }
     expect(wardleyMorphProps('pipeline').fillColor).not.toBe(
@@ -157,7 +178,12 @@ describe('the patch one kind is worth', () => {
     // would otherwise keep `radius: 0` in the Y.Map, silently in force on an
     // ellipse. Derived from the presets, never listed.
     expect(wardleyMorphClears('pipeline')).toEqual([]);
-    for (const kind of ['component', 'market', 'ecosystem'] as const) {
+    for (const kind of [
+      'component',
+      'method',
+      'market',
+      'ecosystem',
+    ] as const) {
       expect(wardleyMorphClears(kind), kind).toEqual(['radius']);
     }
   });
@@ -276,14 +302,20 @@ describe('resolving a selected group to the node the kind lives on', () => {
   });
 
   it('refuses a group holding no Wardley artefact at all', () => {
-    // A plain lasso round two rectangles, and a group of things this family
-    // does not name — an anchor and a method are both real Wardley nodes and
-    // neither is morphable.
+    // A plain lasso round two rectangles, and a group of a thing this family
+    // does not name — an anchor is a real Wardley node and is not morphable.
     const alien = detached(ShapeElementModel, {}) as unknown;
     expect(wardleyNodeOfComponent(grouped([alien, {}]))).toBeUndefined();
     expect(wardleyNodeOfComponent(grouped([]))).toBeUndefined();
     expect(wardleyNodeOfComponent(grouped([node('anchor')]))).toBeUndefined();
-    expect(wardleyNodeOfComponent(grouped([node('method')]))).toBeUndefined();
+  });
+
+  it('finds the circle of a component + method (ADR 0046, 2026-11-04)', () => {
+    // Was a refusal while the method sat outside the family; it is a member
+    // now, so its group resolves exactly as a component's does.
+    const circle = node('method');
+    expect(wardleyNodeOfComponent(grouped([circle, {}]))).toBe(circle);
+    expect(WARDLEY_MORPH_SPEC.kindOf(circle)).toBe('method');
   });
 
   it('refuses a group holding two of them', () => {
@@ -295,7 +327,7 @@ describe('resolving a selected group to the node the kind lives on', () => {
   });
 
   it('answers no kind for the pieces that are not artefacts', () => {
-    for (const kind of ['anchor', 'method', 'handle'] as const) {
+    for (const kind of ['anchor', 'handle'] as const) {
       expect(WARDLEY_MORPH_SPEC.kindOf(node(kind)), kind).toBeUndefined();
     }
   });
@@ -776,6 +808,137 @@ describe('a component becomes a pipeline, and back', () => {
       b.all().filter(model => model instanceof GroupElementModel)
     ).toHaveLength(1);
     expect(shapeOf(group)).toEqual(shapeOf(drawnComponent()));
+  });
+});
+
+/**
+ * A component + method in the family (ADR 0046, amendment of 2026-11-04).
+ *
+ * What this would have caught: a method morph that wrote or dropped the
+ * `wardley:method` tag (the PO's rule is that the tag stays stored, inert on
+ * any other kind, and is in force again when the artefact comes back), a
+ * method morphed into being that differs from one drawn from the sub-menu, and
+ * the pipeline crossing losing the user's links (handle added and re-anchored
+ * on the way in, links given back to the circle on the way out).
+ */
+describe('a component becomes a component + method, and back', () => {
+  const METHOD_TAGS = { 'wardley:method': ['wardley:method/buy'] };
+
+  it('grows to the method circle, in place, and is the method the sub-menu draws', () => {
+    const b = board();
+    createWardleyNode(b.gfx, 'component');
+    const group = b.drawn();
+    const before = centre(nodesOf(group)[0]);
+
+    const circle = morph(group, 'method');
+
+    expect(circle.kind).toBe('method');
+    expect(circle.role).toBe(WARDLEY_ROLE.method);
+    expect(circle.deserializedXYWH.slice(2)).toEqual([
+      WARDLEY_NODE_SIZE.method.w,
+      WARDLEY_NODE_SIZE.method.h,
+    ]);
+    expect(centre(circle)).toEqual(before);
+    // No glyph element to build: the ring is painted by the renderer from
+    // `kind` and the tag (Make when untagged), so the composite stays a circle
+    // and its name.
+    expect(nodesOf(group)).toHaveLength(1);
+
+    const created = board();
+    createWardleyNode(created.gfx, 'method');
+    expect(shapeOf(group)).toEqual(shapeOf(created.drawn()));
+  });
+
+  it('writes no tag on the way in: an untagged method paints Make', () => {
+    const b = board();
+    createWardleyNode(b.gfx, 'component');
+    const group = b.drawn();
+    const update = vi.spyOn(b.surface, 'updateElement');
+
+    const circle = morph(group, 'method');
+
+    expect(own(circle, 'tags')).toBeUndefined();
+    for (const [, props] of update.mock.calls) {
+      expect(props).not.toHaveProperty('tags');
+    }
+  });
+
+  it('keeps the method tag through a round trip, with no write to it', () => {
+    const b = board();
+    createWardleyNode(b.gfx, 'method');
+    const group = b.drawn();
+    const circle = nodesOf(group)[0];
+    b.surface.updateElement(circle.id, { tags: METHOD_TAGS });
+    const update = vi.spyOn(b.surface, 'updateElement');
+
+    morph(group, 'component');
+    // Inert on a component — the ring is painted for `kind === 'method'` only —
+    // but still stored: the decision is not lost.
+    expect(circle.kind).toBe('component');
+    expect(own(circle, 'tags')).toBe(METHOD_TAGS);
+
+    morph(group, 'method');
+    expect(circle.kind).toBe('method');
+    expect(own(circle, 'tags')).toBe(METHOD_TAGS);
+    for (const [, props] of update.mock.calls) {
+      expect(props).not.toHaveProperty('tags');
+    }
+  });
+
+  it('leaves the name in place and its words untouched', () => {
+    const b = board();
+    createWardleyNode(b.gfx, 'component');
+    const group = b.drawn();
+    const label = labelOf(group);
+    const where = label.xywh;
+
+    morph(group, 'method');
+
+    // Both circles carry their name BESIDE them, so the words stay where they
+    // were while the circle grows underneath (the known W3 risk on 18 → 35 is
+    // the one a component growing into an ecosystem already has).
+    expect(label.xywh).toBe(where);
+    // The method's creation prompt IS the component's, so nothing to rewrite.
+    expect(label.text.toString()).toBe(WARDLEY_NODE_LABEL.method);
+  });
+
+  it('becomes a pipeline through the handle, and gives the links back', () => {
+    const b = board();
+    createWardleyNode(b.gfx, 'method');
+    const group = b.drawn();
+    const circle = nodesOf(group)[0];
+    b.surface.updateElement(circle.id, { tags: METHOD_TAGS });
+    const other = b.surface.addElement({
+      type: 'wardleyNode',
+      kind: 'component',
+      role: WARDLEY_ROLE.component,
+      xywh: '[400,0,18,18]',
+    });
+    const link = b.surface.addElement({
+      type: 'connector',
+      role: WARDLEY_ROLE.dependency,
+      source: { id: circle.id },
+      target: { id: other },
+    });
+    const connector = b.surface.getElementById(link) as ConnectorElementModel;
+
+    morph(group, 'pipeline');
+
+    const handle = nodesOf(group).find(child => child.kind === 'handle')!;
+    expect(circle.kind).toBe('pipeline');
+    expect(handle).toBeTruthy();
+    expect(connector.source?.id).toBe(handle.id);
+    expect(connector.target?.id).toBe(other);
+
+    morph(group, 'method');
+
+    expect(nodesOf(group).some(child => child.kind === 'handle')).toBe(false);
+    expect(connector.source?.id).toBe(circle.id);
+    expect(connector.target?.id).toBe(other);
+    expect(own(circle, 'tags')).toBe(METHOD_TAGS);
+    const created = board();
+    createWardleyNode(created.gfx, 'method');
+    expect(shapeOf(group)).toEqual(shapeOf(created.drawn()));
   });
 });
 

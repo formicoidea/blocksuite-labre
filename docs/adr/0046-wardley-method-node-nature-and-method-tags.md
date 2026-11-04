@@ -244,3 +244,44 @@ picture), and a regenerate redraws it from the keys, as for any row
   tagged method) instead of its stored fill. A client older than 0.62 opening
   the same board paints the stored fill (it reads no tag) and offers no
   Method section; the tag is preserved.
+
+## Amendments
+
+### 2026-11-04 — morph families: the method joins the family
+
+The "Change type" menu of a Wardley artefact now offers, in this order (PO
+decision): component, component + method, market, ecosystem, pipeline
+(`WARDLEY_MORPH_FAMILIES`, `gfx/wardley/src/morph.ts`; the restatement
+`WARDLEY_MORPHABLE_KINDS` in `presets.ts` follows). Every pair morphs, in
+both directions.
+
+**Why now.** The method was left out of the family by a written decision:
+its grey fill encoded the chosen method, so morphing away discarded the
+decision and morphing in had to invent one. Sections 2 and 3 of this ADR
+removed that premise: the method is the `wardley:method` tag, and the ring is
+painted from it, Make when no tag names one. The morph never writes `tags`, so:
+
+- component → method writes no tag and opens no menu: the new method paints
+  Make until the author picks another (PO decision);
+- method → any other kind keeps the `wardley:method` tag stored and inert
+  (no superfluous write): the ring is painted for `kind === 'method'` only
+  (`node/node-renderer.ts`) and the legend row requires the `wardley:method`
+  role, so nothing reads it. Morphing back into a method puts it back in force;
+- the nature, the name (rewritten only while it is still the creation
+  prompt), the centre and the connectors survive as for every member; a
+  method ↔ pipeline crossing goes through the pipeline's handle like any other.
+
+Nothing in `afterMorph` is method-specific: label and icon come from the
+`addMethod` command (telemetry `node:method`, key
+`com.labre.keyboardShortcuts.wardley.addMethod`, no new key), the 35-pixel box
+from `WARDLEY_NODE_SIZE`, the name's place (beside) and the patch and clears
+from the presets. The method's birth fill (`METHOD_FILL`) is written by the
+patch as any preset key is, and stays covered by the ring.
+
+**Known risk, unchanged on purpose.** Between two circles the name stays where
+it was while the circle grows (18 → 35: the edge advances 8.5 px, beyond W3's
+`minPenetration` of 4), so a W3 label / component warning may appear after a
+component becomes a method, as it already does when one becomes an ecosystem
+(40). The placement is the author's; the morph does not move it.
+
+Not a red zone: no schema, no stored field, no role or tag change.
