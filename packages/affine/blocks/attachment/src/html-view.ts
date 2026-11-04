@@ -40,8 +40,9 @@ const stopEvent = (event: Event) => event.stopPropagation();
  * reload of the document stops it, which is also what gets a reader out of a page
  * that froze once started.
  *
- * In a page the height is the block's, in `xywh` like its size on a canvas, and its
- * handle shows when the reader is not interacting. On a canvas the canvas sizes it.
+ * In a page, and in a note on a canvas, the height is the block's, in `xywh` like its
+ * size on a canvas, and its handle shows when the reader is not interacting. A block
+ * laid directly on a canvas is sized by the canvas.
  */
 export class AttachmentHtmlView extends WithDisposable(LitElement) {
   static override styles = css`
@@ -58,6 +59,18 @@ export class AttachmentHtmlView extends WithDisposable(LitElement) {
     labre-html-frame {
       position: absolute;
       inset: 0;
+    }
+
+    /*
+     * Above the mask of a canvas note (z-index 1 in the note's stacking context;
+     * nothing between here and there makes one), so what this view claims takes
+     * the pointer without entering the note first. The preview stays under it: a
+     * press there still selects and drags the note (ADR 0048).
+     */
+    .controls,
+    .height-handle,
+    labre-html-frame[interactive] {
+      z-index: 2;
     }
 
     .height-handle {
@@ -144,9 +157,10 @@ export class AttachmentHtmlView extends WithDisposable(LitElement) {
 
   private _interaction: HtmlInteraction | null = null;
 
-  private _resizeFrom: { y: number; height: number } | null = null;
+  private _resizeFrom: { y: number; height: number; scale: number } | null =
+    null;
 
-  /** A page's view, on a canvas the canvas sizes the block. */
+  /** In the flow of a page or a note; a block on the surface, the canvas sizes it. */
   private get _inPage() {
     return !this.closest('affine-edgeless-attachment');
   }
@@ -181,14 +195,21 @@ export class AttachmentHtmlView extends WithDisposable(LitElement) {
     event.preventDefault();
     event.stopPropagation();
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-    this._resizeFrom = { y: event.clientY, height: this._storedHeight };
+    this._resizeFrom = {
+      y: event.clientY,
+      height: this._storedHeight,
+      // The pointer moves on screen, the height is stored in the block's own
+      // pixels: a note on a canvas is drawn at its scale times the zoom.
+      scale: this.getBoundingClientRect().height / this.offsetHeight || 1,
+    };
   };
 
   private readonly _onResizeMove = (event: PointerEvent) => {
     if (!this._resizeFrom) return;
     event.stopPropagation();
     this._dragHeight = this._clampHeight(
-      this._resizeFrom.height + event.clientY - this._resizeFrom.y
+      this._resizeFrom.height +
+        (event.clientY - this._resizeFrom.y) / this._resizeFrom.scale
     );
   };
 

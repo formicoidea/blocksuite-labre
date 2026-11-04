@@ -12,11 +12,16 @@
  * - a thumbnail with a frame before it is in view, or one that takes the pointer;
  * - "Interact" not reaching the frame, or surviving a press outside, or a page
  *   reloaded when the interaction ends;
- * - an embed view offered without a page from the host.
+ * - an embed view offered without a page from the host;
+ * - in a note on the canvas, a mask that swallows "Interact", the frame or the height
+ *   handle until the note is entered, or a preview that stops selecting the note;
+ * - a height drag that ignores the canvas's zoom and the note's own scale.
  */
 import type { HtmlFrame } from '@labre/affine/components/html-frame';
-import type { AttachmentBlockModel } from '@labre/affine/model';
+import type { AttachmentBlockModel, NoteBlockModel } from '@labre/affine/model';
 import { EmbedHtmlConfigExtension } from '@labre/affine/shared/services';
+import { Bound } from '@labre/global/gfx';
+import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { wait } from '../utils/common.js';
@@ -172,6 +177,105 @@ describe('an html attachment', () => {
     stop();
     expect(runs.count).toBe(0);
     expect(views()).toHaveLength(1);
+  });
+
+  describe('in a note on the canvas', () => {
+    const NOTE_SCALE = 1.5;
+
+    const viewport = () =>
+      window.editor.std.get(GfxControllerIdentifier).viewport;
+
+    // What the pointer hits at the centre of a part, through the view's shadow
+    // root, once the part is in the runner's small frame at any zoom.
+    const hitAt = async (view: HTMLElement, part: HTMLElement) => {
+      const centre = () => {
+        const box = part.getBoundingClientRect();
+        return [box.x + box.width / 2, box.y + box.height / 2] as const;
+      };
+      const [px, py] = centre();
+      const host = window.editor.host!.getBoundingClientRect();
+      const { centerX, centerY, zoom } = viewport();
+      viewport().setCenter(
+        centerX + (px - (host.x + host.width / 2)) / zoom,
+        centerY + (py - (host.y + host.height / 2)) / zoom
+      );
+      await wait(100);
+      const [x, y] = centre();
+      const top = document.elementFromPoint(x, y);
+      return top === view ? view.shadowRoot?.elementFromPoint(x, y) : top;
+    };
+
+    async function viewInNote() {
+      cleanup = await setupEditor('edgeless', [
+        EmbedHtmlConfigExtension({ frameUrl: PAGE }),
+      ]);
+      const noteId = addNote(window.doc);
+      const note = window.doc.getModelById(noteId) as NoteBlockModel;
+      window.doc.updateBlock(note, () => {
+        note.props.edgeless.scale = NOTE_SCALE;
+      });
+      const id = await addFile(noteId);
+      turnIntoEmbed(id);
+      await wait(200);
+      const view = views()[0] as HTMLElement;
+      const part = (testid: string) =>
+        view.shadowRoot?.querySelector(
+          `[data-testid="${testid}"]`
+        ) as HTMLElement;
+      return { id, view, part };
+    }
+
+    test.each([0.6, 1, 1.5])(
+      'at zoom %s, the view claims the pointer past the mask, and only there',
+      async zoom => {
+        const { view, part } = await viewInNote();
+        viewport().setZoom(zoom);
+        await wait(200);
+
+        const interact = part('attachment-html-interact');
+        const handle = part('attachment-html-height');
+        const preview = frameOf(view);
+        expect(await hitAt(view, interact)).toBe(interact);
+        expect(await hitAt(view, handle)).toBe(handle);
+        const under = (await hitAt(view, preview)) as HTMLElement;
+        expect(under.classList.contains('affine-note-mask')).toBe(true);
+
+        interact.click();
+        await wait(50);
+        expect(await hitAt(view, preview)).toBe(preview);
+        expect(part('attachment-html-height')).toBeNull();
+      }
+    );
+
+    test('the height handle moves with the pointer at any scale', async () => {
+      const { id, view, part } = await viewInNote();
+      const zoom = 0.5;
+      viewport().setZoom(zoom);
+      await wait(200);
+
+      const model = window.doc.getModelById(id) as AttachmentBlockModel;
+      const before = view.getBoundingClientRect().height;
+      const stored = view.offsetHeight;
+      const handle = part('attachment-html-height');
+      const fire = (type: string, clientY: number) =>
+        handle.dispatchEvent(
+          new PointerEvent(type, {
+            bubbles: true,
+            composed: true,
+            pointerId: 1,
+            clientY,
+          })
+        );
+      handle.setPointerCapture = () => undefined;
+      fire('pointerdown', 100);
+      fire('pointermove', 160);
+      fire('pointerup', 160);
+      await wait(50);
+
+      const stepped = Bound.deserialize(model.props.xywh).h;
+      expect(stepped).toBeCloseTo(stored + 60 / (zoom * NOTE_SCALE), 0);
+      expect(view.getBoundingClientRect().height).toBeCloseTo(before + 60, 0);
+    });
   });
 
   test('the stored html block runs nothing, with a page or without', async () => {

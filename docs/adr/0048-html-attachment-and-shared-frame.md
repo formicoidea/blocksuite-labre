@@ -60,7 +60,11 @@ opens the page.
    inside never reaches the parent. A view that arrives later stays closed until the next
    gesture. Full screen takes one view with its exit button and is interactive. The
    buttons sit on the preview, not in the toolbar, because a read-only reader needs them
-   and an unselected block has no toolbar.
+   and an unselected block has no toolbar. In a note on a canvas the note's mask covers
+   the content until the note is entered: the buttons, the height handle and the frame
+   while interacting stack above it (`z-index: 2`, no stacking context between them and
+   the mask), so "Interact" needs no double-click, and the preview stays under it, so a
+   press there still selects and drags the note.
 10. **An html file opens on its embed view**, in a page and on the canvas, once the host
     has named its page. Only at creation: a stored block keeps its view, and
     `shouldBeConverted` plays no part, it replaces a block by an image.
@@ -69,7 +73,9 @@ opens the page.
     the ratio lock of an attachment is lifted for this view only. A view opens around its
     centre: anchored by its corner, a wide one leaves its buttons off the screen. In a page
     the height is in `xywh` too, no schema change, set by a handle that shows outside the
-    interaction, from 120 to 2400 px, 44 px of target on touch.
+    interaction, from 120 to 2400 px, 44 px of target on touch. A note on a canvas is
+    the same flow drawn at its scale times the zoom: the handle divides the pointer's
+    move by what it measures on screen.
 12. **No script of the html runs without a reader's gesture** (product owner,
     2026-11-04). The html of a file can be written without going through any screen, and
     a page in a loop freezes every reader of a browser that keeps the frame in the
