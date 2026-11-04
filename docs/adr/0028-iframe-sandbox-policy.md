@@ -109,3 +109,28 @@ very same package.
   feature policy, not a sandbox one, and is a separate arbitration.
 - Remaining gap, host-side: there is still no CSP anywhere. The `sandbox` is
   the single control. A `frame-src` allow-list belongs to labreapp.
+
+## Amendments
+
+### 2026-11-04: the pdf frame is locked by the type of its url
+
+Point 7 left the attachment's pdf preview out of this policy. It has no sandbox,
+because a sandbox stops the browser's pdf plugin, and it loads a `blob:` url,
+which has the origin of the app. That was only safe while the url held a pdf,
+and the url's type came from `type`, a prop any collaborator writes. A url also
+outlives the prop: written `text/html` then `application/pdf` with `embed: true`,
+the block loaded the url made for the first value and ran the file on the app's
+origin, with no click, in Chromium, Firefox and WebKit (measured on the
+playground). `credentialless` is no lock: in Chromium the frame could not read
+its own `localStorage` but read `window.parent.localStorage`; the other two
+ignore the attribute.
+
+An attachment's url now carries a type from a list of what is inert
+(`attachmentBlobType`, `blocks/attachment/src/blob-type.ts`), otherwise
+`application/octet-stream`. A list of what is inert, because every `+xml` subtype
+is a document to a browser. The rule holds where the url is made, so a url that
+outlives its prop is still inert. `open()` hands over a file outside that list
+instead of navigating to it. An image block keeps its own type: `image/svg+xml`
+is what paints an `<img>`, and no script runs there (measured in the three
+browsers). Held by `blob-type.unit.spec.ts` and
+`integration-test/.../page/attachment-blob-type.spec.ts`.

@@ -24,6 +24,7 @@ import { GfxControllerIdentifier } from '@labre/std/gfx';
 import type { BlockModel } from '@labre/store';
 
 import type { AttachmentBlockComponent } from './attachment-block';
+import { attachmentBlobType } from './blob-type.js';
 import {
   ATTACHMENT_TOAST_DOWNLOAD_FAILED,
   ATTACHMENT_TOAST_DOWNLOADING,
@@ -85,10 +86,9 @@ export function downloadAttachmentBlob(block: AttachmentBlockComponent) {
 }
 
 export async function refreshData(block: AttachmentBlockComponent) {
-  const model = block.model;
-  const type = model.props.type$.peek();
+  const type = block.model.props.type$.peek();
 
-  await block.resourceController.refreshUrlWith(type);
+  await block.resourceController.refreshUrlWith(attachmentBlobType(type));
 }
 
 export async function getFileType(file: File) {

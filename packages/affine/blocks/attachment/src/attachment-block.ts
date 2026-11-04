@@ -44,6 +44,7 @@ import { when } from 'lit/directives/when.js';
 import { filter } from 'rxjs/operators';
 
 import { pickAttachmentSource } from './asset-picker.js';
+import { attachmentBlobType, NEUTRAL_BLOB_TYPE } from './blob-type.js';
 import { AttachmentEmbedProvider } from './embed';
 import { styles } from './styles';
 import { downloadAttachmentBlob, refreshData } from './utils';
@@ -134,7 +135,12 @@ export class AttachmentBlockComponent extends CaptionedBlockComponent<Attachment
   open = () => {
     const blobUrl = this.blobUrl;
     if (!blobUrl) return;
-    window.open(blobUrl, '_blank');
+    // A file the browser would run is no preview: hand it over.
+    if (attachmentBlobType(this.model.props.type) === NEUTRAL_BLOB_TYPE) {
+      this.download();
+      return;
+    }
+    window.open(blobUrl, '_blank', 'noopener');
   };
 
   // Refreshes data.

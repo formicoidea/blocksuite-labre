@@ -355,7 +355,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/attachment
         metadata {
           path 'packages/affine/blocks/attachment'
-          files '22'
+          files '23'
         }
         adapters = folder 'adapters/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/attachment/src/adapters
@@ -382,7 +382,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/attachment/src
           metadata {
             path 'packages/affine/blocks/attachment/src'
-            files '13'
+            files '14'
           }
         }
       }
@@ -3735,7 +3735,7 @@ model {
   features.database.block -[uses]-> framework.std '19 imports, 9 type-only'
   features.database.block -[uses]-> framework.store '24 imports, 16 type-only'
   features.database.block -[uses]-> model_.model_ '21 imports, 13 type-only'
-  features.database.editor -[uses]-> features.components '7 imports'
+  features.database.editor -[uses]-> features.components '8 imports'
   features.database.editor -[uses]-> features.database.block '9 imports, 1 type-only'
   features.database.editor -[uses]-> features.database.engine '8 imports, 2 type-only'
   features.database.editor -[uses]-> features.ext-loader '1 import'
@@ -5785,7 +5785,7 @@ model {
   features.database.block.utils -[imports]-> model_.model_.src '1 import, 1 type-only'
   features.database.block.views_ -[imports]-> features.database.engine.src '1 import, 1 type-only'
   features.database.block.views_ -[imports]-> features.database.engine.view-presets '1 import'
-  features.database.editor.database-page -[imports]-> features.components.context-menu '1 import'
+  features.database.editor.database-page -[imports]-> features.components.context-menu '2 imports'
   features.database.editor.database-page -[imports]-> features.database.editor.src '2 imports'
   features.database.editor.database-page -[imports]-> features.database.editor.view-settings '1 import'
   features.database.editor.database-page -[imports]-> features.database.editor.view-transfer '1 import'
