@@ -373,12 +373,12 @@ describe('image crop on the canvas', () => {
     );
     await wait();
 
-    const crop = { ...model.props.crop };
-    expect(crop.w).toBeCloseTo(0.25, 2);
-    expect(crop.h).toBeCloseTo(0.5, 2);
+    const { x = 0, y = 0, w = 0, h = 0 } = model.props.crop ?? {};
+    expect(w).toBeCloseTo(0.25, 2);
+    expect(h).toBeCloseTo(0.5, 2);
     // About the frame's centre, the box unmoved.
-    expect(crop.x + crop.w / 2).toBeCloseTo(0.5, 3);
-    expect(crop.y + crop.h / 2).toBeCloseTo(0.5, 3);
+    expect(x + w / 2).toBeCloseTo(0.5, 3);
+    expect(y + h / 2).toBeCloseTo(0.5, 3);
     expect(model.xywh).toBe('[50,0,100,100]');
 
     window.doc.undo();
