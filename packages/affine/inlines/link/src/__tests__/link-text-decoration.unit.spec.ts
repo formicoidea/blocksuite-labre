@@ -22,8 +22,8 @@ beforeAll(() => {
   }
 });
 
-/** The anchor's inline `style` attribute for a link carrying `attributes`. */
-function anchorStyleOf(attributes: AffineTextAttributes) {
+/** The anchor's inline `text-decoration` for a link carrying `attributes`. */
+function anchorDecorationOf(attributes: AffineTextAttributes) {
   const node = document.createElement('affine-link') as AffineLink;
   node.delta = {
     insert: 'labre',
@@ -35,27 +35,25 @@ function anchorStyleOf(attributes: AffineTextAttributes) {
 
   const anchor = container.querySelector('a');
   expect(anchor).not.toBeNull();
-  return anchor!.getAttribute('style') ?? '';
+  return anchor!.style.getPropertyValue('text-decoration');
 }
 
 const LINK = 'https://labre.example/doc';
 
 describe('affine-link text decoration', () => {
   it('renders a struck link with a line through it', () => {
-    expect(anchorStyleOf({ link: LINK, strike: true })).toContain(
+    expect(anchorDecorationOf({ link: LINK, strike: true })).toContain(
       'line-through'
     );
   });
 
   it('renders an underlined link underlined', () => {
-    expect(anchorStyleOf({ link: LINK, underline: true })).toContain(
+    expect(anchorDecorationOf({ link: LINK, underline: true })).toContain(
       'underline'
     );
   });
 
   it('leaves a plain link undecorated', () => {
-    const style = anchorStyleOf({ link: LINK });
-    expect(style).not.toContain('line-through');
-    expect(style).toContain('text-decoration:none');
+    expect(anchorDecorationOf({ link: LINK })).toBe('none');
   });
 });

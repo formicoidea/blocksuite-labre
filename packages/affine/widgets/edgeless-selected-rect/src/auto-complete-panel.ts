@@ -55,7 +55,7 @@ import {
   toDegree,
   Vec,
 } from '@labre/global/gfx';
-import { WithDisposable } from '@labre/global/lit';
+import { styleMap, WithDisposable } from '@labre/global/lit';
 import { FrameIcon, PageIcon } from '@blocksuite/icons/lit';
 import {
   type BlockComponent,
@@ -68,7 +68,6 @@ import { baseTheme } from '@toeverything/theme';
 import { css, html, LitElement, nothing, unsafeCSS } from 'lit';
 import { property } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
-import { styleMap } from 'lit/directives/style-map.js';
 import * as Y from 'yjs';
 
 import {

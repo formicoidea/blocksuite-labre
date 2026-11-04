@@ -1,7 +1,7 @@
 import type { Color } from '@labre/affine-model';
 import { translateKey } from '@labre/affine-shared/services';
 import { on, once, stopPropagation } from '@labre/affine-shared/utils';
-import { SignalWatcher, WithDisposable } from '@labre/global/lit';
+import { SignalWatcher, styleMap, WithDisposable } from '@labre/global/lit';
 import type { BlockStdScope } from '@labre/std';
 import { stdContext } from '@labre/std';
 import { consume } from '@lit/context';
@@ -11,7 +11,6 @@ import { property, query } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { live } from 'lit/directives/live.js';
 import { repeat } from 'lit/directives/repeat.js';
-import { styleMap } from 'lit/directives/style-map.js';
 import clamp from 'lodash-es/clamp';
 
 import { AREA_CIRCLE_R, MATCHERS, SLIDER_CIRCLE_R } from './consts.js';

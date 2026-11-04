@@ -14,7 +14,7 @@ import {
   cloneReferenceInfo,
   referenceToNode,
 } from '@labre/affine-shared/utils';
-import { WithDisposable } from '@labre/global/lit';
+import { styleMap, WithDisposable } from '@labre/global/lit';
 import { LinkedPageIcon } from '@blocksuite/icons/lit';
 import type { BlockComponent, BlockStdScope } from '@labre/std';
 import { BLOCK_ID_ATTR, ShadowlessElement } from '@labre/std';
@@ -29,7 +29,6 @@ import { css, html, nothing } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { choose } from 'lit/directives/choose.js';
 import { ifDefined } from 'lit/directives/if-defined.js';
-import { styleMap } from 'lit/directives/style-map.js';
 
 import type { ReferenceNodeConfigProvider } from './reference-config';
 import { RefNodeSlotsProvider } from './reference-node-slots';

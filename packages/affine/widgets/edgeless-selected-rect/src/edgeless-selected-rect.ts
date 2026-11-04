@@ -29,7 +29,7 @@ import { css, html, nothing } from 'lit';
 import { state } from 'lit/decorators.js';
 import { ifDefined } from 'lit/directives/if-defined.js';
 import { repeat } from 'lit/directives/repeat.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 import { RenderResizeHandles } from './resize-handles.js';
 import { generateCursorUrl, getRotatedResizeCursor } from './utils.js';

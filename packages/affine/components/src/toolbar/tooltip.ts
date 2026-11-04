@@ -11,7 +11,7 @@ import {
 import type { CSSResult } from 'lit';
 import { css, html, LitElement, unsafeCSS } from 'lit';
 import { property } from 'lit/decorators.js';
-import { type StyleInfo, styleMap } from 'lit/directives/style-map.js';
+import { type StyleInfo, styleMap } from '@labre/global/lit';
 
 import { HoverController, type HoverOptions } from '../hover/index.js';
 

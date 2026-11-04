@@ -1,12 +1,11 @@
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
-import { SignalWatcher, WithDisposable } from '@labre/global/lit';
+import { SignalWatcher, styleMap, WithDisposable } from '@labre/global/lit';
 import { PlusIcon } from '@blocksuite/icons/lit';
 import { type BlockStdScope, ShadowlessElement, stdContext } from '@labre/std';
 import { consume } from '@lit/context';
 import { css, nothing, type TemplateResult } from 'lit';
 import { property, query } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
-import { styleMap } from 'lit/directives/style-map.js';
 import { html } from 'lit/static-html.js';
 
 import { wordingOf } from '../../../core/utils/wording.js';

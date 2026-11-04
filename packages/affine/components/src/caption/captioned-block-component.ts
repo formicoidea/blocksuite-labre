@@ -1,11 +1,10 @@
 import { ThemeProvider } from '@labre/affine-shared/services';
-import { watch } from '@labre/global/lit';
+import { type StyleInfo, styleMap, watch } from '@labre/global/lit';
 import { BlockComponent, type BlockService } from '@labre/std';
 import type { BlockModel } from '@labre/store';
 import { html, nothing } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 import { createRef, type Ref, ref } from 'lit/directives/ref.js';
-import { type StyleInfo, styleMap } from 'lit/directives/style-map.js';
 
 import type { BlockCaptionEditor } from './block-caption.js';
 import { styles } from './styles.js';

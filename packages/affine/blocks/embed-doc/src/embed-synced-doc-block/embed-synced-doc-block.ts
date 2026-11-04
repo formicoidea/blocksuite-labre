@@ -40,7 +40,7 @@ import { query, state } from 'lit/decorators.js';
 import { choose } from 'lit/directives/choose.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { guard } from 'lit/directives/guard.js';
-import { type StyleInfo, styleMap } from 'lit/directives/style-map.js';
+import { type StyleInfo, styleMap } from '@labre/global/lit';
 import * as Y from 'yjs';
 
 import { cardIcon } from '../common/child-card.js';

@@ -11,7 +11,7 @@ import { RichText } from '@labre/affine-rich-text';
 import { cssVarV2 } from '@labre/affine-shared/theme';
 import { getViewportElement } from '@labre/affine-shared/utils';
 import { IS_MAC } from '@labre/global/env';
-import { SignalWatcher, WithDisposable } from '@labre/global/lit';
+import { SignalWatcher, styleMap, WithDisposable } from '@labre/global/lit';
 import {
   ArrowDownBigIcon,
   ArrowLeftBigIcon,
@@ -36,7 +36,6 @@ import { property, query } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { ifDefined } from 'lit/directives/if-defined.js';
 import { ref } from 'lit/directives/ref.js';
-import { styleMap } from 'lit/directives/style-map.js';
 
 import { colorList } from './color';
 import { ColumnMaxWidth, DefaultColumnWidth } from './consts';

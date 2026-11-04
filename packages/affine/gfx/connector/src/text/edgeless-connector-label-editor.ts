@@ -13,7 +13,7 @@ import { ThemeProvider, translateKey } from '@labre/affine-shared/services';
 import { almostEqual } from '@labre/affine-shared/utils';
 import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
 import { Bound, type IVec, Vec, type XYWH } from '@labre/global/gfx';
-import { WithDisposable } from '@labre/global/lit';
+import { styleMap, WithDisposable } from '@labre/global/lit';
 import {
   type BlockComponent,
   type BlockStdScope,
@@ -25,7 +25,6 @@ import { RANGE_SYNC_EXCLUDE_ATTR } from '@labre/std/inline';
 import { consume } from '@lit/context';
 import { css, html, nothing } from 'lit';
 import { property, query } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
 import * as Y from 'yjs';
 
 import { CONNECTOR_ADD_TEXT } from '../translations.js';

@@ -1,13 +1,12 @@
 import type { Color, ColorScheme, Palette } from '@labre/affine-model';
 import { DefaultTheme, resolveColor } from '@labre/affine-model';
 import type { ColorEvent } from '@labre/affine-shared/utils';
-import { WithDisposable } from '@labre/global/lit';
+import { styleMap, WithDisposable } from '@labre/global/lit';
 import type { BlockStdScope } from '@labre/std';
 import { html, LitElement, type PropertyValues } from 'lit';
 import { property, query, state } from 'lit/decorators.js';
 import { choose } from 'lit/directives/choose.js';
 import { ifDefined } from 'lit/directives/if-defined.js';
-import { styleMap } from 'lit/directives/style-map.js';
 import { when } from 'lit-html/directives/when.js';
 
 import type { EditorMenuButton } from '../toolbar/menu-button';

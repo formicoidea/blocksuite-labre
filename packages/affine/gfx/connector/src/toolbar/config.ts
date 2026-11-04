@@ -62,7 +62,7 @@ import {
   runCommand,
 } from '@labre/std';
 import { html } from 'lit';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 import { isConnectorWithLabel } from '../connector-manager';
 import {

@@ -11,14 +11,13 @@ import {
   getPopperPosition,
   getViewportElement,
 } from '@labre/affine-shared/utils';
-import { SignalWatcher, WithDisposable } from '@labre/global/lit';
+import { SignalWatcher, styleMap, WithDisposable } from '@labre/global/lit';
 import { MoreHorizontalIcon } from '@blocksuite/icons/lit';
 import { PropTypes, requiredProperties } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { effect } from '@preact/signals-core';
 import { css, html, LitElement, nothing } from 'lit';
 import { property, query, queryAll, state } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
 import throttle from 'lodash-es/throttle';
 
 import type { LinkedDocContext, LinkedMenuGroup } from './config.js';

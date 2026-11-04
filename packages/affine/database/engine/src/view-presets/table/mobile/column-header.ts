@@ -5,7 +5,7 @@ import {
   popupTargetFromElement,
 } from '@labre/affine-components/context-menu';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
-import { SignalWatcher, WithDisposable } from '@labre/global/lit';
+import { SignalWatcher, styleMap, WithDisposable } from '@labre/global/lit';
 import {
   InsertLeftIcon,
   InsertRightIcon,
@@ -16,7 +16,6 @@ import { type BlockStdScope, ShadowlessElement, stdContext } from '@labre/std';
 import { consume } from '@lit/context';
 import { css } from 'lit';
 import { property } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
 import { html } from 'lit/static-html.js';
 
 import { propertyMenuItems } from '../../../core/common/property-menu.js';

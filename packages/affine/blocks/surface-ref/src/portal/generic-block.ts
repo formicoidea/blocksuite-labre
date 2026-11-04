@@ -11,12 +11,11 @@ import type {
   ImageBlockModel,
 } from '@labre/affine-model';
 import { Bound } from '@labre/global/gfx';
-import { WithDisposable } from '@labre/global/lit';
+import { styleMap, WithDisposable } from '@labre/global/lit';
 import { ShadowlessElement } from '@labre/std';
 import type { BlockModel } from '@labre/store';
 import { css, type TemplateResult } from 'lit';
 import { property } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
 import { html } from 'lit/static-html.js';
 
 export class SurfaceRefGenericBlockPortal extends WithDisposable(

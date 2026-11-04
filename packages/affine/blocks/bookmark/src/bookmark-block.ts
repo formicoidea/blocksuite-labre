@@ -20,7 +20,7 @@ import { computed, type ReadonlySignal, signal } from '@preact/signals-core';
 import { html } from 'lit';
 import { property, query } from 'lit/decorators.js';
 import { type ClassInfo, classMap } from 'lit/directives/class-map.js';
-import { type StyleInfo, styleMap } from 'lit/directives/style-map.js';
+import { type StyleInfo, styleMap } from '@labre/global/lit';
 import { filter } from 'rxjs/operators';
 
 import { refreshBookmarkUrlData } from './utils.js';

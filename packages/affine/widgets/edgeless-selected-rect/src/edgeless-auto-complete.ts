@@ -40,7 +40,7 @@ import {
 import { DisposableGroup } from '@labre/global/disposable';
 import type { Bound, IVec } from '@labre/global/gfx';
 import { Vec } from '@labre/global/gfx';
-import { WithDisposable } from '@labre/global/lit';
+import { styleMap, WithDisposable } from '@labre/global/lit';
 import {
   ArrowUpBigIcon,
   PlusIcon,
@@ -57,7 +57,6 @@ import { consume } from '@lit/context';
 import { css, html, LitElement, nothing } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
-import { styleMap } from 'lit/directives/style-map.js';
 
 import { EdgelessAutoCompletePanel } from './auto-complete-panel.js';
 import {

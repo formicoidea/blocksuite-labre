@@ -8,7 +8,7 @@ import {
 import { ImageSelection } from '@labre/affine-shared/selection';
 import { translateKey } from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
-import { SignalWatcher, WithDisposable } from '@labre/global/lit';
+import { SignalWatcher, styleMap, WithDisposable } from '@labre/global/lit';
 import type { BlockComponent, UIEventStateContext } from '@labre/std';
 import { BlockSelection, ShadowlessElement, TextSelection } from '@labre/std';
 import type { BaseSelection } from '@labre/store';
@@ -16,7 +16,6 @@ import { computed } from '@preact/signals-core';
 import { css, html, type PropertyValues } from 'lit';
 import { property, query, state } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
-import { styleMap } from 'lit/directives/style-map.js';
 import { when } from 'lit/directives/when.js';
 
 import { croppedImageStyle } from '../crop/crop-controller.js';

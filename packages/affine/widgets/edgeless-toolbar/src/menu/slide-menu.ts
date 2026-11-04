@@ -1,9 +1,8 @@
-import { WithDisposable } from '@labre/global/lit';
+import { styleMap, WithDisposable } from '@labre/global/lit';
 import { ArrowRightSmallIcon } from '@blocksuite/icons/lit';
 import { consume } from '@lit/context';
 import { css, html, LitElement } from 'lit';
 import { property, query } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
 
 import {
   type EdgelessToolbarSlots,

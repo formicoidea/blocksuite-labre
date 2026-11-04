@@ -4,8 +4,7 @@ import { cssVarV2 } from '@toeverything/theme/v2';
 import { css, html, type TemplateResult } from 'lit';
 import { property, query } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
-import { styleMap } from 'lit/directives/style-map.js';
-import type { StyleInfo } from 'lit-html/directives/style-map.js';
+import { type StyleInfo, styleMap } from '@labre/global/lit';
 
 import { MenuFocusable } from './focusable.js';
 import type { Menu } from './menu.js';

@@ -110,6 +110,8 @@ export const highlightBackgroundDeltaToHtmlAdapterMatcher =
         'var('.length,
         delta.attributes?.background.indexOf(')')
       );
+      // Anything but a `--` name comes back as it was stored, into a style string.
+      if (!backgroundVar.startsWith('--')) return hast;
       const background = theme.getCssVariableColor(backgroundVar);
       return {
         type: 'element',
@@ -146,6 +148,7 @@ export const highlightColorDeltaToHtmlAdapterMatcher =
         'var('.length,
         delta.attributes?.color.indexOf(')')
       );
+      if (!colorVar.startsWith('--')) return hast;
       const color = theme.getCssVariableColor(colorVar);
       return {
         type: 'element',

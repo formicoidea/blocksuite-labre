@@ -1,9 +1,8 @@
-import { SignalWatcher } from '@labre/global/lit';
+import { SignalWatcher, styleMap } from '@labre/global/lit';
 import { ContextConsumer } from '@lit/context';
 import type { ReadonlySignal } from '@preact/signals-core';
 import { css, html, LitElement, nothing, unsafeCSS } from 'lit';
 import { property } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
 
 import { stdContext } from '../../view/element/lit-host.js';
 import {

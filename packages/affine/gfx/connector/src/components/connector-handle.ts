@@ -7,7 +7,7 @@ import type { ConnectorElementModel } from '@labre/affine-model';
 import { DisposableGroup } from '@labre/global/disposable';
 import type { IVec } from '@labre/global/gfx';
 import { getBezierParameters, getBezierPoint, Vec } from '@labre/global/gfx';
-import { WithDisposable } from '@labre/global/lit';
+import { styleMap, WithDisposable } from '@labre/global/lit';
 import {
   type BlockComponent,
   type BlockStdScope,
@@ -19,7 +19,6 @@ import type { Store } from '@labre/store';
 import { consume } from '@lit/context';
 import { css, html, LitElement, nothing } from 'lit';
 import { property, query } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
 
 import type { ConnectionOverlay } from '../connector-manager';
 

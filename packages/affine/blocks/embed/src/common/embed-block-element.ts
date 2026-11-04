@@ -25,7 +25,7 @@ import type { TemplateResult } from 'lit';
 import { html } from 'lit';
 import { query } from 'lit/decorators.js';
 import { type ClassInfo, classMap } from 'lit/directives/class-map.js';
-import { type StyleInfo, styleMap } from 'lit/directives/style-map.js';
+import { type StyleInfo, styleMap } from '@labre/global/lit';
 
 export class EmbedBlockComponent<
   Model extends BlockModel<EmbedProps> = BlockModel<EmbedProps>,

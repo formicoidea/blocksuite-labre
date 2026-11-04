@@ -3,7 +3,7 @@ import { WidgetComponent, WidgetViewExtension } from '@labre/std';
 import { css, html } from 'lit';
 import { state } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 import { literal, unsafeStatic } from 'lit/static-html.js';
 
 export const AFFINE_VIEWPORT_OVERLAY_WIDGET = 'affine-viewport-overlay-widget';

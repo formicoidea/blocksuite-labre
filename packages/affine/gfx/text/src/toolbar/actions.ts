@@ -40,7 +40,7 @@ import {
 import type { GfxModel } from '@labre/std/gfx';
 import { signal } from '@preact/signals-core';
 import { html } from 'lit';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 import {
   isFontStyleSupported,

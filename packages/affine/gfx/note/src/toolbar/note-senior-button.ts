@@ -9,7 +9,7 @@ import {
   translateKey,
 } from '@labre/affine-shared/services';
 import { EdgelessToolbarToolMixin } from '@labre/affine-widget-edgeless-toolbar';
-import { SignalWatcher } from '@labre/global/lit';
+import { SignalWatcher, styleMap } from '@labre/global/lit';
 import { computed } from '@preact/signals-core';
 import { css, html, LitElement } from 'lit';
 import { state } from 'lit/decorators.js';
@@ -201,7 +201,7 @@ export class EdgelessNoteSeniorButton extends EdgelessToolbarToolMixin(
         class="note-root"
         data-app-theme=${appTheme}
         @click=${this._toggleNoteMenu}
-        style="--paper-bg: ${this._noteBg$.value}"
+        style=${styleMap({ '--paper-bg': this._noteBg$.value })}
       >
         <div class="paper">${toShapeNotToAdapt}</div>
         <div class="edgeless-toolbar-note-icon link">${LinkIcon}</div>

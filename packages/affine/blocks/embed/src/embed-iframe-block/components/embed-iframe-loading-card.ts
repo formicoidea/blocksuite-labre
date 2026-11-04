@@ -6,7 +6,7 @@ import { type BlockStdScope } from '@labre/std';
 import { css, html, LitElement } from 'lit';
 import { property } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 import { LOADING_CARD_DEFAULT_HEIGHT } from '../consts';
 import type { EmbedIframeStatusCardOptions } from '../types';

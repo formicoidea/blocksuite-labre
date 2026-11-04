@@ -14,7 +14,7 @@ import {
 } from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { type ColorEvent, stopPropagation } from '@labre/affine-shared/utils';
-import { SignalWatcher, WithDisposable } from '@labre/global/lit';
+import { SignalWatcher, styleMap, WithDisposable } from '@labre/global/lit';
 import type { BlockStdScope } from '@labre/std';
 import { stdContext } from '@labre/std';
 import { consume } from '@lit/context';
@@ -23,7 +23,6 @@ import { css, html, LitElement, nothing, type PropertyValues } from 'lit';
 import { property, query, state } from 'lit/decorators.js';
 import { choose } from 'lit-html/directives/choose.js';
 import { repeat } from 'lit-html/directives/repeat.js';
-import { styleMap } from 'lit-html/directives/style-map.js';
 import { when } from 'lit-html/directives/when.js';
 
 import {

@@ -5,7 +5,7 @@ import {
 } from '@labre/affine-components/context-menu';
 import { css, html } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 import { selectOptionColorGrid } from '../../component/tags/color-menu.js';
 import type { SelectTag } from '../../logical/index.js';

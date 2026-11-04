@@ -1,6 +1,6 @@
 import type { BaseTextAttributes } from '@labre/store';
 import { html } from 'lit';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 import type { AttributeRenderer } from '../types.js';
 

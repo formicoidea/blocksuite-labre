@@ -23,7 +23,7 @@ import { effect } from '@preact/signals-core';
 import { cssVarV2 } from '@toeverything/theme/v2';
 import { css, html, nothing, unsafeCSS } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 import { type ResolvedThreadRange, resolveThreadRange } from './text-range.js';
 import { openThreadOn } from './toolbar.js';

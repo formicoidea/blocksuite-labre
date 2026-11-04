@@ -1,6 +1,6 @@
 import type { ChromeWording } from '@labre/affine-shared/services';
 import { clamp } from '@labre/global/gfx';
-import { WithDisposable } from '@labre/global/lit';
+import { styleMap, WithDisposable } from '@labre/global/lit';
 import { isSameDay, isSameMonth, isToday } from 'date-fns';
 import {
   html,
@@ -11,7 +11,6 @@ import {
 } from 'lit';
 import { property } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
-import { styleMap } from 'lit/directives/style-map.js';
 
 import {
   DATE_PICKER_CLEAR,

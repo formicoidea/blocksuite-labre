@@ -4,7 +4,7 @@ import {
   VirtualKeyboardProvider,
 } from '@labre/affine-shared/services';
 import { isValidUrl, stopPropagation } from '@labre/affine-shared/utils';
-import { SignalWatcher, WithDisposable } from '@labre/global/lit';
+import { SignalWatcher, styleMap, WithDisposable } from '@labre/global/lit';
 import type { EditorHost } from '@labre/std';
 import { ShadowlessElement } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
@@ -12,7 +12,6 @@ import type { BlockModel } from '@labre/store';
 import { html } from 'lit';
 import { property, query, state } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
-import { styleMap } from 'lit-html/directives/style-map.js';
 
 import { toast } from '../toast';
 import {

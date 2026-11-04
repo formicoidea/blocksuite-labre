@@ -30,7 +30,7 @@ import { html } from 'lit';
 import { query } from 'lit/decorators.js';
 import { type ClassInfo, classMap } from 'lit/directives/class-map.js';
 import { ifDefined } from 'lit/directives/if-defined.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 import type { EmbedLinkInputPopupOptions } from './components/embed-iframe-link-input-popup.js';
 import {

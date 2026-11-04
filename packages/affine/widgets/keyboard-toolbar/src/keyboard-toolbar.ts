@@ -1,6 +1,6 @@
 import { getSelectedModelsCommand } from '@labre/affine-shared/commands';
 import { type VirtualKeyboardProviderWithAction } from '@labre/affine-shared/services';
-import { SignalWatcher, WithDisposable } from '@labre/global/lit';
+import { SignalWatcher, styleMap, WithDisposable } from '@labre/global/lit';
 import { ArrowLeftBigIcon, KeyboardIcon } from '@blocksuite/icons/lit';
 import {
   BlockComponent,
@@ -12,7 +12,6 @@ import { effect, type Signal, signal, untracked } from '@preact/signals-core';
 import { html } from 'lit';
 import { property } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
-import { styleMap } from 'lit/directives/style-map.js';
 import { when } from 'lit/directives/when.js';
 
 import type {

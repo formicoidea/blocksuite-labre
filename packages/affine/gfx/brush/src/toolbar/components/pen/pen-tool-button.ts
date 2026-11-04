@@ -5,10 +5,9 @@ import {
   translateKey,
 } from '@labre/affine-shared/services';
 import { EdgelessToolbarToolMixin } from '@labre/affine-widget-edgeless-toolbar';
-import { SignalWatcher } from '@labre/global/lit';
+import { SignalWatcher, styleMap } from '@labre/global/lit';
 import { computed, signal } from '@preact/signals-core';
 import { css, html, LitElement, nothing } from 'lit';
-import { styleMap } from 'lit/directives/style-map.js';
 import { when } from 'lit/directives/when.js';
 
 import { BrushTool } from '../../../brush-tool';

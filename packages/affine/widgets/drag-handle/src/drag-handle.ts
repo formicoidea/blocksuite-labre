@@ -13,7 +13,7 @@ import { computed, type ReadonlySignal, signal } from '@preact/signals-core';
 import { html, nothing } from 'lit';
 import { query, state } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 import type { AFFINE_DRAG_HANDLE_WIDGET } from './consts.js';
 import { RectHelper } from './helpers/rect-helper.js';

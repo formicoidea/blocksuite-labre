@@ -1,11 +1,10 @@
 import { DisposableGroup } from '@labre/global/disposable';
 import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
-import { SignalWatcher } from '@labre/global/lit';
+import { SignalWatcher, styleMap } from '@labre/global/lit';
 import type { BaseTextAttributes, DeltaInsert } from '@labre/store';
 import { effect, signal } from '@preact/signals-core';
 import { html, LitElement } from 'lit';
 import { property } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
 
 import { ZERO_WIDTH_FOR_EMPTY_LINE } from '../consts.js';
 import type { InlineEditor } from '../inline-editor.js';

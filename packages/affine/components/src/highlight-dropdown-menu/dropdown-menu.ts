@@ -5,7 +5,7 @@ import { PropTypes, requiredProperties, stdContext } from '@labre/std';
 import { consume } from '@lit/context';
 import { LitElement } from 'lit';
 import { property } from 'lit/decorators.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 import { html } from 'lit-html';
 import { repeat } from 'lit-html/directives/repeat.js';
 

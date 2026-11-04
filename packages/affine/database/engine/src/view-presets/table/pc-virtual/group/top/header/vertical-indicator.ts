@@ -1,10 +1,9 @@
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
-import { WithDisposable } from '@labre/global/lit';
+import { styleMap, WithDisposable } from '@labre/global/lit';
 import { ShadowlessElement } from '@labre/std';
 import { css, html } from 'lit';
 import { property } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
-import { styleMap } from 'lit/directives/style-map.js';
 
 import { startDrag } from '../../../../../../core/utils/drag';
 import { getResultInRange } from '../../../../../../core/utils/utils';

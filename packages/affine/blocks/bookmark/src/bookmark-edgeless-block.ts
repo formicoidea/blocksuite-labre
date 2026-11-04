@@ -5,7 +5,7 @@ import {
 } from '@labre/affine-shared/consts';
 import { toGfxBlockComponent } from '@labre/std';
 import { GfxViewInteractionExtension } from '@labre/std/gfx';
-import { type StyleInfo, styleMap } from 'lit/directives/style-map.js';
+import { type StyleInfo, styleMap } from '@labre/global/lit';
 
 import { BookmarkBlockComponent } from './bookmark-block.js';
 

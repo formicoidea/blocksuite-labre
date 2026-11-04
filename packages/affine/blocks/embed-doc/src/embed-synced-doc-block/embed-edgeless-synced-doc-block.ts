@@ -21,7 +21,7 @@ import { query } from 'lit/decorators.js';
 import { choose } from 'lit/directives/choose.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { guard } from 'lit/directives/guard.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 import { EmbedSyncedDocConfigExtension } from './configs';
 import { EmbedSyncedDocBlockComponent } from './embed-synced-doc-block';

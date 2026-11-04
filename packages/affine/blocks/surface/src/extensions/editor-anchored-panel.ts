@@ -9,7 +9,7 @@ import {
   unsafeCSS,
 } from 'lit';
 import { ifDefined } from 'lit/directives/if-defined.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 /**
  * **The editor-anchored info panel** — ADR 0011.

@@ -14,7 +14,7 @@ import type { UserInfo } from '@labre/store';
 import { css, html, nothing } from 'lit';
 import { state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
-import { styleMap } from 'lit/directives/style-map.js';
+import { styleMap } from '@labre/global/lit';
 
 import { RemoteColorManager } from '../manager/remote-color-manager';
 import { REMOTE_SELECTION_UNKNOWN_USER } from '../translations.js';
@@ -259,7 +259,9 @@ export class EdgelessRemoteSelectionWidget extends WidgetComponent<RootBlockMode
           ${MultiCursorDuotoneIcon({
             width: '24px',
             height: '24px',
-            style: `fill: ${_remoteColorManager.get(id)}; stroke: ${_remoteColorManager.get(id)};`,
+            // The colour is another client's awareness state: painted through the parent's
+            // `color`, which goes through `styleMap`, never into this string.
+            style: 'fill: currentColor; stroke: currentColor;',
           })}
           <div
             class="remote-username"

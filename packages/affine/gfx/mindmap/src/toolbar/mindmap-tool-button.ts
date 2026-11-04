@@ -14,13 +14,12 @@ import {
   EdgelessToolbarToolMixin,
 } from '@labre/affine-widget-edgeless-toolbar';
 import type { Bound } from '@labre/global/gfx';
-import { SignalWatcher } from '@labre/global/lit';
+import { SignalWatcher, styleMap } from '@labre/global/lit';
 import { computed } from '@preact/signals-core';
 import { css, html, LitElement, nothing } from 'lit';
 import { property, query, state } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { repeat } from 'lit/directives/repeat.js';
-import { styleMap } from 'lit/directives/style-map.js';
 
 import { translateKey } from '@labre/affine-shared/services';
 
