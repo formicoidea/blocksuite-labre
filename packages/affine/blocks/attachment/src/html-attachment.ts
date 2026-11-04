@@ -1,5 +1,5 @@
 import type { AttachmentBlockModel } from '@labre/affine-model';
-import { EmbedHtmlConfigExtension } from '@labre/affine-shared/services';
+import { HtmlFileConfigExtension } from '@labre/affine-shared/services';
 import type { BlockStdScope } from '@labre/std';
 
 const HTML_TYPES = new Set(['text/html', 'application/xhtml+xml']);
@@ -31,7 +31,7 @@ export function withHtmlDefaultView<
   T extends Pick<AttachmentBlockModel['props'], 'name' | 'type'>,
 >(std: BlockStdScope, props: T): T | (T & { embed: true; style: 'html' }) {
   if (!isHtmlAttachment(props)) return props;
-  if (!std.getOptional(EmbedHtmlConfigExtension.identifier)?.frameUrl) {
+  if (!std.getOptional(HtmlFileConfigExtension.identifier)?.frameUrl) {
     return props;
   }
   return { ...props, embed: true, style: 'html' };

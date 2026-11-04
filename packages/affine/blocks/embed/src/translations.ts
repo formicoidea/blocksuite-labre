@@ -4,7 +4,6 @@ import {
   type ChromeWording,
   TOOLBAR_CREATE_LINKED_DOC_TITLE,
   TOOLBAR_EDIT,
-  TOOLBAR_SETTINGS,
 } from '@labre/affine-shared/services';
 
 /**
@@ -34,12 +33,16 @@ export const EMBED_DOC_CREATED_UNDO_MESSAGE: ChromeWording = [
 
 /* ── The HTML embed (`embed-html-block/`) ─────────────────────────────── */
 
-export const EMBED_HTML_EMPTY: ChromeWording = [
-  'com.labre.embed.html.empty',
-  'Empty',
+/** What is left of a stored html block (ADR 0048, amendment of 2026-11-04). */
+export const EMBED_HTML_RETIRED_TITLE: ChromeWording = [
+  'com.labre.embed.html.retired-title',
+  'HTML block',
 ];
 
-export const EMBED_HTML_SETTINGS_HEADER = TOOLBAR_SETTINGS;
+export const EMBED_HTML_RETIRED_DESCRIPTION: ChromeWording = [
+  'com.labre.embed.html.retired-description',
+  'This kind of block is no longer displayed. Its content stays in the document.',
+];
 
 /* ── The generic iframe embed (`embed-iframe-block/`) ─────────────────── */
 
@@ -159,7 +162,8 @@ export const EMBED_IFRAME_NO_LINK_MESSAGE: ChromeWording = [
 export const EMBED_WORDINGS: readonly ChromeWording[] = [
   EMBED_PROMPT_TITLE_MESSAGE,
   EMBED_DOC_CREATED_UNDO_MESSAGE,
-  EMBED_HTML_EMPTY,
+  EMBED_HTML_RETIRED_TITLE,
+  EMBED_HTML_RETIRED_DESCRIPTION,
   EMBED_IFRAME_SLASH_NAME,
   EMBED_IFRAME_SLASH_DESCRIPTION,
   EMBED_IFRAME_ERROR_TITLE,

@@ -17,12 +17,10 @@
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 
 import {
-  CLOSED_SANDBOX,
   HOST_PAGE_SANDBOX,
   HTML_FRAME_READY,
   HtmlFrame,
   registerHtmlFrame,
-  UNTRUSTED_SANDBOX,
 } from '../html-frame/index.js';
 
 const PAGE = '/frame.html';
@@ -102,25 +100,9 @@ describe('what the frame loads', () => {
     expect(() => registerHtmlFrame()).not.toThrow();
   });
 
-  test('without a page and without the fallback, nothing runs', async () => {
+  test('without a page, nothing runs: a srcdoc would inherit the host CSP', async () => {
     const frame = await mount({ html: '<script>1</script>' });
     expect(frame.iframe).toBeNull();
-  });
-
-  test('with the fallback, a srcdoc that runs nothing before the gesture', async () => {
-    const frame = await mount({ html: '<p>x</p>', srcdocFallback: true });
-    expect(frame.iframe?.getAttribute('sandbox')).toBe(CLOSED_SANDBOX);
-    expect(frame.iframe?.srcdoc).toBe('<p>x</p>');
-    expect(frame.iframe?.getAttribute('src')).toBeNull();
-  });
-
-  test('after the gesture, a new srcdoc under the untrusted sandbox', async () => {
-    const frame = await mount({ html: '<p>x</p>', srcdocFallback: true });
-    const closed = frame.iframe;
-    frame.scripts = true;
-    await frame.updateComplete;
-    expect(frame.iframe).not.toBe(closed);
-    expect(frame.iframe?.getAttribute('sandbox')).toBe(UNTRUSTED_SANDBOX);
   });
 
   test('with a page, that page under its sandbox, and the html out of the markup', async () => {

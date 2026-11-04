@@ -25,11 +25,6 @@ export const HOST_PAGE_SANDBOX = 'allow-same-origin allow-scripts';
  */
 export const UNTRUSTED_SANDBOX = 'allow-scripts';
 
-/**
- * Sandbox of a `srcdoc` before the reader's gesture: nothing runs (ADR 0048).
- */
-export const CLOSED_SANDBOX = '';
-
 /** The width a thumbnail lays its page out at, before it is scaled down. */
 const THUMBNAIL_LAYOUT_WIDTH = 1280;
 const THUMBNAIL_ROOT_MARGIN = '200px';
@@ -49,14 +44,13 @@ function hostPage(frameUrl: string | null | undefined) {
 }
 
 /**
- * Runs html in a frame. The one place the library does: the html block, the html
- * attachment and a host's own library all mount this (ADR 0048). No object, no
- * right, no quota here: it takes what to show and how.
+ * Runs html in a frame. The one place the library does: the html attachment and a
+ * host's own library mount this (ADR 0048). No object, no right, no quota here: it
+ * takes what to show and how.
  *
- * With `frameUrl` it loads that page, waits for it to announce itself and answers
- * with `{ html, scripts, scroll }`, to that window and no other. Without it, nothing renders
- * unless `srcdocFallback` is set: only the stored html block has one, because a
- * document must keep rendering (ADR 0047).
+ * It loads `frameUrl`, waits for that page to announce itself and answers with
+ * `{ html, scripts, scroll }`, to that window and no other. Without a page, nothing
+ * renders: a `srcdoc` would inherit the host's Content-Security-Policy.
  *
  * No script of the html runs without a reader's gesture: `scripts` is off unless
  * the host turns it on, and a thumbnail never has it (ADR 0048).
@@ -133,7 +127,7 @@ export class HtmlFrame extends LitElement {
         html: text,
         scripts: this._runsScripts,
         // The page decides for the frame it holds: a thumbnail never scrolls.
-        scroll: !this.thumbnail && !this.noScroll,
+        scroll: !this.thumbnail,
       },
       '*'
     );
@@ -208,37 +202,19 @@ export class HtmlFrame extends LitElement {
     if (this.html === null) return nothing;
 
     const page = hostPage(this.frameUrl);
-    if (!page && !this.srcdocFallback) return nothing;
+    if (!page) return nothing;
     if (this.thumbnail && !(this._seen && this._width && this._height)) {
       return nothing;
     }
 
     // Keyed: what a document may run is fixed when it loads, so a change of mind
     // takes a new frame. A sandbox attribute alone only applies on navigation.
-    const scrolling = this.thumbnail || this.noScroll ? 'no' : nothing;
-    if (page) {
-      return keyed(
-        this._runsScripts,
-        html`<iframe
-          sandbox=${HOST_PAGE_SANDBOX}
-          scrolling=${scrolling}
-          src=${page}
-          loading="lazy"
-          title=${this.title || nothing}
-          tabindex=${this._inert ? -1 : nothing}
-          style=${this._thumbnailStyle}
-          ?inert=${this._inert}
-        ></iframe>`
-      );
-    }
-
-    if (this._text === null) return nothing;
     return keyed(
       this._runsScripts,
       html`<iframe
-        sandbox=${this._runsScripts ? UNTRUSTED_SANDBOX : CLOSED_SANDBOX}
-        scrolling=${scrolling}
-        .srcdoc=${this._text}
+        sandbox=${HOST_PAGE_SANDBOX}
+        scrolling=${this.thumbnail ? 'no' : nothing}
+        src=${page}
         loading="lazy"
         title=${this.title || nothing}
         tabindex=${this._inert ? -1 : nothing}
@@ -313,14 +289,6 @@ export class HtmlFrame extends LitElement {
    */
   @property({ type: Boolean })
   accessor scripts = false;
-
-  /** The frame never scrolls, for html laid out to fit its box. */
-  @property({ attribute: 'no-scroll', type: Boolean })
-  accessor noScroll = false;
-
-  /** Run in a `srcdoc` without a page. The stored html block alone needs it. */
-  @property({ attribute: 'srcdoc-fallback', type: Boolean })
-  accessor srcdocFallback = false;
 
   /**
    * A real preview, laid out at 1280 px and scaled to the box, mounted only once

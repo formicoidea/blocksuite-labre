@@ -3,7 +3,7 @@ import { BlockViewExtension } from '@labre/std';
 import type { ExtensionType } from '@labre/store';
 import { literal } from 'lit/static-html.js';
 
-import { createBuiltinToolbarConfigExtension } from './configs/toolbar';
+import { retiredHtmlToolbarExtension } from './configs/toolbar';
 import { EmbedEdgelessHtmlBlockInteraction } from './embed-edgeless-html-block';
 
 const flavour = EmbedHtmlBlockSchema.model.flavour;
@@ -14,6 +14,6 @@ export const EmbedHtmlViewExtensions: ExtensionType[] = [
       ? literal`affine-embed-edgeless-html-block`
       : literal`affine-embed-html-block`;
   }),
-  createBuiltinToolbarConfigExtension(flavour),
+  retiredHtmlToolbarExtension(flavour),
   EmbedEdgelessHtmlBlockInteraction,
-].flat();
+];

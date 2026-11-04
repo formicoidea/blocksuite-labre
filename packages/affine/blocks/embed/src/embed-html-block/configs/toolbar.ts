@@ -1,165 +1,21 @@
-import { toast } from '@labre/affine-components/toast';
 import { EmbedHtmlModel } from '@labre/affine-model';
 import {
   ActionPlacement,
-  TOAST_COPIED_TO_CLIPBOARD,
-  TOOLBAR_CAPTION,
-  TOOLBAR_COPY,
   TOOLBAR_DELETE,
-  TOOLBAR_DUPLICATE,
-  TOOLBAR_LARGE_HORIZONTAL_STYLE,
-  TOOLBAR_OPEN_THIS_DOC,
-  TOOLBAR_SMALL_HORIZONTAL_STYLE,
-  type ToolbarAction,
-  type ToolbarActionGroup,
   type ToolbarModuleConfig,
   ToolbarModuleExtension,
-  translateKey,
 } from '@labre/affine-shared/services';
-import { getBlockProps } from '@labre/affine-shared/utils';
-import {
-  CaptionIcon,
-  CopyIcon,
-  DeleteIcon,
-  DuplicateIcon,
-  ExpandFullIcon,
-} from '@blocksuite/icons/lit';
+import { DeleteIcon } from '@blocksuite/icons/lit';
 import { BlockFlavourIdentifier } from '@labre/std';
-import { type ExtensionType, Slice } from '@labre/store';
-import { html } from 'lit';
-import { keyed } from 'lit/directives/keyed.js';
+import type { ExtensionType } from '@labre/store';
 
-import { EmbedHtmlBlockComponent } from '../embed-html-block';
-
-const trackBaseProps = {
-  category: 'html',
-  type: 'card view',
-};
-
-const openDocAction = {
-  id: 'a.open-doc',
-  icon: ExpandFullIcon(),
-  tooltip: 'Open this page',
-  tooltipWording: TOOLBAR_OPEN_THIS_DOC,
-  run(ctx) {
-    const block = ctx.getCurrentBlockByType(EmbedHtmlBlockComponent);
-    block?.open();
-  },
-} as const satisfies ToolbarAction;
-
-const captionAction = {
-  id: 'c.caption',
-  tooltip: 'Caption',
-  tooltipWording: TOOLBAR_CAPTION,
-  icon: CaptionIcon(),
-  run(ctx) {
-    const block = ctx.getCurrentBlockByType(EmbedHtmlBlockComponent);
-    block?.captionEditor?.show();
-
-    ctx.track('OpenedCaptionEditor', {
-      ...trackBaseProps,
-      control: 'add caption',
-    });
-  },
-} as const satisfies ToolbarAction;
-
-const builtinToolbarConfig = {
+/**
+ * A retired block can only go (ADR 0048, amendment of 2026-11-04). On a canvas the
+ * generic toolbar already deletes it; its duplicate asks the clipboard, which no
+ * longer has a config for this flavour and writes nothing.
+ */
+const retiredHtmlToolbar = {
   actions: [
-    openDocAction,
-    {
-      id: 'b.style',
-      actions: [
-        {
-          id: 'horizontal',
-          label: 'Large horizontal style',
-          labelWording: TOOLBAR_LARGE_HORIZONTAL_STYLE,
-        },
-        {
-          id: 'list',
-          label: 'Small horizontal style',
-          labelWording: TOOLBAR_SMALL_HORIZONTAL_STYLE,
-        },
-      ],
-      content(ctx) {
-        const model = ctx.getCurrentModelByType(EmbedHtmlModel);
-        if (!model) return null;
-
-        const actions = this.actions.map<ToolbarAction>(action => ({
-          ...action,
-          run: ({ store }) => {
-            store.updateBlock(model, { style: action.id });
-
-            ctx.track('SelectedCardStyle', {
-              ...trackBaseProps,
-              control: 'select card style',
-              type: action.id,
-            });
-          },
-        }));
-        const onToggle = (e: CustomEvent<boolean>) => {
-          e.stopPropagation();
-          const opened = e.detail;
-          if (!opened) return;
-
-          ctx.track('OpenedCardStyleSelector', {
-            ...trackBaseProps,
-            control: 'switch card style',
-          });
-        };
-
-        return html`${keyed(
-          model,
-          html`<affine-card-style-dropdown-menu
-            @toggle=${onToggle}
-            .actions=${actions}
-            .context=${ctx}
-            .style=${model.props.style$}
-          ></affine-card-style-dropdown-menu>`
-        )}`;
-      },
-    } satisfies ToolbarActionGroup<ToolbarAction>,
-    captionAction,
-    {
-      placement: ActionPlacement.More,
-      id: 'a.clipboard',
-      actions: [
-        {
-          id: 'copy',
-          labelWording: TOOLBAR_COPY,
-          icon: CopyIcon(),
-          run(ctx) {
-            const model = ctx.getCurrentModelByType(EmbedHtmlModel);
-            if (!model) return;
-
-            const slice = Slice.fromModels(ctx.store, [model]);
-            ctx.clipboard
-              .copySlice(slice)
-              .then(() =>
-                toast(
-                  ctx.host,
-                  translateKey(ctx.std, ...TOAST_COPIED_TO_CLIPBOARD)
-                )
-              )
-              .catch(console.error);
-          },
-        },
-        {
-          id: 'duplicate',
-          labelWording: TOOLBAR_DUPLICATE,
-          icon: DuplicateIcon(),
-          run(ctx) {
-            const model = ctx.getCurrentModelByType(EmbedHtmlModel);
-            if (!model) return;
-
-            const { flavour, parent } = model;
-            const props = getBlockProps(model);
-            const index = parent?.children.indexOf(model);
-
-            ctx.store.addBlock(flavour, props, parent, index);
-          },
-        },
-      ],
-    },
     {
       placement: ActionPlacement.More,
       id: 'c.delete',
@@ -172,40 +28,17 @@ const builtinToolbarConfig = {
 
         ctx.store.deleteBlock(model);
 
-        // Clears
         ctx.select('note');
         ctx.reset();
       },
     },
   ],
 
-  when: ctx => ctx.getSurfaceModelsByType(EmbedHtmlModel).length === 1,
+  when: ctx => Boolean(ctx.getCurrentModelByType(EmbedHtmlModel)),
 } as const satisfies ToolbarModuleConfig;
 
-const builtinSurfaceToolbarConfig = {
-  actions: [
-    openDocAction,
-    {
-      ...captionAction,
-      id: 'b.caption',
-    },
-  ],
-} as const satisfies ToolbarModuleConfig;
-
-export const createBuiltinToolbarConfigExtension = (
-  flavour: string
-): ExtensionType[] => {
-  const name = flavour.split(':').pop();
-
-  return [
-    ToolbarModuleExtension({
-      id: BlockFlavourIdentifier(flavour),
-      config: builtinToolbarConfig,
-    }),
-
-    ToolbarModuleExtension({
-      id: BlockFlavourIdentifier(`affine:surface:${name}`),
-      config: builtinSurfaceToolbarConfig,
-    }),
-  ];
-};
+export const retiredHtmlToolbarExtension = (flavour: string): ExtensionType =>
+  ToolbarModuleExtension({
+    id: BlockFlavourIdentifier(flavour),
+    config: retiredHtmlToolbar,
+  });

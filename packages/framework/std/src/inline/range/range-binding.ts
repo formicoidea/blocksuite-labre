@@ -291,6 +291,10 @@ export class RangeBinding {
         // when switching between tabs,
         // the browser will focus to the top-level content-editable element
         this.host.focus({ preventScroll: true });
+        // That focus puts a caret in the first text of the document, and its
+        // `selectionchange` would then replace the selection made here: the first
+        // press on a card of an unfocused editor closed its toolbar at once.
+        this.rangeManager?.clear();
       }
     }
 

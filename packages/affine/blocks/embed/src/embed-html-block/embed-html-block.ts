@@ -1,127 +1,64 @@
 import type { EmbedHtmlModel, EmbedHtmlStyles } from '@labre/affine-model';
 import { translateKey } from '@labre/affine-shared/services';
 import { BlockSelection } from '@labre/std';
+import { FileIconHtmlIcon } from '@blocksuite/icons/lit';
 import { html } from 'lit';
-import { query } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
-import { type StyleInfo, styleMap } from 'lit/directives/style-map.js';
 
 import { EmbedBlockComponent } from '../common/embed-block-element.js';
-import { EMBED_HTML_EMPTY } from '../translations.js';
-import { EmbedHtmlConfigExtension } from './embed-html-config.js';
-import { HtmlIcon, styles } from './styles.js';
+import {
+  EMBED_HTML_RETIRED_DESCRIPTION,
+  EMBED_HTML_RETIRED_TITLE,
+} from '../translations.js';
+import { EMBED_HTML_CARD_HEIGHT, styles } from './styles.js';
 
+/**
+ * A stored `affine:embed-html` block, which runs nothing any more (ADR 0048,
+ * amendment of 2026-11-04). Its schema stays registered, since the store throws on
+ * a flavour it does not know and a document must stay readable: this card is what
+ * is left of it. The `html` prop stays in the document and is never read here.
+ */
 export class EmbedHtmlBlockComponent extends EmbedBlockComponent<EmbedHtmlModel> {
   static override styles = styles;
 
   override _cardStyle: (typeof EmbedHtmlStyles)[number] = 'html';
 
-  close = () => {
-    document.exitFullscreen().catch(console.error);
-  };
-
-  protected embedHtmlStyle: StyleInfo = {};
-
-  open = () => {
-    this.iframeWrapper?.requestFullscreen().catch(console.error);
-  };
-
-  refreshData = () => {};
-
-  private get _frameUrl() {
-    return this.std.getOptional(EmbedHtmlConfigExtension.identifier)?.frameUrl;
-  }
-
-  private get _htmlSrc() {
-    return `
-      <style>
-        body {
-          margin: 0;
-        }
-      </style>
-      ${this.model.props.html}
-    `;
-  }
-
-  private _handleDoubleClick(event: MouseEvent) {
-    event.stopPropagation();
-    this.open();
-  }
-
-  private _selectBlock() {
-    const selectionManager = this.host.selection;
-    const blockSelection = selectionManager.create(BlockSelection, {
-      blockId: this.blockId,
-    });
-    selectionManager.setGroup('note', [blockSelection]);
+  // The page's flow: the box of the old preview would be 544 px of nothing.
+  override get _cardHeight() {
+    return EMBED_HTML_CARD_HEIGHT;
   }
 
   protected _handleClick(event: MouseEvent) {
     event.stopPropagation();
-    this._selectBlock();
-  }
-
-  override connectedCallback() {
-    super.connectedCallback();
-    this._cardStyle = this.model.props.style;
+    const selection = this.host.selection;
+    selection.setGroup('note', [
+      selection.create(BlockSelection, { blockId: this.blockId }),
+    ]);
   }
 
   override renderBlock(): unknown {
-    const titleText = 'Basic HTML Page Structure';
-
-    return this.renderEmbed(() => {
-      if (!this.model.props.html) {
-        return html`
-          <div class="affine-html-empty">
-            ${translateKey(this.std, ...EMBED_HTML_EMPTY)}
-          </div>
-        `;
-      }
-      return html`
+    return this.renderEmbed(
+      () => html`
         <div
           class=${classMap({
-            'affine-embed-html-block': true,
+            'affine-embed-html-retired': true,
             selected: this.selected$.value,
           })}
-          style=${styleMap(this.embedHtmlStyle)}
           @click=${this._handleClick}
-          @dblclick=${this._handleDoubleClick}
         >
-          <div class="affine-embed-html">
-            <div class="affine-embed-html-iframe-container">
-              <div class="embed-html-block-iframe-wrapper" allowfullscreen>
-                <labre-html-frame
-                  .html=${this._htmlSrc}
-                  .frameUrl=${this._frameUrl ?? null}
-                  .interactive=${true}
-                  .noScroll=${true}
-                  .srcdocFallback=${true}
-                ></labre-html-frame>
-                <embed-html-fullscreen-toolbar
-                  .embedHtml=${this}
-                ></embed-html-fullscreen-toolbar>
-              </div>
-
-              <!-- overlay to prevent the iframe from capturing pointer events -->
-              <div
-                class=${classMap({
-                  'affine-embed-html-iframe-overlay': true,
-                  hide: !this.showOverlay$.value,
-                })}
-              ></div>
+          <div class="affine-embed-html-retired-icon">
+            ${FileIconHtmlIcon({ width: '24px', height: '24px' })}
+          </div>
+          <div class="affine-embed-html-retired-text">
+            <div class="affine-embed-html-retired-title">
+              ${translateKey(this.std, ...EMBED_HTML_RETIRED_TITLE)}
+            </div>
+            <div class="affine-embed-html-retired-description">
+              ${translateKey(this.std, ...EMBED_HTML_RETIRED_DESCRIPTION)}
             </div>
           </div>
-
-          <div class="affine-embed-html-title">
-            <div class="affine-embed-html-title-icon">${HtmlIcon}</div>
-
-            <div class="affine-embed-html-title-text">${titleText}</div>
-          </div>
         </div>
-      `;
-    });
+      `
+    );
   }
-
-  @query('.embed-html-block-iframe-wrapper')
-  accessor iframeWrapper!: HTMLDivElement;
 }

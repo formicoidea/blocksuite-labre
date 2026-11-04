@@ -49,6 +49,17 @@ export const BOOKMARK_RETRIEVE_FAILED: ChromeWording = [
   'Failed to retrieve link information.',
 ];
 
+/** The card's import button and its failure (`components/import-page-button.ts`). */
+export const BOOKMARK_IMPORT_PAGE: ChromeWording = [
+  'com.labre.bookmark.import-page.label',
+  'Import page',
+];
+
+export const BOOKMARK_IMPORT_PAGE_FAILED: ChromeWording = [
+  'com.labre.bookmark.import-page.failed',
+  'This page could not be imported.',
+];
+
 /**
  * This package's contribution to the translation-key manifest, listed in
  * `PACKAGE_WORDINGS` under source `chrome`
@@ -64,4 +75,6 @@ export const BOOKMARK_WORDINGS: readonly ChromeWording[] = [
   BOOKMARK_ALT_BANNER,
   BOOKMARK_LINK_CARD_FALLBACK,
   BOOKMARK_RETRIEVE_FAILED,
+  BOOKMARK_IMPORT_PAGE,
+  BOOKMARK_IMPORT_PAGE_FAILED,
 ];

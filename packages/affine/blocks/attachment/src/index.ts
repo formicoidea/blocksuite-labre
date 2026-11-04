@@ -14,4 +14,9 @@ export {
   AttachmentEmbedConfigIdentifier,
   AttachmentEmbedProvider,
 } from './embed';
-export { addAttachments, addSiblingAttachmentBlocks } from './utils';
+export { withHtmlDefaultView } from './html-attachment';
+export {
+  addAttachments,
+  addSiblingAttachmentBlocks,
+  type AttachmentBlockSource,
+} from './utils';

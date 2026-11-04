@@ -4,3 +4,4 @@ export * from './commands';
 export * from './components';
 export { BookmarkSlashMenuConfigIdentifier } from './configs/slash-menu';
 export * from './edgeless-clipboard-config';
+export { canImportPage, importPage } from './import-page';

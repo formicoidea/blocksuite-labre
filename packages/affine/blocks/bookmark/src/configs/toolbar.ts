@@ -63,6 +63,7 @@ import { keyed } from 'lit/directives/keyed.js';
 import * as Y from 'yjs';
 
 import { BookmarkBlockComponent } from '../bookmark-block';
+import { canImportPage } from '../import-page';
 
 const trackBaseProps = {
   category: 'bookmark',
@@ -78,6 +79,25 @@ const previewAction = {
     const { url } = model.props;
 
     return html`<affine-link-preview .url=${url}></affine-link-preview>`;
+  },
+} satisfies ToolbarAction;
+
+const importPageAction = {
+  id: 'b.import',
+  when(ctx) {
+    const model = ctx.getCurrentModelByType(BookmarkBlockModel);
+    return Boolean(model && canImportPage(ctx.std, model));
+  },
+  content(ctx) {
+    const model = ctx.getCurrentModelByType(BookmarkBlockModel);
+    if (!model) return null;
+    return html`${keyed(
+      model,
+      html`<affine-bookmark-import-button
+        .ctx=${ctx}
+        .model=${model}
+      ></affine-bookmark-import-button>`
+    )}`;
   },
 } satisfies ToolbarAction;
 
@@ -122,6 +142,7 @@ const createOnToggleFn =
 const builtinToolbarConfig = {
   actions: [
     previewAction,
+    importPageAction,
     {
       id: 'b.conversions',
       actions: [
@@ -390,6 +411,7 @@ const builtinToolbarConfig = {
 const builtinSurfaceToolbarConfig = {
   actions: [
     previewAction,
+    importPageAction,
     {
       id: 'b.conversions',
       actions: [
