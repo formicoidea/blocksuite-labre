@@ -641,6 +641,44 @@ function boundsOf(shape: XmlElement): Rect | null {
   return { x: numbers[0], y: numbers[1], w: numbers[2], h: numbers[3] };
 }
 
+/** Whether a DI child is the shape's `bpmndi:BPMNLabel`. */
+function isBpmnLabel(child: XmlElement): boolean {
+  return (
+    child.namespaceURI === BPMN_NS.bpmndi && child.localName === 'BPMNLabel'
+  );
+}
+
+/**
+ * Beyond this, a coordinate or a size is not a drawing but a file trying to
+ * push a name somewhere nobody will ever scroll to (or overflow a renderer
+ * on the way): a million units is two orders of magnitude past the widest
+ * process bpmn.io's own examples draw.
+ */
+const MAX_LABEL_EXTENT = 1_000_000;
+
+/**
+ * The box a shape's `BPMNLabel` places its name in — `null` when it has none,
+ * or one this reader refuses: not finite, empty or negative, or absurdly far
+ * (ADR 0029, amendment of 2026-11-04). A refused box is no box, and the label
+ * falls back to the pack's own place under the symbol; it is never clamped,
+ * because a clamped box would be a position nobody drew.
+ */
+function labelBoundsOf(shape: XmlElement): Rect | null {
+  const label = childrenOf(shape).find(isBpmnLabel);
+  if (!label) return null;
+  const box = boundsOf(label);
+  if (!box) return null;
+  if (box.w <= 0 || box.h <= 0) return null;
+  if (
+    [box.x, box.y, box.w, box.h].some(
+      value => Math.abs(value) > MAX_LABEL_EXTENT
+    )
+  ) {
+    return null;
+  }
+  return box;
+}
+
 /**
  * Every `BPMNShape` and `BPMNEdge` of the document, keyed by what it draws.
  *
@@ -1145,7 +1183,8 @@ export function importBpmnXml(
   const sortShapeExtras = (
     shape: XmlElement | undefined,
     payload: ForeignInterchange,
-    sourceId: string | undefined
+    sourceId: string | undefined,
+    labelRead = false
   ) => {
     if (!shape) return;
     sortAttributes(
@@ -1157,13 +1196,17 @@ export function importBpmnXml(
     );
     for (const child of childrenOf(shape)) {
       // The bounds and the waypoints ARE the drawing, and the drawing is what
-      // was mapped. A `BPMNLabel` and anything else is kept as diagram matter.
+      // was mapped. A `BPMNLabel` is too once its bounds placed a gravitating
+      // label (`labelRead`): the exporter writes it back from that label, so
+      // carrying it as well would hand the shape two. Anything else — and a
+      // label the reader did not use — is kept as diagram matter.
       if (child.namespaceURI === BPMN_NS.dc && child.localName === 'Bounds') {
         continue;
       }
       if (child.namespaceURI === BPMN_NS.di && child.localName === 'waypoint') {
         continue;
       }
+      if (labelRead && isBpmnLabel(child)) continue;
       carryDi(payload, BPMN_SCOPE.shape, fragmentOf(child));
     }
   };
@@ -1566,7 +1609,6 @@ export function importBpmnXml(
     const bounds = shape?.bounds ?? null;
 
     sortAttributes(element, payload, BPMN_SCOPE.self, sourceId);
-    sortShapeExtras(shape?.element, payload, sourceId);
 
     // The label, from wherever this kind keeps it: an annotation's is a child
     // element, a group's is the value of the category it points at, everything
@@ -1578,6 +1620,17 @@ export function importBpmnXml(
       const ref = attrOf(element, 'categoryValueRef');
       text = (ref !== undefined ? categoryValues.get(ref) : undefined) ?? '';
     }
+
+    // An external kind's name is not the shape's to hold (R38): it goes to a
+    // grouped label, and the node is drawn bare. Where the label goes is the
+    // file's `BPMNLabel` when it drew one this reader accepts — bpmn.io puts a
+    // gateway's name above it and an event's beside it — and the pack's own
+    // place under the symbol otherwise. Only for a shape the file placed: a
+    // swept shape's label follows it under, wherever the file thought it was.
+    const gravitating = text !== '' && bpmnLabelMode(kind) === 'external';
+    const labelBox =
+      gravitating && bounds && shape ? labelBoundsOf(shape.element) : null;
+    sortShapeExtras(shape?.element, payload, sourceId, labelBox !== null);
 
     // D5 case 2: an activity the DIAGRAM says is expanded holds a flow drawn
     // inside it, and the pack draws the collapsed form only.
@@ -1630,9 +1683,6 @@ export function importBpmnXml(
     const box = bounds
       ? new Bound(bounds.x, bounds.y, bounds.w, bounds.h)
       : new Bound(0, 0, size.w, size.h);
-    // An external kind's name is not the shape's to hold (R38): it goes to a
-    // grouped label under the symbol, and the node is drawn bare.
-    const gravitating = text !== '' && bpmnLabelMode(kind) === 'external';
     const order = shape?.index ?? Number.POSITIVE_INFINITY;
     const nodeDraft: Draft = {
       props: bpmnNodeProps(kind, {
@@ -1657,19 +1707,21 @@ export function importBpmnXml(
     drafts.push(nodeDraft);
 
     if (gravitating) {
-      // ponytail: the label is always placed centred under the symbol, and a
-      // `BPMNLabel`'s own bounds are ignored for placement (they are still
-      // carried verbatim as DI, so the file gets them back). Ceiling: a file
-      // that set its label beside an event lands it under. Upgrade: read the
-      // `dc:Bounds` of the shape's `BPMNLabel` and place the text there.
       const nodeId = mint();
       const labelId = mint();
       nodeDraft.props.id = nodeId;
+      // The file's box whole — position, width AND height — rather than a
+      // height re-measured from the text: this reader is pure and has no font
+      // metrics, and the box it was handed is the one the exporter must hand
+      // back for the round trip to be a fixed point.
       const under = bpmnLabelBoxUnder(box.x + box.w / 2, box.y + box.h);
+      const labelProps = labelBox
+        ? bpmnLabelProps(text, labelBox.x, labelBox.y, labelBox)
+        : bpmnLabelProps(text, under.x, under.y);
       // Same order as the node, pushed after it: the stable sort keeps the
       // node, then its label, then the group that holds both.
       drafts.push({
-        props: { ...bpmnLabelProps(text, under.x, under.y), id: labelId },
+        props: { ...labelProps, id: labelId },
         payload: {},
         order,
         kind: 'label',

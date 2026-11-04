@@ -106,3 +106,50 @@ nine frameworks: 72 already consistent with the criterion below, 12 not — the
 - Validation: `bpmn.unlabeled-step` is narrowed to the activities; an event or
   a gateway has no inner text to check any more.
 - A framework that adopts R38 adds the same per-kind spec against the helper.
+
+## Amendments
+
+**2026-11-04 — point 6, the label's PLACE crosses the file (debt 1 lifted).**
+Point 6 bound a name to its node by group membership and left its position to
+the reader: the importer always hung the label under the symbol, centred, and
+carried the file's `bpmndi:BPMNLabel` verbatim as DI (a `ponytail:` in
+`import.ts`); the exporter wrote that carried label back and never one of its
+own. bpmn.io sets an event's name beside it and a gateway's above it, so a
+file came back with every name moved under its symbol, and a label the user
+dragged in Labre went out where it had never been.
+
+- **Import.** When a named external kind's shape carries a `BPMNLabel` with a
+  `dc:Bounds`, the gravitating label is placed in that box: position, width
+  AND height, all from the file. The height is the box's and not re-measured
+  from the text — the reader is a pure function with no font metrics, and the
+  box it was handed is the one the export must give back. A box that is not
+  finite, has a zero or negative size, or lies beyond a million units on any
+  axis is refused, never clamped, and the label falls back to its place under
+  the symbol. A `BPMNLabel` the reader used is mapped, not carried; one it
+  refused is carried as before. A shape with no bounds of its own is swept and
+  its label follows it under, whatever its `BPMNLabel` said.
+- **Export.** `BpmnExportBoard.labelBounds` (beside `labels`, so a host that
+  builds `labels` as plain strings keeps compiling) holds the bound of each
+  grouped label; the shape's `BPMNLabel` is written from it, offset with the
+  rest of the plane. A label does not move the plane's origin: a name hangs
+  wider than a narrow event, so counting it would shift the whole drawing the
+  first time a board's names gravitate into labels and break the fixed point
+  below; a name hung past the leftmost or topmost shape keeps a small negative
+  coordinate, which DI allows. A `BPMNLabel` carried by an earlier import gives way to it,
+  so a shape never holds two (`tBPMNShape` is `Bounds → BPMNLabel?`); every
+  other carried DI child and attribute is kept. A node named by its own inner
+  text (a legacy event), or by an empty label, writes no `BPMNLabel`.
+- **Still not crossing.** A carried `BPMNLabel`'s own attributes (`labelStyle`,
+  an `id`) are not merged into the label Labre writes: no tool on the corpus
+  writes them, and a `labelStyle` without its `BPMNLabelStyle` is ignored by
+  readers anyway. Connector labels (`BPMNEdge`'s `BPMNLabel`) are unchanged.
+- **Fixed point.** A board whose names already sit in grouped labels exports,
+  imports and exports to the same bytes. A board whose names are still inner
+  text writes no `BPMNLabel` the first time; the import groups each name in a
+  label under its symbol, so the second file is the first plus one
+  `BPMNLabel` per name and nothing else moved, and from there on the bytes are
+  a fixed point (`import.unit.spec.ts`, "the round trip is a fixed point").
+- The `ponytail:` line in `import.ts` is deleted; the specs that hold this
+  amendment are `import.unit.spec.ts` ("a name drawn where the file put it"),
+  `export.unit.spec.ts` ("where a name is drawn") and
+  `interchange.unit.spec.ts` ("a label moved by the user").

@@ -94,6 +94,13 @@ describe('the kind table, inverted', () => {
 
 /* ── The fixed point ──────────────────────────────────────────────────── */
 
+/**
+ * A file with its `BPMNLabel`s cut out, so two exports can be compared on
+ * everything BUT where the names are drawn.
+ */
+const withoutBpmnLabels = (xml: string) =>
+  xml.replace(/\n\s*<bpmndi:BPMNLabel>[\s\S]*?<\/bpmndi:BPMNLabel>/g, '');
+
 describe('the round trip is a fixed point', () => {
   const NAME = 'Order to cash';
 
@@ -104,13 +111,27 @@ describe('the round trip is a fixed point', () => {
     // over — that is D3's whole point, and this string comparison is the only
     // test that can tell an id that was given back from one that was minted to
     // look like it.
+    //
+    // This board names its events with inner text (a legacy board), so the
+    // first file places no name and the import hangs each one in a grouped
+    // label: the second file is the first plus one `BPMNLabel` per gravitating
+    // name, and NOTHING else moved — a label that shifted the plane's origin
+    // would fail here (ADR 0029, amendment of 2026-11-04). From there on, the
+    // bytes are a fixed point.
     const { board: drawn } = collaborationBoard();
     const first = exportBpmnXml(drawn, { name: NAME });
+    expect(first).not.toContain('BPMNLabel');
 
     const { elements } = importBpmnXml(first);
     const second = exportBpmnXml(boardFromProps(elements), { name: NAME });
+    expect(second.match(/<bpmndi:BPMNLabel>/g)).toHaveLength(10);
+    expect(withoutBpmnLabels(second)).toBe(first);
 
-    expect(second).toBe(first);
+    const third = exportBpmnXml(
+      boardFromProps(importBpmnXml(second).elements),
+      { name: NAME }
+    );
+    expect(third).toBe(second);
   });
 
   it('reports a Labre file as wholly mapped: nothing carried, nothing lost', () => {
@@ -227,8 +248,12 @@ describe('the round trip is a fixed point', () => {
     const first = exportBpmnXml(labelled, { name: NAME });
     expect(first).toContain('name="Filed"');
     expect(first).toContain('name="Settled"');
-    // No `BPMNLabel` of Labre's own: the label is placed by its reader.
-    expect(first).not.toContain('BPMNLabel');
+    // Each name goes out where its label is drawn: `fakeLabelledNode` hangs it
+    // 6 under the symbol, flush with its left edge, 120 × 26.
+    expect(first).toContain(
+      '<bpmndi:BPMNLabel>\n          <dc:Bounds x="90" y="102" width="120" height="26" />'
+    );
+    expect(first.match(/<bpmndi:BPMNLabel>/g)).toHaveLength(2);
 
     const second = exportBpmnXml(
       boardFromProps(importBpmnXml(first).elements),
@@ -278,9 +303,11 @@ describe('the round trip is a fixed point', () => {
     expect(report.mapped).toBe(3);
   });
 
-  it('exports a legacy event with inner text exactly as a labelled one', () => {
+  it('exports a legacy event with inner text as a labelled one, bar where its name is drawn', () => {
     // Fallback (b): an event drawn before names gravitated keeps its inner
-    // text, and the file cannot tell the two apart.
+    // text, and the file cannot tell the two apart — except that the labelled
+    // one has a drawn label to place, and says where (ADR 0029, amendment of
+    // 2026-11-04). The legacy one leaves its name to the reader.
     const pool = () => fakePool('pool-p', [0, 0, 560, 200], { name: 'Claims' });
     const legacy = bpmnBoardFrom([
       pool(),
@@ -291,9 +318,11 @@ describe('the round trip is a fixed point', () => {
       ...fakeLabelledNode('n-start', 'startEvent', [90, 40, 56, 56], 'Filed'),
     ]);
 
-    expect(exportBpmnXml(labelled, { name: NAME })).toBe(
-      exportBpmnXml(legacy, { name: NAME })
-    );
+    const fromLegacy = exportBpmnXml(legacy, { name: NAME });
+    const fromLabelled = exportBpmnXml(labelled, { name: NAME });
+    expect(fromLegacy).not.toContain('BPMNLabel');
+    expect(fromLabelled).toContain('BPMNLabel');
+    expect(withoutBpmnLabels(fromLabelled)).toBe(fromLegacy);
   });
 
   it('rebuilds the two pools, their lanes and every artefact', () => {
@@ -1604,5 +1633,154 @@ describe('the writer gives back what the reader carried', () => {
       (model as { interchange?: unknown }).interchange = { bpmn: {} };
     }
     expect(exportBpmnXml(drawn, { name: 'Order to cash' })).toBe(before);
+  });
+});
+
+/* ── Where a name is drawn: the file's `BPMNLabel` ────────────────────── */
+
+/**
+ * The importer places a gravitating name in the box the file's
+ * `bpmndi:BPMNLabel` drew (ADR 0029, amendment of 2026-11-04).
+ *
+ * Before, every name came back centred under its symbol whatever the file
+ * said, so a bpmn.io diagram — which sets an event's name beside it and a
+ * gateway's above it — had all its names moved on the first import. These
+ * cases would have caught that, and the other half: a box the reader must
+ * refuse (empty, negative, not a number, a billion units away) placing a name
+ * where nobody drew it.
+ */
+describe('a name drawn where the file put it', () => {
+  /** bpmn.io's own layout: the start's name beside it, the gateway's above. */
+  const drawn = (
+    startLabel: string,
+    gatewayLabel = ''
+  ) => `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="${BPMN_NS.model}" xmlns:bpmndi="${BPMN_NS.bpmndi}" xmlns:dc="${BPMN_NS.dc}" id="D">
+  <bpmn:process id="P">
+    <bpmn:startEvent id="S" name="Order in" />
+    <bpmn:exclusiveGateway id="G" name="In stock?" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="Di">
+    <bpmndi:BPMNPlane id="Pl" bpmnElement="P">
+      <bpmndi:BPMNShape id="SS" bpmnElement="S">
+        <dc:Bounds x="152" y="82" width="36" height="36" />
+        ${startLabel}
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SG" bpmnElement="G" isMarkerVisible="true">
+        <dc:Bounds x="245" y="75" width="50" height="50" />
+        ${gatewayLabel}
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>`;
+  const box = (x: string, y: string, w: string, h: string) =>
+    `<bpmndi:BPMNLabel><dc:Bounds x="${x}" y="${y}" width="${w}" height="${h}" /></bpmndi:BPMNLabel>`;
+  const bound = (xywh: unknown) => JSON.parse(String(xywh)) as number[];
+  type Props = Record<string, unknown>;
+  const labelOf = (elements: readonly Props[], text: string) =>
+    elements.find(element => element.type === 'text' && element.text === text)!;
+  const payloadOf = (elements: readonly Props[], id: string) =>
+    (
+      elements.find(
+        element =>
+          (element.interchange as Record<string, { id?: string }> | undefined)
+            ?.bpmn?.id === id
+      )!.interchange as Record<string, { di?: Record<string, string[]> }>
+    ).bpmn;
+
+  it('places the name in the BPMNLabel box: position, width and height', () => {
+    const { elements } = importBpmnXml(
+      drawn(box('196', '93', '41', '14'), box('241', '45', '58', '14'))
+    );
+    expect(bound(labelOf(elements, 'Order in').xywh)).toEqual([
+      196, 93, 41, 14,
+    ]);
+    expect(bound(labelOf(elements, 'In stock?').xywh)).toEqual([
+      241, 45, 58, 14,
+    ]);
+  });
+
+  it('maps the BPMNLabel it used rather than carrying it as well', () => {
+    // Carried AND placed, the exporter would write it back next to the one it
+    // writes from the label: two `BPMNLabel`s on one shape, which the schema
+    // forbids.
+    const { elements, report } = importBpmnXml(
+      drawn(box('196', '93', '41', '14'))
+    );
+    expect(payloadOf(elements, 'S').di).toBeUndefined();
+    expect(report.carried).toBe(0);
+  });
+
+  it('keeps the place under the symbol when the file drew no BPMNLabel', () => {
+    const { elements } = importBpmnXml(drawn(''));
+    const [lx, ly, lw] = bound(labelOf(elements, 'Order in').xywh);
+    expect(lx + lw / 2).toBe(152 + 36 / 2);
+    expect(ly).toBeGreaterThan(82 + 36);
+  });
+
+  it.each([
+    ['an empty width', box('196', '93', '0', '14')],
+    ['a negative height', box('196', '93', '41', '-14')],
+    ['a coordinate that is not a number', box('NaN', '93', '41', '14')],
+    [
+      'a missing coordinate',
+      '<bpmndi:BPMNLabel><dc:Bounds y="93" width="41" height="14" /></bpmndi:BPMNLabel>',
+    ],
+    ['a box a billion units away', box('1e9', '93', '41', '14')],
+    ['an infinite size', box('196', '93', 'Infinity', '14')],
+    ['a label with no bounds at all', '<bpmndi:BPMNLabel />'],
+  ])('refuses %s and hangs the name under the symbol', (_, label) => {
+    // Refused, never clamped: a clamped box is a place nobody drew. And
+    // refused is not lost — the label is carried verbatim, as before.
+    const { elements } = importBpmnXml(drawn(label));
+    const [lx, ly, lw] = bound(labelOf(elements, 'Order in').xywh);
+    expect(lx + lw / 2).toBe(152 + 36 / 2);
+    expect(ly).toBeGreaterThan(82 + 36);
+    expect(payloadOf(elements, 'S').di?.['@shape']).toHaveLength(1);
+  });
+
+  it('gives bpmn.io its label positions back after a pass through Labre', () => {
+    // The round trip the debt was about: bpmn.io → Labre → bpmn.io. The
+    // export moves the whole plane to the origin, so each name is compared to
+    // its own symbol, which moved by the same amount.
+    const source = drawn(
+      box('196', '93', '41', '14'),
+      box('241', '45', '58', '14')
+    );
+    const again = exportBpmnXml(boardFromProps(importBpmnXml(source).elements));
+    const relative = (xml: string) => {
+      const doc = new DOMParser().parseFromString(xml, 'application/xml');
+      return Array.from(doc.getElementsByTagName('bpmndi:BPMNShape')).map(
+        shape => {
+          const [own, label] = Array.from(
+            shape.getElementsByTagName('dc:Bounds')
+          ).map(bounds =>
+            ['x', 'y', 'width', 'height'].map(name =>
+              Number(bounds.getAttribute(name))
+            )
+          );
+          return [label[0] - own[0], label[1] - own[1], label[2], label[3]];
+        }
+      );
+    };
+    expect(again.match(/<bpmndi:BPMNLabel>/g)).toHaveLength(2);
+    // Two shapes read on each side, or the comparison below proves nothing.
+    expect(relative(source)).toHaveLength(2);
+    expect(relative(again)).toEqual(relative(source));
+  });
+
+  it('lets a swept shape’s label follow it, whatever its BPMNLabel said', () => {
+    // A shape with no bounds of its own is placed by the sweep (D4): a label
+    // left at the file's coordinates would hang far from its symbol.
+    const xml = drawn(box('196', '93', '41', '14')).replace(
+      '<dc:Bounds x="152" y="82" width="36" height="36" />',
+      ''
+    );
+    const { elements } = importBpmnXml(xml);
+    const event = elements.find(element => element.kind === 'startEvent')!;
+    const [ex, ey, ew, eh] = bound(event.xywh);
+    const [lx, ly, lw] = bound(labelOf(elements, 'Order in').xywh);
+    expect(lx + lw / 2).toBe(ex + ew / 2);
+    expect(ly).toBeGreaterThan(ey + eh);
   });
 });
