@@ -175,6 +175,24 @@ describe('the attachment entries, with and without a host', () => {
 });
 
 describe("the card's Replace, with and without a host", () => {
+  it('keeps the natural size of an image the host answers', async () => {
+    const { store } = pageStore();
+    const pick = vi.fn(async () => [
+      {
+        sourceId: 'img',
+        name: 'wide.png',
+        type: 'image/png',
+        size: 10,
+        width: 80,
+        height: 20,
+      },
+    ]);
+
+    await expect(
+      pickAttachmentSource(stdFor(store, { pick }))
+    ).resolves.toMatchObject({ type: 'image/png', width: 80, height: 20 });
+  });
+
   it('asks the host for one file to replace with, by reference', async () => {
     const { store, set } = pageStore();
     vi.mocked(openSingleFileWith).mockClear();

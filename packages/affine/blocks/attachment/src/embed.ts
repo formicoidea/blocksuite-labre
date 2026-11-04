@@ -19,7 +19,8 @@ import {
 import type { Container } from '@labre/global/di';
 import { createIdentifier } from '@labre/global/di';
 import { Bound } from '@labre/global/gfx';
-import { type BlockStdScope, StdIdentifier } from '@labre/std';
+import { BlockSelection, type BlockStdScope, StdIdentifier } from '@labre/std';
+import { GfxControllerIdentifier } from '@labre/std/gfx';
 import type { ExtensionType } from '@labre/store';
 import { Extension } from '@labre/store';
 import type { TemplateResult } from 'lit';
@@ -193,7 +194,11 @@ const embedConfig: AttachmentEmbedConfig[] = [
       const component = std.view.getBlock(model.id);
       if (!component) return;
 
-      await turnIntoImageBlock(model);
+      // Read now: the block is about to go. A selection left on it keeps a
+      // stray toolbar on the canvas.
+      const select = selectionFollowing(std, model.id);
+      const imageId = await turnIntoImageBlock(model);
+      if (imageId) select(imageId);
     },
   },
   {
@@ -323,17 +328,33 @@ function renderHtmlView(
   ></affine-attachment-html-view>`;
 }
 
+/** What selects another block the way `blockId` is selected now, if it is. */
+function selectionFollowing(std: BlockStdScope, blockId: string) {
+  const { selection: surface } = std.get(GfxControllerIdentifier);
+  if (surface.has(blockId)) {
+    return (id: string) => surface.set({ elements: [id], editing: false });
+  }
+  const { selection } = std;
+  if (selection.filter(BlockSelection).some(s => s.blockId === blockId)) {
+    return (id: string) =>
+      selection.setGroup('note', [
+        selection.create(BlockSelection, { blockId: id }),
+      ]);
+  }
+  return () => undefined;
+}
+
 /**
- * Turn the attachment block into an image block.
+ * Turn the attachment block into an image block. Answers the image's id.
  */
 async function turnIntoImageBlock(model: AttachmentBlockModel) {
   if (!model.store.schema.flavourSchemaMap.has('affine:image')) {
     console.error('The image flavour is not supported!');
-    return;
+    return null;
   }
 
   const sourceId = model.props.sourceId;
-  if (!sourceId) return;
+  if (!sourceId) return null;
 
   const { saveAttachmentData, getImageData } = withTempBlobData();
   saveAttachmentData(sourceId, { name: model.props.name });
@@ -369,8 +390,10 @@ async function turnIntoImageBlock(model: AttachmentBlockModel) {
     sourceId,
     caption: model.props.caption,
     size: model.props.size,
+    // Its place on a canvas is its depth too.
+    index: model.props.index,
     ...imageSize,
     ...others,
   };
-  transformModel(model, 'affine:image', imageProp);
+  return transformModel(model, 'affine:image', imageProp);
 }

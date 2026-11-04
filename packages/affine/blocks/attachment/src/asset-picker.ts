@@ -130,15 +130,22 @@ export async function pickAndAddAttachments(
   return addAttachments(std, [file]);
 }
 
+/** What "Replace" received: an image ref may already know its natural size. */
+export type AttachmentReplacement = AttachmentBlockSource &
+  Pick<AssetRef, 'width' | 'height'>;
+
 /**
  * What the attachment toolbar's "Replace" puts in the card: the host's asset
  * dialog when there is one (`kind: 'file'`, `mode: 'replace'`, first ref
  * used, by reference), the system file chooser otherwise (the file goes up
  * through the blob source, as before). `null` when cancelled.
+ *
+ * Either may answer an image: the card then becomes an image block
+ * (`AttachmentBlockComponent.replace`).
  */
 export async function pickAttachmentSource(
   std: BlockStdScope
-): Promise<AttachmentBlockSource | null> {
+): Promise<AttachmentReplacement | null> {
   const picker = std.getOptional(AssetPickerProvider);
   if (picker) {
     const [asset] =
@@ -148,7 +155,9 @@ export async function pickAttachmentSource(
         multiple: false,
         docId: std.store.id,
       })) ?? [];
-    return asset ? (attachmentPropsFrom([asset])[0] ?? null) : null;
+    if (!asset) return null;
+    const { sourceId, name, type, size, width, height } = asset;
+    return { sourceId, name, type, size, width, height };
   }
   const file = await openSingleFileWith();
   if (!file) return null;
