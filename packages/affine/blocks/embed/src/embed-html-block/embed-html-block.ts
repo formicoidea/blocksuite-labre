@@ -7,6 +7,7 @@ import { classMap } from 'lit/directives/class-map.js';
 import { type StyleInfo, styleMap } from 'lit/directives/style-map.js';
 
 import { EmbedBlockComponent } from '../common/embed-block-element.js';
+import { HOST_PAGE_SANDBOX } from '../common/iframe-sandbox.js';
 import { EMBED_HTML_EMPTY } from '../translations.js';
 import { EmbedHtmlConfigExtension } from './embed-html-config.js';
 import { HtmlIcon, styles } from './styles.js';
@@ -37,8 +38,8 @@ export class EmbedHtmlBlockComponent extends EmbedBlockComponent<EmbedHtmlModel>
     if (!frame || event.source !== frame) return;
     if (event.data?.type !== FRAME_READY) return;
     this._writtenHtml = this._htmlSrc;
-    // '*' because an opaque origin cannot be named. A script of the block may
-    // navigate its frame away and ask again: it only ever gets its own html.
+    // '*' because the host's page is the host's business, and may be opaque. A
+    // script of the block that gets a window here only ever gets its own html.
     frame.postMessage({ html: this._writtenHtml }, '*');
   };
 
@@ -126,7 +127,7 @@ export class EmbedHtmlBlockComponent extends EmbedBlockComponent<EmbedHtmlModel>
                 ${frameUrl
                   ? html`<iframe
                       class="embed-html-block-iframe"
-                      sandbox="allow-scripts"
+                      sandbox=${HOST_PAGE_SANDBOX}
                       scrolling="no"
                       src=${frameUrl}
                       loading="lazy"

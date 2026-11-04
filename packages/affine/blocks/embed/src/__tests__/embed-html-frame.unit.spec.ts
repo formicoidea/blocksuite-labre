@@ -1,6 +1,7 @@
 import { render, type TemplateResult } from 'lit';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
 
+import { HOST_PAGE_SANDBOX } from '../common/iframe-sandbox.js';
 import { EmbedHtmlBlockComponent } from '../embed-html-block/embed-html-block.js';
 import { EmbedHtmlConfigExtension } from '../embed-html-block/embed-html-config.js';
 
@@ -61,7 +62,7 @@ describe('the html block and its frame', () => {
     const { iframe } = mount({ frameUrl: '/frame.html' });
     expect(iframe.getAttribute('src')).toBe('/frame.html');
     expect(iframe.srcdoc).toBe('');
-    expect(iframe.getAttribute('sandbox')).toBe('allow-scripts');
+    expect(iframe.getAttribute('sandbox')).toBe(HOST_PAGE_SANDBOX);
   });
 
   test('it sends the stored html to its own frame when asked', () => {
