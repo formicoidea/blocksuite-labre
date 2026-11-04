@@ -131,7 +131,11 @@ describe('what the framework ships as rules', () => {
     for (const rule of ALL_RULES) {
       expect(rule.framework).toBe('bpmn');
       expect(rule.id.startsWith('bpmn.')).toBe(true);
-      expect(rule.version).toBe(1);
+      // Every rule shipped at 1; `bpmn.unlabeled-step` is at 2 since its subject
+      // widened to every flow object (ADR 0021, amendment of 2026-11-04).
+      expect(rule.version, rule.id).toBe(
+        rule.id === 'bpmn.unlabeled-step' ? 2 : 1
+      );
       expect(rule.messageKey).toMatch(/^com\.labre\.bpmn\.validation\./);
       // A framework fallback, so a host with no catalogue reads a sentence
       // rather than a dotted key — the framework owns the word, not the engine.
@@ -462,14 +466,19 @@ describe('what the framework ships as rules', () => {
 });
 
 /**
- * Why this block exists: since R38 (`docs/adr/0029`) an event, a gateway or a
- * data shape is named by a grouped `bpmn:label` text, never by its own inner
- * text — and the `label-presence` family reads only the subject's own text.
- * Left on `bpmn:flow-object`, `bpmn.unlabeled-step` would have told every
- * author of a properly named gateway that it has no name. The rule now asks
- * the question of the activities alone, whose name is inscribed.
+ * Why this block exists: since R38 (`docs/adr/0029`) an event or a gateway is
+ * named by a GROUPED `bpmn:label` text, never by its own inner text. Version 1
+ * of `bpmn.unlabeled-step` could not see that label, so it was narrowed to the
+ * activities and a gateway asking no question went unreported (the
+ * `ponytail:` this replaces). Version 2 asks every flow object and reads the
+ * grouped label through `labelRole` (ADR 0021, amendment of 2026-11-04).
+ *
+ * What it would have caught: the rule reporting a properly NAMED event or
+ * gateway (the sibling not read), an unnamed one going silent again (the
+ * subject narrowed back), or a text that merely sits next to a node counting as
+ * its name (nearness read as grouping).
  */
-describe('bpmn.unlabeled-step asks only the activities', () => {
+describe('bpmn.unlabeled-step reads the grouped label', () => {
   const at = (
     id: string,
     role: string | undefined,
@@ -485,34 +494,95 @@ describe('bpmn.unlabeled-step asks only the activities', () => {
       },
     }) as unknown as GfxPrimitiveElementModel;
 
+  /** Groups `members` the way the palette does: one group, read back by each. */
+  const grouped = (...members: GfxPrimitiveElementModel[]) => {
+    const group = { childElements: members };
+    for (const member of members) {
+      (member as unknown as { group: unknown }).group = group;
+    }
+    return members;
+  };
+
   const unnamed = (elements: GfxPrimitiveElementModel[]) =>
     evaluateCheckup(ALL_RULES, elements, BPMN_PROFILES)
       .filter(v => v.ruleId === 'bpmn.unlabeled-step')
       .flatMap(v => v.elementIds)
       .sort();
 
-  it('is written on the activity role', () => {
-    const rule = ALL_RULES.find(r => r.id === 'bpmn.unlabeled-step');
-    expect(rule?.appliesTo).toBe(BPMN_ROLE.activity);
+  const rule = () => ALL_RULES.find(r => r.id === 'bpmn.unlabeled-step');
+
+  it('is written on every flow object, reading the label role', () => {
+    expect(rule()?.appliesTo).toBe(BPMN_ROLE.flowObject);
+    expect(rule()?.label).toEqual({
+      present: true,
+      labelRole: BPMN_ROLE.label,
+    });
+    // The subject widened: a profile or a host keyed on the old verdicts sees
+    // a new version, never a renamed id.
+    expect(rule()?.version).toBe(2);
   });
 
-  it('reports a wordless task, and no event, gateway or data shape', () => {
+  it('reports an unnamed event and gateway, and a wordless task', () => {
     const board = [
       at('pool', BPMN_ROLE.pool, [0, 0, 1200, 400], {
         validationProfile: 'bpmn.descriptive',
       }),
-      // The external kinds as the palette draws them: no inner text, the name
-      // on a grouped label beside them.
       at('start', BPMN_ROLE.startEvent, [40, 100, 56, 56]),
-      at('startName', BPMN_ROLE.label, [8, 162, 120, 26], {
-        text: 'Request received',
-      }),
       at('gw', BPMN_ROLE.gatewayExclusive, [400, 92, 72, 72]),
-      at('store', BPMN_ROLE.dataStore, [600, 260, 56, 56]),
       at('named', BPMN_ROLE.task, [160, 74, 180, 108], { text: 'Check' }),
       at('blank', BPMN_ROLE.taskUser, [520, 74, 180, 108]),
-      at('sub', BPMN_ROLE.subProcess, [800, 74, 180, 108]),
     ];
-    expect(unnamed(board)).toEqual(['blank', 'sub']);
+    expect(unnamed(board)).toEqual(['blank', 'gw', 'start']);
+  });
+
+  it('accepts an event and a gateway named by their grouped label', () => {
+    const board = [
+      at('pool', BPMN_ROLE.pool, [0, 0, 1200, 400], {
+        validationProfile: 'bpmn.descriptive',
+      }),
+      ...grouped(
+        at('start', BPMN_ROLE.startEvent, [40, 100, 56, 56]),
+        at('startName', BPMN_ROLE.label, [8, 162, 120, 26], {
+          text: 'Request received',
+        })
+      ),
+      ...grouped(
+        at('gw', BPMN_ROLE.gatewayExclusive, [400, 92, 72, 72]),
+        at('gwName', BPMN_ROLE.label, [376, 170, 120, 26], {
+          text: 'Approved?',
+        })
+      ),
+      at('named', BPMN_ROLE.task, [160, 74, 180, 108], { text: 'Check' }),
+    ];
+    expect(unnamed(board)).toEqual([]);
+  });
+
+  it('reports a grouped label left empty, and a label merely nearby', () => {
+    const board = [
+      at('pool', BPMN_ROLE.pool, [0, 0, 1200, 400], {
+        validationProfile: 'bpmn.descriptive',
+      }),
+      // The seed was cleared: the group is there, the name is not.
+      ...grouped(
+        at('start', BPMN_ROLE.startEvent, [40, 100, 56, 56]),
+        at('startName', BPMN_ROLE.label, [8, 162, 120, 26], { text: ' ' })
+      ),
+      // Right underneath, but never grouped: nearness is not naming.
+      at('end', BPMN_ROLE.endEvent, [800, 100, 56, 56]),
+      at('stray', BPMN_ROLE.label, [768, 162, 120, 26], { text: 'Done' }),
+    ];
+    expect(unnamed(board)).toEqual(['end', 'start']);
+  });
+
+  it('keeps a data shape out of it', () => {
+    // `bpmn:data` is not a flow object: a store is named or not, but this
+    // rule was never about it.
+    const board = [
+      at('pool', BPMN_ROLE.pool, [0, 0, 1200, 400], {
+        validationProfile: 'bpmn.descriptive',
+      }),
+      at('store', BPMN_ROLE.dataStore, [600, 260, 56, 56]),
+    ];
+    expect(unnamed(board)).toEqual([]);
   });
 });

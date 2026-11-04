@@ -203,3 +203,45 @@ they returned before, and the exporters read exactly what they read.
 - **No persisted data, no schema change.** The family lives on a rule
   declaration, which is code a framework ships — never a document. Older
   documents are byte-identical and open unchanged.
+
+## Amendments
+
+### 2026-11-04: `label-presence` may read a grouped sibling
+
+This ADR's family has a sibling, `label-presence`, which had no ADR of its own
+and read the subject's own `text` and nothing else. R38 (ADR 0029) moved the
+name of a BPMN event or gateway out of the symbol into a free `bpmn:label` text
+GROUPED with it. The family could not see that text, so `bpmn.unlabeled-step`
+was narrowed to the activities, and a gateway that asks no question went
+unreported (the `ponytail:` in `gfx/bpmn/src/rules.ts`, Notion debt "BPMN labels
+gravitants / R38", item 2).
+
+**Decision.** `LabelPresenceDef` gains an optional `labelRole`. When it is set
+and the subject's own text is empty, the family reads the text of the first
+member of the subject's group whose role is, through `roleIsA`, that role — the
+reading `readName` already does for the reading panel (`reading.ts`), so the
+panel and the check-up agree on whether an element is named. An ungrouped
+subject, or a group with no such member or only an empty one, has no name. A text
+that merely sits next to the subject is still not read: grouping is a fact the
+user made, nearness is a guess. Absent `labelRole`, the family reads exactly
+what it read before.
+
+`bpmn.unlabeled-step` returns to `bpmn:flow-object` (activity, event, gateway),
+declares `labelRole: 'bpmn:label'`, and moves to `version: 2`; its id is kept.
+Strict profiles now report unnamed events and gateways, at the same `audit`
+severity, on demand.
+
+**The limit, written down rather than fixed.** `RULE_SCOPES['label-presence']`
+stays `'element'`. An INCREMENTAL pass judges the subjects its dirty set reaches,
+and editing only the label marks the label dirty, not the symbol it names: a
+real-time rule of this family would keep a stale verdict until the symbol itself
+changes. `bpmn.unlabeled-step` is `on-demand`, and a check-up is a full pass
+(`evaluateCheckup` without a seed), so it is unaffected. A real-time rule that
+declares `labelRole` first needs the dependency scope of ADR 0015 to reach the
+group — a family scope wider than `'element'`, or a closure that adds a dirty
+member's group siblings — and that is the trigger to revisit this amendment.
+
+Held by `blocks/surface/src/__tests__/validation-label-presence.unit.spec.ts`
+(sibling read, specialised role, absent or empty sibling, nearness, detached
+element) and `gfx/bpmn/src/__tests__/profiles.unit.spec.ts` (the rule through
+the BPMN profiles). No stored data, no schema change, no new displayed string.

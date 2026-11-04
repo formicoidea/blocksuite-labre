@@ -106,3 +106,13 @@ nine frameworks: 72 already consistent with the criterion below, 12 not — the
 - Validation: `bpmn.unlabeled-step` is narrowed to the activities; an event or
   a gateway has no inner text to check any more.
 - A framework that adopts R38 adds the same per-kind spec against the helper.
+
+## Amendments
+
+### 2026-11-04: `bpmn.unlabeled-step` asks events and gateways again
+
+The consequence "`bpmn.unlabeled-step` is narrowed to the activities" no longer
+holds. The `label-presence` family can now read the grouped label this ADR
+introduced (`labelRole`, ADR 0021 amendment of 2026-11-04), so the rule is back
+on `bpmn:flow-object` at `version: 2`: an event or a gateway is named by its
+inner text if it still has one, otherwise by the `bpmn:label` sharing its group.

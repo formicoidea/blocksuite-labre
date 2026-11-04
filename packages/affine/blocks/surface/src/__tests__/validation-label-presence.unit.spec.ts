@@ -38,6 +38,15 @@ const ROLES: RoleDefs = {
     labelKey: 'test.sub-process',
   },
   'test:event': { id: 'test:event', kind: 'node', labelKey: 'test.event' },
+  // The free text that names an external symbol (R38), and a specialisation of
+  // it, so the sibling is matched through `roleIsA` like the subject is.
+  'test:label': { id: 'test:label', kind: 'text', labelKey: 'test.label' },
+  'test:caption': {
+    id: 'test:caption',
+    parent: 'test:label',
+    kind: 'text',
+    labelKey: 'test.caption',
+  },
 };
 
 /** "Every step says what it is." */
@@ -281,5 +290,117 @@ describe('what makes an element’s words verdict-bearing', () => {
     expect(
       evaluateCheckup([later], board).map(v => v.elementIds.join('+'))
     ).toEqual(['a']);
+  });
+});
+
+/**
+ * `labelRole`: the name lives on a GROUPED sibling (ADR 0021, amendment of
+ * 2026-11-04).
+ *
+ * R38 (`docs/adr/0029`) moved the name of an event or a gateway out of the
+ * symbol and into a free text grouped with it. Without this field the family
+ * reads the symbol alone and reports every properly named one as unnamed —
+ * which is why BPMN had narrowed its rule to the activities. What these cases
+ * would have caught: the sibling not read, a sibling of the wrong role read, an
+ * absent or empty sibling read as a name, a merely NEARBY text read as one, and
+ * a detached element throwing out of a check-up.
+ */
+describe('a name carried by a grouped sibling', () => {
+  const BY_SIBLING: ValidationRule = {
+    ...NAMED,
+    id: 'test.unnamed-event',
+    appliesTo: 'test:event',
+    moment: 'on-demand',
+    label: { present: true, labelRole: 'test:label' },
+  };
+
+  const check = (elements: GfxPrimitiveElementModel[], rule = BY_SIBLING) =>
+    evaluateCheckup([rule], elements).map(v => v.elementIds.join('+'));
+
+  /** One group holding `members`, read back through each member's `group`. */
+  const grouped = (...members: GfxPrimitiveElementModel[]) => {
+    const group = { childElements: members };
+    for (const member of members) {
+      (member as unknown as { group: unknown }).group = group;
+    }
+    return members;
+  };
+
+  it('reads the text of the sibling carrying the label role', () => {
+    expect(
+      check([
+        frame(),
+        ...grouped(node('e', 'test:event'), node('l', 'test:label', 'Paid')),
+      ])
+    ).toEqual([]);
+  });
+
+  it('reads a sibling whose role specialises the label role', () => {
+    expect(
+      check([
+        frame(),
+        ...grouped(node('e', 'test:event'), node('c', 'test:caption', 'Paid')),
+      ])
+    ).toEqual([]);
+  });
+
+  it('treats an absent sibling as an absent label', () => {
+    // Ungrouped, and grouped with nothing that names it.
+    expect(check([frame(), node('e', 'test:event')])).toEqual(['e']);
+    expect(
+      check([
+        frame(),
+        ...grouped(node('e', 'test:event'), node('x', 'test:activity', 'Pay')),
+      ])
+    ).toEqual(['e']);
+  });
+
+  it('treats an empty or invisible sibling as no name', () => {
+    expect(
+      check([
+        frame(),
+        ...grouped(
+          node('e', 'test:event'),
+          node('l', 'test:label', ' \u200B ')
+        ),
+      ])
+    ).toEqual(['e']);
+  });
+
+  it('does not read a label that merely sits beside the subject', () => {
+    // Same place, no group: nearness is a different family.
+    expect(
+      check([frame(), node('e', 'test:event'), node('l', 'test:label', 'Paid')])
+    ).toEqual(['e']);
+  });
+
+  it("still prefers the subject's own words", () => {
+    // A legacy symbol drawn before R38 keeps its inner text, and is named by it.
+    expect(check([frame(), node('e', 'test:event', 'Paid')])).toEqual([]);
+  });
+
+  it('reads nothing beyond the subject when no label role is declared', () => {
+    const ownOnly: ValidationRule = { ...BY_SIBLING, label: { present: true } };
+    expect(
+      check(
+        [
+          frame(),
+          ...grouped(node('e', 'test:event'), node('l', 'test:label', 'Paid')),
+        ],
+        ownOnly
+      )
+    ).toEqual(['e']);
+  });
+
+  it('reads an element whose group cannot be asked as ungrouped', () => {
+    // `group` is a getter walking the surface, and throws on an element
+    // attached to none. A check-up must not throw: no group, no sibling, no name.
+    const detached = node('e', 'test:event');
+    Object.defineProperty(detached, 'group', {
+      get() {
+        throw new Error('not attached to a surface');
+      },
+    });
+    expect(check([frame(), detached])).toEqual(['e']);
   });
 });
