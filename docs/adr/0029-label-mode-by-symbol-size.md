@@ -106,3 +106,25 @@ nine frameworks: 72 already consistent with the criterion below, 12 not — the
 - Validation: `bpmn.unlabeled-step` is narrowed to the activities; an event or
   a gateway has no inner text to check any more.
 - A framework that adopts R38 adds the same per-kind spec against the helper.
+
+## Amendments
+
+**2026-11-04 — a glyph whose inscribed text IS the notation is exempt (PO
+decision, option 1 without truncation).** The Wardley `porter` deviation
+recorded above becomes a rule rather than a defect. A symbol whose inscribed
+text is the notation itself — one character kept in step with a tag, not a
+name the author gives the symbol — is a declared GLYPH and is exempt from R38:
+the probe asks whether a NAME fits, and a glyph carries none. The Porter letter
+is such a glyph: a 60×60 ellipse (`PORTER_SIZE`) whose 28-unit letter
+(`PORTER_LETTER_FONT_SIZE`, `R` by default) is R, L or E, synchronised both
+ways with the `wardley:competition` tag (`natures.ts`, `WardleyPorterWatcher`),
+and set with `TextFitMode.Overflow` so the circle never grows to fit what is
+typed. Free text beyond one letter is not prevented and not truncated:
+`competitionOfPorterLetter` reads anything but exactly R, L or E as no force,
+so the tag is simply cleared. `gfx/wardley/src/__tests__/label-mode.unit.spec.ts`
+holds it: every Wardley kind the toolbar builds with inscribed text (the two
+areas) fits the probe, and the Porter glyph is the only exemption — it fails
+the probe, so the exemption is load-bearing, and it inscribes one character the
+competition tag reads. Nothing changes for a host or a document; the Backlog
+ticket for `porter` closes. The DDD Event Storming `hotspot` deviation is
+untouched by this amendment.

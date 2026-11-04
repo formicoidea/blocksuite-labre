@@ -267,9 +267,13 @@ label mode follows from it, never the other way round. Enforced by
 `label-mode.unit.spec.ts` in `gfx/bpmn` (every kind of `NODE_SIZE` checked
 against `bpmnLabelMode`), the arithmetic by `label-mode.unit.spec.ts` in
 `affine/shared`; a framework that adopts the rule adds the same per-kind spec.
-Two recorded deviations, each with a Backlog ticket: Wardley `porter` (a
-60-unit ellipse whose inscribed letter IS the notation) and DDD Event Storming
-`hotspot` (a 120-unit diamond whose `Contained` fit shrinks the font). ADR
+A declared GLYPH is exempt: a symbol whose inscribed text IS the notation, one
+character kept in step with a tag, never a name. Wardley `porter` is one (a
+60-unit ellipse whose letter R, L or E is synchronised with
+`wardley:competition`; longer text is not prevented, the tag is cleared), held
+by `label-mode.unit.spec.ts` in `gfx/wardley`. One recorded deviation, with a
+Backlog ticket: DDD Event Storming `hotspot` (a 120-unit diamond whose
+`Contained` fit shrinks the font). ADR
 [0029](../adr/0029-label-mode-by-symbol-size.md).
 
 ## Semantics
