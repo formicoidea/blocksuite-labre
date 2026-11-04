@@ -28,7 +28,7 @@ function blockElement(blockId: string) {
 }
 
 /**
- * A heading hides its collapsed SIBLINGS through an injected
+ * A heading hides its collapsed SIBLINGS through a marker attribute and a static
  * `display: none !important` rule; a list hides its CHILDREN by collapsing the
  * container around them. `checkVisibility` covers both, where a computed
  * `display` on the block itself only covers the first.

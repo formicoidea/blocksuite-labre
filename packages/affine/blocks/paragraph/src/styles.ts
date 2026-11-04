@@ -33,7 +33,14 @@ const headingStyles = unsafeCSS(
   }).join('')
 );
 
+/** Set by a collapsed heading on the block views it folds. */
+export const COLLAPSED_SIBLING_ATTR = 'data-collapsed-sibling';
+
 export const paragraphBlockStyles = css`
+  [${unsafeCSS(COLLAPSED_SIBLING_ATTR)}] {
+    display: none !important;
+  }
+
   affine-paragraph {
     box-sizing: border-box;
     display: block;
