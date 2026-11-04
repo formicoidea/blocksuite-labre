@@ -27,10 +27,12 @@
  * visibly fits. Line height 1.2 em, the renderer's default for single-spaced
  * canvas text.
  *
- * ponytail: no real font metrics — a fixed per-glyph average and a fixed line
- * height, so a shape within a few units of the threshold may be judged wrongly
- * for a font other than Inter. The upgrade is to measure the probe with the
- * shape renderer's `wrapText` / `getLineHeight` in a browser-mode spec.
+ * The ground truth is measured, not assumed: BPMN's
+ * `label-mode-metrics.browser.spec.ts` lays the probe out with the shape
+ * renderer's `wrapText` and `getLineHeight` in Chromium and asserts this
+ * verdict agrees for every kind. A kind whose verdict would change with the
+ * face (Inter against a sans-serif fallback) is listed there by name — today
+ * only the text annotation, 1 to 7 units inside its box.
  */
 
 /** The probe: two five-letter words, as in "Hello World". */

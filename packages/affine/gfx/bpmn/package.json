@@ -30,6 +30,9 @@
     "@labre/store": "workspace:*",
     "lit": "^3.2.0"
   },
+  "devDependencies": {
+    "@labre/affine-gfx-text": "workspace:*"
+  },
   "exports": {
     ".": "./src/index.ts",
     "./commands-manifest": "./src/commands-manifest.ts",
