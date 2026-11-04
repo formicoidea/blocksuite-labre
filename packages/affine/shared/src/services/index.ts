@@ -10,6 +10,7 @@ export * from './command-usage-service';
 export * from './comment-service';
 export * from './data-source-picker-service';
 export * from './doc-display-meta-service';
+export * from './embed-html-config';
 export * from './doc-mode-service';
 export * from './drag-handle-config';
 export * from './edit-props-store';

@@ -1,18 +1,15 @@
 import type { EmbedHtmlModel, EmbedHtmlStyles } from '@labre/affine-model';
 import { translateKey } from '@labre/affine-shared/services';
 import { BlockSelection } from '@labre/std';
-import { html, type PropertyValues } from 'lit';
+import { html } from 'lit';
 import { query } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { type StyleInfo, styleMap } from 'lit/directives/style-map.js';
 
 import { EmbedBlockComponent } from '../common/embed-block-element.js';
-import { HOST_PAGE_SANDBOX } from '../common/iframe-sandbox.js';
 import { EMBED_HTML_EMPTY } from '../translations.js';
 import { EmbedHtmlConfigExtension } from './embed-html-config.js';
 import { HtmlIcon, styles } from './styles.js';
-
-const FRAME_READY = 'labre:embed-html-ready';
 
 export class EmbedHtmlBlockComponent extends EmbedBlockComponent<EmbedHtmlModel> {
   static override styles = styles;
@@ -30,18 +27,6 @@ export class EmbedHtmlBlockComponent extends EmbedBlockComponent<EmbedHtmlModel>
   };
 
   refreshData = () => {};
-
-  private _writtenHtml: string | null = null;
-
-  private readonly _answerFrame = (event: MessageEvent) => {
-    const frame = this.iframe?.contentWindow;
-    if (!frame || event.source !== frame) return;
-    if (event.data?.type !== FRAME_READY) return;
-    this._writtenHtml = this._htmlSrc;
-    // '*' because the host's page is the host's business, and may be opaque. A
-    // script of the block that gets a window here only ever gets its own html.
-    frame.postMessage({ html: this._writtenHtml }, '*');
-  };
 
   private get _frameUrl() {
     return this.std.getOptional(EmbedHtmlConfigExtension.identifier)?.frameUrl;
@@ -79,29 +64,10 @@ export class EmbedHtmlBlockComponent extends EmbedBlockComponent<EmbedHtmlModel>
   override connectedCallback() {
     super.connectedCallback();
     this._cardStyle = this.model.props.style;
-    if (this._frameUrl) {
-      this.disposables.addFromEvent(window, 'message', this._answerFrame);
-    }
-  }
-
-  protected override updated(changedProperties: PropertyValues) {
-    super.updated(changedProperties);
-    // The frame wrote its document once and for all: new html needs a new one.
-    const frameUrl = this._frameUrl;
-    if (
-      frameUrl &&
-      this.iframe &&
-      this._writtenHtml !== null &&
-      this._writtenHtml !== this._htmlSrc
-    ) {
-      this._writtenHtml = null;
-      this.iframe.src = frameUrl;
-    }
   }
 
   override renderBlock(): unknown {
     const titleText = 'Basic HTML Page Structure';
-    const frameUrl = this._frameUrl;
 
     return this.renderEmbed(() => {
       if (!this.model.props.html) {
@@ -124,21 +90,13 @@ export class EmbedHtmlBlockComponent extends EmbedBlockComponent<EmbedHtmlModel>
           <div class="affine-embed-html">
             <div class="affine-embed-html-iframe-container">
               <div class="embed-html-block-iframe-wrapper" allowfullscreen>
-                ${frameUrl
-                  ? html`<iframe
-                      class="embed-html-block-iframe"
-                      sandbox=${HOST_PAGE_SANDBOX}
-                      scrolling="no"
-                      src=${frameUrl}
-                      loading="lazy"
-                    ></iframe>`
-                  : html`<iframe
-                      class="embed-html-block-iframe"
-                      sandbox="allow-scripts"
-                      scrolling="no"
-                      .srcdoc=${this._htmlSrc}
-                      loading="lazy"
-                    ></iframe>`}
+                <labre-html-frame
+                  .html=${this._htmlSrc}
+                  .frameUrl=${this._frameUrl ?? null}
+                  .interactive=${true}
+                  .noScroll=${true}
+                  .srcdocFallback=${true}
+                ></labre-html-frame>
                 <embed-html-fullscreen-toolbar
                   .embedHtml=${this}
                 ></embed-html-fullscreen-toolbar>
@@ -163,9 +121,6 @@ export class EmbedHtmlBlockComponent extends EmbedBlockComponent<EmbedHtmlModel>
       `;
     });
   }
-
-  @query('.embed-html-block-iframe')
-  accessor iframe: HTMLIFrameElement | null = null;
 
   @query('.embed-html-block-iframe-wrapper')
   accessor iframeWrapper!: HTMLDivElement;

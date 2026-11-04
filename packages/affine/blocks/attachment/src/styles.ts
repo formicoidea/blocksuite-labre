@@ -141,6 +141,44 @@ export const styles = css`
     }
   }
 
+  .affine-attachment-card.has-thumbnail .affine-attachment-banner {
+    flex-shrink: 0;
+    width: 160px;
+    height: 90px;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid ${unsafeCSSVarV2('layer/insideBorder/border')};
+  }
+
+  .affine-attachment-card.horizontalThin.has-thumbnail {
+    .affine-attachment-banner {
+      width: 100px;
+      height: 54px;
+    }
+  }
+
+  /* The stored box of a canvas card is 170 by 132: the preview takes it. */
+  .affine-attachment-card.cubeThick.has-thumbnail {
+    height: 100%;
+    gap: 6px;
+    padding: 6px;
+
+    .affine-attachment-content {
+      flex: 0 0 auto;
+    }
+
+    .affine-attachment-content-info {
+      display: none;
+    }
+
+    .affine-attachment-banner {
+      flex: 1 1 0;
+      width: 100%;
+      height: auto;
+      min-height: 0;
+    }
+  }
+
   .affine-attachment-embed-container {
     position: relative;
     width: 100%;

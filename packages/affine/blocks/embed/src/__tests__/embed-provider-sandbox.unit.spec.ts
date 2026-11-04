@@ -124,7 +124,9 @@ describe('every iframe rendered by this package is sandboxed', () => {
 
   test('the sweep actually found the shipped iframes', () => {
     // A silent zero would turn the guard below into a no-op.
-    expect(openingTags.length).toBeGreaterThanOrEqual(5);
+    // The html block's frame moved to the shared component, swept beside it
+    // (`components/src/__tests__/html-frame.unit.spec.ts`, ADR 0048).
+    expect(openingTags.length).toBeGreaterThanOrEqual(4);
   });
 
   test.each(

@@ -451,17 +451,28 @@ export class AttachmentBlockComponent extends CaptionedBlockComponent<Attachment
     const resolvedState = this.resolvedState$.value;
     const cardStyle = this.model.props.style$.value ?? AttachmentBlockStyles[1];
 
+    const thumbnail =
+      resolvedState.state === 'none' && this.blobUrl
+        ? this.std
+            .get(AttachmentEmbedProvider)
+            .renderThumbnail(this.model, this._maxFileSize)
+        : null;
+    const cardState = thumbnail
+      ? { ...resolvedState, kind: thumbnail }
+      : resolvedState;
+
     const classInfo = {
       'affine-attachment-card': true,
       [cardStyle]: true,
       loading: resolvedState.loading,
       error: resolvedState.error,
+      'has-thumbnail': Boolean(thumbnail),
     };
 
     return when(
       cardStyle === 'cubeThick',
-      () => this.renderWithVertical(classInfo, resolvedState),
-      () => this.renderWithHorizontal(classInfo, resolvedState)
+      () => this.renderWithVertical(classInfo, cardState),
+      () => this.renderWithHorizontal(classInfo, cardState)
     );
   };
 
@@ -479,7 +490,7 @@ export class AttachmentBlockComponent extends CaptionedBlockComponent<Attachment
 
     return html`
       <div class="affine-attachment-embed-container">
-        ${guard([this._refreshKey$.value], () => render(model, blobUrl))}
+        ${guard([this._refreshKey$.value], () => render(model, blobUrl, std))}
       </div>
       ${when(enabled, () => {
         const resolvedState = this.resolvedState$.value;

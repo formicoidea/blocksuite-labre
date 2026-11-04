@@ -1,3 +1,5 @@
+import { registerHtmlFrame } from '@labre/affine-components/html-frame';
+
 import { EmbedFigmaBlockComponent } from './embed-figma-block';
 import { EmbedEdgelessBlockComponent } from './embed-figma-block/embed-edgeless-figma-block';
 import { EmbedGithubBlockComponent } from './embed-github-block';
@@ -18,6 +20,7 @@ import { EmbedYoutubeBlockComponent } from './embed-youtube-block';
 import { EmbedEdgelessYoutubeBlockComponent } from './embed-youtube-block/embed-edgeless-youtube-block';
 
 export function effects() {
+  registerHtmlFrame();
   customElements.define(
     'affine-embed-edgeless-figma-block',
     EmbedEdgelessBlockComponent
