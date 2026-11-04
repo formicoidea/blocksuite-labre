@@ -16,6 +16,12 @@ export {
 } from './embed';
 export { withHtmlDefaultView } from './html-attachment';
 export {
+  attachmentReplaceCommands,
+  REPLACE_ATTACHMENT,
+  REPLACE_ATTACHMENT_WITH_SHAPE,
+  replaceAttachmentFile,
+} from './replace-commands';
+export {
   addAttachments,
   addSiblingAttachmentBlocks,
   type AttachmentBlockSource,

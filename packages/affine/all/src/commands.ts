@@ -1,4 +1,5 @@
 import { frameCommands } from '@labre/affine-block-frame';
+import { attachmentReplaceCommands } from '@labre/affine-block-attachment';
 import { imageReplaceCommands } from '@labre/affine-block-image';
 import {
   copyLinkCommands,
@@ -139,6 +140,7 @@ export function getCommands(flags?: LabreFlags): AnyCommandDescriptor[] {
       // ADR 0044: registered by the image view extension, so they go with
       // the `image` flag here too.
       ...(isBlockEnabled(flags, 'image') ? imageReplaceCommands : []),
+      ...attachmentReplaceCommands,
       ...canvasGridCommands,
       ...canvasExportCommands,
       ...canvasDrawioExportCommands,

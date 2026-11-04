@@ -12,17 +12,25 @@ import {
 } from '@labre/affine-shared/services';
 import {
   getImageFilesFromLocal,
-  openFilesWith,
+  openSingleFileWith,
   readImageSize,
 } from '@labre/affine-shared/utils';
 import { Bound, type IVec } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
 import type { BlockModel, Store } from '@labre/store';
 
+import {
+  type Box,
+  cropToBox,
+  pageImageProps,
+  storedImageBox,
+} from './replace/frame.js';
 import { IMAGE_TOAST_READ_SIZE_FAILED } from './translations.js';
 import {
   addImages,
   addSiblingImageBlocks,
+  type FileReplacement,
+  fileSourceFromFile,
   type ImageBlockSource,
   imageSourceFromFile,
   placeImagesOnCanvas,
@@ -119,42 +127,37 @@ export async function addImagesFromAssets(
 }
 
 /**
- * The props that swap `model`'s picture for one of `natural` size while it
- * keeps its displayed width and follows the new ratio. On the canvas the
- * frame keeps its top-left corner and width; in a page the block keeps its
- * `width` (an image still at its natural size, `width` unset, stays so).
+ * The props that put a picture of `natural` size in `model`'s frame (ADR 0044,
+ * amendment of 2026-11-04): the frame does not move, the picture is cut to it. On
+ * the canvas the frame is `xywh`; in a page it is `box`, the displayed size, and
+ * without one (never laid out, no stored size) the image stays at its natural size.
  */
 export function replacementProps(
   model: ImageBlockModel,
   asset: Pick<AssetRef, 'sourceId' | 'size'>,
-  natural: Size
+  natural: Size,
+  box: Box | null = storedImageBox(model.props)
 ): Partial<ImageBlockProps> {
-  const ratio = natural.height / natural.width;
   const props: Partial<ImageBlockProps> = {
     sourceId: asset.sourceId,
     size: asset.size,
   };
   if (model.parent?.flavour === 'affine:surface') {
-    const bound = Bound.deserialize(model.props.xywh);
-    bound.h = bound.w * ratio;
-    props.xywh = bound.serialize();
-    props.width = natural.width;
-    props.height = natural.height;
-    return props;
+    return {
+      ...props,
+      width: natural.width,
+      height: natural.height,
+      ...cropToBox(Bound.deserialize(model.props.xywh), natural),
+    };
   }
-  const width = model.props.width ?? 0;
-  if (width > 0) {
-    props.width = width;
-    props.height = width * ratio;
-  }
-  return props;
+  return box ? { ...props, ...pageImageProps(box, natural) } : props;
 }
 
 /**
- * Swaps the picture of one image block for `asset`, keeping its displayed
- * width and its caption, in one undo step. `false` when nothing was written:
- * a read-only document, the same blob, a ref that is not an image, a size
- * that cannot be read, or a block deleted meanwhile.
+ * Swaps the picture of one image block for `asset`, in its frame and with its
+ * caption, in one undo step. `false` when nothing was written: a read-only
+ * document, the same blob, a ref that is not an image, a size that cannot be read,
+ * or a block deleted meanwhile.
  */
 export async function replaceImage(
   std: BlockStdScope,
@@ -179,12 +182,13 @@ export async function replaceImage(
 
 /**
  * The write half of {@link replaceImage}, for a picture already measured
- * ({@link pickImageSource}): same refusals, same one undo step, synchronous,
+ * ({@link pickReplacement}): same refusals, same one undo step, synchronous,
  * so a caller re-reads its target after a dialog and writes at once.
  */
 export function replaceImageSource(
   model: ImageBlockModel,
-  source: ImageBlockSource
+  source: ImageBlockSource,
+  box?: Box | null
 ): boolean {
   const { store } = model;
   if (store.readonly || !store.getBlock(model.id)) return false;
@@ -192,11 +196,15 @@ export function replaceImageSource(
   if (source.sourceId === model.props.sourceId$.peek()) return false;
   const natural = { width: source.width, height: source.height };
   const asset = { sourceId: source.sourceId, size: source.size };
+  const next = replacementProps(model, asset, natural, box);
   store.captureSync();
   store.transact(() => {
-    store.updateBlock(model, replacementProps(model, asset, natural));
-    // A crop is a window on the picture it was drawn on (ADR 0037).
-    if (model.props.crop) delete (model.props as { crop?: unknown }).crop;
+    store.updateBlock(model, next);
+    // A crop is a window on the picture it was drawn on (ADR 0037): the old one
+    // goes, and the whole picture is the absent key.
+    if (!next.crop && model.props.crop) {
+      delete (model.props as { crop?: unknown }).crop;
+    }
   });
   return true;
 }
@@ -253,46 +261,40 @@ export async function pickAndAddImages(
   return addImagesFromAssets(std, assets, options);
 }
 
-/**
- * One picture to put in place of another, measured: the host's asset dialog
- * when there is one (`replace` mode, one asset), the system file chooser
- * otherwise (the file goes up through the blob source, like every
- * file-chooser path). `null` when cancelled, when the ref is not an image or
- * when its size cannot be read.
- *
- * Shared by the page toolbar's "Replace", the canvas image's « Replace with
- * image » (`canvas.image.replaceWithImage`) and the shape's (ADR 0044,
- * amendment of 2026-10-27): there is one way to choose a picture.
- */
-export async function pickImageSource(
-  std: BlockStdScope
-): Promise<ImageBlockSource | null> {
-  const picked = pickRequest(std, {
-    kind: 'image',
-    mode: 'replace',
-    multiple: false,
-  });
-  if (picked) {
-    const assets = await picked;
-    if (!assets?.length) return null;
-    const [props] = await imagePropsFrom(std, assets.slice(0, 1));
-    return props ?? null;
-  }
-  const [file] = (await openFilesWith('Images', false)) ?? [];
-  return file ? imageSourceFromFile(std, file) : null;
-}
+/** What a person chose to put in place of an element, sorted by what it is. */
+export type ReplacementAnswer =
+  | { kind: 'image'; source: ImageBlockSource }
+  | { kind: 'file'; source: FileReplacement };
 
 /**
- * The page toolbar's "Replace": {@link pickImageSource}, then
- * {@link replaceImageSource} on the block as it is AFTER the dialog (it may
- * be gone, or the document read-only, by then).
+ * What to put in place of an element: the host's asset dialog when there is one
+ * (`replace` mode, one asset, opened on `kind`, the kind of what is replaced), the
+ * system file chooser otherwise (the file goes up through the blob source, like
+ * every file-chooser path). Either may answer any type: the caller looks at the
+ * answer (ADR 0044, amendment of 2026-11-04). `null` when cancelled, or when the
+ * size of a picture cannot be read.
  */
-export async function pickAndReplaceImage(
+export async function pickReplacement(
   std: BlockStdScope,
-  model: ImageBlockModel
-): Promise<boolean> {
-  if (model.store.readonly) return false;
-  const source = await pickImageSource(std);
-  if (!source) return false;
-  return replaceImageSource(model, source);
+  kind: AssetPickerRequest['kind']
+): Promise<ReplacementAnswer | null> {
+  const picked = pickRequest(std, { kind, mode: 'replace', multiple: false });
+  if (picked) {
+    const [asset] = (await picked) ?? [];
+    if (!asset) return null;
+    if (!asset.type.startsWith('image/')) {
+      const { sourceId, name, type, size } = asset;
+      return { kind: 'file', source: { sourceId, name, type, size } };
+    }
+    const [source] = await imagePropsFrom(std, [asset]);
+    return source ? { kind: 'image', source } : null;
+  }
+  const file = await openSingleFileWith();
+  if (!file) return null;
+  if (file.type.startsWith('image/')) {
+    const source = await imageSourceFromFile(std, file);
+    return source ? { kind: 'image', source } : null;
+  }
+  const source = await fileSourceFromFile(std, file);
+  return source ? { kind: 'file', source } : null;
 }

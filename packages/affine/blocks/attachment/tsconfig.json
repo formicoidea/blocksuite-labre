@@ -7,6 +7,7 @@
   },
   "include": ["./src"],
   "references": [
+    { "path": "../image" },
     { "path": "../surface" },
     { "path": "../../components" },
     { "path": "../../ext-loader" },

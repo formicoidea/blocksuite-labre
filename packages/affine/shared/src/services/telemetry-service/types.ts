@@ -57,8 +57,8 @@ export interface BlockCreationEvent extends TelemetryEvent {
  */
 export interface ElementReplacedEvent extends TelemetryEvent {
   page?: 'whiteboard editor';
-  from: 'shape' | 'image';
-  to: 'shape' | 'image';
+  from: 'shape' | 'image' | 'attachment';
+  to: 'shape' | 'image' | 'attachment';
 }
 
 export interface MindMapCollapseEvent extends TelemetryEvent {

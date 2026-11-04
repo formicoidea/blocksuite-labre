@@ -39,7 +39,8 @@ import {
   ReplaceIcon,
   ResetIcon,
 } from '@blocksuite/icons/lit';
-import { BlockFlavourIdentifier } from '@labre/std';
+import { replaceMenuToolbarAction } from '@labre/affine-block-image';
+import { BlockFlavourIdentifier, runCommand } from '@labre/std';
 import type { ExtensionType } from '@labre/store';
 import { flip, offset } from '@floating-ui/dom';
 import { computed } from '@preact/signals-core';
@@ -50,10 +51,21 @@ import { AttachmentBlockComponent } from '../attachment-block';
 import { RenameModal } from '../components/rename-model';
 import { AttachmentEmbedProvider } from '../embed';
 import {
+  attachmentForShape,
+  replaceableAttachment,
+  replaceAttachmentCommand,
+  replaceAttachmentWithShapeCommand,
+} from '../replace-commands';
+import {
   ATTACHMENT_TOOLBAR_HORIZONTAL_STYLE,
   ATTACHMENT_TOOLBAR_REPLACE,
   ATTACHMENT_TOOLBAR_VERTICAL_STYLE,
 } from '../translations';
+
+const FROM_TOOLBAR = {
+  surface: 'contextual-toolbar',
+  source: 'toolbar:general',
+} as const;
 
 const trackBaseProps = {
   category: 'attachment',
@@ -402,10 +414,15 @@ const builtinSurfaceToolbarConfig = {
         )}`;
       },
     } satisfies ToolbarActionGroup<ToolbarAction>,
-    {
-      ...replaceAction,
+    replaceMenuToolbarAction({
       id: 'd.replace',
-    },
+      canPick: std => replaceableAttachment(std) !== null,
+      canShape: std => attachmentForShape(std) !== null,
+      pick: std => runCommand(std, replaceAttachmentCommand, FROM_TOOLBAR),
+      toShape: (std, shape) =>
+        runCommand(std, replaceAttachmentWithShapeCommand, FROM_TOOLBAR, shape),
+      disabled: replaceAction.disabled,
+    }),
     {
       ...downloadAction,
       id: 'e.download',

@@ -17,6 +17,17 @@ export const ATTACHMENT_SLASH_DESCRIPTION: ChromeWording = [
   'Attach a file to the page.',
 ];
 
+/** The commands behind « Replace » on a canvas card (`replace-commands.ts`). */
+export const ATTACHMENT_REPLACE_DESCRIPTION: ChromeWording = [
+  'com.labre.attachment.replace.description',
+  'Put an image or another file in place of this one, in its frame.',
+];
+
+export const ATTACHMENT_REPLACE_WITH_SHAPE_DESCRIPTION: ChromeWording = [
+  'com.labre.attachment.replace.with-shape.description',
+  'Put a rectangle in place of this file.',
+];
+
 /** The slash-menu "PDF" item, same pattern as {@link ATTACHMENT_SLASH_NAME}. */
 export const ATTACHMENT_SLASH_PDF_NAME: ChromeWording = [
   'com.labre.attachment.slash.pdf.name',
@@ -129,6 +140,8 @@ export const ATTACHMENT_HTML_EXIT_FULLSCREEN: ChromeWording = [
  * instead, so they are not restated here.
  */
 export const ATTACHMENT_WORDINGS: readonly ChromeWording[] = [
+  ATTACHMENT_REPLACE_DESCRIPTION,
+  ATTACHMENT_REPLACE_WITH_SHAPE_DESCRIPTION,
   ATTACHMENT_SLASH_DESCRIPTION,
   ATTACHMENT_SLASH_PDF_NAME,
   ATTACHMENT_SLASH_PDF_DESCRIPTION,

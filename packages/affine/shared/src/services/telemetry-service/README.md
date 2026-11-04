@@ -159,20 +159,21 @@ wrong.
 « Replace with image » on a shape and « Replace with shape » on a canvas image
 put a model of the other kind at the old one's place and delete the old one.
 
-| Event             | When                                         | Required props                                         |
-| ----------------- | -------------------------------------------- | ------------------------------------------------------ |
-| `ElementReplaced` | the user replaces a shape or an image (0044) | `from` (`shape` \| `image`), `to` (`shape` \| `image`) |
+| Event             | When                                                        | Required props                                                                           |
+| ----------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `ElementReplaced` | the user replaces a shape, an image or an attachment (0044) | `from` and `to` (`shape` \| `image` \| `attachment`; html and any file are `attachment`) |
 
 Kinds only: never the two ids, never the picture's `sourceId`, never content.
-Shape → image also emits `BlockCreated { blockType: 'affine:image' }`, because
-an image block is inserted by a user action and "images created" stays one
-series; image → shape inserts no block and emits only `ElementReplaced`.
+A replace that inserts a block of another kind also emits `BlockCreated` with
+its flavour, because a block is inserted by a user action and "images created"
+stays one series; → shape inserts no block and emits only `ElementReplaced`.
 Another picture in the same image (`canvas.image.replaceWithImage`, amendment
 of 2026-10-27) emits `ElementReplaced { from: 'image', to: 'image' }` and
 nothing else. All are emitted by the command body
 (`canvas.shape.replaceWithImage`, `canvas.image.replaceWithShape`,
-`canvas.image.replaceWithImage`); a refused or cancelled gesture emits
-nothing.
+`canvas.image.replaceWithImage`, `canvas.attachment.replace`,
+`canvas.attachment.replaceWithShape`) or, in a page, by the toolbar's gesture; a
+refused or cancelled gesture emits nothing.
 
 ## Validation arbitrations (PF8)
 

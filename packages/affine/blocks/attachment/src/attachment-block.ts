@@ -25,13 +25,14 @@ import {
   TOAST_COPIED_TO_CLIPBOARD,
   translateKey,
 } from '@labre/affine-shared/services';
-import { formatSize, withTempBlobData } from '@labre/affine-shared/utils';
+import { formatSize } from '@labre/affine-shared/utils';
 import {
   AttachmentIcon,
   ResetIcon,
   UpgradeIcon,
   WarningIcon,
 } from '@blocksuite/icons/lit';
+import { pickReplacement, reportReplaced } from '@labre/affine-block-image';
 import { BlockSelection } from '@labre/std';
 import { nanoid, Slice } from '@labre/store';
 import { batch, computed, signal } from '@preact/signals-core';
@@ -43,9 +44,9 @@ import { styleMap } from 'lit/directives/style-map.js';
 import { when } from 'lit/directives/when.js';
 import { filter } from 'rxjs/operators';
 
-import { pickAttachmentSource } from './asset-picker.js';
 import { attachmentBlobType, NEUTRAL_BLOB_TYPE } from './blob-type.js';
 import { AttachmentEmbedProvider } from './embed';
+import { writeAttachmentAnswer } from './replace-commands.js';
 import { styles } from './styles';
 import { downloadAttachmentBlob, refreshData } from './utils';
 import {
@@ -167,50 +168,19 @@ export class AttachmentBlockComponent extends CaptionedBlockComponent<Attachment
     const state = this.resourceController.state$.peek();
     if (state.uploading) return;
 
-    const source = await pickAttachmentSource(this.std);
+    const answer = await pickReplacement(this.std, 'file');
     // The dialog is async: the card may be gone, or the page read-only, by now.
-    if (!source || this.std.store.readonly) return;
+    if (!answer || this.std.store.readonly) return;
     if (!this.std.store.getBlock(this.blockId)) return;
-    const { name, size, type, sourceId, width, height } = source;
 
-    let embed = this.model.props.embed$.value ?? false;
-
-    const provider = this.std.get(AttachmentEmbedProvider);
-    let becomesImage = false;
-
-    this.std.store.captureSync();
-    this.std.store.transact(() => {
-      this.std.store.updateBlock(this.blockId, {
-        name,
-        size,
-        type,
-        sourceId,
-        embed: false,
-      });
-
-      becomesImage = provider.shouldBeConverted(this.model);
-      if (becomesImage) return;
-
-      embed &&= provider.embedded(this.model);
-
-      if (embed) {
-        provider.convertTo(this.model);
-      }
-
-      // Reloads
-      this.reload();
-    });
-
-    // An image is an image block, whatever the card showed before. Outside the
-    // transaction: the conversion reads back the block it adds, which a store
-    // only holds once the transaction ends. With its size known it runs now, in
-    // the same undo step, and this component's model is gone when it returns.
-    if (becomesImage) {
-      if (sourceId && width && height) {
-        withTempBlobData().saveImageData(sourceId, { width, height });
-      }
-      provider.convertTo(this.model);
-    }
+    const id = writeAttachmentAnswer(this.std, this.model, answer);
+    if (!id) return;
+    reportReplaced(
+      this.std,
+      { source: 'toolbar:general', surface: 'contextual-toolbar' },
+      'attachment',
+      answer.kind === 'image' ? 'image' : 'attachment'
+    );
   };
 
   private _selectBlock() {

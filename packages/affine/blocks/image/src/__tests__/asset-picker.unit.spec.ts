@@ -4,8 +4,8 @@
  * What it would have caught:
  * - an insertion or a replacement that re-sends the bytes (`blobSync.set`)
  *   instead of referencing the blob the host already stores;
- * - "Replace" that changes the displayed width, keeps the old ratio, or
- *   takes two undo steps;
+ * - "Replace" that moves the frame, distorts a picture instead of cutting it to the
+ *   frame (ADR 0044, amendment of 2026-11-04), or takes two undo steps;
  * - a write on a read-only document, or an empty undo entry when the picked
  *   image is the one already shown;
  * - an editor without a host losing its file chooser, or "Replace" hidden
@@ -27,7 +27,7 @@ import {
 } from '@labre/affine-shared/services';
 import {
   getImageFilesFromLocal,
-  openFilesWith,
+  openSingleFileWith,
   readImageSize,
 } from '@labre/affine-shared/utils';
 import type { BlockStdScope } from '@labre/std';
@@ -38,19 +38,20 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   addSiblingImageBlocksFromAssets,
   pickAndAddSiblingImageBlocks,
-  pickAndReplaceImage,
+  pickReplacement,
   replaceImage,
   replaceImageSource,
   replacementProps,
 } from '../asset-picker';
 import { imageReplaceToolbarAction } from '../configs/replace-action';
+import { pickAndReplaceImage } from '../replace/replace-model';
 
 vi.mock('@labre/affine-components/toast', () => ({ toast: vi.fn() }));
 vi.mock('@labre/affine-shared/utils', async importOriginal => ({
   ...(await importOriginal<typeof import('@labre/affine-shared/utils')>()),
   getImageFilesFromLocal: vi.fn(async () => []),
   // The system file chooser of "Replace" without a host: cancelled.
-  openFilesWith: vi.fn(async () => null),
+  openSingleFileWith: vi.fn(async () => null),
   // happy-dom never decodes an image: the measured size is given here.
   readImageSize: vi.fn(async () => ({ width: 80, height: 20 })),
 }));
@@ -126,14 +127,34 @@ const square: AssetRef = {
 const natural = { width: 50, height: 50 };
 
 describe('replacementProps', () => {
-  it('keeps the width of a page image and follows the new ratio', () => {
+  it('keeps the frame of a page image, a square cut to its 2:1', () => {
     const { ids, image } = editorStore();
     expect(replacementProps(image(ids.pageImage), square, natural)).toEqual({
       sourceId: 'new',
       size: 42,
+      // The whole picture's size: the crop shows 300 x 150 of it (ADR 0037).
       width: 300,
       height: 300,
+      crop: { x: 0, y: 0.25, w: 1, h: 0.5 },
     });
+  });
+
+  it('writes no crop for a picture of the proportions of the frame', () => {
+    const { ids, image } = editorStore();
+    const wide = { width: 80, height: 40 };
+    expect(replacementProps(image(ids.pageImage), square, wide)).toEqual({
+      sourceId: 'new',
+      size: 42,
+      width: 300,
+      height: 150,
+    });
+  });
+
+  it('takes the displayed box of a page image with no stored size', () => {
+    const { ids, image } = editorStore();
+    expect(
+      replacementProps(image(ids.unsized), square, natural, { w: 100, h: 100 })
+    ).toEqual({ sourceId: 'new', size: 42, width: 100, height: 100 });
   });
 
   it('leaves a page image shown at its natural size so', () => {
@@ -144,14 +165,14 @@ describe('replacementProps', () => {
     });
   });
 
-  it('keeps the corner and the width of a canvas image', () => {
+  it('never moves the frame of a canvas image', () => {
     const { ids, image } = editorStore();
     expect(replacementProps(image(ids.canvasImage), square, natural)).toEqual({
       sourceId: 'new',
       size: 42,
-      xywh: '[10,20,200,200]',
       width: 50,
       height: 50,
+      crop: { x: 0, y: 0.25, w: 1, h: 0.5 },
     });
   });
 });
@@ -252,7 +273,10 @@ describe('replaceImage', () => {
     expect(vi.mocked(readImageSize).mock.calls.at(-1)?.[0].type).toBe(
       'image/png'
     );
-    expect(image(ids.pageImage).props.height).toBe(75);
+    // 80 x 20 cut to the frame's 2:1: the box stays 300 x 150.
+    const { props } = image(ids.pageImage);
+    expect([props.width, props.height]).toEqual([600, 150]);
+    expect(props.crop).toEqual({ x: 0.25, y: 0, w: 0.5, h: 1 });
     expect(set).not.toHaveBeenCalled();
   });
 });
@@ -338,13 +362,13 @@ describe('the image entries, with and without a host', () => {
   it('replace through the host in replace mode, through the file chooser without one', async () => {
     const { store, ids, image } = editorStore();
     const pick = vi.fn(async () => [square]);
-    vi.mocked(openFilesWith).mockClear();
+    vi.mocked(openSingleFileWith).mockClear();
 
     // No host: the system file chooser, here cancelled, so nothing written.
     expect(await pickAndReplaceImage(stdFor(store), image(ids.pageImage))).toBe(
       false
     );
-    expect(openFilesWith).toHaveBeenCalledWith('Images', false);
+    expect(openSingleFileWith).toHaveBeenCalledTimes(1);
     expect(store.canUndo).toBe(false);
     expect(
       await pickAndReplaceImage(stdFor(store, { pick }), image(ids.pageImage))
@@ -355,8 +379,63 @@ describe('the image entries, with and without a host', () => {
       multiple: false,
       docId: store.id,
     });
-    expect(openFilesWith).toHaveBeenCalledTimes(1);
+    expect(openSingleFileWith).toHaveBeenCalledTimes(1);
     expect(image(ids.pageImage).props.sourceId).toBe('new');
+  });
+});
+
+describe('pickReplacement', () => {
+  const pdf: AssetRef = {
+    sourceId: 'sha',
+    name: 'plan.pdf',
+    type: 'application/pdf',
+    size: 1234,
+  };
+
+  it('asks the host in replace mode, on the kind of what is replaced', async () => {
+    const { store, set } = editorStore();
+    const pick = vi.fn(async () => [pdf]);
+
+    await expect(
+      pickReplacement(stdFor(store, { pick }), 'file')
+    ).resolves.toEqual({
+      kind: 'file',
+      source: {
+        sourceId: 'sha',
+        name: 'plan.pdf',
+        type: 'application/pdf',
+        size: 1234,
+      },
+    });
+    expect(pick).toHaveBeenCalledWith({
+      kind: 'file',
+      mode: 'replace',
+      multiple: false,
+      docId: store.id,
+    });
+    expect(set).not.toHaveBeenCalled();
+  });
+
+  it('sorts the answer by its type, whatever was asked', async () => {
+    const { store } = editorStore();
+    const std = stdFor(store, { pick: async () => [square] });
+    await expect(pickReplacement(std, 'file')).resolves.toEqual({
+      kind: 'image',
+      source: { sourceId: 'new', size: 42, width: 50, height: 50 },
+    });
+    await expect(
+      pickReplacement(stdFor(store, { pick: async () => [pdf] }), 'image')
+    ).resolves.toMatchObject({ kind: 'file' });
+  });
+
+  it('answers nothing when the viewer cancels', async () => {
+    const { store } = editorStore();
+    await expect(
+      pickReplacement(stdFor(store, { pick: async () => [] }), 'file')
+    ).resolves.toBeNull();
+    await expect(
+      pickReplacement(stdFor(store, { pick: async () => null }), 'image')
+    ).resolves.toBeNull();
   });
 });
 
@@ -366,7 +445,7 @@ describe('replaceImageSource', () => {
     const picture = { sourceId: 'new', size: 42, width: 50, height: 50 };
 
     expect(replaceImageSource(image(ids.canvasImage), picture)).toBe(true);
-    expect(image(ids.canvasImage).props.xywh).toBe('[10,20,200,200]');
+    expect(image(ids.canvasImage).props.xywh).toBe('[10,20,200,100]');
     expect(replaceImageSource(image(ids.canvasImage), picture)).toBe(false);
     store.undo();
     expect(image(ids.canvasImage).props.sourceId).toBe('old');

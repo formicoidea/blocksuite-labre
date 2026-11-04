@@ -167,3 +167,56 @@ library is not reachable".
 - Still no stored-format change: the shapes written are the ones the shape
   tool writes (a polygon without `vertices` paints its default pentagon, as
   after « Switch shape type »).
+
+### 2026-11-04 — anything replaces anything, in the frame of what it replaces
+
+Decision of the product owner, from a recette: « je veux que tout soit remplaçable par
+l'autre image <=> fichier <=> html <=> forme », and « le remplacement d'un élément par un
+autre doit absolument se faire dans les dimensions du cadre existant ». Not a red zone: no
+schema, no stored field, no enum value changes.
+
+- **The matrix.** On a canvas image, file, html and shape all replace one another, both ways
+  (shape to shape stays « Switch shape type »). In a page and in a note, image, file and html;
+  a shape exists in neither, so its entry does not appear there.
+- **The frame stays.** On a canvas `xywh`, `rotate`, `index`, layer, connectors and container
+  membership, through the hand-over above, in one undo step. In a page, the displayed width and
+  height of what is replaced (`replace/frame.ts`).
+- **A picture is cut to the frame, never distorted.** The largest centred window of the frame's
+  proportions (`cropToBox`, the shape's already), written in `crop` (ADR 0037); a smaller picture
+  is enlarged by the same mechanism, and a window covering everything is the absent key. This
+  **replaces**, for image to image, « the height follows the ratio, a crop is dropped » of the
+  amendment of 2026-10-27. A file of 752×544 on a canvas replaced by a picture is 752×544, no
+  longer 460×230.
+- **In a page**, `width` and `height` are the whole picture's (ADR 0037), so a crop stores a whole
+  picture larger than the frame. A file's card has a frame too: a picture replacing it takes that
+  size, low as it is, because the product owner said « absolument ». An image at its natural size
+  with no stored size and never laid out (another page, in « Replace everywhere ») has no frame
+  to read and stays at its natural size.
+- **A file in a page takes the column:** an attachment there stores no width, and giving it one is a
+  stored-format decision this amendment does not take. An html view takes the frame's height,
+  which it stores in `xywh` (ADR 0048). A plain card keeps its own height.
+- **A file in a large frame on a canvas is a card contained in it:** the largest uniform scale that
+  fits, centred, a band in a wide frame and a tile otherwise (`cardStyleFor`). `xywh` stays the
+  frame, so a later replace finds it. This replaces the two-axis scale of the canvas card; a card
+  resized by hand keeps its ratio, so it draws as before.
+- **One gesture.** The host's dialog opens on all its sections for every replace, the request's
+  `kind` saying which section is the replaced element's; without a host, the system file chooser,
+  any type. `AssetPickerRequest` does not change. The caller looks at the type of the reference
+  answered (`pickReplacement`).
+- **One way through.** `replaceWithAnswer` in `@labre/affine-block-image` sorts every pair, and
+  another file in the same attachment stays in the attachment package, which knows how a file is
+  shown (`replaceAttachmentFile`). `@labre/affine-block-attachment` now depends on the image
+  package; the html helpers it needs in return moved to `@labre/affine-shared/services`. The direct
+  conversion it had (`turnIntoImageBlock`) stays for the view menu, whose gesture is not a replace.
+- **Menus.** On a canvas, image and attachment draw the same « Replace » menu
+  (`replaceMenuToolbarAction`, ids `a.replace` and `d.replace`): an entry for the dialog, the
+  sub-menu of shapes. The shape keeps its entry, which accepts anything. In a page, the existing
+  button opens the dialog.
+- **Refusals stay:** read-only, locked, notation shape, mind-map node, a shape with text, and a
+  caption or comments lost to a shape. A caption and comments cross between image and attachment,
+  which both hold them. A citation's card is held by its footnote and is refused too.
+- **Commands and telemetry.** `canvas.attachment.replace` and
+  `canvas.attachment.replaceWithShape` (owner `core`, no `agent`). The ids
+  `canvas.shape.replaceWithImage` and `canvas.image.replaceWithImage` stay, though what they answer
+  grew: identifiers are never removed. `ElementReplaced` gains `attachment` (html and any file);
+  a block inserted by a replace is `BlockCreated`.
