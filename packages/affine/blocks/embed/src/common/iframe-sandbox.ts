@@ -2,8 +2,9 @@
  * The iframe sandbox policy of every embed block, in one place.
  *
  * Every `<iframe>` this package renders points at a third party, so every one
- * of them is sandboxed. The three values below are the only levels there are;
- * see `docs/adr/0028-iframe-sandbox-policy.md` for why.
+ * of them is sandboxed, except the page a host names for the html block. The
+ * values below are the only levels there are; see
+ * `docs/adr/0028-iframe-sandbox-policy.md` for why.
  *
  * These constants used to live inside `embed-iframe-block/`, out of reach of
  * the sibling blocks of the same package — which is how the dedicated
@@ -42,3 +43,12 @@ export const UNTRUSTED_SANDBOX = 'allow-scripts';
  */
 export const PROVIDER_PLAYER_SANDBOX =
   'allow-same-origin allow-scripts allow-presentation';
+
+/**
+ * Sandbox of the page a host names for the html block (ADR 0047). That page is
+ * the host's own code and holds no block content, it hands the html to a frame
+ * it isolates itself. It must keep its origin: with `allow-scripts` alone it
+ * turns opaque, and a frame whose response says `frame-ancestors 'self'` refuses
+ * to load in it (measured in Chromium, Firefox and WebKit).
+ */
+export const HOST_PAGE_SANDBOX = 'allow-same-origin allow-scripts';

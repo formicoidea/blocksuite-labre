@@ -7,6 +7,7 @@ export {
 } from './common/embed-block-element';
 export * from './common/embed-note-content-styles';
 export {
+  HOST_PAGE_SANDBOX,
   PROVIDER_PLAYER_SANDBOX,
   TRUSTED_SANDBOX,
   UNTRUSTED_SANDBOX,

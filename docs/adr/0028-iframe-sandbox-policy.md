@@ -40,7 +40,10 @@ very same package.
 2. **The policy lives in one module of the package**,
    `packages/affine/blocks/embed/src/common/iframe-sandbox.ts`, re-exported
    from the package `index.ts`. It is not owned by any one block. There are
-   exactly three levels, and adding a fourth is an amendment to this ADR:
+   exactly three levels for third parties, and adding one is an amendment to
+   this ADR. [ADR 0047](0047-html-block-frame-served-by-the-host.md) adds a fourth,
+   `HOST_PAGE_SANDBOX` (`allow-same-origin allow-scripts`), for the host's own page
+   only:
 
    | constant                  | value                                                            | granted to                                                                               |
    | ------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
