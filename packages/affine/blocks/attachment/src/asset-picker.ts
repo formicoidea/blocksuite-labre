@@ -7,6 +7,7 @@ import type { IVec } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
 import type { BlockModel } from '@labre/store';
 
+import { withHtmlDefaultView } from './html-attachment.js';
 import {
   addAttachments,
   addSiblingAttachmentBlocks,
@@ -50,7 +51,7 @@ export function addSiblingAttachmentBlocksFromAssets(
   return std.store.addSiblingBlocks(
     targetModel,
     attachmentPropsFrom(assets).map(props => ({
-      ...props,
+      ...withHtmlDefaultView(std, props),
       flavour: 'affine:attachment',
     })),
     placement

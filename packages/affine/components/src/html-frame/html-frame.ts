@@ -1,5 +1,6 @@
 import { css, html, LitElement, nothing, type PropertyValues } from 'lit';
 import { property, query, state } from 'lit/decorators.js';
+import { keyed } from 'lit/directives/keyed.js';
 import { styleMap } from 'lit/directives/style-map.js';
 
 export type HtmlFrameContent = string | Blob;
@@ -23,6 +24,11 @@ export const HOST_PAGE_SANDBOX = 'allow-same-origin allow-scripts';
  * all. Without `allow-same-origin` the frame runs on an opaque origin.
  */
 export const UNTRUSTED_SANDBOX = 'allow-scripts';
+
+/**
+ * Sandbox of a `srcdoc` before the reader's gesture: nothing runs (ADR 0048).
+ */
+export const CLOSED_SANDBOX = '';
 
 /** The width a thumbnail lays its page out at, before it is scaled down. */
 const THUMBNAIL_LAYOUT_WIDTH = 1280;
@@ -48,9 +54,12 @@ function hostPage(frameUrl: string | null | undefined) {
  * right, no quota here: it takes what to show and how.
  *
  * With `frameUrl` it loads that page, waits for it to announce itself and answers
- * with `{ html }`, to that window and no other. Without it, nothing renders unless
- * `srcdocFallback` is set: only the stored html block has one, because a document
- * must keep rendering (ADR 0047).
+ * with `{ html, scripts, scroll }`, to that window and no other. Without it, nothing renders
+ * unless `srcdocFallback` is set: only the stored html block has one, because a
+ * document must keep rendering (ADR 0047).
+ *
+ * No script of the html runs without a reader's gesture: `scripts` is off unless
+ * the host turns it on, and a thumbnail never has it (ADR 0048).
  */
 export class HtmlFrame extends LitElement {
   static override styles = css`
@@ -90,11 +99,18 @@ export class HtmlFrame extends LitElement {
       this._awaitingText = true;
       return;
     }
+    // A closed document cannot ask, only a refresh to the page can: answering
+    // again would reload it forever. It stays empty instead.
+    if (!this._runsScripts && this._writtenText === this._text) return;
     this._post(frame, this._text);
   };
 
   private get _inert() {
     return !this.interactive || this.thumbnail;
+  }
+
+  private get _runsScripts() {
+    return this.scripts && !this.thumbnail;
   }
 
   private get _thumbnailStyle() {
@@ -112,7 +128,15 @@ export class HtmlFrame extends LitElement {
     this._writtenText = text;
     // '*' because the host's page is the host's business, and may be opaque. A
     // script of the block that gets a window here only ever gets its own html.
-    frame.postMessage({ html: text }, '*');
+    frame.postMessage(
+      {
+        html: text,
+        scripts: this._runsScripts,
+        // The page decides for the frame it holds: a thumbnail never scrolls.
+        scroll: !this.thumbnail && !this.noScroll,
+      },
+      '*'
+    );
   }
 
   private async _read(blob: Blob) {
@@ -169,6 +193,8 @@ export class HtmlFrame extends LitElement {
   override connectedCallback() {
     super.connectedCallback();
     window.addEventListener('message', this._answerFrame);
+    // A frame moved in the DOM loads again, and asks again.
+    this._writtenText = null;
     if (this.hasUpdated) this._watchThumbnail();
   }
 
@@ -187,31 +213,39 @@ export class HtmlFrame extends LitElement {
       return nothing;
     }
 
+    // Keyed: what a document may run is fixed when it loads, so a change of mind
+    // takes a new frame. A sandbox attribute alone only applies on navigation.
     const scrolling = this.thumbnail || this.noScroll ? 'no' : nothing;
     if (page) {
-      return html`<iframe
-        sandbox=${HOST_PAGE_SANDBOX}
+      return keyed(
+        this._runsScripts,
+        html`<iframe
+          sandbox=${HOST_PAGE_SANDBOX}
+          scrolling=${scrolling}
+          src=${page}
+          loading="lazy"
+          title=${this.title || nothing}
+          tabindex=${this._inert ? -1 : nothing}
+          style=${this._thumbnailStyle}
+          ?inert=${this._inert}
+        ></iframe>`
+      );
+    }
+
+    if (this._text === null) return nothing;
+    return keyed(
+      this._runsScripts,
+      html`<iframe
+        sandbox=${this._runsScripts ? UNTRUSTED_SANDBOX : CLOSED_SANDBOX}
         scrolling=${scrolling}
-        src=${page}
+        .srcdoc=${this._text}
         loading="lazy"
         title=${this.title || nothing}
         tabindex=${this._inert ? -1 : nothing}
         style=${this._thumbnailStyle}
         ?inert=${this._inert}
-      ></iframe>`;
-    }
-
-    if (this._text === null) return nothing;
-    return html`<iframe
-      sandbox=${UNTRUSTED_SANDBOX}
-      scrolling=${scrolling}
-      .srcdoc=${this._text}
-      loading="lazy"
-      title=${this.title || nothing}
-      tabindex=${this._inert ? -1 : nothing}
-      style=${this._thumbnailStyle}
-      ?inert=${this._inert}
-    ></iframe>`;
+      ></iframe>`
+    );
   }
 
   protected override updated(changed: PropertyValues) {
@@ -232,7 +266,9 @@ export class HtmlFrame extends LitElement {
   }
 
   protected override willUpdate(changed: PropertyValues) {
-    if (changed.has('frameUrl')) this._writtenText = null;
+    if (changed.has('frameUrl') || changed.has('scripts')) {
+      this._writtenText = null;
+    }
     if (!changed.has('html')) return;
     if (typeof this.html === 'string' || this.html === null) {
       this._text = this.html;
@@ -268,6 +304,15 @@ export class HtmlFrame extends LitElement {
 
   @query('iframe')
   accessor iframe: HTMLIFrameElement | null = null;
+
+  /**
+   * The html's scripts may run. Off by default, and only a reader's gesture may
+   * turn it on: a file or a block can be written without going through any screen,
+   * and a page it freezes would freeze for everyone who opens it. A thumbnail never
+   * runs them.
+   */
+  @property({ type: Boolean })
+  accessor scripts = false;
 
   /** The frame never scrolls, for html laid out to fit its box. */
   @property({ attribute: 'no-scroll', type: Boolean })

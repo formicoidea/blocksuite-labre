@@ -355,7 +355,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/attachment
         metadata {
           path 'packages/affine/blocks/attachment'
-          files '25'
+          files '26'
         }
         adapters = folder 'adapters/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/attachment/src/adapters
@@ -382,7 +382,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/attachment/src
           metadata {
             path 'packages/affine/blocks/attachment/src'
-            files '16'
+            files '17'
           }
         }
       }
@@ -3520,11 +3520,11 @@ model {
   features.blocks.attachment -[uses]-> features.blocks.surface '4 imports'
   features.blocks.attachment -[uses]-> features.components '11 imports'
   features.blocks.attachment -[uses]-> features.ext-loader '2 imports'
-  features.blocks.attachment -[uses]-> features.shared '24 imports'
+  features.blocks.attachment -[uses]-> features.shared '26 imports'
   features.blocks.attachment -[uses]-> features.widgets.slash-menu '2 imports, 1 type-only'
-  features.blocks.attachment -[uses]-> framework.global_ '7 imports, 1 type-only'
-  features.blocks.attachment -[uses]-> framework.std '12 imports, 4 type-only'
-  features.blocks.attachment -[uses]-> framework.store '9 imports, 5 type-only'
+  features.blocks.attachment -[uses]-> framework.global_ '8 imports, 1 type-only'
+  features.blocks.attachment -[uses]-> framework.std '13 imports, 5 type-only'
+  features.blocks.attachment -[uses]-> framework.store '10 imports, 6 type-only'
   features.blocks.attachment -[uses]-> model_.model_ '13 imports, 3 type-only'
   features.blocks.bookmark -[uses]-> features.blocks.embed '7 imports'
   features.blocks.bookmark -[uses]-> features.blocks.embed-doc '1 import'
@@ -4572,17 +4572,17 @@ model {
   features.blocks.attachment.src -[imports]-> features.components.resource '1 import'
   features.blocks.attachment.src -[imports]-> features.components.toast '2 imports'
   features.blocks.attachment.src -[imports]-> features.ext-loader.src '2 imports'
-  features.blocks.attachment.src -[imports]-> features.shared.consts '3 imports'
-  features.blocks.attachment.src -[imports]-> features.shared.services '7 imports'
+  features.blocks.attachment.src -[imports]-> features.shared.consts '4 imports'
+  features.blocks.attachment.src -[imports]-> features.shared.services '8 imports'
   features.blocks.attachment.src -[imports]-> features.shared.theme '1 import'
   features.blocks.attachment.src -[imports]-> features.shared.utils '5 imports'
   features.blocks.attachment.src -[imports]-> features.widgets.slash-menu.src '1 import'
   features.blocks.attachment.src -[imports]-> framework.global_.di '1 import'
-  features.blocks.attachment.src -[imports]-> framework.global_.gfx '3 imports, 1 type-only'
+  features.blocks.attachment.src -[imports]-> framework.global_.gfx '4 imports, 1 type-only'
   features.blocks.attachment.src -[imports]-> framework.global_.lit '1 import'
   features.blocks.attachment.src -[imports]-> framework.std.gfx '3 imports'
-  features.blocks.attachment.src -[imports]-> framework.std.src '7 imports, 3 type-only'
-  features.blocks.attachment.src -[imports]-> framework.store.src '5 imports, 3 type-only'
+  features.blocks.attachment.src -[imports]-> framework.std.src '8 imports, 4 type-only'
+  features.blocks.attachment.src -[imports]-> framework.store.src '6 imports, 4 type-only'
   features.blocks.attachment.src -[imports]-> model_.model_.src '9 imports, 2 type-only'
   features.blocks.bookmark.adapters -[imports]-> features.blocks.embed.src '3 imports'
   features.blocks.bookmark.adapters -[imports]-> features.shared.adapters '5 imports'

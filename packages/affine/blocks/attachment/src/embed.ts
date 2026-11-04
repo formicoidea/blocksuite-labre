@@ -286,9 +286,13 @@ const embedConfig: AttachmentEmbedConfig[] = [
       model.props.size <= maxFileSize &&
       Boolean(std && htmlFrameUrl(std)),
     action: model => {
-      const bound = Bound.deserialize(model.props.xywh);
-      bound.w = EMBED_CARD_WIDTH.html;
-      bound.h = EMBED_CARD_HEIGHT.html;
+      // Around its centre: anchored by its corner, a wide view leaves its buttons
+      // off the screen on a canvas (ADR 0048).
+      const bound = Bound.fromCenter(
+        Bound.deserialize(model.props.xywh).center,
+        EMBED_CARD_WIDTH.html,
+        EMBED_CARD_HEIGHT.html
+      );
       model.store.updateBlock(model, {
         embed: true,
         style: 'html',

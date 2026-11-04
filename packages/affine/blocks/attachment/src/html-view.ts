@@ -1,5 +1,7 @@
 import type { AttachmentBlockModel } from '@labre/affine-model';
+import { EMBED_CARD_HEIGHT } from '@labre/affine-shared/consts';
 import { translateKey } from '@labre/affine-shared/services';
+import { Bound } from '@labre/global/gfx';
 import { WithDisposable } from '@labre/global/lit';
 import type { BlockStdScope } from '@labre/std';
 import { ExpandCloseIcon, ExpandFullIcon } from '@blocksuite/icons/lit';
@@ -10,11 +12,18 @@ import {
   ATTACHMENT_HTML_EXIT_FULLSCREEN,
   ATTACHMENT_HTML_FULLSCREEN,
   ATTACHMENT_HTML_INTERACT,
+  ATTACHMENT_HTML_RESIZE,
   ATTACHMENT_HTML_STOP_INTERACTING,
 } from './translations.js';
+import { HtmlInteraction, htmlInteractionOf } from './html-interaction.js';
 import { getAttachmentBlob } from './utils.js';
 
 export const ATTACHMENT_HTML_VIEW_TAG = 'affine-attachment-html-view';
+
+export const HTML_VIEW_MIN_WIDTH = 240;
+export const HTML_VIEW_MIN_HEIGHT = 120;
+const HTML_VIEW_MAX_HEIGHT = 2400;
+const HTML_VIEW_HEIGHT_STEP = 24;
 
 const stopEvent = (event: Event) => event.stopPropagation();
 
@@ -23,9 +32,16 @@ const stopEvent = (event: Event) => event.stopPropagation();
  * view. The bytes are read from the blob store and sent as text; the attachment's
  * `blob:` url, which has the app's origin, plays no part (ADR 0048).
  *
- * Whether the reader is interacting is state of this view, never stored: a page
- * opens on a preview that lets the pointer through, and a press outside ends it.
- * The frame cannot report a press inside it, which is what keeps it going.
+ * A page opens on a preview that lets the pointer through and runs no script.
+ * Interacting is one state for the document (`html-interaction.ts`), never stored.
+ *
+ * Interact or full screen starts the scripts, and they do not stop with the
+ * interaction: reloading the page would throw away what the reader did in it. A
+ * reload of the document stops it, which is also what gets a reader out of a page
+ * that froze once started.
+ *
+ * In a page the height is the block's, in `xywh` like its size on a canvas, and its
+ * handle shows when the reader is not interacting. On a canvas the canvas sizes it.
  */
 export class AttachmentHtmlView extends WithDisposable(LitElement) {
   static override styles = css`
@@ -38,14 +54,48 @@ export class AttachmentHtmlView extends WithDisposable(LitElement) {
       background: white;
     }
 
-    :host([embed]) {
-      min-height: 480px;
-    }
-
     /* A percentage height has no basis in a box sized by its min-height. */
     labre-html-frame {
       position: absolute;
       inset: 0;
+    }
+
+    .height-handle {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 12px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      cursor: ns-resize;
+      touch-action: none;
+    }
+
+    .height-handle::after {
+      content: '';
+      width: 48px;
+      height: 4px;
+      margin-bottom: 4px;
+      border-radius: 2px;
+      background: var(--affine-border-color);
+      box-shadow: 0 0 0 1px var(--affine-background-overlay-panel-color);
+    }
+
+    .height-handle:hover::after,
+    .height-handle:focus-visible::after {
+      background: var(--affine-primary-color);
+    }
+
+    .height-handle:focus-visible {
+      outline: none;
+    }
+
+    @media (pointer: coarse) {
+      .height-handle {
+        height: 44px;
+      }
     }
 
     .controls {
@@ -92,14 +142,83 @@ export class AttachmentHtmlView extends WithDisposable(LitElement) {
     }
   `;
 
-  private readonly _endInteractionOnOutsidePress = (event: Event) => {
-    if (!this._interactive || event.composedPath().includes(this)) return;
-    this._interactive = false;
+  private _interaction: HtmlInteraction | null = null;
+
+  private _resizeFrom: { y: number; height: number } | null = null;
+
+  /** A page's view, on a canvas the canvas sizes the block. */
+  private get _inPage() {
+    return !this.closest('affine-edgeless-attachment');
+  }
+
+  private get _interacting() {
+    return this._interaction?.interacting ?? false;
+  }
+
+  /** The stored height, or the default of a block made before there was one. */
+  private get _storedHeight() {
+    return (
+      Bound.deserialize(this.model.props.xywh$.value).h ||
+      EMBED_CARD_HEIGHT.html
+    );
+  }
+
+  private _clampHeight(height: number) {
+    return Math.min(
+      HTML_VIEW_MAX_HEIGHT,
+      Math.max(HTML_VIEW_MIN_HEIGHT, Math.round(height))
+    );
+  }
+
+  private _storeHeight(height: number) {
+    const { model } = this;
+    const bound = Bound.deserialize(model.props.xywh);
+    bound.h = height;
+    model.store.updateBlock(model, { xywh: bound.serialize() });
+  }
+
+  private readonly _onResizeStart = (event: PointerEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    this._resizeFrom = { y: event.clientY, height: this._storedHeight };
   };
+
+  private readonly _onResizeMove = (event: PointerEvent) => {
+    if (!this._resizeFrom) return;
+    event.stopPropagation();
+    this._dragHeight = this._clampHeight(
+      this._resizeFrom.height + event.clientY - this._resizeFrom.y
+    );
+  };
+
+  private readonly _onResizeEnd = (event: PointerEvent) => {
+    if (!this._resizeFrom) return;
+    event.stopPropagation();
+    this._resizeFrom = null;
+    if (this._dragHeight !== null) this._storeHeight(this._dragHeight);
+    this._dragHeight = null;
+  };
+
+  private readonly _onResizeKey = (event: KeyboardEvent) => {
+    const step = { ArrowDown: 1, ArrowUp: -1 }[event.key];
+    if (!step) return;
+    event.preventDefault();
+    event.stopPropagation();
+    this._storeHeight(
+      this._clampHeight(this._storedHeight + step * HTML_VIEW_HEIGHT_STEP)
+    );
+  };
+
+  /** Called by the document's interaction: the reader's gesture reached this view. */
+  startScripts() {
+    this._started = true;
+  }
 
   private readonly _syncFullscreen = () => {
     const root = this.getRootNode() as Document | ShadowRoot;
     this._fullscreen = root.fullscreenElement === this;
+    if (this._fullscreen) this._started = true;
   };
 
   private readonly _toggleFullscreen = async () => {
@@ -113,7 +232,7 @@ export class AttachmentHtmlView extends WithDisposable(LitElement) {
   };
 
   private readonly _toggleInteractive = () => {
-    this._interactive = !this._interactive;
+    this._interaction?.toggle();
   };
 
   private async _load() {
@@ -147,12 +266,12 @@ export class AttachmentHtmlView extends WithDisposable(LitElement) {
         : html`<button
             type="button"
             data-testid="attachment-html-interact"
-            aria-pressed=${this._interactive}
+            aria-pressed=${this._interacting}
             @click=${this._toggleInteractive}
           >
             ${translateKey(
               std,
-              ...(this._interactive
+              ...(this._interacting
                 ? ATTACHMENT_HTML_STOP_INTERACTING
                 : ATTACHMENT_HTML_INTERACT)
             )}
@@ -181,12 +300,46 @@ export class AttachmentHtmlView extends WithDisposable(LitElement) {
       'fullscreenchange',
       this._syncFullscreen
     );
-    this.disposables.addFromEvent(
-      document,
-      'pointerdown',
-      this._endInteractionOnOutsidePress,
-      { capture: true }
+    this.disposables.add(
+      this.model.props.xywh$.subscribe(() => this.requestUpdate())
     );
+    if (this.embed) {
+      this._interaction = htmlInteractionOf(this.model.store);
+      this._interaction.add(this);
+      this.disposables.add(() => this._interaction?.remove(this));
+    }
+  }
+
+  private _renderHeightHandle() {
+    if (!this._inPage || this._interacting || this._fullscreen) return nothing;
+    if (this.model.store.readonly) return nothing;
+    return html`<div
+      class="height-handle"
+      role="slider"
+      tabindex="0"
+      aria-orientation="vertical"
+      aria-label=${translateKey(this.std, ...ATTACHMENT_HTML_RESIZE)}
+      aria-valuemin=${HTML_VIEW_MIN_HEIGHT}
+      aria-valuemax=${HTML_VIEW_MAX_HEIGHT}
+      aria-valuenow=${this._dragHeight ?? this._storedHeight}
+      data-testid="attachment-html-height"
+      @pointerdown=${this._onResizeStart}
+      @pointermove=${this._onResizeMove}
+      @pointerup=${this._onResizeEnd}
+      @pointercancel=${this._onResizeEnd}
+      @mousedown=${stopEvent}
+      @click=${stopEvent}
+      @dblclick=${stopEvent}
+      @keydown=${this._onResizeKey}
+    ></div>`;
+  }
+
+  protected override willUpdate() {
+    // The fullscreen element takes the whole screen: its height is not the block's.
+    this.style.height =
+      this.embed && this._inPage && !this._fullscreen
+        ? `${this._dragHeight ?? this._storedHeight}px`
+        : '';
   }
 
   override render() {
@@ -195,8 +348,10 @@ export class AttachmentHtmlView extends WithDisposable(LitElement) {
         .frameUrl=${this.frameUrl}
         .title=${this.model.props.name}
         ?thumbnail=${!this.embed}
-        ?interactive=${this._interactive || this._fullscreen}
+        ?interactive=${this._interacting || this._fullscreen}
+        ?scripts=${this._started}
       ></labre-html-frame>
+      ${this.embed ? this._renderHeightHandle() : nothing}
       ${this.embed ? this._renderControls() : nothing}`;
   }
 
@@ -207,7 +362,11 @@ export class AttachmentHtmlView extends WithDisposable(LitElement) {
   private accessor _fullscreen = false;
 
   @state()
-  private accessor _interactive = false;
+  private accessor _dragHeight: number | null = null;
+
+  /** The reader's gesture has happened: the html's scripts may run. */
+  @state()
+  private accessor _started = false;
 
   /** The embed view, with its controls; otherwise a thumbnail. */
   @property({ type: Boolean, reflect: true })

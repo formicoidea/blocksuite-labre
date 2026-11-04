@@ -111,6 +111,11 @@ export const ATTACHMENT_HTML_FULLSCREEN: ChromeWording = [
   'Full screen',
 ];
 
+export const ATTACHMENT_HTML_RESIZE: ChromeWording = [
+  'com.labre.attachment.html.resize',
+  'Change the height',
+];
+
 export const ATTACHMENT_HTML_EXIT_FULLSCREEN: ChromeWording = [
   'com.labre.attachment.html.exit-fullscreen',
   'Exit full screen',
@@ -140,4 +145,5 @@ export const ATTACHMENT_WORDINGS: readonly ChromeWording[] = [
   ATTACHMENT_HTML_STOP_INTERACTING,
   ATTACHMENT_HTML_FULLSCREEN,
   ATTACHMENT_HTML_EXIT_FULLSCREEN,
+  ATTACHMENT_HTML_RESIZE,
 ];

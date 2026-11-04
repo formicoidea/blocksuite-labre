@@ -24,7 +24,7 @@ import {
   AttachmentEmbedProvider,
   AttachmentEmbedService,
 } from '../embed.js';
-import { isHtmlAttachment } from '../html-attachment.js';
+import { isHtmlAttachment, withHtmlDefaultView } from '../html-attachment.js';
 
 const MAX_FILE_SIZE = 1024;
 const FILE_SIZE = 10;
@@ -136,6 +136,30 @@ describe('the embed view of an html attachment', () => {
     expect(view.frameUrl).toBe('/frame.html');
     expect(container.innerHTML).not.toContain('blob:');
     expect(template.values).not.toContain(BLOB_URL);
+  });
+});
+
+describe('the view an html file opens on', () => {
+  const props = { name: 'report.html', type: 'text/html' };
+  const withPage = {
+    getOptional: () => ({ frameUrl: '/frame.html' }),
+  } as unknown as BlockStdScope;
+  const withoutPage = {
+    getOptional: () => null,
+  } as unknown as BlockStdScope;
+
+  test('its embed view, once the host has named its page', () => {
+    expect(withHtmlDefaultView(withPage, props)).toEqual({
+      ...props,
+      embed: true,
+      style: 'html',
+    });
+  });
+
+  test('its card without a page, and any other file its card', () => {
+    expect(withHtmlDefaultView(withoutPage, props)).toEqual(props);
+    const pdf = { name: 'a.pdf', type: 'application/pdf' };
+    expect(withHtmlDefaultView(withPage, pdf)).toEqual(pdf);
   });
 });
 

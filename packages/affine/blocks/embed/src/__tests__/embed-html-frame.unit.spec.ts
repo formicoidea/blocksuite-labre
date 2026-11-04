@@ -3,7 +3,8 @@
  * protocol and the sandbox (`components/src/__tests__/html-frame.unit.spec.ts`).
  *
  * What it would have caught: a stored block losing its `srcdoc` fallback, which
- * only this block has, or a block that is not interactive, as it always was.
+ * only this block has, or a block that is not interactive, as it always was, or one
+ * that asks for scripts: it has no gesture to start them.
  */
 import { render, type TemplateResult } from 'lit';
 import { beforeAll, describe, expect, test } from 'vitest';
@@ -36,6 +37,7 @@ function mount(config?: { frameUrl?: string }) {
     frameUrl: string | null;
     html: string;
     interactive: boolean;
+    scripts: boolean;
     noScroll: boolean;
     srcdocFallback: boolean;
   };
@@ -48,6 +50,7 @@ describe('the html block and its frame', () => {
     expect(frame.frameUrl).toBeNull();
     expect(frame.srcdocFallback).toBe(true);
     expect(frame.interactive).toBe(true);
+    expect(frame.scripts).toBeFalsy();
     expect(frame.noScroll).toBe(true);
   });
 

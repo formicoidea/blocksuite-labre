@@ -9,11 +9,15 @@
  * - a `srcdoc` for an attachment: without a page from the host it renders nothing;
  * - an answer to another window or another message than the frame's announcement;
  * - a thumbnail that takes the pointer, or a frame that exists before it is seen;
+ * - a script of the html that runs without the reader's gesture: a file in a loop
+ *   would freeze the page for everyone who opens it, on a browser that keeps the
+ *   frame in the page's process;
  * - a template of this component without a sandbox (ADR 0028).
  */
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 
 import {
+  CLOSED_SANDBOX,
   HOST_PAGE_SANDBOX,
   HTML_FRAME_READY,
   HtmlFrame,
@@ -103,11 +107,20 @@ describe('what the frame loads', () => {
     expect(frame.iframe).toBeNull();
   });
 
-  test('with the fallback, a srcdoc under the untrusted sandbox', async () => {
+  test('with the fallback, a srcdoc that runs nothing before the gesture', async () => {
     const frame = await mount({ html: '<p>x</p>', srcdocFallback: true });
-    expect(frame.iframe?.getAttribute('sandbox')).toBe(UNTRUSTED_SANDBOX);
+    expect(frame.iframe?.getAttribute('sandbox')).toBe(CLOSED_SANDBOX);
     expect(frame.iframe?.srcdoc).toBe('<p>x</p>');
     expect(frame.iframe?.getAttribute('src')).toBeNull();
+  });
+
+  test('after the gesture, a new srcdoc under the untrusted sandbox', async () => {
+    const frame = await mount({ html: '<p>x</p>', srcdocFallback: true });
+    const closed = frame.iframe;
+    frame.scripts = true;
+    await frame.updateComplete;
+    expect(frame.iframe).not.toBe(closed);
+    expect(frame.iframe?.getAttribute('sandbox')).toBe(UNTRUSTED_SANDBOX);
   });
 
   test('with a page, that page under its sandbox, and the html out of the markup', async () => {
@@ -136,7 +149,7 @@ describe('what the frame loads', () => {
     announce(frame, { source: contentWindow as never, data: READY });
     await vi.waitFor(() =>
       expect(contentWindow.postMessage).toHaveBeenCalledWith(
-        { html: '<p>from a file</p>' },
+        { html: '<p>from a file</p>', scripts: false, scroll: true },
         '*'
       )
     );
@@ -150,9 +163,38 @@ describe('the handshake', () => {
     const contentWindow = fakeWindow(frame);
     announce(frame, { source: contentWindow as never, data: READY });
     expect(contentWindow.postMessage).toHaveBeenCalledWith(
-      { html: '<p>x</p>' },
+      { html: '<p>x</p>', scripts: false, scroll: true },
       '*'
     );
+  });
+
+  test('it allows scripts only once the host says so', async () => {
+    const frame = await mount({ html: '<p>x</p>', frameUrl: PAGE });
+    const closed = frame.iframe;
+    frame.scripts = true;
+    await frame.updateComplete;
+    // What a document may run is fixed when it loads: a new frame.
+    expect(frame.iframe).not.toBe(closed);
+
+    const contentWindow = fakeWindow(frame);
+    announce(frame, { source: contentWindow as never, data: READY });
+    expect(contentWindow.postMessage).toHaveBeenCalledWith(
+      { html: '<p>x</p>', scripts: true, scroll: true },
+      '*'
+    );
+  });
+
+  test('a closed document that refreshes to the page is not answered again', async () => {
+    const frame = await mount({ html: '<p>x</p>', frameUrl: PAGE });
+    const contentWindow = fakeWindow(frame);
+    announce(frame, { source: contentWindow as never, data: READY });
+    announce(frame, { source: contentWindow as never, data: READY });
+    expect(contentWindow.postMessage).toHaveBeenCalledTimes(1);
+
+    frame.remove();
+    document.body.append(frame);
+    announce(frame, { source: contentWindow as never, data: READY });
+    expect(contentWindow.postMessage).toHaveBeenCalledTimes(2);
   });
 
   test('it answers no other window, and no other message', async () => {
@@ -220,6 +262,22 @@ describe('a thumbnail', () => {
     expect(style?.height).toBe(`${BOX_HEIGHT / SCALE}px`);
     expect(frame.iframe?.hasAttribute('inert')).toBe(true);
     expect(frame.iframe?.getAttribute('scrolling')).toBe('no');
+  });
+
+  test('never runs scripts, whatever it is told', async () => {
+    const reveal = stubObservers();
+    const frame = sizedThumbnail();
+    frame.scripts = true;
+    await frame.updateComplete;
+    reveal[0]?.([{ isIntersecting: true }]);
+    await frame.updateComplete;
+
+    const contentWindow = fakeWindow(frame);
+    announce(frame, { source: contentWindow as never, data: READY });
+    expect(contentWindow.postMessage).toHaveBeenCalledWith(
+      { html: '<p>x</p>', scripts: false, scroll: false },
+      '*'
+    );
   });
 });
 

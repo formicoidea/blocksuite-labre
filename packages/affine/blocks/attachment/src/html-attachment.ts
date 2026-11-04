@@ -1,4 +1,6 @@
 import type { AttachmentBlockModel } from '@labre/affine-model';
+import { EmbedHtmlConfigExtension } from '@labre/affine-shared/services';
+import type { BlockStdScope } from '@labre/std';
 
 const HTML_TYPES = new Set(['text/html', 'application/xhtml+xml']);
 const UNDECLARED_TYPES = new Set(['', 'application/octet-stream']);
@@ -18,4 +20,19 @@ export function isHtmlAttachment({
   if (HTML_TYPES.has(declared)) return true;
   if (!UNDECLARED_TYPES.has(declared)) return false;
   return HTML_EXTENSIONS.has(name.split('.').pop()?.toLowerCase() ?? '');
+}
+
+/**
+ * An html file opens on its embed view, in a page and on the canvas, once the host
+ * has named its page; without one it stays a card (ADR 0048). Only at creation: a
+ * stored block keeps the view it has, and a reader who picks the card keeps it.
+ */
+export function withHtmlDefaultView<
+  T extends Pick<AttachmentBlockModel['props'], 'name' | 'type'>,
+>(std: BlockStdScope, props: T): T | (T & { embed: true; style: 'html' }) {
+  if (!isHtmlAttachment(props)) return props;
+  if (!std.getOptional(EmbedHtmlConfigExtension.identifier)?.frameUrl) {
+    return props;
+  }
+  return { ...props, embed: true, style: 'html' };
 }

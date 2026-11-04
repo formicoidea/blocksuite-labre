@@ -30,9 +30,10 @@ opens the page.
 3. **One seam.** `EmbedHtmlConfigExtension({ frameUrl })` (ADR 0047) now also opens
    the attachment's preview. It moved to `@labre/affine-shared/services` so that
    both blocks reach it, and stays importable from the embed package.
-4. **The handshake is ADR 0047's, unchanged.** A `Blob` is read as text and posted.
-   It never becomes a url: a `blob:` url has the origin of the app, the origin of
-   the reader's tokens. A `frameUrl` that is not http(s) is ignored.
+4. **The handshake is ADR 0047's, with two more fields.** The answer is
+   `{ html, scripts, scroll }`; a thumbnail and the html block never scroll. A `Blob` is read as text and posted. It never becomes a url:
+   a `blob:` url has the origin of the app, the origin of the reader's tokens. A
+   `frameUrl` that is not http(s) is ignored.
 5. **Without a page from the host, an html attachment stays a card.** No `srcdoc`
    for this new case, no embed view offered and no thumbnail: the toolbar's "Embed
    view" stays disabled. Only the html block keeps its `srcdoc`, because a stored
@@ -48,15 +49,45 @@ opens the page.
    receive an optional `std`, and `renderThumbnail` is optional; a host's config of
    the previous shape still compiles (`html-attachment.unit.spec.ts`). The card /
    embed switch and the download are the existing ones.
-8. **A thumbnail is a real preview, scaled down.** It is laid out at 1280 px, scaled
-   in CSS to its box, `inert` and without scrolling, and its frame is created only
-   once it has been in view. No capture is stored and no server renders it.
-9. **Interacting is a state of the view, never stored.** A preview lets the pointer
-   through (`inert`), so a page scrolls over it and a canvas drags it. "Interact"
-   lets the pointer in, and a press outside ends it, since a press inside never
-   reaches the parent. Full screen takes the view with its exit button and is
-   interactive. The buttons sit on the preview, not in the toolbar, because a
-   read-only reader needs them and an unselected block has no toolbar.
+8. **A thumbnail is a real preview, scaled down, and it never runs a script.** It is
+   laid out at 1280 px, scaled in CSS to its box, `inert` and without scrolling, and
+   its frame is created only once it has been in view. No capture is stored and no
+   server renders it.
+9. **Interacting is one state per document, never stored** (`html-interaction.ts`).
+   A preview lets the pointer through (`inert`), so a page scrolls over it and a canvas
+   drags it. "Interact" on one embed view lets the pointer into all those of the
+   document and starts their scripts; a press outside all of them ends it, since a press
+   inside never reaches the parent. A view that arrives later stays closed until the next
+   gesture. Full screen takes one view with its exit button and is interactive. The
+   buttons sit on the preview, not in the toolbar, because a read-only reader needs them
+   and an unselected block has no toolbar.
+10. **An html file opens on its embed view**, in a page and on the canvas, once the host
+    has named its page. Only at creation: a stored block keeps its view, and
+    `shouldBeConverted` plays no part, it replaces a block by an image.
+11. **Its size is the block's.** On the canvas the box is the block's bound, not a scale
+    of it, so width and height change on their own and the page is laid out in its box;
+    the ratio lock of an attachment is lifted for this view only. A view opens around its
+    centre: anchored by its corner, a wide one leaves its buttons off the screen. In a page
+    the height is in `xywh` too, no schema change, set by a handle that shows outside the
+    interaction, from 120 to 2400 px, 44 px of target on touch.
+12. **No script of the html runs without a reader's gesture** (product owner,
+    2026-11-04). The html of a file can be written without going through any screen, and
+    a page in a loop freezes every reader of a browser that keeps the frame in the
+    page's process. So `HtmlFrame.scripts` is off by default, a thumbnail never has it,
+    and on an attachment only "Interact" or full screen turns it on (decision 9).
+    - **Closed is the default, at every level.** The answer says `scripts: false` until
+      the gesture. A host's frame must run scripts only on an explicit `scripts: true`,
+      so that a page or a message that says nothing runs nothing. A `srcdoc` is
+      `sandbox=""` until the gesture.
+    - **The html block gets no button.** Its future is being decided: it mounts the same
+      frame and asks for nothing, so its scripts do not run.
+    - **The gesture takes a new frame.** What a document may run is fixed when it loads.
+    - **A page already started keeps running when the interaction ends**, inert.
+      Reloading it would throw away what the reader did in it. A reload of the document
+      stops it, since the gesture is not stored, and that is also what gets a reader out
+      of a page that froze once started.
+    - **A closed document is answered once.** It cannot ask, but a `<meta refresh>` to
+      the host's page could, and answering would reload it forever: it stays empty.
 
 ## Consequences
 
@@ -68,9 +99,14 @@ opens the page.
 - The text is decoded as UTF-8. `ponytail:` a file in another encoding shows wrong
   accents, whatever its `<meta charset>` says; reading the meta before decoding is
   the upgrade, when a real file needs it.
-- A thumbnail runs the file's scripts, as the preview does. Many thumbnails on one
-  screen are many documents; the ceiling is what is in view, since an unseen one has
-  no frame and a seen one stays mounted until the block goes.
+- Interacting with one view starts the scripts of every embed view of the document: a
+  file that loops takes the others down with it, on a browser that keeps the frame in the
+  page's process. It is the reader's gesture, and a reload closes them all.
+- A page drawn by a script shows blank, in its thumbnail and in its preview, until the
+  reader interacts. That is the price of decision 10.
+- A stored html block that draws itself with a script stays empty: it has no gesture.
+- Many thumbnails on one screen are many documents; the ceiling is what is in view,
+  since an unseen one has no frame and a seen one stays mounted until the block goes.
 - The ticket's second enlargement, the full page of the editor without the browser
   full screen, is the host's: the library does not know the size of its shell.
 
