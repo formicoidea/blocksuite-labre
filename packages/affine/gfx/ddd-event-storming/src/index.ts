@@ -35,7 +35,7 @@ export {
 } from './view.js';
 export { EVENT_STORMING_READING } from './reading.js';
 // The toolbar as pure builders (`docs/adr/0045`), also on `./interchange`.
-export { AGGREGATE_SIZE } from './sticky-size.js';
+export { AGGREGATE_SIZE, HOTSPOT_SIZE } from './sticky-size.js';
 export {
   EVENT_STORMING_TOOLBOX,
   eventStormingBoardElement,
