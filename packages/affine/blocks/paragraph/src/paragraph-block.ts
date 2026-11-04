@@ -25,15 +25,27 @@ import {
   type InlineRangeProvider,
 } from '@labre/std/inline';
 import { computed, effect, signal } from '@preact/signals-core';
-import { html, nothing, type TemplateResult } from 'lit';
+import { html, nothing, type PropertyValues, type TemplateResult } from 'lit';
 import { query } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { styleMap } from 'lit/directives/style-map.js';
-import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 
 import { ParagraphBlockConfigExtension } from './paragraph-block-config.js';
-import { paragraphBlockStyles } from './styles.js';
+import { COLLAPSED_SIBLING_ATTR, paragraphBlockStyles } from './styles.js';
 import { PARAGRAPH_PLACEHOLDER_WORDINGS } from './translations.js';
+
+/**
+ * Counts rather than flags: under a collapsed h1, a collapsed h2 folds the same
+ * sibling, and opening the h1 must leave it folded.
+ */
+function changeFoldCount(view: BlockComponent, delta: 1 | -1) {
+  const count = Number(view.getAttribute(COLLAPSED_SIBLING_ATTR) ?? 0) + delta;
+  if (count > 0) {
+    view.setAttribute(COLLAPSED_SIBLING_ATTR, String(count));
+  } else {
+    view.removeAttribute(COLLAPSED_SIBLING_ATTR);
+  }
+}
 
 export class ParagraphBlockComponent extends CaptionedBlockComponent<ParagraphBlockModel> {
   static override styles = paragraphBlockStyles;
@@ -60,6 +72,15 @@ export class ParagraphBlockComponent extends CaptionedBlockComponent<ParagraphBl
 
   private _inlineRangeProvider: InlineRangeProvider | null = null;
 
+  /** The sibling views this heading holds folded. */
+  private readonly _foldedViews = new Set<BlockComponent>();
+
+  private get _collapsed() {
+    return this.store.readonly
+      ? this._readonlyCollapsed.value
+      : this.model.props.collapsed;
+  }
+
   private readonly _isInDatabase = () => {
     let parent = this.parentElement;
     while (parent && parent !== document.body) {
@@ -78,6 +99,36 @@ export class ParagraphBlockComponent extends CaptionedBlockComponent<ParagraphBl
     if (!raw) return raw;
     const wording = PARAGRAPH_PLACEHOLDER_WORDINGS[raw];
     return wording ? translateKey(this.std, ...wording) : raw;
+  }
+
+  /**
+   * A sibling's id comes from the document, which any writer fills as it likes:
+   * the heading marks the view itself, so no id ever reaches an HTML or CSS
+   * parser. An attribute and a static rule rather than an inline `display`,
+   * because some blocks write their own inline `display` on their host.
+   */
+  private _syncFoldedViews() {
+    const folding =
+      this.viewType === 'display' &&
+      this.model.props.type$.value.startsWith('h') &&
+      this._collapsed;
+    const next = new Set(
+      folding
+        ? this.collapsedSiblings.flatMap(
+            sibling => this.std.view.getBlock(sibling.id) ?? []
+          )
+        : []
+    );
+    for (const view of this._foldedViews) {
+      if (next.has(view)) continue;
+      this._foldedViews.delete(view);
+      changeFoldCount(view, -1);
+    }
+    for (const view of next) {
+      if (this._foldedViews.has(view)) continue;
+      this._foldedViews.add(view);
+      changeFoldCount(view, 1);
+    }
   }
 
   private _setReadonlyCollapsed(collapsed: boolean) {
@@ -236,6 +287,16 @@ export class ParagraphBlockComponent extends CaptionedBlockComponent<ParagraphBl
       })
     );
 
+    // A block mounted after this heading's last update (pasted, received from
+    // a peer, rebuilt by a flavour change) is folded by the next one.
+    this.disposables.add(
+      this.std.view.viewUpdated.subscribe(({ type, method }) => {
+        if (type === 'block' && method === 'add' && this._collapsed) {
+          this.requestUpdate();
+        }
+      })
+    );
+
     // > # 123
     // # 456
     //
@@ -260,6 +321,17 @@ export class ParagraphBlockComponent extends CaptionedBlockComponent<ParagraphBl
     );
   }
 
+  override disconnectedCallback() {
+    super.disconnectedCallback();
+    for (const view of this._foldedViews) changeFoldCount(view, -1);
+    this._foldedViews.clear();
+  }
+
+  protected override updated(changedProperties: PropertyValues) {
+    super.updated(changedProperties);
+    this._syncFoldedViews();
+  }
+
   override async getUpdateComplete() {
     const result = await super.getUpdateComplete();
     await this._richTextElement?.updateComplete;
@@ -268,25 +340,8 @@ export class ParagraphBlockComponent extends CaptionedBlockComponent<ParagraphBl
 
   override renderBlock(): TemplateResult<1> {
     const { type$ } = this.model.props;
-    const collapsed = this.store.readonly
-      ? this._readonlyCollapsed.value
-      : this.model.props.collapsed;
+    const collapsed = this._collapsed;
     const collapsedSiblings = this.collapsedSiblings;
-
-    let style = html``;
-    if (this.model.props.type$.value.startsWith('h') && collapsed) {
-      style = html`
-        <style>
-          ${collapsedSiblings.map(sibling =>
-            unsafeHTML(`
-              [data-block-id="${sibling.id}"] {
-                display: none !important;
-              }
-            `)
-          )}
-        </style>
-      `;
-    }
 
     const childrenId = `heading-children-${this.model.id}`;
     const children = html`<div
@@ -301,7 +356,6 @@ export class ParagraphBlockComponent extends CaptionedBlockComponent<ParagraphBl
     </div>`;
 
     return html`
-      ${style}
       <style>
         .affine-paragraph-block-container[data-has-collapsed-siblings='false']
           affine-paragraph-heading-icon
