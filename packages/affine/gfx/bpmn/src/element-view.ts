@@ -26,11 +26,18 @@ import {
 } from './pool-hit.js';
 
 /**
- * The props whose change moves a title band: the names it is sized by, and the
- * box whose height a name wraps along. `paintedBands` itself is NOT here — the
+ * The props whose change moves a title band: the names it is sized by, the
+ * font sizes the author picked for them (ADR 0049), and the box whose height a
+ * name wraps along. `paintedBands` itself is NOT here — the
  * cache's own write must never re-enter the code that writes it.
  */
-const BAND_PROPS = new Set(['name', 'lanes', 'xywh']);
+const BAND_PROPS = new Set([
+  'name',
+  'lanes',
+  'nameFontSize',
+  'laneFontSize',
+  'xywh',
+]);
 
 /**
  * View for a BPMN pool. Three direct gestures live here:

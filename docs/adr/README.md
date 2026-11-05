@@ -53,6 +53,7 @@ One file per decision. Format and lifecycle in
 | [0046](0046-wardley-method-node-nature-and-method-tags.md)     | Wardley component + method           | accepted                  | The method node specialises component (nature, reading, W3); its method is one nine-value tag grouped by family; each value has a prefabricated ring; the legend lists the methods used. |
 | [0047](0047-html-block-frame-served-by-the-host.md)            | Html block frame served by the host  | proposed, block retired   | The html block may run in a page its host serves, through one seam; without it, `srcdoc`. The handshake is `postMessage`, on the frame's request.                                        |
 | [0048](0048-html-attachment-and-shared-frame.md)               | Html attachment and shared frame     | proposed, amended         | An html file is an attachment; one component runs html; without a host's page it stays a card; a thumbnail is a real preview scaled down.                                                |
+| [0049](0049-bpmn-pool-title-sizes.md)                          | BPMN pool title sizes                | accepted                  | Two optional fields on `bpmnPool`, `nameFontSize` / `laneFontSize` (absent = 15 / 13); a `sizeProp` on the background primitive's texts; not written to the `.bpmn` export.              |
 
 Related documents that are not ADRs:
 

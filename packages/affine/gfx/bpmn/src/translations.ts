@@ -8,6 +8,8 @@ import {
 
 import { bpmnCommands } from './commands.js';
 import {
+  BPMN_LANE_TITLE_SIZE,
+  BPMN_POOL_TITLE_SIZE,
   LANE_NAME_FALLBACK,
   LANE_NAME_KEY,
   NODE_LABEL,
@@ -149,6 +151,17 @@ const paletteEntries = (): TranslationKeyManifestEntry[] =>
   }));
 
 /**
+ * The pool toolbar's two title-size dropdown labels (ADR 0049) — chrome,
+ * re-resolved every time the toolbar renders, never written into a document.
+ */
+const poolToolbarEntries = (): TranslationKeyManifestEntry[] =>
+  [BPMN_POOL_TITLE_SIZE, BPMN_LANE_TITLE_SIZE].map(([key, fallback]) => ({
+    key,
+    fallback,
+    source: 'chrome' as const,
+  }));
+
+/**
  * THIS framework's contribution to the translation-key manifest — every
  * `com.labre.*` key BPMN can hand to `TranslationProvider.t`, derived from the
  * very declarations the editor registers (never restated).
@@ -179,6 +192,7 @@ export const bpmnTranslationEntries: TranslationKeyManifestEntry[] =
     exampleSeedEntries(),
     templateNameEntries(),
     paletteEntries(),
+    poolToolbarEntries(),
     importRemarkEntries(),
     importErrorEntries(),
     quarantineReasonEntries(),
