@@ -1,4 +1,4 @@
-import type { Element, ElementContent, Root, Text } from 'hast';
+import type { Element, ElementContent, Text } from 'hast';
 import rehypeParse from 'rehype-parse';
 import { unified } from 'unified';
 
@@ -282,8 +282,10 @@ const isParagraphLike = (node: Element): boolean => {
 };
 
 /** The nodes a trusted renderer's markup parses to, for a block's children. */
-const parseFragment = (html: string): Root['children'] => {
-  return unified().use(rehypeParse, { fragment: true }).parse(html).children;
+const parseFragment = (html: string): ElementContent[] => {
+  // A fragment holds no doctype, the one root child an element cannot.
+  return unified().use(rehypeParse, { fragment: true }).parse(html)
+    .children as ElementContent[];
 };
 
 export const HastUtils = {
