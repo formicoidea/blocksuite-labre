@@ -15,6 +15,7 @@
     { "path": "../pointer" },
     { "path": "../shape" },
     { "path": "../template" },
+    { "path": "../text" },
     { "path": "../../model" },
     { "path": "../../shared" },
     { "path": "../../widgets/edgeless-toolbar" },
