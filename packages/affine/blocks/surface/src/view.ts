@@ -32,6 +32,7 @@ import {
   EdgelessCRUDExtension,
   EdgelessLegacySlotExtension,
   EditPropsMiddlewareBuilder,
+  exportSelectionSvgToolbarExtension,
   exportSvgCommands,
   INTERCHANGE_EXPORT_ICON_KEY,
   InterchangeExtension,
@@ -122,6 +123,9 @@ export class SurfaceViewExtension extends ViewExtensionProvider {
       // (`docs/adr/0025`). Nothing is offered until a board is selected.
       context.register(CommandExtension(exportSvgCommands));
       context.register(exportSvgToolbarExtension);
+      // …and "Export selection as SVG" beside it, for a selection holding no
+      // board; its command rides `exportSvgCommands`.
+      context.register(exportSelectionSvgToolbarExtension);
       // The selection pane's headless half (ADR 0031): the live tree a pane
       // renders from, and the commands its rows run. Core chrome, never a
       // framework's, and nothing it lists is gated — a flag gates tooling,

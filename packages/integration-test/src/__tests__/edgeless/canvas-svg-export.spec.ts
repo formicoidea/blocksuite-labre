@@ -2,9 +2,10 @@ import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import { getViewExports, runViewAction } from '@labre/affine/host-panels';
 import { ShapeType } from '@labre/affine/model';
 import { CanvasLocalVisibility } from '@labre/affine/shared/services';
+import { getRegisteredCommands, runCommand } from '@labre/affine/std';
 import { WARDLEY_BACKGROUND } from '@labre/affine-gfx-wardley';
 import { Bound } from '@labre/global/gfx';
-import { beforeEach, describe, expect, test } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { wait } from '../utils/common.js';
 import { addNote, getDocRootBlock } from '../utils/edgeless.js';
@@ -106,5 +107,110 @@ describe('exporting the whole canvas as SVG', () => {
     await expect(
       runViewAction(edgeless.std, 'canvas.export.svg')
     ).resolves.toEqual({});
+  });
+});
+
+/**
+ * "Export selection as SVG" (`selection.export.svg`) on a real editor: the
+ * same replay as the whole canvas, restricted to what is selected.
+ *
+ * Would have caught: the selection export drawing the whole canvas (or
+ * nothing), losing the `data-labre-*` markers, framing the file on the canvas
+ * rather than on the selection, and downloading an empty file for a selection
+ * of notes alone.
+ */
+describe('exporting the canvas selection as SVG', () => {
+  let edgeless!: EdgelessRootBlockComponent;
+
+  beforeEach(async () => {
+    localStorage.clear();
+    const cleanup = await setupEditor('edgeless');
+    edgeless = getDocRootBlock(window.doc, window.editor, 'edgeless');
+    return cleanup;
+  });
+
+  /**
+   * Every file the command hands the browser, taken where `downloadBlob`
+   * still holds a blob (as `board-svg-export.spec.ts` does).
+   */
+  const exportSelection = async (ids: string[]) => {
+    const files: Blob[] = [];
+    const create = vi
+      .spyOn(URL, 'createObjectURL')
+      .mockImplementation(object => {
+        files.push(object as Blob);
+        return 'blob:captured';
+      });
+    const revoke = vi
+      .spyOn(URL, 'revokeObjectURL')
+      .mockImplementation(() => {});
+    try {
+      edgeless.service.gfx.selection.set({ elements: ids, editing: false });
+      await wait(50);
+      const command = getRegisteredCommands(edgeless.std).find(
+        candidate => candidate.id === 'selection.export.svg'
+      );
+      expect(command, 'selection.export.svg is not registered').toBeDefined();
+      expect(command!.when?.(edgeless.std) ?? true).toBe(true);
+      runCommand(edgeless.std, command!, {
+        surface: 'contextual-toolbar',
+        source: 'toolbar:general',
+      });
+    } finally {
+      create.mockRestore();
+      revoke.mockRestore();
+    }
+    return Promise.all(files.map(file => file.text()));
+  };
+
+  const parse = (svg: string) => {
+    const doc = new DOMParser().parseFromString(svg, 'image/svg+xml');
+    expect(doc.querySelector('parsererror'), svg.slice(0, 400)).toBeNull();
+    return doc;
+  };
+
+  const idsIn = (doc: Document) =>
+    [...doc.querySelectorAll('[data-labre-id]')].map(node =>
+      node.getAttribute('data-labre-id')
+    );
+
+  test('draws the two selected shapes and nothing else', async () => {
+    const first = edgeless.service.crud.addElement('shape', {
+      shapeType: ShapeType.Rect,
+      xywh: '[0,0,100,100]',
+    })!;
+    const second = edgeless.service.crud.addElement('shape', {
+      shapeType: ShapeType.Ellipse,
+      xywh: '[300,0,100,100]',
+    })!;
+    const left = edgeless.service.crud.addElement('shape', {
+      shapeType: ShapeType.Rect,
+      xywh: '[2000,0,100,100]',
+    })!;
+    await wait(100);
+
+    const svgs = await exportSelection([first, second]);
+    expect(svgs).toHaveLength(1);
+    const doc = parse(svgs[0]);
+    const ids = idsIn(doc);
+    expect(ids).toEqual(expect.arrayContaining([first, second]));
+    expect(ids).not.toContain(left);
+    // Markers, as in the board and canvas exports (ADR 0032 §6).
+    const marked = doc.querySelector(`[data-labre-id="${first}"]`);
+    expect(marked?.getAttribute('data-labre-type')).toBe('shape');
+    expect(marked?.getAttribute('data-labre-xywh')).toBeTruthy();
+    // Framed on the selection: the shape left out widens nothing.
+    const width = Number(
+      doc.documentElement.getAttribute('viewBox')?.split(' ')[2]
+    );
+    expect(width).toBeGreaterThanOrEqual(400);
+    expect(width).toBeLessThan(2000);
+  });
+
+  test('a selection of a note alone downloads no file', async () => {
+    const note = addNote(window.doc);
+    await wait(100);
+
+    expect(await exportSelection([note])).toEqual([]);
   });
 });

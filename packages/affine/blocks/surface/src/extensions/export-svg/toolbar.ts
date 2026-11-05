@@ -8,6 +8,7 @@ import { FrameworkBackgroundElementModel } from '@labre/affine-model';
 import {
   ActionPlacement,
   type ChromeWording,
+  commandMoreAction,
   type ToolbarAction,
   type ToolbarContext,
   type ToolbarModuleConfig,
@@ -229,4 +230,51 @@ export const exportSvgToolbarExtension = ToolbarModuleExtension({
     toolbarModuleKey('custom:affine:surface:*', 'export-svg')
   ),
   config: exportSvgToolbarConfig,
+});
+
+/** The selection export's keys, as its descriptor declares them. */
+const EXPORT_SELECTION_SVG_COMMAND_ID = 'selection.export.svg';
+const EXPORT_SELECTION_SVG_LABEL_KEY = 'com.labre.command.selection.export.svg';
+const EXPORT_SELECTION_SVG_LABEL_FALLBACK = 'Export selection as SVG';
+
+// Beside the board's entry, under everything, for the same reason; never
+// shown together with it (the module's `when`).
+const EXPORT_SELECTION_SVG_ACTION_ID = 'z.z-export-selection-svg';
+
+export const exportSelectionSvgToolbarConfig = {
+  actions: [
+    // A plain command entry, no options menu: the export runs with the
+    // defaults (PO decision), so `commandMoreAction` is the whole of it.
+    commandMoreAction(
+      EXPORT_SELECTION_SVG_ACTION_ID,
+      EXPORT_SELECTION_SVG_COMMAND_ID,
+      EXPORT_SELECTION_SVG_LABEL_KEY,
+      EXPORT_SELECTION_SVG_LABEL_FALLBACK,
+      ExportSvgIcon
+    ),
+  ],
+  // Any canvas selection WITHOUT a board. With one, the board's own entry
+  // (`exportSvgToolbarConfig`) is the export the reader means, and two
+  // "Export … SVG" lines in one menu would ask them to tell the two apart.
+  when: (ctx: ToolbarContext) =>
+    ctx.getSurfaceModels().length > 0 &&
+    ctx.getSurfaceModelsByType(FrameworkBackgroundElementModel).length === 0,
+} as const satisfies ToolbarModuleConfig;
+
+/**
+ * "Export selection as SVG" in the "⋮" of any canvas selection that holds no
+ * board.
+ *
+ * Same wildcard slot as the board's entry, under a second owner
+ * (`toolbarModuleKey`): `renderToolbar` merges `custom:affine:surface:*`
+ * into every row whose flavour names the surface — one kind of element
+ * (`affine:surface:shape`, `affine:surface:note`…), a mixed selection
+ * (`affine:surface`, a note beside shapes included) and a locked one
+ * (`affine:surface:locked`) alike — so one registration reaches them all.
+ */
+export const exportSelectionSvgToolbarExtension = ToolbarModuleExtension({
+  id: BlockFlavourIdentifier(
+    toolbarModuleKey('custom:affine:surface:*', 'export-selection-svg')
+  ),
+  config: exportSelectionSvgToolbarConfig,
 });
