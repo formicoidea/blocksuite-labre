@@ -146,6 +146,35 @@ it.
   text covers it in the file as it does on screen. Pinned in
   `board-svg-export.spec.ts`.
 
+## Amendment — 2026-11-05: the selection as SVG
+
+- **A third command, not a wider `export.svg`.** `selection.export.svg`
+  ("Export selection as SVG", core-owned, no telemetry) exports whatever is
+  selected on the canvas, boards or not. `export.svg` keeps its contract —
+  the agent asks it for "the selected board" and gets a board, with its parts
+  options and its frame — and `canvas.export.svg` keeps the whole canvas.
+  The new command is not on the agent surface: an agent has no selection of
+  its own.
+- **Same replay, one shared filter.** `renderSelectionSvg` and
+  `renderCanvasSvg` both go through one helper that drops what this viewer
+  hid (ADR 0031), sets aside blocks with no `BlockSvgPainterExtension`, and
+  sorts by `gfx.layer.compare`, so the two exports cannot disagree on what is
+  drawable. A selected container (a group, a mindmap, a frame) brings its
+  descendants; the file is framed on the union of what is drawn.
+- **Direct, with the defaults (PO decision).** No options menu: the parts
+  switches answer a board's question. SVG only; PNG and PDF stay
+  whole-canvas exports.
+- **One "⋮" entry at a time.** The entry rides the wildcard slot
+  `custom:affine:surface:*` under its own owner (`export-selection-svg`),
+  which `renderToolbar` merges into every surface row — one kind of element,
+  a mixed selection (a note beside shapes included) and a locked one. It is
+  shown only when the selection holds no board; with one, the board's own
+  entry is the export meant.
+- **Nothing drawable, no file.** A selection of notes, frames or images alone
+  produces no download, and a toast through the optional
+  `NotificationProvider` (`com.labre.export.svg.selection.nothing`); a host
+  without one shows nothing.
+
 ## Why not resvg
 
 `resvg` is a _rasteriser_: it turns SVG into PNG. It answers the opposite

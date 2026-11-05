@@ -192,13 +192,15 @@ export function eventStormingFaceOfSticky(
  * ## Why the size is not in here, unlike C4 and BPMN
  *
  * Because on this notation size is not a preset, it is a statement the author
- * made. The aggregate is BORN at 160 against the standard 120 (`commands.ts`),
- * but a sticky a workshop stretched to fit six words is stretched on purpose,
- * and `xywh` is the one thing a morph promises never to touch — the generic
- * module strips it whatever a spec returns. The consequence is visible and
- * accepted: an aggregate morphed to a command keeps its 160, and a command
- * morphed to an aggregate stays 120. The paint says what it is; the size says
- * how much room the author gave it.
+ * made. The aggregate is BORN at 160 and the hotspot at 180 against the
+ * standard 120 (`sticky-size.ts`), but a sticky a workshop stretched to fit
+ * six words is stretched on purpose, and `xywh` is the one thing a morph
+ * promises never to touch — the generic module strips it whatever a spec
+ * returns. The consequence is visible and accepted: an aggregate morphed to a
+ * command keeps its 160, and a command morphed to an aggregate or a hotspot
+ * stays 120 — a hotspot made that way is smaller than R38 asks, and stays so
+ * (ADR 0029, amendment of 2026-11-04). The paint says what it is; the size
+ * says how much room the author gave it.
  */
 export function eventStormingMorphProps(
   kind: EventStormingStickyKind

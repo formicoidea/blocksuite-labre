@@ -240,3 +240,14 @@ palette and Settings › Shortcuts (each framework keeps its selection export
 there). The full page of a database lists the page exports too, in their own
 section. Guards: `view-actions.unit.spec.ts` (listing, flags, labels,
 telemetry, files), `canvas-svg-export.spec.ts` (integration).
+
+### 2026-11-04 — The reorder drag scrolls its list
+
+The controller's contract (§6) gains an optional `scroller`: a row held in a
+20 px band along the list's top or bottom edge scrolls it once per animation
+frame, proportionally to the depth in the band and at most 30 px a frame
+(`panelEdgeScrollDelta`, the canvas edge pan's rule), and the gap is resolved
+again after each step and on each `scroll` of the box, so the line follows the
+rows under a still pointer. Absent, nothing changes; the selection pane, the
+frame panel and the playground's host slide list pass it. Guards:
+`panel-reorder-drag.unit.spec.ts`, `selection-pane-drag.spec.ts`.

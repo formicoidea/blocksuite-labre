@@ -869,8 +869,11 @@ describe('the BPMN XML export, end to end', () => {
     expect(byName(doc, 'startEvent')[0].getAttribute('name')).toBe(
       'Order received'
     );
-    // Labre writes no `BPMNLabel` of its own: a reader places the name.
-    expect(byName(doc, 'BPMNLabel')).toHaveLength(0);
+    // One `BPMNLabel`, the start event's: Labre writes the place of every
+    // gravitating label it drew, so a reader puts the name back where it was
+    // (ADR 0029, amendment of 2026-11-04). The task's name is inscribed and
+    // gets none.
+    expect(byName(doc, 'BPMNLabel')).toHaveLength(1);
 
     // The participant is the pool, and the lanes are the pool's.
     expect(byName(doc, 'participant')[0].getAttribute('name')).toBe('Sales');

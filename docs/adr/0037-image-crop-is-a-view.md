@@ -174,3 +174,45 @@ the picture could not be zoomed inside its window. Nothing stored changes.
 - The zoom toolbar re-checks `viewport.locked` on click (it read it at render
   only, and a lock repaints nothing), and `Alt-2` (zoom to selection) now
   respects the lock like the other zoom shortcuts.
+
+### 2026-11-04 — the frame stays, the picture moves (PO acceptance)
+
+At acceptance the PO inverted the gesture: dragging inside the frame moved
+the window over a fixed picture, and the wheel shrank the window, where the
+expected tool (the one every photo editor ships) holds the frame and moves the
+picture behind it. Nothing stored changes: `crop` is still the normalised
+window on the source, `xywh` the canvas box, `width`/`height` the whole
+picture on a page.
+
+- **The frame is resized by its four corner handles only**, as before
+  (opposite corner pinned, ratio held unless free); the box follows the
+  window (`cropBoundFor`). This is a write that keeps the IMAGE still.
+- **Dragging inside the frame pans the picture**: the window moves the other
+  way to the pointer (`panCrop`), clamped inside the source, so the picture
+  always covers the frame.
+- **A continuous slider above the frame zooms the picture** about the
+  frame's centre (`zoomCropAt`), 1x to 4x. The zoom is derived, never
+  stored: `cropZoomOf(crop)` is the widest window of the crop's ratio over the
+  crop's width, so 1x is the whole picture cut to the frame's ratio. Zooming
+  shrinks the window around its centre, its ratio kept, inside the source and
+  never below `IMAGE_CROP_MIN_SIDE`. The wheel zooms the same way, about the
+  frame's centre rather than the pointer (it is not capped at 4x: its bound is
+  the minimum side, as before; the slider then shows 4x).
+- A pan or a zoom is a write that keeps the FRAME still
+  (`writeImageCrop(…, { keep: 'frame' })`): on the canvas `xywh` is
+  untouched; on a page `width`/`height` are scaled by the old window width
+  over the new one in the same transaction, so `width × crop.w`, the box
+  shown, holds (a page image with no stored size scales the size it is drawn
+  at). Still one `captureSync`, one transaction, nothing written when nothing
+  changed or on a readonly store. A drag commits at release; the slider at
+  release, or 150 ms after its last key, like the wheel.
+- The slider is `<affine-slider>` (`@labre/affine-components/slider`) with a
+  new continuous mode, `range: { min, max, step? }` beside the discrete
+  `points`, keyboard (arrows, Page Up/Down, Home, End) and an ARIA slider
+  role; the line-width and note-style panels keep the discrete mode untouched.
+  It is labelled by `com.labre.image.crop.zoom` (« Zoom »).
+- On the canvas the image's contextual toolbar is already gone while the
+  frame is open (the image is selected in editing state, which the toolbar
+  widget skips), so nothing covers the slider; the page toolbar is not hidden.
+- Superseded: the wheel scaling about the pointer (amendment of 2026-10-27)
+  and dragging the window to move it.

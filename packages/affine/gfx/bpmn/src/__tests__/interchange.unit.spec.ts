@@ -13,6 +13,8 @@ import { GfxControllerIdentifier } from '@labre/std/gfx';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { exportBpmnXmlFile } from '../actions';
+import { exportBpmnXml } from '../export';
+import { importBpmnXml } from '../import';
 import {
   BPMN_INTERCHANGE,
   BPMN_SVG_IMPORT,
@@ -24,8 +26,10 @@ import { BPMN_ROLE } from '../roles';
 import {
   BAND,
   board,
+  boardFromProps,
   collaborationBoard,
   fakeConnector,
+  fakeGroup,
   fakeLabelledNode,
   fakeNode,
   fakePool,
@@ -600,5 +604,50 @@ describe('what the format refused to carry reaches the user', () => {
     );
 
     expect(runExport(elements, {}).warnings).toBeUndefined();
+  });
+});
+
+/**
+ * A name the user moved crosses the file where they left it (ADR 0029,
+ * amendment of 2026-11-04).
+ *
+ * The board picker is what hands the exporter each label's box
+ * (`labelBounds`), read through the same group binding as its text. Before,
+ * it handed over the words only: a label dragged beside its event went out
+ * with no place, and came back under the symbol on the next import. This
+ * would have caught that, the picker forgetting the box, and the import
+ * moving it again.
+ */
+describe('a label moved by the user', () => {
+  it('comes back where it was, through an export and an import', () => {
+    const pool = fakePool('pool-p', [0, 0, POOL_W, POOL_H], { name: 'Claims' });
+    const start = fakeNode('n-start', 'startEvent', [BAND + 40, 70, 56, 56]);
+    // Beside the event, not under it, and narrower than the pack's own box.
+    const label = fakeText('n-start-label', 'Filed', [BAND + 104, 88, 64, 20]);
+    const elements = [
+      pool,
+      start,
+      label,
+      fakeGroup('n-start-group', [start.id, label.id]),
+    ];
+
+    const picked = bpmnBoardFrom(elements);
+    const box = picked.labelBounds?.get('n-start');
+    expect(box && [box.x, box.y, box.w, box.h]).toEqual([
+      BAND + 104,
+      88,
+      64,
+      20,
+    ]);
+
+    const first = exportBpmnXml(picked);
+    const back = importBpmnXml(first).elements;
+    const text = back.find(
+      element => element.type === 'text' && element.text === 'Filed'
+    )!;
+    expect(JSON.parse(String(text.xywh))).toEqual([BAND + 104, 88, 64, 20]);
+
+    // And it stays there: the next export writes the very same file.
+    expect(exportBpmnXml(boardFromProps(back))).toBe(first);
   });
 });

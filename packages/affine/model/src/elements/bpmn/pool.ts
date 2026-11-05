@@ -36,6 +36,10 @@ export type BpmnPoolProps = FrameworkBackgroundProps & {
   name?: string;
   /** The pool's own partition into lanes. Absent until the first one is added. */
   lanes?: BpmnLane[];
+  /** Font size of the participant name; absent paints the declared 15. */
+  nameFontSize?: number;
+  /** Font size of every lane title; absent paints the declared 13. */
+  laneFontSize?: number;
 };
 
 /**
@@ -104,6 +108,28 @@ export class BpmnPoolElementModel extends FrameworkBackgroundElementModel<BpmnPo
    */
   @field()
   accessor lanes: BpmnLane[] | undefined = undefined;
+
+  /**
+   * The font size of the participant name, in model units, chosen by the
+   * author from the pool's toolbar (ADR 0049).
+   *
+   * Optional and `undefined` by default for the reason `lanes` is: `@field()`
+   * writes nothing for an `undefined` default, so a pool whose author never
+   * picked a size stays byte-identical to one written before this field, and
+   * opening a document writes nothing. Absent means the declared size (15);
+   * a value that is not a finite number above zero is ignored by the reader
+   * (`backgroundSizedStyle` in `@labre/affine-block-surface`), never trusted.
+   */
+  @field()
+  accessor nameFontSize: number | undefined = undefined;
+
+  /**
+   * The font size of every lane title of this pool — one size for all of them,
+   * since the lanes are one level of the hierarchy (ADR 0049). Absent means
+   * the declared size (13); same `undefined` contract as {@link nameFontSize}.
+   */
+  @field()
+  accessor laneFontSize: number | undefined = undefined;
 
   /**
    * The title band widths the renderer last PAINTED this pool with: the

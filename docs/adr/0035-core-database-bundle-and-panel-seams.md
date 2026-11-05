@@ -1494,3 +1494,41 @@ databaseId?)` takes the database too. A throwing resolver is logged and
   `import-view.unit.spec.ts`, `remap-view.unit.spec.ts`,
   `source-search.unit.spec.ts` and
   `integration-test/…/page/database-cross-database-view.spec.ts`.
+
+### 2026-11-04: a source is renamed from the view's "Source" list
+
+Asked by the Labre product owner after the recette of 1.1 (issue #576): a
+person renames the source a view reads from that view's settings, not only
+from the host's Settings. The name lives in the host (labre: its base doc,
+unique among the workspace's live sources), so the library draws the field
+and the host decides; nothing is stored by the library.
+
+- **The seam.** `DataSourcePickerService.renameSource?(databaseId, sourceId,
+name): Promise<{ ok: true } | { ok: false; message: string }>`, a
+  widening of the picker seam (§9c) beside `createSource` and
+  `sourceName`. `sourceId` is the view's stored one, `undefined` for the
+  implicit source, as `sourcePolicy` reads it. Absent, the name stays
+  read-only, as in 2.5.
+- **The step.** "Rename source" heads the list `popChangeSourcePicker`
+  opens (the view settings' "Source" and the full page's
+  `database.view.source`): a sub-menu in the same cascade, as
+  `newSourceEntry` names a new source, its field on the current name. It
+  is offered only for the source the view reads, in the block's own
+  database (a view reading another database's source under
+  `crossDatabaseViews` is not offered it; renaming across databases stays
+  in the host's own settings), and never on a read-only document.
+- **Enter alone saves.** The context menu's input completes and blurs on
+  Escape, and the property rename saves on blur, so Escape saves there;
+  here neither `onComplete` nor `onBlur` saves. Enter trims; an unchanged
+  name closes the step without a call, an empty one is refused before the
+  host is asked; while the host answers the field is dimmed and Enter is
+  ignored; `ok` closes the step (the host updates `list()` and the schema
+  block title, and the menus follow), a refusal shows its `message` under
+  the field, a rejection a generic one; an answer arriving after the step
+  closed changes nothing. `sourceName.check`, when given, only warns while
+  typing (never about the source's own name, case and accents aside): the
+  verb decides.
+- Wordings `com.labre.database.source-rename.{entry,failed}`; the field
+  reuses `com.labre.database.source-name.placeholder`. Held by
+  `database/editor/src/__tests__/view-settings-source.unit.spec.ts` and
+  `shared/src/__tests__/services/data-source-picker-null.unit.spec.ts`.

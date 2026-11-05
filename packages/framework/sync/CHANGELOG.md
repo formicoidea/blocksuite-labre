@@ -1,5 +1,12 @@
 # @labre/sync
 
+## 3.0.0
+
+### Patch Changes
+
+- Updated dependencies [0610ec1]
+  - @labre/global@3.0.0
+
 ## 2.5.0
 
 ### Patch Changes

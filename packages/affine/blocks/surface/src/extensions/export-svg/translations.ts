@@ -32,10 +32,20 @@ export const EXPORT_SVG_NOTHING_TO_EXPORT: ChromeWording = [
   'Nothing to export: the options leave nothing of this board to draw.',
 ];
 
+/**
+ * Said when "Export selection as SVG" finds nothing it can draw: a selection
+ * of notes, frames or images alone, which the replay has no painter for.
+ */
+export const EXPORT_SELECTION_SVG_NOTHING_TO_EXPORT: ChromeWording = [
+  'com.labre.export.svg.selection.nothing',
+  'Nothing to export: notes, frames and images are not drawn in an SVG file.',
+];
+
 export const EXPORT_SVG_WORDINGS: readonly ChromeWording[] = [
   EXPORT_SVG_OPTION_FRAMEWORK,
   EXPORT_SVG_OPTION_SHAPES,
   EXPORT_SVG_OPTION_TEXTS,
   EXPORT_SVG_CONFIRM,
   EXPORT_SVG_NOTHING_TO_EXPORT,
+  EXPORT_SELECTION_SVG_NOTHING_TO_EXPORT,
 ];

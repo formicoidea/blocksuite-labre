@@ -6,7 +6,7 @@
  * Held by `interchange-headless.unit.spec.ts` in `packages/affine/all`, which
  * bundles this entry and fails on any editor module in its graph.
  */
-export { AGGREGATE_SIZE } from './sticky-size.js';
+export { AGGREGATE_SIZE, HOTSPOT_SIZE } from './sticky-size.js';
 export {
   EVENT_STORMING_TOOLBOX,
   eventStormingBoardElement,

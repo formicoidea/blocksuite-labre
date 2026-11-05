@@ -49,4 +49,14 @@ describe('DataSourcePickerExtension', () => {
       ])
     ).toBeFalsy();
   });
+
+  // Issue #576: `renameSource` is optional, so a 2.5 host's picker (no verb)
+  // still compiles and resolves as is, and the "Source" list reads the
+  // verb's absence as "the name stays read-only".
+  it('answers a picker without renameSource unchanged', () => {
+    const picker: DataSourcePickerService = { list: () => signal([]) };
+    const resolved = resolve([DataSourcePickerExtension(picker)]);
+    expect(resolved).toBe(picker);
+    expect(resolved?.renameSource).toBeUndefined();
+  });
 });

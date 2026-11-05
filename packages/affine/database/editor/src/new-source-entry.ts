@@ -38,7 +38,7 @@ export interface NewSourceEntry {
 export const named = (sourceName: string | undefined): [] | [string] =>
   sourceName === undefined ? [] : [sourceName];
 
-const VERDICT_WORDING: Record<
+export const VERDICT_WORDING: Record<
   DataSourcePickerSourceNameVerdict,
   ChromeWording
 > = {
@@ -47,7 +47,7 @@ const VERDICT_WORDING: Record<
   empty: SOURCE_NAME_EMPTY,
 };
 
-function verdictOf(
+export function verdictOf(
   naming: DataSourcePickerSourceNaming,
   name: string
 ): DataSourcePickerSourceNameVerdict {
@@ -186,11 +186,17 @@ export function sourceSearch(
   };
 }
 
-// Per menu: the host's names are read once it opens (`suggest`), since
-// `check` answers against the names the last `suggest` read.
+// Per menu: the host's names are read once it opens (`suggest`).
 const namesRead = new WeakMap<Menu, Signal<boolean>>();
 
-function namesReadFor(parent: Menu, naming: DataSourcePickerSourceNaming) {
+/**
+ * Whether `suggest` has settled for `parent`, read once per menu: `check`
+ * answers against the names the last `suggest` read.
+ */
+export function namesReadFor(
+  parent: Menu,
+  naming: DataSourcePickerSourceNaming
+) {
   let read$ = namesRead.get(parent);
   if (!read$) {
     const created$ = signal(false);

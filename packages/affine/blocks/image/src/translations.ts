@@ -62,6 +62,15 @@ export const IMAGE_TOOLBAR_CROP_ORIGINAL: ChromeWording = [
   'Original image',
 ];
 
+/**
+ * The crop frame's zoom slider (ADR 0037 amendment of 2026-11-04): its
+ * accessible name and its tooltip.
+ */
+export const IMAGE_CROP_ZOOM: ChromeWording = [
+  'com.labre.image.crop.zoom',
+  'Zoom',
+];
+
 export const IMAGE_PREVIEW_TITLE: ChromeWording = [
   'com.labre.image.preview.title',
   'Image Block',
@@ -152,6 +161,7 @@ export const IMAGE_WORDINGS: readonly ChromeWording[] = [
   IMAGE_TOOLBAR_CROP_4_3,
   IMAGE_TOOLBAR_CROP_1_1,
   IMAGE_TOOLBAR_CROP_ORIGINAL,
+  IMAGE_CROP_ZOOM,
   IMAGE_PREVIEW_TITLE,
   IMAGE_TOAST_DOWNLOAD_FAILED,
   IMAGE_TOAST_DOWNLOADING,

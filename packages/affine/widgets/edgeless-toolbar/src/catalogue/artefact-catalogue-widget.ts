@@ -28,6 +28,7 @@ import {
   armArtefact,
   armedArtefact,
 } from '../placement/artefact-placement-tool.js';
+import { DockedPanelInset } from '../docked-panel-inset.js';
 import {
   CATALOGUE_CATEGORY_KEY_PREFIX,
   type CatalogueGroup,
@@ -234,6 +235,9 @@ export class EdgelessArtefactCatalogueWidget extends WidgetComponent<RootBlockMo
   /** The owner the body was last scrolled to the top for. */
   private _scrolledFor: CommandOwner | null = null;
 
+  /** The canvas this panel covers while open, told to the viewport (#433). */
+  private readonly _inset = new DockedPanelInset('artefact-catalogue');
+
   get catalogueOpen() {
     return this._owner !== null;
   }
@@ -330,6 +334,7 @@ export class EdgelessArtefactCatalogueWidget extends WidgetComponent<RootBlockMo
       );
       host.removeEventListener('keydown', this._onHostKeydown, true);
       host.removeEventListener('wheel', this._onHostWheel, true);
+      this._inset.withdraw();
     });
   }
 
@@ -356,6 +361,12 @@ export class EdgelessArtefactCatalogueWidget extends WidgetComponent<RootBlockMo
    * another framework would otherwise land mid-list with no idea what is above.
    */
   override updated() {
+    this._inset.sync(
+      this.std.get(GfxControllerIdentifier).viewport,
+      this.shadowRoot?.querySelector<HTMLElement>(
+        '[data-testid="artefact-catalogue-panel"]'
+      ) ?? null
+    );
     const owner = this._owner;
     if (owner === null || owner === this._scrolledFor) {
       if (owner === null) this._scrolledFor = null;

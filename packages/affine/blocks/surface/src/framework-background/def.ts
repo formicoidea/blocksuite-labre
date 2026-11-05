@@ -133,6 +133,15 @@ export interface BackgroundTextDef extends BackgroundLabelSource {
   /** Model prop gating this text. Absent means always drawn. */
   visibleProp?: string;
   /**
+   * Model prop holding the author's font size for this text, in model units.
+   * Absent, or a stored value that is not a finite number above zero, paints
+   * {@link BackgroundTextStyle.size}. Resolved by `backgroundSizedStyle` alone,
+   * which the band widths, the renderer and the hit boxes all read, so a
+   * larger size thickens a wrapped band and moves its hit box with it. Named
+   * consumer: the BPMN participant name (ADR 0049).
+   */
+  sizeProp?: string;
+  /**
    * What happens to words longer than the room they are written in.
    *
    * Absent — what every declaration written before this existed says — draws
@@ -373,6 +382,13 @@ export interface BackgroundInstanceZonesDef {
    */
   label?: {
     style: BackgroundTextStyle;
+    /**
+     * Model prop holding the author's font size for every zone name of the
+     * instance — one size, like the one style above. Same contract as
+     * {@link BackgroundTextDef.sizeProp}. Named consumer: the BPMN lane
+     * titles (ADR 0049).
+     */
+    sizeProp?: string;
     /** Corner placement only. */
     dx?: number;
     /** Corner placement only. */
