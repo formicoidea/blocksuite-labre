@@ -188,20 +188,26 @@ export class RecordDetail extends SignalWatcher(
     this.dataset.widgetId = 'affine-detail-widget';
   }
 
-  row$ = computed(() => {
+  /**
+   * The row the panel shows, read from `rowId` each time: `rowId` is a Lit
+   * property, not a signal, so a `computed` over it memoised the row the
+   * panel OPENED on and every arrow click stepped from that row again (PO
+   * acceptance, 2026-11-05: the second row was as far as the arrows went).
+   */
+  private get row() {
     return this.view.rowGetOrCreate(this.rowId);
-  });
+  }
 
   hasNext() {
-    return this.row$.value.next$.value != null;
+    return this.row.next$.value != null;
   }
 
   hasPrev() {
-    return this.row$.value.prev$.value != null;
+    return this.row.prev$.value != null;
   }
 
   nextRow() {
-    const rowId = this.row$.value.next$.value?.rowId;
+    const rowId = this.row.next$.value?.rowId;
     if (rowId == null) {
       return;
     }
@@ -210,7 +216,7 @@ export class RecordDetail extends SignalWatcher(
   }
 
   prevRow() {
-    const rowId = this.row$.value.prev$.value?.rowId;
+    const rowId = this.row.prev$.value?.rowId;
     if (rowId == null) {
       return;
     }
