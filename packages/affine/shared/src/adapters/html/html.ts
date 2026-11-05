@@ -6,6 +6,7 @@ import {
   BaseAdapter,
   type BlockSnapshot,
   BlockSnapshotSchema,
+  type DeltaInsert,
   type DocSnapshot,
   type ExtensionType,
   type FromBlockSnapshotPayload,
@@ -20,7 +21,7 @@ import {
   type ToDocSnapshotPayload,
   type Transformer,
 } from '@labre/store';
-import type { Root } from 'hast';
+import type { Element, Root } from 'hast';
 import rehypeParse from 'rehype-parse';
 import rehypeStringify from 'rehype-stringify';
 import { unified } from 'unified';
@@ -31,6 +32,7 @@ import {
   type HtmlAST,
 } from '../types';
 import { HastUtils } from '../utils/hast';
+import { AdapterTextUtils } from '../utils/text';
 import {
   type BlockHtmlAdapterMatcher,
   BlockHtmlAdapterMatcherIdentifier,
@@ -46,6 +48,34 @@ import {
 } from './rehype-plugins';
 
 export type Html = string;
+
+/**
+ * A stored block no matcher knows prints what it can read and keeps its children
+ * under it: content degrades, it never disappears (ADR 0009). The title wins over
+ * the text, the way a block that holds both shows it.
+ */
+function unknownBlockNode(
+  snapshot: BlockSnapshot,
+  deltaConverter: HtmlDeltaConverter
+): Element {
+  const { text, title } = snapshot.props;
+  const value = title ?? text;
+  const children =
+    typeof value === 'string'
+      ? [{ type: 'text' as const, value }]
+      : AdapterTextUtils.isText(value)
+        ? deltaConverter.deltaToAST((value as { delta: DeltaInsert[] }).delta)
+        : [];
+  return {
+    type: 'element',
+    tagName: 'div',
+    properties: {
+      className: ['affine-unknown-block'],
+      dataFlavour: snapshot.flavour,
+    },
+    children: children as Element['children'],
+  };
+}
 
 type HtmlToSliceSnapshotPayload = {
   file: Html;
@@ -124,6 +154,13 @@ export class HtmlAdapter extends BaseAdapter<Html> {
         BlockSnapshotSchema.safeParse(node).success
     );
     walker.setEnter(async (o, context) => {
+      if (!this.blockMatchers.some(matcher => matcher.fromMatch(o))) {
+        context.openNode(
+          unknownBlockNode(o.node, this.deltaConverter),
+          'children'
+        );
+        return;
+      }
       for (const matcher of this.blockMatchers) {
         if (matcher.fromMatch(o)) {
           const adapterContext: AdapterContext<
@@ -148,6 +185,10 @@ export class HtmlAdapter extends BaseAdapter<Html> {
       }
     });
     walker.setLeave(async (o, context) => {
+      if (!this.blockMatchers.some(matcher => matcher.fromMatch(o))) {
+        context.closeNode();
+        return;
+      }
       for (const matcher of this.blockMatchers) {
         if (matcher.fromMatch(o)) {
           const adapterContext: AdapterContext<
@@ -236,11 +277,21 @@ export class HtmlAdapter extends BaseAdapter<Html> {
       snapshot: payload.snapshot.blocks,
       assets: payload.assets,
     });
+    // Through the stringifier and a replacer function: a title is user text,
+    // on a public page it must not open a tag, nor be read as a `$&` pattern.
+    const title = this._astToHtml({
+      type: 'root',
+      children: [
+        {
+          type: 'element',
+          tagName: 'h1',
+          properties: {},
+          children: [{ type: 'text', value: payload.snapshot.meta.title }],
+        },
+      ],
+    });
     return {
-      file: file.replace(
-        '<!--BlockSuiteDocTitlePlaceholder-->',
-        `<h1>${payload.snapshot.meta.title}</h1>`
-      ),
+      file: file.replace('<!--BlockSuiteDocTitlePlaceholder-->', () => title),
       assetsIds,
     };
   }

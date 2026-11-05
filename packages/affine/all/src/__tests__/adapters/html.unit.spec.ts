@@ -693,7 +693,7 @@ describe('snapshot to html', () => {
       ],
     };
     const html = template(
-      `<ul class="bulleted-list"><li class="affine-list-block-container">aaa</li></ul><ul style="list-style-type: none; padding-inline-start: 18px;" class="todo-list"><li class="affine-list-block-container"><input type="checkbox"><label style="margin-right: 3px;"></label></input>bbb</li></ul><ul class="bulleted-list"><li class="affine-list-block-container">ccc</li></ul>`
+      `<ul class="bulleted-list"><li class="affine-list-block-container">aaa</li></ul><ul style="list-style-type: none; padding-inline-start: 18px;" class="todo-list"><li class="affine-list-block-container"><input type="checkbox"><label style="margin-right: 3px;"></label>bbb</li></ul><ul class="bulleted-list"><li class="affine-list-block-container">ccc</li></ul>`
     );
 
     const htmlAdapter = new HtmlAdapter(createJob(), provider);
