@@ -239,6 +239,12 @@ model {
       domain_canvas '1.00'
     }
   }
+  extend features.blocks.edgeless-text.adapters {
+    metadata {
+      domain ['canvas']
+      domain_canvas '1.00'
+    }
+  }
   extend features.blocks.edgeless-text.edgeless-toolbar {
     metadata {
       domain ['canvas']
@@ -606,6 +612,13 @@ model {
     }
   }
   extend features.blocks.surface-ref {
+    metadata {
+      domain ['document', 'presentation']
+      domain_document '0.50'
+      domain_presentation '0.50'
+    }
+  }
+  extend features.blocks.surface-ref.adapters {
     metadata {
       domain ['document', 'presentation']
       domain_document '0.50'

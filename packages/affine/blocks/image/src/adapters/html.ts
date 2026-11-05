@@ -34,17 +34,17 @@ export const imageBlockHtmlAdapterMatcher: BlockHtmlAdapterMatcher = {
     enter: async (o, context) => {
       const blobId = (o.node.props.sourceId ?? '') as string;
       const { assets, walkerContext, updateAssetIds } = context;
-      if (!assets) {
+      if (!blobId) {
         return;
       }
 
-      await assets.readFromBlob(blobId);
-      const blob = assets.getAssets().get(blobId);
+      await assets?.readFromBlob(blobId);
       updateAssetIds?.(blobId);
-      if (!blob) {
-        return;
-      }
-      const blobName = getAssetName(assets.getAssets(), blobId);
+      // No blob at hand, or no manager asked to read one: a stored image still
+      // prints, under its id, so a server can map it without downloading it.
+      const blobName = assets?.getAssets().has(blobId)
+        ? getAssetName(assets.getAssets(), blobId)
+        : blobId;
       const isScaledImage = o.node.props.width && o.node.props.height;
       const widthStyle = isScaledImage
         ? {
