@@ -16,6 +16,7 @@ import { EmbedIframeService } from '@labre/affine-shared/services';
 
 import { EmbedFigmaBlockAdapterExtensions } from './embed-figma-block/adapters/extension';
 import { EmbedGithubBlockAdapterExtensions } from './embed-github-block/adapters/extension';
+import { EmbedHtmlBlockHtmlAdapterExtension } from './embed-html-block/adapters/html';
 import { EmbedIframeConfigExtensions } from './embed-iframe-block';
 import { EmbedIframeBlockAdapterExtensions } from './embed-iframe-block/adapters';
 import { EmbedLoomBlockAdapterExtensions } from './embed-loom-block/adapters/extension';
@@ -40,6 +41,7 @@ export class EmbedStoreExtension extends StoreExtensionProvider {
     context.register(EmbedGithubBlockAdapterExtensions);
     context.register(EmbedYoutubeBlockAdapterExtensions);
     context.register(EmbedLoomBlockAdapterExtensions);
+    context.register(EmbedHtmlBlockHtmlAdapterExtension);
     context.register(EmbedIframeBlockAdapterExtensions);
 
     context.register(EmbedIframeConfigExtensions);
