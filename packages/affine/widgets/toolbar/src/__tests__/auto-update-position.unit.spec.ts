@@ -243,4 +243,49 @@ describe('the room the positioner reports', () => {
 
     expect(capOf(toolbar)).toBe(120);
   });
+
+  /**
+   * **A panel docked over the canvas keeps the row clear of itself** (issue
+   * #433). Would have caught the selection pane or the catalogue covering the
+   * row of an element just right of them: `shift` slid the row back to the
+   * column's own left edge, under the panel, because its padding ignored the
+   * viewport's occupied inset.
+   */
+  test('a docked panel on the left pushes the row past its edge', async () => {
+    const PANEL = 300;
+    // An element just right of the panel: the row centred on it would start
+    // under the panel.
+    const selection = { x: COLUMN.x + PANEL + 20, width: 60 };
+
+    async function rowX(occupiedLeft?: () => number) {
+      updates.length = 0;
+      const toolbar = makeToolbar(WHOLE_ROW);
+      stageOn(COLUMN, selection, toolbar);
+      autoUpdatePosition(
+        new AbortController().signal,
+        toolbar.element as never,
+        reference,
+        'affine:note',
+        'top',
+        null,
+        undefined,
+        undefined,
+        occupiedLeft
+      );
+      updates[0]();
+      for (let i = 0; i < 50 && !toolbar.element.style.transform; i++) {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+      const match = /translate3d\(([-\d.]+)px/.exec(
+        toolbar.element.style.transform
+      );
+      return Number.parseFloat(match?.[1] ?? 'NaN');
+    }
+
+    const centred = selection.x + selection.width / 2 - WHOLE_ROW / 2;
+    // No panel: the row stays centred, it fits in the column.
+    expect(await rowX()).toBe(centred);
+    // A panel: the row starts past it, with the usual edge padding.
+    expect(await rowX(() => PANEL)).toBe(COLUMN.x + EDGE + PANEL);
+  });
 });

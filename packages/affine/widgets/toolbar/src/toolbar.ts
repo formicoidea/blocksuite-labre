@@ -35,6 +35,7 @@ import {
 import {
   GfxBlockElementModel,
   type GfxController,
+  GfxControllerIdentifier,
   type GfxModel,
   GfxPrimitiveElementModel,
 } from '@labre/std/gfx';
@@ -718,6 +719,11 @@ export class AffineToolbarWidget extends WidgetComponent {
         const flavour = flavour$.value;
         const placement = placement$.value;
         const sideOptions = sideOptions$.value;
+        // Read for its dependency: a panel docked over the canvas opening or
+        // closing repositions the row clear of it (issue #433).
+        const occupied = std.getOptional(GfxControllerIdentifier)?.viewport
+          .occupiedInsets$;
+        void occupied?.value;
 
         if (abortController.signal.aborted) {
           abortController = new AbortController();
@@ -732,7 +738,8 @@ export class AffineToolbarWidget extends WidgetComponent {
           placement,
           sideOptions,
           undefined,
-          () => this.fitter.resize()
+          () => this.fitter.resize(),
+          () => occupied?.peek().left ?? 0
         );
 
         signal.addEventListener('abort', cleanup, { once: true });

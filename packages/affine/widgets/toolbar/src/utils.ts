@@ -90,7 +90,14 @@ export function autoUpdatePosition(
    * that knows it: `size` is what writes the cap, and it re-runs on every
    * scroll, resize and flip.
    */
-  onAvailableWidth?: () => void
+  onAvailableWidth?: () => void,
+  /**
+   * How much of the editor's left edge a docked panel covers, in screen
+   * pixels (`Viewport.occupiedInsets$`, issue #433). Read on every reposition,
+   * so `shift` keeps the row clear of the selection pane or the catalogue
+   * instead of sliding it under them.
+   */
+  occupiedLeft: () => number = () => 0
 ) {
   const isInline = flavour === 'affine:note';
   const hasSurfaceScope = flavour.includes('surface');
@@ -145,7 +152,7 @@ export function autoUpdatePosition(
               top: 10,
               right: 10,
               bottom: 150,
-              left: 10,
+              left: 10 + occupiedLeft(),
             },
             crossAxis: state.placement.includes('bottom'),
             limiter: limitShift(),

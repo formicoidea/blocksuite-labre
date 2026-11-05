@@ -32,7 +32,12 @@ import { GfxBlockElementModel } from './model/gfx-block-model.js';
 import type { GfxModel } from './model/model.js';
 import { GfxPrimitiveElementModel } from './model/surface/element-model.js';
 import type { SurfaceBlockModel } from './model/surface/surface-model.js';
-import { FIT_TO_SCREEN_PADDING, Viewport, ZOOM_INITIAL } from './viewport.js';
+import {
+  FIT_TO_SCREEN_PADDING,
+  paddingWithInsets,
+  Viewport,
+  ZOOM_INITIAL,
+} from './viewport.js';
 
 export class GfxController extends LifeCycleWatcher {
   static override key = gfxControllerKey;
@@ -287,6 +292,11 @@ export class GfxController extends LifeCycleWatcher {
     }
   }
 
+  /**
+   * Fit the elements (or `bounds`) to the visible part of the canvas: the
+   * viewport's occupied insets join `padding`, so a panel docked over the
+   * canvas does not hide the fitted content (issue #433).
+   */
   fitToScreen(
     options: {
       bounds?: Bound[];
@@ -303,7 +313,7 @@ export class GfxController extends LifeCycleWatcher {
     const commonBound = getCommonBound(elemBounds);
     const { zoom, centerX, centerY } = this.viewport.getFitToScreenData(
       commonBound,
-      options.padding,
+      paddingWithInsets(this.viewport, options.padding),
       ZOOM_INITIAL,
       FIT_TO_SCREEN_PADDING
     );
