@@ -30,6 +30,7 @@ import {
   VIEW_SETTINGS_SOURCE,
 } from '../translations.js';
 import { changeViewSource } from '../view-transfer/change-source.js';
+import { renameSourceEntry } from './rename-source-entry.js';
 import { databaseIdOf } from '../view-transfer/import-view.js';
 import {
   crossDatabaseViews,
@@ -111,6 +112,13 @@ export function currentSourceTitle(
  * labelled with their database; the check matches database and source; a
  * pick of another database's source stores it on the view. "Create source"
  * still creates in this block's database.
+ *
+ * "Rename source" heads the list when the host gives `renameSource` (issue
+ * #576): it renames the source the view reads, never another one, and only
+ * in the block's own database (a view reading another database's source,
+ * under `crossDatabaseViews`, is not offered it: renaming across databases
+ * is left to the host's own settings). Absent, on a read-only page, the
+ * name stays read-only.
  */
 export function popChangeSourcePicker(
   std: BlockStdScope,
@@ -134,6 +142,16 @@ export function popChangeSourcePicker(
       : undefined;
   const untitled = translateKey(std, ...DATABASE_ADD_VIEW_UNTITLED_SOURCE);
   const untitledDatabase = translateKey(std, ...DOC_UNTITLED);
+  const renameSource = picker.renameSource;
+  const rename =
+    renameSource && currentDatabase === undefined
+      ? renameSourceEntry(std, {
+          currentName: () =>
+            dataSource.schema$.peek()?.props.title.toString() ?? '',
+          rename: name => renameSource.call(picker, databaseId, current, name),
+          naming: picker.sourceName,
+        })
+      : undefined;
   return popMenu(target, {
     options: {
       title: { text: translateKey(std, ...PICKER_TITLE), onBack: reopen },
@@ -142,6 +160,7 @@ export function popChangeSourcePicker(
       items: [
         menu.dynamic(() => {
           const sources = workspaceSources(list.value, databaseId, across);
+          const head = rename && !std.store.readonly ? [rename] : [];
           const items = sources.map(source => {
             const selected = isViewSource(source, current, currentDatabase);
             return menu.action({
@@ -162,8 +181,9 @@ export function popChangeSourcePicker(
               },
             });
           });
-          if (!createSource || std.store.readonly) return items;
+          if (!createSource || std.store.readonly) return [...head, ...items];
           return [
+            ...head,
             ...items,
             typedSourceEntry(
               std,

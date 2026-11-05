@@ -43,3 +43,32 @@ export const getCalloutEmoji = (node: Blockquote) => {
 
 export const FOOTNOTE_DEFINITION_PREFIX = 'footnoteDefinition:';
 export const IN_PARAGRAPH_NODE_CONTEXT_KEY = 'mdast:paragraph';
+
+const isBlankText = (node: MarkdownAST) =>
+  node.type === 'text' && node.value.trim() === '';
+
+const isImageOrLinkedImage = (node: MarkdownAST) =>
+  node.type === 'image' ||
+  (node.type === 'link' &&
+    node.children.length > 0 &&
+    node.children.every(child => child.type === 'image'));
+
+/**
+ * A paragraph that holds nothing but images, the way mdast wraps a picture
+ * standing on its own: images, images inside a link (`[![a](src)](href)`),
+ * hard line breaks between them and blank text. The image matcher emits the
+ * blocks; a matcher that opened a text block for it left an empty paragraph
+ * above the image (#521), or skipped the image inside a list item.
+ *
+ * Shared by the paragraph and list matchers so both agree on what "only an
+ * image" means.
+ */
+export const isImageOnlyParagraph = (node: MarkdownAST) =>
+  node.type === 'paragraph' &&
+  node.children.some(isImageOrLinkedImage) &&
+  node.children.every(
+    child =>
+      isImageOrLinkedImage(child) ||
+      child.type === 'break' ||
+      isBlankText(child)
+  );

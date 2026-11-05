@@ -153,3 +153,41 @@ dragged in Labre went out where it had never been.
   amendment are `import.unit.spec.ts` ("a name drawn where the file put it"),
   `export.unit.spec.ts` ("where a name is drawn") and
   `interchange.unit.spec.ts` ("a label moved by the user").
+
+**2026-11-04 — the Event Storming hotspot is born at 180 and conforms (PO
+decision).** The `hotspot` deviation recorded above is corrected. Its diamond
+offers only the rectangle inscribed in it, half of each side: at the standard
+120 (`STICKY_SIZE`) that is 40 units wide, short of one five-letter word in
+Kalam 20 (`STICKY_FONT_SIZE`), so the `Contained` fit shrank the font. Two
+lines of Kalam 20 need about 140 of side; at 180 the seed "Hotspot" (≈ 70
+units) fits without reduction. `eventStormingStickySize('hotspot')` now returns
+`HOTSPOT_SIZE = 180` (`gfx/ddd-event-storming/src/sticky-size.ts`), which the
+command `addHotspot`, the toolbox item and the template (derived from the
+command) all read. `gfx/ddd-event-storming/src/__tests__/label-mode.unit.spec.ts`
+holds every Event Storming sticky, the hotspot included, against
+`fitsInscribedLabel` at `STICKY_FONT_SIZE`. Two limits, accepted: nothing is
+migrated, so a hotspot drawn before this amendment keeps its 120 (a size is a
+value written at creation, not a stored-format change); and a morph never
+touches geometry (`morph.ts`), so a sticky morphed into a hotspot keeps its
+size and may stay below what R38 asks. The Wardley `porter` deviation is
+untouched by this amendment.
+
+**2026-11-04 — a glyph whose inscribed text IS the notation is exempt (PO
+decision, option 1 without truncation).** The Wardley `porter` deviation
+recorded above becomes a rule rather than a defect. A symbol whose inscribed
+text is the notation itself — one character kept in step with a tag, not a
+name the author gives the symbol — is a declared GLYPH and is exempt from R38:
+the probe asks whether a NAME fits, and a glyph carries none. The Porter letter
+is such a glyph: a 60×60 ellipse (`PORTER_SIZE`) whose 28-unit letter
+(`PORTER_LETTER_FONT_SIZE`, `R` by default) is R, L or E, synchronised both
+ways with the `wardley:competition` tag (`natures.ts`, `WardleyPorterWatcher`),
+and set with `TextFitMode.Overflow` so the circle never grows to fit what is
+typed. Free text beyond one letter is not prevented and not truncated:
+`competitionOfPorterLetter` reads anything but exactly R, L or E as no force,
+so the tag is simply cleared. `gfx/wardley/src/__tests__/label-mode.unit.spec.ts`
+holds it: every Wardley kind the toolbar builds with inscribed text (the two
+areas) fits the probe, and the Porter glyph is the only exemption — it fails
+the probe, so the exemption is load-bearing, and it inscribes one character the
+competition tag reads. Nothing changes for a host or a document; the Backlog
+ticket for `porter` closes. The DDD Event Storming `hotspot` deviation is
+untouched by this amendment.

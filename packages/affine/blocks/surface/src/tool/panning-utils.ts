@@ -4,14 +4,19 @@ import type { Viewport } from '@labre/std/gfx';
 
 const PANNING_DISTANCE = 30;
 
+/**
+ * The pan step for a pointer near the edge of the VISIBLE canvas: the band is
+ * measured on `viewport.visibleRect`, so a panel docked over the canvas (the
+ * selection pane, the artefact catalogue) moves the band to its own edge
+ * instead of hiding it under itself (issue #433).
+ */
 export function calPanDelta(
   viewport: Viewport,
   e: PointerEventState,
   edgeDistance = 20
 ): IVec | null {
-  // Get viewport edge
-  const { left, top } = viewport;
-  const { width, height } = viewport;
+  // Get the visible edge: the container less what floats over it
+  const { left, top, width, height } = viewport.visibleRect;
   // Get pointer position
   let { x, y } = e;
   const { containerOffset } = e;
