@@ -2,6 +2,7 @@ import {
   AttachmentAdapter,
   ClipboardAdapter,
   HtmlAdapter,
+  htmlDefersToMarkdown,
   ImageAdapter,
   MixTextAdapter,
   NotionTextAdapter,
@@ -25,6 +26,10 @@ const HtmlClipboardConfig = ClipboardAdapterConfigExtension({
   mimeType: 'text/html',
   adapter: HtmlAdapter,
   priority: 90,
+  // A flat HTML copy of block Markdown (VS Code, browsers, chat apps put one
+  // `<div>` per line beside the Markdown) yields to `text/plain` below,
+  // which parses it (labre P4-11).
+  defer: htmlDefersToMarkdown,
 });
 
 const imageClipboardConfigs = [
