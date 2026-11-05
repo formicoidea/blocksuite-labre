@@ -1,5 +1,20 @@
 # @labre/affine-block-callout
 
+## 3.2.0
+
+### Patch Changes
+
+- @labre/affine-components@3.2.0
+- @labre/affine-ext-loader@3.2.0
+- @labre/affine-inline-preset@3.2.0
+- @labre/affine-model@3.2.0
+- @labre/affine-rich-text@3.2.0
+- @labre/affine-shared@3.2.0
+- @labre/affine-widget-slash-menu@3.2.0
+- @labre/global@3.2.0
+- @labre/std@3.2.0
+- @labre/store@3.2.0
+
 ## 3.1.0
 
 ### Patch Changes
