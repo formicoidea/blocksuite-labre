@@ -27,7 +27,7 @@ import { setupEditor } from '../utils/setup.js';
  *   every cell keeps its whole text, escapes resolved. Would have caught: the
  *   database's Markdown matcher reading tables again, or a cell that lost what
  *   the parser handed it.
- * - **The same table beside a flat HTML copy** (VS Code, browsers, chat apps
+ * - **The same table beside a flat HTML copy** (VS Code, Slack, Teams, chats
  *   write one `<div>` per line next to the Markdown) is still a table: the
  *   HTML adapter, read first, steps aside (labre P4-11). Would have caught:
  *   paragraphs of pipes and no table. Rich HTML beside Markdown and plain
