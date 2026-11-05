@@ -258,6 +258,10 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
       if (!this.isConnected) return;
 
       this.slots.resize.next({ w, h: TOOLBAR_HEIGHT });
+      // The highlight is a position in the row, and a new width re-deals the
+      // row (dense mode, quick tools folded into "more"): the same index
+      // would point at another button.
+      if (w !== this.containerWidth) this.clearHighlight();
       this.containerWidth = w;
 
       if (this._denseSeniorTools) {
@@ -321,8 +325,14 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
     return Math.min(this._quickTools.length, this._visibleQuickToolSize);
   }
 
-  /** Step the keyboard highlight along the toolbar by one button. */
-  walkHighlight(dir: 1 | -1) {
+  /**
+   * Step the keyboard highlight along the toolbar by one button, and say
+   * whether there was a row to walk. There is none while the presentation
+   * toolbar replaces it or while a readonly board hides it, and the caller
+   * then leaves the keystroke to the browser.
+   */
+  walkHighlight(dir: 1 | -1): boolean {
+    if (this.isPresentMode || this.store.readonly) return false;
     const { index, scroll } = stepToolbarHighlight(
       this.keyboardHighlight,
       dir,
@@ -335,6 +345,7 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
     );
     this.keyboardHighlight = index;
     this.scrollSeniorToolIndex = scroll;
+    return index >= 0;
   }
 
   clearHighlight() {
@@ -709,6 +720,19 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
       }
     });
     this._resizeObserver.observe(this);
+    // The highlight only stands while the keyboard is on the toolbar. Left
+    // standing, it hijacks the next Enter: Alt+→, a click on a shape, Enter
+    // to edit its text, and the toolbar button got pressed instead. Capture,
+    // because the canvas and the toolbar both stop the pointer's propagation.
+    this.disposables.addFromEvent(
+      document,
+      'pointerdown',
+      () => this.clearHighlight(),
+      { capture: true }
+    );
+    this.disposables.add(
+      this.gfx.selection.slots.updated.subscribe(() => this.clearHighlight())
+    );
     this.disposables.add(
       this.std
         .get(ThemeProvider)

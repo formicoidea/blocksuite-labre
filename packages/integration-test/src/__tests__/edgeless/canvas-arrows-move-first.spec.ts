@@ -1,3 +1,4 @@
+import { PresentTool } from '@labre/affine/blocks/frame';
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import type { ShapeElementModel } from '@labre/affine/model';
 import {
@@ -196,6 +197,56 @@ describe('canvas arrows move first, Alt reaches the toolbar', () => {
     press('ArrowLeft', { alt: true });
     expect(bar.keyboardHighlight).toBeGreaterThanOrEqual(0);
     press('Escape');
+    expect(bar.keyboardHighlight).toBe(-1);
+  });
+
+  /**
+   * Review of #634: a highlight left standing hijacked the next Enter. Alt+→,
+   * then a click on a shape, then Enter to edit its text, and the toolbar
+   * button got pressed instead. Any of a pointer press outside the toolbar,
+   * a selection change or a plain arrow puts the keyboard back on the canvas.
+   */
+  test('a pointer press on the canvas drops the highlight', () => {
+    const bar = toolbar();
+    press('ArrowRight', { alt: true });
+    expect(bar.keyboardHighlight).toBe(0);
+    edgeless.dispatchEvent(
+      new PointerEvent('pointerdown', { bubbles: true, composed: true })
+    );
+    expect(bar.keyboardHighlight).toBe(-1);
+  });
+
+  test('a selection change drops the highlight', () => {
+    const bar = toolbar();
+    press('ArrowRight', { alt: true });
+    expect(bar.keyboardHighlight).toBe(0);
+    edgeless.service.selection.clear();
+    select();
+    expect(bar.keyboardHighlight).toBe(-1);
+  });
+
+  test('a plain arrow drops the highlight, and Enter then presses nothing', async () => {
+    const bar = toolbar();
+    const tool = edgeless.gfx.tool.currentToolName$.peek();
+    press('ArrowRight', { alt: true });
+    expect(bar.keyboardHighlight).toBe(0);
+    press('ArrowRight');
+    expect(bar.keyboardHighlight).toBe(-1);
+
+    press('Enter');
+    await wait(POPPER_MOUNT_MS);
+    expect(bar.activePopper).toBeNull();
+    expect(edgeless.gfx.tool.currentToolName$.peek()).toBe(tool);
+  });
+
+  test('presentation mode leaves Alt+→ to the browser', async () => {
+    const bar = toolbar();
+    edgeless.gfx.tool.setTool(PresentTool);
+    await bar.updateComplete;
+    expect(bar.isPresentMode).toBe(true);
+
+    const event = press('ArrowRight', { alt: true });
+    expect(event.defaultPrevented).toBe(false);
     expect(bar.keyboardHighlight).toBe(-1);
   });
 });

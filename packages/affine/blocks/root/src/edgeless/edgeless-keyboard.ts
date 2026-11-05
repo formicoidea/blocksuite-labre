@@ -599,6 +599,9 @@ export class EdgelessPageKeyboardManager extends PageKeyboardManager {
     });
     switch (route.kind) {
       case 'move':
+        // Back on the canvas: a toolbar highlight left standing would take
+        // the next Enter.
+        this._toolbar?.clearHighlight();
         this._move(route.key, route.shift);
         return;
       case 'menu':
@@ -607,8 +610,8 @@ export class EdgelessPageKeyboardManager extends PageKeyboardManager {
         this._seniorMenu?.cycle(route.dir);
         return;
       case 'toolbar':
-        event.preventDefault();
-        this._toolbar?.walkHighlight(route.dir);
+        // No row to walk (presentation, readonly): the browser keeps it.
+        if (this._toolbar?.walkHighlight(route.dir)) event.preventDefault();
         return;
       case 'none':
         return;
