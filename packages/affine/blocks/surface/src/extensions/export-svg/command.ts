@@ -17,8 +17,16 @@ import {
   boardSvgExportOptions,
   DEFAULT_BOARD_SVG_EXPORT_OPTIONS,
 } from './parts.js';
-import { canvasRendererOf, renderBoardSvg, renderCanvasSvg } from './render.js';
-import { EXPORT_SVG_NOTHING_TO_EXPORT } from './translations.js';
+import {
+  canvasRendererOf,
+  renderBoardSvg,
+  renderCanvasSvg,
+  renderSelectionSvg,
+} from './render.js';
+import {
+  EXPORT_SELECTION_SVG_NOTHING_TO_EXPORT,
+  EXPORT_SVG_NOTHING_TO_EXPORT,
+} from './translations.js';
 
 /** What the file is, told to the browser. */
 const SVG_MIME = 'image/svg+xml';
@@ -137,7 +145,72 @@ const exportSvg: AnyCommandDescriptor = {
     exportBoardSvg(std, boardSvgExportOptions(params)),
 };
 
-export const exportSvgCommands: AnyCommandDescriptor[] = [exportSvg];
+/**
+ * Render the current canvas selection and hand it to the browser, named after
+ * the page. Nothing drawable — notes, frames or images alone, or only what
+ * this viewer hid — is said once through the host's notification seam; a host
+ * without one gets no toast and, either way, no empty file.
+ */
+export function exportSelectionSvg(std: BlockStdScope): void {
+  const selected = std.get(GfxControllerIdentifier).selection.selectedElements;
+  if (!selected.length) return;
+
+  const rendered = renderSelectionSvg(std, selected);
+  if (!rendered) {
+    std
+      .getOptional(NotificationProvider)
+      ?.toast(translateKey(std, ...EXPORT_SELECTION_SVG_NOTHING_TO_EXPORT));
+    return;
+  }
+  const title = std.store.workspace.meta.getDocMeta(std.store.id)?.title;
+  downloadBlob(
+    new Blob([rendered.svg], { type: `${SVG_MIME};charset=utf-8` }),
+    `${safeFilename(title, SVG_FILENAME_FALLBACK)}.svg`
+  );
+}
+
+/**
+ * "Export selection as SVG": whatever is selected on the canvas, boards or
+ * not, with the replay and the `data-labre-*` markers of the two other SVG
+ * exports (ADR 0025, ADR 0032), framed by the selection's own extent.
+ *
+ * A command of its own rather than a widened `export.svg`: that one's agent
+ * contract is "export the selected board", with its parts options and its
+ * board frame, and an agent asking for a board must not get a loose
+ * selection. Direct, with no options dialog (PO decision): the parts switches
+ * answer a board's question ("which layers of this sheet?") that a selection
+ * does not ask.
+ *
+ * `owner: 'core'` and no `telemetry`, for `export.svg`'s reasons: it names
+ * no framework. It reads, so no read-only guard. Not on the agent surface: an
+ * agent has no selection of its own to export, and `canvas.export.svg` is
+ * the whole-canvas answer it already has.
+ */
+const exportSelectionSvgCommand: AnyCommandDescriptor = {
+  id: 'selection.export.svg',
+  owner: 'core',
+  kind: 'action',
+  labelKey: 'com.labre.command.selection.export.svg',
+  labelFallback: 'Export selection as SVG',
+  descriptionKey: 'com.labre.command.selection.export.svg.description',
+  descriptionFallback:
+    'Download the selected elements as a vector SVG file. Blocks without a painter, such as notes, frames and images, are left out.',
+  category: 'export',
+  keywords: ['svg', 'vector', 'image', 'export', 'download', 'selection'],
+  surfaces: ['catalogue', 'contextual-toolbar', 'palette'],
+  scope: 'edgeless',
+  defaultKeys: { mac: [], other: [] },
+  availability: 'selection',
+  when: std =>
+    canvasRendererOf(std) !== null &&
+    std.get(GfxControllerIdentifier).selection.selectedElements.length > 0,
+  run: std => exportSelectionSvg(std),
+};
+
+export const exportSvgCommands: AnyCommandDescriptor[] = [
+  exportSvg,
+  exportSelectionSvgCommand,
+];
 
 /**
  * The whole canvas as an SVG file, or `null` when there is nothing to draw.

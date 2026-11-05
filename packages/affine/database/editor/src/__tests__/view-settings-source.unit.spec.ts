@@ -21,6 +21,13 @@
  *   database's, not by name, without their database's label, the check
  *   matching a source id of another database, a pick not naming that
  *   database, or "Create source" creating anywhere but in this database.
+ * - (issue #576) "Rename source" offered without the host's `renameSource`,
+ *   on a read-only page, or on a view reading another database's source;
+ *   Escape (which completes and blurs the context menu's input, the way
+ *   the property rename SAVES) calling the host; an unchanged or
+ *   untrimmed name reaching the host; a host refusal closing the field or
+ *   losing its message; a second Enter while the host answers calling it
+ *   twice; an answer arriving after the step closed writing into it.
  */
 import { HostedDataSourceBase } from '@labre/affine-database-block';
 import {
@@ -119,15 +126,20 @@ function context(
     fallback?: boolean;
     createSource?: DataSourcePickerService['createSource'];
     crossDatabaseViews?: boolean;
+    renameSource?: DataSourcePickerService['renameSource'];
+    sourceName?: DataSourcePickerService['sourceName'];
+    storeReadonly?: boolean;
   } = {}
 ) {
   const picker: DataSourcePickerService = {
     list: () => signal([PEOPLE, ARCHIVE, PLAN]),
     createSource: opts.createSource,
     crossDatabaseViews: opts.crossDatabaseViews,
+    renameSource: opts.renameSource,
+    sourceName: opts.sourceName,
   };
   const std = {
-    store: { readonly: false },
+    store: { readonly: opts.storeReadonly ?? false },
     getOptional: (id: unknown) =>
       id === DataSourcePickerProvider && opts.picker !== false ? picker : null,
   } as unknown as BlockStdScope;
@@ -371,5 +383,197 @@ describe('the view settings "Source"', () => {
       ViewSettingsMenuIdentifier,
       expect.any(Function)
     );
+  });
+});
+
+describe('"Rename source" in the view\'s "Source" list', () => {
+  async function openList(opts: Parameters<typeof context>[0] = {}) {
+    const result = context(opts);
+    await draw(result.ctx, databaseViewSettingsMenu().items(result.ctx)!);
+    byTestId('dv-view-setting-source')!.click();
+    await frame();
+    return result;
+  }
+
+  async function openStep() {
+    byTestId('data-source-picker-rename-source')!.click();
+    await vi.waitFor(() =>
+      expect(step()?.querySelector('affine-menu-input')).not.toBeNull()
+    );
+    const host = step()!.querySelector('affine-menu-input')!;
+    await frame();
+    return (host.shadowRoot ?? host).querySelector('input')!;
+  }
+
+  function type(input: HTMLInputElement, value: string) {
+    Object.assign(input, { value });
+    input.dispatchEvent(new InputEvent('input', { bubbles: true }));
+  }
+
+  const press = (input: HTMLInputElement, key: string) =>
+    input.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+
+  const step = () => byTestId('data-source-picker-rename-source-step');
+  const status = () =>
+    byTestId('data-source-picker-rename-source-status')?.textContent?.trim();
+
+  /** Leave the step as the pointer does, onto a source of the list. */
+  const leaveStep = () =>
+    byTestId('data-source-picker-source-s-2')!
+      .closest('affine-menu-button')!
+      .dispatchEvent(new MouseEvent('mouseenter'));
+
+  test('is absent without the verb, without the picker, read-only, or on another database', async () => {
+    const renameSource = vi.fn(async () => ({ ok: true as const }));
+    await openList();
+    expect(byTestId('data-source-picker')).not.toBeNull();
+    expect(byTestId('data-source-picker-rename-source')).toBeNull();
+    document.body.innerHTML = '';
+
+    expect(
+      databaseViewSettingsMenu().items(
+        context({ renameSource, picker: false }).ctx
+      )
+    ).toBeUndefined();
+
+    await openList({ renameSource, storeReadonly: true });
+    expect(byTestId('data-source-picker-rename-source')).toBeNull();
+    document.body.innerHTML = '';
+
+    await openList({
+      renameSource,
+      crossDatabaseViews: true,
+      dataSource: hosted({ current: 's-1', currentDatabase: 'host:archive' }),
+    });
+    expect(byTestId('data-source-picker-rename-source')).toBeNull();
+    document.body.innerHTML = '';
+
+    await openList({ renameSource });
+    const first = byTestId('data-source-picker')!.querySelector(
+      '[data-testid^="data-source-picker-"]'
+    );
+    expect(first?.getAttribute('data-testid')).toBe(
+      'data-source-picker-rename-source'
+    );
+    expect(renameSource).not.toHaveBeenCalled();
+  });
+
+  test('opens on the current name; Enter calls the verb with the trimmed name', async () => {
+    const renameSource = vi.fn(async () => ({ ok: true as const }));
+    await openList({ renameSource, dataSource: hosted({ current: 's-2' }) });
+    const input = await openStep();
+    expect(input.value).toBe('Projects');
+    type(input, '  Budget ');
+    press(input, 'Enter');
+    await vi.waitFor(() => expect(renameSource).toHaveBeenCalledTimes(1));
+    expect(renameSource).toHaveBeenCalledWith('host:plan', 's-2', 'Budget');
+    await vi.waitFor(() => expect(step()).toBeNull());
+    // The library writes nothing: the host renames.
+    expect(changeViewSource).not.toHaveBeenCalled();
+  });
+
+  test("a refusal shows the host's message and keeps the field", async () => {
+    const renameSource = vi.fn(async () => ({
+      ok: false as const,
+      message: 'Name used by "Risks".',
+    }));
+    await openList({ renameSource });
+    const input = await openStep();
+    type(input, 'Risks');
+    press(input, 'Enter');
+    await vi.waitFor(() => expect(status()).toBe('Name used by "Risks".'));
+    expect(step()).not.toBeNull();
+    expect(renameSource).toHaveBeenCalledTimes(1);
+  });
+
+  test('a rejection shows the generic failure and keeps the field', async () => {
+    const renameSource = vi.fn(async () => {
+      throw new Error('offline');
+    });
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await openList({ renameSource });
+    const input = await openStep();
+    type(input, 'Budget');
+    press(input, 'Enter');
+    await vi.waitFor(() =>
+      expect(status()).toBe('The source could not be renamed.')
+    );
+    expect(step()).not.toBeNull();
+    error.mockRestore();
+  });
+
+  test('Escape, an unchanged name and an empty one call nothing', async () => {
+    const renameSource = vi.fn(async () => ({ ok: true as const }));
+    await openList({ renameSource });
+    let input = await openStep();
+    type(input, 'Budget');
+    press(input, 'Escape');
+    input.dispatchEvent(new FocusEvent('blur'));
+    await frame();
+    leaveStep();
+
+    input = await openStep();
+    type(input, ' Projects ');
+    press(input, 'Enter');
+    await vi.waitFor(() => expect(step()).toBeNull());
+
+    input = await openStep();
+    type(input, '   ');
+    press(input, 'Enter');
+    await frame();
+    expect(status()).toBe('Give the source a name.');
+    expect(step()).not.toBeNull();
+    expect(renameSource).not.toHaveBeenCalled();
+  });
+
+  test('a second Enter while the host answers is ignored, a late answer is dropped', async () => {
+    let answer!: (result: { ok: false; message: string }) => void;
+    const renameSource = vi.fn(
+      () =>
+        new Promise<{ ok: false; message: string }>(resolve => {
+          answer = resolve;
+        })
+    );
+    await openList({ renameSource });
+    let input = await openStep();
+    type(input, 'Budget');
+    press(input, 'Enter');
+    press(input, 'Enter');
+    await frame();
+    expect(renameSource).toHaveBeenCalledTimes(1);
+    leaveStep();
+    expect(step()).toBeNull();
+    answer({ ok: false, message: 'late' });
+    await frame();
+    input = await openStep();
+    expect(input.value).toBe('Projects');
+    expect(status()).toBeUndefined();
+  });
+
+  test("the host's naming rule warns while typing, never about the source's own name", async () => {
+    const renameSource = vi.fn(async () => ({ ok: true as const }));
+    await openList({
+      renameSource,
+      sourceName: {
+        suggest: () => '',
+        check: name => {
+          const key = name.trim().toLowerCase();
+          if (!key) return 'empty';
+          return ['projects', 'risks'].includes(key) ? 'taken' : 'ok';
+        },
+      },
+    });
+    const input = await openStep();
+    type(input, 'PROJECTS');
+    await frame();
+    await frame();
+    expect(status()).toBeUndefined();
+    type(input, 'risks');
+    await vi.waitFor(() =>
+      expect(status()).toBe('Another source already has this name.')
+    );
+    // A warning only: the host's verb decides.
+    press(input, 'Enter');
+    await vi.waitFor(() => expect(renameSource).toHaveBeenCalledTimes(1));
   });
 });

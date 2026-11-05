@@ -1,5 +1,74 @@
 # @labre/affine-block-embed
 
+## 3.0.0
+
+### Major Changes
+
+- 56c1183: The `affine:embed-html` block is retired: a stored one renders a readable card, in a
+  page and on the canvas, its html stays in the document and runs nothing, and a paste or
+  a duplicate on the canvas no longer writes a new one. Its schema stays, so every document
+  opens. Removed: `EdgelessClipboardEmbedHtmlConfig`, `EmbedHtmlFullscreenToolbar`,
+  `HtmlIcon`, `CLOSED_SANDBOX`, and `srcdocFallback` and `noScroll` of `labre-html-frame`,
+  which without `frameUrl` now renders nothing.
+
+  `EmbedHtmlConfigExtension` becomes `HtmlFileConfigExtension`, and takes `importPage`: a
+  link card then offers an import button, and the host's answer turns the card into an html
+  attachment at its place, as one undo step (ADR 0048, amendment of 2026-11-04). New keys:
+  `com.labre.bookmark.import-page.{label,failed}`,
+  `com.labre.embed.html.{retired-title,retired-description}`. Removed key:
+  `com.labre.embed.html.empty`.
+
+### Minor Changes
+
+- 1a6e1d4: The html block can run in a page its host serves, through
+  `EmbedHtmlConfigExtension({ frameUrl })`, so that a host's script policy no
+  longer stops the scripts of a stored block. Without the extension the block stays
+  on `srcdoc`, and nothing persisted changes (ADR 0047).
+- 260fcd6: An html file can be imported, previewed and shown as a thumbnail, in a page and on
+  the canvas, once a host names its page through `EmbedHtmlConfigExtension({ frameUrl })`.
+  It is an ordinary attachment; without the page it stays a card. The frame is one
+  component, `labre-html-frame` (`@labre/affine/components/html-frame`), that the html
+  block now mounts too and a host can mount outside the editor.
+
+  `AttachmentEmbedConfig` widens: `check` and `render` receive an optional `std`, and
+  `renderThumbnail` is optional. `EmbedHtmlConfigExtension` also comes from
+  `@labre/affine-shared/services`. Removed: `EmbedHtmlBlockComponent.iframe`, which
+  nothing read, the frame being in the component's shadow root. New keys:
+  `com.labre.attachment.html.{interact,stop-interacting,fullscreen,exit-fullscreen}`
+  (ADR 0048).
+
+- ee98d7e: No script of an html attachment runs without a reader's gesture, Interact or full
+  screen. `labre-html-frame` gains `scripts`, off by default and never on for a
+  thumbnail, and answers the host's page with `{ html, scripts }`: a host's frame must
+  run scripts only on an explicit `scripts: true`. A `srcdoc` is `sandbox=""` until the
+  gesture. The html block asks for no scripts, so a stored block that draws itself with
+  a script stays empty.
+
+  An html file now opens on its embed view, in a page and on the canvas. "Interact" turns
+  on every embed view of the document, a press outside all of them turns them off. An
+  embed view scrolls when it can; on the canvas its width and height change on their own
+  and it opens around its centre; in a page its height has a handle, stored in `xywh`. New
+  key: `com.labre.attachment.html.resize` (ADR 0048).
+
+### Patch Changes
+
+- Updated dependencies [0d3dac4]
+- Updated dependencies [0610ec1]
+- Updated dependencies [260fcd6]
+- Updated dependencies [ee98d7e]
+- Updated dependencies [56c1183]
+- Updated dependencies [3dd3c9f]
+  - @labre/affine-shared@3.0.0
+  - @labre/global@3.0.0
+  - @labre/affine-components@3.0.0
+  - @labre/affine-block-surface@3.0.0
+  - @labre/affine-rich-text@3.0.0
+  - @labre/affine-widget-slash-menu@3.0.0
+  - @labre/affine-ext-loader@3.0.0
+  - @labre/affine-model@3.0.0
+  - @labre/std@3.0.0
+  - @labre/store@3.0.0
+
 ## 2.5.0
 
 ### Patch Changes

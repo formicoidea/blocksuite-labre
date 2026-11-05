@@ -1,5 +1,36 @@
 # @labre/affine-inline-preset
 
+## 3.0.0
+
+### Patch Changes
+
+- 0610ec1: `styleMap` now comes from `@labre/global/lit`: every value goes to the CSSOM on the
+  first render too, as Lit does on later ones, so one value sets one property and a
+  value the browser refuses leaves the property unset. No package imports Lit's
+  directive any more (`style-map-boundary.unit.spec.ts`). The HTML adapter writes a
+  highlight colour only from a `--` token. Nothing persisted changes, and tokens,
+  `var()`, `rgb()` and `oklch()` render as before.
+- Updated dependencies [0d3dac4]
+- Updated dependencies [0610ec1]
+- Updated dependencies [260fcd6]
+- Updated dependencies [ee98d7e]
+- Updated dependencies [56c1183]
+- Updated dependencies [3dd3c9f]
+  - @labre/affine-shared@3.0.0
+  - @labre/global@3.0.0
+  - @labre/affine-components@3.0.0
+  - @labre/affine-inline-comment@3.0.0
+  - @labre/affine-inline-footnote@3.0.0
+  - @labre/affine-inline-latex@3.0.0
+  - @labre/affine-inline-link@3.0.0
+  - @labre/affine-inline-mention@3.0.0
+  - @labre/affine-inline-reference@3.0.0
+  - @labre/affine-rich-text@3.0.0
+  - @labre/affine-ext-loader@3.0.0
+  - @labre/affine-model@3.0.0
+  - @labre/std@3.0.0
+  - @labre/store@3.0.0
+
 ## 2.5.0
 
 ### Patch Changes

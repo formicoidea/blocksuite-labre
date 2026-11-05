@@ -3,6 +3,7 @@ import type { TranslationService } from '@labre/affine-shared/services';
 import type {
   BackgroundLabelSource,
   BackgroundTextDef,
+  BackgroundTextStyle,
   FrameworkBackgroundDef,
 } from './def.js';
 import {
@@ -69,6 +70,34 @@ export function backgroundVisible(
   model: BackgroundModelLike
 ): boolean {
   return visibleProp === undefined ? true : Boolean(model[visibleProp]);
+}
+
+/**
+ * The style a text is painted in once the instance's own size is applied — THE
+ * one place a `sizeProp` is read (ADR 0049).
+ *
+ * The band widths, the renderer and the label hit boxes all take their style
+ * from here, so the size that thickens a wrapped band is the size painted in
+ * it and the size its hit box is cut for. A stored value is trusted only when
+ * it is a finite number above zero: anything else (a damaged or hostile
+ * document, a peer's half-typed value) paints the declared size.
+ *
+ * Returns the declared style ITSELF when nothing overrides it, so a
+ * declaration with no `sizeProp` — every framework but one — allocates
+ * nothing and keeps the identity some callers compare by.
+ */
+export function backgroundSizedStyle(
+  style: BackgroundTextStyle,
+  sizeProp: string | undefined,
+  model: BackgroundModelLike
+): BackgroundTextStyle {
+  if (sizeProp === undefined) return style;
+  const size = model[sizeProp];
+  if (typeof size !== 'number' || !Number.isFinite(size) || size <= 0) {
+    return style;
+  }
+  if (size === style.size) return style;
+  return { ...style, size };
 }
 
 /**
@@ -278,13 +307,14 @@ export function backgroundLabelHits(
     const ay = py + (wrap?.shift[1] ?? 0);
 
     const lines = wrap && wrap.lines.length > 1 ? wrap.lines : [words];
-    const lineHeight = backgroundWrapLineHeight(text.style);
+    const style = backgroundSizedStyle(text.style, text.sizeProp, model);
+    const lineHeight = backgroundWrapLineHeight(style);
     const boxes = lines.map((line, i) => {
       // The renderer's own stacking: centred on the anchor, across the text.
       const across = (i - (lines.length - 1) / 2) * lineHeight;
       return backgroundTextHitBox(
         line,
-        text.style.size,
+        style.size,
         text.vertical ? ax + across : ax,
         text.vertical ? ay : ay + across,
         text.align,

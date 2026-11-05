@@ -1,5 +1,40 @@
 # @labre/affine-block-image
 
+## 3.0.0
+
+### Minor Changes
+
+- 3dd3c9f: Anything replaces anything, in the frame of what it replaces: on a canvas image, file, html
+  and shape, in a page image, file and html. A picture is cut to the frame by the crop of ADR
+  0037 and never distorted, so an image replaced by an image no longer follows the new ratio.
+  A `replace` answer of `AssetPickerProvider` may be of any type. New commands
+  `canvas.attachment.replace` and `canvas.attachment.replaceWithShape`; `ElementReplaced` gains
+  `attachment`. Removed: `pickImageSource`, `pickAttachmentSource`. A card on a canvas is
+  contained in its box instead of stretched. New keys:
+  `com.labre.image.replace.with-asset`, `com.labre.attachment.replace.description`,
+  `com.labre.attachment.replace.with-shape.description`. Removed key:
+  `com.labre.image.replace.with-image` (ADR 0044, amendment of 2026-11-04).
+
+### Patch Changes
+
+- Updated dependencies [0d3dac4]
+- Updated dependencies [0610ec1]
+- Updated dependencies [260fcd6]
+- Updated dependencies [ee98d7e]
+- Updated dependencies [56c1183]
+- Updated dependencies [3dd3c9f]
+  - @labre/affine-shared@3.0.0
+  - @labre/global@3.0.0
+  - @labre/affine-components@3.0.0
+  - @labre/affine-block-surface@3.0.0
+  - @labre/affine-gfx-shape@3.0.0
+  - @labre/affine-widget-slash-menu@3.0.0
+  - @labre/affine-ext-loader@3.0.0
+  - @labre/affine-gfx-turbo-renderer@3.0.0
+  - @labre/affine-model@3.0.0
+  - @labre/std@3.0.0
+  - @labre/store@3.0.0
+
 ## 2.5.0
 
 ### Patch Changes

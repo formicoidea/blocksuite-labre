@@ -29,6 +29,17 @@ export const styles = css`
     cursor: default;
   }
 
+  .slider-container[data-continuous] {
+    cursor: pointer;
+    outline: none;
+  }
+
+  .slider-container[data-continuous]:focus-visible {
+    outline: 1px solid ${unsafeCSSVarV2('button/primary')};
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
   .point-button {
     display: flex;
     align-items: center;

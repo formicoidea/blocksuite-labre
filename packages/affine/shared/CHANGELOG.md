@@ -1,5 +1,67 @@
 # @labre/affine-shared
 
+## 3.0.0
+
+### Major Changes
+
+- 56c1183: The `affine:embed-html` block is retired: a stored one renders a readable card, in a
+  page and on the canvas, its html stays in the document and runs nothing, and a paste or
+  a duplicate on the canvas no longer writes a new one. Its schema stays, so every document
+  opens. Removed: `EdgelessClipboardEmbedHtmlConfig`, `EmbedHtmlFullscreenToolbar`,
+  `HtmlIcon`, `CLOSED_SANDBOX`, and `srcdocFallback` and `noScroll` of `labre-html-frame`,
+  which without `frameUrl` now renders nothing.
+
+  `EmbedHtmlConfigExtension` becomes `HtmlFileConfigExtension`, and takes `importPage`: a
+  link card then offers an import button, and the host's answer turns the card into an html
+  attachment at its place, as one undo step (ADR 0048, amendment of 2026-11-04). New keys:
+  `com.labre.bookmark.import-page.{label,failed}`,
+  `com.labre.embed.html.{retired-title,retired-description}`. Removed key:
+  `com.labre.embed.html.empty`.
+
+### Minor Changes
+
+- 260fcd6: An html file can be imported, previewed and shown as a thumbnail, in a page and on
+  the canvas, once a host names its page through `EmbedHtmlConfigExtension({ frameUrl })`.
+  It is an ordinary attachment; without the page it stays a card. The frame is one
+  component, `labre-html-frame` (`@labre/affine/components/html-frame`), that the html
+  block now mounts too and a host can mount outside the editor.
+
+  `AttachmentEmbedConfig` widens: `check` and `render` receive an optional `std`, and
+  `renderThumbnail` is optional. `EmbedHtmlConfigExtension` also comes from
+  `@labre/affine-shared/services`. Removed: `EmbedHtmlBlockComponent.iframe`, which
+  nothing read, the frame being in the component's shadow root. New keys:
+  `com.labre.attachment.html.{interact,stop-interacting,fullscreen,exit-fullscreen}`
+  (ADR 0048).
+
+- 3dd3c9f: Anything replaces anything, in the frame of what it replaces: on a canvas image, file, html
+  and shape, in a page image, file and html. A picture is cut to the frame by the crop of ADR
+  0037 and never distorted, so an image replaced by an image no longer follows the new ratio.
+  A `replace` answer of `AssetPickerProvider` may be of any type. New commands
+  `canvas.attachment.replace` and `canvas.attachment.replaceWithShape`; `ElementReplaced` gains
+  `attachment`. Removed: `pickImageSource`, `pickAttachmentSource`. A card on a canvas is
+  contained in its box instead of stretched. New keys:
+  `com.labre.image.replace.with-asset`, `com.labre.attachment.replace.description`,
+  `com.labre.attachment.replace.with-shape.description`. Removed key:
+  `com.labre.image.replace.with-image` (ADR 0044, amendment of 2026-11-04).
+
+### Patch Changes
+
+- 0d3dac4: "Replace" on an attachment card answered with an image makes it an image block in the
+  same place, with its caption, and on a canvas its corner and depth, in one undo step
+  when the host's ref carries its size. A host may now offer images for `kind: 'file'`,
+  `mode: 'replace'`.
+
+  An html attachment in a note on a canvas no longer needs the note entered first:
+  "Interact", full screen, the height handle and the frame while interacting take the
+  pointer above the note's mask, and the height follows the pointer at any zoom or note
+  scale (ADR 0048).
+
+- Updated dependencies [0610ec1]
+  - @labre/global@3.0.0
+  - @labre/affine-model@3.0.0
+  - @labre/std@3.0.0
+  - @labre/store@3.0.0
+
 ## 2.5.0
 
 ### Patch Changes

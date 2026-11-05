@@ -244,3 +244,79 @@ picture), and a regenerate redraws it from the keys, as for any row
   tagged method) instead of its stored fill. A client older than 0.62 opening
   the same board paints the stored fill (it reads no tag) and offers no
   Method section; the tag is preserved.
+
+## Amendments
+
+### 2026-11-04 — morph families: the method joins the family
+
+The "Change type" menu of a Wardley artefact now offers, in this order (PO
+decision): component, component + method, market, ecosystem, pipeline
+(`WARDLEY_MORPH_FAMILIES`, `gfx/wardley/src/morph.ts`; the restatement
+`WARDLEY_MORPHABLE_KINDS` in `presets.ts` follows). Every pair morphs, in
+both directions.
+
+**Why now.** The method was left out of the family by a written decision:
+its grey fill encoded the chosen method, so morphing away discarded the
+decision and morphing in had to invent one. Sections 2 and 3 of this ADR
+removed that premise: the method is the `wardley:method` tag, and the ring is
+painted from it, Make when no tag names one. The morph never writes `tags`, so:
+
+- component → method writes no tag and opens no menu: the new method paints
+  Make until the author picks another (PO decision);
+- method → any other kind keeps the `wardley:method` tag stored and inert
+  (no superfluous write): the ring is painted for `kind === 'method'` only
+  (`node/node-renderer.ts`) and the legend row requires the `wardley:method`
+  role, so nothing reads it. Morphing back into a method puts it back in force;
+- the nature, the name (rewritten only while it is still the creation
+  prompt), the centre and the connectors survive as for every member; a
+  method ↔ pipeline crossing goes through the pipeline's handle like any other.
+
+Nothing in `afterMorph` is method-specific: label and icon come from the
+`addMethod` command (telemetry `node:method`, key
+`com.labre.keyboardShortcuts.wardley.addMethod`, no new key), the 35-pixel box
+from `WARDLEY_NODE_SIZE`, the name's place (beside) and the patch and clears
+from the presets. The method's birth fill (`METHOD_FILL`) is written by the
+patch as any preset key is, and stays covered by the ring.
+
+**Known risk, unchanged on purpose.** Between two circles the name stays where
+it was while the circle grows (18 → 35: the edge advances 8.5 px, beyond W3's
+`minPenetration` of 4), so a W3 label / component warning may appear after a
+component becomes a method, as it already does when one becomes an ecosystem
+(40). The placement is the author's; the morph does not move it.
+
+Not a red zone: no schema, no stored field, no role or tag change.
+
+### 2026-11-04 — a pipeline carries a nature, through `appliesTo` and not through a parent
+
+A pipeline is a component spread over a range of evolution: it is an
+activity, data, a practice or knowledge exactly as a circle is, and a mapper
+qualifies it the same way. The `wardley:nature` tag now names it explicitly:
+`appliesTo: [wardley:component, wardley:pipeline]` (`gfx/wardley/src/natures.ts`).
+
+**Why `appliesTo` rather than `parent: component`**, which is how section 1
+brought the method node in. The role tree is read by more than the tag
+registry. W3 (`rules.ts`) compares role PAIRS through `roleIsA`, and its pairs
+include `[component, component]`; a pipeline is a bar components are placed ON
+(`presets.ts`), so a pipeline that IS a component would turn every component
+standing on one into an overlap finding. A parent is a claim every reader of
+the tree acts on; `appliesTo` is a claim this one tag makes. The method node
+needed the first (it is a component for every reader); the pipeline needs only
+the second.
+
+- The handle (`wardley:handle`) stays unqualified: it is the connection point.
+  That keeps one qualifiable member per pipeline composite, so the toolbar's
+  qualification entry answers for the body both on a drawn pipeline (body +
+  (handle + label)) and on a morphed one (one flat group of three)
+  (`tags-toolbar.unit.spec.ts`).
+- The nature survives a morph between component, market, ecosystem and
+  pipeline: the morph writes kind, size and style, never `tags`.
+- **The reading panel does not read a pipeline's nature** (PO decision): the
+  pipeline's reading profile is unchanged and `reading-coverage.unit.spec.ts`
+  still lists `wardley:pipeline` as "not a link in the value chain". The
+  nature is a fact the map carries and the rules engine can read; surfacing
+  it in the panel is a separate change.
+- The renderer JSON export does not write it either: the renderer accepts a
+  nature on a functional component only, so a pipeline's nature is reported in
+  the export's warnings, as a market's or an ecosystem's already is.
+- Not a red zone: no schema, no stored field, no role change; one runtime tag
+  definition widens, and documents written before it load unchanged.

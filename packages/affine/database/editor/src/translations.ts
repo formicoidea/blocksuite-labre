@@ -182,6 +182,20 @@ export const SOURCE_NAME_EMPTY: ChromeWording = [
   'Give the source a name.',
 ];
 
+/* ── Renaming the view's source (issue #576) ──────────────────────────── */
+
+/** First in the view settings' "Source" list, with the host's `renameSource`. */
+export const SOURCE_RENAME_ENTRY: ChromeWording = [
+  'com.labre.database.source-rename.entry',
+  'Rename source',
+];
+
+/** Under the field when `renameSource` rejects (the host's refusals carry their own sentence). */
+export const SOURCE_RENAME_FAILED: ChromeWording = [
+  'com.labre.database.source-rename.failed',
+  'The source could not be renamed.',
+];
+
 /* ── Searching a list of sources (labre recette of 2.1) ───────────────── */
 
 export const SOURCE_SEARCH_PLACEHOLDER: ChromeWording = [
@@ -230,6 +244,8 @@ const DATABASE_EDITOR_WORDINGS: readonly ChromeWording[] = [
   SOURCE_NAME_OK,
   SOURCE_NAME_PLACEHOLDER,
   SOURCE_NAME_TAKEN,
+  SOURCE_RENAME_ENTRY,
+  SOURCE_RENAME_FAILED,
   SOURCE_SEARCH_CREATE,
   SOURCE_SEARCH_PLACEHOLDER,
   VIEW_MENU_IMPORT,

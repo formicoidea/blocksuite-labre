@@ -37,6 +37,40 @@ const tagsInAncestor = (o: NodeProps<HtmlAST>, tagNames: Array<string>) => {
   return false;
 };
 
+const isFollowedByChildrenContainer = (o: NodeProps<HtmlAST>) =>
+  o.next?.type === 'element' &&
+  o.next.tagName === 'div' &&
+  Array.isArray(o.next.properties?.className) &&
+  (o.next.properties.className.includes('affine-block-children-container') ||
+    o.next.properties.className.includes('indented'));
+
+/**
+ * A `<p>` holding nothing but images, line breaks and blank text, the way a
+ * connector or a web page wraps a picture standing on its own. The image
+ * matcher writes the image block; opening a paragraph here left an empty one
+ * with the image nested under it (the HTML twin of #521). Enter and leave
+ * must agree, or the unmatched close pops the parent: both read this.
+ *
+ * A `<p>` followed by a children container keeps its paragraph: that
+ * container's `leave` closes the block the `<p>` opened.
+ */
+const isImageOnlyHtmlParagraph = (o: NodeProps<HtmlAST>) => {
+  const node = o.node;
+  if (!HastUtils.isElement(node) || node.tagName !== 'p') return false;
+  if (isFollowedByChildrenContainer(o)) return false;
+  const isImage = (child: HtmlAST) =>
+    HastUtils.isElement(child) && child.tagName === 'img';
+  return (
+    node.children.some(isImage) &&
+    node.children.every(
+      child =>
+        isImage(child) ||
+        (HastUtils.isElement(child) && child.tagName === 'br') ||
+        (child.type === 'text' && child.value.trim() === '')
+    )
+  );
+};
+
 export const paragraphBlockHtmlAdapterMatcher: BlockHtmlAdapterMatcher = {
   flavour: ParagraphBlockSchema.model.flavour,
   toMatch: o =>
@@ -111,6 +145,9 @@ export const paragraphBlockHtmlAdapterMatcher: BlockHtmlAdapterMatcher = {
           break;
         }
         case 'p': {
+          if (isImageOnlyHtmlParagraph(o)) {
+            break;
+          }
           walkerContext.openNode(
             {
               type: 'block',
@@ -192,15 +229,11 @@ export const paragraphBlockHtmlAdapterMatcher: BlockHtmlAdapterMatcher = {
           break;
         }
         case 'p': {
-          if (
-            o.next?.type === 'element' &&
-            o.next.tagName === 'div' &&
-            Array.isArray(o.next.properties?.className) &&
-            (o.next.properties.className.includes(
-              'affine-block-children-container'
-            ) ||
-              o.next.properties.className.includes('indented'))
-          ) {
+          if (isImageOnlyHtmlParagraph(o)) {
+            // Nothing was opened in enter.
+            break;
+          }
+          if (isFollowedByChildrenContainer(o)) {
             // Close the node when leaving div indented
             break;
           }

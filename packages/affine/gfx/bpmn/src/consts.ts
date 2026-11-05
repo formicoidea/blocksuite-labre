@@ -1,6 +1,7 @@
 import type { BpmnNodeKind } from '@labre/affine-model';
 import { PointStyle, StrokeStyle } from '@labre/affine-model/headless';
 import { NOTATION_NEUTRALS } from '@labre/affine-shared/headless';
+import type { ChromeWording } from '@labre/affine-shared/services';
 
 /**
  * Visual constants for the BPMN basics. Style "C" (hybrid): spec-accurate
@@ -319,6 +320,25 @@ export const POOL_FONT_FAMILY = 'Inter, sans-serif';
  * zoomed out, which is the size the distinction has to hold at.
  */
 export const POOL_LANE_NAME_FONT_SIZE = 13;
+
+/**
+ * The sizes the pool toolbar offers for the participant name and for the lane
+ * titles (ADR 0049) — the default of each among them, and the lane steps two
+ * units under the title's, the distance the default sizes keep. A pool stores
+ * a size only once the author picks one (`nameFontSize` / `laneFontSize`).
+ */
+export const POOL_NAME_FONT_SIZES = [13, 15, 18, 24, 32] as const;
+export const POOL_LANE_NAME_FONT_SIZES = [11, 13, 15, 18, 24] as const;
+
+/** The two size dropdowns' own labels — toolbar chrome, never stored. */
+export const BPMN_POOL_TITLE_SIZE: ChromeWording = [
+  'com.labre.bpmn.toolbar.poolTitleSize',
+  'Pool title size',
+];
+export const BPMN_LANE_TITLE_SIZE: ChromeWording = [
+  'com.labre.bpmn.toolbar.laneTitleSize',
+  'Lane title size',
+];
 
 /**
  * The two band widths live in `@labre/affine-model`, beside the pool model that

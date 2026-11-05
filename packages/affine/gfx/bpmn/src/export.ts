@@ -671,6 +671,20 @@ function isFragment(value: unknown): value is string {
   return typeof value === 'string' && value.trimStart().startsWith('<');
 }
 
+/**
+ * Whether a carried shape child is a `BPMNLabel`, under whatever prefix the
+ * source file bound DI to: matches `<bpmndi:BPMNLabel>` and `<BPMNLabel/>`,
+ * rejects `<bpmndi:BPMNLabelStyle>`. By local name, because the fragment is a
+ * string and its prefix is the file's; under a `BPMNShape`, the one child of
+ * that name the schema allows IS the label.
+ */
+function isCarriedBpmnLabel(node: XmlNode): boolean {
+  return (
+    'fragment' in node &&
+    /^\s*<(?:[A-Za-z_][\w.-]*:)?BPMNLabel(?=[\s/>])/.test(node.fragment)
+  );
+}
+
 /** The carried child fragments of one or more scopes, in the stored order. */
 function carriedFragments(
   bag: Record<string, string[]> | undefined,
@@ -923,6 +937,21 @@ export interface BpmnExportBoard {
    */
   labels?: ReadonlyMap<string, string>;
   /**
+   * Where each of those names is drawn, keyed like {@link labels}: the bound
+   * of the grouped `bpmn:label` text, written as the shape's
+   * `bpmndi:BPMNLabel` so a tool puts the name where the author left it rather
+   * than where it would have chosen (ADR 0029, amendment of 2026-11-04).
+   *
+   * A map of its own beside `labels` rather than a richer value inside it, so
+   * that a host which builds or reads `labels` as plain strings keeps
+   * compiling. A node with a name and no entry here gets no `BPMNLabel` of
+   * Labre's, and whatever an import carried is written back as before.
+   */
+  labelBounds?: ReadonlyMap<
+    string,
+    { x: number; y: number; w: number; h: number }
+  >;
+  /**
    * How many things drawn INSIDE a pool the picking left behind because they
    * carry no BPMN role — a free shape, a text, an artefact drawn before roles
    * existed (2026-08-26).
@@ -1072,6 +1101,8 @@ interface PlannedNode {
   categoryId?: string;
   name: string;
   bound: Bound;
+  /** Where the gravitating name is drawn, when it has a label of its own. */
+  labelBound?: Rect;
   /** A `processes` index, or {@link COLLABORATION}. */
   scope: number;
   lane: BpmnLane | null;
@@ -1459,13 +1490,19 @@ export function exportBpmnXmlWithWarnings(
 
     // The grouped label first, then the shape's own text: a legacy event kept
     // its inner text and must still export the same name.
-    const name = labelOf(board.labels?.get(model.id)) || labelOf(model.text);
+    const label = labelOf(board.labels?.get(model.id));
+    const name = label || labelOf(model.text);
+    // A box only for a name its LABEL gave: a legacy event whose name is its
+    // own inner text has no drawn label to place, and an empty label text in
+    // the group names nothing a reader could draw in it.
+    const labelBound = label ? board.labelBounds?.get(model.id) : undefined;
     const node: PlannedNode = {
       model,
       mapping,
       id: minter.given(carriedBpmnId(model), '', model.id),
       name,
       bound,
+      ...(labelBound ? { labelBound } : {}),
       scope,
       lane: pool ? bpmnLaneOf(pool, bound) : null,
       payload: carriedOf(model),
@@ -1565,6 +1602,12 @@ export function exportBpmnXmlWithWarnings(
     const bound = process.pool.elementBound;
     observe(bound.x, bound.y);
   }
+  // The labels are offset with the shapes but do not MOVE the origin: a name
+  // hangs wider than a narrow event, so letting it count would shift the whole
+  // plane the first time a board's names gravitate into labels, and the
+  // export → import → export fixed point would no longer hold. A name hung
+  // past the leftmost or topmost shape keeps a small negative coordinate,
+  // which BPMN DI allows (ADR 0029, amendment of 2026-11-04).
   for (const node of planned) observe(node.bound.x, node.bound.y);
   for (const edge of edges) {
     for (const [x, y] of edge.waypoints) observe(x, y);
@@ -1849,10 +1892,27 @@ export function exportBpmnXmlWithWarnings(
       attrs.isMarkerVisible = 'true';
     }
     Object.assign(attrs, carried.attrs(node.payload, BPMN_SCOPE.shape));
+    const extras = carriedFragments(node.payload?.di, BPMN_SCOPE.shape);
+    // `tBPMNShape` is `Bounds → BPMNLabel?`: ONE label, after the bounds. When
+    // the name has a label of its own on the board, that label's box is the
+    // `BPMNLabel`, offset with everything else, and any label an import carried
+    // (a document imported before 2026-11-04 holds one) gives way to it.
+    const label = node.labelBound
+      ? [
+          el('bpmndi:BPMNLabel', {}, [
+            el('dc:Bounds', boundsAttrs(node.labelBound, dx, dy)),
+          ]),
+        ]
+      : [];
     planeElements.push(
       el('bpmndi:BPMNShape', attrs, [
         el('dc:Bounds', boundsAttrs(node.bound, dx, dy)),
-        ...carried.keep(carriedFragments(node.payload?.di, BPMN_SCOPE.shape)),
+        ...label,
+        ...carried.keep(
+          node.labelBound
+            ? extras.filter(extra => !isCarriedBpmnLabel(extra))
+            : extras
+        ),
       ])
     );
   }

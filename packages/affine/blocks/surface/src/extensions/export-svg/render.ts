@@ -8,7 +8,9 @@ import type { BlockStdScope } from '@labre/std';
 import {
   GfxBlockElementModel,
   GfxControllerIdentifier,
+  type GfxModel,
   GfxPrimitiveElementModel,
+  isGfxGroupCompatibleModel,
 } from '@labre/std/gfx';
 import type { ExtensionType } from '@labre/store';
 
@@ -215,24 +217,33 @@ export function canvasRendererOf(std: BlockStdScope): CanvasRenderer | null {
   return renderer instanceof CanvasRenderer ? renderer : null;
 }
 
-/**
- * What the WHOLE canvas export draws: every canvas element and every edgeless
- * text block this viewer sees (ADR 0031: what they hid is neither painted nor
- * allowed to widen the picture), in the canvas' own z-order.
- *
- * The canvas' other blocks — notes, frames, images, embeds, attachments — are
- * DOM, and no painter draws them into the 2D context (ADR 0025,
- * Consequences): they are not in the file. A block that registers a
- * {@link BlockSvgPainterExtension} joins without a change here.
- */
-export function canvasSvgModels(std: BlockStdScope): {
+/** What the SVG replay can draw, split by how it draws it. */
+export interface SvgDrawableModels {
+  /** Canvas elements, replayed through the canvas renderer. */
   elements: GfxPrimitiveElementModel[];
+  /** Blocks with a {@link BlockSvgPainterExtension}, painted by it. */
   textBlocks: GfxBlockElementModel[];
-} {
+}
+
+/**
+ * The part of `models` the replay can draw, in the canvas' own z-order: what
+ * this viewer hid is neither painted nor allowed to widen the picture (ADR
+ * 0031), and a block with no {@link BlockSvgPainterExtension} is set aside —
+ * notes, frames, images, embeds, attachments are DOM, and no painter draws
+ * them into the 2D context (ADR 0025, Consequences). A block that registers a
+ * painter joins without a change here.
+ *
+ * Shared by the whole-canvas and the selection exports, so the two can never
+ * disagree on what "drawable" means.
+ */
+function svgDrawableModels(
+  std: BlockStdScope,
+  models: Iterable<GfxModel>
+): SvgDrawableModels {
   const gfx = std.get(GfxControllerIdentifier);
   const elements: GfxPrimitiveElementModel[] = [];
   const textBlocks: GfxBlockElementModel[] = [];
-  for (const model of [...gfx.gfxElements].sort(gfx.layer.compare)) {
+  for (const model of [...models].sort(gfx.layer.compare)) {
     if (gfx.localVisibility.isHidden(model)) continue;
     if (model instanceof GfxPrimitiveElementModel) {
       elements.push(model);
@@ -247,15 +258,48 @@ export function canvasSvgModels(std: BlockStdScope): {
 }
 
 /**
- * The whole canvas as one SVG document: {@link renderBoardSvg}'s replay of
- * the canvas renderers, over everything {@link canvasSvgModels} keeps, framed
- * by the union of what is painted. `null` when there is nothing to draw, or
- * no {@link CanvasRenderer} to draw it with.
+ * What the WHOLE canvas export draws: every canvas element and every painted
+ * block this viewer sees, in the canvas' own z-order ({@link
+ * svgDrawableModels}).
  */
-export function renderCanvasSvg(std: BlockStdScope): BoardSvgExport | null {
+export function canvasSvgModels(std: BlockStdScope): SvgDrawableModels {
+  return svgDrawableModels(std, std.get(GfxControllerIdentifier).gfxElements);
+}
+
+/**
+ * What the SELECTION export draws: the selected models with every container
+ * unfolded — a group, a mindmap or a frame brings its descendants, since a
+ * selected group IS its content on screen — then filtered and ordered like
+ * the whole canvas ({@link svgDrawableModels}). A model reached twice (a
+ * shape selected along with its group) is drawn once.
+ */
+export function selectionSvgModels(
+  std: BlockStdScope,
+  models: readonly GfxModel[]
+): SvgDrawableModels {
+  const unfolded = new Set<GfxModel>();
+  for (const model of models) {
+    unfolded.add(model);
+    if (isGfxGroupCompatibleModel(model)) {
+      for (const descendant of model.descendantElements) {
+        unfolded.add(descendant);
+      }
+    }
+  }
+  return svgDrawableModels(std, unfolded);
+}
+
+/**
+ * Replay what {@link svgDrawableModels} kept, framed by the union of what is
+ * painted. `null` when there is nothing to draw, or no
+ * {@link CanvasRenderer} to draw it with.
+ */
+function renderDrawableSvg(
+  std: BlockStdScope,
+  { elements, textBlocks }: SvgDrawableModels
+): BoardSvgExport | null {
   const renderer = canvasRendererOf(std);
   if (!renderer) return null;
-  const { elements, textBlocks } = canvasSvgModels(std);
   const drawn = [...elements, ...textBlocks];
   const [first] = drawn;
   if (!first) return null;
@@ -266,6 +310,30 @@ export function renderCanvasSvg(std: BlockStdScope): BoardSvgExport | null {
     textBlocks,
     exportBoundOf(first, drawn)
   );
+}
+
+/**
+ * The whole canvas as one SVG document: {@link renderBoardSvg}'s replay of
+ * the canvas renderers, over everything {@link canvasSvgModels} keeps, framed
+ * by the union of what is painted. `null` when there is nothing to draw, or
+ * no {@link CanvasRenderer} to draw it with.
+ */
+export function renderCanvasSvg(std: BlockStdScope): BoardSvgExport | null {
+  return renderDrawableSvg(std, canvasSvgModels(std));
+}
+
+/**
+ * The given selection as one SVG document: the same replay as
+ * {@link renderCanvasSvg}, over what {@link selectionSvgModels} keeps of
+ * `models`, framed by the union of what is painted — the selection's own
+ * extent, not a board's frame. `null` when nothing in it can be drawn (a
+ * selection of notes alone), or no {@link CanvasRenderer} to draw it with.
+ */
+export function renderSelectionSvg(
+  std: BlockStdScope,
+  models: readonly GfxModel[]
+): BoardSvgExport | null {
+  return renderDrawableSvg(std, selectionSvgModels(std, models));
 }
 
 /**
