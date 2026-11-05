@@ -1,5 +1,23 @@
 # @labre/affine-gfx-cynefin-estuarine
 
+## 3.1.0
+
+### Patch Changes
+
+- Updated dependencies [6181857]
+  - @labre/affine-shared@3.1.0
+  - @labre/affine-widget-edgeless-toolbar@3.1.0
+  - @labre/affine-block-surface@3.1.0
+  - @labre/affine-components@3.1.0
+  - @labre/affine-gfx-pointer@3.1.0
+  - @labre/affine-gfx-shape@3.1.0
+  - @labre/affine-gfx-template@3.1.0
+  - @labre/affine-ext-loader@3.1.0
+  - @labre/affine-model@3.1.0
+  - @labre/global@3.1.0
+  - @labre/std@3.1.0
+  - @labre/store@3.1.0
+
 ## 3.0.0
 
 ### Patch Changes
