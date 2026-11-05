@@ -55,7 +55,9 @@ function rows(controller: ImageCropController) {
   };
   const action = imageCropToolbarAction(() => block);
   const host = document.createElement('div');
-  render(action.content!({ std, readonly: false } as never), host);
+  const content = action.content;
+  if (typeof content !== 'function') throw new Error('content is a template');
+  render(content({ std, readonly: false } as never), host);
   const selected = Array.from(
     host.querySelectorAll<HTMLElement>('[data-testid^="image-crop-"]')
   )
