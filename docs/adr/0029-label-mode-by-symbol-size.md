@@ -109,6 +109,14 @@ nine frameworks: 72 already consistent with the criterion below, 12 not — the
 
 ## Amendments
 
+### 2026-11-04: `bpmn.unlabeled-step` asks events and gateways again
+
+The consequence "`bpmn.unlabeled-step` is narrowed to the activities" no longer
+holds. The `label-presence` family can now read the grouped label this ADR
+introduced (`labelRole`, ADR 0021 amendment of 2026-11-04), so the rule is back
+on `bpmn:flow-object` at `version: 2`: an event or a gateway is named by its
+inner text if it still has one, otherwise by the `bpmn:label` sharing its group.
+
 **2026-11-04 — point 6, the label's PLACE crosses the file (debt 1 lifted).**
 Point 6 bound a name to its node by group membership and left its position to
 the reader: the importer always hung the label under the symbol, centred, and

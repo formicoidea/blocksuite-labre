@@ -917,11 +917,14 @@ export interface ReachabilityDef {
  * one the engine can read without importing a model. See {@link elementLabel}
  * for what counts as empty.
  *
- * A framework whose artefacts are named by a SEPARATE element beside them — a
- * text element sitting next to a node, the way a Wardley label does — is not
- * asking this question, and this family cannot answer it: it reads the subject's
- * own words and nothing else. That is a different family (a proximity between
- * two roles), not a flag on this one.
+ * One exception, declared and never guessed: {@link labelRole}. An artefact
+ * whose name is a free text GROUPED with it (R38's external label,
+ * `docs/adr/0029`) still has its name in the artefact, because the group IS the
+ * artefact — one click selects it, one move carries both. The family then reads
+ * the sibling carrying that role, exactly as `readName` does for the reading
+ * panel (`reading.ts`). A text merely sitting NEXT to a node, the way a Wardley
+ * label does, is still not this question: nearness is a different family (a
+ * proximity between two roles), not a flag on this one.
  */
 export interface LabelPresenceDef {
   /**
@@ -933,6 +936,25 @@ export interface LabelPresenceDef {
    * beside it rather than as a second family.
    */
   present: true;
+  /**
+   * The role of the GROUPED sibling that names the subject when the subject's
+   * own `text` is empty — the framework's reading-profile `labelRole`, spelled
+   * again here because a rule must evaluate without a reading profile.
+   *
+   * Own text first, then the first member of the subject's group carrying this
+   * role (through `roleIsA`) with visible words. An ungrouped subject, or a
+   * group with no such member, has no name: absent sibling, absent label.
+   *
+   * Absent is the original reading — the subject's own words and nothing else.
+   *
+   * The known limit (`docs/adr/0021`, amendment of 2026-11-04): the family's
+   * scope stays `'element'`, so an INCREMENTAL pass does not re-judge the
+   * subject when only its sibling's text changes. A rule declaring this field is
+   * therefore meant to be `'on-demand'`, whose check-up is a full pass; a
+   * real-time one would first need the dependency scope of `docs/adr/0015` to
+   * reach the group.
+   */
+  labelRole?: RoleId;
 }
 
 /**
@@ -5236,6 +5258,45 @@ function elementLabel(el: unknown): string {
 }
 
 /**
+ * The words of the subject's GROUPED sibling carrying `labelRole`, or `''` —
+ * the second half of {@link LabelPresenceDef.labelRole}, and the engine-side
+ * twin of `readName` in `reading.ts`: same reading, same order (the first
+ * member with visible words wins), so the panel and the check-up never disagree
+ * about whether an event is named.
+ *
+ * Duck-typed on `group.childElements` rather than `instanceof`, because this
+ * file imports no model. `group` is a getter walking the element's surface and
+ * throws on an element attached to none; a check-up must never throw, so that
+ * reads as "not grouped", which is "no sibling", which is "no name".
+ */
+function groupedLabel(
+  el: GfxPrimitiveElementModel,
+  labelRole: RoleId,
+  roles: RoleDefs
+): string {
+  let group: unknown;
+  try {
+    group = (el as { group?: unknown }).group;
+  } catch {
+    return '';
+  }
+  const members = (group as { childElements?: unknown } | null | undefined)
+    ?.childElements;
+  if (!Array.isArray(members)) return '';
+  const carriesLabelRole = (member: unknown): boolean => {
+    if (member == null || member === el) return false;
+    const role = (member as { role?: unknown }).role;
+    return typeof role === 'string' && roleIsA(role, labelRole, roles);
+  };
+  return (
+    (members as unknown[])
+      .filter(carriesLabelRole)
+      .map(elementLabel)
+      .find(words => words !== '') ?? ''
+  );
+}
+
+/**
  * "Does this artefact say what it is?"
  *
  * The first family that reads an element's WORDS. Every other one asks about
@@ -5248,6 +5309,14 @@ function elementLabel(el: unknown): string {
  * only invisible code points — see {@link elementLabel}. Anything a reader would
  * see is a label, however short: judging the QUALITY of a name is not this
  * family's business and probably nobody's.
+ *
+ * ## A grouped name
+ *
+ * With {@link LabelPresenceDef.labelRole} declared, an empty subject is still
+ * named when a member of its group carrying that role has visible words — R38's
+ * external label (`docs/adr/0029`). An ungrouped subject, or a group without
+ * such a member, is unnamed. See {@link groupedLabel}; the incremental limit it
+ * carries is spelled on the field.
  *
  * ## Silence
  *
@@ -5295,6 +5364,12 @@ function evaluateLabelPresence(
     if (el.role === undefined) continue;
     if (!roleIsA(el.role, subjectRole, rule.roles)) continue;
     if (elementLabel(el) !== '') continue;
+    if (
+      label.labelRole !== undefined &&
+      groupedLabel(el, label.labelRole, rule.roles) !== ''
+    ) {
+      continue;
+    }
 
     backgrounds ??= backgroundsOf(rule, elements);
     const frameId = attributeBackground(el.elementBound, backgrounds)?.id;

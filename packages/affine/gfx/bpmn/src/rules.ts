@@ -152,12 +152,11 @@ import { BPMN_ROLE, BPMN_ROLES } from './roles.js';
  * - `forbidPattern` carries its OWN {@link RuleMessage} inside the pattern
  *   rather than in a slot beside the other bounds, because a forbidden zone is
  *   not a bound that failed and its sentence never reads like one;
- * - `label-presence` reads the subject's OWN `text`. A framework whose artefacts
- *   are named by a separate element beside them is asking a different question,
- *   and this family cannot answer it. BPMN names its ACTIVITIES in place, so it
- *   can ask it of them; since R38 its events, gateways and data shapes are
- *   named by a grouped `bpmn:label` instead, and are not asked (see
- *   {@link unlabeledStep}).
+ * - `label-presence` reads the subject's OWN `text`, then — when the rule
+ *   declares a `labelRole` — the text of the GROUPED sibling carrying it. BPMN
+ *   names its activities in place and, since R38, its events and gateways by a
+ *   grouped `bpmn:label`; {@link unlabeledStep} declares that role and asks all
+ *   three. A text merely sitting beside a node is still not this question.
  */
 
 /**
@@ -1544,38 +1543,38 @@ const singleBlankStart: ValidationRule = {
  * **`audit`**, because an unnamed step is a diagram that is not done rather than
  * a diagram that is wrong, and the panel is where "not done" belongs.
  *
- * Written on `bpmn:activity`, and only there. The `label-presence` family
- * reads the subject's OWN `text`, and since R38 (`docs/adr/0029`) only an
- * activity keeps its name there: an event, a gateway or a data shape is named
- * by a free `bpmn:label` text grouped with it, which the family cannot see
- * (`packages/affine/blocks/surface/src/extensions/validation.ts`, the
- * label-presence evaluator). Left on `bpmn:flow-object`, the rule would report
- * every NAMED event and gateway as unnamed.
+ * Written on `bpmn:flow-object`: every activity, event and gateway. Since R38
+ * (`docs/adr/0029`) only an activity keeps its name in its own `text`; an event
+ * or a gateway is named by a free `bpmn:label` text GROUPED with it. The rule
+ * therefore declares `labelRole: BPMN_ROLE.label`, and the `label-presence`
+ * family reads that sibling when the subject's own text is empty — the same
+ * reading as the panel's `readName` (ADR 0021, amendment of 2026-11-04). A
+ * legacy event still carrying inner text is named by it, as before.
  *
- * Losing them costs little: BPMN practice commonly leaves an event or a
- * converging gateway unnamed, while an activity is a box whose whole content is
- * its name — an empty one says nothing at all. The rule id is kept (ids are
- * forever); it was shipped as "step", and an activity is the step par
- * excellence.
+ * Version 2: version 1 was written on `bpmn:activity` alone, because the
+ * family could not see the grouped label and would have reported every NAMED
+ * event and gateway. A gateway that asks no question, or an event nobody
+ * named, is now reported too — in strict profiles, at the same `audit`
+ * severity. Data shapes are not flow objects and stay out of it. The rule id is
+ * kept (ids are forever); it was shipped as "step".
  *
- * ponytail: the ceiling is "a gateway that asks no question is not reported".
- * The upgrade path is a label-presence mode that also reads the `labelRole`
- * member of the subject's group, the way `readName` does for the reading
- * panel — an engine change, not a pack one.
+ * The incremental limit of a sibling read (editing only the label does not
+ * re-judge the subject on the real-time path) costs nothing here: the rule is
+ * on-demand, and a check-up is a full pass.
  */
 const unlabeledStep: ValidationRule = {
   id: 'bpmn.unlabeled-step',
   framework: 'bpmn',
   family: 'label-presence',
   severity: 'audit',
-  appliesTo: BPMN_ROLE.activity,
+  appliesTo: BPMN_ROLE.flowObject,
   roles: BPMN_ROLES,
   messageKey: 'com.labre.bpmn.validation.unlabeled-step',
   messageFallback: 'This step has no name.',
   suggestionKey: 'com.labre.bpmn.validation.unlabeled-step.suggestion',
   suggestionFallback:
     'Name it in a verb phrase a reader outside the room would understand — "Check the credit limit" rather than "Step 3".',
-  version: 1,
+  version: 2,
   // A name is nowhere required by the specification: an unnamed step is a
   // diagram that is not done, never one that is wrong.
   provenance: {
@@ -1589,7 +1588,7 @@ const unlabeledStep: ValidationRule = {
   // second moment exists to refuse.
   moment: 'on-demand',
   backgroundRole: BPMN_ROLE.pool,
-  label: { present: true },
+  label: { present: true, labelRole: BPMN_ROLE.label },
 };
 
 /**
