@@ -21,7 +21,14 @@
  * - a canvas frame that opens with the selection handles still live on its
  *   corners or the canvas still zooming under the wheel (the PO could not
  *   crop, 2026-10-27), or a close path that leaves the image in editing
- *   state or the viewport locked.
+ *   state or the viewport locked;
+ * - a side handle that changes both dimensions on a free crop, moves its
+ *   pinned side, loses a held ratio, drifts off the centre line, or lets the
+ *   window leave the picture (PO acceptance P4-7, 2026-11-05);
+ * - a wheel that zooms past 4x when the slider stops there, or throws a
+ *   window already past 4x back to 4x;
+ * - an element toolbar left over the frame's handles while it is open, or
+ *   left hidden once it closes.
  */
 import {
   IMAGE_CROP_MIN_SIDE,
@@ -38,6 +45,7 @@ import { describe, expect, test } from 'vitest';
 import {
   cropBoundFor,
   cropWheelFactor,
+  cropWheelZoom,
   cropZoomOf,
   maskRatio,
   moveCrop,
@@ -45,6 +53,7 @@ import {
   presetCrop,
   ratioCrop,
   resizeCrop,
+  resizeCropSide,
   WHOLE_IMAGE,
   wholeImageSize,
   zoomCropAt,
@@ -118,6 +127,70 @@ describe('crop geometry', () => {
     expect(grown.x + grown.w).toBeLessThanOrEqual(1 + 1e-9);
     expect(grown.y + grown.h).toBeLessThanOrEqual(1 + 1e-9);
     close(grown, { x: 0.1, y: 0.1, w: 0.9, h: 0.9 });
+  });
+
+  test('a free side resizes one dimension against the pinned side', () => {
+    const start = { x: 0.2, y: 0.2, w: 0.5, h: 0.4 };
+    close(resizeCropSide(start, 'e', 0.1, 0.3, null), {
+      x: 0.2,
+      y: 0.2,
+      w: 0.6,
+      h: 0.4,
+    });
+    close(resizeCropSide(start, 'w', 0.1, 0.3, null), {
+      x: 0.3,
+      y: 0.2,
+      w: 0.4,
+      h: 0.4,
+    });
+    close(resizeCropSide(start, 'n', 0.3, -0.1, null), {
+      x: 0.2,
+      y: 0.1,
+      w: 0.5,
+      h: 0.5,
+    });
+    close(resizeCropSide(start, 's', 0.3, 0.1, null), {
+      x: 0.2,
+      y: 0.2,
+      w: 0.5,
+      h: 0.5,
+    });
+  });
+
+  test('a free side stops at the image edge and at the minimum side', () => {
+    const start = { x: 0.2, y: 0.2, w: 0.5, h: 0.4 };
+    close(resizeCropSide(start, 'e', 5, 0, null), { x: 0.2, w: 0.8 });
+    close(resizeCropSide(start, 'n', 0, -5, null), { y: 0, h: 0.6 });
+    const crushed = resizeCropSide(start, 'w', 5, 0, null);
+    close(crushed, { x: 0.7 - IMAGE_CROP_MIN_SIDE, w: IMAGE_CROP_MIN_SIDE });
+  });
+
+  test('a side with a held ratio scales the other dimension about its centre', () => {
+    const k = 2;
+    const start = { x: 0.2, y: 0.4, w: 0.4, h: 0.2 };
+    const grown = resizeCropSide(start, 'e', 0.2, 0, k);
+    close(grown, { x: 0.2, w: 0.6, h: 0.3 });
+    // The centre line stays where it was.
+    expect(grown.y + grown.h / 2).toBeCloseTo(0.5, 6);
+    const tall = resizeCropSide(start, 'n', 0, -0.1, k);
+    close(tall, { y: 0.3, h: 0.3, w: 0.6 });
+    expect(tall.x + tall.w / 2).toBeCloseTo(0.4, 6);
+  });
+
+  test('a side with a held ratio stops where the image stops the other side', () => {
+    const k = 2;
+    // The centre line is 0.1 from the top: the height can reach 0.2.
+    const start = { x: 0.1, y: 0.05, w: 0.2, h: 0.1 };
+    const grown = resizeCropSide(start, 'e', 0.6, 0, k);
+    close(grown, { x: 0.1, y: 0, w: 0.4, h: 0.2 });
+    for (const side of ['n', 's', 'e', 'w'] as const) {
+      const next = resizeCropSide(start, side, 3, 3, k);
+      expect(next.w / next.h, side).toBeCloseTo(k, 6);
+      expect(next.x).toBeGreaterThanOrEqual(-1e-9);
+      expect(next.y).toBeGreaterThanOrEqual(-1e-9);
+      expect(next.x + next.w).toBeLessThanOrEqual(1 + 1e-9);
+      expect(next.y + next.h).toBeLessThanOrEqual(1 + 1e-9);
+    }
   });
 
   test('a resized page window stores the WHOLE picture size', () => {
@@ -311,6 +384,15 @@ describe('the picture pans and zooms behind a fixed frame', () => {
     // A flick is bounded.
     expect(cropWheelFactor(-10_000)).toBeCloseTo(1.05 ** -3, 6);
   });
+
+  test('the wheel stops at 4x like the slider', () => {
+    expect(cropWheelZoom(2, -100)).toBeCloseTo(2 * 1.05, 6);
+    expect(cropWheelZoom(3.9, -300)).toBe(4);
+    expect(cropWheelZoom(4, -100)).toBe(4);
+    // A window a corner shrank past 4x: no further in, no jump back out.
+    expect(cropWheelZoom(6, -100)).toBe(6);
+    expect(cropWheelZoom(6, 100)).toBeCloseTo(6 / 1.05, 6);
+  });
 });
 
 describe('writeImageCrop keeping the frame (pan and zoom)', () => {
@@ -425,16 +507,33 @@ function stubCanvas() {
   return { selection, viewport, listeners };
 }
 
+/** The element toolbar as the crop frame uses it: hidden, then shown. */
+function stubToolbar() {
+  const toolbar = {
+    hidden: false,
+    flags: {
+      hide: () => {
+        toolbar.hidden = true;
+      },
+      show: () => {
+        toolbar.hidden = false;
+      },
+    },
+  };
+  return toolbar;
+}
+
 function canvasController() {
   const { store, model } = authorImage({ xywh: '[0,0,400,200]' });
   const gfx = stubCanvas();
+  const toolbar = stubToolbar();
   const block = {
     model,
-    std: { get: () => gfx } as never,
+    std: { get: () => gfx, getOptional: () => toolbar } as never,
     querySelector: () => null,
   };
   const controller = new ImageCropController(block, true);
-  return { store, model, gfx, controller };
+  return { store, model, gfx, toolbar, controller };
 }
 
 describe('the canvas while the frame is open', () => {
@@ -508,19 +607,51 @@ describe('the canvas while the frame is open', () => {
 
   test('the page opens the frame without touching a canvas', () => {
     const { model } = authorImage({ width: 400, height: 300 });
+    const toolbar = stubToolbar();
     const block = {
       model,
       std: {
         get: () => {
           throw new Error('the page has no canvas');
         },
+        getOptional: () => toolbar,
       } as never,
       querySelector: () => null,
     };
     const controller = new ImageCropController(block, false);
     controller.choose('free');
     expect(controller.editing$.value).toBe('free');
+    expect(toolbar.hidden).toBe(true);
     controller.stop();
     expect(controller.editing$.value).toBeNull();
+    expect(toolbar.hidden).toBe(false);
+  });
+
+  test('the toolbar hides while the frame is open and comes back once', () => {
+    const { toolbar, controller } = canvasController();
+    controller.choose('free');
+    expect(toolbar.hidden).toBe(true);
+    // Switching preset keeps it hidden; closing shows it.
+    controller.choose('1:1');
+    expect(toolbar.hidden).toBe(true);
+    controller.stop();
+    expect(toolbar.hidden).toBe(false);
+    // A second stop leaves alone a toolbar hidden by something else since.
+    toolbar.flags.hide();
+    controller.stop();
+    expect(toolbar.hidden).toBe(true);
+  });
+
+  test('an editor without a toolbar still opens the frame', () => {
+    const { model } = authorImage({ width: 400, height: 300 });
+    const block = {
+      model,
+      std: { getOptional: () => null } as never,
+      querySelector: () => null,
+    };
+    const controller = new ImageCropController(block, false);
+    controller.choose('free');
+    expect(controller.editing$.value).toBe('free');
+    expect(() => controller.stop()).not.toThrow();
   });
 });

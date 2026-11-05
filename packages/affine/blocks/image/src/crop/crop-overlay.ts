@@ -8,18 +8,25 @@ import { repeat } from 'lit/directives/repeat.js';
 import {
   type CropCorner,
   type CropRect,
-  cropWheelFactor,
+  type CropSide,
   CROP_ZOOM_MAX,
   CROP_ZOOM_MIN,
+  cropWheelZoom,
   cropZoomOf,
   panCrop,
   resizeCrop,
+  resizeCropSide,
   WHOLE_IMAGE,
   zoomCropAt,
 } from './crop-math.js';
 import type { CropKeep } from './write-crop.js';
 
 const CORNERS: readonly CropCorner[] = ['nw', 'ne', 'sw', 'se'];
+
+const SIDES: readonly CropSide[] = ['n', 's', 'e', 'w'];
+
+const isCorner = (grip: CropCorner | CropSide): grip is CropCorner =>
+  grip.length === 2;
 
 /** Quiet time after the last wheel or slider key that ends one zoom. */
 const ZOOM_COMMIT_DELAY_MS = 150;
@@ -31,7 +38,7 @@ const ZOOM_RANGE = { min: CROP_ZOOM_MIN, max: CROP_ZOOM_MAX, step: ZOOM_STEP };
 
 const ZOOM_SLIDER_STYLE = { width: '120px' };
 
-type Grip = 'pan' | CropCorner;
+type Grip = 'pan' | CropCorner | CropSide;
 
 const rectStyle = (rect: CropRect) =>
   styleMap({
@@ -48,8 +55,10 @@ const rectStyle = (rect: CropRect) =>
  * outside the window.
  *
  * The window is the block's box and stays put: dragging a corner resizes it
- * (the opposite corner pinned, the ratio held when `ratio` is set) and is
- * the only way to change it. Everything else moves the PICTURE behind it:
+ * (the opposite corner pinned, the ratio held when `ratio` is set), dragging
+ * a side resizes one dimension (the opposite side pinned; with a ratio, the
+ * other dimension follows about its centre line), and these handles are the
+ * only way to change it. Everything else moves the PICTURE behind it:
  * dragging inside the window pans the image with the hand, the slider above
  * the window and the wheel zoom it about the window's centre (1x is the
  * widest window of the frame's ratio). The picture always covers the window:
@@ -57,7 +66,7 @@ const rectStyle = (rect: CropRect) =>
  *
  * `draft` is the crop being edited and `_frame` where the window is drawn,
  * both in fractions of this element; the picture is drawn so that `draft`
- * fills `_frame`. A corner drag moves both together (the picture holds
+ * fills `_frame`. A handle drag moves both together (the picture holds
  * still); a pan or a zoom moves `draft` alone.
  *
  * One gesture is one write: a drag commits at release; the slider commits at
@@ -65,7 +74,7 @@ const rectStyle = (rect: CropRect) =>
  * pending zoom is committed at once when a drag starts or the frame is left
  * by Escape, Enter or a press elsewhere. A frame closed by anything else (the
  * toolbar, the block leaving) drops a zoom still pending rather than write
- * after it. A corner commits `'image'` (the box follows the window), a pan
+ * after it. A handle commits `'image'` (the box follows the window), a pan
  * or a zoom `'frame'` (the box stays where it is).
  *
  * Pointer and wheel events never reach the editor while the frame is open: a
@@ -124,11 +133,56 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
       background: ${unsafeCSSVarV2('layer/pureWhite')};
     }
 
-    /* A wider grip than the square drawn, for a finger. */
+    /* A wider grip than the mark drawn. */
     .handle::before {
       content: '';
       position: absolute;
       inset: -10px;
+    }
+
+    /* A finger gets a 44px target, whatever the mark drawn (P4-7). */
+    @media (pointer: coarse) {
+      .handle::before {
+        inset: auto;
+        left: 50%;
+        top: 50%;
+        width: 44px;
+        height: 44px;
+        transform: translate(-50%, -50%);
+      }
+    }
+
+    /* One dimension only: a bar along the side, drawn under the corners. */
+    .handle[data-side='n'],
+    .handle[data-side='s'] {
+      left: calc(50% - 10px);
+      width: 20px;
+      height: 8px;
+      cursor: ns-resize;
+    }
+
+    .handle[data-side='n'] {
+      top: -4px;
+    }
+
+    .handle[data-side='s'] {
+      bottom: -4px;
+    }
+
+    .handle[data-side='e'],
+    .handle[data-side='w'] {
+      top: calc(50% - 10px);
+      width: 8px;
+      height: 20px;
+      cursor: ew-resize;
+    }
+
+    .handle[data-side='e'] {
+      right: -4px;
+    }
+
+    .handle[data-side='w'] {
+      left: -4px;
     }
 
     .handle[data-corner='nw'] {
@@ -201,7 +255,7 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
   @state()
   accessor draft: CropRect = WHOLE_IMAGE;
 
-  /** Where the window is drawn: the stored crop, or a corner drag's draft. */
+  /** Where the window is drawn: the stored crop, or a handle drag's draft. */
   @state()
   private accessor _frame: CropRect = WHOLE_IMAGE;
 
@@ -272,9 +326,7 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
     if (this._grip !== null || this._sliding) return;
     // A line or page delta (Firefox) counts as one full step per unit.
     const deltaY = event.deltaMode === 0 ? event.deltaY : event.deltaY * 100;
-    // The factor scales the window: below 1 (wheel up) shows less of the
-    // picture, which is a higher zoom.
-    this._zoomTo(cropZoomOf(this.draft) / cropWheelFactor(deltaY));
+    this._zoomTo(cropWheelZoom(cropZoomOf(this.draft), deltaY));
   };
 
   private readonly _onSliderSelect = (event: SliderSelectEvent) => {
@@ -399,7 +451,9 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
         );
         return;
       }
-      const next = resizeCrop(start, grip, lx / width, ly / height, this.ratio);
+      const next = isCorner(grip)
+        ? resizeCrop(start, grip, lx / width, ly / height, this.ratio)
+        : resizeCropSide(start, grip, lx / width, ly / height, this.ratio);
       this.draft = next;
       this._frame = next;
     };
@@ -472,6 +526,21 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
         @pointerdown=${(event: PointerEvent) =>
           this._startGesture(event, 'pan')}
       >
+        ${repeat(
+          SIDES,
+          side => side,
+          side => html`
+            <div
+              class="handle"
+              data-side=${side}
+              data-testid=${`image-crop-handle-${side}`}
+              @pointerdown=${(event: PointerEvent) => {
+                event.stopPropagation();
+                this._startGesture(event, side);
+              }}
+            ></div>
+          `
+        )}
         ${repeat(
           CORNERS,
           corner => corner,
