@@ -204,6 +204,61 @@ describe('which element answers for the qualification', () => {
   });
 });
 
+/**
+ * A Wardley pipeline carries a nature (ADR 0046, amendment of 2026-11-04),
+ * declared by naming `wardley:pipeline` in the tag's `appliesTo` — the role
+ * has no parent, so nothing reaches it through `roleIsA`.
+ *
+ * What this would have caught: a pipeline is a composite of a body, a handle
+ * and a label, nested two ways — drawn from the sub-menu it is (body + (handle
+ * + label)), morphed into being it is one flat group of three (`morph.ts`,
+ * `addHandle`). The entry descends ONE level, so the nested shape relies on the
+ * inner group carrying no role, and the flat one on the handle carrying no
+ * tag. Either slip leaves the pipeline with no qualification entry, or with
+ * two candidates and therefore none.
+ */
+describe('a pipeline answers for its body', () => {
+  const roles: RoleDefs = {
+    ...ROLES,
+    'wardley:pipeline': { id: 'wardley:pipeline', kind: 'node' },
+    'wardley:handle': { id: 'wardley:handle', kind: 'node' },
+  };
+  const pack: UniverseTagDefs = {
+    ...PACK,
+    tags: [
+      { ...PACK.tags[0], appliesTo: ['wardley:component', 'wardley:pipeline'] },
+    ],
+  };
+  const pipelineStands = (models: GfxModel[]) => {
+    const { when } = tagsToolbarConfig(roles);
+    const ctx = context(models, [pack]);
+    return typeof when === 'function' ? when(ctx) : Boolean(when);
+  };
+
+  it('drawn: the body beside a nested (handle + label) group', () => {
+    const inner = group(element('wardley:handle'), element('wardley:label'));
+    expect(pipelineStands([group(element('wardley:pipeline'), inner)])).toBe(
+      true
+    );
+  });
+
+  it('morphed: the body, the handle and the label in one flat group', () => {
+    expect(
+      pipelineStands([
+        group(
+          element('wardley:pipeline'),
+          element('wardley:handle'),
+          element('wardley:label')
+        ),
+      ])
+    ).toBe(true);
+  });
+
+  it('never the handle: it is the connection point, not a thing with a nature', () => {
+    expect(pipelineStands([element('wardley:handle')])).toBe(false);
+  });
+});
+
 describe('the entry is generic', () => {
   it('names no framework: it reads the seeded packs and the given roles', () => {
     const other: UniverseTagDefs = {

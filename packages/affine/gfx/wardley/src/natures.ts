@@ -21,15 +21,26 @@ import { WARDLEY_ROLE } from './roles';
  * with a different `packId` that merges with this one, with no library release.
  * Shipping one real pack is what keeps that mechanism honest.
  *
- * ## Why it applies to `wardley:component` and not to `'*'`
+ * ## Why it applies to `wardley:component` and `wardley:pipeline`, not `'*'`
  *
  * A nature qualifies a component. `market`, `ecosystem` and `method`
- * specialise `wardley:component`, so they get it for free through `roleIsA` — that is the
- * entire reason role hierarchy is data. The `anchor` (a user / need) is
- * deliberately NOT a child of `component` and is deliberately NOT qualified
- * here: a need has no nature, it has a demand. The map itself, the change
- * arrow, the inertia bar and the labels are chrome or annotations and are not
- * candidates either.
+ * specialise `wardley:component`, so they get it for free through `roleIsA` —
+ * that is the entire reason role hierarchy is data. The `anchor` (a user /
+ * need) is deliberately NOT a child of `component` and is deliberately NOT
+ * qualified here: a need has no nature, it has a demand. The map itself, the
+ * change arrow, the inertia bar and the labels are chrome or annotations and
+ * are not candidates either.
+ *
+ * A pipeline is named here explicitly (ADR 0046, amendment of 2026-11-04): it
+ * is a component spread over a range of evolution, so it is an activity, data,
+ * a practice or knowledge exactly as a circle is. It is listed in `appliesTo`
+ * rather than given `parent: component` because the role tree is read by more
+ * than this tag: W3 (`rules.ts`) compares role PAIRS through `roleIsA`, and a
+ * pipeline is a bar components are placed ON (`presets.ts`), so a pipeline that
+ * IS a component would turn every component sitting on it into an overlap
+ * finding. The handle (`wardley:handle`) stays out: it is the connection
+ * point, not a thing with a nature, and leaving it out is what sends the
+ * qualification dropdown to the pipeline body whichever of the two is selected.
  *
  * ## Why `cardinality: 'single'`
  *
@@ -168,7 +179,7 @@ export const WARDLEY_TAG_DEFS: UniverseTagDefs = {
         'What kind of thing this component is: an activity, data, a practice or knowledge.',
       descriptionKey: 'com.labre.wardley.tag.nature.description',
       cardinality: 'single',
-      appliesTo: [WARDLEY_ROLE.component],
+      appliesTo: [WARDLEY_ROLE.component, WARDLEY_ROLE.pipeline],
       // No `order`, on any tag of this pack: an absent order sorts by SEED
       // order, which is what puts the library's pack ahead of a client's
       // extension without either having to know about the other. A number here
