@@ -807,9 +807,16 @@ export class CanvasRenderer {
         filter: ['canvas', 'local'],
       }) as SurfaceElementModel[]);
 
-    const tint = this._tintForPass();
-    let boards: FrameworkBackgroundElementModel[] | null = null;
-    const papers: SurfaceElementModel[] = [];
+    // Every board of the surface, not of this pass: a stacking canvas paints
+    // one layer, and the board may sit in another.
+    const tintOf = this._notationTintScope(
+      () =>
+        this._surface.elementModels.filter(
+          (e): e is FrameworkBackgroundElementModel =>
+            e instanceof FrameworkBackgroundElementModel
+        ),
+      id => this._gfx.getElementById(id)
+    );
 
     for (const element of elements) {
       const display = isPainted(element, this._gfx.localVisibility);
@@ -838,20 +845,7 @@ export class CanvasRenderer {
           ctx.globalAlpha = element.opacity ?? 1;
           const dx = element.x - bound.x;
           const dy = element.y - bound.y;
-          if (tint) {
-            // Every board of the surface, not of this pass: a stacking canvas
-            // paints one layer, and the board may sit in another.
-            boards ??= this._surface.elementModels.filter(
-              (e): e is FrameworkBackgroundElementModel =>
-                e instanceof FrameworkBackgroundElementModel
-            );
-            this._notationTint =
-              this._isNotation(element, boards) &&
-              !this._sitsOnKeptPaper(element, papers, tint)
-                ? tint
-                : null;
-            if (paperOf(element)) papers.push(element);
-          }
+          this._notationTint = tintOf?.(element) ?? null;
           try {
             renderFn(element, ctx, matrix.translate(dx, dy), this, rc, bound);
           } finally {
@@ -996,6 +990,51 @@ export class CanvasRenderer {
     this._renderByBound(ctx, matrix, rc, bound, surfaceElements);
   }
 
+  /**
+   * Paint elements that are NOT on the surface — the detached models of an
+   * armed artefact's ghost — exactly as the render loop paints stored ones,
+   * dark notation tint included (ADR 0039). `matrix` maps model coordinates
+   * to the context; each element is drawn at `matrix` moved by its own x / y.
+   *
+   * The elements are their own world: a connector's end and a board an
+   * element sits inside are looked up among them, never on the surface.
+   */
+  renderDetached(
+    elements: readonly SurfaceElementModel[],
+    ctx: CanvasRenderingContext2D,
+    matrix: DOMMatrix,
+    rc: RoughCanvas,
+    bound: IBound
+  ): void {
+    const byId = new Map(elements.map(element => [element.id, element]));
+    const tintOf = this._notationTintScope(
+      () =>
+        elements.filter(
+          (e): e is FrameworkBackgroundElementModel =>
+            e instanceof FrameworkBackgroundElementModel
+        ),
+      id => byId.get(id) ?? null
+    );
+
+    for (const element of elements) {
+      const renderFn = this.std.getOptional<ElementRenderer>(
+        ElementRendererIdentifier(element.type)
+      );
+      if (!renderFn) continue;
+
+      const [x, y] = element.deserializedXYWH;
+      ctx.save();
+      ctx.globalAlpha = element.opacity ?? 1;
+      this._notationTint = tintOf?.(element) ?? null;
+      try {
+        renderFn(element, ctx, matrix.translate(x, y), this, rc, bound);
+      } finally {
+        this._notationTint = null;
+        ctx.restore();
+      }
+    }
+  }
+
   getColorScheme() {
     return (
       this._schemeOverride ??
@@ -1097,6 +1136,31 @@ export class CanvasRenderer {
     return false;
   }
 
+  /**
+   * The per-element tint of one paint, in paint order, or `null` when the
+   * pass paints light. The one place the loop and {@link renderDetached}
+   * decide which element is painted through the dark table (ADR 0039): it
+   * remembers the papers painted so far, so call it once per element, in
+   * z-order. `boards` is read once, on the first element.
+   */
+  private _notationTintScope(
+    boards: () => readonly FrameworkBackgroundElementModel[],
+    resolve: (id: string) => unknown
+  ): ((element: SurfaceElementModel) => NotationTint | null) | null {
+    const tint = this._tintForPass();
+    if (!tint) return null;
+    let known: readonly FrameworkBackgroundElementModel[] | null = null;
+    const papers: SurfaceElementModel[] = [];
+    return element => {
+      known ??= boards();
+      const tinted =
+        this._isNotation(element, known, resolve) &&
+        !this._sitsOnKeptPaper(element, papers, tint);
+      if (paperOf(element)) papers.push(element);
+      return tinted ? tint : null;
+    };
+  }
+
   /** The dark table when this pass paints dark, else `null`. */
   private _tintForPass(): NotationTint | null {
     if (this.getColorScheme() !== ColorScheme.Dark) return null;
@@ -1114,14 +1178,15 @@ export class CanvasRenderer {
    */
   private _isNotation(
     element: SurfaceElementModel,
-    boards: readonly FrameworkBackgroundElementModel[]
+    boards: readonly FrameworkBackgroundElementModel[],
+    resolve: (id: string) => unknown
   ): boolean {
     if ((element as { role?: string }).role) return true;
     // A board is notation whether or not it stamps a role (Cynefin does not).
     if (element instanceof FrameworkBackgroundElementModel) return true;
     if (element instanceof ConnectorElementModel) {
       for (const end of [element.source?.id, element.target?.id]) {
-        const model = end ? this._gfx.getElementById(end) : null;
+        const model = end ? resolve(end) : null;
         if ((model as { role?: string } | null)?.role) return true;
       }
     }

@@ -97,3 +97,7 @@ through this table.
   closeness as the light accent `#2563eb`. The library does not own the
   accent; a host that wants a sharper selection on C4 boards lightens its dark
   accent.
+
+## Amendments
+
+- 2026-11-05: the armed tool's ghost (detached models under the pointer) is painted through `CanvasRenderer.renderDetached`, which applies the same per-element tint as the render loop (`_notationTintScope`); a connector end and a board are looked up among the ghost's own elements. Any paint outside the loop goes through that door, never through the element renderers directly (recette P7-15, `artefact-ghost-dark.unit.spec.ts`).

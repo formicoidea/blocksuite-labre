@@ -1,9 +1,9 @@
 import {
   CanvasRenderer,
-  type ElementRenderer,
   ElementRendererIdentifier,
   type RoughCanvas,
   type SurfaceBlockComponent,
+  type SurfaceElementModel,
   ToolOverlay,
 } from '@labre/affine-block-surface';
 import { ThemeProvider } from '@labre/affine-shared/services';
@@ -43,11 +43,8 @@ export class ArtefactGhostOverlay extends ToolOverlay {
   /** What the command is called, in the reader's language. */
   label: string;
 
-  /** The artefact's drawable elements, in paint order, with their renderer. */
-  private readonly _preview: {
-    model: GfxPrimitiveElementModel;
-    render: ElementRenderer;
-  }[];
+  /** The artefact's drawable elements, in paint order. */
+  private readonly _preview: GfxPrimitiveElementModel[];
 
   constructor(
     gfx: GfxController,
@@ -60,12 +57,9 @@ export class ArtefactGhostOverlay extends ToolOverlay {
     this.label = label;
     // Resolved once: a type without a canvas renderer is skipped silently, as
     // the surface's own render loop skips it.
-    this._preview = models.flatMap(model => {
-      const render = gfx.std.getOptional<ElementRenderer>(
-        ElementRendererIdentifier(model.type)
-      );
-      return render ? [{ model, render }] : [];
-    });
+    this._preview = models.filter(model =>
+      gfx.std.getOptional(ElementRendererIdentifier(model.type))
+    );
   }
 
   /** Whether the artefact itself is drawn, rather than the fallback box. */
@@ -88,32 +82,25 @@ export class ArtefactGhostOverlay extends ToolOverlay {
   }
 
   /**
-   * What the surface's render loop does per element, with the cursor in place
-   * of the element's position: the context is already in model coordinates
-   * here, so the element's matrix is that transform moved to cursor + offset.
+   * The surface's own paint, with the cursor as the origin: the context is
+   * already in model coordinates here, so each element lands at cursor +
+   * recorded offset. It goes through the renderer rather than calling the
+   * element renderers directly so the ghost resolves its colours as the placed
+   * artefact will — on a dark canvas, through the notation dark table
+   * (ADR 0039; the ghost used to keep the light ink, recette P7-15).
    */
   private _renderArtefact(
     ctx: CanvasRenderingContext2D,
     rc: RoughCanvas,
     renderer: CanvasRenderer
   ) {
-    const base = ctx.getTransform();
-    const viewportBound = this.gfx.viewport.viewportBounds;
-
-    for (const { model, render } of this._preview) {
-      const [x, y] = model.deserializedXYWH;
-      ctx.save();
-      ctx.globalAlpha = model.opacity ?? 1;
-      render(
-        model,
-        ctx,
-        base.translate(this.x + x, this.y + y),
-        renderer,
-        rc,
-        viewportBound
-      );
-      ctx.restore();
-    }
+    renderer.renderDetached(
+      this._preview as SurfaceElementModel[],
+      ctx,
+      ctx.getTransform().translate(this.x, this.y),
+      rc,
+      this.gfx.viewport.viewportBounds
+    );
   }
 
   private _renderFootprint(ctx: CanvasRenderingContext2D) {

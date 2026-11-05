@@ -408,7 +408,11 @@ describe('the armed ghost is the artefact itself', () => {
       createDetachedElement,
     };
 
+    // A light canvas: the ghost goes through `renderDetached`, which reads
+    // the scheme and the element renderers off the renderer itself.
     const renderer = Object.assign(Object.create(CanvasRenderer.prototype), {
+      std,
+      provider: {},
       addOverlay: vi.fn(),
       removeOverlay: vi.fn(),
       refresh: vi.fn(),
