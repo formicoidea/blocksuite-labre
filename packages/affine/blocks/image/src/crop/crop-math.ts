@@ -9,6 +9,9 @@ export type CropRect = Pick<ImageCrop, 'x' | 'y' | 'w' | 'h'>;
 
 export type CropCorner = 'nw' | 'ne' | 'sw' | 'se';
 
+/** The side of the window an edge handle drags. */
+export type CropEdge = 'n' | 'e' | 's' | 'w';
+
 export const WHOLE_IMAGE: CropRect = { x: 0, y: 0, w: 1, h: 1 };
 
 /** Width over height, in source pixels, each preset keeps. */
@@ -133,6 +136,58 @@ export function resizeCrop(
     w,
     h,
   };
+}
+
+/**
+ * The window resized by dragging one EDGE (PO acceptance, 2026-11-05): the
+ * dragged side follows `delta`, the pointer's normalised move along the
+ * edge's axis (x for `e`/`w`, y for `n`/`s`), and the opposite side stays
+ * where it is. A free window changes that one dimension only. With a ratio
+ * `k` (normalised `w / h`) the other dimension follows, centred on the
+ * window's middle across the drag; a window against the image's border is
+ * pushed back inside rather than stopped, so it can still grow. Same bounds
+ * as `resizeCrop`: never outside [0, 1]², never below
+ * `IMAGE_CROP_MIN_SIDE`.
+ */
+export function resizeCropEdge(
+  start: CropRect,
+  edge: CropEdge,
+  delta: number,
+  k: number | null
+): CropRect {
+  // Worked along the dragged axis ("along") and the other one ("across"),
+  // so the four edges share one computation.
+  const horizontal = edge === 'e' || edge === 'w';
+  const low = edge === 'w' || edge === 'n';
+  const along = horizontal ? start.x : start.y;
+  const size = horizontal ? start.w : start.h;
+  const across = horizontal ? start.y : start.x;
+  const span = horizontal ? start.h : start.w;
+  const anchor = low ? along + size : along;
+  const max = low ? anchor : 1 - anchor;
+  const min = IMAGE_CROP_MIN_SIDE;
+
+  let nextSize = clamp(size + (low ? -delta : delta), min, max);
+  let nextSpan = span;
+  let nextAcross = across;
+  if (k !== null) {
+    // The ratio as "along over across".
+    const r = horizontal ? k : 1 / k;
+    nextSpan = nextSize / r;
+    if (nextSpan > 1) {
+      nextSpan = 1;
+      nextSize = nextSpan * r;
+    }
+    if (nextSpan < min) {
+      nextSpan = min;
+      nextSize = nextSpan * r;
+    }
+    nextAcross = clamp(across + span / 2 - nextSpan / 2, 0, 1 - nextSpan);
+  }
+  const nextAlong = low ? anchor - nextSize : anchor;
+  return horizontal
+    ? { x: nextAlong, y: nextAcross, w: nextSize, h: nextSpan }
+    : { x: nextAcross, y: nextAlong, w: nextSpan, h: nextSize };
 }
 
 /** Scale of the window per 100 units of wheel `deltaY`. */

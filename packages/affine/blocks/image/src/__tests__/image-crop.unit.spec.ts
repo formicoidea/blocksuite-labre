@@ -7,6 +7,11 @@
  *   portrait photo is wider than tall only in pixels, not in fractions);
  * - a window dragged or resized out of the picture, or a held ratio lost on
  *   the way to the image's edge;
+ * - an edge handle that moves the opposite edge, changes the other dimension
+ *   of a free window, or lets the window leave the image or go below the
+ *   minimum side; with a ratio, an edge that loses the ratio, grows the
+ *   other side off its centre, or stops dead against the image border
+ *   instead of being pushed back inside (PO acceptance, 2026-11-05);
  * - a canvas crop that keeps the box and squeezes the picture, or moves the
  *   kept part elsewhere on the canvas (rotation included);
  * - a gesture split into several undo steps, an unchanged gesture pushing an
@@ -45,6 +50,7 @@ import {
   presetCrop,
   ratioCrop,
   resizeCrop,
+  resizeCropEdge,
   WHOLE_IMAGE,
   wholeImageSize,
   zoomCropAt,
@@ -118,6 +124,115 @@ describe('crop geometry', () => {
     expect(grown.x + grown.w).toBeLessThanOrEqual(1 + 1e-9);
     expect(grown.y + grown.h).toBeLessThanOrEqual(1 + 1e-9);
     close(grown, { x: 0.1, y: 0.1, w: 0.9, h: 0.9 });
+  });
+
+  test('a free edge resizes one side only, the opposite edge pinned', () => {
+    const start = { x: 0.2, y: 0.3, w: 0.4, h: 0.4 };
+    close(resizeCropEdge(start, 'e', 0.1, null), {
+      x: 0.2,
+      y: 0.3,
+      w: 0.5,
+      h: 0.4,
+    });
+    // The left edge follows the pointer, the right edge stays at 0.6.
+    close(resizeCropEdge(start, 'w', -0.1, null), {
+      x: 0.1,
+      y: 0.3,
+      w: 0.5,
+      h: 0.4,
+    });
+    // The top edge going down, the bottom edge stays at 0.7.
+    close(resizeCropEdge(start, 'n', 0.1, null), {
+      x: 0.2,
+      y: 0.4,
+      w: 0.4,
+      h: 0.3,
+    });
+    close(resizeCropEdge(start, 's', -0.1, null), {
+      x: 0.2,
+      y: 0.3,
+      w: 0.4,
+      h: 0.3,
+    });
+  });
+
+  test('a free edge stops at the image border and at the minimum side', () => {
+    const start = { x: 0.2, y: 0.3, w: 0.4, h: 0.4 };
+    close(resizeCropEdge(start, 's', 1, null), {
+      x: 0.2,
+      y: 0.3,
+      w: 0.4,
+      h: 0.7,
+    });
+    close(resizeCropEdge(start, 'w', -1, null), {
+      x: 0,
+      y: 0.3,
+      w: 0.6,
+      h: 0.4,
+    });
+    close(resizeCropEdge(start, 'e', -1, null), {
+      x: 0.2,
+      y: 0.3,
+      w: IMAGE_CROP_MIN_SIDE,
+      h: 0.4,
+    });
+    close(resizeCropEdge(start, 'n', 1, null), {
+      x: 0.2,
+      y: 0.7 - IMAGE_CROP_MIN_SIDE,
+      w: 0.4,
+      h: IMAGE_CROP_MIN_SIDE,
+    });
+  });
+
+  test('with a ratio, an edge drags the other side along, centred', () => {
+    const k = maskRatio('1:1', 1000, 1000) as number;
+    const start = { x: 0.2, y: 0.3, w: 0.4, h: 0.4 };
+    // The right edge: the left edge stays, the height grows with the width
+    // about the vertical centre (0.5).
+    close(resizeCropEdge(start, 'e', 0.2, k), {
+      x: 0.2,
+      y: 0.2,
+      w: 0.6,
+      h: 0.6,
+    });
+    // Up to the image border on the dragged axis.
+    close(resizeCropEdge(start, 'e', 1, k), {
+      x: 0.2,
+      y: 0.1,
+      w: 0.8,
+      h: 0.8,
+    });
+    // The top edge shrinking: the bottom edge stays, the width follows
+    // about the horizontal centre (0.4), never below the minimum side.
+    close(resizeCropEdge(start, 'n', 1, k), {
+      x: 0.4 - IMAGE_CROP_MIN_SIDE / 2,
+      y: 0.7 - IMAGE_CROP_MIN_SIDE,
+      w: IMAGE_CROP_MIN_SIDE,
+      h: IMAGE_CROP_MIN_SIDE,
+    });
+  });
+
+  test('with a ratio, an edge window is pushed back inside the image', () => {
+    const square = maskRatio('1:1', 1000, 1000) as number;
+    // Against the top border: centred growth would leave the image, so the
+    // window is pushed down instead of stopped.
+    close(resizeCropEdge({ x: 0.1, y: 0, w: 0.4, h: 0.4 }, 'e', 0.4, square), {
+      x: 0.1,
+      y: 0,
+      w: 0.8,
+      h: 0.8,
+    });
+    // A 2:1 window grown from its bottom edge: the width is capped at the
+    // whole image, the height follows the ratio back down.
+    const wide = 2;
+    const grown = resizeCropEdge(
+      { x: 0, y: 0.3, w: 0.4, h: 0.2 },
+      's',
+      1,
+      wide
+    );
+    close(grown, { x: 0, y: 0.3, w: 1, h: 0.5 });
+    expect(grown.w / grown.h).toBeCloseTo(wide, 6);
   });
 
   test('a resized page window stores the WHOLE picture size', () => {

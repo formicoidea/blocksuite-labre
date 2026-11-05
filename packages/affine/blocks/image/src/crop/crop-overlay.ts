@@ -7,6 +7,7 @@ import { repeat } from 'lit/directives/repeat.js';
 
 import {
   type CropCorner,
+  type CropEdge,
   type CropRect,
   cropWheelFactor,
   CROP_ZOOM_MAX,
@@ -14,12 +15,20 @@ import {
   cropZoomOf,
   panCrop,
   resizeCrop,
+  resizeCropEdge,
   WHOLE_IMAGE,
   zoomCropAt,
 } from './crop-math.js';
 import type { CropKeep } from './write-crop.js';
 
 const CORNERS: readonly CropCorner[] = ['nw', 'ne', 'sw', 'se'];
+
+const EDGES: readonly CropEdge[] = ['n', 'e', 's', 'w'];
+
+/** Each edge handle's accessible name, already translated. */
+export type CropEdgeLabels = Readonly<Record<CropEdge, string>>;
+
+const NO_EDGE_LABELS: CropEdgeLabels = { n: '', e: '', s: '', w: '' };
 
 /** Quiet time after the last wheel or slider key that ends one zoom. */
 const ZOOM_COMMIT_DELAY_MS = 150;
@@ -31,7 +40,10 @@ const ZOOM_RANGE = { min: CROP_ZOOM_MIN, max: CROP_ZOOM_MAX, step: ZOOM_STEP };
 
 const ZOOM_SLIDER_STYLE = { width: '120px' };
 
-type Grip = 'pan' | CropCorner;
+type Grip = 'pan' | CropCorner | CropEdge;
+
+const isEdge = (grip: Grip): grip is CropEdge =>
+  (EDGES as readonly string[]).includes(grip);
 
 const rectStyle = (rect: CropRect) =>
   styleMap({
@@ -48,25 +60,28 @@ const rectStyle = (rect: CropRect) =>
  * outside the window.
  *
  * The window is the block's box and stays put: dragging a corner resizes it
- * (the opposite corner pinned, the ratio held when `ratio` is set) and is
- * the only way to change it. Everything else moves the PICTURE behind it:
- * dragging inside the window pans the image with the hand, the slider above
- * the window and the wheel zoom it about the window's centre (1x is the
- * widest window of the frame's ratio). The picture always covers the window:
+ * (the opposite corner pinned, the ratio held when `ratio` is set), dragging
+ * the bar at the middle of an edge resizes it along that one axis (the
+ * opposite edge pinned; with a ratio the other side follows, centred,
+ * amendment of 2026-11-05), and these handles are the only way to change
+ * it. Everything else moves the PICTURE behind it: dragging inside the
+ * window pans the image with the hand, the slider above the window and the
+ * wheel zoom it about the window's centre (1x is the widest window of the
+ * frame's ratio). The picture always covers the window:
  * the crop never leaves the source.
  *
  * `draft` is the crop being edited and `_frame` where the window is drawn,
  * both in fractions of this element; the picture is drawn so that `draft`
- * fills `_frame`. A corner drag moves both together (the picture holds
- * still); a pan or a zoom moves `draft` alone.
+ * fills `_frame`. A corner or edge drag moves both together (the picture
+ * holds still); a pan or a zoom moves `draft` alone.
  *
  * One gesture is one write: a drag commits at release; the slider commits at
  * release, or once its keys have been quiet for a moment, like the wheel; a
  * pending zoom is committed at once when a drag starts or the frame is left
  * by Escape, Enter or a press elsewhere. A frame closed by anything else (the
  * toolbar, the block leaving) drops a zoom still pending rather than write
- * after it. A corner commits `'image'` (the box follows the window), a pan
- * or a zoom `'frame'` (the box stays where it is).
+ * after it. A corner or an edge commits `'image'` (the box follows the
+ * window), a pan or a zoom `'frame'` (the box stays where it is).
  *
  * Pointer and wheel events never reach the editor while the frame is open: a
  * press on the frame would otherwise start a canvas drag or a page
@@ -155,6 +170,56 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
       cursor: nwse-resize;
     }
 
+    /* A short bar at the middle of each edge, thinner than a corner. */
+    .edge {
+      position: absolute;
+      box-sizing: border-box;
+      border: 1px solid ${unsafeCSSVarV2('button/primary')};
+      border-radius: 2px;
+      background: ${unsafeCSSVarV2('layer/pureWhite')};
+    }
+
+    /* A wider grip than the bar drawn, still clear of the corners' grips. */
+    .edge::before {
+      content: '';
+      position: absolute;
+      inset: -8px;
+    }
+
+    .edge[data-edge='n'],
+    .edge[data-edge='s'] {
+      left: 50%;
+      width: 16px;
+      height: 6px;
+      margin-left: -8px;
+      cursor: ns-resize;
+    }
+
+    .edge[data-edge='e'],
+    .edge[data-edge='w'] {
+      top: 50%;
+      width: 6px;
+      height: 16px;
+      margin-top: -8px;
+      cursor: ew-resize;
+    }
+
+    .edge[data-edge='n'] {
+      top: -3px;
+    }
+
+    .edge[data-edge='s'] {
+      bottom: -3px;
+    }
+
+    .edge[data-edge='e'] {
+      right: -3px;
+    }
+
+    .edge[data-edge='w'] {
+      left: -3px;
+    }
+
     /* Above the window, at screen size whatever the canvas zoom. */
     .zoom {
       position: absolute;
@@ -191,6 +256,10 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
   @property({ attribute: false })
   accessor zoomLabel = '';
 
+  /** The edge handles' accessible names, already translated. */
+  @property({ attribute: false })
+  accessor edgeLabels: CropEdgeLabels = NO_EDGE_LABELS;
+
   @property({ attribute: false })
   accessor onCommit: (rect: CropRect, keep: CropKeep) => void = () => {};
 
@@ -201,7 +270,7 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
   @state()
   accessor draft: CropRect = WHOLE_IMAGE;
 
-  /** Where the window is drawn: the stored crop, or a corner drag's draft. */
+  /** Where the window is drawn: the stored crop, or a resize's draft. */
   @state()
   private accessor _frame: CropRect = WHOLE_IMAGE;
 
@@ -399,7 +468,14 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
         );
         return;
       }
-      const next = resizeCrop(start, grip, lx / width, ly / height, this.ratio);
+      const next = isEdge(grip)
+        ? resizeCropEdge(
+            start,
+            grip,
+            grip === 'e' || grip === 'w' ? lx / width : ly / height,
+            this.ratio
+          )
+        : resizeCrop(start, grip, lx / width, ly / height, this.ratio);
       this.draft = next;
       this._frame = next;
     };
@@ -473,20 +549,44 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
           this._startGesture(event, 'pan')}
       >
         ${repeat(
-          CORNERS,
-          corner => corner,
-          corner => html`
+          EDGES,
+          edge => edge,
+          edge => html`
             <div
-              class="handle"
-              data-corner=${corner}
-              data-testid=${`image-crop-handle-${corner}`}
+              class="edge"
+              role="separator"
+              aria-orientation=${edge === 'n' || edge === 's'
+                ? 'horizontal'
+                : 'vertical'}
+              aria-label=${this.edgeLabels[edge]}
+              data-edge=${edge}
+              data-testid=${`image-crop-edge-${edge}`}
               @pointerdown=${(event: PointerEvent) => {
                 event.stopPropagation();
-                this._startGesture(event, corner);
+                this._startGesture(event, edge);
               }}
             ></div>
           `
         )}
+        ${
+          // After the edges, so on a window at its minimum side the corner
+          // grips, which resize both ways, stay on top of the edge grips.
+          repeat(
+            CORNERS,
+            corner => corner,
+            corner => html`
+              <div
+                class="handle"
+                data-corner=${corner}
+                data-testid=${`image-crop-handle-${corner}`}
+                @pointerdown=${(event: PointerEvent) => {
+                  event.stopPropagation();
+                  this._startGesture(event, corner);
+                }}
+              ></div>
+            `
+          )
+        }
       </div>
       <div class="zoom" style=${this._zoomStyle()}>
         <div class="zoom-panel">

@@ -71,6 +71,31 @@ export const IMAGE_CROP_ZOOM: ChromeWording = [
   'Zoom',
 ];
 
+/**
+ * The crop frame's edge handles (ADR 0037 amendment of 2026-11-05): the
+ * accessible name of the bar at the middle of each edge, which resizes the
+ * frame along one axis.
+ */
+export const IMAGE_CROP_EDGE_TOP: ChromeWording = [
+  'com.labre.image.crop.edge.top',
+  'Resize from the top edge',
+];
+
+export const IMAGE_CROP_EDGE_RIGHT: ChromeWording = [
+  'com.labre.image.crop.edge.right',
+  'Resize from the right edge',
+];
+
+export const IMAGE_CROP_EDGE_BOTTOM: ChromeWording = [
+  'com.labre.image.crop.edge.bottom',
+  'Resize from the bottom edge',
+];
+
+export const IMAGE_CROP_EDGE_LEFT: ChromeWording = [
+  'com.labre.image.crop.edge.left',
+  'Resize from the left edge',
+];
+
 export const IMAGE_PREVIEW_TITLE: ChromeWording = [
   'com.labre.image.preview.title',
   'Image Block',
@@ -162,6 +187,10 @@ export const IMAGE_WORDINGS: readonly ChromeWording[] = [
   IMAGE_TOOLBAR_CROP_1_1,
   IMAGE_TOOLBAR_CROP_ORIGINAL,
   IMAGE_CROP_ZOOM,
+  IMAGE_CROP_EDGE_TOP,
+  IMAGE_CROP_EDGE_RIGHT,
+  IMAGE_CROP_EDGE_BOTTOM,
+  IMAGE_CROP_EDGE_LEFT,
   IMAGE_PREVIEW_TITLE,
   IMAGE_TOAST_DOWNLOAD_FAILED,
   IMAGE_TOAST_DOWNLOADING,

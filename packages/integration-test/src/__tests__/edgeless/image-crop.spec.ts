@@ -25,7 +25,10 @@
  * - a zoom slider missing from above the frame, writing while held, zooming
  *   off the centre or moving the box; on a page, a zoom that changes the
  *   size of the window instead of the size of the whole picture;
- * - Escape leaving the handles hidden or the viewport locked.
+ * - Escape leaving the handles hidden or the viewport locked;
+ * - an edge handle missing, or one that resizes both axes of a free frame,
+ *   moves the opposite edge, leaves the box behind the window on the canvas,
+ *   or takes more than one undo step (PO acceptance, 2026-11-05).
  */
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import { CanvasRenderer, ExportManager } from '@labre/affine/blocks/surface';
@@ -94,6 +97,19 @@ async function dragHandle(
 ) {
   const handle = overlay.shadowRoot!.querySelector<HTMLElement>(
     `[data-corner="${corner}"]`
+  )!;
+  await dragFrom(handle, dx, dy);
+}
+
+/** One pointer gesture on the bar at the middle of an edge of the frame. */
+async function dragEdge(
+  overlay: HTMLElement,
+  edge: 'n' | 'e' | 's' | 'w',
+  dx: number,
+  dy: number
+) {
+  const handle = overlay.shadowRoot!.querySelector<HTMLElement>(
+    `[data-edge="${edge}"]`
   )!;
   await dragFrom(handle, dx, dy);
 }
@@ -227,6 +243,49 @@ describe('image crop on the canvas', () => {
     );
     await wait();
     expect(overlayOf(block)).toBeNull();
+  });
+
+  test('a free drag of the right edge widens the frame alone, in one step', async () => {
+    const { model, block } = await canvasImage();
+    // A 1:1 window in the middle, then reopened free: the right edge has
+    // room to grow and nothing holds the height.
+    block.cropController.choose('1:1');
+    await wait();
+    block.cropController.choose('free');
+    await wait();
+    expect(model.xywh).toBe('[50,0,100,100]');
+    const overlay = overlayOf(block) as HTMLElement;
+    const handles = overlay.shadowRoot!.querySelectorAll('[data-edge]');
+    expect(handles.length).toBe(4);
+    const frame = overlay
+      .shadowRoot!.querySelector<HTMLElement>(
+        '[data-testid="image-crop-window"]'
+      )!
+      .getBoundingClientRect();
+
+    window.doc.resetHistory();
+    // A quarter of the window to the right: an eighth of the picture more.
+    await dragEdge(overlay, 'e', frame.width / 4, 0);
+
+    const crop = { ...model.props.crop };
+    expect(crop.x).toBeCloseTo(0.25, 3);
+    expect(crop.y).toBeCloseTo(0, 3);
+    expect(crop.w).toBeCloseTo(0.625, 2);
+    expect(crop.h).toBeCloseTo(1, 3);
+    // Free is stored as no mask at all.
+    expect(crop.mask).toBeUndefined();
+    // The picture holds still: the box keeps its left edge and grows right.
+    const [x, y, w, h] = JSON.parse(model.xywh) as number[];
+    expect(x).toBeCloseTo(50, 1);
+    expect(y).toBeCloseTo(0, 1);
+    expect(w).toBeCloseTo(125, 0);
+    expect(h).toBeCloseTo(100, 1);
+
+    // One drag, one undo step.
+    window.doc.undo();
+    expect(model.props.crop?.w).toBeCloseTo(0.5, 6);
+    expect(model.xywh).toBe('[50,0,100,100]');
+    expect(window.doc.canUndo).toBe(false);
   });
 
   test('the frame owns the canvas: no handles, no zoom, the wheel crops', async () => {
