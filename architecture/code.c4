@@ -1495,7 +1495,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/editor
         metadata {
           path 'packages/affine/database/editor'
-          files '20'
+          files '21'
         }
         database-page = folder 'database-page/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/editor/src/database-page
@@ -1529,7 +1529,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/editor/src/view-settings
           metadata {
             path 'packages/affine/database/editor/src/view-settings'
-            files '1'
+            files '2'
           }
         }
         view-transfer = folder 'view-transfer/' {
@@ -2954,7 +2954,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/widgets/edgeless-toolbar
         metadata {
           path 'packages/affine/widgets/edgeless-toolbar'
-          files '42'
+          files '43'
         }
         button = folder 'button/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/widgets/edgeless-toolbar/src/button
@@ -3030,7 +3030,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/widgets/edgeless-toolbar/src
           metadata {
             path 'packages/affine/widgets/edgeless-toolbar/src'
-            files '7'
+            files '8'
           }
         }
       }
@@ -3409,13 +3409,13 @@ model {
       link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/playground
       metadata {
         path 'packages/playground'
-        files '47'
+        files '48'
       }
       apps_ = folder 'apps/' {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/playground/apps
         metadata {
           path 'packages/playground/apps'
-          files '44'
+          files '45'
         }
       }
       examples = folder 'examples/' {
@@ -3613,11 +3613,11 @@ model {
   features.blocks.frame -[uses]-> framework.store '6 imports, 3 type-only'
   features.blocks.frame -[uses]-> model_.model_ '11 imports, 4 type-only'
   features.blocks.image -[uses]-> features.blocks.surface '4 imports'
-  features.blocks.image -[uses]-> features.components '16 imports, 3 type-only'
+  features.blocks.image -[uses]-> features.components '17 imports, 4 type-only'
   features.blocks.image -[uses]-> features.ext-loader '2 imports'
   features.blocks.image -[uses]-> features.gfx.shape_ '1 import'
   features.blocks.image -[uses]-> features.gfx.turbo-renderer '3 imports, 1 type-only'
-  features.blocks.image -[uses]-> features.shared '38 imports, 2 type-only'
+  features.blocks.image -[uses]-> features.shared '39 imports, 2 type-only'
   features.blocks.image -[uses]-> features.widgets.slash-menu '2 imports, 1 type-only'
   features.blocks.image -[uses]-> framework.global_ '14 imports, 1 type-only'
   features.blocks.image -[uses]-> framework.std '27 imports, 7 type-only'
@@ -3726,7 +3726,7 @@ model {
   features.blocks.table -[uses]-> framework.store '9 imports, 3 type-only'
   features.blocks.table -[uses]-> model_.model_ '12 imports, 4 type-only'
   features.components -[uses]-> features.shared '79 imports, 4 type-only'
-  features.components -[uses]-> framework.global_ '54 imports, 5 type-only'
+  features.components -[uses]-> framework.global_ '55 imports, 5 type-only'
   features.components -[uses]-> framework.std '49 imports, 13 type-only'
   features.components -[uses]-> framework.store '8 imports, 7 type-only'
   features.components -[uses]-> framework.sync '1 import, 1 type-only'
@@ -3744,14 +3744,14 @@ model {
   features.database.block -[uses]-> framework.std '19 imports, 9 type-only'
   features.database.block -[uses]-> framework.store '24 imports, 16 type-only'
   features.database.block -[uses]-> model_.model_ '21 imports, 13 type-only'
-  features.database.editor -[uses]-> features.components '8 imports'
+  features.database.editor -[uses]-> features.components '9 imports'
   features.database.editor -[uses]-> features.database.block '9 imports, 1 type-only'
   features.database.editor -[uses]-> features.database.engine '8 imports, 2 type-only'
   features.database.editor -[uses]-> features.ext-loader '1 import'
-  features.database.editor -[uses]-> features.shared '18 imports, 4 type-only'
+  features.database.editor -[uses]-> features.shared '19 imports, 4 type-only'
   features.database.editor -[uses]-> features.widgets.slash-menu '2 imports, 1 type-only'
-  features.database.editor -[uses]-> framework.global_ '4 imports'
-  features.database.editor -[uses]-> framework.std '9 imports, 6 type-only'
+  features.database.editor -[uses]-> framework.global_ '5 imports'
+  features.database.editor -[uses]-> framework.std '10 imports, 7 type-only'
   features.database.editor -[uses]-> framework.store '1 import'
   features.database.engine -[uses]-> features.components '75 imports, 4 type-only'
   features.database.engine -[uses]-> features.shared '98 imports, 44 type-only'
@@ -3819,9 +3819,9 @@ model {
   features.gfx.bpmn -[uses]-> features.gfx.pointer '2 imports'
   features.gfx.bpmn -[uses]-> features.gfx.shape_ '4 imports'
   features.gfx.bpmn -[uses]-> features.gfx.template '2 imports'
-  features.gfx.bpmn -[uses]-> features.shared '13 imports, 1 type-only'
+  features.gfx.bpmn -[uses]-> features.shared '15 imports, 2 type-only'
   features.gfx.bpmn -[uses]-> features.widgets.edgeless-toolbar '3 imports'
-  features.gfx.bpmn -[uses]-> framework.global_ '7 imports, 2 type-only'
+  features.gfx.bpmn -[uses]-> framework.global_ '8 imports, 3 type-only'
   features.gfx.bpmn -[uses]-> framework.std '21 imports, 12 type-only'
   features.gfx.bpmn -[uses]-> model_.model_ '20 imports, 9 type-only'
   features.gfx.brush -[uses]-> features.blocks.surface '12 imports, 1 type-only'
@@ -4151,7 +4151,7 @@ model {
   features.widgets.edgeless-toolbar -[uses]-> features.ext-loader '1 import'
   features.widgets.edgeless-toolbar -[uses]-> features.shared '24 imports, 1 type-only'
   features.widgets.edgeless-toolbar -[uses]-> framework.global_ '18 imports, 6 type-only'
-  features.widgets.edgeless-toolbar -[uses]-> framework.std '31 imports, 13 type-only'
+  features.widgets.edgeless-toolbar -[uses]-> framework.std '32 imports, 14 type-only'
   features.widgets.edgeless-toolbar -[uses]-> framework.store '3 imports, 3 type-only'
   features.widgets.edgeless-toolbar -[uses]-> model_.model_ '9 imports, 4 type-only'
   features.widgets.edgeless-zoom-toolbar -[uses]-> features.blocks.surface '3 imports'
@@ -4263,7 +4263,7 @@ model {
   model_.model_ -[uses]-> framework.std '48 imports, 9 type-only'
   model_.model_ -[uses]-> framework.store '36 imports, 1 type-only'
   tooling.integration-test -[uses]-> assembly.all '10 imports, 2 type-only'
-  tooling.playground -[uses]-> assembly.all '97 imports, 19 type-only'
+  tooling.playground -[uses]-> assembly.all '101 imports, 20 type-only'
   tooling.playground -[uses]-> features.database.engine '3 imports'
   tooling.playground -[uses]-> features.shared '5 imports, 1 type-only'
   tooling.playground -[uses]-> framework.sync '3 imports, 3 type-only'
@@ -5040,9 +5040,10 @@ model {
   features.blocks.image.configs -[imports]-> framework.std.src '1 import'
   features.blocks.image.configs -[imports]-> framework.store.src '1 import, 1 type-only'
   features.blocks.image.configs -[imports]-> model_.model_.src '2 imports, 1 type-only'
-  features.blocks.image.crop -[imports]-> features.blocks.image.src '1 import'
+  features.blocks.image.crop -[imports]-> features.blocks.image.src '2 imports'
+  features.blocks.image.crop -[imports]-> features.components.slider '1 import, 1 type-only'
   features.blocks.image.crop -[imports]-> features.components.toolbar '1 import'
-  features.blocks.image.crop -[imports]-> features.shared.services '1 import'
+  features.blocks.image.crop -[imports]-> features.shared.services '2 imports'
   features.blocks.image.crop -[imports]-> features.shared.theme '1 import'
   features.blocks.image.crop -[imports]-> framework.global_.gfx '2 imports'
   features.blocks.image.crop -[imports]-> framework.global_.lit '2 imports'
@@ -5700,7 +5701,7 @@ model {
   features.components.size-dropdown-menu -[imports]-> framework.std.src '1 import'
   features.components.slider -[imports]-> features.shared.theme '1 import'
   features.components.slider -[imports]-> features.shared.utils '1 import'
-  features.components.slider -[imports]-> framework.global_.gfx '1 import'
+  features.components.slider -[imports]-> framework.global_.gfx '2 imports'
   features.components.slider -[imports]-> framework.global_.lit '1 import'
   features.components.slider -[imports]-> framework.std.src '1 import'
   features.components.smooth-corner -[imports]-> features.shared.utils '1 import'
@@ -5865,13 +5866,14 @@ model {
   features.database.editor.view-bar -[imports]-> features.database.editor.view-transfer '1 import'
   features.database.editor.view-bar -[imports]-> features.database.engine.src '2 imports, 1 type-only'
   features.database.editor.view-bar -[imports]-> features.shared.services '1 import'
-  features.database.editor.view-settings -[imports]-> features.components.context-menu '1 import'
+  features.database.editor.view-settings -[imports]-> features.components.context-menu '2 imports'
   features.database.editor.view-settings -[imports]-> features.database.block.src '1 import'
-  features.database.editor.view-settings -[imports]-> features.database.editor.src '3 imports'
+  features.database.editor.view-settings -[imports]-> features.database.editor.src '5 imports'
   features.database.editor.view-settings -[imports]-> features.database.editor.view-transfer '2 imports'
   features.database.editor.view-settings -[imports]-> features.database.engine.src '1 import, 1 type-only'
-  features.database.editor.view-settings -[imports]-> features.shared.services '1 import'
-  features.database.editor.view-settings -[imports]-> framework.std.src '1 import, 1 type-only'
+  features.database.editor.view-settings -[imports]-> features.shared.services '2 imports'
+  features.database.editor.view-settings -[imports]-> framework.global_.lit '1 import'
+  features.database.editor.view-settings -[imports]-> framework.std.src '2 imports, 2 type-only'
   features.database.editor.view-transfer -[imports]-> features.database.block.src '2 imports'
   features.database.editor.view-transfer -[imports]-> features.database.engine.src '2 imports'
   features.database.editor.view-transfer -[imports]-> features.shared.services '3 imports, 3 type-only'
@@ -6154,10 +6156,10 @@ model {
   features.gfx.bpmn.src -[imports]-> features.gfx.connector.src '1 import'
   features.gfx.bpmn.src -[imports]-> features.gfx.group_.src '1 import'
   features.gfx.bpmn.src -[imports]-> features.gfx.template.src '1 import'
-  features.gfx.bpmn.src -[imports]-> features.shared.services '5 imports'
+  features.gfx.bpmn.src -[imports]-> features.shared.services '6 imports, 1 type-only'
   features.gfx.bpmn.src -[imports]-> features.shared.src '1 import'
   features.gfx.bpmn.src -[imports]-> features.shared.utils '2 imports'
-  features.gfx.bpmn.src -[imports]-> framework.global_.gfx '6 imports, 2 type-only'
+  features.gfx.bpmn.src -[imports]-> framework.global_.gfx '7 imports, 3 type-only'
   features.gfx.bpmn.src -[imports]-> framework.std.gfx '10 imports, 6 type-only'
   features.gfx.bpmn.src -[imports]-> framework.std.src '7 imports, 5 type-only'
   features.gfx.bpmn.src -[imports]-> model_.model_.src '15 imports, 9 type-only'
@@ -6168,10 +6170,11 @@ model {
   features.gfx.bpmn.templates -[imports]-> model_.model_.src '1 import'
   features.gfx.bpmn.toolbar -[imports]-> features.blocks.surface.src '2 imports'
   features.gfx.bpmn.toolbar -[imports]-> features.components.color-picker '1 import, 1 type-only'
-  features.gfx.bpmn.toolbar -[imports]-> features.gfx.bpmn.src '3 imports'
+  features.gfx.bpmn.toolbar -[imports]-> features.gfx.bpmn.src '4 imports'
   features.gfx.bpmn.toolbar -[imports]-> features.gfx.pointer.src '2 imports'
   features.gfx.bpmn.toolbar -[imports]-> features.gfx.shape_.src '2 imports'
   features.gfx.bpmn.toolbar -[imports]-> features.shared.services '4 imports, 1 type-only'
+  features.gfx.bpmn.toolbar -[imports]-> features.shared.utils '1 import'
   features.gfx.bpmn.toolbar -[imports]-> features.widgets.edgeless-toolbar.src '3 imports'
   features.gfx.bpmn.toolbar -[imports]-> framework.global_.lit '1 import'
   features.gfx.bpmn.toolbar -[imports]-> framework.std.src '2 imports'
@@ -7209,6 +7212,7 @@ model {
   features.widgets.edgeless-toolbar.catalogue -[imports]-> features.shared.services '2 imports'
   features.widgets.edgeless-toolbar.catalogue -[imports]-> features.shared.styles '1 import'
   features.widgets.edgeless-toolbar.catalogue -[imports]-> features.widgets.edgeless-toolbar.placement '1 import'
+  features.widgets.edgeless-toolbar.catalogue -[imports]-> features.widgets.edgeless-toolbar.src '1 import'
   features.widgets.edgeless-toolbar.catalogue -[imports]-> framework.global_.env '1 import'
   features.widgets.edgeless-toolbar.catalogue -[imports]-> framework.std.gfx '1 import'
   features.widgets.edgeless-toolbar.catalogue -[imports]-> framework.std.src '3 imports'
@@ -7261,7 +7265,7 @@ model {
   features.widgets.edgeless-toolbar.selection-pane -[imports]-> features.shared.utils '1 import'
   features.widgets.edgeless-toolbar.selection-pane -[imports]-> features.widgets.edgeless-toolbar.extension '1 import'
   features.widgets.edgeless-toolbar.selection-pane -[imports]-> features.widgets.edgeless-toolbar.mixins '1 import'
-  features.widgets.edgeless-toolbar.selection-pane -[imports]-> features.widgets.edgeless-toolbar.src '3 imports'
+  features.widgets.edgeless-toolbar.selection-pane -[imports]-> features.widgets.edgeless-toolbar.src '4 imports'
   features.widgets.edgeless-toolbar.selection-pane -[imports]-> framework.global_.lit '2 imports'
   features.widgets.edgeless-toolbar.selection-pane -[imports]-> framework.std.gfx '2 imports'
   features.widgets.edgeless-toolbar.selection-pane -[imports]-> framework.std.src '4 imports, 1 type-only'
@@ -7281,7 +7285,7 @@ model {
   features.widgets.edgeless-toolbar.src -[imports]-> features.widgets.edgeless-toolbar.placement '1 import'
   features.widgets.edgeless-toolbar.src -[imports]-> features.widgets.edgeless-toolbar.selection-pane '5 imports'
   features.widgets.edgeless-toolbar.src -[imports]-> framework.global_.exceptions '1 import'
-  features.widgets.edgeless-toolbar.src -[imports]-> framework.std.gfx '1 import'
+  features.widgets.edgeless-toolbar.src -[imports]-> framework.std.gfx '2 imports, 1 type-only'
   features.widgets.edgeless-toolbar.src -[imports]-> framework.std.src '1 import'
   features.widgets.edgeless-toolbar.src -[imports]-> model_.model_.src '2 imports, 1 type-only'
   features.widgets.edgeless-zoom-toolbar.src -[imports]-> features.blocks.surface.src '3 imports'
@@ -7646,18 +7650,18 @@ model {
   tooling.integration-test.src -[imports]-> assembly.all.extensions '2 imports'
   tooling.integration-test.src -[imports]-> assembly.all.src '1 import'
   tooling.integration-test.src -[imports]-> tooling.integration-test.editors '1 import'
-  tooling.playground.apps_ -[imports]-> assembly.all.blocks '8 imports, 1 type-only'
+  tooling.playground.apps_ -[imports]-> assembly.all.blocks '9 imports, 1 type-only'
   tooling.playground.apps_ -[imports]-> assembly.all.components '3 imports'
   tooling.playground.apps_ -[imports]-> assembly.all.ext-loader '3 imports, 1 type-only'
   tooling.playground.apps_ -[imports]-> assembly.all.extensions '1 import'
   tooling.playground.apps_ -[imports]-> assembly.all.global_ '12 imports, 2 type-only'
   tooling.playground.apps_ -[imports]-> assembly.all.inlines '1 import'
-  tooling.playground.apps_ -[imports]-> assembly.all.model_ '3 imports, 1 type-only'
+  tooling.playground.apps_ -[imports]-> assembly.all.model_ '4 imports, 2 type-only'
   tooling.playground.apps_ -[imports]-> assembly.all.rich-text '1 import, 1 type-only'
-  tooling.playground.apps_ -[imports]-> assembly.all.shared '13 imports, 1 type-only'
+  tooling.playground.apps_ -[imports]-> assembly.all.shared '14 imports, 1 type-only'
   tooling.playground.apps_ -[imports]-> assembly.all.src '4 imports'
   tooling.playground.apps_ -[imports]-> assembly.all.std '13 imports, 2 type-only'
-  tooling.playground.apps_ -[imports]-> assembly.all.store '26 imports, 10 type-only'
+  tooling.playground.apps_ -[imports]-> assembly.all.store '27 imports, 10 type-only'
   tooling.playground.apps_ -[imports]-> assembly.all.sync '1 import'
   tooling.playground.apps_ -[imports]-> assembly.all.widgets '4 imports'
   tooling.playground.apps_ -[imports]-> features.database.engine.property-presets '1 import'
