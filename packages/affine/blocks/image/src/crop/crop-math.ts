@@ -9,6 +9,8 @@ export type CropRect = Pick<ImageCrop, 'x' | 'y' | 'w' | 'h'>;
 
 export type CropCorner = 'nw' | 'ne' | 'sw' | 'se';
 
+export type CropSide = 'n' | 's' | 'e' | 'w';
+
 export const WHOLE_IMAGE: CropRect = { x: 0, y: 0, w: 1, h: 1 };
 
 /** Width over height, in source pixels, each preset keeps. */
@@ -135,6 +137,76 @@ export function resizeCrop(
   };
 }
 
+/** The same window with its axes swapped: a vertical side read as horizontal. */
+const transpose = (rect: CropRect): CropRect => ({
+  x: rect.y,
+  y: rect.x,
+  w: rect.h,
+  h: rect.w,
+});
+
+/** `resizeCropSide` for the east and west sides. */
+function resizeCropAcross(
+  start: CropRect,
+  west: boolean,
+  dx: number,
+  k: number | null
+): CropRect {
+  const min = IMAGE_CROP_MIN_SIDE;
+  const anchorX = west ? start.x + start.w : start.x;
+  const maxW = west ? anchorX : 1 - anchorX;
+  let w = clamp(west ? start.w - dx : start.w + dx, min, maxW);
+  let h = start.h;
+  let y = start.y;
+  if (k !== null) {
+    // The other dimension follows about its centre line, as far as the
+    // image lets it; the dragged side then gives way so the ratio holds.
+    // `start` is inside the image, so `maxH` is never below `min`, and
+    // `min * k` never exceeds `start.w <= maxW`.
+    const cy = start.y + start.h / 2;
+    const maxH = 2 * Math.min(cy, 1 - cy);
+    h = w / k;
+    if (h > maxH) {
+      h = maxH;
+      w = h * k;
+    }
+    if (h < min) {
+      h = min;
+      w = h * k;
+    }
+    y = cy - h / 2;
+  }
+  return { x: west ? anchorX - w : anchorX, y, w, h };
+}
+
+/**
+ * The window resized by dragging one side (PO acceptance P4-7, 2026-11-05):
+ * the opposite side pinned, one dimension changed. Free, the other dimension
+ * does not move. With a ratio `k` (normalised `w / h`), the other dimension
+ * follows about its centre line, so a side handle stays usable on a preset
+ * rather than being hidden; where the image stops it, the dragged side stops
+ * too. The window never leaves the source.
+ */
+export function resizeCropSide(
+  start: CropRect,
+  side: CropSide,
+  dx: number,
+  dy: number,
+  k: number | null
+): CropRect {
+  if (side === 'e' || side === 'w') {
+    return resizeCropAcross(start, side === 'w', dx, k);
+  }
+  return transpose(
+    resizeCropAcross(
+      transpose(start),
+      side === 'n',
+      dy,
+      k === null ? null : 1 / k
+    )
+  );
+}
+
 /** Scale of the window per 100 units of wheel `deltaY`. */
 export const CROP_WHEEL_STEP = 1.05;
 
@@ -167,6 +239,20 @@ export function panCrop(start: CropRect, dx: number, dy: number): CropRect {
 /** The zoom slider's range: 1x is the widest window of the frame's ratio. */
 export const CROP_ZOOM_MIN = 1;
 export const CROP_ZOOM_MAX = 4;
+
+/**
+ * The zoom one wheel event asks for from `zoom`, bounded like the slider:
+ * never past `CROP_ZOOM_MAX` (the wheel used to run on to the minimum
+ * side). A window a corner already shrank past the bound zooms no further
+ * in, and is never thrown back to the bound either: the wheel out starts
+ * from where it is.
+ */
+export function cropWheelZoom(zoom: number, deltaY: number): number {
+  return Math.min(
+    zoom / cropWheelFactor(deltaY),
+    Math.max(CROP_ZOOM_MAX, zoom)
+  );
+}
 
 /** The width of the widest window of normalised ratio `k` (`w / h`). */
 const widestWindowWidth = (k: number) => Math.min(1, k);

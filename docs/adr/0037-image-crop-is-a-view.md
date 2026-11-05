@@ -216,3 +216,24 @@ picture on a page.
   widget skips), so nothing covers the slider; the page toolbar is not hidden.
 - Superseded: the wheel scaling about the pointer (amendment of 2026-10-27)
   and dragging the window to move it.
+
+### 2026-11-05 — side handles, a bounded wheel, no toolbar over the frame (PO acceptance P4-7)
+
+- **Four side handles** (N, S, E, W) join the corners: a side resizes one
+  dimension, the opposite side pinned (`resizeCropSide`), cursor `ns-resize`
+  or `ew-resize`. Like a corner it is a write that keeps the IMAGE still.
+- **On a ratio preset a side stays usable** rather than hidden: the other
+  dimension follows about its centre line so the ratio holds, and where the
+  picture stops that dimension the dragged side stops too. Hiding them would
+  give a preset a different frame from free, and take the only one-axis
+  grip away from a finger on a small frame.
+- Every handle has a 44px target under `(pointer: coarse)`; the corners are
+  drawn after the sides so they win where the targets overlap.
+- **The wheel is capped at 4x** like the slider (`cropWheelZoom`); a window a
+  corner already shrank past 4x zooms no further in and is not thrown back
+  to 4x. Supersedes « it is not capped at 4x » above.
+- **The element toolbar is hidden while the frame is open**, page and canvas
+  (`ToolbarRegistry.flags.hide()` on open, `show()` on the controller's one
+  `stop`); on a page it covered the top handles and the slider. A preset is
+  changed by closing the frame and reopening it from the toolbar. Supersedes
+  « the page toolbar is not hidden » above.

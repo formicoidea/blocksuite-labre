@@ -25,10 +25,20 @@
  * - a zoom slider missing from above the frame, writing while held, zooming
  *   off the centre or moving the box; on a page, a zoom that changes the
  *   size of the window instead of the size of the whole picture;
- * - Escape leaving the handles hidden or the viewport locked.
+ * - Escape leaving the handles hidden or the viewport locked;
+ * - a frame with corner handles only, a side handle that changes both
+ *   dimensions or loses a preset's ratio, or a side drag that takes more
+ *   than one undo step (PO acceptance P4-7, 2026-11-05);
+ * - a wheel that zooms the picture past the slider's 4x;
+ * - a page frame drawn under the element toolbar, or a toolbar left hidden
+ *   once the frame closes.
  */
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import { CanvasRenderer, ExportManager } from '@labre/affine/blocks/surface';
+import {
+  ToolbarFlag,
+  ToolbarRegistryIdentifier,
+} from '@labre/affine/shared/services';
 import type {
   ImageBlockComponent,
   ImageEdgelessBlockComponent,
@@ -85,17 +95,19 @@ const storedKeys = (model: ImageBlockModel) =>
     ).yBlock.keys()
   );
 
+const handleOf = (overlay: HTMLElement, grip: string) =>
+  overlay.shadowRoot!.querySelector<HTMLElement>(
+    `[data-testid="image-crop-handle-${grip}"]`
+  )!;
+
 /** One pointer gesture on a crop handle, the way a mouse would do it. */
 async function dragHandle(
   overlay: HTMLElement,
-  corner: 'nw' | 'ne' | 'sw' | 'se',
+  grip: 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'e' | 'w',
   dx: number,
   dy: number
 ) {
-  const handle = overlay.shadowRoot!.querySelector<HTMLElement>(
-    `[data-corner="${corner}"]`
-  )!;
-  await dragFrom(handle, dx, dy);
+  await dragFrom(handleOf(overlay, grip), dx, dy);
 }
 
 /** One pointer gesture from the centre of `target`, in two moves. */
@@ -227,6 +239,96 @@ describe('image crop on the canvas', () => {
     );
     await wait();
     expect(overlayOf(block)).toBeNull();
+  });
+
+  test('a free side handle resizes one dimension in one gesture', async () => {
+    const { model, block } = await canvasImage();
+    block.cropController.choose('free');
+    await wait();
+    const overlay = overlayOf(block) as HTMLElement;
+    for (const side of ['n', 's'] as const) {
+      expect(getComputedStyle(handleOf(overlay, side)).cursor).toBe(
+        'ns-resize'
+      );
+    }
+    for (const side of ['e', 'w'] as const) {
+      expect(getComputedStyle(handleOf(overlay, side)).cursor).toBe(
+        'ew-resize'
+      );
+    }
+
+    window.doc.resetHistory();
+    const width = overlay.getBoundingClientRect().width;
+    // The east side halfway in, the pointer wandering down: the height and
+    // the west side do not move.
+    await dragHandle(overlay, 'e', -width / 2, 30);
+
+    const crop = { ...model.props.crop };
+    expect(crop.x).toBeCloseTo(0, 3);
+    expect(crop.y).toBeCloseTo(0, 3);
+    expect(crop.w).toBeCloseTo(0.5, 2);
+    expect(crop.h).toBeCloseTo(1, 3);
+    const [x, y, w, h] = JSON.parse(model.xywh) as number[];
+    expect(x).toBeCloseTo(0, 1);
+    expect(y).toBeCloseTo(0, 1);
+    expect(w).toBeCloseTo(100, 0);
+    expect(h).toBeCloseTo(100, 1);
+
+    window.doc.undo();
+    expect(model.props.crop).toBeUndefined();
+    expect(model.xywh).toBe('[0,0,200,100]');
+    expect(window.doc.canUndo).toBe(false);
+  });
+
+  test('a side handle on a preset keeps its ratio about the centre line', async () => {
+    const { model, block } = await canvasImage();
+    block.cropController.choose('1:1');
+    await wait();
+    expect(model.xywh).toBe('[50,0,100,100]');
+    const overlay = overlayOf(block) as HTMLElement;
+    const frameBox = overlay
+      .shadowRoot!.querySelector<HTMLElement>(
+        '[data-testid="image-crop-window"]'
+      )!
+      .getBoundingClientRect();
+
+    window.doc.resetHistory();
+    // The east side a quarter of the window in.
+    await dragHandle(overlay, 'e', -frameBox.width / 4, 0);
+
+    const { x = 0, y = 0, w = 0, h = 0 } = model.props.crop ?? {};
+    // 1:1 on a 200×100 picture is w / h = 0.5 in fractions.
+    expect(w).toBeCloseTo(0.375, 2);
+    expect(h).toBeCloseTo(0.75, 2);
+    expect(x).toBeCloseTo(0.25, 3);
+    expect(y + h / 2).toBeCloseTo(0.5, 3);
+    const [, , bw, bh] = JSON.parse(model.xywh) as number[];
+    expect(bw).toBeCloseTo(bh, 0);
+
+    window.doc.undo();
+    expect(model.xywh).toBe('[50,0,100,100]');
+    expect(window.doc.canUndo).toBe(false);
+  });
+
+  test('the wheel stops at 4x like the slider', async () => {
+    const { model, block } = await canvasImage();
+    block.cropController.choose('free');
+    await wait();
+    const overlay = overlayOf(block) as HTMLElement;
+    for (let i = 0; i < 20; i++) {
+      overlay.dispatchEvent(
+        new WheelEvent('wheel', {
+          bubbles: true,
+          composed: true,
+          cancelable: true,
+          deltaY: -300,
+        })
+      );
+    }
+    await until(() => model.props.crop !== undefined, 'the wheel commit');
+    // The whole 200×100 picture is 1x; 4x shows a quarter of it across.
+    expect(model.props.crop?.w).toBeCloseTo(0.25, 6);
+    expect(model.props.crop?.h).toBeCloseTo(0.25, 6);
   });
 
   test('the frame owns the canvas: no handles, no zoom, the wheel crops', async () => {
@@ -440,6 +542,7 @@ describe('image crop on a page', () => {
 
   test('a crop opens a window on the picture at the same scale', async () => {
     cleanups.push(await setupEditor('page'));
+    const { flags } = window.editor.std.get(ToolbarRegistryIdentifier);
     const sourceId = await window.doc.blobSync.set(await twoColourPng());
     const noteId = window.doc.addBlock('affine:note', {}, window.doc.root!.id);
     const id = window.doc.addBlock(
@@ -459,6 +562,8 @@ describe('image crop on a page', () => {
 
     image.cropController.choose('1:1');
     await wait();
+    // The element toolbar sat over the top handles: hidden while cropping.
+    expect(flags.check(ToolbarFlag.Hiding)).toBe(true);
 
     const box = image
       .querySelector<HTMLElement>('.resizable-img')!
@@ -507,6 +612,7 @@ describe('image crop on a page', () => {
     image.cropController.restoreOriginal();
     await wait();
     expect(model.props.crop).toBeUndefined();
+    expect(flags.check(ToolbarFlag.Hiding)).toBe(false);
     expect(
       image
         .querySelector<HTMLElement>('.resizable-img')!

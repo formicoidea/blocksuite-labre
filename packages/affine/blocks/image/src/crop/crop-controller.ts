@@ -4,7 +4,10 @@ import {
   type ImageCropMask,
   readImageCrop,
 } from '@labre/affine-model';
-import { translateKey } from '@labre/affine-shared/services';
+import {
+  ToolbarRegistryIdentifier,
+  translateKey,
+} from '@labre/affine-shared/services';
 import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
@@ -45,6 +48,11 @@ export interface CroppableImageBlock {
  * Both are taken by one open path and given back by one `stop`, whatever
  * closes the frame (Escape, Enter, a press elsewhere, the toolbar, the block
  * leaving the DOM, the selection moving elsewhere), so they cannot drift.
+ *
+ * On both views the element toolbar is hidden while the frame is open (PO
+ * acceptance P4-7, 2026-11-05): on a page it sat over the top handles and the
+ * zoom slider. The same open path hides it and the same `stop` shows it
+ * again. A preset is changed by closing the frame and reopening it.
  */
 export class ImageCropController {
   /** The mask the crop frame is open on, `null` when it is closed. */
@@ -56,6 +64,9 @@ export class ImageCropController {
 
   /** Gives the canvas back; set while the frame is open on the canvas. */
   private _release: (() => void) | null = null;
+
+  /** Shows the element toolbar again; set while the frame is open. */
+  private _showToolbar: (() => void) | null = null;
 
   constructor(
     private readonly _block: CroppableImageBlock,
@@ -103,6 +114,14 @@ export class ImageCropController {
 
   private _open(mask: ImageCropMask) {
     this.editing$.value = mask;
+    if (!this._showToolbar) {
+      // Optional: a host may mount the editor without the toolbar widget.
+      const flags = this._block.std.getOptional(
+        ToolbarRegistryIdentifier
+      )?.flags;
+      flags?.hide();
+      this._showToolbar = () => flags?.show();
+    }
     if (!this._onCanvas || this._release) return;
 
     const { selection, viewport } = this._block.std.get(
@@ -150,8 +169,11 @@ export class ImageCropController {
   /** Closes the frame and gives the canvas back; harmless when closed. */
   stop() {
     const release = this._release;
+    const showToolbar = this._showToolbar;
     this._release = null;
+    this._showToolbar = null;
     release?.();
+    showToolbar?.();
     this.editing$.value = null;
   }
 
