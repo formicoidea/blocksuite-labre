@@ -16,6 +16,7 @@ import {
 } from '@labre/affine-model';
 import { fillPlaceholders } from '@labre/affine-shared/services';
 import { safeFilename } from '@labre/affine-shared/utils';
+import type { Bound } from '@labre/global/gfx';
 import type { GfxPrimitiveElementModel } from '@labre/std/gfx';
 
 import { type BpmnExportBoard, exportBpmnXmlWithWarnings } from './export.js';
@@ -110,14 +111,23 @@ function legendMemberIds(
  * left-out count does not report a name that IS written. An unbound
  * `bpmn:label` stays counted: its words are in no file.
  *
+ * `labelBounds` is where each bound label is drawn, the box the exporter writes
+ * as the shape's `BPMNLabel` (ADR 0029, amendment of 2026-11-04): a label the
+ * user dragged beside its event goes out beside it.
+ *
  * Direct children only, read defensively: they came out of a Y.Map.
  */
 function gravitatingLabels(
   elements: readonly GfxPrimitiveElementModel[],
   picked: ReadonlySet<string>
-): { labels: Map<string, string>; consumed: Set<string> } {
+): {
+  labels: Map<string, string>;
+  labelBounds: Map<string, Bound>;
+  consumed: Set<string>;
+} {
   const byId = new Map(elements.map(element => [element.id, element]));
   const labels = new Map<string, string>();
+  const labelBounds = new Map<string, Bound>();
   const consumed = new Set<string>();
   const isLabel = (element: GfxPrimitiveElementModel | undefined) =>
     element instanceof TextElementModel && element.role === BPMN_ROLE.label;
@@ -138,6 +148,7 @@ function gravitatingLabels(
     );
     if (nodes.length === 1 && texts.length === 1) {
       labels.set(nodes[0].id, texts[0].text?.toString() ?? '');
+      labelBounds.set(nodes[0].id, texts[0].elementBound);
       consumed.add(texts[0].id);
     }
     if (
@@ -149,7 +160,7 @@ function gravitatingLabels(
       consumed.add(group.id);
     }
   }
-  return { labels, consumed };
+  return { labels, labelBounds, consumed };
 }
 
 /**
@@ -225,7 +236,7 @@ export function bpmnBoardFrom(
   // audit and the serializer use, so what is reported left out is what the rest
   // of the framework agrees is in there.
   const legend = legendMemberIds(elements);
-  const { labels, consumed } = gravitatingLabels(
+  const { labels, labelBounds, consumed } = gravitatingLabels(
     elements,
     new Set(nodes.map(node => node.id))
   );
@@ -240,7 +251,7 @@ export function bpmnBoardFrom(
     pools,
     nodes,
     connectors,
-    ...(labels.size > 0 ? { labels } : {}),
+    ...(labels.size > 0 ? { labels, labelBounds } : {}),
     ...(leftOut > 0 ? { leftOut } : {}),
   };
 }

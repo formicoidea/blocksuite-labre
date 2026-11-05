@@ -866,6 +866,145 @@ describe('a gravitating label (R38)', () => {
   });
 });
 
+/**
+ * Where a gravitating name is drawn goes out as the shape's `BPMNLabel`
+ * (ADR 0029, amendment of 2026-11-04).
+ *
+ * Before, the exporter wrote no `BPMNLabel` of its own and handed back the
+ * one an import carried, so a label the user moved in Labre went out where
+ * the source file had it, and a board drawn in Labre let bpmn.io guess. These
+ * cases would have caught that; the stale carried label written NEXT to the
+ * real one (two on a shape, against `tBPMNShape`); the label left behind when
+ * the plane moves to the origin; and a `BPMNLabel` invented for a name no
+ * label holds.
+ */
+describe('where a name is drawn', () => {
+  const pool = (x = 0, y = 0) =>
+    fakePool('p', [x, y, POOL_W, POOL_H], { name: 'Sales' });
+  const shapeOf = (doc: Document, id: string) =>
+    di(doc, 'BPMNShape').find(shape => attr(shape, 'bpmnElement') === id)!;
+  const boundsOf = (element: Element) =>
+    ['x', 'y', 'width', 'height'].map(name =>
+      Number(element.getAttribute(name))
+    );
+  const labelsOf = (shape: Element) =>
+    Array.from(shape.children).filter(child => child.localName === 'BPMNLabel');
+
+  it('writes the label’s own box as the BPMNLabel, right after the bounds', () => {
+    const start = fakeNode('s', 'startEvent', [BAND + 20, 40, 56, 56]);
+    const doc = parse(
+      exportBpmnXml(
+        board({
+          pools: [pool()],
+          nodes: [start],
+          labels: new Map([['s', 'Filed']]),
+          labelBounds: new Map([['s', { x: BAND + 80, y: 50, w: 70, h: 20 }]]),
+        })
+      )
+    );
+    const shape = shapeOf(doc, 's');
+    expect(Array.from(shape.children).map(child => child.localName)).toEqual([
+      'Bounds',
+      'BPMNLabel',
+    ]);
+    const [label] = labelsOf(shape);
+    expect(boundsOf(label.children[0])).toEqual([BAND + 80, 50, 70, 20]);
+  });
+
+  it('moves the label with the plane when the drawing is moved to the origin', () => {
+    // The pool sits at (100, 50): everything is written 100 left, 50 up, the
+    // name included, or it would hang 100 to the right of its event.
+    const start = fakeNode('s', 'startEvent', [100 + BAND + 20, 90, 56, 56]);
+    const doc = parse(
+      exportBpmnXml(
+        board({
+          pools: [pool(100, 50)],
+          nodes: [start],
+          labels: new Map([['s', 'Filed']]),
+          labelBounds: new Map([
+            ['s', { x: 100 + BAND + 80, y: 100, w: 70, h: 20 }],
+          ]),
+        })
+      )
+    );
+    const shape = shapeOf(doc, 's');
+    expect(boundsOf(shape.children[0])).toEqual([BAND + 20, 40, 56, 56]);
+    expect(boundsOf(labelsOf(shape)[0].children[0])).toEqual([
+      BAND + 80,
+      50,
+      70,
+      20,
+    ]);
+  });
+
+  it('writes ONE BPMNLabel, in place of the one an import carried', () => {
+    // A document imported before the amendment carries its file's label as
+    // DI; the label the user sees now is the truth, and the schema allows one.
+    // Every other carried child of the shape stays.
+    const start = fakeNode('s', 'startEvent', [BAND + 20, 40, 56, 56]);
+    (start as { interchange?: unknown }).interchange = {
+      bpmn: {
+        id: 's',
+        di: {
+          '@shape': [
+            '<bpmndi:BPMNLabel><dc:Bounds x="1" y="2" width="3" height="4" /></bpmndi:BPMNLabel>',
+            '<vendor:hint xmlns:vendor="urn:vendor" />',
+          ],
+        },
+      },
+    };
+    const xml = exportBpmnXml(
+      board({
+        pools: [pool()],
+        nodes: [start],
+        labels: new Map([['s', 'Filed']]),
+        labelBounds: new Map([['s', { x: BAND + 80, y: 50, w: 70, h: 20 }]]),
+      })
+    );
+    const shape = shapeOf(parse(xml), 's');
+    const labels = labelsOf(shape);
+    expect(labels).toHaveLength(1);
+    expect(boundsOf(labels[0].children[0])).toEqual([BAND + 80, 50, 70, 20]);
+    expect(xml).not.toContain('x="1" y="2"');
+    expect(xml).toContain('<vendor:hint xmlns:vendor="urn:vendor" />');
+  });
+
+  it('hands back a carried BPMNLabel untouched when no label of the board places it', () => {
+    // A legacy event named by its inner text has nothing drawn to place: what
+    // the file said is still the best answer there is.
+    const start = fakeNode('s', 'startEvent', [BAND + 20, 40, 56, 56], 'Old');
+    (start as { interchange?: unknown }).interchange = {
+      bpmn: {
+        id: 's',
+        di: {
+          '@shape': [
+            '<bpmndi:BPMNLabel><dc:Bounds x="1" y="2" width="3" height="4" /></bpmndi:BPMNLabel>',
+          ],
+        },
+      },
+    };
+    const xml = exportBpmnXml(board({ pools: [pool()], nodes: [start] }));
+    expect(xml.match(/BPMNLabel>/g)).toHaveLength(2);
+    expect(xml).toContain('x="1" y="2" width="3" height="4"');
+  });
+
+  it('writes no BPMNLabel for a name no label holds', () => {
+    // An empty grouped label names nothing; the event's own text does, and
+    // there is no drawn box for it.
+    const start = fakeNode('s', 'startEvent', [BAND + 20, 40, 56, 56], 'Old');
+    const xml = exportBpmnXml(
+      board({
+        pools: [pool()],
+        nodes: [start],
+        labels: new Map([['s', '  ']]),
+        labelBounds: new Map([['s', { x: BAND + 80, y: 50, w: 70, h: 20 }]]),
+      })
+    );
+    expect(xml).toContain('<bpmn:startEvent id="s" name="Old"');
+    expect(xml).not.toContain('BPMNLabel');
+  });
+});
+
 describe('ids', () => {
   it('turns a surface id into a valid NCName', () => {
     // `xsd:ID` means NCName: no leading digit, no colon, no space. Surface ids

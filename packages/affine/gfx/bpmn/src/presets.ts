@@ -411,12 +411,16 @@ export function bpmnLabelBoxUnder(
  * centred, carrying the role that makes it a NAME rather than a note.
  *
  * Mirrors `wardleyLabelProps`; one builder so the palette, the scenes and the
- * importer write the same element.
+ * importer write the same element. `size` is the pack's own box unless a file
+ * drew the label somewhere else: an imported `BPMNLabel` keeps its own width
+ * and height, so the name wraps where the author's tool wrapped it and goes
+ * back out in the very box it came in (ADR 0029, amendment of 2026-11-04).
  */
 export function bpmnLabelProps(
   text: string,
   x: number,
-  y: number
+  y: number,
+  size: { w: number; h: number } = { w: BPMN_LABEL_W, h: BPMN_LABEL_H }
 ): Record<string, unknown> & { type: string } {
   return {
     type: 'text',
@@ -426,7 +430,7 @@ export function bpmnLabelProps(
     fontSize: LABEL_FONT_SIZE,
     color: NEUTRAL_STROKE,
     textAlign: TextAlign.Center,
-    xywh: new Bound(x, y, BPMN_LABEL_W, BPMN_LABEL_H).serialize(),
+    xywh: new Bound(x, y, size.w, size.h).serialize(),
   };
 }
 
