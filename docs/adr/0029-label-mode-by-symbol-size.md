@@ -109,6 +109,23 @@ nine frameworks: 72 already consistent with the criterion below, 12 not — the
 
 ## Amendments
 
+**2026-11-04 — the Event Storming hotspot is born at 180 and conforms (PO
+decision).** The `hotspot` deviation recorded above is corrected. Its diamond
+offers only the rectangle inscribed in it, half of each side: at the standard
+120 (`STICKY_SIZE`) that is 40 units wide, short of one five-letter word in
+Kalam 20 (`STICKY_FONT_SIZE`), so the `Contained` fit shrank the font. Two
+lines of Kalam 20 need about 140 of side; at 180 the seed "Hotspot" (≈ 70
+units) fits without reduction. `eventStormingStickySize('hotspot')` now returns
+`HOTSPOT_SIZE = 180` (`gfx/ddd-event-storming/src/sticky-size.ts`), which the
+command `addHotspot`, the toolbox item and the template (derived from the
+command) all read. `gfx/ddd-event-storming/src/__tests__/label-mode.unit.spec.ts`
+holds every Event Storming sticky, the hotspot included, against
+`fitsInscribedLabel` at `STICKY_FONT_SIZE`. Two limits, accepted: nothing is
+migrated, so a hotspot drawn before this amendment keeps its 120 (a size is a
+value written at creation, not a stored-format change); and a morph never
+touches geometry (`morph.ts`), so a sticky morphed into a hotspot keeps its
+size and may stay below what R38 asks. The Wardley `porter` deviation is
+
 **2026-11-04 — a glyph whose inscribed text IS the notation is exempt (PO
 decision, option 1 without truncation).** The Wardley `porter` deviation
 recorded above becomes a rule rather than a defect. A symbol whose inscribed

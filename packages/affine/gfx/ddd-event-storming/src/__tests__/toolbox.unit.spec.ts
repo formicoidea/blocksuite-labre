@@ -17,7 +17,7 @@ import {
   ES_STICKY_ROLE,
   type EventStormingStickyKind,
 } from '../roles';
-import { AGGREGATE_SIZE } from '../sticky-size';
+import { AGGREGATE_SIZE, HOTSPOT_SIZE } from '../sticky-size';
 import {
   EVENT_STORMING_TOOLBOX,
   eventStormingBoardElement,
@@ -28,14 +28,21 @@ import {
 /**
  * The Event Storming toolbar as pure builders (`docs/adr/0045`). What it would
  * have caught: a sticky built for a host that differs from the one the
- * toolbar places (another colour or size, the aggregate at the standard size,
- * a hotspot that is not a diamond, the role on the shadow or the group, a
+ * toolbar places (another colour or size, the aggregate or the hotspot at the
+ * standard size, a hotspot that is not a diamond, the role on the shadow or
+ * the group, a
  * group that is not last or misses a member), a board off its declaration, a
  * flow drawn in another style than the tool its entry arms, and a toolbar item
  * a host cannot name the way the toolbar does.
  */
 
 const CENTRE = { x: 500, y: 300 };
+
+/** The two kinds the toolbar does not place at the standard side. */
+const SIDE_OF: Partial<Record<EventStormingStickyKind, number>> = {
+  aggregate: AGGREGATE_SIZE,
+  hotspot: HOTSPOT_SIZE,
+};
 
 /**
  * Run a toolbar command against an editor reduced to what the command
@@ -117,7 +124,7 @@ describe('event storming toolbox', () => {
 
   it('builds every sticky as the toolbar places it: shadow, face, group last', () => {
     for (const kind of STICKY_KINDS) {
-      const side = kind === 'aggregate' ? AGGREGATE_SIZE : STICKY_SIZE;
+      const side = SIDE_OF[kind] ?? STICKY_SIZE;
       const { added, groups } = runCommand(commandOf(kind));
       const elements = eventStormingStickyElements(kind, {
         x: CENTRE.x - side / 2,
@@ -213,6 +220,9 @@ describe('event storming toolbox', () => {
     expect(
       EVENT_STORMING_TOOLBOX.items.find(i => i.id === 'aggregate')?.size
     ).toEqual({ w: AGGREGATE_SIZE, h: AGGREGATE_SIZE });
+    expect(
+      EVENT_STORMING_TOOLBOX.items.find(i => i.id === 'hotspot')?.size
+    ).toEqual({ w: HOTSPOT_SIZE, h: HOTSPOT_SIZE });
   });
 
   it('builds an item at the point it is given, group last', () => {
