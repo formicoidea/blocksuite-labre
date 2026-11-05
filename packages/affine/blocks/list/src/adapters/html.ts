@@ -95,24 +95,27 @@ export const listBlockHtmlAdapterMatcher: BlockHtmlAdapterMatcher = {
       const currentTNode = walkerContext.currentNode();
       const liChildren = deltaConverter.deltaToAST(text.delta);
       if (o.node.props.type === 'todo') {
-        liChildren.unshift({
-          type: 'element',
-          tagName: 'input',
-          properties: {
-            type: 'checkbox',
-            checked: o.node.props.checked as boolean,
-          },
-          children: [
-            {
-              type: 'element',
-              tagName: 'label',
-              properties: {
-                style: 'margin-right: 3px;',
-              },
-              children: [],
+        // Siblings: `input` is a void element, so a label inside it prints a
+        // stray `</input>` that no parser accepts.
+        liChildren.unshift(
+          {
+            type: 'element',
+            tagName: 'input',
+            properties: {
+              type: 'checkbox',
+              checked: o.node.props.checked as boolean,
             },
-          ],
-        });
+            children: [],
+          },
+          {
+            type: 'element',
+            tagName: 'label',
+            properties: {
+              style: 'margin-right: 3px;',
+            },
+            children: [],
+          }
+        );
       }
       // check if the list is of the same type
       if (
