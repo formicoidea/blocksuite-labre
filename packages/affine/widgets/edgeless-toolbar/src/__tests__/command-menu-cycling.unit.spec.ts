@@ -12,7 +12,7 @@ import { beforeAll, describe, expect, test, vi } from 'vitest';
 import { EdgelessCommandMenu } from '../menu/command-menu.js';
 
 /**
- * Keyboard cycling of an open framework senior menu: Shift+S and the arrows
+ * Keyboard cycling of an open framework senior menu: Shift+S and Alt+←/→
  * move a HIGHLIGHT along the row, Enter runs what it points at.
  *
  * The keystrokes themselves are bound in `@labre/affine-block-root`

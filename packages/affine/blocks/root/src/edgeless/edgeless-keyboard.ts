@@ -55,7 +55,11 @@ import {
 } from '@labre/affine-widget-edgeless-toolbar';
 import { IS_MAC } from '@labre/global/env';
 import { Bound, getCommonBound } from '@labre/global/gfx';
-import { SurfaceSelection, TextSelection } from '@labre/std';
+import {
+  SurfaceSelection,
+  TextSelection,
+  type UIEventStateContext,
+} from '@labre/std';
 import {
   type BaseTool,
   GfxBlockElementModel,
@@ -67,6 +71,7 @@ import {
 } from '@labre/std/gfx';
 
 import { PageKeyboardManager } from '../keyboard/keyboard-manager.js';
+import { type ArrowKey, routeArrowKey } from './arrow-key-routing.js';
 import {
   ROOT_MINDMAP_SEED_NEW_NODE,
   ROOT_TOAST_ZOOM_TO_SELECTION,
@@ -104,11 +109,14 @@ export class EdgelessPageKeyboardManager extends PageKeyboardManager {
     // A keystroke aimed at a canvas text editor belongs to that editor, open
     // menu or not — the same condition the shape cycling below already has.
     if (this.rootComponent.service.selection.editing) return null;
-    const toolbar = this.rootComponent.widgetComponents[
-      EDGELESS_TOOLBAR_WIDGET
-    ] as EdgelessToolbarWidget | undefined;
-    const element = toolbar?.activePopper?.element;
+    const element = this._toolbar?.activePopper?.element;
     return element instanceof EdgelessCommandMenu ? element : null;
+  }
+
+  private get _toolbar(): EdgelessToolbarWidget | undefined {
+    return this.rootComponent.widgetComponents[EDGELESS_TOOLBAR_WIDGET] as
+      | EdgelessToolbarWidget
+      | undefined;
   }
 
   constructor(override rootComponent: EdgelessRootBlockComponent) {
@@ -386,55 +394,31 @@ export class EdgelessPageKeyboardManager extends PageKeyboardManager {
           }
         },
 
-        ArrowUp: () => {
-          this._move('ArrowUp');
-        },
-
-        ArrowDown: () => {
-          this._move('ArrowDown');
-        },
-
-        ArrowLeft: () => {
-          // Same highlight as Shift+S, spelled the way a row of buttons is
-          // normally walked. The guard also keeps the arrows from nudging the
-          // selection behind a menu the user is reading.
-          const menu = this._seniorMenu;
-          if (menu) {
-            menu.cycle(-1);
-            return;
-          }
-          this._move('ArrowLeft');
-        },
-
-        ArrowRight: () => {
-          const menu = this._seniorMenu;
-          if (menu) {
-            menu.cycle(1);
-            return;
-          }
-          this._move('ArrowRight');
-        },
-
-        'Shift-ArrowUp': () => {
-          this._move('ArrowUp', true);
-        },
-
-        'Shift-ArrowDown': () => {
-          this._move('ArrowDown', true);
-        },
-
-        'Shift-ArrowLeft': () => {
-          this._move('ArrowLeft', true);
-        },
-
-        'Shift-ArrowRight': () => {
-          this._move('ArrowRight', true);
-        },
+        // The arrows move the selection whatever the toolbar shows; Alt+←/→
+        // walks the open sub-menu, or the toolbar when none is open
+        // (`arrow-key-routing.ts`).
+        ArrowUp: ctx => this._arrow(ctx, 'ArrowUp'),
+        ArrowDown: ctx => this._arrow(ctx, 'ArrowDown'),
+        ArrowLeft: ctx => this._arrow(ctx, 'ArrowLeft'),
+        ArrowRight: ctx => this._arrow(ctx, 'ArrowRight'),
+        'Shift-ArrowUp': ctx => this._arrow(ctx, 'ArrowUp'),
+        'Shift-ArrowDown': ctx => this._arrow(ctx, 'ArrowDown'),
+        'Shift-ArrowLeft': ctx => this._arrow(ctx, 'ArrowLeft'),
+        'Shift-ArrowRight': ctx => this._arrow(ctx, 'ArrowRight'),
+        'Alt-ArrowLeft': ctx => this._arrow(ctx, 'ArrowLeft'),
+        'Alt-ArrowRight': ctx => this._arrow(ctx, 'ArrowRight'),
 
         Enter: () => {
           // A highlighted sub-menu button consumes Enter; with nothing
           // highlighted the menu takes nothing and the canvas keeps its own.
           if (this._seniorMenu?.activate()) return;
+          // Then a highlighted toolbar button (Alt+←/→ with no sub-menu open).
+          if (
+            !rootComponent.service.selection.editing &&
+            this._toolbar?.activateHighlight()
+          ) {
+            return;
+          }
 
           const { service } = rootComponent;
           const selection = service.selection;
@@ -602,6 +586,33 @@ export class EdgelessPageKeyboardManager extends PageKeyboardManager {
       },
       { global: true }
     );
+  }
+
+  private _arrow(ctx: UIEventStateContext, key: ArrowKey) {
+    const event = ctx.get('keyboardState').raw;
+    const route = routeArrowKey({
+      key,
+      alt: event.altKey,
+      shift: event.shiftKey,
+      editing: this.rootComponent.service.selection.editing,
+      menuOpen: this._seniorMenu !== null,
+    });
+    switch (route.kind) {
+      case 'move':
+        this._move(route.key, route.shift);
+        return;
+      case 'menu':
+        // Alt+← is the browser's Back on Windows and Linux.
+        event.preventDefault();
+        this._seniorMenu?.cycle(route.dir);
+        return;
+      case 'toolbar':
+        event.preventDefault();
+        this._toolbar?.walkHighlight(route.dir);
+        return;
+      case 'none':
+        return;
+    }
   }
 
   private _delete() {
