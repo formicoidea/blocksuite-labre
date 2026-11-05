@@ -49,7 +49,13 @@ export function imageCropToolbarAction(
       if (!block?.blobUrl) return null;
       const controller = block.cropController;
       const crop = controller.crop$.value;
-      const current = crop ? (crop.mask ?? 'free') : null;
+      // The row in force is the preset the frame is OPEN on, never the mask
+      // the stored crop remembers: a selected `editor-menu-action` is inert
+      // (re-picking a choice in force is a no-op there), and these rows are
+      // not choices but the gesture that opens the frame. Marking the stored
+      // mask left « Free » unclickable after the first free crop (PO
+      // acceptance of 2026-11-05).
+      const current = controller.editing$.value;
       const label = translateKey(ctx.std, ...IMAGE_TOOLBAR_CROP);
       const original = translateKey(ctx.std, ...IMAGE_TOOLBAR_CROP_ORIGINAL);
 
