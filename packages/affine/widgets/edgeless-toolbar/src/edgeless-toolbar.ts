@@ -849,6 +849,17 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
  * `element` (something floats over it).
  */
 function deepElementAtCentre(element: HTMLElement): Element | null {
+  // Hit-testing only sees what is on screen: a host page taller than the
+  // window can leave the toolbar below the fold.
+  const box = element.getBoundingClientRect();
+  if (
+    box.top < 0 ||
+    box.left < 0 ||
+    box.bottom > window.innerHeight ||
+    box.right > window.innerWidth
+  ) {
+    element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }
   const rect = element.getBoundingClientRect();
   const x = rect.left + rect.width / 2;
   const y = rect.top + rect.height / 2;

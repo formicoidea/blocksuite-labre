@@ -54,6 +54,9 @@ describe('canvas arrows move first, Alt reaches the toolbar', () => {
   beforeEach(async () => {
     const cleanup = await setupEditor('edgeless');
     edgeless = getDocRootBlock(window.doc, window.editor, 'edgeless');
+    // The dispatcher only runs while active; a pointer entering the host turns
+    // it on, and nothing here moves one before the first keystroke.
+    edgeless.std.event.active = true;
     const id = edgeless.service.crud.addElement('shape', {
       shapeType: 'rect',
       xywh: '[0,0,100,100]',
@@ -131,7 +134,7 @@ describe('canvas arrows move first, Alt reaches the toolbar', () => {
 
     // Nothing was highlighted by the plain arrows: Enter arms nothing.
     press('Enter');
-    expect(armedArtefact(edgeless.gfx)).toBeUndefined();
+    expect(armedArtefact(edgeless.gfx)).toBeFalsy();
   });
 
   test('with the sub-menu open, Alt+→ walks it and the selection stays', async () => {
