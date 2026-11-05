@@ -236,11 +236,21 @@ export class HtmlAdapter extends BaseAdapter<Html> {
       snapshot: payload.snapshot.blocks,
       assets: payload.assets,
     });
+    // Through the stringifier and a replacer function: a title is user text,
+    // on a public page it must not open a tag, nor be read as a `$&` pattern.
+    const title = this._astToHtml({
+      type: 'root',
+      children: [
+        {
+          type: 'element',
+          tagName: 'h1',
+          properties: {},
+          children: [{ type: 'text', value: payload.snapshot.meta.title }],
+        },
+      ],
+    });
     return {
-      file: file.replace(
-        '<!--BlockSuiteDocTitlePlaceholder-->',
-        `<h1>${payload.snapshot.meta.title}</h1>`
-      ),
+      file: file.replace('<!--BlockSuiteDocTitlePlaceholder-->', () => title),
       assetsIds,
     };
   }
