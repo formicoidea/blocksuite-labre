@@ -19,7 +19,14 @@ import {
   WHOLE_IMAGE,
   wholeImageFrame,
 } from './crop-math.js';
-import { IMAGE_CROP_ZOOM } from '../translations.js';
+import {
+  IMAGE_CROP_EDGE_BOTTOM,
+  IMAGE_CROP_EDGE_LEFT,
+  IMAGE_CROP_EDGE_RIGHT,
+  IMAGE_CROP_EDGE_TOP,
+  IMAGE_CROP_ZOOM,
+} from '../translations.js';
+import type { CropEdgeLabels } from './crop-overlay.js';
 import { type CropKeep, writeImageCrop } from './write-crop.js';
 
 /** What the controller needs from the block it serves, page or canvas. */
@@ -166,6 +173,13 @@ export class ImageCropController {
     const ratio = natural
       ? maskRatio(mask, natural.width, natural.height)
       : null;
+    const { std } = this._block;
+    const edgeLabels: CropEdgeLabels = {
+      n: translateKey(std, ...IMAGE_CROP_EDGE_TOP),
+      e: translateKey(std, ...IMAGE_CROP_EDGE_RIGHT),
+      s: translateKey(std, ...IMAGE_CROP_EDGE_BOTTOM),
+      w: translateKey(std, ...IMAGE_CROP_EDGE_LEFT),
+    };
     return html`<affine-image-crop-overlay
       data-testid="image-crop-overlay"
       style=${styleMap(wholeImageFrame(crop))}
@@ -173,7 +187,8 @@ export class ImageCropController {
       .crop=${crop}
       .ratio=${ratio}
       .rotate=${rotate}
-      .zoomLabel=${translateKey(this._block.std, ...IMAGE_CROP_ZOOM)}
+      .zoomLabel=${translateKey(std, ...IMAGE_CROP_ZOOM)}
+      .edgeLabels=${edgeLabels}
       .onCommit=${(rect: CropRect, keep: CropKeep) => {
         this.commit(rect, mask, keep);
       }}

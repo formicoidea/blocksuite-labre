@@ -216,3 +216,33 @@ picture on a page.
   widget skips), so nothing covers the slider; the page toolbar is not hidden.
 - Superseded: the wheel scaling about the pointer (amendment of 2026-10-27)
   and dragging the window to move it.
+
+### 2026-11-05 — edge handles resize along one axis (PO acceptance)
+
+The corner handles change both sides at once; the PO asked to resize in one
+direction for precision. Nothing stored changes: `crop` is still the
+normalised window, and the write is the corners' one.
+
+- **A short bar at the middle of each edge** (top, right, bottom, left) sits
+  beside the four corner handles, thinner than them, with the `ns-resize` /
+  `ew-resize` cursor. Only the bars and the corners resize the frame; a press
+  anywhere else inside it still pans the picture. On a window at its minimum
+  side the corners are drawn above the bars, so the two-axis grip wins.
+- **Dragging an edge moves that edge alone** (`resizeCropEdge`): the opposite
+  edge stays pinned. A free frame changes that one dimension only.
+- **With a ratio (16:9, 4:3, 1:1) the other dimension follows**, anchored on
+  the opposite edge and centred across the drag: a right-edge drag on a 1:1
+  frame grows the width and the height together, the left edge fixed and the
+  vertical centre kept. When centred growth would leave the source, the
+  window is pushed back inside rather than stopped, so a frame against the
+  image's border can still grow; the side across the drag never exceeds the
+  whole image, and the side along it then follows the ratio back.
+- Same bounds as the corners: inside [0, 1]², never below
+  `IMAGE_CROP_MIN_SIDE`. Same write: `keep: 'image'`, the picture keeps its
+  place and scale and the box follows the window (`cropBoundFor`); one drag,
+  one undo step, nothing written when unchanged or readonly.
+- Each bar is a `separator` named by its own key,
+  `com.labre.image.crop.edge.top` (« Resize from the top edge »), `.right`,
+  `.bottom` and `.left`. It is not focusable: the
+  frame has no keyboard resize, corners included; the slider is its keyboard
+  path.
