@@ -2,7 +2,7 @@ import { WithDisposable } from '@labre/affine/global/lit';
 import { GenerateDocUrlProvider } from '@labre/affine/shared/services';
 import { createDefaultDoc } from '@labre/affine/shared/utils';
 import { ShadowlessElement } from '@labre/affine/std';
-import type { Doc, Workspace } from '@labre/affine/store';
+import type { Doc, ExtensionType, Store, Workspace } from '@labre/affine/store';
 import { CloseIcon } from '@blocksuite/icons/lit';
 import type { TestAffineEditorContainer } from '@labre/integration-test';
 import { css, html, nothing } from 'lit';
@@ -10,7 +10,20 @@ import { customElement, property } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { styleMap } from 'lit/directives/style-map.js';
 
+import {
+  createDatabaseDoc,
+  databaseHostBlockId,
+  databaseHostExtensions,
+} from '../database-host.js';
 import { removeModeFromStorage } from '../mock-services.js';
+
+/** The full page a database document opens on, as the Labre app mounts it. */
+type DatabasePage = HTMLElement & {
+  store: Store;
+  extensions: ExtensionType[];
+  hostBlockId: string;
+  heading: HTMLElement | null;
+};
 
 @customElement('docs-panel')
 export class DocsPanel extends WithDisposable(ShadowlessElement) {
@@ -56,6 +69,13 @@ export class DocsPanel extends WithDisposable(ShadowlessElement) {
       cursor: pointer;
       color: var(--affine-text-primary-color);
     }
+    .new-doc-buttons {
+      display: flex;
+      gap: 8px;
+    }
+    .new-doc-buttons .new-doc-button {
+      flex: 1;
+    }
     .new-doc-button:hover {
       background-color: var(--affine-hover-color);
     }
@@ -65,13 +85,69 @@ export class DocsPanel extends WithDisposable(ShadowlessElement) {
     createDocBlock(this.editor.doc.workspace);
   };
 
+  createDatabase = () => {
+    const doc = this.collection.getDoc(createDatabaseDoc(this.collection));
+    if (doc) this.gotoDoc(doc);
+  };
+
+  /** The database document shown on its full page, in place of the editor. */
+  private databasePage: { docId: string; page: DatabasePage } | null = null;
+
+  private closeDatabasePage() {
+    if (!this.databasePage) return;
+    this.databasePage.page.remove();
+    this.databasePage = null;
+    this.editor.style.display = '';
+  }
+
+  /**
+   * A database document opens on its full page (ADR 0035 §1), mounted with
+   * the editor's page extensions plus the stub host's
+   * (`databaseHostExtensions`). The editor stays on its own document,
+   * hidden: the page builds its own editor on the database's store.
+   */
+  private openDatabasePage(doc: Doc, store: Store, hostBlockId: string) {
+    this.closeDatabasePage();
+    const heading = document.createElement('doc-title') as HTMLElement & {
+      doc: Store;
+      bodyBlockId: string;
+    };
+    heading.doc = store;
+    heading.bodyBlockId = hostBlockId;
+    const page = document.createElement('affine-database-page') as DatabasePage;
+    page.style.height = '100%';
+    page.store = store;
+    page.extensions = [
+      ...this.editor.pageSpecs,
+      ...databaseHostExtensions(this.collection),
+    ];
+    page.hostBlockId = hostBlockId;
+    page.heading = heading;
+    this.editor.style.display = 'none';
+    this.editor.after(page);
+    this.databasePage = { docId: doc.id, page };
+  }
+
+  private get currentDocId() {
+    return this.databasePage?.docId ?? this.editor.doc.id;
+  }
+
   gotoDoc = (doc: Doc) => {
     const url = this.editor.std
       .getOptional(GenerateDocUrlProvider)
       ?.generateDocUrl(doc.id);
     if (url) history.pushState({}, '', url);
 
-    this.editor.doc = doc.getStore();
+    const store = doc.getStore();
+    store.load();
+    const hostBlockId = databaseHostBlockId(store);
+    if (hostBlockId) {
+      this.openDatabasePage(doc, store, hostBlockId);
+      this.requestUpdate();
+      return;
+    }
+    this.closeDatabasePage();
+    this.editor.doc = store;
     this.editor.doc.load();
     this.editor.doc.resetHistory();
     this.requestUpdate();
@@ -112,19 +188,31 @@ export class DocsPanel extends WithDisposable(ShadowlessElement) {
         this.requestUpdate();
       })
     );
+    // A title changed elsewhere (a source renamed from its database page)
+    // shows in the list at once.
+    this.disposables.add(
+      this.editor.doc.workspace.meta.docMetaUpdated.subscribe(() => {
+        this.requestUpdate();
+      })
+    );
   }
 
   protected override render(): unknown {
     const { docs, collection } = this;
     return html`
-      <div @click="${this.createDoc}" class="new-doc-button">New Doc</div>
+      <div class="new-doc-buttons">
+        <div @click="${this.createDoc}" class="new-doc-button">New Doc</div>
+        <div @click="${this.createDatabase}" class="new-doc-button">
+          New Database
+        </div>
+      </div>
       ${repeat(
         docs,
         v => v.id,
         doc => {
           const style = styleMap({
             backgroundColor:
-              this.editor.doc.id === doc.id
+              this.currentDocId === doc.id
                 ? 'var(--affine-hover-color)'
                 : undefined,
             padding: '4px 4px 4px 8px',
@@ -139,6 +227,7 @@ export class DocsPanel extends WithDisposable(ShadowlessElement) {
           const deleteDoc = (e: MouseEvent) => {
             e.stopPropagation();
             const isDeleteCurrent = doc.id === this.editor.doc.id;
+            if (doc.id === this.databasePage?.docId) this.closeDatabasePage();
 
             collection.removeDoc(doc.id);
             removeModeFromStorage(doc.id);
