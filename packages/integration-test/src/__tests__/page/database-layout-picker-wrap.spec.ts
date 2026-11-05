@@ -22,6 +22,10 @@ import { setupEditor } from '../utils/setup.js';
  *   tile its label's width plus 32px of padding), which pushed the row past
  *   the edge of the 390px sheet;
  * - a tile, or its label, wider than the room the sheet gives it;
+ * - a tile 8px wider than its column in a host with no global
+ *   `box-sizing: border-box` (this suite has none): the sheet, unlike the
+ *   popover, does not set it, and the menu button is `width: 100%` plus
+ *   padding;
  * - the fix leaking to a wide screen, where the picker stays one row.
  *
  * The sheet is the real `mobile-menu`, mounted on the very menu the action

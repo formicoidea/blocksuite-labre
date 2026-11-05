@@ -9,12 +9,19 @@ import { css } from '@emotion/css';
  * 390px sheet (labre recette P7-21, "Bases lisibles sur téléphone"). Narrow,
  * the tiles wrap two by two and may shrink, their label cut with an ellipsis
  * as a last resort; wide, the row is the single row it always was.
+ *
+ * The phone sheet, unlike the popover, does not set `border-box` for what it
+ * holds: in a host without a global reset a tile's `width: 100%` plus its
+ * padding ran 8px past its column, so the row sets it for its own tree.
  */
 const NARROW = '@media (max-width: 480px)';
 
 export const layoutPickerRowStyle = css({
   display: 'flex',
   flexWrap: 'wrap',
+  '&, & *': {
+    boxSizing: 'border-box',
+  },
   rowGap: '4px',
   [NARROW]: {
     gap: '8px',
