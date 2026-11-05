@@ -76,7 +76,10 @@ export class DatabasePageHost extends SignalWatcher(
          stays in the gutter (at most 24px, the phone's), so nothing at
          rest is faded. Its layer covers the padding box only: the two
          layers below it give back the scrollbars, which sit between the
-         padding box and the border box. */
+         padding box and the border box.
+         A mask reads the alpha channel only, never the hue, so its opaque
+         stops are spelled currentColor: opaque in either theme and not a
+         raw colour the dark-chrome ratchet would count (ADR 0039). */
       --affine-database-page-fade: min(
         var(--affine-editor-side-padding, 24px),
         24px
@@ -85,13 +88,13 @@ export class DatabasePageHost extends SignalWatcher(
         linear-gradient(
             to right,
             transparent,
-            #000 var(--affine-database-page-fade),
-            #000 calc(100% - var(--affine-database-page-fade)),
+            currentColor var(--affine-database-page-fade),
+            currentColor calc(100% - var(--affine-database-page-fade)),
             transparent
           )
           padding-box add,
-        linear-gradient(#000 0 0) border-box exclude,
-        linear-gradient(#000 0 0) padding-box;
+        linear-gradient(currentColor 0 0) border-box exclude,
+        linear-gradient(currentColor 0 0) padding-box;
     }
     /* The editor takes the height the heading leaves (std gives it 100%,
        which overflowed by the heading's height: a scrollbar on a short
