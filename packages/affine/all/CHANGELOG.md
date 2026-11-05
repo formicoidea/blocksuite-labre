@@ -1,5 +1,97 @@
 # @labre/affine
 
+## 3.2.0
+
+### Minor Changes
+
+- 53f3a33: `HtmlAdapter` prints every stored block. New matchers for the callout (`aside.affine-callout`), the latex block (KaTeX, `<code>` when it refuses), the attachment (a link to `assets/<blobId>`, never read), the surface reference (`data-labre-surface-ref`, a place for a host to mount a viewer), the edgeless text and the HTML embed (its caption, never its markup). A block no matcher knows now prints `div.affine-unknown-block` with its title or text instead of nothing, and an image with no blob at hand prints under its id instead of disappearing. The surface matcher is now registered, as it never was: blocks placed on the canvas no longer print at the top of an exported page. `HastUtils.parseFragment` is new. Host guide: `docs/integrate/09-static-html.md`.
+
+### Patch Changes
+
+- aae5c2c: `HtmlAdapter` output no parser has to repair: a todo list item prints its checkbox and label as siblings instead of a stray `</input>`, and a document title is escaped before it reaches the page. A guard spec renders a stored page in plain Node.
+  - @labre/affine-block-attachment@3.2.0
+  - @labre/affine-block-bookmark@3.2.0
+  - @labre/affine-block-callout@3.2.0
+  - @labre/affine-block-code@3.2.0
+  - @labre/affine-block-divider@3.2.0
+  - @labre/affine-block-edgeless-text@3.2.0
+  - @labre/affine-block-embed@3.2.0
+  - @labre/affine-block-embed-doc@3.2.0
+  - @labre/affine-block-frame@3.2.0
+  - @labre/affine-block-image@3.2.0
+  - @labre/affine-block-latex@3.2.0
+  - @labre/affine-block-list@3.2.0
+  - @labre/affine-block-note@3.2.0
+  - @labre/affine-block-paragraph@3.2.0
+  - @labre/affine-block-root@3.2.0
+  - @labre/affine-block-surface@3.2.0
+  - @labre/affine-block-surface-ref@3.2.0
+  - @labre/affine-block-table@3.2.0
+  - @labre/affine-components@3.2.0
+  - @labre/affine-database-block@3.2.0
+  - @labre/affine-database-editor@3.2.0
+  - @labre/affine-database-engine@3.2.0
+  - @labre/affine-database-view-block@3.2.0
+  - @labre/affine-ext-loader@3.2.0
+  - @labre/affine-foundation@3.2.0
+  - @labre/affine-fragment-adapter-panel@3.2.0
+  - @labre/affine-fragment-doc-title@3.2.0
+  - @labre/affine-fragment-frame-panel@3.2.0
+  - @labre/affine-fragment-outline@3.2.0
+  - @labre/affine-gfx-bpmn@3.2.0
+  - @labre/affine-gfx-brush@3.2.0
+  - @labre/affine-gfx-c4@3.2.0
+  - @labre/affine-gfx-connector@3.2.0
+  - @labre/affine-gfx-cynefin-estuarine@3.2.0
+  - @labre/affine-gfx-ddd-aggregate@3.2.0
+  - @labre/affine-gfx-ddd-context-map@3.2.0
+  - @labre/affine-gfx-ddd-core-domain@3.2.0
+  - @labre/affine-gfx-ddd-event-storming@3.2.0
+  - @labre/affine-gfx-ddd-shared@3.2.0
+  - @labre/affine-gfx-edgy@3.2.0
+  - @labre/affine-gfx-group@3.2.0
+  - @labre/affine-gfx-link@3.2.0
+  - @labre/affine-gfx-mindmap@3.2.0
+  - @labre/affine-gfx-note@3.2.0
+  - @labre/affine-gfx-pointer@3.2.0
+  - @labre/affine-gfx-shape@3.2.0
+  - @labre/affine-gfx-template@3.2.0
+  - @labre/affine-gfx-text@3.2.0
+  - @labre/affine-gfx-turbo-renderer@3.2.0
+  - @labre/affine-gfx-uml@3.2.0
+  - @labre/affine-gfx-wardley@3.2.0
+  - @labre/affine-inline-comment@3.2.0
+  - @labre/affine-inline-footnote@3.2.0
+  - @labre/affine-inline-latex@3.2.0
+  - @labre/affine-inline-link@3.2.0
+  - @labre/affine-inline-mention@3.2.0
+  - @labre/affine-inline-preset@3.2.0
+  - @labre/affine-inline-reference@3.2.0
+  - @labre/affine-model@3.2.0
+  - @labre/affine-rich-text@3.2.0
+  - @labre/affine-shared@3.2.0
+  - @labre/affine-widget-drag-handle@3.2.0
+  - @labre/affine-widget-edgeless-auto-connect@3.2.0
+  - @labre/affine-widget-edgeless-dragging-area@3.2.0
+  - @labre/affine-widget-edgeless-selected-rect@3.2.0
+  - @labre/affine-widget-edgeless-toolbar@3.2.0
+  - @labre/affine-widget-edgeless-zoom-toolbar@3.2.0
+  - @labre/affine-widget-frame-title@3.2.0
+  - @labre/affine-widget-keyboard-toolbar@3.2.0
+  - @labre/affine-widget-linked-doc@3.2.0
+  - @labre/affine-widget-note-slicer@3.2.0
+  - @labre/affine-widget-page-dragging-area@3.2.0
+  - @labre/affine-widget-remote-selection@3.2.0
+  - @labre/affine-widget-scroll-anchoring@3.2.0
+  - @labre/affine-widget-slash-menu@3.2.0
+  - @labre/affine-widget-thread-marks@3.2.0
+  - @labre/affine-widget-toolbar@3.2.0
+  - @labre/affine-widget-viewport-overlay@3.2.0
+  - @labre/global@3.2.0
+  - @labre/std@3.2.0
+  - @labre/store@3.2.0
+  - @labre/sync@3.2.0
+
 ## 3.1.0
 
 ### Minor Changes
