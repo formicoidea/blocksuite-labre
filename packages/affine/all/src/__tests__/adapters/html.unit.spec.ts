@@ -3029,3 +3029,59 @@ describe('html to snapshot', () => {
     expect(nanoidReplacement(rawBlockSnapshot)).toEqual(blockSnapshot);
   });
 });
+
+/**
+ * The HTML twin of #521 (PR #538): `<p><img></p>`, the way a connector or a
+ * web page wraps a picture standing on its own, imported as an EMPTY
+ * paragraph with the image block nested under it. The paragraph matcher now
+ * neither opens nor closes for such a `<p>`; an unmatched close would pop
+ * the note, which the sibling paragraph after the image would reveal.
+ */
+describe('image-only <p> to snapshot', () => {
+  type Shape = { flavour: string; text?: string; children?: Shape[] };
+  const shape = (block: BlockSnapshot): Shape => {
+    const text = (block.props.text as { delta: { insert: string }[] })?.delta;
+    const out: Shape = { flavour: block.flavour };
+    if (text) out.text = text.map(op => op.insert).join('');
+    if (block.children.length) out.children = block.children.map(shape);
+    return out;
+  };
+
+  async function importHtml(html: string) {
+    const blobCRUD = new MemoryBlobCRUD();
+    await blobCRUD.set('blob-a', new Blob());
+    const assets = new AssetsManager({ blob: blobCRUD });
+    assets.getPathBlobIdMap().set('assets/a.png', 'blob-a');
+    const snapshot = await new HtmlAdapter(
+      createJob(),
+      provider
+    ).toBlockSnapshot({ file: `<html><body>${html}</body></html>`, assets });
+    return shape(snapshot);
+  }
+
+  test('the image lands at note level with no paragraph around it', async () => {
+    expect(
+      await importHtml(
+        '<p>Avant</p><p><img src="assets/a.png"></p><p>Après</p>'
+      )
+    ).toEqual({
+      flavour: 'affine:note',
+      children: [
+        { flavour: 'affine:paragraph', text: 'Avant' },
+        { flavour: 'affine:image' },
+        { flavour: 'affine:paragraph', text: 'Après' },
+      ],
+    });
+  });
+
+  test('images split by a line break are two image blocks', async () => {
+    expect(
+      await importHtml(
+        '<p><img src="assets/a.png"><br><img src="assets/a.png"></p>'
+      )
+    ).toEqual({
+      flavour: 'affine:note',
+      children: [{ flavour: 'affine:image' }, { flavour: 'affine:image' }],
+    });
+  });
+});

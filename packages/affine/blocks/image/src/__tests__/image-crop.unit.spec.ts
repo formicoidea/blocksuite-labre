@@ -11,8 +11,13 @@
  *   kept part elsewhere on the canvas (rotation included);
  * - a gesture split into several undo steps, an unchanged gesture pushing an
  *   empty one, a write on a readonly store, or a crop that touches the bytes;
- * - a wheel over the frame that drifts away from the pointer, loses the
- *   mask's ratio, leaves the image or shrinks below the minimum side;
+ * - a drag inside the frame that moves the frame instead of the picture
+ *   (the PO's acceptance of 2026-11-04 inverted the gesture), a pan that
+ *   uncovers the frame, or a zoom that drifts off the frame's centre, loses
+ *   its ratio, goes below 1x or below the minimum side, or reads back a
+ *   zoom other than the one the slider set;
+ * - a pan or a zoom that moves the canvas box, or changes the size of the
+ *   page window (`width × crop.w`), or takes more than one undo step;
  * - a canvas frame that opens with the selection handles still live on its
  *   corners or the canvas still zooming under the wheel (the PO could not
  *   crop, 2026-10-27), or a close path that leaves the image in editing
@@ -33,14 +38,16 @@ import { describe, expect, test } from 'vitest';
 import {
   cropBoundFor,
   cropWheelFactor,
+  cropZoomOf,
   maskRatio,
   moveCrop,
+  panCrop,
   presetCrop,
   ratioCrop,
   resizeCrop,
   WHOLE_IMAGE,
   wholeImageSize,
-  zoomCrop,
+  zoomCropAt,
 } from '../crop/crop-math';
 import { ImageCropController } from '../crop/crop-controller';
 import { writeImageCrop } from '../crop/write-crop';
@@ -249,59 +256,146 @@ describe('writeImageCrop', () => {
   });
 });
 
-describe('wheel zoom in the frame', () => {
-  const start = { x: 0.2, y: 0.2, w: 0.4, h: 0.4 };
+describe('the picture pans and zooms behind a fixed frame', () => {
+  test('panning moves the window against the hand, inside the image', () => {
+    const start = { x: 0.2, y: 0.2, w: 0.4, h: 0.4 };
+    // The hand goes right and down: the picture follows, so the window
+    // shows what was up and to the left.
+    close(panCrop(start, 0.1, 0.05), { x: 0.1, y: 0.15, w: 0.4, h: 0.4 });
+    // Never past the image's edge: the picture still covers the frame.
+    close(panCrop(start, 1, -1), { x: 0, y: 0.6, w: 0.4, h: 0.4 });
+  });
 
-  test('the wheel up shrinks the window, the wheel down grows it', () => {
+  test('1x is the widest window of the frame ratio', () => {
+    // A 2:1 window on the image: the whole width is 1x.
+    expect(cropZoomOf({ x: 0, y: 0.25, w: 1, h: 0.5 })).toBeCloseTo(1, 6);
+    // A tall 1:2 window: the whole height is 1x.
+    expect(cropZoomOf({ x: 0.25, y: 0, w: 0.5, h: 1 })).toBeCloseTo(1, 6);
+    // Half of it across is 2x.
+    expect(cropZoomOf({ x: 0.2, y: 0.4, w: 0.5, h: 0.25 })).toBeCloseTo(2, 6);
+  });
+
+  test('zooming scales about the window centre, its ratio kept', () => {
+    const start = { x: 0.3, y: 0.3, w: 0.4, h: 0.2 };
+    const zoomed = zoomCropAt(start, 4);
+    close(zoomed, { w: 0.25, h: 0.125 });
+    expect(zoomed.x + zoomed.w / 2).toBeCloseTo(0.5, 6);
+    expect(zoomed.y + zoomed.h / 2).toBeCloseTo(0.4, 6);
+    // The zoom it reports is the one asked for: the slider reads it back.
+    expect(cropZoomOf(zoomed)).toBeCloseTo(4, 6);
+    expect(cropZoomOf(zoomCropAt(start, 1.37))).toBeCloseTo(1.37, 6);
+  });
+
+  test('zooming out stays inside the image and never below 1x', () => {
+    // Near a corner, zooming out pushes the window back in.
+    const corner = zoomCropAt({ x: 0.7, y: 0.7, w: 0.3, h: 0.3 }, 1.25);
+    close(corner, { x: 0.2, y: 0.2, w: 0.8, h: 0.8 });
+    // Below 1x is 1x: the widest window, centred where it can be.
+    close(zoomCropAt({ x: 0.1, y: 0.4, w: 0.4, h: 0.2 }, 0.2), {
+      x: 0,
+      y: 0.25,
+      w: 1,
+      h: 0.5,
+    });
+  });
+
+  test('zooming in never shrinks below the minimum side', () => {
+    const tiny = zoomCropAt({ x: 0.5, y: 0.5, w: 0.03, h: 0.03 }, 1000);
+    expect(tiny.w).toBeCloseTo(IMAGE_CROP_MIN_SIDE, 6);
+    expect(tiny.h).toBeCloseTo(IMAGE_CROP_MIN_SIDE, 6);
+  });
+
+  test('the wheel up zooms in, the wheel down zooms out', () => {
     expect(cropWheelFactor(-100)).toBeCloseTo(1 / 1.05, 6);
     expect(cropWheelFactor(100)).toBeCloseTo(1.05, 6);
     // A flick is bounded.
     expect(cropWheelFactor(-10_000)).toBeCloseTo(1.05 ** -3, 6);
   });
+});
 
-  test('the point under the pointer stays under it', () => {
-    const px = 0.3;
-    const py = 0.5;
-    const zoomed = zoomCrop(start, 0.5, px, py, null);
-    close(zoomed, { w: 0.2, h: 0.2 });
-    expect((px - zoomed.x) / zoomed.w).toBeCloseTo((px - start.x) / start.w, 6);
-    expect((py - zoomed.y) / zoomed.h).toBeCloseTo((py - start.y) / start.h, 6);
+describe('writeImageCrop keeping the frame (pan and zoom)', () => {
+  test('on the canvas the box does not move', () => {
+    const { store, model } = authorImage({ xywh: '[100,100,400,200]' });
+    writeImageCrop(model, { x: 0.2, y: 0.2, w: 0.5, h: 0.5 }, 'free', true);
+    const box = model.xywh;
+    store.resetHistory();
+
+    // A pan.
+    expect(
+      writeImageCrop(model, { x: 0.3, y: 0.1, w: 0.5, h: 0.5 }, 'free', true, {
+        keep: 'frame',
+      })
+    ).toBe(true);
+    expect(model.xywh).toBe(box);
+    // A zoom.
+    writeImageCrop(model, { x: 0.35, y: 0.2, w: 0.25, h: 0.25 }, 'free', true, {
+      keep: 'frame',
+    });
+    expect(model.xywh).toBe(box);
+    expect(readImageCrop(model.props.crop)).toEqual({
+      x: 0.35,
+      y: 0.2,
+      w: 0.25,
+      h: 0.25,
+    });
+
+    // Each is one undo step.
+    store.undo();
+    expect(readImageCrop(model.props.crop)?.w).toBeCloseTo(0.5, 6);
+    store.undo();
+    expect(readImageCrop(model.props.crop)?.x).toBeCloseTo(0.2, 6);
+    expect(store.canUndo).toBe(false);
   });
 
-  test("the mask's ratio is held, else the window's own", () => {
-    const wide = { x: 0.1, y: 0.3, w: 0.8, h: 0.4 };
-    const free = zoomCrop(wide, 0.5, 0.5, 0.5, null);
-    expect(free.w / free.h).toBeCloseTo(2, 6);
-    // A mask holding 1:1 on a window drawn 2:1 snaps to the mask.
-    const held = zoomCrop(wide, 0.5, 0.5, 0.5, 1);
-    expect(held.w / held.h).toBeCloseTo(1, 6);
-  });
+  test('on a page the window keeps its size: width × crop.w holds', () => {
+    const { store, model } = authorImage({ width: 400, height: 300 });
+    writeImageCrop(model, { x: 0.25, y: 0.25, w: 0.5, h: 0.5 }, 'free', false);
+    store.resetHistory();
 
-  test('the window stays inside the image', () => {
-    // Growing about a corner pushes the window back in.
-    const corner = zoomCrop(
-      { x: 0.5, y: 0.5, w: 0.5, h: 0.5 },
-      1.5,
-      0.75,
-      0.75,
-      null
+    // A pan writes the crop alone.
+    writeImageCrop(model, { x: 0.1, y: 0.25, w: 0.5, h: 0.5 }, 'free', false, {
+      keep: 'frame',
+    });
+    expect(model.props.width).toBe(400);
+    expect(model.props.height).toBe(300);
+
+    // Zooming to 2x of that window doubles the whole picture's size.
+    writeImageCrop(
+      model,
+      { x: 0.225, y: 0.375, w: 0.25, h: 0.25 },
+      'free',
+      false,
+      { keep: 'frame' }
     );
-    close(corner, { x: 0.25, y: 0.25, w: 0.75, h: 0.75 });
-    // Growing past the image fits it, the ratio held.
-    const huge = zoomCrop({ x: 0, y: 0.25, w: 1, h: 0.5 }, 3, 0.5, 0.5, 2);
-    close(huge, { x: 0, y: 0.25, w: 1, h: 0.5 });
+    expect(model.props.width! * 0.25).toBeCloseTo(400 * 0.5, 6);
+    expect(model.props.height! * 0.25).toBeCloseTo(300 * 0.5, 6);
+
+    // The zoom, size and crop together, is one undo step.
+    store.undo();
+    expect(model.props.width).toBe(400);
+    expect(readImageCrop(model.props.crop)?.w).toBeCloseTo(0.5, 6);
   });
 
-  test('the window never shrinks below the minimum side', () => {
-    const tiny = zoomCrop(
-      { x: 0.5, y: 0.5, w: 0.03, h: 0.03 },
-      0.1,
-      0.5,
-      0.5,
-      null
-    );
-    expect(tiny.w).toBeCloseTo(IMAGE_CROP_MIN_SIDE, 6);
-    expect(tiny.h).toBeCloseTo(IMAGE_CROP_MIN_SIDE, 6);
+  test('a page image with no stored size scales the size it is drawn at', () => {
+    const { model } = authorImage();
+    writeImageCrop(model, { x: 0, y: 0, w: 0.5, h: 0.5 }, 'free', false);
+    writeImageCrop(model, { x: 0, y: 0, w: 0.25, h: 0.25 }, 'free', false, {
+      keep: 'frame',
+      natural: { width: 800, height: 600 },
+    });
+    expect(model.props.width).toBeCloseTo(1600, 6);
+    expect(model.props.height).toBeCloseTo(1200, 6);
+  });
+
+  test('an unchanged pan or zoom writes nothing', () => {
+    const { store, model } = authorImage({ xywh: '[0,0,400,200]' });
+    const rect = { x: 0.2, y: 0.2, w: 0.5, h: 0.5 };
+    writeImageCrop(model, rect, 'free', true);
+    store.resetHistory();
+    expect(
+      writeImageCrop(model, { ...rect }, 'free', true, { keep: 'frame' })
+    ).toBe(false);
+    expect(store.canUndo).toBe(false);
   });
 });
 

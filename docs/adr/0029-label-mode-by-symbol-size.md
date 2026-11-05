@@ -106,3 +106,88 @@ nine frameworks: 72 already consistent with the criterion below, 12 not — the
 - Validation: `bpmn.unlabeled-step` is narrowed to the activities; an event or
   a gateway has no inner text to check any more.
 - A framework that adopts R38 adds the same per-kind spec against the helper.
+
+## Amendments
+
+**2026-11-04 — point 6, the label's PLACE crosses the file (debt 1 lifted).**
+Point 6 bound a name to its node by group membership and left its position to
+the reader: the importer always hung the label under the symbol, centred, and
+carried the file's `bpmndi:BPMNLabel` verbatim as DI (a `ponytail:` in
+`import.ts`); the exporter wrote that carried label back and never one of its
+own. bpmn.io sets an event's name beside it and a gateway's above it, so a
+file came back with every name moved under its symbol, and a label the user
+dragged in Labre went out where it had never been.
+
+- **Import.** When a named external kind's shape carries a `BPMNLabel` with a
+  `dc:Bounds`, the gravitating label is placed in that box: position, width
+  AND height, all from the file. The height is the box's and not re-measured
+  from the text — the reader is a pure function with no font metrics, and the
+  box it was handed is the one the export must give back. A box that is not
+  finite, has a zero or negative size, or lies beyond a million units on any
+  axis is refused, never clamped, and the label falls back to its place under
+  the symbol. A `BPMNLabel` the reader used is mapped, not carried; one it
+  refused is carried as before. A shape with no bounds of its own is swept and
+  its label follows it under, whatever its `BPMNLabel` said.
+- **Export.** `BpmnExportBoard.labelBounds` (beside `labels`, so a host that
+  builds `labels` as plain strings keeps compiling) holds the bound of each
+  grouped label; the shape's `BPMNLabel` is written from it, offset with the
+  rest of the plane. A label does not move the plane's origin: a name hangs
+  wider than a narrow event, so counting it would shift the whole drawing the
+  first time a board's names gravitate into labels and break the fixed point
+  below; a name hung past the leftmost or topmost shape keeps a small negative
+  coordinate, which DI allows. A `BPMNLabel` carried by an earlier import gives way to it,
+  so a shape never holds two (`tBPMNShape` is `Bounds → BPMNLabel?`); every
+  other carried DI child and attribute is kept. A node named by its own inner
+  text (a legacy event), or by an empty label, writes no `BPMNLabel`.
+- **Still not crossing.** A carried `BPMNLabel`'s own attributes (`labelStyle`,
+  an `id`) are not merged into the label Labre writes: no tool on the corpus
+  writes them, and a `labelStyle` without its `BPMNLabelStyle` is ignored by
+  readers anyway. Connector labels (`BPMNEdge`'s `BPMNLabel`) are unchanged.
+- **Fixed point.** A board whose names already sit in grouped labels exports,
+  imports and exports to the same bytes. A board whose names are still inner
+  text writes no `BPMNLabel` the first time; the import groups each name in a
+  label under its symbol, so the second file is the first plus one
+  `BPMNLabel` per name and nothing else moved, and from there on the bytes are
+  a fixed point (`import.unit.spec.ts`, "the round trip is a fixed point").
+- The `ponytail:` line in `import.ts` is deleted; the specs that hold this
+  amendment are `import.unit.spec.ts` ("a name drawn where the file put it"),
+  `export.unit.spec.ts` ("where a name is drawn") and
+  `interchange.unit.spec.ts` ("a label moved by the user").
+
+**2026-11-04 — the Event Storming hotspot is born at 180 and conforms (PO
+decision).** The `hotspot` deviation recorded above is corrected. Its diamond
+offers only the rectangle inscribed in it, half of each side: at the standard
+120 (`STICKY_SIZE`) that is 40 units wide, short of one five-letter word in
+Kalam 20 (`STICKY_FONT_SIZE`), so the `Contained` fit shrank the font. Two
+lines of Kalam 20 need about 140 of side; at 180 the seed "Hotspot" (≈ 70
+units) fits without reduction. `eventStormingStickySize('hotspot')` now returns
+`HOTSPOT_SIZE = 180` (`gfx/ddd-event-storming/src/sticky-size.ts`), which the
+command `addHotspot`, the toolbox item and the template (derived from the
+command) all read. `gfx/ddd-event-storming/src/__tests__/label-mode.unit.spec.ts`
+holds every Event Storming sticky, the hotspot included, against
+`fitsInscribedLabel` at `STICKY_FONT_SIZE`. Two limits, accepted: nothing is
+migrated, so a hotspot drawn before this amendment keeps its 120 (a size is a
+value written at creation, not a stored-format change); and a morph never
+touches geometry (`morph.ts`), so a sticky morphed into a hotspot keeps its
+size and may stay below what R38 asks. The Wardley `porter` deviation is
+untouched by this amendment.
+
+**2026-11-04 — a glyph whose inscribed text IS the notation is exempt (PO
+decision, option 1 without truncation).** The Wardley `porter` deviation
+recorded above becomes a rule rather than a defect. A symbol whose inscribed
+text is the notation itself — one character kept in step with a tag, not a
+name the author gives the symbol — is a declared GLYPH and is exempt from R38:
+the probe asks whether a NAME fits, and a glyph carries none. The Porter letter
+is such a glyph: a 60×60 ellipse (`PORTER_SIZE`) whose 28-unit letter
+(`PORTER_LETTER_FONT_SIZE`, `R` by default) is R, L or E, synchronised both
+ways with the `wardley:competition` tag (`natures.ts`, `WardleyPorterWatcher`),
+and set with `TextFitMode.Overflow` so the circle never grows to fit what is
+typed. Free text beyond one letter is not prevented and not truncated:
+`competitionOfPorterLetter` reads anything but exactly R, L or E as no force,
+so the tag is simply cleared. `gfx/wardley/src/__tests__/label-mode.unit.spec.ts`
+holds it: every Wardley kind the toolbar builds with inscribed text (the two
+areas) fits the probe, and the Porter glyph is the only exemption — it fails
+the probe, so the exemption is load-bearing, and it inscribes one character the
+competition tag reads. Nothing changes for a host or a document; the Backlog
+ticket for `porter` closes. The DDD Event Storming `hotspot` deviation is
+untouched by this amendment.

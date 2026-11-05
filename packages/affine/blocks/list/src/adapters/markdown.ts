@@ -3,6 +3,7 @@ import {
   AdapterTextUtils,
   BlockMarkdownAdapterExtension,
   type BlockMarkdownAdapterMatcher,
+  isImageOnlyParagraph,
   type MarkdownAST,
 } from '@labre/affine-shared/adapters';
 import type { DeltaInsert } from '@labre/store';
@@ -24,6 +25,15 @@ export const listBlockMarkdownAdapterMatcher: BlockMarkdownAdapterMatcher = {
         const listNumber = parentList.start
           ? parentList.start + parentList.children.indexOf(o.node)
           : null;
+        // The first paragraph is the item's text and is skipped below. One
+        // holding only an image has no text to give: it is walked instead,
+        // so the image matcher writes the image as a child of the list block
+        // rather than the image being dropped with the skipped paragraph.
+        const first = o.node.children[0];
+        const textParagraph =
+          first && first.type === 'paragraph' && !isImageOnlyParagraph(first)
+            ? first
+            : null;
         walkerContext.openNode(
           {
             type: 'block',
@@ -38,10 +48,9 @@ export const listBlockMarkdownAdapterMatcher: BlockMarkdownAdapterMatcher = {
                     : 'bulleted',
               text: {
                 '$blocksuite:internal:text$': true,
-                delta:
-                  o.node.children[0] && o.node.children[0].type === 'paragraph'
-                    ? deltaConverter.astToDelta(o.node.children[0])
-                    : [],
+                delta: textParagraph
+                  ? deltaConverter.astToDelta(textParagraph)
+                  : [],
               },
               checked: o.node.checked ?? false,
               collapsed: false,
@@ -51,7 +60,7 @@ export const listBlockMarkdownAdapterMatcher: BlockMarkdownAdapterMatcher = {
           },
           'children'
         );
-        if (o.node.children[0] && o.node.children[0].type === 'paragraph') {
+        if (textParagraph) {
           walkerContext.skipChildren(1);
         }
       }

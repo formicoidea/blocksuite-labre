@@ -1,5 +1,46 @@
 # @labre/affine-block-bookmark
 
+## 3.0.0
+
+### Minor Changes
+
+- 56c1183: The `affine:embed-html` block is retired: a stored one renders a readable card, in a
+  page and on the canvas, its html stays in the document and runs nothing, and a paste or
+  a duplicate on the canvas no longer writes a new one. Its schema stays, so every document
+  opens. Removed: `EdgelessClipboardEmbedHtmlConfig`, `EmbedHtmlFullscreenToolbar`,
+  `HtmlIcon`, `CLOSED_SANDBOX`, and `srcdocFallback` and `noScroll` of `labre-html-frame`,
+  which without `frameUrl` now renders nothing.
+
+  `EmbedHtmlConfigExtension` becomes `HtmlFileConfigExtension`, and takes `importPage`: a
+  link card then offers an import button, and the host's answer turns the card into an html
+  attachment at its place, as one undo step (ADR 0048, amendment of 2026-11-04). New keys:
+  `com.labre.bookmark.import-page.{label,failed}`,
+  `com.labre.embed.html.{retired-title,retired-description}`. Removed key:
+  `com.labre.embed.html.empty`.
+
+### Patch Changes
+
+- Updated dependencies [42a03f0]
+- Updated dependencies [0d3dac4]
+- Updated dependencies [0610ec1]
+- Updated dependencies [1a6e1d4]
+- Updated dependencies [260fcd6]
+- Updated dependencies [ee98d7e]
+- Updated dependencies [56c1183]
+- Updated dependencies [3dd3c9f]
+  - @labre/affine-block-attachment@3.0.0
+  - @labre/affine-shared@3.0.0
+  - @labre/global@3.0.0
+  - @labre/affine-block-embed@3.0.0
+  - @labre/affine-components@3.0.0
+  - @labre/affine-block-embed-doc@3.0.0
+  - @labre/affine-block-surface@3.0.0
+  - @labre/affine-widget-slash-menu@3.0.0
+  - @labre/affine-ext-loader@3.0.0
+  - @labre/affine-model@3.0.0
+  - @labre/std@3.0.0
+  - @labre/store@3.0.0
+
 ## 2.5.0
 
 ### Patch Changes

@@ -4,6 +4,7 @@ import {
   type ImageCropMask,
   readImageCrop,
 } from '@labre/affine-model';
+import { translateKey } from '@labre/affine-shared/services';
 import { Bound } from '@labre/global/gfx';
 import type { BlockStdScope } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
@@ -18,13 +19,17 @@ import {
   WHOLE_IMAGE,
   wholeImageFrame,
 } from './crop-math.js';
-import { writeImageCrop } from './write-crop.js';
+import { IMAGE_CROP_ZOOM } from '../translations.js';
+import { type CropKeep, writeImageCrop } from './write-crop.js';
 
 /** What the controller needs from the block it serves, page or canvas. */
 export interface CroppableImageBlock {
   readonly model: ImageBlockModel;
-  /** Read on the canvas only, to take the selection and the viewport. */
-  readonly std: Pick<BlockStdScope, 'get'>;
+  /**
+   * Read on the canvas to take the selection and the viewport, and on both
+   * views to word the zoom slider while the frame is open.
+   */
+  readonly std: BlockStdScope;
   querySelector<E extends Element = Element>(selectors: string): E | null;
 }
 
@@ -121,8 +126,19 @@ export class ImageCropController {
     };
   }
 
-  commit(rect: CropRect, mask = this.editing$.peek() ?? 'free') {
-    return writeImageCrop(this._block.model, rect, mask, this._onCanvas);
+  /**
+   * One crop gesture's write. `keep` is `'frame'` for a pan or a zoom of the
+   * picture behind the frame, which leaves the box where it is.
+   */
+  commit(
+    rect: CropRect,
+    mask = this.editing$.peek() ?? 'free',
+    keep: CropKeep = 'image'
+  ) {
+    return writeImageCrop(this._block.model, rect, mask, this._onCanvas, {
+      keep,
+      natural: keep === 'frame' && !this._onCanvas ? this.natural() : null,
+    });
   }
 
   /** « Image d'origine »: removes the crop; the bytes never changed. */
@@ -157,8 +173,9 @@ export class ImageCropController {
       .crop=${crop}
       .ratio=${ratio}
       .rotate=${rotate}
-      .onCommit=${(rect: CropRect) => {
-        this.commit(rect, mask);
+      .zoomLabel=${translateKey(this._block.std, ...IMAGE_CROP_ZOOM)}
+      .onCommit=${(rect: CropRect, keep: CropKeep) => {
+        this.commit(rect, mask, keep);
       }}
       .onExit=${() => this.stop()}
     ></affine-image-crop-overlay>`;

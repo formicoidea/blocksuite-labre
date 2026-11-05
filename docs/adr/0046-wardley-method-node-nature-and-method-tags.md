@@ -285,3 +285,38 @@ component becomes a method, as it already does when one becomes an ecosystem
 (40). The placement is the author's; the morph does not move it.
 
 Not a red zone: no schema, no stored field, no role or tag change.
+
+### 2026-11-04 — a pipeline carries a nature, through `appliesTo` and not through a parent
+
+A pipeline is a component spread over a range of evolution: it is an
+activity, data, a practice or knowledge exactly as a circle is, and a mapper
+qualifies it the same way. The `wardley:nature` tag now names it explicitly:
+`appliesTo: [wardley:component, wardley:pipeline]` (`gfx/wardley/src/natures.ts`).
+
+**Why `appliesTo` rather than `parent: component`**, which is how section 1
+brought the method node in. The role tree is read by more than the tag
+registry. W3 (`rules.ts`) compares role PAIRS through `roleIsA`, and its pairs
+include `[component, component]`; a pipeline is a bar components are placed ON
+(`presets.ts`), so a pipeline that IS a component would turn every component
+standing on one into an overlap finding. A parent is a claim every reader of
+the tree acts on; `appliesTo` is a claim this one tag makes. The method node
+needed the first (it is a component for every reader); the pipeline needs only
+the second.
+
+- The handle (`wardley:handle`) stays unqualified: it is the connection point.
+  That keeps one qualifiable member per pipeline composite, so the toolbar's
+  qualification entry answers for the body both on a drawn pipeline (body +
+  (handle + label)) and on a morphed one (one flat group of three)
+  (`tags-toolbar.unit.spec.ts`).
+- The nature survives a morph between component, market, ecosystem and
+  pipeline: the morph writes kind, size and style, never `tags`.
+- **The reading panel does not read a pipeline's nature** (PO decision): the
+  pipeline's reading profile is unchanged and `reading-coverage.unit.spec.ts`
+  still lists `wardley:pipeline` as "not a link in the value chain". The
+  nature is a fact the map carries and the rules engine can read; surfacing
+  it in the panel is a separate change.
+- The renderer JSON export does not write it either: the renderer accepts a
+  nature on a functional component only, so a pipeline's nature is reported in
+  the export's warnings, as a market's or an ecosystem's already is.
+- Not a red zone: no schema, no stored field, no role change; one runtime tag
+  definition widens, and documents written before it load unchanged.

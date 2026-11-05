@@ -190,6 +190,14 @@ export interface DataSourcePickerSourceNaming {
   check(name: string): DataSourcePickerSourceNameVerdict;
 }
 
+/**
+ * The host's answer to `renameSource`: `ok`, or a refusal and the sentence
+ * shown under the field (already in the reader's language).
+ */
+export type DataSourcePickerRenameResult =
+  | { ok: true }
+  | { ok: false; message: string };
+
 /** What `deleteView` hands the host: the view, and the verb that removes it. */
 export interface DataSourcePickerViewDeletion extends DataSourcePickerViewRef {
   /** The view's name, as stored ('' when it has none). */
@@ -277,6 +285,26 @@ export interface DataSourcePickerService {
    * entries create at once and never pass a name, as in 2.0.
    */
   sourceName?: DataSourcePickerSourceNaming;
+  /**
+   * Rename source `sourceId` of database `databaseId` (the view's stored
+   * `sourceId`; absent, your implicit source) to `name`, trimmed and not
+   * empty (issue #576, ADR 0035 amendment of 2026-11-04). "Rename source",
+   * first in the view settings' "Source" list, opens a field on the current
+   * name; Enter calls you once, Escape calls nothing, an unchanged name
+   * calls nothing. Resolve `{ ok: true }` once renamed: the library writes
+   * nothing, so update `list()` and the source's schema block title
+   * yourself, and the menus follow. `{ ok: false, message }` keeps the
+   * field open with `message` under it; a rejection shows a generic
+   * failure. `sourceName.check`, when you give it, only warns while
+   * typing: your answer here decides. Offered only for the source the view
+   * reads, in the block's own database, on a writable document. Absent, the
+   * source's name stays read-only, as in 2.5.
+   */
+  renameSource?(
+    databaseId: string,
+    sourceId: string | undefined,
+    name: string
+  ): Promise<DataSourcePickerRenameResult>;
   /**
    * Import a view of another database into `request.databaseId` (labre PRD
    * REQ-DB-2, ADR 0035 amendment of 2026-10-14): the host lets the reader

@@ -59,7 +59,7 @@ describe('the pack the library ships', () => {
     ]);
   });
 
-  test('qualifies components and their specialisations, and nothing else', () => {
+  test('qualifies components, their specialisations and the pipeline, and nothing else', () => {
     const nature = registry.tag(WARDLEY_NATURE_TAG_ID)!;
 
     for (const role of [
@@ -70,11 +70,21 @@ describe('the pack the library ships', () => {
       // A component + method is a component in a ring (ADR 0046): its nature
       // is picked exactly as a plain component's, from the same tag.
       WARDLEY_ROLE.method,
+      // Named in `appliesTo`, NOT reached through a parent (ADR 0046,
+      // amendment of 2026-11-04): a pipeline is a component spread over a
+      // range of evolution, but W3 reads the role tree in pairs, and a
+      // pipeline that IS a component would make every component placed on it
+      // an overlap finding. This line fails if the pipeline loses its nature.
+      WARDLEY_ROLE.pipeline,
     ]) {
       expect(tagAppliesToRole(nature, role, WARDLEY_ROLES), role).toBe(true);
     }
 
     for (const role of [
+      // The pipeline's connection point, not a thing with a nature. Kept out so
+      // a pipeline composite has ONE qualifiable member, its body, and the
+      // toolbar entry answers for it whichever part was clicked.
+      WARDLEY_ROLE.handle,
       // A user / need has no nature, it has a demand — which is why `anchor` is
       // deliberately not a child of `component`.
       WARDLEY_ROLE.anchor,

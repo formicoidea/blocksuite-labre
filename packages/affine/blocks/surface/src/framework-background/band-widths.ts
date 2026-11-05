@@ -17,6 +17,7 @@ import type { BackgroundModelLike } from './labels.js';
 import {
   backgroundInVariant,
   backgroundLabelText,
+  backgroundSizedStyle,
   backgroundVisible,
 } from './labels.js';
 
@@ -218,8 +219,9 @@ export function backgroundBandWidths(
 
       const vertical = label.vertical === true;
       const [ax, ay] = backgroundPoint(label.anchor, plot);
+      const style = backgroundSizedStyle(label.style, label.sizeProp, model);
       const shown = wrapToWidth(
-        measurer(backgroundFont(label.style, family)),
+        measurer(backgroundFont(style, family)),
         backgroundLabelText(label, model, translation),
         backgroundTextRoom(ax, ay, label.align, vertical, w, h),
         label.maxLines ?? DEFAULT_BACKGROUND_WRAP_MAX_LINES
@@ -228,7 +230,7 @@ export function backgroundBandWidths(
       wrapped.push({ label, side: band.side });
       margin[band.side] = Math.max(
         margin[band.side],
-        thicknessFor(shown.length, label.style)
+        thicknessFor(shown.length, style)
       );
     }
   }
@@ -247,7 +249,12 @@ export function backgroundBandWidths(
   if (wrapsZones && zoneLabel && zoneBandWidth !== undefined) {
     const plot = backgroundPlot(def, w, h, margin);
     const stackY = def.instanceZones?.stack === 'y';
-    const ctx = measurer(backgroundFont(zoneLabel.style, family));
+    const zoneStyle = backgroundSizedStyle(
+      zoneLabel.style,
+      zoneLabel.sizeProp,
+      model
+    );
+    const ctx = measurer(backgroundFont(zoneStyle, family));
     for (const zone of backgroundInstanceZones(def, model)) {
       if (zone.name === undefined || zone.name === '') continue;
       const length = stackY
@@ -262,7 +269,7 @@ export function backgroundBandWidths(
       zoneLines.set(zone.id, shown);
       zoneBandWidth = Math.max(
         zoneBandWidth,
-        thicknessFor(shown.length, zoneLabel.style)
+        thicknessFor(shown.length, zoneStyle)
       );
     }
   }

@@ -155,36 +155,52 @@ export function cropWheelFactor(deltaY: number): number {
 }
 
 /**
- * The window scaled by `factor` about a point of the source (`px`, `py`,
- * normalised): that point stays under the pointer. The aspect is `k`
- * (normalised `w / h`) when a mask holds one, else the window's own; the
- * window never outgrows the image nor shrinks below the minimum side, and is
- * then pushed back inside the image.
+ * The picture panned behind a FIXED frame (PO acceptance, 2026-11-04): the
+ * window keeps its size and moves the other way to the pointer, so the image
+ * follows the hand. `dx`/`dy` are the pointer's delta in source units; the
+ * window stays inside the image, so the picture always covers the frame.
  */
-export function zoomCrop(
-  start: CropRect,
-  factor: number,
-  px: number,
-  py: number,
-  k: number | null
-): CropRect {
-  const ratio = k ?? start.w / start.h;
+export function panCrop(start: CropRect, dx: number, dy: number): CropRect {
+  return moveCrop(start, -dx, -dy);
+}
+
+/** The zoom slider's range: 1x is the widest window of the frame's ratio. */
+export const CROP_ZOOM_MIN = 1;
+export const CROP_ZOOM_MAX = 4;
+
+/** The width of the widest window of normalised ratio `k` (`w / h`). */
+const widestWindowWidth = (k: number) => Math.min(1, k);
+
+/**
+ * The zoom a window shows, derived and never stored: the widest window of
+ * the same ratio over this one's width. 1 is the whole image cut to the
+ * frame's ratio; 2 shows half of it across.
+ */
+export function cropZoomOf(rect: CropRect): number {
+  if (!(rect.w > 0) || !(rect.h > 0)) return CROP_ZOOM_MIN;
+  return widestWindowWidth(rect.w / rect.h) / rect.w;
+}
+
+/**
+ * The window at `zoom` (see `cropZoomOf`) about the centre of `start`, its
+ * ratio kept: the frame does not move, the picture scales behind it. Never
+ * below 1x nor `IMAGE_CROP_MIN_SIDE`, and pushed back inside the image, so
+ * the picture always covers the frame.
+ */
+export function zoomCropAt(start: CropRect, zoom: number): CropRect {
+  if (!(start.w > 0) || !(start.h > 0)) return start;
+  const k = start.w / start.h;
   const min = IMAGE_CROP_MIN_SIDE;
-  let w = start.w * factor;
-  let h = w / ratio;
-  // Fit inside the image first, then grow to the minimum: a ratio too
-  // extreme for both keeps the minimum, as `resizeCrop` does.
-  const shrink = Math.min(1, 1 / w, 1 / h);
-  w *= shrink;
-  h *= shrink;
+  let w = widestWindowWidth(k) / Math.max(zoom, CROP_ZOOM_MIN);
+  let h = w / k;
   const grow = Math.max(1, min / w, min / h);
-  w *= grow;
-  h *= grow;
-  const sx = w / start.w;
-  const sy = h / start.h;
+  w = Math.min(1, w * grow);
+  h = Math.min(1, h * grow);
+  const cx = start.x + start.w / 2;
+  const cy = start.y + start.h / 2;
   return {
-    x: clamp(px - (px - start.x) * sx, 0, Math.max(0, 1 - w)),
-    y: clamp(py - (py - start.y) * sy, 0, Math.max(0, 1 - h)),
+    x: clamp(cx - w / 2, 0, Math.max(0, 1 - w)),
+    y: clamp(cy - h / 2, 0, Math.max(0, 1 - h)),
     w,
     h,
   };

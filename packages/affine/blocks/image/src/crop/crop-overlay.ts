@@ -1,4 +1,5 @@
-import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
+import type { SliderSelectEvent } from '@labre/affine-components/slider';
+import { unsafeCSSVar, unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { styleMap, WithDisposable } from '@labre/global/lit';
 import { css, html, LitElement, type PropertyValues } from 'lit';
 import { property, state } from 'lit/decorators.js';
@@ -8,16 +9,29 @@ import {
   type CropCorner,
   type CropRect,
   cropWheelFactor,
-  moveCrop,
+  CROP_ZOOM_MAX,
+  CROP_ZOOM_MIN,
+  cropZoomOf,
+  panCrop,
   resizeCrop,
   WHOLE_IMAGE,
-  zoomCrop,
+  zoomCropAt,
 } from './crop-math.js';
+import type { CropKeep } from './write-crop.js';
 
 const CORNERS: readonly CropCorner[] = ['nw', 'ne', 'sw', 'se'];
 
-/** Quiet time after the last wheel event that ends one wheel gesture. */
-const WHEEL_COMMIT_DELAY_MS = 150;
+/** Quiet time after the last wheel or slider key that ends one zoom. */
+const ZOOM_COMMIT_DELAY_MS = 150;
+
+/** One slider step: a hundredth of the zoom, smooth to the eye. */
+const ZOOM_STEP = 0.01;
+
+const ZOOM_RANGE = { min: CROP_ZOOM_MIN, max: CROP_ZOOM_MAX, step: ZOOM_STEP };
+
+const ZOOM_SLIDER_STYLE = { width: '120px' };
+
+type Grip = 'pan' | CropCorner;
 
 const rectStyle = (rect: CropRect) =>
   styleMap({
@@ -28,21 +42,31 @@ const rectStyle = (rect: CropRect) =>
   });
 
 /**
- * The crop frame (ADR 0037): the WHOLE source, laid over the block at the
- * place it would occupy uncropped (the parent sizes this element with
- * `wholeImageFrame`), dimmed outside the window being edited.
+ * The crop frame (ADR 0037, amendment of 2026-11-04): the WHOLE source as it
+ * is stored, laid over the block at the place it would occupy uncropped (the
+ * parent sizes this element with `wholeImageFrame` of the stored crop), dimmed
+ * outside the window.
  *
- * Dragging the window moves it, dragging a corner resizes it, the ratio held
- * when `ratio` is set. The draft lives here while the pointer is down; the
- * release hands it to `onCommit` once — one gesture, one write, one undo
- * step, decided by the caller (`writeImageCrop`).
+ * The window is the block's box and stays put: dragging a corner resizes it
+ * (the opposite corner pinned, the ratio held when `ratio` is set) and is
+ * the only way to change it. Everything else moves the PICTURE behind it:
+ * dragging inside the window pans the image with the hand, the slider above
+ * the window and the wheel zoom it about the window's centre (1x is the
+ * widest window of the frame's ratio). The picture always covers the window:
+ * the crop never leaves the source.
  *
- * The wheel over the frame zooms the picture inside it: it scales the window
- * about the pointer, the ratio held, inside the image. One scroll is one
- * write: the draft is handed to `onCommit` once the wheel has been quiet for
- * a moment, or at once when a drag starts or the frame is left by Escape,
- * Enter or a press elsewhere. A frame closed by anything else (the toolbar,
- * the block leaving) drops a scroll still pending rather than write after it.
+ * `draft` is the crop being edited and `_frame` where the window is drawn,
+ * both in fractions of this element; the picture is drawn so that `draft`
+ * fills `_frame`. A corner drag moves both together (the picture holds
+ * still); a pan or a zoom moves `draft` alone.
+ *
+ * One gesture is one write: a drag commits at release; the slider commits at
+ * release, or once its keys have been quiet for a moment, like the wheel; a
+ * pending zoom is committed at once when a drag starts or the frame is left
+ * by Escape, Enter or a press elsewhere. A frame closed by anything else (the
+ * toolbar, the block leaving) drops a zoom still pending rather than write
+ * after it. A corner commits `'image'` (the box follows the window), a pan
+ * or a zoom `'frame'` (the box stays where it is).
  *
  * Pointer and wheel events never reach the editor while the frame is open: a
  * press on the frame would otherwise start a canvas drag or a page
@@ -66,9 +90,9 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
     }
 
     img {
+      position: absolute;
       display: block;
-      width: 100%;
-      height: 100%;
+      max-width: none;
       pointer-events: none;
     }
 
@@ -83,7 +107,11 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
       position: absolute;
       box-sizing: border-box;
       border: 1px solid ${unsafeCSSVarV2('button/primary')};
-      cursor: move;
+      cursor: grab;
+    }
+
+    .window[data-panning] {
+      cursor: grabbing;
     }
 
     .handle {
@@ -126,6 +154,22 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
       bottom: -6px;
       cursor: nwse-resize;
     }
+
+    /* Above the window, at screen size whatever the canvas zoom. */
+    .zoom {
+      position: absolute;
+      transform-origin: 50% 100%;
+      padding-bottom: 8px;
+    }
+
+    .zoom-panel {
+      display: flex;
+      align-items: center;
+      padding: 4px 12px;
+      border-radius: 8px;
+      background: ${unsafeCSSVarV2('layer/background/overlayPanel')};
+      box-shadow: ${unsafeCSSVar('overlayPanelShadow')};
+    }
   `;
 
   @property({ attribute: false })
@@ -143,19 +187,37 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
   @property({ attribute: false })
   accessor rotate = 0;
 
+  /** The slider's accessible name and tooltip, already translated. */
   @property({ attribute: false })
-  accessor onCommit: (rect: CropRect) => void = () => {};
+  accessor zoomLabel = '';
+
+  @property({ attribute: false })
+  accessor onCommit: (rect: CropRect, keep: CropKeep) => void = () => {};
 
   @property({ attribute: false })
   accessor onExit: () => void = () => {};
 
+  /** The crop being edited. */
   @state()
   accessor draft: CropRect = WHOLE_IMAGE;
 
-  private _dragging = false;
+  /** Where the window is drawn: the stored crop, or a corner drag's draft. */
+  @state()
+  private accessor _frame: CropRect = WHOLE_IMAGE;
 
-  /** The pending end of a wheel gesture, `null` when none is under way. */
-  private _wheelTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Client pixels per layout pixel, so the slider keeps its screen size. */
+  @state()
+  private accessor _screenScale = 1;
+
+  /** The drag under way, if any. */
+  @state()
+  private accessor _grip: Grip | null = null;
+
+  /** Set while the pointer holds the slider: its release is the commit. */
+  private _sliding = false;
+
+  /** The pending end of a wheel or key zoom, `null` when none is under way. */
+  private _zoomTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** Removes the listeners of the gesture in progress, if any. */
   private _releaseGesture: (() => void) | null = null;
@@ -164,7 +226,7 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
 
   private readonly _onOutsidePointer = (event: PointerEvent) => {
     if (event.composedPath().includes(this)) return;
-    this._commitWheel();
+    this._commitZoom();
     this.onExit();
   };
 
@@ -172,51 +234,71 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
     if (event.key !== 'Escape' && event.key !== 'Enter') return;
     event.preventDefault();
     event.stopPropagation();
-    this._commitWheel();
+    this._commitZoom();
     this.onExit();
   };
 
-  /** Ends the wheel gesture under way, if any, with its one write. */
-  private _commitWheel() {
-    if (this._wheelTimer === null) return;
-    clearTimeout(this._wheelTimer);
-    this._wheelTimer = null;
-    this.onCommit(this.draft);
+  /** Ends the zoom under way, if any, with its one write. */
+  private _commitZoom() {
+    if (this._zoomTimer === null) return;
+    clearTimeout(this._zoomTimer);
+    this._zoomTimer = null;
+    this.onCommit(this.draft, 'frame');
   }
 
-  private _dropWheel() {
-    if (this._wheelTimer === null) return;
-    clearTimeout(this._wheelTimer);
-    this._wheelTimer = null;
+  private _dropZoom() {
+    if (this._zoomTimer === null) return;
+    clearTimeout(this._zoomTimer);
+    this._zoomTimer = null;
+  }
+
+  /**
+   * The picture at `zoom` behind the window. Held by the pointer, the slider
+   * commits at release; otherwise the zoom ends once quiet for a moment.
+   */
+  private _zoomTo(zoom: number) {
+    this.draft = zoomCropAt(this.draft, zoom);
+    if (this._sliding) return;
+    if (this._zoomTimer !== null) clearTimeout(this._zoomTimer);
+    this._zoomTimer = setTimeout(
+      () => this._commitZoom(),
+      ZOOM_COMMIT_DELAY_MS
+    );
   }
 
   private readonly _onWheel = (event: WheelEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    if (this._dragging) return;
-    const { width, height, cos, sin, scale } = this._geometry();
-    if (width <= 0 || height <= 0) return;
-    // The pointer in the source's normalised coordinates: the frame is the
-    // whole source, possibly rotated about its centre.
-    const box = this.getBoundingClientRect();
-    const cdx = event.clientX - (box.left + box.width / 2);
-    const cdy = event.clientY - (box.top + box.height / 2);
-    const px = ((cdx * cos + cdy * sin) / scale + width / 2) / width;
-    const py = ((-cdx * sin + cdy * cos) / scale + height / 2) / height;
+    if (this._grip !== null || this._sliding) return;
     // A line or page delta (Firefox) counts as one full step per unit.
     const deltaY = event.deltaMode === 0 ? event.deltaY : event.deltaY * 100;
-    this.draft = zoomCrop(
-      this.draft,
-      cropWheelFactor(deltaY),
-      Math.min(Math.max(px, 0), 1),
-      Math.min(Math.max(py, 0), 1),
-      this.ratio
-    );
-    if (this._wheelTimer !== null) clearTimeout(this._wheelTimer);
-    this._wheelTimer = setTimeout(
-      () => this._commitWheel(),
-      WHEEL_COMMIT_DELAY_MS
-    );
+    // The factor scales the window: below 1 (wheel up) shows less of the
+    // picture, which is a higher zoom.
+    this._zoomTo(cropZoomOf(this.draft) / cropWheelFactor(deltaY));
+  };
+
+  private readonly _onSliderSelect = (event: SliderSelectEvent) => {
+    event.stopPropagation();
+    this._zoomTo(event.detail.value);
+  };
+
+  private readonly _onSliderPointerDown = (event: PointerEvent) => {
+    if (event.button !== 0) return;
+    this._commitZoom();
+    this._sliding = true;
+    const end = () => {
+      this._releaseGesture?.();
+      this._sliding = false;
+      this.onCommit(this.draft, 'frame');
+    };
+    this._releaseGesture?.();
+    window.addEventListener('pointerup', end, true);
+    window.addEventListener('pointercancel', end, true);
+    this._releaseGesture = () => {
+      window.removeEventListener('pointerup', end, true);
+      window.removeEventListener('pointercancel', end, true);
+      this._releaseGesture = null;
+    };
   };
 
   /**
@@ -227,7 +309,7 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
   override connectedCallback() {
     super.connectedCallback();
     this.disposables.add(() => this._releaseGesture?.());
-    this.disposables.add(() => this._dropWheel());
+    this.disposables.add(() => this._dropZoom());
     this.disposables.addFromEvent(this, 'pointerdown', this._stop);
     this.disposables.addFromEvent(this, 'click', this._stop);
     this.disposables.addFromEvent(this, 'dblclick', this._stop);
@@ -244,10 +326,28 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
   }
 
   override willUpdate(changed: PropertyValues<this>) {
-    if (!changed.has('crop') || this._dragging) return;
-    // A crop written meanwhile (a preset, a peer) wins over a pending scroll.
-    this._dropWheel();
+    if (!changed.has('crop')) return;
+    if (this._grip === 'pan') {
+      // A zoom committed as the pan began lands now: the window is the
+      // stored crop again, the picture still follows the hand.
+      this._frame = this.crop;
+      return;
+    }
+    if (this._grip !== null || this._sliding) return;
+    // A crop written meanwhile (a preset, a peer) wins over a pending zoom.
+    this._dropZoom();
     this.draft = this.crop;
+    this._frame = this.crop;
+  }
+
+  override firstUpdated() {
+    // Read once laid out, outside the update cycle: the viewport is locked
+    // while the frame is open, so the scale does not change after.
+    requestAnimationFrame(() => {
+      if (!this.isConnected) return;
+      const { scale } = this._geometry();
+      if (scale !== this._screenScale) this._screenScale = scale;
+    });
   }
 
   /**
@@ -266,40 +366,53 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
     return { width, height, cos, sin, scale: scale || 1 };
   }
 
-  private _startGesture(event: PointerEvent, grip: 'move' | CropCorner) {
+  private _startGesture(event: PointerEvent, grip: Grip) {
     if (event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
-    this._commitWheel();
+    this._commitZoom();
 
     const start = this.draft;
     const originX = event.clientX;
     const originY = event.clientY;
-    const { width, height, cos, sin, scale } = this._geometry();
-    if (width <= 0 || height <= 0) return;
-    this._dragging = true;
+    if (this.offsetWidth <= 0 || this.offsetHeight <= 0) return;
+    this._grip = grip;
 
     const onMove = (move: PointerEvent) => {
       move.preventDefault();
       move.stopPropagation();
+      // Read afresh: a zoom committed as the drag began resizes this element
+      // on the next render, before the pointer has moved.
+      const { width, height, cos, sin, scale } = this._geometry();
+      if (width <= 0 || height <= 0) return;
       const cdx = move.clientX - originX;
       const cdy = move.clientY - originY;
-      const dx = (cdx * cos + cdy * sin) / scale / width;
-      const dy = (-cdx * sin + cdy * cos) / scale / height;
-      this.draft =
-        grip === 'move'
-          ? moveCrop(start, dx, dy)
-          : resizeCrop(start, grip, dx, dy, this.ratio);
+      const lx = (cdx * cos + cdy * sin) / scale;
+      const ly = (-cdx * sin + cdy * cos) / scale;
+      if (grip === 'pan') {
+        // The window shows `start.w` of the source across its own width.
+        const frame = this._frame;
+        this.draft = panCrop(
+          start,
+          (lx / (width * frame.w)) * start.w,
+          (ly / (height * frame.h)) * start.h
+        );
+        return;
+      }
+      const next = resizeCrop(start, grip, lx / width, ly / height, this.ratio);
+      this.draft = next;
+      this._frame = next;
     };
     const finish = (end: PointerEvent, commit: boolean) => {
       end.preventDefault();
       end.stopPropagation();
       this._releaseGesture?.();
-      this._dragging = false;
+      this._grip = null;
       if (commit) {
-        this.onCommit(this.draft);
+        this.onCommit(this.draft, grip === 'pan' ? 'frame' : 'image');
       } else {
         this.draft = this.crop;
+        this._frame = this.crop;
       }
     };
     const onUp = (end: PointerEvent) => finish(end, true);
@@ -317,19 +430,47 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
     };
   }
 
+  /** The whole picture placed so that `draft` fills the window. */
+  private _pictureStyle() {
+    const { draft, _frame: frame } = this;
+    const sx = frame.w / draft.w;
+    const sy = frame.h / draft.h;
+    return styleMap({
+      left: `${(frame.x - draft.x * sx) * 100}%`,
+      top: `${(frame.y - draft.y * sy) * 100}%`,
+      width: `${sx * 100}%`,
+      height: `${sy * 100}%`,
+    });
+  }
+
+  private _zoomStyle() {
+    const frame = this._frame;
+    return styleMap({
+      left: `${(frame.x + frame.w / 2) * 100}%`,
+      top: `${frame.y * 100}%`,
+      transform: `translate(-50%, -100%) scale(${1 / this._screenScale})`,
+    });
+  }
+
   override render() {
-    const draft = this.draft;
+    const frame = this._frame;
     return html`
       <div class="clip">
-        <img src=${this.src} draggable="false" alt="" />
-        <div class="shade" style=${rectStyle(draft)}></div>
+        <img
+          src=${this.src}
+          draggable="false"
+          alt=""
+          style=${this._pictureStyle()}
+        />
+        <div class="shade" style=${rectStyle(frame)}></div>
       </div>
       <div
         class="window"
         data-testid="image-crop-window"
-        style=${rectStyle(draft)}
+        ?data-panning=${this._grip === 'pan'}
+        style=${rectStyle(frame)}
         @pointerdown=${(event: PointerEvent) =>
-          this._startGesture(event, 'move')}
+          this._startGesture(event, 'pan')}
       >
         ${repeat(
           CORNERS,
@@ -346,6 +487,19 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
             ></div>
           `
         )}
+      </div>
+      <div class="zoom" style=${this._zoomStyle()}>
+        <div class="zoom-panel">
+          <affine-slider
+            data-testid="image-crop-zoom"
+            .range=${ZOOM_RANGE}
+            .value=${Math.min(cropZoomOf(this.draft), CROP_ZOOM_MAX)}
+            .tooltip=${this.zoomLabel}
+            .sliderStyle=${ZOOM_SLIDER_STYLE}
+            @pointerdown=${this._onSliderPointerDown}
+            @select=${this._onSliderSelect}
+          ></affine-slider>
+        </div>
       </div>
     `;
   }

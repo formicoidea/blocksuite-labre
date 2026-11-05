@@ -18,7 +18,7 @@ import { ShapeType } from '@labre/affine/model';
 import { SelectionPaneProvider } from '@labre/affine/shared/services';
 import type { GfxModel } from '@labre/affine/std/gfx';
 import { page, userEvent } from '@vitest/browser/context';
-import { beforeEach, describe, expect, test } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { wait } from '../utils/common.js';
 import { getDocRootBlock } from '../utils/edgeless.js';
@@ -355,6 +355,70 @@ describe('selection pane drag and drop', () => {
    * by behaviour. Each test below pins one behaviour the pane shares with the
    * frame panel (`frame-panel-drag.spec.ts`).
    */
+
+  /*
+   * The edge scroll (ADR 0034, amendment of 2026-11-04). Before it, a list
+   * taller than the pane took a drop only on the rows on screen: held at the
+   * bottom edge, the list stayed put and the rows below the fold were out of
+   * reach. This would catch a pane that stops passing `scroller`, a loop that
+   * never starts under a still pointer, or a line that stays on the gap it
+   * was drawn for once the rows have scrolled. Asserted on a reached
+   * position with a timeout, never on a frame count: the suite is
+   * load-sensitive.
+   */
+  test('held at the bottom edge, the list scrolls to rows below the fold', async () => {
+    const ids = Array.from({ length: 40 }, (_, i) => shape(i * 200));
+    await settle();
+    await openPane();
+    const body = root().querySelector<HTMLElement>(BODY)!;
+    expect(
+      body.scrollHeight > body.clientHeight,
+      'the list is taller than the pane'
+    ).toBe(true);
+    // The first shape added is the lowest row, below the fold.
+    const lowest = ids[0];
+    const top = ids[ids.length - 1];
+    expect(rowIds()[0]).toBe(top);
+    expect(rowIds()[rowIds().length - 1]).toBe(lowest);
+
+    await grab(top);
+    // 8 px above the body's bottom edge: inside the 20 px band.
+    const height = body.getBoundingClientRect().height;
+    await pointerMoveTo(BODY, 0.5, 1 - 8 / height, 4);
+
+    // The pointer stays still; the list scrolls to its end by itself.
+    await vi.waitFor(
+      () => {
+        expect(body.scrollTop).toBeGreaterThanOrEqual(
+          body.scrollHeight - body.clientHeight - 1
+        );
+      },
+      { timeout: 5000, interval: 50 }
+    );
+    const box = body.getBoundingClientRect();
+    const lowestBox = rowOf(lowest).getBoundingClientRect();
+    expect(
+      lowestBox.bottom <= box.bottom && lowestBox.top >= box.top,
+      'the lowest row became visible'
+    ).toBe(true);
+
+    // Drop under the row that scrolled into view.
+    await moveTo(rowSelector(lowest), 0.75);
+    expect(panel().dataset.drag).toBe('valid');
+    const line = indicator();
+    expect(line, 'the line follows the rows that scrolled').toBeTruthy();
+    expect(
+      near(
+        line!.getBoundingClientRect().top,
+        rowOf(lowest).getBoundingClientRect().bottom
+      )
+    ).toBe(true);
+    await release();
+
+    const after = rowIds();
+    expect(after[after.length - 1]).toBe(top);
+    expect(model(top).index < model(lowest).index).toBe(true);
+  });
 
   test('a nudge under five pixels is a click, not a drag', async () => {
     const a = shape(0);

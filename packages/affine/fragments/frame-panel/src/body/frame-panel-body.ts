@@ -232,7 +232,8 @@ export class FramePanelBody extends SignalWatcher(
    * The gesture is the side panels' one controller (`createPanelReorderDrag`,
    * `@labre/affine-shared/utils`, ADR 0034), shared with the selection pane:
    * pointer events, the 5px threshold, the read-only refusal, the mask and
-   * its cursor, Escape and `pointercancel` as cancels, the swallowed click.
+   * its cursor, Escape and `pointercancel` as cancels, the swallowed click,
+   * and the list scrolling while a card is held near its top or bottom edge.
    * What is the panel's own is below: the selected cards move together, their
    * copies follow the pointer, a line marks the gap, and the write is
    * `canvas.frame.reorder`.
@@ -243,6 +244,8 @@ export class FramePanelBody extends SignalWatcher(
       readonly: () => this.editorHost.store.readonly,
       rows: () => this._cards(),
       bounds: () => this,
+      // The body itself scrolls (`.frame-panel-body`, `frame-panel.ts`).
+      scroller: () => this,
       onPickUp: press => this._pickUp(press),
       dropAt: gap => this._dropAt(gap),
       onMove: (drop, point) => {
