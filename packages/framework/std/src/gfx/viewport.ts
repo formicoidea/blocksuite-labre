@@ -1,4 +1,5 @@
 import { Bound, clamp, type IPoint, type IVec, Vec } from '@labre/global/gfx';
+import { signal } from '@preact/signals-core';
 import debounce from 'lodash-es/debounce';
 import { BehaviorSubject, debounceTime, Subject } from 'rxjs';
 
@@ -16,6 +17,55 @@ export const ZOOM_STEP = 0.25;
 export const ZOOM_INITIAL = 1.0;
 
 export const FIT_TO_SCREEN_PADDING = 100;
+
+/**
+ * The part of the viewport container something floats over, in screen pixels
+ * per side: a panel docked over the canvas in overlay (the selection pane, the
+ * artefact catalogue) covers the canvas without shrinking the container, so
+ * the container rect alone says the whole canvas is visible (issue #433).
+ */
+export interface ViewportInsets {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
+const NO_INSETS: Readonly<ViewportInsets> = Object.freeze({
+  top: 0,
+  right: 0,
+  bottom: 0,
+  left: 0,
+});
+
+/**
+ * The smallest visible width or height {@link Viewport.visibleRect} answers,
+ * in screen pixels. A panel at 85vw on a phone leaves a sliver; below this the
+ * edge band and the fit maths would work on a strip nobody can use, so the
+ * visible rect stops shrinking and overlaps the panel instead.
+ */
+export const MIN_VISIBLE_SIZE = 200;
+
+const SIDES = ['top', 'right', 'bottom', 'left'] as const;
+
+function sanitizeInset(value: number | undefined) {
+  return value !== undefined && Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+/**
+ * `padding` (top, right, bottom, left, in screen pixels) plus the viewport's
+ * occupied insets, for a fit that should land in the visible part of the
+ * canvas. Absolute pixels only: a padding below 1 that a caller means as a
+ * percentage (`setViewportByBound`) must be resolved first.
+ */
+export function paddingWithInsets(
+  viewport: Viewport,
+  padding: [number, number, number, number] = [0, 0, 0, 0]
+): [number, number, number, number] {
+  const { top, right, bottom, left } = viewport.occupiedInsets$.value;
+  const [pt, pr, pb, pl] = padding;
+  return [pt + top, pr + right, pb + bottom, pl + left];
+}
 
 export interface ViewportRecord {
   left: number;
@@ -99,6 +149,17 @@ export class Viewport {
   ZOOM_MAX = ZOOM_MAX;
 
   ZOOM_MIN = ZOOM_MIN;
+
+  /** Every declared inset, by owner: one panel, one entry. */
+  private readonly _occupiedInsets = new Map<string, ViewportInsets>();
+
+  /**
+   * The combined occupied insets: the max per side of every declaration, since
+   * two panels docked on the same side (the catalogue and the selection pane)
+   * overlap rather than stack. Runtime state only, never stored, never synced:
+   * each peer's panels are its own.
+   */
+  readonly occupiedInsets$ = signal<Readonly<ViewportInsets>>(NO_INSETS);
 
   private readonly _resetZooming = debounce(() => {
     this.zooming$.next(false);
@@ -244,6 +305,32 @@ export class Viewport {
 
   get translateY() {
     return -this.viewportY * this.zoom;
+  }
+
+  /**
+   * The part of the container nothing floats over, in client coordinates: the
+   * container rect less {@link occupiedInsets$}. Each dimension is kept at
+   * {@link MIN_VISIBLE_SIZE} (or the container's own size when smaller); the
+   * rect then slides back inside the container rather than past its edge.
+   * With no inset declared it is exactly the container rect.
+   */
+  get visibleRect() {
+    const { left, top, width, height } = this;
+    const insets = this.occupiedInsets$.value;
+    const visibleWidth = Math.max(
+      width - insets.left - insets.right,
+      Math.min(MIN_VISIBLE_SIZE, width)
+    );
+    const visibleHeight = Math.max(
+      height - insets.top - insets.bottom,
+      Math.min(MIN_VISIBLE_SIZE, height)
+    );
+    return {
+      left: clamp(left + insets.left, left, left + width - visibleWidth),
+      top: clamp(top + insets.top, top, top + height - visibleHeight),
+      width: visibleWidth,
+      height: visibleHeight,
+    };
   }
 
   get viewportBounds() {
@@ -497,6 +584,44 @@ export class Viewport {
     ] as IVec;
 
     this.setViewport(zoom, center, smooth, forceUpdate);
+  }
+
+  /**
+   * Declare that `owner` covers part of the container (issue #433). A second
+   * call for the same owner replaces its declaration. The returned function
+   * withdraws it — and only it: a stale withdrawal after a newer declaration
+   * by the same owner leaves the newer one in place.
+   */
+  setOccupiedInset(owner: string, insets: Partial<ViewportInsets>): () => void {
+    const entry: ViewportInsets = {
+      top: sanitizeInset(insets.top),
+      right: sanitizeInset(insets.right),
+      bottom: sanitizeInset(insets.bottom),
+      left: sanitizeInset(insets.left),
+    };
+    this._occupiedInsets.set(owner, entry);
+    this._combineOccupiedInsets();
+    return () => {
+      if (this._occupiedInsets.get(owner) !== entry) return;
+      this._occupiedInsets.delete(owner);
+      this._combineOccupiedInsets();
+    };
+  }
+
+  private _combineOccupiedInsets() {
+    const entries = [...this._occupiedInsets.values()];
+    const combined: ViewportInsets = {
+      top: Math.max(0, ...entries.map(entry => entry.top)),
+      right: Math.max(0, ...entries.map(entry => entry.right)),
+      bottom: Math.max(0, ...entries.map(entry => entry.bottom)),
+      left: Math.max(0, ...entries.map(entry => entry.left)),
+    };
+    const current = this.occupiedInsets$.peek();
+    // An unchanged value is not written: every reader would repaint for nothing.
+    if (SIDES.every(side => current[side] === combined[side])) return;
+    this.occupiedInsets$.value = SIDES.some(side => combined[side] > 0)
+      ? Object.freeze(combined)
+      : NO_INSETS;
   }
 
   /** This is the outer container of the viewport, which is the host of the viewport element */

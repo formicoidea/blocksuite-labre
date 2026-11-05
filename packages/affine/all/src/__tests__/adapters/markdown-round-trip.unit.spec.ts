@@ -10,6 +10,11 @@
  *   quote with the text `[!💡]`;
  * - #521: a standalone image (mdast wraps it in a paragraph) imported with an
  *   empty `affine:paragraph` above the image block;
+ * - the same empty paragraph above an image written by the workspace
+ *   connector in the shapes #521 (PR #538) left out: an image inside a link,
+ *   images split by a hard line break; and the image LOST when it stood
+ *   alone in a list item (`- ![a](src)`) or inside a quote, both of which
+ *   skipped the paragraph that carried it;
  * - #519: the code preprocessor (slice level) rewriting the first leading
  *   space of every line to `&#x20;` except for `-` lines, so a `1.`, `*` or
  *   `+` sub-list stopped being a list item and folded into its parent's text.
@@ -175,24 +180,24 @@ describe('nested lists in a slice (#519)', () => {
   });
 });
 
+async function importWithAsset(markdown: string): Promise<Shape[]> {
+  const blobCRUD = new MemoryBlobCRUD();
+  await blobCRUD.set('blob-a', new Blob());
+  const assets = new AssetsManager({ blob: blobCRUD });
+  assets.getPathBlobIdMap().set('assets/a.png', 'blob-a');
+  const snapshot = await new MarkdownAdapter(
+    createJob(),
+    provider
+  ).toBlockSnapshot({
+    file: markdown,
+    assets,
+  });
+  return snapshot.children.map(shape);
+}
+
 describe('standalone image (#521)', () => {
   // mdast wraps a lone image in a paragraph; the paragraph matcher used to
   // open an empty `affine:paragraph` above the image block.
-  async function importWithAsset(markdown: string): Promise<Shape[]> {
-    const blobCRUD = new MemoryBlobCRUD();
-    await blobCRUD.set('blob-a', new Blob());
-    const assets = new AssetsManager({ blob: blobCRUD });
-    assets.getPathBlobIdMap().set('assets/a.png', 'blob-a');
-    const snapshot = await new MarkdownAdapter(
-      createJob(),
-      provider
-    ).toBlockSnapshot({
-      file: markdown,
-      assets,
-    });
-    return snapshot.children.map(shape);
-  }
-
   test('emits the image block alone, no empty paragraph', async () => {
     expect(
       await importWithAsset('Texte avant\n\n![schéma](assets/a.png)\n\nAprès')
@@ -207,5 +212,64 @@ describe('standalone image (#521)', () => {
     expect(
       await importWithAsset('![a](assets/a.png)\n![b](assets/a.png)')
     ).toEqual([{ flavour: 'affine:image' }, { flavour: 'affine:image' }]);
+  });
+});
+
+describe('image-only paragraph in every shape the workspace connector writes', () => {
+  // #521 (PR #538) handled a bare image only. A linked image, images split by
+  // a hard break, and an image in a list item or a quote still went wrong:
+  // an empty paragraph above the image, or the image dropped with the list
+  // item's or the quote's skipped paragraph.
+  test('a linked image is the image block alone (the href is dropped)', async () => {
+    expect(
+      await importWithAsset('[![a](assets/a.png)](https://x.test)')
+    ).toEqual([{ flavour: 'affine:image' }]);
+  });
+
+  test('images split by a hard line break are two image blocks', async () => {
+    expect(
+      await importWithAsset('![a](assets/a.png)  \n![b](assets/a.png)')
+    ).toEqual([{ flavour: 'affine:image' }, { flavour: 'affine:image' }]);
+  });
+
+  test('an image list item keeps the image as a child of the list block', async () => {
+    expect(await importWithAsset('- ![a](assets/a.png)')).toEqual([
+      {
+        flavour: 'affine:list',
+        type: 'bulleted',
+        text: '',
+        children: [{ flavour: 'affine:image' }],
+      },
+    ]);
+  });
+
+  test('a list item with text then an image keeps both', async () => {
+    expect(await importWithAsset('- Item\n\n  ![a](assets/a.png)')).toEqual([
+      {
+        flavour: 'affine:list',
+        type: 'bulleted',
+        text: 'Item',
+        children: [{ flavour: 'affine:image' }],
+      },
+    ]);
+  });
+
+  test('a quote with an image keeps its text and puts the image after it', async () => {
+    const [quote, image, ...rest] = await importWithAsset(
+      '> Quote\n> ![a](assets/a.png)'
+    );
+    expect(quote.flavour).toBe('affine:paragraph');
+    expect(quote.type).toBe('quote');
+    expect(quote.text?.trim()).toBe('Quote');
+    expect(image).toEqual({ flavour: 'affine:image' });
+    expect(rest).toEqual([]);
+  });
+
+  test('a quote without an image still reads as one quote', async () => {
+    // Pins the path this change leaves alone (children skipped). The joined
+    // text is the existing flattening of a multi-paragraph quote, not new.
+    expect(await importWithAsset('> Quote\n>\n> Second')).toEqual([
+      { flavour: 'affine:paragraph', type: 'quote', text: 'QuoteSecond' },
+    ]);
   });
 });

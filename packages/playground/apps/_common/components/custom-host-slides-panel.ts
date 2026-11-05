@@ -187,6 +187,8 @@ export class CustomHostSlidesPanel extends LitElement {
       readonly: () => this.editor.std.store.readonly,
       rows: () => this._rows(),
       bounds: () => this._list(),
+      // The container scrolls, not the list it holds.
+      scroller: () => this.renderRoot.querySelector<HTMLElement>('.container'),
       onPickUp: () => {
         this._moving = this._pressed;
       },

@@ -30,6 +30,7 @@ export {
   InlineDeltaToMarkdownAdapterMatcherIdentifier,
   isCalloutNode,
   isFootnoteDefinitionNode,
+  isImageOnlyParagraph,
   isMarkdownAST,
   type Markdown,
   MarkdownAdapter,

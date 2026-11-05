@@ -1,5 +1,29 @@
 # @labre/affine-block-paragraph
 
+## 3.0.0
+
+### Patch Changes
+
+- aa5db0e: A collapsed heading now hides its siblings by marking their views, with one
+  static rule, instead of writing a stylesheet out of their block ids. An id with a
+  quote in it no longer shows the block it should fold. Nothing persisted changes.
+- Updated dependencies [0d3dac4]
+- Updated dependencies [0610ec1]
+- Updated dependencies [260fcd6]
+- Updated dependencies [ee98d7e]
+- Updated dependencies [56c1183]
+- Updated dependencies [3dd3c9f]
+  - @labre/affine-shared@3.0.0
+  - @labre/global@3.0.0
+  - @labre/affine-inline-preset@3.0.0
+  - @labre/affine-components@3.0.0
+  - @labre/affine-rich-text@3.0.0
+  - @labre/affine-ext-loader@3.0.0
+  - @labre/affine-gfx-turbo-renderer@3.0.0
+  - @labre/affine-model@3.0.0
+  - @labre/std@3.0.0
+  - @labre/store@3.0.0
+
 ## 2.5.0
 
 ### Patch Changes

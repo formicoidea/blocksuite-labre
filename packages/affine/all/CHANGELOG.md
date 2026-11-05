@@ -1,5 +1,166 @@
 # @labre/affine
 
+## 3.0.0
+
+### Major Changes
+
+- 56c1183: The `affine:embed-html` block is retired: a stored one renders a readable card, in a
+  page and on the canvas, its html stays in the document and runs nothing, and a paste or
+  a duplicate on the canvas no longer writes a new one. Its schema stays, so every document
+  opens. Removed: `EdgelessClipboardEmbedHtmlConfig`, `EmbedHtmlFullscreenToolbar`,
+  `HtmlIcon`, `CLOSED_SANDBOX`, and `srcdocFallback` and `noScroll` of `labre-html-frame`,
+  which without `frameUrl` now renders nothing.
+
+  `EmbedHtmlConfigExtension` becomes `HtmlFileConfigExtension`, and takes `importPage`: a
+  link card then offers an import button, and the host's answer turns the card into an html
+  attachment at its place, as one undo step (ADR 0048, amendment of 2026-11-04). New keys:
+  `com.labre.bookmark.import-page.{label,failed}`,
+  `com.labre.embed.html.{retired-title,retired-description}`. Removed key:
+  `com.labre.embed.html.empty`.
+
+### Minor Changes
+
+- 260fcd6: An html file can be imported, previewed and shown as a thumbnail, in a page and on
+  the canvas, once a host names its page through `EmbedHtmlConfigExtension({ frameUrl })`.
+  It is an ordinary attachment; without the page it stays a card. The frame is one
+  component, `labre-html-frame` (`@labre/affine/components/html-frame`), that the html
+  block now mounts too and a host can mount outside the editor.
+
+  `AttachmentEmbedConfig` widens: `check` and `render` receive an optional `std`, and
+  `renderThumbnail` is optional. `EmbedHtmlConfigExtension` also comes from
+  `@labre/affine-shared/services`. Removed: `EmbedHtmlBlockComponent.iframe`, which
+  nothing read, the frame being in the component's shadow root. New keys:
+  `com.labre.attachment.html.{interact,stop-interacting,fullscreen,exit-fullscreen}`
+  (ADR 0048).
+
+- ee98d7e: No script of an html attachment runs without a reader's gesture, Interact or full
+  screen. `labre-html-frame` gains `scripts`, off by default and never on for a
+  thumbnail, and answers the host's page with `{ html, scripts }`: a host's frame must
+  run scripts only on an explicit `scripts: true`. A `srcdoc` is `sandbox=""` until the
+  gesture. The html block asks for no scripts, so a stored block that draws itself with
+  a script stays empty.
+
+  An html file now opens on its embed view, in a page and on the canvas. "Interact" turns
+  on every embed view of the document, a press outside all of them turns them off. An
+  embed view scrolls when it can; on the canvas its width and height change on their own
+  and it opens around its centre; in a page its height has a handle, stored in `xywh`. New
+  key: `com.labre.attachment.html.resize` (ADR 0048).
+
+- 3dd3c9f: Anything replaces anything, in the frame of what it replaces: on a canvas image, file, html
+  and shape, in a page image, file and html. A picture is cut to the frame by the crop of ADR
+  0037 and never distorted, so an image replaced by an image no longer follows the new ratio.
+  A `replace` answer of `AssetPickerProvider` may be of any type. New commands
+  `canvas.attachment.replace` and `canvas.attachment.replaceWithShape`; `ElementReplaced` gains
+  `attachment`. Removed: `pickImageSource`, `pickAttachmentSource`. A card on a canvas is
+  contained in its box instead of stretched. New keys:
+  `com.labre.image.replace.with-asset`, `com.labre.attachment.replace.description`,
+  `com.labre.attachment.replace.with-shape.description`. Removed key:
+  `com.labre.image.replace.with-image` (ADR 0044, amendment of 2026-11-04).
+
+### Patch Changes
+
+- 0d3dac4: "Replace" on an attachment card answered with an image makes it an image block in the
+  same place, with its caption, and on a canvas its corner and depth, in one undo step
+  when the host's ref carries its size. A host may now offer images for `kind: 'file'`,
+  `mode: 'replace'`.
+
+  An html attachment in a note on a canvas no longer needs the note entered first:
+  "Interact", full screen, the height handle and the frame while interacting take the
+  pointer above the note's mask, and the height follows the pointer at any zoom or note
+  scale (ADR 0048).
+
+- Updated dependencies [42a03f0]
+- Updated dependencies [0d3dac4]
+- Updated dependencies [aa5db0e]
+- Updated dependencies [0610ec1]
+- Updated dependencies [1a6e1d4]
+- Updated dependencies [260fcd6]
+- Updated dependencies [ee98d7e]
+- Updated dependencies [56c1183]
+- Updated dependencies [3dd3c9f]
+  - @labre/affine-block-attachment@3.0.0
+  - @labre/affine-shared@3.0.0
+  - @labre/affine-block-paragraph@3.0.0
+  - @labre/global@3.0.0
+  - @labre/affine-inline-preset@3.0.0
+  - @labre/affine-block-embed@3.0.0
+  - @labre/affine-components@3.0.0
+  - @labre/affine-block-bookmark@3.0.0
+  - @labre/affine-block-image@3.0.0
+  - @labre/affine-block-root@3.0.0
+  - @labre/affine-gfx-mindmap@3.0.0
+  - @labre/affine-gfx-note@3.0.0
+  - @labre/affine-widget-keyboard-toolbar@3.0.0
+  - @labre/affine-block-callout@3.0.0
+  - @labre/affine-block-code@3.0.0
+  - @labre/affine-block-divider@3.0.0
+  - @labre/affine-block-edgeless-text@3.0.0
+  - @labre/affine-block-embed-doc@3.0.0
+  - @labre/affine-block-frame@3.0.0
+  - @labre/affine-block-latex@3.0.0
+  - @labre/affine-block-list@3.0.0
+  - @labre/affine-block-note@3.0.0
+  - @labre/affine-block-surface@3.0.0
+  - @labre/affine-block-surface-ref@3.0.0
+  - @labre/affine-block-table@3.0.0
+  - @labre/affine-database-block@3.0.0
+  - @labre/affine-database-editor@3.0.0
+  - @labre/affine-database-engine@3.0.0
+  - @labre/affine-database-view-block@3.0.0
+  - @labre/affine-foundation@3.0.0
+  - @labre/affine-fragment-adapter-panel@3.0.0
+  - @labre/affine-fragment-doc-title@3.0.0
+  - @labre/affine-fragment-frame-panel@3.0.0
+  - @labre/affine-fragment-outline@3.0.0
+  - @labre/affine-gfx-bpmn@3.0.0
+  - @labre/affine-gfx-brush@3.0.0
+  - @labre/affine-gfx-c4@3.0.0
+  - @labre/affine-gfx-connector@3.0.0
+  - @labre/affine-gfx-cynefin-estuarine@3.0.0
+  - @labre/affine-gfx-ddd-aggregate@3.0.0
+  - @labre/affine-gfx-ddd-context-map@3.0.0
+  - @labre/affine-gfx-ddd-core-domain@3.0.0
+  - @labre/affine-gfx-ddd-event-storming@3.0.0
+  - @labre/affine-gfx-ddd-shared@3.0.0
+  - @labre/affine-gfx-edgy@3.0.0
+  - @labre/affine-gfx-group@3.0.0
+  - @labre/affine-gfx-link@3.0.0
+  - @labre/affine-gfx-pointer@3.0.0
+  - @labre/affine-gfx-shape@3.0.0
+  - @labre/affine-gfx-template@3.0.0
+  - @labre/affine-gfx-text@3.0.0
+  - @labre/affine-gfx-uml@3.0.0
+  - @labre/affine-gfx-wardley@3.0.0
+  - @labre/affine-inline-comment@3.0.0
+  - @labre/affine-inline-footnote@3.0.0
+  - @labre/affine-inline-latex@3.0.0
+  - @labre/affine-inline-link@3.0.0
+  - @labre/affine-inline-mention@3.0.0
+  - @labre/affine-inline-reference@3.0.0
+  - @labre/affine-rich-text@3.0.0
+  - @labre/affine-widget-drag-handle@3.0.0
+  - @labre/affine-widget-edgeless-auto-connect@3.0.0
+  - @labre/affine-widget-edgeless-dragging-area@3.0.0
+  - @labre/affine-widget-edgeless-selected-rect@3.0.0
+  - @labre/affine-widget-edgeless-toolbar@3.0.0
+  - @labre/affine-widget-edgeless-zoom-toolbar@3.0.0
+  - @labre/affine-widget-frame-title@3.0.0
+  - @labre/affine-widget-linked-doc@3.0.0
+  - @labre/affine-widget-note-slicer@3.0.0
+  - @labre/affine-widget-page-dragging-area@3.0.0
+  - @labre/affine-widget-remote-selection@3.0.0
+  - @labre/affine-widget-scroll-anchoring@3.0.0
+  - @labre/affine-widget-slash-menu@3.0.0
+  - @labre/affine-widget-thread-marks@3.0.0
+  - @labre/affine-widget-toolbar@3.0.0
+  - @labre/affine-widget-viewport-overlay@3.0.0
+  - @labre/affine-ext-loader@3.0.0
+  - @labre/affine-gfx-turbo-renderer@3.0.0
+  - @labre/affine-model@3.0.0
+  - @labre/std@3.0.0
+  - @labre/store@3.0.0
+  - @labre/sync@3.0.0
+
 ## 2.5.0
 
 ### Minor Changes
