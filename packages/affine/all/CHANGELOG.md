@@ -1,5 +1,181 @@
 # @labre/affine
 
+## 3.1.0
+
+### Minor Changes
+
+- b1a4e44: A BPMN pool's toolbar now offers two size dropdowns: "Pool title size" (13, 15, 18, 24, 32) and "Lane title size" (11, 13, 15, 18, 24, shown when the pool has lanes). The choice is stored in two new optional element fields, `nameFontSize` and `laneFontSize`, absent by default: a pool whose author picks nothing stays byte-identical and paints at 15 / 13 as before, and an older client ignores the keys (ADR 0049). The title bands thicken to hold a larger title, and the rename target follows. The framework-background primitive gains an optional `sizeProp` on a declared text and on an instance's zone label, read through `backgroundSizedStyle`. The `.bpmn` export does not carry the sizes. Two new chrome keys for the host catalogue: `com.labre.bpmn.toolbar.poolTitleSize` and `com.labre.bpmn.toolbar.laneTitleSize`.
+- cb45e74: A view's "Source" list can rename the source the view reads, through a new optional
+  `DataSourcePickerService.renameSource(databaseId, sourceId, name)` verb (issue #576).
+  With it, "Rename source" heads the list and Enter hands the host the trimmed, changed
+  name; `{ ok: false, message }` keeps the field open with the message under it. The
+  library writes nothing: the host renames and updates `list()` and the source's title.
+  Without the verb, the name stays read-only, as before.
+- f3f5c40: "Export selection as SVG": a new core command, `selection.export.svg` (contextual "⋮" of any canvas selection that holds no board, palette, catalogue), downloads the selected elements as a vector SVG file with the same renderer replay and `data-labre-*` markers as the board and whole-canvas exports. Groups, mindmaps and frames bring their content, what this viewer hid is left out, and blocks without an SVG painter (notes, frames, images, embeds) are set aside; when nothing selected can be drawn, the host's `NotificationProvider` shows a toast (`com.labre.export.svg.selection.nothing`) and no file is downloaded. `@labre/affine-block-surface` adds `renderSelectionSvg`, `selectionSvgModels` and `exportSelectionSvg`. New keys for the host catalogue: `com.labre.command.selection.export.svg`, `com.labre.command.selection.export.svg.description`, `com.labre.export.svg.selection.nothing`. `export.svg` is unchanged and still exports the selected board.
+- cc40908: The image crop frame gains four edge handles, a short bar at the middle of each
+  side, that resize it along one axis: the dragged edge moves and the opposite
+  edge stays put. A free frame changes that one dimension only; a 16:9, 4:3 or 1:1
+  frame grows its other dimension with it, centred, and is pushed back inside the
+  picture at its border. Like the corners, an edge drag keeps the picture still,
+  the box follows the window, and one drag is one undo step. Each bar is named by
+  a new key, `com.labre.image.crop.edge.top`, `.right`, `.bottom` and `.left`
+  (« Resize from the top edge »…). Nothing persisted changes format (ADR 0037
+  amendment of 2026-11-05).
+- 2d8325a: The image crop frame no longer moves: only its corner handles resize it.
+  Dragging inside the frame now pans the picture behind it, and a zoom slider
+  above the frame (1x to 4x, the new `com.labre.image.crop.zoom` key, « Zoom »)
+  zooms the picture about the frame's centre, as the wheel now does too. A pan or
+  a zoom keeps the box where it is: `xywh` is untouched on the canvas, and on a
+  page `width`/`height` (the whole picture) scale so the visible window keeps its
+  size. `<affine-slider>` gains a continuous mode, `range: { min, max, step? }`
+  beside the discrete `points`, with keyboard support and an ARIA slider role;
+  the discrete users are unchanged. Nothing persisted changes format (ADR 0037
+  amendment of 2026-11-04).
+- 6181857: The selection pane and the frame panel scroll their list while a row is held near its top
+  or bottom edge, so a row can be dropped below the fold; the drop line follows the rows that
+  scroll under a still pointer, a wheel during the drag included. `PanelReorderDragOptions`
+  (`@labre/affine/host-panels`) gains an optional `scroller`: absent, a host's list behaves as
+  before; present, the controller scrolls it, faster the deeper in a 20 px band, at most 30 px
+  a frame, and stops at the end of the list or of the drag. New export `panelEdgeScrollDelta`
+  from `@labre/affine-shared/utils` (ADR 0034, amendment of 2026-11-04). Nothing persisted
+  changes.
+- 1794fd9: The viewport now knows which part of the canvas a docked panel covers:
+  `Viewport.setOccupiedInset(owner, insets)` declares it (and returns its
+  withdrawal), `occupiedInsets# @labre/affine
+is the combined value (the max per side),
+ `visibleRect`the container less it, and`paddingWithInsets(viewport, padding)`
+  adds it to a fit padding. The selection pane and the artefact catalogue declare
+  their width while open, so edge auto-pan triggers at the panel's edge instead of
+  under it, fit to screen centres on the visible area and the element toolbar
+  stays clear of the panel. Runtime state only: nothing is stored, and nothing
+  changes while no panel is open.
+
+### Patch Changes
+
+- 65db749: BPMN interchange keeps where a name is drawn. An imported event, gateway or data shape now places its name in the box the file's `bpmndi:BPMNLabel` gives (beside or above the symbol, as bpmn.io draws it) instead of always under it, and falls back to under the symbol when that box is missing or not a sane rectangle. The `.bpmn` export writes a `BPMNLabel` from the real position of each grouped label, offset with the rest of the drawing, in place of the one an earlier import carried, so a label the user moved comes back where it was. `BpmnExportBoard` gains an optional `labelBounds` map beside `labels`; nothing persisted changes (ADR 0029, amendment of 2026-11-04).
+- 253dbf6: An orthogonal connector no longer throws "Failed to get line intersections for
+  getNextPoint" (nor a `TypeError` in the router) when one of its ends cannot be
+  routed: an element with a flat or `[0,0,0,0]` bound, a NaN coordinate, or a stored
+  position outside `[0, 1]`. Such a connector is drawn as a direct elbow, or not at
+  all when an end has no finite point, and an end with no anchor now starts from its
+  element's centre instead of the canvas origin. Only the local path is recomputed;
+  nothing is written to the document.
+- 485e489: The record detail panel's up and down arrows now walk the whole view: they
+  used to reach the row next to the one the panel opened on and no further, the
+  panel having memoised its opening row.
+- 6005ee5: An Event Storming hotspot is now created at 180 instead of 120, so its name fits
+  the diamond at the stickies' Kalam 20 instead of being shrunk by the contained
+  fit (rule R38, ADR 0029 amendment). The command, the toolbox item and the
+  template all read the new `HOTSPOT_SIZE`, exported beside `AGGREGATE_SIZE`.
+  Nothing is migrated: a hotspot drawn earlier keeps its size, and a sticky
+  morphed into a hotspot keeps its own.
+- 8a61ece: Importing Markdown or HTML no longer leaves an empty paragraph above a picture
+  that stands on its own, nor loses it. A linked image (`[![a](src)](href)`),
+  images split by a hard line break and an HTML `<p><img></p>` now import as
+  image blocks alone (the link target is still dropped: the image block has no
+  link). An image alone in a list item becomes a child of the list block instead
+  of disappearing, and an image inside a quote lands right after the quote,
+  whose text is kept. Nothing persisted changes.
+- 456d0df: A `label-presence` rule may declare `labelRole`: an element with no text of its own is then named by the text grouped with it under that role, the way the reading panel names it. `bpmn.unlabeled-step` (version 2) uses it and asks every activity, event and gateway again, so a check-up now reports an unnamed event or a gateway that asks no question, and stays silent on one named by its grouped label. Nothing persisted changes.
+- 1de42b3: The Wardley "Change type" menu now offers Component + method beside component,
+  market, ecosystem and pipeline, in both directions. A component that becomes a
+  method paints Make until a method is picked. A method that becomes another kind
+  keeps its `wardley:method` tag stored (unused) and gets it back when it becomes
+  a method again. Name, centre, nature and connectors are kept, through the
+  pipeline's handle when a pipeline is involved. Nothing persisted changes (ADR
+  0046, amendment of 2026-11-04).
+- 299c03f: A Wardley pipeline now carries a nature (activity, data, practice or knowledge)
+  like a component: the qualification entry of its contextual toolbar offers the
+  `wardley:nature` tag on the pipeline body, whether the pipeline was drawn or
+  morphed, and never on its handle. The pipeline keeps its own role (no parent),
+  so a component placed on a pipeline raises no overlap finding. The reading panel
+  and the renderer JSON export do not read a pipeline's nature yet. Nothing
+  persisted changes (ADR 0046, amendment of 2026-11-04).
+- Updated dependencies [65db749]
+- Updated dependencies [6181857]
+  - @labre/affine-gfx-bpmn@3.1.0
+  - @labre/affine-shared@3.1.0
+  - @labre/affine-widget-edgeless-toolbar@3.1.0
+  - @labre/affine-fragment-frame-panel@3.1.0
+  - @labre/affine-block-attachment@3.1.0
+  - @labre/affine-block-bookmark@3.1.0
+  - @labre/affine-block-callout@3.1.0
+  - @labre/affine-block-code@3.1.0
+  - @labre/affine-block-divider@3.1.0
+  - @labre/affine-block-edgeless-text@3.1.0
+  - @labre/affine-block-embed@3.1.0
+  - @labre/affine-block-embed-doc@3.1.0
+  - @labre/affine-block-frame@3.1.0
+  - @labre/affine-block-image@3.1.0
+  - @labre/affine-block-latex@3.1.0
+  - @labre/affine-block-list@3.1.0
+  - @labre/affine-block-note@3.1.0
+  - @labre/affine-block-paragraph@3.1.0
+  - @labre/affine-block-root@3.1.0
+  - @labre/affine-block-surface@3.1.0
+  - @labre/affine-block-surface-ref@3.1.0
+  - @labre/affine-block-table@3.1.0
+  - @labre/affine-components@3.1.0
+  - @labre/affine-database-block@3.1.0
+  - @labre/affine-database-editor@3.1.0
+  - @labre/affine-database-engine@3.1.0
+  - @labre/affine-database-view-block@3.1.0
+  - @labre/affine-foundation@3.1.0
+  - @labre/affine-fragment-adapter-panel@3.1.0
+  - @labre/affine-fragment-doc-title@3.1.0
+  - @labre/affine-fragment-outline@3.1.0
+  - @labre/affine-gfx-brush@3.1.0
+  - @labre/affine-gfx-c4@3.1.0
+  - @labre/affine-gfx-connector@3.1.0
+  - @labre/affine-gfx-cynefin-estuarine@3.1.0
+  - @labre/affine-gfx-ddd-aggregate@3.1.0
+  - @labre/affine-gfx-ddd-context-map@3.1.0
+  - @labre/affine-gfx-ddd-core-domain@3.1.0
+  - @labre/affine-gfx-ddd-event-storming@3.1.0
+  - @labre/affine-gfx-ddd-shared@3.1.0
+  - @labre/affine-gfx-edgy@3.1.0
+  - @labre/affine-gfx-group@3.1.0
+  - @labre/affine-gfx-link@3.1.0
+  - @labre/affine-gfx-mindmap@3.1.0
+  - @labre/affine-gfx-note@3.1.0
+  - @labre/affine-gfx-pointer@3.1.0
+  - @labre/affine-gfx-shape@3.1.0
+  - @labre/affine-gfx-template@3.1.0
+  - @labre/affine-gfx-text@3.1.0
+  - @labre/affine-gfx-uml@3.1.0
+  - @labre/affine-gfx-wardley@3.1.0
+  - @labre/affine-inline-comment@3.1.0
+  - @labre/affine-inline-footnote@3.1.0
+  - @labre/affine-inline-latex@3.1.0
+  - @labre/affine-inline-link@3.1.0
+  - @labre/affine-inline-mention@3.1.0
+  - @labre/affine-inline-preset@3.1.0
+  - @labre/affine-inline-reference@3.1.0
+  - @labre/affine-rich-text@3.1.0
+  - @labre/affine-widget-drag-handle@3.1.0
+  - @labre/affine-widget-edgeless-auto-connect@3.1.0
+  - @labre/affine-widget-edgeless-dragging-area@3.1.0
+  - @labre/affine-widget-edgeless-selected-rect@3.1.0
+  - @labre/affine-widget-edgeless-zoom-toolbar@3.1.0
+  - @labre/affine-widget-frame-title@3.1.0
+  - @labre/affine-widget-keyboard-toolbar@3.1.0
+  - @labre/affine-widget-linked-doc@3.1.0
+  - @labre/affine-widget-note-slicer@3.1.0
+  - @labre/affine-widget-page-dragging-area@3.1.0
+  - @labre/affine-widget-remote-selection@3.1.0
+  - @labre/affine-widget-scroll-anchoring@3.1.0
+  - @labre/affine-widget-slash-menu@3.1.0
+  - @labre/affine-widget-thread-marks@3.1.0
+  - @labre/affine-widget-toolbar@3.1.0
+  - @labre/affine-widget-viewport-overlay@3.1.0
+  - @labre/affine-ext-loader@3.1.0
+  - @labre/affine-gfx-turbo-renderer@3.1.0
+  - @labre/affine-model@3.1.0
+  - @labre/global@3.1.0
+  - @labre/std@3.1.0
+  - @labre/store@3.1.0
+  - @labre/sync@3.1.0
+
 ## 3.0.0
 
 ### Major Changes

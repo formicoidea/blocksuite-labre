@@ -1,5 +1,24 @@
 # @labre/affine-block-database
 
+## 3.1.0
+
+### Patch Changes
+
+- Updated dependencies [6181857]
+  - @labre/affine-shared@3.1.0
+  - @labre/affine-components@3.1.0
+  - @labre/affine-database-engine@3.1.0
+  - @labre/affine-inline-preset@3.1.0
+  - @labre/affine-inline-reference@3.1.0
+  - @labre/affine-rich-text@3.1.0
+  - @labre/affine-widget-drag-handle@3.1.0
+  - @labre/affine-widget-slash-menu@3.1.0
+  - @labre/affine-ext-loader@3.1.0
+  - @labre/affine-model@3.1.0
+  - @labre/global@3.1.0
+  - @labre/std@3.1.0
+  - @labre/store@3.1.0
+
 ## 3.0.0
 
 ### Patch Changes

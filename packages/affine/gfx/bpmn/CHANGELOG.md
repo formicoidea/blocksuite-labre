@@ -1,5 +1,26 @@
 # @labre/affine-gfx-bpmn
 
+## 3.1.0
+
+### Patch Changes
+
+- 65db749: BPMN interchange keeps where a name is drawn. An imported event, gateway or data shape now places its name in the box the file's `bpmndi:BPMNLabel` gives (beside or above the symbol, as bpmn.io draws it) instead of always under it, and falls back to under the symbol when that box is missing or not a sane rectangle. The `.bpmn` export writes a `BPMNLabel` from the real position of each grouped label, offset with the rest of the drawing, in place of the one an earlier import carried, so a label the user moved comes back where it was. `BpmnExportBoard` gains an optional `labelBounds` map beside `labels`; nothing persisted changes (ADR 0029, amendment of 2026-11-04).
+- Updated dependencies [6181857]
+  - @labre/affine-shared@3.1.0
+  - @labre/affine-widget-edgeless-toolbar@3.1.0
+  - @labre/affine-block-surface@3.1.0
+  - @labre/affine-components@3.1.0
+  - @labre/affine-gfx-connector@3.1.0
+  - @labre/affine-gfx-group@3.1.0
+  - @labre/affine-gfx-pointer@3.1.0
+  - @labre/affine-gfx-shape@3.1.0
+  - @labre/affine-gfx-template@3.1.0
+  - @labre/affine-ext-loader@3.1.0
+  - @labre/affine-model@3.1.0
+  - @labre/global@3.1.0
+  - @labre/std@3.1.0
+  - @labre/store@3.1.0
+
 ## 3.0.0
 
 ### Patch Changes
