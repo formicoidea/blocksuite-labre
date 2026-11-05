@@ -43,6 +43,12 @@ import {
   DATA_VIEW_OPEN_IN_SIDE,
 } from '../../../../translations.js';
 import { popColorRules } from './color-rules-menu.js';
+import {
+  layoutPickerItemStyle,
+  layoutPickerLabelStyle,
+  layoutPickerRowStyle,
+  layoutPickerTileStyle,
+} from './layout-picker-css.js';
 
 /**
  * The settings of a view that a menu entry opens on its own (labre PRD
@@ -159,11 +165,11 @@ function popLayout(
       });
       const data: MenuButtonData = {
         content: () => html`
-          <div
-            style="color:var(--affine-text-emphasis-color);width:100%;display: flex;flex-direction: column;align-items: center;justify-content: center;padding: 6px 16px;white-space: nowrap"
-          >
+          <div class="${layoutPickerTileStyle}">
             <div style="${iconStyle}">${renderUniLit(meta.renderer.icon)}</div>
-            <div style="${textStyle}">${name}</div>
+            <div class="${layoutPickerLabelStyle}" style="${textStyle}">
+              ${name}
+            </div>
           </div>
         `,
         select: () => {
@@ -182,11 +188,8 @@ function popLayout(
         },
         class: {},
       };
-      const containerStyle = styleMap({
-        flex: '1',
-      });
       return html` <affine-menu-button
-        style="${containerStyle}"
+        class="${layoutPickerItemStyle}"
         .data="${data}"
         .menu="${menu}"
       ></affine-menu-button>`;
@@ -202,7 +205,12 @@ function popLayout(
         menu => {
           const result = menu.renderItems(viewTypes);
           if (result.length) {
-            return html` <div style="display: flex">${result}</div>`;
+            return html` <div
+              class="${layoutPickerRowStyle}"
+              data-testid="dv-layout-picker"
+            >
+              ${result}
+            </div>`;
           }
           return html``;
         },
