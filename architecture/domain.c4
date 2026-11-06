@@ -1956,7 +1956,7 @@ model {
   extend features.shared {
     metadata {
       domain ['file', 'collaboration', 'canvas']
-      domain_file '0.25'
+      domain_file '0.26'
       domain_collaboration '0.04'
       domain_canvas '0.03'
     }

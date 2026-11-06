@@ -27,6 +27,11 @@ import { setupEditor } from '../utils/setup.js';
  *   every cell keeps its whole text, escapes resolved. Would have caught: the
  *   database's Markdown matcher reading tables again, or a cell that lost what
  *   the parser handed it.
+ * - **The same table beside a flat HTML copy** (VS Code, Slack, Teams, chats
+ *   write one `<div>` per line next to the Markdown) is still a table: the
+ *   HTML adapter, read first, steps aside (labre P4-11). Would have caught:
+ *   paragraphs of pipes and no table. Rich HTML beside Markdown and plain
+ *   prose beside its HTML keep the HTML path, unchanged.
  *
  * Read with `isolate: false` in mind: the clipboard permission is handed back
  * in a `finally`, and the proposal is closed before the editor unmounts.
@@ -70,6 +75,30 @@ describe('pasting in a page', () => {
       await commands.systemClipboard(false);
     }
   };
+
+  /** A paste whose clipboard carries several flavours, as an app writes it. */
+  const pasteFlavours = async (flavours: Record<string, string>) => {
+    await commands.systemClipboard(true);
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem(
+          Object.fromEntries(
+            Object.entries(flavours).map(([type, value]) => [
+              type,
+              new Blob([value], { type }),
+            ])
+          )
+        ),
+      ]);
+      await userEvent.keyboard(`{${MOD}>}v{/${MOD}}`);
+      await settle();
+    } finally {
+      await commands.systemClipboard(false);
+    }
+  };
+
+  const flavoursInDoc = () =>
+    window.doc.getAllModels().map(model => model.flavour);
 
   const noteChildren = () =>
     (window.doc.getBlock(paragraphId)?.model.parent?.children ??
@@ -197,5 +226,64 @@ describe('pasting in a page', () => {
       ['a | b', 'bold *not*', 'x | y', ''],
       ['1', '2', '3', 'extra'],
     ]);
+  });
+
+  describe('beside an HTML copy', () => {
+    const TABLE = ['| a | b |', '| --- | --- |', '| 1 | 2 |'].join('\n');
+
+    test('a flat HTML copy of a GFM table still pastes a table', async () => {
+      await pasteFlavours({
+        'text/html':
+          '<div>| a | b |</div><div>| --- | --- |</div><div>| 1 | 2 |</div>',
+        'text/plain': TABLE,
+      });
+
+      const table = window.doc
+        .getAllModels()
+        .find(model => model.flavour === 'affine:table');
+      expect(table, 'the Markdown table was read').toBeTruthy();
+      expect(flavoursInDoc()).not.toContain('affine:database');
+      const cells = (
+        table!.props as unknown as {
+          cells: Record<string, { text: { toString(): string } }>;
+        }
+      ).cells;
+      expect(
+        Object.values(cells)
+          .map(cell => cell.text.toString())
+          .sort(),
+        'a 2×2 table, every cell whole'
+      ).toEqual(['1', '2', 'a', 'b']);
+      expect(
+        noteChildren().some(model => model.text?.toString().includes('|')),
+        'no paragraph of pipes'
+      ).toBe(false);
+    });
+
+    test('rich HTML keeps its priority beside Markdown', async () => {
+      await pasteFlavours({
+        'text/html': '<ul><li>alpha</li><li>beta</li></ul>',
+        'text/plain': TABLE,
+      });
+
+      expect(flavoursInDoc()).toContain('affine:list');
+      expect(flavoursInDoc()).not.toContain('affine:table');
+    });
+
+    test('plain prose beside its HTML stays paragraphs', async () => {
+      await pasteFlavours({
+        'text/html': '<p>first line</p><p>second line</p>',
+        'text/plain': 'first line\nsecond line',
+      });
+
+      const texts = noteChildren()
+        .map(model => model.text?.toString() ?? '')
+        .join('\n');
+      expect(texts).toContain('first line');
+      expect(texts).toContain('second line');
+      expect(
+        noteChildren().every(model => model.flavour === 'affine:paragraph')
+      ).toBe(true);
+    });
   });
 });

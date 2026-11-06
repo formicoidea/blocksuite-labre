@@ -83,7 +83,7 @@ export class Clipboard extends LifeCycleWatcher {
     const byPriority = Array.from(this._adapters).sort(
       (a, b) => b.priority - a.priority
     );
-    for (const { adapter, mimeType } of byPriority) {
+    for (const { adapter, mimeType, defer } of byPriority) {
       const item = getItem(mimeType);
       if (Array.isArray(item)) {
         if (item.length === 0) {
@@ -98,7 +98,7 @@ export class Clipboard extends LifeCycleWatcher {
           continue;
         }
       }
-      if (item) {
+      if (item && !defer?.(getItem)) {
         const job = this._getJob();
         const adapterInstance = new adapter(job, this.std.store.provider);
         const payload = {

@@ -2802,13 +2802,13 @@ model {
       link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/shared
       metadata {
         path 'packages/affine/shared'
-        files '253'
+        files '254'
       }
       adapters = folder 'adapters/' {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/shared/src/adapters
         metadata {
           path 'packages/affine/shared/src/adapters'
-          files '57'
+          files '58'
         }
       }
       commands = folder 'commands/' {
