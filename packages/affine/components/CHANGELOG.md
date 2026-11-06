@@ -1,5 +1,29 @@
 # @labre/affine-components
 
+## 3.4.0
+
+### Minor Changes
+
+- f0ccba0: `edgeless-color-picker` mounts outside an editor. `std` is now optional (read
+  from the Lit context when an editor provides it, undefined and never touched
+  otherwise), and three optional properties serve a host that embeds the picker
+  on its own: `labels` carries the host's words for the `Colors` / `Custom` tabs
+  and the `Normal` / `Light` / `Dark` modes (the editor's English wording fills
+  any gap), `hideAlpha` drops the alpha slider and the `%` field and makes
+  `pick` report a 6-digit hex, `hideTabs` drops the tab bar so only the
+  single-colour custom picker shows. `hex6# @labre/affine-components reads the current colour as
+`#rrggbb` either way. The palette canvas no longer throws where there is no 2d
+  context (jsdom, happy-dom). Toolbars that leave the options off see no change.
+
+### Patch Changes
+
+- @labre/affine-model@3.4.0
+- @labre/affine-shared@3.4.0
+- @labre/global@3.4.0
+- @labre/std@3.4.0
+- @labre/store@3.4.0
+- @labre/sync@3.4.0
+
 ## 3.3.0
 
 ### Patch Changes
