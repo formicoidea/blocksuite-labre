@@ -119,15 +119,26 @@ export const EdgelessToolbarToolMixin = <T extends Constructor<LitElement>>(
         this.toolbar.activePopper.dispose();
         this.toolbar.activePopper = null;
       }
-      this.popper = createPopper(args[0], args[1], {
+      const popper = createPopper(args[0], args[1], {
         ...args[2],
+        // A button that closes its own menu (a senior button's re-click)
+        // disposes the popper and never tells the toolbar, which then kept
+        // answering "a sub-menu is open" and the canvas arrows went to a menu
+        // nobody could see (recette P7-17, 2026-11-02).
+        onClose: () => {
+          args[2]?.onClose?.();
+          if (this.toolbar.activePopper === popper) {
+            this.toolbar.activePopper = null;
+          }
+        },
         onDispose: () => {
           args[2]?.onDispose?.();
           this.popper = null;
         },
       }) as MenuPopper<HTMLElement>;
-      this.toolbar.activePopper = this.popper;
-      return this.popper;
+      this.popper = popper;
+      this.toolbar.activePopper = popper;
+      return popper;
     }
 
     override disconnectedCallback() {

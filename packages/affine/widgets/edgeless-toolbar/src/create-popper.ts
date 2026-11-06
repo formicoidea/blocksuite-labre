@@ -26,6 +26,12 @@ export function createPopper<T extends keyof HTMLElementTagNameMap>(
     /** transition duration in ms */
     duration?: number;
     onDispose?: () => void;
+    /**
+     * Called the moment the popper starts closing, before its leave
+     * transition. `onDispose` waits for `transitionend`, and whoever asks
+     * "is a menu open?" in between must already hear no.
+     */
+    onClose?: () => void;
     setProps?: (ele: HTMLElementTagNameMap[T]) => void;
   }
 ): MenuPopper<HTMLElementTagNameMap[T]> {
@@ -106,6 +112,7 @@ export function createPopper<T extends keyof HTMLElementTagNameMap>(
   const popper: MenuPopper<HTMLElementTagNameMap[T]> = {
     element: menu,
     dispose: () => {
+      options?.onClose?.();
       // apply leave transition
       animateLeave(menu);
       menu.addEventListener('transitionend', remove, { once: true });

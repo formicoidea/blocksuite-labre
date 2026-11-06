@@ -90,7 +90,8 @@ allocated one (`w`). A prefix must be unique and outside
 **R7b. An artefact command is PLACED, not run** (PO decision, 2026-09-16;
 lettered rather than renumbered so the thirty references below stay valid).
 Choosing a command of kind `artefact` — in the sub-menu, in the catalogue, or
-with Enter on the keyboard highlight — arms `ArtefactPlacementTool`
+with Enter on the keyboard highlight, which Alt+←/→ walks (the plain arrows
+always move the canvas selection) — arms `ArtefactPlacementTool`
 (`packages/affine/widgets/edgeless-toolbar/src/placement/`) instead of running
 it: a dashed ghost at the command's true footprint follows the cursor, Shift+S
 cycles the armed artefact backwards along the owner's row, and the click on

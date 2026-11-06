@@ -50,6 +50,7 @@ import {
   type SeniorTool,
   SeniorToolIdentifier,
 } from './extension/index.js';
+import { stepToolbarHighlight } from './toolbar-highlight.js';
 
 const TOOLBAR_PADDING_X = 12;
 const TOOLBAR_HEIGHT = 64;
@@ -226,6 +227,13 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
     [data-dense-senior='true'] .senior-nav-button-wrapper.next {
       margin-left: ${unsafeCSS(DIVIDER_SPACE)}px;
     }
+    /* The keyboard highlight (Alt+←/→): an opaque 2px ring, the focus ring's
+       weight, so it reads on both themes. */
+    [data-keyboard-highlight] {
+      outline: 2px solid var(--affine-primary-color);
+      outline-offset: -2px;
+      border-radius: 8px;
+    }
     .transform-button svg {
       transition: 0.3s ease-in-out;
     }
@@ -250,6 +258,10 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
       if (!this.isConnected) return;
 
       this.slots.resize.next({ w, h: TOOLBAR_HEIGHT });
+      // The highlight is a position in the row, and a new width re-deals the
+      // row (dense mode, quick tools folded into "more"): the same index
+      // would point at another button.
+      if (w !== this.containerWidth) this.clearHighlight();
       this.containerWidth = w;
 
       if (this._denseSeniorTools) {
@@ -298,6 +310,84 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
   });
 
   activePopper: MenuPopper<HTMLElement> | null = null;
+
+  /**
+   * Which toolbar button the keyboard points at, `-1` for none. Walked with
+   * Alt+←/→ when no sub-menu is open (`edgeless-keyboard.ts`); the plain
+   * arrows belong to the canvas. A highlight, not DOM focus: focus in the
+   * toolbar's shadow tree would take the keystrokes away from the canvas
+   * dispatcher, and the open sub-menu already walks its row the same way.
+   */
+  @state()
+  accessor keyboardHighlight = -1;
+
+  private get _walkableQuickToolSize() {
+    return Math.min(this._quickTools.length, this._visibleQuickToolSize);
+  }
+
+  /**
+   * Step the keyboard highlight along the toolbar by one button, and say
+   * whether there was a row to walk. There is none while the presentation
+   * toolbar replaces it or while a readonly board hides it, and the caller
+   * then leaves the keystroke to the browser.
+   */
+  walkHighlight(dir: 1 | -1): boolean {
+    if (this.isPresentMode || this.store.readonly) return false;
+    const { index, scroll } = stepToolbarHighlight(
+      this.keyboardHighlight,
+      dir,
+      {
+        quick: this._walkableQuickToolSize,
+        senior: this._seniorTools.length,
+        scroll: this.scrollSeniorToolIndex,
+        size: this.scrollSeniorToolSize,
+      }
+    );
+    this.keyboardHighlight = index;
+    this.scrollSeniorToolIndex = scroll;
+    return index >= 0;
+  }
+
+  clearHighlight() {
+    if (this.keyboardHighlight < 0) return false;
+    this.keyboardHighlight = -1;
+    return true;
+  }
+
+  /**
+   * Press the highlighted button, and say whether there was one.
+   *
+   * The click lands on whatever is drawn at the button's centre, the element a
+   * pointer would hit: each tool button binds its click deep in its own shadow
+   * tree (a wrapper div, an inner icon button), so clicking the item's host
+   * would reach none of them.
+   */
+  activateHighlight(): boolean {
+    if (this.keyboardHighlight < 0) return false;
+    const item =
+      this.shadowRoot?.querySelector<HTMLElement>(
+        '[data-keyboard-highlight]'
+      ) ?? null;
+    this.keyboardHighlight = -1;
+    if (!item) return false;
+    const target = deepElementAtCentre(item);
+    if (!target) return false;
+    // Dispatched rather than `.click()`: what is drawn there is often an SVG
+    // shape of the icon, which has no `click()`.
+    target.dispatchEvent(
+      new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+      })
+    );
+    return true;
+  }
+
+  private readonly _onContainerPointerDown = (event: Event) => {
+    this.clearHighlight();
+    stopPropagation(event);
+  };
 
   // calculate all the width manually
   private get _availableWidth() {
@@ -538,7 +628,13 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
         ${this._quickTools
           .slice(0, this._visibleQuickToolSize)
           .map(
-            tool => html`<div class="quick-tool-item">${tool.content}</div>`
+            (tool, index) =>
+              html`<div
+                class="quick-tool-item"
+                ?data-keyboard-highlight=${index === this.keyboardHighlight}
+              >
+                ${tool.content}
+              </div>`
           )}
       </div>
       <div class="quick-tool-more">
@@ -582,7 +678,16 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
             this.scrollSeniorToolIndex + this.scrollSeniorToolSize
           )
           .map(
-            tool => html`<div class="senior-tool-item">${tool.content}</div>`
+            (tool, index) =>
+              html`<div
+                class="senior-tool-item"
+                ?data-keyboard-highlight=${this._walkableQuickToolSize +
+                  this.scrollSeniorToolIndex +
+                  index ===
+                this.keyboardHighlight}
+              >
+                ${tool.content}
+              </div>`
           )}
       </div>
       <div class="senior-nav-button-wrapper next">
@@ -615,6 +720,19 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
       }
     });
     this._resizeObserver.observe(this);
+    // The highlight only stands while the keyboard is on the toolbar. Left
+    // standing, it hijacks the next Enter: Alt+→, a click on a shape, Enter
+    // to edit its text, and the toolbar button got pressed instead. Capture,
+    // because the canvas and the toolbar both stop the pointer's propagation.
+    this.disposables.addFromEvent(
+      document,
+      'pointerdown',
+      () => this.clearHighlight(),
+      { capture: true }
+    );
+    this.disposables.add(
+      this.gfx.selection.slots.updated.subscribe(() => this.clearHighlight())
+    );
     this.disposables.add(
       this.std
         .get(ThemeProvider)
@@ -628,6 +746,7 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
         {
           Escape: () => {
             if (this.gfx.selection.editing) return;
+            this.clearHighlight();
             if (this.edgelessTool === 'frameNavigator') return;
             if (this.edgelessTool === 'default') {
               if (this.activePopper) {
@@ -713,7 +832,7 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
               data-dense-senior=${this._denseSeniorTools}
               @dblclick=${stopPropagation}
               @mousedown=${stopPropagation}
-              @pointerdown=${stopPropagation}
+              @pointerdown=${this._onContainerPointerDown}
             >
               ${this.isPresentMode
                 ? html`<presentation-toolbar
@@ -746,6 +865,40 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
 
   @query('.edgeless-toolbar-container')
   accessor toolbarContainer!: HTMLElement;
+}
+
+/**
+ * The innermost element drawn at an element's centre, across shadow roots:
+ * what a pointer pressed there would hit. `null` when that is not inside
+ * `element` (something floats over it).
+ */
+function deepElementAtCentre(element: HTMLElement): Element | null {
+  // Hit-testing only sees what is on screen: a host page taller than the
+  // window can leave the toolbar below the fold.
+  const box = element.getBoundingClientRect();
+  if (
+    box.top < 0 ||
+    box.left < 0 ||
+    box.bottom > window.innerHeight ||
+    box.right > window.innerWidth
+  ) {
+    element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }
+  const rect = element.getBoundingClientRect();
+  const x = rect.left + rect.width / 2;
+  const y = rect.top + rect.height / 2;
+  let target = document.elementFromPoint(x, y);
+  while (target?.shadowRoot) {
+    const inner = target.shadowRoot.elementFromPoint(x, y);
+    if (!inner || inner === target) break;
+    target = inner;
+  }
+  if (!target) return null;
+  let node: Node | null = target;
+  while (node && node !== element) {
+    node = node.parentNode ?? (node as ShadowRoot).host ?? null;
+  }
+  return node === element ? target : null;
 }
 
 export const edgelessToolbarWidget = WidgetViewExtension(
