@@ -1,5 +1,24 @@
 # @labre/affine-widget-drag-handle
 
+## 3.3.0
+
+### Patch Changes
+
+- Updated dependencies [09a0c0b]
+  - @labre/std@3.3.0
+  - @labre/affine-shared@3.3.0
+  - @labre/affine-block-callout@3.3.0
+  - @labre/affine-block-embed@3.3.0
+  - @labre/affine-block-list@3.3.0
+  - @labre/affine-block-note@3.3.0
+  - @labre/affine-block-paragraph@3.3.0
+  - @labre/affine-block-surface@3.3.0
+  - @labre/affine-components@3.3.0
+  - @labre/affine-model@3.3.0
+  - @labre/affine-ext-loader@3.3.0
+  - @labre/global@3.3.0
+  - @labre/store@3.3.0
+
 ## 3.2.0
 
 ### Patch Changes
