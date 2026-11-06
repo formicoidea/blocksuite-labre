@@ -1,5 +1,23 @@
 # @labre/affine-foundation
 
+## 3.3.0
+
+### Minor Changes
+
+- 09a0c0b: A Markdown table pasted from VS Code, Slack, Teams or another chat app is a table again. These apps put the same text on the clipboard twice, as Markdown in `text/plain` and as one `<div>` per line in `text/html`; the paste read the HTML first and made paragraphs of pipes. The HTML copy now steps aside when the plain text parses into a GFM table and the HTML is flat (only `div`, `p`, `br`, `span`). Nothing else changes path: rich HTML (tables, lists, `<pre>`, Google Docs), source code and prose copied from VS Code, a lone URL and the internal snapshot paste as before. A paste with no GFM delimiter row, or over 200 000 characters, is never parsed. New API: `ClipboardAdapterConfig` gains an optional `defer(read)` that lets an adapter yield one paste to the next by priority, typed by the new `ClipboardItemReader` (`@labre/std`); `htmlDefersToMarkdown`, `isFlatHtml` and `isMarkdownTable` are exported from `@labre/affine-shared/adapters`.
+
+### Patch Changes
+
+- Updated dependencies [09a0c0b]
+  - @labre/std@3.3.0
+  - @labre/affine-shared@3.3.0
+  - @labre/affine-components@3.3.0
+  - @labre/affine-database-engine@3.3.0
+  - @labre/affine-rich-text@3.3.0
+  - @labre/affine-ext-loader@3.3.0
+  - @labre/global@3.3.0
+  - @labre/store@3.3.0
+
 ## 3.2.0
 
 ### Patch Changes

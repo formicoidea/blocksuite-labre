@@ -1,5 +1,115 @@
 # @labre/affine
 
+## 3.3.0
+
+### Minor Changes
+
+- f1c8b51: On the canvas the arrow keys always move the selection (1px, 10px with Shift),
+  whether a framework sub-menu is open or not; they no longer step the sub-menu's
+  highlight. Alt+← / Alt+→ now walks the open sub-menu, or the toolbar's buttons
+  when no sub-menu is open, and Enter presses what is highlighted. Shift+S keeps
+  stepping the open sub-menu backwards. Also fixes the arrows doing nothing after
+  a sub-menu was closed with its own toolbar button. A host that documents the
+  canvas shortcuts should replace "←/→ in an open sub-menu" with "Alt+←/→".
+
+### Patch Changes
+
+- 8705c4e: On a dark canvas, the ghost an armed notation tool leaves under the pointer
+  (a Wardley component, a BPMN task, a C4 container, a UML class, an EDGY, Cynefin
+  or DDD element) is now painted with the notation dark palette, like the element
+  it places, instead of its stored light colours. The ghost goes through the new
+  `CanvasRenderer.renderDetached(elements, ctx, matrix, rc, bound)`, which paints
+  elements that are not on the surface the way the render loop paints stored ones.
+  Nothing is written to the document.
+- 7f2543a: The layout picker of a view's settings (Table, Gallery, List, Kanban) fits a
+  phone: below 480px its tiles wrap two by two and shrink with the sheet instead of
+  running past its edge, a label too long for its tile ends with an ellipsis, and
+  on a touch screen every tile is at least 44px high. A wide screen keeps the
+  single row it had.
+- Updated dependencies [09a0c0b]
+  - @labre/std@3.3.0
+  - @labre/affine-shared@3.3.0
+  - @labre/affine-foundation@3.3.0
+  - @labre/affine-block-attachment@3.3.0
+  - @labre/affine-block-bookmark@3.3.0
+  - @labre/affine-block-callout@3.3.0
+  - @labre/affine-block-code@3.3.0
+  - @labre/affine-block-divider@3.3.0
+  - @labre/affine-block-edgeless-text@3.3.0
+  - @labre/affine-block-embed@3.3.0
+  - @labre/affine-block-embed-doc@3.3.0
+  - @labre/affine-block-frame@3.3.0
+  - @labre/affine-block-image@3.3.0
+  - @labre/affine-block-latex@3.3.0
+  - @labre/affine-block-list@3.3.0
+  - @labre/affine-block-note@3.3.0
+  - @labre/affine-block-paragraph@3.3.0
+  - @labre/affine-block-root@3.3.0
+  - @labre/affine-block-surface@3.3.0
+  - @labre/affine-block-surface-ref@3.3.0
+  - @labre/affine-block-table@3.3.0
+  - @labre/affine-components@3.3.0
+  - @labre/affine-database-block@3.3.0
+  - @labre/affine-database-editor@3.3.0
+  - @labre/affine-database-engine@3.3.0
+  - @labre/affine-database-view-block@3.3.0
+  - @labre/affine-fragment-adapter-panel@3.3.0
+  - @labre/affine-fragment-doc-title@3.3.0
+  - @labre/affine-fragment-frame-panel@3.3.0
+  - @labre/affine-fragment-outline@3.3.0
+  - @labre/affine-gfx-bpmn@3.3.0
+  - @labre/affine-gfx-brush@3.3.0
+  - @labre/affine-gfx-c4@3.3.0
+  - @labre/affine-gfx-connector@3.3.0
+  - @labre/affine-gfx-cynefin-estuarine@3.3.0
+  - @labre/affine-gfx-ddd-aggregate@3.3.0
+  - @labre/affine-gfx-ddd-context-map@3.3.0
+  - @labre/affine-gfx-ddd-core-domain@3.3.0
+  - @labre/affine-gfx-ddd-event-storming@3.3.0
+  - @labre/affine-gfx-ddd-shared@3.3.0
+  - @labre/affine-gfx-edgy@3.3.0
+  - @labre/affine-gfx-group@3.3.0
+  - @labre/affine-gfx-link@3.3.0
+  - @labre/affine-gfx-mindmap@3.3.0
+  - @labre/affine-gfx-note@3.3.0
+  - @labre/affine-gfx-pointer@3.3.0
+  - @labre/affine-gfx-shape@3.3.0
+  - @labre/affine-gfx-template@3.3.0
+  - @labre/affine-gfx-text@3.3.0
+  - @labre/affine-gfx-turbo-renderer@3.3.0
+  - @labre/affine-gfx-uml@3.3.0
+  - @labre/affine-gfx-wardley@3.3.0
+  - @labre/affine-inline-comment@3.3.0
+  - @labre/affine-inline-footnote@3.3.0
+  - @labre/affine-inline-latex@3.3.0
+  - @labre/affine-inline-link@3.3.0
+  - @labre/affine-inline-mention@3.3.0
+  - @labre/affine-inline-preset@3.3.0
+  - @labre/affine-inline-reference@3.3.0
+  - @labre/affine-model@3.3.0
+  - @labre/affine-rich-text@3.3.0
+  - @labre/affine-widget-drag-handle@3.3.0
+  - @labre/affine-widget-edgeless-auto-connect@3.3.0
+  - @labre/affine-widget-edgeless-dragging-area@3.3.0
+  - @labre/affine-widget-edgeless-selected-rect@3.3.0
+  - @labre/affine-widget-edgeless-toolbar@3.3.0
+  - @labre/affine-widget-edgeless-zoom-toolbar@3.3.0
+  - @labre/affine-widget-frame-title@3.3.0
+  - @labre/affine-widget-keyboard-toolbar@3.3.0
+  - @labre/affine-widget-linked-doc@3.3.0
+  - @labre/affine-widget-note-slicer@3.3.0
+  - @labre/affine-widget-page-dragging-area@3.3.0
+  - @labre/affine-widget-remote-selection@3.3.0
+  - @labre/affine-widget-scroll-anchoring@3.3.0
+  - @labre/affine-widget-slash-menu@3.3.0
+  - @labre/affine-widget-thread-marks@3.3.0
+  - @labre/affine-widget-toolbar@3.3.0
+  - @labre/affine-widget-viewport-overlay@3.3.0
+  - @labre/affine-ext-loader@3.3.0
+  - @labre/global@3.3.0
+  - @labre/store@3.3.0
+  - @labre/sync@3.3.0
+
 ## 3.2.0
 
 ### Minor Changes

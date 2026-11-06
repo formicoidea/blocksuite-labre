@@ -1,5 +1,18 @@
 # @labre/affine-widget-thread-marks
 
+## 3.3.0
+
+### Patch Changes
+
+- Updated dependencies [09a0c0b]
+  - @labre/std@3.3.0
+  - @labre/affine-shared@3.3.0
+  - @labre/affine-block-surface@3.3.0
+  - @labre/affine-widget-edgeless-toolbar@3.3.0
+  - @labre/affine-ext-loader@3.3.0
+  - @labre/global@3.3.0
+  - @labre/store@3.3.0
+
 ## 3.2.0
 
 ### Patch Changes
