@@ -118,6 +118,7 @@ function setup(scheme: ColorScheme) {
     h: 10,
     rotate: 0,
     opacity: 1,
+    deserializedXYWH: [0, 0, 10, 10],
     elementBound: new Bound(0, 0, 10, 10),
   });
 
@@ -192,6 +193,38 @@ describe('dark notation tint in the canvas renderer', () => {
     paint([element('notation', INK, 'wardley:component')]);
     expect(renderer.notationTint).toBeNull();
     expect(renderer.getColorValue(INK)).toBe(INK);
+  });
+
+  // The armed ghost's door (`renderDetached`): it used to call the element
+  // renderers itself, outside the loop, and painted every framework's ghost
+  // with the light ink on a dark canvas (recette P7-15).
+  it('renderDetached tints detached elements as the loop tints stored ones', () => {
+    const { renderer, painted, element } = setup(ColorScheme.Dark);
+    const ctx = new OffscreenCanvas(20, 20).getContext(
+      '2d'
+    ) as unknown as CanvasRenderingContext2D;
+    renderer.renderDetached(
+      [
+        element('ghost', INK, 'wardley:component'),
+        element('c4-body', INK, 'c4:component', {
+          filled: true,
+          fillColor: '#85bbf0',
+        }),
+        element('c4-title', '#000000'),
+        element('neutral', INK),
+      ] as never,
+      ctx,
+      new DOMMatrix(),
+      {} as RoughCanvas,
+      new Bound(0, 0, 20, 20)
+    );
+    expect(painted.map(p => [p.id, p.color])).toEqual([
+      ['ghost', DARK_INK],
+      ['c4-body', DARK_INK],
+      ['c4-title', '#000000'],
+      ['neutral', INK],
+    ]);
+    expect(renderer.notationTint).toBeNull();
   });
 
   it('withColorScheme paints light on a dark canvas, then restores it', () => {
