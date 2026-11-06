@@ -190,7 +190,10 @@ export const eq = (lhs: Hsv, rhs: Hsv) =>
 
 export const renderCanvas = (canvas: HTMLCanvasElement, rgb: Rgb) => {
   const { width, height } = canvas;
-  const ctx = canvas.getContext('2d')!;
+  // No 2d context outside a browser (jsdom, happy-dom): a host's test may
+  // mount the picker there, and the gradient is only decoration.
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
 
   ctx.globalCompositeOperation = 'color';
   ctx.clearRect(0, 0, width, height);
