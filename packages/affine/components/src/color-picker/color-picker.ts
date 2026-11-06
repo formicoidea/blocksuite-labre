@@ -4,13 +4,14 @@ import { on, once, stopPropagation } from '@labre/affine-shared/utils';
 import { SignalWatcher, styleMap, WithDisposable } from '@labre/global/lit';
 import type { BlockStdScope } from '@labre/std';
 import { stdContext } from '@labre/std';
-import { consume } from '@lit/context';
+import { ContextConsumer } from '@lit/context';
 import { batch, computed, signal } from '@preact/signals-core';
 import { html, LitElement } from 'lit';
 import { property, query } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { live } from 'lit/directives/live.js';
 import { repeat } from 'lit/directives/repeat.js';
+import { when } from 'lit/directives/when.js';
 import clamp from 'lodash-es/clamp';
 
 import { AREA_CIRCLE_R, MATCHERS, SLIDER_CIRCLE_R } from './consts.js';
@@ -54,27 +55,79 @@ const TABS: NavTab<NavType>[] = [
   { type: 'custom', name: 'Custom' },
 ];
 
+/**
+ * The words the picker displays, by what they name. A host that mounts the
+ * picker outside an editor has no `std` to translate through, so it hands
+ * its own words here; a key left out falls back to the editor's wording.
+ */
+export type ColorPickerLabels = Partial<Record<NavType | ModeType, string>>;
+
+const WORDINGS = {
+  colors: COLOR_PICKER_TAB_COLORS,
+  custom: COLOR_PICKER_TAB_CUSTOM,
+  normal: COLOR_PICKER_MODE_NORMAL,
+  light: COLOR_PICKER_MODE_LIGHT,
+  dark: COLOR_PICKER_MODE_DARK,
+} as const;
+
+/**
+ * The custom-colour picker: a saturation/value area, a hue slider, an alpha
+ * slider and a hex field, with a `Colors` / `Custom` tab bar that toggles
+ * the light/dark pair of modes.
+ *
+ * Inside an editor it reads `std` from the Lit context and translates its
+ * words through it, as every toolbar does. It also mounts on its own, with no
+ * editor around (a host's settings panel, say), since the Labre "publish"
+ * panel reuses it for a brand accent: then `std` stays undefined and
+ *
+ * - {@link labels} carries the host's words (fr/en), the editor's English
+ *   wording filling any gap;
+ * - {@link hideAlpha} drops the alpha slider and the `%` field, and
+ *   {@link EdgelessColorPicker.pick} then reports a 6-digit hex;
+ * - {@link hideTabs} drops the tab bar, so the picker is the single-colour
+ *   custom picker alone (keep `colors.type` at `normal` with it).
+ *
+ * `hex6$` always reads the current colour as `#rrggbb`. Neither option changes
+ * a toolbar that leaves them off.
+ */
 export class EdgelessColorPicker extends SignalWatcher(
   WithDisposable(LitElement)
 ) {
   static override styles = COLOR_PICKER_STYLE;
 
-  @consume({ context: stdContext })
-  accessor std!: BlockStdScope;
+  /**
+   * Provided by the editor's context; undefined when the picker is mounted
+   * outside one, and then never read.
+   */
+  accessor std: BlockStdScope | undefined = undefined;
 
-  private _tabLabel(name: string): string {
-    const wording =
-      name === 'Custom' ? COLOR_PICKER_TAB_CUSTOM : COLOR_PICKER_TAB_COLORS;
-    return this.std ? translateKey(this.std, ...wording) : wording[1];
+  // A controller rather than `@consume`, whose decorator types the field as
+  // the provided value and cannot say 'undefined when nothing provides it'.
+  constructor() {
+    super();
+    new ContextConsumer(this, {
+      context: stdContext,
+      callback: std => {
+        this.std = std;
+      },
+    });
   }
 
-  private _modeLabel(name: string): string {
-    const wording =
-      name === 'Light'
-        ? COLOR_PICKER_MODE_LIGHT
-        : name === 'Dark'
-          ? COLOR_PICKER_MODE_DARK
-          : COLOR_PICKER_MODE_NORMAL;
+  @property({ attribute: false })
+  accessor labels: ColorPickerLabels = {};
+
+  /** Hides the alpha slider and the `%` field; the colour stays opaque. */
+  @property({ type: Boolean })
+  accessor hideAlpha = false;
+
+  /** Hides the `Colors` / `Custom` tab bar. */
+  @property({ type: Boolean })
+  accessor hideTabs = false;
+
+  private _label(type: NavType | ModeType): string {
+    const own = this.labels[type];
+    if (own) return own;
+    const wording = WORDINGS[type];
     return this.std ? translateKey(this.std, ...wording) : wording[1];
   }
 
@@ -142,13 +195,16 @@ export class EdgelessColorPicker extends SignalWatcher(
   #pick() {
     const hsva = this.hsva$.peek();
     const type = this.modeType$.peek();
-    const value = { [type]: hsvaToHex8(hsva) };
+    const toHex = this.hideAlpha
+      ? (hsva: Hsva) => `#${rgbToHex(hsvaToRgba(hsva))}`
+      : hsvaToHex8;
+    const value = { [type]: toHex(hsva) };
     const key = 'Custom';
 
     if (type !== 'normal') {
       const another = type === 'light' ? 'dark' : 'light';
       const { hsva } = this[`${another}$`].peek();
-      value[another] = hsvaToHex8(hsva);
+      value[another] = toHex(hsva);
     }
     this.pick?.({ type: 'pick', detail: { key, value: value as Color } });
   }
@@ -242,7 +298,7 @@ export class EdgelessColorPicker extends SignalWatcher(
     );
 
     this.#alphaRect = this.#setRect(
-      this.alphaControl.getBoundingClientRect(),
+      this.alphaControl?.getBoundingClientRect() ?? new DOMRect(),
       SLIDER_CIRCLE_R
     );
   }
@@ -485,6 +541,7 @@ export class EdgelessColorPicker extends SignalWatcher(
 
         this.disposables.add(
           this.alphaPosX$.subscribe((x: number) => {
+            if (this.hideAlpha) return;
             const hsva = this.hsva$.peek();
             const { width } = this.#alphaRect;
             const a = bound01(x, width);
@@ -509,28 +566,33 @@ export class EdgelessColorPicker extends SignalWatcher(
 
   override render() {
     return html`
-      <header>
-        <nav>
-          ${repeat(
-            TABS,
-            tab => tab.type,
-            ({ type, name }) => html`
-              <button
-                ?active=${type === this.navType$.value}
-                @click=${() => this.#switchNavTab(type)}
-              >
-                ${this._tabLabel(name)}
-              </button>
-            `
-          )}
-        </nav>
-      </header>
+      ${when(
+        !this.hideTabs,
+        () => html`
+          <header>
+            <nav>
+              ${repeat(
+                TABS,
+                tab => tab.type,
+                ({ type }) => html`
+                  <button
+                    ?active=${type === this.navType$.value}
+                    @click=${() => this.#switchNavTab(type)}
+                  >
+                    ${this._label(type)}
+                  </button>
+                `
+              )}
+            </nav>
+          </header>
+        `
+      )}
 
       <div class="modes" ?active=${this.navType$.value === 'custom'}>
         ${repeat(
           [this.light$.value, this.dark$.value],
           mode => mode.type,
-          ({ type, name, hsva }) => html`
+          ({ type, hsva }) => html`
             <div
               class="${classMap({ mode: true, [type]: true })}"
               style=${styleMap({ '--c': hsvaToHex8(hsva) })}
@@ -543,7 +605,7 @@ export class EdgelessColorPicker extends SignalWatcher(
                   ${TransparentIcon()}
                   <div class="color"></div>
                 </div>
-                <div>${this._modeLabel(name)}</div>
+                <div>${this._label(type)}</div>
               </button>
             </div>
           `
@@ -566,13 +628,18 @@ export class EdgelessColorPicker extends SignalWatcher(
           <div class="color-circle"></div>
           <div class="color-slider"></div>
         </div>
-        <div
-          class="color-slider-wrapper alpha"
-          style=${styleMap(this.alphaStyle$.value)}
-        >
-          <div class="color-circle"></div>
-          <div class="color-slider"></div>
-        </div>
+        ${when(
+          !this.hideAlpha,
+          () => html`
+            <div
+              class="color-slider-wrapper alpha"
+              style=${styleMap(this.alphaStyle$.value)}
+            >
+              <div class="color-circle"></div>
+              <div class="color-slider"></div>
+            </div>
+          `
+        )}
       </div>
 
       <footer>
@@ -590,19 +657,24 @@ export class EdgelessColorPicker extends SignalWatcher(
             @paste=${stopPropagation}
           />
         </label>
-        <label class="field alpha">
-          <input
-            type="number"
-            min="0"
-            max="100"
-            .value=${live(this.alpha100$.value)}
-            @input=${this.#editAlpha}
-            @cut=${stopPropagation}
-            @copy=${stopPropagation}
-            @paste=${stopPropagation}
-          />
-          <span>%</span>
-        </label>
+        ${when(
+          !this.hideAlpha,
+          () => html`
+            <label class="field alpha">
+              <input
+                type="number"
+                min="0"
+                max="100"
+                .value=${live(this.alpha100$.value)}
+                @input=${this.#editAlpha}
+                @cut=${stopPropagation}
+                @copy=${stopPropagation}
+                @paste=${stopPropagation}
+              />
+              <span>%</span>
+            </label>
+          `
+        )}
       </footer>
     `;
   }
@@ -613,7 +685,7 @@ export class EdgelessColorPicker extends SignalWatcher(
   );
 
   @query('.color-slider-wrapper.alpha .color-slider')
-  accessor alphaControl!: HTMLDivElement;
+  accessor alphaControl!: HTMLDivElement | null;
 
   accessor alphaPosX$ = signal<number>(0);
 

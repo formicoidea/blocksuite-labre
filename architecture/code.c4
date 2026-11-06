@@ -943,7 +943,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/root
         metadata {
           path 'packages/affine/blocks/root'
-          files '53'
+          files '54'
         }
         adapters = folder 'adapters/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/root/src/adapters
@@ -977,7 +977,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/root/src/edgeless
           metadata {
             path 'packages/affine/blocks/root/src/edgeless'
-            files '26'
+            files '27'
           }
         }
         keyboard = folder 'keyboard/' {
@@ -1558,7 +1558,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/engine
         metadata {
           path 'packages/affine/database/engine'
-          files '338'
+          files '339'
         }
         core = folder 'core/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/engine/src/core
@@ -1592,7 +1592,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/engine/src/widget-presets
           metadata {
             path 'packages/affine/database/engine/src/widget-presets'
-            files '23'
+            files '24'
           }
         }
       }
@@ -2968,7 +2968,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/widgets/edgeless-toolbar
         metadata {
           path 'packages/affine/widgets/edgeless-toolbar'
-          files '43'
+          files '44'
         }
         button = folder 'button/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/widgets/edgeless-toolbar/src/button
@@ -3044,7 +3044,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/widgets/edgeless-toolbar/src
           metadata {
             path 'packages/affine/widgets/edgeless-toolbar/src'
-            files '8'
+            files '9'
           }
         }
       }

@@ -15,6 +15,7 @@ export default defineConfig({
       'src/__tests__/resolve-palette-label*.unit.spec.ts',
       'src/__tests__/color-button*.unit.spec.ts',
       'src/__tests__/color-panel*.unit.spec.ts',
+      'src/__tests__/color-picker*.unit.spec.ts',
       'src/__tests__/framework-palette*.unit.spec.ts',
       'src/__tests__/palette-carousel*.unit.spec.ts',
       'src/__tests__/popup-overflow*.unit.spec.ts',
