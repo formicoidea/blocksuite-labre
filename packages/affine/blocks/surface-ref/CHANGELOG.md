@@ -1,5 +1,22 @@
 # @labre/affine-block-surface-ref
 
+## 3.4.0
+
+### Patch Changes
+
+- Updated dependencies [f0ccba0]
+  - @labre/affine-components@3.4.0
+  - @labre/affine-block-frame@3.4.0
+  - @labre/affine-block-surface@3.4.0
+  - @labre/affine-inline-reference@3.4.0
+  - @labre/affine-widget-slash-menu@3.4.0
+  - @labre/affine-ext-loader@3.4.0
+  - @labre/affine-model@3.4.0
+  - @labre/affine-shared@3.4.0
+  - @labre/global@3.4.0
+  - @labre/std@3.4.0
+  - @labre/store@3.4.0
+
 ## 3.3.0
 
 ### Patch Changes

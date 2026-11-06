@@ -1,5 +1,24 @@
 # @labre/affine-widget-edgeless-selected-rect
 
+## 3.4.0
+
+### Patch Changes
+
+- Updated dependencies [f0ccba0]
+  - @labre/affine-components@3.4.0
+  - @labre/affine-block-frame@3.4.0
+  - @labre/affine-block-surface@3.4.0
+  - @labre/affine-gfx-connector@3.4.0
+  - @labre/affine-gfx-mindmap@3.4.0
+  - @labre/affine-gfx-shape@3.4.0
+  - @labre/affine-gfx-text@3.4.0
+  - @labre/affine-inline-reference@3.4.0
+  - @labre/affine-ext-loader@3.4.0
+  - @labre/affine-model@3.4.0
+  - @labre/affine-shared@3.4.0
+  - @labre/global@3.4.0
+  - @labre/std@3.4.0
+
 ## 3.3.0
 
 ### Patch Changes

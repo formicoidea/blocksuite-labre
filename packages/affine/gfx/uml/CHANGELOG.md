@@ -1,5 +1,23 @@
 # @labre/affine-gfx-uml
 
+## 3.4.0
+
+### Patch Changes
+
+- @labre/affine-block-surface@3.4.0
+- @labre/affine-gfx-connector@3.4.0
+- @labre/affine-gfx-pointer@3.4.0
+- @labre/affine-gfx-shape@3.4.0
+- @labre/affine-gfx-template@3.4.0
+- @labre/affine-gfx-text@3.4.0
+- @labre/affine-widget-edgeless-toolbar@3.4.0
+- @labre/affine-gfx-ddd-shared@3.4.0
+- @labre/affine-ext-loader@3.4.0
+- @labre/affine-model@3.4.0
+- @labre/affine-shared@3.4.0
+- @labre/global@3.4.0
+- @labre/std@3.4.0
+
 ## 3.3.0
 
 ### Patch Changes

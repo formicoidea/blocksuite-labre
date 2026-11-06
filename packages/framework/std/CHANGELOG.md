@@ -1,5 +1,12 @@
 # @labre/std
 
+## 3.4.0
+
+### Patch Changes
+
+- @labre/global@3.4.0
+- @labre/store@3.4.0
+
 ## 3.3.0
 
 ### Minor Changes
