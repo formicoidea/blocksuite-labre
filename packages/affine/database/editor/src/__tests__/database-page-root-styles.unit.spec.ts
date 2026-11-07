@@ -116,7 +116,7 @@ describe('the full page of a database', () => {
       '--affine-database-page-fade: min( var(--affine-editor-side-padding, 24px), 24px );'
     );
     expect(host).toMatch(
-      /mask: linear-gradient\( to right, transparent, #000 var\(--affine-database-page-fade\), #000 calc\(100% - var\(--affine-database-page-fade\)\), transparent \) padding-box add, linear-gradient\(#000 0 0\) border-box exclude, linear-gradient\(#000 0 0\) padding-box;/
+      /mask: linear-gradient\( to right, transparent, currentColor var\(--affine-database-page-fade\), currentColor calc\(100% - var\(--affine-database-page-fade\)\), transparent \) padding-box add, linear-gradient\(currentColor 0 0\) border-box exclude, linear-gradient\(currentColor 0 0\) padding-box;/
     );
   });
 });
