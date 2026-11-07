@@ -58,7 +58,7 @@ const MAX_DEFER_CHARS = 200_000;
 /**
  * True when `text` parses, through the same GFM parser the Markdown adapter
  * uses, into a top-level table. Only the table: copied source code is flat
- * HTML too, and in it `# comment` reads as a heading, `  - name:` as a list
+ * HTML too, and in it `# comment` reads as a heading, `  - name: x` as a list
  * and `Total\n-----` as a setext heading, so any wider set of blocks turned
  * a code paste into Markdown, losing indentation and emphasising `*` / `_`.
  */
