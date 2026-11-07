@@ -173,6 +173,25 @@ function forgetLeftoverSelection() {
   document.getSelection()?.removeAllRanges();
 }
 
+/**
+ * Forget the editor the last spec left mounted.
+ *
+ * A spec that drops the cleanup `setupEditor` returns leaves its editor, and
+ * every block view of its document, in `<body>` for the rest of the suite (one
+ * page, `isolate: false`). `surface-ref.spec.ts` once kept the page editor of
+ * its imported snapshot (20 views), and from there on four later files failed
+ * every test that read the page back (`document-style-values`,
+ * `collapsed-heading-siblings`, `replace-any-element`, `attachment-blob-type`:
+ * 40 tests, the nightly runs of 2026-10-30 to 2026-11-07), each of them green
+ * alone. No spec mounts two editors at once, so whatever is still here belongs
+ * to a spec that is over.
+ */
+function forgetLeftoverEditor() {
+  document
+    .querySelectorAll('affine-editor-container')
+    .forEach(stale => (stale.closest('body > *') ?? stale).remove());
+}
+
 type SetupEditorOptions = {
   extensions?: ExtensionType[];
   enableDomRenderer?: boolean;
@@ -196,6 +215,7 @@ export async function setupEditor(
 
   forgetPersistedViewport();
   forgetLeftoverSelection();
+  forgetLeftoverEditor();
 
   const collection = new TestWorkspace(createCollectionOptions());
   collection.storeExtensions = storeExtensions;

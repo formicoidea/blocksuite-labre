@@ -269,8 +269,12 @@ import type { SurfaceRefBlockComponent } from '@labre/affine/blocks/surface-ref'
 import snapshot from '../snapshots/edgeless/surface-ref.spec.ts/surface-ref.json' assert { type: 'json' };
 
 describe('clipboard', () => {
+  // Returned, so vitest removes the editor after the test: left mounted, its
+  // views stayed in the shared page for every later spec (setup.ts says what
+  // that broke).
+  beforeEach(() => setupEditor('page'));
+
   test('import surface-ref snapshot should render content correctly', async () => {
-    await setupEditor('page');
     const newDoc = await importFromSnapshot(
       doc.workspace,
       snapshot as DocSnapshot
