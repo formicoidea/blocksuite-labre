@@ -52,7 +52,10 @@ Rewrite those to your routes, or pass your own base with
 **The canvas.** `affine:surface` and what sits on it print nothing: a page shows
 its page view. An `affine:surface-ref` prints
 `<div class="affine-surface-ref" data-labre-surface-ref="<id>">` with its caption
-inside, for you to mount a viewer on or leave as is.
+inside, for you to mount a viewer on or leave as is. The viewer is
+`mountCanvasViewer(host, state, options)` from `@labre/affine/canvas-viewer`
+(ADR 0050): load it with a dynamic `import()` on a page that holds a canvas, it
+weighs the whole view graph.
 
 **Formulas.** KaTeX prints HTML and MathML. Load `katex/dist/katex.min.css` on the
 page, or the formula shows twice.

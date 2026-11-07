@@ -1,6 +1,6 @@
 # ADR 0050 — A read-only canvas viewer a host mounts from a Y.Doc state
 
-- Status: proposed
+- Status: accepted (2026-11-08, built as amended below)
 - Date: 2026-11-05
 - Deciders: Mathieu Jolly
 - Host side, never restated here: Labre Sites (labre ADR-0069), public pages
@@ -75,10 +75,50 @@ framework. The two existing consumers of `preview-edgeless` do not change.
 - Until it ships, a host leaves the `data-labre-surface-ref` mount point with its
   caption.
 
+## Amendment 2026-11-08 — what shipped
+
+Built as decided, under the same sub-path and name, with the contract the two
+hosts asked for (Labre Sites' island and its publishing service) folded in:
+
+```ts
+// @labre/affine/canvas-viewer → @formicoidea/labre-core/canvas-viewer
+export function mountCanvasViewer(
+  host: HTMLElement,
+  state: Uint8Array,
+  options?: {
+    onOpenDoc?: (docId: string) => void;
+    onLinkClick?: (url: string) => void;
+    getBlob?: (blobId: string) => Promise<Blob | null>;
+  }
+): { zoomIn(): void; zoomOut(): void; fit(): void; dispose(): void };
+```
+
+- `docId` is gone: the viewer opens the state under its own id. A page link
+  goes to `onOpenDoc` (an inline page reference, a linked or synced doc card);
+  an external one to `onLinkClick`, after `isSafeLinkUrl`, or navigates.
+- The controller gains `zoomIn`, `zoomOut` and `fit`, for a host's own zoom
+  buttons; the viewer fits once at mount.
+- `getBlob` feeds images through a read-only blob source; without it nothing
+  is fetched.
+- No `locale`: the viewer displays no library string. No `fitToContent`
+  switch: it always fits at mount.
+- The light theme is set as custom properties on the viewer's container only.
+- §4 shipped as `utils/wheel-gesture.ts` in `blocks/root` (`zoomAtPointer`,
+  `panByWheel`, `pinchStep`), called by the edgeless root and the viewer.
+- Events: one-finger or mouse drag pans, two fingers pinch, ctrl+wheel and a
+  trackpad pinch zoom, a plain wheel pans; every pointer, wheel and click
+  event stops on the viewer's container in capture, so no block reacts.
+- Measured cost of the entry, browser ESM minified: 5 184 modules, 16.2 MB,
+  3.65 MB gzipped, `.css.ts` not extracted. The lighter graph is still the
+  separate decision of splitting `getInternalViewExtensions`.
+- Tests: `canvas-viewer.unit.spec.ts` (happy-dom, a recording 2d context)
+  holds mount, read-only store, zoom, drag, link and dispose. The painting
+  spec in `packages/integration-test` is not written yet.
+
 ## Open questions
 
-- Does the island pan and zoom on touch from day one? The root handles pinch for
-  a trackpad; a phone's two-finger gesture on a public page is untested.
+- Does the island pan and zoom on touch from day one? Answered in code: yes,
+  one finger pans and two pinch, on pointer events. Still untested on a phone.
 - Should a page's surface references each mount a viewer, or share one? One scope
   per reference is what the surface reference does in the editor; a page with many
   may need a cap.
