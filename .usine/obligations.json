@@ -1,0 +1,34 @@
+{
+  "verifier": [
+    {
+      "nom": "carte d'architecture (ADR 0040)",
+      "commande": "yarn architecture --check",
+      "corriger": "yarn architecture, puis committer architecture/"
+    }
+  ],
+  "couplages": [
+    {
+      "nom": "flags documentés",
+      "si": ["packages/affine/all/src/flags.ts"],
+      "alors": ["docs/integrate/03-flags.md", "docs/adr/**"]
+    },
+    {
+      "nom": "seams documentés",
+      "si": ["packages/affine/shared/src/services/**"],
+      "alors": [
+        "docs/integrate/04-host-seams.md",
+        "packages/affine/shared/src/services/**/README.md",
+        "docs/adr/**"
+      ]
+    },
+    {
+      "nom": "zone rouge : format stocké",
+      "si": [
+        "packages/affine/model/src/**",
+        "packages/framework/store/src/**",
+        "packages/framework/sync/src/**"
+      ],
+      "alors": ["docs/adr/**"]
+    }
+  ]
+}
