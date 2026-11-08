@@ -1,0 +1,4 @@
+# Husky sets a local core.hooksPath, which hides the usine's global hook: call it here.
+if [ -f "$HOME/.usine/hooks/usine.mjs" ]; then
+  node "$HOME/.usine/hooks/usine.mjs" pre-push "$@"
+fi
