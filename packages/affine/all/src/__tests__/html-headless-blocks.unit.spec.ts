@@ -50,7 +50,7 @@ const reparsed = (html: string) =>
   String(unified().use(rehypeParse).use(rehypeStringify).processSync(html));
 
 describe('the HTML of each block, in plain Node', () => {
-  test('a callout is an aside with its icon as text, and its children', async () => {
+  test('a callout is a box with its emoji, its line and its children in a body', async () => {
     const { html } = await renderBlock(
       block('affine:callout', { emoji: '💡', text: text('Heads up') }, [
         block('affine:paragraph', { type: 'text', text: text('Inside') }),
@@ -58,11 +58,20 @@ describe('the HTML of each block, in plain Node', () => {
     );
     expect(
       html.startsWith(
-        '<aside class="affine-callout"><span class="affine-callout-icon">💡</span>Heads up<div'
+        '<div class="affine-callout" data-emoji="💡"><span class="affine-callout-emoji">💡</span>' +
+          '<div class="affine-callout-body"><p>Heads up</p><div class="affine-paragraph-block-container"><p>Inside</p>'
       )
     ).toBe(true);
-    expect(html).toContain('<p>Inside</p>');
-    expect(html.endsWith('</aside>')).toBe(true);
+    expect(html.endsWith('</div></div></div>')).toBe(true);
+  });
+
+  test('a callout with no emoji prints no emoji span', async () => {
+    const { html } = await renderBlock(
+      block('affine:callout', { emoji: '', text: text('Plain') })
+    );
+    expect(html).toBe(
+      '<div class="affine-callout"><div class="affine-callout-body"><p>Plain</p></div></div>'
+    );
   });
 
   test('a formula goes through KaTeX', async () => {
@@ -109,13 +118,54 @@ describe('the HTML of each block, in plain Node', () => {
     expect(html).toBe('<a class="affine-attachment">a.pdf</a>');
   });
 
-  test('a surface reference leaves a mount point and its caption', async () => {
+  test('a surface reference alone leaves a mount point and its caption', async () => {
     const { html } = await renderBlock(
-      block('affine:surface-ref', { reference: 'frame-1', caption: 'A map' })
+      block('affine:surface-ref', {
+        reference: 'frame-1',
+        refFlavour: 'affine:frame',
+        caption: 'A map',
+      })
     );
     expect(html).toBe(
-      '<div class="affine-surface-ref" data-labre-surface-ref="frame-1">A map</div>'
+      '<div class="affine-surface-ref" data-labre-surface-ref="frame-1" data-labre-surface-ref-type="frame">' +
+        '<span class="affine-surface-ref-caption">A map</span></div>'
     );
+  });
+
+  test('a bookmark is a link card from its stored metadata, nothing fetched', async () => {
+    const { html } = await renderBlock(
+      block('affine:bookmark', {
+        url: 'https://example.com/a/b?c=1',
+        title: 'Example <1>',
+        description: 'A description',
+        icon: 'https://example.com/favicon.ico',
+      })
+    );
+    expect(html).toBe(
+      '<a class="affine-bookmark" rel="noopener" href="https://example.com/a/b?c=1" data-icon="https://example.com/favicon.ico">' +
+        '<span class="affine-bookmark-title">Example &#x3C;1></span>' +
+        '<span class="affine-bookmark-description">A description</span>' +
+        '<span class="affine-bookmark-host">example.com</span></a>'
+    );
+  });
+
+  test('a bookmark with no metadata shows its url, and no href for a refused scheme', async () => {
+    expect(
+      (
+        await renderBlock(
+          block('affine:bookmark', { url: 'https://example.com' })
+        )
+      ).html
+    ).toBe(
+      '<a class="affine-bookmark" rel="noopener" href="https://example.com">' +
+        '<span class="affine-bookmark-title">https://example.com</span>' +
+        '<span class="affine-bookmark-host">example.com</span></a>'
+    );
+    const { html } = await renderBlock(
+      block('affine:bookmark', { url: 'javascript:alert(1)', title: 'x' })
+    );
+    expect(html).not.toContain('href');
+    expect(html).toContain('<span class="affine-bookmark-title">x</span>');
   });
 
   test('an edgeless text wraps its paragraphs', async () => {
@@ -203,6 +253,12 @@ describe('a stored page holding them all', () => {
       const page = writer.store.addBlock('affine:page', {
         title: new Text('T'),
       });
+      const surface = writer.store.addBlock('affine:surface', {}, page);
+      writer.store.addBlock(
+        'affine:frame',
+        { id: 'frame-1', title: new Text('A map of the <north>') },
+        surface
+      );
       const note = writer.store.addBlock('affine:note', {}, page);
       const callout = writer.store.addBlock(
         'affine:callout',
@@ -222,7 +278,12 @@ describe('a stored page holding them all', () => {
       );
       writer.store.addBlock(
         'affine:surface-ref',
-        { reference: 'frame-1', caption: '' },
+        { reference: 'frame-1', refFlavour: 'affine:frame', caption: '' },
+        note
+      );
+      writer.store.addBlock(
+        'affine:bookmark',
+        { url: 'https://example.com', title: 'A bookmark' },
         note
       );
       writer.store.addBlock(
@@ -242,11 +303,13 @@ describe('a stored page holding them all', () => {
     });
 
     const fragments = [
-      '<aside class="affine-callout">',
-      'In a callout',
+      '<div class="affine-callout" data-emoji="💡">',
+      '<div class="affine-callout-body"><div class="affine-paragraph-block-container"><p>In a callout</p>',
       'class="katex-display"',
       'href="assets/blob-1"',
-      'data-labre-surface-ref="frame-1"',
+      'data-labre-surface-ref="frame-1" data-labre-surface-ref-type="frame">' +
+        '<span class="affine-surface-ref-title">A map of the &#x3C;north></span></div>',
+      '<a class="affine-bookmark" rel="noopener" href="https://example.com">',
       'A widget',
       'src="assets/blob-2"',
     ];

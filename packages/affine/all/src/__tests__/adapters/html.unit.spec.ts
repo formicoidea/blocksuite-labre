@@ -1169,8 +1169,12 @@ describe('snapshot to html', () => {
           ],
         };
 
+        // A bookmark prints as a link card since the static-HTML pass; the
+        // embeds keep the plain link inside a paragraph container.
         const html = template(
-          `<div class="affine-paragraph-block-container"><a href="${testCase.url}">${testCase.title}</a></div>`
+          testCase.flavour === 'affine:bookmark'
+            ? `<a class="affine-bookmark" rel="noopener" href="${testCase.url}"><span class="affine-bookmark-title">${testCase.title}</span><span class="affine-bookmark-host">example.com</span></a>`
+            : `<div class="affine-paragraph-block-container"><a href="${testCase.url}">${testCase.title}</a></div>`
         );
 
         const htmlAdapter = new HtmlAdapter(createJob(), provider);

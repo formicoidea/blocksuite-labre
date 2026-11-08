@@ -168,7 +168,7 @@ describe('HtmlAdapter in plain Node', () => {
       'A cell',
       '<th>Name</th><th>Notes</th>',
       '<td>A row</td><td>A note</td>',
-      '<a href="https://example.com/b">A bookmark</a>',
+      '<a class="affine-bookmark" rel="noopener" href="https://example.com/b"><span class="affine-bookmark-title">A bookmark</span>',
       '<a href="https://www.youtube.com/watch?v=abc">A video</a>',
     ];
     expect(fragments.filter(fragment => !file.includes(fragment))).toEqual([]);
