@@ -6,14 +6,14 @@
 
 ## 1. What we protect
 
-| Asset | Where it lives | Why it matters |
-| --- | --- | --- |
-| The published bundles | `@formicoidea/labre-*` on npm, built and published by hand (`yarn ci:publish`) | Every host installs them: a hostile bundle runs in every user's browser, with that user's session |
-| The integration branch | `blocksuite-labre-main` | What the next release is built from |
-| The npm publishing right | The maintainer's npm account on the `@formicoidea` scope | It is the release; there is no release workflow in CI |
-| The persisted format | `packages/affine/model`, `packages/framework/store`, `sync` | A bad change corrupts documents irreversibly (red zone) |
-| The host's promises | Seams: network endpoints, telemetry, image proxy, link preview | A host that promises no third-party request relies on the library keeping its defaults honest |
-| The users' documents | Never here: in the host | The library only sees them at run time, in the browser |
+| Asset                    | Where it lives                                                                 | Why it matters                                                                                    |
+| ------------------------ | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| The published bundles    | `@formicoidea/labre-*` on npm, built and published by hand (`yarn ci:publish`) | Every host installs them: a hostile bundle runs in every user's browser, with that user's session |
+| The integration branch   | `blocksuite-labre-main`                                                        | What the next release is built from                                                               |
+| The npm publishing right | The maintainer's npm account on the `@formicoidea` scope                       | It is the release; there is no release workflow in CI                                             |
+| The persisted format     | `packages/affine/model`, `packages/framework/store`, `sync`                    | A bad change corrupts documents irreversibly (red zone)                                           |
+| The host's promises      | Seams: network endpoints, telemetry, image proxy, link preview                 | A host that promises no third-party request relies on the library keeping its defaults honest     |
+| The users' documents     | Never here: in the host                                                        | The library only sees them at run time, in the browser                                            |
 
 ## 2. Who attacks
 
@@ -27,19 +27,19 @@
 
 ## 3. Barriers, and where they are
 
-| Barrier | Rule | Source |
-| --- | --- | --- |
-| A human reviews every PR; a red zone needs a maintainer's explicit approval | Store, sync, model, release scripts, workflows, changeset config | `CLAUDE.md`, red zones; `.usine/obligations.json` (`sensibles`) |
-| The release is manual and local | `ci:version` then `ci:publish` by a maintainer; no workflow holds an npm token | `docs/contribute/05-release.md` |
-| A bundle depends on core and the shared bundle only | A framework package importing another breaks publish | `architecture-map.unit.spec.ts`, `core-database-boundary.unit.spec.ts` |
-| Every import is declared | The bundle script reads the manifests, never the imports | `declared-dependencies.unit.spec.ts` |
-| An imported file is data | A pure parser returns serialized props; unknown data is preserved, never executed | ADR 0012 |
-| An SVG is sanitised before it is read | The reader walks only what `sanitizeSvg` returns; a forged `data-labre-*` marker buys nothing | ADR 0032 |
-| Embeds are sandboxed | An iframe is sandboxed and refuses a non-http(s) URL | `CLAUDE.md`, Security |
-| A style value comes through one door | `styleMap` from `@labre/global/lit`: one value sets one property | `style-map-boundary.unit.spec.ts` |
-| Every network call is injectable | Endpoint and `fetch` are parameters; nothing reads `process.env` | ADR 0003, `docs/integrate/04-host-seams.md` |
-| Telemetry carries ids only | No prose, URL or credential is emitted | telemetry-service `README.md` |
-| The architecture MCP is local | stdio only; its `--http` mode is never deployed or run in CI | ADR 0040 |
+| Barrier                                                                     | Rule                                                                                          | Source                                                                 |
+| --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| A human reviews every PR; a red zone needs a maintainer's explicit approval | Store, sync, model, release scripts, workflows, changeset config                              | `CLAUDE.md`, red zones; `.usine/obligations.json` (`sensibles`)        |
+| The release is manual and local                                             | `ci:version` then `ci:publish` by a maintainer; no workflow holds an npm token                | `docs/contribute/05-release.md`                                        |
+| A bundle depends on core and the shared bundle only                         | A framework package importing another breaks publish                                          | `architecture-map.unit.spec.ts`, `core-database-boundary.unit.spec.ts` |
+| Every import is declared                                                    | The bundle script reads the manifests, never the imports                                      | `declared-dependencies.unit.spec.ts`                                   |
+| An imported file is data                                                    | A pure parser returns serialized props; unknown data is preserved, never executed             | ADR 0012                                                               |
+| An SVG is sanitised before it is read                                       | The reader walks only what `sanitizeSvg` returns; a forged `data-labre-*` marker buys nothing | ADR 0032                                                               |
+| Embeds are sandboxed                                                        | An iframe is sandboxed and refuses a non-http(s) URL                                          | `CLAUDE.md`, Security                                                  |
+| A style value comes through one door                                        | `styleMap` from `@labre/global/lit`: one value sets one property                              | `style-map-boundary.unit.spec.ts`                                      |
+| Every network call is injectable                                            | Endpoint and `fetch` are parameters; nothing reads `process.env`                              | ADR 0003, `docs/integrate/04-host-seams.md`                            |
+| Telemetry carries ids only                                                  | No prose, URL or credential is emitted                                                        | telemetry-service `README.md`                                          |
+| The architecture MCP is local                                               | stdio only; its `--http` mode is never deployed or run in CI                                  | ADR 0040                                                               |
 
 ## 4. What to check
 
