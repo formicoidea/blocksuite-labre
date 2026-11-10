@@ -54,7 +54,10 @@ its page view. An `affine:surface-ref` prints
 `<div class="affine-surface-ref" data-labre-surface-ref="<id>" data-labre-surface-ref-type="frame|group">`
 holding `span.affine-surface-ref-title` (the frame's or group's title, read from
 the page's own surface) and `span.affine-surface-ref-caption`, each only when
-there is text, for you to mount a viewer on or leave as is.
+there is text, for you to mount a viewer on or leave as is. The viewer is
+`mountCanvasViewer(host, state, options)` from `@labre/affine/canvas-viewer`
+(ADR 0050): load it with a dynamic `import()` on a page that holds a canvas, it
+weighs the whole view graph.
 
 **Callouts and bookmarks.** A callout prints `div.affine-callout[data-emoji]`
 with `span.affine-callout-emoji` then `div.affine-callout-body` (its own line as

@@ -54,7 +54,7 @@ One file per decision. Format and lifecycle in
 | [0047](0047-html-block-frame-served-by-the-host.md)            | Html block frame served by the host  | proposed, block retired   | The html block may run in a page its host serves, through one seam; without it, `srcdoc`. The handshake is `postMessage`, on the frame's request.                                        |
 | [0048](0048-html-attachment-and-shared-frame.md)               | Html attachment and shared frame     | proposed, amended         | An html file is an attachment; one component runs html; without a host's page it stays a card; a thumbnail is a real preview scaled down.                                                |
 | [0049](0049-bpmn-pool-title-sizes.md)                          | BPMN pool title sizes                | accepted                  | Two optional fields on `bpmnPool`, `nameFontSize` / `laneFontSize` (absent = 15 / 13); a `sizeProp` on the background primitive's texts; not written to the `.bpmn` export.              |
-| [0050](0050-read-only-canvas-viewer.md)                        | Read-only canvas viewer              | proposed                  | One exported mount over the preview scope, no new scope and no new bundle; pan, zoom and links added by one runtime extension.                                                           |
+| [0050](0050-read-only-canvas-viewer.md)                        | Read-only canvas viewer              | accepted                  | One exported mount over the preview scope, no new scope and no new bundle; pan, zoom and links added by one runtime extension.                                                           |
 
 Related documents that are not ADRs:
 
