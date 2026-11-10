@@ -90,8 +90,11 @@ breaks a host. If in doubt between `minor` and `major`, it is `major`.
   Green means every check of the PR's HEAD commit is completed and
   successful (`gh pr view N --json statusCheckRollup`);
   `gh pr checks --watch` can return on the previous run.
-- Run the whole integration suite before opening the PR, not only your spec
-  ([04-testing.md](04-testing.md#writing-an-integration-test)).
+- The whole integration suite, not only your spec, gates the PR
+  ([04-testing.md](04-testing.md#writing-an-integration-test)). It runs in the
+  PR's CI, not in `yarn ci:local` (format, build, unit), so a review round does
+  not replay it on the workstation; the usine guard refuses the merge until
+  every check of the head commit is green. Locally, run the specs you touched.
 - Squash merge. The PR title becomes the commit subject.
 - `Closes #N` does not auto-close on a non-default branch: close the issue by
   hand after the merge.

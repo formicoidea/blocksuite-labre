@@ -114,7 +114,8 @@ from the code, never drawn ([ADR 0040](../adr/0040-architecture-map-as-code.md))
 1. The change does what the issue says, nothing more.
 2. A test fails without it and passes with it.
 3. `yarn build`, `yarn lint:format`, the relevant unit suite, and the
-   integration suite if the canvas is touched.
+   integration specs you touched if the canvas is touched; the whole
+   integration suite runs in the PR's CI and gates the merge.
 4. A changeset if a host can see the change.
 5. The docs updated if a rule, a seam or a flag changed.
 
