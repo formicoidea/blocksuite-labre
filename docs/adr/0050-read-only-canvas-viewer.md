@@ -89,6 +89,9 @@ export function mountCanvasViewer(
     onOpenDoc?: (docId: string) => void;
     onLinkClick?: (url: string) => void;
     getBlob?: (blobId: string) => Promise<Blob | null>;
+    focus?: { kind: 'frame' | 'group'; id: string };
+    interactive?: boolean; // defaults to !focus
+    onExpand?: () => void;
   }
 ): { zoomIn(): void; zoomOut(): void; fit(): void; dispose(): void };
 ```
@@ -102,6 +105,18 @@ export function mountCanvasViewer(
   is fetched.
 - No `locale`: the viewer displays no library string. No `fitToContent`
   switch: it always fits at mount.
+- `focus` shows one frame or group the way the surface reference block shows
+  it in a page (PO acceptance, 2026-11-10: an inserted frame must open a view
+  on the canvas): the container takes the element's `aspect-ratio`, the view
+  frames its bounds with `setViewportByBound` (a frame edge to edge with its
+  border hidden, a group with 20px), and `fit()` returns to them. It throws
+  when the state holds no element of that kind under that id.
+- `interactive` defaults to `false` with `focus`: a frozen view, like the
+  surface reference under its event mask. The wheel and touch scroll the page,
+  no link is followed, and a click or Enter calls `onExpand`; the host opens
+  the larger view by mounting the same `focus` with `interactive: true`, as the
+  editor opens the referenced canvas. The "Expand" button is the host's: the
+  viewer still displays no library string.
 - The light theme is set as custom properties on the viewer's container only.
 - §4 shipped as `utils/wheel-gesture.ts` in `blocks/root` (`zoomAtPointer`,
   `panByWheel`, `pinchStep`), called by the edgeless root and the viewer.
@@ -112,7 +127,8 @@ export function mountCanvasViewer(
   3.65 MB gzipped, `.css.ts` not extracted. The lighter graph is still the
   separate decision of splitting `getInternalViewExtensions`.
 - Tests: `canvas-viewer.unit.spec.ts` (happy-dom, a recording 2d context)
-  holds mount, read-only store, zoom, drag, link and dispose. The painting
+  holds mount, read-only store, zoom, drag, link, dispose, and a focused frame
+  that shows nothing beyond it, frozen or interactive. The painting
   spec in `packages/integration-test` is not written yet.
 
 ## Open questions

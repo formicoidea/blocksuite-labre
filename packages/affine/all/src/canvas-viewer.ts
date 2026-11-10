@@ -3,14 +3,19 @@ import {
   ViewExtensionManager,
 } from '@labre/affine-ext-loader';
 import { panByWheel, pinchStep, zoomAtPointer } from '@labre/affine-block-root';
+import { FrameBlockComponent } from '@labre/affine-block-frame';
+import { getSurfaceBlock } from '@labre/affine-block-surface';
+import { FrameBlockModel, GroupElementModel } from '@labre/affine-model';
 import { ViewportElementExtension } from '@labre/affine-shared/services';
 import {
   isSafeLinkUrl,
   isTouchPadPinchEvent,
 } from '@labre/affine-shared/utils';
 import { BlockStdScope, LifeCycleWatcher } from '@labre/std';
+import { DisposableGroup } from '@labre/global/disposable';
+import { Bound } from '@labre/global/gfx';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
-import { type ExtensionType, WorkspaceImpl } from '@labre/store';
+import { type ExtensionType, type Store, WorkspaceImpl } from '@labre/store';
 import type { BlobSource } from '@labre/sync';
 import { combinedLightCssVariables } from '@toeverything/theme';
 import {
@@ -56,12 +61,35 @@ export type CanvasViewerOptions = {
    * and an image keeps its placeholder.
    */
   getBlob?: (blobId: string) => Promise<Blob | null>;
+  /**
+   * Shows one frame or group, as the surface reference block shows it in a
+   * page: the view takes the element's proportions (`aspect-ratio`, height
+   * `auto`: give the host a width only) and frames its bounds, a frame edge to
+   * edge with its border hidden, a group with a 20px margin. Throws when the
+   * state holds no element of that kind under that id.
+   */
+  focus?: CanvasViewerFocus;
+  /**
+   * Whether the reader pans and zooms. Defaults to `true` without `focus` and
+   * `false` with it: a frozen view lets the page scroll over it, follows no
+   * link, and calls `onExpand` on a click or on Enter, the way the editor
+   * opens a surface reference. The host opens the larger view itself, usually
+   * by mounting the same `focus` with `interactive: true`.
+   */
+  interactive?: boolean;
+  /** A frozen view was clicked, or activated from the keyboard. */
+  onExpand?: () => void;
 };
+
+export type CanvasViewerFocus = { kind: 'frame' | 'group'; id: string };
 
 export type CanvasViewer = {
   zoomIn(): void;
   zoomOut(): void;
-  /** Frames every element of the canvas; also done once at mount. */
+  /**
+   * Frames the focused element, or every element of the canvas without
+   * `focus`; also done once at mount.
+   */
   fit(): void;
   /** Unmounts the viewer and empties its container. Idempotent. */
   dispose(): void;
@@ -72,6 +100,33 @@ const ZOOM_STEP_RATIO = 1.25;
 
 /** Past this distance, in CSS pixels, a press is a pan, not a click. */
 const CLICK_SLOP_PX = 4;
+
+/** The margin the surface reference block leaves around a group. */
+const GROUP_PADDING: [number, number, number, number] = [20, 20, 20, 20];
+
+/**
+ * The bounds and the stored title of the focused element, read before
+ * anything mounts, so a missing one throws to the host like a bad state.
+ */
+function resolveFocus(
+  store: Store,
+  focus: CanvasViewerFocus
+): { bound: Bound; title: string } | null {
+  if (focus.kind === 'frame') {
+    const model = store.getBlock(focus.id)?.model;
+    if (!(model instanceof FrameBlockModel)) return null;
+    return {
+      bound: Bound.deserialize(model.xywh),
+      title: model.props.title.toString(),
+    };
+  }
+  const element = getSurfaceBlock(store)?.getElementById(focus.id);
+  if (!(element instanceof GroupElementModel)) return null;
+  return {
+    bound: Bound.deserialize(element.xywh),
+    title: element.title.toString(),
+  };
+}
 
 /** The flavours a click opens as a page of the workspace. */
 const DOC_CARD_FLAVOURS = new Set([
@@ -154,16 +209,34 @@ export function mountCanvasViewer(
     workspace.dispose();
     throw new Error('the canvas viewer was given a state with no page');
   }
+  const { focus } = options;
+  const focused = focus ? resolveFocus(store, focus) : null;
+  if (focus && !focused) {
+    workspace.dispose();
+    throw new Error('the canvas viewer found no element to focus on');
+  }
+  const interactive = options.interactive ?? !focus;
 
   const container = document.createElement('div');
   container.dataset.labreCanvasViewer = '';
   const box = container.style;
   box.position = 'relative';
   box.width = '100%';
-  box.height = '100%';
   box.overflow = 'hidden';
-  box.touchAction = 'none';
   box.userSelect = 'none';
+  if (interactive) box.touchAction = 'none';
+  if (focused && !interactive) {
+    // The element's proportions, as the surface reference's `.ref-viewport`.
+    box.aspectRatio = `${focused.bound.w} / ${focused.bound.h || 1}`;
+  } else {
+    box.height = '100%';
+  }
+  if (!interactive && options.onExpand) {
+    box.cursor = 'pointer';
+    container.tabIndex = 0;
+    container.setAttribute('role', 'button');
+    if (focused?.title) container.setAttribute('aria-label', focused.title);
+  }
   // The light theme, on this container only: the page around keeps its own.
   // Built from names already in the theme contract (`theme-imports.unit.spec`):
   // a host that substitutes the theme package needs to export nothing more.
@@ -185,10 +258,34 @@ export function mountCanvasViewer(
   class CanvasViewerUnlock extends LifeCycleWatcher {
     static override key = 'canvas-viewer-unlock';
 
+    private readonly _disposables = new DisposableGroup();
+
     override mounted() {
+      const { viewport } = this.std.get(GfxControllerIdentifier);
       // After `EdgelessLocker`: this viewer moves, the other previews do not.
-      this.std.get(GfxControllerIdentifier).viewport.locked = false;
+      viewport.locked = !interactive;
       requestAnimationFrame(() => viewer.fit());
+      // A frozen view keeps its framing through the host's resizes.
+      if (!interactive) {
+        this._disposables.add(
+          viewport.sizeUpdated.subscribe(() => viewer.fit())
+        );
+      }
+      if (focus?.kind !== 'frame') return;
+      // The frame is the picture's edge: no border, as in the surface reference.
+      const hideBorder = (view: unknown) => {
+        if (view instanceof FrameBlockComponent) view.showBorder = false;
+      };
+      hideBorder(this.std.view.getBlock(focus.id));
+      this._disposables.add(
+        this.std.view.viewUpdated.subscribe(({ id, method, view }) => {
+          if (id === focus.id && method === 'add') hideBorder(view);
+        })
+      );
+    }
+
+    override unmounted() {
+      this._disposables.dispose();
     }
   }
 
@@ -284,17 +381,39 @@ export function mountCanvasViewer(
     else window.location.assign(link.url);
   };
 
-  const listeners: [string, EventListener][] = [
-    ['wheel', onWheel as EventListener],
-    ['pointerdown', onPointerDown as EventListener],
-    ['pointermove', onPointerMove as EventListener],
-    ['pointerup', onPointerUp as EventListener],
-    ['pointercancel', onPointerUp as EventListener],
-    ['click', onClick as EventListener],
-    // Nothing reaches the blocks: no double-click edit, no context menu.
-    ['dblclick', (e: Event) => e.stopPropagation()],
-    ['contextmenu', (e: Event) => e.stopPropagation()],
-  ];
+  // A frozen view is a picture with one gesture, like the surface reference
+  // under its event mask: the wheel and touch scroll the page, a click or
+  // Enter expands it, nothing else reaches the blocks.
+  const onExpand = (e: Event) => {
+    e.preventDefault();
+    e.stopPropagation();
+    options.onExpand?.();
+  };
+  const onExpandKey = (e: KeyboardEvent) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    onExpand(e);
+  };
+  const stop = (e: Event) => e.stopPropagation();
+
+  const listeners: [string, EventListener][] = interactive
+    ? [
+        ['wheel', onWheel as EventListener],
+        ['pointerdown', onPointerDown as EventListener],
+        ['pointermove', onPointerMove as EventListener],
+        ['pointerup', onPointerUp as EventListener],
+        ['pointercancel', onPointerUp as EventListener],
+        ['click', onClick as EventListener],
+        // Nothing reaches the blocks: no double-click edit, no context menu.
+        ['dblclick', stop],
+        ['contextmenu', stop],
+      ]
+    : [
+        ['pointerdown', stop],
+        ['click', onExpand],
+        ['keydown', onExpandKey as EventListener],
+        ['dblclick', stop],
+        ['contextmenu', stop],
+      ];
   listeners.forEach(([type, listener]) =>
     container.addEventListener(type, listener, {
       capture: true,
@@ -311,7 +430,18 @@ export function mountCanvasViewer(
   const viewer: CanvasViewer = {
     zoomIn: () => zoomBy(ZOOM_STEP_RATIO),
     zoomOut: () => zoomBy(1 / ZOOM_STEP_RATIO),
-    fit: () => gfx()?.fitToScreen(),
+    fit: () => {
+      const controller = gfx();
+      if (!controller) return;
+      if (!focused) {
+        controller.fitToScreen();
+        return;
+      }
+      controller.viewport.setViewportByBound(
+        focused.bound,
+        focus?.kind === 'group' ? GROUP_PADDING : undefined
+      );
+    },
     dispose: () => {
       if (!std) return;
       listeners.forEach(([type, listener]) =>

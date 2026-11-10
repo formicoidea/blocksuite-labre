@@ -16,6 +16,7 @@
  * - a dispose that leaves the container, its listeners or the workspace.
  */
 import type { AffineTextAttributes } from '@labre/affine-shared/types';
+import { Bound } from '@labre/global/gfx';
 import { Text } from '@labre/store';
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import * as Y from 'yjs';
@@ -77,10 +78,13 @@ function fixture(): Uint8Array {
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 50));
 
-async function mount(options?: Parameters<typeof mountCanvasViewer>[2]) {
+async function mount(
+  options?: Parameters<typeof mountCanvasViewer>[2],
+  state: Uint8Array = fixture()
+) {
   const host = document.createElement('div');
   document.body.append(host);
-  const viewer = mountCanvasViewer(host, fixture(), options);
+  const viewer = mountCanvasViewer(host, state, options);
   mounted.push(viewer);
   await settle();
   const container = host.querySelector<HTMLElement>(
@@ -91,8 +95,13 @@ async function mount(options?: Parameters<typeof mountCanvasViewer>[2]) {
     std: {
       store: { readonly: boolean };
       get: (id: unknown) => {
-        viewport: { zoom: number; center: { x: number } };
+        viewport: {
+          zoom: number;
+          center: { x: number };
+          viewportBounds: Bound;
+        };
       };
+      view: { getBlock: (id: string) => unknown };
     };
   };
   return { host, viewer, container, editorHost };
@@ -180,5 +189,109 @@ describe('the canvas viewer', () => {
     viewer.dispose();
     expect(host.children.length).toBe(0);
     expect(() => viewer.dispose()).not.toThrow();
+  });
+});
+
+/**
+ * A frame inserted in a page, as the PO's acceptance asks it: the view shows
+ * the frame and nothing beyond it, like the surface reference block.
+ */
+const FRAME = '[0,0,400,300]';
+const OUTSIDE = '[2000,2000,300,100]';
+
+function framedPage(): Uint8Array {
+  const { store, doc } = openHeadless(null);
+  store.transact(() => {
+    const page = store.addBlock('affine:page', { title: new Text('A page') });
+    const surface = store.addBlock('affine:surface', {}, page);
+    store.addBlock(
+      'affine:frame',
+      { id: 'frame-1', title: new Text('The map'), xywh: FRAME },
+      surface
+    );
+    store.addBlock(
+      'affine:note',
+      { id: 'inside', xywh: '[50,50,300,100]' },
+      page
+    );
+    store.addBlock('affine:note', { id: 'outside', xywh: OUTSIDE }, page);
+  });
+  return Y.encodeStateAsUpdate(doc);
+}
+
+describe('the canvas viewer on one frame', () => {
+  const frame = { kind: 'frame', id: 'frame-1' } as const;
+
+  test('shows the frame alone, in its proportions, without its border', async () => {
+    const { container, editorHost } = await mount(
+      { focus: frame },
+      framedPage()
+    );
+    const { GfxControllerIdentifier } = await import('@labre/std/gfx');
+    const shown = editorHost.std.get(GfxControllerIdentifier).viewport
+      .viewportBounds;
+
+    expect(container.style.aspectRatio).toBe('400 / 300');
+    expect(shown.contains(Bound.deserialize(FRAME))).toBe(true);
+    expect(shown.isOverlapWithBound(Bound.deserialize(OUTSIDE))).toBe(false);
+    expect(
+      (editorHost.std.view.getBlock('frame-1') as { showBorder?: boolean })
+        ?.showBorder
+    ).toBe(false);
+  });
+
+  test('frozen by default: the page keeps the wheel, a click or Enter expands', async () => {
+    const onExpand = vi.fn();
+    const { container, editorHost } = await mount(
+      { focus: frame, onExpand },
+      framedPage()
+    );
+    const { GfxControllerIdentifier } = await import('@labre/std/gfx');
+    const viewport = editorHost.std.get(GfxControllerIdentifier).viewport;
+    const zoom = viewport.zoom;
+
+    const wheel = new WheelEvent('wheel', { deltaY: 100, cancelable: true });
+    container.dispatchEvent(wheel);
+    expect(wheel.defaultPrevented).toBe(false);
+    expect(viewport.zoom).toBe(zoom);
+
+    container.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    container.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })
+    );
+    expect(onExpand).toHaveBeenCalledTimes(2);
+    expect(container.getAttribute('role')).toBe('button');
+    expect(container.getAttribute('aria-label')).toBe('The map');
+  });
+
+  test('interactive on demand: it fills the host and zooms', async () => {
+    const { viewer, container, editorHost } = await mount(
+      { focus: frame, interactive: true },
+      framedPage()
+    );
+    const { GfxControllerIdentifier } = await import('@labre/std/gfx');
+    const viewport = editorHost.std.get(GfxControllerIdentifier).viewport;
+
+    expect(container.style.height).toBe('100%');
+    const zoom = viewport.zoom;
+    viewer.zoomIn();
+    expect(viewport.zoom).toBeGreaterThan(zoom);
+    viewer.fit();
+    expect(viewport.zoom).toBeCloseTo(zoom);
+  });
+
+  test('refuses an id that is not a frame, or a frame asked as a group', () => {
+    const host = document.createElement('div');
+    expect(() =>
+      mountCanvasViewer(host, framedPage(), {
+        focus: { kind: 'frame', id: 'inside' },
+      })
+    ).toThrow();
+    expect(() =>
+      mountCanvasViewer(host, framedPage(), {
+        focus: { kind: 'group', id: 'frame-1' },
+      })
+    ).toThrow();
+    expect(host.children.length).toBe(0);
   });
 });
