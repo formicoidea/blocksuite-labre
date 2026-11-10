@@ -2,6 +2,36 @@ import type { Constructor } from '@labre/global/utils';
 import type { CSSResultGroup, CSSResultOrNative } from 'lit';
 import { CSSResult, LitElement } from 'lit';
 
+/**
+ * Every light-DOM style registered so far, so a host can move them to adopted
+ * style sheets after the classes were finalized (most are, at import time).
+ */
+const registeredStyles: CSSResult[] = [];
+
+let adoptStyles = false;
+
+const sheetsOf = (styles: readonly CSSResult[]): CSSStyleSheet[] =>
+  styles
+    .map(style => style.styleSheet)
+    .filter((sheet): sheet is CSSStyleSheet => sheet !== undefined);
+
+/**
+ * Light-DOM styles go to `document.adoptedStyleSheets` from now on, and the
+ * ones already registered follow them there. A Content-Security-Policy whose
+ * `style-src` has no `'unsafe-inline'` blocks every `<style>` element, so
+ * without this nothing the library draws is styled; constructed style sheets
+ * are not subject to it. The canvas viewer calls it (ADR 0050, a public page);
+ * the editor keeps `<style>` elements and its cascade order. Idempotent.
+ */
+export function adoptShadowlessStyles(): void {
+  if (adoptStyles || typeof document === 'undefined') return;
+  adoptStyles = true;
+  document.adoptedStyleSheets = [
+    ...document.adoptedStyleSheets,
+    ...sheetsOf(registeredStyles),
+  ];
+}
+
 export class ShadowlessElement extends LitElement {
   // Map of the number of styles injected into a node
   // A reference count of the number of ShadowlessElements that are still connected
@@ -23,13 +53,22 @@ export class ShadowlessElement extends LitElement {
     const elementStyles = super.finalizeStyles(styles);
     // XXX: This breaks component encapsulation and applies styles to the document.
     // These styles should be manually scoped.
-    elementStyles.forEach((s: CSSResultOrNative) => {
-      if (s instanceof CSSResult && typeof document !== 'undefined') {
-        const styleRoot = document.head;
-        const style = document.createElement('style');
-        style.textContent = s.cssText;
-        styleRoot.append(style);
-      }
+    const results = elementStyles.filter(
+      (s): s is CSSResult => s instanceof CSSResult
+    );
+    registeredStyles.push(...results);
+    if (typeof document === 'undefined') return elementStyles;
+    if (adoptStyles) {
+      document.adoptedStyleSheets = [
+        ...document.adoptedStyleSheets,
+        ...sheetsOf(results),
+      ];
+      return elementStyles;
+    }
+    results.forEach(s => {
+      const style = document.createElement('style');
+      style.textContent = s.cssText;
+      document.head.append(style);
     });
     return elementStyles;
   }
@@ -56,7 +95,23 @@ export class ShadowlessElement extends LitElement {
     const insideShadowRoot = parentRoot instanceof ShadowRoot;
     const styleInjectedCount = this.getConnectedCount();
 
-    if (styleInjectedCount === 0 && insideShadowRoot) {
+    if (styleInjectedCount === 0 && insideShadowRoot && adoptStyles) {
+      const sheets = sheetsOf(
+        SE.elementStyles.filter((s): s is CSSResult => s instanceof CSSResult)
+      );
+      parentRoot.adoptedStyleSheets = [
+        ...parentRoot.adoptedStyleSheets,
+        ...sheets,
+      ];
+      if (!SE.onDisconnectedMap.has(SE)) {
+        SE.onDisconnectedMap.set(SE, new WeakMap());
+      }
+      SE.onDisconnectedMap.get(SE)?.set(parentRoot, () => {
+        parentRoot.adoptedStyleSheets = parentRoot.adoptedStyleSheets.filter(
+          sheet => !sheets.includes(sheet)
+        );
+      });
+    } else if (styleInjectedCount === 0 && insideShadowRoot) {
       const elementStyles = SE.elementStyles;
       const injectedStyles: HTMLStyleElement[] = [];
       elementStyles.forEach((s: CSSResultOrNative) => {

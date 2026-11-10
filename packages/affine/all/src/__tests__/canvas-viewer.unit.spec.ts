@@ -136,6 +136,33 @@ describe('the canvas viewer', () => {
     ).toBe('');
   });
 
+  test('mounts with nothing a strict Content-Security-Policy blocks', async () => {
+    // The published site sends style-src without 'unsafe-inline' and
+    // script-src without 'wasm-unsafe-eval': no <style> element, no inline
+    // style the viewer writes, and code highlighted by the JS regex engine.
+    const { container, editorHost } = await mount();
+    const { CodeBlockConfigExtension } = await import(
+      '@labre/affine-block-code'
+    );
+    expect(container.querySelector('style')).toBeNull();
+    expect(
+      (
+        editorHost.std as unknown as {
+          getOptional: (id: unknown) => { engine?: string } | null;
+        }
+      ).getOptional(CodeBlockConfigExtension.identifier)?.engine
+    ).toBe('javascript');
+    // Nothing is dropped on a read-only page: no file drop indicator.
+    expect(document.querySelector('affine-drop-indicator')).toBeNull();
+  });
+
+  test('names the other pages it is given, as a page reference shows them', async () => {
+    const { container } = await mount({ docTitles: { 'p-2': 'Next page' } });
+    expect(container.querySelector('affine-reference')?.textContent).toContain(
+      'Next page'
+    );
+  });
+
   test('refuses a state with no page', () => {
     const host = document.createElement('div');
     expect(() => mountCanvasViewer(host, new Uint8Array([0, 0]))).toThrow();

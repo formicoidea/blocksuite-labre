@@ -79,9 +79,15 @@ export class CodeBlockHighlighter extends LifeCycleWatcher {
   override mounted(): void {
     super.mounted();
 
-    createHighlighterCore({
-      engine: createOnigurumaEngine(() => getWasm),
-    })
+    const config = this.std.getOptional(CodeBlockConfigExtension.identifier);
+    const engine =
+      config?.engine === 'javascript'
+        ? import('shiki/engine/javascript').then(
+            ({ createJavaScriptRegexEngine }) =>
+              createJavaScriptRegexEngine({ forgiving: true })
+          )
+        : createOnigurumaEngine(() => getWasm);
+    createHighlighterCore({ engine })
       .then(this._loadTheme)
       .catch(console.error);
   }

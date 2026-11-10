@@ -92,6 +92,7 @@ export function mountCanvasViewer(
     focus?: { kind: 'frame' | 'group'; id: string };
     interactive?: boolean; // defaults to !focus
     onExpand?: () => void;
+    docTitles?: Readonly<Record<string, string>>;
   }
 ): { zoomIn(): void; zoomOut(): void; fit(): void; dispose(): void };
 ```
@@ -117,6 +118,22 @@ export function mountCanvasViewer(
   the larger view by mounting the same `focus` with `interactive: true`, as the
   editor opens the referenced canvas. The "Expand" button is the host's: the
   viewer still displays no library string.
+- `docTitles` names the other pages for page references and linked doc
+  cards; a page left out shows as deleted, as in the editor.
+- It holds under a public page's strict Content-Security-Policy (`style-src`
+  without `'unsafe-inline'`, `script-src` without `'wasm-unsafe-eval'`), checked
+  in a browser on 2026-11-10 against a release candidate that drew nothing:
+  `adoptShadowlessStyles()` (`@labre/std`) moves every light-DOM style from
+  `<style>` elements to adopted sheets, which the editor keeps off; the
+  viewer's own rules and emotion's (tables, databases) go to adopted sheets
+  too; code blocks highlight with shiki's JavaScript engine
+  (`CodeBlockConfig.engine`), not WebAssembly; the paragraph's in-template
+  `<style>` moved to its static styles; the file drop is not mounted. Two
+  reports remain and change nothing on screen: emotion's own `<style>`, created
+  at import before any viewer exists, and the `style` attribute
+  `@blocksuite/icons` binds on its icons, whose two declarations the viewer's
+  sheet carries. A click resolves its link from the elements under the
+  pointer, since a note's mask covers its content.
 - The light theme is set as custom properties on the viewer's container only.
 - §4 shipped as `utils/wheel-gesture.ts` in `blocks/root` (`zoomAtPointer`,
   `panByWheel`, `pinchStep`), called by the edgeless root and the viewer.

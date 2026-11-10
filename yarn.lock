@@ -3483,6 +3483,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@labre/affine@workspace:packages/affine/all"
   dependencies:
+    "@emotion/css": "npm:^11.13.5"
     "@labre/affine-block-attachment": "workspace:*"
     "@labre/affine-block-bookmark": "workspace:*"
     "@labre/affine-block-callout": "workspace:*"

@@ -3,6 +3,9 @@ import {
   ViewExtensionManager,
 } from '@labre/affine-ext-loader';
 import { panByWheel, pinchStep, zoomAtPointer } from '@labre/affine-block-root';
+import { cache as emotionCache } from '@emotion/css';
+import { CodeBlockConfigExtension } from '@labre/affine-block-code';
+import { FileDropExtension } from '@labre/affine-components/drop-indicator';
 import { FrameBlockComponent } from '@labre/affine-block-frame';
 import { getSurfaceBlock } from '@labre/affine-block-surface';
 import { FrameBlockModel, GroupElementModel } from '@labre/affine-model';
@@ -12,7 +15,11 @@ import {
   isTouchPadPinchEvent,
   normalizeUrl,
 } from '@labre/affine-shared/utils';
-import { BlockStdScope, LifeCycleWatcher } from '@labre/std';
+import {
+  adoptShadowlessStyles,
+  BlockStdScope,
+  LifeCycleWatcher,
+} from '@labre/std';
 import { DisposableGroup } from '@labre/global/disposable';
 import { Bound } from '@labre/global/gfx';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
@@ -80,6 +87,12 @@ export type CanvasViewerOptions = {
   interactive?: boolean;
   /** A frozen view was clicked, or activated from the keyboard. */
   onExpand?: () => void;
+  /**
+   * The titles of the other pages, by id, as a page reference and a linked
+   * doc card display them. A page left out shows as deleted, as in the editor
+   * when a referenced page is gone: pass every page the reader may follow.
+   */
+  docTitles?: Readonly<Record<string, string>>;
 };
 
 export type CanvasViewerFocus = { kind: 'frame' | 'group'; id: string };
@@ -101,6 +114,65 @@ const ZOOM_STEP_RATIO = 1.25;
 
 /** Past this distance, in CSS pixels, a press is a pan, not a click. */
 const CLICK_SLOP_PX = 4;
+
+let viewerSheet: CSSStyleSheet | null = null;
+
+/**
+ * The viewer's own rules, in an adopted sheet added once: a `<style>` is
+ * blocked by a strict `style-src`, a constructed sheet is not. The preview
+ * root turns pointer events off on itself (a picture, ADR 0050); the viewer
+ * reads the path of a click, so they come back inside the viewer only.
+ */
+function adoptViewerStyles(): void {
+  if (viewerSheet) return;
+  viewerSheet = new CSSStyleSheet();
+  viewerSheet.replaceSync(
+    '[data-labre-canvas-viewer] affine-edgeless-root-preview{pointer-events:auto}' +
+      // What `@blocksuite/icons` binds on each icon as a `style` attribute,
+      // which a strict CSP drops: kept here so an icon never shrinks.
+      '[data-labre-canvas-viewer] svg{user-select:none;flex-shrink:0}'
+  );
+  document.adoptedStyleSheets = [...document.adoptedStyleSheets, viewerSheet];
+}
+
+let emotionSheet: CSSStyleSheet | null = null;
+
+/**
+ * The table and database blocks style through emotion, whose one `<style>` a
+ * strict `style-src` blocks (its sheet is then `null`, every rule lost). Its
+ * rules go to an adopted sheet too: the ones registered at import, replayed
+ * from `cache.registered`, and every later one, by wrapping `sheet.insert`.
+ */
+function adoptEmotionStyles(): void {
+  if (emotionSheet) return;
+  const sheet = new CSSStyleSheet();
+  emotionSheet = sheet;
+  document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+  const into = {
+    insert(rule: string) {
+      try {
+        sheet.insertRule(rule, sheet.cssRules.length);
+      } catch {
+        // A rule this engine refuses, which emotion's own sheet skips too.
+      }
+    },
+  };
+  const prefix = `${emotionCache.key}-`;
+  Object.entries(emotionCache.registered).forEach(([className, styles]) => {
+    if (typeof styles !== 'string' || !className.startsWith(prefix)) return;
+    emotionCache.insert(
+      `.${className}`,
+      { name: className.slice(prefix.length), styles },
+      into as unknown as typeof emotionCache.sheet,
+      false
+    );
+  });
+  const insert = emotionCache.sheet.insert.bind(emotionCache.sheet);
+  emotionCache.sheet.insert = (rule: string) => {
+    into.insert(rule);
+    insert(rule);
+  };
+}
 
 /** The margin the surface reference block leaves around a group. */
 const GROUP_PADDING: [number, number, number, number] = [20, 20, 20, 20];
@@ -202,6 +274,9 @@ export function mountCanvasViewer(
     getInternalStoreExtensions()
   ).get('store');
   workspace.meta.initialize();
+  Object.entries(options.docTitles ?? {}).forEach(([id, title]) =>
+    workspace.meta.addDocMeta({ id, title, tags: [], createDate: 0 })
+  );
   const doc = workspace.createDoc('canvas-viewer');
   Y.applyUpdate(doc.spaceDoc, state);
   const store = doc.getStore({ readonly: true });
@@ -247,12 +322,11 @@ export function mountCanvasViewer(
   (Object.keys(lightThemeV2) as AffineThemeKeyV2[]).forEach(key =>
     box.setProperty(themeToVar(key), lightThemeV2[key])
   );
-  // The preview root turns pointer events off on itself (a picture, ADR 0050);
-  // the viewer reads the path of a click, so they come back, here only.
-  const style = document.createElement('style');
-  style.textContent =
-    '[data-labre-canvas-viewer] affine-edgeless-root-preview{pointer-events:auto}';
-  container.append(style);
+  // A public page's Content-Security-Policy blocks `<style>` elements and
+  // WebAssembly: styles go to adopted sheets, code to shiki's JS engine.
+  adoptShadowlessStyles();
+  adoptEmotionStyles();
+  adoptViewerStyles();
 
   let std: BlockStdScope | null = null;
 
@@ -291,12 +365,15 @@ export function mountCanvasViewer(
   }
 
   const extensions: ExtensionType[] = [
-    ...new ViewExtensionManager(getInternalViewExtensions()).get(
-      'preview-edgeless'
-    ),
+    // Not the file drop: nothing is dropped on a read-only page, and its
+    // indicator, mounted in `<body>`, renders inline styles a CSP blocks.
+    ...new ViewExtensionManager(getInternalViewExtensions())
+      .get('preview-edgeless')
+      .filter(extension => extension !== FileDropExtension),
     // The viewport is this container, as `.ref-viewport` is the surface
     // reference's: the preview root measures it and follows its resizes.
     ViewportElementExtension('[data-labre-canvas-viewer]'),
+    CodeBlockConfigExtension({ engine: 'javascript' }),
     CanvasViewerUnlock,
   ];
   try {
@@ -384,7 +461,12 @@ export function mountCanvasViewer(
     e.preventDefault();
     e.stopPropagation();
     if (travelled > CLICK_SLOP_PX) return;
-    const link = linkOf(e.composedPath(), id => {
+    // A note on the canvas lies under its mask (`.affine-note-mask`), so the
+    // click's own path never holds the link: the elements under the pointer do.
+    const under = document
+      .elementsFromPoint?.(e.clientX, e.clientY)
+      .filter(element => container.contains(element));
+    const link = linkOf([...e.composedPath(), ...(under ?? [])], id => {
       const model = store.getBlock(id)?.model;
       return model ? { flavour: model.flavour, props: model.props } : undefined;
     });
