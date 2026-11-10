@@ -1,4 +1,4 @@
-import { css } from '@emotion/css';
+import { css } from '@labre/affine-shared/styles';
 import { baseTheme } from '@toeverything/theme';
 
 export const selectStyle = css({

@@ -1,5 +1,5 @@
 import { cssVarV2 } from '@labre/affine-shared/theme';
-import { css } from '@emotion/css';
+import { css } from '@labre/affine-shared/styles';
 
 export const groupHeaderCount = css({
   flexShrink: 0,

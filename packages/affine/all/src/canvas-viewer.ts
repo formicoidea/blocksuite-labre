@@ -3,13 +3,13 @@ import {
   ViewExtensionManager,
 } from '@labre/affine-ext-loader';
 import { panByWheel, pinchStep, zoomAtPointer } from '@labre/affine-block-root';
-import { cache as emotionCache } from '@emotion/css';
 import { CodeBlockConfigExtension } from '@labre/affine-block-code';
 import { FileDropExtension } from '@labre/affine-components/drop-indicator';
 import { FrameBlockComponent } from '@labre/affine-block-frame';
 import { getSurfaceBlock } from '@labre/affine-block-surface';
 import { FrameBlockModel, GroupElementModel } from '@labre/affine-model';
 import { ViewportElementExtension } from '@labre/affine-shared/services';
+import { adoptEmotionStyles } from '@labre/affine-shared/styles';
 import {
   isSafeLinkUrl,
   isTouchPadPinchEvent,
@@ -140,43 +140,12 @@ function adoptViewerStyles(): void {
   document.adoptedStyleSheets = [...document.adoptedStyleSheets, viewerSheet];
 }
 
-let emotionSheet: CSSStyleSheet | null = null;
-
-/**
- * The table and database blocks style through emotion, whose one `<style>` a
- * strict `style-src` blocks (its sheet is then `null`, every rule lost). Its
- * rules go to an adopted sheet too: the ones registered at import, replayed
- * from `cache.registered`, and every later one, by wrapping `sheet.insert`.
- */
-function adoptEmotionStyles(): void {
-  if (emotionSheet) return;
-  const sheet = new CSSStyleSheet();
-  emotionSheet = sheet;
-  document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
-  const into = {
-    insert(rule: string) {
-      try {
-        sheet.insertRule(rule, sheet.cssRules.length);
-      } catch {
-        // A rule this engine refuses, which emotion's own sheet skips too.
-      }
-    },
-  };
-  const prefix = `${emotionCache.key}-`;
-  Object.entries(emotionCache.registered).forEach(([className, styles]) => {
-    if (typeof styles !== 'string' || !className.startsWith(prefix)) return;
-    emotionCache.insert(
-      `.${className}`,
-      { name: className.slice(prefix.length), styles },
-      into as unknown as typeof emotionCache.sheet,
-      false
-    );
-  });
-  const insert = emotionCache.sheet.insert.bind(emotionCache.sheet);
-  emotionCache.sheet.insert = (rule: string) => {
-    into.insert(rule);
-    insert(rule);
-  };
+// A public page's Content-Security-Policy blocks `<style>` elements: the
+// library's styles go to adopted sheets. At import, while the modules are
+// still evaluating, so emotion never creates its `<style>` (ADR 0050).
+if (typeof document !== 'undefined') {
+  adoptShadowlessStyles();
+  adoptEmotionStyles();
 }
 
 /** The margin the surface reference block leaves around a group. */
@@ -334,10 +303,6 @@ export function mountCanvasViewer(
   (Object.keys(lightThemeV2) as AffineThemeKeyV2[]).forEach(key =>
     box.setProperty(themeToVar(key), lightThemeV2[key])
   );
-  // A public page's Content-Security-Policy blocks `<style>` elements and
-  // WebAssembly: styles go to adopted sheets, code to shiki's JS engine.
-  adoptShadowlessStyles();
-  adoptEmotionStyles();
   adoptViewerStyles();
 
   let std: BlockStdScope | null = null;

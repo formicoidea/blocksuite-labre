@@ -5,7 +5,7 @@ import {
 } from '@labre/affine-components/context-menu';
 import type { InsertToPosition } from '@labre/affine-shared/utils';
 import { AddCursorIcon } from '@blocksuite/icons/lit';
-import { css } from '@emotion/css';
+import { css } from '@labre/affine-shared/styles';
 import { computed, signal } from '@preact/signals-core';
 import { type TemplateResult } from 'lit';
 import { ref } from 'lit/directives/ref.js';

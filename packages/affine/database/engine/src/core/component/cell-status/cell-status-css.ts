@@ -1,4 +1,4 @@
-import { css } from '@emotion/css';
+import { css } from '@labre/affine-shared/styles';
 
 // A cell whose value is on its way: a spinner centred in the cell, the
 // height of a drawn one, never a skeleton (recette 3; the host's rule,

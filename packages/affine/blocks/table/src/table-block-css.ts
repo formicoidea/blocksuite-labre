@@ -1,4 +1,4 @@
-import { css } from '@emotion/css';
+import { css } from '@labre/affine-shared/styles';
 
 export const tableContainer = css({
   display: 'block',

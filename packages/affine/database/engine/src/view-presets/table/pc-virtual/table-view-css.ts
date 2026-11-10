@@ -1,4 +1,4 @@
-import { css } from '@emotion/css';
+import { css } from '@labre/affine-shared/styles';
 import { cssVarV2 } from '@toeverything/theme/v2';
 
 import { LEFT_TOOL_BAR_WIDTH } from '../consts.js';
