@@ -23,6 +23,8 @@ short, states the rule first, then the reason, then where the code is.
   from BlockSuite and added by Labre. Read this before changing anything
   structural.
 - [lessons.md](lessons.md): what went wrong once and the rule we derived.
+- [THREAT_MODEL.md](THREAT_MODEL.md): who would attack an open-source editor
+  library, where the barriers are, what a reviewer checks. A draft.
 - [adr/README.md](adr/README.md): the architecture decision records. A
   decision that changes a stored format or a host contract is written there
   before the code.
