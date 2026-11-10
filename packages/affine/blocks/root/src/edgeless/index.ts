@@ -10,10 +10,4 @@ export {
 export * from './utils/clipboard-utils.js';
 export { sortEdgelessElements } from './utils/clone-utils.js';
 export { isCanvasElement } from './utils/query.js';
-export {
-  panByWheel,
-  type PinchPointer,
-  pinchStep,
-  zoomAtPointer,
-} from './utils/wheel-gesture.js';
 export { EDGELESS_BLOCK_CHILD_PADDING } from '@labre/affine-shared/consts';

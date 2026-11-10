@@ -1,6 +1,8 @@
 # ADR 0050 — A read-only canvas viewer a host mounts from a Y.Doc state
 
-- Status: accepted (2026-11-08, built as amended below)
+- Status: accepted (2026-11-08, built as amended below); superseded in part
+  by [0051](0051-read-only-viewer-is-the-editor.md) (2026-11-10): the viewer
+  mounts the edgeless editor on a read-only store, not the preview scope
 - Date: 2026-11-05
 - Deciders: Mathieu Jolly
 - Host side, never restated here: Labre Sites (labre ADR-0069), public pages
@@ -135,8 +137,8 @@ export function mountCanvasViewer(
   sheet carries. A click resolves its link from the elements under the
   pointer, since a note's mask covers its content.
 - The light theme is set as custom properties on the viewer's container only.
-- §4 shipped as `utils/wheel-gesture.ts` in `blocks/root` (`zoomAtPointer`,
-  `panByWheel`, `pinchStep`), called by the edgeless root and the viewer.
+- §4 shipped as `utils/wheel-gesture.ts`, then was dropped by ADR 0051: the
+  viewer now runs the editor's own handlers and has none to share.
 - Events: one-finger or mouse drag pans, two fingers pinch, ctrl+wheel and a
   trackpad pinch zoom, a plain wheel pans; every pointer, wheel and click
   event stops on the viewer's container in capture, so no block reacts.

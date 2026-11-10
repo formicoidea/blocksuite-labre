@@ -119,11 +119,10 @@ async function mount(
 }
 
 describe('the canvas viewer', () => {
-  test('mounts a read-only canvas page with no editor around it', async () => {
+  test('mounts the edgeless editor itself on a read-only store', async () => {
+    // ADR 0051: the viewer is the editor, not a picture of it.
     const { container, editorHost } = await mount();
-    expect(
-      container.querySelector('affine-edgeless-root-preview')
-    ).not.toBeNull();
+    expect(container.querySelector('affine-edgeless-root')).not.toBeNull();
     expect(editorHost.std.store.readonly).toBe(true);
     // The light theme, on the viewer's container only.
     expect(
@@ -209,7 +208,7 @@ describe('the canvas viewer', () => {
     expect(host.children.length).toBe(0);
   });
 
-  test('zooms with its buttons and with ctrl+wheel, pans with a drag', async () => {
+  test('zooms with its buttons and, through the editor, with ctrl+wheel', async () => {
     const { viewer, container, editorHost } = await mount();
     const { GfxControllerIdentifier } = await import('@labre/std/gfx');
     const viewport = editorHost.std.get(GfxControllerIdentifier).viewport;
@@ -232,18 +231,10 @@ describe('the canvas viewer', () => {
       clientX: { value: VIEW_W / 2 },
       clientY: { value: VIEW_H / 2 },
     });
-    container.dispatchEvent(wheel);
+    // The editor's own wheel handler, which listens on its host.
+    editorHost.dispatchEvent(wheel);
     expect(viewport.zoom).toBeGreaterThan(before);
     expect(wheel.defaultPrevented).toBe(true);
-
-    const x = viewport.center.x;
-    const down = { pointerId: 1, clientX: 100, clientY: 100, bubbles: true };
-    container.dispatchEvent(new PointerEvent('pointerdown', down));
-    container.dispatchEvent(
-      new PointerEvent('pointermove', { ...down, clientX: 160 })
-    );
-    container.dispatchEvent(new PointerEvent('pointerup', down));
-    expect(viewport.center.x).toBeLessThan(x);
   });
 
   test('a click on a page reference opens that page, a refused URL nothing', async () => {
@@ -271,23 +262,17 @@ describe('the canvas viewer', () => {
     expect(onLinkClick).not.toHaveBeenCalled();
   });
 
-  test('a press takes no pointer capture until it becomes a drag', async () => {
-    // A captured press would send its click to the container, and a click on
-    // a link would no longer find the link (a real browser, not happy-dom).
-    const { container } = await mount();
-    const capture = vi.fn();
-    container.setPointerCapture = capture;
-    container.hasPointerCapture = () => false;
+  test('a drag that ends on a link pans and follows nothing', async () => {
+    const onOpenDoc = vi.fn();
+    const { container } = await mount({ onOpenDoc });
+    const reference = container.querySelector('affine-reference')!;
     const at = { pointerId: 7, clientX: 10, clientY: 10, bubbles: true };
-    container.dispatchEvent(new PointerEvent('pointerdown', at));
-    container.dispatchEvent(new PointerEvent('pointerup', at));
-    expect(capture).not.toHaveBeenCalled();
-
-    container.dispatchEvent(new PointerEvent('pointerdown', at));
-    container.dispatchEvent(
+    reference.dispatchEvent(new PointerEvent('pointerdown', at));
+    reference.dispatchEvent(
       new PointerEvent('pointermove', { ...at, clientX: 40 })
     );
-    expect(capture).toHaveBeenCalledWith(7);
+    reference.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(onOpenDoc).not.toHaveBeenCalled();
   });
 
   test('dispose empties the host and can run twice', async () => {
