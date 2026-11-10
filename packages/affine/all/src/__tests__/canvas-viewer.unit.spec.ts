@@ -21,11 +21,23 @@ import { Text } from '@labre/store';
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import * as Y from 'yjs';
 
-import { type CanvasViewer, mountCanvasViewer } from '../canvas-viewer';
+import {
+  type CanvasViewer,
+  type CanvasViewerOptions,
+  mountCanvasViewer,
+} from '../canvas-viewer';
 import { openHeadless } from './utils/open-headless';
 
 const VIEW_W = 800;
 const VIEW_H = 600;
+const CENTRE_X = 400;
+const CENTRE_Y = 300;
+/** Long enough for the editor's microtasks and first frame to land. */
+const SETTLE_MS = 50;
+/** One wheel notch, in pixels. */
+const WHEEL_NOTCH = 100;
+/** Farther than the drag threshold. */
+const DRAG_DISTANCE = 30;
 
 beforeAll(() => {
   // Every 2d call is a no-op returning a no-op: the surface renders blind.
@@ -87,10 +99,10 @@ function fixture(): Uint8Array {
   return Y.encodeStateAsUpdate(doc);
 }
 
-const settle = () => new Promise(resolve => setTimeout(resolve, 50));
+const settle = () => new Promise(resolve => setTimeout(resolve, SETTLE_MS));
 
 async function mount(
-  options?: Parameters<typeof mountCanvasViewer>[2],
+  options?: CanvasViewerOptions,
   state: Uint8Array = fixture()
 ) {
   const host = document.createElement('div');
@@ -209,7 +221,7 @@ describe('the canvas viewer', () => {
   });
 
   test('zooms with its buttons and, through the editor, with ctrl+wheel', async () => {
-    const { viewer, container, editorHost } = await mount();
+    const { viewer, editorHost } = await mount();
     const { GfxControllerIdentifier } = await import('@labre/std/gfx');
     const viewport = editorHost.std.get(GfxControllerIdentifier).viewport;
 
@@ -220,7 +232,7 @@ describe('the canvas viewer', () => {
     expect(viewport.zoom).toBeCloseTo(before);
 
     const wheel = new WheelEvent('wheel', {
-      deltaY: -100,
+      deltaY: -WHEEL_NOTCH,
       bubbles: true,
       cancelable: true,
     });
@@ -228,8 +240,8 @@ describe('the canvas viewer', () => {
     // keys and no pointer position unless they are set by hand.
     Object.defineProperties(wheel, {
       ctrlKey: { value: true },
-      clientX: { value: VIEW_W / 2 },
-      clientY: { value: VIEW_H / 2 },
+      clientX: { value: CENTRE_X },
+      clientY: { value: CENTRE_Y },
     });
     // The editor's own wheel handler, which listens on its host.
     editorHost.dispatchEvent(wheel);
@@ -251,6 +263,8 @@ describe('the canvas viewer', () => {
     card!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     // Normalised as the bookmark block opens it, never a path on the site.
     expect(onLinkClick).toHaveBeenCalledWith(
+      // Accepts "https://example.com" and "https://example.com/", rejects
+      // "/example.com" (https://regex101.com/?regex=%5Ehttps%3A%5C%2F%5C%2Fexample%5C.com%5C%2F%3F%24).
       expect.stringMatching(/^https:\/\/example\.com\/?$/)
     );
     onLinkClick.mockClear();
@@ -266,13 +280,52 @@ describe('the canvas viewer', () => {
     const onOpenDoc = vi.fn();
     const { container } = await mount({ onOpenDoc });
     const reference = container.querySelector('affine-reference')!;
-    const at = { pointerId: 7, clientX: 10, clientY: 10, bubbles: true };
+    const at = {
+      pointerId: 1,
+      clientX: CENTRE_X,
+      clientY: CENTRE_Y,
+      bubbles: true,
+    };
     reference.dispatchEvent(new PointerEvent('pointerdown', at));
     reference.dispatchEvent(
-      new PointerEvent('pointermove', { ...at, clientX: 40 })
+      new PointerEvent('pointermove', {
+        ...at,
+        clientX: CENTRE_X + DRAG_DISTANCE,
+      })
     );
-    reference.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    // A mouse click carries its count (`detail` 1); a keyboard one, 0.
+    reference.dispatchEvent(
+      new MouseEvent('click', { bubbles: true, detail: 1 })
+    );
     expect(onOpenDoc).not.toHaveBeenCalled();
+    // The drag is over: the link, activated from the keyboard, opens.
+    reference.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(onOpenDoc).toHaveBeenCalledWith('p-2');
+  });
+
+  test('a key typed while the pointer rests on the canvas reaches the page, not the editor', async () => {
+    // The editor's keymap wakes on hover: `v` would switch to selection and
+    // `Mod-a` would take the page's own select-all.
+    const { editorHost } = await mount();
+    const { GfxControllerIdentifier } = await import('@labre/std/gfx');
+    const std = editorHost.std as unknown as {
+      event: { active: boolean };
+      get: (id: unknown) => { tool: { currentToolName$: { peek(): string } } };
+    };
+    const tool = () =>
+      std.get(GfxControllerIdentifier).tool.currentToolName$.peek();
+    const before = tool();
+    std.event.active = true;
+    const key = new KeyboardEvent('keydown', {
+      key: 'v',
+      bubbles: true,
+      cancelable: true,
+    });
+    document.body.dispatchEvent(key);
+    expect(tool()).toBe(before);
+    expect(key.defaultPrevented).toBe(false);
+    // Resumed after the key: the pointer still pans.
+    expect(std.event.active).toBe(true);
   });
 
   test('dispose empties the host and can run twice', async () => {
@@ -341,7 +394,10 @@ describe('the canvas viewer on one frame', () => {
     const viewport = editorHost.std.get(GfxControllerIdentifier).viewport;
     const zoom = viewport.zoom;
 
-    const wheel = new WheelEvent('wheel', { deltaY: 100, cancelable: true });
+    const wheel = new WheelEvent('wheel', {
+      deltaY: WHEEL_NOTCH,
+      cancelable: true,
+    });
     container.dispatchEvent(wheel);
     expect(wheel.defaultPrevented).toBe(false);
     expect(viewport.zoom).toBe(zoom);
@@ -350,7 +406,8 @@ describe('the canvas viewer on one frame', () => {
     container.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })
     );
-    expect(onExpand).toHaveBeenCalledTimes(2);
+    const clickThenEnter = 2;
+    expect(onExpand).toHaveBeenCalledTimes(clickThenEnter);
     expect(container.getAttribute('role')).toBe('button');
     expect(container.getAttribute('aria-label')).toBe('The map');
     // One button: nothing inside it takes focus or keys.

@@ -3,7 +3,6 @@ import { FrameBlockComponent } from '@labre/affine-block-frame';
 import { getSurfaceBlock } from '@labre/affine-block-surface';
 import {
   StoreExtensionManager,
-  ViewExtensionManager,
   type ViewExtensionProvider,
 } from '@labre/affine-ext-loader';
 import { FrameBlockModel, GroupElementModel } from '@labre/affine-model';
@@ -34,10 +33,7 @@ import {
 import * as Y from 'yjs';
 
 import { getInternalStoreExtensions } from './extensions/store.js';
-import {
-  getReadOnlyViewProviders,
-  READ_ONLY_EXCLUDED_EXTENSIONS,
-} from './extensions/view.js';
+import { getReadOnlyViewExtensions } from './extensions/view.js';
 
 /**
  * `@labre/affine/canvas-viewer` — a published canvas, read-only, on a host's
@@ -349,11 +345,7 @@ export function mountCanvasViewer(
   }
 
   const extensions: ExtensionType[] = [
-    ...new ViewExtensionManager(
-      getReadOnlyViewProviders(options.viewExtensions)
-    )
-      .get('edgeless')
-      .filter(extension => !READ_ONLY_EXCLUDED_EXTENSIONS.has(extension)),
+    ...getReadOnlyViewExtensions(options.viewExtensions),
     // The viewport is this container, as `.ref-viewport` is the surface
     // reference's: the editor measures it and follows its resizes.
     ViewportElementExtension('[data-labre-canvas-viewer]'),
@@ -396,7 +388,11 @@ export function mountCanvasViewer(
   const onClick = (e: MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (moved) return;
+    // A click from the keyboard (`detail` 0) never follows a drag.
+    const dragged = moved && e.detail !== 0;
+    moved = false;
+    pressAt = null;
+    if (dragged) return;
     // A note on the canvas lies under its mask (`.affine-note-mask`), so the
     // click's own path never holds the link: the elements under the pointer
     // do, down to the first block (a card hidden under another note is not
@@ -464,6 +460,37 @@ export function mountCanvasViewer(
     })
   );
 
+  // The editor's keymap listens on `document` and wakes when the pointer
+  // merely rests on the canvas: `v` would switch to selection, `Mod-a` and
+  // `Mod-=` would take the page's own select-all and zoom. A reader has no
+  // shortcut to type, so for each key the viewer's dispatcher is paused
+  // before the page sees it and resumed after: the page keeps every key
+  // (Escape to close the host's dialog, select-all, browser zoom), the editor
+  // none. Pointer and wheel, which the same dispatcher carries, are untouched.
+  let paused = false;
+  const pauseKeys = () => {
+    const dispatcher = std?.event;
+    if (!dispatcher?.active) return;
+    paused = true;
+    dispatcher.active = false;
+  };
+  const resumeKeys = () => {
+    if (!paused) return;
+    paused = false;
+    if (std) std.event.active = true;
+  };
+  const keyListeners: [string, EventListener, boolean][] = interactive
+    ? [
+        ['keydown', pauseKeys, true],
+        ['keydown', resumeKeys, false],
+        ['keyup', pauseKeys, true],
+        ['keyup', resumeKeys, false],
+      ]
+    : [];
+  keyListeners.forEach(([type, listener, capture]) =>
+    window.addEventListener(type, listener, { capture })
+  );
+
   const zoomBy = (ratio: number) => {
     const viewport = gfx()?.viewport;
     if (!viewport) return;
@@ -489,6 +516,9 @@ export function mountCanvasViewer(
       if (!std) return;
       listeners.forEach(([type, listener]) =>
         container.removeEventListener(type, listener, { capture: true })
+      );
+      keyListeners.forEach(([type, listener, capture]) =>
+        window.removeEventListener(type, listener, { capture })
       );
       container.remove();
       std = null;

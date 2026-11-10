@@ -118,7 +118,10 @@ import { SlashMenuViewExtension } from '@labre/affine-widget-slash-menu/view';
 import { ThreadMarksViewExtension } from '@labre/affine-widget-thread-marks/view';
 import { ToolbarViewExtension } from '@labre/affine-widget-toolbar/view';
 import { ViewportOverlayViewExtension } from '@labre/affine-widget-viewport-overlay/view';
-import type { ViewExtensionProvider } from '@labre/affine-ext-loader';
+import {
+  ViewExtensionManager,
+  type ViewExtensionProvider,
+} from '@labre/affine-ext-loader';
 import { FileDropExtension } from '@labre/affine-components/drop-indicator';
 import type { ExtensionType } from '@labre/store';
 
@@ -335,4 +338,18 @@ export function getReadOnlyViewProviders(
   return [
     ...new Set([...getInternalViewExtensions(), ...hostProviders]),
   ].filter(provider => !READ_ONLY_EXCLUDED_VIEW_EXTENSIONS.has(provider));
+}
+
+/**
+ * The view extensions the read-only canvas viewer mounts: the editor's own
+ * `edgeless` scope of {@link getReadOnlyViewProviders}, minus
+ * {@link READ_ONLY_EXCLUDED_EXTENSIONS}. The viewer and its guard spec both call
+ * this, so the viewer cannot drift from what the guard checks.
+ */
+export function getReadOnlyViewExtensions(
+  hostProviders: readonly (typeof ViewExtensionProvider)[] = []
+): ExtensionType[] {
+  return new ViewExtensionManager(getReadOnlyViewProviders(hostProviders))
+    .get('edgeless')
+    .filter(extension => !READ_ONLY_EXCLUDED_EXTENSIONS.has(extension));
 }

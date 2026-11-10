@@ -6,7 +6,8 @@
  * `getInternalViewExtensions` (every flag on) and the host's, minus
  * `READ_ONLY_EXCLUDED_VIEW_EXTENSIONS` and `READ_ONLY_EXCLUDED_EXTENSIONS`.
  * This spec reads what each side registers in a real DI container, by
- * identifier, rather than trusting the composition.
+ * identifier: the editor's side from the registry, the viewer's from
+ * `getReadOnlyViewExtensions`, the very list `mountCanvasViewer` mounts.
  *
  * What it would catch:
  * - a provider or an extension on the exclusion lists that paints content (a
@@ -26,6 +27,7 @@ import { describe, expect, test } from 'vitest';
 
 import {
   getInternalViewExtensions,
+  getReadOnlyViewExtensions,
   getReadOnlyViewProviders,
   READ_ONLY_EXCLUDED_EXTENSIONS,
   READ_ONLY_EXCLUDED_VIEW_EXTENSIONS,
@@ -39,6 +41,7 @@ const CONTENT = [
   /^GfxElementModelView$/,
   /^element-renderer$/,
   /^affine\.surface\.dom-element-renderer\./,
+  /^AffineInlineSpec$/,
 ];
 const isContent = (key: string) =>
   CONTENT.some(pattern => pattern.test(key.split('|')[0] ?? ''));
@@ -83,11 +86,8 @@ const editorProviders = getInternalViewExtensions() as Provider[];
 const editor = registeredKeys(
   new ViewExtensionManager(editorProviders).get('edgeless')
 );
-const viewer = registeredKeys(
-  new ViewExtensionManager(getReadOnlyViewProviders())
-    .get('edgeless')
-    .filter(extension => !READ_ONLY_EXCLUDED_EXTENSIONS.has(extension))
-);
+// The very list `mountCanvasViewer` mounts, not a recomposition of it.
+const viewer = registeredKeys(getReadOnlyViewExtensions());
 const excluded = registeredKeys([
   ...[...READ_ONLY_EXCLUDED_VIEW_EXTENSIONS].flatMap(extensionsOf),
   ...READ_ONLY_EXCLUDED_EXTENSIONS,
