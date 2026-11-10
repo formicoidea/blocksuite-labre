@@ -67,6 +67,17 @@ function fixture(): Uint8Array {
       },
       note
     );
+    // A link stored without a scheme, as an import or a connector writes it.
+    store.addBlock(
+      'affine:bookmark',
+      {
+        id: 'bm-1',
+        url: 'example.com',
+        title: 'Example',
+        description: 'A site',
+      },
+      note
+    );
     store.addBlock(
       'affine:frame',
       { title: new Text('A frame'), xywh: '[500,0,300,200]' },
@@ -177,11 +188,39 @@ describe('the canvas viewer', () => {
     reference!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(onOpenDoc).toHaveBeenCalledWith('p-2');
 
+    const card = container.querySelector('[data-block-id="bm-1"]');
+    expect(card).not.toBeNull();
+    card!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    // Normalised as the bookmark block opens it, never a path on the site.
+    expect(onLinkClick).toHaveBeenCalledWith(
+      expect.stringMatching(/^https:\/\/example\.com\/?$/)
+    );
+    onLinkClick.mockClear();
+
     const anchor = document.createElement('a');
     anchor.href = 'javascript:alert(1)';
     container.append(anchor);
     anchor.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(onLinkClick).not.toHaveBeenCalled();
+  });
+
+  test('a press takes no pointer capture until it becomes a drag', async () => {
+    // A captured press would send its click to the container, and a click on
+    // a link would no longer find the link (a real browser, not happy-dom).
+    const { container } = await mount();
+    const capture = vi.fn();
+    container.setPointerCapture = capture;
+    container.hasPointerCapture = () => false;
+    const at = { pointerId: 7, clientX: 10, clientY: 10, bubbles: true };
+    container.dispatchEvent(new PointerEvent('pointerdown', at));
+    container.dispatchEvent(new PointerEvent('pointerup', at));
+    expect(capture).not.toHaveBeenCalled();
+
+    container.dispatchEvent(new PointerEvent('pointerdown', at));
+    container.dispatchEvent(
+      new PointerEvent('pointermove', { ...at, clientX: 40 })
+    );
+    expect(capture).toHaveBeenCalledWith(7);
   });
 
   test('dispose empties the host and can run twice', async () => {
@@ -262,6 +301,8 @@ describe('the canvas viewer on one frame', () => {
     expect(onExpand).toHaveBeenCalledTimes(2);
     expect(container.getAttribute('role')).toBe('button');
     expect(container.getAttribute('aria-label')).toBe('The map');
+    // One button: nothing inside it takes focus or keys.
+    expect((editorHost as HTMLElement & { inert: boolean }).inert).toBe(true);
   });
 
   test('interactive on demand: it fills the host and zooms', async () => {

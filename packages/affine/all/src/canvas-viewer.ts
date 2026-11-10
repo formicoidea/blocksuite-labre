@@ -10,6 +10,7 @@ import { ViewportElementExtension } from '@labre/affine-shared/services';
 import {
   isSafeLinkUrl,
   isTouchPadPinchEvent,
+  normalizeUrl,
 } from '@labre/affine-shared/utils';
 import { BlockStdScope, LifeCycleWatcher } from '@labre/std';
 import { DisposableGroup } from '@labre/global/disposable';
@@ -298,10 +299,20 @@ export function mountCanvasViewer(
     ViewportElementExtension('[data-labre-canvas-viewer]'),
     CanvasViewerUnlock,
   ];
-  std = new BlockStdScope({ store, extensions });
-  const editorHost = std.render();
-  container.append(editorHost);
-  host.append(container);
+  try {
+    std = new BlockStdScope({ store, extensions });
+    const editorHost = std.render();
+    // A frozen view is one button: nothing inside it takes focus, keys or
+    // pointers (the editor host would otherwise be a second tab stop, and
+    // its keyboard handler would wake on focus).
+    if (!interactive) editorHost.inert = true;
+    container.append(editorHost);
+    host.append(container);
+  } catch (error) {
+    container.remove();
+    workspace.dispose();
+    throw error;
+  }
 
   const gfx = () => std?.get(GfxControllerIdentifier);
   const pointers = new Map<number, { x: number; y: number }>();
@@ -328,7 +339,6 @@ export function mountCanvasViewer(
     e.stopPropagation();
     if (pointers.size === 0) travelled = 0;
     pointers.set(e.pointerId, local(e));
-    container.setPointerCapture?.(e.pointerId);
   };
 
   const onPointerMove = (e: PointerEvent) => {
@@ -340,12 +350,19 @@ export function mountCanvasViewer(
     const delta = { x: next.x - last.x, y: next.y - last.y };
     travelled += Math.abs(delta.x) + Math.abs(delta.y);
     pointers.set(e.pointerId, next);
+    // Captured only once it is a drag: a captured press sends its click to
+    // the container, and a click on a link would no longer find the link.
+    if (
+      travelled > CLICK_SLOP_PX &&
+      !container.hasPointerCapture?.(e.pointerId)
+    ) {
+      container.setPointerCapture?.(e.pointerId);
+    }
 
     if (pointers.size === 1) {
-      viewport.applyDeltaCenter(
-        -delta.x / viewport.zoom,
-        -delta.y / viewport.zoom
-      );
+      // As the editor's pan: model units, under any CSS scale of the host.
+      const scale = viewport.zoom * viewport.viewScale;
+      viewport.applyDeltaCenter(-delta.x / scale, -delta.y / scale);
       return;
     }
     const [other] = [...pointers].find(([id]) => id !== e.pointerId) ?? [];
@@ -376,9 +393,12 @@ export function mountCanvasViewer(
       options.onOpenDoc?.(link.docId);
       return;
     }
-    if (!isSafeLinkUrl(link.url)) return;
-    if (options.onLinkClick) options.onLinkClick(link.url);
-    else window.location.assign(link.url);
+    // As the bookmark block opens its link: a stored `example.com` is
+    // `https://example.com`, never a path on the host's site.
+    const url = normalizeUrl(link.url);
+    if (!isSafeLinkUrl(url)) return;
+    if (options.onLinkClick) options.onLinkClick(url);
+    else window.location.assign(url);
   };
 
   // A frozen view is a picture with one gesture, like the surface reference
