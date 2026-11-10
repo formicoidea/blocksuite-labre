@@ -101,13 +101,13 @@ describe('a mind map built with no editor', () => {
     // Squash the root first: only the view's layout (style, fitContent, then
     // placement) can give it its size back, so a layout that did not run fails
     // here instead of passing on the builder's own numbers.
-    gfx.getElementById(created[0]!)!.xywh = '[0,0,1,1]';
+    gfx.surface!.getElementById(created[0]!)!.xywh = '[0,0,1,1]';
     mindmap.layout();
     await wait();
     const actual = relative(
       created
         .slice(0, -1)
-        .map(id => Bound.deserialize(gfx.getElementById(id)!.xywh))
+        .map(id => Bound.deserialize(gfx.surface!.getElementById(id)!.xywh))
     );
 
     actual.forEach((box, i) =>
