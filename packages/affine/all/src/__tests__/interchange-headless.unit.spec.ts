@@ -49,7 +49,13 @@ const ALLOWED_WORKSPACE = [
  * SVG sanitizer is an allow-list on the read tree (`svg-sanitize.ts`), and a
  * DOM sanitizer would put the DOM back in a server's graph.
  */
-const ALLOWED_THIRD_PARTY = new Set(['zod']);
+const ALLOWED_THIRD_PARTY = new Set([
+  'zod',
+  // The theme tokens, data only: the mind map styles' colours are read from
+  // them, and a builder must store the colours the toolbar stores (ADR 0045
+  // amendment of 2026-11-10). A host may alias it to its own theme.
+  '@toeverything/theme',
+]);
 
 /** DOM globals a reader must not touch: a server has none of them. */
 const DOM_GLOBALS =
@@ -102,6 +108,13 @@ const ENTRIES: Entry[] = [
     label: 'ddd-shared ./headless',
     dir: 'packages/affine/gfx/ddd-shared',
     subpath: './headless',
+  },
+  // The mind map is no framework: its builder needs text measurement, which
+  // the caller injects (ADR 0045 amendment of 2026-11-10).
+  {
+    label: 'mindmap ./interchange',
+    dir: 'packages/affine/gfx/mindmap',
+    subpath: './interchange',
   },
   ...FRAMEWORK_DESCRIPTORS.filter(
     d => manifestOf(`packages/${d.dir}`).exports['./interchange'] !== undefined
@@ -173,6 +186,16 @@ describe('the headless interchange entries', () => {
     // subpaths too, or the bundle script has nothing to rewrite them to.
     expect(umbrella.exports['./model/headless']).toBeDefined();
     expect(umbrella.exports['./shared/headless']).toBeDefined();
+    expect(
+      readFileSync(
+        join(
+          ROOT,
+          'packages/affine/all',
+          umbrella.exports['./gfx/mindmap/interchange']!
+        ),
+        'utf8'
+      )
+    ).toContain("export * from '@labre/affine-gfx-mindmap/interchange';");
   });
 
   test.each(ENTRIES)(

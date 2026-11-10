@@ -83,7 +83,7 @@ C4 first (the PR that carries this ADR), then BPMN, EDGY, the DDD boards,
 Cynefin/estuarine, Wardley's composites (market, pipeline, Porter) and UML.
 A framework without an `./interchange` entry gains one for its toolbox. The
 mind map is out of scope: its layout needs text measurement, which a server
-does not have; it gets its own decision.
+does not have; it gets its own decision (amendment of 2026-11-10 below).
 
 ## Consequences
 
@@ -143,3 +143,48 @@ asks for.
 
 The Context Map ships its toolbox with this amendment; the Core Domain Chart
 and Event Storming follow on the same entry.
+
+## Amended 2026-11-10 — the mind map: a builder with the measure injected
+
+**Not a red zone for the stored format** (no schema, no stored field, no enum
+value: the builder writes the props the toolbar's mind map already writes), but
+it **widens the allow-list** of `interchange-headless.unit.spec.ts`, which
+asks for the maintainer's approval like the amendment above. Issue #662.
+
+The mind map was left out above because its layout needs text measurement. It
+is the last canvas tool a host with no editor cannot place (the Labre
+connector's frameworks bench refused it every time), and the measurement is the
+only part a server lacks: `layout` (`gfx/mindmap/src/view/layout.ts`) is pure
+geometry over the nodes' sizes, and only `fitContent` reads a canvas and the
+DOM.
+
+Decided:
+
+1. `@labre/affine-gfx-mindmap/interchange` (core:
+   `@labre/affine/gfx/mindmap/interchange`) exports `buildMindmap(tree,
+options)`. It returns one `shape` per node, in tree order, with the style
+   getter's node props (the root style for the root, `getNodeStyle` by path
+   below it), sized as `fitContent` sizes it, placed by the view's own
+   `layout`, then the `mindmap` element whose `children` name the nodes by
+   local id. Same contract as a toolbox item and a reader: members before the
+   composite, local ids, nothing persisted.
+2. **The text measure is the caller's, and required** (`MindmapTextMeasure`:
+   the width of a line and the height of a line, in the style's font). The
+   library ships no font metrics; an estimate here would store sizes that are
+   wrong without saying so. A server passes an advance-width table of the
+   style's font; the integration spec passes the browser's own measure and
+   holds the result to the editor's layout node by node
+   (`mindmap-headless.spec.ts`).
+3. `layout.ts` is typed against a structural node (`LayoutNode`), which the
+   editor's `MindmapNode` satisfies; its algorithm is unchanged.
+4. `style.ts` loads no lodash (`applyNodeStyle` moves to `apply-style.ts`,
+   still on the model index), and joins `@labre/affine-model/headless`. Its
+   colours come from the theme tokens, so `@toeverything/theme` (data only,
+   aliased by a host to its own theme) joins `zod` in the allow-list: a
+   builder must store the colours the toolbar stores.
+5. `materializeInterchangeImport` rewrites a `mindmap`'s `children` keys and
+   their `parent` onto the minted ids, as it rewrites a group's `children`.
+
+Not done: the branches are local connectors the view draws from the tree, so a
+host that previews a built map draws them itself; collapsed nodes; reading
+`.mm` or `.opml` with no editor (a reader could sit on this builder).

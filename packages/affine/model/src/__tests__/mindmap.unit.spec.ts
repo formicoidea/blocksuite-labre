@@ -3,8 +3,8 @@ import { describe, expect, test, vi } from 'vitest';
 import { MindmapStyle } from '../consts/mindmap.js';
 import type { MindmapNode } from '../elements/mindmap/mindmap.js';
 import { MindmapElementModel } from '../elements/mindmap/mindmap.js';
+import { applyNodeStyle } from '../elements/mindmap/apply-style.js';
 import {
-  applyNodeStyle,
   MINDMAP_NODE_MAX_WIDTH,
   mindmapStyleGetters,
 } from '../elements/mindmap/style.js';

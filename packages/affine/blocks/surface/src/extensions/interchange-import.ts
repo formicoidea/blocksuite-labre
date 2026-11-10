@@ -148,6 +148,25 @@ export function materializeInterchangeImport(
         ])
       );
     }
+    // A mind map names its nodes, and each node its parent, the same way
+    // (`@labre/affine-gfx-mindmap/interchange`, ADR 0045 amendment of
+    // 2026-11-10); its nodes come before it, as a group's members do.
+    if (
+      written.type === 'mindmap' &&
+      children !== null &&
+      typeof children === 'object'
+    ) {
+      written.children = Object.fromEntries(
+        Object.entries(children as Record<string, Record<string, unknown>>).map(
+          ([node, detail]) => [
+            resolve(node) ?? node,
+            typeof detail.parent === 'string'
+              ? { ...detail, parent: resolve(detail.parent) ?? detail.parent }
+              : detail,
+          ]
+        )
+      );
+    }
 
     const id = surface.addElement(written);
     const carried = props.interchange as

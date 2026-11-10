@@ -251,6 +251,7 @@
     "./gfx/mindmap": "./src/gfx/mindmap/index.ts",
     "./gfx/mindmap/store": "./src/gfx/mindmap/store.ts",
     "./gfx/mindmap/view": "./src/gfx/mindmap/view.ts",
+    "./gfx/mindmap/interchange": "./src/gfx/mindmap/interchange.ts",
     "./gfx/connector": "./src/gfx/connector/index.ts",
     "./gfx/connector/store": "./src/gfx/connector/store.ts",
     "./gfx/connector/view": "./src/gfx/connector/view.ts",
