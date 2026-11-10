@@ -107,9 +107,14 @@ export class ShadowlessElement extends LitElement {
         SE.onDisconnectedMap.set(SE, new WeakMap());
       }
       SE.onDisconnectedMap.get(SE)?.set(parentRoot, () => {
-        parentRoot.adoptedStyleSheets = parentRoot.adoptedStyleSheets.filter(
-          sheet => !sheets.includes(sheet)
-        );
+        // One occurrence per sheet: a class sharing a `css` result with this
+        // one adopted its own copy, and keeps it.
+        const adopted = [...parentRoot.adoptedStyleSheets];
+        sheets.forEach(sheet => {
+          const at = adopted.indexOf(sheet);
+          if (at >= 0) adopted.splice(at, 1);
+        });
+        parentRoot.adoptedStyleSheets = adopted;
       });
     } else if (styleInjectedCount === 0 && insideShadowRoot) {
       const elementStyles = SE.elementStyles;

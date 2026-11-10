@@ -163,6 +163,46 @@ describe('the canvas viewer', () => {
     );
   });
 
+  test('a synced doc of a named page settles instead of loading forever', async () => {
+    const { store, doc } = openHeadless(null);
+    store.transact(() => {
+      const page = store.addBlock('affine:page', { title: new Text('A map') });
+      store.addBlock('affine:surface', {}, page);
+      store.addBlock(
+        'affine:embed-synced-doc',
+        { id: 'synced', pageId: 'p-2', xywh: '[0,0,400,200]' },
+        page
+      );
+    });
+    const { container } = await mount(
+      { docTitles: { 'p-2': 'Next page' } },
+      Y.encodeStateAsUpdate(doc)
+    );
+    const card = container.querySelector('affine-embed-synced-doc-block') as
+      | (HTMLElement & { syncedDoc?: { root?: unknown } | null })
+      | null;
+    expect(card).not.toBeNull();
+    // A root to render, so the card is not waiting for one that never comes.
+    expect(card?.syncedDoc?.root).toBeTruthy();
+  });
+
+  test('a click on a note covering a card follows nothing', async () => {
+    // The elements under the pointer run from the note's own text down to a
+    // bookmark the note hides: only the top block counts.
+    const onLinkClick = vi.fn();
+    const { container } = await mount({ onLinkClick });
+    const card = container.querySelector('[data-block-id="bm-1"]')!;
+    const text = container.querySelector('affine-paragraph')!;
+    // happy-dom has no hit testing: the stack a browser would return.
+    Object.defineProperty(document, 'elementsFromPoint', {
+      configurable: true,
+      value: () => [text, card],
+    });
+    container.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(onLinkClick).not.toHaveBeenCalled();
+    Reflect.deleteProperty(document, 'elementsFromPoint');
+  });
+
   test('refuses a state with no page', () => {
     const host = document.createElement('div');
     expect(() => mountCanvasViewer(host, new Uint8Array([0, 0]))).toThrow();

@@ -23,7 +23,12 @@ import {
 import { DisposableGroup } from '@labre/global/disposable';
 import { Bound } from '@labre/global/gfx';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
-import { type ExtensionType, type Store, WorkspaceImpl } from '@labre/store';
+import {
+  type ExtensionType,
+  type Store,
+  Text,
+  WorkspaceImpl,
+} from '@labre/store';
 import type { BlobSource } from '@labre/sync';
 import { combinedLightCssVariables } from '@toeverything/theme';
 import {
@@ -274,9 +279,16 @@ export function mountCanvasViewer(
     getInternalStoreExtensions()
   ).get('store');
   workspace.meta.initialize();
-  Object.entries(options.docTitles ?? {}).forEach(([id, title]) =>
-    workspace.meta.addDocMeta({ id, title, tags: [], createDate: 0 })
-  );
+  Object.entries(options.docTitles ?? {}).forEach(([id, title]) => {
+    workspace.meta.addDocMeta({ id, title, tags: [], createDate: 0 });
+    // The viewer knows a listed page by its title only. Without a root, a
+    // synced-doc card of it waits forever for a page block that never comes;
+    // an empty page with the title lets it settle.
+    const page = workspace.getDoc(id)?.getStore();
+    page?.load(() => {
+      page.addBlock('affine:page', { title: new Text(title) });
+    });
+  });
   const doc = workspace.createDoc('canvas-viewer');
   Y.applyUpdate(doc.spaceDoc, state);
   const store = doc.getStore({ readonly: true });
@@ -463,10 +475,17 @@ export function mountCanvasViewer(
     if (travelled > CLICK_SLOP_PX) return;
     // A note on the canvas lies under its mask (`.affine-note-mask`), so the
     // click's own path never holds the link: the elements under the pointer do.
-    const under = document
-      .elementsFromPoint?.(e.clientX, e.clientY)
-      .filter(element => container.contains(element));
-    const link = linkOf([...e.composedPath(), ...(under ?? [])], id => {
+    // Only down to the first block under the pointer: a card hidden under
+    // another note is not what the reader clicked.
+    const root = container.getRootNode() as Document | ShadowRoot;
+    const stack = (root.elementsFromPoint?.(e.clientX, e.clientY) ?? []).filter(
+      element => container.contains(element)
+    );
+    const hit = stack.findIndex(
+      element => element instanceof HTMLElement && element.dataset.blockId
+    );
+    const under = hit < 0 ? stack : stack.slice(0, hit + 1);
+    const link = linkOf([...e.composedPath(), ...under], id => {
       const model = store.getBlock(id)?.model;
       return model ? { flavour: model.flavour, props: model.props } : undefined;
     });
