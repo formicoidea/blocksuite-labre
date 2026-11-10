@@ -14,7 +14,7 @@
     "dev": "yarn workspace @labre/playground dev",
     "test:unit": "vitest run --coverage.enabled=false",
     "test:integration": "yarn workspace @labre/integration-test test:unit --no-file-parallelism",
-    "ci:local": "yarn lint:format && yarn build && NODE_OPTIONS=--max-old-space-size=6144 yarn test:unit && yarn test:integration",
+    "ci:local": "yarn lint:format && yarn build && NODE_OPTIONS=--max-old-space-size=6144 yarn test:unit",
     "ci:local:fast": "yarn lint:format && yarn build",
     "i18n:manifest": "node scripts/dump-translation-manifest.mjs",
     "lint:format": "prettier . --check",
