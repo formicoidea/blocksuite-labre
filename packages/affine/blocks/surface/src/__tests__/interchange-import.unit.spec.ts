@@ -320,6 +320,19 @@ describe('materializing an import', () => {
     });
   });
 
+  it('passes a mind map entry that is not a record through, without throwing', () => {
+    // A host's own mistake: thrown here, the nodes already written above it
+    // would stay on the canvas without their mind map.
+    const { std, surface } = stubEditor();
+
+    materializeInterchangeImport(std, 'labre:toolbox', [
+      { type: 'shape', id: 'm:n0' },
+      { type: 'mindmap', id: 'm', children: { 'm:n0': null } },
+    ]);
+
+    expect(surface.added).toHaveLength(2);
+  });
+
   it('leaves an end it cannot resolve exactly as the file wrote it', () => {
     // An unresolvable name a reader can go and look up in the source file beats
     // one this function quietly invented: the connector routes to an empty path

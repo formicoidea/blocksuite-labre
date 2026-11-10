@@ -179,6 +179,10 @@ describe('buildMindmap', () => {
     expect(() => buildMindmap(wide, { measure: mono })).toThrow(
       MindmapTooLargeError
     );
+    // One word of 100k characters would wrap in quadratic time.
+    expect(() =>
+      buildMindmap({ text: 'x'.repeat(100_000) }, { measure: mono })
+    ).toThrow(MindmapTooLargeError);
   });
 });
 

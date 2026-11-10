@@ -160,6 +160,8 @@ export function materializeInterchangeImport(
         Object.entries(children as Record<string, Record<string, unknown>>).map(
           ([node, detail]) => [
             resolve(node) ?? node,
+            detail !== null &&
+            typeof detail === 'object' &&
             typeof detail.parent === 'string'
               ? { ...detail, parent: resolve(detail.parent) ?? detail.parent }
               : detail,

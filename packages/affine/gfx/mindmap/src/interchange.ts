@@ -79,12 +79,17 @@ export interface BuildMindmapOptions {
   local?: string;
 }
 
-/** Nodes in one map: a guard against a runaway tree, not a design limit. */
+/** Nodes in one map, and characters in one node: guards against a runaway
+ *  tree (a server builds what a model sent), not design limits. Wrapping is
+ *  quadratic in a node's longest word, so the text is bounded too. */
 export const MINDMAP_MAX_NODES = 500;
+export const MINDMAP_MAX_TEXT = 2_000;
 
 export class MindmapTooLargeError extends Error {
   constructor() {
-    super(`a mind map holds at most ${MINDMAP_MAX_NODES} nodes`);
+    super(
+      `a mind map holds at most ${MINDMAP_MAX_NODES} nodes of ${MINDMAP_MAX_TEXT} characters`
+    );
     this.name = 'MindmapTooLargeError';
   }
 }
@@ -132,8 +137,15 @@ export function wrapMindmapText(
       line = '';
       let rest = word;
       while (width(rest) > maxWidth && rest.length > 1) {
-        let cut = rest.length - 1;
-        while (cut > 1 && width(rest.slice(0, cut)) > maxWidth) cut--;
+        // Forward from one character: a line costs its own width, not the
+        // word's length (a long word would otherwise wrap in quadratic time).
+        let cut = 1;
+        while (
+          cut < rest.length - 1 &&
+          width(rest.slice(0, cut + 1)) <= maxWidth
+        ) {
+          cut++;
+        }
         lines.push(rest.slice(0, cut));
         rest = rest.slice(cut);
       }
@@ -162,7 +174,10 @@ function nodeSize(text: string, style: NodeStyle, measure: MindmapTextMeasure) {
     style.maxWidth || Number.MAX_SAFE_INTEGER,
     measure
   );
-  const widest = Math.max(0, ...lines.map(l => measure.width(l, font)));
+  const widest = lines.reduce(
+    (max, line) => Math.max(max, measure.width(line, font)),
+    0
+  );
   const lineHeight = measure.lineHeight(font);
   return {
     w: widest + horizontalPadding * 2,
@@ -233,7 +248,12 @@ export function buildMindmap(
     path: number[],
     parent?: BuiltNode
   ): BuiltNode => {
-    if (nodes.length >= MINDMAP_MAX_NODES) throw new MindmapTooLargeError();
+    if (
+      nodes.length >= MINDMAP_MAX_NODES ||
+      input.text.length > MINDMAP_MAX_TEXT
+    ) {
+      throw new MindmapTooLargeError();
+    }
     const nodeStyle = parent
       ? getter.getNodeStyle(null, path).node
       : getter.root;
