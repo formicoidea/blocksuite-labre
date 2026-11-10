@@ -51,18 +51,29 @@ Rewrite those to your routes, or pass your own base with
 
 **The canvas.** `affine:surface` and what sits on it print nothing: a page shows
 its page view. An `affine:surface-ref` prints
-`<div class="affine-surface-ref" data-labre-surface-ref="<id>">` with its caption
-inside, for you to mount a viewer on or leave as is. The viewer is
+`<div class="affine-surface-ref" data-labre-surface-ref="<id>" data-labre-surface-ref-type="frame|group">`
+holding `span.affine-surface-ref-title` (the frame's or group's title, read from
+the page's own surface) and `span.affine-surface-ref-caption`, each only when
+there is text, for you to mount a viewer on or leave as is. The viewer is
 `mountCanvasViewer(host, state, options)` from `@labre/affine/canvas-viewer`
 (ADR 0050): load it with a dynamic `import()` on a page that holds a canvas, it
 weighs the whole view graph.
+
+**Callouts and bookmarks.** A callout prints `div.affine-callout[data-emoji]`
+with `span.affine-callout-emoji` then `div.affine-callout-body` (its own line as
+a `<p>`, then its child blocks). A bookmark prints `a.affine-bookmark[rel=noopener]`
+from the metadata stored with the link, never fetched: `span.affine-bookmark-title`
+(the URL when no title was stored), `span.affine-bookmark-description` and
+`span.affine-bookmark-host`, the favicon URL on `data-icon` when there is one.
 
 **Formulas.** KaTeX prints HTML and MathML. Load `katex/dist/katex.min.css` on the
 page, or the formula shows twice.
 
 **Styles.** The classes are hooks with no stylesheet: `affine-callout`,
-`affine-callout-icon`, `affine-latex`, `affine-attachment`, `affine-surface-ref`,
-`affine-edgeless-text`, `affine-embed-html`, `affine-unknown-block`.
+`affine-callout-emoji`, `affine-callout-body`, `affine-bookmark` (and its `-title`,
+`-description`, `-host`), `affine-latex`, `affine-attachment`, `affine-surface-ref`
+(and its `-title`, `-caption`), `affine-edgeless-text`, `affine-embed-html`,
+`affine-unknown-block`.
 
 ## What never reaches the page
 
