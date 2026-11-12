@@ -339,7 +339,10 @@ export const EMOJI_GROUP_FLAGS: ChromeWording = [
   'Flags',
 ];
 
-/** Keyed by emoji-mart's own category id (`people`, `nature`…). */
+/**
+ * Keyed by emoji-mart's own category id (`people`, `nature`…), in emoji-mart's
+ * order: the emoji panel hands these keys to emoji-mart as its category list.
+ */
 export const EMOJI_GROUP_WORDINGS: Readonly<Record<string, ChromeWording>> = {
   people: EMOJI_GROUP_PEOPLE,
   nature: EMOJI_GROUP_NATURE,

@@ -8,7 +8,11 @@
  * - emoji-mart's own words (search, categories, skin tones) left in English
  *   instead of read through the `com.labre.*` wordings and the host's
  *   `translation`;
- * - `rememberRecent: false` still writing the picks to `localStorage`;
+ * - `rememberRecent: false` still writing the picks to `localStorage`, or
+ *   taking "Frequently used" away from every picker opened after it until the
+ *   page reloads (emoji-mart keeps its categories at module level and spliced
+ *   the empty `frequent` one out of them: a host's `openIconPicker` with
+ *   `rememberRecent: false` then cost every callout its row);
  * - emoji-mart, built imperatively, left behind with its document listeners
  *   when the panel goes (the callout's emoji menu once leaked one per opening);
  * - the one-tab picker (the callout's) still drawing a tab bar or a frame
@@ -248,6 +252,18 @@ describe('affine-emoji-picker-panel', () => {
     );
     root.querySelector<HTMLElement>('.category button[aria-label]')!.click();
     expect(localStorage.getItem('emoji-mart.frequently')).toBeNull();
+    document.body.innerHTML = '';
+  });
+
+  test('a picker without recents leaves "Frequently used" to the next one', async () => {
+    localStorage.removeItem('emoji-mart.frequently');
+    const without = await emojiMart(await openPanel({ rememberRecent: false }));
+    expect(without.querySelector('.category[data-id="frequent"]')).toBeNull();
+    document.body.innerHTML = '';
+
+    const next = await emojiMart(await openPanel({ rememberRecent: true }));
+
+    expect(next.querySelector('.category[data-id="frequent"]')).not.toBeNull();
     document.body.innerHTML = '';
   });
 

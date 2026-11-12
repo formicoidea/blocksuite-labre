@@ -27,6 +27,13 @@ import {
   ICON_PICKER_NO_EMOJI_FOUND,
 } from '../translations.js';
 
+/**
+ * emoji-mart's category ids in its own order, which `EMOJI_GROUP_WORDINGS`
+ * declares them in, "Frequently used" first.
+ */
+const FREQUENT_CATEGORY = 'frequent';
+const EMOJI_CATEGORIES = Object.keys(EMOJI_GROUP_WORDINGS);
+
 /** The part of emoji-mart's selection payload the panel reads. */
 interface EmojiMartSelection {
   native: string;
@@ -160,6 +167,16 @@ export class AffineEmojiPickerPanel extends WithDisposable(LitElement) {
       i18n: this._i18n(),
       theme: this._theme(),
       autoFocus: true,
+      // Always named, never left to emoji-mart's default. Its categories live
+      // at module level, shared by every picker of the page, and its init
+      // splices an empty `frequent` out of that shared list unless
+      // `categories` is given, in which case it works on a filtered copy.
+      // Without this, one `rememberRecent: false` opening (`maxFrequentRows:
+      // 0` empties `frequent`) took the row away from every later picker,
+      // the callout's included, until the page reloaded.
+      categories: this.rememberRecent
+        ? [FREQUENT_CATEGORY, ...EMOJI_CATEGORIES]
+        : EMOJI_CATEGORIES,
       ...(this.rememberRecent ? {} : { maxFrequentRows: 0 }),
       onEmojiSelect: this._select,
     }) as unknown as HTMLElement;

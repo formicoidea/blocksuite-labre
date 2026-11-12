@@ -586,8 +586,8 @@ const KEPT_HITS: readonly { file: string; text: string }[] = [
   // `PHASE_LABELS` / `AXIS_LABELS` (`gfx/wardley/src/consts.ts`) — already
   // keyed at the declaration that DRAWS them: `background.ts` states every one
   // of these ten as the `fallback` of a `com.labre.wardley.*` key, and the
-  // bands and axes are painted from there. The same shape as `emoji-data.ts`
-  // above, and the reason P5 needs an entry here at all: the WORDING sits in a
+  // bands and axes are painted from there. The reason P5 needs an entry
+  // here at all: the WORDING sits in a
   // pure-data file that names no key, so the per-file seam gate cannot see
   // that the render site resolves it.
   ...[
