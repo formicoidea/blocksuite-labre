@@ -93,3 +93,41 @@ lacks without it being excluded, and when an exclusion is stale.
   only on a read-only store; if one shows editing chrome on a public page, it
   joins `READ_ONLY_EXCLUDED_EXTENSIONS` and the guard proves it paints no
   content.
+
+## Amendment 2026-11-12 — measured under the site's own policy; the frame's badge
+
+- `canvas-viewer-csp.spec.ts` runs under Labre Sites' policy as the site sends
+  it: `default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'`,
+  no `style-src-attr`, no `'wasm-unsafe-eval'`. It ran before with
+  `style-src-attr 'unsafe-inline'`, so it could not see an attribute report. It
+  waits until the shape is painted rather than a fixed delay, and its page holds
+  a frame with a shape, a linked-doc card, a note of formatted text and a note
+  shown in the page only.
+- Measured there, on the whole canvas and on the frozen frame alike: no
+  `<style>` element and no `style-src-elem` report from the library (emotion's
+  `<style>`, which 0050's amendment still listed, is gone: the viewer adopts
+  before emotion's first flush), one `style-src-attr` report per icon drawn,
+  and one `img-src` report. The spec fails on any other.
+  - The icons: `@blocksuite/icons` binds `user-select:none;flex-shrink:0;` and
+    its caller's declarations as a `style` string. The viewer's adopted sheet
+    carries them (`vertical-align: middle` for a page reference's icon, inline
+    in its text, now included); `font-size: inherit` is what an `svg` does
+    anyway, and the subpage icon's `margin-bottom: 0.1em` stays dropped.
+  - The image: `@atlaskit/pragmatic-drag-and-drop` preloads a 1×1 `data:` gif,
+    its native drag image, when `@labre/std`'s drag and drop module is
+    imported. Nothing is dragged on a read-only page. Removing it means
+    deferring that preload in `@labre/std` for the editor too; not done.
+- The 48 `style-src-attr` reports the site saw on a release candidate in a
+  frozen frame do not reproduce here. Every style the library writes on that
+  path goes through the CSSOM (`@labre/global/lit`'s `styleMap`, the viewer's
+  container), which no policy checks; an attribute set as a string, or a
+  cloned element carrying one, is what a policy reports.
+- A frozen frame with a title shows its title badge as the editor draws it,
+  above the frame's top edge: the view keeps a strip of the badge's height
+  (28px) above the frame, its `aspect-ratio` adds that strip in model units for
+  the current width, and is read again on each resize. The frame stays edge to
+  edge across the width. The guard spec names the frame-title widget among the
+  viewer's and the editing toolbars outside it.
+- `CommunityCanvasTextFonts` is re-exported from `@labre/affine/canvas-viewer`,
+  for a public page that serves the faces itself and needs that entry only.
+  The viewer registers no font list.

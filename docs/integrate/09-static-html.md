@@ -59,6 +59,35 @@ there is text, for you to mount a viewer on or leave as is. The viewer is
 (ADR 0050): load it with a dynamic `import()` on a page that holds a canvas, it
 weighs the whole view graph.
 
+**The viewer under a strict policy.** The viewer holds under a policy with no
+`'unsafe-inline'` style (attribute or element) and no `'wasm-unsafe-eval'`,
+such as `default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'`
+(ADR 0050, ADR 0051). You call nothing for it: importing
+`@labre/affine/canvas-viewer` calls `adoptShadowlessStyles()` (`@labre/affine/std`) and
+`adoptEmotionStyles()` (`@labre/affine/shared/styles`) while the modules
+evaluate, so the library's styles go to `document.adoptedStyleSheets` and no
+`<style>` is created, and the viewer highlights code with
+`CodeBlockConfig.engine: 'javascript'`, not WebAssembly. What the policy still
+needs from you: `script-src` for the viewer's own chunks (shiki loads each
+language with a dynamic `import()`), `style-src` for the CSS your bundler
+extracts from the `.css.ts` files, `font-src` for the faces you declare (the
+viewer registers no font list: the canvas paints with the faces the page has),
+and `img-src blob:` for the images `getBlob` returns. Two kinds of report
+remain, neither visible: one `style-src-attr` per icon (the `style` string
+`@blocksuite/icons` binds, whose declarations the viewer's sheet carries) and
+one `img-src` (the `data:` drag image `@atlaskit/pragmatic-drag-and-drop`
+preloads, never used on a read-only page). Those sheets are global to
+the document and come after its `<style>` and `<link>` in the cascade, with the
+library's selectors scoped to its own classes: import the viewer on a page that
+does not also run the editor, whose cascade order they would change.
+
+To mount the editor itself under such a policy, call the two functions at the
+top level of the module that imports the editor, before its first render, and
+register `CodeBlockConfigExtension({ engine: 'javascript' })` (`@labre/affine/blocks/code`).
+`adoptEmotionStyles()` called later still works, but emotion has then created
+its `<style>` once, which the policy reports. The editor keeps `<style>`
+elements as long as nothing calls them.
+
 **Callouts and bookmarks.** A callout prints `div.affine-callout[data-emoji]`
 with `span.affine-callout-emoji` then `div.affine-callout-body` (its own line as
 a `<p>`, then its child blocks). A bookmark prints `a.affine-bookmark[rel=noopener]`
