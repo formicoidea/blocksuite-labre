@@ -3,7 +3,6 @@ import { AffineEmojiPickerPanel } from './emoji-picker-panel.js';
 import { AffineIconPicker } from './icon-picker.js';
 
 export * from './affine-icon-picker-panel.js';
-export * from './emoji-data.js';
 export * from './emoji-picker-panel.js';
 export * from './icon-data.js';
 export * from './icon-picker.js';

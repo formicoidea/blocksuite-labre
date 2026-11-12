@@ -27,9 +27,10 @@ import { effects } from './effects';
  *
  * What lives here is what an EXISTING callout needs, the mirror of
  * `WardleyRenderViewExtension`:
- * - `effects()` whole: `affine-callout` paints the block, and
- *   `affine-emoji-menu` opens from a rendered callout's icon — both are
- *   render-side, so unlike the frameworks' this `effects()` is not tooling;
+ * - `effects()` whole: `affine-callout` paints the block, and the emoji
+ *   picker (`affine-icon-picker`, Emoji tab only) opens from a rendered
+ *   callout's icon — both are render-side, so unlike the frameworks' this
+ *   `effects()` is not tooling;
  * - the flavour and the block view, the lookup `lit-host` performs;
  * - the keymap: Enter and Backspace inside a callout edit stored content, they
  *   create nothing;

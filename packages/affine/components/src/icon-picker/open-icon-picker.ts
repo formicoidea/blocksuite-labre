@@ -12,7 +12,11 @@ export interface OpenIconPickerOptions {
   color?: string;
   /** `false` hides "Remove", for a host where an icon is mandatory. */
   showRemove?: boolean;
-  /** `false` keeps the picks out of `localStorage`. */
+  /**
+   * `false` keeps the picks out of `localStorage` and drops the Emoji tab's
+   * "Frequently used" row; the skin tone a user chooses there is still
+   * remembered by emoji-mart (`emoji-mart.skin`).
+   */
   rememberRecent?: boolean;
   /**
    * The host's translation service, the object it registers with
@@ -54,6 +58,9 @@ let opened: AbortController | null = null;
  *
  * The popup closes in every case. Escape is consumed while the picker is
  * open, so a host dialog behind it stays open.
+ *
+ * The Emoji tab is emoji-mart's picker, the one a callout opens; it is given
+ * its dataset and its words, so opening it makes no network request.
  *
  * The element must be registered first: call `effects()` of the same entry
  * once at boot, as for `edgeless-color-picker`. Nothing is defined at import.

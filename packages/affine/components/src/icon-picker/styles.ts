@@ -2,8 +2,8 @@ import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { css } from 'lit';
 
 /**
- * Layout shared by both panels: a search header, a scrollable grid of groups
- * and — for the emoji panel — a group navigation footer.
+ * The icon panel's layout: a search header and a scrollable grid of groups.
+ * The emoji panel is emoji-mart's own picker and brings its styles.
  */
 export const panelStyles = css`
   .picker-panel {
@@ -132,36 +132,5 @@ export const panelStyles = css`
     text-align: center;
     font-size: var(--affine-font-sm);
     color: ${unsafeCSSVarV2('text/secondary')};
-  }
-
-  .picker-footer {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    flex: none;
-    padding: 4px 12px 8px;
-    border-top: 1px solid ${unsafeCSSVarV2('layer/insideBorder/border')};
-  }
-
-  .picker-footer button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    padding: 0;
-    border: none;
-    border-radius: 4px;
-    background: transparent;
-    cursor: pointer;
-    font-size: 14px;
-    line-height: 1;
-    opacity: 0.6;
-  }
-
-  .picker-footer button[data-active='true'],
-  .picker-footer button:hover {
-    opacity: 1;
-    background: ${unsafeCSSVarV2('layer/background/hoverOverlay')};
   }
 `;
