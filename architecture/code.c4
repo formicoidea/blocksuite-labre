@@ -3266,7 +3266,7 @@ model {
       link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/all
       metadata {
         path 'packages/affine/all'
-        files '230'
+        files '231'
       }
       blocks = folder 'blocks/' {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/all/src/blocks
