@@ -109,6 +109,15 @@ describe('markdown export keeps the start number (#658)', () => {
     );
   });
 
+  test('the CommonMark cap: nine digits export, ten do not', async () => {
+    expect(await exportMarkdown(noteWith(numbered('aaa', 999_999_999)))).toBe(
+      '999999999. aaa\n'
+    );
+    expect(await exportMarkdown(noteWith(numbered('aaa', 1_234_567_890)))).toBe(
+      '1. aaa\n'
+    );
+  });
+
   test('export then import keeps the 3', async () => {
     const file = await exportMarkdown(continued());
     const imported = await new MarkdownAdapter(
@@ -141,8 +150,8 @@ describe('html export keeps the start number (#658)', () => {
     );
   });
 
-  test('a list starting at 1, with no order or a non-integer one has no start attribute', async () => {
-    for (const order of [1, null, 2.5]) {
+  test('a list at 1, without an order, with a non-integer one or past nine digits has no start attribute', async () => {
+    for (const order of [1, null, 2.5, 1_234_567_890]) {
       const file = await exportHtml(noteWith(numbered('aaa', order)));
       expect(file).toContain('<ol class="numbered-list"><li');
       expect(file).not.toContain('start=');
