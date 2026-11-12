@@ -1,51 +1,13 @@
 import type { BlockSnapshot, NodeProps } from '@labre/store';
 
+import { listStartNumber } from '../list-start-number.js';
+
 const LIST_FLAVOUR = 'affine:list';
 
-/** The largest list number CommonMark reads back: nine digits. */
-const MAX_LIST_NUMBER = 999_999_999;
-
 /**
- * How many items the list opened at `o` holds: `o` itself and the siblings
- * after it of the same list type, which the exports merge into that list.
- */
-function itemCount(o: NodeProps<BlockSnapshot>): number {
-  const siblings = o.parent?.node.children;
-  if (!siblings || o.index === null) return 1;
-  let count = 1;
-  for (let i = o.index + 1; i < siblings.length; i++) {
-    const sibling = siblings[i];
-    if (
-      sibling.flavour !== o.node.flavour ||
-      sibling.props.type !== o.node.props.type
-    ) {
-      break;
-    }
-    count++;
-  }
-  return count;
-}
-
-/**
- * The number a numbered list opened at `o` starts from on export, or
- * `undefined` for 1. Its first block's stored `order` (a list continuing
- * after a paragraph, or typed as `3.`), unless the list's LAST number would
- * pass nine digits: CommonMark reads no list number past nine digits, so the
- * Markdown export writes no start then, and the plain text numbers alike.
- * The same rule as the Markdown and HTML exports (#658, upstream
- * AFFiNE#15726).
- */
-function listStartNumber(o: NodeProps<BlockSnapshot>): number | undefined {
-  const { type, order } = o.node.props;
-  if (type !== 'numbered' || typeof order !== 'number') return undefined;
-  if (!Number.isInteger(order) || order <= 1) return undefined;
-  return order + itemCount(o) - 1 <= MAX_LIST_NUMBER ? order : undefined;
-}
-
-/**
- * The number of the numbered item at `o`, counted the way the Markdown export
- * numbers it: the start of its run of numbered siblings, plus its place in
- * that run (stored `order`s past the first item are not read).
+ * The number of the numbered item at `o`: the start of its run of numbered
+ * siblings (`listStartNumber` of the first), plus its place in that run;
+ * stored `order`s past the first item are not read.
  */
 function itemNumber(o: NodeProps<BlockSnapshot>): number {
   const siblings = o.parent?.node.children;
@@ -61,9 +23,7 @@ function itemNumber(o: NodeProps<BlockSnapshot>): number {
   const start =
     listStartNumber({
       node: siblings[first],
-      next: siblings[first + 1] ?? null,
       parent: o.parent,
-      prop: o.prop,
       index: first,
     }) ?? 1;
   return start + o.index - first;

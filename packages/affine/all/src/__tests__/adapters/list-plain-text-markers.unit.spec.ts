@@ -15,6 +15,12 @@
  *
  * Both paths share one helper (`listPlainTextPrefix`); this spec drives each
  * through its adapter, and asserts that non-list blocks are untouched.
+ *
+ * One exception, in the copy only: a selection inside one item copies that
+ * item alone, without children, and its marker would be pasted with the word
+ * into a field, an address bar or a terminal. A copy of one childless list
+ * item writes its text alone; several blocks, or an item with its sub-items,
+ * keep their markers.
  */
 import {
   MixTextAdapter,
@@ -159,6 +165,25 @@ describe('text/plain copy of a list', () => {
       ]),
     ]);
     expect(text).toBe('3. c\n   - x\n   [x] y');
+  });
+
+  test('a word copied inside one item is the word alone', async () => {
+    // What `sliceText` leaves of a selection inside one item: that item
+    // alone, its text cut to the selection, no children.
+    expect(await copied([item('bulleted', 'word')])).toBe('word');
+    expect(await copied([item('numbered', 'word', { order: 3 })])).toBe('word');
+    expect(await copied([item('todo', 'word', { checked: true })])).toBe(
+      'word'
+    );
+  });
+
+  test('several copied items keep their markers', async () => {
+    const text = await copied([
+      item('bulleted', 'a'),
+      item('numbered', 'b', { order: 2 }),
+    ]);
+    expect(text).toContain('- a');
+    expect(text).toContain('2. b');
   });
 
   test('a copied toggle writes a bullet', async () => {
