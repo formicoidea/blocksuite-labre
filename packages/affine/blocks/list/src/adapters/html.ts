@@ -4,6 +4,7 @@ import {
   BlockHtmlAdapterExtension,
   type BlockHtmlAdapterMatcher,
   HastUtils,
+  listStartNumber,
 } from '@labre/affine-shared/adapters';
 import type { DeltaInsert } from '@labre/store';
 import { nanoid } from '@labre/store';
@@ -136,6 +137,7 @@ export const listBlockHtmlAdapterMatcher: BlockHtmlAdapterMatcher = {
         // if true, add the list item to the list
       } else {
         // if false, create a new list
+        const start = listStartNumber(o);
         walkerContext.openNode(
           {
             type: 'element',
@@ -146,6 +148,7 @@ export const listBlockHtmlAdapterMatcher: BlockHtmlAdapterMatcher = {
                   ? 'list-style-type: none; padding-inline-start: 18px;'
                   : null,
               className: [o.node.props.type + '-list'],
+              ...(start === undefined ? {} : { start }),
             },
             children: [],
           },
