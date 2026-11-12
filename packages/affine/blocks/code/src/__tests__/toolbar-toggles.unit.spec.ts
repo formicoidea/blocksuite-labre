@@ -115,17 +115,19 @@ describe('code toolbar toggles, clicked more than once', () => {
  * the switch flipped the switch AND bubbled up to the row, which flipped the
  * setting a second time; and the switch took its state from the `checked`
  * ATTRIBUTE, which a checkbox stops reading once the user has clicked it, so
- * the drawn state drifted away from the model. Every way in — the switch's
- * checkbox, the words, the row itself — must flip the setting ONCE and leave
- * the switch drawn as the model says.
+ * the drawn state drifted away from the model. Both ways in — the switch's
+ * checkbox and the row — must flip the setting ONCE and leave the switch
+ * drawn as the model says.
  *
  * The rows are drawn by `renderGroups`, as the more menu draws them, and
  * drawn again on each `propsUpdated`, as the more menu does. happy-dom does
  * not pass a click on a `<label>` on to its checkbox, so a click on the
  * visible switch, which is what a mouse hits, is held in Chromium by
- * `integration-test/src/__tests__/page/code-toolbar-toggles.spec.ts`.
+ * `integration-test/src/__tests__/page/code-toolbar-toggles.spec.ts`, as is
+ * a real click on the row's words (the row's handler does not look at the
+ * target, so here the row stands for them).
  */
-type Path = 'checkbox' | 'words' | 'row';
+type Path = 'checkbox' | 'row';
 
 function mountToggles(store: Store, model: CodeBlockModel) {
   if (!customElements.get('toggle-switch')) {
@@ -162,7 +164,6 @@ async function click(row: HTMLElement, path: Path) {
   await toggle.updateComplete;
   const target = {
     checkbox: () => toggle.shadowRoot!.querySelector('input')!,
-    words: () => row.querySelector('.label') as HTMLElement,
     row: () => row,
   }[path]();
   target.click();
@@ -178,7 +179,7 @@ async function drawnState(row: HTMLElement) {
   };
 }
 
-const PATHS: Path[] = ['checkbox', 'words', 'row'];
+const PATHS: Path[] = ['checkbox', 'row'];
 
 describe('code toolbar toggles, clicked on the switch or on the row', () => {
   it.each(PATHS)('flips wrapping once per click on the %s', async path => {
@@ -219,13 +220,7 @@ describe('code toolbar toggles, clicked on the switch or on the row', () => {
     const { store, model } = aCodeBlock();
     const { container, dispose } = mountToggles(store, model);
     try {
-      const paths: Path[] = [
-        'checkbox',
-        'row',
-        'checkbox',
-        'words',
-        'checkbox',
-      ];
+      const paths: Path[] = ['checkbox', 'row', 'checkbox', 'row', 'checkbox'];
       let expected = false;
       for (const path of paths) {
         expected = !expected;
