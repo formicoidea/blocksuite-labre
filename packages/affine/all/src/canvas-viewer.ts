@@ -1,12 +1,18 @@
 import { CodeBlockConfigExtension } from '@labre/affine-block-code';
 import { FrameBlockComponent } from '@labre/affine-block-frame';
-import { getSurfaceBlock } from '@labre/affine-block-surface';
+import {
+  getSurfaceBlock,
+  getSurfaceComponent,
+} from '@labre/affine-block-surface';
 import {
   StoreExtensionManager,
   type ViewExtensionProvider,
 } from '@labre/affine-ext-loader';
 import { FrameBlockModel, GroupElementModel } from '@labre/affine-model';
-import { ViewportElementExtension } from '@labre/affine-shared/services';
+import {
+  translateKey,
+  ViewportElementExtension,
+} from '@labre/affine-shared/services';
 import { adoptEmotionStyles } from '@labre/affine-shared/styles';
 import { isSafeLinkUrl, normalizeUrl } from '@labre/affine-shared/utils';
 import { frameTitleStyleVars } from '@labre/affine-widget-frame-title';
@@ -335,7 +341,6 @@ export function mountCanvasViewer(
     box.cursor = 'pointer';
     container.tabIndex = 0;
     container.setAttribute('role', 'button');
-    if (focused?.title) container.setAttribute('aria-label', focused.title);
   }
   // The light theme, on this container only: the page around keeps its own.
   // Built from names already in the theme contract (`theme-imports.unit.spec`):
@@ -371,6 +376,18 @@ export function mountCanvasViewer(
           })
         );
       }
+      // The viewer loads no face: a public page declares its own, which may
+      // arrive after the canvas painted its text with a fallback. Paint
+      // again each time the page's faces finish loading, as the editor does
+      // once `FontLoaderService`'s are in.
+      const fonts = document.fonts as FontFaceSet | undefined;
+      if (fonts) {
+        const repaint = () => getSurfaceComponent(this.std)?.refresh();
+        fonts.addEventListener('loadingdone', repaint);
+        this._disposables.add(() =>
+          fonts.removeEventListener('loadingdone', repaint)
+        );
+      }
       if (focus?.kind !== 'frame') return;
       // The frame is the picture's edge: no border, as in the surface reference.
       const hideBorder = (view: unknown) => {
@@ -401,6 +418,22 @@ export function mountCanvasViewer(
   ];
   try {
     std = new BlockStdScope({ store, extensions });
+    if (!interactive && options.onExpand) {
+      // A button needs a name, the element's title or none: a host with no
+      // translation reads the English fallback.
+      const title = focused?.title.trim();
+      container.setAttribute(
+        'aria-label',
+        title
+          ? translateKey(
+              std,
+              'com.labre.canvas-viewer.open-titled',
+              'Open canvas: {{title}}',
+              { title }
+            )
+          : translateKey(std, 'com.labre.canvas-viewer.open', 'Open canvas')
+      );
+    }
     const editorHost = std.render();
     // A frozen view is one button: nothing inside it takes focus, keys or
     // pointers (the editor host would otherwise be a second tab stop, and

@@ -12,6 +12,10 @@
  *   page with a canvas;
  * - a mount, a zoom or a click that writes anything into the document shown
  *   (its Y.Doc's state vector moves);
+ * - text left in a fallback face when the page's own fonts arrive late, or a
+ *   listener on `document.fonts` left behind by `dispose`;
+ * - a frozen view whose button has no accessible name (a frame with no
+ *   title);
  * - zoom buttons, ctrl+wheel or a drag that move nothing;
  * - an inline page reference that does not reach `onOpenDoc`, or a refused
  *   scheme that navigates;
@@ -249,6 +253,35 @@ describe('the canvas viewer', () => {
     expect(Y.encodeStateVector(spaceDoc)).toEqual(Y.encodeStateVector(shown));
   });
 
+  test("paints again when the page's fonts finish loading, until disposed", async () => {
+    // happy-dom has no font set to fire: a stand-in for `document.fonts`.
+    const fonts = new EventTarget();
+    Object.defineProperty(document, 'fonts', {
+      value: fonts,
+      configurable: true,
+    });
+    try {
+      const { viewer, editorHost } = await mount();
+      const { getSurfaceComponent } = await import(
+        '@labre/affine-block-surface'
+      );
+      const surface = getSurfaceComponent(
+        editorHost.std as unknown as Parameters<typeof getSurfaceComponent>[0]
+      );
+      if (!surface) throw new Error('no surface mounted');
+      const refresh = vi.spyOn(surface, 'refresh');
+
+      fonts.dispatchEvent(new Event('loadingdone'));
+      expect(refresh).toHaveBeenCalledTimes(1);
+
+      viewer.dispose();
+      fonts.dispatchEvent(new Event('loadingdone'));
+      expect(refresh).toHaveBeenCalledTimes(1);
+    } finally {
+      delete (document as unknown as { fonts?: unknown }).fonts;
+    }
+  });
+
   test('refuses a state with no page', () => {
     const host = document.createElement('div');
     expect(() => mountCanvasViewer(host, new Uint8Array([0, 0]))).toThrow();
@@ -448,9 +481,29 @@ describe('the canvas viewer on one frame', () => {
     const clickThenEnter = 2;
     expect(onExpand).toHaveBeenCalledTimes(clickThenEnter);
     expect(container.getAttribute('role')).toBe('button');
-    expect(container.getAttribute('aria-label')).toBe('The map');
+    expect(container.getAttribute('aria-label')).toBe('Open canvas: The map');
     // One button: nothing inside it takes focus or keys.
     expect((editorHost as HTMLElement & { inert: boolean }).inert).toBe(true);
+  });
+
+  test('a frozen frame with no title still names its button', async () => {
+    const { store, doc } = openHeadless(null);
+    store.transact(() => {
+      const page = store.addBlock('affine:page', { title: new Text('A page') });
+      const surface = store.addBlock('affine:surface', {}, page);
+      store.addBlock(
+        'affine:frame',
+        { id: 'untitled', title: new Text(''), xywh: FRAME },
+        surface
+      );
+    });
+    const { container } = await mount(
+      { focus: { kind: 'frame', id: 'untitled' }, onExpand: () => {} },
+      Y.encodeStateAsUpdate(doc)
+    );
+    // No host translation: the English fallback of its `com.labre.*` key.
+    expect(container.getAttribute('role')).toBe('button');
+    expect(container.getAttribute('aria-label')).toBe('Open canvas');
   });
 
   test('interactive on demand: it fills the host and zooms', async () => {
