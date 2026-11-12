@@ -100,6 +100,14 @@ export default defineConfig(({ mode }) => {
         input: {
           main: resolve(__dirname, 'index.html'),
           'examples/inline': resolve(__dirname, 'examples/inline/index.html'),
+          'examples/canvas-viewer': resolve(
+            __dirname,
+            'examples/canvas-viewer/index.html'
+          ),
+          'examples/canvas-viewer/strict': resolve(
+            __dirname,
+            'examples/canvas-viewer/strict.html'
+          ),
         },
         treeshake: true,
         output: {
