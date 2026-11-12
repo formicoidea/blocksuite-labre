@@ -13,6 +13,16 @@ export interface CodeBlockConfig {
    * @default true
    */
   showLineNumbers?: boolean;
+
+  /**
+   * The regex engine of the highlighter. `oniguruma` is WebAssembly, which a
+   * Content-Security-Policy without `'wasm-unsafe-eval'` blocks; `javascript`
+   * is shiki's pure-JS engine, loaded only when asked for, which skips the few
+   * patterns it cannot run. The canvas viewer of a public page asks for it
+   * (ADR 0050).
+   * @default 'oniguruma'
+   */
+  engine?: 'oniguruma' | 'javascript';
 }
 
 export const CodeBlockConfigExtension =

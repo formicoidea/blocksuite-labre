@@ -1,22 +1,36 @@
+// First, so its top level runs before any block module evaluates.
+import { adoptViewerPageStyles } from './canvas-viewer-styles.js';
+import { CodeBlockConfigExtension } from '@labre/affine-block-code';
+import { FrameBlockComponent } from '@labre/affine-block-frame';
+import {
+  getSurfaceBlock,
+  getSurfaceComponent,
+} from '@labre/affine-block-surface';
 import {
   StoreExtensionManager,
-  ViewExtensionManager,
+  type ViewExtensionProvider,
 } from '@labre/affine-ext-loader';
-import { panByWheel, pinchStep, zoomAtPointer } from '@labre/affine-block-root';
-import { FrameBlockComponent } from '@labre/affine-block-frame';
-import { getSurfaceBlock } from '@labre/affine-block-surface';
 import { FrameBlockModel, GroupElementModel } from '@labre/affine-model';
-import { ViewportElementExtension } from '@labre/affine-shared/services';
 import {
-  isSafeLinkUrl,
-  isTouchPadPinchEvent,
-  normalizeUrl,
-} from '@labre/affine-shared/utils';
-import { BlockStdScope, LifeCycleWatcher } from '@labre/std';
+  CHROME_DELETED_DOC,
+  LINKED_DOC_DELETED,
+  translateKey,
+  TranslationProvider,
+  type TranslationService,
+  ViewportElementExtension,
+} from '@labre/affine-shared/services';
+import { isSafeLinkUrl, normalizeUrl } from '@labre/affine-shared/utils';
+import { frameTitleStyleVars } from '@labre/affine-widget-frame-title';
 import { DisposableGroup } from '@labre/global/disposable';
 import { Bound } from '@labre/global/gfx';
+import { BlockStdScope, LifeCycleWatcher } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
-import { type ExtensionType, type Store, WorkspaceImpl } from '@labre/store';
+import {
+  type ExtensionType,
+  type Store,
+  Text,
+  WorkspaceImpl,
+} from '@labre/store';
 import type { BlobSource } from '@labre/sync';
 import { combinedLightCssVariables } from '@toeverything/theme';
 import {
@@ -27,34 +41,51 @@ import {
 import * as Y from 'yjs';
 
 import { getInternalStoreExtensions } from './extensions/store.js';
-import { getInternalViewExtensions } from './extensions/view.js';
+import { getReadOnlyViewExtensions } from './extensions/view.js';
 
 /**
- * `@labre/affine/canvas-viewer` — a read-only canvas a host mounts from a
- * stored Y.Doc state, with no editor around it (ADR 0050). Labre Sites mounts
- * it as the client-side island of a published canvas page.
+ * `@labre/affine/canvas-viewer` — a published canvas, read-only, on a host's
+ * public page (Labre Sites mounts it as the island of a canvas page or of a
+ * frame inserted in a page).
  *
- * It is the `preview-edgeless` scope the surface reference and the frame panel
- * already draw, plus one runtime extension that gives the picture back its
- * hands: pan (drag, wheel, two fingers), zoom (ctrl+wheel, trackpad pinch, two
- * fingers, the controller's buttons) and a click on a link. Nothing edits: the
- * store is opened `readonly`, and every pointer, wheel and click event stops
- * on the viewer's own container, in capture, before the blocks see it.
+ * It is the edgeless editor itself, mounted on a read-only store (ADR 0051):
+ * the view registry the editor is built from, plus what the host adds for its
+ * own editor (each framework bundle), minus the tooling listed beside the
+ * registry in `READ_ONLY_EXCLUDED_VIEW_EXTENSIONS`. It holds no rendering of
+ * its own: a block or a notation the editor paints, it paints, and a change to
+ * the editor reaches it without touching it. On a read-only store the editor
+ * takes the pan tool, so a drag, the wheel, two fingers and the pinch move the
+ * canvas as they do in the editor.
  *
- * **Cost.** It imports the whole view graph, as the ADR measured: a host loads
- * this entry with a dynamic `import()` on a page that holds a canvas. Making it
- * lighter means splitting `getInternalViewExtensions`, a separate decision.
+ * What is the viewer's: the host's integration (links, the frozen view of a
+ * frame, framing, the light theme) and holding under a public page's strict
+ * Content-Security-Policy (adopted style sheets, no WebAssembly).
+ *
+ * **Cost.** It imports the whole view graph: a host loads this entry with a
+ * dynamic `import()` on a page that holds a canvas.
  */
 
 export type CanvasViewerOptions = {
   /**
-   * The reader clicked something linked to a page of the workspace: an inline
-   * page reference, a linked or synced doc card. Without it, nothing happens.
+   * What the host adds to the registry for its own editor: each framework
+   * bundle's view extensions (`descriptor.extensions[].viewExtension`), the
+   * database editing chrome. Without them, a framework's notation is not
+   * painted: the published core leaves the frameworks to their bundles.
+   */
+  viewExtensions?: readonly (typeof ViewExtensionProvider)[];
+  /**
+   * The reader clicked something linked to a page of the workspace that
+   * `docTitles` names: an inline page reference, a linked or synced doc card.
+   * A page `docTitles` leaves out is never opened. Without it, nothing
+   * happens. The id is whatever the document stores: treat it as untrusted
+   * input.
    */
   onOpenDoc?: (docId: string) => void;
   /**
    * The reader clicked an external link (an inline link, a bookmark, an embed
-   * card); the URL has passed `isSafeLinkUrl`. Without it, the page navigates.
+   * card), with the main or the middle button; the URL has passed
+   * `isSafeLinkUrl`. Without it, the page navigates, or a middle click opens
+   * the link in a new tab (`noopener`).
    */
   onLinkClick?: (url: string) => void;
   /**
@@ -66,7 +97,8 @@ export type CanvasViewerOptions = {
    * Shows one frame or group, as the surface reference block shows it in a
    * page: the view takes the element's proportions (`aspect-ratio`, height
    * `auto`: give the host a width only) and frames its bounds, a frame edge to
-   * edge with its border hidden, a group with a 20px margin. Throws when the
+   * edge with its border hidden and, when it has a title, its title badge
+   * above it as the editor draws it, a group with a 20px margin. Throws when the
    * state holds no element of that kind under that id.
    */
   focus?: CanvasViewerFocus;
@@ -80,9 +112,27 @@ export type CanvasViewerOptions = {
   interactive?: boolean;
   /** A frozen view was clicked, or activated from the keyboard. */
   onExpand?: () => void;
+  /**
+   * The pages the reader may see, by id, with their titles, as a page
+   * reference and a linked or synced doc card display them. A page left out
+   * (not shared, not public, or deleted: the viewer cannot tell) is named
+   * "Access denied" (`com.labre.canvas-viewer.access-denied`) wherever the
+   * editor would say it is deleted, a synced doc of it shows no content, and
+   * a click on it opens nothing.
+   */
+  docTitles?: Readonly<Record<string, string>>;
 };
 
 export type CanvasViewerFocus = { kind: 'frame' | 'group'; id: string };
+
+/**
+ * The canvas text faces, one per family, weight and style, as the editor
+ * offers them; also at `@labre/affine/shared/services`. The viewer loads no
+ * face itself: a public page that serves these files itself declares them,
+ * with its own URLs, beside the viewer. Re-exported here so that page needs
+ * this entry only (Labre Sites reads it).
+ */
+export { CommunityCanvasTextFonts } from '@labre/affine-shared/services';
 
 export type CanvasViewer = {
   zoomIn(): void;
@@ -102,8 +152,42 @@ const ZOOM_STEP_RATIO = 1.25;
 /** Past this distance, in CSS pixels, a press is a pan, not a click. */
 const CLICK_SLOP_PX = 4;
 
+/**
+ * The strip a frame's title badge takes above its top edge, in screen pixels:
+ * the editor draws the badge there (`frame-title.ts`, a frame not nested in
+ * another), so a focused frame keeps that strip in view and shows its badge
+ * as the editor does.
+ */
+const FRAME_BADGE_PX =
+  frameTitleStyleVars.height +
+  // Its 1px border, top and bottom, outside its content height.
+  2 +
+  frameTitleStyleVars.nestedFrameOffset;
+
 /** The margin the surface reference block leaves around a group. */
 const GROUP_PADDING: [number, number, number, number] = [20, 20, 20, 20];
+
+let viewerSheet: CSSStyleSheet | null = null;
+
+/**
+ * What `@blocksuite/icons` binds on each icon as a `style` attribute, which a
+ * policy without `style-src-attr 'unsafe-inline'` drops: in an adopted sheet,
+ * added once, so an icon never shrinks. The icon of a page reference, inline
+ * in its text, also asks for `vertical-align: middle`
+ * (`DocDisplayMetaService`'s icons, the subpage icon of `reference-node.ts`):
+ * without it the icon sits on the baseline. Their `font-size: inherit` is what
+ * an `svg` does anyway, and the subpage icon's `margin-bottom: 0.1em` stays
+ * dropped (a tenth of a line).
+ */
+function adoptViewerStyles(): void {
+  if (viewerSheet) return;
+  viewerSheet = new CSSStyleSheet();
+  viewerSheet.replaceSync(
+    '[data-labre-canvas-viewer] svg{user-select:none;flex-shrink:0}' +
+      '[data-labre-canvas-viewer] affine-reference svg{vertical-align:middle}'
+  );
+  document.adoptedStyleSheets = [...document.adoptedStyleSheets, viewerSheet];
+}
 
 /**
  * The bounds and the stored title of the focused element, read before
@@ -128,6 +212,61 @@ function resolveFocus(
     title: element.title.toString(),
   };
 }
+
+/**
+ * What the editor says of a page that is gone, and what the viewer says
+ * instead: it is only given the pages its reader may see, so a page it lacks
+ * may be private, unshared or deleted.
+ */
+const DENIED_WORDINGS = new Map<string, readonly [string, string]>([
+  [
+    CHROME_DELETED_DOC[0],
+    ['com.labre.canvas-viewer.access-denied', 'Access denied'],
+  ],
+  [
+    LINKED_DOC_DELETED[0],
+    [
+      'com.labre.canvas-viewer.access-denied.description',
+      'You do not have access to this page.',
+    ],
+  ],
+]);
+
+/** The host's translation, with "Access denied" where the editor says deleted. */
+function accessDeniedTranslation(
+  host: TranslationService | null
+): TranslationService {
+  return {
+    t: (key, params) => {
+      const denied = DENIED_WORDINGS.get(key);
+      if (!denied) return host?.t(key, params);
+      const [deniedKey, fallback] = denied;
+      return host?.t(deniedKey, params) || fallback;
+    },
+    get language() {
+      return host?.language;
+    },
+  };
+}
+
+/**
+ * Set up after every other extension of the viewer, the host's included: it
+ * reads the translation registered so far in the viewer's own container (the
+ * host's, if any) and overrides it with its wrapper. A host translation that
+ * needs the editor to resolve is not read, and the wrapper falls back to
+ * English.
+ */
+const AccessDeniedTranslationExtension: ExtensionType = {
+  setup: di => {
+    let host: TranslationService | null = null;
+    try {
+      host = di.provider().getOptional(TranslationProvider);
+    } catch {
+      host = null;
+    }
+    di.override(TranslationProvider, () => accessDeniedTranslation(host));
+  },
+};
 
 /** The flavours a click opens as a page of the workspace. */
 const DOC_CARD_FLAVOURS = new Set([
@@ -202,6 +341,16 @@ export function mountCanvasViewer(
     getInternalStoreExtensions()
   ).get('store');
   workspace.meta.initialize();
+  Object.entries(options.docTitles ?? {}).forEach(([id, title]) => {
+    workspace.meta.addDocMeta({ id, title, tags: [], createDate: 0 });
+    // The viewer knows a listed page by its title only. Without a root, a
+    // synced-doc card of it waits forever for a page block that never comes;
+    // an empty page with the title lets it settle.
+    const page = workspace.getDoc(id)?.getStore();
+    page?.load(() => {
+      page.addBlock('affine:page', { title: new Text(title) });
+    });
+  });
   const doc = workspace.createDoc('canvas-viewer');
   Y.applyUpdate(doc.spaceDoc, state);
   const store = doc.getStore({ readonly: true });
@@ -217,6 +366,10 @@ export function mountCanvasViewer(
     throw new Error('the canvas viewer found no element to focus on');
   }
   const interactive = options.interactive ?? !focus;
+  const docTitles = options.docTitles ?? {};
+  // A focused frame with a title keeps its badge's strip above it.
+  const badgePx =
+    focus?.kind === 'frame' && focused?.title.trim() ? FRAME_BADGE_PX : 0;
 
   const container = document.createElement('div');
   container.dataset.labreCanvasViewer = '';
@@ -226,9 +379,18 @@ export function mountCanvasViewer(
   box.overflow = 'hidden';
   box.userSelect = 'none';
   if (interactive) box.touchAction = 'none';
+  // The element's proportions, as the surface reference's `.ref-viewport`,
+  // plus the badge's strip, whose height is in screen pixels: it is read
+  // again from the width each time the host resizes the view.
+  const proportions = () => {
+    if (!focused) return;
+    const { w, h } = focused.bound;
+    const width = container.getBoundingClientRect().width;
+    const strip = width > 0 ? (badgePx * w) / width : 0;
+    box.aspectRatio = `${w} / ${(h || 1) + strip}`;
+  };
   if (focused && !interactive) {
-    // The element's proportions, as the surface reference's `.ref-viewport`.
-    box.aspectRatio = `${focused.bound.w} / ${focused.bound.h || 1}`;
+    proportions();
   } else {
     box.height = '100%';
   }
@@ -236,7 +398,6 @@ export function mountCanvasViewer(
     box.cursor = 'pointer';
     container.tabIndex = 0;
     container.setAttribute('role', 'button');
-    if (focused?.title) container.setAttribute('aria-label', focused.title);
   }
   // The light theme, on this container only: the page around keeps its own.
   // Built from names already in the theme contract (`theme-imports.unit.spec`):
@@ -247,29 +408,42 @@ export function mountCanvasViewer(
   (Object.keys(lightThemeV2) as AffineThemeKeyV2[]).forEach(key =>
     box.setProperty(themeToVar(key), lightThemeV2[key])
   );
-  // The preview root turns pointer events off on itself (a picture, ADR 0050);
-  // the viewer reads the path of a click, so they come back, here only.
-  const style = document.createElement('style');
-  style.textContent =
-    '[data-labre-canvas-viewer] affine-edgeless-root-preview{pointer-events:auto}';
-  container.append(style);
+  adoptViewerPageStyles();
+  adoptViewerStyles();
 
   let std: BlockStdScope | null = null;
 
-  class CanvasViewerUnlock extends LifeCycleWatcher {
-    static override key = 'canvas-viewer-unlock';
+  class CanvasViewerMount extends LifeCycleWatcher {
+    static override key = 'canvas-viewer-mount';
 
     private readonly _disposables = new DisposableGroup();
 
     override mounted() {
       const { viewport } = this.std.get(GfxControllerIdentifier);
-      // After `EdgelessLocker`: this viewer moves, the other previews do not.
+      // The editor's own wheel, pan and pinch handlers stand still on a
+      // locked viewport: a frozen view is a picture.
       viewport.locked = !interactive;
       requestAnimationFrame(() => viewer.fit());
-      // A frozen view keeps its framing through the host's resizes.
+      // A frozen view keeps its proportions and its framing through the
+      // host's resizes.
       if (!interactive) {
         this._disposables.add(
-          viewport.sizeUpdated.subscribe(() => viewer.fit())
+          viewport.sizeUpdated.subscribe(() => {
+            proportions();
+            viewer.fit();
+          })
+        );
+      }
+      // The viewer loads no face: a public page declares its own, which may
+      // arrive after the canvas painted its text with a fallback. Paint
+      // again each time the page's faces finish loading, as the editor does
+      // once `FontLoaderService`'s are in.
+      const fonts = document.fonts as FontFaceSet | undefined;
+      if (fonts) {
+        const repaint = () => getSurfaceComponent(this.std)?.refresh();
+        fonts.addEventListener('loadingdone', repaint);
+        this._disposables.add(() =>
+          fonts.removeEventListener('loadingdone', repaint)
         );
       }
       if (focus?.kind !== 'frame') return;
@@ -290,17 +464,36 @@ export function mountCanvasViewer(
     }
   }
 
-  const extensions: ExtensionType[] = [
-    ...new ViewExtensionManager(getInternalViewExtensions()).get(
-      'preview-edgeless'
-    ),
-    // The viewport is this container, as `.ref-viewport` is the surface
-    // reference's: the preview root measures it and follows its resizes.
-    ViewportElementExtension('[data-labre-canvas-viewer]'),
-    CanvasViewerUnlock,
-  ];
   try {
+    const extensions: ExtensionType[] = [
+      ...getReadOnlyViewExtensions(options.viewExtensions),
+      // The viewport is this container, as `.ref-viewport` is the surface
+      // reference's: the editor measures it and follows its resizes.
+      ViewportElementExtension('[data-labre-canvas-viewer]'),
+      // Code highlighted by shiki's JavaScript engine: a public page's policy
+      // has no WebAssembly to spare.
+      CodeBlockConfigExtension({ engine: 'javascript' }),
+      // After the host's own, which it wraps.
+      AccessDeniedTranslationExtension,
+      CanvasViewerMount,
+    ];
     std = new BlockStdScope({ store, extensions });
+    if (!interactive && options.onExpand) {
+      // A button needs a name, the element's title or none: a host with no
+      // translation reads the English fallback.
+      const title = focused?.title.trim();
+      container.setAttribute(
+        'aria-label',
+        title
+          ? translateKey(
+              std,
+              'com.labre.canvas-viewer.open-titled',
+              'Open canvas: {{title}}',
+              { title }
+            )
+          : translateKey(std, 'com.labre.canvas-viewer.open', 'Open canvas')
+      );
+    }
     const editorHost = std.render();
     // A frozen view is one button: nothing inside it takes focus, keys or
     // pointers (the editor host would otherwise be a second tab stop, and
@@ -308,6 +501,7 @@ export function mountCanvasViewer(
     if (!interactive) editorHost.inert = true;
     container.append(editorHost);
     host.append(container);
+    if (focused && !interactive) proportions();
   } catch (error) {
     container.remove();
     workspace.dispose();
@@ -315,81 +509,49 @@ export function mountCanvasViewer(
   }
 
   const gfx = () => std?.get(GfxControllerIdentifier);
-  const pointers = new Map<number, { x: number; y: number }>();
-  let travelled = 0;
 
-  const onWheel = (e: WheelEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const viewport = gfx()?.viewport;
-    if (!viewport) return;
-    if (isTouchPadPinchEvent(e)) {
-      zoomAtPointer(viewport, e, container.getBoundingClientRect());
-    } else {
-      panByWheel(viewport, e);
-    }
-  };
-
-  const local = (e: PointerEvent) => {
-    const rect = container.getBoundingClientRect();
-    return { x: e.clientX - rect.x, y: e.clientY - rect.y };
-  };
-
+  // The editor pans on a drag; a press that moved is no click.
+  let pressAt: { x: number; y: number } | null = null;
+  let moved = false;
   const onPointerDown = (e: PointerEvent) => {
-    e.stopPropagation();
-    if (pointers.size === 0) travelled = 0;
-    pointers.set(e.pointerId, local(e));
+    pressAt = { x: e.clientX, y: e.clientY };
+    moved = false;
   };
-
   const onPointerMove = (e: PointerEvent) => {
-    e.stopPropagation();
-    const last = pointers.get(e.pointerId);
-    const viewport = gfx()?.viewport;
-    if (!last || !viewport) return;
-    const next = local(e);
-    const delta = { x: next.x - last.x, y: next.y - last.y };
-    travelled += Math.abs(delta.x) + Math.abs(delta.y);
-    pointers.set(e.pointerId, next);
-    // Captured only once it is a drag: a captured press sends its click to
-    // the container, and a click on a link would no longer find the link.
-    if (
-      travelled > CLICK_SLOP_PX &&
-      !container.hasPointerCapture?.(e.pointerId)
-    ) {
-      container.setPointerCapture?.(e.pointerId);
-    }
-
-    if (pointers.size === 1) {
-      // As the editor's pan: model units, under any CSS scale of the host.
-      const scale = viewport.zoom * viewport.viewScale;
-      viewport.applyDeltaCenter(-delta.x / scale, -delta.y / scale);
-      return;
-    }
-    const [other] = [...pointers].find(([id]) => id !== e.pointerId) ?? [];
-    const second = other === undefined ? undefined : pointers.get(other);
-    if (!second) return;
-    pinchStep(
-      viewport,
-      { ...next, delta },
-      { ...second, delta: { x: 0, y: 0 } }
-    );
+    if (!pressAt) return;
+    const travel =
+      Math.abs(e.clientX - pressAt.x) + Math.abs(e.clientY - pressAt.y);
+    if (travel > CLICK_SLOP_PX) moved = true;
   };
 
-  const onPointerUp = (e: PointerEvent) => {
-    e.stopPropagation();
-    pointers.delete(e.pointerId);
-  };
-
-  const onClick = (e: MouseEvent) => {
+  const follow = (e: MouseEvent, newTab: boolean) => {
     e.preventDefault();
     e.stopPropagation();
-    if (travelled > CLICK_SLOP_PX) return;
-    const link = linkOf(e.composedPath(), id => {
+    // A click from the keyboard (`detail` 0) never follows a drag.
+    const dragged = moved && e.detail !== 0;
+    moved = false;
+    pressAt = null;
+    if (dragged) return;
+    // A note on the canvas lies under its mask (`.affine-note-mask`), so the
+    // click's own path never holds the link: the elements under the pointer
+    // do, down to the first block (a card hidden under another note is not
+    // what the reader clicked).
+    const root = container.getRootNode() as Document | ShadowRoot;
+    const stack = (root.elementsFromPoint?.(e.clientX, e.clientY) ?? []).filter(
+      element => container.contains(element)
+    );
+    const hit = stack.findIndex(
+      element => element instanceof HTMLElement && element.dataset.blockId
+    );
+    const under = hit < 0 ? stack : stack.slice(0, hit + 1);
+    const link = linkOf([...e.composedPath(), ...under], id => {
       const model = store.getBlock(id)?.model;
       return model ? { flavour: model.flavour, props: model.props } : undefined;
     });
     if (!link) return;
     if ('docId' in link) {
+      // A page the host did not name is not the reader's to open.
+      if (!Object.prototype.hasOwnProperty.call(docTitles, link.docId)) return;
       options.onOpenDoc?.(link.docId);
       return;
     }
@@ -398,7 +560,16 @@ export function mountCanvasViewer(
     const url = normalizeUrl(link.url);
     if (!isSafeLinkUrl(url)) return;
     if (options.onLinkClick) options.onLinkClick(url);
+    else if (newTab) window.open(url, '_blank', 'noopener,noreferrer');
     else window.location.assign(url);
+  };
+  const onClick = (e: MouseEvent) => follow(e, false);
+  // The middle button follows an `<a href>` on `auxclick`, not `click`:
+  // without this listener it opened the link past `isSafeLinkUrl`, outside
+  // `onLinkClick` and `docTitles`. No other button follows a link there: the
+  // right one opens the menu (`contextmenu`), back and forward navigate first.
+  const onAuxClick = (e: MouseEvent) => {
+    if (e.button === 1) follow(e, true);
   };
 
   // A frozen view is a picture with one gesture, like the surface reference
@@ -414,22 +585,27 @@ export function mountCanvasViewer(
     onExpand(e);
   };
   const stop = (e: Event) => e.stopPropagation();
+  const refuse = (e: Event) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
 
   const listeners: [string, EventListener][] = interactive
     ? [
-        ['wheel', onWheel as EventListener],
         ['pointerdown', onPointerDown as EventListener],
         ['pointermove', onPointerMove as EventListener],
-        ['pointerup', onPointerUp as EventListener],
-        ['pointercancel', onPointerUp as EventListener],
         ['click', onClick as EventListener],
-        // Nothing reaches the blocks: no double-click edit, no context menu.
+        ['auxclick', onAuxClick as EventListener],
+        // Links are the viewer's: no double-click into a note, no menu.
         ['dblclick', stop],
         ['contextmenu', stop],
       ]
     : [
+        ['wheel', stop],
         ['pointerdown', stop],
         ['click', onExpand],
+        // A picture follows no link, not even with the middle button.
+        ['auxclick', refuse],
         ['keydown', onExpandKey as EventListener],
         ['dblclick', stop],
         ['contextmenu', stop],
@@ -439,6 +615,41 @@ export function mountCanvasViewer(
       capture: true,
       passive: false,
     })
+  );
+
+  // The editor's keymap listens on `document` and wakes when the pointer
+  // merely rests on the canvas: `v` would switch to selection, `Mod-a` and
+  // `Mod-=` would take the page's own select-all and zoom. A reader has no
+  // shortcut to type, so for each key the viewer's dispatcher is paused
+  // before the page sees it and resumed after: the page keeps every key
+  // (Escape to close the host's dialog, select-all, browser zoom), the editor
+  // none. The same dispatcher carries the pointer and the wheel, so the pause
+  // ends with the key: in its bubble phase, and in any case on the next task,
+  // which a listener calling `stopPropagation()` on the way cannot prevent (a
+  // microtask would run between two listeners, before the editor's own).
+  let paused = false;
+  const pauseKeys = () => {
+    const dispatcher = std?.event;
+    if (!dispatcher?.active) return;
+    paused = true;
+    dispatcher.active = false;
+    setTimeout(resumeKeys, 0);
+  };
+  const resumeKeys = () => {
+    if (!paused) return;
+    paused = false;
+    if (std) std.event.active = true;
+  };
+  const keyListeners: [string, EventListener, boolean][] = interactive
+    ? [
+        ['keydown', pauseKeys, true],
+        ['keydown', resumeKeys, false],
+        ['keyup', pauseKeys, true],
+        ['keyup', resumeKeys, false],
+      ]
+    : [];
+  keyListeners.forEach(([type, listener, capture]) =>
+    window.addEventListener(type, listener, { capture })
   );
 
   const zoomBy = (ratio: number) => {
@@ -459,13 +670,16 @@ export function mountCanvasViewer(
       }
       controller.viewport.setViewportByBound(
         focused.bound,
-        focus?.kind === 'group' ? GROUP_PADDING : undefined
+        focus?.kind === 'group' ? GROUP_PADDING : [badgePx, 0, 0, 0]
       );
     },
     dispose: () => {
       if (!std) return;
       listeners.forEach(([type, listener]) =>
         container.removeEventListener(type, listener, { capture: true })
+      );
+      keyListeners.forEach(([type, listener, capture]) =>
+        window.removeEventListener(type, listener, { capture })
       );
       container.remove();
       std = null;

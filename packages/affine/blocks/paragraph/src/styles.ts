@@ -41,6 +41,15 @@ export const paragraphBlockStyles = css`
     display: none !important;
   }
 
+  /* Was a <style> in the template: a strict CSP style-src blocks those (the
+     canvas viewer on a public page, ADR 0050). Higher specificity than the
+     heading icon's own rule, so moving it changes no cascade. */
+  .affine-paragraph-block-container[data-has-collapsed-siblings='false']
+    affine-paragraph-heading-icon
+    .heading-icon {
+    transform: translateX(-48px);
+  }
+
   affine-paragraph {
     box-sizing: border-box;
     display: block;

@@ -42,7 +42,13 @@ import {
 import { BlockSuiteError, ErrorCode } from '@labre/affine/global/exceptions';
 import type { SerializedXYWH } from '@labre/affine/global/gfx';
 import { styleMap } from '@labre/affine/global/lit';
-import { ColorScheme, type DocMode, MindmapStyle } from '@labre/affine/model';
+import {
+  ColorScheme,
+  type DocMode,
+  FrameBlockModel,
+  GroupElementModel,
+  MindmapStyle,
+} from '@labre/affine/model';
 import {
   defaultImageProxyMiddleware,
   docLinkBaseURLMiddleware,
@@ -91,6 +97,7 @@ import { css, html } from 'lit';
 import { customElement, property, query, state } from 'lit/decorators.js';
 import * as lz from 'lz-string';
 import type { Pane } from 'tweakpane';
+import { encodeStateAsUpdate } from 'yjs';
 
 import type { CommentPanel } from '../../comment/index.js';
 import { createTestEditor } from '../../starter/utils/extensions.js';
@@ -672,6 +679,48 @@ export class StarterDebugMenu extends ShadowlessElement {
     }, duration);
   }
 
+  /**
+   * Opens the document in the read-only canvas viewer, on a page of its own
+   * (`examples/canvas-viewer`): importing the viewer here would move the
+   * editor's own styles to adopted sheets. A selected frame or group is shown
+   * frozen, as a host shows a frame inserted in a page; `strict` loads it
+   * under Labre Sites' Content-Security-Policy.
+   */
+  private _openCanvasViewer(strict: boolean) {
+    const selected = this.editor.std
+      ? this.editor.std.get(GfxControllerIdentifier).selection.selectedElements
+      : [];
+    const [first] = selected;
+    const focus =
+      selected.length !== 1
+        ? undefined
+        : first instanceof FrameBlockModel
+          ? { kind: 'frame' as const, id: first.id }
+          : first instanceof GroupElementModel
+            ? { kind: 'group' as const, id: first.id }
+            : undefined;
+    const docTitles = Object.fromEntries(
+      this.collection.meta.docMetas.map(meta => [meta.id, meta.title])
+    );
+    const state = encodeStateAsUpdate(this.doc.spaceDoc);
+    const page = strict ? 'strict.html' : 'index.html';
+    const viewer = window.open(`/examples/canvas-viewer/${page}`, '_blank');
+    if (!viewer) return;
+    const onReady = (event: MessageEvent) => {
+      if (event.source !== viewer) return;
+      if (
+        (event.data as { type?: string })?.type !== 'labre:canvas-viewer-ready'
+      )
+        return;
+      window.removeEventListener('message', onReady);
+      viewer.postMessage(
+        { type: 'labre:canvas-viewer', state, focus, docTitles },
+        window.location.origin
+      );
+    };
+    window.addEventListener('message', onReady);
+  }
+
   private _present() {
     if (!this.editor.std || !this.editor.host) return;
     const gfx = this.editor.std.get(GfxControllerIdentifier);
@@ -1075,6 +1124,17 @@ export class StarterDebugMenu extends ShadowlessElement {
                         HTML Zip
                       </sl-menu-item>
                     </sl-menu>
+                  </sl-menu-item>
+                </sl-menu>
+              </sl-menu-item>
+              <sl-menu-item>
+                Open in Canvas Viewer
+                <sl-menu slot="submenu">
+                  <sl-menu-item @click="${() => this._openCanvasViewer(false)}">
+                    Canvas Viewer
+                  </sl-menu-item>
+                  <sl-menu-item @click="${() => this._openCanvasViewer(true)}">
+                    Canvas Viewer, Strict CSP
                   </sl-menu-item>
                 </sl-menu>
               </sl-menu-item>

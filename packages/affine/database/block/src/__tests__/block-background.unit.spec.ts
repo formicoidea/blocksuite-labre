@@ -9,7 +9,7 @@
  * only opaque surface the block needs is the sticky column header, which
  * data-view paints with the page token.
  */
-import { cache } from '@emotion/css';
+import { cache } from '@labre/affine-shared/styles';
 import { describe, expect, test } from 'vitest';
 
 import {

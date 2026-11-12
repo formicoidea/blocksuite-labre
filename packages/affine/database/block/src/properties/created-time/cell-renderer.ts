@@ -3,7 +3,7 @@ import {
   createFromBaseCellRenderer,
   createIcon,
 } from '@labre/affine-database-engine';
-import { css } from '@emotion/css';
+import { css } from '@labre/affine-shared/styles';
 import { format } from 'date-fns/format';
 import { html } from 'lit';
 

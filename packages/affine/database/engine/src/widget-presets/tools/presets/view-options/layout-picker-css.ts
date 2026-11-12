@@ -1,4 +1,4 @@
-import { css } from '@emotion/css';
+import { css } from '@labre/affine-shared/styles';
 
 /**
  * The layout picker (Table, Gallery, List, Kanban) is a row of equal tiles

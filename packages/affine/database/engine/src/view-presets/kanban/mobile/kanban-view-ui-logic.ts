@@ -6,7 +6,7 @@ import {
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import type { InsertToPosition } from '@labre/affine-shared/utils';
 import { AddCursorIcon } from '@blocksuite/icons/lit';
-import { css } from '@emotion/css';
+import { css } from '@labre/affine-shared/styles';
 import { signal } from '@preact/signals-core';
 import type { TemplateResult } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';

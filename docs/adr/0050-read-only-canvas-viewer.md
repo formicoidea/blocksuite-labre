@@ -1,6 +1,8 @@
 # ADR 0050 — A read-only canvas viewer a host mounts from a Y.Doc state
 
-- Status: accepted (2026-11-08, built as amended below)
+- Status: accepted (2026-11-08, built as amended below); superseded in part
+  by [0051](0051-read-only-viewer-is-the-editor.md) (2026-11-10): the viewer
+  mounts the edgeless editor on a read-only store, not the preview scope
 - Date: 2026-11-05
 - Deciders: Mathieu Jolly
 - Host side, never restated here: Labre Sites (labre ADR-0069), public pages
@@ -92,6 +94,7 @@ export function mountCanvasViewer(
     focus?: { kind: 'frame' | 'group'; id: string };
     interactive?: boolean; // defaults to !focus
     onExpand?: () => void;
+    docTitles?: Readonly<Record<string, string>>;
   }
 ): { zoomIn(): void; zoomOut(): void; fit(): void; dispose(): void };
 ```
@@ -117,9 +120,25 @@ export function mountCanvasViewer(
   the larger view by mounting the same `focus` with `interactive: true`, as the
   editor opens the referenced canvas. The "Expand" button is the host's: the
   viewer still displays no library string.
+- `docTitles` names the other pages for page references and linked doc
+  cards; a page left out shows as deleted, as in the editor.
+- It holds under a public page's strict Content-Security-Policy (`style-src`
+  without `'unsafe-inline'`, `script-src` without `'wasm-unsafe-eval'`), checked
+  in a browser on 2026-11-10 against a release candidate that drew nothing:
+  `adoptShadowlessStyles()` (`@labre/std`) moves every light-DOM style from
+  `<style>` elements to adopted sheets, which the editor keeps off; the
+  viewer's own rules and emotion's (tables, databases) go to adopted sheets
+  too; code blocks highlight with shiki's JavaScript engine
+  (`CodeBlockConfig.engine`), not WebAssembly; the paragraph's in-template
+  `<style>` moved to its static styles; the file drop is not mounted. Two
+  reports remain and change nothing on screen: emotion's own `<style>`, created
+  at import before any viewer exists, and the `style` attribute
+  `@blocksuite/icons` binds on its icons, whose two declarations the viewer's
+  sheet carries. A click resolves its link from the elements under the
+  pointer, since a note's mask covers its content.
 - The light theme is set as custom properties on the viewer's container only.
-- §4 shipped as `utils/wheel-gesture.ts` in `blocks/root` (`zoomAtPointer`,
-  `panByWheel`, `pinchStep`), called by the edgeless root and the viewer.
+- §4 shipped as `utils/wheel-gesture.ts`, then was dropped by ADR 0051: the
+  viewer now runs the editor's own handlers and has none to share.
 - Events: one-finger or mouse drag pans, two fingers pinch, ctrl+wheel and a
   trackpad pinch zoom, a plain wheel pans; every pointer, wheel and click
   event stops on the viewer's container in capture, so no block reacts.
