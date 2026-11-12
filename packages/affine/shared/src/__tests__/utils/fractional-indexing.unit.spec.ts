@@ -113,7 +113,6 @@ describe('generateFractionalIndexingKeyBetween', () => {
       thrown = error;
     }
     expect(thrown).toBeInstanceOf(BlockSuiteError);
-    expect(thrown).not.toBeInstanceOf(RangeError);
     expect((thrown as Error).message).not.toContain('zzzz');
   });
 

@@ -33,7 +33,12 @@ export function generateFractionalIndexingKeyBetween(
     // computed whenever the package can, and only its overflow becomes a
     // named error. Its message never quotes the key, which may be 100 KB of
     // forged content; any other error of the package goes up unchanged.
-    if (!(error instanceof RangeError)) throw error;
+    // Firefox reports the overflow as `InternalError: too much recursion`,
+    // not as a RangeError.
+    const overflow =
+      error instanceof RangeError ||
+      (error instanceof Error && error.name === 'InternalError');
+    if (!overflow) throw error;
     throw new BlockSuiteError(
       ErrorCode.DefaultRuntimeError,
       'fractional index key too long to compute a key between',
