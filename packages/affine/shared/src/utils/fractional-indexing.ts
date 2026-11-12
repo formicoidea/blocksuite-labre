@@ -76,11 +76,22 @@ export function generateFractionalIndexingKeyBetween(
       // keys change; stored keys are compared as before.
       let steps = 0;
       while (b.startsWith(key + '0')) {
-        // Legitimate keys need at most 3 steps; a forged b (`a10` + `10` x N)
-        // needs one per repetition, quadratic in its length. Past the bound,
-        // the bare middle key is still strictly between a and b: only its
-        // uniqueness under concurrent edits is lost, on a hostile document.
-        if (++steps > MAX_PREFIX_STEPS) return middle;
+        // A forged b (`a10` + `10` x N) needs one step per repetition,
+        // quadratic in its length, so the loop is bounded. Legitimate keys
+        // reach the bound too: inserting again and again right after the
+        // first row needs 32 steps by the 150th insert, 128 by the 600th.
+        // Past it, aim at a instead: generateKeyBetween(a, middle) is never
+        // a prefix of middle, so the postfixed key stays below middle, hence
+        // below b, and keeps its random postfix, so two peers inserting at
+        // the same place still get distinct keys. A bare, deterministic
+        // middle would give them the same key, and a later insert between
+        // the two would throw.
+        if (++steps > MAX_PREFIX_STEPS) {
+          const towardsA = generateKeyBetween(a, middle) + '0' + postfix();
+          // a guard: the comparison is cheap and middle is always in order
+          if (a < towardsA && towardsA < b) return towardsA;
+          return middle;
+        }
         key = generateKeyBetween(key, b);
       }
       return key + '0' + postfix();

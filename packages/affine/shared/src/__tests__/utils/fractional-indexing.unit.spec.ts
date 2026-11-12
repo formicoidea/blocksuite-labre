@@ -11,7 +11,12 @@
  * The loop that moves the key towards `b` is bounded: a forged `order`
  * (from a peer, a pasted or imported snapshot) shaped as `a10` + `10` x N
  * made it run once per repetition, quadratic in the length of `b`, and a
- * 100 KB key froze the tab for about 50 s on a table row insert.
+ * 100 KB key froze the tab for about 50 s on a table row insert. Legitimate
+ * keys reach that bound too (inserting right after the first row needs 32
+ * steps by the 150th insert): past it the key must keep its random postfix.
+ * A first bound returned the bare middle key instead, the same on every
+ * peer, so two peers inserting at the same place got equal keys and a later
+ * insert between them threw `a should be smaller than b`.
  *
  * The fix only changes which NEW keys are generated; stored keys are read and
  * compared exactly as before, so nothing here touches the stored format.
@@ -89,5 +94,25 @@ describe('generateFractionalIndexingKeyBetween', () => {
     expect(a < key && key < b).toBe(true);
     // a wide budget: the unbounded loop took tens of seconds here
     expect(elapsed).toBeLessThan(200);
+  });
+
+  it('keeps every key postfixed and unique past the step bound', () => {
+    // A generated key ends with '0' and a 32-character random postfix.
+    const postfixed = (key: string) =>
+      key.length > 33 && key[key.length - 33] === '0';
+    const faulty: string[] = [];
+    for (let round = 0; round < 2; round++) {
+      const keys = [between(null, null)];
+      keys.unshift(between(null, keys[0]));
+      const seen = new Set(keys);
+      // the bound is reached from about the 80th insert on
+      for (let i = 0; i < 200; i++) {
+        const key = insertBetween(faulty, keys[0], keys[1]);
+        if (!postfixed(key) || seen.has(key)) faulty.push(key);
+        seen.add(key);
+        keys.splice(1, 0, key);
+      }
+    }
+    expect(faulty).toEqual([]);
   });
 });
