@@ -29,7 +29,6 @@ page.fontFamily = 'sans-serif';
 const statusLine = document.createElement('p');
 statusLine.textContent = 'Waiting for the starter to send its document…';
 const host = document.createElement('div');
-host.style.width = 'min(960px, 100vw)';
 host.style.margin = '0 auto';
 document.body.append(statusLine, host);
 
@@ -42,6 +41,9 @@ async function mount(request: ViewerRequest, interactive?: boolean) {
   const { mountCanvasViewer } = await import('@labre/affine/canvas-viewer');
   dispose?.();
   const frozen = request.focus && !interactive;
+  // A frozen frame sits in a page column, as on a published page; the
+  // interactive view takes the whole window, as the host's larger view does.
+  host.style.width = frozen ? 'min(960px, 100vw)' : '100vw';
   host.style.height = frozen ? '' : 'calc(100vh - 80px)';
   const viewer = mountCanvasViewer(host, request.state, {
     focus: request.focus,
