@@ -17,6 +17,7 @@ export {
   InlineDeltaToHtmlAdapterMatcherIdentifier,
 } from './html';
 export * from './image';
+export { listStartNumber } from './list-start-number.js';
 export {
   BlockMarkdownAdapterExtension,
   type BlockMarkdownAdapterMatcher,

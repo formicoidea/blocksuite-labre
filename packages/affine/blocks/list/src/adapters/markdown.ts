@@ -4,13 +4,12 @@ import {
   BlockMarkdownAdapterExtension,
   type BlockMarkdownAdapterMatcher,
   isImageOnlyParagraph,
+  listStartNumber,
   type MarkdownAST,
 } from '@labre/affine-shared/adapters';
 import type { DeltaInsert } from '@labre/store';
 import { nanoid } from '@labre/store';
 import type { List } from 'mdast';
-
-import { listStartNumber } from './start-number.js';
 
 const LIST_MDAST_TYPE = new Set(['list', 'listItem']);
 const isListMDASTType = (node: MarkdownAST) => LIST_MDAST_TYPE.has(node.type);

@@ -4,12 +4,11 @@ import {
   BlockHtmlAdapterExtension,
   type BlockHtmlAdapterMatcher,
   HastUtils,
+  listStartNumber,
 } from '@labre/affine-shared/adapters';
 import type { DeltaInsert } from '@labre/store';
 import { nanoid } from '@labre/store';
 import type { Element } from 'hast';
-
-import { listStartNumber } from './start-number.js';
 
 export const listBlockHtmlAdapterMatcher: BlockHtmlAdapterMatcher = {
   flavour: ListBlockSchema.model.flavour,
