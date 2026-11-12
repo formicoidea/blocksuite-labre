@@ -200,10 +200,10 @@ export class DatabaseBlockDataSource extends HostedDataSourceBase {
       meta.config.rawValue.default();
     const schema = meta.config.rawValue.schema;
     const result = schema.safeParse(rawValue);
-    if (result.success) {
-      return result.data;
-    }
-    return;
+    // A stored value its column rejects (a type changed, an import, a peer
+    // on another version) reads as the default and is never rewritten: a
+    // newer peer may understand it, and nothing is written on load (#656).
+    return result.success ? result.data : meta.config.rawValue.default();
   }
 
   protected override getNormalPropertyAndIndex(propertyId: string):
