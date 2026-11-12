@@ -41,7 +41,11 @@ import { setupEditor } from '../utils/setup.js';
  *   card listens in the capture phase, and a click is made here on the
  *   cells a reader aims at (the title at its centre, a property value);
  * - a click on a link inside a card (a URL cell) opening the row instead of
- *   being left to the link.
+ *   being left to the link;
+ * - a card deciding once, when it connects: `readonly$` flips without
+ *   remounting the cards (a right granted late, a lock lifted), so a card
+ *   mounted read-only kept opening rows once writable (a click meant to edit
+ *   navigated away), and one mounted writable never opened once read-only.
  */
 
 /** A host source whose rows are documents (the Labre app's bases). */
@@ -61,7 +65,8 @@ const documentRows: ExtensionType = {
 
 const SETTLE_MS = 100;
 const ESTIMATE = 3;
-const SITE = 'https://example.com/';
+// A link that leads nowhere: the suite never reaches the network.
+const SITE = 'https://example.invalid/';
 const SETTLE_FRAMES = 4;
 
 const settle = async () => {
@@ -99,7 +104,11 @@ type Mode = (typeof MODES)[number];
  * it connects), so the view is switched to only once the page is read-only.
  * The title column is listed, or the table draws no title and no open button.
  */
-async function readonlyDatabase(mode: Mode, hosted: boolean) {
+async function readonlyDatabase(
+  mode: Mode,
+  hosted: boolean,
+  { mountedWritable = false } = {}
+) {
   const doc = window.doc;
   const noteId = doc.addBlock('affine:note', {}, doc.root!.id);
   const databaseId = doc.addBlock(
@@ -162,12 +171,20 @@ async function readonlyDatabase(mode: Mode, hosted: boolean) {
     ],
   } as never);
   await settle();
-  doc.readonly = true;
   const block = document.querySelector<DatabaseBlockComponent>(
     `affine-database[data-block-id="${model.id}"]`
   )!;
   // The current view is the reader's own, never written to the document.
-  block.dataSource.viewManager.setCurrentView(`${mode}-1`);
+  const show = () => block.dataSource.viewManager.setCurrentView(`${mode}-1`);
+  if (mountedWritable) {
+    // The cards connect while the page is writable, then it turns read-only.
+    show();
+    await settle();
+    doc.readonly = true;
+  } else {
+    doc.readonly = true;
+    show();
+  }
   await settle();
   return { doc, model, rowIds, block, estimate };
 }
@@ -292,9 +309,10 @@ describe('opening a row of a read-only database', () => {
     ]);
     const { rowIds, block, estimate } = await readonlyDatabase('kanban', true);
     const card = cardOf(block, rowIds[0]!);
-    // The link opens in a new tab: keep the page where it is.
+    // The link opens in a new tab: keep the page where it is. Captured,
+    // because the cell stops the click before it bubbles to the window.
     const stay = (e: Event) => e.preventDefault();
-    window.addEventListener('click', stay);
+    window.addEventListener('click', stay, true);
     try {
       const title = card.querySelector('.card-header-title')!;
       const onTitle = hitAtCentre(title);
@@ -324,7 +342,48 @@ describe('opening a row of a read-only database', () => {
       await settle();
       expect(open).toHaveBeenCalledTimes(2);
     } finally {
-      window.removeEventListener('click', stay);
+      window.removeEventListener('click', stay, true);
     }
+  });
+
+  test('a kanban mounted read-only stops opening rows once writable', async () => {
+    const open = vi.fn<(request: DatabaseOpenRowRequest) => void>();
+    cleanup = await setupEditor('page', [
+      documentRows,
+      DatabaseOpenRowExtension({ open }),
+    ]);
+    const { doc, rowIds, block, estimate } = await readonlyDatabase(
+      'kanban',
+      true
+    );
+    doc.readonly = false;
+    await settle();
+    cardOf(block, rowIds[0]!)
+      .querySelector<HTMLElement>(
+        `affine-data-view-kanban-cell[data-column-id="${estimate}"]`
+      )!
+      .click();
+    await settle();
+    expect(open).not.toHaveBeenCalled();
+  });
+
+  test('a kanban mounted writable opens rows once read-only', async () => {
+    const open = vi.fn<(request: DatabaseOpenRowRequest) => void>();
+    cleanup = await setupEditor('page', [
+      documentRows,
+      DatabaseOpenRowExtension({ open }),
+    ]);
+    const { rowIds, block } = await readonlyDatabase('kanban', true, {
+      mountedWritable: true,
+    });
+    const title = cardOf(block, rowIds[0]!).querySelector(
+      '.card-header-title'
+    )!;
+    hitAtCentre(title).click();
+    await settle();
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(open).toHaveBeenCalledWith(
+      expect.objectContaining({ docId: rowIds[0] })
+    );
   });
 });
