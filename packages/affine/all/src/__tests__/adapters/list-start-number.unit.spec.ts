@@ -109,13 +109,29 @@ describe('markdown export keeps the start number (#658)', () => {
     );
   });
 
-  test('the CommonMark cap: nine digits export, ten do not', async () => {
+  test('the CommonMark cap: the last number has nine digits at most', async () => {
     expect(await exportMarkdown(noteWith(numbered('aaa', 999_999_999)))).toBe(
       '999999999. aaa\n'
     );
     expect(await exportMarkdown(noteWith(numbered('aaa', 1_234_567_890)))).toBe(
       '1. aaa\n'
     );
+    // remark numbers from the start: the second item would be 1000000000
+    const overflowing = noteWith(
+      numbered('aaa', 999_999_999),
+      numbered('bbb', 1_000_000_000)
+    );
+    expect(await exportMarkdown(overflowing)).toBe('1. aaa\n2. bbb\n');
+    expect(
+      await exportMarkdown(
+        noteWith(numbered('aaa', 999_999_998), numbered('bbb', 999_999_999))
+      )
+    ).toBe('999999998. aaa\n999999999. bbb\n');
+    const imported = await new MarkdownAdapter(
+      createJob(),
+      provider
+    ).toBlockSnapshot({ file: await exportMarkdown(overflowing) });
+    expect(listOrders(imported).map(([text]) => text)).toEqual(['aaa', 'bbb']);
   });
 
   test('export then import keeps the 3', async () => {
@@ -156,6 +172,11 @@ describe('html export keeps the start number (#658)', () => {
       expect(file).toContain('<ol class="numbered-list"><li');
       expect(file).not.toContain('start=');
     }
+    // one rule with Markdown: no start when the last number passes nine digits
+    const file = await exportHtml(
+      noteWith(numbered('aaa', 999_999_999), numbered('bbb', 1_000_000_000))
+    );
+    expect(file).not.toContain('start=');
   });
 
   test('export then import keeps the 3', async () => {

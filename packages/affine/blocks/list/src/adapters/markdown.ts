@@ -96,7 +96,7 @@ export const listBlockMarkdownAdapterMatcher: BlockMarkdownAdapterMatcher = {
         // if true, add the list item to the list
       } else {
         // if false, create a new list
-        const start = listStartNumber(o.node.props);
+        const start = listStartNumber(o);
         walkerContext
           .openNode(
             {
