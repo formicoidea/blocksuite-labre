@@ -27,6 +27,9 @@
  * - zoom buttons, ctrl+wheel or a drag that move nothing;
  * - an inline page reference that does not reach `onOpenDoc`, or a refused
  *   scheme that navigates;
+ * - a middle click (`auxclick`) that follows an `<a href>` the canvas
+ *   renders past `isSafeLinkUrl`, `onLinkClick` and `docTitles`, or that
+ *   follows anything at all in a frozen view;
  * - a dispose that leaves the container, its listeners or the workspace.
  */
 import type { AffineTextAttributes } from '@labre/affine-shared/types';
@@ -565,6 +568,82 @@ describe('the canvas viewer', () => {
     expect(onOpenDoc).toHaveBeenCalledWith('p-2');
   });
 
+  test('a middle click follows a link as a click does, through the same checks', async () => {
+    const onOpenDoc = vi.fn();
+    const onLinkClick = vi.fn();
+    const { container } = await mount({ onOpenDoc, onLinkClick });
+    const middle = () =>
+      new MouseEvent('auxclick', {
+        bubbles: true,
+        cancelable: true,
+        button: 1,
+        detail: 1,
+      });
+
+    // A page the host did not name opens nothing, with any button.
+    const reference = container.querySelector('affine-reference')!;
+    reference.dispatchEvent(middle());
+    expect(onOpenDoc).not.toHaveBeenCalled();
+
+    const card = container.querySelector('[data-block-id="bm-1"]')!;
+    card.dispatchEvent(middle());
+    expect(onLinkClick).toHaveBeenCalledWith(
+      expect.stringMatching(/^https:\/\/example\.com\/?$/)
+    );
+    onLinkClick.mockClear();
+
+    // The browser's own new tab is cancelled: a refused URL opens nothing.
+    const anchor = document.createElement('a');
+    anchor.href = 'javascript:alert(1)';
+    container.append(anchor);
+    const event = middle();
+    anchor.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    expect(onLinkClick).not.toHaveBeenCalled();
+
+    // Any other button follows nothing.
+    const right = new MouseEvent('auxclick', {
+      bubbles: true,
+      cancelable: true,
+      button: 2,
+    });
+    card.dispatchEvent(right);
+    expect(right.defaultPrevented).toBe(true);
+    expect(onLinkClick).not.toHaveBeenCalled();
+  });
+
+  test('a middle click on a named page opens it; without onLinkClick, a link opens in a new tab', async () => {
+    const onOpenDoc = vi.fn();
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    const assign = vi
+      .spyOn(window.location, 'assign')
+      .mockImplementation(() => {});
+    try {
+      const { container } = await mount({
+        onOpenDoc,
+        docTitles: { 'p-2': 'Next page' },
+      });
+      const middle = { bubbles: true, cancelable: true, button: 1, detail: 1 };
+      container
+        .querySelector('affine-reference')!
+        .dispatchEvent(new MouseEvent('auxclick', middle));
+      expect(onOpenDoc).toHaveBeenCalledWith('p-2');
+
+      container
+        .querySelector('[data-block-id="bm-1"]')!
+        .dispatchEvent(new MouseEvent('auxclick', middle));
+      expect(open).toHaveBeenCalledWith(
+        expect.stringMatching(/^https:\/\/example\.com\/?$/),
+        '_blank',
+        'noopener,noreferrer'
+      );
+      expect(assign).not.toHaveBeenCalled();
+    } finally {
+      open.mockRestore();
+      assign.mockRestore();
+    }
+  });
+
   test('a key typed while the pointer rests on the canvas reaches the page, not the editor', async () => {
     // The editor's keymap wakes on hover: `v` would switch to selection and
     // `Mod-a` would take the page's own select-all.
@@ -708,6 +787,19 @@ describe('the canvas viewer on one frame', () => {
       new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })
     );
     const clickThenEnter = 2;
+    expect(onExpand).toHaveBeenCalledTimes(clickThenEnter);
+
+    // A picture follows no link, not even with the middle button.
+    const anchor = document.createElement('a');
+    anchor.href = 'https://example.com/';
+    container.append(anchor);
+    const middle = new MouseEvent('auxclick', {
+      bubbles: true,
+      cancelable: true,
+      button: 1,
+    });
+    anchor.dispatchEvent(middle);
+    expect(middle.defaultPrevented).toBe(true);
     expect(onExpand).toHaveBeenCalledTimes(clickThenEnter);
     expect(container.getAttribute('role')).toBe('button');
     expect(container.getAttribute('aria-label')).toBe('Open canvas: The map');

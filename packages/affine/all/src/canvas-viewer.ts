@@ -83,7 +83,9 @@ export type CanvasViewerOptions = {
   onOpenDoc?: (docId: string) => void;
   /**
    * The reader clicked an external link (an inline link, a bookmark, an embed
-   * card); the URL has passed `isSafeLinkUrl`. Without it, the page navigates.
+   * card), with the main or the middle button; the URL has passed
+   * `isSafeLinkUrl`. Without it, the page navigates, or a middle click opens
+   * the link in a new tab (`noopener`).
    */
   onLinkClick?: (url: string) => void;
   /**
@@ -522,7 +524,7 @@ export function mountCanvasViewer(
     if (travel > CLICK_SLOP_PX) moved = true;
   };
 
-  const onClick = (e: MouseEvent) => {
+  const follow = (e: MouseEvent, newTab: boolean) => {
     e.preventDefault();
     e.stopPropagation();
     // A click from the keyboard (`detail` 0) never follows a drag.
@@ -558,7 +560,21 @@ export function mountCanvasViewer(
     const url = normalizeUrl(link.url);
     if (!isSafeLinkUrl(url)) return;
     if (options.onLinkClick) options.onLinkClick(url);
+    else if (newTab) window.open(url, '_blank', 'noopener,noreferrer');
     else window.location.assign(url);
+  };
+  const onClick = (e: MouseEvent) => follow(e, false);
+  // The middle button follows an `<a href>` on `auxclick`, not `click`:
+  // without this listener it opened the link past `isSafeLinkUrl`, outside
+  // `onLinkClick` and `docTitles`. Any other button (right, back, forward)
+  // follows nothing.
+  const onAuxClick = (e: MouseEvent) => {
+    if (e.button === 1) {
+      follow(e, true);
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
   };
 
   // A frozen view is a picture with one gesture, like the surface reference
@@ -574,12 +590,17 @@ export function mountCanvasViewer(
     onExpand(e);
   };
   const stop = (e: Event) => e.stopPropagation();
+  const refuse = (e: Event) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
 
   const listeners: [string, EventListener][] = interactive
     ? [
         ['pointerdown', onPointerDown as EventListener],
         ['pointermove', onPointerMove as EventListener],
         ['click', onClick as EventListener],
+        ['auxclick', onAuxClick as EventListener],
         // Links are the viewer's: no double-click into a note, no menu.
         ['dblclick', stop],
         ['contextmenu', stop],
@@ -588,6 +609,8 @@ export function mountCanvasViewer(
         ['wheel', stop],
         ['pointerdown', stop],
         ['click', onExpand],
+        // A picture follows no link, not even with the middle button.
+        ['auxclick', refuse],
         ['keydown', onExpandKey as EventListener],
         ['dblclick', stop],
         ['contextmenu', stop],
