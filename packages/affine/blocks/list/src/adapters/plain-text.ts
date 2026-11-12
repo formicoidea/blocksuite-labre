@@ -2,6 +2,7 @@ import { ListBlockSchema } from '@labre/affine-model';
 import {
   BlockPlainTextAdapterExtension,
   type BlockPlainTextAdapterMatcher,
+  listPlainTextPrefix,
 } from '@labre/affine-shared/adapters';
 import type { DeltaInsert } from '@labre/store';
 
@@ -17,6 +18,7 @@ export const listBlockPlainTextAdapterMatcher: BlockPlainTextAdapterMatcher = {
       };
       const { deltaConverter } = context;
       const buffer = deltaConverter.deltaToAST(text.delta).join('');
+      context.textBuffer.content += listPlainTextPrefix(o);
       context.textBuffer.content += buffer;
       context.textBuffer.content += '\n';
     },

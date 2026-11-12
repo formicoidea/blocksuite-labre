@@ -24,6 +24,7 @@ import {
 
 import { MarkdownAdapter } from './markdown/markdown';
 import { CHROME_UNTITLED } from '../services/translation-service/chrome.js';
+import { listPlainTextPrefix } from './plain-text/list-marker.js';
 import { AdapterFactoryIdentifier } from './types/adapter';
 import { resolveWording } from './utils/wording.js';
 
@@ -69,7 +70,8 @@ export class MixTextAdapter extends BaseAdapter<MixText> {
   }
 
   private async _traverseSnapshot(
-    snapshot: BlockSnapshot
+    snapshot: BlockSnapshot,
+    listMarkers = true
   ): Promise<{ mixtext: string }> {
     let buffer = '';
     const walker = new ASTWalker<BlockSnapshot, never>();
@@ -94,6 +96,7 @@ export class MixTextAdapter extends BaseAdapter<MixText> {
           break;
         }
         case 'affine:list': {
+          if (listMarkers) buffer += listPlainTextPrefix(o);
           buffer += text.delta.map(delta => delta.insert).join('');
           break;
         }
@@ -141,6 +144,22 @@ export class MixTextAdapter extends BaseAdapter<MixText> {
   async fromSliceSnapshot({
     snapshot,
   }: FromSliceSnapshotPayload): Promise<FromSliceSnapshotResult<MixText>> {
+    // A selection inside one list item copies that item alone, without its
+    // children (`copyMiddleware`, `sliceText`): it is the text the reader
+    // selected, pasted into a field, an address bar or a terminal, so it
+    // writes no marker. Several blocks, or an item with its sub-items, do.
+    const [only] = snapshot.content;
+    if (
+      snapshot.content.length === 1 &&
+      only.flavour === 'affine:list' &&
+      only.children.length === 0
+    ) {
+      const { mixtext } = await this._traverseSnapshot(only, false);
+      return {
+        file: mixtext.match(/\n/g)?.length === 1 ? mixtext.trimEnd() : mixtext,
+        assetsIds: [],
+      };
+    }
     let buffer = '';
     const sliceAssetsIds: string[] = [];
     for (const contentSlice of snapshot.content) {
