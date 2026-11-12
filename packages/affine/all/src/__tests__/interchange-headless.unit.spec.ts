@@ -103,6 +103,13 @@ const ENTRIES: Entry[] = [
     dir: 'packages/affine/gfx/ddd-shared',
     subpath: './headless',
   },
+  // The mind map is no framework: its builder needs text measurement, which
+  // the caller injects (ADR 0045 amendment of 2026-11-10).
+  {
+    label: 'mindmap ./interchange',
+    dir: 'packages/affine/gfx/mindmap',
+    subpath: './interchange',
+  },
   ...FRAMEWORK_DESCRIPTORS.filter(
     d => manifestOf(`packages/${d.dir}`).exports['./interchange'] !== undefined
   ).map(d => ({
@@ -173,6 +180,16 @@ describe('the headless interchange entries', () => {
     // subpaths too, or the bundle script has nothing to rewrite them to.
     expect(umbrella.exports['./model/headless']).toBeDefined();
     expect(umbrella.exports['./shared/headless']).toBeDefined();
+    expect(
+      readFileSync(
+        join(
+          ROOT,
+          'packages/affine/all',
+          umbrella.exports['./gfx/mindmap/interchange']!
+        ),
+        'utf8'
+      )
+    ).toContain("export * from '@labre/affine-gfx-mindmap/interchange';");
   });
 
   test.each(ENTRIES)(
@@ -195,6 +212,12 @@ describe('the headless interchange entries', () => {
         modules.filter(path =>
           /packages\/framework\/(?:std|store|sync)\//.test(path)
         )
+      ).toEqual([]);
+      // Nor the AFFiNE theme package, which the model's theme once loaded for
+      // its palette (ADR 0045, amendment of 2026-11-12): matches
+      // `node_modules/@toeverything/theme/dist/v2/index.js`, not `zod`.
+      expect(
+        modules.filter(path => /node_modules\/@toeverything\//.test(path))
       ).toEqual([]);
       // And no DOM by name, in any module that made it in: the readers are
       // pure in ADR 0012's amended sense, with no DOM and no editor.

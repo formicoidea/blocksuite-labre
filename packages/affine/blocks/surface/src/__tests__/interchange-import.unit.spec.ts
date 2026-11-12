@@ -294,6 +294,45 @@ describe('materializing an import', () => {
     expect(notes).toEqual([]);
   });
 
+  it('rewrites a mind map’s nodes and their parents onto the minted ids', () => {
+    // What `@labre/affine-gfx-mindmap/interchange` hands over (ADR 0045
+    // amendment of 2026-11-10): the nodes first, then the mind map naming them
+    // and each node's parent by local id. Left verbatim, the mind map would
+    // name shapes that do not exist and build no tree.
+    const { std, surface } = stubEditor();
+
+    const [root, child] = materializeInterchangeImport(std, 'labre:toolbox', [
+      { type: 'shape', id: 'm:n0' },
+      { type: 'shape', id: 'm:n1' },
+      {
+        type: 'mindmap',
+        id: 'm',
+        children: {
+          'm:n0': { index: 'a0' },
+          'm:n1': { index: 'a0', parent: 'm:n0' },
+        },
+      },
+    ]);
+
+    expect(surface.added[2]?.children).toEqual({
+      [root!]: { index: 'a0' },
+      [child!]: { index: 'a0', parent: root },
+    });
+  });
+
+  it('passes a mind map entry that is not a record through, without throwing', () => {
+    // A host's own mistake: thrown here, the nodes already written above it
+    // would stay on the canvas without their mind map.
+    const { std, surface } = stubEditor();
+
+    materializeInterchangeImport(std, 'labre:toolbox', [
+      { type: 'shape', id: 'm:n0' },
+      { type: 'mindmap', id: 'm', children: { 'm:n0': null } },
+    ]);
+
+    expect(surface.added).toHaveLength(2);
+  });
+
   it('leaves an end it cannot resolve exactly as the file wrote it', () => {
     // An unresolvable name a reader can go and look up in the source file beats
     // one this function quietly invented: the connector routes to an empty path

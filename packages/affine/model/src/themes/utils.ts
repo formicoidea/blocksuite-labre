@@ -1,10 +1,5 @@
-import {
-  type AffineThemeKeyV2,
-  darkThemeV2,
-  lightThemeV2,
-} from '@toeverything/theme/v2';
-
 import type { Color } from './color';
+import { PALETTE_VALUES, type PaletteKey } from './palette-values';
 import type { Palette } from './types';
 
 // Converts a color map to color list.
@@ -18,12 +13,13 @@ export function buildPalettes(
   }));
 }
 
-export function getColorByKey(key: AffineThemeKeyV2): Color {
-  const dark = darkThemeV2[key];
-  const light = lightThemeV2[key];
-  if (dark === light) return dark;
-  return { dark, light };
+// Read from the library's own copy of the palette, not from
+// `@toeverything/theme`: this file is in every editor-free graph (ADR 0045,
+// amendment of 2026-11-12). A fresh object per call, as before the copy.
+export function getColorByKey(key: PaletteKey): Color {
+  const value: Color = PALETTE_VALUES[key];
+  return typeof value === 'string' ? value : { ...value };
 }
 
-export const pureBlack = lightThemeV2['edgeless/palette/black'];
-export const pureWhite = lightThemeV2['edgeless/palette/white'];
+export const pureBlack = PALETTE_VALUES['edgeless/palette/black'].light;
+export const pureWhite = PALETTE_VALUES['edgeless/palette/white'].light;

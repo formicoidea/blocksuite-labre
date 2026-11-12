@@ -1,11 +1,34 @@
-import {
-  LayoutType,
-  type MindmapElementModel,
-  type MindmapNode,
-  type MindmapRoot,
-} from '@labre/affine-model';
+import { LayoutType } from '@labre/affine-model/headless';
 import type { SerializedXYWH } from '@labre/global/gfx';
 import { Bound } from '@labre/global/gfx';
+
+/**
+ * What the layout reads and writes of a node: the editor's `MindmapNode`, or
+ * a plain node built with no editor (`../interchange.ts`, ADR 0045 amendment
+ * of 2026-11-10). Pure geometry over the nodes' sizes, which is why a server
+ * can lay a mind map out once it has measured the texts.
+ */
+export interface LayoutNode {
+  detail: { collapsed?: boolean };
+  element: {
+    readonly x: number;
+    readonly y: number;
+    readonly w: number;
+    readonly h: number;
+    /** A fresh bound: the layout grows it. */
+    readonly elementBound: Bound;
+    xywh: SerializedXYWH;
+  };
+  children: LayoutNode[];
+}
+
+export type LayoutRoot = LayoutNode & {
+  left: LayoutNode[];
+  right: LayoutNode[];
+};
+
+/** All the layout reads of the mind map itself. */
+type LayoutOwner = { layoutType: LayoutType };
 
 export const NODE_VERTICAL_SPACING = 45;
 export const NODE_HORIZONTAL_SPACING = 110;
@@ -20,7 +43,7 @@ type TreeSize = {
   /**
    * The root node of the tree
    */
-  root: MindmapNode;
+  root: LayoutNode;
 
   /**
    * The size of the tree, including its descendants
@@ -34,9 +57,9 @@ type TreeSize = {
 };
 
 const calculateNodeSize = (
-  root: MindmapNode,
+  root: LayoutNode,
   parent: TreeSize | null = null,
-  rootChildren?: MindmapNode[]
+  rootChildren?: LayoutNode[]
 ): TreeSize => {
   const bound = root.element.elementBound;
   const children: TreeSize[] = [];
@@ -83,7 +106,7 @@ const calculateNodeSize = (
 const layoutTree = (
   tree: TreeSize,
   layoutType: LayoutType.LEFT | LayoutType.RIGHT,
-  mindmap: MindmapElementModel,
+  mindmap: LayoutOwner,
   path: number[] = [0]
 ) => {
   const firstLevel = path.length === 1;
@@ -128,34 +151,22 @@ const layoutTree = (
   }
 };
 
-const layoutRight = (
-  root: MindmapNode,
-  mindmap: MindmapElementModel,
-  path = [0]
-) => {
+const layoutRight = (root: LayoutNode, mindmap: LayoutOwner, path = [0]) => {
   const rootTree = calculateNodeSize(root, null);
 
   layoutTree(rootTree, LayoutType.RIGHT, mindmap, path);
 };
 
-const layoutLeft = (
-  root: MindmapNode,
-  mindmap: MindmapElementModel,
-  path = [0]
-) => {
+const layoutLeft = (root: LayoutNode, mindmap: LayoutOwner, path = [0]) => {
   const rootTree = calculateNodeSize(root, null);
 
   layoutTree(rootTree, LayoutType.LEFT, mindmap, path);
 };
 
-const layoutBalance = (
-  root: MindmapNode,
-  mindmap: MindmapElementModel,
-  path = [0]
-) => {
+const layoutBalance = (root: LayoutNode, mindmap: LayoutOwner, path = [0]) => {
   const rootTree = calculateNodeSize(root, null);
-  const leftTree: MindmapNode[] = (root as MindmapRoot).left;
-  const rightTree: MindmapNode[] = (root as MindmapRoot).right;
+  const leftTree: LayoutNode[] = (root as LayoutRoot).left;
+  const rightTree: LayoutNode[] = (root as LayoutRoot).right;
 
   {
     const leftTreeSize = calculateNodeSize(root, null, leftTree);
@@ -183,8 +194,8 @@ const layoutBalance = (
 };
 
 export const layout = (
-  root: MindmapNode,
-  mindmap: MindmapElementModel,
+  root: LayoutNode,
+  mindmap: LayoutOwner,
   layoutDir: LayoutType | null,
   path: number[]
 ) => {
