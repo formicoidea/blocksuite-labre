@@ -80,15 +80,16 @@ export function generateFractionalIndexingKeyBetween(
         // quadratic in its length, so the loop is bounded. Legitimate keys
         // reach the bound too: inserting again and again right after the
         // first row needs 32 steps by the 150th insert, 128 by the 600th.
-        // Past it, aim at a instead: generateKeyBetween(a, middle) is never
-        // a prefix of middle, so the postfixed key stays below middle, hence
-        // below b, and keeps its random postfix, so two peers inserting at
-        // the same place still get distinct keys. A bare, deterministic
-        // middle would give them the same key, and a later insert between
-        // the two would throw.
+        // Past it, aim at a instead: generateKeyBetween(a, middle) plus a
+        // random postfix, so two peers inserting at the same place still get
+        // distinct keys. A bare, deterministic middle would give them the
+        // same key, and a later insert between the two would throw.
         if (++steps > MAX_PREFIX_STEPS) {
           const towardsA = generateKeyBetween(a, middle) + '0' + postfix();
-          // a guard: the comparison is cheap and middle is always in order
+          // Required, not decorative: midpoint can return a prefix of middle
+          // (its `b.slice(0, 1)` branch), and that prefix plus the postfix
+          // may sort after b. Only this check keeps the order; the bare
+          // middle is the fallback that is always in order.
           if (a < towardsA && towardsA < b) return towardsA;
           return middle;
         }
