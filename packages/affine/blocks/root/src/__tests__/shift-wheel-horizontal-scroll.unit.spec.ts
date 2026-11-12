@@ -4,10 +4,10 @@ import { describe, expect, test } from 'vitest';
 /**
  * Shift+wheel must scroll the canvas sideways on every platform.
  *
- * The decision is one boolean inside `_initWheelEvent`, and that method is
- * unreachable from a unit test: it hangs off a live `EdgelessRootBlockComponent`
- * — a custom element with a store, a gfx controller and a viewport behind it.
- * So this test reads the decision out of the source, the same way
+ * The decision is one boolean inside `panByWheel` (`utils/wheel-gesture.ts`,
+ * shared by the edgeless root and the read-only canvas viewer since ADR 0050),
+ * and `IS_WINDOWS` is a module constant a unit test cannot flip. So this test
+ * reads the decision out of the source, the same way
  * `reserved-keys.unit.spec.ts` reads the edgeless hotkey bindings: the
  * expression itself is the contract, and it is checked against the truth table
  * of the input devices it is meant to serve.
@@ -15,7 +15,7 @@ import { describe, expect, test } from 'vitest';
 // Repo-relative: the transform rewrites `import.meta.url` to a non-file URL,
 // and vitest runs from the workspace root.
 const SOURCE = readFileSync(
-  'packages/affine/blocks/root/src/edgeless/edgeless-root-block.ts',
+  'packages/affine/blocks/root/src/edgeless/utils/wheel-gesture.ts',
   'utf8'
 );
 
@@ -30,7 +30,7 @@ function horizontalScrollPredicate(): (
   const match = SOURCE.match(/const simulateHorizontalScroll =([^;]+);/);
   if (!match) {
     throw new Error(
-      'could not find `simulateHorizontalScroll` in edgeless-root-block.ts — ' +
+      'could not find `simulateHorizontalScroll` in wheel-gesture.ts — ' +
         'the wheel handler moved, re-point this test at it'
     );
   }

@@ -39,5 +39,6 @@
     ".changeset/config.json",
     ".github/**",
     "LICENSE"
-  ]
+  ],
+  "checksGitHub": ["Build & Test"]
 }
