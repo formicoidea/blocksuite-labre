@@ -45,6 +45,9 @@ export const richTextPropertyModelConfig = richTextColumnType.modelConfig({
     },
     toJson: ({ value, dataSource }) => {
       if (!value) return null;
+      // A cell stored as a plain string (`storedShapeIsReadable`) is its
+      // own text: it has no deltas to walk.
+      if (typeof value === 'string') return value;
       const host = dataSource.serviceGet(EditorHostKey);
       if (host) {
         const collection = host.std.workspace;
