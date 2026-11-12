@@ -19,15 +19,22 @@
  *   rejects, so the stored value stays and the Y.Doc sees no update;
  * - the fix swallowing a valid value (a rich-text `Text` must come back as
  *   itself) or turning an absent cell into a default, which `propertyTypeSet`
- *   would then write for every row on a type change.
+ *   would then write for every row on a type change;
+ * - a rich-text cell stored as a string read as the default, its text then
+ *   lost on the first edit or type change (below).
  */
 import {
   NoteBlockSchemaExtension,
   RootBlockSchemaExtension,
 } from '@labre/affine-model';
+import {
+  databasePropertyConverts,
+  RichTextCell,
+} from '@labre/affine-database-block';
 import type { EditorHost } from '@labre/std';
 import { Text } from '@labre/store';
 import { TestWorkspace } from '@labre/store/test';
+import { computed, signal } from '@preact/signals-core';
 import { describe, expect, test } from 'vitest';
 
 import { queryBlockAllColumnMap } from '../columns/index.js';
@@ -137,5 +144,69 @@ describe('a malformed stored data-view cell', () => {
     for (const type of TYPES) {
       expect(source.cellValueGet('row', type)).toBeUndefined();
     }
+  });
+});
+
+/**
+ * A rich-text cell stored as a plain string (an older document, a snapshot
+ * or an import writing plain text) fails the rich-text schema, which takes a
+ * `Text` only, yet its readers read it: the cell's editor turns it into a
+ * `Text` keeping its content, `toString` and the conversions read it too.
+ * Read as the default (`undefined`), its first edit wrote an empty `Text`
+ * over it and a type change converted nothing: the text was lost.
+ */
+describe('a rich-text cell stored as a string', () => {
+  test('reads as itself, and so does its text', () => {
+    const { source } = dataViewWith({ 'rich-text': 'note' });
+
+    const value = source.cellValueGet('row', 'rich-text');
+
+    expect(value).toBe('note');
+    expect(
+      queryBlockAllColumnMap['rich-text'].config.rawValue.toString({
+        value,
+        data: {},
+      } as never)
+    ).toBe('note');
+  });
+
+  test('keeps its text when the cell enters editing', () => {
+    const { source, model } = dataViewWith({ 'rich-text': 'note' });
+    if (!customElements.get('test-dv-rich-text-cell')) {
+      customElements.define('test-dv-rich-text-cell', RichTextCell);
+    }
+    const renderer = document.createElement(
+      'test-dv-rich-text-cell'
+    ) as RichTextCell;
+    renderer.cell = {
+      value$: computed(() => source.cellValueGet('row', 'rich-text')),
+      valueSet: (value: unknown) =>
+        source.cellValueChange('row', 'rich-text', value),
+      property: { readonly$: signal(false) },
+    } as never;
+
+    renderer.beforeEnterEditMode();
+
+    expect(model.props.cells.row['rich-text']?.toString()).toBe('note');
+  });
+
+  test('converts its text on a type change', () => {
+    const { source } = dataViewWith({ 'rich-text': 'note' });
+    const toSelect = databasePropertyConverts.find(
+      convert => convert.from === 'rich-text' && convert.to === 'select'
+    )!;
+
+    const result = toSelect.convert(
+      {} as never,
+      [source.cellValueGet('row', 'rich-text')] as never
+    ) as {
+      property: { options: { id: string; value: string }[] };
+      cells: unknown[];
+    };
+
+    expect(result.property.options.map(option => option.value)).toEqual([
+      'note',
+    ]);
+    expect(result.cells).toEqual([result.property.options[0]?.id]);
   });
 });
