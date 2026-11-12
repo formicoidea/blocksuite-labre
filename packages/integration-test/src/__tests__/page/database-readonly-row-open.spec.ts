@@ -35,7 +35,13 @@ import { setupEditor } from '../utils/setup.js';
  *   opener (the library's own detail panel stays an editing tool there), or
  *   over rows that are blocks;
  * - the row menu ("...") or any editing chrome coming back with the open
- *   button: only opening is kept.
+ *   button: only opening is kept;
+ * - a read-only kanban card that opens only from its margin: every kanban
+ *   cell (the title, each property) stops the click it receives, so the
+ *   card listens in the capture phase, and a click is made here on the
+ *   cells a reader aims at (the title at its centre, a property value);
+ * - a click on a link inside a card (a URL cell) opening the row instead of
+ *   being left to the link.
  */
 
 /** A host source whose rows are documents (the Labre app's bases). */
@@ -54,6 +60,8 @@ const documentRows: ExtensionType = {
 };
 
 const SETTLE_MS = 100;
+const ESTIMATE = 3;
+const SITE = 'https://example.com/';
 const SETTLE_FRAMES = 4;
 
 const settle = async () => {
@@ -111,12 +119,24 @@ async function readonlyDatabase(mode: Mode, hosted: boolean) {
       options: [{ id: 'todo', value: 'Todo', color: 'var(--affine-tag-blue)' }],
     })
   );
+  const estimate = addProperty(
+    model,
+    'end',
+    databaseBlockProperties.numberColumnConfig.create('Estimate')
+  );
+  const site = addProperty(
+    model,
+    'end',
+    databaseBlockProperties.linkColumnConfig.create('Site')
+  );
   const rowIds = ['Alpha', 'Bravo'].map(title =>
     doc.addBlock('affine:paragraph', { text: new Text(title) }, databaseId)
   );
-  rowIds.forEach(rowId =>
-    updateCell(model, rowId, { columnId: status, value: 'todo' })
-  );
+  rowIds.forEach(rowId => {
+    updateCell(model, rowId, { columnId: status, value: 'todo' });
+    updateCell(model, rowId, { columnId: estimate, value: ESTIMATE });
+    updateCell(model, rowId, { columnId: site, value: SITE });
+  });
   const columns = [
     { id: 'title', hide: false },
     ...model.props.columns.map(c => ({ id: c.id, hide: false })),
@@ -149,7 +169,7 @@ async function readonlyDatabase(mode: Mode, hosted: boolean) {
   // The current view is the reader's own, never written to the document.
   block.dataSource.viewManager.setCurrentView(`${mode}-1`);
   await settle();
-  return { doc, model, rowIds, block };
+  return { doc, model, rowIds, block, estimate };
 }
 
 /** What opens row `rowId` in `mode`: the table's button, or the card. */
@@ -159,8 +179,23 @@ const opener = (block: Element, mode: Mode, rowId: string) =>
         `data-view-table-row[data-row-id="${rowId}"] [data-testid="dv-row-open"]`
       )
     : block.querySelector<HTMLElement>(
-        `affine-data-view-kanban-card[data-card-id="${rowId}"]`
+        `affine-data-view-kanban-card[data-card-id="${rowId}"] .card-header-title affine-data-view-kanban-cell`
       );
+
+const cardOf = (block: Element, rowId: string) =>
+  block.querySelector<HTMLElement>(
+    `affine-data-view-kanban-card[data-card-id="${rowId}"]`
+  )!;
+
+/** The element a reader's click at the centre of `element` lands on. */
+const hitAtCentre = (element: Element) => {
+  element.scrollIntoView({ block: 'center' });
+  const box = element.getBoundingClientRect();
+  return document.elementFromPoint(
+    box.left + box.width / 2,
+    box.top + box.height / 2
+  ) as HTMLElement;
+};
 
 describe('opening a row of a read-only database', () => {
   test.each(MODES)(
@@ -248,4 +283,48 @@ describe('opening a row of a read-only database', () => {
       await expectNothingOpens(block, mode, rowIds[0]!, open);
     }
   );
+
+  test('a read-only kanban card opens from its title and its values, not from a link', async () => {
+    const open = vi.fn<(request: DatabaseOpenRowRequest) => void>();
+    cleanup = await setupEditor('page', [
+      documentRows,
+      DatabaseOpenRowExtension({ open }),
+    ]);
+    const { rowIds, block, estimate } = await readonlyDatabase('kanban', true);
+    const card = cardOf(block, rowIds[0]!);
+    // The link opens in a new tab: keep the page where it is.
+    const stay = (e: Event) => e.preventDefault();
+    window.addEventListener('click', stay);
+    try {
+      const title = card.querySelector('.card-header-title')!;
+      const onTitle = hitAtCentre(title);
+      expect(title.contains(onTitle), 'the click lands on the title').toBe(
+        true
+      );
+      onTitle.click();
+      await settle();
+      expect(open).toHaveBeenCalledTimes(1);
+
+      card
+        .querySelector<HTMLElement>(
+          `affine-data-view-kanban-cell[data-column-id="${estimate}"]`
+        )!
+        .click();
+      await settle();
+      expect(open).toHaveBeenCalledTimes(2);
+      expect(open).toHaveBeenLastCalledWith(
+        expect.objectContaining({ docId: rowIds[0] })
+      );
+
+      const link = card.querySelector<HTMLAnchorElement>(
+        '[data-testid="property-link-a"]'
+      );
+      expect(link?.href).toBe(SITE);
+      link!.click();
+      await settle();
+      expect(open).toHaveBeenCalledTimes(2);
+    } finally {
+      window.removeEventListener('click', stay);
+    }
+  });
 });

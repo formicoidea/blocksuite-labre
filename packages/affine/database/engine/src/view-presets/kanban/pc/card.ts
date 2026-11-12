@@ -132,6 +132,12 @@ const styles = css`
   }
 `;
 
+/** Whether a click lands on a link (`a[href]`), shadow roots included. */
+const clickFollowsLink = (event: Event): boolean =>
+  event
+    .composedPath()
+    .some(target => target instanceof Element && target.matches('a[href]'));
+
 export class KanbanCard extends SignalWatcher(
   WithDisposable(ShadowlessElement)
 ) {
@@ -283,14 +289,23 @@ export class KanbanCard extends SignalWatcher(
     if (this.view.readonly$.value) {
       // A reader may still open a row the host opens (a page): opening
       // writes nothing. Nothing else of the card answers a read-only view.
+      // Captured, because every kanban cell (the title, each property) stops
+      // the click it receives: a bubbling listener only heard the margin.
       if (opensRowsWhenReadonly(this.view.manager.dataSource)) {
-        this._disposables.addFromEvent(this, 'click', e => {
-          this.kanbanViewLogic.root.openDetailPanel({
-            view: this.view,
-            rowId: this.cardId,
-            newTab: isNewTabClick(e),
-          });
-        });
+        this._disposables.addFromEvent(
+          this,
+          'click',
+          e => {
+            // A link in a cell (a URL) is followed, not the row opened.
+            if (clickFollowsLink(e)) return;
+            this.kanbanViewLogic.root.openDetailPanel({
+              view: this.view,
+              rowId: this.cardId,
+              newTab: isNewTabClick(e),
+            });
+          },
+          { capture: true }
+        );
       }
       return;
     }
