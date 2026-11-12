@@ -7,8 +7,11 @@ export default defineConfig({
   test: {
     root: './packages/affine/fragments/outline',
     // Scoped on purpose: this package has no historical unit suite, so only
-    // the spec added alongside the i18n fix runs here.
-    include: ['src/__tests__/translations.unit.spec.ts'],
+    // the specs added since (the i18n fix, the settings switch) run here.
+    include: [
+      'src/__tests__/translations.unit.spec.ts',
+      'src/__tests__/outline-setting-menu.unit.spec.ts',
+    ],
     testTimeout: 10000,
     environment: 'happy-dom',
   },
