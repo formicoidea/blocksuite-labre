@@ -316,10 +316,16 @@ export class KanbanCard extends SignalWatcher(
     if (this.view.readonly$.value) {
       return;
     }
+    // Both stay attached when the view turns read-only without remounting
+    // the card: the editing menu is not offered then, and a card selection
+    // left from editing must not open the row a second time after the
+    // read-only listener above.
     this._disposables.addFromEvent(this, 'contextmenu', e => {
+      if (this.view.readonly$.peek()) return;
       this.contextMenu(e);
     });
     this._disposables.addFromEvent(this, 'click', e => {
+      if (this.view.readonly$.peek()) return;
       if (e.shiftKey) {
         this.getSelection()?.shiftClickCard(e);
         return;

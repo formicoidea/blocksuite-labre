@@ -45,7 +45,11 @@ import { setupEditor } from '../utils/setup.js';
  * - a card deciding once, when it connects: `readonly$` flips without
  *   remounting the cards (a right granted late, a lock lifted), so a card
  *   mounted read-only kept opening rows once writable (a click meant to edit
- *   navigated away), and one mounted writable never opened once read-only.
+ *   navigated away), and one mounted writable never opened once read-only;
+ * - such a card, left selected as a card by an editing gesture, opening its
+ *   row twice once read-only (the read-only listener, then the editing
+ *   one: two host navigations, two tabs on Ctrl/Cmd), or still offering
+ *   its editing menu on a right click.
  */
 
 /** A host source whose rows are documents (the Labre app's bases). */
@@ -385,5 +389,55 @@ describe('opening a row of a read-only database', () => {
     expect(open).toHaveBeenCalledWith(
       expect.objectContaining({ docId: rowIds[0] })
     );
+  });
+
+  test('a card selected while writable opens once, and offers no editing menu, once read-only', async () => {
+    const open = vi.fn<(request: DatabaseOpenRowRequest) => void>();
+    cleanup = await setupEditor('page', [
+      documentRows,
+      DatabaseOpenRowExtension({ open }),
+    ]);
+    const { doc, block, rowIds } = await readonlyDatabase('kanban', true, {
+      mountedWritable: true,
+    });
+    // Back to the editing state the reader left, then read-only again.
+    doc.readonly = false;
+    await settle();
+    const rowId = rowIds[0]!;
+    // The card's own handles on its board (the element is not exported).
+    const card = cardOf(block, rowId) as HTMLElement & {
+      groupKey: string;
+      kanbanViewLogic: {
+        selectionController?: {
+          selection:
+            | {
+                selectionType: 'card';
+                cards: { groupKey: string; cardId: string }[];
+              }
+            | undefined;
+        };
+      };
+    };
+    const selection = card.kanbanViewLogic.selectionController;
+    expect(selection, 'the board has a selection').toBeDefined();
+    selection!.selection = {
+      selectionType: 'card',
+      cards: [{ groupKey: card.groupKey, cardId: rowId }],
+    };
+    doc.readonly = true;
+    await settle();
+
+    // The card's margin: no cell stops the click. The host is asked at once.
+    card.click();
+    expect(open).toHaveBeenCalledTimes(1);
+    await settle();
+    expect(open).toHaveBeenCalledTimes(1);
+
+    const menusBefore = document.querySelectorAll('affine-menu').length;
+    card.dispatchEvent(
+      new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+    );
+    await settle();
+    expect(document.querySelectorAll('affine-menu')).toHaveLength(menusBefore);
   });
 });
