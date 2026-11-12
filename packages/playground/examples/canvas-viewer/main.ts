@@ -26,12 +26,12 @@ const page = document.body.style;
 page.margin = '0';
 page.fontFamily = 'sans-serif';
 
-const status = document.createElement('p');
-status.textContent = 'Waiting for the starter to send its document…';
+const statusLine = document.createElement('p');
+statusLine.textContent = 'Waiting for the starter to send its document…';
 const host = document.createElement('div');
 host.style.width = 'min(960px, 100vw)';
 host.style.margin = '0 auto';
-document.body.append(status, host);
+document.body.append(statusLine, host);
 
 let dispose: (() => void) | null = null;
 
@@ -48,10 +48,10 @@ async function mount(request: ViewerRequest, interactive?: boolean) {
     interactive,
     docTitles: request.docTitles,
     onOpenDoc: docId => {
-      status.textContent = `onOpenDoc("${docId}")`;
+      statusLine.textContent = `onOpenDoc("${docId}")`;
     },
     onLinkClick: url => {
-      status.textContent = `onLinkClick("${url}")`;
+      statusLine.textContent = `onLinkClick("${url}")`;
     },
     // The host opens the larger view: the same focus, interactive.
     onExpand: () => void show(request, true),
@@ -63,7 +63,7 @@ async function mount(request: ViewerRequest, interactive?: boolean) {
       }`
     : 'whole canvas, interactive';
   setTimeout(() => {
-    status.textContent = `${what} · policy reports: ${violations.length}`;
+    statusLine.textContent = `${what} · policy reports: ${violations.length}`;
   }, REPORT_DELAY_MS);
 }
 
@@ -71,7 +71,7 @@ async function show(request: ViewerRequest, interactive?: boolean) {
   try {
     await mount(request, interactive);
   } catch (error) {
-    status.textContent = `The viewer refused this document: ${String(error)}`;
+    statusLine.textContent = `The viewer refused this document: ${String(error)}`;
   }
 }
 
