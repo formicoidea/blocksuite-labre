@@ -83,12 +83,36 @@ the document and come after its `<style>` and `<link>` in the cascade, with the
 library's selectors scoped to its own classes: import the viewer on a page that
 does not also run the editor, whose cascade order they would change.
 
-To mount the editor itself under such a policy, call the two functions at the
-top level of the module that imports the editor, before its first render, and
-register `CodeBlockConfigExtension({ engine: 'javascript' })` (`@labre/affine/blocks/code`).
-`adoptEmotionStyles()` called later still works, but emotion has then created
-its `<style>` once, which the policy reports. The editor keeps `<style>`
-elements as long as nothing calls them.
+Import the viewer before anything else from the library on that page: the
+library's emotion instance (its own, key `labre`; your `@emotion/css` is never
+touched) writes each rule when the table and database modules evaluate, and a
+rule written before the switch creates one `<style>`, which the policy reports.
+To mount the editor itself under such a policy, call the two functions in a
+module your entry imports first, before any other library module, and register
+`CodeBlockConfigExtension({ engine: 'javascript' })` (`@labre/affine/blocks/code`).
+The editor keeps `<style>` elements as long as nothing calls them.
+
+**What the viewer loads.** Links and embeds render as their author placed them,
+as in the editor: an iframe, YouTube, Figma or Loom embed loads its player
+(sandboxed, http(s) only), a bookmark queries its preview when it stores none,
+and remote images go through the image proxy. The network goes through the
+same seams as the editor's, which you give the viewer in a provider of
+`viewExtensions`: for previews, an extension whose `setup` calls
+`di.override(LinkPreviewServiceIdentifier, () => yourService)`; for images, a
+`LifeCycleWatcher` whose `created()` calls
+`this.std.store.get(ImageProxyService).setImageProxyURL(yourProxy)` (the
+proxy is a store extension, so a view override would miss the blocks that read
+it from the store). Without them, the public defaults apply, as in the editor
+(`04-host-seams.md`).
+
+**Pages the reader may not see.** `docTitles` lists the pages the reader may
+see. A page it leaves out, whether unshared, private or deleted (the viewer
+cannot tell), is named "Access denied" (`com.labre.canvas-viewer.access-denied`,
+its card sentence `com.labre.canvas-viewer.access-denied.description`) wherever
+the editor would call it deleted: an inline reference, a linked doc card, a
+synced doc, which then shows no content. A click on it calls nothing;
+`onOpenDoc` only ever receives a page of `docTitles`. The id still comes from
+the document: treat it as untrusted.
 
 **Callouts and bookmarks.** A callout prints `div.affine-callout[data-emoji]`
 with `span.affine-callout-emoji` then `div.affine-callout-body` (its own line as

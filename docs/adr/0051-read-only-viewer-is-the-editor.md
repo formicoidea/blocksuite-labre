@@ -131,3 +131,22 @@ lacks without it being excluded, and when an exclusion is stale.
 - `CommunityCanvasTextFonts` is re-exported from `@labre/affine/canvas-viewer`,
   for a public page that serves the faces itself and needs that entry only.
   The viewer registers no font list.
+- Links and embeds render as their author placed them (PO decision of
+  2026-11-12: an author who shares an external link means it to be seen),
+  through the editor's seams: a host gives the viewer its link preview
+  service (`di.override`) and its image proxy (a `LifeCycleWatcher` calling
+  `setImageProxyURL`, the proxy being a store extension) in a provider of
+  `viewExtensions`, or the public defaults apply. Tested with a bookmark that
+  stores no metadata.
+- A page `docTitles` leaves out may be unshared, private or deleted; the
+  viewer cannot tell, so it says "Access denied" where the editor says
+  deleted (`com.labre.canvas-viewer.access-denied` and its `.description`),
+  by wrapping the host's translation, and a click on it opens nothing.
+- The library's emotion rules come from an instance of its own (key
+  `labre`), inserted synchronously as before; the viewer adopts them from a
+  module it imports first, before any block module evaluates. A first version
+  patched `@emotion/css`'s default instance, shared with a host, and deferred
+  every rule.
+- A key's pause of the viewer's dispatcher also ends on the next task: a
+  listener that stopped the key's propagation left the wheel and the drag
+  dead.
