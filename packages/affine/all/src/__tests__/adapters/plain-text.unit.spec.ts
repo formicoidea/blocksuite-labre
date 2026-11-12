@@ -316,7 +316,8 @@ describe('snapshot to plain text', () => {
       ],
     };
 
-    const plainText = 'aaa\nbbb\nccc\nddd\neee\n';
+    // markers and nesting as the Markdown export writes them
+    const plainText = '1. aaa\n   1. bbb\n   - ccc\n   1. ddd\n2. eee\n';
 
     const plainTextAdapter = new PlainTextAdapter(createJob(), provider);
     const target = await plainTextAdapter.fromBlockSnapshot({

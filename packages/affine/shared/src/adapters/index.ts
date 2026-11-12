@@ -69,6 +69,7 @@ export {
   InlineDeltaToPlainTextAdapterExtension,
   type InlineDeltaToPlainTextAdapterMatcher,
   InlineDeltaToPlainTextAdapterMatcherIdentifier,
+  listPlainTextPrefix,
   type PlainText,
   PlainTextAdapter,
   PlainTextAdapterFactoryExtension,

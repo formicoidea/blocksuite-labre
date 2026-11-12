@@ -24,6 +24,7 @@ import {
 
 import { MarkdownAdapter } from './markdown/markdown';
 import { CHROME_UNTITLED } from '../services/translation-service/chrome.js';
+import { listPlainTextPrefix } from './plain-text/list-marker.js';
 import { AdapterFactoryIdentifier } from './types/adapter';
 import { resolveWording } from './utils/wording.js';
 
@@ -94,6 +95,7 @@ export class MixTextAdapter extends BaseAdapter<MixText> {
           break;
         }
         case 'affine:list': {
+          buffer += listPlainTextPrefix(o);
           buffer += text.delta.map(delta => delta.insert).join('');
           break;
         }
