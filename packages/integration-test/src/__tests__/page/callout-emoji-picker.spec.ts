@@ -13,7 +13,10 @@
  *   offering it an Icons tab or a Remove it has no field for;
  * - a picked emoji written anywhere but `props.emoji`, or written as
  *   something other than the native character;
- * - the opening reaching for the network (emoji-mart's CDN default).
+ * - the opening reaching for the network (emoji-mart's CDN default);
+ * - a read-only document whose callout icon still opened the picker and let
+ *   a pick write `props.emoji` into Yjs, which then synced (the gesture never
+ *   checked `store.readonly`, before and after the unification).
  */
 import type { AffineIconPicker } from '@labre/affine/components/icon-picker';
 import type { CalloutBlockModel } from '@labre/affine/model';
@@ -54,6 +57,7 @@ describe("a callout's emoji", () => {
   });
 
   afterEach(() => {
+    window.editor.std.store.readonly = false;
     vi.restoreAllMocks();
     // The popup closes on a click away; the next spec shares this page.
     document.body.click();
@@ -62,6 +66,31 @@ describe("a callout's emoji", () => {
 
   const callout = () =>
     window.doc.getBlock(calloutId)!.model as CalloutBlockModel;
+
+  const calloutIcon = () =>
+    until(
+      () =>
+        window.editor.host?.querySelector<HTMLElement>(
+          `affine-callout[data-block-id="${calloutId}"] .affine-callout-emoji-container`
+        ),
+      'the callout icon'
+    );
+
+  const pickerInPage = () =>
+    [...window.editor.host!.querySelectorAll('.blocksuite-portal')]
+      .map(portal =>
+        portal.shadowRoot?.querySelector<AffineIconPicker>('affine-icon-picker')
+      )
+      .find(Boolean);
+
+  const emojiButtons = (picker: AffineIconPicker) => [
+    ...(picker.shadowRoot
+      ?.querySelector('affine-emoji-picker-panel')
+      ?.shadowRoot?.querySelector('em-emoji-picker')
+      ?.shadowRoot?.querySelectorAll<HTMLElement>(
+        '.category button[aria-label]'
+      ) ?? []),
+  ];
 
   const openedPicker = async () => {
     const icon = await until(
@@ -108,6 +137,33 @@ describe("a callout's emoji", () => {
       null
     );
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  test('a read-only document opens no picker from the icon', async () => {
+    window.editor.std.store.readonly = true;
+
+    (await calloutIcon()).click();
+    await wait(SETTLE_MS);
+
+    expect(pickerInPage()).toBeUndefined();
+    expect(callout().props.emoji).toBe('😀');
+  });
+
+  test('a picker left open when the document turns read-only writes nothing', async () => {
+    const picker = await openedPicker();
+    const button = await until(
+      () =>
+        emojiButtons(picker).find(
+          candidate => candidate.getAttribute('aria-label') !== '😀'
+        ),
+      'an emoji other than the current one'
+    );
+    window.editor.std.store.readonly = true;
+
+    button.click();
+    await wait(SETTLE_MS);
+
+    expect(callout().props.emoji).toBe('😀');
   });
 
   test('a picked emoji is written to props.emoji as its native character', async () => {

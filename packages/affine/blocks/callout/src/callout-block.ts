@@ -68,6 +68,10 @@ export class CalloutBlockComponent extends CaptionedBlockComponent<CalloutBlockM
 
   private _emojiMenuAbortController: AbortController | null = null;
   private readonly _toggleEmojiMenu = () => {
+    // The picker exists to write `props.emoji`: a read-only document opens
+    // none, and a pick that lands after the document turned read-only is
+    // dropped below.
+    if (this.store.readonly) return;
     if (this._emojiMenuAbortController) {
       this._emojiMenuAbortController.abort();
     }
@@ -79,6 +83,7 @@ export class CalloutBlockComponent extends CaptionedBlockComponent<CalloutBlockM
         .activeTab=${'emoji'}
         .showRemove=${false}
         @select=${(event: CustomEvent<IconPickerSelectDetail>) => {
+          if (this.store.readonly) return;
           const icon = event.detail;
           if (icon?.type !== IconType.Emoji) return;
           this.model.props.emoji = icon.unicode;
