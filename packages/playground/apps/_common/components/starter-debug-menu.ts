@@ -18,10 +18,18 @@ import './left-side-panel.js';
 
 import { PresentTool } from '@labre/affine/blocks/frame';
 import { ExportManager } from '@labre/affine/blocks/surface';
+import {
+  effects as iconPickerEffects,
+  type IconData,
+  IconType,
+  openIconPicker,
+  renderAffineIcon,
+} from '@labre/affine/components/icon-picker';
 import { toast } from '@labre/affine/components/toast';
 import { StoreExtensionManagerIdentifier } from '@labre/affine/ext-loader';
 import { BlockSuiteError, ErrorCode } from '@labre/affine/global/exceptions';
 import type { SerializedXYWH } from '@labre/affine/global/gfx';
+import { styleMap } from '@labre/affine/global/lit';
 import { ColorScheme, type DocMode } from '@labre/affine/model';
 import {
   defaultImageProxyMiddleware,
@@ -632,6 +640,29 @@ export class StarterDebugMenu extends ShadowlessElement {
     runCommand(std, command, { surface: 'palette', source: 'shortcut' });
   }
 
+  /**
+   * Host demo of issue #636: what the Labre shell does for a workspace icon,
+   * through the public entry only, with no `std` handed to the picker.
+   */
+  private async _pickHostIcon(event: MouseEvent) {
+    iconPickerEffects();
+    const anchor = event.currentTarget as HTMLElement;
+    const picked = await openIconPicker(anchor);
+    if (picked === undefined) return;
+    this._hostIcon = picked;
+    toast(this.editor.host!, JSON.stringify(picked));
+  }
+
+  private _renderHostIcon() {
+    const icon = this._hostIcon;
+    if (!icon) return html`<sl-icon name="emoji-smile"></sl-icon>`;
+    if (icon.type === IconType.Emoji) return icon.unicode;
+    return html`<span
+      style=${styleMap({ color: icon.color, display: 'inline-flex' })}
+      >${renderAffineIcon(icon.name, { width: '16px', height: '16px' })}</span
+    >`;
+  }
+
   private _toggleCatalogue() {
     const host = this.editor.host;
     if (!host) return;
@@ -990,6 +1021,20 @@ export class StarterDebugMenu extends ShadowlessElement {
             </sl-button>
           </sl-tooltip>
 
+          <sl-tooltip
+            content="Icon Picker (host demo)"
+            placement="bottom"
+            hoist
+          >
+            <sl-button
+              size="small"
+              data-testid="host-icon-picker-button"
+              @click="${this._pickHostIcon}"
+            >
+              ${this._renderHostIcon()}
+            </sl-button>
+          </sl-tooltip>
+
           <sl-tooltip content="Toggle Canvas Grid" placement="bottom" hoist>
             <sl-button
               size="small"
@@ -1066,6 +1111,9 @@ export class StarterDebugMenu extends ShadowlessElement {
 
   @state()
   private accessor _canRedo = false;
+
+  @state()
+  private accessor _hostIcon: IconData | null = null;
 
   @state()
   private accessor _canUndo = false;

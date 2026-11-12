@@ -1,4 +1,4 @@
-import { translateKey } from '@labre/affine-shared/services';
+import type { TranslationService } from '@labre/affine-shared/services';
 import { SearchIcon } from '@blocksuite/icons/lit';
 import type { BlockStdScope } from '@labre/std';
 import { stdContext } from '@labre/std';
@@ -18,6 +18,7 @@ import {
 import { pushRecent, readRecent, RECENT_EMOJIS_KEY } from './recent-store.js';
 import { panelStyles } from './styles.js';
 import { IconType } from './types.js';
+import { iconPickerWording } from './wording.js';
 import {
   EMOJI_GROUP_WORDINGS,
   ICON_PICKER_FILTER_PLACEHOLDER,
@@ -44,6 +45,10 @@ export class AffineEmojiPickerPanel extends LitElement {
   @consume({ context: stdContext })
   accessor std!: BlockStdScope;
 
+  /** Handed down by `affine-icon-picker`; see its `translation`. */
+  @property({ attribute: false })
+  accessor translation: TranslationService | undefined = undefined;
+
   private _groupLabel(name: string): string {
     const wording =
       name === RECENT_GROUP_NAME
@@ -52,13 +57,11 @@ export class AffineEmojiPickerPanel extends LitElement {
             getEmojiGroups().find(group => group.name === name)?.id ?? ''
           ];
     if (!wording) return name;
-    return this.std ? translateKey(this.std, ...wording) : wording[1];
+    return iconPickerWording(this, wording);
   }
 
   private _emptyLabel(): string {
-    return this.std
-      ? translateKey(this.std, ...ICON_PICKER_NO_EMOJI_FOUND)
-      : ICON_PICKER_NO_EMOJI_FOUND[1];
+    return iconPickerWording(this, ICON_PICKER_NO_EMOJI_FOUND);
   }
 
   @state()
@@ -172,9 +175,10 @@ export class AffineEmojiPickerPanel extends LitElement {
             ${SearchIcon()}
             <input
               type="text"
-              placeholder=${this.std
-                ? translateKey(this.std, ...ICON_PICKER_FILTER_PLACEHOLDER)
-                : ICON_PICKER_FILTER_PLACEHOLDER[1]}
+              placeholder=${iconPickerWording(
+                this,
+                ICON_PICKER_FILTER_PLACEHOLDER
+              )}
               .value=${this._keyword}
               @input=${(e: Event) => {
                 this._keyword = (e.target as HTMLInputElement).value;

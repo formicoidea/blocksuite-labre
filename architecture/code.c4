@@ -1154,7 +1154,7 @@ model {
       link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/components
       metadata {
         path 'packages/affine/components'
-        files '142'
+        files '144'
       }
       block-selection = folder 'block-selection/' {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/components/src/block-selection
@@ -1286,7 +1286,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/components/src/icon-picker
         metadata {
           path 'packages/affine/components/src/icon-picker'
-          files '9'
+          files '11'
         }
       }
       icons_ = folder 'icons/' {
@@ -3266,7 +3266,7 @@ model {
       link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/all
       metadata {
         path 'packages/affine/all'
-        files '230'
+        files '231'
       }
       blocks = folder 'blocks/' {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/all/src/blocks
@@ -3279,7 +3279,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/all/src/components
         metadata {
           path 'packages/affine/all/src/components'
-          files '34'
+          files '35'
         }
       }
       data-view = folder 'data-view/' {
@@ -3468,7 +3468,7 @@ model {
   assembly.all -[uses]-> features.blocks.surface '11 imports'
   assembly.all -[uses]-> features.blocks.surface-ref '6 imports'
   assembly.all -[uses]-> features.blocks.table '6 imports'
-  assembly.all -[uses]-> features.components '48 imports, 13 type-only'
+  assembly.all -[uses]-> features.components '49 imports, 13 type-only'
   assembly.all -[uses]-> features.database.block '6 imports'
   assembly.all -[uses]-> features.database.editor '2 imports'
   assembly.all -[uses]-> features.database.engine '3 imports'
@@ -3739,9 +3739,9 @@ model {
   features.blocks.table -[uses]-> framework.std '10 imports, 4 type-only'
   features.blocks.table -[uses]-> framework.store '9 imports, 3 type-only'
   features.blocks.table -[uses]-> model_.model_ '12 imports, 4 type-only'
-  features.components -[uses]-> features.shared '79 imports, 4 type-only'
-  features.components -[uses]-> framework.global_ '55 imports, 5 type-only'
-  features.components -[uses]-> framework.std '49 imports, 13 type-only'
+  features.components -[uses]-> features.shared '81 imports, 8 type-only'
+  features.components -[uses]-> framework.global_ '56 imports, 5 type-only'
+  features.components -[uses]-> framework.std '50 imports, 14 type-only'
   features.components -[uses]-> framework.store '8 imports, 7 type-only'
   features.components -[uses]-> framework.sync '1 import, 1 type-only'
   features.components -[uses]-> model_.model_ '16 imports, 5 type-only'
@@ -4277,7 +4277,7 @@ model {
   model_.model_ -[uses]-> framework.std '48 imports, 9 type-only'
   model_.model_ -[uses]-> framework.store '36 imports, 1 type-only'
   tooling.integration-test -[uses]-> assembly.all '10 imports, 2 type-only'
-  tooling.playground -[uses]-> assembly.all '101 imports, 20 type-only'
+  tooling.playground -[uses]-> assembly.all '103 imports, 20 type-only'
   tooling.playground -[uses]-> features.database.engine '3 imports'
   tooling.playground -[uses]-> features.shared '5 imports, 1 type-only'
   tooling.playground -[uses]-> framework.sync '3 imports, 3 type-only'
@@ -4323,6 +4323,7 @@ model {
   assembly.all.components -[imports]-> features.components.hover '1 import'
   assembly.all.components -[imports]-> features.components.html-frame '1 import'
   assembly.all.components -[imports]-> features.components.icon-button '1 import'
+  assembly.all.components -[imports]-> features.components.icon-picker '1 import'
   assembly.all.components -[imports]-> features.components.icons_ '1 import'
   assembly.all.components -[imports]-> features.components.link-preview '1 import'
   assembly.all.components -[imports]-> features.components.linked-doc-title '1 import'
@@ -5680,11 +5681,13 @@ model {
   features.components.hover -[imports]-> framework.global_.lit '1 import, 1 type-only'
   features.components.hover -[imports]-> framework.global_.utils '1 import'
   features.components.html-frame -[imports]-> framework.global_.lit '1 import'
+  features.components.icon-picker -[imports]-> features.components.portal '1 import'
   features.components.icon-picker -[imports]-> features.components.src '3 imports'
-  features.components.icon-picker -[imports]-> features.shared.services '3 imports'
+  features.components.icon-picker -[imports]-> features.shared.services '5 imports, 4 type-only'
   features.components.icon-picker -[imports]-> features.shared.theme '2 imports'
+  features.components.icon-picker -[imports]-> framework.global_.exceptions '1 import'
   features.components.icon-picker -[imports]-> framework.global_.lit '1 import'
-  features.components.icon-picker -[imports]-> framework.std.src '3 imports'
+  features.components.icon-picker -[imports]-> framework.std.src '4 imports, 1 type-only'
   features.components.link-preview -[imports]-> features.shared.utils '1 import'
   features.components.link-preview -[imports]-> framework.std.src '1 import'
   features.components.linked-doc-title -[imports]-> features.components.src '1 import'
@@ -7678,10 +7681,10 @@ model {
   tooling.integration-test.src -[imports]-> assembly.all.src '1 import'
   tooling.integration-test.src -[imports]-> tooling.integration-test.editors '1 import'
   tooling.playground.apps_ -[imports]-> assembly.all.blocks '9 imports, 1 type-only'
-  tooling.playground.apps_ -[imports]-> assembly.all.components '3 imports'
+  tooling.playground.apps_ -[imports]-> assembly.all.components '4 imports'
   tooling.playground.apps_ -[imports]-> assembly.all.ext-loader '3 imports, 1 type-only'
   tooling.playground.apps_ -[imports]-> assembly.all.extensions '1 import'
-  tooling.playground.apps_ -[imports]-> assembly.all.global_ '12 imports, 2 type-only'
+  tooling.playground.apps_ -[imports]-> assembly.all.global_ '13 imports, 2 type-only'
   tooling.playground.apps_ -[imports]-> assembly.all.inlines '1 import'
   tooling.playground.apps_ -[imports]-> assembly.all.model_ '4 imports, 2 type-only'
   tooling.playground.apps_ -[imports]-> assembly.all.rich-text '1 import, 1 type-only'
