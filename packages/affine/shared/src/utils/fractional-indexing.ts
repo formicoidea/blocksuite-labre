@@ -1,4 +1,8 @@
+import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
 import { generateKeyBetween } from 'fractional-indexing';
+
+/** Bound on the steps moving a key towards b, see the loop below. */
+const MAX_PREFIX_STEPS = 16;
 
 function hasSamePrefix(a: string, b: string) {
   return a.startsWith(b) || b.startsWith(a);
@@ -16,6 +20,34 @@ export function generateFractionalIndexingKeyBetween(
   a: string | null,
   b: string | null
 ) {
+  try {
+    return keyBetween(a, b);
+  } catch (error) {
+    // The package's `midpoint` recurses once per character of a run of top
+    // digits (`z`): a forged key such as `a0` + `z` x 20000 overflows the
+    // stack. No length bound replaces this catch: legitimate keys have no
+    // ceiling (inserting again and again right before the same row grows
+    // them by about one character per six inserts, 4035 after 20000), and
+    // the overflow point depends on the engine and on how warm the code is
+    // (about 5700 characters cold, 10000 optimised, on V8). So a key is
+    // computed whenever the package can, and only its overflow becomes a
+    // named error. Its message never quotes the key, which may be 100 KB of
+    // forged content; any other error of the package goes up unchanged.
+    // Firefox reports the overflow as `InternalError: too much recursion`,
+    // not as a RangeError.
+    const overflow =
+      error instanceof RangeError ||
+      (error instanceof Error && error.name === 'InternalError');
+    if (!overflow) throw error;
+    throw new BlockSuiteError(
+      ErrorCode.DefaultRuntimeError,
+      'fractional index key too long to compute a key between',
+      { cause: error }
+    );
+  }
+}
+
+function keyBetween(a: string | null, b: string | null) {
   const randomSize = 32;
   function postfix(length: number = randomSize) {
     const chars =
@@ -65,7 +97,34 @@ export function generateFractionalIndexingKeyBetween(
     // generate a key between a and b
     if (hasSamePrefix(aSubkey, bSubkey) && a !== null && b !== null) {
       // conflict, if the subkeys are the same, generate a key between fullkeys
-      return generateKeyBetween(a, b) + '0' + postfix();
+      const middle = generateKeyBetween(a, b);
+      let key = middle;
+      // The postfix would decide the order, and could sort the key after b,
+      // if b continues with key + '0': move the key closer to b until it
+      // no longer prefixes b that way (#655, upstream AFFiNE#15709). Only new
+      // keys change; stored keys are compared as before.
+      let steps = 0;
+      while (b.startsWith(key + '0')) {
+        // A forged b (`a10` + `10` x N) needs one step per repetition,
+        // quadratic in its length, so the loop is bounded. Legitimate keys
+        // reach the bound too: inserting again and again right after the
+        // first row needs 32 steps by the 150th insert, 128 by the 600th.
+        // Past it, aim at a instead: generateKeyBetween(a, middle) plus a
+        // random postfix, so two peers inserting at the same place still get
+        // distinct keys. A bare, deterministic middle would give them the
+        // same key, and a later insert between the two would throw.
+        if (++steps > MAX_PREFIX_STEPS) {
+          const towardsA = generateKeyBetween(a, middle) + '0' + postfix();
+          // Required, not decorative: midpoint can return a prefix of middle
+          // (its `b.slice(0, 1)` branch), and that prefix plus the postfix
+          // may sort after b. Only this check keeps the order; the bare
+          // middle is the fallback that is always in order.
+          if (a < towardsA && towardsA < b) return towardsA;
+          return middle;
+        }
+        key = generateKeyBetween(key, b);
+      }
+      return key + '0' + postfix();
     } else {
       return generateKeyBetween(aSubkey, bSubkey) + '0' + postfix();
     }
