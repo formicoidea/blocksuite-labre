@@ -49,14 +49,7 @@ const ALLOWED_WORKSPACE = [
  * SVG sanitizer is an allow-list on the read tree (`svg-sanitize.ts`), and a
  * DOM sanitizer would put the DOM back in a server's graph.
  */
-const ALLOWED_THIRD_PARTY = new Set([
-  'zod',
-  // Not `@toeverything/theme`: the model's theme reads its palette from its
-  // own copy (`themes/palette-values.ts`, held to the package by
-  // `palette-values.unit.spec.ts`), so the mind map styles, which a builder
-  // must store as the toolbar does, bring no theme package in (ADR 0045,
-  // amendment of 2026-11-12).
-]);
+const ALLOWED_THIRD_PARTY = new Set(['zod']);
 
 /** DOM globals a reader must not touch: a server has none of them. */
 const DOM_GLOBALS =

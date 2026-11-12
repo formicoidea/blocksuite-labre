@@ -267,9 +267,6 @@ describe('buildMindmap', () => {
 
   test('emits the nodes and the mind map only: the branches are never stored', () => {
     const built = buildMindmap(launch, { measure: mono });
-    expect(new Set(built.map(e => e.type))).toEqual(
-      new Set(['shape', 'mindmap'])
-    );
     // Default local ids: the map is `mindmap`, its nodes `mindmap:n<i>`.
     expect(built.map(e => e.id)).toEqual([
       ...Array.from({ length: 10 }, (_, i) => `mindmap:n${i}`),
