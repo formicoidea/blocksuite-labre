@@ -3423,7 +3423,7 @@ model {
       link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/playground
       metadata {
         path 'packages/playground'
-        files '48'
+        files '49'
       }
       apps_ = folder 'apps/' {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/playground/apps
@@ -3436,7 +3436,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/playground/examples
         metadata {
           path 'packages/playground/examples'
-          files '1'
+          files '2'
         }
       }
       scripts = folder 'scripts/' {
@@ -3515,7 +3515,7 @@ model {
   assembly.all -[uses]-> features.widgets.edgeless-selected-rect '4 imports'
   assembly.all -[uses]-> features.widgets.edgeless-toolbar '5 imports'
   assembly.all -[uses]-> features.widgets.edgeless-zoom-toolbar '4 imports'
-  assembly.all -[uses]-> features.widgets.frame-title '3 imports'
+  assembly.all -[uses]-> features.widgets.frame-title '4 imports'
   assembly.all -[uses]-> features.widgets.keyboard-toolbar '3 imports'
   assembly.all -[uses]-> features.widgets.linked-doc '4 imports'
   assembly.all -[uses]-> features.widgets.note-slicer '3 imports'
@@ -4277,7 +4277,7 @@ model {
   model_.model_ -[uses]-> framework.std '48 imports, 9 type-only'
   model_.model_ -[uses]-> framework.store '36 imports, 1 type-only'
   tooling.integration-test -[uses]-> assembly.all '10 imports, 2 type-only'
-  tooling.playground -[uses]-> assembly.all '101 imports, 20 type-only'
+  tooling.playground -[uses]-> assembly.all '102 imports, 20 type-only'
   tooling.playground -[uses]-> features.database.engine '3 imports'
   tooling.playground -[uses]-> features.shared '5 imports, 1 type-only'
   tooling.playground -[uses]-> framework.sync '3 imports, 3 type-only'
@@ -4533,6 +4533,7 @@ model {
   assembly.all.src -[imports]-> features.widgets.edgeless-selected-rect.src '1 import'
   assembly.all.src -[imports]-> features.widgets.edgeless-toolbar.src '2 imports'
   assembly.all.src -[imports]-> features.widgets.edgeless-zoom-toolbar.src '1 import'
+  assembly.all.src -[imports]-> features.widgets.frame-title.src '1 import'
   assembly.all.src -[imports]-> features.widgets.linked-doc.src '1 import'
   assembly.all.src -[imports]-> features.widgets.remote-selection.src '1 import'
   assembly.all.src -[imports]-> features.widgets.slash-menu.src '1 import'
@@ -7710,6 +7711,7 @@ model {
   tooling.playground.apps_ -[imports]-> framework.sync.src '3 imports, 3 type-only'
   tooling.playground.apps_ -[imports]-> model_.model_.src '3 imports, 1 type-only'
   tooling.playground.apps_ -[imports]-> tooling.integration-test.src '19 imports, 10 type-only'
+  tooling.playground.examples -[imports]-> assembly.all.src '1 import'
   tooling.playground.examples -[imports]-> assembly.all.std '3 imports'
   tooling.playground.examples -[imports]-> assembly.all.store '1 import'
 }
