@@ -78,6 +78,15 @@ export const TAG_SELECT_CREATE: ChromeWording = [
   'com.labre.data-view.tag.create',
   'Create',
 ];
+/**
+ * What an option whose name is empty or blank is drawn as (a pill, a cell,
+ * a group title) and the placeholder of its rename field, so it stays
+ * visible and clickable (#657). Display only: the stored name is unchanged.
+ */
+export const TAG_UNTITLED: ChromeWording = [
+  'com.labre.data-view.tag.untitled',
+  'Untitled',
+];
 
 /*
  * The colours an option can take, as the option menu lists them: the
@@ -1020,6 +1029,7 @@ export const DATA_VIEW_WORDINGS: readonly ChromeWording[] = [
   TAG_SELECT_PLACEHOLDER,
   TAG_SELECT_TIP,
   TAG_SELECT_CREATE,
+  TAG_UNTITLED,
   TAG_COLOR_TEAL,
   VIEWS_BAR_MORE,
   VIEWS_BAR_ADD_VIEW,

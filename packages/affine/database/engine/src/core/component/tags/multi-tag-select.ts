@@ -34,6 +34,7 @@ import {
   TAG_SELECT_CREATE,
   TAG_SELECT_PLACEHOLDER,
   TAG_SELECT_TIP,
+  TAG_UNTITLED,
 } from '../../../translations.js';
 import type { SelectTag } from '../../logical/index.js';
 import { stopPropagation } from '../../utils/event.js';
@@ -63,6 +64,7 @@ import {
   tagSelectInputStyle,
   tagTextStyle,
 } from './styles-css.js';
+import { tagLabel } from './tag-label.js';
 
 export type TagOptionEdits = 'all' | 'create-rename';
 
@@ -162,12 +164,14 @@ class TagManager {
   filteredOptions$ = computed(() => {
     let matched = false;
     const options: RenderOption[] = [];
+    const filterText = this.text$.value.toLocaleLowerCase();
+    const say = this.ops.wording ?? englishWording;
     for (const option of this.options$.value) {
+      // A blank option is drawn as the fallback label: typing it finds it.
       if (
-        !this.text$.value ||
-        option.value
-          .toLocaleLowerCase()
-          .includes(this.text$.value.toLocaleLowerCase())
+        !filterText ||
+        option.value.toLocaleLowerCase().includes(filterText) ||
+        tagLabel(option.value, say).toLocaleLowerCase().includes(filterText)
       ) {
         options.push({
           ...option,
@@ -247,6 +251,7 @@ export class MultiTagSelect extends SignalWatcher(
     }
     const rename = menu.input({
       initialValue: option.value,
+      placeholder: this.say(TAG_UNTITLED),
       onChange: text => {
         this.tagManager.changeTag({
           id: option.id,
@@ -394,7 +399,9 @@ export class MultiTagSelect extends SignalWatcher(
       backgroundColor: color,
     });
     return html` <div class="${tagContainerStyle}" style=${style}>
-      <div data-testid="tag-name" class="${tagTextStyle}">${name}</div>
+      <div data-testid="tag-name" class="${tagTextStyle}">
+        ${tagLabel(name, wording => this.say(wording))}
+      </div>
       ${onDelete
         ? html` <div class="${tagDeleteIconStyle}" @click="${onDelete}">
             ${CloseIcon()}
@@ -598,7 +605,9 @@ const popMobileTagSelect = (target: PopupTarget, ops: TagSelectOptions) => {
                   width: 'max-content',
                 });
                 return html` <div class="${tagContainerStyle}" style=${style}>
-                  <div class="${tagTextStyle}">${option.value}</div>
+                  <div class="${tagTextStyle}">
+                    ${tagLabel(option.value, say)}
+                  </div>
                 </div>`;
               })}
               <input
@@ -631,7 +640,9 @@ const popMobileTagSelect = (target: PopupTarget, ops: TagSelectOptions) => {
                             </div>`
                           : ''}
                         <div class="${tagContainerStyle}" style=${style}>
-                          <div class="${tagTextStyle}">${option.value}</div>
+                          <div class="${tagTextStyle}">
+                            ${tagLabel(option.value, say)}
+                          </div>
                         </div>
                       </div>
                     `;

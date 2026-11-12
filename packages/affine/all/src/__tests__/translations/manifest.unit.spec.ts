@@ -139,6 +139,9 @@ const KEPT_SEPARATE_CHROME_WORDS: Readonly<Record<string, string>> = {
   Title:
     "the page title's placeholder vs a database property type (Notion says « Name »)",
   Tomorrow: "the slash menu's insert-tomorrow entry vs a date group's name",
+  // #657: a select option has a name, not a title.
+  Untitled:
+    'a page with no title vs a select option with a blank name (a host may say « Sans nom »)',
   Yesterday: "the slash menu's insert-yesterday entry vs a date group's name",
   // `@labre/affine-components` sits below the slash-menu widget, so the date
   // picker cannot import the slash menu's wording.

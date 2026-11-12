@@ -7,7 +7,9 @@ import { repeat } from 'lit/directives/repeat.js';
 import { html } from 'lit/static-html.js';
 
 import type { SelectTag } from '../../logical/index.js';
+import { wordingFrom } from '../../utils/wording.js';
 import { getColorByColor } from './colors.js';
+import { tagLabel } from './tag-label.js';
 
 export class MultiTagView extends WithDisposable(ShadowlessElement) {
   static override styles = css`
@@ -49,6 +51,7 @@ export class MultiTagView extends WithDisposable(ShadowlessElement) {
   override render() {
     const values = this.value;
     const map = new Map<string, SelectTag>(this.options?.map(v => [v.id, v]));
+    const say = wordingFrom(this);
     return html`
       <div contenteditable="false" class="affine-select-cell-container">
         ${repeat(values, id => {
@@ -63,7 +66,7 @@ export class MultiTagView extends WithDisposable(ShadowlessElement) {
             data-testid="tag-selected"
             class="select-selected"
             style=${style}
-            >${option.value}</span
+            >${tagLabel(option.value, say)}</span
           >`;
         })}
       </div>
