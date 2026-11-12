@@ -18,13 +18,13 @@
  * peer, so two peers inserting at the same place got equal keys and a later
  * insert between them threw `a should be smaller than b`.
  *
- * Keys are also bounded in length (4096 characters): the package's
- * `midpoint` recurses once per character of a run of `z`, so a forged
- * `a0` + `z` x 20000 overflowed the stack with an anonymous `RangeError`.
- * Such a key now fails with a named `BlockSuiteError` whose message does not
- * quote the key, before the package is called; legitimate keys never reach
- * the bound (the longest series measured, 20000 inserts right before the
- * same row, ends at 4035 characters; every other pattern stays under 310).
+ * A forged key such as `a0` + `z` x 20000 overflowed the stack with an
+ * anonymous `RangeError`: the package's `midpoint` recurses once per
+ * character of a run of `z`. That overflow now comes out as a named
+ * `BlockSuiteError` whose message does not quote the key. No length bound
+ * replaces it: legitimate keys have no ceiling (20000 inserts right before
+ * the same row end at 4035 characters), so a bound would refuse documents
+ * the package can still compute; the series below must never throw.
  *
  * The fix only changes which NEW keys are generated; stored keys are read and
  * compared exactly as before, so nothing here touches the stored format.
@@ -93,53 +93,52 @@ describe('generateFractionalIndexingKeyBetween', () => {
     expect(misordered).toEqual([]);
   });
 
-  it('returns fast and in order for a forged b just under the length bound (bounded loop)', () => {
+  it('returns fast and in order for a forged 100 KB b (bounded loop)', () => {
     const postfix = 'x'.repeat(32);
     const a = 'a100' + postfix;
-    // 4037 characters: the unbounded loop ran once per '10'
-    const b = 'a10' + '10'.repeat(2_000) + '10' + postfix;
-    expect(b.length).toBeLessThanOrEqual(4096);
+    const b = 'a10' + '10'.repeat(50_000) + '10' + postfix;
     const started = performance.now();
     const key = between(a, b);
     const elapsed = performance.now() - started;
     expect(a < key && key < b).toBe(true);
-    // a wide budget: the unbounded loop took tens of seconds on 100 KB
+    // a wide budget: the unbounded loop took tens of seconds here
     expect(elapsed).toBeLessThan(200);
   });
 
-  it('refuses a forged key past the length bound with a named error, not a RangeError', () => {
-    const forged = 'a0' + 'z'.repeat(20_000);
-    const failures = [
-      () => between(forged, 'a1'),
-      () => between('a0', 'a10' + '10'.repeat(50_000) + 'x'.repeat(32)),
-      () => between(forged, null),
-      () => between(null, 'a1' + 'z'.repeat(5_000)),
-    ].map(generate => {
-      try {
-        generate();
-        return null;
-      } catch (error) {
-        return error;
-      }
-    });
-    for (const error of failures) {
-      expect(error).toBeInstanceOf(BlockSuiteError);
-      expect((error as Error).message).not.toContain('zzzz');
-      expect((error as Error).message).not.toContain('1010');
+  it('turns the stack overflow of a forged key into a named error', () => {
+    let thrown: unknown;
+    try {
+      between('a0' + 'z'.repeat(20_000), 'a1');
+    } catch (error) {
+      thrown = error;
     }
+    expect(thrown).toBeInstanceOf(BlockSuiteError);
+    expect(thrown).not.toBeInstanceOf(RangeError);
+    expect((thrown as Error).message).not.toContain('zzzz');
   });
 
-  it('never refuses a key from a long series of legitimate inserts', () => {
-    const lengths: number[] = [];
+  it('lets any other error of the package go up unchanged', () => {
+    expect(() => between('b', 'a')).toThrow('a should be smaller than b');
+    let thrown: unknown;
+    try {
+      // an integer part the package refuses, not an overflow
+      between('a', 'b0');
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(Error);
+    expect(thrown).not.toBeInstanceOf(BlockSuiteError);
+  });
+
+  it('never throws on a long series of legitimate inserts', () => {
+    const misordered: string[] = [];
     // random places, the usual pattern
     let keys = [between(null, null)];
     for (let i = 0; i < 8_000; i++) {
       const at = Math.floor(Math.random() * (keys.length + 1));
       const a = at === 0 ? null : keys[at - 1];
       const b = at === keys.length ? null : keys[at];
-      const key = between(a, b);
-      lengths.push(key.length);
-      keys.splice(at, 0, key);
+      keys.splice(at, 0, insertBetween(misordered, a, b));
     }
     // again and again right after the first row (the #655 path), then right
     // before the same row (the only pattern whose keys keep growing)
@@ -147,14 +146,11 @@ describe('generateFractionalIndexingKeyBetween', () => {
       keys = [between(null, null)];
       keys.push(between(keys[0], null));
       for (let i = 0; i < 2_000; i++) {
-        const key = between(keys[0], keys[1]);
-        lengths.push(key.length);
-        keys.splice(1, 0, key);
+        keys.splice(1, 0, insertBetween(misordered, keys[0], keys[1]));
         if (side === 'before last') keys.shift();
       }
     }
-    // the bound is 4096 characters
-    expect(Math.max(...lengths)).toBeLessThan(1_000);
+    expect(misordered).toEqual([]);
   });
 
   it('keeps every key postfixed and unique past the step bound', () => {

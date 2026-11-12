@@ -4,21 +4,6 @@ import { generateKeyBetween } from 'fractional-indexing';
 /** Bound on the steps moving a key towards b, see the loop below. */
 const MAX_PREFIX_STEPS = 16;
 
-/**
- * Longest key `a` or `b` accepted. The package's `midpoint` recurses once
- * per character of a run of top digits (`z`), so a forged key such as
- * `a0` + `z` x 20000 overflowed the stack with a `RangeError`. Measured
- * on V8 (Node 24, Chromium): the overflow starts from about 5700 characters
- * on a cold stack, 10000 once optimised, so the bound sits under the cold
- * figure. Legitimate keys stay far below it in normal use (20000 inserts:
- * 37 characters appending or prepending, about 300 right after the first
- * row); the one pattern that grows them is inserting again and again right
- * before the same row, about one character per six inserts, 4035 after
- * 20000. That series overflows the stack a few thousand inserts later
- * anyway: past the bound it fails earlier, with a named error.
- */
-const MAX_KEY_LENGTH = 4096;
-
 function hasSamePrefix(a: string, b: string) {
   return a.startsWith(b) || b.startsWith(a);
 }
@@ -35,6 +20,29 @@ export function generateFractionalIndexingKeyBetween(
   a: string | null,
   b: string | null
 ) {
+  try {
+    return keyBetween(a, b);
+  } catch (error) {
+    // The package's `midpoint` recurses once per character of a run of top
+    // digits (`z`): a forged key such as `a0` + `z` x 20000 overflows the
+    // stack. No length bound replaces this catch: legitimate keys have no
+    // ceiling (inserting again and again right before the same row grows
+    // them by about one character per six inserts, 4035 after 20000), and
+    // the overflow point depends on the engine and on how warm the code is
+    // (about 5700 characters cold, 10000 optimised, on V8). So a key is
+    // computed whenever the package can, and only its overflow becomes a
+    // named error. Its message never quotes the key, which may be 100 KB of
+    // forged content; any other error of the package goes up unchanged.
+    if (!(error instanceof RangeError)) throw error;
+    throw new BlockSuiteError(
+      ErrorCode.DefaultRuntimeError,
+      'fractional index key too long to compute a key between',
+      { cause: error }
+    );
+  }
+}
+
+function keyBetween(a: string | null, b: string | null) {
   const randomSize = 32;
   function postfix(length: number = randomSize) {
     const chars =
@@ -46,17 +54,6 @@ export function generateFractionalIndexingKeyBetween(
       result += chars.charAt(values[i] % chars.length);
     }
     return result;
-  }
-
-  // The message never quotes the key: it may be 100 KB of forged content.
-  if (
-    (a !== null && a.length > MAX_KEY_LENGTH) ||
-    (b !== null && b.length > MAX_KEY_LENGTH)
-  ) {
-    throw new BlockSuiteError(
-      ErrorCode.DefaultRuntimeError,
-      `fractional index key longer than ${MAX_KEY_LENGTH} characters`
-    );
   }
 
   if (a !== null && b !== null && a >= b) {
