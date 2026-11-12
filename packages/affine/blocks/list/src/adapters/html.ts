@@ -9,6 +9,8 @@ import type { DeltaInsert } from '@labre/store';
 import { nanoid } from '@labre/store';
 import type { Element } from 'hast';
 
+import { listStartNumber } from './start-number.js';
+
 export const listBlockHtmlAdapterMatcher: BlockHtmlAdapterMatcher = {
   flavour: ListBlockSchema.model.flavour,
   toMatch: o => HastUtils.isElement(o.node) && o.node.tagName === 'li',
@@ -136,6 +138,7 @@ export const listBlockHtmlAdapterMatcher: BlockHtmlAdapterMatcher = {
         // if true, add the list item to the list
       } else {
         // if false, create a new list
+        const start = listStartNumber(o.node.props);
         walkerContext.openNode(
           {
             type: 'element',
@@ -146,6 +149,7 @@ export const listBlockHtmlAdapterMatcher: BlockHtmlAdapterMatcher = {
                   ? 'list-style-type: none; padding-inline-start: 18px;'
                   : null,
               className: [o.node.props.type + '-list'],
+              ...(start === undefined ? {} : { start }),
             },
             children: [],
           },

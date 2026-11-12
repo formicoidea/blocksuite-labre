@@ -10,6 +10,8 @@ import type { DeltaInsert } from '@labre/store';
 import { nanoid } from '@labre/store';
 import type { List } from 'mdast';
 
+import { listStartNumber } from './start-number.js';
+
 const LIST_MDAST_TYPE = new Set(['list', 'listItem']);
 const isListMDASTType = (node: MarkdownAST) => LIST_MDAST_TYPE.has(node.type);
 
@@ -94,6 +96,7 @@ export const listBlockMarkdownAdapterMatcher: BlockMarkdownAdapterMatcher = {
         // if true, add the list item to the list
       } else {
         // if false, create a new list
+        const start = listStartNumber(o.node.props);
         walkerContext
           .openNode(
             {
@@ -101,6 +104,7 @@ export const listBlockMarkdownAdapterMatcher: BlockMarkdownAdapterMatcher = {
               ordered: o.node.props.type === 'numbered',
               spread: false,
               children: [],
+              ...(start === undefined ? {} : { start }),
             },
             'children'
           )
