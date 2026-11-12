@@ -40,7 +40,8 @@ export function addProperty(
 export function copyCellsByProperty(
   model: DatabaseBlockModel,
   fromId: ColumnDataType['id'],
-  toId: ColumnDataType['id']
+  toId: ColumnDataType['id'],
+  mapValue: (value: unknown) => unknown = value => value
 ) {
   model.store.transact(() => {
     Object.keys(model.props.cells).forEach(rowId => {
@@ -49,6 +50,7 @@ export function copyCellsByProperty(
         model.props.cells[rowId][toId] = {
           ...cell,
           columnId: toId,
+          value: mapValue(cell.value),
         };
       }
     });
