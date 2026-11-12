@@ -566,15 +566,10 @@ export function mountCanvasViewer(
   const onClick = (e: MouseEvent) => follow(e, false);
   // The middle button follows an `<a href>` on `auxclick`, not `click`:
   // without this listener it opened the link past `isSafeLinkUrl`, outside
-  // `onLinkClick` and `docTitles`. Any other button (right, back, forward)
-  // follows nothing.
+  // `onLinkClick` and `docTitles`. No other button follows a link there: the
+  // right one opens the menu (`contextmenu`), back and forward navigate first.
   const onAuxClick = (e: MouseEvent) => {
-    if (e.button === 1) {
-      follow(e, true);
-      return;
-    }
-    e.preventDefault();
-    e.stopPropagation();
+    if (e.button === 1) follow(e, true);
   };
 
   // A frozen view is a picture with one gesture, like the surface reference

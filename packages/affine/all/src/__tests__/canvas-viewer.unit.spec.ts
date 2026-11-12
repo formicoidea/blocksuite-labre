@@ -600,16 +600,6 @@ describe('the canvas viewer', () => {
     anchor.dispatchEvent(event);
     expect(event.defaultPrevented).toBe(true);
     expect(onLinkClick).not.toHaveBeenCalled();
-
-    // Any other button follows nothing.
-    const right = new MouseEvent('auxclick', {
-      bubbles: true,
-      cancelable: true,
-      button: 2,
-    });
-    card.dispatchEvent(right);
-    expect(right.defaultPrevented).toBe(true);
-    expect(onLinkClick).not.toHaveBeenCalled();
   });
 
   test('a middle click on a named page opens it; without onLinkClick, a link opens in a new tab', async () => {
