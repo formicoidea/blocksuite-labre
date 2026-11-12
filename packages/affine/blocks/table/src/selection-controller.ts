@@ -597,14 +597,17 @@ export class SelectionController implements ReactiveController {
       if (removeNativeSelection) {
         getSelection()?.removeAllRanges();
       }
-      this.host.selection.set([
+      // One group, never all of them: `set` and `clear()` would also drop the
+      // canvas selection of the note being edited (`gfx` group), so in
+      // edgeless the note left edit mode under the caret (#659).
+      this.host.selection.setGroup(TableSelection.group, [
         new TableSelection({
           blockId: this.host.model.id,
           data: selection,
         }),
       ]);
     } else {
-      this.host.selection.clear();
+      this.host.selection.setGroup(TableSelection.group, []);
     }
   }
   selected$ = computed(() => this.getSelected());
