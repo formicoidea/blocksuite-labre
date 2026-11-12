@@ -51,10 +51,11 @@ const ALLOWED_WORKSPACE = [
  */
 const ALLOWED_THIRD_PARTY = new Set([
   'zod',
-  // The theme tokens, data only: the mind map styles' colours are read from
-  // them, and a builder must store the colours the toolbar stores (ADR 0045
-  // amendment of 2026-11-10). A host may alias it to its own theme.
-  '@toeverything/theme',
+  // Not `@toeverything/theme`: the model's theme reads its palette from its
+  // own copy (`themes/palette-values.ts`, held to the package by
+  // `palette-values.unit.spec.ts`), so the mind map styles, which a builder
+  // must store as the toolbar does, bring no theme package in (ADR 0045,
+  // amendment of 2026-11-12).
 ]);
 
 /** DOM globals a reader must not touch: a server has none of them. */
@@ -218,6 +219,12 @@ describe('the headless interchange entries', () => {
         modules.filter(path =>
           /packages\/framework\/(?:std|store|sync)\//.test(path)
         )
+      ).toEqual([]);
+      // Nor the AFFiNE theme package, which the model's theme once loaded for
+      // its palette (ADR 0045, amendment of 2026-11-12): matches
+      // `node_modules/@toeverything/theme/dist/v2/index.js`, not `zod`.
+      expect(
+        modules.filter(path => /node_modules\/@toeverything\//.test(path))
       ).toEqual([]);
       // And no DOM by name, in any module that made it in: the readers are
       // pure in ADR 0012's amended sense, with no DOM and no editor.

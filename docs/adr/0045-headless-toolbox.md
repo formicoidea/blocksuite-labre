@@ -147,9 +147,9 @@ and Event Storming follow on the same entry.
 ## Amended 2026-11-10 — the mind map: a builder with the measure injected
 
 **Not a red zone for the stored format** (no schema, no stored field, no enum
-value: the builder writes the props the toolbar's mind map already writes), but
-it **widens the allow-list** of `interchange-headless.unit.spec.ts`, which
-asks for the maintainer's approval like the amendment above. Issue #662.
+value: the builder writes the props the toolbar's mind map already writes). The
+allow-list of `interchange-headless.unit.spec.ts` stays `zod` (amendment of
+2026-11-12 below). Issue #662.
 
 The mind map was left out above because its layout needs text measurement. It
 is the last canvas tool a host with no editor cannot place (the Labre
@@ -182,9 +182,9 @@ options)`. It returns one `shape` per node, in tree order, with the style
    editor's `MindmapNode` satisfies; its algorithm is unchanged.
 4. `style.ts` loads no lodash (`applyNodeStyle` moves to `apply-style.ts`,
    still on the model index), and joins `@labre/affine-model/headless`. Its
-   colours come from the theme tokens, so `@toeverything/theme` (data only,
-   aliased by a host to its own theme) joins `zod` in the allow-list: a
-   builder must store the colours the toolbar stores.
+   colours come from the model's theme, so a builder stores the colours the
+   toolbar stores; that theme carries its own palette values (amendment of
+   2026-11-12 below).
 5. `materializeInterchangeImport` rewrites a `mindmap`'s `children` keys and
    their `parent` onto the minted ids, as it rewrites a group's `children`.
 6. Two copies, each held to its original: `wrapMindmapText` is `wrapText`
@@ -201,3 +201,36 @@ options)`. It returns one `shape` per node, in tree order, with the style
 Not done: the branches are local connectors the view draws from the tree, so a
 host that previews a built map draws them itself; collapsed nodes; reading
 `.mm` or `.opml` with no editor (a reader could sit on this builder).
+
+## Amended 2026-11-12 — the library's theme carries its palette values
+
+**Touches `packages/affine/model` (red zone) without changing the stored
+format**: `DefaultTheme` is deep-equal before and after, so every colour the
+editor writes into a document is the colour it wrote before.
+
+With the mind map styles in `@labre/affine-model/headless`, the editor-free
+graph reached `themes/utils.ts`, which read `@toeverything/theme/v2` at run
+time for `getColorByKey` and `pureBlack` / `pureWhite`: the only third-party
+package besides `zod` in that graph. The product owner chose not to widen the
+allow-list for it.
+
+Decided:
+
+1. `model/src/themes/palette-values.ts` holds the palette entries the theme
+   reads (the keys `default.ts` passes to `getColorByKey`, plus the black and
+   white `pureBlack` and `pureWhite` read), valued as `getColorByKey` valued
+   them: one colour when the dark and light themes agree, `{ dark, light }`
+   when they do not. It imports types only. `getColorByKey`, `pureBlack` and
+   `pureWhite` read it, and nothing in `model/src` imports the package at run
+   time any more.
+2. A deliberate copy, held by a parity: `palette-values.unit.spec.ts` checks
+   every entry against `@toeverything/theme/v2` (a test may import it), and
+   the key list against `default.ts`. A bump of the package that would change
+   a stored colour fails there; moving the colour becomes an edit of the copy,
+   that is a decision.
+3. The editor-free entries load `zod` and the workspace sources only;
+   `interchange-headless.unit.spec.ts` refuses `@toeverything/theme` by name.
+
+Consequences: `@toeverything/theme` stays a dependency of the model (its
+parity spec) and of the editor packages that read its CSS variables; nothing
+changes for a host.

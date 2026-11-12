@@ -9,8 +9,9 @@
  * the drag-and-drop adapter): the headless `./interchange` entries of the
  * framework bundles. Held by `interchange-headless.unit.spec.ts` in
  * `packages/affine/all`. Add only from files that import nothing but
- * `@labre/global`, `zod`, the theme tokens (`@toeverything/theme`, data only)
- * and types.
+ * `@labre/global`, `zod` and types. Not `@toeverything/theme`: the theme reads
+ * its palette from its own copy, `themes/palette-values.ts` (ADR 0045,
+ * amendment of 2026-11-12).
  */
 export * from './consts/index.js';
 export * from './elements/bpmn/consts.js';

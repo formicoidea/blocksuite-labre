@@ -239,4 +239,8 @@ const elements = buildMindmap(
 The branches are drawn by the editor from the tree, never stored: a host that
 previews a built map draws them itself.
 
+Like the framework entries, this one loads `zod` and nothing else from outside
+the library: the mind map styles' colours come from the library's theme, which
+carries its own copy of the palette (ADR 0045, amendment of 2026-11-12).
+
 Next: [07-upgrade.md](07-upgrade.md).
