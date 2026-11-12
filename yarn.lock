@@ -1457,7 +1457,6 @@ __metadata:
   resolution: "@labre/affine-block-callout@workspace:packages/affine/blocks/callout"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@emoji-mart/data": "npm:^1.2.1"
     "@floating-ui/dom": "npm:^1.6.10"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
@@ -1473,7 +1472,6 @@ __metadata:
     "@preact/signals-core": "npm:^1.8.0"
     "@toeverything/theme": "npm:^1.1.15"
     "@types/mdast": "npm:^4.0.4"
-    emoji-mart: "npm:^5.6.0"
     lit: "npm:^3.2.0"
     minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
@@ -1964,6 +1962,7 @@ __metadata:
     "@types/lodash-es": "npm:^4.17.12"
     "@types/mdast": "npm:^4.0.4"
     date-fns: "npm:^4.0.0"
+    emoji-mart: "npm:^5.6.0"
     lit: "npm:^3.2.0"
     lit-html: "npm:^3.2.1"
     lodash-es: "npm:^4.17.21"

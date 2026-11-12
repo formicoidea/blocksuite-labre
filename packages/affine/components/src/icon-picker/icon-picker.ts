@@ -3,7 +3,7 @@ import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import type { BlockStdScope } from '@labre/std';
 import { stdContext } from '@labre/std';
 import { consume } from '@lit/context';
-import { css, html, LitElement } from 'lit';
+import { css, html, LitElement, type PropertyValues } from 'lit';
 import { property } from 'lit/decorators.js';
 
 import { DEFAULT_ICON_COLOR } from './icon-data.js';
@@ -24,7 +24,10 @@ const TABS: ReadonlyArray<{
 ];
 
 /**
- * A standalone emoji + icon picker, ported from upstream's React component.
+ * The library's one emoji + icon picker: emoji-mart's picker on the Emoji tab
+ * (the one the callout block always opened, issue 636 follow-up: the PO chose
+ * it over the emoji grid this element first shipped with) and the
+ * `@blocksuite/icons` set on the Icons tab, ported from upstream.
  *
  * It is deliberately wired to nothing: it dispatches a bubbling, composed
  * `select` event carrying an `IconData` (or `null` when the user asks to
@@ -46,11 +49,16 @@ export class AffineIconPicker extends LitElement {
   accessor std!: BlockStdScope;
 
   static override styles = css`
+    /*
+     * The frame is sized on emoji-mart's own picker (nine 36px cells plus its
+     * padding and scrollbar gutter, 435px high), so switching tabs never
+     * resizes the popup.
+     */
     :host {
       display: flex;
       flex-direction: column;
-      width: 340px;
-      height: 400px;
+      width: 352px;
+      height: 435px;
       border-radius: 8px;
       border: 1px solid ${unsafeCSSVarV2('layer/insideBorder/border')};
       background: ${unsafeCSSVarV2('layer/background/overlayPanel')};
@@ -116,11 +124,26 @@ export class AffineIconPicker extends LitElement {
       flex: 1;
       min-height: 0;
     }
+
+    /*
+     * One tab and no Remove: nothing to frame, emoji-mart draws its own box
+     * exactly as the callout's emoji menu did.
+     */
+    :host([data-bare]) {
+      width: auto;
+      height: auto;
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+      overflow: visible;
+    }
   `;
 
   /**
    * The panel currently shown. Upstream opens on Icons; a host may set another
-   * tab up front, and clicking a tab writes back here.
+   * tab up front, and clicking a tab writes back here. A tab left out of
+   * {@link tabs} falls back to the first one offered.
    */
   @property({ attribute: false })
   accessor activeTab: IconPickerTab = 'icons';
@@ -132,11 +155,20 @@ export class AffineIconPicker extends LitElement {
   accessor color: string = DEFAULT_ICON_COLOR;
 
   /**
+   * The tabs offered, in their order. A host whose model stores only an emoji
+   * (the callout's `emoji` prop) passes `['emoji']`; with one tab the tab bar
+   * is not drawn, and with Remove hidden too neither is the frame.
+   */
+  @property({ attribute: false })
+  accessor tabs: readonly IconPickerTab[] = ['emoji', 'icons'];
+
+  /**
    * Hides the "Remove" affordance for hosts where an icon is mandatory.
    */
   @property({ attribute: false })
   accessor showRemove = true;
 
+  /** See `OpenIconPickerOptions.rememberRecent`. */
   @property({ attribute: false })
   accessor rememberRecent = true;
 
@@ -158,22 +190,48 @@ export class AffineIconPicker extends LitElement {
     );
   };
 
-  override render() {
+  private get _offered() {
+    const offered = TABS.filter(tab => this.tabs.includes(tab.value));
+    return offered.length ? offered : TABS;
+  }
+
+  private get _shownTab(): IconPickerTab {
+    const offered = this._offered;
+    return offered.some(tab => tab.value === this.activeTab)
+      ? this.activeTab
+      : offered[0].value;
+  }
+
+  private get _bare() {
+    return this._offered.length < 2 && !this.showRemove;
+  }
+
+  override willUpdate(changed: PropertyValues<this>) {
+    super.willUpdate(changed);
+    this.toggleAttribute('data-bare', this._bare);
+  }
+
+  private _renderHeader() {
+    if (this._bare) return null;
+    const offered = this._offered;
+    const shown = this._shownTab;
     return html`
       <header class="icon-picker-header">
         <div class="icon-picker-tabs">
-          ${TABS.map(
-            tab => html`
-              <button
-                type="button"
-                data-tab=${tab.value}
-                data-active=${this.activeTab === tab.value}
-                @click=${() => (this.activeTab = tab.value)}
-              >
-                ${iconPickerWording(this, tab.wording)}
-              </button>
-            `
-          )}
+          ${offered.length < 2
+            ? null
+            : offered.map(
+                tab => html`
+                  <button
+                    type="button"
+                    data-tab=${tab.value}
+                    data-active=${shown === tab.value}
+                    @click=${() => (this.activeTab = tab.value)}
+                  >
+                    ${iconPickerWording(this, tab.wording)}
+                  </button>
+                `
+              )}
         </div>
         ${this.showRemove
           ? html`
@@ -188,11 +246,18 @@ export class AffineIconPicker extends LitElement {
             `
           : null}
       </header>
+    `;
+  }
+
+  override render() {
+    return html`
+      ${this._renderHeader()}
       <main class="icon-picker-body">
-        ${this.activeTab === 'emoji'
+        ${this._shownTab === 'emoji'
           ? html`<affine-emoji-picker-panel
               .rememberRecent=${this.rememberRecent}
               .translation=${this.translation}
+              ?framed=${!this._bare}
             ></affine-emoji-picker-panel>`
           : html`<affine-icon-picker-panel
               .color=${this.color}

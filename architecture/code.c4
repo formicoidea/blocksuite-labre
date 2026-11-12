@@ -432,7 +432,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/callout
         metadata {
           path 'packages/affine/blocks/callout'
-          files '19'
+          files '18'
         }
         adapters = folder 'adapters/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/callout/src/adapters
@@ -459,7 +459,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/callout/src
           metadata {
             path 'packages/affine/blocks/callout/src'
-            files '9'
+            files '8'
           }
         }
       }
@@ -1154,7 +1154,7 @@ model {
       link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/components
       metadata {
         path 'packages/affine/components'
-        files '144'
+        files '143'
       }
       block-selection = folder 'block-selection/' {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/components/src/block-selection
@@ -1286,7 +1286,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/components/src/icon-picker
         metadata {
           path 'packages/affine/components/src/icon-picker'
-          files '11'
+          files '10'
         }
       }
       icons_ = folder 'icons/' {
@@ -3553,13 +3553,13 @@ model {
   features.blocks.bookmark -[uses]-> framework.std '12 imports, 2 type-only'
   features.blocks.bookmark -[uses]-> framework.store '8 imports, 5 type-only'
   features.blocks.bookmark -[uses]-> model_.model_ '14 imports, 4 type-only'
-  features.blocks.callout -[uses]-> features.components '4 imports'
+  features.blocks.callout -[uses]-> features.components '6 imports'
   features.blocks.callout -[uses]-> features.ext-loader '2 imports'
   features.blocks.callout -[uses]-> features.inlines.preset '1 import'
   features.blocks.callout -[uses]-> features.rich-text '7 imports, 1 type-only'
   features.blocks.callout -[uses]-> features.shared '19 imports, 1 type-only'
   features.blocks.callout -[uses]-> features.widgets.slash-menu '2 imports, 1 type-only'
-  features.blocks.callout -[uses]-> framework.global_ '2 imports'
+  features.blocks.callout -[uses]-> framework.global_ '1 import'
   features.blocks.callout -[uses]-> framework.std '7 imports, 3 type-only'
   features.blocks.callout -[uses]-> framework.store '4 imports, 2 type-only'
   features.blocks.callout -[uses]-> model_.model_ '11 imports, 1 type-only'
@@ -3739,12 +3739,12 @@ model {
   features.blocks.table -[uses]-> framework.std '10 imports, 4 type-only'
   features.blocks.table -[uses]-> framework.store '9 imports, 3 type-only'
   features.blocks.table -[uses]-> model_.model_ '12 imports, 4 type-only'
-  features.components -[uses]-> features.shared '81 imports, 8 type-only'
-  features.components -[uses]-> framework.global_ '56 imports, 5 type-only'
+  features.components -[uses]-> features.shared '81 imports, 7 type-only'
+  features.components -[uses]-> framework.global_ '57 imports, 5 type-only'
   features.components -[uses]-> framework.std '50 imports, 14 type-only'
   features.components -[uses]-> framework.store '8 imports, 7 type-only'
   features.components -[uses]-> framework.sync '1 import, 1 type-only'
-  features.components -[uses]-> model_.model_ '16 imports, 5 type-only'
+  features.components -[uses]-> model_.model_ '17 imports, 5 type-only'
   features.database.block -[uses]-> features.components '10 imports, 1 type-only'
   features.database.block -[uses]-> features.database.engine '42 imports, 10 type-only'
   features.database.block -[uses]-> features.ext-loader '2 imports'
@@ -4688,6 +4688,7 @@ model {
   features.blocks.callout.src -[imports]-> features.blocks.callout.commands '2 imports'
   features.blocks.callout.src -[imports]-> features.blocks.callout.configs '3 imports'
   features.blocks.callout.src -[imports]-> features.components.caption '1 import'
+  features.blocks.callout.src -[imports]-> features.components.icon-picker '2 imports'
   features.blocks.callout.src -[imports]-> features.components.portal '1 import'
   features.blocks.callout.src -[imports]-> features.ext-loader.src '2 imports'
   features.blocks.callout.src -[imports]-> features.inlines.preset.src '1 import'
@@ -4697,7 +4698,7 @@ model {
   features.blocks.callout.src -[imports]-> features.shared.theme '1 import'
   features.blocks.callout.src -[imports]-> features.shared.utils '2 imports'
   features.blocks.callout.src -[imports]-> features.widgets.slash-menu.src '1 import'
-  features.blocks.callout.src -[imports]-> framework.global_.lit '2 imports'
+  features.blocks.callout.src -[imports]-> framework.global_.lit '1 import'
   features.blocks.callout.src -[imports]-> framework.std.src '3 imports, 1 type-only'
   features.blocks.callout.src -[imports]-> model_.model_.src '4 imports, 1 type-only'
   features.blocks.code.adapters -[imports]-> features.shared.adapters '5 imports'
@@ -5683,11 +5684,12 @@ model {
   features.components.html-frame -[imports]-> framework.global_.lit '1 import'
   features.components.icon-picker -[imports]-> features.components.portal '1 import'
   features.components.icon-picker -[imports]-> features.components.src '3 imports'
-  features.components.icon-picker -[imports]-> features.shared.services '5 imports, 4 type-only'
+  features.components.icon-picker -[imports]-> features.shared.services '5 imports, 3 type-only'
   features.components.icon-picker -[imports]-> features.shared.theme '2 imports'
   features.components.icon-picker -[imports]-> framework.global_.exceptions '1 import'
-  features.components.icon-picker -[imports]-> framework.global_.lit '1 import'
+  features.components.icon-picker -[imports]-> framework.global_.lit '2 imports'
   features.components.icon-picker -[imports]-> framework.std.src '4 imports, 1 type-only'
+  features.components.icon-picker -[imports]-> model_.model_.src '1 import'
   features.components.link-preview -[imports]-> features.shared.utils '1 import'
   features.components.link-preview -[imports]-> framework.std.src '1 import'
   features.components.linked-doc-title -[imports]-> features.components.src '1 import'

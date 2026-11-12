@@ -1,12 +1,23 @@
+/**
+ * The picker's elements, mounted on their own: the tabbed `affine-icon-picker`,
+ * its emoji half (emoji-mart's picker, the callout's since the picker was
+ * unified with it) and its icon half.
+ *
+ * What it would have caught on the emoji half:
+ * - a pick that does not come out as `{ type: 'emoji', unicode }`;
+ * - emoji-mart's own words (search, categories, skin tones) left in English
+ *   instead of read through the `com.labre.*` wordings and the host's
+ *   `translation`;
+ * - `rememberRecent: false` still writing the picks to `localStorage`;
+ * - emoji-mart, built imperatively, left behind with its document listeners
+ *   when the panel goes (the callout's emoji menu once leaked one per opening);
+ * - the one-tab picker (the callout's) still drawing a tab bar or a frame
+ *   around emoji-mart's own.
+ */
 import { type LitElement, nothing } from 'lit';
 import { beforeAll, describe, expect, test } from 'vitest';
 
 import type { AffineIconPickerPanel } from '../icon-picker/affine-icon-picker-panel.js';
-import {
-  emojiUnicode,
-  filterEmojiGroups,
-  getEmojiGroups,
-} from '../icon-picker/emoji-data.js';
 import type { AffineEmojiPickerPanel } from '../icon-picker/emoji-picker-panel.js';
 import {
   DEFAULT_ICON_COLOR,
@@ -28,55 +39,19 @@ const mount = async <T extends LitElement>(element: T): Promise<T> => {
   return element;
 };
 
+/** emoji-mart's shadow root inside an emoji panel, once its init has run. */
+async function emojiMart(panel: HTMLElement): Promise<ShadowRoot> {
+  for (let i = 0; i < 40; i++) {
+    const root = panel.shadowRoot?.querySelector('em-emoji-picker')?.shadowRoot;
+    if (root?.querySelector('.category button[aria-label]')) return root;
+    await new Promise(resolve => setTimeout(resolve, 25));
+  }
+  throw new Error('emoji-mart drew no emoji');
+}
+
 const cells = (root: HTMLElement) => [
   ...(root.shadowRoot?.querySelectorAll<HTMLElement>('.picker-cell') ?? []),
 ];
-
-describe('emoji data', () => {
-  test('groups the dataset into the eight upstream categories', () => {
-    const groups = getEmojiGroups();
-
-    expect(groups.map(group => group.name)).toEqual([
-      'Smileys & People',
-      'Animals & Nature',
-      'Food & Drink',
-      'Activity',
-      'Travel & Places',
-      'Objects',
-      'Symbols',
-      'Flags',
-    ]);
-    expect(groups.every(group => group.emojis.length > 0)).toBe(true);
-  });
-
-  test('filters on keywords and drops the groups left empty', () => {
-    const filtered = filterEmojiGroups(getEmojiGroups(), 'pizza');
-
-    expect(filtered).toHaveLength(1);
-    expect(filtered[0].name).toBe('Food & Drink');
-    expect(filtered[0].emojis.map(emoji => emoji.skins[0])).toContain('🍕');
-  });
-
-  test('an empty keyword leaves the groups untouched', () => {
-    expect(filterEmojiGroups(getEmojiGroups(), '   ')).toEqual(
-      getEmojiGroups()
-    );
-  });
-
-  test('a skin tone falls back to the neutral variant when there is none', () => {
-    const toneless = { id: 'x', name: 'x', keywords: [], skins: ['🍕'] };
-    const toned = {
-      id: 'wave',
-      name: 'wave',
-      keywords: [],
-      skins: ['👋', '👋🏻', '👋🏼', '👋🏽', '👋🏾', '👋🏿'],
-    };
-
-    expect(emojiUnicode(toneless, 3)).toBe('🍕');
-    expect(emojiUnicode(toned, 3)).toBe('👋🏽');
-    expect(emojiUnicode(toned, undefined)).toBe('👋');
-  });
-});
 
 describe('icon data', () => {
   test('offers every icon of the set, without its Icon suffix', () => {
@@ -156,6 +131,41 @@ describe('affine-icon-picker', () => {
     expect(details).toEqual([null]);
   });
 
+  test('one tab and no Remove: no tab bar, no frame, emoji-mart alone', async () => {
+    const picker = await mount(
+      Object.assign(document.createElement('affine-icon-picker'), {
+        rememberRecent: false,
+        tabs: ['emoji'] as const,
+        showRemove: false,
+      })
+    );
+
+    // `activeTab` still says 'icons' (its default): a tab not offered falls
+    // back to the first one that is.
+    expect(picker.activeTab).toBe('icons');
+    expect(picker.shadowRoot?.querySelector('header')).toBeNull();
+    expect(picker.hasAttribute('data-bare')).toBe(true);
+    const panel = picker.shadowRoot?.querySelector('affine-emoji-picker-panel');
+    expect(panel).not.toBeNull();
+    expect(panel?.framed).toBe(false);
+    picker.remove();
+  });
+
+  test('two tabs: the frame is drawn and the emoji panel fills it', async () => {
+    const picker = await mount(
+      Object.assign(document.createElement('affine-icon-picker'), {
+        rememberRecent: false,
+        activeTab: 'emoji' as const,
+      })
+    );
+
+    expect(picker.hasAttribute('data-bare')).toBe(false);
+    expect(
+      picker.shadowRoot?.querySelector('affine-emoji-picker-panel')?.framed
+    ).toBe(true);
+    picker.remove();
+  });
+
   test('the Remove affordance can be hidden', async () => {
     const picker = await mount(
       Object.assign(document.createElement('affine-icon-picker'), {
@@ -171,95 +181,83 @@ describe('affine-icon-picker', () => {
 });
 
 describe('affine-emoji-picker-panel', () => {
-  const openPanel = async (): Promise<AffineEmojiPickerPanel> =>
+  const openPanel = async (
+    props: Partial<AffineEmojiPickerPanel> = {}
+  ): Promise<AffineEmojiPickerPanel> =>
     mount(
       Object.assign(document.createElement('affine-emoji-picker-panel'), {
         rememberRecent: false,
+        ...props,
       })
     );
 
-  test('filtering narrows the rendered grid', async () => {
-    const panel = await openPanel();
-    const before = cells(panel).length;
-
-    const input = panel.shadowRoot?.querySelector('input');
-    if (!input) throw new Error('missing filter input');
-    input.value = 'pizza';
-    input.dispatchEvent(new Event('input'));
-    await panel.updateComplete;
-
-    const after = cells(panel);
-    expect(after.length).toBeLessThan(before);
-    expect(after.some(cell => cell.textContent?.includes('🍕'))).toBe(true);
-  });
-
-  test('a keyword nobody matches shows the empty state', async () => {
-    const panel = await openPanel();
-
-    const input = panel.shadowRoot?.querySelector('input');
-    if (!input) throw new Error('missing filter input');
-    input.value = 'zzzznotanemoji';
-    input.dispatchEvent(new Event('input'));
-    await panel.updateComplete;
-
-    expect(panel.shadowRoot?.querySelector('.picker-empty')?.textContent).toBe(
-      'No emoji found'
-    );
-  });
-
   test('picking an emoji emits its unicode', async () => {
     const panel = await openPanel();
-
     const details: IconPickerSelectDetail[] = [];
     panel.addEventListener('select', event =>
       details.push((event as CustomEvent<IconPickerSelectDetail>).detail)
     );
 
-    const input = panel.shadowRoot?.querySelector('input');
-    if (!input) throw new Error('missing filter input');
-    input.value = 'pizza';
-    input.dispatchEvent(new Event('input'));
-    await panel.updateComplete;
+    const button = (await emojiMart(panel)).querySelector<HTMLElement>(
+      '.category button[aria-label]'
+    )!;
+    button.click();
 
-    cells(panel)
-      .find(cell => cell.textContent?.includes('🍕'))
-      ?.click();
-
-    expect(details).toEqual([{ type: IconType.Emoji, unicode: '🍕' }]);
+    expect(details).toEqual([
+      { type: IconType.Emoji, unicode: button.getAttribute('aria-label') },
+    ]);
+    panel.remove();
   });
 
-  test('a skin tone is applied to the rendered emojis', async () => {
+  test("emoji-mart's words come from the wordings, English by default", async () => {
+    const english = await emojiMart(await openPanel());
+    expect(english.querySelector('input')?.getAttribute('placeholder')).toBe(
+      'Search'
+    );
+    expect(
+      [...english.querySelectorAll('.category .sticky')].map(
+        heading => heading.textContent
+      )
+    ).toContain('Food & Drink');
+    document.body.innerHTML = '';
+
+    const catalogue: Record<string, string> = {
+      'com.labre.filterable-list.search-placeholder': 'Rechercher',
+      'com.labre.emoji-group.foods': 'Nourriture',
+    };
+    const translated = await emojiMart(
+      await openPanel({ translation: { t: key => catalogue[key] } })
+    );
+    expect(translated.querySelector('input')?.getAttribute('placeholder')).toBe(
+      'Rechercher'
+    );
+    const headings = [...translated.querySelectorAll('.category .sticky')].map(
+      heading => heading.textContent
+    );
+    expect(headings).toContain('Nourriture');
+    expect(headings).toContain('Animals & Nature');
+    document.body.innerHTML = '';
+  });
+
+  test('rememberRecent off shows no frequent row and stores no pick', async () => {
+    localStorage.removeItem('emoji-mart.frequently');
+    const root = await emojiMart(await openPanel({ rememberRecent: false }));
+
+    expect(root.querySelector('.category[data-id="frequent"] button')).toBe(
+      null
+    );
+    root.querySelector<HTMLElement>('.category button[aria-label]')!.click();
+    expect(localStorage.getItem('emoji-mart.frequently')).toBeNull();
+    document.body.innerHTML = '';
+  });
+
+  test('emoji-mart is unmounted with the panel', async () => {
     const panel = await openPanel();
+    await emojiMart(panel);
 
-    const input = panel.shadowRoot?.querySelector('input');
-    if (!input) throw new Error('missing filter input');
-    input.value = 'wave';
-    input.dispatchEvent(new Event('input'));
-    await panel.updateComplete;
+    panel.remove();
 
-    panel.shadowRoot
-      ?.querySelector<HTMLElement>('[data-testid="skin-tone-trigger"]')
-      ?.click();
-    await panel.updateComplete;
-
-    const menu = panel.shadowRoot?.querySelector(
-      '[data-testid="skin-tone-menu"]'
-    );
-    expect(menu).not.toBeNull();
-    menu?.querySelectorAll<HTMLElement>('button')[5]?.click();
-    await panel.updateComplete;
-
-    const details: IconPickerSelectDetail[] = [];
-    panel.addEventListener('select', event =>
-      details.push((event as CustomEvent<IconPickerSelectDetail>).detail)
-    );
-    cells(panel)
-      .find(cell => cell.textContent?.includes('👋'))
-      ?.click();
-
-    expect(details).toHaveLength(1);
-    const [detail] = details;
-    expect(detail && 'unicode' in detail && detail.unicode).toBe('👋🏿');
+    expect(panel.shadowRoot?.querySelector('em-emoji-picker')).toBeNull();
   });
 });
 

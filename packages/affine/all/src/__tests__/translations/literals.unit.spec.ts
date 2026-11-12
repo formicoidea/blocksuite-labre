@@ -534,46 +534,6 @@ const KEPT_HITS: readonly { file: string; text: string }[] = [
     text: '${} ${}',
   },
 
-  // `GROUP_ORDER[].name` (icon-picker/emoji-data.ts) — already translated at
-  // the render site: `emoji-picker-panel.ts` looks the group up by this very
-  // `name` and resolves `EMOJI_GROUP_WORDINGS[group.id]` (declared in this
-  // package's own `translations.ts`, which IS covered by the manifest). This
-  // pure-data file calls no `translateKey`, imports no `Wording` and writes
-  // no `com.labre.*` literal of its own, so the per-file seam gate
-  // (`SEAM_USE`) can never see that the render site already resolves it.
-  {
-    file: 'packages/affine/components/src/icon-picker/emoji-data.ts',
-    text: 'Smileys & People',
-  },
-  {
-    file: 'packages/affine/components/src/icon-picker/emoji-data.ts',
-    text: 'Animals & Nature',
-  },
-  {
-    file: 'packages/affine/components/src/icon-picker/emoji-data.ts',
-    text: 'Food & Drink',
-  },
-  {
-    file: 'packages/affine/components/src/icon-picker/emoji-data.ts',
-    text: 'Activity',
-  },
-  {
-    file: 'packages/affine/components/src/icon-picker/emoji-data.ts',
-    text: 'Travel & Places',
-  },
-  {
-    file: 'packages/affine/components/src/icon-picker/emoji-data.ts',
-    text: 'Objects',
-  },
-  {
-    file: 'packages/affine/components/src/icon-picker/emoji-data.ts',
-    text: 'Symbols',
-  },
-  {
-    file: 'packages/affine/components/src/icon-picker/emoji-data.ts',
-    text: 'Flags',
-  },
-
   // `BracketPair.name` (`shared/src/consts/bracket-pairs.ts`) — an internal
   // identifier, never displayed: both consumers (`blocks/code`'s auto-close
   // and `inlines/preset`'s bracket keymap) read only `.left` / `.right`, never

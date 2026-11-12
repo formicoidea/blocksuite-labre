@@ -8,7 +8,9 @@
  * - the entry defining its elements at import (house rule: `effects()` only),
  *   or `effects()` throwing when a second caller runs it;
  * - `openIconPicker` not resolving the picked emoji or icon as plain JSON, or
- *   `null` for "Remove", or the popup staying in the page afterwards;
+ *   `null` for "Remove", or the popup staying in the page afterwards — the
+ *   emoji now picked in emoji-mart's grid, the Emoji tab since the picker was
+ *   unified with the callout's;
  * - a cancel (Escape, click outside, the host's signal, a second opening)
  *   leaving the promise pending or the popup open, or Escape reaching a host
  *   dialog behind the picker: a listener on `document` (stopped propagation)
@@ -72,6 +74,18 @@ async function panel(picker: AffineIconPicker, tag: string) {
 
 const portals = () => document.querySelectorAll('.blocksuite-portal').length;
 
+/** The first emoji button emoji-mart draws, once its async init has run. */
+async function firstEmoji(emojis: HTMLElement): Promise<HTMLElement> {
+  for (let i = 0; i < 40; i++) {
+    const button = emojis.shadowRoot
+      ?.querySelector('em-emoji-picker')
+      ?.shadowRoot?.querySelector<HTMLElement>('.category button[aria-label]');
+    if (button) return button;
+    await new Promise(resolve => setTimeout(resolve, 25));
+  }
+  throw new Error('emoji-mart drew no emoji');
+}
+
 describe('registration', () => {
   test('importing the entry defines nothing; effects() does, twice safely', () => {
     expect(definedAtImport).toEqual([]);
@@ -91,8 +105,8 @@ describe('openIconPicker outside an editor', () => {
     const picker = await openedPicker();
     expect(picker.std).toBeUndefined();
     const emojis = await panel(picker, 'affine-emoji-picker-panel');
-    const cell = emojis.shadowRoot!.querySelector<HTMLElement>('.picker-cell')!;
-    const unicode = cell.textContent!.trim();
+    const cell = await firstEmoji(emojis);
+    const unicode = cell.getAttribute('aria-label')!;
     cell.click();
 
     const icon = await result;
