@@ -164,6 +164,10 @@ export class MixTextAdapter extends BaseAdapter<MixText> {
     const sliceAssetsIds: string[] = [];
     for (const contentSlice of snapshot.content) {
       const { mixtext } = await this._traverseSnapshot(contentSlice);
+      // A copy holds one snapshot per top-level block: separate them as
+      // `_traverseSnapshot` separates two blocks of one snapshot, a newline
+      // before every block but the first, so they no longer run together.
+      if (buffer.length > 0) buffer += '\n';
       buffer += mixtext;
     }
     const mixtext =
