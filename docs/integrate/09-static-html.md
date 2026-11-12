@@ -71,7 +71,9 @@ evaluate, so the library's styles go to `document.adoptedStyleSheets` and no
 needs from you: `script-src` for the viewer's own chunks (shiki loads each
 language with a dynamic `import()`), `style-src` for the CSS your bundler
 extracts from the `.css.ts` files, `font-src` for the faces you declare (the
-viewer registers no font list: the canvas paints with the faces the page has),
+viewer registers no font list: the canvas paints with the faces the page has,
+and paints again each time `document.fonts` finishes loading, so a face that
+arrives after the mount still reaches the text),
 and `img-src blob:` for the images `getBlob` returns. Two kinds of report
 remain, neither visible: one `style-src-attr` per icon (the `style` string
 `@blocksuite/icons` binds, whose declarations the viewer's sheet carries) and
