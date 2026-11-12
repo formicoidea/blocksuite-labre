@@ -102,7 +102,9 @@ same seams as the editor's, which you give the viewer in a provider of
 `LifeCycleWatcher` whose `created()` calls
 `this.std.store.get(ImageProxyService).setImageProxyURL(yourProxy)` (the
 proxy is a store extension, so a view override would miss the blocks that read
-it from the store). Without them, the public defaults apply, as in the editor
+it from the store). `setImageProxyURL` also sets a URL global to the module,
+which the clipboard, import and export read: on a page that carries the
+editor too, the last call wins. Without them, the public defaults apply, as in the editor
 (`04-host-seams.md`).
 
 **Pages the reader may not see.** `docTitles` lists the pages the reader may

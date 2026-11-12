@@ -8,14 +8,12 @@ import {
 } from '@labre/affine-block-surface';
 import {
   StoreExtensionManager,
-  ViewExtensionManager,
   type ViewExtensionProvider,
 } from '@labre/affine-ext-loader';
 import { FrameBlockModel, GroupElementModel } from '@labre/affine-model';
 import {
   CHROME_DELETED_DOC,
   LINKED_DOC_DELETED,
-  TranslationExtension,
   translateKey,
   TranslationProvider,
   type TranslationService,
@@ -23,7 +21,6 @@ import {
 } from '@labre/affine-shared/services';
 import { isSafeLinkUrl, normalizeUrl } from '@labre/affine-shared/utils';
 import { frameTitleStyleVars } from '@labre/affine-widget-frame-title';
-import { Container } from '@labre/global/di';
 import { DisposableGroup } from '@labre/global/disposable';
 import { Bound } from '@labre/global/gfx';
 import { BlockStdScope, LifeCycleWatcher } from '@labre/std';
@@ -233,22 +230,6 @@ const DENIED_WORDINGS = new Map<string, readonly [string, string]>([
   ],
 ]);
 
-/**
- * The host's translation, if one of its providers registers it, read from a
- * container of its own before the viewer's: the viewer wraps it rather than
- * replace it.
- */
-function hostTranslationOf(
-  providers: readonly (typeof ViewExtensionProvider)[] = []
-): TranslationService | null {
-  if (!providers.length) return null;
-  const container = new Container();
-  new ViewExtensionManager([...providers])
-    .get('edgeless')
-    .forEach(extension => extension.setup(container));
-  return container.provider().getOptional(TranslationProvider);
-}
-
 /** The host's translation, with "Access denied" where the editor says deleted. */
 function accessDeniedTranslation(
   host: TranslationService | null
@@ -265,6 +246,25 @@ function accessDeniedTranslation(
     },
   };
 }
+
+/**
+ * Set up after every other extension of the viewer, the host's included: it
+ * reads the translation registered so far in the viewer's own container (the
+ * host's, if any) and overrides it with its wrapper. A host translation that
+ * needs the editor to resolve is not read, and the wrapper falls back to
+ * English.
+ */
+const AccessDeniedTranslationExtension: ExtensionType = {
+  setup: di => {
+    let host: TranslationService | null = null;
+    try {
+      host = di.provider().getOptional(TranslationProvider);
+    } catch {
+      host = null;
+    }
+    di.override(TranslationProvider, () => accessDeniedTranslation(host));
+  },
+};
 
 /** The flavours a click opens as a page of the workspace. */
 const DOC_CARD_FLAVOURS = new Set([
@@ -462,21 +462,19 @@ export function mountCanvasViewer(
     }
   }
 
-  const extensions: ExtensionType[] = [
-    ...getReadOnlyViewExtensions(options.viewExtensions),
-    // The viewport is this container, as `.ref-viewport` is the surface
-    // reference's: the editor measures it and follows its resizes.
-    ViewportElementExtension('[data-labre-canvas-viewer]'),
-    // Code highlighted by shiki's JavaScript engine: a public page's policy
-    // has no WebAssembly to spare.
-    CodeBlockConfigExtension({ engine: 'javascript' }),
-    // After the host's own, which it wraps.
-    TranslationExtension(
-      accessDeniedTranslation(hostTranslationOf(options.viewExtensions))
-    ),
-    CanvasViewerMount,
-  ];
   try {
+    const extensions: ExtensionType[] = [
+      ...getReadOnlyViewExtensions(options.viewExtensions),
+      // The viewport is this container, as `.ref-viewport` is the surface
+      // reference's: the editor measures it and follows its resizes.
+      ViewportElementExtension('[data-labre-canvas-viewer]'),
+      // Code highlighted by shiki's JavaScript engine: a public page's policy
+      // has no WebAssembly to spare.
+      CodeBlockConfigExtension({ engine: 'javascript' }),
+      // After the host's own, which it wraps.
+      AccessDeniedTranslationExtension,
+      CanvasViewerMount,
+    ];
     std = new BlockStdScope({ store, extensions });
     if (!interactive && options.onExpand) {
       // A button needs a name, the element's title or none: a host with no

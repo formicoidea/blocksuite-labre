@@ -18,6 +18,8 @@
  *   title);
  * - a key stopped inside the editor that leaves the dispatcher paused, so
  *   the wheel and the drag are dead and the page scrolls instead;
+ * - a mount that throws when a host provider registers nothing for the
+ *   canvas scope;
  * - a page the host left out of `docTitles` named "deleted" instead of
  *   "Access denied", or opened on a click;
  * - a host's link preview or image proxy, given in `viewExtensions`, that
@@ -233,6 +235,46 @@ describe('the canvas viewer', () => {
     card!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
     expect(onOpenDoc).not.toHaveBeenCalled();
+  });
+
+  test("a host's providers that skip the canvas scope still mount, translated or not", async () => {
+    // A seam provider that registers for the page view only (the ext-loader
+    // README's own pattern) once made the viewer throw before it mounted.
+    const { ViewExtensionProvider } = await import('@labre/affine-ext-loader');
+    const { TranslationExtension } = await import(
+      '@labre/affine-shared/services'
+    );
+    type Context = Parameters<
+      InstanceType<typeof ViewExtensionProvider>['setup']
+    >[0];
+    const french = TranslationExtension({
+      t: key =>
+        key === 'com.labre.canvas-viewer.access-denied'
+          ? 'Accès refusé'
+          : undefined,
+    });
+    class PageOnly extends ViewExtensionProvider {
+      override name = 'host-page-only';
+      override setup(context: Context) {
+        super.setup(context);
+        if (context.scope === 'page') context.register(french);
+      }
+    }
+    class Translated extends ViewExtensionProvider {
+      override name = 'host-translation';
+      override setup(context: Context) {
+        super.setup(context);
+        context.register(french);
+      }
+    }
+    const reference = async (
+      viewExtensions: (typeof ViewExtensionProvider)[]
+    ) => {
+      const { container } = await mount({ viewExtensions });
+      return container.querySelector('affine-reference')?.textContent ?? '';
+    };
+    expect(await reference([PageOnly])).toContain('Access denied');
+    expect(await reference([Translated])).toContain('Accès refusé');
   });
 
   test("a host's link preview and image proxy reach the blocks through viewExtensions", async () => {
