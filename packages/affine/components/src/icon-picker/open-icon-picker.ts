@@ -103,12 +103,15 @@ export function openIconPicker(
     });
 
     // On `window` in the capture phase, so it runs before a host dialog's
-    // own Escape listener on `document` and stops it there.
+    // own Escape listener on `document` and stops it there; prevented too,
+    // because a native `<dialog>` opened with `showModal()` closes on
+    // Escape's default action, not through a listener.
     window.addEventListener(
       'keydown',
       event => {
         if (event.key !== 'Escape') return;
         event.stopPropagation();
+        event.preventDefault();
         controller.abort();
       },
       { capture: true, signal: controller.signal }

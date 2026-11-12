@@ -11,7 +11,12 @@
  *   `null` for "Remove", or the popup staying in the page afterwards;
  * - a cancel (Escape, click outside, the host's signal, a second opening)
  *   leaving the promise pending or the popup open, or Escape reaching a host
- *   dialog behind the picker;
+ *   dialog behind the picker: a listener on `document` (stopped propagation)
+ *   or a native `<dialog>` opened with `showModal()`, which closes on
+ *   Escape's default action rather than through a listener, so the key must
+ *   also be `defaultPrevented` (asserted on the event: happy-dom implements
+ *   `showModal()` but never closes a dialog on Escape, so a dialog left open
+ *   there would prove nothing);
  * - the host's translation service ignored with no `std`, or the English
  *   fallback lost when it has no entry for a key.
  */
@@ -134,12 +139,16 @@ describe('openIconPicker outside an editor', () => {
     const hostListener = () => (hostSawEscape = true);
     document.addEventListener('keydown', hostListener);
 
-    document.body.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })
-    );
+    const escape = new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    });
+    document.body.dispatchEvent(escape);
 
     expect(await result).toBeUndefined();
     expect(hostSawEscape).toBe(false);
+    expect(escape.defaultPrevented).toBe(true);
     expect(portals()).toBe(0);
     document.removeEventListener('keydown', hostListener);
   });
