@@ -54,20 +54,37 @@ const styles = css`
 export class ToggleSwitch extends LitElement {
   static override styles = styles;
 
-  private _toggleSwitch() {
-    this.on = !this.on;
+  /**
+   * The checkbox says what the user asked for: negating `on` instead answered
+   * a stale value whenever the two had drifted apart.
+   */
+  private _toggleSwitch(event: Event) {
+    this.on = (event.target as HTMLInputElement).checked;
     if (this.onChange) {
       this.onChange(this.on);
     }
   }
 
+  /**
+   * A switch often sits in a clickable row (a menu action) that toggles the
+   * same setting: the click must end here, or the row toggles it a second
+   * time (#660). It covers the label's own click and the checkbox click the
+   * label sends on.
+   */
+  private readonly _stopClick = (event: MouseEvent) => {
+    event.stopPropagation();
+  };
+
   override render() {
+    // `.checked`, the property: a checkbox stops reading its `checked`
+    // attribute once clicked, so an attribute binding let the drawn state
+    // drift from `on` (#660).
     return html`
-      <label class=${this.on ? 'on' : ''}>
+      <label class=${this.on ? 'on' : ''} @click=${this._stopClick}>
         <input
           type="checkbox"
           class="switch"
-          ?checked=${this.on}
+          .checked=${this.on}
           @change=${this._toggleSwitch}
         />
       </label>
