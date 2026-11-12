@@ -7,9 +7,9 @@ import { TABLE_HEADER_COLUMN, TABLE_HEADER_ROW } from './translations';
 
 /**
  * The "Header row" / "Header column" item of the first row's / first
- * column's menu (ADR 0043): a plain action with the menu's check mark, the
- * toggle-switch row of `menu.toggleSwitch` hands its click the value it was
- * built with.
+ * column's menu (ADR 0043): a plain action with the menu's check mark, not a
+ * `menu.toggleSwitch` row; the setter it calls writes `true` or deletes the
+ * key, and the check mark says which.
  *
  * Kept out of `table-cell.ts` on purpose: the literal guard treats every
  * literal of a file that calls `translateKey` as covered when it equals some

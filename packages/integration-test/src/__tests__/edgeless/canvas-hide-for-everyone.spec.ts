@@ -36,22 +36,13 @@ import { beforeEach, describe, expect, test } from 'vitest';
 import * as Y from 'yjs';
 
 import { wait } from '../utils/common.js';
+import { deepQueryAll } from '../utils/deep-query.js';
 import { addNote, getDocRootBlock } from '../utils/edgeless.js';
 import { setupEditor } from '../utils/setup.js';
 
 const PANE_WIDGET = 'edgeless-selection-pane-widget';
 const ROW = '[data-testid="selection-pane-row"]';
 const ENTRY = '[data-testid="selection-pane-hide-for-everyone"]';
-
-/** Every element matching `selector`, through every open shadow root. */
-function deepQueryAll(root: ParentNode, selector: string): HTMLElement[] {
-  const found = Array.from(root.querySelectorAll<HTMLElement>(selector));
-  for (const element of root.querySelectorAll('*')) {
-    if (element.shadowRoot)
-      found.push(...deepQueryAll(element.shadowRoot, selector));
-  }
-  return found;
-}
 
 describe('hide for everyone', () => {
   let edgeless!: EdgelessRootBlockComponent;

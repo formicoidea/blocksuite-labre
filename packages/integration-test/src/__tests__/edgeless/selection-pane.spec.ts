@@ -33,6 +33,7 @@ import { page, userEvent } from '@vitest/browser/context';
 import { beforeEach, describe, expect, test } from 'vitest';
 
 import { wait } from '../utils/common.js';
+import { deepQueryAll } from '../utils/deep-query.js';
 import { getDocRootBlock } from '../utils/edgeless.js';
 import { setupEditor } from '../utils/setup.js';
 
@@ -51,16 +52,6 @@ function deepQuery(root: ParentNode, selector: string): HTMLElement | null {
     }
   }
   return null;
-}
-
-/** Every element matching `selector`, through every open shadow root. */
-function deepQueryAll(root: ParentNode, selector: string): HTMLElement[] {
-  const found = Array.from(root.querySelectorAll<HTMLElement>(selector));
-  for (const element of root.querySelectorAll('*')) {
-    if (element.shadowRoot)
-      found.push(...deepQueryAll(element.shadowRoot, selector));
-  }
-  return found;
 }
 
 describe('selection pane', () => {

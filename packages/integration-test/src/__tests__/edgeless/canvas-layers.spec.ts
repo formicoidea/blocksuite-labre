@@ -83,6 +83,7 @@ import DRAWIO_COMPRESSED from '../../../../affine/gfx/uml/src/__tests__/corpus/d
 
 import { dragModel } from '../utils/canvas-gesture.js';
 import { wait } from '../utils/common.js';
+import { deepQueryAll } from '../utils/deep-query.js';
 import { getDocRootBlock } from '../utils/edgeless.js';
 import { pointerDown, pointerMoveTo, pointerUp } from '../utils/pointer.js';
 import { setupEditor } from '../utils/setup.js';
@@ -95,16 +96,6 @@ declare module '@vitest/browser/context' {
 }
 
 const PANE_WIDGET = 'edgeless-selection-pane-widget';
-
-/** Every element matching `selector`, through every open shadow root. */
-function deepQueryAll(root: ParentNode, selector: string): HTMLElement[] {
-  const found = Array.from(root.querySelectorAll<HTMLElement>(selector));
-  for (const element of root.querySelectorAll('*')) {
-    if (element.shadowRoot)
-      found.push(...deepQueryAll(element.shadowRoot, selector));
-  }
-  return found;
-}
 
 describe('user layers', () => {
   let edgeless!: EdgelessRootBlockComponent;
