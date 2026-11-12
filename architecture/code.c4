@@ -1558,13 +1558,13 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/engine
         metadata {
           path 'packages/affine/database/engine'
-          files '339'
+          files '340'
         }
         core = folder 'core/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/engine/src/core
           metadata {
             path 'packages/affine/database/engine/src/core'
-            files '167'
+            files '168'
           }
         }
         property-presets = folder 'property-presets/' {
@@ -3768,7 +3768,7 @@ model {
   features.database.editor -[uses]-> framework.std '10 imports, 7 type-only'
   features.database.editor -[uses]-> framework.store '1 import'
   features.database.engine -[uses]-> features.components '75 imports, 4 type-only'
-  features.database.engine -[uses]-> features.shared '98 imports, 44 type-only'
+  features.database.engine -[uses]-> features.shared '99 imports, 45 type-only'
   features.database.engine -[uses]-> framework.global_ '110 imports, 5 type-only'
   features.database.engine -[uses]-> framework.std '81 imports, 9 type-only'
   features.database.engine -[uses]-> framework.store '12 imports, 4 type-only'
@@ -5909,9 +5909,9 @@ model {
   features.database.engine.core -[imports]-> features.components.context-menu '18 imports, 4 type-only'
   features.database.engine.core -[imports]-> features.components.icons_ '1 import'
   features.database.engine.core -[imports]-> features.components.src '2 imports'
-  features.database.engine.core -[imports]-> features.database.engine.src '23 imports'
+  features.database.engine.core -[imports]-> features.database.engine.src '25 imports'
   features.database.engine.core -[imports]-> features.database.engine.view-presets '5 imports, 3 type-only'
-  features.database.engine.core -[imports]-> features.shared.services '18 imports, 10 type-only'
+  features.database.engine.core -[imports]-> features.shared.services '19 imports, 11 type-only'
   features.database.engine.core -[imports]-> features.shared.theme '5 imports'
   features.database.engine.core -[imports]-> features.shared.types '12 imports, 12 type-only'
   features.database.engine.core -[imports]-> features.shared.utils '10 imports, 8 type-only'

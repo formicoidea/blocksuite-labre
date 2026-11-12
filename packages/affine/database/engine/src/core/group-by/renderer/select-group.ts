@@ -7,7 +7,9 @@ import { css, html } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 import { styleMap } from '@labre/global/lit';
 
+import { TAG_UNTITLED } from '../../../translations.js';
 import { selectOptionColorGrid } from '../../component/tags/color-menu.js';
+import { tagLabel } from '../../component/tags/tag-label.js';
 import type { SelectTag } from '../../logical/index.js';
 import { wordingOf } from '../../utils/wording.js';
 import { BaseGroup } from './base.js';
@@ -33,6 +35,9 @@ export class SelectGroupView extends BaseGroup<
     }
 
     .tag {
+      /* Never a zero-height strip: the title is what a rename clicks (#657). */
+      box-sizing: border-box;
+      min-height: 20px;
       padding: 0 8px;
       border-radius: 4px;
       font-size: var(--data-view-cell-text-size);
@@ -53,6 +58,7 @@ export class SelectGroupView extends BaseGroup<
         items: [
           menu.input({
             initialValue: this.tag?.value ?? '',
+            placeholder: wordingOf(this.std)(TAG_UNTITLED),
             onChange: text => {
               this.updateTag({ value: text });
             },
@@ -91,7 +97,9 @@ export class SelectGroupView extends BaseGroup<
       readonly: this.readonly,
     });
     return html` <div @click="${this._click}" class="${classList}">
-      <div class="tag" style="${style}">${tag.value}</div>
+      <div class="tag" style="${style}">
+        ${tagLabel(tag.value, wordingOf(this.std))}
+      </div>
     </div>`;
   }
 
