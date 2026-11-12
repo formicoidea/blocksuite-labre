@@ -17,7 +17,12 @@
  *   excluded, i.e. a composition that drifts from "the registry minus the
  *   list" (another scope, a filter added by hand);
  * - a stale entry: an excluded provider gone from the registry, an excluded
- *   extension no kept provider registers.
+ *   extension no kept provider registers;
+ * - a frame shown without its title badge, or with the editor's editing bar
+ *   (PO acceptance of Labre Sites: an inserted frame shows its badge as in
+ *   the editor, without the toolbar). A widget is not "content" to the rule
+ *   above, since the excluded editing widgets register as widgets too, so the
+ *   badge is named here.
  */
 import type { ViewExtensionProvider } from '@labre/affine-ext-loader';
 import { ViewExtensionManager } from '@labre/affine-ext-loader';
@@ -123,6 +128,21 @@ describe('the read-only viewer is the editor minus its tooling', () => {
     expect(
       [...READ_ONLY_EXCLUDED_EXTENSIONS].filter(
         extension => !keptExtensions.has(extension)
+      )
+    ).toEqual([]);
+  });
+
+  test('a frame keeps its title badge and loses the editing toolbars', () => {
+    const widgets = (keys: Set<string>) =>
+      [...keys].filter(key => key.startsWith('WidgetView|'));
+    expect(
+      widgets(viewer).filter(key => key.includes('affine-frame-title-widget'))
+    ).not.toEqual([]);
+    expect(
+      widgets(viewer).filter(key =>
+        /affine-toolbar-widget|edgeless-toolbar-widget|affine-edgeless-zoom-toolbar-widget/.test(
+          key
+        )
       )
     ).toEqual([]);
   });

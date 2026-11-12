@@ -9,6 +9,7 @@ import { FrameBlockModel, GroupElementModel } from '@labre/affine-model';
 import { ViewportElementExtension } from '@labre/affine-shared/services';
 import { adoptEmotionStyles } from '@labre/affine-shared/styles';
 import { isSafeLinkUrl, normalizeUrl } from '@labre/affine-shared/utils';
+import { frameTitleStyleVars } from '@labre/affine-widget-frame-title';
 import { DisposableGroup } from '@labre/global/disposable';
 import { Bound } from '@labre/global/gfx';
 import {
@@ -84,7 +85,8 @@ export type CanvasViewerOptions = {
    * Shows one frame or group, as the surface reference block shows it in a
    * page: the view takes the element's proportions (`aspect-ratio`, height
    * `auto`: give the host a width only) and frames its bounds, a frame edge to
-   * edge with its border hidden, a group with a 20px margin. Throws when the
+   * edge with its border hidden and, when it has a title, its title badge
+   * above it as the editor draws it, a group with a 20px margin. Throws when the
    * state holds no element of that kind under that id.
    */
   focus?: CanvasViewerFocus;
@@ -108,6 +110,15 @@ export type CanvasViewerOptions = {
 
 export type CanvasViewerFocus = { kind: 'frame' | 'group'; id: string };
 
+/**
+ * The canvas text faces, one per family, weight and style, as the editor
+ * offers them; also at `@labre/affine/shared/services`. The viewer loads no
+ * face itself: a public page that serves these files itself declares them,
+ * with its own URLs, beside the viewer. Re-exported here so that page needs
+ * this entry only (Labre Sites reads it).
+ */
+export { CommunityCanvasTextFonts } from '@labre/affine-shared/services';
+
 export type CanvasViewer = {
   zoomIn(): void;
   zoomOut(): void;
@@ -126,6 +137,18 @@ const ZOOM_STEP_RATIO = 1.25;
 /** Past this distance, in CSS pixels, a press is a pan, not a click. */
 const CLICK_SLOP_PX = 4;
 
+/**
+ * The strip a frame's title badge takes above its top edge, in screen pixels:
+ * the editor draws the badge there (`frame-title.ts`, a frame not nested in
+ * another), so a focused frame keeps that strip in view and shows its badge
+ * as the editor does.
+ */
+const FRAME_BADGE_PX =
+  frameTitleStyleVars.height +
+  // Its 1px border, top and bottom, outside its content height.
+  2 +
+  frameTitleStyleVars.nestedFrameOffset;
+
 /** The margin the surface reference block leaves around a group. */
 const GROUP_PADDING: [number, number, number, number] = [20, 20, 20, 20];
 
@@ -142,13 +165,19 @@ let viewerSheet: CSSStyleSheet | null = null;
 /**
  * What `@blocksuite/icons` binds on each icon as a `style` attribute, which a
  * policy without `style-src-attr 'unsafe-inline'` drops: in an adopted sheet,
- * added once, so an icon never shrinks.
+ * added once, so an icon never shrinks. The icon of a page reference, inline
+ * in its text, also asks for `vertical-align: middle`
+ * (`DocDisplayMetaService`'s icons, the subpage icon of `reference-node.ts`):
+ * without it the icon sits on the baseline. Their `font-size: inherit` is what
+ * an `svg` does anyway, and the subpage icon's `margin-bottom: 0.1em` stays
+ * dropped (a tenth of a line).
  */
 function adoptViewerStyles(): void {
   if (viewerSheet) return;
   viewerSheet = new CSSStyleSheet();
   viewerSheet.replaceSync(
-    '[data-labre-canvas-viewer] svg{user-select:none;flex-shrink:0}'
+    '[data-labre-canvas-viewer] svg{user-select:none;flex-shrink:0}' +
+      '[data-labre-canvas-viewer] affine-reference svg{vertical-align:middle}'
   );
   document.adoptedStyleSheets = [...document.adoptedStyleSheets, viewerSheet];
 }
@@ -275,6 +304,9 @@ export function mountCanvasViewer(
     throw new Error('the canvas viewer found no element to focus on');
   }
   const interactive = options.interactive ?? !focus;
+  // A focused frame with a title keeps its badge's strip above it.
+  const badgePx =
+    focus?.kind === 'frame' && focused?.title.trim() ? FRAME_BADGE_PX : 0;
 
   const container = document.createElement('div');
   container.dataset.labreCanvasViewer = '';
@@ -284,9 +316,18 @@ export function mountCanvasViewer(
   box.overflow = 'hidden';
   box.userSelect = 'none';
   if (interactive) box.touchAction = 'none';
+  // The element's proportions, as the surface reference's `.ref-viewport`,
+  // plus the badge's strip, whose height is in screen pixels: it is read
+  // again from the width each time the host resizes the view.
+  const proportions = () => {
+    if (!focused) return;
+    const { w, h } = focused.bound;
+    const width = container.getBoundingClientRect().width;
+    const strip = width > 0 ? (badgePx * w) / width : 0;
+    box.aspectRatio = `${w} / ${(h || 1) + strip}`;
+  };
   if (focused && !interactive) {
-    // The element's proportions, as the surface reference's `.ref-viewport`.
-    box.aspectRatio = `${focused.bound.w} / ${focused.bound.h || 1}`;
+    proportions();
   } else {
     box.height = '100%';
   }
@@ -320,10 +361,14 @@ export function mountCanvasViewer(
       // locked viewport: a frozen view is a picture.
       viewport.locked = !interactive;
       requestAnimationFrame(() => viewer.fit());
-      // A frozen view keeps its framing through the host's resizes.
+      // A frozen view keeps its proportions and its framing through the
+      // host's resizes.
       if (!interactive) {
         this._disposables.add(
-          viewport.sizeUpdated.subscribe(() => viewer.fit())
+          viewport.sizeUpdated.subscribe(() => {
+            proportions();
+            viewer.fit();
+          })
         );
       }
       if (focus?.kind !== 'frame') return;
@@ -363,6 +408,7 @@ export function mountCanvasViewer(
     if (!interactive) editorHost.inert = true;
     container.append(editorHost);
     host.append(container);
+    if (focused && !interactive) proportions();
   } catch (error) {
     container.remove();
     workspace.dispose();
@@ -509,7 +555,7 @@ export function mountCanvasViewer(
       }
       controller.viewport.setViewportByBound(
         focused.bound,
-        focus?.kind === 'group' ? GROUP_PADDING : undefined
+        focus?.kind === 'group' ? GROUP_PADDING : [badgePx, 0, 0, 0]
       );
     },
     dispose: () => {

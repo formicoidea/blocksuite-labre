@@ -10,6 +10,8 @@
  * What it would have caught:
  * - a mount that needs an editor around it, edits the store or throws on a
  *   page with a canvas;
+ * - a mount, a zoom or a click that writes anything into the document shown
+ *   (its Y.Doc's state vector moves);
  * - zoom buttons, ctrl+wheel or a drag that move nothing;
  * - an inline page reference that does not reach `onOpenDoc`, or a refused
  *   scheme that navigates;
@@ -214,6 +216,39 @@ describe('the canvas viewer', () => {
     Reflect.deleteProperty(document, 'elementsFromPoint');
   });
 
+  test('names the canvas text faces from its own entry', async () => {
+    // A public page serves the faces itself and reads the list here.
+    const entry = await import('../canvas-viewer');
+    const { CommunityCanvasTextFonts } = await import(
+      '@labre/affine-shared/services'
+    );
+    expect(entry.CommunityCanvasTextFonts).toBe(CommunityCanvasTextFonts);
+    expect(entry.CommunityCanvasTextFonts.length).toBeGreaterThan(0);
+  });
+
+  test('writes nothing into the document it shows', async () => {
+    const state = fixture();
+    const shown = new Y.Doc();
+    Y.applyUpdate(shown, state);
+    const { viewer, container, editorHost } = await mount(
+      { onOpenDoc: () => {}, onLinkClick: () => {} },
+      state
+    );
+    viewer.zoomIn();
+    viewer.fit();
+    container.dispatchEvent(
+      new MouseEvent('click', {
+        bubbles: true,
+        clientX: CENTRE_X,
+        clientY: CENTRE_Y,
+      })
+    );
+    await settle();
+    const spaceDoc = (editorHost.std.store as unknown as { spaceDoc: Y.Doc })
+      .spaceDoc;
+    expect(Y.encodeStateVector(spaceDoc)).toEqual(Y.encodeStateVector(shown));
+  });
+
   test('refuses a state with no page', () => {
     const host = document.createElement('div');
     expect(() => mountCanvasViewer(host, new Uint8Array([0, 0]))).toThrow();
@@ -366,7 +401,7 @@ function framedPage(): Uint8Array {
 describe('the canvas viewer on one frame', () => {
   const frame = { kind: 'frame', id: 'frame-1' } as const;
 
-  test('shows the frame alone, in its proportions, without its border', async () => {
+  test('shows the frame alone, in its proportions, without its border, under its badge', async () => {
     const { container, editorHost } = await mount(
       { focus: frame },
       framedPage()
@@ -375,8 +410,12 @@ describe('the canvas viewer on one frame', () => {
     const shown = editorHost.std.get(GfxControllerIdentifier).viewport
       .viewportBounds;
 
-    expect(container.style.aspectRatio).toBe('400 / 300');
+    // The frame's proportions plus the strip of its title badge (28px over
+    // a view 800px wide, 14 model units at that width), as the editor draws
+    // the badge above the frame's top edge.
+    expect(container.style.aspectRatio).toBe('400 / 314');
     expect(shown.contains(Bound.deserialize(FRAME))).toBe(true);
+    expect(shown.y).toBeLessThan(Bound.deserialize(FRAME).y);
     expect(shown.isOverlapWithBound(Bound.deserialize(OUTSIDE))).toBe(false);
     expect(
       (editorHost.std.view.getBlock('frame-1') as { showBorder?: boolean })
