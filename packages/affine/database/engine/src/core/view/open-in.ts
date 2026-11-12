@@ -2,6 +2,7 @@ import {
   DATABASE_VIEW_OPEN_IN,
   type DatabaseViewOpenIn,
 } from '@labre/affine-model';
+import { createIdentifier } from '@labre/global/di';
 
 import type { DataSource } from '../data-source/base.js';
 import type { SingleView } from '../view-manager/single-view.js';
@@ -52,5 +53,28 @@ export function rowsArePages(dataSource: DataSource): boolean {
   return (
     (dataSource as Partial<{ rowsAreDocuments: boolean }>).rowsAreDocuments ===
     true
+  );
+}
+
+/**
+ * Set to `true` on a data source (`serviceSet`) by the block that hosts its
+ * views when the host opens rows itself (`DatabaseOpenRowExtension`, ADR 0035
+ * §9a), the opener being declared above this package. Absent means the
+ * library's own detail panel.
+ */
+export const HostOpensRowsKey = createIdentifier<true>(
+  'data-view-host-opens-rows'
+);
+
+/**
+ * Whether a read-only view still opens its rows: when they are pages and the
+ * host opens them, opening writes nothing (the host navigates), so a reader
+ * of a shared, public or trashed base can open a row as the phone table
+ * always let them. Without an opener, the library's detail panel is an
+ * editing surface and a read-only view keeps its rows closed, as before.
+ */
+export function opensRowsWhenReadonly(dataSource: DataSource): boolean {
+  return (
+    dataSource.serviceGet(HostOpensRowsKey) === true && rowsArePages(dataSource)
   );
 }

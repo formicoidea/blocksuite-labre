@@ -40,6 +40,7 @@ import {
   type DataViewWidgetProps,
   defineUniComponent,
   ExternalGroupByConfigProvider,
+  HostOpensRowsKey,
   NewRowMenuOpenerKey,
   PageLayoutKey,
   PropertiesPanelOpenerKey,
@@ -224,6 +225,11 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
       dataSource.serviceSet(EditorHostKey, this.host);
       dataSource.serviceSet(DataViewEventTraceKey, this.traceDatabaseEvent);
       dataSource.serviceSet(PageLayoutKey, this.standalone$);
+      // With a host opener, a read-only view still opens rows that are
+      // pages (`opensRowsWhenReadonly`); `null` reads as no opener.
+      if (this.std.getOptional(DatabaseOpenRowProvider)) {
+        dataSource.serviceSet(HostOpensRowsKey, true);
+      }
       // With a host properties panel, the view options' "Properties" opens
       // it (ADR 0035 §9b); without, the data-view's popover stays.
       if (this.std.getOptional(PropertiesPanelProvider)) {
