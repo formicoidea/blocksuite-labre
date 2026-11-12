@@ -13,6 +13,11 @@
  *
  * The menu is built the way its one caller, the export-SVG options menu,
  * builds it: rows rebuilt through `menu.dynamic` from a signal.
+ *
+ * The switch keeps its click from the row, so the menu container that gives
+ * the focus back to the menu's hidden search field never sees it; the last
+ * case holds that the arrows and Enter, heard only on that field, still drive
+ * the menu after a click on the switch.
  */
 import {
   menu,
@@ -24,22 +29,13 @@ import { page, userEvent } from '@vitest/browser/context';
 import { beforeEach, describe, expect, test } from 'vitest';
 
 import { wait } from '../utils/common.js';
+import { deepQueryAll } from '../utils/deep-query.js';
 import { setupEditor } from '../utils/setup.js';
 
 type ToggleSwitchElement = HTMLElement & {
   on: boolean;
   updateComplete: Promise<boolean>;
 };
-
-/** Every element matching `selector`, through every open shadow root. */
-function deepQueryAll(root: ParentNode, selector: string): HTMLElement[] {
-  const found = Array.from(root.querySelectorAll<HTMLElement>(selector));
-  for (const element of root.querySelectorAll('*')) {
-    if (element.shadowRoot)
-      found.push(...deepQueryAll(element.shadowRoot, selector));
-  }
-  return found;
-}
 
 const settle = async () => {
   await wait(50);
@@ -125,4 +121,19 @@ describe('a menu.toggleSwitch row, clicked with the mouse', () => {
       }
     }
   );
+
+  test('the keyboard still drives the menu after a click on the switch', async () => {
+    const { on, writes, toggle } = await open();
+
+    await userEvent.click(page.elementLocator(toggle()!));
+    await settle();
+    expect(writes).toEqual([false]);
+
+    // ArrowDown highlights the row, Enter presses it: one more flip.
+    await userEvent.keyboard('{ArrowDown}');
+    await userEvent.keyboard('{Enter}');
+    await settle();
+    expect(writes, 'the keys reached the menu').toEqual([false, true]);
+    expect(on.value).toBe(true);
+  });
 });

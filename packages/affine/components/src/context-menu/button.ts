@@ -304,6 +304,11 @@ export const menuButtonItems = {
       }
       const onChange = (on: boolean) => {
         config.onChange(on);
+        // The switch keeps its click from the row, so the menu's container,
+        // which gives the focus back to the hidden search field on a click,
+        // never sees it; the label's mousedown has taken that focus, and the
+        // arrows and Enter, heard only on that field, would go dead.
+        menu.focusTo(menu.currentFocused$.peek());
       };
 
       const data: MenuButtonData = {
@@ -333,6 +338,7 @@ export const menuButtonItems = {
     },
 } satisfies Record<string, MenuItemRender<never>>;
 
+// ponytail: redundant once <toggle-switch> stops its own click (fix/code-toggle-double); remove when both have landed.
 /**
  * The switch of a `menu.toggleSwitch` row answers its own click through
  * `onChange`; the click must not also reach the row, whose `select` would
