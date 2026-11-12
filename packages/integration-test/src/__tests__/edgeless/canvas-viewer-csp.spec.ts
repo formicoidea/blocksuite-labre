@@ -6,8 +6,8 @@
  * light-DOM component and emotion wrote its styles into `<style>` elements and
  * the code highlighter compiled WebAssembly, which the page's policy refused.
  * rc.1 drew, but the frame inserted in a page raised 48 `style-src-attr`
- * reports on the site: this spec then ran under a looser policy, with
- * `style-src-attr 'unsafe-inline'`, and saw none of them. Here the viewer runs
+ * reports on the site, and this spec, under a looser policy with
+ * `style-src-attr 'unsafe-inline'`, could not see an attribute report. Here the viewer runs
  * in a frame under the site's own policy: no `'unsafe-inline'` anywhere, no
  * `style-src-attr`, no `'wasm-unsafe-eval'`, `default-src 'none'`.
  *
@@ -122,7 +122,10 @@ async function mountUnderPolicy(focus: boolean): Promise<FrameReport> {
     `<script type="module" src="${script}"></script></body></html>`;
   let stage = 'loading';
   const messages = new Promise<FrameReport>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error()), REPORT_DEADLINE_MS);
+    const timer = setTimeout(
+      () => reject(new Error(`the framed viewer never reported (${stage})`)),
+      REPORT_DEADLINE_MS
+    );
     window.addEventListener('message', function onMessage(event) {
       if (event.source !== frame.contentWindow) return;
       const data = event.data as { type?: string; message?: string };
