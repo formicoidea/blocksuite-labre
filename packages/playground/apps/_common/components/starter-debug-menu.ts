@@ -17,12 +17,24 @@ import '@shoelace-style/shoelace/dist/themes/dark.css';
 import './left-side-panel.js';
 
 import { PresentTool } from '@labre/affine/blocks/frame';
-import { ExportManager } from '@labre/affine/blocks/surface';
+import {
+  ExportManager,
+  materializeInterchangeImport,
+} from '@labre/affine/blocks/surface';
 import { toast } from '@labre/affine/components/toast';
 import { StoreExtensionManagerIdentifier } from '@labre/affine/ext-loader';
+import {
+  buildMindmap,
+  type MindmapTextMeasure,
+} from '@labre/affine/gfx/mindmap/interchange';
+import {
+  getFontString,
+  getLineWidth,
+  measureTextInDOM,
+} from '@labre/affine/gfx/text';
 import { BlockSuiteError, ErrorCode } from '@labre/affine/global/exceptions';
 import type { SerializedXYWH } from '@labre/affine/global/gfx';
-import { ColorScheme, type DocMode } from '@labre/affine/model';
+import { ColorScheme, type DocMode, MindmapStyle } from '@labre/affine/model';
 import {
   defaultImageProxyMiddleware,
   docLinkBaseURLMiddleware,
@@ -164,6 +176,50 @@ function initStyleDebugMenu(
   });
 }
 
+/**
+ * What `buildMindmap` is handed in the playground: the browser's own measure,
+ * the one `fitContent` uses, standing in for the width table a host with no
+ * editor passes (ADR 0045, amendment of 2026-11-10).
+ */
+const browserMindmapMeasure: MindmapTextMeasure = {
+  width: (text, font) => getLineWidth(text, getFontString(font)),
+  lineHeight: font => {
+    const { lineHeight, lineGap } = measureTextInDOM(
+      font.fontFamily,
+      font.fontSize,
+      font.fontWeight
+    );
+    return lineHeight + lineGap;
+  },
+};
+
+const HEADLESS_MINDMAP_TREE = {
+  text: 'Product launch',
+  children: [
+    {
+      text: 'Marketing',
+      children: [
+        { text: 'Press kit' },
+        {
+          text:
+            'Coordinate the launch webinar with the partner network, the ' +
+            'non-profit foundations and the regional sales teams before the ' +
+            'end of the quarter',
+        },
+      ],
+    },
+    { text: 'Product', children: [{ text: 'Beta' }, { text: 'Docs' }] },
+    { text: 'Sales', children: [{ text: 'Pricing' }, { text: 'Demo' }] },
+  ],
+};
+
+const HEADLESS_MINDMAP_STYLES = [
+  MindmapStyle.ONE,
+  MindmapStyle.TWO,
+  MindmapStyle.THREE,
+  MindmapStyle.FOUR,
+];
+
 function getDarkModeConfig(): boolean {
   const updatedDarkModeConfig = localStorage.getItem('blocksuite:dark');
   if (updatedDarkModeConfig !== null) {
@@ -240,6 +296,65 @@ export class StarterDebugMenu extends ShadowlessElement {
 
     const noteId = this.doc.addBlock('affine:note', { xywh }, rootId);
     this.doc.addBlock('affine:paragraph', {}, noteId);
+  }
+
+  private _headlessMindmapCount = 0;
+
+  /**
+   * Recette of `buildMindmap`: builds a mind map the way a host with no editor
+   * does and writes it with the materializer, at the top-left of the view.
+   * Each click takes the next style. The editor lays a mind map out again as
+   * it lands, so the toast counts the nodes that layout moved or resized:
+   * zero means the builder wrote what the editor would have. Draw the same
+   * style from the toolbar beside it to compare by eye.
+   */
+  private async _buildHeadlessMindmap() {
+    const std = this.editor.host?.std;
+    if (!std || this.editor.mode !== 'edgeless') {
+      if (this.editor.host) toast(this.editor.host, 'Switch to edgeless first');
+      return;
+    }
+    const style =
+      HEADLESS_MINDMAP_STYLES[
+        this._headlessMindmapCount++ % HEADLESS_MINDMAP_STYLES.length
+      ];
+    const gfx = std.get(GfxControllerIdentifier);
+    const view = gfx.viewport.viewportBounds;
+    await document.fonts.ready;
+    const built = buildMindmap(HEADLESS_MINDMAP_TREE, {
+      measure: browserMindmapMeasure,
+      at: { x: view.x + 40, y: view.y + 40 },
+      style,
+      local: `playground-${this._headlessMindmapCount}`,
+    });
+    std.store.captureSync();
+    const created = materializeInterchangeImport(std, 'labre:toolbox', built);
+    std.store.captureSync();
+    await new Promise(resolve =>
+      requestAnimationFrame(() => setTimeout(resolve))
+    );
+
+    // Relative to the root: the materializer may shift the whole map.
+    const relative = (boxes: SerializedXYWH[]) => {
+      const all = boxes.map(xywh => JSON.parse(xywh) as number[]);
+      const [x0, y0] = all[0]!;
+      return all.map(([x, y, w, h]) => [x! - x0!, y! - y0!, w!, h!]);
+    };
+    const expected = relative(
+      built.filter(e => e.type === 'shape').map(e => e.xywh as SerializedXYWH)
+    );
+    const actual = relative(
+      created
+        .slice(0, -1)
+        .map(id => gfx.surface?.getElementById(id)?.xywh ?? '[0,0,0,0]')
+    );
+    const moved = actual.filter((box, i) =>
+      box.some((v, k) => Math.abs(v - expected[i]![k]!) > 0.5)
+    ).length;
+    toast(
+      this.editor.host!,
+      `Mind map built with no editor, style ${style}: the editor moved ${moved} of ${actual.length} nodes`
+    );
   }
 
   private async _clearSiteData() {
@@ -960,6 +1075,9 @@ export class StarterDebugMenu extends ShadowlessElement {
                 Toggle Comment Panel
               </sl-menu-item>
               <sl-menu-item @click="${this._addNote}"> Add Note </sl-menu-item>
+              <sl-menu-item @click="${this._buildHeadlessMindmap}">
+                Build Mind Map (headless)
+              </sl-menu-item>
               <sl-menu-item @click="${this._toggleMultipleEditors}">
                 Toggle Multiple Editors
               </sl-menu-item>
