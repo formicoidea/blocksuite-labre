@@ -80,8 +80,10 @@ export interface BuildMindmapOptions {
 }
 
 /** Nodes in one map, and characters in one node: guards against a runaway
- *  tree (a server builds what a model sent), not design limits. Wrapping is
- *  quadratic in a node's longest word, so the text is bounded too. */
+ *  tree (a server builds what a model sent), not design limits. Wrapping
+ *  measures the line it is filling once per word, so a node costs up to its
+ *  length squared: the text is bounded too. The error names the limits, never
+ *  the tree's text. */
 export const MINDMAP_MAX_NODES = 500;
 export const MINDMAP_MAX_TEXT = 2_000;
 
@@ -93,6 +95,24 @@ export class MindmapTooLargeError extends Error {
     this.name = 'MindmapTooLargeError';
   }
 }
+
+/** The injected measure answered something that is not a size (`NaN`, a
+ *  negative or an infinite number, as a width table that misses a character
+ *  may): the wrap could not progress on it, and a box built from it would be
+ *  stored wrong. */
+export class MindmapMeasureError extends Error {
+  constructor() {
+    super(
+      'the injected text measure returned a width or a line height that is not a finite, non-negative number'
+    );
+    this.name = 'MindmapMeasureError';
+  }
+}
+
+const size = (value: number) => {
+  if (!Number.isFinite(value) || value < 0) throw new MindmapMeasureError();
+  return value;
+};
 
 const DIGITS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 
@@ -109,9 +129,24 @@ export function mindmapChildIndex(n: number): string {
 }
 
 /**
- * The lines `fitContent` sets a node's text in: each paragraph whole when it
- * fits `maxWidth`, else word by word, a word wider than the line cut where it
- * stops fitting (the rule of `wrapText` in `affine-gfx-text`).
+ * The lines `fitContent` sets a node's text in: `wrapText` of
+ * `affine-gfx-text`, line for line, with the injected width in place of the
+ * canvas. A copy and not an import, because `wrapText` measures with the
+ * browser's canvas, which a server has not got.
+ *
+ * Its quirks are kept on purpose, because each one changes a node's box:
+ *
+ * - a line broken before a word that does not fit keeps its trailing space,
+ *   and `fitContent` measures it, space included;
+ * - a hyphen ends a token (`non-profit` wraps as `non-` / `profit`);
+ * - a word wider than the line is cut character by character, each character
+ *   measured alone, and a line holds strictly less than `maxWidth`;
+ * - blank lines produced by the wrapping are dropped, the paragraph's own are
+ *   kept.
+ *
+ * Held to the real `wrapText` by `mindmap-headless.spec.ts` (integration
+ * suite), on a corpus of the cases above. The cut of a long word measures one
+ * character at a time, so wrapping stays linear in the word's length.
  */
 export function wrapMindmapText(
   text: string,
@@ -119,41 +154,104 @@ export function wrapMindmapText(
   maxWidth: number,
   measure: MindmapTextMeasure
 ): string[] {
-  const width = (s: string) => measure.width(s, font);
+  if (!Number.isFinite(maxWidth) || maxWidth < 0) return text.split('\n');
+  const width = (s: string) => size(measure.width(s, font));
+  const chars = new Map<string, number>();
+  const charWidth = (char: string) => {
+    let w = chars.get(char);
+    if (w === undefined) {
+      w = width(char);
+      chars.set(char, w);
+    }
+    return w;
+  };
+  const spaceWidth = width(' ');
   const lines: string[] = [];
+  let currentLine = '';
+  let widthTillNow = 0;
+  const push = (line: string) => {
+    if (line.trim()) lines.push(line);
+  };
+  const reset = () => {
+    currentLine = '';
+    widthTillNow = 0;
+  };
+
   for (const paragraph of text.split('\n')) {
     if (width(paragraph) <= maxWidth) {
       lines.push(paragraph);
       continue;
     }
-    let line = '';
-    for (const word of paragraph.split(' ').filter(Boolean)) {
-      const joined = line ? `${line} ${word}` : word;
-      if (width(joined) <= maxWidth) {
-        line = joined;
-        continue;
-      }
-      if (line) lines.push(line);
-      line = '';
-      let rest = word;
-      while (width(rest) > maxWidth && rest.length > 1) {
-        // Forward from one character: a line costs its own width, not the
-        // word's length (a long word would otherwise wrap in quadratic time).
-        let cut = 1;
-        while (
-          cut < rest.length - 1 &&
-          width(rest.slice(0, cut + 1)) <= maxWidth
-        ) {
-          cut++;
+    const words = tokensOf(paragraph);
+    reset();
+    let index = 0;
+    while (index < words.length) {
+      const word = words[index]!;
+      const wordWidth = width(word);
+      if (wordWidth === maxWidth) {
+        push(word);
+        index++;
+      } else if (wordWidth > maxWidth) {
+        push(currentLine);
+        reset();
+        let rest = word;
+        while (rest.length > 0) {
+          const char = String.fromCodePoint(rest.codePointAt(0)!);
+          const w = charWidth(char);
+          widthTillNow += w;
+          rest = rest.slice(char.length);
+          if (widthTillNow >= maxWidth) {
+            push(currentLine);
+            currentLine = char;
+            widthTillNow = w;
+          } else {
+            currentLine += char;
+          }
         }
-        lines.push(rest.slice(0, cut));
-        rest = rest.slice(cut);
+        if (widthTillNow + spaceWidth >= maxWidth) {
+          push(currentLine);
+          reset();
+        } else if (!currentLine.endsWith('-')) {
+          currentLine += ' ';
+          widthTillNow += spaceWidth;
+        }
+        index++;
+      } else {
+        while (widthTillNow < maxWidth && index < words.length) {
+          const next = words[index]!;
+          widthTillNow = width(currentLine + next);
+          if (widthTillNow > maxWidth) {
+            push(currentLine);
+            reset();
+            break;
+          }
+          index++;
+          const appendSpace = !next.endsWith('-');
+          currentLine += next;
+          if (appendSpace) currentLine += ' ';
+          if (widthTillNow + spaceWidth >= maxWidth) {
+            lines.push(appendSpace ? currentLine.slice(0, -1) : currentLine);
+            reset();
+            break;
+          }
+        }
       }
-      line = rest;
     }
-    if (line) lines.push(line);
+    if (currentLine.endsWith(' ')) {
+      currentLine = currentLine.slice(0, -1);
+      push(currentLine);
+    }
   }
   return lines;
+}
+
+/** `parseTokens` of `affine-gfx-text`: words, a hyphen ending its token. */
+function tokensOf(line: string): string[] {
+  const parts = line.split('-');
+  return parts
+    .map((part, i) => (i < parts.length - 1 ? `${part}-` : part))
+    .join(' ')
+    .split(' ');
 }
 
 const fontOf = (style: NodeStyle): MindmapFont => ({
@@ -175,10 +273,10 @@ function nodeSize(text: string, style: NodeStyle, measure: MindmapTextMeasure) {
     measure
   );
   const widest = lines.reduce(
-    (max, line) => Math.max(max, measure.width(line, font)),
+    (max, line) => Math.max(max, size(measure.width(line, font))),
     0
   );
-  const lineHeight = measure.lineHeight(font);
+  const lineHeight = size(measure.lineHeight(font));
   return {
     w: widest + horizontalPadding * 2,
     h: Math.max(1, lines.length) * lineHeight + verticalPadding * 2,

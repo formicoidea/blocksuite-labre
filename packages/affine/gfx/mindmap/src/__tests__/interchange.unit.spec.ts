@@ -4,7 +4,9 @@ import {
   mindmapStyleGetters,
 } from '@labre/affine-model';
 import { Bound } from '@labre/global/gfx';
-import { generateKeyBetween } from 'fractional-indexing';
+// The very function the model calls when it appends a child (`addNode`, the
+// `children` convert), through the package that declares it.
+import { generateKeyBetween } from '@labre/std/gfx';
 import { describe, expect, test } from 'vitest';
 
 import {
@@ -12,6 +14,9 @@ import {
   type MindmapFont,
   mindmapChildIndex,
   type MindmapTextMeasure,
+  MindmapMeasureError,
+  MINDMAP_MAX_NODES,
+  MINDMAP_MAX_TEXT,
   MindmapTooLargeError,
   wrapMindmapText,
 } from '../interchange.js';
@@ -171,18 +176,105 @@ describe('buildMindmap', () => {
     }
   });
 
-  test('refuses a runaway tree rather than building it', () => {
-    const wide = {
+  test('builds a map of exactly the node cap, refuses one more', () => {
+    const fan = (nodes: number) => ({
       text: 'root',
-      children: Array.from({ length: 600 }, (_, i) => ({ text: `${i}` })),
+      children: Array.from({ length: nodes - 1 }, (_, i) => ({ text: `${i}` })),
+    });
+    const built = buildMindmap(fan(MINDMAP_MAX_NODES), { measure: mono });
+    expect(shapes(built)).toHaveLength(MINDMAP_MAX_NODES);
+    expect(() =>
+      buildMindmap(fan(MINDMAP_MAX_NODES + 1), { measure: mono })
+    ).toThrow(MindmapTooLargeError);
+  });
+
+  test('builds a node of exactly the text cap, refuses one more character', () => {
+    const at = (length: number) => ({
+      text: 'root',
+      children: [{ text: 'y'.repeat(length) }],
+    });
+    expect(
+      byText(
+        buildMindmap(at(MINDMAP_MAX_TEXT), { measure: mono }),
+        'y'.repeat(MINDMAP_MAX_TEXT)
+      )
+    ).toBeDefined();
+    expect(() =>
+      buildMindmap(at(MINDMAP_MAX_TEXT + 1), { measure: mono })
+    ).toThrow(MindmapTooLargeError);
+  });
+
+  test('the refusal names the limits, never the text it was sent', () => {
+    const secret = 'confidential board minutes';
+    const tree = {
+      text: secret,
+      children: [{ text: `${secret} `.repeat(MINDMAP_MAX_TEXT) }],
     };
-    expect(() => buildMindmap(wide, { measure: mono })).toThrow(
+    expect(() => buildMindmap(tree, { measure: mono })).toThrow(
       MindmapTooLargeError
     );
-    // One word of 100k characters would wrap in quadratic time.
+    try {
+      buildMindmap(tree, { measure: mono });
+    } catch (error) {
+      expect((error as Error).message).not.toContain('confidential');
+      expect((error as Error).message).toContain(`${MINDMAP_MAX_NODES}`);
+    }
+  });
+
+  test('takes every size from the measure and the style, nothing else', () => {
+    // A measure that says the text takes no room: each box is the padding.
+    const none: MindmapTextMeasure = { width: () => 0, lineHeight: () => 0 };
+    const getter = mindmapStyleGetters[MindmapStyle.ONE];
+    const built = buildMindmap(launch, { measure: none });
+    for (const shape of shapes(built)) {
+      const [vertical, horizontal] = shape.padding as [number, number];
+      const box = boxOf(shape);
+      expect([box.w, box.h]).toEqual([horizontal * 2, vertical * 2]);
+    }
+    // And twice the measure, twice the text's part of the box.
+    const twice: MindmapTextMeasure = {
+      width: (text, font) => mono.width(text, font) * 2,
+      lineHeight: font => mono.lineHeight(font) * 2,
+    };
+    const [vertical, horizontal] = getter.root.padding;
+    const once = boxOf(
+      byText(buildMindmap(launch, { measure: mono }), 'Launch')
+    );
+    const double = boxOf(
+      byText(buildMindmap(launch, { measure: twice }), 'Launch')
+    );
+    expect(double.w - horizontal * 2).toBe((once.w - horizontal * 2) * 2);
+    expect(double.h - vertical * 2).toBe((once.h - vertical * 2) * 2);
+  });
+
+  test('refuses a measure that answers no size, rather than looping on it', () => {
+    // A width table that misses a character answers `undefined`, read `NaN`:
+    // the wrap cannot progress on it.
+    const holes: MindmapTextMeasure = {
+      width: (text, font) =>
+        text.includes('§') ? NaN : mono.width(text, font),
+      lineHeight: mono.lineHeight,
+    };
     expect(() =>
-      buildMindmap({ text: 'x'.repeat(100_000) }, { measure: mono })
-    ).toThrow(MindmapTooLargeError);
+      buildMindmap({ text: `${'§ '.repeat(200)}` }, { measure: holes })
+    ).toThrow(MindmapMeasureError);
+    expect(() =>
+      buildMindmap(launch, {
+        measure: { width: mono.width, lineHeight: () => -1 },
+      })
+    ).toThrow(MindmapMeasureError);
+  });
+
+  test('emits the nodes and the mind map only: the branches are never stored', () => {
+    const built = buildMindmap(launch, { measure: mono });
+    expect(new Set(built.map(e => e.type))).toEqual(
+      new Set(['shape', 'mindmap'])
+    );
+    // Default local ids: the map is `mindmap`, its nodes `mindmap:n<i>`.
+    expect(built.map(e => e.id)).toEqual([
+      ...Array.from({ length: 10 }, (_, i) => `mindmap:n${i}`),
+      'mindmap',
+    ]);
   });
 });
 
@@ -194,12 +286,15 @@ describe('wrapMindmapText', () => {
     fontStyle: 'normal',
   };
 
+  // The expected lines are `wrapText`'s, quirks included; the integration
+  // spec `mindmap-headless.spec.ts` holds the copy to the real function.
   test('keeps a paragraph that fits, wraps one that does not word by word', () => {
     expect(wrapMindmapText('a b c', font, 100, mono)).toEqual(['a b c']);
-    // 5 px a character: 40 px holds eight.
+    // 5 px a character: 40 px holds eight. A line broken before a word that
+    // does not fit keeps its space, and `fitContent` measures it.
     expect(wrapMindmapText('alpha beta gamma', font, 40, mono)).toEqual([
-      'alpha',
-      'beta',
+      'alpha ',
+      'beta ',
       'gamma',
     ]);
     expect(wrapMindmapText('one\ntwo', font, 100, mono)).toEqual([
@@ -208,18 +303,44 @@ describe('wrapMindmapText', () => {
     ]);
   });
 
-  test('cuts a word wider than the line', () => {
+  test('cuts a word wider than the line strictly short of the width', () => {
     expect(wrapMindmapText('abcdefghijkl', font, 40, mono)).toEqual([
-      'abcdefgh',
-      'ijkl',
+      'abcdefg',
+      'hijkl',
     ]);
+  });
+
+  test('breaks after a hyphen', () => {
+    expect(wrapMindmapText('non-profit org', font, 40, mono)).toEqual([
+      'non-',
+      'profit ',
+      'org',
+    ]);
+  });
+
+  test('cuts a long word in linear time', () => {
+    let calls = 0;
+    const counted: MindmapTextMeasure = {
+      width: (text, f) => {
+        calls++;
+        return mono.width(text, f);
+      },
+      lineHeight: mono.lineHeight,
+    };
+    const word = 'abcdefghijklmnopqrstuvwxyz'.repeat(70);
+    expect(wrapMindmapText(word, font, 40, counted).join('')).toBe(word);
+    // One measure per distinct character, plus the paragraph, the word and
+    // the space: never one per character position.
+    expect(calls).toBeLessThan(40);
   });
 });
 
 describe('mindmapChildIndex', () => {
+  // Every index a child can get: a node has at most MINDMAP_MAX_NODES - 1
+  // siblings, the root included in the count.
   test('hands out the keys fractional-indexing hands out from a0', () => {
     let key: string | null = null;
-    for (let n = 0; n < 200; n++) {
+    for (let n = 0; n < MINDMAP_MAX_NODES; n++) {
       key = generateKeyBetween(key, null);
       expect(mindmapChildIndex(n)).toBe(key);
     }

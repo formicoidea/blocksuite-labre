@@ -169,7 +169,10 @@ options)`. It returns one `shape` per node, in tree order, with the style
    local id. Same contract as a toolbox item and a reader: members before the
    composite, local ids, nothing persisted.
 2. **The text measure is the caller's, and required** (`MindmapTextMeasure`:
-   the width of a line and the height of a line, in the style's font). The
+   the width of a line, and what one line adds to a node's height, the line
+   height plus its gap as `measureTextInDOM` gives them to `fitContent`, in
+   the style's font). A measure that answers no size (`NaN`, negative,
+   infinite) throws `MindmapMeasureError` rather than store a wrong box. The
    library ships no font metrics; an estimate here would store sizes that are
    wrong without saying so. A server passes an advance-width table of the
    style's font; the integration spec passes the browser's own measure and
@@ -184,6 +187,16 @@ options)`. It returns one `shape` per node, in tree order, with the style
    builder must store the colours the toolbar stores.
 5. `materializeInterchangeImport` rewrites a `mindmap`'s `children` keys and
    their `parent` onto the minted ids, as it rewrites a group's `children`.
+6. Two copies, each held to its original: `wrapMindmapText` is `wrapText`
+   (`affine-gfx-text`) with the injected width in place of the canvas, quirks
+   included (the trailing space a broken line keeps, the hyphen that ends a
+   token, the long word cut one character at a time), held line for line to
+   the real function by `mindmap-headless.spec.ts`; `mindmapChildIndex` is the
+   key sequence `fractional-indexing` hands out from `a0`, held to
+   `generateKeyBetween` by the builder's unit spec. Both exist because a
+   server's graph may not load the canvas nor that package.
+7. Bounds: 500 nodes a map, 2 000 characters a node (`MindmapTooLargeError`,
+   whose message names the limits and never the tree's text).
 
 Not done: the branches are local connectors the view draws from the tree, so a
 host that previews a built map draws them itself; collapsed nodes; reading

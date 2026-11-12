@@ -212,9 +212,14 @@ marker captioned by its `name` slot; link id `movement`.
 The mind map is no framework and has no toolbox: a tree is not a set of text
 slots. Core ships `buildMindmap` on `@formicoidea/labre-core/gfx/mindmap/interchange`
 (ADR 0045, amendment of 2026-11-10). It needs the text measurement a server
-does not have, so the host passes it: the width of a line and the height of a
-line, in the font the style names (`mindmapStyleGetters`, on
-`@formicoidea/labre-core/model/headless`).
+does not have, so the host passes it, in the font the style names
+(`mindmapStyleGetters`, on `@formicoidea/labre-core/model/headless`): the
+advance width of one line, as canvas `measureText` gives it, and what one line
+adds to a node's height, the line height plus its gap as `measureTextInDOM`
+gives them to `fitContent`. A measure that answers `NaN`, a negative or an
+infinite number throws `MindmapMeasureError`; a tree over 500 nodes or a node
+over 2 000 characters throws `MindmapTooLargeError`, whose message carries no
+text of the tree.
 
 ```ts
 import { buildMindmap } from '@formicoidea/labre-core/gfx/mindmap/interchange';
@@ -226,8 +231,9 @@ const elements = buildMindmap(
     at: { x: 0, y: 0 },
   }
 );
-// one `shape` per node, then the `mindmap` naming them by local id:
-// write them with `materializeInterchangeImport`, which rewrites the ids.
+// one `shape` per node in tree order (`<local>:n0` is the root), then the
+// `mindmap` (`id: local`) naming them by local id: write them with
+// `materializeInterchangeImport`, which rewrites the ids.
 ```
 
 The branches are drawn by the editor from the tree, never stored: a host that
