@@ -150,9 +150,9 @@ export function openIconPicker(
       },
     });
 
-    // The portal's own `closeOnClickAway` reads `event.target`; the composed
-    // path is what says whether a click inside the picker's shadow tree landed
-    // in the popup. Registered a task later so the opening click is not one.
+    // The composed path says whether a click inside the picker's shadow tree
+    // landed in the popup. Registered a task later so the opening click is
+    // not one.
     setTimeout(() => {
       if (controller.signal.aborted) return;
       document.addEventListener(

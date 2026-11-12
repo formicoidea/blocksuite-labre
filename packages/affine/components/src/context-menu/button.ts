@@ -320,7 +320,6 @@ export const menuButtonItems = {
           <toggle-switch
             .on="${config.on}"
             .onChange="${onChange}"
-            @click=${stopSwitchClick}
           ></toggle-switch>
           ${config.postfix}
         `,
@@ -337,15 +336,3 @@ export const menuButtonItems = {
       return html`${keyed(config.name, renderButton(data, menu))}`;
     },
 } satisfies Record<string, MenuItemRender<never>>;
-
-// ponytail: redundant once <toggle-switch> stops its own click (fix/code-toggle-double); remove when both have landed.
-/**
- * The switch of a `menu.toggleSwitch` row answers its own click through
- * `onChange`; the click must not also reach the row, whose `select` would
- * flip the setting a second time. Stopped at the switch's host, which every
- * click from inside it (its label, the checkbox the label sends on to)
- * crosses.
- */
-const stopSwitchClick = (event: MouseEvent) => {
-  event.stopPropagation();
-};
