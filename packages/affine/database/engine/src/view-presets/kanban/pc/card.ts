@@ -16,6 +16,7 @@ import {
   ROW_COLOR_PROPERTY,
   viewRowColor,
 } from '../../../core/view/color-rules.js';
+import { opensRowsWhenReadonly } from '../../../core/view/open-in.js';
 import type { KanbanColumn } from '../kanban-view-manager.js';
 import type { KanbanViewUILogic } from './kanban-view-ui-logic.js';
 import { openDetail, popCardMenu } from './menu.js';
@@ -280,6 +281,17 @@ export class KanbanCard extends SignalWatcher(
   override connectedCallback() {
     super.connectedCallback();
     if (this.view.readonly$.value) {
+      // A reader may still open a row the host opens (a page): opening
+      // writes nothing. Nothing else of the card answers a read-only view.
+      if (opensRowsWhenReadonly(this.view.manager.dataSource)) {
+        this._disposables.addFromEvent(this, 'click', e => {
+          this.kanbanViewLogic.root.openDetailPanel({
+            view: this.view,
+            rowId: this.cardId,
+            newTab: isNewTabClick(e),
+          });
+        });
+      }
       return;
     }
     this._disposables.addFromEvent(this, 'contextmenu', e => {
