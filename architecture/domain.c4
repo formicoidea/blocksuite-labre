@@ -7,7 +7,7 @@ model {
   extend assembly.all {
     metadata {
       domain ['document', 'canvas']
-      domain_document '0.41'
+      domain_document '0.40'
       domain_canvas '0.13'
     }
   }
