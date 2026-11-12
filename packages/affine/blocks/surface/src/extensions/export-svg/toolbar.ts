@@ -102,9 +102,9 @@ const SWITCHES: readonly [BoardSvgExportPart, ChromeWording][] = [
  * as the HTML embed's settings do) rather than a modal of its own.
  *
  * The choice lives in a signal read through `menu.dynamic`, so a row redrawn
- * after a flip says the CURRENT value: `toggleSwitch` hands its row click the
- * `on` it was built with, and a static `on` would undo a flip when the reader
- * then clicked the row's words.
+ * after a flip says the CURRENT value: `toggleSwitch` writes `!on` from the
+ * `on` the row was built with, so with a static `on` a second click on the
+ * row would write the same value again, and the switch would not be redrawn.
  */
 function openExportSvgOptions(
   std: BlockStdScope,
