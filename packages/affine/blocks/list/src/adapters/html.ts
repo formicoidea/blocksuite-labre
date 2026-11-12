@@ -34,9 +34,16 @@ export const listBlockHtmlAdapterMatcher: BlockHtmlAdapterMatcher = {
         }
       }
 
+      // Count the items only: indented HTML puts a whitespace text node
+      // between two `<li>`, and counting it numbered `start="3"` as 4, 6, 8.
+      // No `start` stays `null`: the list block numbers it from its previous
+      // sibling when it connects.
       const listNumber =
         typeof parentList.properties.start === 'number'
-          ? parentList.properties.start + parentList.children.indexOf(o.node)
+          ? parentList.properties.start +
+            HastUtils.getElementChildren(parentList)
+              .filter(item => item.tagName === 'li')
+              .indexOf(o.node)
           : null;
       const firstElementChild = HastUtils.getElementChildren(o.node)[0];
       o.node = HastUtils.flatNodes(
