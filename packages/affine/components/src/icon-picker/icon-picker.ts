@@ -1,4 +1,4 @@
-import { translateKey } from '@labre/affine-shared/services';
+import type { TranslationService } from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import type { BlockStdScope } from '@labre/std';
 import { stdContext } from '@labre/std';
@@ -8,6 +8,7 @@ import { property } from 'lit/decorators.js';
 
 import { DEFAULT_ICON_COLOR } from './icon-data.js';
 import type { IconPickerTab } from './types.js';
+import { iconPickerWording } from './wording.js';
 import {
   ICON_PICKER_ICONS_GROUP,
   ICON_PICKER_REMOVE,
@@ -34,6 +35,11 @@ const TABS: ReadonlyArray<{
  *   @select=${(e: CustomEvent<IconPickerSelectDetail>) => apply(e.detail)}
  * ></affine-icon-picker>`
  * ```
+ *
+ * It mounts outside an editor too (a host's settings panel, issue #636):
+ * `std` then stays undefined and the words come from {@link translation} if
+ * the host hands one, else from their English fallback. To open it anchored to
+ * an element and await the choice, use `openIconPicker`.
  */
 export class AffineIconPicker extends LitElement {
   @consume({ context: stdContext })
@@ -134,6 +140,14 @@ export class AffineIconPicker extends LitElement {
   @property({ attribute: false })
   accessor rememberRecent = true;
 
+  /**
+   * The host's translation service, for a picker mounted with no editor
+   * around: the same object it registers with `TranslationExtension`. Handed
+   * down to both panels; absent, the words are the English fallbacks.
+   */
+  @property({ attribute: false })
+  accessor translation: TranslationService | undefined = undefined;
+
   private readonly _remove = () => {
     this.dispatchEvent(
       new CustomEvent('select', {
@@ -156,9 +170,7 @@ export class AffineIconPicker extends LitElement {
                 data-active=${this.activeTab === tab.value}
                 @click=${() => (this.activeTab = tab.value)}
               >
-                ${this.std
-                  ? translateKey(this.std, ...tab.wording)
-                  : tab.wording[1]}
+                ${iconPickerWording(this, tab.wording)}
               </button>
             `
           )}
@@ -171,9 +183,7 @@ export class AffineIconPicker extends LitElement {
                 data-testid="icon-picker-remove"
                 @click=${this._remove}
               >
-                ${this.std
-                  ? translateKey(this.std, ...ICON_PICKER_REMOVE)
-                  : ICON_PICKER_REMOVE[1]}
+                ${iconPickerWording(this, ICON_PICKER_REMOVE)}
               </button>
             `
           : null}
@@ -182,10 +192,12 @@ export class AffineIconPicker extends LitElement {
         ${this.activeTab === 'emoji'
           ? html`<affine-emoji-picker-panel
               .rememberRecent=${this.rememberRecent}
+              .translation=${this.translation}
             ></affine-emoji-picker-panel>`
           : html`<affine-icon-picker-panel
               .color=${this.color}
               .rememberRecent=${this.rememberRecent}
+              .translation=${this.translation}
             ></affine-icon-picker-panel>`}
       </main>
     `;

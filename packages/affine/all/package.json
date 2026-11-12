@@ -276,6 +276,7 @@
     "./components/highlight-dropdown-menu": "./src/components/highlight-dropdown-menu.ts",
     "./components/hover": "./src/components/hover.ts",
     "./components/icon-button": "./src/components/icon-button.ts",
+    "./components/icon-picker": "./src/components/icon-picker.ts",
     "./components/icons": "./src/components/icons.ts",
     "./components/link-preview": "./src/components/link-preview.ts",
     "./components/linked-doc-title": "./src/components/linked-doc-title.ts",

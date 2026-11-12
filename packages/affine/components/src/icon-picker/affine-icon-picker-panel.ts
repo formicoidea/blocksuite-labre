@@ -1,4 +1,4 @@
-import { translateKey } from '@labre/affine-shared/services';
+import type { TranslationService } from '@labre/affine-shared/services';
 import { SearchIcon } from '@blocksuite/icons/lit';
 import type { BlockStdScope } from '@labre/std';
 import { stdContext } from '@labre/std';
@@ -19,6 +19,7 @@ import {
 import { pushRecent, readRecent, RECENT_ICONS_KEY } from './recent-store.js';
 import { panelStyles } from './styles.js';
 import { IconType } from './types.js';
+import { iconPickerWording } from './wording.js';
 import {
   COLOR_NAME_WORDINGS,
   ICON_PICKER_FILTER_PLACEHOLDER,
@@ -34,6 +35,10 @@ import {
 export class AffineIconPickerPanel extends LitElement {
   @consume({ context: stdContext })
   accessor std!: BlockStdScope;
+
+  /** Handed down by `affine-icon-picker`; see its `translation`. */
+  @property({ attribute: false })
+  accessor translation: TranslationService | undefined = undefined;
 
   static override styles = [
     panelStyles,
@@ -97,25 +102,19 @@ export class AffineIconPickerPanel extends LitElement {
   private _colorName(name: string): string {
     const wording = COLOR_NAME_WORDINGS[name];
     if (!wording) return name;
-    return this.std ? translateKey(this.std, ...wording) : wording[1];
+    return iconPickerWording(this, wording);
   }
 
   private _recentGroupLabel(): string {
-    return this.std
-      ? translateKey(this.std, ...ICON_PICKER_RECENT_GROUP)
-      : ICON_PICKER_RECENT_GROUP[1];
+    return iconPickerWording(this, ICON_PICKER_RECENT_GROUP);
   }
 
   private _iconsGroupLabel(): string {
-    return this.std
-      ? translateKey(this.std, ...ICON_PICKER_ICONS_GROUP)
-      : ICON_PICKER_ICONS_GROUP[1];
+    return iconPickerWording(this, ICON_PICKER_ICONS_GROUP);
   }
 
   private _emptyLabel(): string {
-    return this.std
-      ? translateKey(this.std, ...ICON_PICKER_NO_ICON_FOUND)
-      : ICON_PICKER_NO_ICON_FOUND[1];
+    return iconPickerWording(this, ICON_PICKER_NO_ICON_FOUND);
   }
 
   private _renderGroup(name: string, iconNames: string[]) {
@@ -154,9 +153,10 @@ export class AffineIconPickerPanel extends LitElement {
             ${SearchIcon()}
             <input
               type="text"
-              placeholder=${this.std
-                ? translateKey(this.std, ...ICON_PICKER_FILTER_PLACEHOLDER)
-                : ICON_PICKER_FILTER_PLACEHOLDER[1]}
+              placeholder=${iconPickerWording(
+                this,
+                ICON_PICKER_FILTER_PLACEHOLDER
+              )}
               .value=${this._keyword}
               @input=${(e: Event) => {
                 this._keyword = (e.target as HTMLInputElement).value;
