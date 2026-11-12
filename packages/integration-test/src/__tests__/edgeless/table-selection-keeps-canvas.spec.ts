@@ -3,20 +3,17 @@
  * note being edited belongs to the `gfx` group. The table's selection
  * controller once wrote its selection with `selection.set([...])` and cleared
  * it with `selection.clear()`, which replace EVERY group (issue #659, upstream
- * toeverything/AFFiNE#15791). In edgeless that meant:
+ * toeverything/AFFiNE#15791). In edgeless, placing the caret in a cell (the
+ * cell answers with an `area` selection) dropped the note's editing
+ * selection, so the note left edit mode under the user's caret.
  *
- * - placing the caret in a cell (the cell answers with an `area` selection)
- *   dropped the note's editing selection, so the note left edit mode under
- *   the user's caret;
- * - selecting then clearing a column (the column menu does both) replaced an
- *   unrelated canvas selection with nothing.
- *
- * Both paths are driven here on a real edgeless editor and the `gfx` group is
- * read back after each one. Page mode runs the same steps to hold that the
- * fix writes no canvas selection where there was none. No pointer gesture:
- * the selection is set through the selection API, as the column menu and the
- * cell focus do, so the spec does not depend on where the shared page left
- * the camera.
+ * That path goes through the real cell focus and real typing, on a real
+ * edgeless editor, and the `gfx` group is read back after each step. Page
+ * mode runs the same steps to hold that the fix writes no canvas selection
+ * where there was none. No pointer gesture: the caret is placed through the
+ * cell's inline editor, so the spec does not depend on where the shared page
+ * left the camera. Selecting then clearing a column is the same `setGroup`
+ * write, held by `table/src/__tests__/table-selection-group.unit.spec.ts`.
  */
 import type { TableSelectionData } from '@labre/affine/blocks/table';
 import { SurfaceSelection } from '@labre/std';
@@ -32,7 +29,6 @@ import { setupEditor } from '../utils/setup.js';
 // needs the controller it hangs off.
 type TableHost = HTMLElement & {
   selectionController: {
-    setSelected(selection: TableSelectionData | undefined): void;
     getSelected(): TableSelectionData | undefined;
   };
 };
@@ -97,19 +93,6 @@ describe.each(['page', 'edgeless'] as const)(
       await wait(50);
 
       expect(cellText(tableId)).toBe('abcxyz');
-      expect(editor.std.selection.getGroup('gfx')).toEqual(canvas);
-    });
-
-    test('selecting then clearing a column keeps the canvas selection', async () => {
-      table.selectionController.setSelected({
-        type: 'column',
-        columnId: 'column',
-      });
-      expect(table.selectionController.getSelected()?.type).toBe('column');
-      expect(editor.std.selection.getGroup('gfx')).toEqual(canvas);
-
-      table.selectionController.setSelected(undefined);
-      expect(table.selectionController.getSelected()).toBeUndefined();
       expect(editor.std.selection.getGroup('gfx')).toEqual(canvas);
     });
   }
