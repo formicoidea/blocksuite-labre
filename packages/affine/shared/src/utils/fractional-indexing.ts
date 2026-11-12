@@ -1,5 +1,8 @@
 import { generateKeyBetween } from 'fractional-indexing';
 
+/** Bound on the steps moving a key towards b, see the loop below. */
+const MAX_PREFIX_STEPS = 16;
+
 function hasSamePrefix(a: string, b: string) {
   return a.startsWith(b) || b.startsWith(a);
 }
@@ -65,12 +68,19 @@ export function generateFractionalIndexingKeyBetween(
     // generate a key between a and b
     if (hasSamePrefix(aSubkey, bSubkey) && a !== null && b !== null) {
       // conflict, if the subkeys are the same, generate a key between fullkeys
-      let key = generateKeyBetween(a, b);
+      const middle = generateKeyBetween(a, b);
+      let key = middle;
       // The postfix would decide the order, and could sort the key after b,
       // if b continues with key + '0': move the key closer to b until it
       // no longer prefixes b that way (#655, upstream AFFiNE#15709). Only new
       // keys change; stored keys are compared as before.
+      let steps = 0;
       while (b.startsWith(key + '0')) {
+        // Legitimate keys need at most 3 steps; a forged b (`a10` + `10` x N)
+        // needs one per repetition, quadratic in its length. Past the bound,
+        // the bare middle key is still strictly between a and b: only its
+        // uniqueness under concurrent edits is lost, on a hostile document.
+        if (++steps > MAX_PREFIX_STEPS) return middle;
         key = generateKeyBetween(key, b);
       }
       return key + '0' + postfix();

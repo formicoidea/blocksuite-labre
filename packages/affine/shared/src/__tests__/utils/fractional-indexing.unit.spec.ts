@@ -8,6 +8,11 @@
  * toeverything/AFFiNE#15709). Inserting right after the first key reached
  * that case within about twenty inserts.
  *
+ * The loop that moves the key towards `b` is bounded: a forged `order`
+ * (from a peer, a pasted or imported snapshot) shaped as `a10` + `10` x N
+ * made it run once per repetition, quadratic in the length of `b`, and a
+ * 100 KB key froze the tab for about 50 s on a table row insert.
+ *
  * The fix only changes which NEW keys are generated; stored keys are read and
  * compared exactly as before, so nothing here touches the stored format.
  */
@@ -72,5 +77,17 @@ describe('generateFractionalIndexingKeyBetween', () => {
       }
     }
     expect(misordered).toEqual([]);
+  });
+
+  it('returns fast and in order for a forged 100 KB b (bounded loop)', () => {
+    const postfix = 'x'.repeat(32);
+    const a = 'a100' + postfix;
+    const b = 'a10' + '10'.repeat(50_000) + '10' + postfix;
+    const started = performance.now();
+    const key = between(a, b);
+    const elapsed = performance.now() - started;
+    expect(a < key && key < b).toBe(true);
+    // a wide budget: the unbounded loop took tens of seconds here
+    expect(elapsed).toBeLessThan(200);
   });
 });
