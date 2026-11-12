@@ -1,3 +1,5 @@
+// First, so its top level runs before any block module evaluates.
+import { adoptViewerPageStyles } from './canvas-viewer-styles.js';
 import { CodeBlockConfigExtension } from '@labre/affine-block-code';
 import { FrameBlockComponent } from '@labre/affine-block-frame';
 import {
@@ -6,23 +8,25 @@ import {
 } from '@labre/affine-block-surface';
 import {
   StoreExtensionManager,
+  ViewExtensionManager,
   type ViewExtensionProvider,
 } from '@labre/affine-ext-loader';
 import { FrameBlockModel, GroupElementModel } from '@labre/affine-model';
 import {
+  CHROME_DELETED_DOC,
+  LINKED_DOC_DELETED,
+  TranslationExtension,
   translateKey,
+  TranslationProvider,
+  type TranslationService,
   ViewportElementExtension,
 } from '@labre/affine-shared/services';
-import { adoptEmotionStyles } from '@labre/affine-shared/styles';
 import { isSafeLinkUrl, normalizeUrl } from '@labre/affine-shared/utils';
 import { frameTitleStyleVars } from '@labre/affine-widget-frame-title';
+import { Container } from '@labre/global/di';
 import { DisposableGroup } from '@labre/global/disposable';
 import { Bound } from '@labre/global/gfx';
-import {
-  adoptShadowlessStyles,
-  BlockStdScope,
-  LifeCycleWatcher,
-} from '@labre/std';
+import { BlockStdScope, LifeCycleWatcher } from '@labre/std';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 import {
   type ExtensionType,
@@ -73,8 +77,11 @@ export type CanvasViewerOptions = {
    */
   viewExtensions?: readonly (typeof ViewExtensionProvider)[];
   /**
-   * The reader clicked something linked to a page of the workspace: an inline
-   * page reference, a linked or synced doc card. Without it, nothing happens.
+   * The reader clicked something linked to a page of the workspace that
+   * `docTitles` names: an inline page reference, a linked or synced doc card.
+   * A page `docTitles` leaves out is never opened. Without it, nothing
+   * happens. The id is whatever the document stores: treat it as untrusted
+   * input.
    */
   onOpenDoc?: (docId: string) => void;
   /**
@@ -107,9 +114,12 @@ export type CanvasViewerOptions = {
   /** A frozen view was clicked, or activated from the keyboard. */
   onExpand?: () => void;
   /**
-   * The titles of the other pages, by id, as a page reference and a linked
-   * doc card display them. A page left out shows as deleted, as in the editor
-   * when a referenced page is gone: pass every page the reader may follow.
+   * The pages the reader may see, by id, with their titles, as a page
+   * reference and a linked or synced doc card display them. A page left out
+   * (not shared, not public, or deleted: the viewer cannot tell) is named
+   * "Access denied" (`com.labre.canvas-viewer.access-denied`) wherever the
+   * editor would say it is deleted, a synced doc of it shows no content, and
+   * a click on it opens nothing.
    */
   docTitles?: Readonly<Record<string, string>>;
 };
@@ -158,14 +168,6 @@ const FRAME_BADGE_PX =
 /** The margin the surface reference block leaves around a group. */
 const GROUP_PADDING: [number, number, number, number] = [20, 20, 20, 20];
 
-// A public page's Content-Security-Policy blocks `<style>` elements: the
-// library's styles go to adopted sheets. At import, while the modules are
-// still evaluating, so emotion never creates its `<style>`.
-if (typeof document !== 'undefined') {
-  adoptShadowlessStyles();
-  adoptEmotionStyles();
-}
-
 let viewerSheet: CSSStyleSheet | null = null;
 
 /**
@@ -209,6 +211,58 @@ function resolveFocus(
   return {
     bound: Bound.deserialize(element.xywh),
     title: element.title.toString(),
+  };
+}
+
+/**
+ * What the editor says of a page that is gone, and what the viewer says
+ * instead: it is only given the pages its reader may see, so a page it lacks
+ * may be private, unshared or deleted.
+ */
+const DENIED_WORDINGS = new Map<string, readonly [string, string]>([
+  [
+    CHROME_DELETED_DOC[0],
+    ['com.labre.canvas-viewer.access-denied', 'Access denied'],
+  ],
+  [
+    LINKED_DOC_DELETED[0],
+    [
+      'com.labre.canvas-viewer.access-denied.description',
+      'You do not have access to this page.',
+    ],
+  ],
+]);
+
+/**
+ * The host's translation, if one of its providers registers it, read from a
+ * container of its own before the viewer's: the viewer wraps it rather than
+ * replace it.
+ */
+function hostTranslationOf(
+  providers: readonly (typeof ViewExtensionProvider)[] = []
+): TranslationService | null {
+  if (!providers.length) return null;
+  const container = new Container();
+  new ViewExtensionManager([...providers])
+    .get('edgeless')
+    .forEach(extension => extension.setup(container));
+  return container.provider().getOptional(TranslationProvider);
+}
+
+/** The host's translation, with "Access denied" where the editor says deleted. */
+function accessDeniedTranslation(
+  host: TranslationService | null
+): TranslationService {
+  return {
+    t: (key, params) => {
+      const denied = DENIED_WORDINGS.get(key);
+      if (!denied) return host?.t(key, params);
+      const [deniedKey, fallback] = denied;
+      return host?.t(deniedKey, params) || fallback;
+    },
+    get language() {
+      return host?.language;
+    },
   };
 }
 
@@ -310,6 +364,7 @@ export function mountCanvasViewer(
     throw new Error('the canvas viewer found no element to focus on');
   }
   const interactive = options.interactive ?? !focus;
+  const docTitles = options.docTitles ?? {};
   // A focused frame with a title keeps its badge's strip above it.
   const badgePx =
     focus?.kind === 'frame' && focused?.title.trim() ? FRAME_BADGE_PX : 0;
@@ -351,6 +406,7 @@ export function mountCanvasViewer(
   (Object.keys(lightThemeV2) as AffineThemeKeyV2[]).forEach(key =>
     box.setProperty(themeToVar(key), lightThemeV2[key])
   );
+  adoptViewerPageStyles();
   adoptViewerStyles();
 
   let std: BlockStdScope | null = null;
@@ -414,6 +470,10 @@ export function mountCanvasViewer(
     // Code highlighted by shiki's JavaScript engine: a public page's policy
     // has no WebAssembly to spare.
     CodeBlockConfigExtension({ engine: 'javascript' }),
+    // After the host's own, which it wraps.
+    TranslationExtension(
+      accessDeniedTranslation(hostTranslationOf(options.viewExtensions))
+    ),
     CanvasViewerMount,
   ];
   try {
@@ -490,6 +550,8 @@ export function mountCanvasViewer(
     });
     if (!link) return;
     if ('docId' in link) {
+      // A page the host did not name is not the reader's to open.
+      if (!Object.prototype.hasOwnProperty.call(docTitles, link.docId)) return;
       options.onOpenDoc?.(link.docId);
       return;
     }
@@ -545,13 +607,17 @@ export function mountCanvasViewer(
   // shortcut to type, so for each key the viewer's dispatcher is paused
   // before the page sees it and resumed after: the page keeps every key
   // (Escape to close the host's dialog, select-all, browser zoom), the editor
-  // none. Pointer and wheel, which the same dispatcher carries, are untouched.
+  // none. The same dispatcher carries the pointer and the wheel, so the pause
+  // ends with the key: in its bubble phase, and in any case on the next task,
+  // which a listener calling `stopPropagation()` on the way cannot prevent (a
+  // microtask would run between two listeners, before the editor's own).
   let paused = false;
   const pauseKeys = () => {
     const dispatcher = std?.event;
     if (!dispatcher?.active) return;
     paused = true;
     dispatcher.active = false;
+    setTimeout(resumeKeys, 0);
   };
   const resumeKeys = () => {
     if (!paused) return;

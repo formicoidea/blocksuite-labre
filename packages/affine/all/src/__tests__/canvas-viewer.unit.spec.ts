@@ -16,6 +16,12 @@
  *   listener on `document.fonts` left behind by `dispose`;
  * - a frozen view whose button has no accessible name (a frame with no
  *   title);
+ * - a key stopped inside the editor that leaves the dispatcher paused, so
+ *   the wheel and the drag are dead and the page scrolls instead;
+ * - a page the host left out of `docTitles` named "deleted" instead of
+ *   "Access denied", or opened on a click;
+ * - a host's link preview or image proxy, given in `viewExtensions`, that
+ *   does not reach the blocks (they would call the public defaults).
  * - zoom buttons, ctrl+wheel or a drag that move nothing;
  * - an inline page reference that does not reach `onOpenDoc`, or a refused
  *   scheme that navigates;
@@ -180,6 +186,145 @@ describe('the canvas viewer', () => {
     );
   });
 
+  test('a page the host left out is "Access denied" and opens nothing', async () => {
+    const { store, doc } = openHeadless(null);
+    store.transact(() => {
+      const page = store.addBlock('affine:page', { title: new Text('A map') });
+      const surface = store.addBlock('affine:surface', {}, page);
+      const note = store.addBlock(
+        'affine:note',
+        { xywh: '[0,0,400,100]' },
+        page
+      );
+      store.addBlock(
+        'affine:paragraph',
+        {
+          text: new Text<AffineTextAttributes>([
+            {
+              insert: ' ',
+              attributes: {
+                reference: { type: 'LinkedPage', pageId: 'private' },
+              },
+            },
+          ]),
+        },
+        note
+      );
+      store.addBlock(
+        'affine:embed-linked-doc',
+        { id: 'card', pageId: 'private', xywh: '[0,200,248,80]' },
+        surface
+      );
+    });
+    const onOpenDoc = vi.fn();
+    const { container } = await mount(
+      { onOpenDoc, docTitles: { shared: 'Shared page' } },
+      Y.encodeStateAsUpdate(doc)
+    );
+
+    const reference = container.querySelector('affine-reference');
+    expect(reference?.textContent).toContain('Access denied');
+    expect(reference?.textContent).not.toContain('Deleted');
+    reference!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    const card = container.querySelector('[data-block-id="card"]');
+    expect(card?.textContent).toContain('Access denied');
+    expect(card?.textContent).not.toMatch(/deleted/i);
+    card!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    expect(onOpenDoc).not.toHaveBeenCalled();
+  });
+
+  test("a host's link preview and image proxy reach the blocks through viewExtensions", async () => {
+    const { ViewExtensionProvider } = await import('@labre/affine-ext-loader');
+    const { LinkPreviewServiceIdentifier } = await import(
+      '@labre/affine-shared/services'
+    );
+    const { ImageProxyService } = await import('@labre/affine-shared/adapters');
+    const { LifeCycleWatcher } = await import('@labre/std');
+    const query = vi.fn((_url: string, _signal?: AbortSignal) =>
+      Promise.resolve({
+        title: 'From the host',
+        icon: 'https://example.org/icon.png',
+      })
+    );
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockRejectedValue(new Error('no network in this test'));
+    // The image proxy is a store extension: a watcher of the host's sets it.
+    class HostImageProxy extends LifeCycleWatcher {
+      static override key = 'host-image-proxy';
+      override created() {
+        this.std.store
+          .get(ImageProxyService)
+          .setImageProxyURL('https://host.example/proxy');
+      }
+    }
+    class HostServices extends ViewExtensionProvider {
+      override name = 'host-services';
+      override setup(
+        context: Parameters<
+          InstanceType<typeof ViewExtensionProvider>['setup']
+        >[0]
+      ) {
+        super.setup(context);
+        context.register([
+          {
+            setup: di => {
+              di.override(LinkPreviewServiceIdentifier, () => ({
+                query,
+                setEndpoint: () => {},
+                endpoint: 'https://host.example/preview',
+              }));
+            },
+          },
+          HostImageProxy,
+        ]);
+      }
+    }
+    const { store, doc } = openHeadless(null);
+    store.transact(() => {
+      const page = store.addBlock('affine:page', { title: new Text('A map') });
+      store.addBlock('affine:surface', {}, page);
+      const note = store.addBlock(
+        'affine:note',
+        { xywh: '[0,0,400,200]' },
+        page
+      );
+      // No stored metadata: the bookmark asks for a preview on mount.
+      store.addBlock(
+        'affine:bookmark',
+        { url: 'https://example.org/article' },
+        note
+      );
+    });
+    try {
+      const { container } = await mount(
+        { viewExtensions: [HostServices] },
+        Y.encodeStateAsUpdate(doc)
+      );
+      await settle();
+      expect(query).toHaveBeenCalledWith(
+        'https://example.org/article',
+        expect.anything()
+      );
+      expect(fetchSpy).not.toHaveBeenCalled();
+      const images = (root: ParentNode): HTMLImageElement[] => [
+        ...root.querySelectorAll('img'),
+        ...[...root.querySelectorAll('*')].flatMap(element =>
+          element.shadowRoot ? images(element.shadowRoot) : []
+        ),
+      ];
+      const sources = images(container).map(image => image.src);
+      expect(sources).not.toEqual([]);
+      sources.forEach(source =>
+        expect(source.startsWith('https://host.example/proxy?url=')).toBe(true)
+      );
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+
   test('a synced doc of a named page settles instead of loading forever', async () => {
     const { store, doc } = openHeadless(null);
     store.transact(() => {
@@ -320,7 +465,11 @@ describe('the canvas viewer', () => {
   test('a click on a page reference opens that page, a refused URL nothing', async () => {
     const onOpenDoc = vi.fn();
     const onLinkClick = vi.fn();
-    const { container } = await mount({ onOpenDoc, onLinkClick });
+    const { container } = await mount({
+      onOpenDoc,
+      onLinkClick,
+      docTitles: { 'p-2': 'Next page' },
+    });
     const reference = container.querySelector('affine-reference');
     expect(reference).not.toBeNull();
     reference!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -346,7 +495,10 @@ describe('the canvas viewer', () => {
 
   test('a drag that ends on a link pans and follows nothing', async () => {
     const onOpenDoc = vi.fn();
-    const { container } = await mount({ onOpenDoc });
+    const { container } = await mount({
+      onOpenDoc,
+      docTitles: { 'p-2': 'Next page' },
+    });
     const reference = container.querySelector('affine-reference')!;
     const at = {
       pointerId: 1,
@@ -394,6 +546,41 @@ describe('the canvas viewer', () => {
     expect(key.defaultPrevented).toBe(false);
     // Resumed after the key: the pointer still pans.
     expect(std.event.active).toBe(true);
+  });
+
+  test('a key the editor stops still gives the canvas back its wheel', async () => {
+    // The pause on a key is lifted on the next task, not only in the key's
+    // bubble phase, which a listener calling stopPropagation never reaches.
+    const { editorHost } = await mount();
+    const { GfxControllerIdentifier } = await import('@labre/std/gfx');
+    const std = editorHost.std as unknown as { event: { active: boolean } };
+    const viewport = editorHost.std.get(GfxControllerIdentifier).viewport;
+    // The pointer rests on the canvas: the dispatcher is awake.
+    std.event.active = true;
+    const stop = (event: Event) => event.stopPropagation();
+    editorHost.addEventListener('keydown', stop);
+    editorHost.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'a', bubbles: true })
+    );
+    editorHost.removeEventListener('keydown', stop);
+    // Paused for the key, and its bubble phase never came.
+    expect(std.event.active).toBe(false);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(std.event.active).toBe(true);
+
+    const before = viewport.zoom;
+    const wheel = new WheelEvent('wheel', {
+      deltaY: -WHEEL_NOTCH,
+      bubbles: true,
+      cancelable: true,
+    });
+    Object.defineProperties(wheel, {
+      ctrlKey: { value: true },
+      clientX: { value: CENTRE_X },
+      clientY: { value: CENTRE_Y },
+    });
+    editorHost.dispatchEvent(wheel);
+    expect(viewport.zoom).toBeGreaterThan(before);
   });
 
   test('dispose empties the host and can run twice', async () => {
