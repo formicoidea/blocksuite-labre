@@ -258,6 +258,12 @@ export const toggleGroup: MenuItemGroup<CodeBlockToolbarContext> = {
     {
       type: 'wrap',
       generate: ({ blockComponent }) => {
+        // One entry point for the row and its switch, so both flip the
+        // setting once and both refuse a readonly store (#660).
+        const setWrap = (wrap: boolean) => {
+          if (blockComponent.store.readonly) return;
+          blockComponent.setWrap(wrap);
+        };
         return {
           action: () => {},
           render: () => {
@@ -269,17 +275,15 @@ export const toggleGroup: MenuItemGroup<CodeBlockToolbarContext> = {
             const icon = wrapped ? CancelWrapIcon : WrapIcon;
             return html`
               <editor-menu-action
-                @click=${() => {
-                  const currentWrap = blockComponent.model.props.wrap;
-                  blockComponent.setWrap(!currentWrap);
-                }}
+                @click=${() => setWrap(!blockComponent.model.props.wrap)}
                 aria-label=${label}
               >
                 ${icon}
                 <span class="label">${label}</span>
                 <toggle-switch
                   style="margin-left: auto;"
-                  .on="${wrapped}"
+                  .on=${wrapped}
+                  .onChange=${setWrap}
                 ></toggle-switch>
               </editor-menu-action>
             `;
@@ -293,6 +297,12 @@ export const toggleGroup: MenuItemGroup<CodeBlockToolbarContext> = {
         std.getOptional(CodeBlockConfigExtension.identifier)?.showLineNumbers ??
         true,
       generate: ({ blockComponent }) => {
+        const setLineNumber = (lineNumber: boolean) => {
+          if (blockComponent.store.readonly) return;
+          blockComponent.store.updateBlock(blockComponent.model, {
+            lineNumber,
+          });
+        };
         return {
           action: () => {},
           render: () => {
@@ -305,18 +315,15 @@ export const toggleGroup: MenuItemGroup<CodeBlockToolbarContext> = {
             );
             return html`
               <editor-menu-action
-                @click=${() => {
-                  blockComponent.store.updateBlock(blockComponent.model, {
-                    lineNumber: !blockComponent.showLineNumbers,
-                  });
-                }}
+                @click=${() => setLineNumber(!blockComponent.showLineNumbers)}
                 aria-label=${label}
               >
                 ${NumberedListIcon()}
                 <span class="label">${label}</span>
                 <toggle-switch
                   style="margin-left: auto;"
-                  .on="${lineNumber}"
+                  .on=${lineNumber}
+                  .onChange=${setLineNumber}
                 ></toggle-switch>
               </editor-menu-action>
             `;
