@@ -557,8 +557,31 @@ export function parseTokens(text: string): string[] {
 
 export const charWidth = (() => {
   const cachedCharWidth = new Map<string, Array<number>>();
+  // A character beyond one UTF-16 unit (an emoji, any code point outside the
+  // BMP) is keyed by the whole string: indexed by its first unit, every emoji
+  // from U+1F300 to U+1F64F shared one entry, and the first one measured gave
+  // its width to all the others.
+  const cachedWideCharWidth = new Map<string, Map<string, number>>();
+
+  const calculateWide = (char: string, font: string) => {
+    let fontCache = cachedWideCharWidth.get(font);
+    if (!fontCache) {
+      fontCache = new Map();
+      cachedWideCharWidth.set(font, fontCache);
+    }
+
+    let width = fontCache.get(char);
+    if (width === undefined) {
+      width = getLineWidth(char, font);
+      fontCache.set(char, width);
+    }
+
+    return width;
+  };
 
   const calculate = (char: string, font: string) => {
+    if (char.length !== 1) return calculateWide(char, font);
+
     const ascii = char.charCodeAt(0);
 
     let fontCache = cachedCharWidth.get(font);
