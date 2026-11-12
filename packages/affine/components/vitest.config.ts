@@ -25,6 +25,7 @@ export default defineConfig({
       'src/__tests__/file-drop-page-verdict*.unit.spec.ts',
       'src/__tests__/html-frame*.unit.spec.ts',
       'src/__tests__/slider*.unit.spec.ts',
+      'src/__tests__/portal*.unit.spec.ts',
     ],
     testTimeout: 10000,
     environment: 'happy-dom',

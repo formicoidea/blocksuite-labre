@@ -150,7 +150,11 @@ export function createLitPortal({
       document.addEventListener(
         'click',
         e => {
-          if (portalRoot.contains(e.target as Node)) return;
+          // `e.target` is retargeted to the outermost shadow host this
+          // document listener can see: for a portal held inside a shadow
+          // tree (a widget's), every click on its own content would read as
+          // a click away. The composed path still holds the portal.
+          if (e.composedPath().includes(portalRoot)) return;
           abortController.abort();
         },
         {
