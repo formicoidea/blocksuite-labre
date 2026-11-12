@@ -210,6 +210,10 @@ export class EdgelessRootBlockComponent extends BlockComponent<
           [p1.x - p1.delta.x, p1.y - p1.delta.y],
           [p2.x - p2.delta.x, p2.y - p2.delta.y]
         );
+        // Two fingers that were on the same point give no ratio: dividing by
+        // a zero distance sends the zoom to Infinity. The read-only canvas
+        // viewer runs this same handler (ADR 0051).
+        if (lastDistance === 0) return false;
         const currentDistance = Vec.dist([p1.x, p1.y], [p2.x, p2.y]);
 
         const zoom = (currentDistance / lastDistance) * viewport.zoom;
