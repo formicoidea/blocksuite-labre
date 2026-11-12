@@ -1,5 +1,5 @@
 import { ShadowlessElement } from '@labre/std';
-import { type Text } from '@labre/store';
+import { Text } from '@labre/store';
 import { css, html } from 'lit';
 import { state } from 'lit/decorators.js';
 import { createRef, ref } from 'lit/directives/ref.js';
@@ -91,12 +91,16 @@ export function fillSelectionWithFocusCellData(
       const dataType = curCol.dataType$.value;
 
       if (dataType && t.richText.is(dataType)) {
-        const focusCellText = focusData as Text | undefined;
+        // A rich-text cell may be stored as a plain string (an older
+        // document, an import; `storedShapeIsReadable` in the database
+        // block): it has no deltas, and no `clear` to fill over.
+        const delta =
+          focusData instanceof Text || focusData instanceof Y.Text
+            ? focusData.toDelta()
+            : [{ insert: focusData?.toString() ?? '' }];
+        const curCellText = curCell.value$.value;
 
-        const delta = focusCellText?.toDelta() ?? [{ insert: '' }];
-        const curCellText = curCell.value$.value as Text | undefined;
-
-        if (curCellText) {
+        if (curCellText instanceof Text) {
           curCellText.clear();
           curCellText.applyDelta(delta);
         } else {
