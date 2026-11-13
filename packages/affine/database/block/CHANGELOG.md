@@ -1,5 +1,40 @@
 # @labre/affine-block-database
 
+## 3.5.0
+
+### Patch Changes
+
+- d19e52a: A data-view (`affine:data-view`) cell whose stored value does not match its column (after a type change, an import, or a peer on another version) now reads as the column's default instead of reaching the views raw, where a malformed date or multi-select threw and a malformed checkbox rendered as ticked. The stored value is left untouched: nothing is written when the cell is read. Same rule as the database block (#656). A shape a reader still reads is kept as stored: a rich-text cell stored as a plain string keeps its text when edited or converted. `storedShapeIsReadable(type, value)` is exported for data sources that apply the same rule.
+- d19e52a: A database cell whose stored value does not match its column (after a type change, an import, or a peer on another version) now reads as the column's default instead of `undefined`, so the cell renders and readers get a value of the expected type. The stored value is left untouched: nothing is written when the cell is read (#656). A shape a reader still reads is kept as stored: a rich-text cell stored as a plain string keeps its text when edited, converted, exported as JSON or copied by drag-to-fill (as a source or a target, in the table and the virtual table). `storedShapeIsReadable(type, value)` is exported for data sources that apply the same rule.
+- d19e52a: "Duplicate property" on a select or multi-select column now gives the copy its own option ids, and the duplicated cells point at them: the two columns no longer share an option, so editing a tag in one leaves the other alone. Labels, colours and the source column are unchanged, the duplicate is one undo step, and nothing is written on a read-only document. `copyCellsByProperty` takes an optional fourth argument mapping each copied value.
+- d19e52a: A read-only database (a public share, a reader's view, a page in the trash) now opens its rows on desktop when they are pages and the host registered `DatabaseOpenRowExtension`: the table keeps its open button on the title column and a kanban card opens on a click, as the phone table already did. Editing stays off and opening writes nothing; without an opener, or over rows that are blocks, a read-only view behaves as before.
+- Updated dependencies [3fd7f03]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+  - @labre/std@3.5.0
+  - @labre/affine-shared@3.5.0
+  - @labre/affine-components@3.5.0
+  - @labre/affine-database-engine@3.5.0
+  - @labre/affine-inline-preset@3.5.0
+  - @labre/affine-inline-reference@3.5.0
+  - @labre/affine-model@3.5.0
+  - @labre/affine-rich-text@3.5.0
+  - @labre/affine-widget-drag-handle@3.5.0
+  - @labre/affine-widget-slash-menu@3.5.0
+  - @labre/affine-ext-loader@3.5.0
+  - @labre/global@3.5.0
+  - @labre/store@3.5.0
+
 ## 3.4.0
 
 ### Patch Changes

@@ -1,5 +1,29 @@
 # @labre/data-view
 
+## 3.5.0
+
+### Patch Changes
+
+- d19e52a: A database cell whose stored value does not match its column (after a type change, an import, or a peer on another version) now reads as the column's default instead of `undefined`, so the cell renders and readers get a value of the expected type. The stored value is left untouched: nothing is written when the cell is read (#656). A shape a reader still reads is kept as stored: a rich-text cell stored as a plain string keeps its text when edited, converted, exported as JSON or copied by drag-to-fill (as a source or a target, in the table and the virtual table). `storedShapeIsReadable(type, value)` is exported for data sources that apply the same rule.
+- d19e52a: A read-only database (a public share, a reader's view, a page in the trash) now opens its rows on desktop when they are pages and the host registered `DatabaseOpenRowExtension`: the table keeps its open button on the title column and a kanban card opens on a click, as the phone table already did. Editing stays off and opening writes nothing; without an opener, or over rows that are blocks, a read-only view behaves as before.
+- d19e52a: A select or multi-select option whose name is empty or blank is now drawn as "Untitled" (new key `com.labre.data-view.tag.untitled`) in cells, in the tag menu (where typing it finds the option) and as a kanban group title, which keeps its height and opens its rename menu again. Display only: the stored option name is not changed. Hosts with their own catalogue add the new key (#657).
+- Updated dependencies [3fd7f03]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+  - @labre/std@3.5.0
+  - @labre/affine-shared@3.5.0
+  - @labre/affine-components@3.5.0
+  - @labre/affine-model@3.5.0
+  - @labre/global@3.5.0
+  - @labre/store@3.5.0
+
 ## 3.4.0
 
 ### Patch Changes

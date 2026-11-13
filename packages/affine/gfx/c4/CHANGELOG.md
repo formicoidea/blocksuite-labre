@@ -1,5 +1,35 @@
 # @labre/affine-gfx-c4
 
+## 3.5.0
+
+### Patch Changes
+
+- Updated dependencies [3fd7f03]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+  - @labre/std@3.5.0
+  - @labre/affine-shared@3.5.0
+  - @labre/affine-components@3.5.0
+  - @labre/affine-gfx-text@3.5.0
+  - @labre/affine-block-surface@3.5.0
+  - @labre/affine-gfx-connector@3.5.0
+  - @labre/affine-gfx-ddd-shared@3.5.0
+  - @labre/affine-gfx-pointer@3.5.0
+  - @labre/affine-gfx-shape@3.5.0
+  - @labre/affine-gfx-template@3.5.0
+  - @labre/affine-model@3.5.0
+  - @labre/affine-widget-edgeless-toolbar@3.5.0
+  - @labre/affine-ext-loader@3.5.0
+  - @labre/global@3.5.0
+
 ## 3.4.0
 
 ### Patch Changes
