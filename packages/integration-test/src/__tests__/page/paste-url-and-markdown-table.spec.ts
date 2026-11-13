@@ -8,6 +8,7 @@ import { commands, userEvent } from '@vitest/browser/context';
 import { beforeEach, describe, expect, test } from 'vitest';
 
 import { wait } from '../utils/common.js';
+import { deepQueryAll } from '../utils/deep-query.js';
 import { addNote, getDocRootBlock } from '../utils/edgeless.js';
 import { setupEditor } from '../utils/setup.js';
 
@@ -49,16 +50,6 @@ describe('pasting in a page', () => {
     )?.toolbar ?? null;
 
   const isOpen = () => !!toolbar()?.dataset.open;
-
-  /** Every element matching `selector`, through every open shadow root. */
-  const deepQueryAll = (scope: ParentNode, selector: string): HTMLElement[] => {
-    const found = Array.from(scope.querySelectorAll<HTMLElement>(selector));
-    for (const element of scope.querySelectorAll('*')) {
-      if (element.shadowRoot)
-        found.push(...deepQueryAll(element.shadowRoot, selector));
-    }
-    return found;
-  };
 
   const settle = async () => {
     await wait(150);

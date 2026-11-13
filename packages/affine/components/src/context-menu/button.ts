@@ -304,6 +304,11 @@ export const menuButtonItems = {
       }
       const onChange = (on: boolean) => {
         config.onChange(on);
+        // The switch keeps its click from the row, so the menu's container,
+        // which gives the focus back to the hidden search field on a click,
+        // never sees it; the label's mousedown has taken that focus, and the
+        // arrows and Enter, heard only on that field, would go dead.
+        menu.focusTo(menu.currentFocused$.peek());
       };
 
       const data: MenuButtonData = {
@@ -318,8 +323,11 @@ export const menuButtonItems = {
           ></toggle-switch>
           ${config.postfix}
         `,
+        // A click on the row flips the setting; it used to hand back the
+        // value the row was built with, so it changed nothing, or undid a
+        // flip made on the switch.
         select: () => {
-          config.onChange(config.on);
+          config.onChange(!config.on);
           return false;
         },
         class: config.class ?? {},

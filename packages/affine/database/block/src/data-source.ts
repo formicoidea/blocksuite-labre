@@ -16,7 +16,7 @@ import {
 } from '@labre/affine-database-engine';
 import { propertyPresets } from '@labre/affine-database-engine/property-presets';
 import type { BlockStdScope, EditorHost } from '@labre/std';
-import { type BlockModel } from '@labre/store';
+import { type BlockModel, nanoid } from '@labre/store';
 import { computed, signal } from '@preact/signals-core';
 
 import { getIcon } from './block-icons.js';
@@ -25,6 +25,7 @@ import {
   databaseBlockProperties,
   databasePropertyConverts,
 } from './properties/index.js';
+import { storedShapeIsReadable } from './properties/stored-shapes.js';
 import { canTurnIntoSource, turnBlocksIntoSource } from './turn-into-source.js';
 import {
   addProperty,
@@ -36,6 +37,36 @@ import {
   updateCells,
   updateProperty,
 } from './utils/block-utils.js';
+
+/**
+ * A column's data with every `options[].id` renewed (select, multi-select),
+ * and the mapping its cell values (an option id or a list of them) go
+ * through. Data without options comes back as is, with an identity remap.
+ */
+function withFreshOptionIds(data: Record<string, unknown>): {
+  data: Record<string, unknown>;
+  remap: (value: unknown) => unknown;
+} {
+  const options = data.options;
+  if (!Array.isArray(options)) {
+    return { data, remap: value => value };
+  }
+  const ids = new Map<unknown, string>(
+    options.map((option: { id: unknown }) => [option.id, nanoid()])
+  );
+  const renew = (value: unknown) =>
+    typeof value === 'string' ? (ids.get(value) ?? value) : value;
+  return {
+    data: {
+      ...data,
+      options: options.map((option: { id: unknown }) => ({
+        ...option,
+        id: ids.get(option.id),
+      })),
+    },
+    remap: value => (Array.isArray(value) ? value.map(renew) : renew(value)),
+  };
+}
 
 type SpacialProperty = {
   valueSet: (rowId: string, propertyId: string, value: unknown) => void;
@@ -200,10 +231,14 @@ export class DatabaseBlockDataSource extends HostedDataSourceBase {
       meta.config.rawValue.default();
     const schema = meta.config.rawValue.schema;
     const result = schema.safeParse(rawValue);
-    if (result.success) {
-      return result.data;
-    }
-    return;
+    // A stored value its column rejects (a type changed, an import, a peer
+    // on another version) reads as the default and is never rewritten: a
+    // newer peer may understand it, and nothing is written on load (#656).
+    // A shape a reader still reads (a rich-text string) is read as stored.
+    if (result.success) return result.data;
+    return storedShapeIsReadable(type, rawValue)
+      ? rawValue
+      : meta.config.rawValue.default();
   }
 
   protected override getNormalPropertyAndIndex(propertyId: string):
@@ -409,7 +444,7 @@ export class DatabaseBlockDataSource extends HostedDataSourceBase {
   }
 
   propertyDuplicate(propertyId: string): string | undefined {
-    if (this.isFixedProperty(propertyId)) {
+    if (this.doc.readonly || this.isFixedProperty(propertyId)) {
       return;
     }
     this.doc.captureSync();
@@ -423,16 +458,28 @@ export class DatabaseBlockDataSource extends HostedDataSourceBase {
     while (names.has(`${nonIdProps.name}(${index})`)) {
       index++;
     }
-    const schema = { ...nonIdProps, name: `${nonIdProps.name}(${index})` };
-    const id = addProperty(
-      this._model,
-      {
-        before: false,
-        id: propertyId,
-      },
-      schema
-    );
-    copyCellsByProperty(this._model, copyId, id);
+    // The copy's options get their own ids, and its cells follow them: two
+    // columns sharing an option id would read as one tag to anything keyed
+    // by it (a host merging bases, a filter or group moved across columns).
+    const { data, remap } = withFreshOptionIds(nonIdProps.data);
+    const schema = {
+      ...nonIdProps,
+      data,
+      name: `${nonIdProps.name}(${index})`,
+    };
+    // One transaction: the column and its cells are one undo step.
+    let id = '';
+    this.doc.transact(() => {
+      id = addProperty(
+        this._model,
+        {
+          before: false,
+          id: propertyId,
+        },
+        schema
+      );
+      copyCellsByProperty(this._model, copyId, id, remap);
+    });
     return id;
   }
 

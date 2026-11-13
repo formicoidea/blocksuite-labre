@@ -28,16 +28,6 @@
     "packages/affine/blocks/surface/src/extensions/interchange-import.ts": [
       "${} ${}"
     ],
-    "packages/affine/components/src/icon-picker/emoji-data.ts": [
-      "Activity",
-      "Animals & Nature",
-      "Flags",
-      "Food & Drink",
-      "Objects",
-      "Smileys & People",
-      "Symbols",
-      "Travel & Places"
-    ],
     "packages/affine/database/block/src/components/title/index.ts": [
       "true"
     ],

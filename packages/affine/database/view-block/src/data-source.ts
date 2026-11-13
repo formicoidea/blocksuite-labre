@@ -1,6 +1,7 @@
 import {
   DatabaseBlockDataSource,
   databasePropertyConverts,
+  storedShapeIsReadable,
 } from '@labre/affine-database-block';
 import type { ColumnDataType } from '@labre/affine-model';
 import {
@@ -146,7 +147,20 @@ export class BlockQueryDataSource extends DataSourceBase {
   cellValueGet(rowId: string, propertyId: string): unknown {
     const viewColumn = this.getViewColumn(propertyId);
     if (viewColumn) {
-      return this.block.props.cells[rowId]?.[propertyId];
+      const value = this.block.props.cells[rowId]?.[propertyId];
+      const rawValue = this.propertyMetaGet(viewColumn.type)?.config.rawValue;
+      if (value === undefined || !rawValue) {
+        return value;
+      }
+      // A stored value its column rejects (a type changed, an import, a peer
+      // on another version) reads as the default and is never rewritten: a
+      // newer peer may understand it, and nothing is written on load (same
+      // rule as `DatabaseBlockDataSource.getCellValue`, #656). A shape a
+      // reader still reads (a rich-text string) is read as stored.
+      return rawValue.schema.safeParse(value).success ||
+        storedShapeIsReadable(viewColumn.type, value)
+        ? value
+        : rawValue.default();
     }
     const block = this.blockMap.get(rowId);
     if (block) {

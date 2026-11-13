@@ -304,8 +304,7 @@ export const ICON_PICKER_REMOVE: ChromeWording = [
 ];
 
 /**
- * The eight emoji-mart categories `emoji-data.ts`'s `GROUP_ORDER` names, in
- * the same order.
+ * The eight emoji-mart categories the emoji panel shows, in its own order.
  */
 export const EMOJI_GROUP_PEOPLE: ChromeWording = [
   'com.labre.emoji-group.people',
@@ -340,7 +339,10 @@ export const EMOJI_GROUP_FLAGS: ChromeWording = [
   'Flags',
 ];
 
-/** Keyed by `emoji-data.ts`'s own group id (`people`, `nature`…). */
+/**
+ * Keyed by emoji-mart's own category id (`people`, `nature`…), in emoji-mart's
+ * order: the emoji panel hands these keys to emoji-mart as its category list.
+ */
 export const EMOJI_GROUP_WORDINGS: Readonly<Record<string, ChromeWording>> = {
   people: EMOJI_GROUP_PEOPLE,
   nature: EMOJI_GROUP_NATURE,
@@ -351,6 +353,68 @@ export const EMOJI_GROUP_WORDINGS: Readonly<Record<string, ChromeWording>> = {
   symbols: EMOJI_GROUP_SYMBOLS,
   flags: EMOJI_GROUP_FLAGS,
 };
+
+/*
+ * The rest of emoji-mart's own chrome, handed to it as its `i18n` object by
+ * `emoji-picker-panel.ts` so it never downloads a locale file. The search
+ * placeholder reuses `FILTERABLE_LIST_SEARCH_PLACEHOLDER` and the empty
+ * state `ICON_PICKER_NO_EMOJI_FOUND`; the skin tones carry "skin tone" so
+ * they stay apart from the colour modes' "Light" and "Dark".
+ */
+export const EMOJI_PICKER_FREQUENT: ChromeWording = [
+  'com.labre.emoji-picker.frequent',
+  'Frequently used',
+];
+export const EMOJI_PICKER_SEARCH_RESULTS: ChromeWording = [
+  'com.labre.emoji-picker.search-results',
+  'Search Results',
+];
+export const EMOJI_PICKER_NO_RESULTS_TITLE: ChromeWording = [
+  'com.labre.emoji-picker.no-results-title',
+  'Oh no!',
+];
+export const EMOJI_PICKER_PICK: ChromeWording = [
+  'com.labre.emoji-picker.pick',
+  'Pick an emoji…',
+];
+export const EMOJI_PICKER_SKIN_CHOOSE: ChromeWording = [
+  'com.labre.emoji-picker.skin.choose',
+  'Choose default skin tone',
+];
+export const EMOJI_PICKER_SKIN_1: ChromeWording = [
+  'com.labre.emoji-picker.skin.1',
+  'Default skin tone',
+];
+export const EMOJI_PICKER_SKIN_2: ChromeWording = [
+  'com.labre.emoji-picker.skin.2',
+  'Light skin tone',
+];
+export const EMOJI_PICKER_SKIN_3: ChromeWording = [
+  'com.labre.emoji-picker.skin.3',
+  'Medium-light skin tone',
+];
+export const EMOJI_PICKER_SKIN_4: ChromeWording = [
+  'com.labre.emoji-picker.skin.4',
+  'Medium skin tone',
+];
+export const EMOJI_PICKER_SKIN_5: ChromeWording = [
+  'com.labre.emoji-picker.skin.5',
+  'Medium-dark skin tone',
+];
+export const EMOJI_PICKER_SKIN_6: ChromeWording = [
+  'com.labre.emoji-picker.skin.6',
+  'Dark skin tone',
+];
+
+/** Keyed by emoji-mart's skin index, 1 (no modifier) to 6. */
+export const EMOJI_PICKER_SKIN_WORDINGS: readonly ChromeWording[] = [
+  EMOJI_PICKER_SKIN_1,
+  EMOJI_PICKER_SKIN_2,
+  EMOJI_PICKER_SKIN_3,
+  EMOJI_PICKER_SKIN_4,
+  EMOJI_PICKER_SKIN_5,
+  EMOJI_PICKER_SKIN_6,
+];
 
 /* ── Linked doc title chip ───────────────────────────────────────────── */
 
@@ -557,6 +621,17 @@ export const COMPONENTS_WORDINGS: readonly ChromeWording[] = [
   EMOJI_GROUP_OBJECTS,
   EMOJI_GROUP_SYMBOLS,
   EMOJI_GROUP_FLAGS,
+  EMOJI_PICKER_FREQUENT,
+  EMOJI_PICKER_SEARCH_RESULTS,
+  EMOJI_PICKER_NO_RESULTS_TITLE,
+  EMOJI_PICKER_PICK,
+  EMOJI_PICKER_SKIN_CHOOSE,
+  EMOJI_PICKER_SKIN_1,
+  EMOJI_PICKER_SKIN_2,
+  EMOJI_PICKER_SKIN_3,
+  EMOJI_PICKER_SKIN_4,
+  EMOJI_PICKER_SKIN_5,
+  EMOJI_PICKER_SKIN_6,
   DOC_TITLE_ARIA,
   NOTIFY_SWITCHED_TO_CARD_TITLE,
   NOTIFY_SWITCHED_TO_CARD_MESSAGE,

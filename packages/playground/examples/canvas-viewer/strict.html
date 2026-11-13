@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Labre Sites' policy, plus `connect-src` for the dev server's own
+         socket. Vite's dev server injects each CSS module as a <style>, which
+         this policy refuses: those reports are the dev server's, a production
+         bundle links its CSS from 'self'. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; connect-src 'self' ws:"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Canvas viewer, strict policy</title>
+  </head>
+  <body>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

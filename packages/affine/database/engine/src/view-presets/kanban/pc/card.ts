@@ -16,6 +16,7 @@ import {
   ROW_COLOR_PROPERTY,
   viewRowColor,
 } from '../../../core/view/color-rules.js';
+import { opensRowsWhenReadonly } from '../../../core/view/open-in.js';
 import type { KanbanColumn } from '../kanban-view-manager.js';
 import type { KanbanViewUILogic } from './kanban-view-ui-logic.js';
 import { openDetail, popCardMenu } from './menu.js';
@@ -130,6 +131,12 @@ const styles = css`
     height: 16px;
   }
 `;
+
+/** Whether a click lands on a link (`a[href]`), shadow roots included. */
+const clickFollowsLink = (event: Event): boolean =>
+  event
+    .composedPath()
+    .some(target => target instanceof Element && target.matches('a[href]'));
 
 export class KanbanCard extends SignalWatcher(
   WithDisposable(ShadowlessElement)
@@ -279,13 +286,46 @@ export class KanbanCard extends SignalWatcher(
 
   override connectedCallback() {
     super.connectedCallback();
+    // A reader may still open a row the host opens (a page): opening writes
+    // nothing. Captured, because every kanban cell (the title, each
+    // property) stops the click it receives: a bubbling listener only heard
+    // the margin. Attached whatever the view is now and decided at the
+    // click, because `readonly$` flips without remounting the cards (a
+    // right granted late, a lock lifted): writable, it returns at once and
+    // leaves the editing gestures alone.
+    this._disposables.addFromEvent(
+      this,
+      'click',
+      e => {
+        if (
+          !this.view.readonly$.peek() ||
+          !opensRowsWhenReadonly(this.view.manager.dataSource)
+        ) {
+          return;
+        }
+        // A link in a cell (a URL) is followed, not the row opened.
+        if (clickFollowsLink(e)) return;
+        this.kanbanViewLogic.root.openDetailPanel({
+          view: this.view,
+          rowId: this.cardId,
+          newTab: isNewTabClick(e),
+        });
+      },
+      { capture: true }
+    );
     if (this.view.readonly$.value) {
       return;
     }
+    // Both stay attached when the view turns read-only without remounting
+    // the card: the editing menu is not offered then, and a card selection
+    // left from editing must not open the row a second time after the
+    // read-only listener above.
     this._disposables.addFromEvent(this, 'contextmenu', e => {
+      if (this.view.readonly$.peek()) return;
       this.contextMenu(e);
     });
     this._disposables.addFromEvent(this, 'click', e => {
+      if (this.view.readonly$.peek()) return;
       if (e.shiftKey) {
         this.getSelection()?.shiftClickCard(e);
         return;

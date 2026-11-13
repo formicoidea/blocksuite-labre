@@ -1,10 +1,15 @@
 import { CaptionedBlockComponent } from '@labre/affine-components/caption';
+import {
+  type IconPickerSelectDetail,
+  type IconPickerTab,
+  IconType,
+} from '@labre/affine-components/icon-picker';
 import { createLitPortal } from '@labre/affine-components/portal';
 import { DefaultInlineManagerExtension } from '@labre/affine-inline-preset';
 import { type CalloutBlockModel } from '@labre/affine-model';
 import { focusTextModel } from '@labre/affine-rich-text';
 import { EDGELESS_TOP_CONTENTEDITABLE_SELECTOR } from '@labre/affine-shared/consts';
-import { DocModeProvider, ThemeProvider } from '@labre/affine-shared/services';
+import { DocModeProvider } from '@labre/affine-shared/services';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import type { BlockComponent } from '@labre/std';
 import { flip, offset } from '@floating-ui/dom';
@@ -13,6 +18,15 @@ import { query } from 'lit/decorators.js';
 import { styleMap } from '@labre/global/lit';
 
 import { getCalloutEmojiMarginTop } from './emoji-margin.js';
+
+/**
+ * The callout stores an emoji and nothing else (`CalloutProps.emoji`, a
+ * string), so its picker offers the Emoji tab alone: an icon picked there
+ * would have nowhere to go. Storing an icon is a new optional prop, hence an
+ * ADR first (stored format).
+ */
+const CALLOUT_PICKER_TABS: readonly IconPickerTab[] = ['emoji'];
+
 export class CalloutBlockComponent extends CaptionedBlockComponent<CalloutBlockModel> {
   static override styles = css`
     :host {
@@ -54,20 +68,27 @@ export class CalloutBlockComponent extends CaptionedBlockComponent<CalloutBlockM
 
   private _emojiMenuAbortController: AbortController | null = null;
   private readonly _toggleEmojiMenu = () => {
+    // The picker exists to write `props.emoji`: a read-only document opens
+    // none, and a pick that lands after the document turned read-only is
+    // dropped below.
+    if (this.store.readonly) return;
     if (this._emojiMenuAbortController) {
       this._emojiMenuAbortController.abort();
     }
     this._emojiMenuAbortController = new AbortController();
 
-    const theme = this.std.get(ThemeProvider).theme$.value;
-
     createLitPortal({
-      template: html`<affine-emoji-menu
-        .theme=${theme}
-        .onEmojiSelect=${(data: { native: string }) => {
-          this.model.props.emoji = data.native;
+      template: html`<affine-icon-picker
+        .tabs=${CALLOUT_PICKER_TABS}
+        .activeTab=${'emoji'}
+        .showRemove=${false}
+        @select=${(event: CustomEvent<IconPickerSelectDetail>) => {
+          if (this.store.readonly) return;
+          const icon = event.detail;
+          if (icon?.type !== IconType.Emoji) return;
+          this.model.props.emoji = icon.unicode;
         }}
-      ></affine-emoji-menu>`,
+      ></affine-icon-picker>`,
       portalStyles: {
         zIndex: 'var(--affine-z-index-popover)',
       },

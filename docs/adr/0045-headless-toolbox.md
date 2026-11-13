@@ -83,7 +83,7 @@ C4 first (the PR that carries this ADR), then BPMN, EDGY, the DDD boards,
 Cynefin/estuarine, Wardley's composites (market, pipeline, Porter) and UML.
 A framework without an `./interchange` entry gains one for its toolbox. The
 mind map is out of scope: its layout needs text measurement, which a server
-does not have; it gets its own decision.
+does not have; it gets its own decision (amendment of 2026-11-10 below).
 
 ## Consequences
 
@@ -143,3 +143,94 @@ asks for.
 
 The Context Map ships its toolbox with this amendment; the Core Domain Chart
 and Event Storming follow on the same entry.
+
+## Amended 2026-11-10 — the mind map: a builder with the measure injected
+
+**Not a red zone for the stored format** (no schema, no stored field, no enum
+value: the builder writes the props the toolbar's mind map already writes). The
+allow-list of `interchange-headless.unit.spec.ts` stays `zod` (amendment of
+2026-11-12 below). Issue #662.
+
+The mind map was left out above because its layout needs text measurement. It
+is the last canvas tool a host with no editor cannot place (the Labre
+connector's frameworks bench refused it every time), and the measurement is the
+only part a server lacks: `layout` (`gfx/mindmap/src/view/layout.ts`) is pure
+geometry over the nodes' sizes, and only `fitContent` reads a canvas and the
+DOM.
+
+Decided:
+
+1. `@labre/affine-gfx-mindmap/interchange` (core:
+   `@labre/affine/gfx/mindmap/interchange`) exports `buildMindmap(tree,
+options)`. It returns one `shape` per node, in tree order, with the style
+   getter's node props (the root style for the root, `getNodeStyle` by path
+   below it), sized as `fitContent` sizes it, placed by the view's own
+   `layout`, then the `mindmap` element whose `children` name the nodes by
+   local id. Same contract as a toolbox item and a reader: members before the
+   composite, local ids, nothing persisted.
+2. **The text measure is the caller's, and required** (`MindmapTextMeasure`:
+   the width of a line, and what one line adds to a node's height, the line
+   height plus its gap as `measureTextInDOM` gives them to `fitContent`, in
+   the style's font). A measure that answers no size (`NaN`, negative,
+   infinite) throws `MindmapMeasureError` rather than store a wrong box. The
+   library ships no font metrics; an estimate here would store sizes that are
+   wrong without saying so. A server passes an advance-width table of the
+   style's font; the integration spec passes the browser's own measure and
+   holds the result to the editor's layout node by node
+   (`mindmap-headless.spec.ts`).
+3. `layout.ts` is typed against a structural node (`LayoutNode`), which the
+   editor's `MindmapNode` satisfies; its algorithm is unchanged.
+4. `style.ts` loads no lodash (`applyNodeStyle` moves to `apply-style.ts`,
+   still on the model index), and joins `@labre/affine-model/headless`. Its
+   colours come from the model's theme, so a builder stores the colours the
+   toolbar stores; that theme carries its own palette values (amendment of
+   2026-11-12 below).
+5. `materializeInterchangeImport` rewrites a `mindmap`'s `children` keys and
+   their `parent` onto the minted ids, as it rewrites a group's `children`.
+6. Two copies, each held to its original: `wrapMindmapText` is `wrapText`
+   (`affine-gfx-text`) with the injected width in place of the canvas, quirks
+   included (the trailing space a broken line keeps, the hyphen that ends a
+   token, the long word cut one character at a time), held line for line to
+   the real function by `mindmap-headless.spec.ts`; `mindmapChildIndex` is the
+   key sequence `fractional-indexing` hands out from `a0`, held to
+   `generateKeyBetween` by the builder's unit spec. Both exist because a
+   server's graph may not load the canvas nor that package.
+7. Bounds: 500 nodes a map, 2 000 characters a node (`MindmapTooLargeError`,
+   whose message names the limits and never the tree's text).
+
+Not done: the branches are local connectors the view draws from the tree, so a
+host that previews a built map draws them itself; collapsed nodes; reading
+`.mm` or `.opml` with no editor (a reader could sit on this builder).
+
+## Amended 2026-11-12 — the library's theme carries its palette values
+
+**Touches `packages/affine/model` (red zone) without changing the stored
+format**: `DefaultTheme` is deep-equal before and after, so every colour the
+editor writes into a document is the colour it wrote before.
+
+With the mind map styles in `@labre/affine-model/headless`, the editor-free
+graph reached `themes/utils.ts`, which read `@toeverything/theme/v2` at run
+time for `getColorByKey` and `pureBlack` / `pureWhite`: the only third-party
+package besides `zod` in that graph. The product owner chose not to widen the
+allow-list for it.
+
+Decided:
+
+1. `model/src/themes/palette-values.ts` holds the palette entries the theme
+   reads (the keys `default.ts` passes to `getColorByKey`, plus the black and
+   white `pureBlack` and `pureWhite` read), valued as `getColorByKey` valued
+   them: one colour when the dark and light themes agree, `{ dark, light }`
+   when they do not. It imports types only. `getColorByKey`, `pureBlack` and
+   `pureWhite` read it, and nothing in `model/src` imports the package at run
+   time any more.
+2. A deliberate copy, held by a parity: `palette-values.unit.spec.ts` checks
+   every entry against `@toeverything/theme/v2` (a test may import it), and
+   the key list against `default.ts`. A bump of the package that would change
+   a stored colour fails there; moving the colour becomes an edit of the copy,
+   that is a decision.
+3. The editor-free entries load `zod` and the workspace sources only;
+   `interchange-headless.unit.spec.ts` refuses `@toeverything/theme` by name.
+
+Consequences: `@toeverything/theme` stays a dependency of the model (its
+parity spec) and of the editor packages that read its CSS variables; nothing
+changes for a host.

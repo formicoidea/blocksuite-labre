@@ -4,6 +4,7 @@ import {
   BlockHtmlAdapterExtension,
   type BlockHtmlAdapterMatcher,
   HastUtils,
+  listStartNumber,
 } from '@labre/affine-shared/adapters';
 import type { DeltaInsert } from '@labre/store';
 import { nanoid } from '@labre/store';
@@ -33,9 +34,16 @@ export const listBlockHtmlAdapterMatcher: BlockHtmlAdapterMatcher = {
         }
       }
 
+      // Count the items only: indented HTML puts a whitespace text node
+      // between two `<li>`, and counting it numbered `start="3"` as 4, 6, 8.
+      // No `start` stays `null`: the list block numbers it from its previous
+      // sibling when it connects.
       const listNumber =
         typeof parentList.properties.start === 'number'
-          ? parentList.properties.start + parentList.children.indexOf(o.node)
+          ? parentList.properties.start +
+            HastUtils.getElementChildren(parentList)
+              .filter(item => item.tagName === 'li')
+              .indexOf(o.node)
           : null;
       const firstElementChild = HastUtils.getElementChildren(o.node)[0];
       o.node = HastUtils.flatNodes(
@@ -136,6 +144,7 @@ export const listBlockHtmlAdapterMatcher: BlockHtmlAdapterMatcher = {
         // if true, add the list item to the list
       } else {
         // if false, create a new list
+        const start = listStartNumber(o);
         walkerContext.openNode(
           {
             type: 'element',
@@ -146,6 +155,7 @@ export const listBlockHtmlAdapterMatcher: BlockHtmlAdapterMatcher = {
                   ? 'list-style-type: none; padding-inline-start: 18px;'
                   : null,
               className: [o.node.props.type + '-list'],
+              ...(start === undefined ? {} : { start }),
             },
             children: [],
           },

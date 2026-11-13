@@ -1,6 +1,3 @@
-import isEqual from 'lodash-es/isEqual';
-import last from 'lodash-es/last';
-
 import { ConnectorMode } from '../../consts/connector.js';
 import { MindmapStyle } from '../../consts/mindmap.js';
 import { StrokeStyle } from '../../consts/note.js';
@@ -69,7 +66,8 @@ export abstract class MindmapStyleGetter {
   abstract readonly root: NodeStyle;
 
   abstract getNodeStyle(
-    node: MindmapNode,
+    // Unused by the four styles: a headless builder passes null (ADR 0045).
+    node: MindmapNode | null,
     path: number[]
   ): {
     connector: ConnectorStyle;
@@ -120,7 +118,7 @@ export class StyleOne extends MindmapStyleGetter {
     return this._colorOrders[number % this._colorOrders.length];
   }
 
-  getNodeStyle(_: MindmapNode, path: number[]) {
+  getNodeStyle(_: MindmapNode | null, path: number[]) {
     const color = this._getColor(path[1] ?? 0);
 
     return {
@@ -228,11 +226,11 @@ export class StyleTwo extends MindmapStyleGetter {
 
   private _getColor(number: number) {
     return number >= this._colorOrders.length
-      ? last(this._colorOrders)!
+      ? this._colorOrders[this._colorOrders.length - 1]
       : this._colorOrders[number];
   }
 
-  getNodeStyle(_: MindmapNode, path: number[]) {
+  getNodeStyle(_: MindmapNode | null, path: number[]) {
     const color = this._getColor(path.length - 2);
 
     return {
@@ -342,7 +340,7 @@ export class StyleThree extends MindmapStyleGetter {
     return this._strokeColor[number % this._strokeColor.length];
   }
 
-  override getNodeStyle(_: MindmapNode, path: number[]) {
+  override getNodeStyle(_: MindmapNode | null, path: number[]) {
     const strokeColor = this._getColor(path.length - 2);
     const dotColor = this._getColor(path.length - 1);
 
@@ -449,7 +447,7 @@ export class StyleFour extends MindmapStyleGetter {
     return this._colors[order % this._colors.length];
   }
 
-  getNodeStyle(_: MindmapNode, path: number[]) {
+  getNodeStyle(_: MindmapNode | null, path: number[]) {
     const stroke = this._getColor(path[1] ?? 0);
 
     return {
@@ -506,13 +504,4 @@ export const mindmapStyleGetters: Record<MindmapStyle, MindmapStyleGetter> = {
   [MindmapStyle.TWO]: styleTwo,
   [MindmapStyle.THREE]: styleThree,
   [MindmapStyle.FOUR]: styleFour,
-};
-
-export const applyNodeStyle = (node: MindmapNode, nodeStyle: NodeStyle) => {
-  Object.entries(nodeStyle).forEach(([key, value]) => {
-    const element = node.element as unknown as Record<string, unknown>;
-    if (!isEqual(element[key], value)) {
-      element[key] = value;
-    }
-  });
 };

@@ -2,6 +2,7 @@ import { NoteConfigExtension } from '@labre/affine-block-note';
 import {
   DefaultTool,
   getBgGridGap,
+  normalizeWheelDeltaY,
   type SurfaceBlockComponent,
   type SurfaceBlockModel,
 } from '@labre/affine-block-surface';
@@ -27,7 +28,8 @@ import {
   requestConnectedFrame,
   requestThrottledConnectedFrame,
 } from '@labre/affine-shared/utils';
-import { Bound } from '@labre/global/gfx';
+import { IS_WINDOWS } from '@labre/global/env';
+import { Bound, Point, Vec } from '@labre/global/gfx';
 import {
   BlockComponent,
   type GfxBlockComponent,
@@ -47,7 +49,6 @@ import { EdgelessPageKeyboardManager } from './edgeless-keyboard.js';
 import type { EdgelessRootService } from './edgeless-root-service.js';
 import { pinchZoomAction } from './utils/pinch-zoom.js';
 import { isCanvasElement } from './utils/query.js';
-import { panByWheel, pinchStep, zoomAtPointer } from './utils/wheel-gesture.js';
 
 export class EdgelessRootBlockComponent extends BlockComponent<
   RootBlockModel,
@@ -199,7 +200,30 @@ export class EdgelessRootBlockComponent extends BlockComponent<
 
         const multiPointersState = ctx.get('multiPointerState');
         const [p1, p2] = multiPointersState.pointers;
-        pinchStep(viewport, p1, p2);
+
+        const currentCenter = new Point(
+          0.5 * (p1.x + p2.x),
+          0.5 * (p1.y + p2.y)
+        );
+
+        const lastDistance = Vec.dist(
+          [p1.x - p1.delta.x, p1.y - p1.delta.y],
+          [p2.x - p2.delta.x, p2.y - p2.delta.y]
+        );
+        // Two fingers that were on the same point give no ratio: dividing by
+        // a zero distance sends the zoom to Infinity. The read-only canvas
+        // viewer runs this same handler (ADR 0051).
+        if (lastDistance === 0) return false;
+        const currentDistance = Vec.dist([p1.x, p1.y], [p2.x, p2.y]);
+
+        const zoom = (currentDistance / lastDistance) * viewport.zoom;
+
+        const [baseX, baseY] = viewport.toModelCoord(
+          currentCenter.x,
+          currentCenter.y
+        );
+
+        viewport.setZoom(zoom, new Point(baseX, baseY));
 
         return false;
       })
@@ -349,7 +373,16 @@ export class EdgelessRootBlockComponent extends BlockComponent<
     const { viewport } = this.gfx;
     if (viewport.locked) return;
 
-    zoomAtPointer(viewport, e, this.getBoundingClientRect());
+    const rect = this.getBoundingClientRect();
+    const [baseX, baseY] = viewport.toModelCoord(
+      e.clientX - rect.x,
+      e.clientY - rect.y
+    );
+    viewport.setZoom(
+      normalizeWheelDeltaY(e.deltaY, viewport.zoom),
+      new Point(baseX, baseY),
+      true
+    );
     this._pinchZoomed.add(e);
   };
 
@@ -377,12 +410,37 @@ export class EdgelessRootBlockComponent extends BlockComponent<
         const { viewport } = this.gfx;
         if (viewport.locked) return;
 
+        // zoom
         if (isTouchPadPinchEvent(e) || edgelessScrollZoom) {
-          zoomAtPointer(viewport, e, this.getBoundingClientRect());
-        } else {
-          panByWheel(viewport, e);
+          const rect = this.getBoundingClientRect();
+          // Perform zooming relative to the mouse position
+          const [baseX, baseY] = this.gfx.viewport.toModelCoord(
+            e.clientX - rect.x,
+            e.clientY - rect.y
+          );
+
+          const zoom = normalizeWheelDeltaY(e.deltaY, viewport.zoom);
+          viewport.setZoom(zoom, new Point(baseX, baseY), true);
+          e.stopPropagation();
         }
-        e.stopPropagation();
+        // pan
+        else {
+          // Shift+wheel means "scroll sideways" on every platform. Windows
+          // never sends a horizontal delta for it, so the vertical one has to
+          // be reinterpreted; elsewhere the OS does it natively for trackpads
+          // and horizontal-capable mice, and `deltaX === 0` is what a plain
+          // mouse — with nothing but a vertical wheel — leaves us to work with.
+          const simulateHorizontalScroll =
+            e.shiftKey && (IS_WINDOWS || e.deltaX === 0);
+          const dx = simulateHorizontalScroll
+            ? e.deltaY / viewport.zoom
+            : e.deltaX / viewport.zoom;
+          const dy = simulateHorizontalScroll ? 0 : e.deltaY / viewport.zoom;
+
+          viewport.applyDeltaCenter(dx, dy);
+          viewport.viewportMoved.next([dx, dy]);
+          e.stopPropagation();
+        }
       })
     );
   }

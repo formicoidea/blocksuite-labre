@@ -1,4 +1,4 @@
-import { css } from '@emotion/css';
+import { css } from '@labre/affine-shared/styles';
 import { cssVarV2 } from '@toeverything/theme/v2';
 
 // The block paints no background of its own: the page's shows through, as

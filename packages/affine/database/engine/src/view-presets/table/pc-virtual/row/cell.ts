@@ -19,6 +19,18 @@ import type { VirtualTableViewUILogic } from '../table-view-ui-logic';
 import type { TableGridCell } from '../types';
 import { popRowMenu } from './menu';
 import { rowSelectedBg } from './row-header-css';
+
+/**
+ * Draws every cell of the virtual table, the title column included.
+ *
+ * ponytail: the virtual table (`enable_table_virtual_scroll`, off by
+ * default) has no row open button, writable or read-only: a row opens only
+ * from the context menu's "Expand" (`popRowMenu`), and that menu is off in
+ * a read-only view (`contextMenu` below), so a reader cannot open a row
+ * here. Upgrade, the day the flag turns on: take the pc table's `row-ops`
+ * button on the title column (`pc/row/row.ts`), gated by
+ * `!readonly || opensRowsWhenReadonly(dataSource)` like there.
+ */
 export class DatabaseCellContainer extends SignalWatcher(
   WithDisposable(ShadowlessElement)
 ) {

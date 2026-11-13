@@ -37,8 +37,11 @@ export class OutlineNotePreviewSettingMenu extends SignalWatcher(
         <div class=${styles.toggleButton}>
           <toggle-switch
             .on=${showPreviewIcon}
-            .onChange=${() => {
-              this._context.showIcons$.value = !showPreviewIcon;
+            .onChange=${(on: boolean) => {
+              // The switch's own value, never the negation of the one read at
+              // render: two flips before a re-render would write the same
+              // value twice and leave the switch and the setting apart.
+              this._context.showIcons$.value = on;
             }}
           ></toggle-switch>
         </div>

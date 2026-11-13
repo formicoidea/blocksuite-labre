@@ -6,7 +6,7 @@ import {
 import { SignalWatcher, styleMap, WithDisposable } from '@labre/global/lit';
 import { PlusIcon } from '@blocksuite/icons/lit';
 import { ShadowlessElement } from '@labre/std';
-import { css } from '@emotion/css';
+import { css } from '@labre/affine-shared/styles';
 import { nothing } from 'lit';
 import { property, query } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';

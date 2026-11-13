@@ -118,6 +118,12 @@ import { SlashMenuViewExtension } from '@labre/affine-widget-slash-menu/view';
 import { ThreadMarksViewExtension } from '@labre/affine-widget-thread-marks/view';
 import { ToolbarViewExtension } from '@labre/affine-widget-toolbar/view';
 import { ViewportOverlayViewExtension } from '@labre/affine-widget-viewport-overlay/view';
+import {
+  ViewExtensionManager,
+  type ViewExtensionProvider,
+} from '@labre/affine-ext-loader';
+import { FileDropExtension } from '@labre/affine-components/drop-indicator';
+import type { ExtensionType } from '@labre/store';
 
 import {
   isBlockEnabled,
@@ -271,4 +277,79 @@ export function getInternalViewExtensions(flags?: LabreFlags) {
     OutlineViewExtension,
     AdapterPanelViewExtension,
   ];
+}
+
+/**
+ * The editor's tooling, left out of the read-only canvas viewer (ADR 0051):
+ * the viewer IS this registry mounted on a read-only store, minus these. A
+ * provider added to the registry reaches the viewer without touching it; one
+ * that only serves editing, a panel, collaboration or telemetry goes here.
+ * `read-only-view.unit.spec.ts` fails if an entry contributes a block view or
+ * a canvas element's view or renderer, so this list never hides content.
+ */
+export const READ_ONLY_EXCLUDED_VIEW_EXTENSIONS: ReadonlySet<
+  typeof ViewExtensionProvider
+> = new Set<typeof ViewExtensionProvider>([
+  // Telemetry and the AI audit: nothing a reader triggers is measured.
+  CommandTelemetryViewExtension,
+  CommandUsageViewExtension,
+  AuditViewExtension,
+  // Editing widgets: selection, menus, toolbars, drag and drop, slicing.
+  DragHandleViewExtension,
+  EdgelessAutoConnectViewExtension,
+  EdgelessDraggingAreaViewExtension,
+  EdgelessSelectedRectViewExtension,
+  EdgelessToolbarViewExtension,
+  EdgelessZoomToolbarViewExtension,
+  KeyboardToolbarViewExtension,
+  LinkedDocViewExtension,
+  NoteSlicerViewExtension,
+  PageDraggingAreaViewExtension,
+  ScrollAnchoringViewExtension,
+  SlashMenuViewExtension,
+  ToolbarViewExtension,
+  // Collaboration: other readers' cursors, comment marks.
+  RemoteSelectionViewExtension,
+  ThreadMarksViewExtension,
+  // Panels beside the editor.
+  AdapterPanelViewExtension,
+  DocTitleViewExtension,
+  FramePanelViewExtension,
+  OutlineViewExtension,
+]);
+
+/**
+ * Single extensions, inside a kept provider, that only serve editing: the
+ * file drop mounts an indicator in `<body>` for files nobody drops on a
+ * read-only page.
+ */
+export const READ_ONLY_EXCLUDED_EXTENSIONS: ReadonlySet<ExtensionType> =
+  new Set<ExtensionType>([FileDropExtension]);
+
+/**
+ * The view providers of the read-only canvas viewer: the registry with every
+ * flag on, plus what the host adds for its own editor (each framework
+ * bundle's view extensions, the database editing chrome), minus
+ * {@link READ_ONLY_EXCLUDED_VIEW_EXTENSIONS}.
+ */
+export function getReadOnlyViewProviders(
+  hostProviders: readonly (typeof ViewExtensionProvider)[] = []
+): (typeof ViewExtensionProvider)[] {
+  return [
+    ...new Set([...getInternalViewExtensions(), ...hostProviders]),
+  ].filter(provider => !READ_ONLY_EXCLUDED_VIEW_EXTENSIONS.has(provider));
+}
+
+/**
+ * The view extensions the read-only canvas viewer mounts: the editor's own
+ * `edgeless` scope of {@link getReadOnlyViewProviders}, minus
+ * {@link READ_ONLY_EXCLUDED_EXTENSIONS}. The viewer and its guard spec both call
+ * this, so the viewer cannot drift from what the guard checks.
+ */
+export function getReadOnlyViewExtensions(
+  hostProviders: readonly (typeof ViewExtensionProvider)[] = []
+): ExtensionType[] {
+  return new ViewExtensionManager(getReadOnlyViewProviders(hostProviders))
+    .get('edgeless')
+    .filter(extension => !READ_ONLY_EXCLUDED_EXTENSIONS.has(extension));
 }

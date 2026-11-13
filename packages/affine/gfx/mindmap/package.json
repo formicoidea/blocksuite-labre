@@ -47,6 +47,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./view": "./src/view.ts",
+    "./interchange": "./src/interchange.ts",
     "./store": "./src/store.ts",
     "./translations": "./src/translations.ts"
   },

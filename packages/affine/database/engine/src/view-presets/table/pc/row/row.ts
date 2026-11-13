@@ -19,6 +19,7 @@ import {
   ROW_COLOR_PROPERTY,
   viewRowColor,
 } from '../../../../core/view/color-rules.js';
+import { opensRowsWhenReadonly } from '../../../../core/view/open-in.js';
 import type { TableGroup } from '../group.js';
 import { openDetail, popRowMenu } from '../menu.js';
 import type { TableViewUILogic } from '../table-view-ui-logic.js';
@@ -276,7 +277,8 @@ export class TableRowView extends SignalWatcher(
               </dv-table-view-cell-container>
               <div class="${cellDivider}"></div>
             </div>
-            ${!column.readonly$.value &&
+            ${(!column.readonly$.value ||
+              opensRowsWhenReadonly(view.manager.dataSource)) &&
             column.view.mainProperties$.value.titleColumn === column.id
               ? html`<div class="row-ops show-on-hover-row">
                   <div

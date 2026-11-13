@@ -15,7 +15,6 @@
   "license": "MPL-2.0",
   "dependencies": {
     "@blocksuite/icons": "^2.2.12",
-    "@emotion/css": "^11.13.5",
     "@emotion/hash": "^0.9.2",
     "@floating-ui/dom": "^1.6.13",
     "@labre/affine-components": "workspace:*",

@@ -17,12 +17,38 @@ import '@shoelace-style/shoelace/dist/themes/dark.css';
 import './left-side-panel.js';
 
 import { PresentTool } from '@labre/affine/blocks/frame';
-import { ExportManager } from '@labre/affine/blocks/surface';
+import {
+  ExportManager,
+  materializeInterchangeImport,
+} from '@labre/affine/blocks/surface';
+import {
+  effects as iconPickerEffects,
+  type IconData,
+  IconType,
+  openIconPicker,
+  renderAffineIcon,
+} from '@labre/affine/components/icon-picker';
 import { toast } from '@labre/affine/components/toast';
 import { StoreExtensionManagerIdentifier } from '@labre/affine/ext-loader';
+import {
+  buildMindmap,
+  type MindmapTextMeasure,
+} from '@labre/affine/gfx/mindmap/interchange';
+import {
+  getFontString,
+  getLineWidth,
+  measureTextInDOM,
+} from '@labre/affine/gfx/text';
 import { BlockSuiteError, ErrorCode } from '@labre/affine/global/exceptions';
 import type { SerializedXYWH } from '@labre/affine/global/gfx';
-import { ColorScheme, type DocMode } from '@labre/affine/model';
+import { styleMap } from '@labre/affine/global/lit';
+import {
+  ColorScheme,
+  type DocMode,
+  FrameBlockModel,
+  GroupElementModel,
+  MindmapStyle,
+} from '@labre/affine/model';
 import {
   defaultImageProxyMiddleware,
   docLinkBaseURLMiddleware,
@@ -71,6 +97,7 @@ import { css, html } from 'lit';
 import { customElement, property, query, state } from 'lit/decorators.js';
 import * as lz from 'lz-string';
 import type { Pane } from 'tweakpane';
+import { encodeStateAsUpdate } from 'yjs';
 
 import type { CommentPanel } from '../../comment/index.js';
 import { createTestEditor } from '../../starter/utils/extensions.js';
@@ -164,6 +191,50 @@ function initStyleDebugMenu(
   });
 }
 
+/**
+ * What `buildMindmap` is handed in the playground: the browser's own measure,
+ * the one `fitContent` uses, standing in for the width table a host with no
+ * editor passes (ADR 0045, amendment of 2026-11-10).
+ */
+const browserMindmapMeasure: MindmapTextMeasure = {
+  width: (text, font) => getLineWidth(text, getFontString(font)),
+  lineHeight: font => {
+    const { lineHeight, lineGap } = measureTextInDOM(
+      font.fontFamily,
+      font.fontSize,
+      font.fontWeight
+    );
+    return lineHeight + lineGap;
+  },
+};
+
+const HEADLESS_MINDMAP_TREE = {
+  text: 'Product launch',
+  children: [
+    {
+      text: 'Marketing',
+      children: [
+        { text: 'Press kit' },
+        {
+          text:
+            'Coordinate the launch webinar with the partner network, the ' +
+            'non-profit foundations and the regional sales teams before the ' +
+            'end of the quarter',
+        },
+      ],
+    },
+    { text: 'Product', children: [{ text: 'Beta' }, { text: 'Docs' }] },
+    { text: 'Sales', children: [{ text: 'Pricing' }, { text: 'Demo' }] },
+  ],
+};
+
+const HEADLESS_MINDMAP_STYLES = [
+  MindmapStyle.ONE,
+  MindmapStyle.TWO,
+  MindmapStyle.THREE,
+  MindmapStyle.FOUR,
+];
+
 function getDarkModeConfig(): boolean {
   const updatedDarkModeConfig = localStorage.getItem('blocksuite:dark');
   if (updatedDarkModeConfig !== null) {
@@ -240,6 +311,65 @@ export class StarterDebugMenu extends ShadowlessElement {
 
     const noteId = this.doc.addBlock('affine:note', { xywh }, rootId);
     this.doc.addBlock('affine:paragraph', {}, noteId);
+  }
+
+  private _headlessMindmapCount = 0;
+
+  /**
+   * Recette of `buildMindmap`: builds a mind map the way a host with no editor
+   * does and writes it with the materializer, at the top-left of the view.
+   * Each click takes the next style. The editor lays a mind map out again as
+   * it lands, so the toast counts the nodes that layout moved or resized:
+   * zero means the builder wrote what the editor would have. Draw the same
+   * style from the toolbar beside it to compare by eye.
+   */
+  private async _buildHeadlessMindmap() {
+    const std = this.editor.host?.std;
+    if (!std || this.editor.mode !== 'edgeless') {
+      if (this.editor.host) toast(this.editor.host, 'Switch to edgeless first');
+      return;
+    }
+    const style =
+      HEADLESS_MINDMAP_STYLES[
+        this._headlessMindmapCount++ % HEADLESS_MINDMAP_STYLES.length
+      ];
+    const gfx = std.get(GfxControllerIdentifier);
+    const view = gfx.viewport.viewportBounds;
+    await document.fonts.ready;
+    const built = buildMindmap(HEADLESS_MINDMAP_TREE, {
+      measure: browserMindmapMeasure,
+      at: { x: view.x + 40, y: view.y + 40 },
+      style,
+      local: `playground-${this._headlessMindmapCount}`,
+    });
+    std.store.captureSync();
+    const created = materializeInterchangeImport(std, 'labre:toolbox', built);
+    std.store.captureSync();
+    await new Promise(resolve =>
+      requestAnimationFrame(() => setTimeout(resolve))
+    );
+
+    // Relative to the root: the materializer may shift the whole map.
+    const relative = (boxes: SerializedXYWH[]) => {
+      const all = boxes.map(xywh => JSON.parse(xywh) as number[]);
+      const [x0, y0] = all[0]!;
+      return all.map(([x, y, w, h]) => [x! - x0!, y! - y0!, w!, h!]);
+    };
+    const expected = relative(
+      built.filter(e => e.type === 'shape').map(e => e.xywh as SerializedXYWH)
+    );
+    const actual = relative(
+      created
+        .slice(0, -1)
+        .map(id => gfx.surface?.getElementById(id)?.xywh ?? '[0,0,0,0]')
+    );
+    const moved = actual.filter((box, i) =>
+      box.some((v, k) => Math.abs(v - expected[i]![k]!) > 0.5)
+    ).length;
+    toast(
+      this.editor.host!,
+      `Mind map built with no editor, style ${style}: the editor moved ${moved} of ${actual.length} nodes`
+    );
   }
 
   private async _clearSiteData() {
@@ -549,6 +679,48 @@ export class StarterDebugMenu extends ShadowlessElement {
     }, duration);
   }
 
+  /**
+   * Opens the document in the read-only canvas viewer, on a page of its own
+   * (`examples/canvas-viewer`): importing the viewer here would move the
+   * editor's own styles to adopted sheets. A selected frame or group is shown
+   * frozen, as a host shows a frame inserted in a page; `strict` loads it
+   * under Labre Sites' Content-Security-Policy.
+   */
+  private _openCanvasViewer(strict: boolean) {
+    const selected = this.editor.std
+      ? this.editor.std.get(GfxControllerIdentifier).selection.selectedElements
+      : [];
+    const [first] = selected;
+    const focus =
+      selected.length !== 1
+        ? undefined
+        : first instanceof FrameBlockModel
+          ? { kind: 'frame' as const, id: first.id }
+          : first instanceof GroupElementModel
+            ? { kind: 'group' as const, id: first.id }
+            : undefined;
+    const docTitles = Object.fromEntries(
+      this.collection.meta.docMetas.map(meta => [meta.id, meta.title])
+    );
+    const state = encodeStateAsUpdate(this.doc.spaceDoc);
+    const page = strict ? 'strict.html' : 'index.html';
+    const viewer = window.open(`/examples/canvas-viewer/${page}`, '_blank');
+    if (!viewer) return;
+    const onReady = (event: MessageEvent) => {
+      if (event.source !== viewer) return;
+      if (
+        (event.data as { type?: string })?.type !== 'labre:canvas-viewer-ready'
+      )
+        return;
+      window.removeEventListener('message', onReady);
+      viewer.postMessage(
+        { type: 'labre:canvas-viewer', state, focus, docTitles },
+        window.location.origin
+      );
+    };
+    window.addEventListener('message', onReady);
+  }
+
   private _present() {
     if (!this.editor.std || !this.editor.host) return;
     const gfx = this.editor.std.get(GfxControllerIdentifier);
@@ -630,6 +802,29 @@ export class StarterDebugMenu extends ShadowlessElement {
     const command = getRegisteredCommands(std).find(c => c.id === id);
     if (!command) return;
     runCommand(std, command, { surface: 'palette', source: 'shortcut' });
+  }
+
+  /**
+   * Host demo of issue #636: what the Labre shell does for a workspace icon,
+   * through the public entry only, with no `std` handed to the picker.
+   */
+  private async _pickHostIcon(event: MouseEvent) {
+    iconPickerEffects();
+    const anchor = event.currentTarget as HTMLElement;
+    const picked = await openIconPicker(anchor);
+    if (picked === undefined) return;
+    this._hostIcon = picked;
+    toast(this.editor.host!, JSON.stringify(picked));
+  }
+
+  private _renderHostIcon() {
+    const icon = this._hostIcon;
+    if (!icon) return html`<sl-icon name="emoji-smile"></sl-icon>`;
+    if (icon.type === IconType.Emoji) return icon.unicode;
+    return html`<span
+      style=${styleMap({ color: icon.color, display: 'inline-flex' })}
+      >${renderAffineIcon(icon.name, { width: '16px', height: '16px' })}</span
+    >`;
   }
 
   private _toggleCatalogue() {
@@ -932,6 +1127,17 @@ export class StarterDebugMenu extends ShadowlessElement {
                   </sl-menu-item>
                 </sl-menu>
               </sl-menu-item>
+              <sl-menu-item>
+                Open in Canvas Viewer
+                <sl-menu slot="submenu">
+                  <sl-menu-item @click="${() => this._openCanvasViewer(false)}">
+                    Canvas Viewer
+                  </sl-menu-item>
+                  <sl-menu-item @click="${() => this._openCanvasViewer(true)}">
+                    Canvas Viewer, Strict CSP
+                  </sl-menu-item>
+                </sl-menu>
+              </sl-menu-item>
               <sl-menu-item @click="${this._toggleStyleDebugMenu}">
                 Toggle CSS Debug Menu
               </sl-menu-item>
@@ -960,6 +1166,9 @@ export class StarterDebugMenu extends ShadowlessElement {
                 Toggle Comment Panel
               </sl-menu-item>
               <sl-menu-item @click="${this._addNote}"> Add Note </sl-menu-item>
+              <sl-menu-item @click="${this._buildHeadlessMindmap}">
+                Build Mind Map (headless)
+              </sl-menu-item>
               <sl-menu-item @click="${this._toggleMultipleEditors}">
                 Toggle Multiple Editors
               </sl-menu-item>
@@ -987,6 +1196,20 @@ export class StarterDebugMenu extends ShadowlessElement {
           <sl-tooltip content="Toggle Catalogue" placement="bottom" hoist>
             <sl-button size="small" @click="${this._toggleCatalogue}">
               <sl-icon name="layout-sidebar"></sl-icon>
+            </sl-button>
+          </sl-tooltip>
+
+          <sl-tooltip
+            content="Icon Picker (host demo)"
+            placement="bottom"
+            hoist
+          >
+            <sl-button
+              size="small"
+              data-testid="host-icon-picker-button"
+              @click="${this._pickHostIcon}"
+            >
+              ${this._renderHostIcon()}
             </sl-button>
           </sl-tooltip>
 
@@ -1066,6 +1289,9 @@ export class StarterDebugMenu extends ShadowlessElement {
 
   @state()
   private accessor _canRedo = false;
+
+  @state()
+  private accessor _hostIcon: IconData | null = null;
 
   @state()
   private accessor _canUndo = false;

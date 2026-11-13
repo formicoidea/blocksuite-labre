@@ -1,3 +1,4 @@
+export { adoptEmotionStyles, cache, css } from './emotion.js';
 export { fontBaseStyle, fontSMStyle, fontXSStyle } from './font';
 export {
   reducedMotionStyle,

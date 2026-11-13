@@ -3,8 +3,8 @@ import { describe, expect, test, vi } from 'vitest';
 import { MindmapStyle } from '../consts/mindmap.js';
 import type { MindmapNode } from '../elements/mindmap/mindmap.js';
 import { MindmapElementModel } from '../elements/mindmap/mindmap.js';
+import { applyNodeStyle } from '../elements/mindmap/apply-style.js';
 import {
-  applyNodeStyle,
   MINDMAP_NODE_MAX_WIDTH,
   mindmapStyleGetters,
 } from '../elements/mindmap/style.js';
@@ -44,6 +44,20 @@ describe('mindmap node style', () => {
     applyNodeStyle(node, mindmapStyleGetters[MindmapStyle.ONE].root);
 
     expect(element.maxWidth).toBe(MINDMAP_NODE_MAX_WIDTH);
+  });
+
+  test('a node deeper than style two’s palette keeps its last colour', () => {
+    // Guards the drop of lodash `last` from `style.ts`, so the getters load in
+    // a server's graph (ADR 0045, amendment of 2026-11-10): past the end of the
+    // palette, every depth still takes its last colour.
+    const getter = mindmapStyleGetters[MindmapStyle.TWO];
+    const fillAt = (depth: number) =>
+      getter.getNodeStyle(null, [0, ...Array<number>(depth).fill(0)]).node
+        .fillColor;
+
+    expect(fillAt(1)).not.toEqual(fillAt(3));
+    expect(fillAt(4)).toEqual(fillAt(3));
+    expect(fillAt(9)).toEqual(fillAt(3));
   });
 });
 

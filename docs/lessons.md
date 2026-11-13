@@ -293,3 +293,31 @@ Container()` threw "illegal constructor" and the page hung.
     collection, is quadratic on a load path. Measure a load with real-shaped
     string ids and with the hidden query, because the default one no longer
     exercises the walk (`packages/framework/store/src/__tests__/parent-index.unit.spec.ts`).
+
+37. **Library work left on a host session's disk, and a merge without it.**
+    The read-only canvas viewer's follow-up (ADR 0051: the viewer is the
+    editor, drawn under a strict Content-Security-Policy) was written from a
+    session working on the host, straight in the library's main checkout:
+    six commits, never pushed. #653 was merged from the remote branch, so
+    main carried a viewer that drew nothing on the host's public pages, and
+    the main checkout stayed on a feature branch. The same week a mind map
+    builder sat in an unpushed worktree while sibling sessions recorded its
+    PR as open.
+    _Rule:_ library work happens in a library session, in a worktree of its
+    own, and is not done until its PR exists; a host session sends the need
+    to a library session instead. Before merging a PR whose work was
+    reported elsewhere, compare the local branch with the PR head
+    (`git cherry origin/<branch> <branch>`).
+
+38. **A red `ci:local` that never ran a test.**
+    On a Windows workstation shared with Docker and two Supabase stacks,
+    `yarn test:unit` failed in about 90 s with `Failed to connect to the
+browser session … within the timeout`: Chromium could not start the
+    browser projects, and no test ran at all. The same tree passed once the
+    load dropped (702 files, 9 174 tests in 21 min). A worktree checked out
+    with `core.autocrlf=true` fails `prettier --check` on every file for the
+    same kind of reason: the environment, not the change.
+    _Rule:_ read the log before believing a red gate: "Tests no tests" with a
+    browser-session error is the machine. Create a worktree in LF
+    (`git config --worktree core.autocrlf false` before the checkout), and
+    run the full unit suite alone, when the machine is quiet.

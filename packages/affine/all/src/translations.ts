@@ -289,6 +289,15 @@ const CHROME_KEYS: readonly [key: string, fallback: string][] = [
     'com.labre.catalogue.open.description',
     'This framework offers more than the menu can show.',
   ],
+  // Read-only canvas viewer: a page the host did not give it, and the name
+  // of a frozen view, a button
+  ['com.labre.canvas-viewer.access-denied', 'Access denied'],
+  [
+    'com.labre.canvas-viewer.access-denied.description',
+    'You do not have access to this page.',
+  ],
+  ['com.labre.canvas-viewer.open', 'Open canvas'],
+  ['com.labre.canvas-viewer.open-titled', 'Open canvas: {{title}}'],
   // Artefact catalogue sidepanel
   ['com.labre.catalogue.title', 'Artefacts'],
   ['com.labre.catalogue.close', 'Close'],

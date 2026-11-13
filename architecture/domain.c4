@@ -7,7 +7,7 @@ model {
   extend assembly.all {
     metadata {
       domain ['document', 'canvas']
-      domain_document '0.41'
+      domain_document '0.40'
       domain_canvas '0.13'
     }
   }
@@ -56,7 +56,7 @@ model {
   extend assembly.all.src {
     metadata {
       domain ['canvas']
-      domain_canvas '0.18'
+      domain_canvas '0.17'
     }
   }
   extend assembly.all.store {
@@ -581,7 +581,7 @@ model {
   extend features.blocks.root {
     metadata {
       domain ['canvas', 'file']
-      domain_canvas '0.51'
+      domain_canvas '0.50'
       domain_file '0.15'
     }
   }

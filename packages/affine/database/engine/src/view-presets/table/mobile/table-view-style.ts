@@ -1,4 +1,4 @@
-import { css } from '@emotion/css';
+import { css } from '@labre/affine-shared/styles';
 import { cssVarV2 } from '@toeverything/theme/v2';
 
 import { ROW_COLOR_PROPERTY } from '../../../core/view/color-rules.js';

@@ -1,4 +1,3 @@
-export const RECENT_EMOJIS_KEY = 'affine:icon-picker:recent-emojis';
 export const RECENT_ICONS_KEY = 'affine:icon-picker:recent-icons';
 
 const MAX_RECENT = 10;
