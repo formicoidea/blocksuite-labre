@@ -1,5 +1,31 @@
 # @labre/affine-block-table
 
+## 3.5.0
+
+### Patch Changes
+
+- d19e52a: A table selection no longer wipes the canvas selection: in edgeless, placing the caret in a table cell or selecting then clearing a column keeps the note in edit mode and leaves other selected canvas elements selected (#659, upstream toeverything/AFFiNE#15791).
+- Updated dependencies [3fd7f03]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+  - @labre/std@3.5.0
+  - @labre/affine-shared@3.5.0
+  - @labre/affine-components@3.5.0
+  - @labre/affine-inline-preset@3.5.0
+  - @labre/affine-model@3.5.0
+  - @labre/affine-rich-text@3.5.0
+  - @labre/affine-widget-slash-menu@3.5.0
+  - @labre/affine-ext-loader@3.5.0
+  - @labre/global@3.5.0
+  - @labre/store@3.5.0
+
 ## 3.4.0
 
 ### Patch Changes

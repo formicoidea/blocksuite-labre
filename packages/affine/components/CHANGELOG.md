@@ -1,5 +1,56 @@
 # @labre/affine-components
 
+## 3.5.0
+
+### Minor Changes
+
+- d19e52a: The icon picker is public: `@labre/affine/components/icon-picker` (in
+  `@formicoidea/labre-core`) exports `openIconPicker(anchor, options)`, which opens
+  `affine-icon-picker` anchored to an element outside any editor and resolves
+  with the choice as plain JSON (`{ type: 'emoji', unicode }` or
+  `{ type: 'affine-icon', name, color }`), `null` for "Remove", or `undefined`
+  when the user cancels (Escape, a click outside, the host's `signal`). Call the
+  entry's `effects()` once at boot to register the elements; it no longer throws
+  when called twice. Pass `translation` (the service you give
+  `TranslationExtension`) to translate the picker without an editor, English
+  otherwise; the element itself takes the same `translation` property. Redraw a
+  stored icon with `renderAffineIcon(name)` painted in `color`, an emoji as text.
+- d19e52a: One emoji picker: the Emoji tab of `affine-icon-picker`, and so of
+  `openIconPicker`, is now emoji-mart's picker, the one a callout always opened
+  (search, category bar, "Frequently used", skin tones, preview line), and a
+  callout's icon opens `affine-icon-picker` on that tab alone. `openIconPicker`
+  keeps its options, its result (`IconData`, `null` for Remove, `undefined` on a
+  cancel) and its Escape handling. What a host may notice: the popup is 352×435
+  (was 340×400); emoji recents now live in emoji-mart's `emoji-mart.frequently`
+  instead of `affine:icon-picker:recent-emojis`, `rememberRecent: false` also
+  hides the "Frequently used" row, and the chosen skin tone is remembered in
+  `emoji-mart.skin`. The picker hands emoji-mart its dataset and its words, so
+  opening it makes no network request. The element gains `tabs` (for instance
+  `['emoji']`). Eleven new keys translate emoji-mart's chrome:
+  `com.labre.emoji-picker.frequent`, `.search-results`, `.no-results-title`,
+  `.pick`, `.skin.choose` and `.skin.1` to `.skin.6`. Removed: the callout's
+  `affine-emoji-menu` element, and from `@labre/affine/components/icon-picker`
+  (not yet in a release) `getEmojiGroups`, `filterEmojiGroups`, `emojiUnicode`,
+  `SKIN_TONES`, `RECENT_GROUP_NAME`, `RECENT_EMOJIS_KEY`, `EmojiGroup` and
+  `PickerEmoji`, which drew the emoji grid it replaces.
+
+### Patch Changes
+
+- d19e52a: The Wrap and Line number switches of the code block's "more" menu flip their setting once, whether the user clicks the switch or the row, and the switch always shows the stored value (#660, upstream toeverything/AFFiNE#15782). `<toggle-switch>` now keeps its click to itself (a row holding one no longer receives it), reads the new value from its checkbox and binds it as a property; a host that relied on a switch's click reaching an enclosing element must listen to `onChange` instead.
+- d19e52a: A `menu.toggleSwitch` row now flips its setting once per click: a click on the row calls `onChange(!on)` (it used to hand back the value the row was built with, so it changed nothing or undid a flip), and a click on its switch no longer also reaches the row. A caller that keeps a static `on` still needs to rebuild the row (for instance through `menu.dynamic`) for a second click on the row to flip back.
+- d19e52a: `createLitPortal({ closeOnClickAway: true })` no longer closes a portal on a click inside it when the portal is held by a shadow tree: the click-away test reads the event's composed path instead of its retargeted `target`. The zoom bar's vertical menu now stays open while you zoom with it; a click outside still closes every such portal.
+- Updated dependencies [3fd7f03]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+  - @labre/std@3.5.0
+  - @labre/affine-shared@3.5.0
+  - @labre/affine-model@3.5.0
+  - @labre/global@3.5.0
+  - @labre/store@3.5.0
+  - @labre/sync@3.5.0
+
 ## 3.4.0
 
 ### Minor Changes
