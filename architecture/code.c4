@@ -3423,13 +3423,13 @@ model {
       link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/playground
       metadata {
         path 'packages/playground'
-        files '49'
+        files '44'
       }
       apps_ = folder 'apps/' {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/playground/apps
         metadata {
           path 'packages/playground/apps'
-          files '45'
+          files '40'
         }
       }
       examples = folder 'examples/' {
@@ -4277,12 +4277,12 @@ model {
   model_.model_ -[uses]-> framework.std '48 imports, 9 type-only'
   model_.model_ -[uses]-> framework.store '36 imports, 1 type-only'
   tooling.integration-test -[uses]-> assembly.all '10 imports, 2 type-only'
-  tooling.playground -[uses]-> assembly.all '106 imports, 20 type-only'
+  tooling.playground -[uses]-> assembly.all '105 imports, 20 type-only'
   tooling.playground -[uses]-> features.database.engine '3 imports'
   tooling.playground -[uses]-> features.shared '5 imports, 1 type-only'
-  tooling.playground -[uses]-> framework.sync '3 imports, 3 type-only'
+  tooling.playground -[uses]-> framework.sync '1 import, 1 type-only'
   tooling.playground -[uses]-> model_.model_ '3 imports, 1 type-only'
-  tooling.playground -[uses]-> tooling.integration-test '19 imports, 10 type-only'
+  tooling.playground -[uses]-> tooling.integration-test '18 imports, 10 type-only'
 
   // Folder to folder: imports that cross a src/* folder.
   assembly.all.blocks -[imports]-> features.blocks.attachment.src '3 imports'
@@ -7705,7 +7705,7 @@ model {
   tooling.playground.apps_ -[imports]-> assembly.all.shared '14 imports, 1 type-only'
   tooling.playground.apps_ -[imports]-> assembly.all.src '4 imports'
   tooling.playground.apps_ -[imports]-> assembly.all.std '13 imports, 2 type-only'
-  tooling.playground.apps_ -[imports]-> assembly.all.store '27 imports, 10 type-only'
+  tooling.playground.apps_ -[imports]-> assembly.all.store '26 imports, 10 type-only'
   tooling.playground.apps_ -[imports]-> assembly.all.sync '1 import'
   tooling.playground.apps_ -[imports]-> assembly.all.widgets '4 imports'
   tooling.playground.apps_ -[imports]-> features.database.engine.property-presets '1 import'
@@ -7715,9 +7715,9 @@ model {
   tooling.playground.apps_ -[imports]-> features.shared.commands '1 import'
   tooling.playground.apps_ -[imports]-> features.shared.types '1 import, 1 type-only'
   tooling.playground.apps_ -[imports]-> features.shared.utils '1 import'
-  tooling.playground.apps_ -[imports]-> framework.sync.src '3 imports, 3 type-only'
+  tooling.playground.apps_ -[imports]-> framework.sync.src '1 import, 1 type-only'
   tooling.playground.apps_ -[imports]-> model_.model_.src '3 imports, 1 type-only'
-  tooling.playground.apps_ -[imports]-> tooling.integration-test.src '19 imports, 10 type-only'
+  tooling.playground.apps_ -[imports]-> tooling.integration-test.src '18 imports, 10 type-only'
   tooling.playground.examples -[imports]-> assembly.all.src '1 import'
   tooling.playground.examples -[imports]-> assembly.all.std '3 imports'
   tooling.playground.examples -[imports]-> assembly.all.store '1 import'
