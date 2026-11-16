@@ -1,5 +1,57 @@
 # @labre/affine-block-root
 
+## 3.5.0
+
+### Patch Changes
+
+- Updated dependencies [3fd7f03]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+  - @labre/std@3.5.0
+  - @labre/affine-shared@3.5.0
+  - @labre/affine-components@3.5.0
+  - @labre/affine-database-block@3.5.0
+  - @labre/affine-database-engine@3.5.0
+  - @labre/affine-gfx-text@3.5.0
+  - @labre/affine-block-attachment@3.5.0
+  - @labre/affine-block-bookmark@3.5.0
+  - @labre/affine-block-edgeless-text@3.5.0
+  - @labre/affine-block-embed@3.5.0
+  - @labre/affine-block-frame@3.5.0
+  - @labre/affine-block-image@3.5.0
+  - @labre/affine-block-note@3.5.0
+  - @labre/affine-block-paragraph@3.5.0
+  - @labre/affine-block-surface@3.5.0
+  - @labre/affine-gfx-brush@3.5.0
+  - @labre/affine-gfx-connector@3.5.0
+  - @labre/affine-gfx-group@3.5.0
+  - @labre/affine-gfx-mindmap@3.5.0
+  - @labre/affine-gfx-note@3.5.0
+  - @labre/affine-gfx-pointer@3.5.0
+  - @labre/affine-gfx-shape@3.5.0
+  - @labre/affine-inline-link@3.5.0
+  - @labre/affine-inline-preset@3.5.0
+  - @labre/affine-model@3.5.0
+  - @labre/affine-rich-text@3.5.0
+  - @labre/affine-widget-edgeless-toolbar@3.5.0
+  - @labre/affine-widget-linked-doc@3.5.0
+  - @labre/affine-ext-loader@3.5.0
+  - @labre/global@3.5.0
+  - @labre/store@3.5.0
+
 ## 3.4.0
 
 ### Patch Changes

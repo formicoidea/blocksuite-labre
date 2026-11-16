@@ -1,5 +1,33 @@
 # @labre/affine-block-list
 
+## 3.5.0
+
+### Patch Changes
+
+- d19e52a: The Markdown and HTML exports keep the start number of a numbered list that does not start at 1 (`3.` / `<ol start="3">`), read from the stored `order` of its first item, so an export then import round trip keeps the numbering and a copied list pastes into another app with its numbers. A list starting at 1, without an order, or whose last number would pass nine digits (the CommonMark limit) exports exactly as before. The rule is `listStartNumber`, exported from `@labre/affine-shared/adapters`.
+- d19e52a: Importing or pasting indented HTML with `<ol start="N">` numbers its items N, N+1, N+2 again: the whitespace between two `<li>` was counted as an item, so `<ol start="3">` came in as 4, 6, 8. Lists without `start` are unchanged (the list block numbers them from 1).
+- d19e52a: Plain text (the plain-text export and the `text/plain` copy) now writes list markers as the Markdown export does: `- ` for a bullet or a toggle, `N. ` for a numbered item from its list's start number, `[ ] ` / `[x] ` for a to-do, and sub-lists indented by their parent's marker width. A selection inside a single list item still copies its text alone, without a marker. Other blocks are written as before. `listPlainTextPrefix` and `listStartNumber` (the start number rule) are exported from `@labre/affine-shared/adapters`.
+- Updated dependencies [3fd7f03]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+  - @labre/std@3.5.0
+  - @labre/affine-shared@3.5.0
+  - @labre/affine-components@3.5.0
+  - @labre/affine-gfx-turbo-renderer@3.5.0
+  - @labre/affine-inline-preset@3.5.0
+  - @labre/affine-model@3.5.0
+  - @labre/affine-rich-text@3.5.0
+  - @labre/affine-ext-loader@3.5.0
+  - @labre/global@3.5.0
+  - @labre/store@3.5.0
+
 ## 3.4.0
 
 ### Patch Changes

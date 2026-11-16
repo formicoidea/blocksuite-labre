@@ -1,5 +1,179 @@
 # @labre/affine
 
+## 3.5.0
+
+### Minor Changes
+
+- 3fd7f03: New entry `@labre/affine/canvas-viewer` (ADR 0050, ADR 0051): `mountCanvasViewer(host, state, options)` shows a stored canvas, read-only, on a host's public page. It is the edgeless editor itself on a read-only store, built from the view registry plus the host's own providers (`viewExtensions`: each framework bundle's view extensions, which the published core leaves to the bundles) minus the tooling listed in `READ_ONLY_EXCLUDED_VIEW_EXTENSIONS` and `READ_ONLY_EXCLUDED_EXTENSIONS` (exported from `@labre/affine/extensions/view` with `getReadOnlyViewProviders`); a guard spec proves no excluded entry paints content. The editor pans and zooms as it does for a read-only document. A page link goes to `onOpenDoc(docId)`, an external one to `onLinkClick(url)` after `isSafeLinkUrl`, with the main or the middle button (without `onLinkClick`, a click navigates the page and a middle click opens a new tab, `noopener`; a frozen view follows no link with either); `getBlob` feeds images; `docTitles` names the other pages. `focus: { kind: 'frame' | 'group', id }` shows one element the way a surface reference shows it in a page, frozen by default (`interactive`) with `onExpand` on a click or Enter. It returns `{ zoomIn, zoomOut, fit, dispose }` and imports the whole view graph (3.65 MB gzipped): load it with a dynamic `import()`.
+
+  It holds under a strict Content-Security-Policy (no `'unsafe-inline'` style, no `'wasm-unsafe-eval'`): new `adoptShadowlessStyles()` (`@labre/std`) moves light-DOM styles to adopted style sheets, new `adoptEmotionStyles()` (`@labre/affine-shared/styles`) does the same for the library's own emotion instance (key `labre`, so its classes read `labre-…`; the table and database blocks now use it, and a host's `@emotion/css` is never touched, its rules still inserted as before), new `CodeBlockConfig.engine: 'oniguruma' | 'javascript'` (default `oniguruma`) highlights code without WebAssembly, and the paragraph block's in-template `<style>` moved to its static styles. The editor keeps `<style>` elements unless a host calls the two functions, which importing `@labre/affine/canvas-viewer` does for the whole page: load the viewer on a page without the editor.
+
+  A frozen frame shows its title badge above it, as the editor draws it: its `aspect-ratio` includes the badge's strip. `CommunityCanvasTextFonts` is also exported from `@labre/affine/canvas-viewer`; the viewer loads no face itself and paints the canvas again whenever the page's own faces finish loading (`document.fonts` `loadingdone`). A frozen view's button is named `com.labre.canvas-viewer.open-titled` ("Open canvas: {{title}}"), or `com.labre.canvas-viewer.open` ("Open canvas") for an element with no title. A page `docTitles` leaves out (unshared, private or deleted: the viewer cannot tell) is named "Access denied" (`com.labre.canvas-viewer.access-denied`, `com.labre.canvas-viewer.access-denied.description`) in references and linked or synced doc cards, shows no synced content, and opens nothing: `onOpenDoc` only receives pages of `docTitles`, still as untrusted input. Links and embeds render as their author placed them; a host gives the viewer its link preview service and image proxy in a provider of `viewExtensions`, or the public defaults apply as in the editor. A key stopped inside the viewer no longer leaves its pointer and wheel paused. The two-finger pinch of the edgeless editor, which the viewer runs, ignores a step whose fingers started on the same point instead of zooming to infinity. Under `default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'` the viewer still raises one `style-src-attr` report per icon (the `style` string `@blocksuite/icons` binds, whose declarations the viewer's sheet carries) and one `img-src` report (a `data:` drag image preloaded at import), neither visible (`docs/integrate/09-static-html.md`).
+
+- 3b8f024: `HtmlAdapter` prints a callout, a bookmark and a surface reference as blocks a
+  stylesheet can set apart, for a page published as static HTML. A callout is
+  `div.affine-callout[data-emoji]` holding `span.affine-callout-emoji` (both left out
+  when the emoji is empty) and
+  `div.affine-callout-body` (its line as a `<p>`, then its children); it replaces
+  the `aside.affine-callout` / `span.affine-callout-icon` of 3.4.0. A bookmark is
+  `a.affine-bookmark[rel=noopener]` built from the stored link metadata only
+  (`-title`, `-description`, `-host` spans, favicon on `data-icon`), in place of
+  a bare link in a paragraph container. A surface reference is
+  `div.affine-surface-ref[data-labre-surface-ref][data-labre-surface-ref-type=frame|group]`
+  with
+  `span.affine-surface-ref-title` (the frame's or group's title, read from the
+  page's surface) and `span.affine-surface-ref-caption`; the mount attribute of
+  3.4.0 and ADR 0050 is unchanged. Host guide: `docs/integrate/09-static-html.md`.
+- d19e52a: The icon picker is public: `@labre/affine/components/icon-picker` (in
+  `@formicoidea/labre-core`) exports `openIconPicker(anchor, options)`, which opens
+  `affine-icon-picker` anchored to an element outside any editor and resolves
+  with the choice as plain JSON (`{ type: 'emoji', unicode }` or
+  `{ type: 'affine-icon', name, color }`), `null` for "Remove", or `undefined`
+  when the user cancels (Escape, a click outside, the host's `signal`). Call the
+  entry's `effects()` once at boot to register the elements; it no longer throws
+  when called twice. Pass `translation` (the service you give
+  `TranslationExtension`) to translate the picker without an editor, English
+  otherwise; the element itself takes the same `translation` property. Redraw a
+  stored icon with `renderAffineIcon(name)` painted in `color`, an emoji as text.
+- d19e52a: A mind map can be built with no editor: `buildMindmap(tree, { measure, at, style, layoutType, local })`
+  on the new core subpath `@labre/affine/gfx/mindmap/interchange` returns the
+  elements the toolbar's mind map writes (one styled `shape` per node, sized as
+  `fitContent` sizes it and placed by the view's layout, then the `mindmap`
+  element naming them by local id). The caller injects the text measurement
+  (`MindmapTextMeasure`: a line's width, and a line's height plus its gap as
+  `measureTextInDOM` gives them, in the style's font); the library has no font
+  metrics without a DOM. Long texts wrap exactly as the editor wraps them
+  (`wrapMindmapText`). A measure that answers no size throws
+  `MindmapMeasureError`; more than 500 nodes or 2 000 characters in a node throws
+  `MindmapTooLargeError`. `materializeInterchangeImport`
+  now rewrites a mind map's `children` and their `parent` onto the minted ids, as
+  it does a group's. The mind map style getters (`mindmapStyleGetters`,
+  `MINDMAP_NODE_MAX_WIDTH`, `NodeStyle`…) are on `@labre/affine/model/headless`;
+  `MindmapStyleGetter.getNodeStyle` takes `MindmapNode | null`. ADR 0045,
+  amendment of 2026-11-10; issue #662.
+- d19e52a: One emoji picker: the Emoji tab of `affine-icon-picker`, and so of
+  `openIconPicker`, is now emoji-mart's picker, the one a callout always opened
+  (search, category bar, "Frequently used", skin tones, preview line), and a
+  callout's icon opens `affine-icon-picker` on that tab alone. `openIconPicker`
+  keeps its options, its result (`IconData`, `null` for Remove, `undefined` on a
+  cancel) and its Escape handling. What a host may notice: the popup is 352×435
+  (was 340×400); emoji recents now live in emoji-mart's `emoji-mart.frequently`
+  instead of `affine:icon-picker:recent-emojis`, `rememberRecent: false` also
+  hides the "Frequently used" row, and the chosen skin tone is remembered in
+  `emoji-mart.skin`. The picker hands emoji-mart its dataset and its words, so
+  opening it makes no network request. The element gains `tabs` (for instance
+  `['emoji']`). Eleven new keys translate emoji-mart's chrome:
+  `com.labre.emoji-picker.frequent`, `.search-results`, `.no-results-title`,
+  `.pick`, `.skin.choose` and `.skin.1` to `.skin.6`. Removed: the callout's
+  `affine-emoji-menu` element, and from `@labre/affine/components/icon-picker`
+  (not yet in a release) `getEmojiGroups`, `filterEmojiGroups`, `emojiUnicode`,
+  `SKIN_TONES`, `RECENT_GROUP_NAME`, `RECENT_EMOJIS_KEY`, `EmojiGroup` and
+  `PickerEmoji`, which drew the emoji grid it replaces.
+
+### Patch Changes
+
+- Updated dependencies [3fd7f03]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+  - @labre/std@3.5.0
+  - @labre/affine-shared@3.5.0
+  - @labre/affine-block-code@3.5.0
+  - @labre/affine-components@3.5.0
+  - @labre/affine-database-view-block@3.5.0
+  - @labre/affine-database-block@3.5.0
+  - @labre/affine-database-engine@3.5.0
+  - @labre/affine-block-list@3.5.0
+  - @labre/affine-fragment-outline@3.5.0
+  - @labre/affine-block-table@3.5.0
+  - @labre/affine-gfx-text@3.5.0
+  - @labre/affine-block-callout@3.5.0
+  - @labre/affine-block-attachment@3.5.0
+  - @labre/affine-block-bookmark@3.5.0
+  - @labre/affine-block-divider@3.5.0
+  - @labre/affine-block-edgeless-text@3.5.0
+  - @labre/affine-block-embed@3.5.0
+  - @labre/affine-block-embed-doc@3.5.0
+  - @labre/affine-block-frame@3.5.0
+  - @labre/affine-block-image@3.5.0
+  - @labre/affine-block-latex@3.5.0
+  - @labre/affine-block-note@3.5.0
+  - @labre/affine-block-paragraph@3.5.0
+  - @labre/affine-block-root@3.5.0
+  - @labre/affine-block-surface@3.5.0
+  - @labre/affine-block-surface-ref@3.5.0
+  - @labre/affine-database-editor@3.5.0
+  - @labre/affine-foundation@3.5.0
+  - @labre/affine-fragment-adapter-panel@3.5.0
+  - @labre/affine-fragment-doc-title@3.5.0
+  - @labre/affine-fragment-frame-panel@3.5.0
+  - @labre/affine-gfx-bpmn@3.5.0
+  - @labre/affine-gfx-brush@3.5.0
+  - @labre/affine-gfx-c4@3.5.0
+  - @labre/affine-gfx-connector@3.5.0
+  - @labre/affine-gfx-cynefin-estuarine@3.5.0
+  - @labre/affine-gfx-ddd-aggregate@3.5.0
+  - @labre/affine-gfx-ddd-context-map@3.5.0
+  - @labre/affine-gfx-ddd-core-domain@3.5.0
+  - @labre/affine-gfx-ddd-event-storming@3.5.0
+  - @labre/affine-gfx-ddd-shared@3.5.0
+  - @labre/affine-gfx-edgy@3.5.0
+  - @labre/affine-gfx-group@3.5.0
+  - @labre/affine-gfx-link@3.5.0
+  - @labre/affine-gfx-mindmap@3.5.0
+  - @labre/affine-gfx-note@3.5.0
+  - @labre/affine-gfx-pointer@3.5.0
+  - @labre/affine-gfx-shape@3.5.0
+  - @labre/affine-gfx-template@3.5.0
+  - @labre/affine-gfx-turbo-renderer@3.5.0
+  - @labre/affine-gfx-uml@3.5.0
+  - @labre/affine-gfx-wardley@3.5.0
+  - @labre/affine-inline-comment@3.5.0
+  - @labre/affine-inline-footnote@3.5.0
+  - @labre/affine-inline-latex@3.5.0
+  - @labre/affine-inline-link@3.5.0
+  - @labre/affine-inline-mention@3.5.0
+  - @labre/affine-inline-preset@3.5.0
+  - @labre/affine-inline-reference@3.5.0
+  - @labre/affine-model@3.5.0
+  - @labre/affine-rich-text@3.5.0
+  - @labre/affine-widget-drag-handle@3.5.0
+  - @labre/affine-widget-edgeless-auto-connect@3.5.0
+  - @labre/affine-widget-edgeless-dragging-area@3.5.0
+  - @labre/affine-widget-edgeless-selected-rect@3.5.0
+  - @labre/affine-widget-edgeless-toolbar@3.5.0
+  - @labre/affine-widget-edgeless-zoom-toolbar@3.5.0
+  - @labre/affine-widget-frame-title@3.5.0
+  - @labre/affine-widget-keyboard-toolbar@3.5.0
+  - @labre/affine-widget-linked-doc@3.5.0
+  - @labre/affine-widget-note-slicer@3.5.0
+  - @labre/affine-widget-page-dragging-area@3.5.0
+  - @labre/affine-widget-remote-selection@3.5.0
+  - @labre/affine-widget-scroll-anchoring@3.5.0
+  - @labre/affine-widget-slash-menu@3.5.0
+  - @labre/affine-widget-thread-marks@3.5.0
+  - @labre/affine-widget-toolbar@3.5.0
+  - @labre/affine-widget-viewport-overlay@3.5.0
+  - @labre/affine-ext-loader@3.5.0
+  - @labre/global@3.5.0
+  - @labre/store@3.5.0
+  - @labre/sync@3.5.0
+
 ## 3.4.0
 
 ### Patch Changes

@@ -1,5 +1,36 @@
 # @labre/affine-block-data-view
 
+## 3.5.0
+
+### Patch Changes
+
+- d19e52a: A data-view (`affine:data-view`) cell whose stored value does not match its column (after a type change, an import, or a peer on another version) now reads as the column's default instead of reaching the views raw, where a malformed date or multi-select threw and a malformed checkbox rendered as ticked. The stored value is left untouched: nothing is written when the cell is read. Same rule as the database block (#656). A shape a reader still reads is kept as stored: a rich-text cell stored as a plain string keeps its text when edited or converted. `storedShapeIsReadable(type, value)` is exported for data sources that apply the same rule.
+- Updated dependencies [3fd7f03]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+  - @labre/std@3.5.0
+  - @labre/affine-shared@3.5.0
+  - @labre/affine-components@3.5.0
+  - @labre/affine-database-block@3.5.0
+  - @labre/affine-database-engine@3.5.0
+  - @labre/affine-model@3.5.0
+  - @labre/affine-widget-slash-menu@3.5.0
+  - @labre/affine-ext-loader@3.5.0
+  - @labre/global@3.5.0
+  - @labre/store@3.5.0
+
 ## 3.4.0
 
 ### Patch Changes

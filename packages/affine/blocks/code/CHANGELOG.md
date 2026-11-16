@@ -1,5 +1,43 @@
 # @labre/affine-block-code
 
+## 3.5.0
+
+### Minor Changes
+
+- 3fd7f03: New entry `@labre/affine/canvas-viewer` (ADR 0050, ADR 0051): `mountCanvasViewer(host, state, options)` shows a stored canvas, read-only, on a host's public page. It is the edgeless editor itself on a read-only store, built from the view registry plus the host's own providers (`viewExtensions`: each framework bundle's view extensions, which the published core leaves to the bundles) minus the tooling listed in `READ_ONLY_EXCLUDED_VIEW_EXTENSIONS` and `READ_ONLY_EXCLUDED_EXTENSIONS` (exported from `@labre/affine/extensions/view` with `getReadOnlyViewProviders`); a guard spec proves no excluded entry paints content. The editor pans and zooms as it does for a read-only document. A page link goes to `onOpenDoc(docId)`, an external one to `onLinkClick(url)` after `isSafeLinkUrl`, with the main or the middle button (without `onLinkClick`, a click navigates the page and a middle click opens a new tab, `noopener`; a frozen view follows no link with either); `getBlob` feeds images; `docTitles` names the other pages. `focus: { kind: 'frame' | 'group', id }` shows one element the way a surface reference shows it in a page, frozen by default (`interactive`) with `onExpand` on a click or Enter. It returns `{ zoomIn, zoomOut, fit, dispose }` and imports the whole view graph (3.65 MB gzipped): load it with a dynamic `import()`.
+
+  It holds under a strict Content-Security-Policy (no `'unsafe-inline'` style, no `'wasm-unsafe-eval'`): new `adoptShadowlessStyles()` (`@labre/std`) moves light-DOM styles to adopted style sheets, new `adoptEmotionStyles()` (`@labre/affine-shared/styles`) does the same for the library's own emotion instance (key `labre`, so its classes read `labre-…`; the table and database blocks now use it, and a host's `@emotion/css` is never touched, its rules still inserted as before), new `CodeBlockConfig.engine: 'oniguruma' | 'javascript'` (default `oniguruma`) highlights code without WebAssembly, and the paragraph block's in-template `<style>` moved to its static styles. The editor keeps `<style>` elements unless a host calls the two functions, which importing `@labre/affine/canvas-viewer` does for the whole page: load the viewer on a page without the editor.
+
+  A frozen frame shows its title badge above it, as the editor draws it: its `aspect-ratio` includes the badge's strip. `CommunityCanvasTextFonts` is also exported from `@labre/affine/canvas-viewer`; the viewer loads no face itself and paints the canvas again whenever the page's own faces finish loading (`document.fonts` `loadingdone`). A frozen view's button is named `com.labre.canvas-viewer.open-titled` ("Open canvas: {{title}}"), or `com.labre.canvas-viewer.open` ("Open canvas") for an element with no title. A page `docTitles` leaves out (unshared, private or deleted: the viewer cannot tell) is named "Access denied" (`com.labre.canvas-viewer.access-denied`, `com.labre.canvas-viewer.access-denied.description`) in references and linked or synced doc cards, shows no synced content, and opens nothing: `onOpenDoc` only receives pages of `docTitles`, still as untrusted input. Links and embeds render as their author placed them; a host gives the viewer its link preview service and image proxy in a provider of `viewExtensions`, or the public defaults apply as in the editor. A key stopped inside the viewer no longer leaves its pointer and wheel paused. The two-finger pinch of the edgeless editor, which the viewer runs, ignores a step whose fingers started on the same point instead of zooming to infinity. Under `default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'` the viewer still raises one `style-src-attr` report per icon (the `style` string `@blocksuite/icons` binds, whose declarations the viewer's sheet carries) and one `img-src` report (a `data:` drag image preloaded at import), neither visible (`docs/integrate/09-static-html.md`).
+
+### Patch Changes
+
+- d19e52a: The Wrap and Line number switches of the code block's "more" menu flip their setting once, whether the user clicks the switch or the row, and the switch always shows the stored value (#660, upstream toeverything/AFFiNE#15782). `<toggle-switch>` now keeps its click to itself (a row holding one no longer receives it), reads the new value from its checkbox and binds it as a property; a host that relied on a switch's click reaching an enclosing element must listen to `onChange` instead.
+- Updated dependencies [3fd7f03]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+  - @labre/std@3.5.0
+  - @labre/affine-shared@3.5.0
+  - @labre/affine-components@3.5.0
+  - @labre/affine-gfx-turbo-renderer@3.5.0
+  - @labre/affine-inline-comment@3.5.0
+  - @labre/affine-inline-latex@3.5.0
+  - @labre/affine-inline-link@3.5.0
+  - @labre/affine-inline-preset@3.5.0
+  - @labre/affine-model@3.5.0
+  - @labre/affine-rich-text@3.5.0
+  - @labre/affine-widget-slash-menu@3.5.0
+  - @labre/affine-ext-loader@3.5.0
+  - @labre/global@3.5.0
+  - @labre/store@3.5.0
+
 ## 3.4.0
 
 ### Patch Changes

@@ -1,5 +1,31 @@
 # @labre/affine-gfx-text
 
+## 3.5.0
+
+### Patch Changes
+
+- d19e52a: `charWidth.calculate` keeps one width per character: a character beyond one UTF-16 unit (an emoji) is no longer cached under its first unit, which every emoji from U+1F300 to U+1F64F shares. A canvas text whose long word of emojis is cut by `wrapText` now breaks where the emojis' own widths say. A text without emoji measures and wraps as before, and no stored size is rewritten.
+- Updated dependencies [3fd7f03]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+  - @labre/std@3.5.0
+  - @labre/affine-shared@3.5.0
+  - @labre/affine-components@3.5.0
+  - @labre/affine-block-surface@3.5.0
+  - @labre/affine-model@3.5.0
+  - @labre/affine-rich-text@3.5.0
+  - @labre/affine-widget-edgeless-toolbar@3.5.0
+  - @labre/affine-ext-loader@3.5.0
+  - @labre/global@3.5.0
+  - @labre/store@3.5.0
+
 ## 3.4.0
 
 ### Patch Changes

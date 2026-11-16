@@ -1,5 +1,31 @@
 # @labre/affine-fragment-outline
 
+## 3.5.0
+
+### Patch Changes
+
+- d19e52a: The "Show type icon" switch of the outline panel's settings menu now stores the value the switch shows. It used to store the negation of the value read at the last render, so two flips before a re-render left the switch on and the setting off.
+- Updated dependencies [3fd7f03]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+- Updated dependencies [d19e52a]
+  - @labre/std@3.5.0
+  - @labre/affine-shared@3.5.0
+  - @labre/affine-components@3.5.0
+  - @labre/affine-block-note@3.5.0
+  - @labre/affine-fragment-doc-title@3.5.0
+  - @labre/affine-model@3.5.0
+  - @labre/affine-rich-text@3.5.0
+  - @labre/affine-ext-loader@3.5.0
+  - @labre/global@3.5.0
+  - @labre/store@3.5.0
+
 ## 3.4.0
 
 ### Patch Changes
