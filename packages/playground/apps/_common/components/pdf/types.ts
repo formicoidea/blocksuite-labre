@@ -13,17 +13,6 @@ export type DocInfo = {
   height: number;
 };
 
-export type ViewportInfo = {
-  dpi: number;
-  width: number;
-  height: number;
-};
-
-export enum MessageState {
-  Poll,
-  Ready,
-}
-
 export enum MessageOp {
   Init,
   Inited,

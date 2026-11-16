@@ -6,8 +6,6 @@ import {
   type ReferenceParams,
 } from '@labre/affine/model';
 import {
-  type CommentId,
-  type CommentProvider,
   type DocModeProvider,
   type EditorSetting,
   GeneralSettingSchema,
@@ -15,13 +13,12 @@ import {
   type NotificationService,
   type ParseDocUrlService,
   type PropertiesPanelService,
-  type ThemeExtension,
   type TitleBandProperty,
   type TitleBandService,
   type TitleBandSheetState,
 } from '@labre/affine/shared/services';
 import type { BlockStdScope } from '@labre/affine/std';
-import type { BaseSelection, Workspace } from '@labre/affine/store';
+import type { Workspace } from '@labre/affine/store';
 import type { TestAffineEditorContainer } from '@labre/integration-test';
 import { Signal, signal } from '@preact/signals-core';
 import { html, render } from 'lit';
@@ -211,12 +208,6 @@ export class MockEdgelessTheme {
 
 export const mockEdgelessTheme = new MockEdgelessTheme();
 
-export const themeExtension: ThemeExtension = {
-  getEdgelessTheme() {
-    return mockEdgelessTheme.theme$;
-  },
-};
-
 export function mockGenerateDocUrlService(collection: Workspace) {
   const generateDocUrlService: GenerateDocUrlService = {
     generateDocUrl: (docId: string, params?: ReferenceParams) => {
@@ -324,92 +315,6 @@ export function mockEditorSetting() {
   window.editorSetting$ = signal;
 
   return signal;
-}
-
-export function mockCommentProvider() {
-  class MockCommentProvider implements CommentProvider {
-    commentId = 0;
-
-    comments = new Map<
-      CommentId,
-      {
-        selections: BaseSelection[];
-        resolved: boolean;
-      }
-    >();
-
-    commentAddSubject = new Subject<{
-      id: CommentId;
-      selections: BaseSelection[];
-    }>();
-
-    commentResolveSubject = new Subject<CommentId>();
-
-    commentHighlightSubject = new Subject<CommentId | null>();
-
-    commentDeleteSubject = new Subject<CommentId>();
-
-    addComment(selections: BaseSelection[]) {
-      const id: CommentId = `${this.commentId++}`;
-      this.comments.set(id, {
-        selections,
-        resolved: false,
-      });
-      this.commentAddSubject.next({
-        id,
-        selections,
-      });
-    }
-
-    resolveComment(id: CommentId) {
-      const comment = this.comments.get(id);
-      if (!comment) return;
-      comment.resolved = true;
-      this.commentResolveSubject.next(id);
-    }
-
-    deleteComment(id: CommentId) {
-      this.comments.delete(id);
-      this.commentDeleteSubject.next(id);
-    }
-
-    highlightComment(id: CommentId | null) {
-      this.commentHighlightSubject.next(id);
-    }
-
-    getComments(type: 'resolved' | 'unresolved' | 'all' = 'all') {
-      return Array.from(this.comments.entries())
-        .filter(([_, comment]) => {
-          if (type === 'all') return true;
-          if (type === 'resolved') return comment.resolved;
-          return !comment.resolved;
-        })
-        .map(([id]) => id);
-    }
-
-    onCommentAdded(
-      callback: (id: CommentId, selections: BaseSelection[]) => void
-    ) {
-      return this.commentAddSubject.subscribe(({ id, selections }) => {
-        callback(id, selections);
-      });
-    }
-
-    onCommentResolved(callback: (id: CommentId) => void) {
-      return this.commentResolveSubject.subscribe(callback);
-    }
-
-    onCommentDeleted(callback: (id: CommentId) => void) {
-      return this.commentDeleteSubject.subscribe(callback);
-    }
-
-    onCommentHighlighted(callback: (id: CommentId | null) => void) {
-      return this.commentHighlightSubject.subscribe(callback);
-    }
-  }
-
-  const provider = new MockCommentProvider();
-  return provider;
 }
 
 declare global {
