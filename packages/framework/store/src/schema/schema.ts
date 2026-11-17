@@ -3,7 +3,6 @@ import { BlockSchema, type BlockSchemaType } from '../model/index.js';
 import { SchemaValidateError } from './error.js';
 
 function escapeRegExp(text: string) {
-  // Backslashes every regex metacharacter: "a.b" gives "a\.b", "a-b" stays.
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
