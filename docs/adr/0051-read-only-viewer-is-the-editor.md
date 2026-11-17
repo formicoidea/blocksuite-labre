@@ -150,3 +150,19 @@ lacks without it being excluded, and when an exclusion is stale.
 - A key's pause of the viewer's dispatcher also ends on the next task: a
   listener that stopped the key's propagation left the wheel and the drag
   dead.
+
+## Amendment 2026-11-17 — a custom element is content too (issue #668)
+
+3.5.0 filed `DocTitleViewExtension` with the panels and left it out of the
+viewer. Its provider registers nothing in DI; its `effect()` defines
+`<doc-title>` and `<labre-title-band>`, which the page note's head renders, so
+a published canvas lost the page title that 3.4.0 drew. The unit guard reads
+DI keys and could not see it.
+
+- `DocTitleViewExtension` is mounted by the viewer again.
+- "Content" now also means a custom element a kept view renders: an excluded
+  provider may not be the one that defines it. The browser spec
+  `canvas-viewer-page-title.spec.ts` mounts the viewer in a frame of its own
+  (a fresh element registry, so an editor of an earlier spec cannot mask the
+  gap) on a page holding the common blocks, and fails on any undefined
+  element in the viewer, open shadow roots included.
