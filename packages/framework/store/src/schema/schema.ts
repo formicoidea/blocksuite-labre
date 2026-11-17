@@ -1,8 +1,42 @@
-import { minimatch } from 'minimatch';
-
 import { SCHEMA_NOT_FOUND_MESSAGE } from '../consts.js';
 import { BlockSchema, type BlockSchemaType } from '../model/index.js';
 import { SchemaValidateError } from './error.js';
+
+function escapeRegExp(text: string) {
+  // Backslashes every regex metacharacter: "a.b" gives "a\.b", "a-b" stays.
+  // https://regex101.com/?regex=%5B.*%2B%3F%5E%24%7B%7D()%7C%5B%5C%5D%5C%5C%5D&flags=g&testString=a.b%0Aa-b
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Matches a flavour against a pattern of a schema's `parent` / `children`
+ * list, with the answers `minimatch` gave on the patterns the schemas use
+ * (issue #667, which dropped the dependency for the `brace-expansion`
+ * advisories it carried into the published core). `*` matches any run of
+ * characters but `/`; a trailing `!(a|b)` matches any run but `/` that is
+ * none of the alternatives (`affine:embed-!(synced-doc)` in the edgeless
+ * text schema); everything else is literal and the match is anchored.
+ * Pinned by `schema-flavour-pattern.unit.spec.ts`.
+ *
+ * ponytail: `*` and a trailing `!(literal|…)` only. `?`, classes, braces,
+ * a `!(…)` followed by more pattern and glob alternatives inside `!(…)` are
+ * literal, `**` acts as `*`, and minimatch's dot and empty-segment rules for
+ * `*` are not mirrored (every flavour is `scope:name`). A schema that needs
+ * more adds it here with a case in the guard spec, not a glob dependency.
+ */
+function matchFlavourPattern(flavour: string, pattern: string): boolean {
+  const negation = '!(';
+  const open = pattern.endsWith(')') ? pattern.lastIndexOf(negation) : -1;
+  const head = open === -1 ? pattern : pattern.slice(0, open);
+  const body = head.split('*').map(escapeRegExp).join('[^/]*');
+  const excluded = pattern.slice(open + negation.length, -1).split('|');
+  const tail =
+    open === -1 ? '' : `(?!(?:${excluded.map(escapeRegExp).join('|')})$)[^/]*`;
+  // "affine:embed-!(synced-doc)" accepts "affine:embed-github" and rejects
+  // "affine:embed-synced-doc"; "affine:embed-*" rejects "affine:embedx".
+  // https://regex101.com/?regex=%5Eaffine%3Aembed-(%3F!(%3F%3Asynced-doc)%24)%5B%5E%2F%5D*%24&flags=gm&testString=affine%3Aembed-github%0Aaffine%3Aembed-synced-doc
+  return new RegExp(`^${body}${tail}$`).test(flavour);
+}
 
 /**
  * Represents a schema manager for block flavours and their relationships.
@@ -114,7 +148,8 @@ export class Schema {
   }
 
   /**
-   * Checks if two flavours match, using minimatch for wildcard support.
+   * Checks if two flavours match, either one read as a pattern
+   * (`matchFlavourPattern`).
    *
    * @param childFlavour - The child block flavour.
    * @param parentFlavour - The parent block flavour.
@@ -122,8 +157,8 @@ export class Schema {
    */
   private _matchFlavour(childFlavour: string, parentFlavour: string) {
     return (
-      minimatch(childFlavour, parentFlavour) ||
-      minimatch(parentFlavour, childFlavour)
+      matchFlavourPattern(childFlavour, parentFlavour) ||
+      matchFlavourPattern(parentFlavour, childFlavour)
     );
   }
 
