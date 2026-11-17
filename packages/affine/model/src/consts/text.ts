@@ -132,7 +132,7 @@ export enum TextFitMode {
   Overflow = 'overflow',
 }
 
-export const FontFamilySchema = z.nativeEnum(FontFamily);
-export const FontWeightSchema = z.nativeEnum(FontWeight);
-export const FontStyleSchema = z.nativeEnum(FontStyle);
-export const TextAlignSchema = z.nativeEnum(TextAlign);
+export const FontFamilySchema = z.enum(FontFamily);
+export const FontWeightSchema = z.enum(FontWeight);
+export const FontStyleSchema = z.enum(FontStyle);
+export const TextAlignSchema = z.enum(TextAlign);

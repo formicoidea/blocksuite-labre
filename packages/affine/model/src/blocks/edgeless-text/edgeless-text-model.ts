@@ -37,7 +37,8 @@ export const EdgelessTextZodSchema = z
     fontWeight: FontWeightSchema,
     textAlign: TextAlignSchema,
   })
-  .default({
+  // `prefault`, zod 3's `default`: the value is parsed, never shared (ADR 0052).
+  .prefault({
     color: DefaultTheme.textColor,
     fontFamily: FontFamily.Inter,
     fontStyle: FontStyle.Normal,

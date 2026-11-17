@@ -1558,13 +1558,13 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/engine
         metadata {
           path 'packages/affine/database/engine'
-          files '340'
+          files '341'
         }
         core = folder 'core/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/engine/src/core
           metadata {
             path 'packages/affine/database/engine/src/core'
-            files '168'
+            files '169'
           }
         }
         property-presets = folder 'property-presets/' {
@@ -5938,7 +5938,7 @@ model {
   features.database.engine.property-presets -[imports]-> features.components.context-menu '3 imports'
   features.database.engine.property-presets -[imports]-> features.components.date-picker '1 import'
   features.database.engine.property-presets -[imports]-> features.components.portal '1 import'
-  features.database.engine.property-presets -[imports]-> features.database.engine.core '50 imports, 2 type-only'
+  features.database.engine.property-presets -[imports]-> features.database.engine.core '53 imports, 2 type-only'
   features.database.engine.property-presets -[imports]-> features.database.engine.src '8 imports'
   features.database.engine.property-presets -[imports]-> features.shared.services '2 imports, 1 type-only'
   features.database.engine.property-presets -[imports]-> features.shared.styles '6 imports'

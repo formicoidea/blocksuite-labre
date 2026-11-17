@@ -36,7 +36,7 @@ export const ReferenceInlineSpecExtension =
               'LinkedPage',
             ]),
           })
-          .merge(ReferenceInfoSchema)
+          .extend(ReferenceInfoSchema.shape)
           .optional()
           .nullable()
           .catch(undefined),

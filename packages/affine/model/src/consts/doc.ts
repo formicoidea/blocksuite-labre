@@ -54,7 +54,7 @@ export const ReferenceInfoSchema = z
     pageId: z.string(),
     params: ReferenceParamsSchema.optional(),
   })
-  .merge(AliasInfoSchema);
+  .extend(AliasInfoSchema.shape);
 
 export type ReferenceInfo = z.infer<typeof ReferenceInfoSchema>;
 

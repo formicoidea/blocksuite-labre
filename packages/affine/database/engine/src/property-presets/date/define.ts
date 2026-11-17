@@ -5,6 +5,7 @@ import zod from 'zod';
 import { t } from '../../core/logical/type-presets.js';
 import { propertyType } from '../../core/property/property-config.js';
 import { DATA_VIEW_TYPE_DATE } from '../../translations.js';
+import { storedNumber } from '../../core/logical/stored-number.js';
 export const datePropertyType = propertyType('date');
 export const datePropertyModelConfig = datePropertyType.modelConfig({
   name: DATA_VIEW_TYPE_DATE[1],
@@ -14,12 +15,12 @@ export const datePropertyModelConfig = datePropertyType.modelConfig({
     default: () => ({}),
   },
   jsonValue: {
-    schema: zod.number().nullable(),
+    schema: storedNumber().nullable(),
     isEmpty: () => false,
     type: () => t.date.instance(),
   },
   rawValue: {
-    schema: zod.number().nullable(),
+    schema: storedNumber().nullable(),
     default: () => null,
     toString: ({ value }) => (value != null ? format(value, 'yyyy-MM-dd') : ''),
     fromString: ({ value }) => {

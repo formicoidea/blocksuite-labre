@@ -19,7 +19,8 @@ export const CodeBlockUnitSpecExtension =
   InlineSpecExtension<AffineTextAttributes>({
     name: 'code-block-unit',
     schema: z.object({
-      'code-block-uint': z.undefined(),
+      // Optional: zod 4 refuses an absent key unless it is (ADR 0052).
+      'code-block-uint': z.undefined().optional(),
     }),
     match: () => true,
     renderer: ({ delta }) => {

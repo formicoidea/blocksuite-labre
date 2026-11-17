@@ -1,10 +1,9 @@
-import zod from 'zod';
-
 import { t } from '../../core/logical/type-presets.js';
 import { propertyType } from '../../core/property/property-config.js';
 import { NumberPropertySchema } from './types.js';
 import { parseNumber } from './utils/formatter.js';
 import { DATA_VIEW_TYPE_NUMBER } from '../../translations.js';
+import { storedNumber } from '../../core/logical/stored-number.js';
 export const numberPropertyType = propertyType('number');
 
 export const numberPropertyModelConfig = numberPropertyType.modelConfig({
@@ -15,12 +14,12 @@ export const numberPropertyModelConfig = numberPropertyType.modelConfig({
     default: () => ({ decimal: 0, format: 'number' }) as const,
   },
   jsonValue: {
-    schema: zod.number().nullable(),
+    schema: storedNumber().nullable(),
     isEmpty: ({ value }) => value == null,
     type: () => t.number.instance(),
   },
   rawValue: {
-    schema: zod.number().nullable(),
+    schema: storedNumber().nullable(),
     default: () => null,
     toString: ({ value }) => value?.toString() ?? '',
     fromString: ({ value }) => {

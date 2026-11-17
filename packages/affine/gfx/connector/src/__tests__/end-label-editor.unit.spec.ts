@@ -326,7 +326,7 @@ describe('end labels are never remembered as last props', () => {
    * the next connector the author draws.
    */
   test('the connector schema names no label text or box', () => {
-    const keys = Object.keys(ConnectorSchema.removeDefault().shape);
+    const keys = Object.keys(ConnectorSchema.unwrap().shape);
 
     for (const which of [
       'center',

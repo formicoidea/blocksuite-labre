@@ -46,7 +46,7 @@ import {
   NodePropsSchema,
   pickStylePropsForKey,
 } from '@labre/affine-shared/utils';
-import { Container } from '@labre/global/di';
+import { Container, createIdentifier } from '@labre/global/di';
 import { StdIdentifier } from '@labre/std';
 import {
   BlockSchema,
@@ -66,6 +66,9 @@ import { getAffineSchemas } from '../schemas.js';
 
 /** Keys whose value is random by construction: their presence is pinned. */
 const RANDOM_KEYS = new Set(['id', 'seed', 'index']);
+
+/** A block prop drawn at random by its schema (a frame's presentation slot). */
+const RANDOM_PROPS = new Set(['presentationIndex']);
 
 /**
  * A plain, comparable picture of a value: library wrappers and Yjs types are
@@ -95,7 +98,10 @@ function plain(value: unknown): unknown {
   if (typeof value === 'function') return '<function>';
   if (value !== null && typeof value === 'object') {
     return Object.fromEntries(
-      Object.entries(value).map(([k, v]) => [k, plain(v)])
+      Object.entries(value).map(([k, v]) => [
+        k,
+        RANDOM_PROPS.has(k) ? '<random>' : plain(v),
+      ])
     );
   }
   return value;
@@ -114,9 +120,15 @@ function outcome(schema: Parser, input: unknown) {
   if (result.success) return { success: true, data: plain(result.data) };
   return {
     success: false,
-    paths: (result.error?.issues ?? []).map(issue =>
-      issue.path.map(String).join('.')
-    ),
+    // Each failing path once: how many issues a version reports for one
+    // path (zod 3 two for `.int().refine()`, zod 4 one) is not a format.
+    paths: [
+      ...new Set(
+        (result.error?.issues ?? []).map(issue =>
+          issue.path.map(String).join('.')
+        )
+      ),
+    ],
   };
 }
 
@@ -340,15 +352,48 @@ describe('zod format guard — the style a new element is created with', () => {
 });
 
 describe('zod format guard — inline delta attributes', () => {
-  test('the default inline manager schema, as a paragraph normalises', () => {
+  /** Every inline manager the page view registers, by its DI id. */
+  function inlineSchema(id?: string): Parser {
     const manager = new ViewExtensionManager(getInternalViewExtensions({}));
     const container = new Container();
     manager.get('page').forEach(ext => ext.setup(container));
     container.addImpl(StdIdentifier, () => ({}) as never);
-    const inline = container
-      .provider()
-      .get(DefaultInlineManagerExtension.identifier);
-    const schema = inline.getSchema() as unknown as Parser;
+    const identifier = id
+      ? createIdentifier<{ getSchema: () => unknown }>('AffineInlineManager')(
+          id
+        )
+      : DefaultInlineManagerExtension.identifier;
+    return container.provider().get(identifier).getSchema() as Parser;
+  }
+
+  /**
+   * Added after the zod 4 move, when it showed that zod 4 refuses an ABSENT
+   * key whose schema is `z.undefined()` (zod 3 let it be absent): the code
+   * block's and the LaTeX editor's managers declare their unit key that way,
+   * so under zod 4 every delta's attributes there failed to parse and the
+   * marks were dropped. The expectations are zod 3's, checked against zod
+   * 3.25 with the same schemas outside the library.
+   */
+  test('the code block and LaTeX editor managers accept a delta without their unit key', () => {
+    const code = inlineSchema('CodeBlockInlineManager');
+    expect(code.safeParse({}).success).toBe(true);
+    expect(outcome(code, { bold: true, link: 'https://x.y' })).toEqual({
+      success: true,
+      data: { bold: true, link: 'https://x.y' },
+    });
+    expect(code.safeParse({ 'code-block-uint': undefined }).success).toBe(true);
+    expect(code.safeParse({ 'code-block-uint': true }).success).toBe(false);
+
+    const latex = inlineSchema('latex-inline-editor');
+    expect(outcome(latex, { bold: true })).toEqual({
+      success: true,
+      data: { bold: true },
+    });
+    expect(latex.safeParse({ 'latex-editor-unit': 1 }).success).toBe(false);
+  });
+
+  test('the default inline manager schema, as a paragraph normalises', () => {
+    const schema = inlineSchema();
     expect(
       outcomes(schema, {
         empty: {},
@@ -403,6 +448,12 @@ describe('zod format guard — database values read back', () => {
     zero: 0,
     number: SOME_FRACTION,
     negative: NEGATIVE,
+    // Added after the move: zod 4's `number()` refuses infinities, zod 3's
+    // took them; a stored cell keeps reading them (`storedNumber`). Every
+    // outcome of these three was checked against zod 3.25 outside the library.
+    infinity: Infinity,
+    'minus infinity': -Infinity,
+    'not a number': NaN,
     string: 'text',
     empty: '',
     true: true,

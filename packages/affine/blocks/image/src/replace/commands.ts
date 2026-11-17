@@ -52,7 +52,7 @@ export type ReplaceElementParams = z.infer<typeof replaceElementParams>;
  * palette and the agent keep the v1 behaviour.
  */
 export const replaceWithShapeParams = replaceElementParams.extend({
-  shapeType: z.nativeEnum(ShapeType).optional(),
+  shapeType: z.enum(ShapeType).optional(),
   // The corner radius as a fraction of the box: 0.1 is the rounded rectangle.
   radius: z.number().min(0).max(0.5).optional(),
 });

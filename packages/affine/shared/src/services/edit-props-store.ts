@@ -222,7 +222,8 @@ export class EditPropsStore extends LifeCycleWatcher {
   }
 
   recordLastProps(key: LastPropsKey, props: Partial<LastProps[LastPropsKey]>) {
-    const schema = OptionalPropsSchema._def.innerType.shape[key];
+    const schema = (OptionalPropsSchema as z.ZodOptional<z.ZodObject>).unwrap()
+      .shape[key];
     if (!schema) return;
 
     const overrideProps = schema.parse(props);
@@ -239,7 +240,9 @@ export class EditPropsStore extends LifeCycleWatcher {
       { [key]: overrideProps },
       customizer
     );
-    this.innerProps$.value = OptionalPropsSchema.parse(nextProps);
+    this.innerProps$.value = OptionalPropsSchema.parse(
+      nextProps
+    ) as DeepPartial<LastProps>;
   }
 
   /**

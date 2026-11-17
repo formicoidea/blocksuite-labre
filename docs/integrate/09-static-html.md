@@ -74,7 +74,14 @@ extracts from the `.css.ts` files, `font-src` for the faces you declare (the
 viewer registers no font list: the canvas paints with the faces the page has,
 and paints again each time `document.fonts` finishes loading, so a face that
 arrives after the mount still reaches the text),
-and `img-src blob:` for the images `getBlob` returns. Two kinds of report
+and `img-src blob:` for the images `getBlob` returns, and one line of yours
+for zod (ADR 0052): zod 4 probes `new Function` when it builds its first
+object schema, which the library does while its modules evaluate, so a policy
+without `'unsafe-eval'` reports an `eval`. Call `config({ jitless: true })`
+from `zod` in a module your entry imports before any library module; the
+library never sets it, the setting is global to every zod on your page.
+Without it the viewer still paints, zod parsing interpreted, and the report
+stays. Two kinds of report
 remain, neither visible: one `style-src-attr` per icon (the `style` string
 `@blocksuite/icons` binds, whose declarations the viewer's sheet carries) and
 one `img-src` (the `data:` drag image `@atlaskit/pragmatic-drag-and-drop`

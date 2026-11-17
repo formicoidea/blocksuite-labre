@@ -56,6 +56,7 @@ One file per decision. Format and lifecycle in
 | [0049](0049-bpmn-pool-title-sizes.md)                          | BPMN pool title sizes                | accepted                  | Two optional fields on `bpmnPool`, `nameFontSize` / `laneFontSize` (absent = 15 / 13); a `sizeProp` on the background primitive's texts; not written to the `.bpmn` export.              |
 | [0050](0050-read-only-canvas-viewer.md)                        | Read-only canvas viewer              | superseded in part (0051) | One exported mount over the preview scope, no new scope and no new bundle; pan, zoom and links added by one runtime extension.                                                           |
 | [0051](0051-read-only-viewer-is-the-editor.md)                 | Read-only viewer is the editor       | accepted                  | The viewer is the edgeless editor on a read-only store: the registry plus the host's providers, minus one exclusion list beside it, held by a DI guard.                                  |
+| [0052](0052-zod-4.md)                                          | zod 4, the same documents            | accepted                  | zod `^4.6.6` from `'zod'`; every outcome zod decides pinned under zod 3 and held; object defaults are `.prefault`; the host, never the library, sets `jitless`. Red zone, major.         |
 
 Related documents that are not ADRs:
 

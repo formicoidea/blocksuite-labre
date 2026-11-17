@@ -17,10 +17,10 @@ import { linkColumnConfig } from './properties/link/cell-renderer.js';
 import { DatabaseViewCreationExtension } from './view-creation.js';
 
 const optionsSchema = z.object({
-  configure: z
-    .function()
-    .args(z.instanceof(DatabaseBlockModel), z.custom<MenuOptions>())
-    .returns(z.custom<MenuOptions>()),
+  configure: z.function({
+    input: [z.instanceof(DatabaseBlockModel), z.custom<MenuOptions>()],
+    output: z.custom<MenuOptions>(),
+  }),
 });
 
 export type DatabaseViewExtensionOptions = z.infer<typeof optionsSchema>;

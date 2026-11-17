@@ -36,7 +36,8 @@ export const NoteZodSchema = z
       }),
     }),
   })
-  .default({
+  // `prefault`, zod 3's `default`: the value is parsed, never shared (ADR 0052).
+  .prefault({
     background: DefaultTheme.noteBackgrounColor,
     displayMode: NoteDisplayMode.EdgelessOnly,
     edgeless: {

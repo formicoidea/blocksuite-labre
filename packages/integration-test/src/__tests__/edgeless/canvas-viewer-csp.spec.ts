@@ -18,7 +18,11 @@
  *   the browser for (a policy report whose source is not Vite's own dev CSS
  *   injection or its socket, which only the test server performs);
  * - a frame inserted in a page that loses its title badge, or shows the
- *   editor's editing chrome.
+ *   editor's editing chrome;
+ * - an `eval` the library asks for. zod 4 probes `new Function` when it
+ *   builds its first object schema (ADR 0052): the frame loads first the one
+ *   module a host under such a policy owns (`canvas-viewer-csp-host.ts`,
+ *   zod's `jitless`), and a frame without it shows the report it prevents.
  */
 import { describe, expect, test } from 'vitest';
 
@@ -109,17 +113,29 @@ const refused = (report: FrameReport) =>
       !isIconStyle(violation)
   );
 
+/** A document under {@link POLICY} running these module scripts, in order. */
+function policyDocument(scripts: string[]): string {
+  const tags = scripts
+    .map(path => new URL(path, import.meta.url).href)
+    .map(src => `<script type="module" src="${src}"></script>`)
+    .join('');
+  return (
+    `<!doctype html><html><head>` +
+    `<meta http-equiv="Content-Security-Policy" content="${POLICY}">` +
+    `</head><body>${tags}</body></html>`
+  );
+}
+
 async function mountUnderPolicy(focus: boolean): Promise<FrameReport> {
-  const shim = new URL('./canvas-viewer-csp-shim.ts', import.meta.url).href;
-  const script = new URL('./canvas-viewer-csp-frame.ts', import.meta.url).href;
   const frame = document.createElement('iframe');
   frame.style.width = '820px';
   frame.style.height = '640px';
-  frame.srcdoc =
-    `<!doctype html><html><head>` +
-    `<meta http-equiv="Content-Security-Policy" content="${POLICY}">` +
-    `</head><body><script type="module" src="${shim}"></script>` +
-    `<script type="module" src="${script}"></script></body></html>`;
+  // The shim, then the host's own first module, then the viewer.
+  frame.srcdoc = policyDocument([
+    './canvas-viewer-csp-shim.ts',
+    './canvas-viewer-csp-host.ts',
+    './canvas-viewer-csp-frame.ts',
+  ]);
   let stage = 'loading';
   const messages = new Promise<FrameReport>((resolve, reject) => {
     const timer = setTimeout(
@@ -193,6 +209,62 @@ describe('the canvas viewer under the site Content-Security-Policy', () => {
         inside: true,
       });
       expect(report.chrome).toEqual([]);
+    },
+    TEST_TIMEOUT_MS
+  );
+});
+
+/** The store's modules under {@link POLICY}, without the host's zod line. */
+async function probeWithoutJitless(): Promise<PolicyReport[]> {
+  const frame = document.createElement('iframe');
+  frame.srcdoc = policyDocument([
+    './canvas-viewer-csp-shim.ts',
+    './canvas-viewer-csp-probe.ts',
+  ]);
+  const reports = new Promise<PolicyReport[]>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error('the probe frame never reported')),
+      REPORT_DEADLINE_MS
+    );
+    window.addEventListener('message', function onMessage(event) {
+      if (event.source !== frame.contentWindow) return;
+      const data = event.data as {
+        type?: string;
+        message?: string;
+        violations?: PolicyReport[];
+      };
+      if (data.type !== 'probed' && data.type !== 'error') return;
+      clearTimeout(timer);
+      window.removeEventListener('message', onMessage);
+      if (data.type === 'error') {
+        reject(new Error(`the probe frame threw: ${data.message}`));
+        return;
+      }
+      resolve(data.violations ?? []);
+    });
+  });
+  document.body.append(frame);
+  try {
+    return await reports;
+  } finally {
+    frame.remove();
+  }
+}
+
+describe("zod's eval probe under the site Content-Security-Policy", () => {
+  test(
+    'is reported when the host does not set jitless first',
+    async () => {
+      const violations = await probeWithoutJitless();
+      console.info('[csp] without jitless', JSON.stringify(violations));
+      // Chromium names a refused `new Function` with the blocked URI `eval`.
+      expect(
+        violations.some(
+          violation =>
+            violation.directive.startsWith('script-src') &&
+            violation.target === 'eval'
+        )
+      ).toBe(true);
     },
     TEST_TIMEOUT_MS
   );
