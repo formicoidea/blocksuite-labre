@@ -34,10 +34,6 @@ export type TitleReport = {
   titleBand: { present: boolean; defined: boolean };
   /** Custom elements in the viewer (open shadow roots included) left undefined. */
   undefinedElements: string[];
-  /** Block views drawn in the viewer, by tag, for a failing run. */
-  blocks: string[];
-  /** Blocks the stored page could not be given (a flavour's props refused). */
-  skipped: string[];
 };
 
 /**
@@ -46,7 +42,7 @@ export type TitleReport = {
  * blocks and elements a published canvas commonly holds, so a component one
  * of them draws that the viewer never defines shows up.
  */
-function storedPage(skipped: string[]): Uint8Array {
+function storedPage(): Uint8Array {
   const workspace = new WorkspaceImpl({ id: 'page-title' });
   workspace.storeExtensions = new StoreExtensionManager(
     getInternalStoreExtensions()
@@ -55,64 +51,43 @@ function storedPage(skipped: string[]): Uint8Array {
   const doc = workspace.createDoc('page');
   const store = doc.getStore();
   store.load();
-  const attempt = (name: string, add: () => unknown) => {
-    try {
-      add();
-    } catch (error) {
-      skipped.push(`${name}: ${String(error)}`);
-    }
-  };
   let surfaceId = '';
   store.transact(() => {
     const page = store.addBlock('affine:page', { title: new Text(PAGE_TITLE) });
     surfaceId = store.addBlock('affine:surface', {}, page);
     const note = store.addBlock('affine:note', { xywh: '[0,0,500,600]' }, page);
     store.addBlock('affine:paragraph', { text: new Text('Body') }, note);
-    attempt('list', () =>
-      store.addBlock(
-        'affine:list',
-        { type: 'bulleted', text: new Text('Item') },
-        note
-      )
+    store.addBlock(
+      'affine:list',
+      { type: 'bulleted', text: new Text('Item') },
+      note
     );
-    attempt('code', () =>
-      store.addBlock(
-        'affine:code',
-        { text: new Text('const a = 1;'), language: 'typescript' },
-        note
-      )
+    store.addBlock(
+      'affine:code',
+      { text: new Text('const a = 1;'), language: 'typescript' },
+      note
     );
-    attempt('callout', () => {
-      const callout = store.addBlock('affine:callout', {}, note);
-      store.addBlock('affine:paragraph', { text: new Text('Note') }, callout);
-    });
-    attempt('divider', () => store.addBlock('affine:divider', {}, note));
-    attempt('latex', () =>
-      store.addBlock('affine:latex', { latex: 'a^2+b^2' }, note)
+    const callout = store.addBlock('affine:callout', {}, note);
+    store.addBlock('affine:paragraph', { text: new Text('Note') }, callout);
+    store.addBlock('affine:divider', {}, note);
+    store.addBlock('affine:latex', { latex: 'a^2+b^2' }, note);
+    store.addBlock('affine:database', {}, note);
+    store.addBlock('affine:table', {}, note);
+    store.addBlock(
+      'affine:frame',
+      { title: new Text('The frame'), xywh: '[700,0,600,400]' },
+      surfaceId
     );
-    attempt('database', () => store.addBlock('affine:database', {}, note));
-    attempt('table', () => store.addBlock('affine:table', {}, note));
-    attempt('frame', () =>
-      store.addBlock(
-        'affine:frame',
-        { title: new Text('The frame'), xywh: '[700,0,600,400]' },
-        surfaceId
-      )
+    const text = store.addBlock(
+      'affine:edgeless-text',
+      { xywh: '[700,500,200,50]' },
+      surfaceId
     );
-    attempt('edgeless-text', () => {
-      const text = store.addBlock(
-        'affine:edgeless-text',
-        { xywh: '[700,500,200,50]' },
-        surfaceId
-      );
-      store.addBlock('affine:paragraph', { text: new Text('Free') }, text);
-    });
-    attempt('embed-linked-doc', () =>
-      store.addBlock(
-        'affine:embed-linked-doc',
-        { pageId: 'another-page', xywh: '[1000,500,248,80]' },
-        surfaceId
-      )
+    store.addBlock('affine:paragraph', { text: new Text('Free') }, text);
+    store.addBlock(
+      'affine:embed-linked-doc',
+      { pageId: 'another-page', xywh: '[1000,500,248,80]' },
+      surfaceId
     );
     const second = store.addBlock(
       'affine:note',
@@ -124,14 +99,13 @@ function storedPage(skipped: string[]): Uint8Array {
   const surface = store.getBlock(surfaceId)?.model as unknown as {
     addElement: (props: Record<string, unknown>) => string;
   };
-  attempt('shape', () =>
-    surface.addElement({
-      type: 'shape',
-      shapeType: 'rect',
-      xywh: '[750,50,200,100]',
-      text: new Text('Shape'),
-    })
-  );
+  surface.addElement({
+    type: 'shape',
+    shapeType: 'rect',
+    xywh: '[750,50,200,100]',
+    // A surface element stores a Y.Text: a store `Text` is not one.
+    text: new Y.Text('Shape'),
+  });
   const state = Y.encodeStateAsUpdate(doc.spaceDoc);
   workspace.dispose();
   return state;
@@ -168,8 +142,7 @@ async function mount() {
   host.style.width = '800px';
   host.style.height = '600px';
   document.body.replaceChildren(host);
-  const skipped: string[] = [];
-  const viewer = mountCanvasViewer(host, storedPage(skipped));
+  const viewer = mountCanvasViewer(host, storedPage());
   await until(() => host.querySelector('edgeless-page-block-title') !== null);
   await Array.from({ length: SETTLE_FRAMES }).reduce<Promise<void>>(
     previous => previous.then(nextFrame),
@@ -196,18 +169,6 @@ async function mount() {
           .filter(name => name.includes('-') && !customElements.get(name))
       ),
     ].sort(),
-    blocks: [
-      ...new Set(
-        allElements(host)
-          .map(element => element.localName)
-          .filter(name =>
-            /^affine-.*(block|database|table|latex|code|callout|divider|list|paragraph|note|frame|text|embed)/.test(
-              name
-            )
-          )
-      ),
-    ].sort(),
-    skipped,
   };
   viewer.dispose();
   window.parent.postMessage(report, '*');

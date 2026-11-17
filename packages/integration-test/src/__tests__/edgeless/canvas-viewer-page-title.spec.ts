@@ -77,7 +77,6 @@ describe('the canvas viewer draws the page title', () => {
     'at the head of the page note, with every custom element defined',
     async () => {
       const report = await mountInFrame();
-      console.info('[page-title]', JSON.stringify(report));
       expect(report.head).toBe(true);
       expect(report.docTitle).toMatchObject({
         present: true,
