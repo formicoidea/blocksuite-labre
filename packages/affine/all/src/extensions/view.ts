@@ -285,7 +285,10 @@ export function getInternalViewExtensions(flags?: LabreFlags) {
  * provider added to the registry reaches the viewer without touching it; one
  * that only serves editing, a panel, collaboration or telemetry goes here.
  * `read-only-view.unit.spec.ts` fails if an entry contributes a block view or
- * a canvas element's view or renderer, so this list never hides content.
+ * a canvas element's view or renderer, so this list never hides content. A
+ * custom element defined in a provider's `effect()` leaves no DI key: the
+ * browser spec `canvas-viewer-page-title.spec.ts` fails if a kept view renders
+ * one that no mounted provider defines.
  */
 export const READ_ONLY_EXCLUDED_VIEW_EXTENSIONS: ReadonlySet<
   typeof ViewExtensionProvider
@@ -311,9 +314,9 @@ export const READ_ONLY_EXCLUDED_VIEW_EXTENSIONS: ReadonlySet<
   // Collaboration: other readers' cursors, comment marks.
   RemoteSelectionViewExtension,
   ThreadMarksViewExtension,
-  // Panels beside the editor.
+  // Panels beside the editor. Not `DocTitleViewExtension`: its `effect()`
+  // defines `<doc-title>`, which the page note's head renders (issue #668).
   AdapterPanelViewExtension,
-  DocTitleViewExtension,
   FramePanelViewExtension,
   OutlineViewExtension,
 ]);
