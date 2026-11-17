@@ -38,7 +38,7 @@ const spotifyConfig = {
     heightInNote: SPOTIFY_DEFAULT_HEIGHT_IN_NOTE,
     widthPercent: SPOTIFY_DEFAULT_WIDTH_PERCENT,
     allow: 'autoplay; clipboard-write; encrypted-media; picture-in-picture',
-    style: 'border-radius: 8px;',
+    style: { borderRadius: '8px' },
     allowFullscreen: true,
     containerBorderRadius: 12,
   },

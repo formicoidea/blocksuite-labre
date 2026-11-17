@@ -166,3 +166,26 @@ DI keys and could not see it.
   (a fresh element registry, so an editor of an earlier spec cannot mask the
   gap) on a page holding the common blocks, and fails on any undefined
   element in the viewer, open shadow roots included.
+
+## Amendment 2026-11-17 — a `style` text in a block's template (#668)
+
+- Labre Sites saw two more `style-src-attr` sources on a page with a frozen
+  frame: `display: contents;` (the table's cells, add button and selection
+  layer) and `padding-left: 24px` (the divider's children container). Measured
+  in Chromium: a constant `style` text in a Lit template is one report per
+  template and still applies; a `style` attribute whose text is built from a
+  value (`style="a: ${x}"`, `style=${string}`, even `style=${''}`) is one
+  report per element and is dropped whole, so the divider lost its indent.
+- Both now go through `styleMap` (`@labre/global/lit`), as do the two other
+  value-built `style` attributes the viewer can draw: the embed iframe's
+  provider style (rounded corners) and `renderUniLit`'s empty fallback, which
+  binds `nothing`. `IframeOptions.style` widens to `string | StyleInfo`: the
+  built-in providers give an object, a host's string is split into its
+  declarations, one value per property.
+- `canvas-viewer-csp.spec.ts` now draws a divider and a one-cell table in its
+  note and measures the divider's indent under the policy.
+- Left as they are: the constant `style` texts of the database views (data
+  view, table and kanban). Each is one report per template, nothing is lost on
+  screen, and the viewer draws a database only when the document holds one. A
+  report from one fails the spec once the fixture holds a database; moving them
+  is a pass of its own.

@@ -134,6 +134,9 @@ export class TableBlockComponent extends CaptionedBlockComponent<TableBlockModel
     // handles) hung into the gutter: a wide table scrolls within the column
     // the person writes in, not across the whole editor (labre recette of
     // 2.1; it used to bleed by its distance to the editor's edge minus 72px).
+    // Every style goes through `styleMap`, even a constant one: a `style` text
+    // in the template is refused by a host page without `style-src-attr`
+    // (#668, `canvas-viewer-csp.spec.ts`).
     return html`
       <div
         contenteditable="false"
@@ -162,7 +165,7 @@ export class TableBlockComponent extends CaptionedBlockComponent<TableBlockModel
                           );
                           return html`
                             <affine-table-cell
-                              style="display: contents;"
+                              style=${styleMap({ display: 'contents' })}
                               .rowIndex=${rowIndex}
                               .columnIndex=${columnIndex}
                               .row=${row}
@@ -182,11 +185,11 @@ export class TableBlockComponent extends CaptionedBlockComponent<TableBlockModel
             ${IS_MOBILE || this.dataManager.readonly$.value
               ? nothing
               : html`<affine-table-add-button
-                  style="display: contents;"
+                  style=${styleMap({ display: 'contents' })}
                   .dataManager=${this.dataManager}
                 ></affine-table-add-button>`}
             ${html`<affine-table-selection-layer
-              style="display: contents;"
+              style=${styleMap({ display: 'contents' })}
               .selectionController=${this.selectionController}
               .getRowRect=${this.getRowRect}
               .getColumnRect=${this.getColumnRect}

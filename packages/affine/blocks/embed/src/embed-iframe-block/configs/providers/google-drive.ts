@@ -189,7 +189,7 @@ const googleDriveConfig = {
     widthPercent: GOOGLE_DRIVE_DEFAULT_WIDTH_PERCENT,
     heightInNote: GOOGLE_DRIVE_DEFAULT_HEIGHT_IN_NOTE,
     allowFullscreen: true,
-    style: 'border: none; border-radius: 8px;',
+    style: { border: 'none', borderRadius: '8px' },
   },
 };
 

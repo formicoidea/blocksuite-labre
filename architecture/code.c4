@@ -572,7 +572,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/embed
         metadata {
           path 'packages/affine/blocks/embed'
-          files '125'
+          files '126'
         }
         common = folder 'common/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/embed/src/common
@@ -613,7 +613,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/embed/src/embed-iframe-block
           metadata {
             path 'packages/affine/blocks/embed/src/embed-iframe-block'
-            files '33'
+            files '34'
           }
         }
         embed-loom-block = folder 'embed-loom-block/' {
@@ -3581,6 +3581,7 @@ model {
   features.blocks.divider -[uses]-> features.ext-loader '2 imports'
   features.blocks.divider -[uses]-> features.rich-text '1 import'
   features.blocks.divider -[uses]-> features.shared '7 imports, 1 type-only'
+  features.blocks.divider -[uses]-> framework.global_ '1 import'
   features.blocks.divider -[uses]-> framework.std '4 imports, 1 type-only'
   features.blocks.divider -[uses]-> framework.store '4 imports, 1 type-only'
   features.blocks.divider -[uses]-> model_.model_ '7 imports, 1 type-only'
@@ -3597,9 +3598,9 @@ model {
   features.blocks.embed -[uses]-> features.blocks.surface '17 imports'
   features.blocks.embed -[uses]-> features.components '17 imports'
   features.blocks.embed -[uses]-> features.ext-loader '2 imports'
-  features.blocks.embed -[uses]-> features.shared '89 imports, 5 type-only'
+  features.blocks.embed -[uses]-> features.shared '90 imports, 6 type-only'
   features.blocks.embed -[uses]-> features.widgets.slash-menu '10 imports, 5 type-only'
-  features.blocks.embed -[uses]-> framework.global_ '19 imports, 1 type-only'
+  features.blocks.embed -[uses]-> framework.global_ '20 imports, 2 type-only'
   features.blocks.embed -[uses]-> framework.std '41 imports, 10 type-only'
   features.blocks.embed -[uses]-> framework.store '24 imports, 19 type-only'
   features.blocks.embed -[uses]-> model_.model_ '57 imports, 15 type-only'
@@ -4118,7 +4119,7 @@ model {
   features.rich-text -[uses]-> framework.std '8 imports, 5 type-only'
   features.rich-text -[uses]-> framework.store '4 imports, 2 type-only'
   features.rich-text -[uses]-> model_.model_ '1 import'
-  features.shared -[uses]-> framework.global_ '94 imports, 17 type-only'
+  features.shared -[uses]-> framework.global_ '95 imports, 18 type-only'
   features.shared -[uses]-> framework.std '87 imports, 41 type-only'
   features.shared -[uses]-> framework.store '116 imports, 84 type-only'
   features.shared -[uses]-> model_.model_ '46 imports, 17 type-only'
@@ -4778,6 +4779,7 @@ model {
   features.blocks.divider.src -[imports]-> features.shared.consts '1 import'
   features.blocks.divider.src -[imports]-> features.shared.types '1 import, 1 type-only'
   features.blocks.divider.src -[imports]-> features.shared.utils '1 import'
+  features.blocks.divider.src -[imports]-> framework.global_.lit '1 import'
   features.blocks.divider.src -[imports]-> framework.std.inline '1 import'
   features.blocks.divider.src -[imports]-> framework.std.src '3 imports, 1 type-only'
   features.blocks.divider.src -[imports]-> model_.model_.src '3 imports, 1 type-only'
@@ -4950,12 +4952,12 @@ model {
   features.blocks.embed.embed-iframe-block -[imports]-> features.shared.adapters '3 imports'
   features.blocks.embed.embed-iframe-block -[imports]-> features.shared.commands '1 import'
   features.blocks.embed.embed-iframe-block -[imports]-> features.shared.consts '1 import'
-  features.blocks.embed.embed-iframe-block -[imports]-> features.shared.services '16 imports'
+  features.blocks.embed.embed-iframe-block -[imports]-> features.shared.services '17 imports, 1 type-only'
   features.blocks.embed.embed-iframe-block -[imports]-> features.shared.theme '5 imports'
   features.blocks.embed.embed-iframe-block -[imports]-> features.shared.utils '3 imports'
   features.blocks.embed.embed-iframe-block -[imports]-> features.widgets.slash-menu.src '2 imports, 1 type-only'
   features.blocks.embed.embed-iframe-block -[imports]-> framework.global_.gfx '3 imports'
-  features.blocks.embed.embed-iframe-block -[imports]-> framework.global_.lit '7 imports'
+  features.blocks.embed.embed-iframe-block -[imports]-> framework.global_.lit '8 imports, 1 type-only'
   features.blocks.embed.embed-iframe-block -[imports]-> framework.global_.utils '1 import'
   features.blocks.embed.embed-iframe-block -[imports]-> framework.std.gfx '2 imports'
   features.blocks.embed.embed-iframe-block -[imports]-> framework.std.src '11 imports, 5 type-only'
@@ -7126,6 +7128,7 @@ model {
   features.shared.services -[imports]-> framework.global_.disposable '4 imports, 1 type-only'
   features.shared.services -[imports]-> framework.global_.env '1 import'
   features.shared.services -[imports]-> framework.global_.exceptions '3 imports'
+  features.shared.services -[imports]-> framework.global_.lit '1 import, 1 type-only'
   features.shared.services -[imports]-> framework.global_.utils '4 imports, 2 type-only'
   features.shared.services -[imports]-> framework.std.gfx '7 imports, 2 type-only'
   features.shared.services -[imports]-> framework.std.inline '1 import'
