@@ -4,7 +4,6 @@ import { SchemaValidateError } from './error.js';
 
 function escapeRegExp(text: string) {
   // Backslashes every regex metacharacter: "a.b" gives "a\.b", "a-b" stays.
-  // https://regex101.com/?regex=%5B.*%2B%3F%5E%24%7B%7D()%7C%5B%5C%5D%5C%5C%5D&flags=g&testString=a.b%0Aa-b
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
@@ -34,7 +33,6 @@ function matchFlavourPattern(flavour: string, pattern: string): boolean {
     open === -1 ? '' : `(?!(?:${excluded.map(escapeRegExp).join('|')})$)[^/]*`;
   // "affine:embed-!(synced-doc)" accepts "affine:embed-github" and rejects
   // "affine:embed-synced-doc"; "affine:embed-*" rejects "affine:embedx".
-  // https://regex101.com/?regex=%5Eaffine%3Aembed-(%3F!(%3F%3Asynced-doc)%24)%5B%5E%2F%5D*%24&flags=gm&testString=affine%3Aembed-github%0Aaffine%3Aembed-synced-doc
   return new RegExp(`^${body}${tail}$`).test(flavour);
 }
 
