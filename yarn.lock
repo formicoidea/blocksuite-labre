@@ -1417,7 +1417,6 @@ __metadata:
     "@toeverything/theme": "npm:^1.1.15"
     file-type: "npm:^21.0.0"
     lit: "npm:^3.2.0"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     zod: "npm:^3.23.8"
   languageName: unknown
@@ -1444,7 +1443,6 @@ __metadata:
     "@preact/signals-core": "npm:^1.8.0"
     "@toeverything/theme": "npm:^1.1.15"
     lit: "npm:^3.2.0"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     vitest: "npm:3.1.3"
     yjs: "npm:^13.6.23"
@@ -1473,7 +1471,6 @@ __metadata:
     "@toeverything/theme": "npm:^1.1.15"
     "@types/mdast": "npm:^4.0.4"
     lit: "npm:^3.2.0"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     zod: "npm:^3.23.8"
   languageName: unknown
@@ -1504,7 +1501,6 @@ __metadata:
     "@toeverything/theme": "npm:^1.1.15"
     "@types/mdast": "npm:^4.0.4"
     lit: "npm:^3.2.0"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     shiki: "npm:^3.0.0"
     zod: "npm:^3.23.8"
@@ -1529,7 +1525,6 @@ __metadata:
     "@toeverything/theme": "npm:^1.1.15"
     "@types/mdast": "npm:^4.0.4"
     lit: "npm:^3.2.0"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     zod: "npm:^3.23.8"
   languageName: unknown
@@ -1557,7 +1552,6 @@ __metadata:
     "@preact/signals-core": "npm:^1.8.0"
     "@toeverything/theme": "npm:^1.1.15"
     lit: "npm:^3.2.0"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     vitest: "npm:3.1.3"
     zod: "npm:^3.23.8"
@@ -1588,7 +1582,6 @@ __metadata:
     "@types/lodash-es": "npm:^4.17.12"
     lit: "npm:^3.2.0"
     lodash-es: "npm:^4.17.21"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     vitest: "npm:3.1.3"
     yjs: "npm:^13.6.21"
@@ -1618,7 +1611,6 @@ __metadata:
     "@types/lodash-es": "npm:^4.17.12"
     lit: "npm:^3.2.0"
     lodash-es: "npm:^4.17.21"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     vitest: "npm:3.1.3"
     yjs: "npm:^13.6.21"
@@ -1648,7 +1640,6 @@ __metadata:
     "@toeverything/theme": "npm:^1.1.15"
     "@types/mdast": "npm:^4.0.4"
     lit: "npm:^3.2.0"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     yjs: "npm:^13.6.21"
     zod: "npm:^3.23.8"
@@ -1677,7 +1668,6 @@ __metadata:
     "@toeverything/theme": "npm:^1.1.15"
     file-type: "npm:^21.0.0"
     lit: "npm:^3.2.0"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     zod: "npm:^3.23.8"
   languageName: unknown
@@ -1706,7 +1696,6 @@ __metadata:
     "@types/mdast": "npm:^4.0.4"
     katex: "npm:^0.18.10"
     lit: "npm:^3.2.0"
-    minimatch: "npm:^10.0.1"
     remark-math: "npm:^6.0.0"
     rxjs: "npm:^7.8.1"
     zod: "npm:^3.23.8"
@@ -1735,7 +1724,6 @@ __metadata:
     "@types/hast": "npm:^3.0.4"
     "@types/mdast": "npm:^4.0.4"
     lit: "npm:^3.2.0"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     vitest: "npm:3.1.3"
     zod: "npm:^3.23.8"
@@ -1770,7 +1758,6 @@ __metadata:
     "@vanilla-extract/vite-plugin": "npm:5.1.4"
     lit: "npm:^3.2.0"
     lodash-es: "npm:^4.17.21"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     zod: "npm:^3.23.8"
   languageName: unknown
@@ -1796,7 +1783,6 @@ __metadata:
     "@toeverything/theme": "npm:^1.1.15"
     "@types/mdast": "npm:^4.0.4"
     lit: "npm:^3.2.0"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     zod: "npm:^3.23.8"
   languageName: unknown
@@ -1847,7 +1833,6 @@ __metadata:
     html2canvas: "npm:^1.4.1"
     lit: "npm:^3.2.0"
     lodash-es: "npm:^4.17.21"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     yjs: "npm:^13.6.21"
     zod: "npm:^3.23.8"
@@ -1998,7 +1983,6 @@ __metadata:
     "@types/mdast": "npm:^4.0.4"
     date-fns: "npm:^4.0.0"
     lit: "npm:^3.2.0"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     yjs: "npm:^13.6.21"
     zod: "npm:^3.23.8"
@@ -2078,7 +2062,6 @@ __metadata:
     "@types/mdast": "npm:^4.0.4"
     "@vanilla-extract/vite-plugin": "npm:5.1.4"
     lit: "npm:^3.2.0"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     zod: "npm:^3.23.8"
   languageName: unknown
@@ -2164,7 +2147,6 @@ __metadata:
     "@toeverything/theme": "npm:^1.1.15"
     "@vanilla-extract/vite-plugin": "npm:5.1.4"
     lit: "npm:^3.2.0"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     zod: "npm:^3.23.8"
   languageName: unknown
@@ -2192,7 +2174,6 @@ __metadata:
     "@types/lodash-es": "npm:^4.17.12"
     lit: "npm:^3.2.0"
     lodash-es: "npm:^4.17.21"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     yjs: "npm:^13.6.21"
     zod: "npm:^3.23.8"
@@ -2220,7 +2201,6 @@ __metadata:
     "@toeverything/theme": "npm:^1.1.15"
     "@vanilla-extract/css": "npm:^1.17.0"
     lit: "npm:^3.2.0"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     zod: "npm:^3.23.8"
   languageName: unknown
@@ -2270,7 +2250,6 @@ __metadata:
     "@types/lodash-es": "npm:^4.17.12"
     lit: "npm:^3.2.0"
     lodash-es: "npm:^4.17.21"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     yjs: "npm:^13.6.21"
     zod: "npm:^3.23.8"
@@ -2322,7 +2301,6 @@ __metadata:
     happy-dom: "npm:^21.0.4"
     lit: "npm:^3.2.0"
     lodash-es: "npm:^4.17.21"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     yjs: "npm:^13.6.21"
     zod: "npm:^3.23.8"
@@ -2502,7 +2480,6 @@ __metadata:
     "@types/lodash-es": "npm:^4.17.12"
     lit: "npm:^3.2.0"
     lodash-es: "npm:^4.17.21"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     yjs: "npm:^13.6.21"
     zod: "npm:^3.23.8"
@@ -2531,7 +2508,6 @@ __metadata:
     "@types/lodash-es": "npm:^4.17.12"
     lit: "npm:^3.2.0"
     lodash-es: "npm:^4.17.21"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     yjs: "npm:^13.6.21"
     zod: "npm:^3.23.8"
@@ -2566,7 +2542,6 @@ __metadata:
     "@types/lodash-es": "npm:^4.17.12"
     lit: "npm:^3.2.0"
     lodash-es: "npm:^4.17.21"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     simple-xml-to-json: "npm:^1.2.2"
     yjs: "npm:^13.6.21"
@@ -2598,7 +2573,6 @@ __metadata:
     "@types/lodash-es": "npm:^4.17.12"
     lit: "npm:^3.2.0"
     lodash-es: "npm:^4.17.21"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     yjs: "npm:^13.6.21"
     zod: "npm:^3.23.8"
@@ -2625,7 +2599,6 @@ __metadata:
     "@types/lodash-es": "npm:^4.17.12"
     lit: "npm:^3.2.0"
     lodash-es: "npm:^4.17.21"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     yjs: "npm:^13.6.21"
     zod: "npm:^3.23.8"
@@ -2655,7 +2628,6 @@ __metadata:
     "@types/lodash-es": "npm:^4.17.12"
     lit: "npm:^3.2.0"
     lodash-es: "npm:^4.17.21"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     yjs: "npm:^13.6.21"
     zod: "npm:^3.23.8"
@@ -2684,7 +2656,6 @@ __metadata:
     "@types/lodash-es": "npm:^4.17.12"
     lit: "npm:^3.2.0"
     lodash-es: "npm:^4.17.21"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     yjs: "npm:^13.6.21"
     zod: "npm:^3.23.8"
@@ -2712,7 +2683,6 @@ __metadata:
     "@types/lodash-es": "npm:^4.17.12"
     lit: "npm:^3.2.0"
     lodash-es: "npm:^4.17.21"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     yjs: "npm:^13.6.21"
     zod: "npm:^3.23.8"
@@ -3061,7 +3031,6 @@ __metadata:
     micromark-extension-gfm-table: "npm:^2.1.0"
     micromark-extension-gfm-task-list-item: "npm:^2.1.0"
     micromark-util-combine-extensions: "npm:^2.0.0"
-    minimatch: "npm:^10.0.1"
     quick-lru: "npm:^7.0.1"
     rehype-parse: "npm:^9.0.0"
     rehype-stringify: "npm:^10.0.0"
@@ -3103,7 +3072,6 @@ __metadata:
     "@types/lodash-es": "npm:^4.17.12"
     lit: "npm:^3.2.0"
     lodash-es: "npm:^4.17.21"
-    minimatch: "npm:^10.0.1"
     rxjs: "npm:^7.8.1"
     zod: "npm:^3.23.8"
   languageName: unknown
@@ -3715,7 +3683,6 @@ __metadata:
     lodash.clonedeep: "npm:^4.5.0"
     lodash.ismatch: "npm:^4.4.0"
     lodash.merge: "npm:^4.6.2"
-    minimatch: "npm:^10.0.1"
     nanoid: "npm:^5.1.16"
     rxjs: "npm:^7.8.1"
     vitest: "npm:3.1.3"
@@ -3959,14 +3926,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@playwright/test@npm:^1.51.1":
-  version: 1.52.0
-  resolution: "@playwright/test@npm:1.52.0"
+"@playwright/test@npm:^1.64.0":
+  version: 1.64.0
+  resolution: "@playwright/test@npm:1.64.0"
   dependencies:
-    playwright: "npm:1.52.0"
+    playwright: "npm:1.64.0"
   bin:
     playwright: cli.js
-  checksum: 10/e18a4eb626c7bc6cba212ff2e197cf9ae2e4da1c91bfdf08a744d62e27222751173e4b220fa27da72286a89a3b4dea7c09daf384d23708f284b64f98e9a63a88
+  checksum: 10/150071109a165e413f390bea574c2d6508788b713dbc0ae58ba3bfed7d5befa621f862b4a818fab502e409365f465bf90641dc1da7a64ccd4910a0124e8cd3bf
   languageName: node
   linkType: hard
 
@@ -5261,13 +5228,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"balanced-match@npm:^4.0.2":
-  version: 4.0.4
-  resolution: "balanced-match@npm:4.0.4"
-  checksum: 10/fb07bb66a0959c2843fc055838047e2a95ccebb837c519614afb067ebfdf2fa967ca8d712c35ced07f2cd26fc6f07964230b094891315ad74f11eba3d53178a0
-  languageName: node
-  linkType: hard
-
 "base64-arraybuffer@npm:^1.0.2":
   version: 1.0.2
   resolution: "base64-arraybuffer@npm:1.0.2"
@@ -5298,7 +5258,7 @@ __metadata:
     "@changesets/cli": "npm:^2.27.7"
     "@commitlint/cli": "npm:^19.4.0"
     "@commitlint/config-conventional": "npm:^19.2.2"
-    "@playwright/test": "npm:^1.51.1"
+    "@playwright/test": "npm:^1.64.0"
     "@size-limit/esbuild-why": "npm:^11.1.5"
     "@size-limit/preset-small-lib": "npm:^11.1.4"
     "@types/node": "npm:^22.13.10"
@@ -5321,20 +5281,11 @@ __metadata:
   linkType: soft
 
 "brace-expansion@npm:^2.0.2":
-  version: 2.1.1
-  resolution: "brace-expansion@npm:2.1.1"
+  version: 2.1.8
+  resolution: "brace-expansion@npm:2.1.8"
   dependencies:
     balanced-match: "npm:^1.0.0"
-  checksum: 10/4681c533dc4e6c77b3ad795b38683d297fd03c739a17bfb2a338529fa7dcf4540683a79dcd662905f4c5b0db7cfda18daafcd18dd1bbf7c3b076fe0c9c3487eb
-  languageName: node
-  linkType: hard
-
-"brace-expansion@npm:^5.0.5":
-  version: 5.0.6
-  resolution: "brace-expansion@npm:5.0.6"
-  dependencies:
-    balanced-match: "npm:^4.0.2"
-  checksum: 10/a7acf120fefa79e9d7c9c92898114f57c07596a3920197f3c5917e6a628b04220a5f7f9618c30bdd973a6576a32113b99f9c3f1c8245ccc399dd2a9a718d81d8
+  checksum: 10/fdc4d9c7597395ecd670246098823cb3cb72736fbb3252a3103a7ec5928ab31e7de0623e334af0665018a9c57ad48c28e99897627547ba38f254e52c384a74ed
   languageName: node
   linkType: hard
 
@@ -6635,31 +6586,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fsevents@npm:2.3.2":
-  version: 2.3.2
-  resolution: "fsevents@npm:2.3.2"
-  dependencies:
-    node-gyp: "npm:latest"
-  checksum: 10/6b5b6f5692372446ff81cf9501c76e3e0459a4852b3b5f1fc72c103198c125a6b8c72f5f166bdd76ffb2fca261e7f6ee5565daf80dca6e571e55bcc589cc1256
-  conditions: os=darwin
-  languageName: node
-  linkType: hard
-
 "fsevents@npm:~2.3.2, fsevents@npm:~2.3.3":
   version: 2.3.3
   resolution: "fsevents@npm:2.3.3"
   dependencies:
     node-gyp: "npm:latest"
   checksum: 10/4c1ade961ded57cdbfbb5cac5106ec17bc8bccd62e16343c569a0ceeca83b9dfef87550b4dc5cbb89642da412b20c5071f304c8c464b80415446e8e155a038c0
-  conditions: os=darwin
-  languageName: node
-  linkType: hard
-
-"fsevents@patch:fsevents@npm%3A2.3.2#optional!builtin<compat/fsevents>":
-  version: 2.3.2
-  resolution: "fsevents@patch:fsevents@npm%3A2.3.2#optional!builtin<compat/fsevents>::version=2.3.2&hash=df0bf1"
-  dependencies:
-    node-gyp: "npm:latest"
   conditions: os=darwin
   languageName: node
   linkType: hard
@@ -8458,15 +8390,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"minimatch@npm:^10.0.1":
-  version: 10.2.5
-  resolution: "minimatch@npm:10.2.5"
-  dependencies:
-    brace-expansion: "npm:^5.0.5"
-  checksum: 10/19e87a931aff60ee7b9d80f39f817b8bfc54f61f8356ee3549fbf636dbccacacfec8d803eac73293955c4527cd085247dfc064bce4a5e349f8f3b85e2bf5da0f
-  languageName: node
-  linkType: hard
-
 "minimatch@npm:^9.0.4":
   version: 9.0.9
   resolution: "minimatch@npm:9.0.9"
@@ -9111,36 +9034,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"playwright-core@npm:1.52.0":
-  version: 1.52.0
-  resolution: "playwright-core@npm:1.52.0"
-  bin:
-    playwright-core: cli.js
-  checksum: 10/42e13f5f98dc25ebc95525fb338a215b9097b2ba39d41e99972a190bf75d79979f163f5bc07b1ca06847ee07acb2c9b487d070fab67e9cd55e33310fc05aca3c
-  languageName: node
-  linkType: hard
-
 "playwright-core@npm:1.64.0":
   version: 1.64.0
   resolution: "playwright-core@npm:1.64.0"
   bin:
     playwright-core: cli.js
   checksum: 10/38b1c9a4ebe96ab5ee282a9743cb57dd5abb4d1370ad5570b676b71d0864e6f9feb9feebe74e15af4af6828ebaca3670f77bdcdc1979a1fa02462465456edc12
-  languageName: node
-  linkType: hard
-
-"playwright@npm:1.52.0":
-  version: 1.52.0
-  resolution: "playwright@npm:1.52.0"
-  dependencies:
-    fsevents: "npm:2.3.2"
-    playwright-core: "npm:1.52.0"
-  dependenciesMeta:
-    fsevents:
-      optional: true
-  bin:
-    playwright: cli.js
-  checksum: 10/214175446089000c2ac997b925063b95f7d86d129c5d7c74caa5ddcb05bcad598dfd569d2133a10dc82d288bf67e7858877dcd099274b0b928b9c63db7d6ecec
   languageName: node
   linkType: hard
 
