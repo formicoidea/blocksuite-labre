@@ -66,7 +66,7 @@ const genericConfig = {
     widthPercent: GENERIC_DEFAULT_WIDTH_PERCENT,
     heightInNote: GENERIC_DEFAULT_HEIGHT_IN_NOTE,
     allowFullscreen: true,
-    style: 'border: none; border-radius: 8px;',
+    style: { border: 'none', borderRadius: '8px' },
     allow: 'clipboard-read; clipboard-write; picture-in-picture;',
     referrerpolicy: 'no-referrer-when-downgrade',
   },

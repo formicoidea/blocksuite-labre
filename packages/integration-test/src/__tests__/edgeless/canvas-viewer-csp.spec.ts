@@ -18,7 +18,12 @@
  *   the browser for (a policy report whose source is not Vite's own dev CSS
  *   injection or its socket, which only the test server performs);
  * - a frame inserted in a page that loses its title badge, or shows the
- *   editor's editing chrome.
+ *   editor's editing chrome;
+ * - a block that writes its style as a `style` text instead of through
+ *   `styleMap` (#668): a constant text such as the table's
+ *   `display: contents` is one report per template, and a text built from
+ *   a value, such as the divider's `padding-left`, is refused and lost on
+ *   screen, so the divider's children container is also measured.
  */
 import { describe, expect, test } from 'vitest';
 
@@ -36,6 +41,9 @@ const POLICY = [
   "style-src 'self'",
   "font-src 'self'",
 ].join('; ');
+
+/** The divider's children container padding, `BLOCK_CHILDREN_CONTAINER_PADDING_LEFT`. */
+const DIVIDER_PADDING = '24px';
 
 /** Imports of the whole view graph through the dev server, then the paint. */
 const REPORT_DEADLINE_MS = 180_000;
@@ -167,6 +175,7 @@ describe('the canvas viewer under the site Content-Security-Policy', () => {
       expect(report.painted).toBeGreaterThan(PAINTED_MIN);
       expect(report.styleElements).toBe(0);
       expect(refused(report)).toEqual([]);
+      expect(report.dividerPadding).toBe(DIVIDER_PADDING);
       // The editor's own badge, without its editing chrome.
       expect(report.badge).toMatchObject({ text: FRAME_TITLE, shown: true });
       expect(report.chrome).toEqual([]);
@@ -187,6 +196,7 @@ describe('the canvas viewer under the site Content-Security-Policy', () => {
       expect(report.painted).toBeGreaterThan(PAINTED_MIN);
       expect(report.styleElements).toBe(0);
       expect(refused(report)).toEqual([]);
+      expect(report.dividerPadding).toBe(DIVIDER_PADDING);
       expect(report.badge).toMatchObject({
         text: FRAME_TITLE,
         shown: true,

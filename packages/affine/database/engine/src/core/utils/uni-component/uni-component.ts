@@ -6,7 +6,7 @@ import { SignalWatcher, type StyleInfo, styleMap } from '@labre/global/lit';
 import { ShadowlessElement } from '@labre/std';
 import type { Signal } from '@preact/signals-core';
 import type { LitElement, PropertyValues, TemplateResult } from 'lit';
-import { css, html } from 'lit';
+import { css, html, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
 
 export const renderUniLit = <Props, Expose extends NonNullable<unknown>>(
@@ -18,11 +18,13 @@ export const renderUniLit = <Props, Expose extends NonNullable<unknown>>(
     class?: string;
   }
 ): TemplateResult => {
+  // `nothing`, not `''`: even an empty `style` attribute is a report on a host
+  // page without `style-src-attr` (#668).
   return html` <uni-lit
     .uni="${uni}"
     .props="${props}"
     .ref="${options?.ref}"
-    style=${options?.style ? styleMap(options?.style) : ''}
+    style=${options?.style ? styleMap(options.style) : nothing}
   ></uni-lit>`;
 };
 

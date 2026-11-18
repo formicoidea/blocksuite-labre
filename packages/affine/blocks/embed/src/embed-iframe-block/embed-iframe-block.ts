@@ -42,6 +42,7 @@ import {
   LINK_CREATE_POPUP_OFFSET,
   LOADING_CARD_DEFAULT_HEIGHT,
 } from './consts.js';
+import { iframeStyleInfo } from './iframe-style.js';
 import { embedIframeBlockStyles } from './style.js';
 import {
   EmbedIframeError,
@@ -360,7 +361,7 @@ export class EmbedIframeBlockComponent extends CaptionedBlockComponent<EmbedIfra
         allow=${ifDefined(allow)}
         referrerpolicy=${ifDefined(referrerpolicy)}
         scrolling=${ifDefined(scrolling)}
-        style=${ifDefined(style)}
+        style=${styleMap(iframeStyleInfo(style))}
       ></iframe>
     `;
   };
