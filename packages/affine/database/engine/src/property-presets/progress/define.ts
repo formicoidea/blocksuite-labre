@@ -3,6 +3,7 @@ import zod from 'zod';
 import { t } from '../../core/logical/type-presets.js';
 import { propertyType } from '../../core/property/property-config.js';
 import { DATA_VIEW_TYPE_PROGRESS } from '../../translations.js';
+import { storedNumber } from '../../core/logical/stored-number.js';
 export const progressPropertyType = propertyType('progress');
 
 export const progressPropertyModelConfig = progressPropertyType.modelConfig({
@@ -13,12 +14,12 @@ export const progressPropertyModelConfig = progressPropertyType.modelConfig({
     default: () => ({}),
   },
   jsonValue: {
-    schema: zod.number(),
+    schema: storedNumber(),
     isEmpty: () => false,
     type: () => t.number.instance(),
   },
   rawValue: {
-    schema: zod.number(),
+    schema: storedNumber(),
     default: () => 0,
     toString: ({ value }) => value.toString(),
     fromString: ({ value }) => {

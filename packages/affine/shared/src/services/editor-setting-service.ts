@@ -25,7 +25,7 @@ export const GeneralSettingSchema = z
       .enum(['affine:embed-linked-doc', 'affine:embed-synced-doc'])
       .default('affine:embed-synced-doc'),
   })
-  .merge(NodePropsSchema);
+  .extend(NodePropsSchema.shape);
 
 export type EditorSetting = z.infer<typeof GeneralSettingSchema>;
 

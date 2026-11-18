@@ -33,7 +33,7 @@ export const NOTE_SHADOWS = [
 
 export const DEFAULT_NOTE_SHADOW = NoteShadow.Box;
 
-export const NoteShadowsSchema = z.nativeEnum(NoteShadow);
+export const NoteShadowsSchema = z.enum(NoteShadow);
 
 export enum NoteDisplayMode {
   DocAndEdgeless = 'both',
@@ -47,9 +47,9 @@ export enum StrokeStyle {
   Solid = 'solid',
 }
 
-export const StrokeStyleSchema = z.nativeEnum(StrokeStyle);
+export const StrokeStyleSchema = z.enum(StrokeStyle);
 
-export const NoteDisplayModeSchema = z.nativeEnum(NoteDisplayMode);
+export const NoteDisplayModeSchema = z.enum(NoteDisplayMode);
 
 export const DEFAULT_NOTE_BORDER_STYLE = StrokeStyle.None;
 
@@ -75,6 +75,6 @@ export const NOTE_CORNERS = [
 
 export const DEFAULT_NOTE_CORNER = NoteCorners.Small;
 
-export const NoteCornersSchema = z.nativeEnum(NoteCorners);
+export const NoteCornersSchema = z.enum(NoteCorners);
 
 export const DEFAULT_NOTE_BORDER_SIZE = 4;

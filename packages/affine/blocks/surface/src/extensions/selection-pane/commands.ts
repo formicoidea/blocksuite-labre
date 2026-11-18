@@ -93,8 +93,9 @@ const toggleSelectionPane: AnyCommandDescriptor = {
 
 /*
  * "An `id` or a non-empty `ids`" is checked in `run`, not with a zod `refine`:
- * a refined schema is a `ZodEffects`, which `describeCommandParams` cannot
- * project, so the agent manifest would lose the whole parameter contract.
+ * `describeCommandParams` cannot state a refinement, so it reads a refined
+ * schema as undescribable and the agent manifest would lose the whole
+ * parameter contract.
  */
 export const reorderElementParams = z.object({
   // The element or gfx block to move.

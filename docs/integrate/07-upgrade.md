@@ -55,6 +55,18 @@ Typical changes a host sees, from the Labre app's history:
 Six weeks of library in one hop produced three compile breaks and one silent
 behaviour change. Upgrade at every minor.
 
+## 3.5 → 4.0 (zod 4)
+
+The library moves from zod 3 to zod `^4.6.6` (ADR 0052, GHSA-mrhx-c7xc-m3w5).
+Stored documents are untouched: every document opens, renders and round-trips
+as before, and nothing new is written. What a host sees:
+
+| Kind                         | Change                                                                                                                                                                                                                  | What to do                                                                                                                                   |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| a peer moves a major         | every bundle depends on `zod ^4.6.6`; the zod types in the API are zod 4's: `CommandDescriptor.params`, `BlockSnapshotSchema` / `SliceSnapshotSchema` / `DocSnapshotSchema`, `InlineSpecs.schema`, `setAttributeSchema` | build every schema you hand the library with zod `^4.6.6` (`z.function({ input, output })`, `z.record(key, value)`), and dedupe to one zod 4 |
+| a page policy reports `eval` | zod 4 probes `new Function` when it builds its first object schema, while the library's modules evaluate                                                                                                                | on a page whose policy has no `'unsafe-eval'`, call `config({ jitless: true })` from `zod` in a module imported before any library module    |
+| nothing else                 | the agent manifest's parameter contracts, the style defaults, the inline attributes and database values read back are byte-identical (guarded)                                                                          | nothing                                                                                                                                      |
+
 ## 1.1 → 2.0 (the calendar view is removed)
 
 One intended compile break, for a host that imported the calendar preset: it

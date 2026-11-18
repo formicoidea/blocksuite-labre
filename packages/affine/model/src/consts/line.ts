@@ -66,4 +66,4 @@ export const LINE_COLORS = [
   LineColor.White,
 ] as const;
 
-export const LineColorsSchema = z.nativeEnum(LineColor);
+export const LineColorsSchema = z.enum(LineColor);

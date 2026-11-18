@@ -34,17 +34,26 @@ import {
   ZodIntersection,
   ZodObject,
   ZodOptional,
+  ZodPrefault,
   type ZodTypeAny,
-  ZodUnion,
 } from 'zod';
 
-const ConnectorEndpointSchema = z.nativeEnum(PointStyle);
-const LineWidthSchema = z.nativeEnum(LineWidth);
-const ShapeStyleSchema = z.nativeEnum(ShapeStyle);
-const TextVerticalAlignSchema = z.nativeEnum(TextVerticalAlign);
-const ConnectorModeSchema = z.nativeEnum(ConnectorMode);
-const LayoutTypeSchema = z.nativeEnum(LayoutType);
-const MindmapStyleSchema = z.nativeEnum(MindmapStyle);
+/*
+ * The style defaults below are `.prefault()`, not `.default()`: zod 3's
+ * `.default(value)` parsed `value` through the object (fresh objects, nested
+ * defaults filled), which is zod 4's `.prefault`; zod 4's `.default` returns
+ * a shallow copy of `value` unparsed, so every element created from it would
+ * share the nested `labelStyle` object (ADR 0052). Held by
+ * `affine/all/src/__tests__/zod-format-guard.unit.spec.ts`.
+ */
+
+const ConnectorEndpointSchema = z.enum(PointStyle);
+const LineWidthSchema = z.enum(LineWidth);
+const ShapeStyleSchema = z.enum(ShapeStyle);
+const TextVerticalAlignSchema = z.enum(TextVerticalAlign);
+const ConnectorModeSchema = z.enum(ConnectorMode);
+const LayoutTypeSchema = z.enum(LayoutType);
+const MindmapStyleSchema = z.enum(MindmapStyle);
 
 export const ConnectorSchema = z
   .object({
@@ -64,7 +73,7 @@ export const ConnectorSchema = z
       textAlign: TextAlignSchema,
     }),
   })
-  .default({
+  .prefault({
     frontEndpointStyle: DEFAULT_FRONT_ENDPOINT_STYLE,
     rearEndpointStyle: DEFAULT_REAR_ENDPOINT_STYLE,
     stroke: DefaultTheme.connectorColor,
@@ -87,7 +96,7 @@ export const BrushSchema = z
     color: ColorSchema,
     lineWidth: LineWidthSchema,
   })
-  .default({
+  .prefault({
     color: DefaultTheme.black,
     lineWidth: LineWidth.Four,
   });
@@ -100,7 +109,7 @@ export const HighlighterSchema = z
       .int()
       .refine(value => HIGHLIGHTER_LINE_WIDTHS.includes(value)),
   })
-  .default({
+  .prefault({
     color: DefaultTheme.hightlighterColor,
     lineWidth: DEFAULT_HIGHLIGHTER_LINE_WIDTH,
   });
@@ -141,11 +150,11 @@ const ShapeObject = {
   roughness: z.number(),
 };
 
-export const ShapeSchema = z.object(ShapeObject).default(DEFAULT_SHAPE);
+export const ShapeSchema = z.object(ShapeObject).prefault(DEFAULT_SHAPE);
 
 export const RoundedShapeSchema = z
   .object(ShapeObject)
-  .default({ ...DEFAULT_SHAPE, radius: 0.1 });
+  .prefault({ ...DEFAULT_SHAPE, radius: 0.1 });
 
 export const TextSchema = z
   .object({
@@ -156,7 +165,7 @@ export const TextSchema = z
     fontStyle: FontStyleSchema,
     textAlign: TextAlignSchema,
   })
-  .default({
+  .prefault({
     color: DefaultTheme.textColor,
     fontSize: 24,
     fontFamily: FontFamily.Inter,
@@ -170,7 +179,7 @@ export const MindmapSchema = z
     layoutType: LayoutTypeSchema,
     style: MindmapStyleSchema,
   })
-  .default({
+  .prefault({
     layoutType: LayoutType.RIGHT,
     style: MindmapStyle.ONE,
   });
@@ -196,8 +205,8 @@ export const NodePropsSchema = z.object({
 export type NodeProps = z.infer<typeof NodePropsSchema>;
 
 export function makeDeepOptional(schema: ZodTypeAny): ZodTypeAny {
-  if (schema instanceof ZodDefault) {
-    return makeDeepOptional(schema._def.innerType);
+  if (schema instanceof ZodDefault || schema instanceof ZodPrefault) {
+    return makeDeepOptional(schema.def.innerType as ZodTypeAny);
   }
   if (schema instanceof ZodObject) {
     const shape = schema.shape;
@@ -207,16 +216,21 @@ export function makeDeepOptional(schema: ZodTypeAny): ZodTypeAny {
       })
     );
     return z.object(deepOptionalShape).optional();
-  } else if (schema instanceof ZodUnion) {
-    return schema.or(z.undefined());
   } else if (schema instanceof ZodIntersection) {
     return z.intersection(
-      makeDeepOptional(schema._def.left),
-      makeDeepOptional(schema._def.right)
+      makeDeepOptional(schema.def.left as ZodTypeAny),
+      makeDeepOptional(schema.def.right as ZodTypeAny)
     );
   } else {
+    // A union included: zod 3's `.or(z.undefined())` let the key be absent,
+    // zod 4 only lets an `.optional()` key be absent (ADR 0052).
     return schema.optional();
   }
+}
+
+/** The object behind a {@link makeDeepOptional} result, which is optional. */
+function deepOptionalShape(schema: ZodTypeAny): Record<string, ZodTypeAny> {
+  return (schema as ZodOptional<ZodObject>).unwrap().shape;
 }
 
 const OptionalNodePropsSchema = makeDeepOptional(NodePropsSchema);
@@ -231,7 +245,7 @@ export function pickStylePropsForKey<K extends keyof NodeProps>(
   key: K,
   props: Record<string, unknown>
 ): Partial<NodeProps[K]> | null {
-  const keySchema = OptionalNodePropsSchema._def.innerType.shape[key];
+  const keySchema = deepOptionalShape(OptionalNodePropsSchema)[key];
   const inner =
     keySchema instanceof ZodOptional ? keySchema.unwrap() : keySchema;
   if (!(inner instanceof ZodObject)) return null;

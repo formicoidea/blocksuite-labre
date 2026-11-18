@@ -1,0 +1,4611 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`zod format guard — block schemas and surface elements > every block schema validates and keeps its default props 1`] = `
+{
+  "affine:attachment": {
+    "props": {
+      "caption": undefined,
+      "comments": undefined,
+      "embed": false,
+      "footnoteIdentifier": null,
+      "hiddenForEveryone": undefined,
+      "index": "a0",
+      "layer": undefined,
+      "lockedBySelf": false,
+      "meta:createdAt": undefined,
+      "meta:createdBy": undefined,
+      "meta:updatedAt": undefined,
+      "meta:updatedBy": undefined,
+      "name": "",
+      "rotate": 0,
+      "size": 0,
+      "sourceId": undefined,
+      "style": "horizontalThin",
+      "type": "application/octet-stream",
+      "xywh": "[0,0,0,0]",
+    },
+    "valid": true,
+  },
+  "affine:bookmark": {
+    "props": {
+      "caption": null,
+      "comments": undefined,
+      "description": null,
+      "footnoteIdentifier": null,
+      "hiddenForEveryone": undefined,
+      "icon": null,
+      "image": null,
+      "index": "a0",
+      "layer": undefined,
+      "lockedBySelf": false,
+      "meta:createdAt": undefined,
+      "meta:createdBy": undefined,
+      "meta:updatedAt": undefined,
+      "meta:updatedBy": undefined,
+      "rotate": 0,
+      "style": "horizontal",
+      "title": null,
+      "url": "",
+      "xywh": "[0,0,0,0]",
+    },
+    "valid": true,
+  },
+  "affine:callout": {
+    "props": {
+      "emoji": "😀",
+      "meta:createdAt": undefined,
+      "meta:createdBy": undefined,
+      "meta:updatedAt": undefined,
+      "meta:updatedBy": undefined,
+      "text": {
+        "$text": {
+          "$yText": [],
+        },
+      },
+    },
+    "valid": true,
+  },
+  "affine:code": {
+    "props": {
+      "caption": "",
+      "collapsed": undefined,
+      "comments": undefined,
+      "language": null,
+      "lineNumber": undefined,
+      "meta:createdAt": undefined,
+      "meta:createdBy": undefined,
+      "meta:updatedAt": undefined,
+      "meta:updatedBy": undefined,
+      "preview": undefined,
+      "text": {
+        "$text": {
+          "$yText": [],
+        },
+      },
+      "wrap": false,
+    },
+    "valid": true,
+  },
+  "affine:data-view": {
+    "props": {
+      "cells": {},
+      "columns": [],
+      "title": "",
+      "views": [],
+    },
+    "valid": true,
+  },
+  "affine:database": {
+    "props": {
+      "cells": {},
+      "columns": [],
+      "comments": undefined,
+      "externalSourceId": undefined,
+      "title": {
+        "$text": {
+          "$yText": [],
+        },
+      },
+      "views": [],
+    },
+    "valid": true,
+  },
+  "affine:divider": {
+    "props": undefined,
+    "valid": true,
+  },
+  "affine:edgeless-text": {
+    "props": {
+      "color": {
+        "dark": "#ffffff",
+        "light": "#000000",
+      },
+      "comments": undefined,
+      "fontFamily": "blocksuite:surface:Inter",
+      "fontStyle": "normal",
+      "fontWeight": "400",
+      "hasMaxWidth": false,
+      "hiddenForEveryone": undefined,
+      "index": "a0",
+      "layer": undefined,
+      "lockedBySelf": false,
+      "rotate": 0,
+      "scale": 1,
+      "textAlign": "left",
+      "xywh": "[0,0,16,16]",
+    },
+    "valid": true,
+  },
+  "affine:embed-figma": {
+    "props": {
+      "caption": null,
+      "comments": undefined,
+      "description": null,
+      "hiddenForEveryone": undefined,
+      "index": "a0",
+      "layer": undefined,
+      "lockedBySelf": false,
+      "meta:createdAt": undefined,
+      "meta:createdBy": undefined,
+      "meta:updatedAt": undefined,
+      "meta:updatedBy": undefined,
+      "rotate": 0,
+      "style": "figma",
+      "title": null,
+      "url": "",
+      "xywh": "[0,0,0,0]",
+    },
+    "valid": true,
+  },
+  "affine:embed-github": {
+    "props": {
+      "assignees": null,
+      "caption": null,
+      "comments": undefined,
+      "createdAt": null,
+      "description": null,
+      "githubId": "",
+      "githubType": "issue",
+      "hiddenForEveryone": undefined,
+      "image": null,
+      "index": "a0",
+      "layer": undefined,
+      "lockedBySelf": false,
+      "meta:createdAt": undefined,
+      "meta:createdBy": undefined,
+      "meta:updatedAt": undefined,
+      "meta:updatedBy": undefined,
+      "owner": "",
+      "repo": "",
+      "rotate": 0,
+      "status": null,
+      "statusReason": null,
+      "style": "horizontal",
+      "title": null,
+      "url": "",
+      "xywh": "[0,0,0,0]",
+    },
+    "valid": true,
+  },
+  "affine:embed-html": {
+    "props": {
+      "caption": null,
+      "comments": undefined,
+      "design": undefined,
+      "hiddenForEveryone": undefined,
+      "html": undefined,
+      "index": "a0",
+      "layer": undefined,
+      "lockedBySelf": false,
+      "meta:createdAt": undefined,
+      "meta:createdBy": undefined,
+      "meta:updatedAt": undefined,
+      "meta:updatedBy": undefined,
+      "rotate": 0,
+      "style": "html",
+      "xywh": "[0,0,0,0]",
+    },
+    "valid": true,
+  },
+  "affine:embed-linked-doc": {
+    "props": {
+      "caption": null,
+      "comments": undefined,
+      "description": undefined,
+      "footnoteIdentifier": null,
+      "hiddenForEveryone": undefined,
+      "index": "a0",
+      "layer": undefined,
+      "lockedBySelf": false,
+      "meta:createdAt": undefined,
+      "meta:createdBy": undefined,
+      "meta:updatedAt": undefined,
+      "meta:updatedBy": undefined,
+      "pageId": "",
+      "rotate": 0,
+      "style": "horizontal",
+      "title": undefined,
+      "xywh": "[0,0,0,0]",
+    },
+    "valid": true,
+  },
+  "affine:embed-loom": {
+    "props": {
+      "caption": null,
+      "comments": undefined,
+      "description": null,
+      "hiddenForEveryone": undefined,
+      "image": null,
+      "index": "a0",
+      "layer": undefined,
+      "lockedBySelf": false,
+      "meta:createdAt": undefined,
+      "meta:createdBy": undefined,
+      "meta:updatedAt": undefined,
+      "meta:updatedBy": undefined,
+      "rotate": 0,
+      "style": "video",
+      "title": null,
+      "url": "",
+      "videoId": null,
+      "xywh": "[0,0,0,0]",
+    },
+    "valid": true,
+  },
+  "affine:embed-synced-doc": {
+    "props": {
+      "caption": undefined,
+      "comments": undefined,
+      "description": undefined,
+      "hiddenForEveryone": undefined,
+      "index": "a0",
+      "layer": undefined,
+      "lockedBySelf": undefined,
+      "meta:createdAt": undefined,
+      "meta:createdBy": undefined,
+      "meta:updatedAt": undefined,
+      "meta:updatedBy": undefined,
+      "pageId": "",
+      "preFoldHeight": undefined,
+      "rotate": 0,
+      "scale": undefined,
+      "style": "syncedDoc",
+      "title": undefined,
+      "xywh": "[0,0,800,100]",
+    },
+    "valid": true,
+  },
+  "affine:embed-youtube": {
+    "props": {
+      "caption": null,
+      "comments": undefined,
+      "creator": null,
+      "creatorImage": null,
+      "creatorUrl": null,
+      "description": null,
+      "hiddenForEveryone": undefined,
+      "image": null,
+      "index": "a0",
+      "layer": undefined,
+      "lockedBySelf": false,
+      "meta:createdAt": undefined,
+      "meta:createdBy": undefined,
+      "meta:updatedAt": undefined,
+      "meta:updatedBy": undefined,
+      "rotate": 0,
+      "style": "video",
+      "title": null,
+      "url": "",
+      "videoId": null,
+      "xywh": "[0,0,0,0]",
+    },
+    "valid": true,
+  },
+  "affine:frame": {
+    "props": {
+      "background": "transparent",
+      "childElementIds": {},
+      "comments": undefined,
+      "hiddenForEveryone": undefined,
+      "index": "a0",
+      "layer": undefined,
+      "lockedBySelf": false,
+      "presentationIndex": "<random>",
+      "title": {
+        "$text": {
+          "$yText": [],
+        },
+      },
+      "xywh": "[0,0,100,100]",
+    },
+    "valid": true,
+  },
+  "affine:image": {
+    "props": {
+      "caption": "",
+      "comments": undefined,
+      "crop": undefined,
+      "height": 0,
+      "hiddenForEveryone": undefined,
+      "index": "a0",
+      "layer": undefined,
+      "lockedBySelf": false,
+      "meta:createdAt": undefined,
+      "meta:createdBy": undefined,
+      "meta:updatedAt": undefined,
+      "meta:updatedBy": undefined,
+      "rotate": 0,
+      "size": -1,
+      "sourceId": "",
+      "width": 0,
+      "xywh": "[0,0,0,0]",
+    },
+    "valid": true,
+  },
+  "affine:latex": {
+    "props": {
+      "comments": undefined,
+      "hiddenForEveryone": undefined,
+      "index": "a0",
+      "latex": "",
+      "layer": undefined,
+      "lockedBySelf": false,
+      "rotate": 0,
+      "scale": 1,
+      "xywh": "[0,0,16,16]",
+    },
+    "valid": true,
+  },
+  "affine:list": {
+    "props": {
+      "checked": false,
+      "collapsed": false,
+      "comments": undefined,
+      "meta:createdAt": undefined,
+      "meta:createdBy": undefined,
+      "meta:updatedAt": undefined,
+      "meta:updatedBy": undefined,
+      "order": null,
+      "text": {
+        "$text": {
+          "$yText": [],
+        },
+      },
+      "type": "bulleted",
+    },
+    "valid": true,
+  },
+  "affine:note": {
+    "props": {
+      "background": {
+        "dark": "#252525",
+        "light": "#ffffff",
+      },
+      "comments": undefined,
+      "displayMode": "both",
+      "edgeless": {
+        "style": {
+          "borderRadius": 8,
+          "borderSize": 4,
+          "borderStyle": "none",
+          "shadowType": "--affine-note-shadow-box",
+        },
+      },
+      "hidden": false,
+      "hiddenForEveryone": undefined,
+      "index": "a0",
+      "layer": undefined,
+      "lockedBySelf": false,
+      "xywh": "[0,0,498,92]",
+    },
+    "valid": true,
+  },
+  "affine:page": {
+    "props": {
+      "title": {
+        "$text": {
+          "$yText": [],
+        },
+      },
+    },
+    "valid": true,
+  },
+  "affine:paragraph": {
+    "props": {
+      "collapsed": false,
+      "comments": undefined,
+      "meta:createdAt": undefined,
+      "meta:createdBy": undefined,
+      "meta:updatedAt": undefined,
+      "meta:updatedBy": undefined,
+      "text": {
+        "$text": {
+          "$yText": [],
+        },
+      },
+      "type": "text",
+    },
+    "valid": true,
+  },
+  "affine:surface": {
+    "props": {
+      "elements": {
+        "$boxed": undefined,
+      },
+      "layers": undefined,
+      "showGrid": undefined,
+    },
+    "valid": true,
+  },
+  "affine:surface-ref": {
+    "props": {
+      "caption": "",
+      "comments": undefined,
+      "refFlavour": "",
+      "reference": "",
+    },
+    "valid": true,
+  },
+  "affine:table": {
+    "props": {
+      "cells": {},
+      "columns": {},
+      "comments": undefined,
+      "headerColumn": undefined,
+      "headerRow": undefined,
+      "meta:createdAt": undefined,
+      "meta:createdBy": undefined,
+      "meta:updatedAt": undefined,
+      "meta:updatedBy": undefined,
+      "rows": {},
+    },
+    "valid": true,
+  },
+}
+`;
+
+exports[`zod format guard — block schemas and surface elements > every surface element type stores the same defaults 1`] = `
+{
+  "bpmnNode": {
+    "$yMap": {
+      "controlPoints": null,
+      "fillColor": "#fcd34d",
+      "filled": false,
+      "id": "<random>",
+      "index": "<random>",
+      "isClosed": true,
+      "kind": "task",
+      "maxWidth": false,
+      "padding": [
+        10,
+        20,
+      ],
+      "radius": 0,
+      "rotate": 0,
+      "roughness": 1.4,
+      "seed": "<random>",
+      "shadow": null,
+      "shapeStyle": "General",
+      "shapeType": "rect",
+      "smoothFlags": null,
+      "strokeColor": "#fcd34d",
+      "strokeStyle": "solid",
+      "strokeWidth": 4,
+      "textFitMode": "grow",
+      "textResizing": 1,
+      "type": "bpmnNode",
+      "vertices": null,
+      "xywh": "[0,0,100,100]",
+    },
+  },
+  "bpmnPool": {
+    "$yMap": {
+      "id": "<random>",
+      "index": "<random>",
+      "name": "Pool",
+      "resizeEnabled": true,
+      "rotate": 0,
+      "seed": "<random>",
+      "type": "bpmnPool",
+      "xywh": "[0,0,100,100]",
+    },
+  },
+  "brush": {
+    "$yMap": {
+      "color": {
+        "dark": "#ffffff",
+        "light": "#000000",
+      },
+      "id": "<random>",
+      "index": "<random>",
+      "lineWidth": 4,
+      "points": [],
+      "rotate": 0,
+      "seed": "<random>",
+      "type": "brush",
+      "xywh": "[0,0,100,100]",
+    },
+  },
+  "c4Board": {
+    "$yMap": {
+      "id": "<random>",
+      "index": "<random>",
+      "name": "C4 diagram",
+      "resizeEnabled": true,
+      "rotate": 0,
+      "seed": "<random>",
+      "type": "c4Board",
+      "xywh": "[0,0,100,100]",
+    },
+  },
+  "c4Boundary": {
+    "$yMap": {
+      "id": "<random>",
+      "index": "<random>",
+      "name": "Boundary",
+      "resizeEnabled": true,
+      "rotate": 0,
+      "seed": "<random>",
+      "type": "c4Boundary",
+      "xywh": "[0,0,100,100]",
+    },
+  },
+  "c4Node": {
+    "$yMap": {
+      "controlPoints": null,
+      "fillColor": "#fcd34d",
+      "filled": false,
+      "id": "<random>",
+      "index": "<random>",
+      "isClosed": true,
+      "kind": "system",
+      "maxWidth": false,
+      "padding": [
+        10,
+        20,
+      ],
+      "radius": 0,
+      "rotate": 0,
+      "roughness": 1.4,
+      "seed": "<random>",
+      "shadow": null,
+      "shapeStyle": "General",
+      "shapeType": "rect",
+      "smoothFlags": null,
+      "strokeColor": "#fcd34d",
+      "strokeStyle": "solid",
+      "strokeWidth": 4,
+      "textFitMode": "grow",
+      "textResizing": 1,
+      "type": "c4Node",
+      "vertices": null,
+      "xywh": "[0,0,100,100]",
+    },
+  },
+  "connector": {
+    "$yMap": {
+      "curveControlPoint": null,
+      "id": "<random>",
+      "index": "<random>",
+      "mode": 2,
+      "roughness": 1.4,
+      "seed": "<random>",
+      "source": {
+        "position": [
+          0,
+          0,
+        ],
+      },
+      "stroke": "#929292",
+      "strokeStyle": "solid",
+      "strokeWidth": 4,
+      "target": {
+        "position": [
+          0,
+          0,
+        ],
+      },
+      "type": "connector",
+    },
+  },
+  "contextMap": {
+    "$yMap": {
+      "id": "<random>",
+      "index": "<random>",
+      "resizeEnabled": true,
+      "rotate": 0,
+      "seed": "<random>",
+      "type": "contextMap",
+      "xywh": "[0,0,100,100]",
+    },
+  },
+  "coreDomain": {
+    "$yMap": {
+      "id": "<random>",
+      "index": "<random>",
+      "resizeEnabled": true,
+      "rotate": 0,
+      "seed": "<random>",
+      "showLabels": true,
+      "showZones": true,
+      "type": "coreDomain",
+      "variant": "classic",
+      "xywh": "[0,0,100,100]",
+    },
+  },
+  "cynefin": {
+    "$yMap": {
+      "id": "<random>",
+      "index": "<random>",
+      "resizeEnabled": true,
+      "rotate": 0,
+      "seed": "<random>",
+      "showDescriptions": true,
+      "showLiminalLine": true,
+      "showTitles": true,
+      "type": "cynefin",
+      "xywh": "[0,0,100,100]",
+    },
+  },
+  "edgy": {
+    "$yMap": {
+      "architectureLabel": "Architecture",
+      "cropToCircles": false,
+      "experienceLabel": "Experience",
+      "id": "<random>",
+      "identityLabel": "Identity",
+      "index": "<random>",
+      "resizeEnabled": true,
+      "rotate": 0,
+      "seed": "<random>",
+      "showLabels": true,
+      "showPictos": true,
+      "spotlightEnabled": true,
+      "type": "edgy",
+      "xywh": "[0,0,100,100]",
+    },
+  },
+  "edgyBoard": {
+    "$yMap": {
+      "id": "<random>",
+      "index": "<random>",
+      "resizeEnabled": true,
+      "rotate": 0,
+      "seed": "<random>",
+      "spotlightEnabled": true,
+      "type": "edgyBoard",
+      "xywh": "[0,0,100,100]",
+    },
+  },
+  "edgyNode": {
+    "$yMap": {
+      "controlPoints": null,
+      "fillColor": "#fcd34d",
+      "filled": false,
+      "id": "<random>",
+      "index": "<random>",
+      "isClosed": true,
+      "kind": "outcome",
+      "maxWidth": false,
+      "padding": [
+        10,
+        20,
+      ],
+      "radius": 0,
+      "rotate": 0,
+      "roughness": 1.4,
+      "seed": "<random>",
+      "shadow": null,
+      "shapeStyle": "General",
+      "shapeType": "rect",
+      "smoothFlags": null,
+      "strokeColor": "#fcd34d",
+      "strokeStyle": "solid",
+      "strokeWidth": 4,
+      "textFitMode": "grow",
+      "textResizing": 1,
+      "type": "edgyNode",
+      "vertices": null,
+      "xywh": "[0,0,100,100]",
+    },
+  },
+  "estuarine": {
+    "$yMap": {
+      "id": "<random>",
+      "index": "<random>",
+      "resizeEnabled": true,
+      "rotate": 0,
+      "seed": "<random>",
+      "showAxisLabels": true,
+      "showCounterfactual": true,
+      "showLiminal": true,
+      "showVolatile": true,
+      "type": "estuarine",
+      "xywh": "[0,0,100,100]",
+    },
+  },
+  "eventStorming": {
+    "$yMap": {
+      "id": "<random>",
+      "index": "<random>",
+      "resizeEnabled": true,
+      "rotate": 0,
+      "seed": "<random>",
+      "type": "eventStorming",
+      "xywh": "[0,0,100,100]",
+    },
+  },
+  "group": {
+    "$yMap": {
+      "children": {
+        "$yMap": {},
+      },
+      "id": "<random>",
+      "index": "<random>",
+      "seed": "<random>",
+      "title": {
+        "$yText": [],
+      },
+      "type": "group",
+    },
+  },
+  "highlighter": {
+    "$yMap": {
+      "color": "#84cfff4d",
+      "id": "<random>",
+      "index": "<random>",
+      "lineWidth": 22,
+      "points": [],
+      "rotate": 0,
+      "seed": "<random>",
+      "type": "highlighter",
+      "xywh": "[0,0,100,100]",
+    },
+  },
+  "mindmap": {
+    "$yMap": {
+      "children": {
+        "$yMap": {},
+      },
+      "id": "<random>",
+      "index": "<random>",
+      "layoutType": 0,
+      "seed": "<random>",
+      "style": 1,
+      "type": "mindmap",
+    },
+  },
+  "mindmap (malformed)": "accepted",
+  "mindmap (tree)": 3,
+  "shape": {
+    "$yMap": {
+      "controlPoints": null,
+      "fillColor": "#fcd34d",
+      "filled": false,
+      "id": "<random>",
+      "index": "<random>",
+      "isClosed": true,
+      "maxWidth": false,
+      "padding": [
+        10,
+        20,
+      ],
+      "radius": 0,
+      "rotate": 0,
+      "roughness": 1.4,
+      "seed": "<random>",
+      "shadow": null,
+      "shapeStyle": "General",
+      "shapeType": "rect",
+      "smoothFlags": null,
+      "strokeColor": "#fcd34d",
+      "strokeStyle": "solid",
+      "strokeWidth": 4,
+      "textFitMode": "grow",
+      "textResizing": 1,
+      "type": "shape",
+      "vertices": null,
+      "xywh": "[0,0,100,100]",
+    },
+  },
+  "text": {
+    "$yMap": {
+      "color": {
+        "dark": "#ffffff",
+        "light": "#000000",
+      },
+      "fontFamily": "blocksuite:surface:Inter",
+      "fontSize": 16,
+      "fontStyle": "normal",
+      "fontWeight": "400",
+      "hasMaxWidth": false,
+      "id": "<random>",
+      "index": "<random>",
+      "rotate": 0,
+      "seed": "<random>",
+      "text": {
+        "$yText": [],
+      },
+      "textAlign": "center",
+      "type": "text",
+      "xywh": "[0,0,100,100]",
+    },
+  },
+  "umlDiagram": {
+    "$yMap": {
+      "id": "<random>",
+      "index": "<random>",
+      "kind": "class",
+      "name": "Diagram",
+      "resizeEnabled": true,
+      "rotate": 0,
+      "seed": "<random>",
+      "type": "umlDiagram",
+      "xywh": "[0,0,100,100]",
+    },
+  },
+  "umlFragment": {
+    "$yMap": {
+      "id": "<random>",
+      "index": "<random>",
+      "name": "",
+      "operator": "alt",
+      "resizeEnabled": true,
+      "rotate": 0,
+      "seed": "<random>",
+      "type": "umlFragment",
+      "xywh": "[0,0,100,100]",
+    },
+  },
+  "umlNode": {
+    "$yMap": {
+      "controlPoints": null,
+      "fillColor": "#fcd34d",
+      "filled": false,
+      "id": "<random>",
+      "index": "<random>",
+      "isClosed": true,
+      "kind": "class",
+      "maxWidth": false,
+      "padding": [
+        10,
+        20,
+      ],
+      "radius": 0,
+      "rotate": 0,
+      "roughness": 1.4,
+      "seed": "<random>",
+      "shadow": null,
+      "shapeStyle": "General",
+      "shapeType": "rect",
+      "smoothFlags": null,
+      "strokeColor": "#fcd34d",
+      "strokeStyle": "solid",
+      "strokeWidth": 4,
+      "textFitMode": "grow",
+      "textResizing": 1,
+      "type": "umlNode",
+      "vertices": null,
+      "xywh": "[0,0,100,100]",
+    },
+  },
+  "umlPartition": {
+    "$yMap": {
+      "id": "<random>",
+      "index": "<random>",
+      "name": "Partition",
+      "orientation": "vertical",
+      "resizeEnabled": true,
+      "rotate": 0,
+      "seed": "<random>",
+      "type": "umlPartition",
+      "xywh": "[0,0,100,100]",
+    },
+  },
+  "umlRegion": {
+    "$yMap": {
+      "id": "<random>",
+      "index": "<random>",
+      "name": "State",
+      "resizeEnabled": true,
+      "rotate": 0,
+      "seed": "<random>",
+      "type": "umlRegion",
+      "xywh": "[0,0,100,100]",
+    },
+  },
+  "umlSubject": {
+    "$yMap": {
+      "id": "<random>",
+      "index": "<random>",
+      "name": "Subject",
+      "resizeEnabled": true,
+      "rotate": 0,
+      "seed": "<random>",
+      "type": "umlSubject",
+      "xywh": "[0,0,100,100]",
+    },
+  },
+  "wardley": {
+    "$yMap": {
+      "banded": false,
+      "id": "<random>",
+      "index": "<random>",
+      "resizeEnabled": false,
+      "rotate": 0,
+      "seed": "<random>",
+      "showColumnDividers": true,
+      "showColumnLabels": true,
+      "showCornerLabels": true,
+      "showGradient": true,
+      "showVisibilityLabels": true,
+      "showXAxis": true,
+      "showYAxis": true,
+      "type": "wardley",
+      "variant": "classic",
+      "xywh": "[0,0,100,100]",
+    },
+  },
+  "wardleyNode": {
+    "$yMap": {
+      "controlPoints": null,
+      "fillColor": "#fcd34d",
+      "filled": false,
+      "id": "<random>",
+      "index": "<random>",
+      "isClosed": true,
+      "kind": "component",
+      "maxWidth": false,
+      "padding": [
+        10,
+        20,
+      ],
+      "radius": 0,
+      "rotate": 0,
+      "roughness": 1.4,
+      "seed": "<random>",
+      "shadow": null,
+      "shapeStyle": "General",
+      "shapeType": "rect",
+      "smoothFlags": null,
+      "strokeColor": "#fcd34d",
+      "strokeStyle": "solid",
+      "strokeWidth": 4,
+      "textFitMode": "grow",
+      "textResizing": 1,
+      "type": "wardleyNode",
+      "vertices": null,
+      "xywh": "[0,0,100,100]",
+    },
+  },
+}
+`;
+
+exports[`zod format guard — database values read back > rawValue, jsonValue and propertyData of every column type 1`] = `
+{
+  "checkboxColumnConfig": {
+    "jsonValue": {
+      "empty": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "empty array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "false": {
+        "data": false,
+        "success": true,
+      },
+      "infinity": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "minus infinity": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "negative": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "not a number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "null": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "number array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "object": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "text": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "true": {
+        "data": true,
+        "success": true,
+      },
+      "undefined": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "zero": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+    },
+    "propertyData": {
+      "decimal": {
+        "data": {},
+        "success": true,
+      },
+      "default": {
+        "data": {},
+        "success": true,
+      },
+      "empty": {
+        "data": {},
+        "success": true,
+      },
+      "options": {
+        "data": {},
+        "success": true,
+      },
+    },
+    "rawValue": {
+      "empty": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "empty array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "false": {
+        "data": false,
+        "success": true,
+      },
+      "infinity": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "minus infinity": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "negative": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "not a number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "null": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "number array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "object": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "text": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "true": {
+        "data": true,
+        "success": true,
+      },
+      "undefined": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "zero": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+    },
+  },
+  "createdTimeColumnConfig": {
+    "jsonValue": {
+      "empty": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "empty array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "false": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "infinity": {
+        "data": Infinity,
+        "success": true,
+      },
+      "minus infinity": {
+        "data": -Infinity,
+        "success": true,
+      },
+      "negative": {
+        "data": -1,
+        "success": true,
+      },
+      "not a number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "null": {
+        "data": null,
+        "success": true,
+      },
+      "number": {
+        "data": 0.5,
+        "success": true,
+      },
+      "number array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "object": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "text": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "true": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "undefined": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "zero": {
+        "data": 0,
+        "success": true,
+      },
+    },
+    "propertyData": {
+      "decimal": {
+        "data": {},
+        "success": true,
+      },
+      "default": {
+        "data": {},
+        "success": true,
+      },
+      "empty": {
+        "data": {},
+        "success": true,
+      },
+      "options": {
+        "data": {},
+        "success": true,
+      },
+    },
+    "rawValue": {
+      "empty": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "empty array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "false": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "infinity": {
+        "data": Infinity,
+        "success": true,
+      },
+      "minus infinity": {
+        "data": -Infinity,
+        "success": true,
+      },
+      "negative": {
+        "data": -1,
+        "success": true,
+      },
+      "not a number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "null": {
+        "data": null,
+        "success": true,
+      },
+      "number": {
+        "data": 0.5,
+        "success": true,
+      },
+      "number array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "object": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "text": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "true": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "undefined": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "zero": {
+        "data": 0,
+        "success": true,
+      },
+    },
+  },
+  "dateColumnConfig": {
+    "jsonValue": {
+      "empty": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "empty array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "false": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "infinity": {
+        "data": Infinity,
+        "success": true,
+      },
+      "minus infinity": {
+        "data": -Infinity,
+        "success": true,
+      },
+      "negative": {
+        "data": -1,
+        "success": true,
+      },
+      "not a number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "null": {
+        "data": null,
+        "success": true,
+      },
+      "number": {
+        "data": 0.5,
+        "success": true,
+      },
+      "number array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "object": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "text": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "true": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "undefined": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "zero": {
+        "data": 0,
+        "success": true,
+      },
+    },
+    "propertyData": {
+      "decimal": {
+        "data": {},
+        "success": true,
+      },
+      "default": {
+        "data": {},
+        "success": true,
+      },
+      "empty": {
+        "data": {},
+        "success": true,
+      },
+      "options": {
+        "data": {},
+        "success": true,
+      },
+    },
+    "rawValue": {
+      "empty": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "empty array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "false": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "infinity": {
+        "data": Infinity,
+        "success": true,
+      },
+      "minus infinity": {
+        "data": -Infinity,
+        "success": true,
+      },
+      "negative": {
+        "data": -1,
+        "success": true,
+      },
+      "not a number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "null": {
+        "data": null,
+        "success": true,
+      },
+      "number": {
+        "data": 0.5,
+        "success": true,
+      },
+      "number array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "object": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "text": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "true": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "undefined": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "zero": {
+        "data": 0,
+        "success": true,
+      },
+    },
+  },
+  "imageColumnConfig": {
+    "jsonValue": {
+      "empty": {
+        "data": "",
+        "success": true,
+      },
+      "empty array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "false": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "infinity": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "minus infinity": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "negative": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "not a number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "null": {
+        "data": null,
+        "success": true,
+      },
+      "number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "number array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "object": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string": {
+        "data": "text",
+        "success": true,
+      },
+      "string array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "text": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "true": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "undefined": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "zero": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+    },
+    "propertyData": {
+      "decimal": {
+        "data": {},
+        "success": true,
+      },
+      "default": {
+        "data": {},
+        "success": true,
+      },
+      "empty": {
+        "data": {},
+        "success": true,
+      },
+      "options": {
+        "data": {},
+        "success": true,
+      },
+    },
+    "rawValue": {
+      "empty": {
+        "data": "",
+        "success": true,
+      },
+      "empty array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "false": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "infinity": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "minus infinity": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "negative": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "not a number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "null": {
+        "data": null,
+        "success": true,
+      },
+      "number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "number array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "object": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string": {
+        "data": "text",
+        "success": true,
+      },
+      "string array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "text": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "true": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "undefined": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "zero": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+    },
+  },
+  "linkColumnConfig": {
+    "jsonValue": {
+      "empty": {
+        "data": "",
+        "success": true,
+      },
+      "empty array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "false": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "infinity": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "minus infinity": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "negative": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "not a number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "null": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "number array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "object": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string": {
+        "data": "text",
+        "success": true,
+      },
+      "string array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "text": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "true": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "undefined": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "zero": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+    },
+    "propertyData": {
+      "decimal": {
+        "data": {},
+        "success": true,
+      },
+      "default": {
+        "data": {},
+        "success": true,
+      },
+      "empty": {
+        "data": {},
+        "success": true,
+      },
+      "options": {
+        "data": {},
+        "success": true,
+      },
+    },
+    "rawValue": {
+      "empty": {
+        "data": "",
+        "success": true,
+      },
+      "empty array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "false": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "infinity": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "minus infinity": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "negative": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "not a number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "null": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "number array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "object": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string": {
+        "data": "text",
+        "success": true,
+      },
+      "string array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "text": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "true": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "undefined": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "zero": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+    },
+  },
+  "multiSelectColumnConfig": {
+    "jsonValue": {
+      "empty": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "empty array": {
+        "data": [],
+        "success": true,
+      },
+      "false": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "infinity": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "minus infinity": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "negative": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "not a number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "null": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "number array": {
+        "paths": [
+          "0",
+        ],
+        "success": false,
+      },
+      "object": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string array": {
+        "data": [
+          "a",
+          "b",
+        ],
+        "success": true,
+      },
+      "text": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "true": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "undefined": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "zero": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+    },
+    "propertyData": {
+      "decimal": {
+        "paths": [
+          "options",
+        ],
+        "success": false,
+      },
+      "default": {
+        "data": {
+          "options": [],
+        },
+        "success": true,
+      },
+      "empty": {
+        "paths": [
+          "options",
+        ],
+        "success": false,
+      },
+      "options": {
+        "data": {
+          "options": [
+            {
+              "color": "c",
+              "id": "o",
+              "value": "v",
+            },
+          ],
+        },
+        "success": true,
+      },
+    },
+    "rawValue": {
+      "empty": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "empty array": {
+        "data": [],
+        "success": true,
+      },
+      "false": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "infinity": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "minus infinity": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "negative": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "not a number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "null": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "number array": {
+        "paths": [
+          "0",
+        ],
+        "success": false,
+      },
+      "object": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string array": {
+        "data": [
+          "a",
+          "b",
+        ],
+        "success": true,
+      },
+      "text": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "true": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "undefined": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "zero": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+    },
+  },
+  "numberColumnConfig": {
+    "jsonValue": {
+      "empty": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "empty array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "false": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "infinity": {
+        "data": Infinity,
+        "success": true,
+      },
+      "minus infinity": {
+        "data": -Infinity,
+        "success": true,
+      },
+      "negative": {
+        "data": -1,
+        "success": true,
+      },
+      "not a number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "null": {
+        "data": null,
+        "success": true,
+      },
+      "number": {
+        "data": 0.5,
+        "success": true,
+      },
+      "number array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "object": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "text": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "true": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "undefined": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "zero": {
+        "data": 0,
+        "success": true,
+      },
+    },
+    "propertyData": {
+      "decimal": {
+        "data": {
+          "decimal": 2,
+          "format": "percent",
+        },
+        "success": true,
+      },
+      "default": {
+        "data": {
+          "decimal": 0,
+          "format": "number",
+        },
+        "success": true,
+      },
+      "empty": {
+        "paths": [
+          "format",
+        ],
+        "success": false,
+      },
+      "options": {
+        "paths": [
+          "format",
+        ],
+        "success": false,
+      },
+    },
+    "rawValue": {
+      "empty": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "empty array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "false": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "infinity": {
+        "data": Infinity,
+        "success": true,
+      },
+      "minus infinity": {
+        "data": -Infinity,
+        "success": true,
+      },
+      "negative": {
+        "data": -1,
+        "success": true,
+      },
+      "not a number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "null": {
+        "data": null,
+        "success": true,
+      },
+      "number": {
+        "data": 0.5,
+        "success": true,
+      },
+      "number array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "object": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "text": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "true": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "undefined": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "zero": {
+        "data": 0,
+        "success": true,
+      },
+    },
+  },
+  "progressColumnConfig": {
+    "jsonValue": {
+      "empty": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "empty array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "false": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "infinity": {
+        "data": Infinity,
+        "success": true,
+      },
+      "minus infinity": {
+        "data": -Infinity,
+        "success": true,
+      },
+      "negative": {
+        "data": -1,
+        "success": true,
+      },
+      "not a number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "null": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "number": {
+        "data": 0.5,
+        "success": true,
+      },
+      "number array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "object": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "text": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "true": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "undefined": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "zero": {
+        "data": 0,
+        "success": true,
+      },
+    },
+    "propertyData": {
+      "decimal": {
+        "data": {},
+        "success": true,
+      },
+      "default": {
+        "data": {},
+        "success": true,
+      },
+      "empty": {
+        "data": {},
+        "success": true,
+      },
+      "options": {
+        "data": {},
+        "success": true,
+      },
+    },
+    "rawValue": {
+      "empty": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "empty array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "false": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "infinity": {
+        "data": Infinity,
+        "success": true,
+      },
+      "minus infinity": {
+        "data": -Infinity,
+        "success": true,
+      },
+      "negative": {
+        "data": -1,
+        "success": true,
+      },
+      "not a number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "null": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "number": {
+        "data": 0.5,
+        "success": true,
+      },
+      "number array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "object": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "text": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "true": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "undefined": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "zero": {
+        "data": 0,
+        "success": true,
+      },
+    },
+  },
+  "richTextColumnConfig": {
+    "jsonValue": {
+      "empty": {
+        "data": "",
+        "success": true,
+      },
+      "empty array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "false": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "infinity": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "minus infinity": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "negative": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "not a number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "null": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "number array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "object": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string": {
+        "data": "text",
+        "success": true,
+      },
+      "string array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "text": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "true": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "undefined": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "zero": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+    },
+    "propertyData": {
+      "decimal": {
+        "data": {},
+        "success": true,
+      },
+      "default": {
+        "data": {},
+        "success": true,
+      },
+      "empty": {
+        "data": {},
+        "success": true,
+      },
+      "options": {
+        "data": {},
+        "success": true,
+      },
+    },
+    "rawValue": {
+      "empty": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "empty array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "false": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "infinity": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "minus infinity": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "negative": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "not a number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "null": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "number array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "object": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "text": {
+        "data": {
+          "$text": {
+            "$yText": [
+              {
+                "insert": "t",
+              },
+            ],
+          },
+        },
+        "success": true,
+      },
+      "true": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "undefined": {
+        "data": undefined,
+        "success": true,
+      },
+      "zero": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+    },
+  },
+  "selectColumnConfig": {
+    "jsonValue": {
+      "empty": {
+        "data": "",
+        "success": true,
+      },
+      "empty array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "false": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "infinity": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "minus infinity": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "negative": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "not a number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "null": {
+        "data": null,
+        "success": true,
+      },
+      "number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "number array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "object": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string": {
+        "data": "text",
+        "success": true,
+      },
+      "string array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "text": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "true": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "undefined": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "zero": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+    },
+    "propertyData": {
+      "decimal": {
+        "paths": [
+          "options",
+        ],
+        "success": false,
+      },
+      "default": {
+        "data": {
+          "options": [],
+        },
+        "success": true,
+      },
+      "empty": {
+        "paths": [
+          "options",
+        ],
+        "success": false,
+      },
+      "options": {
+        "data": {
+          "options": [
+            {
+              "color": "c",
+              "id": "o",
+              "value": "v",
+            },
+          ],
+        },
+        "success": true,
+      },
+    },
+    "rawValue": {
+      "empty": {
+        "data": "",
+        "success": true,
+      },
+      "empty array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "false": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "infinity": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "minus infinity": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "negative": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "not a number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "null": {
+        "data": null,
+        "success": true,
+      },
+      "number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "number array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "object": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string": {
+        "data": "text",
+        "success": true,
+      },
+      "string array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "text": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "true": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "undefined": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "zero": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+    },
+  },
+  "titleColumnConfig": {
+    "jsonValue": {
+      "empty": {
+        "data": "",
+        "success": true,
+      },
+      "empty array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "false": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "infinity": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "minus infinity": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "negative": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "not a number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "null": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "number array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "object": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string": {
+        "data": "text",
+        "success": true,
+      },
+      "string array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "text": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "true": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "undefined": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "zero": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+    },
+    "propertyData": {
+      "decimal": {
+        "data": {},
+        "success": true,
+      },
+      "default": {
+        "data": {},
+        "success": true,
+      },
+      "empty": {
+        "data": {},
+        "success": true,
+      },
+      "options": {
+        "data": {},
+        "success": true,
+      },
+    },
+    "rawValue": {
+      "empty": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "empty array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "false": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "infinity": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "minus infinity": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "negative": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "not a number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "null": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "number": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "number array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "object": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "string array": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "text": {
+        "data": {
+          "$text": {
+            "$yText": [
+              {
+                "insert": "t",
+              },
+            ],
+          },
+        },
+        "success": true,
+      },
+      "true": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+      "undefined": {
+        "data": undefined,
+        "success": true,
+      },
+      "zero": {
+        "paths": [
+          "",
+        ],
+        "success": false,
+      },
+    },
+  },
+}
+`;
+
+exports[`zod format guard — inline delta attributes > the default inline manager schema, as a paragraph normalises 1`] = `
+{
+  "comment": {
+    "data": {
+      "comment-abc": true,
+      "comment-def": null,
+    },
+    "success": true,
+  },
+  "empty": {
+    "data": {},
+    "success": true,
+  },
+  "footnote": {
+    "data": {
+      "footnote": {
+        "label": "1",
+        "reference": {
+          "type": "url",
+          "url": "u",
+        },
+      },
+    },
+    "success": true,
+  },
+  "latex": {
+    "data": {
+      "latex": "x^2",
+    },
+    "success": true,
+  },
+  "link": {
+    "data": {
+      "link": "https://example.com",
+    },
+    "success": true,
+  },
+  "marks": {
+    "data": {
+      "background": "var(--x)",
+      "bold": true,
+      "code": true,
+      "color": "red",
+      "italic": true,
+      "overline": true,
+      "strike": true,
+      "underline": true,
+    },
+    "success": true,
+  },
+  "mention": {
+    "data": {
+      "mention": {
+        "member": "m",
+        "notification": "n",
+      },
+    },
+    "success": true,
+  },
+  "not an object": {
+    "paths": [
+      "",
+    ],
+    "success": false,
+  },
+  "nulls clear": {
+    "data": {
+      "bold": null,
+      "color": null,
+      "link": null,
+    },
+    "success": true,
+  },
+  "reference": {
+    "data": {
+      "reference": {
+        "pageId": "p",
+        "params": {
+          "blockIds": [
+            "b",
+          ],
+          "elementIds": [],
+          "mode": "page",
+        },
+        "title": "T",
+        "type": "LinkedPage",
+      },
+    },
+    "success": true,
+  },
+  "reference, bad type": {
+    "data": {
+      "reference": undefined,
+    },
+    "success": true,
+  },
+  "reference, deprecated type": {
+    "data": {
+      "reference": {
+        "pageId": "p",
+        "type": "Subpage",
+      },
+    },
+    "success": true,
+  },
+  "unknown keys": {
+    "data": {},
+    "success": true,
+  },
+  "wrong values are caught": {
+    "data": {
+      "bold": undefined,
+      "color": undefined,
+      "latex": undefined,
+      "link": undefined,
+    },
+    "success": true,
+  },
+}
+`;
+
+exports[`zod format guard — model schemas > colour, reference and footnote 1`] = `
+{
+  "color": {
+    "dark/light": {
+      "data": {
+        "dark": "#000",
+        "light": "#fff",
+      },
+      "success": true,
+    },
+    "normal": {
+      "data": {
+        "normal": "#000",
+      },
+      "success": true,
+    },
+    "number": {
+      "paths": [
+        "",
+      ],
+      "success": false,
+    },
+    "partial dark/light": {
+      "paths": [
+        "",
+      ],
+      "success": false,
+    },
+    "string": {
+      "data": "#fff",
+      "success": true,
+    },
+  },
+  "footnote": {
+    "bad type": {
+      "paths": [
+        "reference.type",
+      ],
+      "success": false,
+    },
+    "doc": {
+      "data": {
+        "label": "1",
+        "reference": {
+          "docId": "d",
+          "type": "doc",
+        },
+      },
+      "success": true,
+    },
+    "url": {
+      "data": {
+        "label": "2",
+        "reference": {
+          "title": "X",
+          "type": "url",
+          "url": "https://x.y",
+        },
+      },
+      "success": true,
+    },
+  },
+  "reference": {
+    "bad mode": {
+      "paths": [
+        "params.mode",
+      ],
+      "success": false,
+    },
+    "minimal": {
+      "data": {
+        "pageId": "p",
+      },
+      "success": true,
+    },
+    "params": {
+      "data": {
+        "description": "D",
+        "pageId": "p",
+        "params": {
+          "blockIds": [
+            "b",
+          ],
+          "elementIds": [],
+          "mode": "edgeless",
+        },
+        "title": "T",
+      },
+      "success": true,
+    },
+  },
+}
+`;
+
+exports[`zod format guard — model schemas > the gfx block style defaults (note, frame, edgeless text) 1`] = `
+{
+  "edgeless-text": {
+    "data": {
+      "color": {
+        "dark": "#ffffff",
+        "light": "#000000",
+      },
+      "fontFamily": "blocksuite:surface:Inter",
+      "fontStyle": "normal",
+      "fontWeight": "400",
+      "textAlign": "left",
+    },
+    "success": true,
+  },
+  "frame": {
+    "data": {
+      "background": "transparent",
+    },
+    "success": true,
+  },
+  "frame, own value": {
+    "data": {
+      "background": {
+        "normal": "#000",
+      },
+    },
+    "success": true,
+  },
+  "note": {
+    "data": {
+      "background": {
+        "dark": "#252525",
+        "light": "#ffffff",
+      },
+      "displayMode": "edgeless",
+      "edgeless": {
+        "style": {
+          "borderRadius": 8,
+          "borderSize": 4,
+          "borderStyle": "none",
+          "shadowType": "--affine-note-shadow-box",
+        },
+      },
+    },
+    "success": true,
+  },
+  "note, partial": {
+    "paths": [
+      "displayMode",
+      "edgeless",
+    ],
+    "success": false,
+  },
+}
+`;
+
+exports[`zod format guard — the agent manifest parameter contract > every described command parameter 1`] = `
+{
+  "canvas.attachment.replace": [
+    {
+      "key": "elementId",
+      "kind": "string",
+      "required": false,
+    },
+  ],
+  "canvas.element.lock": [
+    {
+      "key": "ids",
+      "kind": "string[]",
+      "required": false,
+    },
+  ],
+  "canvas.element.reorder": [
+    {
+      "key": "id",
+      "kind": "string",
+      "required": false,
+    },
+    {
+      "key": "ids",
+      "kind": "string[]",
+      "required": false,
+    },
+    {
+      "key": "above",
+      "kind": "string",
+      "nullable": true,
+      "required": true,
+    },
+  ],
+  "canvas.element.unlock": [
+    {
+      "key": "ids",
+      "kind": "string[]",
+      "required": false,
+    },
+  ],
+  "canvas.frame.rename": [
+    {
+      "key": "id",
+      "kind": "string",
+      "required": true,
+    },
+    {
+      "key": "title",
+      "kind": "string",
+      "required": true,
+    },
+  ],
+  "canvas.frame.reorder": [
+    {
+      "key": "ids",
+      "kind": "string[]",
+      "required": true,
+    },
+    {
+      "key": "before",
+      "kind": "string",
+      "nullable": true,
+      "required": true,
+    },
+  ],
+  "canvas.group.rename": [
+    {
+      "key": "id",
+      "kind": "string",
+      "required": true,
+    },
+    {
+      "key": "title",
+      "kind": "string",
+      "required": true,
+    },
+  ],
+  "canvas.image.replaceWithImage": [
+    {
+      "key": "elementId",
+      "kind": "string",
+      "required": false,
+    },
+  ],
+  "canvas.layer.create": [
+    {
+      "key": "name",
+      "kind": "string",
+      "required": false,
+    },
+  ],
+  "canvas.layer.delete": [
+    {
+      "key": "id",
+      "kind": "string",
+      "required": true,
+    },
+  ],
+  "canvas.layer.moveElements": [
+    {
+      "key": "ids",
+      "kind": "string[]",
+      "required": false,
+    },
+    {
+      "key": "layerId",
+      "kind": "string",
+      "required": true,
+    },
+  ],
+  "canvas.layer.rename": [
+    {
+      "key": "id",
+      "kind": "string",
+      "required": true,
+    },
+    {
+      "key": "name",
+      "kind": "string",
+      "required": true,
+    },
+  ],
+  "canvas.layer.reorder": [
+    {
+      "key": "id",
+      "kind": "string",
+      "required": true,
+    },
+    {
+      "key": "above",
+      "kind": "string",
+      "nullable": true,
+      "required": true,
+    },
+  ],
+  "canvas.shape.replaceWithImage": [
+    {
+      "key": "elementId",
+      "kind": "string",
+      "required": false,
+    },
+  ],
+  "canvas.visibility.hideForEveryone": [
+    {
+      "key": "ids",
+      "kind": "string[]",
+      "required": false,
+    },
+    {
+      "key": "layerIds",
+      "kind": "string[]",
+      "required": false,
+    },
+    {
+      "key": "hidden",
+      "kind": "boolean",
+      "required": false,
+    },
+  ],
+  "canvas.visibility.hideLocal": [
+    {
+      "key": "ids",
+      "kind": "string[]",
+      "required": false,
+    },
+    {
+      "key": "layerIds",
+      "kind": "string[]",
+      "required": false,
+    },
+    {
+      "key": "hidden",
+      "kind": "boolean",
+      "required": false,
+    },
+  ],
+  "edge.invert-direction": [
+    {
+      "key": "elementIds",
+      "kind": "string[]",
+      "required": false,
+    },
+  ],
+  "element.read": [
+    {
+      "key": "elementId",
+      "kind": "string",
+      "required": false,
+    },
+  ],
+  "map.audit": [
+    {
+      "key": "criterionIds",
+      "kind": "string[]",
+      "required": false,
+    },
+  ],
+  "pivot.bind": [
+    {
+      "key": "pivotDocId",
+      "kind": "string",
+      "nullable": true,
+      "required": true,
+    },
+    {
+      "key": "elementIds",
+      "kind": "string[]",
+      "required": false,
+    },
+  ],
+  "tag.set": [
+    {
+      "key": "tag",
+      "kind": "string",
+      "required": true,
+    },
+    {
+      "key": "values",
+      "kind": "string[]",
+      "required": true,
+    },
+    {
+      "key": "elementIds",
+      "kind": "string[]",
+      "required": false,
+    },
+  ],
+}
+`;
+
+exports[`zod format guard — the style a new element is created with > NodePropsSchema fills every default from nothing 1`] = `
+{
+  "affine:edgeless-text": {
+    "data": {
+      "color": {
+        "dark": "#ffffff",
+        "light": "#000000",
+      },
+      "fontFamily": "blocksuite:surface:Inter",
+      "fontStyle": "normal",
+      "fontWeight": "400",
+      "textAlign": "left",
+    },
+    "success": true,
+  },
+  "affine:frame": {
+    "data": {
+      "background": "transparent",
+    },
+    "success": true,
+  },
+  "affine:note": {
+    "data": {
+      "background": {
+        "dark": "#252525",
+        "light": "#ffffff",
+      },
+      "displayMode": "edgeless",
+      "edgeless": {
+        "style": {
+          "borderRadius": 8,
+          "borderSize": 4,
+          "borderStyle": "none",
+          "shadowType": "--affine-note-shadow-box",
+        },
+      },
+    },
+    "success": true,
+  },
+  "brush": {
+    "data": {
+      "color": {
+        "dark": "#ffffff",
+        "light": "#000000",
+      },
+      "lineWidth": 4,
+    },
+    "success": true,
+  },
+  "connector": {
+    "data": {
+      "frontEndpointStyle": "None",
+      "labelStyle": {
+        "color": {
+          "dark": "#ffffff",
+          "light": "#000000",
+        },
+        "fontFamily": "blocksuite:surface:Inter",
+        "fontSize": 16,
+        "fontStyle": "normal",
+        "fontWeight": "400",
+        "textAlign": "center",
+      },
+      "mode": 2,
+      "rearEndpointStyle": "Arrow",
+      "rough": false,
+      "stroke": "#929292",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+    },
+    "success": true,
+  },
+  "highlighter": {
+    "data": {
+      "color": "#84cfff4d",
+      "lineWidth": 22,
+    },
+    "success": true,
+  },
+  "mindmap": {
+    "data": {
+      "layoutType": 0,
+      "style": 1,
+    },
+    "success": true,
+  },
+  "shape:diamond": {
+    "data": {
+      "color": "#000000",
+      "fillColor": "#fcd34d",
+      "filled": true,
+      "fontFamily": "blocksuite:surface:Inter",
+      "fontSize": 20,
+      "fontStyle": "normal",
+      "fontWeight": "400",
+      "radius": 0,
+      "roughness": 1.4,
+      "shapeStyle": "General",
+      "strokeColor": "#fcd34d",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+      "textAlign": "center",
+    },
+    "success": true,
+  },
+  "shape:ellipse": {
+    "data": {
+      "color": "#000000",
+      "fillColor": "#fcd34d",
+      "filled": true,
+      "fontFamily": "blocksuite:surface:Inter",
+      "fontSize": 20,
+      "fontStyle": "normal",
+      "fontWeight": "400",
+      "radius": 0,
+      "roughness": 1.4,
+      "shapeStyle": "General",
+      "strokeColor": "#fcd34d",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+      "textAlign": "center",
+    },
+    "success": true,
+  },
+  "shape:polygon": {
+    "data": {
+      "color": "#000000",
+      "fillColor": "#fcd34d",
+      "filled": true,
+      "fontFamily": "blocksuite:surface:Inter",
+      "fontSize": 20,
+      "fontStyle": "normal",
+      "fontWeight": "400",
+      "radius": 0,
+      "roughness": 1.4,
+      "shapeStyle": "General",
+      "strokeColor": "#fcd34d",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+      "textAlign": "center",
+    },
+    "success": true,
+  },
+  "shape:rect": {
+    "data": {
+      "color": "#000000",
+      "fillColor": "#fcd34d",
+      "filled": true,
+      "fontFamily": "blocksuite:surface:Inter",
+      "fontSize": 20,
+      "fontStyle": "normal",
+      "fontWeight": "400",
+      "radius": 0,
+      "roughness": 1.4,
+      "shapeStyle": "General",
+      "strokeColor": "#fcd34d",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+      "textAlign": "center",
+    },
+    "success": true,
+  },
+  "shape:roundedRect": {
+    "data": {
+      "color": "#000000",
+      "fillColor": "#fcd34d",
+      "filled": true,
+      "fontFamily": "blocksuite:surface:Inter",
+      "fontSize": 20,
+      "fontStyle": "normal",
+      "fontWeight": "400",
+      "radius": 0.1,
+      "roughness": 1.4,
+      "shapeStyle": "General",
+      "strokeColor": "#fcd34d",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+      "textAlign": "center",
+    },
+    "success": true,
+  },
+  "shape:triangle": {
+    "data": {
+      "color": "#000000",
+      "fillColor": "#fcd34d",
+      "filled": true,
+      "fontFamily": "blocksuite:surface:Inter",
+      "fontSize": 20,
+      "fontStyle": "normal",
+      "fontWeight": "400",
+      "radius": 0,
+      "roughness": 1.4,
+      "shapeStyle": "General",
+      "strokeColor": "#fcd34d",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+      "textAlign": "center",
+    },
+    "success": true,
+  },
+  "text": {
+    "data": {
+      "color": {
+        "dark": "#ffffff",
+        "light": "#000000",
+      },
+      "fontFamily": "blocksuite:surface:Inter",
+      "fontSize": 24,
+      "fontStyle": "normal",
+      "fontWeight": "400",
+      "textAlign": "left",
+    },
+    "success": true,
+  },
+}
+`;
+
+exports[`zod format guard — the style a new element is created with > NodePropsSchema fills every default from nothing 2`] = `
+{
+  "data": {
+    "affine:edgeless-text": {
+      "color": {
+        "dark": "#ffffff",
+        "light": "#000000",
+      },
+      "fontFamily": "blocksuite:surface:Inter",
+      "fontStyle": "normal",
+      "fontWeight": "400",
+      "textAlign": "left",
+    },
+    "affine:frame": {
+      "background": "transparent",
+    },
+    "affine:note": {
+      "background": {
+        "dark": "#252525",
+        "light": "#ffffff",
+      },
+      "displayMode": "edgeless",
+      "edgeless": {
+        "style": {
+          "borderRadius": 8,
+          "borderSize": 4,
+          "borderStyle": "none",
+          "shadowType": "--affine-note-shadow-box",
+        },
+      },
+    },
+    "brush": {
+      "color": {
+        "dark": "#ffffff",
+        "light": "#000000",
+      },
+      "lineWidth": 4,
+    },
+    "connector": {
+      "frontEndpointStyle": "None",
+      "labelStyle": {
+        "color": {
+          "dark": "#ffffff",
+          "light": "#000000",
+        },
+        "fontFamily": "blocksuite:surface:Inter",
+        "fontSize": 16,
+        "fontStyle": "normal",
+        "fontWeight": "400",
+        "textAlign": "center",
+      },
+      "mode": 2,
+      "rearEndpointStyle": "Arrow",
+      "rough": false,
+      "stroke": "#929292",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+    },
+    "highlighter": {
+      "color": "#84cfff4d",
+      "lineWidth": 22,
+    },
+    "mindmap": {
+      "layoutType": 0,
+      "style": 1,
+    },
+    "shape:diamond": {
+      "color": "#000000",
+      "fillColor": "#fcd34d",
+      "filled": true,
+      "fontFamily": "blocksuite:surface:Inter",
+      "fontSize": 20,
+      "fontStyle": "normal",
+      "fontWeight": "400",
+      "radius": 0,
+      "roughness": 1.4,
+      "shapeStyle": "General",
+      "strokeColor": "#fcd34d",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+      "textAlign": "center",
+    },
+    "shape:ellipse": {
+      "color": "#000000",
+      "fillColor": "#fcd34d",
+      "filled": true,
+      "fontFamily": "blocksuite:surface:Inter",
+      "fontSize": 20,
+      "fontStyle": "normal",
+      "fontWeight": "400",
+      "radius": 0,
+      "roughness": 1.4,
+      "shapeStyle": "General",
+      "strokeColor": "#fcd34d",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+      "textAlign": "center",
+    },
+    "shape:polygon": {
+      "color": "#000000",
+      "fillColor": "#fcd34d",
+      "filled": true,
+      "fontFamily": "blocksuite:surface:Inter",
+      "fontSize": 20,
+      "fontStyle": "normal",
+      "fontWeight": "400",
+      "radius": 0,
+      "roughness": 1.4,
+      "shapeStyle": "General",
+      "strokeColor": "#fcd34d",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+      "textAlign": "center",
+    },
+    "shape:rect": {
+      "color": "#000000",
+      "fillColor": "#fcd34d",
+      "filled": true,
+      "fontFamily": "blocksuite:surface:Inter",
+      "fontSize": 20,
+      "fontStyle": "normal",
+      "fontWeight": "400",
+      "radius": 0,
+      "roughness": 1.4,
+      "shapeStyle": "General",
+      "strokeColor": "#fcd34d",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+      "textAlign": "center",
+    },
+    "shape:roundedRect": {
+      "color": "#000000",
+      "fillColor": "#fcd34d",
+      "filled": true,
+      "fontFamily": "blocksuite:surface:Inter",
+      "fontSize": 20,
+      "fontStyle": "normal",
+      "fontWeight": "400",
+      "radius": 0.1,
+      "roughness": 1.4,
+      "shapeStyle": "General",
+      "strokeColor": "#fcd34d",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+      "textAlign": "center",
+    },
+    "shape:triangle": {
+      "color": "#000000",
+      "fillColor": "#fcd34d",
+      "filled": true,
+      "fontFamily": "blocksuite:surface:Inter",
+      "fontSize": 20,
+      "fontStyle": "normal",
+      "fontWeight": "400",
+      "radius": 0,
+      "roughness": 1.4,
+      "shapeStyle": "General",
+      "strokeColor": "#fcd34d",
+      "strokeStyle": "solid",
+      "strokeWidth": 2,
+      "textAlign": "center",
+    },
+    "text": {
+      "color": {
+        "dark": "#ffffff",
+        "light": "#000000",
+      },
+      "fontFamily": "blocksuite:surface:Inter",
+      "fontSize": 24,
+      "fontStyle": "normal",
+      "fontWeight": "400",
+      "textAlign": "left",
+    },
+  },
+  "success": true,
+}
+`;
+
+exports[`zod format guard — the style a new element is created with > makeDeepOptional keeps partial records partial 1`] = `
+{
+  "a colour object": {
+    "data": {
+      "brush": {
+        "color": {
+          "dark": "#000",
+          "light": "#fff",
+        },
+      },
+    },
+    "success": true,
+  },
+  "a highlighter width off the list": {
+    "paths": [
+      "highlighter.lineWidth",
+    ],
+    "success": false,
+  },
+  "empty": {
+    "data": {},
+    "success": true,
+  },
+  "nested prop": {
+    "data": {
+      "connector": {
+        "labelStyle": {
+          "fontSize": 12,
+        },
+      },
+    },
+    "success": true,
+  },
+  "one prop": {
+    "data": {
+      "connector": {
+        "stroke": "#fff",
+      },
+    },
+    "success": true,
+  },
+  "undefined": {
+    "data": undefined,
+    "success": true,
+  },
+  "unknown key": {
+    "data": {
+      "shape:rect": {
+        "radius": 1,
+      },
+    },
+    "success": true,
+  },
+  "wrong value": {
+    "paths": [
+      "shape:rect.radius",
+    ],
+    "success": false,
+  },
+}
+`;
+
+exports[`zod format guard — the style a new element is created with > pickStylePropsForKey 1`] = `
+{
+  "affine:note": {
+    "background": "#fff",
+    "displayMode": "both",
+  },
+  "brush": {
+    "color": {
+      "normal": "#000",
+    },
+    "lineWidth": 2,
+  },
+  "connector": {
+    "mode": 1,
+    "strokeWidth": 4,
+  },
+  "highlighter": {
+    "color": {
+      "normal": "#000",
+    },
+  },
+  "mindmap": {
+    "layoutType": 1,
+  },
+  "nothing": null,
+  "shape:rect": {
+    "color": {
+      "normal": "#000",
+    },
+    "fillColor": "#123456",
+    "fontSize": 12,
+    "strokeWidth": 4,
+    "textAlign": "center",
+    "textVerticalAlign": "bottom",
+  },
+  "text": {
+    "color": {
+      "normal": "#000",
+    },
+    "fontSize": 12,
+    "textAlign": "center",
+  },
+}
+`;
+
+exports[`zod format guard — the style a new element is created with > the host's EditorSetting 1`] = `
+{
+  "bad view": {
+    "paths": [
+      "docCanvasPreferView",
+    ],
+    "success": false,
+  },
+  "empty": {
+    "data": {
+      "affine:edgeless-text": {
+        "color": {
+          "dark": "#ffffff",
+          "light": "#000000",
+        },
+        "fontFamily": "blocksuite:surface:Inter",
+        "fontStyle": "normal",
+        "fontWeight": "400",
+        "textAlign": "left",
+      },
+      "affine:frame": {
+        "background": "transparent",
+      },
+      "affine:note": {
+        "background": {
+          "dark": "#252525",
+          "light": "#ffffff",
+        },
+        "displayMode": "edgeless",
+        "edgeless": {
+          "style": {
+            "borderRadius": 8,
+            "borderSize": 4,
+            "borderStyle": "none",
+            "shadowType": "--affine-note-shadow-box",
+          },
+        },
+      },
+      "brush": {
+        "color": {
+          "dark": "#ffffff",
+          "light": "#000000",
+        },
+        "lineWidth": 4,
+      },
+      "connector": {
+        "frontEndpointStyle": "None",
+        "labelStyle": {
+          "color": {
+            "dark": "#ffffff",
+            "light": "#000000",
+          },
+          "fontFamily": "blocksuite:surface:Inter",
+          "fontSize": 16,
+          "fontStyle": "normal",
+          "fontWeight": "400",
+          "textAlign": "center",
+        },
+        "mode": 2,
+        "rearEndpointStyle": "Arrow",
+        "rough": false,
+        "stroke": "#929292",
+        "strokeStyle": "solid",
+        "strokeWidth": 2,
+      },
+      "docCanvasPreferView": "affine:embed-synced-doc",
+      "edgelessDisableScheduleUpdate": false,
+      "edgelessScrollZoom": false,
+      "highlighter": {
+        "color": "#84cfff4d",
+        "lineWidth": 22,
+      },
+      "mindmap": {
+        "layoutType": 0,
+        "style": 1,
+      },
+      "shape:diamond": {
+        "color": "#000000",
+        "fillColor": "#fcd34d",
+        "filled": true,
+        "fontFamily": "blocksuite:surface:Inter",
+        "fontSize": 20,
+        "fontStyle": "normal",
+        "fontWeight": "400",
+        "radius": 0,
+        "roughness": 1.4,
+        "shapeStyle": "General",
+        "strokeColor": "#fcd34d",
+        "strokeStyle": "solid",
+        "strokeWidth": 2,
+        "textAlign": "center",
+      },
+      "shape:ellipse": {
+        "color": "#000000",
+        "fillColor": "#fcd34d",
+        "filled": true,
+        "fontFamily": "blocksuite:surface:Inter",
+        "fontSize": 20,
+        "fontStyle": "normal",
+        "fontWeight": "400",
+        "radius": 0,
+        "roughness": 1.4,
+        "shapeStyle": "General",
+        "strokeColor": "#fcd34d",
+        "strokeStyle": "solid",
+        "strokeWidth": 2,
+        "textAlign": "center",
+      },
+      "shape:polygon": {
+        "color": "#000000",
+        "fillColor": "#fcd34d",
+        "filled": true,
+        "fontFamily": "blocksuite:surface:Inter",
+        "fontSize": 20,
+        "fontStyle": "normal",
+        "fontWeight": "400",
+        "radius": 0,
+        "roughness": 1.4,
+        "shapeStyle": "General",
+        "strokeColor": "#fcd34d",
+        "strokeStyle": "solid",
+        "strokeWidth": 2,
+        "textAlign": "center",
+      },
+      "shape:rect": {
+        "color": "#000000",
+        "fillColor": "#fcd34d",
+        "filled": true,
+        "fontFamily": "blocksuite:surface:Inter",
+        "fontSize": 20,
+        "fontStyle": "normal",
+        "fontWeight": "400",
+        "radius": 0,
+        "roughness": 1.4,
+        "shapeStyle": "General",
+        "strokeColor": "#fcd34d",
+        "strokeStyle": "solid",
+        "strokeWidth": 2,
+        "textAlign": "center",
+      },
+      "shape:roundedRect": {
+        "color": "#000000",
+        "fillColor": "#fcd34d",
+        "filled": true,
+        "fontFamily": "blocksuite:surface:Inter",
+        "fontSize": 20,
+        "fontStyle": "normal",
+        "fontWeight": "400",
+        "radius": 0.1,
+        "roughness": 1.4,
+        "shapeStyle": "General",
+        "strokeColor": "#fcd34d",
+        "strokeStyle": "solid",
+        "strokeWidth": 2,
+        "textAlign": "center",
+      },
+      "shape:triangle": {
+        "color": "#000000",
+        "fillColor": "#fcd34d",
+        "filled": true,
+        "fontFamily": "blocksuite:surface:Inter",
+        "fontSize": 20,
+        "fontStyle": "normal",
+        "fontWeight": "400",
+        "radius": 0,
+        "roughness": 1.4,
+        "shapeStyle": "General",
+        "strokeColor": "#fcd34d",
+        "strokeStyle": "solid",
+        "strokeWidth": 2,
+        "textAlign": "center",
+      },
+      "text": {
+        "color": {
+          "dark": "#ffffff",
+          "light": "#000000",
+        },
+        "fontFamily": "blocksuite:surface:Inter",
+        "fontSize": 24,
+        "fontStyle": "normal",
+        "fontWeight": "400",
+        "textAlign": "left",
+      },
+    },
+    "success": true,
+  },
+  "host values": {
+    "paths": [
+      "shape:rect.color",
+      "shape:rect.fillColor",
+      "shape:rect.strokeColor",
+      "shape:rect.strokeStyle",
+      "shape:rect.strokeWidth",
+      "shape:rect.shapeStyle",
+      "shape:rect.filled",
+      "shape:rect.fontSize",
+      "shape:rect.fontFamily",
+      "shape:rect.fontWeight",
+      "shape:rect.fontStyle",
+      "shape:rect.textAlign",
+      "shape:rect.roughness",
+    ],
+    "success": false,
+  },
+}
+`;

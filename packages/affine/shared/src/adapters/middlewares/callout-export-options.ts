@@ -24,8 +24,8 @@ export const CalloutAdmonitionTypeSet: Set<string> = new Set(
 );
 
 export const calloutMarkdownExportOptionsSchema = z.object({
-  style: z.nativeEnum(CalloutExportStyle),
-  admonitionType: z.nativeEnum(CalloutAdmonitionType).optional(),
+  style: z.enum(CalloutExportStyle),
+  admonitionType: z.enum(CalloutAdmonitionType).optional(),
 });
 export type CalloutMarkdownExportOptions = z.infer<
   typeof calloutMarkdownExportOptionsSchema

@@ -5,19 +5,18 @@ import type {
 } from '@labre/std/inline';
 import type { BaseTextAttributes, DeltaInsert } from '@labre/store';
 import type * as Y from 'yjs';
-import type { AnyZodObject, KeySchema, ZodEffects, ZodRecord } from 'zod';
+import type { z } from 'zod';
 
 export type InlineSpecs<
   TextAttributes extends BaseTextAttributes = BaseTextAttributes,
 > = {
   name: keyof TextAttributes | string;
-  schema:
-    | AnyZodObject
-    | ZodEffects<
-        ZodRecord<KeySchema>,
-        Partial<Record<string, unknown>>,
-        unknown
-      >;
+  /**
+   * The attributes this spec owns, as a zod 4 schema: a `z.object` of
+   * optional keys, or a record such as `dynamicSchema` builds. Intersected
+   * with the others by `InlineManager.getSchema()`.
+   */
+  schema: z.ZodType<Partial<Record<string, unknown>>>;
   match: (delta: DeltaInsert<TextAttributes>) => boolean;
   renderer: AttributeRenderer<TextAttributes>;
   embed?: boolean;

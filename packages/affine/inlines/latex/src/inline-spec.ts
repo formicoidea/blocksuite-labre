@@ -31,7 +31,8 @@ export const LatexEditorUnitSpecExtension =
   InlineSpecExtension<AffineTextAttributes>({
     name: 'latex-editor-unit',
     schema: z.object({
-      'latex-editor-unit': z.undefined(),
+      // Optional: zod 4 refuses an absent key unless it is (ADR 0052).
+      'latex-editor-unit': z.undefined().optional(),
     }),
     match: () => true,
     renderer: ({ delta }) => {

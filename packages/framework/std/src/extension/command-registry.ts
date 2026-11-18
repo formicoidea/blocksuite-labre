@@ -765,31 +765,70 @@ export function toShortcutManifestEntry(
 }
 
 /**
- * The shape of a zod definition, read through `_def` rather than `instanceof`.
+ * The shape of a zod 4 definition, read through `_zod.def` rather than
+ * `instanceof`.
  *
  * `instanceof z.ZodOptional` would need a VALUE import of zod in `@labre/std`,
- * which today imports it as a type only — a runtime dependency added to the
- * core bundle for an introspection that runs once per command at assembly time.
- * `_def.typeName` is zod-internal but stable across zod 3, and the whole reader
- * is defensive: anything it does not recognise yields no contract at all rather
- * than a wrong one.
+ * which imports it as a type only — a runtime dependency added to the core
+ * bundle for an introspection that runs once per command at assembly time.
+ * `_zod.def` is zod 4's public introspection surface (zod 3's `_def.typeName`
+ * is gone: read through it, every contract went silently empty, ADR 0052),
+ * and the whole reader is defensive: anything it does not recognise yields no
+ * contract at all rather than a wrong one.
  */
 type ZodDefLike = {
-  typeName?: string;
+  type?: string;
   innerType?: unknown;
-  type?: unknown;
-  shape?: () => Record<string, unknown>;
+  element?: unknown;
+  shape?: Record<string, unknown>;
+  entries?: Record<string, unknown>;
+  checks?: unknown[];
+  check?: string;
 };
 
 const zodDef = (schema: unknown): ZodDefLike =>
-  (schema as { _def?: ZodDefLike } | undefined)?._def ?? {};
+  (schema as { _zod?: { def?: ZodDefLike } } | undefined)?._zod?.def ?? {};
+
+/**
+ * A `.refine()` / `.superRefine()` (a `custom` check). zod 3 wrapped it in a
+ * `ZodEffects` this reader could not see through, so a refined parameter
+ * withdrew the contract; zod 4 keeps the refined schema's own type. Read as
+ * undescribable still: the manifest cannot state the refinement, and an agent
+ * told less than the schema checks gets its call rejected.
+ */
+const isRefined = (def: ZodDefLike) =>
+  (def.checks ?? []).some(check => zodDef(check).check === 'custom');
+
+/**
+ * A `z.enum([...])` of strings, which zod 3 named `ZodEnum`. zod 4 also builds
+ * `z.nativeEnum` / `z.enum(SomeEnum)` as an `enum`, whose keys are the enum's
+ * member names: zod 3 named that one `ZodNativeEnum` and described nothing.
+ * ponytail: describing a string native enum as `string` would be honest too;
+ * that is a manifest change of its own, not a side effect of the zod move.
+ */
+const isStringEnum = (def: ZodDefLike) =>
+  Object.entries(def.entries ?? {}).every(
+    ([name, value]) => typeof value === 'string' && value === name
+  );
 
 const ZOD_KIND: Record<string, CommandParamKind> = {
-  ZodString: 'string',
-  ZodNumber: 'number',
-  ZodBoolean: 'boolean',
-  ZodEnum: 'string',
+  string: 'string',
+  number: 'number',
+  boolean: 'boolean',
 };
+
+/** The kind of an unwrapped schema, or `undefined` when it is not describable. */
+function kindOf(def: ZodDefLike): CommandParamKind | undefined {
+  if (isRefined(def)) return undefined;
+  if (def.type === 'array') {
+    const element = zodDef(def.element);
+    return element.type === 'string' && !isRefined(element)
+      ? 'string[]'
+      : undefined;
+  }
+  if (def.type === 'enum') return isStringEnum(def) ? 'string' : undefined;
+  return ZOD_KIND[def.type ?? ''];
+}
 
 /** Unwraps at most a few modifier layers; a deeper nesting is not describable. */
 function describeParam(key: string, schema: unknown): CommandParam | undefined {
@@ -799,12 +838,17 @@ function describeParam(key: string, schema: unknown): CommandParam | undefined {
 
   for (let depth = 0; depth < 4; depth++) {
     const def = zodDef(current);
-    if (def.typeName === 'ZodOptional' || def.typeName === 'ZodDefault') {
+    if (isRefined(def)) return undefined;
+    if (
+      def.type === 'optional' ||
+      def.type === 'default' ||
+      def.type === 'prefault'
+    ) {
       required = false;
       current = def.innerType;
       continue;
     }
-    if (def.typeName === 'ZodNullable') {
+    if (def.type === 'nullable') {
       nullable = true;
       current = def.innerType;
       continue;
@@ -812,14 +856,7 @@ function describeParam(key: string, schema: unknown): CommandParam | undefined {
     break;
   }
 
-  const def = zodDef(current);
-  const kind =
-    def.typeName === 'ZodArray'
-      ? zodDef(def.type).typeName === 'ZodString'
-        ? ('string[]' as const)
-        : undefined
-      : ZOD_KIND[def.typeName ?? ''];
-
+  const kind = kindOf(zodDef(current));
   if (!kind) return undefined;
   return nullable ? { key, kind, required, nullable } : { key, kind, required };
 }
@@ -840,12 +877,12 @@ export function describeCommandParams(
   schema: unknown
 ): CommandParam[] | undefined {
   const def = zodDef(schema);
-  if (def.typeName !== 'ZodObject' || typeof def.shape !== 'function') {
+  if (def.type !== 'object' || !def.shape || isRefined(def)) {
     return undefined;
   }
 
   const params: CommandParam[] = [];
-  for (const [key, property] of Object.entries(def.shape())) {
+  for (const [key, property] of Object.entries(def.shape)) {
     const param = describeParam(key, property);
     if (!param) return undefined;
     params.push(param);

@@ -37,7 +37,8 @@ export const FrameZodSchema = z
   .object({
     background: ColorSchema,
   })
-  .default({
+  // `prefault`, zod 3's `default`: the value is parsed, never shared (ADR 0052).
+  .prefault({
     background: DefaultTheme.transparent,
   });
 

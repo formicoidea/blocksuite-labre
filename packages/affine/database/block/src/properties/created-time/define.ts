@@ -1,4 +1,4 @@
-import { propertyType, t } from '@labre/affine-database-engine';
+import { propertyType, storedNumber, t } from '@labre/affine-database-engine';
 import { format } from 'date-fns/format';
 import zod from 'zod';
 import { DATABASE_TYPE_CREATED_TIME } from '../../translations.js';
@@ -13,12 +13,12 @@ export const createdTimePropertyModelConfig = createdTimeColumnType.modelConfig(
       default: () => ({}),
     },
     jsonValue: {
-      schema: zod.number().nullable(),
+      schema: storedNumber().nullable(),
       isEmpty: () => false,
       type: () => t.date.instance(),
     },
     rawValue: {
-      schema: zod.number().nullable(),
+      schema: storedNumber().nullable(),
       default: () => null,
       toString: ({ value }) =>
         value != null ? format(value, 'yyyy-MM-dd HH:mm:ss') : '',

@@ -6,6 +6,7 @@ import * as zod from 'zod';
 import Zod from 'zod';
 
 import { ct } from './composite-type.js';
+import { storedNumber } from './stored-number.js';
 import { defineDataType } from './data-type.js';
 import type { TypeConvertConfig, TypeInstance, ValueTypeOf } from './type.js';
 import { tv } from './type-variable.js';
@@ -23,11 +24,11 @@ export const UserInfoSchema = Zod.object({
 export type UserInfo = Zod.TypeOf<typeof UserInfoSchema>;
 export const unknown = defineDataType('Unknown', zod.never(), zod.unknown());
 export const dt = {
-  number: defineDataType('Number', zod.number(), zod.number()),
+  number: defineDataType('Number', zod.number(), storedNumber()),
   string: defineDataType('String', zod.string(), zod.string()),
   boolean: defineDataType('Boolean', zod.boolean(), zod.boolean()),
   richText: defineDataType('RichText', zod.string(), zod.string()),
-  date: defineDataType('Date', zod.number(), zod.number()),
+  date: defineDataType('Date', zod.number(), storedNumber()),
   url: defineDataType('URL', zod.string(), zod.string()),
   image: defineDataType('Image', zod.string(), zod.string()),
   tag: defineDataType('Tag', zod.array(SelectTagSchema), zod.string()),

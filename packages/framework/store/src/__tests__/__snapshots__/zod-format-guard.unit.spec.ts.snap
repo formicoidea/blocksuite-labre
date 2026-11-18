@@ -1,0 +1,288 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`zod format guard — @labre/store > BlockSchema accepts a defined schema and refuses a malformed one 1`] = `
+{
+  "defined": true,
+  "missing version": false,
+  "no props getter": true,
+  "props is not a function": false,
+  "transformer is not a function": false,
+}
+`;
+
+exports[`zod format guard — @labre/store > BlockSnapshotSchema 1`] = `
+{
+  "bad child": {
+    "paths": [
+      "children.0.id",
+      "children.0.flavour",
+      "children.0.props",
+      "children.0.children",
+    ],
+    "success": false,
+  },
+  "minimal": {
+    "data": {
+      "children": [],
+      "flavour": "affine:paragraph",
+      "id": "a",
+      "props": {},
+      "type": "block",
+    },
+    "success": true,
+  },
+  "missing props": {
+    "paths": [
+      "props",
+    ],
+    "success": false,
+  },
+  "nested children": {
+    "data": {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [],
+              "flavour": "affine:paragraph",
+              "id": "c2",
+              "props": {
+                "n": 1,
+              },
+              "type": "block",
+            },
+          ],
+          "flavour": "affine:paragraph",
+          "id": "c1",
+          "props": {},
+          "type": "block",
+        },
+      ],
+      "flavour": "affine:paragraph",
+      "id": "root",
+      "props": {},
+      "type": "block",
+    },
+    "success": true,
+  },
+  "non-string id": {
+    "paths": [
+      "id",
+    ],
+    "success": false,
+  },
+  "null": {
+    "paths": [
+      "",
+    ],
+    "success": false,
+  },
+  "props is an array": {
+    "paths": [
+      "props",
+    ],
+    "success": false,
+  },
+  "props keep every key and value": {
+    "data": {
+      "children": [],
+      "flavour": "affine:paragraph",
+      "id": "a",
+      "props": {
+        "nested": {
+          "deep": [
+            1,
+            2,
+            {
+              "k": null,
+            },
+          ],
+        },
+        "prop:unknown": "kept",
+        "text": {
+          "$blocksuite:internal:text$": true,
+          "delta": [
+            {
+              "insert": "x",
+            },
+          ],
+        },
+        "undef": undefined,
+      },
+      "type": "block",
+    },
+    "success": true,
+  },
+  "unknown top-level key is stripped": {
+    "data": {
+      "children": [],
+      "flavour": "affine:paragraph",
+      "id": "a",
+      "props": {},
+      "type": "block",
+    },
+    "success": true,
+  },
+  "version is a string": {
+    "paths": [
+      "version",
+    ],
+    "success": false,
+  },
+  "with version": {
+    "data": {
+      "children": [],
+      "flavour": "affine:paragraph",
+      "id": "a",
+      "props": {},
+      "type": "block",
+      "version": 1,
+    },
+    "success": true,
+  },
+  "wrong type literal": {
+    "paths": [
+      "type",
+    ],
+    "success": false,
+  },
+}
+`;
+
+exports[`zod format guard — @labre/store > DocSnapshotSchema 1`] = `
+{
+  "meta keeps only the declared keys": {
+    "data": {
+      "blocks": {
+        "children": [],
+        "flavour": "affine:paragraph",
+        "id": "root",
+        "props": {},
+        "type": "block",
+      },
+      "meta": {
+        "createDate": 1,
+        "id": "p",
+        "tags": [
+          "a",
+        ],
+        "title": "T",
+      },
+      "type": "page",
+    },
+    "success": true,
+  },
+  "meta without tags": {
+    "paths": [
+      "meta.tags",
+    ],
+    "success": false,
+  },
+  "minimal": {
+    "data": {
+      "blocks": {
+        "children": [],
+        "flavour": "affine:paragraph",
+        "id": "root",
+        "props": {},
+        "type": "block",
+      },
+      "meta": {
+        "createDate": 1,
+        "id": "p",
+        "tags": [],
+        "title": "T",
+      },
+      "type": "page",
+    },
+    "success": true,
+  },
+}
+`;
+
+exports[`zod format guard — @labre/store > SliceSnapshotSchema 1`] = `
+{
+  "minimal": {
+    "data": {
+      "content": [
+        {
+          "children": [],
+          "flavour": "affine:paragraph",
+          "id": "a",
+          "props": {},
+          "type": "block",
+        },
+      ],
+      "pageId": "p",
+      "type": "slice",
+      "workspaceId": "w",
+    },
+    "success": true,
+  },
+  "missing pageId": {
+    "paths": [
+      "pageId",
+    ],
+    "success": false,
+  },
+  "unknown key stripped": {
+    "data": {
+      "content": [],
+      "pageId": "p",
+      "type": "slice",
+      "workspaceId": "w",
+    },
+    "success": true,
+  },
+}
+`;
+
+exports[`zod format guard — @labre/store > baseTextAttributes 1`] = `
+{
+  "a wrong link is caught": {
+    "data": {
+      "link": undefined,
+    },
+    "success": true,
+  },
+  "a wrong value is caught to undefined": {
+    "data": {
+      "bold": undefined,
+      "italic": undefined,
+    },
+    "success": true,
+  },
+  "empty": {
+    "data": {},
+    "success": true,
+  },
+  "every base mark": {
+    "data": {
+      "bold": true,
+      "code": true,
+      "italic": true,
+      "link": "https://example.com",
+      "strike": true,
+      "underline": true,
+    },
+    "success": true,
+  },
+  "explicit undefined": {
+    "data": {
+      "bold": undefined,
+    },
+    "success": true,
+  },
+  "null clears a mark": {
+    "data": {
+      "bold": null,
+      "link": null,
+    },
+    "success": true,
+  },
+  "unknown keys are stripped": {
+    "data": {},
+    "success": true,
+  },
+}
+`;
