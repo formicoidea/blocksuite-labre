@@ -69,6 +69,11 @@ export type FrameReport = {
   chrome: string[];
   /** Font faces the document holds after the mount. */
   fonts: string[];
+  /**
+   * The computed left padding of the divider's children container, which the
+   * divider sets inline: a refused `style` attribute leaves it at `0px`.
+   */
+  dividerPadding: string | null;
   violations: PolicyReport[];
 };
 
@@ -93,7 +98,7 @@ document.addEventListener('securitypolicyviolation', event => {
 
 /**
  * A page: a frame holding a shape, a card linked to another page, a note of
- * formatted text and a note shown
+ * formatted text, a divider and a one-cell table, and a note shown
  * in the page only (the editor draws nothing for it on the canvas), and a note
  * far outside the frame. What a published canvas commonly holds, so a block
  * that writes a `style` attribute shows up here.
@@ -129,6 +134,17 @@ function storedPage(): Uint8Array {
           { insert: ' and ' },
           { insert: 'a link', attributes: { link: 'https://example.com' } },
         ]),
+      },
+      inside
+    );
+    // A divider and a table: their `style` attributes were refused (#668).
+    store.addBlock('affine:divider', {}, inside);
+    store.addBlock(
+      'affine:table',
+      {
+        rows: { row: { rowId: 'row', order: 'a0' } },
+        columns: { column: { columnId: 'column', order: 'a0' } },
+        cells: { 'row:column': { text: new Text('abc') } },
       },
       inside
     );
@@ -220,6 +236,13 @@ function badgeOf(host: HTMLElement): FrameReport['badge'] {
   };
 }
 
+function dividerPaddingOf(host: HTMLElement): string | null {
+  const container = host.querySelector(
+    'affine-divider .affine-block-children-container'
+  );
+  return container ? getComputedStyle(container).paddingLeft : null;
+}
+
 window.addEventListener('message', event => {
   const data = event.data as { type?: string; focus?: boolean } | null;
   if (data?.type !== 'mount') return;
@@ -256,6 +279,7 @@ async function mount(focus: boolean) {
     fonts: [...document.fonts].map(
       face => `${face.family} ${face.weight} ${face.style}`
     ),
+    dividerPadding: dividerPaddingOf(host),
     violations: [...violations],
   };
   viewer.dispose();

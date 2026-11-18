@@ -73,7 +73,7 @@ const googleDocsConfig = {
     widthPercent: GOOGLE_DOCS_DEFAULT_WIDTH_PERCENT,
     heightInNote: GOOGLE_DOCS_DEFAULT_HEIGHT_IN_NOTE,
     allowFullscreen: true,
-    style: 'border: none; border-radius: 8px;',
+    style: { border: 'none', borderRadius: '8px' },
   },
 };
 

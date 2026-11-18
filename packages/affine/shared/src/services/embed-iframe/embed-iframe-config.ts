@@ -1,4 +1,5 @@
 import { createIdentifier, type ServiceIdentifier } from '@labre/global/di';
+import type { StyleInfo } from '@labre/global/lit';
 import type { ExtensionType } from '@labre/store';
 
 /**
@@ -9,7 +10,7 @@ import type { ExtensionType } from '@labre/store';
  *   heightInSurface: 152,
  *   heightInNote: 152,
  *   widthPercent: 100,
- *   style: 'border-radius: 12px;',
+ *   style: { borderRadius: '12px' },
  *   allow: 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture',
  * }
  */
@@ -18,7 +19,10 @@ export type IframeOptions = {
   heightInSurface: number; // the default height of embed iframe in surface, in pixels
   heightInNote: number; // the default height of embed iframe in note, in pixels
   widthPercent: number; // the width percentage of embed iframe relative to parent container width, normalized to 0-100
-  style?: string;
+  // The iframe's inline style, applied through the CSSOM so a host page
+  // without `style-src-attr` keeps it (#668). Prefer the object; a string is
+  // split into its declarations, one value per property.
+  style?: string | Readonly<StyleInfo>;
   referrerpolicy?: string;
   scrolling?: boolean;
   allow?: string;

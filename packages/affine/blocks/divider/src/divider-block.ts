@@ -1,6 +1,7 @@
 import { CaptionedBlockComponent } from '@labre/affine-components/caption';
 import type { DividerBlockModel } from '@labre/affine-model';
 import { BLOCK_CHILDREN_CONTAINER_PADDING_LEFT } from '@labre/affine-shared/consts';
+import { styleMap } from '@labre/global/lit';
 import { BlockSelection } from '@labre/std';
 import { html } from 'lit';
 
@@ -24,9 +25,13 @@ export class DividerBlockComponent extends CaptionedBlockComponent<DividerBlockM
   }
 
   override renderBlock() {
+    // Through the CSSOM: a `style` attribute built from a value is dropped
+    // whole by a host page without `style-src-attr` (#668).
     const children = html`<div
       class="affine-block-children-container"
-      style="padding-left: ${BLOCK_CHILDREN_CONTAINER_PADDING_LEFT}px"
+      style=${styleMap({
+        paddingLeft: `${BLOCK_CHILDREN_CONTAINER_PADDING_LEFT}px`,
+      })}
     >
       ${this.renderChildren(this.model)}
     </div>`;
