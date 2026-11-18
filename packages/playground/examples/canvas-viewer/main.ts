@@ -7,7 +7,15 @@
  * beside it must not get. `strict.html` loads this same script under Labre
  * Sites' Content-Security-Policy. The opener posts the state once this page
  * says it is ready.
+ *
+ * It sets zod's `jitless` before the viewer is imported, as a host serving it
+ * under a policy without `'unsafe-eval'` does (ADR 0052): otherwise zod's
+ * `new Function` probe raises a `script-src` report on `strict.html`.
  */
+import { config } from 'zod';
+
+config({ jitless: true });
+
 type ViewerRequest = {
   type: 'labre:canvas-viewer';
   state: Uint8Array;
