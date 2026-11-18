@@ -1,5 +1,20 @@
 # @labre/affine-widget-note-slicer
 
+## 4.0.0
+
+### Patch Changes
+
+- Updated dependencies [a5a067f]
+  - @labre/affine-shared@4.0.0
+  - @labre/affine-block-note@4.0.0
+  - @labre/affine-block-surface@4.0.0
+  - @labre/affine-components@4.0.0
+  - @labre/affine-ext-loader@4.0.0
+  - @labre/affine-model@4.0.0
+  - @labre/std@4.0.0
+  - @labre/affine-widget-edgeless-selected-rect@4.0.0
+  - @labre/global@4.0.0
+
 ## 3.5.0
 
 ### Patch Changes

@@ -1,5 +1,17 @@
 # @labre/store
 
+## 4.0.0
+
+### Major Changes
+
+- 1ede10d: zod 4 (ADR 0052, GHSA-mrhx-c7xc-m3w5, #667). Every package now depends on `zod ^4.6.6` instead of zod 3, and the zod types in the public API are zod 4's: `CommandDescriptor.params`, the exported `BlockSnapshotSchema`, `SliceSnapshotSchema` and `DocSnapshotSchema`, `InlineSpecs.schema` (now `z.ZodType<Partial<Record<string, unknown>>>`), `AttributeService.setAttributeSchema`, `BlockSchemaType` and the view extensions' option schemas. What a host does: build every schema it hands the library with zod `^4.6.6` (`z.function({ input, output })` instead of `.args().returns()`, `z.record(z.string(), value)` instead of `z.record(value)`), and dedupe to one zod 4 instance. On a page whose Content-Security-Policy has no `'unsafe-eval'` (the canvas viewer on a public page, or the editor), call `config({ jitless: true })` from `zod` in a module the entry imports before any library module: zod 4 probes `new Function` when it builds its first object schema, which the library does while its modules evaluate, and the library never sets that global flag itself; without it everything still works and the policy reports one `eval`. Stored documents are untouched: block and element defaults, snapshot parsing, inline attributes, database values read back, the creation style and the agent manifest's parameter contracts are byte-identical to zod 3 (two guard specs pin them), and nothing new is written. Two zod 4 behaviours are neutralised to keep that true: an object key that may be absent is now declared `.optional()` (the code block's and LaTeX editor's inline managers would otherwise refuse every delta), and stored number, date, progress and created-time cells keep reading `Infinity` through the new `storedNumber()` of `@labre/affine-database-engine` (zod 4's `number()` refuses it).
+
+### Patch Changes
+
+- 4575d50: `minimatch` is no longer a dependency of any published package, so the `brace-expansion` advisories it carried stop reaching hosts through `@formicoidea/labre-core` (#667). The store matches the flavour patterns of a schema's `parent` / `children` lists itself, with the same answers on every pattern the library's schemas use: `*` (any run of characters but `/`) and a trailing negation `!(a|b)` (`affine:embed-!(synced-doc)` in the edgeless text schema). This is a narrowing for a host that registers its own block schemas: `?`, character classes, braces and a `!(…)` followed by more pattern are now read literally (such a pattern matches only the identical flavour), and `**` acts as `*`.
+  - @labre/global@4.0.0
+  - @labre/sync@4.0.0
+
 ## 3.5.0
 
 ### Patch Changes
