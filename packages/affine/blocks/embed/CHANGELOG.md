@@ -1,5 +1,31 @@
 # @labre/affine-block-embed
 
+## 4.0.0
+
+### Patch Changes
+
+- a5a067f: The table, the divider, the embed iframe and the database's `uni-lit` no longer
+  write a `style` text: a host page whose policy has no `style-src-attr` (the
+  read-only canvas viewer on Labre Sites, #668) raised a report for the table's
+  `display: contents` and dropped the divider's 24px child indent and the embed's
+  rounded corners. They now go through `styleMap`, one CSSOM property at a time.
+  `IframeOptions.style` (`@labre/affine-shared/services`) widens to
+  `string | StyleInfo`: the built-in providers give an object, a host config that
+  still gives a string is split into its declarations and keeps working.
+- Updated dependencies [4575d50]
+- Updated dependencies [a5a067f]
+- Updated dependencies [1ede10d]
+  - @labre/store@4.0.0
+  - @labre/affine-shared@4.0.0
+  - @labre/affine-block-surface@4.0.0
+  - @labre/affine-components@4.0.0
+  - @labre/affine-ext-loader@4.0.0
+  - @labre/affine-model@4.0.0
+  - @labre/affine-rich-text@4.0.0
+  - @labre/affine-widget-slash-menu@4.0.0
+  - @labre/std@4.0.0
+  - @labre/global@4.0.0
+
 ## 3.5.0
 
 ### Patch Changes
