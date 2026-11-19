@@ -1,3 +1,4 @@
+import { FILTERABLE_LIST_SEARCH_PLACEHOLDER as SEARCH } from '@labre/affine-components/translations';
 import { TranslationProvider } from '@labre/affine-shared/services';
 import { type BlockStdScope, stdContext } from '@labre/std';
 import { ContextProvider } from '@lit/context';
@@ -5,16 +6,17 @@ import { signal } from '@preact/signals-core';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { coreEffects } from '../core/effect.js';
+import { filterTraitKey } from '../core/filter/trait.js';
 import { PageLayoutKey } from '../core/view-manager/page-layout.js';
 import type { DataViewUILogicBase } from '../core/view/data-view-base.js';
 import {
   DATA_VIEW_FILTER,
   DATA_VIEW_NEW_RECORD,
-  DATA_VIEW_SEARCH,
   DATA_VIEW_SORT,
   DATA_VIEW_VIEW_SETTINGS,
 } from '../translations.js';
 import { widgetPresetsEffects } from '../widget-presets/effect.js';
+import { ShowQuickSettingBarKey } from '../widget-presets/quick-setting-bar/context.js';
 import { toolsWidgetPresets } from '../widget-presets/tools/index.js';
 import {
   keyboardOpener,
@@ -32,7 +34,15 @@ import {
  *   instead of read through the translation seam: "⋯" was a bare `div`
  *   with no name, search an icon `div` inside a `label`;
  * - Enter or Space not activating a control, or reaching the editor too
- *   (its Enter adds a row under a selected cell);
+ *   (its Enter adds a row under a selected cell); a key held down adding a
+ *   row per repeat on New;
+ * - an unmodified key typed in the toolbar reaching the view's keys on the
+ *   document (with a cell selected: Tab stuck, a letter or Backspace
+ *   editing the cell), or a Ctrl shortcut (undo) no longer reaching them;
+ * - the folded search field in the accessibility tree (typing there
+ *   filtered the rows with the field still folded);
+ * - a menu button without its state (`aria-expanded`), or filter and sort
+ *   not saying whether the quick-setting bar they toggle is shown;
  * - a read-only view offering filter, sort, view options or New;
  * - the toolbar hidden at rest where the views are the page itself
  *   (`PageLayoutKey`, a database's full page), or shown at rest inline;
@@ -70,18 +80,29 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function logicOf(options: { readonly?: boolean; pageLayout?: boolean }) {
+function logicOf(options: {
+  readonly?: boolean;
+  pageLayout?: boolean;
+  hasFilter?: boolean;
+}) {
   const pageLayout =
     options.pageLayout === undefined ? null : signal(options.pageLayout);
+  const bar = signal<Record<string, boolean>>({});
+  const filterTrait = options.hasFilter
+    ? { hasFilter$: signal(true), filter$: signal({ conditions: [] }) }
+    : undefined;
   const view = {
     id: 'view-1',
     type: 'table',
     readonly$: signal(options.readonly ?? false),
     rowsLocked$: signal(false),
     vars$: signal([]),
-    traitGet: () => undefined,
+    traitGet: (key: unknown) =>
+      key === filterTraitKey ? filterTrait : undefined,
     setSearch: vi.fn(),
     serviceGet: (key: unknown) => (key === PageLayoutKey ? pageLayout : null),
+    serviceGetOrCreate: (key: unknown) =>
+      key === ShowQuickSettingBarKey ? bar : null,
   };
   const addRow = vi.fn();
   const logic = {
@@ -89,7 +110,7 @@ function logicOf(options: { readonly?: boolean; pageLayout?: boolean }) {
     addRow,
     eventTrace: vi.fn(),
   } as unknown as DataViewUILogicBase;
-  return { logic, addRow, pageLayout };
+  return { logic, addRow, pageLayout, bar };
 }
 
 /** Lit renders a level of nested elements per pass: the toolbar has three. */
@@ -136,12 +157,13 @@ async function mountToolbar(
 
 /**
  * What the tab order holds, in DOM order. The search field is out of it
- * while folded: a stop clipped to nothing would hold an invisible focus.
+ * while folded (`inert`): a stop clipped to nothing would hold an
+ * invisible focus.
  */
 const tabStops = (toolbar: HTMLElement) =>
   [
     ...toolbar.querySelectorAll<HTMLElement>('[tabindex], button, input'),
-  ].filter(element => element.tabIndex >= 0);
+  ].filter(element => element.tabIndex >= 0 && !element.closest('[inert]'));
 
 /** The accessible name the toolbar gives: `aria-label`, else the text. */
 const nameOf = (element: HTMLElement) =>
@@ -166,7 +188,7 @@ describe('the view toolbar of a table', () => {
     expect(stops.map(nameOf)).toEqual([
       DATA_VIEW_FILTER[1],
       DATA_VIEW_SORT[1],
-      DATA_VIEW_SEARCH[1],
+      SEARCH[1],
       DATA_VIEW_VIEW_SETTINGS[1],
       DATA_VIEW_NEW_RECORD[1],
     ]);
@@ -174,7 +196,7 @@ describe('the view toolbar of a table', () => {
       toolbar
         .querySelector('.affine-database-search-input')
         ?.getAttribute('aria-label')
-    ).toBe(DATA_VIEW_SEARCH[1]);
+    ).toBe(SEARCH[1]);
   });
 
   it('reads every name through the translation seam', async () => {
@@ -185,15 +207,10 @@ describe('the view toolbar of a table', () => {
     expect(names).toEqual([
       `[${DATA_VIEW_FILTER[0]}]`,
       `[${DATA_VIEW_SORT[0]}]`,
-      `[${DATA_VIEW_SEARCH[0]}]`,
+      `[${SEARCH[0]}]`,
       `[${DATA_VIEW_VIEW_SETTINGS[0]}]`,
       `[${DATA_VIEW_NEW_RECORD[0]}]`,
     ]);
-    expect(
-      [DATA_VIEW_SEARCH, DATA_VIEW_VIEW_SETTINGS].map(([key]) =>
-        key.startsWith('com.labre.')
-      )
-    ).toEqual([true, true]);
   });
 
   it('activates a control with Enter and Space, and keeps them from the editor', async () => {
@@ -223,9 +240,85 @@ describe('the view toolbar of a table', () => {
     );
     expect(editorKeydown).not.toHaveBeenCalled();
 
-    const other = new KeyboardEvent('keydown', { key: 'a', bubbles: true });
-    newRecord.dispatchEvent(other);
-    expect(editorKeydown).toHaveBeenCalledTimes(1);
+    const held = new KeyboardEvent('keydown', {
+      key: ' ',
+      repeat: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    newRecord.dispatchEvent(held);
+    expect(held.defaultPrevented, 'no page scroll either').toBe(true);
+    expect(addRow, 'a held key clicks once').toHaveBeenCalledTimes(keys.length);
+  });
+
+  it('keeps unmodified keys from the view, and lets shortcuts through', async () => {
+    const { logic } = logicOf({});
+    const toolbar = await mountToolbar(logic);
+    const editorKeydown = vi.fn();
+    toolbar.parentElement!.addEventListener('keydown', editorKeydown);
+    const filter = tabStops(toolbar)[0]!;
+    const field = toolbar.querySelector<HTMLElement>(
+      '.affine-database-search-input'
+    )!;
+    const send = (target: HTMLElement, init: KeyboardEventInit) =>
+      target.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          bubbles: true,
+          cancelable: true,
+          ...init,
+        })
+      );
+
+    ['Tab', 'q', 'Backspace', 'Delete', 'ArrowDown', 'Escape'].forEach(key =>
+      send(filter, { key })
+    );
+    send(filter, { key: 'Tab', shiftKey: true });
+    send(field, { key: 'a' });
+    expect(editorKeydown).not.toHaveBeenCalled();
+
+    send(filter, { key: 'z', ctrlKey: true });
+    send(filter, { key: 'z', metaKey: true });
+    expect(editorKeydown).toHaveBeenCalledTimes(2);
+  });
+
+  it('folds the search field out of the accessibility tree', async () => {
+    const { logic } = logicOf({});
+    const toolbar = await mountToolbar(logic);
+    const button = toolbar.querySelector<HTMLElement>(
+      '[data-testid="dv-tools-search"]'
+    )!;
+    const field = toolbar.querySelector<HTMLElement>(
+      '.affine-database-search-input'
+    )!;
+    expect(field.hasAttribute('inert')).toBe(true);
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+
+    button.click();
+    await settle();
+    expect(field.hasAttribute('inert')).toBe(false);
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+    expect(button.tabIndex, 'open, the field takes its place').toBe(-1);
+  });
+
+  it('gives every menu button its state', async () => {
+    const { logic, bar } = logicOf({ hasFilter: true });
+    const toolbar = await mountToolbar(logic);
+    const stops = tabStops(toolbar);
+    const filter = stops[0]!;
+    const sort = stops[1]!;
+    const viewOptions = stops[3]!;
+
+    expect(viewOptions.getAttribute('aria-haspopup')).toBe('menu');
+    expect(viewOptions.getAttribute('aria-expanded')).toBe('false');
+    expect(sort.getAttribute('aria-haspopup'), 'no sort: a menu').toBe('menu');
+    expect(filter.hasAttribute('aria-haspopup'), 'a filter: a toggle').toBe(
+      false
+    );
+    expect(filter.getAttribute('aria-expanded')).toBe('false');
+
+    bar.value = { 'view-1': true };
+    await settle();
+    expect(filter.getAttribute('aria-expanded')).toBe('true');
   });
 
   it('offers only search on a read-only view', async () => {
@@ -297,6 +390,22 @@ describe('the focus after a toolbar menu', () => {
     target.popupStart()();
     await Promise.resolve();
     expect(document.activeElement).not.toBe(button);
+  });
+
+  it('says the menu is open on a menu button, and only there', async () => {
+    const button = control();
+    button.setAttribute('aria-haspopup', 'menu');
+    const bare = control();
+    const end = popupTargetReturningFocus(button, undefined).popupStart();
+    const endBare = popupTargetReturningFocus(bare, undefined).popupStart();
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+    expect(bare.hasAttribute('aria-expanded')).toBe(false);
+
+    end();
+    end();
+    endBare();
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+    expect(button.classList.contains('active')).toBe(false);
   });
 
   it('leaves the focus to whatever took it meanwhile', async () => {

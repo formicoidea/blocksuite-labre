@@ -122,10 +122,24 @@ export class DataViewHeaderToolsFilter extends WidgetBase {
       data-testid="dv-tools-filter"
       role="button"
       tabindex="0"
+      aria-haspopup="${this.hasFilter.value ? nothing : 'menu'}"
+      aria-expanded="${this.hasFilter.value ? String(this.barShown) : nothing}"
       aria-label="${wordingOf(this.std)(DATA_VIEW_FILTER)}"
     >
       ${FilterIcon()}
     </div>`;
+  }
+
+  /**
+   * With a filter, the button shows and hides the quick-setting bar, which
+   * then holds it (#678: its state, `aria-expanded`); without, it opens a
+   * menu (`aria-haspopup`, its state set while open, `keyboard.ts`).
+   */
+  private get barShown(): boolean {
+    return !!this.view.serviceGetOrCreate(
+      ShowQuickSettingBarKey,
+      createDefaultShowQuickSettingBar
+    ).value[this.view.id];
   }
 
   toggleShowFilter(show?: boolean) {

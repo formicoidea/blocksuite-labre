@@ -1,3 +1,4 @@
+import { FILTERABLE_LIST_SEARCH_PLACEHOLDER } from '@labre/affine-components/translations';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { CloseIcon, SearchIcon } from '@blocksuite/icons/lit';
 import { type BlockStdScope, stdContext } from '@labre/std';
@@ -14,12 +15,17 @@ import { WidgetBase } from '../../../../core/widget/widget-base.js';
 import type { KanbanViewUILogic } from '../../../../view-presets/kanban/pc/kanban-view-ui-logic.js';
 import type { VirtualTableViewUILogic } from '../../../../view-presets/table/pc-virtual/table-view-ui-logic.js';
 import {
-  DATA_VIEW_SEARCH,
   DATA_VIEW_SEARCH_CLEAR_HINT,
   DATA_VIEW_SEARCH_PLACEHOLDER,
   DATA_VIEW_SEARCH_ESCAPE,
 } from '../../../../translations.js';
 import { activateOnEnterOrSpace } from '../../keyboard.js';
+
+/**
+ * The search button and its field (#678): the filterable list's "Search",
+ * one chrome word, one key (`manifest.unit.spec.ts`).
+ */
+const SEARCH = FILTERABLE_LIST_SEARCH_PLACEHOLDER;
 
 const styles = css`
   .affine-database-search-container {
@@ -126,11 +132,12 @@ export class DataViewHeaderToolsSearch extends WidgetBase<
     });
   };
 
-  private readonly _clickSearch = (e: MouseEvent) => {
+  private readonly _clickSearch = async (e: MouseEvent) => {
     e.stopPropagation();
     this.showSearch = true;
-    // The label focuses its field on a pointer click; Enter or Space on the
-    // button does not go through the label's activation (#678).
+    // Folded, the field is inert and takes no focus: once open, focus it,
+    // for Enter or Space on the button as for a click on the label (#678).
+    await this.updateComplete;
     this._searchInput.focus();
   };
 
@@ -180,8 +187,11 @@ export class DataViewHeaderToolsSearch extends WidgetBase<
       'search-container-expand': this.showSearch,
       active: this.showSearch,
     });
-    // Folded, the field is clipped to nothing: out of the tab order, reached
-    // through the Search button, which leaves it once the field is open (#678).
+    // Folded, the field is clipped to nothing: `inert`, out of the tab order
+    // and of the accessibility tree (a focus put there by an assistive tool
+    // and typing filtered the rows with the field still folded), reached
+    // through the Search button, which leaves the tab order once it is open
+    // (#678).
     return html`
       <label class="${searchToolClassMap}" @click="${this._clickSearch}">
         <div
@@ -189,15 +199,15 @@ export class DataViewHeaderToolsSearch extends WidgetBase<
           data-testid="dv-tools-search"
           role="button"
           tabindex="${this.showSearch ? -1 : 0}"
-          aria-label="${wordingOf(this.std)(DATA_VIEW_SEARCH)}"
+          aria-label="${wordingOf(this.std)(SEARCH)}"
           aria-expanded="${this.showSearch ? 'true' : 'false'}"
           @keydown="${activateOnEnterOrSpace}"
         >
           ${SearchIcon()}
         </div>
         <input
-          aria-label="${wordingOf(this.std)(DATA_VIEW_SEARCH)}"
-          tabindex="${this.showSearch ? 0 : -1}"
+          aria-label="${wordingOf(this.std)(SEARCH)}"
+          ?inert="${!this.showSearch}"
           placeholder="${wordingOf(this.std)(DATA_VIEW_SEARCH_PLACEHOLDER)}"
           class="affine-database-search-input"
           @input="${this._onSearch}"

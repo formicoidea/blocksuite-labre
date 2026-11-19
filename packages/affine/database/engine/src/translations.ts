@@ -291,17 +291,6 @@ export const DATA_VIEW_ADD_FILTER: ChromeWording = [
   'Add filter',
 ];
 
-/**
- * The toolbar's search button, which opens the field, and the field's own
- * accessible name (#678). The filterable list's "Search"
- * (`@labre/affine-components`): one chrome word, one key, declared there, so
- * not listed below.
- */
-export const DATA_VIEW_SEARCH: ChromeWording = [
-  'com.labre.filterable-list.search-placeholder',
-  'Search',
-];
-
 export const DATA_VIEW_SEARCH_PLACEHOLDER: ChromeWording = [
   'com.labre.data-view.search.placeholder',
   'Search...',

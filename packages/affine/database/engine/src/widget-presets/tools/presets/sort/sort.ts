@@ -129,10 +129,20 @@ export class DataViewHeaderToolsSort extends WidgetBase {
       data-testid="dv-tools-sort"
       role="button"
       tabindex="0"
+      aria-haspopup="${this.hasSort.value ? nothing : 'menu'}"
+      aria-expanded="${this.hasSort.value ? String(this.barShown) : nothing}"
       aria-label="${wordingOf(this.std)(DATA_VIEW_SORT)}"
     >
       ${SortIcon()}
     </div>`;
+  }
+
+  /** As the filter button's (`DataViewHeaderToolsFilter.barShown`). */
+  private get barShown(): boolean {
+    return !!this.view.serviceGetOrCreate(
+      ShowQuickSettingBarKey,
+      createDefaultShowQuickSettingBar
+    ).value[this.view.id];
   }
 
   toggleShowQuickSettingBar(show?: boolean) {

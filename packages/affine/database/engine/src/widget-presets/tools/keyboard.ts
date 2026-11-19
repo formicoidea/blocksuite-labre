@@ -15,7 +15,8 @@ import {
  * one click handler serves the mouse and the keyboard. That click's `detail`
  * is 0, as for a native button activated from the keyboard, which is how
  * `keyboardOpener` tells them apart. Stopped here, so the editor's own Enter
- * (a new row under a selected cell) never sees it.
+ * (a new row under a selected cell) never sees it. A key held down clicks
+ * once: its repeats would add a row each on "New".
  */
 export function activateOnEnterOrSpace(event: KeyboardEvent) {
   if (event.key !== 'Enter' && event.key !== ' ') return;
@@ -25,6 +26,7 @@ export function activateOnEnterOrSpace(event: KeyboardEvent) {
   }
   event.preventDefault();
   event.stopPropagation();
+  if (event.repeat) return;
   (event.currentTarget as HTMLElement).click();
 }
 
@@ -34,27 +36,47 @@ export function keyboardOpener(event: MouseEvent): HTMLElement | undefined {
   return event.currentTarget as HTMLElement;
 }
 
+/** Only on a menu button: `aria-expanded` means nothing on a bare anchor. */
+function setExpanded(anchor: HTMLElement, expanded: boolean) {
+  if (!anchor.hasAttribute('aria-haspopup')) return;
+  anchor.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+}
+
 /**
- * `popupTargetFromElement(anchor)`, whose menus give the focus back to
- * `opener` when they close (Escape included), so a keyboard user carries on
- * from the control that opened them. Only when the focus fell to the body
- * with the menu's own field: whatever took it meanwhile (a host's panel, the
- * next menu of the same gesture) keeps it. Without an opener (a mouse
- * click), the plain target: focusing the control would paint its ring under
- * a pointer.
+ * `popupTargetFromElement(anchor)`, whose menus:
+ * - say they are open on `anchor` (`aria-expanded`, WCAG 4.1.2) while one
+ *   is, when `anchor` is a menu button (`aria-haspopup`);
+ * - give the focus back to `opener` when they close (Escape included), so a
+ *   keyboard user carries on from the control that opened them. Only when
+ *   the focus fell to the body with the menu's own field: a host's panel
+ *   that took it meanwhile keeps it. The next menu of the same gesture (the
+ *   sort panel after a new sort) takes its field's focus a frame later
+ *   (`MenuComponent.firstUpdated`), so `opener` holds the focus for that
+ *   frame, then the menu has it.
+ *
+ * Without an opener (a mouse click), no focus is moved: focusing the
+ * control would paint its ring under a pointer.
  */
 export function popupTargetReturningFocus(
   anchor: HTMLElement,
   opener: HTMLElement | undefined
 ): PopupTarget {
   const target = popupTargetFromElement(anchor);
-  if (!opener) return target;
+  let open = 0;
   return {
     ...target,
     popupStart: () => {
       const end = target.popupStart();
+      open++;
+      setExpanded(anchor, true);
+      let ended = false;
       return () => {
+        if (ended) return;
+        ended = true;
         end();
+        open--;
+        if (!open) setExpanded(anchor, false);
+        if (!opener) return;
         // The menu is removed right after this callback: look once it is.
         queueMicrotask(() => {
           const active = document.activeElement;

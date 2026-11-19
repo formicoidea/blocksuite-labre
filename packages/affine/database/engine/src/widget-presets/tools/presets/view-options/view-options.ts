@@ -170,6 +170,7 @@ export class DataViewHeaderToolsViewOptions extends WidgetBase {
       role="button"
       tabindex="0"
       aria-haspopup="menu"
+      aria-expanded="false"
       aria-label="${wordingOf(this.std)(DATA_VIEW_VIEW_SETTINGS)}"
       @click="${this.clickMoreAction}"
       @keydown="${activateOnEnterOrSpace}"

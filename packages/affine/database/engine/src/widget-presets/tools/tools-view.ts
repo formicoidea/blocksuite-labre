@@ -47,6 +47,11 @@ const styles = css`
     outline: 2px solid var(--affine-primary-color);
     outline-offset: -2px;
   }
+  /* On a phone with a keyboard, "+" is filled with the same blue: the ring
+     goes around it, on the toolbar's background. */
+  .affine-database-toolbar .new-record-phone:focus-visible {
+    outline-offset: 2px;
+  }
 
   @media print {
     .affine-database-toolbar {
@@ -58,6 +63,19 @@ const styles = css`
 export class DataViewHeaderTools extends WidgetBase {
   static override styles = styles;
 
+  /**
+   * A key typed on a control or in the search field is the toolbar's (#678):
+   * the view's own keys listen on the document for its selection, so with a
+   * cell still selected, Tab moved to the next cell instead of the next
+   * control, and a letter or Backspace edited the cell the reader had left.
+   * Unmodified keys stop here; the browser still moves the focus on Tab.
+   * Shortcuts with Ctrl, Meta or Alt (undo, a host's) still go through.
+   */
+  private readonly _keepKeysInToolbar = (event: KeyboardEvent) => {
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    event.stopPropagation();
+  };
+
   override render() {
     // Shown at rest on a phone, and where the views are the page itself (a
     // database's full page, `PageLayoutKey`), as Notion shows a full-page
@@ -68,7 +86,10 @@ export class DataViewHeaderTools extends WidgetBase {
       'affine-database-toolbar': true,
     });
     const tools = this.toolsMap[this.view.type];
-    return html` <div class="${classList}">
+    return html` <div
+      class="${classList}"
+      @keydown="${this._keepKeysInToolbar}"
+    >
       ${repeat(tools ?? [], uni => {
         return renderUniLit(uni, {
           dataViewLogic: this.dataViewLogic,
