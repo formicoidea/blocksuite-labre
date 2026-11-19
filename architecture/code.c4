@@ -1558,7 +1558,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/engine
         metadata {
           path 'packages/affine/database/engine'
-          files '341'
+          files '342'
         }
         core = folder 'core/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/engine/src/core
@@ -1592,7 +1592,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/engine/src/widget-presets
           metadata {
             path 'packages/affine/database/engine/src/widget-presets'
-            files '24'
+            files '25'
           }
         }
       }
@@ -5972,8 +5972,9 @@ model {
   features.database.engine.view-presets -[imports]-> framework.global_.lit '45 imports'
   features.database.engine.view-presets -[imports]-> framework.std.src '42 imports, 3 type-only'
   features.database.engine.view-presets -[imports]-> framework.store.src '4 imports'
-  features.database.engine.widget-presets -[imports]-> features.components.context-menu '12 imports'
-  features.database.engine.widget-presets -[imports]-> features.database.engine.core '95 imports, 24 type-only'
+  features.database.engine.widget-presets -[imports]-> features.components.context-menu '11 imports'
+  features.database.engine.widget-presets -[imports]-> features.components.src '1 import'
+  features.database.engine.widget-presets -[imports]-> features.database.engine.core '96 imports, 24 type-only'
   features.database.engine.widget-presets -[imports]-> features.database.engine.src '13 imports'
   features.database.engine.widget-presets -[imports]-> features.database.engine.view-presets '2 imports, 2 type-only'
   features.database.engine.widget-presets -[imports]-> features.shared.services '8 imports, 1 type-only'
