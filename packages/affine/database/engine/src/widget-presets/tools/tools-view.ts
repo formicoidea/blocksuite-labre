@@ -5,6 +5,7 @@ import { classMap } from 'lit/directives/class-map.js';
 import { repeat } from 'lit/directives/repeat.js';
 
 import { type DataViewInstance, renderUniLit } from '../../core/index.js';
+import { PageLayoutKey } from '../../core/view-manager/page-layout.js';
 import type { SingleView } from '../../core/view-manager/single-view.js';
 import type { ViewManager } from '../../core/view-manager/view-manager.js';
 import type { DataViewWidget } from '../../core/widget/types.js';
@@ -27,10 +28,24 @@ const styles = css`
     visibility: visible;
     opacity: 1;
   }
+  /* Never invisible while one of its controls holds the focus (#678). */
+  .affine-database-toolbar:focus-within {
+    visibility: visible;
+    opacity: 1;
+  }
 
   .show-toolbar {
     visibility: visible;
     opacity: 1;
+  }
+
+  /* The keyboard focus of every control (#678): the opaque 2px ring of the
+     library's keyboard highlight (edgeless toolbar), drawn inside the box so
+     the search field's clipping container never cuts it. */
+  .affine-database-toolbar [role='button']:focus-visible,
+  .affine-database-toolbar button:focus-visible {
+    outline: 2px solid var(--affine-primary-color);
+    outline-offset: -2px;
   }
 
   @media print {
@@ -44,8 +59,12 @@ export class DataViewHeaderTools extends WidgetBase {
   static override styles = styles;
 
   override render() {
+    // Shown at rest on a phone, and where the views are the page itself (a
+    // database's full page, `PageLayoutKey`), as Notion shows a full-page
+    // database (#678); inline in a text, it waits for the pointer or focus.
+    const pageLayout = !!this.view.serviceGet(PageLayoutKey)?.value;
     const classList = classMap({
-      'show-toolbar': IS_MOBILE,
+      'show-toolbar': IS_MOBILE || pageLayout,
       'affine-database-toolbar': true,
     });
     const tools = this.toolsMap[this.view.type];

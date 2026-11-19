@@ -5,7 +5,9 @@ import type { ExtensionType } from '@labre/store';
  * What a database asks the host to open beside its "New" button (ADR 0035
  * amendment of 2026-10-14, labre PRD REQ-DB-6, 14 and 15):
  *
- * - `anchor`: the chevron the menu hangs from;
+ * - `anchor`: the chevron the menu hangs from; reachable with Tab and
+ *   opened with Enter or Space (#678), it should get the focus back when
+ *   the menu closes, Escape included, as the toolbar's own menus do;
  * - `blockId`: the `affine:database` block that hosts the view, so the host
  *   can tell a base's own page from an inline view of it;
  * - `viewId`: the view the gesture came from.

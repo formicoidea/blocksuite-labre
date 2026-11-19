@@ -70,6 +70,11 @@ import {
   type ViewSettingKey,
   viewSettingAvailable,
 } from './view-settings.js';
+import {
+  activateOnEnterOrSpace,
+  keyboardOpener,
+  popupTargetReturningFocus,
+} from '../../keyboard.js';
 
 const styles = css`
   .affine-database-toolbar-item.more-action {
@@ -112,7 +117,12 @@ export class DataViewHeaderToolsViewOptions extends WidgetBase {
 
   clickMoreAction = (e: MouseEvent) => {
     e.stopPropagation();
-    this.openMoreAction(popupTargetFromElement(e.currentTarget as HTMLElement));
+    this.openMoreAction(
+      popupTargetReturningFocus(
+        e.currentTarget as HTMLElement,
+        keyboardOpener(e)
+      )
+    );
   };
 
   openMoreAction = (target: PopupTarget) => {
@@ -156,7 +166,13 @@ export class DataViewHeaderToolsViewOptions extends WidgetBase {
     }
     return html` <div
       class="affine-database-toolbar-item more-action"
+      data-testid="dv-tools-view-options"
+      role="button"
+      tabindex="0"
+      aria-haspopup="menu"
+      aria-label="${wordingOf(this.std)(DATA_VIEW_VIEW_SETTINGS)}"
       @click="${this.clickMoreAction}"
+      @keydown="${activateOnEnterOrSpace}"
     >
       ${MoreHorizontalIcon()}
     </div>`;
