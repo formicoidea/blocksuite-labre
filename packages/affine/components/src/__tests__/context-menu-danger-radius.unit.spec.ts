@@ -13,7 +13,9 @@
  * the root to sentinel values: the label and the icon must take the error
  * variable with no hover, while a plain entry keeps the primary text colour.
  * The icon is read on the `<svg>` itself, whose paths fill with
- * `currentColor`.
+ * `currentColor`. A row holding a popup open (`.active` on its host, set by
+ * `popupTargetFromElement`) takes the danger background, not the grey wash of
+ * any other active row; `:hover` itself is out of happy-dom's reach.
  */
 import { DeleteIcon, DuplicateIcon } from '@blocksuite/icons/lit';
 import {
@@ -32,11 +34,15 @@ import { menu } from '../context-menu/menu-all.js';
 const ERROR = 'rgb(201, 12, 34)';
 const TEXT = 'rgb(17, 18, 19)';
 const ICON = 'rgb(51, 52, 53)';
+const ERROR_BACKGROUND = 'rgb(255, 236, 238)';
+const HOVER = 'rgb(240, 240, 240)';
 
 const THEME: Record<string, string> = {
   '--affine-error-color': ERROR,
   '--affine-text-primary-color': TEXT,
   '--affine-icon-color': ICON,
+  '--affine-background-error-color': ERROR_BACKGROUND,
+  '--affine-hover-color': HOVER,
 };
 
 beforeAll(() => {
@@ -87,6 +93,7 @@ async function openMenu() {
     );
     if (!element) throw new Error(`no row ${testId}`);
     return {
+      element,
       label: element.querySelector<HTMLElement>('.affine-menu-action-text')!,
       icon: element.querySelector<SVGElement>('svg')!,
     };
@@ -101,6 +108,16 @@ describe('context menu, destructive entry and panel radius (#677)', () => {
 
     expect(getComputedStyle(deleteRow.label).color).toBe(ERROR);
     expect(getComputedStyle(deleteRow.icon).color).toBe(ERROR);
+  });
+
+  test('a delete-item entry holding a popup open takes the error background', async () => {
+    const { row } = await openMenu();
+    const deleteRow = row('delete');
+    deleteRow.element.closest('affine-menu-button')!.classList.add('active');
+
+    expect(getComputedStyle(deleteRow.element).backgroundColor).toBe(
+      ERROR_BACKGROUND
+    );
   });
 
   test('a plain entry keeps the primary text and icon colours', async () => {

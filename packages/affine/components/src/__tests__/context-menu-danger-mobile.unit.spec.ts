@@ -1,5 +1,3 @@
-import { beforeAll, describe, expect, test, vi } from 'vitest';
-
 /**
  * On a phone a destructive menu entry is drawn in the error colour at rest,
  * label included (#677).
@@ -10,6 +8,8 @@ import { beforeAll, describe, expect, test, vi } from 'vitest';
  * colour, so only the icon turned red. The desktop twin of this check is
  * `context-menu-danger-radius.unit.spec.ts`.
  */
+import { beforeAll, describe, expect, test, vi } from 'vitest';
+
 vi.mock('@labre/global/env', async importOriginal => ({
   ...(await importOriginal<typeof import('@labre/global/env')>()),
   IS_MOBILE: true,

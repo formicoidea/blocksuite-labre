@@ -336,7 +336,7 @@ The floating selection toolbar.
 
 - **Panel:** Overlay Paper, 8px corners, 8px padding, 180px minimum width, Overlay shadow. Grouped sections use 4px padding and 12px corners.
 - **Items:** 4px padding and corners, 14px Inter, Hover Veil on hover. Larger rows use 11px 8px padding.
-- **Destructive items** (`delete-item`): label and icon in Error Red (`--affine-error-color`) at rest, the error background (`--affine-background-error-color`) on hover. The host theme keeps that red at 4.5:1 on the panel and on the error background.
+- **Destructive items** (`delete-item`): label and icon in Error Red (`--affine-error-color`) at rest, the error background (`--affine-background-error-color`) on hover and while the item holds a popup open. The host theme keeps that red at 4.5:1 on the panel and on the error background.
 - **Input:** 4px corners, 4px 6px padding; on focus, a 2px Borrowed Blue ring at 30%.
 
 ### Side Panel Header
