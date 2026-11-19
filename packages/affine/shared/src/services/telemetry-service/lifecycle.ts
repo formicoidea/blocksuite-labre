@@ -326,9 +326,9 @@ export type AuditEvents = {
 };
 
 /**
- * A document was opened carrying elements the editor cannot draw — today, a
- * surface element whose `xywh` never arrived (#318), which reads a zero-size
- * bound and paints nothing.
+ * A document was opened carrying elements the editor cannot draw — a surface
+ * element whose `xywh` never arrived (#318), which reads a zero-size bound and
+ * paints nothing, or one the surface skipped because it cannot read it (#669).
  *
  * **Not a lifecycle event and not a user gesture: a health event.** The block
  * taxonomy describes what someone did; this one describes what a document IS
@@ -342,8 +342,16 @@ export type AuditEvents = {
  */
 export interface DocumentDamagedEvent extends TelemetryEvent {
   page?: 'doc editor' | 'whiteboard editor';
-  /** What is wrong with the elements this event counts. */
-  reason: 'missing-xywh';
+  /**
+   * What is wrong with the elements this event counts; one event per reason
+   * in a batch. `missing-xywh`: drawn with no geometry (#318). `unknown-type`:
+   * a type this client does not register, most likely a newer client's, so
+   * the element is not drawn. `unreadable`: no type or id, or its model could
+   * not be built; not drawn either (#669, ADR 0053). Spelled out here rather
+   * than imported, so a new surface reason fails to compile until the
+   * taxonomy says it.
+   */
+  reason: 'missing-xywh' | 'unknown-type' | 'unreadable';
   /** How many damaged elements this batch found. */
   elementCount: number;
 }

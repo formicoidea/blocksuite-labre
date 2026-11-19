@@ -12,9 +12,16 @@
  *    distinct documents unreadable.
  * 3. **Ids are deduplicated for the watcher's lifetime.** A resync that
  *    re-announces an element already counted must add nothing.
+ * 4. **One event per REASON in a batch (#669, ADR 0053).** An element skipped
+ *    because a newer client wrote it is not a bound that never arrived; with a
+ *    single hard-coded reason, every skipped element would have been counted
+ *    as `missing-xywh`.
  */
 import type { BlockStdScope } from '@labre/std';
-import type { SurfaceElementDamageReport } from '@labre/std/gfx';
+import type {
+  SurfaceDamageReason,
+  SurfaceElementDamageReport,
+} from '@labre/std/gfx';
 import { describe, expect, test } from 'vitest';
 
 import { DocumentDamageTelemetryWatcher } from '../../services/telemetry-service/document-damage-watcher.js';
@@ -24,13 +31,16 @@ import {
 } from '../../services/telemetry-service/index.js';
 
 /** The surface API the watcher touches, and nothing else. */
-function fakeSurface(damagedIds: string[] = []) {
+function fakeSurface(
+  damagedIds: string[] = [],
+  reasonOf: (id: string) => SurfaceDamageReason = () => 'missing-xywh'
+) {
   const listeners = new Set<(report: SurfaceElementDamageReport) => void>();
   let unsubscribed = 0;
   return {
     flavour: 'affine:surface',
     damagedElements: new Map(
-      damagedIds.map(id => [id, { type: 'shape', reason: 'missing-xywh' }])
+      damagedIds.map(id => [id, { type: 'shape', reason: reasonOf(id) }])
     ),
     elementDamaged: {
       subscribe: (next: (report: SurfaceElementDamageReport) => void) => {
@@ -44,10 +54,8 @@ function fakeSurface(damagedIds: string[] = []) {
       },
     },
     /** A later arrival, the way a remote sync delivers one. */
-    damage(id: string) {
-      listeners.forEach(next =>
-        next({ id, type: 'shape', reason: 'missing-xywh' })
-      );
+    damage(id: string, reason: SurfaceDamageReason = 'missing-xywh') {
+      listeners.forEach(next => next({ id, type: 'shape', reason }));
     },
     unsubscribedCount: () => unsubscribed,
   };
@@ -128,6 +136,39 @@ describe('DocumentDamageTelemetryWatcher', () => {
       {
         event: 'DocumentDamaged',
         props: { reason: 'missing-xywh', elementCount: 3 },
+      },
+    ]);
+  });
+
+  test('a batch mixing reasons is one event per reason', async () => {
+    const surface = fakeSurface(['a', 'b', 'c'], id =>
+      id === 'a' ? 'missing-xywh' : 'unknown-type'
+    );
+    const { watcher, events } = setup([surface]);
+
+    watcher.mounted();
+    expect(events).toEqual([
+      {
+        event: 'DocumentDamaged',
+        props: { reason: 'missing-xywh', elementCount: 1 },
+      },
+      {
+        event: 'DocumentDamaged',
+        props: { reason: 'unknown-type', elementCount: 2 },
+      },
+    ]);
+
+    surface.damage('d', 'unreadable');
+    surface.damage('e', 'unknown-type');
+    await settle();
+    expect(events.slice(2)).toEqual([
+      {
+        event: 'DocumentDamaged',
+        props: { reason: 'unreadable', elementCount: 1 },
+      },
+      {
+        event: 'DocumentDamaged',
+        props: { reason: 'unknown-type', elementCount: 1 },
       },
     ]);
   });

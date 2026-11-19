@@ -75,8 +75,22 @@ export type MiddlewareCtx = {
 
 export type SurfaceMiddleware = (ctx: MiddlewareCtx) => void;
 
-/** Why an element is considered damaged. One reason so far. */
-export type SurfaceDamageReason = 'missing-xywh';
+/**
+ * Why an element is considered damaged. In memory only, never stored.
+ *
+ * - `missing-xywh` (#318): the element is built and paints a zero-size bound.
+ * - `unknown-type` (#669, ADR 0053): its `type` names no element this client
+ *   registers, most likely one a newer client wrote. Skipped: no model.
+ * - `unreadable` (#669, ADR 0053): no `type` or `id`, not a map, or building
+ *   its model threw; a corrupt or half-written element. Skipped: no model.
+ *
+ * A skipped element's Y.Map is left exactly as it is, so a client that can
+ * read it still sees it in the same document.
+ */
+export type SurfaceDamageReason =
+  | 'missing-xywh'
+  | 'unknown-type'
+  | 'unreadable';
 
 /** What the surface knows about one damaged element. */
 export type SurfaceElementDamage = {
@@ -559,18 +573,23 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
     // @ts-expect-error ignore
     Ctor['_decoratorState'] = state;
 
-    const elementModel = new Ctor({
-      id,
-      yMap,
-      model: this,
-      stashedStore: stashed,
-      onChange: payload => mounted && options.onChange({ id, ...payload }),
-    }) as GfxPrimitiveElementModel;
-
-    // @ts-expect-error ignore
-    delete Ctor['_decoratorState'];
-    state.creating = false;
-    state.skipField = false;
+    let elementModel: GfxPrimitiveElementModel;
+    try {
+      elementModel = new Ctor({
+        id,
+        yMap,
+        model: this,
+        stashedStore: stashed,
+        onChange: payload => mounted && options.onChange({ id, ...payload }),
+      }) as GfxPrimitiveElementModel;
+    } finally {
+      // A constructor that throws on a corrupt map (#669) must not leave the
+      // decorator state armed for the next element this surface builds.
+      // @ts-expect-error ignore
+      delete Ctor['_decoratorState'];
+      state.creating = false;
+      state.skipField = false;
+    }
 
     // A document whose Yjs state still has pending structs can carry an element
     // whose `xywh` key never arrived. The element reads its `[0,0,0,0]` fallback
@@ -624,6 +643,63 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
       mount,
       unmount,
     };
+  }
+
+  /**
+   * Builds the model of an element read from the document, or skips it (#669,
+   * ADR 0053): one element this client cannot read must never empty the
+   * surface, at load as on a remote update.
+   *
+   * Skipped means no model, a damage record keyed by the elements-map key and
+   * pushed through {@link elementDamaged}, and NOTHING written: the Y.Map stays
+   * as it is, for a newer client that can read it. A missing `xywh` is not a
+   * reason to skip; it keeps its own path in {@link _createElementFromYMap}.
+   */
+  private _readElementFromYMap(
+    key: string,
+    value: unknown,
+    skipped: SurfaceElementDamageReport[]
+  ) {
+    let type: unknown;
+    let reason: SurfaceDamageReason = 'unreadable';
+
+    try {
+      const yMap = value as Y.Map<unknown>;
+      type = yMap.get('type');
+      const id = yMap.get('id');
+
+      if (typeof type === 'string' && typeof id === 'string' && id !== '') {
+        if (this._elementCtorMap[type]) {
+          const model = this._createElementFromYMap(type, id, yMap, {
+            onChange: payload => {
+              this._emitElementUpdated(model.model, payload);
+            },
+            skipFieldInit: true,
+          });
+          return model;
+        }
+        reason = 'unknown-type';
+      }
+    } catch {
+      // Not a map, or a constructor that threw on what the map holds: both
+      // are 'unreadable', and neither may escape into the Yjs observer.
+    }
+
+    const damage = { type: typeof type === 'string' ? type : '', reason };
+    this._damagedElements.set(key, damage);
+    this.elementDamaged.next({ id: key, ...damage });
+    skipped.push({ id: key, ...damage });
+    return null;
+  }
+
+  /** One console line per batch, however many elements it skipped. */
+  private _warnSkippedElements(skipped: SurfaceElementDamageReport[]) {
+    if (skipped.length === 0) return;
+    console.warn(
+      `[labre] surface skipped ${skipped.length} element(s) it cannot read, ` +
+        `left untouched in the document: ` +
+        skipped.map(({ id, reason }) => `${id} (${reason})`).join(', ')
+    );
   }
 
   /**
@@ -734,6 +810,7 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
         unmount: () => void;
         model: GfxPrimitiveElementModel;
       }[] = [];
+      const skipped: SurfaceElementDamageReport[] = [];
 
       keysChanged.forEach(id => {
         const change = changes.keys.get(id);
@@ -745,17 +822,9 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
               const hasModel = this._elementModels.has(id);
               const model = hasModel
                 ? this._elementModels.get(id)!
-                : this._createElementFromYMap(
-                    element.get('type') as string,
-                    element.get('id') as string,
-                    element,
-                    {
-                      onChange: payload => {
-                        this._emitElementUpdated(model.model, payload);
-                      },
-                      skipFieldInit: true,
-                    }
-                  );
+                : this._readElementFromYMap(id, element, skipped);
+
+              if (!model) break;
 
               !hasModel && this._elementModels.set(id, model);
               addToType(model.model.type, model.model);
@@ -763,16 +832,19 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
             }
             break;
           case 'delete':
+            // A skipped element has no model, yet its damage leaves with it.
+            this._damagedElements.delete(id);
             if (this._elementModels.has(id)) {
               const { model, unmount } = this._elementModels.get(id)!;
               removeFromType(model.type, model);
               this._elementModels.delete(id);
-              this._damagedElements.delete(id);
               deletedElements.push({ model, unmount });
             }
             break;
         }
       });
+
+      this._warnSkippedElements(skipped);
 
       addedElements.forEach(({ mount, model }) => {
         mount();
@@ -789,21 +861,12 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
       });
     };
 
+    const skipped: SurfaceElementDamageReport[] = [];
     elementsYMap.forEach((val, key) => {
-      const model = this._createElementFromYMap(
-        val.get('type') as string,
-        val.get('id') as string,
-        val,
-        {
-          onChange: payload => {
-            this._emitElementUpdated(model.model, payload);
-          },
-          skipFieldInit: true,
-        }
-      );
-
-      this._elementModels.set(key, model);
+      const model = this._readElementFromYMap(key, val, skipped);
+      if (model) this._elementModels.set(key, model);
     });
+    this._warnSkippedElements(skipped);
 
     this._elementModels.forEach(({ mount, model }) => {
       addToType(model.type, model);
@@ -937,9 +1000,11 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
   }
 
   private _watchChildrenChange() {
+    // The stored elements, not the models: a canvas holding only elements this
+    // client skipped (#669) is not empty, and must never be treated as such.
     const updateIsEmpty = () => {
       this._isEmpty$.value =
-        this._elementModels.size === 0 && this.children.length === 0;
+        this.elements.getValue()!.size === 0 && this.children.length === 0;
     };
 
     const disposables = new DisposableGroup();

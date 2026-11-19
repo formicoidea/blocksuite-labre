@@ -242,9 +242,9 @@ cross this bus.
 Not a gesture: a health event. It says what a document IS when it lands, which
 no lifecycle event can.
 
-| Event             | When                                                                                                   | Required props           |
-| ----------------- | ------------------------------------------------------------------------------------------------------ | ------------------------ |
-| `DocumentDamaged` | the editor opens a document carrying elements without geometry, or receives such elements through sync | `reason`, `elementCount` |
+| Event             | When                                                                                                                 | Required props                                                              |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `DocumentDamaged` | the editor opens a document carrying elements without geometry or that it cannot read, or receives them through sync | `reason` (`missing-xywh` \| `unknown-type` \| `unreadable`), `elementCount` |
 
 Emitted by `DocumentDamageTelemetryWatcher` (registered next to
 `BlockLifecycleTelemetryWatcher` in the foundation view extension), which reads
@@ -252,8 +252,13 @@ Emitted by `DocumentDamageTelemetryWatcher` (registered next to
 before any watcher exists, so a subscription alone would always be too late —
 then subscribes to `elementDamaged` for what sync delivers afterwards.
 
-- **One event per document per batch**, never one per element: the opening
-  batch is sent at mount, later arrivals are aggregated in a microtask.
+- **One event per document per batch and per reason**, never one per element:
+  the opening batch is sent at mount, later arrivals are aggregated in a
+  microtask. `missing-xywh` is an element drawn with no geometry (#318);
+  `unknown-type` an element whose type this client does not register, most
+  likely written by a newer client; `unreadable` an element with no type or
+  id, or whose model could not be built. The last two are skipped by the
+  surface, never drawn, and left untouched in the document (#669, ADR 0053).
 - **Elements are deduplicated** by id for the watcher's lifetime, so a document
   never counts an element twice.
 - **No ids and no content** — not the element ids, not their types, not the
