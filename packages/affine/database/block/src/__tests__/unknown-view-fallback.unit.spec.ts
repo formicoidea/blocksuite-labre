@@ -20,14 +20,15 @@
  *   finding a prototype member instead of the fallback.
  *
  * Issue #680 (Labre V2 drops its Calendar view and relies on this fallback)
- * names the calendar case end to end: a session that only reads a stored
- * calendar emits no Yjs update at all, `dataUpdate` called on it keeps its
- * `mode` and its calendar keys (`date`, `card`, `sources`), the views bar's
- * tab menu offers "Duplicate as table" on it (and only on a fallback view),
- * and the bar's "+" lists no calendar. It would have caught a fallback that
- * throws or resolves nothing, a `dataUpdate` guard dropped or read from the
- * derived `type` instead of the stored mode, and the menu entry's `hide`
- * inverted or removed.
+ * names the calendar case: reading a stored calendar through the data
+ * source, the UI logic and `setCurrentView` emits no Yjs update, and
+ * `dataUpdate` called on it keeps its `mode` and its calendar keys (`date`,
+ * `card`, `sources`); the views bar's tab menu offers "Duplicate as table"
+ * on it (and only on a fallback view) but never the plain "Duplicate",
+ * which would copy `mode: 'calendar'` into a new calendar view; the bar's
+ * "+" lists no calendar. It would have caught a fallback that throws or
+ * resolves nothing, the `dataUpdate` guard dropped, and the `hide` of
+ * either duplicate entry inverted or removed.
  *
  * The host side (the Labre app) is held by its own `lib-boundary.test.ts`;
  * the painted DOM by `integration-test/…/page/database-stored-views.spec.ts`.
@@ -44,7 +45,10 @@ import {
   type PopupTarget,
   popupTargetFromElement,
 } from '@labre/affine-components/context-menu';
-import { FeatureFlagService } from '@labre/affine-shared/services';
+import {
+  FeatureFlagService,
+  TOOLBAR_DUPLICATE,
+} from '@labre/affine-shared/services';
 import {
   DataViewRootUILogic,
   duplicateAsShownPreset,
@@ -357,24 +361,38 @@ describe('#680: a stored calendar is read, never rewritten, and can leave as a t
   const byTestId = (id: string) =>
     document.querySelector<HTMLElement>(`[data-testid="${id}"]`);
 
-  /** A tab's menu, once painted: "Delete" closes every tab's menu. */
+  /**
+   * A tab's menu, once painted ("Delete" closes every tab's menu): its
+   * "Duplicate as table" entry, and whether it lists the plain "Duplicate"
+   * (no test id: found by its English fallback, `std` being absent).
+   */
   async function openTabMenu(source: DatabaseBlockDataSource, viewId: string) {
     const { bar, target } = viewsBar(source, viewId);
     bar.openViewOption(target, viewId);
     await vi.waitUntil(() =>
       document.querySelector('affine-menu .delete-item')
     );
-    return byTestId('database-view-duplicate-as-table');
+    const names = [
+      ...document.querySelectorAll('affine-menu .affine-menu-button'),
+    ].map(item => item.textContent?.trim());
+    return {
+      asTable: byTestId('database-view-duplicate-as-table'),
+      duplicate: names.includes(TOOLBAR_DUPLICATE[1]),
+    };
   }
 
-  test('a session that only reads emits no Yjs update, and `dataUpdate` keeps mode and calendar keys', () => {
+  // No block mounted, no Lit render: the real paint is held by
+  // `integration-test/…/page/database-stored-views.spec.ts`, which compares
+  // `props.views` deep-equal but does not count Yjs updates.
+  test('reading through the data source, UI logic and `setCurrentView` emits no Yjs update; a direct `dataUpdate` keeps mode and calendar keys', () => {
     const { store, model } = createDatabase();
     expect(storedCalendar(model)).toEqual(CALENDAR);
     const updates: Uint8Array[] = [];
     const onUpdate = (update: Uint8Array) => updates.push(update);
     store.doc.spaceDoc.on('update', onUpdate);
 
-    // As on load: a fresh source, the calendar opened and drawn.
+    // What a load does below the view: a fresh source, its root UI logic,
+    // the calendar made current and its view logic read.
     const source = new DatabaseBlockDataSource(model);
     const root = new DataViewRootUILogic({ dataSource: source } as never);
     source.viewManager.setCurrentView(CALENDAR.id);
@@ -401,11 +419,16 @@ describe('#680: a stored calendar is read, never rewritten, and can leave as a t
     expect(storedCalendar(model)).toEqual(CALENDAR);
   });
 
-  test('the tab menu offers "Duplicate as table" on the calendar, and it adds a table', async () => {
+  test('the tab menu offers "Duplicate as table" on the calendar, never "Duplicate", and it adds a table', async () => {
     const { model } = createDatabase();
     const source = new DatabaseBlockDataSource(model);
 
-    const entry = await openTabMenu(source, CALENDAR.id);
+    const { asTable: entry, duplicate } = await openTabMenu(
+      source,
+      CALENDAR.id
+    );
+    // "Duplicate" copies the stored view as is: a new calendar view.
+    expect(duplicate, '"Duplicate" offered').toBe(false);
     expect(entry, '"Duplicate as table" offered').not.toBe(null);
     entry!.click();
 
@@ -415,11 +438,14 @@ describe('#680: a stored calendar is read, never rewritten, and can leave as a t
     expect(storedCalendar(model)).toEqual(CALENDAR);
   });
 
-  test('the tab menu of a view drawn with its own preset has no "Duplicate as table"', async () => {
+  test('the tab menu of a view drawn with its own preset has "Duplicate", not "Duplicate as table"', async () => {
     const { model, tableId } = createDatabase();
     const source = new DatabaseBlockDataSource(model);
 
-    expect(await openTabMenu(source, tableId)).toBe(null);
+    const { asTable, duplicate } = await openTabMenu(source, tableId);
+    expect(asTable).toBe(null);
+    // Holds the calendar's `duplicate: false` to a lookup that can match.
+    expect(duplicate).toBe(true);
   });
 
   test('the views bar "+" lists every creatable preset and no calendar', async () => {
