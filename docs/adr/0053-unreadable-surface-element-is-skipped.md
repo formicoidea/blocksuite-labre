@@ -141,12 +141,50 @@ these outcomes.
     element for that node (`affine/model/src/elements/mindmap/mindmap.ts:391`,
     `:416`); a layout that reads the node's bound would throw. Not exercised
     here (the model package is a red zone).
-- **Copy of an element whose stored `id` is absent or wrong.** `serialize()`
-  returns the stored map (`framework/std/src/gfx/model/surface/element-model.ts:479`),
-  and the paste maps old to new ids by that serialised `id`
-  (`clipboard/command.ts:189`, `:201`): such an element is pasted, but a
-  connector or group copied with it that names it by key is not re-pointed.
-  Not changed here: the load path does not need it.
+- **Copy, paste and duplicate of an element whose stored `id` is absent or
+  wrong** — known limit, not a regression, left for a follow-up (outside the
+  load path). These are exactly the #681 documents this ADR now opens. The
+  cause: identity is the key, but `serialize()` still returns the STORED map,
+  stored `id` included (`framework/std/src/gfx/model/surface/element-model.ts:479`),
+  and the paste keys everything by that serialised `id`. All paths below are
+  in `blocks/root/src/edgeless/clipboard/`:
+  - copying two or more elements with no stored `id` pastes only ONE,
+    silently: the paste deduplicates by `id` and `seen.has(undefined)` is
+    true from the second one on (`command.ts:132`). In a #681 document no
+    element has an `id`, so copying N shapes pastes one;
+  - a group or a mindmap containing such an element is not pasted at all:
+    its child has no entry in `oldToNewIdMap`, so it logs `Copy failed` and
+    returns `null` (`canvas.ts:28-34` for a group, `44-54` for a mindmap);
+  - a connector copied with such an element stays attached to the ORIGINAL
+    element: `serializeConnector` finds the end in the selection by model id
+    (the key) and keeps `{ id: key }` (`blocks/root/src/edgeless/utils/clone-utils.ts:95`),
+    then the paste finds no new id for the key and keeps it
+    (`canvas.ts:78-79`);
+  - duplication and Alt-drag take the same path
+    (`blocks/root/src/edgeless/interact-extensions/clone-ext.ts:13`,
+    `prepareCloneData` then the same paste command).
+    Nothing writes into the original: `addElement` assigns a new id and never
+    copies the `id` key (`UNSAFE_ELEMENT_PROP_KEYS`).
+- **A local `addElement` whose mount throws** (a bug in a registered type, not
+  corrupt data) is now skipped like a loaded element: the model is removed,
+  the Y.Map it just wrote stays in the document, `addElement` returns an id
+  for which `getElementById` is `null`, and a `DocumentDamaged` `unreadable`
+  is counted (`surface-model.ts:901-904`, `926-929`, `738`). Before, a
+  half-mounted model stayed and the error was swallowed by `store.transact`.
+  Known limit, not fixed here.
+- **Pre-existing: a connector stored without `mode`** throws
+  `unknown connector mode` in a microtask of the connector watcher, not at
+  mount, so the guard does not catch it; `pendingFlag` then stays `true` and
+  no connector path of that surface is recomputed for the session
+  (`gfx/connector/src/connector-watcher.ts:121-129`,
+  `gfx/connector/src/connector-manager.ts:1723`). Read from the code, not
+  demonstrated. Not fixed here.
+- **The `@observe` metadata quirk** (`framework/std/src/gfx/model/surface/decorators/common.ts:17`):
+  `setObjectPropMeta` reads the table through the prototype chain and mutates
+  what it finds, so a subclass of a concrete, already instantiated element
+  class adds its observers to the parent's table. Inert today: no element
+  class with `@observe` is extended by another concrete class (the guard
+  spec's test types work around it). Not fixed here.
 - **Known limit, pre-existing, not fixed here.** The elements-map observer
   handles `add` and `delete` only (`surface-model.ts`, `onElementsMapChange`).
   A peer that REPLACES the Y.Map under an existing key (`update` action)
