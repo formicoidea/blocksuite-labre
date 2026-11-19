@@ -48,7 +48,6 @@ describe('BlockStdScope.getView', () => {
     const std = createStd();
     const view = std.getView('test:unregistered');
     expect(view).toBeNull();
-    expect(view !== null).toBe(false);
   });
 
   test('answers the registered view for a known flavour', () => {
