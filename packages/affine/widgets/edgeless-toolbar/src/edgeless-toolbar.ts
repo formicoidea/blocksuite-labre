@@ -19,7 +19,11 @@ import {
   translateKey,
 } from '@labre/affine-shared/services';
 import { stopPropagation } from '@labre/affine-shared/utils';
-import { EDGELESS_TOOLBAR_MORE_TOOLS } from './translations.js';
+import {
+  EDGELESS_TOOLBAR_MORE_TOOLS,
+  EDGELESS_TOOLBAR_NEXT_TOOLS,
+  EDGELESS_TOOLBAR_PREVIOUS_TOOLS,
+} from './translations.js';
 import {
   ArrowLeftSmallIcon,
   ArrowRightSmallIcon,
@@ -31,13 +35,21 @@ import { autoPlacement, offset } from '@floating-ui/dom';
 import { ContextProvider } from '@lit/context';
 import { computed } from '@preact/signals-core';
 import { baseTheme, cssVar } from '@toeverything/theme';
-import { css, html, nothing, unsafeCSS } from 'lit';
+import {
+  css,
+  html,
+  nothing,
+  type PropertyValues,
+  type ReactiveElement,
+  unsafeCSS,
+} from 'lit';
 import { query, state } from 'lit/decorators.js';
-import { cache } from 'lit/directives/cache.js';
+import { keyed } from 'lit/directives/keyed.js';
 import { literal, unsafeStatic } from 'lit/static-html.js';
 import debounce from 'lodash-es/debounce';
 import { Subject } from 'rxjs';
 
+import { EdgelessToolIconButton } from './button/tool-icon-button.js';
 import {
   edgelessToolbarContext,
   type EdgelessToolbarSlots,
@@ -642,6 +654,7 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
           ?disabled=${!this._denseQuickTools}
           .size=${20}
           class="quick-tool-more-button"
+          aria-label=${translateKey(this.std, ...EDGELESS_TOOLBAR_MORE_TOOLS)}
           @click=${this._openMoreQuickToolsMenu}
           ?active=${this._quickTools
             .slice(this._visibleQuickToolSize)
@@ -658,17 +671,15 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
         <icon-button
           .size=${20}
           class="senior-nav-button"
+          aria-label=${translateKey(
+            this.std,
+            ...EDGELESS_TOOLBAR_PREVIOUS_TOOLS
+          )}
           ?disabled=${this._seniorScrollPrevDisabled}
           @click=${this._onSeniorNavPrev}
         >
           ${ArrowLeftSmallIcon({ width: '20px', height: '20px' })}
-          ${cache(
-            this._seniorPrevTooltip
-              ? html` <affine-tooltip tip-position="top" .offset=${4}>
-                  ${this._seniorPrevTooltip}
-                </affine-tooltip>`
-              : nothing
-          )}
+          ${pagerTooltip(this._seniorPrevTooltip)}
         </icon-button>
       </div>
       <div class="senior-tools">
@@ -681,6 +692,7 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
             (tool, index) =>
               html`<div
                 class="senior-tool-item"
+                data-senior-index=${this.scrollSeniorToolIndex + index}
                 ?data-keyboard-highlight=${this._walkableQuickToolSize +
                   this.scrollSeniorToolIndex +
                   index ===
@@ -694,17 +706,12 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
         <icon-button
           .size=${20}
           class="senior-nav-button"
+          aria-label=${translateKey(this.std, ...EDGELESS_TOOLBAR_NEXT_TOOLS)}
           ?disabled=${this._seniorScrollNextDisabled}
           @click=${this._onSeniorNavNext}
         >
           ${ArrowRightSmallIcon({ width: '20px', height: '20px' })}
-          ${cache(
-            this._seniorNextTooltip
-              ? html` <affine-tooltip tip-position="top" .offset=${4}>
-                  ${this._seniorNextTooltip}
-                </affine-tooltip>`
-              : nothing
-          )}
+          ${pagerTooltip(this._seniorNextTooltip)}
         </icon-button>
       </div>
     `;
@@ -768,6 +775,58 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
     if (this._resizeObserver) {
       this._resizeObserver.disconnect();
     }
+  }
+
+  override updated(changed: PropertyValues<this>) {
+    super.updated(changed);
+    this._syncRow().catch(console.error);
+  }
+
+  /** Bumped by every sync of the row, so an older one still waiting stops. */
+  private _rowSyncs = 0;
+
+  /**
+   * The row's buttons in order, each with the item that draws it: the quick
+   * tools on show, then the senior tools on show. A tool's own component draws
+   * its button an update after this row, so this waits for them.
+   */
+  private async _rowEntries(): Promise<ToolbarRowEntry[]> {
+    const items = Array.from(
+      this.shadowRoot?.querySelectorAll<HTMLElement>(
+        '.quick-tool-item, .senior-tool-item'
+      ) ?? []
+    );
+    const buttons = await Promise.all(items.map(rowButtonsIn));
+    return items.flatMap((item, index) => {
+      const { seniorIndex } = item.dataset;
+      const senior = seniorIndex === undefined ? null : Number(seniorIndex);
+      return buttons[index].map(button => ({
+        button,
+        item: index,
+        senior,
+        alone: buttons[index].length === 1,
+      }));
+    });
+  }
+
+  /**
+   * What the row's buttons tell assistive technology (#679). Each announces
+   * its state; a senior tool drawn as one button is named by the label its
+   * tool declares — a framework's display name, from its descriptor's key —
+   * rather than by its tooltip, which its menu empties while open. The pen
+   * and eraser share one senior tool and name themselves.
+   */
+  private async _syncRow() {
+    const sync = ++this._rowSyncs;
+    const entries = await this._rowEntries();
+    if (sync !== this._rowSyncs || !this.isConnected) return;
+    const seniors = this._seniorTools;
+    entries.forEach(({ button, senior, alone }) => {
+      button.onToolbarRow = true;
+      if (senior !== null && alone) {
+        button.label = this._seniorToolLabel(seniors[senior]);
+      }
+    });
   }
 
   override firstUpdated() {
@@ -865,6 +924,55 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
 
   @query('.edgeless-toolbar-container')
   accessor toolbarContainer!: HTMLElement;
+}
+
+interface ToolbarRowEntry {
+  button: EdgelessToolIconButton;
+  /** Position of the item that draws it, among the items on show. */
+  item: number;
+  /** The senior tool's index among all of them; `null` for a quick tool. */
+  senior: number | null;
+  /** Whether it is its item's only button. */
+  alone: boolean;
+}
+
+/**
+ * The buttons a toolbar item puts on the row. A tool's component draws its
+ * button first in its shadow tree; what it appends after — the popper of its
+ * menu, a panel — is not on the row, so the walk stops at the first button of
+ * each shadow tree. A plain wrapper (the pen and the eraser side by side) gives
+ * every component it holds.
+ */
+async function rowButtonsIn(root: Element): Promise<EdgelessToolIconButton[]> {
+  if (root instanceof EdgelessToolIconButton) return [root];
+  await (root as Partial<ReactiveElement>).updateComplete;
+  const shadow = root.shadowRoot;
+  if (!shadow) {
+    const found = await Promise.all(Array.from(root.children, rowButtonsIn));
+    return found.flat();
+  }
+  for (const child of Array.from(shadow.children)) {
+    const found = await rowButtonsIn(child);
+    if (found.length > 0) return found;
+  }
+  return [];
+}
+
+/**
+ * A pager arrow's tooltip: the senior tool it brings in. Keyed by that name
+ * because a tooltip shows a copy of its content taken when the pointer came
+ * in: after a page turn under a still pointer, the arrow went on showing the
+ * tool it had just brought in (#679). A new name is a new tooltip, and the old
+ * one leaves with its popup.
+ */
+function pagerTooltip(label: string) {
+  if (!label) return nothing;
+  return keyed(
+    label,
+    html`<affine-tooltip tip-position="top" .offset=${4}>
+      ${label}
+    </affine-tooltip>`
+  );
 }
 
 /**

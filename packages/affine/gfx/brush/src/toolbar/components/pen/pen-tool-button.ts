@@ -175,6 +175,7 @@ export class EdgelessPenToolButton extends EdgelessToolbarToolMixin(
       <edgeless-toolbar-button
         class="edgeless-pen-button"
         data-drawing-tool="${type}"
+        .label=${tip}
         .tooltip=${when(
           this.popper,
           () => nothing,

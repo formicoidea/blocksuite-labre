@@ -25,6 +25,21 @@ export const EDGELESS_TOOLBAR_MORE_TOOLS: ChromeWording = [
 ];
 
 /**
+ * The accessible names of the senior row's pager arrows (#679). Their tooltip
+ * shows the tool the arrow brings in, a name another button already carries
+ * once paged in; the arrow itself is named by what it does.
+ */
+export const EDGELESS_TOOLBAR_PREVIOUS_TOOLS: ChromeWording = [
+  'com.labre.edgeless-toolbar.previous-tools',
+  'Previous tools',
+];
+
+export const EDGELESS_TOOLBAR_NEXT_TOOLS: ChromeWording = [
+  'com.labre.edgeless-toolbar.next-tools',
+  'Next tools',
+];
+
+/**
  * A family the element still carries but the host no longer configures
  * (#396): the font picker keeps its name, greyed, with this mark. `{{name}}`
  * is the family name, a proper name the host does not translate.
@@ -201,6 +216,8 @@ export const SELECTION_PANE_TYPE_ELEMENT: ChromeWording = [
 /** Every wording this package declares, in the order it renders them. */
 export const EDGELESS_TOOLBAR_WORDINGS: readonly ChromeWording[] = [
   EDGELESS_TOOLBAR_MORE_TOOLS,
+  EDGELESS_TOOLBAR_PREVIOUS_TOOLS,
+  EDGELESS_TOOLBAR_NEXT_TOOLS,
   EDGELESS_TOOLBAR_FONT_FAMILY_UNAVAILABLE,
   SELECTION_PANE_TITLE,
   SELECTION_PANE_EMPTY,
