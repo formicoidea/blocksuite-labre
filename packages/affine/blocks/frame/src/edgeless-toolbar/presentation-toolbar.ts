@@ -10,6 +10,7 @@ import {
   translateKey,
   ViewportElementProvider,
 } from '@labre/affine-shared/services';
+import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { EdgelessToolbarToolMixin } from '@labre/affine-widget-edgeless-toolbar';
 import { Bound, clamp } from '@labre/global/gfx';
 import { SignalWatcher } from '@labre/global/lit';
@@ -103,12 +104,13 @@ export class PresentationToolbar extends EdgelessToolbarToolMixin(
       border-radius: 8px;
       position: relative;
       overflow: hidden;
+      background: ${unsafeCSSVarV2('button/error')};
 
       svg {
         display: block;
         width: 24px;
         height: 24px;
-        color: white;
+        color: ${unsafeCSSVarV2('button/pureWhiteText')};
       }
     }
     .edgeless-frame-navigator-stop::before {
@@ -495,7 +497,6 @@ export class PresentationToolbar extends EdgelessToolbarToolMixin(
       <button
         class="edgeless-frame-navigator-stop"
         @click=${this._exitPresentation}
-        style="background: ${cssVar('warningColor')}"
       >
         ${StopAiIcon()}
       </button>
