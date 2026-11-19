@@ -109,18 +109,22 @@ export class EdgelessToolIconButton extends LitElement {
    * template (a wording beside its shortcut) cannot name the button, and one
    * emptied while the button's menu is open must not unname it: those owners
    * pass `label`.
+   *
+   * Only on the canvas toolbar's row, or for an owner that passes `label`.
+   * Elsewhere — a panel, a menu, the auto-complete — a visible text is the
+   * name and the tooltip only describes it (WCAG 2.5.3): those buttons keep
+   * exactly the attributes their owner gives them.
    */
   override updated() {
+    if (!this.onToolbarRow && !this.label) return;
     const name =
       this.label || (typeof this.tooltip === 'string' ? this.tooltip : '');
     if (name) this.setAttribute('aria-label', name);
     else this.removeAttribute('aria-label');
 
-    if (this.onToolbarRow && this.active !== undefined) {
-      this.setAttribute('aria-pressed', String(this.active));
-    } else {
-      this.removeAttribute('aria-pressed');
-    }
+    if (!this.onToolbarRow) return;
+    if (this.active === undefined) this.removeAttribute('aria-pressed');
+    else this.setAttribute('aria-pressed', String(this.active));
   }
 
   override render() {

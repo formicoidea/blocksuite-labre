@@ -53,7 +53,7 @@ describe('the accessible name of a toolbar button', () => {
   test('is the translated wording its tooltip shows', async () => {
     const std = hostWith({ [EDGELESS_TOOLBAR_MORE_TOOLS[0]]: "Plus d'outils" });
     const tooltip = translateKey(std, ...EDGELESS_TOOLBAR_MORE_TOOLS);
-    const element = await button({ tooltip });
+    const element = await button({ tooltip, onToolbarRow: true });
     expect(element.getAttribute('role')).toBe('button');
     expect(element.getAttribute('aria-label')).toBe("Plus d'outils");
   });
@@ -63,7 +63,7 @@ describe('the accessible name of a toolbar button', () => {
       data-tip="Eraser"
       data-shortcut="E"
     ></affine-tooltip-content-with-shortcut>`;
-    const unnamed = await button({ tooltip });
+    const unnamed = await button({ tooltip, onToolbarRow: true });
     expect(unnamed.hasAttribute('aria-label')).toBe(false);
 
     const named = await button({ tooltip, label: 'Eraser' });
@@ -79,8 +79,40 @@ describe('the accessible name of a toolbar button', () => {
   });
 
   test('"coming soon" shows in the tooltip, never in the name', async () => {
-    const element = await button({ tooltip: 'Frame', coming: true });
+    const element = await button({
+      tooltip: 'Frame',
+      coming: true,
+      onToolbarRow: true,
+    });
     expect(element.getAttribute('aria-label')).toBe('Frame');
+  });
+});
+
+/**
+ * GUARD — off the canvas toolbar's row, the element is what it was before
+ * #679. Review of #679: deriving the name from the tooltip everywhere named
+ * the auto-complete's "add the same object" button "Shape" in English under
+ * its translated visible label, and named the outline's display-mode button
+ * with a tooltip that empties when its popup opens (WCAG 2.5.3).
+ */
+describe('off the toolbar row, nothing is added', () => {
+  test('no aria-label, no aria-pressed, no tabindex from a tooltip', async () => {
+    const element = await button({ tooltip: 'Shape', active: true });
+    expect(element.hasAttribute('aria-label')).toBe(false);
+    expect(element.hasAttribute('aria-pressed')).toBe(false);
+    expect(element.hasAttribute('tabindex')).toBe(false);
+  });
+
+  test("an owner's own aria-label is left as it is", async () => {
+    const element = document.createElement('edgeless-tool-icon-button');
+    element.setAttribute('aria-label', 'Add the same object');
+    element.tooltip = 'Shape';
+    document.body.append(element);
+    mounted.push(element);
+    await element.updateComplete;
+    element.tooltip = '';
+    await element.updateComplete;
+    expect(element.getAttribute('aria-label')).toBe('Add the same object');
   });
 });
 
