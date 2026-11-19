@@ -88,23 +88,58 @@ class MountFailsElement extends TestShapeElement {
     return 'testMountFails';
   }
 
-  @observe(() => {
-    mountFailsObserved++;
+  @observe((_, instance) => {
+    if (instance.type === 'testMountFails') mountFailsObserved++;
   })
   @field()
-  accessor nested: YMap<unknown> | undefined = undefined;
+  accessor mountNested: YMap<unknown> | undefined = undefined;
 
   override onCreated() {
     throw new Error('onCreated cannot read this map');
   }
 }
 
-/** The reader's surface: the test surface, plus the two failing types. */
+/** How many times the first observer of an observer-failing element ran. */
+let observerFailsObserved = 0;
+
+/**
+ * A registered type whose SECOND observer throws while the observers start,
+ * after the first one attached to a nested map: exactly the mindmap's
+ * `children` observer running `buildTree` on a `null` node.
+ *
+ * Both observers act on their own type only, and the props have names no
+ * other test type uses: `setObjectPropMeta` (`decorators/common.ts`) reads
+ * `target[symbol]` through the prototype chain and mutates what it finds, so
+ * a subclass of `TestShapeElement` adds its observers to the parent's table
+ * once a test shape exists, and they then start on every test shape's mount.
+ */
+class ObserverFailsElement extends TestShapeElement {
+  override get type() {
+    return 'testObserverFails';
+  }
+
+  @observe((_, instance) => {
+    if (instance.type === 'testObserverFails') observerFailsObserved++;
+  })
+  @field()
+  accessor observerNested: YMap<unknown> | undefined = undefined;
+
+  @observe((_, instance) => {
+    if (instance.type === 'testObserverFails') {
+      throw new Error('this observer cannot read the map');
+    }
+  })
+  @field()
+  accessor observerBroken: YMap<unknown> | undefined = undefined;
+}
+
+/** The reader's surface: the test surface, plus the failing types. */
 class ReaderSurfaceModel extends SurfaceBlockModel {
   override _init() {
     this._extendElement({
       testExplodes: ExplodingElement,
       testMountFails: MountFailsElement,
+      testObserverFails: ObserverFailsElement,
     });
     super._init();
   }
@@ -204,7 +239,7 @@ function writeElements(raw: YDoc, surfaceId: string, ids: string[]) {
         map.set(key, value);
       }
       // The nested map whose observer starts before `onCreated` throws.
-      if (id === MOUNT_FAILS) map.set('nested', new YMap<unknown>());
+      if (id === MOUNT_FAILS) map.set('mountNested', new YMap<unknown>());
     }
   });
 }
@@ -616,12 +651,41 @@ describe('an element whose mount throws', () => {
       const element = elementsOf(raw, surfaceId).get(MOUNT_FAILS) as YMap<
         YMap<unknown>
       >;
-      element.get('nested')!.set('probe', 1);
+      element.get('mountNested')!.set('probe', 1);
       (element as YMap<unknown>).set('label', 'touched');
     });
     sync(raw, spaceDoc);
 
     expect(mountFailsObserved).toBe(observedAtLoad);
+  });
+
+  test('an observer that throws while starting leaves none of the others attached', () => {
+    const { workspace, surfaceId, raw } = setupWriter();
+    writeElements(raw, surfaceId, [VALID_A]);
+    raw.transact(() => {
+      const map = new YMap<unknown>();
+      elementsOf(raw, surfaceId).set('observer-fails', map);
+      map.set('type', 'testObserverFails');
+      map.set('xywh', '[0,0,1,1]');
+      map.set('observerNested', new YMap<unknown>());
+      map.set('observerBroken', new YMap<unknown>());
+    });
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { surface, spaceDoc } = open(workspace, raw, surfaceId);
+    expect(surface.damagedElements.get('observer-fails')?.reason).toBe(
+      'unreadable'
+    );
+    const observedAtLoad = observerFailsObserved;
+
+    raw.transact(() => {
+      const element = elementsOf(raw, surfaceId).get('observer-fails') as YMap<
+        YMap<unknown>
+      >;
+      element.get('observerNested')!.set('probe', 1);
+    });
+    sync(raw, spaceDoc);
+
+    expect(observerFailsObserved).toBe(observedAtLoad);
   });
 
   test('is skipped the same way when it arrives by a remote update', () => {
