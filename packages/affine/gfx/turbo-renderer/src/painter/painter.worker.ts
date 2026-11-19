@@ -35,7 +35,7 @@ export class ViewportLayoutPainter {
   public provider: ServiceProvider;
 
   getPainter(type: string): BlockLayoutPainter | null {
-    return this.provider.getOptional(BlockPainterProvider(type));
+    return this.provider.getOptional(BlockPainterProvider(type)) ?? null;
   }
 
   constructor(extensions: ExtensionType[]) {

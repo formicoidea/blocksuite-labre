@@ -142,7 +142,9 @@ export class BlockStdScope {
   }
 
   getView(flavour: string) {
-    return this.getOptional(BlockViewIdentifier(flavour));
+    // The DI answers `undefined` for a missing view despite its `| null`
+    // type; a host testing `!== null` must see the null it was promised (#682).
+    return this.getOptional(BlockViewIdentifier(flavour)) ?? null;
   }
 
   mount() {
