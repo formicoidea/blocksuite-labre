@@ -19,8 +19,11 @@
  * - the element is skipped (no model) and every other element mounts;
  * - it is reported once, through `damagedElements` / `elementDamaged`, with
  *   `unknown-type` (a type present but not registered: a newer client) or
- *   `unreadable` (no type, no id, not a map, or a model that threw);
- * - at most one console line per batch, never an unhandled error;
+ *   `unreadable` (no type, not a map, or a model whose construction or mount
+ *   threw — a mount that throws is undone, no observer left on the map);
+ * - an element's identity is its KEY in the elements map: one stored with no
+ *   `id`, or another `id`, loads under its key and is not skipped (#681);
+ * - one console line per batch, bounded, never an unhandled error;
  * - NOTHING is written: its Y.Map stays exactly as it is, for a client that
  *   can read it; the load emits no Yjs update at all;
  * - the position of the bad element in the map does not matter.
@@ -45,7 +48,11 @@ import {
 } from 'yjs';
 
 import { effects } from '../../effects.js';
-import type { SurfaceElementDamageReport } from '../../gfx/index.js';
+import {
+  field,
+  observe,
+  type SurfaceElementDamageReport,
+} from '../../gfx/index.js';
 import { TestShapeElement } from '../test-gfx-element.js';
 import {
   RootBlockSchemaExtension,
@@ -68,10 +75,37 @@ class ExplodingElement extends TestShapeElement {
   }
 }
 
-/** The reader's surface: the test surface, plus the exploding type. */
+/** How many times the observer of a mount-failing element ran. */
+let mountFailsObserved = 0;
+
+/**
+ * A registered type whose model builds, but whose MOUNT throws, after an
+ * observer has started on a nested map: the shape of a real mindmap whose
+ * `children` hold a `null` node (`buildTree` throws from its observer).
+ */
+class MountFailsElement extends TestShapeElement {
+  override get type() {
+    return 'testMountFails';
+  }
+
+  @observe(() => {
+    mountFailsObserved++;
+  })
+  @field()
+  accessor nested: YMap<unknown> | undefined = undefined;
+
+  override onCreated() {
+    throw new Error('onCreated cannot read this map');
+  }
+}
+
+/** The reader's surface: the test surface, plus the two failing types. */
 class ReaderSurfaceModel extends SurfaceBlockModel {
   override _init() {
-    this._extendElement({ testExplodes: ExplodingElement });
+    this._extendElement({
+      testExplodes: ExplodingElement,
+      testMountFails: MountFailsElement,
+    });
     super._init();
   }
 }
@@ -93,6 +127,7 @@ const VALID_A = 'valid-a';
 const VALID_B = 'valid-b';
 const UNTYPED = 'untyped';
 const FUTURE = 'future';
+const MOUNT_FAILS = 'mount-fails';
 
 type Entries = Record<string, unknown>;
 
@@ -122,12 +157,15 @@ const FIXTURES: Record<string, Entries> = {
   [VALID_B]: shape(VALID_B),
   [UNTYPED]: untyped(UNTYPED),
   [FUTURE]: future(FUTURE),
+  [MOUNT_FAILS]: { ...shape(MOUNT_FAILS), type: 'testMountFails' },
 };
 
 const EXPECTED_DAMAGE = {
   [UNTYPED]: { type: '', reason: 'unreadable' },
   [FUTURE]: { type: 'futureShape', reason: 'unknown-type' },
 };
+
+const MOUNT_FAILS_DAMAGE = { type: 'testMountFails', reason: 'unreadable' };
 
 /** The document the editor wrote: a page and an empty surface. */
 function setupWriter() {
@@ -165,6 +203,8 @@ function writeElements(raw: YDoc, surfaceId: string, ids: string[]) {
       for (const [key, value] of Object.entries(FIXTURES[id] ?? {})) {
         map.set(key, value);
       }
+      // The nested map whose observer starts before `onCreated` throws.
+      if (id === MOUNT_FAILS) map.set('nested', new YMap<unknown>());
     }
   });
 }
@@ -177,7 +217,7 @@ function open(
   workspace: TestWorkspace,
   raw: YDoc,
   surfaceId: string,
-  surfaceExtension = SurfaceBlockSchemaExtension
+  surfaceExtension = ReaderSurfaceExtension
 ) {
   const reader = new TestWorkspace(workspaceOptions());
   applyUpdate(reader.doc, encodeStateAsUpdate(workspace.doc));
@@ -300,16 +340,13 @@ describe('a surface holding elements it cannot read', () => {
     );
   });
 
-  test('a map with no id, and a value that is not a map, are unreadable', () => {
+  test('a value that is not a map, or null, is unreadable', () => {
     const { workspace, surfaceId, raw } = setupWriter();
     writeElements(raw, surfaceId, [VALID_A]);
     const elements = elementsOf(raw, surfaceId);
     raw.transact(() => {
-      const noId = new YMap<unknown>();
-      elements.set('no-id', noId);
-      noId.set('type', 'testShape');
-      noId.set('xywh', '[0,0,1,1]');
       elements.set('not-a-map', 'a string' as unknown as YMap<unknown>);
+      elements.set('null', null as unknown as YMap<unknown>);
     });
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -317,8 +354,8 @@ describe('a surface holding elements it cannot read', () => {
 
     expect(surface.elementModels.map(model => model.id)).toEqual([VALID_A]);
     expect(Object.fromEntries(surface.damagedElements)).toEqual({
-      'no-id': { type: 'testShape', reason: 'unreadable' },
       'not-a-map': { type: '', reason: 'unreadable' },
+      null: { type: '', reason: 'unreadable' },
     });
     expect(skippedWarnings(warn)).toHaveLength(1);
     expect(updates).toEqual([]);
@@ -506,5 +543,244 @@ describe('neighbours of a skipped element', () => {
     expect((stored.get(FUTURE) as YMap<unknown>).toJSON()).toEqual(
       FIXTURES[FUTURE]
     );
+  });
+});
+
+/** An empty canvas, opened; later elements arrive through {@link sync}. */
+function openEmpty() {
+  const { workspace, surfaceId, raw } = setupWriter();
+  return { surfaceId, raw, ...open(workspace, raw, surfaceId) };
+}
+
+/** The proof a model is mounted: its updates leave the surface. */
+function expectMounted(surface: SurfaceBlockModel, id: string) {
+  const updated: string[] = [];
+  const subscription = surface.elementUpdated.subscribe(payload =>
+    updated.push(payload.id)
+  );
+  surface.updateElement(id, { xywh: '[3,3,10,10]' });
+  subscription.unsubscribe();
+  expect(updated).toEqual([id]);
+}
+
+/**
+ * A model that BUILDS but whose mount throws (an observer or `onCreated`
+ * choking on the map, as a real mindmap does on a `null` node) stopped the
+ * load loop exactly as a bad type did: later models unmounted, watchers never
+ * set up, an unhandled error.
+ */
+describe('an element whose mount throws', () => {
+  test.each([
+    ['first', [MOUNT_FAILS, VALID_A, VALID_B]],
+    ['in the middle', [VALID_A, MOUNT_FAILS, VALID_B]],
+    ['last', [VALID_A, VALID_B, MOUNT_FAILS]],
+  ])('is skipped at load when it comes %s', (_, order) => {
+    const { workspace, surfaceId, raw } = setupWriter();
+    writeElements(raw, surfaceId, order);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const { surface, updates } = open(workspace, raw, surfaceId);
+
+    expect(surface.elementModels.map(model => model.id).sort()).toEqual([
+      VALID_A,
+      VALID_B,
+    ]);
+    expect(surface.getElementById(MOUNT_FAILS)).toBeNull();
+    expect(surface.damagedElements.get(MOUNT_FAILS)).toEqual(
+      MOUNT_FAILS_DAMAGE
+    );
+    expect(updates).toEqual([]);
+    expectMounted(surface, VALID_A);
+    expectMounted(surface, VALID_B);
+
+    // The watchers are set up: the elements-map observer emits elementAdded.
+    const added: string[] = [];
+    surface.elementAdded.subscribe(({ id }) => added.push(id));
+    const id = surface.addElement({ type: 'testShape' });
+    expect(added).toEqual([id]);
+
+    // One line, carrying what threw.
+    const lines = skippedWarnings(warn);
+    expect(lines).toHaveLength(1);
+    expect(String(lines[0][1])).toContain('onCreated cannot read this map');
+  });
+
+  test('its partial mount is undone: no observer is left on its map', () => {
+    const { workspace, surfaceId, raw } = setupWriter();
+    writeElements(raw, surfaceId, [MOUNT_FAILS, VALID_A]);
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { spaceDoc } = open(workspace, raw, surfaceId);
+    const observedAtLoad = mountFailsObserved;
+
+    raw.transact(() => {
+      const element = elementsOf(raw, surfaceId).get(MOUNT_FAILS) as YMap<
+        YMap<unknown>
+      >;
+      element.get('nested')!.set('probe', 1);
+      (element as YMap<unknown>).set('label', 'touched');
+    });
+    sync(raw, spaceDoc);
+
+    expect(mountFailsObserved).toBe(observedAtLoad);
+  });
+
+  test('is skipped the same way when it arrives by a remote update', () => {
+    const { surfaceId, raw, surface, spaceDoc } = openEmpty();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const added: string[] = [];
+    const reports: SurfaceElementDamageReport[] = [];
+    surface.elementAdded.subscribe(({ id }) => added.push(id));
+    surface.elementDamaged.subscribe(report => reports.push(report));
+
+    writeElements(raw, surfaceId, [VALID_A, MOUNT_FAILS, VALID_B]);
+    expect(() => sync(raw, spaceDoc)).not.toThrow();
+
+    expect(added.sort()).toEqual([VALID_A, VALID_B]);
+    expect(surface.getElementById(MOUNT_FAILS)).toBeNull();
+    expect(reports).toEqual([{ id: MOUNT_FAILS, ...MOUNT_FAILS_DAMAGE }]);
+    expectMounted(surface, VALID_B);
+    expect(skippedWarnings(warn)).toHaveLength(1);
+  });
+});
+
+/**
+ * An element's identity is its KEY in the elements map (#681, ADR 0053):
+ * every lookup is by key, but the model used to take its id from the stored
+ * `id` prop, so an element stored without one got `model.id === undefined`
+ * and its first update reached `getElementById(undefined)`. A stored `id`
+ * that is absent or different is not a reason to skip either: such documents
+ * render today, and must keep rendering.
+ */
+describe('identity is the key in the elements map', () => {
+  function writeRaw(raw: YDoc, surfaceId: string, entries: Entries[]) {
+    const elements = elementsOf(raw, surfaceId);
+    raw.transact(() => {
+      entries.forEach(({ key, ...props }) => {
+        const map = new YMap<unknown>();
+        elements.set(key as string, map);
+        Object.entries(props).forEach(([k, v]) => map.set(k, v));
+      });
+    });
+  }
+
+  const noId = { key: 'no-id', type: 'testShape', xywh: '[0,0,10,10]' };
+  const otherId = { ...shape('stored-id'), key: 'other-key' };
+
+  test('an element with no id, or another id, loads under its key', () => {
+    const { workspace, surfaceId, raw } = setupWriter();
+    writeRaw(raw, surfaceId, [noId, otherId]);
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const { surface, spaceDoc, updates } = open(workspace, raw, surfaceId);
+
+    for (const key of ['no-id', 'other-key']) {
+      expect(surface.getElementById(key)!.id).toBe(key);
+      expectMounted(surface, key);
+    }
+    expect(surface.damagedElements.size).toBe(0);
+    expect(updates).toEqual([]);
+    // Nothing repaired: the stored ids stay as they were written.
+    const stored = elementsOf(spaceDoc, surfaceId);
+    expect((stored.get('no-id') as YMap<unknown>).has('id')).toBe(false);
+    expect((stored.get('other-key') as YMap<unknown>).get('id')).toBe(
+      'stored-id'
+    );
+  });
+
+  test('the same when they arrive by a remote update', () => {
+    const { surfaceId, raw, surface, spaceDoc } = openEmpty();
+    const added: string[] = [];
+    surface.elementAdded.subscribe(({ id }) => added.push(id));
+
+    writeRaw(raw, surfaceId, [noId, otherId]);
+    sync(raw, spaceDoc);
+
+    expect(added.sort()).toEqual(['no-id', 'other-key']);
+    expect(surface.getElementById('no-id')!.id).toBe('no-id');
+    expectMounted(surface, 'other-key');
+  });
+
+  test('a missing xywh is recorded, and removed, under the key', () => {
+    const { surfaceId, raw, surface, spaceDoc } = openEmpty();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    writeRaw(raw, surfaceId, [
+      { key: 'key-x', id: 'stored-x', type: 'testShape', index: 'a0' },
+    ]);
+    sync(raw, spaceDoc);
+
+    expect([...surface.damagedElements]).toEqual([
+      ['key-x', { type: 'testShape', reason: 'missing-xywh' }],
+    ]);
+
+    raw.transact(() => elementsOf(raw, surfaceId).delete('key-x'));
+    sync(raw, spaceDoc);
+    expect(surface.damagedElements.size).toBe(0);
+  });
+});
+
+describe('what a skipped element changes around it', () => {
+  test('a null value arriving by a remote update is reported too', () => {
+    const { surfaceId, raw, surface, spaceDoc } = openEmpty();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    raw.transact(() => {
+      elementsOf(raw, surfaceId).set('null', null as unknown as YMap<unknown>);
+    });
+    expect(() => sync(raw, spaceDoc)).not.toThrow();
+
+    expect(surface.damagedElements.get('null')).toEqual({
+      type: '',
+      reason: 'unreadable',
+    });
+  });
+
+  test('an empty canvas receiving a skipped element is no longer empty', () => {
+    const { surfaceId, raw, surface, spaceDoc } = openEmpty();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(surface.isEmpty()).toBe(true);
+
+    writeElements(raw, surfaceId, [FUTURE]);
+    sync(raw, spaceDoc);
+    expect(surface.isEmpty()).toBe(false);
+
+    raw.transact(() => elementsOf(raw, surfaceId).delete(FUTURE));
+    sync(raw, spaceDoc);
+    expect(surface.isEmpty()).toBe(true);
+  });
+
+  test('the console line names five keys at most, and carries what threw', () => {
+    const { workspace, surfaceId, raw } = setupWriter();
+    const many = Array.from({ length: 7 }, (_, i) => ({
+      ...future(`future-${i}`),
+      key: `future-${i}`,
+    }));
+    const elements = elementsOf(raw, surfaceId);
+    raw.transact(() => {
+      // First, so its key is among the five shown.
+      const explodes = new YMap<unknown>();
+      elements.set('explodes', explodes);
+      explodes.set('type', 'testExplodes');
+      explodes.set('xywh', '[0,0,1,1]');
+      many.forEach(({ key, ...props }) => {
+        const map = new YMap<unknown>();
+        elements.set(key, map);
+        Object.entries(props).forEach(([k, v]) => map.set(k, v));
+      });
+    });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const { spaceDoc } = open(workspace, raw, surfaceId);
+    expect([...elementsOf(spaceDoc, surfaceId).keys()][0]).toBe('explodes');
+
+    const lines = skippedWarnings(warn);
+    expect(lines).toHaveLength(1);
+    const [message, ...extra] = lines[0];
+    expect(String(message)).toContain('skipped 8 element(s)');
+    expect(String(message)).toContain('and 3 more');
+    expect(String(message)).not.toContain('future-6');
+    // One "(reason)" per key shown: matches "(unknown-type)", not "unknown-type".
+    expect(
+      String(message).match(/\((unknown-type|unreadable)\)/g)
+    ).toHaveLength(5);
+    expect(extra.map(String)).toEqual(['Error: this map cannot be read']);
   });
 });

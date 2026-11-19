@@ -141,20 +141,26 @@ own (`packages/affine/blocks/root/src/edgeless/clipboard/command.ts`).
 
 ## Canvas elements this client cannot read
 
-A canvas element whose map has no `type` or `id`, a `type` this client does
-not register (a newer client's), or a model that throws while being built is
-**skipped**, at load and on a remote update alike (ADR 0053, #669): every
-other element mounts, the skipped one is not drawn, and its `Y.Map` is left
-exactly as it was, so a client that can read it still sees it. Nothing is
-written on load.
+A canvas element whose value is not a map, whose `type` is absent or not a
+string, whose `type` this client does not register (a newer client's), or
+whose model throws while being built or mounted is **skipped**, at load and on
+a remote update alike (ADR 0053, #669): every other element mounts, the
+skipped one is not drawn, and its `Y.Map` is left exactly as it was, so a
+client that can read it still sees it. Nothing is written on load.
 
-The surface reports it once, in `damagedElements` and through
-`elementDamaged`, with the reason `unknown-type` or `unreadable` beside
-`missing-xywh`; with a telemetry adapter, `DocumentDamaged` counts it under
-the same reason (telemetry README, _Document damage_). A writer outside the
-editor (an importer, a connector, an agent) that leaves a half-written map
-gets this degraded reading, not an empty canvas; it should still write
-`type` and `id` first.
+An element's identity is its **key** in the elements map: one stored without
+`id`, or with an `id` other than its key, mounts under its key (#681), and
+nothing rewrites the stored `id`.
+
+The surface reports a skipped element once, in `damagedElements` (by key,
+with `getElementById(key)` returning `null`) and through `elementDamaged`,
+with the reason `unknown-type` or `unreadable` beside `missing-xywh`; with a
+telemetry adapter, `DocumentDamaged` counts it under the same reason
+(telemetry README, _Document damage_). The reasons are append-only: treat
+`reason` as an open string. A writer outside the editor (an importer, a
+connector, an agent) that leaves a half-written map gets this degraded
+reading, not an empty canvas; it should still write `type` first, and `id`
+equal to the key.
 
 ## Read-only
 

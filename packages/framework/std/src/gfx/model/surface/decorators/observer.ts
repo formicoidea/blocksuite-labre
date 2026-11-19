@@ -152,14 +152,17 @@ export function initializeObservers(
 ) {
   const observers = getObjectPropMeta(proto, observeSymbol);
 
-  Object.keys(observers).forEach(prop => {
-    startObserve(prop, receiver);
-  });
-
+  // Registered BEFORE the observers start: it reads the table at dispose
+  // time, so an observer that throws while starting (a corrupt map, #669)
+  // still leaves the ones started before it detachable by `onDestroyed`.
   receiver['_disposable'].add(() => {
     // @ts-expect-error ignore
     Object.values(receiver[observerDisposableSymbol] ?? {}).forEach(dispose =>
       (dispose as () => void)()
     );
+  });
+
+  Object.keys(observers).forEach(prop => {
+    startObserve(prop, receiver);
   });
 }

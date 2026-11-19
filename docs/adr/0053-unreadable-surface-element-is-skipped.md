@@ -1,15 +1,18 @@
 # ADR 0053 — An unreadable surface element is skipped, never fatal
 
 - Status: **accepted** (2026-11-19)
-- Deciders: the product owner set the acceptance criteria on issue #669 (the
-  comment "The load guard: the behaviour Labre relies on").
+- Deciders: the acceptance criteria of issue #669 (comment by the Labre V2
+  release session, "The load guard: the behaviour Labre relies on"); two
+  declared deviations from them below, the identity one to be confirmed by
+  the product owner.
 - **Red zones**: none touched. The change lives in `packages/framework/std`
-  (`SurfaceBlockModel`) and in the telemetry watcher of
-  `packages/affine/shared`. Nothing persisted changes: no key, no schema, no
-  default; the load writes nothing at all.
+  (`SurfaceBlockModel`, the `@observe` decorator) and in the telemetry watcher
+  of `packages/affine/shared`. Nothing persisted changes: no key, no schema,
+  no default; the load writes nothing at all.
 - Related: #318 (an element whose `xywh` never arrived, the first
-  `SurfaceDamageReason`), ADR 0003 (telemetry bus and taxonomy), docs/lessons.md
-  6 (content dropped silently on resave).
+  `SurfaceDamageReason`), #681 (elements stored without `id`), ADR 0003
+  (telemetry bus and taxonomy), ADR 0031 (why layers are not an element type),
+  docs/lessons.md 6 (content dropped silently on resave).
 
 ## Context
 
@@ -20,7 +23,9 @@ surface's elements map, in the block's `created` subscriber, and
 after the bad one were never built, the ones before it were never mounted, and
 the surface watchers (group cascade, emptiness, user layers) were never set up.
 One bad element, and the canvas opened empty. A remote update carrying such an
-element threw from the Yjs observer the same way.
+element threw from the Yjs observer the same way. A model that built but whose
+MOUNT threw (an observer or `onCreated` choking on the map, e.g. a `mindmap`
+whose `children` hold a `null` node) did the same.
 
 Two writers produce such elements, and neither is hypothetical:
 
@@ -30,50 +35,86 @@ Two writers produce such elements, and neither is hypothetical:
   an agent): a value Yjs refuses mid-transaction leaves a map with some keys
   and no `type` (the write side of #669, out of scope here).
 
-"Documents render everywhere, forever" (principle, CLAUDE.md) forbids both
-outcomes.
+Separately, the model took its id from the stored `id` prop while every lookup
+(`_elementModels`, `getElementById`) is by the element's key in the map. An
+element stored without `id` (#681: a template JSON written by `snapshotToDoc`
+as is) got `model.id === undefined`; it painted, but its first `elementAdded`
+or `elementUpdated` reached `GridManager` with `getElementById(undefined)`.
+
+"Documents render everywhere, forever" (principle, CLAUDE.md) forbids all of
+these outcomes.
 
 ## Decision
 
-1. **Skip, do not fail.** An entry of the elements map is skipped, with no
-   model, when it is not a map, has no string `type` or no non-empty string
-   `id`, names a type this client does not register, or its model throws while
-   being built. Every other element is built and mounted, and the watchers are
-   set up. The same reading runs at load and in the elements-map observer, so
-   a remote update takes the same path.
-2. **Two in-memory reasons**, beside `missing-xywh`:
-   - `unknown-type`: a string `type` this client does not register, which is
-     most likely a newer client's;
-   - `unreadable`: everything else (no type, no id, not a map, a model that
-     threw), which is a corrupt or half-written element.
+1. **Identity is the key.** A model is built with its key in the elements map
+   as its id, at load and in the observer, whatever the stored `id` says
+   (absent, not a string, empty, different). Nothing is written: the stored
+   `id` stays as it was.
+2. **Skip, do not fail.** An entry is skipped, with no model, when its value
+   is not a map, its `type` is absent or not a string, its type is not
+   registered, or its model throws while being built or MOUNTED. A failed mount
+   is undone (`unmount`, itself guarded; the `@observe` teardown is registered
+   before the observers start, so the ones started before the throw are
+   detached). Every other element is built and mounted, and the watchers are
+   set up. The same reading runs at load and in the elements-map observer, for
+   any value a remote update adds, `null` included.
+3. **Two in-memory reasons**, beside `missing-xywh`:
+   - `unknown-type`: a string `type` this client does not register, most
+     likely a newer client's;
+   - `unreadable`: no string `type`, not a map, or a model whose construction
+     or mount threw; a corrupt or half-written element.
      They are kept apart because a host counts them: the first says "upgrade",
      the second says "a writer is broken". The damage record carries the
-     elements-map key and the stored type when it is a string (`''` otherwise),
-     never a prop value.
-3. **Reported once.** The skipped element enters `damagedElements` and is
-   pushed through `elementDamaged`, like `missing-xywh`. One `console.warn`
-   per batch (a load, or one observer event), listing ids and reasons. A
-   remote delete of a skipped element takes its record away.
-4. **Left untouched.** Its `Y.Map` is not deleted, repaired or rewritten, and
+     element's key and the stored type when it is a string (`''` otherwise),
+     never a prop value and never the error.
+4. **Every damage record is keyed by the element's key**, `missing-xywh`
+   included, and a delete of that key removes it, whether the element had a
+   model or not.
+5. **Reported once, logged once per batch.** The skipped element enters
+   `damagedElements` and is pushed through `elementDamaged`. One `console.warn`
+   per batch (a load, or one observer event) gives the count and at most the
+   first five keys with their reasons; what a constructor or a mount threw is
+   passed to that line as extra arguments, so a bug in a registered type is
+   not silently relabelled. The pre-existing one line per `missing-xywh`
+   element (#318) is unchanged.
+6. **Left untouched.** Its `Y.Map` is not deleted, repaired or rewritten, and
    the load emits no Yjs update. A client that can read it still sees it.
-5. **No repair of a late completion.** The elements-map observer is shallow: a
+7. **No repair of a late completion.** The elements-map observer is shallow: a
    `type` that lands inside a skipped map in a LATER transaction is not seen
    until the document is opened again. No mechanism is built for it.
-6. **A canvas holding only skipped elements is not empty**: `isEmpty` counts
-   the stored elements, not the models.
-7. **Telemetry mirrors the reason.** `DocumentDamaged` widens its `reason` to
+8. **A canvas holding only skipped elements is not empty**: `isEmpty` counts
+   the stored elements and is recomputed on every change of the elements map,
+   so a skipped element arriving or leaving by sync counts too.
+9. **Telemetry mirrors the reason.** `DocumentDamaged` widens its `reason` to
    `missing-xywh | unknown-type | unreadable`; the watcher sends one event per
    reason present in a batch. No new event, no new seam, no flag.
-8. A missing `xywh` keeps its #318 behaviour: built, painted with a zero-size
-   bound, reported as `missing-xywh`. It is not skipped.
+
+### Declared deviations from the acceptance criteria
+
+- **A missing `id` is not skipped** (criterion 1 lists it). Skipping it would
+  open blank every document that renders today with id-less elements (#681:
+  those without connectors open under 4.0.0). Identity being the key (§1),
+  the stored `id` carries no information the surface needs. To be confirmed by
+  the product owner.
+- **A missing `xywh` is not skipped** (criterion 1 lists it). It keeps its
+  #318 behaviour: built, mounted, painted with a zero-size bound, reported as
+  `missing-xywh`; a host has counted it that way since #318.
+- **"At most one console warning"** (criterion 2) holds per batch of skipped
+  elements; a load that also carries `missing-xywh` elements writes one more
+  line per such element (#318, unchanged).
 
 ## Consequences
 
 - A newer client's element, or a half-written one, costs the reader that
   element only. The canvas opens, and the document keeps the element.
-- `SurfaceDamageReason` gains two values. A host that `switch`es on it
-  exhaustively sees a compile error at upgrade, which is the point; one that
-  only counts it sees nothing.
+- An element stored without `id`, or with an `id` other than its key, now
+  mounts under its key: `getElementById(key).id === key`, and its events
+  carry the key.
+- The cost to hosts: `SurfaceDamageReason` and `DocumentDamagedEvent.reason`
+  are enum-like, append-only values (house rule), and gain two members. A host
+  that `switch`es on them exhaustively gets a compile error at upgrade and
+  must add a default branch; hosts should treat `reason` as an open string.
+  A host that only counts sees nothing new but the new values.
 - What a skipped element does NOT get, because it has no model. Each is a
   path the product owner may want followed up; none writes on load:
   - **Whole-document snapshot** (`SurfaceBlockTransformer.toSnapshot`,
@@ -83,9 +124,13 @@ outcomes.
   - **Copy, duplicate, drag and frame templates** serialise from models
     (`blocks/root/src/edgeless/utils/clone-utils.ts:36`, `:145`;
     `widgets/drag-handle/src/middleware/blocks-filter.ts:31-33`;
-    `blocks/frame/src/frame-template.ts:43`): a skipped child of a copied
-    group is not copied, and a copied connector ending on it becomes a free
-    end. The original stays in the document.
+    `blocks/frame/src/frame-template.ts:43`). A copied group serialises its
+    whole `children` map, the skipped id included (`clone-utils.ts:82`); at
+    paste that id has no new id, so the GROUP is dropped
+    (`blocks/root/src/edgeless/clipboard/canvas.ts:28-34`, `console.error`
+    then `return null`) and its readable children are pasted ungrouped
+    (`clipboard/command.ts:201`, `:217`). A copied connector ending on a
+    skipped element becomes a free end. The original stays in the document.
   - **Deleting a group** that lists a skipped child
     (`framework/std/src/gfx/model/surface/surface-model.ts`, `deleteElement`)
     deletes what this client can read; the skipped child stays in the map.
@@ -96,5 +141,18 @@ outcomes.
     element for that node (`affine/model/src/elements/mindmap/mindmap.ts:391`,
     `:416`); a layout that reads the node's bound would throw. Not exercised
     here (the model package is a red zone).
+- **Copy of an element whose stored `id` is absent or wrong.** `serialize()`
+  returns the stored map (`framework/std/src/gfx/model/surface/element-model.ts:479`),
+  and the paste maps old to new ids by that serialised `id`
+  (`clipboard/command.ts:189`, `:201`): such an element is pasted, but a
+  connector or group copied with it that names it by key is not re-pointed.
+  Not changed here: the load path does not need it.
+- **Known limit, pre-existing, not fixed here.** The elements-map observer
+  handles `add` and `delete` only (`surface-model.ts`, `onElementsMapChange`).
+  A peer that REPLACES the Y.Map under an existing key (`update` action)
+  leaves a valid element's old model bound to the replaced map, and a skipped
+  element replaced by a valid one stays skipped until reload.
+- If a model is reported `missing-xywh` and then fails to mount, it is
+  reported a second time, as `unreadable`; the record keeps the second.
 - No placeholder is painted where a skipped element was (criterion 6 of the
   issue, optional).

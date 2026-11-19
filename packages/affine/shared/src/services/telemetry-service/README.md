@@ -256,9 +256,11 @@ then subscribes to `elementDamaged` for what sync delivers afterwards.
   the opening batch is sent at mount, later arrivals are aggregated in a
   microtask. `missing-xywh` is an element drawn with no geometry (#318);
   `unknown-type` an element whose type this client does not register, most
-  likely written by a newer client; `unreadable` an element with no type or
-  id, or whose model could not be built. The last two are skipped by the
-  surface, never drawn, and left untouched in the document (#669, ADR 0053).
+  likely written by a newer client; `unreadable` an element with no type, a
+  value that is not a map, or a model that could not be built or mounted. The
+  last two are skipped by the surface, never drawn, and left untouched in the
+  document (#669, ADR 0053). `reason` is an append-only value: treat it as an
+  open string, never `switch` on it exhaustively.
 - **Elements are deduplicated** by id for the watcher's lifetime, so a document
   never counts an element twice.
 - **No ids and no content** — not the element ids, not their types, not the

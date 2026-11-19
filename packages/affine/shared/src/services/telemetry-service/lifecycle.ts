@@ -346,8 +346,9 @@ export interface DocumentDamagedEvent extends TelemetryEvent {
    * What is wrong with the elements this event counts; one event per reason
    * in a batch. `missing-xywh`: drawn with no geometry (#318). `unknown-type`:
    * a type this client does not register, most likely a newer client's, so
-   * the element is not drawn. `unreadable`: no type or id, or its model could
-   * not be built; not drawn either (#669, ADR 0053). Spelled out here rather
+   * the element is not drawn. `unreadable`: no type, not a map, or its model
+   * could not be built or mounted; not drawn either (#669, ADR 0053). An
+   * append-only value: treat it as an open string. Spelled out here rather
    * than imported, so a new surface reason fails to compile until the
    * taxonomy says it.
    */
