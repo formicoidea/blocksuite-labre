@@ -196,7 +196,11 @@ describe('edgeless toolbar: names, state and the pager tooltip', () => {
 
     // A senior tool that is a canvas tool says so too (review of #679: with
     // the note tool on, no button was pressed).
-    edgeless.gfx.tool.setTool(NoteTool);
+    edgeless.gfx.tool.setTool(NoteTool, {
+      childFlavour: 'affine:paragraph',
+      childType: 'text',
+      tip: 'Note',
+    });
     const note = rowButtons().find(({ button }) =>
       button.classList.contains('edgeless-note-button')
     )!.button;
@@ -220,9 +224,12 @@ describe('edgeless toolbar: names, state and the pager tooltip', () => {
       .textContent!.trim();
 
     // The pointer comes onto the arrow — the tooltip listens for exactly this
-    // — and stays there while it clicks, as a user's does.
-    arrow.dispatchEvent(new MouseEvent('mouseenter'));
-    await vi.waitFor(() => expect(shownTooltips()).toContain(announced));
+    // — and stays there while it clicks, as a user's does. Repeated until the
+    // tooltip has wired its reference, a frame after it is drawn.
+    await vi.waitFor(() => {
+      arrow.dispatchEvent(new MouseEvent('mouseenter'));
+      expect(shownTooltips()).toContain(announced);
+    });
 
     arrow.click();
     await bar.updateComplete;
