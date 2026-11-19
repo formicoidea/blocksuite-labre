@@ -9,8 +9,26 @@ import { styleMap } from '@labre/global/lit';
 
 import { EDGELESS_TOOLBAR_COMING_SOON } from '../translations.js';
 
+/**
+ * The keyboard's ring on a toolbar button (#679, ADR 0054): the opaque 2px
+ * outline of the toolbar's `[data-keyboard-highlight]`. The host is the focus
+ * target and carries the name, the state and the `tabindex`; the ring is drawn
+ * on its visible box.
+ */
+export const toolButtonFocusRing = css`
+  :host(:focus-visible) {
+    outline: none;
+  }
+  :host(:focus-visible) .icon-container {
+    outline: 2px solid var(--affine-primary-color);
+    outline-offset: -2px;
+    border-radius: 8px;
+  }
+`;
+
 export class EdgelessToolIconButton extends LitElement {
   static override styles = css`
+    ${toolButtonFocusRing}
     .icon-container {
       position: relative;
       display: flex;

@@ -7326,7 +7326,7 @@ model {
   features.widgets.edgeless-toolbar.src -[imports]-> features.widgets.edgeless-toolbar.button '3 imports'
   features.widgets.edgeless-toolbar.src -[imports]-> features.widgets.edgeless-toolbar.catalogue '3 imports'
   features.widgets.edgeless-toolbar.src -[imports]-> features.widgets.edgeless-toolbar.extension '1 import'
-  features.widgets.edgeless-toolbar.src -[imports]-> features.widgets.edgeless-toolbar.menu '2 imports'
+  features.widgets.edgeless-toolbar.src -[imports]-> features.widgets.edgeless-toolbar.menu '3 imports'
   features.widgets.edgeless-toolbar.src -[imports]-> features.widgets.edgeless-toolbar.panel '2 imports'
   features.widgets.edgeless-toolbar.src -[imports]-> features.widgets.edgeless-toolbar.placement '1 import'
   features.widgets.edgeless-toolbar.src -[imports]-> features.widgets.edgeless-toolbar.selection-pane '5 imports'

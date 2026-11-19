@@ -485,20 +485,25 @@ export class EdgelessPageKeyboardManager extends PageKeyboardManager {
           });
         },
         Tab: ctx => {
-          ctx.get('defaultState').event.preventDefault();
-
           const { service } = rootComponent;
           const selection = service.selection;
           const elements = selection.selectedElements;
+          const mindMapNode = isSingleMindMapNode(elements);
 
-          if (!isSingleMindMapNode(elements)) {
-            return;
-          }
+          // Kept while a text is edited or a mind map node waits for a
+          // sibling; anywhere else Tab is the browser's, so the keyboard can
+          // leave the canvas for its toolbar (#679, ADR 0054). Returning true
+          // decides the keystroke here: the root's `fallbackKeymap`, which
+          // would swallow it, never runs.
+          if (!mindMapNode && !selection.editing) return true;
+          ctx.get('defaultState').event.preventDefault();
+
+          if (!mindMapNode) return false;
           // Same raw-`transact` path as Enter's `addNode`.
-          if (rootComponent.store.readonly) return;
+          if (rootComponent.store.readonly) return false;
 
           const mindmap = elements[0].group as MindmapElementModel;
-          if (mindmap.isLocked()) return;
+          if (mindmap.isLocked()) return false;
 
           const node = mindmap.getNode(elements[0].id)!;
           const id = mindmap.addNode(node.id, undefined, 'after', {
@@ -522,6 +527,7 @@ export class EdgelessPageKeyboardManager extends PageKeyboardManager {
               );
             }
           });
+          return false;
         },
       },
       {

@@ -21,6 +21,7 @@ import {
 import { stopPropagation } from '@labre/affine-shared/utils';
 import {
   EDGELESS_TOOLBAR_MORE_TOOLS,
+  EDGELESS_TOOLBAR_NAME,
   EDGELESS_TOOLBAR_NEXT_TOOLS,
   EDGELESS_TOOLBAR_PREVIOUS_TOOLS,
 } from './translations.js';
@@ -62,7 +63,11 @@ import {
   type SeniorTool,
   SeniorToolIdentifier,
 } from './extension/index.js';
-import { stepToolbarHighlight } from './toolbar-highlight.js';
+import { EdgelessCommandMenu } from './menu/command-menu.js';
+import {
+  stepToolbarHighlight,
+  type ToolbarHighlight,
+} from './toolbar-highlight.js';
 
 const TOOLBAR_PADDING_X = 12;
 const TOOLBAR_HEIGHT = 64;
@@ -240,8 +245,12 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
       margin-left: ${unsafeCSS(DIVIDER_SPACE)}px;
     }
     /* The keyboard highlight (Alt+←/→): an opaque 2px ring, the focus ring's
-       weight, so it reads on both themes. */
-    [data-keyboard-highlight] {
+       weight, so it reads on both themes. The same ring marks keyboard focus
+       on the toolbar's own icon buttons (ADR 0054); the tool buttons draw it
+       in their own shadow tree (toolButtonFocusRing). */
+    [data-keyboard-highlight],
+    .quick-tool-more-button:focus-visible,
+    .senior-nav-button:focus-visible {
       outline: 2px solid var(--affine-primary-color);
       outline-offset: -2px;
       border-radius: 8px;
@@ -326,9 +335,11 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
   /**
    * Which toolbar button the keyboard points at, `-1` for none. Walked with
    * Alt+←/→ when no sub-menu is open (`edgeless-keyboard.ts`); the plain
-   * arrows belong to the canvas. A highlight, not DOM focus: focus in the
-   * toolbar's shadow tree would take the keystrokes away from the canvas
-   * dispatcher, and the open sub-menu already walks its row the same way.
+   * arrows belong to the canvas. A highlight, not DOM focus: a shortcut FROM
+   * the canvas, which keeps the keystrokes for the canvas dispatcher, and the
+   * open sub-menu already walks its row the same way. A user who chooses the
+   * toolbar Tabs into it and gets real focus instead (ADR 0054), which clears
+   * this highlight.
    */
   @state()
   accessor keyboardHighlight = -1;
@@ -811,23 +822,51 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
   /** Bumped by every sync of the row, so an older one still waiting stops. */
   private _rowSyncs = 0;
 
+  /** The row as last read: what the keyboard walks (ADR 0054). */
+  private _rowStops: ToolbarRowEntry[] = [];
+
+  /** "More tools" is on the row only while it holds tools. */
+  private get _showsMoreTools() {
+    return this._denseQuickTools && this._hiddenQuickTools.length > 0;
+  }
+
+  /** Items the row puts before the senior tools: quick tools, "More tools". */
+  private get _fixedItemCount() {
+    const quick =
+      this.shadowRoot?.querySelectorAll('.quick-tool-item').length ?? 0;
+    return quick + (this._showsMoreTools ? 1 : 0);
+  }
+
   /**
-   * The row's buttons in order: the quick tools on show, then the senior
-   * tools on show. A tool's own component draws
-   * its button an update after this row, so this waits for them.
+   * The row's buttons in order, each with the item that draws it: the quick
+   * tools on show, "More tools" when it holds any, then the senior tools on
+   * show. `at` is the item's place in the whole row, paged-out senior tools
+   * included — the index `stepToolbarHighlight` walks. A tool's own component
+   * draws its button an update after this row, so this waits for them.
    */
   private async _rowEntries(): Promise<ToolbarRowEntry[]> {
+    const isMore = (item: HTMLElement) =>
+      item.classList.contains('quick-tool-more-button');
     const items = Array.from(
       this.shadowRoot?.querySelectorAll<HTMLElement>(
-        '.quick-tool-item, .senior-tool-item'
+        '.quick-tool-item, .quick-tool-more-button, .senior-tool-item'
       ) ?? []
+    ).filter(item => !isMore(item) || this._showsMoreTools);
+    const fixed = items.filter(
+      item => item.dataset.seniorIndex === undefined
+    ).length;
+    const buttons = await Promise.all(
+      items.map(
+        async (item): Promise<HTMLElement[]> =>
+          isMore(item) ? [item] : rowButtonsIn(item)
+      )
     );
-    const buttons = await Promise.all(items.map(rowButtonsIn));
     return items.flatMap((item, index) => {
       const { seniorIndex } = item.dataset;
       const senior = seniorIndex === undefined ? null : Number(seniorIndex);
       return buttons[index].map(button => ({
         button,
+        at: senior === null ? index : fixed + senior,
         senior,
         alone: buttons[index].length === 1,
       }));
@@ -839,19 +878,223 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
    * its state; a senior tool drawn as one button is named by the label its
    * tool declares — a framework's display name, from its descriptor's key —
    * rather than by its tooltip, which its menu empties while open. The pen
-   * and eraser share one senior tool and name themselves.
+   * and eraser share one senior tool and name themselves. Then the one Tab
+   * stop: the focused button while the keyboard is in the row.
    */
-  private async _syncRow() {
+  private async _syncRow(): Promise<ToolbarRowEntry[]> {
     const sync = ++this._rowSyncs;
     const entries = await this._rowEntries();
-    if (sync !== this._rowSyncs || !this.isConnected) return;
+    if (sync !== this._rowSyncs || !this.isConnected) return entries;
     const seniors = this._seniorTools;
     entries.forEach(({ button, senior, alone }) => {
+      if (!(button instanceof EdgelessToolIconButton)) return;
       button.onToolbarRow = true;
       if (senior !== null && alone) {
         button.label = this._seniorToolLabel(seniors[senior]);
       }
     });
+    this._rowStops = entries;
+    const focused = deepActiveElement();
+    this._setTabStop(entries.find(({ button }) => button === focused)?.button);
+    return entries;
+  }
+
+  /**
+   * The row's one Tab stop (ADR 0054): `stop` when given, else the active
+   * tool, else the first button. The pager arrows are never one: the arrow
+   * keys page the row as they walk it.
+   */
+  private _setTabStop(stop?: HTMLElement) {
+    const stops = this._rowStops.map(({ button }) => button);
+    const target =
+      stop ??
+      stops.find(
+        button =>
+          button instanceof EdgelessToolIconButton && button.active === true
+      ) ??
+      stops[0];
+    const others = Array.from(
+      this.shadowRoot?.querySelectorAll<HTMLElement>(
+        '.senior-nav-button, .quick-tool-more-button'
+      ) ?? []
+    );
+    new Set([...stops, ...others]).forEach(button => {
+      const index = button === target ? 0 : -1;
+      if (button.tabIndex !== index) button.tabIndex = index;
+    });
+  }
+
+  private _focusStop(stop: HTMLElement) {
+    this._setTabStop(stop);
+    stop.focus();
+  }
+
+  private _focusCanvas() {
+    this.std.host.focus({ preventScroll: true });
+  }
+
+  /**
+   * The toolbar's keys, on a button the keyboard focused (ADR 0054). A button
+   * a pointer click focused leaves every key to the canvas, as before; and
+   * keys the row does not use go on to the canvas dispatcher, which listens on
+   * `document` — those it does use stop here, or the canvas would also move
+   * the selection, pan on Space, or reset the tool on Escape.
+   */
+  private readonly _onRowKeydown = (event: KeyboardEvent) => {
+    const origin = event.composedPath()[0];
+    const here = this._rowStops.find(({ button }) => button === origin);
+    if (!here || event.isComposing || event.ctrlKey || event.metaKey) return;
+    if (!here.button.matches(':focus-visible')) return;
+    const consume = () => {
+      event.preventDefault();
+      event.stopPropagation();
+    };
+    switch (event.key) {
+      case 'Tab':
+        // The browser's: the row is one stop. Kept from the canvas, whose
+        // Tab adds a sibling to a selected mind map node.
+        event.stopPropagation();
+        return;
+      case 'ArrowLeft':
+      case 'ArrowRight':
+        // With a sub-menu open, Alt+←/→ walk it, as on the canvas.
+        if (event.altKey && this.activePopper) return;
+        consume();
+        this._walkFocus(here, event.key === 'ArrowRight' ? 1 : -1).catch(
+          console.error
+        );
+        return;
+      case 'Home':
+      case 'End':
+        consume();
+        this._walkFrom(-1, event.key === 'Home' ? 1 : -1).catch(console.error);
+        return;
+      case 'ArrowUp':
+      case 'ArrowDown':
+        consume();
+        return;
+      case 'Enter':
+      case ' ':
+        consume();
+        if (!event.repeat) this._press(here.button);
+        return;
+      case 'Escape':
+        consume();
+        this._escape();
+        return;
+    }
+  };
+
+  private readonly _onRowFocusIn = (event: FocusEvent) => {
+    const origin = event.composedPath()[0];
+    const here = this._rowStops.find(({ button }) => button === origin);
+    if (!here) return;
+    // The keyboard is in the row: the Alt+←/→ highlight would be a second
+    // ring.
+    this.clearHighlight();
+    this._setTabStop(here.button);
+  };
+
+  private readonly _onRowFocusOut = (event: FocusEvent) => {
+    const next = event.relatedTarget;
+    if (next instanceof Node && this.toolbarContainer?.contains(next)) return;
+    // Out of the row: its stop goes back to the active tool.
+    this._setTabStop();
+  };
+
+  /** One button along, its own item's next button first (pen, eraser). */
+  private async _walkFocus(here: ToolbarRowEntry, dir: 1 | -1) {
+    const stops = this._rowStops;
+    const next = stops[stops.indexOf(here) + dir];
+    if (next && next.at === here.at) {
+      this._focusStop(next.button);
+      return;
+    }
+    await this._walkFrom(here.at, dir);
+  }
+
+  /**
+   * Step along the row's items from `at` (`-1`: from outside, so forwards is
+   * the first and backwards the last), paging the senior row as the Alt+←/→
+   * highlight does, and focus the item's first button — its last when going
+   * back. An item that draws no button is stepped over.
+   */
+  private async _walkFrom(at: number, dir: 1 | -1) {
+    const row = () => ({
+      quick: this._fixedItemCount,
+      senior: this._seniorTools.length,
+      scroll: this.scrollSeniorToolIndex,
+      size: this.scrollSeniorToolSize,
+    });
+    let from = at;
+    const total = row().quick + row().senior;
+    for (let step = 0; step < total; step++) {
+      const target = stepToolbarHighlight(from, dir, row());
+      if (await this._focusItem(target, dir)) return;
+      from = target.index;
+    }
+  }
+
+  private async _focusItem(
+    { index, scroll }: ToolbarHighlight,
+    dir: 1 | -1
+  ): Promise<boolean> {
+    if (index < 0) return false;
+    if (scroll !== this.scrollSeniorToolIndex) {
+      this.scrollSeniorToolIndex = scroll;
+      await this.updateComplete;
+    }
+    this._rowStops = await this._syncRow();
+    const buttons = this._rowStops.filter(({ at }) => at === index);
+    const stop = dir === 1 ? buttons[0] : buttons[buttons.length - 1];
+    if (!stop) return false;
+    this._focusStop(stop.button);
+    return true;
+  }
+
+  /**
+   * Press the focused button where a pointer would (see `activateHighlight`).
+   * A press that picks a tool gives the canvas the keyboard back; one that
+   * opens a framework's sub-menu keeps the focus on its button, for Escape to
+   * close it; anything else (undo, the layers pane) leaves the focus here.
+   */
+  private _press(button: HTMLElement) {
+    const menu = this.activePopper?.element;
+    // A command the open sub-menu highlights (Alt+←/→) is what Enter runs,
+    // as on the canvas.
+    if (menu instanceof EdgelessCommandMenu && menu.activate()) {
+      this._focusCanvas();
+      return;
+    }
+    const tool = this.gfx.tool.currentToolName$.peek();
+    const popper = this.activePopper;
+    const target =
+      (button instanceof EdgelessToolIconButton &&
+        deepElementAtCentre(button)) ||
+      button;
+    target.dispatchEvent(
+      new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+      })
+    );
+    const opened = this.activePopper;
+    const subMenu =
+      opened !== popper && opened?.element instanceof EdgelessCommandMenu;
+    if (subMenu) return;
+    if (this.gfx.tool.currentToolName$.peek() !== tool) this._focusCanvas();
+  }
+
+  /** Escape closes the open sub-menu, else gives the canvas the keyboard. */
+  private _escape() {
+    const popper = this.activePopper;
+    if (popper) {
+      popper.dispose();
+      this.activePopper = null;
+      return;
+    }
+    this._focusCanvas();
   }
 
   override firstUpdated() {
@@ -911,6 +1154,11 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
           >
             <div
               class="edgeless-toolbar-container"
+              role="toolbar"
+              aria-label=${translateKey(this.std, ...EDGELESS_TOOLBAR_NAME)}
+              @keydown=${this._onRowKeydown}
+              @focusin=${this._onRowFocusIn}
+              @focusout=${this._onRowFocusOut}
               data-dense-quick=${this._denseQuickTools &&
               this._hiddenQuickTools.length > 0}
               data-dense-senior=${this._denseSeniorTools}
@@ -952,7 +1200,10 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
 }
 
 interface ToolbarRowEntry {
-  button: EdgelessToolIconButton;
+  /** A tool's button, or the toolbar's own "More tools". */
+  button: HTMLElement;
+  /** The place of the item that draws it in the whole row. */
+  at: number;
   /** The senior tool's index among all of them; `null` for a quick tool. */
   senior: number | null;
   /** Whether it is its item's only button. */
@@ -979,6 +1230,15 @@ async function rowButtonsIn(root: Element): Promise<EdgelessToolIconButton[]> {
     if (found.length > 0) return found;
   }
   return [];
+}
+
+/** Where the focus is, through every shadow root. */
+function deepActiveElement(): Element | null {
+  let active = document.activeElement;
+  while (active?.shadowRoot?.activeElement) {
+    active = active.shadowRoot.activeElement;
+  }
+  return active;
 }
 
 /**
