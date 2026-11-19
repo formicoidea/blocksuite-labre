@@ -50,9 +50,6 @@
     "packages/affine/gfx/bpmn/src/export.ts": [
       "<?xml version=\"1.0\" encoding=\"UTF-8\"?>n${}n"
     ],
-    "packages/affine/gfx/brush/src/toolbar/senior-tool.ts": [
-      "Pen"
-    ],
     "packages/affine/gfx/c4/src/templates.ts": [
       "C4"
     ],
