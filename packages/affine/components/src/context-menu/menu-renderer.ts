@@ -55,7 +55,8 @@ export class MenuComponent
       user-select: none;
       min-width: 180px;
       box-shadow: ${unsafeCSSVar('overlayPanelShadow')};
-      border-radius: 4px;
+      /* The floating-menu radius of the shell's 4 / 8 / 12 scale (#677). */
+      border-radius: 8px;
       background-color: ${unsafeCSSVarV2('layer/background/overlayPanel')};
       padding: 8px;
       position: absolute;
