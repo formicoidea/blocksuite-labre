@@ -786,8 +786,8 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
   private _rowSyncs = 0;
 
   /**
-   * The row's buttons in order, each with the item that draws it: the quick
-   * tools on show, then the senior tools on show. A tool's own component draws
+   * The row's buttons in order: the quick tools on show, then the senior
+   * tools on show. A tool's own component draws
    * its button an update after this row, so this waits for them.
    */
   private async _rowEntries(): Promise<ToolbarRowEntry[]> {
@@ -802,7 +802,6 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
       const senior = seniorIndex === undefined ? null : Number(seniorIndex);
       return buttons[index].map(button => ({
         button,
-        item: index,
         senior,
         alone: buttons[index].length === 1,
       }));
@@ -928,8 +927,6 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
 
 interface ToolbarRowEntry {
   button: EdgelessToolIconButton;
-  /** Position of the item that draws it, among the items on show. */
-  item: number;
   /** The senior tool's index among all of them; `null` for a quick tool. */
   senior: number | null;
   /** Whether it is its item's only button. */

@@ -1,11 +1,12 @@
 import { FrameTool } from '@labre/affine/blocks/frame';
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
+import { NoteTool } from '@labre/affine/gfx/note';
 import {
   EDGELESS_TOOLBAR_WIDGET,
   type EdgelessToolbarWidget,
 } from '@labre/affine/widgets/edgeless-toolbar';
 import { page } from '@vitest/browser/context';
-import { beforeEach, describe, expect, test } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { wait } from '../utils/common.js';
 import { deepQueryAll } from '../utils/deep-query.js';
@@ -21,7 +22,7 @@ import { setupEditor } from '../utils/setup.js';
  *
  * Read on the real toolbar at the suite's 1024px, where the senior row is
  * paged: every page is turned, so every senior tool the registry holds is
- * read. The keyboard model is `edgeless-toolbar-keyboard.spec.ts`.
+ * read.
  */
 
 /** What a tooltip shows: its text, or the wording beside a shortcut. */
@@ -75,6 +76,24 @@ describe('edgeless toolbar: names, state and the pager tooltip', () => {
     );
 
   /**
+   * The row's tools draw their buttons an update after the row, and the row
+   * names them after that: wait until every drawn button says something, or
+   * give up and let the assertions below say what is missing.
+   */
+  const rowSettled = () =>
+    vi
+      .waitFor(
+        () => {
+          const buttons = rowButtons();
+          if (!buttons.length) throw new Error('nothing drawn yet');
+          if (buttons.some(({ button }) => !button.hasAttribute('aria-label')))
+            throw new Error('a button is not named yet');
+        },
+        { timeout: 2000 }
+      )
+      .catch(() => {});
+
+  /**
    * Turn every page of the senior row and read each tool as it is drawn —
    * then, not at the end: Lit draws the next page into the same elements, so
    * one element is a different tool on every page.
@@ -89,7 +108,7 @@ describe('edgeless toolbar: names, state and the pager tooltip', () => {
     for (let scroll = 0; scroll <= last; scroll++) {
       bar.scrollSeniorToolIndex = scroll;
       await bar.updateComplete;
-      await wait(20);
+      await rowSettled();
       rowButtons().forEach(({ key, button }) =>
         seen.set(key, {
           name: button.getAttribute('aria-label'),
@@ -133,14 +152,15 @@ describe('edgeless toolbar: names, state and the pager tooltip', () => {
       bar.scrollSeniorToolIndex = scroll;
       await bar.updateComplete;
     }
-    await wait(20);
-    const wardley = find()!.shadowRoot!.querySelector(
-      'edgeless-toolbar-button'
-    );
-    const byName = page
-      .getByRole('button', { name: 'Wardley map', exact: true })
-      .elements();
-    expect(byName).toContain(wardley);
+    await vi.waitFor(() => {
+      const wardley = find()!.shadowRoot!.querySelector(
+        'edgeless-toolbar-button'
+      );
+      const byName = page
+        .getByRole('button', { name: 'Wardley map', exact: true })
+        .elements();
+      expect(byName).toContain(wardley);
+    });
   });
 
   test('the pager arrows and "more tools" are named by what they do', () => {
@@ -166,20 +186,30 @@ describe('edgeless toolbar: names, state and the pager tooltip', () => {
     expect(undo.hasAttribute('aria-pressed')).toBe(false);
 
     edgeless.gfx.tool.setTool(FrameTool);
-    await toolbar().updateComplete;
-    await wait(20);
     const frame = rowButtons().find(({ button }) =>
       button.classList.contains('edgeless-frame-button')
     )!.button;
-    expect(frame.getAttribute('aria-pressed')).toBe('true');
-    expect(select.getAttribute('aria-pressed')).toBe('false');
+    await vi.waitFor(() => {
+      expect(frame.getAttribute('aria-pressed')).toBe('true');
+      expect(select.getAttribute('aria-pressed')).toBe('false');
+    });
+
+    // A senior tool that is a canvas tool says so too (review of #679: with
+    // the note tool on, no button was pressed).
+    edgeless.gfx.tool.setTool(NoteTool);
+    const note = rowButtons().find(({ button }) =>
+      button.classList.contains('edgeless-note-button')
+    )!.button;
+    await vi.waitFor(() => {
+      expect(note.getAttribute('aria-pressed')).toBe('true');
+      expect(frame.getAttribute('aria-pressed')).toBe('false');
+    });
   });
 
   test('after paging, the arrow keeps no tooltip of the tool it brought in', async () => {
     const bar = toolbar();
     bar.scrollSeniorToolIndex = 0;
     await bar.updateComplete;
-    await wait(20);
     // Two pages at least, so the arrow still has a tool to announce after one.
     expect(seniorCount()).toBeGreaterThan(2 * bar.scrollSeniorToolSize);
     const arrow = bar.shadowRoot!.querySelector<HTMLElement>(
@@ -192,15 +222,16 @@ describe('edgeless toolbar: names, state and the pager tooltip', () => {
     // The pointer comes onto the arrow — the tooltip listens for exactly this
     // — and stays there while it clicks, as a user's does.
     arrow.dispatchEvent(new MouseEvent('mouseenter'));
-    await wait(150);
-    expect(shownTooltips()).toContain(announced);
+    await vi.waitFor(() => expect(shownTooltips()).toContain(announced));
 
     arrow.click();
     await bar.updateComplete;
-    await wait(300);
-
     expect(bar.scrollSeniorToolIndex).toBeGreaterThan(0);
-    expect(shownTooltips()).not.toContain(announced);
+    // The stale popup never leaves: this waits out its leave transition and
+    // fails at the timeout if it stays.
+    await vi.waitFor(() => expect(shownTooltips()).not.toContain(announced), {
+      timeout: 2000,
+    });
     arrow.dispatchEvent(new MouseEvent('mouseleave'));
   });
 });
