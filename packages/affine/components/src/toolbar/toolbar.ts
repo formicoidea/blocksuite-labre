@@ -12,9 +12,12 @@ export class EditorToolbar extends WithDisposable(LitElement) {
       /* ONE line, always: the toolbar's height never depends on the selection,
          so it never moves under the cursor. When the row runs out of room the
          widget spends its entries — icon only first, then into the "⋮" menu —
-         rather than growing a second row (PO arbitration of 02/08/2026). */
-      height: 36px;
-      box-sizing: content-box;
+         rather than growing a second row (PO arbitration of 02/08/2026).
+         40px OUTSIDE, the border inside it: a step of the shell's control
+         heights (28, 32, 40). The content box with its 0.5px border measured
+         37px, on no step at all (#679, DESIGN.md "Editor Toolbar"). */
+      height: 40px;
+      box-sizing: border-box;
       flex-wrap: nowrap;
       /* And never outside its own background. The row's width is a max-width
          the positioner writes; entries keep their natural width (below), so a

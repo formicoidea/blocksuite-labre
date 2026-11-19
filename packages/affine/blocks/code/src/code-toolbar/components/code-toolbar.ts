@@ -28,6 +28,9 @@ export class AffineCodeToolbar extends WithDisposable(LitElement) {
 
     .code-toolbar-container {
       width: auto;
+      /* The code block's own compact bar, sized from its content: it keeps the
+         content box the editor toolbar dropped for its 40px outer height. */
+      box-sizing: content-box;
       height: 24px;
       gap: 4px;
       padding: 4px;
