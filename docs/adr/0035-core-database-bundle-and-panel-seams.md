@@ -1532,3 +1532,44 @@ name): Promise<{ ok: true } | { ok: false; message: string }>`, a
   reuses `com.labre.database.source-name.placeholder`. Held by
   `database/editor/src/__tests__/view-settings-source.unit.spec.ts` and
   `shared/src/__tests__/services/data-source-picker-null.unit.spec.ts`.
+
+### 2026-11-20: a source not open to the reader's page (`'not-open'`)
+
+Issue #693, from the Labre host's ADR-0073 (a source's rights by
+openings): a guest may read a base and a view while the view's source is
+not open to the page the guest reads. The host had no reason for that state
+and sent `'unshared'`, which drew "Database not shared" over a base that IS
+shared. Not a red zone: nothing stored, no schema, no flag, no new seam.
+
+- **The reason.** `HostedSourceUnavailableReason` gains `'not-open'`
+  (append-only; a widening of what a resolver may answer). The view keeps
+  its title and view bar and draws "Source not open"
+  (`com.labre.database.source-not-open`, `.hint`: "An owner or a member of
+  the workspace must open this source to this page to show its rows.") in
+  place of its body, `data-testid="database-source-not-open"`,
+  `role="status"`, exactly as `'unshared'`: no row, no "New", no cell to
+  edit, never "Connect a source", even under `requireSource`, and nothing
+  written. No button: the gesture that opens a source is the host's.
+- **An unknown reason** (amends "A reason this build does not know reads as
+  no source", 2026-10-30, above). It read as a missing source, which
+  `requireSource` answers with "Connect a source": a guest of a host newer
+  than the library was offered to re-point the view away. Now any
+  `{ unavailable }` answer whose reason this build does not know is still
+  unreadable: `sourceUnavailable$` answers `'unknown'` (never a reason a
+  host sends; `HostedSourceUnavailableState` types the signal) and the view
+  draws the neutral "Source not found" wording
+  (`com.labre.database.source-missing`, `.hint`) in the same layout,
+  `data-testid="database-source-unknown"`, never "Connect a source". An
+  answer naming a reason is never read as a schema.
+- **The table.** The notice's wordings are one table keyed by every state
+  but `'loading'` (`sourceUnavailableNotice`, `source-unavailable.ts`): a
+  reason appended without its wording does not compile.
+- **The host's, never the library's:** deciding the state (the library
+  holds no rights logic, it draws the reason it is given) and the gesture
+  that opens a source. A host must not send `'not-open'` to a library
+  older than this amendment: 4.0 reads it as a missing source ("No source
+  connected" and its "Connect a source" under `requireSource`).
+- Held by `database/block/src/__tests__/source-unavailable.unit.spec.ts`,
+  `hosted-source-unavailable-type.unit.spec.ts`,
+  `cross-database-views.unit.spec.ts` and
+  `integration-test/…/page/database-cross-database-view.spec.ts`.

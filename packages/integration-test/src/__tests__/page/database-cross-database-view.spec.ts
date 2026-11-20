@@ -326,4 +326,99 @@ describe('a view of another database', () => {
     expect(byTestId('database-source-missing')).toBeNull();
     expect(JSON.stringify(model.props.views)).toBe(before);
   });
+
+  test('a source not open to this page draws "Source not open" under the view bar, and another view still opens', async () => {
+    cleanup = await setupEditor('page', [
+      hostSources,
+      DataSourcePickerExtension({
+        list: () => signal([]),
+        crossDatabaseViews: true,
+        requireSource: true,
+      }),
+    ]);
+    const model = writeDatabase({
+      sourceId: 'src-p',
+      databaseId: PEOPLE,
+      columns: [],
+    });
+    window.doc.updateBlock(model, {
+      views: [
+        ...model.props.views,
+        {
+          id: 'v2',
+          name: 'Projects view',
+          mode: 'table',
+          filter: { type: 'group', op: 'and', conditions: [] },
+          sourceId: 'src-a',
+          columns: [
+            { id: 'src-a-name', hide: false },
+            { id: 'src-a-field', hide: false },
+          ],
+        },
+      ],
+    } as never);
+    sources[`${PEOPLE}/src-p`] = { unavailable: 'not-open' };
+    await settle();
+    window.doc.resetHistory();
+    const before = JSON.stringify(model.props.views);
+    const updated = vi.fn();
+    const subscription = window.doc.slots.blockUpdated.subscribe(updated);
+    const block = blockOf(model);
+    const notice = block.querySelector<HTMLElement>(
+      '[data-testid="database-source-not-open"]'
+    );
+    expect(notice).not.toBeNull();
+    expect(notice!.getAttribute('role')).toBe('status');
+    expect(notice!.textContent).toContain('Source not open');
+    expect(notice!.textContent).toContain('must open this source');
+    expect(notice!.querySelector('data-view-component-button')).toBeNull();
+    expect(block.textContent).toContain('Plan');
+    expect(block.textContent).toContain('Board of work');
+    expect(block.textContent).not.toContain('Team row');
+    expect(block.querySelector('.new-record')).toBeNull();
+    expect(byTestId('database-source-unshared')).toBeNull();
+    expect(byTestId('database-source-required')).toBeNull();
+    expect(byTestId('database-source-required-connect')).toBeNull();
+    expect(byTestId('database-source-missing')).toBeNull();
+    subscription.unsubscribe();
+    expect(updated).not.toHaveBeenCalled();
+    expect(window.doc.canUndo).toBe(false);
+    expect(JSON.stringify(model.props.views)).toBe(before);
+
+    // The view bar stays operable: the other view reads an open source.
+    const tab = block.querySelector<HTMLElement>(
+      '[data-testid="database-view-tab"][data-view-id="v2"]'
+    );
+    expect(tab, 'the other view is a tab of the bar').not.toBeNull();
+    tab!.click();
+    await settle();
+    expect(byTestId('database-source-not-open')).toBeNull();
+    expect(blockOf(model).textContent).toContain('Projects row');
+  });
+
+  test('a reason this build does not know draws "Source not found", never "Connect a source"', async () => {
+    cleanup = await setupEditor('page', [
+      hostSources,
+      DataSourcePickerExtension({
+        list: () => signal([]),
+        crossDatabaseViews: true,
+        requireSource: true,
+      }),
+    ]);
+    const model = writeDatabase({ sourceId: 'src-a', columns: [] });
+    sources[`${PLAN}/src-a`] = {
+      unavailable: 'archived-in-a-later-host',
+    } as never;
+    const before = JSON.stringify(model.props.views);
+    await settle();
+    const notice = blockOf(model).querySelector<HTMLElement>(
+      '[data-testid="database-source-unknown"]'
+    );
+    expect(notice).not.toBeNull();
+    expect(notice!.getAttribute('role')).toBe('status');
+    expect(notice!.textContent).toContain('Source not found');
+    expect(byTestId('database-source-required')).toBeNull();
+    expect(byTestId('database-source-required-connect')).toBeNull();
+    expect(JSON.stringify(model.props.views)).toBe(before);
+  });
 });

@@ -52,21 +52,57 @@ export interface HostedSource {
  * with the reader ("Database not shared"); `'trashed'`, it is in the trash
  * and may be restored ("Source in the trash"), whatever its database;
  * `'loading'`, its database is not loaded yet (labre recette of 2.4.1: a view
- * of another database drew "Connect a source" until it loaded). The view
- * draws that notice in place of its body, never an error and never "Connect
- * a source", which would re-point the view away for good.
+ * of another database drew "Connect a source" until it loaded); `'not-open'`,
+ * its database is shared but the host has not opened this source to the page
+ * the reader reads ("Source not open", issue #693, amendment of 2026-11-20).
+ * The host decides which; the library holds no rights. The view draws that
+ * notice in place of its body, never an error and never "Connect a source",
+ * which would re-point the view away for good. Append-only: a host only
+ * WIDENS what it may send.
  */
-export type HostedSourceUnavailableReason = 'unshared' | 'trashed' | 'loading';
+export type HostedSourceUnavailableReason =
+  | 'unshared'
+  | 'trashed'
+  | 'loading'
+  | 'not-open';
 
 export interface HostedSourceUnavailable {
   unavailable: HostedSourceUnavailableReason;
 }
 
+/**
+ * What {@link HostedDataSourceBase.sourceUnavailable$} answers: the host's
+ * reason, or `'unknown'` for an `{ unavailable }` answer whose reason this
+ * build does not know (a host newer than the library). An unknown reason is
+ * still a source the reader may not read: the view draws the neutral
+ * "Source not found" notice, never "Connect a source" (amendment of
+ * 2026-11-20). `'unknown'` is never a reason a host sends.
+ */
+export type HostedSourceUnavailableState =
+  | HostedSourceUnavailableReason
+  | 'unknown';
+
 const UNAVAILABLE_REASONS: readonly string[] = [
   'unshared',
   'trashed',
   'loading',
+  'not-open',
 ] satisfies readonly HostedSourceUnavailableReason[];
+
+const UNKNOWN_REASON = Object.freeze({ unavailable: 'unknown' as const });
+
+/** The resolver's answer once read: an unknown reason is normalised. */
+type ResolvedSource =
+  | HostedSource
+  | HostedSourceUnavailable
+  | typeof UNKNOWN_REASON
+  | null;
+
+function isUnreadable(
+  answer: ResolvedSource
+): answer is HostedSourceUnavailable | typeof UNKNOWN_REASON {
+  return answer !== null && 'unavailable' in answer;
+}
 
 /** Whether a resolver's answer is {@link HostedSourceUnavailable}. */
 export function isHostedSourceUnavailable(
@@ -220,7 +256,7 @@ export abstract class HostedDataSourceBase extends DataSourceBase {
   private resolve(
     sourceId: string | undefined,
     databaseId: string | undefined
-  ): HostedSource | HostedSourceUnavailable | null {
+  ): ResolvedSource {
     if (!this._resolveSource) {
       return { schema: this._model, rows: this._implicitRows$ };
     }
@@ -229,13 +265,15 @@ export abstract class HostedDataSourceBase extends DataSourceBase {
     if (database !== home && !this.crossDatabaseViews) return null;
     try {
       const answer = this._resolveSource(sourceId, database) ?? null;
-      // A reason this build does not know is no source, never a schema.
+      // A reason this build does not know is still unavailable: never a
+      // schema, and never a missing source, which `requireSource` answers
+      // with "Connect a source" (amendment of 2026-11-20).
       if (
         answer &&
         'unavailable' in answer &&
         !isHostedSourceUnavailable(answer)
       ) {
-        return null;
+        return UNKNOWN_REASON;
       }
       return answer;
     } catch (error) {
@@ -257,14 +295,12 @@ export abstract class HostedDataSourceBase extends DataSourceBase {
     databaseId?: string
   ): HostedSource | null {
     const answer = this.resolve(sourceId, databaseId);
-    return isHostedSourceUnavailable(answer) ? null : answer;
+    return isUnreadable(answer) ? null : answer;
   }
 
   // Without `resolveSource` the current view is not read at all: the
   // implicit source does not depend on it.
-  private readonly _answer$: ReadonlySignal<
-    HostedSource | HostedSourceUnavailable | null
-  > = computed(() =>
+  private readonly _answer$: ReadonlySignal<ResolvedSource> = computed(() =>
     this._resolveSource
       ? this.resolve(this.currentSourceId$.value, this.currentDatabaseId$.value)
       : this.resolve(undefined, undefined)
@@ -273,7 +309,7 @@ export abstract class HostedDataSourceBase extends DataSourceBase {
   /** The current view's source; `null` when `resolveSource` knows none. */
   readonly source$: ReadonlySignal<HostedSource | null> = computed(() => {
     const answer = this._answer$.value;
-    return isHostedSourceUnavailable(answer) ? null : answer;
+    return isUnreadable(answer) ? null : answer;
   });
 
   readonly schema$: ReadonlySignal<DatabaseBlockModel | null> = computed(
@@ -290,12 +326,16 @@ export abstract class HostedDataSourceBase extends DataSourceBase {
    * (ADR 0035 amendment of 2026-10-30): `'unshared'`, its database is not
    * shared with the reader ("Database not shared"); `'trashed'`, the source
    * is in the trash ("Source in the trash"); `'loading'`, its database is
-   * not loaded yet (a spinner). `null` otherwise, "Source not found" included.
+   * not loaded yet (a spinner); `'not-open'`, the host has not opened the
+   * source to the reader's page ("Source not open", amendment of
+   * 2026-11-20); `'unknown'`, a reason this build does not know (the
+   * neutral "Source not found" notice, never "Connect a source"). `null`
+   * otherwise, a missing source (the resolver's `null`) included.
    */
-  readonly sourceUnavailable$: ReadonlySignal<HostedSourceUnavailableReason | null> =
+  readonly sourceUnavailable$: ReadonlySignal<HostedSourceUnavailableState | null> =
     computed(() => {
       const answer = this._answer$.value;
-      return isHostedSourceUnavailable(answer) ? answer.unavailable : null;
+      return isUnreadable(answer) ? answer.unavailable : null;
     });
 
   /** Each row is a document (ADR 0035 §9a, §9f). Read-only. */

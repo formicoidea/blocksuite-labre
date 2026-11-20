@@ -19,7 +19,12 @@
  *   recette of 2.4) rather than as `'trashed'`: "Connect a source" would
  *   re-point the view away from a source the reader may restore; or a
  *   database still loading (labre recette of 2.4.1) rather than as
- *   `'loading'`: "Connect a source" was offered until it loaded;
+ *   `'loading'`: "Connect a source" was offered until it loaded; or a
+ *   source not open to the reader's page (issue #693) rather than as
+ *   `'not-open'`, or one written on the way;
+ * - a reason this build does not know read as no source (up to 4.0, which
+ *   `requireSource` answers with "Connect a source") or as a schema, rather
+ *   than as `'unknown'` (amendment of 2026-11-20);
  * - `sourcePolicy`, `deleteView` or the properties panel's request keyed by
  *   the block's database for a view that reads another one;
  * - `reconnectDatabaseView` rewriting the block's `externalSourceId` under
@@ -284,16 +289,42 @@ describe('a view of another database', () => {
     expect(hosted.rows$.value).toEqual([]);
   });
 
-  test('a reason this build does not know reads as no source', () => {
+  test("a source not open to the reader's page is 'not-open', never a missing source", () => {
+    const { store, model } = database([...STORED_23, FOREIGN]);
+    const before = JSON.parse(JSON.stringify(model.props.views));
+    const updated = vi.fn();
+    const subscription = store.slots.blockUpdated.subscribe(updated);
+    const hosted = build(model, () => ({ unavailable: 'not-open' }), optedIn());
+    ['v-1', 'v-3'].forEach(view => {
+      hosted.viewManager.setCurrentView(view);
+      expect(hosted.sourceUnavailable$.value).toBe('not-open');
+      expect(hosted.sourceMissing$.value).toBe(true);
+      expect(hosted.source$.value).toBeNull();
+      expect(hosted.rows$.value).toEqual([]);
+    });
+    expect(hosted.sourceOf('s-team', 'host:people')).toBeNull();
+    subscription.unsubscribe();
+    expect(updated).not.toHaveBeenCalled();
+    expect(store.canUndo).toBe(false);
+    expect(JSON.parse(JSON.stringify(model.props.views))).toEqual(before);
+  });
+
+  // Up to 4.0 an unknown reason read as no source, which `requireSource`
+  // answers with "Connect a source" (amendment of 2026-11-20).
+  test("a reason this build does not know is 'unknown', still unreadable, never a schema", () => {
     const { model } = database(STORED_23);
-    const hosted = build(
-      model,
-      () => ({ unavailable: 'archived' }) as never,
-      optedIn()
-    );
-    expect(hosted.sourceUnavailable$.value).toBeNull();
-    expect(hosted.sourceMissing$.value).toBe(true);
-    expect(hosted.rows$.value).toEqual([]);
+    ['archived', '__proto__', '', undefined].forEach(unavailable => {
+      const hosted = build(
+        model,
+        () => ({ unavailable, schema: model, rows: signal(['r']) }) as never,
+        optedIn()
+      );
+      expect(hosted.sourceUnavailable$.value).toBe('unknown');
+      expect(hosted.sourceMissing$.value).toBe(true);
+      expect(hosted.source$.value).toBeNull();
+      expect(hosted.sourceOf('s-plan')).toBeNull();
+      expect(hosted.rows$.value).toEqual([]);
+    });
   });
 
   test("sourcePolicy is asked for the view's database", () => {
