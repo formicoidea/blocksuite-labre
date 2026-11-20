@@ -39,11 +39,13 @@ import {
  * - an unmodified key typed in the toolbar reaching the view's keys on the
  *   document (with a cell selected: Tab stuck, a letter or Backspace
  *   editing the cell), or a Ctrl shortcut (undo) no longer reaching them;
- * - a control taking the focus on a mouse click (away from the table's
- *   own focus, which reads the keys of its selected cell), or a control
- *   without the keyboard focus keeping the view's keys (the product
- *   owner's rule: a toolbar takes the keys of its own model, and only in
- *   keyboard mode);
+ * - a pointer press focusing anything but what 4.0.0 focused (the control
+ *   kept its `tabindex` during the press, or the press was prevented, which
+ *   left an editing number cell to take the focus back and lose its value),
+ *   or a control without the keyboard focus keeping the view's keys (the
+ *   product owner's rule: a toolbar takes the keys of its own model, and
+ *   only in keyboard mode); Escape stopped on a control (a host's menu or
+ *   the open popups' Escape listen on the document);
  * - the folded search field in the accessibility tree (typing there
  *   filtered the rows with the field still folded);
  * - a menu button without its state (`aria-expanded`), or filter and sort
@@ -277,37 +279,46 @@ describe('the view toolbar of a table', () => {
       );
 
     filter.focus();
-    ['Tab', 'q', 'Backspace', 'Delete', 'ArrowDown', 'Escape'].forEach(key =>
+    ['Tab', 'q', 'Backspace', 'Delete', 'ArrowDown'].forEach(key =>
       send(filter, { key })
     );
     send(filter, { key: 'Tab', shiftKey: true });
     send(field, { key: 'a' });
     expect(editorKeydown).not.toHaveBeenCalled();
 
+    // Escape means nothing on a control: a document listener (the open
+    // popups', a host's menu) still gets it.
+    send(filter, { key: 'Escape' });
+    expect(editorKeydown).toHaveBeenCalledTimes(1);
+    editorKeydown.mockClear();
+
     const shortcuts = [{ ctrlKey: true }, { metaKey: true }];
     shortcuts.forEach(modifier => send(filter, { key: 'z', ...modifier }));
     expect(editorKeydown).toHaveBeenCalledTimes(shortcuts.length);
   });
 
-  it('takes no focus on a mouse click, but the search field places its caret', async () => {
+  it('drops a control from focus for the length of a pointer press, as 4.0.0 drew it', async () => {
     const { logic } = logicOf({});
     const toolbar = await mountToolbar(logic);
-    const press = (target: HTMLElement) => {
-      const event = new MouseEvent('mousedown', {
+    const stops = tabStops(toolbar);
+    const pressed = stops.map(control => {
+      const down = new PointerEvent('pointerdown', {
         bubbles: true,
         cancelable: true,
       });
-      target.dispatchEvent(event);
-      return event.defaultPrevented;
-    };
-    const field = toolbar.querySelector<HTMLElement>(
-      '.affine-database-search-input'
-    )!;
+      control.dispatchEvent(down);
+      const during = control.getAttribute('tabindex');
+      window.dispatchEvent(new PointerEvent('pointerup'));
+      return {
+        prevented: down.defaultPrevented,
+        during,
+        after: control.getAttribute('tabindex'),
+      };
+    });
 
-    expect(tabStops(toolbar).map(press)).toEqual(
-      tabStops(toolbar).map(() => true)
+    expect(pressed).toEqual(
+      stops.map(() => ({ prevented: false, during: null, after: '0' }))
     );
-    expect(press(field)).toBe(false);
   });
 
   it('leaves every key but Tab to the view on a control without the keyboard focus', async () => {

@@ -134,6 +134,8 @@ export class DataViewHeaderToolsSearch extends WidgetBase<
 
   private readonly _clickSearch = async (e: MouseEvent) => {
     e.stopPropagation();
+    // Enter or Space on the button sends a click of `detail` 0.
+    this.openedFromKeyboard = e.detail === 0;
     this.showSearch = true;
     // Folded, the field is inert and takes no focus: once open, focus it,
     // for Enter or Space on the button as for a click on the label (#678).
@@ -154,19 +156,28 @@ export class DataViewHeaderToolsSearch extends WidgetBase<
     this.showSearch = false;
   };
 
+  /**
+   * Escape clears the text, then folds the field. Opened from the keyboard,
+   * the field keeps its Escape and the second one gives the focus back to
+   * the Search button (#678). Opened with the mouse, Escape does what it did
+   * on 4.0.0 and goes on to the editor, and the focus is not moved: the
+   * product owner's rule, after a mouse gesture the content behaves as
+   * before.
+   */
   private readonly _onSearchKeydown = (event: KeyboardEvent) => {
     if (event.key !== 'Escape') return;
-    // Handled here: neither the editor nor an open popup acts on it too.
-    event.stopPropagation();
+    if (this.openedFromKeyboard) event.stopPropagation();
     if (this._searchInput.value) {
       this._searchInput.value = '';
       this.dataViewLogic.view.setSearch('');
       return;
     }
     this.showSearch = false;
-    // Closed from the keyboard: back to the button that opened it (#678).
-    this._searchButton.focus();
+    if (this.openedFromKeyboard) this._searchButton.focus();
   };
+
+  /** How the field was last opened: `_onSearchKeydown`. */
+  private openedFromKeyboard = false;
 
   preventBlur = false;
 
