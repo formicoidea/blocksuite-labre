@@ -19,7 +19,19 @@
  * - a mode spelled like an `Object` member (`constructor`, `__proto__`)
  *   finding a prototype member instead of the fallback.
  *
- * The host side (the Labre app) is held by its own `lib-boundary.test.ts`.
+ * Issue #680 (Labre V2 drops its Calendar view and relies on this fallback)
+ * names the calendar case: reading a stored calendar through the data
+ * source, the UI logic and `setCurrentView` emits no Yjs update, and
+ * `dataUpdate` called on it keeps its `mode` and its calendar keys (`date`,
+ * `card`, `sources`); the views bar's tab menu offers "Duplicate as table"
+ * on it (and only on a fallback view) but never the plain "Duplicate",
+ * which would copy `mode: 'calendar'` into a new calendar view; the bar's
+ * "+" lists no calendar. It would have caught a fallback that throws or
+ * resolves nothing, the `dataUpdate` guard dropped, and the `hide` of
+ * either duplicate entry inverted or removed.
+ *
+ * The host side (the Labre app) is held by its own `lib-boundary.test.ts`;
+ * the painted DOM by `integration-test/…/page/database-stored-views.spec.ts`.
  */
 import {
   DatabaseBlockSchemaExtension,
@@ -28,7 +40,15 @@ import {
   ParagraphBlockSchemaExtension,
   RootBlockSchemaExtension,
 } from '@labre/affine-model';
-import { FeatureFlagService } from '@labre/affine-shared/services';
+import {
+  effects as contextMenuEffects,
+  type PopupTarget,
+  popupTargetFromElement,
+} from '@labre/affine-components/context-menu';
+import {
+  FeatureFlagService,
+  TOOLBAR_DUPLICATE,
+} from '@labre/affine-shared/services';
 import {
   DataViewRootUILogic,
   duplicateAsShownPreset,
@@ -45,7 +65,7 @@ import {
   createAutoIncrementIdGenerator,
   TestWorkspace,
 } from '@labre/store/test';
-import { beforeAll, describe, expect, test } from 'vitest';
+import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 
 import { databaseSlashMenuConfig } from '../configs/slash-menu.js';
 import { DatabaseBlockDataSource } from '../data-source.js';
@@ -139,6 +159,11 @@ function createDatabase() {
 beforeAll(() => {
   // The table UI logic builds its controllers' elements at construction.
   if (!customElements.get('affine-data-view-renderer')) dataViewEffects();
+  if (!customElements.get('affine-menu')) contextMenuEffects();
+});
+
+afterEach(() => {
+  document.body.innerHTML = '';
 });
 
 const storedViews = (model: DatabaseBlockModel) =>
@@ -303,5 +328,137 @@ describe('calendar is gone (2.0): drawn as a table, never created', () => {
       ].join(' ');
       expect(words.toLowerCase()).not.toContain('calendar');
     }
+  });
+});
+
+type ViewsBar = HTMLElement & {
+  dataViewLogic: unknown;
+  openViewOption(target: PopupTarget, viewId: string): void;
+  _addViewMenu(event: MouseEvent): void;
+};
+
+describe('#680: a stored calendar is read, never rewritten, and can leave as a table', () => {
+  const storedCalendar = (model: DatabaseBlockModel) =>
+    storedViews(model).find(
+      view => (view as { id: string }).id === CALENDAR.id
+    );
+
+  /**
+   * The views bar of a database, as its header builds it: the element
+   * `dataViewEffects()` registers. Typed by shape, as `DataViewHeaderViews`
+   * is exported from no entry point of the engine.
+   */
+  function viewsBar(source: DatabaseBlockDataSource, viewId: string) {
+    const root = new DataViewRootUILogic({ dataSource: source } as never);
+    source.viewManager.setCurrentView(viewId);
+    const bar = document.createElement('data-view-header-views') as ViewsBar;
+    bar.dataViewLogic = root.currentView$.value!;
+    const anchor = document.createElement('div');
+    document.body.append(anchor);
+    return { bar, anchor, target: popupTargetFromElement(anchor) };
+  }
+
+  const byTestId = (id: string) =>
+    document.querySelector<HTMLElement>(`[data-testid="${id}"]`);
+
+  /**
+   * A tab's menu, once painted ("Delete" closes every tab's menu): its
+   * "Duplicate as table" entry, and whether it lists the plain "Duplicate"
+   * (no test id: found by its English fallback, `std` being absent).
+   */
+  async function openTabMenu(source: DatabaseBlockDataSource, viewId: string) {
+    const { bar, target } = viewsBar(source, viewId);
+    bar.openViewOption(target, viewId);
+    await vi.waitUntil(() =>
+      document.querySelector('affine-menu .delete-item')
+    );
+    const names = [
+      ...document.querySelectorAll('affine-menu .affine-menu-button'),
+    ].map(item => item.textContent?.trim());
+    return {
+      asTable: byTestId('database-view-duplicate-as-table'),
+      duplicate: names.includes(TOOLBAR_DUPLICATE[1]),
+    };
+  }
+
+  // No block mounted, no Lit render: the real paint is held by
+  // `integration-test/…/page/database-stored-views.spec.ts`, which compares
+  // `props.views` deep-equal but does not count Yjs updates.
+  test('reading through the data source, UI logic and `setCurrentView` emits no Yjs update; a direct `dataUpdate` keeps mode and calendar keys', () => {
+    const { store, model } = createDatabase();
+    expect(storedCalendar(model)).toEqual(CALENDAR);
+    const updates: Uint8Array[] = [];
+    const onUpdate = (update: Uint8Array) => updates.push(update);
+    store.doc.spaceDoc.on('update', onUpdate);
+
+    // What a load does below the view: a fresh source, its root UI logic,
+    // the calendar made current and its view logic read.
+    const source = new DatabaseBlockDataSource(model);
+    const root = new DataViewRootUILogic({ dataSource: source } as never);
+    source.viewManager.setCurrentView(CALENDAR.id);
+    const view = root.currentView$.value!.view as TableSingleView;
+    expect(view.meta).toBe(viewPresets.tableViewMeta);
+    expect(view.properties$.value.length).toBeGreaterThan(0);
+    expect(view.filterTrait.filter$.value.conditions).toEqual([]);
+
+    // Every setting of the view funnels into `dataUpdate`; called directly,
+    // with what a careless fallback would write, it writes nothing.
+    view.dataUpdate(
+      () =>
+        ({
+          mode: 'table',
+          columns: [],
+          date: undefined,
+          card: undefined,
+          sources: undefined,
+        }) as never
+    );
+
+    store.doc.spaceDoc.off('update', onUpdate);
+    expect(updates).toEqual([]);
+    expect(storedCalendar(model)).toEqual(CALENDAR);
+  });
+
+  test('the tab menu offers "Duplicate as table" on the calendar, never "Duplicate", and it adds a table', async () => {
+    const { model } = createDatabase();
+    const source = new DatabaseBlockDataSource(model);
+
+    const { asTable: entry, duplicate } = await openTabMenu(
+      source,
+      CALENDAR.id
+    );
+    // "Duplicate" copies the stored view as is: a new calendar view.
+    expect(duplicate, '"Duplicate" offered').toBe(false);
+    expect(entry, '"Duplicate as table" offered').not.toBe(null);
+    entry!.click();
+
+    const added = source.viewManager.currentViewId$.value!;
+    expect(added).not.toBe(CALENDAR.id);
+    expect(source.viewManager.viewGet(added)?.type).toBe('table');
+    expect(storedCalendar(model)).toEqual(CALENDAR);
+  });
+
+  test('the tab menu of a view drawn with its own preset has "Duplicate", not "Duplicate as table"', async () => {
+    const { model, tableId } = createDatabase();
+    const source = new DatabaseBlockDataSource(model);
+
+    const { asTable, duplicate } = await openTabMenu(source, tableId);
+    expect(asTable).toBe(null);
+    // Holds the calendar's `duplicate: false` to a lookup that can match.
+    expect(duplicate).toBe(true);
+  });
+
+  test('the views bar "+" lists every creatable preset and no calendar', async () => {
+    const { model } = createDatabase();
+    const source = new DatabaseBlockDataSource(model);
+    const { bar, anchor } = viewsBar(source, CALENDAR.id);
+
+    bar._addViewMenu({ currentTarget: anchor } as never);
+    await vi.waitUntil(() => byTestId('database-add-view-preset'));
+    const names = [
+      ...document.querySelectorAll('[data-testid="database-add-view-preset"]'),
+    ].map(item => item.textContent?.trim().toLowerCase() ?? '');
+    expect(names).toHaveLength(source.viewMetas.length);
+    expect(names.filter(name => name.includes('calendar'))).toEqual([]);
   });
 });
