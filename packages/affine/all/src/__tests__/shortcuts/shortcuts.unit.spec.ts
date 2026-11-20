@@ -93,14 +93,21 @@ describe('getShortcutManifest', () => {
   });
 
   test('an override on a keyless command actually binds', () => {
+    // `c4.addPerson` is keyless by intent (C4 has no chord prefix, ADR 0055),
+    // and `q x` is nobody's default: only the override can put it there.
+    // `edgy.addBoard` served here until it gained `g b` as its DEFAULT, which
+    // left the override equal to the default and the test proving nothing.
     const descriptors = getCommands().map(toShortcutDescriptor);
-    const { keymap } = resolveKeymap(
-      descriptors,
-      { 'edgy.addBoard': ['g', 'b'] },
-      'edgeless',
-      {} as BlockStdScope
-    );
-    expect(Object.keys(keymap)).toContain('g b');
+    const person = descriptors.find(d => d.id === 'c4.addPerson')!;
+    expect(person.defaultKeys).toEqual({ mac: [], other: [] });
+    const bound = (overrides: Record<string, string[]>) =>
+      Object.keys(
+        resolveKeymap(descriptors, overrides, 'edgeless', {} as BlockStdScope)
+          .keymap
+      );
+
+    expect(bound({})).not.toContain('q x');
+    expect(bound({ 'c4.addPerson': ['q', 'x'] })).toContain('q x');
   });
 });
 
