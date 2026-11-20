@@ -224,6 +224,33 @@ export class EdgelessTemplatePanel extends WithDisposable(LitElement) {
     this.dispatchEvent(new CustomEvent('closepanel'));
   }
 
+  /**
+   * Every keystroke inside the panel stays in it (the search field types
+   * `t`, `v`, Delete or a chord prefix as text, never as a canvas
+   * shortcut), except Escape: it closes the panel and hands the keyboard back
+   * to the canvas, whose host takes the focus again so the arrows, Delete and
+   * Space work at once (`docs/adr/0055`, the Templates shortcut).
+   */
+  private readonly _onKeydown = (event: KeyboardEvent) => {
+    event.stopPropagation();
+    if (event.key !== 'Escape' || this.isDragging) return;
+    event.preventDefault();
+    this._closePanel();
+    this.edgeless.std.host.focus({ preventScroll: true });
+  };
+
+  /**
+   * Put the caret in the search field: what the keyboard shortcut does after
+   * opening the panel. A click on the toolbar button does not call it, so a
+   * mouse user's focus stays where it was.
+   */
+  async focusSearch() {
+    await this.updateComplete;
+    this.renderRoot
+      .querySelector<HTMLInputElement>('.search-input')
+      ?.focus({ preventScroll: true });
+  }
+
   private _fetch(fn: (state: { canceled: boolean }) => Promise<unknown>) {
     if (this._fetchJob) {
       this._fetchJob.cancel();
@@ -379,7 +406,7 @@ export class EdgelessTemplatePanel extends WithDisposable(LitElement) {
     super.connectedCallback();
     this._initDragController();
 
-    this.addEventListener('keydown', stopPropagation, false);
+    this.addEventListener('keydown', this._onKeydown, false);
     this._disposables.add(() => {
       if (this._currentCategory) {
         this.edgeless.std

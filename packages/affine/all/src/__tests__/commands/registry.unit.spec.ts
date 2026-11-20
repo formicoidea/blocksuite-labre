@@ -288,7 +288,9 @@ describe('command registry invariants', () => {
       // 2026-11-04): an attachment has no flag.
       // …and 46 with `selection.export.svg`: the selection as SVG, core-owned
       // for `export.svg`'s reason — it draws whatever is selected.
-      core: 46,
+      // …and 47 with `canvas.templates.toggle` (ADR 0055 § 7): `l` opens the
+      // Templates panel, a tool of no framework; it rides the `template` flag.
+      core: 47,
     });
     // 112 since the two SVG fallback imports (`bpmn.importSvg`,
     // `wardley.importSvg`) joined the OWM pair — one SVG row per framework,
@@ -336,7 +338,8 @@ describe('command registry invariants', () => {
     // …and 219 with `canvas.image.replaceWithImage` (ADR 0044, 2026-10-27).
     // …and 221 with the two of an attachment (ADR 0044, 2026-11-04).
     // …and 222 with `selection.export.svg`.
-    expect(commands).toHaveLength(222);
+    // …and 223 with `canvas.templates.toggle` (ADR 0055 § 7).
+    expect(commands).toHaveLength(223);
   });
 
   /**

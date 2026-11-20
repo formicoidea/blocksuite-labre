@@ -163,6 +163,18 @@ export class EdgelessTemplateButton extends EdgelessToolbarToolMixin(
     }
   }
 
+  /**
+   * Open the panel, or close it when it is open, exactly as a click on the
+   * button does; `focusSearch` then puts the caret in its search field. The
+   * Templates keyboard shortcut (`canvas.templates.toggle`) calls it, and
+   * only it asks for the focus.
+   */
+  async togglePanel(options: { focusSearch?: boolean } = {}) {
+    this._togglePanel();
+    const panel = this._openedPanel;
+    if (panel && options.focusSearch) await panel.focusSearch();
+  }
+
   private _togglePanel() {
     if (this._openedPanel) {
       this._closePanel();

@@ -30,6 +30,7 @@ import { coreDomainCommands } from '@labre/affine-gfx-ddd-core-domain';
 import { eventStormingCommands } from '@labre/affine-gfx-ddd-event-storming';
 import { edgyCommands } from '@labre/affine-gfx-edgy';
 import { shapeCommands } from '@labre/affine-gfx-shape';
+import { templateCommands } from '@labre/affine-gfx-template';
 import { umlCommands } from '@labre/affine-gfx-uml';
 import { wardleyCommands } from '@labre/affine-gfx-wardley';
 import {
@@ -141,6 +142,9 @@ export function getCommands(flags?: LabreFlags): AnyCommandDescriptor[] {
       // the `image` flag here too.
       ...(isBlockEnabled(flags, 'image') ? imageReplaceCommands : []),
       ...attachmentReplaceCommands,
+      // The `l` shortcut to the Templates panel (ADR 0055), registered by the
+      // template view extension: it goes with the `template` flag here too.
+      ...(isBlockEnabled(flags, 'template') ? templateCommands : []),
       ...canvasGridCommands,
       ...canvasExportCommands,
       ...canvasDrawioExportCommands,

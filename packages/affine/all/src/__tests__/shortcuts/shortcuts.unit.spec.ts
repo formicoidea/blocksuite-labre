@@ -25,6 +25,30 @@ const command = (
 });
 
 describe('getShortcutManifest', () => {
+  /**
+   * The Templates panel's `l` (ADR 0055 § 7) is a row a host's Settings ›
+   * Shortcuts draws and can rebind, worded by the button's own key, and it
+   * goes with the `template` flag that removes the button.
+   */
+  test('lists the Templates shortcut, and drops it with the template flag', () => {
+    const row = getShortcutManifest().find(
+      e => e.id === 'canvas.templates.toggle'
+    );
+    expect(row).toEqual({
+      id: 'canvas.templates.toggle',
+      owner: 'core',
+      labelKey: 'com.labre.template.senior-tool.name',
+      labelFallback: 'Template',
+      scope: 'edgeless',
+      defaultKeys: { mac: ['l'], other: ['l'] },
+    });
+    expect(
+      getShortcutManifest({ template: false }).some(
+        e => e.id === 'canvas.templates.toggle'
+      )
+    ).toBe(false);
+  });
+
   test('always includes core shortcuts (undo/redo) without handlers', () => {
     const ids = getShortcutManifest().map(e => e.id);
     expect(ids).toContain('undo');

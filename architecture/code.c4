@@ -2431,7 +2431,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/gfx/template
         metadata {
           path 'packages/affine/gfx/template'
-          files '25'
+          files '26'
         }
         builtin = folder 'builtin/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/gfx/template/src/builtin
@@ -2451,7 +2451,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/gfx/template/src
           metadata {
             path 'packages/affine/gfx/template/src'
-            files '8'
+            files '9'
           }
         }
         toolbar = folder 'toolbar/' {
@@ -3495,7 +3495,7 @@ model {
   assembly.all -[uses]-> features.gfx.note '4 imports'
   assembly.all -[uses]-> features.gfx.pointer '4 imports'
   assembly.all -[uses]-> features.gfx.shape_ '7 imports'
-  assembly.all -[uses]-> features.gfx.template '4 imports'
+  assembly.all -[uses]-> features.gfx.template '5 imports'
   assembly.all -[uses]-> features.gfx.text '6 imports'
   assembly.all -[uses]-> features.gfx.turbo-renderer '1 import'
   assembly.all -[uses]-> features.gfx.uml '3 imports'
@@ -4014,9 +4014,9 @@ model {
   features.gfx.template -[uses]-> features.components '2 imports'
   features.gfx.template -[uses]-> features.ext-loader '1 import'
   features.gfx.template -[uses]-> features.shared '12 imports, 1 type-only'
-  features.gfx.template -[uses]-> features.widgets.edgeless-toolbar '3 imports'
+  features.gfx.template -[uses]-> features.widgets.edgeless-toolbar '4 imports'
   features.gfx.template -[uses]-> framework.global_ '10 imports, 1 type-only'
-  features.gfx.template -[uses]-> framework.std '16 imports, 9 type-only'
+  features.gfx.template -[uses]-> framework.std '18 imports, 10 type-only'
   features.gfx.template -[uses]-> framework.store '3 imports, 2 type-only'
   features.gfx.template -[uses]-> model_.model_ '5 imports, 2 type-only'
   features.gfx.text -[uses]-> features.blocks.surface '9 imports'
@@ -4517,7 +4517,7 @@ model {
   assembly.all.src -[imports]-> features.gfx.note.src '1 import'
   assembly.all.src -[imports]-> features.gfx.pointer.src '1 import'
   assembly.all.src -[imports]-> features.gfx.shape_.src '2 imports'
-  assembly.all.src -[imports]-> features.gfx.template.src '1 import'
+  assembly.all.src -[imports]-> features.gfx.template.src '2 imports'
   assembly.all.src -[imports]-> features.gfx.text.src '1 import'
   assembly.all.src -[imports]-> features.gfx.uml.src '2 imports'
   assembly.all.src -[imports]-> features.gfx.wardley.src '2 imports'
@@ -6789,12 +6789,13 @@ model {
   features.gfx.template.services -[imports]-> model_.model_.src '2 imports, 2 type-only'
   features.gfx.template.src -[imports]-> features.blocks.surface.src '1 import'
   features.gfx.template.src -[imports]-> features.ext-loader.src '1 import'
-  features.gfx.template.src -[imports]-> features.gfx.template.toolbar '9 imports, 2 type-only'
+  features.gfx.template.src -[imports]-> features.gfx.template.toolbar '10 imports, 3 type-only'
   features.gfx.template.src -[imports]-> features.shared.services '2 imports'
+  features.gfx.template.src -[imports]-> features.widgets.edgeless-toolbar.src '1 import'
   features.gfx.template.src -[imports]-> framework.global_.di '1 import'
   features.gfx.template.src -[imports]-> framework.global_.gfx '1 import'
   features.gfx.template.src -[imports]-> framework.std.gfx '2 imports'
-  features.gfx.template.src -[imports]-> framework.std.src '2 imports, 2 type-only'
+  features.gfx.template.src -[imports]-> framework.std.src '4 imports, 3 type-only'
   features.gfx.template.src -[imports]-> framework.store.src '1 import, 1 type-only'
   features.gfx.template.toolbar -[imports]-> features.blocks.surface.src '2 imports'
   features.gfx.template.toolbar -[imports]-> features.components.icons_ '1 import'

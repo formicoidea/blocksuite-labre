@@ -40,6 +40,11 @@
  * AMENDED again by ADR 0055 (product owner's decision) — Event Storming takes
  * `o` (the orange stickies), ten more commands that shipped keyless. Same
  * terms: additions only.
+ *
+ * AMENDED again by ADR 0055 (product owner's decision of 2026-11-20) — the
+ * Templates panel gets a single-key shortcut, `l` in the edgeless scope
+ * (`canvas.templates.toggle`, a NEW command). `t` was refused (the Text tool)
+ * and `m` is the mind map's. Addition only.
  */
 export const KEYMAP_GOLDEN = {
   declarations: [
@@ -56,6 +61,13 @@ export const KEYMAP_GOLDEN = {
       scope: 'edgeless',
       mac: ['Mod-d'],
       other: ['Mod-d'],
+    },
+    {
+      id: 'canvas.templates.toggle',
+      owner: 'core',
+      scope: 'edgeless',
+      mac: ['l'],
+      other: ['l'],
     },
     {
       id: 'doc.copyLink',
@@ -490,6 +502,7 @@ export const KEYMAP_GOLDEN = {
         'Mod-d': 'duplicate',
         'Mod-y': 'applyLastStyle',
         'Mod-Shift-f': 'shape.cycleTextFit',
+        l: 'canvas.templates.toggle',
         'w c': 'wardley.addComponent',
         'w l': 'wardley.linkTool',
         'w a': 'wardley.addAnchor',
@@ -559,6 +572,7 @@ export const KEYMAP_GOLDEN = {
         'Mod-d': 'duplicate',
         'Mod-y': 'applyLastStyle',
         'Mod-Shift-f': 'shape.cycleTextFit',
+        l: 'canvas.templates.toggle',
         'w c': 'wardley.addComponent',
         'w l': 'wardley.linkTool',
         'w a': 'wardley.addAnchor',

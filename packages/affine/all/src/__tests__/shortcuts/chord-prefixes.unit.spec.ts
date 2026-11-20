@@ -163,6 +163,22 @@ function* sourceFiles(dir: string): Generator<string> {
 }
 
 const commands = getCommands();
+
+/** Every single keystroke bound on the canvas, canonical (`shift-p`, `ctrl-z`). */
+function singleKeys(): Set<string | null> {
+  return new Set<string | null>([
+    ...RESERVED_EDGELESS_KEYS.map(k => canonicalCombo([k])),
+    ...TOOLBAR_BARE_KEYS.map(({ key }) => canonicalCombo([key])),
+    ...RAW_KEYDOWN_LISTENERS.filter(l => !l.whileEditing).flatMap(l =>
+      l.letters.map(letter => canonicalCombo([letter]))
+    ),
+    ...commands.flatMap(c =>
+      [c.defaultKeys.mac, c.defaultKeys.other]
+        .filter(keys => keys.length === 1)
+        .map(keys => canonicalCombo(keys))
+    ),
+  ]);
+}
 const isFrameworkOwned = (c: AnyCommandDescriptor) => c.owner !== 'core';
 const hasKeys = (c: AnyCommandDescriptor) =>
   c.defaultKeys.mac.length > 0 || c.defaultKeys.other.length > 0;
@@ -253,19 +269,24 @@ describe('framework chord prefixes', () => {
     }
   });
 
+  /**
+   * THE registry of single keys taken on the canvas, as one list a reviewer
+   * reads: the edgeless keyboard's tools, the toolbar buttons' own hotkeys, a
+   * raw listener's letters outside an edit mode, and every command's one-key
+   * default (`l`, the Templates panel, ADR 0055). A new bare letter shows up
+   * here as a reviewed diff, and no prefix can take one of them.
+   */
+  test('the bare letters taken on the canvas are the decided ones', () => {
+    const letters = [...singleKeys()]
+      .filter((k): k is string => k !== null && /^[a-z0-9]$/.test(k))
+      .sort();
+    expect(letters).toEqual(
+      ['c', 'e', 'f', 'h', 'k', 'l', 'm', 'n', 'p', 's', 't', 'v'].sort()
+    );
+  });
+
   test('no prefix is a single-key shortcut', () => {
-    const singles = new Set<string | null>([
-      ...RESERVED_EDGELESS_KEYS.map(k => canonicalCombo([k])),
-      ...TOOLBAR_BARE_KEYS.map(({ key }) => canonicalCombo([key])),
-      ...RAW_KEYDOWN_LISTENERS.filter(l => !l.whileEditing).flatMap(l =>
-        l.letters.map(letter => canonicalCombo([letter]))
-      ),
-      ...commands.flatMap(c =>
-        [c.defaultKeys.mac, c.defaultKeys.other]
-          .filter(keys => keys.length === 1)
-          .map(keys => canonicalCombo(keys))
-      ),
-    ]);
+    const singles = singleKeys();
     for (const { id, chordPrefix } of FRAMEWORK_DESCRIPTORS) {
       if (chordPrefix === undefined) continue;
       expect(
