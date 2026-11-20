@@ -219,7 +219,10 @@ export class EdgelessTemplateButton extends EdgelessToolbarToolMixin(
     const { cards, _openedPanel } = this;
     const expanded = _openedPanel !== null;
 
-    return html`<edgeless-toolbar-button @click=${this._togglePanel}>
+    return html`<edgeless-toolbar-button
+      .active=${this.active}
+      @click=${this._togglePanel}
+    >
       <div class="template-cards ${expanded ? 'expanded' : ''}">
         <div class="arrow-icon">${ArrowDownSmallIcon}</div>
         ${repeat(

@@ -1,0 +1,283 @@
+import { FrameTool } from '@labre/affine/blocks/frame';
+import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
+import { NoteTool } from '@labre/affine/gfx/note';
+import {
+  EDGELESS_TOOLBAR_WIDGET,
+  type EdgelessToolbarWidget,
+} from '@labre/affine/widgets/edgeless-toolbar';
+import { page } from '@vitest/browser/context';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
+
+import { wait } from '../utils/common.js';
+import { deepQueryAll } from '../utils/deep-query.js';
+import { getDocRootBlock } from '../utils/edgeless.js';
+import { setupEditor } from '../utils/setup.js';
+
+/**
+ * #679, design audit of 2026-11-18 (P1-7): no button of the canvas toolbar had
+ * an accessible name or exposed its state — select, frame, connector, undo,
+ * layers, pen, eraser, every framework: `role="button"` and nothing else. And
+ * after paging the senior row, the arrow went on showing the tooltip of the
+ * tool it had just brought in (« Cynefin / Estuarine »).
+ *
+ * Read on the real toolbar at the suite's 1024px, where the senior row is
+ * paged: every page is turned, so every senior tool the registry holds is
+ * read.
+ */
+
+/** What a tooltip shows: its text, or the wording beside a shortcut. */
+function tooltipWording(button: HTMLElement): string | null {
+  const tooltip = button.shadowRoot?.querySelector('affine-tooltip');
+  if (!tooltip) return null;
+  const withShortcut = tooltip.querySelector(
+    'affine-tooltip-content-with-shortcut'
+  );
+  if (withShortcut) return withShortcut.getAttribute('data-tip');
+  return tooltip.textContent?.trim() || null;
+}
+
+/** The tooltip popups on screen, by what they say. */
+const shownTooltips = () =>
+  deepQueryAll(document.body, '[role="tooltip"]').map(
+    tooltip => tooltip.textContent?.trim() ?? ''
+  );
+
+describe('edgeless toolbar: names, state and the pager tooltip', () => {
+  let edgeless!: EdgelessRootBlockComponent;
+
+  beforeEach(async () => {
+    const cleanup = await setupEditor('edgeless');
+    edgeless = getDocRootBlock(window.doc, window.editor, 'edgeless');
+    await wait();
+    return cleanup;
+  });
+
+  const toolbar = () =>
+    edgeless.widgetComponents[
+      EDGELESS_TOOLBAR_WIDGET
+    ] as unknown as EdgelessToolbarWidget;
+
+  const seniorCount = () => {
+    const bar = toolbar();
+    return (bar as unknown as { _seniorTools: unknown[] })._seniorTools.length;
+  };
+
+  /** The buttons drawn by the row's items, each keyed by the tool it is. */
+  const rowButtons = () =>
+    Array.from(
+      toolbar().shadowRoot!.querySelectorAll<HTMLElement>(
+        '.quick-tool-item, .senior-tool-item'
+      )
+    ).flatMap((item, index) =>
+      deepQueryAll(item, '[role="button"]').map((button, nth) => ({
+        key: `${item.dataset.seniorIndex ?? `quick-${index}`}#${nth}`,
+        button,
+      }))
+    );
+
+  /**
+   * The row's tools draw their buttons an update after the row, and the row
+   * names them after that: wait until every drawn button says something, or
+   * give up and let the assertions below say what is missing.
+   */
+  const rowSettled = () =>
+    vi
+      .waitFor(
+        () => {
+          const buttons = rowButtons();
+          if (!buttons.length) throw new Error('nothing drawn yet');
+          if (buttons.some(({ button }) => !button.hasAttribute('aria-label')))
+            throw new Error('a button is not named yet');
+        },
+        { timeout: 2000 }
+      )
+      .catch(() => {});
+
+  /**
+   * Turn every page of the senior row and read each tool as it is drawn —
+   * then, not at the end: Lit draws the next page into the same elements, so
+   * one element is a different tool on every page.
+   */
+  const readWholeRow = async () => {
+    const bar = toolbar();
+    const seen = new Map<
+      string,
+      { name: string | null; tooltip: string | null }
+    >();
+    const last = Math.max(0, seniorCount() - bar.scrollSeniorToolSize);
+    for (let scroll = 0; scroll <= last; scroll++) {
+      bar.scrollSeniorToolIndex = scroll;
+      await bar.updateComplete;
+      await rowSettled();
+      rowButtons().forEach(({ key, button }) =>
+        seen.set(key, {
+          name: button.getAttribute('aria-label'),
+          tooltip: tooltipWording(button),
+        })
+      );
+    }
+    bar.scrollSeniorToolIndex = 0;
+    await bar.updateComplete;
+    return seen;
+  };
+
+  test('every button of the row is named, and no two alike', async () => {
+    const seen = await readWholeRow();
+    // Every senior tool is drawn at least once (the pen and eraser share one).
+    expect(seen.size).toBeGreaterThan(seniorCount());
+    const names = Array.from(seen.values(), ({ name }) => name);
+    const unnamed = Array.from(seen.keys()).filter((_, i) => !names[i]);
+    expect(unnamed, 'buttons without a name').toEqual([]);
+    expect(new Set(names).size, names.join(' | ')).toBe(names.length);
+  });
+
+  test('a tool is named with the wording of its tooltip', async () => {
+    const seen = await readWholeRow();
+    const mismatched = Array.from(seen.values()).filter(
+      ({ name, tooltip }) => tooltip !== null && tooltip !== name
+    );
+    expect(mismatched).toEqual([]);
+  });
+
+  test('a framework button is named after the framework', async () => {
+    await readWholeRow();
+    const bar = toolbar();
+    bar.scrollSeniorToolIndex = 0;
+    await bar.updateComplete;
+    // Page until the Wardley button is drawn, then ask the browser's own
+    // accessibility tree for it by name.
+    const find = () =>
+      bar.shadowRoot!.querySelector('edgeless-wardley-senior-button');
+    for (let scroll = 0; scroll < 32 && !find(); scroll++) {
+      bar.scrollSeniorToolIndex = scroll;
+      await bar.updateComplete;
+    }
+    await vi.waitFor(() => {
+      const wardley = find()!.shadowRoot!.querySelector(
+        'edgeless-toolbar-button'
+      );
+      const byName = page
+        .getByRole('button', { name: 'Wardley map', exact: true })
+        .elements();
+      expect(byName).toContain(wardley);
+    });
+  });
+
+  test('the pager arrows and "more tools" are named by what they do', () => {
+    const named = (selector: string) =>
+      toolbar().shadowRoot!.querySelector(selector)?.getAttribute('aria-label');
+    expect(named('.senior-nav-button-wrapper.prev icon-button')).toBe(
+      'Previous tools'
+    );
+    expect(named('.senior-nav-button-wrapper.next icon-button')).toBe(
+      'Next tools'
+    );
+    expect(named('.quick-tool-more-button')).toBe('More Tools');
+  });
+
+  test('the active tool says it is pressed; an action says nothing', async () => {
+    await rowSettled();
+    const select = rowButtons().find(({ button }) =>
+      button.classList.contains('edgeless-default-button')
+    )!.button;
+    const undo = rowButtons().find(({ button }) =>
+      button.classList.contains('edgeless-undo-tool-button')
+    )!.button;
+    await vi.waitFor(() =>
+      expect(select.getAttribute('aria-pressed')).toBe('true')
+    );
+    // Named: the row's sync has reached this button, so the absence of a
+    // state below is the button's own, not a sync that has not run yet.
+    await vi.waitFor(() =>
+      expect(undo.getAttribute('aria-label')).toBe('Undo')
+    );
+    expect(undo.hasAttribute('aria-pressed')).toBe(false);
+
+    edgeless.gfx.tool.setTool(FrameTool);
+    const frame = rowButtons().find(({ button }) =>
+      button.classList.contains('edgeless-frame-button')
+    )!.button;
+    await vi.waitFor(() => {
+      expect(frame.getAttribute('aria-pressed')).toBe('true');
+      expect(select.getAttribute('aria-pressed')).toBe('false');
+    });
+
+    // A senior tool that is a canvas tool says so too (review of #679: with
+    // the note tool on, no button was pressed).
+    edgeless.gfx.tool.setTool(NoteTool, {
+      childFlavour: 'affine:paragraph',
+      childType: 'text',
+      tip: 'Note',
+    });
+    const note = rowButtons().find(({ button }) =>
+      button.classList.contains('edgeless-note-button')
+    )!.button;
+    await vi.waitFor(() => {
+      expect(note.getAttribute('aria-pressed')).toBe('true');
+      expect(frame.getAttribute('aria-pressed')).toBe('false');
+    });
+  });
+
+  /**
+   * Review of #679: the toolbar re-renders on every viewport update, and the
+   * row's sync (senior factories, a walk of every tool's shadow tree) ran on
+   * each of them, so on every frame of a pan or a zoom. A viewport update
+   * alone must not sync the row; turning a page must.
+   */
+  test('a pan does not re-sync the row; a page turn does', async () => {
+    const bar = toolbar() as unknown as {
+      _syncRow: () => Promise<void>;
+      updateComplete: Promise<boolean>;
+      scrollSeniorToolIndex: number;
+    };
+    await rowSettled();
+    const sync = vi.spyOn(bar, '_syncRow');
+    try {
+      const { viewport } = edgeless.gfx;
+      const frames = 30;
+      for (let frame = 0; frame < frames; frame++) {
+        viewport.setCenter(viewport.centerX + 10, viewport.centerY);
+        await bar.updateComplete;
+      }
+      expect(sync).toHaveBeenCalledTimes(0);
+
+      bar.scrollSeniorToolIndex = bar.scrollSeniorToolIndex + 1;
+      await bar.updateComplete;
+      expect(sync).toHaveBeenCalledTimes(1);
+    } finally {
+      sync.mockRestore();
+    }
+  });
+
+  test('after paging, the arrow keeps no tooltip of the tool it brought in', async () => {
+    const bar = toolbar();
+    bar.scrollSeniorToolIndex = 0;
+    await bar.updateComplete;
+    // Two pages at least, so the arrow still has a tool to announce after one.
+    expect(seniorCount()).toBeGreaterThan(2 * bar.scrollSeniorToolSize);
+    const arrow = bar.shadowRoot!.querySelector<HTMLElement>(
+      '.senior-nav-button-wrapper.next icon-button'
+    )!;
+    const announced = arrow
+      .querySelector('affine-tooltip')!
+      .textContent!.trim();
+
+    // The pointer comes onto the arrow — the tooltip listens for exactly this
+    // — and stays there while it clicks, as a user's does. Repeated until the
+    // tooltip has wired its reference, a frame after it is drawn.
+    await vi.waitFor(() => {
+      arrow.dispatchEvent(new MouseEvent('mouseenter'));
+      expect(shownTooltips()).toContain(announced);
+    });
+
+    arrow.click();
+    await bar.updateComplete;
+    expect(bar.scrollSeniorToolIndex).toBeGreaterThan(0);
+    // The stale popup never leaves: this waits out its leave transition and
+    // fails at the timeout if it stays.
+    await vi.waitFor(() => expect(shownTooltips()).not.toContain(announced), {
+      timeout: 2000,
+    });
+    arrow.dispatchEvent(new MouseEvent('mouseleave'));
+  });
+});

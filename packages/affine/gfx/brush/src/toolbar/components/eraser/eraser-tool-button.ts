@@ -61,6 +61,7 @@ export class EdgelessEraserToolButton extends EdgelessToolbarToolMixin(
     return html`
       <edgeless-toolbar-button
         class="edgeless-eraser-button"
+        .label=${translateKey(this.edgeless.std, ...BRUSH_TOOLTIP_ERASER)}
         .tooltip=${html`<affine-tooltip-content-with-shortcut
           data-tip="${translateKey(this.edgeless.std, ...BRUSH_TOOLTIP_ERASER)}"
           data-shortcut="${'E'}"

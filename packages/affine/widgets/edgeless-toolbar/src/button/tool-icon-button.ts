@@ -100,6 +100,33 @@ export class EdgelessToolIconButton extends LitElement {
     this.role = 'button';
   }
 
+  /**
+   * The accessible name and state live on the host, the node that carries
+   * `role="button"` (#679).
+   *
+   * The name is the translated wording the pointer reads: `label` when the
+   * owner passes one, else a tooltip that is plain text. A tooltip drawn as a
+   * template (a wording beside its shortcut) cannot name the button, and one
+   * emptied while the button's menu is open must not unname it: those owners
+   * pass `label`.
+   *
+   * Only on the canvas toolbar's row, or for an owner that passes `label`.
+   * Elsewhere — a panel, a menu, the auto-complete — a visible text is the
+   * name and the tooltip only describes it (WCAG 2.5.3): those buttons keep
+   * exactly the attributes their owner gives them.
+   */
+  override updated() {
+    if (!this.onToolbarRow && !this.label) return;
+    const name =
+      this.label || (typeof this.tooltip === 'string' ? this.tooltip : '');
+    if (name) this.setAttribute('aria-label', name);
+    else this.removeAttribute('aria-label');
+
+    if (!this.onToolbarRow) return;
+    if (this.active === undefined) this.removeAttribute('aria-pressed');
+    else this.setAttribute('aria-pressed', String(this.active));
+  }
+
   override render() {
     const tooltip = this.coming
       ? this.std
@@ -147,8 +174,12 @@ export class EdgelessToolIconButton extends LitElement {
     `;
   }
 
+  /**
+   * `undefined` while the owner binds nothing: an action (undo, insert a text)
+   * has no state, and only a bound value is announced (`onToolbarRow`).
+   */
   @property({ attribute: false })
-  accessor active = false;
+  accessor active: boolean | undefined = undefined;
 
   @property({ attribute: false })
   accessor activeMode: 'color' | 'background' = 'color';
@@ -180,8 +211,21 @@ export class EdgelessToolIconButton extends LitElement {
   @property({ attribute: false })
   accessor justify: string | undefined = undefined;
 
+  /** The accessible name, for an owner whose tooltip cannot be one. */
+  @property({ attribute: false })
+  accessor label: string | undefined = undefined;
+
   @property({ attribute: false })
   accessor labelHeight: string | undefined = undefined;
+
+  /**
+   * Set by the edgeless toolbar on the buttons of its own row: there a bound
+   * `active` is the tool's state, announced as `aria-pressed`. The same button
+   * in a sub-menu stays silent, because there `active` can be a keyboard
+   * highlight (`EdgelessCommandMenu`).
+   */
+  @property({ attribute: false })
+  accessor onToolbarRow = false;
 
   @property({ type: Boolean })
   accessor showTooltip = true;

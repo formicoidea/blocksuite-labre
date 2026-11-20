@@ -321,6 +321,7 @@ export class EdgelessMindmapToolButton extends EdgelessToolbarToolMixin(
           ? translateKey(this.edgeless.std, ...MINDMAP_TOOLTIP)
           : 'Others'}
       .tooltipOffset=${4}
+      .active=${!!active}
       @click=${this._toggleMenu}
       style="width: 100%; height: 100%; display: inline-block"
     >

@@ -26,6 +26,7 @@ export class EdgelessFrameToolButton extends QuickToolMixin(LitElement) {
     return html`
       <edgeless-tool-icon-button
         class="edgeless-frame-button"
+        .label=${translateKey(this.edgeless.std, ...TOOLBAR_FRAME)}
         .tooltip=${this.popper
           ? ''
           : html`<affine-tooltip-content-with-shortcut

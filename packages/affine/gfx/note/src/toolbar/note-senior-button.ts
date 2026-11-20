@@ -196,6 +196,7 @@ export class EdgelessNoteSeniorButton extends EdgelessToolbarToolMixin(
             data-shortcut="${'N'}"
           ></affine-tooltip-content-with-shortcut>`}
       .tooltipOffset=${5}
+      .active=${this.active}
     >
       <div
         class="note-root"

@@ -119,7 +119,7 @@ components:
     textColor: '{colors.ink}'
     rounded: '{rounded.md}'
     padding: '0 6px'
-    height: '36px'
+    height: '40px'
   menu-panel:
     backgroundColor: '{colors.overlay-paper}'
     textColor: '{colors.ink}'
@@ -151,7 +151,7 @@ components:
 
 **Creative North Star: "Quiet Chrome, Loud Notation"**
 
-The editor has two layers. The **chrome** (toolbars, menus, icon buttons, popovers, the page itself) is AFFiNE's visual system as it stands, delivered by `@toeverything/theme` 1.1.15 with no Labre overrides. It is neutral grey on white, 4px corners, Inter at 15px, and one borrowed blue for interaction. It follows the app theme (`data-theme="light" | "dark"`) and stays out of the way: controls appear on selection, sit in a single 36px row, and hold back when nothing is selected.
+The editor has two layers. The **chrome** (toolbars, menus, icon buttons, popovers, the page itself) is AFFiNE's visual system as it stands, delivered by `@toeverything/theme` 1.1.15 with no Labre overrides. It is neutral grey on white, 4px corners, Inter at 15px, and one borrowed blue for interaction. It follows the app theme (`data-theme="light" | "dark"`) and stays out of the way: controls appear on selection, sit in a single 40px row, and hold back when nothing is selected.
 
 The **notation** (EDGY, C4, BPMN, Wardley, Event Storming, DDD, Cynefin) is where the colour lives. Each framework paints with the colours of its own standard or stencil, fixed in model units and fixed in both themes. A C4 container is `#438DD5` on every screen and in every export, because a diagram is a document that has to read the same in a slide deck as it does in the editor.
 
@@ -163,7 +163,7 @@ This file describes the system **as it is**. It records the incumbent implementa
 
 - Neutral, low-contrast chrome: greys and hairlines, with the accent kept to selection, focus and active states.
 - Framework notations keep the colours of their standard and ignore the app theme.
-- Compact, fixed-height controls (36px toolbar, 4px-padded icon buttons, 4px corners).
+- Compact, fixed-height controls (40px toolbar, 4px-padded icon buttons, 4px corners).
 - Flat document surfaces; shadows only on floating panels.
 - Light/dark switching comes from the upstream theme's CSS variables, never from per-component colour logic.
 
@@ -277,7 +277,7 @@ In page mode, prose flows in a single 944px column (`--affine-editor-width`) wit
 
 Chrome spacing uses a 4px base: 4px icon padding, 8px gaps between toolbar entries and inside panels, 6px toolbar side padding, 12px menu input padding. Floating toolbars are placed with floating-ui, with a 10px viewport margin, and flip rather than overflow.
 
-**The One-Row Rule.** The editor toolbar is always exactly one 36px row. When space runs out, entries drop to icon-only and then move into the "⋮" overflow menu. The toolbar never wraps onto a second row, so it never shifts under the cursor.
+**The One-Row Rule.** The editor toolbar is always exactly one 40px row. When space runs out, entries drop to icon-only and then move into the "⋮" overflow menu. The toolbar never wraps onto a second row, so it never shifts under the cursor.
 
 ## Elevation & Depth
 
@@ -327,7 +327,7 @@ The main control. Compact and transparent at rest; it responds to the pointer bu
 
 The floating selection toolbar.
 
-- **Shape:** 8px corners, 0.5px inside border (`layer/insideBorder/border`), 0 6px padding, exactly 36px tall.
+- **Shape:** 8px corners, 0.5px inside border (`layer/insideBorder/border`), 0 6px padding, exactly 40px tall border included (`box-sizing: border-box`): a step of the shell's control heights, 28, 32 or 40px. In 4.0.0 and before it was a 36px content box plus the border, measured 37 to 38px depending on the browser (#679). The code block's compact bar keeps its own content box.
 - **Background / Shadow:** overlay panel background (`layer/background/overlayPanel`) with the Overlay shadow. A `data-without-bg` variant drops the border, background and shadow.
 - **Content:** entries 8px apart at natural width, never squeezed; overflow goes into a "⋮" menu (see The One-Row Rule).
 - **Theming:** the toolbar sets its own light/dark variables from the upstream `combinedLight/DarkCssVariables`, so it renders correctly even when portalled outside the themed tree.
