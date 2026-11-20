@@ -13,6 +13,7 @@ import {
   DATA_VIEW_NEW_RECORD,
   DATA_VIEW_ROWS_LOCKED,
 } from '../../../../translations.js';
+import { activateOnEnterOrSpace } from '../../keyboard.js';
 
 const styles = css`
   .new-record {
@@ -177,6 +178,9 @@ export class DataViewHeaderToolsAddRow extends WidgetBase {
         </button>`
       : html` <data-view-component-button
           class="affine-database-toolbar-item new-record"
+          role="button"
+          tabindex="0"
+          @keydown="${activateOnEnterOrSpace}"
           .onClick="${this.onAddNewRecord}"
           .icon="${PlusIcon()}"
           .text="${html`<span style="font-weight: 500"
@@ -193,7 +197,9 @@ export class DataViewHeaderToolsAddRow extends WidgetBase {
         class="affine-database-toolbar-item new-record-more"
         data-testid="database-new-record-more"
         role="button"
+        tabindex="0"
         aria-haspopup="menu"
+        @keydown="${activateOnEnterOrSpace}"
         aria-label="${label}"
         title="${label}"
         .onClick="${this.onOpenMenu}"

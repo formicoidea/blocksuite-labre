@@ -1,4 +1,3 @@
-import { popupTargetFromElement } from '@labre/affine-components/context-menu';
 import { FilterIcon } from '@blocksuite/icons/lit';
 import { computed } from '@preact/signals-core';
 import { cssVarV2 } from '@toeverything/theme/v2';
@@ -18,6 +17,11 @@ import {
   createDefaultShowQuickSettingBar,
   ShowQuickSettingBarKey,
 } from '../../../quick-setting-bar/context.js';
+import {
+  activateOnEnterOrSpace,
+  keyboardOpener,
+  popupTargetReturningFocus,
+} from '../../keyboard.js';
 
 const styles = css`
   .affine-database-filter-button {
@@ -75,7 +79,10 @@ export class DataViewHeaderToolsFilter extends WidgetBase {
       return;
     }
     popCreateFilter(
-      popupTargetFromElement(event.currentTarget as HTMLElement),
+      popupTargetReturningFocus(
+        event.currentTarget as HTMLElement,
+        keyboardOpener(event)
+      ),
       {
         vars: this.view.vars$,
         onSelect: filter => {
@@ -109,14 +116,30 @@ export class DataViewHeaderToolsFilter extends WidgetBase {
     });
     return html` <div
       @click="${this.clickFilter}"
+      @keydown="${activateOnEnterOrSpace}"
       style="${style}"
       class="affine-database-filter-button"
       data-testid="dv-tools-filter"
       role="button"
+      tabindex="0"
+      aria-haspopup="${this.hasFilter.value ? nothing : 'menu'}"
+      aria-expanded="${this.hasFilter.value ? String(this.barShown) : nothing}"
       aria-label="${wordingOf(this.std)(DATA_VIEW_FILTER)}"
     >
       ${FilterIcon()}
     </div>`;
+  }
+
+  /**
+   * With a filter, the button shows and hides the quick-setting bar, which
+   * then holds it (#678: its state, `aria-expanded`); without, it opens a
+   * menu (`aria-haspopup`, its state set while open, `keyboard.ts`).
+   */
+  private get barShown(): boolean {
+    return !!this.view.serviceGetOrCreate(
+      ShowQuickSettingBarKey,
+      createDefaultShowQuickSettingBar
+    ).value[this.view.id];
   }
 
   toggleShowFilter(show?: boolean) {

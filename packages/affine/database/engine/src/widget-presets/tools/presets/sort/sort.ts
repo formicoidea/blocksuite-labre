@@ -1,4 +1,3 @@
-import { popupTargetFromElement } from '@labre/affine-components/context-menu';
 import { SortIcon } from '@blocksuite/icons/lit';
 import { computed } from '@preact/signals-core';
 import { cssVarV2 } from '@toeverything/theme/v2';
@@ -18,6 +17,11 @@ import {
   ShowQuickSettingBarKey,
 } from '../../../quick-setting-bar/context.js';
 import { popSortRoot } from '../../../quick-setting-bar/sort/root-panel.js';
+import {
+  activateOnEnterOrSpace,
+  keyboardOpener,
+  popupTargetReturningFocus,
+} from '../../keyboard.js';
 
 const styles = css`
   .affine-database-sort-button {
@@ -74,7 +78,9 @@ export class DataViewHeaderToolsSort extends WidgetBase {
       this.toggleShowQuickSettingBar();
       return;
     }
-    popCreateSort(popupTargetFromElement(event.currentTarget as HTMLElement), {
+    const opener = keyboardOpener(event);
+    const anchor = event.currentTarget as HTMLElement;
+    popCreateSort(popupTargetReturningFocus(anchor, opener), {
       sortUtils: {
         ...sortUtils,
         add: sort => {
@@ -85,9 +91,12 @@ export class DataViewHeaderToolsSort extends WidgetBase {
               'affine-data-view-renderer'
             )?.querySelector('.data-view-sort-button');
             if (ele) {
-              popSortRoot(popupTargetFromElement(ele as HTMLElement), {
-                sortUtils: sortUtils,
-              });
+              popSortRoot(
+                popupTargetReturningFocus(ele as HTMLElement, opener),
+                {
+                  sortUtils: sortUtils,
+                }
+              );
             }
           });
         },
@@ -114,14 +123,26 @@ export class DataViewHeaderToolsSort extends WidgetBase {
     });
     return html` <div
       @click="${this.clickSort}"
+      @keydown="${activateOnEnterOrSpace}"
       style="${style}"
       class="affine-database-sort-button"
       data-testid="dv-tools-sort"
       role="button"
+      tabindex="0"
+      aria-haspopup="${this.hasSort.value ? nothing : 'menu'}"
+      aria-expanded="${this.hasSort.value ? String(this.barShown) : nothing}"
       aria-label="${wordingOf(this.std)(DATA_VIEW_SORT)}"
     >
       ${SortIcon()}
     </div>`;
+  }
+
+  /** As the filter button's (`DataViewHeaderToolsFilter.barShown`). */
+  private get barShown(): boolean {
+    return !!this.view.serviceGetOrCreate(
+      ShowQuickSettingBarKey,
+      createDefaultShowQuickSettingBar
+    ).value[this.view.id];
   }
 
   toggleShowQuickSettingBar(show?: boolean) {

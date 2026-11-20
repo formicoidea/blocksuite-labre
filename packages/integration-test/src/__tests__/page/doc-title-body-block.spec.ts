@@ -5,7 +5,7 @@ import type { InlineEditor } from '@labre/std/inline';
 import type { ExtensionType, Store } from '@labre/store';
 import { Text } from '@labre/store';
 import { userEvent } from '@vitest/browser/context';
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { wait } from '../utils/common.js';
 import { setupEditor } from '../utils/setup.js';
@@ -29,7 +29,12 @@ import { setupEditor } from '../utils/setup.js';
  *   card's or row's title in editing, writing nothing (recette of 1.1; a
  *   table selects its first cell, as before);
  * - the default title losing its 0.48 behaviour: Enter adds a first
- *   paragraph, ArrowDown creates one when the note has no text block.
+ *   paragraph, ArrowDown creates one when the note has no text block;
+ * - Tab kept in the title of a base's full page, so the keyboard never
+ *   reached the database's view toolbar (#678), or Shift+Tab from that
+ *   toolbar not coming back to the title;
+ * - Tab leaving the title of an ordinary document (the title keeps it, as
+ *   upstream does and as its paragraphs keep it to indent).
  */
 
 type DatabasePage = HTMLElement & {
@@ -140,6 +145,21 @@ describe('<doc-title> on a database full page (bodyBlockId)', () => {
     expect(writes, 'nothing written').toBe(0);
   });
 
+  test('Tab leaves the title for the view toolbar, Shift+Tab comes back', async () => {
+    await mount();
+    await press(title, '{Tab}');
+    const filter = page.querySelector<HTMLElement>(
+      '[data-testid="dv-tools-filter"]'
+    );
+    await vi.waitFor(() => expect(document.activeElement).toBe(filter));
+
+    await userEvent.keyboard('{Shift>}{Tab}{/Shift}');
+    await vi.waitFor(() =>
+      expect(title.contains(document.activeElement)).toBe(true)
+    );
+    expect(writes, 'nothing written').toBe(0);
+  });
+
   test('ArrowDown hands the caret to the body block', async () => {
     await mount();
     await press(title, '{ArrowDown}');
@@ -198,6 +218,21 @@ describe('<doc-title> without bodyBlockId (0.48)', () => {
     const after = noteChildren(noteId);
     expect(after).toHaveLength(before.length + 1);
     expect(doc.getModelById(after[0]!)?.flavour).toBe('affine:paragraph');
+  });
+
+  test('Tab stays in the title', async () => {
+    cleanup = await setupEditor('page');
+    const { noteId } = writeDatabaseNote();
+    const title = await vi.waitFor(() => {
+      const element = window.editor.querySelector<Title>('doc-title');
+      expect(element?.inlineEditor).toBeTruthy();
+      return element!;
+    });
+    const before = { note: noteChildren(noteId), title: titleText() };
+    await press(title, '{Tab}');
+    expect(title.contains(document.activeElement), 'the focus').toBe(true);
+    expect(title.inlineEditor!.getInlineRange(), 'the caret').not.toBe(null);
+    expect({ note: noteChildren(noteId), title: titleText() }).toEqual(before);
   });
 
   test('ArrowDown creates a paragraph when the note has no text block', async () => {

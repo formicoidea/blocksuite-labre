@@ -1,3 +1,4 @@
+import { FILTERABLE_LIST_SEARCH_PLACEHOLDER } from '@labre/affine-components/translations';
 import { unsafeCSSVarV2 } from '@labre/affine-shared/theme';
 import { CloseIcon, SearchIcon } from '@blocksuite/icons/lit';
 import { type BlockStdScope, stdContext } from '@labre/std';
@@ -18,6 +19,13 @@ import {
   DATA_VIEW_SEARCH_PLACEHOLDER,
   DATA_VIEW_SEARCH_ESCAPE,
 } from '../../../../translations.js';
+import { activateOnEnterOrSpace } from '../../keyboard.js';
+
+/**
+ * The search button and its field (#678): the filterable list's "Search",
+ * one chrome word, one key (`manifest.unit.spec.ts`).
+ */
+const SEARCH = FILTERABLE_LIST_SEARCH_PLACEHOLDER;
 
 const styles = css`
   .affine-database-search-container {
@@ -124,9 +132,15 @@ export class DataViewHeaderToolsSearch extends WidgetBase<
     });
   };
 
-  private readonly _clickSearch = (e: MouseEvent) => {
+  private readonly _clickSearch = async (e: MouseEvent) => {
     e.stopPropagation();
+    // Enter or Space on the button sends a click of `detail` 0.
+    this.openedFromKeyboard = e.detail === 0;
     this.showSearch = true;
+    // Folded, the field is inert and takes no focus: once open, focus it,
+    // for Enter or Space on the button as for a click on the label (#678).
+    await this.updateComplete;
+    this._searchInput.focus();
   };
 
   private readonly _onSearch = (event: InputEvent) => {
@@ -142,16 +156,28 @@ export class DataViewHeaderToolsSearch extends WidgetBase<
     this.showSearch = false;
   };
 
+  /**
+   * Escape clears the text, then folds the field. Opened from the keyboard,
+   * the field keeps its Escape and the second one gives the focus back to
+   * the Search button (#678). Opened with the mouse, Escape does what it did
+   * on 4.0.0 and goes on to the editor, and the focus is not moved: the
+   * product owner's rule, after a mouse gesture the content behaves as
+   * before.
+   */
   private readonly _onSearchKeydown = (event: KeyboardEvent) => {
-    if (event.key === 'Escape') {
-      if (this._searchInput.value) {
-        this._searchInput.value = '';
-        this.dataViewLogic.view.setSearch('');
-      } else {
-        this.showSearch = false;
-      }
+    if (event.key !== 'Escape') return;
+    if (this.openedFromKeyboard) event.stopPropagation();
+    if (this._searchInput.value) {
+      this._searchInput.value = '';
+      this.dataViewLogic.view.setSearch('');
+      return;
     }
+    this.showSearch = false;
+    if (this.openedFromKeyboard) this._searchButton.focus();
   };
+
+  /** How the field was last opened: `_onSearchKeydown`. */
+  private openedFromKeyboard = false;
 
   preventBlur = false;
 
@@ -172,10 +198,27 @@ export class DataViewHeaderToolsSearch extends WidgetBase<
       'search-container-expand': this.showSearch,
       active: this.showSearch,
     });
+    // Folded, the field is clipped to nothing: `inert`, out of the tab order
+    // and of the accessibility tree (a focus put there by an assistive tool
+    // and typing filtered the rows with the field still folded), reached
+    // through the Search button, which leaves the tab order once it is open
+    // (#678).
     return html`
       <label class="${searchToolClassMap}" @click="${this._clickSearch}">
-        <div class="affine-database-search-input-icon">${SearchIcon()}</div>
+        <div
+          class="affine-database-search-input-icon"
+          data-testid="dv-tools-search"
+          role="button"
+          tabindex="${this.showSearch ? -1 : 0}"
+          aria-label="${wordingOf(this.std)(SEARCH)}"
+          aria-expanded="${this.showSearch ? 'true' : 'false'}"
+          @keydown="${activateOnEnterOrSpace}"
+        >
+          ${SearchIcon()}
+        </div>
         <input
+          aria-label="${wordingOf(this.std)(SEARCH)}"
+          ?inert="${!this.showSearch}"
           placeholder="${wordingOf(this.std)(DATA_VIEW_SEARCH_PLACEHOLDER)}"
           class="affine-database-search-input"
           @input="${this._onSearch}"
@@ -207,6 +250,9 @@ export class DataViewHeaderToolsSearch extends WidgetBase<
 
   @query('.affine-database-search-input')
   private accessor _searchInput!: HTMLInputElement;
+
+  @query('.affine-database-search-input-icon')
+  private accessor _searchButton!: HTMLElement;
 
   @state()
   private accessor showSearch = false;

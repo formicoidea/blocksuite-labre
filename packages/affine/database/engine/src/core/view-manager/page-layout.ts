@@ -6,7 +6,8 @@ import type { ReadonlySignal } from '@preact/signals-core';
  * `true` while the views are the page itself (a database's full page, ADR
  * 0035 amendment of 2026-10-28). A table then grows to its columns' width
  * and its column header sticks natively to the page's scroller, which
- * scrolls both ways; data-view's script leaves that header alone.
+ * scrolls both ways; data-view's script leaves that header alone. Every
+ * view's toolbar is then shown at rest, not on hover (#678).
  *
  * Absent reads `false`, the 0.61 inline table. Set by the database block
  * from facts it measures, never stored.
