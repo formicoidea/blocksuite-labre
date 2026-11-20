@@ -23,7 +23,7 @@ export const coreDomainCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.ddd-core-domain.addChart',
     labelFallback: 'Core Domain Chart',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['d', 'c'], other: ['d', 'c'] },
   },
   {
     id: 'ddd-core-domain.addBigBet',
@@ -31,7 +31,7 @@ export const coreDomainCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.ddd-core-domain.addBigBet',
     labelFallback: 'Big-bet sub-domain',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['d', 'g'], other: ['d', 'g'] },
   },
   {
     id: 'ddd-core-domain.addPlatform',
@@ -39,7 +39,7 @@ export const coreDomainCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.ddd-core-domain.addPlatform',
     labelFallback: 'Platform sub-domain',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['d', 'p'], other: ['d', 'p'] },
   },
   {
     id: 'ddd-core-domain.addOutsourced',
@@ -47,7 +47,7 @@ export const coreDomainCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.ddd-core-domain.addOutsourced',
     labelFallback: 'Outsourced / purchased',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['d', 'o'], other: ['d', 'o'] },
   },
   {
     id: 'ddd-core-domain.addBcCurrent',
@@ -55,7 +55,7 @@ export const coreDomainCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.ddd-core-domain.addBcCurrent',
     labelFallback: 'Bounded context',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['d', 'n'], other: ['d', 'n'] },
   },
   {
     id: 'ddd-core-domain.addBcFuture',
@@ -63,7 +63,7 @@ export const coreDomainCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.ddd-core-domain.addBcFuture',
     labelFallback: 'Future position',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['d', 'f'], other: ['d', 'f'] },
   },
   {
     id: 'ddd-core-domain.addCollaboration',

@@ -58,6 +58,7 @@ One file per decision. Format and lifecycle in
 | [0051](0051-read-only-viewer-is-the-editor.md)                 | Read-only viewer is the editor       | accepted                  | The viewer is the edgeless editor on a read-only store: the registry plus the host's providers, minus one exclusion list beside it, held by a DI guard.                                       |
 | [0052](0052-zod-4.md)                                          | zod 4, the same documents            | accepted                  | zod `^4.6.6` from `'zod'`; every outcome zod decides pinned under zod 3 and held; object defaults are `.prefault`; the host, never the library, sets `jitless`. Red zone, major.              |
 | [0053](0053-unreadable-surface-element-is-skipped.md)          | Unreadable surface element skipped   | accepted                  | Identity is the element's key; one with no type, an unregistered type, or a model that throws while built or mounted is skipped, reported (`unknown-type` / `unreadable`) and left untouched. |
+| [0055](0055-framework-chord-prefixes.md)                       | Framework chord prefixes             | accepted                  | `b` BPMN, `u` UML, `y` Cynefin, `g` EDGY, `d` both DDD boards beside Wardley's `w`; placed artefacts only; a prefix on a single-key shortcut is never shipped (Event Storming's `t` stopped). |
 
 Related documents that are not ADRs:
 

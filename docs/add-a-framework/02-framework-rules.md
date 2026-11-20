@@ -83,9 +83,19 @@ specialisation, unless an exemption names it and says why
 commands to find the roles). Eight of nine frameworks have a legend; Cynefin
 has none by ADR 0013, which is the exemption the same test reads.
 
-**R7. Chords use the framework's prefix letter**, and only Wardley has
-allocated one (`w`). A prefix must be unique and outside
-`RESERVED_EDGELESS_KEYS` (`registry.unit.spec.ts`).
+**R7. Chords use the framework's prefix letter**, declared once in the
+framework package (`<NAME>_CHORD_PREFIX`, read by `frameworkChord` from
+`@labre/affine-shared/utils`) and again as `chordPrefix` in `frameworks.ts`.
+A framework that ships a chord declares its prefix; a prefix with no chord is
+not allocated. A prefix is never a single-key shortcut (`RESERVED_EDGELESS_KEYS`,
+the toolbar's `m` and `s`, a command's one-key default) and is shared only by
+declaration (the two DDD boards on `d`); second keys are one letter or digit,
+unique across every framework sharing the prefix. Only the artefacts a user
+places get a default chord; tools, templates and rare entries stay keyless,
+bindable from Settings › Shortcuts. Allocated: `w` Wardley, `b` BPMN, `u` UML,
+`y` Cynefin / Estuarine, `g` EDGY, `d` Core Domain Chart and Context Map; C4
+and Event Storming have none (ADR 0055;
+`chord-prefixes.unit.spec.ts`).
 
 **R7b. An artefact command is PLACED, not run** (PO decision, 2026-09-16;
 lettered rather than renumbered so the thirty references below stay valid).

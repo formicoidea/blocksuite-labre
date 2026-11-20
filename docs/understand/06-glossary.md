@@ -15,7 +15,7 @@ Plain words for the names you will meet in the code.
 | **bundle**             | A generated npm package under `@formicoidea/`. Not a workspace package.                                                                                        |
 | **catalogue**          | The side panel listing every command of a framework.                                                                                                           |
 | **changeset**          | A file under `.changeset/` describing a user-facing change; consumed at release to bump versions and write changelogs.                                         |
-| **chord**              | A two-key shortcut: press `w` then `c`. Each framework may own one prefix letter.                                                                              |
+| **chord**              | A two-key shortcut: press `w` then `c`. A framework owns one prefix letter; the two DDD boards share `d` (ADR 0055).                                           |
 | **command descriptor** | The declaration of one user-facing action: id, label key, icon key, chord, surfaces, `run`. The one source the menus and shortcuts derive from.                |
 | **contextual toolbar** | The toolbar shown above a selected element.                                                                                                                    |
 | **CRUD service**       | `EdgelessCRUDIdentifier`: the service that adds, updates and deletes surface elements.                                                                         |

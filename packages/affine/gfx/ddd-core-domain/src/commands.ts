@@ -14,6 +14,7 @@ import {
   type ChromeWording,
   translateKey,
 } from '@labre/affine-shared/services';
+import { frameworkChord } from '@labre/affine-shared/utils';
 import type {
   BlockStdScope,
   CommandDescriptor,
@@ -29,6 +30,34 @@ import {
   markerRole,
   subdomainRole,
 } from './roles';
+
+/**
+ * The first keystroke of every Core Domain Chart chord (`d c` places a
+ * chart). The two DDD boards SHARE `d` by product decision: their second keys
+ * are unique across both (`chord-prefixes.unit.spec.ts`), so `d` reads as
+ * "DDD" whichever board you are on. Spelled again as
+ * `FrameworkDescriptor.chordPrefix` in `@labre/affine`'s `frameworks.ts`,
+ * held together by the same spec (`docs/adr/0055`).
+ */
+const DDD_CHORD_PREFIX = 'd';
+
+/**
+ * The second keys of the five sub-domain dots, by preset kind: the dots are
+ * built from the shared `CD_SUBDOMAINS` presets, so their key is looked up
+ * here rather than written into a literal spec. `n` and `f` pair the two
+ * positions of a bounded context, now and future. A preset with no entry is
+ * keyless by intent; the three team-topology markers are, like Wardley's
+ * annotations, reached for once the chart is drawn.
+ */
+const SUBDOMAIN_KEYS: Partial<
+  Record<(typeof CD_SUBDOMAINS)[number]['kind'], string>
+> = {
+  bigBet: 'g',
+  platform: 'p',
+  outsourced: 'o',
+  bcCurrent: 'n',
+  bcFuture: 'f',
+};
 
 /**
  * The legend wording of a sub-domain dot: the ROLE's own i18n key — so a host
@@ -88,6 +117,11 @@ const markerSwatch = (fill: string, letter: string) =>
 
 interface Spec {
   id: string;
+  /**
+   * Second keystroke of the chord, after {@link DDD_CHORD_PREFIX}; absent =
+   * keyless by intent (`docs/adr/0055`).
+   */
+  key?: string;
   label: string;
   iconKey: string;
   /** Historical `FrameworkElementEvent.element` value — do not rename. */
@@ -108,6 +142,7 @@ interface Spec {
 const SPECS: Spec[] = [
   {
     id: 'addChart',
+    key: 'c',
     label: 'Core Domain Chart',
     iconKey: 'ddd-core-domain.chart',
     element: 'background',
@@ -121,6 +156,7 @@ const SPECS: Spec[] = [
   ...CD_SUBDOMAINS.map(
     (preset): Spec => ({
       id: `add${preset.kind[0].toUpperCase()}${preset.kind.slice(1)}`,
+      key: SUBDOMAIN_KEYS[preset.kind],
       label: preset.label,
       iconKey: `ddd-core-domain.subdomain.${preset.kind}`,
       element: `subdomain:${preset.kind}`,
@@ -228,7 +264,7 @@ export const coreDomainCommands: CommandDescriptor[] = SPECS.map(
     surfaces: ['senior-menu', 'catalogue', 'palette', 'agent'],
     order,
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: frameworkChord(DDD_CHORD_PREFIX, spec.key),
     availability: 'always',
     run: spec.run,
     telemetry: {

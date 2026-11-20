@@ -1,3 +1,4 @@
+import { frameworkChord } from '@labre/affine-shared/utils';
 import type { BlockStdScope, CommandDescriptor } from '@labre/std';
 import type { TemplateResult } from 'lit';
 
@@ -14,6 +15,15 @@ import {
 } from './toolbar/icons';
 
 /**
+ * The first keystroke of every Cynefin / Estuarine chord (`y c` places a
+ * Cynefin framework): `c` is the connector tool, so the second letter of the
+ * name. Spelled again as `FrameworkDescriptor.chordPrefix` in
+ * `@labre/affine`'s `frameworks.ts`; `chord-prefixes.unit.spec.ts` holds the
+ * two together (`docs/adr/0055`).
+ */
+const CYNEFIN_CHORD_PREFIX = 'y';
+
+/**
  * The Cynefin / Estuarine toolbox as commands. One senior button hosts both
  * frameworks, so they share the `cynefin-estuarine` owner — which is also the
  * flag key; the historical PostHog value stays `'cynefin'` through
@@ -21,6 +31,11 @@ import {
  */
 interface Spec {
   id: string;
+  /**
+   * Second keystroke of the chord, after {@link CYNEFIN_CHORD_PREFIX}; absent =
+   * keyless by intent (`docs/adr/0055`).
+   */
+  key?: string;
   label: string;
   iconKey: string;
   element: string;
@@ -32,6 +47,7 @@ interface Spec {
 const SPECS: Spec[] = [
   {
     id: 'addCynefin',
+    key: 'c',
     label: 'Cynefin framework',
     iconKey: 'cynefin.frame',
     element: 'cynefin',
@@ -40,6 +56,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addEstuarineMap',
+    key: 'e',
     label: 'Estuarine map',
     iconKey: 'estuarine.map',
     element: 'estuarine',
@@ -48,6 +65,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addConstraintHexagon',
+    key: 'h',
     label: 'Hexagon node',
     iconKey: 'estuarine.hexagon',
     element: 'node:hexagon',
@@ -67,7 +85,7 @@ export const cynefinEstuarineCommands: CommandDescriptor[] = SPECS.map(
     surfaces: ['senior-menu', 'catalogue', 'palette', 'agent'],
     order,
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: frameworkChord(CYNEFIN_CHORD_PREFIX, spec.key),
     availability: 'always',
     run: spec.run,
     telemetry: {
