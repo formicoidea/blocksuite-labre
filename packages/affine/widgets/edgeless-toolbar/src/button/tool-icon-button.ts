@@ -1,13 +1,20 @@
 import { translateKey } from '@labre/affine-shared/services';
 import type { BlockStdScope } from '@labre/std';
 import type { Placement } from '@floating-ui/dom';
-import type { TemplateResult } from 'lit';
+import type { PropertyValues, TemplateResult } from 'lit';
 import { css, html, LitElement, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
 import { cache } from 'lit/directives/cache.js';
 import { styleMap } from '@labre/global/lit';
 
 import { EDGELESS_TOOLBAR_COMING_SOON } from '../translations.js';
+
+/**
+ * Fired by a button of the toolbar's row when its `active` changes, so the
+ * row can keep its Tab stop on the active tool (ADR 0054). The toolbar listens
+ * for it by this name, `@toolbar-row-state`.
+ */
+export const TOOLBAR_ROW_STATE_EVENT = 'toolbar-row-state';
 
 /**
  * The keyboard's ring on a toolbar button (#679, ADR 0054): the opaque 2px
@@ -133,7 +140,7 @@ export class EdgelessToolIconButton extends LitElement {
    * name and the tooltip only describes it (WCAG 2.5.3): those buttons keep
    * exactly the attributes their owner gives them.
    */
-  override updated() {
+  override updated(changed: PropertyValues<this>) {
     if (!this.onToolbarRow && !this.label) return;
     const name =
       this.label || (typeof this.tooltip === 'string' ? this.tooltip : '');
@@ -143,6 +150,12 @@ export class EdgelessToolIconButton extends LitElement {
     if (!this.onToolbarRow) return;
     if (this.active === undefined) this.removeAttribute('aria-pressed');
     else this.setAttribute('aria-pressed', String(this.active));
+    // The row keeps its one Tab stop on the active tool (ADR 0054).
+    if (changed.has('active')) {
+      this.dispatchEvent(
+        new Event(TOOLBAR_ROW_STATE_EVENT, { bubbles: true, composed: true })
+      );
+    }
   }
 
   override render() {

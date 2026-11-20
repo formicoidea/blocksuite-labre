@@ -484,19 +484,38 @@ export class EdgelessPageKeyboardManager extends PageKeyboardManager {
             }
           });
         },
+        // Shift+Tab leaves the editor backwards, the browser's way: the host is
+        // the editor's first stop, so its previous one is outside. Returning
+        // true keeps it from the root's `fallbackKeymap`, which swallowed it.
+        // A text being edited and a mind map node keep it, as before (#679,
+        // ADR 0054).
+        'Shift-Tab': ctx => {
+          const selection = rootComponent.service.selection;
+          if (selection.editing) return false;
+          if (ctx.get('defaultState').event.target !== this.std.host) {
+            return false;
+          }
+          return !isSingleMindMapNode(selection.selectedElements);
+        },
         Tab: ctx => {
           const { service } = rootComponent;
           const selection = service.selection;
           const elements = selection.selectedElements;
           const mindMapNode = isSingleMindMapNode(elements);
 
-          // Kept while a text is edited or a mind map node waits for a
-          // sibling; anywhere else Tab is the browser's, so the keyboard can
-          // leave the canvas for its toolbar (#679, ADR 0054). Returning true
-          // decides the keystroke here: the root's `fallbackKeymap`, which
-          // would swallow it, never runs.
-          if (!mindMapNode && !selection.editing) return true;
-          ctx.get('defaultState').event.preventDefault();
+          const event = ctx.get('defaultState').event;
+          event.preventDefault();
+          // On the canvas itself — the focus on the editor host, no text being
+          // edited, no mind map node waiting for a sibling — Tab takes the
+          // keyboard to the toolbar by moving the focus there: the browser's
+          // next stop would be the text of the first note on the canvas
+          // (#679, ADR 0054). With no row to go to (presentation, readonly),
+          // or from a pane's field, it stays swallowed, as before.
+          const onCanvas = event.target === this.std.host;
+          if (!mindMapNode && !selection.editing) {
+            if (onCanvas) this._toolbar?.focusRow();
+            return true;
+          }
 
           if (!mindMapNode) return false;
           // Same raw-`transact` path as Enter's `addNode`.
