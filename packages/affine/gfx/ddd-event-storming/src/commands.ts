@@ -12,6 +12,7 @@ import {
   type ChromeWording,
   translateKey,
 } from '@labre/affine-shared/services';
+import { frameworkChord } from '@labre/affine-shared/utils';
 import type {
   BlockStdScope,
   CommandDescriptor,
@@ -23,6 +24,34 @@ import { svg, type TemplateResult } from 'lit';
 import { activateEventStormingFlow, createEventStormingBoard } from './actions';
 import { ES_ROLE, ES_STICKY_ROLE } from './roles';
 import { eventStormingStickyOpts } from './toolbox';
+
+/**
+ * The first keystroke of every Event Storming chord (`o e` places a domain
+ * event): `o` for the orange stickies, the PO's choice once the requested
+ * `t` turned out to be the Text tool. Spelled again as
+ * `FrameworkDescriptor.chordPrefix` in `@labre/affine`'s `frameworks.ts`;
+ * `chord-prefixes.unit.spec.ts` holds the two together (`docs/adr/0055`).
+ */
+const EVENT_STORMING_CHORD_PREFIX = 'o';
+
+/**
+ * The second keys of the eight stickies, by preset kind: the stickies are
+ * built from the shared `ES_STICKIES` presets, so their key is looked up here
+ * rather than written into a literal spec. A preset with no entry is keyless
+ * by intent.
+ */
+const STICKY_KEYS: Partial<
+  Record<(typeof ES_STICKIES)[number]['kind'], string>
+> = {
+  domainEvent: 'e',
+  command: 'c',
+  aggregate: 'a',
+  actor: 'u',
+  constraint: 'i',
+  policy: 'p',
+  readModel: 'r',
+  system: 's',
+};
 
 /**
  * The automatic legend's own section titles — text stamped onto the board the
@@ -63,6 +92,11 @@ const boardSwatch = svg`<svg width="24" height="24" viewBox="0 0 24 24" fill="no
 
 interface Spec {
   id: string;
+  /**
+   * Second keystroke of the chord, after {@link EVENT_STORMING_CHORD_PREFIX};
+   * absent = keyless by intent: the flow is a tool (`docs/adr/0055`).
+   */
+  key?: string;
   label: string;
   iconKey: string;
   /** Historical `FrameworkElementEvent.element` value — do not rename. */
@@ -83,6 +117,7 @@ interface Spec {
 const SPECS: Spec[] = [
   {
     id: 'addBoard',
+    key: 'b',
     label: 'Event Storming board',
     iconKey: 'ddd-event-storming.board',
     // A NEW telemetry value: every other entry below keeps the `element` string
@@ -95,6 +130,7 @@ const SPECS: Spec[] = [
   ...ES_STICKIES.map(
     (preset): Spec => ({
       id: `add${preset.kind[0].toUpperCase()}${preset.kind.slice(1)}`,
+      key: STICKY_KEYS[preset.kind],
       label: preset.label,
       iconKey: `ddd-event-storming.sticky.${preset.kind}`,
       element: `sticky:${preset.kind}`,
@@ -131,6 +167,7 @@ const SPECS: Spec[] = [
   ),
   {
     id: 'addHotspot',
+    key: 'h',
     label: ES_HOTSPOT.label,
     iconKey: 'ddd-event-storming.sticky.hotspot',
     element: 'sticky:hotspot',
@@ -193,8 +230,10 @@ export const eventStormingCommands: CommandDescriptor[] = SPECS.map(
     surfaces: ['senior-menu', 'catalogue', 'palette', 'agent'],
     order,
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
-    availability: 'always',
+    defaultKeys: frameworkChord(EVENT_STORMING_CHORD_PREFIX, spec.key),
+    // It WRITES: a read-only document is one it cannot run on, so no surface
+    // offers it there and no chord arms for it (`docs/adr/0055`).
+    availability: 'editable',
     run: spec.run,
     telemetry: {
       framework: 'ddd-event-storming',

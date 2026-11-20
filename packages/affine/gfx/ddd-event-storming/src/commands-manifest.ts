@@ -23,7 +23,7 @@ export const eventStormingCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.ddd-event-storming.addBoard',
     labelFallback: 'Event Storming board',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['o', 'b'], other: ['o', 'b'] },
   },
   {
     id: 'ddd-event-storming.addDomainEvent',
@@ -31,7 +31,7 @@ export const eventStormingCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.ddd-event-storming.addDomainEvent',
     labelFallback: 'Domain event',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['o', 'e'], other: ['o', 'e'] },
   },
   {
     id: 'ddd-event-storming.addCommand',
@@ -39,7 +39,7 @@ export const eventStormingCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.ddd-event-storming.addCommand',
     labelFallback: 'Command',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['o', 'c'], other: ['o', 'c'] },
   },
   {
     id: 'ddd-event-storming.addAggregate',
@@ -47,7 +47,7 @@ export const eventStormingCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.ddd-event-storming.addAggregate',
     labelFallback: 'Aggregate',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['o', 'a'], other: ['o', 'a'] },
   },
   {
     id: 'ddd-event-storming.addActor',
@@ -55,7 +55,7 @@ export const eventStormingCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.ddd-event-storming.addActor',
     labelFallback: 'Actor',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['o', 'u'], other: ['o', 'u'] },
   },
   {
     id: 'ddd-event-storming.addConstraint',
@@ -63,7 +63,7 @@ export const eventStormingCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.ddd-event-storming.addConstraint',
     labelFallback: 'Constraint',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['o', 'i'], other: ['o', 'i'] },
   },
   {
     id: 'ddd-event-storming.addPolicy',
@@ -71,7 +71,7 @@ export const eventStormingCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.ddd-event-storming.addPolicy',
     labelFallback: 'Policy',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['o', 'p'], other: ['o', 'p'] },
   },
   {
     id: 'ddd-event-storming.addReadModel',
@@ -79,7 +79,7 @@ export const eventStormingCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.ddd-event-storming.addReadModel',
     labelFallback: 'Read model',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['o', 'r'], other: ['o', 'r'] },
   },
   {
     id: 'ddd-event-storming.addSystem',
@@ -87,7 +87,7 @@ export const eventStormingCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.ddd-event-storming.addSystem',
     labelFallback: 'External system',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['o', 's'], other: ['o', 's'] },
   },
   {
     id: 'ddd-event-storming.addHotspot',
@@ -95,7 +95,7 @@ export const eventStormingCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.ddd-event-storming.addHotspot',
     labelFallback: 'Hotspot',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['o', 'h'], other: ['o', 'h'] },
   },
   {
     id: 'ddd-event-storming.addFlow',

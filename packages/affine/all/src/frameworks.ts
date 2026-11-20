@@ -133,9 +133,9 @@ export const FRAMEWORK_DESCRIPTORS: FrameworkDescriptor[] = [
     labelKey: 'com.labre.framework.ddd-event-storming',
     labelFallback: 'Event Storming',
     iconKey: 'ddd-event-storming.toolbar',
-    // No chord prefix: the requested `t` is the Text tool, and a chord on it
-    // would change what `t` alone does. Awaiting a product decision on another
-    // letter (`docs/adr/0055` § Event Storming).
+    // `o` for the orange stickies: the requested `t` is the Text tool, and a
+    // chord on it would change what `t` alone does (`docs/adr/0055`).
+    chordPrefix: 'o',
     telemetryKey: 'event-storming',
     telemetrySegment: 'ddd toolbox',
     bundle: 'framework-ddd-event-storming',

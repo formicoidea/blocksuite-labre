@@ -36,6 +36,10 @@
  * winning. No golden id moved and no golden combo changed: the Wardley rows
  * above are byte-for-byte the ones before. Anything else drifting is still a
  * regression.
+ *
+ * AMENDED again by ADR 0055 (product owner's decision) — Event Storming takes
+ * `o` (the orange stickies), ten more commands that shipped keyless. Same
+ * terms: additions only.
  */
 export const KEYMAP_GOLDEN = {
   declarations: [
@@ -403,6 +407,76 @@ export const KEYMAP_GOLDEN = {
       mac: ['u', 's'],
       other: ['u', 's'],
     },
+    {
+      id: 'ddd-event-storming.addBoard',
+      owner: 'ddd-event-storming',
+      scope: 'edgeless',
+      mac: ['o', 'b'],
+      other: ['o', 'b'],
+    },
+    {
+      id: 'ddd-event-storming.addDomainEvent',
+      owner: 'ddd-event-storming',
+      scope: 'edgeless',
+      mac: ['o', 'e'],
+      other: ['o', 'e'],
+    },
+    {
+      id: 'ddd-event-storming.addCommand',
+      owner: 'ddd-event-storming',
+      scope: 'edgeless',
+      mac: ['o', 'c'],
+      other: ['o', 'c'],
+    },
+    {
+      id: 'ddd-event-storming.addAggregate',
+      owner: 'ddd-event-storming',
+      scope: 'edgeless',
+      mac: ['o', 'a'],
+      other: ['o', 'a'],
+    },
+    {
+      id: 'ddd-event-storming.addActor',
+      owner: 'ddd-event-storming',
+      scope: 'edgeless',
+      mac: ['o', 'u'],
+      other: ['o', 'u'],
+    },
+    {
+      id: 'ddd-event-storming.addConstraint',
+      owner: 'ddd-event-storming',
+      scope: 'edgeless',
+      mac: ['o', 'i'],
+      other: ['o', 'i'],
+    },
+    {
+      id: 'ddd-event-storming.addPolicy',
+      owner: 'ddd-event-storming',
+      scope: 'edgeless',
+      mac: ['o', 'p'],
+      other: ['o', 'p'],
+    },
+    {
+      id: 'ddd-event-storming.addReadModel',
+      owner: 'ddd-event-storming',
+      scope: 'edgeless',
+      mac: ['o', 'r'],
+      other: ['o', 'r'],
+    },
+    {
+      id: 'ddd-event-storming.addSystem',
+      owner: 'ddd-event-storming',
+      scope: 'edgeless',
+      mac: ['o', 's'],
+      other: ['o', 's'],
+    },
+    {
+      id: 'ddd-event-storming.addHotspot',
+      owner: 'ddd-event-storming',
+      scope: 'edgeless',
+      mac: ['o', 'h'],
+      other: ['o', 'h'],
+    },
   ],
   bindings: {
     mac: {
@@ -461,6 +535,16 @@ export const KEYMAP_GOLDEN = {
         'u a': 'uml.addActor',
         'u o': 'uml.addUseCase',
         'u s': 'uml.addSubject',
+        'o b': 'ddd-event-storming.addBoard',
+        'o e': 'ddd-event-storming.addDomainEvent',
+        'o c': 'ddd-event-storming.addCommand',
+        'o a': 'ddd-event-storming.addAggregate',
+        'o u': 'ddd-event-storming.addActor',
+        'o i': 'ddd-event-storming.addConstraint',
+        'o p': 'ddd-event-storming.addPolicy',
+        'o r': 'ddd-event-storming.addReadModel',
+        'o s': 'ddd-event-storming.addSystem',
+        'o h': 'ddd-event-storming.addHotspot',
       },
     },
     other: {
@@ -520,6 +604,16 @@ export const KEYMAP_GOLDEN = {
         'u a': 'uml.addActor',
         'u o': 'uml.addUseCase',
         'u s': 'uml.addSubject',
+        'o b': 'ddd-event-storming.addBoard',
+        'o e': 'ddd-event-storming.addDomainEvent',
+        'o c': 'ddd-event-storming.addCommand',
+        'o a': 'ddd-event-storming.addAggregate',
+        'o u': 'ddd-event-storming.addActor',
+        'o i': 'ddd-event-storming.addConstraint',
+        'o p': 'ddd-event-storming.addPolicy',
+        'o r': 'ddd-event-storming.addReadModel',
+        'o s': 'ddd-event-storming.addSystem',
+        'o h': 'ddd-event-storming.addHotspot',
       },
     },
   },

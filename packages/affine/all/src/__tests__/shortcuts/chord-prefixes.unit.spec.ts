@@ -1,5 +1,5 @@
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { readdirSync, readFileSync } from 'node:fs';
+import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { RESERVED_EDGELESS_KEYS } from '@labre/affine-block-root';
@@ -62,6 +62,106 @@ const TOOLBAR_BARE_KEYS = [
   },
 ] as const;
 
+/**
+ * Every raw `keydown` listener in the canvas packages — a listener the keymap
+ * engine never sees, so neither `RESERVED_EDGELESS_KEYS` nor a command's
+ * defaults can tell a prefix it is taken. Each entry names the letters it acts
+ * on alone, and whether it acts on them ONLY while a canvas element is in edit
+ * mode: a prefix never arms then (`canRunFromKeyboard` in
+ * `command-registry.ts`), so such a letter may also be a prefix.
+ *
+ * The last test walks the sources: a NEW file with a raw `keydown` listener
+ * fails until it is listed here, which is when somebody has to read which
+ * letters it takes.
+ */
+const RAW_KEYDOWN_LISTENERS: readonly {
+  file: string;
+  letters: readonly string[];
+  whileEditing?: true;
+  why: string;
+}[] = [
+  {
+    file: 'packages/affine/blocks/root/src/edgeless/edgeless-keyboard.ts',
+    letters: [],
+    why: 'Space through the dispatcher, the event type read in _space',
+  },
+  {
+    file: 'packages/affine/gfx/bpmn/src/element-view.ts',
+    letters: [],
+    why: 'Enter / Escape on its own name input',
+  },
+  {
+    file: 'packages/affine/gfx/c4/src/element-view.ts',
+    letters: [],
+    why: 'Enter / Escape on its own name input',
+  },
+  {
+    file: 'packages/affine/gfx/shape/src/element-view.ts',
+    letters: ['b'],
+    whileEditing: true,
+    why: 'polygon vertex edit (selection editing): b toggles Bézier smoothing',
+  },
+  {
+    file: 'packages/affine/gfx/shape/src/polygon-tool.ts',
+    letters: [],
+    why: 'Escape / Enter while a polygon is being drawn',
+  },
+  {
+    file: 'packages/affine/gfx/shape/src/text/edgeless-shape-text-editor.ts',
+    letters: [],
+    why: 'on its own contenteditable',
+  },
+  {
+    file: 'packages/affine/gfx/template/src/toolbar/template-panel.ts',
+    letters: [],
+    why: 'stops propagation out of its own panel',
+  },
+  {
+    file: 'packages/affine/widgets/edgeless-selected-rect/src/edgeless-element-link.ts',
+    letters: [],
+    why: 'on its own input',
+  },
+  {
+    file: 'packages/affine/widgets/edgeless-toolbar/src/catalogue/artefact-catalogue-widget.ts',
+    letters: [],
+    why: 'Escape while the catalogue is open',
+  },
+  {
+    file: 'packages/affine/widgets/edgeless-toolbar/src/draggable/draggable-element.controller.ts',
+    letters: [],
+    why: 'Escape while dragging from the toolbar',
+  },
+  {
+    file: 'packages/affine/widgets/edgeless-toolbar/src/selection-pane/selection-pane-widget.ts',
+    letters: [],
+    why: 'Escape while the pane is open; its rename input',
+  },
+  {
+    file: 'packages/affine/widgets/slash-menu/src/slash-menu-popover.ts',
+    letters: [],
+    why: 'a popover over a text being typed',
+  },
+];
+
+/** The folders whose raw `keydown` listeners can meet a canvas chord. */
+const CANVAS_SOURCE_DIRS = [
+  'packages/affine/gfx',
+  'packages/affine/widgets',
+  'packages/affine/blocks/root/src/edgeless',
+];
+
+function* sourceFiles(dir: string): Generator<string> {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (['node_modules', 'dist', '__tests__'].includes(entry.name)) continue;
+      yield* sourceFiles(path);
+    } else if (entry.name.endsWith('.ts') && !entry.name.endsWith('.d.ts')) {
+      yield path;
+    }
+  }
+}
+
 const commands = getCommands();
 const isFrameworkOwned = (c: AnyCommandDescriptor) => c.owner !== 'core';
 const hasKeys = (c: AnyCommandDescriptor) =>
@@ -72,9 +172,9 @@ const prefixOf = (id: FrameworkId) =>
 
 describe('framework chord prefixes', () => {
   /**
-   * The allocation itself, so a moved letter is a reviewed diff. `ddd-event-
-   * storming` has none because the requested `t` is the Text tool, `c4`
-   * because nobody asked for one.
+   * The allocation itself, so a moved letter is a reviewed diff. Event
+   * Storming is on `o` because the requested `t` is the Text tool (product
+   * owner's choice); `c4` has none because nobody asked for one.
    */
   test('the allocated prefixes are the decided ones', () => {
     expect(
@@ -84,7 +184,7 @@ describe('framework chord prefixes', () => {
       edgy: 'g',
       'cynefin-estuarine': 'y',
       bpmn: 'b',
-      'ddd-event-storming': undefined,
+      'ddd-event-storming': 'o',
       c4: undefined,
       'ddd-core-domain': 'd',
       'ddd-context-map': 'd',
@@ -157,6 +257,9 @@ describe('framework chord prefixes', () => {
     const singles = new Set<string | null>([
       ...RESERVED_EDGELESS_KEYS.map(k => canonicalCombo([k])),
       ...TOOLBAR_BARE_KEYS.map(({ key }) => canonicalCombo([key])),
+      ...RAW_KEYDOWN_LISTENERS.filter(l => !l.whileEditing).flatMap(l =>
+        l.letters.map(letter => canonicalCombo([letter]))
+      ),
       ...commands.flatMap(c =>
         [c.defaultKeys.mac, c.defaultKeys.other]
           .filter(keys => keys.length === 1)
@@ -196,6 +299,33 @@ describe('framework chord prefixes', () => {
       // outside an arrow and `mode: () =>`.
       const binding = new RegExp(`^\\s+${key}: (\\(\\)|ctx) =>`, 'm');
       expect(readFileSync(join(ROOT, file), 'utf8'), file).toMatch(binding);
+    }
+  });
+
+  test('every raw keydown listener of the canvas packages is listed', () => {
+    const found = CANVAS_SOURCE_DIRS.flatMap(dir => [
+      ...sourceFiles(join(ROOT, dir)),
+    ])
+      // Accepts `addEventListener('keydown', …)` and `@keydown=${…}`;
+      // rejects the word in prose, such as "a keydown event".
+      .filter(path => /'keydown'|@keydown=/.test(readFileSync(path, 'utf8')))
+      .map(path => relative(ROOT, path).split('\\').join('/'))
+      .sort();
+    expect(found).toEqual(RAW_KEYDOWN_LISTENERS.map(l => l.file).sort());
+  });
+
+  /**
+   * A keyboard binding runs only where its descriptor says it can
+   * (`canRunFromKeyboard`): a framework command that PLACES or ARMS a drawing
+   * writes, so it declares `'editable'` and a read-only document neither runs
+   * it nor arms its prefix. `'always'` let `w c` throw "Cannot add element in
+   * readonly mode" from the keyboard.
+   */
+  test('every framework artefact or tool declares it writes', () => {
+    for (const command of commands) {
+      if (!isFrameworkOwned(command)) continue;
+      if (command.kind !== 'artefact' && command.kind !== 'tool') continue;
+      expect(command.availability, command.id).toBe('editable');
     }
   });
 });
