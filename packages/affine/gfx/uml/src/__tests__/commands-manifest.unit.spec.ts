@@ -65,9 +65,20 @@ describe('the uml command inventory', () => {
       expect(command.surfaces, command.id).toContain('palette');
       expect(command.iconKey, command.id).toBeTruthy();
       expect(command.telemetry?.framework, command.id).toBe('uml');
-      // Keyless by intent — still bindable from Settings › Shortcuts.
-      expect(command.defaultKeys.mac, command.id).toEqual([]);
-      expect(command.defaultKeys.other, command.id).toEqual([]);
+      // The eight senior ARTEFACTS carry a `u` chord (`docs/adr/0055`);
+      // the rest are keyless by intent — still bindable from Settings ›
+      // Shortcuts.
+      const chorded =
+        command.kind === 'artefact' && command.surfaces.includes('senior-menu');
+      expect(command.defaultKeys.mac, command.id).toEqual(
+        command.defaultKeys.other
+      );
+      if (chorded) {
+        expect(command.defaultKeys.other[0], command.id).toBe('u');
+        expect(command.defaultKeys.other, command.id).toHaveLength(2);
+      } else {
+        expect(command.defaultKeys.other, command.id).toEqual([]);
+      }
     }
   });
 
