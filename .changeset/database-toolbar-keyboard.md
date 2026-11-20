@@ -23,11 +23,16 @@ text, a second Escape closes the field and returns to the button.
 
 Behaviour that changes for a host:
 
-- a key without Ctrl, Meta or Alt typed on a toolbar control or in its search
-  field (Enter, Space, Escape, Tab, letters, arrows, Backspace, Delete) no
-  longer reaches the editor, the view's keys or your listeners on the
-  document: with a cell still selected, Tab used to move the cell and a letter
-  edited it. Shortcuts with a modifier (undo) still go through;
+- the toolbar takes the keys of its own model, and only in keyboard mode: a
+  key without Ctrl, Meta or Alt (Enter, Space, Escape, letters, arrows,
+  Backspace, Delete) typed on a control the reader TABBED to
+  (`:focus-visible`), or in the search field, no longer reaches the editor,
+  the view's keys or your listeners on the document (with a cell still
+  selected, Tab used to move the cell and a letter edited it); Tab and
+  Shift+Tab on a control always move the focus. A mouse click on a control
+  takes no focus (its mousedown is prevented, the search field's excepted),
+  so after a pointer gesture the view keeps its keys as before. Shortcuts with
+  a modifier (undo) always go through;
 - Escape in the search field no longer reaches the editor, your listeners or
   the open popups' Escape;
 - the folded search field is `inert`: out of the tab order and of the

@@ -34,6 +34,13 @@ import { setupEditor } from '../utils/setup.js';
  * - with a cell selected (the state after any gesture in the table): Tab
  *   stuck on a control, a letter on a control putting the cell in editing,
  *   Backspace on a control clearing the cell, Tab stuck in the search field;
+ * - the toolbar taking the view's keys after a MOUSE gesture (the product
+ *   owner's rule: a toolbar takes the keys of its own model, and only in
+ *   keyboard mode): a cell selected, a click on Filter, the menu closed by a
+ *   click, then a letter must edit the cell and the arrows move it, as on
+ *   4.0.0; a click on the arrow beside New (which opens no library menu)
+ *   took the focus from the table on mousedown, and a letter no longer
+ *   edited the cell;
  * - filter, sort or view options not opening from Enter or Space, Escape
  *   not closing their menu, or the focus left on the page's body after it;
  * - search, an icon in a label, not opening from the keyboard with the
@@ -224,6 +231,26 @@ function cellSelection() {
     selection => selection.type === 'database'
   ) as { viewSelection?: { selectionType?: string; isEditing?: boolean } };
   return held?.viewSelection;
+}
+
+/**
+ * Keyboard focus on `control` while a cell is selected: the selection came
+ * from a click, so a plain `focus()` would be a pointer focus; a key that
+ * nothing binds (Shift) first makes the page's modality the keyboard's, as
+ * for a reader who tabs on from there.
+ */
+async function keyboardFocus(control: HTMLElement) {
+  await userEvent.keyboard('{Shift}');
+  control.focus();
+  expect(control.matches(':focus-visible'), 'keyboard focus').toBe(true);
+}
+
+/** Where the table's cell selection stands: its row, and whether it edits. */
+function cellState() {
+  const held = cellSelection() as
+    | { focus?: { rowIndex: number }; isEditing?: boolean }
+    | undefined;
+  return { row: held?.focus?.rowIndex, editing: held?.isEditing };
 }
 
 /** A real click on the first row's first cell, then out of its editing. */
@@ -420,7 +447,7 @@ describe('the view toolbar while a cell of the table is selected', () => {
   test('Tab and Shift+Tab still walk the toolbar', async () => {
     const { block, controls } = await mountInline();
     await selectCell(block);
-    controls.filter.focus();
+    await keyboardFocus(controls.filter);
 
     await tabThrough([controls.sort, controls.search, controls.viewOptions]);
     await tabThrough([controls.search, controls.sort], true);
@@ -433,7 +460,7 @@ describe('the view toolbar while a cell of the table is selected', () => {
     const { block, model, controls } = await mountInline();
     await selectCell(block);
     const before = rowTexts(model);
-    controls.filter.focus();
+    await keyboardFocus(controls.filter);
 
     await userEvent.keyboard('q');
     await userEvent.keyboard('{Backspace}');
@@ -451,7 +478,7 @@ describe('the view toolbar while a cell of the table is selected', () => {
     const field = toolbarOf(block)!.querySelector<HTMLInputElement>(
       '.affine-database-search-input'
     )!;
-    controls.search.focus();
+    await keyboardFocus(controls.search);
     await userEvent.keyboard('{Enter}');
     await until(() => isFocused(field));
 
@@ -460,6 +487,49 @@ describe('the view toolbar while a cell of the table is selected', () => {
     await userEvent.keyboard('{Tab}');
     await until(() => isFocused(controls.viewOptions));
     expect(rowTexts(model)).toEqual(before);
+  });
+});
+
+describe('the view keys after a mouse gesture on the toolbar', () => {
+  test('a click on Filter, the menu closed by a click: the arrows move the cell, a letter edits it', async () => {
+    const { block, controls } = await mountInline();
+    await selectCell(block);
+    expect(cellState()).toEqual({ row: 0, editing: false });
+
+    await userEvent.click(controls.filter);
+    await until(() => expect(openMenus()).toHaveLength(1));
+    const modal = openMenus()[0].parentElement!;
+    await userEvent.click(modal, { position: { x: 2, y: 2 } });
+    await until(() => expect(openMenus()).toHaveLength(0));
+    expect(
+      document.activeElement?.matches(':focus-visible') &&
+        toolbarOf(block)!.contains(document.activeElement),
+      'no keyboard focus in the toolbar'
+    ).toBe(false);
+
+    await userEvent.keyboard('{ArrowDown}');
+    await until(() => expect(cellState().row, 'the arrow moved it').toBe(1));
+    await userEvent.keyboard('q');
+    await until(() =>
+      expect(cellState().editing, 'the letter edits it').toBe(true)
+    );
+  });
+
+  test('a click on the arrow beside New takes no focus, and a letter still edits the cell', async () => {
+    const { block, controls, open } = await mountInline();
+    await selectCell(block);
+
+    await userEvent.click(controls.newRecordMenu);
+    await until(() => expect(open).toHaveBeenCalledTimes(1));
+    expect(
+      toolbarOf(block)!.contains(document.activeElement),
+      'the focus left where it was, out of the toolbar'
+    ).toBe(false);
+
+    await userEvent.keyboard('q');
+    await until(() =>
+      expect(cellState().editing, 'the letter edits it').toBe(true)
+    );
   });
 });
 

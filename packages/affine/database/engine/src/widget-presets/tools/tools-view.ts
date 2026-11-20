@@ -10,6 +10,7 @@ import type { SingleView } from '../../core/view-manager/single-view.js';
 import type { ViewManager } from '../../core/view-manager/view-manager.js';
 import type { DataViewWidget } from '../../core/widget/types.js';
 import { WidgetBase } from '../../core/widget/widget-base.js';
+import { hasKeyboardFocus } from './keyboard.js';
 
 const styles = css`
   .affine-database-toolbar {
@@ -64,16 +65,41 @@ export class DataViewHeaderTools extends WidgetBase {
   static override styles = styles;
 
   /**
-   * A key typed on a control or in the search field is the toolbar's (#678):
-   * the view's own keys listen on the document for its selection, so with a
-   * cell still selected, Tab moved to the next cell instead of the next
-   * control, and a letter or Backspace edited the cell the reader had left.
-   * Unmodified keys stop here; the browser still moves the focus on Tab.
-   * Shortcuts with Ctrl, Meta or Alt (undo, a host's) still go through.
+   * The view's own keys listen on the document for its selection: with a
+   * cell still selected, Tab on a control moved to the next cell instead of
+   * the next control, and a letter or Backspace edited the cell (#678).
+   * The toolbar takes the keys of its own model, and only in keyboard mode
+   * (the product owner's rule, `hasKeyboardFocus`):
+   * - Tab and Shift+Tab on a control always move the focus (the browser's);
+   * - in the search field, every key is the field's;
+   * - on a control the user tabbed to, every unmodified key is the toolbar's;
+   * - on a control focused by a mouse click, keys go on to the view, as they
+   *   did before.
+   * Shortcuts with Ctrl, Meta or Alt (undo, a host's) always go through.
    */
   private readonly _keepKeysInToolbar = (event: KeyboardEvent) => {
     if (event.ctrlKey || event.metaKey || event.altKey) return;
-    event.stopPropagation();
+    const target = event.target as HTMLElement;
+    if (
+      event.key === 'Tab' ||
+      target instanceof HTMLInputElement ||
+      hasKeyboardFocus(target)
+    ) {
+      event.stopPropagation();
+    }
+  };
+
+  /**
+   * A click on a control leaves the focus where it was (the product owner's
+   * rule, #678): a `tabindex="0"` control would take it on mousedown, away
+   * from the table's own focus, which reads the keys of its selected cell,
+   * so a letter typed after a click on "New"'s arrow no longer edited the
+   * cell, as it did before the controls were focusable. The search field
+   * keeps its mousedown, which places its caret.
+   */
+  private readonly _keepFocusOnClick = (event: MouseEvent) => {
+    if (event.target instanceof HTMLInputElement) return;
+    event.preventDefault();
   };
 
   override render() {
@@ -89,6 +115,7 @@ export class DataViewHeaderTools extends WidgetBase {
     return html` <div
       class="${classList}"
       @keydown="${this._keepKeysInToolbar}"
+      @mousedown="${this._keepFocusOnClick}"
     >
       ${repeat(tools ?? [], uni => {
         return renderUniLit(uni, {

@@ -39,6 +39,11 @@ import {
  * - an unmodified key typed in the toolbar reaching the view's keys on the
  *   document (with a cell selected: Tab stuck, a letter or Backspace
  *   editing the cell), or a Ctrl shortcut (undo) no longer reaching them;
+ * - a control taking the focus on a mouse click (away from the table's
+ *   own focus, which reads the keys of its selected cell), or a control
+ *   without the keyboard focus keeping the view's keys (the product
+ *   owner's rule: a toolbar takes the keys of its own model, and only in
+ *   keyboard mode);
  * - the folded search field in the accessibility tree (typing there
  *   filtered the rows with the field still folded);
  * - a menu button without its state (`aria-expanded`), or filter and sort
@@ -221,6 +226,8 @@ describe('the view toolbar of a table', () => {
     const newRecord = tabStops(toolbar).at(-1)!;
     const clicks: number[] = [];
     newRecord.addEventListener('click', event => clicks.push(event.detail));
+    // happy-dom reads :focus-visible as :focus: focused here is tabbed to.
+    newRecord.focus();
 
     const keys = ['Enter', ' '];
     const prevented = keys.map(key => {
@@ -251,7 +258,7 @@ describe('the view toolbar of a table', () => {
     expect(addRow, 'a held key clicks once').toHaveBeenCalledTimes(keys.length);
   });
 
-  it('keeps unmodified keys from the view, and lets shortcuts through', async () => {
+  it('keeps unmodified keys from the view in keyboard mode, and lets shortcuts through', async () => {
     const { logic } = logicOf({});
     const toolbar = await mountToolbar(logic);
     const editorKeydown = vi.fn();
@@ -269,6 +276,7 @@ describe('the view toolbar of a table', () => {
         })
       );
 
+    filter.focus();
     ['Tab', 'q', 'Backspace', 'Delete', 'ArrowDown', 'Escape'].forEach(key =>
       send(filter, { key })
     );
@@ -276,9 +284,60 @@ describe('the view toolbar of a table', () => {
     send(field, { key: 'a' });
     expect(editorKeydown).not.toHaveBeenCalled();
 
-    send(filter, { key: 'z', ctrlKey: true });
-    send(filter, { key: 'z', metaKey: true });
-    expect(editorKeydown).toHaveBeenCalledTimes(2);
+    const shortcuts = [{ ctrlKey: true }, { metaKey: true }];
+    shortcuts.forEach(modifier => send(filter, { key: 'z', ...modifier }));
+    expect(editorKeydown).toHaveBeenCalledTimes(shortcuts.length);
+  });
+
+  it('takes no focus on a mouse click, but the search field places its caret', async () => {
+    const { logic } = logicOf({});
+    const toolbar = await mountToolbar(logic);
+    const press = (target: HTMLElement) => {
+      const event = new MouseEvent('mousedown', {
+        bubbles: true,
+        cancelable: true,
+      });
+      target.dispatchEvent(event);
+      return event.defaultPrevented;
+    };
+    const field = toolbar.querySelector<HTMLElement>(
+      '.affine-database-search-input'
+    )!;
+
+    expect(tabStops(toolbar).map(press)).toEqual(
+      tabStops(toolbar).map(() => true)
+    );
+    expect(press(field)).toBe(false);
+  });
+
+  it('leaves every key but Tab to the view on a control without the keyboard focus', async () => {
+    const { logic, addRow } = logicOf({});
+    const toolbar = await mountToolbar(logic);
+    const editorKeydown = vi.fn();
+    toolbar.parentElement!.addEventListener('keydown', editorKeydown);
+    const stops = tabStops(toolbar);
+    const filter = stops[0]!;
+    const newRecord = stops.at(-1)!;
+    const send = (target: HTMLElement, key: string) => {
+      const event = new KeyboardEvent('keydown', {
+        key,
+        bubbles: true,
+        cancelable: true,
+      });
+      target.dispatchEvent(event);
+      return event.defaultPrevented;
+    };
+
+    const keys = ['q', 'Backspace', 'ArrowDown', 'Escape', 'Enter', ' '];
+    keys.forEach(key => send(filter, key));
+    expect(send(newRecord, 'Enter'), 'Enter not taken').toBe(false);
+    expect(addRow, 'nor New activated').not.toHaveBeenCalled();
+    expect(editorKeydown).toHaveBeenCalledTimes(keys.length + 1);
+
+    send(filter, 'Tab');
+    expect(editorKeydown, 'Tab moves the focus').toHaveBeenCalledTimes(
+      keys.length + 1
+    );
   });
 
   it('folds the search field out of the accessibility tree', async () => {

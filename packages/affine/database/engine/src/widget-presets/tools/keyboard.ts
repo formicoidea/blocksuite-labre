@@ -11,12 +11,24 @@ import {
  */
 
 /**
- * Enter or Space on such a control: the click a native button would get, so
- * one click handler serves the mouse and the keyboard. That click's `detail`
- * is 0, as for a native button activated from the keyboard, which is how
- * `keyboardOpener` tells them apart. Stopped here, so the editor's own Enter
- * (a new row under a selected cell) never sees it. A key held down clicks
- * once: its repeats would add a row each on "New".
+ * Whether `element` holds the KEYBOARD focus, the user having tabbed to it.
+ * The product owner's rule (#678): navigating a toolbar never overrides the
+ * keyboard commands of the content, so a toolbar takes the keys of its own
+ * model only in keyboard mode. A `tabindex="0"` control also takes the focus
+ * on a mouse click; there, the keys stay the view's, as they were before.
+ */
+export function hasKeyboardFocus(element: Element): boolean {
+  return element.matches(':focus-visible');
+}
+
+/**
+ * Enter or Space on such a control, in keyboard mode (`hasKeyboardFocus`):
+ * the click a native button would get, so one click handler serves the
+ * mouse and the keyboard. That click's `detail` is 0, as for a native button
+ * activated from the keyboard, which is how `keyboardOpener` tells them
+ * apart. Stopped here, so the editor's own Enter (a new row under a selected
+ * cell) never sees it. A key held down clicks once: its repeats would add a
+ * row each on "New".
  */
 export function activateOnEnterOrSpace(event: KeyboardEvent) {
   if (event.key !== 'Enter' && event.key !== ' ') return;
@@ -24,6 +36,7 @@ export function activateOnEnterOrSpace(event: KeyboardEvent) {
   if (event.isComposing || event.ctrlKey || event.metaKey || event.altKey) {
     return;
   }
+  if (!hasKeyboardFocus(event.currentTarget as Element)) return;
   event.preventDefault();
   event.stopPropagation();
   if (event.repeat) return;
