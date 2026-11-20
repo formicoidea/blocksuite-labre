@@ -697,8 +697,9 @@ describe('the reversed reading of a Wardley component', () => {
       expect(smooth).not.toBeNull();
 
       // The panel floats over the bar and wears the bar's own corner. The
-      // slide-out menu is not a precedent here: it went back to 8px on the
-      // product owner's decision of 2026-11-20 (`slide-menu-radius.unit.spec.ts`).
+      // slide-out menu is not a precedent here: #199 took it to 16px in 0.35.0
+      // and that was reverted to 8px on a product decision
+      // (`slide-menu-radius.unit.spec.ts`).
       expect(getComputedStyle(panel()!).borderTopLeftRadius).toBe(
         `${smooth!.borderRadius}px`
       );

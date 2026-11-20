@@ -1,13 +1,12 @@
 /**
  * The menu that slides out above the canvas toolbar (`edgeless-slide-menu`:
- * the framework sub-menus and the shape, connector, pen, note and frame
- * menus) rounds its top corners at 8px; its bottom edge, which meets the
- * toolbar, stays square.
+ * the framework sub-menus and the shape, connector, pen, note, frame, mind map
+ * and text menus) rounds its top corners at 8px; its bottom edge, which meets
+ * the toolbar, stays square.
  *
- * Pinned on purpose: #199 moved these corners to the toolbar's 16px, and the
- * product owner asked for the 8px back at the acceptance of the 2026-11-20
- * build. A later "same family of chrome, same corner" alignment must change
- * this spec with it, not past it.
+ * Pinned on purpose: #199 moved these corners to the toolbar's 16px in 0.35.0,
+ * and that was reverted on a product decision. A later "same family of chrome,
+ * same corner" alignment must change this spec with it, not past it.
  *
  * The radius is read as the COMPUTED style of `.menu-container` on a really
  * mounted `edgeless-slide-menu`, so the rule that reaches the element is the
