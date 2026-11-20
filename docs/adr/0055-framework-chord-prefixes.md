@@ -4,7 +4,7 @@
 - Deciders: the product owner's request ("extend the `w` + key combinations
   to the other frameworks: DDD `d`, UML `u`, BPMN `b`, Cynefin `y`, EDGY `g`,
   Event Storming `t`") and his choice of `o` for Event Storming once `t` was
-  found taken; the collision rule, the hand-on rule and the read-only rule
+  found taken, and his choice of `l` for the Templates panel (§ 7); the collision rule, the hand-on rule and the read-only rule
   below are the lead's. The second-key table is a proposal the product owner
   validates or amends, one field per command.
 - **Red zones**: none touched. No schema, no stored prop, no command id, no
@@ -64,7 +64,7 @@ Wardley package's own command builder.
 | Raw `keydown` listeners                           | `b` (with `Delete`, `Backspace`, `Escape`): Bézier smoothing of the hovered vertex, only while a polygon's vertices are edited (`gfx/shape/src/element-view.ts`)                    |
 | Edgeless, any printable key                       | with a single mind-map node selected, a printable key starts editing that node with the key typed (`_bindToggleHand`, a global handler registered after the shortcut keymap)        |
 | Edgeless modifier combos                          | `Mod-g`, `Shift-Mod-g`, `Mod-a`, `Mod--`, `Mod-=`, `Alt-0/1/2`, `Control-d`, arrows, `Backspace`, `Delete`, `Escape`, `Enter`, `Tab`, `Space` (held: hand)                          |
-| Command registry (core)                           | `Mod-z`, `Shift-Mod-z`, `Control-y` (not mac), `Mod-Alt-l` (global); `Mod-d`, `Mod-y`, `Mod-Shift-f` (edgeless)                                                                     |
+| Command registry (core)                           | `Mod-z`, `Shift-Mod-z`, `Control-y` (not mac), `Mod-Alt-l` (global); `Mod-d`, `Mod-y`, `Mod-Shift-f`, `l` Templates panel (edgeless, § 7)                                           |
 | Command registry (Wardley)                        | `w b`, `w c`, `w m`, `w a`, `w p`, `w l`, `w e`, `w i`                                                                                                                              |
 | Host defaults (labre)                             | none on the canvas beyond the library's: the host's canvas list is a read-only mirror of the rows above                                                                             |
 
@@ -236,17 +236,18 @@ What remains INHERENT to a prefix, and is the product owner's to accept: a
 prefix letter then, within 1.2 s, a tool letter becomes an artefact when that
 letter is also a second key, and is swallowed otherwise. Tool letters: `v`
 select, `t` text, `c` connector, `h` hand, `n` note, `p` pen, `e` eraser, `k`
-note slicer, `f` frame, `m` mind map, `s` shape.
+note slicer, `f` frame, `m` mind map, `s` shape, and `l` the Templates
+panel (§ 7).
 
-| Prefix | Tool letter → artefact instead of the tool                                                                   | Tool letter swallowed |
-| ------ | ------------------------------------------------------------------------------------------------------------ | --------------------- |
-| `w`    | `c` component, `p` pipeline, `m` method, `e` evolution arrow (a connector tool, not the eraser)              | `v t h n k f s`       |
-| `b`    | `v` service task, `t` task, `c` call activity, `n` text annotation, `p` pool, `e` end event, `s` start event | `h k f m`             |
-| `u`    | `c` class, `e` enumeration, `p` package, `s` subject                                                         | `v t h n k f m`       |
-| `g`    | `p` People                                                                                                   | `v t c h n e k f m s` |
-| `y`    | `c` Cynefin framework, `e` Estuarine map, `h` hexagon                                                        | `v t n p k f m s`     |
-| `d`    | `c` chart, `n` bounded context (now), `p` platform, `f` future position, `m` Context Map board, `s` system   | `v t h e k`           |
-| `o`    | `c` command, `e` domain event, `p` policy, `s` external system, `h` hotspot                                  | `v t n k f m`         |
+| Prefix | Tool letter → artefact instead of the tool                                                                                               | Tool letter swallowed   |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| `w`    | `c` component, `p` pipeline, `m` method, `e` evolution arrow (a connector tool, not the eraser), `l` link tool (not the Templates panel) | `v t h n k f s`         |
+| `b`    | `v` service task, `t` task, `c` call activity, `n` text annotation, `p` pool, `e` end event, `s` start event                             | `h k f m l`             |
+| `u`    | `c` class, `e` enumeration, `p` package, `s` subject                                                                                     | `v t h n k f m l`       |
+| `g`    | `p` People                                                                                                                               | `v t c h n e k f m s l` |
+| `y`    | `c` Cynefin framework, `e` Estuarine map, `h` hexagon                                                                                    | `v t n p k f m s l`     |
+| `d`    | `c` chart, `n` bounded context (now), `p` platform, `f` future position, `m` Context Map board, `s` system                               | `v t h e k l`           |
+| `o`    | `c` command, `e` domain event, `p` policy, `s` external system, `h` hotspot                                                              | `v t n k f m l`         |
 
 Before this ADR the six new prefix letters did nothing, and the tool letter
 that followed them switched the tool.
@@ -270,6 +271,48 @@ when at least one of its chords can run. So:
 - while a polygon's vertices are edited (selection `editing: true`), no
   prefix arms: the polygon's own `b` keeps the key, and `b` with no vertex
   hovered swallows nothing.
+
+### 7. `l` opens the Templates panel
+
+Product owner's decision of 2026-11-20: the Templates panel of the canvas
+toolbar is reached from the keyboard by ONE key, not a chord. `t` was his
+first wish and is the Text tool; `m` is already the mind map's (the toolbar
+button's own hotkey, untouched); among the free letters he chose `l`.
+
+- It is one command of the registry, `canvas.templates.toggle` (owner
+  `core`, scope `edgeless`, `defaultKeys` `l`), registered by the template
+  view extension and listed by `getCommands` under the `template` flag: a
+  host overrides or disables it like any other, Settings › Shortcuts lists it,
+  and `runCommand` measures it. Its label is the button's own key,
+  `com.labre.template.senior-tool.name` ("Template"): no new wording.
+- Not the button's own `bindHotKey` (as `m` and `s` are): the senior row is
+  paged, and the Templates button, the last senior tool, is often not in the
+  DOM. The command pages it in through the row's public keyboard walk
+  (`walkHighlight` / `clearHighlight`, present on the base and kept by the
+  toolbar's keyboard model of ADR 0054), then calls the button's
+  `togglePanel({ focusSearch: true })`: the panel opens exactly as a click
+  opens it, with the caret in its search field. A click does not move the
+  focus.
+- `l` again, the focus outside the field, closes it, as a second click does.
+  In the field `l` is a letter: the panel keeps every keystroke (the tool
+  letters, the chord prefixes, Delete, the arrows, Ctrl+Z) except Escape,
+  which closes it and gives the focus back to the editor host, so the arrows,
+  Delete and Space reach the canvas at once.
+- The gate is the one of § 6: not while a canvas element is in edit mode (a
+  note, a text, a cell, a polygon's vertices: `l` types or does what it did),
+  `availability: 'editable'` (a read-only board draws no toolbar and inserts
+  no template: the key does nothing), and a `when` that refuses the
+  presentation, whose toolbar replaces the row.
+- `l` is the second key of one chord, Wardley's `w l` (link tool): within
+  1.2 s after `w` the chord wins; after any other prefix `l` is swallowed
+  (§ 5). `Shift+L`, `Alt+L` and `Mod+L` stay unbound on the canvas
+  (`Mod-Shift-l` keeps its own binding). `l` enters the registry of taken
+  bare letters, pinned by `chord-prefixes.unit.spec.ts`, so no prefix can
+  take it.
+- Known limit, out of scope: the template CARDS are not reachable from the
+  keyboard (no arrow grid, no Enter to insert). From the search field, Tab
+  leaves the panel for the next focusable element of the page (the panel has
+  no other focusable element), by reading; not verified at the keyboard.
 
 ## Consequences
 
