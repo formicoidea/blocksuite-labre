@@ -126,10 +126,12 @@ describe('bindKeymap chords', () => {
   });
 
   /**
-   * What an armed prefix does with EVERY kind of next keystroke, pinned before
-   * anyone changes it: a non-printable key, a modified key and Space are
-   * swallowed exactly like an unmatched letter, so a stray `w` followed by
-   * Delete loses the Delete.
+   * What an armed prefix does with a keystroke that cannot continue a chord:
+   * a named key, a modified key, Space. Pinned first as SWALLOWED (the
+   * behaviour of ADR 0008), then changed deliberately by ADR 0055: it disarms
+   * and reaches the canvas's own binding, so a stray `w` followed by Delete
+   * still deletes. Before 0055 every case below returned true and `canvasKey`
+   * was never called.
    */
   test.each([
     ['Delete', {}],
@@ -139,7 +141,7 @@ describe('bindKeymap chords', () => {
     [' ', {}],
     ['z', { ctrlKey: true }],
     ['d', { ctrlKey: true }],
-  ] as const)('an armed prefix swallows %s %o', (key, init) => {
+  ] as const)('an armed prefix hands %s %o on to the canvas', (key, init) => {
     const chord = vi.fn(() => true);
     const canvasKey = vi.fn(() => true);
     const h = harness();
@@ -156,8 +158,64 @@ describe('bindKeymap chords', () => {
 
     h.press('w');
     expect(h.press(key, init)).toBe(true);
-    expect(canvasKey).not.toHaveBeenCalled();
+    expect(canvasKey).toHaveBeenCalledOnce();
     expect(chord).not.toHaveBeenCalled();
+    // …and the prefix is forgotten: `c` alone is no chord any more.
+    expect(h.press('c')).toBe(false);
+    expect(chord).not.toHaveBeenCalled();
+  });
+
+  test('a chord whose second key is modified still completes', () => {
+    const chord = vi.fn(() => true);
+    const h = harness();
+    h.bind({ 'w Alt-x': chord });
+
+    // A modified keystroke is handed on only when it completes no chord.
+    h.press('w');
+    expect(h.press('x', { altKey: true })).toBe(true);
+    expect(chord).toHaveBeenCalledOnce();
+  });
+
+  test('a prefix whose chords cannot run does not arm', () => {
+    let runnable = false;
+    const chord = Object.assign(
+      vi.fn(() => true),
+      { canRun: () => runnable }
+    );
+    const handTool = vi.fn(() => true);
+    const h = harness();
+    h.bind({ 'w c': chord });
+    h.bind({ h: handTool });
+
+    // Not runnable (a read-only document, say): `w` is left alone and `h`
+    // reaches the hand tool.
+    expect(h.press('w')).toBe(false);
+    expect(h.press('h')).toBe(true);
+    expect(handTool).toHaveBeenCalledOnce();
+
+    // Runnable again: the prefix arms and the namespace swallows `h`.
+    runnable = true;
+    expect(h.press('w')).toBe(true);
+    expect(h.press('h')).toBe(true);
+    expect(handTool).toHaveBeenCalledOnce();
+  });
+
+  test('a prefix arms when ONE of its chords can run', () => {
+    const blocked = Object.assign(
+      vi.fn(() => true),
+      { canRun: () => false }
+    );
+    const open = vi.fn(() => true);
+    const h = harness();
+    h.bind({ 'w c': blocked, 'w p': open });
+
+    expect(h.press('w')).toBe(true);
+    h.press('p');
+    expect(open).toHaveBeenCalledOnce();
+    // The blocked chord is not even armed: `w c` is an unmatched letter.
+    h.press('w');
+    h.press('c');
+    expect(blocked).not.toHaveBeenCalled();
   });
 
   test('an armed prefix expires after the timeout', () => {
