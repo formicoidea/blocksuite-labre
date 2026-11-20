@@ -176,13 +176,21 @@ describe('edgeless toolbar: names, state and the pager tooltip', () => {
   });
 
   test('the active tool says it is pressed; an action says nothing', async () => {
+    await rowSettled();
     const select = rowButtons().find(({ button }) =>
       button.classList.contains('edgeless-default-button')
     )!.button;
     const undo = rowButtons().find(({ button }) =>
       button.classList.contains('edgeless-undo-tool-button')
     )!.button;
-    expect(select.getAttribute('aria-pressed')).toBe('true');
+    await vi.waitFor(() =>
+      expect(select.getAttribute('aria-pressed')).toBe('true')
+    );
+    // Named: the row's sync has reached this button, so the absence of a
+    // state below is the button's own, not a sync that has not run yet.
+    await vi.waitFor(() =>
+      expect(undo.getAttribute('aria-label')).toBe('Undo')
+    );
     expect(undo.hasAttribute('aria-pressed')).toBe(false);
 
     edgeless.gfx.tool.setTool(FrameTool);
@@ -208,6 +216,37 @@ describe('edgeless toolbar: names, state and the pager tooltip', () => {
       expect(note.getAttribute('aria-pressed')).toBe('true');
       expect(frame.getAttribute('aria-pressed')).toBe('false');
     });
+  });
+
+  /**
+   * Review of #679: the toolbar re-renders on every viewport update, and the
+   * row's sync (senior factories, a walk of every tool's shadow tree) ran on
+   * each of them, so on every frame of a pan or a zoom. A viewport update
+   * alone must not sync the row; turning a page must.
+   */
+  test('a pan does not re-sync the row; a page turn does', async () => {
+    const bar = toolbar() as unknown as {
+      _syncRow: () => Promise<void>;
+      updateComplete: Promise<boolean>;
+      scrollSeniorToolIndex: number;
+    };
+    await rowSettled();
+    const sync = vi.spyOn(bar, '_syncRow');
+    try {
+      const { viewport } = edgeless.gfx;
+      const frames = 30;
+      for (let frame = 0; frame < frames; frame++) {
+        viewport.setCenter(viewport.centerX + 10, viewport.centerY);
+        await bar.updateComplete;
+      }
+      expect(sync).toHaveBeenCalledTimes(0);
+
+      bar.scrollSeniorToolIndex = bar.scrollSeniorToolIndex + 1;
+      await bar.updateComplete;
+      expect(sync).toHaveBeenCalledTimes(1);
+    } finally {
+      sync.mockRestore();
+    }
   });
 
   test('after paging, the arrow keeps no tooltip of the tool it brought in', async () => {

@@ -777,9 +777,35 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
     }
   }
 
+  /**
+   * Syncs the row only when what it draws changed: another page of the senior
+   * row, another width, the row shown again after presentation or readonly.
+   * The toolbar re-renders on every viewport update, so syncing on each one
+   * ran the senior factories and walked the tools' shadow trees on every frame
+   * of a pan or a zoom (review of #679). A tool's own state (`active`) needs
+   * no sync: its button reflects it.
+   */
   override updated(changed: PropertyValues<this>) {
     super.updated(changed);
+    const signature = this._drawnRowSignature();
+    if (signature === this._rowSignature) return;
+    this._rowSignature = signature;
     this._syncRow().catch(console.error);
+  }
+
+  /** The drawn row as of the last sync, item by item. */
+  private _rowSignature = '';
+
+  private _drawnRowSignature() {
+    const items =
+      this.shadowRoot?.querySelectorAll<HTMLElement>(
+        '.quick-tool-item, .senior-tool-item'
+      ) ?? [];
+    return Array.from(
+      items,
+      (item, index) =>
+        `${item.dataset.seniorIndex ?? `q${index}`}:${item.firstElementChild?.localName ?? ''}`
+    ).join('|');
   }
 
   /** Bumped by every sync of the row, so an older one still waiting stops. */
