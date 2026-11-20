@@ -17,8 +17,9 @@
  *   spinner's `aria-busy`), or any of them losing `role="status"`.
  *
  * The block around it (title and view bar kept, no row, no "New", no
- * "Connect a source", nothing written, switching views) is held in a real
- * editor by `integration-test/…/page/database-cross-database-view.spec.ts`.
+ * "Connect a source", nothing written from before the first render,
+ * switching views, a live flip with a stale cell selection) is held in a
+ * real editor by `integration-test/…/page/database-cross-database-view.spec.ts`.
  */
 import { TranslationProvider } from '@labre/affine-shared/services';
 import type { BlockStdScope } from '@labre/std';
@@ -59,7 +60,7 @@ describe('a source not open to the reader’s page', () => {
     expect(notice.getAttribute('role')).toBe('status');
     expect(textsOf(notice)).toEqual([
       'Source not open',
-      'An owner or a member of the workspace must open this source to this page to show its rows.',
+      'This view reads a source that is not open to this page. Open the source to this page to see its rows.',
     ]);
     expect(notice.querySelector('button, data-view-component-button')).toBe(
       null

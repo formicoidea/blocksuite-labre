@@ -265,14 +265,13 @@ export abstract class HostedDataSourceBase extends DataSourceBase {
     if (database !== home && !this.crossDatabaseViews) return null;
     try {
       const answer = this._resolveSource(sourceId, database) ?? null;
+      // A JS host's `ok && source` may answer `false`, `0` or `''`: a
+      // missing source, never a TypeError in `source$`.
+      if (typeof answer !== 'object' || answer === null) return null;
       // A reason this build does not know is still unavailable: never a
       // schema, and never a missing source, which `requireSource` answers
       // with "Connect a source" (amendment of 2026-11-20).
-      if (
-        answer &&
-        'unavailable' in answer &&
-        !isHostedSourceUnavailable(answer)
-      ) {
+      if ('unavailable' in answer && !isHostedSourceUnavailable(answer)) {
         return UNKNOWN_REASON;
       }
       return answer;

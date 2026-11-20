@@ -13,8 +13,10 @@ import {
   type DataSourcePickerDatabase,
   DataSourcePickerExtension,
 } from '@labre/affine/shared/services';
+import type { EditorHost } from '@labre/std';
 import { type ExtensionType, type Store, Text } from '@labre/store';
 import { signal } from '@preact/signals-core';
+import { userEvent } from '@vitest/browser/context';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { wait } from '../utils/common.js';
@@ -35,7 +37,17 @@ import { setupEditor } from '../utils/setup.js';
  * - an unreadable database drawn as an error, as "Source not found" or with
  *   "Connect a source", instead of "Database not shared"; a source in the
  *   trash offered "Connect a source" (under `requireSource`) instead of
- *   "Source in the trash".
+ *   "Source in the trash";
+ * - a source not open to the reader's page (issue #693) drawn as anything
+ *   but "Source not open" under the title and the view bar, a row the host
+ *   still holds drawn, a write on mounting the notice (taken before the
+ *   first render), or the view bar no longer switching views;
+ * - a mounted view whose source stops being open keeping its rows, or a
+ *   cell selected before the flip still writing (a letter, Delete,
+ *   Backspace, Enter, a paste) or throwing; flipping back not drawing the
+ *   rows again;
+ * - a reason this build does not know offered "Connect a source" (ADR 0035
+ *   amendment of 2026-11-20).
  */
 
 const PLAN = 'host:plan';
@@ -43,7 +55,11 @@ const PEOPLE = 'host:people';
 
 /** The host's sources, keyed `database/source`; a schema block each. */
 let sources: Record<string, HostedSource | HostedSourceUnavailable> = {};
+/** Bumped to make the resolver answer again (a host's live rights). */
+const sourcesRevision = signal(0);
 const rowAdd = vi.fn(() => '');
+/** Every data write of the host's source but `rowAdd`. */
+const writes = vi.fn();
 
 class KeyedSource extends HostedDataSourceBase {
   private column(id: string) {
@@ -73,12 +89,18 @@ class KeyedSource extends HostedDataSourceBase {
   protected getPropertyMetas(): PropertyMetaConfig[] {
     return [];
   }
-  cellValueChange(): void {}
+  cellValueChange(...args: unknown[]): void {
+    writes('cellValueChange', ...args);
+  }
   rowAdd(): string {
     return rowAdd();
   }
-  rowDelete(): void {}
-  rowMove(): void {}
+  rowDelete(...args: unknown[]): void {
+    writes('rowDelete', ...args);
+  }
+  rowMove(...args: unknown[]): void {
+    writes('rowMove', ...args);
+  }
   propertyAdd(): string | undefined {
     return undefined;
   }
@@ -103,11 +125,10 @@ const hostSources: ExtensionType = {
   setup: di => {
     di.override(DatabaseDataSourceProvider, () => ({
       createDataSource: (model, init) => {
-        const source = new KeyedSource(
-          model,
-          (sourceId, databaseId) =>
-            sources[`${databaseId}/${sourceId ?? 'src-a'}`] ?? null
-        );
+        const source = new KeyedSource(model, (sourceId, databaseId) => {
+          void sourcesRevision.value;
+          return sources[`${databaseId}/${sourceId ?? 'src-a'}`] ?? null;
+        });
         init?.(source as never);
         return source;
       },
@@ -151,6 +172,7 @@ afterEach(() => {
   cleanup = undefined;
   sources = {};
   rowAdd.mockClear();
+  writes.mockClear();
 });
 
 function addSource(doc: Store, hidden: string, key: string, title: string) {
@@ -213,6 +235,65 @@ const byTestId = (id: string) =>
 
 const storedView = (model: DatabaseBlockModel) =>
   model.props.views[0] as { sourceId?: string; databaseId?: string };
+
+const requiring = DataSourcePickerExtension({
+  list: () => signal([]),
+  crossDatabaseViews: true,
+  requireSource: true,
+});
+
+const TEAM_COLUMNS = [
+  { id: 'src-p-name', hide: false },
+  { id: 'src-p-field', hide: false },
+];
+
+const PROJECTS_VIEW = {
+  id: 'v2',
+  name: 'Projects view',
+  mode: 'table',
+  filter: { type: 'group', op: 'and', conditions: [] },
+  sourceId: 'src-a',
+  columns: [
+    { id: 'src-a-name', hide: false },
+    { id: 'src-a-field', hide: false },
+  ],
+};
+
+/** `'not-open'` while the host still holds the source's schema and rows. */
+const notOpen = (key: string) =>
+  ({ ...sources[key], unavailable: 'not-open' }) as never;
+
+function countYjsUpdates() {
+  const space = window.doc.doc.spaceDoc;
+  let count = 0;
+  const onUpdate = () => count++;
+  space.on('update', onUpdate);
+  return { count: () => count, stop: () => space.off('update', onUpdate) };
+}
+
+function collectErrors() {
+  const list: string[] = [];
+  const onError = (event: ErrorEvent) => list.push(String(event.message));
+  const onRejection = (event: PromiseRejectionEvent) =>
+    list.push(String(event.reason));
+  window.addEventListener('error', onError);
+  window.addEventListener('unhandledrejection', onRejection);
+  return {
+    list,
+    stop: () => {
+      window.removeEventListener('error', onError);
+      window.removeEventListener('unhandledrejection', onRejection);
+    },
+  };
+}
+
+function cellSelection() {
+  const host = window.editor.host as EditorHost;
+  const held = host.std.selection.value.find(
+    selection => selection.type === 'database'
+  ) as { viewSelection?: { selectionType?: string; isEditing?: boolean } };
+  return held?.viewSelection;
+}
 
 describe('a view of another database', () => {
   test('is picked from the view settings, renders its rows and takes a new row', async () => {
@@ -327,42 +408,25 @@ describe('a view of another database', () => {
     expect(JSON.stringify(model.props.views)).toBe(before);
   });
 
-  test('a source not open to this page draws "Source not open" under the view bar, and another view still opens', async () => {
-    cleanup = await setupEditor('page', [
-      hostSources,
-      DataSourcePickerExtension({
-        list: () => signal([]),
-        crossDatabaseViews: true,
-        requireSource: true,
-      }),
-    ]);
+  test('a source not open to this page draws "Source not open" under the view bar, writes nothing, and another view still opens', async () => {
+    cleanup = await setupEditor('page', [hostSources, requiring]);
     const model = writeDatabase({
       sourceId: 'src-p',
       databaseId: PEOPLE,
-      columns: [],
+      columns: TEAM_COLUMNS,
     });
     window.doc.updateBlock(model, {
-      views: [
-        ...model.props.views,
-        {
-          id: 'v2',
-          name: 'Projects view',
-          mode: 'table',
-          filter: { type: 'group', op: 'and', conditions: [] },
-          sourceId: 'src-a',
-          columns: [
-            { id: 'src-a-name', hide: false },
-            { id: 'src-a-field', hide: false },
-          ],
-        },
-      ],
+      views: [...model.props.views, PROJECTS_VIEW],
     } as never);
-    sources[`${PEOPLE}/src-p`] = { unavailable: 'not-open' };
-    await settle();
+    // Taken before the first render of the notice, so a write on mount shows.
     window.doc.resetHistory();
     const before = JSON.stringify(model.props.views);
     const updated = vi.fn();
     const subscription = window.doc.slots.blockUpdated.subscribe(updated);
+    const yjs = countYjsUpdates();
+    // The host still holds the source's rows: none may be drawn.
+    sources[`${PEOPLE}/src-p`] = notOpen(`${PEOPLE}/src-p`);
+    await settle();
     const block = blockOf(model);
     const notice = block.querySelector<HTMLElement>(
       '[data-testid="database-source-not-open"]'
@@ -370,18 +434,21 @@ describe('a view of another database', () => {
     expect(notice).not.toBeNull();
     expect(notice!.getAttribute('role')).toBe('status');
     expect(notice!.textContent).toContain('Source not open');
-    expect(notice!.textContent).toContain('must open this source');
+    expect(notice!.textContent).toContain('not open to this page');
     expect(notice!.querySelector('data-view-component-button')).toBeNull();
     expect(block.textContent).toContain('Plan');
     expect(block.textContent).toContain('Board of work');
     expect(block.textContent).not.toContain('Team row');
+    expect(block.textContent).not.toContain('Team field');
     expect(block.querySelector('.new-record')).toBeNull();
     expect(byTestId('database-source-unshared')).toBeNull();
     expect(byTestId('database-source-required')).toBeNull();
     expect(byTestId('database-source-required-connect')).toBeNull();
     expect(byTestId('database-source-missing')).toBeNull();
     subscription.unsubscribe();
+    yjs.stop();
     expect(updated).not.toHaveBeenCalled();
+    expect(yjs.count()).toBe(0);
     expect(window.doc.canUndo).toBe(false);
     expect(JSON.stringify(model.props.views)).toBe(before);
 
@@ -396,20 +463,90 @@ describe('a view of another database', () => {
     expect(blockOf(model).textContent).toContain('Projects row');
   });
 
+  test('a mounted view whose source stops being open drops its rows, and a stale cell selection writes nothing', async () => {
+    cleanup = await setupEditor('page', [hostSources, requiring]);
+    const model = writeDatabase({
+      sourceId: 'src-p',
+      databaseId: PEOPLE,
+      columns: TEAM_COLUMNS,
+    });
+    const key = `${PEOPLE}/src-p`;
+    const readable = sources[key]!;
+    await settle();
+    const block = blockOf(model);
+    expect(block.textContent).toContain('Team row');
+    const cell = block.querySelector<HTMLElement>(
+      'dv-table-view-cell-container, affine-database-virtual-cell-container'
+    );
+    expect(cell, 'a cell of the readable view').not.toBeNull();
+    await userEvent.click(cell!);
+    await vi.waitFor(() =>
+      expect(cellSelection()?.selectionType, 'a cell selected').toBe('area')
+    );
+    if (cellSelection()?.isEditing) {
+      await userEvent.keyboard('{Escape}');
+      await vi.waitFor(() => expect(cellSelection()?.isEditing).toBe(false));
+    }
+    // Control: while readable, the same gesture reaches the host's source.
+    await userEvent.keyboard('{Delete}');
+    await vi.waitFor(() => expect(writes).toHaveBeenCalled());
+    writes.mockClear();
+
+    window.doc.resetHistory();
+    const before = JSON.stringify(model.props.views);
+    const yjs = countYjsUpdates();
+    const errors = collectErrors();
+    sources[key] = notOpen(key);
+    sourcesRevision.value++;
+    await settle();
+    expect(byTestId('database-source-not-open')).not.toBeNull();
+    expect(blockOf(model).textContent).not.toContain('Team row');
+    // The gestures below run against the selection taken while readable: it
+    // outlives the flip (the view that handled it is unmounted). A change
+    // that clears it on the flip is fine; update this line then.
+    expect(cellSelection()?.selectionType, 'the stale selection').toBe('area');
+
+    await userEvent.keyboard('q');
+    await userEvent.keyboard('{Delete}');
+    await userEvent.keyboard('{Backspace}');
+    await userEvent.keyboard('{Enter}');
+    const data = new DataTransfer();
+    data.setData('text/plain', 'pasted');
+    (document.activeElement ?? window.editor.host)!.dispatchEvent(
+      new ClipboardEvent('paste', {
+        clipboardData: data,
+        bubbles: true,
+        cancelable: true,
+      })
+    );
+    await settle();
+    errors.stop();
+    yjs.stop();
+    expect(errors.list).toEqual([]);
+    expect(writes).not.toHaveBeenCalled();
+    expect(rowAdd).not.toHaveBeenCalled();
+    expect(yjs.count()).toBe(0);
+    expect(window.doc.canUndo).toBe(false);
+    expect(JSON.stringify(model.props.views)).toBe(before);
+    expect(blockOf(model).textContent).not.toContain('pasted');
+
+    sources[key] = readable;
+    sourcesRevision.value++;
+    await settle();
+    expect(byTestId('database-source-not-open')).toBeNull();
+    expect(blockOf(model).textContent).toContain('Team row');
+  });
+
   test('a reason this build does not know draws "Source not found", never "Connect a source"', async () => {
-    cleanup = await setupEditor('page', [
-      hostSources,
-      DataSourcePickerExtension({
-        list: () => signal([]),
-        crossDatabaseViews: true,
-        requireSource: true,
-      }),
-    ]);
+    cleanup = await setupEditor('page', [hostSources, requiring]);
     const model = writeDatabase({ sourceId: 'src-a', columns: [] });
+    window.doc.resetHistory();
+    const before = JSON.stringify(model.props.views);
+    const updated = vi.fn();
+    const subscription = window.doc.slots.blockUpdated.subscribe(updated);
     sources[`${PLAN}/src-a`] = {
       unavailable: 'archived-in-a-later-host',
     } as never;
-    const before = JSON.stringify(model.props.views);
     await settle();
     const notice = blockOf(model).querySelector<HTMLElement>(
       '[data-testid="database-source-unknown"]'
@@ -419,6 +556,9 @@ describe('a view of another database', () => {
     expect(notice!.textContent).toContain('Source not found');
     expect(byTestId('database-source-required')).toBeNull();
     expect(byTestId('database-source-required-connect')).toBeNull();
+    subscription.unsubscribe();
+    expect(updated).not.toHaveBeenCalled();
+    expect(window.doc.canUndo).toBe(false);
     expect(JSON.stringify(model.props.views)).toBe(before);
   });
 });

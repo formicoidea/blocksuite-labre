@@ -294,7 +294,17 @@ describe('a view of another database', () => {
     const before = JSON.parse(JSON.stringify(model.props.views));
     const updated = vi.fn();
     const subscription = store.slots.blockUpdated.subscribe(updated);
-    const hosted = build(model, () => ({ unavailable: 'not-open' }), optedIn());
+    // The host still holds the source's rows: none may be counted.
+    const hosted = build(
+      model,
+      () =>
+        ({
+          unavailable: 'not-open',
+          schema: model,
+          rows: signal(['r-1', 'r-2']),
+        }) as never,
+      optedIn()
+    );
     ['v-1', 'v-3'].forEach(view => {
       hosted.viewManager.setCurrentView(view);
       expect(hosted.sourceUnavailable$.value).toBe('not-open');
@@ -320,6 +330,21 @@ describe('a view of another database', () => {
         optedIn()
       );
       expect(hosted.sourceUnavailable$.value).toBe('unknown');
+      expect(hosted.sourceMissing$.value).toBe(true);
+      expect(hosted.source$.value).toBeNull();
+      expect(hosted.sourceOf('s-plan')).toBeNull();
+      expect(hosted.rows$.value).toEqual([]);
+    });
+  });
+
+  // A JS host's `return ok && source` answers a falsy primitive; `'unavailable'
+  // in false` threw a TypeError in `source$` (adversarial review of #693).
+  test('a falsy primitive answer reads as a missing source and never throws', () => {
+    const { model } = database(STORED_23);
+    [false, 0, '', undefined].forEach(answer => {
+      const hosted = build(model, () => answer as never, optedIn());
+      expect(() => hosted.sourceUnavailable$.value).not.toThrow();
+      expect(hosted.sourceUnavailable$.value).toBeNull();
       expect(hosted.sourceMissing$.value).toBe(true);
       expect(hosted.source$.value).toBeNull();
       expect(hosted.sourceOf('s-plan')).toBeNull();

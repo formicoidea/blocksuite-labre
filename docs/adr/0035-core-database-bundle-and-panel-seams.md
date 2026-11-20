@@ -1544,12 +1544,21 @@ shared. Not a red zone: nothing stored, no schema, no flag, no new seam.
 - **The reason.** `HostedSourceUnavailableReason` gains `'not-open'`
   (append-only; a widening of what a resolver may answer). The view keeps
   its title and view bar and draws "Source not open"
-  (`com.labre.database.source-not-open`, `.hint`: "An owner or a member of
-  the workspace must open this source to this page to show its rows.") in
-  place of its body, `data-testid="database-source-not-open"`,
-  `role="status"`, exactly as `'unshared'`: no row, no "New", no cell to
-  edit, never "Connect a source", even under `requireSource`, and nothing
-  written. No button: the gesture that opens a source is the host's.
+  (`com.labre.database.source-not-open`, `.hint`: "This view reads a source
+  that is not open to this page. Open the source to this page to see its
+  rows.") in place of its body, `data-testid="database-source-not-open"`,
+  `role="status"`, exactly as `'unshared'`: no row (even one the answer
+  still carries), no "New", no cell to edit, never "Connect a source", even
+  under `requireSource`, and nothing written. No button: the gesture that
+  opens a source is the host's. The fallback names no role (the library has
+  no rights model, no privileged consumer): who may open it (in Labre, an
+  owner or a member of the workspace) is a line of the host's catalogue.
+- **A live flip.** A mounted view whose answer turns `'not-open'` drops its
+  rows and draws the notice; a cell selected before the flip writes nothing
+  (a letter, Delete, Backspace, Enter, a paste) and throws nothing; turning
+  readable draws the rows again.
+- **A falsy answer.** A resolver answering a non-object (`false`, `0`, `''`,
+  a JS host's `ok && source`) reads as a missing source, never a TypeError.
 - **An unknown reason** (amends "A reason this build does not know reads as
   no source", 2026-10-30, above). It read as a missing source, which
   `requireSource` answers with "Connect a source": a guest of a host newer
@@ -1566,9 +1575,12 @@ shared. Not a red zone: nothing stored, no schema, no flag, no new seam.
   reason appended without its wording does not compile.
 - **The host's, never the library's:** deciding the state (the library
   holds no rights logic, it draws the reason it is given) and the gesture
-  that opens a source. A host must not send `'not-open'` to a library
-  older than this amendment: 4.0 reads it as a missing source ("No source
-  connected" and its "Connect a source" under `requireSource`).
+  that opens a source. A host sends `'not-open'` only once it runs the
+  library version that ships this amendment: an older library reads a
+  reason it does not know as a missing source, which under `requireSource`
+  draws "No source connected" with "Connect a source"
+  (`docs/integrate/07-upgrade.md`). A host handling `sourceUnavailable$`
+  exhaustively sees `'not-open'` and `'unknown'`.
 - Held by `database/block/src/__tests__/source-unavailable.unit.spec.ts`,
   `hosted-source-unavailable-type.unit.spec.ts`,
   `cross-database-views.unit.spec.ts` and
