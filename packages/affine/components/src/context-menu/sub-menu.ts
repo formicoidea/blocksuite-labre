@@ -15,8 +15,8 @@ import { ifDefined } from 'lit/directives/if-defined.js';
 
 import { MenuFocusable } from './focusable.js';
 import { Menu, type MenuOptions, type SubMenuSide } from './menu.js';
+import { fitToWindowHeight } from './fit-window.js';
 import {
-  fitToWindowHeight,
   POPUP_STRATEGY,
   popMenu,
   popupTargetFromElement,

@@ -2,6 +2,7 @@ import { IS_MOBILE } from '@labre/global/env';
 import { computed, signal } from '@preact/signals-core';
 import type { TemplateResult } from 'lit';
 
+import { scrollDeltaToShow } from './fit-window.js';
 import { MenuFocusable } from './focusable.js';
 import type { MenuComponentInterface } from './types.js';
 
@@ -124,16 +125,14 @@ export class Menu {
   focusNext() {
     if (!this._currentFocused$.value) {
       const ele = this.menuElement.getFirstFocusableElement();
-      if (ele instanceof MenuFocusable) {
-        ele.focus();
-      }
+      if (ele instanceof MenuFocusable) this.highlight(ele);
       return;
     }
     const list = this.menuElement
       .getFocusableElements()
       .filter(ele => ele instanceof MenuFocusable);
     const index = list.indexOf(this._currentFocused$.value);
-    list[index + 1]?.focus();
+    this.highlight(list[index + 1]);
   }
 
   focusPrev() {
@@ -148,7 +147,22 @@ export class Menu {
       this._currentFocused$.value = undefined;
       return;
     }
-    list[index - 1]?.focus();
+    this.highlight(list[index - 1]);
+  }
+
+  /**
+   * The arrows' highlight, scrolled into the panel's view: the only path
+   * that scrolls a capped panel to an entry (`fit-window.ts`), so a pointer,
+   * a sub-menu closing or a programmatic focus never scrolls it.
+   */
+  private highlight(entry: MenuFocusable | undefined) {
+    if (!entry) return;
+    entry.focus();
+    const panel = this.menuElement;
+    panel.scrollTop += scrollDeltaToShow(
+      panel.getBoundingClientRect(),
+      entry.getBoundingClientRect()
+    );
   }
 
   focusTo(ele?: MenuFocusable) {

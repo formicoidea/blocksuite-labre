@@ -20,7 +20,7 @@ import {
 } from '@blocksuite/icons/lit';
 import { type BlockStdScope, ShadowlessElement } from '@labre/std';
 import { nanoid } from '@labre/store';
-import { autoPlacement, offset, shift } from '@floating-ui/dom';
+import { autoPlacement, offset, shift, size } from '@floating-ui/dom';
 import { computed, type ReadonlySignal, signal } from '@preact/signals-core';
 import { cssVarV2 } from '@toeverything/theme/v2';
 import { nothing } from 'lit';
@@ -671,6 +671,36 @@ export type TagSelectOptions = {
    */
   std?: BlockStdScope;
 } & TagManagerOptions;
+/** The gap the tag selector keeps to the window's edge. */
+const WINDOW_PADDING = 8;
+
+/**
+ * The tag selector stays inside the window, every option reachable (product
+ * owner's acceptance of the database work: no entry of a menu is ever
+ * unreachable). It is placed `fixed` against the window, its options list
+ * capped at 400px by its style: in a short window the field, the hint and
+ * the list ran past the bottom edge. The LIST is capped at the room the
+ * field and the hint leave, and scrolls; the field stays in view. A list
+ * that fits keeps the cap of its style.
+ */
+const fitOptionsToWindow = size({
+  padding: WINDOW_PADDING,
+  apply({ availableHeight, elements }) {
+    const list = elements.floating.querySelector<HTMLElement>(
+      `.${selectOptionsContainerStyle}`
+    );
+    if (!list) return;
+    const scrolled = list.scrollTop;
+    list.style.maxHeight = '';
+    const room = Math.floor(
+      availableHeight - (elements.floating.offsetHeight - list.offsetHeight)
+    );
+    if (list.offsetHeight <= room) return;
+    list.style.maxHeight = `${Math.max(0, room)}px`;
+    list.scrollTop = scrolled;
+  },
+});
+
 export const popTagSelect = (target: PopupTarget, ops: TagSelectOptions) => {
   if (IS_MOBILE) {
     const handler = popMobileTagSelect(target, ops);
@@ -709,6 +739,7 @@ export const popTagSelect = (target: PopupTarget, ops: TagSelectOptions) => {
       }),
       offset({ mainAxis: -36 }),
       shift(),
+      fitOptionsToWindow,
     ],
     container: ops.container,
   });

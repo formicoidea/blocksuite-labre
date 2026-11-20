@@ -6,7 +6,7 @@ import { DatePicker } from '@labre/affine-components/date-picker';
 import { formatLocale } from '@labre/affine-shared/services';
 import { createLitPortal } from '@labre/affine-components/portal';
 import { IS_MOBILE } from '@labre/global/env';
-import { flip, offset } from '@floating-ui/dom';
+import { flip, offset, shift } from '@floating-ui/dom';
 import { computed, signal } from '@preact/signals-core';
 import { format } from 'date-fns/format';
 import { html } from 'lit';
@@ -20,6 +20,9 @@ import {
   dateValueContainerStyle,
 } from './cell-renderer-css.js';
 import { datePropertyModelConfig } from './define.js';
+
+/** The gap the date picker keeps to the window's edge. */
+const DATE_PICKER_WINDOW_PADDING = 8;
 
 export class DateCell extends BaseCellRenderer<number, number> {
   private _prevPortalAbortController: AbortController | null = null;
@@ -93,7 +96,15 @@ export class DateCell extends BaseCellRenderer<number, number> {
         computePosition: {
           referenceElement: this,
           placement: 'bottom',
-          middleware: [offset(10), flip()],
+          // Inside the window as far as a calendar can be (product owner:
+          // no entry of a menu is ever unreachable): `flip` takes the side
+          // with room, `shift` on both axes keeps it from crossing an edge;
+          // a window shorter than the calendar still cuts its bottom.
+          middleware: [
+            offset(10),
+            flip(),
+            shift({ padding: DATE_PICKER_WINDOW_PADDING, crossAxis: true }),
+          ],
         },
         template: () => {
           const datePicker = this.createDatePicker();

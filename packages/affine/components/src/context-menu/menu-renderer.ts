@@ -20,13 +20,13 @@ import {
   type Placement,
   type ReferenceElement,
   shift,
-  size,
 } from '@floating-ui/dom';
 import { consume, ContextEvent, ContextProvider } from '@lit/context';
 import { css, html, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
 import { createRef, ref } from 'lit/directives/ref.js';
 
+import { fitToWindowHeight } from './fit-window.js';
 import type { MenuFocusable } from './focusable.js';
 import { Menu, type MenuConfig, type MenuOptions } from './menu.js';
 import type { MenuComponentInterface } from './types.js';
@@ -111,6 +111,17 @@ export class MenuComponent
       justify-content: center;
       margin-top: 8px;
     }
+
+    /* A panel capped at the window scrolls (fit-window.ts): the field it
+       opens on (a shown search, a column's name) stays in view above the
+       list it filters or names. */
+    affine-menu > .affine-menu-search-container,
+    affine-menu > .affine-menu-body > .affine-menu-input-row:first-child {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background-color: ${unsafeCSSVarV2('layer/background/overlayPanel')};
+    }
   `;
 
   private readonly _clickContainer = (e: MouseEvent) => {
@@ -168,28 +179,15 @@ export class MenuComponent
   }
 
   focusInput() {
-    this.searchRef.value?.focus();
+    // A capped panel scrolls (`fit-window.ts`): focusing the hidden field at
+    // its top must not scroll it back there under the pointer (a click in a
+    // margin, a sub-menu closing).
+    this.searchRef.value?.focus({ preventScroll: true });
   }
 
   focusTo(ele?: MenuFocusable) {
     this.menu.setFocusOnly(ele);
     this.focusInput();
-    if (ele) this.scrollToEntry(ele);
-  }
-
-  /**
-   * The highlighted entry stays in the panel's view: capped at the window
-   * (`fitToWindowHeight`), a long menu scrolls inside itself, and the arrows
-   * move a `.focused` class, not the DOM focus, so nothing else brings the
-   * entry into view. Only the panel scrolls, never the page under it.
-   */
-  private scrollToEntry(entry: HTMLElement) {
-    const panel = this.getBoundingClientRect();
-    const box = entry.getBoundingClientRect();
-    if (box.top < panel.top) this.scrollTop -= panel.top - box.top;
-    else if (box.bottom > panel.bottom) {
-      this.scrollTop += box.bottom - panel.bottom;
-    }
   }
 
   getFirstFocusableElement(): HTMLElement | null {
@@ -548,34 +546,6 @@ const onDocumentKeydown = (event: KeyboardEvent) => {
  * clipping box names a root outside itself: `POPUP_ROOT_ATTR`).
  */
 export const POPUP_STRATEGY = 'fixed' as const;
-
-/** The gap a capped menu keeps to the window's edge. */
-const WINDOW_PADDING = 8;
-
-/**
- * A menu never runs past the window: capped at the room on the side it
- * opens on, it scrolls inside itself (product owner's acceptance of the
- * database work). A menu is placed `fixed` (`POPUP_STRATEGY`): on a tall
- * page the reader could scroll its anchor up and the menu with it, on a
- * short one (a base of three rows on its full page) nothing scrolled, and
- * the entries past the window's bottom could not be reached at all. Last in
- * a middleware list, after the placement is chosen. A menu that fits keeps
- * its height; the cap only bites when the room is shorter.
- */
-export const fitToWindowHeight = (): Middleware =>
-  size({
-    padding: WINDOW_PADDING,
-    apply({ availableHeight, elements }) {
-      Object.assign(elements.floating.style, {
-        maxHeight: `${Math.max(0, Math.floor(availableHeight))}px`,
-        overflowY: 'auto',
-        // Shut, not left to compute to `auto` beside the vertical axis: a
-        // translated child would scroll the panel sideways
-        // (`popup-overflow.unit.spec.ts`).
-        overflowX: 'hidden',
-      });
-    },
-  });
 
 export const createPopup = (
   target: PopupTarget,
