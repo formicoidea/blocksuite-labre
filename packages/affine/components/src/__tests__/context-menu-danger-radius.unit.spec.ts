@@ -1,12 +1,16 @@
 /**
  * A destructive menu entry reads as one before it is hovered, and the menu
- * panel takes the floating-menu radius of the shell (#677, design audit
+ * panel keeps the house radius of buttons and menu items (#677, design audit
  * P2-20).
  *
  * `.affine-menu-button.delete-item` was styled under `:hover` only, so
  * "Delete" in a database column, view, row or card menu was drawn like every
- * other entry until the pointer reached it; the panel had 4px corners where
- * every floating menu of the shell has 8px.
+ * other entry until the pointer reached it.
+ *
+ * The panel's 4px corners are pinned on purpose: #687 moved them to 8px, the
+ * shell's floating-menu radius, and the product owner reverted it at
+ * acceptance; a menu panel keeps the 4px of the buttons and items it holds,
+ * not the toolbar's 8px.
  *
  * The styles are read back computed, from a menu really mounted (the light-DOM
  * sheets go to `document.adoptedStyleSheets`), with the theme variables set on
@@ -128,9 +132,9 @@ describe('context menu, destructive entry and panel radius (#677)', () => {
     expect(getComputedStyle(plainRow.icon).color).toBe(ICON);
   });
 
-  test('the menu panel has 8px corners', async () => {
+  test('the menu panel keeps 4px corners', async () => {
     const { panel } = await openMenu();
 
-    expect(getComputedStyle(panel).borderRadius).toBe('8px');
+    expect(getComputedStyle(panel).borderRadius).toBe('4px');
   });
 });
