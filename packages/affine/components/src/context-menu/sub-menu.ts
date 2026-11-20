@@ -16,6 +16,7 @@ import { ifDefined } from 'lit/directives/if-defined.js';
 import { MenuFocusable } from './focusable.js';
 import { Menu, type MenuOptions, type SubMenuSide } from './menu.js';
 import {
+  fitToWindowHeight,
   POPUP_STRATEGY,
   popMenu,
   popupTargetFromElement,
@@ -58,6 +59,7 @@ export function nestedSubMenuPosition(parentSide: SubMenuSide | undefined) {
         fallbackPlacements: [`${other}-start`, `${side}-end`, `${other}-end`],
       }),
       shift({ padding: 8 }),
+      fitToWindowHeight(),
     ],
   };
 }

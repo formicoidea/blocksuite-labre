@@ -20,6 +20,7 @@ import {
   type Placement,
   type ReferenceElement,
   shift,
+  size,
 } from '@floating-ui/dom';
 import { consume, ContextEvent, ContextProvider } from '@lit/context';
 import { css, html, nothing } from 'lit';
@@ -173,6 +174,22 @@ export class MenuComponent
   focusTo(ele?: MenuFocusable) {
     this.menu.setFocusOnly(ele);
     this.focusInput();
+    if (ele) this.scrollToEntry(ele);
+  }
+
+  /**
+   * The highlighted entry stays in the panel's view: capped at the window
+   * (`fitToWindowHeight`), a long menu scrolls inside itself, and the arrows
+   * move a `.focused` class, not the DOM focus, so nothing else brings the
+   * entry into view. Only the panel scrolls, never the page under it.
+   */
+  private scrollToEntry(entry: HTMLElement) {
+    const panel = this.getBoundingClientRect();
+    const box = entry.getBoundingClientRect();
+    if (box.top < panel.top) this.scrollTop -= panel.top - box.top;
+    else if (box.bottom > panel.bottom) {
+      this.scrollTop += box.bottom - panel.bottom;
+    }
   }
 
   getFirstFocusableElement(): HTMLElement | null {
@@ -532,6 +549,34 @@ const onDocumentKeydown = (event: KeyboardEvent) => {
  */
 export const POPUP_STRATEGY = 'fixed' as const;
 
+/** The gap a capped menu keeps to the window's edge. */
+const WINDOW_PADDING = 8;
+
+/**
+ * A menu never runs past the window: capped at the room on the side it
+ * opens on, it scrolls inside itself (product owner's acceptance of the
+ * database work). A menu is placed `fixed` (`POPUP_STRATEGY`): on a tall
+ * page the reader could scroll its anchor up and the menu with it, on a
+ * short one (a base of three rows on its full page) nothing scrolled, and
+ * the entries past the window's bottom could not be reached at all. Last in
+ * a middleware list, after the placement is chosen. A menu that fits keeps
+ * its height; the cap only bites when the room is shorter.
+ */
+export const fitToWindowHeight = (): Middleware =>
+  size({
+    padding: WINDOW_PADDING,
+    apply({ availableHeight, elements }) {
+      Object.assign(elements.floating.style, {
+        maxHeight: `${Math.max(0, Math.floor(availableHeight))}px`,
+        overflowY: 'auto',
+        // Shut, not left to compute to `auto` beside the vertical axis: a
+        // translated child would scroll the panel sideways
+        // (`popup-overflow.unit.spec.ts`).
+        overflowX: 'hidden',
+      });
+    },
+  });
+
 export const createPopup = (
   target: PopupTarget,
   content: HTMLElement,
@@ -699,20 +744,23 @@ export const popMenu = (
       if (placement.startsWith('left')) menu.side = 'left';
       else if (placement.startsWith('right')) menu.side = 'right';
     },
-    middleware: props.middleware ?? [
-      autoPlacement({
-        allowedPlacements: [
-          'bottom-start',
-          'bottom-end',
-          'top-start',
-          'top-end',
-        ],
-      }),
-      offset(4),
-      // Keep the menu inside the viewport: on a constrained viewport the
-      // allowed placements can all overflow, and without a shift the menu
-      // simply hangs off the edge of the screen.
-      shift({ padding: 8 }),
+    middleware: [
+      ...(props.middleware ?? [
+        autoPlacement({
+          allowedPlacements: [
+            'bottom-start',
+            'bottom-end',
+            'top-start',
+            'top-end',
+          ],
+        }),
+        offset(4),
+        // Keep the menu inside the viewport: on a constrained viewport the
+        // allowed placements can all overflow, and without a shift the menu
+        // simply hangs off the edge of the screen.
+        shift({ padding: 8 }),
+      ]),
+      fitToWindowHeight(),
     ],
     container: props.container,
   });
