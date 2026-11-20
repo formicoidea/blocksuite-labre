@@ -125,6 +125,41 @@ describe('bindKeymap chords', () => {
     expect(single).toHaveBeenCalledOnce();
   });
 
+  /**
+   * What an armed prefix does with EVERY kind of next keystroke, pinned before
+   * anyone changes it: a non-printable key, a modified key and Space are
+   * swallowed exactly like an unmatched letter, so a stray `w` followed by
+   * Delete loses the Delete.
+   */
+  test.each([
+    ['Delete', {}],
+    ['Backspace', {}],
+    ['Escape', {}],
+    ['ArrowRight', {}],
+    [' ', {}],
+    ['z', { ctrlKey: true }],
+    ['d', { ctrlKey: true }],
+  ] as const)('an armed prefix swallows %s %o', (key, init) => {
+    const chord = vi.fn(() => true);
+    const canvasKey = vi.fn(() => true);
+    const h = harness();
+    h.bind({ 'w c': chord });
+    h.bind({
+      Delete: canvasKey,
+      Backspace: canvasKey,
+      Escape: canvasKey,
+      ArrowRight: canvasKey,
+      Space: canvasKey,
+      'Mod-z': canvasKey,
+      'Control-d': canvasKey,
+    });
+
+    h.press('w');
+    expect(h.press(key, init)).toBe(true);
+    expect(canvasKey).not.toHaveBeenCalled();
+    expect(chord).not.toHaveBeenCalled();
+  });
+
   test('an armed prefix expires after the timeout', () => {
     vi.useFakeTimers();
     const chord = vi.fn(() => true);
