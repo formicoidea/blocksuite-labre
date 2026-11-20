@@ -123,7 +123,7 @@ components:
   menu-panel:
     backgroundColor: '{colors.overlay-paper}'
     textColor: '{colors.ink}'
-    rounded: '{rounded.sm}'
+    rounded: '{rounded.md}'
     padding: '8px'
     width: '180px'
   menu-item:
@@ -298,7 +298,7 @@ The system is hybrid. Document surfaces (the page, the canvas, framework boards)
 
 ## Shapes
 
-The corners are small and consistent. 4px is the house radius, used about twice as often as any other value in the library: icon buttons, menu items, menu panels, inputs and raised canvas controls. 8px is for the editor toolbar and larger containers, 12px for grouped menus and popovers (`--affine-popover-radius`), and 2px for hairline details. Borders are hairlines: 1px, or 0.5px on the toolbar panel's inside border.
+The corners are small and consistent. 4px is the house radius, used about twice as often as any other value in the library: icon buttons, menu items, inputs and raised canvas controls. 8px is for the editor toolbar, menu panels and larger containers, 12px for grouped menus and popovers (`--affine-popover-radius`), and 2px for hairline details. Borders are hairlines: 1px, or 0.5px on the toolbar panel's inside border.
 
 Notations have their own form language, taken from their standards. C4 boundaries and relationships use **square** corners and 1–1.5px `#444444` strokes, following the stencil. BPMN tasks are rounded and events are circles, as the standard requires. Framework board cards are rounded rectangles with a hairline border: 10px on Wardley, 12px on C4, Event Storming and Context Map, 16px on the EDGY board, 6px on a BPMN pool.
 
@@ -334,8 +334,9 @@ The floating selection toolbar.
 
 ### Menus
 
-- **Panel:** Overlay Paper, 4px corners, 8px padding, 180px minimum width, Overlay shadow. Grouped sections use 4px padding and 12px corners.
+- **Panel:** Overlay Paper, 8px corners, 8px padding, 180px minimum width, Overlay shadow. Grouped sections use 4px padding and 12px corners.
 - **Items:** 4px padding and corners, 14px Inter, Hover Veil on hover. Larger rows use 11px 8px padding.
+- **Destructive items** (`delete-item`): label and icon in Error Red (`--affine-error-color`) at rest, the error background (`--affine-background-error-color`) on hover and while the item holds a popup open. The host theme keeps that red at 4.5:1 on the panel and on the error background.
 - **Input:** 4px corners, 4px 6px padding; on focus, a 2px Borrowed Blue ring at 30%.
 
 ### Side Panel Header
