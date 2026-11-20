@@ -446,6 +446,24 @@ describe('edgeless toolbar keyboard model', () => {
       noRing();
     });
 
+    test('a click after the keyboard was in the row gives every key back to the canvas', async () => {
+      await tabIntoToolbar();
+      // Undo: a press that changes neither the tool nor the selection, so
+      // nothing else moves the focus off the row.
+      const undo = rowButtons().find(
+        button => button.getAttribute('aria-label') === 'Undo'
+      )!;
+      await userEvent.click(undo);
+      expect(focusedButton(), 'the click ends keyboard mode').toBeNull();
+      noRing();
+
+      const shape = addShape();
+      select(shape.id);
+      const x = shape.elementBound.x;
+      await press('{ArrowRight}');
+      expect(shape.elementBound.x).toBe(x + 1);
+    });
+
     test('after a real click on a pager arrow, the arrows move the shape', async () => {
       const arrow = toolbar().shadowRoot!.querySelector<HTMLElement>(
         '.senior-nav-button-wrapper.next icon-button'
