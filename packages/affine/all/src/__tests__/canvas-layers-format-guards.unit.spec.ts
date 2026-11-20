@@ -12,10 +12,15 @@
  *    drag — and comes back out unchanged.
  * 2. The same for an unknown `prop:` on the `affine:surface` block itself,
  *    where `layers` will live.
- * 3. An unknown element TYPE inside the surface's `elements` map makes the
- *    surface throw while it loads — which is why a `layer` element type was
- *    rejected: an older client would fail to open the whole canvas, not merely
- *    lose its layers.
+ * 3. An unknown element TYPE inside the surface's `elements` map made the
+ *    surface throw while it loaded, in every client up to 4.0.0 — which is why
+ *    a `layer` element type was rejected: such a client fails to open the
+ *    whole canvas, not merely lose its layers, and those clients still open
+ *    documents written today. From the next release on, the surface SKIPS an
+ *    element of an unknown type instead (#669, ADR 0053): reported as
+ *    `unknown-type`, its map left untouched, every other element loaded. The
+ *    test below pins that newer behaviour; the reasoning of ADR 0031 still
+ *    holds for the older clients.
  *
  * The clipboard half of the guard (a duplicate carries a block's unknown prop,
  * a paste leaves the surface's untouched) needs the real edgeless clipboard and
@@ -30,7 +35,8 @@ import type { DocSnapshot, Store } from '@labre/store';
 import { Schema, Text, Transformer } from '@labre/store';
 import { TestWorkspace } from '@labre/store/test';
 import { config as rxjsConfig } from 'rxjs';
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
+import type * as Y from 'yjs';
 
 import { getInternalStoreExtensions } from '../extensions/store.js';
 import { getAffineSchemas } from '../schemas.js';
@@ -215,7 +221,7 @@ describe('the surface snapshot round trip', () => {
 });
 
 describe('an unknown element TYPE', () => {
-  test('makes the surface throw while it loads', async () => {
+  test('is skipped while the surface loads, and left untouched', async () => {
     const { collection, transformer } = createWorkspace('guard-type');
     const board = authorBoard(collection, 'board');
     const snapshot = JSON.parse(
@@ -235,24 +241,42 @@ describe('an unknown element TYPE', () => {
 
     // The surface builds its element models from its `created` slot, an rxjs
     // subscriber, and rxjs reports a subscriber's throw on a later macrotask
-    // through `config.onUnhandledError`. Capture it there rather than letting
-    // it escape as an unhandled error, and wait for that macrotask.
+    // through `config.onUnhandledError`. Capture it there, so a regression to
+    // the 4.0.0 throw fails this test instead of escaping, and wait for it.
     const thrown: unknown[] = [];
     const previous = rxjsConfig.onUnhandledError;
     rxjsConfig.onUnhandledError = error => thrown.push(error);
+    // The skip is reported once on the console; this suite fails on any log.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    let reloaded: Store | null | undefined;
     try {
-      await transformer.snapshotToDoc({
+      reloaded = await transformer.snapshotToDoc({
         ...snapshot,
         meta: { ...snapshot.meta, id: 'type-reloaded' },
       });
       await new Promise(resolve => setTimeout(resolve, 0));
     } finally {
       rxjsConfig.onUnhandledError = previous;
+      warn.mockRestore();
     }
 
-    expect(thrown).toHaveLength(1);
-    expect(String(thrown[0])).toMatch(
-      /Invalid element type: x-labre-layer-probe/
+    expect(thrown).toEqual([]);
+    const loaded = [...reloaded!.getAllModels()].find(
+      model => model.flavour === 'affine:surface'
+    ) as unknown as {
+      elementModels: { type: string }[];
+      damagedElements: ReadonlyMap<string, unknown>;
+      elements: { getValue(): Y.Map<Y.Map<unknown>> };
+    };
+    expect(loaded.elementModels.map(model => model.type)).toEqual(['shape']);
+    expect([...loaded.damagedElements]).toEqual([
+      [
+        'probe-element',
+        { type: 'x-labre-layer-probe', reason: 'unknown-type' },
+      ],
+    ]);
+    expect(loaded.elements.getValue().get('probe-element')!.toJSON()).toEqual(
+      elements['probe-element']
     );
   });
 });

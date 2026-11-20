@@ -75,8 +75,22 @@ export type MiddlewareCtx = {
 
 export type SurfaceMiddleware = (ctx: MiddlewareCtx) => void;
 
-/** Why an element is considered damaged. One reason so far. */
-export type SurfaceDamageReason = 'missing-xywh';
+/**
+ * Why an element is considered damaged. In memory only, never stored.
+ *
+ * - `missing-xywh` (#318): the element is built and paints a zero-size bound.
+ * - `unknown-type` (#669, ADR 0053): its `type` names no element this client
+ *   registers, most likely one a newer client wrote. Skipped: no model.
+ * - `unreadable` (#669, ADR 0053): no `type` or `id`, not a map, or building
+ *   its model threw; a corrupt or half-written element. Skipped: no model.
+ *
+ * A skipped element's Y.Map is left exactly as it is, so a client that can
+ * read it still sees it in the same document.
+ */
+export type SurfaceDamageReason =
+  | 'missing-xywh'
+  | 'unknown-type'
+  | 'unreadable';
 
 /** What the surface knows about one damaged element. */
 export type SurfaceElementDamage = {
@@ -86,6 +100,12 @@ export type SurfaceElementDamage = {
 
 /** The same fact, pushed as it happens. */
 export type SurfaceElementDamageReport = SurfaceElementDamage & { id: string };
+
+/** A skipped element, with what threw (console only, never reported). */
+type SkippedElement = SurfaceElementDamageReport & { error?: unknown };
+
+/** How many skipped keys one console line names (ADR 0053). */
+const MAX_SKIPPED_KEYS_LOGGED = 5;
 
 /**
  * Prop keys that are never copied onto an element, whatever the caller sends.
@@ -343,9 +363,9 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
   readonly userLayers: SurfaceUserLayers = new SurfaceUserLayers(this);
 
   /**
-   * An element was found damaged — see {@link damagedElements}. Pushed at the
-   * same moment the console line is written, so a subscriber that arrives
-   * later reads the map instead and misses nothing.
+   * An element was found damaged — see {@link damagedElements}. Pushed once,
+   * when the element is read (at load, or when sync delivers it); a
+   * subscriber that arrives later reads the map instead and misses nothing.
    */
   elementDamaged = new Subject<SurfaceElementDamageReport>();
 
@@ -364,9 +384,13 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
   private readonly _damagedElements = new Map<string, SurfaceElementDamage>();
 
   /**
-   * The elements this surface built from a Y.Map that was missing a key it
-   * declares — today only `xywh`, the bound without which the element paints
-   * nothing (see {@link _createElementFromYMap}).
+   * The damaged elements of this surface, by their key in the elements map,
+   * with the reason (see {@link SurfaceDamageReason}):
+   *
+   * - `missing-xywh`: built and mounted from a Y.Map with no `xywh`, the bound
+   *   without which the element paints nothing (#318);
+   * - `unknown-type` / `unreadable`: SKIPPED (#669, ADR 0053). They have no
+   *   model, so `getElementById(key)` is `null` for them.
    *
    * **State, not just a signal.** The element models are built when the block
    * model is created, before any view or `LifeCycleWatcher` is mounted, so a
@@ -559,18 +583,23 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
     // @ts-expect-error ignore
     Ctor['_decoratorState'] = state;
 
-    const elementModel = new Ctor({
-      id,
-      yMap,
-      model: this,
-      stashedStore: stashed,
-      onChange: payload => mounted && options.onChange({ id, ...payload }),
-    }) as GfxPrimitiveElementModel;
-
-    // @ts-expect-error ignore
-    delete Ctor['_decoratorState'];
-    state.creating = false;
-    state.skipField = false;
+    let elementModel: GfxPrimitiveElementModel;
+    try {
+      elementModel = new Ctor({
+        id,
+        yMap,
+        model: this,
+        stashedStore: stashed,
+        onChange: payload => mounted && options.onChange({ id, ...payload }),
+      }) as GfxPrimitiveElementModel;
+    } finally {
+      // A constructor that throws on a corrupt map (#669) must not leave the
+      // decorator state armed for the next element this surface builds.
+      // @ts-expect-error ignore
+      delete Ctor['_decoratorState'];
+      state.creating = false;
+      state.skipField = false;
+    }
 
     // A document whose Yjs state still has pending structs can carry an element
     // whose `xywh` key never arrived. The element reads its `[0,0,0,0]` fallback
@@ -624,6 +653,127 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
       mount,
       unmount,
     };
+  }
+
+  /**
+   * Builds the model of an element read from the document, or skips it (#669,
+   * ADR 0053): one element this client cannot read must never empty the
+   * surface, at load as on a remote update.
+   *
+   * The element's identity is its KEY in the elements map: every lookup is by
+   * key, so the model is built with it, whatever the stored `id` says (absent,
+   * not a string, or another value — #681). Nothing is written to fix it.
+   *
+   * Skipped means no model, a damage record keyed by the elements-map key and
+   * pushed through {@link elementDamaged}, and NOTHING written: the Y.Map stays
+   * as it is, for a newer client that can read it. A missing `xywh` is not a
+   * reason to skip; it keeps its own path in {@link _createElementFromYMap}.
+   * A model whose MOUNT throws is skipped later, by {@link _mountElement}.
+   */
+  private _readElementFromYMap(
+    key: string,
+    value: unknown,
+    skipped: SkippedElement[]
+  ) {
+    let type: unknown;
+
+    try {
+      const yMap = value as Y.Map<unknown>;
+      type = yMap.get('type');
+
+      if (typeof type !== 'string') {
+        this._skipElement(key, '', 'unreadable', skipped);
+        return null;
+      }
+      if (!this._elementCtorMap[type]) {
+        this._skipElement(key, type, 'unknown-type', skipped);
+        return null;
+      }
+
+      const model = this._createElementFromYMap(type, key, yMap, {
+        onChange: payload => {
+          this._emitElementUpdated(model.model, payload);
+        },
+        skipFieldInit: true,
+      });
+      return model;
+    } catch (error) {
+      // Not a map (`get` is not a function), or a constructor that threw on
+      // what the map holds: 'unreadable' either way, never into the observer.
+      this._skipElement(
+        key,
+        typeof type === 'string' ? type : '',
+        'unreadable',
+        skipped,
+        error
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Mounts a model built by {@link _readElementFromYMap}. A mount that throws
+   * (an observer or `onCreated` choking on what the map holds) is undone and
+   * the element skipped as `unreadable`, so it cannot stop the elements after
+   * it, nor the surface watchers, from being set up (#669, ADR 0053).
+   */
+  private _mountElement(
+    key: string,
+    entry: {
+      mount: () => void;
+      unmount: () => void;
+      model: GfxPrimitiveElementModel;
+    },
+    skipped: SkippedElement[]
+  ) {
+    try {
+      entry.mount();
+      return true;
+    } catch (error) {
+      try {
+        entry.unmount();
+      } catch {
+        // The mount already failed; what the teardown says adds nothing.
+      }
+      this._elementModels.delete(key);
+      this._skipElement(key, entry.model.type, 'unreadable', skipped, error);
+      return false;
+    }
+  }
+
+  private _skipElement(
+    key: string,
+    type: string,
+    reason: SurfaceDamageReason,
+    skipped: SkippedElement[],
+    error?: unknown
+  ) {
+    const damage = { type, reason };
+    this._damagedElements.set(key, damage);
+    this.elementDamaged.next({ id: key, ...damage });
+    skipped.push({ id: key, ...damage, error });
+  }
+
+  /**
+   * One console line per batch, however many elements it skipped: the count
+   * and the first keys, bounded so a forged document cannot flood the console.
+   * What a constructor or a mount threw rides along as extra arguments, so a
+   * bug in a registered type is not silently relabelled "unreadable"; it never
+   * reaches the damage report or telemetry.
+   */
+  private _warnSkippedElements(skipped: SkippedElement[]) {
+    if (skipped.length === 0) return;
+    const shown = skipped.slice(0, MAX_SKIPPED_KEYS_LOGGED);
+    const more = skipped.length - shown.length;
+    console.warn(
+      `[labre] surface skipped ${skipped.length} element(s) it cannot read, ` +
+        `left untouched in the document: ` +
+        shown.map(({ id, reason }) => `${id} (${reason})`).join(', ') +
+        (more > 0 ? ` and ${more} more` : ''),
+      ...shown
+        .filter(({ error }) => error !== undefined)
+        .map(({ error }) => error)
+    );
   }
 
   /**
@@ -727,57 +877,63 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
     ) => {
       const { changes, keysChanged } = event;
       const addedElements: {
-        mount: () => void;
-        model: GfxPrimitiveElementModel;
+        key: string;
+        entry: {
+          mount: () => void;
+          unmount: () => void;
+          model: GfxPrimitiveElementModel;
+        };
       }[] = [];
       const deletedElements: {
         unmount: () => void;
         model: GfxPrimitiveElementModel;
       }[] = [];
+      const skipped: SkippedElement[] = [];
 
       keysChanged.forEach(id => {
         const change = changes.keys.get(id);
         const element = this.elements.getValue()!.get(id);
 
         switch (change?.action) {
-          case 'add':
-            if (element) {
-              const hasModel = this._elementModels.has(id);
-              const model = hasModel
-                ? this._elementModels.get(id)!
-                : this._createElementFromYMap(
-                    element.get('type') as string,
-                    element.get('id') as string,
-                    element,
-                    {
-                      onChange: payload => {
-                        this._emitElementUpdated(model.model, payload);
-                      },
-                      skipFieldInit: true,
-                    }
-                  );
+          case 'add': {
+            // Any value, `null` included: the same reading, and the same
+            // report, as at load.
+            const hasModel = this._elementModels.has(id);
+            const model = hasModel
+              ? this._elementModels.get(id)!
+              : this._readElementFromYMap(id, element, skipped);
 
-              !hasModel && this._elementModels.set(id, model);
-              addToType(model.model.type, model.model);
-              addedElements.push(model);
-            }
+            if (!model) break;
+
+            !hasModel && this._elementModels.set(id, model);
+            addToType(model.model.type, model.model);
+            addedElements.push({ key: id, entry: model });
             break;
+          }
           case 'delete':
+            // A skipped element has no model, yet its damage leaves with it.
+            this._damagedElements.delete(id);
             if (this._elementModels.has(id)) {
               const { model, unmount } = this._elementModels.get(id)!;
               removeFromType(model.type, model);
               this._elementModels.delete(id);
-              this._damagedElements.delete(id);
               deletedElements.push({ model, unmount });
             }
             break;
         }
       });
 
-      addedElements.forEach(({ mount, model }) => {
-        mount();
-        this.elementAdded.next({ id: model.id, local: transaction.local });
+      addedElements.forEach(({ key, entry }) => {
+        if (!this._mountElement(key, entry, skipped)) {
+          removeFromType(entry.model.type, entry.model);
+          return;
+        }
+        this.elementAdded.next({
+          id: entry.model.id,
+          local: transaction.local,
+        });
       });
+      this._warnSkippedElements(skipped);
       deletedElements.forEach(({ unmount, model }) => {
         unmount();
         this.elementRemoved.next({
@@ -789,26 +945,20 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
       });
     };
 
+    const skipped: SkippedElement[] = [];
     elementsYMap.forEach((val, key) => {
-      const model = this._createElementFromYMap(
-        val.get('type') as string,
-        val.get('id') as string,
-        val,
-        {
-          onChange: payload => {
-            this._emitElementUpdated(model.model, payload);
-          },
-          skipFieldInit: true,
-        }
-      );
-
-      this._elementModels.set(key, model);
+      const model = this._readElementFromYMap(key, val, skipped);
+      if (model) this._elementModels.set(key, model);
     });
 
-    this._elementModels.forEach(({ mount, model }) => {
-      addToType(model.type, model);
-      mount();
+    // Deleting the current entry while iterating a Map is safe.
+    this._elementModels.forEach((entry, key) => {
+      addToType(entry.model.type, entry.model);
+      if (!this._mountElement(key, entry, skipped)) {
+        removeFromType(entry.model.type, entry.model);
+      }
     });
+    this._warnSkippedElements(skipped);
 
     Object.values(this.store.blocks.peek()).forEach(block => {
       if (isGfxGroupCompatibleModel(block.model)) {
@@ -937,14 +1087,21 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
   }
 
   private _watchChildrenChange() {
+    // The stored elements, not the models: a canvas holding only elements this
+    // client skipped (#669) is not empty, and must never be treated as such.
     const updateIsEmpty = () => {
       this._isEmpty$.value =
-        this._elementModels.size === 0 && this.children.length === 0;
+        this.elements.getValue()!.size === 0 && this.children.length === 0;
     };
 
     const disposables = new DisposableGroup();
     disposables.add(this.elementAdded.subscribe(updateIsEmpty));
     disposables.add(this.elementRemoved.subscribe(updateIsEmpty));
+    // A skipped element arriving or leaving by sync emits neither of the two
+    // above; the stored map itself does.
+    const elements = this.elements.getValue()!;
+    elements.observe(updateIsEmpty);
+    disposables.add(() => elements.unobserve(updateIsEmpty));
     this.store.slots.blockUpdated.subscribe(payload => {
       if (['add', 'delete'].includes(payload.type)) {
         updateIsEmpty();

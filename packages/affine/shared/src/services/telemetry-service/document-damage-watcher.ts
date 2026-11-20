@@ -1,5 +1,6 @@
 import { LifeCycleWatcher } from '@labre/std';
 import type {
+  SurfaceDamageReason,
   SurfaceElementDamage,
   SurfaceElementDamageReport,
 } from '@labre/std/gfx';
@@ -63,7 +64,7 @@ export class DocumentDamageTelemetryWatcher extends LifeCycleWatcher {
   /** Ids already counted, so a document never counts an element twice. */
   private readonly _counted = new Set<string>();
 
-  private readonly _pending = new Set<string>();
+  private readonly _pending = new Map<string, SurfaceDamageReason>();
 
   private _flushScheduled = false;
 
@@ -85,10 +86,12 @@ export class DocumentDamageTelemetryWatcher extends LifeCycleWatcher {
     ).filter(isDamageReportingSurface);
 
     for (const surface of surfaces) {
-      for (const id of surface.damagedElements.keys()) this._pending.add(id);
+      for (const [id, { reason }] of surface.damagedElements) {
+        this._pending.set(id, reason);
+      }
       this._subscriptions.push(
-        surface.elementDamaged.subscribe(({ id }) => {
-          this._pending.add(id);
+        surface.elementDamaged.subscribe(({ id, reason }) => {
+          this._pending.set(id, reason);
           this._schedule();
         })
       );
@@ -118,14 +121,21 @@ export class DocumentDamageTelemetryWatcher extends LifeCycleWatcher {
     });
   }
 
+  /**
+   * One event per reason present in the batch: an element skipped because a
+   * newer client wrote it (`unknown-type`) is a different fact from a bound
+   * that never arrived, and a dashboard must be able to tell them apart (#669).
+   */
   private _flush() {
-    const fresh = [...this._pending].filter(id => !this._counted.has(id));
+    const counts = new Map<SurfaceDamageReason, number>();
+    for (const [id, reason] of this._pending) {
+      if (this._counted.has(id)) continue;
+      this._counted.add(id);
+      counts.set(reason, (counts.get(reason) ?? 0) + 1);
+    }
     this._pending.clear();
-    if (fresh.length === 0) return;
-    for (const id of fresh) this._counted.add(id);
-    this._telemetry?.track('DocumentDamaged', {
-      reason: 'missing-xywh',
-      elementCount: fresh.length,
-    });
+    for (const [reason, elementCount] of counts) {
+      this._telemetry?.track('DocumentDamaged', { reason, elementCount });
+    }
   }
 }
