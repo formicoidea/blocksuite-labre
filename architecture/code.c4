@@ -2968,7 +2968,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/widgets/edgeless-toolbar
         metadata {
           path 'packages/affine/widgets/edgeless-toolbar'
-          files '44'
+          files '45'
         }
         button = folder 'button/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/widgets/edgeless-toolbar/src/button
@@ -3009,7 +3009,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/widgets/edgeless-toolbar/src/menu
           metadata {
             path 'packages/affine/widgets/edgeless-toolbar/src/menu'
-            files '4'
+            files '5'
           }
         }
         mixins = folder 'mixins/' {
@@ -7326,7 +7326,7 @@ model {
   features.widgets.edgeless-toolbar.src -[imports]-> features.widgets.edgeless-toolbar.button '3 imports'
   features.widgets.edgeless-toolbar.src -[imports]-> features.widgets.edgeless-toolbar.catalogue '3 imports'
   features.widgets.edgeless-toolbar.src -[imports]-> features.widgets.edgeless-toolbar.extension '1 import'
-  features.widgets.edgeless-toolbar.src -[imports]-> features.widgets.edgeless-toolbar.menu '3 imports'
+  features.widgets.edgeless-toolbar.src -[imports]-> features.widgets.edgeless-toolbar.menu '4 imports'
   features.widgets.edgeless-toolbar.src -[imports]-> features.widgets.edgeless-toolbar.panel '2 imports'
   features.widgets.edgeless-toolbar.src -[imports]-> features.widgets.edgeless-toolbar.placement '1 import'
   features.widgets.edgeless-toolbar.src -[imports]-> features.widgets.edgeless-toolbar.selection-pane '5 imports'

@@ -12,7 +12,7 @@ import { EDGELESS_TOOLBAR_COMING_SOON } from '../translations.js';
 /**
  * Fired by a button of the toolbar's row when its `active` changes, so the
  * row can keep its Tab stop on the active tool (ADR 0054). The toolbar listens
- * for it by this name, `@toolbar-row-state`.
+ * for it by this name on its render root.
  */
 export const TOOLBAR_ROW_STATE_EVENT = 'toolbar-row-state';
 
@@ -135,13 +135,16 @@ export class EdgelessToolIconButton extends LitElement {
    * emptied while the button's menu is open must not unname it: those owners
    * pass `label`.
    *
-   * Only on the canvas toolbar's row, or for an owner that passes `label`.
-   * Elsewhere — a panel, a menu, the auto-complete — a visible text is the
+   * Only on the canvas toolbar's row, in the menus its buttons open (the
+   * items of an `edgeless-slide-menu`, which the keyboard walks since the
+   * acceptance of #679), or for an owner that passes `label`. Elsewhere — a
+   * panel, the element toolbar, the auto-complete — a visible text is the
    * name and the tooltip only describes it (WCAG 2.5.3): those buttons keep
    * exactly the attributes their owner gives them.
    */
   override updated(changed: PropertyValues<this>) {
-    if (!this.onToolbarRow && !this.label) return;
+    const inToolbarMenu = this.closest('edgeless-slide-menu') !== null;
+    if (!this.onToolbarRow && !inToolbarMenu && !this.label) return;
     const name =
       this.label || (typeof this.tooltip === 'string' ? this.tooltip : '');
     if (name) this.setAttribute('aria-label', name);

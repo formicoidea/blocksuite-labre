@@ -67,14 +67,15 @@ The toolbar takes real DOM focus, on the APG toolbar pattern.
      back to the canvas.
      Every other key — Delete, Backspace, a tool letter, Ctrl or Meta shortcuts
      — goes on to the canvas, as from the canvas itself.
-5. **What a press does with the focus.** A press that opens something from
-   the button — any popper the toolbar tracks (a framework's sub-menu, a
-   tool's options: frame, connector, pen, note, shape, mind map) or a panel
-   the button appends beside itself (templates) — keeps the focus on the
-   button: Escape closes it and returns the focus, and Tab moves on to its
-   controls that the browser can focus. A press that only picks a tool (the
-   eraser) gives the canvas the keyboard back. Anything else (undo, the layers
-   pane, a text, add a file) leaves the focus on the button. A press that
+5. **What a press does with the focus.** A press that opens a menu from the
+   button — any popper the toolbar tracks (a framework's sub-menu, a tool's
+   options: frame, connector, pen, note, shape, mind map) — puts the keyboard
+   on the menu's first control (§10); Escape closes it and gives the button
+   the focus back. The templates panel, which the button appends beside
+   itself, keeps the focus on the button, Tab reaching its search field. A
+   press that only picks a tool (the eraser) gives the canvas the keyboard
+   back. Anything else (undo, the layers pane, a text, add a file) leaves the
+   focus on the button. A press that
    changes the selection makes `RangeBinding` (`framework/std`) focus the
    editor host whenever the selection holds no text, sometimes a hundred
    milliseconds later; after a keyboard press or Escape, and until the next
@@ -104,17 +105,49 @@ The toolbar takes real DOM focus, on the APG toolbar pattern.
    focus whose editor is gone.
 8. **The pager arrows are not Tab or arrow stops.** The arrows page the row as
    they walk, so every senior tool is reachable without them; they keep their
-   names ("Previous tools", "Next tools") and stay clickable.
+   names ("Previous tools", "Next tools") and stay clickable. Their tooltip is
+   that name: it used to announce the tool the arrow brings in, and a tooltip
+   rebuilt at each page turn showed at once under a pointer resting on the
+   arrow — a tool's name over a button that is not that tool (#679,
+   criterion 5, found with a real mouse in the acceptance).
 9. **The Alt+←/→ highlight stays** as a shortcut from the canvas, unchanged;
    focus entering the toolbar clears it, so the two rings never show at once.
+   In a framework's sub-menu the highlight and the focus are one current
+   command (`EdgelessCommandMenu.point`), marked `aria-current`.
+10. **The menu model** (#679 acceptance: the product owner could not reach
+    a framework's tools, nor the shape types, from the keyboard). One model
+    for every menu the row opens, read from what the menu draws
+    (`menu/menu-keyboard.ts`, `menuGroups`), held by the toolbar
+    (`_onMenuKeydown`), not by each menu:
+    - a menu is a row of **groups** in reading order; a group starts at a
+      divider or where the controls change component. Its controls are the
+      buttons it draws (`role="button"`, a native `button`); a widget with
+      keys of its own — the colour grid (`radiogroup`), the width slider — is
+      a group of its own whose keys stay its own;
+    - opened from the keyboard, the menu takes the focus on its first
+      control; opened with the mouse, it takes nothing (§4);
+    - ←/→ (and ↑/↓) walk the controls of a group, wrapping; Home / End go to
+      its ends; Tab / Shift+Tab go to the next / previous group, and past the
+      last or the first close the menu and give its button the focus back,
+      as Escape does (APG's menu button, Tab leaving the menu);
+    - Enter / Space press the control as a pointer does (§4). A press that
+      changes the tool or runs a framework's command is done with the menu:
+      it closes and the canvas has the keys. An option (a shape type, a mode,
+      a colour, a width) keeps the menu open and the focus on it;
+    - inside a menu the model takes only those keys; every other key goes on
+      to the canvas, as from the row.
+      A menu built from the shared pieces gets the model with nothing to
+      declare; a control the menu draws as a plain element must say it is a
+      button (`role="button"`, the frame presets) to be reached.
 
 ## Consequences
 
 - The keyboard path is held by the integration suite
   (`edgeless/edgeless-toolbar-keyboard.spec.ts`, real Playwright keys and
   mouse): every button pressed by a click, Enter, Space and a held Enter must
-  do the same thing; every button that opens something must keep the focus,
-  close on Escape and give it back. The names and the state are held by
+  do the same thing; every menu a button opens must take the keyboard, be
+  walked to its last control, close on Escape and give the button the focus
+  back. The names and the state are held by
   `edgeless-toolbar-a11y.spec.ts`, the senior tools' declared labels by
   `affine/all`'s `toolbar-names.unit.spec.ts`, the highlight by
   `canvas-arrows-move-first.spec.ts`.
@@ -125,18 +158,21 @@ The toolbar takes real DOM focus, on the APG toolbar pattern.
 - A tool whose tooltip is a template, or is emptied while its menu is open,
   must pass `label` to its button, or it is unnamed — which the integration
   spec reports.
-- **What stays out of the keyboard's reach.** The controls inside the tools'
-  menus and options are `edgeless-tool-icon-button`s that take no focus: the
-  frame presets, the connector's modes and styles, the pen's colours and
-  widths, the note menu, the shape menu, the mind map styles and import, the
-  templates panel's cards. Each would need a keyboard model of its own
-  (swatches, sliders, a grid), which this decision does not build. Tab from
-  the button reaches only what the browser can focus there, which the
-  integration spec lists at each run: the colour button of the curve, pen and
-  shape options, a native button of the mind map menu, the templates panel's
-  search field; Escape from any of them closes the thing and gives its button
-  the focus back. A framework sub-menu's commands stay reachable with Alt+←/→
-  and Enter, as from the canvas.
+- **Every menu control is reachable** (§10), held by the integration spec on
+  every button of every page: the keyboard enters the menu, reaches every
+  control it draws, and Enter on one does what a click does. The buttons of
+  the menus are named from their tooltip like the row's (the naming scope of
+  `edgeless-tool-icon-button` covers the items of an `edgeless-slide-menu`;
+  a template tooltip passes `label`), the mind map's native buttons carry an
+  `aria-label`, the frame presets say `role="button"`. The width slider, a
+  discrete `affine-slider`, became an ARIA slider stepping point to point,
+  which every user of the discrete slider gets.
+- **What still needs the pointer.** The templates panel's cards are a
+  scrolling grid behind a search field, a model of its own (search, then a
+  grid walked in two dimensions, then insertion): Tab reaches the search
+  field, nothing more. The mind map menu's items, reached and named, place
+  by click-to-drag — a press picks the item up and the next click on the
+  canvas sets it down — so a keyboard user can pick one but not place it.
 - A canvas shortcut that is not one of the toolbar's keys acts while focus is
   in the toolbar, exactly as it does from the canvas (a Delete removes the
   selected shape): the product owner's rule.

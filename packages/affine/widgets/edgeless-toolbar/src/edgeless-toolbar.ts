@@ -45,7 +45,6 @@ import {
   unsafeCSS,
 } from 'lit';
 import { query, state } from 'lit/decorators.js';
-import { keyed } from 'lit/directives/keyed.js';
 import { literal, unsafeStatic } from 'lit/static-html.js';
 import debounce from 'lodash-es/debounce';
 import { Subject } from 'rxjs';
@@ -67,6 +66,7 @@ import {
   SeniorToolIdentifier,
 } from './extension/index.js';
 import { EdgelessCommandMenu } from './menu/command-menu.js';
+import { groupEntry, menuGroups } from './menu/menu-keyboard.js';
 import {
   stepToolbarHighlight,
   type ToolbarHighlight,
@@ -555,20 +555,6 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
       : tool.name;
   }
 
-  private get _seniorNextTooltip() {
-    if (this._seniorScrollNextDisabled) return '';
-    return this._seniorToolLabel(
-      this._seniorTools[this.scrollSeniorToolIndex + this.scrollSeniorToolSize]
-    );
-  }
-
-  private get _seniorPrevTooltip() {
-    if (this._seniorScrollPrevDisabled) return '';
-    return this._seniorToolLabel(
-      this._seniorTools[this.scrollSeniorToolIndex - 1]
-    );
-  }
-
   private get _seniorScrollNextDisabled() {
     return (
       this.scrollSeniorToolIndex + this.scrollSeniorToolSize >=
@@ -751,7 +737,9 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
           @click=${this._onSeniorNavPrev}
         >
           ${ArrowLeftSmallIcon({ width: '20px', height: '20px' })}
-          ${pagerTooltip(this._seniorPrevTooltip)}
+          ${pagerTooltip(
+            translateKey(this.std, ...EDGELESS_TOOLBAR_PREVIOUS_TOOLS)
+          )}
         </icon-button>
       </div>
       <div class="senior-tools">
@@ -783,7 +771,9 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
           @click=${this._onSeniorNavNext}
         >
           ${ArrowRightSmallIcon({ width: '20px', height: '20px' })}
-          ${pagerTooltip(this._seniorNextTooltip)}
+          ${pagerTooltip(
+            translateKey(this.std, ...EDGELESS_TOOLBAR_NEXT_TOOLS)
+          )}
         </icon-button>
       </div>
     `;
@@ -859,7 +849,7 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
     this.disposables.addFromEvent(
       this.renderRoot,
       'keydown',
-      this._onOpenedEscape,
+      this._onMenuKeydown,
       { capture: true }
     );
     // The keyboard back on the canvas, or out of the editor: what it opened
@@ -874,7 +864,11 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
           const kept = this._kept;
           if (kept?.isConnected) {
             queueMicrotask(() => {
-              if (this._kept === kept) this._focusStop(kept);
+              if (this._kept !== kept) return;
+              // A control of an open menu takes the focus back and nothing
+              // more: the row button that opened the menu stays its owner.
+              if (this._rowButtonOf(kept)) this._focusStop(kept);
+              else kept.focus();
             });
             return;
           }
@@ -1189,10 +1183,7 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
   private readonly _onRowKeydown = (event: KeyboardEvent) => {
     if (event.isComposing || event.ctrlKey || event.metaKey) return;
     const here = this._rowButtonOf(event.composedPath()[0]);
-    if (!here) {
-      this._onOpenedKeydown(event);
-      return;
-    }
+    if (!here) return;
     const consume = () => {
       event.preventDefault();
       event.stopPropagation();
@@ -1237,32 +1228,154 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
     }
   };
 
-  /**
-   * Keys from inside what a row button opened in the toolbar — its menu, the
-   * templates panel. Tab moves through their controls the browser's way, out
-   * of the canvas's reach (ADR 0054); Escape is `_onOpenedEscape`'s.
-   */
-  private _onOpenedKeydown(event: KeyboardEvent) {
-    if (event.key === 'Tab') event.stopPropagation();
+  /** What the row opened and is still open: the popper's menu, or a panel. */
+  private _openedMenu(): HTMLElement | null {
+    const popper = this.activePopper?.element;
+    if (popper?.isConnected) return popper;
+    if (!this._isOpen()) return null;
+    const last = this._opened?.root.lastElementChild;
+    return last instanceof HTMLElement ? last : null;
   }
 
   /**
-   * Escape from inside what a row button opened, caught on the way down: the
-   * templates panel stops every keydown that bubbles out of it.
+   * The menu model (#679 acceptance, ADR 0054): keys from inside what a row
+   * button opened, caught on the way down — the templates panel stops every
+   * keydown that bubbles out of it, and a menu's own handlers must not see a
+   * key the model takes.
+   *
+   * Escape closes it and gives its button the focus back. While the keyboard
+   * holds the menu (a keyboard press opened it), the arrows walk the controls
+   * of a group (`menuGroups`), Home / End go to its ends, Tab / Shift+Tab move
+   * to the next / previous group and, past the last or the first, close the
+   * menu and give its button the focus back; Enter / Space press the control
+   * as a click does. In a widget with its own keys (the colour grid, the
+   * slider) only Tab and Escape are the model's. A menu the mouse opened
+   * takes no key: the keyboard owner is cleared by any pointer press.
    */
-  private readonly _onOpenedEscape = (event: KeyboardEvent) => {
-    if (event.key !== 'Escape' || event.isComposing) return;
+  private readonly _onMenuKeydown = (event: KeyboardEvent) => {
+    if (event.isComposing || event.ctrlKey || event.metaKey || event.altKey) {
+      return;
+    }
     const path = event.composedPath();
     if (this._rowButtonOf(path[0])) return;
-    const popper = this.activePopper;
-    const inPopper = !!popper && path.includes(popper.element);
-    const inOpened =
-      this._isOpen() && path.some(node => node === this._opened?.root);
-    if (!inPopper && !inOpened) return;
-    event.preventDefault();
-    event.stopPropagation();
-    this._escape();
+    const menu = this._openedMenu();
+    if (!menu || !path.includes(menu)) return;
+    const consume = () => {
+      event.preventDefault();
+      event.stopPropagation();
+    };
+    if (event.key === 'Escape') {
+      consume();
+      this._escape();
+      return;
+    }
+    if (!this._keyboardOwner) return;
+    const target = path[0];
+    const groups = menuGroups(menu);
+    const at = groups.findIndex(group =>
+      group.controls.some(control => control === target)
+    );
+    if (at < 0) {
+      // A field of a panel (the templates' search): Tab is the browser's,
+      // out of the canvas's reach.
+      if (event.key === 'Tab') event.stopPropagation();
+      return;
+    }
+    const group = groups[at];
+    const controls = group.controls;
+    const here = controls.indexOf(target as HTMLElement);
+    // A key a widget handles itself (a width on the slider, a colour) can
+    // change the selection too: the focus stays on the control (`_kept`).
+    this._kept = controls[here];
+    switch (event.key) {
+      case 'Tab': {
+        consume();
+        const next = groups[at + (event.shiftKey ? -1 : 1)];
+        if (next) this._focusControl(groupEntry(next));
+        else this._escape();
+        return;
+      }
+      case 'ArrowLeft':
+      case 'ArrowUp':
+      case 'ArrowRight':
+      case 'ArrowDown': {
+        if (group.own) return;
+        consume();
+        const dir =
+          event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1;
+        const length = controls.length;
+        this._focusControl(controls[(here + dir + length) % length]);
+        return;
+      }
+      case 'Home':
+      case 'End':
+        if (group.own) return;
+        consume();
+        this._focusControl(
+          controls[event.key === 'Home' ? 0 : controls.length - 1]
+        );
+        return;
+      case 'Enter':
+      case ' ':
+        if (group.own) return;
+        consume();
+        if (event.repeat) return;
+        this._pressKey = event.key;
+        this._pressMenuControl(menu, controls[here]);
+        return;
+    }
   };
+
+  /** Put the keyboard on a control of the open menu. */
+  private _focusControl(control: HTMLElement) {
+    // A button host takes the focus only with a `tabindex`; -1 keeps it out
+    // of the page's Tab order, which the menu model owns.
+    if (!control.hasAttribute('tabindex'))
+      control.setAttribute('tabindex', '-1');
+    const menu = this._openedMenu();
+    // One current command: the sub-menu's highlight follows the focus.
+    if (menu instanceof EdgelessCommandMenu) menu.point(control);
+    this._kept = control;
+    control.focus();
+  }
+
+  /**
+   * Enter or Space on a control of the menu: pressed as a pointer presses it.
+   * A press that picks a tool or runs a framework's command is done with the
+   * menu: it closes and the canvas gets its keys back, as after picking a tool
+   * on the row. An option (a shape type, a colour, a width) keeps the menu
+   * open and the focus on the control.
+   */
+  private _pressMenuControl(menu: HTMLElement, control: HTMLElement) {
+    const tool = this.gfx.tool.currentToolName$.peek();
+    this._kept = control;
+    this._pressLikePointer(control);
+    const done =
+      menu instanceof EdgelessCommandMenu ||
+      !control.isConnected ||
+      this._openedMenu() !== menu ||
+      this.gfx.tool.currentToolName$.peek() !== tool;
+    if (!done) return;
+    if (this.activePopper?.element === menu) {
+      this.activePopper.dispose();
+      this.activePopper = null;
+    }
+    this._focusCanvas();
+  }
+
+  /**
+   * After a keyboard press opened a menu: the keyboard goes into it, on its
+   * first control, once the menu and the widgets in it have drawn.
+   */
+  private async _enterMenu() {
+    const menu = this._openedMenu();
+    if (!menu) return;
+    await (menu as Partial<ReactiveElement>).updateComplete;
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    if (this._openedMenu() !== menu || !this._keyboardOwner) return;
+    const first = menuGroups(menu)[0];
+    if (first) this._focusControl(groupEntry(first));
+  }
 
   private readonly _onRowFocusIn = (event: FocusEvent) => {
     const here = this._rowButtonOf(event.composedPath()[0]);
@@ -1354,10 +1467,11 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
   /**
    * Press the focused button as a pointer would (`_pressLikePointer`).
    * Whatever the press opens from the button — a framework's sub-menu, a
-   * tool's options, the templates panel — keeps the focus on the button:
-   * Escape closes it and gives the focus back, Tab reaches its controls that
-   * take focus. A press that only picks a tool gives the canvas the keyboard
-   * back; anything else (undo, the layers pane, a text) leaves it here.
+   * tool's options — takes the keyboard on its first control (`_enterMenu`,
+   * then the menu model of `_onMenuKeydown`); Escape closes it and gives the
+   * button the focus back. A press that only picks a tool gives the canvas
+   * the keyboard back; anything else (undo, the layers pane, a text) leaves
+   * it here.
    */
   private _press(button: HTMLElement) {
     const menu = this.activePopper?.element;
@@ -1376,9 +1490,11 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
     const grew = root instanceof ShadowRoot && root.childElementCount > count;
     this._opened = grew ? { button, root, count } : null;
     const popped = this.activePopper !== null && this.activePopper !== popper;
-    if (!popped && !grew && this.gfx.tool.currentToolName$.peek() !== tool) {
-      this._focusCanvas();
+    if (popped || grew) {
+      this._enterMenu().catch(console.error);
+      return;
     }
+    if (this.gfx.tool.currentToolName$.peek() !== tool) this._focusCanvas();
   }
 
   /**
@@ -1566,20 +1682,17 @@ function deepActiveElement(): Element | null {
 }
 
 /**
- * A pager arrow's tooltip: the senior tool it brings in. Keyed by that name
- * because a tooltip shows a copy of its content taken when the pointer came
- * in: after a page turn under a still pointer, the arrow went on showing the
- * tool it had just brought in (#679). A new name is a new tooltip, and the old
- * one leaves with its popup.
+ * A pager arrow's tooltip: the arrow's own name, as on every other button.
+ * It used to announce the senior tool the arrow brings in, rebuilt at each
+ * page turn; a rebuilt tooltip shows at once under a pointer resting on the
+ * arrow (`affine-tooltip` reads `:hover` when it wires its reference), so
+ * after a click the arrow showed a tool's name it did not stand for (#679,
+ * criterion 5, seen with a real mouse in the acceptance).
  */
 function pagerTooltip(label: string) {
-  if (!label) return nothing;
-  return keyed(
-    label,
-    html`<affine-tooltip tip-position="top" .offset=${4}>
-      ${label}
-    </affine-tooltip>`
-  );
+  return html`<affine-tooltip tip-position="top" .offset=${4}>
+    ${label}
+  </affine-tooltip>`;
 }
 
 /**

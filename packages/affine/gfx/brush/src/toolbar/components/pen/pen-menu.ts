@@ -130,6 +130,7 @@ export class EdgelessPenMenu extends EdgelessToolbarToolMixin(
         <div class="pens" slot="prefix">
           <edgeless-tool-icon-button
             class="edgeless-brush-button"
+            .label=${translateKey(this.edgeless.std, ...penTipWording('brush'))}
             .tooltip=${html`<affine-tooltip-content-with-shortcut
               data-tip="${translateKey(
                 this.edgeless.std,
@@ -152,6 +153,10 @@ export class EdgelessPenMenu extends EdgelessToolbarToolMixin(
 
           <edgeless-tool-icon-button
             class="edgeless-highlighter-button"
+            .label=${translateKey(
+              this.edgeless.std,
+              ...penTipWording('highlighter')
+            )}
             .tooltip=${html`<affine-tooltip-content-with-shortcut
               data-tip="${translateKey(
                 this.edgeless.std,

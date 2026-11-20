@@ -53,12 +53,25 @@ const CONTINUOUS_KEYS: Record<string, KeyMove | undefined> = Object.assign(
   } satisfies Record<string, KeyMove>
 );
 
+/** The keys a discrete slider answers: the index to step to from `here`. */
+const DISCRETE_KEYS: Record<
+  string,
+  ((here: number, last: number) => number) | undefined
+> = Object.assign(Object.create(null), {
+  ArrowRight: (here: number) => here + 1,
+  ArrowUp: (here: number) => here + 1,
+  ArrowLeft: (here: number) => here - 1,
+  ArrowDown: (here: number) => here - 1,
+  Home: () => 0,
+  End: (_here: number, last: number) => last,
+});
+
 /**
  * A slider over a few `points` (discrete: the line widths), or over any
  * value between `min` and `max` (continuous: the image crop's zoom). Both
- * emit `select` with the value under the pointer; the continuous one also
- * answers the arrow keys, Page Up/Down, Home and End, and exposes itself as
- * an ARIA slider labelled by its `tooltip`.
+ * emit `select` with the value under the pointer. Both expose themselves as
+ * an ARIA slider labelled by its `tooltip` and answer the arrow keys, Home
+ * and End; the continuous one also Page Up/Down.
  */
 @requiredProperties({
   range: PropTypes.of(
@@ -209,7 +222,12 @@ export class Slider extends WithDisposable(LitElement) {
 
   private readonly _onKeydown = (e: KeyboardEvent) => {
     const range = this.range;
-    if (this.disabled || !isContinuousRange(range)) return;
+    if (this.disabled) return;
+    if (isDiscreteRange(range)) {
+      this._onDiscreteKeydown(e, range.points);
+      return;
+    }
+    if (!isContinuousRange(range)) return;
     const move = CONTINUOUS_KEYS[e.key];
     if (!move) return;
     // The editor would otherwise move the selection or the caret.
@@ -219,6 +237,22 @@ export class Slider extends WithDisposable(LitElement) {
       snapContinuous(range, move(this.value, continuousStep(range), range))
     );
   };
+
+  /**
+   * The discrete slider's keys (the line widths, #679 acceptance): the arrows
+   * step to the next or previous point, Home and End to the ends, as the
+   * continuous one does along its track.
+   */
+  private _onDiscreteKeydown(e: KeyboardEvent, points: number[]) {
+    const last = points.length - 1;
+    const here = Math.max(points.indexOf(this.value), 0);
+    const next = DISCRETE_KEYS[e.key]?.(here, last);
+    if (next === undefined) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const value = points[clamp(next, 0, last)];
+    if (value !== undefined && value !== this.value) this._onSelect(value);
+  }
 
   override connectedCallback() {
     super.connectedCallback();
@@ -280,7 +314,16 @@ export class Slider extends WithDisposable(LitElement) {
   override render() {
     const range = this.range;
     if (isContinuousRange(range)) return this._renderContinuous(range);
-    return html`<div class="slider-container">
+    return html`<div
+      class="slider-container"
+      role="slider"
+      tabindex=${this.disabled ? -1 : 0}
+      aria-label=${this.tooltip ?? nothing}
+      aria-valuemin=${range.points[0] ?? nothing}
+      aria-valuemax=${range.points[range.points.length - 1] ?? nothing}
+      aria-valuenow=${this.value}
+      aria-disabled=${this.disabled ? 'true' : 'false'}
+    >
       ${repeat(
         range.points,
         w => w,

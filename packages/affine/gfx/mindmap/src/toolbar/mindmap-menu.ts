@@ -117,6 +117,12 @@ export class EdgelessMindmapMenu extends EdgelessToolbarToolMixin(
     .mindmap-item:hover {
       background: var(--affine-hover-color);
     }
+    .text-item > button:focus-visible,
+    .media-item > button:focus-visible,
+    .mindmap-item > button:focus-visible {
+      outline: 2px solid var(--affine-primary-color);
+      outline-offset: -2px;
+    }
     .text-item > button.next,
     .media-item > button.next,
     .mindmap-item > button.next {
@@ -148,6 +154,7 @@ export class EdgelessMindmapMenu extends EdgelessToolbarToolMixin(
       <button
         style="opacity: ${isBeingDragged ? 0 : 1}"
         class="next"
+        aria-label=${translateKey(this.std, ...MINDMAP_IMPORT_TOOLTIP)}
         @mousedown=${(e: MouseEvent) => {
           this.draggableController.onMouseDown(e, {
             preview: importMindMapIcon,
@@ -305,6 +312,10 @@ export class EdgelessMindmapMenu extends EdgelessToolbarToolMixin(
                 : nothing}
               <button
                 style="opacity: ${isDraggingMedia ? 0 : 1}"
+                aria-label=${translateKey(
+                  this.std,
+                  ...MINDMAP_ADD_MEDIA_TOOLTIP
+                )}
                 @mousedown=${(e: MouseEvent) =>
                   this.draggableController.onMouseDown(e, {
                     preview: mediaItem.icon,
@@ -339,6 +350,10 @@ export class EdgelessMindmapMenu extends EdgelessToolbarToolMixin(
                 : nothing}
               <button
                 style="opacity: ${isDraggingText ? 0 : 1}"
+                aria-label=${translateKey(
+                  this.std,
+                  ...MINDMAP_EDGELESS_TEXT_TOOLTIP
+                )}
                 @mousedown=${(e: MouseEvent) =>
                   this.draggableController.onMouseDown(e, {
                     preview: textItem.icon,
@@ -387,6 +402,7 @@ export class EdgelessMindmapMenu extends EdgelessToolbarToolMixin(
                     : nothing}
                   <button
                     style="opacity: ${isBeingDragged ? 0 : 1}"
+                    aria-label=${translateKey(this.std, ...MINDMAP_TOOLTIP)}
                     @mousedown=${(e: MouseEvent) => {
                       this.draggableController.onMouseDown(e, {
                         preview: mindMap.icon,
