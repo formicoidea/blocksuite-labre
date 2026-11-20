@@ -53,11 +53,11 @@ export class CitationService extends Extension implements CitationViewService {
   }
 
   get docModeService() {
-    return this.std.getOptional(DocModeProvider);
+    return this.std.getOptional(DocModeProvider) ?? null;
   }
 
   get telemetryService() {
-    return this.std.getOptional(TelemetryProvider);
+    return this.std.getOptional(TelemetryProvider) ?? null;
   }
 
   isCitationModel = (model: BlockModel) => {

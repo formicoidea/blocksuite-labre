@@ -189,7 +189,7 @@ export abstract class DataSourceBase implements DataSource {
   }
 
   serviceGet<T>(key: GeneralServiceIdentifier<T>): T | null {
-    return this.provider.getOptional(key);
+    return this.provider.getOptional(key) ?? null;
   }
 
   serviceSet<T>(key: GeneralServiceIdentifier<T>, value: T): void {

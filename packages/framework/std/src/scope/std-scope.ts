@@ -142,7 +142,12 @@ export class BlockStdScope {
   }
 
   getView(flavour: string) {
-    return this.getOptional(BlockViewIdentifier(flavour));
+    // The DI answers `undefined` for a missing view despite its `| null`
+    // type; a host testing `!== null` must see the null it was promised (#682).
+    // ponytail: converted per caller; the fix belongs in ServiceProvider.getOptional, after
+    // its toBeDefined() ADR 0009 guards (interchange-gating, reversed-contract-doc, artefact-
+    // catalogue, uml*) and the undefined pins (database-render-gating, reading-proposal) change.
+    return this.getOptional(BlockViewIdentifier(flavour)) ?? null;
   }
 
   mount() {

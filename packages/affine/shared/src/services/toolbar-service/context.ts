@@ -280,7 +280,7 @@ abstract class ToolbarContextBase {
   }
 
   get telemetryProvider() {
-    return this.std.getOptional(TelemetryProvider);
+    return this.std.getOptional(TelemetryProvider) ?? null;
   }
 
   track = (...[name, props]: Parameters<TelemetryService['track']>) => {

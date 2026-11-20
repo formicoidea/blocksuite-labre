@@ -137,7 +137,7 @@ export class DefaultTool extends BaseTool {
   }
 
   get interactivity() {
-    return this.std.getOptional(InteractivityIdentifier);
+    return this.std.getOptional(InteractivityIdentifier) ?? null;
   }
 
   private async _cloneContent() {
