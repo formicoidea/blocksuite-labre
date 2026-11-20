@@ -27,5 +27,5 @@ defaults to `undefined` instead of `false`. The pen's senior tool declares the
 `com.labre.edgeless-toolbar.previous-tools` ("Previous tools") and
 `com.labre.edgeless-toolbar.next-tools` ("Next tools"). The element (contextual)
 toolbar, which also draws the page view's formatting toolbar, is 40px tall
-border included (`box-sizing: border-box`), instead of a 36px content box that
-measured 37px; the code block's bar keeps its size.
+border included (`box-sizing: border-box`), instead of a 36px content box plus its
+border (measured 37 to 38px depending on the browser, in 4.0.0 and before); the code block's bar keeps its size.

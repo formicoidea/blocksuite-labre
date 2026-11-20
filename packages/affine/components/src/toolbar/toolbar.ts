@@ -14,8 +14,9 @@ export class EditorToolbar extends WithDisposable(LitElement) {
          widget spends its entries — icon only first, then into the "⋮" menu —
          rather than growing a second row (PO arbitration of 02/08/2026).
          40px OUTSIDE, the border inside it: a step of the shell's control
-         heights (28, 32, 40). The content box with its 0.5px border measured
-         37px, on no step at all (#679, DESIGN.md "Editor Toolbar"). */
+         heights (28, 32, 40). In 4.0.0 and before, a 36px content box plus
+         the border, measured 37 to 38px depending on the browser: on no
+         step at all (#679, DESIGN.md "Editor Toolbar"). */
       height: 40px;
       box-sizing: border-box;
       flex-wrap: nowrap;

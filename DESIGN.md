@@ -327,7 +327,7 @@ The main control. Compact and transparent at rest; it responds to the pointer bu
 
 The floating selection toolbar.
 
-- **Shape:** 8px corners, 0.5px inside border (`layer/insideBorder/border`), 0 6px padding, exactly 40px tall border included (`box-sizing: border-box`): a step of the shell's control heights, 28, 32 or 40px. Until 4.0 it was a 36px content box, which the border made 37px measured (#679). The code block's compact bar keeps its own content box.
+- **Shape:** 8px corners, 0.5px inside border (`layer/insideBorder/border`), 0 6px padding, exactly 40px tall border included (`box-sizing: border-box`): a step of the shell's control heights, 28, 32 or 40px. In 4.0.0 and before it was a 36px content box plus the border, measured 37 to 38px depending on the browser (#679). The code block's compact bar keeps its own content box.
 - **Background / Shadow:** overlay panel background (`layer/background/overlayPanel`) with the Overlay shadow. A `data-without-bg` variant drops the border, background and shadow.
 - **Content:** entries 8px apart at natural width, never squeezed; overflow goes into a "⋮" menu (see The One-Row Rule).
 - **Theming:** the toolbar sets its own light/dark variables from the upstream `combinedLight/DarkCssVariables`, so it renders correctly even when portalled outside the themed tree.

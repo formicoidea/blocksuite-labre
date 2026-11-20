@@ -13,9 +13,10 @@ import { addNote, getDocRootBlock } from '../utils/edgeless.js';
 import { setupEditor } from '../utils/setup.js';
 
 /**
- * #679 (design audit P2-20): the element toolbar measured 37px — a 36px
- * content box plus its 0.5px border on each side, which this suite's Chromium
- * rounds to 38px — a height on none of the shell's control steps (28, 32, 40).
+ * #679 (design audit P2-20): in 4.0.0 and before the element toolbar was a
+ * 36px content box plus its 0.5px border on each side, measured 37 to 38px
+ * depending on the browser (38px in this suite's Chromium) — a height on none
+ * of the shell's control steps (28, 32, 40).
  * It is 40px OUTSIDE, border included, still one row (DESIGN.md "Editor
  * Toolbar").
  *
