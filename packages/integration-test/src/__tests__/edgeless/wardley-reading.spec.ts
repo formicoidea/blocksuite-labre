@@ -696,9 +696,9 @@ describe('the reversed reading of a Wardley component', () => {
         | null;
       expect(smooth).not.toBeNull();
 
-      // Same family of chrome, same corner — the reasoning that took
-      // `edgeless-slide-menu` from 8 to 16 in #199, applied to the panel that
-      // floats over the very same bar.
+      // The panel floats over the bar and wears the bar's own corner. The
+      // slide-out menu is not a precedent here: it went back to 8px on the
+      // product owner's decision of 2026-11-20 (`slide-menu-radius.unit.spec.ts`).
       expect(getComputedStyle(panel()!).borderTopLeftRadius).toBe(
         `${smooth!.borderRadius}px`
       );
