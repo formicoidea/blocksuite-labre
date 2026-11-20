@@ -93,9 +93,15 @@ The toolbar takes real DOM focus, on the APG toolbar pattern.
    pointer presses), a focus that drops to the body — a pane or a menu closing
    on its own Escape, a text editor leaving, the row re-dealt under a resize —
    is given back to the row button the keyboard stood on, to the row's stop
-   if that button is gone, to the canvas if the row is. A frame-by-frame
-   watch does it, only in that state, since a focused element that is removed
-   fires no event. A page that lost the focus to the browser is left alone.
+   if that button is gone, to the canvas if the row is. A `focusout` with no
+   `relatedTarget` triggers one look a frame later, only in that state:
+   Chromium fires it when the focused element is removed (checked in the
+   second review of #679); no frame runs while the focus rests. A page that
+   lost the focus to the browser is left alone. Not covered: switching the
+   editor between page and canvas replaces the whole host, and the focus
+   ends on the body both ways — as it does on the base from the canvas
+   (`d1ae67217`, measured in the second review); the row cannot hand back a
+   focus whose editor is gone.
 8. **The pager arrows are not Tab or arrow stops.** The arrows page the row as
    they walk, so every senior tool is reachable without them; they keep their
    names ("Previous tools", "Next tools") and stay clickable.
@@ -136,3 +142,11 @@ The toolbar takes real DOM focus, on the APG toolbar pattern.
   selected shape): the product owner's rule.
 - On a read-only document the toolbar draws nothing, so there is nothing to
   reach (ADR 0051).
+- **Known limits.** (1) "More Tools" opened with the mouse at a narrow
+  width puts the focus in its menu's search field; Escape closes it and the
+  focus ends on the body, so the canvas loses the arrows and Space until a
+  click. The base does the same (`d1ae67217`); the menu is `popMenu`'s, the
+  keyboard path through the row gives the focus back. (2) The focus watch of
+  §7 relies on `focusout` at removal; a browser that does not fire it leaves
+  those cases on the body, as before this decision. Chromium is the only
+  browser the integration suite runs.

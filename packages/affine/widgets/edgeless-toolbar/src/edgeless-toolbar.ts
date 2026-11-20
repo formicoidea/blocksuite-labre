@@ -50,7 +50,10 @@ import { literal, unsafeStatic } from 'lit/static-html.js';
 import debounce from 'lodash-es/debounce';
 import { Subject } from 'rxjs';
 
-import { EdgelessToolIconButton } from './button/tool-icon-button.js';
+import {
+  EdgelessToolIconButton,
+  TOOLBAR_ROW_STATE_EVENT,
+} from './button/tool-icon-button.js';
 import {
   edgelessToolbarContext,
   type EdgelessToolbarSlots,
@@ -446,6 +449,13 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
    * focus on the editor host, the nearest focusable ancestor: that is still
    * where it goes, so after a click every key is the canvas's, as it was, and
    * no ring shows under the mouse.
+   *
+   * Needed, not belt and braces: a click that changes the tool or the
+   * selection sends the focus to the host anyway (`RangeBinding`), but one
+   * that changes neither — the layers pane, Add file, Undo with nothing to
+   * undo — would leave it on the button, which then took the arrows, Enter
+   * and Space from the canvas (second review of #679; held by "after a click that moves
+   * neither the tool nor the selection" in `edgeless-toolbar-keyboard.spec`).
    */
   private readonly _onContainerMouseDown = (event: MouseEvent) => {
     stopPropagation(event);
@@ -806,14 +816,30 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
       },
       { capture: true }
     );
-    // The next key ends what a keyboard press kept (`_keepFocus`); the row's
-    // own handlers, further down, keep it again for the press they make.
+    // A new key ends what the last keyboard press kept (`_kept`) and the wait
+    // for its release (`_pressKey`): a release lost to a native dialog the
+    // press opened (a file picker) must not swallow the next Space's release
+    // on the canvas, which would leave its pan stuck. The row's own handlers,
+    // further down, set both again for the press they make.
     this.disposables.addFromEvent(
       document,
       'keydown',
       (event: KeyboardEvent) => {
-        if (!event.repeat) this._kept = null;
+        if (event.repeat) return;
+        this._kept = null;
+        this._pressKey = null;
       },
+      { capture: true }
+    );
+    this.disposables.addFromEvent(
+      this.renderRoot,
+      TOOLBAR_ROW_STATE_EVENT,
+      this._onRowStateChange
+    );
+    this.disposables.addFromEvent(
+      document,
+      'focusout',
+      this._onDocumentFocusOut,
       { capture: true }
     );
     // The key that pressed a row button is released after the press: its keyup
@@ -1097,14 +1123,11 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
    */
   private _keyboardOwner: HTMLElement | null = null;
 
-  /** The frame request of the watch on that owner's focus, `0` for none. */
+  /** The frame request of the look at the focus after a `focusout`, `0` for none. */
   private _focusWatch = 0;
 
   private _setKeyboardOwner(owner: HTMLElement | null) {
     this._keyboardOwner = owner;
-    if (owner && !this._focusWatch) {
-      this._focusWatch = requestAnimationFrame(this._watchFocus);
-    }
     if (!owner && this._focusWatch) {
       cancelAnimationFrame(this._focusWatch);
       this._focusWatch = 0;
@@ -1112,21 +1135,26 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
   }
 
   /**
-   * A frame-by-frame look at the focus, only while the keyboard came from the
-   * row. What drops the focus to the body — a menu or a pane closing on its
-   * own Escape, the row re-dealt under a resize, a text editor leaving — often
-   * fires no event: the focused element is just removed. A page that lost the
-   * focus to the browser (Tab past its last stop) is left alone.
+   * The focus leaving for nothing (`focusout` with no `relatedTarget`) while
+   * the keyboard came from the row. What drops it to the body — a menu or a
+   * pane closing on its own Escape, the row re-dealt under a resize, a text
+   * editor leaving — removes the focused element, which Chromium reports with
+   * a `focusout` (checked in the second review of #679). One look, a frame
+   * later, once the focus has settled; no frame runs while it rests.
    */
+  private readonly _onDocumentFocusOut = (event: FocusEvent) => {
+    if (!this._keyboardOwner || event.relatedTarget || this._focusWatch) return;
+    this._focusWatch = requestAnimationFrame(this._watchFocus);
+  };
+
+  /** A page that lost the focus to the browser (Tab past its last stop) is left alone. */
   private readonly _watchFocus = () => {
     this._focusWatch = 0;
     if (!this._keyboardOwner || !this.isConnected) return;
     const active = document.activeElement;
     if (document.hasFocus() && (!active || active === document.body)) {
       this._restoreKeyboard().catch(console.error);
-      return;
     }
-    this._focusWatch = requestAnimationFrame(this._watchFocus);
   };
 
   private async _restoreKeyboard() {
@@ -1254,7 +1282,7 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
   };
 
   /**
-   * A tool's state changed (`toolbarRowStateEvent`): while the keyboard is
+   * A tool's state changed (`TOOLBAR_ROW_STATE_EVENT`): while the keyboard is
    * elsewhere, the row's stop follows the active tool.
    */
   private readonly _onRowStateChange = () => {
@@ -1343,7 +1371,7 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
     const popper = this.activePopper;
     const root = button.getRootNode();
     const count = root instanceof ShadowRoot ? root.childElementCount : 0;
-    this._keepFocus(button);
+    this._kept = button;
     if (!this._pressLikePointer(button)) return;
     const grew = root instanceof ShadowRoot && root.childElementCount > count;
     this._opened = grew ? { button, root, count } : null;
@@ -1353,21 +1381,17 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
     }
   }
 
-  /** The row button a keyboard press keeps the focus on (`_keepFocus`). */
-  private _kept: HTMLElement | null = null;
-
   /**
-   * A press changes the selection, and `RangeBinding` (`framework/std`)
-   * answers a selection with no text in it by focusing the editor host — at
-   * once, or up to a hundred milliseconds later through the store's selection
-   * — which took the keyboard off the row as soon as a pointer had left a
-   * selection on the canvas (#679, B4). Until the next key or pointer press,
-   * a focus landing on the host goes back to the button; `_focusCanvas`, or
-   * the focus leaving the editor, ends that at once.
+   * The row button a keyboard press keeps the focus on. A press changes the
+   * selection, and `RangeBinding` (`framework/std`) answers a selection with
+   * no text in it by focusing the editor host — at once, or up to a hundred
+   * milliseconds later through the store's selection — which took the
+   * keyboard off the row as soon as a pointer had left a selection on the
+   * canvas (#679, B4). Until the next key or pointer press, a focus landing
+   * on the host goes back to the button; `_focusCanvas`, or the focus
+   * leaving the editor, ends that at once.
    */
-  private _keepFocus(button: HTMLElement) {
-    this._kept = button;
-  }
+  private _kept: HTMLElement | null = null;
 
   /**
    * Escape closes what the row opened and gives its button the focus back;
@@ -1380,7 +1404,7 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
       popper.dispose();
       this.activePopper = null;
       if (owner?.isConnected) {
-        this._keepFocus(owner);
+        this._kept = owner;
         this._focusStop(owner);
       }
       return;
@@ -1389,7 +1413,7 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
     if (opened && this._isOpen() && opened.button.isConnected) {
       // Closed the way it opened: its button toggles it.
       this._opened = null;
-      this._keepFocus(opened.button);
+      this._kept = opened.button;
       this._pressLikePointer(opened.button);
       this._focusStop(opened.button);
       return;
@@ -1459,7 +1483,6 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
               @keydown=${this._onRowKeydown}
               @focusin=${this._onRowFocusIn}
               @focusout=${this._onRowFocusOut}
-              @toolbar-row-state=${this._onRowStateChange}
               data-dense-quick=${this._denseQuickTools &&
               this._hiddenQuickTools.length > 0}
               data-dense-senior=${this._denseSeniorTools}

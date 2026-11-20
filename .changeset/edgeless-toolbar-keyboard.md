@@ -15,6 +15,8 @@ exactly as a click does (once, even when held), Escape closes what the button
 opened and gives it the focus back, or gives the canvas the keyboard. Every
 other key (Delete, letters, shortcuts) still reaches the canvas. A mouse click
 never puts the focus on a button, so after a click every key is the canvas's,
-as before. Picking a tool gives the canvas the keyboard back. Keyboard focus
+as before. A press that only picks a tool (the eraser) gives the canvas the
+keyboard back; one that opens options or a menu (frame, curve, pen, note,
+shape, the frameworks, templates) keeps the focus on the button. Keyboard focus
 draws the same 2px ring as the Alt+←/→ highlight, which stays as a shortcut
 from the canvas.

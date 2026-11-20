@@ -126,6 +126,24 @@ describe('edgeless toolbar keyboard model', () => {
         () => false
       );
 
+  /**
+   * The pointer tool swaps Select and Hand behind its own 100ms animation:
+   * its icon fades out on the press and back in once the tool is swapped.
+   */
+  const pointerSettled = () =>
+    until(
+      () =>
+        deepQueryAll(
+          toolbar().shadowRoot!,
+          'edgeless-default-tool-button'
+        ).every(
+          button =>
+            (button as unknown as { currentIcon?: HTMLElement }).currentIcon
+              ?.style.opacity !== '0'
+        ),
+      'the pointer tool has swapped'
+    );
+
   /** Where the focus is, for a failure's message. */
   const where = () => {
     const chain: string[] = [];
@@ -463,6 +481,94 @@ describe('edgeless toolbar keyboard model', () => {
       expect(shape.elementBound.x).toBe(x + 1);
     });
 
+    /**
+     * Second review of #679: a click that changes neither the tool nor the
+     * selection (the layers pane, Add file, Undo with nothing to undo) leaves
+     * nothing else to move the focus off the button — no `RangeBinding`
+     * answer, no tool change. Only the row's own `mousedown`
+     * (`_onContainerMouseDown`) gives the canvas the keys back; without it,
+     * the arrows, Enter and Space were the toolbar's. Every button whose
+     * click is of that kind, read from what the row draws.
+     */
+    test(
+      'after a click that moves neither the tool nor the selection, the canvas has every key',
+      { timeout: 120_000 },
+      async () => {
+        const buttons = await everyButton();
+        const quiet: string[] = [];
+        const failures: string[] = [];
+        for (const [name, scroll] of buttons) {
+          await reset();
+          const shape = addShape();
+          select(shape.id);
+          // Nothing to undo: Undo is then a click of that kind too.
+          edgeless.store.resetHistory();
+          const before = tool();
+          await userEvent.click(await buttonNamed(name, scroll));
+          await pointerSettled();
+          await frames(3);
+          const selected = edgeless.gfx.selection.selectedIds;
+          const quietClick =
+            tool() === before &&
+            selected.length === 1 &&
+            selected[0] === shape.id;
+          if (!quietClick) continue;
+          quiet.push(name);
+          const x = shape.elementBound.x;
+          await press('{ArrowRight}');
+          if (shape.elementBound.x !== x + 1) {
+            failures.push(`${name}: → did not move the shape (${where()})`);
+          }
+          await press('{ArrowLeft}');
+          if (shape.elementBound.x !== x) {
+            failures.push(`${name}: ← did not move the shape (${where()})`);
+          }
+          await userEvent.keyboard('{ >}');
+          if (!(await holds(() => tool() === 'pan'))) {
+            failures.push(`${name}: Space did not pan (${where()})`);
+          }
+          await userEvent.keyboard('{/ }');
+          await until(() => tool() === before, 'Space released');
+        }
+        await reset();
+        expect(quiet).toContain('Selection pane');
+        expect(quiet).toContain('Undo');
+        expect(quiet).toContain('Add file');
+        expect(failures).toEqual([]);
+      }
+    );
+
+    /**
+     * Second review of #679: the row swallows the release of the key that
+     * pressed a button. A release lost to a native dialog the press opened (a
+     * file picker) left that wait standing, and the next Space released on the
+     * canvas was swallowed instead, its pan stuck.
+     */
+    test('a press whose key release is lost does not swallow the next Space release', async () => {
+      const undo = rowButtons().find(
+        button => button.getAttribute('aria-label') === 'Undo'
+      )!;
+      undo.focus();
+      // The keydown alone: its keyup never comes.
+      undo.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: ' ',
+          code: 'Space',
+          bubbles: true,
+          composed: true,
+          cancelable: true,
+        })
+      );
+      await userEvent.click(window.editor.host!, {
+        position: { x: 200, y: 200 },
+      });
+      expect(focusedButton()).toBeNull();
+      await userEvent.keyboard('{ >}');
+      await until(() => tool() === 'pan', 'Space held pans');
+      await userEvent.keyboard('{/ }');
+      await until(() => tool() === 'default', 'Space released ends the pan');
+    });
+
     test('after a real click on a pager arrow, the arrows move the shape', async () => {
       const arrow = toolbar().shadowRoot!.querySelector<HTMLElement>(
         '.senior-nav-button-wrapper.next icon-button'
@@ -668,9 +774,7 @@ describe('edgeless toolbar keyboard model', () => {
       picks: picks.length,
     };
     await pressIt();
-    // The pointer tool swaps Select and Hand behind its own 100ms animation,
-    // so the press is read once that has run.
-    await new Promise(resolve => setTimeout(resolve, 150));
+    await pointerSettled();
     await frames(3);
     return JSON.stringify({
       tool: tool(),
