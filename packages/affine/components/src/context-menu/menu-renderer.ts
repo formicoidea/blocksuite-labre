@@ -114,11 +114,14 @@ export class MenuComponent
 
     /* A panel capped at the window scrolls (fit-window.ts): the field it
        opens on (a shown search, a column's name) stays in view above the
-       list it filters or names. */
+       list it filters or names. Stuck over the panel's 8px top padding
+       (top: -8px), so no entry shows above it; the panel's own rounded
+       clip keeps the corners. The keyboard's highlight stops below it
+       (Menu.highlight). */
     affine-menu > .affine-menu-search-container,
     affine-menu > .affine-menu-body > .affine-menu-input-row:first-child {
       position: sticky;
-      top: 0;
+      top: -8px;
       z-index: 1;
       background-color: ${unsafeCSSVarV2('layer/background/overlayPanel')};
     }

@@ -14,22 +14,26 @@
  * - a menu taller than the room on its side running past the window instead
  *   of being capped there and scrolling inside itself, or its last entry
  *   unreachable by a real click;
- * - the arrows moving the highlight to an entry the panel does not show, or
- *   the column's name field scrolling away with the list;
+ * - the arrows, down or up, moving the highlight to an entry the panel does
+ *   not show, or hides under the name field row stuck at its top, or the
+ *   column's name field scrolling away with the list;
  * - a menu that fits capped and scrolling all the same;
  * - a capped panel scrolling by itself under the pointer: back to its top
  *   when a sub-menu closed (the name field, focused at opening, was scrolled
  *   to), or when a click landed in a margin (the hidden search field took
  *   the focus and was scrolled to);
  * - the tag selector of a select cell (its own popup) or the date picker
- *   of a date cell running past a short window.
+ *   of a date cell running past a short window, or the tag selector's arrows
+ *   selecting an option its list does not show;
+ * - a popup left open, or a short window left, for the next spec of the
+ *   suite, which shares one page.
  */
 import { DatabaseBlockDataSource } from '@labre/affine/blocks/database';
 import type { DatabaseBlockModel } from '@labre/affine/model';
 import type { ExtensionType, Store } from '@labre/store';
 import { Text } from '@labre/store';
 import { page, userEvent } from '@vitest/browser/context';
-import { afterAll, afterEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { deepQueryAll } from '../utils/deep-query.js';
 import { pointerMoveTo } from '../utils/pointer.js';
@@ -50,6 +54,10 @@ const PATIENCE_MS = 5000;
 const SETTLE_FRAMES = 6;
 /** Options of the select column: more than its 400px list shows. */
 const OPTION_COUNT = 24;
+/** Escapes enough for a name field, a menu and its sub-menu. */
+const MAX_ESCAPES = 4;
+/** Arrow presses that take the selection past what the capped list shows. */
+const OPTIONS_PAST_THE_LIST = 12;
 /** The middle of a box, for the pointer. */
 const CENTRE = 0.5;
 /** The column menu and the sub-menu its hovered entry opens. */
@@ -83,19 +91,22 @@ type Title = HTMLElement & { doc: Store; bodyBlockId: string | undefined };
 
 let cleanup: (() => void) | undefined;
 
-afterEach(() => {
-  // A popup left open keeps its Escape on the document: close it here.
-  [...document.querySelectorAll('affine-menu')].forEach(() =>
-    document.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'Escape', cancelable: true })
-    )
-  );
+/** Every popup a test here may open: menus, the tag selector, the date picker. */
+const openPopups = () => [
+  ...document.querySelectorAll('affine-menu'),
+  ...document.querySelectorAll('affine-multi-tag-select'),
+  ...deepQueryAll(document, 'date-picker'),
+];
+
+// Each test closes what it opened, by the reader's gesture; this holds it,
+// and gives the suite's shared page its frame back.
+afterEach(async () => {
+  const left = openPopups().map(popup => popup.tagName.toLowerCase());
   cleanup?.();
   cleanup = undefined;
-});
-
-afterAll(async () => {
   await page.viewport(FRAME_WIDTH, FRAME_HEIGHT);
+  expect(left, 'no popup left open').toEqual([]);
+  await until(() => expect(window.innerHeight).toBe(FRAME_HEIGHT));
 });
 
 /** A base of three rows on its full page, as a host mounts it. */
@@ -166,6 +177,19 @@ async function openHeaderMenu(header: HTMLElement) {
   });
 }
 
+/** Whether the reader sees `entry` itself at its centre (nothing over it). */
+function hitAtCentre(entry: HTMLElement) {
+  const box = entry.getBoundingClientRect();
+  const hit = document.elementFromPoint(
+    box.left + box.width * CENTRE,
+    box.top + box.height * CENTRE
+  );
+  return !!hit && entry.contains(hit);
+}
+
+const highlighted = (menu: HTMLElement) =>
+  menu.querySelector('.focused')?.closest<HTMLElement>('[data-focusable]');
+
 /** Whether `inner` is shown inside `outer` and inside the window. */
 function shownIn(inner: Element, outer: Element) {
   const box = inner.getBoundingClientRect();
@@ -214,20 +238,40 @@ describe('a column menu on a short base, in a short window', () => {
     const entries = [
       ...menu.querySelectorAll<HTMLElement>('[data-focusable="true"]'),
     ];
-    await userEvent.keyboard('{ArrowDown}'.repeat(entries.length));
+    // Down, one step at a time: each highlighted entry is wholly shown, and
+    // nothing (the name field row) covers it.
+    const list = entries.slice(1);
+    await list.reduce<Promise<void>>(async (previous, entry) => {
+      await previous;
+      await userEvent.keyboard('{ArrowDown}');
+      await until(() => expect(highlighted(menu)).toBe(entry));
+      expect(shownIn(entry, menu), `${entry.textContent} shown`).toBe(true);
+      expect(hitAtCentre(entry), `${entry.textContent} not covered`).toBe(true);
+    }, Promise.resolve());
     const last = entries.at(-1)!;
-    await until(() => {
-      expect(menu.querySelector('.focused')?.closest('[data-focusable]')).toBe(
-        last
-      );
-      expect(shownIn(last, menu), 'the highlighted entry is shown').toBe(true);
-    });
+    // The menu does not wrap: past the last entry, the highlight stays.
+    await userEvent.keyboard('{ArrowDown}');
+    await until(() => expect(highlighted(menu)).toBe(last));
     const nameField = menu.querySelector('affine-menu-input')!;
     expect(menu.scrollTop, 'scrolled to the last entry').toBeGreaterThan(0);
     expect(
       shownIn(nameField, menu),
       'the name field stays in view over the list'
     ).toBe(true);
+    // Up again to the first entry of the list, under the name field row.
+    await list
+      .slice(0, -1)
+      .reverse()
+      .reduce<Promise<void>>(async (previous, entry) => {
+        await previous;
+        await userEvent.keyboard('{ArrowUp}');
+        await until(() => expect(highlighted(menu)).toBe(entry));
+        expect(shownIn(entry, menu), `${entry.textContent} shown`).toBe(true);
+        expect(
+          hitAtCentre(entry),
+          `${entry.textContent} not under the name field row`
+        ).toBe(true);
+      }, Promise.resolve());
     await userEvent.keyboard('{Escape}');
     await until(() => expect(menus()).toHaveLength(0));
 
@@ -253,6 +297,7 @@ describe('a column menu on a short base, in a short window', () => {
     expect(menu.scrollHeight, 'no scroll').toBeLessThanOrEqual(
       menu.clientHeight
     );
+    await closeMenusByEscape();
   });
 
   test('does not scroll by itself when the pointer leaves a sub-menu for the next entry', async () => {
@@ -280,6 +325,7 @@ describe('a column menu on a short base, in a short window', () => {
     await pointerMoveTo('[data-probe="next"]', CENTRE, CENTRE);
     await settle();
     expect(menu.scrollTop, 'the panel did not move').toBe(scrolled);
+    await closeMenusByEscape();
   });
 
   test('does not scroll back to its top on a click in a margin', async () => {
@@ -299,8 +345,26 @@ describe('a column menu on a short base, in a short window', () => {
     await settle();
     expect(menus(), 'still open').toContain(menu);
     expect(menu.scrollTop, 'the panel did not move').toBe(scrolled);
+    await closeMenusByEscape();
   });
 });
+
+/**
+ * Escape, as the reader closes a menu: once to leave its name field, once
+ * per menu (a sub-menu over it).
+ */
+async function closeMenusByEscape() {
+  await Array.from({ length: MAX_ESCAPES }).reduce<Promise<void>>(
+    async previous => {
+      await previous;
+      if (!menus().length) return;
+      await userEvent.keyboard('{Escape}');
+      await settle();
+    },
+    Promise.resolve()
+  );
+  await until(() => expect(menus()).toHaveLength(0));
+}
 
 /** The height of the menu's name field row: scrolled past it, it is out of view. */
 function nameRowHeight(menu: HTMLElement) {
@@ -351,6 +415,29 @@ describe('the popups of a cell, in a short window', () => {
     expect(scroller!.contains(field), 'the field is not in the scroll').toBe(
       false
     );
+
+    // The arrows bring the selected option wholly into the list's view,
+    // down past what the list shows, and around from the first to the last.
+    const optionAt = () =>
+      scroller!.querySelector<HTMLElement>('[data-selected-option="true"]');
+    const followed = async (key: string) => {
+      await userEvent.keyboard(key);
+      await settle();
+      const option = optionAt();
+      expect(option, 'a selected option').toBeTruthy();
+      expect(shownIn(option!, scroller!), `${key}: shown`).toBe(true);
+      expect(hitAtCentre(option!), `${key}: not covered`).toBe(true);
+    };
+    await Array.from({ length: OPTIONS_PAST_THE_LIST }).reduce<Promise<void>>(
+      async previous => {
+        await previous;
+        await followed('{ArrowDown}');
+      },
+      Promise.resolve()
+    );
+    expect(scroller!.scrollTop, 'the list scrolled down').toBeGreaterThan(0);
+    await userEvent.keyboard('{Escape}');
+    await until(() => expect(openPopups()).toHaveLength(0));
   });
 
   test('the date picker stays inside the window', async () => {
@@ -371,5 +458,8 @@ describe('the popups of a cell, in a short window', () => {
         window.innerHeight + EPSILON
       );
     });
+    // Closed by a click away, as the reader closes it.
+    await userEvent.click(document.body, { position: { x: 2, y: 2 } });
+    await until(() => expect(openPopups()).toHaveLength(0));
   });
 });

@@ -13,14 +13,20 @@
  * - a panel that fits carries no cap and no scroll, and loses them once it
  *   fits again (a larger window); a new placement keeps its scroll position;
  * - the keyboard's highlight scrolls the panel just enough to show the
- *   entry, and not at all when it shows.
+ *   entry, and not at all when it shows; what the panel shows starts below
+ *   a header stuck at its top (ArrowUp left the highlight under the name
+ *   field row), a header not laid out does not count.
  *
  * The geometry (a real short window, a real click on the last entry, a real
  * pointer over a sub-menu) is `database-menu-fits-viewport.spec.ts`.
  */
 import { describe, expect, test } from 'vitest';
 
-import { capToRoom, scrollDeltaToShow } from '../context-menu/fit-window.js';
+import {
+  capToRoom,
+  scrollDeltaToShow,
+  scrollViewOf,
+} from '../context-menu/fit-window.js';
 
 /** Content height of the panel under test. */
 const CONTENT = 460;
@@ -68,6 +74,8 @@ describe('a panel and the room on its side', () => {
 
 /** A panel shown from y 100 to 300, and entries around it. */
 const PANEL = { top: 100, bottom: 300 };
+/** Where a name field row stuck at the panel's top ends. */
+const STUCK_HEADER_BOTTOM = 140;
 const HIGHLIGHTS = [
   { where: 'shown', entry: { top: 120, bottom: 150 }, delta: 0 },
   { where: 'below the panel', entry: { top: 310, bottom: 340 }, delta: 40 },
@@ -81,4 +89,40 @@ describe('the keyboard highlight and the panel', () => {
       expect(scrollDeltaToShow(PANEL, entry)).toBe(delta);
     }
   );
+});
+
+/** A box whose client rect and height are given (no layout engine here). */
+function boxOf(top: number, bottom: number, laidOut = true) {
+  const element = document.createElement('div');
+  element.getBoundingClientRect = () =>
+    ({
+      top,
+      bottom,
+      left: 0,
+      right: 0,
+      width: 0,
+      height: bottom - top,
+    }) as DOMRect;
+  Object.defineProperty(element, 'offsetHeight', {
+    get: () => (laidOut ? bottom - top : 0),
+  });
+  Object.defineProperty(element, 'clientHeight', { get: () => bottom - top });
+  return element;
+}
+
+describe('what a scrolling panel shows', () => {
+  test('starts below the header stuck at its top', () => {
+    const panel = boxOf(PANEL.top, PANEL.bottom);
+    const header = boxOf(PANEL.top, STUCK_HEADER_BOTTOM);
+    expect(scrollViewOf(panel, [header])).toEqual({
+      top: STUCK_HEADER_BOTTOM,
+      bottom: PANEL.bottom,
+    });
+  });
+
+  test('ignores a header that is not laid out', () => {
+    const panel = boxOf(PANEL.top, PANEL.bottom);
+    const hidden = boxOf(PANEL.top, STUCK_HEADER_BOTTOM, false);
+    expect(scrollViewOf(panel, [hidden]).top).toBe(PANEL.top);
+  });
 });

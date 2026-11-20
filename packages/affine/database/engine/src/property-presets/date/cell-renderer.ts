@@ -1,6 +1,7 @@
 import {
   popMenu,
   popupTargetFromElement,
+  WINDOW_PADDING,
 } from '@labre/affine-components/context-menu';
 import { DatePicker } from '@labre/affine-components/date-picker';
 import { formatLocale } from '@labre/affine-shared/services';
@@ -20,9 +21,6 @@ import {
   dateValueContainerStyle,
 } from './cell-renderer-css.js';
 import { datePropertyModelConfig } from './define.js';
-
-/** The gap the date picker keeps to the window's edge. */
-const DATE_PICKER_WINDOW_PADDING = 8;
 
 export class DateCell extends BaseCellRenderer<number, number> {
   private _prevPortalAbortController: AbortController | null = null;
@@ -98,12 +96,16 @@ export class DateCell extends BaseCellRenderer<number, number> {
           placement: 'bottom',
           // Inside the window as far as a calendar can be (product owner:
           // no entry of a menu is ever unreachable): `flip` takes the side
-          // with room, `shift` on both axes keeps it from crossing an edge;
-          // a window shorter than the calendar still cuts its bottom.
+          // with room, `shift` on both axes keeps it from crossing an edge.
+          // ponytail: placed once, no `autoUpdate`; with no room on either
+          // side it covers the cell it edits, a scroll leaves it behind, and
+          // a window shorter than the calendar still cuts its bottom. Give
+          // the portal `autoUpdate` and a `size` that scrolls the calendar
+          // if a host's short window ever needs more.
           middleware: [
             offset(10),
             flip(),
-            shift({ padding: DATE_PICKER_WINDOW_PADDING, crossAxis: true }),
+            shift({ padding: WINDOW_PADDING, crossAxis: true }),
           ],
         },
         template: () => {

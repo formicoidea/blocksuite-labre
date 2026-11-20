@@ -2,9 +2,19 @@ import { IS_MOBILE } from '@labre/global/env';
 import { computed, signal } from '@preact/signals-core';
 import type { TemplateResult } from 'lit';
 
-import { scrollDeltaToShow } from './fit-window.js';
+import { scrollDeltaToShow, scrollViewOf } from './fit-window.js';
 import { MenuFocusable } from './focusable.js';
 import type { MenuComponentInterface } from './types.js';
+
+/**
+ * The headers a capped panel keeps stuck at its top while its list scrolls
+ * (`MenuComponent`'s sticky rule): a shown search, the name field row a
+ * menu opens on. A hidden search is absolutely placed, never sticky.
+ */
+const STICKY_HEADERS = [
+  ':scope > .affine-menu-search-container',
+  ':scope > .affine-menu-body > .affine-menu-input-row:first-child',
+].join(', ');
 
 export type MenuConfig = (
   menu: Menu,
@@ -159,8 +169,13 @@ export class Menu {
     if (!entry) return;
     entry.focus();
     const panel = this.menuElement;
+    const stuck = [
+      ...panel.querySelectorAll<HTMLElement>(STICKY_HEADERS),
+    ].filter(header => getComputedStyle(header).position === 'sticky');
+    // An entry inside a stuck header (the name field) is always in view.
+    if (stuck.some(header => header.contains(entry))) return;
     panel.scrollTop += scrollDeltaToShow(
-      panel.getBoundingClientRect(),
+      scrollViewOf(panel, stuck),
       entry.getBoundingClientRect()
     );
   }

@@ -4,6 +4,10 @@ import {
   popMenu,
   type PopupTarget,
   popupTargetFromElement,
+  capToRoom,
+  scrollDeltaToShow,
+  scrollViewOf,
+  WINDOW_PADDING,
 } from '@labre/affine-components/context-menu';
 import {
   type ChromeWording,
@@ -312,9 +316,11 @@ export class MultiTagSelect extends SignalWatcher(
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
       this.setSelectedOption(this.selectedIndex$.value - 1);
+      this.followSelected().catch(console.error);
     } else if (event.key === 'ArrowDown') {
       event.preventDefault();
       this.setSelectedOption(this.selectedIndex$.value + 1);
+      this.followSelected().catch(console.error);
     } else if (event.key === 'Escape') {
       this.onComplete();
     }
@@ -447,6 +453,7 @@ export class MultiTagSelect extends SignalWatcher(
                   ? sortable(select.id)
                   : nothing}
                 class="${classes}"
+                data-selected-option="${isSelected ? 'true' : 'false'}"
                 @mouseenter="${mouseenter}"
                 @click="${select.select}"
               >
@@ -480,6 +487,26 @@ export class MultiTagSelect extends SignalWatcher(
         )}
       </div>
     `;
+  }
+
+  /**
+   * The option the arrows selected, scrolled wholly into the list's view
+   * (capped at the window, the list scrolls: `fitOptionsToWindow`). Only
+   * from the keyboard: a hovered option is already under the pointer.
+   */
+  private async followSelected() {
+    await this.updateComplete;
+    const list = this.querySelector<HTMLElement>(
+      `.${selectOptionsContainerStyle}`
+    );
+    const selected = list?.querySelector<HTMLElement>(
+      '[data-selected-option="true"]'
+    );
+    if (!list || !selected) return;
+    list.scrollTop += scrollDeltaToShow(
+      scrollViewOf(list),
+      selected.getBoundingClientRect()
+    );
   }
 
   private setSelectedOption(index: number) {
@@ -671,9 +698,6 @@ export type TagSelectOptions = {
    */
   std?: BlockStdScope;
 } & TagManagerOptions;
-/** The gap the tag selector keeps to the window's edge. */
-const WINDOW_PADDING = 8;
-
 /**
  * The tag selector stays inside the window, every option reachable (product
  * owner's acceptance of the database work: no entry of a menu is ever
@@ -690,14 +714,12 @@ const fitOptionsToWindow = size({
       `.${selectOptionsContainerStyle}`
     );
     if (!list) return;
-    const scrolled = list.scrollTop;
+    // The list at the height its style allows (400px), measured bare.
     list.style.maxHeight = '';
-    const room = Math.floor(
-      availableHeight - (elements.floating.offsetHeight - list.offsetHeight)
-    );
-    if (list.offsetHeight <= room) return;
-    list.style.maxHeight = `${Math.max(0, room)}px`;
-    list.scrollTop = scrolled;
+    const styled = parseFloat(getComputedStyle(list).maxHeight);
+    const room =
+      availableHeight - (elements.floating.offsetHeight - list.offsetHeight);
+    capToRoom(list, Number.isNaN(styled) ? room : Math.min(room, styled));
   },
 });
 
