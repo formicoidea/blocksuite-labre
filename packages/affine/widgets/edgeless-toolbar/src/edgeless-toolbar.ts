@@ -800,14 +800,25 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
         this.clearHighlight();
         // A pointer press ends the keyboard's session in the row; the
         // toolbar's own press (`_pressLikePointer`) is the keyboard's.
-        if (!this._pressing) this._setKeyboardOwner(null);
+        if (this._pressing) return;
+        this._kept = null;
+        this._setKeyboardOwner(null);
+      },
+      { capture: true }
+    );
+    // The next key ends what a keyboard press kept (`_keepFocus`); the row's
+    // own handlers, further down, keep it again for the press they make.
+    this.disposables.addFromEvent(
+      document,
+      'keydown',
+      (event: KeyboardEvent) => {
+        if (!event.repeat) this._kept = null;
       },
       { capture: true }
     );
     // The key that pressed a row button is released after the press: its keyup
-    // belongs to that press. Stopped before anything the press opened sees it
-    // (the templates panel takes the focus into its search field, which acts
-    // on an Enter's keyup).
+    // belongs to that press. Stopped here, the canvas never sees a keyup whose
+    // keydown it did not get (a Space keyup there ends a pan).
     this.disposables.addFromEvent(
       document,
       'keyup',
@@ -849,6 +860,7 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
           // "More Tools" opens its menu in a portal outside the editor.
           !this._moreQuickToolsMenu
         ) {
+          this._kept = null;
           this._setKeyboardOwner(null);
         }
       },
@@ -1347,18 +1359,14 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
   /**
    * A press changes the selection, and `RangeBinding` (`framework/std`)
    * answers a selection with no text in it by focusing the editor host — at
-   * once, or once the tool has settled — which took the keyboard off the row
-   * as soon as a pointer had left a selection on the canvas (#679, B4). For
-   * the two frames after a keyboard press, a focus landing on the host goes
-   * back to the button; `_focusCanvas` ends that at once.
+   * once, or up to a hundred milliseconds later through the store's selection
+   * — which took the keyboard off the row as soon as a pointer had left a
+   * selection on the canvas (#679, B4). Until the next key or pointer press,
+   * a focus landing on the host goes back to the button; `_focusCanvas`, or
+   * the focus leaving the editor, ends that at once.
    */
   private _keepFocus(button: HTMLElement) {
     this._kept = button;
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        if (this._kept === button) this._kept = null;
-      })
-    );
   }
 
   /**

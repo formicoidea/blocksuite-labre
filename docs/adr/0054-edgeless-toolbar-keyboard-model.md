@@ -76,9 +76,10 @@ The toolbar takes real DOM focus, on the APG toolbar pattern.
    eraser) gives the canvas the keyboard back. Anything else (undo, the layers
    pane, a text, add a file) leaves the focus on the button. A press that
    changes the selection makes `RangeBinding` (`framework/std`) focus the
-   editor host whenever the selection holds no text; for the two frames after
-   a keyboard press or Escape, the toolbar sends a focus that lands on the
-   host back to the button, rather than changing `std`.
+   editor host whenever the selection holds no text, sometimes a hundred
+   milliseconds later; after a keyboard press or Escape, and until the next
+   key or pointer press, the toolbar sends a focus that lands on the host
+   back to the button, rather than changing `std`.
 6. **The canvas gives the toolbar the focus.** From the editor host, with no
    text being edited and no single mind map node selected, Tab moves the
    focus to the row's stop itself: the notes come before the toolbar in the

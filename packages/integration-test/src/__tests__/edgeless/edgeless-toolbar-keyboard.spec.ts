@@ -25,7 +25,6 @@ import {
   vi,
 } from 'vitest';
 
-import { wait } from '../utils/common.js';
 import { deepQueryAll } from '../utils/deep-query.js';
 import { addNote, getDocRootBlock } from '../utils/edgeless.js';
 import { setupEditor } from '../utils/setup.js';
@@ -879,17 +878,32 @@ describe('edgeless toolbar keyboard model', () => {
       });
       column.style.width = '380px';
       window.dispatchEvent(new Event('resize'));
-      const more = toolbar().shadowRoot!.querySelector<HTMLElement>(
-        '.quick-tool-more-button'
-      )!;
+      // Read again each time: the resize re-renders the row.
+      const moreButton = () =>
+        toolbar().shadowRoot!.querySelector<HTMLElement>(
+          '.quick-tool-more-button'
+        );
       await until(
-        () => !more.hasAttribute('disabled'),
+        () => moreButton()?.hasAttribute('disabled') === false,
         '"More Tools" holds tools'
       );
       await rowReady();
-      more.focus();
-      await press('{Enter}');
-      await until(() => !within(deepActive(), more), 'the menu takes focus');
+      await until(() => {
+        moreButton()!.focus();
+        return deepActive() === moreButton();
+      }, '"More Tools" takes the focus');
+      const more = moreButton()!;
+      // The row's resize handler is throttled (300ms, trailing): its trailing
+      // run can close, or close and reopen, a menu opened meanwhile, and the
+      // focus then stays on the button. Press again until the menu holds it.
+      await vi.waitFor(
+        async () => {
+          if (!within(deepActive(), more)) return;
+          await press('{Enter}');
+          throw new Error('the menu takes focus');
+        },
+        { timeout: 3000, interval: 400 }
+      );
       await press('{Escape}');
       await until(() => !onBody(), 'focus not on the body');
       expect(deepActive()).toBe(more);
@@ -952,7 +966,6 @@ describe('edgeless toolbar keyboard model', () => {
     await press('{Escape}');
     expect(toolbar().activePopper).toBeNull();
     expect(focusedButton()).toBe(frame);
-    await wait();
   });
 });
 
