@@ -1154,7 +1154,7 @@ model {
       link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/components
       metadata {
         path 'packages/affine/components'
-        files '143'
+        files '144'
       }
       block-selection = folder 'block-selection/' {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/components/src/block-selection
@@ -1202,7 +1202,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/components/src/context-menu
         metadata {
           path 'packages/affine/components/src/context-menu'
-          files '13'
+          files '14'
         }
       }
       date-picker = folder 'date-picker/' {
