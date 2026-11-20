@@ -359,7 +359,9 @@ const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, order) => ({
   // Keyless by intent — still bindable from Settings › Shortcuts, which is what
   // `toShortcutDescriptor` being total buys.
   defaultKeys: { mac: [], other: [] },
-  availability: 'always',
+  // It WRITES: a read-only document is one it cannot run on, so no surface
+  // offers it there and no chord arms for it (`docs/adr/0055`).
+  availability: 'editable',
   run: spec.run,
   telemetry: { framework: 'c4', element: spec.element, board: spec.board },
   ...(spec.legend ? { legend: spec.legend } : {}),

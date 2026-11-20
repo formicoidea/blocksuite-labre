@@ -306,7 +306,9 @@ export const edgyCommands: CommandDescriptor[] = SPECS.map((spec, order) => ({
   order,
   scope: 'edgeless',
   defaultKeys: frameworkChord(EDGY_CHORD_PREFIX, spec.key),
-  availability: 'always',
+  // It WRITES: a read-only document is one it cannot run on, so no surface
+  // offers it there and no chord arms for it (`docs/adr/0055`).
+  availability: 'editable',
   run: spec.run,
   telemetry: { framework: 'edgy', element: spec.element, board: spec.board },
   ...(spec.legend ? { legend: spec.legend } : {}),

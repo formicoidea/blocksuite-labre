@@ -86,7 +86,9 @@ export const cynefinEstuarineCommands: CommandDescriptor[] = SPECS.map(
     order,
     scope: 'edgeless',
     defaultKeys: frameworkChord(CYNEFIN_CHORD_PREFIX, spec.key),
-    availability: 'always',
+    // It WRITES: a read-only document is one it cannot run on, so no surface
+    // offers it there and no chord arms for it (`docs/adr/0055`).
+    availability: 'editable',
     run: spec.run,
     telemetry: {
       framework: 'cynefin-estuarine',

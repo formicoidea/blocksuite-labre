@@ -389,7 +389,9 @@ const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, order) => ({
   order,
   scope: 'edgeless',
   defaultKeys: frameworkChord(WARDLEY_CHORD_PREFIX, spec.key),
-  availability: 'always',
+  // It WRITES: a read-only document is one it cannot run on, so no surface
+  // offers it there and no chord arms for it (`docs/adr/0055`).
+  availability: 'editable',
   run: std => spec.run(std.get(GfxControllerIdentifier)),
   telemetry: { framework: 'wardley', element: spec.element, board: spec.board },
   // The legend, SUBSCRIBED rather than tabulated (`docs/adr/0009`'s sibling):
