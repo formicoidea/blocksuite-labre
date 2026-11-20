@@ -53,6 +53,15 @@ export type DataViewRendererConfig = {
    * Absent: every view draws as in 0.48.
    */
   viewPlaceholder?: (logic: DataViewUILogicBase) => TemplateResult | undefined;
+  /**
+   * What of the caller's header still makes sense when the source holds no
+   * view at all (every view deleted, or a block stored with `views: []`,
+   * its schema default; ADR 0035 amendment of 2026-11-20): drawn above the
+   * engine's empty state (`<data-view-no-view>`, which offers "+"'s
+   * gesture). Absent: the empty state alone. Derived at each render, never
+   * written.
+   */
+  noViewHeader?: (root: DataViewRootUILogic) => TemplateResult;
   detailPanelConfig: {
     openDetailPanel: (
       target: HTMLElement,
@@ -240,6 +249,33 @@ export class DataViewRootUI extends SignalWatcher(
     this.logic.openDetailPanel(ops);
   };
 
+  /**
+   * Where the keyboard focus goes when the control that held it left with
+   * what its menu did (the view options' "⋯" of the last view deleted from
+   * the keyboard, `popupTargetReturningFocus`): the first control marked
+   * `data-view-focus-fallback` once this view has drawn (the empty state's
+   * button, else its status). Nothing while another element holds the
+   * focus, nor when nothing is marked: a menu opened with the mouse never
+   * gets here (WCAG 2.4.3, ADR 0035 amendment of 2026-11-20).
+   */
+  async restoreFocus(): Promise<void> {
+    await this.updateComplete;
+    // The placeholder's elements draw one level per pass, after this one.
+    await Promise.all(
+      [...this.querySelectorAll('*')].map(
+        element =>
+          (element as Partial<{ updateComplete: Promise<unknown> }>)
+            .updateComplete
+      )
+    );
+    const target = this.querySelector<HTMLElement>(
+      '[data-view-focus-fallback]'
+    );
+    const active = document.activeElement;
+    if (!target || (active && active !== document.body)) return;
+    target.focus();
+  }
+
   override connectedCallback() {
     super.connectedCallback();
     this.disposables.add(this.logic.setupViewChangeListener());
@@ -253,7 +289,14 @@ export class DataViewRootUI extends SignalWatcher(
     });
     const currentView = this.logic.currentView$.value;
     if (!currentView) {
-      return;
+      // `currentViewId$` falls back to the first view: no current view is
+      // no view at all. Up to 4.0 this drew nothing, header included.
+      return html`
+        <div style="display: contents" class="${containerClass}">
+          ${this.logic.config.noViewHeader?.(this.logic)}
+          <data-view-no-view .root="${this.logic}"></data-view-no-view>
+        </div>
+      `;
     }
     const placeholder = this.logic.config.viewPlaceholder?.(currentView);
     if (placeholder) {

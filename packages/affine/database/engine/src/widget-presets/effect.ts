@@ -1,3 +1,4 @@
+import { DataViewNoView } from './no-view/no-view.js';
 import { FilterConditionView } from './quick-setting-bar/filter/condition-view.js';
 import { FilterGroupView } from './quick-setting-bar/filter/group-panel-view.js';
 import { FilterBar } from './quick-setting-bar/filter/list-view.js';
@@ -38,4 +39,5 @@ export function widgetPresetsEffects() {
   customElements.define('filter-root-view', FilterRootView);
   customElements.define('sort-root-view', SortRootView);
   customElements.define('data-view-header-views', DataViewHeaderViews);
+  customElements.define('data-view-no-view', DataViewNoView);
 }

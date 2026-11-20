@@ -1532,3 +1532,78 @@ name): Promise<{ ok: true } | { ok: false; message: string }>`, a
   reuses `com.labre.database.source-name.placeholder`. Held by
   `database/editor/src/__tests__/view-settings-source.unit.spec.ts` and
   `shared/src/__tests__/services/data-source-picker-null.unit.spec.ts`.
+
+### 2026-11-20: a database with no view draws an empty state
+
+Reported by the product owner at the acceptance of 4.0, in the playground,
+on a base's full page: with one view, "⋯" (view settings) › Delete, or the
+same entry of the tab's menu, and the whole views area went (no tab bar, no
+"+", no table, only the page title and its properties); nothing but Ctrl+Z
+brought a view back. Both entries call `view.delete()`, which removes the
+view from `props.views` and nothing else; with no view left, the root
+renderer (`DataViewRootUI`) drew nothing, header included, since the header
+is drawn by the view (inherited from upstream with the fork, in every
+release up to 4.0). `views: []`
+is also the schema default of both blocks, so the state also arrives from a
+store, an undo, a peer or a paste. No stored field, no schema, no default
+changed.
+
+- **The empty state is the engine's.** The root renderer draws it whenever
+  the source holds no view (`<data-view-no-view>`, in `widget-presets`),
+  under what the block still draws of its header
+  (`DataViewRendererConfig.noViewHeader`, a widening): the database block
+  its title row with its "⋯" (rename, copy, delete the block), the
+  data-view block its title row. One implementation for the inline database,
+  the `affine:data-view` block, the canvas, a base's full page (where the
+  title row is the page heading's, `data-standalone`), table and kanban,
+  desktop and mobile: the root renderer is the one place every one of them
+  passes, and it is the one that knows there is no view. No views bar: it is
+  a row of a view's tabs (its widget reads a view).
+- **Its gesture is "+".** A status, "No view" (`role="status"`), then, where
+  a view may be added (`canAddView`: a writable source whose host did not
+  switch creation off, `ViewCreationOffKey`), a hint and a "New view" button
+  that pops what the views bar's "+" pops (`popAddViewMenu`, the bar's own
+  gesture moved to `view-creation.ts` so both are one): with the bundle, its
+  `AddViewMenu` (this database's sources, "Create source", "Import a
+  view"); without it, the creatable presets. The view added is current and
+  `DatabaseViewAdded` is traced once. A read-only document, or
+  `{ database: false }`, gets the status alone: core offers what "+" already
+  offered, never more (§1, §5).
+- **Not the creation popover.** The lead's first design reused "Connect a
+  source" (`DatabaseCreationMenuIdentifier`). It cannot run with no view:
+  `connectDatabaseToSource` keeps the block's first view and refuses a block
+  without one, and `reconnectDatabaseView` re-points an existing view, so
+  both write nothing; and it would connect a native database to a host
+  source when the reader only asked for a view back. "+" is the gesture that
+  adds a view on every kind of block.
+- **Nothing is written.** The state is derived at each render, on mount, on
+  an undo or a peer's deletion alike. Undo of the deletion draws the view
+  again; redo, the empty state.
+- **A stale current view.** `ViewManagerBase.currentViewId$` now answers the
+  picked view only while it exists, else the first view: a view a peer, an
+  undo or a host's later `remove()` took away stayed current by id, and a
+  database with views left drew nothing too.
+- **The focus.** The button is a named `role="button"` in the tab order,
+  activated by Enter and Space, ringed like the toolbar (#678). A menu opened
+  from the keyboard (`popupTargetReturningFocus`) whose opener left with
+  what it did (the "⋯" of the last view) gives the focus to what the view
+  then draws (`DataViewRootUI.restoreFocus`: the button, else the status),
+  never to the body (WCAG 2.4.3). A mouse deletion moves no focus.
+- **Not done.** "Delete" on the last view is neither hidden nor disabled:
+  the product owner chose the empty state, and the Labre host relies on the
+  gesture to offer trashing the base (`deleteView`, amendment of
+  2026-10-29), which stays the host's; the library carries no trash, rights
+  or page deletion. `afterRemove` with zero views keeps the vanished id,
+  which `currentViewId$` now reads past. The views bar's tabs stay out of
+  the tab order (#678's own follow-up). A native database with no view
+  under `requireSource` is locked, so it shows the status alone; the
+  creation gestures never leave one.
+- **Consequences.** A host that rendered `DataViewRootUILogic` itself gets
+  the empty state where it had nothing; a header needs `noViewHeader`. No
+  seam's degraded path changes (the seams table is unchanged): without the
+  picker, the bundle's "+" lists no source and offers the presets.
+- Wordings `com.labre.data-view.no-view` ("No view") and
+  `com.labre.data-view.no-view.hint` ("The rows are kept. Add a view to show
+  them."); the button reuses `com.labre.data-view.views-bar.add-view`. Held
+  by `database/block/src/__tests__/no-view-state.unit.spec.ts` and
+  `integration-test/…/page/database-no-view.spec.ts`.

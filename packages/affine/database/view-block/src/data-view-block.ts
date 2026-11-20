@@ -181,6 +181,17 @@ export class DataViewBlockComponent extends CaptionedBlockComponent<DataViewBloc
     }
   );
 
+  /**
+   * With no view left (ADR 0035 amendment of 2026-11-20): the title row,
+   * above the engine's empty state that offers "+"'s gesture.
+   */
+  private readonly noViewHeader = () => html`
+    <div style="display:flex;gap:8px;padding: 0 6px;margin-bottom: 8px;">
+      <div>${this.model.props.title}</div>
+      ${this.renderDatabaseOps()}
+    </div>
+  `;
+
   selection$ = computed(() => {
     const databaseSelection = this.selection.value.find(
       (selection): selection is DatabaseSelection => {
@@ -261,6 +272,7 @@ export class DataViewBlockComponent extends CaptionedBlockComponent<DataViewBloc
     setSelection: this.setSelection,
     dataSource: this.dataSource,
     headerWidget: this.headerWidget,
+    noViewHeader: this.noViewHeader,
     clipboard: this.std.clipboard,
     dnd: this.std.dnd,
     notification: {

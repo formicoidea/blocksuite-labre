@@ -343,7 +343,7 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
     return true;
   }
 
-  private readonly renderTitle = (dataViewLogic: DataViewUILogicBase) => {
+  private readonly renderTitle = (dataViewLogic?: DataViewUILogicBase) => {
     return html` <affine-database-title
       class="${databaseTitleStyles}"
       .titleText="${this.model.props.title}"
@@ -745,6 +745,20 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
       </div>`;
   };
 
+  /**
+   * A database with no view left (ADR 0035 amendment of 2026-11-20): the
+   * title row, its "⋯" included (rename, copy, delete the block), above the
+   * engine's empty state, whose button is the views bar's "+". No views
+   * bar: it is a row of a view's tabs, and there is none.
+   */
+  private readonly renderNoViewHeader = () => {
+    return html`<div class="${databaseHeaderContainerStyles}">
+      <div class="${databaseTitleRowStyles}">
+        ${this.renderTitle()} ${this.renderDatabaseOps()}
+      </div>
+    </div>`;
+  };
+
   /** "Move into a database" is waiting for the host: one call at a time. */
   private readonly moving$ = signal(false);
 
@@ -875,6 +889,7 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
         this.renderSourceUnavailable(logic) ??
         this.renderSourceRequired(logic) ??
         this.renderSourceMissing(logic),
+      noViewHeader: this.renderNoViewHeader,
       onDrag: this.onDrag,
       clipboard: this.std.clipboard,
       dnd: this.std.dnd,
