@@ -8,6 +8,7 @@ import {
   canonicalCombo,
   type FrameworkId,
 } from '@labre/std';
+import * as ts from 'typescript';
 import { describe, expect, test } from 'vitest';
 
 import { getCommands } from '../../commands.js';
@@ -66,62 +67,81 @@ const SOURCES = SOURCE_ROOTS.flatMap(dir => [...sourceFiles(join(ROOT, dir))])
   .map(path => ({ path, text: readFileSync(join(ROOT, path), 'utf8') }));
 
 /**
- * The sites that call `bindHotKey` with something else than an object
- * literal: the definitions and the one override that forwards its argument.
- * A NEW site passing a variable fails until it is read and listed, since its
- * keys cannot be walked.
+ * The `bindHotKey` calls whose keymap cannot be read: the one override that
+ * forwards its argument. A NEW call passing a variable, a spread or a computed
+ * key that is not a string fails until it is read and listed.
  */
 const BIND_HOT_KEY_FORWARDERS = [
   'packages/affine/blocks/root/src/edgeless/edgeless-root-block.ts',
-  'packages/framework/std/src/extension/service.ts',
-  'packages/framework/std/src/view/element/block-component.ts',
-  'packages/framework/std/src/view/element/widget-component.ts',
 ];
 
+/** A property name read as the key it binds, or `undefined` when unreadable. */
+function keyOf(name: ts.PropertyName): string | undefined {
+  if (
+    ts.isIdentifier(name) ||
+    ts.isStringLiteral(name) ||
+    ts.isNoSubstitutionTemplateLiteral(name) ||
+    ts.isNumericLiteral(name)
+  ) {
+    return name.text;
+  }
+  if (
+    ts.isComputedPropertyName(name) &&
+    (ts.isStringLiteral(name.expression) ||
+      ts.isNoSubstitutionTemplateLiteral(name.expression))
+  ) {
+    return name.expression.text;
+  }
+  return undefined;
+}
+
 /**
- * Every `bindHotKey({ … })` of the library, read off the sources: the file and
- * the top-level keys of its object literal. That is where the edgeless
- * keyboard's tools AND the toolbar buttons' own hotkeys (`m` the mind map,
- * `s` the shape) are bound, outside the shortcut manifest; a button that
- * binds a new bare letter shows up here without anyone typing it.
+ * Every `bindHotKey(…)` call of the library, read with the TypeScript parser
+ * (the compiler `yarn build` runs): the file, the keys of its object literal
+ * and whether all of them could be read. That is where the edgeless keyboard's
+ * tools AND the toolbar buttons' own hotkeys (`m` the mind map, `s` the shape)
+ * are bound, outside the shortcut manifest; a button that binds a new bare
+ * letter shows up here however it is spelled (`y:`, `'y':`, `['y']:`, several
+ * keys on one line), and a definition (`bindHotKey(keymap) { … }`) is not a call.
  */
-function bindHotKeySites(): { file: string; keys: string[] }[] {
-  const sites: { file: string; keys: string[] }[] = [];
+function bindHotKeySites(): { file: string; keys: string[]; read: boolean }[] {
+  const sites: { file: string; keys: string[]; read: boolean }[] = [];
   for (const { path, text } of SOURCES) {
-    // Accepts `this.edgeless.bindHotKey(`; rejects `_bindHotKey(` (a method
-    // of its own) and the word inside a comment, handled below.
-    for (const match of text.matchAll(/(?<![\w])bindHotKey\(\s*/g)) {
-      const lineStart = text.lastIndexOf('\n', match.index) + 1;
-      const line = text.slice(lineStart, match.index).trim();
-      if (line.startsWith('*') || line.startsWith('//')) continue;
-      const open = match.index + match[0].length;
-      if (text[open] !== '{') {
-        sites.push({ file: path, keys: [] });
-        continue;
-      }
-      // The literal, up to its closing brace.
-      let depth = 0;
-      let end = open;
-      for (; end < text.length; end++) {
-        if (text[end] === '{') depth++;
-        if (text[end] === '}' && --depth === 0) break;
-      }
-      const body = text.slice(open + 1, end);
-      // Its top-level keys: `v: () =>`, `'Shift-p': () =>`, `Escape: ctx =>`.
-      const keys: string[] = [];
-      let level = 0;
-      for (const bodyLine of body.split('\n')) {
-        if (level === 0) {
-          const key = /^\s*'?([^\s':]+)'?\s*:/.exec(bodyLine)?.[1];
-          if (key) keys.push(key);
+    if (!text.includes('bindHotKey')) continue;
+    const source = ts.createSourceFile(
+      path,
+      text,
+      ts.ScriptTarget.Latest,
+      true
+    );
+    const visit = (node: ts.Node) => {
+      if (ts.isCallExpression(node)) {
+        const callee = node.expression;
+        const name = ts.isPropertyAccessExpression(callee)
+          ? callee.name.text
+          : ts.isIdentifier(callee)
+            ? callee.text
+            : undefined;
+        if (name === 'bindHotKey') {
+          const [keymap] = node.arguments;
+          const keys: string[] = [];
+          let read =
+            keymap !== undefined && ts.isObjectLiteralExpression(keymap);
+          if (keymap && ts.isObjectLiteralExpression(keymap)) {
+            for (const property of keymap.properties) {
+              const key = ts.isSpreadAssignment(property)
+                ? undefined
+                : keyOf(property.name);
+              if (key === undefined) read = false;
+              else keys.push(key);
+            }
+          }
+          sites.push({ file: path, keys, read });
         }
-        for (const char of bodyLine) {
-          if (char === '{' || char === '(' || char === '[') level++;
-          if (char === '}' || char === ')' || char === ']') level--;
-        }
       }
-      sites.push({ file: path, keys });
-    }
+      ts.forEachChild(node, visit);
+    };
+    visit(source);
   }
   return sites;
 }
@@ -510,10 +530,83 @@ const RAW_KEYDOWN_LISTENERS: readonly {
 
 const commands = getCommands();
 
+/**
+ * Every handler added to the dispatcher's `keyDown` event outside a keymap
+ * (`handleEvent('keyDown', …)`, `std.event.add('keyDown', …)`): a third channel,
+ * beside `bindHotKey` and raw listeners, that no keymap can see. Each entry
+ * names the bare letters it takes and the state they need: `editing` (a canvas
+ * element in edit mode, where no prefix arms) or `selection` (a selection
+ * state that runs before the shortcut keymap, so a prefix cannot arm there).
+ * Only an entry with neither may not take a prefix letter. A NEW file with
+ * such a handler fails until it is listed.
+ */
+const KEYDOWN_HANDLERS: readonly {
+  file: string;
+  letters: 'any' | readonly string[];
+  needs?: 'editing' | 'selection';
+  why: string;
+}[] = [
+  {
+    file: 'packages/affine/blocks/root/src/edgeless/edgeless-keyboard.ts',
+    letters: 'any',
+    needs: 'selection',
+    why: 'a printable key with ONE mind-map node selected starts editing it with that key; Space pans',
+  },
+  {
+    file: 'packages/affine/database/engine/src/view-presets/table/pc/controller/hotkeys.ts',
+    letters: 'any',
+    needs: 'selection',
+    why: 'a printable key with a table cell selected starts editing it',
+  },
+  {
+    file: 'packages/affine/database/engine/src/view-presets/table/pc-virtual/controller/hotkeys.ts',
+    letters: 'any',
+    needs: 'selection',
+    why: 'a printable key with a table cell selected starts editing it',
+  },
+  {
+    file: 'packages/affine/gfx/connector/src/text/edgeless-connector-label-editor.ts',
+    letters: [],
+    needs: 'editing',
+    why: "while a connector's label is edited",
+  },
+  {
+    file: 'packages/affine/gfx/group/src/text/edgeless-group-title-editor.ts',
+    letters: [],
+    needs: 'editing',
+    why: "while a group's title is edited",
+  },
+  {
+    file: 'packages/affine/widgets/drag-handle/src/watchers/keyboard-event-watcher.ts',
+    letters: [],
+    why: 'only while a block is dragged; it prevents the default and consumes nothing',
+  },
+  {
+    file: 'packages/affine/widgets/frame-title/src/edgeless-frame-title-editor.ts',
+    letters: [],
+    needs: 'editing',
+    why: "while a frame's title is edited",
+  },
+  {
+    file: 'packages/affine/widgets/slash-menu/src/widget.ts',
+    letters: [],
+    needs: 'editing',
+    why: '`/` in a text being typed',
+  },
+  {
+    file: 'packages/framework/std/src/event/control/keyboard.ts',
+    letters: [],
+    why: 'the keymap engine itself: every binding it adds is a keymap',
+  },
+];
+
 /** Every single keystroke bound on the canvas, canonical (`shift-p`, `ctrl-z`). */
 function singleKeys(): Set<string | null> {
   return new Set<string | null>([
     ...RESERVED_EDGELESS_KEYS.map(k => canonicalCombo([k])),
+    ...KEYDOWN_HANDLERS.filter(h => !h.needs && h.letters !== 'any').flatMap(
+      h => (h.letters as readonly string[]).map(l => canonicalCombo([l]))
+    ),
     ...bindHotKeySites().flatMap(({ keys }) =>
       keys.filter(isBareKey).map(key => canonicalCombo([key]))
     ),
@@ -662,16 +755,34 @@ describe('framework chord prefixes', () => {
     }
   });
 
-  test('every bindHotKey of the library is an object literal or a known forwarder', () => {
+  test('every bindHotKey of the library is read, or a known forwarder', () => {
     const sites = bindHotKeySites();
     expect(
-      [...new Set(sites.filter(s => !s.keys.length).map(s => s.file))].sort()
+      [...new Set(sites.filter(s => !s.read).map(s => s.file))].sort()
     ).toEqual([...BIND_HOT_KEY_FORWARDERS].sort());
-    // …and the walk does read the bindings: the edgeless keyboard's tools and
-    // the toolbar buttons' own letters come out of it.
+    // …and the parser does read the bindings: the edgeless keyboard's tools
+    // and the toolbar buttons' own letters come out of it.
     const bare = new Set(sites.flatMap(s => s.keys.filter(isBareKey)));
     for (const key of [...RESERVED_EDGELESS_KEYS, 'm', 's']) {
       expect(bare.has(key), key).toBe(true);
+    }
+  });
+
+  test('every dispatcher keyDown handler of the library is listed', () => {
+    const found = SOURCES
+      // Accepts `handleEvent('keyDown', …)` and `std.event.add('keyDown', …)`
+      // across a line break; rejects the raw DOM `'keydown'`.
+      .filter(({ text }) =>
+        /\b(handleEvent|add)\(\s*['"]keyDown['"]/.test(text)
+      )
+      .map(({ path }) => path)
+      .sort();
+    expect(found).toEqual(KEYDOWN_HANDLERS.map(h => h.file).sort());
+    // A handler that takes letters with no state to gate them could hold a
+    // prefix letter: none may.
+    for (const handler of KEYDOWN_HANDLERS) {
+      if (handler.needs) continue;
+      expect(handler.letters, handler.file).toEqual([]);
     }
   });
 
