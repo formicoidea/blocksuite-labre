@@ -4,6 +4,12 @@ import { MenuDivider } from './menu-divider';
 import { MenuComponent, MobileMenuComponent } from './menu-renderer';
 import { MenuSubMenu, MobileSubMenu } from './sub-menu';
 
+export {
+  capToRoom,
+  scrollDeltaToShow,
+  scrollViewOf,
+  WINDOW_PADDING,
+} from './fit-window.js';
 export * from './button';
 export * from './focusable';
 export * from './group';

@@ -26,6 +26,7 @@ import { css, html, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
 import { createRef, ref } from 'lit/directives/ref.js';
 
+import { fitToWindowHeight } from './fit-window.js';
 import type { MenuFocusable } from './focusable.js';
 import { Menu, type MenuConfig, type MenuOptions } from './menu.js';
 import type { MenuComponentInterface } from './types.js';
@@ -110,6 +111,20 @@ export class MenuComponent
       justify-content: center;
       margin-top: 8px;
     }
+
+    /* A panel capped at the window scrolls (fit-window.ts): the field it
+       opens on (a shown search, a column's name) stays in view above the
+       list it filters or names. Stuck over the panel's 8px top padding
+       (top: -8px), so no entry shows above it; the panel's own rounded
+       clip keeps the corners. The keyboard's highlight stops below it
+       (Menu.highlight). */
+    affine-menu > .affine-menu-search-container,
+    affine-menu > .affine-menu-body > .affine-menu-input-row:first-child {
+      position: sticky;
+      top: -8px;
+      z-index: 1;
+      background-color: ${unsafeCSSVarV2('layer/background/overlayPanel')};
+    }
   `;
 
   private readonly _clickContainer = (e: MouseEvent) => {
@@ -167,7 +182,10 @@ export class MenuComponent
   }
 
   focusInput() {
-    this.searchRef.value?.focus();
+    // A capped panel scrolls (`fit-window.ts`): focusing the hidden field at
+    // its top must not scroll it back there under the pointer (a click in a
+    // margin, a sub-menu closing).
+    this.searchRef.value?.focus({ preventScroll: true });
   }
 
   focusTo(ele?: MenuFocusable) {
@@ -699,20 +717,23 @@ export const popMenu = (
       if (placement.startsWith('left')) menu.side = 'left';
       else if (placement.startsWith('right')) menu.side = 'right';
     },
-    middleware: props.middleware ?? [
-      autoPlacement({
-        allowedPlacements: [
-          'bottom-start',
-          'bottom-end',
-          'top-start',
-          'top-end',
-        ],
-      }),
-      offset(4),
-      // Keep the menu inside the viewport: on a constrained viewport the
-      // allowed placements can all overflow, and without a shift the menu
-      // simply hangs off the edge of the screen.
-      shift({ padding: 8 }),
+    middleware: [
+      ...(props.middleware ?? [
+        autoPlacement({
+          allowedPlacements: [
+            'bottom-start',
+            'bottom-end',
+            'top-start',
+            'top-end',
+          ],
+        }),
+        offset(4),
+        // Keep the menu inside the viewport: on a constrained viewport the
+        // allowed placements can all overflow, and without a shift the menu
+        // simply hangs off the edge of the screen.
+        shift({ padding: 8 }),
+      ]),
+      fitToWindowHeight(),
     ],
     container: props.container,
   });

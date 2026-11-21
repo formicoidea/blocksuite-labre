@@ -1,12 +1,13 @@
 import {
   popMenu,
   popupTargetFromElement,
+  WINDOW_PADDING,
 } from '@labre/affine-components/context-menu';
 import { DatePicker } from '@labre/affine-components/date-picker';
 import { formatLocale } from '@labre/affine-shared/services';
 import { createLitPortal } from '@labre/affine-components/portal';
 import { IS_MOBILE } from '@labre/global/env';
-import { flip, offset } from '@floating-ui/dom';
+import { flip, offset, shift } from '@floating-ui/dom';
 import { computed, signal } from '@preact/signals-core';
 import { format } from 'date-fns/format';
 import { html } from 'lit';
@@ -93,7 +94,19 @@ export class DateCell extends BaseCellRenderer<number, number> {
         computePosition: {
           referenceElement: this,
           placement: 'bottom',
-          middleware: [offset(10), flip()],
+          // Inside the window as far as a calendar can be (product owner:
+          // no entry of a menu is ever unreachable): `flip` takes the side
+          // with room, `shift` on both axes keeps it from crossing an edge.
+          // ponytail: placed once, no `autoUpdate`; with no room on either
+          // side it covers the cell it edits, a scroll leaves it behind, and
+          // a window shorter than the calendar still cuts its bottom. Give
+          // the portal `autoUpdate` and a `size` that scrolls the calendar
+          // if a host's short window ever needs more.
+          middleware: [
+            offset(10),
+            flip(),
+            shift({ padding: WINDOW_PADDING, crossAxis: true }),
+          ],
         },
         template: () => {
           const datePicker = this.createDatePicker();
