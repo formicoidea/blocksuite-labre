@@ -18,24 +18,31 @@ export const TOOLBAR_ROW_STATE_EVENT = 'toolbar-row-state';
 
 /**
  * The keyboard's ring on a toolbar button (#679, ADR 0054): the opaque 2px
- * outline of the toolbar's `[data-keyboard-highlight]`. The host is the focus
+ * ring of the toolbar's `[data-keyboard-highlight]`. The host is the focus
  * target and carries the name, the state and the `tabindex`; the ring is drawn
  * on its visible box, inside it.
  *
- * `--edgeless-toolbar-focus-ring-offset` insets it further where the box
- * fills the bar: the toolbar sets it on its senior tools, whose buttons are
- * as tall as the bar, so the ring clears the bar's border instead of sitting
- * on it (product owner, acceptance of #691; ADR 0054, amendment of
- * 2026-11-21).
+ * Drawn as the box's positioned `::after`, above what the button holds: an
+ * outline paints under positioned or transformed children, and the senior
+ * tools' artwork (the note's paper, the file's card, the text) covered it in
+ * part or whole. `--edgeless-toolbar-focus-ring-inset` moves it further in
+ * where the box fills the bar: the toolbar sets it on its senior tools,
+ * whose buttons are as tall as the bar, so the ring clears the bar's border
+ * instead of sitting on it (product owner, acceptance of #691; ADR 0054,
+ * amendment of 2026-11-21).
  */
 export const toolButtonFocusRing = css`
   :host(:focus-visible) {
     outline: none;
   }
-  :host(:focus-visible) .icon-container {
-    outline: 2px solid var(--affine-primary-color);
-    outline-offset: var(--edgeless-toolbar-focus-ring-offset, -2px);
+  :host(:focus-visible) .icon-container::after {
+    content: '';
+    position: absolute;
+    inset: var(--edgeless-toolbar-focus-ring-inset, 0px);
+    border: 2px solid var(--affine-primary-color);
     border-radius: 8px;
+    pointer-events: none;
+    z-index: 1;
   }
 `;
 

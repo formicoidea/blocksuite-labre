@@ -266,13 +266,19 @@ in keyboard mode, and after a mouse gesture it is the toolbar of 4.0.0.
 
    - The senior tools' buttons are as tall as the bar, their artwork clipped
      at its edges (`DESIGN.md`): the ring, drawn on the button's box, lay on
-     the bar's top border and was cut at its bottom. A row button's ring is
+     the bar's top border and was cut at its bottom. A tool button's ring is
      drawn inside its box (`toolButtonFocusRing`, still 2px, colour
      unchanged), and on a senior tool 2px further in
-     (`--edgeless-toolbar-focus-ring-offset`, set by the bar on its senior
+     (`--edgeless-toolbar-focus-ring-inset`, set by the bar on its senior
      items): every ring of the bar — quick tools, each senior tool on every
      page, "More tools", the pager arrows — lies inside the bar, clear of its
-     1px border, clipped by no ancestor.
+     1px border, clipped by no ancestor. It is the box's positioned
+     `::after`, above the artwork: an outline paints under positioned or
+     transformed children, and the note's paper, the file's card and the
+     text covered it (seen in the visual check of this amendment). Text and
+     Add file draw their artwork past their button's box: their ring, the
+     box's, crosses the artwork rather than surrounding it (visible, inside
+     the bar; their boxes are theirs to widen).
    - A chosen colour swatch drew its selection ring 27px wide on a 24px
      swatch: 1.5px out on each side, on half pixels, which the browser snaps
      to one side, with 0.5px left to the focus ring — the two rings visibly
@@ -282,7 +288,9 @@ in keyboard mode, and after a mouse gesture it is the toolbar of 4.0.0.
    - The slide-out menus clipped the ring of a control at their scrolling
      edges (the first control, the width slider; the last swatch). The strip
      keeps 5px of room inside its clipping edges and scrolls a focused
-     control in with that margin; its content stays where it was.
+     control in with its ring, clear of the slide arrows; its content stays
+     where it was. The colour grid scrolls its own swatch in (a move inside
+     its shadow tree sends the strip no `focusin`).
      Held by "the focus ring, where the product owner saw it" in
      `edgeless-toolbar-keyboard.spec.ts`, which measures each ring from what
      draws it (`utils/focus-ring.ts`): every button of the bar on every page,

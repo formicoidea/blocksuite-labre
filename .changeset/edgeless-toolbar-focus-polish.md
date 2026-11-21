@@ -15,7 +15,8 @@ tool. Nothing is stored. Sub-menus are unchanged.
 
 The keyboard's ring is drawn whole: on the large tools (Note, Pen, the
 frameworks…) it sits inside the toolbar, clear of its border, instead of on
-it and cut at the bottom; on a colour swatch the selection ring (now 28px)
+it and cut at the bottom, and every tool button's ring is drawn above the
+button's artwork, which used to hide part of it; on a colour swatch the selection ring (now 28px)
 and the focus ring are concentric on whole pixels with an even 1px gap,
 where they sat visibly off-centre; in the slide-out menus a control at the
 strip's edge (the width slider, the last swatch) is scrolled in with its

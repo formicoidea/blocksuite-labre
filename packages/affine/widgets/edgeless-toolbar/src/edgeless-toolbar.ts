@@ -240,7 +240,7 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
          the bar's edges (DESIGN.md): its focus ring is drawn 2px inside it,
          clear of the bar's border, rather than on it (ADR 0054, amendment of
          2026-11-21). Read by toolButtonFocusRing. */
-      --edgeless-toolbar-focus-ring-offset: -4px;
+      --edgeless-toolbar-focus-ring-inset: 2px;
     }
     .senior-nav-button-wrapper {
       flex-shrink: 0;

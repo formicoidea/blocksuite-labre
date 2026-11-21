@@ -1,9 +1,11 @@
 /**
  * The geometry of a keyboard focus ring, read from what draws it (ADR 0054,
- * amendment of 2026-11-21): every ring of the canvas toolbar and its menus is
- * an `outline`, on the focused control or on an element of its shadow tree
- * (`:focus-visible` rules), and a chosen colour swatch draws its selection
- * ring as a bordered `::after`. Boxes are in client pixels.
+ * amendment of 2026-11-21): a ring of the canvas toolbar and its menus is an
+ * `outline` on the focused control or on an element of its shadow tree
+ * (`:focus-visible` rules), or — on a tool button, whose artwork an outline
+ * paints under — the bordered `::after` of its `.icon-container`. A chosen
+ * colour swatch draws its selection ring as a bordered `::after`. Boxes are
+ * in client pixels.
  */
 
 export interface Box {
@@ -14,16 +16,37 @@ export interface Box {
 }
 
 export interface Ring {
-  /** The element whose outline is the ring. */
+  /** The element whose outline, or whose `::after`, is the ring. */
   element: Element;
+  /** Whether it is the element's `::after` (positioned in it). */
+  pseudo: boolean;
   /** The ring's outer edge. */
   outer: Box;
   /** The ring's inner edge. */
   inner: Box;
   /** Its thickness. */
   width: number;
-  /** Its `outline-offset`. */
-  offset: number;
+}
+
+/** A tool button's ring: its icon box's bordered, positioned `::after`. */
+function pseudoRing(element: Element): Ring | null {
+  if (!element.classList.contains('icon-container')) return null;
+  const style = getComputedStyle(element, '::after');
+  const width = parseFloat(style.borderTopWidth);
+  if (style.content === 'none' || style.position !== 'absolute') return null;
+  if (style.borderTopStyle === 'none' || !(width > 0)) return null;
+  const box = element.getBoundingClientRect();
+  const left = box.left + parseFloat(style.left);
+  const top = box.top + parseFloat(style.top);
+  // The computed width is the content box's unless the box says otherwise.
+  const edges = style.boxSizing === 'border-box' ? 0 : 2 * width;
+  const outer = {
+    left,
+    top,
+    right: left + parseFloat(style.width) + edges,
+    bottom: top + parseFloat(style.height) + edges,
+  };
+  return { element, pseudo: true, outer, inner: grow(outer, -width), width };
 }
 
 const grow = (box: Box, by: number): Box => ({
@@ -54,6 +77,8 @@ export function focusRing(control: Element): Ring | null {
     ? Array.from(control.shadowRoot.querySelectorAll('*'))
     : [];
   for (const element of [control, ...inside]) {
+    const pseudo = pseudoRing(element);
+    if (pseudo) return pseudo;
     const style = getComputedStyle(element);
     const width = parseFloat(style.outlineWidth);
     if (style.outlineStyle === 'none' || !(width > 0)) continue;
@@ -61,10 +86,10 @@ export function focusRing(control: Element): Ring | null {
     const box = element.getBoundingClientRect();
     return {
       element,
+      pseudo: false,
       outer: grow(box, width + offset),
       inner: grow(box, offset),
       width,
-      offset,
     };
   }
   return null;
@@ -119,12 +144,14 @@ const containsPositioned = (position: string, style: CSSStyleDeclaration) => {
  * The ancestors that clip `element` — those whose `overflow` (or `contain`)
  * clips, crossing shadow roots and slots, and skipping those an absolutely
  * or fixed positioned box escapes (they are not on its containing-block
- * chain) — each with its padding box, the edge it clips at.
+ * chain) — each with its padding box, the edge it clips at. For a ring drawn
+ * as `element`'s positioned `::after`, `element` itself is the first.
  */
-export function clippingAncestors(element: Element) {
+export function clippingAncestors(element: Element, pseudo = false) {
   const found: { element: Element; box: Box }[] = [];
-  let position = getComputedStyle(element).position;
-  for (let node = flatParent(element); node; node = flatParent(node)) {
+  let position = pseudo ? 'absolute' : getComputedStyle(element).position;
+  const first = pseudo ? element : flatParent(element);
+  for (let node = first; node; node = flatParent(node)) {
     if (!(node instanceof Element)) continue;
     const style = getComputedStyle(node);
     if (style.display === 'contents') continue;
@@ -160,7 +187,7 @@ export const inside = (inner: Box, outer: Box) =>
 
 /** What clips `ring`: every clipping ancestor of its element it overflows. */
 export const ringClippedBy = (ring: Ring) =>
-  clippingAncestors(ring.element)
+  clippingAncestors(ring.element, ring.pseudo)
     .filter(({ box }) => !inside(ring.outer, box))
     .map(({ element, box }) => {
       const name = [element.localName, ...element.classList].join('.');

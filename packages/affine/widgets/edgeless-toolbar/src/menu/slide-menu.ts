@@ -12,6 +12,13 @@ import {
 /** The room a control's focus ring takes outside it: a colour swatch's 5px. */
 const RING_ROOM = 5;
 
+/**
+ * How far a slide arrow reaches into the strip (32px shown at half size,
+ * centred on the strip's edge): a control scrolled in keeps its ring clear of
+ * it too.
+ */
+const ARROW_REACH = 8;
+
 export class EdgelessSlideMenu extends WithDisposable(LitElement) {
   static override styles = css`
     :host {
@@ -44,14 +51,16 @@ export class EdgelessSlideMenu extends WithDisposable(LitElement) {
     /* The keyboard's ring on a control may stand 5px outside it (a colour
        swatch's, RING_ROOM): the strip keeps that much room inside its
        clipping edges, and scrolls a focused control in with it (ADR 0054,
-       amendment of 2026-11-21). The content sits where it did, 10px from
-       the edges. */
+       amendment of 2026-11-21), clear of the slide arrows (ARROW_REACH,
+       the scroll padding). The content sits where it did, 10px from the
+       edges. */
     .menu-container-scrollable {
       overflow-x: auto;
       overscroll-behavior: none;
       scrollbar-width: none;
       height: 100%;
       padding-right: 5px;
+      scroll-padding-inline: 8px;
     }
     .slide-menu-content {
       display: flex;
@@ -135,10 +144,11 @@ export class EdgelessSlideMenu extends WithDisposable(LitElement) {
     const strip = this._menuContainer;
     const box = control.getBoundingClientRect();
     const view = strip.getBoundingClientRect();
-    if (box.left - RING_ROOM < view.left) {
-      strip.scrollLeft -= view.left - (box.left - RING_ROOM);
-    } else if (box.right + RING_ROOM > view.right) {
-      strip.scrollLeft += box.right + RING_ROOM - view.right;
+    const room = RING_ROOM + ARROW_REACH;
+    if (box.left - room < view.left) {
+      strip.scrollLeft -= view.left - (box.left - room);
+    } else if (box.right + room > view.right) {
+      strip.scrollLeft += box.right + room - view.right;
     }
   };
 
