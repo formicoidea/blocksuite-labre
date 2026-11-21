@@ -140,7 +140,9 @@ export class EdgelessToolIconButton extends LitElement {
    * acceptance of #679), or for an owner that passes `label`. Elsewhere — a
    * panel, the element toolbar, the auto-complete — a visible text is the
    * name and the tooltip only describes it (WCAG 2.5.3): those buttons keep
-   * exactly the attributes their owner gives them.
+   * exactly the attributes their owner gives them. `pressed`, like `label`,
+   * is outside that scope: it is announced wherever an owner binds it, and
+   * only the toolbar's menus bind it.
    */
   override updated(changed: PropertyValues<this>) {
     // An option the owner says is chosen (a shape type, a connector mode):

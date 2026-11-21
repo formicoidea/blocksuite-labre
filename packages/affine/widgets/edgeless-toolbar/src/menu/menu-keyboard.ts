@@ -17,13 +17,12 @@ export interface MenuGroup {
 }
 
 /**
- * The separators the menus draw: `menu-divider`, a `role="separator"`, or an
- * EMPTY element whose class ends in `divider` (`.divider`, `.thin-divider`,
- * `.submenu-divider`) — a container named so is still walked.
+ * The separators the menus draw: `menu-divider`, or an EMPTY element whose
+ * class ends in `divider` (`.divider`, `.thin-divider`, `.submenu-divider`)
+ * — a container named so is still walked.
  */
 const isDivider = (element: Element) =>
   element.localName === 'menu-divider' ||
-  element.getAttribute('role') === 'separator' ||
   (element.childElementCount === 0 &&
     [...element.classList].some(name => name.endsWith('divider')));
 

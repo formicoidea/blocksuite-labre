@@ -34,8 +34,11 @@ groups (types, widths, colours) and, past the last, close the menu and return
 to its button, as Escape does. Enter or Space press a control as a click does,
 and the menu then does what it does after that click: gone, the canvas has the
 keys; still open (an option such as a shape type or Pen / Highlighter), the
-focus stays on the control. A menu opened with the mouse moves no focus, and a
-menu the keyboard visited is, for the mouse, the menu it was before. The
+focus stays on the control — unless a key or a click came first, which keeps
+its own move. Escape after picking a mind map style drops it and gives the
+select tool back, as it does with the mouse. A menu opened with the mouse
+moves no focus, and a click in a menu the keyboard visited is the click it
+was before. The
 menus' buttons are named from their tooltip (each mind map style by its own
 name) and the chosen option is announced as pressed (`aria-pressed`, through
 the new `pressed` property of `edgeless-tool-icon-button`).

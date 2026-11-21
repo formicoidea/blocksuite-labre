@@ -61,6 +61,7 @@ import {
   edgelessToolbarThemeContext,
 } from './context.js';
 import type { MenuPopper } from './create-popper.js';
+import type { EdgelessDraggableElementController } from './draggable/draggable-element.controller.js';
 import {
   QuickToolIdentifier,
   type SeniorTool,
@@ -86,6 +87,14 @@ const DIVIDER_SPACE = 8;
 /** How many frames a menu opened from the keyboard gets to draw its controls. */
 const MENU_DRAW_FRAMES = 10;
 const SAFE_AREA_WIDTH = 64;
+
+/** A menu that picks an element up to drop on the canvas (the mind map's). */
+type PickUpMenu = {
+  draggableController: Pick<
+    EdgelessDraggableElementController<unknown>,
+    'cancel' | 'states'
+  >;
+};
 
 // Cap the whole toolbar width so the centered senior sub-menus land close to
 // the buttons. The ResizeObserver reads the host width, so the senior-tool
@@ -1397,6 +1406,12 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
    * the press has settled: the canvas gets its keys back. It is still there
    * (an option: a shape type, Pen or Highlighter, a mode): the focus stays on
    * the control, or on the one drawn in its place if the menu redrew it.
+   *
+   * Only while the press is still the last thing that happened: a key typed
+   * before it settled (Tab, Escape, an arrow), a pointer press or the focus
+   * leaving the editor each clear or move `_kept`, and their move stands —
+   * acted on regardless, Enter then Tab lost the Tab and Enter then Escape
+   * sent the focus to the canvas (fourth review of #679).
    */
   private async _pressMenuControl(menu: HTMLElement, at: number, here: number) {
     const control = menuGroups(menu)[at]?.controls[here];
@@ -1405,6 +1420,7 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
     this._pressLikePointer(control);
     await (menu as Partial<ReactiveElement>).updateComplete;
     await new Promise(resolve => requestAnimationFrame(resolve));
+    if (this._kept !== control) return;
     if (this._openedMenu() !== menu) {
       this._focusCanvas();
       return;
@@ -1579,8 +1595,15 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
     const owner = this._keyboardOwner;
     const popper = this.activePopper;
     if (popper) {
+      // A pick-up the menu armed (a mind map style) is dropped as the mouse's
+      // Escape drops it: the drag cancelled (its own Escape listens on the
+      // window, which a key taken here never reaches), the select tool back.
+      const drag = (popper.element as Partial<PickUpMenu>).draggableController;
+      const pickedUp = !!drag?.states.draggingElement;
+      if (pickedUp) drag.cancel();
       popper.dispose();
       this.activePopper = null;
+      if (pickedUp) this.gfx.tool.setTool(DefaultTool);
       if (owner?.isConnected) {
         this._kept = owner;
         this._focusStop(owner);

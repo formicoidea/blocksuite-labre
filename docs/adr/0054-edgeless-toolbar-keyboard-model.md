@@ -32,7 +32,8 @@ The toolbar takes real DOM focus, on the APG toolbar pattern.
 2. **The focus target is the button host** — `edgeless-tool-icon-button` (and
    its subclass `edgeless-toolbar-button`), the node that already carries
    `role="button"`. Its name (`aria-label`, from `label` or a plain-text
-   tooltip), its state (`aria-pressed`, on the row only), its roving
+   tooltip), its state (`aria-pressed`: a tool's `active` on the row, a
+   chosen option's `pressed` in a menu), its roving
    `tabindex` and the `:focus-visible` that draws the ring are all on that
    host; the ring itself is painted on its inner box, the same 2px opaque
    outline as `[data-keyboard-highlight]`. "More tools" is an `icon-button`,
@@ -139,7 +140,14 @@ The toolbar takes real DOM focus, on the APG toolbar pattern.
       decides it — one rule for every menu: gone once the press has settled,
       the canvas has the keys; still there (an option: a shape type, Pen or
       Highlighter, a mode, a colour), the focus stays on the control, or on
-      the one the menu drew in its place;
+      the one the menu drew in its place. Only while the press is still the
+      last thing that happened: a key typed before it settled (Tab, Escape,
+      an arrow), a pointer press or the focus leaving the editor keeps its
+      own move (fourth review of #679);
+    - Escape (or Tab past the last group) on a menu that picked an element up
+      (a mind map style) drops it as the mouse's Escape does: the drag
+      cancelled, the select tool back, then the menu closed and its button
+      focused;
     - the keyboard leaves nothing behind: the `tabindex` it gives a menu
       button is taken back when keyboard mode ends (the menu closed, a
       pointer press, the canvas), so a later click is the click of 4.0.0;
@@ -201,4 +209,11 @@ The toolbar takes real DOM focus, on the APG toolbar pattern.
   keyboard path through the row gives the focus back. (2) The focus watch of
   §7 relies on `focusout` at removal; a browser that does not fire it leaves
   those cases on the body, as before this decision. Chromium is the only
-  browser the integration suite runs.
+  browser the integration suite runs. (3) The mind map styles are read in
+  the menu's order, which is the enum's (« Style 1, Style 4, Style 3,
+  Style 2 »): their names are the styles' identities, shared with the
+  Templates catalogue (lead decision, fourth review: accepted as is).
+  (4) `edgeless-toolbar-keyboard.spec.ts` takes about 7 minutes alone, the
+  two data-driven "Enter equals click" tests about 2 and 3 of them: each
+  control is reached from a fresh menu by the keyboard and by the mouse, so
+  that no press inherits another's state.
