@@ -54,6 +54,8 @@ const PATIENCE_MS = 5000;
 const SETTLE_FRAMES = 6;
 /** Options of the select column: more than its 400px list shows. */
 const OPTION_COUNT = 24;
+/** A click in the page's top left corner, away from any popup. */
+const CLICK_AWAY_OFFSET = 2;
 /** Escapes enough for a name field, a menu and its sub-menu. */
 const MAX_ESCAPES = 4;
 /** Arrow presses that take the selection past what the capped list shows. */
@@ -230,9 +232,17 @@ describe('a column menu on a short base, in a short window', () => {
       'taller than the window allows: it scrolls inside itself'
     ).toBeGreaterThan(menu.clientHeight);
 
-    // The name field takes the focus first; Escape leaves it to the list.
+    // The name field takes the focus two frames after the menu opens
+    // (MenuInput selects it); the hidden search field has it one frame
+    // after, and Escape there closes the menu. Wait for the name field: a
+    // slower runner (the PR's CI) pressed Escape in between, and the walk
+    // below found nothing highlighted.
     await until(() =>
-      expect(document.activeElement?.closest('affine-menu')).toBe(menu)
+      expect(
+        document.activeElement
+          ?.closest('affine-menu-input')
+          ?.closest('affine-menu')
+      ).toBe(menu)
     );
     await userEvent.keyboard('{Escape}');
     const entries = [
@@ -459,7 +469,9 @@ describe('the popups of a cell, in a short window', () => {
       );
     });
     // Closed by a click away, as the reader closes it.
-    await userEvent.click(document.body, { position: { x: 2, y: 2 } });
+    await userEvent.click(document.body, {
+      position: { x: CLICK_AWAY_OFFSET, y: CLICK_AWAY_OFFSET },
+    });
     await until(() => expect(openPopups()).toHaveLength(0));
   });
 });
