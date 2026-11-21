@@ -1,5 +1,26 @@
 # @labre/affine-inline-latex
 
+## 4.1.0
+
+### Patch Changes
+
+- Updated dependencies [6d7a084]
+- Updated dependencies [84c6752]
+- Updated dependencies [55d12e4]
+- Updated dependencies [f92920b]
+- Updated dependencies [1d9baf6]
+- Updated dependencies [f54c196]
+- Updated dependencies [bd9ba02]
+- Updated dependencies [810c0ed]
+  - @labre/affine-components@4.1.0
+  - @labre/affine-shared@4.1.0
+  - @labre/std@4.1.0
+  - @labre/affine-rich-text@4.1.0
+  - @labre/affine-model@4.1.0
+  - @labre/affine-ext-loader@4.1.0
+  - @labre/global@4.1.0
+  - @labre/store@4.1.0
+
 ## 4.0.0
 
 ### Patch Changes

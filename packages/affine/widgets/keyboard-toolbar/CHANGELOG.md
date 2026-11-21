@@ -1,5 +1,46 @@
 # @labre/affine-widget-keyboard-toolbar
 
+## 4.1.0
+
+### Patch Changes
+
+- Updated dependencies [7a61224]
+- Updated dependencies [b721773]
+- Updated dependencies [2342f43]
+- Updated dependencies [6d7a084]
+- Updated dependencies [84c6752]
+- Updated dependencies [55d12e4]
+- Updated dependencies [f92920b]
+- Updated dependencies [1d9baf6]
+- Updated dependencies [f54c196]
+- Updated dependencies [bd9ba02]
+- Updated dependencies [810c0ed]
+  - @labre/affine-database-engine@4.1.0
+  - @labre/affine-database-block@4.1.0
+  - @labre/affine-fragment-doc-title@4.1.0
+  - @labre/affine-components@4.1.0
+  - @labre/affine-block-note@4.1.0
+  - @labre/affine-block-image@4.1.0
+  - @labre/affine-shared@4.1.0
+  - @labre/std@4.1.0
+  - @labre/affine-block-embed@4.1.0
+  - @labre/affine-block-surface@4.1.0
+  - @labre/affine-block-attachment@4.1.0
+  - @labre/affine-block-latex@4.1.0
+  - @labre/affine-block-list@4.1.0
+  - @labre/affine-block-paragraph@4.1.0
+  - @labre/affine-block-surface-ref@4.1.0
+  - @labre/affine-inline-latex@4.1.0
+  - @labre/affine-inline-link@4.1.0
+  - @labre/affine-inline-preset@4.1.0
+  - @labre/affine-inline-reference@4.1.0
+  - @labre/affine-rich-text@4.1.0
+  - @labre/affine-widget-linked-doc@4.1.0
+  - @labre/affine-model@4.1.0
+  - @labre/affine-ext-loader@4.1.0
+  - @labre/global@4.1.0
+  - @labre/store@4.1.0
+
 ## 4.0.0
 
 ### Patch Changes
