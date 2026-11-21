@@ -589,11 +589,17 @@ export const isEditingOnCanvas = (std: BlockStdScope) =>
  * Whether the canvas is being PRESENTED: the active tool declares
  * `BaseTool.presents` (the frame navigator). Read off the tool's own
  * declaration, so this module names no tool.
+ *
+ * Every std has a gfx controller, but `gfx.tool` exists only where the tool
+ * controller is registered: `ToolController.extendGfx` installs that getter,
+ * and only the edgeless view registers `ToolController`. On a page the
+ * property is absent, whatever its type says, and a page presents nothing.
  */
 const isPresenting = (std: BlockStdScope) => {
-  const tool = std
-    .getOptional(GfxControllerIdentifier)
-    ?.tool.currentTool$.peek();
+  const gfx = std.getOptional(GfxControllerIdentifier) as {
+    tool?: { currentTool$: { peek(): BaseTool | undefined } };
+  } | null;
+  const tool = gfx?.tool?.currentTool$.peek();
   return Boolean(tool && (tool.constructor as typeof BaseTool).presents);
 };
 

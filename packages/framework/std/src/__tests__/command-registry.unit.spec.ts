@@ -142,6 +142,24 @@ describe('availability while the canvas is presented', () => {
     );
   });
 
+  /**
+   * A PAGE has a gfx controller but no tool controller: `gfx.tool` is a
+   * getter only `ToolController.extendGfx` installs, and only the edgeless
+   * view registers `ToolController`. Reading `gfx.tool.currentTool$` there
+   * threw while a page listed its database view settings (PR #697 CI): no
+   * tool means nothing is being presented.
+   */
+  test("on a page (no tool controller) 'editable' neither throws nor is refused", () => {
+    const pageStd = {
+      store: { readonly: false },
+      selection: { filter: () => [] },
+      getOptional: (id: unknown) =>
+        id === GfxControllerIdentifier ? {} : undefined,
+    } as unknown as BlockStdScope;
+    expect(() => isCommandAvailable(pageStd, writes)).not.toThrow();
+    expect(isCommandAvailable(pageStd, writes)).toBe(true);
+  });
+
   test("'always' still runs while presenting", () => {
     expect(isCommandAvailable(stdWithTool(new Presenting()), always)).toBe(
       true
