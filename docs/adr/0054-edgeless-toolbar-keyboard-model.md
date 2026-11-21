@@ -217,3 +217,85 @@ The toolbar takes real DOM focus, on the APG toolbar pattern.
   two data-driven "Enter equals click" tests about 2 and 3 of them: each
   control is reached from a fresh menu by the keyboard and by the mouse, so
   that no press inherits another's state.
+
+## Amendment — 2026-11-21: the Tab stop is the button used last; the ring sits whole
+
+The product owner accepted #691 on the acceptance build with three remarks,
+answered here. The rule of §4 is untouched: the toolbar takes the keyboard only
+in keyboard mode, and after a mouse gesture it is the toolbar of 4.0.0.
+
+1. **The Tab stop is the button used last** (replaces the stop rule of §3;
+   the product owner: "start where the user is or where he last was, at the
+   level of the toolbar only"). Tab kept starting on the active tool, and a
+   placed shape or a picked style gives the select tool back, so nearly
+   always on the first button: the whole bar to cross again. The APG toolbar
+   pattern returns focus to the control that last had it. The row's one Tab
+   stop is now the row button the user last used — the last one the keyboard
+   focused, the last one clicked, the last one pressed through the Alt+←/→
+   highlight — for the life of the mounted toolbar; until the row is used
+   once, the active tool's, as before.
+
+   - A tool picked from the canvas (a letter such as `h` or `v`, a chord, the
+     select tool given back after placing) moves no stop.
+   - A click moves the stop to the clicked button without focusing it and
+     without leaving any `tabindex` but the roving one: at every moment exactly
+     one row button is `tabindex="0"`, every other and the pager arrows and
+     "More tools" `-1`. A click on a pager arrow moves nothing (§8).
+   - The button is remembered by its tool — a senior tool by its name, a quick
+     tool by its place, then its place in its item (pen, eraser) — since a
+     page turn or a resize draws the row anew. On another page of the senior
+     row, the canvas's Tab turns the row to that page and focuses it; not
+     drawn at all (a resize folded it into "More tools"), the stop is the
+     active tool's button, else the first, and the memory waits for it to be
+     drawn again. Flags are read once at mount (ADR 0009), so a framework a
+     flag turns off is never drawn in that editor's life: another editor
+     starts with nothing remembered.
+   - Sub-menus are unchanged: a menu opened from the keyboard takes the focus
+     on its first control (§10).
+   - Nothing is stored — not in the document, not in `localStorage` or
+     `sessionStorage`: it is view state of the toolbar.
+   - Shift+Tab from the row still gives the canvas the keyboard, Escape still
+     gives it back without changing the tool. The browser's own Tab order
+     (Shift+Tab from what follows the editor) lands on the stop of the page on
+     show; only the canvas's Tab turns the page.
+     Held by "the Tab stop is the button used last" in
+     `edgeless-toolbar-keyboard.spec.ts`.
+
+2. **A ring sits whole, inside what it marks, concentric with what it
+   surrounds.** Two of the rings the keyboard draws did not.
+
+   - The senior tools' buttons are as tall as the bar, their artwork clipped
+     at its edges (`DESIGN.md`): the ring, drawn on the button's box, lay on
+     the bar's top border and was cut at its bottom. A row button's ring is
+     drawn inside its box (`toolButtonFocusRing`, still 2px, colour
+     unchanged), and on a senior tool 2px further in
+     (`--edgeless-toolbar-focus-ring-offset`, set by the bar on its senior
+     items): every ring of the bar — quick tools, each senior tool on every
+     page, "More tools", the pager arrows — lies inside the bar, clear of its
+     1px border, clipped by no ancestor.
+   - A chosen colour swatch drew its selection ring 27px wide on a 24px
+     swatch: 1.5px out on each side, on half pixels, which the browser snaps
+     to one side, with 0.5px left to the focus ring — the two rings visibly
+     off-centre. The selection ring is 28px (2px out of a large swatch, 4px
+     out of a small one), the focus ring 1px outside it all round, both on
+     whole pixels and centred on the swatch.
+   - The slide-out menus clipped the ring of a control at their scrolling
+     edges (the first control, the width slider; the last swatch). The strip
+     keeps 5px of room inside its clipping edges and scrolls a focused
+     control in with that margin; its content stays where it was.
+     Held by "the focus ring, where the product owner saw it" in
+     `edgeless-toolbar-keyboard.spec.ts`, which measures each ring from what
+     draws it (`utils/focus-ring.ts`): every button of the bar on every page,
+     every control of every menu the keyboard reaches.
+
+3. **Found on the way, recorded.** (a) An Escape typed while a closed menu
+   still slides out (its 230ms leave transition) read the menu as open and
+   pressed its button again, the menu back: the row forgets what it opened
+   when Escape closes a popper (fixed here; held by "a tool that gives the
+   select tool back after use"). (b) Not fixed: at a 380px-wide toolbar
+   (one senior tool a page, "More tools" shown) → stalls on "Add file" and
+   goes no further; it does so on the base too. The ring test walks that
+   width only as far as the first senior pages (a `ponytail:` line in the
+   spec says where to lift it). (c) A tooltip the resting mouse raised over a
+   menu control takes a keyboard press there, since the press is the
+   pointer's at what is drawn (§4): Enter then does nothing. Not changed.
