@@ -1,5 +1,180 @@
 # @labre/data-view
 
+## 4.1.0
+
+### Minor Changes
+
+- 7a61224: A database whose every view was deleted no longer disappears (ADR 0035,
+  amendment of 2026-11-20). Deleting the only view ("⋯" › Delete, or the tab's
+  menu) used to leave nothing on the page: no title, no views bar, no "+", no
+  table, and no way back but Ctrl+Z. Such a database, or one stored with no
+  view, now draws its title row (with its "⋯") above an empty state: "No view",
+  and, where a view may be added, a hint and a "New view" button that opens what
+  the views bar's "+" opens (with `labre-core-database`, the database's sources,
+  and "Create source" once a name is typed in its search; without it, the
+  layouts). A read-only document, or `{ database: false }`, shows the status
+  alone. It holds inline, on the canvas and on a base's full page. Nothing is
+  written: undo brings the view back, redo the empty state, and a peer's deletion
+  lands on it too.
+
+  Native rows with no view under a host that sets `requireSource` are locked, so
+  they offer no "New view": the empty state now shows their read-only notice, and
+  "Move into a database" turns them into a host source that offers "New view".
+
+  Focus (WCAG 2.4.3): when a removal leaves no view and nothing holds the focus
+  once the empty state has drawn, the focus goes to "New view" (or to the status
+  where there is no button), whether the removal came from the keyboard, from a
+  host's `deleteView` → `remove()`, an undo or a redo; an undo that brings the
+  view back gives it to the view's "⋯". A peer's write and a mouse gesture move
+  nothing, and the page never scrolls to the block. A preset picked from the
+  empty state's menu with the keyboard lands the focus on the new view's "⋯". A
+  click in the frame takes no focus.
+
+  A view current only by an id that no longer exists (deleted by a peer, an undo
+  or a host's later `remove()`) is no longer drawn as nothing: the first view is
+  shown (`ViewManagerBase.currentViewId# @labre/data-view reads past a stale id).
+
+  "Delete" on the last view is unchanged and still reaches the host's
+  `deleteView`, which decides what goes with it.
+
+  For the host:
+
+  - Two new translation keys (English fallback):
+    `com.labre.data-view.no-view` "No view",
+    `com.labre.data-view.no-view.hint` "Add a view to show this database's
+    rows." The button reuses `com.labre.data-view.views-bar.add-view` ("New
+    view").
+  - `deleteView`: close your confirmation dialog, its focus return included,
+    before you call `remove()`; a dialog still holding the focus when the view
+    goes keeps it, and returns it to the "⋯" the removal takes away (the Labre
+    shell today calls `remove()` before `sourceTrashStore.done()`: swap them).
+  - The focus rule needs remote updates applied with an origin: one applied
+    without reads as local and would move the focus on an idle peer.
+  - A host that builds its own `DataViewRootUILogic` now gets the empty state
+    where it got nothing; `DataViewRendererConfig` gains two optional members,
+    `noViewHeader` (what of your header to draw above it) and `onChangeView` (a
+    view added from it). The 4.0 config still types.
+
+  The `affine:data-view` block passes its header too, but is not verified: it
+  throws at construction and its data source implements neither `viewManager`
+  nor `readonly# @labre/data-view, both older than this change.
+
+- 2342f43: The view toolbar of a database (filter, sort, search, view settings "⋯", New
+  and the arrow of the host's menu beside it) is now driven from the keyboard
+  (#678): each control is in the tab order in visual order, named, activated
+  by Enter and Space (a key held down activates once), and shows a 2px
+  `--affine-primary-color` focus ring under `:focus-visible`. The toolbar is no
+  longer at opacity 0 while one of its controls holds the focus, and it is shown
+  at rest on a database opened as the page itself (the views' `PageLayoutKey`,
+  as the table's page layout already reads it); inline in a text it still
+  appears on hover. Menu buttons say their state (`aria-expanded`); filter and
+  sort, once a filter or a sort exists, say whether the quick-setting bar they
+  toggle is shown. Filter, sort and view settings menus opened from the keyboard
+  give the focus back to their control when they close, Escape included (the view
+  settings take two Escapes: the first leaves their name field). Search is a
+  named button that opens its field with the focus inside; opened from the
+  keyboard, Escape clears the text, a second Escape closes the field and returns
+  to the button.
+
+  The rule: the toolbar takes only the keys of its own model, and only in
+  keyboard mode; after any mouse gesture the content behaves as in 4.0.0.
+
+  - On a control the reader tabbed to (`:focus-visible`), a key without Ctrl,
+    Meta or Alt (Enter, Space, letters, arrows, Backspace, Delete) stays in the
+    toolbar: it no longer reaches the editor, the view's keys or your listeners
+    on the document (with a cell still selected, Tab used to move the cell and a
+    letter edited it). Tab and Shift+Tab on a control always move the focus.
+    Escape is never stopped on a control: the open popups' Escape and your own
+    menus still get it.
+  - In the search field, every key but Escape stays in the field. Escape stays
+    there too when the field was opened from the keyboard; opened with the
+    mouse, it goes on to the editor as before and the focus is not moved.
+  - A pointer press on a control focuses what 4.0.0 focused: for the length of
+    the press the control has no `tabindex`, so the press blurs the focused
+    element (an editing cell commits) and the browser focuses the nearest
+    focusable ancestor; the menu the click opens then takes the focus.
+  - Shortcuts with a modifier (undo) always go through.
+
+  Other behaviour a host may notice:
+
+  - the folded search field is `inert`: out of the tab order and of the
+    accessibility tree, reached through the Search button;
+  - Tab in the title of a page of one block (`<doc-title .bodyBlockId>`, a
+    base's full page) now leaves the title for that block's controls, the view
+    toolbar first, and Shift+Tab comes back. An ordinary document's title keeps
+    Tab, as before. For that, the editor host of `affine-database-page` leaves
+    the tab order (`tabindex="-1"`, still focusable by script): Tab stopped on
+    it between the title and the views, and the editor keeps a Tab pressed
+    there;
+  - a host that fills `DatabaseNewRowMenuExtension`: read
+    `anchor.matches(':focus-visible')` when you open your menu. `true` (opened
+    from the keyboard): give the focus back to `anchor` itself, not to a
+    descendant, when your menu closes, Escape included. `false` (opened with the
+    pointer): do not focus `anchor`, or it would hold the keys a selected cell
+    expects.
+
+  Not reached from the keyboard yet: the view tabs and the "+" of the views bar
+  (Tab goes from the title or the control before the toolbar straight to
+  Filter), and the filter and sort chips of the quick-setting bar (a filter
+  created from the keyboard cannot be edited or removed from it).
+
+  No new translation key: the search button and its field are named by
+  `com.labre.filterable-list.search-placeholder` ("Search", one chrome word, one
+  key), and the "⋯" button by `com.labre.data-view.view-settings` ("View
+  settings"); check that your catalogue's wording of the first reads as a button
+  name.
+
+### Patch Changes
+
+- 1d9baf6: `BlockStdScope.getView(flavour)` now answers `null` for a flavour with no registered view, as its `BlockViewType | null` type always said; it answered `undefined` (#682). The same holds for the other public reads typed `| null` that passed the optional service lookup through: `CodeBlockComponent.notificationService`, `EmbedIframeBlockComponent.notificationService`, `DefaultTool.interactivity`, `DataSourceBase.serviceGet` and `SingleViewBase.serviceGet` (which delegates to it), `ViewportLayoutPainter.getPainter`, `CitationService.docModeService` and `.telemetryService`, `ToolbarContext.telemetryProvider`. Code written against the declared types (a truthiness test, `?.`, `??`, `!= null`, `=== null`, `!== null`) is unaffected or now correct; a comparison with `=== undefined`, which the types never allowed for, no longer matches. `std.getOptional(...)` itself is unchanged.
+- bd9ba02: No entry of a menu of a base is out of reach any more in a short window, with
+  the mouse and with the keyboard. Menus are placed `fixed` against the window:
+  on a short page (a base of three rows opened on its full page) a column menu
+  ran past the bottom edge and its last entries ("Duplicate", "Delete") could
+  not be reached. This predates the release (4.0.0 behaves the same).
+
+  - Every menu opened with `popMenu`, with the default placement or a caller's
+    own middleware, and every nested sub-menu, is capped at the room on the side
+    it opens on when its content is taller, and then scrolls inside itself; a
+    menu that fits carries no cap and no scroll. A menu that fits by less than
+    8px is capped and scrolls by those few pixels. The field it opens on (a
+    shown search, a column's name) stays in view above the list, covering the
+    panel's top padding.
+  - The arrow keys, down and up, scroll the highlighted entry wholly into view,
+    below the field stuck at the top; nothing else scrolls a panel: not the
+    pointer, not a sub-menu closing, not a click in a margin. The menu does not
+    wrap and has no Home or End.
+  - The tag selector of a select or multi-select cell caps its options list at
+    the room its field leaves, the field staying in view, and its arrows bring
+    the selected option into view (they wrap). The date picker of a date cell
+    shifts to stay inside the window; with no room on either side it covers its
+    cell, and a window shorter than the calendar still cuts its bottom.
+  - New exports of `@labre/affine-components/context-menu`, for the base's own
+    popups: `capToRoom`, `scrollDeltaToShow`, `scrollViewOf`, `WINDOW_PADDING`.
+
+  Not covered: a scrolled page under the library's own lockfile. There,
+  `@floating-ui/utils` 0.2.9 counts `container-type` as making a containing
+  block (Chrome does not), and a popup opened on an inline base in a scrolled
+  page lands off its anchor, outside the window. `@floating-ui/utils` 0.2.11 and
+  later fix it, within the `^0.2.9` range `@floating-ui/dom` asks for; a host
+  that resolves one of them (Labre resolves 0.2.11) does not have the defect.
+
+  Nothing stored, no seam, no new key.
+
+- Updated dependencies [6d7a084]
+- Updated dependencies [55d12e4]
+- Updated dependencies [f92920b]
+- Updated dependencies [1d9baf6]
+- Updated dependencies [f54c196]
+- Updated dependencies [bd9ba02]
+- Updated dependencies [810c0ed]
+  - @labre/affine-components@4.1.0
+  - @labre/affine-shared@4.1.0
+  - @labre/std@4.1.0
+  - @labre/affine-model@4.1.0
+  - @labre/global@4.1.0
+  - @labre/store@4.1.0
+
 ## 4.0.0
 
 ### Patch Changes

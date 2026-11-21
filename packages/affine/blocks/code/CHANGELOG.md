@@ -1,5 +1,53 @@
 # @labre/affine-block-code
 
+## 4.1.0
+
+### Minor Changes
+
+- 6d7a084: Edgeless toolbar names, state and element toolbar height (#679). Every button
+  of the canvas toolbar now has an accessible name, the same translated wording
+  as its tooltip: the quick tools, the pen and the eraser, each senior tool
+  (a framework's button is named after the framework, "Wardley map",
+  "Cynefin / Estuarine"), "More Tools" and the two pager arrows. The tools expose
+  their state as `aria-pressed` (the note and template tools and the mind map
+  menu included); an action (undo, insert a text, add a file) exposes none. After paging the senior row, the arrow no longer keeps the
+  tooltip of the tool it brought in. `edgeless-tool-icon-button` gains `label`
+  (its name when its tooltip is a template) and `onToolbarRow`; it names and
+  states itself only on the toolbar row or when given a `label`, so its other
+  uses (panels, menus, auto-complete) keep the attributes their owner gives; its `active`
+  defaults to `undefined` instead of `false`. The pen's senior tool declares the
+  `com.labre.brush.tooltip.pen` key. New keys for the host's catalogue:
+  `com.labre.edgeless-toolbar.previous-tools` ("Previous tools") and
+  `com.labre.edgeless-toolbar.next-tools` ("Next tools"). The element (contextual)
+  toolbar, which also draws the page view's formatting toolbar, is 40px tall
+  border included (`box-sizing: border-box`), instead of a 36px content box plus its
+  border (measured 37 to 38px depending on the browser, in 4.0.0 and before); the code block's bar keeps its size.
+
+### Patch Changes
+
+- 1d9baf6: `BlockStdScope.getView(flavour)` now answers `null` for a flavour with no registered view, as its `BlockViewType | null` type always said; it answered `undefined` (#682). The same holds for the other public reads typed `| null` that passed the optional service lookup through: `CodeBlockComponent.notificationService`, `EmbedIframeBlockComponent.notificationService`, `DefaultTool.interactivity`, `DataSourceBase.serviceGet` and `SingleViewBase.serviceGet` (which delegates to it), `ViewportLayoutPainter.getPainter`, `CitationService.docModeService` and `.telemetryService`, `ToolbarContext.telemetryProvider`. Code written against the declared types (a truthiness test, `?.`, `??`, `!= null`, `=== null`, `!== null`) is unaffected or now correct; a comparison with `=== undefined`, which the types never allowed for, no longer matches. `std.getOptional(...)` itself is unchanged.
+- Updated dependencies [6d7a084]
+- Updated dependencies [55d12e4]
+- Updated dependencies [f92920b]
+- Updated dependencies [1d9baf6]
+- Updated dependencies [f54c196]
+- Updated dependencies [bd9ba02]
+- Updated dependencies [810c0ed]
+  - @labre/affine-components@4.1.0
+  - @labre/affine-shared@4.1.0
+  - @labre/std@4.1.0
+  - @labre/affine-gfx-turbo-renderer@4.1.0
+  - @labre/affine-inline-latex@4.1.0
+  - @labre/affine-inline-link@4.1.0
+  - @labre/affine-inline-preset@4.1.0
+  - @labre/affine-rich-text@4.1.0
+  - @labre/affine-widget-slash-menu@4.1.0
+  - @labre/affine-inline-comment@4.1.0
+  - @labre/affine-model@4.1.0
+  - @labre/affine-ext-loader@4.1.0
+  - @labre/global@4.1.0
+  - @labre/store@4.1.0
+
 ## 4.0.0
 
 ### Patch Changes

@@ -1,5 +1,25 @@
 # @labre/affine-block-surface
 
+## 4.1.0
+
+### Patch Changes
+
+- 1d9baf6: `BlockStdScope.getView(flavour)` now answers `null` for a flavour with no registered view, as its `BlockViewType | null` type always said; it answered `undefined` (#682). The same holds for the other public reads typed `| null` that passed the optional service lookup through: `CodeBlockComponent.notificationService`, `EmbedIframeBlockComponent.notificationService`, `DefaultTool.interactivity`, `DataSourceBase.serviceGet` and `SingleViewBase.serviceGet` (which delegates to it), `ViewportLayoutPainter.getPainter`, `CitationService.docModeService` and `.telemetryService`, `ToolbarContext.telemetryProvider`. Code written against the declared types (a truthiness test, `?.`, `??`, `!= null`, `=== null`, `!== null`) is unaffected or now correct; a comparison with `=== undefined`, which the types never allowed for, no longer matches. `std.getOptional(...)` itself is unchanged.
+- Updated dependencies [6d7a084]
+- Updated dependencies [55d12e4]
+- Updated dependencies [f92920b]
+- Updated dependencies [1d9baf6]
+- Updated dependencies [f54c196]
+- Updated dependencies [bd9ba02]
+- Updated dependencies [810c0ed]
+  - @labre/affine-components@4.1.0
+  - @labre/affine-shared@4.1.0
+  - @labre/std@4.1.0
+  - @labre/affine-model@4.1.0
+  - @labre/affine-ext-loader@4.1.0
+  - @labre/global@4.1.0
+  - @labre/store@4.1.0
+
 ## 4.0.0
 
 ### Patch Changes
