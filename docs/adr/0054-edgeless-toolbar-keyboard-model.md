@@ -306,8 +306,9 @@ in keyboard mode, and after a mouse gesture it is the toolbar of 4.0.0.
      paperclip outside. The bar marks such a
      cell (`data-cell-ring`, read at each sync of the row, since a page turn
      deals other tools into the same cells) and the cell that holds the
-     focused button (`data-keyboard-focus`, set on a `:focus-visible` focus
-     only, as every other button's ring, cleared on blur);
+     focused button (`data-keyboard-focus`: exactly when that button is the
+     deep active element and matches `:focus-visible`, as every other
+     button's ring);
      the cell's `.cell-ring`, an element of its own, draws the ring and the
      button draws none (`--edgeless-toolbar-focus-ring-display`). Not the
      cell's `::after`: that needs a positioned cell, and a positioned cell
@@ -315,7 +316,13 @@ in keyboard mode, and after a mouse gesture it is the toolbar of 4.0.0.
      — tried, it broke every senior menu. The unpositioned cell centres the
      ring as a flex item. `:has(:focus-visible)` cannot see a focus inside
      the tool's shadow tree, and `:focus-within` would also match a focus in
-     the tool's open menu, so the bar sets the mark. A cell of two buttons
+     the tool's open menu, so the bar sets the mark. It reads it on the
+     button's own `focus` and `blur`, which fire on the button wherever the
+     other end of the move is, and at each sync of the row — not on the
+     bar's `focusin` / `focusout`: the menu lives in the tool's shadow tree
+     beside the button, a move between them never leaves that tree, and the
+     Shape cell kept its ring while its menu had the keyboard (two rings on
+     screen, acceptance of the second review). A cell of two buttons
      (the pen and the eraser) keeps one ring per button, each 2px inside its
      button. No artwork moves, no clipping changes.
    - The slide-out menus open inside a senior cell and inherited its ring

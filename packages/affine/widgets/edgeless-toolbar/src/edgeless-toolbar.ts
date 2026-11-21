@@ -1175,15 +1175,16 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
     // A senior tool drawn as one button has its ring drawn by its cell (the
     // styles' `[data-cell-ring]`). Read each sync: a page turn deals other
     // tools into the same cells.
-    const cells = new Set(
-      entries
-        .filter(({ senior, alone }) => senior !== null && alone)
-        .map(({ item }) => item)
+    const ringed = entries.filter(
+      ({ senior, alone }) => senior !== null && alone
     );
+    const cells = new Set(ringed.map(({ item }) => item));
     this.shadowRoot
       ?.querySelectorAll<HTMLElement>('.senior-tool-item')
       .forEach(item => item.toggleAttribute('data-cell-ring', cells.has(item)));
+    ringed.forEach(({ button }) => this._watchCellRing(button));
     this._rowStops = entries;
+    this._refreshCellRing();
     const focused = deepActiveElement();
     this._setTabStop(entries.find(({ button }) => button === focused)?.button);
     return entries;
@@ -1673,39 +1674,51 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
     // The button the keyboard stands on is the one used last: Tab comes back
     // to it from the canvas.
     this._useStop(here);
-    // Its senior cell draws the ring when the tool is one button (the
-    // styles' `[data-cell-ring][data-keyboard-focus]`) — when the focus
-    // shows one, as every other button's ring: `:focus-visible` (a host's
-    // `focusRow()` after a mouse gesture draws none; second review of #691).
-    if (!here.matches(':focus-visible')) {
-      this._markFocusedCell(null);
-      return;
-    }
-    this._markFocusedCell(
-      event
-        .composedPath()
-        .find(
-          (node): node is HTMLElement =>
-            node instanceof HTMLElement &&
-            node.classList.contains('senior-tool-item')
-        ) ?? null
-    );
   };
 
-  /** The senior cell that holds the focused row button, if any. */
+  /** The senior cell whose ring shows (`data-keyboard-focus`), if any. */
   private _focusedCell: HTMLElement | null = null;
 
-  private _markFocusedCell(cell: HTMLElement | null) {
+  /** Row buttons whose own `focus` and `blur` mark their cell. */
+  private readonly _cellRingWatched = new WeakSet<HTMLElement>();
+
+  /**
+   * The ring of a senior tool drawn as one button is its cell's (the styles'
+   * `[data-cell-ring][data-keyboard-focus]`): shown if and only if that
+   * button is the deep active element and matches `:focus-visible`, as every
+   * other button's own ring (a host's `focusRow()` after a mouse gesture
+   * draws none). Read on the button's OWN `focus` and `blur`, which fire on
+   * it whatever the other end of the move is. The toolbar's `focusin` /
+   * `focusout` cannot tell: the tool's menu lives in the tool's shadow tree
+   * beside its button, and a move between them never leaves that tree — the
+   * cell kept its ring while the menu had the keyboard, two rings on screen
+   * (acceptance of the second review of #691). Also read at each sync of
+   * the row, which re-deals tools into the cells.
+   */
+  private _watchCellRing(button: HTMLElement) {
+    if (this._cellRingWatched.has(button)) return;
+    this._cellRingWatched.add(button);
+    button.addEventListener('focus', this._refreshCellRing);
+    button.addEventListener('blur', this._refreshCellRing);
+  }
+
+  private readonly _refreshCellRing = () => {
+    const active = deepActiveElement();
+    const entry =
+      active instanceof HTMLElement && active.matches(':focus-visible')
+        ? this._rowStops.find(
+            ({ button, senior, alone }) =>
+              button === active && senior !== null && alone
+          )
+        : undefined;
+    const cell = entry?.item ?? null;
     if (this._focusedCell === cell) return;
     this._focusedCell?.removeAttribute('data-keyboard-focus');
     this._focusedCell = cell;
     cell?.setAttribute('data-keyboard-focus', '');
-  }
+  };
 
   private readonly _onRowFocusOut = (event: FocusEvent) => {
-    // The button loses the focus: its cell's ring goes with it (a focus
-    // landing on another row button marks that one's cell).
-    this._markFocusedCell(null);
     const next = event.relatedTarget;
     if (next instanceof Node && this.toolbarContainer?.contains(next)) return;
     // Out of the row: its stop stays on the button used last.

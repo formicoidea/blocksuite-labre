@@ -150,6 +150,34 @@ describe('edgeless toolbar keyboard model', () => {
     return within(active, container()) ? (active as HTMLElement) : null;
   };
 
+  /**
+   * At most one focus ring on screen, for a senior cell's ring (acceptance
+   * of the second review of #691: the Shape cell kept its ring while its
+   * menu had the keyboard). A cell's ring shows exactly when the deep active
+   * element is a row button alone in a ringed cell and `:focus-visible`;
+   * what is wrong, or `null`.
+   */
+  const cellRingFault = (): string | null => {
+    const shown = Array.from(
+      toolbar().shadowRoot!.querySelectorAll('.cell-ring')
+    ).filter(ring => getComputedStyle(ring).display !== 'none');
+    const active = deepActive();
+    const cell = active ? seniorCellOf(active) : null;
+    const owed =
+      active instanceof HTMLElement &&
+      (active as { onToolbarRow?: boolean }).onToolbarRow === true &&
+      active.matches(':focus-visible') &&
+      cell?.hasAttribute('data-cell-ring') === true;
+    const label = active?.getAttribute('aria-label') ?? active?.localName;
+    if (owed && (shown.length !== 1 || shown[0].parentElement !== cell)) {
+      return `${shown.length} cell rings shown, focus on ${label} owes its cell's alone`;
+    }
+    if (!owed && shown.length > 0) {
+      return `${shown.length} cell ring(s) shown, focus on ${label} owes none`;
+    }
+    return null;
+  };
+
   const canvasHasFocus = () => deepActive() === window.editor.host;
 
   const tool = () => edgeless.gfx.tool.currentToolName$.peek();
@@ -1157,9 +1185,12 @@ describe('edgeless toolbar keyboard model', () => {
           }
         });
         const drawn = drawnControls(opened);
-        const reached = await walkMenu(opened, control =>
-          failures.push(...menuRingFaults(name, control))
-        );
+        const reached = await walkMenu(opened, control => {
+          failures.push(...menuRingFaults(name, control));
+          const ring = cellRingFault();
+          if (ring)
+            failures.push(`${name} › ${describeControl(control)}: ${ring}`);
+        });
         const missing = drawn.filter(control => !reached.has(control));
         if (missing.length > 0) {
           failures.push(
@@ -1190,6 +1221,8 @@ describe('edgeless toolbar keyboard model', () => {
             `${name}: Escape does not give the focus back (${where()})`
           );
         }
+        const back = cellRingFault();
+        if (back) failures.push(`${name}, after Escape: ${back}`);
         // The mouse: the menu opens, the focus stays where it was.
         await reset();
         await userEvent.click(await buttonNamed(name, scroll));
@@ -2163,6 +2196,42 @@ describe('edgeless toolbar keyboard model', () => {
       await until(() => last.hasAttribute('active'), 'the swatch is picked');
       await reset();
     });
+
+    /**
+     * Acceptance of the second review of #691: in the Shape menu, the
+     * keyboard on its controls, the Shape cell kept its ring — two rings on
+     * screen. The menu lives in the tool's shadow tree beside the button, so
+     * the toolbar's focusin / focusout never heard the focus move. One ring
+     * at a time: none of the bar's while the menu has the keyboard; Escape,
+     * the Shape cell's alone, on its button; Escape again, none.
+     */
+    test('the cell ring is off while its menu has the keyboard, back on Escape', async () => {
+      const shown = () =>
+        Array.from(toolbar().shadowRoot!.querySelectorAll('.cell-ring')).filter(
+          ring => getComputedStyle(ring).display !== 'none'
+        );
+      await reset();
+      const buttons = await everyButton();
+      const button = await buttonNamed('Shape', buttons.get('Shape')!);
+      const opened = (await openWithEnter(button))!;
+      lastMenu = opened;
+      await until(() => within(deepActive(), opened), 'the keyboard is in');
+      await press('{ArrowRight}');
+      await press('{ArrowRight}');
+      expect(within(deepActive(), opened)).toBe(true);
+      expect(shown()).toEqual([]);
+      expect(cellRingFault()).toBeNull();
+      await press('{Escape}');
+      await until(() => focusedButton() === button, 'back on Shape');
+      expect(shown().map(ring => ring.parentElement)).toEqual([
+        seniorCellOf(button),
+      ]);
+      expect(cellRingFault()).toBeNull();
+      await press('{Escape}');
+      await until(() => focusedButton() === null, 'off the row');
+      expect(shown()).toEqual([]);
+      await reset();
+    });
   });
 
   /**
@@ -2203,6 +2272,8 @@ describe('edgeless toolbar keyboard model', () => {
           .filter(control => control.getAttribute('tabindex') !== '-1')
           .map(label)
       ).toEqual([]);
+      // And at most one ring on screen, wherever the focus is.
+      expect(cellRingFault()).toBeNull();
     };
 
     /** → from where the keyboard stands to the button named `name`. */

@@ -32,7 +32,8 @@ slides the strip under the pointer. After a prefix (the pen menu's pens) the
 strip's content starts 5px further right and the menu is 5px wider. An Escape
 typed while a menu is still sliding shut no longer opens it again. A large
 tool's ring shows only for a focus that shows rings (`:focus-visible`), as
-every other button's: a host's `focusRow()` after a mouse gesture draws none.
+every other button's: a host's `focusRow()` after a mouse gesture draws none,
+and while the tool's menu has the keyboard the cell draws none either.
 A press through the highlight just after it turned the page remembers the tool
 pressed, not the one the page showed before. An unchosen swatch has no border
 at all, so forced-colours mode does not draw it as chosen.
