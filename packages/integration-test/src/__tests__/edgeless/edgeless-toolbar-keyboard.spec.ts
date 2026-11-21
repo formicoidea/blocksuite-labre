@@ -1081,6 +1081,15 @@ describe('edgeless toolbar keyboard model', () => {
     propsStore().lastUsedStyle$.value = saved.used;
   };
 
+  /** Where a press starts from: the tool, its options, the props, the menu. */
+  const startOf = ({
+    tool,
+    options,
+    props,
+    menu,
+  }: ReturnType<typeof pressState>) =>
+    JSON.stringify({ tool, options, props, menu });
+
   const changeFrom = (before: ReturnType<typeof pressState>) => {
     const now = pressState();
     return JSON.stringify({
@@ -1204,6 +1213,7 @@ describe('edgeless toolbar keyboard model', () => {
             break;
           }
           const keyFrom = pressState();
+          const keyTool = edgeless.gfx.tool.currentToolOption$.peek();
           await press(key);
           await pointerSettled();
           await frames(3);
@@ -1247,7 +1257,32 @@ describe('edgeless toolbar keyboard model', () => {
             );
             break;
           }
+          // The press that opened the menu armed the tool, from state that
+          // neither `reset()` (the tool) nor the props put back (fourth review
+          // of #679): the pen kind and the note's block type live on their
+          // row button, so the keyboard's press on Highlighter or Text armed
+          // the mouse path's opening with it; and the Shape button is a stack
+          // of three shapes, the click arming the one under the pointer, which
+          // the stack's `.shape:hover` transition (0.3s) moves when the real
+          // click lands a frame after the pointer on a loaded machine — the
+          // ellipse, where Enter on the centre armed the rounded rectangle.
+          // What this test compares is the press on a menu control: the mouse
+          // path starts from the tool and options the keyboard path started
+          // from, and a start that still differs is a failure of its own.
+          if (keyTool && startOf(keyFrom) !== startOf(pressState())) {
+            edgeless.gfx.tool.setTool(
+              keyTool.toolType as never,
+              keyTool.options as never
+            );
+            await frames(2);
+          }
           const clickFrom = pressState();
+          if (startOf(keyFrom) !== startOf(clickFrom)) {
+            failures.push(
+              `${name} ${describeControl(control)} ${key}: the paths start apart\n key   ${startOf(keyFrom)}\n click ${startOf(clickFrom)}`
+            );
+            continue;
+          }
           await userEvent.click(control);
           await pointerSettled();
           await frames(3);
@@ -1255,7 +1290,7 @@ describe('edgeless toolbar keyboard model', () => {
           pressed++;
           if (byKey !== byClick) {
             failures.push(
-              `${name} ${describeControl(control)} ${key}\n key   ${byKey}\n click ${byClick}`
+              `${name} ${describeControl(control)} ${key}\n start ${startOf(keyFrom)}\n key   ${byKey}\n click ${byClick}`
             );
           }
           // Where a mouse leaves the focus: on the canvas, never in the menu.
