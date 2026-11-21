@@ -1,7 +1,10 @@
 import { describe, expect, test, vi } from 'vitest';
 
 import { createPopper } from '../create-popper.js';
-import { stepToolbarHighlight } from '../toolbar-highlight.js';
+import {
+  seniorScrollToShow,
+  stepToolbarHighlight,
+} from '../toolbar-highlight.js';
 
 /**
  * The toolbar half of recette P7-17 (2026-11-02): Alt+←/→ walks the toolbar
@@ -14,6 +17,25 @@ import { stepToolbarHighlight } from '../toolbar-highlight.js';
  * mixin now clears the toolbar's reference from, and it must fire before the
  * leave transition, not on `transitionend`.
  */
+
+/**
+ * The page the canvas's Tab turns the senior row to when the button used last
+ * is paged out (ADR 0054, amendment of 2026-11-21): the walk's own page, so
+ * Tab and → bring a tool in the same way.
+ */
+describe('seniorScrollToShow', () => {
+  const pager = { scroll: 2, size: 3 };
+
+  test('leaves the page when the tool is on show', () => {
+    expect(seniorScrollToShow(2, pager)).toBe(2);
+    expect(seniorScrollToShow(4, pager)).toBe(2);
+  });
+
+  test('turns the least: the tool first when before, last when after', () => {
+    expect(seniorScrollToShow(0, pager)).toBe(0);
+    expect(seniorScrollToShow(7, pager)).toBe(5);
+  });
+});
 
 describe('stepToolbarHighlight', () => {
   const row = { quick: 3, senior: 5, scroll: 0, size: 2 };

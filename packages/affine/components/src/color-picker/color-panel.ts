@@ -66,15 +66,24 @@ export class EdgelessColorButton extends LitElement {
       width: 20px;
       height: 20px;
     }
+    /* The selection ring and the focus ring are drawn from ONE box, so they
+       stay concentric at any device pixel ratio (product owner, acceptance
+       of #691; ADR 0054, amendment of 2026-11-21): the selection ring is the
+       box's border, the focus ring its outline, 1px outside it all round.
+       Two boxes snapped apart: a 27px ring on a 24px swatch sat on half
+       pixels, off the focus ring drawn on the host. The box is 28px, on whole
+       pixels around a 24px or a 20px swatch, border-box: the outline does
+       not move with the border, which only a chosen swatch has (a
+       transparent one on every swatch may be forced to a system colour in
+       forced-colours mode, every swatch then looking chosen). */
     :host::after {
       position: absolute;
       display: block;
       content: '';
-      width: 27px;
-      height: 27px;
+      width: 28px;
+      height: 28px;
       border-radius: 50%;
       box-sizing: border-box;
-      overflow: hidden;
       pointer-events: none;
     }
 
@@ -83,9 +92,16 @@ export class EdgelessColorButton extends LitElement {
     }
 
     :host(:focus-visible) {
+      outline: none;
+    }
+    :host(:focus-visible)::after {
       outline: 2px solid ${unsafeCSSVarV2('layer/insideBorder/primaryBorder')};
-      outline-offset: 2px;
-      border-radius: 50%;
+      outline-offset: 1px;
+    }
+    /* The ring's room (1px + 2px outside the 28px box: 5px outside a 24px
+       swatch), kept when a swatch is scrolled into view. */
+    :host {
+      scroll-margin: 5px;
     }
   `;
 
@@ -220,6 +236,12 @@ export class EdgelessColorPanel extends LitElement {
     this._focusIndex = next;
     this.requestUpdate();
     swatches[next]?.focus();
+    // An arrow key moved the focus: in whatever scrolls the grid (the canvas
+    // toolbar's slide-out strips, a panel, a page), the browser leaves a
+    // swatch that shows in part where it is, its ring cut: brought in whole,
+    // ring included (the swatch's `scroll-margin`; ADR 0054, amendment of
+    // 2026-11-21). A pointer never comes here.
+    swatches[next]?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   };
 
   private _focusIndex: number | undefined = undefined;
