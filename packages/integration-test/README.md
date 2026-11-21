@@ -4,20 +4,30 @@ Integration test for BlockSuite.
 
 ## Running Tests
 
-You can run all integration tests using:
+Run the whole suite from the repository root, as CI does:
 
 ```bash
-cd blocksuite/integration-test
-yarn test:unit
+yarn test:integration
 ```
 
-To run a specific test or test file, use the `-t` flag with a test name pattern:
+It runs two browser sessions one after the other (`scripts/test-integration.mjs`,
+`--shard=1/2` then `--shard=2/2`): one page over the whole suite grows too
+large ([docs/contribute/04-testing.md](../../docs/contribute/04-testing.md)).
+Arguments reach both sessions:
 
 ```bash
-# Run a specific test
-yarn test:unit -t "should access turbo renderer instance"
-
 # Run all tests in a specific file
+yarn test:integration src/__tests__/edgeless/viewport-renderer.spec.ts
+
+# Run a specific test
+yarn test:integration -t "should access turbo renderer instance"
+```
+
+This package's own `test:unit` is one session over whatever it is given:
+use it from this directory for a single spec, never for the whole suite.
+
+```bash
+cd packages/integration-test
 yarn test:unit src/__tests__/edgeless/viewport-renderer.spec.ts
 ```
 

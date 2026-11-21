@@ -55,6 +55,17 @@ Typical changes a host sees, from the Labre app's history:
 Six weeks of library in one hop produced three compile breaks and one silent
 behaviour change. Upgrade at every minor.
 
+## 4.0 → the next release (a source not open to the reader's page)
+
+No compile break for a host that only answers the resolver. Stored documents
+are untouched. What a host sees (ADR 0035, amendment of 2026-11-20, #693):
+
+| Kind                       | Change                                                                                                                                                                                 | What to do                                                                                                                                                                                                                                           |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| a reason a host may send   | `resolveSource` may answer `{ unavailable: 'not-open' }`: "Source not open" under the title and the view bar, no row, never "Connect a source"                                         | send it only once you run the library version that ships it: an older library reads a reason it does not know as a missing source, which under `requireSource` draws "No source connected" with "Connect a source". Keep `'unshared'` until you bump |
+| a value a host may read    | `sourceUnavailable$` also answers `'not-open'` and `'unknown'` (a reason this library does not know, drawn as the neutral "Source not found"), typed by `HostedSourceUnavailableState` | compile error only if you handle its values exhaustively: add the two members                                                                                                                                                                        |
+| translation keys are added | `com.labre.database.source-not-open`, `com.labre.database.source-not-open.hint`; the English fallback names no role                                                                    | translate both (`yarn i18n:manifest`); your hint may say who may open the source (in Labre, an owner or a member of the workspace)                                                                                                                   |
+
 ## 3.5 → 4.0 (zod 4)
 
 The library moves from zod 3 to zod `^4.6.6` (ADR 0052, GHSA-mrhx-c7xc-m3w5).
