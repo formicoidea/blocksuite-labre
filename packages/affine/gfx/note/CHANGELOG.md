@@ -1,5 +1,96 @@
 # @labre/affine-gfx-note
 
+## 4.1.0
+
+### Minor Changes
+
+- 6d7a084: Edgeless toolbar names, state and element toolbar height (#679). Every button
+  of the canvas toolbar now has an accessible name, the same translated wording
+  as its tooltip: the quick tools, the pen and the eraser, each senior tool
+  (a framework's button is named after the framework, "Wardley map",
+  "Cynefin / Estuarine"), "More Tools" and the two pager arrows. The tools expose
+  their state as `aria-pressed` (the note and template tools and the mind map
+  menu included); an action (undo, insert a text, add a file) exposes none. After paging the senior row, the arrow no longer keeps the
+  tooltip of the tool it brought in. `edgeless-tool-icon-button` gains `label`
+  (its name when its tooltip is a template) and `onToolbarRow`; it names and
+  states itself only on the toolbar row or when given a `label`, so its other
+  uses (panels, menus, auto-complete) keep the attributes their owner gives; its `active`
+  defaults to `undefined` instead of `false`. The pen's senior tool declares the
+  `com.labre.brush.tooltip.pen` key. New keys for the host's catalogue:
+  `com.labre.edgeless-toolbar.previous-tools` ("Previous tools") and
+  `com.labre.edgeless-toolbar.next-tools` ("Next tools"). The element (contextual)
+  toolbar, which also draws the page view's formatting toolbar, is 40px tall
+  border included (`box-sizing: border-box`), instead of a 36px content box plus its
+  border (measured 37 to 38px depending on the browser, in 4.0.0 and before); the code block's bar keeps its size.
+
+### Patch Changes
+
+- 55d12e4: Edgeless toolbar keyboard model (#679, ADR 0054). The canvas toolbar is one
+  `role="toolbar"` named by the new key `com.labre.edgeless-toolbar.name`
+  ("Canvas tools"), with one Tab stop: the active tool's button, through a roving
+  `tabindex`. One Tab from the canvas reaches it, notes or not; Shift+Tab from
+  the toolbar goes back to the canvas. The canvas keeps Tab while a text is
+  edited or a single mind map node is selected. While a toolbar button holds the
+  keyboard focus, the toolbar takes its own keys only: ←/→ walk every button and
+  page the senior row, Home/End go to the ends, Enter and Space press the button
+  exactly as a click does (once, even when held), Escape closes what the button
+  opened and gives it the focus back, or gives the canvas the keyboard. Every
+  other key (Delete, letters, shortcuts) still reaches the canvas. A mouse click
+  never puts the focus on a button, so after a click every key is the canvas's,
+  as before. A press that only picks a tool (the eraser) gives the canvas the
+  keyboard back.
+
+  A menu opened from the keyboard (a framework's commands, the frame, connector,
+  pen, note, shape and mind map options) takes the keyboard on its first
+  control: the arrows walk a group of controls, Tab and Shift+Tab move between
+  groups (types, widths, colours) and, past the last, close the menu and return
+  to its button, as Escape does. Enter or Space press a control as a click does,
+  and the menu then does what it does after that click: gone, the canvas has the
+  keys; still open (an option such as a shape type or Pen / Highlighter), the
+  focus stays on the control — unless a key or a click came first, which keeps
+  its own move. Escape after picking a mind map style drops it and gives the
+  select tool back, as it does with the mouse. A menu opened with the mouse
+  moves no focus, and a click in a menu the keyboard visited is the click it
+  was before. The
+  menus' buttons are named from their tooltip (each mind map style by its own
+  name) and the chosen option is announced as pressed (`aria-pressed`, through
+  the new `pressed` property of `edgeless-tool-icon-button`).
+
+  The discrete `affine-slider` (line widths, the note's corner radius) is now an
+  ARIA slider and a Tab stop everywhere it is drawn — the brush and highlighter
+  element toolbars, the connector's and the shape's line width, the note's
+  corner radius: the arrows step it point to point, Home and End go to its ends.
+  It is named by its new `label` property, which every use in the library
+  passes; a host that renders `affine-slider` itself should pass one too.
+
+  The pager arrows keep their names ("Next tools", "Previous tools") and their
+  tooltip still previews the tool they bring in; a click closes that preview
+  until the pointer leaves the arrow, where it used to stay shown, stale, over a
+  resting pointer. Keyboard focus draws the same 2px ring as the Alt+←/→
+  highlight, which stays as a shortcut from the canvas.
+
+- Updated dependencies [6d7a084]
+- Updated dependencies [55d12e4]
+- Updated dependencies [f92920b]
+- Updated dependencies [1d9baf6]
+- Updated dependencies [f54c196]
+- Updated dependencies [bd9ba02]
+- Updated dependencies [5475fda]
+- Updated dependencies [810c0ed]
+  - @labre/affine-widget-edgeless-toolbar@4.1.0
+  - @labre/affine-components@4.1.0
+  - @labre/affine-block-image@4.1.0
+  - @labre/affine-shared@4.1.0
+  - @labre/std@4.1.0
+  - @labre/affine-block-surface@4.1.0
+  - @labre/affine-block-attachment@4.1.0
+  - @labre/affine-block-bookmark@4.1.0
+  - @labre/affine-rich-text@4.1.0
+  - @labre/affine-model@4.1.0
+  - @labre/affine-ext-loader@4.1.0
+  - @labre/global@4.1.0
+  - @labre/store@4.1.0
+
 ## 4.0.0
 
 ### Patch Changes
