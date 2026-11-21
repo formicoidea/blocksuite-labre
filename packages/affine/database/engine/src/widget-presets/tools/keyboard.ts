@@ -106,7 +106,14 @@ export function popupTargetReturningFocus(
             opener.focus();
             return;
           }
-          if (root?.isConnected) await root.restoreFocus();
+          if (!root?.isConnected) return;
+          // A microtask has no caller to reject to: an element of the view
+          // whose update threw would surface as an unhandled rejection.
+          try {
+            await root.restoreFocus();
+          } catch (error) {
+            console.error(error);
+          }
         });
       };
     },

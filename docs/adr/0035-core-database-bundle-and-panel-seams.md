@@ -1613,14 +1613,17 @@ changed.
   `DataViewRootUI.restoreFocus` puts the focus on the first element marked
   `data-view-focus-fallback` once the renderer has drawn (the button, else
   the status, lent a `tabindex="-1"` until it loses the focus; with a view,
-  its "⋯"), and only when nobody holds it. Two callers:
+  its "⋯"), only when nobody holds it, and never scrolling the page to it
+  (`preventScroll`: the block may be off-screen). Two callers:
   - a menu opened from the keyboard (`popupTargetReturningFocus`) whose
     opener left with what it did: the "⋯" of the last view deleted, or the
     button once a view is added from it (the focus lands on the new view's
     "⋯");
   - a LOCAL write of `views` that leaves none (`focusAfterLastViewRemoved`,
     the database block): the direct removal, the host's `remove()`, an undo
-    or a redo. A peer's removal moves nothing.
+    or a redo; and the way back, a local write that brings a view back after
+    none (an undo typed on the empty state's button gives the focus to the
+    view's "⋯"). A peer's write moves nothing.
     A mouse gesture leaves the focus on the editor host, so nothing moves.
     **The host's side** (`deleteView`, amendment of 2026-10-29): close your
     dialog, its own focus return included, before you call `remove()`. A
@@ -1642,6 +1645,17 @@ changed.
   engine's change is a minor. No seam's degraded path changes (the seams
   table is unchanged): without the picker, the bundle's "+" lists no
   source and offers the presets.
+  - The Labre shell calls `request.remove()` before closing its
+    confirmation (`sourceTrashStore.done()`, `source-trash-wiring.ts`), so
+    the focus still ends on the body there: it should call `done()` first.
+  - The focus rule rests on the transaction being remote for a peer: a sync
+    provider applying updates without an origin reads as local and would
+    move the focus on an idle peer (the library's peers and Labre's sync set
+    one).
+  - A redo typed on the view toolbar's "⋯" (Ctrl+Shift+Z, Ctrl+Y) does not
+    reach the editor's shortcuts, where Ctrl+Z typed on the empty state's
+    button does; the toolbar's key handling is not this amendment's, a
+    follow-up of its own.
 - Wordings `com.labre.data-view.no-view` ("No view") and
   `com.labre.data-view.no-view.hint` ("Add a view to show this database's
   rows."); the button reuses `com.labre.data-view.views-bar.add-view`. Held

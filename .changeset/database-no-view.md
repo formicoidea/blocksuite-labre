@@ -24,10 +24,11 @@ they offer no "New view": the empty state now shows their read-only notice, and
 Focus (WCAG 2.4.3): when a removal leaves no view and nothing holds the focus
 once the empty state has drawn, the focus goes to "New view" (or to the status
 where there is no button), whether the removal came from the keyboard, from a
-host's `deleteView` → `remove()`, an undo or a redo; a peer's removal and a
-mouse gesture move nothing. A preset picked from the empty state's menu with
-the keyboard lands the focus on the new view's "⋯". A click in the frame takes
-no focus.
+host's `deleteView` → `remove()`, an undo or a redo; an undo that brings the
+view back gives it to the view's "⋯". A peer's write and a mouse gesture move
+nothing, and the page never scrolls to the block. A preset picked from the
+empty state's menu with the keyboard lands the focus on the new view's "⋯". A
+click in the frame takes no focus.
 
 A view current only by an id that no longer exists (deleted by a peer, an undo
 or a host's later `remove()`) is no longer drawn as nothing: the first view is
@@ -45,7 +46,10 @@ For the host:
   view").
 - `deleteView`: close your confirmation dialog, its focus return included,
   before you call `remove()`; a dialog still holding the focus when the view
-  goes keeps it, and returns it to the "⋯" the removal takes away.
+  goes keeps it, and returns it to the "⋯" the removal takes away (the Labre
+  shell today calls `remove()` before `sourceTrashStore.done()`: swap them).
+- The focus rule needs remote updates applied with an origin: one applied
+  without reads as local and would move the focus on an idle peer.
 - A host that builds its own `DataViewRootUILogic` now gets the empty state
   where it got nothing; `DataViewRendererConfig` gains two optional members,
   `noViewHeader` (what of your header to draw above it) and `onChangeView` (a

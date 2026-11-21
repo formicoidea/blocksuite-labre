@@ -1,4 +1,5 @@
 import {
+  type DatabaseBlockComponent,
   DatabaseBlockDataSource,
   DatabaseDataSourceProvider,
   HostedDataSourceBase,
@@ -11,6 +12,8 @@ import { type DatabaseBlockModel, NoteDisplayMode } from '@labre/affine/model';
 import {
   type DataSourcePickerDatabase,
   DataSourcePickerExtension,
+  type DataSourcePickerService,
+  type DataSourcePickerViewDeletion,
 } from '@labre/affine/shared/services';
 import type { ExtensionType, Store } from '@labre/store';
 import { Text } from '@labre/store';
@@ -42,6 +45,14 @@ import { setupEditor } from '../utils/setup.js';
  *   menu with the keyboard dropping the focus instead of landing on the new
  *   view's "⋯";
  * - a click in the empty state's frame taking the document's focus;
+ * - from the keyboard, delete then undo then redo leaving the focus on the
+ *   body at any step (the undo takes the focused button away: the focus
+ *   goes to the view's "⋯"; the redo gives it back to "New view"), or the
+ *   page moving;
+ * - the host removing the last view LATER (its dialog first): "New view"
+ *   not taking the focus when nobody holds it, taking it from an element
+ *   that holds it, or the page jumping to an off-screen base when it does
+ *   (`focus()` without `preventScroll`: ~1700px under 80 paragraphs);
  * - deleting one view of two showing anything but the other view;
  * - the full page of a base drawing nothing under its heading;
  * - a HOSTED base (a host source per view, the host's picker): "New view"
@@ -82,6 +93,9 @@ const MENU_ENTRIES_MAX = 20;
 
 /** Inside the empty state's 12px padding, away from its text. */
 const FRAME_INSET_PX = 4;
+
+/** Enough lines above a base to push it ~1700px below the page's top. */
+const PARAGRAPHS_ABOVE = 80;
 
 /** Retried until it holds: what the spec waits for, never a delay. */
 const until = <T>(check: () => T) =>
@@ -177,6 +191,33 @@ async function deleteFromViewSettings(block: HTMLElement) {
 const statusOf = (block: HTMLElement) =>
   inBlock(block, '[data-testid="database-no-view-status"]');
 
+/** "⋯" reached from the keyboard, then Delete with the arrows and Enter. */
+async function deleteFromKeyboard(block: HTMLElement) {
+  const options = viewOptionsOf(block)!;
+  // A key nothing binds makes the page's modality the keyboard's.
+  await userEvent.keyboard('{Shift}');
+  options.focus();
+  expect(options.matches(':focus-visible'), 'keyboard focus').toBe(true);
+
+  await userEvent.keyboard('{Enter}');
+  await until(() => expect(openMenus()).toHaveLength(1));
+  // The menu opens on the view's name: Escape leaves it, the menu stays.
+  await until(() =>
+    expect(document.activeElement?.closest('affine-menu-input')).toBeTruthy()
+  );
+  await userEvent.keyboard('{Escape}');
+  const focusedEntry = () =>
+    openMenus()[0]?.querySelector('.affine-menu-button.focused');
+  const reachDelete = async (left: number): Promise<void> => {
+    if (focusedEntry()?.classList.contains('delete-item')) return;
+    expect(left, 'Delete reached with the arrows').toBeGreaterThan(0);
+    await userEvent.keyboard('{ArrowDown}');
+    return reachDelete(left - 1);
+  };
+  await reachDelete(MENU_ENTRIES_MAX);
+  await userEvent.keyboard('{Enter}');
+}
+
 /** The empty state as the reader sees it: title row, status, button. */
 async function expectEmptyState(block: HTMLElement, model: DatabaseBlockModel) {
   await until(() => expect(emptyStateOf(block)).not.toBe(null));
@@ -266,29 +307,7 @@ describe('deleting the only view of a database', () => {
 
   test('from the keyboard, the focus lands on "New view", which opens its menu with Enter', async () => {
     const { block, model } = await mountInline();
-    const options = viewOptionsOf(block)!;
-    // A key nothing binds makes the page's modality the keyboard's.
-    await userEvent.keyboard('{Shift}');
-    options.focus();
-    expect(options.matches(':focus-visible'), 'keyboard focus').toBe(true);
-
-    await userEvent.keyboard('{Enter}');
-    await until(() => expect(openMenus()).toHaveLength(1));
-    // The menu opens on the view's name: Escape leaves it, the menu stays.
-    await until(() =>
-      expect(document.activeElement?.closest('affine-menu-input')).toBeTruthy()
-    );
-    await userEvent.keyboard('{Escape}');
-    const focusedEntry = () =>
-      openMenus()[0]?.querySelector('.affine-menu-button.focused');
-    const reachDelete = async (left: number): Promise<void> => {
-      if (focusedEntry()?.classList.contains('delete-item')) return;
-      expect(left, 'Delete reached with the arrows').toBeGreaterThan(0);
-      await userEvent.keyboard('{ArrowDown}');
-      return reachDelete(left - 1);
-    };
-    await reachDelete(MENU_ENTRIES_MAX);
-    await userEvent.keyboard('{Enter}');
+    await deleteFromKeyboard(block);
 
     await expectEmptyState(block, model);
     const button = addButtonOf(block)!;
@@ -322,6 +341,34 @@ describe('deleting the only view of a database', () => {
     await until(() =>
       expect(document.activeElement).toBe(viewOptionsOf(block))
     );
+  });
+
+  test('from the keyboard, delete then undo then redo: where the focus is at each step, the page still', async () => {
+    const { block, model } = await mountInline();
+    await deleteFromKeyboard(block);
+    await expectEmptyState(block, model);
+    await until(() => expect(document.activeElement).toBe(addButtonOf(block)));
+    const before = scrollPositions();
+
+    // Undo, typed on the button: the view is back and takes the button
+    // away; the focus goes to the view's "⋯", never left on the body.
+    await userEvent.keyboard('{Control>}z{/Control}');
+    await until(() => expect(viewOptionsOf(block)).not.toBe(null));
+    expect(model.props.views).toHaveLength(1);
+    await until(() =>
+      expect(document.activeElement).toBe(viewOptionsOf(block))
+    );
+    expect(scrollPositions()).toEqual(before);
+
+    // Redo: the empty state again, its button focused. Through the store:
+    // a redo typed on the view toolbar's "⋯" (Ctrl+Shift+Z or Ctrl+Y) does
+    // not reach the editor's shortcuts (the toolbar's key handling is not
+    // this change's; a follow-up of its own). What follows is the same.
+    expect(window.doc.canRedo, 'the deletion can be redone').toBe(true);
+    window.doc.redo();
+    await expectEmptyState(block, model);
+    await until(() => expect(document.activeElement).toBe(addButtonOf(block)));
+    expect(scrollPositions()).toEqual(before);
   });
 
   test('a mouse deletion moves no focus to the empty state', async () => {
@@ -520,8 +567,11 @@ const PLAN: DataSourcePickerDatabase = {
   ],
 };
 
-/** The host's picker: its base, a way to create a source, and to move rows. */
-async function mountHosted() {
+/**
+ * The host's picker: its base, a way to create a source, and to move rows;
+ * with `deleteView`, the host intercepts deletions (labre's confirmation).
+ */
+async function mountHosted(deleteView?: DataSourcePickerService['deleteView']) {
   const createSource = vi.fn(async () => ({ id: 'src-c', title: 'Budget' }));
   const createDatabaseFrom = vi.fn(async () => PLAN);
   cleanup = await setupEditor('page', [
@@ -531,6 +581,7 @@ async function mountHosted() {
       createSource,
       requireSource: true,
       createDatabaseFrom,
+      deleteView,
     }),
   ]);
   const store = window.doc;
@@ -575,31 +626,36 @@ const sourceEntry = (sourceId: string) =>
     `[data-testid="database-add-view-source-${sourceId}"]`
   );
 
+/** A base of the host's database, its one view reading "Projects". */
+function hostedBase(store: Store, noteId: string) {
+  return store.addBlock(
+    'affine:database',
+    {
+      title: new Text('Plan'),
+      columns: [],
+      externalSourceId: PLAN_ID,
+      views: [
+        {
+          id: 'v1',
+          name: 'Projects',
+          mode: 'table',
+          sourceId: 'src-a',
+          columns: [
+            { id: 'src-a-name', hide: false },
+            { id: 'src-a-field', hide: false },
+          ],
+          filter: { type: 'group', op: 'and', conditions: [] },
+        },
+      ],
+    } as never,
+    noteId
+  );
+}
+
 describe('a hosted base', () => {
   test('its last view deleted, "New view" lists its sources and brings a view of one back', async () => {
     const { store, noteId } = await mountHosted();
-    const id = store.addBlock(
-      'affine:database',
-      {
-        title: new Text('Plan'),
-        columns: [],
-        externalSourceId: PLAN_ID,
-        views: [
-          {
-            id: 'v1',
-            name: 'Projects',
-            mode: 'table',
-            sourceId: 'src-a',
-            columns: [
-              { id: 'src-a-name', hide: false },
-              { id: 'src-a-field', hide: false },
-            ],
-            filter: { type: 'group', op: 'and', conditions: [] },
-          },
-        ],
-      } as never,
-      noteId
-    );
+    const id = hostedBase(store, noteId);
     const model = store.getModelById(id) as DatabaseBlockModel;
     const block = await blockOf(id);
     await until(() => expect(viewOptionsOf(block)).not.toBe(null));
@@ -684,5 +740,79 @@ describe('a hosted base', () => {
     expect(
       inBlock(block, '[data-testid="database-source-required-read-only"]')
     ).toBe(null);
+  });
+});
+
+/** Where the page stands: the editor's scroller and the document's. */
+const scrollPositions = () => ({
+  editor: window.editor.parentElement!.scrollTop,
+  page: document.scrollingElement?.scrollTop ?? 0,
+});
+
+/**
+ * A host that asks first (labre's confirmation dialog) and removes the view
+ * a tick later, once its dialog is closed and the focus has dropped.
+ */
+async function hostedBaseWithLaterRemoval(paragraphsAbove = 0) {
+  const requests: DataSourcePickerViewDeletion[] = [];
+  const { store, noteId } = await mountHosted(request => {
+    requests.push(request);
+  });
+  Array.from({ length: paragraphsAbove }).forEach((_, index) => {
+    store.addBlock(
+      'affine:paragraph',
+      { text: new Text(`Line ${index}`) },
+      noteId
+    );
+  });
+  const id = hostedBase(store, noteId);
+  const block = await blockOf(id);
+  await until(() => expect(viewOptionsOf(block)).not.toBe(null));
+  // The delete gesture's own path ("⋯" › Delete calls it): what this
+  // suite holds is what follows the host's answer, not the menu.
+  (block as DatabaseBlockComponent).dataSource.viewManager.viewDelete('v1');
+  expect(requests, 'the host is asked').toHaveLength(1);
+  expect(addButtonOf(block), 'the view is still there').toBe(null);
+  const removeLater = async () => {
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(requests[0]!.remove()).toBe(true);
+  };
+  return { block, removeLater };
+}
+
+describe('the focus when the host removes the last view later', () => {
+  test('nobody holding it: "New view" gets it, and the page does not move', async () => {
+    const { block, removeLater } =
+      await hostedBaseWithLaterRemoval(PARAGRAPHS_ABOVE);
+    // The page back at its top, the base far below; the dialog closed.
+    window.editor.parentElement!.scrollTop = 0;
+    document.scrollingElement?.scrollTo(0, 0);
+    (document.activeElement as HTMLElement | null)?.blur();
+    const before = scrollPositions();
+    expect(
+      block.getBoundingClientRect().top,
+      'the base below the fold'
+    ).toBeGreaterThan(window.innerHeight);
+
+    await removeLater();
+
+    await until(() => expect(document.activeElement).toBe(addButtonOf(block)));
+    expect(scrollPositions()).toEqual(before);
+  });
+
+  test('an element holding it keeps it', async () => {
+    const { block, removeLater } = await hostedBaseWithLaterRemoval();
+    const dialogButton = document.createElement('button');
+    dialogButton.textContent = 'still open';
+    document.body.append(dialogButton);
+    dialogButton.focus();
+
+    try {
+      await removeLater();
+      await until(() => expect(addButtonOf(block)).not.toBe(null));
+      expect(document.activeElement).toBe(dialogButton);
+    } finally {
+      dialogButton.remove();
+    }
   });
 });

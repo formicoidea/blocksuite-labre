@@ -307,7 +307,9 @@ export class DataViewRootUI extends SignalWatcher(
         }
       );
     }
-    target.focus();
+    // Never scrolled to: the removal may come from a host's dialog or a redo
+    // while the block is off-screen, and the page must not jump to it.
+    target.focus({ preventScroll: true });
   }
 
   override connectedCallback() {

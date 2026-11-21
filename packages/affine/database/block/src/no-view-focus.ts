@@ -16,7 +16,11 @@ export interface FocusRestorer {
  * body. So every LOCAL write of `views` that leaves none (the direct
  * removal, the host's `remove()`, an undo or redo of either) asks the
  * renderer to `restoreFocus`, which moves it only when nobody holds it once
- * the empty state has drawn. A peer's removal moves nothing.
+ * the empty state has drawn. The way back too: a local write that brings
+ * a view back after none (an undo typed on the empty state's button, which
+ * the view takes away) gives it to the view's "⋯". A peer's write moves
+ * nothing: this rests on the transaction being remote, so a sync provider
+ * that applies updates without an origin reads as local here.
  *
  * The host's side: close your dialog, its own focus return included,
  * before you call `remove()`. A dialog still holding the focus at that
@@ -34,10 +38,13 @@ export function focusAfterLastViewRemoved(
       console.error(error);
     }
   };
+  let hadViews = model.props.views.length > 0;
   return model.store.slots.blockUpdated.subscribe(event => {
     if (event.type !== 'update' || event.id !== model.id) return;
-    if (!event.isLocal || event.props.key !== 'views') return;
-    if (model.props.views.length > 0) return;
-    void restore();
+    if (event.props.key !== 'views') return;
+    const hasViews = model.props.views.length > 0;
+    const crossed = hasViews !== hadViews;
+    hadViews = hasViews;
+    if (event.isLocal && crossed) void restore();
   });
 }
