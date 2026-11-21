@@ -34,7 +34,7 @@ const pointerUp: BrowserCommand<[]> = async ctx => {
  * A real copy then paste: Chromium denies `navigator.clipboard.write` (what
  * the edgeless copy calls) to a page without the permission, and a trusted
  * paste then carries nothing. `granted: false` takes it back, so the rest of
- * the suite, which shares one page (`isolate: false`), runs without it.
+ * the session, which shares one page (`isolate: false`), runs without it.
  */
 const systemClipboard: BrowserCommand<[granted: boolean]> = async (
   ctx,
