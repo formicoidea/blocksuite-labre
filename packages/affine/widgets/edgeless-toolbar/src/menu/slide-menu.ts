@@ -9,10 +9,24 @@ import {
   edgelessToolbarSlotsContext,
 } from '../index';
 
+/** The room a control's focus ring takes outside it: a colour swatch's 5px. */
+const RING_ROOM = 5;
+
+/**
+ * How far a slide arrow reaches into the strip (32px shown at half size,
+ * centred on the strip's edge): a control scrolled in keeps its ring clear of
+ * it too.
+ */
+const ARROW_REACH = 8;
+
 export class EdgelessSlideMenu extends WithDisposable(LitElement) {
   static override styles = css`
     :host {
       max-width: 100%;
+      /* A menu opens inside its senior tool's cell and would inherit the
+         cell's ring settings: its own buttons draw their ring on their box. */
+      --edgeless-toolbar-focus-ring-inset: 0px;
+      --edgeless-toolbar-focus-ring-display: block;
     }
     ::-webkit-scrollbar {
       display: none;
@@ -32,15 +46,26 @@ export class EdgelessSlideMenu extends WithDisposable(LitElement) {
       position: relative;
       height: calc(var(--menu-height) + 1px);
       box-sizing: border-box;
-      padding-left: 10px;
+      padding-left: 5px;
       scroll-snap-type: x mandatory;
     }
+    ::slotted([slot='prefix']) {
+      margin-left: 5px;
+    }
+    /* The keyboard's ring on a control may stand 5px outside it (a colour
+       swatch's, RING_ROOM): the strip keeps that much room inside its
+       clipping edges, and scrolls a focused control in with it (ADR 0054,
+       amendment of 2026-11-21), clear of the slide arrows (ARROW_REACH,
+       the scroll padding). With no prefix the content sits where it did,
+       10px from the edges; after a prefix (the pen menu's pens) the strip's
+       content starts 5px further right and the menu is 5px wider. */
     .menu-container-scrollable {
       overflow-x: auto;
       overscroll-behavior: none;
       scrollbar-width: none;
       height: 100%;
-      padding-right: 10px;
+      padding-right: 5px;
+      scroll-padding-inline: 8px;
     }
     .slide-menu-content {
       display: flex;
@@ -49,6 +74,7 @@ export class EdgelessSlideMenu extends WithDisposable(LitElement) {
       height: 100%;
       transition: left 0.5s ease-in-out;
       width: fit-content;
+      padding: 0 5px;
     }
     .next-slide-button,
     .previous-slide-button {
@@ -109,6 +135,32 @@ export class EdgelessSlideMenu extends WithDisposable(LitElement) {
     event.stopPropagation();
   }
 
+  /**
+   * A control the keyboard focuses is scrolled in whole, its ring with it.
+   * The browser's own scroll on focus leaves a control that already shows in
+   * part where it is — its ring cut by the strip's edge (product owner,
+   * acceptance of #691). Only this strip scrolls. A move inside one widget's
+   * shadow tree (from swatch to swatch) sends no `focusin` this far: the
+   * colour grid scrolls its own swatch in.
+   */
+  private readonly _onFocusIn = (event: FocusEvent) => {
+    const control = event.composedPath()[0];
+    if (!(control instanceof Element)) return;
+    // The keyboard's focus only: a mouse press that focuses a half-shown
+    // swatch would slide the strip between its mousedown and its mouseup,
+    // and the click would land on another control.
+    if (!control.matches(':focus-visible')) return;
+    const strip = this._menuContainer;
+    const box = control.getBoundingClientRect();
+    const view = strip.getBoundingClientRect();
+    const room = RING_ROOM + ARROW_REACH;
+    if (box.left - room < view.left) {
+      strip.scrollLeft -= view.left - (box.left - room);
+    } else if (box.right + room > view.right) {
+      strip.scrollLeft += box.right + room - view.right;
+    }
+  };
+
   private _toggleSlideButton() {
     const scrollLeft = this._menuContainer.scrollLeft;
     const menuWidth = this._menuContainer.clientWidth;
@@ -146,7 +198,7 @@ export class EdgelessSlideMenu extends WithDisposable(LitElement) {
           style=${styleMap({ '--menu-height': this.height })}
         >
           <slot name="prefix"></slot>
-          <div class="menu-container-scrollable">
+          <div class="menu-container-scrollable" @focusin=${this._onFocusIn}>
             <div class="slide-menu-content" @wheel=${this._handleWheel}>
               <slot></slot>
             </div>
