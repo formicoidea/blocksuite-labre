@@ -32,9 +32,9 @@ import { classMap } from 'lit/directives/class-map.js';
 import { modeShownAsFallback } from '../../core/view-manager/single-view.js';
 import {
   canAddView,
-  duplicateAsShownPreset,
   popAddViewMenu,
-} from '../../core/view-manager/view-creation.js';
+} from '../../core/view-manager/add-view.js';
+import { duplicateAsShownPreset } from '../../core/view-manager/view-creation.js';
 import { WidgetBase } from '../../core/widget/widget-base.js';
 import {
   VIEW_DUPLICATE_AS_TABLE,

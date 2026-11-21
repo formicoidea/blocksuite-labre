@@ -68,9 +68,10 @@ function setExpanded(anchor: HTMLElement, expanded: boolean) {
  *   frame, then the menu has it.
  *
  * - when the opener itself left with what the menu did (the last view
- *   deleted from its "⋯"), give it to what its view draws instead
- *   (`DataViewRootUI.restoreFocus`: the empty state's button), so the focus
- *   never falls to the body (ADR 0035 amendment of 2026-11-20).
+ *   deleted from its "⋯", or a view added from the empty state's button),
+ *   give it to what the renderer draws next (`DataViewRootUI.restoreFocus`:
+ *   the empty state's button, or the new view's "⋯"), so the focus never
+ *   falls to the body (ADR 0035 amendment of 2026-11-20).
  *
  * Without an opener (a mouse click), no focus is moved: focusing the
  * control would paint its ring under a pointer.
@@ -105,12 +106,7 @@ export function popupTargetReturningFocus(
             opener.focus();
             return;
           }
-          if (!root?.isConnected) return;
-          try {
-            await root.restoreFocus();
-          } catch (error) {
-            console.error(error);
-          }
+          if (root?.isConnected) await root.restoreFocus();
         });
       };
     },

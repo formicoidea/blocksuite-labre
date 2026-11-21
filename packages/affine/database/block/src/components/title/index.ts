@@ -12,9 +12,6 @@ import { classMap } from 'lit/directives/class-map.js';
 
 import type { DatabaseBlockComponent } from '../../database-block.js';
 
-/** Outside a database block, with no view: nothing to edit the title of. */
-const READ_ONLY: ReadonlySignal<boolean> = signal(true);
-
 export class DatabaseTitle extends SignalWatcher(
   WithDisposable(ShadowlessElement)
 ) {
@@ -191,13 +188,13 @@ export class DatabaseTitle extends SignalWatcher(
 
   /**
    * The view's, else (a database with no view, ADR 0035 amendment of
-   * 2026-11-20) its block's data source's, which a view's follows.
+   * 2026-11-20) its block's data source's, which a view's follows. Without
+   * a view the title is drawn only by its block (`renderNoViewHeader`).
    */
   get readonly$(): ReadonlySignal<boolean> {
     return (
       this.dataViewLogic?.view.readonly$ ??
-      this.database?.dataSource.readonly$ ??
-      READ_ONLY
+      (this.database as DatabaseBlockComponent).dataSource.readonly$
     );
   }
 

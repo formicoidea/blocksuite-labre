@@ -122,10 +122,13 @@ export const DATA_VIEW_NO_VIEW: ChromeWording = [
   'No view',
 ];
 
-/** Under it, where a view can be added: the rows were not deleted. */
+/**
+ * Under it, where a view can be added. Says nothing about the rows: a host
+ * may have trashed them with the last view (labre's "everything" choice).
+ */
 export const DATA_VIEW_NO_VIEW_HINT: ChromeWording = [
   'com.labre.data-view.no-view.hint',
-  'The rows are kept. Add a view to show them.',
+  "Add a view to show this database's rows.",
 ];
 
 /** A tab's menu: the name field. */

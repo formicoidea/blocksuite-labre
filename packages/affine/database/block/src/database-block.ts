@@ -85,6 +85,7 @@ import {
   databaseViewBarContainerStyles,
 } from './database-block-styles.js';
 import { BlockRenderer } from './detail-panel/block-renderer.js';
+import { focusAfterLastViewRemoved } from './no-view-focus.js';
 import { NoteRenderer } from './detail-panel/note-renderer.js';
 import { sourceRequirement } from './linked-view.js';
 import { DatabaseSelection } from './selection.js';
@@ -750,12 +751,18 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
    * title row, its "⋯" included (rename, copy, delete the block), above the
    * engine's empty state, whose button is the views bar's "+". No views
    * bar: it is a row of a view's tabs, and there is none.
+   *
+   * Native rows under a host that requires a source are locked, so no view
+   * can be added and the "⋯" is gone: the read-only notice and its "Move
+   * into a database" are the way out, as in a view's header. Once moved, the
+   * block reads a host source and offers "New view".
    */
   private readonly renderNoViewHeader = () => {
     return html`<div class="${databaseHeaderContainerStyles}">
       <div class="${databaseTitleRowStyles}">
         ${this.renderTitle()} ${this.renderDatabaseOps()}
       </div>
+      ${this.renderReadOnlyNotice()}
     </div>`;
   };
 
@@ -827,6 +834,11 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
     this.classList.add(databaseBlockStyles);
     this.refreshStandalone();
     this.watchStandalone();
+    this.disposables.add(
+      focusAfterLastViewRemoved(this.model, () =>
+        this.querySelector('affine-data-view-renderer')
+      )
+    );
 
     // Rebuild the source whenever the block is re-pointed at (or detached from)
     // an external collection. The first (synchronous) emission is skipped: the
@@ -890,6 +902,9 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
         this.renderSourceRequired(logic) ??
         this.renderSourceMissing(logic),
       noViewHeader: this.renderNoViewHeader,
+      onChangeView: id => {
+        currentViewStorage.setCurrentView(this.blockId, id);
+      },
       onDrag: this.onDrag,
       clipboard: this.std.clipboard,
       dnd: this.std.dnd,

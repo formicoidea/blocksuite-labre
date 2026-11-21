@@ -31,6 +31,9 @@ import type { DataViewUILogicBase } from './view/data-view-base.js';
 import type { SingleView } from './view-manager/single-view.js';
 import type { DataViewWidget } from './widget/index.js';
 
+/** Render passes `restoreFocus` waits for at most: a view is ~6 deep. */
+const FOCUS_SETTLE_PASSES = 8;
+
 export type DataViewRendererConfig = {
   clipboard: Clipboard;
   dnd?: DndController;
@@ -62,6 +65,12 @@ export type DataViewRendererConfig = {
    * written.
    */
   noViewHeader?: (root: DataViewRootUILogic) => TemplateResult;
+  /**
+   * A view was added from that empty state and made current: the caller
+   * remembers it, as the views bar's `onChangeView` does for "+". Absent:
+   * nothing is remembered beyond the view manager.
+   */
+  onChangeView?: (viewId: string) => void;
   detailPanelConfig: {
     openDetailPanel: (
       target: HTMLElement,
@@ -250,29 +259,54 @@ export class DataViewRootUI extends SignalWatcher(
   };
 
   /**
-   * Where the keyboard focus goes when the control that held it left with
-   * what its menu did (the view options' "⋯" of the last view deleted from
-   * the keyboard, `popupTargetReturningFocus`): the first control marked
-   * `data-view-focus-fallback` once this view has drawn (the empty state's
-   * button, else its status). Nothing while another element holds the
-   * focus, nor when nothing is marked: a menu opened with the mouse never
-   * gets here (WCAG 2.4.3, ADR 0035 amendment of 2026-11-20).
+   * Where the focus goes when nobody holds it after the view changed under
+   * it (WCAG 2.4.3, ADR 0035 amendment of 2026-11-20): the first element
+   * marked `data-view-focus-fallback` once this renderer has drawn: the
+   * empty state's button (else its status) with no view, the view options'
+   * "⋯" with one. Two callers: a menu opened from the keyboard whose opener
+   * left with what it did (`popupTargetReturningFocus`), and a local removal
+   * of the last view (the database block, `focusAfterLastViewRemoved`).
+   * Nothing while another element holds the focus (a mouse click leaves it
+   * on the editor host, a host's dialog keeps its own). A target that is not
+   * focusable (the status) gets `tabindex="-1"` until it loses the focus, so
+   * a click never focuses it.
    */
   async restoreFocus(): Promise<void> {
     await this.updateComplete;
     // The placeholder's elements draw one level per pass, after this one.
-    await Promise.all(
-      [...this.querySelectorAll('*')].map(
-        element =>
-          (element as Partial<{ updateComplete: Promise<unknown> }>)
-            .updateComplete
-      )
-    );
-    const target = this.querySelector<HTMLElement>(
-      '[data-view-focus-fallback]'
-    );
+    // A view's "⋯" sits several elements down (the view, its header, its
+    // toolbar), each drawing one pass after its parent: settle pass by pass
+    // until a target is drawn, a bounded number of times.
+    const find = () =>
+      this.querySelector<HTMLElement>('[data-view-focus-fallback]');
+    const settleOnce = () =>
+      Promise.all(
+        [...this.querySelectorAll('*')].map(
+          element =>
+            (element as Partial<{ updateComplete: Promise<unknown> }>)
+              .updateComplete
+        )
+      );
+    const target = await Array.from({ length: FOCUS_SETTLE_PASSES }).reduce<
+      Promise<HTMLElement | null>
+    >(async previous => {
+      const found = await previous;
+      if (found) return found;
+      await settleOnce();
+      return find();
+    }, Promise.resolve(find()));
     const active = document.activeElement;
     if (!target || (active && active !== document.body)) return;
+    if (!target.hasAttribute('tabindex')) {
+      target.setAttribute('tabindex', '-1');
+      target.addEventListener(
+        'blur',
+        () => target.removeAttribute('tabindex'),
+        {
+          once: true,
+        }
+      );
+    }
     target.focus();
   }
 

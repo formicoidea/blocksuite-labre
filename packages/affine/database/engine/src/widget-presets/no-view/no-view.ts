@@ -14,7 +14,7 @@ import type { DataViewRootUILogic } from '../../core/data-view.js';
 import {
   canAddView,
   popAddViewMenu,
-} from '../../core/view-manager/view-creation.js';
+} from '../../core/view-manager/add-view.js';
 import {
   DATA_VIEW_NO_VIEW,
   DATA_VIEW_NO_VIEW_HINT,
@@ -35,19 +35,22 @@ import { VIEWS_BAR_TOUCH_TARGET } from '../views-bar/views-view.js';
  * what of its header the block still draws (`noViewHeader`), so the inline
  * database, the data-view block, the full page and the canvas share it.
  *
- * - A status ("No view"), never an invisible block: `views: []` is also the
- *   schema default of both blocks, so it arrives from a store, an undo, a
- *   peer or a paste. Derived at each render, nothing is written.
+ * - A status ("No view", the only live region), never an invisible block:
+ *   `views: []` is also the schema default of both blocks, so it arrives
+ *   from a store, an undo, a peer or a paste. Derived at each render,
+ *   nothing is written.
  * - Where a view may be added (`canAddView`: writable, view creation on),
  *   the hint and one button that is the views bar's "+" itself
  *   (`popAddViewMenu`): the `core-database` bundle's sources when it is
- *   there, the creatable presets otherwise. A read-only document, or
- *   `{ database: false }` (`ViewCreationOffKey`), gets the status alone: the
- *   bundle adds creation, core never does more than "+" did (ADR 0035 §1).
+ *   there, the creatable presets otherwise. Where "+" is absent the button
+ *   is too: a read-only document, or a source whose host switched creation
+ *   off (`ViewCreationOffKey`, which the database block sets under
+ *   `{ database: false }`; the data-view block sets none, so it keeps both).
+ *   The bundle adds creation, core never does more than "+" did (§1).
  * - The button is a named control in the tab order, activated by Enter and
  *   Space, ringed like the toolbar's (#678). It, else the status, is where
- *   the keyboard focus lands when the last view is deleted from the
- *   keyboard (`data-view-focus-fallback`, `DataViewRootUI.restoreFocus`).
+ *   the keyboard focus lands when a removal leaves no view and nothing holds
+ *   the focus (`data-view-focus-fallback`, `DataViewRootUI.restoreFocus`).
  *
  * Styles mirror the block's "Connect a source" notice
  * (`databaseSourceMissingStyles`) and the toolbar's focus ring.
@@ -72,8 +75,10 @@ export class DataViewNoView extends SignalWatcher(
       color: var(--affine-text-primary-color);
       background-color: var(--affine-hover-color);
     }
-    .dv-no-view:focus {
-      outline: none;
+    .dv-no-view-status:focus-visible {
+      outline: 2px solid var(--affine-primary-color);
+      outline-offset: 2px;
+      border-radius: 4px;
     }
     .dv-no-view-hint {
       color: var(--affine-text-secondary-color);
@@ -105,6 +110,7 @@ export class DataViewNoView extends SignalWatcher(
       std: this.std,
       dataSource,
       eventTrace,
+      onAdded: id => this.root.config.onChangeView?.(id),
     });
   };
 
@@ -116,14 +122,18 @@ export class DataViewNoView extends SignalWatcher(
   override render() {
     const canAdd = canAddView(this.root.config.dataSource);
     const label = this.wording(VIEWS_BAR_ADD_VIEW);
-    return html`<div
-      class="dv-no-view"
-      data-testid="database-no-view"
-      role="status"
-      tabindex="-1"
-      ?data-view-focus-fallback="${!canAdd}"
-    >
-      <div>${this.wording(DATA_VIEW_NO_VIEW)}</div>
+    // The live region is the status alone: a button inside one is announced
+    // with it. It holds no `tabindex`, so a click in the frame never takes
+    // the focus; `restoreFocus` lends it one when it is the target.
+    return html`<div class="dv-no-view" data-testid="database-no-view">
+      <div
+        class="dv-no-view-status"
+        data-testid="database-no-view-status"
+        role="status"
+        ?data-view-focus-fallback="${!canAdd}"
+      >
+        ${this.wording(DATA_VIEW_NO_VIEW)}
+      </div>
       ${canAdd
         ? html`<div class="dv-no-view-hint">
               ${this.wording(DATA_VIEW_NO_VIEW_HINT)}

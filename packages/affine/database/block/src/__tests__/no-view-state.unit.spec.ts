@@ -21,9 +21,22 @@
  *   empty state, when `remove()` takes the last view;
  * - undo not bringing the view back, redo not giving the empty state back;
  * - the button not being "+"'s gesture: a view of the picked preset, made
- *   current and traced `DatabaseViewAdded` once;
+ *   current, traced `DatabaseViewAdded` once and handed to the block to
+ *   remember (`onChangeView`);
  * - a view current only by a stale id (a peer deleted it while another view
- *   remains) drawing nothing instead of the remaining view.
+ *   remains) drawing nothing instead of the remaining view;
+ * - the live region holding the button too, or the status holding a
+ *   `tabindex` (a click in the frame took the document's focus): only
+ *   `restoreFocus` lends it one, and takes it back on blur;
+ * - the host removing the last view LATER (its own dialog first) dropping
+ *   the focus on the body: once nobody holds it, the empty state's button
+ *   gets it; an element that holds it keeps it; a peer's removal moves
+ *   nothing (`focusAfterLastViewRemoved`);
+ * - native rows with no view under `requireSource` left with no way out:
+ *   "Move into a database" accepts a block with no view, and the block it
+ *   leaves reads a host source that offers "New view";
+ * - the empty state's frame drifting from the block's "Connect a source"
+ *   notice it copies (the engine cannot import the block's styles).
  *
  * The real block header, the keyboard and the focus are held by
  * `integration-test/…/page/database-no-view.spec.ts`.
@@ -37,11 +50,13 @@ import {
 } from '@labre/affine-model';
 import { effects as contextMenuEffects } from '@labre/affine-components/context-menu';
 import {
+  type DataSourcePickerDatabase,
   DataSourcePickerProvider,
   type DataSourcePickerService,
   type DataSourcePickerViewDeletion,
   FeatureFlagService,
 } from '@labre/affine-shared/services';
+import type { BlockStdScope } from '@labre/std';
 import {
   type DataSourceBase,
   DataViewRootUILogic,
@@ -60,6 +75,11 @@ import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import { applyUpdate, encodeStateAsUpdate } from 'yjs';
 
 import { DatabaseBlockDataSource } from '../data-source.js';
+import { databaseSourceMissingStyles } from '../database-block-styles.js';
+import { sourceRequirement } from '../linked-view.js';
+import { focusAfterLastViewRemoved } from '../no-view-focus.js';
+import { DatabaseDataSourceProvider } from '../service/index.js';
+import { moveDatabaseRowsIntoSource } from '../turn-into-source.js';
 
 const TABLE = { id: 'v1', name: 'Table View', mode: 'table' };
 const BOARD = { id: 'v2', name: 'Board', mode: 'kanban' };
@@ -147,9 +167,11 @@ const settle = () =>
  */
 async function mount(source: DataSourceBase) {
   const eventTrace = vi.fn();
+  const onChangeView = vi.fn();
   const root = new DataViewRootUILogic({
     dataSource: source,
     eventTrace,
+    onChangeView,
     selection$: signal(undefined),
     setSelection: () => {},
     noViewHeader: () => html`<div data-testid="no-view-header">Plan</div>`,
@@ -160,7 +182,7 @@ async function mount(source: DataSourceBase) {
   element.logic = root;
   document.body.append(element);
   await settle();
-  return { root, element, eventTrace };
+  return { root, element, eventTrace, onChangeView };
 }
 
 const byTestId = (id: string) =>
@@ -205,13 +227,21 @@ describe('a database with no view', () => {
     }
 
     expect(byTestId('no-view-header')?.textContent).toBe('Plan');
-    const status = byTestId('database-no-view');
+    const status = byTestId('database-no-view-status');
     expect(status?.getAttribute('role')).toBe('status');
-    expect(status?.textContent).toContain('No view');
+    expect(status?.textContent?.trim()).toBe('No view');
+    expect(status?.hasAttribute('tabindex'), 'no tabindex at rest').toBe(false);
+    expect(
+      document.querySelectorAll('[role="status"]'),
+      'one live region'
+    ).toHaveLength(1);
     const button = byTestId('database-no-view-add');
     expect(button?.getAttribute('role')).toBe('button');
     expect(button?.tabIndex).toBe(0);
     expect(button?.textContent?.trim()).toBe('New view');
+    expect(status!.contains(button), 'the button outside the region').toBe(
+      false
+    );
     expect(updates).toEqual([]);
     expect(store.canUndo).toBe(false);
     expect(model.props.views).toEqual([]);
@@ -241,7 +271,7 @@ describe('a database with no view', () => {
   test('its button adds a view of the picked preset, current, traced once', async () => {
     const { model } = database([]);
     const source = new DatabaseBlockDataSource(model);
-    const { eventTrace } = await mount(source);
+    const { eventTrace, onChangeView } = await mount(source);
 
     byTestId('database-no-view-add')!.click();
     await vi.waitUntil(() => byTestId('database-add-view-preset'));
@@ -265,6 +295,134 @@ describe('a database with no view', () => {
       viewType: added.mode,
       source: 'existing',
     });
+    expect(onChangeView).toHaveBeenCalledExactlyOnceWith(added.id);
+  });
+
+  test('read-only, the status takes the focus only when given it, and gives the tabindex back', async () => {
+    const { store, model } = database([]);
+    store.readonly = true;
+    const { element } = await mount(new DatabaseBlockDataSource(model));
+    const status = byTestId('database-no-view-status')!;
+    expect(status.hasAttribute('tabindex')).toBe(false);
+
+    await element.restoreFocus();
+    expect(document.activeElement).toBe(status);
+    expect(status.getAttribute('tabindex')).toBe('-1');
+
+    status.blur();
+    expect(status.hasAttribute('tabindex')).toBe(false);
+  });
+
+  test('its frame is the block\'s "Connect a source" notice, measure for measure', async () => {
+    const { model } = database([]);
+    await mount(new DatabaseBlockDataSource(model));
+    const notice = document.createElement('div');
+    notice.className = databaseSourceMissingStyles;
+    document.body.append(notice);
+    const frame = byTestId('database-no-view')!;
+
+    const measures = (element: HTMLElement) => {
+      const style = getComputedStyle(element);
+      return {
+        padding: style.padding,
+        margin: style.margin,
+        borderRadius: style.borderRadius,
+        fontSize: style.fontSize,
+        lineHeight: style.lineHeight,
+        gap: style.gap,
+        color: style.color,
+        backgroundColor: style.backgroundColor,
+      };
+    };
+    expect(measures(frame)).toEqual(measures(notice));
+  });
+});
+
+describe('the focus after a local removal of the last view', () => {
+  /** A host that asks first (its dialog) and removes later. */
+  async function hostedLater() {
+    const { model } = database([{ ...TABLE, sourceId: 's1' }], {
+      externalSourceId: 'host:plan',
+    });
+    const requests: DataSourcePickerViewDeletion[] = [];
+    const picker: DataSourcePickerService = {
+      list: () => signal([]),
+      deleteView: request => {
+        requests.push(request);
+      },
+    };
+    const source = new DatabaseBlockDataSource(model, ds =>
+      ds.serviceSet(DataSourcePickerProvider, picker)
+    );
+    const { element } = await mount(source);
+    const watch = focusAfterLastViewRemoved(model, () => element);
+    source.viewManager.viewDelete(TABLE.id);
+    expect(requests).toHaveLength(1);
+    return { request: requests[0]!, watch };
+  }
+
+  test('nobody holding the focus when the host removes it: the button gets it', async () => {
+    const { request, watch } = await hostedLater();
+    (document.activeElement as HTMLElement | null)?.blur();
+    expect(document.activeElement).toBe(document.body);
+
+    expect(request.remove()).toBe(true);
+    await vi.waitUntil(
+      () => document.activeElement === byTestId('database-no-view-add')
+    );
+    watch.unsubscribe();
+  });
+
+  test('an element holding the focus keeps it', async () => {
+    const { request, watch } = await hostedLater();
+    const dialogButton = document.createElement('button');
+    document.body.append(dialogButton);
+    dialogButton.focus();
+
+    expect(request.remove()).toBe(true);
+    await settle();
+    expect(byTestId('database-no-view-add')).not.toBe(null);
+    expect(document.activeElement).toBe(dialogButton);
+    watch.unsubscribe();
+  });
+});
+
+describe('native rows with no view, under a host that requires a source', () => {
+  test('"Move into a database" takes them out, and the block then offers "New view"', async () => {
+    const { store, model } = database([]);
+    const from: DataSourcePickerDatabase = {
+      id: 'host:from',
+      title: 'From',
+      sources: [{ id: 'src-from', title: 'Rows' }],
+    };
+    const createDatabaseFrom = vi.fn(async () => from);
+    const picker: DataSourcePickerService = {
+      list: () => signal([]),
+      requireSource: true,
+      createDatabaseFrom,
+    };
+    const provider: DatabaseDataSourceProvider = {
+      createDataSource: (m, init) => new DatabaseBlockDataSource(m, init),
+    };
+    const services = new Map<unknown, unknown>([
+      [DataSourcePickerProvider, picker],
+      [DatabaseDataSourceProvider, provider],
+    ]);
+    const std = {
+      store,
+      getOptional: (id: unknown) => services.get(id) ?? null,
+    } as unknown as BlockStdScope;
+    expect(sourceRequirement(std, model)).toBe('read-only');
+
+    expect(await moveDatabaseRowsIntoSource(std, model)).toBe(true);
+    expect(createDatabaseFrom).toHaveBeenCalledTimes(1);
+    expect(model.props.externalSourceId).toBe('host:from');
+    expect(model.props.views).toEqual([]);
+    expect(model.children).toHaveLength(0);
+    expect(sourceRequirement(std, model)).toBe('none');
+
+    await mount(new DatabaseBlockDataSource(model));
+    expect(byTestId('database-no-view-add')).not.toBe(null);
   });
 });
 
@@ -367,8 +525,10 @@ describe('a peer deleting views', () => {
   test('the last view deleted by a peer draws the empty state and writes nothing here', async () => {
     const peers = twoPeers([TABLE]);
     const source = new DatabaseBlockDataSource(peers.viewerModel);
-    await mount(source);
+    const { element } = await mount(source);
+    const watch = focusAfterLastViewRemoved(peers.viewerModel, () => element);
     expect(byTestId('a-view')).not.toBe(null);
+    (document.activeElement as HTMLElement | null)?.blur();
 
     new DatabaseBlockDataSource(peers.authorModel).viewManager.viewDelete(
       TABLE.id
@@ -379,6 +539,8 @@ describe('a peer deleting views', () => {
     expect(viewIds(peers.viewerModel)).toEqual([]);
     expect(byTestId('database-no-view')).not.toBe(null);
     expect(peers.localWrites()).toBe(0);
+    expect(document.activeElement, 'a peer moves no focus').toBe(document.body);
+    watch.unsubscribe();
   });
 
   test('the current view deleted by a peer while another remains draws the other', async () => {
