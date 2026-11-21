@@ -7553,7 +7553,7 @@ model {
   framework.std.extension -[imports]-> framework.global_.env '1 import'
   framework.std.extension -[imports]-> framework.global_.exceptions '2 imports'
   framework.std.extension -[imports]-> framework.std.event '5 imports, 4 type-only'
-  framework.std.extension -[imports]-> framework.std.gfx '1 import, 1 type-only'
+  framework.std.extension -[imports]-> framework.std.gfx '3 imports, 2 type-only'
   framework.std.extension -[imports]-> framework.std.scope '6 imports, 6 type-only'
   framework.std.extension -[imports]-> framework.std.selection '1 import'
   framework.std.extension -[imports]-> framework.std.spec '2 imports, 2 type-only'
