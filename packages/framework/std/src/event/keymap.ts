@@ -170,10 +170,39 @@ export function bindKeymap(
   let armedDepth = 0;
   let armedTimer: ReturnType<typeof setTimeout> | null = null;
   let disposeInterceptor: (() => void) | null = null;
+  /** The keystroke that armed or advanced the chord: its auto-repeat is ignored. */
+  let lastStroke: string | null = null;
+
+  /**
+   * A key HELD after completing a chord: its auto-repeat is swallowed until it
+   * is released (a new, non-repeat press) or another key is pressed. Without
+   * it, `b` then `p` held placed the pool and then the repeats, no longer in
+   * the namespace, switched to the Pen tool (`docs/adr/0055`).
+   */
+  let guardedStroke: string | null = null;
+  let disposeGuard: (() => void) | null = null;
+
+  const stopGuard = () => {
+    guardedStroke = null;
+    if (disposeGuard !== null) {
+      disposeGuard();
+      disposeGuard = null;
+    }
+  };
+
+  const guardRepeats: UIEventHandler = ctx => {
+    const event = ctx.get('keyboardState').raw;
+    const name = keyName(event);
+    if (MODIFIER_KEYS.has(name)) return false;
+    if (event.repeat && modifiers(name, event) === guardedStroke) return true;
+    stopGuard();
+    return false;
+  };
 
   const disarm = () => {
     armed = [];
     armedDepth = 0;
+    lastStroke = null;
     if (armedTimer !== null) {
       clearTimeout(armedTimer);
       armedTimer = null;
@@ -208,6 +237,9 @@ export function bindKeymap(
     }
 
     const stroke = modifiers(name, event);
+    // The prefix (or a step) still held: its repeats stay in the namespace
+    // and change nothing, rather than disarming and re-arming in a loop.
+    if (event.repeat && stroke === lastStroke) return true;
     const matches = armed.filter(s => s.steps[armedDepth] === stroke);
 
     if (!matches.length) {
@@ -225,10 +257,14 @@ export function bindKeymap(
     if (complete) {
       disarm();
       complete.handler(ctx);
+      stopGuard();
+      guardedStroke = stroke;
+      if (interceptors) disposeGuard = interceptors.register(guardRepeats);
       return true;
     }
     armed = matches;
     armedDepth += 1;
+    lastStroke = stroke;
     rearmTimeout();
     return true;
   };
@@ -237,6 +273,11 @@ export function bindKeymap(
     const state = ctx.get('keyboardState');
     const event = state.raw;
     const name = keyName(event);
+
+    // Without an interceptor registry, the held-key guard is checked here.
+    if (guardedStroke !== null && !interceptors && guardRepeats(ctx)) {
+      return true;
+    }
 
     if (sequences.length && !isTypingTarget(event)) {
       // Without an interceptor registry, continuations are handled here.
@@ -254,9 +295,11 @@ export function bindKeymap(
             ((s.handler as ChordBinding).canRun?.(ctx) ?? true)
         );
         // An existing single binding on the prefix key wins over the chord.
-        if (starting.length && !map[stroke]) {
+        // A repeat never arms: a prefix held past the timeout stays inert.
+        if (starting.length && !map[stroke] && !event.repeat) {
           armed = starting;
           armedDepth = 1;
+          lastStroke = stroke;
           rearmTimeout();
           if (interceptors) {
             disposeInterceptor = interceptors.register(continueChord);
@@ -312,7 +355,12 @@ export function bindKeymap(
     return false;
   };
 
-  return Object.assign(run, { dispose: disarm });
+  return Object.assign(run, {
+    dispose: () => {
+      disarm();
+      stopGuard();
+    },
+  });
 }
 
 // In Android, the keypress event  dose not contain

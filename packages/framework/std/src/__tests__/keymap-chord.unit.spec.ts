@@ -165,6 +165,81 @@ describe('bindKeymap chords', () => {
     expect(chord).not.toHaveBeenCalled();
   });
 
+  /**
+   * A key held after it completed a chord auto-repeats (`repeat: true`): those
+   * repeats used to arrive disarmed and reach the key's own single binding, so
+   * `b` then `p` held placed the pool AND switched to the Pen tool.
+   */
+  test('a held second key does not repeat into its single binding', () => {
+    const chord = vi.fn(() => true);
+    const pen = vi.fn(() => true);
+    const h = harness();
+    h.bind({ 'b p': chord });
+    h.bind({ p: pen });
+
+    h.press('b');
+    h.press('p');
+    for (let i = 0; i < 3; i++) {
+      expect(h.press('p', { repeat: true })).toBe(true);
+    }
+    expect(chord).toHaveBeenCalledOnce();
+    expect(pen).not.toHaveBeenCalled();
+
+    // Released and pressed again: an ordinary `p`.
+    expect(h.press('p')).toBe(true);
+    expect(pen).toHaveBeenCalledOnce();
+  });
+
+  test('another key ends the held-key guard', () => {
+    const chord = vi.fn(() => true);
+    const pen = vi.fn(() => true);
+    const hand = vi.fn(() => true);
+    const h = harness();
+    h.bind({ 'b p': chord });
+    h.bind({ p: pen, h: hand });
+
+    h.press('b');
+    h.press('p');
+    h.press('h');
+    expect(hand).toHaveBeenCalledOnce();
+    // The guard is gone: even a repeat of `p` is an ordinary `p` now.
+    h.press('p', { repeat: true });
+    expect(pen).toHaveBeenCalledOnce();
+  });
+
+  test('a held prefix stays armed, without arming again in a loop', () => {
+    const chord = vi.fn(() => true);
+    const hand = vi.fn(() => true);
+    const h = harness();
+    h.bind({ 'b p': chord });
+    h.bind({ h: hand });
+
+    h.press('b');
+    for (let i = 0; i < 4; i++) {
+      expect(h.press('b', { repeat: true })).toBe(true);
+    }
+    // Still armed on the first press, whatever the number of repeats.
+    h.press('p');
+    expect(chord).toHaveBeenCalledOnce();
+    expect(hand).not.toHaveBeenCalled();
+  });
+
+  test('a prefix held past the timeout does not arm again', () => {
+    vi.useFakeTimers();
+    const chord = vi.fn(() => true);
+    const hand = vi.fn(() => true);
+    const h = harness();
+    h.bind({ 'b p': chord });
+    h.bind({ h: hand });
+
+    h.press('b');
+    vi.advanceTimersByTime(2000);
+    // A repeat of the held `b` arrives after the prefix expired: inert.
+    expect(h.press('b', { repeat: true })).toBe(false);
+    expect(h.press('h')).toBe(true);
+    expect(hand).toHaveBeenCalledOnce();
+  });
+
   test('a chord whose second key is modified still completes', () => {
     const chord = vi.fn(() => true);
     const h = harness();
