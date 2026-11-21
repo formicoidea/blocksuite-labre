@@ -1,4 +1,3 @@
-import { RESERVED_EDGELESS_KEYS } from '@labre/affine-block-root';
 import { recordAction } from '@labre/affine-block-surface';
 import { bpmnCommandIcons } from '@labre/affine-gfx-bpmn';
 import { c4CommandIcons } from '@labre/affine-gfx-c4';
@@ -13,11 +12,9 @@ import {
   wardleyCommands,
 } from '@labre/affine-gfx-wardley';
 import {
-  canonicalCombo,
   FRAMEWORK_IDS,
   selectSeniorMenuCommands,
   SENIOR_MENU_CAP,
-  type CommandDescriptor,
   type FrameworkId,
 } from '@labre/std';
 import { describe, expect, test } from 'vitest';
@@ -31,7 +28,6 @@ import { FRAMEWORK_DESCRIPTORS } from '../../frameworks.js';
  */
 const commands = getCommands();
 const byOwner = (owner: string) => commands.filter(c => c.owner === owner);
-const chordsOf = (c: CommandDescriptor) => c.defaultKeys.other;
 
 describe('command registry invariants', () => {
   /**
@@ -292,7 +288,9 @@ describe('command registry invariants', () => {
       // 2026-11-04): an attachment has no flag.
       // …and 46 with `selection.export.svg`: the selection as SVG, core-owned
       // for `export.svg`'s reason — it draws whatever is selected.
-      core: 46,
+      // …and 47 with `canvas.templates.toggle` (ADR 0055 § 7): `l` opens the
+      // Templates panel, a tool of no framework; it rides the `template` flag.
+      core: 47,
     });
     // 112 since the two SVG fallback imports (`bpmn.importSvg`,
     // `wardley.importSvg`) joined the OWM pair — one SVG row per framework,
@@ -340,7 +338,8 @@ describe('command registry invariants', () => {
     // …and 219 with `canvas.image.replaceWithImage` (ADR 0044, 2026-10-27).
     // …and 221 with the two of an attachment (ADR 0044, 2026-11-04).
     // …and 222 with `selection.export.svg`.
-    expect(commands).toHaveLength(222);
+    // …and 223 with `canvas.templates.toggle` (ADR 0055 § 7).
+    expect(commands).toHaveLength(223);
   });
 
   /**
@@ -536,36 +535,10 @@ describe('command registry invariants', () => {
     }
   });
 
-  test('every chord uses its framework’s prefix, with unique second keys', () => {
-    for (const descriptor of FRAMEWORK_DESCRIPTORS) {
-      const chords = byOwner(descriptor.id)
-        .map(chordsOf)
-        .filter(keys => keys.length > 0);
-      if (!chords.length) continue;
-      expect(
-        descriptor.chordPrefix,
-        `${descriptor.id} has chords but no allocated prefix`
-      ).toBeTruthy();
-      expect(chords.every(keys => keys[0] === descriptor.chordPrefix)).toBe(
-        true
-      );
-      const seconds = chords.map(keys => keys.slice(1).join(' '));
-      expect(new Set(seconds).size).toBe(seconds.length);
-    }
-  });
-
-  test('chord prefixes are unique and never shadow an imperative edgeless key', () => {
-    const prefixes = FRAMEWORK_DESCRIPTORS.map(d => d.chordPrefix).filter(
-      (p): p is string => !!p
-    );
-    expect(new Set(prefixes).size).toBe(prefixes.length);
-    const reserved = new Set(
-      RESERVED_EDGELESS_KEYS.map(k => canonicalCombo([k]))
-    );
-    for (const prefix of prefixes) {
-      expect(reserved.has(canonicalCombo([prefix])), prefix).toBe(false);
-    }
-  });
+  // The chord-prefix invariants (one prefix per framework, unique second keys,
+  // no prefix on a single-key shortcut) moved, strengthened, to
+  // `../shortcuts/chord-prefixes.unit.spec.ts` when two frameworks first shared
+  // a prefix (`docs/adr/0055`).
 
   test('every framework has a descriptor and every descriptor a framework', () => {
     expect(FRAMEWORK_DESCRIPTORS.map(d => d.id).sort()).toEqual(

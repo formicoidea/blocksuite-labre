@@ -1,3 +1,4 @@
+import { frameworkChord } from '@labre/affine-shared/utils';
 import type { CommandDescriptor } from '@labre/std';
 import { type GfxController, GfxControllerIdentifier } from '@labre/std/gfx';
 import type { TemplateResult } from 'lit';
@@ -50,6 +51,14 @@ import {
 } from './toolbar/icons';
 
 /**
+ * The first keystroke of every Wardley chord (`w c` places a component).
+ * `FrameworkDescriptor.chordPrefix` in `@labre/affine`'s `frameworks.ts` spells
+ * it again for the host, which this package cannot import, and
+ * `chord-prefixes.unit.spec.ts` holds the two together (`docs/adr/0055`).
+ */
+const WARDLEY_CHORD_PREFIX = 'w';
+
+/**
  * The Wardley toolbox as {@link CommandDescriptor}s — the SINGLE declaration
  * the senior sub-menu, the keymap, Settings › Shortcuts, the catalogue and the
  * agent all read (`docs/adr/0008`). Before PF3 the same artefacts were spelled
@@ -98,7 +107,10 @@ interface Spec {
   legendRole?: WardleyLegendRole;
   /** Historical label key, for the seven commands that already shipped. */
   labelKey?: string;
-  /** Second keystroke of the `w` chord; absent = keyless by intent. */
+  /**
+   * Second keystroke of the chord, after {@link WARDLEY_CHORD_PREFIX}; absent =
+   * keyless by intent.
+   */
   key?: string;
   iconKey: string;
   /**
@@ -376,10 +388,10 @@ const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, order) => ({
   surfaces: ['senior-menu', 'catalogue', 'palette', 'agent'],
   order,
   scope: 'edgeless',
-  defaultKeys: spec.key
-    ? { mac: ['w', spec.key], other: ['w', spec.key] }
-    : { mac: [], other: [] },
-  availability: 'always',
+  defaultKeys: frameworkChord(WARDLEY_CHORD_PREFIX, spec.key),
+  // It WRITES: a read-only document is one it cannot run on, so no surface
+  // offers it there and no chord arms for it (`docs/adr/0055`).
+  availability: 'editable',
   run: std => spec.run(std.get(GfxControllerIdentifier)),
   telemetry: { framework: 'wardley', element: spec.element, board: spec.board },
   // The legend, SUBSCRIBED rather than tabulated (`docs/adr/0009`'s sibling):

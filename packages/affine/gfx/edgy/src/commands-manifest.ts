@@ -39,7 +39,7 @@ export const edgyCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.edgy.addBoard',
     labelFallback: 'EDGY board (hover spotlight)',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['g', 'b'], other: ['g', 'b'] },
   },
   {
     id: 'edgy.addPeople',
@@ -47,7 +47,7 @@ export const edgyCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.edgy.addPeople',
     labelFallback: 'People',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['g', 'p'], other: ['g', 'p'] },
   },
   {
     id: 'edgy.addOutcome',
@@ -55,7 +55,7 @@ export const edgyCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.edgy.addOutcome',
     labelFallback: 'Outcome',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['g', 'o'], other: ['g', 'o'] },
   },
   {
     id: 'edgy.addObject',
@@ -63,7 +63,7 @@ export const edgyCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.edgy.addObject',
     labelFallback: 'Object',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['g', 'j'], other: ['g', 'j'] },
   },
   {
     id: 'edgy.addActivity',
@@ -71,7 +71,7 @@ export const edgyCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.edgy.addActivity',
     labelFallback: 'Activity',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['g', 'a'], other: ['g', 'a'] },
   },
   {
     id: 'edgy.addRelation',

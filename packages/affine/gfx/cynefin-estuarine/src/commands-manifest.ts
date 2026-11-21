@@ -23,7 +23,7 @@ export const cynefinEstuarineCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.cynefin-estuarine.addCynefin',
     labelFallback: 'Cynefin framework',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['y', 'c'], other: ['y', 'c'] },
   },
   {
     id: 'cynefin-estuarine.addEstuarineMap',
@@ -31,7 +31,7 @@ export const cynefinEstuarineCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.cynefin-estuarine.addEstuarineMap',
     labelFallback: 'Estuarine map',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['y', 'e'], other: ['y', 'e'] },
   },
   {
     id: 'cynefin-estuarine.addConstraintHexagon',
@@ -39,6 +39,6 @@ export const cynefinEstuarineCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.cynefin-estuarine.addConstraintHexagon',
     labelFallback: 'Hexagon node',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['y', 'h'], other: ['y', 'h'] },
   },
 ];

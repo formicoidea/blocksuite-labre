@@ -303,10 +303,20 @@ describe('the bpmn command inventory', () => {
       expect(command.scope, command.id).toBe('edgeless');
       expect(command.surfaces, command.id).toContain('catalogue');
       expect(command.iconKey, command.id).toBeTruthy();
-      // Keyless by intent, all of them: past fourteen, a framework binds by
-      // host override rather than by shipping a default chord.
-      expect(command.defaultKeys.mac, command.id).toEqual([]);
-      expect(command.defaultKeys.other, command.id).toEqual([]);
+      // The twelve senior ARTEFACTS carry a `b` chord (`docs/adr/0055`);
+      // the flows, the refinements, the lanes and the file commands stay
+      // keyless by intent and bind by host override.
+      const chorded =
+        command.kind === 'artefact' && command.surfaces.includes('senior-menu');
+      expect(command.defaultKeys.mac, command.id).toEqual(
+        command.defaultKeys.other
+      );
+      if (chorded) {
+        expect(command.defaultKeys.other[0], command.id).toBe('b');
+        expect(command.defaultKeys.other, command.id).toHaveLength(2);
+      } else {
+        expect(command.defaultKeys.other, command.id).toEqual([]);
+      }
     }
   });
 

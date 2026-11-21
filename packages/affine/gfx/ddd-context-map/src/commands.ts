@@ -13,6 +13,7 @@ import {
   type ChromeWording,
   translateKey,
 } from '@labre/affine-shared/services';
+import { frameworkChord } from '@labre/affine-shared/utils';
 import type {
   BlockStdScope,
   CommandDescriptor,
@@ -35,6 +36,16 @@ import {
 // Declared in `seeds.ts` (editor-free, for the toolbox) and re-exported here,
 // where `translations.ts` has always read them.
 export { CONTEXT_MAP_SEED_BOUNDED_CONTEXT, CONTEXT_MAP_SEED_CLOUD };
+
+/**
+ * The first keystroke of every Context Map chord (`d b` places a bounded
+ * context). The two DDD boards SHARE `d` by product decision: their second keys
+ * are unique across both (`chord-prefixes.unit.spec.ts`), so `d` reads as
+ * "DDD" whichever board you are on. Spelled again as
+ * `FrameworkDescriptor.chordPrefix` in `@labre/affine`'s `frameworks.ts`,
+ * held together by the same spec (`docs/adr/0055`).
+ */
+const DDD_CHORD_PREFIX = 'd';
 
 /**
  * The automatic legend's own section titles — text stamped onto the board the
@@ -78,6 +89,11 @@ const relationSwatch = (dashed: boolean, arrow: boolean) =>
 
 interface Spec {
   id: string;
+  /**
+   * Second keystroke of the chord, after {@link DDD_CHORD_PREFIX}; absent =
+   * keyless by intent (`docs/adr/0055`).
+   */
+  key?: string;
   label: string;
   iconKey: string;
   /** Historical `FrameworkElementEvent.element` value — do not rename. */
@@ -100,6 +116,7 @@ interface Spec {
 const SPECS: Spec[] = [
   {
     id: 'addBoard',
+    key: 'm',
     label: 'Context Map board',
     iconKey: 'ddd-context-map.board',
     // A NEW telemetry value, and the only one in this file: every other entry
@@ -114,6 +131,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addBoundedContext',
+    key: 'b',
     label: 'Bounded Context',
     iconKey: 'ddd-context-map.bubble',
     element: 'bounded-context',
@@ -141,6 +159,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addCloud',
+    key: 's',
     label: 'Cloud / System (Big Ball of Mud)',
     iconKey: 'ddd-context-map.cloud',
     element: 'cloud',
@@ -213,8 +232,10 @@ export const contextMapCommands: CommandDescriptor[] = SPECS.map(
     surfaces: ['senior-menu', 'catalogue', 'palette', 'agent'],
     order,
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
-    availability: 'always',
+    defaultKeys: frameworkChord(DDD_CHORD_PREFIX, spec.key),
+    // It WRITES: a read-only document is one it cannot run on, so no surface
+    // offers it there and no chord arms for it (`docs/adr/0055`).
+    availability: 'editable',
     run: spec.run,
     telemetry: {
       framework: 'ddd-context-map',

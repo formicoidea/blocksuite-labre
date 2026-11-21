@@ -23,7 +23,7 @@ export const contextMapCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.ddd-context-map.addBoard',
     labelFallback: 'Context Map board',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['d', 'm'], other: ['d', 'm'] },
   },
   {
     id: 'ddd-context-map.addBoundedContext',
@@ -31,7 +31,7 @@ export const contextMapCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.ddd-context-map.addBoundedContext',
     labelFallback: 'Bounded Context',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['d', 'b'], other: ['d', 'b'] },
   },
   {
     id: 'ddd-context-map.addCloud',
@@ -39,7 +39,7 @@ export const contextMapCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.ddd-context-map.addCloud',
     labelFallback: 'Cloud / System (Big Ball of Mud)',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['d', 's'], other: ['d', 's'] },
   },
   {
     id: 'ddd-context-map.addPartnership',

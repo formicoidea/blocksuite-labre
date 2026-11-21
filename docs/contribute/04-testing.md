@@ -113,8 +113,10 @@ Whenever one thing is spelled in two places, a test holds them equal:
 - `commands-manifest.unit.spec.ts`: the hand-committed manifest equals the
   projection of the descriptors, row for row.
 - `registry.unit.spec.ts` (in `affine/all`): every framework has a
-  descriptor, every command an icon key, every chord its owner's prefix, no
-  sub-menu over the cap.
+  descriptor, every command an icon key, no sub-menu over the cap.
+- `chord-prefixes.unit.spec.ts` (in `affine/all`): every chord on its
+  owner's declared prefix, no prefix on a single-key shortcut, no shared
+  prefix nobody declared (ADR 0055).
 - `reading-coverage.unit.spec.ts`: mounts the real view extensions and reads
   the container back, so a deleted `context.register(…)` line fails the test.
   Importing the exported constant would not catch it.

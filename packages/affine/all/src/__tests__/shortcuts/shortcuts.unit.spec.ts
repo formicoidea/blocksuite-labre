@@ -25,6 +25,30 @@ const command = (
 });
 
 describe('getShortcutManifest', () => {
+  /**
+   * The Templates panel's `l` (ADR 0055 § 7) is a row a host's Settings ›
+   * Shortcuts draws and can rebind, worded by the button's own key, and it
+   * goes with the `template` flag that removes the button.
+   */
+  test('lists the Templates shortcut, and drops it with the template flag', () => {
+    const row = getShortcutManifest().find(
+      e => e.id === 'canvas.templates.toggle'
+    );
+    expect(row).toEqual({
+      id: 'canvas.templates.toggle',
+      owner: 'core',
+      labelKey: 'com.labre.template.senior-tool.name',
+      labelFallback: 'Template',
+      scope: 'edgeless',
+      defaultKeys: { mac: ['l'], other: ['l'] },
+    });
+    expect(
+      getShortcutManifest({ template: false }).some(
+        e => e.id === 'canvas.templates.toggle'
+      )
+    ).toBe(false);
+  });
+
   test('always includes core shortcuts (undo/redo) without handlers', () => {
     const ids = getShortcutManifest().map(e => e.id);
     expect(ids).toContain('undo');
@@ -93,14 +117,21 @@ describe('getShortcutManifest', () => {
   });
 
   test('an override on a keyless command actually binds', () => {
+    // `c4.addPerson` is keyless by intent (C4 has no chord prefix, ADR 0055),
+    // and `q x` is nobody's default: only the override can put it there.
+    // `edgy.addBoard` served here until it gained `g b` as its DEFAULT, which
+    // left the override equal to the default and the test proving nothing.
     const descriptors = getCommands().map(toShortcutDescriptor);
-    const { keymap } = resolveKeymap(
-      descriptors,
-      { 'edgy.addBoard': ['g', 'b'] },
-      'edgeless',
-      {} as BlockStdScope
-    );
-    expect(Object.keys(keymap)).toContain('g b');
+    const person = descriptors.find(d => d.id === 'c4.addPerson')!;
+    expect(person.defaultKeys).toEqual({ mac: [], other: [] });
+    const bound = (overrides: Record<string, string[]>) =>
+      Object.keys(
+        resolveKeymap(descriptors, overrides, 'edgeless', {} as BlockStdScope)
+          .keymap
+      );
+
+    expect(bound({})).not.toContain('q x');
+    expect(bound({ 'c4.addPerson': ['q', 'x'] })).toContain('q x');
   });
 });
 

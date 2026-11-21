@@ -24,7 +24,7 @@ export const umlCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.uml.addDiagram',
     labelFallback: 'UML diagram',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['u', 'd'], other: ['u', 'd'] },
   },
   {
     id: 'uml.addClass',
@@ -32,7 +32,7 @@ export const umlCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.uml.addClass',
     labelFallback: 'Class',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['u', 'c'], other: ['u', 'c'] },
   },
   {
     id: 'uml.addInterface',
@@ -40,7 +40,7 @@ export const umlCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.uml.addInterface',
     labelFallback: 'Interface',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['u', 'i'], other: ['u', 'i'] },
   },
   {
     id: 'uml.addEnumeration',
@@ -48,7 +48,7 @@ export const umlCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.uml.addEnumeration',
     labelFallback: 'Enumeration',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['u', 'e'], other: ['u', 'e'] },
   },
   {
     id: 'uml.addPackage',
@@ -56,7 +56,7 @@ export const umlCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.uml.addPackage',
     labelFallback: 'Package',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['u', 'p'], other: ['u', 'p'] },
   },
   {
     id: 'uml.addActor',
@@ -64,7 +64,7 @@ export const umlCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.uml.addActor',
     labelFallback: 'Actor',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['u', 'a'], other: ['u', 'a'] },
   },
   {
     id: 'uml.addUseCase',
@@ -72,7 +72,7 @@ export const umlCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.uml.addUseCase',
     labelFallback: 'Use case',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['u', 'o'], other: ['u', 'o'] },
   },
   {
     id: 'uml.addSubject',
@@ -80,7 +80,7 @@ export const umlCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.uml.addSubject',
     labelFallback: 'Subject',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['u', 's'], other: ['u', 's'] },
   },
   {
     id: 'uml.addObject',

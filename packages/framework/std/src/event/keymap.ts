@@ -2,7 +2,7 @@ import { IS_MAC } from '@labre/global/env';
 import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
 import { base, keyName } from 'w3c-keyname';
 
-import type { UIEventHandler } from './base.js';
+import type { UIEventHandler, UIEventStateContext } from './base.js';
 
 /**
  * Parse one keystroke name (`'Mod-z'`) into the runtime form used for event
@@ -83,6 +83,36 @@ function isTypingTarget(event: KeyboardEvent) {
 }
 
 /**
+ * A keystroke that is never a printable continuation: pressed with Ctrl, Meta
+ * or Alt, a named key (Delete, Backspace, Escape, Enter, Tab, the arrows,
+ * Home / End, the page and function keys), or Space. When it completes no
+ * armed chord, it is handed on to the canvas's own bindings rather than
+ * swallowed: a stray prefix letter must not cost the user the Delete, the
+ * undo or the arrow that follows it (`docs/adr/0055`). Shift alone does not
+ * count: a Shift-ed letter is printable and stays in the namespace.
+ */
+function isCanvasKeystroke(name: string, event: KeyboardEvent) {
+  return (
+    event.ctrlKey ||
+    event.metaKey ||
+    event.altKey ||
+    name.length !== 1 ||
+    name === ' '
+  );
+}
+
+/**
+ * A binding of a chord may say whether it could run right now. A prefix arms
+ * only when at least one of the chords it starts could: with none runnable (a
+ * read-only document, a canvas element in edit mode), the prefix letter is
+ * left to whatever else binds it and the next keystroke is never swallowed.
+ * Absent = always runnable, which is every binding that predates it.
+ */
+export type ChordBinding = UIEventHandler & {
+  canRun?: (ctx: UIEventStateContext) => boolean;
+};
+
+/**
  * Lets an armed chord preempt the rest of the dispatcher chain: the
  * continuation handler registered here must run BEFORE every existing keyDown
  * handler (the dispatcher unshifts new handlers, so registering at arm time
@@ -99,8 +129,11 @@ export interface ChordInterceptorRegistry {
  * space-separated sequence of keystrokes (`'w c'`): pressing the first
  * keystroke arms the sequence, and the next keystroke (within a short
  * timeout) resolves it. The prefix scopes the continuation to its namespace:
- * an unknown continuation is swallowed (no such shortcut), it never falls
- * through to the generic single-keystroke bindings.
+ * an unknown printable continuation is swallowed (no such shortcut), it never
+ * falls through to the generic single-keystroke bindings; a keystroke that is
+ * no printable continuation (a named key, a modified key, Space) disarms and
+ * is handed on. A prefix whose chords all say they cannot run
+ * ({@link ChordBinding}) does not arm.
  *
  * Pass `interceptors` (the dispatcher does) so an armed chord consumes its
  * continuation before earlier-registered handlers; without it, continuations
@@ -137,10 +170,39 @@ export function bindKeymap(
   let armedDepth = 0;
   let armedTimer: ReturnType<typeof setTimeout> | null = null;
   let disposeInterceptor: (() => void) | null = null;
+  /** The keystroke that armed or advanced the chord: its auto-repeat is ignored. */
+  let lastStroke: string | null = null;
+
+  /**
+   * A key HELD after completing a chord: its auto-repeat is swallowed until it
+   * is released (a new, non-repeat press) or another key is pressed. Without
+   * it, `b` then `p` held placed the pool and then the repeats, no longer in
+   * the namespace, switched to the Pen tool (`docs/adr/0055`).
+   */
+  let guardedStroke: string | null = null;
+  let disposeGuard: (() => void) | null = null;
+
+  const stopGuard = () => {
+    guardedStroke = null;
+    if (disposeGuard !== null) {
+      disposeGuard();
+      disposeGuard = null;
+    }
+  };
+
+  const guardRepeats: UIEventHandler = ctx => {
+    const event = ctx.get('keyboardState').raw;
+    const name = keyName(event);
+    if (MODIFIER_KEYS.has(name)) return false;
+    if (event.repeat && modifiers(name, event) === guardedStroke) return true;
+    stopGuard();
+    return false;
+  };
 
   const disarm = () => {
     armed = [];
     armedDepth = 0;
+    lastStroke = null;
     if (armedTimer !== null) {
       clearTimeout(armedTimer);
       armedTimer = null;
@@ -175,14 +237,19 @@ export function bindKeymap(
     }
 
     const stroke = modifiers(name, event);
+    // The prefix (or a step) still held: its repeats stay in the namespace
+    // and change nothing, rather than disarming and re-arming in a loop.
+    if (event.repeat && stroke === lastStroke) return true;
     const matches = armed.filter(s => s.steps[armedDepth] === stroke);
 
     if (!matches.length) {
-      // No continuation matched. The prefix scopes the next keystroke to
-      // its namespace ("in wardley, shortcut X"): an unknown key there
-      // means "no such shortcut" and is swallowed, never handed to the
-      // generic single-key bindings (w+e must not trigger the eraser).
       disarm();
+      // Delete, an arrow, Ctrl+Z, Space…: not a letter of the namespace, so
+      // it goes to the canvas exactly as it would have without the prefix.
+      if (isCanvasKeystroke(name, event)) return false;
+      // An unknown LETTER is the namespace's own business: "no such
+      // shortcut", swallowed, never handed to the generic single-key
+      // bindings (w then h must not reach the hand tool).
       return true;
     }
 
@@ -190,10 +257,14 @@ export function bindKeymap(
     if (complete) {
       disarm();
       complete.handler(ctx);
+      stopGuard();
+      guardedStroke = stroke;
+      if (interceptors) disposeGuard = interceptors.register(guardRepeats);
       return true;
     }
     armed = matches;
     armedDepth += 1;
+    lastStroke = stroke;
     rearmTimeout();
     return true;
   };
@@ -202,6 +273,11 @@ export function bindKeymap(
     const state = ctx.get('keyboardState');
     const event = state.raw;
     const name = keyName(event);
+
+    // Without an interceptor registry, the held-key guard is checked here.
+    if (guardedStroke !== null && !interceptors && guardRepeats(ctx)) {
+      return true;
+    }
 
     if (sequences.length && !isTypingTarget(event)) {
       // Without an interceptor registry, continuations are handled here.
@@ -213,11 +289,17 @@ export function bindKeymap(
 
       if (armedDepth === 0) {
         const stroke = modifiers(name, event);
-        const starting = sequences.filter(s => s.steps[0] === stroke);
+        const starting = sequences.filter(
+          s =>
+            s.steps[0] === stroke &&
+            ((s.handler as ChordBinding).canRun?.(ctx) ?? true)
+        );
         // An existing single binding on the prefix key wins over the chord.
-        if (starting.length && !map[stroke]) {
+        // A repeat never arms: a prefix held past the timeout stays inert.
+        if (starting.length && !map[stroke] && !event.repeat) {
           armed = starting;
           armedDepth = 1;
+          lastStroke = stroke;
           rearmTimeout();
           if (interceptors) {
             disposeInterceptor = interceptors.register(continueChord);
@@ -273,7 +355,12 @@ export function bindKeymap(
     return false;
   };
 
-  return Object.assign(run, { dispose: disarm });
+  return Object.assign(run, {
+    dispose: () => {
+      disarm();
+      stopGuard();
+    },
+  });
 }
 
 // In Android, the keypress event  dose not contain

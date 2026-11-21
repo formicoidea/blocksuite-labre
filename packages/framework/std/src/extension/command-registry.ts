@@ -3,6 +3,11 @@ import type { ExtensionType } from '@labre/store';
 import type { TemplateResult } from 'lit';
 import type { z } from 'zod';
 
+import type { ChordBinding } from '../event/keymap.js';
+// The identifier alone, not `@labre/std/gfx`: that entry would close an import
+// cycle through `extension/` (see `isEditingOnCanvas`).
+import { GfxControllerIdentifier } from '../gfx/identifiers.js';
+import type { BaseTool } from '../gfx/tool/tool.js';
 import { SurfaceSelection } from '../selection/index.js';
 import type { BlockStdScope } from '../scope/index.js';
 // TYPE-only, and the only edge this module has towards `gfx`: a legend entry
@@ -90,7 +95,7 @@ export type Availability =
   | 'always'
   | 'selection' // any non-empty canvas selection, not text-editing
   | 'selection:framework' // selection contains the owner's element types
-  | 'editable'; // document is not read-only
+  | 'editable'; // document is not read-only, canvas is not being presented
 
 /**
  * Which surfaces a command opts into. Absent from the array = absent from the
@@ -580,6 +585,24 @@ const surfaceSelections = (std: BlockStdScope) =>
 export const isEditingOnCanvas = (std: BlockStdScope) =>
   surfaceSelections(std).some(sel => sel.editing);
 
+/**
+ * Whether the canvas is being PRESENTED: the active tool declares
+ * `BaseTool.presents` (the frame navigator). Read off the tool's own
+ * declaration, so this module names no tool.
+ *
+ * Every std has a gfx controller, but `gfx.tool` exists only where the tool
+ * controller is registered: `ToolController.extendGfx` installs that getter,
+ * and only the edgeless view registers `ToolController`. On a page the
+ * property is absent, whatever its type says, and a page presents nothing.
+ */
+const isPresenting = (std: BlockStdScope) => {
+  const gfx = std.getOptional(GfxControllerIdentifier) as {
+    tool?: { currentTool$: { peek(): BaseTool | undefined } };
+  } | null;
+  const tool = gfx?.tool?.currentTool$.peek();
+  return Boolean(tool && (tool.constructor as typeof BaseTool).presents);
+};
+
 const hasCanvasSelection = (std: BlockStdScope) =>
   surfaceSelections(std).some(sel => sel.elements.length > 0);
 
@@ -609,7 +632,9 @@ export function isCommandAvailable(
     case 'selection:framework':
       return !isEditingOnCanvas(std) && hasCanvasSelection(std);
     case 'editable':
-      return !std.store.readonly;
+      // A presentation writes nothing either (ADR 0055): `b p` while
+      // presenting placed a pool and left the presentation.
+      return !std.store.readonly && !isPresenting(std);
   }
 }
 
@@ -706,16 +731,38 @@ export function toShortcutDescriptor(
     defaultKeys: command.defaultKeys,
     scope: command.scope,
     owner: command.owner,
-    handler: std => ctx => {
-      // A keystroke aimed at a canvas text editor belongs to that editor.
-      if (command.scope === 'edgeless' && isEditingOnCanvas(std)) return false;
-      if (!isCommandAvailable(std, command)) return false;
-      if (command.when && !command.when(std)) return false;
-      ctx.get('defaultState').event.preventDefault();
-      runCommand(std, command, { surface: 'shortcut', source: 'shortcut' });
-      return true;
+    handler: std => {
+      const canRun = () => canRunFromKeyboard(std, command);
+      const handler: ChordBinding = ctx => {
+        if (!canRun()) return false;
+        ctx.get('defaultState').event.preventDefault();
+        runCommand(std, command, { surface: 'shortcut', source: 'shortcut' });
+        return true;
+      };
+      // The same predicate, asked BEFORE a chord prefix arms: when none of a
+      // prefix's commands can run (a read-only store and `availability:
+      // 'editable'`, a canvas element in edit mode), the prefix letter does
+      // not arm and swallows nothing (`docs/adr/0055`).
+      handler.canRun = canRun;
+      return handler;
     },
   };
+}
+
+/**
+ * Whether a keyboard binding of `command` may run now: the one gate every
+ * shortcut and chord goes through, read off the descriptor's own declared
+ * data rather than checked per framework.
+ */
+function canRunFromKeyboard(
+  std: BlockStdScope,
+  command: AnyCommandDescriptor
+): boolean {
+  // A keystroke aimed at a canvas element in edit mode (a text, a polygon's
+  // vertices) belongs to that element.
+  if (command.scope === 'edgeless' && isEditingOnCanvas(std)) return false;
+  if (!isCommandAvailable(std, command)) return false;
+  return !command.when || command.when(std);
 }
 
 /**

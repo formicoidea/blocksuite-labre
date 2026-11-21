@@ -23,7 +23,7 @@ export const bpmnCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.bpmn.addStartEvent',
     labelFallback: 'Start event',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['b', 's'], other: ['b', 's'] },
   },
   {
     id: 'bpmn.addEndEvent',
@@ -31,7 +31,7 @@ export const bpmnCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.bpmn.addEndEvent',
     labelFallback: 'End event',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['b', 'e'], other: ['b', 'e'] },
   },
   {
     id: 'bpmn.addTask',
@@ -39,7 +39,7 @@ export const bpmnCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.bpmn.addTask',
     labelFallback: 'Task',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['b', 't'], other: ['b', 't'] },
   },
   {
     id: 'bpmn.addExclusiveGateway',
@@ -47,7 +47,7 @@ export const bpmnCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.bpmn.addExclusiveGateway',
     labelFallback: 'Exclusive gateway',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['b', 'x'], other: ['b', 'x'] },
   },
   {
     id: 'bpmn.sequenceFlowTool',
@@ -63,7 +63,7 @@ export const bpmnCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.bpmn.addPool',
     labelFallback: 'Pool',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['b', 'p'], other: ['b', 'p'] },
   },
   {
     id: 'bpmn.messageFlowTool',
@@ -79,7 +79,7 @@ export const bpmnCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.bpmn.addUserTask',
     labelFallback: 'User task',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['b', 'u'], other: ['b', 'u'] },
   },
   {
     id: 'bpmn.addServiceTask',
@@ -87,7 +87,7 @@ export const bpmnCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.bpmn.addServiceTask',
     labelFallback: 'Service task',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['b', 'v'], other: ['b', 'v'] },
   },
   {
     id: 'bpmn.addSubProcess',
@@ -95,7 +95,7 @@ export const bpmnCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.bpmn.addSubProcess',
     labelFallback: 'Sub-process',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['b', 'o'], other: ['b', 'o'] },
   },
   {
     id: 'bpmn.addCallActivity',
@@ -103,7 +103,7 @@ export const bpmnCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.bpmn.addCallActivity',
     labelFallback: 'Call activity',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['b', 'c'], other: ['b', 'c'] },
   },
   {
     id: 'bpmn.addParallelGateway',
@@ -111,7 +111,7 @@ export const bpmnCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.bpmn.addParallelGateway',
     labelFallback: 'Parallel gateway',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['b', 'a'], other: ['b', 'a'] },
   },
   {
     id: 'bpmn.addMessageStartEvent',
@@ -159,7 +159,7 @@ export const bpmnCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.bpmn.addDataObject',
     labelFallback: 'Data object',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['b', 'd'], other: ['b', 'd'] },
   },
   {
     id: 'bpmn.addDataStore',
@@ -175,7 +175,7 @@ export const bpmnCommandsManifest: ShortcutManifestEntry[] = [
     labelKey: 'com.labre.commands.bpmn.addTextAnnotation',
     labelFallback: 'Text annotation',
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
+    defaultKeys: { mac: ['b', 'n'], other: ['b', 'n'] },
   },
   {
     id: 'bpmn.addGroup',

@@ -1,5 +1,6 @@
 import type { BpmnNodeKind } from '@labre/affine-model';
 import { StrokeStyle } from '@labre/affine-model';
+import { frameworkChord } from '@labre/affine-shared/utils';
 import type {
   BlockStdScope,
   CommandDescriptor,
@@ -69,6 +70,13 @@ import {
 } from './toolbar/icons';
 
 /**
+ * The first keystroke of every BPMN chord (`b t` places a task). Spelled again
+ * as `FrameworkDescriptor.chordPrefix` in `@labre/affine`'s `frameworks.ts`;
+ * `chord-prefixes.unit.spec.ts` holds the two together (`docs/adr/0055`).
+ */
+const BPMN_CHORD_PREFIX = 'b';
+
+/**
  * The BPMN toolbox as commands. Like EDGY, BPMN had a menu and zero manifest
  * entries before PF3 — invisible to Settings › Shortcuts (`docs/adr/0008`).
  *
@@ -121,6 +129,12 @@ import {
  */
 interface Spec {
   id: string;
+  /**
+   * Second keystroke of the chord, after {@link BPMN_CHORD_PREFIX}; absent =
+   * keyless by intent. Only the senior ARTEFACTS carry one: the flows are
+   * tools and the trigger variants are refinements (`docs/adr/0055`).
+   */
+  key?: string;
   label: string;
   iconKey: string;
   kind: 'artefact' | 'tool';
@@ -219,6 +233,7 @@ const SPECS: Spec[] = [
   /* ── The core: a drawable process, from the first click ─────────────── */
   {
     id: 'addStartEvent',
+    key: 's',
     label: 'Start event',
     iconKey: 'bpmn.start',
     kind: 'artefact',
@@ -229,6 +244,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addEndEvent',
+    key: 'e',
     label: 'End event',
     iconKey: 'bpmn.end',
     kind: 'artefact',
@@ -239,6 +255,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addTask',
+    key: 't',
     label: 'Task',
     iconKey: 'bpmn.task',
     kind: 'artefact',
@@ -249,6 +266,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addExclusiveGateway',
+    key: 'x',
     label: 'Exclusive gateway',
     iconKey: 'bpmn.gateway',
     kind: 'artefact',
@@ -270,6 +288,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addPool',
+    key: 'p',
     label: 'Pool',
     iconKey: 'bpmn.pool',
     kind: 'artefact',
@@ -296,6 +315,7 @@ const SPECS: Spec[] = [
   /* ── Activities: the typed tasks and the two that stand for a process ─ */
   {
     id: 'addUserTask',
+    key: 'u',
     label: 'User task',
     iconKey: 'bpmn.task.user',
     kind: 'artefact',
@@ -306,6 +326,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addServiceTask',
+    key: 'v',
     label: 'Service task',
     iconKey: 'bpmn.task.service',
     kind: 'artefact',
@@ -316,6 +337,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addSubProcess',
+    key: 'o',
     label: 'Sub-process',
     iconKey: 'bpmn.sub-process',
     kind: 'artefact',
@@ -326,6 +348,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addCallActivity',
+    key: 'c',
     label: 'Call activity',
     iconKey: 'bpmn.call-activity',
     kind: 'artefact',
@@ -340,6 +363,7 @@ const SPECS: Spec[] = [
     // shipped (`addExclusiveGateway`) — a command id is a value a host override
     // table points at, and the pair reads as a pair in every list that sorts.
     id: 'addParallelGateway',
+    key: 'a',
     label: 'Parallel gateway',
     iconKey: 'bpmn.gateway.parallel',
     kind: 'artefact',
@@ -405,6 +429,7 @@ const SPECS: Spec[] = [
   /* ── Data ───────────────────────────────────────────────────────────── */
   {
     id: 'addDataObject',
+    key: 'd',
     label: 'Data object',
     iconKey: 'bpmn.data-object',
     kind: 'artefact',
@@ -426,6 +451,7 @@ const SPECS: Spec[] = [
   /* ── Artifacts: what an author writes ON the picture ────────────────── */
   {
     id: 'addTextAnnotation',
+    key: 'n',
     label: 'Text annotation',
     iconKey: 'bpmn.text-annotation',
     kind: 'artefact',
@@ -605,8 +631,10 @@ const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, order) => {
       : ['catalogue', 'palette', 'agent'],
     order,
     scope: 'edgeless',
-    defaultKeys: { mac: [], other: [] },
-    availability: 'always',
+    defaultKeys: frameworkChord(BPMN_CHORD_PREFIX, spec.key),
+    // It WRITES: a read-only document is one it cannot run on, so no surface
+    // offers it there and no chord arms for it (`docs/adr/0055`).
+    availability: 'editable',
     run: gestureOf(spec),
     telemetry: { framework: 'bpmn', element: spec.element, board: spec.board },
     ...(legend ? { legend } : {}),

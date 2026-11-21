@@ -41,10 +41,12 @@ export const FRAMEWORK_DESCRIPTORS: FrameworkDescriptor[] = [
     labelKey: 'com.labre.framework.wardley',
     labelFallback: 'Wardley map',
     iconKey: 'wardley.toolbar',
-    // The only allocated chord prefix: `w` was free against
-    // RESERVED_EDGELESS_KEYS. The other six frameworks ship no chord, so they
-    // allocate no letter — a prefix with no chord behind it is dead data, and
-    // the uniqueness test guards the day one of them earns its first.
+    // The first allocated chord prefix: `w` was free against
+    // RESERVED_EDGELESS_KEYS. Every prefix is spelled twice — here for the host,
+    // and as the framework package's own constant, which builds its chords —
+    // and `chord-prefixes.unit.spec.ts` holds the two together, refuses a
+    // prefix that shadows a single-key shortcut, and refuses a prefix with no
+    // chord behind it (dead data). The allocation is `docs/adr/0055`.
     chordPrefix: 'w',
     telemetryKey: 'wardley',
     telemetrySegment: 'wardley toolbox',
@@ -66,6 +68,8 @@ export const FRAMEWORK_DESCRIPTORS: FrameworkDescriptor[] = [
     labelKey: 'com.labre.framework.edgy',
     labelFallback: 'EDGY',
     iconKey: 'edgy.toolbar',
+    // `e` is the eraser, so the last letter of the name (`docs/adr/0055`).
+    chordPrefix: 'g',
     telemetryKey: 'edgy',
     telemetrySegment: 'edgy toolbox',
     bundle: 'framework-edgy',
@@ -84,6 +88,8 @@ export const FRAMEWORK_DESCRIPTORS: FrameworkDescriptor[] = [
     labelKey: 'com.labre.framework.cynefin-estuarine',
     labelFallback: 'Cynefin / Estuarine',
     iconKey: 'cynefin.toolbar',
+    // `c` is the connector tool, so the second letter of the name.
+    chordPrefix: 'y',
     // Historical PostHog value; the flag and the owner say
     // `cynefin-estuarine`, the wire says `cynefin`.
     telemetryKey: 'cynefin',
@@ -108,6 +114,7 @@ export const FRAMEWORK_DESCRIPTORS: FrameworkDescriptor[] = [
     labelKey: 'com.labre.framework.bpmn',
     labelFallback: 'BPMN',
     iconKey: 'bpmn.toolbar',
+    chordPrefix: 'b',
     telemetryKey: 'bpmn',
     telemetrySegment: 'bpmn toolbox',
     bundle: 'framework-bpmn',
@@ -126,6 +133,9 @@ export const FRAMEWORK_DESCRIPTORS: FrameworkDescriptor[] = [
     labelKey: 'com.labre.framework.ddd-event-storming',
     labelFallback: 'Event Storming',
     iconKey: 'ddd-event-storming.toolbar',
+    // `o` for the orange stickies: the requested `t` is the Text tool, and a
+    // chord on it would change what `t` alone does (`docs/adr/0055`).
+    chordPrefix: 'o',
     telemetryKey: 'event-storming',
     telemetrySegment: 'ddd toolbox',
     bundle: 'framework-ddd-event-storming',
@@ -148,6 +158,7 @@ export const FRAMEWORK_DESCRIPTORS: FrameworkDescriptor[] = [
     labelKey: 'com.labre.framework.c4',
     labelFallback: 'C4 model',
     iconKey: 'c4.toolbar',
+    // No chord prefix: C4 was not part of the request (`docs/adr/0055`).
     telemetryKey: 'c4',
     telemetrySegment: 'c4 toolbox',
     bundle: 'framework-c4',
@@ -167,6 +178,9 @@ export const FRAMEWORK_DESCRIPTORS: FrameworkDescriptor[] = [
     labelKey: 'com.labre.framework.ddd-core-domain',
     labelFallback: 'Core Domain Chart',
     iconKey: 'ddd-core-domain.toolbar',
+    // Shared with the Context Map, by product decision: `d` is "DDD". The
+    // second keys of the two boards never collide (`docs/adr/0055`).
+    chordPrefix: 'd',
     telemetryKey: 'core-domain',
     telemetrySegment: 'ddd toolbox',
     bundle: 'framework-ddd-core-domain',
@@ -185,6 +199,8 @@ export const FRAMEWORK_DESCRIPTORS: FrameworkDescriptor[] = [
     labelKey: 'com.labre.framework.ddd-context-map',
     labelFallback: 'Context Map',
     iconKey: 'ddd-context-map.toolbar',
+    // Shared with the Core Domain Chart: see above.
+    chordPrefix: 'd',
     telemetryKey: 'context-map',
     telemetrySegment: 'ddd toolbox',
     bundle: 'framework-ddd-context-map',
@@ -204,6 +220,7 @@ export const FRAMEWORK_DESCRIPTORS: FrameworkDescriptor[] = [
     labelKey: 'com.labre.framework.uml',
     labelFallback: 'UML',
     iconKey: 'uml.toolbar',
+    chordPrefix: 'u',
     telemetryKey: 'uml',
     telemetrySegment: 'uml toolbox',
     bundle: 'framework-uml',

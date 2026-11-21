@@ -1,4 +1,5 @@
 import type { ChromeWording } from '@labre/affine-shared/services';
+import { frameworkChord } from '@labre/affine-shared/utils';
 import type {
   BlockStdScope,
   CommandDescriptor,
@@ -39,9 +40,17 @@ import {
 } from './toolbar/icons';
 
 /**
+ * The first keystroke of every EDGY chord (`g p` places People). Spelled again
+ * as `FrameworkDescriptor.chordPrefix` in `@labre/affine`'s `frameworks.ts`;
+ * `chord-prefixes.unit.spec.ts` holds the two together (`docs/adr/0055`).
+ */
+const EDGY_CHORD_PREFIX = 'g';
+
+/**
  * The EDGY toolbox as commands. Before PF3 these seven artefacts existed ONLY
  * as hard-coded buttons, so EDGY was entirely invisible to Settings ›
- * Shortcuts; they are all bindable now, all keyless by default (`docs/adr/0008`).
+ * Shortcuts; they are all bindable now (`docs/adr/0008`), and the board and the
+ * four base elements carry a default `g` chord (`docs/adr/0055`).
  *
  * An eighth entry joined them on the PO recette of 26/08/2026, and it is the
  * first EDGY command that arms a TOOL rather than dropping an artefact:
@@ -149,6 +158,12 @@ function baseEntry(
 
 interface Spec {
   id: string;
+  /**
+   * Second keystroke of the chord, after {@link EDGY_CHORD_PREFIX}; absent =
+   * keyless by intent: the two diagrams are templates and the relation is a
+   * tool (`docs/adr/0055`).
+   */
+  key?: string;
   label: string;
   /**
    * The sentence shown under the label — what the GESTURE means (M1 of
@@ -201,6 +216,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addBoard',
+    key: 'b',
     label: 'EDGY board (hover spotlight)',
     iconKey: 'edgy.board',
     category: 'diagrams',
@@ -210,6 +226,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addPeople',
+    key: 'p',
     label: 'People',
     iconKey: 'edgy.people',
     category: 'elements',
@@ -219,6 +236,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addOutcome',
+    key: 'o',
     label: 'Outcome',
     iconKey: 'edgy.outcome',
     category: 'elements',
@@ -228,6 +246,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addObject',
+    key: 'j',
     label: 'Object',
     iconKey: 'edgy.object',
     category: 'elements',
@@ -237,6 +256,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addActivity',
+    key: 'a',
     label: 'Activity',
     iconKey: 'edgy.activity',
     category: 'elements',
@@ -285,8 +305,10 @@ export const edgyCommands: CommandDescriptor[] = SPECS.map((spec, order) => ({
   surfaces: ['senior-menu', 'catalogue', 'palette', 'agent'],
   order,
   scope: 'edgeless',
-  defaultKeys: { mac: [], other: [] },
-  availability: 'always',
+  defaultKeys: frameworkChord(EDGY_CHORD_PREFIX, spec.key),
+  // It WRITES: a read-only document is one it cannot run on, so no surface
+  // offers it there and no chord arms for it (`docs/adr/0055`).
+  availability: 'editable',
   run: spec.run,
   telemetry: { framework: 'edgy', element: spec.element, board: spec.board },
   ...(spec.legend ? { legend: spec.legend } : {}),

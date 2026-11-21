@@ -1,3 +1,4 @@
+export * from './commands.js';
 export * from './contribute.js';
 export * from './make-snapshot.js';
 export * from './services/template.js';

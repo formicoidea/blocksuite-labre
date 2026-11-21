@@ -1,3 +1,4 @@
+import { frameworkChord } from '@labre/affine-shared/utils';
 import type { BlockStdScope, CommandDescriptor } from '@labre/std';
 import type { TemplateResult } from 'lit';
 
@@ -28,6 +29,13 @@ import {
   umlToolbarIcon,
   UML_TOOLBOX_ICONS,
 } from './toolbar/icons.js';
+
+/**
+ * The first keystroke of every UML chord (`u c` places a class). Spelled again
+ * as `FrameworkDescriptor.chordPrefix` in `@labre/affine`'s `frameworks.ts`;
+ * `chord-prefixes.unit.spec.ts` holds the two together (`docs/adr/0055`).
+ */
+const UML_CHORD_PREFIX = 'u';
 
 /**
  * The UML toolbox as commands — the single source every surface reads: the
@@ -184,6 +192,11 @@ interface Spec {
    * 2026-08-28).
    */
   senior: boolean;
+  /**
+   * Second keystroke of the chord, after {@link UML_CHORD_PREFIX}; absent =
+   * keyless by intent (`docs/adr/0055`).
+   */
+  key?: string;
   run: (std: BlockStdScope) => void;
 }
 
@@ -204,6 +217,7 @@ const SPECS: Spec[] = [
   // nominated fourteen, the rendered thirteen, and the nine sections.
   {
     id: 'addDiagram',
+    key: 'd',
     label: 'UML diagram',
     iconKey: 'uml.diagram',
     kind: 'artefact',
@@ -219,6 +233,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addClass',
+    key: 'c',
     label: 'Class',
     iconKey: 'uml.class',
     kind: 'artefact',
@@ -229,6 +244,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addInterface',
+    key: 'i',
     label: 'Interface',
     iconKey: 'uml.interface',
     kind: 'artefact',
@@ -239,6 +255,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addEnumeration',
+    key: 'e',
     label: 'Enumeration',
     iconKey: 'uml.enumeration',
     kind: 'artefact',
@@ -249,6 +266,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addPackage',
+    key: 'p',
     label: 'Package',
     iconKey: 'uml.package',
     kind: 'artefact',
@@ -259,6 +277,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addActor',
+    key: 'a',
     label: 'Actor',
     iconKey: 'uml.actor',
     kind: 'artefact',
@@ -269,6 +288,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addUseCase',
+    key: 'o',
     label: 'Use case',
     iconKey: 'uml.use-case',
     kind: 'artefact',
@@ -279,6 +299,7 @@ const SPECS: Spec[] = [
   },
   {
     id: 'addSubject',
+    key: 's',
     label: 'Subject',
     iconKey: 'uml.subject',
     kind: 'artefact',
@@ -938,11 +959,14 @@ const toolboxCommands: CommandDescriptor[] = SPECS.map((spec, index) => ({
   // used to reserve slot 1 for the XMI import is gone with the reason for it.
   order: index,
   scope: 'edgeless',
-  // Keyless by intent, and at sixty-nine commands there is no chord alphabet
-  // that would not be arbitrary — still bindable from Settings › Shortcuts,
-  // which is what `toShortcutDescriptor` being total buys.
-  defaultKeys: { mac: [], other: [] },
-  availability: 'always',
+  // Only the eight senior artefacts of the cold row carry a chord: at
+  // sixty-nine commands a letter for every one would be arbitrary, so the rest
+  // stay keyless by intent — still bindable from Settings › Shortcuts, which is
+  // what `toShortcutDescriptor` being total buys (`docs/adr/0055`).
+  defaultKeys: frameworkChord(UML_CHORD_PREFIX, spec.key),
+  // It WRITES: a read-only document is one it cannot run on, so no surface
+  // offers it there and no chord arms for it (`docs/adr/0055`).
+  availability: 'editable',
   run: spec.run,
   telemetry: { framework: 'uml', element: spec.element, board: spec.board },
   // The legend row this entry's artefact puts on the frame it is drawn on —
