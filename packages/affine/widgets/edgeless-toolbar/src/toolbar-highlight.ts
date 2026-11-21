@@ -21,6 +21,21 @@ export interface ToolbarHighlight {
 }
 
 /**
+ * The senior window's first tool once `senior` is on show: unchanged when it
+ * already is, else the least move that brings it in — the page the walk of
+ * `stepToolbarHighlight` turns to when it reaches that tool.
+ */
+export function seniorScrollToShow(
+  senior: number,
+  row: Pick<ToolbarRow, 'scroll' | 'size'>
+): number {
+  const size = Math.max(1, row.size);
+  if (senior < row.scroll) return senior;
+  if (senior >= row.scroll + size) return senior - size + 1;
+  return row.scroll;
+}
+
+/**
  * Step the toolbar highlight by one button, wrapping at both ends — the same
  * walk an open sub-menu does (`EdgelessCommandMenu.cycle`): nothing
  * highlighted yet, forwards lands on the first button and backwards on the
@@ -38,11 +53,5 @@ export function stepToolbarHighlight(
   const next =
     index < 0 || index >= total ? entry : (index + dir + total) % total;
   if (next < row.quick) return { index: next, scroll: row.scroll };
-  const senior = next - row.quick;
-  const size = Math.max(1, row.size);
-  if (senior < row.scroll) return { index: next, scroll: senior };
-  if (senior >= row.scroll + size) {
-    return { index: next, scroll: senior - size + 1 };
-  }
-  return { index: next, scroll: row.scroll };
+  return { index: next, scroll: seniorScrollToShow(next - row.quick, row) };
 }

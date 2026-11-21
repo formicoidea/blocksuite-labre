@@ -20,7 +20,13 @@ export const TOOLBAR_ROW_STATE_EVENT = 'toolbar-row-state';
  * The keyboard's ring on a toolbar button (#679, ADR 0054): the opaque 2px
  * outline of the toolbar's `[data-keyboard-highlight]`. The host is the focus
  * target and carries the name, the state and the `tabindex`; the ring is drawn
- * on its visible box.
+ * on its visible box, inside it.
+ *
+ * `--edgeless-toolbar-focus-ring-offset` insets it further where the box
+ * fills the bar: the toolbar sets it on its senior tools, whose buttons are
+ * as tall as the bar, so the ring clears the bar's border instead of sitting
+ * on it (product owner, acceptance of #691; ADR 0054, amendment of
+ * 2026-11-21).
  */
 export const toolButtonFocusRing = css`
   :host(:focus-visible) {
@@ -28,7 +34,7 @@ export const toolButtonFocusRing = css`
   }
   :host(:focus-visible) .icon-container {
     outline: 2px solid var(--affine-primary-color);
-    outline-offset: -2px;
+    outline-offset: var(--edgeless-toolbar-focus-ring-offset, -2px);
     border-radius: 8px;
   }
 `;

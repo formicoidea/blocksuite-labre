@@ -30,6 +30,15 @@ import {
 
 import { deepQueryAll } from '../utils/deep-query.js';
 import { addNote, getDocRootBlock } from '../utils/edgeless.js';
+import {
+  type Box,
+  centre,
+  describeBox,
+  focusRing,
+  inside,
+  ringClippedBy,
+  selectionRing,
+} from '../utils/focus-ring.js';
 import { pointerMoveTo } from '../utils/pointer.js';
 import { setupEditor } from '../utils/setup.js';
 
@@ -223,6 +232,26 @@ describe('edgeless toolbar keyboard model', () => {
     await frames();
   };
 
+  /**
+   * The keyboard's walk of the row: Tab from the canvas, then → across every
+   * button and every page of the senior row until it wraps to the first.
+   * `visit` sees each button as the keyboard stands on it.
+   */
+  const walkRow = async (visit: (button: HTMLElement) => void) => {
+    const first = await tabIntoToolbar();
+    for (let step = 0; step < 64; step++) {
+      const here = focusedButton()!;
+      visit(here);
+      await userEvent.keyboard('{ArrowRight}');
+      await until(
+        () => focusedButton() !== null && focusedButton() !== here,
+        `ArrowRight moves on from ${here.getAttribute('aria-label')}`
+      );
+      if (focusedButton() === first) break;
+    }
+    return first;
+  };
+
   const addShape = () => {
     const id = edgeless.service.crud.addElement('shape', {
       shapeType: 'rect',
@@ -318,20 +347,12 @@ describe('edgeless toolbar keyboard model', () => {
 
     test('the arrows walk every button, across the pager, and wrap', async () => {
       const bar = toolbar();
-      const first = await tabIntoToolbar();
       const names: string[] = [];
       let pagedTo = 0;
-      for (let step = 0; step < 64; step++) {
-        const here = focusedButton()!;
+      const first = await walkRow(here => {
         names.push(here.getAttribute('aria-label') ?? '');
-        await userEvent.keyboard('{ArrowRight}');
-        await until(
-          () => focusedButton() !== null && focusedButton() !== here,
-          `ArrowRight moves on from ${names.at(-1)}`
-        );
         pagedTo = Math.max(pagedTo, bar.scrollSeniorToolIndex);
-        if (focusedButton() === first) break;
-      }
+      });
       expect(focusedButton(), 'the walk wraps to the first button').toBe(first);
       expect(pagedTo, 'the walk turned the pager').toBeGreaterThan(0);
       expect(names).toContain('Wardley map');
@@ -948,6 +969,40 @@ describe('edgeless toolbar keyboard model', () => {
   };
 
   /**
+   * The keyboard's walk of an open menu, from the control it stands on: each
+   * group both ways with the arrows, then Tab to the next, until Tab leaves
+   * the menu. `visit` sees each control the first time the keyboard stands
+   * on it; what was reached comes back.
+   */
+  const walkMenu = async (
+    opened: Element,
+    visit: (control: Element) => void = () => {}
+  ) => {
+    const drawn = drawnControls(opened);
+    const reached = new Set<Element | null>();
+    const stand = () => {
+      const here = deepActive();
+      if (reached.has(here)) return;
+      reached.add(here);
+      if (here && within(here, opened)) visit(here);
+    };
+    stand();
+    // Walk each group both ways, then Tab to the next one.
+    for (let group = 0; group <= drawn.length; group++) {
+      for (const key of ['{ArrowRight}', '{ArrowLeft}']) {
+        for (let step = 0; step < drawn.length; step++) {
+          await press(key);
+          stand();
+        }
+      }
+      await press('{Tab}');
+      if (!within(deepActive(), opened)) break;
+      stand();
+    }
+    return reached;
+  };
+
+  /**
    * #679 acceptance (the product owner): in the frameworks' sub-menu the
    * focus never reached the tools, and in the shapes menu only the colours.
    * Every button that opens a menu, on every page, from the keyboard: the
@@ -975,19 +1030,7 @@ describe('edgeless toolbar keyboard model', () => {
           continue;
         }
         const drawn = drawnControls(opened);
-        const reached = new Set<Element | null>([deepActive()]);
-        // Walk each group both ways, then Tab to the next one.
-        for (let group = 0; group <= drawn.length; group++) {
-          for (const key of ['{ArrowRight}', '{ArrowLeft}']) {
-            for (let step = 0; step < drawn.length; step++) {
-              await press(key);
-              reached.add(deepActive());
-            }
-          }
-          await press('{Tab}');
-          if (!within(deepActive(), opened)) break;
-          reached.add(deepActive());
-        }
+        const reached = await walkMenu(opened);
         const missing = drawn.filter(control => !reached.has(control));
         if (missing.length > 0) {
           failures.push(
@@ -1768,6 +1811,450 @@ describe('edgeless toolbar keyboard model', () => {
     await press('{Escape}');
     expect(toolbar().activePopper).toBeNull();
     expect(focusedButton()).toBe(frame);
+  });
+
+  /**
+   * The product owner's acceptance of #691 (ADR 0054, amendment of
+   * 2026-11-21): where the keyboard's ring is drawn. Every ring of the bar
+   * and of its menus is measured from what draws it (`utils/focus-ring.ts`).
+   */
+  describe('the focus ring, where the product owner saw it', () => {
+    /** The bar inside its border: the smooth corner's box, less its stroke. */
+    const barInside = (): Box => {
+      const bar = toolbar().shadowRoot!.querySelector(
+        'smooth-corner'
+      ) as HTMLElement & { borderWidth: number };
+      const box = bar.getBoundingClientRect();
+      const border = bar.borderWidth;
+      return {
+        left: box.left + border,
+        top: box.top + border,
+        right: box.right - border,
+        bottom: box.bottom - border,
+      };
+    };
+
+    /** What is wrong with the ring `control` draws on the bar, if anything. */
+    const barRingFaults = (control: HTMLElement, name: string) => {
+      const ring = focusRing(control);
+      if (!ring) return [`${name}: no ring`];
+      const faults: string[] = [];
+      if (ring.width < 2) faults.push(`${name}: a ${ring.width}px ring`);
+      const bar = barInside();
+      if (!inside(ring.outer, bar)) {
+        faults.push(
+          `${name}: ring ${describeBox(ring.outer)} out of the bar inside its border ${describeBox(bar)}`
+        );
+      }
+      const clipped = ringClippedBy(ring);
+      if (clipped.length > 0) {
+        faults.push(
+          `${name}: ring ${describeBox(ring.outer)} clipped by ${clipped.join(', ')}`
+        );
+      }
+      return faults;
+    };
+
+    /**
+     * Remark 2: after Tab, the 2px ring of the Note button was a rectangle
+     * whose top edge sat on the bar's top border and whose bottom edge was
+     * cut by the bar's bottom. A senior tool's button is as tall as the bar,
+     * and its ring was drawn on its box. Every button the keyboard stands on
+     * — the quick tools, each senior tool on every page of the pager, "More
+     * tools" at a narrow width — and the pager arrows: the whole ring inside
+     * the bar, clear of its border, clipped by nothing.
+     */
+    test('the ring of every button of the bar lies inside the bar, clear of its border', async () => {
+      const faults: string[] = [];
+      const measured = new Set<string>();
+      const measure = (button: HTMLElement) => {
+        const name = button.getAttribute('aria-label') ?? button.localName;
+        measured.add(name);
+        faults.push(...barRingFaults(button, name));
+      };
+      await walkRow(measure);
+      // The pager arrows take the focus only from code (they are no stop):
+      // measured on a page where both are live.
+      const bar = toolbar();
+      bar.scrollSeniorToolIndex = 1;
+      await bar.updateComplete;
+      await rowReady();
+      for (const arrow of bar.shadowRoot!.querySelectorAll<HTMLElement>(
+        '.senior-nav-button'
+      )) {
+        arrow.focus();
+        await frames();
+        expect(arrow.matches(':focus-visible')).toBe(true);
+        measure(arrow);
+      }
+      // Narrow: the quick tools fold into "More tools", one senior tool a page.
+      const column = window.editor.parentElement as HTMLElement;
+      onTestFinished(() => {
+        column.style.width = '';
+      });
+      column.style.width = '380px';
+      window.dispatchEvent(new Event('resize'));
+      await until(
+        () =>
+          bar
+            .shadowRoot!.querySelector<HTMLElement>('.quick-tool-more-button')
+            ?.hasAttribute('disabled') === false,
+        '"More tools" holds tools'
+      );
+      await rowReady();
+      // "More tools" and the pager arrows open by a width transition: the
+      // ring is measured where the row comes to rest.
+      await until(
+        () => bar.shadowRoot!.getAnimations().length === 0,
+        'the row has come to rest'
+      );
+      // From the first button across "More tools" and the first senior
+      // pages. ponytail: not the whole narrow row — at 380px → stalls on
+      // "Add file" on the base already (found here, reported with #691's
+      // follow-ups); walk it whole once that is fixed.
+      await tabIntoToolbar();
+      await press('{Home}');
+      for (let step = 0; step < 5; step++) {
+        const here = focusedButton()!;
+        measure(here);
+        await userEvent.keyboard('{ArrowRight}');
+        await until(() => focusedButton() !== here, 'ArrowRight moves');
+      }
+      expect(measured).toContain('Note');
+      expect(measured).toContain('More Tools');
+      expect(measured).toContain('Next tools');
+      expect(faults).toEqual([]);
+    });
+
+    /**
+     * Remark 1: in the Shape menu, the keyboard's ring around the chosen
+     * swatch sat down and to the left of its selection ring — two rings that
+     * were not concentric. The selection ring was 27px on a 24px swatch, so
+     * 1.5px out on each side: on half pixels, which the browser snaps to one
+     * side, half a pixel from where the focus ring is, which itself left
+     * only 0.5px between the two. Every control of every menu, reached by the
+     * keyboard: the ring is whole (clipped by nothing), centred on the swatch
+     * it surrounds, and on a chosen swatch concentric with its selection ring
+     * on whole pixels, with the same gap of at least 1px all round.
+     */
+    test(
+      'in every menu, the ring is whole and centred; a chosen swatch has two concentric rings',
+      { timeout: 240_000 },
+      async () => {
+        const buttons = await everyButton();
+        const faults: string[] = [];
+        let swatches = 0;
+        let chosen = 0;
+        const near = (a: number, b: number) => Math.abs(a - b) <= 0.5;
+        const whole = (value: number) =>
+          Math.abs(value - Math.round(value)) < 0.01;
+        for (const [name, scroll] of buttons) {
+          if (OWN_MODEL.has(name)) continue;
+          await reset();
+          const opened = await openWithEnter(await buttonNamed(name, scroll));
+          if (!opened) continue;
+          if (!(await holds(() => within(deepActive(), opened)))) {
+            faults.push(`${name}: the keyboard did not go in (${where()})`);
+            continue;
+          }
+          await walkMenu(opened, control => {
+            const label = `${name} › ${describeControl(control)}`;
+            const ring = focusRing(control);
+            if (!ring) {
+              faults.push(`${label}: no ring`);
+              return;
+            }
+            const clipped = ringClippedBy(ring);
+            if (clipped.length > 0) {
+              faults.push(
+                `${label}: ring ${describeBox(ring.outer)} clipped by ${clipped.join(', ')}`
+              );
+            }
+            const swatch = control.shadowRoot?.querySelector('.color-unit');
+            if (!swatch) return;
+            swatches++;
+            const at = centre(ring.outer);
+            const disc = centre(swatch.getBoundingClientRect());
+            if (!near(at.x, disc.x) || !near(at.y, disc.y)) {
+              faults.push(
+                `${label}: ring centred at ${at.x},${at.y}, the swatch at ${disc.x},${disc.y}`
+              );
+            }
+            const selection = selectionRing(control);
+            if (!selection) return;
+            chosen++;
+            const mid = centre(selection);
+            if (!near(at.x, mid.x) || !near(at.y, mid.y)) {
+              faults.push(
+                `${label}: focus ring centred at ${at.x},${at.y}, selection ring at ${mid.x},${mid.y}`
+              );
+            }
+            const host = control.getBoundingClientRect();
+            const offsets = [
+              selection.left - host.left,
+              selection.top - host.top,
+              ring.inner.left - host.left,
+              ring.inner.top - host.top,
+            ];
+            if (!offsets.every(whole)) {
+              faults.push(
+                `${label}: rings off whole pixels, offsets ${offsets.join(', ')}`
+              );
+            }
+            const gaps = [
+              selection.left - ring.inner.left,
+              selection.top - ring.inner.top,
+              ring.inner.right - selection.right,
+              ring.inner.bottom - selection.bottom,
+            ];
+            if (gaps.some(gap => gap < 1 || !near(gap, gaps[0]))) {
+              faults.push(
+                `${label}: gaps between the rings ${gaps.join(', ')} (selection ${describeBox(selection)}, focus inner ${describeBox(ring.inner)})`
+              );
+            }
+          });
+        }
+        await reset();
+        expect(swatches).toBeGreaterThan(10);
+        expect(chosen).toBeGreaterThan(2);
+        expect(faults).toEqual([]);
+      }
+    );
+  });
+
+  /**
+   * Remark 3 of the product owner's acceptance of #691: Tab always started
+   * again at the first button, the active tool's — and a placed shape or a
+   * picked style gives the select tool back, so nearly always the first —
+   * which made him cross the whole bar again. The Tab stop is the button
+   * used last in the row (the APG toolbar: focus returns to the control that
+   * last had it), for the life of the editor; until the row is used, the
+   * active tool's (ADR 0054, amendment of 2026-11-21). Sub-menus are
+   * unchanged. At every step, exactly one button of the row is a Tab stop.
+   */
+  describe('the Tab stop is the button used last', () => {
+    const named = (name: string) =>
+      rowButtons().find(button => button.getAttribute('aria-label') === name);
+
+    /** The roving `tabindex` as it stands: one `0` on the row, the rest `-1`. */
+    const expectOneStop = async (stop: HTMLElement) => {
+      await rowReady();
+      const controls = [
+        ...rowButtons(),
+        ...toolbar().shadowRoot!.querySelectorAll<HTMLElement>(
+          '.senior-nav-button, .quick-tool-more-button'
+        ),
+      ];
+      const label = (control: Element) =>
+        control.getAttribute('aria-label') ?? control.localName;
+      expect(
+        controls
+          .filter(control => control.getAttribute('tabindex') === '0')
+          .map(label)
+      ).toEqual([label(stop)]);
+      expect(
+        controls
+          .filter(control => control.getAttribute('tabindex') !== '0')
+          .filter(control => control.getAttribute('tabindex') !== '-1')
+          .map(label)
+      ).toEqual([]);
+    };
+
+    /** → from where the keyboard stands to the button named `name`. */
+    const walkTo = async (name: string) => {
+      for (
+        let step = 0;
+        step < 64 && focusedButton()?.getAttribute('aria-label') !== name;
+        step++
+      ) {
+        const here = focusedButton();
+        await userEvent.keyboard('{ArrowRight}');
+        await until(() => focusedButton() !== here, 'ArrowRight moves');
+      }
+      expect(focusedButton()?.getAttribute('aria-label')).toBe(name);
+      return focusedButton()!;
+    };
+
+    test('Tab, a walk to a button, Shift+Tab, Tab: the keyboard is back on that button', async () => {
+      const select = await tabIntoToolbar();
+      expect(
+        select.getAttribute('aria-pressed'),
+        'unused: the active tool'
+      ).toBe('true');
+      const undo = await walkTo('Undo');
+      await press('{Shift>}{Tab}{/Shift}');
+      expect(canvasHasFocus()).toBe(true);
+      await expectOneStop(undo);
+      expect(await tabIntoToolbar()).toBe(undo);
+
+      // A senior tool, left with Escape (the tool unchanged).
+      const note = await walkTo('Note');
+      await press('{Escape}');
+      expect(canvasHasFocus()).toBe(true);
+      expect(tool()).toBe('default');
+      await expectOneStop(note);
+      expect(await tabIntoToolbar()).toBe(note);
+    });
+
+    test('a tool that gives the select tool back after use: Tab comes back to it', async () => {
+      // The mouse rests out of the way: a tooltip it raised over the menu
+      // would take the press (`_pressLikePointer` presses what is drawn).
+      await pointerMoveTo('html', 0, 0, 1);
+      await tabIntoToolbar();
+      const frame = await walkTo('Frame');
+      await press('{Enter}');
+      const menu = toolbar().activePopper?.element;
+      await until(
+        () => !!menu && within(deepActive(), menu),
+        'the keyboard is in the frame options'
+      );
+      const before = edgeless.store.getAllModels().length;
+      // A preset: a frame is placed and the select tool is back. Pressed once
+      // the menu has slid in: a press lands where the pointer would.
+      const preset = deepActive()!;
+      await until(() => {
+        const box = preset.getBoundingClientRect();
+        const x = box.left + box.width / 2;
+        const y = box.top + box.height / 2;
+        let hit = document.elementFromPoint(x, y);
+        while (hit?.shadowRoot) {
+          const inner = hit.shadowRoot.elementFromPoint(x, y);
+          if (!inner || inner === hit) break;
+          hit = inner;
+        }
+        return within(hit, preset);
+      }, 'the frame options have slid in');
+      await press('{Enter}');
+      await until(() => tool() === 'default', 'the select tool is back');
+      expect(edgeless.store.getAllModels().length).toBe(before + 1);
+      // The options stay open on the preset (ADR 0054 §10): Escape closes
+      // them onto the Frame button, Escape again gives the canvas the keys —
+      // where the stop used to go back to the active tool, Select.
+      if (toolbar().activePopper) {
+        await press('{Escape}');
+        await until(() => focusedButton() === frame, 'back on Frame');
+      }
+      // The second Escape comes while the options are still sliding out: it
+      // closes nothing more (it used to press Frame again, the menu back).
+      await press('{Escape}');
+      await until(() => canvasHasFocus(), 'the canvas has the keys');
+      expect(toolbar().activePopper).toBeNull();
+      expect(tool()).toBe('default');
+      await expectOneStop(frame);
+      const back = await tabIntoToolbar();
+      expect(back).toBe(frame);
+      expect(back.getAttribute('aria-pressed')).toBe('false');
+    });
+
+    test('a click moves the stop to the button and focuses nothing', async () => {
+      const undo = named('Undo')!;
+      await userEvent.click(undo);
+      expect(focusedButton(), 'a click focuses nothing').toBeNull();
+      await expectOneStop(undo);
+      expect(await tabIntoToolbar()).toBe(undo);
+
+      // A senior tool clicked, its menu closed with Escape on the canvas.
+      await press('{Shift>}{Tab}{/Shift}');
+      const note = named('Note')!;
+      await userEvent.click(note);
+      expect(focusedButton()).toBeNull();
+      await press('{Escape}');
+      await until(() => tool() === 'default', 'Escape gave the select tool');
+      await expectOneStop(note);
+      expect(await tabIntoToolbar()).toBe(note);
+    });
+
+    test('a tool picked from the canvas does not move the stop', async () => {
+      await tabIntoToolbar();
+      const undo = await walkTo('Undo');
+      await press('{Escape}');
+      // A letter: the hand. Then the select tool again.
+      await press('h');
+      expect(tool()).toBe('pan');
+      await expectOneStop(undo);
+      await press('v');
+      expect(tool()).toBe('default');
+      await expectOneStop(undo);
+      expect(await tabIntoToolbar()).toBe(undo);
+    });
+
+    test('the button used last on another page: Tab turns the bar to it', async () => {
+      const bar = toolbar();
+      await tabIntoToolbar();
+      await press('{End}');
+      await until(() => bar.scrollSeniorToolIndex > 0, 'End pages the row');
+      const last = focusedButton()!.getAttribute('aria-label');
+      await press('{Escape}');
+      // Back to the first page with the mouse: an arrow moves no stop.
+      const previous = bar.shadowRoot!.querySelector<HTMLElement>(
+        '.senior-nav-button-wrapper.prev icon-button'
+      )!;
+      for (let step = 0; step < 16 && bar.scrollSeniorToolIndex > 0; step++) {
+        await userEvent.click(previous);
+        await frames();
+      }
+      expect(bar.scrollSeniorToolIndex).toBe(0);
+      expect(named(last!)).toBeUndefined();
+      // Not drawn: the page on show holds the active tool's stop.
+      await expectOneStop(named('Select')!);
+      const back = await tabIntoToolbar();
+      expect(back.getAttribute('aria-label')).toBe(last);
+      expect(bar.scrollSeniorToolIndex).toBeGreaterThan(0);
+      await expectOneStop(back);
+    });
+
+    test('the button used last, folded away by a resize: the active tool holds the stop until it is back', async () => {
+      await tabIntoToolbar();
+      await walkTo('Selection pane');
+      await press('{Escape}');
+      const column = window.editor.parentElement as HTMLElement;
+      onTestFinished(() => {
+        column.style.width = '';
+      });
+      const width = async (value: string, folded: boolean) => {
+        column.style.width = value;
+        window.dispatchEvent(new Event('resize'));
+        await until(
+          () => (named('Selection pane') === undefined) === folded,
+          folded ? 'the selection pane folds into "More tools"' : 'wide again'
+        );
+        await rowReady();
+      };
+      await width('380px', true);
+      const active = rowButtons().find(
+        button => button.getAttribute('aria-pressed') === 'true'
+      )!;
+      await expectOneStop(active);
+      // The memory outlives the resize.
+      await width('', false);
+      await expectOneStop(named('Selection pane')!);
+      // Gone when Tab comes: the active tool.
+      await width('380px', true);
+      expect(await tabIntoToolbar()).toBe(active);
+    });
+
+    test('each editor has its own, stored nowhere: a second one, Wardley off, starts on its active tool', async () => {
+      const storage = () => [
+        storageCopy(localStorage),
+        storageCopy(sessionStorage),
+      ];
+      const before = storage();
+      await tabIntoToolbar();
+      await walkTo('Wardley map');
+      await press('{Escape}');
+      expect((await tabIntoToolbar()).getAttribute('aria-label')).toBe(
+        'Wardley map'
+      );
+      await press('{Escape}');
+      expect(storage(), 'nothing stored').toEqual(before);
+
+      onTestFinished(await mount({ flags: { wardley: false } }));
+      expect(named('Wardley map')).toBeUndefined();
+      const stop = await tabIntoToolbar();
+      expect(stop.getAttribute('aria-pressed')).toBe('true');
+      expect(stop.getAttribute('aria-label')).toBe('Select');
+      await expectOneStop(stop);
+    });
   });
 });
 

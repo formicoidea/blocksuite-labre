@@ -70,6 +70,7 @@ import {
 import { EdgelessCommandMenu } from './menu/command-menu.js';
 import { groupEntry, menuGroups } from './menu/menu-keyboard.js';
 import {
+  seniorScrollToShow,
   stepToolbarHighlight,
   type ToolbarHighlight,
 } from './toolbar-highlight.js';
@@ -235,6 +236,11 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
       justify-content: center;
       align-items: center;
       flex-shrink: 0;
+      /* A senior tool's button is as tall as the bar, its artwork clipped at
+         the bar's edges (DESIGN.md): its focus ring is drawn 2px inside it,
+         clear of the bar's border, rather than on it (ADR 0054, amendment of
+         2026-11-21). Read by toolButtonFocusRing. */
+      --edgeless-toolbar-focus-ring-offset: -4px;
     }
     .senior-nav-button-wrapper {
       flex-shrink: 0;
@@ -392,15 +398,21 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
     return true;
   }
 
-  /** Press the highlighted button, and say whether there was one. */
+  /**
+   * Press the highlighted button, and say whether there was one. A use of
+   * the toolbar like a click: the row's Tab stop moves to it.
+   */
   activateHighlight(): boolean {
-    if (this.keyboardHighlight < 0) return false;
+    const index = this.keyboardHighlight;
+    if (index < 0) return false;
     const item =
       this.shadowRoot?.querySelector<HTMLElement>(
         '[data-keyboard-highlight]'
       ) ?? null;
     this.keyboardHighlight = -1;
     if (!item) return false;
+    const used = this._rowStops.find(({ at }) => at === index);
+    if (used) this._useStop(used.button);
     return this._pressLikePointer(item);
   }
 
@@ -468,21 +480,27 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
    * undo — would leave it on the button, which then took the arrows, Enter
    * and Space from the canvas (second review of #679; held by "after a click that moves
    * neither the tool nor the selection" in `edgeless-toolbar-keyboard.spec`).
+   *
+   * A click on a row button is a use of the toolbar: the row's Tab stop
+   * moves to that button, which is still not focused (ADR 0054, amendment of
+   * 2026-11-21). A pager arrow is never a stop and moves nothing.
    */
   private readonly _onContainerMouseDown = (event: MouseEvent) => {
     stopPropagation(event);
     if (this._pressing) return;
-    const onRowControl = event
-      .composedPath()
-      .some(
-        node =>
-          !!this._rowButtonOf(node) ||
-          (node instanceof HTMLElement &&
-            node.classList.contains('senior-nav-button'))
-      );
-    if (!onRowControl) return;
+    const path = event.composedPath();
+    const button = path
+      .map(node => this._rowButtonOf(node))
+      .find(found => found !== null);
+    const onPager = path.some(
+      node =>
+        node instanceof HTMLElement &&
+        node.classList.contains('senior-nav-button')
+    );
+    if (!button && !onPager) return;
     event.preventDefault();
     this._focusCanvas();
+    if (button) this._useStop(button);
   };
 
   // calculate all the width manually
@@ -1036,6 +1054,19 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
     const fixed = items.filter(
       item => item.dataset.seniorIndex === undefined
     ).length;
+    const seniors = this._seniorTools;
+    // What the item draws, by an identity that outlives a page turn or a
+    // resize, which draw it anew: a senior tool by its name, since its index
+    // moves when another tool is drawn or not.
+    const toolOf = (
+      item: HTMLElement,
+      index: number,
+      senior: number | null
+    ) => {
+      if (isMore(item)) return 'more';
+      if (senior === null) return `quick:${index}`;
+      return `senior:${seniors[senior]?.name ?? senior}`;
+    };
     const buttons = await Promise.all(
       items.map(
         async (item): Promise<HTMLElement[]> =>
@@ -1045,11 +1076,13 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
     return items.flatMap((item, index) => {
       const { seniorIndex } = item.dataset;
       const senior = seniorIndex === undefined ? null : Number(seniorIndex);
-      return buttons[index].map(button => ({
+      const tool = toolOf(item, index, senior);
+      return buttons[index].map((button, nth) => ({
         button,
         at: senior === null ? index : fixed + senior,
         senior,
         alone: buttons[index].length === 1,
+        key: `${tool}#${nth}`,
       }));
     });
   }
@@ -1081,14 +1114,56 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
   }
 
   /**
-   * The row's one Tab stop (ADR 0054): `stop` when given, else the active
-   * tool, else the first button. The pager arrows are never one: the arrow
-   * keys page the row as they walk it.
+   * The row button the user last used — the last the keyboard focused, the
+   * last clicked, the last pressed through the Alt+←/→ highlight — by its
+   * `key`, which outlives a page turn or a resize; `null` until the row is
+   * used once. The row's Tab stop (ADR 0054, amendment of 2026-11-21, the
+   * APG toolbar's "focus returns to the control that last had it"). View
+   * state of this mounted toolbar: nothing stores it.
+   */
+  private _usedStop: { key: string; senior: string | null } | null = null;
+
+  /** The row's entry the user last used, when it is drawn. */
+  private _usedEntry() {
+    const used = this._usedStop;
+    if (!used) return undefined;
+    return this._rowStops.find(({ key }) => key === used.key);
+  }
+
+  /**
+   * `button` was used: it becomes the row's Tab stop, without the focus. A
+   * button of a page the row has not read yet is read first.
+   */
+  private _useStop(button: HTMLElement) {
+    const remember = (entries: ToolbarRowEntry[]) => {
+      const entry = entries.find(found => found.button === button);
+      if (!entry) return false;
+      const seniors = this._seniorTools;
+      this._usedStop = {
+        key: entry.key,
+        senior:
+          entry.senior === null ? null : (seniors[entry.senior]?.name ?? null),
+      };
+      this._setTabStop();
+      return true;
+    };
+    if (remember(this._rowStops)) return;
+    this._syncRow().then(remember).catch(console.error);
+  }
+
+  /**
+   * The row's one Tab stop (ADR 0054, amendment of 2026-11-21): `stop` when
+   * given, else the button last used, else the active tool, else the first
+   * button. A tool picked from the canvas (a letter, a chord, the select
+   * tool given back after placing) moves none of them but the active tool,
+   * which only counts until the row is used. The pager arrows are never one:
+   * the arrow keys page the row as they walk it.
    */
   private _setTabStop(stop?: HTMLElement) {
     const stops = this._rowStops.map(({ button }) => button);
     const target =
       stop ??
+      this._usedEntry()?.button ??
       stops.find(
         button =>
           button instanceof EdgelessToolIconButton && button.active === true
@@ -1125,16 +1200,55 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
 
   /**
    * Give the row the keyboard: its Tab stop takes the focus. The canvas's
-   * Tab calls it (ADR 0054). False when there is no row to give it to: the
+   * Tab calls it (ADR 0054). The button last used, on another page of the
+   * senior row, has the row turned to that page first; gone (a resize folded
+   * it into "More tools"), the stop is the active tool's, else the first
+   * (amendment of 2026-11-21). False when there is no row to give it to: the
    * presentation toolbar replaces it, or a readonly board hides it.
    */
   focusRow(): boolean {
     if (this.isPresentMode || this.store.readonly) return false;
+    const used = this._usedStop;
+    const pagedOut = used?.senior
+      ? this._seniorTools.findIndex(({ name }) => name === used.senior)
+      : -1;
+    if (used && pagedOut >= 0 && !this._usedEntry()) {
+      this._focusPagedOut(pagedOut, used.key).catch(console.error);
+      return true;
+    }
+    return this._focusDrawnStop();
+  }
+
+  /**
+   * Focus the row's stop on the page on show, turning no page: the keyboard
+   * coming back after the row was re-dealt under it (`_restoreKeyboard`,
+   * `_walkFocus`), where a page turn would fight the walk that turned it.
+   */
+  private _focusDrawnStop(): boolean {
+    if (this.isPresentMode || this.store.readonly) return false;
     const stops = this._rowStops.map(({ button }) => button);
-    const stop = stops.find(button => button.tabIndex === 0) ?? stops[0];
+    const stop =
+      stops.find(button => button.getAttribute('tabindex') === '0') ?? stops[0];
     if (!stop?.isConnected) return false;
     this._focusStop(stop);
     return true;
+  }
+
+  /** Turn the senior row to the page that holds `senior`, then focus `key`. */
+  private async _focusPagedOut(senior: number, key: string) {
+    this.scrollSeniorToolIndex = seniorScrollToShow(senior, {
+      scroll: this.scrollSeniorToolIndex,
+      size: this.scrollSeniorToolSize,
+    });
+    await this.updateComplete;
+    this._rowStops = await this._syncRow();
+    const stops = this._rowStops;
+    const stop =
+      stops.find(entry => entry.key === key)?.button ??
+      stops.find(({ button }) => button.getAttribute('tabindex') === '0')
+        ?.button ??
+      stops[0]?.button;
+    if (stop?.isConnected) this._focusStop(stop);
   }
 
   private _focusStop(stop: HTMLElement) {
@@ -1215,7 +1329,7 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
       return;
     }
     this._rowStops = await this._syncRow();
-    if (!this.focusRow()) this._focusCanvas();
+    if (!this._focusDrawnStop()) this._focusCanvas();
   }
 
   /** What a press of a row button opened in its own shadow tree, if open. */
@@ -1462,18 +1576,22 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
     this.clearHighlight();
     this._setTabStop(here);
     this._setKeyboardOwner(here);
+    // The button the keyboard stands on is the one used last: Tab comes back
+    // to it from the canvas.
+    this._useStop(here);
   };
 
   private readonly _onRowFocusOut = (event: FocusEvent) => {
     const next = event.relatedTarget;
     if (next instanceof Node && this.toolbarContainer?.contains(next)) return;
-    // Out of the row: its stop goes back to the active tool.
+    // Out of the row: its stop stays on the button used last.
     this._setTabStop();
   };
 
   /**
    * A tool's state changed (`TOOLBAR_ROW_STATE_EVENT`): while the keyboard is
-   * elsewhere, the row's stop follows the active tool.
+   * elsewhere and the row has not been used yet, its stop follows the active
+   * tool; once used, the stop stays on the button used last.
    */
   private readonly _onRowStateChange = () => {
     const focused = deepActiveElement();
@@ -1490,7 +1608,7 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
       here = this._rowStops.find(entry => entry.button === button);
     }
     if (!here) {
-      this.focusRow();
+      this._focusDrawnStop();
       return;
     }
     const stops = this._rowStops;
@@ -1603,6 +1721,10 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
       if (pickedUp) drag.cancel();
       popper.dispose();
       this.activePopper = null;
+      // Closed: the popper leaves through a transition, still in its button's
+      // shadow tree, and an Escape typed meanwhile read it as open and
+      // pressed the button again — the menu back (acceptance of #691).
+      this._opened = null;
       if (pickedUp) this.gfx.tool.setTool(DefaultTool);
       if (owner?.isConnected) {
         this._kept = owner;
@@ -1733,6 +1855,11 @@ interface ToolbarRowEntry {
   senior: number | null;
   /** Whether it is its item's only button. */
   alone: boolean;
+  /**
+   * Which button it is, across page turns and resizes, which draw the row
+   * anew: its tool (a senior tool by name), then its place in its item.
+   */
+  key: string;
 }
 
 /**
