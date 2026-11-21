@@ -44,35 +44,105 @@ const SHARED_PREFIXES: Record<string, readonly FrameworkId[]> = {
   d: ['ddd-context-map', 'ddd-core-domain'],
 };
 
-/**
- * Bare letters a toolbar button binds on the edgeless root for itself, through
- * its own `bindHotKey` — outside `edgeless-keyboard.ts`, so outside
- * `RESERVED_EDGELESS_KEYS` and its mirror test. Mirrored against the sources
- * by the last test of this file.
- */
-const TOOLBAR_BARE_KEYS = [
-  { key: 'm', file: 'packages/affine/gfx/mindmap/src/toolbar/mindmap-menu.ts' },
-  {
-    key: 'm',
-    file: 'packages/affine/gfx/mindmap/src/toolbar/mindmap-tool-button.ts',
-  },
-  {
-    key: 's',
-    file: 'packages/affine/gfx/shape/src/draggable/shape-draggable.ts',
-  },
-] as const;
+/** Every `src` of the library: where a canvas key can be taken. */
+const SOURCE_ROOTS = ['packages/affine', 'packages/framework'];
+
+function* sourceFiles(dir: string): Generator<string> {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (['node_modules', 'dist', '__tests__'].includes(entry.name)) continue;
+      yield* sourceFiles(path);
+    } else if (entry.name.endsWith('.ts') && !entry.name.endsWith('.d.ts')) {
+      yield path;
+    }
+  }
+}
+
+/** Library sources, repo-relative with forward slashes, tests excluded. */
+const SOURCES = SOURCE_ROOTS.flatMap(dir => [...sourceFiles(join(ROOT, dir))])
+  .map(path => relative(ROOT, path).split('\\').join('/'))
+  .filter(path => path.includes('/src/'))
+  .map(path => ({ path, text: readFileSync(join(ROOT, path), 'utf8') }));
 
 /**
- * Every raw `keydown` listener in the canvas packages — a listener the keymap
- * engine never sees, so neither `RESERVED_EDGELESS_KEYS` nor a command's
- * defaults can tell a prefix it is taken. Each entry names the letters it acts
- * on alone, and whether it acts on them ONLY while a canvas element is in edit
- * mode: a prefix never arms then (`canRunFromKeyboard` in
- * `command-registry.ts`), so such a letter may also be a prefix.
+ * The sites that call `bindHotKey` with something else than an object
+ * literal: the definitions and the one override that forwards its argument.
+ * A NEW site passing a variable fails until it is read and listed, since its
+ * keys cannot be walked.
+ */
+const BIND_HOT_KEY_FORWARDERS = [
+  'packages/affine/blocks/root/src/edgeless/edgeless-root-block.ts',
+  'packages/framework/std/src/extension/service.ts',
+  'packages/framework/std/src/view/element/block-component.ts',
+  'packages/framework/std/src/view/element/widget-component.ts',
+];
+
+/**
+ * Every `bindHotKey({ … })` of the library, read off the sources: the file and
+ * the top-level keys of its object literal. That is where the edgeless
+ * keyboard's tools AND the toolbar buttons' own hotkeys (`m` the mind map,
+ * `s` the shape) are bound, outside the shortcut manifest; a button that
+ * binds a new bare letter shows up here without anyone typing it.
+ */
+function bindHotKeySites(): { file: string; keys: string[] }[] {
+  const sites: { file: string; keys: string[] }[] = [];
+  for (const { path, text } of SOURCES) {
+    // Accepts `this.edgeless.bindHotKey(`; rejects `_bindHotKey(` (a method
+    // of its own) and the word inside a comment, handled below.
+    for (const match of text.matchAll(/(?<![\w])bindHotKey\(\s*/g)) {
+      const lineStart = text.lastIndexOf('\n', match.index) + 1;
+      const line = text.slice(lineStart, match.index).trim();
+      if (line.startsWith('*') || line.startsWith('//')) continue;
+      const open = match.index + match[0].length;
+      if (text[open] !== '{') {
+        sites.push({ file: path, keys: [] });
+        continue;
+      }
+      // The literal, up to its closing brace.
+      let depth = 0;
+      let end = open;
+      for (; end < text.length; end++) {
+        if (text[end] === '{') depth++;
+        if (text[end] === '}' && --depth === 0) break;
+      }
+      const body = text.slice(open + 1, end);
+      // Its top-level keys: `v: () =>`, `'Shift-p': () =>`, `Escape: ctx =>`.
+      const keys: string[] = [];
+      let level = 0;
+      for (const bodyLine of body.split('\n')) {
+        if (level === 0) {
+          const key = /^\s*'?([^\s':]+)'?\s*:/.exec(bodyLine)?.[1];
+          if (key) keys.push(key);
+        }
+        for (const char of bodyLine) {
+          if (char === '{' || char === '(' || char === '[') level++;
+          if (char === '}' || char === ')' || char === ']') level--;
+        }
+      }
+      sites.push({ file: path, keys });
+    }
+  }
+  return sites;
+}
+
+/**
+ * A key a `bindHotKey` takes alone: one character, optionally Shift-ed. A
+ * modifier combo or a named key (`Escape`, `ArrowUp`) cannot be a prefix.
+ */
+const isBareKey = (key: string) => /^(Shift-)?.$/.test(key);
+
+/**
+ * Every raw `keydown` listener of the library — one the keymap engine never
+ * sees, so neither a `bindHotKey` nor a command's defaults can tell a prefix
+ * it is taken. Each entry names the bare letters it acts on (none needs a
+ * modifier to be listed: a modified letter cannot be a prefix), whether it acts
+ * on them ONLY while a canvas element is in edit mode (a prefix never arms
+ * then, `canRunFromKeyboard`), and why it cannot meet a chord.
  *
- * The last test walks the sources: a NEW file with a raw `keydown` listener
- * fails until it is listed here, which is when somebody has to read which
- * letters it takes.
+ * A test walks every `src` of `packages/affine` and `packages/framework`: a
+ * NEW file with a raw `keydown` listener fails until it is listed here, which
+ * is when somebody has to read which letters it takes.
  */
 const RAW_KEYDOWN_LISTENERS: readonly {
   file: string;
@@ -81,9 +151,254 @@ const RAW_KEYDOWN_LISTENERS: readonly {
   why: string;
 }[] = [
   {
+    file: 'packages/affine/all/src/canvas-viewer.ts',
+    letters: [],
+    why: "the read-only viewer's own named keys; no letter",
+  },
+  {
+    file: 'packages/affine/blocks/attachment/src/components/rename-model.ts',
+    letters: [],
+    why: 'a shared component on its own element (input, menu, picker); no bare letter',
+  },
+  {
+    file: 'packages/affine/blocks/attachment/src/html-view.ts',
+    letters: [],
+    why: 'on its own element (input, popup); no bare letter',
+  },
+  {
+    file: 'packages/affine/blocks/embed/src/embed-iframe-block/components/embed-iframe-link-edit-popup.ts',
+    letters: [],
+    why: 'a shared component on its own element (input, menu, picker); no bare letter',
+  },
+  {
+    file: 'packages/affine/blocks/embed/src/embed-iframe-block/components/embed-iframe-link-input-popup.ts',
+    letters: [],
+    why: 'a shared component on its own element (input, menu, picker); no bare letter',
+  },
+  {
+    file: 'packages/affine/blocks/image/src/crop/crop-overlay.ts',
+    letters: [],
+    why: 'Escape / Enter, capture on document while an image is being cropped',
+  },
+  {
+    file: 'packages/affine/blocks/note/src/note-edgeless-block.ts',
+    letters: [],
+    why: 'named keys on the note it belongs to; no letter',
+  },
+  {
     file: 'packages/affine/blocks/root/src/edgeless/edgeless-keyboard.ts',
     letters: [],
     why: 'Space through the dispatcher, the event type read in _space',
+  },
+  {
+    file: 'packages/affine/blocks/surface/src/extensions/editor-anchored-panel.ts',
+    letters: [],
+    why: 'Escape on its own panel',
+  },
+  {
+    file: 'packages/affine/blocks/surface/src/extensions/violation-detail-widget.ts',
+    letters: [],
+    why: 'on its own element (input, popup); no bare letter',
+  },
+  {
+    file: 'packages/affine/blocks/surface/src/framework-background/background-view.ts',
+    letters: [],
+    why: "Enter / Escape on a board's title input",
+  },
+  {
+    file: 'packages/affine/blocks/table/src/table-cell.ts',
+    letters: [],
+    why: 'Mod+A in a cell being edited (modifier required)',
+  },
+  {
+    file: 'packages/affine/components/src/caption/block-caption.ts',
+    letters: [],
+    why: 'a shared component on its own element (input, menu, picker); no bare letter',
+  },
+  {
+    file: 'packages/affine/components/src/color-picker/color-panel.ts',
+    letters: [],
+    why: 'a shared component on its own element (input, menu, picker); no bare letter',
+  },
+  {
+    file: 'packages/affine/components/src/color-picker/color-picker.ts',
+    letters: [],
+    why: 'a shared component on its own element (input, menu, picker); no bare letter',
+  },
+  {
+    file: 'packages/affine/components/src/color-picker/palette-carousel.ts',
+    letters: [],
+    why: 'a shared component on its own element (input, menu, picker); no bare letter',
+  },
+  {
+    file: 'packages/affine/components/src/context-menu/input.ts',
+    letters: [],
+    why: 'a shared component on its own element (input, menu, picker); no bare letter',
+  },
+  {
+    file: 'packages/affine/components/src/context-menu/menu-renderer.ts',
+    letters: [],
+    why: 'a shared component on its own element (input, menu, picker); no bare letter',
+  },
+  {
+    file: 'packages/affine/components/src/date-picker/date-picker.ts',
+    letters: [],
+    why: 'a shared component on its own element (input, menu, picker); no bare letter',
+  },
+  {
+    file: 'packages/affine/components/src/embed-card-modal/embed-card-create-modal.ts',
+    letters: [],
+    why: 'a shared component on its own element (input, menu, picker); no bare letter',
+  },
+  {
+    file: 'packages/affine/components/src/embed-card-modal/embed-card-edit-modal.ts',
+    letters: [],
+    why: 'a shared component on its own element (input, menu, picker); no bare letter',
+  },
+  {
+    file: 'packages/affine/components/src/filterable-list/index.ts',
+    letters: [],
+    why: 'a shared component on its own element (input, menu, picker); no bare letter',
+  },
+  {
+    file: 'packages/affine/components/src/icon-picker/open-icon-picker.ts',
+    letters: [],
+    why: 'a shared component on its own element (input, menu, picker); no bare letter',
+  },
+  {
+    file: 'packages/affine/components/src/resource/status.ts',
+    letters: [],
+    why: 'a shared component on its own element (input, menu, picker); no bare letter',
+  },
+  {
+    file: 'packages/affine/components/src/size-dropdown-menu/dropdown-menu.ts',
+    letters: [],
+    why: 'a shared component on its own element (input, menu, picker); no bare letter',
+  },
+  {
+    file: 'packages/affine/components/src/slider/slider.ts',
+    letters: [],
+    why: 'a shared component on its own element (input, menu, picker); no bare letter',
+  },
+  {
+    file: 'packages/affine/components/src/toolbar/menu-button.ts',
+    letters: [],
+    why: 'a shared component on its own element (input, menu, picker); no bare letter',
+  },
+  {
+    file: 'packages/affine/database/block/src/components/title/index.ts',
+    letters: [],
+    why: 'inside a database view, cell or menu that has the focus; no bare letter',
+  },
+  {
+    file: 'packages/affine/database/block/src/detail-panel/block-renderer.ts',
+    letters: [],
+    why: 'inside a database view, cell or menu that has the focus; no bare letter',
+  },
+  {
+    file: 'packages/affine/database/block/src/properties/link/cell-renderer.ts',
+    letters: [],
+    why: 'inside a database view, cell or menu that has the focus; no bare letter',
+  },
+  {
+    file: 'packages/affine/database/block/src/properties/rich-text/cell-renderer.ts',
+    letters: [],
+    why: 'Mod+B/I/U/S/E/A in a cell being edited (modifier required)',
+  },
+  {
+    file: 'packages/affine/database/block/src/properties/title/text.ts',
+    letters: [],
+    why: 'Mod+A in a title being edited (modifier required)',
+  },
+  {
+    file: 'packages/affine/database/engine/src/core/component/tags/multi-tag-select.ts',
+    letters: [],
+    why: 'inside a database view, cell or menu that has the focus; no bare letter',
+  },
+  {
+    file: 'packages/affine/database/engine/src/core/property/standalone-cell.ts',
+    letters: [],
+    why: 'inside a database view, cell or menu that has the focus; no bare letter',
+  },
+  {
+    file: 'packages/affine/database/engine/src/core/utils/drag.ts',
+    letters: [],
+    why: 'inside a database view, cell or menu that has the focus; no bare letter',
+  },
+  {
+    file: 'packages/affine/database/engine/src/core/utils/wc-dnd/sensors/mouse.ts',
+    letters: [],
+    why: 'inside a database view, cell or menu that has the focus; no bare letter',
+  },
+  {
+    file: 'packages/affine/database/engine/src/property-presets/number/cell-renderer.ts',
+    letters: [],
+    why: 'Mod+Z in a cell being edited (modifier required)',
+  },
+  {
+    file: 'packages/affine/database/engine/src/property-presets/progress/cell-renderer.ts',
+    letters: [],
+    why: 'inside a database view, cell or menu that has the focus; no bare letter',
+  },
+  {
+    file: 'packages/affine/database/engine/src/property-presets/text/cell-renderer.ts',
+    letters: [],
+    why: 'inside a database view, cell or menu that has the focus; no bare letter',
+  },
+  {
+    file: 'packages/affine/database/engine/src/view-presets/table/mobile/group.ts',
+    letters: [],
+    why: 'inside a database view, cell or menu that has the focus; no bare letter',
+  },
+  {
+    file: 'packages/affine/database/engine/src/view-presets/table/pc/group.ts',
+    letters: [],
+    why: 'inside a database view, cell or menu that has the focus; no bare letter',
+  },
+  {
+    file: 'packages/affine/database/engine/src/widget-presets/tools/presets/filter/filter.ts',
+    letters: [],
+    why: 'inside a database view, cell or menu that has the focus; no bare letter',
+  },
+  {
+    file: 'packages/affine/database/engine/src/widget-presets/tools/presets/search/search.ts',
+    letters: [],
+    why: 'inside a database view, cell or menu that has the focus; no bare letter',
+  },
+  {
+    file: 'packages/affine/database/engine/src/widget-presets/tools/presets/sort/sort.ts',
+    letters: [],
+    why: 'inside a database view, cell or menu that has the focus; no bare letter',
+  },
+  {
+    file: 'packages/affine/database/engine/src/widget-presets/tools/presets/table-add-row/add-row.ts',
+    letters: [],
+    why: 'inside a database view, cell or menu that has the focus; no bare letter',
+  },
+  {
+    file: 'packages/affine/database/engine/src/widget-presets/tools/presets/view-options/view-options.ts',
+    letters: [],
+    why: 'inside a database view, cell or menu that has the focus; no bare letter',
+  },
+  {
+    file: 'packages/affine/database/engine/src/widget-presets/tools/tools-view.ts',
+    letters: [],
+    why: 'inside a database view, cell or menu that has the focus; no bare letter',
+  },
+  {
+    file: 'packages/affine/fragments/doc-title/src/doc-title.ts',
+    letters: [],
+    why: 'a text or its popup, on its own element; no bare letter',
+  },
+  {
+    file: 'packages/affine/fragments/doc-title/src/title-band/title-band.ts',
+    letters: [],
+    why: 'a text or its popup, on its own element; no bare letter',
+  },
+  {
+    file: 'packages/affine/fragments/frame-panel/src/card/frame-card-title.ts',
+    letters: [],
+    why: 'a text or its popup, on its own element; no bare letter',
   },
   {
     file: 'packages/affine/gfx/bpmn/src/element-view.ts',
@@ -114,7 +429,42 @@ const RAW_KEYDOWN_LISTENERS: readonly {
   {
     file: 'packages/affine/gfx/template/src/toolbar/template-panel.ts',
     letters: [],
-    why: 'stops propagation out of its own panel',
+    why: 'keeps its own keystrokes; Escape closes it',
+  },
+  {
+    file: 'packages/affine/inlines/latex/src/latex-node/latex-editor-menu.ts',
+    letters: [],
+    why: 'a text or its popup, on its own element; no bare letter',
+  },
+  {
+    file: 'packages/affine/inlines/link/src/link-node/affine-link.ts',
+    letters: [],
+    why: 'a text or its popup, on its own element; no bare letter',
+  },
+  {
+    file: 'packages/affine/inlines/link/src/link-node/link-popup/link-popup.ts',
+    letters: [],
+    why: 'a text or its popup, on its own element; no bare letter',
+  },
+  {
+    file: 'packages/affine/inlines/reference/src/reference-node/reference-popup/reference-popup.ts',
+    letters: [],
+    why: 'a text or its popup, on its own element; no bare letter',
+  },
+  {
+    file: 'packages/affine/rich-text/src/rich-text.ts',
+    letters: [],
+    why: 'Mod+Z in a text being edited (modifier required)',
+  },
+  {
+    file: 'packages/affine/shared/src/utils/event.ts',
+    letters: [],
+    why: 'Ctrl+P / N / V helpers for popups over a text (modifier required)',
+  },
+  {
+    file: 'packages/affine/shared/src/utils/panel-reorder-drag.ts',
+    letters: [],
+    why: 'on its own element (input, popup); no bare letter',
   },
   {
     file: 'packages/affine/widgets/edgeless-selected-rect/src/edgeless-element-link.ts',
@@ -139,28 +489,24 @@ const RAW_KEYDOWN_LISTENERS: readonly {
   {
     file: 'packages/affine/widgets/slash-menu/src/slash-menu-popover.ts',
     letters: [],
-    why: 'a popover over a text being typed',
+    why: 'Ctrl+P / N in a popover over a text being typed (modifier required)',
+  },
+  {
+    file: 'packages/framework/std/src/event/control/keyboard.ts',
+    letters: [],
+    why: 'the dispatcher itself: every binding goes through the keymaps',
+  },
+  {
+    file: 'packages/framework/std/src/gfx/keyboard.ts',
+    letters: [],
+    why: 'tracks Shift and Space as held keys; no letter',
+  },
+  {
+    file: 'packages/framework/std/src/inline/services/event.ts',
+    letters: [],
+    why: 'on its own element (input, popup); no bare letter',
   },
 ];
-
-/** The folders whose raw `keydown` listeners can meet a canvas chord. */
-const CANVAS_SOURCE_DIRS = [
-  'packages/affine/gfx',
-  'packages/affine/widgets',
-  'packages/affine/blocks/root/src/edgeless',
-];
-
-function* sourceFiles(dir: string): Generator<string> {
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const path = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      if (['node_modules', 'dist', '__tests__'].includes(entry.name)) continue;
-      yield* sourceFiles(path);
-    } else if (entry.name.endsWith('.ts') && !entry.name.endsWith('.d.ts')) {
-      yield path;
-    }
-  }
-}
 
 const commands = getCommands();
 
@@ -168,7 +514,9 @@ const commands = getCommands();
 function singleKeys(): Set<string | null> {
   return new Set<string | null>([
     ...RESERVED_EDGELESS_KEYS.map(k => canonicalCombo([k])),
-    ...TOOLBAR_BARE_KEYS.map(({ key }) => canonicalCombo([key])),
+    ...bindHotKeySites().flatMap(({ keys }) =>
+      keys.filter(isBareKey).map(key => canonicalCombo([key]))
+    ),
     ...RAW_KEYDOWN_LISTENERS.filter(l => !l.whileEditing).flatMap(l =>
       l.letters.map(letter => canonicalCombo([letter]))
     ),
@@ -260,10 +608,10 @@ describe('framework chord prefixes', () => {
     }
   });
 
-  test('a second key is one lowercase letter or digit', () => {
-    // Accepts `c` or `7`; rejects `C` (a Shift stroke the chord matcher reads
-    // as `Shift-C`), `Mod-c` and `Escape`.
-    const SECOND_KEY = /^[a-z0-9]$/;
+  test('a second key is one lowercase letter', () => {
+    // Accepts `c`; rejects `C` (a Shift stroke the chord matcher reads as
+    // `Shift-C`), `7` (Shift-ed on AZERTY), `Mod-c` and `Escape`.
+    const SECOND_KEY = /^[a-z]$/;
     for (const command of chords) {
       expect(command.defaultKeys.other[1], command.id).toMatch(SECOND_KEY);
     }
@@ -314,23 +662,25 @@ describe('framework chord prefixes', () => {
     }
   });
 
-  test('the toolbar bare keys are really bound where this file says', () => {
-    for (const { key, file } of TOOLBAR_BARE_KEYS) {
-      // Accepts the binding line `          m: () => {`; rejects `  m: 1,`
-      // outside an arrow and `mode: () =>`.
-      const binding = new RegExp(`^\\s+${key}: (\\(\\)|ctx) =>`, 'm');
-      expect(readFileSync(join(ROOT, file), 'utf8'), file).toMatch(binding);
+  test('every bindHotKey of the library is an object literal or a known forwarder', () => {
+    const sites = bindHotKeySites();
+    expect(
+      [...new Set(sites.filter(s => !s.keys.length).map(s => s.file))].sort()
+    ).toEqual([...BIND_HOT_KEY_FORWARDERS].sort());
+    // …and the walk does read the bindings: the edgeless keyboard's tools and
+    // the toolbar buttons' own letters come out of it.
+    const bare = new Set(sites.flatMap(s => s.keys.filter(isBareKey)));
+    for (const key of [...RESERVED_EDGELESS_KEYS, 'm', 's']) {
+      expect(bare.has(key), key).toBe(true);
     }
   });
 
-  test('every raw keydown listener of the canvas packages is listed', () => {
-    const found = CANVAS_SOURCE_DIRS.flatMap(dir => [
-      ...sourceFiles(join(ROOT, dir)),
-    ])
+  test('every raw keydown listener of the library is listed', () => {
+    const found = SOURCES
       // Accepts `addEventListener('keydown', …)` and `@keydown=${…}`;
       // rejects the word in prose, such as "a keydown event".
-      .filter(path => /'keydown'|@keydown=/.test(readFileSync(path, 'utf8')))
-      .map(path => relative(ROOT, path).split('\\').join('/'))
+      .filter(({ text }) => /'keydown'|@keydown=/.test(text))
+      .map(({ path }) => path)
       .sort();
     expect(found).toEqual(RAW_KEYDOWN_LISTENERS.map(l => l.file).sort());
   });
