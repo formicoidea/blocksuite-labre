@@ -19,6 +19,12 @@ import {
  */
 export const EDGELESS_TOOLBAR_COMING_SOON = ICON_BUTTON_COMING_SOON;
 
+/** The accessible name of the toolbar itself, one `role="toolbar"` (ADR 0054). */
+export const EDGELESS_TOOLBAR_NAME: ChromeWording = [
+  'com.labre.edgeless-toolbar.name',
+  'Canvas tools',
+];
+
 export const EDGELESS_TOOLBAR_MORE_TOOLS: ChromeWording = [
   'com.labre.edgeless-toolbar.more-tools',
   'More Tools',
@@ -215,6 +221,7 @@ export const SELECTION_PANE_TYPE_ELEMENT: ChromeWording = [
 
 /** Every wording this package declares, in the order it renders them. */
 export const EDGELESS_TOOLBAR_WORDINGS: readonly ChromeWording[] = [
+  EDGELESS_TOOLBAR_NAME,
   EDGELESS_TOOLBAR_MORE_TOOLS,
   EDGELESS_TOOLBAR_PREVIOUS_TOOLS,
   EDGELESS_TOOLBAR_NEXT_TOOLS,

@@ -594,6 +594,7 @@ export class ImageCropOverlay extends WithDisposable(LitElement) {
             data-testid="image-crop-zoom"
             .range=${ZOOM_RANGE}
             .value=${Math.min(cropZoomOf(this.draft), CROP_ZOOM_MAX)}
+            .label=${this.zoomLabel}
             .tooltip=${this.zoomLabel}
             .sliderStyle=${ZOOM_SLIDER_STYLE}
             @pointerdown=${this._onSliderPointerDown}

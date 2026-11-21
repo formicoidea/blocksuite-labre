@@ -1,7 +1,7 @@
 import { translateKey } from '@labre/affine-shared/services';
 import type { BlockStdScope } from '@labre/std';
 import type { Placement } from '@floating-ui/dom';
-import type { TemplateResult } from 'lit';
+import type { PropertyValues, TemplateResult } from 'lit';
 import { css, html, LitElement, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
 import { cache } from 'lit/directives/cache.js';
@@ -9,8 +9,33 @@ import { styleMap } from '@labre/global/lit';
 
 import { EDGELESS_TOOLBAR_COMING_SOON } from '../translations.js';
 
+/**
+ * Fired by a button of the toolbar's row when its `active` changes, so the
+ * row can keep its Tab stop on the active tool (ADR 0054). The toolbar listens
+ * for it by this name on its render root.
+ */
+export const TOOLBAR_ROW_STATE_EVENT = 'toolbar-row-state';
+
+/**
+ * The keyboard's ring on a toolbar button (#679, ADR 0054): the opaque 2px
+ * outline of the toolbar's `[data-keyboard-highlight]`. The host is the focus
+ * target and carries the name, the state and the `tabindex`; the ring is drawn
+ * on its visible box.
+ */
+export const toolButtonFocusRing = css`
+  :host(:focus-visible) {
+    outline: none;
+  }
+  :host(:focus-visible) .icon-container {
+    outline: 2px solid var(--affine-primary-color);
+    outline-offset: -2px;
+    border-radius: 8px;
+  }
+`;
+
 export class EdgelessToolIconButton extends LitElement {
   static override styles = css`
+    ${toolButtonFocusRing}
     .icon-container {
       position: relative;
       display: flex;
@@ -110,13 +135,25 @@ export class EdgelessToolIconButton extends LitElement {
    * emptied while the button's menu is open must not unname it: those owners
    * pass `label`.
    *
-   * Only on the canvas toolbar's row, or for an owner that passes `label`.
-   * Elsewhere — a panel, a menu, the auto-complete — a visible text is the
+   * Only on the canvas toolbar's row, in the menus its buttons open (the
+   * items of an `edgeless-slide-menu`, which the keyboard walks since the
+   * acceptance of #679), or for an owner that passes `label`. Elsewhere — a
+   * panel, the element toolbar, the auto-complete — a visible text is the
    * name and the tooltip only describes it (WCAG 2.5.3): those buttons keep
-   * exactly the attributes their owner gives them.
+   * exactly the attributes their owner gives them. `pressed`, like `label`,
+   * is outside that scope: it is announced wherever an owner binds it, and
+   * only the toolbar's menus bind it.
    */
-  override updated() {
-    if (!this.onToolbarRow && !this.label) return;
+  override updated(changed: PropertyValues<this>) {
+    // An option the owner says is chosen (a shape type, a connector mode):
+    // announced wherever the owner binds it, as it does its `label`.
+    if (this.pressed !== undefined) {
+      this.setAttribute('aria-pressed', String(this.pressed));
+    } else if (changed.has('pressed')) {
+      this.removeAttribute('aria-pressed');
+    }
+    const inToolbarMenu = this.closest('edgeless-slide-menu') !== null;
+    if (!this.onToolbarRow && !inToolbarMenu && !this.label) return;
     const name =
       this.label || (typeof this.tooltip === 'string' ? this.tooltip : '');
     if (name) this.setAttribute('aria-label', name);
@@ -125,6 +162,12 @@ export class EdgelessToolIconButton extends LitElement {
     if (!this.onToolbarRow) return;
     if (this.active === undefined) this.removeAttribute('aria-pressed');
     else this.setAttribute('aria-pressed', String(this.active));
+    // The row keeps its one Tab stop on the active tool (ADR 0054).
+    if (changed.has('active')) {
+      this.dispatchEvent(
+        new Event(TOOLBAR_ROW_STATE_EVENT, { bubbles: true, composed: true })
+      );
+    }
   }
 
   override render() {
@@ -210,6 +253,15 @@ export class EdgelessToolIconButton extends LitElement {
 
   @property({ attribute: false })
   accessor justify: string | undefined = undefined;
+
+  /**
+   * Whether this option is the chosen one, announced as `aria-pressed`. An
+   * owner binds it where `active` means the choice — a menu's shape types,
+   * connector modes, pens, note types — and not where `active` is a
+   * keyboard highlight (a framework's sub-menu). `undefined`: no state.
+   */
+  @property({ attribute: false })
+  accessor pressed: boolean | undefined = undefined;
 
   /** The accessible name, for an owner whose tooltip cannot be one. */
   @property({ attribute: false })

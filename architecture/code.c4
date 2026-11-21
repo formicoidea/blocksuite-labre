@@ -2968,7 +2968,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/widgets/edgeless-toolbar
         metadata {
           path 'packages/affine/widgets/edgeless-toolbar'
-          files '44'
+          files '45'
         }
         button = folder 'button/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/widgets/edgeless-toolbar/src/button
@@ -3009,7 +3009,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/widgets/edgeless-toolbar/src/menu
           metadata {
             path 'packages/affine/widgets/edgeless-toolbar/src/menu'
-            files '4'
+            files '5'
           }
         }
         mixins = folder 'mixins/' {
@@ -3978,7 +3978,7 @@ model {
   features.gfx.mindmap -[uses]-> framework.global_ '17 imports, 5 type-only'
   features.gfx.mindmap -[uses]-> framework.std '12 imports, 6 type-only'
   features.gfx.mindmap -[uses]-> framework.store '1 import, 1 type-only'
-  features.gfx.mindmap -[uses]-> model_.model_ '16 imports, 3 type-only'
+  features.gfx.mindmap -[uses]-> model_.model_ '16 imports, 2 type-only'
   features.gfx.note -[uses]-> features.blocks.attachment '1 import'
   features.gfx.note -[uses]-> features.blocks.bookmark '1 import'
   features.gfx.note -[uses]-> features.blocks.image '1 import'
@@ -6626,7 +6626,7 @@ model {
   features.gfx.mindmap.toolbar -[imports]-> framework.global_.lit '2 imports'
   features.gfx.mindmap.toolbar -[imports]-> framework.std.src '5 imports, 2 type-only'
   features.gfx.mindmap.toolbar -[imports]-> framework.store.src '1 import, 1 type-only'
-  features.gfx.mindmap.toolbar -[imports]-> model_.model_.src '5 imports, 2 type-only'
+  features.gfx.mindmap.toolbar -[imports]-> model_.model_.src '5 imports, 1 type-only'
   features.gfx.mindmap.utils -[imports]-> framework.std.gfx '1 import, 1 type-only'
   features.gfx.mindmap.utils -[imports]-> model_.model_.src '1 import'
   features.gfx.mindmap.view_ -[imports]-> features.gfx.shape_.src '1 import'
@@ -7327,8 +7327,9 @@ model {
   features.widgets.edgeless-toolbar.src -[imports]-> features.shared.utils '1 import'
   features.widgets.edgeless-toolbar.src -[imports]-> features.widgets.edgeless-toolbar.button '3 imports'
   features.widgets.edgeless-toolbar.src -[imports]-> features.widgets.edgeless-toolbar.catalogue '3 imports'
+  features.widgets.edgeless-toolbar.src -[imports]-> features.widgets.edgeless-toolbar.draggable '1 import, 1 type-only'
   features.widgets.edgeless-toolbar.src -[imports]-> features.widgets.edgeless-toolbar.extension '1 import'
-  features.widgets.edgeless-toolbar.src -[imports]-> features.widgets.edgeless-toolbar.menu '2 imports'
+  features.widgets.edgeless-toolbar.src -[imports]-> features.widgets.edgeless-toolbar.menu '4 imports'
   features.widgets.edgeless-toolbar.src -[imports]-> features.widgets.edgeless-toolbar.panel '2 imports'
   features.widgets.edgeless-toolbar.src -[imports]-> features.widgets.edgeless-toolbar.placement '1 import'
   features.widgets.edgeless-toolbar.src -[imports]-> features.widgets.edgeless-toolbar.selection-pane '5 imports'

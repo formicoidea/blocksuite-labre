@@ -355,6 +355,7 @@ export class EdgelessNoteStylePanel extends SignalWatcher(
         </div>
         <div class="edgeless-note-corner-radius-panel">
           <affine-slider
+            .label=${translateKey(this.std, ...NOTE_STYLE_CORNER_RADIUS)}
             .value=${this._borderRadius}
             .range=${{
               points: [0, 4, 8, 16, 24, 32],

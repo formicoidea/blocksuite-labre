@@ -1,8 +1,9 @@
 import { DefaultTool } from '@labre/affine-block-surface';
 import { toast } from '@labre/affine-components/toast';
 import { EmptyTool } from '@labre/affine-gfx-pointer';
-import type { MindmapStyle } from '@labre/affine-model';
+import { MindmapStyle } from '@labre/affine-model';
 import {
+  type ChromeWording,
   EditPropsStore,
   FeatureFlagService,
   TelemetryProvider,
@@ -34,8 +35,24 @@ import {
   MINDMAP_EDGELESS_TEXT_TOOLTIP,
   MINDMAP_IMPORT_FAILED_TOAST,
   MINDMAP_IMPORT_TOOLTIP,
+  MINDMAP_TEMPLATE_NAME_STYLE_1,
+  MINDMAP_TEMPLATE_NAME_STYLE_2,
+  MINDMAP_TEMPLATE_NAME_STYLE_3,
+  MINDMAP_TEMPLATE_NAME_STYLE_4,
   MINDMAP_TOOLTIP,
 } from '../translations.js';
+
+/**
+ * Each style button's name: the style's own name, the one its starter template
+ * already shows (« Mind Map — Style N »). One name for all four left them
+ * indistinguishable to a screen reader (third review of #679).
+ */
+const STYLE_NAMES: Record<MindmapStyle, ChromeWording> = {
+  [MindmapStyle.ONE]: MINDMAP_TEMPLATE_NAME_STYLE_1,
+  [MindmapStyle.TWO]: MINDMAP_TEMPLATE_NAME_STYLE_2,
+  [MindmapStyle.THREE]: MINDMAP_TEMPLATE_NAME_STYLE_3,
+  [MindmapStyle.FOUR]: MINDMAP_TEMPLATE_NAME_STYLE_4,
+};
 
 type TextItem = {
   type: 'text';
@@ -117,6 +134,12 @@ export class EdgelessMindmapMenu extends EdgelessToolbarToolMixin(
     .mindmap-item:hover {
       background: var(--affine-hover-color);
     }
+    .text-item > button:focus-visible,
+    .media-item > button:focus-visible,
+    .mindmap-item > button:focus-visible {
+      outline: 2px solid var(--affine-primary-color);
+      outline-offset: -2px;
+    }
     .text-item > button.next,
     .media-item > button.next,
     .mindmap-item > button.next {
@@ -148,6 +171,7 @@ export class EdgelessMindmapMenu extends EdgelessToolbarToolMixin(
       <button
         style="opacity: ${isBeingDragged ? 0 : 1}"
         class="next"
+        aria-label=${translateKey(this.std, ...MINDMAP_IMPORT_TOOLTIP)}
         @mousedown=${(e: MouseEvent) => {
           this.draggableController.onMouseDown(e, {
             preview: importMindMapIcon,
@@ -305,6 +329,10 @@ export class EdgelessMindmapMenu extends EdgelessToolbarToolMixin(
                 : nothing}
               <button
                 style="opacity: ${isDraggingMedia ? 0 : 1}"
+                aria-label=${translateKey(
+                  this.std,
+                  ...MINDMAP_ADD_MEDIA_TOOLTIP
+                )}
                 @mousedown=${(e: MouseEvent) =>
                   this.draggableController.onMouseDown(e, {
                     preview: mediaItem.icon,
@@ -339,6 +367,10 @@ export class EdgelessMindmapMenu extends EdgelessToolbarToolMixin(
                 : nothing}
               <button
                 style="opacity: ${isDraggingText ? 0 : 1}"
+                aria-label=${translateKey(
+                  this.std,
+                  ...MINDMAP_EDGELESS_TEXT_TOOLTIP
+                )}
                 @mousedown=${(e: MouseEvent) =>
                   this.draggableController.onMouseDown(e, {
                     preview: textItem.icon,
@@ -387,6 +419,11 @@ export class EdgelessMindmapMenu extends EdgelessToolbarToolMixin(
                     : nothing}
                   <button
                     style="opacity: ${isBeingDragged ? 0 : 1}"
+                    aria-label=${translateKey(
+                      this.std,
+                      ...STYLE_NAMES[mindMap.style]
+                    )}
+                    aria-pressed=${isActive ? 'true' : 'false'}
                     @mousedown=${(e: MouseEvent) => {
                       this.draggableController.onMouseDown(e, {
                         preview: mindMap.icon,

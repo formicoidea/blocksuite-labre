@@ -127,6 +127,7 @@ export class EdgelessNoteMenu extends EdgelessToolbarToolMixin(LitElement) {
 
             <edgeless-tool-icon-button
               .activeMode=${'background'}
+              .label=${translateKey(this.edgeless.std, ...GFX_NOTE_MENU_LINK)}
               .tooltip=${html`<affine-tooltip-content-with-shortcut
                 data-tip="${translateKey(
                   this.edgeless.std,
@@ -178,6 +179,7 @@ export class EdgelessNoteMenu extends EdgelessToolbarToolMixin(LitElement) {
                 return html`
                   <edgeless-tool-icon-button
                     .active=${childType === item.childType}
+                    .pressed=${childType === item.childType}
                     .activeMode=${'background'}
                     .tooltip=${tip}
                     @click=${() =>

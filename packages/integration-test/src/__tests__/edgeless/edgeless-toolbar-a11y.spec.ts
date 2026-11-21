@@ -5,12 +5,13 @@ import {
   EDGELESS_TOOLBAR_WIDGET,
   type EdgelessToolbarWidget,
 } from '@labre/affine/widgets/edgeless-toolbar';
-import { page } from '@vitest/browser/context';
+import { page, userEvent } from '@vitest/browser/context';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { wait } from '../utils/common.js';
 import { deepQueryAll } from '../utils/deep-query.js';
 import { getDocRootBlock } from '../utils/edgeless.js';
+import { pointerDown, pointerMoveTo, pointerUp } from '../utils/pointer.js';
 import { setupEditor } from '../utils/setup.js';
 
 /**
@@ -261,6 +262,10 @@ describe('edgeless toolbar: names, state and the pager tooltip', () => {
     const announced = arrow
       .querySelector('affine-tooltip')!
       .textContent!.trim();
+    // The tooltip previews the tool the arrow brings in; the name stays the
+    // arrow's own.
+    const name = arrow.getAttribute('aria-label');
+    expect(announced).not.toBe(name);
 
     // The pointer comes onto the arrow — the tooltip listens for exactly this
     // — and stays there while it clicks, as a user's does. Repeated until the
@@ -278,6 +283,133 @@ describe('edgeless toolbar: names, state and the pager tooltip', () => {
     await vi.waitFor(() => expect(shownTooltips()).not.toContain(announced), {
       timeout: 2000,
     });
+    expect(arrow.getAttribute('aria-label')).toBe(name);
     arrow.dispatchEvent(new MouseEvent('mouseleave'));
+  });
+
+  /**
+   * #679 acceptance, criterion 5 with a REAL mouse: click "Next tools" once
+   * and leave the pointer on it — a tooltip naming a tool (« Cynefin /
+   * Estuarine ») stayed over the arrow. The arrow's tooltip previews the
+   * tool past the page; rebuilt at each page, it showed at once under the
+   * resting pointer. A click closes it until the pointer comes back onto the
+   * arrow, which then shows the preview of the tool the arrow now brings in.
+   */
+  describe('a resting pointer sees only the tooltip of what is under it', () => {
+    /** The name of what the pointer is over, through shadow roots. */
+    const nameUnder = (x: number, y: number) => {
+      let element: Element | null = document.elementFromPoint(x, y);
+      while (element?.shadowRoot) {
+        const inner = element.shadowRoot.elementFromPoint(x, y);
+        if (!inner || inner === element) break;
+        element = inner;
+      }
+      let node: Node | null = element;
+      while (node) {
+        if (node instanceof Element && node.hasAttribute('aria-label')) {
+          return node.getAttribute('aria-label');
+        }
+        node = node.parentNode ?? (node as ShadowRoot).host ?? null;
+      }
+      return null;
+    };
+
+    /**
+     * Where the pointer will rest on `element`, brought on screen first: the
+     * suite's editor is taller than the window, its toolbar below the fold.
+     */
+    const centreOf = (element: Element) => {
+      element.scrollIntoView({ block: 'center', inline: 'nearest' });
+      const box = element.getBoundingClientRect();
+      return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+    };
+
+    /** Tooltips on screen that do not name what the pointer is over. */
+    const foreign = (x: number, y: number) => {
+      const name = nameUnder(x, y);
+      return shownTooltips().filter(text => !name || !text.includes(name));
+    };
+
+    /**
+     * The tooltips settled: what shows now is what stays. A stale one fails at
+     * the timeout; one shown late is read on the next check.
+     */
+    const noForeignTooltip = async (x: number, y: number) => {
+      await vi.waitFor(() => expect(foreign(x, y)).toEqual([]), {
+        timeout: 2000,
+      });
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      expect(foreign(x, y)).toEqual([]);
+    };
+
+    const arrowOf = (side: 'next' | 'prev') =>
+      toolbar().shadowRoot!.querySelector<HTMLElement>(
+        `.senior-nav-button-wrapper.${side} icon-button`
+      )!;
+
+    /** What the arrow previews now (the toolbar's own reading of it). */
+    const preview = (side: 'next' | 'prev') =>
+      (toolbar() as unknown as Record<string, string>)[
+        side === 'next' ? '_seniorNextTooltip' : '_seniorPrevTooltip'
+      ];
+
+    const clickAndRest = async (side: 'next' | 'prev') => {
+      const selector = `edgeless-toolbar-widget .senior-nav-button-wrapper.${side} icon-button`;
+      centreOf(arrowOf(side));
+      await pointerMoveTo(selector, 0.5, 0.5);
+      await pointerDown();
+      await pointerUp();
+      await toolbar().updateComplete;
+      // Under the unmoved pointer: no tooltip at all, the stale one gone.
+      await vi.waitFor(() => expect(shownTooltips()).toEqual([]), {
+        timeout: 2000,
+      });
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      expect(shownTooltips()).toEqual([]);
+      // Away and back: the preview of the tool the arrow brings in now.
+      await pointerMoveTo(
+        'edgeless-toolbar-widget .senior-tool-item',
+        0.5,
+        0.5
+      );
+      await pointerMoveTo(selector, 0.5, 0.5);
+      const now = preview(side);
+      if (now) {
+        await vi.waitFor(() => expect(shownTooltips()).toContain(now));
+      }
+    };
+
+    test('after a click on "Next tools", then on "Previous tools"', async () => {
+      const bar = toolbar();
+      bar.scrollSeniorToolIndex = 0;
+      await bar.updateComplete;
+      expect(seniorCount()).toBeGreaterThan(bar.scrollSeniorToolSize);
+      await clickAndRest('next');
+      expect(bar.scrollSeniorToolIndex).toBeGreaterThan(0);
+      await clickAndRest('prev');
+      expect(bar.scrollSeniorToolIndex).toBe(0);
+    });
+
+    test('while the keyboard pages the row under a resting pointer', async () => {
+      const bar = toolbar();
+      bar.scrollSeniorToolIndex = 0;
+      await bar.updateComplete;
+      await rowSettled();
+      const item = bar.shadowRoot!.querySelector('.senior-tool-item')!;
+      const rest = centreOf(item);
+      await pointerMoveTo(
+        'edgeless-toolbar-widget .senior-tool-item',
+        0.5,
+        0.5
+      );
+      // The keyboard into the row, then End: the row pages under the pointer.
+      window.editor.host!.focus();
+      await userEvent.keyboard('{Tab}');
+      await userEvent.keyboard('{End}');
+      await vi.waitFor(() =>
+        expect(bar.scrollSeniorToolIndex).toBeGreaterThan(0)
+      );
+      await noForeignTooltip(rest.x, rest.y);
+    });
   });
 });
