@@ -11,6 +11,7 @@
 '@labre/affine-gfx-ddd-event-storming': minor
 '@labre/affine-gfx-c4': minor
 '@labre/affine-gfx-template': minor
+'@labre/affine-block-frame': minor
 '@labre/affine-gfx-wardley': minor
 ---
 
@@ -48,14 +49,28 @@ prefix, and is swallowed otherwise. So a prefix then a tool letter no longer
 switches the tool: `b` then `t` places a BPMN task instead of picking the Text
 tool, `b` then `h` does nothing instead of picking the hand, `w` then `l` arms
 the Wardley link tool rather than opening the Templates panel (ADR 0055 § 5
-has the table for every prefix). Every other key is handed on, now for `w` too:
-after a prefix, Delete, Backspace, Escape, Enter, Tab, the arrows, Space and
-any Ctrl / Meta / Alt combination (Ctrl+Z, Ctrl+D) do exactly what they do
-without it, where they used to be swallowed for 1.2 s after `w`.
+has the table for every prefix). Every printable character after a prefix
+stays in its namespace, so the canvas's own printable shortcuts are swallowed
+there too: `Shift+P` (highlighter), `Shift+S` (shape cycle), `-` (note
+slicer), `@` (link), digits and punctuation. Named keys, Space and modified
+keys are handed on, now for `w` too: after a prefix, Delete, Backspace,
+Escape, Enter, Tab, the arrows, Space and any Ctrl / Meta / Alt combination
+(Ctrl+Z, Ctrl+D) do exactly what they do without it, where they used to be
+swallowed for 1.2 s after `w`. The shared `d` follows the two DDD flags: with
+one board off, its letters after `d` are swallowed and the other board's
+still place; with both off, `d` arms nothing. A key held after completing a
+chord no longer auto-repeats into its own tool (`b` then `p` held used to
+place the pool and then pick the Pen tool), for `w` too. With Caps Lock on, no
+prefix arms (as for `w` before).
 
-In a read-only document, and while a canvas element is in edit mode (a text,
-a polygon's vertices), no prefix arms and no chord runs: a chord used to throw
-"Cannot add element in readonly mode" (`w c` included). Every framework
+In a read-only document, during a presentation, and while a canvas element is
+in edit mode (a text, a polygon's vertices), no prefix arms and no chord runs:
+a chord used to throw "Cannot add element in readonly mode" (`w c` included),
+and during a presentation `w c` and the new chords wrote into the document
+and left the presentation; now each letter does what it does alone there.
+`availability: 'editable'` now also means "not presenting": a tool declaring
+the new `BaseTool.presents` (`PresentTool` does) makes every `'editable'`
+command unavailable, imports included. Every framework
 artefact and tool command now declares `availability: 'editable'` instead of
 `'always'`, in `getCommandManifest()` too: a host surface that honours
 `availability` withdraws them from a read-only document.

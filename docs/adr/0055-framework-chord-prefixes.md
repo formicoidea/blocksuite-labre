@@ -70,10 +70,16 @@ Wardley package's own command builder.
 
 `w` alone is bound to nothing. Of the requested prefixes, `d`, `u`, `y` and
 `g` are bound to nothing alone; `b` only inside a polygon's vertex edit; `t` is
-the Text tool. `o`, chosen for Event Storming, is bound to nothing alone. Every
-raw `keydown` listener of the canvas packages is listed, with the letters it
-takes, in `chord-prefixes.unit.spec.ts`, which walks the sources so a new one
-fails until it is read.
+the Text tool. `o`, chosen for Event Storming, is bound to nothing alone.
+`chord-prefixes.unit.spec.ts` reads these off the sources rather than a list
+typed by hand: it walks every `src` of `packages/affine` and
+`packages/framework` (tests excluded) for the top-level keys of every
+`bindHotKey({ … })` literal (the edgeless keyboard's tools, the toolbar
+buttons' `m` and `s`; a site passing a variable must be one of the four known
+forwarders), and for every raw `keydown` listener, each listed with the letters
+it takes and why it cannot meet a chord (71 files today: one letter, the
+polygon's `b`, in vertex edit only; the others named keys, a modifier, or their
+own focused element). A new binding or listener fails until it is read.
 
 ## Decision
 
@@ -122,14 +128,17 @@ two together. It fails when:
 - two frameworks share a prefix that `SHARED_PREFIXES` does not declare;
 - two commands of one prefix, across every framework sharing it, use the
   same second key;
-- a second key is not one lowercase letter or digit (a capital is a Shift
-  stroke, which the chord matcher reads as `Shift-C`, never `C`);
-- a prefix is a single-key shortcut: `RESERVED_EDGELESS_KEYS`, the toolbar
-  buttons' `m` and `s` (mirrored against their sources), a letter a raw
-  `keydown` listener takes outside an edit mode, or any registered command's
-  one-keystroke default;
-- a raw `keydown` listener appears in the canvas packages without being
-  listed;
+- a second key is not one lowercase letter (a capital is a Shift stroke,
+  which the chord matcher reads as `Shift-C`, never `C`; a digit needs Shift
+  on AZERTY);
+- a prefix is a single-key shortcut: any bare key of a `bindHotKey({ … })`
+  read off the sources (`RESERVED_EDGELESS_KEYS`, the toolbar buttons' `m` and
+  `s`), a letter a raw `keydown` listener takes outside an edit mode, or any
+  registered command's one-keystroke default (`l`, § 7);
+- a `bindHotKey` site passes something else than a literal, or a raw
+  `keydown` listener appears anywhere in the library, without being listed;
+- the bare letters taken on the canvas change (pinned: `c e f h k l m n p s t
+v`);
 - a chord collides with any other registered command's default;
 - a framework artefact or tool does not declare `availability: 'editable'`;
 - the allocation table itself changes.
@@ -215,7 +224,12 @@ continuation — pressed with Ctrl, Meta or Alt, a named key (Delete,
 Backspace, Escape, Enter, Tab, the arrows, Home / End, the page and function
 keys), or Space — disarms the prefix and is handed on to its normal handler.
 An unmatched printable character is still swallowed, as before ("no such
-shortcut in this namespace": `w h` does not reach the hand tool).
+shortcut in this namespace": `w h` does not reach the hand tool). Printable
+means every single character, so the canvas's own printable shortcuts stay
+swallowed within 1.2 s after a prefix as well: `Shift-p` (highlighter),
+`Shift-s` (shape cycle, or back in an open senior menu), `-` (note slicer) and
+`@` (link) on QWERTY, the digits and the punctuation. Only named keys, Space
+and modified keys are handed on.
 
 | After `w` (or any prefix), within 1.2 s | Before (ADR 0008)         | After                           |
 | --------------------------------------- | ------------------------- | ------------------------------- |
@@ -249,10 +263,27 @@ panel (§ 7).
 | `d`    | `c` chart, `n` bounded context (now), `p` platform, `f` future position, `m` Context Map board, `s` system                               | `v t h e k l`           |
 | `o`    | `c` command, `e` domain event, `p` policy, `s` external system, `h` hotspot                                                              | `v t n k f m l`         |
 
+The table assumes every framework on. The shared `d` follows its flags: with
+the Core Domain Chart off, `d c`, `d g`, `d p`, `d o`, `d n`, `d f` are
+swallowed and `d m`, `d b`, `d s` still place; with the Context Map off, the
+reverse; with both off, `d` arms nothing and every letter after it does what
+it does alone. Any other prefix with its framework off arms nothing.
+
+A key held after it completed a chord no longer auto-repeats into its own
+binding (`b` then `p` held placed the pool, then the repeats picked the Pen
+tool): the repeats of that key are swallowed until it is released or another
+key is pressed, and a held prefix neither re-arms in a loop nor arms again
+after its timeout (`keymap-chord.unit.spec.ts`, `framework-chords.spec.ts`).
+Applies to `w` too.
+
+Known limit: with Caps Lock on, the letter arrives as `B`, a Shift-less
+capital no prefix matches: no prefix arms (as for `w` before), and the letter
+does what a capital does on the canvas.
+
 Before this ADR the six new prefix letters did nothing, and the tool letter
 that followed them switched the tool.
 
-### 6. No chord where none can run: read-only, edit modes
+### 6. No chord where none can run: read-only, presentation, edit modes
 
 One gate decides whether a keyboard binding may run, `canRunFromKeyboard`
 (`command-registry.ts`), and it reads only declared data: not while a canvas
@@ -268,6 +299,15 @@ when at least one of its chords can run. So:
   throws nothing and places nothing, and the prefix letter does not arm at
   all: `b` then `h` still switches to the hand tool, which the read-only
   canvas allows;
+- while the canvas is PRESENTED, `'editable'` is unavailable too: a tool
+  declares `BaseTool.presents` (the frame navigator, `PresentTool`, does) and
+  `isCommandAvailable` reads it, naming no tool. So during a presentation no
+  prefix arms and no chord writes; each letter does what it does without this
+  ADR (`b` nothing, `p` the Pen tool, which ends the presentation). This is a
+  deliberate change for `w` as well: on the base, `w c` during a
+  presentation wrote a component into the document and left the
+  presentation. It also withdraws every other `'editable'` command (the
+  imports, the frame reorder) while presenting;
 - while a polygon's vertices are edited (selection `editing: true`), no
   prefix arms: the polygon's own `b` keeps the key, and `b` with no vertex
   hovered swallows nothing.
@@ -343,12 +383,16 @@ button's own hotkey, untouched); among the free letters he chose `l`.
   scope disables every `d` chord for that user ("a single binding on the
   prefix wins"); one binding a GLOBAL command on a bare prefix letter is
   masked in edgeless, where the edgeless keymap runs first and arms.
+- `FrameworkDescriptor.chordPrefix` is read nowhere but the parity tests: kept
+  on purpose, as ADR 0008's single identity of a framework that a host can
+  read, and held equal to each package's constant by the spec.
 - With a single mind-map node selected, a printable key starts editing that
-  node; that handler is registered after the shortcut keymap and so runs
-  first, which by reading keeps a prefix from arming there, as for `w` today
-  (not verified at the keyboard).
+  node with the key typed; that handler runs before the shortcut keymap, so no
+  prefix arms there: typing "bo" writes "bo" into the node (verified at the
+  keyboard by the second review).
+
 - No displayed string is added; the French catalogue needs nothing.
 - `RESERVED_EDGELESS_KEYS` still lists `edgeless-keyboard.ts` only; the
-  toolbar's `m` and `s` and the raw `keydown` listeners are mirrored by the
-  chord spec rather than added to it, because the constant's own mirror test
+  toolbar's `m` and `s` and the raw `keydown` listeners are read off the
+  sources by the chord spec rather than added to it, because the constant's own mirror test
   reads that one file.

@@ -22,6 +22,7 @@
  * a permuted second key fails here. Real keystrokes go to whatever holds the
  * focus, and the suite shares one page, so every test blurs the focus first.
  */
+import { PresentTool } from '@labre/affine/blocks/frame';
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
 import type { BlockFlags } from '@labre/affine/flags';
 import {
@@ -325,6 +326,51 @@ describe('where no chord can run, no prefix arms', () => {
       await userEvent.keyboard('h');
       await vi.waitFor(() => expect(tool()).toBe('pan'));
       expect(placed()).toEqual([]);
+    } finally {
+      cleanup();
+    }
+  });
+});
+
+describe('a held key, a presentation', () => {
+  test('b then p HELD places one pool and leaves the Pen tool alone', async () => {
+    const { cleanup, placed, tool } = await mount();
+    try {
+      // `{p>4/}`: p pressed and held for four keydowns (the last three with
+      // `repeat`), then released — the auto-repeat of a held key.
+      await userEvent.keyboard('b{p>4/}');
+      await vi.waitFor(() => expect(placed()).toEqual(['bpmn/pool']));
+      expect(tool()).not.toBe('brush');
+      // Released, `p` alone is the Pen tool again.
+      await userEvent.keyboard('p');
+      await vi.waitFor(() => expect(tool()).toBe('brush'));
+    } finally {
+      cleanup();
+    }
+  });
+
+  test('while presenting, a prefix arms nothing and writes nothing', async () => {
+    const { cleanup, service, placed, tool } = await mount();
+    try {
+      service.gfx.tool.setTool(PresentTool, { mode: 'fit' });
+      await vi.waitFor(() => expect(tool()).toBe('frameNavigator'));
+
+      // `b` arms nothing, so `p` does what it does alone during a
+      // presentation (it picks the Pen tool, which ends the presentation),
+      // and no pool is written into the document.
+      await userEvent.keyboard('bp');
+      await vi.waitFor(() => expect(tool()).toBe('brush'));
+      expect(placed()).toEqual([]);
+      expect(service.gfx.gfxElements.length).toBe(0);
+
+      // Wardley's `w c`, which wrote a component during a presentation before
+      // ADR 0055, too.
+      service.gfx.tool.setTool(PresentTool, { mode: 'fit' });
+      await vi.waitFor(() => expect(tool()).toBe('frameNavigator'));
+      await userEvent.keyboard('wc');
+      await vi.waitFor(() => expect(tool()).toBe('connector'));
+      expect(placed()).toEqual([]);
+      expect(service.gfx.gfxElements.length).toBe(0);
     } finally {
       cleanup();
     }
