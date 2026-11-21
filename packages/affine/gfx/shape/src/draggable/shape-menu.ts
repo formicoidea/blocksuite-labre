@@ -136,6 +136,7 @@ export class EdgelessShapeMenu extends SignalWatcher(
                       ...tooltipWording
                     )}
                     .active=${shapeName === name}
+                    .pressed=${shapeName === name}
                     .activeMode=${'background'}
                     .iconSize=${'20px'}
                     @click=${() => this.onChange(name)}

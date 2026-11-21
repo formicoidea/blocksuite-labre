@@ -5,6 +5,7 @@ import type { MindmapElementModel } from '@labre/affine/model';
 import {
   type AssetPickerRequest,
   AssetPickerExtension,
+  EditPropsStore,
 } from '@labre/affine/shared/services';
 import {
   EDGELESS_TOOLBAR_WIDGET,
@@ -720,14 +721,21 @@ describe('edgeless toolbar keyboard model', () => {
   };
 
   /** Back to a quiet canvas: nothing open, the select tool, the canvas focused. */
+  /** The last menu a press opened, which may still be on its way out. */
+  let lastMenu: Element | null = null;
+
   const reset = async () => {
     const bar = toolbar();
     // A menu leaves through a 230ms transition, during which a press of its
-    // button toggles it shut again: wait until it is gone.
+    // button toggles it shut again: wait until it is gone — the open one,
+    // and the last one seen, which a press may have closed already.
     const menu = bar.activePopper?.element;
     bar.activePopper?.dispose();
     bar.activePopper = null;
     if (menu) await until(() => !menu.isConnected, 'the menu has left');
+    const seen = lastMenu;
+    lastMenu = null;
+    if (seen) await holds(() => !seen.isConnected);
     // The templates panel is no popper: a click outside it closes it, and
     // left open, the next press of its button would toggle it shut.
     const [panel] = deepQueryAll(
@@ -883,6 +891,7 @@ describe('edgeless toolbar keyboard model', () => {
     await press('{Enter}');
     await frames(2);
     const popper = toolbar().activePopper?.element ?? null;
+    lastMenu = popper;
     if (popper) return popper;
     return root.childElementCount > children ? root.lastElementChild : null;
   };
@@ -978,80 +987,250 @@ describe('edgeless toolbar keyboard model', () => {
   );
 
   /**
-   * #679 acceptance: Enter on a control of a menu does what a click on it
-   * does — the first control of every menu, read the same way after both. A
-   * framework's command closes its menu and gives the canvas the keys.
+   * What a press left behind, read the same way after a click and after a
+   * key: the tool and its options, the last props the menus write (shape
+   * name, connector mode, colours, widths, pen or highlighter), which menu is
+   * open, and what the canvas gained.
    */
-  test(
-    'Enter on a menu control does what a click on it does',
-    { timeout: 240_000 },
-    async () => {
-      const buttons = await everyButton();
-      const failures: string[] = [];
-      const counts = () => ({
-        models: edgeless.store.getAllModels().length,
-        elements: edgeless.gfx.surface!.elementModels.length,
-        picks: picks.length,
-      });
-      /** The tool, and what the canvas gained since `before`. */
-      const read = (before: ReturnType<typeof counts>) => {
-        const now = counts();
-        return JSON.stringify({
-          tool: tool(),
-          models: now.models - before.models,
-          elements: now.elements - before.elements,
-          picks: now.picks - before.picks,
-        });
-      };
-      for (const [name, scroll] of buttons) {
-        if (OWN_MODEL.has(name)) continue;
-        // The keyboard: Enter on the button, then on the control it lands on.
-        await reset();
-        const opened = await openWithEnter(await buttonNamed(name, scroll));
-        if (!opened) continue;
-        if (!(await holds(() => within(deepActive(), opened)))) {
-          failures.push(`${name}: the keyboard did not go in`);
-          continue;
-        }
-        const index = drawnControls(opened).indexOf(
-          deepActive() as HTMLElement
-        );
-        const isCommand = opened instanceof EdgelessCommandMenu;
-        const keyBefore = counts();
-        await press('{Enter}');
-        await pointerSettled();
-        await frames(3);
-        const byKey = read(keyBefore);
-        if (isCommand && !(await holds(() => canvasHasFocus()))) {
-          failures.push(
-            `${name}: a command left the keys away from the canvas (${where()})`
-          );
-        }
-        // The mouse: a click on the button, then on the same control.
-        await reset();
-        await userEvent.click(await buttonNamed(name, scroll));
-        await frames(3);
-        const byMouse = toolbar().activePopper?.element ?? opened;
-        const control = drawnControls(byMouse)[index];
-        if (!control) {
-          failures.push(`${name}: no control ${index} after a click`);
-          continue;
-        }
-        const clickBefore = counts();
-        await userEvent.click(control);
-        await pointerSettled();
-        await frames(3);
-        const byClick = read(clickBefore);
-        if (byKey !== byClick) {
-          failures.push(
-            `${name} ${describeControl(control)}\n key   ${byKey}\n click ${byClick}`
-          );
+  const pressState = () => {
+    const option = edgeless.gfx.tool.currentToolOption$.peek();
+    const menu = toolbar().activePopper?.element;
+    return {
+      tool: tool(),
+      options: JSON.stringify(option?.options ?? null, (_key, value) =>
+        typeof value === 'function' ? undefined : value
+      ),
+      props: JSON.stringify(edgeless.std.get(EditPropsStore).lastProps$.peek()),
+      menu: menu?.isConnected ? menu.localName : null,
+      models: edgeless.store.getAllModels().length,
+      elements: edgeless.gfx.surface!.elementModels.length,
+      picks: picks.length,
+    };
+  };
+  const changeFrom = (before: ReturnType<typeof pressState>) => {
+    const now = pressState();
+    return JSON.stringify({
+      ...now,
+      models: now.models - before.models,
+      elements: now.elements - before.elements,
+      picks: now.picks - before.picks,
+    });
+  };
+
+  /**
+   * Walks the keyboard to `target` the way a user does: the arrows inside a
+   * group, both ways, Tab to the next one. A slider is crossed with Tab
+   * alone — its arrows would change the width on the way.
+   */
+  const walkTo = async (target: Element, limit: number) => {
+    for (let group = 0; group < limit; group++) {
+      if (deepActive() === target) return true;
+      if (deepActive()?.getAttribute('role') !== 'slider') {
+        // Rightwards until the group wraps (a row of buttons: all seen) or
+        // stops at its end (a grid entered mid-way: back to its start).
+        const start = deepActive();
+        let wrapped = false;
+        for (const key of ['{ArrowRight}', '{ArrowLeft}']) {
+          if (wrapped) break;
+          for (let step = 0; step < limit; step++) {
+            const here = deepActive();
+            await press(key);
+            const now = deepActive();
+            if (now === target) return true;
+            if (now === here) break;
+            if (key === '{ArrowRight}' && now === start) {
+              wrapped = true;
+              break;
+            }
+          }
         }
       }
+      await press('{Tab}');
+      if (deepActive() === target) return true;
+    }
+    return deepActive() === target;
+  };
+
+  /**
+   * #679, third review: Enter on "Highlighter" closed the pen menu where a
+   * click leaves it open, and the test that should have held it pressed the
+   * first control of each menu and read only the tool and the counts. Every
+   * control of every menu of every page now: the state after Enter equals
+   * the state after a real click; in keyboard mode the focus stays on the
+   * control (or the one drawn in its place) while the menu stays, and is on
+   * the canvas when it closes. Space too, on the first control of a group.
+   * A slider is left out: Enter is not its activation, its keys are held by
+   * `slider-continuous.unit.spec.ts`.
+   */
+  const enterEqualsClick = async (commandMenus: boolean) => {
+    // Each button by its place in the row, read before any press: a tool's
+    // name follows its state (the connector is named by its mode).
+    const places: [string, number, number][] = [];
+    for (const [name, scroll] of await everyButton()) {
+      const button = await buttonNamed(name, scroll);
+      places.push([name, scroll, rowButtons().indexOf(button)]);
+    }
+    const failures: string[] = [];
+    let pressed = 0;
+    for (const [name, scroll, position] of places) {
+      if (OWN_MODEL.has(name)) continue;
       await reset();
+      const buttonAt = async () => {
+        const bar = toolbar();
+        bar.scrollSeniorToolIndex = scroll;
+        await bar.updateComplete;
+        await rowReady();
+        return rowButtons()[position];
+      };
+      const first = await openWithEnter(await buttonAt());
+      if (!first) continue;
+      if (first instanceof EdgelessCommandMenu !== commandMenus) continue;
+      const count = drawnControls(first).length;
+      // Where Tab lands is a group's first control: Space is pressed there.
+      const firstOfGroup = new Set<number>();
+      await holds(() => within(deepActive(), first));
+      for (let step = 0; step <= count; step++) {
+        const at = drawnControls(first).indexOf(deepActive() as HTMLElement);
+        if (at < 0) break;
+        firstOfGroup.add(at);
+        await press('{Tab}');
+      }
+      for (let index = 0; index < count; index++) {
+        for (const key of ['{Enter}', '{ }']) {
+          if (key === '{ }' && !firstOfGroup.has(index)) continue;
+          // The keyboard.
+          await reset();
+          const opened = await openWithEnter(await buttonAt());
+          if (!opened || !(await holds(() => within(deepActive(), opened)))) {
+            failures.push(`${name}: the keyboard did not go in`);
+            break;
+          }
+          const target = drawnControls(opened)[index];
+          if (target.getAttribute('role') === 'slider') break;
+          if (!(await walkTo(target, 4 * count))) {
+            failures.push(`${name} #${index}: not reached by the keys`);
+            break;
+          }
+          const keyFrom = pressState();
+          await press(key);
+          await pointerSettled();
+          await frames(3);
+          const byKey = changeFrom(keyFrom);
+          const open = toolbar().activePopper?.element;
+          const focusOk = open?.isConnected
+            ? await holds(() => {
+                const active = deepActive();
+                // The same control, or the one drawn in its place: a
+                // menu that redraws (a drag's copy) moves the indices.
+                const named = target.getAttribute('aria-label');
+                return (
+                  !!active &&
+                  within(active, open) &&
+                  (drawnControls(open).indexOf(active as HTMLElement) ===
+                    index ||
+                    (named !== null &&
+                      active.getAttribute('aria-label') === named))
+                );
+              })
+            : await holds(() => canvasHasFocus());
+          if (!focusOk) {
+            failures.push(
+              `${name} ${describeControl(target)} ${key}: the focus is at ${where()}`
+            );
+          }
+          // The mouse.
+          await reset();
+          await userEvent.click(await buttonAt());
+          const drawn = () => {
+            const menu = toolbar().activePopper?.element;
+            return menu?.isConnected ? drawnControls(menu) : [];
+          };
+          await holds(() => drawn().length === count);
+          lastMenu = toolbar().activePopper?.element ?? null;
+          const control = drawn()[index];
+          if (!control) {
+            failures.push(
+              `${name} #${index}: a click opens ${drawn().length} controls, not ${count}`
+            );
+            break;
+          }
+          const clickFrom = pressState();
+          await userEvent.click(control);
+          await pointerSettled();
+          await frames(3);
+          const byClick = changeFrom(clickFrom);
+          pressed++;
+          if (byKey !== byClick) {
+            failures.push(
+              `${name} ${describeControl(control)} ${key}\n key   ${byKey}\n click ${byClick}`
+            );
+          }
+        }
+      }
+    }
+    await reset();
+    return { failures, pressed };
+  };
+
+  test(
+    'Enter on any control of an option menu does what a click on it does',
+    { timeout: 900_000 },
+    async () => {
+      const { failures, pressed } = await enterEqualsClick(false);
+      expect(pressed).toBeGreaterThan(20);
       expect(failures).toEqual([]);
     }
   );
+
+  test(
+    "Enter on any command of a framework's menu does what a click on it does",
+    { timeout: 900_000 },
+    async () => {
+      const { failures, pressed } = await enterEqualsClick(true);
+      expect(pressed).toBeGreaterThan(20);
+      expect(failures).toEqual([]);
+    }
+  );
+
+  /**
+   * #679, third review: a control the keyboard had visited kept its
+   * `tabindex`, so a later click focused it: Tab was then swallowed and
+   * Escape dropped the focus on the body. After the keyboard leaves, a menu
+   * the mouse opens is the one it opened before #679.
+   */
+  test('a keyboard visit leaves nothing behind for the mouse', async () => {
+    const buttons = await everyButton();
+    const curve = buttons.get('Curve')!;
+    const opened = await openWithEnter(await buttonNamed('Curve', curve));
+    await until(() => within(deepActive(), opened!), 'the keyboard is in');
+    await press('{ArrowRight}');
+    await press('{Escape}');
+    await holds(() => !opened!.isConnected);
+
+    await userEvent.click(await buttonNamed('Curve', curve));
+    await frames(3);
+    const menu = toolbar().activePopper!.element;
+    const control = drawnControls(menu)[1];
+    await userEvent.click(control);
+    await frames(3);
+    expect(
+      drawnControls(menu).filter(
+        button =>
+          button.localName === 'edgeless-tool-icon-button' &&
+          button.hasAttribute('tabindex')
+      )
+    ).toEqual([]);
+    expect(within(deepActive(), menu)).toBe(false);
+    await press('{Escape}');
+    expect(document.activeElement).not.toBe(document.body);
+    // The canvas has the keys: V, then the arrows move a selected shape.
+    await press('v');
+    const shape = addShape();
+    select(shape.id);
+    const x = shape.elementBound.x;
+    await press('{ArrowRight}');
+    expect(shape.elementBound.x).toBe(x + 1);
+  });
 
   /** B3 of the review of #679: in none of these does the focus end on the body. */
   describe('the focus never ends on the page body', () => {

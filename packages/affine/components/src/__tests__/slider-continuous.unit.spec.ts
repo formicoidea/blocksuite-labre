@@ -173,6 +173,13 @@ describe('affine-slider, discrete', () => {
     expect(selected).toEqual([6, 2, 8, 2]);
   });
 
+  test('its label names it, before its tooltip', async () => {
+    const { element } = await mount({ points: [0, 4, 8] }, 4);
+    element.label = 'Corner Radius';
+    await element.updateComplete;
+    expect(container(element).getAttribute('aria-label')).toBe('Corner Radius');
+  });
+
   test('nothing is emitted past an end', async () => {
     const { element, selected } = await mount({ points: [2, 4] }, 4);
     press(element, 'ArrowRight');

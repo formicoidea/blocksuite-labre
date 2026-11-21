@@ -279,7 +279,6 @@ export abstract class EdgelessCommandMenu extends EdgelessToolbarToolMixin(
       'More artefacts…'
     );
     return html`<edgeless-tool-icon-button
-      aria-current=${index === this._highlight ? 'true' : nothing}
       .label=${label}
       .tooltip=${html`${label}<span
           style="display:block;max-width:220px;margin-top:2px;opacity:0.75;font-size:11px;line-height:1.35;white-space:normal"
@@ -309,7 +308,6 @@ export abstract class EdgelessCommandMenu extends EdgelessToolbarToolMixin(
               (command, index) =>
                 html`<edgeless-tool-icon-button
                   data-command-id=${command.id}
-                  aria-current=${index === highlight ? 'true' : nothing}
                   .label=${translateKey(
                     std,
                     command.labelKey,

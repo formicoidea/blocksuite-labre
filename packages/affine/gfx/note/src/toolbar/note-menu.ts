@@ -179,6 +179,7 @@ export class EdgelessNoteMenu extends EdgelessToolbarToolMixin(LitElement) {
                 return html`
                   <edgeless-tool-icon-button
                     .active=${childType === item.childType}
+                    .pressed=${childType === item.childType}
                     .activeMode=${'background'}
                     .tooltip=${tip}
                     @click=${() =>

@@ -154,6 +154,18 @@ describe('the state of a toolbar button', () => {
     expect(undo.hasAttribute('aria-pressed')).toBe(false);
   });
 
+  test('an option its owner says is chosen is aria-pressed, anywhere', async () => {
+    // A menu's shape type, connector mode, pen: the owner binds `pressed`.
+    const element = await button({ tooltip: 'Ellipse', pressed: true });
+    expect(element.getAttribute('aria-pressed')).toBe('true');
+    element.pressed = false;
+    await element.updateComplete;
+    expect(element.getAttribute('aria-pressed')).toBe('false');
+    element.pressed = undefined;
+    await element.updateComplete;
+    expect(element.hasAttribute('aria-pressed')).toBe(false);
+  });
+
   test('off the row (a sub-menu) `active` stays silent', async () => {
     // In `EdgelessCommandMenu`, `active` is the keyboard highlight.
     const element = await button({ tooltip: 'Component', active: true });

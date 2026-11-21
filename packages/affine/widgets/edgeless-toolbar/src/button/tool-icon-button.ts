@@ -143,6 +143,13 @@ export class EdgelessToolIconButton extends LitElement {
    * exactly the attributes their owner gives them.
    */
   override updated(changed: PropertyValues<this>) {
+    // An option the owner says is chosen (a shape type, a connector mode):
+    // announced wherever the owner binds it, as it does its `label`.
+    if (this.pressed !== undefined) {
+      this.setAttribute('aria-pressed', String(this.pressed));
+    } else if (changed.has('pressed')) {
+      this.removeAttribute('aria-pressed');
+    }
     const inToolbarMenu = this.closest('edgeless-slide-menu') !== null;
     if (!this.onToolbarRow && !inToolbarMenu && !this.label) return;
     const name =
@@ -244,6 +251,15 @@ export class EdgelessToolIconButton extends LitElement {
 
   @property({ attribute: false })
   accessor justify: string | undefined = undefined;
+
+  /**
+   * Whether this option is the chosen one, announced as `aria-pressed`. An
+   * owner binds it where `active` means the choice — a menu's shape types,
+   * connector modes, pens, note types — and not where `active` is a
+   * keyboard highlight (a framework's sub-menu). `undefined`: no state.
+   */
+  @property({ attribute: false })
+  accessor pressed: boolean | undefined = undefined;
 
   /** The accessible name, for an owner whose tooltip cannot be one. */
   @property({ attribute: false })

@@ -5,7 +5,11 @@
 '@labre/affine-gfx-brush': patch
 '@labre/affine-gfx-note': patch
 '@labre/affine-gfx-mindmap': patch
+'@labre/affine-gfx-shape': patch
+'@labre/affine-gfx-connector': patch
 '@labre/affine-block-frame': patch
+'@labre/affine-block-note': patch
+'@labre/affine-block-image': patch
 ---
 
 Edgeless toolbar keyboard model (#679, ADR 0054). The canvas toolbar is one
@@ -27,12 +31,24 @@ A menu opened from the keyboard (a framework's commands, the frame, connector,
 pen, note, shape and mind map options) takes the keyboard on its first
 control: the arrows walk a group of controls, Tab and Shift+Tab move between
 groups (types, widths, colours) and, past the last, close the menu and return
-to its button, as Escape does; Enter or Space press a control as a click does.
-A framework's command, or a press that picks a tool, closes the menu and gives
-the canvas the keys. A menu opened with the mouse moves no focus. The menus'
-buttons are named from their tooltip. The discrete `affine-slider` (the line
-widths) is an ARIA slider now, stepping point to point with the arrows, Home
-and End. The pager arrows' tooltip is their own name ("Next tools", "Previous
-tools") instead of the tool they bring in, which stayed shown over a resting
-pointer after a page turn. Keyboard focus draws the same 2px ring as the
-Alt+←/→ highlight, which stays as a shortcut from the canvas.
+to its button, as Escape does. Enter or Space press a control as a click does,
+and the menu then does what it does after that click: gone, the canvas has the
+keys; still open (an option such as a shape type or Pen / Highlighter), the
+focus stays on the control. A menu opened with the mouse moves no focus, and a
+menu the keyboard visited is, for the mouse, the menu it was before. The
+menus' buttons are named from their tooltip (each mind map style by its own
+name) and the chosen option is announced as pressed (`aria-pressed`, through
+the new `pressed` property of `edgeless-tool-icon-button`).
+
+The discrete `affine-slider` (line widths, the note's corner radius) is now an
+ARIA slider and a Tab stop everywhere it is drawn — the brush and highlighter
+element toolbars, the connector's and the shape's line width, the note's
+corner radius: the arrows step it point to point, Home and End go to its ends.
+It is named by its new `label` property, which every use in the library
+passes; a host that renders `affine-slider` itself should pass one too.
+
+The pager arrows keep their names ("Next tools", "Previous tools") and their
+tooltip still previews the tool they bring in; a click closes that preview
+until the pointer leaves the arrow, where it used to stay shown, stale, over a
+resting pointer. Keyboard focus draws the same 2px ring as the Alt+←/→
+highlight, which stays as a shortcut from the canvas.

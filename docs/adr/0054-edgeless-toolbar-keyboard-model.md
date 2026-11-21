@@ -105,15 +105,19 @@ The toolbar takes real DOM focus, on the APG toolbar pattern.
    focus whose editor is gone.
 8. **The pager arrows are not Tab or arrow stops.** The arrows page the row as
    they walk, so every senior tool is reachable without them; they keep their
-   names ("Previous tools", "Next tools") and stay clickable. Their tooltip is
-   that name: it used to announce the tool the arrow brings in, and a tooltip
-   rebuilt at each page turn showed at once under a pointer resting on the
-   arrow — a tool's name over a button that is not that tool (#679,
-   criterion 5, found with a real mouse in the acceptance).
+   names ("Previous tools", "Next tools"), which never change with the page,
+   and stay clickable. Their tooltip previews the tool the arrow brings in,
+   as in 4.0.0. A click closes that preview until the pointer leaves the
+   arrow: rebuilt at each page turn, it used to show at once under the
+   pointer resting on the arrow and stay there (#679, criterion 5, found with
+   a real mouse in the acceptance). Back on the arrow, the pointer reads the
+   preview of the tool it brings in then.
 9. **The Alt+←/→ highlight stays** as a shortcut from the canvas, unchanged;
    focus entering the toolbar clears it, so the two rings never show at once.
-   In a framework's sub-menu the highlight and the focus are one current
-   command (`EdgelessCommandMenu.point`), marked `aria-current`.
+   In a framework's sub-menu the highlight follows the focus
+   (`EdgelessCommandMenu.point`): one current command for Enter, whether the
+   keyboard walks the menu from the canvas or from inside. Nothing more is
+   announced for it: inside the menu, the focus says it.
 10. **The menu model** (#679 acceptance: the product owner could not reach
     a framework's tools, nor the shape types, from the keyboard). One model
     for every menu the row opens, read from what the menu draws
@@ -130,10 +134,15 @@ The toolbar takes real DOM focus, on the APG toolbar pattern.
       its ends; Tab / Shift+Tab go to the next / previous group, and past the
       last or the first close the menu and give its button the focus back,
       as Escape does (APG's menu button, Tab leaving the menu);
-    - Enter / Space press the control as a pointer does (§4). A press that
-      changes the tool or runs a framework's command is done with the menu:
-      it closes and the canvas has the keys. An option (a shape type, a mode,
-      a colour, a width) keeps the menu open and the focus on it;
+    - Enter / Space press the control as a pointer does (§4), and what the
+      press did to the menu decides where the keyboard goes, the way a click
+      decides it — one rule for every menu: gone once the press has settled,
+      the canvas has the keys; still there (an option: a shape type, Pen or
+      Highlighter, a mode, a colour), the focus stays on the control, or on
+      the one the menu drew in its place;
+    - the keyboard leaves nothing behind: the `tabindex` it gives a menu
+      button is taken back when keyboard mode ends (the menu closed, a
+      pointer press, the canvas), so a later click is the click of 4.0.0;
     - inside a menu the model takes only those keys; every other key goes on
       to the canvas, as from the row.
       A menu built from the shared pieces gets the model with nothing to
@@ -164,9 +173,16 @@ The toolbar takes real DOM focus, on the APG toolbar pattern.
   the menus are named from their tooltip like the row's (the naming scope of
   `edgeless-tool-icon-button` covers the items of an `edgeless-slide-menu`;
   a template tooltip passes `label`), the mind map's native buttons carry an
-  `aria-label`, the frame presets say `role="button"`. The width slider, a
-  discrete `affine-slider`, became an ARIA slider stepping point to point,
-  which every user of the discrete slider gets.
+  `aria-label` (each style its own name, « Mind Map — Style N », the
+  wording its starter template shows), the frame presets say
+  `role="button"`. The chosen option is announced as `aria-pressed`: an
+  owner binds `pressed` where `active` is the choice (shape types,
+  connector modes, Pen / Highlighter, note types; the mind map styles on
+  their buttons), never where `active` is a highlight (a framework's
+  sub-menu). The width slider, a discrete `affine-slider`, became an ARIA
+  slider stepping point to point, and a Tab stop, everywhere it is drawn:
+  every use passes a `label` (held by `affine/all`'s
+  `slider-names.unit.spec.ts`).
 - **What still needs the pointer.** The templates panel's cards are a
   scrolling grid behind a search field, a model of its own (search, then a
   grid walked in two dimensions, then insertion): Tab reaches the search

@@ -16,11 +16,22 @@ export interface MenuGroup {
   own: boolean;
 }
 
+/**
+ * The separators the menus draw: `menu-divider`, a `role="separator"`, or an
+ * EMPTY element whose class ends in `divider` (`.divider`, `.thin-divider`,
+ * `.submenu-divider`) — a container named so is still walked.
+ */
 const isDivider = (element: Element) =>
   element.localName === 'menu-divider' ||
-  [...element.classList].some(name => name.endsWith('divider'));
+  element.getAttribute('role') === 'separator' ||
+  (element.childElementCount === 0 &&
+    [...element.classList].some(name => name.endsWith('divider')));
 
-const isShown = (element: Element) => element.getClientRects().length > 0;
+/** Drawn, visible and not inert: what `focus()` can reach. */
+const isShown = (element: Element) =>
+  element.getClientRects().length > 0 &&
+  element.checkVisibility({ visibilityProperty: true }) &&
+  element.closest('[inert]') === null;
 
 const isControl = (element: Element): element is HTMLElement =>
   element instanceof HTMLElement &&
@@ -29,17 +40,6 @@ const isControl = (element: Element): element is HTMLElement =>
   !element.hasAttribute('disabled') &&
   (element as { disabled?: boolean }).disabled !== true &&
   isShown(element);
-
-/** Every element under `root` matching `selector`, through shadow roots. */
-function deepQueryAll(root: Element, selector: string): HTMLElement[] {
-  const found: HTMLElement[] = [];
-  const walk = (node: Element) => {
-    if (node.matches(selector)) found.push(node as HTMLElement);
-    [...(node.shadowRoot?.children ?? []), ...node.children].forEach(walk);
-  };
-  [...(root.shadowRoot?.children ?? []), ...root.children].forEach(walk);
-  return found;
-}
 
 export function menuGroups(menu: Element): MenuGroup[] {
   const groups: MenuGroup[] = [];
@@ -59,7 +59,12 @@ export function menuGroups(menu: Element): MenuGroup[] {
       const controls =
         role === 'slider'
           ? [element as HTMLElement]
-          : deepQueryAll(element, '[role="radio"]');
+          : // The colour grid draws its swatches in its own shadow root.
+            [
+              ...(element.shadowRoot?.querySelectorAll<HTMLElement>(
+                '[role="radio"]'
+              ) ?? []),
+            ];
       // A disabled slider takes itself out of the tab order (`tabindex -1`).
       const shown = controls.filter(
         control =>

@@ -91,6 +91,14 @@ export class Slider extends WithDisposable(LitElement) {
   @property({ attribute: false })
   accessor tooltip: string | undefined = undefined;
 
+  /**
+   * The slider's accessible name (the translated wording of what it sets). A
+   * focusable slider must be named: every use passes one, held by
+   * `affine/all`'s `slider-names.unit.spec.ts`. Falls back to `tooltip`.
+   */
+  @property({ attribute: false })
+  accessor label: string | undefined = undefined;
+
   @property({ attribute: false })
   accessor range!: SliderRange | SliderContinuousRange;
 
@@ -296,7 +304,7 @@ export class Slider extends WithDisposable(LitElement) {
       data-continuous
       role="slider"
       tabindex=${this.disabled ? -1 : 0}
-      aria-label=${this.tooltip ?? nothing}
+      aria-label=${this.label ?? this.tooltip ?? nothing}
       aria-valuemin=${range.min}
       aria-valuemax=${range.max}
       aria-valuenow=${this.value}
@@ -318,7 +326,7 @@ export class Slider extends WithDisposable(LitElement) {
       class="slider-container"
       role="slider"
       tabindex=${this.disabled ? -1 : 0}
-      aria-label=${this.tooltip ?? nothing}
+      aria-label=${this.label ?? this.tooltip ?? nothing}
       aria-valuemin=${range.points[0] ?? nothing}
       aria-valuemax=${range.points[range.points.length - 1] ?? nothing}
       aria-valuenow=${this.value}

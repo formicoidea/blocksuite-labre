@@ -28,6 +28,9 @@ export class EdgelessLineWidthPanel extends WithDisposable(LitElement) {
   override render() {
     return html`<affine-slider
       ?disabled=${this.disabled}
+      .label=${this.std
+        ? translateKey(this.std, ...LINE_WIDTH_THICKNESS)
+        : LINE_WIDTH_THICKNESS[1]}
       .range=${{ points: this.lineWidths }}
       .value=${this.selectedSize}
       .tooltip=${this.hasTooltip
