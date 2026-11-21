@@ -5,10 +5,10 @@ parity tests for anything spelled twice.**
 
 ## Two suites
 
-| Suite       | Files                                                  | Runner                                             | Runs where                                                             |
-| ----------- | ------------------------------------------------------ | -------------------------------------------------- | ---------------------------------------------------------------------- |
-| unit        | `packages/**/src/__tests__/**/*.unit.spec.ts`          | vitest, happy-dom (some packages use browser mode) | `yarn test:unit`, or one package from where its config expects (below) |
-| integration | `packages/integration-test/src/__tests__/**/*.spec.ts` | vitest browser mode, Playwright chromium, serial   | `yarn test:integration`                                                |
+| Suite       | Files                                                  | Runner                                                         | Runs where                                                             |
+| ----------- | ------------------------------------------------------ | -------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| unit        | `packages/**/src/__tests__/**/*.unit.spec.ts`          | vitest, happy-dom (some packages use browser mode)             | `yarn test:unit`, or one package from where its config expects (below) |
+| integration | `packages/integration-test/src/__tests__/**/*.spec.ts` | vitest browser mode, Playwright chromium, serial, two sessions | `yarn test:integration`                                                |
 
 One unit package runs from the repo root, with `--config`, when its
 `vitest.config.ts` sets `test.root: './packages/…'`, and from its own
@@ -71,9 +71,17 @@ test('a board is picked by its border', () => {
 Globals `window.doc` and `window.editor` are set by the setup. Keep
 `--no-file-parallelism`; the suite is load-sensitive and retries on CI.
 
-Every spec file runs in ONE shared page (`isolate: false`): what a spec leaves
-behind — a docked panel, a zoom, a scroll, a granted permission — is the next
-spec's starting point. Hence:
+`yarn test:integration` runs two browser sessions one after the other
+(`scripts/test-integration.mjs`, Vitest `--shard=1/2` then `--shard=2/2`);
+both always run and the command fails when either did. Extra arguments go to
+both sessions, so a filter that lands in one leaves the other with no file,
+which passes (`--passWithNoTests`, added only when arguments are given).
+
+Every spec file of a session runs in ONE shared page (`isolate: false`): what
+a spec leaves behind — a docked panel, a zoom, a scroll, a granted permission
+— is the next spec's starting point. The shard is decided by a hash of the
+file path, so adding a spec can move others to the other session and give
+them new neighbours. Hence:
 
 - **Run the whole suite before a PR**, not only your spec: a spec that passes
   alone can fail after another one.
@@ -121,6 +129,15 @@ test file, run `tsc -b --force <package>` so the cache does not skip it.
   16 ms; under load it still fails about one run in three. Rerun alone.
 - Two integration specs fetch a dead public asset host; a ticket exists to
   vendor the fixtures.
+- The integration page keeps about 6 MB per test (measured 2026-11-21: one
+  session over 1341 tests grew linearly to 8.2 GB, all in the page's
+  renderer; `setupEditor`'s cleanup removes the editor and three globals,
+  nothing more). The 16 GB hosted runner died near the end of the suite, with
+  no log: "The runner has received a shutdown signal" or "lost communication
+  with the server". Two sessions halve the peak; the leak is not fixed.
+  Trigger: a session's peak nearing the runner's memory again (the job dying
+  late without a log, or a sampled peak past about 6 GB) — add a session in
+  `scripts/test-integration.mjs`, or fix the teardown.
 
 ## Manual verification in the playground
 
