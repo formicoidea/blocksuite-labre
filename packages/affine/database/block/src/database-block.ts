@@ -88,6 +88,7 @@ import { BlockRenderer } from './detail-panel/block-renderer.js';
 import { NoteRenderer } from './detail-panel/note-renderer.js';
 import { sourceRequirement } from './linked-view.js';
 import { DatabaseSelection } from './selection.js';
+import { sourceUnavailableNotice } from './source-unavailable.js';
 import { isStandaloneDatabase } from './standalone-layout.js';
 import {
   databaseOpenRowRequest,
@@ -107,10 +108,6 @@ import {
   DATABASE_SOURCE_REQUIRED,
   DATABASE_SOURCE_REQUIRED_HINT,
   DATABASE_SOURCE_REQUIRED_READ_ONLY,
-  DATABASE_SOURCE_TRASHED,
-  DATABASE_SOURCE_TRASHED_HINT,
-  DATABASE_SOURCE_UNSHARED,
-  DATABASE_SOURCE_UNSHARED_HINT,
   DATABASE_DELETE,
   DATABASE_TITLE_LABEL,
 } from './translations.js';
@@ -632,10 +629,13 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
    * the body. `'unshared'`: its database is not shared with the reader
    * ("Database not shared"). `'trashed'`: the source is in the trash
    * ("Source in the trash"), shown until it is restored. `'loading'`: its
-   * database is not loaded yet, a spinner and no words. Never an error and
-   * never "Connect a source": the view is right, and re-pointing it would
-   * lose a source the reader may get back. Takes precedence over the two
-   * notices below; nothing is written.
+   * database is not loaded yet, a spinner and no words. `'not-open'`: the
+   * host has not opened the source to the reader's page ("Source not open",
+   * amendment of 2026-11-20). A reason this build does not know: the neutral
+   * "Source not found" (`sourceUnavailableNotice`). Never an error and never
+   * "Connect a source": the view is right, and re-pointing it would lose a
+   * source the reader may get back. Takes precedence over the two notices
+   * below; nothing is written.
    */
   private readonly renderSourceUnavailable = (
     dataViewLogic: DataViewUILogicBase
@@ -644,40 +644,15 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
     if (!(dataSource instanceof HostedDataSourceBase)) return undefined;
     const reason = dataSource.sourceUnavailable$.value;
     if (reason === null) return undefined;
-    const header = html`<div class="${databaseHeaderContainerStyles}">
-      <div class="${databaseTitleRowStyles}">
-        ${this.renderTitle(dataViewLogic)}
-      </div>
-      <div class="${databaseToolbarRowStyles} ${databaseHeaderBarStyles}">
-        ${this.renderViewBar({ dataViewLogic })}
-      </div>
-    </div>`;
-    if (reason === 'loading') {
-      return html`${header}
-        <div
-          class="${databaseSourceMissingStyles}"
-          data-testid="database-source-loading"
-          role="status"
-          aria-busy="true"
-        >
-          ${LoadingIcon()}
-        </div>`;
-    }
-    const [title, hint] =
-      reason === 'trashed'
-        ? [DATABASE_SOURCE_TRASHED, DATABASE_SOURCE_TRASHED_HINT]
-        : [DATABASE_SOURCE_UNSHARED, DATABASE_SOURCE_UNSHARED_HINT];
-    return html`${header}
-      <div
-        class="${databaseSourceMissingStyles}"
-        data-testid="database-source-${reason}"
-        role="status"
-      >
-        <div>${translateKey(this.std, ...title)}</div>
-        <div class="${databaseSourceMissingHintStyles}">
-          ${translateKey(this.std, ...hint)}
+    return html`<div class="${databaseHeaderContainerStyles}">
+        <div class="${databaseTitleRowStyles}">
+          ${this.renderTitle(dataViewLogic)}
         </div>
-      </div>`;
+        <div class="${databaseToolbarRowStyles} ${databaseHeaderBarStyles}">
+          ${this.renderViewBar({ dataViewLogic })}
+        </div>
+      </div>
+      ${sourceUnavailableNotice(this.std, reason)}`;
   };
 
   /**
