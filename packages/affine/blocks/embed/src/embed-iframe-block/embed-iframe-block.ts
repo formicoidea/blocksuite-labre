@@ -118,7 +118,7 @@ export class EmbedIframeBlockComponent extends CaptionedBlockComponent<EmbedIfra
   }
 
   get notificationService() {
-    return this.std.getOptional(NotificationProvider);
+    return this.std.getOptional(NotificationProvider) ?? null;
   }
 
   get inSurface() {

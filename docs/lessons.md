@@ -321,3 +321,26 @@ browser session … within the timeout`: Chromium could not start the
     browser-session error is the machine. Create a worktree in LF
     (`git config --worktree core.autocrlf false` before the checkout), and
     run the full unit suite alone, when the machine is quiet.
+
+39. **A runner "lost" near the end of the integration suite, twice read as
+    GitHub's infrastructure.** From 2026-11-18 the integration job, normally
+    12 minutes, stalled around file 134 of 147 and ended with "The runner has
+    received a shutdown signal" or, after about 54 minutes, "The hosted runner
+    lost communication with the server": on main, on small unrelated PRs
+    (green at the rerun), then on every PR adding specs. Twice it was taken
+    for the hosted infrastructure. Memory is the cause we inferred, from a
+    measurement on Windows: the suite shares one page (`isolate: false`) and
+    that page keeps about 6 MB per test; sampled every 15 s over a full local
+    run (1341 tests, at d91150343), the headless Chromium tree grew linearly
+    from 0.1 to 8.2 GB, all in the page's renderer, while one long spec alone
+    stays under 0.9 GB. With Vite and Vitest beside it, that would exhaust the
+    16 GB Linux runner; nobody measured the runner itself.
+    `yarn test:integration` now runs two browser sessions
+    (`scripts/test-integration.mjs`, `--shard`): at b72177321 (148 files,
+    1315 tests), 4.2 GB peak each, 4.55 GB at most for both (the first
+    session's renderer outlived its browser by about three minutes on
+    Windows). The leak itself is not fixed
+    ([04-testing.md](contribute/04-testing.md#flaky) has the trigger).
+    _Rule:_ a job that dies without a log near the end of a long shared-page
+    run is memory until measured otherwise; measure the browser's memory over
+    a full run before calling it infrastructure.

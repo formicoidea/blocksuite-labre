@@ -164,6 +164,8 @@ export class DatabasePageHost extends SignalWatcher(
     this.addEventListener('dragover', stopFileDrop, true);
     this.addEventListener('drop', stopFileDrop, true);
     this.holdSelection();
+    // Reconnected, the editor host takes its tab stop back: drop it again.
+    this.requestUpdate();
   }
 
   override disconnectedCallback() {
@@ -196,6 +198,20 @@ export class DatabasePageHost extends SignalWatcher(
     this.holdSelection();
     // `std.render()` builds a new editor host each call: once per editor.
     this.editorHost = this._std?.render();
+  }
+
+  /**
+   * The page's editor host is a tab stop of its own (`tabindex="0"`, set on
+   * connect for the keys of a block selection), and the root keeps the Tab
+   * pressed there (`fallbackKeymap`): between the heading and the views, Tab
+   * from the title stopped on it, and so did Shift+Tab from the view toolbar
+   * (#678). Out of the tab order, the host stays focusable by script.
+   */
+  protected override updated(changed: PropertyValues<this>) {
+    super.updated(changed);
+    if (this.editorHost && this.editorHost.tabIndex !== -1) {
+      this.editorHost.tabIndex = -1;
+    }
   }
 
   override render() {

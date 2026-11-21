@@ -61,13 +61,19 @@ export class MenuButton extends MenuFocusable {
       outline: 1px solid ${unsafeCSS(cssVarV2.layer.insideBorder.primaryBorder)};
     }
 
-    .affine-menu-button.delete-item:hover {
-      background-color: var(--affine-background-error-color);
+    /*
+      A destructive entry reads as one before it is hovered (#677): label and
+      icon in the theme's danger colour at rest, the danger background on
+      hover or while it holds a popup open, as any row's hover wash does.
+    */
+    .affine-menu-button.delete-item,
+    .affine-menu-button.delete-item .affine-menu-action-text {
       color: var(--affine-error-color);
     }
 
-    .affine-menu-button.delete-item:hover .affine-menu-action-text {
-      color: var(--affine-error-color);
+    .affine-menu-button.delete-item:hover,
+    affine-menu-button.active .affine-menu-button.delete-item {
+      background-color: var(--affine-background-error-color);
     }
 
     /*
@@ -158,7 +164,7 @@ export class MobileMenuButton extends MenuFocusable {
       color: var(--affine-error-color);
     }
 
-    .mobile-menu-button.delete-item .mobile-menu-action-text {
+    .mobile-menu-button.delete-item .affine-menu-action-text {
       color: var(--affine-error-color);
     }
   `;

@@ -190,6 +190,11 @@ export class DocTitle extends WithDisposable(ShadowlessElement) {
         if (this._std) focusTextModel(this._std, newFirstParagraphId);
       }
     } else if (event.key === 'Tab') {
+      // A document's title keeps Tab, as its paragraphs do (upstream): Tab
+      // there would leave the text for whatever follows the editor. The
+      // page of one block (`bodyBlockId`, a base's full page) lets it go to
+      // that block's controls, its view toolbar first (#678).
+      if (this.bodyBlockId !== undefined) return;
       event.preventDefault();
       event.stopPropagation();
     }

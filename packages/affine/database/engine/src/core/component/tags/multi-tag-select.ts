@@ -4,6 +4,10 @@ import {
   popMenu,
   type PopupTarget,
   popupTargetFromElement,
+  capToRoom,
+  scrollDeltaToShow,
+  scrollViewOf,
+  WINDOW_PADDING,
 } from '@labre/affine-components/context-menu';
 import {
   type ChromeWording,
@@ -20,7 +24,7 @@ import {
 } from '@blocksuite/icons/lit';
 import { type BlockStdScope, ShadowlessElement } from '@labre/std';
 import { nanoid } from '@labre/store';
-import { autoPlacement, offset, shift } from '@floating-ui/dom';
+import { autoPlacement, offset, shift, size } from '@floating-ui/dom';
 import { computed, type ReadonlySignal, signal } from '@preact/signals-core';
 import { cssVarV2 } from '@toeverything/theme/v2';
 import { nothing } from 'lit';
@@ -312,9 +316,11 @@ export class MultiTagSelect extends SignalWatcher(
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
       this.setSelectedOption(this.selectedIndex$.value - 1);
+      this.followSelected().catch(console.error);
     } else if (event.key === 'ArrowDown') {
       event.preventDefault();
       this.setSelectedOption(this.selectedIndex$.value + 1);
+      this.followSelected().catch(console.error);
     } else if (event.key === 'Escape') {
       this.onComplete();
     }
@@ -447,6 +453,7 @@ export class MultiTagSelect extends SignalWatcher(
                   ? sortable(select.id)
                   : nothing}
                 class="${classes}"
+                data-selected-option="${isSelected ? 'true' : 'false'}"
                 @mouseenter="${mouseenter}"
                 @click="${select.select}"
               >
@@ -480,6 +487,26 @@ export class MultiTagSelect extends SignalWatcher(
         )}
       </div>
     `;
+  }
+
+  /**
+   * The option the arrows selected, scrolled wholly into the list's view
+   * (capped at the window, the list scrolls: `fitOptionsToWindow`). Only
+   * from the keyboard: a hovered option is already under the pointer.
+   */
+  private async followSelected() {
+    await this.updateComplete;
+    const list = this.querySelector<HTMLElement>(
+      `.${selectOptionsContainerStyle}`
+    );
+    const selected = list?.querySelector<HTMLElement>(
+      '[data-selected-option="true"]'
+    );
+    if (!list || !selected) return;
+    list.scrollTop += scrollDeltaToShow(
+      scrollViewOf(list),
+      selected.getBoundingClientRect()
+    );
   }
 
   private setSelectedOption(index: number) {
@@ -671,6 +698,31 @@ export type TagSelectOptions = {
    */
   std?: BlockStdScope;
 } & TagManagerOptions;
+/**
+ * The tag selector stays inside the window, every option reachable (product
+ * owner's acceptance of the database work: no entry of a menu is ever
+ * unreachable). It is placed `fixed` against the window, its options list
+ * capped at 400px by its style: in a short window the field, the hint and
+ * the list ran past the bottom edge. The LIST is capped at the room the
+ * field and the hint leave, and scrolls; the field stays in view. A list
+ * that fits keeps the cap of its style.
+ */
+const fitOptionsToWindow = size({
+  padding: WINDOW_PADDING,
+  apply({ availableHeight, elements }) {
+    const list = elements.floating.querySelector<HTMLElement>(
+      `.${selectOptionsContainerStyle}`
+    );
+    if (!list) return;
+    // The list at the height its style allows (400px), measured bare.
+    list.style.maxHeight = '';
+    const styled = parseFloat(getComputedStyle(list).maxHeight);
+    const room =
+      availableHeight - (elements.floating.offsetHeight - list.offsetHeight);
+    capToRoom(list, Number.isNaN(styled) ? room : Math.min(room, styled));
+  },
+});
+
 export const popTagSelect = (target: PopupTarget, ops: TagSelectOptions) => {
   if (IS_MOBILE) {
     const handler = popMobileTagSelect(target, ops);
@@ -709,6 +761,7 @@ export const popTagSelect = (target: PopupTarget, ops: TagSelectOptions) => {
       }),
       offset({ mainAxis: -36 }),
       shift(),
+      fitOptionsToWindow,
     ],
     container: ops.container,
   });
