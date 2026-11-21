@@ -30,6 +30,10 @@ import {
   type ShapeElementModel,
 } from '@labre/affine/model';
 import { TelemetryExtension } from '@labre/affine/shared/services';
+import {
+  EDGELESS_TOOLBAR_WIDGET,
+  type EdgelessToolbarWidget,
+} from '@labre/affine/widgets/edgeless-toolbar';
 import { SurfaceSelection } from '@labre/std';
 import { userEvent } from '@vitest/browser/context';
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
@@ -335,6 +339,50 @@ describe('where no chord can run, no prefix arms', () => {
       await userEvent.keyboard('h');
       await vi.waitFor(() => expect(tool()).toBe('pan'));
       expect(placed()).toEqual([]);
+    } finally {
+      cleanup();
+    }
+  });
+});
+
+/**
+ * The toolbar's keyboard model (ADR 0054, #691): a toolbar button holding the
+ * focus takes only the row's keys (arrows, Home, End, Enter, Space, Escape,
+ * Tab); a letter is the canvas's. A chord is two letters, so it must reach the
+ * canvas keymap from there too: the prefix arms (its target, a button, is not
+ * editable) and the second key completes it. #691's own spec holds a single
+ * letter (`h`); this one holds a chord.
+ */
+describe('from the toolbar, by keyboard', () => {
+  test('with a toolbar button focused by Tab, a chord places its artefact', async () => {
+    const { cleanup, service, placed } = await mount();
+    try {
+      const root = getDocRootBlock(window.doc, window.editor, 'edgeless');
+      const toolbar = root.widgetComponents[
+        EDGELESS_TOOLBAR_WIDGET
+      ] as unknown as EdgelessToolbarWidget;
+      const deepActive = () => {
+        let active = document.activeElement;
+        while (active?.shadowRoot?.activeElement) {
+          active = active.shadowRoot.activeElement;
+        }
+        return active;
+      };
+      // The row is ready once its buttons carry their tab stops.
+      await vi.waitFor(() =>
+        expect(
+          toolbar.shadowRoot!.querySelector('[role="button"][tabindex]')
+        ).toBeTruthy()
+      );
+      service.std.host.focus();
+      await userEvent.keyboard('{Tab}');
+      await vi.waitFor(() => {
+        expect(toolbar.shadowRoot!.activeElement).not.toBeNull();
+        expect(deepActive()?.getAttribute('role')).toBe('button');
+      });
+
+      await userEvent.keyboard('bp');
+      await vi.waitFor(() => expect(placed()).toEqual(['bpmn/pool']));
     } finally {
       cleanup();
     }

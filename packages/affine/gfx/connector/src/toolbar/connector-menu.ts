@@ -39,6 +39,7 @@ function ConnectorModeButtonGroup(
     <div class="connector-mode-button-group">
       <edgeless-tool-icon-button
         .active=${mode === ConnectorMode.Curve}
+        .pressed=${mode === ConnectorMode.Curve}
         .activeMode=${'background'}
         .tooltip=${translateKey(
           std,
@@ -51,6 +52,7 @@ function ConnectorModeButtonGroup(
       </edgeless-tool-icon-button>
       <edgeless-tool-icon-button
         .active=${mode === ConnectorMode.Orthogonal}
+        .pressed=${mode === ConnectorMode.Orthogonal}
         .activeMode=${'background'}
         .tooltip=${translateKey(
           std,
@@ -63,6 +65,7 @@ function ConnectorModeButtonGroup(
       </edgeless-tool-icon-button>
       <edgeless-tool-icon-button
         .active=${mode === ConnectorMode.Straight}
+        .pressed=${mode === ConnectorMode.Straight}
         .activeMode=${'background'}
         .tooltip=${translateKey(
           std,

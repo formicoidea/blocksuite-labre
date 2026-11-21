@@ -89,13 +89,34 @@ describe('the accessible name of a toolbar button', () => {
 });
 
 /**
- * GUARD — off the canvas toolbar's row, the element is what it was before
- * #679. Review of #679: deriving the name from the tooltip everywhere named
- * the auto-complete's "add the same object" button "Shape" in English under
- * its translated visible label, and named the outline's display-mode button
- * with a tooltip that empties when its popup opens (WCAG 2.5.3).
+ * The menus the row's buttons open (an `edgeless-slide-menu`'s items) are
+ * walked by the keyboard since the acceptance of #679: their buttons are
+ * named from their tooltip too. Their `active` stays silent (below).
  */
-describe('off the toolbar row, nothing is added', () => {
+describe('in a menu of the toolbar', () => {
+  test('a button in an edgeless-slide-menu is named from its tooltip', async () => {
+    const menu = document.createElement('edgeless-slide-menu');
+    const element = document.createElement('edgeless-tool-icon-button');
+    element.tooltip = 'Rectangle';
+    menu.append(element);
+    document.body.append(menu);
+    mounted.push(menu);
+    await element.updateComplete;
+    expect(element.getAttribute('aria-label')).toBe('Rectangle');
+    expect(element.hasAttribute('aria-pressed')).toBe(false);
+  });
+});
+
+/**
+ * GUARD — off the canvas toolbar's row and its menus, the element is what it
+ * was before #679: names are set on the row, in an `edgeless-slide-menu`, or
+ * from an owner's `label`, nowhere else. Review of #679: deriving the name
+ * from the tooltip everywhere named the auto-complete's "add the same object"
+ * button "Shape" in English under its translated visible label, and named the
+ * outline's display-mode button with a tooltip that empties when its popup
+ * opens (WCAG 2.5.3).
+ */
+describe('off the toolbar row and its menus, nothing is added', () => {
   test('no aria-label, no aria-pressed, no tabindex from a tooltip', async () => {
     const element = await button({ tooltip: 'Shape', active: true });
     expect(element.hasAttribute('aria-label')).toBe(false);
@@ -131,6 +152,18 @@ describe('the state of a toolbar button', () => {
   test('an action that binds no state announces none', async () => {
     const undo = await button({ tooltip: 'Undo', onToolbarRow: true });
     expect(undo.hasAttribute('aria-pressed')).toBe(false);
+  });
+
+  test('an option its owner says is chosen is aria-pressed, anywhere', async () => {
+    // A menu's shape type, connector mode, pen: the owner binds `pressed`.
+    const element = await button({ tooltip: 'Ellipse', pressed: true });
+    expect(element.getAttribute('aria-pressed')).toBe('true');
+    element.pressed = false;
+    await element.updateComplete;
+    expect(element.getAttribute('aria-pressed')).toBe('false');
+    element.pressed = undefined;
+    await element.updateComplete;
+    expect(element.hasAttribute('aria-pressed')).toBe(false);
   });
 
   test('off the row (a sub-menu) `active` stays silent', async () => {

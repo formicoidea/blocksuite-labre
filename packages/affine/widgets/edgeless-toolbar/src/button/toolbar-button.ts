@@ -1,9 +1,13 @@
 import { css, html } from 'lit';
 
-import { EdgelessToolIconButton } from './tool-icon-button.js';
+import {
+  EdgelessToolIconButton,
+  toolButtonFocusRing,
+} from './tool-icon-button.js';
 
 export class EdgelessToolbarButton extends EdgelessToolIconButton {
   static override styles = css`
+    ${toolButtonFocusRing}
     .icon-container {
       position: relative;
       display: flex;

@@ -165,6 +165,19 @@ export abstract class EdgelessCommandMenu extends EdgelessToolbarToolMixin(
   }
 
   /**
+   * The keyboard's focus is on `button` (the toolbar's menu model, ADR
+   * 0054): the highlight follows it, so the menu has one current command
+   * whether the keyboard walks it from the canvas (Alt+←/→) or from inside.
+   */
+  point(button: Element) {
+    const buttons = [
+      ...this.renderRoot.querySelectorAll('edgeless-tool-icon-button'),
+    ];
+    const index = buttons.indexOf(button as (typeof buttons)[number]);
+    if (index >= 0 && this._armed < 0) this._active = index;
+  }
+
+  /**
    * Do whatever the keyboard points at, and say whether it did.
    *
    * It goes through the same {@link _invoke} the click goes through, so an
@@ -266,6 +279,7 @@ export abstract class EdgelessCommandMenu extends EdgelessToolbarToolMixin(
       'More artefacts…'
     );
     return html`<edgeless-tool-icon-button
+      .label=${label}
       .tooltip=${html`${label}<span
           style="display:block;max-width:220px;margin-top:2px;opacity:0.75;font-size:11px;line-height:1.35;white-space:normal"
           >${translateKey(
@@ -294,6 +308,11 @@ export abstract class EdgelessCommandMenu extends EdgelessToolbarToolMixin(
               (command, index) =>
                 html`<edgeless-tool-icon-button
                   data-command-id=${command.id}
+                  .label=${translateKey(
+                    std,
+                    command.labelKey,
+                    command.labelFallback
+                  )}
                   .tooltip=${this._tooltip(command)}
                   .active=${index === highlight}
                   .hoverState=${index === highlight}

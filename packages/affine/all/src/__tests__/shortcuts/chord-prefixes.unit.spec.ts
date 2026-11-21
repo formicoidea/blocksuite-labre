@@ -401,6 +401,11 @@ const RAW_KEYDOWN_LISTENERS: readonly {
     why: 'inside a database view, cell or menu that has the focus; no bare letter',
   },
   {
+    file: 'packages/affine/database/engine/src/widget-presets/no-view/no-view.ts',
+    letters: [],
+    why: 'Enter / Space on its own "+" button, which has the focus (activateOnEnterOrSpace)',
+  },
+  {
     file: 'packages/affine/database/engine/src/widget-presets/tools/tools-view.ts',
     letters: [],
     why: 'inside a database view, cell or menu that has the focus; no bare letter',
@@ -495,6 +500,11 @@ const RAW_KEYDOWN_LISTENERS: readonly {
     file: 'packages/affine/widgets/edgeless-toolbar/src/catalogue/artefact-catalogue-widget.ts',
     letters: [],
     why: 'Escape while the catalogue is open',
+  },
+  {
+    file: 'packages/affine/widgets/edgeless-toolbar/src/edgeless-toolbar.ts',
+    letters: [],
+    why: 'ADR 0054: a capture on document only forgets the last keyboard press (takes no key, prevents nothing); _onMenuKeydown takes Escape, Tab, the arrows, Home / End, Enter / Space, never with a modifier, and only with the focus in a menu the row opened; a row button returns early, so letters reach the canvas',
   },
   {
     file: 'packages/affine/widgets/edgeless-toolbar/src/draggable/draggable-element.controller.ts',

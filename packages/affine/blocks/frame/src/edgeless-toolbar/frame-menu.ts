@@ -51,6 +51,10 @@ export class EdgelessFrameMenu extends EdgelessToolbarToolMixin(LitElement) {
       transition: background-color 0.23s ease;
       pointer-events: none;
     }
+    .frame-add-button:focus-visible {
+      outline: 2px solid var(--affine-primary-color);
+      outline-offset: -2px;
+    }
     .frame-add-button:hover::before {
       background: var(--affine-hover-color);
     }
@@ -93,6 +97,7 @@ export class EdgelessFrameMenu extends EdgelessToolbarToolMixin(LitElement) {
                   frameManager.createFrameOnViewportCenter(item.wh);
                 }}
                 class="frame-add-button ${index}"
+                role="button"
                 data-name="${item.name}"
                 data-w="${item.wh[0]}"
                 data-h="${item.wh[1]}"

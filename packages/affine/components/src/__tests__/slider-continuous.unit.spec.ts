@@ -9,8 +9,8 @@
  * - arrow keys, Page Up/Down, Home and End that do nothing, overshoot the
  *   range or leak to the editor (which would move the selected element);
  * - a `select` re-emitted for the value already shown;
- * - the discrete mode changed on the way: its points, its cursor index and
- *   the absence of an ARIA slider role.
+ * - the discrete mode changed on the way: its points and its cursor index;
+ *   since #679's acceptance it is an ARIA slider too, stepping point to point.
  */
 import { beforeAll, describe, expect, test } from 'vitest';
 
@@ -139,20 +139,50 @@ describe('affine-slider, continuous', () => {
   });
 });
 
-describe('affine-slider, discrete (unchanged)', () => {
+/**
+ * The discrete slider (the line widths of the pen and connector menus) took
+ * no focus and no key, so the toolbar's menus could not reach their widths
+ * from the keyboard (#679 acceptance): it is an ARIA slider now, stepping
+ * point to point.
+ */
+describe('affine-slider, discrete', () => {
   test('draws its points and puts the cursor on the selected index', async () => {
     const { element } = await mount({ points: [2, 4, 6, 8] }, 6);
     const track = container(element);
     expect(track.querySelectorAll('.point-button')).toHaveLength(4);
-    expect(track.getAttribute('role')).toBeNull();
     expect(element.style.getPropertyValue('--count')).toBe('4');
     expect(element.style.getPropertyValue('--cursor')).toBe('2');
   });
 
-  test('ignores the continuous keys', async () => {
-    const { element, selected } = await mount({ points: [2, 4] }, 2);
-    const event = press(element, 'ArrowRight');
-    expect(event.defaultPrevented).toBe(false);
+  test('is an ARIA slider named by its tooltip, one Tab stop', async () => {
+    const { element } = await mount({ points: [2, 4, 6, 8] }, 6);
+    const track = container(element);
+    expect(track.getAttribute('role')).toBe('slider');
+    expect(track.getAttribute('aria-label')).toBe('Zoom');
+    expect(track.getAttribute('aria-valuenow')).toBe('6');
+    expect(track.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('the arrows step point to point, Home and End to the ends, and stop', async () => {
+    const { element, selected } = await mount({ points: [2, 4, 6, 8] }, 4);
+    const right = press(element, 'ArrowRight');
+    expect(right.defaultPrevented).toBe(true);
+    press(element, 'ArrowLeft');
+    press(element, 'End');
+    press(element, 'Home');
+    expect(selected).toEqual([6, 2, 8, 2]);
+  });
+
+  test('its label names it, before its tooltip', async () => {
+    const { element } = await mount({ points: [0, 4, 8] }, 4);
+    element.label = 'Corner Radius';
+    await element.updateComplete;
+    expect(container(element).getAttribute('aria-label')).toBe('Corner Radius');
+  });
+
+  test('nothing is emitted past an end', async () => {
+    const { element, selected } = await mount({ points: [2, 4] }, 4);
+    press(element, 'ArrowRight');
     expect(selected).toEqual([]);
   });
 });

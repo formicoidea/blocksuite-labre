@@ -48,8 +48,17 @@ export class ViewManagerBase implements ViewManager {
     return this.dataSource.viewDataList$.value.map(data => data.id);
   });
 
+  /**
+   * The view picked last, while it exists; else the first view; `undefined`
+   * only when there is none. A picked id is not cleared when its view goes
+   * from elsewhere (a peer, an undo, a host's later `remove()`), so it is
+   * checked here: a stale id drew nothing at all, as if the block had no
+   * view (ADR 0035 amendment of 2026-11-20).
+   */
   currentViewId$ = computed(() => {
-    return this._currentViewId$.value ?? this.views$.value[0];
+    const views = this.views$.value;
+    const picked = this._currentViewId$.value;
+    return picked !== undefined && views.includes(picked) ? picked : views[0];
   });
 
   currentView$ = computed(() => {

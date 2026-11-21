@@ -34,8 +34,8 @@ export const styles = css`
     outline: none;
   }
 
-  .slider-container[data-continuous]:focus-visible {
-    outline: 1px solid ${unsafeCSSVarV2('button/primary')};
+  .slider-container:focus-visible {
+    outline: 2px solid ${unsafeCSSVarV2('button/primary')};
     outline-offset: 2px;
     border-radius: 4px;
   }

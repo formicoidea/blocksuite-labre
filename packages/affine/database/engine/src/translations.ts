@@ -112,6 +112,25 @@ export const VIEWS_BAR_ADD_VIEW: ChromeWording = [
   'New view',
 ];
 
+/*
+ * A database whose every view was deleted (ADR 0035 amendment of
+ * 2026-11-20): its empty state, in place of the view. Its button says
+ * "+"'s words (`VIEWS_BAR_ADD_VIEW`): it is the same gesture.
+ */
+export const DATA_VIEW_NO_VIEW: ChromeWording = [
+  'com.labre.data-view.no-view',
+  'No view',
+];
+
+/**
+ * Under it, where a view can be added. Says nothing about the rows: a host
+ * may have trashed them with the last view (labre's "everything" choice).
+ */
+export const DATA_VIEW_NO_VIEW_HINT: ChromeWording = [
+  'com.labre.data-view.no-view.hint',
+  "Add a view to show this database's rows.",
+];
+
 /** A tab's menu: the name field. */
 export const VIEWS_BAR_VIEW_NAME: ChromeWording = [
   'com.labre.data-view.views-bar.view-name',
@@ -1033,6 +1052,8 @@ export const DATA_VIEW_WORDINGS: readonly ChromeWording[] = [
   TAG_COLOR_TEAL,
   VIEWS_BAR_MORE,
   VIEWS_BAR_ADD_VIEW,
+  DATA_VIEW_NO_VIEW,
+  DATA_VIEW_NO_VIEW_HINT,
   VIEWS_BAR_VIEW_NAME,
   VIEWS_BAR_EDIT_VIEW,
   VIEWS_BAR_MOVE_LEFT,
