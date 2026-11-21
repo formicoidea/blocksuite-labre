@@ -32,10 +32,19 @@ import {
 import { TelemetryExtension } from '@labre/affine/shared/services';
 import { SurfaceSelection } from '@labre/std';
 import { userEvent } from '@vitest/browser/context';
-import { describe, expect, test, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 
 import { addNote, getDocRootBlock } from '../utils/edgeless.js';
+import { snapshotPageState } from '../utils/page-state.js';
 import { setupEditor } from '../utils/setup.js';
+
+// The commands these tests run write the usage store, and the Templates panel
+// its remembered category: the shared page gets them back as it was.
+let restorePage: () => void = () => {};
+beforeAll(() => {
+  restorePage = snapshotPageState();
+});
+afterAll(() => restorePage());
 
 type Service = EdgelessRootBlockComponent['service'];
 type Tracked = { name: string; props: Record<string, unknown> };

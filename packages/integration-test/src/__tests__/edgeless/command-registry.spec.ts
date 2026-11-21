@@ -123,10 +123,31 @@ describe('command registry on the canvas', () => {
   });
 
   test('a keyless command is still invocable — the point of the registry', async () => {
-    const command = menuCommands('ddd-context-map').find(
-      c => c.id === 'ddd-context-map.addBoundedContext'
-    )!;
-    expect(command.defaultKeys).toEqual({ mac: [], other: [] });
+    // Picked off the registry rather than named: ADR 0055 gave chords to the
+    // placed artefacts, and `ddd-context-map.addBoundedContext`, the example
+    // here until then, became `d b`. Any framework artefact keyless by
+    // decision (a background variant, a rare entry) makes the point.
+    const owners = [
+      'wardley',
+      'bpmn',
+      'uml',
+      'edgy',
+      'ddd-core-domain',
+    ] as const;
+    const command = owners
+      .flatMap(owner => getCommandsForSurface(edgeless.std, owner, 'catalogue'))
+      .find(
+        c =>
+          c.kind === 'artefact' &&
+          c.defaultKeys.mac.length === 0 &&
+          c.defaultKeys.other.length === 0
+      );
+    if (!command) {
+      throw new Error(
+        'no keyless framework artefact is left to prove a keyless command runs'
+      );
+    }
+    const before = edgeless.gfx.gfxElements.length;
 
     runCommand(edgeless.std, command, {
       surface: 'palette',
@@ -134,8 +155,6 @@ describe('command registry on the canvas', () => {
     });
     await wait();
 
-    expect(
-      edgeless.surface.model.elementModels.some(m => m.type === 'shape')
-    ).toBe(true);
+    expect(edgeless.gfx.gfxElements.length, command.id).toBeGreaterThan(before);
   });
 });
