@@ -3,7 +3,8 @@
  * amendment of 2026-11-21): a ring of the canvas toolbar and its menus is an
  * `outline` on the focused control or on an element of its shadow tree
  * (`:focus-visible` rules), or — on a tool button, whose artwork an outline
- * paints under — the bordered `::after` of its `.icon-container`. A chosen
+ * paints under — the bordered `::after` of its `.icon-container`, or for a
+ * senior tool drawn as one button the `.cell-ring` of its cell. A chosen
  * colour swatch draws its selection ring as a bordered `::after`. Boxes are
  * in client pixels.
  */
@@ -28,25 +29,50 @@ export interface Ring {
   width: number;
 }
 
-/** A tool button's ring: its icon box's bordered, positioned `::after`. */
+/** A tool button's ring: the bordered, positioned `::after` of its icon box. */
 function pseudoRing(element: Element): Ring | null {
   if (!element.classList.contains('icon-container')) return null;
   const style = getComputedStyle(element, '::after');
   const width = parseFloat(style.borderTopWidth);
-  if (style.content === 'none' || style.position !== 'absolute') return null;
+  if (style.content === 'none' || style.display === 'none') return null;
+  if (style.position !== 'absolute') return null;
   if (style.borderTopStyle === 'none' || !(width > 0)) return null;
+  const outer = afterBox(element, style);
+  return { element, pseudo: true, outer, inner: grow(outer, -width), width };
+}
+
+/** The border box of `element`'s positioned `::after`, whose computed `style` is given. */
+function afterBox(element: Element, style: CSSStyleDeclaration): Box {
   const box = element.getBoundingClientRect();
   const left = box.left + parseFloat(style.left);
   const top = box.top + parseFloat(style.top);
   // The computed width is the content box's unless the box says otherwise.
-  const edges = style.boxSizing === 'border-box' ? 0 : 2 * width;
-  const outer = {
+  const edges =
+    style.boxSizing === 'border-box' ? 0 : 2 * parseFloat(style.borderTopWidth);
+  return {
     left,
     top,
     right: left + parseFloat(style.width) + edges,
     bottom: top + parseFloat(style.height) + edges,
   };
-  return { element, pseudo: true, outer, inner: grow(outer, -width), width };
+}
+
+/** A focus ring drawn as the outline of `element`'s positioned `::after` (a colour swatch's). */
+function afterOutline(element: Element): Ring | null {
+  const style = getComputedStyle(element, '::after');
+  const width = parseFloat(style.outlineWidth);
+  if (style.content === 'none' || style.display === 'none') return null;
+  if (style.position !== 'absolute') return null;
+  if (style.outlineStyle === 'none' || !(width > 0)) return null;
+  const offset = parseFloat(style.outlineOffset);
+  const box = afterBox(element, style);
+  return {
+    element,
+    pseudo: true,
+    outer: grow(box, width + offset),
+    inner: grow(box, offset),
+    width,
+  };
 }
 
 const grow = (box: Box, by: number): Box => ({
@@ -77,7 +103,7 @@ export function focusRing(control: Element): Ring | null {
     ? Array.from(control.shadowRoot.querySelectorAll('*'))
     : [];
   for (const element of [control, ...inside]) {
-    const pseudo = pseudoRing(element);
+    const pseudo = pseudoRing(element) ?? afterOutline(element);
     if (pseudo) return pseudo;
     const style = getComputedStyle(element);
     const width = parseFloat(style.outlineWidth);
@@ -92,26 +118,59 @@ export function focusRing(control: Element): Ring | null {
       width,
     };
   }
+  // A senior tool drawn as one button: the ring is its cell's `.cell-ring`.
+  const cell = seniorCellOf(control);
+  const drawn = cell?.querySelector(':scope > .cell-ring');
+  if (!drawn) return null;
+  const style = getComputedStyle(drawn);
+  const width = parseFloat(style.borderTopWidth);
+  if (style.display === 'none' || !(width > 0)) return null;
+  const outer = drawn.getBoundingClientRect();
+  return {
+    element: drawn,
+    pseudo: false,
+    outer,
+    inner: grow(outer, -width),
+    width,
+  };
+}
+
+/** The toolbar's senior cell that holds `control`, if any. */
+export function seniorCellOf(control: Element): Element | null {
+  for (let node = flatParent(control); node; node = flatParent(node)) {
+    if (node instanceof Element && node.classList.contains('senior-tool-item'))
+      return node;
+  }
   return null;
 }
 
+/** Whether a computed colour paints nothing (`rgba(…, 0)`, `transparent`). */
+const invisible = (colour: string) =>
+  colour === 'transparent' || /rgba\(.*,\s*0\)$/.test(colour);
+
 /**
- * The selection ring a chosen swatch draws (`:host([active])::after`, a
- * bordered circle positioned on the swatch), or `null`.
+ * The selection ring a chosen swatch draws (the border of its positioned
+ * `::after`, transparent when not chosen), or `null`.
  */
 export function selectionRing(control: Element): Box | null {
   const style = getComputedStyle(control, '::after');
   if (style.content === 'none' || style.position !== 'absolute') return null;
   if (!(parseFloat(style.borderTopWidth) > 0)) return null;
-  const box = control.getBoundingClientRect();
-  const left = box.left + parseFloat(style.left);
-  const top = box.top + parseFloat(style.top);
-  return {
-    left,
-    top,
-    right: left + parseFloat(style.width),
-    bottom: top + parseFloat(style.height),
-  };
+  if (invisible(style.borderTopColor)) return null;
+  return afterBox(control, style);
+}
+
+/**
+ * Whether a ring is a positioned box stacked above the artwork of what it
+ * marks (`z-index` ≥ 1). A proxy for paint order, read from computed style:
+ * the real check would sample the ring's pixels in a screenshot over the
+ * artwork. An `outline` fails it: it paints under positioned children.
+ */
+export function ringPaintsAbove(ring: Ring): boolean {
+  const style = ring.pseudo
+    ? getComputedStyle(ring.element, '::after')
+    : getComputedStyle(ring.element);
+  return style.position === 'absolute' && Number(style.zIndex) >= 1;
 }
 
 /** Whether a space-separated CSS value names one of `tokens`. */

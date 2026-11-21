@@ -83,6 +83,8 @@ const QUICK_TOOL_MORE_SIZE = 20;
 const SENIOR_TOOLS_GAP = 0;
 const SENIOR_TOOL_WIDTH = 96;
 const SENIOR_TOOL_NAV_SIZE = 20;
+/** How far a senior tool's ring sits inside its cell: clear of the bar's 1px border. */
+const CELL_RING_INSET = 2;
 const DIVIDER_WIDTH = 8;
 const DIVIDER_SPACE = 8;
 /** How many frames a menu opened from the keyboard gets to draw its controls. */
@@ -242,6 +244,35 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
          2026-11-21). Read by toolButtonFocusRing. */
       --edgeless-toolbar-focus-ring-inset: 2px;
     }
+    /* A senior tool drawn as one button: the ring is the cell's, 2px inside
+       the bar, whatever box the tool gives its button — Text and Add file
+       draw their artwork past theirs (ADR 0054, amendment of 2026-11-21).
+       The button draws none; the cell's .cell-ring draws it above the
+       artwork. A cell of two buttons (pen, eraser) keeps one ring per
+       button.
+       The ring is a sibling of the tool, never a positioned ancestor of it:
+       a tool's menu is an absolute box in the tool's shadow tree, sized and
+       placed by the nearest positioned ancestor — the bar — and a
+       positioned cell would shrink every menu to the cell. Unpositioned,
+       the ring's static position is the cell's centre (the cell centres its
+       content), and its fixed size is the cell less 2px a side. */
+    .senior-tool-item[data-cell-ring] {
+      --edgeless-toolbar-focus-ring-display: none;
+    }
+    .cell-ring {
+      display: none;
+      position: absolute;
+      box-sizing: border-box;
+      width: ${unsafeCSS(SENIOR_TOOL_WIDTH - 2 * CELL_RING_INSET)}px;
+      height: ${unsafeCSS(TOOLBAR_HEIGHT - 2 * CELL_RING_INSET)}px;
+      border: 2px solid var(--affine-primary-color);
+      border-radius: 8px;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .senior-tool-item[data-cell-ring][data-keyboard-focus] > .cell-ring {
+      display: block;
+    }
     .senior-nav-button-wrapper {
       flex-shrink: 0;
       width: 0px;
@@ -351,7 +382,24 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
     initialValue: this,
   });
 
-  activePopper: MenuPopper<HTMLElement> | null = null;
+  private _activePopper: MenuPopper<HTMLElement> | null = null;
+
+  /**
+   * The menu a row button popped. Every close path sets it back to `null`
+   * (the popper's `onClose`, the canvas's Escape, the row's own): that is
+   * where the row forgets what it opened (`_opened`). The popper leaves
+   * through a transition, still in its button's shadow tree, and an Escape
+   * typed meanwhile read it as open and pressed the button again — the menu
+   * back (review of #691).
+   */
+  get activePopper(): MenuPopper<HTMLElement> | null {
+    return this._activePopper;
+  }
+
+  set activePopper(popper: MenuPopper<HTMLElement> | null) {
+    if (!popper && this._activePopper) this._opened = null;
+    this._activePopper = popper;
+  }
 
   /**
    * Which toolbar button the keyboard points at, `-1` for none. Walked with
@@ -403,15 +451,16 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
    * the toolbar like a click: the row's Tab stop moves to it.
    */
   activateHighlight(): boolean {
-    const index = this.keyboardHighlight;
-    if (index < 0) return false;
+    if (this.keyboardHighlight < 0) return false;
     const item =
       this.shadowRoot?.querySelector<HTMLElement>(
         '[data-keyboard-highlight]'
       ) ?? null;
     this.keyboardHighlight = -1;
     if (!item) return false;
-    const used = this._rowStops.find(({ at }) => at === index);
+    // By the item, not the index: the highlight counts the quick tools
+    // without "More tools", the row's places count it (review of #691).
+    const used = this._rowStops.find(entry => entry.item === item);
     if (used) this._useStop(used.button);
     return this._pressLikePointer(item);
   }
@@ -483,7 +532,8 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
    *
    * A click on a row button is a use of the toolbar: the row's Tab stop
    * moves to that button, which is still not focused (ADR 0054, amendment of
-   * 2026-11-21). A pager arrow is never a stop and moves nothing.
+   * 2026-11-21). A pager arrow is never a stop and moves nothing; nor does a
+   * press of another mouse button than the primary (a right-click is no use).
    */
   private readonly _onContainerMouseDown = (event: MouseEvent) => {
     stopPropagation(event);
@@ -500,7 +550,7 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
     if (!button && !onPager) return;
     event.preventDefault();
     this._focusCanvas();
-    if (button) this._useStop(button);
+    if (button && event.button === 0) this._useStop(button);
   };
 
   // calculate all the width manually
@@ -820,6 +870,7 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
                 this.keyboardHighlight}
               >
                 ${tool.content}
+                <div class="cell-ring"></div>
               </div>`
           )}
       </div>
@@ -861,6 +912,7 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
         // A pointer press ends the keyboard's session in the row; the
         // toolbar's own press (`_pressLikePointer`) is the keyboard's.
         if (this._pressing) return;
+        this._inputs++;
         this._kept = null;
         this._setKeyboardOwner(null);
       },
@@ -876,6 +928,7 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
       'keydown',
       (event: KeyboardEvent) => {
         if (event.repeat) return;
+        this._inputs++;
         this._kept = null;
         this._pressKey = null;
       },
@@ -1083,6 +1136,7 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
         senior,
         alone: buttons[index].length === 1,
         key: `${tool}#${nth}`,
+        item,
       }));
     });
   }
@@ -1107,6 +1161,17 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
         button.label = this._seniorToolLabel(seniors[senior]);
       }
     });
+    // A senior tool drawn as one button has its ring drawn by its cell (the
+    // styles' `[data-cell-ring]`). Read each sync: a page turn deals other
+    // tools into the same cells.
+    const cells = new Set(
+      entries
+        .filter(({ senior, alone }) => senior !== null && alone)
+        .map(({ item }) => item)
+    );
+    this.shadowRoot
+      ?.querySelectorAll<HTMLElement>('.senior-tool-item')
+      .forEach(item => item.toggleAttribute('data-cell-ring', cells.has(item)));
     this._rowStops = entries;
     const focused = deepActiveElement();
     this._setTabStop(entries.find(({ button }) => button === focused)?.button);
@@ -1117,9 +1182,12 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
    * The row button the user last used — the last the keyboard focused, the
    * last clicked, the last pressed through the Alt+←/→ highlight — by its
    * `key`, which outlives a page turn or a resize; `null` until the row is
-   * used once. The row's Tab stop (ADR 0054, amendment of 2026-11-21, the
-   * APG toolbar's "focus returns to the control that last had it"). View
-   * state of this mounted toolbar: nothing stores it.
+   * used once. The row's Tab stop (ADR 0054, amendment of 2026-11-21). The
+   * APG toolbar returns focus to the control that last had the focus;
+   * counting a click and a highlight press too is this library's extension,
+   * by the product owner's decision — a clicked one-shot button (Undo, Add
+   * file) becomes the stop. View state of this mounted toolbar: nothing
+   * stores it.
    */
   private _usedStop: { key: string; senior: string | null } | null = null;
 
@@ -1213,11 +1281,19 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
       ? this._seniorTools.findIndex(({ name }) => name === used.senior)
       : -1;
     if (used && pagedOut >= 0 && !this._usedEntry()) {
-      this._focusPagedOut(pagedOut, used.key).catch(console.error);
+      this._focusPagedOut(pagedOut, used.key, this._inputs).catch(
+        console.error
+      );
       return true;
     }
     return this._focusDrawnStop();
   }
+
+  /**
+   * Counts the keys and pointer presses (`connectedCallback`): a focus the
+   * row gives after an await is given only if nothing came in between.
+   */
+  private _inputs = 0;
 
   /**
    * Focus the row's stop on the page on show, turning no page: the keyboard
@@ -1234,14 +1310,21 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
     return true;
   }
 
-  /** Turn the senior row to the page that holds `senior`, then focus `key`. */
-  private async _focusPagedOut(senior: number, key: string) {
+  /**
+   * Turn the senior row to the page that holds `senior`, then focus `key` —
+   * unless a key or a pointer press came meanwhile, or the focus left the
+   * canvas where the Tab found it (review of #691): their move stands.
+   */
+  private async _focusPagedOut(senior: number, key: string, inputs: number) {
     this.scrollSeniorToolIndex = seniorScrollToShow(senior, {
       scroll: this.scrollSeniorToolIndex,
       size: this.scrollSeniorToolSize,
     });
     await this.updateComplete;
     this._rowStops = await this._syncRow();
+    if (this._inputs !== inputs || deepActiveElement() !== this.std.host) {
+      return;
+    }
     const stops = this._rowStops;
     const stop =
       stops.find(entry => entry.key === key)?.button ??
@@ -1579,9 +1662,33 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
     // The button the keyboard stands on is the one used last: Tab comes back
     // to it from the canvas.
     this._useStop(here);
+    // Its senior cell draws the ring when the tool is one button (the
+    // styles' `[data-cell-ring][data-keyboard-focus]`).
+    this._markFocusedCell(
+      event
+        .composedPath()
+        .find(
+          (node): node is HTMLElement =>
+            node instanceof HTMLElement &&
+            node.classList.contains('senior-tool-item')
+        ) ?? null
+    );
   };
 
+  /** The senior cell that holds the focused row button, if any. */
+  private _focusedCell: HTMLElement | null = null;
+
+  private _markFocusedCell(cell: HTMLElement | null) {
+    if (this._focusedCell === cell) return;
+    this._focusedCell?.removeAttribute('data-keyboard-focus');
+    this._focusedCell = cell;
+    cell?.setAttribute('data-keyboard-focus', '');
+  }
+
   private readonly _onRowFocusOut = (event: FocusEvent) => {
+    // The button loses the focus: its cell's ring goes with it (a focus
+    // landing on another row button marks that one's cell).
+    this._markFocusedCell(null);
     const next = event.relatedTarget;
     if (next instanceof Node && this.toolbarContainer?.contains(next)) return;
     // Out of the row: its stop stays on the button used last.
@@ -1720,11 +1827,8 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
       const pickedUp = !!drag?.states.draggingElement;
       if (pickedUp) drag.cancel();
       popper.dispose();
+      // Forgets what the row opened too (`activePopper`'s setter).
       this.activePopper = null;
-      // Closed: the popper leaves through a transition, still in its button's
-      // shadow tree, and an Escape typed meanwhile read it as open and
-      // pressed the button again — the menu back (acceptance of #691).
-      this._opened = null;
       if (pickedUp) this.gfx.tool.setTool(DefaultTool);
       if (owner?.isConnected) {
         this._kept = owner;
@@ -1860,6 +1964,8 @@ interface ToolbarRowEntry {
    * anew: its tool (a senior tool by name), then its place in its item.
    */
   key: string;
+  /** The row's item that draws it (a `.senior-tool-item` for a senior tool). */
+  item: HTMLElement;
 }
 
 /**

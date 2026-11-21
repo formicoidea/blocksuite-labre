@@ -23,6 +23,10 @@ export class EdgelessSlideMenu extends WithDisposable(LitElement) {
   static override styles = css`
     :host {
       max-width: 100%;
+      /* A menu opens inside its senior tool's cell and would inherit the
+         cell's ring settings: its own buttons draw their ring on their box. */
+      --edgeless-toolbar-focus-ring-inset: 0px;
+      --edgeless-toolbar-focus-ring-display: block;
     }
     ::-webkit-scrollbar {
       display: none;
@@ -52,8 +56,9 @@ export class EdgelessSlideMenu extends WithDisposable(LitElement) {
        swatch's, RING_ROOM): the strip keeps that much room inside its
        clipping edges, and scrolls a focused control in with it (ADR 0054,
        amendment of 2026-11-21), clear of the slide arrows (ARROW_REACH,
-       the scroll padding). The content sits where it did, 10px from the
-       edges. */
+       the scroll padding). With no prefix the content sits where it did,
+       10px from the edges; after a prefix (the pen menu's pens) the strip's
+       content starts 5px further right and the menu is 5px wider. */
     .menu-container-scrollable {
       overflow-x: auto;
       overscroll-behavior: none;
@@ -141,6 +146,10 @@ export class EdgelessSlideMenu extends WithDisposable(LitElement) {
   private readonly _onFocusIn = (event: FocusEvent) => {
     const control = event.composedPath()[0];
     if (!(control instanceof Element)) return;
+    // The keyboard's focus only: a mouse press that focuses a half-shown
+    // swatch would slide the strip between its mousedown and its mouseup,
+    // and the click would land on another control.
+    if (!control.matches(':focus-visible')) return;
     const strip = this._menuContainer;
     const box = control.getBoundingClientRect();
     const view = strip.getBoundingClientRect();

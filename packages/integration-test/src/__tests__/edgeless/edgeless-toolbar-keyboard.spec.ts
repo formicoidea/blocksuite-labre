@@ -37,7 +37,9 @@ import {
   focusRing,
   inside,
   ringClippedBy,
+  ringPaintsAbove,
   selectionRing,
+  seniorCellOf,
 } from '../utils/focus-ring.js';
 import { pointerMoveTo } from '../utils/pointer.js';
 import { setupEditor } from '../utils/setup.js';
@@ -1002,6 +1004,92 @@ describe('edgeless toolbar keyboard model', () => {
     return reached;
   };
 
+  /** The swatches, the chosen ones and the tool buttons the ring checks saw. */
+  const ringTally = { swatches: 0, chosen: 0, tools: 0 };
+
+  /**
+   * What is wrong with the ring `control` draws in a menu, if anything (ADR
+   * 0054, amendment of 2026-11-21): clipped by an ancestor; on a tool button,
+   * not on its own box (a menu opened from a senior tool inherited the cell's
+   * inset, its rings 2px inside, over the icon — review of #691) or not
+   * stacked above it; on a swatch, not centred on the disc, or — chosen —
+   * not concentric with its selection ring on whole pixels with an even gap
+   * of at least 1px.
+   */
+  const menuRingFaults = (name: string, control: Element): string[] => {
+    const label = `${name} › ${describeControl(control)}`;
+    const ring = focusRing(control);
+    if (!ring) return [`${label}: no ring`];
+    const faults: string[] = [];
+    const clipped = ringClippedBy(ring);
+    if (clipped.length > 0) {
+      faults.push(
+        `${label}: ring ${describeBox(ring.outer)} clipped by ${clipped.join(', ')}`
+      );
+    }
+    const near = (a: number, b: number) => Math.abs(a - b) <= 0.5;
+    const whole = (value: number) => Math.abs(value - Math.round(value)) < 0.01;
+    if (control.localName === 'edgeless-tool-icon-button') {
+      ringTally.tools++;
+      const box = control.shadowRoot!.querySelector('.icon-container')!;
+      const own = box.getBoundingClientRect();
+      const same = (['left', 'top', 'right', 'bottom'] as const).every(
+        side => Math.abs(ring.outer[side] - own[side]) < 0.01
+      );
+      if (!same) {
+        faults.push(
+          `${label}: ring ${describeBox(ring.outer)}, not its box ${describeBox(own)}`
+        );
+      }
+      if (!ringPaintsAbove(ring)) {
+        faults.push(`${label}: ring not stacked above the button's icon`);
+      }
+    }
+    const swatch = control.shadowRoot?.querySelector('.color-unit');
+    if (!swatch) return faults;
+    ringTally.swatches++;
+    const at = centre(ring.outer);
+    const disc = centre(swatch.getBoundingClientRect());
+    if (!near(at.x, disc.x) || !near(at.y, disc.y)) {
+      faults.push(
+        `${label}: ring centred at ${at.x},${at.y}, the swatch at ${disc.x},${disc.y}`
+      );
+    }
+    const selection = selectionRing(control);
+    if (!selection) return faults;
+    ringTally.chosen++;
+    const mid = centre(selection);
+    if (!near(at.x, mid.x) || !near(at.y, mid.y)) {
+      faults.push(
+        `${label}: focus ring centred at ${at.x},${at.y}, selection ring at ${mid.x},${mid.y}`
+      );
+    }
+    const host = control.getBoundingClientRect();
+    const offsets = [
+      selection.left - host.left,
+      selection.top - host.top,
+      ring.inner.left - host.left,
+      ring.inner.top - host.top,
+    ];
+    if (!offsets.every(whole)) {
+      faults.push(
+        `${label}: rings off whole pixels, offsets ${offsets.join(', ')}`
+      );
+    }
+    const gaps = [
+      selection.left - ring.inner.left,
+      selection.top - ring.inner.top,
+      ring.inner.right - selection.right,
+      ring.inner.bottom - selection.bottom,
+    ];
+    if (gaps.some(gap => gap < 1 || !near(gap, gaps[0]))) {
+      faults.push(
+        `${label}: gaps between the rings ${gaps.join(', ')} (selection ${describeBox(selection)}, focus inner ${describeBox(ring.inner)})`
+      );
+    }
+    return faults;
+  };
+
   /**
    * #679 acceptance (the product owner): in the frameworks' sub-menu the
    * focus never reached the tools, and in the shapes menu only the colours.
@@ -1010,6 +1098,14 @@ describe('edgeless toolbar keyboard model', () => {
    * (between groups) reach every control it draws; Tab past the last group
    * closes it and gives the button the focus back, as Escape does. The same
    * menu opened with the mouse moves no focus.
+   *
+   * And the ring the keyboard draws on each control it stands on
+   * (`menuRingFaults`; acceptance of #691, remark 1: in the Shape menu the
+   * ring round the chosen swatch sat down and to the left of its selection
+   * ring — a 27px ring on a 24px swatch, on half pixels the browser snaps to
+   * one side, 0.5px from the focus ring). One walk for both. The slide
+   * arrows reach no further into the strip than its scroll padding, the
+   * room a control scrolled in keeps (a proxy: their box, not their paint).
    */
   test(
     'every menu a button opens: the keyboard enters it, reaches every control and leaves',
@@ -1018,6 +1114,9 @@ describe('edgeless toolbar keyboard model', () => {
       const buttons = await everyButton();
       const opening: string[] = [];
       const failures: string[] = [];
+      ringTally.swatches = 0;
+      ringTally.chosen = 0;
+      ringTally.tools = 0;
       for (const [name, scroll] of buttons) {
         await reset();
         const button = await buttonNamed(name, scroll);
@@ -1029,8 +1128,38 @@ describe('edgeless toolbar keyboard model', () => {
           failures.push(`${name}: the keyboard did not go in (${where()})`);
           continue;
         }
+        const arrows = [opened, opened.shadowRoot]
+          .flatMap(root =>
+            root
+              ? deepQueryAll(root, '.next-slide-button, .previous-slide-button')
+              : []
+          )
+          .filter(arrow => arrow.getClientRects().length > 0);
+        // Measured once the menu is up: it rises through a transition, and a
+        // ring measured on the way sits a fraction of a pixel low.
+        await until(() => opened.getAnimations().length === 0, 'menu up');
+        arrows.forEach(arrow => {
+          const strip = (arrow.getRootNode() as ShadowRoot).querySelector(
+            '.menu-container-scrollable'
+          )!;
+          const view = strip.getBoundingClientRect();
+          const box = arrow.getBoundingClientRect();
+          const next = arrow.classList.contains('next-slide-button');
+          const reach = next ? view.right - box.left : box.right - view.left;
+          const style = getComputedStyle(strip);
+          const room = parseFloat(
+            next ? style.scrollPaddingInlineEnd : style.scrollPaddingInlineStart
+          );
+          if (reach > room + 0.01) {
+            failures.push(
+              `${name}: a slide arrow reaches ${reach}px into the strip, which keeps ${room}px`
+            );
+          }
+        });
         const drawn = drawnControls(opened);
-        const reached = await walkMenu(opened);
+        const reached = await walkMenu(opened, control =>
+          failures.push(...menuRingFaults(name, control))
+        );
         const missing = drawn.filter(control => !reached.has(control));
         if (missing.length > 0) {
           failures.push(
@@ -1076,6 +1205,9 @@ describe('edgeless toolbar keyboard model', () => {
       await reset();
       console.info(`[679] menus: ${opening.join(', ')}`);
       expect(opening.length).toBeGreaterThan(10);
+      expect(ringTally.swatches).toBeGreaterThan(10);
+      expect(ringTally.chosen).toBeGreaterThan(2);
+      expect(ringTally.tools).toBeGreaterThan(20);
       expect(failures).toEqual([]);
     }
   );
@@ -1852,6 +1984,39 @@ describe('edgeless toolbar keyboard model', () => {
           `${name}: ring ${describeBox(ring.outer)} clipped by ${clipped.join(', ')}`
         );
       }
+      // A tool's ring is stacked above its artwork (an outline painted under
+      // it: the note's paper, the file's card). `ringPaintsAbove` is a proxy
+      // for paint order; the real check samples the ring's pixels.
+      const tool = control.shadowRoot?.querySelector('.icon-container');
+      if (tool && !ringPaintsAbove(ring)) {
+        faults.push(`${name}: ring not stacked above the tool's artwork`);
+      }
+      // A senior tool drawn as one button: the ring is its cell's, 2px in,
+      // whatever box the tool gives its button (Text and Add file draw
+      // their artwork past theirs). Two buttons (pen, eraser): one each.
+      const cell = seniorCellOf(control);
+      const alone =
+        cell !== null &&
+        deepQueryAll(cell, '[role="button"]').filter(
+          button => (button as { onToolbarRow?: boolean }).onToolbarRow
+        ).length === 1;
+      if (cell && alone) {
+        const box = cell.getBoundingClientRect();
+        const expected = {
+          left: box.left + 2,
+          top: box.top + 2,
+          right: box.right - 2,
+          bottom: box.bottom - 2,
+        };
+        const same = (['left', 'top', 'right', 'bottom'] as const).every(
+          side => Math.abs(ring.outer[side] - expected[side]) < 0.01
+        );
+        if (!same) {
+          faults.push(
+            `${name}: ring ${describeBox(ring.outer)}, not its cell's ${describeBox(expected)}`
+          );
+        }
+      }
       return faults;
     };
 
@@ -1862,7 +2027,11 @@ describe('edgeless toolbar keyboard model', () => {
      * and its ring was drawn on its box. Every button the keyboard stands on
      * — the quick tools, each senior tool on every page of the pager, "More
      * tools" at a narrow width — and the pager arrows: the whole ring inside
-     * the bar, clear of its border, clipped by nothing.
+     * the bar, clear of its border, clipped by nothing. Then the coordinator's
+     * look at the screenshots: on Text and Add file the ring followed their
+     * small button box, across the lettering, round the blue card alone — a
+     * senior tool drawn as one button has its cell's ring, 2px inside the
+     * bar, like Note's.
      */
     test('the ring of every button of the bar lies inside the bar, clear of its border', async () => {
       const faults: string[] = [];
@@ -1909,9 +2078,10 @@ describe('edgeless toolbar keyboard model', () => {
         'the row has come to rest'
       );
       // From the first button across "More tools" and the first senior
-      // pages. ponytail: not the whole narrow row — at 380px → stalls on
-      // "Add file" on the base already (found here, reported with #691's
-      // follow-ups); walk it whole once that is fixed.
+      // pages. ponytail: five steps, not the whole narrow row — at 380px →
+      // stalls on "Add file" and goes no further, on the base too (ADR 0054,
+      // amendment of 2026-11-21, §3b). Upgrade: once → passes "Add file" at
+      // 380px, replace this loop with `walkRow(measure)`.
       await tabIntoToolbar();
       await press('{Home}');
       for (let step = 0; step < 5; step++) {
@@ -1927,99 +2097,56 @@ describe('edgeless toolbar keyboard model', () => {
     });
 
     /**
-     * Remark 1: in the Shape menu, the keyboard's ring around the chosen
-     * swatch sat down and to the left of its selection ring — two rings that
-     * were not concentric. The selection ring was 27px on a 24px swatch, so
-     * 1.5px out on each side: on half pixels, which the browser snaps to one
-     * side, half a pixel from where the focus ring is, which itself left
-     * only 0.5px between the two. Every control of every menu, reached by the
-     * keyboard: the ring is whole (clipped by nothing), centred on the swatch
-     * it surrounds, and on a chosen swatch concentric with its selection ring
-     * on whole pixels, with the same gap of at least 1px all round.
+     * Review of #691: the strip scrolled a control in on any focus, a mouse
+     * press's too — a press on a half-shown swatch slid the strip between its
+     * mousedown and its mouseup, and the click could land on another control.
+     * Only the keyboard's focus scrolls it: a real click on the last swatch
+     * of the Shape menu, cut by the strip, picks it and leaves the strip where
+     * it was at the press.
      */
-    test(
-      'in every menu, the ring is whole and centred; a chosen swatch has two concentric rings',
-      { timeout: 240_000 },
-      async () => {
-        const buttons = await everyButton();
-        const faults: string[] = [];
-        let swatches = 0;
-        let chosen = 0;
-        const near = (a: number, b: number) => Math.abs(a - b) <= 0.5;
-        const whole = (value: number) =>
-          Math.abs(value - Math.round(value)) < 0.01;
-        for (const [name, scroll] of buttons) {
-          if (OWN_MODEL.has(name)) continue;
-          await reset();
-          const opened = await openWithEnter(await buttonNamed(name, scroll));
-          if (!opened) continue;
-          if (!(await holds(() => within(deepActive(), opened)))) {
-            faults.push(`${name}: the keyboard did not go in (${where()})`);
-            continue;
-          }
-          await walkMenu(opened, control => {
-            const label = `${name} › ${describeControl(control)}`;
-            const ring = focusRing(control);
-            if (!ring) {
-              faults.push(`${label}: no ring`);
-              return;
-            }
-            const clipped = ringClippedBy(ring);
-            if (clipped.length > 0) {
-              faults.push(
-                `${label}: ring ${describeBox(ring.outer)} clipped by ${clipped.join(', ')}`
-              );
-            }
-            const swatch = control.shadowRoot?.querySelector('.color-unit');
-            if (!swatch) return;
-            swatches++;
-            const at = centre(ring.outer);
-            const disc = centre(swatch.getBoundingClientRect());
-            if (!near(at.x, disc.x) || !near(at.y, disc.y)) {
-              faults.push(
-                `${label}: ring centred at ${at.x},${at.y}, the swatch at ${disc.x},${disc.y}`
-              );
-            }
-            const selection = selectionRing(control);
-            if (!selection) return;
-            chosen++;
-            const mid = centre(selection);
-            if (!near(at.x, mid.x) || !near(at.y, mid.y)) {
-              faults.push(
-                `${label}: focus ring centred at ${at.x},${at.y}, selection ring at ${mid.x},${mid.y}`
-              );
-            }
-            const host = control.getBoundingClientRect();
-            const offsets = [
-              selection.left - host.left,
-              selection.top - host.top,
-              ring.inner.left - host.left,
-              ring.inner.top - host.top,
-            ];
-            if (!offsets.every(whole)) {
-              faults.push(
-                `${label}: rings off whole pixels, offsets ${offsets.join(', ')}`
-              );
-            }
-            const gaps = [
-              selection.left - ring.inner.left,
-              selection.top - ring.inner.top,
-              ring.inner.right - selection.right,
-              ring.inner.bottom - selection.bottom,
-            ];
-            if (gaps.some(gap => gap < 1 || !near(gap, gaps[0]))) {
-              faults.push(
-                `${label}: gaps between the rings ${gaps.join(', ')} (selection ${describeBox(selection)}, focus inner ${describeBox(ring.inner)})`
-              );
-            }
-          });
-        }
-        await reset();
-        expect(swatches).toBeGreaterThan(10);
-        expect(chosen).toBeGreaterThan(2);
-        expect(faults).toEqual([]);
-      }
-    );
+    test('a mouse press on a half-shown swatch does not slide the strip', async () => {
+      await reset();
+      const buttons = await everyButton();
+      await userEvent.click(await buttonNamed('Shape', buttons.get('Shape')!));
+      await frames(3);
+      const menu = toolbar().activePopper!.element;
+      lastMenu = menu;
+      await until(() => menu.getAnimations().length === 0, 'the menu is up');
+      const [strip] = deepQueryAll(
+        menu.shadowRoot!,
+        '.menu-container-scrollable'
+      ) as HTMLElement[];
+      await until(
+        () => strip.scrollWidth > strip.clientWidth,
+        'the strip cuts the swatches'
+      );
+      const swatches = deepQueryAll(menu.shadowRoot!, 'edgeless-color-button');
+      const last = swatches.at(-1)! as HTMLElement;
+      // The last swatch cut by the strip's right edge, 16px of it showing:
+      // the press lands on that part, clear of the slide arrow.
+      strip.scrollLeft = strip.scrollWidth;
+      await frames(3);
+      const shown = 16;
+      strip.scrollLeft -=
+        strip.getBoundingClientRect().right -
+        shown -
+        last.getBoundingClientRect().left;
+      await frames(3);
+      let atPress: number | null = null;
+      const record = () => {
+        atPress = strip.scrollLeft;
+      };
+      last.addEventListener('mousedown', record, { capture: true });
+      onTestFinished(() =>
+        last.removeEventListener('mousedown', record, { capture: true })
+      );
+      await userEvent.click(last, { position: { x: 3, y: 12 } });
+      await frames(3);
+      expect(atPress).not.toBeNull();
+      expect(strip.scrollLeft).toBe(atPress);
+      await until(() => last.hasAttribute('active'), 'the swatch is picked');
+      await reset();
+    });
   });
 
   /**
@@ -2027,9 +2154,11 @@ describe('edgeless toolbar keyboard model', () => {
    * again at the first button, the active tool's — and a placed shape or a
    * picked style gives the select tool back, so nearly always the first —
    * which made him cross the whole bar again. The Tab stop is the button
-   * used last in the row (the APG toolbar: focus returns to the control that
-   * last had it), for the life of the editor; until the row is used, the
-   * active tool's (ADR 0054, amendment of 2026-11-21). Sub-menus are
+   * used last in the row — focused, clicked or pressed through the
+   * highlight, wider than the APG toolbar's "the control that last had the
+   * focus", by the product owner's decision — for the life of the editor;
+   * until the row is used, the active tool's (ADR 0054, amendment of
+   * 2026-11-21). Sub-menus are
    * unchanged. At every step, exactly one button of the row is a Tab stop.
    */
   describe('the Tab stop is the button used last', () => {
@@ -2130,13 +2259,11 @@ describe('edgeless toolbar keyboard model', () => {
       // The options stay open on the preset (ADR 0054 §10): Escape closes
       // them onto the Frame button, Escape again gives the canvas the keys —
       // where the stop used to go back to the active tool, Select.
-      if (toolbar().activePopper) {
-        await press('{Escape}');
-        await until(() => focusedButton() === frame, 'back on Frame');
-      }
-      // The second Escape comes while the options are still sliding out: it
-      // closes nothing more (it used to press Frame again, the menu back).
-      await press('{Escape}');
+      // Both Escapes in one burst: the second comes while the options are
+      // still sliding out (230ms), whatever the runner's speed. It closes
+      // nothing more — it used to press Frame again, the menu back.
+      expect(toolbar().activePopper).not.toBeNull();
+      await press('{Escape}{Escape}');
       await until(() => canvasHasFocus(), 'the canvas has the keys');
       expect(toolbar().activePopper).toBeNull();
       expect(tool()).toBe('default');
@@ -2162,6 +2289,61 @@ describe('edgeless toolbar keyboard model', () => {
       await until(() => tool() === 'default', 'Escape gave the select tool');
       await expectOneStop(note);
       expect(await tabIntoToolbar()).toBe(note);
+    });
+
+    /**
+     * Review of #691: only the primary button is a use. A right or middle
+     * press on a row button moved the stop to it.
+     */
+    test('a right-click moves no stop', async () => {
+      const undo = named('Undo')!;
+      const active = rowButtons().find(
+        button => button.getAttribute('aria-pressed') === 'true'
+      )!;
+      await userEvent.click(undo, { button: 'right' });
+      await expectOneStop(active);
+      expect(await tabIntoToolbar()).toBe(active);
+    });
+
+    /**
+     * Review of #691: Enter on the Alt+←/→ highlight remembered the wrong
+     * button while "More tools" shows — the highlight counts the quick tools
+     * without it, the row's places with it.
+     */
+    test('a press through the Alt+→ highlight, "More tools" shown: Tab comes back to that tool', async () => {
+      const column = window.editor.parentElement as HTMLElement;
+      onTestFinished(() => {
+        column.style.width = '';
+      });
+      column.style.width = '380px';
+      window.dispatchEvent(new Event('resize'));
+      await until(
+        () =>
+          toolbar()
+            .shadowRoot!.querySelector<HTMLElement>('.quick-tool-more-button')
+            ?.hasAttribute('disabled') === false,
+        '"More tools" holds tools'
+      );
+      await rowReady();
+      const highlighted = () => {
+        const item = toolbar().shadowRoot!.querySelector(
+          '[data-keyboard-highlight]'
+        );
+        return item
+          ? deepQueryAll(item, '[role="button"]')[0]?.getAttribute('aria-label')
+          : undefined;
+      };
+      window.editor.host!.focus();
+      for (let step = 0; step < 8 && highlighted() !== 'Note'; step++) {
+        await press('{Alt>}{ArrowRight}{/Alt}');
+      }
+      expect(highlighted()).toBe('Note');
+      await press('{Enter}');
+      await until(() => tool() === 'affine:note', 'the note tool');
+      await press('{Escape}');
+      await until(() => tool() === 'default', 'Escape gave the select tool');
+      const stop = await tabIntoToolbar();
+      expect(stop.getAttribute('aria-label')).toBe('Note');
     });
 
     test('a tool picked from the canvas does not move the stop', async () => {

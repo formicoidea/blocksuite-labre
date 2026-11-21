@@ -29,7 +29,9 @@ export const TOOLBAR_ROW_STATE_EVENT = 'toolbar-row-state';
  * where the box fills the bar: the toolbar sets it on its senior tools,
  * whose buttons are as tall as the bar, so the ring clears the bar's border
  * instead of sitting on it (product owner, acceptance of #691; ADR 0054,
- * amendment of 2026-11-21).
+ * amendment of 2026-11-21). `--edgeless-toolbar-focus-ring-display: none`
+ * hands the ring to the toolbar's senior cell, which draws it round the
+ * whole cell when the tool is one button.
  */
 export const toolButtonFocusRing = css`
   :host(:focus-visible) {
@@ -37,6 +39,7 @@ export const toolButtonFocusRing = css`
   }
   :host(:focus-visible) .icon-container::after {
     content: '';
+    display: var(--edgeless-toolbar-focus-ring-display, block);
     position: absolute;
     inset: var(--edgeless-toolbar-focus-ring-inset, 0px);
     border: 2px solid var(--affine-primary-color);

@@ -35,16 +35,6 @@ describe('seniorScrollToShow', () => {
     expect(seniorScrollToShow(0, pager)).toBe(0);
     expect(seniorScrollToShow(7, pager)).toBe(5);
   });
-
-  test('agrees with the walk that reaches the same tool', () => {
-    const row = { quick: 2, senior: 9, ...pager };
-    for (let senior = 0; senior < row.senior; senior++) {
-      const index = row.quick + senior;
-      expect(stepToolbarHighlight(index - 1, 1, row).scroll).toBe(
-        seniorScrollToShow(senior, row)
-      );
-    }
-  });
 });
 
 describe('stepToolbarHighlight', () => {

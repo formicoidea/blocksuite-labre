@@ -228,28 +228,40 @@ in keyboard mode, and after a mouse gesture it is the toolbar of 4.0.0.
    the product owner: "start where the user is or where he last was, at the
    level of the toolbar only"). Tab kept starting on the active tool, and a
    placed shape or a picked style gives the select tool back, so nearly
-   always on the first button: the whole bar to cross again. The APG toolbar
-   pattern returns focus to the control that last had it. The row's one Tab
-   stop is now the row button the user last used — the last one the keyboard
-   focused, the last one clicked, the last one pressed through the Alt+←/→
-   highlight — for the life of the mounted toolbar; until the row is used
-   once, the active tool's, as before.
+   always on the first button: the whole bar to cross again. The row's one
+   Tab stop is now the row button the user last used — the last one the
+   keyboard focused, the last one clicked, the last one pressed through the
+   Alt+←/→ highlight — for the life of the mounted toolbar; until the row is
+   used once, the active tool's, as before. The APG toolbar pattern returns
+   focus to the control that last had the focus; counting a click and a
+   press through the highlight as well is this library's extension, by the
+   product owner's decision. Its known cost: a one-shot button that was
+   clicked (Undo, Add file) becomes the stop, and the ring shows where Tab
+   landed before any Enter.
 
    - A tool picked from the canvas (a letter such as `h` or `v`, a chord, the
      select tool given back after placing) moves no stop.
-   - A click moves the stop to the clicked button without focusing it and
-     without leaving any `tabindex` but the roving one: at every moment exactly
-     one row button is `tabindex="0"`, every other and the pager arrows and
-     "More tools" `-1`. A click on a pager arrow moves nothing (§8).
+   - A click — the primary button only; a right or middle click moves nothing
+     — moves the stop to the clicked button without focusing it and without
+     leaving any `tabindex` but the roving one: at every moment exactly one
+     row button is `tabindex="0"`, every other and the pager arrows and "More
+     tools" `-1`. A click on a pager arrow moves nothing (§8).
+   - A press through the highlight finds its button by the highlighted item,
+     not by its index: the highlight does not count "More tools", the row's
+     places do, so at a narrow width the index named the wrong tool.
    - The button is remembered by its tool — a senior tool by its name, a quick
      tool by its place, then its place in its item (pen, eraser) — since a
      page turn or a resize draws the row anew. On another page of the senior
-     row, the canvas's Tab turns the row to that page and focuses it; not
-     drawn at all (a resize folded it into "More tools"), the stop is the
-     active tool's button, else the first, and the memory waits for it to be
-     drawn again. Flags are read once at mount (ADR 0009), so a framework a
-     flag turns off is never drawn in that editor's life: another editor
-     starts with nothing remembered.
+     row, the canvas's Tab turns the row to that page and focuses it once
+     the page is drawn — unless a key or a pointer press came in between, or
+     the keyboard left the canvas, which cancel it. Not drawn at all (a
+     resize folded it into "More tools"), the stop is the active tool's
+     button, else the first; the memory holds while nobody Tabs in, and a
+     resize that draws it again gives it back. The first Tab onto that
+     fallback is a focus like any other: it becomes the button used last,
+     and the folded tool is forgotten. Flags are read once at mount (ADR
+     0009), so a framework a flag turns off is never drawn in that
+     editor's life: another editor starts with nothing remembered.
    - Sub-menus are unchanged: a menu opened from the keyboard takes the focus
      on its first control (§10).
    - Nothing is stored — not in the document, not in `localStorage` or
@@ -272,25 +284,60 @@ in keyboard mode, and after a mouse gesture it is the toolbar of 4.0.0.
      (`--edgeless-toolbar-focus-ring-inset`, set by the bar on its senior
      items): every ring of the bar — quick tools, each senior tool on every
      page, "More tools", the pager arrows — lies inside the bar, clear of its
-     1px border, clipped by no ancestor. It is the box's positioned
-     `::after`, above the artwork: an outline paints under positioned or
-     transformed children, and the note's paper, the file's card and the
-     text covered it (seen in the visual check of this amendment). Text and
-     Add file draw their artwork past their button's box: their ring, the
-     box's, crosses the artwork rather than surrounding it (visible, inside
-     the bar; their boxes are theirs to widen).
+     1px border, clipped by no ancestor. It is a positioned `::after`, above
+     the artwork: an outline paints under positioned or transformed
+     children, and the note's paper, the file's card and the text covered it
+     (seen in the visual check of this amendment). The spec checks this from
+     computed style (a positioned box, `z-index` at least 1), a proxy for
+     paint order; the real check, pixels of the ring over the artwork, was
+     done by eye on screenshots.
+   - Every senior tool drawn as one button has one ring geometry, owned by
+     the toolbar: its cell's box, 2px inside the bar's inside edges, whatever
+     box the tool gives its button. Text and Add file draw their artwork
+     past their button's box, and a ring on that box crossed the lettering
+     and left the file's card and paperclip outside. The bar marks such a
+     cell (`data-cell-ring`, read at each sync of the row, since a page turn
+     deals other tools into the same cells) and the cell that holds the
+     focused button (`data-keyboard-focus`, set on focus, cleared on blur);
+     the cell's `.cell-ring`, an element of its own, draws the ring and the
+     button draws none (`--edgeless-toolbar-focus-ring-display`). Not the
+     cell's `::after`: that needs a positioned cell, and a positioned cell
+     becomes the containing block of the tool's menu, sized against the bar
+     — tried, it broke every senior menu. The unpositioned cell centres the
+     ring as a flex item. `:has(:focus-visible)` cannot see a focus inside
+     the tool's shadow tree, and `:focus-within` would also match a focus in
+     the tool's open menu, so the bar sets the mark. A cell of two buttons
+     (the pen and the eraser) keeps one ring per button, each 2px inside the
+     bar. No artwork moves, no clipping changes.
+   - The slide-out menus open inside a senior cell and inherited its ring
+     settings: their tool buttons drew the ring 2px inside, over the icon
+     (review of #691). The menu resets both for its own buttons; in every
+     menu the keyboard reaches, a tool button's ring is its own box.
    - A chosen colour swatch drew its selection ring 27px wide on a 24px
      swatch: 1.5px out on each side, on half pixels, which the browser snaps
      to one side, with 0.5px left to the focus ring — the two rings visibly
-     off-centre. The selection ring is 28px (2px out of a large swatch, 4px
-     out of a small one), the focus ring 1px outside it all round, both on
-     whole pixels and centred on the swatch.
+     off-centre. Both rings are now drawn from one 28px box centred on the
+     swatch, its `::after`, there whether the swatch is chosen or not: the
+     selection ring is its border (transparent when not chosen), the focus
+     ring its outline 1px outside it. One box cannot snap apart from itself,
+     at any device pixel ratio (looked at by eye at 1, 1.25 and 1.5). The
+     ring stands 5px outside a 24px swatch, wherever the grid is drawn:
+     measured unclipped in the canvas toolbar's menus (the spec's walk), the
+     shape's fill and border picker, the connector's stroke picker and the
+     note style panel; read from CSS for the database's colour menu and
+     carousel, whose grid sits in 4px of padding inside the menu's 8px, the
+     menu the only ancestor that may clip (when capped to the window).
    - The slide-out menus clipped the ring of a control at their scrolling
      edges (the first control, the width slider; the last swatch). The strip
-     keeps 5px of room inside its clipping edges and scrolls a focused
-     control in with its ring, clear of the slide arrows; its content stays
-     where it was. The colour grid scrolls its own swatch in (a move inside
-     its shadow tree sends the strip no `focusin`).
+     keeps 5px of room inside its clipping edges and scrolls a control the
+     keyboard focuses (`:focus-visible`) in with its ring, clear of the slide
+     arrows, which reach at most its 8px scroll padding into it. A mouse
+     press scrolls nothing: a strip sliding between mousedown and mouseup
+     sent the click to another control. With no prefix the content sits where
+     it did; after a prefix (the pen menu's pens) the strip's content starts
+     5px further right and the menu is 5px wider. The colour grid scrolls its
+     own swatch in on an arrow key (a move inside its shadow tree sends the
+     strip no `focusin`), wherever the grid is.
      Held by "the focus ring, where the product owner saw it" in
      `edgeless-toolbar-keyboard.spec.ts`, which measures each ring from what
      draws it (`utils/focus-ring.ts`): every button of the bar on every page,
@@ -299,9 +346,10 @@ in keyboard mode, and after a mouse gesture it is the toolbar of 4.0.0.
 3. **Found on the way, recorded.** (a) An Escape typed while a closed menu
    still slides out (its 230ms leave transition) read the menu as open and
    pressed its button again, the menu back: the row forgets what it opened
-   when Escape closes a popper (fixed here; held by "a tool that gives the
-   select tool back after use"). (b) Not fixed: at a 380px-wide toolbar
-   (one senior tool a page, "More tools" shown) → stalls on "Add file" and
+   the moment its popper closes, whatever closes it (`activePopper`), not on
+   Escape alone (fixed here; held by "a tool that gives the select tool back
+   after use", two Escapes sent in one task). (b) Not fixed: at a 380px-wide
+   toolbar (one senior tool a page, "More tools" shown) → stalls on "Add file" and
    goes no further; it does so on the base too. The ring test walks that
    width only as far as the first senior pages (a `ponytail:` line in the
    spec says where to lift it). (c) A tooltip the resting mouse raised over a

@@ -66,13 +66,14 @@ export class EdgelessColorButton extends LitElement {
       width: 20px;
       height: 20px;
     }
-    /* The selection ring and the focus ring are centred on the swatch by
-       whole pixels (product owner, acceptance of #691; ADR 0054, amendment
-       of 2026-11-21). The selection ring is 28px, 2px outside a large (24px)
-       swatch and 4px outside a small (20px) one: an odd size (27px) put it
-       on half pixels, which the browser snaps to one side, so it sat off the
-       focus ring, touching it on one side. The focus ring is drawn 1px
-       outside the selection ring, all round. */
+    /* The selection ring and the focus ring are drawn from ONE box, so they
+       stay concentric at any device pixel ratio (product owner, acceptance
+       of #691; ADR 0054, amendment of 2026-11-21): the selection ring is the
+       box's border, the focus ring its outline, 1px outside it all round.
+       Two boxes snapped apart: a 27px ring on a 24px swatch sat on half
+       pixels, off the focus ring drawn on the host. The box is 28px, on whole
+       pixels around a 24px or a 20px swatch; its border is there chosen or
+       not, transparent when not. */
     :host::after {
       position: absolute;
       display: block;
@@ -81,27 +82,24 @@ export class EdgelessColorButton extends LitElement {
       height: 28px;
       border-radius: 50%;
       box-sizing: border-box;
-      overflow: hidden;
+      border: 1.5px solid transparent;
       pointer-events: none;
     }
 
     :host([active])::after {
-      border: 1.5px solid var(--affine-primary-color);
+      border-color: var(--affine-primary-color);
     }
 
     :host(:focus-visible) {
+      outline: none;
+    }
+    :host(:focus-visible)::after {
       outline: 2px solid ${unsafeCSSVarV2('layer/insideBorder/primaryBorder')};
-      outline-offset: 5px;
-      border-radius: 50%;
+      outline-offset: 1px;
     }
-    :host(.large:focus-visible) {
-      outline-offset: 3px;
-    }
-    /* The ring's room, kept when a swatch is scrolled into view. */
+    /* The ring's room (1px + 2px outside the 28px box: 5px outside a 24px
+       swatch), kept when a swatch is scrolled into view. */
     :host {
-      scroll-margin: 7px;
-    }
-    :host(.large) {
       scroll-margin: 5px;
     }
   `;
@@ -237,10 +235,11 @@ export class EdgelessColorPanel extends LitElement {
     this._focusIndex = next;
     this.requestUpdate();
     swatches[next]?.focus();
-    // In a scrolling strip (the canvas toolbar's menus) the browser leaves a
+    // An arrow key moved the focus: in whatever scrolls the grid (the canvas
+    // toolbar's slide-out strips, a panel, a page), the browser leaves a
     // swatch that shows in part where it is, its ring cut: brought in whole,
     // ring included (the swatch's `scroll-margin`; ADR 0054, amendment of
-    // 2026-11-21).
+    // 2026-11-21). A pointer never comes here.
     swatches[next]?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   };
 
