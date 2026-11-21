@@ -72,14 +72,28 @@ Wardley package's own command builder.
 `g` are bound to nothing alone; `b` only inside a polygon's vertex edit; `t` is
 the Text tool. `o`, chosen for Event Storming, is bound to nothing alone.
 `chord-prefixes.unit.spec.ts` reads these off the sources rather than a list
-typed by hand: it walks every `src` of `packages/affine` and
-`packages/framework` (tests excluded) for the top-level keys of every
-`bindHotKey({ … })` literal (the edgeless keyboard's tools, the toolbar
-buttons' `m` and `s`; a site passing a variable must be one of the four known
-forwarders), and for every raw `keydown` listener, each listed with the letters
-it takes and why it cannot meet a chord (71 files today: one letter, the
-polygon's `b`, in vertex edit only; the others named keys, a modifier, or their
-own focused element). A new binding or listener fails until it is read.
+typed by hand. It walks every `src` of `packages/affine` and
+`packages/framework` (tests excluded), through three channels:
+
+- every `bindHotKey(…)` call, read with the TypeScript parser: the keys of its
+  object literal however they are spelled (`y:`, `'y':`, `['y']:`, several on
+  one line); a call passing a variable, a spread or a non-string computed key
+  must be the one known forwarder (`edgeless-root-block.ts`);
+- every raw `keydown` listener, by file, each listed with the letters it takes
+  and why it cannot meet a chord (71 files today: one letter, the polygon's
+  `b`, in vertex edit only; the others named keys, a modifier, or their own
+  focused element);
+- every dispatcher `keyDown` handler (`handleEvent('keyDown', …)`,
+  `std.event.add('keyDown', …)`), by file, with the letters it takes and the
+  state they need (9 files today: the mind-map node and the database cells
+  take any printable key, but only with that node or cell selected, a handler
+  that runs before the shortcut keymap; the title and label editors only in
+  edit mode).
+
+A new binding, listener or handler fails until it is read. What it does not
+see: a keymap bound through `KeymapExtension` (block text keymaps, scoped to
+their blocks and to text editing) and a listener spelled otherwise than
+`'keydown'` / `@keydown=`.
 
 ## Decision
 
@@ -135,8 +149,10 @@ two together. It fails when:
   read off the sources (`RESERVED_EDGELESS_KEYS`, the toolbar buttons' `m` and
   `s`), a letter a raw `keydown` listener takes outside an edit mode, or any
   registered command's one-keystroke default (`l`, § 7);
-- a `bindHotKey` site passes something else than a literal, or a raw
-  `keydown` listener appears anywhere in the library, without being listed;
+- a `bindHotKey` keymap cannot be read, or a raw `keydown` listener or a
+  dispatcher `keyDown` handler appears anywhere in the library, without being
+  listed; a listed `keyDown` handler that needs no edit or selection state
+  takes a letter;
 - the bare letters taken on the canvas change (pinned: `c e f h k l m n p s t
 v`);
 - a chord collides with any other registered command's default;
@@ -327,12 +343,17 @@ button's own hotkey, untouched); among the free letters he chose `l`.
   `com.labre.template.senior-tool.name` ("Template"): no new wording.
 - Not the button's own `bindHotKey` (as `m` and `s` are): the senior row is
   paged, and the Templates button, the last senior tool, is often not in the
-  DOM. The command pages it in through the row's public keyboard walk
-  (`walkHighlight` / `clearHighlight`, present on the base and kept by the
-  toolbar's keyboard model of ADR 0054), then calls the button's
-  `togglePanel({ focusSearch: true })`: the panel opens exactly as a click
-  opens it, with the caret in its search field. A click does not move the
-  focus.
+  DOM. It is the LAST tool of the row, so the command takes one step of the
+  row's public keyboard walk backwards from no highlight (`walkHighlight(-1)`
+  then `clearHighlight`, present with the same meaning on the base and in the
+  toolbar's keyboard model of ADR 0054), which shows the last page, then calls
+  the button's `togglePanel({ focusSearch: true })`: the panel opens exactly as
+  a click opens it, with the caret in its search field. A click does not move
+  the focus. When the panel the shortcut opened closes (Escape, a click
+  elsewhere, `l` again), the row goes back to the page it was on, unless the
+  user paged it meanwhile. No toolbar API is added.
+- A host that removes the Templates button leaves `l` free: the command's
+  `when` requires the `template` senior tool in the toolbar's registry.
 - `l` again, the focus outside the field, closes it, as a second click does.
   In the field `l` is a letter: the panel keeps every keystroke (the tool
   letters, the chord prefixes, Delete, the arrows, Ctrl+Z) except Escape,
@@ -349,10 +370,13 @@ button's own hotkey, untouched); among the free letters he chose `l`.
   (`Mod-Shift-l` keeps its own binding). `l` enters the registry of taken
   bare letters, pinned by `chord-prefixes.unit.spec.ts`, so no prefix can
   take it.
-- Known limit, out of scope: the template CARDS are not reachable from the
-  keyboard (no arrow grid, no Enter to insert). From the search field, Tab
-  leaves the panel for the next focusable element of the page (the panel has
-  no other focusable element), by reading; not verified at the keyboard.
+- Known limits, out of scope: from the search field, Tab moves the focus to
+  the categories list INSIDE the panel (Shift+Tab goes back); it is reachable
+  but not operable from the keyboard: the panel keeps every keystroke, so a
+  letter or an arrow there does nothing, and Escape closes the panel. Enter in
+  the search field inserts nothing. The template CARDS are not reachable from
+  the keyboard (no arrow grid, no Enter to insert). Verified at the keyboard by
+  the third review.
 
 ## Consequences
 

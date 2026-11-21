@@ -87,16 +87,23 @@ has none by ADR 0013, which is the exemption the same test reads.
 framework package (`<NAME>_CHORD_PREFIX`, read by `frameworkChord` from
 `@labre/affine-shared/utils`) and again as `chordPrefix` in `frameworks.ts`.
 A framework that ships a chord declares its prefix; a prefix with no chord is
-not allocated. A prefix is never a single-key shortcut (`RESERVED_EDGELESS_KEYS`,
-the toolbar's `m` and `s`, a letter a raw `keydown` listener takes outside an
-edit mode, a command's one-key default) and is shared only by declaration (the
-two DDD boards on `d`); second keys are one letter or digit, unique across
-every framework sharing the prefix. Only the artefacts a user places get a
-default chord; tools, templates and rare entries stay keyless, bindable from
-Settings › Shortcuts. Every artefact and tool declares `availability:
-'editable'`: a read-only document runs none and arms no prefix. A new raw
-`keydown` listener in the canvas packages is listed in the same spec, with the
-letters it takes. Allocated: `w` Wardley, `b` BPMN, `u` UML, `y` Cynefin /
+not allocated. A prefix is never a single-key shortcut: a bare key of any
+`bindHotKey({ … })` of the library (the edgeless keyboard's tools, the toolbar's
+`m` and `s`), a letter a raw `keydown` listener or a dispatcher `keyDown`
+handler takes outside an edit or selection state, or a command's one-key
+default (`l`, the Templates panel). It is shared only by declaration (the two
+DDD boards on `d`); second keys are one lowercase letter (no digit: it needs
+Shift on AZERTY), unique across every framework sharing the prefix. Only the
+artefacts a user places get a default chord; tools, templates and rare entries
+stay keyless, bindable from Settings › Shortcuts. Every artefact and tool
+declares `availability: 'editable'`: a read-only document and a presentation
+run none and arm no prefix (`isCommandAvailable`, `BaseTool.presents`;
+`command-registry.unit.spec.ts` in `framework/std`, `framework-chords.spec.ts`).
+The keys are read off every `src` of `packages/affine` and
+`packages/framework`: `bindHotKey` keymaps with the TypeScript parser, raw
+`keydown` listeners and `keyDown` handlers by file, each listed with the
+letters it takes; a new one fails until it is listed
+(`chord-prefixes.unit.spec.ts`). Allocated: `w` Wardley, `b` BPMN, `u` UML, `y` Cynefin /
 Estuarine, `g` EDGY, `d` Core Domain Chart and Context Map, `o` Event
 Storming; C4 has none (ADR 0055; `chord-prefixes.unit.spec.ts`).
 
