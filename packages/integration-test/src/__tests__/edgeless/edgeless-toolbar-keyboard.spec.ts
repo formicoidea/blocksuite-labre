@@ -17,7 +17,9 @@ import { SurfaceSelection } from '@labre/std';
 import { Text } from '@labre/store';
 import { userEvent } from '@vitest/browser/context';
 import {
+  afterAll,
   afterEach,
+  beforeAll,
   beforeEach,
   describe,
   expect,
@@ -28,6 +30,7 @@ import {
 
 import { deepQueryAll } from '../utils/deep-query.js';
 import { addNote, getDocRootBlock } from '../utils/edgeless.js';
+import { pointerMoveTo } from '../utils/pointer.js';
 import { setupEditor } from '../utils/setup.js';
 
 /**
@@ -75,6 +78,34 @@ const frames = async (count = 2) => {
     await new Promise(resolve => requestAnimationFrame(resolve));
   }
 };
+
+/** A storage's keys and values, to put back as they were. */
+const storageCopy = (storage: Storage) =>
+  Object.fromEntries(
+    Object.keys(storage).map(key => [key, storage.getItem(key)!])
+  );
+const storageRestore = (storage: Storage, copy: Record<string, string>) => {
+  storage.clear();
+  Object.entries(copy).forEach(([key, value]) => storage.setItem(key, value));
+};
+
+/**
+ * The suite shares one page (`isolate: false`): what this file's presses write
+ * to the browser's storage (the commands' usage ranking, the templates panel's
+ * category, the presentation's toast flag) and where its real mouse rests
+ * would reach every spec after it (#691). Both go back to how the file found
+ * them: the storage as it was, the mouse at the frame's corner, where
+ * Playwright starts it.
+ */
+let storageBefore: [Record<string, string>, Record<string, string>];
+beforeAll(() => {
+  storageBefore = [storageCopy(localStorage), storageCopy(sessionStorage)];
+});
+afterAll(async () => {
+  storageRestore(localStorage, storageBefore[0]);
+  storageRestore(sessionStorage, storageBefore[1]);
+  await pointerMoveTo('html', 0, 0, 1);
+});
 
 describe('edgeless toolbar keyboard model', () => {
   let edgeless!: EdgelessRootBlockComponent;
@@ -207,7 +238,12 @@ describe('edgeless toolbar keyboard model', () => {
   const after = document.createElement('button');
   after.textContent = 'after the editor';
 
+  /** The editors mounted and not yet torn down, and the body before the first. */
+  let mounted = 0;
+  let bodyBefore = new Set<Element>();
+
   const mount = async (options?: Parameters<typeof setupEditor>[2]) => {
+    if (mounted++ === 0) bodyBefore = new Set(document.body.children);
     const cleanup = await setupEditor(
       'edgeless',
       [
@@ -227,6 +263,21 @@ describe('edgeless toolbar keyboard model', () => {
     return () => {
       after.remove();
       cleanup();
+      // The suite shares one page (`isolate: false`). The mind map menu's
+      // import falls back to a hidden file input on the body (`openFilesWith`,
+      // `affine-shared/utils/file/filesys.ts`), removed only on `change`,
+      // which no dialog ever sends here: left, later specs found it (#691).
+      document.body
+        .querySelectorAll(':scope > input.affine-upload-input')
+        .forEach(input => input.remove());
+      // Nothing a test appended to the body outlives its editors (a test
+      // may mount a second one over the first: checked once both are gone).
+      if (--mounted > 0) return;
+      expect(
+        [...document.body.children]
+          .filter(child => !bodyBefore.has(child))
+          .map(child => child.outerHTML.slice(0, 120))
+      ).toEqual([]);
     };
   };
 
