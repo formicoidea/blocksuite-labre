@@ -275,7 +275,7 @@ export const menuInputItems = {
         ...config.style,
       });
       return html`
-        <div style="${style}">
+        <div class="affine-menu-input-row" style="${style}">
           ${config.prefix} ${renderInput(data, menu)} ${config.postfix}
         </div>
       `;
