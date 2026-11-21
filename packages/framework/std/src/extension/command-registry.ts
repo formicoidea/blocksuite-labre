@@ -4,6 +4,10 @@ import type { TemplateResult } from 'lit';
 import type { z } from 'zod';
 
 import type { ChordBinding } from '../event/keymap.js';
+// The identifier alone, not `@labre/std/gfx`: that entry would close an import
+// cycle through `extension/` (see `isEditingOnCanvas`).
+import { GfxControllerIdentifier } from '../gfx/identifiers.js';
+import type { BaseTool } from '../gfx/tool/tool.js';
 import { SurfaceSelection } from '../selection/index.js';
 import type { BlockStdScope } from '../scope/index.js';
 // TYPE-only, and the only edge this module has towards `gfx`: a legend entry
@@ -91,7 +95,7 @@ export type Availability =
   | 'always'
   | 'selection' // any non-empty canvas selection, not text-editing
   | 'selection:framework' // selection contains the owner's element types
-  | 'editable'; // document is not read-only
+  | 'editable'; // document is not read-only, canvas is not being presented
 
 /**
  * Which surfaces a command opts into. Absent from the array = absent from the
@@ -581,6 +585,18 @@ const surfaceSelections = (std: BlockStdScope) =>
 export const isEditingOnCanvas = (std: BlockStdScope) =>
   surfaceSelections(std).some(sel => sel.editing);
 
+/**
+ * Whether the canvas is being PRESENTED: the active tool declares
+ * `BaseTool.presents` (the frame navigator). Read off the tool's own
+ * declaration, so this module names no tool.
+ */
+const isPresenting = (std: BlockStdScope) => {
+  const tool = std
+    .getOptional(GfxControllerIdentifier)
+    ?.tool.currentTool$.peek();
+  return Boolean(tool && (tool.constructor as typeof BaseTool).presents);
+};
+
 const hasCanvasSelection = (std: BlockStdScope) =>
   surfaceSelections(std).some(sel => sel.elements.length > 0);
 
@@ -610,7 +626,9 @@ export function isCommandAvailable(
     case 'selection:framework':
       return !isEditingOnCanvas(std) && hasCanvasSelection(std);
     case 'editable':
-      return !std.store.readonly;
+      // A presentation writes nothing either (ADR 0055): `b p` while
+      // presenting placed a pool and left the presentation.
+      return !std.store.readonly && !isPresenting(std);
   }
 }
 

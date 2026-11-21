@@ -13,6 +13,14 @@ export abstract class BaseTool<
 > extends Extension {
   static toolName: string = '';
 
+  /**
+   * The tool PRESENTS the canvas rather than editing it (the frame navigator).
+   * While it is active nothing that writes runs: a command declaring
+   * `availability: 'editable'` is unavailable, so its keyboard chord neither
+   * runs nor arms its prefix (`isCommandAvailable`, `docs/adr/0055`).
+   */
+  static presents = false;
+
   private readonly eventTarget!: ToolEventTarget;
 
   activatedOption: Option = {} as Option;

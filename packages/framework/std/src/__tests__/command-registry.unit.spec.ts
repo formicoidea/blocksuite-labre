@@ -1,13 +1,17 @@
 import { describe, expect, test } from 'vitest';
 
+import type { ChordBinding } from '../event/keymap.js';
 import {
   CommandTelemetryIdentifier,
   CommandUsageIdentifier,
+  isCommandAvailable,
   runCommand,
+  toShortcutDescriptor,
   type AnyCommandDescriptor,
   type CommandInvocation,
   type CommandUsageStore,
 } from '../extension/command-registry.js';
+import { GfxControllerIdentifier } from '../gfx/identifiers.js';
 import type { BlockStdScope } from '../scope/std-scope.js';
 
 const invocation: CommandInvocation = {
@@ -99,5 +103,56 @@ describe('runCommand feeds the usage store', () => {
   test('no registered store is not an error', () => {
     const std = { getOptional: () => undefined } as unknown as BlockStdScope;
     expect(() => runCommand(std, command('undo'), invocation)).not.toThrow();
+  });
+});
+
+/**
+ * A presentation is not an editing state (ADR 0055): while the active tool
+ * declares `BaseTool.presents`, a command that writes (`'editable'`) is
+ * unavailable, so its keyboard chord neither runs nor arms its prefix. `b p`
+ * during a presentation used to write a pool into the document.
+ */
+describe('availability while the canvas is presented', () => {
+  class Presenting {
+    static presents = true;
+  }
+  class Editing {
+    static presents = false;
+  }
+  const stdWithTool = (tool: object | null, readonly = false) =>
+    ({
+      store: { readonly },
+      selection: { filter: () => [] },
+      getOptional: (id: unknown) =>
+        id === GfxControllerIdentifier
+          ? { tool: { currentTool$: { peek: () => tool } } }
+          : undefined,
+    }) as unknown as BlockStdScope;
+  const writes = command('writes', { availability: 'editable' });
+  const always = command('always', { availability: 'always' });
+
+  test("'editable' is refused while presenting, and only then", () => {
+    expect(isCommandAvailable(stdWithTool(new Presenting()), writes)).toBe(
+      false
+    );
+    expect(isCommandAvailable(stdWithTool(new Editing()), writes)).toBe(true);
+    expect(isCommandAvailable(stdWithTool(null), writes)).toBe(true);
+    expect(isCommandAvailable(stdWithTool(new Editing(), true), writes)).toBe(
+      false
+    );
+  });
+
+  test("'always' still runs while presenting", () => {
+    expect(isCommandAvailable(stdWithTool(new Presenting()), always)).toBe(
+      true
+    );
+  });
+
+  test('the chord gate follows: a presented canvas arms no editable chord', () => {
+    const binding = toShortcutDescriptor({
+      ...writes,
+      scope: 'edgeless',
+    }).handler(stdWithTool(new Presenting())) as ChordBinding;
+    expect(binding.canRun?.({} as never)).toBe(false);
   });
 });
