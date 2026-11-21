@@ -167,6 +167,7 @@ export class DataViewHeaderToolsViewOptions extends WidgetBase {
     return html` <div
       class="affine-database-toolbar-item more-action"
       data-testid="dv-tools-view-options"
+      data-view-focus-fallback
       role="button"
       tabindex="0"
       aria-haspopup="menu"

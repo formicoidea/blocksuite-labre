@@ -5,7 +5,7 @@ import type { DataViewUILogicBase } from '@labre/affine-database-engine';
 import { SignalWatcher, styleMap, WithDisposable } from '@labre/global/lit';
 import { ShadowlessElement } from '@labre/std';
 import type { Text } from '@labre/store';
-import { signal } from '@preact/signals-core';
+import { type ReadonlySignal, signal } from '@preact/signals-core';
 import { css, html } from 'lit';
 import { property, query } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
@@ -92,7 +92,7 @@ export class DatabaseTitle extends SignalWatcher(
 
   private readonly onFocus = () => {
     this.isFocus$.value = true;
-    if (this.dataViewLogic.selection$.value) {
+    if (this.dataViewLogic?.selection$.value) {
       this.dataViewLogic.setSelection(undefined);
     }
   };
@@ -186,8 +186,16 @@ export class DatabaseTitle extends SignalWatcher(
     this.input.blur();
   }
 
-  get readonly$() {
-    return this.dataViewLogic.view.readonly$;
+  /**
+   * The view's, else (a database with no view, ADR 0035 amendment of
+   * 2026-11-20) its block's data source's, which a view's follows. Without
+   * a view the title is drawn only by its block (`renderNoViewHeader`).
+   */
+  get readonly$(): ReadonlySignal<boolean> {
+    return (
+      this.dataViewLogic?.view.readonly$ ??
+      (this.database as DatabaseBlockComponent).dataSource.readonly$
+    );
   }
 
   private readonly text$ = signal('');
@@ -195,8 +203,9 @@ export class DatabaseTitle extends SignalWatcher(
   @property({ attribute: false })
   accessor titleText!: Text;
 
+  /** Absent when the database has no view left. */
   @property({ attribute: false })
-  accessor dataViewLogic!: DataViewUILogicBase;
+  accessor dataViewLogic: DataViewUILogicBase | undefined;
 }
 
 declare global {

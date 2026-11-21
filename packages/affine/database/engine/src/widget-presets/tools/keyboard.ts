@@ -67,6 +67,12 @@ function setExpanded(anchor: HTMLElement, expanded: boolean) {
  *   (`MenuComponent.firstUpdated`), so `opener` holds the focus for that
  *   frame, then the menu has it.
  *
+ * - when the opener itself left with what the menu did (the last view
+ *   deleted from its "⋯", or a view added from the empty state's button),
+ *   give it to what the renderer draws next (`DataViewRootUI.restoreFocus`:
+ *   the empty state's button, or the new view's "⋯"), so the focus never
+ *   falls to the body (ADR 0035 amendment of 2026-11-20).
+ *
  * Without an opener (a mouse click), no focus is moved: focusing the
  * control would paint its ring under a pointer.
  */
@@ -75,6 +81,8 @@ export function popupTargetReturningFocus(
   opener: HTMLElement | undefined
 ): PopupTarget {
   const target = popupTargetFromElement(anchor);
+  // Found while the opener is in it: once it has left, it has no parent.
+  const root = opener?.closest('affine-data-view-renderer');
   let open = 0;
   return {
     ...target,
@@ -91,10 +99,21 @@ export function popupTargetReturningFocus(
         if (!open) setExpanded(anchor, false);
         if (!opener) return;
         // The menu is removed right after this callback: look once it is.
-        queueMicrotask(() => {
+        queueMicrotask(async () => {
           const active = document.activeElement;
           if (active && active !== document.body) return;
-          if (opener.isConnected) opener.focus();
+          if (opener.isConnected) {
+            opener.focus();
+            return;
+          }
+          if (!root?.isConnected) return;
+          // A microtask has no caller to reject to: an element of the view
+          // whose update threw would surface as an unhandled rejection.
+          try {
+            await root.restoreFocus();
+          } catch (error) {
+            console.error(error);
+          }
         });
       };
     },

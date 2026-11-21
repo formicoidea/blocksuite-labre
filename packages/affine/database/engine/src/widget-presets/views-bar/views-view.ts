@@ -29,13 +29,12 @@ import { css, html, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 
-import { viewDefaultName } from '../../core/view/default-name.js';
 import { modeShownAsFallback } from '../../core/view-manager/single-view.js';
 import {
-  AddViewMenuIdentifier,
-  duplicateAsShownPreset,
-  ViewCreationOffKey,
-} from '../../core/view-manager/view-creation.js';
+  canAddView,
+  popAddViewMenu,
+} from '../../core/view-manager/add-view.js';
+import { duplicateAsShownPreset } from '../../core/view-manager/view-creation.js';
 import { WidgetBase } from '../../core/widget/widget-base.js';
 import {
   VIEW_DUPLICATE_AS_TABLE,
@@ -172,62 +171,16 @@ export class DataViewHeaderViews extends WidgetBase {
       : fillPlaceholders(wording[1], params);
   }
 
-  /** The host switched view creation off for this source (ADR 0035 §5). */
-  private get creationOff() {
-    return this.dataSource.serviceGet(ViewCreationOffKey) === true;
-  }
-
   /**
-   * The bar's "add a view of this preset", also handed to the bundle's "+"
-   * menu: the name is resolved here, at the gesture, and written as is
-   * (ADR 0023); `DatabaseViewAdded` is reported once (B17), `source` saying
-   * whether the gesture created the source the view reads.
+   * "+": the one add-a-view gesture (`popAddViewMenu`), shared with the
+   * empty state of a database with no view.
    */
-  private readonly addView = (
-    type: string,
-    source: 'existing' | 'new' = 'existing'
-  ) => {
-    const id = this.viewManager.viewAdd(
-      type,
-      viewDefaultName(this.dataSource.viewMetaGet(type), this.std)
-    );
-    this.viewManager.setCurrentView(id);
-    this.onChangeView?.(id);
-    this.dataViewLogic.root.config.eventTrace('DatabaseViewAdded', {
-      viewType: type,
-      source,
-    });
-    return id;
-  };
-
-  private presetItems() {
-    return this.dataSource.viewMetas.map(v => {
-      return menu.action({
-        name: viewDefaultName(v, this.std),
-        testId: 'database-add-view-preset',
-        prefix: html`<uni-lit .uni=${v.renderer.icon}></uni-lit>`,
-        select: () => {
-          this.addView(v.type);
-        },
-      });
-    });
-  }
-
   _addViewMenu = (event: MouseEvent) => {
-    const addViewMenu = this.std?.getOptional(AddViewMenuIdentifier);
-    const context = {
+    popAddViewMenu(popupTargetFromElement(event.currentTarget as HTMLElement), {
       std: this.std,
       dataSource: this.dataSource,
-      viewManager: this.viewManager,
-      addView: this.addView,
-    };
-    const items = addViewMenu?.items(context);
-    const placeholder = items && addViewMenu?.searchPlaceholder?.(context);
-    popMenu(popupTargetFromElement(event.currentTarget as HTMLElement), {
-      options: {
-        items: items ?? this.presetItems(),
-        search: placeholder ? { placeholder } : undefined,
-      },
+      eventTrace: this.dataViewLogic.root.config.eventTrace,
+      onAdded: id => this.onChangeView?.(id),
     });
   };
 
@@ -396,7 +349,7 @@ export class DataViewHeaderViews extends WidgetBase {
             ${this.moreLabel(hidden.length)}
           </div>`
         : nothing}
-      ${this.readonly || this.creationOff
+      ${!canAddView(this.dataSource)
         ? nothing
         : html`<div
             class="database-view-button dv-icon-16 dv-hover"
