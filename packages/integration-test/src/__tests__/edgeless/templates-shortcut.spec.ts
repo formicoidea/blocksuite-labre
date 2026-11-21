@@ -17,6 +17,10 @@
  * page, so every test blurs the focus first.
  */
 import type { EdgelessRootBlockComponent } from '@labre/affine/blocks/root';
+import {
+  EDGELESS_TOOLBAR_WIDGET,
+  type EdgelessToolbarWidget,
+} from '@labre/affine/widgets/edgeless-toolbar';
 import type { ShapeElementModel } from '@labre/affine/model';
 import { SurfaceSelection } from '@labre/std';
 import { userEvent } from '@vitest/browser/context';
@@ -132,6 +136,50 @@ describe('the Templates panel on `l`', () => {
       await userEvent.keyboard('[Space>]');
       await vi.waitFor(() => expect(tool()).toBe('pan'));
       await userEvent.keyboard('[/Space]');
+    } finally {
+      cleanup();
+    }
+  });
+
+  /**
+   * The button sits last in a PAGED row: `l` pages the row to it, and the
+   * row goes back to the page the user was on when the panel closes, however
+   * it closes. It stayed on the last page before (0 to 12 at 1024px).
+   */
+  test('the toolbar row goes back to its page when the panel closes', async () => {
+    const { cleanup, service, panel, search } = await mount();
+    try {
+      const root = getDocRootBlock(window.doc, window.editor, 'edgeless');
+      const toolbar = root.widgetComponents[
+        EDGELESS_TOOLBAR_WIDGET
+      ] as unknown as EdgelessToolbarWidget;
+      const page = toolbar.scrollSeniorToolIndex;
+
+      // Escape.
+      await userEvent.keyboard('l');
+      await vi.waitFor(() => expect(search()).toBeTruthy());
+      expect(toolbar.scrollSeniorToolIndex).not.toBe(page);
+      await userEvent.keyboard('{Escape}');
+      await vi.waitFor(() => expect(panel()).toBeNull());
+      expect(toolbar.scrollSeniorToolIndex).toBe(page);
+
+      // `l` again, the focus back on the canvas.
+      await userEvent.keyboard('l');
+      await vi.waitFor(() => expect(search()).toBeTruthy());
+      service.std.host.focus();
+      await userEvent.keyboard('l');
+      await vi.waitFor(() => expect(panel()).toBeNull());
+      expect(toolbar.scrollSeniorToolIndex).toBe(page);
+
+      // A click elsewhere.
+      await userEvent.keyboard('l');
+      await vi.waitFor(() => expect(search()).toBeTruthy());
+      // The panel listens for outside clicks from its first frame on.
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      document.body.click();
+      await vi.waitFor(() => expect(panel()).toBeNull());
+      expect(toolbar.scrollSeniorToolIndex).toBe(page);
     } finally {
       cleanup();
     }

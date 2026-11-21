@@ -4,10 +4,10 @@ import {
 } from '@labre/affine-ext-loader';
 import { CommandExtension } from '@labre/std';
 
-import { templateCommands } from './commands';
-import { effects } from './effects';
-import { TemplateTool } from './template-tool';
-import { templateSeniorTool } from './toolbar/senior-tool';
+import { templateCommands } from './commands.js';
+import { effects } from './effects.js';
+import { TemplateTool } from './template-tool.js';
+import { templateSeniorTool } from './toolbar/senior-tool.js';
 
 export class TemplateViewExtension extends ViewExtensionProvider {
   override name = 'affine-template-view';

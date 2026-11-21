@@ -3,8 +3,11 @@ import { html } from 'lit';
 
 import { TEMPLATE_SENIOR_TOOL_NAME } from '../translations.js';
 
+/** The Templates senior tool's id in the toolbar's registry. */
+export const TEMPLATE_SENIOR_TOOL_ID = 'template';
+
 export const templateSeniorTool = SeniorToolExtension(
-  'template',
+  TEMPLATE_SENIOR_TOOL_ID,
   ({ block }) => {
     return {
       name: TEMPLATE_SENIOR_TOOL_NAME[1],

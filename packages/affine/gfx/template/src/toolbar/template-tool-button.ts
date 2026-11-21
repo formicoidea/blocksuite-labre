@@ -160,19 +160,33 @@ export class EdgelessTemplateButton extends EdgelessToolbarToolMixin(
       } else {
         this.setEdgelessTool(DefaultTool);
       }
+
+      const onClose = this._onPanelClose;
+      this._onPanelClose = null;
+      onClose?.();
     }
   }
 
+  /** What the opener of the open panel asked to run when it closes. */
+  private _onPanelClose: (() => void) | null = null;
+
   /**
    * Open the panel, or close it when it is open, exactly as a click on the
-   * button does; `focusSearch` then puts the caret in its search field. The
-   * Templates keyboard shortcut (`canvas.templates.toggle`) calls it, and
-   * only it asks for the focus.
+   * button does; `focusSearch` then puts the caret in its search field, and
+   * `onClose` runs when the panel this call OPENED closes, however it closes
+   * (Escape, a click elsewhere, the button, the shortcut again). The Templates
+   * keyboard shortcut (`canvas.templates.toggle`) calls it, and only it asks
+   * for the focus.
    */
-  async togglePanel(options: { focusSearch?: boolean } = {}) {
+  async togglePanel(
+    options: { focusSearch?: boolean; onClose?: () => void } = {}
+  ) {
+    const opening = !this._openedPanel;
     this._togglePanel();
     const panel = this._openedPanel;
-    if (panel && options.focusSearch) await panel.focusSearch();
+    if (!opening || !panel) return;
+    this._onPanelClose = options.onClose ?? null;
+    if (options.focusSearch) await panel.focusSearch();
   }
 
   private _togglePanel() {
