@@ -30,4 +30,9 @@ keyboard reaches at the strip's edge (the width slider, the last swatch) is
 scrolled in with its ring; a mouse press on a half-shown control no longer
 slides the strip under the pointer. After a prefix (the pen menu's pens) the
 strip's content starts 5px further right and the menu is 5px wider. An Escape
-typed while a menu is still sliding shut no longer opens it again.
+typed while a menu is still sliding shut no longer opens it again. A large
+tool's ring shows only for a focus that shows rings (`:focus-visible`), as
+every other button's: a host's `focusRow()` after a mouse gesture draws none.
+A press through the highlight just after it turned the page remembers the tool
+pressed, not the one the page showed before. An unchosen swatch has no border
+at all, so forced-colours mode does not draw it as chosen.

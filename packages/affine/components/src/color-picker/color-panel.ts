@@ -72,8 +72,10 @@ export class EdgelessColorButton extends LitElement {
        box's border, the focus ring its outline, 1px outside it all round.
        Two boxes snapped apart: a 27px ring on a 24px swatch sat on half
        pixels, off the focus ring drawn on the host. The box is 28px, on whole
-       pixels around a 24px or a 20px swatch; its border is there chosen or
-       not, transparent when not. */
+       pixels around a 24px or a 20px swatch, border-box: the outline does
+       not move with the border, which only a chosen swatch has (a
+       transparent one on every swatch may be forced to a system colour in
+       forced-colours mode, every swatch then looking chosen). */
     :host::after {
       position: absolute;
       display: block;
@@ -82,12 +84,11 @@ export class EdgelessColorButton extends LitElement {
       height: 28px;
       border-radius: 50%;
       box-sizing: border-box;
-      border: 1.5px solid transparent;
       pointer-events: none;
     }
 
     :host([active])::after {
-      border-color: var(--affine-primary-color);
+      border: 1.5px solid var(--affine-primary-color);
     }
 
     :host(:focus-visible) {

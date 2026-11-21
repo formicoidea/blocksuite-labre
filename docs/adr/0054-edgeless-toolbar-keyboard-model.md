@@ -248,7 +248,13 @@ in keyboard mode, and after a mouse gesture it is the toolbar of 4.0.0.
      tools" `-1`. A click on a pager arrow moves nothing (§8).
    - A press through the highlight finds its button by the highlighted item,
      not by its index: the highlight does not count "More tools", the row's
-     places do, so at a narrow width the index named the wrong tool.
+     places do, so at a narrow width the index named the wrong tool. And
+     only an entry read for the tool the item draws now: the senior cells
+     are reused across a page turn, another tool inside, and until the row
+     is read again their entries name the tool drawn before — a press right
+     after the highlight turned the page remembered that one. With no such
+     entry yet, the button is remembered once the row is read. In the pen
+     and eraser's cell, the button the press lands on, at its centre.
    - The button is remembered by its tool — a senior tool by its name, a quick
      tool by its place, then its place in its item (pen, eraser) — since a
      page turn or a resize draws the row anew. On another page of the senior
@@ -292,13 +298,16 @@ in keyboard mode, and after a mouse gesture it is the toolbar of 4.0.0.
      paint order; the real check, pixels of the ring over the artwork, was
      done by eye on screenshots.
    - Every senior tool drawn as one button has one ring geometry, owned by
-     the toolbar: its cell's box, 2px inside the bar's inside edges, whatever
-     box the tool gives its button. Text and Add file draw their artwork
-     past their button's box, and a ring on that box crossed the lettering
-     and left the file's card and paperclip outside. The bar marks such a
+     the toolbar: its cell's box less 2px a side, whatever box the tool
+     gives its button. The cell spans the bar's height, its 1px border
+     included, so the ring stands 1px clear of that border (measured).
+     Text and Add file draw their artwork past their button's box, and a
+     ring on that box crossed the lettering and left the file's card and
+     paperclip outside. The bar marks such a
      cell (`data-cell-ring`, read at each sync of the row, since a page turn
      deals other tools into the same cells) and the cell that holds the
-     focused button (`data-keyboard-focus`, set on focus, cleared on blur);
+     focused button (`data-keyboard-focus`, set on a `:focus-visible` focus
+     only, as every other button's ring, cleared on blur);
      the cell's `.cell-ring`, an element of its own, draws the ring and the
      button draws none (`--edgeless-toolbar-focus-ring-display`). Not the
      cell's `::after`: that needs a positioned cell, and a positioned cell
@@ -307,8 +316,8 @@ in keyboard mode, and after a mouse gesture it is the toolbar of 4.0.0.
      ring as a flex item. `:has(:focus-visible)` cannot see a focus inside
      the tool's shadow tree, and `:focus-within` would also match a focus in
      the tool's open menu, so the bar sets the mark. A cell of two buttons
-     (the pen and the eraser) keeps one ring per button, each 2px inside the
-     bar. No artwork moves, no clipping changes.
+     (the pen and the eraser) keeps one ring per button, each 2px inside its
+     button. No artwork moves, no clipping changes.
    - The slide-out menus open inside a senior cell and inherited its ring
      settings: their tool buttons drew the ring 2px inside, over the icon
      (review of #691). The menu resets both for its own buttons; in every
@@ -318,7 +327,9 @@ in keyboard mode, and after a mouse gesture it is the toolbar of 4.0.0.
      to one side, with 0.5px left to the focus ring — the two rings visibly
      off-centre. Both rings are now drawn from one 28px box centred on the
      swatch, its `::after`, there whether the swatch is chosen or not: the
-     selection ring is its border (transparent when not chosen), the focus
+     selection ring is its border, which only a chosen swatch has (a
+     transparent border on every swatch may be forced to a system colour in
+     forced-colours mode, every swatch then looking chosen), the focus
      ring its outline 1px outside it. One box cannot snap apart from itself,
      at any device pixel ratio (looked at by eye at 1, 1.25 and 1.5). The
      ring stands 5px outside a 24px swatch, wherever the grid is drawn:

@@ -150,7 +150,7 @@ const invisible = (colour: string) =>
 
 /**
  * The selection ring a chosen swatch draws (the border of its positioned
- * `::after`, transparent when not chosen), or `null`.
+ * `::after`, which only a chosen swatch has), or `null`.
  */
 export function selectionRing(control: Element): Box | null {
   const style = getComputedStyle(control, '::after');

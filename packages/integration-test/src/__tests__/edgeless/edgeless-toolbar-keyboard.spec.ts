@@ -41,7 +41,7 @@ import {
   selectionRing,
   seniorCellOf,
 } from '../utils/focus-ring.js';
-import { pointerMoveTo } from '../utils/pointer.js';
+import { pointerDown, pointerMoveTo, pointerUp } from '../utils/pointer.js';
 import { setupEditor } from '../utils/setup.js';
 
 /**
@@ -2031,7 +2031,7 @@ describe('edgeless toolbar keyboard model', () => {
      * look at the screenshots: on Text and Add file the ring followed their
      * small button box, across the lettering, round the blue card alone — a
      * senior tool drawn as one button has its cell's ring, 2px inside the
-     * bar, like Note's.
+     * cell — 1px clear of the bar's border — like Note's.
      */
     test('the ring of every button of the bar lies inside the bar, clear of its border', async () => {
       const faults: string[] = [];
@@ -2100,9 +2100,10 @@ describe('edgeless toolbar keyboard model', () => {
      * Review of #691: the strip scrolled a control in on any focus, a mouse
      * press's too — a press on a half-shown swatch slid the strip between its
      * mousedown and its mouseup, and the click could land on another control.
-     * Only the keyboard's focus scrolls it: a real click on the last swatch
-     * of the Shape menu, cut by the strip, picks it and leaves the strip where
-     * it was at the press.
+     * Only the keyboard's focus scrolls it: the real mouse, moved to the
+     * last swatch of the Shape menu by coordinates (no scroll into view
+     * first), presses it while the strip still cuts it; the click picks it
+     * and the strip is where it was at the press.
      */
     test('a mouse press on a half-shown swatch does not slide the strip', async () => {
       await reset();
@@ -2132,18 +2133,33 @@ describe('edgeless toolbar keyboard model', () => {
         shown -
         last.getBoundingClientRect().left;
       await frames(3);
-      let atPress: number | null = null;
+      // At the press: where the strip was, and whether the swatch was still
+      // cut — the real mouse, moved by coordinates, scrolls nothing in first.
+      const seen: { atPress: { scroll: number; cut: boolean } | null } = {
+        atPress: null,
+      };
       const record = () => {
-        atPress = strip.scrollLeft;
+        seen.atPress = {
+          scroll: strip.scrollLeft,
+          cut:
+            last.getBoundingClientRect().right >
+            strip.getBoundingClientRect().right,
+        };
       };
       last.addEventListener('mousedown', record, { capture: true });
-      onTestFinished(() =>
-        last.removeEventListener('mousedown', record, { capture: true })
-      );
-      await userEvent.click(last, { position: { x: 3, y: 12 } });
+      last.setAttribute('data-pressed-swatch', '');
+      onTestFinished(() => {
+        last.removeEventListener('mousedown', record, { capture: true });
+        last.removeAttribute('data-pressed-swatch');
+      });
+      await pointerMoveTo('[data-pressed-swatch]', 3 / 24, 0.5);
+      await pointerDown();
+      await pointerUp();
       await frames(3);
-      expect(atPress).not.toBeNull();
-      expect(strip.scrollLeft).toBe(atPress);
+      const { atPress } = seen;
+      expect(atPress, 'the press reached the swatch').not.toBeNull();
+      expect(atPress!.cut, 'the swatch was cut at the press').toBe(true);
+      expect(strip.scrollLeft).toBe(atPress!.scroll);
       await until(() => last.hasAttribute('active'), 'the swatch is picked');
       await reset();
     });
@@ -2344,6 +2360,82 @@ describe('edgeless toolbar keyboard model', () => {
       await until(() => tool() === 'default', 'Escape gave the select tool');
       const stop = await tabIntoToolbar();
       expect(stop.getAttribute('aria-label')).toBe('Note');
+    });
+
+    /**
+     * Second review of #691: the senior cells are reused across a page turn,
+     * another tool inside, and the row is read again only once the tools in
+     * them have drawn. A press through the highlight in between found the
+     * cell's entry from the page before and remembered THAT tool. Driven
+     * through the two calls Alt+→ and Enter make, with the page drawn and
+     * the row not read yet in between — real keys a task apart rarely land
+     * there.
+     */
+    test('a press through the highlight right after it turns the page remembers the tool pressed', async () => {
+      const bar = toolbar();
+      const highlighted = () =>
+        bar.shadowRoot!.querySelector<HTMLElement>('[data-keyboard-highlight]');
+      const lastOnPage = () =>
+        highlighted()?.dataset.seniorIndex ===
+        String(bar.scrollSeniorToolIndex + bar.scrollSeniorToolSize - 1);
+      window.editor.host!.focus();
+      for (let step = 0; step < 40 && !lastOnPage(); step++) {
+        await press('{Alt>}{ArrowRight}{/Alt}');
+      }
+      expect(lastOnPage(), 'the highlight on the last tool of a page').toBe(
+        true
+      );
+      await rowReady();
+      const before = bar.scrollSeniorToolIndex;
+      bar.walkHighlight(1);
+      await bar.updateComplete;
+      expect(bar.scrollSeniorToolIndex, 'the page turned').not.toBe(before);
+      const item = highlighted()!;
+      expect(bar.activateHighlight()).toBe(true);
+      await rowReady();
+      const pressed = deepQueryAll(item, '[role="button"]').map(button =>
+        button.getAttribute('aria-label')
+      );
+      await frames(3);
+      await press('{Escape}');
+      await until(() => bar.activePopper === null, 'no menu open');
+      if (tool() !== 'default') await press('{Escape}');
+      await until(() => tool() === 'default', 'the select tool');
+      const stop = await tabIntoToolbar();
+      expect(pressed).toContain(stop.getAttribute('aria-label'));
+    });
+
+    /**
+     * Second review of #691: a senior cell drew its ring on any focus of its
+     * button, where every other button draws it on `:focus-visible` only. A
+     * host calling `focusRow()` after a mouse gesture got a ring round Text
+     * and none on Undo.
+     */
+    test('the row focused by a host after a click draws no cell ring', async () => {
+      await tabIntoToolbar();
+      const text = await walkTo('Text');
+      await press('{Escape}');
+      // A host's own button, clicked with the mouse, gives the row the
+      // keyboard: the focus came from a pointer (the canvas and the toolbar
+      // cancel their mousedown, so only a host control shows it).
+      const hostButton = document.createElement('button');
+      hostButton.textContent = 'Focus the toolbar';
+      hostButton.style.cssText = 'position:fixed;left:8px;top:8px;z-index:9999';
+      hostButton.addEventListener('click', () => toolbar().focusRow());
+      document.body.append(hostButton);
+      try {
+        await userEvent.click(hostButton);
+        await until(() => focusedButton() === text, 'the row has the focus');
+        await frames(2);
+        expect(
+          text.matches(':focus-visible'),
+          'a focus that shows no ring'
+        ).toBe(false);
+        expect(focusRing(text)).toBeNull();
+      } finally {
+        hostButton.remove();
+      }
+      await press('{Escape}');
     });
 
     test('a tool picked from the canvas does not move the stop', async () => {

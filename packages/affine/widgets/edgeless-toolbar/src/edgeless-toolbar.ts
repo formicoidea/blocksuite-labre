@@ -244,8 +244,10 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
          2026-11-21). Read by toolButtonFocusRing. */
       --edgeless-toolbar-focus-ring-inset: 2px;
     }
-    /* A senior tool drawn as one button: the ring is the cell's, 2px inside
-       the bar, whatever box the tool gives its button — Text and Add file
+    /* A senior tool drawn as one button: the ring is the cell's box less
+       2px a side — the cell spans the bar's height, its 1px border
+       included, so the ring stands 1px clear of that border — whatever box
+       the tool gives its button — Text and Add file
        draw their artwork past theirs (ADR 0054, amendment of 2026-11-21).
        The button draws none; the cell's .cell-ring draws it above the
        artwork. A cell of two buttons (pen, eraser) keeps one ring per
@@ -460,8 +462,17 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
     if (!item) return false;
     // By the item, not the index: the highlight counts the quick tools
     // without "More tools", the row's places count it (review of #691).
-    const used = this._rowStops.find(entry => entry.item === item);
-    if (used) this._useStop(used.button);
+    const used = pressedEntry(this._rowStops, item);
+    if (used) {
+      this._useStop(used.button);
+    } else {
+      this._syncRow()
+        .then(entries => {
+          const read = pressedEntry(entries, item);
+          if (read) this._useStop(read.button);
+        })
+        .catch(console.error);
+    }
     return this._pressLikePointer(item);
   }
 
@@ -1663,7 +1674,13 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
     // to it from the canvas.
     this._useStop(here);
     // Its senior cell draws the ring when the tool is one button (the
-    // styles' `[data-cell-ring][data-keyboard-focus]`).
+    // styles' `[data-cell-ring][data-keyboard-focus]`) — when the focus
+    // shows one, as every other button's ring: `:focus-visible` (a host's
+    // `focusRow()` after a mouse gesture draws none; second review of #691).
+    if (!here.matches(':focus-visible')) {
+      this._markFocusedCell(null);
+      return;
+    }
     this._markFocusedCell(
       event
         .composedPath()
@@ -2048,6 +2065,33 @@ function deepElementAtCentre(element: HTMLElement): Element | null {
     node = node.parentNode ?? (node as ShadowRoot).host ?? null;
   }
   return node === element ? target : null;
+}
+
+/**
+ * The entry of `entries` a press through the highlight on `item` lands on,
+ * or `undefined` when they do not describe that item as drawn now. The
+ * senior cells are reused across a page turn, another tool inside, and until
+ * the row is read again their entries name the tool the page drew before:
+ * an entry counts only when its `senior` is the item's (second review of
+ * #691). The press lands at the item's centre (`_pressLikePointer`): of the
+ * pen and the eraser, the button drawn there.
+ */
+function pressedEntry(entries: ToolbarRowEntry[], item: HTMLElement) {
+  const { seniorIndex } = item.dataset;
+  const senior = seniorIndex === undefined ? null : Number(seniorIndex);
+  const drawn = entries.filter(
+    entry => entry.item === item && entry.senior === senior
+  );
+  if (drawn.length < 2) return drawn[0];
+  const target = deepElementAtCentre(item);
+  const holds = (button: HTMLElement) => {
+    for (let node: Node | null = target; node; ) {
+      if (node === button) return true;
+      node = node.parentNode ?? (node as ShadowRoot).host ?? null;
+    }
+    return false;
+  };
+  return drawn.find(({ button }) => holds(button)) ?? drawn[0];
 }
 
 export const edgelessToolbarWidget = WidgetViewExtension(
