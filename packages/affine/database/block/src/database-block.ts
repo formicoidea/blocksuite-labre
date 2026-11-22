@@ -19,6 +19,7 @@ import {
   DocModeProvider,
   type EventTraceFn,
   NotificationProvider,
+  panelFor,
   PropertiesPanelProvider,
   type TelemetryEventMap,
   TelemetryProvider,
@@ -228,9 +229,13 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
       if (this.std.getOptional(DatabaseOpenRowProvider)) {
         dataSource.serviceSet(HostOpensRowsKey, true);
       }
-      // With a host properties panel, the view options' "Properties" opens
-      // it (ADR 0035 §9b); without, the data-view's popover stays.
-      if (this.std.getOptional(PropertiesPanelProvider)) {
+      // With a host properties panel that answers `'source'`, the view
+      // options' "Properties" opens it (ADR 0035 §9b, `scopes` #708);
+      // without, the data-view's popover stays.
+      // ponytail: `scopes` is read once, when the data source is built; a host
+      // that drops `'source'` later keeps an opener that opens nothing until
+      // the block remounts. Read it in the opener if hosts ever flip it live.
+      if (panelFor(this.std.getOptional(PropertiesPanelProvider), 'source')) {
         dataSource.serviceSet(PropertiesPanelOpenerKey, viewId => {
           openDatabasePropertiesPanel(this.std, this.model, viewId);
         });

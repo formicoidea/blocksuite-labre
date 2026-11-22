@@ -805,6 +805,28 @@ describe('the title band', () => {
     expect(panel.open).toHaveBeenCalledWith({ scope: 'page', docId: DOC });
   });
 
+  // Issue #708: a host keeps its panel for database views only, or for the
+  // page only; the button follows `scopes`.
+  it("draws the panel button only when the panel answers 'page'", async () => {
+    const { service } = bandService({ status: 'ready', properties: [OWNER] });
+    const withScopes = (scopes: PropertiesPanelService['scopes']) =>
+      mount(
+        fakeStd(
+          new Map<unknown, unknown>([
+            [TitleBandProvider, service],
+            [
+              PropertiesPanelProvider,
+              { open: vi.fn(), close: vi.fn(), scopes },
+            ],
+          ])
+        ).std
+      );
+    expect(q(await withScopes(['source']), 'title-band-open-panel')).toBeNull();
+    expect(
+      q(await withScopes(['page']), 'title-band-open-panel')
+    ).not.toBeNull();
+  });
+
   // Recette 3: a right-click on a chip's name opens the host's menu for that
   // property, under the name, as its panel's label and handle do; the
   // browser's menu stays shut. Without `configure`, on a read-only document

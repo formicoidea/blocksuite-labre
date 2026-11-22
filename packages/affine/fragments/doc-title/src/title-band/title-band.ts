@@ -4,6 +4,7 @@ import {
   DOC_UNTITLED,
   FeatureFlagService,
   formatLocale,
+  panelFor,
   PropertiesPanelProvider,
   type TitleBandNotShownPage,
   type TitleBandProperty,
@@ -469,9 +470,10 @@ export class TitleBand extends SignalWatcher(
 
   private readonly _openPanel = () => {
     if (!this.std) return;
-    this.std
-      .getOptional(PropertiesPanelProvider)
-      ?.open({ scope: 'page', docId: this.docId });
+    panelFor(this.std.getOptional(PropertiesPanelProvider), 'page')?.open({
+      scope: 'page',
+      docId: this.docId,
+    });
   };
 
   private readonly _onChip = (event: Event, editable: boolean) => {
@@ -621,7 +623,10 @@ export class TitleBand extends SignalWatcher(
     }
     if (state.status !== 'ready') return nothing;
 
-    const hasPanel = !!this.std?.getOptional(PropertiesPanelProvider);
+    const hasPanel = !!panelFor(
+      this.std?.getOptional(PropertiesPanelProvider),
+      'page'
+    );
     const { properties } = state;
     const canAdd = !!sources.service.add && !this._readonly;
     if (properties.length === 0 && !canAdd && !hasPanel) return nothing;

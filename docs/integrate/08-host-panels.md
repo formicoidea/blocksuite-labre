@@ -280,6 +280,9 @@ const extensions = [
   PropertiesPanelExtension({
     open: (request: PropertiesPanelRequest) => sidebar.showProperties(request),
     close: () => sidebar.hideProperties(),
+    // Optional (since 4.2): ['page'] keeps your panel for the page sheet
+    // and leaves a database view's "Properties" to the data-view's menu.
+    // scopes: ['page'],
   }),
 ];
 
