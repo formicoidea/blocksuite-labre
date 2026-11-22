@@ -1254,8 +1254,18 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
     this.localElementAdded.next(elem);
   }
 
-  applyMiddlewares(middlewares: SurfaceMiddleware[]) {
+  /**
+   * Install the middlewares of the editor being mounted. The returned
+   * function takes them out again, unless another editor has installed its
+   * own since (a mode switch mounts the next editor before the last one
+   * unmounts): the surface outlives the editor, and kept the unmounted
+   * editor, its std and its detached tree alive through these closures.
+   */
+  applyMiddlewares(middlewares: SurfaceMiddleware[]): () => void {
     this._middlewares = middlewares;
+    return () => {
+      if (this._middlewares === middlewares) this._middlewares = [];
+    };
   }
 
   deleteElement(id: string) {
