@@ -5,6 +5,7 @@ import {
 } from '@labre/affine/blocks/database';
 import type { DatabaseBlockModel } from '@labre/affine-model';
 import { Text } from '@labre/store';
+import { userEvent } from '@vitest/browser/context';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 
 import { wait } from '../utils/common.js';
@@ -29,7 +30,10 @@ import { setupEditor } from '../utils/setup.js';
  * - in a host's narrow left sidebar (labre, about 470px), a property's menu
  *   drawn over the list it edits, or its « Type » sub-menu half off screen
  *   (labre recette of 1.1): the menu sits beside the list, both inside the
- *   viewport.
+ *   viewport;
+ * - the table header's « + » creating a column before a type is picked, so
+ *   Escape left a stray column, or opening the previous column's title
+ *   editor instead of the new one's (labre recette of 2026-11-22).
  */
 
 const settle = async () => {
@@ -264,5 +268,36 @@ describe('the properties list of a view', () => {
     } finally {
       sidebar.remove();
     }
+  });
+
+  test('the table header « + » creates a column only once a type is picked', async () => {
+    block().dataSource.viewManager.setCurrentView('table-1');
+    await settle();
+    const before = model.props.columns.length;
+    const plus = () =>
+      block().querySelector<HTMLElement>(
+        '[data-testid="dv-table-add-column"]'
+      )!;
+
+    plus().click();
+    await settle();
+    expect(menuButton('Number')).toBeDefined();
+    expect(model.props.columns).toHaveLength(before);
+    await userEvent.keyboard('{Escape}');
+    await settle();
+    expect(menuButton('Number')).toBeUndefined();
+    expect(model.props.columns).toHaveLength(before);
+
+    plus().click();
+    await settle();
+    menuButton('Number')!.click();
+    await settle();
+    expect(model.props.columns).toHaveLength(before + 1);
+    const added = model.props.columns.at(-1)!;
+    expect(added.type).toBe('number');
+    // The title editor of THAT column opens, not the previous one's.
+    expect(
+      document.querySelector<HTMLInputElement>('affine-menu-input input')?.value
+    ).toBe(added.name);
   });
 });

@@ -417,6 +417,8 @@ describe('the header "+" on a phone', () => {
     expect(add.getAttribute('aria-label')).toBe('New property');
     add.click();
     await settle();
+    // The sheet opens once the new column is drawn (whenPropertyShown).
+    await new Promise(resolve => setTimeout(resolve));
     expect(propertyAdd).toHaveBeenCalled();
     expect(popMenu).toHaveBeenCalledTimes(1);
     const header = popMenu.mock.contexts[0] as MobileTableColumnHeader;
