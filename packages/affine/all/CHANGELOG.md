@@ -1,5 +1,181 @@
 # @labre/affine
 
+## 4.1.0
+
+### Minor Changes
+
+- f92920b: Framework chord prefixes beside Wardley's `w` (ADR 0055). Forty-seven
+  framework commands that shipped keyless gain a default chord on the canvas:
+  BPMN `b` (`b p` pool, `b s` start event, `b e` end event, `b t` task, `b u`
+  user task, `b v` service task, `b o` sub-process, `b c` call activity, `b x`
+  exclusive gateway, `b a` parallel gateway, `b d` data object, `b n` text
+  annotation); UML `u` (`u d` diagram, `u c` class, `u i` interface, `u e`
+  enumeration, `u p` package, `u a` actor, `u o` use case, `u s` subject);
+  Cynefin / Estuarine `y` (`y c` Cynefin framework, `y e` Estuarine map, `y h`
+  hexagon); EDGY `g` (`g b` board, `g p` People, `g o` Outcome, `g j` Object,
+  `g a` Activity); DDD `d`, shared by two boards (Core Domain Chart: `d c`
+  chart, `d g` big-bet, `d p` platform, `d o` outsourced, `d n` bounded context,
+  `d f` future position; Context Map: `d m` board, `d b` bounded context, `d s`
+  cloud / system); Event Storming `o` (`o b` board, `o e` domain event, `o c`
+  command, `o a` aggregate, `o u` actor, `o i` constraint, `o p` policy, `o r`
+  read model, `o s` external system, `o h` hotspot). C4 has none. Every Wardley
+  chord is unchanged.
+
+  `l` on the canvas opens the Templates panel, as a click on its toolbar button
+  does, with the caret in its search field (new command `canvas.templates.toggle`,
+  edgeless scope, overridable, listed by `getShortcutManifest()`; label: the
+  existing `com.labre.template.senior-tool.name` key, no new wording). `l` again,
+  the focus outside the field, closes it; Escape in the panel closes it and gives
+  the focus back to the canvas. It does nothing while a canvas element is edited,
+  on a read-only board and in a presentation. `EdgelessTemplateButton` gains
+  `togglePanel({ focusSearch })` and `EdgelessTemplatePanel` `focusSearch()`.
+  The template cards are still not reachable from the keyboard.
+
+  What your users will notice on the canvas. The letters `b`, `u`, `g`, `y`, `d`
+  and `o`, which did nothing alone, now arm a chord for 1.2 s, as `w` always
+  has: the next letter places an artefact when it is a second key of that
+  prefix, and is swallowed otherwise. So a prefix then a tool letter no longer
+  switches the tool: `b` then `t` places a BPMN task instead of picking the Text
+  tool, `b` then `h` does nothing instead of picking the hand, `w` then `l` arms
+  the Wardley link tool rather than opening the Templates panel (ADR 0055 § 5
+  has the table for every prefix). Every printable character after a prefix
+  stays in its namespace, so the canvas's own printable shortcuts are swallowed
+  there too: `Shift+P` (highlighter), `Shift+S` (shape cycle), `-` (note
+  slicer), `@` (link), digits and punctuation. Named keys, Space and modified
+  keys are handed on, now for `w` too: after a prefix, Delete, Backspace,
+  Escape, Enter, Tab, the arrows, Space and any Ctrl / Meta / Alt combination
+  (Ctrl+Z, Ctrl+D) do exactly what they do without it, where they used to be
+  swallowed for 1.2 s after `w`. The shared `d` follows the two DDD flags: with
+  one board off, its letters after `d` are swallowed and the other board's
+  still place; with both off, `d` arms nothing. A key held after completing a
+  chord no longer auto-repeats into its own tool (`b` then `p` held used to
+  place the pool and then pick the Pen tool), for `w` too. With Caps Lock on, no
+  prefix arms (as for `w` before).
+
+  In a read-only document, during a presentation, and while a canvas element is
+  in edit mode (a text, a polygon's vertices), no prefix arms and no chord runs:
+  a chord used to throw "Cannot add element in readonly mode" (`w c` included),
+  and during a presentation `w c` and the new chords wrote into the document
+  and left the presentation; now each letter does what it does alone there.
+  `availability: 'editable'` now also means "not presenting": a tool declaring
+  the new `BaseTool.presents` (`PresentTool` does) makes every `'editable'`
+  command unavailable, imports included. Every framework
+  artefact and tool command now declares `availability: 'editable'` instead of
+  `'always'`, in `getCommandManifest()` too: a host surface that honours
+  `availability` withdraws them from a read-only document.
+
+  Nothing persisted changes: no command id and no `labelKey` moved, only
+  `defaultKeys` went from empty to a chord, in `getShortcutManifest()`, in
+  `getCommandManifest()` and in each framework bundle's `./commands-manifest`. A
+  user's override on any of these ids keeps winning. An override that already
+  put another command on one of the new chords conflicts with the default:
+  `resolveKeymap` binds the first registered and reports the conflict to
+  `ShortcutConflictReporter`, or only to the console when the host registers
+  none. `FrameworkDescriptor.chordPrefix` is now set for every framework but
+  `c4`. `@labre/affine-shared/utils` exports `frameworkChord`, the helper the
+  frameworks build their chords with; `@labre/std` exports `ChordBinding`, a
+  keymap handler that may say whether it can run (`canRun`), which
+  `toShortcutDescriptor` now provides. No new displayed string: the French
+  catalogue needs nothing.
+
+### Patch Changes
+
+- Updated dependencies [7a61224]
+- Updated dependencies [b721773]
+- Updated dependencies [2342f43]
+- Updated dependencies [6d7a084]
+- Updated dependencies [84c6752]
+- Updated dependencies [55d12e4]
+- Updated dependencies [f92920b]
+- Updated dependencies [1d9baf6]
+- Updated dependencies [f54c196]
+- Updated dependencies [bd9ba02]
+- Updated dependencies [059fa65]
+- Updated dependencies [5475fda]
+- Updated dependencies [810c0ed]
+  - @labre/affine-database-engine@4.1.0
+  - @labre/affine-database-block@4.1.0
+  - @labre/affine-database-view-block@4.1.0
+  - @labre/affine-fragment-doc-title@4.1.0
+  - @labre/affine-database-editor@4.1.0
+  - @labre/affine-widget-edgeless-toolbar@4.1.0
+  - @labre/affine-components@4.1.0
+  - @labre/affine-block-code@4.1.0
+  - @labre/affine-block-frame@4.1.0
+  - @labre/affine-gfx-brush@4.1.0
+  - @labre/affine-gfx-connector@4.1.0
+  - @labre/affine-gfx-pointer@4.1.0
+  - @labre/affine-gfx-note@4.1.0
+  - @labre/affine-gfx-template@4.1.0
+  - @labre/affine-gfx-mindmap@4.1.0
+  - @labre/affine-block-root@4.1.0
+  - @labre/affine-gfx-shape@4.1.0
+  - @labre/affine-block-note@4.1.0
+  - @labre/affine-block-image@4.1.0
+  - @labre/affine-shared@4.1.0
+  - @labre/std@4.1.0
+  - @labre/affine-gfx-bpmn@4.1.0
+  - @labre/affine-gfx-uml@4.1.0
+  - @labre/affine-gfx-edgy@4.1.0
+  - @labre/affine-gfx-cynefin-estuarine@4.1.0
+  - @labre/affine-gfx-ddd-core-domain@4.1.0
+  - @labre/affine-gfx-ddd-context-map@4.1.0
+  - @labre/affine-gfx-ddd-event-storming@4.1.0
+  - @labre/affine-gfx-c4@4.1.0
+  - @labre/affine-gfx-wardley@4.1.0
+  - @labre/affine-block-embed@4.1.0
+  - @labre/affine-block-surface@4.1.0
+  - @labre/affine-gfx-turbo-renderer@4.1.0
+  - @labre/affine-foundation@4.1.0
+  - @labre/affine-widget-keyboard-toolbar@4.1.0
+  - @labre/affine-widget-toolbar@4.1.0
+  - @labre/affine-fragment-outline@4.1.0
+  - @labre/affine-block-edgeless-text@4.1.0
+  - @labre/affine-gfx-ddd-aggregate@4.1.0
+  - @labre/affine-gfx-ddd-shared@4.1.0
+  - @labre/affine-gfx-group@4.1.0
+  - @labre/affine-gfx-link@4.1.0
+  - @labre/affine-gfx-text@4.1.0
+  - @labre/affine-widget-thread-marks@4.1.0
+  - @labre/affine-block-attachment@4.1.0
+  - @labre/affine-block-bookmark@4.1.0
+  - @labre/affine-block-callout@4.1.0
+  - @labre/affine-block-divider@4.1.0
+  - @labre/affine-block-embed-doc@4.1.0
+  - @labre/affine-block-latex@4.1.0
+  - @labre/affine-block-list@4.1.0
+  - @labre/affine-block-paragraph@4.1.0
+  - @labre/affine-block-surface-ref@4.1.0
+  - @labre/affine-block-table@4.1.0
+  - @labre/affine-fragment-adapter-panel@4.1.0
+  - @labre/affine-fragment-frame-panel@4.1.0
+  - @labre/affine-inline-footnote@4.1.0
+  - @labre/affine-inline-latex@4.1.0
+  - @labre/affine-inline-link@4.1.0
+  - @labre/affine-inline-preset@4.1.0
+  - @labre/affine-inline-reference@4.1.0
+  - @labre/affine-rich-text@4.1.0
+  - @labre/affine-widget-drag-handle@4.1.0
+  - @labre/affine-widget-edgeless-auto-connect@4.1.0
+  - @labre/affine-widget-edgeless-dragging-area@4.1.0
+  - @labre/affine-widget-edgeless-selected-rect@4.1.0
+  - @labre/affine-widget-edgeless-zoom-toolbar@4.1.0
+  - @labre/affine-widget-frame-title@4.1.0
+  - @labre/affine-widget-linked-doc@4.1.0
+  - @labre/affine-widget-note-slicer@4.1.0
+  - @labre/affine-widget-remote-selection@4.1.0
+  - @labre/affine-widget-slash-menu@4.1.0
+  - @labre/affine-inline-comment@4.1.0
+  - @labre/affine-inline-mention@4.1.0
+  - @labre/affine-widget-page-dragging-area@4.1.0
+  - @labre/affine-widget-scroll-anchoring@4.1.0
+  - @labre/affine-widget-viewport-overlay@4.1.0
+  - @labre/affine-model@4.1.0
+  - @labre/affine-ext-loader@4.1.0
+  - @labre/global@4.1.0
+  - @labre/store@4.1.0
+  - @labre/sync@4.1.0
+
 ## 4.0.0
 
 ### Patch Changes

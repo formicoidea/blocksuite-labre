@@ -1,5 +1,176 @@
 # @labre/affine-block-frame
 
+## 4.1.0
+
+### Minor Changes
+
+- 6d7a084: Edgeless toolbar names, state and element toolbar height (#679). Every button
+  of the canvas toolbar now has an accessible name, the same translated wording
+  as its tooltip: the quick tools, the pen and the eraser, each senior tool
+  (a framework's button is named after the framework, "Wardley map",
+  "Cynefin / Estuarine"), "More Tools" and the two pager arrows. The tools expose
+  their state as `aria-pressed` (the note and template tools and the mind map
+  menu included); an action (undo, insert a text, add a file) exposes none. After paging the senior row, the arrow no longer keeps the
+  tooltip of the tool it brought in. `edgeless-tool-icon-button` gains `label`
+  (its name when its tooltip is a template) and `onToolbarRow`; it names and
+  states itself only on the toolbar row or when given a `label`, so its other
+  uses (panels, menus, auto-complete) keep the attributes their owner gives; its `active`
+  defaults to `undefined` instead of `false`. The pen's senior tool declares the
+  `com.labre.brush.tooltip.pen` key. New keys for the host's catalogue:
+  `com.labre.edgeless-toolbar.previous-tools` ("Previous tools") and
+  `com.labre.edgeless-toolbar.next-tools` ("Next tools"). The element (contextual)
+  toolbar, which also draws the page view's formatting toolbar, is 40px tall
+  border included (`box-sizing: border-box`), instead of a 36px content box plus its
+  border (measured 37 to 38px depending on the browser, in 4.0.0 and before); the code block's bar keeps its size.
+- f92920b: Framework chord prefixes beside Wardley's `w` (ADR 0055). Forty-seven
+  framework commands that shipped keyless gain a default chord on the canvas:
+  BPMN `b` (`b p` pool, `b s` start event, `b e` end event, `b t` task, `b u`
+  user task, `b v` service task, `b o` sub-process, `b c` call activity, `b x`
+  exclusive gateway, `b a` parallel gateway, `b d` data object, `b n` text
+  annotation); UML `u` (`u d` diagram, `u c` class, `u i` interface, `u e`
+  enumeration, `u p` package, `u a` actor, `u o` use case, `u s` subject);
+  Cynefin / Estuarine `y` (`y c` Cynefin framework, `y e` Estuarine map, `y h`
+  hexagon); EDGY `g` (`g b` board, `g p` People, `g o` Outcome, `g j` Object,
+  `g a` Activity); DDD `d`, shared by two boards (Core Domain Chart: `d c`
+  chart, `d g` big-bet, `d p` platform, `d o` outsourced, `d n` bounded context,
+  `d f` future position; Context Map: `d m` board, `d b` bounded context, `d s`
+  cloud / system); Event Storming `o` (`o b` board, `o e` domain event, `o c`
+  command, `o a` aggregate, `o u` actor, `o i` constraint, `o p` policy, `o r`
+  read model, `o s` external system, `o h` hotspot). C4 has none. Every Wardley
+  chord is unchanged.
+
+  `l` on the canvas opens the Templates panel, as a click on its toolbar button
+  does, with the caret in its search field (new command `canvas.templates.toggle`,
+  edgeless scope, overridable, listed by `getShortcutManifest()`; label: the
+  existing `com.labre.template.senior-tool.name` key, no new wording). `l` again,
+  the focus outside the field, closes it; Escape in the panel closes it and gives
+  the focus back to the canvas. It does nothing while a canvas element is edited,
+  on a read-only board and in a presentation. `EdgelessTemplateButton` gains
+  `togglePanel({ focusSearch })` and `EdgelessTemplatePanel` `focusSearch()`.
+  The template cards are still not reachable from the keyboard.
+
+  What your users will notice on the canvas. The letters `b`, `u`, `g`, `y`, `d`
+  and `o`, which did nothing alone, now arm a chord for 1.2 s, as `w` always
+  has: the next letter places an artefact when it is a second key of that
+  prefix, and is swallowed otherwise. So a prefix then a tool letter no longer
+  switches the tool: `b` then `t` places a BPMN task instead of picking the Text
+  tool, `b` then `h` does nothing instead of picking the hand, `w` then `l` arms
+  the Wardley link tool rather than opening the Templates panel (ADR 0055 § 5
+  has the table for every prefix). Every printable character after a prefix
+  stays in its namespace, so the canvas's own printable shortcuts are swallowed
+  there too: `Shift+P` (highlighter), `Shift+S` (shape cycle), `-` (note
+  slicer), `@` (link), digits and punctuation. Named keys, Space and modified
+  keys are handed on, now for `w` too: after a prefix, Delete, Backspace,
+  Escape, Enter, Tab, the arrows, Space and any Ctrl / Meta / Alt combination
+  (Ctrl+Z, Ctrl+D) do exactly what they do without it, where they used to be
+  swallowed for 1.2 s after `w`. The shared `d` follows the two DDD flags: with
+  one board off, its letters after `d` are swallowed and the other board's
+  still place; with both off, `d` arms nothing. A key held after completing a
+  chord no longer auto-repeats into its own tool (`b` then `p` held used to
+  place the pool and then pick the Pen tool), for `w` too. With Caps Lock on, no
+  prefix arms (as for `w` before).
+
+  In a read-only document, during a presentation, and while a canvas element is
+  in edit mode (a text, a polygon's vertices), no prefix arms and no chord runs:
+  a chord used to throw "Cannot add element in readonly mode" (`w c` included),
+  and during a presentation `w c` and the new chords wrote into the document
+  and left the presentation; now each letter does what it does alone there.
+  `availability: 'editable'` now also means "not presenting": a tool declaring
+  the new `BaseTool.presents` (`PresentTool` does) makes every `'editable'`
+  command unavailable, imports included. Every framework
+  artefact and tool command now declares `availability: 'editable'` instead of
+  `'always'`, in `getCommandManifest()` too: a host surface that honours
+  `availability` withdraws them from a read-only document.
+
+  Nothing persisted changes: no command id and no `labelKey` moved, only
+  `defaultKeys` went from empty to a chord, in `getShortcutManifest()`, in
+  `getCommandManifest()` and in each framework bundle's `./commands-manifest`. A
+  user's override on any of these ids keeps winning. An override that already
+  put another command on one of the new chords conflicts with the default:
+  `resolveKeymap` binds the first registered and reports the conflict to
+  `ShortcutConflictReporter`, or only to the console when the host registers
+  none. `FrameworkDescriptor.chordPrefix` is now set for every framework but
+  `c4`. `@labre/affine-shared/utils` exports `frameworkChord`, the helper the
+  frameworks build their chords with; `@labre/std` exports `ChordBinding`, a
+  keymap handler that may say whether it can run (`canRun`), which
+  `toShortcutDescriptor` now provides. No new displayed string: the French
+  catalogue needs nothing.
+
+### Patch Changes
+
+- 55d12e4: Edgeless toolbar keyboard model (#679, ADR 0054). The canvas toolbar is one
+  `role="toolbar"` named by the new key `com.labre.edgeless-toolbar.name`
+  ("Canvas tools"), with one Tab stop: the active tool's button, through a roving
+  `tabindex`. One Tab from the canvas reaches it, notes or not; Shift+Tab from
+  the toolbar goes back to the canvas. The canvas keeps Tab while a text is
+  edited or a single mind map node is selected. While a toolbar button holds the
+  keyboard focus, the toolbar takes its own keys only: ←/→ walk every button and
+  page the senior row, Home/End go to the ends, Enter and Space press the button
+  exactly as a click does (once, even when held), Escape closes what the button
+  opened and gives it the focus back, or gives the canvas the keyboard. Every
+  other key (Delete, letters, shortcuts) still reaches the canvas. A mouse click
+  never puts the focus on a button, so after a click every key is the canvas's,
+  as before. A press that only picks a tool (the eraser) gives the canvas the
+  keyboard back.
+
+  A menu opened from the keyboard (a framework's commands, the frame, connector,
+  pen, note, shape and mind map options) takes the keyboard on its first
+  control: the arrows walk a group of controls, Tab and Shift+Tab move between
+  groups (types, widths, colours) and, past the last, close the menu and return
+  to its button, as Escape does. Enter or Space press a control as a click does,
+  and the menu then does what it does after that click: gone, the canvas has the
+  keys; still open (an option such as a shape type or Pen / Highlighter), the
+  focus stays on the control — unless a key or a click came first, which keeps
+  its own move. Escape after picking a mind map style drops it and gives the
+  select tool back, as it does with the mouse. A menu opened with the mouse
+  moves no focus, and a click in a menu the keyboard visited is the click it
+  was before. The
+  menus' buttons are named from their tooltip (each mind map style by its own
+  name) and the chosen option is announced as pressed (`aria-pressed`, through
+  the new `pressed` property of `edgeless-tool-icon-button`).
+
+  The discrete `affine-slider` (line widths, the note's corner radius) is now an
+  ARIA slider and a Tab stop everywhere it is drawn — the brush and highlighter
+  element toolbars, the connector's and the shape's line width, the note's
+  corner radius: the arrows step it point to point, Home and End go to its ends.
+  It is named by its new `label` property, which every use in the library
+  passes; a host that renders `affine-slider` itself should pass one too.
+
+  The pager arrows keep their names ("Next tools", "Previous tools") and their
+  tooltip still previews the tool they bring in; a click closes that preview
+  until the pointer leaves the arrow, where it used to stay shown, stale, over a
+  resting pointer. Keyboard focus draws the same 2px ring as the Alt+←/→
+  highlight, which stays as a shortcut from the canvas.
+
+- 059fa65: The "Stop presentation" button of the presentation toolbar now reads a fill and
+  on-fill pair of the theme, `button/error` (`--affine-v2-button-error`) for its
+  fill and `button/pureWhiteText` (`--affine-v2-button-pureWhiteText`) for its
+  icon, instead of `warningColor` (`--affine-warning-color`) under a literal
+  white (#683). A host theme may now tune its warning colour for text alone; it
+  must give the `button/error` / `button/pureWhiteText` pair a contrast of at
+  least 3:1 (WCAG 1.4.11). The fill moved from an inline `style` attribute to the
+  component's stylesheet.
+- Updated dependencies [6d7a084]
+- Updated dependencies [84c6752]
+- Updated dependencies [55d12e4]
+- Updated dependencies [f92920b]
+- Updated dependencies [1d9baf6]
+- Updated dependencies [f54c196]
+- Updated dependencies [bd9ba02]
+- Updated dependencies [5475fda]
+- Updated dependencies [810c0ed]
+  - @labre/affine-widget-edgeless-toolbar@4.1.0
+  - @labre/affine-components@4.1.0
+  - @labre/affine-gfx-pointer@4.1.0
+  - @labre/affine-shared@4.1.0
+  - @labre/std@4.1.0
+  - @labre/affine-block-surface@4.1.0
+  - @labre/affine-widget-frame-title@4.1.0
+  - @labre/affine-model@4.1.0
+  - @labre/affine-ext-loader@4.1.0
+  - @labre/global@4.1.0
+  - @labre/store@4.1.0
+
 ## 4.0.0
 
 ### Patch Changes
