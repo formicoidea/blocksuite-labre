@@ -9,7 +9,8 @@
  * base that IS shared. This spec would have caught:
  * - `'not-open'` drawn as anything but its own title and hint, with its own
  *   test id, or with a button (the gesture that opens a source is the
- *   host's);
+ *   host's), or with a hint asking the reader to open the source, which
+ *   the one reader who sees it cannot do (#704, amendment of 2026-11-22);
  * - a translation provider not honoured for either of its two keys;
  * - a reason this build does not know (`'unknown'`) drawing an error or
  *   nothing instead of the neutral "Source not found";
@@ -60,7 +61,7 @@ describe('a source not open to the reader’s page', () => {
     expect(notice.getAttribute('role')).toBe('status');
     expect(textsOf(notice)).toEqual([
       'Source not open',
-      'This view reads a source that is not open to this page. Open the source to this page to see its rows.',
+      'This view reads a source that is not open to this page.',
     ]);
     expect(notice.querySelector('button, data-view-component-button')).toBe(
       null
