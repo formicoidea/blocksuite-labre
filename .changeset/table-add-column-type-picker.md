@@ -13,3 +13,6 @@ applies the add asynchronously (it reads its server first) saw the previous
 column's editor open. The same wait now covers "Insert left / right" (classic,
 virtual and mobile tables), the mobile "+" and the properties list's "New
 property"; if the property never arrives, nothing opens.
+
+`editLastColumnTitle` of `<affine-database-column-header>` is gone (no caller
+in the library); `editColumnTitle(id)` opens the editor of one column.

@@ -153,6 +153,8 @@ async function settle() {
         )
         .filter(Boolean)
     );
+    // A new property's menu opens on the frame after it is drawn.
+    await new Promise(resolve => requestAnimationFrame(resolve));
   }
 }
 

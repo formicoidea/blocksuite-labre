@@ -233,7 +233,8 @@ export const popPropertyMenu = (
 const PROPERTY_SHOWN_TIMEOUT_MS = 10_000;
 
 /**
- * Runs `then` on the frame after `view` displays the property `id`, or never
+ * Runs `then` on the frame after `view` displays the property `id` (and
+ * the elements drawing it have updated), or never
  * if it does not arrive within `timeoutMs`. Returns a cancel.
  *
  * A gesture that adds a property and then opens its title editor must wait
@@ -255,7 +256,9 @@ export const whenPropertyShown = (
     done = true;
     clearTimeout(timer);
     unsubscribe?.();
-    if (shown) requestAnimationFrame(then);
+    // A task first: every microtask that renders the new property (Lit's
+    // updates, nested ones included) has run by then; then the frame.
+    if (shown) setTimeout(() => requestAnimationFrame(then));
   };
   unsubscribe = view.properties$.subscribe(list => {
     if (list.some(property => property.id === id)) finish(true);
@@ -267,8 +270,8 @@ export const whenPropertyShown = (
 };
 
 /**
- * The type picker of a new property, as the table header's "+", the
- * properties list and the record detail's "Add property" draw it: one entry
+ * The type picker of a new property, as the table header's "+" and the
+ * properties list draw it: one entry
  * per type the source offers, named after the type. Nothing is written until
  * a type is picked: Escape or a click outside closes the menu and creates
  * nothing. The property is added at the end of the source (every view),

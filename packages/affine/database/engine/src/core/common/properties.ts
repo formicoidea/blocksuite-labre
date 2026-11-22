@@ -199,13 +199,19 @@ export class DataViewPropertiesSettingView extends SignalWatcher(
       title: this.wording(DATA_VIEW_PROPERTY_TYPE),
       wording: this.wording,
       onAdd: id => {
-        whenPropertyShown(this.view, id, () => {
-          const row = this.querySelector<HTMLElement>(
-            `.property-item[data-property-id="${CSS.escape(id)}"]`
-          );
-          row?.scrollIntoView({ block: 'nearest' });
-          this._openMenu(this.view.propertyGetOrCreate(id), row ?? button);
-        });
+        this.disposables.add(
+          whenPropertyShown(
+            { properties$: this.view.propertiesRaw$ },
+            id,
+            () => {
+              const row = this.querySelector<HTMLElement>(
+                `.property-item[data-property-id="${CSS.escape(id)}"]`
+              );
+              row?.scrollIntoView({ block: 'nearest' });
+              this._openMenu(this.view.propertyGetOrCreate(id), row ?? button);
+            }
+          )
+        );
       },
     });
   };

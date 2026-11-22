@@ -37,6 +37,7 @@ const GIVE_UP_MS = 100;
 
 let frames: FrameRequestCallback[] = [];
 const flushFrames = () => {
+  vi.advanceTimersByTime(0);
   const pending = frames;
   frames = [];
   pending.forEach(cb => cb(0));
@@ -111,9 +112,9 @@ describe('whenPropertyShown', () => {
 });
 
 type PickerEntry = { name: string; select: () => void };
-const entriesOf = (call: unknown[]) =>
-  (call[1] as { options: { items: Array<{ items: PickerEntry[] }> } }).options
-    .items[0].items;
+const entriesOf = (call: unknown[] | undefined) =>
+  (call?.[1] as { options: { items: Array<{ items: PickerEntry[] }> } }).options
+    .items[0]!.items;
 
 describe('the new property type picker', () => {
   it('writes nothing until a type is picked, then adds that type', () => {
@@ -135,7 +136,7 @@ describe('the new property type picker', () => {
 
     const entries = entriesOf(popMenu.mock.calls[0]);
     expect(entries.map(e => e.name)).toEqual(['Text', 'Number']);
-    entries[1].select();
+    entries[1]!.select();
     expect(propertyAdd).toHaveBeenCalledWith('end', {
       type: 'number',
       name: 'Number',
