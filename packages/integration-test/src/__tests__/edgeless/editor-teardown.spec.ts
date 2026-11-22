@@ -20,7 +20,10 @@
  * - the library: that last editor was held by the surface model, which kept
  *   the unmounted editor's surface middlewares, each closing over its std
  *   (`SurfaceMiddlewareExtension`). A host that keeps its workspace open
- *   kept one detached editor per document it had opened on the canvas.
+ *   kept one detached editor per document it had opened on the canvas. And
+ *   the editor unmounted while active stayed in `UIEventDispatcher`'s static
+ *   active slot until another one was activated (seen only after a spec
+ *   that had moved the pointer, so every editor here is made active).
  *
  * What it would have caught: any of those holders, as a count of editors
  * still alive after full garbage collections (a number, not a timing), and
@@ -60,10 +63,12 @@ const RELEASE_TIMEOUT_MS = 5000;
 /** Mounts and garbage collections take a few seconds each test. */
 const TEST_TIMEOUT_MS = 60_000;
 
-/** Mount an edgeless editor with a shape on its canvas, painted. */
+/** Mount an edgeless editor, active, with a shape on its canvas, painted. */
 async function mountWithAShape() {
   const cleanup = await setupEditor('edgeless');
   const edgeless = getDocRootBlock(window.doc, window.editor, 'edgeless');
+  // What a click, a focus or the pointer entering does; most specs do it.
+  edgeless.std.event.active = true;
   edgeless.service.crud.addElement('shape', {
     shapeType: ShapeType.Rect,
     xywh: '[0,0,100,100]',
