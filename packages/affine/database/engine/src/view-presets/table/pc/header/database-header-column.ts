@@ -21,7 +21,10 @@ import { classMap } from 'lit/directives/class-map.js';
 import { createRef, ref } from 'lit/directives/ref.js';
 import { html } from 'lit/static-html.js';
 
-import { popPropertyMenu } from '../../../../core/common/property-menu.js';
+import {
+  popPropertyMenu,
+  whenPropertyShown,
+} from '../../../../core/common/property-menu.js';
 import { filterTraitKey } from '../../../../core/filter/trait.js';
 import { firstFilterByRef } from '../../../../core/filter/utils.js';
 import { renderUniLit } from '../../../../core/index.js';
@@ -148,6 +151,24 @@ export class DatabaseHeaderColumn extends SignalWatcher(
   private drawWidthDragBarTask = 0;
 
   private readonly widthDragBar = createRef();
+
+  /**
+   * Opens the title editor of the column "Insert left / right" added once it
+   * is drawn. Up to 4.1 the sibling was opened in the next microtask: a
+   * host that applies the add asynchronously had not drawn it yet, and the
+   * neighbour's editor opened instead (whenPropertyShown).
+   */
+  private editTitleWhenShown(id: string) {
+    const host = this.closest('affine-database-column-header');
+    whenPropertyShown(this.tableViewManager, id, () => {
+      const column = host?.querySelector(
+        `[data-column-id="${CSS.escape(id)}"]`
+      );
+      if (!(column instanceof DatabaseHeaderColumn)) return;
+      column.editTitle();
+      column.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+    });
+  }
 
   editTitle = () => {
     this._clickColumn();
@@ -281,23 +302,11 @@ export class DatabaseHeaderColumn extends SignalWatcher(
               hide: () => this.tableViewManager.propertiesLocked$.value,
               prefix: InsertLeftIcon(),
               select: () => {
-                this.tableViewManager.propertyAdd({
+                const id = this.tableViewManager.propertyAdd({
                   id: this.column.id,
                   before: true,
                 });
-                Promise.resolve()
-                  .then(() => {
-                    const pre =
-                      this.previousElementSibling?.previousElementSibling;
-                    if (pre instanceof DatabaseHeaderColumn) {
-                      pre.editTitle();
-                      pre.scrollIntoView({
-                        inline: 'nearest',
-                        block: 'nearest',
-                      });
-                    }
-                  })
-                  .catch(console.error);
+                if (id) this.editTitleWhenShown(id);
               },
             }),
             menu.action({
@@ -305,22 +314,11 @@ export class DatabaseHeaderColumn extends SignalWatcher(
               hide: () => this.tableViewManager.propertiesLocked$.value,
               prefix: InsertRightIcon(),
               select: () => {
-                this.tableViewManager.propertyAdd({
+                const id = this.tableViewManager.propertyAdd({
                   id: this.column.id,
                   before: false,
                 });
-                Promise.resolve()
-                  .then(() => {
-                    const next = this.nextElementSibling?.nextElementSibling;
-                    if (next instanceof DatabaseHeaderColumn) {
-                      next.editTitle();
-                      next.scrollIntoView({
-                        inline: 'nearest',
-                        block: 'nearest',
-                      });
-                    }
-                  })
-                  .catch(console.error);
+                if (id) this.editTitleWhenShown(id);
               },
             }),
             menu.action({

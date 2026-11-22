@@ -229,12 +229,51 @@ export const popPropertyMenu = (
     middleware: placement.beside ? besideListMiddleware() : undefined,
   });
 
+/** How long a gesture waits for the property it added to be displayed. */
+const PROPERTY_SHOWN_TIMEOUT_MS = 10_000;
+
 /**
- * The type picker of a new property, as the virtual table header's "+" and
- * the record detail's "Add property" draw it: one entry per type the source
- * offers, named after the type. The property is added at the end of the
- * source (every view), under the type's own name, and `onAdd` gets its id
- * so the opener can open its menu for the rename.
+ * Runs `then` on the frame after `view` displays the property `id`, or never
+ * if it does not arrive within `timeoutMs`. Returns a cancel.
+ *
+ * A gesture that adds a property and then opens its title editor must wait
+ * for THAT property, never open "the last column next frame": a host whose
+ * data source applies the add asynchronously (it first reads its server)
+ * has not drawn the new column yet, and the previous column opened instead.
+ */
+export const whenPropertyShown = (
+  view: Pick<SingleView, 'properties$'>,
+  id: string,
+  then: () => void,
+  timeoutMs = PROPERTY_SHOWN_TIMEOUT_MS
+): (() => void) => {
+  let done = false;
+  let unsubscribe: (() => void) | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const finish = (shown: boolean) => {
+    if (done) return;
+    done = true;
+    clearTimeout(timer);
+    unsubscribe?.();
+    if (shown) requestAnimationFrame(then);
+  };
+  unsubscribe = view.properties$.subscribe(list => {
+    if (list.some(property => property.id === id)) finish(true);
+  });
+  // Already displayed: `subscribe` ran `finish` before `unsubscribe` existed.
+  if (done) unsubscribe();
+  else timer = setTimeout(() => finish(false), timeoutMs);
+  return () => finish(false);
+};
+
+/**
+ * The type picker of a new property, as the table header's "+", the
+ * properties list and the record detail's "Add property" draw it: one entry
+ * per type the source offers, named after the type. Nothing is written until
+ * a type is picked: Escape or a click outside closes the menu and creates
+ * nothing. The property is added at the end of the source (every view),
+ * under the type's own name, and `onAdd` gets its id so the opener can open
+ * its menu for the rename.
  */
 export const popNewPropertyMenu = (
   target: PopupTarget,

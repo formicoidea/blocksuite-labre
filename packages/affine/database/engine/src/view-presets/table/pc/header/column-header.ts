@@ -7,10 +7,18 @@ import { nothing, type TemplateResult } from 'lit';
 import { property, query } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { html } from 'lit/static-html.js';
+import { popupTargetFromElement } from '@labre/affine-components/context-menu';
 
+import {
+  popNewPropertyMenu,
+  whenPropertyShown,
+} from '../../../../core/common/property-menu.js';
+import { wordingFrom } from '../../../../core/utils/wording.js';
+import { DATA_VIEW_PROPERTY_TYPE } from '../../../../translations.js';
 import { PageLayoutKey } from '../../../../core/view-manager/page-layout.js';
 import { cellDivider } from '../../styles.js';
 import type { TableGroup } from '../group.js';
+import type { DatabaseHeaderColumn } from './database-header-column.js';
 import { tableStyle } from '../table-view-style';
 import { type TableViewUILogic } from '../table-view-ui-logic.js';
 import { styles } from './styles.js';
@@ -20,20 +28,33 @@ export class DatabaseColumnHeader extends SignalWatcher(
 ) {
   static override styles = styles;
 
+  /**
+   * "+" opens the type picker; the column exists only once a type is
+   * picked (Escape or a click outside creates nothing), then ITS title
+   * editor opens when it is drawn, never "the last column next frame"
+   * (whenPropertyShown says why).
+   */
   private readonly _onAddColumn = (e: MouseEvent) => {
     if (this.readonly || this.tableViewManager.propertiesLocked$.value) return;
-    this.tableViewManager.propertyAdd('end');
     const ele = e.currentTarget as HTMLElement;
-    requestAnimationFrame(() => {
-      this.editLastColumnTitle();
-      ele.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    const wording = wordingFrom(ele);
+    popNewPropertyMenu(popupTargetFromElement(ele), this.tableViewManager, {
+      title: wording(DATA_VIEW_PROPERTY_TYPE),
+      wording,
+      onAdd: id => {
+        whenPropertyShown(this.tableViewManager, id, () => {
+          ele.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+          this.editColumnTitle(id);
+        });
+      },
     });
   };
 
-  editLastColumnTitle = () => {
-    const columns = this.querySelectorAll('affine-database-header-column');
-    const column = columns.item(columns.length - 1);
-    column.editTitle();
+  editColumnTitle = (id: string) => {
+    const column = this.querySelector<DatabaseHeaderColumn>(
+      `affine-database-header-column[data-column-id="${CSS.escape(id)}"]`
+    );
+    column?.editTitle();
   };
 
   preMove = 0;

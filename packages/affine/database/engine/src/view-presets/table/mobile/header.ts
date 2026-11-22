@@ -8,6 +8,7 @@ import { property, query } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { html } from 'lit/static-html.js';
 
+import { whenPropertyShown } from '../../../core/common/property-menu.js';
 import { wordingOf } from '../../../core/utils/wording.js';
 import { DATA_VIEW_NEW_PROPERTY } from '../../../translations.js';
 import { cellDivider } from '../styles.js';
@@ -38,23 +39,23 @@ export class MobileTableHeader extends SignalWatcher(
   /**
    * "+" adds a property and opens ITS "Property settings" sheet. Up to 0.54
    * the last header was looked up in the same tick, before the header had
-   * drawn the new column, so the sheet opened on the previous last property.
+   * drawn the new column, so the sheet opened on the previous last property;
+   * up to 4.1 it waited one update only, too early for a host that applies
+   * the add asynchronously (whenPropertyShown).
    */
   private readonly _onAddColumn = () => {
     if (this.readonly || this.tableViewManager.propertiesLocked$.value) return;
     const id = this.tableViewManager.propertyAdd('end');
     if (!id) return;
-    this.updateComplete
-      .then(() => {
-        Array.from(
-          this.querySelectorAll<MobileTableColumnHeader>(
-            'mobile-table-column-header'
-          )
+    whenPropertyShown(this.tableViewManager, id, () => {
+      Array.from(
+        this.querySelectorAll<MobileTableColumnHeader>(
+          'mobile-table-column-header'
         )
-          .find(header => header.column.id === id)
-          ?.editTitle();
-      })
-      .catch(console.error);
+      )
+        .find(header => header.column.id === id)
+        ?.editTitle();
+    });
   };
 
   private get readonly() {
