@@ -135,17 +135,23 @@ test file, run `tsc -b --force <package>` so the cache does not skip it.
   16 ms; under load it still fails about one run in three. Rerun alone.
 - Two integration specs fetch a dead public asset host; a ticket exists to
   vendor the fixtures.
-- The integration page keeps about 6 MB per test (measured on Windows,
+- The integration page kept about 6 MB per test (measured on Windows,
   2026-11-21: one session over 1341 tests, at d91150343, grew linearly to
-  8.2 GB, all in the page's renderer; `setupEditor`'s cleanup removes the
-  editor and three globals, nothing more). The 16 GB hosted runner died near
+  8.2 GB, all in the page's renderer). The 16 GB hosted runner died near
   the end of the suite, with no log: "The runner has received a shutdown
   signal" or "lost communication with the server"; that memory killed it is
-  inferred, not measured on the runner. Two sessions halve the peak (148
-  files, 1315 tests at b72177321: 4.2 GB per session); the leak is not fixed.
-  Trigger: a session's peak nearing the runner's memory again (the job dying
-  late without a log, or a sampled peak past about 6 GB) — add a session in
-  `scripts/test-integration.mjs`, or fix the teardown.
+  inferred, not measured on the runner. Two sessions halved the peak (148
+  files, 1315 tests at b72177321: 4.2 GB per session). The teardown now
+  frees the editor: `setupEditor`'s cleanup disposes of its store and its
+  workspace (the awareness interval and the block-meta throttle held every
+  workspace of the session) and an unmounted editor takes its surface
+  middlewares back; `editor-teardown.spec.ts` counts the editors left alive
+  after garbage collections (none of 30) and holds the JS heap under 200 KB
+  per mount (650 KB before, about 75 KB after with a shape drawn). The
+  full-run curve has not been sampled again, so the two sessions stay. Trigger: a sampled full run flat under about 2 GB — drop
+  to one session; a session's peak nearing the runner's memory again (the
+  job dying late without a log, or a sampled peak past about 6 GB) — take a
+  heap snapshot of the page and find the holder before adding a session.
 
 ## Manual verification in the playground
 

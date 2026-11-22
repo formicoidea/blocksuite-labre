@@ -339,8 +339,22 @@ browser session … within the timeout`: Chromium could not start the
     (`scripts/test-integration.mjs`, `--shard`): at b72177321 (148 files,
     1315 tests), 4.2 GB peak each, 4.55 GB at most for both (the first
     session's renderer outlived its browser by about three minutes on
-    Windows). The leak itself is not fixed
-    ([04-testing.md](contribute/04-testing.md#flaky) has the trigger).
+    Windows). The leak was then found with heap snapshots (2026-11-22):
+    every `TestWorkspace` of the session stayed reachable from the page's
+    timer list, through the y-protocols `Awareness` interval that only
+    `workspace.dispose()` clears and the store's `BlockMetaService`
+    throttle (30 s after a local edit, until `store.dispose()`), neither of
+    which `setupEditor`'s cleanup called; on a canvas the workspace's
+    surface model also kept the last editor mounted on it, through that
+    editor's surface middlewares (a library leak for any host keeping its
+    workspace open). 30 edgeless mounts kept 30 editors and about 650 KB of
+    JS heap each; with the cleanup disposing of the store and the workspace
+    and the editor taking its middlewares back, none, and about 75 KB per
+    mount with a shape drawn (20 KB on an empty canvas;
+    `editor-teardown.spec.ts`). The two sessions stay until a sampled full
+    run shows the flat curve ([04-testing.md](contribute/04-testing.md#flaky)).
     _Rule:_ a job that dies without a log near the end of a long shared-page
     run is memory until measured otherwise; measure the browser's memory over
-    a full run before calling it infrastructure.
+    a full run before calling it infrastructure, and find what holds it in a
+    heap snapshot (retainers from the GC roots, ephemeron edges skipped)
+    before working around it.

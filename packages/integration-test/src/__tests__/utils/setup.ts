@@ -192,6 +192,27 @@ function forgetLeftoverEditor() {
     .forEach(stale => (stale.closest('body > *') ?? stale).remove());
 }
 
+/**
+ * Dispose of the store and the workspace the last spec built, and forget them.
+ *
+ * Every `setupEditor` builds a fresh `TestWorkspace`, whose y-protocols
+ * `Awareness` starts a 3 s `setInterval` that only `dispose()` clears, and a
+ * store whose `BlockMetaService` holds a 30 s `throttleTime` timer after
+ * each local edit until the store is disposed. The page's timer list held
+ * every workspace of the session that way, and through it the store, its
+ * blocks and, on a canvas, the last editor mounted on it: 30 edgeless mounts
+ * kept 30 `BlockStdScope`s and about 650 KB of JS heap each, on top of the
+ * detached DOM and canvases they hold (`editor-teardown.spec.ts`,
+ * docs/lessons.md 39). Run from `cleanup` and again before a mount, for a
+ * spec that dropped its cleanup.
+ */
+function forgetLeftoverCollection() {
+  window.doc?.dispose();
+  window.collection?.dispose();
+  delete (window as any).doc;
+  delete (window as any).collection;
+}
+
 type SetupEditorOptions = {
   extensions?: ExtensionType[];
   enableDomRenderer?: boolean;
@@ -216,6 +237,7 @@ export async function setupEditor(
   forgetPersistedViewport();
   forgetLeftoverSelection();
   forgetLeftoverEditor();
+  forgetLeftoverCollection();
 
   const collection = new TestWorkspace(createCollectionOptions());
   collection.storeExtensions = storeExtensions;
@@ -231,15 +253,18 @@ export async function setupEditor(
     featureFlagService?.setFlag('enable_dom_renderer', true);
   }
 
-  const appElement = await createEditor(
+  let appElement: HTMLElement | null = await createEditor(
     collection,
     mode,
     extensions,
     options.flags
   );
 
+  // Let go of the app once removed: a spec keeps its last cleanup in scope
+  // (a `let`, the frame of an async test), and the app holds the editor.
   return () => {
     appElement?.remove();
+    appElement = null;
     cleanup();
   };
 }
@@ -247,11 +272,9 @@ export async function setupEditor(
 export function cleanup() {
   window.editor?.remove();
 
-  delete (window as any).collection;
+  forgetLeftoverCollection();
 
   delete (window as any).editor;
-
-  delete (window as any).store;
 }
 
 declare global {
