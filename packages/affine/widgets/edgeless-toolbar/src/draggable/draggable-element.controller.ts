@@ -4,7 +4,7 @@ import {
   ThemeProvider,
   ViewportElementProvider,
 } from '@labre/affine-shared/services';
-import { Bound } from '@labre/global/gfx';
+import { Bound, type IVec } from '@labre/global/gfx';
 import { GfxControllerIdentifier } from '@labre/std/gfx';
 import {
   type ReactiveController,
@@ -342,6 +342,33 @@ export class EdgelessDraggableElementController<T>
     if (this.states.cancelled) return;
     this._updateState('cancelled', true);
     this._animateCancelDrop();
+  }
+
+  /**
+   * Set down what a click picked up (`clickToDrag`) at `center`, a point of
+   * the model, sized as a drop there would size it: `standardWidth` wide, the
+   * picked element's proportions. The keyboard's placement (ADR 0054,
+   * amendment of 2026-11-22): it has no pointer to carry the element to the
+   * canvas, so Enter on a mind map style or a template card puts it at the
+   * centre of the view, where the Text and Add file tools insert. False when
+   * nothing is picked up.
+   */
+  dropAt(center: IVec): boolean {
+    const { overlay, info, options } = this;
+    if (!overlay || !this.states.draggingElement || this.states.cancelled) {
+      return false;
+    }
+    const { elementInfo, elementRectOriginal } = info;
+    const w = elementInfo.standardWidth ?? options.standardWidth ?? 100;
+    const h =
+      elementRectOriginal.width > 0
+        ? (w * elementRectOriginal.height) / elementRectOriginal.width
+        : w;
+    const bound = new Bound(center[0] - w / 2, center[1] - h / 2, w, h);
+    options.onDrop?.(elementInfo, bound);
+    this.reset();
+    this.removeAllEvents();
+    return true;
   }
 
   /**

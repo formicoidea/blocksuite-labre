@@ -373,3 +373,87 @@ in keyboard mode, and after a mouse gesture it is the toolbar of 4.0.0.
    spec says where to lift it). (c) A tooltip the resting mouse raised over a
    menu control takes a keyboard press there, since the press is the
    pointer's at what is drawn (§4): Enter then does nothing. Not changed.
+
+## Amendment — 2026-11-22: what the keyboard could not do in 4.1.0
+
+The product owner's acceptance of 4.1.0 listed five things the keyboard could
+not do in the canvas toolbar; four were reproduced and are fixed, the fifth
+was not and is held as it is. The rules of §4 hold: the toolbar takes only its
+own keys, only in keyboard mode, and after a mouse gesture it is the toolbar of
+4.0.0. The chord prefixes of ADR 0055 (`w b u y g d o`, `l` for Templates) are
+untouched.
+
+1. **The templates panel joins the menu model** (replaces the panel's line in
+   §5 and "What still needs the pointer" for the templates). A text field is
+   a group of its own whose keys stay its own, like the slider (`menuGroups`:
+   an `input` of type text or search); the panel's categories and cards say
+   `role="button"`, each card named by its template (its displayed name, else
+   "Add", `com.labre.template.panel.add`), the chosen category
+   `aria-pressed`; an empty `.template-group-divider`, drawn as nothing,
+   ends the categories' group, as a divider ends one in every menu. So Enter on the Templates button puts the keyboard in the
+   search field, as the `l` shortcut does; Tab goes to the categories, then
+   to the cards; ←/→ walk a group, one card at a time (a two-dimensional walk
+   of the grid was not asked for: ponytail, the arrows of the menu model are
+   one-dimensional); Enter on a category shows it; Enter on a card places it
+   (2). Typing in the field stays text (ADR 0055); Escape closes the panel and
+   gives the button the focus back. The integration specs that walk every
+   menu still leave the panel out (`OWN_MODEL`): pressing each of its cards
+   twice over would take minutes; the panel's path is held by
+   `edgeless-toolbar-keyboard-gaps.spec.ts`.
+
+2. **Enter places what a click picks up.** A mind map style and a template
+   card are picked up by a click and set down by the next click on the canvas
+   (`clickToDrag`); the keyboard has no pointer to carry them. In keyboard
+   mode, a press that picked an element up sets it down at once, at the centre
+   of the view (`EdgelessDraggableElementController.dropAt`), where the Text
+   and Add file tools insert: `standardWidth` wide, the picked element's
+   proportions, through the menu's own `onDrop` — the mind map selected and
+   the select tool back, the template inserted — and then, as after any press,
+   the menu decides where the keyboard goes: still open, the focus stays on
+   the control, for another; gone, the canvas has the keys. One rule in the toolbar
+   (`_pressMenuControl`), read from the menu's `draggableController`, as
+   Escape already reads it (§10): a menu that picks up tomorrow gets it with
+   nothing to declare. This is the one place Enter does not do what a click
+   does on its own: it does what the click and the click on the canvas do
+   together, which is what "Enter on any control does what a click does"
+   compares (`edgeless-toolbar-keyboard.spec.ts` completes the mouse's press
+   with that second click). The mouse is unchanged: a click picks up, its
+   Escape drops.
+
+3. **At a 380px-wide bar, → passes "Add file"** (fixes §3b of the amendment
+   of 2026-11-21). The senior cells were reused across a page turn: at one
+   tool a page, Text and Add file share their template, and the cell kept
+   the same button, retitled under the focus. → did move to Add file, but the
+   focus stayed on the same element: nothing for a screen reader to announce,
+   and a walk waiting for the focus to move saw it stall there — what the ring
+   test of the previous amendment met (measured on the base: the focused node
+   is the same before and after). The cells are keyed by the tool's place
+   among all of them, so a page turn draws the next tool in a cell of its own.
+   A sliding page keeps the cells it shares in place: nothing focused moves.
+   The ring test now walks the whole narrow row (its `ponytail:` lifted).
+
+4. **The Shape tool's ghost waits for the pointer.** Taken from the keyboard
+   (`s`, Enter on Shape), the tool drew its ghost where `ToolOverlay` starts
+   it — the last pointer move the canvas saw, its top-left corner when there
+   was none — and left it there until the mouse moved. Hidden instead, until
+   the first pointer move over the canvas, as it already hides when the
+   pointer leaves the canvas: the ghost previews where a click puts the shape,
+   and until the pointer moves the tool does not know where that is. Placing
+   it somewhere sensible was the alternative; there is no place a keyboard
+   user can click, and a ghost away from the pointer misinforms the mouse
+   user. The tool remembers that the pointer is on the canvas across a re-take
+   of itself (`s` again or Shift+S cycling, a shape picked in the menu), so a
+   resting pointer keeps its ghost; another tool taken resets it.
+
+5. **A tooltip raised by the resting mouse: reported, not reproduced**
+   (§3c of the amendment of 2026-11-21 stays unconfirmed, nothing changed).
+   Measured on the base with a real mouse resting on a shape type of the Shape
+   menu until its tooltip showed: Enter on that control, and Enter on its
+   neighbour, each pressed the control the keyboard stood on. The tooltips
+   are `pointer-events: none` (`affine-tooltip`), so the hit test that finds
+   what a press lands on (§4) never meets them. Held as it is by "a tooltip
+   raised by the resting mouse does not take the keyboard press"; a menu
+   where it still happens needs its steps before any change.
+
+Held by `edgeless-toolbar-keyboard-gaps.spec.ts` (one mount, one test a gap)
+and the amended tests of `edgeless-toolbar-keyboard.spec.ts`.
