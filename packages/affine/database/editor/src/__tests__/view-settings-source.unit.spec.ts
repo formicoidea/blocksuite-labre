@@ -128,6 +128,7 @@ function context(
     crossDatabaseViews?: boolean;
     renameSource?: DataSourcePickerService['renameSource'];
     sourceName?: DataSourcePickerService['sourceName'];
+    placeView?: DataSourcePickerService['placeView'];
     storeReadonly?: boolean;
   } = {}
 ) {
@@ -137,9 +138,13 @@ function context(
     crossDatabaseViews: opts.crossDatabaseViews,
     renameSource: opts.renameSource,
     sourceName: opts.sourceName,
+    placeView: opts.placeView,
   };
   const std = {
-    store: { readonly: opts.storeReadonly ?? false },
+    store: {
+      readonly: opts.storeReadonly ?? false,
+      getModelById: () => ({}),
+    },
     getOptional: (id: unknown) =>
       id === DataSourcePickerProvider && opts.picker !== false ? picker : null,
   } as unknown as BlockStdScope;
@@ -220,6 +225,26 @@ describe('the view settings "Source"', () => {
       's-2',
       'existing'
     );
+  });
+
+  test("a pick waits for the host's placeView, and writes once it places", async () => {
+    const placeView = vi.fn();
+    const { ctx } = context({ placeView });
+    await draw(ctx, databaseViewSettingsMenu().items(ctx)!);
+    byTestId('dv-view-setting-source')!.click();
+    await frame();
+    byTestId('data-source-picker-source-s-2')!.click();
+    expect(placeView).toHaveBeenCalledOnce();
+    const request = placeView.mock.calls[0]![0];
+    expect(request).toMatchObject({
+      gesture: 'change-source',
+      databaseId: 'host:plan',
+      sourceId: 's-2',
+      viewId: 'v1',
+    });
+    expect(changeViewSource).not.toHaveBeenCalled();
+    expect(request.place()).toBe(true);
+    expect(changeViewSource).toHaveBeenCalledOnce();
   });
 
   async function openList(opts: Parameters<typeof context>[0] = {}) {
