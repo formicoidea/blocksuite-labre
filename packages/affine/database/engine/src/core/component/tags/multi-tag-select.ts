@@ -70,7 +70,8 @@ import {
 } from './styles-css.js';
 import { tagLabel } from './tag-label.js';
 
-export type TagOptionEdits = 'all' | 'create-rename';
+/** Append-only (a host passes these through `TitleBandProperty`). */
+export type TagOptionEdits = 'all' | 'create-rename' | 'create';
 
 type RenderOption = {
   value: string;
@@ -95,7 +96,9 @@ export type TagManagerOptions = {
    * `'create-rename'`: "Create" and the option menu's name only, no delete,
    * no colour and no reordering: a host that writes an option's definition
    * one edit at a time and offers no more (the title band, ADR 0035
-   * amendment of 2026-10-14).
+   * amendment of 2026-10-14). `'create'`: "Create" only, no option menu:
+   * options whose id is their label, which a rename would have to rewrite
+   * everywhere (issue #710).
    */
   optionEdits?: TagOptionEdits;
   onComplete?: () => void;
@@ -250,7 +253,7 @@ export class MultiTagSelect extends SignalWatcher(
   private readonly _clickItemOption = (e: MouseEvent, id: string) => {
     e.stopPropagation();
     const option = this.options.value.find(v => v.id === id);
-    if (!option) {
+    if (!option || this.optionEdits === 'create') {
       return;
     }
     const rename = menu.input({
@@ -472,7 +475,7 @@ export class MultiTagSelect extends SignalWatcher(
                       : nothing}
                   ${this.renderTag(select.value, select.color)}
                 </div>
-                ${editable && !select.isCreate
+                ${editable && !select.isCreate && this.optionEdits !== 'create'
                   ? html` <div
                       class="${selectOptionIconStyle}"
                       @click="${clickOption}"
