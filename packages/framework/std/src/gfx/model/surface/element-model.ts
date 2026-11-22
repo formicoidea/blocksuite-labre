@@ -479,6 +479,12 @@ export abstract class GfxPrimitiveElementModel<
   serialize() {
     const result = this.yMap.toJSON();
     result.xywh = this.xywh;
+    // The identity is the key in the elements map (ADR 0053 §1), never the
+    // stored `id`, which an element written outside the editor may lack or
+    // spell otherwise (#681). Copy, duplicate and paste map every reference
+    // (group children, connector ends) by this `id`; with the stored one, N
+    // id-less elements pasted as one (ADR 0056). Nothing is written.
+    result.id = this.id;
     return result as SerializedElement;
   }
 
