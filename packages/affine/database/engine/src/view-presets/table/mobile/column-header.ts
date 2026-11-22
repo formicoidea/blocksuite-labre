@@ -18,7 +18,10 @@ import { css } from 'lit';
 import { property } from 'lit/decorators.js';
 import { html } from 'lit/static-html.js';
 
-import { propertyMenuItems } from '../../../core/common/property-menu.js';
+import {
+  propertyMenuItems,
+  whenPropertyShown,
+} from '../../../core/common/property-menu.js';
 import { wordingOf } from '../../../core/utils/wording.js';
 import type { Property } from '../../../core/view-manager/property.js';
 import { numberFormats } from '../../../property-presets/number/utils/formats.js';
@@ -64,6 +67,24 @@ export class MobileTableColumnHeader extends SignalWatcher(
     }
     this.popMenu();
   };
+
+  /**
+   * Opens the title editor of the column "Insert left / right" added once it
+   * is drawn. Up to 4.1 the sibling was opened in the next microtask: a
+   * host that applies the add asynchronously had not drawn it yet, and the
+   * neighbour's editor opened instead (whenPropertyShown).
+   */
+  private editTitleWhenShown(id: string) {
+    const host = this.closest('mobile-table-header');
+    whenPropertyShown(this.tableViewManager, id, () => {
+      const column = host?.querySelector(
+        `[data-column-id="${CSS.escape(id)}"]`
+      );
+      if (!(column instanceof MobileTableColumnHeader)) return;
+      column.editTitle();
+      column.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+    });
+  }
 
   editTitle = () => {
     this._clickColumn();
@@ -124,23 +145,11 @@ export class MobileTableColumnHeader extends SignalWatcher(
                   hide: () => this.tableViewManager.propertiesLocked$.value,
                   prefix: InsertLeftIcon(),
                   select: () => {
-                    this.tableViewManager.propertyAdd({
+                    const id = this.tableViewManager.propertyAdd({
                       id: this.column.id,
                       before: true,
                     });
-                    Promise.resolve()
-                      .then(() => {
-                        const pre =
-                          this.previousElementSibling?.previousElementSibling;
-                        if (pre instanceof MobileTableColumnHeader) {
-                          pre.editTitle();
-                          pre.scrollIntoView({
-                            inline: 'nearest',
-                            block: 'nearest',
-                          });
-                        }
-                      })
-                      .catch(console.error);
+                    if (id) this.editTitleWhenShown(id);
                   },
                 }),
                 menu.action({
@@ -148,23 +157,11 @@ export class MobileTableColumnHeader extends SignalWatcher(
                   hide: () => this.tableViewManager.propertiesLocked$.value,
                   prefix: InsertRightIcon(),
                   select: () => {
-                    this.tableViewManager.propertyAdd({
+                    const id = this.tableViewManager.propertyAdd({
                       id: this.column.id,
                       before: false,
                     });
-                    Promise.resolve()
-                      .then(() => {
-                        const next =
-                          this.nextElementSibling?.nextElementSibling;
-                        if (next instanceof MobileTableColumnHeader) {
-                          next.editTitle();
-                          next.scrollIntoView({
-                            inline: 'nearest',
-                            block: 'nearest',
-                          });
-                        }
-                      })
-                      .catch(console.error);
+                    if (id) this.editTitleWhenShown(id);
                   },
                 }),
                 menu.action({

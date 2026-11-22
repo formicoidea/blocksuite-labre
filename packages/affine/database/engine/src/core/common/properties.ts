@@ -31,7 +31,11 @@ import { verticalListSortingStrategy } from '../utils/wc-dnd/sort/strategies/ind
 import type { Property } from '../view-manager/property.js';
 import type { SingleView } from '../view-manager/single-view.js';
 import { englishWording, type Wording } from '../utils/wording.js';
-import { popNewPropertyMenu, popPropertyMenu } from './property-menu.js';
+import {
+  popNewPropertyMenu,
+  popPropertyMenu,
+  whenPropertyShown,
+} from './property-menu.js';
 
 /**
  * The properties of a view, as the view options' "Properties" and the
@@ -195,15 +199,19 @@ export class DataViewPropertiesSettingView extends SignalWatcher(
       title: this.wording(DATA_VIEW_PROPERTY_TYPE),
       wording: this.wording,
       onAdd: id => {
-        this.updateComplete
-          .then(() => {
-            const row = this.querySelector<HTMLElement>(
-              `.property-item[data-property-id="${CSS.escape(id)}"]`
-            );
-            row?.scrollIntoView({ block: 'nearest' });
-            this._openMenu(this.view.propertyGetOrCreate(id), row ?? button);
-          })
-          .catch(console.error);
+        this.disposables.add(
+          whenPropertyShown(
+            { properties$: this.view.propertiesRaw$ },
+            id,
+            () => {
+              const row = this.querySelector<HTMLElement>(
+                `.property-item[data-property-id="${CSS.escape(id)}"]`
+              );
+              row?.scrollIntoView({ block: 'nearest' });
+              this._openMenu(this.view.propertyGetOrCreate(id), row ?? button);
+            }
+          )
+        );
       },
     });
   };

@@ -1,8 +1,4 @@
-import {
-  menu,
-  popMenu,
-  popupTargetFromElement,
-} from '@labre/affine-components/context-menu';
+import { popupTargetFromElement } from '@labre/affine-components/context-menu';
 import { SignalWatcher, styleMap, WithDisposable } from '@labre/global/lit';
 import { PlusIcon } from '@blocksuite/icons/lit';
 import { ShadowlessElement } from '@labre/std';
@@ -12,15 +8,15 @@ import { property, query } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { html } from 'lit/static-html.js';
 
-import { renderUniLit } from '../../../../../../core';
 import { LEFT_TOOL_BAR_WIDTH } from '../../../../consts';
 import { cellDivider } from '../../../../styles';
 import type { VirtualTableViewUILogic } from '../../../table-view-ui-logic';
 import * as styles from './column-header-css';
 import {
-  propertyTypeName,
-  wordingFrom,
-} from '../../../../../../core/utils/wording.js';
+  popNewPropertyMenu,
+  whenPropertyShown,
+} from '../../../../../../core/common/property-menu.js';
+import { wordingFrom } from '../../../../../../core/utils/wording.js';
 import { DATA_VIEW_PROPERTY_TYPE } from '../../../../../../translations.js';
 const leftBarStyle = css({
   width: LEFT_TOOL_BAR_WIDTH,
@@ -28,40 +24,19 @@ const leftBarStyle = css({
 export class VirtualTableHeader extends SignalWatcher(
   WithDisposable(ShadowlessElement)
 ) {
+  /** "+" as the classic table draws it (`DatabaseColumnHeader`). */
   private readonly _onAddColumn = (e: MouseEvent) => {
     if (this.readonly || this.tableViewManager.propertiesLocked$.value) return;
     const ele = e.currentTarget as HTMLElement;
     const wording = wordingFrom(ele);
-    popMenu(popupTargetFromElement(ele), {
-      options: {
-        title: {
-          text: wording(DATA_VIEW_PROPERTY_TYPE),
-        },
-        items: [
-          menu.group({
-            items: this.tableViewManager.propertyMetas$.value.map(config => {
-              return menu.action({
-                name: propertyTypeName(wording, config.config),
-                prefix: renderUniLit(config.renderer.icon),
-                select: () => {
-                  const id = this.tableViewManager.propertyAdd('end', {
-                    type: config.type,
-                    name: propertyTypeName(wording, config.config),
-                  });
-                  if (id) {
-                    requestAnimationFrame(() => {
-                      ele.scrollIntoView({
-                        block: 'nearest',
-                        inline: 'nearest',
-                      });
-                      this.openPropertyMenuById(id);
-                    });
-                  }
-                },
-              });
-            }),
-          }),
-        ],
+    popNewPropertyMenu(popupTargetFromElement(ele), this.tableViewManager, {
+      title: wording(DATA_VIEW_PROPERTY_TYPE),
+      wording,
+      onAdd: id => {
+        whenPropertyShown(this.tableViewManager, id, () => {
+          ele.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+          this.openPropertyMenuById(id);
+        });
       },
     });
   };
