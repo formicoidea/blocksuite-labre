@@ -49,7 +49,9 @@ export const DATABASE_SOURCE_TRASHED_HINT: ChromeWording = [
  * `{ unavailable: 'not-open' }`, issue #693, ADR 0035 amendment of
  * 2026-11-20): the gesture that opens it is the host's, so no button. The
  * fallback names no role (the library holds no rights model): who may open
- * it is a line of the host's catalogue.
+ * it is a line of the host's catalogue. The hint states the fact and asks
+ * nothing of the reader (issue #704): the one who sees this state, a guest
+ * in Labre, cannot open the source.
  */
 export const DATABASE_SOURCE_NOT_OPEN: ChromeWording = [
   'com.labre.database.source-not-open',
@@ -58,7 +60,7 @@ export const DATABASE_SOURCE_NOT_OPEN: ChromeWording = [
 
 export const DATABASE_SOURCE_NOT_OPEN_HINT: ChromeWording = [
   'com.labre.database.source-not-open.hint',
-  'This view reads a source that is not open to this page. Open the source to this page to see its rows.',
+  'This view reads a source that is not open to this page.',
 ];
 
 /**

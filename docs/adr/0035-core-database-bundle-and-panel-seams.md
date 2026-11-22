@@ -1715,3 +1715,16 @@ changed.
   by `database/block/src/__tests__/no-view-state.unit.spec.ts`,
   `engine/src/__tests__/renderer-config-signature.unit.spec.ts` and
   `integration-test/…/page/database-no-view.spec.ts`.
+
+### 2026-11-22: the « source not open » hint states the fact
+
+Amends "a source not open to the reader's page" (2026-11-20). Its hint
+(`com.labre.database.source-not-open.hint`) told the reader to open the
+source to the page. In the Labre host only a guest reaches this state (an
+owner or a member reads every source), and a guest cannot open a source: the
+one reader who saw the sentence was told to do what they cannot (issue
+#704). The English fallback now states the fact alone: "This view reads a
+source that is not open to this page." Who may open it stays a line of the
+host's catalogue, which overrides the key as before: no new key, no new
+seam, nothing stored. Held by
+`database/block/src/__tests__/source-unavailable.unit.spec.ts`.
