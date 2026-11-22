@@ -126,11 +126,17 @@ export const connectorWatcher: SurfaceMiddleware = (
     if (!pendingFlag) {
       pendingFlag = true;
       queueMicrotask(() => {
-        pendingList.forEach((isLocal, connector) =>
-          updateConnectorPath(connector, isLocal)
-        );
-        pendingList.clear();
-        pendingFlag = false;
+        // `finally`: a connector whose routing throws must not leave the flag
+        // up, or no connector of this surface is ever routed again for the
+        // session (ADR 0056).
+        try {
+          pendingList.forEach((isLocal, connector) =>
+            updateConnectorPath(connector, isLocal)
+          );
+        } finally {
+          pendingList.clear();
+          pendingFlag = false;
+        }
       });
     }
   };
