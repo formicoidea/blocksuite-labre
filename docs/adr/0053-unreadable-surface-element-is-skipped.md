@@ -194,3 +194,27 @@ these outcomes.
   reported a second time, as `unreadable`; the record keeps the second.
 - No placeholder is painted where a skipped element was (criterion 6 of the
   issue, optional).
+
+## Amendment — 2026-11-22: three known limits closed, and the write side
+
+ADR 0056 closes three of the limits listed under Consequences, and the write
+side of #669 this ADR left out of scope. The decision above is unchanged.
+
+- **A peer replacing the Y.Map under an existing key** is handled: the
+  observer reads an `update` as the removal of the old model, announced first,
+  then the reading of the new value, built and mounted or skipped and reported.
+  A skipped element replaced by a readable one is mounted without a reload.
+- **Copy, paste and duplicate of elements with no stored `id`** work:
+  `serialize()` returns the key as `id` (§1 of this ADR, carried to the
+  serialized form). Nothing is written.
+- **A connector stored without `mode`** (or with a newer client's) is routed
+  as Straight instead of throwing, and the connector watcher no longer stays
+  wedged after a routing that throws.
+- **The write side**: `addElement` converts a store `Text`, checks every
+  declared field value before anything is written and throws when one cannot
+  be stored, and writes `type` and `id` first. The half-written element this
+  ADR describes as coming from "a writer outside the editor" can no longer
+  come from `addElement`.
+
+Still open: a local `addElement` whose mount throws, the `@observe` metadata
+quirk, a late completion of a skipped map, the placeholder.
