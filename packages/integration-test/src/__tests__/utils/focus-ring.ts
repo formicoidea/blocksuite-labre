@@ -234,6 +234,21 @@ export function clippingAncestors(element: Element, pseudo = false) {
   return found;
 }
 
+/**
+ * The computed width Chromium gives a border or an outline declared
+ * `cssPx` wide on this screen: snapped down to whole device pixels, never
+ * under one ("snap as a border width", CSS Values 4). On a screen scaled to
+ * 175 % a 2px ring computes as 1.71429px (headed run, Chromium 156); headless
+ * runs at a ratio of 1 and reads 2px, and an emulated `deviceScaleFactor`
+ * does not snap. An assertion on a ring's computed width compares with this,
+ * never with the declared literal, or it fails on a headed run on a scaled
+ * screen (docs/lessons.md 40).
+ */
+export function drawnLineWidth(cssPx: number): number {
+  const ratio = window.devicePixelRatio;
+  return Math.max(1, Math.floor(cssPx * ratio)) / ratio;
+}
+
 /** Layout rounding: a hundredth of a pixel. */
 const EPSILON = 0.01;
 

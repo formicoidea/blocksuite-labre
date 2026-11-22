@@ -358,3 +358,15 @@ browser session … within the timeout`: Chromium could not start the
     a full run before calling it infrastructure, and find what holds it in a
     heap snapshot (retainers from the GC roots, ephemeron edges skipped)
     before working around it.
+
+40. **A focus ring "2px" that read 1.71429px on the workstation.**
+    `database-toolbar-keyboard.spec.ts` asserted the computed
+    `outline-width` of the database toolbar's ring as `'2px'`: green
+    headless and in CI, red in a headed run on a Windows screen scaled to
+    175 %, where Chromium 156 computes border and outline widths snapped
+    down to whole device pixels (2 × 1.75 = 3.5, floored to 3, read back as
+    1.71429px). Playwright's emulated `deviceScaleFactor` does not snap
+    (1.25, 1.333, 1.5 and 1.75 all read `2px`), so no headless run shows it.
+    _Rule:_ compare a computed border or outline width with
+    `drawnLineWidth(declared)` (`__tests__/utils/focus-ring.ts`), never
+    with the declared literal.
