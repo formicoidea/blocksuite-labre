@@ -104,6 +104,16 @@ export const ATTACHMENT_BUTTON_RELOAD: ChromeWording = [
 ];
 
 /**
+ * The accessible name and tooltip of the card's Download on a read-only
+ * document (#744, ADR 0058), `{{name}}` the file's full name. Its visible
+ * word is the toolbar's own `TOOLBAR_DOWNLOAD` (L7 dedupe).
+ */
+export const ATTACHMENT_BUTTON_DOWNLOAD: ChromeWording = [
+  'com.labre.attachment.button.download',
+  'Download {{name}}',
+];
+
+/**
  * The controls of an html attachment's embed view (`html-view.ts`). "Interact"
  * lets the pointer into the preview; a press outside ends it.
  */
@@ -154,6 +164,7 @@ export const ATTACHMENT_WORDINGS: readonly ChromeWording[] = [
   ATTACHMENT_BUTTON_UPGRADE,
   ATTACHMENT_BUTTON_RETRY,
   ATTACHMENT_BUTTON_RELOAD,
+  ATTACHMENT_BUTTON_DOWNLOAD,
   ATTACHMENT_HTML_INTERACT,
   ATTACHMENT_HTML_STOP_INTERACTING,
   ATTACHMENT_HTML_FULLSCREEN,
