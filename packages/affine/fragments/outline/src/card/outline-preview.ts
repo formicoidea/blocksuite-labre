@@ -20,9 +20,11 @@ import { LinkedPageIcon } from '@blocksuite/icons/lit';
 import { ShadowlessElement } from '@labre/std';
 import type { BlockModel, DeltaInsert } from '@labre/store';
 import { consume } from '@lit/context';
+import katex from 'katex';
 import { html, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
+import { ref } from 'lit/directives/ref.js';
 
 import { previewIconMap, type TocContext, tocContext } from '../config.js';
 import { isHeadingBlock, isRootBlock } from '../utils/query.js';
@@ -38,6 +40,26 @@ import * as styles from './outline-preview.css';
 
 function assertType<T>(value: unknown): asserts value is T {
   noop(value);
+}
+
+/**
+ * A `ref` callback drawing `latex` into its element (issue #735). katex builds
+ * the DOM itself, as the inline LaTeX node does: no HTML string is parsed.
+ * MathML output carries the formula's semantics, which a screen reader reads.
+ */
+function renderInlineLatex(latex: string) {
+  return (element: Element | undefined) => {
+    if (!(element instanceof HTMLElement)) return;
+    try {
+      katex.render(latex, element, {
+        displayMode: false,
+        output: 'mathml',
+        throwOnError: false,
+      });
+    } catch {
+      element.textContent = latex;
+    }
+  };
 }
 
 export const AFFINE_OUTLINE_BLOCK_PREVIEW = 'affine-outline-block-preview';
@@ -92,6 +114,13 @@ export class OutlineBlockPreview extends SignalWatcher(
               : translateKey(this._std, ...DOC_UNTITLED)}</span
           ></span
         >`;
+      } else if (delta.attributes?.latex) {
+        // Inline LaTeX keeps its source on the attribute and a blank insert,
+        // so rendering the insert alone drops the formula.
+        return html`<span
+          class=${styles.textSpan}
+          ${ref(renderInlineLatex(delta.attributes.latex))}
+        ></span>`;
       } else {
         // If not linked doc, render the text.
         return delta.insert.toString().trim().length > 0
