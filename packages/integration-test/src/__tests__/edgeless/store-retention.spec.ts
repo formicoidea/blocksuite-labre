@@ -31,17 +31,17 @@
  *   give 20 distinct stores, each under a random key
  *   (`store/src/model/store-container.ts:23-27`).
  *
- * Every test is a real assertion, green today. Two hold what is right and
- * stays right: one document remounted keeps one store and no editor, and a
- * store removed from its container is rebuilt live from Yjs (it sees a block
- * a peer adds). Four PIN today's leak, marked `PINNED LEAK`: a store that
- * `dispose()` does not let go, `dispose()` alone handing the same dead store
- * back, preview stores alive after `dispose()` + `removeStore`, and one store
- * per `getStore({ readonly: false })`. They are not the desired behaviour.
- * **Trigger:** when ADR 0057's code lands, each pinned assertion fails; it is
- * replaced by the `ADR 0057 target` written next to it, never loosened.
- * Pinning rather than `test.fails` keeps a timeout or an unrelated throw
- * red, and shows a partial landing assertion by assertion.
+ * Every test is a real assertion. Two held before ADR 0057 and stay: one
+ * document remounted keeps one store and no editor, and a store removed from
+ * its container is rebuilt live from Yjs (it sees a block a peer adds). Four
+ * pinned the leak above (`PINNED LEAK`) and were flipped to their ADR 0057
+ * targets as its parts landed: a disposed store is collected, `dispose()`
+ * alone makes the next `getStore()` build a new, live store, disposed preview
+ * stores are collected, and `getStore({ readonly: false })` is one store.
+ * Measured at the landing of part 1 (Chromium, headless): 0 of 20 disposed
+ * stores alive once the last editors' debounces ran (3 of 20 at the first
+ * collection after the loop), 0 of 20 preview stores, 10-12 KB of heap per
+ * document opened and closed (69-80 KB before).
  *
  * Each test builds its own workspace and disposes of it in a `finally`: the
  * session shares one page (`isolate: false`), and a disposed, dropped
@@ -200,12 +200,14 @@ describe('a workspace kept open and the stores opened in it', () => {
   );
 
   /**
-   * PINNED LEAK (ADR 0057 part 1): a store disposed and removed after its last
-   * unmount stays alive, all 20 of them, held by the Yjs observers `dispose()`
-   * leaves attached. The heap per document is logged, not asserted.
+   * ADR 0057 part 1 (was PINNED LEAK: 20 of 20 alive, held by the Yjs
+   * observers `dispose()` left attached): a store disposed after its last
+   * unmount is collected. The last editors mounted on it are collected a
+   * moment later (their debounces), so the count is awaited like theirs in
+   * the first test. The heap per document is logged, not asserted.
    */
   test(
-    'today a store disposed after its last unmount is still alive',
+    'a store disposed after its last unmount is collected',
     async () => {
       cleanup();
       const workspace = openWorkspace();
@@ -215,6 +217,7 @@ describe('a workspace kept open and the stores opened in it', () => {
           const { doc, store } = openStore(workspace, `doc:${index}`);
           await mountAndUnmount(store);
           store.dispose();
+          // A no-op since ADR 0057: `dispose()` already forgot the store.
           doc.removeStore({ id: doc.spaceDoc.guid });
           return new WeakRef(store);
         };
@@ -228,8 +231,7 @@ describe('a workspace kept open and the stores opened in it', () => {
         console.log(
           `[store-retention] ${alive}/${N} disposed stores alive, ${kbPer(growth, N - WARM_UP)} KB per document over ${N - WARM_UP} documents`
         );
-        expect(alive, 'PINNED LEAK, see the docblock').toBe(N);
-        // ADR 0057 target: expect(alive).toBe(0);
+        await allReleased(stores, 'disposed stores');
       } finally {
         workspace.dispose();
       }
@@ -238,26 +240,24 @@ describe('a workspace kept open and the stores opened in it', () => {
   );
 
   /**
-   * PINNED LEAK (ADR 0057 part 1): `dispose()` alone leaves the store in the
-   * container, so the next `getStore()` hands the same disposed store back,
-   * and it never sees what a peer adds afterwards. Why
-   * `docs/integrate/02-mount.md` says not to dispose of a store you may
-   * reopen.
+   * ADR 0057 part 1 (was PINNED LEAK: `dispose()` alone left the store in its
+   * container, the next `getStore()` handed the same dead store back, and it
+   * never saw what a peer added): the next `getStore()` builds a new store,
+   * which sees the block a peer adds.
    */
-  test('today dispose() alone hands the same dead store back', () => {
+  test('dispose() alone makes the next getStore() build a live store', () => {
     cleanup();
     const workspace = openWorkspace();
     try {
       const { doc, store } = openStore(workspace, 'doc:dead');
       store.dispose();
       const reopened = doc.getStore();
-      expect(reopened, 'PINNED LEAK, see the docblock').toBe(store);
-      // ADR 0057 target: expect(reopened).not.toBe(store);
+      // `toBe` on two stores would print both object graphs on failure.
+      expect(reopened === store, 'the same, disposed, store').toBe(false);
       reopened.load();
       const noteId = addNoteFromAPeer(doc.spaceDoc, store);
       expect(doc.yBlocks.has(noteId)).toBe(true);
-      expect(reopened.getBlock(noteId), 'PINNED LEAK').toBeUndefined();
-      // ADR 0057 target: expect(reopened.getBlock(noteId)).toBeDefined();
+      expect(reopened.getBlock(noteId)?.flavour).toBe('affine:note');
     } finally {
       workspace.dispose();
     }
@@ -296,12 +296,12 @@ describe('a workspace kept open and the stores opened in it', () => {
   });
 
   /**
-   * PINNED LEAK (ADR 0057 parts 1 and 3): 20 preview stores, each disposed
-   * and removed the way a call site should once its preview is gone, all
-   * stay alive.
+   * ADR 0057 part 1 (was PINNED LEAK: 20 of 20 alive): 20 preview stores,
+   * each disposed the way a call site does once its preview is gone, are
+   * collected.
    */
   test(
-    'today a query store disposed and removed after its preview is still alive',
+    'a query store disposed after its preview is collected',
     async () => {
       cleanup();
       const workspace = openWorkspace();
@@ -328,8 +328,7 @@ describe('a workspace kept open and the stores opened in it', () => {
         console.log(
           `[store-retention] ${alive}/${N} query stores alive after dispose + removeStore`
         );
-        expect(alive, 'PINNED LEAK, see the docblock').toBe(N);
-        // ADR 0057 target: expect(alive).toBe(0);
+        expect(alive).toBe(0);
       } finally {
         workspace.dispose();
       }

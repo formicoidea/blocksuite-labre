@@ -2,6 +2,7 @@ import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
 import * as Y from 'yjs';
 
 import { ReactiveFlatYMap } from '../../reactive/flat-native-y/index.js';
+import { ReleaseScope } from '../../reactive/release-scope.js';
 import type { Schema } from '../../schema/schema.js';
 import type { Store } from '../store/store.js';
 import { BlockModel } from './block-model.js';
@@ -10,6 +11,9 @@ import { internalPrimitives } from './zod.js';
 
 export class FlatSyncController {
   private _reactive!: ReactiveFlatYMap;
+
+  /** What this block attached to Yjs, detached by {@link release} (ADR 0057). */
+  private readonly _scope = new ReleaseScope();
 
   readonly flavour: string;
 
@@ -57,7 +61,8 @@ export class FlatSyncController {
       this.yBlock,
       model.deleted,
       this.onChange,
-      defaultProps
+      defaultProps,
+      this._scope
     );
     this._reactive = reactive;
     const proxy = reactive.proxy;
@@ -152,6 +157,16 @@ export class FlatSyncController {
       props,
       yChildren,
     };
+  }
+
+  /**
+   * Detach everything this block attached to Yjs: the flat map's observer,
+   * its `Text`, `Boxed` and array proxies, and its model's (#746, ADR
+   * 0057). Writes nothing; the model keeps answering its last state.
+   */
+  release() {
+    this._scope.release();
+    this.model._release();
   }
 
   get stash() {

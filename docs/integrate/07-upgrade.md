@@ -55,6 +55,17 @@ Typical changes a host sees, from the Labre app's history:
 Six weeks of library in one hop produced three compile breaks and one silent
 behaviour change. Upgrade at every minor.
 
+## 4.0 → the next release (a disposed store lets go)
+
+No compile break. Stored documents are untouched: a store's release writes
+nothing to Yjs (ADR 0057, #746). What a host sees:
+
+| Kind                | Change                                                                                                                                                                                                                    | What to do                                                                                                                                                                         |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| a behaviour changes | `store.dispose()` releases the store for good: it detaches everything it attached to the document and the awareness, and `doc.getStore()` builds a new, live store afterwards (it used to hand the same, deaf store back) | close a document you are done with by disposing of its store after its last editor unmounts ([02-mount.md](02-mount.md#closing-and-reopening-a-document)); keep it across remounts |
+| a call now throws   | `load()` and every write through a disposed store throw a `BlockSuiteError` (`ModelCRUDError`); reads still answer                                                                                                        | do not keep a disposed store: get the document's store again with `doc.getStore()`, and subscribe to its slots again                                                               |
+| a behaviour changes | a reopened document starts with an empty undo history; this client's selection in it leaves the awareness                                                                                                                 | nothing                                                                                                                                                                            |
+
 ## 4.0 → the next release (a source not open to the reader's page)
 
 No compile break for a host that only answers the resolver. Stored documents

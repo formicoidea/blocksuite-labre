@@ -1,5 +1,7 @@
 import type { Array as YArray, Map as YMap } from 'yjs';
 
+import type { ReleaseScope } from './release-scope.js';
+
 export type UnRecord = Record<string, unknown>;
 
 export type Native2Y<T> =
@@ -16,4 +18,10 @@ export type TransformOptions = {
 
 export type ProxyOptions<T> = {
   onChange?: (data: T, isLocal: boolean) => void;
+  /**
+   * @internal
+   * The block scope the proxy belongs to: its registry, and the handle a
+   * store release detaches (ADR 0057). Omitted, the module-level registry.
+   */
+  scope?: ReleaseScope;
 };

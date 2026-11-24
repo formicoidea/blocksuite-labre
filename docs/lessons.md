@@ -372,6 +372,19 @@ browser session … within the timeout`: Chromium could not start the
     number measured under one harness describes that harness: say which
     before quoting it as a host's cost.
 
+    _Amended 2026-11-24 (ADR 0057 landed):_ `store.dispose()` now detaches
+    what the store and its blocks attached and the workspace forgets the
+    store: 0 of 20 disposed stores alive (3 at the first collection, the
+    last editors' debounces, none a moment later), 0 of 20 disposed preview
+    stores, about 11 KB of heap per document opened, edited and closed (69-80
+    KB before), the document's own Yjs content among it. One holder the
+    ADR's reading missed sat outside the store package: the surface model's
+    `elements` observer, detached only when the surface was DELETED, which a
+    release never does. _Rule:_ a release must reach every observer attached
+    on the store's behalf, whichever package attached it; count them before
+    and after with a guard (`store-release.unit.spec.ts`,
+    `surface-release.unit.spec.ts`), never infer them from one file.
+
 40. **A focus ring "2px" that read 1.71429px on the workstation.**
     `database-toolbar-keyboard.spec.ts` asserted the computed
     `outline-width` of the database toolbar's ring as `'2px'`: green

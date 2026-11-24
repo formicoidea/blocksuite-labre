@@ -1,5 +1,6 @@
 import type { BlockMeta } from '@labre/affine-model';
 import { type BlockModel, StoreExtension } from '@labre/store';
+import type { Subscription } from 'rxjs';
 import { filter, groupBy, mergeMap, throttleTime } from 'rxjs/operators';
 
 import { FeatureFlagService } from './feature-flag-service';
@@ -23,30 +24,45 @@ export class BlockMetaService extends StoreExtension {
     return flagService.getFlag('enable_block_meta') === true;
   }
 
+  /**
+   * The throttled meta writer, one per store however often `load()` runs
+   * (it runs `loaded()` each time), ended by `disposed()`. Its 30 s window
+   * drops later events, it defers none (rxjs `throttleTime` defaults to
+   * leading edge only): ending it loses no meta, and frees the store at once
+   * instead of when the window of its last local edit closes (#746, ADR
+   * 0057, Context 2).
+   */
+  private _subscription: Subscription | null = null;
+
+  override disposed() {
+    super.disposed();
+    this._subscription?.unsubscribe();
+    this._subscription = null;
+  }
+
   override loaded() {
-    this.store.disposableGroup.add(
-      this.store.slots.blockUpdated
-        .pipe(
-          filter(payload => payload.isLocal),
-          groupBy(payload => `${payload.type}-${payload.id}`),
-          mergeMap(group => group.pipe(throttleTime(BLOCK_META_THROTTLE_TIME)))
-        )
-        .subscribe(payload => {
-          const { type, id } = payload;
-          if (!this.isBlockMetaEnabled) return;
+    if (this._subscription) return;
+    this._subscription = this.store.slots.blockUpdated
+      .pipe(
+        filter(payload => payload.isLocal),
+        groupBy(payload => `${payload.type}-${payload.id}`),
+        mergeMap(group => group.pipe(throttleTime(BLOCK_META_THROTTLE_TIME)))
+      )
+      .subscribe(payload => {
+        const { type, id } = payload;
+        if (!this.isBlockMetaEnabled) return;
 
-          const model = this.store.getBlock(id)?.model;
-          if (!model) return;
+        const model = this.store.getBlock(id)?.model;
+        if (!model) return;
 
-          if (type === 'add') {
-            return this._onBlockCreated(model);
-          }
+        if (type === 'add') {
+          return this._onBlockCreated(model);
+        }
 
-          if (type === 'update') {
-            return this._onBlockUpdated(model);
-          }
-        })
-    );
+        if (type === 'update') {
+          return this._onBlockUpdated(model);
+        }
+      });
   }
 
   private readonly _onBlockCreated = (model: BlockModel<BlockMeta>): void => {

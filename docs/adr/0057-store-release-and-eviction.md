@@ -1,10 +1,12 @@
 # ADR 0057 — A disposed store lets go of Yjs, and the next one is built fresh
 
-- Status: **proposed** (2026-11-24)
+- Status: **accepted** (2026-11-24; the maintainer approved implementing it
+  as written on 2026-11-24, with the product owner's three decisions below)
 - Deciders: the product owner, on the three questions answered at the end; the
   maintainer, for the red zone. Proposed by the library session of
   2026-11-24, which re-verified issue #746 against the code and found its
-  diagnosis partly wrong.
+  diagnosis partly wrong. Where the code differs from the proposal: "As
+  implemented", at the end.
 - **Red zone**: `packages/framework/store` (`Store`, `StoreContainer`,
   `HistoryExtension`, `StoreSelectionExtension`, the block model, the sync
   controller and the reactive layer). No code lands before a maintainer's
@@ -362,3 +364,71 @@ red-zone code change itself.
    identical with `WorkspaceImpl` (Context 1), so this fix does not depend on
    it. Moving the host off `store/test` (ADR 0004) remains a separate host
    decision.
+
+## Maintainer approval (2026-11-24)
+
+The maintainer approved implementing this ADR as written, with the product
+owner's three decisions above, on 2026-11-24. Approved and nothing else: no
+Yjs key, schema, default, snapshot format or sync protocol changes;
+`packages/framework/sync` and `packages/affine/model` are not touched.
+
+## As implemented
+
+Part 1 landed with #746. Where the code differs from, or goes beyond, the
+decision above, and why:
+
+- **The scope is per block, its handles are weak.** Each block's sync
+  controller owns a `ReleaseScope` (`store/src/reactive/release-scope.ts`):
+  the proxy registry for its props (the module-level `proxies` stays for
+  unscoped callers: the workspace meta, the reactive unit tests) and a
+  handle on every proxy, `Text` and `Boxed` built for them. A block removed
+  while the store lives releases its own scope; `dispose()` releases every
+  block's. The block's own observers (the sync controller's, the model's
+  two) are strong handles. The prop-level ones are `WeakRef`s: an observer
+  whose Yjs type was collected holds nothing, and a strong handle per nested
+  replacement (a new `Y.Map` per database cell edit) would have made a live
+  store grow until the block went away. Swept as the set doubles.
+- **A write through a sibling store's proxy is mirrored.** With one proxy
+  per store, a nested write made through the editor store's proxy carries a
+  proxy origin, which a proxy skips as its own: the preview's proxy would
+  have kept the old value. `BaseReactiveYData` now mirrors a proxy-origin
+  write whose target belongs to ANOTHER scope, like a remote one. Within one
+  store nothing changes. The flat-data model's top-level map is unscoped
+  for that check and keeps today's behaviour (a second store does not see
+  another store's local flat writes, as before; its nested arrays now do).
+- **Every block model is disposed at release, and the surface detaches from
+  `dispose()`.** The decision lists the store package's observers; in
+  edgeless the surface model's `elements` map observer (and its element
+  models' own) held the store as well, and the store-retention spec measured
+  it. `SurfaceBlockModel` (`packages/framework/std`, outside the red zone)
+  runs the teardown it ran on `deleted` from `dispose()` too. So after a
+  release the surface's element models are unmounted (`getElementById`
+  answers `null`); the store's own reads (`getBlock`, `root`, a model's
+  props) answer their last state.
+- **More entry points throw than the six listed.** Reading the class gave
+  eleven: `load`, `addBlock`, `addBlocks`, `addSiblingBlocks`, `updateBlock`,
+  `deleteBlock`, `moveBlocks`, `transact`, `withoutTransact`, `undo`, `redo`.
+  The error is a `BlockSuiteError` with `ErrorCode.ModelCRUDError`, the code
+  the store throws for a write a readonly store refuses. Not guarded: a
+  write that bypasses the `Store` class (a model's `props` setter, a nested
+  prop proxy, a `Text` method). It lands in Yjs, where every live store sees
+  it; the released store does not. Guarding them means a disposed check in
+  the reactive layer's write paths, left for a follow-up if a host meets it.
+- **`dispose()` sets its flag first and runs every step.** A write attempted
+  while releasing throws instead of landing; an extension whose `disposed()`
+  throws does not leave the rest attached (the first error is rethrown at
+  the end).
+- **`BlockMetaService` owns its subscription** (`packages/affine/shared`,
+  outside the red zone): subscribed once however often `load()` runs (it
+  subscribed once per call), ended in its `disposed()`.
+- **What stays attached, by Yjs's design.** `Y.UndoManager`'s constructor
+  adds an anonymous `destroy` listener to the sub-document that
+  `destroy()` cannot remove: one small listener per store opened on a
+  document, closing over the destroyed manager (its listeners cleared, no
+  store reachable), for the document's life.
+- **Found, not changed.** While a store lives, every change to a `Text` prop
+  attaches one more observer to its `Y.Text`: the prop's signal is fed a new
+  `Text` per change (`sync-controller.ts`, `_getPropsProxy`). Measured: ten
+  edits, ten observers. They are now released with the store; stopping the
+  growth changes what the `text$` signal holds, which consumers may compare
+  by identity, so it is left for its own change.

@@ -39,19 +39,32 @@ export class StoreContainer {
       },
     };
 
-    const doc = new Store({
+    const store: Store = new Store({
       doc: this.doc,
       readonly,
       query,
       provider,
       extensions: [storeExtension].concat(extensions ?? []),
+      // A disposed store is forgotten under the key it was built with, so
+      // the next `getStore()` with the same options builds a new one from
+      // Yjs (#746, ADR 0057). Only that store: a newer one under the same key
+      // (built after an explicit `removeStore`) stays.
+      onDispose: () => {
+        if (this._storeMap.get(key) === store) this._storeMap.delete(key);
+      },
     });
 
-    this._storeMap.set(key, doc);
+    this._storeMap.set(key, store);
 
-    return doc;
+    return store;
   };
 
+  /**
+   * Forget a store without disposing of it: the next `getStore()` with the
+   * same options builds a new one, and this one stays live for whoever holds
+   * it. Idempotent. Closing a document is `store.dispose()`, which already
+   * forgets the store (ADR 0057).
+   */
   removeStore = ({ readonly, query, id }: RemoveStoreOptions) => {
     let idOrOptions: string | { readonly?: boolean; query?: Query };
     if (readonly || query) {

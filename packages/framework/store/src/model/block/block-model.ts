@@ -2,6 +2,7 @@ import type { Disposable } from '@labre/global/disposable';
 import { computed, type Signal, signal } from '@preact/signals-core';
 import { Subject } from 'rxjs';
 import { take } from 'rxjs/operators';
+import type * as Y from 'yjs';
 
 import type { Text } from '../../reactive/index.js';
 import type { Store } from '../store/store.js';
@@ -33,6 +34,9 @@ export class BlockModel<Props extends object = object> {
   private readonly _onCreated: Disposable;
 
   private readonly _onDeleted: Disposable;
+
+  /** Detaches the two Yjs observers `created` attaches (ADR 0057). */
+  private _unobserveY: (() => void) | null = null;
 
   childMap = computed(() =>
     this._children.value.reduce((map, id, index) => {
@@ -116,15 +120,24 @@ export class BlockModel<Props extends object = object> {
   constructor() {
     this._onCreated = {
       dispose: this.created.pipe(take(1)).subscribe(() => {
-        this._children.value = this.yBlock.get('sys:children').toArray();
-        this.yBlock.get('sys:children').observe(event => {
+        // The array observed is kept: `sys:children` may be replaced later,
+        // and only this one can be unobserved.
+        const yChildren = this.yBlock.get('sys:children');
+        this._children.value = yChildren.toArray();
+        const onChildren = (event: Y.YArrayEvent<string>) => {
           this._children.value = event.target.toArray();
-        });
-        this.yBlock.observe(event => {
+        };
+        const onBlock = (event: Y.YMapEvent<unknown>) => {
           if (event.keysChanged.has('sys:children')) {
             this._children.value = this.yBlock.get('sys:children').toArray();
           }
-        });
+        };
+        yChildren.observe(onChildren);
+        this.yBlock.observe(onBlock);
+        this._unobserveY = () => {
+          yChildren.unobserve(onChildren);
+          this.yBlock.unobserve(onBlock);
+        };
       }).unsubscribe,
     };
     this._onDeleted = {
@@ -132,6 +145,16 @@ export class BlockModel<Props extends object = object> {
         this._onCreated.dispose();
       }).unsubscribe,
     };
+  }
+
+  /**
+   * @internal
+   * Detach the model's own Yjs observers: its block left the store, or the
+   * store was released (#746, ADR 0057). Writes nothing.
+   */
+  _release() {
+    this._unobserveY?.();
+    this._unobserveY = null;
   }
 
   dispose() {

@@ -9,6 +9,13 @@ import { native2Y, y2Native } from './native-y.js';
 import { type OnTextChange, Text } from './text/index.js';
 import type { ProxyOptions, TransformOptions, UnRecord } from './types.js';
 
+/**
+ * The registry a proxy resolves its Yjs type in: its block scope's own
+ * (ADR 0057), or the module-level one for an unscoped caller.
+ */
+const registryOf = (options?: { scope?: { proxies: typeof proxies } }) =>
+  options?.scope?.proxies ?? proxies;
+
 export class ReactiveYArray extends BaseReactiveYData<
   unknown[],
   YArray<unknown>
@@ -30,7 +37,9 @@ export class ReactiveYArray extends BaseReactiveYData<
         if (change.insert) {
           const _arr = [change.insert].flat();
 
-          const proxyList = _arr.map(value => createYProxy(value));
+          const proxyList = _arr.map(value =>
+            createYProxy(value, { scope: this._options.scope })
+          );
 
           this._updateWithSkip(() => {
             this._source.splice(retain, 0, ...proxyList);
@@ -66,7 +75,7 @@ export class ReactiveYArray extends BaseReactiveYData<
           return result;
         }
 
-        const reactive = proxies.get(this._ySource);
+        const reactive = registryOf(this._options).get(this._ySource);
         if (!reactive) {
           throw new BlockSuiteError(
             ErrorCode.ReactiveProxyError,
@@ -165,7 +174,7 @@ export class ReactiveYArray extends BaseReactiveYData<
           );
         }
 
-        const proxied = proxies.get(this._ySource);
+        const proxied = registryOf(this._options).get(this._ySource);
         if (!proxied) {
           throw new BlockSuiteError(
             ErrorCode.ReactiveProxyError,
@@ -202,8 +211,14 @@ export class ReactiveYArray extends BaseReactiveYData<
   ) {
     super();
     this._proxy = this._getProxy();
-    proxies.set(_ySource, this);
+    registryOf(_options).set(_ySource, this);
+    _options.scope?.track(this);
     _ySource.observe(this._observer);
+  }
+
+  /** @internal */
+  _release() {
+    this._ySource.unobserve(this._observer);
   }
 
   pop(prop: number) {
@@ -232,8 +247,8 @@ export class ReactiveYMap extends BaseReactiveYData<UnRecord, YMap<unknown>> {
         } else if (type.action === 'add' || type.action === 'update') {
           const current = this._ySource.get(key);
           this._updateWithSkip(() => {
-            this._source[key] = proxies.has(current)
-              ? proxies.get(current)
+            this._source[key] = registryOf(this._options).has(current)
+              ? registryOf(this._options).get(current)
               : createYProxy(current, this._options);
           });
         }
@@ -263,7 +278,7 @@ export class ReactiveYMap extends BaseReactiveYData<UnRecord, YMap<unknown>> {
           return result;
         }
 
-        const reactive = proxies.get(this._ySource);
+        const reactive = registryOf(this._options).get(this._ySource);
         if (!reactive) {
           throw new BlockSuiteError(
             ErrorCode.ReactiveProxyError,
@@ -299,7 +314,7 @@ export class ReactiveYMap extends BaseReactiveYData<UnRecord, YMap<unknown>> {
           return Reflect.deleteProperty(target, p);
         }
 
-        const proxied = proxies.get(this._ySource);
+        const proxied = registryOf(this._options).get(this._ySource);
         if (!proxied) {
           throw new BlockSuiteError(
             ErrorCode.ReactiveProxyError,
@@ -333,8 +348,14 @@ export class ReactiveYMap extends BaseReactiveYData<UnRecord, YMap<unknown>> {
   ) {
     super();
     this._proxy = this._getProxy();
-    proxies.set(_ySource, this);
+    registryOf(_options).set(_ySource, this);
+    _options.scope?.track(this);
     _ySource.observe(this._observer);
+  }
+
+  /** @internal */
+  _release() {
+    this._ySource.unobserve(this._observer);
   }
 
   // eslint-disable-next-line sonarjs/no-identical-functions
@@ -353,17 +374,18 @@ export function createYProxy<Data>(
   yAbstract: unknown,
   options: ProxyOptions<Data> = {}
 ): Data {
-  if (proxies.has(yAbstract)) {
-    return proxies.get(yAbstract)!.proxy as Data;
+  const registry = registryOf(options);
+  if (registry.has(yAbstract)) {
+    return registry.get(yAbstract)!.proxy as Data;
   }
 
   const transform: TransformOptions['transform'] = (value, origin) => {
     if (value instanceof Text) {
-      value.bind(options.onChange as OnTextChange);
+      value.bind(options.onChange as OnTextChange, options.scope);
       return value;
     }
     if (Boxed.is(origin)) {
-      (value as Boxed).bind(options.onChange as OnBoxedChange);
+      (value as Boxed).bind(options.onChange as OnBoxedChange, options.scope);
       return value;
     }
     if (origin instanceof YArray) {

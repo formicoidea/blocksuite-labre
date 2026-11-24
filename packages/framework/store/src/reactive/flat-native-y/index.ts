@@ -5,6 +5,7 @@ import { Array as YArray, type Map as YMap, type YMapEvent } from 'yjs';
 import { BaseReactiveYData } from '../base-reactive-data';
 import { Boxed, type OnBoxedChange } from '../boxed';
 import { ReactiveYArray } from '../proxy';
+import type { ReleaseScope } from '../release-scope.js';
 import { type OnTextChange, Text } from '../text';
 import type { ProxyOptions, UnRecord } from '../types';
 import { initializeData } from './initialize';
@@ -45,16 +46,17 @@ export class ReactiveFlatYMap extends BaseReactiveYData<
   ) => {
     const onChange = this._getPropOnChange(key);
     if (value instanceof Text) {
-      value.bind(onChange as OnTextChange);
+      value.bind(onChange as OnTextChange, this._releaseScope);
       return value;
     }
     if (Boxed.is(origin)) {
-      (value as Boxed).bind(onChange as OnBoxedChange);
+      (value as Boxed).bind(onChange as OnBoxedChange, this._releaseScope);
       return value;
     }
     if (origin instanceof YArray) {
       const data = new ReactiveYArray(value as unknown[], origin, {
         onChange,
+        scope: this._releaseScope,
       });
       return data.proxy;
     }
@@ -100,7 +102,9 @@ export class ReactiveFlatYMap extends BaseReactiveYData<
     protected readonly _ySource: YMap<unknown>,
     private readonly _onDispose: Subject<void>,
     private readonly _onChange?: OnChange,
-    defaultProps?: Record<string, unknown>
+    defaultProps?: Record<string, unknown>,
+    /** The block scope a store release detaches (ADR 0057). */
+    private readonly _releaseScope?: ReleaseScope
   ) {
     super();
     this._initialized = false;
@@ -147,6 +151,7 @@ export class ReactiveFlatYMap extends BaseReactiveYData<
     }
 
     this._proxy = proxy;
+    this._releaseScope?.track(this);
     this._ySource.observe(this._observer);
     this._initialized = true;
 
@@ -158,6 +163,11 @@ export class ReactiveFlatYMap extends BaseReactiveYData<
         proxy[key] = value;
       });
     }
+  }
+
+  /** @internal */
+  _release() {
+    this._ySource.unobserve(this._observer);
   }
 
   pop = (prop: string): void => {
