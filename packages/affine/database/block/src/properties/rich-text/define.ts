@@ -23,8 +23,7 @@ export const richTextPropertyModelConfig = richTextColumnType.modelConfig({
     default: () => ({}),
   },
   jsonValue: {
-    // An empty cell has always serialised as `null`; the schema says so (#742).
-    schema: zod.string().nullable(),
+    schema: zod.string(),
     type: () => t.richText.instance(),
     isEmpty: ({ value }) => !value,
   },
@@ -42,8 +41,15 @@ export const richTextPropertyModelConfig = richTextColumnType.modelConfig({
         value: new Text(value),
       };
     },
+    // An empty cell has always serialised as `null`, which the JSON schema
+    // above (`zod.string()`) does not admit; the code before #742 reached it
+    // through an `any`. Either side is a host contract held by
+    // `zod-format-guard.unit.spec.ts` (an ADR, not a fix in passing), so the
+    // mismatch stays as it was, spelled out.
     toJson: ({ value, dataSource }) =>
-      value ? getTextWithResolvedReferences(value, dataSource) : null,
+      value
+        ? getTextWithResolvedReferences(value, dataSource)
+        : (null as unknown as string),
     fromJson: ({ value }) =>
       typeof value !== 'string' ? undefined : new Text(value),
     onUpdate: ({ value, callback }) => {

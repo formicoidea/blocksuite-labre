@@ -19,8 +19,8 @@ search; a one-off read (an adapter's export) gets the title of the moment.
 A host's override of `DocDisplayMetaProvider` titles is not consulted here.
 A data source built outside an editor keeps the raw text, as before.
 
-An empty rich-text cell exports as `null`, as it always did; the cell's
-JSON schema now says so (`string | null`).
+An empty rich-text cell exports as `null`, as it always did; its JSON schema
+is unchanged.
 
 Property types: `PropertyConfig.rawValue.toString` receives an optional
 `dataSource` (a view's cell passes it). A type written against the previous
