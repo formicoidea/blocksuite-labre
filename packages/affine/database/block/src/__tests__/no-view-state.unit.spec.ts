@@ -36,7 +36,10 @@
  *   "Move into a database" accepts a block with no view, and the block it
  *   leaves reads a host source that offers "New view";
  * - the empty state's frame drifting from the block's "Connect a source"
- *   notice it copies (the engine cannot import the block's styles).
+ *   notice it copies (the engine cannot import the block's styles);
+ * - the host's action (#707) not replacing "New view", a second live
+ *   region, a redraw missed when the host flips its signal, an action on a
+ *   read-only document, or a host that throws breaking the empty state.
  *
  * The real block header, the keyboard and the focus are held by
  * `integration-test/…/page/database-no-view.spec.ts`.
@@ -51,6 +54,7 @@ import {
 import { effects as contextMenuEffects } from '@labre/affine-components/context-menu';
 import {
   type DataSourcePickerDatabase,
+  type DataSourcePickerNoViewAction,
   DataSourcePickerProvider,
   type DataSourcePickerService,
   type DataSourcePickerViewDeletion,
@@ -61,6 +65,7 @@ import {
   type DataSourceBase,
   DataViewRootUILogic,
   type DataViewUILogicBase,
+  NoViewActionKey,
   ViewCreationOffKey,
 } from '@labre/affine-database-engine';
 import { effects as dataViewEffects } from '@labre/affine-database-engine/effects';
@@ -77,6 +82,7 @@ import { applyUpdate, encodeStateAsUpdate } from 'yjs';
 import { DatabaseBlockDataSource } from '../data-source.js';
 import { databaseSourceMissingStyles } from '../database-block-styles.js';
 import { sourceRequirement } from '../linked-view.js';
+import { hostNoViewAction } from '../no-view-action.js';
 import { focusAfterLastViewRemoved } from '../no-view-focus.js';
 import { DatabaseDataSourceProvider } from '../service/index.js';
 import { moveDatabaseRowsIntoSource } from '../turn-into-source.js';
@@ -558,5 +564,163 @@ describe('a peer deleting views', () => {
 
     expect(byTestId('a-view')?.dataset.viewId).toBe(TABLE.id);
     expect(peers.localWrites()).toBe(0);
+  });
+});
+
+describe('the host\'s action under "No view" (#707)', () => {
+  const action = (overrides: Partial<DataSourcePickerNoViewAction> = {}) => ({
+    label: 'Nouvelle source',
+    hint: 'Cette base attend sa source.',
+    run: vi.fn(),
+    ...overrides,
+  });
+
+  test('wins over "New view": its label, its hint, its run, one live region, nothing written', async () => {
+    const { store, model } = database([]);
+    const host = action();
+    const updates: Uint8Array[] = [];
+    const record = (update: Uint8Array) => updates.push(update);
+    store.doc.spaceDoc.on('update', record);
+    try {
+      await mount(
+        new DatabaseBlockDataSource(model, ds =>
+          ds.serviceSet(NoViewActionKey, signal(host))
+        )
+      );
+    } finally {
+      store.doc.spaceDoc.off('update', record);
+    }
+
+    expect(byTestId('database-no-view-add')).toBe(null);
+    const button = byTestId('database-no-view-host-action')!;
+    expect(button.textContent?.trim()).toBe('Nouvelle source');
+    expect(button.hasAttribute('aria-haspopup')).toBe(false);
+    expect(byTestId('database-no-view')?.textContent).toContain(
+      'Cette base attend sa source.'
+    );
+    expect(document.querySelectorAll('[role="status"]')).toHaveLength(1);
+    button.click();
+    expect(host.run).toHaveBeenCalledWith(button);
+    expect(updates).toEqual([]);
+  });
+
+  test('says it opens a menu when the host says so', async () => {
+    const { model } = database([]);
+    await mount(
+      new DatabaseBlockDataSource(model, ds =>
+        ds.serviceSet(NoViewActionKey, signal(action({ menu: true })))
+      )
+    );
+    expect(
+      byTestId('database-no-view-host-action')?.getAttribute('aria-haspopup')
+    ).toBe('menu');
+  });
+
+  test('follows the signal: null keeps "New view", an action replaces it, null gives it back', async () => {
+    const { model } = database([]);
+    const action$ = signal<DataSourcePickerNoViewAction | null>(null);
+    await mount(
+      new DatabaseBlockDataSource(model, ds =>
+        ds.serviceSet(NoViewActionKey, action$)
+      )
+    );
+    expect(byTestId('database-no-view-add')).not.toBe(null);
+
+    action$.value = action();
+    await settle();
+    expect(byTestId('database-no-view-add')).toBe(null);
+    expect(byTestId('database-no-view-host-action')).not.toBe(null);
+
+    action$.value = null;
+    await settle();
+    expect(byTestId('database-no-view-host-action')).toBe(null);
+    expect(byTestId('database-no-view-add')).not.toBe(null);
+  });
+
+  test('is drawn where the library offers no view (creation off), never on a read-only document', async () => {
+    const off = database([]);
+    await mount(
+      new DatabaseBlockDataSource(off.model, ds => {
+        ds.serviceSet(ViewCreationOffKey, true);
+        ds.serviceSet(NoViewActionKey, signal(action()));
+      })
+    );
+    expect(byTestId('database-no-view-host-action')).not.toBe(null);
+    document.body.innerHTML = '';
+
+    const { store, model } = database([]);
+    store.readonly = true;
+    await mount(
+      new DatabaseBlockDataSource(model, ds =>
+        ds.serviceSet(NoViewActionKey, signal(action()))
+      )
+    );
+    expect(byTestId('database-no-view-host-action')).toBe(null);
+    expect(byTestId('database-no-view-status')).not.toBe(null);
+  });
+
+  test('is the focus fallback, and a swapped action runs the new one, the focus kept', async () => {
+    const { model } = database([]);
+    const first = action({ label: 'Nouvelle source' });
+    const second = action({ label: 'Importer' });
+    const action$ = signal<DataSourcePickerNoViewAction | null>(null);
+    await mount(
+      new DatabaseBlockDataSource(model, ds =>
+        ds.serviceSet(NoViewActionKey, action$)
+      )
+    );
+    const button = byTestId('database-no-view-add')!;
+    button.focus();
+    // What "New view"'s menu leaves once closed.
+    button.setAttribute('aria-expanded', 'false');
+
+    action$.value = first;
+    await settle();
+    expect(button.hasAttribute('aria-expanded')).toBe(false);
+    expect(byTestId('database-no-view-host-action')).toBe(button);
+    expect(document.activeElement).toBe(button);
+    expect(button.hasAttribute('data-view-focus-fallback')).toBe(true);
+    expect(
+      byTestId('database-no-view-status')?.hasAttribute(
+        'data-view-focus-fallback'
+      )
+    ).toBe(false);
+
+    action$.value = second;
+    await settle();
+    expect(button.textContent?.trim()).toBe('Importer');
+    button.click();
+    expect(second.run).toHaveBeenCalledWith(button);
+    expect(first.run).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(button);
+  });
+
+  test("the block asks the picker for its databases only, and a host that throws keeps the library's", () => {
+    const action$ = signal(null);
+    const noViewAction = vi.fn(() => action$);
+    const picker = { list: () => signal([]), noViewAction };
+    const hosted = database([], { externalSourceId: 'db-plan' });
+    expect(hostNoViewAction(picker, hosted.model)).toBe(action$);
+    expect(noViewAction).toHaveBeenCalledWith({
+      databaseId: 'db-plan',
+      docId: hosted.store.id,
+      blockId: hosted.model.id,
+    });
+
+    expect(hostNoViewAction(picker, database([]).model)).toBe(null);
+    expect(hostNoViewAction({ list: () => signal([]) }, hosted.model)).toBe(
+      null
+    );
+
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const throwing = {
+      list: () => signal([]),
+      noViewAction: () => {
+        throw new Error('host');
+      },
+    };
+    expect(hostNoViewAction(throwing, hosted.model)).toBe(null);
+    expect(error).toHaveBeenCalledOnce();
+    error.mockRestore();
   });
 });
