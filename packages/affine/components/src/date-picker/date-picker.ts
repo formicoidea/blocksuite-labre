@@ -1,7 +1,7 @@
 import type { ChromeWording } from '@labre/affine-shared/services';
 import { clamp } from '@labre/global/gfx';
 import { styleMap, WithDisposable } from '@labre/global/lit';
-import { isSameDay, isSameMonth, isToday } from 'date-fns';
+import { format, isSameDay, isSameMonth, isToday } from 'date-fns';
 import {
   html,
   LitElement,
@@ -128,7 +128,7 @@ export class DatePicker extends WithDisposable(LitElement) {
   }
 
   /** Cell */
-  private _cellRenderer(cell: DateCell) {
+  private _cellRenderer(cell: DateCell, fullDate: Intl.DateTimeFormat) {
     const classes = classMap({
       interactive: true,
       'date-cell': true,
@@ -136,11 +136,13 @@ export class DatePicker extends WithDisposable(LitElement) {
       'date-cell--not-curr-month': cell.notCurrentMonth,
       'date-cell--selected': !!cell.selected,
     });
-    const dateRaw = `${cell.date.getFullYear()}-${cell.date.getMonth()}-${cell.date.getDate()}(${cell.date.getDay()})`;
+    // The label is read aloud, so it is the date in words in the picker's
+    // locale; `data-date` is for selectors, an ISO date (issue #736: both
+    // were built from the 0-based `getMonth()`).
     return html`<button
       tabindex=${cell.tabIndex ?? -1}
-      aria-label=${dateRaw}
-      data-date=${dateRaw}
+      aria-label=${fullDate.format(cell.date)}
+      data-date=${format(cell.date, 'yyyy-MM-dd')}
       class=${classes}
       @click=${() => {
         this._onChange(cell.date);
@@ -151,6 +153,9 @@ export class DatePicker extends WithDisposable(LitElement) {
   }
 
   private _dateContent() {
+    const fullDate = new Intl.DateTimeFormat(this.locale, {
+      dateStyle: 'full',
+    });
     return html` <div class="date-picker-header">
         <div class="date-picker-header__buttons">
           <button
@@ -188,7 +193,7 @@ export class DatePicker extends WithDisposable(LitElement) {
         ${this._matrix.map(
           week =>
             html`<div class="date-picker-week">
-              ${week.map(cell => this._cellRenderer(cell))}
+              ${week.map(cell => this._cellRenderer(cell, fullDate))}
             </div>`
         )}
       </div>
