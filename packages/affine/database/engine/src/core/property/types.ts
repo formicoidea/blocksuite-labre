@@ -30,7 +30,17 @@ export type PropertyConfig<Data, RawValue = unknown, JsonValue = unknown> = {
   rawValue: {
     schema: ZodType<RawValue>;
     default: () => RawValue;
-    toString: (config: { value: RawValue; data: Data }) => string;
+    /**
+     * `dataSource` is optional (#742): a view's cell passes it, so a text
+     * type can resolve what it stores by reference (a linked doc's title);
+     * a caller outside a view (an adapter, a standalone cell) has none, and
+     * a type written before 4.4 never reads it.
+     */
+    toString: (config: {
+      value: RawValue;
+      data: Data;
+      dataSource?: DataSource;
+    }) => string;
     fromString: (
       config: WithCommonPropertyConfig<{
         value: string;

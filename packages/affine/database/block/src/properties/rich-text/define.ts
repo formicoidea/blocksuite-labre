@@ -1,12 +1,9 @@
-import type { AffineTextAttributes } from '@labre/affine-shared/types';
 import { propertyType, t } from '@labre/affine-database-engine';
-import type { DeltaInsert } from '@labre/store';
 import { Text } from '@labre/store';
 import * as Y from 'yjs';
 import zod from 'zod';
 
-import { EditorHostKey } from '../../context/host-context.js';
-import { isLinkedDoc } from '../../utils/title-doc.js';
+import { getTextWithResolvedReferences } from '../../utils/title-doc.js';
 import { DATABASE_TYPE_TEXT } from '../../translations.js';
 
 export const richTextColumnType = propertyType('rich-text');
@@ -37,35 +34,22 @@ export const richTextPropertyModelConfig = richTextColumnType.modelConfig({
       )
       .optional(),
     default: () => undefined,
-    toString: ({ value }) => value?.toString() ?? '',
+    toString: ({ value, dataSource }) =>
+      getTextWithResolvedReferences(value, dataSource),
     fromString: ({ value }) => {
       return {
         value: new Text(value),
       };
     },
-    toJson: ({ value, dataSource }) => {
-      if (!value) return null;
-      // A cell stored as a plain string (`storedShapeIsReadable`) is its
-      // own text: it has no deltas to walk.
-      if (typeof value === 'string') return value;
-      const host = dataSource.serviceGet(EditorHostKey);
-      if (host) {
-        const collection = host.std.workspace;
-        const yText = toYText(value);
-        const deltas = yText?.toDelta();
-        const text = deltas
-          .map((delta: DeltaInsert<AffineTextAttributes>) => {
-            if (isLinkedDoc(delta)) {
-              const linkedDocId = delta.attributes?.reference?.pageId as string;
-              return collection.getDoc(linkedDocId)?.meta?.title;
-            }
-            return delta.insert;
-          })
-          .join('');
-        return text;
-      }
-      return value?.toString() ?? null;
-    },
+    // An empty cell has always serialised as `null`, which the JSON schema
+    // above (`zod.string()`) does not admit; the code before #742 reached it
+    // through an `any`. Either side is a host contract held by
+    // `zod-format-guard.unit.spec.ts` (an ADR, not a fix in passing), so the
+    // mismatch stays as it was, spelled out.
+    toJson: ({ value, dataSource }) =>
+      value
+        ? getTextWithResolvedReferences(value, dataSource)
+        : (null as unknown as string),
     fromJson: ({ value }) =>
       typeof value !== 'string' ? undefined : new Text(value),
     onUpdate: ({ value, callback }) => {

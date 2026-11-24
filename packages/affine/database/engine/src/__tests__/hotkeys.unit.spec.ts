@@ -17,6 +17,7 @@ const TAG_COLUMN_TYPES = [
 function createLogic() {
   const view = {
     rowsDelete: vi.fn(),
+    lockRows: vi.fn(),
     rows$: { value: [] },
     groupTrait: { groupsDataList$: { value: [] } },
   };
@@ -96,12 +97,13 @@ describe('TableHotkeysController', () => {
   });
 
   it('starts editing on character key', () => {
-    const { logic, selectionController } = createLogic();
+    const { logic, view, selectionController } = createLogic();
     const ctrl = new TableHotkeysController(logic as any);
     ctrl.hostConnected();
     const cell = {
       rowId: 'r1',
       dataset: { rowId: 'r1', columnId: 'c1' },
+      isEditing$: { value: true },
       column: {
         valueSetFromString: vi.fn(),
         type$: { value: 'text' },
@@ -121,6 +123,7 @@ describe('TableHotkeysController', () => {
     };
     logic.keyDown({ get: () => ({ raw: evt }) });
     expect(cell.column.valueSetFromString).toHaveBeenCalledWith('r1', 'A');
+    expect(view.lockRows).toHaveBeenCalledWith(true);
     expect(selectionController.selection.isEditing).toBe(true);
     expect(evt.preventDefault).toHaveBeenCalled();
   });
@@ -186,12 +189,13 @@ describe('Virtual TableHotkeysController', () => {
   });
 
   it('writes character to cell', () => {
-    const { logic, selectionController } = createLogic();
+    const { logic, view, selectionController } = createLogic();
     const ctrl = new VirtualHotkeysController(logic as any);
     ctrl.hostConnected();
     const cell = {
       rowId: 'r1',
       dataset: { rowId: 'r1', columnId: 'c1' },
+      isEditing$: { value: true },
       column$: {
         value: {
           valueSetFromString: vi.fn(),
@@ -216,6 +220,7 @@ describe('Virtual TableHotkeysController', () => {
       'r1',
       'b'
     );
+    expect(view.lockRows).toHaveBeenCalledWith(true);
     expect(selectionController.selection.isEditing).toBe(true);
     expect(evt.preventDefault).toHaveBeenCalled();
   });

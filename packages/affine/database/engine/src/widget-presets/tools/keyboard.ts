@@ -53,25 +53,36 @@ export function activateOnEnterOrSpace(event: KeyboardEvent) {
  * rule, `hasKeyboardFocus`):
  * - Tab and Shift+Tab on a control always move the focus (the browser's);
  * - in a text field (the toolbar's search), every key but Escape is the
- *   field's;
+ *   field's, shortcuts included: Ctrl/Cmd+A selects the search text and
+ *   Ctrl/Cmd+Z undoes the typing, where the view would select every row or
+ *   undo the document (#730, upstream toeverything/AFFiNE#15900);
  * - on a control the user tabbed to, every unmodified key but Escape is
  *   the bar's;
  * - Escape is never stopped here: a control gives it no meaning, and a
  *   document listener (the open popups' Escape, a host's menu) needs it;
  *   the search field decides for itself (`DataViewHeaderToolsSearch`).
- * Shortcuts with Ctrl, Meta or Alt (undo, redo, a host's) always go through.
+ * Outside a text field, shortcuts with Ctrl, Meta or Alt (undo, redo, a
+ * host's) always go through.
  */
 export function keepKeysInBar(event: KeyboardEvent) {
-  if (event.ctrlKey || event.metaKey || event.altKey) return;
   if (event.key === 'Escape') return;
   const target = event.target as HTMLElement;
-  if (
-    event.key === 'Tab' ||
-    target instanceof HTMLInputElement ||
-    hasKeyboardFocus(target)
-  ) {
+  if (isTextField(target)) {
+    event.stopPropagation();
+    return;
+  }
+  if (event.ctrlKey || event.metaKey || event.altKey) return;
+  if (event.key === 'Tab' || hasKeyboardFocus(target)) {
     event.stopPropagation();
   }
+}
+
+function isTextField(target: HTMLElement): boolean {
+  return (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target.isContentEditable
+  );
 }
 
 /**
