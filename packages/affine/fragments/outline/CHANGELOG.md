@@ -1,5 +1,21 @@
 # @labre/affine-fragment-outline
 
+## 4.3.0
+
+### Patch Changes
+
+- Updated dependencies [bba6fbd]
+  - @labre/affine-components@4.3.0
+  - @labre/affine-block-note@4.3.0
+  - @labre/affine-fragment-doc-title@4.3.0
+  - @labre/affine-rich-text@4.3.0
+  - @labre/affine-ext-loader@4.3.0
+  - @labre/affine-model@4.3.0
+  - @labre/affine-shared@4.3.0
+  - @labre/global@4.3.0
+  - @labre/std@4.3.0
+  - @labre/store@4.3.0
+
 ## 4.2.0
 
 ### Patch Changes

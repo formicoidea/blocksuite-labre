@@ -1,5 +1,27 @@
 # @labre/affine-widget-edgeless-toolbar
 
+## 4.3.0
+
+### Minor Changes
+
+- bba6fbd: Every keyboard focus ring now reads `--affine-focus-ring-color` first, then
+  the token it read before (issue #724). A host theme can give the ring its
+  own colour, for instance one that keeps 3:1 under the toolbars' hover veils
+  in dark while the accent stays dark enough to fill a control with a white
+  label. The library ships no value: without it, nothing changes.
+
+### Patch Changes
+
+- Updated dependencies [bba6fbd]
+  - @labre/affine-components@4.3.0
+  - @labre/affine-block-surface@4.3.0
+  - @labre/affine-ext-loader@4.3.0
+  - @labre/affine-model@4.3.0
+  - @labre/affine-shared@4.3.0
+  - @labre/global@4.3.0
+  - @labre/std@4.3.0
+  - @labre/store@4.3.0
+
 ## 4.2.0
 
 ### Patch Changes
