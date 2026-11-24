@@ -6,6 +6,7 @@ import {
   type ConnectorLabelEnd,
   ConnectorMode,
   DEFAULT_POLYGON_VERTICES,
+  FrameBlockModel,
   GroupElementModel,
   type LocalConnectorElementModel,
   ShapeElementModel,
@@ -1286,6 +1287,17 @@ export class ConnectionOverlay extends Overlay {
       // FIXME: the real path needs to be expanded: diamod, ellipse, trangle.
       if (!rotateBound.expand(10).isPointInBound(point)) continue;
 
+      // A frame connects at its border only: the anchor loop below always picks
+      // the nearest anchor, so without this an endpoint anywhere inside a frame
+      // snapped to one of its edges (#740, upstream f0e5009).
+      if (
+        connectable instanceof FrameBlockModel &&
+        Vec.dist(connectable.getNearestPoint(point), point) >=
+          OUTLINE_SNAP_DISTANCE
+      ) {
+        continue;
+      }
+
       // then check if closes to anchors
       const anchors = getAnchors(connectable, this.centerAnchorEnabled);
       const len = anchors.length;
@@ -1319,7 +1331,7 @@ export class ConnectionOverlay extends Overlay {
       // if not, check if closes to bound
       const nearestPoint = connectable.getNearestPoint(point);
 
-      if (Vec.dist(nearestPoint, point) < 8) {
+      if (Vec.dist(nearestPoint, point) < OUTLINE_SNAP_DISTANCE) {
         this.highlightPoint = nearestPoint;
         const originPoint = getPointFromBoundsWithRotation(
           rBound(connectable, true),
@@ -1371,6 +1383,13 @@ export class ConnectionOverlay extends Overlay {
     return result;
   }
 }
+
+/**
+ * How close to an element's outline, in model units, a dragged endpoint
+ * attaches to it (`renderConnector`). A frame is reached only that close to its
+ * border (#740).
+ */
+const OUTLINE_SNAP_DISTANCE = 8;
 
 const ON_EDGE_EPSILON = 0.0001;
 

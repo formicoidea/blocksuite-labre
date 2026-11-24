@@ -43,9 +43,31 @@ export class AttachmentEdgelessBlockComponent extends toGfxBlockComponent(
       });
       return this.renderPageContent();
     }
+    const bound = this.model.elementBound;
+    // The video embed is drawn (embed.ts, its `video` config: no other config
+    // takes a `video/` type). Not the `style` prop: its type names the card
+    // styles only, though the video action stores 'video' there.
+    if (
+      embed$.value &&
+      this.model.props.type.startsWith('video/') &&
+      this.embedded()
+    ) {
+      // The bound is the clip's ratio (#738): the box takes it whole, at the
+      // card's width, and the `<video>` letterboxes inside (ADR 0044, amendment
+      // of 2026-11-24).
+      const videoWidth = EMBED_CARD_WIDTH.video;
+      const scale = bound.w / videoWidth;
+      this.containerStyleMap = styleMap({
+        width: `${videoWidth}px`,
+        height: `${bound.h / scale}px`,
+        transform: `scale(${scale})`,
+        transformOrigin: '0 0',
+        overflow: 'hidden',
+      });
+      return this.renderPageContent();
+    }
     const width = EMBED_CARD_WIDTH[cardStyle];
     const height = EMBED_CARD_HEIGHT[cardStyle];
-    const bound = this.model.elementBound;
     // Contained, in the middle of the box: a « Replace » leaves a card in a frame of
     // any proportions (ADR 0044, amendment of 2026-11-04), and stretched words read
     // badly. A card resized by hand keeps its ratio, so this is its old scale.

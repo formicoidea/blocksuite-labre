@@ -61,6 +61,7 @@ import {
   ATTACHMENT_TOOLBAR_REPLACE,
   ATTACHMENT_TOOLBAR_VERTICAL_STYLE,
 } from '../translations';
+import { isDownloadableAttachment } from '../utils.js';
 
 const FROM_TOOLBAR = {
   surface: 'contextual-toolbar',
@@ -211,8 +212,7 @@ const downloadAction = {
   when(ctx) {
     const model = ctx.getCurrentModelByType(AttachmentBlockModel);
     if (!model) return false;
-    // Current citation attachment block does not support download
-    return model.props.style !== 'citation' && !model.props.footnoteIdentifier;
+    return isDownloadableAttachment(model);
   },
 } as const satisfies ToolbarAction;
 

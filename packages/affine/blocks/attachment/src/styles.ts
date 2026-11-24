@@ -103,6 +103,41 @@ export const styles = css`
     }
   }
 
+  /* The read-only Download (#744): never shrinks, the name truncates. */
+  .affine-attachment-download {
+    flex-shrink: 0;
+    align-self: center;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  .affine-attachment-download:focus-visible {
+    outline: 2px solid
+      var(--affine-focus-ring-color, var(--affine-primary-color));
+    outline-offset: -2px;
+  }
+
+  .affine-attachment-embed-download {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 1;
+    height: 28px;
+    padding: 0 8px;
+    background: var(--affine-background-overlay-panel-color);
+    box-shadow: var(--affine-shadow-1);
+  }
+
+  .affine-attachment-embed-container.inline-download {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .affine-attachment-embed-download {
+      position: static;
+    }
+  }
+
   .affine-attachment-banner {
     display: flex;
     align-items: center;

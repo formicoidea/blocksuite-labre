@@ -1884,3 +1884,66 @@ not only to fill the gap where the library offers none.
   database and keeps 4.1's state.
 - Not a red zone: nothing stored, no flag; one optional member on an
   existing seam. Held by `database/block/src/__tests__/no-view-state.unit.spec.ts`.
+
+### 2026-11-24: a stored `affine:data-view` block draws a placeholder
+
+Issue #745, decision of the product owner of 2026-11-24: draw a placeholder, do not
+port `BlockQueryDataSource` for now. Not a red zone: no schema, no stored field, no
+flag changes.
+
+- **The placeholder.** `DataViewBlockComponent.renderBlock()` draws the block's title
+  row with its "⋯" (rename, copy, delete; absent on a read-only document), then a
+  status (`role="status"`, `data-testid="data-view-block-unavailable"`) modelled on
+  the database's `sourceUnavailableNotice`: « This view cannot be displayed. » and
+  « It was created in another editor; its content is kept. »
+  (`com.labre.data-view-block.unavailable` and its `.hint`, in the package's new
+  `translations.ts`, ADR 0023). No button in the status: Labre offers no way to
+  create such a block, and nothing here may repair one. Its styles sit in the
+  block's light-DOM sheet, scoped under `affine-data-view`.
+- **The "⋯" is a real button.** It is the block's only control under the
+  placeholder, so it moves from a `<div>` with a click handler to a
+  `<button type="button">` (tab order, Enter and Space, `aria-haspopup="menu"`),
+  named « Block options » (`com.labre.data-view-block.options`), with the house
+  focus ring (`--affine-focus-ring-color`). Its menu is unchanged. Not done: the
+  focus is not given back to it when the menu closes (the engine's
+  `popupTargetReturningFocus` is not exported).
+- **The engine is never built.** The render neither constructs
+  `DataViewRootUILogic` nor reads `dataSource`; the block's lazy root logic and its
+  builder are removed. `BlockQueryDataSource` and its specs stay; the block's public
+  members (`dataSource`, `headerWidget`, `toolsWidget`, `selection$`,
+  `setSelection`, …) stay, marked `@deprecated` so nobody deletes them as dead code
+  before a major. The upgrade path, porting the source
+  the way `DatabaseBlockDataSource` is written, needs an ADR of its own.
+- **Nothing is written.** Mounting and rendering emit no Yjs update; props are left
+  as stored; a snapshot round-trip keeps the block whole. The schema admits no child
+  in practice (`affine:paragraph` and `affine:list` do not name `affine:data-view` as
+  a parent), so there is none to keep.
+- **Flags.** The placeholder lives in the always-on `DataViewRenderViewExtension`, so
+  it shows whatever the `data-view` flag says (ADR 0009).
+- **Correction to the amendment of 2026-11-20.** Its bullet on the `affine:data-view`
+  block says the block « throws at construction ». Since #718 the block constructs
+  (its root logic was built lazily, on first render); it was the first render that
+  threw, on the unported data source. That bullet's « would follow its own "+" » no
+  longer applies: the block never reaches the engine's empty state.
+- Held by `database/view-block/src/__tests__/block-mount.unit.spec.ts`,
+  `block-styles-scope.unit.spec.ts` and
+  `integration-test/src/__tests__/page/data-view-placeholder.spec.ts` (the "⋯" from
+  the keyboard).
+
+### 2026-11-24: in a text field of a bar, every key but Escape is the field's
+
+Issue #730. The amendment of 2026-11-22 above says `keepKeysInBar` lets « shortcuts
+with a modifier always through ». That let Ctrl/Cmd+A typed in the view search reach
+the table's `Mod-a` (every row selected, the field's own select-all lost) and
+Ctrl/Cmd+Z reach the editor's undo.
+
+- **Rule.** When the key's target is a text field of the bar (an `<input>`, a
+  `<textarea>`, a contenteditable: the search, a rename), every key except Escape
+  stops at the bar, shortcuts with a modifier included. Escape keeps the rule of
+  2026-11-22. On a control that is not a text field, a shortcut with a modifier
+  still goes through.
+- **Host-visible.** A host's own document-level shortcut (Ctrl/Cmd+K, Ctrl+S) does
+  not fire while the caret is in one of these fields; a host that needs it there
+  listens in the capture phase.
+- Held by `database/engine/src/__tests__/search-field-keys.unit.spec.ts` and
+  `toolbar-keyboard.unit.spec.ts`.
