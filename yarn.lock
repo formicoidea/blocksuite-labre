@@ -1231,29 +1231,29 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@floating-ui/core@npm:^1.7.1":
-  version: 1.7.1
-  resolution: "@floating-ui/core@npm:1.7.1"
+"@floating-ui/core@npm:^1.8.0":
+  version: 1.8.0
+  resolution: "@floating-ui/core@npm:1.8.0"
   dependencies:
-    "@floating-ui/utils": "npm:^0.2.9"
-  checksum: 10/5dbe5d92dcdaef6a915a6bfaa432a684b0a021e6eca0eab796216eecb0870282f8b9ecfcf449f1cac94cc24d8c5114d1677b1f7a6e11e2642967065f2497ce26
+    "@floating-ui/utils": "npm:^0.2.12"
+  checksum: 10/762cd5677fd4e82597db2efdd8f1e81d248eac5615d8be755e1bbb5f12a14c56a6bccd735676374d4914db7ccb3f09ec405ec7433e8c48a5521f5d66dc8dd5d6
   languageName: node
   linkType: hard
 
-"@floating-ui/dom@npm:^1.6.10, @floating-ui/dom@npm:^1.6.12, @floating-ui/dom@npm:^1.6.13":
-  version: 1.7.1
-  resolution: "@floating-ui/dom@npm:1.7.1"
+"@floating-ui/dom@npm:^1.6.12, @floating-ui/dom@npm:^1.7.6":
+  version: 1.8.0
+  resolution: "@floating-ui/dom@npm:1.8.0"
   dependencies:
-    "@floating-ui/core": "npm:^1.7.1"
-    "@floating-ui/utils": "npm:^0.2.9"
-  checksum: 10/77f385e0202855aaeee7c8c96e40c8cd06c63f1946ed666824beed40b98e9414a5a8c19ac8c8f68653577eceb1866261a785d3d9855a531bd85d2865024ca9e9
+    "@floating-ui/core": "npm:^1.8.0"
+    "@floating-ui/utils": "npm:^0.2.12"
+  checksum: 10/2e7d75fb702875a62795dd8529569f27eff53167768d75476056d6bf824a1ba608177a8877ed9d728eadb5787b4bd07b043fb2c3125b7ad2505a398680b323c0
   languageName: node
   linkType: hard
 
-"@floating-ui/utils@npm:^0.2.9":
-  version: 0.2.9
-  resolution: "@floating-ui/utils@npm:0.2.9"
-  checksum: 10/0ca786347db3dd8d9034b86d1449fabb96642788e5900cc5f2aee433cd7b243efbcd7a165bead50b004ee3f20a90ddebb6a35296fc41d43cfd361b6f01b69ffb
+"@floating-ui/utils@npm:^0.2.12":
+  version: 0.2.12
+  resolution: "@floating-ui/utils@npm:0.2.12"
+  checksum: 10/ec4e176fb22d33d75df752c5acf82dcaacae40ed2d09c1a5015cb4081318fff20260db216678e952344b95f90c6b43214762b69eba7c51556ecd82c35a795cff
   languageName: node
   linkType: hard
 
@@ -1401,7 +1401,7 @@ __metadata:
   resolution: "@labre/affine-block-attachment@workspace:packages/affine/blocks/attachment"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-block-image": "workspace:*"
     "@labre/affine-block-surface": "workspace:*"
     "@labre/affine-components": "workspace:*"
@@ -1455,7 +1455,7 @@ __metadata:
   resolution: "@labre/affine-block-callout@workspace:packages/affine/blocks/callout"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.10"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
     "@labre/affine-inline-preset": "workspace:*"
@@ -1481,7 +1481,7 @@ __metadata:
   resolution: "@labre/affine-block-code@workspace:packages/affine/blocks/code"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
     "@labre/affine-gfx-turbo-renderer": "workspace:*"
@@ -1511,7 +1511,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@labre/affine-block-divider@workspace:packages/affine/blocks/divider"
   dependencies:
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
     "@labre/affine-model": "workspace:*"
@@ -1535,7 +1535,7 @@ __metadata:
   resolution: "@labre/affine-block-edgeless-text@workspace:packages/affine/blocks/edgeless-text"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-block-surface": "workspace:*"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
@@ -1563,7 +1563,7 @@ __metadata:
   resolution: "@labre/affine-block-embed-doc@workspace:packages/affine/blocks/embed-doc"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-block-embed": "workspace:*"
     "@labre/affine-block-surface": "workspace:*"
     "@labre/affine-components": "workspace:*"
@@ -1594,7 +1594,7 @@ __metadata:
   resolution: "@labre/affine-block-embed@workspace:packages/affine/blocks/embed"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-block-surface": "workspace:*"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
@@ -1623,7 +1623,7 @@ __metadata:
   resolution: "@labre/affine-block-frame@workspace:packages/affine/blocks/frame"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-block-surface": "workspace:*"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
@@ -1651,7 +1651,7 @@ __metadata:
   resolution: "@labre/affine-block-image@workspace:packages/affine/blocks/image"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-block-surface": "workspace:*"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
@@ -1678,7 +1678,7 @@ __metadata:
   resolution: "@labre/affine-block-latex@workspace:packages/affine/blocks/latex"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-block-note": "workspace:*"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
@@ -1707,7 +1707,7 @@ __metadata:
   resolution: "@labre/affine-block-list@workspace:packages/affine/blocks/list"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
     "@labre/affine-gfx-turbo-renderer": "workspace:*"
@@ -1767,7 +1767,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@labre/affine-block-paragraph@workspace:packages/affine/blocks/paragraph"
   dependencies:
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
     "@labre/affine-gfx-turbo-renderer": "workspace:*"
@@ -1793,7 +1793,7 @@ __metadata:
   resolution: "@labre/affine-block-root@workspace:packages/affine/blocks/root"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-block-attachment": "workspace:*"
     "@labre/affine-block-bookmark": "workspace:*"
     "@labre/affine-block-edgeless-text": "workspace:*"
@@ -1844,7 +1844,7 @@ __metadata:
   resolution: "@labre/affine-block-surface-ref@workspace:packages/affine/blocks/surface-ref"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-block-frame": "workspace:*"
     "@labre/affine-block-surface": "workspace:*"
     "@labre/affine-components": "workspace:*"
@@ -1904,7 +1904,7 @@ __metadata:
   resolution: "@labre/affine-block-table@workspace:packages/affine/blocks/table"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
     "@labre/affine-inline-preset": "workspace:*"
@@ -1931,7 +1931,7 @@ __metadata:
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
     "@emoji-mart/data": "npm:^1.2.1"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-model": "workspace:*"
     "@labre/affine-shared": "workspace:*"
     "@labre/global": "workspace:*"
@@ -1962,7 +1962,7 @@ __metadata:
   resolution: "@labre/affine-database-block@workspace:packages/affine/database/block"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-database-engine": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
@@ -2018,7 +2018,7 @@ __metadata:
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
     "@emotion/hash": "npm:^0.9.2"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-model": "workspace:*"
     "@labre/affine-shared": "workspace:*"
@@ -2045,7 +2045,7 @@ __metadata:
   resolution: "@labre/affine-database-view-block@workspace:packages/affine/database/view-block"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-database-block": "workspace:*"
     "@labre/affine-database-engine": "workspace:*"
@@ -2083,7 +2083,7 @@ __metadata:
   resolution: "@labre/affine-foundation@workspace:packages/affine/foundation"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-database-engine": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
@@ -2109,7 +2109,7 @@ __metadata:
   resolution: "@labre/affine-fragment-adapter-panel@workspace:packages/affine/fragments/adapter-panel"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
     "@labre/affine-model": "workspace:*"
@@ -2130,7 +2130,7 @@ __metadata:
   resolution: "@labre/affine-fragment-doc-title@workspace:packages/affine/fragments/doc-title"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-block-surface": "workspace:*"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-database-engine": "workspace:*"
@@ -2157,7 +2157,7 @@ __metadata:
   resolution: "@labre/affine-fragment-frame-panel@workspace:packages/affine/fragments/frame-panel"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-block-frame": "workspace:*"
     "@labre/affine-block-surface": "workspace:*"
     "@labre/affine-components": "workspace:*"
@@ -2185,7 +2185,7 @@ __metadata:
   resolution: "@labre/affine-fragment-outline@workspace:packages/affine/fragments/outline"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-block-note": "workspace:*"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
@@ -2639,7 +2639,7 @@ __metadata:
   resolution: "@labre/affine-gfx-template@workspace:packages/affine/gfx/template"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-block-surface": "workspace:*"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
@@ -2774,7 +2774,7 @@ __metadata:
   resolution: "@labre/affine-inline-footnote@workspace:packages/affine/inlines/footnote"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
     "@labre/affine-model": "workspace:*"
@@ -2803,7 +2803,7 @@ __metadata:
   resolution: "@labre/affine-inline-latex@workspace:packages/affine/inlines/latex"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
     "@labre/affine-model": "workspace:*"
@@ -2836,7 +2836,7 @@ __metadata:
   resolution: "@labre/affine-inline-link@workspace:packages/affine/inlines/link"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
     "@labre/affine-inline-reference": "workspace:*"
@@ -2866,7 +2866,7 @@ __metadata:
   resolution: "@labre/affine-inline-mention@workspace:packages/affine/inlines/mention"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-ext-loader": "workspace:*"
     "@labre/affine-model": "workspace:*"
     "@labre/affine-shared": "workspace:*"
@@ -2892,7 +2892,7 @@ __metadata:
   resolution: "@labre/affine-inline-preset@workspace:packages/affine/inlines/preset"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
     "@labre/affine-inline-comment": "workspace:*"
@@ -2931,7 +2931,7 @@ __metadata:
   resolution: "@labre/affine-inline-reference@workspace:packages/affine/inlines/reference"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
     "@labre/affine-model": "workspace:*"
@@ -2976,7 +2976,7 @@ __metadata:
   resolution: "@labre/affine-rich-text@workspace:packages/affine/rich-text"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-model": "workspace:*"
     "@labre/affine-shared": "workspace:*"
@@ -3003,7 +3003,7 @@ __metadata:
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
     "@emotion/css": "npm:^11.13.5"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-model": "workspace:*"
     "@labre/global": "workspace:*"
     "@labre/std": "workspace:*"
@@ -3052,7 +3052,7 @@ __metadata:
   resolution: "@labre/affine-widget-drag-handle@workspace:packages/affine/widgets/drag-handle"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-block-callout": "workspace:*"
     "@labre/affine-block-embed": "workspace:*"
     "@labre/affine-block-list": "workspace:*"
@@ -3149,7 +3149,7 @@ __metadata:
   resolution: "@labre/affine-widget-edgeless-toolbar@workspace:packages/affine/widgets/edgeless-toolbar"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-block-surface": "workspace:*"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
@@ -3173,7 +3173,7 @@ __metadata:
   resolution: "@labre/affine-widget-edgeless-zoom-toolbar@workspace:packages/affine/widgets/edgeless-zoom-toolbar"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-block-surface": "workspace:*"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
@@ -3363,7 +3363,7 @@ __metadata:
   resolution: "@labre/affine-widget-slash-menu@workspace:packages/affine/widgets/slash-menu"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-components": "workspace:*"
     "@labre/affine-ext-loader": "workspace:*"
     "@labre/affine-model": "workspace:*"
@@ -3405,7 +3405,7 @@ __metadata:
   resolution: "@labre/affine-widget-toolbar@workspace:packages/affine/widgets/toolbar"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-block-surface": "workspace:*"
     "@labre/affine-block-table": "workspace:*"
     "@labre/affine-components": "workspace:*"
@@ -3429,7 +3429,7 @@ __metadata:
   resolution: "@labre/affine-widget-viewport-overlay@workspace:packages/affine/widgets/viewport-overlay"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine-ext-loader": "workspace:*"
     "@labre/affine-model": "workspace:*"
     "@labre/affine-shared": "workspace:*"
@@ -3561,7 +3561,7 @@ __metadata:
   resolution: "@labre/integration-test@workspace:packages/integration-test"
   dependencies:
     "@blocksuite/icons": "npm:^2.2.12"
-    "@floating-ui/dom": "npm:^1.6.13"
+    "@floating-ui/dom": "npm:^1.7.6"
     "@labre/affine": "workspace:*"
     "@labre/affine-block-image": "workspace:*"
     "@labre/affine-block-list": "workspace:*"
