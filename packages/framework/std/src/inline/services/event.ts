@@ -127,7 +127,13 @@ export class EventService<TextAttributes extends BaseTextAttributes> {
       if (!inlineRange) return;
     }
 
-    let ifHandleTargetRange = true;
+    // A non-collapsed selection wins over the target range: Firefox may start
+    // the target range of a select-all at the inline root (#741). Spellcheck
+    // replacement is exempt: Firefox fires it with the misspelled word as
+    // target range BEFORE selecting that word (EditorBase::ReplaceTextAsAction),
+    // so the selection may still be a wider, unrelated range.
+    let ifHandleTargetRange =
+      inlineRange.length === 0 || event.inputType === 'insertReplacementText';
 
     if (event.inputType.startsWith('delete')) {
       if (
