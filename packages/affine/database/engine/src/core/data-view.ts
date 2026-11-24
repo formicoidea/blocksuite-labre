@@ -270,15 +270,18 @@ export class DataViewRootUI extends SignalWatcher(
    * on the editor host, a host's dialog keeps its own). A target that is not
    * focusable (the status) gets `tabindex="-1"` until it loses the focus, so
    * a click never focuses it.
+   *
+   * `selector` (optional, a widening) names another target: the views bar
+   * passes the tab of a view picked from the keyboard, whose tab may leave
+   * with the old view's header.
    */
-  async restoreFocus(): Promise<void> {
+  async restoreFocus(selector = '[data-view-focus-fallback]'): Promise<void> {
     await this.updateComplete;
     // The placeholder's elements draw one level per pass, after this one.
     // A view's "⋯" sits several elements down (the view, its header, its
     // toolbar), each drawing one pass after its parent: settle pass by pass
     // until a target is drawn, a bounded number of times.
-    const find = () =>
-      this.querySelector<HTMLElement>('[data-view-focus-fallback]');
+    const find = () => this.querySelector<HTMLElement>(selector);
     const settleOnce = () =>
       Promise.all(
         [...this.querySelectorAll('*')].map(

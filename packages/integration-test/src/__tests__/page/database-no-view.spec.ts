@@ -45,6 +45,7 @@ import { setupEditor } from '../utils/setup.js';
  *   menu with the keyboard dropping the focus instead of landing on the new
  *   view's "⋯";
  * - a click in the empty state's frame taking the document's focus;
+ * - a redo typed on "⋯" (Ctrl+Shift+Z) not reaching the editor's redo;
  * - from the keyboard, delete then undo then redo leaving the focus on the
  *   body at any step (the undo takes the focused button away: the focus
  *   goes to the view's "⋯"; the redo gives it back to "New view"), or the
@@ -360,12 +361,13 @@ describe('deleting the only view of a database', () => {
     );
     expect(scrollPositions()).toEqual(before);
 
-    // Redo: the empty state again, its button focused. Through the store:
-    // a redo typed on the view toolbar's "⋯" (Ctrl+Shift+Z or Ctrl+Y) does
-    // not reach the editor's shortcuts (the toolbar's key handling is not
-    // this change's; a follow-up of its own). What follows is the same.
+    // Redo, typed on the view toolbar's "⋯": the empty state again, its
+    // button focused. The undo left a caret in the first row's title while
+    // the focus went to "⋯", and that cell's inline editor, which hears
+    // every key of the page root, swallowed Ctrl+Shift+Z: no redo ran (ADR
+    // 0035 amendments of 2026-11-20 and 2026-11-22).
     expect(window.doc.canRedo, 'the deletion can be redone').toBe(true);
-    window.doc.redo();
+    await userEvent.keyboard('{Control>}{Shift>}z{/Shift}{/Control}');
     await expectEmptyState(block, model);
     await until(() => expect(document.activeElement).toBe(addButtonOf(block)));
     expect(scrollPositions()).toEqual(before);

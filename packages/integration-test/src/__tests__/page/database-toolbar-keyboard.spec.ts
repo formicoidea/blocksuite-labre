@@ -598,21 +598,25 @@ describe('the view toolbar of a database opened as the page', () => {
     );
   });
 
-  test('is reached with Tab from the title, and Shift+Tab goes back to it', async () => {
+  test('is reached with Tab from the title after the views bar, and Shift+Tab goes back to it', async () => {
     const { title, database } = await mountFullPage();
     const controls = controlsOf(database);
+    // The views bar comes first: the view's tab and "+" (its own spec,
+    // `database-bars-keyboard.spec.ts`), then the toolbar.
+    const views = [
+      database.querySelector<HTMLElement>('[data-testid="database-view-tab"]')!,
+      database.querySelector<HTMLElement>(
+        '[data-testid="database-add-view-button"]'
+      )!,
+    ];
+    const order = [...views, ...TAB_ORDER.map(name => controls[name])];
     title.inlineEditor!.focusEnd();
     await until(() =>
       expect(title.contains(document.activeElement)).toBe(true)
     );
 
-    await tabThrough(TAB_ORDER.map(name => controls[name]));
-    await tabThrough(
-      TAB_ORDER.slice(0, -1)
-        .reverse()
-        .map(n => controls[n]),
-      true
-    );
+    await tabThrough(order);
+    await tabThrough(order.slice(0, -1).reverse(), true);
     await userEvent.keyboard('{Shift>}{Tab}{/Shift}');
     await until(() =>
       expect(title.contains(document.activeElement)).toBe(true)
