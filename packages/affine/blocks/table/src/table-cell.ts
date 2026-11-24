@@ -348,7 +348,9 @@ export class TableCell extends SignalWatcher(
                 name: 'Move Up',
                 prefix: ArrowUpBigIcon(),
                 select: () => {
-                  this.dataManager.moveRow(rowIndex, rowIndex - 1);
+                  // `moveRow` places the row AFTER the given index: after
+                  // the row above the previous one, like Move Left (#731).
+                  this.dataManager.moveRow(rowIndex, rowIndex - 2);
                 },
               }),
               menu.action({
