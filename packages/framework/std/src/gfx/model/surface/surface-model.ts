@@ -1126,12 +1126,18 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
     });
   }
 
-  private _propsToY(type: string, props: Record<string, unknown>) {
+  private _propsToY(type: string, input: Record<string, unknown>) {
     const ctor = this._elementCtorMap[type];
 
     if (!ctor) {
       throw new Error(`Invalid element type: ${type}`);
     }
+
+    // Converted on a copy: the caller's object keeps what it passed. Written
+    // back into it, the Yjs type built here would be attached by this call
+    // and refused, as already in a document, when the same props are passed
+    // again (ADR 0056).
+    const props = { ...input };
 
     Object.entries(props).forEach(([key, val]) => {
       // A store `Text` (what a block's text is) takes the store's own rule

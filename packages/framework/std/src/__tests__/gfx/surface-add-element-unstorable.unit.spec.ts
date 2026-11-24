@@ -36,7 +36,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import * as Y from 'yjs';
 
 import { effects } from '../../effects.js';
-import { field } from '../../gfx/index.js';
+import { field, SURFACE_TEXT_UNIQ_IDENTIFIER } from '../../gfx/index.js';
 import { TestShapeElement } from '../test-gfx-element.js';
 import {
   RootBlockSchemaExtension,
@@ -140,6 +140,33 @@ describe('a store Text handed to addElement', () => {
     expect(bound.yText.doc).toBe(elsewhere);
     expect(elsewhere.getMap('host').get('text')).toBe(bound.yText);
     expect(bound.toString()).toBe('Bound elsewhere');
+  });
+
+  test('the same props object can be added twice', () => {
+    // The conversion wrote the Yjs type it built back into the caller's
+    // object; the first call attached it, and the second refused it as
+    // already in a document. The caller's object now keeps what it passed.
+    const { surface, stored } = setupSurface();
+    const label = new Text('Twice');
+    const props = {
+      type: 'testText',
+      label,
+      text: {
+        [SURFACE_TEXT_UNIQ_IDENTIFIER]: true,
+        delta: [{ insert: 'Wrapped' }],
+      },
+    };
+
+    const first = surface.addElement(props);
+    const second = surface.addElement(props);
+
+    expect(props.label).toBe(label);
+    expect(props.text).not.toBeInstanceOf(Y.Text);
+    [first, second].forEach(id => {
+      expect(String(stored(id)!.get('label'))).toBe('Twice');
+      expect(String(stored(id)!.get('text'))).toBe('Wrapped');
+    });
+    expect(stored(first)!.get('label')).not.toBe(stored(second)!.get('label'));
   });
 });
 
