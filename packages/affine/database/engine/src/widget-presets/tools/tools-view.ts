@@ -45,7 +45,8 @@ const styles = css`
      the search field's clipping container never cuts it. */
   .affine-database-toolbar [role='button']:focus-visible,
   .affine-database-toolbar button:focus-visible {
-    outline: 2px solid var(--affine-primary-color);
+    outline: 2px solid
+      var(--affine-focus-ring-color, var(--affine-primary-color));
     outline-offset: -2px;
   }
   /* On a phone with a keyboard, "+" is filled with the same blue: the ring

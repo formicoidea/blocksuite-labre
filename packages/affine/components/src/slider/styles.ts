@@ -35,7 +35,8 @@ export const styles = css`
   }
 
   .slider-container:focus-visible {
-    outline: 2px solid ${unsafeCSSVarV2('button/primary')};
+    outline: 2px solid
+      var(--affine-focus-ring-color, ${unsafeCSSVarV2('button/primary')});
     outline-offset: 2px;
     border-radius: 4px;
   }

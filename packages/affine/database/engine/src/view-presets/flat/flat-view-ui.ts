@@ -356,7 +356,8 @@ export const flatOpenButtonStyles = css`
 
   .dv-flat-open:focus-visible {
     visibility: visible;
-    outline: 2px solid var(--affine-primary-color);
+    outline: 2px solid
+      var(--affine-focus-ring-color, var(--affine-primary-color));
     outline-offset: 1px;
   }
 

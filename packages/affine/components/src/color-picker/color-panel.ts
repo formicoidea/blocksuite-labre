@@ -95,7 +95,11 @@ export class EdgelessColorButton extends LitElement {
       outline: none;
     }
     :host(:focus-visible)::after {
-      outline: 2px solid ${unsafeCSSVarV2('layer/insideBorder/primaryBorder')};
+      outline: 2px solid
+        var(
+          --affine-focus-ring-color,
+          ${unsafeCSSVarV2('layer/insideBorder/primaryBorder')}
+        );
       outline-offset: 1px;
     }
     /* The ring's room (1px + 2px outside the 28px box: 5px outside a 24px

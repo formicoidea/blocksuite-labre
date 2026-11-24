@@ -99,7 +99,8 @@ export class DatabasePropertiesPanel extends SignalWatcher(
 
       .affine-database-properties-panel-button:focus-visible,
       .affine-database-properties-panel-toggle:focus-visible {
-        outline: 2px solid var(--affine-primary-color);
+        outline: 2px solid
+          var(--affine-focus-ring-color, var(--affine-primary-color));
         outline-offset: 1px;
       }
 

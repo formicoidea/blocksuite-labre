@@ -76,7 +76,8 @@ export class DataViewNoView extends SignalWatcher(
       background-color: var(--affine-hover-color);
     }
     .dv-no-view-status:focus-visible {
-      outline: 2px solid var(--affine-primary-color);
+      outline: 2px solid
+        var(--affine-focus-ring-color, var(--affine-primary-color));
       outline-offset: 2px;
       border-radius: 4px;
     }
@@ -84,7 +85,8 @@ export class DataViewNoView extends SignalWatcher(
       color: var(--affine-text-secondary-color);
     }
     .dv-no-view data-view-component-button:focus-visible {
-      outline: 2px solid var(--affine-primary-color);
+      outline: 2px solid
+        var(--affine-focus-ring-color, var(--affine-primary-color));
       outline-offset: -2px;
     }
     data-view-no-view.mobile data-view-component-button {

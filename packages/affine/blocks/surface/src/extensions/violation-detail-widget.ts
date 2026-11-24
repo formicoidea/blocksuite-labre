@@ -252,7 +252,8 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
     }
 
     .violation-badge:focus-visible .violation-badge-dot {
-      outline: 2px solid var(--affine-primary-color);
+      outline: 2px solid
+        var(--affine-focus-ring-color, var(--affine-primary-color));
       outline-offset: 2px;
     }
 
@@ -364,7 +365,8 @@ export class ViolationDetailWidget extends WidgetComponent<RootBlockModel> {
     }
 
     .violation-action:focus-visible {
-      outline: 2px solid var(--affine-primary-color);
+      outline: 2px solid
+        var(--affine-focus-ring-color, var(--affine-primary-color));
       outline-offset: 1px;
     }
 

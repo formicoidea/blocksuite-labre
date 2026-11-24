@@ -58,7 +58,11 @@ export class MenuButton extends MenuFocusable {
     }
 
     .affine-menu-button.focused {
-      outline: 1px solid ${unsafeCSS(cssVarV2.layer.insideBorder.primaryBorder)};
+      outline: 1px solid
+        var(
+          --affine-focus-ring-color,
+          ${unsafeCSS(cssVarV2.layer.insideBorder.primaryBorder)}
+        );
     }
 
     /*

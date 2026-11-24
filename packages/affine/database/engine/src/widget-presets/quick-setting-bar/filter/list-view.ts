@@ -62,7 +62,8 @@ export class FilterBar extends SignalWatcher(ShadowlessElement) {
     /* The view toolbar's keyboard ring (#678), inside the box: the bar
        scrolls sideways and clips what overflows it. */
     .filter-bar-add-filter:focus-visible {
-      outline: 2px solid var(--affine-primary-color);
+      outline: 2px solid
+        var(--affine-focus-ring-color, var(--affine-primary-color));
       outline-offset: -2px;
     }
 

@@ -62,7 +62,10 @@ export class SizeDropdownMenu extends SignalWatcher(
     }
 
     input:focus {
-      outline-color: var(--affine-primary-color);
+      outline-color: var(
+        --affine-focus-ring-color,
+        var(--affine-primary-color)
+      );
       outline-width: 0.5px;
     }
 

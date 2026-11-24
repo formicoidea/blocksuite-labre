@@ -96,7 +96,8 @@ export const groupToggleStyles = css`
   }
 
   .dv-group-toggle:focus-visible {
-    outline: 2px solid var(--affine-primary-color);
+    outline: 2px solid
+      var(--affine-focus-ring-color, var(--affine-primary-color));
     outline-offset: 1px;
   }
 
@@ -187,7 +188,8 @@ export class DataViewHiddenGroups extends SignalWatcher(
     }
 
     .dv-hidden-group-show:focus-visible {
-      outline: 2px solid var(--affine-primary-color);
+      outline: 2px solid
+        var(--affine-focus-ring-color, var(--affine-primary-color));
       outline-offset: 1px;
     }
 

@@ -168,7 +168,8 @@ export class ReadingProposalWidget extends EditorAnchoredPanel {
       }
 
       .reading-action:focus-visible {
-        outline: 2px solid var(--affine-primary-color);
+        outline: 2px solid
+          var(--affine-focus-ring-color, var(--affine-primary-color));
         outline-offset: 1px;
       }
     `,

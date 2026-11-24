@@ -42,7 +42,8 @@ export const toolButtonFocusRing = css`
     display: var(--edgeless-toolbar-focus-ring-display, block);
     position: absolute;
     inset: var(--edgeless-toolbar-focus-ring-inset, 0px);
-    border: 2px solid var(--affine-primary-color);
+    border: 2px solid
+      var(--affine-focus-ring-color, var(--affine-primary-color));
     border-radius: 8px;
     pointer-events: none;
     z-index: 1;

@@ -39,7 +39,8 @@ export class Button extends SignalWatcher(WithDisposable(ShadowlessElement)) {
     /* A button in the tab order (the toolbar's New, the quick-setting bar's
        chips) gets the view toolbar's keyboard ring (#678), inside the box. */
     data-view-component-button[tabindex]:focus-visible {
-      outline: 2px solid var(--affine-primary-color);
+      outline: 2px solid
+        var(--affine-focus-ring-color, var(--affine-primary-color));
       outline-offset: -2px;
     }
 
