@@ -2200,6 +2200,7 @@ __metadata:
     "@preact/signals-core": "npm:^1.8.0"
     "@toeverything/theme": "npm:^1.1.15"
     "@vanilla-extract/css": "npm:^1.17.0"
+    katex: "npm:^0.18.10"
     lit: "npm:^3.2.0"
     rxjs: "npm:^7.8.1"
     zod: "npm:^4.6.6"

@@ -7,10 +7,12 @@ export default defineConfig({
   test: {
     root: './packages/affine/fragments/outline',
     // Scoped on purpose: this package has no historical unit suite, so only
-    // the specs added since (the i18n fix, the settings switch) run here.
+    // the specs added since (the i18n fix, the settings switch, the inline
+    // LaTeX preview) run here.
     include: [
       'src/__tests__/translations.unit.spec.ts',
       'src/__tests__/outline-setting-menu.unit.spec.ts',
+      'src/__tests__/outline-preview-inline-latex.unit.spec.ts',
     ],
     testTimeout: 10000,
     environment: 'happy-dom',
