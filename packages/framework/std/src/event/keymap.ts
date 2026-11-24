@@ -363,6 +363,39 @@ export function bindKeymap(
   });
 }
 
+/**
+ * Native formatting input → the binding it stands for. Native controls such
+ * as the iOS selection menu (B / I / U) send a `beforeinput` with one of these
+ * input types and no key event at all (#743). Every entry is a `Mod-`
+ * keystroke: {@link formatInputKeystroke} relies on it.
+ */
+const FORMAT_INPUT_TYPE_HOTKEYS: Readonly<Record<string, string>> =
+  Object.assign(Object.create(null), {
+    formatBold: 'Mod-b',
+    formatItalic: 'Mod-i',
+    formatUnderline: 'Mod-u',
+  });
+
+/**
+ * The keystroke a native formatting input stands for, as the init of the key
+ * event that runs it through a {@link bindKeymap} binding exactly like the
+ * real keystroke; `null` for any other input type. Its modifier follows
+ * `IS_MAC`, as `Mod` does when the keymap is bound, so the `Mod-` binding
+ * matches on every platform (Ctrl on iOS, where `IS_MAC` is false).
+ */
+export function formatInputKeystroke(
+  inputType: string
+): KeyboardEventInit | null {
+  const hotkey = FORMAT_INPUT_TYPE_HOTKEYS[inputType];
+  if (hotkey === undefined) return null;
+  return {
+    key: hotkey.slice('Mod-'.length),
+    ctrlKey: !IS_MAC,
+    metaKey: IS_MAC,
+    cancelable: true,
+  };
+}
+
 // In Android, the keypress event  dose not contain
 // the information about what key is pressed. See
 // https://stackoverflow.com/a/68188679
