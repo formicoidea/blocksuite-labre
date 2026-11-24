@@ -5,6 +5,10 @@ import {
   EditorSettingExtension,
   EditorSettingProvider,
 } from '@labre/affine-shared/services';
+import {
+  holdPreviewStore,
+  type PreviewStoreHold,
+} from '@labre/affine-shared/utils';
 import { BlockStdScope, BlockViewIdentifier } from '@labre/std';
 import type {
   BlockModel,
@@ -20,6 +24,19 @@ import { EdgelessDndPreviewElement } from '../components/edgeless-preview/previe
 import type { AffineDragHandleWidget } from '../drag-handle.js';
 
 export class PreviewHelper {
+  /**
+   * The query stores of the drag images built since the last drag ended.
+   * Each drag built one and nothing released it: with its Yjs observers it
+   * stayed for the workspace's life (#746, ADR 0057, part 3).
+   */
+  private readonly _previewHolds = new Set<PreviewStoreHold>();
+
+  /** Release the drag images' stores: the drag is over (drop or cancel). */
+  releasePreviews = () => {
+    this._previewHolds.forEach(hold => hold.release());
+    this._previewHolds.clear();
+  };
+
   private readonly _calculateQuery = (selectedIds: string[]): Query => {
     const ids: Array<{ id: string; viewType: BlockViewType }> = selectedIds.map(
       id => ({
@@ -68,7 +85,9 @@ export class PreviewHelper {
     const docModeService = std.get(DocModeProvider);
     const editorSetting = std.get(EditorSettingProvider);
     const query = this._calculateQuery(blockIds as string[]);
-    const store = widget.store.doc.getStore({ query });
+    const hold = holdPreviewStore(widget.store.doc, { query });
+    this._previewHolds.add(hold);
+    const { store } = hold;
     let previewSpec = widget.std
       .get(ViewExtensionManagerIdentifier)
       .get('preview-page');

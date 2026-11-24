@@ -1,7 +1,11 @@
 ---
 '@labre/store': minor
 '@labre/std': patch
-'@labre/affine-shared': patch
+'@labre/affine-shared': minor
+'@labre/affine-widget-drag-handle': patch
+'@labre/affine-block-embed-doc': patch
+'@labre/affine-fragment-frame-panel': patch
+'@labre/affine-block-surface-ref': patch
 ---
 
 `store.dispose()` now releases a store for good (#746, ADR 0057). It detaches
@@ -28,3 +32,11 @@ however often `load()` runs.
 `readonly: true` does, instead of building a new one on every call, and
 `doc.removeStore({ readonly: false })` forgets it. It stays a store distinct
 from the default `doc.getStore()`; with an `id` it is still keyed by the id.
+
+The library's own previews release their query stores: the drag image when
+the drag ends, the linked-doc card when it needs other blocks or
+disconnects, the frame card and the surface-ref note when they disconnect.
+Previews asking for the same store share it through the new
+`holdPreviewStore(doc, options)` (`@labre/affine-shared/utils`): the last
+release disposes of it. The frame card used to remove its store under the
+wrong key and kept every one.

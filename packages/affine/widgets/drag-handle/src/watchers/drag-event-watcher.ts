@@ -157,6 +157,7 @@ export class DragEventWatcher {
   };
 
   private readonly _cleanup = () => {
+    this.previewHelper.releasePreviews();
     this._clearDropIndicator();
     this.widget.hide(true);
     this.std.selection.setGroup('gfx', []);

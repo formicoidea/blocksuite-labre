@@ -374,8 +374,8 @@ Yjs key, schema, default, snapshot format or sync protocol changes;
 
 ## As implemented
 
-Parts 1 and 2 landed with #746. Where the code differs from, or goes beyond,
-the decision above, and why:
+The three parts landed with #746. Where the code differs from, or goes
+beyond, the decision above, and why:
 
 - **The scope is per block, its handles are weak.** Each block's sync
   controller owns a `ReleaseScope` (`store/src/reactive/release-scope.ts`):
@@ -434,6 +434,27 @@ the decision above, and why:
   `{ readonlyKey: 'false' }` instead of minting a random key. No caller in
   the repo relied on the random key; the only ones were the store's own
   "local readonly" test and the retention spec.
+- **Part 3 counts holds instead of disposing per call site.** A query
+  store is cached by its options, and two of the four sites share one: every
+  frame card of a document asks for the same frame filter, and every
+  surface-ref note portal asks for the same (empty, see Context 5) query.
+  Disposing of it when one card or portal goes would have left the others
+  rendering a dead store. `holdPreviewStore` (`@labre/affine-shared/utils`)
+  hands each preview a hold; the last release disposes of the store, at the
+  end of the task, so a preview moved in the DOM (disconnected then
+  reconnected at once) keeps it. The drag image releases its holds when the
+  drag ends (`onDrop` of the draggable, which also fires on a cancel); the
+  linked-doc card swaps its hold when a render needs other blocks, keeps it
+  when the blocks are the same, and releases it on disconnect; the frame
+  preview and the note portal release on disconnect. The note portal's empty
+  query is left as Context 5 found it.
+- **Other call sites, not changed.** `getStore({ readonly: true })` in the
+  surface-ref block (`surface-ref-block.ts`) and in the synced-doc
+  toolbar (`configs/toolbar.ts`), and the default stores
+  `DocDisplayMetaService` builds for the titles it resolves, are one store
+  per document, never released, bounded by the documents opened: the same
+  growth as a host's own default stores, not a per-call one. The canvas
+  viewer's readonly store goes with the workspace it builds and disposes of.
 - **Found, not changed.** While a store lives, every change to a `Text` prop
   attaches one more observer to its `Y.Text`: the prop's signal is fed a new
   `Text` per change (`sync-controller.ts`, `_getPropsProxy`). Measured: ten

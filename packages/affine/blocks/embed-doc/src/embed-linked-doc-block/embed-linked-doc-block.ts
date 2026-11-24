@@ -57,7 +57,10 @@ import * as Y from 'yjs';
 
 import { cardIcon } from '../common/child-card.js';
 import { isDocTrashed } from '../common/doc-trashed.js';
-import { renderLinkedDocInCard } from '../common/render-linked-doc';
+import {
+  releaseLinkedDocPreview,
+  renderLinkedDocInCard,
+} from '../common/render-linked-doc';
 import { SyncedDocErrorIcon } from '../embed-synced-doc-block/styles.js';
 import { EMBED_DOC_UPDATED_LABEL } from '../translations.js';
 import { styles } from './styles.js';
@@ -508,6 +511,7 @@ export class EmbedLinkedDocBlockComponent extends EmbedBlockComponent<EmbedLinke
 
   override connectedCallback() {
     super.connectedCallback();
+    this.disposables.add(() => releaseLinkedDocPreview(this));
 
     this._cardStyle = this.model.props.style;
     this._referenceToNode = referenceToNode(this.model.props);

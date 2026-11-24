@@ -7,6 +7,10 @@ import {
   EDGELESS_BLOCK_CHILD_PADDING,
 } from '@labre/affine-shared/consts';
 import { ThemeProvider } from '@labre/affine-shared/services';
+import {
+  holdPreviewStore,
+  type PreviewStoreHold,
+} from '@labre/affine-shared/utils';
 import { deserializeXYWH } from '@labre/global/gfx';
 import { styleMap, WithDisposable } from '@labre/global/lit';
 import { BlockStdScope, type EditorHost, ShadowlessElement } from '@labre/std';
@@ -27,6 +31,14 @@ export class SurfaceRefNotePortal extends WithDisposable(ShadowlessElement) {
 
   query: Query | null = null;
 
+  /**
+   * The store the preview renders, held while the portal is connected and
+   * released when it goes (#746, ADR 0057, part 3). It used to be removed
+   * from its container and never disposed of: the store, with its Yjs
+   * observers, stayed for the workspace's life.
+   */
+  private _previewHold: PreviewStoreHold | null = null;
+
   override connectedCallback() {
     super.connectedCallback();
 
@@ -45,10 +57,14 @@ export class SurfaceRefNotePortal extends WithDisposable(ShadowlessElement) {
     };
     this.query = query;
 
-    const doc = this.model.store;
-    this._disposables.add(() => {
-      doc.doc.removeStore({ query, readonly: true });
+    const hold = holdPreviewStore(this.model.store.doc, {
+      query,
+      readonly: true,
     });
+    this._previewHold = hold;
+    // Kept after the release: an update Lit runs once the portal is gone
+    // still renders (from a released store, never seen) instead of failing.
+    this._disposables.add(() => hold.release());
   }
 
   override firstUpdated() {
@@ -105,14 +121,11 @@ export class SurfaceRefNotePortal extends WithDisposable(ShadowlessElement) {
   }
 
   renderPreview() {
-    if (!this.query) {
+    if (!this.query || !this._previewHold) {
       console.error('Query is not set before rendering note preview');
       return nothing;
     }
-    const doc = this.model.store.doc.getStore({
-      query: this.query,
-      readonly: true,
-    });
+    const doc = this._previewHold.store;
     const previewSpec = this.host.std
       .get(ViewExtensionManagerIdentifier)
       .get('preview-page');

@@ -22,6 +22,7 @@ export * from './math';
 export * from './model';
 export * from './panel-reorder-drag';
 export * from './popper-position';
+export * from './preview-store';
 export * from './print-to-pdf';
 export * from './reference';
 export * from './reordering';

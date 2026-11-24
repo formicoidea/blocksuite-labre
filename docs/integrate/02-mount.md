@@ -227,6 +227,12 @@ one store per document opened in it, until you release it
   answer its last state, so teardown code that reads still works. Drop
   your references to it and open the document again with
   `doc.getStore()`.
+- **A preview built on a query store** (`doc.getStore({ query })`) is
+  released the same way once the preview is gone. Previews asking for the
+  same options share one cached store: hold it with `holdPreviewStore(doc,
+options)` from `@labre/affine-shared/utils` and call `release()` when
+  yours goes; the last release disposes of it. The library's own previews
+  (drag image, linked-doc card, frame card, surface-ref note) do.
 - **A store you never dispose of stays** for the workspace's life, one per
   document opened (the cache is the point: the growth follows documents,
   not mounts). `workspace.dispose()` frees them all, once you also drop
