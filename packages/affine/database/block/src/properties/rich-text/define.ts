@@ -1,12 +1,9 @@
-import type { AffineTextAttributes } from '@labre/affine-shared/types';
 import { propertyType, t } from '@labre/affine-database-engine';
-import type { DeltaInsert } from '@labre/store';
 import { Text } from '@labre/store';
 import * as Y from 'yjs';
 import zod from 'zod';
 
-import { EditorHostKey } from '../../context/host-context.js';
-import { isLinkedDoc } from '../../utils/title-doc.js';
+import { getTextWithResolvedReferences } from '../../utils/title-doc.js';
 import { DATABASE_TYPE_TEXT } from '../../translations.js';
 
 export const richTextColumnType = propertyType('rich-text');
@@ -26,7 +23,8 @@ export const richTextPropertyModelConfig = richTextColumnType.modelConfig({
     default: () => ({}),
   },
   jsonValue: {
-    schema: zod.string(),
+    // An empty cell has always serialised as `null`; the schema says so (#742).
+    schema: zod.string().nullable(),
     type: () => t.richText.instance(),
     isEmpty: ({ value }) => !value,
   },
@@ -37,35 +35,15 @@ export const richTextPropertyModelConfig = richTextColumnType.modelConfig({
       )
       .optional(),
     default: () => undefined,
-    toString: ({ value }) => value?.toString() ?? '',
+    toString: ({ value, dataSource }) =>
+      getTextWithResolvedReferences(value, dataSource),
     fromString: ({ value }) => {
       return {
         value: new Text(value),
       };
     },
-    toJson: ({ value, dataSource }) => {
-      if (!value) return null;
-      // A cell stored as a plain string (`storedShapeIsReadable`) is its
-      // own text: it has no deltas to walk.
-      if (typeof value === 'string') return value;
-      const host = dataSource.serviceGet(EditorHostKey);
-      if (host) {
-        const collection = host.std.workspace;
-        const yText = toYText(value);
-        const deltas = yText?.toDelta();
-        const text = deltas
-          .map((delta: DeltaInsert<AffineTextAttributes>) => {
-            if (isLinkedDoc(delta)) {
-              const linkedDocId = delta.attributes?.reference?.pageId as string;
-              return collection.getDoc(linkedDocId)?.meta?.title;
-            }
-            return delta.insert;
-          })
-          .join('');
-        return text;
-      }
-      return value?.toString() ?? null;
-    },
+    toJson: ({ value, dataSource }) =>
+      value ? getTextWithResolvedReferences(value, dataSource) : null,
     fromJson: ({ value }) =>
       typeof value !== 'string' ? undefined : new Text(value),
     onUpdate: ({ value, callback }) => {
