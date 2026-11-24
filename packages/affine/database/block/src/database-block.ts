@@ -43,6 +43,7 @@ import {
   ExternalGroupByConfigProvider,
   HostOpensRowsKey,
   NewRowMenuOpenerKey,
+  NoViewActionKey,
   PageLayoutKey,
   PropertiesPanelOpenerKey,
   renderUniLit,
@@ -87,6 +88,7 @@ import {
 } from './database-block-styles.js';
 import { BlockRenderer } from './detail-panel/block-renderer.js';
 import { focusAfterLastViewRemoved } from './no-view-focus.js';
+import { hostNoViewAction } from './no-view-action.js';
 import { NoteRenderer } from './detail-panel/note-renderer.js';
 import { sourceRequirement } from './linked-view.js';
 import { DatabaseSelection } from './selection.js';
@@ -258,6 +260,10 @@ export class DatabaseBlockComponent extends CaptionedBlockComponent<DatabaseBloc
       // reads the picker from its own scope, below the editor's.
       const picker = this.std.getOptional(DataSourcePickerProvider);
       if (picker) dataSource.serviceSet(DataSourcePickerProvider, picker);
+      // The host's action under "No view" (issue #707): it wins over the
+      // library's "New view"; the engine reads the signal while drawing.
+      const noViewAction = hostNoViewAction(picker, this.model);
+      if (noViewAction) dataSource.serviceSet(NoViewActionKey, noViewAction);
       // `{ database: false }` takes view creation away, never the views.
       if (!this.std.getOptional(DatabaseViewCreationIdentifier)) {
         dataSource.serviceSet(ViewCreationOffKey, true);

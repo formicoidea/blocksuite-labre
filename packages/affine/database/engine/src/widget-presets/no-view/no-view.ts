@@ -16,6 +16,10 @@ import {
   popAddViewMenu,
 } from '../../core/view-manager/add-view.js';
 import {
+  type NoViewAction,
+  NoViewActionKey,
+} from '../../core/view-manager/no-view-action.js';
+import {
   DATA_VIEW_NO_VIEW,
   DATA_VIEW_NO_VIEW_HINT,
   VIEWS_BAR_ADD_VIEW,
@@ -47,8 +51,11 @@ import { VIEWS_BAR_TOUCH_TARGET } from '../views-bar/views-view.js';
  *   there, the creatable presets otherwise. Where "+" is absent the button
  *   is too: a read-only document, or a source whose host switched creation
  *   off (`ViewCreationOffKey`, which the database block sets under
- *   `{ database: false }`). The bundle adds creation, core never does more
- *   than "+" did (§1).
+ *   `{ database: false }`).
+ *   The bundle adds creation, core never does more than "+" did (§1).
+ * - A host's action (`NoViewActionKey`, issue #707, amendment of
+ *   2026-11-24) replaces "New view" and its hint under the same status,
+ *   creation off included, never on a read-only document.
  * - The button is a named control in the tab order, activated by Enter and
  *   Space, ringed like the toolbar's (#678). It, else the status, is where
  *   the keyboard focus lands when a removal leaves no view and nothing holds
@@ -123,37 +130,90 @@ export class DataViewNoView extends SignalWatcher(
     this.classList.toggle('mobile', IS_MOBILE);
   }
 
+  /**
+   * The host's action, which wins over "New view" (issue #707): a host whose
+   * base needs another first gesture (a source to create) offers it here,
+   * so the status stays the one live region. Read from the signal while
+   * drawing, so a host that learns late what to offer redraws the state.
+   * Never on a read-only document.
+   */
+  private hostAction(): NoViewAction | null {
+    const { dataSource } = this.root.config;
+    if (dataSource.readonly$.value) return null;
+    try {
+      return dataSource.serviceGet(NoViewActionKey)?.value ?? null;
+    } catch (error) {
+      // A host signal that throws keeps the library's own state.
+      console.error(error);
+      return null;
+    }
+  }
+
+  /**
+   * The button's one handler, read at the click: the host may swap its
+   * action while the button is drawn, and `data-view-component-button`
+   * binds `onClick` once, when it connects.
+   */
+  private readonly runAction = (event: MouseEvent) => {
+    const action = this.hostAction();
+    if (action) {
+      action.run(event.currentTarget as HTMLElement);
+      return;
+    }
+    if (canAddView(this.root.config.dataSource)) this.addView(event);
+  };
+
+  /**
+   * "New view" opens a menu and leaves `aria-expanded` on its button
+   * (`popupTargetReturningFocus`); the same element then carrying a host
+   * action that opens none would still be announced as collapsed.
+   */
+  override updated() {
+    const button = this.querySelector(
+      'data-view-component-button[data-view-focus-fallback]'
+    );
+    if (button && !button.hasAttribute('aria-haspopup')) {
+      button.removeAttribute('aria-expanded');
+    }
+  }
+
   override render() {
-    const canAdd = canAddView(this.root.config.dataSource);
-    const label = this.wording(VIEWS_BAR_ADD_VIEW);
+    const action = this.hostAction();
+    const offer = action !== null || canAddView(this.root.config.dataSource);
+    const hint = action ? action.hint : this.wording(DATA_VIEW_NO_VIEW_HINT);
+    const opensMenu = action ? action.menu === true : true;
     // The live region is the status alone: a button inside one is announced
     // with it. It holds no `tabindex`, so a click in the frame never takes
     // the focus; `restoreFocus` lends it one when it is the target.
+    // One button whatever it offers: Lit keeps the element when the host's
+    // action comes, changes or goes, so a focused button keeps the focus.
     return html`<div class="dv-no-view" data-testid="database-no-view">
       <div
         class="dv-no-view-status"
         data-testid="database-no-view-status"
         role="status"
-        ?data-view-focus-fallback="${!canAdd}"
+        ?data-view-focus-fallback="${!offer}"
       >
         ${this.wording(DATA_VIEW_NO_VIEW)}
       </div>
-      ${canAdd
-        ? html`<div class="dv-no-view-hint">
-              ${this.wording(DATA_VIEW_NO_VIEW_HINT)}
-            </div>
-            <data-view-component-button
-              data-testid="database-no-view-add"
-              data-view-focus-fallback
-              role="button"
-              tabindex="0"
-              aria-haspopup="menu"
-              hoverType="border"
-              @keydown="${activateOnEnterOrSpace}"
-              .onClick="${this.addView}"
-              .icon="${PlusIcon()}"
-              .text="${label}"
-            ></data-view-component-button>`
+      ${offer && hint
+        ? html`<div class="dv-no-view-hint">${hint}</div>`
+        : nothing}
+      ${offer
+        ? html`<data-view-component-button
+            data-testid="${action
+              ? 'database-no-view-host-action'
+              : 'database-no-view-add'}"
+            data-view-focus-fallback
+            role="button"
+            tabindex="0"
+            aria-haspopup="${opensMenu ? 'menu' : nothing}"
+            hoverType="border"
+            @keydown="${activateOnEnterOrSpace}"
+            .onClick="${this.runAction}"
+            .icon="${action ? undefined : PlusIcon()}"
+            .text="${action ? action.label : this.wording(VIEWS_BAR_ADD_VIEW)}"
+          ></data-view-component-button>`
         : nothing}
     </div>`;
   }
