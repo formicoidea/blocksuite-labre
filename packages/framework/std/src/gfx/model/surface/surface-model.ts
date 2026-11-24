@@ -1254,8 +1254,30 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
     this.localElementAdded.next(elem);
   }
 
-  applyMiddlewares(middlewares: SurfaceMiddleware[]) {
+  /**
+   * Every editor mounted on this surface's store, in mount order, with its
+   * middlewares; the last one mounted runs (`_middlewares`).
+   */
+  private readonly _installedMiddlewares: SurfaceMiddleware[][] = [];
+
+  /**
+   * Install the middlewares of the editor being mounted. The returned
+   * function takes out that editor's own, and the last editor still mounted
+   * gets its back: the surface outlives the editor, and kept the unmounted
+   * editor, its std and its detached tree alive through these closures,
+   * while two editors on one store (a host's split view, a mode switch
+   * mounting the next before the last unmounts) must leave the remaining one
+   * with its index, layer and last-used props.
+   */
+  applyMiddlewares(middlewares: SurfaceMiddleware[]): () => void {
+    this._installedMiddlewares.push(middlewares);
     this._middlewares = middlewares;
+    return () => {
+      const index = this._installedMiddlewares.lastIndexOf(middlewares);
+      if (index === -1) return;
+      this._installedMiddlewares.splice(index, 1);
+      this._middlewares = this._installedMiddlewares.at(-1) ?? [];
+    };
   }
 
   deleteElement(id: string) {

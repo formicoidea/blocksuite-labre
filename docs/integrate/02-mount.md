@@ -187,7 +187,11 @@ return () => {
 ```
 
 Order matters: remove the editor first, then close the channels it was
-reading from.
+reading from. When the workspace itself goes, call `workspace.dispose()`:
+its awareness runs an interval that keeps the workspace, every store
+opened from it and their blocks reachable until it is cleared. An editor
+removed from a workspace that stays open is not kept by it (the canvas
+surface used to keep the last editor mounted on each document).
 
 ## Frameworks other than Lit
 

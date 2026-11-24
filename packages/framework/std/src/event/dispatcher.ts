@@ -464,6 +464,9 @@ export class UIEventDispatcher extends LifeCycleWatcher {
   }
 
   override unmounted() {
+    // The active dispatcher is a static: one unmounted while active kept its
+    // std and detached tree alive until another editor was activated.
+    this._setActive(false);
     this.disposables.dispose();
   }
 }

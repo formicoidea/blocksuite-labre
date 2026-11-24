@@ -47,6 +47,33 @@ const systemClipboard: BrowserCommand<[granted: boolean]> = async (
   }
 };
 
+/**
+ * The page's JS heap, for a spec that asserts the editor's teardown frees
+ * what it mounted (`editor-teardown.spec.ts`). Through the DevTools protocol,
+ * so no launch flag is needed: `collectGarbage` runs a full collection of the
+ * page's isolate (the test iframe shares it, same origin), `heapUsage`
+ * answers its exact used size in bytes (`performance.memory` is bucketed and
+ * cached without `--enable-precise-memory-info`).
+ */
+const collectGarbage: BrowserCommand<[]> = async ctx => {
+  const cdp = await ctx.page.context().newCDPSession(ctx.page);
+  try {
+    await cdp.send('HeapProfiler.collectGarbage');
+  } finally {
+    await cdp.detach();
+  }
+};
+
+const heapUsage: BrowserCommand<[]> = async ctx => {
+  const cdp = await ctx.page.context().newCDPSession(ctx.page);
+  try {
+    const { usedSize } = await cdp.send('Runtime.getHeapUsage');
+    return usedSize;
+  } finally {
+    await cdp.detach();
+  }
+};
+
 export default defineConfig(_configEnv =>
   defineConfig({
     esbuild: { target: 'es2018' },
@@ -67,7 +94,14 @@ export default defineConfig(_configEnv =>
         headless: process.env.CI === 'true',
         instances: [{ browser: 'chromium' }],
         provider: 'playwright',
-        commands: { pointerMoveTo, pointerDown, pointerUp, systemClipboard },
+        commands: {
+          pointerMoveTo,
+          pointerDown,
+          pointerUp,
+          systemClipboard,
+          collectGarbage,
+          heapUsage,
+        },
         isolate: false,
         viewport: {
           width: 1024,
