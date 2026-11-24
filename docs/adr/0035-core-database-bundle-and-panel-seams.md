@@ -1851,6 +1851,40 @@ provider; an inline one lives in a page editor that needs it.
   `database/block/src/__tests__/properties-panel-scopes.unit.spec.ts` and
   `fragments/doc-title/src/__tests__/title-band.unit.spec.ts`.
 
+### 2026-11-24: the host's action under "No view" (`noViewAction`)
+
+Issue #707. Amends "a database with no view draws an empty state"
+(2026-11-20). The Labre host has bases where the library's "New view" is
+the wrong first gesture (a base born with no readable source needs a source
+first) and drew its own banner beside the library's status: two status
+regions in a row, on screen and for a screen reader, and an embedded block
+with no action at all. The host asked for its action to replace "New view",
+not only to fill the gap where the library offers none.
+
+- **The seam.** `DataSourcePickerService.noViewAction?(block)`, `block` =
+  `{ databaseId, docId, blockId }`, answers a
+  `ReadonlySignal<{ label, hint?, menu?, run(anchor) } | null>`. Asked when
+  the block's data source is built, for a block with an `externalSourceId`;
+  synchronous, and a throw reads as `null`. The database block hands the
+  signal to the engine as a data-source service (`NoViewActionKey`).
+- **Host wins.** An action replaces "New view" (and its hint), whatever
+  `canAddView` says, view creation off included. `null` keeps the 4.1
+  state. The status ("No view") stays the library's and the one live
+  region; the button takes "New view"'s place in the focus contract
+  (`data-view-focus-fallback`, Enter and Space, the ring), and says
+  `aria-haspopup="menu"` only when the host says `menu`. `run` receives
+  the button.
+- **Live.** The empty state reads the signal while drawing: a host that
+  learns what to offer after a server read flips it, no remount, no
+  invalidation call.
+- **Never** on a read-only document. Nothing is written by the state, the
+  action's gesture is the host's. Label and hint arrive translated: no key.
+- Scope: the `affine:database` block of a host database, embedded in a
+  page or on its full page. The `affine:data-view` block has no host
+  database and keeps 4.1's state.
+- Not a red zone: nothing stored, no flag; one optional member on an
+  existing seam. Held by `database/block/src/__tests__/no-view-state.unit.spec.ts`.
+
 ### 2026-11-24: in a text field of a bar, every key but Escape is the field's
 
 Issue #730. The amendment of 2026-11-22 above says `keepKeysInBar` lets « shortcuts

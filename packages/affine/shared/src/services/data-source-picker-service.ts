@@ -250,6 +250,28 @@ export interface DataSourcePickerViewPlacement {
   place(): boolean;
 }
 
+/** The database block whose "No view" state asks for `noViewAction`. */
+export interface DataSourcePickerBlockRef {
+  /** The block's database (its `externalSourceId`), as `list()` names it. */
+  databaseId: string;
+  /** The document (store id) and the `affine:database` block. */
+  docId: string;
+  blockId: string;
+}
+
+/**
+ * The host's action under "No view" (`noViewAction`). `label` and `hint`
+ * are already in the reader's language. `menu`: `run` opens a menu (the
+ * button says so to assistive technology). `run` receives the button, to
+ * anchor a menu or return the focus to.
+ */
+export interface DataSourcePickerNoViewAction {
+  label: string;
+  hint?: string;
+  menu?: boolean;
+  run(anchor: HTMLElement): void;
+}
+
 /**
  * The data-source picker (ADR 0035 §9c, issue B12): the host lists the
  * databases and sources a view may read, and creates them. The library draws
@@ -380,6 +402,21 @@ export interface DataSourcePickerService {
    * view is placed at once, as in 4.1.
    */
   placeView?(request: DataSourcePickerViewPlacement): void;
+  /**
+   * The action under "No view" for one of your database blocks (issue
+   * #707, ADR 0035 amendment of 2026-11-24), as a signal: answer `null` to
+   * keep the library's own, an action to draw yours in its place ("New
+   * view" included: yours wins). Flip the signal when you learn what to
+   * offer (after a server read) and the empty state follows, without a
+   * remount. Read when the block's data source is built, for a block with
+   * an `externalSourceId`; MUST return synchronously and MUST NOT throw (a
+   * throw reads as `null`). Never drawn on a read-only document; the
+   * status ("No view") stays the library's and the one live region.
+   * Absent, the empty state is 4.1's.
+   */
+  noViewAction?(
+    block: DataSourcePickerBlockRef
+  ): ReadonlySignal<DataSourcePickerNoViewAction | null>;
   /**
    * An undo (`'undo'`: the view is back) or a redo (`'redo'`: it is gone
    * again) of a removal made by `request.remove()`, on this client. Never

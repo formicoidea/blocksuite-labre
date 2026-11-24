@@ -1425,7 +1425,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/block
         metadata {
           path 'packages/affine/database/block'
-          files '70'
+          files '71'
         }
         adapters = folder 'adapters/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/block/src/adapters
@@ -1480,7 +1480,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/block/src
           metadata {
             path 'packages/affine/database/block/src'
-            files '24'
+            files '25'
           }
         }
         utils = folder 'utils/' {
@@ -1558,13 +1558,13 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/engine
         metadata {
           path 'packages/affine/database/engine'
-          files '344'
+          files '345'
         }
         core = folder 'core/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/engine/src/core
           metadata {
             path 'packages/affine/database/engine/src/core'
-            files '170'
+            files '171'
           }
         }
         property-presets = folder 'property-presets/' {
@@ -3752,13 +3752,13 @@ model {
   features.database.block -[uses]-> features.inlines.preset '3 imports'
   features.database.block -[uses]-> features.inlines.reference '1 import'
   features.database.block -[uses]-> features.rich-text '2 imports, 2 type-only'
-  features.database.block -[uses]-> features.shared '52 imports, 8 type-only'
+  features.database.block -[uses]-> features.shared '53 imports, 9 type-only'
   features.database.block -[uses]-> features.widgets.drag-handle '1 import'
   features.database.block -[uses]-> features.widgets.slash-menu '2 imports, 1 type-only'
   features.database.block -[uses]-> framework.global_ '16 imports'
   features.database.block -[uses]-> framework.std '21 imports, 11 type-only'
   features.database.block -[uses]-> framework.store '25 imports, 15 type-only'
-  features.database.block -[uses]-> model_.model_ '22 imports, 14 type-only'
+  features.database.block -[uses]-> model_.model_ '23 imports, 15 type-only'
   features.database.editor -[uses]-> features.components '9 imports'
   features.database.editor -[uses]-> features.database.block '9 imports, 1 type-only'
   features.database.editor -[uses]-> features.database.engine '8 imports, 2 type-only'
@@ -3769,8 +3769,8 @@ model {
   features.database.editor -[uses]-> framework.std '10 imports, 7 type-only'
   features.database.editor -[uses]-> framework.store '1 import'
   features.database.engine -[uses]-> features.components '76 imports, 5 type-only'
-  features.database.engine -[uses]-> features.shared '124 imports, 46 type-only'
-  features.database.engine -[uses]-> framework.global_ '113 imports, 5 type-only'
+  features.database.engine -[uses]-> features.shared '125 imports, 47 type-only'
+  features.database.engine -[uses]-> framework.global_ '114 imports, 5 type-only'
   features.database.engine -[uses]-> framework.std '83 imports, 10 type-only'
   features.database.engine -[uses]-> framework.store '12 imports, 2 type-only'
   features.database.engine -[uses]-> model_.model_ '7 imports, 4 type-only'
@@ -5851,7 +5851,7 @@ model {
   features.database.block.src -[imports]-> features.ext-loader.src '2 imports'
   features.database.block.src -[imports]-> features.shared.commands '1 import'
   features.database.block.src -[imports]-> features.shared.consts '1 import'
-  features.database.block.src -[imports]-> features.shared.services '9 imports, 3 type-only'
+  features.database.block.src -[imports]-> features.shared.services '10 imports, 4 type-only'
   features.database.block.src -[imports]-> features.shared.styles '1 import'
   features.database.block.src -[imports]-> features.shared.theme '1 import'
   features.database.block.src -[imports]-> features.shared.utils '4 imports, 1 type-only'
@@ -5863,7 +5863,7 @@ model {
   features.database.block.src -[imports]-> framework.std.inline '1 import'
   features.database.block.src -[imports]-> framework.std.src '10 imports, 6 type-only'
   features.database.block.src -[imports]-> framework.store.src '10 imports, 6 type-only'
-  features.database.block.src -[imports]-> model_.model_.src '12 imports, 10 type-only'
+  features.database.block.src -[imports]-> model_.model_.src '13 imports, 11 type-only'
   features.database.block.utils -[imports]-> features.database.block.context '1 import'
   features.database.block.utils -[imports]-> features.database.block.service '1 import, 1 type-only'
   features.database.block.utils -[imports]-> features.database.engine.src '1 import, 1 type-only'
@@ -5929,12 +5929,12 @@ model {
   features.database.engine.core -[imports]-> features.components.src '2 imports'
   features.database.engine.core -[imports]-> features.database.engine.src '25 imports'
   features.database.engine.core -[imports]-> features.database.engine.view-presets '5 imports, 3 type-only'
-  features.database.engine.core -[imports]-> features.shared.services '20 imports, 12 type-only'
+  features.database.engine.core -[imports]-> features.shared.services '21 imports, 13 type-only'
   features.database.engine.core -[imports]-> features.shared.styles '3 imports'
   features.database.engine.core -[imports]-> features.shared.theme '5 imports'
   features.database.engine.core -[imports]-> features.shared.types '12 imports, 12 type-only'
   features.database.engine.core -[imports]-> features.shared.utils '10 imports, 8 type-only'
-  features.database.engine.core -[imports]-> framework.global_.di '11 imports, 1 type-only'
+  features.database.engine.core -[imports]-> framework.global_.di '12 imports, 1 type-only'
   features.database.engine.core -[imports]-> framework.global_.disposable '4 imports, 4 type-only'
   features.database.engine.core -[imports]-> framework.global_.env '3 imports'
   features.database.engine.core -[imports]-> framework.global_.exceptions '3 imports'
@@ -5979,7 +5979,7 @@ model {
   features.database.engine.view-presets -[imports]-> framework.store.src '4 imports'
   features.database.engine.widget-presets -[imports]-> features.components.context-menu '10 imports, 1 type-only'
   features.database.engine.widget-presets -[imports]-> features.components.src '1 import'
-  features.database.engine.widget-presets -[imports]-> features.database.engine.core '99 imports, 26 type-only'
+  features.database.engine.widget-presets -[imports]-> features.database.engine.core '100 imports, 26 type-only'
   features.database.engine.widget-presets -[imports]-> features.database.engine.src '14 imports'
   features.database.engine.widget-presets -[imports]-> features.database.engine.view-presets '2 imports, 2 type-only'
   features.database.engine.widget-presets -[imports]-> features.shared.services '9 imports, 1 type-only'
