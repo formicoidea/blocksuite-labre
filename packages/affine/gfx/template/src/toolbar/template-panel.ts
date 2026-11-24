@@ -106,6 +106,13 @@ export class EdgelessTemplatePanel extends WithDisposable(LitElement) {
       background-color: var(--affine-background-tertiary-color);
     }
 
+    /* Ends the categories' group in the toolbar's menu model, which starts a
+       group at an element named a divider: Tab goes from the categories to
+       the cards (ADR 0054, amendment of 2026-11-22). Draws nothing. */
+    .template-group-divider {
+      display: none;
+    }
+
     .template-viewport {
       position: relative;
       flex-grow: 1;
@@ -473,10 +480,15 @@ export class EdgelessTemplatePanel extends WithDisposable(LitElement) {
               const label = nameKey
                 ? translateKey(this.edgeless.std, nameKey, cate)
                 : cate;
+              // A button, so the toolbar's menu model reaches it (ADR 0054,
+              // amendment of 2026-11-22): a group between the search field
+              // and the cards.
               return html`<div
                 class="category-entry ${_currentCategory === cate
                   ? 'selected'
                   : ''}"
+                role="button"
+                aria-pressed=${_currentCategory === cate ? 'true' : 'false'}
                 @click=${() => {
                   this._currentCategory = cate;
                   this._updateTemplates();
@@ -487,6 +499,7 @@ export class EdgelessTemplatePanel extends WithDisposable(LitElement) {
             }
           )}
         </div>
+        <div class="template-group-divider"></div>
         <div class="template-viewport">
           <div class="template-scrollcontent" data-scrollable>
             <div class="template-list">
@@ -523,18 +536,24 @@ export class EdgelessTemplatePanel extends WithDisposable(LitElement) {
                         this.edgeless.std,
                         template
                       );
+                      // A named button: the menu model walks the cards with
+                      // the arrows, and Enter places one at the centre of the
+                      // view (ADR 0054, amendment of 2026-11-22).
+                      const addLabel = translateKey(
+                        this.edgeless.std,
+                        ...TEMPLATE_PANEL_ADD
+                      );
                       return html`
                         <div
                           class=${`template-item ${
                             template === this._loadingTemplate ? 'loading' : ''
                           }`}
+                          role="button"
+                          aria-label=${displayName || addLabel}
                           style=${styleMap({
                             opacity: isBeingDragged ? '0' : '1',
                           })}
-                          data-hover-text=${translateKey(
-                            this.edgeless.std,
-                            ...TEMPLATE_PANEL_ADD
-                          )}
+                          data-hover-text=${addLabel}
                           @mousedown=${(e: MouseEvent) =>
                             this.draggableController.onMouseDown(e, {
                               data: template,

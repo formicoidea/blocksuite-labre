@@ -8,8 +8,9 @@
  * a group; Tab and Shift+Tab move between groups. A group starts at a divider
  * (`menu-divider`, or a class naming one), or where the controls change
  * component (another shadow root). A widget with its own keys — the colour
- * grid (`radiogroup`), the slider — is a group of its own whose keys stay its
- * own (`own`): the menu enters it at its own tab stop and leaves it with Tab.
+ * grid (`radiogroup`), the slider, a text field — is a group of its own whose
+ * keys stay its own (`own`): the menu enters it at its own tab stop and
+ * leaves it with Tab.
  */
 export interface MenuGroup {
   controls: HTMLElement[];
@@ -40,6 +41,11 @@ const isControl = (element: Element): element is HTMLElement =>
   (element as { disabled?: boolean }).disabled !== true &&
   isShown(element);
 
+const isTextField = (element: Element): element is HTMLInputElement =>
+  element instanceof HTMLInputElement &&
+  (element.type === 'text' || element.type === 'search') &&
+  !element.disabled;
+
 export function menuGroups(menu: Element): MenuGroup[] {
   const groups: MenuGroup[] = [];
   let run: HTMLElement[] = [];
@@ -50,6 +56,13 @@ export function menuGroups(menu: Element): MenuGroup[] {
   const visit = (element: Element) => {
     if (isDivider(element)) {
       close();
+      return;
+    }
+    // A text field (the templates panel's search) types its own keys: a
+    // group of its own, left with Tab (ADR 0054, amendment of 2026-11-22).
+    if (isTextField(element)) {
+      close();
+      if (isShown(element)) groups.push({ controls: [element], own: true });
       return;
     }
     const role = element.getAttribute('role');
