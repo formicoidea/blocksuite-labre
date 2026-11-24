@@ -208,8 +208,8 @@ side of #669 this ADR left out of scope. The decision above is unchanged.
   `serialize()` returns the key as `id` (§1 of this ADR, carried to the
   serialized form). Nothing is written.
 - **A connector stored without `mode`** (or with a newer client's) is routed
-  as Straight instead of throwing, and the connector watcher no longer stays
-  wedged after a routing that throws.
+  as Straight instead of throwing, and a connector whose routing throws no
+  longer stops the connector watcher from routing the others.
 - **The write side**: `addElement` converts a store `Text`, checks every
   declared field value before anything is written and throws when one cannot
   be stored, and writes `type` and `id` first. The half-written element this

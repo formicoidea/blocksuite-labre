@@ -67,7 +67,10 @@ editor reaches:
    that one, and the store already has the conversion, so nothing is invented.
    Refusing would break a caller that "worked" (an id came back) for a value
    the library knows how to store. It applies to `updateElement` too, which
-   shares `_propsToY`.
+   shares `_propsToY`. The conversion works on a copy of the props: the
+   caller's object keeps what it passed, so the same object can be added
+   twice (written back, the Yjs type attached by the first call would be
+   refused by the second).
 2. **Every declared field value is checked before anything is written.**
    After `_propsToY`, each value bound for a `@field()` is checked with the
    rule Yjs applies at attach time (`typeMapSet`, yjs 13.6: `null`, the
@@ -98,9 +101,11 @@ editor reaches:
    newer client's (the enum is append-only): every other reader — the
    renderer, the bound in `updatePath`, the handles — already draws anything
    but `Curve` as a polyline, so the straight path is the one they agree with.
-   Nothing is written. And the watcher's microtask clears its pending list and
-   its flag in a `finally`, so one routing that throws, for whatever reason,
-   no longer stops every later one.
+   Nothing is written. And the watcher routes each connector in its own
+   `try`, in its microtask and in the pass it makes when it mounts: a
+   connector whose routing throws, for whatever reason, is reported once
+   (`console.error`) and costs only itself; the connectors after it, and
+   every later batch, are routed.
 
 ## What stays loadable
 

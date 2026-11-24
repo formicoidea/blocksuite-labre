@@ -13,8 +13,10 @@
  * The contract held here:
  * - an absent or unknown mode is routed as Straight, the reading every other
  *   reader (renderer, bound, handles) already gives anything but Curve;
- * - a routing that throws, whatever the cause, no longer wedges the watcher:
- *   the next change schedules a new pass.
+ * - a connector whose routing throws, whatever the cause, is reported once
+ *   and costs only itself: the connectors after it in the same batch, or in
+ *   the pass the watcher makes when it mounts, are routed, and every later
+ *   change schedules a new batch.
  */
 import type { SurfaceBlockModel } from '@labre/affine-block-surface';
 import type { LocalConnectorElementModel } from '@labre/affine-model';
@@ -66,19 +68,35 @@ describe('a connector whose mode this client does not know', () => {
 });
 
 describe('the connector watcher', () => {
-  it('routes again after a routing that threw', () => {
+  /** A connector whose routing throws, whatever the cause. */
+  const broken = {
+    type: 'connector',
+    get source(): never {
+      throw new Error('this connector cannot be read');
+    },
+  };
+  /** A connector the watcher hands to the router: two free ends. */
+  const routable = {
+    type: 'connector',
+    source: { position: [0, 0] },
+    target: { position: FAR_END },
+  };
+
+  function mount(atMount: object[] = []) {
     const scheduled: (() => void)[] = [];
     vi.spyOn(globalThis, 'queueMicrotask').mockImplementation(task => {
       scheduled.push(task);
     });
+    const routed: unknown[] = [];
+    vi.spyOn(ConnectorPathGenerator, 'updatePath').mockImplementation(
+      connector => {
+        routed.push(connector);
+      }
+    );
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const elementAdded = new Subject<{ id: string; local: boolean }>();
-    const broken = {
-      type: 'connector',
-      get source(): never {
-        throw new Error('this connector cannot be read');
-      },
-    };
+    const byId: Record<string, object> = { broken, routable };
     const surface = {
       elementAdded,
       elementUpdated: new Subject(),
@@ -88,21 +106,62 @@ describe('the connector watcher', () => {
         getModelById: () => null,
       },
       hasElementById: () => true,
-      getElementById: () => broken,
-      getElementsByType: () => [],
+      getElementById: (id: string) => byId[id] ?? null,
+      getElementsByType: () => atMount,
       getConnectors: () => [],
     } as unknown as SurfaceBlockModel;
 
-    const dispose = connectorWatcher(surface) as () => void;
+    let dispose: (() => void) | undefined;
+    const mounting = () => {
+      dispose = connectorWatcher(surface) as () => void;
+    };
+    /** Queues both connectors in one batch, the broken one first. */
+    const batch = () => {
+      elementAdded.next({ id: 'broken', local: true });
+      elementAdded.next({ id: 'routable', local: true });
+      scheduled.at(-1)!();
+    };
+    return {
+      mounting,
+      batch,
+      scheduled,
+      routed,
+      error,
+      dispose: () => dispose?.(),
+    };
+  }
 
-    elementAdded.next({ id: 'broken', local: true });
-    expect(scheduled).toHaveLength(1);
-    expect(() => scheduled[0]()).toThrow('this connector cannot be read');
+  it('routes the connectors after one that throws, in the same batch', () => {
+    const { mounting, batch, routed, error, dispose } = mount();
+    mounting();
 
-    const before = scheduled.length;
-    elementAdded.next({ id: 'broken', local: true });
-    expect(scheduled).toHaveLength(before + 1);
+    expect(batch).not.toThrow();
 
+    expect(routed).toEqual([routable]);
+    expect(error).toHaveBeenCalledTimes(1);
+    dispose();
+  });
+
+  it('routes every later batch, and reports the broken connector once', () => {
+    const { mounting, batch, scheduled, routed, error, dispose } = mount();
+    mounting();
+
+    batch();
+    batch();
+
+    expect(scheduled).toHaveLength(2);
+    expect(routed).toEqual([routable, routable]);
+    expect(error).toHaveBeenCalledTimes(1);
+    dispose();
+  });
+
+  it('routes the connectors after one that throws when it mounts', () => {
+    const { mounting, routed, error, dispose } = mount([broken, routable]);
+
+    expect(mounting).not.toThrow();
+
+    expect(routed).toEqual([routable]);
+    expect(error).toHaveBeenCalledTimes(1);
     dispose();
   });
 });
