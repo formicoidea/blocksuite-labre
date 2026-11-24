@@ -28,10 +28,9 @@ function acceptOf(open: () => Promise<unknown>): string {
     '.affine-upload-input'
   );
   const accept = input?.accept ?? '';
-  // `cancel` settles the promise; only the `change` path removes the element,
-  // so the helper takes it away itself or the next call reads this one.
+  // `cancel` settles the promise and removes the element, so the next call
+  // reads its own input (held by the cancel spec at the end of this file).
   input?.dispatchEvent(new Event('cancel'));
-  input?.remove();
   void pending;
   return accept;
 }
@@ -79,5 +78,27 @@ describe('the fallback file picker filter', () => {
 
   it('filters nothing when the caller asked for anything', () => {
     expect(acceptFor('Any')).toBe('');
+  });
+});
+
+describe('cancelling the fallback file picker', () => {
+  /**
+   * Only the `change` listener used to remove the hidden input: a dismissed
+   * dialog resolved the promise and left its `<input type="file">` in the
+   * body, one more per cancel for the life of the page. This spec would have
+   * caught that leak — the input is still mounted after `cancel`.
+   */
+  it('removes the input and answers "nothing chosen"', async () => {
+    const pending = openFilesWith('Images', true);
+    const input = document.querySelector<HTMLInputElement>(
+      '.affine-upload-input'
+    );
+    expect(input?.isConnected).toBe(true);
+
+    input?.dispatchEvent(new Event('cancel'));
+
+    await expect(pending).resolves.toBeNull();
+    expect(input?.isConnected).toBe(false);
+    expect(document.querySelectorAll('.affine-upload-input')).toHaveLength(0);
   });
 });

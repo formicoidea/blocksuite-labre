@@ -81,4 +81,20 @@ describe('UIEventDispatcher activation', () => {
 
     expect(dispatcher.active).toBe(true);
   });
+
+  /**
+   * The active dispatcher is a static of `UIEventDispatcher`: an editor
+   * unmounted while active (removed under the pointer, or after a click)
+   * stayed there, and kept its std, its DI container and its detached tree
+   * alive until another editor was activated. Found by
+   * `editor-teardown.spec.ts` (integration), run after a spec that had moved
+   * the pointer: one editor of 30 never collected.
+   */
+  test('lets go of the active slot when it unmounts', () => {
+    const { dispatcher } = mountDispatcher();
+
+    dispatcher.unmounted();
+
+    expect(dispatcher.active).toBe(false);
+  });
 });
