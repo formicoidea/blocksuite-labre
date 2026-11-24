@@ -319,6 +319,12 @@ Unit, in `packages/framework/store`:
 7. A local edit then an immediate `dispose()`: the edit and, with
    `enable_block_meta`, its meta are in Yjs (the issue's guard; true today,
    held from now on).
+8. _Added 2026-11-25, see "As implemented":_ a database cell edit (number,
+   text, date, progress, link) left and closed in one task, the store
+   disposed right after: the value is in Yjs, written once, and nothing
+   throws (`database/engine/src/__tests__/cell-write-at-teardown.unit.spec.ts`,
+   `database/block/src/__tests__/link-cell-write-at-teardown.unit.spec.ts`,
+   `integration-test/src/__tests__/page/database-cell-saved-at-close.spec.ts`).
 
 Integration: the three assertions of `store-retention.spec.ts` that pin
 today's leak (20 disposed stores alive, 20 preview stores alive, 20 distinct
@@ -462,6 +468,29 @@ beyond, the decision above, and why:
   per document, never released, bounded by the documents opened: the same
   growth as a host's own default stores, not a per-call one. The canvas
   viewer's readonly store goes with the workspace it builds and disposes of.
+- **Context 2 corrected (2026-11-25): a pending write did exist.** The
+  block-meta throttle holds nothing, as Context 2 says, but five database
+  cell editors (number, text, date, progress, link) deferred their exit
+  write by one animation frame through `BaseCellRenderer.valueSetNextTick`
+  (`database/engine/src/core/property/base-cell.ts`). An exit followed by
+  the editor's teardown and `store.dispose()` in the same task left that
+  frame behind: it wrote through the released store, threw `store … is
+disposed`, and the edit was lost. The first full integration run after
+  part 1 met it eight times, all in `database-toolbar-pointer.spec.ts`.
+  Fixed at the root, not by a disposed guard: the base cell keeps the
+  pending value and its frame (`valueSetNextTick`, base-cell.ts:169), writes
+  it at once when the cell leaves the DOM (`disconnectedCallback` →
+  `flushPendingWrite`, base-cell.ts:184-197), cancels the frame so it never
+  writes twice, lets a newer immediate write cancel an older pending one,
+  writes at once when the cell is already out of the DOM, and drops a
+  deferred write if the property turned readonly meanwhile. A write that
+  still reaches a disposed store keeps throwing. Why the write was deferred
+  could not be traced: the code predates the fork (imported by "sync back
+  from affine", f444caa0d) and the upstream reference clone is shallow. Read
+  from the callers, the exit hook runs inside the view's selection change
+  (a subscription, an `effect` on mobile) while it still flips
+  `isEditing$` and blurs; the flush leaves that path deferred and only runs
+  at teardown, where the cell has no exit of its own in progress. Guard 8.
 - **Found, not changed.** While a store lives, every change to a `Text` prop
   attaches one more observer to its `Y.Text`: the prop's signal is fed a new
   `Text` per change (`sync-controller.ts`, `_getPropsProxy`). Measured: ten
