@@ -10,7 +10,8 @@
  * its "On an existing source" / "With a new source" entries beside the
  * search, and a host without naming got no creation from the search. At the
  * recette of 2.3: Enter on "Bilan" created nothing until ArrowDown, and the
- * placeholder was cut at the menu's 180px.
+ * placeholder was cut at the menu's 180px. Issue #701: a source picked in
+ * "+ view" added before the host's `placeView` answered.
  */
 import { HostedDataSourceBase } from '@labre/affine-database-block';
 import {
@@ -20,10 +21,11 @@ import {
   popupTargetFromElement,
 } from '@labre/affine-components/context-menu';
 import type { AddViewMenuContext } from '@labre/affine-database-engine';
-import type {
-  DataSourcePickerDatabase,
-  DataSourcePickerService,
-  DataSourcePickerSourceNaming,
+import {
+  type DataSourcePickerDatabase,
+  DataSourcePickerProvider,
+  type DataSourcePickerService,
+  type DataSourcePickerSourceNaming,
 } from '@labre/affine-shared/services';
 import type { BlockStdScope } from '@labre/std';
 import { signal } from '@preact/signals-core';
@@ -310,7 +312,13 @@ function hostedPlan() {
         ],
       },
       readonly$: { value: signal(false) },
-      hostModel: { value: { props: { externalSourceId: 'db-plan' } } },
+      hostModel: {
+        value: {
+          id: 'block-1',
+          props: { externalSourceId: 'db-plan' },
+          store: { id: 'doc-1', readonly: false, getModelById: () => ({}) },
+        },
+      },
     }
   );
 }
@@ -322,11 +330,12 @@ describe('"+ view", one list of sources', () => {
       name?: string
     ) => Promise<string | undefined>,
     sources?: { id: string; title: string }[],
-    adapter?: AddViewSourcePicker
+    adapter?: AddViewSourcePicker,
+    std?: BlockStdScope
   ) {
     const dataSource = hostedPlan();
     const context = {
-      std: undefined,
+      std,
       dataSource,
       viewManager: {},
       addView: () => '',
@@ -356,6 +365,31 @@ describe('"+ view", one list of sources', () => {
     )!;
     return { dataSource, context, menu, search };
   }
+
+  test("a picked source is added only once the host's placeView places it", async () => {
+    const placeView = vi.fn();
+    const picker = { list: () => signal([]), placeView };
+    const std = {
+      getOptional: (id: unknown) =>
+        id === DataSourcePickerProvider ? picker : null,
+    } as unknown as BlockStdScope;
+    await openAddView(undefined, undefined, undefined, std);
+    byTestId('database-add-view-source-s2')!.click();
+    await frame();
+    byTestId('database-add-view-preset')!.click();
+    expect(placeView).toHaveBeenCalledOnce();
+    const request = placeView.mock.calls[0]![0];
+    expect(request).toMatchObject({
+      gesture: 'add-view',
+      databaseId: 'db-plan',
+      sourceId: 's2',
+      docId: 'doc-1',
+      blockId: 'block-1',
+    });
+    expect(addViewOnSource).not.toHaveBeenCalled();
+    expect(request.place()).toBe(true);
+    expect(addViewOnSource).toHaveBeenCalledOnce();
+  });
 
   test('lists the sources under its search field, no other entry', async () => {
     const { menu, search } = await openAddView(async () => 's3');

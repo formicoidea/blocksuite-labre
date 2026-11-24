@@ -979,9 +979,10 @@ describe('edgeless toolbar keyboard model', () => {
     control.localName;
 
   /**
-   * What stays out of the menu model, and why (ADR 0054): the templates
-   * panel draws its cards as a scrolling grid behind a search field, which
-   * needs a model of its own.
+   * What these walks leave out, and why (ADR 0054, amendment of
+   * 2026-11-22): the templates panel is in the menu model, but walking and
+   * pressing each of its cards by the keys and by the mouse would take
+   * minutes; its path is held by `edgeless-toolbar-keyboard-gaps.spec.ts`.
    */
   const OWN_MODEL = new Set(['Template']);
 
@@ -1492,6 +1493,42 @@ describe('edgeless toolbar keyboard model', () => {
             continue;
           }
           await userEvent.click(control);
+          // A control whose click picks an element up (a mind map style):
+          // the mouse sets it down with a click on the canvas, where Enter
+          // sets it down at once, at the centre of the view (ADR 0054,
+          // amendment of 2026-11-22). That second click is part of the
+          // mouse's press.
+          type PickUp = {
+            draggableController?: {
+              states: { draggingElement: unknown; cancelled: boolean };
+            };
+          };
+          const picker = () =>
+            (toolbar().activePopper?.element as PickUp | undefined)
+              ?.draggableController;
+          // Picked up and not let go: the import entry cancels its pick-up.
+          const carried = () =>
+            !!picker()?.states.draggingElement && !picker()?.states.cancelled;
+          if (picker() && (await holds(carried))) {
+            // A point of the canvas inside the window, above the centre
+            // where the keyboard's press placed one: a mark that takes no
+            // pointer, for the real mouse to go to.
+            const mark = document.createElement('div');
+            mark.setAttribute('data-keyboard-spec-drop', '');
+            Object.assign(mark.style, {
+              position: 'fixed',
+              left: `${Math.round(window.innerWidth * 0.3)}px`,
+              top: `${Math.round(window.innerHeight * 0.25)}px`,
+              width: '1px',
+              height: '1px',
+              pointerEvents: 'none',
+            });
+            document.body.append(mark);
+            await pointerMoveTo('[data-keyboard-spec-drop]', 0.5, 0.5);
+            await pointerDown();
+            await pointerUp();
+            mark.remove();
+          }
           await pointerSettled();
           await frames(3);
           const byClick = changeFrom(clickFrom);
@@ -1736,18 +1773,26 @@ describe('edgeless toolbar keyboard model', () => {
    * a click then Escape gives the select tool back: the drag's Escape listens
    * on the window, which the menu's Escape never reached.
    */
-  test('Escape after picking a mind map style gives the select tool back, as with the mouse', async () => {
+  /**
+   * Enter on a mind map style places it at the centre of the view (ADR 0054,
+   * amendment of 2026-11-22: it used to pick it up, with no key to set it
+   * down); the mouse still picks it up, and its Escape drops it.
+   */
+  test('Enter on a mind map style places it; Escape after picking one with the mouse gives the select tool back', async () => {
     const buttons = await everyButton();
     const scroll = buttons.get('Mind Map')!;
     await reset();
     const button = await buttonNamed('Mind Map', scroll);
     const opened = (await openWithEnter(button))!;
     await until(() => within(deepActive(), opened), 'the keyboard is in');
+    const mindmaps = () =>
+      edgeless.gfx.surface!.elementModels.filter(
+        element => element.type === 'mindmap'
+      ).length;
+    const before = mindmaps();
     await press('{Enter}');
-    await until(() => tool() === 'empty', 'the style is picked up');
-    await press('{Escape}');
+    await until(() => mindmaps() === before + 1, 'the style is placed');
     expect(await holds(() => tool() === 'default')).toBe(true);
-    expect(await holds(() => focusedButton() === button)).toBe(true);
 
     await reset();
     await userEvent.click(await buttonNamed('Mind Map', scroll));
@@ -2110,19 +2155,10 @@ describe('edgeless toolbar keyboard model', () => {
         () => bar.shadowRoot!.getAnimations().length === 0,
         'the row has come to rest'
       );
-      // From the first button across "More tools" and the first senior
-      // pages. ponytail: five steps, not the whole narrow row — at 380px →
-      // stalls on "Add file" and goes no further, on the base too (ADR 0054,
-      // amendment of 2026-11-21, §3b). Upgrade: once → passes "Add file" at
-      // 380px, replace this loop with `walkRow(measure)`.
-      await tabIntoToolbar();
-      await press('{Home}');
-      for (let step = 0; step < 5; step++) {
-        const here = focusedButton()!;
-        measure(here);
-        await userEvent.keyboard('{ArrowRight}');
-        await until(() => focusedButton() !== here, 'ArrowRight moves');
-      }
+      // The whole narrow row, every page of the senior row: → passes "Add
+      // file" since each senior tool draws its own cell (ADR 0054,
+      // amendment of 2026-11-22).
+      await walkRow(measure);
       expect(measured).toContain('Note');
       expect(measured).toContain('More Tools');
       expect(measured).toContain('Next tools');
@@ -2464,6 +2500,15 @@ describe('edgeless toolbar keyboard model', () => {
       const item = highlighted()!;
       expect(bar.activateHighlight()).toBe(true);
       await rowReady();
+      // Each tool draws its own cell (ADR 0054, amendment of 2026-11-22): the
+      // button the page turn brought in is named once the row has read it.
+      await until(
+        () =>
+          deepQueryAll(item, '[role="button"]').every(button =>
+            button.hasAttribute('aria-label')
+          ),
+        'the pressed tool is named'
+      );
       const pressed = deepQueryAll(item, '[role="button"]').map(button =>
         button.getAttribute('aria-label')
       );

@@ -3,6 +3,7 @@ import {
   DATABASE_CREATION_TITLE,
   type DatabaseCreationMenu,
   type DatabaseCreationRequest,
+  placeViewThroughHost,
   reconnectDatabaseView,
 } from '@labre/affine-database-block';
 import {
@@ -58,17 +59,42 @@ export function databaseCreationItems(
 ): MenuConfig[] {
   const t = (wording: readonly [string, string]) =>
     translateKey(std, wording[0], wording[1]);
-  const connect = (database: DataSourcePickerDatabase, sourceId: string) => {
+  const connect = (
+    database: DataSourcePickerDatabase,
+    sourceId: string
+  ): boolean => {
     const model = databaseModel(std, blockId);
-    if (!model) return;
+    if (!model) return false;
     if (model.props.externalSourceId === undefined) {
-      connectDatabaseToSource(std, model, { database, sourceId });
-      return;
+      return connectDatabaseToSource(std, model, { database, sourceId });
     }
     const view = viewId ?? model.props.views[0]?.id;
-    if (view) {
-      reconnectDatabaseView(std, model, { database, sourceId, viewId: view });
-    }
+    return view
+      ? reconnectDatabaseView(std, model, { database, sourceId, viewId: view })
+      : false;
+  };
+  // An existing source goes through the host's `placeView` (issue #701);
+  // one the host just created for this gesture does not.
+  const connectExisting = (
+    database: DataSourcePickerDatabase,
+    sourceId: string
+  ) => {
+    const model = databaseModel(std, blockId);
+    const reconnects = model?.props.externalSourceId !== undefined;
+    const view = reconnects ? (viewId ?? model?.props.views[0]?.id) : undefined;
+    placeViewThroughHost({
+      picker,
+      store: std.store,
+      ref: {
+        gesture: 'connect',
+        databaseId: database.id,
+        sourceId,
+        docId: std.store.id,
+        blockId,
+        ...(view === undefined ? {} : { viewId: view }),
+      },
+      placeNow: () => connect(database, sourceId),
+    });
   };
   const createDatabase = picker.createDatabase;
   const list = picker.list();
@@ -101,7 +127,9 @@ export function databaseCreationItems(
         testId: 'database-creation-link-existing',
         items: dataSourcePickerItems(std, picker, {
           offerCreate: false,
-          onPick: ({ database, sourceId }) => connect(database, sourceId),
+          // `offerCreate: false`: every pick here is an existing source.
+          onPick: ({ database, sourceId }) =>
+            connectExisting(database, sourceId),
         }),
       },
     }),

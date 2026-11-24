@@ -1729,6 +1729,45 @@ host's catalogue, which overrides the key as before: no new key, no new
 seam, nothing stored. Held by
 `database/block/src/__tests__/source-unavailable.unit.spec.ts`.
 
+### 2026-11-22: the host confirms where a view of its source is placed (`placeView`)
+
+Issue #701. Labre's new database format (its ADR-0073) keeps a source in its
+own documents and lets a guest reach a source only once an owner or a member
+has opened it to the host page. Placing a view of a source in a document
+gives that document's audience a path to the source, so the host must be
+able to announce it and let the person cancel, **before** the write.
+Watching the Y.Doc afterwards would not do: a view arriving by sync is no
+placement, and a cancel could no longer prevent it. Not a red zone: nothing
+stored changes, no flag; one optional member on an existing seam.
+
+- **The seam.** `DataSourcePickerService.placeView?(request)`, the symmetric
+  of `deleteView` (amendment of 2026-10-29). `request` names the gesture
+  (`'add-view'`, `'linked-view'`, `'connect'`, `'change-source'`), the
+  database and source the view will read, the document, the block (absent
+  for `'linked-view'`, whose block `place()` creates) and, when a view is
+  re-pointed, its id. `place()` runs the 4.1 write, one undo step, and
+  answers `false` when nothing was written (read-only by then, the anchor or
+  view gone, an unknown source, or already called). Not calling it writes
+  nothing.
+- **The gestures.** "+ view" picking a source (of this database or another
+  one), "Linked view of a database", the creation popover's "Link an
+  existing source" (connecting a native block or re-pointing a hosted
+  view), and "Source" in a view's settings (also `database.view.source`).
+  The creation popover was not in the issue's list; it places a view of an
+  existing source the same way, so it asks too.
+- **Never asked.** A source the gesture created (`createSource`,
+  `createDatabase`, "turn into a source"): the host made it for this view.
+  An undo, a redo, a paste, a template, a remote change: only the gestures
+  call the seam. A read-only document: nothing is placed, nothing asked.
+- **Absent.** Each gesture places at once, exactly as in 4.1.
+- **Shape.** One helper, `placeViewThroughHost` (`database/block`), beside
+  `deleteViewThroughHost`; each gesture hands it the write it already had.
+- Held by `database/block/src/__tests__/view-placement.unit.spec.ts`, and
+  in `database/editor/src/__tests__/` by `source-search` ("+ view"),
+  `view-settings-source` ("Source") and `creation-popover`. The slash
+  entry's wiring has no spec of its own (its block insertion is covered by
+  the integration suite, the seam by the helper's spec).
+
 ### 2026-11-22: the views bar and the quick-setting bar from the keyboard
 
 The follow-ups the 2026-11-20 amendment and #678 left: the views bar's tabs

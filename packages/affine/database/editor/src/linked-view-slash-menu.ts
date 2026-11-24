@@ -1,4 +1,7 @@
-import { insertLinkedDatabaseView } from '@labre/affine-database-block';
+import {
+  insertLinkedDatabaseView,
+  placeViewThroughHost,
+} from '@labre/affine-database-block';
 import { popupTargetFromElement } from '@labre/affine-components/context-menu';
 import { getSelectedModelsCommand } from '@labre/affine-shared/commands';
 import { DataSourcePickerProvider } from '@labre/affine-shared/services';
@@ -43,13 +46,30 @@ export const linkedViewSlashMenuConfig: SlashMenuConfig = {
         const anchor = after ? std.view.getBlock(after.id) : null;
         if (!after || !anchor) return;
         popDataSourcePicker(std, picker, popupTargetFromElement(anchor), {
-          onPick: ({ database, sourceId }) => {
-            insertLinkedDatabaseView(std, {
-              after,
-              database,
-              sourceId,
-              viewType: 'table',
-              removeEmptyLine: true,
+          onPick: ({ database, sourceId, source }) => {
+            const insert = () =>
+              insertLinkedDatabaseView(std, {
+                after,
+                database,
+                sourceId,
+                viewType: 'table',
+                removeEmptyLine: true,
+              }) !== null;
+            // A source the host just created for this pick is no placement
+            // to confirm (issue #701).
+            placeViewThroughHost({
+              picker,
+              store: std.store,
+              ref:
+                source === 'new'
+                  ? null
+                  : {
+                      gesture: 'linked-view',
+                      databaseId: database.id,
+                      sourceId,
+                      docId: std.store.id,
+                    },
+              placeNow: insert,
             });
           },
         });
