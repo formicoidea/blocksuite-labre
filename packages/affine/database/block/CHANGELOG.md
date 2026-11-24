@@ -1,5 +1,99 @@
 # @labre/affine-block-database
 
+## 4.2.0
+
+### Minor Changes
+
+- 62dd689: A host can confirm (or refuse) the placement of a view of one of its
+  existing sources before the library writes it (issue #701, ADR 0035
+  amendment of 2026-11-22). `DataSourcePickerService` gains an optional
+  `placeView(request)`, the symmetric of `deleteView`: "+ view" picking a
+  source, "Linked view of a database", the creation popover's "Link an existing
+  source" and "Source" in a view's settings hand the host a request naming the
+  gesture, the database, the source, the document and the block, and write the
+  view (one undo step) only when the host calls `request.place()`. Never called
+  for a source the gesture created, an undo, a redo, a paste or a remote
+  change. Without `placeView`, every gesture places at once, as before. New
+  exports: `placeViewThroughHost` and `ViewPlacementRef`
+  (`@labre/affine-database-block`), `DataSourcePickerViewPlacement` and
+  `DataSourcePickerPlacementGesture` (`@labre/affine-shared/services`).
+- 1cb683c: A host properties panel can say which requests it answers (issue #708):
+  `PropertiesPanelService` gains an optional `scopes`, absent meaning every
+  scope as before. With `scopes: ['page']` the host keeps its panel for the
+  page sheet beside the title band, while a database view's "Properties"
+  (inline or full page) opens the data-view's own properties menu, as without a
+  panel; with `['source']` the title band draws no panel button. New export:
+  `panelFor(panel, scope)` (`@labre/affine-shared/services`).
+
+### Patch Changes
+
+- 7648275: The views bar and the quick-setting bar of a database are now driven from the
+  keyboard, as the view toolbar beside them has been since 4.1.0 (#678's
+  follow-up): each view tab, "N more", "+", the sort chip, each filter chip,
+  each filter group chip and "Add filter" is a named `role="button"` in the tab
+  order, in visual order, activated by Enter and Space (a key held down
+  activates once), with the toolbar's 2px `--affine-primary-color` ring under
+  `:focus-visible`. The current view's tab says so (`aria-current="true"`)
+  and, on a writable view, that it opens a menu (`aria-haspopup`, `aria-expanded` while open); a tab the
+  bar's width hides is out of the tab order and of the accessibility tree
+  (`visibility: hidden`), reached through "N more". A menu opened from the
+  keyboard gives the focus back to its control when it closes; when that
+  control left with what the menu did (the last filter or sort removed, the
+  current view deleted), the focus goes to the view settings "⋯". A view picked
+  from the keyboard keeps the focus on its tab.
+
+  Tab from a base's full-page title now reaches the current view's tab first,
+  then the other tabs and "+", then Filter. Inline, the views bar sits between
+  the text before the database and the toolbar.
+
+  The rule is the toolbar's: the bars take only the keys of their own model,
+  and only in keyboard mode; after any mouse gesture the content behaves as
+  before (a pressed control has no `tabindex` for the length of the press).
+  Shortcuts with a modifier (undo, redo, a host's) always go through.
+
+  `DataViewRootUI.restoreFocus(selector?)` takes an optional selector of the
+  element to focus (default `[data-view-focus-fallback]`, the previous
+  behaviour).
+
+  A redo (Ctrl+Shift+Z, Ctrl+Y) typed on a control of the database (the view
+  settings "⋯" after an undo that brought a view back) now reaches the
+  editor: a title or text cell holding a leftover caret no longer swallows a
+  key whose target is outside it. Typing in a cell is unchanged.
+
+  Not reached from the keyboard yet: the rows of the sort panel (a rule's
+  property, its order, its ✕) inside the menu the sort chip opens; its "Add
+  sort" and "Delete" (all sorts) are.
+
+- 433c6a4: The English fallback of `com.labre.database.source-not-open.hint` no longer
+  tells the reader to open the source (issue #704): only a reader who cannot
+  open it sees that state. It now reads "This view reads a source that is not
+  open to this page." A host that names who may open the source keeps doing so
+  in its own catalogue; the key is unchanged.
+- Updated dependencies [7648275]
+- Updated dependencies [82c5534]
+- Updated dependencies [53b75d4]
+- Updated dependencies [53b75d4]
+- Updated dependencies [99eeeb9]
+- Updated dependencies [ab0b3ec]
+- Updated dependencies [62dd689]
+- Updated dependencies [1cb683c]
+- Updated dependencies [f7cba5d]
+- Updated dependencies [1f98095]
+- Updated dependencies [5a66cd7]
+  - @labre/affine-database-engine@4.2.0
+  - @labre/std@4.2.0
+  - @labre/affine-shared@4.2.0
+  - @labre/affine-components@4.2.0
+  - @labre/affine-inline-preset@4.2.0
+  - @labre/affine-inline-reference@4.2.0
+  - @labre/affine-model@4.2.0
+  - @labre/affine-rich-text@4.2.0
+  - @labre/affine-widget-drag-handle@4.2.0
+  - @labre/affine-widget-slash-menu@4.2.0
+  - @labre/affine-ext-loader@4.2.0
+  - @labre/global@4.2.0
+  - @labre/store@4.2.0
+
 ## 4.1.0
 
 ### Minor Changes

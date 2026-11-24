@@ -1,5 +1,47 @@
 # @labre/affine-database-editor
 
+## 4.2.0
+
+### Minor Changes
+
+- 62dd689: A host can confirm (or refuse) the placement of a view of one of its
+  existing sources before the library writes it (issue #701, ADR 0035
+  amendment of 2026-11-22). `DataSourcePickerService` gains an optional
+  `placeView(request)`, the symmetric of `deleteView`: "+ view" picking a
+  source, "Linked view of a database", the creation popover's "Link an existing
+  source" and "Source" in a view's settings hand the host a request naming the
+  gesture, the database, the source, the document and the block, and write the
+  view (one undo step) only when the host calls `request.place()`. Never called
+  for a source the gesture created, an undo, a redo, a paste or a remote
+  change. Without `placeView`, every gesture places at once, as before. New
+  exports: `placeViewThroughHost` and `ViewPlacementRef`
+  (`@labre/affine-database-block`), `DataSourcePickerViewPlacement` and
+  `DataSourcePickerPlacementGesture` (`@labre/affine-shared/services`).
+
+### Patch Changes
+
+- Updated dependencies [7648275]
+- Updated dependencies [82c5534]
+- Updated dependencies [53b75d4]
+- Updated dependencies [53b75d4]
+- Updated dependencies [99eeeb9]
+- Updated dependencies [ab0b3ec]
+- Updated dependencies [62dd689]
+- Updated dependencies [1cb683c]
+- Updated dependencies [433c6a4]
+- Updated dependencies [f7cba5d]
+- Updated dependencies [1f98095]
+- Updated dependencies [5a66cd7]
+  - @labre/affine-database-engine@4.2.0
+  - @labre/affine-database-block@4.2.0
+  - @labre/std@4.2.0
+  - @labre/affine-shared@4.2.0
+  - @labre/affine-components@4.2.0
+  - @labre/affine-widget-slash-menu@4.2.0
+  - @labre/affine-ext-loader@4.2.0
+  - @labre/global@4.2.0
+  - @labre/store@4.2.0
+
 ## 4.1.0
 
 ### Patch Changes

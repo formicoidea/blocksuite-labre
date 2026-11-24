@@ -1,5 +1,43 @@
 # @labre/affine-gfx-template
 
+## 4.2.0
+
+### Patch Changes
+
+- 82c5534: Canvas toolbar keyboard, the gaps found in the 4.1.0 acceptance (ADR 0054,
+  amendment of 2026-11-22). Enter on the Templates button now puts the keyboard
+  in the panel's search field; Tab goes on to the categories and the cards, the
+  arrows walk them, and Enter on a card places the template at the centre of the
+  view. Enter on a mind map style places the mind map at the centre of the view
+  instead of picking it up with no key to set it down
+  (`EdgelessDraggableElementController.dropAt`, new). At a narrow bar (one senior
+  tool a page), → from Text now moves the focus to Add file's own button: each
+  senior tool draws its own cell. The Shape tool taken from the keyboard no
+  longer draws its ghost in the canvas's top-left corner: with no pointer over
+  the editor it is hidden until the pointer moves over the canvas, read from the
+  new `ToolController.pointerOnHost# @labre/affine-gfx-template
+  signal; a pointer resting on the canvas
+  keeps it where it rests. The mouse is unchanged.
+- Updated dependencies [82c5534]
+- Updated dependencies [53b75d4]
+- Updated dependencies [53b75d4]
+- Updated dependencies [99eeeb9]
+- Updated dependencies [ab0b3ec]
+- Updated dependencies [62dd689]
+- Updated dependencies [1cb683c]
+- Updated dependencies [f7cba5d]
+- Updated dependencies [5a66cd7]
+  - @labre/affine-widget-edgeless-toolbar@4.2.0
+  - @labre/std@4.2.0
+  - @labre/affine-shared@4.2.0
+  - @labre/affine-components@4.2.0
+  - @labre/affine-block-surface@4.2.0
+  - @labre/affine-model@4.2.0
+  - @labre/affine-rich-text@4.2.0
+  - @labre/affine-ext-loader@4.2.0
+  - @labre/global@4.2.0
+  - @labre/store@4.2.0
+
 ## 4.1.0
 
 ### Minor Changes

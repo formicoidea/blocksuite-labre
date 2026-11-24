@@ -1,5 +1,48 @@
 # @labre/affine-shared
 
+## 4.2.0
+
+### Minor Changes
+
+- 62dd689: A host can confirm (or refuse) the placement of a view of one of its
+  existing sources before the library writes it (issue #701, ADR 0035
+  amendment of 2026-11-22). `DataSourcePickerService` gains an optional
+  `placeView(request)`, the symmetric of `deleteView`: "+ view" picking a
+  source, "Linked view of a database", the creation popover's "Link an existing
+  source" and "Source" in a view's settings hand the host a request naming the
+  gesture, the database, the source, the document and the block, and write the
+  view (one undo step) only when the host calls `request.place()`. Never called
+  for a source the gesture created, an undo, a redo, a paste or a remote
+  change. Without `placeView`, every gesture places at once, as before. New
+  exports: `placeViewThroughHost` and `ViewPlacementRef`
+  (`@labre/affine-database-block`), `DataSourcePickerViewPlacement` and
+  `DataSourcePickerPlacementGesture` (`@labre/affine-shared/services`).
+- 1cb683c: A host properties panel can say which requests it answers (issue #708):
+  `PropertiesPanelService` gains an optional `scopes`, absent meaning every
+  scope as before. With `scopes: ['page']` the host keeps its panel for the
+  page sheet beside the title band, while a database view's "Properties"
+  (inline or full page) opens the data-view's own properties menu, as without a
+  panel; with `['source']` the title band draws no panel button. New export:
+  `panelFor(panel, scope)` (`@labre/affine-shared/services`).
+- 5a66cd7: A title band chip can create options without offering "Rename" (issue #710):
+  `TitleBandProperty` gains an optional `optionEdits` (`'create'` or
+  `'create-rename'`, absent reading `'create-rename'` as before), read when the
+  property is `dataWritable`. With `'create'`, the tag menu keeps "Create" and
+  draws no option menu, for options whose id is their label. `TagOptionEdits`
+  gains `'create'` (append-only).
+
+### Patch Changes
+
+- 99eeeb9: The fallback file picker (browsers without `showOpenFilePicker`) now removes its hidden `<input type="file">` when the dialog is cancelled, not only when a file is chosen; a dismissed dialog no longer leaves one input behind in the page body.
+- Updated dependencies [82c5534]
+- Updated dependencies [53b75d4]
+- Updated dependencies [53b75d4]
+- Updated dependencies [f7cba5d]
+  - @labre/std@4.2.0
+  - @labre/affine-model@4.2.0
+  - @labre/global@4.2.0
+  - @labre/store@4.2.0
+
 ## 4.1.0
 
 ### Minor Changes

@@ -1,5 +1,48 @@
 # @labre/affine-fragment-doc-title
 
+## 4.2.0
+
+### Minor Changes
+
+- 1cb683c: A host properties panel can say which requests it answers (issue #708):
+  `PropertiesPanelService` gains an optional `scopes`, absent meaning every
+  scope as before. With `scopes: ['page']` the host keeps its panel for the
+  page sheet beside the title band, while a database view's "Properties"
+  (inline or full page) opens the data-view's own properties menu, as without a
+  panel; with `['source']` the title band draws no panel button. New export:
+  `panelFor(panel, scope)` (`@labre/affine-shared/services`).
+- 5a66cd7: A title band chip can create options without offering "Rename" (issue #710):
+  `TitleBandProperty` gains an optional `optionEdits` (`'create'` or
+  `'create-rename'`, absent reading `'create-rename'` as before), read when the
+  property is `dataWritable`. With `'create'`, the tag menu keeps "Create" and
+  draws no option menu, for options whose id is their label. `TagOptionEdits`
+  gains `'create'` (append-only).
+
+### Patch Changes
+
+- Updated dependencies [7648275]
+- Updated dependencies [82c5534]
+- Updated dependencies [53b75d4]
+- Updated dependencies [53b75d4]
+- Updated dependencies [99eeeb9]
+- Updated dependencies [ab0b3ec]
+- Updated dependencies [62dd689]
+- Updated dependencies [1cb683c]
+- Updated dependencies [f7cba5d]
+- Updated dependencies [1f98095]
+- Updated dependencies [5a66cd7]
+  - @labre/affine-database-engine@4.2.0
+  - @labre/std@4.2.0
+  - @labre/affine-shared@4.2.0
+  - @labre/affine-components@4.2.0
+  - @labre/affine-block-surface@4.2.0
+  - @labre/affine-inline-reference@4.2.0
+  - @labre/affine-model@4.2.0
+  - @labre/affine-rich-text@4.2.0
+  - @labre/affine-ext-loader@4.2.0
+  - @labre/global@4.2.0
+  - @labre/store@4.2.0
+
 ## 4.1.0
 
 ### Patch Changes
