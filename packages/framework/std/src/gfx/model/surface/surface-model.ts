@@ -1,7 +1,7 @@
 import { DisposableGroup } from '@labre/global/disposable';
 import { assertType, type Constructor } from '@labre/global/utils';
 import type { Boxed } from '@labre/store';
-import { BlockModel, nanoid } from '@labre/store';
+import { BlockModel, nanoid, native2Y, Text } from '@labre/store';
 import { signal } from '@preact/signals-core';
 import { Subject } from 'rxjs';
 import * as Y from 'yjs';
@@ -217,9 +217,11 @@ function isEncodableElementValue(
   }
 
   // Already a Yjs type: `_propsToY` builds these for the wrapper payloads, and
-  // Yjs owns their encoding.
+  // Yjs owns their encoding — as long as it is in no document yet. Yjs never
+  // refuses one that is: it re-parents it, and both documents point at the
+  // same content (#669, ADR 0056).
   if (value instanceof Y.AbstractType) {
-    return true;
+    return value.doc === null;
   }
 
   if (value instanceof Uint8Array) {
@@ -289,6 +291,56 @@ function isEncodableElementValue(
 function canStoreUnknownPropValue(value: unknown): boolean {
   try {
     return isEncodableElementValue(value);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * What `Y.Map.set` accepts as a value, read from yjs' `typeMapSet`
+ * (13.6): anything else makes it throw `Unexpected content type`.
+ */
+const STORABLE_VALUE_CONSTRUCTORS = new Set<unknown>([
+  Number,
+  Object,
+  Boolean,
+  Array,
+  String,
+  Date,
+  BigInt,
+  Uint8Array,
+  Y.Doc,
+]);
+
+/**
+ * Whether a DECLARED field value can enter an element's Y.Map when the map is
+ * attached to the document (#669, ADR 0056).
+ *
+ * A new element is built in a detached Y.Map whose values Yjs only checks when
+ * the map is attached, inside `store.transact`. A value it refuses there
+ * throws half-way through the map's keys, `transact` swallows the error, and
+ * the document keeps a map with the keys before it only — no `type`, no
+ * `xywh` — that every reader skips. So the values are checked BEFORE, with
+ * the rule Yjs applies: `null`, JSON-like values (by constructor, exactly as
+ * `typeMapSet` dispatches), binary, a sub-document, or a Yjs type that is in
+ * no document yet. An integrated Yjs type is refused although Yjs would take
+ * it: it would be moved, not copied, corrupting its source.
+ *
+ * Top level only, like Yjs: what a plain object holds is encoded as JSON and
+ * cannot make the attach throw. Never throws itself (a hostile getter or proxy
+ * means "not storable").
+ */
+function canStoreFieldValue(value: unknown): boolean {
+  if (value === null || value === undefined) {
+    return true;
+  }
+
+  try {
+    if (value instanceof Y.AbstractType) {
+      return value.doc === null;
+    }
+
+    return STORABLE_VALUE_CONSTRUCTORS.has((value as object).constructor);
   } catch {
     return false;
   }
@@ -450,7 +502,13 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
       throw new Error('Cannot find id in props');
     }
 
+    // `type` and `id` first, before the field defaults the constructor
+    // writes: a map's keys enter the document in this order, so a reader finds
+    // them first (#669, ADR 0056).
     const yMap = new Y.Map();
+    yMap.set('type', type);
+    yMap.set('id', id);
+
     const elementModel = this._createElementFromYMap(
       type as string,
       id as string,
@@ -462,9 +520,7 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
     );
 
     props = this._propsToY(type as string, props);
-
-    yMap.set('type', type);
-    yMap.set('id', id);
+    this._assertFieldValuesStorable(elementModel.model, props);
 
     Object.keys(rest).forEach(key => {
       if (props[key] !== undefined) {
@@ -473,6 +529,36 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
     });
 
     return elementModel;
+  }
+
+  /**
+   * Throws, naming the keys, when a value bound for one of the element's
+   * declared fields could not enter the document ({@link canStoreFieldValue}).
+   * Called before any value is assigned and before the map is attached, so the
+   * caller of `addElement` gets the error and the document gets nothing
+   * (#669, ADR 0056). An unknown key keeps its own rule: an unstorable value
+   * is dropped with a warning ({@link _assignElementProp}).
+   */
+  private _assertFieldValuesStorable(
+    element: GfxPrimitiveElementModel,
+    props: Record<string, unknown>
+  ) {
+    const fields = getFieldPropsSet(element);
+    const refused = Object.keys(props).filter(
+      key =>
+        !UNSAFE_ELEMENT_PROP_KEYS.has(key) &&
+        fields.has(key) &&
+        !canStoreFieldValue(props[key])
+    );
+
+    if (refused.length === 0) return;
+
+    throw new Error(
+      `Cannot add ${element.type}: ` +
+        refused.map(key => `"${key}"`).join(', ') +
+        ` cannot be stored in the document (expected JSON, a store Text, or ` +
+        `a Yjs type that is in no document yet)`
+    );
   }
 
   /**
@@ -888,7 +974,29 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
         unmount: () => void;
         model: GfxPrimitiveElementModel;
       }[] = [];
+      const replacedElements: typeof deletedElements = [];
       const skipped: SkippedElement[] = [];
+      const takeOut = (id: string, into: typeof deletedElements) => {
+        // A skipped element has no model, yet its damage leaves with it.
+        this._damagedElements.delete(id);
+        if (!this._elementModels.has(id)) return;
+        const { model, unmount } = this._elementModels.get(id)!;
+        removeFromType(model.type, model);
+        this._elementModels.delete(id);
+        into.push({ model, unmount });
+      };
+      const announceRemoved = ({
+        unmount,
+        model,
+      }: (typeof deletedElements)[number]) => {
+        unmount();
+        this.elementRemoved.next({
+          id: model.id,
+          type: model.type,
+          model,
+          local: transaction.local,
+        });
+      };
 
       keysChanged.forEach(id => {
         const change = changes.keys.get(id);
@@ -911,17 +1019,26 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
             break;
           }
           case 'delete':
-            // A skipped element has no model, yet its damage leaves with it.
-            this._damagedElements.delete(id);
-            if (this._elementModels.has(id)) {
-              const { model, unmount } = this._elementModels.get(id)!;
-              removeFromType(model.type, model);
-              this._elementModels.delete(id);
-              deletedElements.push({ model, unmount });
-            }
+            takeOut(id, deletedElements);
             break;
+          case 'update': {
+            // A peer set a NEW map under a key that already had one (#669,
+            // ADR 0056). The old model is bound to a map that left the
+            // document: it is a removal of the old value then an addition of
+            // the new one, read like any other, and announced in that order
+            // so a subscriber never sees the new model removed.
+            takeOut(id, replacedElements);
+            const model = this._readElementFromYMap(id, element, skipped);
+            if (!model) break;
+            this._elementModels.set(id, model);
+            addToType(model.model.type, model.model);
+            addedElements.push({ key: id, entry: model });
+            break;
+          }
         }
       });
+
+      replacedElements.forEach(announceRemoved);
 
       addedElements.forEach(({ key, entry }) => {
         if (!this._mountElement(key, entry, skipped)) {
@@ -934,15 +1051,7 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
         });
       });
       this._warnSkippedElements(skipped);
-      deletedElements.forEach(({ unmount, model }) => {
-        unmount();
-        this.elementRemoved.next({
-          id: model.id,
-          type: model.type,
-          model,
-          local: transaction.local,
-        });
-      });
+      deletedElements.forEach(announceRemoved);
     };
 
     const skipped: SkippedElement[] = [];
@@ -1017,14 +1126,29 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
     });
   }
 
-  private _propsToY(type: string, props: Record<string, unknown>) {
+  private _propsToY(type: string, input: Record<string, unknown>) {
     const ctor = this._elementCtorMap[type];
 
     if (!ctor) {
       throw new Error(`Invalid element type: ${type}`);
     }
 
+    // Converted on a copy: the caller's object keeps what it passed. Written
+    // back into it, the Yjs type built here would be attached by this call
+    // and refused, as already in a document, when the same props are passed
+    // again (ADR 0056).
+    const props = { ...input };
+
     Object.entries(props).forEach(([key, val]) => {
+      // A store `Text` (what a block's text is) takes the store's own rule
+      // (`native2Y`): its `Y.Text` while it is in no document, a copy once it
+      // is. Unconverted, Yjs refused it at attach time and the element was
+      // half-written (#669, ADR 0056).
+      if (val instanceof Text) {
+        Reflect.set(props, key, native2Y(val));
+        return;
+      }
+
       if (val instanceof Object) {
         if (Reflect.has(val, SURFACE_TEXT_UNIQ_IDENTIFIER)) {
           const yText = new Y.Text();

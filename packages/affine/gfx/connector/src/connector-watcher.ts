@@ -111,6 +111,23 @@ export const connectorWatcher: SurfaceMiddleware = (
     }
   };
   /**
+   * Routes one connector, and never throws (ADR 0056). A connector whose
+   * routing throws used to stop the loop it was in: the connectors after it
+   * went unrouted, at mount and in every batch it was part of, and a throw in
+   * the microtask left `pendingFlag` up for the session. It is reported once,
+   * the others are routed.
+   */
+  const reported = new WeakSet<ConnectorElementModel>();
+  const routeConnector = (connector: ConnectorElementModel, local: boolean) => {
+    try {
+      updateConnectorPath(connector, local);
+    } catch (error) {
+      if (reported.has(connector)) return;
+      reported.add(connector);
+      console.error('[labre] a connector cannot be routed', error);
+    }
+  };
+  /**
    * Connectors whose path must be recomputed in the next microtask, mapped to
    * whether ANY of the changes that queued them was local — a single local
    * gesture is enough to let the peer persist the derived label box.
@@ -127,7 +144,7 @@ export const connectorWatcher: SurfaceMiddleware = (
       pendingFlag = true;
       queueMicrotask(() => {
         pendingList.forEach((isLocal, connector) =>
-          updateConnectorPath(connector, isLocal)
+          routeConnector(connector, isLocal)
         );
         pendingList.clear();
         pendingFlag = false;
@@ -215,7 +232,7 @@ export const connectorWatcher: SurfaceMiddleware = (
   surface
     .getElementsByType('connector')
     .forEach(connector =>
-      updateConnectorPath(connector as ConnectorElementModel, false)
+      routeConnector(connector as ConnectorElementModel, false)
     );
 
   return () => {
