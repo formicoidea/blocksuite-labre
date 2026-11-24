@@ -19,15 +19,8 @@ export class StoreContainer {
     extensions,
     id,
   }: GetStoreOptions = {}) => {
-    let idOrOptions: string | { readonly?: boolean; query?: Query };
-    if (readonly || query) {
-      idOrOptions = { readonly, query };
-    } else if (!id) {
-      idOrOptions = this.doc.workspace.idGenerator();
-    } else {
-      idOrOptions = id;
-    }
-    const key = this._getQueryKey(idOrOptions);
+    const key =
+      this._keyOf({ readonly, query, id }) ?? this.doc.workspace.idGenerator();
 
     if (this._storeMap.has(key)) {
       return this._storeMap.get(key) as Store;
@@ -66,17 +59,31 @@ export class StoreContainer {
    * forgets the store (ADR 0057).
    */
   removeStore = ({ readonly, query, id }: RemoveStoreOptions) => {
-    let idOrOptions: string | { readonly?: boolean; query?: Query };
-    if (readonly || query) {
-      idOrOptions = { readonly, query };
-    } else if (!id) {
-      return;
-    } else {
-      idOrOptions = id;
-    }
-    const key = this._getQueryKey(idOrOptions);
+    const key = this._keyOf({ readonly, query, id });
+    if (key === null) return;
     this._storeMap.delete(key);
   };
+
+  /**
+   * The key a store is cached under, the same for `getStore` and
+   * `removeStore`; `null` when the options name none (only a direct
+   * container call without an id: `doc.getStore()` always passes the
+   * sub-document's guid).
+   *
+   * `readonly: false` with neither a query nor an id is keyed like
+   * `readonly: true` (`{ readonlyKey: 'false' }`): it used to mint a random
+   * key per call, a new store each time that `removeStore` could not name
+   * (#746, ADR 0057, part 2). It stays distinct from the default store,
+   * whose key is the guid: toggling the default store's local `readonly`
+   * must not reach it (`doc.unit.spec.ts`, "local readonly"). An `id`
+   * still wins over `readonly: false`, as before.
+   */
+  private _keyOf({ readonly, query, id }: RemoveStoreOptions): string | null {
+    if (readonly || query) return this._getQueryKey({ readonly, query });
+    if (id) return id;
+    if (readonly === false) return this._getQueryKey({ readonly, query });
+    return null;
+  }
 
   private readonly _getQueryKey = (
     idOrOptions: string | { readonly?: boolean; query?: Query }

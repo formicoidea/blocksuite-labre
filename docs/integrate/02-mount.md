@@ -204,8 +204,10 @@ one store per document opened in it, until you release it
   each new editor on it. The undo history lives in the store, so it
   survives the remount, a mode switch and a route change. Do not release a
   store between two mounts of the same document.
-  Do not ask for `getStore({ readonly: false })`: today it builds a new
-  store on every call.
+  `getStore({ readonly: false })` is another store, one per document (its
+  own selection and history), kept apart so that toggling the default
+  store's local `readonly` does not reach it; ask for it only if you need
+  that.
 - **Close a document for good with `store.dispose()`**, after its last
   editor is unmounted. It detaches everything the store attached to the
   document and to the awareness, and the workspace forgets it: the next

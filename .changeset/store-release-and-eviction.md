@@ -23,3 +23,8 @@ changes. A second store on the same document (a query preview, a readonly
 mirror) no longer borrows the first store's nested-prop proxies, so it is
 notified of nested changes. `BlockMetaService` subscribes once per store
 however often `load()` runs.
+
+`doc.getStore({ readonly: false })` now returns one store per document, as
+`readonly: true` does, instead of building a new one on every call, and
+`doc.removeStore({ readonly: false })` forgets it. It stays a store distinct
+from the default `doc.getStore()`; with an `id` it is still keyed by the id.

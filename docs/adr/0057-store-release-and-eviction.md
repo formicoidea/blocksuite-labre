@@ -374,8 +374,8 @@ Yjs key, schema, default, snapshot format or sync protocol changes;
 
 ## As implemented
 
-Part 1 landed with #746. Where the code differs from, or goes beyond, the
-decision above, and why:
+Parts 1 and 2 landed with #746. Where the code differs from, or goes beyond,
+the decision above, and why:
 
 - **The scope is per block, its handles are weak.** Each block's sync
   controller owns a `ReleaseScope` (`store/src/reactive/release-scope.ts`):
@@ -426,6 +426,14 @@ decision above, and why:
   `destroy()` cannot remove: one small listener per store opened on a
   document, closing over the destroyed manager (its listeners cleared, no
   store reachable), for the document's life.
+- **Part 2 keeps an `id` above `readonly: false`.** The key rule is one
+  function for `getStore` and `removeStore` (`StoreContainer._keyOf`):
+  `readonly: true` or a query keys by query, as before; then an `id` keys
+  by id, as before (so `{ id: guid, readonly: false }` is still the default
+  store); only then does `readonly: false` key as
+  `{ readonlyKey: 'false' }` instead of minting a random key. No caller in
+  the repo relied on the random key; the only ones were the store's own
+  "local readonly" test and the retention spec.
 - **Found, not changed.** While a store lives, every change to a `Text` prop
   attaches one more observer to its `Y.Text`: the prop's signal is fed a new
   `Text` per change (`sync-controller.ts`, `_getPropsProxy`). Measured: ten

@@ -337,10 +337,11 @@ describe('a workspace kept open and the stores opened in it', () => {
   );
 
   /**
-   * PINNED LEAK (ADR 0057 part 2): every `getStore({ readonly: false })`
-   * mints a new store under a random key, 20 distinct stores for 20 calls.
+   * ADR 0057 part 2 (was PINNED LEAK: every `getStore({ readonly: false })`
+   * minted a new store under a random key, 20 distinct stores for 20
+   * calls): 20 calls give one store, distinct from the default one.
    */
-  test('today each getStore({ readonly: false }) builds a new store', () => {
+  test('getStore({ readonly: false }) is one store', () => {
     cleanup();
     const workspace = openWorkspace();
     try {
@@ -351,10 +352,9 @@ describe('a workspace kept open and the stores opened in it', () => {
       console.log(
         `[store-retention] ${stores.size} distinct stores from ${N} getStore({ readonly: false })`
       );
-      expect(stores.size, 'PINNED LEAK, see the docblock').toBe(N);
-      // ADR 0057 target: expect(stores.size).toBe(1);
-      // and it stays distinct from the default store (doc.unit.spec.ts,
-      // "local readonly"):
+      expect(stores.size).toBe(1);
+      // It stays distinct from the default store (doc.unit.spec.ts, "local
+      // readonly").
       expect(stores.has(store)).toBe(false);
     } finally {
       workspace.dispose();
