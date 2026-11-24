@@ -11,11 +11,18 @@ export const imageBlockNotionHtmlAdapterMatcher: BlockNotionHtmlAdapterMatcher =
   {
     flavour: ImageBlockSchema.model.flavour,
     toMatch: o => {
+      if (!HastUtils.isElement(o.node)) {
+        return false;
+      }
+      if (o.node.tagName === 'img') {
+        // A person value exports its avatar as `img.user-icon` beside the
+        // name: it is decoration, not an image block (issue #734).
+        const className = o.node.properties.className;
+        return !(Array.isArray(className) && className.includes('user-icon'));
+      }
       return (
-        HastUtils.isElement(o.node) &&
-        (o.node.tagName === 'img' ||
-          (o.node.tagName === 'figure' &&
-            !!HastUtils.querySelector(o.node, '.image')))
+        o.node.tagName === 'figure' &&
+        !!HastUtils.querySelector(o.node, '.image')
       );
     },
     fromMatch: () => false,
