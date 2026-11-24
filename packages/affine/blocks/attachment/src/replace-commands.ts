@@ -67,7 +67,8 @@ export function replaceAttachmentFile(
     store.updateBlock(model, { name, size, type, sourceId, embed: false });
     const embed =
       (wasEmbed || isHtmlAttachment(model.props)) && provider.embedded(model);
-    if (embed) provider.convertTo(model);
+    // The frame wins: no later write may size the view (#738).
+    if (embed) provider.convertTo(model, undefined, { keepBound: true });
     const onCard =
       !embed && !(AttachmentBlockStyles as readonly unknown[]).includes(style);
     store.updateBlock(model, {

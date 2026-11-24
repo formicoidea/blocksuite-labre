@@ -37,7 +37,9 @@ import { VIEWS_BAR_TOUCH_TARGET } from '../views-bar/views-view.js';
  * no tab bar, no "+", no table, nothing to get a view back with but Ctrl+Z).
  * The root renderer draws it in place of the view (`DataViewRootUI`), under
  * what of its header the block still draws (`noViewHeader`), so the inline
- * database, the data-view block, the full page and the canvas share it.
+ * database, the full page and the canvas share it. The `affine:data-view`
+ * block never reaches it: it draws its own placeholder instead of the root
+ * renderer (#745, ADR 0035 amendment of 2026-11-24).
  *
  * - A status ("No view", the only live region), never an invisible block:
  *   `views: []` is also the schema default of both blocks, so it arrives
@@ -49,7 +51,7 @@ import { VIEWS_BAR_TOUCH_TARGET } from '../views-bar/views-view.js';
  *   there, the creatable presets otherwise. Where "+" is absent the button
  *   is too: a read-only document, or a source whose host switched creation
  *   off (`ViewCreationOffKey`, which the database block sets under
- *   `{ database: false }`; the data-view block sets none, so it keeps both).
+ *   `{ database: false }`).
  *   The bundle adds creation, core never does more than "+" did (§1).
  * - A host's action (`NoViewActionKey`, issue #707, amendment of
  *   2026-11-24) replaces "New view" and its hint under the same status,

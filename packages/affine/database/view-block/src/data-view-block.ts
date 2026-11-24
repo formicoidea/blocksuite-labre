@@ -1,8 +1,4 @@
-import {
-  BlockRenderer,
-  DatabaseSelection,
-  NoteRenderer,
-} from '@labre/affine-database-block';
+import { DatabaseSelection } from '@labre/affine-database-block';
 import { CaptionedBlockComponent } from '@labre/affine-components/caption';
 import {
   menu,
@@ -10,44 +6,40 @@ import {
   popupTargetFromElement,
 } from '@labre/affine-components/context-menu';
 import { CopyIcon, DeleteIcon } from '@labre/affine-components/icons';
-import { PeekViewProvider } from '@labre/affine-components/peek';
-import { toast } from '@labre/affine-components/toast';
 import { EDGELESS_TOP_CONTENTEDITABLE_SELECTOR } from '@labre/affine-shared/consts';
 import {
   DocModeProvider,
-  NotificationProvider,
-  type TelemetryEventMap,
-  TelemetryProvider,
   DOC_UNTITLED,
   TOOLBAR_COPY,
   translateKey,
 } from '@labre/affine-shared/services';
 import {
-  createRecordDetail,
-  createUniComponentFromWebComponent,
   type DataSource,
   dataViewCommonStyle,
   type DataViewProps,
-  DataViewRootUILogic,
   type DataViewSelection,
   type DataViewWidget,
   type DataViewWidgetProps,
   defineUniComponent,
   renderUniLit,
-  uniMap,
 } from '@labre/affine-database-engine';
 import { widgetPresets } from '@labre/affine-database-engine/widget-presets';
 import { MoreHorizontalIcon } from '@blocksuite/icons/lit';
 import { type BlockComponent } from '@labre/std';
 import { RANGE_SYNC_EXCLUDE_ATTR } from '@labre/std/inline';
 import { Slice } from '@labre/store';
-import { computed, signal } from '@preact/signals-core';
+import { computed } from '@preact/signals-core';
 import { css, nothing, unsafeCSS } from 'lit';
 import { html } from 'lit/static-html.js';
 
 import { BlockQueryDataSource } from './data-source.js';
 import type { DataViewBlockModel } from './data-view-model.js';
 import { DATABASE_DELETE } from '@labre/affine-database-block/translations';
+import {
+  DATA_VIEW_BLOCK_OPTIONS,
+  DATA_VIEW_BLOCK_UNAVAILABLE,
+  DATA_VIEW_BLOCK_UNAVAILABLE_HINT,
+} from './translations.js';
 
 export class DataViewBlockComponent extends CaptionedBlockComponent<DataViewBlockModel> {
   // A light-DOM sheet scoped on this block's own tag. Upstream scoped it on
@@ -85,6 +77,36 @@ export class DataViewBlockComponent extends CaptionedBlockComponent<DataViewBloc
 
     .database-ops:hover {
       background-color: var(--affine-hover-color);
+    }
+
+    affine-data-view button.database-ops {
+      border: none;
+      background: none;
+      color: inherit;
+      font: inherit;
+    }
+
+    affine-data-view button.database-ops:focus-visible {
+      outline: 2px solid
+        var(--affine-focus-ring-color, var(--affine-primary-color));
+      outline-offset: 1px;
+    }
+
+    affine-data-view .data-view-block-unavailable {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin: 8px 0;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      line-height: 22px;
+      color: var(--affine-text-primary-color);
+      background-color: var(--affine-hover-color);
+    }
+
+    affine-data-view .data-view-block-unavailable-hint {
+      color: var(--affine-text-secondary-color);
     }
 
     @media print {
@@ -142,6 +164,7 @@ export class DataViewBlockComponent extends CaptionedBlockComponent<DataViewBloc
 
   private _dataSource?: DataSource;
 
+  /** @deprecated Unread since #745 (the block draws a placeholder); kept as public API until a major. */
   _bindHotkey: DataViewProps['bindHotkey'] = hotkeys => {
     return {
       dispose: this.host.event.bindHotkey(hotkeys, {
@@ -150,6 +173,7 @@ export class DataViewBlockComponent extends CaptionedBlockComponent<DataViewBloc
     };
   };
 
+  /** @deprecated Unread since #745 (the block draws a placeholder); kept as public API until a major. */
   _handleEvent: DataViewProps['handleEvent'] = (name, handler) => {
     return {
       dispose: this.host.event.add(name, handler, {
@@ -158,6 +182,7 @@ export class DataViewBlockComponent extends CaptionedBlockComponent<DataViewBloc
     };
   };
 
+  /** @deprecated Unread since #745 (the block draws a placeholder); kept as public API until a major. */
   headerWidget: DataViewWidget = defineUniComponent(
     (props: DataViewWidgetProps) => {
       return html`
@@ -181,17 +206,7 @@ export class DataViewBlockComponent extends CaptionedBlockComponent<DataViewBloc
     }
   );
 
-  /**
-   * With no view left (ADR 0035 amendment of 2026-11-20): the title row,
-   * above the engine's empty state that offers "+"'s gesture.
-   */
-  private readonly noViewHeader = () => html`
-    <div style="display:flex;gap:8px;padding: 0 6px;margin-bottom: 8px;">
-      <div>${this.model.props.title}</div>
-      ${this.renderDatabaseOps()}
-    </div>
-  `;
-
+  /** @deprecated Unread since #745 (the block draws a placeholder); kept as public API until a major. */
   selection$ = computed(() => {
     const databaseSelection = this.selection.value.find(
       (selection): selection is DatabaseSelection => {
@@ -204,6 +219,7 @@ export class DataViewBlockComponent extends CaptionedBlockComponent<DataViewBloc
     return databaseSelection?.viewSelection;
   });
 
+  /** @deprecated Unread since #745 (the block draws a placeholder); kept as public API until a major. */
   setSelection = (selection: DataViewSelection | undefined) => {
     this.selection.setGroup(
       'note',
@@ -218,6 +234,7 @@ export class DataViewBlockComponent extends CaptionedBlockComponent<DataViewBloc
     );
   };
 
+  /** @deprecated Unread since #745 (the block draws a placeholder); kept as public API until a major. */
   toolsWidget: DataViewWidget = widgetPresets.createTools({
     table: [
       widgetPresets.tools.filter,
@@ -232,6 +249,7 @@ export class DataViewBlockComponent extends CaptionedBlockComponent<DataViewBloc
     ],
   });
 
+  /** @deprecated The block stopped reading it in #745; only the never-registered slash-menu entry does. Kept as public API until a major. */
   get dataSource(): DataSource {
     if (!this._dataSource) {
       this._dataSource = new BlockQueryDataSource(this.host, this.model, {
@@ -250,13 +268,27 @@ export class DataViewBlockComponent extends CaptionedBlockComponent<DataViewBloc
     return this.rootComponent;
   }
 
+  /**
+   * The block's "⋯" (rename, copy, delete). Under the placeholder it is the
+   * block's only control (#745), so a real button: in the tab order, pressed
+   * by Enter and Space, named, with the house focus ring.
+   */
   private renderDatabaseOps() {
     if (this.store.readonly) {
       return nothing;
     }
-    return html` <div class="database-ops" @click="${this._clickDatabaseOps}">
+    const label = translateKey(this.std, ...DATA_VIEW_BLOCK_OPTIONS);
+    return html`<button
+      type="button"
+      class="database-ops"
+      data-testid="data-view-block-options"
+      aria-label=${label}
+      aria-haspopup="menu"
+      title=${label}
+      @click=${this._clickDatabaseOps}
+    >
       ${MoreHorizontalIcon()}
-    </div>`;
+    </button>`;
   }
 
   override connectedCallback() {
@@ -264,86 +296,35 @@ export class DataViewBlockComponent extends CaptionedBlockComponent<DataViewBloc
 
     this.setAttribute(RANGE_SYNC_EXCLUDE_ATTR, 'true');
   }
-  private _dataViewRootLogic?: DataViewRootUILogic;
 
-  // Built on first render, never in a class field: Lit constructs the element
-  // before the `std` context reaches it, and this literal reads the host, the
-  // model and the clipboard (`block-mount.unit.spec.ts`). Same lazy getter as
-  // the database block's.
-  private get dataViewRootLogic(): DataViewRootUILogic {
-    if (!this._dataViewRootLogic) {
-      this._dataViewRootLogic = this._buildDataViewRootLogic();
-    }
-    return this._dataViewRootLogic;
-  }
-
-  private _buildDataViewRootLogic() {
-    return new DataViewRootUILogic({
-      virtualPadding$: signal(0),
-      bindHotkey: this._bindHotkey,
-      handleEvent: this._handleEvent,
-      selection$: this.selection$,
-      setSelection: this.setSelection,
-      dataSource: this.dataSource,
-      headerWidget: this.headerWidget,
-      noViewHeader: this.noViewHeader,
-      clipboard: this.std.clipboard,
-      dnd: this.std.dnd,
-      notification: {
-        toast: message => {
-          const notification = this.std.getOptional(NotificationProvider);
-          if (notification) {
-            notification.toast(message);
-          } else {
-            toast(this.host, message);
-          }
-        },
-      },
-      eventTrace: (key, params) => {
-        const telemetryService = this.std.getOptional(TelemetryProvider);
-        telemetryService?.track(key, {
-          ...(params as TelemetryEventMap[typeof key]),
-          blockId: this.blockId,
-        });
-      },
-      detailPanelConfig: {
-        openDetailPanel: (target, data) => {
-          const peekViewService = this.std.getOptional(PeekViewProvider);
-          if (peekViewService) {
-            const template = createRecordDetail({
-              ...data,
-              openDoc: () => {},
-              detail: {
-                header: uniMap(
-                  createUniComponentFromWebComponent(BlockRenderer),
-                  props => ({
-                    ...props,
-                    host: this.host,
-                  })
-                ),
-                note: uniMap(
-                  createUniComponentFromWebComponent(NoteRenderer),
-                  props => ({
-                    ...props,
-                    model: this.model,
-                    host: this.host,
-                  })
-                ),
-              },
-            });
-            return peekViewService.peek({ target, template });
-          } else {
-            return Promise.resolve();
-          }
-        },
-      },
-    });
-  }
-
+  /**
+   * The title row and its "⋯" (rename, copy, delete; none on a read-only
+   * document), then a status in place of the views (issue #745, product owner
+   * decision of 2026-11-24, ADR 0035 amendment of 2026-11-24). The block's
+   * data source was never ported to the view engine (`BlockQueryDataSource`,
+   * its `ponytail:` line), so the engine is never built here and
+   * `dataSource` is never read: a stored block draws, and writes nothing.
+   * Modelled on the database's `sourceUnavailableNotice`: a status, no
+   * button, its sheet (`databaseSourceMissingStyles`) restated here scoped
+   * under the block's tag.
+   */
   override renderBlock() {
     return html`
       <div contenteditable="false" style="position: relative">
-        ${this.dataViewRootLogic.render()}
+        <div style="display:flex;gap:8px;padding: 0 6px;margin-bottom: 8px;">
+          <div>${this.model.props.title}</div>
+          ${this.renderDatabaseOps()}
+        </div>
+        <div
+          class="data-view-block-unavailable"
+          data-testid="data-view-block-unavailable"
+          role="status"
+        >
+          <div>${translateKey(this.std, ...DATA_VIEW_BLOCK_UNAVAILABLE)}</div>
+          <div class="data-view-block-unavailable-hint">
+            ${translateKey(this.std, ...DATA_VIEW_BLOCK_UNAVAILABLE_HINT)}
+          </div>
+        </div>
       </div>
     `;
   }

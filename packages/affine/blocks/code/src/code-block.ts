@@ -515,6 +515,7 @@ export class CodeBlockComponent extends CaptionedBlockComponent<CodeBlockModel> 
           style=${styleMap({
             display: shouldRenderPreview ? 'none' : undefined,
           })}
+          spellcheck="false"
           .yText=${this.model.props.text.yText}
           .inlineEventSource=${this.topContenteditableElement ?? nothing}
           .undoManager=${this.store.history.undoManager}

@@ -23,11 +23,13 @@ import {
   FileSizeLimitProvider,
   TelemetryProvider,
   TOAST_COPIED_TO_CLIPBOARD,
+  TOOLBAR_DOWNLOAD,
   translateKey,
 } from '@labre/affine-shared/services';
 import { formatSize } from '@labre/affine-shared/utils';
 import {
   AttachmentIcon,
+  DownloadIcon,
   ResetIcon,
   UpgradeIcon,
   WarningIcon,
@@ -48,20 +50,30 @@ import { attachmentBlobType, NEUTRAL_BLOB_TYPE } from './blob-type.js';
 import { AttachmentEmbedProvider } from './embed';
 import { writeAttachmentAnswer } from './replace-commands.js';
 import { styles } from './styles';
-import { downloadAttachmentBlob, refreshData } from './utils';
 import {
+  downloadAttachmentBlob,
+  isDownloadableAttachment,
+  refreshData,
+} from './utils.js';
+import {
+  ATTACHMENT_BUTTON_DOWNLOAD,
   ATTACHMENT_BUTTON_RELOAD,
   ATTACHMENT_BUTTON_RETRY,
   ATTACHMENT_BUTTON_UPGRADE,
-} from './translations';
+} from './translations.js';
 
 type AttachmentResolvedStateInfo = ResolvedStateInfo & {
   kind?: TemplateResult;
 };
 
+const stopEvent = (event: Event) => event.stopPropagation();
+
 @Peekable({
+  // Any file on a read-only document, a PDF otherwise (#744, upstream
+  // toeverything/AFFiNE 268371c, ADR 0058): a reader has no toolbar, so the
+  // host's peek view is one way to the file. Still only with a provider.
   enableOn: ({ model }: AttachmentBlockComponent) => {
-    return !model.store.readonly && model.props.type.endsWith('pdf');
+    return model.store.readonly || model.props.type.endsWith('pdf');
   },
 })
 export class AttachmentBlockComponent extends CaptionedBlockComponent<AttachmentBlockModel> {
@@ -343,6 +355,49 @@ export class AttachmentBlockComponent extends CaptionedBlockComponent<Attachment
     `;
   };
 
+  /**
+   * The reader's Download, drawn in the card or over an embed, on a read-only
+   * document only (#744, ADR 0058): the toolbar that holds Download there is
+   * never shown on read-only, nor mounted in the canvas viewer (ADR 0051). An
+   * editable document draws nothing more than before. It runs the toolbar's
+   * own `download()` and writes nothing. The events it handles stop at the
+   * button: the canvas gestures (the read-only pan tool), the selection and
+   * the peek view's double click never see them.
+   *
+   * A horizontal card draws it in the size line, where Reload and Upgrade
+   * sit; a vertical one beside its title, since its banner holds the preview
+   * when there is one and its size line is hidden then.
+   */
+  protected renderReadonlyDownload = (placement: 'card' | 'embed') => {
+    if (!this.std.store.readonly || !this.blobUrl) return null;
+    if (!isDownloadableAttachment(this.model)) return null;
+    const label = translateKey(this.std, ...ATTACHMENT_BUTTON_DOWNLOAD, {
+      name: this.model.props.name$.value,
+    });
+
+    return html`<button
+      type="button"
+      class=${classMap({
+        'affine-attachment-content-button': true,
+        'affine-attachment-download': true,
+        'affine-attachment-embed-download': placement === 'embed',
+      })}
+      data-testid="attachment-download"
+      aria-label=${label}
+      title=${label}
+      @pointerdown=${stopEvent}
+      @mousedown=${stopEvent}
+      @dblclick=${stopEvent}
+      @keydown=${stopEvent}
+      @click=${(event: MouseEvent) => {
+        event.stopPropagation();
+        this.download();
+      }}
+    >
+      ${DownloadIcon()} ${translateKey(this.std, ...TOOLBAR_DOWNLOAD)}
+    </button>`;
+  };
+
   protected renderWithHorizontal(
     classInfo: ClassInfo,
     {
@@ -372,6 +427,7 @@ export class AttachmentBlockComponent extends CaptionedBlockComponent<Attachment
               ['error', () => this.renderNormalButton(needUpload)],
               ['error:oversize', this.renderUpgradeButton],
             ])}
+            ${this.renderReadonlyDownload('card')}
           </div>
         </div>
 
@@ -399,6 +455,7 @@ export class AttachmentBlockComponent extends CaptionedBlockComponent<Attachment
             <div class="affine-attachment-content-title-text truncate">
               ${title}
             </div>
+            ${this.renderReadonlyDownload('card')}
           </div>
 
           <div class="affine-attachment-content-info truncate">
@@ -474,9 +531,20 @@ export class AttachmentBlockComponent extends CaptionedBlockComponent<Attachment
 
     const enabled = provider.shouldShowStatus(model);
 
+    // Over the corner of an embed that fills its box (pdf under its event
+    // mask, video, html, whose own controls sit top right); beside an audio
+    // player, whose controls span its whole width.
+    const inlineDownload = model.props.type$.value.startsWith('audio/');
+
     return html`
-      <div class="affine-attachment-embed-container">
+      <div
+        class=${classMap({
+          'affine-attachment-embed-container': true,
+          'inline-download': inlineDownload,
+        })}
+      >
         ${guard([this._refreshKey$.value], () => render(model, blobUrl, std))}
+        ${this.renderReadonlyDownload('embed')}
       </div>
       ${when(enabled, () => {
         const resolvedState = this.resolvedState$.value;

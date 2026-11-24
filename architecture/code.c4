@@ -1600,7 +1600,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/view-block
         metadata {
           path 'packages/affine/database/view-block'
-          files '15'
+          files '16'
         }
         block-meta = folder 'block-meta/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/view-block/src/block-meta
@@ -1627,7 +1627,7 @@ model {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/database/view-block/src
           metadata {
             path 'packages/affine/database/view-block/src'
-            files '8'
+            files '9'
           }
         }
         views_ = folder 'views/' {
@@ -3472,7 +3472,7 @@ model {
   assembly.all -[uses]-> features.database.block '6 imports'
   assembly.all -[uses]-> features.database.editor '2 imports'
   assembly.all -[uses]-> features.database.engine '3 imports'
-  assembly.all -[uses]-> features.database.view-block '6 imports'
+  assembly.all -[uses]-> features.database.view-block '7 imports'
   assembly.all -[uses]-> features.ext-loader '5 imports'
   assembly.all -[uses]-> features.foundation '5 imports'
   assembly.all -[uses]-> features.fragments.adapter-panel '4 imports'
@@ -3774,11 +3774,11 @@ model {
   features.database.engine -[uses]-> framework.std '83 imports, 10 type-only'
   features.database.engine -[uses]-> framework.store '12 imports, 2 type-only'
   features.database.engine -[uses]-> model_.model_ '7 imports, 4 type-only'
-  features.database.view-block -[uses]-> features.components '5 imports'
+  features.database.view-block -[uses]-> features.components '3 imports'
   features.database.view-block -[uses]-> features.database.block '5 imports'
   features.database.view-block -[uses]-> features.database.engine '11 imports, 4 type-only'
   features.database.view-block -[uses]-> features.ext-loader '2 imports'
-  features.database.view-block -[uses]-> features.shared '6 imports'
+  features.database.view-block -[uses]-> features.shared '7 imports, 1 type-only'
   features.database.view-block -[uses]-> features.widgets.slash-menu '1 import, 1 type-only'
   features.database.view-block -[uses]-> framework.global_ '2 imports, 1 type-only'
   features.database.view-block -[uses]-> framework.std '5 imports, 2 type-only'
@@ -4496,7 +4496,7 @@ model {
   assembly.all.src -[imports]-> features.database.block.src '1 import'
   assembly.all.src -[imports]-> features.database.editor.src '1 import'
   assembly.all.src -[imports]-> features.database.engine.src '1 import'
-  assembly.all.src -[imports]-> features.database.view-block.src '1 import'
+  assembly.all.src -[imports]-> features.database.view-block.src '2 imports'
   assembly.all.src -[imports]-> features.ext-loader.src '1 import'
   assembly.all.src -[imports]-> features.fragments.adapter-panel.src '1 import'
   assembly.all.src -[imports]-> features.fragments.doc-title.src '2 imports'
@@ -4583,7 +4583,7 @@ model {
   features.blocks.attachment.components -[imports]-> framework.std.src '1 import, 1 type-only'
   features.blocks.attachment.components -[imports]-> model_.model_.src '1 import, 1 type-only'
   features.blocks.attachment.configs -[imports]-> features.blocks.attachment.components '1 import'
-  features.blocks.attachment.configs -[imports]-> features.blocks.attachment.src '6 imports'
+  features.blocks.attachment.configs -[imports]-> features.blocks.attachment.src '7 imports'
   features.blocks.attachment.configs -[imports]-> features.blocks.image.src '1 import'
   features.blocks.attachment.configs -[imports]-> features.components.portal '1 import'
   features.blocks.attachment.configs -[imports]-> features.shared.consts '1 import'
@@ -6006,8 +6006,6 @@ model {
   features.database.view-block.src -[imports]-> features.components.caption '1 import'
   features.database.view-block.src -[imports]-> features.components.context-menu '1 import'
   features.database.view-block.src -[imports]-> features.components.icons_ '1 import'
-  features.database.view-block.src -[imports]-> features.components.peek '1 import'
-  features.database.view-block.src -[imports]-> features.components.toast '1 import'
   features.database.view-block.src -[imports]-> features.database.block.src '3 imports'
   features.database.view-block.src -[imports]-> features.database.engine.property-presets '1 import'
   features.database.view-block.src -[imports]-> features.database.engine.src '3 imports, 1 type-only'
@@ -6016,7 +6014,7 @@ model {
   features.database.view-block.src -[imports]-> features.database.view-block.columns '1 import'
   features.database.view-block.src -[imports]-> features.ext-loader.src '2 imports'
   features.database.view-block.src -[imports]-> features.shared.consts '1 import'
-  features.database.view-block.src -[imports]-> features.shared.services '1 import'
+  features.database.view-block.src -[imports]-> features.shared.services '2 imports, 1 type-only'
   features.database.view-block.src -[imports]-> features.shared.utils '2 imports'
   features.database.view-block.src -[imports]-> framework.global_.exceptions '1 import'
   features.database.view-block.src -[imports]-> framework.std.inline '1 import'

@@ -45,6 +45,14 @@ export async function getAttachmentBlob(model: AttachmentBlockModel) {
 }
 
 /**
+ * Whether an attachment offers Download: the toolbar's action and the card's
+ * read-only button (#744) ask the same question. A citation's card has none.
+ */
+export function isDownloadableAttachment(model: AttachmentBlockModel) {
+  return model.props.style !== 'citation' && !model.props.footnoteIdentifier;
+}
+
+/**
  * Since the size of the attachment may be very large,
  * the download process may take a long time!
  */
