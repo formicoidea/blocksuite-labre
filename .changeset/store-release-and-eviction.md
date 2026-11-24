@@ -25,8 +25,10 @@ its reads keep answering its last state, and a second `dispose()` does
 nothing. `load()` used to revive a disposed store half-way, deaf to remote
 changes. A second store on the same document (a query preview, a readonly
 mirror) no longer borrows the first store's nested-prop proxies, so it is
-notified of nested changes. `BlockMetaService` subscribes once per store
-however often `load()` runs.
+notified of nested changes; as a consequence the `stashProp` / `popProp`
+exports only reach proxies built outside a store (a block's own props
+stash through `model.stash`, unchanged). `BlockMetaService` subscribes once
+per store however often `load()` runs.
 
 `doc.getStore({ readonly: false })` now returns one store per document, as
 `readonly: true` does, instead of building a new one on every call, and

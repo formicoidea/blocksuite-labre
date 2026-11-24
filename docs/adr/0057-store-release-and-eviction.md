@@ -388,6 +388,13 @@ beyond, the decision above, and why:
   whose Yjs type was collected holds nothing, and a strong handle per nested
   replacement (a new `Y.Map` per database cell edit) would have made a live
   store grow until the block went away. Swept as the set doubles.
+- **`stashProp` / `popProp` reach unscoped proxies only.** These two
+  exports of `@labre/store` look a Yjs type up in the module-level
+  registry, which no longer holds a block prop's proxies. No caller exists
+  in the repo (blocks stash through `model.stash`, which is per store);
+  a host calling them on a block's nested type gets a no-op. Filling the
+  module-level registry as well would put back the edge that kept the
+  store alive.
 - **A write through a sibling store's proxy is mirrored.** With one proxy
   per store, a nested write made through the editor store's proxy carries a
   proxy origin, which a proxy skips as its own: the preview's proxy would
