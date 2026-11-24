@@ -546,15 +546,36 @@ export class SelectionController implements ReactiveController {
     if (!(target instanceof HTMLElement)) {
       return;
     }
-    const offsets = domToOffsets(this.host, 'tr', 'td');
-    if (!offsets) return;
-    const startX = event.clientX;
-    const startY = event.clientY;
+    const startOffsets = domToOffsets(this.host, 'tr', 'td');
+    if (!startOffsets) return;
+    // The press point is kept relative to the table, and the cell edges are
+    // re-read on every update: a scroll during the drag moves the table under
+    // the pointer, so viewport offsets captured at mousedown go stale (#728).
+    const anchorX = event.clientX - (startOffsets.columns[0] ?? 0);
+    const anchorY = event.clientY - (startOffsets.rows[0] ?? 0);
+    let endX = event.clientX;
+    let endY = event.clientY;
     let selected = false;
     const initCell = target.closest('affine-table-cell');
     if (!initCell) {
       selected = true;
     }
+    const updateSelection = () => {
+      const offsets = domToOffsets(this.host, 'tr', 'td');
+      if (!offsets) return;
+      const startX = (offsets.columns[0] ?? 0) + anchorX;
+      const startY = (offsets.rows[0] ?? 0) + anchorY;
+      const [left, right] = startX > endX ? [endX, startX] : [startX, endX];
+      const [top, bottom] = startY > endY ? [endY, startY] : [startY, endY];
+      const area = getAreaByOffsets(offsets, top, bottom, left, right);
+      this.setSelected({
+        type: 'area',
+        rowStartIndex: area.top,
+        rowEndIndex: area.bottom,
+        columnStartIndex: area.left,
+        columnEndIndex: area.right,
+      });
+    };
     const onMove = (event: MouseEvent) => {
       const target = event.target;
       if (target instanceof HTMLElement) {
@@ -563,26 +584,42 @@ export class SelectionController implements ReactiveController {
           return;
         }
         selected = true;
-        const endX = event.clientX;
-        const endY = event.clientY;
-        const [left, right] = startX > endX ? [endX, startX] : [startX, endX];
-        const [top, bottom] = startY > endY ? [endY, startY] : [startY, endY];
-        const area = getAreaByOffsets(offsets, top, bottom, left, right);
-        this.setSelected({
-          type: 'area',
-          rowStartIndex: area.top,
-          rowEndIndex: area.bottom,
-          columnStartIndex: area.left,
-          columnEndIndex: area.right,
-        });
+        endX = event.clientX;
+        endY = event.clientY;
+        updateSelection();
       }
     };
-    const onUp = () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
+    // Capture phase: `scroll` does not bubble, and the scrolling box may be
+    // the page, the table's own scroll box or any ancestor in between.
+    const onScroll = () => {
+      if (selected) {
+        updateSelection();
+      }
     };
+    const release = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', release);
+      window.removeEventListener('scroll', onScroll, true);
+      if (this.releaseDragSelection === release) {
+        this.releaseDragSelection = undefined;
+      }
+    };
+    this.releaseDragSelection?.();
+    this.releaseDragSelection = release;
     window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
+    window.addEventListener('mouseup', release);
+    window.addEventListener('scroll', onScroll, true);
+  }
+
+  /**
+   * The window listeners of a drag selection in progress. Released on mouseup,
+   * and on `hostDisconnected` too: a table removed mid-drag (undo, a remote
+   * peer deleting it) must not keep window listeners alive (#728).
+   */
+  private releaseDragSelection: (() => void) | undefined = undefined;
+
+  hostDisconnected() {
+    this.releaseDragSelection?.();
   }
 
   setSelected(

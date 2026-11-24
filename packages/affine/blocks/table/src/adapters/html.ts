@@ -98,9 +98,7 @@ export const tableBlockHtmlAdapterMatcher: BlockHtmlAdapterMatcher = {
         return createAstTableRow(
           v.cells.map((cell, columnIndex) => {
             return createAstTableCell(
-              typeof cell.value === 'string'
-                ? [{ type: 'text', value: cell.value }]
-                : deltaConverter.deltaToAST(cell.value.delta),
+              deltaConverter.deltaToAST(cell.value.delta),
               (hasHeaderRow && rowIndex === 0) ||
                 (hasHeaderColumn && columnIndex === 0)
             );

@@ -62,10 +62,28 @@ type Row = {
 type Cell = {
   value: { delta: DeltaInsert[] };
 };
+
+/**
+ * A cell as a snapshot may hold it, wider than `TableCellSerialized`: the
+ * store always writes a `Text`, but an imported or older snapshot, or a host
+ * write that skipped it, can carry a plain string or no `text` at all. The
+ * exporters once read `.delta` off either and failed the whole export (#732).
+ */
+type SnapshotTableCell = {
+  text?: string | { delta: DeltaInsert[] };
+};
+
+const cellValue = (cell: SnapshotTableCell | undefined): Cell['value'] => {
+  const text = cell?.text;
+  if (text === undefined || text === '') return { delta: [] };
+  if (typeof text === 'string') return { delta: [{ insert: text }] };
+  return text;
+};
+
 export const processTable = (
   columns: Record<string, TableColumn>,
   rows: Record<string, TableRow>,
-  cells: Record<string, TableCellSerialized>
+  cells: Record<string, SnapshotTableCell>
 ): Table => {
   const sortedColumns = Object.values(columns).sort((a, b) =>
     a.order.localeCompare(b.order)
@@ -81,17 +99,8 @@ export const processTable = (
       cells: [],
     };
     sortedColumns.forEach(col => {
-      const cell = cells[`${r.rowId}:${col.columnId}`];
-      if (!cell) {
-        row.cells.push({
-          value: {
-            delta: [],
-          },
-        });
-        return;
-      }
       row.cells.push({
-        value: cell.text,
+        value: cellValue(cells[`${r.rowId}:${col.columnId}`]),
       });
     });
     table.rows.push(row);

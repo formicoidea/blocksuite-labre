@@ -147,15 +147,32 @@ export class TableDataManager {
     }
   }
 
+  /**
+   * `after` as an index in `[-1, length - 1]`, `-1` meaning "before the
+   * first". An index past the end clamps to the last item: `getOrder` once
+   * answered it with a key between `null` and `null` while items existed,
+   * which can equal an existing order key (Move Down on the last row, #731).
+   */
+  private normalizeAfter(length: number, after?: number): number {
+    if (after == null || after < 0) return -1;
+    return Math.min(after, length - 1);
+  }
+
   private getOrder<T extends { order: string }>(array: T[], after?: number) {
-    after = after != null ? (after < 0 ? undefined : after) : undefined;
-    const prevOrder = after == null ? null : array[after]?.order;
-    const nextOrder = after == null ? array[0]?.order : array[after + 1]?.order;
-    const order = generateFractionalIndexingKeyBetween(
-      prevOrder ?? null,
-      nextOrder ?? null
-    );
-    return order;
+    const index = this.normalizeAfter(array.length, after);
+    const prevOrder = index < 0 ? null : (array[index]?.order ?? null);
+    const nextOrder = array[index + 1]?.order ?? null;
+    return generateFractionalIndexingKeyBetween(prevOrder, nextOrder);
+  }
+
+  /**
+   * Placing an item right after itself or right after its predecessor leaves
+   * it where it is: such a move writes nothing, since an unchanged write is
+   * an empty undo step and a fresh key gains nothing (#731).
+   */
+  private movesNothing(length: number, from: number, after?: number) {
+    const index = this.normalizeAfter(length, after);
+    return index === from || index === from - 1;
   }
 
   addColumn(after?: number) {
@@ -353,9 +370,11 @@ export class TableDataManager {
   }
 
   moveColumn(from: number, after?: number) {
+    if (this.model.store.readonly) return;
     const columns = this.columns$.value;
     const column = columns[from];
     if (!column) return;
+    if (this.movesNothing(columns.length, from, after)) return;
     const order = this.getOrder(columns, after);
     this.model.store.transact(() => {
       const realColumn = this.model.props.columns[column.columnId];
@@ -366,9 +385,11 @@ export class TableDataManager {
   }
 
   moveRow(from: number, after?: number) {
+    if (this.model.store.readonly) return;
     const rows = this.rows$.value;
     const row = rows[from];
     if (!row) return;
+    if (this.movesNothing(rows.length, from, after)) return;
     const order = this.getOrder(rows, after);
     this.model.store.transact(() => {
       const realRow = this.model.props.rows[row.rowId];
