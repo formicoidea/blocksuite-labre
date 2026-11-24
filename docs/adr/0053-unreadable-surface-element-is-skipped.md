@@ -218,3 +218,26 @@ side of #669 this ADR left out of scope. The decision above is unchanged.
 
 Still open: a local `addElement` whose mount throws, the `@observe` metadata
 quirk, a late completion of a skipped map, the placeholder.
+
+## Amendment — 2026-11-24: a removed element is silent from the moment it leaves
+
+#681's message survived #684 by a path unrelated to stored ids. In one
+transaction, `onElementsMapChange` takes a deleted element out of the models
+(`getElementById` is `null` from there) but tears it down and announces its
+`elementRemoved` only after the transaction's additions are mounted and
+announced. The model stayed mounted in that window, and a group read there
+(the board stacking rule reads every top-level bound on a local
+`elementAdded`, and the layer manager still holds the group) recomputed its
+bound and emitted `elementUpdated` with an id nobody could resolve; the grid
+dereferenced it and threw.
+
+- **Decision.** An element stops emitting when it leaves the models, not when
+  it is announced removed: `takeOut` silences it. Its teardown
+  (`onDestroyed`) and its `elementRemoved` keep their moment, their order
+  (additions first, then removals in the order the keys changed) and their
+  payload; an `elementRemoved` subscriber still reads the model, its last
+  bound included.
+- **Not done.** The `getElementById(id)!` of the `elementUpdated` subscribers
+  (`grid.ts`, `layer.ts`, `view-manager.ts`) gets no null check: the surface
+  no longer emits what they could not resolve.
+- Guard: `affine/all/src/__tests__/grid-update-of-removed-group.unit.spec.ts`.

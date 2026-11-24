@@ -7,7 +7,11 @@ import {
   UIEventStateContext,
 } from '../base.js';
 import type { EventOptions, UIEventDispatcher } from '../dispatcher.js';
-import { androidBindKeymapPatch, bindKeymap } from '../keymap.js';
+import {
+  androidBindKeymapPatch,
+  bindKeymap,
+  formatInputKeystroke,
+} from '../keymap.js';
 import { KeyboardEventState } from '../state/index.js';
 import { EventScopeSourceType, EventSourceState } from '../state/source.js';
 
@@ -124,6 +128,36 @@ export class KeyboardControl {
         ctx => {
           if (this.composition) return false;
           return binding(ctx);
+        },
+        options
+      )
+    );
+    // Native formatting input (iOS selection menu, #743) runs the binding of
+    // the keystroke it stands for, through the same binding as a real
+    // keystroke. On desktop, a Ctrl/Cmd+B the binding declined is followed by
+    // the browser's own formatBold: the binding runs a second time and
+    // declines again, which is harmless (bindings decline on state checks
+    // alone, before any side effect), and the input stays unprevented here.
+    disposables.add(
+      this._dispatcher.add(
+        'beforeInput',
+        ctx => {
+          if (this.composition) return false;
+          const event = ctx.get('defaultState').event;
+          if (!(event instanceof InputEvent)) return false;
+          const keystroke = formatInputKeystroke(event.inputType);
+          if (!keystroke) return false;
+          const handled = binding(
+            this._createContext(
+              event,
+              new KeyboardEventState({
+                event: new KeyboardEvent('keydown', keystroke),
+                composing: false,
+              })
+            )
+          );
+          if (handled) event.preventDefault();
+          return handled;
         },
         options
       )

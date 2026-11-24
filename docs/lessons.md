@@ -360,6 +360,18 @@ browser session … within the timeout`: Chromium could not start the
     heap snapshot (retainers from the GC roots, ephemeron edges skipped)
     before working around it.
 
+    _Amended 2026-11-24 (#746):_ the 75 KB is what that spec keeps per mount
+    when each mount builds its own workspace and the cleanup disposes of the
+    store AND the workspace; it is not the cost of a store left in a
+    workspace kept open, which #746 read it as. There, a store is reused
+    across mounts of one document (`doc.getStore()` is keyed by the
+    sub-document), stays alive per distinct document opened (about 85 KB of
+    heap each, 20 of 20 alive, with or without `store.dispose()`), and the
+    30 s throttle holds nothing pending; the holders are Yjs observers
+    `dispose()` leaves attached (`store-retention.spec.ts`, ADR 0057). A
+    number measured under one harness describes that harness: say which
+    before quoting it as a host's cost.
+
 40. **A focus ring "2px" that read 1.71429px on the workstation.**
     `database-toolbar-keyboard.spec.ts` asserted the computed
     `outline-width` of the database toolbar's ring as `'2px'`: green
