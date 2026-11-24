@@ -3,11 +3,13 @@
  * browser sessions, run one after the other.
  *
  * One session shares one page across its files (`isolate: false`), and that
- * page keeps about 6 MB per test it mounted: over the whole suite it reached
+ * page kept about 6 MB per test it mounted: over the whole suite it reached
  * 8.2 GB, measured on Windows; that this, with Vite and Vitest, exhausted
  * the 16 GB hosted runner near the end of the run is inferred
  * (docs/lessons.md 39). `--shard` gives each half of the files its own
- * browser, so the page that accumulates is thrown away half-way.
+ * browser, so whatever the page accumulates is thrown away half-way. The
+ * teardown leak behind it is fixed (`editor-teardown.spec.ts`); the second
+ * session stays as a guard until a full run is sampled flat.
  *
  * Both sessions always run, so one run reports every failure; the exit code
  * is 1 when either failed. Sequential, one file at a time
@@ -29,9 +31,9 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// ponytail: each session's peak grows with every spec (about 6 MB per test);
-// fix `setupEditor`'s teardown, or raise the count, before it nears the
-// runner's memory again (docs/contribute/04-testing.md, Flaky).
+// ponytail: a guard since the teardown leak was fixed; drop to one session
+// once a sampled full run stays flat, and find the holder in a heap snapshot
+// before raising the count (docs/contribute/04-testing.md, Flaky).
 const SESSIONS = 2;
 
 const cwd = join(

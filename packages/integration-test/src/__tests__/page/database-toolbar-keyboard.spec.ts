@@ -10,6 +10,7 @@ import { Text } from '@labre/store';
 import { userEvent } from '@vitest/browser/context';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
+import { drawnLineWidth } from '../utils/focus-ring.js';
 import { pointerMoveTo } from '../utils/pointer.js';
 import { setupEditor } from '../utils/setup.js';
 
@@ -78,6 +79,9 @@ afterEach(() => {
   cleanup?.();
   cleanup = undefined;
 });
+
+/** The focus ring the toolbar's stylesheet declares, in CSS pixels. */
+const RING_WIDTH_PX = 2;
 
 /** A loaded machine may take seconds to lay out a page. */
 const PATIENCE_MS = 5000;
@@ -313,8 +317,14 @@ describe('the view toolbar of an inline table, from the keyboard', () => {
       'New Record',
       HOST_MENU_LABEL,
     ]);
-    expect(visited.map(step => [step.outline, step.width])).toEqual(
-      order.map(() => ['solid', '2px'])
+    expect(visited.map(step => step.outline)).toEqual(order.map(() => 'solid'));
+    // Read against the declared width as the screen draws it: a headed run
+    // on a 175 % display computes 2px as 1.71429px (whole device pixels).
+    visited.forEach(step =>
+      expect(parseFloat(step.width), step.name).toBeCloseTo(
+        drawnLineWidth(RING_WIDTH_PX),
+        3
+      )
     );
 
     await tabThrough(order.slice(0, -1).reverse(), true);

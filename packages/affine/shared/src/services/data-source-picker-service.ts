@@ -211,6 +211,46 @@ export interface DataSourcePickerViewDeletion extends DataSourcePickerViewRef {
 }
 
 /**
+ * Which gesture places the view of an existing source (`placeView`):
+ * - `add-view`: "+ view" picks a source (of this database or another one);
+ * - `linked-view`: "Linked view of a database" inserts a new block;
+ * - `connect`: the creation popover's "Link an existing source" connects
+ *   the block (or re-points its view) to a source;
+ * - `change-source`: "Source" in a view's settings re-points the view.
+ *
+ * The union only widens.
+ */
+export type DataSourcePickerPlacementGesture =
+  | 'add-view'
+  | 'linked-view'
+  | 'connect'
+  | 'change-source';
+
+/** What `placeView` hands the host: where the view goes, and the verb. */
+export interface DataSourcePickerViewPlacement {
+  gesture: DataSourcePickerPlacementGesture;
+  /** The database the view will read, as `list()` names it. */
+  databaseId: string;
+  /** The source the view will store; absent, the host's implicit source. */
+  sourceId?: string;
+  /** The document (store id) the view lands in. */
+  docId: string;
+  /**
+   * The `affine:database` block holding the view; absent for
+   * `linked-view`, whose block `place()` creates.
+   */
+  blockId?: string;
+  /** The view re-pointed (`change-source`, a `connect` that re-points). */
+  viewId?: string;
+  /**
+   * Insert the view (or apply the new source) as one undo step. `false`
+   * when nothing was written: the page turned read-only, the anchor or the
+   * view is gone, the source is unknown, or `place` was already called.
+   */
+  place(): boolean;
+}
+
+/**
  * The data-source picker (ADR 0035 §9c, issue B12): the host lists the
  * databases and sources a view may read, and creates them. The library draws
  * the picker (`@labre/affine-database-editor`), inserts the view and never
@@ -328,6 +368,18 @@ export interface DataSourcePickerService {
    * remote change. Absent, the view is removed at once, as in 1.0.
    */
   deleteView?(request: DataSourcePickerViewDeletion): void;
+  /**
+   * A reader is about to place the view of one of your existing sources
+   * in a document (ADR 0035 amendment of 2026-11-22, issue #701): placing
+   * it gives the document's audience a path to the source. Announce it,
+   * ask what you must, then call `request.place()`; not calling it places
+   * nothing and writes nothing. Called once per gesture, before anything is
+   * written, on a writable document (`request.gesture` says which); never
+   * for an undo, a redo, a paste, a template, a remote change, or a source
+   * the gesture created (`createSource`, `createDatabase`). Absent, the
+   * view is placed at once, as in 4.1.
+   */
+  placeView?(request: DataSourcePickerViewPlacement): void;
   /**
    * An undo (`'undo'`: the view is back) or a redo (`'redo'`: it is gone
    * again) of a removal made by `request.remove()`, on this client. Never

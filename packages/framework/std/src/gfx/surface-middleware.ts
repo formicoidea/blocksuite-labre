@@ -43,19 +43,39 @@ export abstract class SurfaceMiddlewareBuilder extends Extension {
 export const SurfaceMiddlewareBuilderIdentifier =
   createIdentifier<SurfaceMiddlewareBuilder>('SurfaceMiddlewareBuilder');
 
+/**
+ * Installs the mounted editor's surface middlewares on the store's surface,
+ * and takes them back on unmount: the surface lives as long as the store,
+ * and a middleware closes over its editor's std (see
+ * `surface-middleware-teardown.unit.spec.ts`).
+ */
 export class SurfaceMiddlewareExtension extends LifeCycleWatcher {
   static override key: string = 'surfaceMiddleware';
 
+  private _release = () => {};
+
   override mounted(): void {
-    const builders = Array.from(
-      this.std.provider.getAll(SurfaceMiddlewareBuilderIdentifier).values()
+    const middlewares = Array.from(
+      this.std.provider.getAll(SurfaceMiddlewareBuilderIdentifier).values(),
+      builder => builder.middleware
     );
 
-    const dispose = onSurfaceAdded(this.std.store, surface => {
+    let restore = () => {};
+    const stop = onSurfaceAdded(this.std.store, surface => {
       if (surface) {
-        surface.applyMiddlewares(builders.map(builder => builder.middleware));
-        queueMicrotask(() => dispose());
+        restore = surface.applyMiddlewares(middlewares);
+        queueMicrotask(() => stop());
       }
     });
+    // A store with no surface yet keeps the effect waiting until unmount.
+    this._release = () => {
+      stop();
+      restore();
+    };
+  }
+
+  override unmounted(): void {
+    this._release();
+    this._release = () => {};
   }
 }

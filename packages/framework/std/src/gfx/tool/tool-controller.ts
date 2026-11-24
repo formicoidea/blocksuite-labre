@@ -178,6 +178,17 @@ export class ToolController extends GfxExtension {
   });
 
   /**
+   * Whether the pointer is over the editor, whatever the tool: set by a move
+   * over it, cleared when it leaves it (a `pointerout` whose next target is
+   * outside the host), `false` until the first move. `lastMouseViewPos$`
+   * keeps the last position after the pointer left, and its initial value is
+   * the corner; a tool overlay drawn where the pointer is reads this to know
+   * whether there is a pointer to stand under (the Shape tool's ghost, ADR
+   * 0054, amendment of 2026-11-22).
+   */
+  readonly pointerOnHost$ = new Signal<boolean>(false);
+
+  /**
    * The last mouse position in model coordinates space.
    */
   readonly lastMousePos$ = computed(() => {
@@ -522,8 +533,21 @@ export class ToolController extends GfxExtension {
           x: evt.x,
           y: evt.y,
         };
+        this.pointerOnHost$.value = true;
 
         invokeToolHandler('pointerMove', evt);
+      })
+    );
+
+    // `pointerout` bubbles from every child the pointer leaves: only a next
+    // target outside the host is the pointer leaving the editor.
+    this._disposableGroup.add(
+      this.std.event.add('pointerOut', ctx => {
+        const next = ctx.get('pointerState').raw.relatedTarget;
+        const host = this.std.host;
+        if (!(next instanceof Node && host.contains(next))) {
+          this.pointerOnHost$.value = false;
+        }
       })
     );
 

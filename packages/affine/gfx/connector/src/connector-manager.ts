@@ -1720,7 +1720,13 @@ export class ConnectorPathGenerator extends PathGenerator {
     } else if (mode === ConnectorMode.Curve) {
       return this._generateCurveConnectorPath(connector);
     }
-    throw new Error('unknown connector mode');
+    // A mode this client does not know: absent (a connector written outside
+    // the editor) or a newer client's (the enum is append-only). Thrown, it
+    // stopped every connector of the surface from being routed again. Every
+    // other reader (the renderer, the bound in `updatePath`, the handles) draws
+    // anything but Curve as a polyline, so the straight path is the one they
+    // agree with. Nothing is written (ADR 0056).
+    return this._generateStraightConnectorPath(connector);
   }
 
   private _generateCurveConnectorPath(

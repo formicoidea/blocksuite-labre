@@ -19,7 +19,9 @@
  *   re-pointing the asked view (`reconnectDatabaseView`);
  * - the entries without the stable test ids a host's end-to-end suite
  *   selects them by (`database-creation-new-source`,
- *   `database-creation-link-existing-entry`).
+ *   `database-creation-link-existing-entry`);
+ * - a linked existing source connected before the host's `placeView`
+ *   answers, or a source the host just created asked about (issue #701).
  */
 import { DatabaseCreationMenuIdentifier } from '@labre/affine-database-block';
 import {
@@ -262,5 +264,63 @@ describe('the creation menu registration', () => {
       DatabaseCreationMenuIdentifier,
       expect.any(Function)
     );
+  });
+});
+
+describe("the host's placeView", () => {
+  async function pickPlanSource(
+    placeView: DataSourcePickerService['placeView']
+  ) {
+    await open({
+      list: () => signal([PLAN]),
+      createDatabase: vi.fn(async () => PEOPLE),
+      placeView,
+    });
+    linkEntry()!.click();
+    await frame();
+    [
+      ...byTestId(
+        'database-creation-link-existing'
+      )!.querySelectorAll<HTMLElement>('affine-menu-sub-menu'),
+    ]
+      .find(item => item.textContent?.includes('Plan'))!
+      .click();
+    await frame();
+    byTestId('data-source-picker-source-s-2')!.click();
+  }
+
+  test('an existing source is connected only once the host places it', async () => {
+    const placeView = vi.fn();
+    await pickPlanSource(placeView);
+    expect(placeView).toHaveBeenCalledOnce();
+    const request = placeView.mock.calls[0]![0];
+    expect(request).toMatchObject({
+      gesture: 'connect',
+      databaseId: 'db-plan',
+      sourceId: 's-2',
+      blockId: BLOCK.id,
+    });
+    expect(request.viewId).toBeUndefined();
+    expect(connect).not.toHaveBeenCalled();
+
+    expect(request.place()).toBe(true);
+    expect(connect).toHaveBeenCalledOnce();
+  });
+
+  test('a host that never places connects nothing', async () => {
+    await pickPlanSource(vi.fn());
+    expect(connect).not.toHaveBeenCalled();
+  });
+
+  test('a source the host creates for the gesture is not asked about', async () => {
+    const placeView = vi.fn();
+    await open({
+      list: () => signal([]),
+      createDatabase: vi.fn(async () => PEOPLE),
+      placeView,
+    });
+    byTestId('database-creation-new-source')!.click();
+    await vi.waitFor(() => expect(connect).toHaveBeenCalledOnce());
+    expect(placeView).not.toHaveBeenCalled();
   });
 });
