@@ -176,6 +176,11 @@ const RAW_KEYDOWN_LISTENERS: readonly {
     why: "the read-only viewer's own named keys; no letter",
   },
   {
+    file: 'packages/affine/blocks/attachment/src/attachment-block.ts',
+    letters: [],
+    why: "the read-only Download button keeps its own keys from the editor's handlers (ADR 0058); it acts on no letter, and a read-only document arms no prefix",
+  },
+  {
     file: 'packages/affine/blocks/attachment/src/components/rename-model.ts',
     letters: [],
     why: 'a shared component on its own element (input, menu, picker); no bare letter',
