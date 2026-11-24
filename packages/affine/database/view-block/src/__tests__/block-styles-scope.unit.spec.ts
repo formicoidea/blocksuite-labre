@@ -33,4 +33,17 @@ describe('the data-view block sheet', () => {
     expect(own.length).toBeGreaterThan(0);
     for (const rule of own) expect(rule).not.toMatch(/background/);
   });
+
+  // The placeholder of a stored block (#745) is light DOM too: its classes
+  // are reached only under the block's tag, never page-wide.
+  test('scopes the placeholder under its tag', () => {
+    const css = cssOf(DataViewBlockComponent.styles);
+    const placeholderRules = css
+      .split('}')
+      .filter(rule => rule.includes('.data-view-block-unavailable'));
+    expect(placeholderRules.length).toBeGreaterThan(0);
+    placeholderRules.forEach(rule =>
+      expect(rule.trim().startsWith('affine-data-view ')).toBe(true)
+    );
+  });
 });

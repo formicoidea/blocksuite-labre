@@ -30,9 +30,10 @@ export type BlockQueryDataSourceConfig = {
 // ponytail: never ported to the signal-based engine (upstream carries the same
 // FIXME): `viewManager`, `rows$`, `properties$`, `viewDataList$` and the other
 // abstract members of `DataSourceBase` are missing, so `DataViewRootUILogic`
-// throws on the block's first render and a stored `affine:data-view` does not
-// mount. Upgrade: port it the way `DatabaseBlockDataSource` is written, or
-// draw a placeholder for the block; a product owner decision (ADR 0035).
+// cannot run on it. The block therefore draws a placeholder and never builds
+// this source on render (#745, ADR 0035 amendment of 2026-11-24); only the
+// block's public `dataSource` getter still does. Upgrade: port it the way
+// `DatabaseBlockDataSource` is written, which needs an ADR first.
 // @ts-expect-error FIXME: ts error
 export class BlockQueryDataSource extends DataSourceBase {
   private readonly columnMetaMap = new Map<
