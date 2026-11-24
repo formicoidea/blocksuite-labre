@@ -381,6 +381,7 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
     string,
     {
       mount: () => void;
+      silence: () => void;
       unmount: () => void;
       model: GfxPrimitiveElementModel;
     }
@@ -713,8 +714,18 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
       this.elementDamaged.next({ id, type, reason: 'missing-xywh' });
     }
 
-    const unmount = () => {
+    // Called as the element leaves `_elementModels`: `getElementById` is
+    // `null` for it from then on, so it must not emit any more, although its
+    // teardown and its `elementRemoved` wait until the transaction's additions
+    // are announced.
+    // A group read in that window recomputes its bound and emitted an update
+    // no subscriber could resolve (#681, ADR 0053 amendment of 2026-11-24).
+    const silence = () => {
       mounted = false;
+    };
+
+    const unmount = () => {
+      silence();
       elementModel.onDestroyed();
     };
 
@@ -737,6 +748,7 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
     return {
       model: elementModel,
       mount,
+      silence,
       unmount,
     };
   }
@@ -980,9 +992,11 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
         // A skipped element has no model, yet its damage leaves with it.
         this._damagedElements.delete(id);
         if (!this._elementModels.has(id)) return;
-        const { model, unmount } = this._elementModels.get(id)!;
+        const { model, silence, unmount } = this._elementModels.get(id)!;
         removeFromType(model.type, model);
         this._elementModels.delete(id);
+        // Silent as it leaves, torn down and announced in `announceRemoved`.
+        silence();
         into.push({ model, unmount });
       };
       const announceRemoved = ({
