@@ -121,6 +121,18 @@ KaTeX 0.18 prefixes its internal classes (`base` became `katex-base`,
 markup the library emits mis-renders every formula. Resolve `katex` to 0.18
 or later on your side.
 
+`micromark-extension-math` (markdown math parsing, pulled in by `remark-math`)
+still asks for `katex ^0.16.0`, so your install also gets a nested 0.16 copy,
+flagged by a security advisory fixed in 0.18.2 (GHSA-238p-pmpm-9mq7). The
+library never calls that copy: it uses only the package's syntax extension,
+not its `renderToString` HTML path, which the package index imports all the
+same. The library's own lockfile overrides it; add the same override in your
+package manager so the 0.16 copy disappears:
+
+- pnpm: `"pnpm": { "overrides": { "micromark-extension-math>katex": "^0.18.10" } }`
+- Yarn: `"resolutions": { "micromark-extension-math/katex": "^0.18.10" }`
+- npm: `"overrides": { "micromark-extension-math": { "katex": "^0.18.10" } }`
+
 The library ships vanilla-extract `.css.ts` files. Your bundler needs the
 plugin; see [06-build-tooling.md](06-build-tooling.md).
 
