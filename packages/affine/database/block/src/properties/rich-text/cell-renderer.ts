@@ -108,6 +108,9 @@ export class RichTextCell extends BaseCellRenderer<Text, string> {
   }
 
   private readonly _handleKeyDown = (event: KeyboardEvent) => {
+    // As the title cell's (`title/text.ts`): a key typed on a control of the
+    // view while a caret lingers here is not the cell's.
+    if (!this.contains(event.target as Node)) return;
     if (event.key !== 'Escape') {
       if (event.key === 'Tab') {
         event.preventDefault();

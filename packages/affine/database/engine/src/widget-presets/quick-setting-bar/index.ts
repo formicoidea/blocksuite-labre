@@ -11,6 +11,7 @@ import {
 } from './context.js';
 import { renderFilterBar } from './filter/index.js';
 import { renderSortBar } from './sort/index.js';
+import { focusAsBeforeOnPress, keepKeysInBar } from '../tools/keyboard.js';
 
 export const widgetQuickSettingBar = defineUniComponent(
   (props: DataViewWidgetProps) => {
@@ -32,8 +33,12 @@ export const widgetQuickSettingBar = defineUniComponent(
     if (!barList.length) {
       return html``;
     }
+    // Its chips are in the tab order (#678's follow-up): the bar takes the
+    // keys of its own model, and only in keyboard mode (`keyboard.ts`).
     return html` <div
       style="display: flex;margin-top: 8px;align-items: center;width: 100%;gap:8px"
+      @keydown="${keepKeysInBar}"
+      @pointerdown="${focusAsBeforeOnPress}"
     >
       ${barList.map((bar, index) => {
         return html`

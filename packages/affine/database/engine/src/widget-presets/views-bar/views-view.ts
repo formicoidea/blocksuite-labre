@@ -29,6 +29,7 @@ import { css, html, nothing } from 'lit';
 import { property } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 
+import type { DataViewRootUI } from '../../core/data-view.js';
 import { modeShownAsFallback } from '../../core/view-manager/single-view.js';
 import {
   canAddView,
@@ -36,6 +37,13 @@ import {
 } from '../../core/view-manager/add-view.js';
 import { duplicateAsShownPreset } from '../../core/view-manager/view-creation.js';
 import { WidgetBase } from '../../core/widget/widget-base.js';
+import {
+  activateOnEnterOrSpace,
+  focusAsBeforeOnPress,
+  keepKeysInBar,
+  keyboardOpener,
+  popupTargetReturningFocus,
+} from '../tools/keyboard.js';
 import {
   VIEW_DUPLICATE_AS_TABLE,
   VIEW_SHOWN_AS_TABLE,
@@ -46,6 +54,21 @@ import {
   VIEWS_BAR_MOVE_RIGHT,
   VIEWS_BAR_VIEW_NAME,
 } from '../../translations.js';
+
+/**
+ * A view picked from the keyboard: the focus stays on its tab, or goes to
+ * the one drawn in its place when the view drawn next redraws the bar, never
+ * to the body (WCAG 2.4.3).
+ */
+async function focusTabOnceDrawn(root: DataViewRootUI, id: string) {
+  try {
+    await root.restoreFocus(
+      `[data-testid="database-view-tab"][data-view-id="${CSS.escape(id)}"]`
+    );
+  } catch (error) {
+    console.error(error);
+  }
+}
 
 /** A finger-sized tab, "N more" and "+" on a phone (ADR 0035 §1, B5, B11). */
 export const VIEWS_BAR_TOUCH_TARGET = 44;
@@ -63,6 +86,16 @@ export const VIEWS_BAR_TOUCH_TARGET = 44;
  *   creatable presets otherwise. Readonly, or with creation switched off for
  *   the source (`ViewCreationOffKey`, ADR 0035 §5), there is no "+".
  * - On a phone the tabs, "N more" and "+" are 44px tall, nothing else changes.
+ * - The keyboard reaches them as it reaches the view toolbar beside it
+ *   (#678, `../tools/keyboard.ts`): each drawn tab, "N more" and "+" is a
+ *   named `role="button"` in the tab order, in visual order, activated by
+ *   Enter and Space and ringed under `:focus-visible`; the current view's tab
+ *   says so (`aria-current`) and, writable, that it opens a menu. A tab the
+ *   width hides is out of the tab order and of the accessibility tree
+ *   (`visibility: hidden`), reached through "N more". Not a `tablist`: "N
+ *   more" and "+" share the row's container (`component-overflow`), which a
+ *   tablist may not own, and a tab here is a button that also opens a menu.
+ *   The bar takes the keys of its own model, and only in keyboard mode.
  *
  * Stays in core: a core-only host must reach every stored view (ADR 0035 §1).
  */
@@ -108,8 +141,20 @@ export class DataViewHeaderViews extends WidgetBase {
       gap: 4px;
       flex-shrink: 0;
     }
+    /* A tab the width hides stays in the DOM to be measured (opacity 0):
+       hidden from Tab and from the accessibility tree too. */
+    data-view-header-views .component-overflow-item.hidden {
+      visibility: hidden;
+    }
     data-view-header-views::-webkit-scrollbar-thumb {
       width: 1px;
+    }
+
+    /* The view toolbar's keyboard ring (#678), inside the box: the tab's
+       item clips what overflows it. */
+    data-view-header-views [role='button']:focus-visible {
+      outline: 2px solid var(--affine-primary-color);
+      outline-offset: -2px;
     }
 
     .database-view-button {
@@ -176,7 +221,11 @@ export class DataViewHeaderViews extends WidgetBase {
    * empty state of a database with no view.
    */
   _addViewMenu = (event: MouseEvent) => {
-    popAddViewMenu(popupTargetFromElement(event.currentTarget as HTMLElement), {
+    const target = popupTargetReturningFocus(
+      event.currentTarget as HTMLElement,
+      keyboardOpener(event)
+    );
+    popAddViewMenu(target, {
       std: this.std,
       dataSource: this.dataSource,
       eventTrace: this.dataViewLogic.root.config.eventTrace,
@@ -186,7 +235,10 @@ export class DataViewHeaderViews extends WidgetBase {
 
   _showMore = (event: MouseEvent, hidden: readonly string[]) => {
     popFilterableSimpleMenu(
-      popupTargetFromElement(event.currentTarget as HTMLElement),
+      popupTargetReturningFocus(
+        event.currentTarget as HTMLElement,
+        keyboardOpener(event)
+      ),
       [
         menu.group({
           items: hidden.flatMap(id => {
@@ -344,7 +396,12 @@ export class DataViewHeaderViews extends WidgetBase {
             class="database-view-button dv-hover"
             data-overflow-more
             data-testid="database-views-more"
+            role="button"
+            tabindex="0"
+            aria-haspopup="menu"
+            aria-expanded="false"
             @click="${(event: MouseEvent) => this._showMore(event, hidden)}"
+            @keydown="${activateOnEnterOrSpace}"
           >
             ${this.moreLabel(hidden.length)}
           </div>`
@@ -355,9 +412,13 @@ export class DataViewHeaderViews extends WidgetBase {
             class="database-view-button dv-icon-16 dv-hover"
             data-testid="database-add-view-button"
             role="button"
+            tabindex="0"
+            aria-haspopup="menu"
+            aria-expanded="false"
             aria-label="${addLabel}"
             title="${addLabel}"
             @click="${this._addViewMenu}"
+            @keydown="${activateOnEnterOrSpace}"
           >
             ${PlusIcon()}
           </div>`}
@@ -374,11 +435,14 @@ export class DataViewHeaderViews extends WidgetBase {
   renderViews = () => {
     const views = this.viewManager.views$.value;
     return views.map(id => () => {
+      const selected = this.viewManager.currentViewId$.value === id;
       const classList = classMap({
         'database-view-button': true,
         'dv-hover': true,
-        selected: this.viewManager.currentViewId$.value === id,
+        selected,
       });
+      // The current tab's click opens its menu, a writable view's only.
+      const opensMenu = selected && !this.readonly;
       const view = this.viewManager.viewDataGet(id);
       const shownAs =
         view && modeShownAsFallback(this.dataSource, view.mode)
@@ -389,8 +453,14 @@ export class DataViewHeaderViews extends WidgetBase {
           class="${classList}"
           data-testid="database-view-tab"
           data-view-id="${id}"
+          role="button"
+          tabindex="0"
+          aria-current="${selected ? 'true' : nothing}"
+          aria-haspopup="${opensMenu ? 'menu' : nothing}"
+          aria-expanded="${opensMenu ? 'false' : nothing}"
           title="${shownAs ?? nothing}"
           @click="${(event: MouseEvent) => this.clickView(event, id)}"
+          @keydown="${activateOnEnterOrSpace}"
         >
           <uni-lit class="icon" .uni="${this.getRenderer(id)?.icon}"></uni-lit>
           <div class="name">${view?.name}</div>
@@ -413,13 +483,18 @@ export class DataViewHeaderViews extends WidgetBase {
   }
 
   private clickView(event: MouseEvent, id: string) {
+    const opener = keyboardOpener(event);
     if (this.viewManager.currentViewId$.value !== id) {
+      // Found while the tab is in it: the view drawn next may redraw the
+      // bar, and the focused tab then leaves with the old view.
+      const root = this.closest('affine-data-view-renderer');
       this.viewManager.setCurrentView(id);
       this.onChangeView?.(id);
+      if (opener && root) void focusTabOnceDrawn(root, id);
       return;
     }
     this.openViewOption(
-      popupTargetFromElement(event.currentTarget as HTMLElement),
+      popupTargetReturningFocus(event.currentTarget as HTMLElement, opener),
       id
     );
   }
@@ -434,6 +509,8 @@ export class DataViewHeaderViews extends WidgetBase {
     const current = this.viewManager.currentViewId$.value;
     return html`
       <component-overflow
+        @keydown="${keepKeysInBar}"
+        @pointerdown="${focusAsBeforeOnPress}"
         .renderItem="${this.renderViews()}"
         .renderMore="${this.renderMore}"
         .pinned="${current ? views.indexOf(current) : -1}"
