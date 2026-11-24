@@ -58,6 +58,15 @@ export interface TitleBandProperty {
    * `tags`) never does.
    */
   dataWritable?: boolean;
+  /**
+   * Which option edits the chip offers when `dataWritable` is `true`
+   * (issue #710): `'create-rename'` (absent, as before 4.2) creates and
+   * renames; `'create'` creates only, with no option menu, for options
+   * whose id is their label (the Labre app's `tags`). Ignored otherwise.
+   * A created option still arrives with a generated id (`setData`, then the
+   * `set` that selects it): a host keyed by label maps it on its side.
+   */
+  optionEdits?: 'create' | 'create-rename';
 }
 
 /**

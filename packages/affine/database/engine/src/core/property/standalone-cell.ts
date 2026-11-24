@@ -65,7 +65,7 @@ export interface StandaloneCellSource<
   /**
    * Which option edits `dataSet` stands for; absent, all. `'create-rename'`:
    * a select creates and renames options and deletes, recolours and
-   * reorders none (`TagOptionEdits`).
+   * reorders none; `'create'`: it creates them only (`TagOptionEdits`).
    */
   readonly optionEdits?: TagOptionEdits;
   /** The view's flags (`enable_number_formatting`); absent, all off. */
