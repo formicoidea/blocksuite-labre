@@ -193,6 +193,36 @@ opened from it and their blocks reachable until it is cleared. An editor
 removed from a workspace that stays open is not kept by it (the canvas
 surface used to keep the last editor mounted on each document).
 
+### Closing and reopening a document
+
+The STORE of a document is another matter: a workspace that stays open keeps
+one store per document opened in it, whatever you call. Until
+[ADR 0057](../adr/0057-store-release-and-eviction.md) lands (proposed), this
+is the safe use:
+
+- **Reuse the store across mounts.** `doc.getStore()` with no argument (or
+  `{ id: docId }`) returns the same store for a document every time; mount
+  each new editor on it. The undo history lives in the store, so it
+  survives the remount.
+  Do not ask for `getStore({ readonly: false })`: today it builds a new
+  store on every call.
+- **Do not dispose of a store you may reopen from the same workspace.** A
+  disposed store stays in the workspace's cache: the next `getStore()`
+  returns it, its `load()` does not reattach it to Yjs, and blocks a remote
+  peer adds afterwards never appear in it. `removeStore` after `dispose()`
+  avoids that but frees nothing: the old store's Yjs observers stay attached.
+- **Only `workspace.dispose()` frees the stores of a workspace**, once you
+  also drop your references to it (a store edited in the last 30 s is freed
+  30 s later).
+- **Never call `doc.dispose()` to close a document.** It clears the
+  document's blocks in Yjs, and the deletion syncs to every peer and to
+  storage. It is what deleting a document does.
+
+The retained cost is measured in
+`packages/integration-test/src/__tests__/edgeless/store-retention.spec.ts`:
+roughly 85 KB of JS heap per distinct document opened, part of it the
+document's own content.
+
 ## Frameworks other than Lit
 
 The container is a custom element. From React, render `<my-editor-container>`
