@@ -118,6 +118,28 @@ describe('surface middlewares follow the mounted editor', () => {
     expect(ran).toEqual([second.std]);
   });
 
+  /**
+   * Two editable scopes on one store (a host's split view): the later one
+   * leaving must hand the surface back to the earlier one, not leave it bare.
+   * Taking the middlewares out wholesale left the editor still mounted with
+   * none — no `beforeAdd`, so no index, no user layer (ADR 0031), no
+   * last-used props on what it created.
+   */
+  test('the editor still mounted gets its middlewares back when a later one leaves', async () => {
+    const { store, rootId } = createStore();
+    const surface = surfaceOf(
+      store,
+      store.addBlock('test:surface', {}, rootId)
+    );
+
+    const first = await mount(store);
+    const second = await mount(store);
+    second.remove();
+    surface.addElement({ type: 'testShape' });
+
+    expect(ran).toEqual([first.std]);
+  });
+
   test('a surface added after the editor left receives nothing from it', async () => {
     const { store, rootId } = createStore();
 
