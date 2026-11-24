@@ -420,3 +420,13 @@ button's own hotkey, untouched); among the free letters he chose `l`.
   toolbar's `m` and `s` and the raw `keydown` listeners are read off the
   sources by the chord spec rather than added to it, because the constant's own mirror test
   reads that one file.
+
+## Amendment — 2026-11-22: the second-key table is validated
+
+The product owner validated the second-key table of the Decision as written,
+command by command, and accepted the cost inherent to a prefix: for 1.2 s
+after a prefix, a tool letter places an artefact or is swallowed (`b` then `t`
+places a BPMN task instead of picking the Text tool). Nothing in the code
+changes; the "proposal the product owner validates or amends" of the Deciders
+line is now a decision. A later change to a chord is an amendment here, with
+the override and conflict consequences above.
