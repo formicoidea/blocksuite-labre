@@ -7,6 +7,7 @@ import { TableViewRowSelection } from './selection';
 
 export interface TableCell {
   rowId: string;
+  isEditing$: ReadonlySignal<boolean>;
   setTagDraft?(value: string): void;
 }
 
@@ -31,14 +32,21 @@ export interface StartEditOptions<T extends TableCell> {
     columnIndex: number
   ) => T | undefined;
   updateSelection: (sel: TableViewSelectionWithType) => void;
+  lockRows: (lock: boolean) => void;
   getColumn: ColumnAccessor<T>;
 }
 
 export function handleCharStartEdit<T extends TableCell>(
   options: StartEditOptions<T>
 ): boolean {
-  const { event, selection, getCellContainer, updateSelection, getColumn } =
-    options;
+  const {
+    event,
+    selection,
+    getCellContainer,
+    updateSelection,
+    lockRows,
+    getColumn,
+  } = options;
 
   const target = event.target as HTMLElement | null;
   if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
@@ -61,16 +69,25 @@ export function handleCharStartEdit<T extends TableCell>(
     );
     if (cell) {
       const column = getColumn(cell);
-      if (column) {
-        if (TAG_COLUMN_TYPES.has(column.type$.value) && cell.setTagDraft) {
-          // A tag cell has no free-text value to write into: hand the typed
-          // character to the cell so the tag picker opens searching for it.
-          cell.setTagDraft(event.key);
-        } else {
-          column.valueSetFromString(cell.rowId, event.key);
-        }
+      if (
+        column &&
+        TAG_COLUMN_TYPES.has(column.type$.value) &&
+        cell.setTagDraft
+      ) {
+        // A tag cell has no free-text value to write into: hand the typed
+        // character to the cell so the tag picker opens searching for it.
+        cell.setTagDraft(event.key);
+        updateSelection({ ...selection, isEditing: true });
+      } else {
+        updateSelection({ ...selection, isEditing: true });
+        // The row order must be frozen before the first write, or a sorted
+        // view moves the row away from the selection (#739, upstream
+        // toeverything/AFFiNE#15915). The cell's own lock in `render()`
+        // comes a Lit update later. Read the cell, not `true`: the virtual
+        // table may refuse the edit mode.
+        lockRows(cell.isEditing$.value);
+        column?.valueSetFromString(cell.rowId, event.key);
       }
-      updateSelection({ ...selection, isEditing: true });
       event.preventDefault();
       return true;
     }
