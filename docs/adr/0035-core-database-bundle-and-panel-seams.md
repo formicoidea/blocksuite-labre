@@ -1850,3 +1850,21 @@ provider; an inline one lives in a page editor that needs it.
   seam, a widening of a host-implemented type. Held by
   `database/block/src/__tests__/properties-panel-scopes.unit.spec.ts` and
   `fragments/doc-title/src/__tests__/title-band.unit.spec.ts`.
+
+### 2026-11-24: in a text field of a bar, every key but Escape is the field's
+
+Issue #730. The amendment of 2026-11-22 above says `keepKeysInBar` lets « shortcuts
+with a modifier always through ». That let Ctrl/Cmd+A typed in the view search reach
+the table's `Mod-a` (every row selected, the field's own select-all lost) and
+Ctrl/Cmd+Z reach the editor's undo.
+
+- **Rule.** When the key's target is a text field of the bar (an `<input>`, a
+  `<textarea>`, a contenteditable: the search, a rename), every key except Escape
+  stops at the bar, shortcuts with a modifier included. Escape keeps the rule of
+  2026-11-22. On a control that is not a text field, a shortcut with a modifier
+  still goes through.
+- **Host-visible.** A host's own document-level shortcut (Ctrl/Cmd+K, Ctrl+S) does
+  not fire while the caret is in one of these fields; a host that needs it there
+  listens in the capture phase.
+- Held by `database/engine/src/__tests__/search-field-keys.unit.spec.ts` and
+  `toolbar-keyboard.unit.spec.ts`.
