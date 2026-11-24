@@ -1768,6 +1768,65 @@ stored changes, no flag; one optional member on an existing seam.
   entry's wiring has no spec of its own (its block insertion is covered by
   the integration suite, the seam by the helper's spec).
 
+### 2026-11-22: the views bar and the quick-setting bar from the keyboard
+
+The follow-ups the 2026-11-20 amendment and #678 left: the views bar's tabs
+and "+" stayed out of the tab order, and so did the quick-setting bar's
+chips, so a filter or a sort created from the keyboard could be neither
+edited nor removed from it. No stored field, schema or default changed.
+
+- **One model, the toolbar's.** No new keyboard model: every tab, "N more",
+  "+", the sort chip, each filter or group chip and "Add filter" is a named
+  `role="button"` in the tab order (native Tab, visual order), activated by
+  Enter and Space, ringed under `:focus-visible`, as the view toolbar's
+  controls (`widget-presets/tools/keyboard.ts`). Its two bar-level handlers
+  moved there from the toolbar so the three bars share them
+  (`keepKeysInBar`: the bar takes the keys of its own model, only in
+  keyboard mode, shortcuts with a modifier always through;
+  `focusAsBeforeOnPress`: a pressed control has no `tabindex`, so a mouse
+  gesture focuses what 4.0.0 focused).
+- **Buttons, not a `tablist`.** "N more" and "+" share the row's container
+  (`component-overflow`), which a tablist may not own, and a tab here is a
+  button that either picks its view or, current, opens its menu. The
+  current tab says so with `aria-current="true"` and, writable, with
+  `aria-haspopup="menu"`. A roving tabindex with the arrows was not taken:
+  the toolbar beside it walks with Tab, and the bar holds only the tabs its
+  width draws (a hidden tab is `visibility: hidden`, out of the tab order
+  and the accessibility tree, reached through "N more").
+- **The focus.** A menu opened from the keyboard gives the focus back to its
+  control (`popupTargetReturningFocus`); a control that left with what its
+  menu did (the last filter or sort removed, the view deleted from its tab)
+  hands it to `restoreFocus`, which lands on "⋯". A view picked from the
+  keyboard keeps the focus on its tab: `DataViewRootUI.restoreFocus` takes
+  an optional selector (a widening), and the bar passes the picked tab's,
+  since the view drawn next may draw the bar again.
+- **The redo on "⋯".** The consequences of the 2026-11-20 amendment noted
+  that a redo typed on the view toolbar's "⋯" (Ctrl+Shift+Z, Ctrl+Y) did
+  not reach the editor's shortcuts. The toolbar was not the cause: it lets
+  every key with Ctrl, Meta or Alt through. The undo that brings a view
+  back leaves a caret in its first row's title while the focus goes to
+  "⋯", and the inline editor of a title or text cell hears every key of
+  the page root while it holds a range (`InlineEventService` listens on its
+  event source, the page root); the cell's handler stopped every key but
+  Escape there, so the redo never reached the dispatcher. On a database
+  with no row, or no caret left behind, it did reach (measured inline and
+  on a base's full page). The title cell and the rich-text cell now ignore
+  a key whose target is outside them (`properties/title/text.ts`,
+  `properties/rich-text/cell-renderer.ts`); typing in a cell is unchanged,
+  its key's target being the cell's own editable root.
+  `integration-test/…/page/database-no-view.spec.ts` types the redo instead
+  of calling the store. Not changed: `InlineEventService` itself, which
+  every inline editor shares (a follow-up if another consumer of
+  `slots.keydown` shows the same).
+- **Not done.** The rows of the sort panel (a rule's property, its order,
+  its ✕) live inside the menu the sort chip opens, whose keyboard is the
+  menu's (arrows over its entries); its "Add sort" and "Delete" are reached,
+  a rule's own controls are not. A follow-up of the shared menu.
+- Held by `database/block/src/__tests__/views-bar-keyboard.unit.spec.ts`,
+  `engine/src/__tests__/toolbar-keyboard.unit.spec.ts`,
+  `integration-test/…/page/database-bars-keyboard.spec.ts` and
+  `integration-test/…/page/database-no-view.spec.ts` (the redo).
+
 ### 2026-11-22: a host panel answers the scopes it lists (`scopes`)
 
 Issue #708. One `PropertiesPanelProvider` decided for the title band

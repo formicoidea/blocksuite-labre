@@ -31,8 +31,8 @@ import { setupEditor } from '../utils/setup.js';
  * - the default title losing its 0.48 behaviour: Enter adds a first
  *   paragraph, ArrowDown creates one when the note has no text block;
  * - Tab kept in the title of a base's full page, so the keyboard never
- *   reached the database's view toolbar (#678), or Shift+Tab from that
- *   toolbar not coming back to the title;
+ *   reached the database's views bar and view toolbar (#678), or Shift+Tab
+ *   from there not coming back to the title;
  * - Tab leaving the title of an ordinary document (the title keeps it, as
  *   upstream does and as its paragraphs keep it to indent).
  */
@@ -145,13 +145,15 @@ describe('<doc-title> on a database full page (bodyBlockId)', () => {
     expect(writes, 'nothing written').toBe(0);
   });
 
-  test('Tab leaves the title for the view toolbar, Shift+Tab comes back', async () => {
+  test('Tab leaves the title for the views bar, Shift+Tab comes back', async () => {
     await mount();
     await press(title, '{Tab}');
-    const filter = page.querySelector<HTMLElement>(
-      '[data-testid="dv-tools-filter"]'
+    // The database's first stop: the current view's tab, then "+" and the
+    // view toolbar (`database-bars-keyboard.spec.ts`).
+    const tab = page.querySelector<HTMLElement>(
+      '[data-testid="database-view-tab"]'
     );
-    await vi.waitFor(() => expect(document.activeElement).toBe(filter));
+    await vi.waitFor(() => expect(document.activeElement).toBe(tab));
 
     await userEvent.keyboard('{Shift>}{Tab}{/Shift}');
     await vi.waitFor(() =>

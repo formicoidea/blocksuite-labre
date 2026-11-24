@@ -40,5 +40,6 @@
     ".github/**",
     "LICENSE"
   ],
-  "checksGitHub": ["Build & Test"]
+  "checksGitHub": ["Build & Test"],
+  "checksLegers": ["Lint", "Typecheck & Build"]
 }

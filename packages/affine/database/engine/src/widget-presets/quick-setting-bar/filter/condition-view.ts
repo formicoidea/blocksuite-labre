@@ -35,6 +35,11 @@ import {
   wordingFrom,
 } from '../../../core/utils/wording.js';
 import { DATA_VIEW_FILTER_INVALID } from '../../../translations.js';
+import {
+  activateOnEnterOrSpace,
+  keyboardOpener,
+  popupTargetReturningFocus,
+} from '../../tools/keyboard.js';
 
 export class FilterConditionView extends SignalWatcher(ShadowlessElement) {
   /** The words of the editor this condition is drawn in; English outside. */
@@ -94,9 +99,12 @@ export class FilterConditionView extends SignalWatcher(ShadowlessElement) {
     }
   `;
 
-  private readonly onClickButton = (evt: Event) => {
+  private readonly onClickButton = (evt: MouseEvent) => {
     this.popConditionEdit(
-      popupTargetFromElement(evt.currentTarget as HTMLElement)
+      popupTargetReturningFocus(
+        evt.currentTarget as HTMLElement,
+        keyboardOpener(evt)
+      )
     );
   };
 
@@ -299,8 +307,14 @@ export class FilterConditionView extends SignalWatcher(ShadowlessElement) {
     return html`
       <data-view-component-button
         hoverType="border"
+        data-testid="dv-filter-condition"
+        role="button"
+        tabindex="0"
+        aria-haspopup="menu"
+        aria-expanded="false"
         .icon="${renderUniLit(leftVar.icon)}"
         @click="${this.onClickButton}"
+        @keydown="${activateOnEnterOrSpace}"
         .text="${html`<span
           style="overflow: hidden;max-width: 230px;text-overflow: ellipsis"
           >${this.text$.value}</span

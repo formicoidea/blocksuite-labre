@@ -406,6 +406,31 @@ const RAW_KEYDOWN_LISTENERS: readonly {
     why: 'Enter / Space on its own "+" button, which has the focus (activateOnEnterOrSpace)',
   },
   {
+    file: 'packages/affine/database/engine/src/widget-presets/quick-setting-bar/filter/condition-view.ts',
+    letters: [],
+    why: 'Enter / Space on its own chip or tab, which has the focus (activateOnEnterOrSpace); no bare letter',
+  },
+  {
+    file: 'packages/affine/database/engine/src/widget-presets/quick-setting-bar/filter/list-view.ts',
+    letters: [],
+    why: 'Enter / Space on its own chip or tab, which has the focus (activateOnEnterOrSpace); no bare letter',
+  },
+  {
+    file: 'packages/affine/database/engine/src/widget-presets/quick-setting-bar/index.ts',
+    letters: [],
+    why: 'keeps the keys of a control that has the keyboard focus inside the database bar (keepKeysInBar); no bare letter reaches the canvas',
+  },
+  {
+    file: 'packages/affine/database/engine/src/widget-presets/quick-setting-bar/sort/index.ts',
+    letters: [],
+    why: 'Enter / Space on its own chip or tab, which has the focus (activateOnEnterOrSpace); no bare letter',
+  },
+  {
+    file: 'packages/affine/database/engine/src/widget-presets/views-bar/views-view.ts',
+    letters: [],
+    why: 'Enter / Space on its own chip or tab, which has the focus (activateOnEnterOrSpace); no bare letter; the bar itself keepKeysInBar',
+  },
+  {
     file: 'packages/affine/database/engine/src/widget-presets/tools/tools-view.ts',
     letters: [],
     why: 'inside a database view, cell or menu that has the focus; no bare letter',

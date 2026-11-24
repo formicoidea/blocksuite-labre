@@ -1,7 +1,4 @@
-import {
-  type PopupTarget,
-  popupTargetFromElement,
-} from '@labre/affine-components/context-menu';
+import type { PopupTarget } from '@labre/affine-components/context-menu';
 import { SignalWatcher } from '@labre/global/lit';
 import {
   ArrowDownSmallIcon,
@@ -21,6 +18,11 @@ import { wordingOf } from '../../../core/utils/wording.js';
 import type { DataViewUILogicBase } from '../../../core/view/data-view-base.js';
 import { DATA_VIEW_ADD_FILTER } from '../../../translations.js';
 import { popFilterGroup } from './group-panel-view.js';
+import {
+  activateOnEnterOrSpace,
+  keyboardOpener,
+  popupTargetReturningFocus,
+} from '../../tools/keyboard.js';
 
 export class FilterBar extends SignalWatcher(ShadowlessElement) {
   static override styles = css`
@@ -55,6 +57,13 @@ export class FilterBar extends SignalWatcher(ShadowlessElement) {
       font-style: normal;
       font-weight: 400;
       line-height: 22px;
+    }
+
+    /* The view toolbar's keyboard ring (#678), inside the box: the bar
+       scrolls sideways and clips what overflows it. */
+    .filter-bar-add-filter:focus-visible {
+      outline: 2px solid var(--affine-primary-color);
+      outline-offset: -2px;
     }
 
     /* A finger needs 44px: the host's touch-target floor (P7). */
@@ -98,7 +107,12 @@ export class FilterBar extends SignalWatcher(ShadowlessElement) {
   };
 
   private readonly addFilter = (e: MouseEvent) => {
-    const element = popupTargetFromElement(e.target as HTMLElement);
+    // Anchored where 4.1.0 anchored a click (the icon or the words); from
+    // the keyboard, the target is the control itself.
+    const element = popupTargetReturningFocus(
+      e.target as HTMLElement,
+      keyboardOpener(e)
+    );
     popCreateFilter(element, {
       vars: this.vars,
       onSelect: filter => {
@@ -145,7 +159,13 @@ export class FilterBar extends SignalWatcher(ShadowlessElement) {
     return html` <div
       style="height: 100%;"
       class="filter-bar-add-filter dv-icon-16 dv-round-4 dv-hover"
+      data-testid="dv-filter-bar-add"
+      role="button"
+      tabindex="0"
+      aria-haspopup="menu"
+      aria-expanded="false"
       @click="${this.addFilter}"
+      @keydown="${activateOnEnterOrSpace}"
     >
       ${PlusIcon()} ${wordingOf(this.std)(DATA_VIEW_ADD_FILTER)}
     </div>`;
@@ -188,7 +208,10 @@ export class FilterBar extends SignalWatcher(ShadowlessElement) {
     }
     const expandGroup = (e: MouseEvent) => {
       this.expandGroup(
-        popupTargetFromElement(e.currentTarget as HTMLElement),
+        popupTargetReturningFocus(
+          e.currentTarget as HTMLElement,
+          keyboardOpener(e)
+        ),
         i
       );
     };
@@ -196,8 +219,13 @@ export class FilterBar extends SignalWatcher(ShadowlessElement) {
     const text = length > 1 ? `${length} rules` : `${length} rule`;
     return html` <data-view-component-button
       hoverType="border"
+      role="button"
+      tabindex="0"
+      aria-haspopup="menu"
+      aria-expanded="false"
       .icon="${FilterIcon()}"
       @click="${expandGroup}"
+      @keydown="${activateOnEnterOrSpace}"
       .text="${html`${text}`}"
       .postfix="${ArrowDownSmallIcon()}"
     ></data-view-component-button>`;

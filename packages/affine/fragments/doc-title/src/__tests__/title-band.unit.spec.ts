@@ -60,7 +60,8 @@ import { LABRE_TITLE_BAND, TitleBand } from '../title-band/title-band';
  * - the tag menu offers the host's options and creates none, unless the host
  *   takes a definition write (`setData`) for that property (`dataWritable`):
  *   then it creates and renames options through `setData`, never deletes,
- *   recolours or reorders one (product owner, 2026-10-14);
+ *   recolours or reorders one (product owner, 2026-10-14), and only creates
+ *   when the host says `optionEdits: 'create'` (#710);
  * - a write goes to `set` and the chip shows pending until it settles; the
  *   band never applies the value itself, the host's `sheetimport {
   EdgelessCRUDIdentifier,
@@ -644,11 +645,51 @@ describe('the title band', () => {
     expect(service.set).not.toHaveBeenCalled();
   });
 
+  // Issue #710: options whose id is their label (the Labre app's tags) are
+  // created from the chip but never renamed there.
+  it("with optionEdits 'create', creates an option and offers no option menu", async () => {
+    const setData = vi.fn(async () => {});
+    const { service } = bandService(
+      {
+        status: 'ready',
+        properties: [{ ...STATUS, dataWritable: true, optionEdits: 'create' }],
+      },
+      { setData }
+    );
+    const band = await mount(
+      fakeStd(new Map([[TitleBandProvider, service]])).std
+    );
+    cellOf(chipOf(band, 'status')).click();
+    await frame();
+    const menu = document.querySelector('affine-multi-tag-select')!;
+    expect(menu.optionEdits).toBe('create');
+    expect(menu.querySelector('[data-testid="option-more"]')).toBeNull();
+
+    const input = menu.querySelector('input')!;
+    input.value = 'Blocked';
+    input.dispatchEvent(new InputEvent('input', { bubbles: true }));
+    await menu.updateComplete;
+    input.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })
+    );
+    expect(setData).toHaveBeenCalledTimes(1);
+    const [, , data] = setData.mock.calls[0] as unknown as [
+      string,
+      string,
+      { options: { id: string; value: string }[] },
+    ];
+    const created = data.options[0]!;
+    expect(created.value).toBe('Blocked');
+    expect(service.set).toHaveBeenCalledWith(DOC, 'status', created.id);
+  });
+
   it('keeps the options fixed without setData, dataWritable or a writable chip', async () => {
     const setData = vi.fn(async () => {});
     const cases: [Partial<TitleBandService>, TitleBandProperty, boolean][] = [
       [{}, { ...STATUS, dataWritable: true }, false],
       [{ setData }, STATUS, false],
+      // `optionEdits` only narrows what `dataWritable` allows (#710).
+      [{ setData }, { ...STATUS, optionEdits: 'create' }, false],
       [{ setData }, { ...STATUS, dataWritable: true, readonly: true }, false],
       [{ setData }, { ...STATUS, dataWritable: true }, true],
     ];

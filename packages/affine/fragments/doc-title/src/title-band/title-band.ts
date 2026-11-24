@@ -77,7 +77,15 @@ interface BandSources {
   collapsed$: ReadonlySignal<boolean> | null;
   notShown$: ReadonlySignal<readonly TitleBandNotShownPage[]> | null;
   /** One cell per chip, kept across sheet updates so an open editor stays. */
-  cells: Map<string, { type: string; optionsWritable: boolean; cell: Cell }>;
+  cells: Map<
+    string,
+    {
+      type: string;
+      optionsWritable: boolean;
+      optionEdits: 'create' | 'create-rename';
+      cell: Cell;
+    }
+  >;
 }
 
 /**
@@ -424,10 +432,12 @@ export class TitleBand extends SignalWatcher(
     const optionsWritable =
       bandOptionsWritable(cellType, prop, !!sources.service.setData) &&
       !this._isReadonlyChip(prop);
+    const optionEdits = prop.optionEdits ?? 'create-rename';
     const cached = sources.cells.get(prop.id);
     if (
       cached?.type === prop.type &&
-      cached.optionsWritable === optionsWritable
+      cached.optionsWritable === optionsWritable &&
+      cached.optionEdits === optionEdits
     )
       return cached.cell;
 
@@ -453,18 +463,19 @@ export class TitleBand extends SignalWatcher(
       featureFlags$: this._featureFlags$,
       serviceGet: key => std.getOptional(key),
       // A chip creates and renames options only, never deletes, recolours
-      // or reorders one (product owner, 2026-10-14).
+      // or reorders one (product owner, 2026-10-14); a host may narrow it
+      // to creating (`optionEdits: 'create'`, issue #710).
       ...(optionsWritable
         ? {
             dataSet: (data: Record<string, unknown>) => {
               const current = current$.peek();
               if (current) this._writeData(current, data);
             },
-            optionEdits: 'create-rename' as const,
+            optionEdits,
           }
         : {}),
     });
-    sources.cells.set(id, { type, optionsWritable, cell });
+    sources.cells.set(id, { type, optionsWritable, optionEdits, cell });
     return cell;
   }
 

@@ -204,6 +204,12 @@ export class HeaderAreaTextCell extends BaseCellRenderer<Text, string> {
   }
 
   private readonly _handleKeyDown = (event: KeyboardEvent) => {
+    // The inline editor hears every key of the page root while it holds a
+    // range, and an undo leaves its caret here with the focus on a control
+    // of the view: Ctrl+Shift+Z typed on the toolbar's "⋯" stopped here and
+    // no redo ran (ADR 0035 amendment of 2026-11-22). A key aimed elsewhere
+    // is not the cell's.
+    if (!this.contains(event.target as Node)) return;
     if (event.key !== 'Escape') {
       if (event.key === 'Tab') {
         event.preventDefault();
