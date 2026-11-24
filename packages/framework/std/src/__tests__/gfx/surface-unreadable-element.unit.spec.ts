@@ -848,3 +848,119 @@ describe('what a skipped element changes around it', () => {
     expect(extra.map(String)).toEqual(['Error: this map cannot be read']);
   });
 });
+
+/**
+ * A peer that SETS a new map under a key that already has one (ADR 0056,
+ * formerly a known limit of ADR 0053). The elements-map observer read `add`
+ * and `delete` only, so on `update` the old model stayed bound to a map that
+ * had left the document (painting stale values, writing into a dead map), and
+ * a skipped element replaced by a readable one stayed skipped until reload.
+ */
+describe('a map replaced under an existing key', () => {
+  function replace(raw: YDoc, surfaceId: string, key: string, props: Entries) {
+    const elements = elementsOf(raw, surfaceId);
+    raw.transact(() => {
+      const map = new YMap<unknown>();
+      elements.set(key, map);
+      Object.entries(props).forEach(([k, v]) => map.set(k, v));
+    });
+  }
+
+  function openWith(ids: string[]) {
+    const { workspace, surfaceId, raw } = setupWriter();
+    writeElements(raw, surfaceId, ids);
+    const reader = open(workspace, raw, surfaceId);
+    const events: string[] = [];
+    reader.surface.elementRemoved.subscribe(({ id }) =>
+      events.push(`removed ${id}`)
+    );
+    reader.surface.elementAdded.subscribe(({ id }) =>
+      events.push(`added ${id}`)
+    );
+    return { surfaceId, raw, events, ...reader };
+  }
+
+  test('a readable element gets a new model, bound to the new map', () => {
+    const { surfaceId, raw, surface, spaceDoc, events } = openWith([VALID_A]);
+    const before = surface.getElementById(VALID_A)!;
+    const moved = '[40,40,10,10]';
+
+    replace(raw, surfaceId, VALID_A, { ...shape(VALID_A), xywh: moved });
+    expect(() => sync(raw, spaceDoc)).not.toThrow();
+
+    const after = surface.getElementById(VALID_A)!;
+    expect(after).not.toBe(before);
+    expect(after.yMap).toBe(elementsOf(spaceDoc, surfaceId).get(VALID_A));
+    expect(after.xywh).toBe(moved);
+    // The old one first, so no subscriber sees the new model removed.
+    expect(events).toEqual([`removed ${VALID_A}`, `added ${VALID_A}`]);
+    expectMounted(surface, VALID_A);
+  });
+
+  test('a skipped element replaced by a readable one is mounted', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { surfaceId, raw, surface, spaceDoc, events } = openWith([UNTYPED]);
+    expect(surface.damagedElements.has(UNTYPED)).toBe(true);
+
+    replace(raw, surfaceId, UNTYPED, shape(UNTYPED));
+    sync(raw, spaceDoc);
+
+    expect(surface.damagedElements.has(UNTYPED)).toBe(false);
+    expect(events).toEqual([`added ${UNTYPED}`]);
+    expectMounted(surface, UNTYPED);
+  });
+
+  test('a readable element replaced by an unreadable one is removed and reported', () => {
+    const { surfaceId, raw, surface, spaceDoc, events } = openWith([VALID_A]);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    replace(raw, surfaceId, VALID_A, future(VALID_A));
+    expect(() => sync(raw, spaceDoc)).not.toThrow();
+
+    expect(surface.getElementById(VALID_A)).toBeNull();
+    expect(surface.damagedElements.get(VALID_A)).toEqual({
+      type: 'futureShape',
+      reason: 'unknown-type',
+    });
+    expect(events).toEqual([`removed ${VALID_A}`]);
+    expect(skippedWarnings(warn)).toHaveLength(1);
+  });
+});
+
+/**
+ * Copy, duplicate and paste key every reference by `serialize().id`: the
+ * paste deduplicates by it, a group's children and a connector's ends are
+ * mapped to the new ids by it. It returned the STORED `id`, so in a document
+ * whose elements have none (#681) copying N elements pasted one, a group was
+ * not pasted and a copied connector stayed attached to the original (ADR 0053
+ * known limit, fixed by ADR 0056). The serialized id is the key; nothing is
+ * written.
+ */
+describe('the serialized id is the key', () => {
+  test('an element stored with no id, or another id, serializes its key', () => {
+    const { workspace, surfaceId, raw } = setupWriter();
+    const elements = elementsOf(raw, surfaceId);
+    raw.transact(() => {
+      const noId = new YMap<unknown>();
+      elements.set('no-id', noId);
+      noId.set('type', 'testShape');
+      noId.set('xywh', '[0,0,10,10]');
+      const other = new YMap<unknown>();
+      elements.set('other-key', other);
+      Object.entries(shape('stored-id')).forEach(([k, v]) => other.set(k, v));
+    });
+
+    const { surface, spaceDoc, updates } = open(workspace, raw, surfaceId);
+
+    expect(surface.getElementById('no-id')!.serialize().id).toBe('no-id');
+    expect(surface.getElementById('other-key')!.serialize().id).toBe(
+      'other-key'
+    );
+    expect(updates).toEqual([]);
+    const stored = elementsOf(spaceDoc, surfaceId);
+    expect((stored.get('no-id') as YMap<unknown>).has('id')).toBe(false);
+    expect((stored.get('other-key') as YMap<unknown>).get('id')).toBe(
+      'stored-id'
+    );
+  });
+});

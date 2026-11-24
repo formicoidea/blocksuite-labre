@@ -26,3 +26,4 @@ export * from './turn-into-source.js';
 // The creation popover (`@labre/affine-database-editor`) titles itself with
 // the wording core declares for its "Connect a source" button.
 export { DATABASE_CREATION_TITLE } from './translations.js';
+export * from './view-placement.js';

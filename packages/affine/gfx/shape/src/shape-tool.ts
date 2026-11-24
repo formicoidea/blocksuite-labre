@@ -234,6 +234,17 @@ export class ShapeTool extends BaseTool<ShapeToolOption> {
       fillColor: attributes.fillColor,
       strokeColor: attributes.strokeColor,
     });
+    // The ghost previews where a click puts the shape, so it stands under
+    // the pointer: `ToolOverlay` starts it at the last pointer move seen, the
+    // canvas's top-left corner when there was none. With no pointer over the
+    // editor — the tool taken from the keyboard (`s`, Enter on Shape), the
+    // mouse elsewhere — it is hidden until the first move, as it hides when
+    // the pointer leaves the canvas; a pointer resting on the canvas, moved
+    // there under any tool, keeps it shown where it rests (ADR 0054,
+    // amendment of 2026-11-22).
+    if (!this.gfx.tool.pointerOnHost$.peek()) {
+      this._shapeOverlay.globalAlpha = 0;
+    }
     this._surfaceComponent?.renderer.addOverlay(this._shapeOverlay);
   }
 

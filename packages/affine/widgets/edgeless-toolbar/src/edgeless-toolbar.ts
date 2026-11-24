@@ -46,6 +46,7 @@ import {
 } from 'lit';
 import { query, state } from 'lit/decorators.js';
 import { keyed } from 'lit/directives/keyed.js';
+import { repeat } from 'lit/directives/repeat.js';
 import { literal, unsafeStatic } from 'lit/static-html.js';
 import debounce from 'lodash-es/debounce';
 import { Subject } from 'rxjs';
@@ -91,11 +92,14 @@ const DIVIDER_SPACE = 8;
 const MENU_DRAW_FRAMES = 10;
 const SAFE_AREA_WIDTH = 64;
 
-/** A menu that picks an element up to drop on the canvas (the mind map's). */
+/**
+ * A menu that picks an element up to drop on the canvas: the mind map's, the
+ * templates panel.
+ */
 type PickUpMenu = {
   draggableController: Pick<
     EdgelessDraggableElementController<unknown>,
-    'cancel' | 'states'
+    'cancel' | 'dropAt' | 'states'
   >;
 };
 
@@ -865,25 +869,31 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
         </icon-button>
       </div>
       <div class="senior-tools">
-        ${this._seniorTools
-          .slice(
+        ${repeat(
+          this._seniorTools.slice(
             this.scrollSeniorToolIndex,
             this.scrollSeniorToolIndex + this.scrollSeniorToolSize
-          )
-          .map(
-            (tool, index) =>
-              html`<div
-                class="senior-tool-item"
-                data-senior-index=${this.scrollSeniorToolIndex + index}
-                ?data-keyboard-highlight=${this._walkableQuickToolSize +
-                  this.scrollSeniorToolIndex +
-                  index ===
-                this.keyboardHighlight}
-              >
-                ${tool.content}
-                <div class="cell-ring"></div>
-              </div>`
-          )}
+          ),
+          // One cell per tool, keyed by its place among all of them: a page
+          // turn draws the next tool in a cell of its own. Reused, a cell
+          // whose next tool shares the template of the last (Text and Add
+          // file) kept the same button, retitled under the focus: → moved
+          // nothing a screen reader or a walk of the row could see (ADR 0054,
+          // amendment of 2026-11-22).
+          (_tool, index) => this.scrollSeniorToolIndex + index,
+          (tool, index) =>
+            html`<div
+              class="senior-tool-item"
+              data-senior-index=${this.scrollSeniorToolIndex + index}
+              ?data-keyboard-highlight=${this._walkableQuickToolSize +
+                this.scrollSeniorToolIndex +
+                index ===
+              this.keyboardHighlight}
+            >
+              ${tool.content}
+              <div class="cell-ring"></div>
+            </div>`
+        )}
       </div>
       <div class="senior-nav-button-wrapper next">
         <icon-button
@@ -1627,6 +1637,14 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
     if (!control) return;
     this._kept = control;
     this._pressLikePointer(control);
+    // A press that picked an element up (a mind map style, a template card)
+    // sets it down at once, at the centre of the view: the keyboard has no
+    // pointer to carry it to the canvas (ADR 0054, amendment of 2026-11-22).
+    const drag = (menu as Partial<PickUpMenu>).draggableController;
+    if (drag?.states.draggingElement) {
+      const { centerX, centerY } = this.gfx.viewport;
+      drag.dropAt([centerX, centerY]);
+    }
     await (menu as Partial<ReactiveElement>).updateComplete;
     await new Promise(resolve => requestAnimationFrame(resolve));
     if (this._kept !== control) return;

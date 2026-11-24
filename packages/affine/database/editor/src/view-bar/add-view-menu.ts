@@ -1,5 +1,6 @@
 import {
   HostedDataSourceBase,
+  placeViewThroughHost,
   viewDatabaseId,
 } from '@labre/affine-database-block';
 import { menu, type MenuConfig } from '@labre/affine-components/context-menu';
@@ -262,23 +263,45 @@ export function databaseAddViewMenu(
             testId: 'database-add-view-preset',
             prefix: html`<uni-lit .uni=${meta.renderer.icon}></uni-lit>`,
             select: () => {
-              if (source?.databaseId === undefined) {
-                addViewOnSource(
+              const addNow = () => {
+                if (source?.databaseId === undefined) {
+                  return !!addViewOnSource(
+                    context,
+                    dataSource,
+                    meta.type,
+                    source?.sourceId
+                  );
+                }
+                return !!addViewOnSource(
                   context,
                   dataSource,
                   meta.type,
-                  source?.sourceId
+                  source.sourceId,
+                  'existing',
+                  source.databaseId
                 );
+              };
+              const model = dataSource.hostModel;
+              const databaseId =
+                source?.databaseId ?? model.props.externalSourceId;
+              if (!hostPicker?.placeView || databaseId === undefined) {
+                addNow();
                 return;
               }
-              addViewOnSource(
-                context,
-                dataSource,
-                meta.type,
-                source.sourceId,
-                'existing',
-                source.databaseId
-              );
+              placeViewThroughHost({
+                picker: hostPicker,
+                store: model.store,
+                ref: {
+                  gesture: 'add-view',
+                  databaseId,
+                  ...(source?.sourceId === undefined
+                    ? {}
+                    : { sourceId: source.sourceId }),
+                  docId: model.store.id,
+                  blockId: model.id,
+                },
+                placeNow: addNow,
+              });
             },
           })
         );

@@ -27,6 +27,12 @@ export type BlockQueryDataSourceConfig = {
   type: keyof typeof blockMetaMap;
 };
 
+// ponytail: never ported to the signal-based engine (upstream carries the same
+// FIXME): `viewManager`, `rows$`, `properties$`, `viewDataList$` and the other
+// abstract members of `DataSourceBase` are missing, so `DataViewRootUILogic`
+// throws on the block's first render and a stored `affine:data-view` does not
+// mount. Upgrade: port it the way `DatabaseBlockDataSource` is written, or
+// draw a placeholder for the block; a product owner decision (ADR 0035).
 // @ts-expect-error FIXME: ts error
 export class BlockQueryDataSource extends DataSourceBase {
   private readonly columnMetaMap = new Map<

@@ -336,11 +336,38 @@ browser session … within the timeout`: Chromium could not start the
     stays under 0.9 GB. With Vite and Vitest beside it, that would exhaust the
     16 GB Linux runner; nobody measured the runner itself.
     `yarn test:integration` now runs two browser sessions
-    (`scripts/test-integration.mjs`, `--shard`): at b72177321 (148 files,
-    1315 tests), 4.2 GB peak each, 4.55 GB at most for both (the first
-    session's renderer outlived its browser by about three minutes on
-    Windows). The leak itself is not fixed
-    ([04-testing.md](contribute/04-testing.md#flaky) has the trigger).
+    (`scripts/test-integration.mjs`, `--shard`): at b72177321 (148 files, 1315
+    tests), 4.2 GB peak each, 4.55 GB at most for both (the first session's
+    renderer outlived its browser by about three minutes on Windows). The leak
+    was then found with heap snapshots (2026-11-22): every `TestWorkspace` of
+    the session stayed reachable from the page's timer list, through the
+    y-protocols `Awareness` interval that only `workspace.dispose()` clears
+    and the store's `BlockMetaService` throttle (30 s after a local edit,
+    until `store.dispose()`), neither of which `setupEditor`'s cleanup called;
+    on a canvas the workspace's surface model also kept the last editor
+    mounted on it, through that editor's surface middlewares (a library leak
+    for any host keeping its workspace open), and `UIEventDispatcher`'s static
+    active slot kept the editor unmounted while active (another, bounded to
+    one editor). 30 edgeless mounts kept 30 editors and about 650 KB of JS
+    heap each; with the cleanup disposing of the store and the workspace and
+    the editor taking its middlewares back, none, and about 75 KB per mount
+    with a shape drawn (20 KB on an empty canvas; `editor-teardown.spec.ts`).
+    The two sessions stay until a sampled full run shows the flat curve
+    ([04-testing.md](contribute/04-testing.md#flaky)).
     _Rule:_ a job that dies without a log near the end of a long shared-page
     run is memory until measured otherwise; measure the browser's memory over
-    a full run before calling it infrastructure.
+    a full run before calling it infrastructure, and find what holds it in a
+    heap snapshot (retainers from the GC roots, ephemeron edges skipped)
+    before working around it.
+
+40. **A focus ring "2px" that read 1.71429px on the workstation.**
+    `database-toolbar-keyboard.spec.ts` asserted the computed
+    `outline-width` of the database toolbar's ring as `'2px'`: green
+    headless and in CI, red in a headed run on a Windows screen scaled to
+    175 %, where Chromium 156 computes border and outline widths snapped
+    down to whole device pixels (2 × 1.75 = 3.5, floored to 3, read back as
+    1.71429px). Playwright's emulated `deviceScaleFactor` does not snap
+    (1.25, 1.333, 1.5 and 1.75 all read `2px`), so no headless run shows it.
+    _Rule:_ compare a computed border or outline width with
+    `drawnLineWidth(declared)` (`__tests__/utils/focus-ring.ts`), never
+    with the declared literal.

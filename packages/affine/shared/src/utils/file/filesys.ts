@@ -234,8 +234,13 @@ async function openFilesWithSpec(
 
       resolve(input.files ? Array.from(input.files) : null);
     });
-    // The `cancel` event fires when the user cancels the dialog.
-    input.addEventListener('cancel', () => resolve(null));
+    // The `cancel` event fires when the user cancels the dialog (Chromium 113,
+    // Firefox 91, Safari 16.4). It removes the input too: otherwise every
+    // dismissed dialog left one hidden `<input type="file">` in the body.
+    input.addEventListener('cancel', () => {
+      input.remove();
+      resolve(null);
+    });
     // Show the picker.
     if ('showPicker' in HTMLInputElement.prototype) {
       input.showPicker();

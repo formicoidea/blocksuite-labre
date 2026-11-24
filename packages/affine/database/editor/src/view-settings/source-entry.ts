@@ -1,4 +1,7 @@
-import { HostedDataSourceBase } from '@labre/affine-database-block';
+import {
+  HostedDataSourceBase,
+  placeViewThroughHost,
+} from '@labre/affine-database-block';
 import {
   menu,
   type MenuHandler,
@@ -171,13 +174,26 @@ export function popChangeSourcePicker(
               testId: `data-source-picker-source-${source.sourceId}`,
               select: () => {
                 if (selected) return;
-                changeViewSource(
-                  dataSource,
-                  viewId,
-                  source.sourceId,
-                  'existing',
-                  ...inDatabase(source.databaseId)
-                );
+                placeViewThroughHost({
+                  picker,
+                  store: std.store,
+                  ref: {
+                    gesture: 'change-source',
+                    databaseId: source.databaseId ?? databaseId,
+                    sourceId: source.sourceId,
+                    docId: std.store.id,
+                    blockId: dataSource.hostModel.id,
+                    viewId,
+                  },
+                  placeNow: () =>
+                    changeViewSource(
+                      dataSource,
+                      viewId,
+                      source.sourceId,
+                      'existing',
+                      ...inDatabase(source.databaseId)
+                    ),
+                });
               },
             });
           });
