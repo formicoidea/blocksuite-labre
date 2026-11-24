@@ -11,6 +11,7 @@ export { attachmentViewDropdownMenu } from './configs/toolbar';
 export * from './edgeless-clipboard-config';
 export {
   type AttachmentEmbedConfig,
+  type AttachmentEmbedConvertOptions,
   AttachmentEmbedConfigIdentifier,
   AttachmentEmbedProvider,
 } from './embed';

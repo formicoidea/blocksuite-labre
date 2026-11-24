@@ -27,6 +27,40 @@ export function readImageSize(file: File | Blob) {
   });
 }
 
+/** Upstream's wait for a video's metadata (toeverything/AFFiNE a28cad2). */
+const VIDEO_METADATA_TIMEOUT_MS = 3000;
+
+/**
+ * The natural size of a video, read from its metadata alone (issue #738,
+ * upstream toeverything/AFFiNE a28cad2). `null` when the browser cannot tell
+ * within `timeoutMs`: a codec it cannot decode may fire neither
+ * `loadedmetadata` nor `error`, and a caller must never wait on it forever.
+ */
+export function readVideoSize(
+  blob: Blob,
+  timeoutMs = VIDEO_METADATA_TIMEOUT_MS
+) {
+  return new Promise<{ width: number; height: number } | null>(resolve => {
+    const video = document.createElement('video');
+    const url = URL.createObjectURL(blob);
+    const done = (size: { width: number; height: number } | null) => {
+      clearTimeout(timer);
+      video.onloadedmetadata = video.onerror = null;
+      video.removeAttribute('src');
+      URL.revokeObjectURL(url);
+      resolve(size);
+    };
+    const timer = setTimeout(() => done(null), timeoutMs);
+    video.preload = 'metadata';
+    video.onloadedmetadata = () => {
+      const { videoWidth: width, videoHeight: height } = video;
+      done(width && height ? { width, height } : null);
+    };
+    video.onerror = () => done(null);
+    video.src = url;
+  });
+}
+
 export function convertToPng(blob: Blob): Promise<Blob | null> {
   return new Promise(resolve => {
     const reader = new FileReader();

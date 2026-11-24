@@ -220,3 +220,46 @@ schema, no stored field, no enum value changes.
   `canvas.shape.replaceWithImage` and `canvas.image.replaceWithImage` stay, though what they answer
   grew: identifiers are never removed. `ElementReplaced` gains `attachment` (html and any file);
   a block inserted by a replace is `BlockCreated`.
+
+### 2026-11-24 — a video embed is painted at its bound's ratio
+
+Issue #738, port of upstream toeverything/AFFiNE a28cad2, reworked after review. Not a red zone:
+no schema, no stored field, no enum value changes.
+
+- **The exception.** The contained card of the amendment of 2026-11-04 stays for every card. A
+  video EMBED (`embed: true` on a `video/` file whose embed view is drawn) is no longer a card
+  contained in its frame: its box takes the bound whole, at the card's width
+  (`scale = bound.w / 752`, height `bound.h / scale`, upstream's formula), and the `<video>`
+  inside is `object-fit: contain`, so a clip is never cropped and never stretched. The canvas
+  block tells a video embed by its file type and `embedded()`, not by `style`, whose type names
+  the card styles only.
+- **Why the exception.** « Turn into embed view » on a video writes a bound at the clip's own
+  ratio. Contained as a card, that bound would still be painted as a 752 × 544 box letterboxed
+  in it, and the fix would not show on a canvas.
+- **Measure first, then write once.** The house precedent: `turnIntoImageBlock` and
+  `resetImageSize` read an image's size before their one write. « Turn into embed view » on a
+  video notes the block's `sourceId`, `embed` and `xywh`, reads the clip's size
+  (`readVideoSize`, `@labre/affine-shared/utils`: up to 3 s, `null` on error or timeout), then
+  writes once, after `captureSync`: `embed: true`, `style: 'video'` and a box at the block's
+  corner, 752 wide, the clip's height for that width (`752 × h / w`), the card's 544 when the
+  size is `null`. One write, one undo step; the undo manager is never touched.
+- **Only if nothing moved.** The write happens only when the store is still writable, the block
+  still exists, and `sourceId`, `embed` and `xywh` are exactly as noted: a « Replace »,
+  « Card view » or « Embed view » by another path, a resize by the user or a peer, an undo or a
+  deletion during the read leaves the block as it is, and nothing is written. A second « Embed
+  view » while the clip is read is the same gesture: it reads nothing and writes nothing.
+- **What the user sees.** The card stays a card while the clip is read: a few milliseconds for a
+  file whose metadata the browser reads at once, up to 3 s for one it cannot decode, after which
+  the box takes the card's height. Nothing in the toolbar waits on the action: its « Embed view »
+  calls `convertTo` and traces the click; the view menu reads the model and follows the write.
+- **A replace keeps its frame.** `replaceAttachmentFile` calls `convertTo` with
+  `{ keepBound: true }` (a new optional `AttachmentEmbedConvertOptions` passed to an embed
+  config's `action`): the video action then writes synchronously, inside the replace's
+  transaction, `embed: true`, `style: 'video'` and the card's box, the replace writes the frame
+  back, and the clip is never read. A video replacing an embed of any proportions is painted at
+  the frame's ratio, the clip letterboxed in it, in one undo step, as the amendment of
+  2026-11-04 asks.
+- **Stored embeds.** A video embed saved before reads 752 × 544, the card's ratio, and is painted
+  exactly as before; its clip, no longer cropped, letterboxes in it. Nothing is rewritten on load:
+  only a new « Turn into embed view » writes the clip's ratio.
+- Held by `blocks/attachment/src/__tests__/video-embed-ratio.unit.spec.ts`.

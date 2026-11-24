@@ -13,6 +13,7 @@ import {
 } from '@labre/affine-shared/services';
 import {
   readImageSize,
+  readVideoSize,
   transformModel,
   withTempBlobData,
 } from '@labre/affine-shared/utils';
@@ -30,6 +31,14 @@ import { styleMap } from '@labre/global/lit';
 import { isHtmlAttachment } from './html-attachment';
 import { getAttachmentBlob } from './utils';
 
+export type AttachmentEmbedConvertOptions = {
+  /**
+   * The caller writes the frame, inside its own transaction (a « Replace »,
+   * ADR 0044): the action writes at once and never measures the file.
+   */
+  keepBound?: boolean;
+};
+
 export type AttachmentEmbedConfig = {
   name: string;
   /**
@@ -42,10 +51,13 @@ export type AttachmentEmbedConfig = {
   ) => boolean;
   /**
    * The action will be executed when the 「Turn into embed view」 button is clicked.
+   * It may measure the file first and write afterwards; with `keepBound` it
+   * writes synchronously, so the caller's transaction holds the write.
    */
   action?: (
     model: AttachmentBlockModel,
-    std: BlockStdScope
+    std: BlockStdScope,
+    options?: AttachmentEmbedConvertOptions
   ) => Promise<void> | void;
   /**
    * Renders the embed view.
@@ -137,11 +149,15 @@ export class AttachmentEmbedService extends Extension {
   }
 
   // Converts to embed view.
-  convertTo(model: AttachmentBlockModel, maxFileSize = this._maxFileSize) {
+  convertTo(
+    model: AttachmentBlockModel,
+    maxFileSize = this._maxFileSize,
+    options?: AttachmentEmbedConvertOptions
+  ) {
     const config = this._configOf(model, maxFileSize);
 
     if (config?.action) {
-      config.action(model, this.std)?.catch(console.error);
+      config.action(model, this.std, options)?.catch(console.error);
       return;
     }
 
@@ -245,22 +261,33 @@ const embedConfig: AttachmentEmbedConfig[] = [
     shouldShowStatus: true,
     check: (model, maxFileSize) =>
       model.props.type.startsWith('video/') && model.props.size <= maxFileSize,
-    action: model => {
-      const bound = Bound.deserialize(model.props.xywh);
-      bound.w = EMBED_CARD_WIDTH.video;
-      bound.h = EMBED_CARD_HEIGHT.video;
-      model.store.updateBlock(model, {
-        embed: true,
-        style: 'video',
-        xywh: bound.serialize(),
-      });
+    async action(model, _std, options) {
+      const { store } = model;
+      if (store.readonly) return;
+      // A « Replace » writes the frame itself, in its own transaction: write
+      // at once, never measure (ADR 0044, amendment of 2026-11-24).
+      if (options?.keepBound) {
+        store.updateBlock(model, {
+          embed: true,
+          style: 'video',
+          xywh: videoBox(model.props.xywh, null),
+        });
+        return;
+      }
+      // A second click while the clip is read is the same gesture.
+      if (pendingVideoReads.has(model)) return;
+      pendingVideoReads.add(model);
+      try {
+        await embedAtClipRatio(model);
+      } finally {
+        pendingVideoReads.delete(model);
+      }
     },
     render: (_, blobUrl) =>
       html`<video
         style=${styleMap({
           display: 'flex',
-          objectFit: 'cover',
-          backgroundSize: 'cover',
+          objectFit: 'contain',
           width: '100%',
           height: '100%',
         })}
@@ -308,6 +335,58 @@ const embedConfig: AttachmentEmbedConfig[] = [
     renderThumbnail: (model, std) => renderHtmlView(model, std, false),
   },
 ];
+
+/** Models whose clip is being read for an « Embed view », one read at a time. */
+const pendingVideoReads = new WeakSet<AttachmentBlockModel>();
+
+/**
+ * The video card's box at the corner of `xywh`: the card's width, and the
+ * clip's height for that width when its size is known, the card's otherwise.
+ */
+function videoBox(
+  xywh: string,
+  size: { width: number; height: number } | null
+) {
+  const bound = Bound.deserialize(xywh);
+  bound.w = EMBED_CARD_WIDTH.video;
+  bound.h = size
+    ? (bound.w * size.height) / size.width
+    : EMBED_CARD_HEIGHT.video;
+  return bound.serialize();
+}
+
+/**
+ * « Embed view » on a video: measure first, then write once (#738, ADR 0044
+ * amendment of 2026-11-24), as `turnIntoImageBlock` measures an image before
+ * it writes. The box takes the clip's own ratio, so a portrait clip does not
+ * sit in a landscape box. The read takes up to 3 s (`readVideoSize`), the
+ * card stays a card meanwhile; the write happens only if nothing moved: the
+ * block still there and writable, the same file, the same view and the same
+ * box as when the gesture began (no « Replace », « Card view », resize, undo
+ * or peer's change in between). One write, one undo step.
+ */
+async function embedAtClipRatio(model: AttachmentBlockModel) {
+  const { store } = model;
+  const { sourceId, embed, xywh } = model.props;
+
+  const blob = await getAttachmentBlob(model);
+  const size = blob ? await readVideoSize(blob) : null;
+
+  const unchanged =
+    !store.readonly &&
+    store.hasBlock(model.id) &&
+    model.props.sourceId === sourceId &&
+    model.props.embed === embed &&
+    model.props.xywh === xywh;
+  if (!unchanged) return;
+
+  store.captureSync();
+  store.updateBlock(model, {
+    embed: true,
+    style: 'video',
+    xywh: videoBox(xywh, size),
+  });
+}
 
 function htmlFrameUrl(std: BlockStdScope) {
   return std.getOptional(HtmlFileConfigExtension.identifier)?.frameUrl ?? null;
