@@ -41,20 +41,6 @@ export class ShapeTool extends BaseTool<ShapeToolOption> {
   // shape overlay
   private _shapeOverlay: ShapeOverlay | null = null;
 
-  /**
-   * Whether the pointer has moved over the canvas since the tool was taken,
-   * and has not left it. The ghost previews where a click puts the shape, so
-   * it stands under the pointer; `ToolOverlay` starts it at the last pointer
-   * move seen, the canvas's top-left corner when there was none. A tool taken
-   * from the keyboard (`s`, Enter on the toolbar's Shape) drew it there and
-   * left it until the mouse moved (ADR 0054, amendment of 2026-11-22): the
-   * ghost is hidden until the first move, as it already hides when the
-   * pointer leaves the canvas. Kept across a re-take of the tool itself
-   * (Shift+S cycling the shape, the shape menu picking another), which
-   * re-creates the ghost under a pointer that may not move.
-   */
-  private _pointerOnCanvas = false;
-
   private get _surfaceComponent() {
     return this.gfx.surfaceComponent as SurfaceBlockComponent | null;
   }
@@ -107,7 +93,6 @@ export class ShapeTool extends BaseTool<ShapeToolOption> {
   }
 
   private _hideOverlay() {
-    this._pointerOnCanvas = false;
     if (!this._shapeOverlay) return;
     this._shapeOverlay.globalAlpha = 0;
     this._surfaceComponent?.refresh();
@@ -249,7 +234,17 @@ export class ShapeTool extends BaseTool<ShapeToolOption> {
       fillColor: attributes.fillColor,
       strokeColor: attributes.strokeColor,
     });
-    if (!this._pointerOnCanvas) this._shapeOverlay.globalAlpha = 0;
+    // The ghost previews where a click puts the shape, so it stands under
+    // the pointer: `ToolOverlay` starts it at the last pointer move seen, the
+    // canvas's top-left corner when there was none. With no pointer over the
+    // editor — the tool taken from the keyboard (`s`, Enter on Shape), the
+    // mouse elsewhere — it is hidden until the first move, as it hides when
+    // the pointer leaves the canvas; a pointer resting on the canvas, moved
+    // there under any tool, keeps it shown where it rests (ADR 0054,
+    // amendment of 2026-11-22).
+    if (!this.gfx.tool.pointerOnHost$.peek()) {
+      this._shapeOverlay.globalAlpha = 0;
+    }
     this._surfaceComponent?.renderer.addOverlay(this._shapeOverlay);
   }
 
@@ -312,15 +307,6 @@ export class ShapeTool extends BaseTool<ShapeToolOption> {
   }
 
   override mounted() {
-    // Another tool taken: the next take of this one starts with no pointer.
-    this.disposable.add(
-      effect(() => {
-        if (this.gfx.tool.currentToolName$.value !== ShapeTool.toolName) {
-          this._pointerOnCanvas = false;
-        }
-      })
-    );
-
     this.disposable.add(
       effect(() => {
         const pressed = this.gfx.keyboard.shiftKey$.value;
@@ -346,7 +332,6 @@ export class ShapeTool extends BaseTool<ShapeToolOption> {
   }
 
   override pointerMove(e: PointerEventState) {
-    this._pointerOnCanvas = true;
     if (!this._shapeOverlay) return;
     // shape options, like stroke color, fill color, etc.
     if (this._shapeOverlay.globalAlpha === 0)

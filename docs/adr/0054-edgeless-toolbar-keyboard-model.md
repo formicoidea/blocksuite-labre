@@ -441,9 +441,14 @@ untouched.
    and until the pointer moves the tool does not know where that is. Placing
    it somewhere sensible was the alternative; there is no place a keyboard
    user can click, and a ghost away from the pointer misinforms the mouse
-   user. The tool remembers that the pointer is on the canvas across a re-take
-   of itself (`s` again or Shift+S cycling, a shape picked in the menu), so a
-   resting pointer keeps its ghost; another tool taken resets it.
+   user. "No pointer" is read from the tool controller, whatever the tool:
+   `ToolController.pointerOnHost$` is set by any move over the editor and
+   cleared when the pointer leaves it (a `pointerout` whose next target is
+   outside the host). So a mouse moved over the canvas under the select tool
+   and left at rest, then `s`, draws the ghost where it rests, as before; a
+   first version kept that fact on the Shape tool, which hears moves only
+   while it is the tool, and hid the ghost there until the next move (found
+   in review).
 
 5. **A tooltip raised by the resting mouse: reported, not reproduced**
    (§3c of the amendment of 2026-11-21 stays unconfirmed, nothing changed).

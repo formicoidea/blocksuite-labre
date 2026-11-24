@@ -326,10 +326,33 @@ describe('edgeless toolbar keyboard: the gaps of the 4.1.0 acceptance', () => {
     expect(seen.at(-1)).toBe('Template');
   });
 
-  test('the Shape tool taken from the keyboard hides its ghost until the mouse moves', async () => {
-    type Ghost = { _shapeOverlay: { globalAlpha: number } | null };
+  test('the Shape tool hides its ghost while no pointer is over the editor, and keeps it under a resting one', async () => {
+    type Ghost = {
+      _shapeOverlay: { globalAlpha: number; x: number; y: number } | null;
+    };
     const ghost = () =>
       (edgeless.gfx.tool.currentTool$.peek() as unknown as Ghost)._shapeOverlay;
+    // The real mouse to a point of the canvas inside the window, through a
+    // mark that takes no pointer: the editor's box may reach past the window
+    // after an earlier test resized its column.
+    const pointerOverCanvas = async (fx: number, fy: number) => {
+      const mark = document.createElement('div');
+      mark.setAttribute('data-gaps-canvas', '');
+      Object.assign(mark.style, {
+        position: 'fixed',
+        left: `${Math.round(window.innerWidth * fx)}px`,
+        top: `${Math.round(window.innerHeight * fy)}px`,
+        width: '1px',
+        height: '1px',
+        pointerEvents: 'none',
+      });
+      document.body.append(mark);
+      await pointerMoveTo('[data-gaps-canvas]', 0.5, 0.5);
+      mark.remove();
+    };
+    // `s` is bound by the toolbar's Shape button once it is drawn: at this
+    // width the senior row is paged, and the test may run first.
+    await buttonNamed('Shape');
     // The mouse away from the canvas, where a keyboard user leaves it.
     await pointerMoveTo('html', 0, 0, 1);
     window.editor.host!.focus();
@@ -337,9 +360,7 @@ describe('edgeless toolbar keyboard: the gaps of the 4.1.0 acceptance', () => {
     await until(() => tool() === 'shape', '`s` takes the Shape tool');
     expect(ghost()?.globalAlpha).toBe(0);
     // The first move over the canvas shows it, under the pointer.
-    edgeless.host.setAttribute('data-gaps-canvas', '');
-    onTestFinished(() => edgeless.host.removeAttribute('data-gaps-canvas'));
-    await pointerMoveTo('[data-gaps-canvas]', 0.4, 0.4);
+    await pointerOverCanvas(0.4, 0.4);
     await until(() => ghost()?.globalAlpha === 1, 'a move shows the ghost');
     // `s` again cycles the shape, taking the tool again under a resting
     // pointer: the ghost it draws anew stays shown.
@@ -349,7 +370,30 @@ describe('edgeless toolbar keyboard: the gaps of the 4.1.0 acceptance', () => {
     await press('{Escape}');
     await until(() => tool() === 'default', 'Escape gives the select tool');
 
-    // Enter on the toolbar's Shape: the same.
+    // The mouse moved over the canvas under the select tool, then at rest:
+    // `s` draws the ghost where it rests, as before the amendment (review of
+    // its first version, which hid it until the next move).
+    await pointerOverCanvas(0.3, 0.35);
+    // The real mouse's moves can land late on a loaded machine: wait for
+    // the editor to have seen one, longer than `until` does.
+    await vi.waitFor(
+      () => {
+        if (!edgeless.gfx.tool.pointerOnHost$.peek()) {
+          throw new Error('the pointer is over the editor');
+        }
+      },
+      { timeout: 5000 }
+    );
+    await press('s');
+    await until(() => tool() === 'shape', '`s` takes the Shape tool');
+    expect(ghost()?.globalAlpha, 'a resting pointer keeps its ghost').toBe(1);
+    const under = edgeless.gfx.tool.lastMousePos$.peek();
+    expect(ghost()?.x).toBeCloseTo(under.x);
+    expect(ghost()?.y).toBeCloseTo(under.y);
+    await press('{Escape}');
+    await until(() => tool() === 'default', 'Escape gives the select tool');
+
+    // Enter on the toolbar's Shape, the mouse away: hidden again.
     await pointerMoveTo('html', 0, 0, 1);
     const shape = await buttonNamed('Shape');
     shape.focus();

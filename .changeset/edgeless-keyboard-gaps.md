@@ -2,6 +2,7 @@
 '@labre/affine-widget-edgeless-toolbar': patch
 '@labre/affine-gfx-template': patch
 '@labre/affine-gfx-shape': patch
+'@labre/std': patch
 ---
 
 Canvas toolbar keyboard, the gaps found in the 4.1.0 acceptance (ADR 0054,
@@ -13,5 +14,7 @@ instead of picking it up with no key to set it down
 (`EdgelessDraggableElementController.dropAt`, new). At a narrow bar (one senior
 tool a page), → from Text now moves the focus to Add file's own button: each
 senior tool draws its own cell. The Shape tool taken from the keyboard no
-longer draws its ghost in the canvas's top-left corner: it is hidden until the
-pointer moves over the canvas. The mouse is unchanged.
+longer draws its ghost in the canvas's top-left corner: with no pointer over
+the editor it is hidden until the pointer moves over the canvas, read from the
+new `ToolController.pointerOnHost$` signal; a pointer resting on the canvas
+keeps it where it rests. The mouse is unchanged.
