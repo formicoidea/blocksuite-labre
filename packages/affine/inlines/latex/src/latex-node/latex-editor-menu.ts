@@ -3,6 +3,7 @@ import type { RichText } from '@labre/affine-rich-text';
 import { ThemeProvider, translateKey } from '@labre/affine-shared/services';
 import { unsafeCSSVar } from '@labre/affine-shared/theme';
 import type { AffineTextAttributes } from '@labre/affine-shared/types';
+import { IS_MAC } from '@labre/global/env';
 import { SignalWatcher, WithDisposable } from '@labre/global/lit';
 import { noop } from '@labre/global/utils';
 import { DoneIcon } from '@blocksuite/icons/lit';
@@ -156,6 +157,19 @@ export class LatexEditorMenu extends SignalWatcher(
         e.preventDefault();
         e.stopPropagation();
         this.abortController.abort();
+      }
+      // Firefox's native select-all is dropped by the inline range sync
+      // (#741): select the formula through the inline editor instead. 'A'
+      // with Caps Lock counts; Mod+Shift+A / Mod+Alt+A are other shortcuts.
+      if (
+        e.key.toLowerCase() === 'a' &&
+        (IS_MAC ? e.metaKey : e.ctrlKey) &&
+        !e.shiftKey &&
+        !e.altKey
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.richText?.inlineEditor?.selectAll();
       }
     });
 
