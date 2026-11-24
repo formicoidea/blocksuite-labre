@@ -127,7 +127,8 @@ export class EdgelessArtefactCatalogueWidget extends WidgetComponent<RootBlockMo
     }
 
     .artefact-catalogue-panel:focus-visible {
-      outline: 2px solid var(--affine-primary-color);
+      outline: 2px solid
+        var(--affine-focus-ring-color, var(--affine-primary-color));
       outline-offset: -2px;
     }
 
@@ -194,7 +195,8 @@ export class EdgelessArtefactCatalogueWidget extends WidgetComponent<RootBlockMo
     }
 
     .artefact-catalogue-entry:focus-visible {
-      outline: 2px solid var(--affine-primary-color);
+      outline: 2px solid
+        var(--affine-focus-ring-color, var(--affine-primary-color));
       outline-offset: -2px;
     }
 

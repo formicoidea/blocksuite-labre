@@ -52,7 +52,8 @@ export class EdgelessFrameMenu extends EdgelessToolbarToolMixin(LitElement) {
       pointer-events: none;
     }
     .frame-add-button:focus-visible {
-      outline: 2px solid var(--affine-primary-color);
+      outline: 2px solid
+        var(--affine-focus-ring-color, var(--affine-primary-color));
       outline-offset: -2px;
     }
     .frame-add-button:hover::before {

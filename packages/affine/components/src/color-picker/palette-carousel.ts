@@ -81,7 +81,8 @@ export const paletteCarouselStyles = css`
   }
 
   .palette-carousel-name:focus-visible {
-    outline: 1px solid var(--affine-primary-color);
+    outline: 1px solid
+      var(--affine-focus-ring-color, var(--affine-primary-color));
     outline-offset: -1px;
   }
 
@@ -163,7 +164,8 @@ export const paletteCarouselStyles = css`
   }
 
   .palette-carousel-option:focus-visible {
-    outline: 1px solid var(--affine-primary-color);
+    outline: 1px solid
+      var(--affine-focus-ring-color, var(--affine-primary-color));
     outline-offset: -1px;
   }
 

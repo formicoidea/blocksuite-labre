@@ -153,7 +153,8 @@ export class DataViewHeaderViews extends WidgetBase {
     /* The view toolbar's keyboard ring (#678), inside the box: the tab's
        item clips what overflows it. */
     data-view-header-views [role='button']:focus-visible {
-      outline: 2px solid var(--affine-primary-color);
+      outline: 2px solid
+        var(--affine-focus-ring-color, var(--affine-primary-color));
       outline-offset: -2px;
     }
 

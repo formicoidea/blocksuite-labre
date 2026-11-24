@@ -164,7 +164,8 @@ export class TitleBand extends SignalWatcher(
     }
 
     .labre-title-band button:focus-visible {
-      outline: 2px solid var(--affine-primary-color);
+      outline: 2px solid
+        var(--affine-focus-ring-color, var(--affine-primary-color));
       outline-offset: 1px;
     }
 
@@ -218,7 +219,8 @@ export class TitleBand extends SignalWatcher(
 
     .labre-title-band-chip:focus-visible,
     .labre-title-band-chip dv-standalone-cell:focus-visible {
-      outline: 2px solid var(--affine-primary-color);
+      outline: 2px solid
+        var(--affine-focus-ring-color, var(--affine-primary-color));
       outline-offset: 1px;
       border-radius: 4px;
     }

@@ -211,14 +211,17 @@ export const datePickerStyle = css`
   .interactive::before {
     opacity: 0;
     transition: none;
-    box-shadow: 0 0 0 3px var(--affine-primary-color);
+    /* The focus halo (opacity 0.5 on :focus-visible): a ring, issue #724. */
+    box-shadow: 0 0 0 3px
+      var(--affine-focus-ring-color, var(--affine-primary-color));
   }
 
   /* .interactive:active, */
 
   .interactive:focus-visible {
     outline: none;
-    outline: 1px solid var(--affine-primary-color);
+    outline: 1px solid
+      var(--affine-focus-ring-color, var(--affine-primary-color));
   }
 
   /* .interactive:active::before, */

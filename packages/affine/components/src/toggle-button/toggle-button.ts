@@ -45,7 +45,8 @@ export class ToggleButton extends WithDisposable(ShadowlessElement) {
 
     .toggle-icon:focus-visible {
       opacity: 1;
-      outline: 1px solid var(--affine-primary-color);
+      outline: 1px solid
+        var(--affine-focus-ring-color, var(--affine-primary-color));
     }
 
     .toggle-icon[data-collapsed='true'] {

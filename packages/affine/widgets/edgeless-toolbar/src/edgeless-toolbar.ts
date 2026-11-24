@@ -271,7 +271,8 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
       box-sizing: border-box;
       width: ${unsafeCSS(SENIOR_TOOL_WIDTH - 2 * CELL_RING_INSET)}px;
       height: ${unsafeCSS(TOOLBAR_HEIGHT - 2 * CELL_RING_INSET)}px;
-      border: 2px solid var(--affine-primary-color);
+      border: 2px solid
+        var(--affine-focus-ring-color, var(--affine-primary-color));
       border-radius: 8px;
       pointer-events: none;
       z-index: 1;
@@ -309,7 +310,8 @@ export class EdgelessToolbarWidget extends WidgetComponent<RootBlockModel> {
     [data-keyboard-highlight],
     .quick-tool-more-button:focus-visible,
     .senior-nav-button:focus-visible {
-      outline: 2px solid var(--affine-primary-color);
+      outline: 2px solid
+        var(--affine-focus-ring-color, var(--affine-primary-color));
       outline-offset: -2px;
       border-radius: 8px;
     }
