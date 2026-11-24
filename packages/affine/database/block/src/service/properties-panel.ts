@@ -1,5 +1,6 @@
 import type { DatabaseBlockModel } from '@labre/affine-model';
 import {
+  panelFor,
   type PropertiesPanelRequest,
   PropertiesPanelProvider,
 } from '@labre/affine-shared/services';
@@ -41,7 +42,8 @@ export function databasePropertiesPanelRequest(
  * Open the host's properties panel on a view of `model`: the call the view
  * options' "Properties" makes, and the one the view bar and the view settings
  * of `@labre/affine-database-editor` make. `false` when the host has no panel
- * (`PropertiesPanelExtension` absent or `null`): the caller then keeps the
+ * (`PropertiesPanelExtension` absent or `null`) or its panel does not
+ * answer `'source'` (`scopes`, issue #708): the caller then keeps the
  * data-view's own properties popover.
  */
 export function openDatabasePropertiesPanel(
@@ -49,7 +51,7 @@ export function openDatabasePropertiesPanel(
   model: DatabaseBlockModel,
   viewId: string
 ): boolean {
-  const panel = std.getOptional(PropertiesPanelProvider);
+  const panel = panelFor(std.getOptional(PropertiesPanelProvider), 'source');
   if (!panel) return false;
   panel.open(databasePropertiesPanelRequest(model, viewId));
   return true;

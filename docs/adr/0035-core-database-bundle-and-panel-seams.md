@@ -1826,3 +1826,27 @@ edited nor removed from it. No stored field, schema or default changed.
   `engine/src/__tests__/toolbar-keyboard.unit.spec.ts`,
   `integration-test/…/page/database-bars-keyboard.spec.ts` and
   `integration-test/…/page/database-no-view.spec.ts` (the redo).
+
+### 2026-11-22: a host panel answers the scopes it lists (`scopes`)
+
+Issue #708. One `PropertiesPanelProvider` decided for the title band
+(`scope: 'page'`) and for every database view of the editor (`'source'`):
+the database block set its "Properties" opener as soon as a provider
+existed. The Labre host needs its panel for a page's property band, and the
+data-view's own properties menu for its inline and full-page databases (its
+product owner's recette of 2026-11-22). A full-page database could drop the
+provider; an inline one lives in a page editor that needs it.
+
+- **The field.** `PropertiesPanelService.scopes?`, typed off the request
+  union (`PropertiesPanelRequest['scope'][]`), so a scope added later is
+  listable. Absent: every scope, as before.
+- **One reading.** `panelFor(panel, scope)` (`@labre/affine-shared/services`)
+  answers the panel or `null`. The database block sets
+  `PropertiesPanelOpenerKey` only for a panel answering `'source'`;
+  `openDatabasePropertiesPanel` answers `false` otherwise, so its callers
+  keep the data-view's menu; the title band draws its panel button and
+  opens the panel only for one answering `'page'`.
+- Not a red zone: nothing stored, no flag; an optional field on an existing
+  seam, a widening of a host-implemented type. Held by
+  `database/block/src/__tests__/properties-panel-scopes.unit.spec.ts` and
+  `fragments/doc-title/src/__tests__/title-band.unit.spec.ts`.

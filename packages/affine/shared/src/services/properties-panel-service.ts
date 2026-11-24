@@ -48,6 +48,27 @@ export interface PropertiesPanelService {
   open(request: PropertiesPanelRequest): void;
   /** Put it away. Writes nothing. */
   close(): void;
+  /**
+   * The request scopes this panel answers (issue #708, ADR 0035 amendment
+   * of 2026-11-22). Absent: every scope, as before 4.2. A scope left out
+   * gets the library's own UI back: without `'page'`, the title band draws
+   * no panel button; without `'source'`, a database view's "Properties"
+   * opens the data-view's own menu. Read when the chrome is drawn, as the
+   * provider itself is.
+   */
+  readonly scopes?: readonly PropertiesPanelRequest['scope'][];
+}
+
+/**
+ * `panel` when it answers `scope`, `null` otherwise: the one reading of
+ * `PropertiesPanelService.scopes`, so every opener agrees.
+ */
+export function panelFor(
+  panel: PropertiesPanelService | null | undefined,
+  scope: PropertiesPanelRequest['scope']
+): PropertiesPanelService | null {
+  if (!panel) return null;
+  return !panel.scopes || panel.scopes.includes(scope) ? panel : null;
 }
 
 export const PropertiesPanelProvider = createIdentifier<PropertiesPanelService>(

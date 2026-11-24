@@ -204,6 +204,35 @@ describe('opening a row (B9)', () => {
 });
 
 describe('the properties panel (B10)', () => {
+  test("a panel answering 'page' only leaves \"Properties\" to the view's menu (#708)", async () => {
+    const panelOpen = vi.fn<(request: PropertiesPanelRequest) => void>();
+    cleanup = await setupEditor('page', [
+      PropertiesPanelExtension({
+        open: panelOpen,
+        close: vi.fn(),
+        scopes: ['page'],
+      }),
+    ]);
+    const { model } = writeDatabase({ hosted: false });
+    await settle();
+
+    blockOf(model)
+      .querySelector<HTMLElement>(
+        'data-view-header-tools-view-options .more-action'
+      )!
+      .click();
+    await settle();
+    [...document.querySelectorAll<HTMLElement>('affine-menu-button')]
+      .find(button => button.textContent?.includes('Properties'))!
+      .click();
+    await settle();
+
+    expect(panelOpen).not.toHaveBeenCalled();
+    expect(
+      document.querySelector('data-view-properties-setting')
+    ).not.toBeNull();
+  });
+
   test('"Properties" asks the host panel, and the element draws the view list', async () => {
     const panelOpen = vi.fn<(request: PropertiesPanelRequest) => void>();
     cleanup = await setupEditor('page', [
