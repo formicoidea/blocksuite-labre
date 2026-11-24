@@ -1,5 +1,60 @@
 # @labre/std
 
+## 4.2.0
+
+### Patch Changes
+
+- 82c5534: Canvas toolbar keyboard, the gaps found in the 4.1.0 acceptance (ADR 0054,
+  amendment of 2026-11-22). Enter on the Templates button now puts the keyboard
+  in the panel's search field; Tab goes on to the categories and the cards, the
+  arrows walk them, and Enter on a card places the template at the centre of the
+  view. Enter on a mind map style places the mind map at the centre of the view
+  instead of picking it up with no key to set it down
+  (`EdgelessDraggableElementController.dropAt`, new). At a narrow bar (one senior
+  tool a page), → from Text now moves the focus to Add file's own button: each
+  senior tool draws its own cell. The Shape tool taken from the keyboard no
+  longer draws its ghost in the canvas's top-left corner: with no pointer over
+  the editor it is hidden until the pointer moves over the canvas, read from the
+  new `ToolController.pointerOnHost# @labre/std
+  signal; a pointer resting on the canvas
+  keeps it where it rests. The mouse is unchanged.
+- 53b75d4: An editor unmounted while active (removed after a click, a focus or with the
+  pointer over it) is no longer kept in memory by `UIEventDispatcher`, whose
+  active dispatcher is a static: it stayed there, with its std, DI container
+  and detached DOM tree, until another editor was activated. `unmounted()` now
+  deactivates the dispatcher, so `std.event.active` reads `false` after the
+  editor is removed.
+- 53b75d4: An unmounted editor no longer stays in memory through its document's canvas
+  surface. `SurfaceMiddlewareExtension` installed the editor's surface
+  middlewares on the store's surface model and never took them out, so a host
+  that keeps its workspace open kept one detached editor (its std, DI
+  container and DOM tree) per document opened on the canvas, and a write to the
+  surface with no editor mounted still ran the unmounted editor's `beforeAdd`
+  (last-used props, layer index). The editor now takes its own middlewares back on
+  unmount and the last editor still mounted on that store gets its back (a
+  mode switch, two editors on one store in a split view), and a
+  store with no surface no longer keeps the effect waiting for one after the
+  editor is gone.
+
+  `SurfaceBlockModel.applyMiddlewares(middlewares)` now returns a function that
+  removes them and reinstates those of the editor mounted before; callers that
+  ignore the result keep the previous behaviour.
+
+  Hosts: call `workspace.dispose()` when a workspace goes; its awareness
+  interval otherwise keeps the workspace, its stores and their blocks
+  reachable (docs/integrate/02-mount.md).
+
+- f7cba5d: `surface.addElement` no longer saves a half-written canvas element (#669, write side, ADR 0056). Up to 4.1.0, a value Yjs cannot store — a store `Text` (`@labre/store`) given as a text or a label, a class instance, a Yjs type already in a document — made the write fail half-way inside `store.transact`, which only logged it: `addElement` returned an id, and the document kept an element with some of its keys (for a `text` element, no `type`, `id` nor `xywh`, so every reader skipped it), or a shape or connector silently lost its label and the props after it.
+
+  - A store `Text` is now accepted and stored as a `Y.Text`, by the store's own rule: its `Y.Text` while it is in no document, a copy once it is (`updateElement` converts it too). The props object you pass is no longer modified, so it can be passed again.
+  - Any other value a declared field cannot store makes `addElement` (and `createDetachedElement`) **throw**, naming the keys, before anything is written: no stored element, no model, no event. A host, an importer or an agent that passed such a value now hears about it instead of getting a broken element. Well-formed calls are unchanged.
+  - `type` and `id` are now the first keys of a new element's stored map.
+
+  Three limits ADR 0053 left open are closed. A peer that replaces the map stored under an existing element key is now read as the removal of the old element then the addition of the new one (`elementRemoved` first, then `elementAdded`, same id), so the canvas no longer keeps a model bound to a map that left the document, and a skipped element replaced by a readable one appears without a reload. `serialize()` now returns the element's key as its `id`, so copy, paste and duplicate work in documents whose elements were stored without `id` (#681): copying several elements pasted only one, a group was not pasted, a copied connector stayed attached to the original. A connector stored without `mode`, or with a mode this version does not know, is routed as a straight line instead of throwing, and one connector whose routing throws is reported once and no longer stops the other connectors of the canvas from being routed, when the canvas opens or for the rest of the session. Nothing persisted changes.
+
+  - @labre/global@4.2.0
+  - @labre/store@4.2.0
+
 ## 4.1.0
 
 ### Minor Changes

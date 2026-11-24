@@ -1,5 +1,25 @@
 # @labre/affine-components
 
+## 4.2.0
+
+### Patch Changes
+
+- ab0b3ec: Raise the `@floating-ui/dom` floor to `^1.7.6` in every manifest that declares it, which brings `@floating-ui/utils` to 0.2.12 (from 0.2.9): from 0.2.11 on, popups anchored in a scrolled page are placed where they belong. The lockfile now holds one version of each `@floating-ui/*` package (`@floating-ui/dom` 1.8.0, `@floating-ui/core` 1.8.0).
+- Updated dependencies [82c5534]
+- Updated dependencies [53b75d4]
+- Updated dependencies [53b75d4]
+- Updated dependencies [99eeeb9]
+- Updated dependencies [62dd689]
+- Updated dependencies [1cb683c]
+- Updated dependencies [f7cba5d]
+- Updated dependencies [5a66cd7]
+  - @labre/std@4.2.0
+  - @labre/affine-shared@4.2.0
+  - @labre/affine-model@4.2.0
+  - @labre/global@4.2.0
+  - @labre/store@4.2.0
+  - @labre/sync@4.2.0
+
 ## 4.1.0
 
 ### Minor Changes

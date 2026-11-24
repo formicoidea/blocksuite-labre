@@ -1,5 +1,86 @@
 # @labre/data-view
 
+## 4.2.0
+
+### Minor Changes
+
+- 7648275: The views bar and the quick-setting bar of a database are now driven from the
+  keyboard, as the view toolbar beside them has been since 4.1.0 (#678's
+  follow-up): each view tab, "N more", "+", the sort chip, each filter chip,
+  each filter group chip and "Add filter" is a named `role="button"` in the tab
+  order, in visual order, activated by Enter and Space (a key held down
+  activates once), with the toolbar's 2px `--affine-primary-color` ring under
+  `:focus-visible`. The current view's tab says so (`aria-current="true"`)
+  and, on a writable view, that it opens a menu (`aria-haspopup`, `aria-expanded` while open); a tab the
+  bar's width hides is out of the tab order and of the accessibility tree
+  (`visibility: hidden`), reached through "N more". A menu opened from the
+  keyboard gives the focus back to its control when it closes; when that
+  control left with what the menu did (the last filter or sort removed, the
+  current view deleted), the focus goes to the view settings "⋯". A view picked
+  from the keyboard keeps the focus on its tab.
+
+  Tab from a base's full-page title now reaches the current view's tab first,
+  then the other tabs and "+", then Filter. Inline, the views bar sits between
+  the text before the database and the toolbar.
+
+  The rule is the toolbar's: the bars take only the keys of their own model,
+  and only in keyboard mode; after any mouse gesture the content behaves as
+  before (a pressed control has no `tabindex` for the length of the press).
+  Shortcuts with a modifier (undo, redo, a host's) always go through.
+
+  `DataViewRootUI.restoreFocus(selector?)` takes an optional selector of the
+  element to focus (default `[data-view-focus-fallback]`, the previous
+  behaviour).
+
+  A redo (Ctrl+Shift+Z, Ctrl+Y) typed on a control of the database (the view
+  settings "⋯" after an undo that brought a view back) now reaches the
+  editor: a title or text cell holding a leftover caret no longer swallows a
+  key whose target is outside it. Typing in a cell is unchanged.
+
+  Not reached from the keyboard yet: the rows of the sort panel (a rule's
+  property, its order, its ✕) inside the menu the sort chip opens; its "Add
+  sort" and "Delete" (all sorts) are.
+
+- 1f98095: The table's "+" column now opens the property type picker, as the virtual
+  table, the properties list and the record detail already did: the column is
+  created only once a type is picked, and Escape or a click outside creates and
+  writes nothing.
+
+  The title editor that follows opens on the column the gesture added, once it
+  is drawn, never on "the last column next frame". A host whose data source
+  applies the add asynchronously (it reads its server first) saw the previous
+  column's editor open. The same wait now covers "Insert left / right" (classic,
+  virtual and mobile tables), the mobile "+" and the properties list's "New
+  property"; if the property never arrives, nothing opens.
+
+  `editLastColumnTitle` of `<affine-database-column-header>` is gone (no caller
+  in the library); `editColumnTitle(id)` opens the editor of one column.
+
+- 5a66cd7: A title band chip can create options without offering "Rename" (issue #710):
+  `TitleBandProperty` gains an optional `optionEdits` (`'create'` or
+  `'create-rename'`, absent reading `'create-rename'` as before), read when the
+  property is `dataWritable`. With `'create'`, the tag menu keeps "Create" and
+  draws no option menu, for options whose id is their label. `TagOptionEdits`
+  gains `'create'` (append-only).
+
+### Patch Changes
+
+- Updated dependencies [82c5534]
+- Updated dependencies [53b75d4]
+- Updated dependencies [53b75d4]
+- Updated dependencies [99eeeb9]
+- Updated dependencies [ab0b3ec]
+- Updated dependencies [62dd689]
+- Updated dependencies [1cb683c]
+- Updated dependencies [f7cba5d]
+- Updated dependencies [5a66cd7]
+  - @labre/std@4.2.0
+  - @labre/affine-shared@4.2.0
+  - @labre/affine-components@4.2.0
+  - @labre/affine-model@4.2.0
+  - @labre/global@4.2.0
+  - @labre/store@4.2.0
+
 ## 4.1.0
 
 ### Minor Changes

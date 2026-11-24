@@ -1,5 +1,27 @@
 # @labre/affine-gfx-ddd-aggregate
 
+## 4.2.0
+
+### Patch Changes
+
+- Updated dependencies [82c5534]
+- Updated dependencies [53b75d4]
+- Updated dependencies [53b75d4]
+- Updated dependencies [99eeeb9]
+- Updated dependencies [62dd689]
+- Updated dependencies [1cb683c]
+- Updated dependencies [f7cba5d]
+- Updated dependencies [5a66cd7]
+  - @labre/affine-widget-edgeless-toolbar@4.2.0
+  - @labre/affine-gfx-template@4.2.0
+  - @labre/std@4.2.0
+  - @labre/affine-shared@4.2.0
+  - @labre/affine-block-surface@4.2.0
+  - @labre/affine-model@4.2.0
+  - @labre/affine-ext-loader@4.2.0
+  - @labre/global@4.2.0
+  - @labre/store@4.2.0
+
 ## 4.1.0
 
 ### Patch Changes

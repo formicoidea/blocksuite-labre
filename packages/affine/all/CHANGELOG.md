@@ -1,5 +1,105 @@
 # @labre/affine
 
+## 4.2.0
+
+### Patch Changes
+
+- Updated dependencies [e76c59e]
+- Updated dependencies [7648275]
+- Updated dependencies [82c5534]
+- Updated dependencies [53b75d4]
+- Updated dependencies [53b75d4]
+- Updated dependencies [99eeeb9]
+- Updated dependencies [ab0b3ec]
+- Updated dependencies [62dd689]
+- Updated dependencies [1cb683c]
+- Updated dependencies [433c6a4]
+- Updated dependencies [f7cba5d]
+- Updated dependencies [1f98095]
+- Updated dependencies [5a66cd7]
+  - @labre/affine-database-view-block@4.2.0
+  - @labre/affine-database-engine@4.2.0
+  - @labre/affine-database-block@4.2.0
+  - @labre/affine-widget-edgeless-toolbar@4.2.0
+  - @labre/affine-gfx-template@4.2.0
+  - @labre/affine-gfx-shape@4.2.0
+  - @labre/std@4.2.0
+  - @labre/affine-shared@4.2.0
+  - @labre/affine-components@4.2.0
+  - @labre/affine-database-editor@4.2.0
+  - @labre/affine-fragment-doc-title@4.2.0
+  - @labre/affine-gfx-connector@4.2.0
+  - @labre/affine-block-root@4.2.0
+  - @labre/affine-foundation@4.2.0
+  - @labre/affine-widget-keyboard-toolbar@4.2.0
+  - @labre/affine-widget-toolbar@4.2.0
+  - @labre/affine-block-edgeless-text@4.2.0
+  - @labre/affine-block-frame@4.2.0
+  - @labre/affine-gfx-bpmn@4.2.0
+  - @labre/affine-gfx-brush@4.2.0
+  - @labre/affine-gfx-c4@4.2.0
+  - @labre/affine-gfx-cynefin-estuarine@4.2.0
+  - @labre/affine-gfx-ddd-aggregate@4.2.0
+  - @labre/affine-gfx-ddd-context-map@4.2.0
+  - @labre/affine-gfx-ddd-core-domain@4.2.0
+  - @labre/affine-gfx-ddd-event-storming@4.2.0
+  - @labre/affine-gfx-ddd-shared@4.2.0
+  - @labre/affine-gfx-edgy@4.2.0
+  - @labre/affine-gfx-group@4.2.0
+  - @labre/affine-gfx-link@4.2.0
+  - @labre/affine-gfx-mindmap@4.2.0
+  - @labre/affine-gfx-note@4.2.0
+  - @labre/affine-gfx-pointer@4.2.0
+  - @labre/affine-gfx-text@4.2.0
+  - @labre/affine-gfx-uml@4.2.0
+  - @labre/affine-gfx-wardley@4.2.0
+  - @labre/affine-widget-thread-marks@4.2.0
+  - @labre/affine-block-image@4.2.0
+  - @labre/affine-widget-edgeless-selected-rect@4.2.0
+  - @labre/affine-block-attachment@4.2.0
+  - @labre/affine-block-bookmark@4.2.0
+  - @labre/affine-block-callout@4.2.0
+  - @labre/affine-block-code@4.2.0
+  - @labre/affine-block-divider@4.2.0
+  - @labre/affine-block-embed@4.2.0
+  - @labre/affine-block-embed-doc@4.2.0
+  - @labre/affine-block-latex@4.2.0
+  - @labre/affine-block-list@4.2.0
+  - @labre/affine-block-note@4.2.0
+  - @labre/affine-block-paragraph@4.2.0
+  - @labre/affine-block-surface@4.2.0
+  - @labre/affine-block-surface-ref@4.2.0
+  - @labre/affine-block-table@4.2.0
+  - @labre/affine-fragment-adapter-panel@4.2.0
+  - @labre/affine-fragment-frame-panel@4.2.0
+  - @labre/affine-fragment-outline@4.2.0
+  - @labre/affine-gfx-turbo-renderer@4.2.0
+  - @labre/affine-inline-comment@4.2.0
+  - @labre/affine-inline-footnote@4.2.0
+  - @labre/affine-inline-latex@4.2.0
+  - @labre/affine-inline-link@4.2.0
+  - @labre/affine-inline-mention@4.2.0
+  - @labre/affine-inline-preset@4.2.0
+  - @labre/affine-inline-reference@4.2.0
+  - @labre/affine-model@4.2.0
+  - @labre/affine-rich-text@4.2.0
+  - @labre/affine-widget-drag-handle@4.2.0
+  - @labre/affine-widget-edgeless-auto-connect@4.2.0
+  - @labre/affine-widget-edgeless-dragging-area@4.2.0
+  - @labre/affine-widget-edgeless-zoom-toolbar@4.2.0
+  - @labre/affine-widget-frame-title@4.2.0
+  - @labre/affine-widget-linked-doc@4.2.0
+  - @labre/affine-widget-note-slicer@4.2.0
+  - @labre/affine-widget-page-dragging-area@4.2.0
+  - @labre/affine-widget-remote-selection@4.2.0
+  - @labre/affine-widget-scroll-anchoring@4.2.0
+  - @labre/affine-widget-slash-menu@4.2.0
+  - @labre/affine-widget-viewport-overlay@4.2.0
+  - @labre/affine-ext-loader@4.2.0
+  - @labre/global@4.2.0
+  - @labre/store@4.2.0
+  - @labre/sync@4.2.0
+
 ## 4.1.0
 
 ### Minor Changes

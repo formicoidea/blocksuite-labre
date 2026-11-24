@@ -1,5 +1,33 @@
 # @labre/affine-block-data-view
 
+## 4.2.0
+
+### Patch Changes
+
+- e76c59e: The `affine:data-view` block element no longer throws while it is constructed: its view logic is now built on first render, as the database block's is. The block still does not render (its data source predates the current database engine); that is tracked separately.
+- Updated dependencies [7648275]
+- Updated dependencies [82c5534]
+- Updated dependencies [53b75d4]
+- Updated dependencies [53b75d4]
+- Updated dependencies [99eeeb9]
+- Updated dependencies [ab0b3ec]
+- Updated dependencies [62dd689]
+- Updated dependencies [1cb683c]
+- Updated dependencies [433c6a4]
+- Updated dependencies [f7cba5d]
+- Updated dependencies [1f98095]
+- Updated dependencies [5a66cd7]
+  - @labre/affine-database-engine@4.2.0
+  - @labre/affine-database-block@4.2.0
+  - @labre/std@4.2.0
+  - @labre/affine-shared@4.2.0
+  - @labre/affine-components@4.2.0
+  - @labre/affine-model@4.2.0
+  - @labre/affine-widget-slash-menu@4.2.0
+  - @labre/affine-ext-loader@4.2.0
+  - @labre/global@4.2.0
+  - @labre/store@4.2.0
+
 ## 4.1.0
 
 ### Patch Changes

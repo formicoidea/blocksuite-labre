@@ -1,5 +1,53 @@
 # @labre/affine-block-root
 
+## 4.2.0
+
+### Patch Changes
+
+- Updated dependencies [7648275]
+- Updated dependencies [82c5534]
+- Updated dependencies [53b75d4]
+- Updated dependencies [53b75d4]
+- Updated dependencies [99eeeb9]
+- Updated dependencies [ab0b3ec]
+- Updated dependencies [62dd689]
+- Updated dependencies [1cb683c]
+- Updated dependencies [433c6a4]
+- Updated dependencies [f7cba5d]
+- Updated dependencies [1f98095]
+- Updated dependencies [5a66cd7]
+  - @labre/affine-database-engine@4.2.0
+  - @labre/affine-database-block@4.2.0
+  - @labre/affine-widget-edgeless-toolbar@4.2.0
+  - @labre/affine-gfx-shape@4.2.0
+  - @labre/std@4.2.0
+  - @labre/affine-shared@4.2.0
+  - @labre/affine-components@4.2.0
+  - @labre/affine-gfx-connector@4.2.0
+  - @labre/affine-block-edgeless-text@4.2.0
+  - @labre/affine-block-frame@4.2.0
+  - @labre/affine-gfx-brush@4.2.0
+  - @labre/affine-gfx-group@4.2.0
+  - @labre/affine-gfx-mindmap@4.2.0
+  - @labre/affine-gfx-note@4.2.0
+  - @labre/affine-gfx-pointer@4.2.0
+  - @labre/affine-gfx-text@4.2.0
+  - @labre/affine-block-image@4.2.0
+  - @labre/affine-block-attachment@4.2.0
+  - @labre/affine-block-bookmark@4.2.0
+  - @labre/affine-block-embed@4.2.0
+  - @labre/affine-block-note@4.2.0
+  - @labre/affine-block-paragraph@4.2.0
+  - @labre/affine-block-surface@4.2.0
+  - @labre/affine-inline-link@4.2.0
+  - @labre/affine-inline-preset@4.2.0
+  - @labre/affine-model@4.2.0
+  - @labre/affine-rich-text@4.2.0
+  - @labre/affine-widget-linked-doc@4.2.0
+  - @labre/affine-ext-loader@4.2.0
+  - @labre/global@4.2.0
+  - @labre/store@4.2.0
+
 ## 4.1.0
 
 ### Minor Changes
