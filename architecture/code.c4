@@ -4583,7 +4583,7 @@ model {
   features.blocks.attachment.components -[imports]-> framework.std.src '1 import, 1 type-only'
   features.blocks.attachment.components -[imports]-> model_.model_.src '1 import, 1 type-only'
   features.blocks.attachment.configs -[imports]-> features.blocks.attachment.components '1 import'
-  features.blocks.attachment.configs -[imports]-> features.blocks.attachment.src '6 imports'
+  features.blocks.attachment.configs -[imports]-> features.blocks.attachment.src '7 imports'
   features.blocks.attachment.configs -[imports]-> features.blocks.image.src '1 import'
   features.blocks.attachment.configs -[imports]-> features.components.portal '1 import'
   features.blocks.attachment.configs -[imports]-> features.shared.consts '1 import'
