@@ -95,6 +95,12 @@ breaks a host. If in doubt between `minor` and `major`, it is `major`.
   PR's CI, not in `yarn ci:local` (format, build, unit), so a review round does
   not replay it on the workstation; the usine guard refuses the merge until
   every check of the head commit is green. Locally, run the specs you touched.
+  One exception (`checksLegers` in `.usine/obligations.json`): a PR that was
+  green, then only updated with the base (a conflict settled in the docs, none
+  of its own code touched, nothing sensitive or dependency-related moved),
+  merges once `Lint` and `Typecheck & Build` are green on the new head; the
+  unit and integration runs of its last green commit stand, and the nightly
+  run catches what a cross-file conflict could still break.
 - Squash merge. The PR title becomes the commit subject.
 - `Closes #N` does not auto-close on a non-default branch: close the issue by
   hand after the merge.
