@@ -1,5 +1,101 @@
 # @labre/affine
 
+## 4.3.0
+
+### Minor Changes
+
+- bba6fbd: Every keyboard focus ring now reads `--affine-focus-ring-color` first, then
+  the token it read before (issue #724). A host theme can give the ring its
+  own colour, for instance one that keeps 3:1 under the toolbars' hover veils
+  in dark while the accent stays dark enough to fill a control with a white
+  label. The library ships no value: without it, nothing changes.
+
+### Patch Changes
+
+- Updated dependencies [bba6fbd]
+  - @labre/affine-components@4.3.0
+  - @labre/affine-widget-edgeless-toolbar@4.3.0
+  - @labre/affine-block-attachment@4.3.0
+  - @labre/affine-block-bookmark@4.3.0
+  - @labre/affine-block-callout@4.3.0
+  - @labre/affine-block-code@4.3.0
+  - @labre/affine-block-divider@4.3.0
+  - @labre/affine-block-edgeless-text@4.3.0
+  - @labre/affine-block-embed@4.3.0
+  - @labre/affine-block-embed-doc@4.3.0
+  - @labre/affine-block-frame@4.3.0
+  - @labre/affine-block-image@4.3.0
+  - @labre/affine-block-latex@4.3.0
+  - @labre/affine-block-list@4.3.0
+  - @labre/affine-block-note@4.3.0
+  - @labre/affine-block-paragraph@4.3.0
+  - @labre/affine-block-root@4.3.0
+  - @labre/affine-block-surface@4.3.0
+  - @labre/affine-block-surface-ref@4.3.0
+  - @labre/affine-block-table@4.3.0
+  - @labre/affine-database-block@4.3.0
+  - @labre/affine-database-editor@4.3.0
+  - @labre/affine-database-engine@4.3.0
+  - @labre/affine-database-view-block@4.3.0
+  - @labre/affine-foundation@4.3.0
+  - @labre/affine-fragment-adapter-panel@4.3.0
+  - @labre/affine-fragment-doc-title@4.3.0
+  - @labre/affine-fragment-frame-panel@4.3.0
+  - @labre/affine-fragment-outline@4.3.0
+  - @labre/affine-gfx-bpmn@4.3.0
+  - @labre/affine-gfx-brush@4.3.0
+  - @labre/affine-gfx-c4@4.3.0
+  - @labre/affine-gfx-connector@4.3.0
+  - @labre/affine-gfx-cynefin-estuarine@4.3.0
+  - @labre/affine-gfx-ddd-context-map@4.3.0
+  - @labre/affine-gfx-ddd-core-domain@4.3.0
+  - @labre/affine-gfx-ddd-event-storming@4.3.0
+  - @labre/affine-gfx-edgy@4.3.0
+  - @labre/affine-gfx-group@4.3.0
+  - @labre/affine-gfx-link@4.3.0
+  - @labre/affine-gfx-mindmap@4.3.0
+  - @labre/affine-gfx-note@4.3.0
+  - @labre/affine-gfx-pointer@4.3.0
+  - @labre/affine-gfx-shape@4.3.0
+  - @labre/affine-gfx-template@4.3.0
+  - @labre/affine-gfx-text@4.3.0
+  - @labre/affine-gfx-wardley@4.3.0
+  - @labre/affine-inline-footnote@4.3.0
+  - @labre/affine-inline-latex@4.3.0
+  - @labre/affine-inline-link@4.3.0
+  - @labre/affine-inline-preset@4.3.0
+  - @labre/affine-inline-reference@4.3.0
+  - @labre/affine-rich-text@4.3.0
+  - @labre/affine-widget-drag-handle@4.3.0
+  - @labre/affine-widget-edgeless-auto-connect@4.3.0
+  - @labre/affine-widget-edgeless-dragging-area@4.3.0
+  - @labre/affine-widget-edgeless-selected-rect@4.3.0
+  - @labre/affine-widget-edgeless-zoom-toolbar@4.3.0
+  - @labre/affine-widget-frame-title@4.3.0
+  - @labre/affine-widget-keyboard-toolbar@4.3.0
+  - @labre/affine-widget-linked-doc@4.3.0
+  - @labre/affine-widget-note-slicer@4.3.0
+  - @labre/affine-widget-remote-selection@4.3.0
+  - @labre/affine-widget-slash-menu@4.3.0
+  - @labre/affine-widget-toolbar@4.3.0
+  - @labre/affine-gfx-ddd-aggregate@4.3.0
+  - @labre/affine-gfx-ddd-shared@4.3.0
+  - @labre/affine-gfx-uml@4.3.0
+  - @labre/affine-widget-thread-marks@4.3.0
+  - @labre/affine-inline-comment@4.3.0
+  - @labre/affine-ext-loader@4.3.0
+  - @labre/affine-gfx-turbo-renderer@4.3.0
+  - @labre/affine-inline-mention@4.3.0
+  - @labre/affine-model@4.3.0
+  - @labre/affine-shared@4.3.0
+  - @labre/affine-widget-page-dragging-area@4.3.0
+  - @labre/affine-widget-scroll-anchoring@4.3.0
+  - @labre/affine-widget-viewport-overlay@4.3.0
+  - @labre/global@4.3.0
+  - @labre/std@4.3.0
+  - @labre/store@4.3.0
+  - @labre/sync@4.3.0
+
 ## 4.2.0
 
 ### Patch Changes
