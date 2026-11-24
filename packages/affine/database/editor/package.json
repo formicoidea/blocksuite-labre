@@ -42,6 +42,6 @@
     "@labre/affine-model": "workspace:*",
     "@vanilla-extract/vite-plugin": "5.1.4",
     "rxjs": "^7.8.1",
-    "vitest": "^3.2.3"
+    "vitest": "3.2.7"
   }
 }
