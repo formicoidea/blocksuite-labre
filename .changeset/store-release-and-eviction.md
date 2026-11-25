@@ -17,6 +17,7 @@
 '@labre/affine-gfx-mindmap': patch
 '@labre/affine-database-block': patch
 '@labre/affine-database-view-block': patch
+'@labre/affine-widget-linked-doc': patch
 ---
 
 `store.dispose()` now releases a store for good (#746, ADR 0057). It detaches
@@ -54,9 +55,18 @@ afterwards. `doc.defaultStore` (never builds one) and
 store; `followDefaultStore(doc, attach)` (`@labre/affine-shared/utils`)
 follows another document's default store without keeping it. The linked-doc
 card, the data-view source and the surface-ref use them: a document closed
-while another document shows it is released, and the card refreshes when
-it is opened again. `DocDisplayMetaService` no longer builds the store of
-every linked document it names.
+while another document shows it is released, nothing of the library opens
+it again, and the card refreshes when it is opened again. The card reads
+the document's title and trash from its meta, and its content from the
+open store or, when nobody has the document open, from a readonly store of
+its own released with the card (its `linkedDoc` is `undefined` while none
+is open). The data-view source lists the documents open. Readers of
+another document once (`docCRUD.get`: an export walking a synced document,
+an import checking a linked one) get its open store, else its readonly one,
+through the new `storeToRead(doc)` (`@labre/affine-shared/utils`). The
+surface-ref finds the document of its element from Yjs and builds a
+readonly store for that one alone. `DocDisplayMetaService` no longer
+builds the store of every linked document it names.
 
 `doc.getStore({ readonly: false })` now returns one store per document, as
 `readonly: true` does, instead of building a new one on every call, and

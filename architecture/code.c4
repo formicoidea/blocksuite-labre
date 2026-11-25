@@ -642,13 +642,13 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/embed-doc
         metadata {
           path 'packages/affine/blocks/embed-doc'
-          files '46'
+          files '47'
         }
         common = folder 'common/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/embed-doc/src/common
           metadata {
             path 'packages/affine/blocks/embed-doc/src/common'
-            files '3'
+            files '4'
           }
         }
         embed-linked-doc-block = folder 'embed-linked-doc-block/' {
@@ -3610,11 +3610,11 @@ model {
   features.blocks.embed-doc -[uses]-> features.ext-loader '4 imports'
   features.blocks.embed-doc -[uses]-> features.inlines.reference '2 imports'
   features.blocks.embed-doc -[uses]-> features.rich-text '1 import'
-  features.blocks.embed-doc -[uses]-> features.shared '39 imports, 1 type-only'
+  features.blocks.embed-doc -[uses]-> features.shared '40 imports, 1 type-only'
   features.blocks.embed-doc -[uses]-> features.widgets.slash-menu '1 import'
   features.blocks.embed-doc -[uses]-> framework.global_ '13 imports'
   features.blocks.embed-doc -[uses]-> framework.std '20 imports, 5 type-only'
-  features.blocks.embed-doc -[uses]-> framework.store '16 imports, 11 type-only'
+  features.blocks.embed-doc -[uses]-> framework.store '17 imports, 12 type-only'
   features.blocks.embed-doc -[uses]-> model_.model_ '28 imports, 5 type-only'
   features.blocks.frame -[uses]-> features.blocks.surface '12 imports'
   features.blocks.frame -[uses]-> features.components '5 imports'
@@ -3728,7 +3728,7 @@ model {
   features.blocks.surface-ref -[uses]-> features.widgets.slash-menu '1 import'
   features.blocks.surface-ref -[uses]-> framework.global_ '10 imports'
   features.blocks.surface-ref -[uses]-> framework.std '17 imports, 4 type-only'
-  features.blocks.surface-ref -[uses]-> framework.store '5 imports, 5 type-only'
+  features.blocks.surface-ref -[uses]-> framework.store '6 imports, 6 type-only'
   features.blocks.surface-ref -[uses]-> model_.model_ '12 imports, 3 type-only'
   features.blocks.table -[uses]-> features.components '4 imports'
   features.blocks.table -[uses]-> features.ext-loader '2 imports'
@@ -4211,7 +4211,7 @@ model {
   features.widgets.linked-doc -[uses]-> features.ext-loader '2 imports'
   features.widgets.linked-doc -[uses]-> features.inlines.reference '1 import'
   features.widgets.linked-doc -[uses]-> features.rich-text '2 imports'
-  features.widgets.linked-doc -[uses]-> features.shared '25 imports, 2 type-only'
+  features.widgets.linked-doc -[uses]-> features.shared '27 imports, 2 type-only'
   features.widgets.linked-doc -[uses]-> framework.global_ '14 imports'
   features.widgets.linked-doc -[uses]-> framework.std '12 imports, 4 type-only'
   features.widgets.linked-doc -[uses]-> framework.store '8 imports, 3 type-only'
@@ -4814,11 +4814,11 @@ model {
   features.blocks.embed-doc.common -[imports]-> features.ext-loader.src '1 import'
   features.blocks.embed-doc.common -[imports]-> features.shared.consts '1 import'
   features.blocks.embed-doc.common -[imports]-> features.shared.services '1 import'
-  features.blocks.embed-doc.common -[imports]-> features.shared.utils '1 import'
+  features.blocks.embed-doc.common -[imports]-> features.shared.utils '2 imports'
   features.blocks.embed-doc.common -[imports]-> framework.std.src '2 imports, 1 type-only'
-  features.blocks.embed-doc.common -[imports]-> framework.store.src '2 imports, 2 type-only'
+  features.blocks.embed-doc.common -[imports]-> framework.store.src '3 imports, 3 type-only'
   features.blocks.embed-doc.common -[imports]-> model_.model_.src '2 imports, 1 type-only'
-  features.blocks.embed-doc.embed-linked-doc-block -[imports]-> features.blocks.embed-doc.common '3 imports'
+  features.blocks.embed-doc.embed-linked-doc-block -[imports]-> features.blocks.embed-doc.common '4 imports'
   features.blocks.embed-doc.embed-linked-doc-block -[imports]-> features.blocks.embed-doc.embed-synced-doc-block '2 imports'
   features.blocks.embed-doc.embed-linked-doc-block -[imports]-> features.blocks.embed-doc.src '3 imports'
   features.blocks.embed-doc.embed-linked-doc-block -[imports]-> features.blocks.embed.src '4 imports'
@@ -5459,7 +5459,7 @@ model {
   features.blocks.surface-ref.src -[imports]-> framework.global_.lit '1 import'
   features.blocks.surface-ref.src -[imports]-> framework.std.gfx '4 imports, 1 type-only'
   features.blocks.surface-ref.src -[imports]-> framework.std.src '4 imports, 1 type-only'
-  features.blocks.surface-ref.src -[imports]-> framework.store.src '2 imports, 2 type-only'
+  features.blocks.surface-ref.src -[imports]-> framework.store.src '3 imports, 3 type-only'
   features.blocks.surface-ref.src -[imports]-> model_.model_.src '6 imports, 2 type-only'
   features.blocks.surface.adapters -[imports]-> features.blocks.surface.element-model '1 import, 1 type-only'
   features.blocks.surface.adapters -[imports]-> features.shared.adapters '7 imports, 4 type-only'
@@ -7434,7 +7434,7 @@ model {
   features.widgets.linked-doc.src -[imports]-> model_.model_.src '1 import, 1 type-only'
   features.widgets.linked-doc.transformers -[imports]-> features.shared.adapters '4 imports'
   features.widgets.linked-doc.transformers -[imports]-> features.shared.services '2 imports'
-  features.widgets.linked-doc.transformers -[imports]-> features.shared.utils '2 imports'
+  features.widgets.linked-doc.transformers -[imports]-> features.shared.utils '4 imports'
   features.widgets.linked-doc.transformers -[imports]-> framework.global_.di '3 imports'
   features.widgets.linked-doc.transformers -[imports]-> framework.global_.exceptions '1 import'
   features.widgets.linked-doc.transformers -[imports]-> framework.global_.utils '4 imports'

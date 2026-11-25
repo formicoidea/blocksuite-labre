@@ -473,7 +473,7 @@ disposed`, and the edit was lost. The first full integration run after
   Fixed at the root, not by a disposed guard: the base cell keeps the
   pending value and its frame (`valueSetNextTick`, base-cell.ts:169), writes
   it at once when the cell leaves the DOM (`disconnectedCallback`,
-  base-cell.ts:183-193), cancels the frame so it never
+  base-cell.ts:183-198), cancels the frame so it never
   writes twice, lets a newer immediate write cancel an older pending one,
   writes at once when the cell is already out of the DOM, and drops a
   deferred write if the property turned readonly meanwhile. A write that
@@ -583,3 +583,83 @@ target }`). Yjs keeps the outer origin of a nested transaction, so a
      mounted with its card (or its surface-ref) to B, B's default store
      disposed and collected, B then edited on a fresh store, A shows the
      edit.
+
+## Amendment — 2026-11-25: two findings of the third review, fixed
+
+1. **A table cell's `Text` was released twice.** A flat-data block binds each
+   `Text` and `Boxed` of a nested prop more than once: when `initializeData`
+   reads it, then again when it is assigned into its nested proxy
+   (`bindOnChangeIfNeed`, then the transform). That is the base's behaviour,
+   and it was harmless there: `bind` only set the callback, and each instance
+   observes Yjs once, from its constructor (one observer per cell `Y.Text`
+   and `Boxed` map while the store is open, on the base as now, and one
+   `blockUpdated` per edit). The first landing made a scoped `bind` also
+   track the target, and `ReleaseScope.track` kept one handle per call, so
+   `store.dispose()` unobserved a cell twice and Yjs warned "Tried to remove
+   event handler that doesn't exist" (30 times in the integration run, one
+   per table cell; none on the base). `ReleaseScope` now holds a target once
+   (a `WeakSet`), and every `_release` (`Text`, `Boxed`, `ReactiveYArray`,
+   `ReactiveYMap`, `ReactiveFlatYMap`) is idempotent. The same review of the
+   path found a `Text` written into a cell through the flat proxy (the
+   table's whole-cell write) bound with a closure over the store's
+   `onChange` and never tracked, so it kept the store after the release:
+   `bindOnChangeIfNeed` now takes the block scope. Unchanged, as on the base:
+   a `Boxed` written into a new cell is never bound to the store (it notifies
+   nothing), so its own observer holds nothing of it; a `Text` written back
+   to its own cell leaves the model's text reading empty (a base bug,
+   reported, not touched here). Guards: `store-release.unit.spec.ts`, « a
+   Text and a Boxed in a flat block's nested prop » (red before: two
+   warnings; one handler left on a locally written cell).
+2. **The linked-doc card built the other document's default store again.**
+   Its `linkedDoc` getter asked `getStore({ id })`, the default store's key,
+   from the title, the render, the empty check and `_load` (run on every
+   document-list change): after a host closed B, any re-render of a card to
+   B, or any rename in the workspace, rebuilt B's default store, which
+   nobody released. The card now reads existence, title and trash from the
+   `Doc` and its meta, and content from `LinkedDocSource`
+   (`embed-doc/src/common/linked-doc-source.ts`): B's default store while it
+   is open; when nobody has B open and the card must load content, a counted
+   readonly store of its own (`holdPreviewStore`), released with the card
+   (the base built the default store there); once the default store it read
+   is released, nothing until a store comes back (title from meta, the
+   empty-preview body; building a store then would only work around the
+   host's close). Guards: `embed-doc/src/__tests__/linked-doc-source.unit.spec.ts`
+   and `cross-doc-store-release.spec.ts` (B's `defaultStore` null after the
+   close, after a forced re-render and reload of the card, after another
+   document and B are renamed, and after the collection; the card shows B's
+   renamed title; red before on the rebuilt store).
+
+   Every other place that asks another document for a store, re-audited:
+
+   - data-view source: built every document's default store when built, a
+     closed one included; it now never builds one and lists the documents
+     open (`data-source-follows-docs.unit.spec.ts`, red before). Its
+     `dataSource` getter is deprecated and read by no registered entry;
+   - the transformers' `docCRUD.get` (the store's own and the linked-doc
+     widget's HTML, Markdown, Notion and zip ones): « one-shot » above was
+     the wrong verdict, it built the default store of every synced document
+     exported and every linked document a paste or an import checked, and
+     that store stayed. It now answers the open default store, else the
+     readonly one (`storeToRead`, `@labre/affine-shared/utils`; guards in
+     `follow-default-store.unit.spec.ts` and `store-release.unit.spec.ts`);
+   - surface-ref: scanning the workspace for the referenced element built a
+     readonly store for every document scanned; the document is now found
+     from its Yjs blocks, and the readonly store is built for that one
+     document, the one the preview renders;
+   - synced-doc block, card and toolbar: readonly stores, one per synced
+     document shown, as before (documented retention);
+   - `DocDisplayMetaService`, the inline reference node, the linked-doc
+     menus, quick search and the « more » menus, the database link cell and
+     title column: meta only, no store;
+   - the paste middleware: `getDoc` for existence only;
+   - the frame panel: a counted preview store of its own document;
+   - creation paths (`createDefaultDoc`, « create linked doc » from a note,
+     a slice or edgeless elements): the new document's store, by design;
+   - canvas viewer: its own workspace.
+
+Also from that review: `defaultStoreChanged` announces in order (a
+subscriber that opens the document again inside a `null` no longer lets
+later subscribers see the new store before the `null`;
+`store-container.unit.spec.ts`), and a cell's `disconnectedCallback` runs
+its teardown in a `finally`, so a flush that throws on a store the host
+disposed of first does not skip it (`cell-write-at-teardown.unit.spec.ts`).

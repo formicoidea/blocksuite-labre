@@ -10,4 +10,6 @@ left that frame behind, so the write ran after the store was released,
 threw `store … is disposed`, and the edit was lost. The cell now writes the
 pending value as it leaves the DOM, once, and the frame never runs; a
 deferred write is also dropped if the cell turned readonly meanwhile. While
-the editor stays mounted the write still waits for the next frame.
+the editor stays mounted the write still waits for the next frame. If that
+write throws (a host that disposed of the store before removing the
+editor), the element's teardown still runs.

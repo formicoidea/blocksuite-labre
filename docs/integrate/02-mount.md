@@ -242,10 +242,16 @@ one store per document opened in it, until you release it
   then refreshes). Code of yours that listens to another document's store
   does the same with `followDefaultStore(doc, attach)` from
   `@labre/affine-shared/utils`, or reads `doc.defaultStore` (never builds
-  one) and `doc.defaultStoreChanged`. What stays: the library keeps one
-  READONLY store per document it shows from another one (a synced doc, a
-  surface-ref's preview), never released, as before; the store you close
-  is the default one.
+  one) and `doc.defaultStoreChanged`. Nothing of the library opens a
+  closed document again: a card reads its title and trash from the
+  document's meta, and its content from the open store, or, when nobody
+  has the document open, from a readonly store of its own released with
+  the card. What stays: one READONLY store per synced document shown, and
+  one per document a surface-ref shows an element of (found from Yjs, not
+  per document scanned), never released, as before; one-shot readers of
+  another document (an export walking a synced doc, an import checking a
+  linked doc) read its open store, else that readonly one. The store you
+  close is the default one.
 - **A preview built on a query store** (`doc.getStore({ query })`) is
   released the same way once the preview is gone. Previews asking for the
   same options share one cached store: hold it with `holdPreviewStore(doc,
