@@ -180,19 +180,15 @@ export abstract class BaseCellRenderer<
     this._pendingWrite = { value, frame };
   }
 
-  /** Write now what `valueSetNextTick` left pending, once. */
-  flushPendingWrite() {
-    const pending = this._pendingWrite;
-    if (!pending) return;
-    this._cancelPendingWrite();
-    this._writeDeferred(pending.value);
-  }
-
   override disconnectedCallback() {
-    // Runs after a subclass's own teardown commit (each calls `super`
-    // last): that commit, an immediate write, already cancelled a pending
-    // older value.
-    this.flushPendingWrite();
+    // Write now, once, what `valueSetNextTick` left pending. Runs after a
+    // subclass's own teardown commit (each calls `super` last): that commit,
+    // an immediate write, already cancelled a pending older value.
+    const pending = this._pendingWrite;
+    if (pending) {
+      this._cancelPendingWrite();
+      this._writeDeferred(pending.value);
+    }
     super.disconnectedCallback();
   }
 
