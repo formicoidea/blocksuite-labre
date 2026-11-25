@@ -32,7 +32,12 @@ export const insertImagesCommand: Command<
       targetModel,
       placement
     ).then(result => {
-      if (result.length && removeEmptyLine && targetModel.text?.length === 0) {
+      if (
+        result.length &&
+        removeEmptyLine &&
+        !std.store.disposed &&
+        targetModel.text?.length === 0
+      ) {
         std.store.deleteBlock(targetModel);
       }
 

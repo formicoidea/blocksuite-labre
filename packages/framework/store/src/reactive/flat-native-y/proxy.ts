@@ -111,6 +111,7 @@ function createProxyHandler(
     initialized,
     transform,
     stashed,
+    scope,
   } = options;
 
   return {
@@ -135,6 +136,7 @@ function createProxyHandler(
               onChange,
               fullPath,
               value,
+              scope,
             });
 
           if (!isStashed) {
@@ -152,9 +154,13 @@ function createProxyHandler(
           return result;
         }
 
-        bindOnChangeIfNeed(value, () => {
-          onChange?.(firstKey, true);
-        });
+        bindOnChangeIfNeed(
+          value,
+          () => {
+            onChange?.(firstKey, true);
+          },
+          scope
+        );
         const yValue = native2Y(value);
         const next = transform(firstKey, value, yValue);
 

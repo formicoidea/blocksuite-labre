@@ -132,7 +132,8 @@ export abstract class EdgelessClipboardConfig extends Extension {
     context: ClipboardConfigCreationContext
   ): Promise<string | null> {
     const prepared = await this.prepare(snapshot, context);
-    if (!prepared) return null;
+    // Prepared: the document may be closed by now (ADR 0057).
+    if (!prepared || this.std.store.disposed) return null;
     const result: { id: string | null | Promise<string | null> } = {
       id: null,
     };

@@ -188,6 +188,8 @@ export async function addSiblingAttachmentBlocks(
       return embed === undefined ? withHtmlDefaultView(std, props) : props;
     })
   );
+  // The uploads awaited: a document closed meanwhile gets nothing (ADR 0057).
+  if (std.store.disposed) return [];
 
   const blockIds = std.store.addSiblingBlocks(
     targetModel,
@@ -211,6 +213,7 @@ export async function addAttachments(
   const propsArray = await Promise.all(
     files.map(file => buildPropsWith(std, file, undefined, 'whiteboard'))
   );
+  if (std.store.disposed) return [];
 
   return placeAttachmentsOnCanvas(std, propsArray, point, shouldTransformPoint);
 }

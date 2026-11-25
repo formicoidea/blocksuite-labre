@@ -1,6 +1,7 @@
 import * as Y from 'yjs';
 
 import { NATIVE_UNIQ_IDENTIFIER } from '../consts.js';
+import type { ReleaseScope } from './release-scope.js';
 
 export type OnBoxedChange = (data: unknown, isLocal: boolean) => void;
 
@@ -116,22 +117,43 @@ export class Boxed<Value = unknown> {
       this._map.set('type', NATIVE_UNIQ_IDENTIFIER as Value);
       this._map.set('value', value);
     }
-    this._map.observeDeep(events => {
-      events.forEach(event => {
-        const isLocal =
-          !event.transaction.origin ||
-          !this._map.doc ||
-          event.transaction.origin instanceof Y.UndoManager ||
-          event.transaction.origin.proxy
-            ? true
-            : event.transaction.origin === this._map.doc.clientID;
-        this._onChange?.(this.getValue(), isLocal);
-      });
-    });
+    this._map.observeDeep(this._observer);
   }
 
-  /** @internal */
-  bind(onChange: OnBoxedChange) {
+  private _observing = true;
+
+  private readonly _observer = (events: Y.YEvent<any>[]) => {
+    events.forEach(event => {
+      const isLocal =
+        !event.transaction.origin ||
+        !this._map.doc ||
+        event.transaction.origin instanceof Y.UndoManager ||
+        event.transaction.origin.proxy
+          ? true
+          : event.transaction.origin === this._map.doc.clientID;
+      this._onChange?.(this.getValue(), isLocal);
+    });
+  };
+
+  /**
+   * @internal
+   * `scope` is the block scope of the store the boxed value notifies; it
+   * is released with it (ADR 0057).
+   */
+  bind(onChange: OnBoxedChange, scope?: ReleaseScope) {
     this._onChange = onChange;
+    scope?.track(this);
+  }
+
+  /**
+   * @internal
+   * Stop observing the `Y.Map`: the store this value was built for is
+   * released (ADR 0057). Writes nothing; the value keeps reading Yjs.
+   * Idempotent.
+   */
+  _release() {
+    if (!this._observing) return;
+    this._observing = false;
+    this._map.unobserveDeep(this._observer);
   }
 }

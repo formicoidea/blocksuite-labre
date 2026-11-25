@@ -265,7 +265,8 @@ export const moreActions = [
 
           const create = async () => {
             const title = await promptDocTitle(ctx.std, placeholder);
-            if (title === null) return;
+            // The prompt is async: the document may be closed by now.
+            if (title === null || ctx.store.disposed) return;
 
             const edgeless = getEdgelessWith(ctx);
             if (!edgeless) return;
@@ -345,7 +346,7 @@ export const moreActions = [
             if (!surfaceId) return;
 
             const title = await promptDocTitle(ctx.std);
-            if (title === null) return;
+            if (title === null || ctx.store.disposed) return;
 
             const clonedModels = getSortedCloneElements(models);
             const linkedDoc = createLinkedDocFromEdgelessElements(
@@ -505,7 +506,8 @@ function linkElementViaQuickSearch(
   quickSearch
     .openQuickSearch()
     .then(result => {
-      if (!result) return;
+      // The search is async: the document may be closed by now.
+      if (!result || ctx.store.disposed) return;
       const crud = ctx.std.get(EdgelessCRUDIdentifier);
       if ('docId' in result) {
         crud.updateElement(el.id, {

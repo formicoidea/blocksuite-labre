@@ -169,7 +169,7 @@ model {
       link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/framework/store
       metadata {
         path 'packages/framework/store'
-        files '82'
+        files '83'
       }
       adapter = folder 'adapter/' {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/framework/store/src/adapter
@@ -203,7 +203,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/framework/store/src/reactive
         metadata {
           path 'packages/framework/store/src/reactive'
-          files '21'
+          files '22'
         }
       }
       schema = folder 'schema/' {
@@ -642,13 +642,13 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/embed-doc
         metadata {
           path 'packages/affine/blocks/embed-doc'
-          files '46'
+          files '47'
         }
         common = folder 'common/' {
           link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/blocks/embed-doc/src/common
           metadata {
             path 'packages/affine/blocks/embed-doc/src/common'
-            files '3'
+            files '4'
           }
         }
         embed-linked-doc-block = folder 'embed-linked-doc-block/' {
@@ -2802,7 +2802,7 @@ model {
       link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/shared
       metadata {
         path 'packages/affine/shared'
-        files '258'
+        files '260'
       }
       adapters = folder 'adapters/' {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/shared/src/adapters
@@ -2871,7 +2871,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/shared/src/utils
         metadata {
           path 'packages/affine/shared/src/utils'
-          files '60'
+          files '62'
         }
       }
     }
@@ -3610,11 +3610,11 @@ model {
   features.blocks.embed-doc -[uses]-> features.ext-loader '4 imports'
   features.blocks.embed-doc -[uses]-> features.inlines.reference '2 imports'
   features.blocks.embed-doc -[uses]-> features.rich-text '1 import'
-  features.blocks.embed-doc -[uses]-> features.shared '39 imports, 1 type-only'
+  features.blocks.embed-doc -[uses]-> features.shared '40 imports, 1 type-only'
   features.blocks.embed-doc -[uses]-> features.widgets.slash-menu '1 import'
   features.blocks.embed-doc -[uses]-> framework.global_ '13 imports'
   features.blocks.embed-doc -[uses]-> framework.std '20 imports, 5 type-only'
-  features.blocks.embed-doc -[uses]-> framework.store '16 imports, 11 type-only'
+  features.blocks.embed-doc -[uses]-> framework.store '17 imports, 12 type-only'
   features.blocks.embed-doc -[uses]-> model_.model_ '28 imports, 5 type-only'
   features.blocks.frame -[uses]-> features.blocks.surface '12 imports'
   features.blocks.frame -[uses]-> features.components '5 imports'
@@ -3724,11 +3724,11 @@ model {
   features.blocks.surface-ref -[uses]-> features.components '4 imports, 1 type-only'
   features.blocks.surface-ref -[uses]-> features.ext-loader '4 imports'
   features.blocks.surface-ref -[uses]-> features.inlines.reference '1 import'
-  features.blocks.surface-ref -[uses]-> features.shared '16 imports'
+  features.blocks.surface-ref -[uses]-> features.shared '17 imports'
   features.blocks.surface-ref -[uses]-> features.widgets.slash-menu '1 import'
   features.blocks.surface-ref -[uses]-> framework.global_ '10 imports'
   features.blocks.surface-ref -[uses]-> framework.std '17 imports, 4 type-only'
-  features.blocks.surface-ref -[uses]-> framework.store '5 imports, 5 type-only'
+  features.blocks.surface-ref -[uses]-> framework.store '6 imports, 6 type-only'
   features.blocks.surface-ref -[uses]-> model_.model_ '12 imports, 3 type-only'
   features.blocks.table -[uses]-> features.components '4 imports'
   features.blocks.table -[uses]-> features.ext-loader '2 imports'
@@ -3813,7 +3813,7 @@ model {
   features.fragments.frame-panel -[uses]-> features.blocks.frame '2 imports'
   features.fragments.frame-panel -[uses]-> features.blocks.surface '3 imports'
   features.fragments.frame-panel -[uses]-> features.ext-loader '2 imports'
-  features.fragments.frame-panel -[uses]-> features.shared '9 imports'
+  features.fragments.frame-panel -[uses]-> features.shared '10 imports'
   features.fragments.frame-panel -[uses]-> framework.global_ '13 imports'
   features.fragments.frame-panel -[uses]-> framework.std '10 imports, 2 type-only'
   features.fragments.frame-panel -[uses]-> framework.store '2 imports, 2 type-only'
@@ -4121,7 +4121,7 @@ model {
   features.rich-text -[uses]-> model_.model_ '1 import'
   features.shared -[uses]-> framework.global_ '95 imports, 18 type-only'
   features.shared -[uses]-> framework.std '88 imports, 42 type-only'
-  features.shared -[uses]-> framework.store '116 imports, 84 type-only'
+  features.shared -[uses]-> framework.store '118 imports, 86 type-only'
   features.shared -[uses]-> model_.model_ '46 imports, 17 type-only'
   features.widgets.drag-handle -[uses]-> features.blocks.callout '1 import, 1 type-only'
   features.widgets.drag-handle -[uses]-> features.blocks.embed '1 import'
@@ -4131,7 +4131,7 @@ model {
   features.widgets.drag-handle -[uses]-> features.blocks.surface '3 imports, 1 type-only'
   features.widgets.drag-handle -[uses]-> features.components '1 import'
   features.widgets.drag-handle -[uses]-> features.ext-loader '2 imports'
-  features.widgets.drag-handle -[uses]-> features.shared '21 imports'
+  features.widgets.drag-handle -[uses]-> features.shared '22 imports'
   features.widgets.drag-handle -[uses]-> framework.global_ '12 imports, 2 type-only'
   features.widgets.drag-handle -[uses]-> framework.std '19 imports, 9 type-only'
   features.widgets.drag-handle -[uses]-> framework.store '7 imports, 6 type-only'
@@ -4211,7 +4211,7 @@ model {
   features.widgets.linked-doc -[uses]-> features.ext-loader '2 imports'
   features.widgets.linked-doc -[uses]-> features.inlines.reference '1 import'
   features.widgets.linked-doc -[uses]-> features.rich-text '2 imports'
-  features.widgets.linked-doc -[uses]-> features.shared '25 imports, 2 type-only'
+  features.widgets.linked-doc -[uses]-> features.shared '27 imports, 2 type-only'
   features.widgets.linked-doc -[uses]-> framework.global_ '14 imports'
   features.widgets.linked-doc -[uses]-> framework.std '12 imports, 4 type-only'
   features.widgets.linked-doc -[uses]-> framework.store '8 imports, 3 type-only'
@@ -4814,11 +4814,11 @@ model {
   features.blocks.embed-doc.common -[imports]-> features.ext-loader.src '1 import'
   features.blocks.embed-doc.common -[imports]-> features.shared.consts '1 import'
   features.blocks.embed-doc.common -[imports]-> features.shared.services '1 import'
-  features.blocks.embed-doc.common -[imports]-> features.shared.utils '1 import'
+  features.blocks.embed-doc.common -[imports]-> features.shared.utils '2 imports'
   features.blocks.embed-doc.common -[imports]-> framework.std.src '2 imports, 1 type-only'
-  features.blocks.embed-doc.common -[imports]-> framework.store.src '2 imports, 2 type-only'
+  features.blocks.embed-doc.common -[imports]-> framework.store.src '3 imports, 3 type-only'
   features.blocks.embed-doc.common -[imports]-> model_.model_.src '2 imports, 1 type-only'
-  features.blocks.embed-doc.embed-linked-doc-block -[imports]-> features.blocks.embed-doc.common '3 imports'
+  features.blocks.embed-doc.embed-linked-doc-block -[imports]-> features.blocks.embed-doc.common '4 imports'
   features.blocks.embed-doc.embed-linked-doc-block -[imports]-> features.blocks.embed-doc.embed-synced-doc-block '2 imports'
   features.blocks.embed-doc.embed-linked-doc-block -[imports]-> features.blocks.embed-doc.src '3 imports'
   features.blocks.embed-doc.embed-linked-doc-block -[imports]-> features.blocks.embed.src '4 imports'
@@ -5432,6 +5432,7 @@ model {
   features.blocks.surface-ref.portal -[imports]-> features.ext-loader.src '1 import'
   features.blocks.surface-ref.portal -[imports]-> features.shared.consts '1 import'
   features.blocks.surface-ref.portal -[imports]-> features.shared.services '1 import'
+  features.blocks.surface-ref.portal -[imports]-> features.shared.utils '1 import'
   features.blocks.surface-ref.portal -[imports]-> framework.global_.gfx '2 imports'
   features.blocks.surface-ref.portal -[imports]-> framework.global_.lit '2 imports'
   features.blocks.surface-ref.portal -[imports]-> framework.std.inline '1 import'
@@ -5458,7 +5459,7 @@ model {
   features.blocks.surface-ref.src -[imports]-> framework.global_.lit '1 import'
   features.blocks.surface-ref.src -[imports]-> framework.std.gfx '4 imports, 1 type-only'
   features.blocks.surface-ref.src -[imports]-> framework.std.src '4 imports, 1 type-only'
-  features.blocks.surface-ref.src -[imports]-> framework.store.src '2 imports, 2 type-only'
+  features.blocks.surface-ref.src -[imports]-> framework.store.src '3 imports, 3 type-only'
   features.blocks.surface-ref.src -[imports]-> model_.model_.src '6 imports, 2 type-only'
   features.blocks.surface.adapters -[imports]-> features.blocks.surface.element-model '1 import, 1 type-only'
   features.blocks.surface.adapters -[imports]-> features.shared.adapters '7 imports, 4 type-only'
@@ -6117,6 +6118,7 @@ model {
   features.fragments.frame-panel.card -[imports]-> features.blocks.surface.src '1 import'
   features.fragments.frame-panel.card -[imports]-> features.ext-loader.src '1 import'
   features.fragments.frame-panel.card -[imports]-> features.shared.services '2 imports'
+  features.fragments.frame-panel.card -[imports]-> features.shared.utils '1 import'
   features.fragments.frame-panel.card -[imports]-> framework.global_.disposable '2 imports'
   features.fragments.frame-panel.card -[imports]-> framework.global_.gfx '1 import'
   features.fragments.frame-panel.card -[imports]-> framework.global_.lit '3 imports'
@@ -7163,7 +7165,7 @@ model {
   features.shared.utils -[imports]-> framework.std.gfx '2 imports, 1 type-only'
   features.shared.utils -[imports]-> framework.std.inline '2 imports, 1 type-only'
   features.shared.utils -[imports]-> framework.std.src '13 imports, 10 type-only'
-  features.shared.utils -[imports]-> framework.store.src '16 imports, 14 type-only'
+  features.shared.utils -[imports]-> framework.store.src '18 imports, 16 type-only'
   features.shared.utils -[imports]-> model_.model_.src '13 imports, 3 type-only'
   features.widgets.drag-handle.components -[imports]-> features.shared.services '1 import'
   features.widgets.drag-handle.components -[imports]-> features.shared.theme '1 import'
@@ -7172,7 +7174,7 @@ model {
   features.widgets.drag-handle.components -[imports]-> framework.std.src '1 import, 1 type-only'
   features.widgets.drag-handle.helpers -[imports]-> features.ext-loader.src '1 import'
   features.widgets.drag-handle.helpers -[imports]-> features.shared.services '1 import'
-  features.widgets.drag-handle.helpers -[imports]-> features.shared.utils '2 imports'
+  features.widgets.drag-handle.helpers -[imports]-> features.shared.utils '3 imports'
   features.widgets.drag-handle.helpers -[imports]-> features.widgets.drag-handle.components '1 import'
   features.widgets.drag-handle.helpers -[imports]-> features.widgets.drag-handle.src '5 imports, 3 type-only'
   features.widgets.drag-handle.helpers -[imports]-> framework.global_.gfx '1 import'
@@ -7432,7 +7434,7 @@ model {
   features.widgets.linked-doc.src -[imports]-> model_.model_.src '1 import, 1 type-only'
   features.widgets.linked-doc.transformers -[imports]-> features.shared.adapters '4 imports'
   features.widgets.linked-doc.transformers -[imports]-> features.shared.services '2 imports'
-  features.widgets.linked-doc.transformers -[imports]-> features.shared.utils '2 imports'
+  features.widgets.linked-doc.transformers -[imports]-> features.shared.utils '4 imports'
   features.widgets.linked-doc.transformers -[imports]-> framework.global_.di '3 imports'
   features.widgets.linked-doc.transformers -[imports]-> framework.global_.exceptions '1 import'
   features.widgets.linked-doc.transformers -[imports]-> framework.global_.utils '4 imports'
@@ -7649,7 +7651,7 @@ model {
   framework.store.model_ -[imports]-> framework.global_.disposable '2 imports, 1 type-only'
   framework.store.model_ -[imports]-> framework.global_.exceptions '4 imports'
   framework.store.model_ -[imports]-> framework.store.extension '5 imports, 2 type-only'
-  framework.store.model_ -[imports]-> framework.store.reactive '5 imports, 1 type-only'
+  framework.store.model_ -[imports]-> framework.store.reactive '7 imports, 1 type-only'
   framework.store.model_ -[imports]-> framework.store.schema '5 imports, 4 type-only'
   framework.store.model_ -[imports]-> framework.store.src '1 import'
   framework.store.model_ -[imports]-> framework.store.transformer '3 imports, 2 type-only'

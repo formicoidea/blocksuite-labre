@@ -108,7 +108,8 @@ export async function refreshEmbedGithubUrlData(
       assignees = null,
     } = githubUrlData);
 
-    if (signal?.aborted) return;
+    // Fetched: the document may be closed by now (ADR 0057).
+    if (signal?.aborted || embedGithubElement.store.disposed) return;
 
     embedGithubElement.store.updateBlock(embedGithubElement.model, {
       image,
@@ -142,7 +143,12 @@ export async function refreshEmbedGithubStatus(
 
   const githubApiData = await queryApiData(embedGithubElement.model, signal);
 
-  if (!githubApiData.status || signal?.aborted) return;
+  if (
+    !githubApiData.status ||
+    signal?.aborted ||
+    embedGithubElement.store.disposed
+  )
+    return;
 
   embedGithubElement.store.updateBlock(embedGithubElement.model, {
     status: githubApiData.status,

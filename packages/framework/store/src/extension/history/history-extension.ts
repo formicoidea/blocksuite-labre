@@ -75,5 +75,10 @@ export class HistoryExtension extends StoreExtension {
     this._history.off('stack-item-popped', this._historyObserver);
     this._history.off('stack-item-updated', this._historyObserver);
     this.onUpdated.complete();
+    // Removes the manager's `afterTransaction` handler from the sub-document,
+    // which otherwise keeps the manager and its stacks for the document's
+    // life; writes nothing (#746, ADR 0057). The stacks go with it: a
+    // released document reopens with an empty history.
+    this._history.destroy();
   }
 }

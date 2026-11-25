@@ -35,6 +35,14 @@ export class Block {
     return this._syncController.version;
   }
 
+  /**
+   * @internal
+   * Detach every Yjs observer this block attached (ADR 0057).
+   */
+  release() {
+    this._syncController.release();
+  }
+
   constructor(
     readonly schema: Schema,
     readonly yBlock: YBlock,

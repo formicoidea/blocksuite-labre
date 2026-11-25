@@ -56,6 +56,7 @@ export default [
   'packages/affine/inlines/link/vitest.config.ts',
   'packages/affine/model/vitest.config.ts',
   'packages/affine/shared/vitest.config.ts',
+  'packages/affine/widgets/drag-handle/vitest.config.ts',
   'packages/affine/widgets/edgeless-toolbar/vitest.config.ts',
   'packages/affine/widgets/keyboard-toolbar/vitest.config.ts',
   'packages/affine/widgets/linked-doc/vitest.config.ts',

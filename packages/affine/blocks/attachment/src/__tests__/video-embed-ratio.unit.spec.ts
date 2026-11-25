@@ -444,6 +444,20 @@ describe('« Embed view » measures first, then writes once, if nothing moved (#
     expect(updates).toEqual([]);
   });
 
+  test('a document closed meanwhile is not written, and nothing throws (ADR 0057)', async () => {
+    const { gate, open } = metadataGate();
+    videosReport(PORTRAIT, 'loadedmetadata', gate);
+    const { store, model } = await storedAttachment();
+    const pending = convert(model);
+    store.dispose();
+    const updates = recordUpdates(store);
+
+    open();
+    await expect(pending).resolves.toBeUndefined();
+
+    expect(updates).toEqual([]);
+  });
+
   test('a block deleted meanwhile is not written', async () => {
     const { gate, open } = metadataGate();
     videosReport(PORTRAIT, 'loadedmetadata', gate);

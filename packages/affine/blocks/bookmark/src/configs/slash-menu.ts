@@ -54,6 +54,8 @@ const bookmarkSlashMenuConfig: SlashMenuConfig = {
           }
         )
           .then(() => {
+            // The modal is async: the document may be closed by now.
+            if (model.store.disposed) return;
             if (model.text?.length === 0) {
               model.store.deleteBlock(model);
             }

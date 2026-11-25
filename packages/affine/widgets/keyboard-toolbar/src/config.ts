@@ -405,7 +405,8 @@ const contentMediaToolGroup: KeyboardToolPanelGroup = {
             }
           }
         );
-        if (model.text?.length === 0) {
+        // The modal is async: the document may be closed by now.
+        if (!std.store.disposed && model.text?.length === 0) {
           std.store.deleteBlock(model);
         }
       },
@@ -498,7 +499,8 @@ const embedToolGroup: KeyboardToolPanelGroup = {
             }
           }
         );
-        if (model.text?.length === 0) {
+        // The modal is async: the document may be closed by now.
+        if (!std.store.disposed && model.text?.length === 0) {
           std.store.deleteBlock(model);
         }
       },
@@ -531,7 +533,8 @@ const embedToolGroup: KeyboardToolPanelGroup = {
             }
           }
         );
-        if (model.text?.length === 0) {
+        // The modal is async: the document may be closed by now.
+        if (!std.store.disposed && model.text?.length === 0) {
           std.store.deleteBlock(model);
         }
       },
@@ -565,7 +568,8 @@ const embedToolGroup: KeyboardToolPanelGroup = {
             }
           }
         );
-        if (model.text?.length === 0) {
+        // The modal is async: the document may be closed by now.
+        if (!std.store.disposed && model.text?.length === 0) {
           std.store.deleteBlock(model);
         }
       },
@@ -598,7 +602,8 @@ const embedToolGroup: KeyboardToolPanelGroup = {
             }
           }
         );
-        if (model.text?.length === 0) {
+        // The modal is async: the document may be closed by now.
+        if (!std.store.disposed && model.text?.length === 0) {
           std.store.deleteBlock(model);
         }
       },

@@ -49,6 +49,8 @@ import { classMap } from 'lit/directives/class-map.js';
 import { guard } from 'lit/directives/guard.js';
 import { styleMap } from '@labre/global/lit';
 
+import { holdsReference } from './utils.js';
+
 @Peekable({
   enableOn: (block: SurfaceRefBlockComponent) => !!block.referenceModel,
 })
@@ -225,8 +227,17 @@ export class SurfaceRefBlockComponent extends BlockComponent<SurfaceRefBlockMode
       let result = find(this.store);
       if (result[0]) return result;
 
+      // Another document's element is read from its readonly store, the
+      // one the preview renders (`_previewDoc`), never from its default
+      // store: a host closing that document releases the default store, and
+      // a model kept from it would be dead and keep it alive. The document is
+      // found from Yjs first, so that readonly store is built for it alone,
+      // not for every document scanned (#746, ADR 0057).
       for (const doc of this.std.workspace.docs.values()) {
-        result = find(doc.getStore());
+        if (doc.id === this.store.id || !holdsReference(doc, referenceId)) {
+          continue;
+        }
+        result = find(doc.getStore({ readonly: true }));
         if (result[0]) return result;
       }
 

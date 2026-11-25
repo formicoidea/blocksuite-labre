@@ -405,6 +405,8 @@ const builtinSurfaceToolbarConfig = {
               const y = syncedDocModel.elementBound.y;
 
               const children = await draftedModels;
+              // The draft is async: the document may be closed by now.
+              if (std.store.disposed) return;
               const props: Partial<NoteProps> = {
                 xywh: new Bound(
                   x,

@@ -4,12 +4,14 @@ import { createMutex } from 'lib0/mutex.js';
 import * as Y from 'yjs';
 
 import {
+  attachYProxy,
   Boxed,
-  createYProxy,
   native2Y,
+  Text,
   type UnRecord,
   y2Native,
 } from '../../reactive/index.js';
+import { ReleaseScope } from '../../reactive/release-scope.js';
 import type { Schema } from '../../schema/schema.js';
 import type { Store } from '../store/store.js';
 import { BlockModel } from './block-model.js';
@@ -35,52 +37,71 @@ export class SyncController {
 
   private readonly _mutex = createMutex();
 
-  private readonly _observeYBlockChanges = () => {
-    this.yBlock.observe(event => {
-      event.keysChanged.forEach(key => {
-        const type = event.changes.keys.get(key);
-        if (!type) {
-          return;
+  /**
+   * What this block attached to Yjs through its props (proxies, `Text`,
+   * `Boxed`), detached by {@link release} (#746, ADR 0057).
+   */
+  private readonly _scope = new ReleaseScope();
+
+  /**
+   * Built through the block scope, so a `Text` or `Boxed` made for a
+   * signal's value is detached with the block too. Same values as a bare
+   * `y2Native`.
+   */
+  private readonly _y2Native = (value: unknown) =>
+    y2Native(value, {
+      transform: (native: unknown) => {
+        if (native instanceof Text || native instanceof Boxed) {
+          this._scope.track(native);
         }
-        const isLocal =
-          !this.yBlock.doc ||
-          !event.transaction.origin ||
-          event.transaction.origin instanceof Y.UndoManager ||
-          event.transaction.origin.proxy
-            ? true
-            : event.transaction.origin === this.yBlock.doc.clientID;
-        if (type.action === 'update' || type.action === 'add') {
-          const value = this.yBlock.get(key);
-          const keyName = key.replace('prop:', '');
-          const proxy = this._getPropsProxy(keyName, value);
-          this._byPassUpdate(() => {
-            // @ts-expect-error allow magic props
-            this.model.props[keyName] = proxy;
-            const signalKey = `${keyName}$`;
-            this._mutex(() => {
-              if (signalKey in this.model.props) {
-                // @ts-expect-error allow magic props
-                this.model.props[signalKey].value = y2Native(value);
-              }
-            });
-          });
-          this.onChange?.(keyName, isLocal);
-          return;
-        }
-        if (type.action === 'delete') {
-          const keyName = key.replace('prop:', '');
-          this._byPassUpdate(() => {
-            // @ts-expect-error allow magic props
-            delete this.model.props[keyName];
-            if (`${keyName}$` in this.model.props) {
+        return native;
+      },
+    });
+
+  private readonly _onYBlockChange = (event: Y.YMapEvent<unknown>) => {
+    event.keysChanged.forEach(key => {
+      const type = event.changes.keys.get(key);
+      if (!type) {
+        return;
+      }
+      const isLocal =
+        !this.yBlock.doc ||
+        !event.transaction.origin ||
+        event.transaction.origin instanceof Y.UndoManager ||
+        event.transaction.origin.proxy
+          ? true
+          : event.transaction.origin === this.yBlock.doc.clientID;
+      if (type.action === 'update' || type.action === 'add') {
+        const value = this.yBlock.get(key);
+        const keyName = key.replace('prop:', '');
+        const proxy = this._getPropsProxy(keyName, value);
+        this._byPassUpdate(() => {
+          // @ts-expect-error allow magic props
+          this.model.props[keyName] = proxy;
+          const signalKey = `${keyName}$`;
+          this._mutex(() => {
+            if (signalKey in this.model.props) {
               // @ts-expect-error allow magic props
-              this.model.props[`${keyName}$`].value = undefined;
+              this.model.props[signalKey].value = this._y2Native(value);
             }
           });
-          this.onChange?.(keyName, isLocal);
-          return;
-        }
-      });
+        });
+        this.onChange?.(keyName, isLocal);
+        return;
+      }
+      if (type.action === 'delete') {
+        const keyName = key.replace('prop:', '');
+        this._byPassUpdate(() => {
+          // @ts-expect-error allow magic props
+          delete this.model.props[keyName];
+          if (`${keyName}$` in this.model.props) {
+            // @ts-expect-error allow magic props
+            this.model.props[`${keyName}$`].value = undefined;
+          }
+        });
+        this.onChange?.(keyName, isLocal);
+        return;
+      }
     });
   };
 
@@ -123,7 +144,19 @@ export class SyncController {
 
     this.model = this._createModel(props);
 
-    this._observeYBlockChanges();
+    this.yBlock.observe(this._onYBlockChange);
+  }
+
+  /**
+   * Detach everything this block attached to Yjs: its own observer, its
+   * model's, and its props' proxies, `Text` and `Boxed` (#746, ADR 0057).
+   * Run when the block leaves the store and when the store is released.
+   * Writes nothing; the model keeps answering its last state.
+   */
+  release() {
+    this.yBlock.unobserve(this._onYBlockChange);
+    this._scope.release();
+    this.model._release();
   }
 
   private _createModel(props: UnRecord) {
@@ -228,14 +261,15 @@ export class SyncController {
   }
 
   private _getPropsProxy(name: string, value: unknown) {
-    return createYProxy(value, {
+    return attachYProxy(value, {
+      scope: this._scope,
       onChange: (_, isLocal) => {
         this.onChange?.(name, isLocal);
         const signalKey = `${name}$`;
         if (signalKey in this.model.props) {
           this._mutex(() => {
             // @ts-expect-error allow magic props
-            this.model.props[signalKey].value = y2Native(value);
+            this.model.props[signalKey].value = this._y2Native(value);
           });
         }
       },
@@ -341,6 +375,9 @@ export class SyncController {
       this.yBlock.get(`prop:${prop}`),
       {
         transform: (value, origin) => {
+          if (value instanceof Text || value instanceof Boxed) {
+            this._scope.track(value);
+          }
           if (Boxed.is(origin)) {
             return value;
           }

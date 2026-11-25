@@ -478,11 +478,25 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
     return this._isEmpty$.value;
   }
 
+  /**
+   * What the surface attached to Yjs and to its store's slots: its elements
+   * map observer, the group, emptiness and user-layer watchers. Run when the
+   * surface block is deleted AND when its store is released, which disposes
+   * of every model without deleting it (#746, ADR 0057): left attached, the
+   * elements map observer held this model, and through it the store, for as
+   * long as the document.
+   */
+  private readonly _teardown = new DisposableGroup();
+
   constructor() {
     super();
     const subscription = this.created.subscribe(() => {
       this._init();
       subscription.unsubscribe();
+    });
+    const deleted = this.deleted.subscribe(() => {
+      deleted.unsubscribe();
+      this._teardown.dispose();
     });
   }
 
@@ -1134,7 +1148,7 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
       }
     });
 
-    this.deleted.subscribe(() => {
+    this._teardown.add(() => {
       elementsYMap.unobserve(onElementsMapChange);
       subscription.unsubscribe();
     });
@@ -1219,7 +1233,7 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
         }
       }
     );
-    this.deleted.subscribe(() => {
+    this._teardown.add(() => {
       disposable.unsubscribe();
     });
   }
@@ -1245,7 +1259,7 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
         updateIsEmpty();
       }
     });
-    this.deleted.subscribe(() => {
+    this._teardown.add(() => {
       disposables.dispose();
     });
   }
@@ -1299,7 +1313,7 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
         }
       }),
     ];
-    this.deleted.subscribe(() => {
+    this._teardown.add(() => {
       subscriptions.forEach(subscription => subscription.unsubscribe());
     });
   }
@@ -1456,6 +1470,7 @@ export class SurfaceBlockModel extends BlockModel<SurfaceBlockProps> {
 
   override dispose(): void {
     super.dispose();
+    this._teardown.dispose();
 
     this.elementAdded.complete();
     this.elementRemoved.complete();

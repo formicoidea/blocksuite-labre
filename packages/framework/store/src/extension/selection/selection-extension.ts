@@ -53,55 +53,75 @@ export class StoreSelectionExtension extends StoreExtension {
       });
     });
 
-    this.store.awarenessStore.awareness.on(
-      'change',
-      (change: { updated: number[]; added: number[]; removed: number[] }) => {
-        const all = change.updated.concat(change.added).concat(change.removed);
-        const localClientID = this.store.awarenessStore.awareness.clientID;
-        const exceptLocal = all.filter(id => id !== localClientID);
-
-        // Only consider remote selections from other clients
-        if (exceptLocal.length > 0) {
-          const map = new Map<number, BaseSelection[]>();
-          this.store.awarenessStore.getStates().forEach((state, id) => {
-            if (id === this.store.awarenessStore.awareness.clientID) return;
-            // selection id starts with the same block collection id from others clients would be considered as remote selections
-            const selection = Object.entries(state.selectionV2)
-              .filter(([key]) => key.startsWith(this.store.id))
-              .flatMap(([_, selection]) => selection);
-
-            const selections = selection
-              .map(json => {
-                try {
-                  return this._jsonToSelection(json);
-                } catch (error) {
-                  console.error(
-                    'Parse remote selection failed:',
-                    id,
-                    json,
-                    error
-                  );
-                  return null;
-                }
-              })
-              .filter((sel): sel is BaseSelection => !!sel);
-
-            map.set(id, selections);
-          });
-          this._remoteSelections.value = map;
-          this.slots.remoteChanged.next(map);
-        }
-      }
-    );
+    // One handler, kept as a field: `load()` runs `loaded()` again, and the
+    // awareness outlives the store, so an inline closure added here was one
+    // more listener per load that nothing removed, each holding the store
+    // (#746, ADR 0057). The awareness dedupes the same function.
+    this.store.awarenessStore.awareness.on('change', this._onAwarenessChange);
 
     this.store.history.undoManager.on('stack-item-added', this._itemAdded);
     this.store.history.undoManager.on('stack-item-popped', this._itemPopped);
   }
 
+  private readonly _onAwarenessChange = (change: {
+    updated: number[];
+    added: number[];
+    removed: number[];
+  }) => {
+    const all = change.updated.concat(change.added).concat(change.removed);
+    const localClientID = this.store.awarenessStore.awareness.clientID;
+    const exceptLocal = all.filter(id => id !== localClientID);
+
+    // Only consider remote selections from other clients
+    if (exceptLocal.length > 0) {
+      const map = new Map<number, BaseSelection[]>();
+      this.store.awarenessStore.getStates().forEach((state, id) => {
+        if (id === this.store.awarenessStore.awareness.clientID) return;
+        // selection id starts with the same block collection id from others clients would be considered as remote selections
+        const selection = Object.entries(state.selectionV2)
+          .filter(([key]) => key.startsWith(this.store.id))
+          .flatMap(([_, selection]) => selection);
+
+        const selections = selection
+          .map(json => {
+            try {
+              return this._jsonToSelection(json);
+            } catch (error) {
+              console.error('Parse remote selection failed:', id, json, error);
+              return null;
+            }
+          })
+          .filter((sel): sel is BaseSelection => !!sel);
+
+        map.set(id, selections);
+      });
+      this._remoteSelections.value = map;
+      this.slots.remoteChanged.next(map);
+    }
+  };
+
   override disposed() {
     super.disposed();
+    this.store.awarenessStore.awareness.off('change', this._onAwarenessChange);
     this.store.history.undoManager.off('stack-item-added', this._itemAdded);
     this.store.history.undoManager.off('stack-item-popped', this._itemPopped);
+    this._removeLocalSelection();
+  }
+
+  /**
+   * Take this store's entry out of the local `selectionV2`: peers stop
+   * seeing this client's selection in a document it closed, and the
+   * awareness state stops growing by one key per store opened (ADR 0057).
+   * Ephemeral presence, not the document: nothing is written to Yjs. An
+   * absent key (no selection was ever set, or the awareness is destroyed)
+   * changes nothing.
+   */
+  private _removeLocalSelection() {
+    const awareness = this.store.awarenessStore;
+    const selections = awareness.getLocalState()?.selectionV2;
+    if (!selections || !(this._id in selections)) return;
+    const { [this._id]: _, ...rest } = selections;
+    awareness.setLocalStateField('selectionV2', rest);
   }
 
   get value() {

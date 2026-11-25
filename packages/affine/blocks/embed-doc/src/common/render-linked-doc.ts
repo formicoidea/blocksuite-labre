@@ -6,15 +6,51 @@ import {
   ParagraphBlockModel,
 } from '@labre/affine-model';
 import { EMBED_CARD_HEIGHT } from '@labre/affine-shared/consts';
-import { matchModels } from '@labre/affine-shared/utils';
+import {
+  holdPreviewStore,
+  matchModels,
+  type PreviewStoreHold,
+} from '@labre/affine-shared/utils';
 import { BlockStdScope } from '@labre/std';
 import type { BlockModel, Query } from '@labre/store';
+import { untracked } from '@preact/signals-core';
 import { render, type TemplateResult } from 'lit';
 
 import type { EmbedLinkedDocBlockComponent } from '../embed-linked-doc-block';
 import type { EmbedSyncedDocCard } from '../embed-synced-doc-block/components/embed-synced-doc-card';
 
+type LinkedDocCard = EmbedLinkedDocBlockComponent | EmbedSyncedDocCard;
+
+/**
+ * The query store each card's note preview renders (#746, ADR 0057, part
+ * 3). A card built a new one per render and never released any: every
+ * re-render of a synced card (on each update of its document) left a store,
+ * with its Yjs observers, for the workspace's life.
+ */
+const previewHolds = new WeakMap<LinkedDocCard, PreviewStoreHold>();
+
+/**
+ * Release the store of the card's note preview: the card is disconnected.
+ * Run from each card's disposables; a card connected again renders anew.
+ */
+export function releaseLinkedDocPreview(card: LinkedDocCard) {
+  previewHolds.get(card)?.release();
+  previewHolds.delete(card);
+}
+
 export function renderLinkedDocInCard(
+  card: EmbedLinkedDocBlockComponent | EmbedSyncedDocCard
+) {
+  // An imperative render, never a reactive dependency of its caller. A card
+  // connected during its parent's update (a note's render, a signal effect)
+  // ran this synchronously: reading the linked document's `root.children`
+  // made the PARENT's render effect depend on the linked store, which then
+  // stayed alive after the host released it, and re-rendered the parent at
+  // every change of the linked document (#746, ADR 0057).
+  untracked(() => renderLinkedDocInCardNow(card));
+}
+
+function renderLinkedDocInCardNow(
   card: EmbedLinkedDocBlockComponent | EmbedSyncedDocCard
 ) {
   const linkedDoc = card.linkedDoc;
@@ -184,7 +220,12 @@ async function renderNoteContent(
     mode: 'strict',
     match: ids.map(id => ({ id, viewType: 'display' })),
   };
-  const previewDoc = doc.doc.getStore({ query });
+  // Held before the previous one is released: a render with the same query
+  // keeps the same store instead of rebuilding it.
+  const hold = holdPreviewStore(doc.doc, { query });
+  previewHolds.get(card)?.release();
+  previewHolds.set(card, hold);
+  const previewDoc = hold.store;
   const std = card.host.std;
   const previewSpec = std
     .get(ViewExtensionManagerIdentifier)
@@ -203,6 +244,8 @@ async function renderNoteContent(
   contentEditableElements.forEach(element => {
     (element as HTMLElement).contentEditable = 'false';
   });
+  // The card left while its container was awaited: nothing will release it.
+  if (!card.isConnected) releaseLinkedDocPreview(card);
 }
 
 function filterTextModel(model: BlockModel) {

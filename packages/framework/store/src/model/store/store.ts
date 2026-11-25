@@ -369,6 +369,7 @@ export class Store {
    * @category History
    */
   undo = () => {
+    this._throwIfDisposed('undo');
     if (this.readonly) {
       console.error('cannot undo in readonly mode');
       return;
@@ -382,6 +383,7 @@ export class Store {
    * @category History
    */
   redo = () => {
+    this._throwIfDisposed('redo');
     if (this.readonly) {
       console.error('cannot undo in readonly mode');
       return;
@@ -412,6 +414,7 @@ export class Store {
    * @category History
    */
   transact(fn: () => void, shouldTransact: boolean = this._shouldTransact) {
+    this._throwIfDisposed('transact');
     const spaceDoc = this._doc.spaceDoc;
     spaceDoc.transact(
       () => {
@@ -442,6 +445,7 @@ export class Store {
    * @category History
    */
   withoutTransact(fn: () => void) {
+    this._throwIfDisposed('transact');
     this._shouldTransact = false;
     fn();
     this._shouldTransact = true;
@@ -593,6 +597,37 @@ export class Store {
 
   private _isDisposed = false;
 
+  /**
+   * Whether the store was released with {@link dispose}: the document was
+   * closed, and every write through this store throws (ADR 0057). Code that
+   * resumes after an `await` (an upload, a measure, a dialog, a fetch)
+   * checks it before writing, and abandons the gesture when it is `true`,
+   * the way it does when the store turned readonly meanwhile.
+   *
+   * @category Store Lifecycle
+   */
+  get disposed() {
+    return this._isDisposed;
+  }
+
+  /** The container's eviction of this store, run once by {@link dispose}. */
+  private readonly _onDispose?: () => void;
+
+  /**
+   * A released store is a dead object (ADR 0057, "A stale reference"): a
+   * write through it would either be lost or land in Yjs without the store
+   * seeing it, both silently, so every mutation entry point throws; reads
+   * keep answering the last state, because teardown code reads while it
+   * unmounts. Same error code as a write a readonly store refuses.
+   */
+  private _throwIfDisposed(action: string) {
+    if (!this._isDisposed) return;
+    throw new BlockSuiteError(
+      ErrorCode.ModelCRUDError,
+      `cannot ${action}: store ${this.id} is disposed; open the document again with doc.getStore()`
+    );
+  }
+
   private get _history() {
     return this._provider.get(HistoryExtension);
   }
@@ -602,7 +637,17 @@ export class Store {
    * In most cases, you don't need to use the constructor directly.
    * The store is created by the {@link Doc} instance.
    */
-  constructor({ readonly, query, provider, extensions }: StoreOptions) {
+  constructor({
+    readonly,
+    query,
+    provider,
+    extensions,
+    onDispose,
+  }: StoreOptions & {
+    /** @internal The container's eviction, run once at release. */
+    onDispose?: () => void;
+  }) {
+    this._onDispose = onDispose;
     this.slots = {
       ready: new Subject(),
       rootAdded: new Subject(),
@@ -778,6 +823,8 @@ export class Store {
 
       block.model.deleted.next();
       block.model.dispose();
+      // A block removed while the store lives detaches its own observers.
+      block.release();
     } catch (e) {
       console.error('An error occurred while removing block:');
       console.error(e);
@@ -801,6 +848,7 @@ export class Store {
     parent?: BlockModel | string | null,
     parentIndex?: number
   ): string {
+    this._throwIfDisposed('add a block');
     if (this.readonly) {
       throw new BlockSuiteError(
         ErrorCode.ModelCRUDError,
@@ -840,6 +888,7 @@ export class Store {
     parent?: BlockModel | string | null,
     parentIndex?: number
   ): string[] {
+    this._throwIfDisposed('add blocks');
     const ids: string[] = [];
     blocks.forEach(block => {
       const id = this.addBlock(
@@ -869,6 +918,7 @@ export class Store {
     props: Array<Partial<BlockProps>>,
     placement: 'after' | 'before' = 'after'
   ): string[] {
+    this._throwIfDisposed('add blocks');
     if (!props.length) return [];
     const parent = this.getParent(targetModel);
     if (!parent) return [];
@@ -916,6 +966,7 @@ export class Store {
       | (() => void)
       | Partial<(PropsOfModel<T> & BlockSysProps) | BlockProps>
   ) {
+    this._throwIfDisposed('update a block');
     if (this.readonly) {
       console.error('cannot modify data in readonly mode');
       return;
@@ -999,6 +1050,7 @@ export class Store {
       deleteChildren: true,
     }
   ) {
+    this._throwIfDisposed('delete a block');
     if (this.readonly) {
       console.error('cannot modify data in readonly mode');
       return;
@@ -1200,6 +1252,7 @@ export class Store {
     targetSibling: BlockModel | null = null,
     shouldInsertBeforeSibling = true
   ) {
+    this._throwIfDisposed('move blocks');
     if (this.readonly) {
       console.error('Cannot modify data in read-only mode');
       return;
@@ -1228,8 +1281,14 @@ export class Store {
       blobCRUD: this.workspace.blobSync,
       docCRUD: {
         create: (id: string) => this.workspace.createDoc(id).getStore({ id }),
-        get: (id: string) =>
-          this.workspace.getDoc(id)?.getStore({ id }) ?? null,
+        // Read only, never the default store built anew: a document closed
+        // by its host stays closed after an export or an import that read
+        // it (#746, ADR 0057).
+        get: (id: string) => {
+          const doc = this.workspace.getDoc(id);
+          if (!doc) return null;
+          return doc.defaultStore ?? doc.getStore({ readonly: true });
+        },
         delete: (id: string) => this.workspace.removeDoc(id),
       },
       middlewares,
@@ -1276,13 +1335,15 @@ export class Store {
    * @category Store Lifecycle
    */
   load(initFn?: () => void) {
-    if (this._isDisposed) {
-      this.disposableGroup = new DisposableGroup();
-      this._subscribeToSlots();
-      this._isDisposed = false;
-    }
+    // Never revived: a disposed store brought back here had no deep observer
+    // and completed slots, so it looked open and missed every remote change
+    // (ADR 0057, Context 4).
+    this._throwIfDisposed('load');
 
     this._doc.load(initFn);
+    // `initFn` may have closed the document: a released store attaches
+    // nothing again (the selection extension's awareness listener).
+    if (this._isDisposed) return this;
     this._provider.getAll(StoreExtensionIdentifier).forEach(ext => {
       ext.loaded();
     });
@@ -1292,25 +1353,60 @@ export class Store {
   }
 
   /**
-   * Disposes the store and releases all resources
+   * Release the store for good: the document is closed (#746, ADR 0057).
+   *
+   * Detaches everything the store and its blocks attached to Yjs and to the
+   * awareness (the blocks map's deep observer, every block's observers and
+   * its props' proxies, `Text` and `Boxed`, the undo manager, the selection
+   * listener and this store's `selectionV2` entry), runs each store
+   * extension's `disposed()`, disposes every block model, completes the
+   * slots, and drops the store from its document's container, so the next
+   * `doc.getStore()` with the same options builds a new store from Yjs.
+   *
+   * It writes nothing to Yjs: nothing stored is lost, and nothing is pending
+   * (the block-meta throttle drops, it never defers). What goes is what
+   * lived in memory: the undo and redo stacks, the local selection, the
+   * local `readonly` toggle, every subscription to the slots. Afterwards
+   * `load()` and every mutation entry point throw; reads answer the last
+   * state. Calling it again does nothing.
    *
    * @category Store Lifecycle
    */
   dispose() {
+    if (this._isDisposed) return;
+    // Set first: a write attempted while releasing throws instead of landing.
+    this._isDisposed = true;
+
+    // Every step runs even if one throws, so a faulty extension cannot leave
+    // observers attached; the first error is rethrown at the end.
+    const errors: unknown[] = [];
+    const step = (fn: () => void) => {
+      try {
+        fn();
+      } catch (error) {
+        errors.push(error);
+      }
+    };
+
     this._provider.getAll(StoreExtensionIdentifier).forEach(ext => {
-      ext.disposed();
+      step(() => ext.disposed());
     });
-    if (this._doc.ready) {
-      this._yBlocks.unobserveDeep(this._handleYEvents);
-    }
+    // Attached by the constructor whether or not the doc was ready.
+    this._yBlocks.unobserveDeep(this._handleYEvents);
+    Object.values(this._peekBlocks()).forEach(block => {
+      step(() => block.release());
+      step(() => block.model.dispose());
+    });
     this.slots.ready.complete();
     this.slots.rootAdded.complete();
     this.slots.rootDeleted.complete();
     this.slots.blockUpdated.complete();
     this.slots.yBlockUpdated.complete();
-    this.disposableGroup.dispose();
-    this._crud.dispose();
-    this._isDisposed = true;
+    step(() => this.disposableGroup.dispose());
+    step(() => this._crud.dispose());
+    step(() => this._onDispose?.());
+
+    if (errors.length > 0) throw errors[0];
   }
 
   private _handleYBlockAdd(id: string, isLocal: boolean) {

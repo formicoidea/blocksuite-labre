@@ -2,6 +2,7 @@ import {
   replaceIdMiddleware,
   titleMiddleware,
 } from '@labre/affine-shared/adapters';
+import { storeToRead } from '@labre/affine-shared/utils';
 import { sha } from '@labre/global/utils';
 import type { DocSnapshot, Schema, Store, Workspace } from '@labre/store';
 import { extMimeMap, getAssetName, Transformer } from '@labre/store';
@@ -19,7 +20,7 @@ async function exportDocs(
     blobCRUD: collection.blobSync,
     docCRUD: {
       create: (id: string) => collection.createDoc(id).getStore({ id }),
-      get: (id: string) => collection.getDoc(id)?.getStore({ id }) ?? null,
+      get: (id: string) => storeToRead(collection.getDoc(id)),
       delete: (id: string) => collection.removeDoc(id),
     },
     middlewares: [
@@ -110,7 +111,7 @@ async function importDocs(
     blobCRUD: collection.blobSync,
     docCRUD: {
       create: (id: string) => collection.createDoc(id).getStore({ id }),
-      get: (id: string) => collection.getDoc(id)?.getStore({ id }) ?? null,
+      get: (id: string) => storeToRead(collection.getDoc(id)),
       delete: (id: string) => collection.removeDoc(id),
     },
     middlewares: [

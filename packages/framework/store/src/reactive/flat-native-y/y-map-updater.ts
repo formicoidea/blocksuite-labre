@@ -10,7 +10,7 @@ import {
 
 type YMapOptions = Pick<
   CreateProxyOptions,
-  'shouldByPassYjs' | 'yMap' | 'initialized' | 'onChange'
+  'shouldByPassYjs' | 'yMap' | 'initialized' | 'onChange' | 'scope'
 > & {
   fullPath: string;
   value: unknown;
@@ -23,6 +23,7 @@ export function yMapUpdater({
   onChange,
   fullPath,
   value,
+  scope,
 }: YMapOptions) {
   const firstKey = getFirstKey(fullPath);
   if (shouldByPassYjs()) {
@@ -41,9 +42,13 @@ export function yMapUpdater({
         run(value, fullPath);
       } else {
         list.push(() => {
-          bindOnChangeIfNeed(value, () => {
-            onChange?.(firstKey, true);
-          });
+          bindOnChangeIfNeed(
+            value,
+            () => {
+              onChange?.(firstKey, true);
+            },
+            scope
+          );
           yMap.set(keyWithPrefix(fullPath), native2Y(value));
         });
       }

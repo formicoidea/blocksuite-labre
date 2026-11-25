@@ -30,7 +30,8 @@ export async function refreshBookmarkUrlData(
       bookmarkElement.error = true;
     }
 
-    if (signal?.aborted) return;
+    // The preview is fetched: the document may be closed by now (ADR 0057).
+    if (signal?.aborted || bookmarkElement.store.disposed) return;
 
     bookmarkElement.store.updateBlock(bookmarkElement.model, {
       title,

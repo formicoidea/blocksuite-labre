@@ -196,32 +196,85 @@ surface used to keep the last editor mounted on each document).
 ### Closing and reopening a document
 
 The STORE of a document is another matter: a workspace that stays open keeps
-one store per document opened in it, whatever you call. Until
-[ADR 0057](../adr/0057-store-release-and-eviction.md) lands (proposed), this
-is the safe use:
+one store per document opened in it, until you release it
+([ADR 0057](../adr/0057-store-release-and-eviction.md)).
 
 - **Reuse the store across mounts.** `doc.getStore()` with no argument (or
   `{ id: docId }`) returns the same store for a document every time; mount
   each new editor on it. The undo history lives in the store, so it
-  survives the remount.
-  Do not ask for `getStore({ readonly: false })`: today it builds a new
-  store on every call.
-- **Do not dispose of a store you may reopen from the same workspace.** A
-  disposed store stays in the workspace's cache: the next `getStore()`
-  returns it, its `load()` does not reattach it to Yjs, and blocks a remote
-  peer adds afterwards never appear in it. `removeStore` after `dispose()`
-  avoids that but frees nothing: the old store's Yjs observers stay attached.
-- **Only `workspace.dispose()` frees the stores of a workspace**, once you
-  also drop your references to it (a store edited in the last 30 s is freed
-  30 s later).
+  survives the remount, a mode switch and a route change. Do not release a
+  store between two mounts of the same document.
+  `getStore({ readonly: false })` is another store, one per document (its
+  own selection and history), kept apart so that toggling the default
+  store's local `readonly` does not reach it; ask for it only if you need
+  that.
+- **Close a document for good with `store.dispose()`**, after its last
+  editor is unmounted. It detaches everything the store attached to the
+  document and to the awareness, and the workspace forgets it: the next
+  `doc.getStore()` builds a new store from the document, live, which sees
+  everything peers wrote meanwhile. The release writes nothing, and loses
+  nothing an editor already wrote: a typed edit is in Yjs when the call
+  that made it returns, a number or text database cell still being edited
+  is saved as its editor unmounts, a date, progress or link cell is saved
+  only if its editor had already left editing (its value is written then;
+  one still open when it unmounts is lost, unmount it after editing ends),
+  and the block-meta writer defers nothing. What goes is
+  what lived in memory: the
+  undo and redo stacks (a reopened document starts with an empty history),
+  the local selection (peers stop seeing it), the store's local `readonly`
+  toggle, every subscription to its slots and signals (subscribe again
+  on the new store), and **every gesture still waiting** when you close:
+  an image or file being uploaded or measured, a dialog left open (a file
+  picker, « Replace », a title prompt, quick search), a link preview being
+  fetched, a paste being prepared. Those resume after their `await`, find
+  the document closed, and write nothing. Calling `dispose()` twice does
+  nothing; `removeStore` after it is not needed.
+- **A disposed store is a dead object.** `load()` and every write through
+  it (`addBlock`, `addBlocks`, `addSiblingBlocks`, `updateBlock`,
+  `deleteBlock`, `moveBlocks`, `transact`, `withoutTransact`, `undo`,
+  `redo`) throw a `BlockSuiteError` (`ErrorCode.ModelCRUDError`); reads
+  answer its last state, so teardown code that reads still works, and
+  `readonly`, `hasBlock` and `getBlock` keep answering "writable and
+  present". Ask `store.disposed` instead: code of yours that resumes after
+  an `await` checks it before writing and abandons the gesture. Drop your
+  references to it and open the document again with `doc.getStore()`.
+- **Other documents follow it, they do not keep it.** The default store is
+  shared across the workspace: a linked-doc card, a surface-ref or a
+  data-view in another document still open reads it. They let a released
+  store go and attach again when the document is opened again (the card
+  then refreshes). Code of yours that listens to another document's store
+  does the same with `followDefaultStore(doc, attach)` from
+  `@labre/affine-shared/utils`, or reads `doc.defaultStore` (never builds
+  one) and `doc.defaultStoreChanged`. Nothing of the library opens a
+  closed document again: a card reads its title and trash from the
+  document's meta, and its content from the open store, or, when nobody
+  has the document open, from a readonly store of its own released with
+  the card. What stays: one READONLY store per synced document shown, and
+  one per document a surface-ref shows an element of (found from Yjs, not
+  per document scanned), never released, as before; one-shot readers of
+  another document (an export walking a synced doc, an import checking a
+  linked doc) read its open store, else that readonly one. The store you
+  close is the default one.
+- **A preview built on a query store** (`doc.getStore({ query })`) is
+  released the same way once the preview is gone. Previews asking for the
+  same options share one cached store: hold it with `holdPreviewStore(doc,
+options)` from `@labre/affine-shared/utils` and call `release()` when
+  yours goes; the last release disposes of it. The library's own previews
+  (drag image, linked-doc card, frame card, surface-ref note) do.
+- **A store you never dispose of stays** for the workspace's life, one per
+  document opened (the cache is the point: the growth follows documents,
+  not mounts). `workspace.dispose()` frees them all, once you also drop
+  your references.
 - **Never call `doc.dispose()` to close a document.** It clears the
   document's blocks in Yjs, and the deletion syncs to every peer and to
   storage. It is what deleting a document does.
 
 The retained cost is measured in
 `packages/integration-test/src/__tests__/edgeless/store-retention.spec.ts`:
-roughly 85 KB of JS heap per distinct document opened, part of it the
-document's own content.
+a disposed store is collected. A document opened, edited (one shape) and
+closed that way still costs about 11 KB of JS heap, its own Yjs content
+among it, which the workspace's root document keeps while the workspace is
+open (69-80 KB before ADR 0057).
 
 ## Frameworks other than Lit
 

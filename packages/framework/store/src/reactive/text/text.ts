@@ -2,8 +2,17 @@ import { BlockSuiteError, ErrorCode } from '@labre/global/exceptions';
 import { type Signal, signal } from '@preact/signals-core';
 import * as Y from 'yjs';
 
+import type { ReleaseScope } from '../release-scope.js';
 import type { BaseTextAttributes } from './attributes';
 import type { DeltaInsert, DeltaOperation, OnTextChange } from './types';
+
+/**
+ * The block scope each bound text belongs to (ADR 0057), kept beside the
+ * instance rather than on it: a text's own fields are what a structural
+ * comparison or a `JSON.stringify` of a model's props sees, and a scope's
+ * bookkeeping must not make two equal texts differ.
+ */
+const releaseScopes = new WeakMap<object, ReleaseScope>();
 
 /**
  * Text is an abstraction of Y.Text.
@@ -79,18 +88,34 @@ export class Text<
 
     this._length$ = signal(length);
     this._deltas$ = signal(this._yText.doc ? this._yText.toDelta() : []);
-    this._yText.observe(event => {
-      const isLocal =
-        !event.transaction.origin ||
-        !this._yText.doc ||
-        event.transaction.origin instanceof Y.UndoManager ||
-        event.transaction.origin.proxy
-          ? true
-          : event.transaction.origin === this._yText.doc.clientID;
-      this._length$.value = this._yText.length;
-      this._deltas$.value = this._yText.toDelta();
-      this._onChange?.(this._yText, isLocal);
-    });
+    this._yText.observe(this._observer);
+  }
+
+  private _observing = true;
+
+  private readonly _observer = (event: Y.YTextEvent) => {
+    const isLocal =
+      !event.transaction.origin ||
+      !this._yText.doc ||
+      event.transaction.origin instanceof Y.UndoManager ||
+      event.transaction.origin.proxy
+        ? true
+        : event.transaction.origin === this._yText.doc.clientID;
+    this._length$.value = this._yText.length;
+    this._deltas$.value = this._yText.toDelta();
+    this._onChange?.(this._yText, isLocal);
+  };
+
+  /**
+   * @internal
+   * Stop observing the `Y.Text`: the store this text was built for is
+   * released (ADR 0057). Writes nothing; the text keeps its last value.
+   * Idempotent.
+   */
+  _release() {
+    if (!this._observing) return;
+    this._observing = false;
+    this._yText.unobserve(this._observer);
   }
 
   private _transact(callback: () => void) {
@@ -125,9 +150,16 @@ export class Text<
 
   /**
    * @internal
+   * `scope` is the block scope of the store the text notifies: the text,
+   * and any clone or split part that inherits its `onChange`, is released
+   * with it (ADR 0057).
    */
-  bind(onChange?: OnTextChange) {
+  bind(onChange?: OnTextChange, scope?: ReleaseScope) {
     this._onChange = onChange;
+    if (scope) {
+      releaseScopes.set(this, scope);
+      scope.track(this);
+    }
   }
 
   /**
@@ -149,7 +181,7 @@ export class Text<
    */
   clone() {
     const text = new Text(this._yText.clone());
-    text.bind(this._onChange);
+    text.bind(this._onChange, releaseScopes.get(this));
     return text;
   }
 
@@ -446,7 +478,7 @@ export class Text<
     const rightYText = new Y.Text();
     rightYText.applyDelta(rightDeltas);
     const rightText = new Text(rightYText);
-    rightText.bind(this._onChange);
+    rightText.bind(this._onChange, releaseScopes.get(this));
 
     return rightText;
   }

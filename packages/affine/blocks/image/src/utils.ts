@@ -113,6 +113,8 @@ export async function resetImageSize(
   }
 
   const imageSize = await readImageSize(blob);
+  // Measured: the document may be closed by now (ADR 0057).
+  if (block.store.disposed) return;
 
   const bound = model.elementBound;
   bound.w = imageSize.width;
@@ -321,6 +323,8 @@ export async function addSiblingImageBlocks(
   const propsArray = await Promise.all(
     files.map(file => buildPropsWith(std, file))
   );
+  // The uploads awaited: a document closed meanwhile gets nothing (ADR 0057).
+  if (std.store.disposed) return [];
 
   const blockIds = std.store.addSiblingBlocks(
     targetModel,
@@ -347,6 +351,7 @@ export async function addImageBlocks(
   const propsArray = await Promise.all(
     files.map(file => buildPropsWith(std, file))
   );
+  if (std.store.disposed) return [];
 
   const blocks = propsArray.map(blockProps => ({ flavour, blockProps }));
 
@@ -372,6 +377,7 @@ export async function addImages(
   const propsArray = await Promise.all(
     files.map(file => buildPropsWith(std, file))
   );
+  if (std.store.disposed) return [];
 
   return placeImagesOnCanvas(std, propsArray, options);
 }

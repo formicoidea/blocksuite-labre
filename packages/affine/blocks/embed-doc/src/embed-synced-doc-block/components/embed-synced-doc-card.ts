@@ -22,7 +22,10 @@ import { property, queryAsync } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import throttle from 'lodash-es/throttle';
 
-import { renderLinkedDocInCard } from '../../common/render-linked-doc';
+import {
+  releaseLinkedDocPreview,
+  renderLinkedDocInCard,
+} from '../../common/render-linked-doc';
 import { EMBED_DOC_UPDATED_LABEL } from '../../translations.js';
 import type { EmbedSyncedDocBlockComponent } from '../embed-synced-doc-block.js';
 import { cardStyles } from '../styles.js';
@@ -87,6 +90,7 @@ export class EmbedSyncedDocCard extends WithDisposable(ShadowlessElement) {
 
   override connectedCallback() {
     super.connectedCallback();
+    this.disposables.add(() => releaseLinkedDocPreview(this));
 
     this.block.handleEvent(
       'dragStart',

@@ -157,6 +157,7 @@ export class DragEventWatcher {
   };
 
   private readonly _cleanup = () => {
+    this.previewHelper.releasePreviews();
     this._clearDropIndicator();
     this.widget.hide(true);
     this.std.selection.setGroup('gfx', []);
@@ -658,6 +659,8 @@ export class DragEventWatcher {
       else {
         this._mergeSnapshotToCurDoc(snapshot)
           .then(idRemap => {
+            // The merge is async: the document may be closed by now.
+            if (store.disposed) return;
             let largestElem!: {
               size: number;
               id: string;
@@ -737,6 +740,7 @@ export class DragEventWatcher {
     job
       .snapshotToSlice(snapshotWithoutNote, std.store, parent, index)
       .then(() => {
+        if (std.store.disposed) return;
         const block = std.store.getBlock(id)?.model;
         if (block) {
           std.store.deleteBlock(block);
@@ -884,6 +888,8 @@ export class DragEventWatcher {
           await addInDependencyOrder(childId);
         }
       }
+      // Each child awaited: the document may be closed by now (ADR 0057).
+      if (surface.store.disposed) return;
 
       if (blockMap[id]) {
         const { surfaceChild, snapshot: blockSnapshot } = blockMap[id];

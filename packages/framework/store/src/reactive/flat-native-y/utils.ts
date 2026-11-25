@@ -1,5 +1,6 @@
 import { SYS_KEYS } from '../../consts';
 import { Boxed } from '../boxed';
+import type { ReleaseScope } from '../release-scope.js';
 import { Text } from '../text';
 import type { UnRecord } from '../types';
 
@@ -43,8 +44,12 @@ export function getFirstKey(key: string): string {
   return result;
 }
 
-export function bindOnChangeIfNeed(value: unknown, onChange: () => void): void {
+export function bindOnChangeIfNeed(
+  value: unknown,
+  onChange: () => void,
+  scope?: ReleaseScope
+): void {
   if (value instanceof Text || Boxed.is(value)) {
-    value.bind(onChange);
+    value.bind(onChange, scope);
   }
 }

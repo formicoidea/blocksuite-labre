@@ -5,6 +5,7 @@ import {
   DocModeProvider,
   ViewportElementExtension,
 } from '@labre/affine-shared/services';
+import { holdPreviewStore } from '@labre/affine-shared/utils';
 import { DisposableGroup } from '@labre/global/disposable';
 import { Bound, deserializeXYWH } from '@labre/global/gfx';
 import { styleMap, WithDisposable } from '@labre/global/lit';
@@ -129,13 +130,25 @@ export class FramePreview extends WithDisposable(ShadowlessElement) {
     return this.frame.store;
   }
 
+  /**
+   * Every frame card of a document shares one preview store (same filter),
+   * held per card and disposed when the last card goes (#746, ADR 0057,
+   * part 3). It used to be removed with `{ query }` alone, whose readonly
+   * key is `'false'`: the entry it created with `readonly: true` stayed,
+   * and nothing disposed of the store.
+   */
   private _initPreviewDoc() {
     const doc = this._originalDoc.workspace.getDoc(this._originalDoc.id);
-    this._previewDoc =
-      doc?.getStore({ readonly: true, query: this._docFilter }) ?? null;
-    this.disposables.add(() => {
-      this._originalDoc.doc.removeStore({ query: this._docFilter });
+    if (!doc) {
+      this._previewDoc = null;
+      return;
+    }
+    const hold = holdPreviewStore(doc, {
+      readonly: true,
+      query: this._docFilter,
     });
+    this._previewDoc = hold.store;
+    this.disposables.add(() => hold.release());
   }
 
   private _initSpec() {

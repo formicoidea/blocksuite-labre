@@ -178,6 +178,8 @@ export async function turnBlocksIntoSource(
   if (!first || std.store.readonly) return false;
   const content = blocksContent(std, blocks);
   const database = await createFrom(std, content);
+  // The document may be closed by now (ADR 0057): nothing to tell anyone.
+  if (std.store.disposed) return false;
   const source = database?.sources[0];
   if (!database || !source) return false;
   const unchanged =
@@ -217,6 +219,8 @@ export async function moveDatabaseRowsIntoSource(
   }
   const content = databaseContent(std, model);
   const database = await createFrom(std, content);
+  // The document may be closed by now (ADR 0057): nothing to tell anyone.
+  if (std.store.disposed) return false;
   const source = database?.sources[0];
   if (!database || !source) return false;
   const unchanged =

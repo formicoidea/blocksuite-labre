@@ -131,14 +131,70 @@ export abstract class BaseCellRenderer<
     this.requestUpdate();
   }
 
+  /**
+   * The write `valueSetNextTick` deferred to the next frame, until that
+   * frame runs or the cell leaves the DOM. Every editor that defers (number,
+   * text, date, progress, link) does so from `beforeExitEditingMode`, which
+   * the views call inside their selection change (a subscription, or an
+   * `effect` on mobile) while they still flip `isEditing$` and blur: the
+   * frame keeps the store write, and the re-render and undo capture it
+   * starts, out of that synchronous exit. But an exit followed by the
+   * editor's teardown in the same task (a click elsewhere then a navigation,
+   * a host closing the document) left the frame behind: the write ran after
+   * the editor was gone, and after the store was released it threw and the
+   * edit was lost (#746, ADR 0057). The cell now flushes it as it leaves the
+   * DOM, where no exit of its own is in progress.
+   */
+  private _pendingWrite: { value: RawValue | undefined; frame: number } | null =
+    null;
+
+  private _cancelPendingWrite() {
+    if (!this._pendingWrite) return;
+    cancelAnimationFrame(this._pendingWrite.frame);
+    this._pendingWrite = null;
+  }
+
+  /** A deferred write lands later: the store may have turned readonly. */
+  private _writeDeferred(value: RawValue | undefined) {
+    if (this.cell.property.readonly$.peek()) return;
+    this.cell.valueSet(value);
+  }
+
   valueSetImmediate(value: RawValue | undefined): void {
+    // A newer value: the pending, older one must not land after it.
+    this._cancelPendingWrite();
     this.cell.valueSet(value);
   }
 
   valueSetNextTick(value: RawValue | undefined) {
-    requestAnimationFrame(() => {
-      this.cell.valueSet(value);
+    this._cancelPendingWrite();
+    // Out of the DOM, no frame will come before the store may be released.
+    if (!this.isConnected) {
+      this._writeDeferred(value);
+      return;
+    }
+    const frame = requestAnimationFrame(() => {
+      this._pendingWrite = null;
+      this._writeDeferred(value);
     });
+    this._pendingWrite = { value, frame };
+  }
+
+  override disconnectedCallback() {
+    // Write now, once, what `valueSetNextTick` left pending. Runs after a
+    // subclass's own teardown commit (each calls `super` last): that commit,
+    // an immediate write, already cancelled a pending older value. The
+    // element's teardown runs even if that write throws (a host that
+    // disposed of the store before removing the editor, #746).
+    const pending = this._pendingWrite;
+    try {
+      if (pending) {
+        this._cancelPendingWrite();
+        this._writeDeferred(pending.value);
+      }
+    } finally {
+      super.disconnectedCallback();
+    }
   }
 
   onCopy(_e: ClipboardEvent) {}
