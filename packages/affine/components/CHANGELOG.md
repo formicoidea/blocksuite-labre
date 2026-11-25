@@ -1,5 +1,27 @@
 # @labre/affine-components
 
+## 4.4.0
+
+### Patch Changes
+
+- 67c493b: A screen reader now reads a date picker day as a full date in the picker's
+  `locale` ("Tuesday, November 24, 2026" in `en-US`) instead of "2026-10-24(2)",
+  which gave the month one too low. The cell's `data-date` attribute is now an
+  ISO date (`2026-11-24`, zero-padded) instead of `2026-10-24(2)`. Fixes #736
+  (upstream toeverything/AFFiNE#15870).
+- Updated dependencies [098a74a]
+- Updated dependencies [098a74a]
+- Updated dependencies [53d49a9]
+- Updated dependencies [f7584b1]
+- Updated dependencies [9416f0c]
+- Updated dependencies [1bd38b0]
+  - @labre/std@4.4.0
+  - @labre/affine-shared@4.4.0
+  - @labre/store@4.4.0
+  - @labre/affine-model@4.4.0
+  - @labre/global@4.4.0
+  - @labre/sync@4.4.0
+
 ## 4.3.0
 
 ### Minor Changes

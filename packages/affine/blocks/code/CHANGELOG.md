@@ -1,5 +1,35 @@
 # @labre/affine-block-code
 
+## 4.4.0
+
+### Patch Changes
+
+- 67c493b: The browser spellchecker no longer underlines code in a code block: the
+  block's editable area now has `spellcheck="false"`. Paragraphs and other text
+  blocks keep the browser default. Fixes #733 (upstream
+  toeverything/AFFiNE#15902).
+- Updated dependencies [67c493b]
+- Updated dependencies [098a74a]
+- Updated dependencies [098a74a]
+- Updated dependencies [53d49a9]
+- Updated dependencies [f7584b1]
+- Updated dependencies [9416f0c]
+- Updated dependencies [1bd38b0]
+  - @labre/affine-components@4.4.0
+  - @labre/affine-inline-latex@4.4.0
+  - @labre/std@4.4.0
+  - @labre/affine-shared@4.4.0
+  - @labre/store@4.4.0
+  - @labre/affine-inline-link@4.4.0
+  - @labre/affine-inline-preset@4.4.0
+  - @labre/affine-rich-text@4.4.0
+  - @labre/affine-widget-slash-menu@4.4.0
+  - @labre/affine-gfx-turbo-renderer@4.4.0
+  - @labre/affine-inline-comment@4.4.0
+  - @labre/affine-model@4.4.0
+  - @labre/affine-ext-loader@4.4.0
+  - @labre/global@4.4.0
+
 ## 4.3.0
 
 ### Patch Changes

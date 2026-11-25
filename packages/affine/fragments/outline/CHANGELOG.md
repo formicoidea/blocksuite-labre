@@ -1,5 +1,32 @@
 # @labre/affine-fragment-outline
 
+## 4.4.0
+
+### Patch Changes
+
+- 67c493b: The outline panel now shows a heading's inline equation instead of dropping
+  it. The formula is drawn by KaTeX as MathML, so a screen reader can read it,
+  and it stays inside the entry's single truncated line. The outline package now
+  declares `katex` (^0.18.10, the same range as the LaTeX inline). Fixes #735
+  (upstream toeverything/AFFiNE#15813).
+- Updated dependencies [67c493b]
+- Updated dependencies [098a74a]
+- Updated dependencies [098a74a]
+- Updated dependencies [53d49a9]
+- Updated dependencies [f7584b1]
+- Updated dependencies [9416f0c]
+- Updated dependencies [1bd38b0]
+  - @labre/affine-components@4.4.0
+  - @labre/std@4.4.0
+  - @labre/affine-shared@4.4.0
+  - @labre/store@4.4.0
+  - @labre/affine-fragment-doc-title@4.4.0
+  - @labre/affine-block-note@4.4.0
+  - @labre/affine-rich-text@4.4.0
+  - @labre/affine-model@4.4.0
+  - @labre/affine-ext-loader@4.4.0
+  - @labre/global@4.4.0
+
 ## 4.3.0
 
 ### Patch Changes

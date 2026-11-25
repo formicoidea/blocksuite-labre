@@ -1,5 +1,118 @@
 # @labre/std
 
+## 4.4.0
+
+### Minor Changes
+
+- 098a74a: Native bold, italic and underline controls now format rich text (#743, after
+  upstream toeverything/AFFiNE aaf0c9f). The iOS selection menu (B / I / U) and
+  similar native controls send a `beforeinput` of type `formatBold`,
+  `formatItalic` or `formatUnderline` with no key event, so nothing happened.
+  Every keymap bound with `bindHotkey` now runs the binding it registered as
+  `Mod-b`, `Mod-i` or `Mod-u` for these inputs, on all platforms, through the
+  same binding and keyboard state as the real shortcut; the input is prevented
+  only when the binding handled it. Nothing runs during
+  a composition, an armed chord is left armed, and the Android Backspace
+  routing is unchanged.
+
+### Patch Changes
+
+- 098a74a: Ctrl+A (Cmd+A on macOS) in the equation editor selects the whole formula on
+  Firefox too, and typing or Backspace then replaces it (#741, port of upstream
+  toeverything/AFFiNE a2dbbec). The equation editor handles the shortcut itself
+  and selects through its inline editor instead of leaving it to the browser.
+
+  In every inline editor, an input typed over a non-collapsed selection now
+  replaces that selection even when the browser reports a different target
+  range: Firefox reported the target range of a select-all from the editor
+  root, and the input landed in the wrong place. A collapsed caret still uses
+  the target range (word and character deletion depend on it), and so does a
+  spellcheck or autocorrect replacement (`insertReplacementText`), which
+  Firefox fires with the misspelled word as target range before selecting it.
+
+- f7584b1: An element deleted in the same transaction that adds another no longer emits
+  `elementUpdated` after it has left the surface (#681). Until now it stayed
+  mounted until its `elementRemoved`, which comes after the transaction's
+  `elementAdded`: a group read in that window (the board stacking rule reads
+  every top-level bound on a local addition) recomputed its bound and emitted an
+  update whose id `getElementById` no longer resolved, and the spatial index
+  threw `Cannot read properties of null (reading 'externalXYWH')`. The element
+  is now silenced as it leaves the surface; `elementAdded` and `elementRemoved`
+  keep their order and their payload, and an `elementRemoved` subscriber still
+  reads the removed model.
+- 9416f0c: `store.dispose()` now releases a store for good (#746, ADR 0057). It detaches
+  every Yjs observer the store and its blocks attached (their props' proxies,
+  `Text` and `Boxed` included), its awareness listener and its `selectionV2`
+  entry, and destroys its undo manager; the surface model detaches its
+  elements observer too. The document's container forgets the store, so the
+  next `doc.getStore()` builds a new, live store from Yjs instead of handing
+  the disposed one back. A release writes nothing to Yjs: nothing stored is
+  lost or changed. A reopened document starts with an empty undo history.
+
+  **New throw:** a disposed store throws a `BlockSuiteError`
+  (`ErrorCode.ModelCRUDError`) from `load()` and from every mutation entry
+  point (`addBlock`, `addBlocks`, `addSiblingBlocks`, `updateBlock`,
+  `deleteBlock`, `moveBlocks`, `transact`, `withoutTransact`, `undo`, `redo`);
+  its reads keep answering its last state, and a second `dispose()` does
+  nothing. `load()` used to revive a disposed store half-way, deaf to remote
+  changes. Two stores on the same document (the editor's and a query
+  preview, a readonly mirror) still share one proxy per nested prop, so they
+  can never read different nested values, and each is now notified of nested
+  changes (a second store was not); releasing one store leaves the other's
+  reactive. `BlockMetaService` subscribes once per store however often
+  `load()` runs.
+
+  **New API:** `store.disposed` answers whether a store was released: code
+  that resumes after an `await` checks it before writing. The library's own
+  gestures do (an image or attachment upload or measure, « Replace », «
+  Embed view », « Turn into image », link-preview refreshes, the embed and
+  keyboard-toolbar dialogs, paste preparation, « create linked doc », the
+  mindmap import, the drag merges, « turn into source »): a document closed
+  while one waits is left alone, nothing written and nothing thrown. A
+  `load(initFn)` whose `initFn` disposes of the store attaches nothing
+  afterwards. `doc.defaultStore` (never builds one) and
+  `doc.defaultStoreChanged` tell when a document gets or loses its default
+  store; `followDefaultStore(doc, attach)` (`@labre/affine-shared/utils`)
+  follows another document's default store without keeping it. The linked-doc
+  card, the data-view source and the surface-ref use them: a document closed
+  while another document shows it is released, nothing of the library opens
+  it again, and the card refreshes when it is opened again. The card reads
+  the document's title and trash from its meta, and its content from the
+  open store or, when nobody has the document open, from a readonly store of
+  its own released with the card (its `linkedDoc` is `undefined` while none
+  is open). The data-view source lists the documents open. Readers of
+  another document once (`docCRUD.get`: an export walking a synced document,
+  an import checking a linked one) get its open store, else its readonly one,
+  through the new `storeToRead(doc)` (`@labre/affine-shared/utils`). The
+  surface-ref finds the document of its element from Yjs and builds a
+  readonly store for that one alone. `DocDisplayMetaService` no longer
+  builds the store of every linked document it names.
+
+  **Deprecated:** `DocDisplayMetaService`'s public `iconMap` and `titleMap`
+  keep their type and stay empty: the service builds no store, so there is
+  nothing to key them by. Read `icon(pageId)` / `title(pageId)`. The `Doc`
+  interface gains two required members, `defaultStore` and
+  `defaultStoreChanged`: nothing to do for a host that uses the library's
+  workspace classes, a compile error only for one that implements `Doc`
+  itself.
+
+  `doc.getStore({ readonly: false })` now returns one store per document, as
+  `readonly: true` does, instead of building a new one on every call, and
+  `doc.removeStore({ readonly: false })` forgets it. It stays a store distinct
+  from the default `doc.getStore()`; with an `id` it is still keyed by the id.
+
+  The library's own previews release their query stores: the drag image when
+  the drag ends, the linked-doc card when it needs other blocks or
+  disconnects, the frame card and the surface-ref note when they disconnect.
+  Previews asking for the same store share it through the new
+  `holdPreviewStore(doc, options)` (`@labre/affine-shared/utils`): the last
+  release disposes of it. The frame card used to remove its store under the
+  wrong key and kept every one.
+
+- Updated dependencies [9416f0c]
+  - @labre/store@4.4.0
+  - @labre/global@4.4.0
+
 ## 4.3.0
 
 ### Patch Changes

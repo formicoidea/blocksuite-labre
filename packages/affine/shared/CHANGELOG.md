@@ -1,5 +1,125 @@
 # @labre/affine-shared
 
+## 4.4.0
+
+### Minor Changes
+
+- 53d49a9: A host can supply the action of a database's "No view" state (issue #707):
+  `DataSourcePickerService` gains an optional `noViewAction(block)` that
+  answers a signal of `{ label, hint?, menu?, run(anchor) } | null`. An action
+  replaces the library's "New view" under the same "No view" status, which
+  stays the one live region; `null` keeps the previous state; flipping the
+  signal redraws it. Never drawn on a read-only document. New exports:
+  `NoViewAction` and `NoViewActionKey` (`@labre/affine-database-engine`),
+  `DataSourcePickerNoViewAction` and `DataSourcePickerBlockRef`
+  (`@labre/affine-shared/services`).
+- 9416f0c: `store.dispose()` now releases a store for good (#746, ADR 0057). It detaches
+  every Yjs observer the store and its blocks attached (their props' proxies,
+  `Text` and `Boxed` included), its awareness listener and its `selectionV2`
+  entry, and destroys its undo manager; the surface model detaches its
+  elements observer too. The document's container forgets the store, so the
+  next `doc.getStore()` builds a new, live store from Yjs instead of handing
+  the disposed one back. A release writes nothing to Yjs: nothing stored is
+  lost or changed. A reopened document starts with an empty undo history.
+
+  **New throw:** a disposed store throws a `BlockSuiteError`
+  (`ErrorCode.ModelCRUDError`) from `load()` and from every mutation entry
+  point (`addBlock`, `addBlocks`, `addSiblingBlocks`, `updateBlock`,
+  `deleteBlock`, `moveBlocks`, `transact`, `withoutTransact`, `undo`, `redo`);
+  its reads keep answering its last state, and a second `dispose()` does
+  nothing. `load()` used to revive a disposed store half-way, deaf to remote
+  changes. Two stores on the same document (the editor's and a query
+  preview, a readonly mirror) still share one proxy per nested prop, so they
+  can never read different nested values, and each is now notified of nested
+  changes (a second store was not); releasing one store leaves the other's
+  reactive. `BlockMetaService` subscribes once per store however often
+  `load()` runs.
+
+  **New API:** `store.disposed` answers whether a store was released: code
+  that resumes after an `await` checks it before writing. The library's own
+  gestures do (an image or attachment upload or measure, « Replace », «
+  Embed view », « Turn into image », link-preview refreshes, the embed and
+  keyboard-toolbar dialogs, paste preparation, « create linked doc », the
+  mindmap import, the drag merges, « turn into source »): a document closed
+  while one waits is left alone, nothing written and nothing thrown. A
+  `load(initFn)` whose `initFn` disposes of the store attaches nothing
+  afterwards. `doc.defaultStore` (never builds one) and
+  `doc.defaultStoreChanged` tell when a document gets or loses its default
+  store; `followDefaultStore(doc, attach)` (`@labre/affine-shared/utils`)
+  follows another document's default store without keeping it. The linked-doc
+  card, the data-view source and the surface-ref use them: a document closed
+  while another document shows it is released, nothing of the library opens
+  it again, and the card refreshes when it is opened again. The card reads
+  the document's title and trash from its meta, and its content from the
+  open store or, when nobody has the document open, from a readonly store of
+  its own released with the card (its `linkedDoc` is `undefined` while none
+  is open). The data-view source lists the documents open. Readers of
+  another document once (`docCRUD.get`: an export walking a synced document,
+  an import checking a linked one) get its open store, else its readonly one,
+  through the new `storeToRead(doc)` (`@labre/affine-shared/utils`). The
+  surface-ref finds the document of its element from Yjs and builds a
+  readonly store for that one alone. `DocDisplayMetaService` no longer
+  builds the store of every linked document it names.
+
+  **Deprecated:** `DocDisplayMetaService`'s public `iconMap` and `titleMap`
+  keep their type and stay empty: the service builds no store, so there is
+  nothing to key them by. Read `icon(pageId)` / `title(pageId)`. The `Doc`
+  interface gains two required members, `defaultStore` and
+  `defaultStoreChanged`: nothing to do for a host that uses the library's
+  workspace classes, a compile error only for one that implements `Doc`
+  itself.
+
+  `doc.getStore({ readonly: false })` now returns one store per document, as
+  `readonly: true` does, instead of building a new one on every call, and
+  `doc.removeStore({ readonly: false })` forgets it. It stays a store distinct
+  from the default `doc.getStore()`; with an `id` it is still keyed by the id.
+
+  The library's own previews release their query stores: the drag image when
+  the drag ends, the linked-doc card when it needs other blocks or
+  disconnects, the frame card and the surface-ref note when they disconnect.
+  Previews asking for the same store share it through the new
+  `holdPreviewStore(doc, options)` (`@labre/affine-shared/utils`): the last
+  release disposes of it. The frame card used to remove its store under the
+  wrong key and kept every one.
+
+- 1bd38b0: A video shown as an embed keeps its own proportions (#738, port of upstream
+  toeverything/AFFiNE a28cad2). The video is no longer cropped: it is fitted
+  inside its box (`object-fit: contain`). « Turn into embed view » on a video
+  first reads the clip's own size (a few milliseconds usually, at most 3
+  seconds), then switches to an embed whose box has the clip's ratio at the
+  card's width (752), a portrait clip getting a portrait box; when the size
+  cannot be read, the box keeps the card height (544), as before. It is one
+  undo step, and nothing is written when something changed during the read
+  (another file, a resize by anyone, the view switched, an undo, a deletion, a
+  read-only document); a second click during the read does nothing more.
+  « Replace » by a video keeps the frame it replaces, in one undo step, and
+  never reads the clip. On a canvas, a video embed is painted at its bound's
+  ratio instead of as a card contained in it (ADR 0044, amendment of
+  2026-11-24); every other card is unchanged.
+
+  Video embeds saved before keep their 752 × 544 box and are not rewritten on
+  load: a clip of another ratio now shows bars on two sides (letterboxed) where
+  it was cropped before.
+
+  New in `@labre/affine-shared/utils`: `readVideoSize(blob, timeoutMs = 3000)`,
+  beside `readImageSize`, the video's natural size or `null` when it cannot be
+  read in time. New optional third parameter of an embed config's `action` and
+  of `AttachmentEmbedService.convertTo`: `{ keepBound?: boolean }`
+  (`AttachmentEmbedConvertOptions`, exported by the package), for a caller that
+  writes the frame itself in its own transaction. A config written for the
+  two-parameter `action` keeps compiling.
+
+### Patch Changes
+
+- Updated dependencies [098a74a]
+- Updated dependencies [098a74a]
+- Updated dependencies [f7584b1]
+- Updated dependencies [9416f0c]
+  - @labre/std@4.4.0
+  - @labre/store@4.4.0
+  - @labre/affine-model@4.4.0
+  - @labre/global@4.4.0
+
 ## 4.3.0
 
 ### Patch Changes

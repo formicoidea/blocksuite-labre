@@ -1,5 +1,57 @@
 # @labre/affine-block-table
 
+## 4.4.0
+
+### Patch Changes
+
+- 5fcc199: A drag selection across table cells follows the pointer while the page or the
+  table scrolls (#728, port of upstream toeverything/AFFiNE 05dd274). The
+  selected area used to be computed from cell positions captured when the
+  button went down, so after a scroll it no longer matched the cells under the
+  pointer, and a scroll with the pointer at rest updated nothing. The cell
+  positions are now read again on every move and on every scroll during the
+  drag. A table removed while a drag selection is in progress no longer leaves
+  that selection's listeners on the window (the column, row and width drags are
+  unchanged).
+- 5fcc199: Markdown, plain-text and HTML export (and copy as Markdown) no longer fail on
+  a table cell stored as a plain string or with no text at all (#732, port of
+  the table part of upstream toeverything/AFFiNE 89bdb9c). Such cells come from
+  imported or older snapshots or from a host write; a string cell now exports
+  its text and a cell without text exports as an empty cell, exactly like the
+  equivalent rich-text cells. Export only reads the snapshot: nothing is
+  rewritten.
+- 5fcc199: Inserting a table from a nested list item, a nested paragraph or a paragraph
+  inside a callout now works (#729, port of upstream toeverything/AFFiNE#14840).
+  Nothing happened before: the table was refused next to a block whose parent
+  cannot hold a table, and the error was swallowed. The table now goes after the
+  closest enclosing block that can have a table beside it, as the document
+  schema decides; the empty line left by the slash menu is still removed. A
+  readonly document gets no table.
+- 5fcc199: "Move Up" in a table row's menu moves the row up (#731, port of upstream
+  toeverything/AFFiNE b90edc1); it did nothing before. "Move Down" on the last
+  row and "Move Right" on the last column no longer give the moved item the
+  order key of the first one, and a move that leaves a row or a column where it
+  is (first row up, last column right, a drag dropped in place) writes nothing,
+  so it adds no empty undo step. A row or column added or moved past the end
+  lands after the last one with a key of its own. Readonly tables refuse moves.
+- Updated dependencies [67c493b]
+- Updated dependencies [098a74a]
+- Updated dependencies [098a74a]
+- Updated dependencies [53d49a9]
+- Updated dependencies [f7584b1]
+- Updated dependencies [9416f0c]
+- Updated dependencies [1bd38b0]
+  - @labre/affine-components@4.4.0
+  - @labre/std@4.4.0
+  - @labre/affine-shared@4.4.0
+  - @labre/store@4.4.0
+  - @labre/affine-inline-preset@4.4.0
+  - @labre/affine-rich-text@4.4.0
+  - @labre/affine-widget-slash-menu@4.4.0
+  - @labre/affine-model@4.4.0
+  - @labre/affine-ext-loader@4.4.0
+  - @labre/global@4.4.0
+
 ## 4.3.0
 
 ### Patch Changes

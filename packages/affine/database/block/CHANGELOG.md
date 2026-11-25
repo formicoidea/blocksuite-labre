@@ -1,5 +1,139 @@
 # @labre/affine-block-database
 
+## 4.4.0
+
+### Minor Changes
+
+- 53d49a9: A host can supply the action of a database's "No view" state (issue #707):
+  `DataSourcePickerService` gains an optional `noViewAction(block)` that
+  answers a signal of `{ label, hint?, menu?, run(anchor) } | null`. An action
+  replaces the library's "New view" under the same "No view" status, which
+  stays the one live region; `null` keeps the previous state; flipping the
+  signal redraws it. Never drawn on a read-only document. New exports:
+  `NoViewAction` and `NoViewActionKey` (`@labre/affine-database-engine`),
+  `DataSourcePickerNoViewAction` and `DataSourcePickerBlockRef`
+  (`@labre/affine-shared/services`).
+
+### Patch Changes
+
+- fa1fb74: A database title or text cell holding a linked-doc reference now reads as
+  the editor shows it (#742, upstream toeverything/AFFiNE#15865): the linked
+  doc's title, or the alias the reference carries. The view search finds the
+  row by that title, and the cell's copy, `stringValue$` and export
+  (`jsonValue$`) carry it, where they held a blank placeholder (search, copy)
+  or ignored the alias (export). A reference to a deleted or untitled doc
+  reads with the editor's own wordings, through the existing translation keys.
+
+  The title is read from the workspace's doc metadata: no store of the linked
+  doc is created and no doc is loaded, so a table linking many docs costs a
+  lookup per reference. A rename of the linked doc, local or from a peer, is
+  followed by the cell's `stringValue$` and `jsonValue$` and by the view
+  search; a one-off read (an adapter's export) gets the title of the moment.
+  A host's override of `DocDisplayMetaProvider` titles is not consulted here.
+  A data source built outside an editor keeps the raw text, as before.
+
+  An empty rich-text cell exports as `null`, as it always did; its JSON schema
+  is unchanged.
+
+  Property types: `PropertyConfig.rawValue.toString` receives an optional
+  `dataSource` (a view's cell passes it). A type written against the previous
+  shape keeps compiling and keeps its behaviour, and a call without it still
+  compiles.
+
+- 9416f0c: `store.dispose()` now releases a store for good (#746, ADR 0057). It detaches
+  every Yjs observer the store and its blocks attached (their props' proxies,
+  `Text` and `Boxed` included), its awareness listener and its `selectionV2`
+  entry, and destroys its undo manager; the surface model detaches its
+  elements observer too. The document's container forgets the store, so the
+  next `doc.getStore()` builds a new, live store from Yjs instead of handing
+  the disposed one back. A release writes nothing to Yjs: nothing stored is
+  lost or changed. A reopened document starts with an empty undo history.
+
+  **New throw:** a disposed store throws a `BlockSuiteError`
+  (`ErrorCode.ModelCRUDError`) from `load()` and from every mutation entry
+  point (`addBlock`, `addBlocks`, `addSiblingBlocks`, `updateBlock`,
+  `deleteBlock`, `moveBlocks`, `transact`, `withoutTransact`, `undo`, `redo`);
+  its reads keep answering its last state, and a second `dispose()` does
+  nothing. `load()` used to revive a disposed store half-way, deaf to remote
+  changes. Two stores on the same document (the editor's and a query
+  preview, a readonly mirror) still share one proxy per nested prop, so they
+  can never read different nested values, and each is now notified of nested
+  changes (a second store was not); releasing one store leaves the other's
+  reactive. `BlockMetaService` subscribes once per store however often
+  `load()` runs.
+
+  **New API:** `store.disposed` answers whether a store was released: code
+  that resumes after an `await` checks it before writing. The library's own
+  gestures do (an image or attachment upload or measure, « Replace », «
+  Embed view », « Turn into image », link-preview refreshes, the embed and
+  keyboard-toolbar dialogs, paste preparation, « create linked doc », the
+  mindmap import, the drag merges, « turn into source »): a document closed
+  while one waits is left alone, nothing written and nothing thrown. A
+  `load(initFn)` whose `initFn` disposes of the store attaches nothing
+  afterwards. `doc.defaultStore` (never builds one) and
+  `doc.defaultStoreChanged` tell when a document gets or loses its default
+  store; `followDefaultStore(doc, attach)` (`@labre/affine-shared/utils`)
+  follows another document's default store without keeping it. The linked-doc
+  card, the data-view source and the surface-ref use them: a document closed
+  while another document shows it is released, nothing of the library opens
+  it again, and the card refreshes when it is opened again. The card reads
+  the document's title and trash from its meta, and its content from the
+  open store or, when nobody has the document open, from a readonly store of
+  its own released with the card (its `linkedDoc` is `undefined` while none
+  is open). The data-view source lists the documents open. Readers of
+  another document once (`docCRUD.get`: an export walking a synced document,
+  an import checking a linked one) get its open store, else its readonly one,
+  through the new `storeToRead(doc)` (`@labre/affine-shared/utils`). The
+  surface-ref finds the document of its element from Yjs and builds a
+  readonly store for that one alone. `DocDisplayMetaService` no longer
+  builds the store of every linked document it names.
+
+  **Deprecated:** `DocDisplayMetaService`'s public `iconMap` and `titleMap`
+  keep their type and stay empty: the service builds no store, so there is
+  nothing to key them by. Read `icon(pageId)` / `title(pageId)`. The `Doc`
+  interface gains two required members, `defaultStore` and
+  `defaultStoreChanged`: nothing to do for a host that uses the library's
+  workspace classes, a compile error only for one that implements `Doc`
+  itself.
+
+  `doc.getStore({ readonly: false })` now returns one store per document, as
+  `readonly: true` does, instead of building a new one on every call, and
+  `doc.removeStore({ readonly: false })` forgets it. It stays a store distinct
+  from the default `doc.getStore()`; with an `id` it is still keyed by the id.
+
+  The library's own previews release their query stores: the drag image when
+  the drag ends, the linked-doc card when it needs other blocks or
+  disconnects, the frame card and the surface-ref note when they disconnect.
+  Previews asking for the same store share it through the new
+  `holdPreviewStore(doc, options)` (`@labre/affine-shared/utils`): the last
+  release disposes of it. The frame card used to remove its store under the
+  wrong key and kept every one.
+
+- Updated dependencies [9416f0c]
+- Updated dependencies [fa1fb74]
+- Updated dependencies [fa1fb74]
+- Updated dependencies [fa1fb74]
+- Updated dependencies [67c493b]
+- Updated dependencies [098a74a]
+- Updated dependencies [098a74a]
+- Updated dependencies [53d49a9]
+- Updated dependencies [f7584b1]
+- Updated dependencies [9416f0c]
+- Updated dependencies [1bd38b0]
+  - @labre/affine-database-engine@4.4.0
+  - @labre/affine-components@4.4.0
+  - @labre/std@4.4.0
+  - @labre/affine-shared@4.4.0
+  - @labre/store@4.4.0
+  - @labre/affine-widget-drag-handle@4.4.0
+  - @labre/affine-inline-preset@4.4.0
+  - @labre/affine-inline-reference@4.4.0
+  - @labre/affine-rich-text@4.4.0
+  - @labre/affine-widget-slash-menu@4.4.0
+  - @labre/affine-model@4.4.0
+  - @labre/affine-ext-loader@4.4.0
+  - @labre/global@4.4.0
+
 ## 4.3.0
 
 ### Patch Changes

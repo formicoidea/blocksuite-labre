@@ -1,5 +1,17 @@
 # @labre/affine-model
 
+## 4.4.0
+
+### Patch Changes
+
+- Updated dependencies [098a74a]
+- Updated dependencies [098a74a]
+- Updated dependencies [f7584b1]
+- Updated dependencies [9416f0c]
+  - @labre/std@4.4.0
+  - @labre/store@4.4.0
+  - @labre/global@4.4.0
+
 ## 4.3.0
 
 ### Patch Changes

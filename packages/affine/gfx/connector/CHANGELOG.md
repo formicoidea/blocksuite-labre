@@ -1,5 +1,36 @@
 # @labre/affine-gfx-connector
 
+## 4.4.0
+
+### Patch Changes
+
+- 1bd38b0: A connector endpoint dragged inside a frame stays where it is dropped (#740,
+  port of upstream toeverything/AFFiNE f0e5009). It used to snap to one of the
+  frame's edge anchors wherever it was inside the frame. A frame is now reached
+  only within 8 units of its border, the distance at which an endpoint already
+  attached to any element's outline; an endpoint over a shape drawn in the frame
+  still attaches to that shape. Framework boards are unchanged: they were never
+  connection targets, and an endpoint inside one stays free unless it is over a
+  node.
+- Updated dependencies [67c493b]
+- Updated dependencies [098a74a]
+- Updated dependencies [098a74a]
+- Updated dependencies [53d49a9]
+- Updated dependencies [f7584b1]
+- Updated dependencies [9416f0c]
+- Updated dependencies [1bd38b0]
+  - @labre/affine-components@4.4.0
+  - @labre/std@4.4.0
+  - @labre/affine-shared@4.4.0
+  - @labre/store@4.4.0
+  - @labre/affine-block-surface@4.4.0
+  - @labre/affine-gfx-text@4.4.0
+  - @labre/affine-rich-text@4.4.0
+  - @labre/affine-widget-edgeless-toolbar@4.4.0
+  - @labre/affine-model@4.4.0
+  - @labre/affine-ext-loader@4.4.0
+  - @labre/global@4.4.0
+
 ## 4.3.0
 
 ### Patch Changes
