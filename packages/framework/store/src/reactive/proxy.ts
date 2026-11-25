@@ -229,8 +229,12 @@ export class ReactiveYArray extends BaseReactiveYData<
     _ySource.observe(this._observer);
   }
 
-  /** @internal */
+  private _observing = true;
+
+  /** @internal Idempotent. */
   _release() {
+    if (!this._observing) return;
+    this._observing = false;
     this._ySource.unobserve(this._observer);
     forget(this._options, this._ySource, this);
   }
@@ -367,8 +371,12 @@ export class ReactiveYMap extends BaseReactiveYData<UnRecord, YMap<unknown>> {
     _ySource.observe(this._observer);
   }
 
-  /** @internal */
+  private _observing = true;
+
+  /** @internal Idempotent. */
   _release() {
+    if (!this._observing) return;
+    this._observing = false;
     this._ySource.unobserve(this._observer);
     forget(this._options, this._ySource, this);
   }

@@ -90,6 +90,7 @@ export class ReactiveFlatYMap extends BaseReactiveYData<
       transform: this._transform,
       stashed: this._stashed,
       initialized: () => this._initialized,
+      scope: this._releaseScope,
     });
 
   private readonly _updateWithYjsSkip = (fn: () => void) => {
@@ -165,8 +166,12 @@ export class ReactiveFlatYMap extends BaseReactiveYData<
     }
   }
 
-  /** @internal */
+  private _observing = true;
+
+  /** @internal Idempotent. */
   _release() {
+    if (!this._observing) return;
+    this._observing = false;
     this._ySource.unobserve(this._observer);
   }
 

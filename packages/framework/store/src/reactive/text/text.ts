@@ -91,6 +91,8 @@ export class Text<
     this._yText.observe(this._observer);
   }
 
+  private _observing = true;
+
   private readonly _observer = (event: Y.YTextEvent) => {
     const isLocal =
       !event.transaction.origin ||
@@ -108,8 +110,11 @@ export class Text<
    * @internal
    * Stop observing the `Y.Text`: the store this text was built for is
    * released (ADR 0057). Writes nothing; the text keeps its last value.
+   * Idempotent.
    */
   _release() {
+    if (!this._observing) return;
+    this._observing = false;
     this._yText.unobserve(this._observer);
   }
 

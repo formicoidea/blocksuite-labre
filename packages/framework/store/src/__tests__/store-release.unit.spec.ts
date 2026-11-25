@@ -43,7 +43,7 @@ import * as Y from 'yjs';
 import { StoreSelectionExtension } from '../extension/index.js';
 import { BlockSchemaExtension } from '../extension/schema.js';
 import { defineBlockSchema, type Store } from '../model/index.js';
-import { Text } from '../reactive/index.js';
+import { Boxed, Text } from '../reactive/index.js';
 import { createAutoIncrementIdGenerator } from '../test/index.js';
 import { TestWorkspace } from '../test/test-workspace.js';
 import {
@@ -69,11 +69,25 @@ const FlatBlockSchema = defineBlockSchema({
   },
 });
 
+/** A flat-data block with a `Text` and a `Boxed` under a nested prop. */
+type Cell = { text: Text; note: Boxed<{ n: number }> };
+const CellsBlockSchema = defineBlockSchema({
+  flavour: 'test:cells',
+  props: () => ({ cells: {} as Record<string, Cell> }),
+  metadata: {
+    version: 1,
+    role: 'content',
+    parent: ['affine:page'],
+    isFlatData: true,
+  },
+});
+
 const extensions = [
   RootBlockSchemaExtension,
   NoteBlockSchemaExtension,
   ParagraphBlockSchemaExtension,
   BlockSchemaExtension(FlatBlockSchema),
+  BlockSchemaExtension(CellsBlockSchema),
 ];
 
 const DOC_ID = 'doc:release';
@@ -450,6 +464,139 @@ describe('Store.dispose() releases what the store attached (ADR 0057)', () => {
       store.dispose();
       expect(local()).toEqual([]);
     } finally {
+      workspace.dispose();
+    }
+  });
+});
+
+describe('a Text and a Boxed in a flat block’s nested prop (a table cell)', () => {
+  const CELLS_ID = 'cells';
+  const CELL = 'r:c';
+  const SEEDED_NOTE = { n: 1 };
+  const EDITED_NOTE = { n: 2 };
+  const LOCAL_NOTE = { n: 3 };
+  /** The observer a `Boxed` attaches in its own constructor. */
+  const OWN_OBSERVER = 1;
+
+  /** A document whose cells block arrived from a peer. */
+  function docWithCells(workspace: TestWorkspace) {
+    const peer = openWorkspace();
+    const peerStore = peer.createDoc(DOC_ID).getStore();
+    peerStore.load(() => {
+      peerStore.addBlock('affine:page', { id: PAGE_ID }, null);
+      peerStore.addBlock(
+        'test:cells',
+        {
+          id: CELLS_ID,
+          cells: {
+            [CELL]: { text: new Text('x'), note: new Boxed(SEEDED_NOTE) },
+          },
+        },
+        PAGE_ID
+      );
+    });
+    const update = Y.encodeStateAsUpdate(peerStore.spaceDoc);
+    peer.dispose();
+    const doc = workspace.createDoc(DOC_ID);
+    Y.applyUpdate(doc.spaceDoc, update, 'remote');
+    return doc;
+  }
+
+  /** The cell's `Y.Text` and `Boxed` map, as the document holds them now. */
+  function yCell(spaceDoc: Y.Doc) {
+    const yBlock = spaceDoc.getMap<Y.Map<unknown>>('blocks').get(CELLS_ID)!;
+    return {
+      text: yBlock.get(`prop:cells.${CELL}.text`) as Y.Text,
+      note: yBlock.get(`prop:cells.${CELL}.note`) as Y.Map<unknown>,
+    };
+  }
+
+  const cellOf = (store: Store) =>
+    (store.getModelById(CELLS_ID)!.props as { cells: Record<string, Cell> })
+      .cells[CELL];
+
+  /** Yjs warns when a handler it does not hold is removed: a double release. */
+  function consoleSpies() {
+    return [vi.spyOn(console, 'warn'), vi.spyOn(console, 'error')];
+  }
+
+  test('each is observed once while the store is open, notifies once per edit, and is released once', () => {
+    const workspace = openWorkspace();
+    const spies = consoleSpies();
+    try {
+      const doc = docWithCells(workspace);
+      const { text, note } = yCell(doc.spaceDoc);
+      expect([handlersOn(text), handlersOn(note)]).toEqual([0, 0]);
+
+      const store = doc.getStore();
+      store.load();
+      // As on the base: one observer each, by the model's Text and Boxed.
+      expect([handlersOn(text), handlersOn(note)]).toEqual([1, 1]);
+
+      const updates: string[] = [];
+      store.slots.blockUpdated.subscribe(({ type, id }) => {
+        if (id === CELLS_ID) updates.push(type);
+      });
+      cellOf(store).text.insert('y', 0);
+      expect(updates).toEqual(['update']);
+      cellOf(store).note.setValue(EDITED_NOTE);
+      expect(updates).toEqual(['update', 'update']);
+
+      store.dispose();
+
+      expect([handlersOn(text), handlersOn(note)]).toEqual([0, 0]);
+      spies.forEach(spy => expect(spy).not.toHaveBeenCalled());
+      expect(text.toString()).toBe('yx');
+      expect(note.get('value')).toEqual(EDITED_NOTE);
+    } finally {
+      spies.forEach(spy => spy.mockRestore());
+      workspace.dispose();
+    }
+  });
+
+  test('a cell written again, locally then by a peer, is released once, old and new', () => {
+    const workspace = openWorkspace();
+    const spies = consoleSpies();
+    try {
+      const doc = docWithCells(workspace);
+      const store = doc.getStore();
+      store.load();
+      const seeded = yCell(doc.spaceDoc);
+
+      // The table's write: the whole cell replaced through the proxy.
+      const model = store.getModelById(CELLS_ID)!;
+      (model.props as { cells: Record<string, Cell> }).cells[CELL] = {
+        text: new Text('local'),
+        note: new Boxed(LOCAL_NOTE),
+      };
+      const local = yCell(doc.spaceDoc);
+      // The same Text written back to its own cell: bound again, tracked once.
+      // (What it does to the content is the base's and not asserted here.)
+      cellOf(store).text = cellOf(store).text;
+
+      // A peer replaces the cell's text: the flat data re-initialises it.
+      fromAPeer(doc.spaceDoc, blocks => {
+        blocks
+          .get(CELLS_ID)!
+          .set(`prop:cells.${CELL}.text`, new Y.Text('peer'));
+      });
+      const remote = yCell(doc.spaceDoc);
+      expect(cellOf(store).text.toString()).toBe('peer');
+
+      store.dispose();
+
+      expect([handlersOn(seeded.text), handlersOn(seeded.note)]).toEqual([
+        0, 0,
+      ]);
+      expect([handlersOn(local.text), handlersOn(remote.text)]).toEqual([0, 0]);
+      // The Boxed written in the cell is the caller's own instance, observing
+      // since its constructor and, as on the base, never bound to the store:
+      // its observer holds nothing of it.
+      expect(remote.note).toBe(local.note);
+      expect(handlersOn(local.note)).toBe(OWN_OBSERVER);
+      spies.forEach(spy => expect(spy).not.toHaveBeenCalled());
+    } finally {
+      spies.forEach(spy => spy.mockRestore());
       workspace.dispose();
     }
   });

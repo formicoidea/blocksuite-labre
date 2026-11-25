@@ -120,6 +120,8 @@ export class Boxed<Value = unknown> {
     this._map.observeDeep(this._observer);
   }
 
+  private _observing = true;
+
   private readonly _observer = (events: Y.YEvent<any>[]) => {
     events.forEach(event => {
       const isLocal =
@@ -147,8 +149,11 @@ export class Boxed<Value = unknown> {
    * @internal
    * Stop observing the `Y.Map`: the store this value was built for is
    * released (ADR 0057). Writes nothing; the value keeps reading Yjs.
+   * Idempotent.
    */
   _release() {
+    if (!this._observing) return;
+    this._observing = false;
     this._map.unobserveDeep(this._observer);
   }
 }

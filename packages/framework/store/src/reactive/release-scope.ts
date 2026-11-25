@@ -27,15 +27,17 @@ const SWEEP_GROWTH = 2;
  * workspace is open. `release()` detaches them all; it reads and detaches,
  * and never writes to Yjs.
  *
- * Each scope has its own registry: a store never reuses a proxy another store
- * created. One module-level registry keyed by the Yjs type (`memory.ts`)
- * would hand a second store on the same document (a query preview, a readonly
- * mirror) the FIRST store's proxy for every nested prop, bound to that
- * store's model: the preview would never be notified of a nested change, and
- * releasing the first store would freeze the preview's data (ADR 0057 guard
- * 6).
+ * A block scope has its own registry (a flat-data block's arrays, per store);
+ * a nested prop's tree is shared by every store on the document and has the
+ * module-level one (`memory.ts`, `SharedPropTree`, ADR 0057 guard 6).
  * Unscoped callers (the workspace meta, the reactive unit tests) keep the
  * module-level registry and its behaviour.
+ *
+ * A target is held once however often it is tracked: the reactive layer binds
+ * the same `Text` or `Boxed` several times (a flat-data cell is bound when
+ * its data is read, then again when it is assigned into its nested proxy,
+ * as on the base), and each `_release` is idempotent besides, so nothing is
+ * detached twice (Yjs warns on removing a handler it does not hold).
  *
  * What is tracked is held WEAKLY: an observer whose Yjs type was collected
  * cannot hold anything, and a strong handle per prop write would make a live
@@ -47,6 +49,9 @@ export class ReleaseScope {
   private _released = false;
 
   private readonly _tracked = new Set<WeakRef<Releasable>>();
+
+  /** What `_tracked` holds a reference to, so a target is tracked once. */
+  private readonly _seen = new WeakSet<Releasable>();
 
   private _sweepAt = FIRST_SWEEP_AT;
 
@@ -67,6 +72,8 @@ export class ReleaseScope {
       target._release();
       return;
     }
+    if (this._seen.has(target)) return;
+    this._seen.add(target);
     this._tracked.add(new WeakRef(target));
     if (this._tracked.size < this._sweepAt) return;
     this._tracked.forEach(ref => {
