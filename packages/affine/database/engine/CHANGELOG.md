@@ -1,5 +1,91 @@
 # @labre/data-view
 
+## 4.4.0
+
+### Minor Changes
+
+- fa1fb74: A database title or text cell holding a linked-doc reference now reads as
+  the editor shows it (#742, upstream toeverything/AFFiNE#15865): the linked
+  doc's title, or the alias the reference carries. The view search finds the
+  row by that title, and the cell's copy, `stringValue$` and export
+  (`jsonValue$`) carry it, where they held a blank placeholder (search, copy)
+  or ignored the alias (export). A reference to a deleted or untitled doc
+  reads with the editor's own wordings, through the existing translation keys.
+
+  The title is read from the workspace's doc metadata: no store of the linked
+  doc is created and no doc is loaded, so a table linking many docs costs a
+  lookup per reference. A rename of the linked doc, local or from a peer, is
+  followed by the cell's `stringValue$` and `jsonValue$` and by the view
+  search; a one-off read (an adapter's export) gets the title of the moment.
+  A host's override of `DocDisplayMetaProvider` titles is not consulted here.
+  A data source built outside an editor keeps the raw text, as before.
+
+  An empty rich-text cell exports as `null`, as it always did; its JSON schema
+  is unchanged.
+
+  Property types: `PropertyConfig.rawValue.toString` receives an optional
+  `dataSource` (a view's cell passes it). A type written against the previous
+  shape keeps compiling and keeps its behaviour, and a call without it still
+  compiles.
+
+- 53d49a9: A host can supply the action of a database's "No view" state (issue #707):
+  `DataSourcePickerService` gains an optional `noViewAction(block)` that
+  answers a signal of `{ label, hint?, menu?, run(anchor) } | null`. An action
+  replaces the library's "New view" under the same "No view" status, which
+  stays the one live region; `null` keeps the previous state; flipping the
+  signal redraws it. Never drawn on a read-only document. New exports:
+  `NoViewAction` and `NoViewActionKey` (`@labre/affine-database-engine`),
+  `DataSourcePickerNoViewAction` and `DataSourcePickerBlockRef`
+  (`@labre/affine-shared/services`).
+
+### Patch Changes
+
+- 9416f0c: A database cell edit is saved when its editor closes, not one frame later.
+  The number, text, date, progress and link editors hand their value over on
+  exit one animation frame later (`valueSetNextTick`); an editor removed in
+  the exit's task (a host closing the document and disposing of its store)
+  left that frame behind, so the write ran after the store was released,
+  threw `store … is disposed`, and the edit was lost. The cell now writes the
+  pending value as it leaves the DOM, once, and the frame never runs; a
+  deferred write is also dropped if the cell turned readonly meanwhile. While
+  the editor stays mounted the write still waits for the next frame. If that
+  write throws (a host that disposed of the store before removing the
+  editor), the element's teardown still runs.
+- fa1fb74: A shortcut typed in a database view's search field now stays in the field
+  (#730, upstream toeverything/AFFiNE#15900): Ctrl/Cmd+A selects the search
+  text instead of selecting every row of the table, and Ctrl/Cmd+Z undoes the
+  typing instead of undoing the document. Every key typed in a text field of
+  the view toolbar, the views bar or the quick-setting bar is the field's,
+  Escape excepted: from a search field opened with the mouse, Escape still
+  reaches the page, as before. Shortcuts typed on a toolbar control (not a
+  field) still go through to the editor.
+
+  Hosts: a document-level shortcut of your own (Ctrl/Cmd+K, Ctrl+S) no longer
+  fires while the caret is in one of these fields, since the keydown stops at
+  the bar; listen in the capture phase if one must still fire there.
+
+- fa1fb74: In a table view sorted by a column, typing into a selected cell no longer
+  makes its row jump away (#739, upstream toeverything/AFFiNE#15915): the
+  first key enters the edit mode and freezes the row order before it is
+  written, so the row stays where it was and the cell keeps editing. Before,
+  the first letter was written while the rows were still sorted live, the row
+  moved to its new place and the editor was left on the row that took its
+  place. Tag cells (select, multi-select), which open their picker instead of
+  writing the key, are unchanged.
+- Updated dependencies [67c493b]
+- Updated dependencies [098a74a]
+- Updated dependencies [098a74a]
+- Updated dependencies [53d49a9]
+- Updated dependencies [f7584b1]
+- Updated dependencies [9416f0c]
+- Updated dependencies [1bd38b0]
+  - @labre/affine-components@4.4.0
+  - @labre/std@4.4.0
+  - @labre/affine-shared@4.4.0
+  - @labre/store@4.4.0
+  - @labre/affine-model@4.4.0
+  - @labre/global@4.4.0
+
 ## 4.3.0
 
 ### Patch Changes

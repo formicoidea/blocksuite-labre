@@ -1,5 +1,31 @@
 # @labre/affine-widget-toolbar
 
+## 4.4.0
+
+### Patch Changes
+
+- Updated dependencies [fa1fb74]
+- Updated dependencies [67c493b]
+- Updated dependencies [098a74a]
+- Updated dependencies [098a74a]
+- Updated dependencies [53d49a9]
+- Updated dependencies [f7584b1]
+- Updated dependencies [9416f0c]
+- Updated dependencies [5fcc199]
+- Updated dependencies [5fcc199]
+- Updated dependencies [5fcc199]
+- Updated dependencies [5fcc199]
+- Updated dependencies [1bd38b0]
+  - @labre/affine-database-block@4.4.0
+  - @labre/affine-components@4.4.0
+  - @labre/std@4.4.0
+  - @labre/affine-shared@4.4.0
+  - @labre/affine-block-surface@4.4.0
+  - @labre/affine-block-table@4.4.0
+  - @labre/affine-model@4.4.0
+  - @labre/affine-ext-loader@4.4.0
+  - @labre/global@4.4.0
+
 ## 4.3.0
 
 ### Patch Changes
