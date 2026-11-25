@@ -48,10 +48,10 @@ export function holdPreviewStore(
         try {
           store.dispose();
         } catch (error) {
-          // Thrown on its own task, nobody would know which store failed: a
-          // store extension threw in `disposed()`. Still reported, with that.
+          // Thrown on its own task, nobody would know which store failed
+          // (any step of the dispose can throw). Still reported, with that.
           throw new Error(
-            `releasing the preview store of document "${doc.id}" failed: a store extension threw while it was disposed of`,
+            `disposing the preview store of document "${doc.id}" failed`,
             { cause: error }
           );
         }

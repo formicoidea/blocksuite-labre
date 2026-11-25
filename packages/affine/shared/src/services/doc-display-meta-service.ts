@@ -11,6 +11,7 @@ import {
   PageIcon,
 } from '@blocksuite/icons/lit';
 import { LifeCycleWatcher, StdIdentifier } from '@labre/std';
+import type { Store } from '@labre/store';
 import {
   computed,
   type ReadonlySignal,
@@ -80,22 +81,34 @@ export class DocDisplayMetaService
   readonly disposables: DisposableMember[] = [];
 
   /**
+   * @deprecated No longer populated since ADR 0057: the service builds no
+   * store, so there is nothing to key by. Read `icon(pageId)`.
+   */
+  readonly iconMap = new WeakMap<Store, Signal<TemplateResult>>();
+
+  /**
+   * @deprecated No longer populated since ADR 0057: the service builds no
+   * store, so there is nothing to key by. Read `title(pageId)`.
+   */
+  readonly titleMap = new WeakMap<Store, Signal<string>>();
+
+  /**
    * By document id (#746, ADR 0057). Keyed by the document's default store,
    * the cache built that store for every linked document it resolved, kept
    * it for the workspace's life, and built it again after a host released
    * it, only to read a title and a mode that live in the workspace meta.
    */
-  readonly iconMap = new Map<string, Signal<TemplateResult>>();
+  private readonly _icons = new Map<string, Signal<TemplateResult>>();
 
-  readonly titleMap = new Map<string, Signal<string>>();
+  private readonly _titles = new Map<string, Signal<string>>();
 
   static override setup(di: Container) {
     di.addImpl(DocDisplayMetaProvider, this, [StdIdentifier]);
   }
 
   dispose() {
-    this.iconMap.clear();
-    this.titleMap.clear();
+    this._icons.clear();
+    this._titles.clear();
     while (this.disposables.length > 0) {
       const disposable = this.disposables.pop();
       if (disposable) {
@@ -114,7 +127,7 @@ export class DocDisplayMetaService
       return computed(() => DocDisplayMetaService.icons.deleted);
     }
 
-    let icon$ = this.iconMap.get(pageId);
+    let icon$ = this._icons.get(pageId);
 
     if (!icon$) {
       icon$ = signal(
@@ -133,7 +146,7 @@ export class DocDisplayMetaService
         }, pageId);
 
       this.disposables.push(disposable);
-      this.iconMap.set(pageId, icon$);
+      this._icons.set(pageId, icon$);
     }
 
     return computed(() => {
@@ -171,7 +184,7 @@ export class DocDisplayMetaService
       );
     }
 
-    let title$ = this.titleMap.get(pageId);
+    let title$ = this._titles.get(pageId);
     if (!title$) {
       title$ = signal(
         doc.meta?.title || translateKey(this.std, ...CHROME_UNTITLED)
@@ -185,7 +198,7 @@ export class DocDisplayMetaService
       );
 
       this.disposables.push(disposable);
-      this.titleMap.set(pageId, title$);
+      this._titles.set(pageId, title$);
     }
 
     return computed(() => {

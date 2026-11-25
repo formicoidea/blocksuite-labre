@@ -122,7 +122,9 @@ describe('a preview store that fails to dispose (ADR 0057 part 3)', () => {
         reported = error;
       }
       expect(reported).toBeInstanceOf(Error);
-      expect((reported as Error).message).toContain('"doc"');
+      expect((reported as Error).message).toBe(
+        'disposing the preview store of document "doc" failed'
+      );
       expect((reported as Error).cause).toBe(boom);
     } finally {
       defer.mockRestore();
