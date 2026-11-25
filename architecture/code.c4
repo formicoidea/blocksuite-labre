@@ -2802,7 +2802,7 @@ model {
       link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/shared
       metadata {
         path 'packages/affine/shared'
-        files '259'
+        files '260'
       }
       adapters = folder 'adapters/' {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/shared/src/adapters
@@ -2871,7 +2871,7 @@ model {
         link https://github.com/formicoidea/blocksuite-labre/tree/blocksuite-labre-main/packages/affine/shared/src/utils
         metadata {
           path 'packages/affine/shared/src/utils'
-          files '61'
+          files '62'
         }
       }
     }
@@ -7146,7 +7146,7 @@ model {
   features.shared.services -[imports]-> framework.std.gfx '7 imports, 2 type-only'
   features.shared.services -[imports]-> framework.std.inline '1 import'
   features.shared.services -[imports]-> framework.std.src '36 imports, 11 type-only'
-  features.shared.services -[imports]-> framework.store.src '51 imports, 38 type-only'
+  features.shared.services -[imports]-> framework.store.src '50 imports, 37 type-only'
   features.shared.services -[imports]-> model_.model_.src '17 imports, 11 type-only'
   features.shared.styles -[imports]-> features.shared.theme '1 import'
   features.shared.styles -[imports]-> features.shared.types '1 import, 1 type-only'
@@ -7165,7 +7165,7 @@ model {
   features.shared.utils -[imports]-> framework.std.gfx '2 imports, 1 type-only'
   features.shared.utils -[imports]-> framework.std.inline '2 imports, 1 type-only'
   features.shared.utils -[imports]-> framework.std.src '13 imports, 10 type-only'
-  features.shared.utils -[imports]-> framework.store.src '17 imports, 15 type-only'
+  features.shared.utils -[imports]-> framework.store.src '18 imports, 16 type-only'
   features.shared.utils -[imports]-> model_.model_.src '13 imports, 3 type-only'
   features.widgets.drag-handle.components -[imports]-> features.shared.services '1 import'
   features.widgets.drag-handle.components -[imports]-> features.shared.theme '1 import'

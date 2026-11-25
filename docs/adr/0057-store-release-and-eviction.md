@@ -383,32 +383,25 @@ Yjs key, schema, default, snapshot format or sync protocol changes;
 The three parts landed with #746. Where the code differs from, or goes
 beyond, the decision above, and why:
 
-- **The scope is per block, its handles are weak.** Each block's sync
-  controller owns a `ReleaseScope` (`store/src/reactive/release-scope.ts`):
-  the proxy registry for its props (the module-level `proxies` stays for
-  unscoped callers: the workspace meta, the reactive unit tests) and a
-  handle on every proxy, `Text` and `Boxed` built for them. A block removed
-  while the store lives releases its own scope; `dispose()` releases every
-  block's. The block's own observers (the sync controller's, the model's
-  two) are strong handles. The prop-level ones are `WeakRef`s: an observer
-  whose Yjs type was collected holds nothing, and a strong handle per nested
-  replacement (a new `Y.Map` per database cell edit) would have made a live
-  store grow until the block went away. Swept as the set doubles.
-- **`stashProp` / `popProp` reach unscoped proxies only.** These two
-  exports of `@labre/store` look a Yjs type up in the module-level
-  registry, which no longer holds a block prop's proxies. No caller exists
-  in the repo (blocks stash through `model.stash`, which is per store);
-  a host calling them on a block's nested type gets a no-op. Filling the
-  module-level registry as well would put back the edge that kept the
-  store alive.
-- **A write through a sibling store's proxy is mirrored.** With one proxy
-  per store, a nested write made through the editor store's proxy carries a
-  proxy origin, which a proxy skips as its own: the preview's proxy would
-  have kept the old value. `BaseReactiveYData` now mirrors a proxy-origin
-  write whose target belongs to ANOTHER scope, like a remote one. Within one
-  store nothing changes. The flat-data model's top-level map is unscoped
-  for that check and keeps today's behaviour (a second store does not see
-  another store's local flat writes, as before; its nested arrays now do).
+- **Nested props: one proxy tree per Yjs type, shared by the stores of a
+  document; a store adds a listener.** (Corrected 2026-11-25, see the
+  amendment below: the first landing gave each store its own proxies and
+  could not hold.) A block prop that is a `Y.Map` or a `Y.Array` resolves
+  to the shared tree of that type (`attachYProxy`,
+  `store/src/reactive/proxy.ts`): one proxy per type in the module-level
+  registry, as before ADR 0057, so two stores on one document read the same
+  nested values whoever writes and however. Each store's sync controller
+  registers its `onChange` on the tree (a preview is now notified of nested
+  changes; the registry used to bind the tree to the first store alone);
+  releasing a store takes its listeners back, and the tree detaches from
+  Yjs, and leaves the registry, with its last listener. A block's `Text`
+  and `Boxed` props, its own observers and a flat-data block's map stay per
+  store, in the block's `ReleaseScope` (`store/src/reactive/release-scope.ts`).
+  The prop-level handles are `WeakRef`s (an observer whose Yjs type was
+  collected holds nothing; a strong handle per nested replacement would make
+  a live store grow), swept as the set doubles; a block removed while the
+  store lives releases its own. `stashProp` / `popProp` reach the shared
+  trees again.
 - **Every block model is disposed at release, and the surface detaches from
   `dispose()`.** The decision lists the store package's observers; in
   edgeless the surface model's `elements` map observer (and its element
@@ -461,13 +454,13 @@ beyond, the decision above, and why:
   when the blocks are the same, and releases it on disconnect; the frame
   preview and the note portal release on disconnect. The note portal's empty
   query is left as Context 5 found it.
-- **Other call sites, not changed.** `getStore({ readonly: true })` in the
-  surface-ref block (`surface-ref-block.ts`) and in the synced-doc
-  toolbar (`configs/toolbar.ts`), and the default stores
-  `DocDisplayMetaService` builds for the titles it resolves, are one store
-  per document, never released, bounded by the documents opened: the same
-  growth as a host's own default stores, not a per-call one. The canvas
-  viewer's readonly store goes with the workspace it builds and disposes of.
+- **Other call sites.** `getStore({ readonly: true })` in the surface-ref
+  block and in the synced-doc block and toolbar is one store per document,
+  never released, bounded by the documents opened: the stores a host closes
+  are default stores, these are not, so they are not affected by a release
+  (a documented retention, as before ADR 0057). `DocDisplayMetaService`
+  no longer builds a store at all (see the amendment). The canvas viewer's
+  readonly store goes with the workspace it builds and disposes of.
 - **Context 2 corrected (2026-11-25): a pending write did exist.** The
   block-meta throttle holds nothing, as Context 2 says, but five database
   cell editors (number, text, date, progress, link) deferred their exit
@@ -479,8 +472,8 @@ disposed`, and the edit was lost. The first full integration run after
   part 1 met it eight times, all in `database-toolbar-pointer.spec.ts`.
   Fixed at the root, not by a disposed guard: the base cell keeps the
   pending value and its frame (`valueSetNextTick`, base-cell.ts:169), writes
-  it at once when the cell leaves the DOM (`disconnectedCallback` →
-  `flushPendingWrite`, base-cell.ts:184-197), cancels the frame so it never
+  it at once when the cell leaves the DOM (`disconnectedCallback`,
+  base-cell.ts:183-193), cancels the frame so it never
   writes twice, lets a newer immediate write cancel an older pending one,
   writes at once when the cell is already out of the DOM, and drops a
   deferred write if the property turned readonly meanwhile. A write that
@@ -497,3 +490,96 @@ disposed`, and the edit was lost. The first full integration run after
   edits, ten observers. They are now released with the store; stopping the
   growth changes what the `text$` signal holds, which consumers may compare
   by identity, so it is left for its own change.
+
+## Amendment — 2026-11-25: three findings of the second review, fixed
+
+An independent review of the branch found two regressions against the base
+and a broken contract. Each is fixed here; the guards are named.
+
+1. **Nested writes inside a transaction did not reach a second store.** The
+   first landing gave each store its own nested-prop proxies and recognised
+   a sibling store's write by the transaction ORIGIN (`{ proxy: true,
+target }`). Yjs keeps the outer origin of a nested transaction, so a
+   nested write made inside `store.transact`, an `updateBlock(model, () =>
+…)` callback or any outer transaction (the house's mandatory path for
+   nested writes) carried the store's client id; the other store's proxy
+   took it for its own and kept the old value, and an editable second store
+   running the database `updateCells` pattern then recreated a row it
+   thought missing and dropped the editor's cells. Recognising one's own
+   write by the transaction instead would still be too coarse (two stores'
+   proxies writing in one transaction) and would need every handler to be
+   idempotent. The fix restores the base's design, one proxy per Yjs type
+   shared by every store, and makes only the release per store (a listener
+   per store on the shared tree, the tree detached with its last listener).
+   Divergence is then impossible by construction. Guard:
+   `store/src/__tests__/two-stores-nested-props.unit.spec.ts` (12 cases, 10
+   red on the first landing: inside `transact`, deeper, array push, both
+   stores in one transaction, remote interleaved, splice and reorder, map in
+   map, `Text` and `Boxed` inside a nested prop, `updateBlock` callback,
+   `updateCells` on an editable second store), and guard 6 in
+   `store-release.unit.spec.ts` (one proxy for both stores, detached with the
+   last). What still differs per store, as on the base: a flat-data block's
+   map (a second store does not see another store's local flat writes) and
+   each store's top-level `Text` / `Boxed` instances (they read Yjs
+   directly, so they cannot diverge).
+2. **A write after an `await` threw on a closed document.** "No
+   well-formed call changes behaviour" (under "A stale reference") was
+   wrong for asynchronous gestures: an upload, a measure, a dialog or a
+   fetch that resumes after the host disposed of the store used to write
+   through it, and now throws, while `readonly`, `hasBlock` and `getBlock`
+   answer "writable and present". `store.disposed` is the public answer;
+   the library's own gestures check it after each `await` and abandon the
+   gesture (nothing written, nothing thrown), as they do when the store
+   turned readonly meanwhile. Sites fixed: « Embed view » on a video and «
+   Turn into image » (`blocks/attachment/src/embed.ts`), « Replace »
+   (`attachment-block.ts`), `addImageBlocks` / `addSiblingImageBlocks` /
+   `addImages` and `resetImageSize` (`blocks/image/src/utils.ts`), the
+   attachment uploads and picker, the image asset picker and insert command,
+   the bookmark, GitHub, Loom, YouTube and iframe refreshes and their slash
+   menus, the keyboard toolbar's embed actions, the synced-doc « duplicate
+   as note », the edgeless cut and paste preparation, the « create linked
+   doc » prompts and quick search link, the mindmap import, the drag-handle
+   merges, the database « turn into source », the frame adoption microtask
+   and the surface clipboard's prepared blocks. Guards:
+   `attachment/src/__tests__/closed-mid-gesture.unit.spec.ts`,
+   `video-embed-ratio.unit.spec.ts` (« a document closed meanwhile »),
+   `image/src/__tests__/closed-mid-upload.unit.spec.ts`. Also: `load(initFn)`
+   returns early when `initFn` disposed of the store, so no extension
+   attaches again (`store-release.unit.spec.ts`).
+3. **Components of another document kept, or went deaf to, a released
+   default store.** The default store is shared across the workspace. The
+   doc now tells when it gets or loses one: `doc.defaultStore` (never
+   builds one) and `doc.defaultStoreChanged` (the store when built, `null`
+   when released or removed), and `followDefaultStore(doc, attach)`
+   (`@labre/affine-shared/utils`) attaches to the open store, lets it go at
+   its release and attaches again when the document is opened again, never
+   building it. Consumers, with their verdicts:
+   - linked-doc card (`embed-linked-doc-block.ts`): followed, refreshed on
+     reopen; and its imperative preview render runs `untracked`: a card
+     connected during its note's update read the linked document's
+     `root.children` inside the NOTE's render effect, which then kept the
+     released store alive (found with a heap snapshot);
+   - data-view source (`database/view-block/src/data-source.ts`): follows
+     each document, drops a released store's blocks, reads them again on
+     reopen. Nothing builds this source on render on this base (#754); its
+     `dataSource` getter still can;
+   - `DocDisplayMetaService`: keyed its title and icon caches by the default
+     store, building it for every linked document it resolved and again
+     after a release; now keyed by document id, no store;
+   - surface-ref to an element of another document: the element is read
+     from that document's readonly store (the one its preview renders), not
+     from the default store;
+   - synced-doc block, its card and its toolbar: readonly stores, not
+     affected (documented retention, one per document, as before);
+   - the inline reference node, the doc title and the outline: read through
+     `DocDisplayMetaService` or their own editor's store, not affected;
+   - canvas viewer: its own workspace, not affected;
+   - the import/export transformers' `docCRUD.get`: one-shot, not listeners.
+     Guards: `store/src/__tests__/store-container.unit.spec.ts` (the signal),
+     `shared/src/__tests__/utils/follow-default-store.unit.spec.ts` (the
+     helper, and display meta building no store),
+     `view-block/src/__tests__/data-source-follows-docs.unit.spec.ts`, and
+     `integration-test/src/__tests__/page/cross-doc-store-release.spec.ts`: A
+     mounted with its card (or its surface-ref) to B, B's default store
+     disposed and collected, B then edited on a fresh store, A shows the
+     edit.

@@ -385,6 +385,23 @@ browser session … within the timeout`: Chromium could not start the
     and after with a guard (`store-release.unit.spec.ts`,
     `surface-release.unit.spec.ts`), never infer them from one file.
 
+    _Amended 2026-11-25 (second review of ADR 0057):_ three things the
+    first landing got wrong. Per-store proxies told their own writes from a
+    sibling's by the transaction origin, which Yjs keeps from the OUTER
+    transaction: nested writes inside `store.transact` never reached the
+    other store (the shared proxy of the base is back, released per
+    listener). Writes after an `await` started throwing on a closed
+    document, and nothing could ask (`store.disposed` now). And the store
+    of a linked document stayed alive through a NOTE's render effect: the
+    card, connected during the note's update, read the linked document's
+    `root.children` synchronously, so the note's effect depended on it; a
+    heap snapshot (ephemeron edges skipped) named the effect in one run.
+    _Rule:_ before calling a design safe for "two stores on one document",
+    write the divergence cases as tests (inside a transaction, both writers
+    in one transaction, undo, remote interleaved); and an imperative render
+    called from a lifecycle hook runs `untracked`, or whoever is rendering
+    around it inherits its dependencies.
+
 40. **A focus ring "2px" that read 1.71429px on the workstation.**
     `database-toolbar-keyboard.spec.ts` asserted the computed
     `outline-width` of the database toolbar's ring as `'2px'`: green

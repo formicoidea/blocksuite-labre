@@ -6,6 +6,17 @@
 '@labre/affine-block-embed-doc': patch
 '@labre/affine-fragment-frame-panel': patch
 '@labre/affine-block-surface-ref': patch
+'@labre/affine-block-attachment': patch
+'@labre/affine-block-image': patch
+'@labre/affine-block-embed': patch
+'@labre/affine-block-bookmark': patch
+'@labre/affine-block-root': patch
+'@labre/affine-block-surface': patch
+'@labre/affine-block-frame': patch
+'@labre/affine-widget-keyboard-toolbar': patch
+'@labre/affine-gfx-mindmap': patch
+'@labre/affine-database-block': patch
+'@labre/affine-database-view-block': patch
 ---
 
 `store.dispose()` now releases a store for good (#746, ADR 0057). It detaches
@@ -23,12 +34,29 @@ point (`addBlock`, `addBlocks`, `addSiblingBlocks`, `updateBlock`,
 `deleteBlock`, `moveBlocks`, `transact`, `withoutTransact`, `undo`, `redo`);
 its reads keep answering its last state, and a second `dispose()` does
 nothing. `load()` used to revive a disposed store half-way, deaf to remote
-changes. A second store on the same document (a query preview, a readonly
-mirror) no longer borrows the first store's nested-prop proxies, so it is
-notified of nested changes; as a consequence the `stashProp` / `popProp`
-exports only reach proxies built outside a store (a block's own props
-stash through `model.stash`, unchanged). `BlockMetaService` subscribes once
-per store however often `load()` runs.
+changes. Two stores on the same document (the editor's and a query
+preview, a readonly mirror) still share one proxy per nested prop, so they
+can never read different nested values, and each is now notified of nested
+changes (a second store was not); releasing one store leaves the other's
+reactive. `BlockMetaService` subscribes once per store however often
+`load()` runs.
+
+**New API:** `store.disposed` answers whether a store was released: code
+that resumes after an `await` checks it before writing. The library's own
+gestures do (an image or attachment upload or measure, « Replace », «
+Embed view », « Turn into image », link-preview refreshes, the embed and
+keyboard-toolbar dialogs, paste preparation, « create linked doc », the
+mindmap import, the drag merges, « turn into source »): a document closed
+while one waits is left alone, nothing written and nothing thrown. A
+`load(initFn)` whose `initFn` disposes of the store attaches nothing
+afterwards. `doc.defaultStore` (never builds one) and
+`doc.defaultStoreChanged` tell when a document gets or loses its default
+store; `followDefaultStore(doc, attach)` (`@labre/affine-shared/utils`)
+follows another document's default store without keeping it. The linked-doc
+card, the data-view source and the surface-ref use them: a document closed
+while another document shows it is released, and the card refreshes when
+it is opened again. `DocDisplayMetaService` no longer builds the store of
+every linked document it names.
 
 `doc.getStore({ readonly: false })` now returns one store per document, as
 `readonly: true` does, instead of building a new one on every call, and

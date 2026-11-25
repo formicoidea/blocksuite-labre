@@ -212,21 +212,40 @@ one store per document opened in it, until you release it
   editor is unmounted. It detaches everything the store attached to the
   document and to the awareness, and the workspace forgets it: the next
   `doc.getStore()` builds a new store from the document, live, which sees
-  everything peers wrote meanwhile. Nothing stored is lost or written:
-  every edit is in Yjs when the call that made it returns, and the
-  block-meta writer defers nothing. What goes is what lived in memory: the
+  everything peers wrote meanwhile. The release writes nothing, and loses
+  nothing an editor already wrote: a typed edit is in Yjs when the call
+  that made it returns, a database cell being edited is saved as its
+  editor unmounts, and the block-meta writer defers nothing. What goes is
+  what lived in memory: the
   undo and redo stacks (a reopened document starts with an empty history),
   the local selection (peers stop seeing it), the store's local `readonly`
-  toggle, and every subscription to its slots and signals (subscribe again
-  on the new store). Calling it twice does nothing; `removeStore` after it
-  is not needed.
+  toggle, every subscription to its slots and signals (subscribe again
+  on the new store), and **every gesture still waiting** when you close:
+  an image or file being uploaded or measured, a dialog left open (a file
+  picker, « Replace », a title prompt, quick search), a link preview being
+  fetched, a paste being prepared. Those resume after their `await`, find
+  the document closed, and write nothing. Calling `dispose()` twice does
+  nothing; `removeStore` after it is not needed.
 - **A disposed store is a dead object.** `load()` and every write through
   it (`addBlock`, `addBlocks`, `addSiblingBlocks`, `updateBlock`,
   `deleteBlock`, `moveBlocks`, `transact`, `withoutTransact`, `undo`,
   `redo`) throw a `BlockSuiteError` (`ErrorCode.ModelCRUDError`); reads
-  answer its last state, so teardown code that reads still works. Drop
-  your references to it and open the document again with
-  `doc.getStore()`.
+  answer its last state, so teardown code that reads still works, and
+  `readonly`, `hasBlock` and `getBlock` keep answering "writable and
+  present". Ask `store.disposed` instead: code of yours that resumes after
+  an `await` checks it before writing and abandons the gesture. Drop your
+  references to it and open the document again with `doc.getStore()`.
+- **Other documents follow it, they do not keep it.** The default store is
+  shared across the workspace: a linked-doc card, a surface-ref or a
+  data-view in another document still open reads it. They let a released
+  store go and attach again when the document is opened again (the card
+  then refreshes). Code of yours that listens to another document's store
+  does the same with `followDefaultStore(doc, attach)` from
+  `@labre/affine-shared/utils`, or reads `doc.defaultStore` (never builds
+  one) and `doc.defaultStoreChanged`. What stays: the library keeps one
+  READONLY store per document it shows from another one (a synced doc, a
+  surface-ref's preview), never released, as before; the store you close
+  is the default one.
 - **A preview built on a query store** (`doc.getStore({ query })`) is
   released the same way once the preview is gone. Previews asking for the
   same options share one cached store: hold it with `holdPreviewStore(doc,
