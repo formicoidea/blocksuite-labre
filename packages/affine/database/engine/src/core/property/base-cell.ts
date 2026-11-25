@@ -183,13 +183,18 @@ export abstract class BaseCellRenderer<
   override disconnectedCallback() {
     // Write now, once, what `valueSetNextTick` left pending. Runs after a
     // subclass's own teardown commit (each calls `super` last): that commit,
-    // an immediate write, already cancelled a pending older value.
+    // an immediate write, already cancelled a pending older value. The
+    // element's teardown runs even if that write throws (a host that
+    // disposed of the store before removing the editor, #746).
     const pending = this._pendingWrite;
-    if (pending) {
-      this._cancelPendingWrite();
-      this._writeDeferred(pending.value);
+    try {
+      if (pending) {
+        this._cancelPendingWrite();
+        this._writeDeferred(pending.value);
+      }
+    } finally {
+      super.disconnectedCallback();
     }
-    super.disconnectedCallback();
   }
 
   onCopy(_e: ClipboardEvent) {}

@@ -206,6 +206,31 @@ describe.each(editors)('the $name editor closed in the exit task', editor => {
     }
   });
 
+  it('the store released before the editor leaves: the flush throws, the teardown still runs', async () => {
+    const { workspace, store } = openStore();
+    try {
+      const { el } = await mountEditing(editor, store);
+      editor.stage(el);
+      exitEditing(el);
+      const tornDown = vi.fn();
+      (
+        el as unknown as { disposables: { add(fn: () => void): void } }
+      ).disposables.add(tornDown);
+      // The host disposed of the store, then removes the editor: the edit
+      // cannot land, and the throw must not skip the element's teardown.
+      store.dispose();
+
+      expect(() =>
+        (
+          el as unknown as { disconnectedCallback(): void }
+        ).disconnectedCallback()
+      ).toThrow(/disposed/);
+      expect(tornDown).toHaveBeenCalledOnce();
+    } finally {
+      workspace.dispose();
+    }
+  });
+
   it('a store turned readonly before the write gets nothing', async () => {
     const { workspace, store } = openStore();
     try {
