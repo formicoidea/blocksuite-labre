@@ -35,7 +35,6 @@ import {
 import {
   cloneReferenceInfo,
   cloneReferenceInfoWithoutAliases,
-  followDefaultStore,
   isNewTabTrigger,
   isNewViewTrigger,
   matchModels,
@@ -44,7 +43,7 @@ import {
 import { Bound } from '@labre/global/gfx';
 import { ResetIcon } from '@blocksuite/icons/lit';
 import { BlockSelection } from '@labre/std';
-import { Text } from '@labre/store';
+import { type Doc, Text } from '@labre/store';
 import { computed } from '@preact/signals-core';
 import { html, nothing } from 'lit';
 import { property, queryAsync, state } from 'lit/decorators.js';
@@ -58,6 +57,7 @@ import * as Y from 'yjs';
 
 import { cardIcon } from '../common/child-card.js';
 import { isDocTrashed } from '../common/doc-trashed.js';
+import { LinkedDocSource } from '../common/linked-doc-source.js';
 import {
   releaseLinkedDocPreview,
   renderLinkedDocInCard,
@@ -95,8 +95,16 @@ export class EmbedLinkedDocBlockComponent extends EmbedBlockComponent<EmbedLinke
       return;
     }
 
-    const linkedDoc = this.linkedDoc;
+    const source = this._sourceNow();
+    if (!source) {
+      this._loading = false;
+      return;
+    }
+    const linkedDoc = source.contentStore();
     if (!linkedDoc) {
+      // Closed by its host under the card: its title and a degraded body
+      // until it is opened again (#746, ADR 0057).
+      releaseLinkedDocPreview(this);
       this._loading = false;
       return;
     }
@@ -120,6 +128,8 @@ export class EmbedLinkedDocBlockComponent extends EmbedBlockComponent<EmbedLinke
         linkedDoc,
         this.model.props.pageId
       );
+      // Closed, or opened anew, while the card waited: that load is stale.
+      if (this.linkedDoc !== linkedDoc) return;
     }
 
     this._loading = false;
@@ -257,7 +267,7 @@ export class EmbedLinkedDocBlockComponent extends EmbedBlockComponent<EmbedLinke
   get docTitle() {
     return (
       this.model.props.title ||
-      this.linkedDoc?.meta?.title ||
+      this._linkedDocument?.meta?.title ||
       translateKey(this.std, ...CHROME_UNTITLED)
     );
   }
@@ -266,9 +276,65 @@ export class EmbedLinkedDocBlockComponent extends EmbedBlockComponent<EmbedLinke
     return this._linkedDocMode;
   }
 
+  /**
+   * The store the card reads the linked document's content from, if one is
+   * open or held by the card; builds none (#746, ADR 0057). Title, trash and
+   * existence come from the document itself.
+   */
   get linkedDoc() {
-    const doc = this.std.workspace.getDoc(this.model.props.pageId);
-    return doc?.getStore({ id: this.model.props.pageId });
+    return this._source?.store ?? undefined;
+  }
+
+  /** The document the card points at, if the workspace has it. */
+  private get _linkedDocument(): Doc | null {
+    return this.std.workspace.getDoc(this.model.props.pageId) ?? null;
+  }
+
+  private _source: LinkedDocSource | null = null;
+
+  private _stopFollowing: (() => void) | null = null;
+
+  /**
+   * The source of the document the card points at now, made (and its
+   * default store followed) the first time the document is there.
+   */
+  private _sourceNow(): LinkedDocSource | null {
+    const doc = this._linkedDocument;
+    if (this._source?.doc === doc) return this._source;
+    this._dropSource();
+    if (!doc) return null;
+    const source = new LinkedDocSource(doc);
+    this._source = source;
+    this._stopFollowing = source.follow((store, reopened) => {
+      // Should throttle the blockUpdated event to avoid too many re-renders
+      // Because the blockUpdated event is triggered too frequently at some cases
+      const subscription = store.slots.blockUpdated.subscribe(
+        throttle(payload => {
+          if (
+            payload.type === 'update' &&
+            ['', 'caption', 'xywh'].includes(payload.props.key)
+          ) {
+            return;
+          }
+
+          if (payload.type === 'add' && payload.init) {
+            return;
+          }
+
+          this.refreshData();
+        }, RENDER_CARD_THROTTLE_MS)
+      );
+      if (reopened) this.refreshData();
+      return () => subscription.unsubscribe();
+    });
+    return source;
+  }
+
+  private _dropSource() {
+    this._stopFollowing?.();
+    this._stopFollowing = null;
+    this._source?.release();
+    this._source = null;
   }
 
   get readonly() {
@@ -297,11 +363,9 @@ export class EmbedLinkedDocBlockComponent extends EmbedBlockComponent<EmbedLinke
   };
 
   private _isDocEmpty() {
-    const linkedDoc = this.linkedDoc;
-    if (!linkedDoc) {
-      return false;
-    }
-    return !!linkedDoc && this.isNoteContentEmpty && this.isBannerEmpty;
+    return (
+      !!this._linkedDocument && this.isNoteContentEmpty && this.isBannerEmpty
+    );
   }
 
   protected _handleClick = (event: MouseEvent) => {
@@ -341,7 +405,7 @@ export class EmbedLinkedDocBlockComponent extends EmbedBlockComponent<EmbedLinke
   };
 
   private readonly _renderEmbedView = () => {
-    const linkedDoc = this.linkedDoc;
+    const linkedDoc = this._linkedDocument;
     const isDeleted = !linkedDoc || isDocTrashed(linkedDoc);
     const isLoading = this._loading;
     const isError = this.isError;
@@ -522,46 +586,11 @@ export class EmbedLinkedDocBlockComponent extends EmbedBlockComponent<EmbedLinke
       this.isError = true;
     });
 
-    const linkedDoc = this.linkedDoc;
-    if (linkedDoc) {
-      // Followed, never kept (#746, ADR 0057): the linked document's default
-      // store is shared with its own editor, and a host closing that document
-      // releases it. A subscription made once kept the released store alive
-      // and went deaf; this one lets it go and attaches again, refreshing the
-      // card, when the document gets a store again.
-      this.disposables.add(
-        followDefaultStore(linkedDoc.doc, (store, reopened) => {
-          // Should throttle the blockUpdated event to avoid too many re-renders
-          // Because the blockUpdated event is triggered too frequently at some cases
-          const subscription = store.slots.blockUpdated.subscribe(
-            throttle(payload => {
-              if (
-                payload.type === 'update' &&
-                ['', 'caption', 'xywh'].includes(payload.props.key)
-              ) {
-                return;
-              }
-
-              if (payload.type === 'add' && payload.init) {
-                return;
-              }
-
-              this._load().catch(e => {
-                console.error(e);
-                this.isError = true;
-              });
-            }, RENDER_CARD_THROTTLE_MS)
-          );
-          if (reopened) {
-            this._load().catch(e => {
-              console.error(e);
-              this.isError = true;
-            });
-          }
-          return () => subscription.unsubscribe();
-        })
-      );
-
+    this.disposables.add(() => this._dropSource());
+    // Followed, never kept (#746, ADR 0057): the linked document's default
+    // store is its host's; the card attaches to it while it is open, lets it
+    // go when the host releases it, and refreshes when it is opened again.
+    if (this._sourceNow()) {
       this._setDocUpdatedAt();
 
       if (this._referenceToNode) {
@@ -623,7 +652,7 @@ export class EmbedLinkedDocBlockComponent extends EmbedBlockComponent<EmbedLinke
       return;
     }
     // update card style when linked doc deleted
-    const linkedDoc = this.linkedDoc;
+    const linkedDoc = this._linkedDocument;
     const { xywh, style } = this.model.props;
     const bound = Bound.deserialize(xywh);
     if (linkedDoc && style === 'horizontalThin') {

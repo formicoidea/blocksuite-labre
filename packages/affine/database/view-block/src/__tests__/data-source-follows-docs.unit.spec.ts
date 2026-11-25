@@ -12,8 +12,10 @@
  * leave the rows, and come back from the new store when the document is
  * opened again.
  *
- * No block builds this source on render on this base (the data-view block
- * draws a placeholder, #754); its public `dataSource` getter still does.
+ * It never builds a default store: one the host closed stays closed, the
+ * source being built or the document list changing. No block builds this
+ * source on render on this base (the data-view block draws a placeholder,
+ * #754); only its deprecated `dataSource` getter does.
  */
 import {
   ListBlockSchemaExtension,
@@ -67,12 +69,22 @@ function setup() {
       noteId
     );
   const firstTodo = todoIn(otherStore, 'first');
-  const source = new BlockQueryDataSource(
-    { store: host } as unknown as EditorHost,
-    host.getModelById(viewId) as DataViewBlockModel,
-    { type: 'todo' }
-  );
-  return { workspace, other, otherStore, todoIn, firstTodo, source };
+  const makeSource = () =>
+    new BlockQueryDataSource(
+      { store: host } as unknown as EditorHost,
+      host.getModelById(viewId) as DataViewBlockModel,
+      { type: 'todo' }
+    );
+  const source = makeSource();
+  return {
+    workspace,
+    other,
+    otherStore,
+    todoIn,
+    firstTodo,
+    source,
+    makeSource,
+  };
 }
 
 describe('the data-view source and the documents it reads (ADR 0057)', () => {
@@ -104,6 +116,20 @@ describe('the data-view source and the documents it reads (ADR 0057)', () => {
       expect(source.blockMap.get(firstTodo)?.model.store).toBe(reopened);
       const second = todoIn(reopened, 'second');
       expect(source.rows).toEqual([firstTodo, second]);
+    } finally {
+      workspace.dispose();
+    }
+  });
+
+  test('a document its host closed stays closed: built, and on a document list change, the source opens nothing', () => {
+    const { workspace, other, otherStore, makeSource } = setup();
+    try {
+      otherStore.dispose();
+      const later = makeSource();
+      workspace.createDoc('listed-later');
+
+      expect(other.defaultStore).toBeNull();
+      expect(later.rows).toEqual([]);
     } finally {
       workspace.dispose();
     }

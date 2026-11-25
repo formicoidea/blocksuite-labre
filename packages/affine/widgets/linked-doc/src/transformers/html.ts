@@ -8,7 +8,7 @@ import {
   titleMiddleware,
 } from '@labre/affine-shared/adapters';
 import { CHROME_UNTITLED } from '@labre/affine-shared/services';
-import { safeFilename } from '@labre/affine-shared/utils';
+import { safeFilename, storeToRead } from '@labre/affine-shared/utils';
 import { Container } from '@labre/global/di';
 import { sha } from '@labre/global/utils';
 import type { ExtensionType, Schema, Store, Workspace } from '@labre/store';
@@ -100,7 +100,7 @@ async function importHTMLToDoc({
     blobCRUD: collection.blobSync,
     docCRUD: {
       create: (id: string) => collection.createDoc(id).getStore({ id }),
-      get: (id: string) => collection.getDoc(id)?.getStore({ id }) ?? null,
+      get: (id: string) => storeToRead(collection.getDoc(id)),
       delete: (id: string) => collection.removeDoc(id),
     },
     middlewares: [
@@ -174,7 +174,7 @@ async function importHTMLZip({
         blobCRUD: collection.blobSync,
         docCRUD: {
           create: (id: string) => collection.createDoc(id).getStore({ id }),
-          get: (id: string) => collection.getDoc(id)?.getStore({ id }) ?? null,
+          get: (id: string) => storeToRead(collection.getDoc(id)),
           delete: (id: string) => collection.removeDoc(id),
         },
         middlewares: [

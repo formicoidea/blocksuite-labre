@@ -19,7 +19,10 @@ import {
 import { describe, expect, test, vi } from 'vitest';
 
 import { DocDisplayMetaService } from '../../services/doc-display-meta-service.js';
-import { followDefaultStore } from '../../utils/follow-default-store.js';
+import {
+  followDefaultStore,
+  storeToRead,
+} from '../../utils/follow-default-store.js';
 
 function openWorkspace() {
   const workspace = new TestWorkspace({
@@ -108,6 +111,27 @@ describe('DocDisplayMetaService never builds a linked store (ADR 0057)', () => {
       expect(service.title('linked').value).toBe('Renamed');
       expect(doc.defaultStore).toBeNull();
       service.dispose();
+    } finally {
+      workspace.dispose();
+    }
+  });
+});
+
+describe('storeToRead, for the one-shot readers of docCRUD.get (ADR 0057)', () => {
+  test('the open default store, else the readonly one; a closed document stays closed', () => {
+    const workspace = openWorkspace();
+    try {
+      const doc = workspace.createDoc('b');
+      const open = doc.getStore();
+      expect(storeToRead(doc)).toBe(open);
+
+      open.dispose();
+      const read = storeToRead(doc);
+      expect(read?.readonly).toBe(true);
+      expect(read).not.toBe(open);
+      expect(doc.defaultStore).toBeNull();
+
+      expect(storeToRead(null)).toBeNull();
     } finally {
       workspace.dispose();
     }

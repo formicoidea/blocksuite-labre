@@ -15,9 +15,12 @@
  *
  * Held here end to end, for each: A stays mounted with its card or its
  * surface-ref; B's default store is disposed and collected (nothing of A
- * keeps it); B is then opened again on a fresh store and edited, and A shows
- * the edit.
+ * keeps it), and nothing of A opens it again, a re-render or a document-list
+ * change included (the card read B through its default store's key and
+ * rebuilt it); B is then opened again on a fresh store and edited, and A
+ * shows the edit.
  */
+import type { EmbedLinkedDocBlockComponent } from '@labre/affine/blocks/embed-doc';
 import type { SurfaceRefBlockComponent } from '@labre/affine/blocks/surface-ref';
 import { type Store, Text } from '@labre/store';
 import { afterEach, describe, expect, test, vi } from 'vitest';
@@ -71,6 +74,14 @@ const allCollected = (refs: WeakRef<object>[]) =>
     interval: RELEASE_POLL_MS,
   });
 
+/** B's `Doc`: it says whether a default store is open, and builds none. */
+const docB = () => window.collection.getDoc(B_ID)!;
+
+/** Something in the workspace renamed: a document-list change. */
+function renameA(title: string) {
+  window.collection.meta.setDocMeta(window.doc.id, { title });
+}
+
 /** Release B's default store, forget it here, answer a weak reference. */
 function closeB(b: { store: Store | null }) {
   const store = b.store!;
@@ -80,24 +91,49 @@ function closeB(b: { store: Store | null }) {
 }
 
 describe('another document shows a document that is closed (ADR 0057)', () => {
-  test("a linked-doc card lets B's store go, then shows B edited on a fresh store", async () => {
+  test("a linked-doc card lets B's store go, never opens it again, then shows B edited on a fresh store", async () => {
     cleanup = await setupEditor('page');
     const b = openB();
-    window.doc.addBlock(
+    const cardId = window.doc.addBlock(
       'affine:embed-linked-doc',
       { pageId: B_ID, style: 'vertical' },
       noteOfA()
     );
+    const card = () =>
+      window.editor.host!.querySelector<EmbedLinkedDocBlockComponent>(
+        `affine-embed-linked-doc-block[data-block-id="${cardId}"]`
+      )!;
     const preview = () =>
-      window.editor.host!.querySelector<HTMLElement>(
+      card().querySelector<HTMLElement>(
         '.affine-embed-doc-content-note-blocks'
       );
+    const title = () =>
+      card()
+        .querySelector('.affine-embed-linked-doc-content-title-text')
+        ?.textContent?.trim();
     await until(() => expect(preview()?.textContent).toContain('first'));
+    expect(title()).toBe('B');
 
     const released = closeB(b);
-    await allCollected([released]);
+    expect(docB().defaultStore).toBeNull();
 
-    const fresh = window.collection.getDoc(B_ID)!.getStore();
+    // A forced re-render and reload of the card.
+    card().requestUpdate();
+    card().refreshData();
+    await card().updateComplete;
+    expect(docB().defaultStore).toBeNull();
+    // A document-list change: another document renamed, then B.
+    renameA('A renamed');
+    await card().updateComplete;
+    expect(docB().defaultStore).toBeNull();
+    window.collection.meta.setDocMeta(B_ID, { title: 'B renamed' });
+    await until(() => expect(title()).toBe('B renamed'));
+    expect(docB().defaultStore).toBeNull();
+
+    await allCollected([released]);
+    expect(docB().defaultStore).toBeNull();
+
+    const fresh = docB().getStore();
     fresh.load();
     fresh.addBlock('affine:paragraph', { text: new Text('second') }, b.noteId);
 
@@ -128,9 +164,15 @@ describe('another document shows a document that is closed (ADR 0057)', () => {
     expect(referenced?.store).not.toBe(b.store);
 
     const released = closeB(b);
+    expect(docB().defaultStore).toBeNull();
+    surfaceRef.requestUpdate();
+    await surfaceRef.updateComplete;
+    renameA('A renamed');
+    expect(docB().defaultStore).toBeNull();
     await allCollected([released]);
+    expect(docB().defaultStore).toBeNull();
 
-    const fresh = window.collection.getDoc(B_ID)!.getStore();
+    const fresh = docB().getStore();
     fresh.load();
     fresh.updateBlock(b.frameId, { xywh: '[10,10,300,150]' });
 

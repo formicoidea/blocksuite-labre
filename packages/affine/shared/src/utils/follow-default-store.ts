@@ -42,3 +42,17 @@ export function followDefaultStore(
     detach = undefined;
   };
 }
+
+/**
+ * A store to READ another document from, never its default store built anew
+ * (#746, ADR 0057): the default store while its host has it open, else the
+ * document's readonly store. For one-shot readers (an export walking a synced
+ * document, an import asking whether a linked document exists), whose
+ * `docCRUD.get` built the default store, which then stayed after its host had
+ * closed the document. The readonly store stays too: one per document read,
+ * the same retention as a synced-doc card's.
+ */
+export function storeToRead(doc: Doc | null | undefined): Store | null {
+  if (!doc) return null;
+  return doc.defaultStore ?? doc.getStore({ readonly: true });
+}

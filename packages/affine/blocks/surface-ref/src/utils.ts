@@ -15,6 +15,7 @@ import {
   MindmapIcon,
 } from '@blocksuite/icons/lit';
 import { type GfxModel } from '@labre/std/gfx';
+import type { Doc } from '@labre/store';
 import { html, type TemplateResult } from 'lit';
 
 import {
@@ -166,3 +167,25 @@ export const getReferenceModelTitle = (model: GfxModel) => {
   }
   return null;
 };
+
+/** The part of a `Y.Map` the scan below reads. */
+type YMapReader = { get(key: string): unknown; has(key: string): boolean };
+
+/**
+ * Whether `doc` holds `id`, as a block or as an element of a surface, read
+ * from its Yjs blocks: finding the document a reference lives in builds no
+ * store (#746, ADR 0057). Scanning the workspace through stores built one
+ * per document scanned (the default store on the base), none ever released.
+ * A surface keeps its elements in a `Boxed` map: `prop:elements` -> `value`.
+ */
+export function holdsReference(doc: Doc, id: string): boolean {
+  const blocks = doc.yBlocks;
+  if (blocks.has(id)) return true;
+  for (const block of blocks.values()) {
+    if (block.get('sys:flavour') !== 'affine:surface') continue;
+    const boxed = block.get('prop:elements') as YMapReader | undefined;
+    const elements = boxed?.get('value') as YMapReader | undefined;
+    if (elements?.has(id)) return true;
+  }
+  return false;
+}

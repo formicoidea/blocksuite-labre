@@ -174,13 +174,14 @@ export class BlockQueryDataSource extends DataSourceBase {
 
   /**
    * A document's matching blocks, read from its default store while one is
-   * open (#746, ADR 0057). The first read builds the store, as before; once a
-   * host releases it, its blocks leave `blockMap` (they were the released
-   * store's) and this source attaches again when the document is opened
-   * again, never rebuilding the store itself.
+   * open (#746, ADR 0057): once a host releases it, its blocks leave
+   * `blockMap` (they were the released store's), and this source attaches
+   * again when the document is opened again. It never builds a default
+   * store, which is the host's to open and close: the base built one for
+   * every document of the workspace, a closed one included. A document
+   * nobody has open is not listed.
    */
   private _follow(doc: Doc) {
-    doc.getStore();
     this.docDisposeMap.set(
       doc.id,
       followDefaultStore(doc, store => this.listenToDoc(store))
