@@ -122,22 +122,25 @@ describe('LinkedDocSource (ADR 0057)', () => {
     }
   });
 
-  test('content: the open default store; once its host closes it, none, and nothing built', () => {
+  test('content: the open default store; once its host closes it, none, nothing built, and the card told', () => {
     const { workspace, doc } = openWorkspace();
     try {
       const open = doc.getStore();
       const asked = storesAskedOf(doc);
       const source = new LinkedDocSource(doc);
       const followed: Store[] = [];
+      const closed = vi.fn();
       const stop = source.follow(
         () => {},
         store => {
           followed.push(store);
-        }
+        },
+        closed
       );
 
       expect(source.contentStore()).toBe(open);
       open.dispose();
+      expect(closed).toHaveBeenCalledOnce();
       expect(source.contentStore()).toBeNull();
       expect(source.store).toBeNull();
       expect(asked).toEqual([]);
@@ -147,8 +150,10 @@ describe('LinkedDocSource (ADR 0057)', () => {
       expect(followed).toEqual([open, reopened]);
       expect(source.contentStore()).toBe(reopened);
 
+      // The card stopping is not a close.
       stop();
       reopened.dispose();
+      expect(closed).toHaveBeenCalledOnce();
     } finally {
       workspace.dispose();
     }

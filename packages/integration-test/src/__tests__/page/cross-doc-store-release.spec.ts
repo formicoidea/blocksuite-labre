@@ -30,6 +30,10 @@ import { aliveAfterGc } from '../utils/heap.js';
 import { setupEditor } from '../utils/setup.js';
 
 const PATIENCE_MS = 5000;
+/** How long a card waits for a linked document's content (the default). */
+const CONTENT_WAIT_MS = 8000;
+/** A case that outlasts that wait, with room for the editor's set-up. */
+const PAST_CONTENT_WAIT_MS = CONTENT_WAIT_MS + PATIENCE_MS + PATIENCE_MS;
 const RELEASE_POLL_MS = 250;
 const B_ID = 'doc:closed-b';
 
@@ -277,4 +281,40 @@ describe('another document shows a document that is closed (ADR 0057)', () => {
     opened.dispose();
     source.dispose();
   });
+
+  test('B closed by its host while the card waits on its store for content: the card stops loading, nothing rebuilt', async () => {
+    cleanup = await setupEditor('page');
+    const waiting = window.collection.createDoc('doc:waiting');
+    const opened = waiting.getStore();
+    opened.load();
+    const { loading } = mountCard(waiting.id);
+    await until(() => expect(loading()).toBe(true));
+
+    // Shorter than the content wait (8 s), which the close never ends.
+    opened.dispose();
+
+    await until(() => expect(loading()).toBe(false));
+    expect(waiting.defaultStore).toBeNull();
+  });
+
+  test(
+    'B opened by its host, still empty, while the card waits on its own store: the card reads the new store and leaves loading after the content wait',
+    async () => {
+      cleanup = await setupEditor('page');
+      const empty = window.collection.createDoc('doc:empty');
+      const { loading } = mountCard(empty.id);
+      await until(() => expect(loading()).toBe(true));
+
+      // Nothing ever arrives: the card's load on its own store (let go
+      // now) can only go stale, so the open itself must restart it.
+      const opened = empty.getStore();
+      opened.load();
+
+      await vi.waitFor(() => expect(loading()).toBe(false), {
+        timeout: CONTENT_WAIT_MS + PATIENCE_MS,
+      });
+      opened.dispose();
+    },
+    PAST_CONTENT_WAIT_MS
+  );
 });

@@ -78,14 +78,17 @@ export class LinkedDocSource {
   /**
    * Hear the changes of the store read now (`onBlockUpdated`), and follow
    * the default store: `onOpened` runs on each one the document gets,
-   * `reopened` for one replacing a released one. The card's own store is
-   * let go while a default store is open. Answers the stop.
+   * `reopened` for one replacing a released one; `onClosed` when its host
+   * releases it (not when the follow stops). The card's own store is let go
+   * while a default store is open. Answers the stop.
    */
   follow(
     onBlockUpdated: (update: BlockUpdate) => void,
-    onOpened?: (store: Store, reopened: boolean) => void
+    onOpened?: (store: Store, reopened: boolean) => void,
+    onClosed?: () => void
   ): () => void {
     this._onBlockUpdated = onBlockUpdated;
+    let stopping = false;
     const stop = followDefaultStore(this.doc, (store, reopened) => {
       this._closed = false;
       this._releaseHold();
@@ -94,10 +97,12 @@ export class LinkedDocSource {
       return () => {
         if (this._heard?.store === store) this._hear(null);
         this._closed = true;
+        if (!stopping) onClosed?.();
       };
     });
     this._hear(this.store);
     return () => {
+      stopping = true;
       stop();
       this._hear(null);
       this._onBlockUpdated = null;

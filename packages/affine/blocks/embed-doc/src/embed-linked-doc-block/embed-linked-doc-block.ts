@@ -330,14 +330,20 @@ export class EmbedLinkedDocBlockComponent extends EmbedBlockComponent<EmbedLinke
     let following = false;
     // Whichever store the source reads (the card's own, or the default one
     // once the host opens the document), its changes refresh the card.
-    const stop = source.follow(onBlockUpdated, (_store, reopened) => {
-      // A store opened again, or opened while the card waited for content
-      // (its load then went stale): read it, once the host's task, which may
-      // still be loading it, is done.
-      if (reopened || (following && this._loading)) {
-        queueMicrotask(() => this.refreshData());
-      }
-    });
+    const stop = source.follow(
+      onBlockUpdated,
+      (_store, reopened) => {
+        // A store opened again, or opened while the card waited for content
+        // (its load then went stale): read it, once the host's task, which
+        // may still be loading it, is done.
+        if (reopened || (following && this._loading)) {
+          queueMicrotask(() => this.refreshData());
+        }
+      },
+      // Closed by its host, a load waiting on that store included: fall back
+      // to the title and the degraded body, never left loading.
+      () => queueMicrotask(() => this.refreshData())
+    );
     following = true;
     this._stopFollowing = () => {
       onBlockUpdated.cancel();
