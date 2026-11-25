@@ -5,6 +5,7 @@ import {
 } from '@labre/affine-database-block';
 import type { ColumnDataType } from '@labre/affine-model';
 import {
+  followDefaultStore,
   insertPositionToIndex,
   type InsertToPosition,
 } from '@labre/affine-shared/utils';
@@ -15,7 +16,7 @@ import {
 import { propertyPresets } from '@labre/affine-database-engine/property-presets';
 import { BlockSuiteError } from '@labre/global/exceptions';
 import type { EditorHost } from '@labre/std';
-import type { Block, Store } from '@labre/store';
+import type { Block, Doc, Store } from '@labre/store';
 import { Subject } from 'rxjs';
 
 import type { BlockMeta } from './block-meta/base.js';
@@ -84,20 +85,11 @@ export class BlockQueryDataSource extends DataSourceBase {
     for (const property of this.meta.properties) {
       this.columnMetaMap.set(property.metaConfig.type, property.metaConfig);
     }
-    for (const collection of this.workspace.docs.values()) {
-      for (const block of Object.values(collection.getStore().blocks.peek())) {
-        if (this.meta.selector(block)) {
-          this.blockMap.set(block.id, block);
-        }
-      }
-    }
-    this.workspace.docs.forEach(doc => {
-      this.listenToDoc(doc.getStore());
-    });
+    this.workspace.docs.forEach(doc => this._follow(doc));
     this.workspace.slots.docListUpdated.subscribe(() => {
       this.workspace.docs.forEach(doc => {
         if (!this.docDisposeMap.has(doc.id)) {
-          this.listenToDoc(doc.getStore());
+          this._follow(doc);
         }
       });
       this.docDisposeMap.forEach((_, id) => {
@@ -180,21 +172,48 @@ export class BlockQueryDataSource extends DataSourceBase {
     return this.block.props.columns.find(v => v.id === id);
   }
 
-  listenToDoc(doc: Store) {
+  /**
+   * A document's matching blocks, read from its default store while one is
+   * open (#746, ADR 0057). The first read builds the store, as before; once a
+   * host releases it, its blocks leave `blockMap` (they were the released
+   * store's) and this source attaches again when the document is opened
+   * again, never rebuilding the store itself.
+   */
+  private _follow(doc: Doc) {
+    doc.getStore();
     this.docDisposeMap.set(
       doc.id,
-      doc.slots.blockUpdated.subscribe(v => {
-        if (v.type === 'add') {
-          const blockById = doc.getBlock(v.id);
-          if (blockById && this.meta.selector(blockById)) {
-            this.blockMap.set(v.id, blockById);
-          }
-        } else if (v.type === 'delete') {
-          this.blockMap.delete(v.id);
-        }
-        this.slots.update.next(undefined);
-      }).unsubscribe
+      followDefaultStore(doc, store => this.listenToDoc(store))
     );
+  }
+
+  /** Read `doc`'s matching blocks and follow them; answers the undo. */
+  listenToDoc(doc: Store) {
+    const own = new Set<string>();
+    for (const block of Object.values(doc.blocks.peek())) {
+      if (this.meta.selector(block)) {
+        this.blockMap.set(block.id, block);
+        own.add(block.id);
+      }
+    }
+    const subscription = doc.slots.blockUpdated.subscribe(v => {
+      if (v.type === 'add') {
+        const blockById = doc.getBlock(v.id);
+        if (blockById && this.meta.selector(blockById)) {
+          this.blockMap.set(v.id, blockById);
+          own.add(v.id);
+        }
+      } else if (v.type === 'delete') {
+        this.blockMap.delete(v.id);
+        own.delete(v.id);
+      }
+      this.slots.update.next(undefined);
+    });
+    return () => {
+      subscription.unsubscribe();
+      own.forEach(id => this.blockMap.delete(id));
+      this.slots.update.next(undefined);
+    };
   }
 
   propertyAdd(

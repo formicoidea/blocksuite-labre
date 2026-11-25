@@ -35,6 +35,7 @@ import {
 import {
   cloneReferenceInfo,
   cloneReferenceInfoWithoutAliases,
+  followDefaultStore,
   isNewTabTrigger,
   isNewViewTrigger,
   matchModels,
@@ -523,28 +524,42 @@ export class EmbedLinkedDocBlockComponent extends EmbedBlockComponent<EmbedLinke
 
     const linkedDoc = this.linkedDoc;
     if (linkedDoc) {
-      // Should throttle the blockUpdated event to avoid too many re-renders
-      // Because the blockUpdated event is triggered too frequently at some cases
+      // Followed, never kept (#746, ADR 0057): the linked document's default
+      // store is shared with its own editor, and a host closing that document
+      // releases it. A subscription made once kept the released store alive
+      // and went deaf; this one lets it go and attaches again, refreshing the
+      // card, when the document gets a store again.
       this.disposables.add(
-        linkedDoc.slots.blockUpdated.subscribe(
-          throttle(payload => {
-            if (
-              payload.type === 'update' &&
-              ['', 'caption', 'xywh'].includes(payload.props.key)
-            ) {
-              return;
-            }
+        followDefaultStore(linkedDoc.doc, (store, reopened) => {
+          // Should throttle the blockUpdated event to avoid too many re-renders
+          // Because the blockUpdated event is triggered too frequently at some cases
+          const subscription = store.slots.blockUpdated.subscribe(
+            throttle(payload => {
+              if (
+                payload.type === 'update' &&
+                ['', 'caption', 'xywh'].includes(payload.props.key)
+              ) {
+                return;
+              }
 
-            if (payload.type === 'add' && payload.init) {
-              return;
-            }
+              if (payload.type === 'add' && payload.init) {
+                return;
+              }
 
+              this._load().catch(e => {
+                console.error(e);
+                this.isError = true;
+              });
+            }, RENDER_CARD_THROTTLE_MS)
+          );
+          if (reopened) {
             this._load().catch(e => {
               console.error(e);
               this.isError = true;
             });
-          }, RENDER_CARD_THROTTLE_MS)
-        )
+          }
+          return () => subscription.unsubscribe();
+        })
       );
 
       this._setDocUpdatedAt();

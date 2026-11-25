@@ -13,6 +13,7 @@ import {
 } from '@labre/affine-shared/utils';
 import { BlockStdScope } from '@labre/std';
 import type { BlockModel, Query } from '@labre/store';
+import { untracked } from '@preact/signals-core';
 import { render, type TemplateResult } from 'lit';
 
 import type { EmbedLinkedDocBlockComponent } from '../embed-linked-doc-block';
@@ -38,6 +39,18 @@ export function releaseLinkedDocPreview(card: LinkedDocCard) {
 }
 
 export function renderLinkedDocInCard(
+  card: EmbedLinkedDocBlockComponent | EmbedSyncedDocCard
+) {
+  // An imperative render, never a reactive dependency of its caller. A card
+  // connected during its parent's update (a note's render, a signal effect)
+  // ran this synchronously: reading the linked document's `root.children`
+  // made the PARENT's render effect depend on the linked store, which then
+  // stayed alive after the host released it, and re-rendered the parent at
+  // every change of the linked document (#746, ADR 0057).
+  untracked(() => renderLinkedDocInCardNow(card));
+}
+
+function renderLinkedDocInCardNow(
   card: EmbedLinkedDocBlockComponent | EmbedSyncedDocCard
 ) {
   const linkedDoc = card.linkedDoc;

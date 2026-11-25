@@ -11,7 +11,6 @@ import {
   PageIcon,
 } from '@blocksuite/icons/lit';
 import { LifeCycleWatcher, StdIdentifier } from '@labre/std';
-import type { Store } from '@labre/store';
 import {
   computed,
   type ReadonlySignal,
@@ -80,15 +79,23 @@ export class DocDisplayMetaService
 
   readonly disposables: DisposableMember[] = [];
 
-  readonly iconMap = new WeakMap<Store, Signal<TemplateResult>>();
+  /**
+   * By document id (#746, ADR 0057). Keyed by the document's default store,
+   * the cache built that store for every linked document it resolved, kept
+   * it for the workspace's life, and built it again after a host released
+   * it, only to read a title and a mode that live in the workspace meta.
+   */
+  readonly iconMap = new Map<string, Signal<TemplateResult>>();
 
-  readonly titleMap = new WeakMap<Store, Signal<string>>();
+  readonly titleMap = new Map<string, Signal<string>>();
 
   static override setup(di: Container) {
     di.addImpl(DocDisplayMetaProvider, this, [StdIdentifier]);
   }
 
   dispose() {
+    this.iconMap.clear();
+    this.titleMap.clear();
     while (this.disposables.length > 0) {
       const disposable = this.disposables.pop();
       if (disposable) {
@@ -107,9 +114,7 @@ export class DocDisplayMetaService
       return computed(() => DocDisplayMetaService.icons.deleted);
     }
 
-    const store = doc.getStore();
-
-    let icon$ = this.iconMap.get(store);
+    let icon$ = this.iconMap.get(pageId);
 
     if (!icon$) {
       icon$ = signal(
@@ -128,7 +133,7 @@ export class DocDisplayMetaService
         }, pageId);
 
       this.disposables.push(disposable);
-      this.iconMap.set(store, icon$);
+      this.iconMap.set(pageId, icon$);
     }
 
     return computed(() => {
@@ -166,9 +171,7 @@ export class DocDisplayMetaService
       );
     }
 
-    const store = doc.getStore();
-
-    let title$ = this.titleMap.get(store);
+    let title$ = this.titleMap.get(pageId);
     if (!title$) {
       title$ = signal(
         doc.meta?.title || translateKey(this.std, ...CHROME_UNTITLED)
@@ -182,7 +185,7 @@ export class DocDisplayMetaService
       );
 
       this.disposables.push(disposable);
-      this.titleMap.set(store, title$);
+      this.titleMap.set(pageId, title$);
     }
 
     return computed(() => {

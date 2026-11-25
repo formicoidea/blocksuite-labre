@@ -225,8 +225,12 @@ export class SurfaceRefBlockComponent extends BlockComponent<SurfaceRefBlockMode
       let result = find(this.store);
       if (result[0]) return result;
 
+      // Another document's element is read from its readonly store, the
+      // one the preview renders (`_previewDoc`), never from its default
+      // store: a host closing that document releases the default store, and
+      // a model kept from it would be dead and keep it alive (#746, ADR 0057).
       for (const doc of this.std.workspace.docs.values()) {
-        result = find(doc.getStore());
+        result = find(doc.getStore({ readonly: true }));
         if (result[0]) return result;
       }
 

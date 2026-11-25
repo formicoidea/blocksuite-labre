@@ -10,6 +10,7 @@ export * from './edgeless';
 export * from './event';
 export { getSvgPath as getFigmaSquircleSvgPath } from './figma-squircle';
 export * from './file';
+export * from './follow-default-store';
 export * from './framework-chord';
 export * from './fractional-indexing';
 export * from './image';
