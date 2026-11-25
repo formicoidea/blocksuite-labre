@@ -15,7 +15,7 @@ import {
   createAutoIncrementIdGenerator,
   TestWorkspace,
 } from '@labre/store/test';
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 
 import { holdPreviewStore } from '../../utils/preview-store.js';
 
@@ -91,6 +91,41 @@ describe('holdPreviewStore (ADR 0057 part 3)', () => {
       expect(isDisposed(after.store)).toBe(false);
       after.release();
     } finally {
+      workspace.dispose();
+    }
+  });
+});
+
+describe('a preview store that fails to dispose (ADR 0057 part 3)', () => {
+  test('the failure is reported with the document it belongs to, never swallowed', () => {
+    const { workspace, doc } = openDoc();
+    const later: Array<() => void> = [];
+    const defer = vi
+      .spyOn(globalThis, 'queueMicrotask')
+      .mockImplementation(fn => {
+        later.push(fn);
+      });
+    try {
+      const hold = holdPreviewStore(doc, { readonly: true, query });
+      const boom = new Error('an extension failed in disposed()');
+      vi.spyOn(hold.store, 'dispose').mockImplementation(() => {
+        throw boom;
+      });
+      hold.release();
+      defer.mockRestore();
+
+      expect(later).toHaveLength(1);
+      let reported: unknown;
+      try {
+        later[0]();
+      } catch (error) {
+        reported = error;
+      }
+      expect(reported).toBeInstanceOf(Error);
+      expect((reported as Error).message).toContain('"doc"');
+      expect((reported as Error).cause).toBe(boom);
+    } finally {
+      defer.mockRestore();
       workspace.dispose();
     }
   });
