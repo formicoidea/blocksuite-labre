@@ -214,8 +214,11 @@ one store per document opened in it, until you release it
   `doc.getStore()` builds a new store from the document, live, which sees
   everything peers wrote meanwhile. The release writes nothing, and loses
   nothing an editor already wrote: a typed edit is in Yjs when the call
-  that made it returns, a database cell being edited is saved as its
-  editor unmounts, and the block-meta writer defers nothing. What goes is
+  that made it returns, a number or text database cell still being edited
+  is saved as its editor unmounts, a date, progress or link cell is saved
+  only if its editor had already left editing (its value is written then;
+  one still open when it unmounts is lost, unmount it after editing ends),
+  and the block-meta writer defers nothing. What goes is
   what lived in memory: the
   undo and redo stacks (a reopened document starts with an empty history),
   the local selection (peers stop seeing it), the store's local `readonly`

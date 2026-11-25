@@ -623,7 +623,11 @@ target }`). Yjs keeps the outer origin of a nested transaction, so a
    (the base built the default store there); once the default store it read
    is released, nothing until a store comes back (title from meta, the
    empty-preview body; building a store then would only work around the
-   host's close). Guards: `embed-doc/src/__tests__/linked-doc-source.unit.spec.ts`
+   host's close). The card hears the changes of whichever store it reads
+   (fourth review: on its own store it heard none, so a peer's new block
+   never showed): the listening moves from its own store to the default one
+   and to none with the reads, once per change; a store opened while the
+   card waited for content refreshes it after the host's task. Guards: `embed-doc/src/__tests__/linked-doc-source.unit.spec.ts`
    and `cross-doc-store-release.spec.ts` (B's `defaultStore` null after the
    close, after a forced re-render and reload of the card, after another
    document and B are renamed, and after the collection; the card shows B's
