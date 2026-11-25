@@ -21,32 +21,9 @@ export abstract class BaseReactiveYData<
     };
   };
 
-  /**
-   * A write made through the proxy ANOTHER store built for this same Yjs type
-   * (#746, ADR 0057). A proxy skips the writes that carry a proxy origin,
-   * because they are its own and already in its source; since each store
-   * builds its own proxies (`ReleaseScope`), a write through a sibling store's
-   * proxy is not this one's, and must be mirrored like a remote one, or a
-   * preview store would keep reading the value from before the edit made in
-   * the editor. Within one store nothing changes: one scope, one proxy per
-   * type.
-   */
-  private _isSiblingStoreWrite(origin: unknown) {
-    const scope = this._options?.scope;
-    if (!scope || typeof origin !== 'object' || origin === null) return false;
-    const { proxy, target } = origin as { proxy?: unknown; target?: unknown };
-    return (
-      proxy === true &&
-      target instanceof BaseReactiveYData &&
-      target !== this &&
-      target._options?.scope !== scope
-    );
-  }
-
   protected _onObserve = (event: Y.YEvent<any>, handler: () => void) => {
     if (
       event.transaction.origin?.force === true ||
-      this._isSiblingStoreWrite(event.transaction.origin) ||
       (event.transaction.origin?.proxy !== true &&
         (!event.transaction.local ||
           event.transaction.origin instanceof Y.UndoManager))

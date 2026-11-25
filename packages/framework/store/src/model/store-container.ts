@@ -4,13 +4,34 @@ import type {
   GetStoreOptions,
   RemoveStoreOptions,
 } from '../extension';
+import { Subject } from 'rxjs';
+
 import { DocIdentifier } from '../extension/workspace';
 import { type Query, Store } from './store';
 
 export class StoreContainer {
   private readonly _storeMap = new Map<string, Store>();
 
+  /**
+   * The default store (`doc.getStore()`) each time one is built, and `null`
+   * when it is released or removed (#746, ADR 0057). A component of ANOTHER
+   * document that follows this one (a linked-doc card) listens here instead
+   * of keeping the store: it lets a released store go, and attaches again
+   * when the document is opened again.
+   */
+  readonly defaultStoreChanged = new Subject<Store | null>();
+
   constructor(readonly doc: Doc) {}
+
+  /** The default store if one is open; never builds one. */
+  get defaultStore(): Store | null {
+    return this._storeMap.get(this._defaultKey) ?? null;
+  }
+
+  /** The key of the default store: the sub-document's guid (`DocImpl`). */
+  private get _defaultKey() {
+    return this.doc.spaceDoc.guid;
+  }
 
   getStore = ({
     readonly,
@@ -43,11 +64,14 @@ export class StoreContainer {
       // Yjs (#746, ADR 0057). Only that store: a newer one under the same key
       // (built after an explicit `removeStore`) stays.
       onDispose: () => {
-        if (this._storeMap.get(key) === store) this._storeMap.delete(key);
+        if (this._storeMap.get(key) !== store) return;
+        this._storeMap.delete(key);
+        if (key === this._defaultKey) this.defaultStoreChanged.next(null);
       },
     });
 
     this._storeMap.set(key, store);
+    if (key === this._defaultKey) this.defaultStoreChanged.next(store);
 
     return store;
   };
@@ -60,8 +84,8 @@ export class StoreContainer {
    */
   removeStore = ({ readonly, query, id }: RemoveStoreOptions) => {
     const key = this._keyOf({ readonly, query, id });
-    if (key === null) return;
-    this._storeMap.delete(key);
+    if (key === null || !this._storeMap.delete(key)) return;
+    if (key === this._defaultKey) this.defaultStoreChanged.next(null);
   };
 
   /**

@@ -597,6 +597,19 @@ export class Store {
 
   private _isDisposed = false;
 
+  /**
+   * Whether the store was released with {@link dispose}: the document was
+   * closed, and every write through this store throws (ADR 0057). Code that
+   * resumes after an `await` (an upload, a measure, a dialog, a fetch)
+   * checks it before writing, and abandons the gesture when it is `true`,
+   * the way it does when the store turned readonly meanwhile.
+   *
+   * @category Store Lifecycle
+   */
+  get disposed() {
+    return this._isDisposed;
+  }
+
   /** The container's eviction of this store, run once by {@link dispose}. */
   private readonly _onDispose?: () => void;
 
@@ -1322,6 +1335,9 @@ export class Store {
     this._throwIfDisposed('load');
 
     this._doc.load(initFn);
+    // `initFn` may have closed the document: a released store attaches
+    // nothing again (the selection extension's awareness listener).
+    if (this._isDisposed) return this;
     this._provider.getAll(StoreExtensionIdentifier).forEach(ext => {
       ext.loaded();
     });

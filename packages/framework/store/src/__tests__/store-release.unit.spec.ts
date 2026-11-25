@@ -24,8 +24,11 @@
  * 4. a disposed store throws from `load()` and every mutation entry point,
  *    reads keep answering, a second `dispose()` does nothing;
  * 6. two live stores on one document (the editor's and a readonly query
- *    preview) do not share nested-prop proxies: releasing one leaves the
- *    other reactive, and a nested edit made through one reaches the other;
+ *    preview) share ONE proxy tree per nested prop, each notified of its
+ *    changes: releasing one leaves the other reactive, a nested edit made
+ *    through one reaches the other, and the tree detaches from Yjs with the
+ *    last of them (the divergence cases, writes inside a transaction among
+ *    them, are in `two-stores-nested-props.unit.spec.ts`);
  * 7. an edit made just before `dispose()` is in Yjs: nothing pending is lost
  *    (the block-meta half of this guard lives in `affine/shared`, beside the
  *    service);
@@ -452,7 +455,7 @@ describe('Store.dispose() releases what the store attached (ADR 0057)', () => {
   });
 });
 
-describe('two stores on one document do not share nested-prop proxies (guard 6)', () => {
+describe('two stores on one document share one nested-prop tree (guard 6)', () => {
   function openBoth(workspace: TestWorkspace) {
     const doc = docWithPeerContent(workspace);
     const main = doc.getStore();
@@ -484,14 +487,24 @@ describe('two stores on one document do not share nested-prop proxies (guard 6)'
       );
     });
 
-  test('each store builds its own proxy for a nested prop', () => {
+  test('both stores read one proxy per nested prop; it detaches with the last store', () => {
     const workspace = openWorkspace();
     try {
-      const { main, preview, mainPage, previewPage } = openBoth(workspace);
-      expect(previewPage.props.style).not.toBe(mainPage.props.style);
-      expect(previewPage.props.items).not.toBe(mainPage.props.items);
+      const { doc, main, preview, mainPage, previewPage } = openBoth(workspace);
+      expect(previewPage.props.style).toBe(mainPage.props.style);
+      expect(previewPage.props.items).toBe(mainPage.props.items);
+
+      const yStyle = doc.spaceDoc
+        .getMap<Y.Map<unknown>>('blocks')
+        .get(PAGE_ID)!
+        .get('prop:style');
+      const attached = handlersOn(yStyle);
+      expect(attached).toBeGreaterThan(0);
       preview.dispose();
+      // The editor store still uses the tree: it stays attached.
+      expect(handlersOn(yStyle)).toBe(attached);
       main.dispose();
+      expect(handlersOn(yStyle)).toBe(0);
     } finally {
       workspace.dispose();
     }
@@ -672,3 +685,37 @@ describe('collaboration: one client closes and reopens, both converge', () => {
 function colorOfStyle(page: RootBlockModel) {
   return (page.props.style as { color: string }).color;
 }
+
+describe('what a closed document tells the code that resumes after an await', () => {
+  test('store.disposed answers whether the store was released', () => {
+    const workspace = openWorkspace();
+    try {
+      const doc = docWithPeerContent(workspace);
+      const store = doc.getStore();
+      store.load();
+      expect(store.disposed).toBe(false);
+      store.dispose();
+      expect(store.disposed).toBe(true);
+      expect(doc.getStore().disposed).toBe(false);
+    } finally {
+      workspace.dispose();
+    }
+  });
+
+  test('a store disposed inside load(initFn) attaches nothing afterwards', () => {
+    const workspace = openWorkspace();
+    try {
+      const doc = workspace.createDoc('doc:closed-while-loading');
+      const awareness = workspace.awarenessStore.awareness;
+      const before = listenersOf(awareness, 'change');
+      const store = doc.getStore();
+      store.load(() => store.dispose());
+
+      expect(store.disposed).toBe(true);
+      expect(listenersOf(awareness, 'change')).toBe(before);
+      expect(listenersOf(doc.spaceDoc, 'afterTransaction')).toBe(0);
+    } finally {
+      workspace.dispose();
+    }
+  });
+});

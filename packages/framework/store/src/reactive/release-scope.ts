@@ -44,18 +44,18 @@ const SWEEP_GROWTH = 2;
  * exactly what can still be reached from the document.
  */
 export class ReleaseScope {
-  /** The proxy built by this scope for each Yjs type, one per type. */
-  readonly proxies: typeof globalProxies = new WeakMap();
-
   private _released = false;
 
   private readonly _tracked = new Set<WeakRef<Releasable>>();
 
   private _sweepAt = FIRST_SWEEP_AT;
 
-  get released() {
-    return this._released;
-  }
+  /**
+   * @param proxies The registry the proxies built in this scope resolve their
+   * Yjs type in, one proxy per type. Its own by default (a flat-data block's
+   * arrays, per store); the module-level one for a shared nested-prop tree.
+   */
+  constructor(readonly proxies: typeof globalProxies = new WeakMap()) {}
 
   /**
    * Keep a handle on `target` so `release()` can detach it. A target tracked

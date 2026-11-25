@@ -4,8 +4,8 @@ import { createMutex } from 'lib0/mutex.js';
 import * as Y from 'yjs';
 
 import {
+  attachYProxy,
   Boxed,
-  createYProxy,
   native2Y,
   Text,
   type UnRecord,
@@ -261,7 +261,7 @@ export class SyncController {
   }
 
   private _getPropsProxy(name: string, value: unknown) {
-    return createYProxy(value, {
+    return attachYProxy(value, {
       scope: this._scope,
       onChange: (_, isLocal) => {
         this.onChange?.(name, isLocal);

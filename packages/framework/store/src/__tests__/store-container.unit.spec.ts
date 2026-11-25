@@ -84,3 +84,59 @@ describe('getStore({ readonly: false }) is keyed (ADR 0057 guard 5)', () => {
     }
   });
 });
+
+/**
+ * What a component of another document follows instead of keeping a store
+ * (#746, ADR 0057, amendment of 2026-11-25): a linked-doc card in document
+ * A that kept B's default store kept it alive after B was closed, and was
+ * deaf to B once the host released it. `doc.defaultStore` answers without
+ * building one; `doc.defaultStoreChanged` tells when one is built and when it
+ * goes.
+ */
+describe('the default store, followed from outside (ADR 0057)', () => {
+  test('defaultStore never builds a store, and defaultStoreChanged reports its life', () => {
+    const { workspace, doc } = openDoc();
+    try {
+      const events: Array<unknown> = [];
+      doc.defaultStoreChanged.subscribe(store => events.push(store));
+      expect(doc.defaultStore).toBeNull();
+
+      const first = doc.getStore();
+      expect(doc.getStore()).toBe(first);
+      expect(doc.defaultStore).toBe(first);
+      // Other stores of the document are not the default one.
+      doc.getStore({ readonly: true });
+      doc.getStore({ readonly: false });
+      expect(events).toEqual([first]);
+
+      first.dispose();
+      expect(doc.defaultStore).toBeNull();
+      expect(events).toEqual([first, null]);
+
+      const second = doc.getStore();
+      second.dispose();
+      second.dispose(); // twice: reported once
+      expect(events).toEqual([first, null, second, null]);
+    } finally {
+      workspace.dispose();
+    }
+  });
+
+  test('removeStore of the default store reports it gone, once', () => {
+    const { workspace, doc } = openDoc();
+    try {
+      const events: Array<unknown> = [];
+      const store = doc.getStore();
+      doc.defaultStoreChanged.subscribe(next => events.push(next));
+      doc.removeStore({ id: doc.spaceDoc.guid });
+      doc.removeStore({ id: doc.spaceDoc.guid });
+      expect(events).toEqual([null]);
+      expect(doc.defaultStore).toBeNull();
+      // The removed store is not reported again when it is disposed later.
+      store.dispose();
+      expect(events).toEqual([null]);
+    } finally {
+      workspace.dispose();
+    }
+  });
+});

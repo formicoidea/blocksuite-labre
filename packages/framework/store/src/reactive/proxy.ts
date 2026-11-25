@@ -7,14 +7,27 @@ import { Boxed, type OnBoxedChange } from './boxed.js';
 import { proxies } from './memory.js';
 import { native2Y, y2Native } from './native-y.js';
 import { type OnTextChange, Text } from './text/index.js';
+import type { Releasable } from './release-scope.js';
+import { ReleaseScope } from './release-scope.js';
 import type { ProxyOptions, TransformOptions, UnRecord } from './types.js';
 
 /**
- * The registry a proxy resolves its Yjs type in: its block scope's own
- * (ADR 0057), or the module-level one for an unscoped caller.
+ * The registry a proxy resolves its Yjs type in: its scope's (the shared
+ * tree's is the module-level one, a flat-data block's is its own), or the
+ * module-level one for an unscoped caller.
  */
 const registryOf = (options?: { scope?: { proxies: typeof proxies } }) =>
   options?.scope?.proxies ?? proxies;
+
+/** A released proxy leaves the registry, so the next reader builds a live one. */
+const forget = (
+  options: { scope?: { proxies: typeof proxies } } | undefined,
+  ySource: object,
+  reactive: object
+) => {
+  const registry = registryOf(options);
+  if (registry.get(ySource) === reactive) registry.delete(ySource);
+};
 
 export class ReactiveYArray extends BaseReactiveYData<
   unknown[],
@@ -219,6 +232,7 @@ export class ReactiveYArray extends BaseReactiveYData<
   /** @internal */
   _release() {
     this._ySource.unobserve(this._observer);
+    forget(this._options, this._ySource, this);
   }
 
   pop(prop: number) {
@@ -356,6 +370,7 @@ export class ReactiveYMap extends BaseReactiveYData<UnRecord, YMap<unknown>> {
   /** @internal */
   _release() {
     this._ySource.unobserve(this._observer);
+    forget(this._options, this._ySource, this);
   }
 
   // eslint-disable-next-line sonarjs/no-identical-functions
@@ -409,4 +424,92 @@ export function createYProxy<Data>(
   };
 
   return y2Native(yAbstract, { transform }) as Data;
+}
+
+type PropListener = (data: unknown, isLocal: boolean) => void;
+
+/**
+ * The proxy tree of ONE nested prop (a block's `Y.Map` or `Y.Array` value
+ * and everything under it), shared by every store on the document, and
+ * released with the last store that uses it (#746, ADR 0057, amendment of
+ * 2026-11-25).
+ *
+ * One proxy per Yjs type is what keeps two stores on a document from ever
+ * reading different nested values: a proxy skips the local writes it made
+ * itself, recognised by their proxy origin or a local origin, and Yjs keeps
+ * the OUTER origin of a nested transaction, so a second proxy on the same
+ * type could never tell a sibling's write made inside `store.transact` from
+ * its own, and kept the old value (the first landing of ADR 0057 did that).
+ * What a store adds is a listener: each store's sync controller is notified
+ * of a change under the prop (the module-level registry used to bind the
+ * tree to the first store alone, so a preview never was), and a released
+ * store takes its listener back. The tree detaches from Yjs, and leaves the
+ * registry, when its last listener goes.
+ */
+class SharedPropTree {
+  private readonly _listeners = new Map<ReleaseScope, PropListener>();
+
+  private readonly _handles = new Map<ReleaseScope, Releasable>();
+
+  /** Everything built under the prop: the module-level registry. */
+  readonly scope = new ReleaseScope(proxies);
+
+  released = false;
+
+  readonly options: ProxyOptions<unknown> = {
+    onChange: (data, isLocal) => {
+      this._listeners.forEach(listener => listener(data, isLocal));
+    },
+    scope: this.scope,
+  };
+
+  /**
+   * Notify `onChange` of the changes under the prop until the returned
+   * handle is released. One listener per block scope: the same block asking
+   * again (its prop written then observed) replaces its own.
+   */
+  listen(owner: ReleaseScope, onChange: PropListener): Releasable {
+    this._listeners.set(owner, onChange);
+    let handle = this._handles.get(owner);
+    if (!handle) {
+      handle = {
+        _release: () => {
+          this._listeners.delete(owner);
+          this._handles.delete(owner);
+          if (this._listeners.size > 0) return;
+          this.released = true;
+          this.scope.release();
+        },
+      };
+      this._handles.set(owner, handle);
+    }
+    return handle;
+  }
+}
+
+/** The shared tree of each nested prop, by its top-level Yjs type. */
+const sharedTrees = new WeakMap<object, SharedPropTree>();
+
+/**
+ * @internal
+ * The value a block's sync controller reads for a prop: for a `Y.Map` or a
+ * `Y.Array`, the proxy of the shared tree, with `onChange` listening to it
+ * until `scope` (the block's) is released; anything else (a `Text`, a
+ * `Boxed`, a plain value) built for this store alone, as before.
+ */
+export function attachYProxy<Data>(
+  yAbstract: unknown,
+  { onChange, scope }: { onChange: PropListener; scope: ReleaseScope }
+): Data {
+  const shared =
+    (yAbstract instanceof YArray || yAbstract instanceof YMap) &&
+    !Boxed.is(yAbstract);
+  if (!shared) return createYProxy<Data>(yAbstract, { onChange, scope });
+  let tree = sharedTrees.get(yAbstract);
+  if (!tree || tree.released) {
+    tree = new SharedPropTree();
+    sharedTrees.set(yAbstract, tree);
+  }
+  scope.track(tree.listen(scope, onChange));
+  return createYProxy<Data>(yAbstract, tree.options as ProxyOptions<Data>);
 }

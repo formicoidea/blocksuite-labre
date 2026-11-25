@@ -1,4 +1,5 @@
 import { createIdentifier } from '@labre/global/di';
+import type { Observable } from 'rxjs';
 import type * as Y from 'yjs';
 
 import type { Store, StoreOptions, YBlock } from '../../model';
@@ -24,6 +25,20 @@ export interface Doc {
   clear(): void;
   getStore(options?: GetStoreOptions): Store;
   removeStore(options: RemoveStoreOptions): void;
+
+  /**
+   * The default store (`getStore()`) if one is open; never builds one
+   * (ADR 0057).
+   */
+  get defaultStore(): Store | null;
+
+  /**
+   * The default store each time one is built, and `null` when it is
+   * released (`store.dispose()`) or removed (ADR 0057). Code of another
+   * document that follows this one listens here and never keeps a released
+   * store.
+   */
+  get defaultStoreChanged(): Observable<Store | null>;
 
   get loaded(): boolean;
   get awarenessStore(): AwarenessStore;

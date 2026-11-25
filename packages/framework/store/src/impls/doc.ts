@@ -120,6 +120,14 @@ export class DocImpl implements Doc {
     return this._storeContainer.removeStore;
   }
 
+  get defaultStore() {
+    return this._storeContainer.defaultStore;
+  }
+
+  get defaultStoreChanged() {
+    return this._storeContainer.defaultStoreChanged;
+  }
+
   private _destroy() {
     this._ySpaceDoc.destroy();
     this._loaded = false;
