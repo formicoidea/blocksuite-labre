@@ -122,7 +122,10 @@ describe('another document shows a document that is closed (ADR 0057)', () => {
       return element!;
     });
     // Read from B's readonly store, never from the default one.
-    expect(surfaceRef.referenceModel?.store).not.toBe(b.store);
+    // A frame is a block model: it has the store it was read from.
+    const referenced = surfaceRef.referenceModel as { store?: Store } | null;
+    expect(referenced?.store).toBeDefined();
+    expect(referenced?.store).not.toBe(b.store);
 
     const released = closeB(b);
     await allCollected([released]);
