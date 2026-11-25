@@ -57,7 +57,10 @@ import * as Y from 'yjs';
 
 import { cardIcon } from '../common/child-card.js';
 import { isDocTrashed } from '../common/doc-trashed.js';
-import { LinkedDocSource } from '../common/linked-doc-source.js';
+import {
+  type BlockUpdate,
+  LinkedDocSource,
+} from '../common/linked-doc-source.js';
 import {
   releaseLinkedDocPreview,
   renderLinkedDocInCard,
@@ -78,6 +81,9 @@ export class EmbedLinkedDocBlockComponent extends EmbedBlockComponent<EmbedLinke
     if (this.isCitation) {
       return;
     }
+    // A refresh that fires after the card left (a throttled change, a store
+    // opened meanwhile) would follow the document again for nobody.
+    if (!this.isConnected) return;
 
     const {
       loading = true,
@@ -305,28 +311,38 @@ export class EmbedLinkedDocBlockComponent extends EmbedBlockComponent<EmbedLinke
     if (!doc) return null;
     const source = new LinkedDocSource(doc);
     this._source = source;
-    this._stopFollowing = source.follow((store, reopened) => {
-      // Should throttle the blockUpdated event to avoid too many re-renders
-      // Because the blockUpdated event is triggered too frequently at some cases
-      const subscription = store.slots.blockUpdated.subscribe(
-        throttle(payload => {
-          if (
-            payload.type === 'update' &&
-            ['', 'caption', 'xywh'].includes(payload.props.key)
-          ) {
-            return;
-          }
+    // Should throttle the blockUpdated event to avoid too many re-renders
+    // Because the blockUpdated event is triggered too frequently at some cases
+    const onBlockUpdated = throttle((payload: BlockUpdate) => {
+      if (
+        payload.type === 'update' &&
+        ['', 'caption', 'xywh'].includes(payload.props.key)
+      ) {
+        return;
+      }
 
-          if (payload.type === 'add' && payload.init) {
-            return;
-          }
+      if (payload.type === 'add' && payload.init) {
+        return;
+      }
 
-          this.refreshData();
-        }, RENDER_CARD_THROTTLE_MS)
-      );
-      if (reopened) this.refreshData();
-      return () => subscription.unsubscribe();
+      this.refreshData();
+    }, RENDER_CARD_THROTTLE_MS);
+    let following = false;
+    // Whichever store the source reads (the card's own, or the default one
+    // once the host opens the document), its changes refresh the card.
+    const stop = source.follow(onBlockUpdated, (_store, reopened) => {
+      // A store opened again, or opened while the card waited for content
+      // (its load then went stale): read it, once the host's task, which may
+      // still be loading it, is done.
+      if (reopened || (following && this._loading)) {
+        queueMicrotask(() => this.refreshData());
+      }
     });
+    following = true;
+    this._stopFollowing = () => {
+      onBlockUpdated.cancel();
+      stop();
+    };
     return source;
   }
 

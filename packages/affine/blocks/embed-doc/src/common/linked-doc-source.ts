@@ -1,10 +1,10 @@
 import {
-  type DetachStore,
   followDefaultStore,
   holdPreviewStore,
   type PreviewStoreHold,
 } from '@labre/affine-shared/utils';
 import type { Doc, GetStoreOptions, Store } from '@labre/store';
+import type { Subscription } from 'rxjs';
 
 import { isDocTrashed } from './doc-trashed.js';
 
@@ -18,6 +18,9 @@ const OWN_STORE: GetStoreOptions = {
   readonly: true,
   query: { mode: 'loose', match: [] },
 };
+
+/** What a store's `blockUpdated` sends. */
+export type BlockUpdate = Parameters<Store['slots']['blockUpdated']['next']>[0];
 
 /**
  * Where a linked-doc card reads the document it points at (#746, ADR 0057,
@@ -34,11 +37,19 @@ const OWN_STORE: GetStoreOptions = {
  * - once the default store it read is released, from nothing until a store
  *   comes back: the card shows its title and a degraded body, and building a
  *   store of its own then would only work around the host's close.
+ *
+ * Whichever store it reads, the card hears its changes: `blockUpdated` is
+ * listened to on that one store, and the listening moves with it (its own
+ * store, then the default one when the host opens the document, then none).
  */
 export class LinkedDocSource {
   private _hold: PreviewStoreHold | null = null;
 
   private _closed = false;
+
+  private _onBlockUpdated: ((update: BlockUpdate) => void) | null = null;
+
+  private _heard: { store: Store; subscription: Subscription } | null = null;
 
   constructor(readonly doc: Doc) {}
 
@@ -60,34 +71,61 @@ export class LinkedDocSource {
     const store = this.store;
     if (store || this._closed) return store;
     this._hold = holdPreviewStore(this.doc, OWN_STORE);
+    this._hear(this._hold.store);
     return this._hold.store;
   }
 
   /**
-   * Follow the default store: `attach` runs on each one the document gets,
-   * `reopened` for one replacing a released one. The card's own store is let
-   * go while a default store is open. Answers the stop.
+   * Hear the changes of the store read now (`onBlockUpdated`), and follow
+   * the default store: `onOpened` runs on each one the document gets,
+   * `reopened` for one replacing a released one. The card's own store is
+   * let go while a default store is open. Answers the stop.
    */
   follow(
-    attach: (store: Store, reopened: boolean) => DetachStore | void
+    onBlockUpdated: (update: BlockUpdate) => void,
+    onOpened?: (store: Store, reopened: boolean) => void
   ): () => void {
-    return followDefaultStore(this.doc, (store, reopened) => {
+    this._onBlockUpdated = onBlockUpdated;
+    const stop = followDefaultStore(this.doc, (store, reopened) => {
       this._closed = false;
       this._releaseHold();
-      const detach = attach(store, reopened);
+      this._hear(store);
+      onOpened?.(store, reopened);
       return () => {
-        detach?.();
+        if (this._heard?.store === store) this._hear(null);
         this._closed = true;
       };
     });
+    this._hear(this.store);
+    return () => {
+      stop();
+      this._hear(null);
+      this._onBlockUpdated = null;
+    };
   }
 
   release() {
     this._releaseHold();
   }
 
+  /** Listen to `store`'s changes, and to no other store's. */
+  private _hear(store: Store | null) {
+    if (this._heard?.store === store) return;
+    this._heard?.subscription.unsubscribe();
+    this._heard = null;
+    const onBlockUpdated = this._onBlockUpdated;
+    if (!store || !onBlockUpdated) return;
+    this._heard = {
+      store,
+      subscription: store.slots.blockUpdated.subscribe(onBlockUpdated),
+    };
+  }
+
   private _releaseHold() {
-    this._hold?.release();
+    const hold = this._hold;
+    if (!hold) return;
+    if (this._heard?.store === hold.store) this._hear(null);
+    hold.release();
     this._hold = null;
   }
 }

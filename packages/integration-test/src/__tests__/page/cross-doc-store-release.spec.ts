@@ -24,6 +24,7 @@ import type { EmbedLinkedDocBlockComponent } from '@labre/affine/blocks/embed-do
 import type { SurfaceRefBlockComponent } from '@labre/affine/blocks/surface-ref';
 import { type Store, Text } from '@labre/store';
 import { afterEach, describe, expect, test, vi } from 'vitest';
+import * as Y from 'yjs';
 
 import { aliveAfterGc } from '../utils/heap.js';
 import { setupEditor } from '../utils/setup.js';
@@ -80,6 +81,49 @@ const docB = () => window.collection.getDoc(B_ID)!;
 /** Something in the workspace renamed: a document-list change. */
 function renameA(title: string) {
   window.collection.meta.setDocMeta(window.doc.id, { title });
+}
+
+/** A peer of `doc` adds a paragraph under `noteId`; it arrives remote. */
+function peerAddsParagraph(doc: Y.Doc, noteId: string, text: string) {
+  const peer = new Y.Doc();
+  Y.applyUpdate(peer, Y.encodeStateAsUpdate(doc));
+  peer.transact(() => {
+    const blocks = peer.getMap<Y.Map<unknown>>('blocks');
+    const paragraph = new Y.Map<unknown>();
+    paragraph.set('sys:id', text);
+    paragraph.set('sys:flavour', 'affine:paragraph');
+    paragraph.set('sys:version', 1);
+    paragraph.set('sys:children', new Y.Array<string>());
+    paragraph.set('prop:type', 'text');
+    paragraph.set('prop:text', new Y.Text(text));
+    blocks.set(text, paragraph);
+    (blocks.get(noteId)!.get('sys:children') as Y.Array<string>).push([text]);
+  });
+  Y.applyUpdate(
+    doc,
+    Y.encodeStateAsUpdate(peer, Y.encodeStateVector(doc)),
+    'remote'
+  );
+  peer.destroy();
+}
+
+/** A linked-doc card to `pageId` in A, and what it shows. */
+function mountCard(pageId: string) {
+  const cardId = window.doc.addBlock(
+    'affine:embed-linked-doc',
+    { pageId, style: 'vertical' },
+    noteOfA()
+  );
+  const card = () =>
+    window.editor.host!.querySelector<EmbedLinkedDocBlockComponent>(
+      `affine-embed-linked-doc-block[data-block-id="${cardId}"]`
+    )!;
+  const preview = () =>
+    card()?.querySelector<HTMLElement>('.affine-embed-doc-content-note-blocks')
+      ?.textContent ?? '';
+  const loading = () =>
+    !!card()?.querySelector('.affine-embed-linked-doc-block.loading');
+  return { card, preview, loading };
 }
 
 /** Release B's default store, forget it here, answer a weak reference. */
@@ -180,5 +224,57 @@ describe('another document shows a document that is closed (ADR 0057)', () => {
       expect(surfaceRef.referenceModel?.xywh).toBe('[10,10,300,150]')
     );
     fresh.dispose();
+  });
+
+  test("B open nowhere: a peer's new block shows in the card; B opened, then closed: it keeps up, nothing rebuilt", async () => {
+    cleanup = await setupEditor('page');
+    const b = openB();
+    closeB(b);
+    const { preview } = mountCard(B_ID);
+    await until(() => expect(preview()).toContain('first'));
+    // Read from the card's own store: B is still closed.
+    expect(docB().defaultStore).toBeNull();
+
+    peerAddsParagraph(docB().spaceDoc, b.noteId, 'from-a-peer');
+    await until(() => expect(preview()).toContain('from-a-peer'));
+    expect(docB().defaultStore).toBeNull();
+
+    const open = { store: docB().getStore() as Store | null };
+    open.store!.load();
+    peerAddsParagraph(docB().spaceDoc, b.noteId, 'while-open');
+    await until(() => expect(preview()).toContain('while-open'));
+
+    closeB(open);
+    peerAddsParagraph(docB().spaceDoc, b.noteId, 'after-close');
+    expect(docB().defaultStore).toBeNull();
+  });
+
+  test("B's content arrives and B is opened in one task while the card waits: the card stops loading and shows it", async () => {
+    cleanup = await setupEditor('page');
+    const arriving = window.collection.createDoc('doc:arriving');
+    const { preview, loading } = mountCard(arriving.id);
+    await until(() => expect(loading()).toBe(true));
+
+    // Written elsewhere, then, in one task: synced in, and opened by the host.
+    const source = window.collection
+      .createDoc('doc:arriving-source')
+      .getStore();
+    source.load(() => {
+      const root = source.addBlock('affine:page', { title: new Text('Late') });
+      const note = source.addBlock('affine:note', {}, root);
+      source.addBlock('affine:paragraph', { text: new Text('arrived') }, note);
+    });
+    Y.applyUpdate(
+      arriving.spaceDoc,
+      Y.encodeStateAsUpdate(source.spaceDoc),
+      'remote'
+    );
+    const opened = arriving.getStore();
+    opened.load();
+
+    await until(() => expect(loading()).toBe(false));
+    await until(() => expect(preview()).toContain('arrived'));
+    opened.dispose();
+    source.dispose();
   });
 });

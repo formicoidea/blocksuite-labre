@@ -10,14 +10,23 @@
  * counted store of the card's own when nobody has the document open, and
  * from nothing once the host closed it under the card.
  */
-import { type Doc, type Store } from '@labre/store';
+import {
+  NoteBlockSchemaExtension,
+  ParagraphBlockSchemaExtension,
+  RootBlockSchemaExtension,
+} from '@labre/affine-model';
+import { type Doc, type Store, Text } from '@labre/store';
 import {
   createAutoIncrementIdGenerator,
   TestWorkspace,
 } from '@labre/store/test';
 import { describe, expect, test, vi } from 'vitest';
+import * as Y from 'yjs';
 
-import { LinkedDocSource } from '../common/linked-doc-source.js';
+import {
+  type BlockUpdate,
+  LinkedDocSource,
+} from '../common/linked-doc-source.js';
 
 const endOfTask = () => new Promise<void>(resolve => queueMicrotask(resolve));
 
@@ -30,6 +39,54 @@ function openWorkspace() {
   const doc = workspace.createDoc('b');
   workspace.meta.setDocMeta('b', { title: 'B' });
   return { workspace, doc };
+}
+
+/**
+ * B with a page and a note written by a peer, no store open on it here, and
+ * `peerAdds(id)`: the peer adds a paragraph, which arrives remote.
+ */
+function withPeerContent() {
+  const open = (id: string) => {
+    const workspace = new TestWorkspace({
+      id,
+      idGenerator: createAutoIncrementIdGenerator(),
+    });
+    workspace.storeExtensions = [
+      RootBlockSchemaExtension,
+      NoteBlockSchemaExtension,
+      ParagraphBlockSchemaExtension,
+    ];
+    workspace.meta.initialize();
+    return workspace;
+  };
+  const peer = open('linked-doc-source-peer');
+  const peerStore = peer.createDoc('b').getStore();
+  let noteId = '';
+  peerStore.load(() => {
+    const page = peerStore.addBlock('affine:page', {});
+    noteId = peerStore.addBlock('affine:note', {}, page);
+  });
+  const local = open('linked-doc-source-local');
+  const doc = local.createDoc('b');
+  const sync = () =>
+    Y.applyUpdate(
+      doc.spaceDoc,
+      Y.encodeStateAsUpdate(
+        peerStore.spaceDoc,
+        Y.encodeStateVector(doc.spaceDoc)
+      ),
+      'remote'
+    );
+  sync();
+  const peerAdds = (id: string) => {
+    peerStore.addBlock('affine:paragraph', { id, text: new Text(id) }, noteId);
+    sync();
+  };
+  const dispose = () => {
+    local.dispose();
+    peer.dispose();
+  };
+  return { dispose, doc, peerAdds };
 }
 
 /** Every store asked of `doc` from now on. */
@@ -72,9 +129,12 @@ describe('LinkedDocSource (ADR 0057)', () => {
       const asked = storesAskedOf(doc);
       const source = new LinkedDocSource(doc);
       const followed: Store[] = [];
-      const stop = source.follow(store => {
-        followed.push(store);
-      });
+      const stop = source.follow(
+        () => {},
+        store => {
+          followed.push(store);
+        }
+      );
 
       expect(source.contentStore()).toBe(open);
       open.dispose();
@@ -117,6 +177,42 @@ describe('LinkedDocSource (ADR 0057)', () => {
       open.dispose();
     } finally {
       workspace.dispose();
+    }
+  });
+
+  test("nobody has it open: a peer's changes are heard on the card's own store, then once on the default one, then not at all", async () => {
+    const { dispose, doc, peerAdds } = withPeerContent();
+    try {
+      const updates: BlockUpdate[] = [];
+      const source = new LinkedDocSource(doc);
+      const stop = source.follow(update => updates.push(update));
+      const own = source.contentStore()!;
+      own.load();
+      const added = () =>
+        updates.filter(u => u.type === 'add' && !u.init).map(u => u.id);
+
+      peerAdds('p1');
+      expect(added()).toEqual(['p1']);
+
+      // The host opens the document: heard on its store alone.
+      const open = doc.getStore();
+      open.load();
+      peerAdds('p2');
+      expect(added()).toEqual(['p1', 'p2']);
+      await endOfTask();
+      expect(own.disposed).toBe(true);
+
+      // The host closes it: nothing heard, nothing built.
+      open.dispose();
+      peerAdds('p3');
+      expect(added()).toEqual(['p1', 'p2']);
+      expect(source.contentStore()).toBeNull();
+      expect(doc.defaultStore).toBeNull();
+
+      stop();
+      source.release();
+    } finally {
+      dispose();
     }
   });
 
