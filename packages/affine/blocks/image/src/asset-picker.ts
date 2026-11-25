@@ -99,8 +99,9 @@ export async function addSiblingImageBlocksFromAssets(
 ): Promise<string[]> {
   if (std.store.readonly) return [];
   const props = await imagePropsFrom(std, assets);
-  // Re-checked: the document may have turned read-only while measuring.
-  if (!props.length || std.store.readonly) return [];
+  // Re-checked: the document may have turned read-only, or been closed
+  // (ADR 0057), while measuring.
+  if (!props.length || std.store.disposed || std.store.readonly) return [];
   const flavour = ImageBlockSchema.model.flavour;
   std.store.captureSync();
   return std.store.addSiblingBlocks(
@@ -121,7 +122,7 @@ export async function addImagesFromAssets(
 ): Promise<string[]> {
   if (std.store.readonly) return [];
   const props = await imagePropsFrom(std, assets);
-  if (!props.length || std.store.readonly) return [];
+  if (!props.length || std.store.disposed || std.store.readonly) return [];
   std.store.captureSync();
   return placeImagesOnCanvas(std, props, options);
 }

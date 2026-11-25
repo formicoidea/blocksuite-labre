@@ -39,7 +39,10 @@ export const embedLoomSlashMenuConfig: SlashMenuConfig = {
               }
             }
           );
-          if (model.text?.length === 0) std.store.deleteBlock(model);
+          // The modal is async: the document may be closed by now.
+          if (!std.store.disposed && model.text?.length === 0) {
+            std.store.deleteBlock(model);
+          }
         })().catch(console.error);
       },
     },

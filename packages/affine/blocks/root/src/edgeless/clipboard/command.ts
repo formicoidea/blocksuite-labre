@@ -172,8 +172,11 @@ export const createElementsFromClipboardDataCommand: Command<Input, Output> = (
       items.push({ oldId, prepared, requested });
     }
 
-    // The preparation awaited: the document may have turned readonly since.
-    if (std.store.readonly) return { canvasElements, blockModels };
+    // The preparation awaited: the document may have turned readonly, or
+    // been closed (ADR 0057), since.
+    if (std.store.disposed || std.store.readonly) {
+      return { canvasElements, blockModels };
+    }
 
     const written: Written[] = [];
     const legacy: { block: PastedBlock; id: Promise<string | null> }[] = [];
@@ -262,7 +265,9 @@ export const createElementsFromClipboardDataCommand: Command<Input, Output> = (
         context.oldToNewIdMap.set(block.oldId, newId);
         late.push({ ...block, newId });
       }
-      if (!std.store.readonly) std.store.transact(() => finish(late));
+      if (!std.store.disposed && !std.store.readonly) {
+        std.store.transact(() => finish(late));
+      }
     }
 
     return {

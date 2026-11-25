@@ -95,7 +95,8 @@ export async function refreshEmbedYoutubeUrlData(
       creatorImage = null,
     } = youtubeUrlData);
 
-    if (signal?.aborted) return;
+    // Fetched: the document may be closed by now (ADR 0057).
+    if (signal?.aborted || embedYoutubeElement.store.disposed) return;
 
     embedYoutubeElement.store.updateBlock(embedYoutubeElement.model, {
       image,

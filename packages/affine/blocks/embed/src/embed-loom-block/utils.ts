@@ -60,7 +60,8 @@ export async function refreshEmbedLoomUrlData(
     const loomUrlData = await queryUrlData(embedLoomElement.model);
     ({ title = null, description = null, image = null } = loomUrlData);
 
-    if (signal?.aborted) return;
+    // Fetched: the document may be closed by now (ADR 0057).
+    if (signal?.aborted || embedLoomElement.store.disposed) return;
 
     embedLoomElement.store.updateBlock(embedLoomElement.model, {
       title,

@@ -372,7 +372,10 @@ async function embedAtClipRatio(model: AttachmentBlockModel) {
   const blob = await getAttachmentBlob(model);
   const size = blob ? await readVideoSize(blob) : null;
 
+  // The document may have been closed meanwhile (`store.disposed`, ADR
+  // 0057): the gesture is abandoned, as when it turned readonly.
   const unchanged =
+    !store.disposed &&
     !store.readonly &&
     store.hasBlock(model.id) &&
     model.props.sourceId === sourceId &&
@@ -462,6 +465,10 @@ async function turnIntoImageBlock(model: AttachmentBlockModel) {
       bounds.h = imageSize.height;
     }
   }
+
+  // The measure awaited: a document closed meanwhile abandons the turn
+  // (ADR 0057), it never writes through the released store.
+  if (model.store.disposed) return null;
 
   const others = bounds ? { xywh: bounds.serialize() } : undefined;
 

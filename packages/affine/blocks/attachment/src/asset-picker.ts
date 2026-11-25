@@ -102,14 +102,13 @@ export async function pickAndAddSiblingAttachmentBlocks(
   const picked = pickFiles(std);
   let ids: string[];
   if (picked) {
-    ids = addSiblingAttachmentBlocksFromAssets(
-      std,
-      (await picked) ?? [],
-      targetModel
-    );
+    const assets = (await picked) ?? [];
+    // The picker is async: the document may be closed by now (ADR 0057).
+    if (std.store.disposed) return [];
+    ids = addSiblingAttachmentBlocksFromAssets(std, assets, targetModel);
   } else {
     const file = await openSingleFileWith();
-    if (!file) return [];
+    if (!file || std.store.disposed) return [];
     ids = await addSiblingAttachmentBlocks(std, [file], targetModel);
   }
   if (ids.length && targetModel.text?.length === 0) {

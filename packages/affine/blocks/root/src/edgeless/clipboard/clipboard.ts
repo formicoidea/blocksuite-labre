@@ -187,6 +187,8 @@ export class EdgelessClipboardController extends PageClipboard {
     event.preventDefault();
 
     await this._onCopy(_context, surfaceSelections);
+    // The copy is async: the document may be closed by now (ADR 0057).
+    if (this.doc.disposed) return;
 
     if (surfaceSelections[0]?.editing) {
       // use build-in cut handler in rich-text when cut in surface text element

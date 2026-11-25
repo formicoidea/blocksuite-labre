@@ -181,8 +181,9 @@ export class AttachmentBlockComponent extends CaptionedBlockComponent<Attachment
     if (state.uploading) return;
 
     const answer = await pickReplacement(this.std, 'file');
-    // The dialog is async: the card may be gone, or the page read-only, by now.
-    if (!answer || this.std.store.readonly) return;
+    // The dialog is async: the card may be gone, the page read-only or the
+    // document closed (ADR 0057), by now.
+    if (!answer || this.std.store.disposed || this.std.store.readonly) return;
     if (!this.std.store.getBlock(this.blockId)) return;
 
     const id = writeAttachmentAnswer(this.std, this.model, answer);

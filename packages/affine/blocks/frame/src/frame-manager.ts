@@ -375,7 +375,10 @@ export class EdgelessFrameManager extends GfxExtension {
             if (--this._pendingAdoptionTicks > 0) return;
 
             const elements = this._pendingAdoptions.splice(0);
-            if (surfaceModel.store.readonly) return;
+            // A microtask later: the document may be closed by now.
+            if (surfaceModel.store.disposed || surfaceModel.store.readonly) {
+              return;
+            }
             doc.transact(() => {
               elements.forEach(element => this._adoptIfInFrame(element));
             });

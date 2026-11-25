@@ -168,6 +168,8 @@ export async function convertSelectedBlocksToLinkedDoc(
   docTitle?: string
 ) {
   const models = await selectedModels;
+  // The draft is async: the document may be closed by now (ADR 0057).
+  if (doc.disposed) return;
   const slice = std.clipboard.sliceToSnapshot(Slice.fromModels(doc, models));
   if (!slice) {
     return;

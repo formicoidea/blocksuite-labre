@@ -197,6 +197,9 @@ export class EmbedIframeBlockComponent extends CaptionedBlockComponent<EmbedIfra
         });
       }
 
+      // Fetched: the document may be closed by now (ADR 0057).
+      if (this.store.disposed) return false;
+
       // update model
       const iframeUrl = this._getIframeUrl(embedData) ?? currentIframeUrl;
       this.store.updateBlock(this.model, {
