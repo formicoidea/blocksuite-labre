@@ -1281,8 +1281,14 @@ export class Store {
       blobCRUD: this.workspace.blobSync,
       docCRUD: {
         create: (id: string) => this.workspace.createDoc(id).getStore({ id }),
-        get: (id: string) =>
-          this.workspace.getDoc(id)?.getStore({ id }) ?? null,
+        // Read only, never the default store built anew: a document closed
+        // by its host stays closed after an export or an import that read
+        // it (#746, ADR 0057).
+        get: (id: string) => {
+          const doc = this.workspace.getDoc(id);
+          if (!doc) return null;
+          return doc.defaultStore ?? doc.getStore({ readonly: true });
+        },
         delete: (id: string) => this.workspace.removeDoc(id),
       },
       middlewares,

@@ -865,4 +865,23 @@ describe('what a closed document tells the code that resumes after an await', ()
       workspace.dispose();
     }
   });
+
+  test('a transformer reading a closed document (docCRUD.get) leaves it closed', () => {
+    const workspace = openWorkspace();
+    try {
+      const doc = docWithPeerContent(workspace);
+      const closed = doc.getStore();
+      closed.load();
+      const other = workspace.createDoc('doc:reader').getStore();
+      closed.dispose();
+
+      const read = other.getTransformer().docCRUD.get(DOC_ID);
+
+      expect(read?.readonly).toBe(true);
+      expect(doc.defaultStore).toBeNull();
+      other.dispose();
+    } finally {
+      workspace.dispose();
+    }
+  });
 });

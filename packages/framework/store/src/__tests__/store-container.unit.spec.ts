@@ -139,4 +139,33 @@ describe('the default store, followed from outside (ADR 0057)', () => {
       workspace.dispose();
     }
   });
+
+  test('a subscriber opening the document again inside the null: every subscriber sees null, then the new store', () => {
+    const { workspace, doc } = openDoc();
+    try {
+      const first = doc.getStore();
+      let second: unknown = null;
+      let whenNull: { released: boolean; evicted: boolean } | null = null;
+      doc.defaultStoreChanged.subscribe(next => {
+        if (next !== null || second) return;
+        // What the null promises: the store is released and evicted.
+        whenNull = {
+          released: first.disposed,
+          evicted: doc.defaultStore === null,
+        };
+        second = doc.getStore();
+      });
+      const seen: Array<unknown> = [];
+      doc.defaultStoreChanged.subscribe(next => seen.push(next));
+
+      first.dispose();
+
+      expect(whenNull).toEqual({ released: true, evicted: true });
+      expect(second).not.toBe(first);
+      expect(seen).toEqual([null, second]);
+      expect(doc.defaultStore).toBe(second);
+    } finally {
+      workspace.dispose();
+    }
+  });
 });

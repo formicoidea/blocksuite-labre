@@ -21,6 +21,30 @@ export class StoreContainer {
    */
   readonly defaultStoreChanged = new Subject<Store | null>();
 
+  /** What is announced and not yet delivered to every subscriber. */
+  private readonly _announcing: Array<Store | null> = [];
+
+  /**
+   * Announce on `defaultStoreChanged`, in order: a subscriber that opens the
+   * document again inside a `null` (a new default store built synchronously)
+   * has the new store announced after the `null` reached every subscriber,
+   * never before it reached the later ones. A `null` goes out once the store
+   * is released and evicted (`onDispose` runs last in `Store.dispose`).
+   */
+  private _announce(store: Store | null) {
+    this._announcing.push(store);
+    if (this._announcing.length > 1) return;
+    try {
+      while (this._announcing.length > 0) {
+        this.defaultStoreChanged.next(this._announcing[0]);
+        this._announcing.shift();
+      }
+    } finally {
+      // Never stuck: a throwing delivery drops what was left to announce.
+      this._announcing.length = 0;
+    }
+  }
+
   constructor(readonly doc: Doc) {}
 
   /** The default store if one is open; never builds one. */
@@ -66,12 +90,12 @@ export class StoreContainer {
       onDispose: () => {
         if (this._storeMap.get(key) !== store) return;
         this._storeMap.delete(key);
-        if (key === this._defaultKey) this.defaultStoreChanged.next(null);
+        if (key === this._defaultKey) this._announce(null);
       },
     });
 
     this._storeMap.set(key, store);
-    if (key === this._defaultKey) this.defaultStoreChanged.next(store);
+    if (key === this._defaultKey) this._announce(store);
 
     return store;
   };
@@ -85,7 +109,7 @@ export class StoreContainer {
   removeStore = ({ readonly, query, id }: RemoveStoreOptions) => {
     const key = this._keyOf({ readonly, query, id });
     if (key === null || !this._storeMap.delete(key)) return;
-    if (key === this._defaultKey) this.defaultStoreChanged.next(null);
+    if (key === this._defaultKey) this._announce(null);
   };
 
   /**
