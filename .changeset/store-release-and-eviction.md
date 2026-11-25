@@ -68,11 +68,13 @@ surface-ref finds the document of its element from Yjs and builds a
 readonly store for that one alone. `DocDisplayMetaService` no longer
 builds the store of every linked document it names.
 
-**Type change (`@labre/affine-shared`, minor):** `DocDisplayMetaService`'s
-public `iconMap` and `titleMap` are keyed by document id
-(`Map<string, …>`); they were keyed by the document's store
-(`WeakMap<Store, …>`). Code that reads them by store does not compile:
-read them by the document's id, or call `icon(pageId)` / `title(pageId)`.
+**Deprecated:** `DocDisplayMetaService`'s public `iconMap` and `titleMap`
+keep their type and stay empty: the service builds no store, so there is
+nothing to key them by. Read `icon(pageId)` / `title(pageId)`. The `Doc`
+interface gains two required members, `defaultStore` and
+`defaultStoreChanged`: nothing to do for a host that uses the library's
+workspace classes, a compile error only for one that implements `Doc`
+itself.
 
 `doc.getStore({ readonly: false })` now returns one store per document, as
 `readonly: true` does, instead of building a new one on every call, and

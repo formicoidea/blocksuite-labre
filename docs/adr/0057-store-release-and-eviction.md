@@ -565,7 +565,10 @@ target }`). Yjs keeps the outer origin of a nested transaction, so a
      `dataSource` getter still can;
    - `DocDisplayMetaService`: keyed its title and icon caches by the default
      store, building it for every linked document it resolved and again
-     after a release; now keyed by document id, no store;
+     after a release; now keyed by document id in private caches, no
+     store. The public `iconMap` and `titleMap` keep their type, deprecated
+     and empty, so the change stays a minor (guard:
+     `shared/src/__tests__/services/doc-display-meta-signature.unit.spec.ts`);
    - surface-ref to an element of another document: the element is read
      from that document's readonly store (the one its preview renders), not
      from the default store;
@@ -626,8 +629,7 @@ target }`). Yjs keeps the outer origin of a nested transaction, so a
    host's close). The card hears the changes of whichever store it reads
    (fourth review: on its own store it heard none, so a peer's new block
    never showed): the listening moves from its own store to the default one
-   and to none with the reads, once per change; a store opened while the
-   card waited for content refreshes it after the host's task. Guards: `embed-doc/src/__tests__/linked-doc-source.unit.spec.ts`
+   and to none with the reads, once per change; a store opened while the card waited for content refreshes it after the host's task, and so does a close, so a card is never left loading (fifth review). Guards: `embed-doc/src/__tests__/linked-doc-source.unit.spec.ts`
    and `cross-doc-store-release.spec.ts` (B's `defaultStore` null after the
    close, after a forced re-render and reload of the card, after another
    document and B are renamed, and after the collection; the card shows B's
